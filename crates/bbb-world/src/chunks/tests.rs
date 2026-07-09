@@ -264,6 +264,24 @@ fn samples_motion_blocking_height_from_chunk_heightmap() {
 }
 
 #[test]
+fn samples_requested_heightmap_kind_from_chunk_heightmap() {
+    let dimension = WorldDimension {
+        min_y: 0,
+        height: 16,
+    };
+    let mut packet = synthetic_local_palette_chunk_packet();
+    packet.chunk_data.heightmaps = vec![ChunkHeightmapData {
+        kind_id: 1,
+        data: motion_blocking_heightmap(dimension, &[(2, 3, 5)]).data,
+    }];
+    let mut store = WorldStore::with_dimension(dimension);
+    store.insert_level_chunk_with_light(packet).unwrap();
+
+    assert_eq!(store.sample_heightmap_first_available(1, 34, -45), Some(5));
+    assert_eq!(store.sample_heightmap_first_available(4, 34, -45), None);
+}
+
+#[test]
 fn motion_blocking_height_ignores_missing_or_malformed_heightmap() {
     let dimension = WorldDimension {
         min_y: 0,

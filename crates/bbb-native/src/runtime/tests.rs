@@ -1220,6 +1220,50 @@ fn hud_debug_overlay_projects_custom_light_levels_from_camera_feet_block() {
 }
 
 #[test]
+fn hud_debug_overlay_projects_custom_heightmaps_from_camera_feet_block() {
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    let mut chunk = empty_lightmap_test_chunk(world.dimension());
+    chunk.heightmaps = vec![
+        test_heightmap(1, world.dimension(), &[(2, 3, 9)]),
+        test_heightmap(4, world.dimension(), &[(2, 3, 7)]),
+    ];
+    world.insert_decoded_chunk(chunk);
+    let mut input = ClientInputState::new(true);
+    input.set_debug_screen_entry_status(
+        DebugScreenEntryId::Heightmap,
+        crate::debug_entries::DebugScreenEntryStatus::AlwaysOn,
+    );
+
+    let overlay = hud_debug_overlay(
+        &input,
+        &world,
+        Some(CameraPose {
+            position: [2.25, 1.0, 3.25],
+            y_rot: 0.0,
+            x_rot: 0.0,
+            eye_height: 1.62,
+        }),
+        winit::dpi::PhysicalSize::new(320, 240),
+        &HudDebugFpsSampler::default(),
+        VANILLA_UNLIMITED_FRAMERATE_LIMIT,
+        true,
+        &HudDebugNetworkSampler::default(),
+        &HudDebugTpsSampler::default(),
+        &NetCounters::default(),
+    )
+    .expect("custom heightmap entry should show with loaded camera chunk");
+
+    assert_eq!(
+        overlay.left_lines,
+        vec![
+            "CH S: 9 M: 7 ML: ??".to_string(),
+            "SH S: ?? O: ?? M: ?? ML: ??".to_string(),
+        ]
+    );
+    assert!(overlay.right_lines.is_empty());
+}
+
+#[test]
 fn hud_debug_overlay_projects_custom_biome_from_camera_feet_block() {
     let mut world = world_with_dimension(0, "minecraft:overworld");
     world.record_registry_entries(
@@ -5103,6 +5147,14 @@ fn test_motion_blocking_heightmap(
     dimension: WorldDimension,
     entries: &[(u8, u8, i32)],
 ) -> HeightmapData {
+    test_heightmap(4, dimension, entries)
+}
+
+fn test_heightmap(
+    kind_id: i32,
+    dimension: WorldDimension,
+    entries: &[(u8, u8, i32)],
+) -> HeightmapData {
     let bits = test_heightmap_bits_for_dimension(dimension);
     let mut values = vec![0u64; 16 * 16];
     for &(local_x, local_z, first_available) in entries {
@@ -5110,7 +5162,7 @@ fn test_motion_blocking_heightmap(
         values[index] = u64::try_from(first_available - dimension.min_y).unwrap();
     }
     HeightmapData {
-        kind_id: 4,
+        kind_id,
         data: pack_test_fixed_values(&values, bits)
             .into_iter()
             .map(|value| value as i64)

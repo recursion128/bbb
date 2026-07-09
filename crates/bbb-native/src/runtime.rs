@@ -46,7 +46,7 @@ use bbb_renderer::{
     VANILLA_MAX_RENDER_DISTANCE_CHUNKS, VANILLA_MIN_RENDER_DISTANCE_CHUNKS,
 };
 use bbb_world::{
-    sign_wood_and_form_for_block_name, BlockPos, BookScreenState, ContainerState,
+    sign_wood_and_form_for_block_name, BlockPos, BookScreenState, ChunkPos, ContainerState,
     EvokerFangsCritParticleState, FireworkRocketTrailParticleState, ItemEquipmentSlot,
     MerchantOfferState, MerchantOffersState, MobEffectState, MountArmorSlotKind,
     MountInventoryKind, OminousItemSpawnerParticleState, PrimedTntSmokeParticleState,
@@ -152,6 +152,10 @@ const VANILLA_END_SKY_LIGHT_COLOR: [f32; 3] = rgb24(-5_480_243);
 const VANILLA_END_AMBIENT_LIGHT_COLOR: [f32; 3] = rgb24(-12_630_209);
 const VANILLA_LIGHTMAP_DEFAULT_DAY_TIME: i64 = 6_000;
 const VANILLA_LIGHTMAP_DAY_PERIOD_TICKS: i64 = 24_000;
+const VANILLA_HEIGHTMAP_WORLD_SURFACE_ID: i32 = 1;
+const VANILLA_HEIGHTMAP_OCEAN_FLOOR_ID: i32 = 3;
+const VANILLA_HEIGHTMAP_MOTION_BLOCKING_ID: i32 = 4;
+const VANILLA_HEIGHTMAP_MOTION_BLOCKING_NO_LEAVES_ID: i32 = 5;
 const VANILLA_TIMELINE_NIGHT_SKY_LIGHT_COLOR: i32 = argb_color(255, 122, 122, 255);
 const VANILLA_WEATHER_SKY_LIGHT_FACTOR: f32 = 0.24;
 const VANILLA_WEATHER_RAIN_ALPHA: f32 = 0.3125;
@@ -3137,6 +3141,13 @@ fn hud_debug_overlay_at_partial_tick(
             }
         }
     }
+    if entry_enabled(DebugScreenEntryId::Heightmap) {
+        if let Some(camera_pose) = camera_pose {
+            if let Some(heightmap_lines) = hud_debug_heightmap_lines(world, camera_pose) {
+                left_lines.extend(heightmap_lines);
+            }
+        }
+    }
     if entry_enabled(DebugScreenEntryId::Biome) {
         if let Some(camera_pose) = camera_pose {
             if let Some(biome_line) = hud_debug_biome_line(world, camera_pose) {
@@ -3569,6 +3580,48 @@ fn hud_debug_light_line(world: &WorldStore, camera_pose: CameraPose) -> Option<S
         "Client Light: {raw} ({} sky, {} block)",
         light.sky, light.block
     ))
+}
+
+fn hud_debug_heightmap_lines(world: &WorldStore, camera_pose: CameraPose) -> Option<Vec<String>> {
+    let feet_pos = camera_feet_block_position(camera_pose)?;
+    world.probe_chunk(ChunkPos {
+        x: feet_pos.x.div_euclid(16),
+        z: feet_pos.z.div_euclid(16),
+    })?;
+    let client_height = |kind_id| hud_debug_heightmap_value(world, kind_id, feet_pos.x, feet_pos.z);
+    let server_height =
+        |kind_id| hud_debug_heightmap_server_value(world, kind_id, feet_pos.x, feet_pos.z);
+    Some(vec![
+        format!(
+            "CH S: {} M: {} ML: {}",
+            client_height(VANILLA_HEIGHTMAP_WORLD_SURFACE_ID),
+            client_height(VANILLA_HEIGHTMAP_MOTION_BLOCKING_ID),
+            client_height(VANILLA_HEIGHTMAP_MOTION_BLOCKING_NO_LEAVES_ID)
+        ),
+        format!(
+            "SH S: {} O: {} M: {} ML: {}",
+            server_height(VANILLA_HEIGHTMAP_WORLD_SURFACE_ID),
+            server_height(VANILLA_HEIGHTMAP_OCEAN_FLOOR_ID),
+            server_height(VANILLA_HEIGHTMAP_MOTION_BLOCKING_ID),
+            server_height(VANILLA_HEIGHTMAP_MOTION_BLOCKING_NO_LEAVES_ID)
+        ),
+    ])
+}
+
+fn hud_debug_heightmap_value(world: &WorldStore, kind_id: i32, x: i32, z: i32) -> String {
+    world
+        .sample_heightmap_first_available(kind_id, x, z)
+        .map(|height| height.to_string())
+        .unwrap_or_else(|| "??".to_string())
+}
+
+fn hud_debug_heightmap_server_value(
+    _world: &WorldStore,
+    _kind_id: i32,
+    _x: i32,
+    _z: i32,
+) -> String {
+    "??".to_string()
 }
 
 fn hud_debug_biome_line(world: &WorldStore, camera_pose: CameraPose) -> Option<String> {

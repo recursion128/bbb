@@ -5499,6 +5499,22 @@
   `SharedConstants.DEBUG_SHOW_SERVER_DEBUG_VALUES` 下追加的 `Server Light` 行
   需要 local-server light mirror；完整 group layout、`DebugOptionsScreen` 和
   `debug-profile.json` 持久化仍待后续。
+- [x] debug overlay heightmap entry shell（P2 native/runtime slice，
+  2026-07-09）：依据 `DebugScreenEntries.HEIGHTMAP` 注册
+  `DebugEntryHeightmap`；该 entry 使用 camera entity `blockPosition()`，要求
+  loaded client chunk，加入 `minecraft:heightmaps` group，并把 client
+  heightmaps 格式化为
+  `CH S: <WORLD_SURFACE> M: <MOTION_BLOCKING> ML: <MOTION_BLOCKING_NO_LEAVES>`。
+  server heightmaps 格式为
+  `SH S: <WORLD_SURFACE> O: <OCEAN_FLOOR> M: <MOTION_BLOCKING> ML: <MOTION_BLOCKING_NO_LEAVES>`，
+  无 server chunk 时显示 `??`。native 现在有非 profile 默认项
+  `Heightmap` entry id，default / performance profiles 中保持 `Never`，
+  reduced-debug 下按默认 `DebugScreenEntry.isAllowed` 过滤；world 暴露通用
+  `sample_heightmap_first_available` 查询 decoded chunk heightmaps，custom
+  status 启用时从 camera-feet loaded chunk heightmaps 投影 client row，
+  server row 仍显示 `??`。边界：client heightmap 缺失或 malformed 时同样显示
+  `??`；完整 group layout、local-server heightmap mirror 与
+  `DebugOptionsScreen` / `debug-profile.json` 持久化仍待后续。
 - [x] debug overlay biome entry shell（P2 native/runtime slice，2026-07-09）：
   依据 `DebugScreenEntries.BIOME` 注册 `DebugEntryBiome`，该 entry 使用 camera
   entity `blockPosition()`、检查 build height，并从

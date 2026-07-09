@@ -490,11 +490,11 @@ impl WorldStore {
         ))
     }
 
-    /// Samples vanilla `Heightmap.Types.MOTION_BLOCKING` first-available height
-    /// from the chunk heightmap sent by `ClientboundLevelChunkWithLightPacket`.
-    /// Returns `None` for unloaded chunks, missing heightmaps, or malformed raw
-    /// data so callers can fall back to their own slower scan.
-    pub fn sample_motion_blocking_height(&self, x: i32, z: i32) -> Option<i32> {
+    /// Samples a vanilla heightmap first-available height from the chunk
+    /// heightmap sent by `ClientboundLevelChunkWithLightPacket`. Returns
+    /// `None` for unloaded chunks, missing heightmaps, or malformed raw data so
+    /// callers can fall back to their own slower scan.
+    pub fn sample_heightmap_first_available(&self, kind_id: i32, x: i32, z: i32) -> Option<i32> {
         let chunk_pos = ChunkPos {
             x: x.div_euclid(16),
             z: z.div_euclid(16),
@@ -503,12 +503,11 @@ impl WorldStore {
         let local_z = z.rem_euclid(16) as u8;
         let index = heightmap_index(local_x, local_z);
         let chunk = self.probe_chunk(chunk_pos)?;
-        chunk_heightmap_first_available(
-            chunk,
-            VANILLA_HEIGHTMAP_MOTION_BLOCKING_ID,
-            self.dimension,
-            index,
-        )
+        chunk_heightmap_first_available(chunk, kind_id, self.dimension, index)
+    }
+
+    pub fn sample_motion_blocking_height(&self, x: i32, z: i32) -> Option<i32> {
+        self.sample_heightmap_first_available(VANILLA_HEIGHTMAP_MOTION_BLOCKING_ID, x, z)
     }
 
     pub fn extract_terrain_chunk(&self, pos: ChunkPos) -> Option<TerrainChunkSnapshot> {

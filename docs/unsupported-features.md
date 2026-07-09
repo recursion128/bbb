@@ -1219,6 +1219,21 @@ When an agent does any of the following, update this file in the same slice:
     `SharedConstants.DEBUG_SHOW_SERVER_DEBUG_VALUES` needs a local-server light
     mirror and remains future work; full debug group layout/persistence still
     belongs to `DebugOptionsScreen`.
+  - Done 2026-07-09 — Debug overlay heightmap entry shell. Vanilla anchors:
+    `DebugScreenEntries.HEIGHTMAP` registers `DebugEntryHeightmap`; it reads
+    the camera entity `blockPosition()`, requires a loaded client chunk, adds
+    rows to the `minecraft:heightmaps` group, and formats client heightmaps as
+    `CH S: <WORLD_SURFACE> M: <MOTION_BLOCKING> ML: <MOTION_BLOCKING_NO_LEAVES>`.
+    It also formats server heightmaps as
+    `SH S: <WORLD_SURFACE> O: <OCEAN_FLOOR> M: <MOTION_BLOCKING> ML: <MOTION_BLOCKING_NO_LEAVES>`,
+    using `??` when no server chunk is available. bbb now has a non-profile
+    `Heightmap` entry id, keeps it `Never` in default/performance profiles,
+    filters it under reduced-debug info, exposes a generic world
+    `sample_heightmap_first_available` query over decoded chunk heightmaps, and
+    projects the client row from loaded camera-feet chunk heightmaps while the
+    server row remains `??`. Boundary: missing or malformed client heightmaps
+    are also shown as `??`; exact group layout, local-server heightmap mirror,
+    and profile persistence remain future work.
   - Done 2026-07-09 — Debug overlay biome entry shell. Vanilla anchors:
     `DebugScreenEntries.BIOME` registers `DebugEntryBiome`; the entry reads the
     camera entity `blockPosition()`, checks build height, and formats

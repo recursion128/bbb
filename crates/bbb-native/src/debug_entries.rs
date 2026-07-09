@@ -24,6 +24,7 @@ pub(crate) enum DebugScreenEntryId {
     PlayerSectionPosition,
     DayCount,
     LightLevels,
+    Heightmap,
     Biome,
     LookingAtBlockState,
     LookingAtBlockTags,
@@ -255,6 +256,10 @@ mod tests {
             DebugScreenEntryStatus::Never
         );
         assert_eq!(
+            entries.status(DebugScreenEntryId::Heightmap),
+            DebugScreenEntryStatus::Never
+        );
+        assert_eq!(
             entries.status(DebugScreenEntryId::Biome),
             DebugScreenEntryStatus::Never
         );
@@ -367,6 +372,11 @@ mod tests {
             DebugScreenEntryStatus::AlwaysOn,
         );
         assert!(!entries.is_currently_enabled(DebugScreenEntryId::LightLevels, true));
+        entries.set_status(
+            DebugScreenEntryId::Heightmap,
+            DebugScreenEntryStatus::AlwaysOn,
+        );
+        assert!(!entries.is_currently_enabled(DebugScreenEntryId::Heightmap, true));
         entries.set_status(DebugScreenEntryId::Biome, DebugScreenEntryStatus::AlwaysOn);
         assert!(!entries.is_currently_enabled(DebugScreenEntryId::Biome, true));
         entries.set_status(

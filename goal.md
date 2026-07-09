@@ -309,13 +309,13 @@ Screen Render Surfaces" 条目）：
   3D crosshair rendering、
   default-profile debug entry coverage、performance-profile GPU utilization
   entry shell、day-count debug entry shell、detailed-memory debug entry
-  shell、light-levels debug entry shell、biome debug entry shell、
-  looking-at block-state debug entry shell、looking-at block-tags debug entry
-  shell、looking-at fluid-state debug entry shell、looking-at fluid-tags debug
-  entry shell、looking-at entity debug entry shell、looking-at entity-tags debug
-  entry shell、chunk-render-stats debug entry shell、entity-render-stats debug
-  entry shell、particle-render-stats debug entry shell、chunk-source-stats debug
-  entry shell、
+  shell、light-levels debug entry shell、heightmap debug entry shell、biome
+  debug entry shell、looking-at block-state debug entry shell、looking-at
+  block-tags debug entry shell、looking-at fluid-state debug entry shell、
+  looking-at fluid-tags debug entry shell、looking-at entity debug entry
+  shell、looking-at entity-tags debug entry shell、chunk-render-stats debug
+  entry shell、entity-render-stats debug entry shell、particle-render-stats
+  debug entry shell、chunk-source-stats debug entry shell、
   F3+I local block-entity NBT capture、
   advanced tooltip component-count display、F3+I local entity transform NBT
   capture、debug feedback styled prefix baseline、
