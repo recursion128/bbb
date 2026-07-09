@@ -6310,6 +6310,15 @@
   更广泛的 Mob save data、passengers 以及其他 entity-specific
   `addAdditionalSaveData` 仍待本地 state owner 后才能关闭完整
   `saveWithoutId` parity。
+- [x] debug overlay F3+I local interaction save fields（P2 native slice，
+  2026-07-09）：依据 `Interaction.addAdditionalSaveData` 写 float `width`、
+  float `height`、nullable `attack`、nullable `interaction` 和 boolean `response`；
+  synced metadata ids 8、9、10 分别携带 width、height、response，默认值为
+  1.0/1.0/false。native 现在对授权 Shift+F3+I 本地 interaction recreate
+  command 追加 metadata-derived `width`、`height`、`response`。边界：local
+  attack/interaction `PlayerAction` NBT 以及其他 entity-specific
+  `addAdditionalSaveData` 仍待本地 state owner 后才能关闭完整
+  `saveWithoutId` parity。
 - [x] debug overlay F3+I local iron-golem save fields（P2 native slice，
   2026-07-09）：依据 `IronGolem.addAdditionalSaveData` 调用 Mob 保存链后写
   `PlayerCreated`，再由 `NeutralMob.addPersistentAngerSaveData` 写

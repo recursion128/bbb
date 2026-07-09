@@ -1160,7 +1160,7 @@ When an agent does any of the following, update this file in the same slice:
     suspicious-stew effect lines, map-id lines, instrument description lines,
     tropical-fish pattern lines,
     banner-pattern rows, pot-decoration rows,
-    remaining F3+I full local entity saveWithoutId parity beyond local creeper/creaking/shulker/slime-family/snow-golem/bat/bogged/end-crystal/endermite/ghast/iron-golem/phantom/ravager/wither/zoglin save fields,
+    remaining F3+I full local entity saveWithoutId parity beyond local creeper/creaking/shulker/slime-family/snow-golem/bat/bogged/end-crystal/endermite/ghast/interaction/iron-golem/phantom/ravager/wither/zoglin save fields,
     full vanilla profiler section coverage,
     profiling metrics recorder/output,
     DebugOptionsScreen narration/full widget styling polish, and native pause
@@ -2848,6 +2848,15 @@ When an agent does any of the following, update this file in the same slice:
     explosion power, broader Mob save data, passengers, and other
     entity-specific `addAdditionalSaveData` fields still need local state owners
     before full `saveWithoutId` parity.
+  - Done 2026-07-09 — Debug overlay F3+I local interaction save fields.
+    Vanilla anchors: `Interaction.addAdditionalSaveData` writes float `width`,
+    float `height`, nullable `attack`, nullable `interaction`, and boolean
+    `response`; synced metadata ids 8, 9, and 10 carry width, height, and
+    response with defaults 1.0/1.0/false. bbb now appends metadata-derived
+    `width`, `height`, and `response` for authorized Shift+F3+I local
+    interaction recreate commands. Boundary: local attack/interaction
+    `PlayerAction` NBT and other entity-specific `addAdditionalSaveData` fields
+    still need local state owners before full `saveWithoutId` parity.
   - Done 2026-07-09 — Debug overlay F3+I local iron-golem save fields.
     Vanilla anchors: `IronGolem.addAdditionalSaveData` calls the Mob save chain,
     writes `PlayerCreated`, then `NeutralMob.addPersistentAngerSaveData` writes
@@ -3913,7 +3922,7 @@ When an agent does any of the following, update this file in the same slice:
     intangible projectile line, and ominous bottle amplifier line, potion effect lines, and creative
     suspicious-stew effect lines, map-id lines, and instrument description
     lines, tropical-fish pattern lines, banner-pattern rows, pot-decoration
-    rows, remaining F3+I full local entity saveWithoutId parity beyond local creeper/creaking/shulker/slime-family/snow-golem/bat/bogged/end-crystal/endermite/ghast/iron-golem/phantom/ravager/wither/zoglin save fields,
+    rows, remaining F3+I full local entity saveWithoutId parity beyond local creeper/creaking/shulker/slime-family/snow-golem/bat/bogged/end-crystal/endermite/ghast/interaction/iron-golem/phantom/ravager/wither/zoglin save fields,
     full vanilla profiler section coverage,
     profiling metrics recorder/output,
     DebugOptionsScreen narration/full widget styling polish, native pause

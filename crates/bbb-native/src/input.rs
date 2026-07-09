@@ -12,11 +12,11 @@ use bbb_protocol::{
         VANILLA_ENTITY_TYPE_BOGGED_ID, VANILLA_ENTITY_TYPE_CREAKING_ID,
         VANILLA_ENTITY_TYPE_CREEPER_ID, VANILLA_ENTITY_TYPE_ENDERMITE_ID,
         VANILLA_ENTITY_TYPE_END_CRYSTAL_ID, VANILLA_ENTITY_TYPE_GHAST_ID,
-        VANILLA_ENTITY_TYPE_IRON_GOLEM_ID, VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID,
-        VANILLA_ENTITY_TYPE_PHANTOM_ID, VANILLA_ENTITY_TYPE_RAVAGER_ID,
-        VANILLA_ENTITY_TYPE_SHULKER_ID, VANILLA_ENTITY_TYPE_SLIME_ID,
-        VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID, VANILLA_ENTITY_TYPE_WITHER_ID,
-        VANILLA_ENTITY_TYPE_ZOGLIN_ID,
+        VANILLA_ENTITY_TYPE_INTERACTION_ID, VANILLA_ENTITY_TYPE_IRON_GOLEM_ID,
+        VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID, VANILLA_ENTITY_TYPE_PHANTOM_ID,
+        VANILLA_ENTITY_TYPE_RAVAGER_ID, VANILLA_ENTITY_TYPE_SHULKER_ID,
+        VANILLA_ENTITY_TYPE_SLIME_ID, VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID,
+        VANILLA_ENTITY_TYPE_WITHER_ID, VANILLA_ENTITY_TYPE_ZOGLIN_ID,
     },
     packets::{
         BlockEntityTagQuery, BlockPos as ProtocolBlockPos, ChangeGameModeCommand,
@@ -229,6 +229,12 @@ const END_CRYSTAL_BEAM_TARGET_DATA_ID: u8 = 8;
 const END_CRYSTAL_SHOW_BOTTOM_DATA_ID: u8 = 9;
 const END_CRYSTAL_DEFAULT_SHOW_BOTTOM: bool = true;
 const GHAST_DEFAULT_EXPLOSION_POWER: i8 = 1;
+const INTERACTION_WIDTH_DATA_ID: u8 = 8;
+const INTERACTION_HEIGHT_DATA_ID: u8 = 9;
+const INTERACTION_RESPONSE_DATA_ID: u8 = 10;
+const INTERACTION_DEFAULT_WIDTH: f32 = 1.0;
+const INTERACTION_DEFAULT_HEIGHT: f32 = 1.0;
+const INTERACTION_DEFAULT_RESPONSE: bool = false;
 const IRON_GOLEM_FLAGS_DATA_ID: u8 = 16;
 const IRON_GOLEM_PLAYER_CREATED_FLAG: i8 = 1;
 const IRON_GOLEM_DEFAULT_FLAGS: i8 = 0;
@@ -3590,6 +3596,9 @@ fn debug_push_entity_additional_save_data(entity: &EntityState, fields: &mut Vec
             debug_push_mob_additional_save_data(entity, fields);
             debug_push_ghast_additional_save_data(fields);
         }
+        VANILLA_ENTITY_TYPE_INTERACTION_ID => {
+            debug_push_interaction_additional_save_data(entity, fields);
+        }
         VANILLA_ENTITY_TYPE_IRON_GOLEM_ID => {
             debug_push_mob_additional_save_data(entity, fields);
             debug_push_iron_golem_additional_save_data(entity, fields);
@@ -3725,6 +3734,22 @@ fn debug_push_ghast_additional_save_data(fields: &mut Vec<String>) {
     fields.push(format!("ExplosionPower: {GHAST_DEFAULT_EXPLOSION_POWER}b"));
 }
 
+fn debug_push_interaction_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
+    let width = debug_entity_data_float_present(entity, INTERACTION_WIDTH_DATA_ID)
+        .unwrap_or(INTERACTION_DEFAULT_WIDTH);
+    let height = debug_entity_data_float_present(entity, INTERACTION_HEIGHT_DATA_ID)
+        .unwrap_or(INTERACTION_DEFAULT_HEIGHT);
+    let response = debug_entity_data_bool_present(entity, INTERACTION_RESPONSE_DATA_ID)
+        .unwrap_or(INTERACTION_DEFAULT_RESPONSE);
+    if let Some(width) = debug_snbt_float(width) {
+        fields.push(format!("width: {width}"));
+    }
+    if let Some(height) = debug_snbt_float(height) {
+        fields.push(format!("height: {height}"));
+    }
+    fields.push(format!("response: {}", debug_snbt_bool(response)));
+}
+
 fn debug_push_iron_golem_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
     let flags = debug_entity_data_byte_present(entity, IRON_GOLEM_FLAGS_DATA_ID)
         .unwrap_or(IRON_GOLEM_DEFAULT_FLAGS);
@@ -3820,6 +3845,17 @@ fn debug_entity_data_bool_present(entity: &EntityState, data_id: u8) -> Option<b
         .find(|value| value.data_id == data_id)
         .and_then(|value| match &value.value {
             EntityDataValueKind::Boolean(value) => Some(*value),
+            _ => None,
+        })
+}
+
+fn debug_entity_data_float_present(entity: &EntityState, data_id: u8) -> Option<f32> {
+    entity
+        .data_values
+        .iter()
+        .find(|value| value.data_id == data_id)
+        .and_then(|value| match &value.value {
+            EntityDataValueKind::Float(value) => Some(*value),
             _ => None,
         })
 }
