@@ -2668,6 +2668,33 @@ fn hud_debug_overlay_projects_profiler_toggle_without_fake_chart_data() {
 }
 
 #[test]
+fn hud_debug_overlay_merges_native_profiler_chart() {
+    let chart = HudDebugProfilerChart {
+        current_node_name: "root".to_string(),
+        current_global_percentage: 100.0,
+        slices: vec![bbb_renderer::HudDebugProfilerSlice {
+            name: "render".to_string(),
+            percentage: 75.0,
+            global_percentage: 75.0,
+        }],
+    };
+
+    let chart_only =
+        hud_debug_overlay_with_profiler_chart(None, Some(chart.clone())).expect("chart overlay");
+    assert_eq!(chart_only.profiler_chart, Some(chart.clone()));
+    assert!(chart_only.left_lines.is_empty());
+
+    let existing = HudDebugOverlay {
+        left_lines: vec!["Minecraft 26.1".to_string()],
+        ..HudDebugOverlay::default()
+    };
+    let merged = hud_debug_overlay_with_profiler_chart(Some(existing), Some(chart.clone()))
+        .expect("merged overlay");
+    assert_eq!(merged.left_lines, vec!["Minecraft 26.1".to_string()]);
+    assert_eq!(merged.profiler_chart, Some(chart));
+}
+
+#[test]
 fn hud_debug_overlay_projects_game_mode_switcher_state() {
     let mut world = world_with_dimension_height(0, "minecraft:overworld", 384);
     let player_id = world

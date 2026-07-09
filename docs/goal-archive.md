@@ -6426,3 +6426,13 @@
   DebugOptionsScreen 最近一次 left click，在 250ms double-click 时选中点击处的
   search word。边界：narration、keyboard focus highlighted states 与 remaining full
   widget polish 仍待后续。
+- [x] debug overlay current-frame profiler chart data and tree navigation（P2
+  native/runtime slice，2026-07-09）：依据 `Minecraft.runTick` 将
+  `fpsPieProfiler.getResults()` 交给 `ProfilerPieChart`、`FilledProfileResults.getTimes`
+  输出 current node + direct children + `unspecified` slice 的百分比排序规则，以及
+  `ProfilerPieChart.profilerPieChartKeyPress` 用 0 返回父 path、1..9 进入非
+  `unspecified` child path 的行为，native 现在记录 redraw frame 的真实 wall-clock
+  `update` / `render` / `publish` section 到 repo-native profiler tree，F3+1 可投影
+  `HudDebugProfilerChart`，普通数字键请求会实际改变 tree path 而不是仅日志记录。
+  边界：这是当前帧 native profiler，不是完整 vanilla `ActiveProfiler` section graph；
+  `ActiveMetricsRecorder`、自动/手动 stop timing 与 zipped `debug/profiling` 输出仍待后续。

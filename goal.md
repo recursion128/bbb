@@ -361,8 +361,8 @@ Screen Render Surfaces" 条目）：
   剩余 individual non-default debug entry renderers、
   entity hitbox local-server mirror green boxes/delta arrows and 3D debug-text
   billboard rendering、advanced tooltip component-specific full
-  parity/persistence、F3+I full local entity saveWithoutId parity、profiler data
-  sampling and ProfileResults tree navigation、
+  parity/persistence、F3+I full local entity saveWithoutId parity、
+  full vanilla profiler section coverage、
   profiling metrics recorder/output、DebugOptionsScreen narration/focus/full widget
   styling polish、native pause tick-freeze eligibility/full PauseScreen remaining actions/subscreens，
   低优先）。

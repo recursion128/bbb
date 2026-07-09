@@ -27,6 +27,7 @@ mod code_of_conduct_overlay;
 mod conduit_scene;
 mod crosshair;
 mod debug_entries;
+mod debug_profiler;
 mod decorated_pot_scene;
 mod enchanting_table_book_scene;
 mod end_portal_scene;
@@ -57,6 +58,7 @@ use bbb_item_model::NativeItemRuntime;
 use code_of_conduct::{default_code_of_conduct_store_path, CodeOfConductAcceptance};
 use code_of_conduct_overlay::CodeOfConductOverlayState;
 use debug_entries::DebugScreenEntryList;
+use debug_profiler::{DebugProfiler, DebugProfilerSectionSample};
 use entity_assets::load_entity_model_textures;
 use hud_assets::load_hud_textures;
 use input::{
@@ -426,6 +428,7 @@ fn main() -> Result<()> {
     let mut hud_debug_fps_sampler = HudDebugFpsSampler::default();
     let mut hud_debug_network_sampler = HudDebugNetworkSampler::default();
     let mut hud_debug_tps_sampler = HudDebugTpsSampler::default();
+    let mut debug_profiler = DebugProfiler::default();
     let mut lightmap_ticks = LightmapTickState::with_brightness_factor_and_hide_lightning_flash(
         args.client_gamma,
         args.hide_lightning_flash,
@@ -612,11 +615,18 @@ fn main() -> Result<()> {
                         }
                         let profiler_chart_navigation_requests =
                             input.take_debug_profiler_chart_navigation_requests();
-                        if let Some(last_digit) = profiler_chart_navigation_requests.last() {
+                        let profiler_chart_navigation_request_count =
+                            profiler_chart_navigation_requests.len();
+                        let last_digit = profiler_chart_navigation_requests.last().copied();
+                        for digit in profiler_chart_navigation_requests {
+                            debug_profiler.navigate(digit);
+                        }
+                        if let Some(last_digit) = last_digit {
                             tracing::info!(
-                                navigation_requests = profiler_chart_navigation_requests.len(),
+                                navigation_requests = profiler_chart_navigation_request_count,
                                 last_digit,
-                                "profiler chart navigation requested; native profiler results are not implemented"
+                                current_path = debug_profiler.current_path(),
+                                "profiler chart navigation requested"
                             );
                         }
                         let debug_frustum_requests = input.take_debug_frustum_requests();
@@ -1007,6 +1017,7 @@ fn main() -> Result<()> {
                     );
                 }
                 WindowEvent::RedrawRequested => {
+                    let profiler_frame_started_at = Instant::now();
                     if code_of_conduct_overlay.is_visible(&world)
                         || runtime_wants_cursor(&input, &world)
                     {
@@ -1022,6 +1033,7 @@ fn main() -> Result<()> {
                         items.drain_profile_resolution_results();
                         drain_dynamic_player_skin_downloads(items, &mut renderer);
                     }
+                    let profiler_update_started_at = Instant::now();
                     if !pump_network_and_terrain(
                         &mut net_events,
                         &net_commands,
@@ -1053,10 +1065,12 @@ fn main() -> Result<()> {
                         args.client_framerate_limit,
                         args.client_vsync,
                         args.hide_lightning_flash,
+                        debug_profiler.chart(),
                     ) {
                         target.exit();
                         return;
                     }
+                    let profiler_update_duration = profiler_update_started_at.elapsed();
                     input.consume_debug_recreate_server_query_response(
                         &mut world,
                         &mut debug_clipboard,
@@ -1091,11 +1105,13 @@ fn main() -> Result<()> {
                     let render_path = cli_screenshot_path.or(control_screenshot_path.as_deref());
                     let wrote_cli_screenshot = cli_screenshot_path.is_some();
 
+                    let profiler_render_started_at = Instant::now();
                     if let Err(err) = renderer.render(render_path) {
                         tracing::error!(?err, "render failed");
                         target.exit();
                         return;
                     }
+                    let profiler_render_duration = profiler_render_started_at.elapsed();
 
                     if wrote_cli_screenshot {
                         screenshot = None;
@@ -1104,16 +1120,36 @@ fn main() -> Result<()> {
                         }
                     }
 
+                    let profiler_publish_started_at = Instant::now();
                     let audio_counters = audio_runtime
                         .as_ref()
                         .map(NativeAudioRuntime::counters)
                         .unwrap_or_else(|| audio_status.clone());
-                    if !publish_snapshot(
+                    let published = publish_snapshot(
                         &snapshot,
                         control_renderer_counters(renderer.counters()),
                         &net_counters,
                         &audio_counters,
-                    ) {
+                    );
+                    let profiler_publish_duration = profiler_publish_started_at.elapsed();
+                    debug_profiler.record_frame(
+                        profiler_frame_started_at.elapsed(),
+                        &[
+                            DebugProfilerSectionSample {
+                                name: "update",
+                                duration: profiler_update_duration,
+                            },
+                            DebugProfilerSectionSample {
+                                name: "render",
+                                duration: profiler_render_duration,
+                            },
+                            DebugProfilerSectionSample {
+                                name: "publish",
+                                duration: profiler_publish_duration,
+                            },
+                        ],
+                    );
+                    if !published {
                         target.exit();
                     }
                     if let Some(interval) = frame_interval {
@@ -1194,6 +1230,7 @@ fn main() -> Result<()> {
                     args.client_framerate_limit,
                     args.client_vsync,
                     args.hide_lightning_flash,
+                    debug_profiler.chart(),
                 ) {
                     target.exit();
                     return;

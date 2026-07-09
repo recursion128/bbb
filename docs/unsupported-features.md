@@ -1146,8 +1146,8 @@ When an agent does any of the following, update this file in the same slice:
     entity hitbox local-server mirror green boxes/delta arrows and 3D debug-text
     billboard rendering,
     advanced tooltip component-specific full parity/persistence,
-    F3+I full local entity saveWithoutId parity, profiler data sampling and
-    ProfileResults tree navigation, profiling metrics recorder/output,
+    F3+I full local entity saveWithoutId parity, full vanilla profiler section
+    coverage, profiling metrics recorder/output,
     DebugOptionsScreen narration/full widget styling polish, and native pause
     tick-freeze eligibility/full PauseScreen remaining actions/subscreens remain
     (large, low priority).
@@ -1739,9 +1739,11 @@ When an agent does any of the following, update this file in the same slice:
     child labels, pie slices, and side shading through the HUD white-pixel/text
     path, and lifts the panel above F3+2/F3+3 charts using the same 69px
     bottom offset. Runtime intentionally projects no fake chart data until bbb
-    owns profiler `ProfileResults`. Boundary: profiler sampling/results,
-    ProfileResults tree path mutation, and F3+L metrics recorder/output remain
-    future work; numeric-key routing is covered by this shell slice.
+    owns profiler `ProfileResults`. Boundary at the time: profiler
+    sampling/results, ProfileResults tree path mutation, and F3+L metrics
+    recorder/output remained future work; current-frame native sampling/tree
+    navigation is covered by the later 2026-07-09 item below, while full
+    metrics output remains future work.
   - Done 2026-07-08 — Debug overlay profiler chart numeric-key routing shell.
     Vanilla anchors: `KeyboardHandler.keyPress` calls
     `getProfilerPieChart().profilerPieChartKeyPress(event.getDigit())` when the
@@ -1751,8 +1753,25 @@ When an agent does any of the following, update this file in the same slice:
     navigation requests for visible-chart top-row digit presses outside F3
     modifier handling, does not record F3+digit chart toggles, and lets the same
     digit continue to hotbar selection. The main loop drains and logs these
-    requests until native `ProfileResults` owns real tree path mutation.
-    Boundary: profiler sampling/results and actual tree navigation remain future work.
+    requests until native `ProfileResults` owns real tree path mutation. This
+    shell is superseded by the later 2026-07-09 current-frame profiler tree
+    navigation item below.
+  - Done 2026-07-09 — Debug overlay current-frame profiler chart data and tree
+    navigation. Vanilla anchors: `Minecraft.runTick` feeds
+    `ProfilerPieChart` with `fpsPieProfiler.getResults()` while F3+1 is
+    visible; `FilledProfileResults.getTimes(path)` emits the current node
+    first, then direct child `ResultField`s sorted by percentage and name,
+    adding an `unspecified` slice when child time is below self time;
+    `ProfilerPieChart` handles digit `0` by moving to the parent path and
+    digits `1..9` by appending a non-`unspecified` child name with
+    `ProfileResults.PATH_SEPARATOR`. bbb now records real redraw-frame
+    wall-clock sections (`update`, `render`, `publish`) into a native profiler
+    result tree, projects the current path as `HudDebugProfilerChart` while
+    F3+1 is visible, and applies queued numeric navigation requests to that
+    tree instead of only logging them. Boundary: this is a repo-native
+    current-frame profiler, not the full vanilla `ActiveProfiler` section
+    graph; `ActiveMetricsRecorder`, automatic/manual stop timing, and real
+    zipped `debug/profiling` output remain future work.
   - Done 2026-07-08 — Debug overlay F3+2 FPS chart rendering. Vanilla anchors:
     `DebugScreenOverlay.showFpsCharts` extracts `FpsDebugChart` at the bottom
     left with width `min(LocalSampleLogger.CAPACITY + 2, guiWidth / 2)`, and
@@ -1761,7 +1780,8 @@ When an agent does any of the following, update this file in the same slice:
     samples in `HudDebugFpsSampler`, projects them into `HudDebugOverlay` only
     while F3+2 is visible, and renders the FPS chart through the HUD white-pixel
     quad/text path with vanilla sample height and green/yellow/red thresholds.
-    Boundary: profiler `ProfileResults` data/navigation remains future work.
+    Boundary: full metrics recorder/output and broader vanilla profiler section
+    coverage remain future work.
   - Done 2026-07-08 — Debug overlay F3+2 TPS chart rendering. Vanilla anchors:
     `ClientDebugSubscriber.requestedSubscriptions` subscribes to
     `RemoteDebugSampleType.TICK_TIME` while `showFpsCharts` is enabled, using
@@ -1775,8 +1795,9 @@ When an agent does any of the following, update this file in the same slice:
     the world tick-rate, and renders the TPS chart through the HUD chart path
     with vanilla 240-sample capacity, 60px height, full-minus-idle labels,
     stacked component bars, TPS label, and threshold colors. Boundary: bbb only
-    has the dedicated tick-time subscription owner; profiler `ProfileResults`
-    data/navigation remains future work.
+    has the dedicated tick-time subscription owner; full metrics
+    recorder/output and broader vanilla profiler section coverage remain
+    future work.
   - Done 2026-07-08 — Debug overlay F3+3 network ping/bandwidth chart
     rendering. Vanilla anchors: `DebugScreenOverlay.showNetworkCharts` renders
     `BandwidthDebugChart` on the left for non-local connections and
@@ -2308,8 +2329,8 @@ When an agent does any of the following, update this file in the same slice:
     `HudDebugOverlay`, draws the same border and preview rect in the HUD pass,
     samples the renderer-owned dynamic lightmap texture through a HUD-layout
     nearest sampler, and keeps the vanilla mutual exclusion with FPS/network
-    charts from the existing input state. Boundary: profiler `ProfileResults`
-    data/navigation remains open.
+    charts from the existing input state. Boundary: full metrics
+    recorder/output and broader vanilla profiler section coverage remain open.
   - Done 2026-07-08 — Advancement screen contents/tree rendering closeout.
     The local advancement screen now has open/close, empty window, Done button,
     initial root-tab selection, root tab rendering/click selection, selected
@@ -2326,7 +2347,8 @@ When an agent does any of the following, update this file in the same slice:
     native per-frame FPS sampler, feeds the sampled value into the debug
     overlay's default priority lines, and formats the line from the startup
     `--client-framerate-limit` value (`260` / `inf` as unlimited). Boundary:
-    profiler `ProfileResults` data/navigation remains open.
+    full metrics recorder/output and broader vanilla profiler section coverage
+    remain open.
   - Done 2026-07-08 — Debug overlay configured-framerate FPS guide.
     Vanilla anchors: `FpsDebugChart.drawAdditionalLinesAndLabels` draws a cyan
     horizontal line at `getSampleHeight(1.0E9 / framerateLimit)` only when
@@ -3202,8 +3224,8 @@ When an agent does any of the following, update this file in the same slice:
     local-server mirror green boxes/delta arrows and
     3D debug-text billboard rendering,
     advanced tooltip component-specific full parity/persistence, F3+I full
-    local entity saveWithoutId parity, profiler data sampling and
-    ProfileResults tree navigation, profiling metrics recorder/output,
+    local entity saveWithoutId parity, full vanilla profiler section coverage,
+    profiling metrics recorder/output,
     DebugOptionsScreen narration/full widget styling polish, native pause
     tick-freeze eligibility/full
     PauseScreen remaining actions/subscreens.

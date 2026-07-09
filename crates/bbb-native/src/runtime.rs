@@ -27,22 +27,23 @@ use bbb_renderer::{
     HudDebugCrosshair, HudDebugFrameTimeChart, HudDebugGameModeSwitcher,
     HudDebugGameModeSwitcherSlot, HudDebugNetworkCharts, HudDebugOptionsEntryStatus,
     HudDebugOptionsRow, HudDebugOptionsScreen, HudDebugOptionsTooltip, HudDebugOverlay,
-    HudDebugTpsChart, HudDebugTpsSample, HudEntityPreview, HudEntityPreviewItemDisplayContext,
-    HudEntityPreviewItemLayer, HudEntityPreviewItemSlot, HudEntityPreviewRect, HudFoodEffect,
-    HudGameModeSwitcherMode, HudHeartKind, HudIconLayer, HudInventoryBackgroundLayer,
-    HudInventoryBackgroundTexture, HudInventoryFillLayer, HudInventoryFillStage,
-    HudInventoryGhostItem, HudInventoryItem, HudInventoryItemScissor, HudInventoryScreen,
-    HudInventorySlot, HudInventoryTextBackground, HudInventoryTextInputDecoration,
-    HudInventoryTextLabel, HudInventoryTooltip, HudInventoryTooltipLine, HudItemCountLabel,
-    HudItemDurabilityBar, HudItemFoil, HudItemIcon, HudJumpBar, HudPauseScreen, HudPlayerHealth,
-    HudSignEditorKind, HudSignEditorScreen, HudStatsScreen, HudUvRect, HudVehicleHealth,
-    LevelLighting, LightmapEnvironment, LightningBoltRenderState, ParticleBlockFluidSurfaceSample,
-    ParticleEntityTargetContext, ParticleFluidKind, ParticleLocalPlayerScopeContext,
-    ParticlePlayerMotionContext, ParticleSoundEvent, ParticleSpawnBatch, ParticleSpawnCommand,
-    Renderer, SelectionColoredBox, SelectionLine, SelectionOutline, SignModelAttachment,
-    SignModelWood, SkyEnvironment, SkyMoonPhase, WeatherColumn, WeatherFrame, WeatherRenderState,
-    DEFAULT_ARMOR_STAND_MODEL_POSE, ENTITY_FULL_BRIGHT_LIGHT_COORDS, HUD_HOTBAR_SLOTS,
-    ITEM_MODEL_NO_OVERLAY, VANILLA_DEFAULT_CLOUD_COLOR, VANILLA_DEFAULT_CLOUD_HEIGHT,
+    HudDebugProfilerChart, HudDebugTpsChart, HudDebugTpsSample, HudEntityPreview,
+    HudEntityPreviewItemDisplayContext, HudEntityPreviewItemLayer, HudEntityPreviewItemSlot,
+    HudEntityPreviewRect, HudFoodEffect, HudGameModeSwitcherMode, HudHeartKind, HudIconLayer,
+    HudInventoryBackgroundLayer, HudInventoryBackgroundTexture, HudInventoryFillLayer,
+    HudInventoryFillStage, HudInventoryGhostItem, HudInventoryItem, HudInventoryItemScissor,
+    HudInventoryScreen, HudInventorySlot, HudInventoryTextBackground,
+    HudInventoryTextInputDecoration, HudInventoryTextLabel, HudInventoryTooltip,
+    HudInventoryTooltipLine, HudItemCountLabel, HudItemDurabilityBar, HudItemFoil, HudItemIcon,
+    HudJumpBar, HudPauseScreen, HudPlayerHealth, HudSignEditorKind, HudSignEditorScreen,
+    HudStatsScreen, HudUvRect, HudVehicleHealth, LevelLighting, LightmapEnvironment,
+    LightningBoltRenderState, ParticleBlockFluidSurfaceSample, ParticleEntityTargetContext,
+    ParticleFluidKind, ParticleLocalPlayerScopeContext, ParticlePlayerMotionContext,
+    ParticleSoundEvent, ParticleSpawnBatch, ParticleSpawnCommand, Renderer, SelectionColoredBox,
+    SelectionLine, SelectionOutline, SignModelAttachment, SignModelWood, SkyEnvironment,
+    SkyMoonPhase, WeatherColumn, WeatherFrame, WeatherRenderState, DEFAULT_ARMOR_STAND_MODEL_POSE,
+    ENTITY_FULL_BRIGHT_LIGHT_COORDS, HUD_HOTBAR_SLOTS, ITEM_MODEL_NO_OVERLAY,
+    VANILLA_DEFAULT_CLOUD_COLOR, VANILLA_DEFAULT_CLOUD_HEIGHT,
     VANILLA_DEFAULT_LIGHTMAP_BLOCK_FACTOR, VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR,
     VANILLA_DEFAULT_LIGHTMAP_SKY_FACTOR, VANILLA_DEFAULT_LIGHTMAP_SKY_LIGHT_COLOR,
     VANILLA_MAX_RENDER_DISTANCE_CHUNKS, VANILLA_MIN_RENDER_DISTANCE_CHUNKS,
@@ -1814,6 +1815,7 @@ pub(crate) fn pump_network_and_terrain(
     client_framerate_limit: u32,
     client_vsync: bool,
     hide_lightning_flash: bool,
+    hud_debug_profiler_chart: Option<HudDebugProfilerChart>,
 ) -> bool {
     let mut audio_events = audio_events;
     let mut particle_events = particle_events;
@@ -2174,23 +2176,29 @@ pub(crate) fn pump_network_and_terrain(
         .as_deref()
         .map(AudioEventSink::counters)
         .unwrap_or_else(|| audio_status.clone());
-    let hud_debug_overlay = hud_debug_overlay_at_partial_tick(
-        input,
-        world,
-        camera_pose,
-        entity_partial_tick,
-        item_runtime,
-        terrain_textures,
-        &renderer_counters,
-        render_distance_chunks,
-        surface_size,
-        hud_debug_fps_sampler,
-        client_framerate_limit,
-        client_vsync,
-        hud_debug_network_sampler,
-        hud_debug_tps_sampler,
-        net_counters,
-        &hud_audio_counters,
+    let hud_debug_overlay = hud_debug_overlay_with_profiler_chart(
+        hud_debug_overlay_at_partial_tick(
+            input,
+            world,
+            camera_pose,
+            entity_partial_tick,
+            item_runtime,
+            terrain_textures,
+            &renderer_counters,
+            render_distance_chunks,
+            surface_size,
+            hud_debug_fps_sampler,
+            client_framerate_limit,
+            client_vsync,
+            hud_debug_network_sampler,
+            hud_debug_tps_sampler,
+            net_counters,
+            &hud_audio_counters,
+        ),
+        input
+            .debug_profiler_chart_visible()
+            .then_some(hud_debug_profiler_chart)
+            .flatten(),
     );
     let dropped_item_models = dropped_item_models(
         world,
@@ -3531,6 +3539,25 @@ fn hud_debug_overlay_at_partial_tick(
         ),
         show_lightmap_preview: input.debug_lightmap_texture_visible(),
     })
+}
+
+fn hud_debug_overlay_with_profiler_chart(
+    overlay: Option<HudDebugOverlay>,
+    profiler_chart: Option<HudDebugProfilerChart>,
+) -> Option<HudDebugOverlay> {
+    let Some(profiler_chart) = profiler_chart else {
+        return overlay;
+    };
+    match overlay {
+        Some(mut overlay) => {
+            overlay.profiler_chart = Some(profiler_chart);
+            Some(overlay)
+        }
+        None => Some(HudDebugOverlay {
+            profiler_chart: Some(profiler_chart),
+            ..HudDebugOverlay::default()
+        }),
+    }
 }
 
 const DEBUG_GAME_MODE_SWITCHER_BACKGROUND_WIDTH: i32 = 125;
