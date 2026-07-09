@@ -6146,6 +6146,16 @@
   `instrument.minecraft.*` 行，并按灰色 fallback 投影 direct description。
   边界：非 vanilla goat-horn 的动态 registry-key description resolution、
   `TooltipDisplay` hidden-components 与其它 component provider tooltip 仍未完成。
+- [x] advanced tooltip tropical-fish pattern lines（P2 protocol +
+  item-runtime slice，2026-07-09）：依据 `ItemStack.addDetailsToTooltip` 先调用
+  `DataComponents.TROPICAL_FISH_PATTERN`，再调用 instrument/map-id，以及
+  `TropicalFish.Pattern.addToTooltip` 组合 pattern、base color 和 pattern color：
+  22 个 `COMMON_VARIANTS` 输出 italic gray predefined name，否则输出 italic gray
+  pattern type 与颜色行。protocol summary 现在记录 decoded
+  `minecraft:tropical_fish/pattern`、`base_color`、`pattern_color` ids；native item
+  tooltip 按 vanilla `ByIdMap` 语义把未知 pattern/color 回退 KOB/white，并投影
+  本地化 predefined/type/color 行。边界：`TooltipDisplay` hidden-components 与其它
+  component provider tooltip 仍未完成。
 - [x] debug overlay F3+I local entity transform NBT capture（P2
   native/world slice，2026-07-08）：依据
   `KeyboardHandler.copyRecreateCommand(addNbt, pullFromServer)` 在 entity hit

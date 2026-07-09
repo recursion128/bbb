@@ -25,15 +25,54 @@ const LORE_STYLE: ComponentStyle = ComponentStyle {
 };
 const OMINOUS_BOTTLE_BAD_OMEN_DURATION_TICKS: i32 = 120_000;
 const DEFAULT_TOOLTIP_TICKRATE: f32 = 20.0;
+const TOOLTIP_GRAY_TEXT_COLOR: u32 = 0xAA_AA_AA;
 const INSTRUMENT_DESCRIPTION_STYLE: ComponentStyle = ComponentStyle {
     bold: None,
     italic: None,
     underlined: None,
     strikethrough: None,
     obfuscated: None,
-    color: Some(0xAA_AA_AA),
+    color: Some(TOOLTIP_GRAY_TEXT_COLOR),
     click_event: None,
 };
+const TROPICAL_FISH_PATTERNS: &[(i32, &str)] = &[
+    (0, "kob"),
+    (256, "sunstreak"),
+    (512, "snooper"),
+    (768, "dasher"),
+    (1024, "brinely"),
+    (1280, "spotty"),
+    (1, "flopper"),
+    (257, "stripey"),
+    (513, "glitter"),
+    (769, "blockfish"),
+    (1025, "betty"),
+    (1281, "clayfish"),
+];
+const TROPICAL_FISH_COMMON_VARIANTS: &[(i32, i32, i32)] = &[
+    (257, 1, 7),
+    (1, 7, 7),
+    (1, 7, 11),
+    (1281, 0, 7),
+    (256, 11, 7),
+    (0, 1, 0),
+    (1280, 6, 3),
+    (769, 10, 4),
+    (1281, 0, 14),
+    (1280, 0, 4),
+    (513, 0, 7),
+    (1281, 0, 1),
+    (768, 9, 6),
+    (1024, 5, 3),
+    (1025, 14, 0),
+    (512, 7, 14),
+    (769, 14, 0),
+    (1, 0, 4),
+    (0, 14, 0),
+    (256, 7, 0),
+    (768, 9, 4),
+    (1, 4, 4),
+];
 const VANILLA_INSTRUMENT_KEYS: &[&str] = &[
     "minecraft:ponder_goat_horn",
     "minecraft:sing_goat_horn",
@@ -325,6 +364,118 @@ fn vanilla_instrument_key(registry_id: i32) -> Option<&'static str> {
     VANILLA_INSTRUMENT_KEYS.get(index).copied()
 }
 
+fn push_tropical_fish_tooltip_lines(
+    language: &LanguageCatalog,
+    component_patch: &DataComponentPatchSummary,
+    lines: &mut Vec<NativeItemTooltipLine>,
+) {
+    let Some(pattern_id) = component_patch.tropical_fish_pattern_id else {
+        return;
+    };
+    let (pattern_id, pattern_name) = tropical_fish_pattern(pattern_id);
+    let base_color_id = dye_color_id_or_white(component_patch.tropical_fish_base_color_id);
+    let pattern_color_id = dye_color_id_or_white(component_patch.tropical_fish_pattern_color_id);
+
+    if let Some(common_index) =
+        tropical_fish_common_variant_index(pattern_id, base_color_id, pattern_color_id)
+    {
+        lines.push(italic_gray_tooltip_line(
+            language
+                .get_or_key(&format!(
+                    "entity.minecraft.tropical_fish.predefined.{common_index}"
+                ))
+                .to_string(),
+        ));
+        return;
+    }
+
+    lines.push(italic_gray_tooltip_line(
+        language
+            .get_or_key(&format!(
+                "entity.minecraft.tropical_fish.type.{pattern_name}"
+            ))
+            .to_string(),
+    ));
+
+    let base_color = language
+        .get_or_key(&format!(
+            "color.minecraft.{}",
+            dye_color_name(base_color_id)
+        ))
+        .to_string();
+    let color_text = if base_color_id == pattern_color_id {
+        base_color
+    } else {
+        format!(
+            "{}, {}",
+            base_color,
+            language.get_or_key(&format!(
+                "color.minecraft.{}",
+                dye_color_name(pattern_color_id)
+            ))
+        )
+    };
+    lines.push(italic_gray_tooltip_line(color_text));
+}
+
+fn italic_gray_tooltip_line(text: String) -> NativeItemTooltipLine {
+    NativeItemTooltipLine {
+        text: text.clone(),
+        tint: TOOLTIP_TEXT_GRAY,
+        runs: vec![HudStyledTextRun {
+            text,
+            style: HudTextStyle {
+                italic: true,
+                ..HudTextStyle::default()
+            },
+            color: Some(TOOLTIP_GRAY_TEXT_COLOR),
+        }],
+    }
+}
+
+fn tropical_fish_pattern(packed_id: i32) -> (i32, &'static str) {
+    TROPICAL_FISH_PATTERNS
+        .iter()
+        .copied()
+        .find(|(id, _)| *id == packed_id)
+        .unwrap_or((0, "kob"))
+}
+
+fn tropical_fish_common_variant_index(
+    pattern_id: i32,
+    base_color_id: i32,
+    pattern_color_id: i32,
+) -> Option<usize> {
+    TROPICAL_FISH_COMMON_VARIANTS
+        .iter()
+        .position(|variant| *variant == (pattern_id, base_color_id, pattern_color_id))
+}
+
+fn dye_color_id_or_white(color_id: Option<i32>) -> i32 {
+    color_id.filter(|id| (0..=15).contains(id)).unwrap_or(0)
+}
+
+fn dye_color_name(color_id: i32) -> &'static str {
+    match color_id {
+        1 => "orange",
+        2 => "magenta",
+        3 => "light_blue",
+        4 => "yellow",
+        5 => "lime",
+        6 => "pink",
+        7 => "gray",
+        8 => "light_gray",
+        9 => "cyan",
+        10 => "purple",
+        11 => "blue",
+        12 => "brown",
+        13 => "green",
+        14 => "red",
+        15 => "black",
+        _ => "white",
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -351,6 +502,34 @@ mod tests {
         assert_eq!(vanilla_instrument_key(7), Some("minecraft:dream_goat_horn"));
         assert_eq!(vanilla_instrument_key(8), None);
         assert_eq!(vanilla_instrument_key(-1), None);
+    }
+
+    #[test]
+    fn tropical_fish_tables_follow_26_1_pattern_and_common_variant_order() {
+        assert_eq!(
+            TROPICAL_FISH_PATTERNS,
+            &[
+                (0, "kob"),
+                (256, "sunstreak"),
+                (512, "snooper"),
+                (768, "dasher"),
+                (1024, "brinely"),
+                (1280, "spotty"),
+                (1, "flopper"),
+                (257, "stripey"),
+                (513, "glitter"),
+                (769, "blockfish"),
+                (1025, "betty"),
+                (1281, "clayfish"),
+            ]
+        );
+        assert_eq!(tropical_fish_pattern(257), (257, "stripey"));
+        assert_eq!(tropical_fish_pattern(9999), (0, "kob"));
+        assert_eq!(tropical_fish_common_variant_index(257, 1, 7), Some(0));
+        assert_eq!(tropical_fish_common_variant_index(1, 4, 4), Some(21));
+        assert_eq!(tropical_fish_common_variant_index(0, 0, 14), None);
+        assert_eq!(dye_color_id_or_white(Some(15)), 15);
+        assert_eq!(dye_color_id_or_white(Some(16)), 0);
     }
 }
 
@@ -1111,6 +1290,7 @@ impl NativeItemRuntime {
                 .map(|run| hud_run_from_component(run, &name_wrapper))
                 .collect(),
         }];
+        push_tropical_fish_tooltip_lines(&self.language, &stack.component_patch, &mut lines);
         push_instrument_tooltip_lines(&self.language, &stack.component_patch, &mut lines);
         push_map_id_tooltip_lines(&self.language, &stack.component_patch, options, &mut lines);
         push_bees_tooltip_lines(&self.language, stack.component_patch.bees_count, &mut lines);

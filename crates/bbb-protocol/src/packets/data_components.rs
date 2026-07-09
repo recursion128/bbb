@@ -158,6 +158,12 @@ pub struct DataComponentPatchSummary {
     #[serde(default)]
     pub armor_trim_pattern_direct: Option<TrimPatternSummary>,
     #[serde(default)]
+    pub tropical_fish_pattern_id: Option<i32>,
+    #[serde(default)]
+    pub tropical_fish_base_color_id: Option<i32>,
+    #[serde(default)]
+    pub tropical_fish_pattern_color_id: Option<i32>,
+    #[serde(default)]
     pub instrument_id: Option<i32>,
     #[serde(default)]
     pub instrument_description: Option<String>,
@@ -687,6 +693,15 @@ fn decode_typed_data_component_patch_summary(
                 summary.armor_trim_material_direct = trim.material_direct;
                 summary.armor_trim_pattern_id = trim.pattern_id;
                 summary.armor_trim_pattern_direct = trim.pattern_direct;
+            }
+            88 => {
+                summary.tropical_fish_pattern_id = Some(decoder.read_var_i32()?);
+            }
+            89 => {
+                summary.tropical_fish_base_color_id = Some(decoder.read_var_i32()?);
+            }
+            90 => {
+                summary.tropical_fish_pattern_color_id = Some(decoder.read_var_i32()?);
             }
             61 => {
                 let instrument = decode_instrument_component_summary(decoder)?;
@@ -2613,6 +2628,35 @@ mod tests {
     }
 
     #[test]
+    fn decodes_tropical_fish_pattern_components() {
+        let mut payload = Encoder::new();
+        payload.write_var_i32(3);
+        payload.write_var_i32(0);
+        payload.write_var_i32(88);
+        payload.write_var_i32(257);
+        payload.write_var_i32(89);
+        payload.write_var_i32(1);
+        payload.write_var_i32(90);
+        payload.write_var_i32(7);
+
+        let payload = payload.into_inner();
+        let mut decoder = Decoder::new(&payload);
+        let patch = decode_data_component_patch_summary(&mut decoder).unwrap();
+        assert_eq!(
+            patch,
+            DataComponentPatchSummary {
+                added: 3,
+                added_type_ids: vec![88, 89, 90],
+                tropical_fish_pattern_id: Some(257),
+                tropical_fish_base_color_id: Some(1),
+                tropical_fish_pattern_color_id: Some(7),
+                ..DataComponentPatchSummary::default()
+            }
+        );
+        assert!(decoder.is_empty());
+    }
+
+    #[test]
     fn decodes_inline_jukebox_playable_song_payload() {
         let mut payload = Encoder::new();
         payload.write_var_i32(1);
@@ -3437,6 +3481,7 @@ mod tests {
                 added: component_ids.len(),
                 added_type_ids: component_ids.to_vec(),
                 removed_type_ids: Vec::new(),
+                tropical_fish_pattern_id: Some(3),
                 ..DataComponentPatchSummary::default()
             }
         );

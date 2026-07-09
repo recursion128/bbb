@@ -244,6 +244,10 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
                 "item.container.loot_table.unknown": "Unknown contents",
                 "item.container.item_count": "%s x%s",
                 "item.container.more_items": "and %s more...",
+                "entity.minecraft.tropical_fish.predefined.0": "Anemone",
+                "entity.minecraft.tropical_fish.type.kob": "Kob",
+                "color.minecraft.white": "White",
+                "color.minecraft.red": "Red",
                 "instrument.minecraft.ponder_goat_horn": "Ponder",
                 "filled_map.id": "Id #%s",
                 "filled_map.level": "(Level %s/%s)",
@@ -427,6 +431,41 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
             name_line("Test Combo", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
             tooltip_line("minecraft:test_combo", TOOLTIP_TEXT_DARK_GRAY),
             tooltip_line("13 component(s)", TOOLTIP_TEXT_DARK_GRAY),
+        ])
+    );
+    assert_eq!(
+        runtime.tooltip_lines_for_stack(&ItemStackSummary {
+            item_id: Some(0),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                tropical_fish_pattern_id: Some(257),
+                tropical_fish_base_color_id: Some(1),
+                tropical_fish_pattern_color_id: Some(7),
+                instrument_id: Some(0),
+                ..DataComponentPatchSummary::default()
+            },
+        }),
+        Some(vec![
+            name_line("Test Combo", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
+            italic_tooltip_line("Anemone", TOOLTIP_TEXT_GRAY, 0xAA_AA_AA),
+            tooltip_line("Ponder", TOOLTIP_TEXT_GRAY),
+        ])
+    );
+    assert_eq!(
+        runtime.tooltip_lines_for_stack(&ItemStackSummary {
+            item_id: Some(0),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                tropical_fish_pattern_id: Some(0),
+                tropical_fish_base_color_id: Some(0),
+                tropical_fish_pattern_color_id: Some(14),
+                ..DataComponentPatchSummary::default()
+            },
+        }),
+        Some(vec![
+            name_line("Test Combo", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
+            italic_tooltip_line("Kob", TOOLTIP_TEXT_GRAY, 0xAA_AA_AA),
+            italic_tooltip_line("White, Red", TOOLTIP_TEXT_GRAY, 0xAA_AA_AA),
         ])
     );
     assert_eq!(

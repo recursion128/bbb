@@ -1152,7 +1152,8 @@ When an agent does any of the following, update this file in the same slice:
     armor trim rows, dynamic profile line, intangible projectile line, and
     ominous bottle amplifier line, potion custom-effect lines, creative
     suspicious-stew effect lines, map-id lines, instrument description lines,
-    F3+I full local entity saveWithoutId parity, full vanilla profiler section coverage,
+    tropical-fish pattern lines, F3+I full local entity saveWithoutId parity,
+    full vanilla profiler section coverage,
     profiling metrics recorder/output,
     DebugOptionsScreen narration/full widget styling polish, and native pause
     tick-freeze eligibility/full PauseScreen remaining actions/subscreens remain
@@ -1196,6 +1197,17 @@ When an agent does any of the following, update this file in the same slice:
     registry-key resolution beyond the vanilla goat-horn id table,
     `TooltipDisplay` hidden-components, and remaining component providers
     remain future work.
+  - Done 2026-07-09 — Advanced tooltip tropical-fish pattern lines. Vanilla
+    anchors: `ItemStack.addDetailsToTooltip` calls
+    `DataComponents.TROPICAL_FISH_PATTERN` before instrument/map-id, and
+    `TropicalFish.Pattern.addToTooltip` combines the pattern with
+    `TROPICAL_FISH_BASE_COLOR` / `TROPICAL_FISH_PATTERN_COLOR`, emitting an
+    italic gray predefined tropical-fish name for the 22 common variants or an
+    italic gray type line plus color line otherwise. bbb now records decoded
+    pattern/base-color/pattern-color ids, applies vanilla KOB/white fallback
+    semantics for unknown ids, and projects localized predefined/type/color
+    tooltip rows in provider order. Boundary: `TooltipDisplay`
+    hidden-components and remaining component providers remain future work.
   - Done 2026-07-09 — Advanced tooltip occupied beehive bees line. Vanilla
     anchors: `ItemStack.addDetailsToTooltip` calls
     `addToTooltip(DataComponents.BEES, ...)` before written-book, charged
@@ -2501,7 +2513,8 @@ When an agent does any of the following, update this file in the same slice:
     item-count/more rows, direct jukebox song descriptions, direct armor trim
     rows, dynamic profile line, intangible projectile line, and ominous bottle
     amplifier line, potion custom-effect lines, and creative suspicious-stew
-    effect lines, map-id lines, and instrument description lines.
+    effect lines, map-id lines, instrument description lines, and tropical-fish
+    pattern lines.
   - Done 2026-07-08 — Debug overlay F3+C copy-location clipboard action and
     manual-crash warning shell.
     Vanilla anchors: `Options.keyDebugCopyLocation` binds key code 67 (C), and
@@ -2770,8 +2783,8 @@ When an agent does any of the following, update this file in the same slice:
     container item-count/more rows, direct jukebox song descriptions, direct
     armor trim rows, dynamic profile line, intangible projectile line, and
     ominous bottle amplifier line, potion custom-effect lines, and creative
-    suspicious-stew effect lines, map-id lines, and instrument description
-    lines are covered by later entries.
+    suspicious-stew effect lines, map-id lines, instrument description lines,
+    and tropical-fish pattern lines are covered by later entries.
   - Done 2026-07-08 — Debug overlay F3+P focus-pause option toggle. Vanilla
     anchors: `Options.pauseOnLostFocus` defaults true, and
     `KeyboardHandler.handleDebugKeys` maps `keyDebugFocusPause` to toggling
@@ -3454,7 +3467,7 @@ When an agent does any of the following, update this file in the same slice:
     armor trim rows, dynamic profile line, intangible projectile line, and
     ominous bottle amplifier line, potion custom-effect lines, and creative
     suspicious-stew effect lines, map-id lines, and instrument description
-    lines, F3+I full local entity
+    lines, tropical-fish pattern lines, F3+I full local entity
     saveWithoutId parity, full vanilla profiler section coverage,
     profiling metrics recorder/output,
     DebugOptionsScreen narration/full widget styling polish, native pause
