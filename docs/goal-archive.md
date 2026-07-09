@@ -6199,3 +6199,16 @@
   debug-profile persistence，并在 renderer 中把 F3 overlay 画在 screen
   背后。边界：scrollbar 视觉、not-allowed tooltip、narration、EditBox
   光标/selection 和完整 vanilla widget styling 仍是后续 polish。
+- [x] debug overlay DebugOptionsScreen scrollbar/not-allowed tooltip polish（P2
+  input/runtime/renderer slice，2026-07-09）：依据
+  `AbstractSelectionList.scrollBarX` 的 `rowRight + scrollbarWidth + 2`、6px
+  `AbstractScrollArea.defaultSettings` scrollbar、32px 最小 scroller 高度、
+  `scrollerHeight = height^2/contentHeight` 与按 scroll amount 插值的
+  `scrollBarY`，renderer 现在从 DebugOptionsScreen 的 `scroll_row` /
+  `total_rows` / 内容 band 计算并绘制 scrollbar。依据
+  `DebugOptionsScreen.OptionEntry.extractContent`，native 现在在 reduced debug
+  info 下、鼠标 hover 不允许显示的 entry 名称区域且未进入三态按钮区域时投影
+  `debug.options.notAllowed.tooltip`；renderer 复用 HUD tooltip 背景/边框与
+  styled text shadow/main pass 绘制该 tooltip。边界：narration、EditBox
+  光标/selection、scrollbar dragging 与完整 vanilla widget sprite styling
+  仍待后续 polish。

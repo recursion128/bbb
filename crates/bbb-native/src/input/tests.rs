@@ -2911,6 +2911,52 @@ fn debug_options_screen_buttons_update_status_and_profiles() {
 }
 
 #[test]
+fn debug_options_screen_projects_not_allowed_tooltip_on_entry_name_hover() {
+    let mut input = ClientInputState::new(true);
+    input.open_debug_options_screen();
+    assert!(input.handle_debug_options_screen_text_input("biome"));
+    let surface = winit::dpi::PhysicalSize::new(420, 240);
+    let content_x = debug_options_content_x(surface);
+    let name_x = content_x + 2;
+    let entry_y = DEBUG_OPTIONS_HEADER_HEIGHT + DEBUG_OPTIONS_ROW_HEIGHT + 2;
+
+    assert!(input.handle_debug_options_screen_cursor_moved(Some(
+        winit::dpi::PhysicalPosition::new(f64::from(name_x), f64::from(entry_y))
+    )));
+    let reduced = input
+        .debug_options_screen_hud_state(surface, true)
+        .expect("screen should project under reduced debug info");
+    assert_eq!(
+        reduced
+            .tooltip
+            .as_ref()
+            .map(|tooltip| tooltip.text.as_str()),
+        Some("Not visible when debug info is reduced")
+    );
+    assert_eq!(
+        reduced
+            .tooltip
+            .as_ref()
+            .map(|tooltip| (tooltip.x, tooltip.y)),
+        Some((name_x, entry_y))
+    );
+
+    let full = input
+        .debug_options_screen_hud_state(surface, false)
+        .expect("screen should project without reduced debug info");
+    assert_eq!(full.tooltip, None);
+
+    let buttons_start = content_x + DEBUG_OPTIONS_ROW_WIDTH - DEBUG_OPTIONS_STATUS_BUTTON_WIDTH * 3;
+    assert!(input.handle_debug_options_screen_cursor_moved(Some(
+        winit::dpi::PhysicalPosition::new(f64::from(buttons_start), f64::from(entry_y))
+    )));
+    let over_button = input
+        .debug_options_screen_hud_state(surface, true)
+        .expect("screen should project with button hover");
+    assert_eq!(over_button.tooltip, None);
+}
+
+#[test]
 fn debug_options_screen_consumes_keys_scrolls_and_allows_f3_global_keymap() {
     let mut input = ClientInputState::new(true);
     input.open_debug_options_screen();

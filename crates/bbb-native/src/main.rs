@@ -412,6 +412,7 @@ fn main() -> Result<()> {
                         return;
                     }
                     if input.debug_options_screen_is_open() {
+                        input.handle_debug_options_screen_cursor_moved(cursor_position);
                         return;
                     }
                     if world.advancements_screen_is_open() {

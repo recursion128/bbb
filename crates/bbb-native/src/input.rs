@@ -180,12 +180,14 @@ pub(crate) struct DebugPauseScreenState {
 struct DebugOptionsScreenState {
     search_text: String,
     scroll_row: usize,
+    cursor_position: Option<(i32, i32)>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct DebugOptionsScreenHudState {
     pub(crate) search_text: String,
     pub(crate) rows: Vec<DebugOptionsScreenHudRow>,
+    pub(crate) tooltip: Option<DebugOptionsScreenTooltip>,
     pub(crate) scroll_row: usize,
     pub(crate) total_rows: usize,
     pub(crate) visible_rows: usize,
@@ -204,6 +206,13 @@ pub(crate) enum DebugOptionsScreenHudRow {
         status: DebugScreenEntryStatus,
         allowed: bool,
     },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct DebugOptionsScreenTooltip {
+    pub(crate) text: String,
+    pub(crate) x: i32,
+    pub(crate) y: i32,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -928,9 +937,27 @@ impl ClientInputState {
                 },
             })
             .collect();
+        let tooltip = screen
+            .cursor_position
+            .and_then(|(mouse_x, mouse_y)| {
+                debug_options_not_allowed_tooltip_at(
+                    &screen.search_text,
+                    scroll_row,
+                    mouse_x,
+                    mouse_y,
+                    surface_size,
+                    reduced_debug_info,
+                )
+            })
+            .map(|(x, y)| DebugOptionsScreenTooltip {
+                text: "Not visible when debug info is reduced".to_string(),
+                x,
+                y,
+            });
         Some(DebugOptionsScreenHudState {
             search_text: screen.search_text.clone(),
             rows,
+            tooltip,
             scroll_row,
             total_rows,
             visible_rows,
@@ -995,6 +1022,17 @@ impl ClientInputState {
         true
     }
 
+    pub(crate) fn handle_debug_options_screen_cursor_moved(
+        &mut self,
+        cursor_position: Option<PhysicalPosition<f64>>,
+    ) -> bool {
+        let Some(screen) = self.debug_options_screen.as_mut() else {
+            return false;
+        };
+        screen.cursor_position = cursor_position.and_then(physical_position_floor_i32);
+        true
+    }
+
     pub(crate) fn handle_debug_options_screen_mouse_input(
         &mut self,
         button: MouseButton,
@@ -1005,6 +1043,9 @@ impl ClientInputState {
     ) -> bool {
         if self.debug_options_screen.is_none() {
             return false;
+        }
+        if let Some(screen) = self.debug_options_screen.as_mut() {
+            screen.cursor_position = cursor_position.and_then(physical_position_floor_i32);
         }
         if !matches!((button, state), (MouseButton::Left, ElementState::Pressed)) {
             return true;
@@ -1919,6 +1960,29 @@ fn debug_options_row_index_at(
     let row_index = (mouse_y - DEBUG_OPTIONS_HEADER_HEIGHT) / DEBUG_OPTIONS_ROW_HEIGHT;
     (row_index >= 0 && (row_index as usize) < debug_options_visible_row_count(surface_size))
         .then_some(row_index as usize)
+}
+
+fn debug_options_not_allowed_tooltip_at(
+    search_text: &str,
+    scroll_row: usize,
+    mouse_x: i32,
+    mouse_y: i32,
+    surface_size: PhysicalSize<u32>,
+    reduced_debug_info: bool,
+) -> Option<(i32, i32)> {
+    let row_index = debug_options_row_index_at(mouse_x, mouse_y, surface_size)?;
+    let rows = debug_options_screen_rows(search_text);
+    let visible_rows = debug_options_visible_row_count(surface_size);
+    let scroll_row = scroll_row.min(debug_options_max_scroll_row(rows.len(), visible_rows));
+    let DebugOptionsScreenRow::Entry(entry) = *rows.get(scroll_row + row_index)? else {
+        return None;
+    };
+    if entry.is_allowed(reduced_debug_info) {
+        return None;
+    }
+    let buttons_start_x = debug_options_content_x(surface_size) + DEBUG_OPTIONS_ROW_WIDTH
+        - DEBUG_OPTIONS_STATUS_BUTTON_WIDTH * 3;
+    (mouse_x < buttons_start_x).then_some((mouse_x, mouse_y))
 }
 
 fn debug_options_footer_button_y(surface_size: PhysicalSize<u32>) -> i32 {

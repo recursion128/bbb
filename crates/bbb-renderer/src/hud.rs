@@ -134,11 +134,27 @@ pub struct HudDebugOptionsScreen {
     pub warning: String,
     pub search_text: String,
     pub rows: Vec<HudDebugOptionsRow>,
+    pub tooltip: Option<HudDebugOptionsTooltip>,
     pub scroll_row: usize,
     pub total_rows: usize,
     pub visible_rows: usize,
     pub default_profile_active: bool,
     pub performance_profile_active: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct HudDebugOptionsTooltip {
+    pub text: String,
+    pub x: i32,
+    pub y: i32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct HudDebugOptionsScrollbarRect {
+    x: i32,
+    y: i32,
+    width: u32,
+    height: u32,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -539,6 +555,8 @@ const HUD_DEBUG_OPTIONS_DONE_BUTTON_WIDTH: i32 = 60;
 const HUD_DEBUG_OPTIONS_FOOTER_BUTTON_SPACING: i32 = 8;
 const HUD_DEBUG_OPTIONS_SEARCH_WIDTH: i32 = HUD_DEBUG_OPTIONS_ROW_WIDTH / 3;
 const HUD_DEBUG_OPTIONS_SEARCH_HEIGHT: i32 = 20;
+const HUD_DEBUG_OPTIONS_SCROLLBAR_WIDTH: i32 = 6;
+const HUD_DEBUG_OPTIONS_SCROLLBAR_MIN_HEIGHT: i32 = 32;
 const HUD_DEBUG_CROSSHAIR_SCALE: f32 = 0.01;
 const HUD_DEBUG_CROSSHAIR_FOV_DEGREES: f32 = 70.0;
 const HUD_DEBUG_CROSSHAIR_OUTLINE_WIDTH: f32 = 4.0;
@@ -4282,6 +4300,8 @@ impl Renderer {
                 &mut vertices,
                 &mut post_gui_item_commands,
                 &self.hud_white_pixel,
+                self.hud_tooltip_background.as_ref(),
+                self.hud_tooltip_frame.as_ref(),
                 self.hud_font_atlas.as_ref(),
                 &self.hud_font_glyphs,
                 &self.hud_obfuscated_glyph_pool,
@@ -5755,6 +5775,8 @@ fn push_hud_debug_options_screen<'a>(
     vertices: &mut Vec<HudVertex>,
     commands: &mut Vec<HudDrawCommand<'a>>,
     white_pixel: &'a HudSpriteGpu,
+    tooltip_background: Option<&'a HudNineSliceSprite>,
+    tooltip_frame: Option<&'a HudNineSliceSprite>,
     font_atlas: Option<&'a HudSpriteGpu>,
     glyphs: &HudFontGlyphMap,
     obfuscated_pool: &HudObfuscatedGlyphPool,
@@ -5861,6 +5883,15 @@ fn push_hud_debug_options_screen<'a>(
         }
     }
 
+    push_hud_debug_options_scrollbar(
+        vertices,
+        commands,
+        white_pixel,
+        surface_size,
+        screen.scroll_row,
+        screen.total_rows,
+    );
+
     push_hud_debug_options_footer(
         vertices,
         commands,
@@ -5873,6 +5904,217 @@ fn push_hud_debug_options_screen<'a>(
         screen.default_profile_active,
         screen.performance_profile_active,
     );
+    push_hud_debug_options_tooltip(
+        vertices,
+        commands,
+        white_pixel,
+        tooltip_background,
+        tooltip_frame,
+        font_atlas,
+        glyphs,
+        obfuscated_pool,
+        frame_index,
+        surface_size,
+        screen.tooltip.as_ref(),
+    );
+}
+
+fn push_hud_debug_options_scrollbar<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    white_pixel: &'a HudSpriteGpu,
+    surface_size: PhysicalSize<u32>,
+    scroll_row: usize,
+    total_rows: usize,
+) {
+    let Some((background_rect, scroller_rect)) =
+        hud_debug_options_scrollbar_rects(surface_size, scroll_row, total_rows)
+    else {
+        return;
+    };
+    push_hud_debug_tinted_rect(
+        vertices,
+        commands,
+        white_pixel,
+        surface_size,
+        background_rect.x,
+        background_rect.y,
+        background_rect.width,
+        background_rect.height,
+        [0.0, 0.0, 0.0, 0.45],
+    );
+    push_hud_debug_tinted_rect(
+        vertices,
+        commands,
+        white_pixel,
+        surface_size,
+        scroller_rect.x,
+        scroller_rect.y,
+        scroller_rect.width,
+        scroller_rect.height,
+        [0.55, 0.55, 0.55, 0.92],
+    );
+}
+
+fn hud_debug_options_scrollbar_rects(
+    surface_size: PhysicalSize<u32>,
+    scroll_row: usize,
+    total_rows: usize,
+) -> Option<(HudDebugOptionsScrollbarRect, HudDebugOptionsScrollbarRect)> {
+    let list_height = i32::try_from(surface_size.height)
+        .unwrap_or(i32::MAX)
+        .saturating_sub(HUD_DEBUG_OPTIONS_HEADER_HEIGHT + HUD_DEBUG_OPTIONS_FOOTER_HEIGHT);
+    if list_height <= 8 || total_rows == 0 {
+        return None;
+    }
+    let total_rows_i32 =
+        i32::try_from(total_rows).unwrap_or(i32::MAX / HUD_DEBUG_OPTIONS_ROW_HEIGHT);
+    let content_height = total_rows_i32.saturating_mul(HUD_DEBUG_OPTIONS_ROW_HEIGHT);
+    if content_height <= list_height {
+        return None;
+    }
+    let max_scroll_amount = content_height - list_height;
+    let scroll_amount = i32::try_from(scroll_row)
+        .unwrap_or(i32::MAX / HUD_DEBUG_OPTIONS_ROW_HEIGHT)
+        .saturating_mul(HUD_DEBUG_OPTIONS_ROW_HEIGHT)
+        .min(max_scroll_amount);
+    let max_scroller_height = (list_height - 8).max(1);
+    let min_scroller_height = HUD_DEBUG_OPTIONS_SCROLLBAR_MIN_HEIGHT.min(max_scroller_height);
+    let scroller_height = list_height
+        .saturating_mul(list_height)
+        .checked_div(content_height)
+        .unwrap_or(max_scroller_height)
+        .clamp(min_scroller_height, max_scroller_height);
+    let scrollable_track = (list_height - scroller_height).max(0);
+    let scroller_y = HUD_DEBUG_OPTIONS_HEADER_HEIGHT
+        + scroll_amount
+            .saturating_mul(scrollable_track)
+            .checked_div(max_scroll_amount)
+            .unwrap_or(0);
+    let scrollbar_x = hud_debug_options_content_x(surface_size)
+        + HUD_DEBUG_OPTIONS_ROW_WIDTH
+        + HUD_DEBUG_OPTIONS_SCROLLBAR_WIDTH
+        + 2;
+
+    Some((
+        HudDebugOptionsScrollbarRect {
+            x: scrollbar_x,
+            y: HUD_DEBUG_OPTIONS_HEADER_HEIGHT,
+            width: HUD_DEBUG_OPTIONS_SCROLLBAR_WIDTH as u32,
+            height: list_height as u32,
+        },
+        HudDebugOptionsScrollbarRect {
+            x: scrollbar_x,
+            y: scroller_y,
+            width: HUD_DEBUG_OPTIONS_SCROLLBAR_WIDTH as u32,
+            height: scroller_height as u32,
+        },
+    ))
+}
+
+#[allow(clippy::too_many_arguments)]
+fn push_hud_debug_options_tooltip<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    white_pixel: &'a HudSpriteGpu,
+    tooltip_background: Option<&'a HudNineSliceSprite>,
+    tooltip_frame: Option<&'a HudNineSliceSprite>,
+    font_atlas: &'a HudSpriteGpu,
+    glyphs: &HudFontGlyphMap,
+    obfuscated_pool: &HudObfuscatedGlyphPool,
+    frame_index: u64,
+    surface_size: PhysicalSize<u32>,
+    tooltip: Option<&HudDebugOptionsTooltip>,
+) {
+    let Some(tooltip) = tooltip else {
+        return;
+    };
+    let runs = [HudStyledTextRun::plain(tooltip.text.as_str())];
+    let Some(text_width) = hud_font_runs_width(&runs, glyphs) else {
+        return;
+    };
+    let Some(text_height) = hud_inventory_tooltip_text_height(1) else {
+        return;
+    };
+    let background_rect = hud_inventory_tooltip_background_hud_rect(
+        surface_size,
+        surface_size.width,
+        surface_size.height,
+        tooltip.x,
+        tooltip.y,
+        text_width,
+        text_height,
+    );
+    match (tooltip_background, tooltip_frame) {
+        (Some(background), Some(frame)) => {
+            for segment in hud_inventory_tooltip_sprite_segments(
+                background_rect,
+                background.scaling,
+                frame.scaling,
+            ) {
+                let sprite = match segment.layer {
+                    HudTooltipSpriteLayer::Background => &background.gpu,
+                    HudTooltipSpriteLayer::Frame => &frame.gpu,
+                };
+                push_hud_draw_with_uv_and_tint(
+                    vertices,
+                    commands,
+                    sprite,
+                    surface_size,
+                    segment.rect,
+                    segment.uv,
+                    HUD_TINT_WHITE,
+                );
+            }
+        }
+        _ => {
+            push_hud_draw_with_uv_and_tint(
+                vertices,
+                commands,
+                white_pixel,
+                surface_size,
+                background_rect,
+                HudUvRect {
+                    min: [0.0, 0.0],
+                    max: [1.0, 1.0],
+                },
+                HUD_TOOLTIP_BACKGROUND_TINT,
+            );
+        }
+    }
+
+    let origin = hud_inventory_tooltip_line_origin(
+        surface_size,
+        surface_size.width,
+        surface_size.height,
+        tooltip.x,
+        tooltip.y,
+        text_width,
+        text_height,
+        0,
+    );
+    for (shadow_offset, is_shadow) in [(1.0, true), (0.0, false)] {
+        let geometry = hud_styled_text_pass_geometry(
+            &runs,
+            glyphs,
+            obfuscated_pool,
+            frame_index,
+            origin,
+            shadow_offset,
+            is_shadow,
+            HUD_TINT_WHITE,
+            None,
+            1.0,
+        );
+        push_hud_styled_text_pass(
+            vertices,
+            commands,
+            white_pixel,
+            font_atlas,
+            surface_size,
+            &geometry,
+        );
+    }
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -9926,11 +10168,13 @@ fn sanitize_hud_debug_options_screen(
         .filter_map(sanitize_hud_debug_options_row)
         .take(visible_rows)
         .collect::<Vec<_>>();
+    let tooltip = screen.tooltip.and_then(sanitize_hud_debug_options_tooltip);
     (!title.is_empty()).then_some(HudDebugOptionsScreen {
         title,
         warning,
         search_text,
         rows,
+        tooltip,
         scroll_row: screen.scroll_row.min(screen.total_rows),
         total_rows: screen.total_rows.min(256),
         visible_rows,
@@ -9958,6 +10202,17 @@ fn sanitize_hud_debug_options_row(row: HudDebugOptionsRow) -> Option<HudDebugOpt
             })
         }
     }
+}
+
+fn sanitize_hud_debug_options_tooltip(
+    tooltip: HudDebugOptionsTooltip,
+) -> Option<HudDebugOptionsTooltip> {
+    let text = sanitize_hud_text_line(tooltip.text)?;
+    (!text.is_empty()).then_some(HudDebugOptionsTooltip {
+        text,
+        x: tooltip.x,
+        y: tooltip.y,
+    })
 }
 
 fn sanitize_hud_debug_game_mode_switcher_slot(
@@ -14224,6 +14479,11 @@ mod tests {
             title: "Debug\nOptions".to_string(),
             warning: "Warning".to_string(),
             search_text: String::new(),
+            tooltip: Some(HudDebugOptionsTooltip {
+                text: "No\nReduced".to_string(),
+                x: 12,
+                y: 34,
+            }),
             rows: vec![
                 HudDebugOptionsRow::Category {
                     label: "Debug Screen Text".to_string(),
@@ -14251,12 +14511,17 @@ mod tests {
         assert_eq!(screen.search_text, "");
         assert_eq!(screen.rows.len(), 2);
         assert_eq!(screen.scroll_row, 3);
+        assert_eq!(
+            screen.tooltip.as_ref().map(|tooltip| tooltip.text.as_str()),
+            Some("NoReduced")
+        );
         assert!(!screen.default_profile_active);
         assert!(screen.performance_profile_active);
         assert!(sanitize_hud_debug_options_screen(HudDebugOptionsScreen {
             title: "\n".to_string(),
             warning: "Warning".to_string(),
             search_text: String::new(),
+            tooltip: None,
             rows: Vec::new(),
             scroll_row: 0,
             total_rows: 0,
@@ -14265,6 +14530,23 @@ mod tests {
             performance_profile_active: true,
         })
         .is_none());
+    }
+
+    #[test]
+    fn debug_options_scrollbar_rects_match_vanilla_selection_list_metrics() {
+        let surface = PhysicalSize::new(420, 240);
+        let (background, scroller) =
+            hud_debug_options_scrollbar_rects(surface, 10, 47).expect("scrollbar");
+
+        assert_eq!(background.x, 393);
+        assert_eq!(background.y, 61);
+        assert_eq!(background.width, 6);
+        assert_eq!(background.height, 146);
+        assert_eq!(scroller.x, 393);
+        assert_eq!(scroller.y, 89);
+        assert_eq!(scroller.width, 6);
+        assert_eq!(scroller.height, 32);
+        assert_eq!(hud_debug_options_scrollbar_rects(surface, 0, 3), None);
     }
 
     #[test]

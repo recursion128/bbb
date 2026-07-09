@@ -5869,6 +5869,43 @@ fn hud_debug_options_screen_projects_visible_rows_and_suppresses_pause() {
 }
 
 #[test]
+fn hud_debug_options_screen_projects_not_allowed_tooltip_under_reduced_debug_info() {
+    let mut input = ClientInputState::new(true);
+    let world =
+        world_with_dimension_height_and_reduced_debug_info(0, "minecraft:overworld", 384, true);
+    let surface = winit::dpi::PhysicalSize::new(420, 240);
+    input.open_debug_options_screen();
+    assert!(input.handle_debug_options_screen_text_input("biome"));
+    let tooltip_x = 37;
+    let tooltip_y = 83;
+    assert!(input.handle_debug_options_screen_cursor_moved(Some(
+        winit::dpi::PhysicalPosition::new(f64::from(tooltip_x), f64::from(tooltip_y))
+    )));
+
+    let screen = hud_debug_options_screen(&input, &world, surface).expect("debug options screen");
+
+    assert_eq!(
+        screen.tooltip.as_ref().map(|tooltip| tooltip.text.as_str()),
+        Some("Not visible when debug info is reduced")
+    );
+    assert_eq!(
+        screen
+            .tooltip
+            .as_ref()
+            .map(|tooltip| (tooltip.x, tooltip.y)),
+        Some((tooltip_x, tooltip_y))
+    );
+    assert_eq!(
+        screen.rows[1],
+        HudDebugOptionsRow::Entry {
+            path: "biome".to_string(),
+            status: HudDebugOptionsEntryStatus::Never,
+            allowed: false,
+        }
+    );
+}
+
+#[test]
 fn book_screen_open_releases_held_movement() {
     let (tx, mut rx) = mpsc::channel(4);
     let commands = Some(tx);

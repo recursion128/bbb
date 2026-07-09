@@ -1132,14 +1132,16 @@ When an agent does any of the following, update this file in the same slice:
     decision, F3+F4 GameModeSwitcher item icon parity, no-menu
     PauseScreen(false) input/cursor/render shell, SharedConstants DEBUG_HOTKEYS /
     DEBUG_FEATURE_COUNT gated dev hotkeys, DebugOptionsScreen
-    input/search/list/profile/status/done screen shell, and ordinary F3 keymap audit:
+    input/search/list/profile/status/done screen shell,
+    DebugOptionsScreen scrollbar/not-allowed tooltip polish, and ordinary F3 keymap audit:
     remaining individual non-default debug entry renderers,
     entity hitbox local-server mirror green boxes/delta arrows and 3D debug-text
     billboard rendering,
     advanced tooltip component-specific full parity/persistence,
     F3+I full local entity saveWithoutId parity, profiler data sampling and
     ProfileResults tree navigation, profiling metrics recorder/output,
-    DebugOptionsScreen scrollbar/tooltip/narration polish, and native pause
+    DebugOptionsScreen narration/exact EditBox cursor-selection/full widget
+    styling polish, and native pause
     tick-freeze eligibility/full PauseScreen menu remain (large, low priority).
 - Evidence / boundary:
   - Done 2026-07-08 — Debug overlay advanced tooltip component-count display.
@@ -1207,8 +1209,26 @@ When an agent does any of the following, update this file in the same slice:
     search text, row scrolling, status/profile/done mouse actions, persists
     status/profile changes through the existing debug-profile store, projects a
     renderer HUD screen, and draws the existing debug overlay behind it.
-    Boundary: visual scrollbar, not-allowed tooltip, narration, exact EditBox
-    cursor/selection behavior, and full vanilla widget styling remain future
+    Boundary: narration, exact EditBox cursor/selection behavior, and full vanilla widget styling remain future
+    polish.
+  - Done 2026-07-09 — Debug overlay DebugOptionsScreen scrollbar and
+    not-allowed tooltip polish. Vanilla anchors:
+    `AbstractSelectionList.scrollBarX` places the list scrollbar at
+    `rowRight + scrollbarWidth + 2`, `AbstractScrollArea.defaultSettings`
+    uses a 6px scrollbar with 32px minimum scroller height, and
+    `AbstractScrollArea.scrollerHeight` / `scrollBarY` derive the thumb from
+    `height * height / contentHeight` and the current scroll amount. The
+    debug option row tooltip is emitted by
+    `DebugOptionsScreen.OptionEntry.extractContent` when the row is not
+    allowed under reduced debug info, the row is hovered, and the cursor is
+    over the name area before the three status buttons; its English text is
+    `debug.options.notAllowed.tooltip`. bbb now tracks the DebugOptionsScreen
+    cursor position, projects the not-allowed tooltip into HUD state under the
+    same reduced-debug/name-area condition, renders that tooltip using the
+    existing HUD tooltip background/frame path, and draws a vanilla-metric
+    scrollbar from `scroll_row`, `total_rows`, and the 61px/33px screen
+    content band. Boundary: narration, exact EditBox cursor/selection behavior,
+    scrollbar dragging, and full vanilla widget sprite styling remain future
     polish.
   - Done 2026-07-09 — Debug overlay performance-profile GPU utilization entry
     shell. Vanilla anchors: `DebugScreenEntries.GPU_UTILIZATION` registers
@@ -2852,7 +2872,8 @@ When an agent does any of the following, update this file in the same slice:
     state/feedback shell.
     F3+F6 now opens a native DebugOptionsScreen with search, scrollable
     vanilla-ordered categories, status/profile/done buttons, cursor release,
-    profile persistence, and debug overlay drawn behind the screen.
+    profile persistence, debug overlay drawn behind the screen, vanilla-metric
+    scrollbar drawing, and reduced-debug not-allowed hover tooltip projection.
     The debug
     entry status/profile model now owns default/performance/custom
     statuses for implemented entries, startup `--debug-profile`, vanilla
@@ -2907,7 +2928,8 @@ When an agent does any of the following, update this file in the same slice:
     advanced tooltip component-specific full parity/persistence, F3+I full
     local entity saveWithoutId parity, profiler data sampling and
     ProfileResults tree navigation, profiling metrics recorder/output,
-    DebugOptionsScreen scrollbar/tooltip/narration polish, native pause
+    DebugOptionsScreen narration/exact EditBox cursor-selection/full widget
+    styling polish, native pause
     tick-freeze eligibility/full
     PauseScreen menu.
   - Done 2026-07-08 — Jumpable-vehicle contextual bar. Vanilla anchors:
