@@ -16,10 +16,11 @@ use bbb_protocol::{
         VANILLA_ENTITY_TYPE_ELDER_GUARDIAN_ID, VANILLA_ENTITY_TYPE_ENDERMAN_ID,
         VANILLA_ENTITY_TYPE_ENDERMITE_ID, VANILLA_ENTITY_TYPE_END_CRYSTAL_ID,
         VANILLA_ENTITY_TYPE_GHAST_ID, VANILLA_ENTITY_TYPE_GLOW_SQUID_ID,
-        VANILLA_ENTITY_TYPE_GUARDIAN_ID, VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID,
-        VANILLA_ENTITY_TYPE_INTERACTION_ID, VANILLA_ENTITY_TYPE_IRON_GOLEM_ID,
-        VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID, VANILLA_ENTITY_TYPE_MOOSHROOM_ID,
-        VANILLA_ENTITY_TYPE_OCELOT_ID, VANILLA_ENTITY_TYPE_PHANTOM_ID, VANILLA_ENTITY_TYPE_PIG_ID,
+        VANILLA_ENTITY_TYPE_GOAT_ID, VANILLA_ENTITY_TYPE_GUARDIAN_ID,
+        VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID, VANILLA_ENTITY_TYPE_INTERACTION_ID,
+        VANILLA_ENTITY_TYPE_IRON_GOLEM_ID, VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID,
+        VANILLA_ENTITY_TYPE_MOOSHROOM_ID, VANILLA_ENTITY_TYPE_OCELOT_ID,
+        VANILLA_ENTITY_TYPE_PHANTOM_ID, VANILLA_ENTITY_TYPE_PIG_ID,
         VANILLA_ENTITY_TYPE_PUFFERFISH_ID, VANILLA_ENTITY_TYPE_RABBIT_ID,
         VANILLA_ENTITY_TYPE_RAVAGER_ID, VANILLA_ENTITY_TYPE_SALMON_ID,
         VANILLA_ENTITY_TYPE_SHEEP_ID, VANILLA_ENTITY_TYPE_SHULKER_ID,
@@ -235,6 +236,12 @@ const COW_SOUND_VARIANT_DATA_ID: u8 = 19;
 const COW_DEFAULT_SOUND_VARIANT_ID: i32 = 0;
 const MOOSHROOM_TYPE_DATA_ID: u8 = 18;
 const MOOSHROOM_DEFAULT_TYPE_ID: i32 = 0;
+const GOAT_SCREAMING_DATA_ID: u8 = 18;
+const GOAT_LEFT_HORN_DATA_ID: u8 = 19;
+const GOAT_RIGHT_HORN_DATA_ID: u8 = 20;
+const GOAT_DEFAULT_SCREAMING: bool = false;
+const GOAT_DEFAULT_HAS_LEFT_HORN: bool = true;
+const GOAT_DEFAULT_HAS_RIGHT_HORN: bool = true;
 const CREEPER_POWERED_DATA_ID: u8 = 17;
 const CREEPER_IGNITED_DATA_ID: u8 = 18;
 const CREEPER_DEFAULT_FUSE: i16 = 30;
@@ -3715,6 +3722,12 @@ fn debug_push_entity_additional_save_data(entity: &EntityState, fields: &mut Vec
             debug_push_ageable_mob_additional_save_data(entity, fields);
             debug_push_glow_squid_additional_save_data(entity, fields);
         }
+        VANILLA_ENTITY_TYPE_GOAT_ID => {
+            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_ageable_mob_additional_save_data(entity, fields);
+            debug_push_animal_additional_save_data(fields);
+            debug_push_goat_additional_save_data(entity, fields);
+        }
         VANILLA_ENTITY_TYPE_SQUID_ID => {
             debug_push_mob_additional_save_data(entity, fields);
             debug_push_ageable_mob_additional_save_data(entity, fields);
@@ -3949,6 +3962,21 @@ fn debug_mooshroom_variant_name(variant: i32) -> &'static str {
         1 => "brown",
         _ => "red",
     }
+}
+
+fn debug_push_goat_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
+    let is_screaming = debug_entity_data_bool_present(entity, GOAT_SCREAMING_DATA_ID)
+        .unwrap_or(GOAT_DEFAULT_SCREAMING);
+    let has_left_horn = debug_entity_data_bool_present(entity, GOAT_LEFT_HORN_DATA_ID)
+        .unwrap_or(GOAT_DEFAULT_HAS_LEFT_HORN);
+    let has_right_horn = debug_entity_data_bool_present(entity, GOAT_RIGHT_HORN_DATA_ID)
+        .unwrap_or(GOAT_DEFAULT_HAS_RIGHT_HORN);
+    fields.push(format!(
+        "IsScreamingGoat: {}",
+        debug_snbt_bool(is_screaming)
+    ));
+    fields.push(format!("HasLeftHorn: {}", debug_snbt_bool(has_left_horn)));
+    fields.push(format!("HasRightHorn: {}", debug_snbt_bool(has_right_horn)));
 }
 
 fn debug_push_creeper_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
