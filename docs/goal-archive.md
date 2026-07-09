@@ -6297,6 +6297,13 @@
   time/target、更广泛的 Mob save data、passengers 以及其他 entity-specific
   `addAdditionalSaveData` 仍待本地 state owner 后才能关闭完整
   `saveWithoutId` parity。
+- [x] debug overlay F3+I local phantom save field（P2 native slice，
+  2026-07-09）：依据 `Phantom.addAdditionalSaveData` 调用 Mob 保存链后保存
+  nullable `anchor_pos`，再从 synced `Phantom.ID_SIZE` 16 写 lowercase `size`。
+  native 现在对授权 Shift+F3+I 本地 phantom recreate command 追加 Mob 字段和
+  metadata-derived `size`。边界：local `anchor_pos`、更广泛的 Mob save data、
+  passengers 以及其他 entity-specific `addAdditionalSaveData` 仍待本地 state owner
+  后才能关闭完整 `saveWithoutId` parity。
 - [x] debug overlay F3+I local ravager save fields（P2 native slice，
   2026-07-09）：依据 `Ravager.addAdditionalSaveData` 在
   `PatrollingMonster` 与 `Raider` 父类字段之后写入 `AttackTick`、`StunTick`、

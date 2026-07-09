@@ -12,8 +12,9 @@ use bbb_protocol::{
         VANILLA_ENTITY_TYPE_BOGGED_ID, VANILLA_ENTITY_TYPE_CREEPER_ID,
         VANILLA_ENTITY_TYPE_END_CRYSTAL_ID, VANILLA_ENTITY_TYPE_GHAST_ID,
         VANILLA_ENTITY_TYPE_IRON_GOLEM_ID, VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID,
-        VANILLA_ENTITY_TYPE_RAVAGER_ID, VANILLA_ENTITY_TYPE_SLIME_ID,
-        VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID, VANILLA_ENTITY_TYPE_ZOGLIN_ID,
+        VANILLA_ENTITY_TYPE_PHANTOM_ID, VANILLA_ENTITY_TYPE_RAVAGER_ID,
+        VANILLA_ENTITY_TYPE_SLIME_ID, VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID,
+        VANILLA_ENTITY_TYPE_ZOGLIN_ID,
     },
     packets::{
         BlockEntityTagQuery, BlockPos as ProtocolBlockPos, ChangeGameModeCommand,
@@ -224,6 +225,8 @@ const IRON_GOLEM_DEFAULT_FLAGS: i8 = 0;
 const NEUTRAL_MOB_DEFAULT_ANGER_END_TIME: i64 = 0;
 const PATROLLING_MONSTER_DEFAULT_PATROL_LEADER: bool = false;
 const PATROLLING_MONSTER_DEFAULT_PATROLLING: bool = false;
+const PHANTOM_SIZE_DATA_ID: u8 = 16;
+const PHANTOM_DEFAULT_SIZE: i32 = 0;
 const RAIDER_DEFAULT_WAVE: i32 = 0;
 const RAIDER_DEFAULT_CAN_JOIN_RAID: bool = false;
 const RAVAGER_DEFAULT_ATTACK_TICK: i32 = 0;
@@ -3567,6 +3570,10 @@ fn debug_push_entity_additional_save_data(entity: &EntityState, fields: &mut Vec
             debug_push_mob_additional_save_data(entity, fields);
             debug_push_iron_golem_additional_save_data(entity, fields);
         }
+        VANILLA_ENTITY_TYPE_PHANTOM_ID => {
+            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_phantom_additional_save_data(entity, fields);
+        }
         VANILLA_ENTITY_TYPE_RAVAGER_ID => {
             debug_push_mob_additional_save_data(entity, fields);
             debug_push_patrolling_monster_additional_save_data(fields);
@@ -3684,6 +3691,12 @@ fn debug_push_patrolling_monster_additional_save_data(fields: &mut Vec<String>) 
         "Patrolling: {}",
         debug_snbt_bool(PATROLLING_MONSTER_DEFAULT_PATROLLING)
     ));
+}
+
+fn debug_push_phantom_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
+    let size =
+        debug_entity_data_int_present(entity, PHANTOM_SIZE_DATA_ID).unwrap_or(PHANTOM_DEFAULT_SIZE);
+    fields.push(format!("size: {size}"));
 }
 
 fn debug_push_raider_additional_save_data(fields: &mut Vec<String>) {
