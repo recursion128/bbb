@@ -7001,3 +7001,11 @@
   仍按 `Mob.DATA_MOB_FLAGS_ID` 解读。边界：`LivingEntity` 的 health/attributes/brain/
   equipment 等复杂 state 仍不在本地轻量 F3+I 覆盖内，未引入 blaze 客户端燃烧状态
   到 save NBT。
+- [x] Debug overlay F3+I local spider-family save fields（P2 native input
+  slice，2026-07-09）：依据 vanilla 26.1 `Spider` 只定义攀爬 `DATA_FLAGS_ID`
+  且不覆写 `addAdditionalSaveData`，`CaveSpider` 继承 `Spider` 且同样不覆写 save；
+  保存链落在 `Mob.addAdditionalSaveData` 的 mob 字段。native F3+I 本地实体复制现在
+  对 spider 与 cave_spider 输出 `CanPickUpLoot`、`PersistenceRequired`、`LeftHanded`
+  与 `NoAI`。边界：攀爬状态是 synched client state，不是 vanilla save NBT 字段；
+  `LivingEntity` 的 health/attributes/brain/equipment 等复杂 state 仍不在本地轻量
+  F3+I 覆盖内。
