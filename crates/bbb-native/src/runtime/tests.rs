@@ -24,7 +24,7 @@ use bbb_protocol::packets::{
 };
 use bbb_world::{
     BlockPos, ChunkColumn, ChunkPos, ChunkSection, ChunkState, HeightmapData, LightData,
-    LocalPlayerPoseState, PaletteDomain, PaletteKind, PalettedContainerData,
+    LocalPlayerPoseState, PaletteDomain, PaletteKind, PalettedContainerData, RegistryPacketEntry,
     WorldBlockDestroyProfile, WorldDimension,
 };
 use tokio::sync::mpsc;
@@ -1214,6 +1214,50 @@ fn hud_debug_overlay_projects_custom_light_levels_from_camera_feet_block() {
     assert_eq!(
         overlay.left_lines,
         vec!["Client Light: 13 (4 sky, 13 block)".to_string()]
+    );
+    assert!(overlay.right_lines.is_empty());
+}
+
+#[test]
+fn hud_debug_overlay_projects_custom_biome_from_camera_feet_block() {
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    world.record_registry_entries(
+        "minecraft:worldgen/biome",
+        0,
+        vec![
+            RegistryPacketEntry::stub("minecraft:plains"),
+            RegistryPacketEntry::stub("minecraft:cherry_grove"),
+        ],
+    );
+    world.insert_decoded_chunk(empty_lightmap_test_chunk_with_biome(world.dimension(), 1));
+    let mut input = ClientInputState::new(true);
+    input.set_debug_screen_entry_status(
+        DebugScreenEntryId::Biome,
+        crate::debug_entries::DebugScreenEntryStatus::AlwaysOn,
+    );
+
+    let overlay = hud_debug_overlay(
+        &input,
+        &world,
+        Some(CameraPose {
+            position: [0.25, 1.0, 0.25],
+            y_rot: 0.0,
+            x_rot: 0.0,
+            eye_height: 1.62,
+        }),
+        winit::dpi::PhysicalSize::new(320, 240),
+        &HudDebugFpsSampler::default(),
+        VANILLA_UNLIMITED_FRAMERATE_LIMIT,
+        true,
+        &HudDebugNetworkSampler::default(),
+        &HudDebugTpsSampler::default(),
+        &NetCounters::default(),
+    )
+    .expect("custom biome entry should show with loaded camera block");
+
+    assert_eq!(
+        overlay.left_lines,
+        vec!["Biome: minecraft:cherry_grove".to_string()]
     );
     assert!(overlay.right_lines.is_empty());
 }

@@ -3096,6 +3096,13 @@ fn hud_debug_overlay(
             }
         }
     }
+    if entry_enabled(DebugScreenEntryId::Biome) {
+        if let Some(camera_pose) = camera_pose {
+            if let Some(biome_line) = hud_debug_biome_line(world, camera_pose) {
+                left_lines.push(biome_line);
+            }
+        }
+    }
     let debug_crosshair = camera_pose
         .filter(|_| entry_enabled(DebugScreenEntryId::ThreeDimensionalCrosshair))
         .map(hud_debug_crosshair);
@@ -3471,6 +3478,18 @@ fn hud_debug_light_line(world: &WorldStore, camera_pose: CameraPose) -> Option<S
         "Client Light: {raw} ({} sky, {} block)",
         light.sky, light.block
     ))
+}
+
+fn hud_debug_biome_line(world: &WorldStore, camera_pose: CameraPose) -> Option<String> {
+    let feet_pos = camera_feet_block_position(camera_pose)?;
+    let biome_id = world.probe_block(feet_pos)?.biome_id?;
+    let biome = world
+        .registry_content("minecraft:worldgen/biome")
+        .and_then(|registry| registry.entries.get(usize::try_from(biome_id).ok()?))
+        .map(|entry| entry.id.as_str())
+        .map(str::to_string)
+        .unwrap_or_else(|| format!("[unregistered {biome_id}]"));
+    Some(format!("Biome: {biome}"))
 }
 
 fn camera_feet_block_position(camera: CameraPose) -> Option<BlockPos> {

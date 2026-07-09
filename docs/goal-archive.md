@@ -5449,7 +5449,7 @@
   `ALWAYS_ON` 可在 overlay 隐藏时投影，custom status 有 focused test，
   reduced-debug 会过滤 position、3D crosshair 与 renderer entries。边界：
   actual `DebugOptionsScreen`、`debug-profile.json` 持久化，以及 look-at /
-  biome / chunk stats 等 individual non-default entry
+  chunk stats 等 individual non-default entry
   renderers 仍待后续。
 - [x] debug overlay performance-profile GPU utilization entry shell（P2
   native/runtime slice，2026-07-09）：依据
@@ -5500,6 +5500,17 @@
   `SharedConstants.DEBUG_SHOW_SERVER_DEBUG_VALUES` 下追加的 `Server Light` 行
   需要 local-server light mirror；完整 group layout、`DebugOptionsScreen` 和
   `debug-profile.json` 持久化仍待后续。
+- [x] debug overlay biome entry shell（P2 native/runtime slice，2026-07-09）：
+  依据 `DebugScreenEntries.BIOME` 注册 `DebugEntryBiome`，该 entry 使用 camera
+  entity `blockPosition()`、检查 build height，并从
+  `minecraft.level.getBiome(feetPos)` 输出 `Biome: <registry key>`；当
+  `SharedConstants.DEBUG_SHOW_SERVER_DEBUG_VALUES` 开启时还会追加 `Server Biome`
+  行。native 现在有非 profile 默认项 `Biome` entry id，default / performance
+  profiles 中保持 `Never`，reduced-debug 下按默认 `DebugScreenEntry.isAllowed`
+  过滤；custom status 启用时，从 loaded chunk biome data 读取 camera feet block
+  biome id，并通过已跟踪的 `minecraft:worldgen/biome` registry entries 映射为
+  registry key。边界：optional server biome row 需要 local-server biome mirror；
+  registry content 缺失时 native 显示 `[unregistered <id>]` 而非 key。
 - [x] debug overlay F3+B local-server missing-entity label data and startup
   flag（P2 native/renderer slice，2026-07-09）：依据
   `SharedConstants.DEBUG_SHOW_LOCAL_SERVER_ENTITY_HIT_BOXES =

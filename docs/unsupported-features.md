@@ -1111,7 +1111,7 @@ When an agent does any of the following, update this file in the same slice:
     3D crosshair rendering, default-profile debug entry coverage,
     performance-profile GPU utilization entry shell, day-count debug entry
     shell, detailed-memory debug entry shell, light-levels debug entry shell,
-    F3+I
+    biome debug entry shell, F3+I
     local block-entity NBT capture, advanced tooltip component-count display,
     F3+I local entity transform NBT capture, debug feedback styled prefix
     baseline, F3+S dynamic texture dump clickable/open-file feedback payload,
@@ -1167,7 +1167,7 @@ When an agent does any of the following, update this file in the same slice:
     implemented always-on text entries even when the F3 overlay is hidden.
     Boundary: actual `DebugOptionsScreen`, persisted
     `debug-profile.json`, and individual non-default entry renderers such as
-    look-at/biome/chunk stats remain future work.
+    look-at/chunk stats remain future work.
   - Done 2026-07-09 — Debug overlay performance-profile GPU utilization entry
     shell. Vanilla anchors: `DebugScreenEntries.GPU_UTILIZATION` registers
     `DebugEntryGpuUtilization`, the performance profile enables it
@@ -1219,6 +1219,18 @@ When an agent does any of the following, update this file in the same slice:
     `SharedConstants.DEBUG_SHOW_SERVER_DEBUG_VALUES` needs a local-server light
     mirror and remains future work; full debug group layout/persistence still
     belongs to `DebugOptionsScreen`.
+  - Done 2026-07-09 — Debug overlay biome entry shell. Vanilla anchors:
+    `DebugScreenEntries.BIOME` registers `DebugEntryBiome`; the entry reads the
+    camera entity `blockPosition()`, checks build height, and formats
+    `Biome: <registry key>` from `minecraft.level.getBiome(feetPos)`, with an
+    optional `Server Biome` row behind
+    `SharedConstants.DEBUG_SHOW_SERVER_DEBUG_VALUES`. bbb now has a
+    non-profile `Biome` entry id, keeps it `Never` in default/performance
+    profiles, filters it under reduced-debug info, samples the camera feet
+    block biome id from loaded chunk biome data, and maps that id through the
+    tracked `minecraft:worldgen/biome` registry entries. Boundary: the optional
+    server biome row needs a local-server biome mirror; if registry content is
+    unavailable, bbb reports `[unregistered <id>]` instead of a key.
   - Done 2026-07-09 — Debug overlay F3+B local-server missing-entity label
     data and startup flag. Vanilla anchors:
     `SharedConstants.DEBUG_SHOW_LOCAL_SERVER_ENTITY_HIT_BOXES =
@@ -2433,7 +2445,8 @@ When an agent does any of the following, update this file in the same slice:
     overworld day clock. Custom-enabled detailed memory now renders the
     vanilla-shaped heap/non-heap rows from native process memory.
     Custom-enabled light levels now render the client light row from the
-    camera feet block. F3+B local-server
+    camera feet block, and custom-enabled biome renders the loaded camera feet
+    biome registry key. F3+B local-server
     debug mode now has startup `--debug-show-local-server-entity-hit-boxes`
     plus client-side `Missing Server Entity` label data when no local-server
     entity mirror exists. The
