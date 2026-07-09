@@ -289,9 +289,10 @@ case "$cmd" in
     ;;
   gate)
     export CARGO_TARGET_DIR=/tmp/bbb-target-main
-    cargo fmt --check
+    cargo fmt --all --check
     git diff --check
-    cargo test --workspace
+    RUSTFLAGS='-D warnings' cargo check --workspace
+    RUSTFLAGS='-D warnings' cargo test --workspace
     ;;
   size)
     found=0

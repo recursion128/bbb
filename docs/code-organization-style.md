@@ -242,5 +242,4 @@ For active feature work, prefer this sequence:
 2. Move only the minimal existing code needed for that feature family.
 3. Implement the new behavior inside that module.
 4. Re-export only what downstream crates need.
-5. Run `cargo fmt --check`, `git diff --check`, and
-   `CARGO_TARGET_DIR=/tmp/bbb-target-main cargo test --workspace`.
+5. Run the pre-commit gate defined in `goal.md` (or `scripts/cargo-dev.sh gate`).

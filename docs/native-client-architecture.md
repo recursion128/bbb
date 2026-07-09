@@ -137,10 +137,10 @@ Frame structure invariants (enforced by tests in `render.rs`):
 Renderer state is runtime state. It may cache data derived from `bbb-world` and
 `bbb-pack`, but `bbb-world` remains canonical.
 
-### `bbb-audio` or Native Audio Runtime
+### `bbb-audio` Playback Runtime
 
-Target audio should be a separate playback boundary. This may be a future
-`bbb-audio` crate or a narrow native runtime module until it grows.
+Audio is a separate playback boundary. The `bbb-audio` crate owns it, with Kira
+behind a default `kira` feature and the device backend behind `device`.
 
 - Input: audio commands derived from world/net events.
 - Backend: Kira is appropriate here, not inside `bbb-world`.
@@ -246,8 +246,9 @@ State formatted for external APIs, tests, logs, or probes.
 
 Examples:
 
-- `NetCounters.last_sound`.
-- `NetCounters.last_player_chat`.
+- Control-server query methods such as `audio.last_sound`, which read canonical
+  world state (`bbb-world::client::audio`) on demand rather than caching it.
+- `NetCounters` connection/session/runtime-status fields.
 - Control report structs.
 
 Derived state belongs in `bbb-control` or native projection code and must be
@@ -310,8 +311,8 @@ Prefer small semantic components:
 - `EntityMobEffects`: active effects.
 - `EntityDamage`: last damage event state.
 - `EntityMinecartLerp`: minecart interpolation steps.
-- `HurtingProjectile` or `ProjectileAcceleration`: acceleration power and other
-  projectile-specific state.
+- `EntityHurtingProjectile`: acceleration power and other projectile-specific
+  state.
 
 Do not add new fields to a catch-all `EntityState` first if a component already
 owns the semantic area. `EntityState` is useful for serialization, tests, probe
@@ -333,10 +334,10 @@ Example target for `ProjectilePower`:
 - Received packet increments `projectile_power_packets`.
 - If entity is missing, increment `projectile_power_updates_ignored`.
 - If entity exists but is not a hurting projectile, increment ignored.
-- If entity has `HurtingProjectile`, update `acceleration_power` and increment
-  applied.
-- `NetCounters.last_projectile_power` is projected from the world update summary
-  or component state, not maintained as independent native state.
+- If entity has `EntityHurtingProjectile`, update `acceleration_power` and
+  increment applied.
+- The control server's `world.last_projectile_power` reads the world update
+  summary on demand; it is not maintained as independent native state.
 
 ### Query And Performance Policy
 
@@ -403,7 +404,7 @@ This layer is deterministic and testable.
 
 ### Audio Runtime
 
-The future audio runtime owns playback:
+The audio runtime owns playback:
 
 - Kira `AudioManager`.
 - Decoded sound data cache.
@@ -485,8 +486,10 @@ duplicating resource-path logic in runtime systems.
 Rules:
 
 - New world-relevant packet state should be stored in `bbb-world`.
-- Native control projection should call a `sync_*_counters` helper that copies
-  counters and last-state summaries from `WorldStore`.
+- Native control projection splits two ways:
+  `apply_control_projection_event` populates runtime status from `NetEvent`s,
+  and control-server methods read `WorldStore` on demand. Neither copies
+  world state into a cached snapshot.
 - Native-only counters are allowed only for connection/session/runtime state
   that `bbb-world` should not own, such as connection status or command queue
   lengths.
@@ -591,7 +594,6 @@ inputs. They should be testable without network, renderer, or audio backends.
   audio command extraction and entity movement systems as they outgrow direct
   apply methods.
 - Build `bbb-pack` lookup APIs around official 26.1 assets.
-- Add the audio runtime boundary, with Kira behind a feature or isolated crate.
 - Verify each `RendererFrame` field's extraction timing against the vanilla
   tick->render order (fields currently read at their historical sequence
   points, documented on the struct).

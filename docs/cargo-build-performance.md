@@ -5,10 +5,8 @@ used to keep focused tests fast without weakening the final merge gate.
 
 ## Goals
 
-- Preserve the final gate:
-  - `cargo fmt --check`
-  - `git diff --check`
-  - `CARGO_TARGET_DIR=/tmp/bbb-target-main cargo test --workspace`
+- Preserve the final gate defined in `goal.md` under "提交前门禁"
+  (`scripts/cargo-dev.sh gate` runs it against `/tmp/bbb-target-main`).
 - Reduce daily focused-test and multi-worktree cold compile cost.
 - Keep build output out of the repo-local `target` directory.
 - Keep caches stable across slices and clean them deliberately, not after every
@@ -26,8 +24,8 @@ to relax correctness checks. The preferred order is:
 3. Evaluate optional `sccache` only when it is installed locally, and compare
    runs with and without `RUSTC_WRAPPER=sccache`.
 4. Use `fast-test` only for daily focused iteration.
-5. Keep the final merge gate on the default profile with
-   `CARGO_TARGET_DIR=/tmp/bbb-target-main cargo test --workspace`.
+5. Keep the final merge gate on the default profile, running the `goal.md` gate
+   against `CARGO_TARGET_DIR=/tmp/bbb-target-main`.
 
 ## Current sccache Decision
 
@@ -432,8 +430,12 @@ Conclusion:
   focused timing before broad profile changes.
 - Consider `cargo-nextest` only for test execution time. It will not remove the
   dominant cold compilation cost.
-- Do not prioritize mold/lld on this macOS machine; target caching, sccache, and
-  profile measurement are the higher-confidence local optimizations.
+- The recorded baselines below were taken on a macOS machine; the current
+  development host is Linux (`x86_64`). Re-measure before trusting absolute
+  numbers, and evaluate `mold`/`lld` — the earlier "do not prioritize a fast
+  linker" guidance was specific to the macOS toolchain and does not carry over.
+- Entity projection / client-tick hot-path baselines live in
+  `docs/performance-baselines.md`.
 
 ## Recheck History
 

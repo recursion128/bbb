@@ -19,6 +19,12 @@ configuration UI.
   `~/Work/mc-code/sources/26.1/`
 - Follow the repo code organization and style rules in:
   `docs/code-organization-style.md`
+- Crate boundaries, ownership rules, and state taxonomy:
+  `docs/native-client-architecture.md`
+- Build/target/cache policy and measured build baselines:
+  `docs/cargo-build-performance.md`
+- Current priorities, hard constraints, structural invariants, and the
+  pre-commit gate: `goal.md`; the feature gap ledger: `docs/unsupported-features.md`
 - For packet ids and wire formats, prefer vanilla `GameProtocols.java` and the
   relevant `Clientbound*Packet` / `Serverbound*Packet` class.
 - For client behavior, inspect `ClientPacketListener`, `ClientLevel`,
@@ -119,16 +125,12 @@ Every worker prompt should include:
 
 ## Testing Gate
 
-Before committing a slice, run:
-
-```sh
-cargo fmt --check
-git diff --check
-CARGO_TARGET_DIR=/tmp/bbb-target-main cargo test --workspace
-```
+The authoritative pre-commit gate is defined in `goal.md` under "提交前门禁".
+Do not copy the command list into other files; point at `goal.md` instead.
+`scripts/cargo-dev.sh gate` runs exactly that gate against `/tmp/bbb-target-main`.
 
 Focused crate tests are useful while developing, but the default merge gate is the full
-workspace test suite. If a command cannot run, state the reason and the residual risk.
+workspace check + test suite. If a command cannot run, state the reason and the residual risk.
 For daily focused tests, agents may use `cargo test --profile fast-test` with an
 assigned external `CARGO_TARGET_DIR`; this does not replace the merge gate.
 Agents may use `scripts/cargo-dev.sh` for focused tests, fast-test, timings,
