@@ -5382,7 +5382,7 @@
   screen cursor，menu pause screen 左键点击 Return to Game rect 会关闭 screen；
   runtime 投影 hover，renderer 绘制 native Return to Game button，main 在
   pause-screen close 后恢复 cursor capture。边界：dim background、
-  feedback/custom-dialog、Options、Share to LAN / Player Reporting、
+  custom additions/dialogs、Options、Share to LAN / Player Reporting、
   Disconnect、draft-report icon、music toast、以及 tick-freeze eligibility 仍未实现。
 - [x] native PauseScreen(true) Advancements button（P2 input/runtime/renderer
   slice，2026-07-09）：依据 `PauseScreen.createPauseMenu` 在 Return to Game 后
@@ -5391,7 +5391,7 @@
   `AdvancementsScreen` 的行为。native pause screen 现在投影 Advancements hover，
   renderer 绘制该按钮，左键点击会关闭 pause shell、打开现有 native advancements
   screen，并在有 visible root tab 时沿用既有 `SeenAdvancements::OpenedTab`
-  packet 语义。边界：parent-return behavior、feedback/custom-dialog、
+  packet 语义。边界：parent-return behavior、custom additions/dialogs、
   Options、Share to LAN / Player Reporting、Disconnect、draft-report icon、dim
   background、music toast、以及 tick-freeze eligibility 仍未实现。
 - [x] native PauseScreen(true) Stats button loading screen shell（P2
@@ -5405,8 +5405,20 @@
   native Stats loading shell 并排队 `RequestStats`；Stats shell 渲染 `Stats` 与
   `Downloading statistics...`，Done/Escape 关闭。边界：General/Items/Mobs 统计
   列表、排序/icons、server `onStatsUpdated` populated view、parent-return behavior、
-  feedback/custom-dialog、Options、Share to LAN / Player Reporting、Disconnect、
+  custom additions/dialogs、Options、Share to LAN / Player Reporting、Disconnect、
   draft-report icon、dim background、music toast、以及 tick-freeze eligibility 仍未实现。
+- [x] native PauseScreen(true) Send Feedback / Report Bugs link row shell（P2
+  input/runtime/renderer slice，2026-07-09）：依据
+  `PauseScreen.addFeedbackButtons` 在没有 pause-screen custom additions 时添加
+  half-width `menu.sendFeedback` 和 `menu.reportBugs` buttons；Send Feedback 在
+  stable version 下使用 `CommonLinks.RELEASE_FEEDBACK`，否则使用
+  `CommonLinks.SNAPSHOT_FEEDBACK`，Report Bugs 使用
+  `CommonLinks.SNAPSHOT_BUGS_FEEDBACK` 且 `DataVersion.isSideSeries()` 时 inactive。
+  native pause screen 现在在第三行 `(width / 2 - 102, height / 4 + 56, 98, 20)` /
+  `(width / 2 + 4, height / 4 + 56, 98, 20)` 投影两个按钮的 hover/disabled
+  状态，renderer 绘制 Send Feedback / Report Bugs，左键点击记录可 drain 的 link
+  request 并由 main 记录日志。边界：ConfirmLinkScreen、实际 platform browser
+  opening、自定义 additions 时的 Feedback sub-screen / server-dialog row 仍未实现。
 - [x] debug overlay F3+B entity AABB hitbox outline rendering（P2
   renderer/runtime slice，2026-07-08）：依据
   `DebugScreenEntries.ENTITY_HITBOXES` 由 `KeyboardHandler.handleDebugKeys`

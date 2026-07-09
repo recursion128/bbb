@@ -67,7 +67,7 @@ use input::{
     handle_mouse_input_at_partial_tick, handle_mouse_motion, handle_mouse_wheel,
     handle_text_input_with_item_runtime, queue_debug_recreate_server_query_request,
     release_active_input, ClientInputState, DebugClipboard, DebugFeatureCountRequest,
-    DebugFrustumRequest, DebugProfilingToggleRequest,
+    DebugFrustumRequest, DebugProfilingToggleRequest, PauseScreenLinkRequest,
 };
 use particle_runtime::{NativeParticleRuntime, ParticleEventSink};
 use runtime::{
@@ -822,6 +822,7 @@ fn main() -> Result<()> {
                             cursor_position,
                             window.inner_size(),
                         );
+                        drain_pause_screen_link_requests(&mut input);
                         if !runtime_wants_cursor(&input, &world) {
                             set_cursor_capture(&window, &mut cursor_captured, true);
                         }
@@ -1281,6 +1282,25 @@ fn runtime_wants_cursor(input: &ClientInputState, world: &WorldStore) -> bool {
         || input.debug_options_screen_is_open()
         || input.debug_pause_screen_is_open()
         || input.debug_game_mode_switcher_is_open()
+}
+
+fn drain_pause_screen_link_requests(input: &mut ClientInputState) {
+    for request in input.take_pause_screen_link_requests() {
+        match request {
+            PauseScreenLinkRequest::SendFeedback { url } => {
+                tracing::info!(
+                    url,
+                    "pause screen send-feedback link requested; native confirm-link screen is not implemented"
+                );
+            }
+            PauseScreenLinkRequest::ReportBugs { url } => {
+                tracing::info!(
+                    url,
+                    "pause screen report-bugs link requested; native confirm-link screen is not implemented"
+                );
+            }
+        }
+    }
 }
 
 fn drain_dynamic_player_skin_downloads(

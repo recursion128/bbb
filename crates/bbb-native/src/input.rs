@@ -118,9 +118,13 @@ const PAUSE_SCREEN_HALF_BUTTON_WIDTH: i32 = 98;
 const PAUSE_SCREEN_RETURN_TO_GAME_BUTTON_HEIGHT: i32 = 20;
 const PAUSE_SCREEN_RETURN_TO_GAME_TOP_OFFSET: i32 = 8;
 const PAUSE_SCREEN_SECOND_ROW_TOP_OFFSET: i32 = 32;
+const PAUSE_SCREEN_THIRD_ROW_TOP_OFFSET: i32 = 56;
 const STATS_SCREEN_DONE_BUTTON_WIDTH: i32 = 200;
 const STATS_SCREEN_DONE_BUTTON_HEIGHT: i32 = 20;
 const STATS_SCREEN_FOOTER_HEIGHT: i32 = 33;
+const PAUSE_SCREEN_RELEASE_FEEDBACK_URL: &str = "https://aka.ms/javafeedback?ref=game";
+const PAUSE_SCREEN_SNAPSHOT_FEEDBACK_URL: &str = "https://aka.ms/snapshotfeedback?ref=game";
+const PAUSE_SCREEN_SNAPSHOT_BUGS_URL: &str = "https://aka.ms/snapshotbugs?ref=game";
 const ENTITY_SHARED_FLAGS_DATA_ID: u8 = 0;
 const ENTITY_AIR_SUPPLY_DATA_ID: u8 = 1;
 const ENTITY_CUSTOM_NAME_DATA_ID: u8 = 2;
@@ -198,6 +202,12 @@ struct DebugGameModeSwitcherState {
 pub(crate) struct DebugPauseScreenState {
     pub(crate) show_pause_menu: bool,
     pub(crate) cursor_position: Option<(i32, i32)>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum PauseScreenLinkRequest {
+    SendFeedback { url: &'static str },
+    ReportBugs { url: &'static str },
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -339,6 +349,7 @@ pub(crate) struct ClientInputState {
     advancement_mouse_left_down: bool,
     advancement_is_scrolling: bool,
     stats_screen_cursor_position: Option<(i32, i32)>,
+    pause_screen_link_requests: Vec<PauseScreenLinkRequest>,
     debug_entries: DebugScreenEntryList,
     debug_profile_store_path: Option<PathBuf>,
     debug_modifier_down: bool,
@@ -1381,9 +1392,25 @@ impl ClientInputState {
             } else if pause_screen_stats_button_contains(cursor_position, surface_size) {
                 self.close_debug_pause_screen();
                 open_stats_screen(self, counters, world, net_commands);
+            } else if pause_screen_send_feedback_button_contains(cursor_position, surface_size) {
+                self.pause_screen_link_requests
+                    .push(PauseScreenLinkRequest::SendFeedback {
+                        url: pause_screen_feedback_url(),
+                    });
+            } else if pause_screen_report_bugs_button_contains(cursor_position, surface_size)
+                && pause_screen_report_bugs_button_enabled()
+            {
+                self.pause_screen_link_requests
+                    .push(PauseScreenLinkRequest::ReportBugs {
+                        url: PAUSE_SCREEN_SNAPSHOT_BUGS_URL,
+                    });
             }
         }
         true
+    }
+
+    pub(crate) fn take_pause_screen_link_requests(&mut self) -> Vec<PauseScreenLinkRequest> {
+        std::mem::take(&mut self.pause_screen_link_requests)
     }
 
     pub(crate) fn stats_screen_cursor_position(&self) -> Option<(i32, i32)> {
@@ -2495,6 +2522,40 @@ pub(crate) fn pause_screen_stats_button_contains(
     mouse_x >= x && mouse_x < x + width && mouse_y >= y && mouse_y < y + height
 }
 
+pub(crate) fn pause_screen_send_feedback_button_contains(
+    cursor_position: Option<(i32, i32)>,
+    surface_size: PhysicalSize<u32>,
+) -> bool {
+    let Some((mouse_x, mouse_y)) = cursor_position else {
+        return false;
+    };
+    let (x, y, width, height) = pause_screen_send_feedback_button_rect(surface_size);
+    mouse_x >= x && mouse_x < x + width && mouse_y >= y && mouse_y < y + height
+}
+
+pub(crate) fn pause_screen_report_bugs_button_contains(
+    cursor_position: Option<(i32, i32)>,
+    surface_size: PhysicalSize<u32>,
+) -> bool {
+    let Some((mouse_x, mouse_y)) = cursor_position else {
+        return false;
+    };
+    let (x, y, width, height) = pause_screen_report_bugs_button_rect(surface_size);
+    mouse_x >= x && mouse_x < x + width && mouse_y >= y && mouse_y < y + height
+}
+
+pub(crate) fn pause_screen_report_bugs_button_enabled() -> bool {
+    MC_DATA_VERSION_SERIES == "main"
+}
+
+pub(crate) fn pause_screen_feedback_url() -> &'static str {
+    if MC_STABLE {
+        PAUSE_SCREEN_RELEASE_FEEDBACK_URL
+    } else {
+        PAUSE_SCREEN_SNAPSHOT_FEEDBACK_URL
+    }
+}
+
 pub(crate) fn stats_screen_done_button_contains(
     cursor_position: Option<(i32, i32)>,
     surface_size: PhysicalSize<u32>,
@@ -2536,6 +2597,28 @@ fn pause_screen_stats_button_rect(surface_size: PhysicalSize<u32>) -> (i32, i32,
     (
         width / 2 + 4,
         height / 4 + PAUSE_SCREEN_SECOND_ROW_TOP_OFFSET,
+        PAUSE_SCREEN_HALF_BUTTON_WIDTH,
+        PAUSE_SCREEN_RETURN_TO_GAME_BUTTON_HEIGHT,
+    )
+}
+
+fn pause_screen_send_feedback_button_rect(surface_size: PhysicalSize<u32>) -> (i32, i32, i32, i32) {
+    let width = i32::try_from(surface_size.width).unwrap_or(i32::MAX);
+    let height = i32::try_from(surface_size.height).unwrap_or(i32::MAX);
+    (
+        width / 2 - PAUSE_SCREEN_RETURN_TO_GAME_BUTTON_WIDTH / 2,
+        height / 4 + PAUSE_SCREEN_THIRD_ROW_TOP_OFFSET,
+        PAUSE_SCREEN_HALF_BUTTON_WIDTH,
+        PAUSE_SCREEN_RETURN_TO_GAME_BUTTON_HEIGHT,
+    )
+}
+
+fn pause_screen_report_bugs_button_rect(surface_size: PhysicalSize<u32>) -> (i32, i32, i32, i32) {
+    let width = i32::try_from(surface_size.width).unwrap_or(i32::MAX);
+    let height = i32::try_from(surface_size.height).unwrap_or(i32::MAX);
+    (
+        width / 2 + 4,
+        height / 4 + PAUSE_SCREEN_THIRD_ROW_TOP_OFFSET,
         PAUSE_SCREEN_HALF_BUTTON_WIDTH,
         PAUSE_SCREEN_RETURN_TO_GAME_BUTTON_HEIGHT,
     )

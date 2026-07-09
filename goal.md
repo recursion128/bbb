@@ -339,6 +339,7 @@ Screen Render Surfaces" 条目）：
   PauseScreen Return to Game button render/input/action、
   PauseScreen Advancements button render/input/action、
   PauseScreen Stats button loading screen shell、
+  PauseScreen Send Feedback / Report Bugs link row shell、
   SharedConstants DEBUG_HOTKEYS / DEBUG_FEATURE_COUNT gated dev hotkeys、
   DebugOptionsScreen input/search/list/profile/status/done screen shell、
   DebugOptionsScreen scrollbar/not-allowed tooltip polish、

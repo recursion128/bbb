@@ -3549,6 +3549,61 @@ fn debug_pause_screen_stats_button_opens_stats_screen_and_requests_stats() {
 }
 
 #[test]
+fn debug_pause_screen_send_feedback_button_records_link_request() {
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+    let surface = PhysicalSize::new(320, 240);
+    input.open_debug_pause_screen_with_menu();
+
+    assert!(input.handle_debug_pause_screen_mouse_input(
+        &mut counters,
+        &mut world,
+        &None,
+        MouseButton::Left,
+        ElementState::Pressed,
+        Some(PhysicalPosition::new(68.0, 126.0)),
+        surface,
+    ));
+
+    assert!(input.debug_pause_screen_is_open());
+    assert_eq!(
+        input.take_pause_screen_link_requests(),
+        vec![PauseScreenLinkRequest::SendFeedback {
+            url: "https://aka.ms/javafeedback?ref=game"
+        }]
+    );
+}
+
+#[test]
+fn debug_pause_screen_report_bugs_button_records_link_request_when_enabled() {
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+    let surface = PhysicalSize::new(320, 240);
+    input.open_debug_pause_screen_with_menu();
+
+    assert!(pause_screen_report_bugs_button_enabled());
+    assert!(input.handle_debug_pause_screen_mouse_input(
+        &mut counters,
+        &mut world,
+        &None,
+        MouseButton::Left,
+        ElementState::Pressed,
+        Some(PhysicalPosition::new(170.0, 126.0)),
+        surface,
+    ));
+
+    assert!(input.debug_pause_screen_is_open());
+    assert_eq!(
+        input.take_pause_screen_link_requests(),
+        vec![PauseScreenLinkRequest::ReportBugs {
+            url: "https://aka.ms/snapshotbugs?ref=game"
+        }]
+    );
+}
+
+#[test]
 fn debug_pause_screen_still_allows_global_f3_overlay_toggle() {
     let mut input = ClientInputState::new(true);
     let mut counters = NetCounters::default();
