@@ -6657,6 +6657,19 @@
   行，应用 hidden component type id 102，并覆盖 creative random-variant fallback。
   边界：registry-holder ids 已保存但尚未通过 painting variant registry catalog 解析
   title/author/size，非 direct holder tooltip rows 仍未完成。
+- [x] advanced tooltip spawner block-entity rows（P2 protocol + item-runtime
+  slice，2026-07-09）：依据 `ItemStack.addDetailsToTooltip` 在 block-state/entity-data
+  provider 后对 `Items.SPAWNER` / `Items.TRIAL_SPAWNER` 调用
+  `Spawner.appendHoverText`，且该路径受
+  `TooltipDisplay.shows(DataComponents.BLOCK_ENTITY_DATA)` 门控；
+  `Spawner.getSpawnEntityDisplayName` 从 `SpawnData.entity.id` 解析实体类型并输出灰色
+  entity display name，否则输出空行、灰色 `block.minecraft.spawner.desc1` 与蓝色前导空格
+  `block.minecraft.spawner.desc2`。protocol summary 现在从
+  `minecraft:block_entity_data` typed NBT 提取 `SpawnData.entity.id`，native item
+  tooltip 对 spawner/trial_spawner 输出 spawned entity name 或默认 help rows，并应用 hidden
+  component type id 60。边界：这是 targeted tooltip extraction，不是通用
+  `TypedEntityData`/block-entity NBT 模型；`ENTITY_DATA` peaceful warning 和 broader
+  block-entity exact predicates 仍未完成。
 - [x] advanced tooltip dynamic profile line（P2 item-runtime slice，2026-07-09）：
   依据 `ItemStack.addDetailsToTooltip` 在 dyed-color 之后、lore 之前调用
   `DataComponents.PROFILE` provider，且 `ResolvableProfile.Dynamic.addToTooltip`

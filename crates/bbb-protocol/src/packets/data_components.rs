@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 
-use super::{chunks, read_resource_location};
+use super::{chunks, normalize_resource_location, read_resource_location};
 use crate::{
     codec::{Decoder, ProtocolError, Result},
     component::{
@@ -205,6 +205,8 @@ pub struct DataComponentPatchSummary {
     pub painting_variant_id: Option<i32>,
     #[serde(default)]
     pub painting_variant_direct: Option<PaintingVariantSummary>,
+    #[serde(default)]
+    pub block_entity_spawn_entity_type: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -837,6 +839,11 @@ fn decode_typed_data_component_patch_summary(
             }
             77 => {
                 summary.bees_count = decode_bees(decoder)?;
+            }
+            60 => {
+                let block_entity_data = decode_typed_entity_data_summary(decoder)?;
+                summary.block_entity_spawn_entity_type =
+                    typed_entity_data_spawn_entity_type(block_entity_data.tag.as_ref());
             }
             83 => {
                 summary.villager_variant_id = Some(decode_holder_registry_id(decoder)?);
@@ -1788,9 +1795,44 @@ fn decode_trim_material_holder_summary(
     }
 }
 
+struct TypedEntityDataSummary {
+    tag: Option<NbtSummaryValue>,
+}
+
 fn decode_typed_entity_data(decoder: &mut Decoder<'_>) -> Result<()> {
-    decoder.read_var_i32()?;
-    skip_nbt_tag_from_decoder(decoder)
+    let _ = decode_typed_entity_data_summary(decoder)?;
+    Ok(())
+}
+
+fn decode_typed_entity_data_summary(decoder: &mut Decoder<'_>) -> Result<TypedEntityDataSummary> {
+    let _type_id = decode_holder_registry_id(decoder)?;
+    Ok(TypedEntityDataSummary {
+        tag: decode_nbt_summary_from_decoder(decoder)?,
+    })
+}
+
+fn typed_entity_data_spawn_entity_type(tag: Option<&NbtSummaryValue>) -> Option<String> {
+    let spawn_data = nbt_compound_get(tag?, "SpawnData")?;
+    let entity = nbt_compound_get(spawn_data, "entity")?;
+    nbt_string(nbt_compound_get(entity, "id")?)
+        .and_then(|entity_id| normalize_resource_location(entity_id.to_string()).ok())
+}
+
+fn nbt_compound_get<'a>(value: &'a NbtSummaryValue, key: &str) -> Option<&'a NbtSummaryValue> {
+    let NbtSummaryValue::Compound(entries) = value else {
+        return None;
+    };
+    entries
+        .iter()
+        .find(|entry| entry.name == key)
+        .map(|entry| &entry.value)
+}
+
+fn nbt_string(value: &NbtSummaryValue) -> Option<&str> {
+    let NbtSummaryValue::String(value) = value else {
+        return None;
+    };
+    Some(value)
 }
 
 struct InstrumentComponentSummary {
@@ -3883,7 +3925,7 @@ mod tests {
 
         payload.write_var_i32(60);
         payload.write_var_i32(2);
-        payload.write_bytes(&empty_nbt_compound_root());
+        payload.write_bytes(&spawner_block_entity_nbt_root("minecraft:zombie"));
 
         let payload = payload.into_inner();
         let mut decoder = Decoder::new(&payload);
@@ -3894,6 +3936,7 @@ mod tests {
                 added: component_ids.len(),
                 added_type_ids: component_ids.to_vec(),
                 removed_type_ids: Vec::new(),
+                block_entity_spawn_entity_type: Some("minecraft:zombie".to_string()),
                 ..DataComponentPatchSummary::default()
             }
         );
@@ -4459,6 +4502,19 @@ mod tests {
         out.extend_from_slice(&2i32.to_be_bytes());
         write_mutf8(&mut out, "one");
         write_mutf8(&mut out, "two");
+        out.push(0);
+        out
+    }
+
+    fn spawner_block_entity_nbt_root(entity_id: &str) -> Vec<u8> {
+        let mut out = vec![10];
+        out.push(10);
+        write_mutf8(&mut out, "SpawnData");
+        out.push(10);
+        write_mutf8(&mut out, "entity");
+        write_named_nbt_string(&mut out, "id", entity_id);
+        out.push(0);
+        out.push(0);
         out.push(0);
         out
     }

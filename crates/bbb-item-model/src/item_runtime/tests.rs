@@ -1625,6 +1625,85 @@ fn native_item_runtime_shows_smithing_template_append_tooltips() {
 }
 
 #[test]
+fn native_item_runtime_shows_spawner_block_entity_tooltips() {
+    let root = unique_temp_dir("item-runtime-spawner-tooltip");
+    let assets = assets_dir(&root);
+    write_item_atlases(&assets);
+    write_item_registry_source(&root, &["spawner", "trial_spawner"]);
+    write_json(
+        &assets.join("lang").join("en_us.json"),
+        r#"{
+                "block.minecraft.spawner": "Monster Spawner",
+                "block.minecraft.trial_spawner": "Trial Spawner",
+                "block.minecraft.spawner.desc1": "Interact with Spawn Egg:",
+                "block.minecraft.spawner.desc2": "Sets Mob Type",
+                "entity.minecraft.zombie": "Zombie"
+            }"#,
+    );
+
+    let runtime = NativeItemRuntime::load(&PackRoots::from_root(&root).unwrap()).unwrap();
+
+    assert_eq!(
+        runtime.tooltip_lines_for_stack(&ItemStackSummary {
+            item_id: Some(0),
+            count: 1,
+            component_patch: DataComponentPatchSummary::default(),
+        }),
+        Some(vec![
+            name_line("Monster Spawner", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
+            tooltip_line("", TOOLTIP_TEXT_WHITE),
+            tooltip_line("Interact with Spawn Egg:", TOOLTIP_TEXT_GRAY),
+            tooltip_line(" Sets Mob Type", TOOLTIP_TEXT_BLUE),
+        ])
+    );
+    assert_eq!(
+        runtime.tooltip_lines_for_stack(&ItemStackSummary {
+            item_id: Some(0),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                block_entity_spawn_entity_type: Some("minecraft:zombie".to_string()),
+                ..DataComponentPatchSummary::default()
+            },
+        }),
+        Some(vec![
+            name_line("Monster Spawner", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
+            tooltip_line("Zombie", TOOLTIP_TEXT_GRAY),
+        ])
+    );
+    assert_eq!(
+        runtime.tooltip_lines_for_stack(&ItemStackSummary {
+            item_id: Some(0),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                tooltip_hidden_component_type_ids: vec![60],
+                ..DataComponentPatchSummary::default()
+            },
+        }),
+        Some(vec![name_line(
+            "Monster Spawner",
+            TOOLTIP_TEXT_WHITE,
+            0xFF_FF_FF,
+            false
+        )])
+    );
+    assert_eq!(
+        runtime.tooltip_lines_for_stack(&ItemStackSummary {
+            item_id: Some(1),
+            count: 1,
+            component_patch: DataComponentPatchSummary::default(),
+        }),
+        Some(vec![
+            name_line("Trial Spawner", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
+            tooltip_line("", TOOLTIP_TEXT_WHITE),
+            tooltip_line("Interact with Spawn Egg:", TOOLTIP_TEXT_GRAY),
+            tooltip_line(" Sets Mob Type", TOOLTIP_TEXT_BLUE),
+        ])
+    );
+
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
 fn special_foil_texture_detection_follows_clock_and_compasses_tag() {
     let root = unique_temp_dir("item-runtime-special-foil");
     let assets = assets_dir(&root);

@@ -75,7 +75,7 @@ pub(crate) fn read_resource_location(decoder: &mut Decoder<'_>) -> Result<String
     normalize_resource_location(decoder.read_string(32767)?)
 }
 
-fn normalize_resource_location(raw: String) -> Result<String> {
+pub(crate) fn normalize_resource_location(raw: String) -> Result<String> {
     let (namespace, path) = match raw.find(':') {
         Some(0) => ("minecraft", &raw[1..]),
         Some(separator) => (&raw[..separator], &raw[separator + 1..]),

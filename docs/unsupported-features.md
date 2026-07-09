@@ -1480,6 +1480,21 @@ When an agent does any of the following, update this file in the same slice:
     block-state properties produce no vanilla tooltip lines here, and remaining
     component providers, `TooltipDisplay` hiding, and options persistence remain
     future work.
+  - Done 2026-07-09 — Advanced tooltip spawner block-entity rows. Vanilla
+    anchors: after `DataComponents.BLOCK_STATE` / `ENTITY_DATA`,
+    `ItemStack.addDetailsToTooltip` calls `Spawner.appendHoverText` for
+    `Items.SPAWNER` and `Items.TRIAL_SPAWNER` when
+    `TooltipDisplay.shows(DataComponents.BLOCK_ENTITY_DATA)`. That helper emits
+    the gray spawned entity display name from `SpawnData.entity.id`, or else an
+    empty separator, gray `block.minecraft.spawner.desc1`, and blue
+    space-prefixed `block.minecraft.spawner.desc2`. bbb now decodes
+    `minecraft:block_entity_data` typed NBT enough to preserve
+    `SpawnData.entity.id`, projects entity names through the language catalog,
+    emits the default spawner help rows for spawner and trial-spawner item
+    stacks, and honors hidden component type id 60. Boundary: this is a targeted
+    tooltip extraction, not a general `TypedEntityData`/block-entity NBT summary
+    model; `ENTITY_DATA` peaceful-mode warnings and broader block-entity exact
+    predicates remain future work.
   - Done 2026-07-08 — Debug overlay default-profile entry coverage closeout.
     Vanilla anchors: `DebugScreenEntries.PROFILES` maps the default profile to
     `3d_crosshair`, `game_version`, `tps`, `fps`, `memory`, `system_specs`,

@@ -31,6 +31,10 @@ const DISC_FRAGMENT_5_DESCRIPTION_KEY: &str = "item.minecraft.disc_fragment_5.de
 const PAINTING_RESOURCE_ID: &str = "minecraft:painting";
 const PAINTING_DIMENSIONS_KEY: &str = "painting.dimensions";
 const PAINTING_RANDOM_KEY: &str = "painting.random";
+const SPAWNER_RESOURCE_ID: &str = "minecraft:spawner";
+const TRIAL_SPAWNER_RESOURCE_ID: &str = "minecraft:trial_spawner";
+const SPAWNER_DESC1_KEY: &str = "block.minecraft.spawner.desc1";
+const SPAWNER_DESC2_KEY: &str = "block.minecraft.spawner.desc2";
 const NETHERITE_UPGRADE_SMITHING_TEMPLATE_RESOURCE_ID: &str =
     "minecraft:netherite_upgrade_smithing_template";
 const ARMOR_TRIM_SMITHING_TEMPLATE_SUFFIX: &str = "_armor_trim_smithing_template";
@@ -73,6 +77,7 @@ const COMPONENT_BEES_TYPE_ID: i32 = 77;
 const COMPONENT_CONTAINER_LOOT_TYPE_ID: i32 = 79;
 const COMPONENT_TROPICAL_FISH_PATTERN_TYPE_ID: i32 = 88;
 const COMPONENT_PAINTING_VARIANT_TYPE_ID: i32 = 102;
+const COMPONENT_BLOCK_ENTITY_DATA_TYPE_ID: i32 = 60;
 const INSTRUMENT_DESCRIPTION_STYLE: ComponentStyle = ComponentStyle {
     bold: None,
     italic: None,
@@ -773,6 +778,42 @@ fn push_optional_component_tooltip_line(
             runs: hud_runs_from_component(runs.unwrap_or(&[]), text, &ComponentStyle::default()),
         });
     }
+}
+
+fn push_spawner_block_entity_tooltip_lines(
+    language: &LanguageCatalog,
+    component_patch: &DataComponentPatchSummary,
+    lines: &mut Vec<NativeItemTooltipLine>,
+) {
+    if let Some(entity_id) = component_patch.block_entity_spawn_entity_type.as_deref() {
+        lines.push(NativeItemTooltipLine::plain(
+            localized_entity_name(language, entity_id),
+            TOOLTIP_TEXT_GRAY,
+        ));
+    } else {
+        lines.push(NativeItemTooltipLine::plain(
+            String::new(),
+            TOOLTIP_TEXT_WHITE,
+        ));
+        lines.push(NativeItemTooltipLine::plain(
+            language.get_or_key(SPAWNER_DESC1_KEY).to_string(),
+            TOOLTIP_TEXT_GRAY,
+        ));
+        lines.push(NativeItemTooltipLine::plain(
+            format!(" {}", language.get_or_key(SPAWNER_DESC2_KEY)),
+            TOOLTIP_TEXT_BLUE,
+        ));
+    }
+}
+
+fn localized_entity_name(language: &LanguageCatalog, resource_id: &str) -> String {
+    language
+        .get_or_key(&description_key("entity", resource_id))
+        .to_string()
+}
+
+fn item_is_spawner(resource_id: &str) -> bool {
+    matches!(resource_id, SPAWNER_RESOURCE_ID | TRIAL_SPAWNER_RESOURCE_ID)
 }
 
 fn smithing_template_tooltip_keys(item_id: &str) -> Option<(&'static str, &'static str)> {
@@ -2193,6 +2234,13 @@ impl NativeItemRuntime {
             push_block_state_tooltip_lines(
                 &self.language,
                 &stack.component_patch.block_state_properties,
+                &mut lines,
+            );
+        }
+        if item_is_spawner(item_id) && shows(COMPONENT_BLOCK_ENTITY_DATA_TYPE_ID) {
+            push_spawner_block_entity_tooltip_lines(
+                &self.language,
+                &stack.component_patch,
                 &mut lines,
             );
         }
