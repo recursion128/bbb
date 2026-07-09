@@ -15,12 +15,13 @@ use bbb_protocol::{
         VANILLA_ENTITY_TYPE_CREAKING_ID, VANILLA_ENTITY_TYPE_CREEPER_ID,
         VANILLA_ENTITY_TYPE_DOLPHIN_ID, VANILLA_ENTITY_TYPE_ELDER_GUARDIAN_ID,
         VANILLA_ENTITY_TYPE_ENDERMAN_ID, VANILLA_ENTITY_TYPE_ENDERMITE_ID,
-        VANILLA_ENTITY_TYPE_END_CRYSTAL_ID, VANILLA_ENTITY_TYPE_GHAST_ID,
-        VANILLA_ENTITY_TYPE_GLOW_SQUID_ID, VANILLA_ENTITY_TYPE_GOAT_ID,
-        VANILLA_ENTITY_TYPE_GUARDIAN_ID, VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID,
-        VANILLA_ENTITY_TYPE_INTERACTION_ID, VANILLA_ENTITY_TYPE_IRON_GOLEM_ID,
-        VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID, VANILLA_ENTITY_TYPE_MOOSHROOM_ID,
-        VANILLA_ENTITY_TYPE_OCELOT_ID, VANILLA_ENTITY_TYPE_PHANTOM_ID, VANILLA_ENTITY_TYPE_PIG_ID,
+        VANILLA_ENTITY_TYPE_END_CRYSTAL_ID, VANILLA_ENTITY_TYPE_FROG_ID,
+        VANILLA_ENTITY_TYPE_GHAST_ID, VANILLA_ENTITY_TYPE_GLOW_SQUID_ID,
+        VANILLA_ENTITY_TYPE_GOAT_ID, VANILLA_ENTITY_TYPE_GUARDIAN_ID,
+        VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID, VANILLA_ENTITY_TYPE_INTERACTION_ID,
+        VANILLA_ENTITY_TYPE_IRON_GOLEM_ID, VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID,
+        VANILLA_ENTITY_TYPE_MOOSHROOM_ID, VANILLA_ENTITY_TYPE_OCELOT_ID,
+        VANILLA_ENTITY_TYPE_PHANTOM_ID, VANILLA_ENTITY_TYPE_PIG_ID,
         VANILLA_ENTITY_TYPE_PUFFERFISH_ID, VANILLA_ENTITY_TYPE_RABBIT_ID,
         VANILLA_ENTITY_TYPE_RAVAGER_ID, VANILLA_ENTITY_TYPE_SALMON_ID,
         VANILLA_ENTITY_TYPE_SHEEP_ID, VANILLA_ENTITY_TYPE_SHULKER_ID,
@@ -248,6 +249,8 @@ const DOLPHIN_GOT_FISH_DATA_ID: u8 = 18;
 const DOLPHIN_MOISTNESS_DATA_ID: u8 = 19;
 const DOLPHIN_DEFAULT_GOT_FISH: bool = false;
 const DOLPHIN_DEFAULT_MOISTNESS: i32 = 2400;
+const FROG_VARIANT_DATA_ID: u8 = 18;
+const FROG_DEFAULT_VARIANT_ID: i32 = 0;
 const CREEPER_POWERED_DATA_ID: u8 = 17;
 const CREEPER_IGNITED_DATA_ID: u8 = 18;
 const CREEPER_DEFAULT_FUSE: i16 = 30;
@@ -3682,6 +3685,12 @@ fn debug_push_entity_additional_save_data(entity: &EntityState, fields: &mut Vec
             debug_push_ageable_mob_additional_save_data(entity, fields);
             debug_push_dolphin_additional_save_data(entity, fields);
         }
+        VANILLA_ENTITY_TYPE_FROG_ID => {
+            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_ageable_mob_additional_save_data(entity, fields);
+            debug_push_animal_additional_save_data(fields);
+            debug_push_frog_additional_save_data(entity, fields);
+        }
         VANILLA_ENTITY_TYPE_COW_ID => {
             debug_push_mob_additional_save_data(entity, fields);
             debug_push_ageable_mob_additional_save_data(entity, fields);
@@ -4013,6 +4022,27 @@ fn debug_push_dolphin_additional_save_data(entity: &EntityState, fields: &mut Ve
         .unwrap_or(DOLPHIN_DEFAULT_MOISTNESS);
     fields.push(format!("GotFish: {}", debug_snbt_bool(got_fish)));
     fields.push(format!("Moistness: {moistness}"));
+}
+
+fn debug_push_frog_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
+    let variant = debug_entity_data_registry_id_present(
+        entity,
+        FROG_VARIANT_DATA_ID,
+        EntityDataRegistryHolder::FrogVariant,
+    )
+    .unwrap_or(FROG_DEFAULT_VARIANT_ID);
+    fields.push(format!(
+        "variant: {}",
+        debug_snbt_string(debug_frog_variant_resource_id(variant))
+    ));
+}
+
+fn debug_frog_variant_resource_id(variant: i32) -> &'static str {
+    match variant {
+        1 => "minecraft:warm",
+        2 => "minecraft:cold",
+        _ => "minecraft:temperate",
+    }
 }
 
 fn debug_push_creeper_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
