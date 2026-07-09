@@ -14,7 +14,8 @@ use bbb_protocol::{
         VANILLA_ENTITY_TYPE_GHAST_ID, VANILLA_ENTITY_TYPE_IRON_GOLEM_ID,
         VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID, VANILLA_ENTITY_TYPE_PHANTOM_ID,
         VANILLA_ENTITY_TYPE_RAVAGER_ID, VANILLA_ENTITY_TYPE_SLIME_ID,
-        VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID, VANILLA_ENTITY_TYPE_ZOGLIN_ID,
+        VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID, VANILLA_ENTITY_TYPE_WITHER_ID,
+        VANILLA_ENTITY_TYPE_ZOGLIN_ID,
     },
     packets::{
         BlockEntityTagQuery, BlockPos as ProtocolBlockPos, ChangeGameModeCommand,
@@ -233,6 +234,8 @@ const RAIDER_DEFAULT_CAN_JOIN_RAID: bool = false;
 const RAVAGER_DEFAULT_ATTACK_TICK: i32 = 0;
 const RAVAGER_DEFAULT_STUN_TICK: i32 = 0;
 const RAVAGER_DEFAULT_ROAR_TICK: i32 = 0;
+const WITHER_INVULNERABLE_TICKS_DATA_ID: u8 = 19;
+const WITHER_DEFAULT_INVULNERABLE_TICKS: i32 = 0;
 const ZOGLIN_BABY_DATA_ID: u8 = 16;
 const ZOGLIN_DEFAULT_BABY: bool = false;
 const SIGN_LINE_MAX_LENGTH: usize = 384;
@@ -3585,6 +3588,10 @@ fn debug_push_entity_additional_save_data(entity: &EntityState, fields: &mut Vec
             debug_push_raider_additional_save_data(fields);
             debug_push_ravager_additional_save_data(entity, fields);
         }
+        VANILLA_ENTITY_TYPE_WITHER_ID => {
+            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_wither_additional_save_data(entity, fields);
+        }
         VANILLA_ENTITY_TYPE_ZOGLIN_ID => {
             debug_push_mob_additional_save_data(entity, fields);
             debug_push_zoglin_additional_save_data(entity, fields);
@@ -3730,6 +3737,13 @@ fn debug_push_ravager_additional_save_data(entity: &EntityState, fields: &mut Ve
         "RoarTick: {}",
         ravager.map_or(RAVAGER_DEFAULT_ROAR_TICK, |state| state.roar_tick)
     ));
+}
+
+fn debug_push_wither_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
+    let invulnerable_ticks =
+        debug_entity_data_int_present(entity, WITHER_INVULNERABLE_TICKS_DATA_ID)
+            .unwrap_or(WITHER_DEFAULT_INVULNERABLE_TICKS);
+    fields.push(format!("Invul: {invulnerable_ticks}"));
 }
 
 fn debug_push_zoglin_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {

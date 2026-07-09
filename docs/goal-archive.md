@@ -6320,6 +6320,14 @@
   non-default patrol/raid membership、更广泛的 Mob save data、passengers 以及其他
   entity-specific `addAdditionalSaveData` 仍待本地 state owner 后才能关闭完整
   `saveWithoutId` parity。
+- [x] debug overlay F3+I local wither save field（P2 native slice，
+  2026-07-09）：依据 `WitherBoss.addAdditionalSaveData` 调用 Mob 保存链后，从
+  synced `WitherBoss.DATA_ID_INV` 19 写 `Invul`，默认值与 NBT 读取 fallback
+  均为 0。native 现在对授权 Shift+F3+I 本地 wither recreate command 追加 Mob
+  字段和 metadata-derived `Invul`。边界：更广泛的 Mob save data、passengers、
+  boss-event state、side-head targets 以及其他 entity-specific
+  `addAdditionalSaveData` 仍待本地 state owner 后才能关闭完整
+  `saveWithoutId` parity。
 - [x] debug overlay F3+I local zoglin save field（P2 native slice，
   2026-07-09）：依据 `Zoglin.addAdditionalSaveData` 调用 Mob 保存链后，从
   `Zoglin.DATA_BABY_ID` 16 写 `IsBaby`，vanilla 默认 false。native 现在对授权
