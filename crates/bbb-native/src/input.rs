@@ -14,12 +14,13 @@ use bbb_protocol::{
         VANILLA_ENTITY_TYPE_CREEPER_ID, VANILLA_ENTITY_TYPE_ELDER_GUARDIAN_ID,
         VANILLA_ENTITY_TYPE_ENDERMITE_ID, VANILLA_ENTITY_TYPE_END_CRYSTAL_ID,
         VANILLA_ENTITY_TYPE_GHAST_ID, VANILLA_ENTITY_TYPE_GUARDIAN_ID,
-        VANILLA_ENTITY_TYPE_INTERACTION_ID, VANILLA_ENTITY_TYPE_IRON_GOLEM_ID,
-        VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID, VANILLA_ENTITY_TYPE_PHANTOM_ID,
-        VANILLA_ENTITY_TYPE_RAVAGER_ID, VANILLA_ENTITY_TYPE_SHULKER_ID,
-        VANILLA_ENTITY_TYPE_SILVERFISH_ID, VANILLA_ENTITY_TYPE_SLIME_ID,
-        VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID, VANILLA_ENTITY_TYPE_SPIDER_ID,
-        VANILLA_ENTITY_TYPE_WITHER_ID, VANILLA_ENTITY_TYPE_ZOGLIN_ID,
+        VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID, VANILLA_ENTITY_TYPE_INTERACTION_ID,
+        VANILLA_ENTITY_TYPE_IRON_GOLEM_ID, VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID,
+        VANILLA_ENTITY_TYPE_PHANTOM_ID, VANILLA_ENTITY_TYPE_RAVAGER_ID,
+        VANILLA_ENTITY_TYPE_SHULKER_ID, VANILLA_ENTITY_TYPE_SILVERFISH_ID,
+        VANILLA_ENTITY_TYPE_SLIME_ID, VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID,
+        VANILLA_ENTITY_TYPE_SPIDER_ID, VANILLA_ENTITY_TYPE_WITHER_ID,
+        VANILLA_ENTITY_TYPE_ZOGLIN_ID,
     },
     packets::{
         BlockEntityTagQuery, BlockPos as ProtocolBlockPos, ChangeGameModeCommand,
@@ -202,6 +203,13 @@ const MOB_FLAG_NO_AI: i8 = 1;
 const MOB_FLAG_LEFT_HANDED: i8 = 2;
 const MOB_DEFAULT_CAN_PICK_UP_LOOT: bool = false;
 const MOB_DEFAULT_PERSISTENCE_REQUIRED: bool = false;
+const AGEABLE_MOB_BABY_DATA_ID: u8 = 16;
+const AGEABLE_MOB_AGE_LOCKED_DATA_ID: u8 = 17;
+const AGEABLE_MOB_CLIENT_ADULT_AGE: i32 = 1;
+const AGEABLE_MOB_CLIENT_BABY_AGE: i32 = -1;
+const AGEABLE_MOB_DEFAULT_FORCED_AGE: i32 = 0;
+const AGEABLE_MOB_DEFAULT_AGE_LOCKED: bool = false;
+const ANIMAL_DEFAULT_IN_LOVE: i32 = 0;
 const CREEPER_POWERED_DATA_ID: u8 = 17;
 const CREEPER_IGNITED_DATA_ID: u8 = 18;
 const CREEPER_DEFAULT_FUSE: i16 = 30;
@@ -255,6 +263,7 @@ const WITHER_INVULNERABLE_TICKS_DATA_ID: u8 = 19;
 const WITHER_DEFAULT_INVULNERABLE_TICKS: i32 = 0;
 const ZOGLIN_BABY_DATA_ID: u8 = 16;
 const ZOGLIN_DEFAULT_BABY: bool = false;
+const HAPPY_GHAST_DEFAULT_STILL_TIMEOUT: i32 = 0;
 const SIGN_LINE_MAX_LENGTH: usize = 384;
 const BOOK_SCREEN_WIDTH: i32 = 192;
 const BOOK_SCREEN_HEIGHT: i32 = 192;
@@ -3599,6 +3608,12 @@ fn debug_push_entity_additional_save_data(entity: &EntityState, fields: &mut Vec
         VANILLA_ENTITY_TYPE_GUARDIAN_ID | VANILLA_ENTITY_TYPE_ELDER_GUARDIAN_ID => {
             debug_push_mob_additional_save_data(entity, fields);
         }
+        VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID => {
+            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_ageable_mob_additional_save_data(entity, fields);
+            debug_push_animal_additional_save_data(fields);
+            debug_push_happy_ghast_additional_save_data(fields);
+        }
         VANILLA_ENTITY_TYPE_BOGGED_ID => {
             debug_push_mob_additional_save_data(entity, fields);
             debug_push_bogged_additional_save_data(entity, fields);
@@ -3660,6 +3675,24 @@ fn debug_push_mob_additional_save_data(entity: &EntityState, fields: &mut Vec<St
     if flags & MOB_FLAG_NO_AI != 0 {
         fields.push("NoAI: 1b".to_string());
     }
+}
+
+fn debug_push_ageable_mob_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
+    let is_baby = debug_entity_data_bool_present(entity, AGEABLE_MOB_BABY_DATA_ID).unwrap_or(false);
+    let age = if is_baby {
+        AGEABLE_MOB_CLIENT_BABY_AGE
+    } else {
+        AGEABLE_MOB_CLIENT_ADULT_AGE
+    };
+    let age_locked = debug_entity_data_bool_present(entity, AGEABLE_MOB_AGE_LOCKED_DATA_ID)
+        .unwrap_or(AGEABLE_MOB_DEFAULT_AGE_LOCKED);
+    fields.push(format!("Age: {age}"));
+    fields.push(format!("ForcedAge: {AGEABLE_MOB_DEFAULT_FORCED_AGE}"));
+    fields.push(format!("AgeLocked: {}", debug_snbt_bool(age_locked)));
+}
+
+fn debug_push_animal_additional_save_data(fields: &mut Vec<String>) {
+    fields.push(format!("InLove: {ANIMAL_DEFAULT_IN_LOVE}"));
 }
 
 fn debug_push_creeper_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
@@ -3750,6 +3783,12 @@ fn debug_push_end_crystal_additional_save_data(entity: &EntityState, fields: &mu
 
 fn debug_push_ghast_additional_save_data(fields: &mut Vec<String>) {
     fields.push(format!("ExplosionPower: {GHAST_DEFAULT_EXPLOSION_POWER}b"));
+}
+
+fn debug_push_happy_ghast_additional_save_data(fields: &mut Vec<String>) {
+    fields.push(format!(
+        "still_timeout: {HAPPY_GHAST_DEFAULT_STILL_TIMEOUT}"
+    ));
 }
 
 fn debug_push_interaction_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {

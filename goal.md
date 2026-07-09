@@ -204,8 +204,8 @@ surfaces" 节；整体低优先）：
   billboard 绘制。
 - advanced tooltip 其余 component 专属行与选项持久化：逐条对照 vanilla
   `ItemStack.addDetailsToTooltip` 的 component 分派补齐，已实现者由代码确认。
-- F3+I 本地实体 `saveWithoutId` 逐实体补全：对照各实体 vanilla
-  `addAdditionalSaveData`，未输出字段者列为待办。
+- F3+I 本地实体 `saveWithoutId` 继续逐实体补全：对照各实体 vanilla
+  `addAdditionalSaveData`，推进剩余实体族与仍需本地 owner 的保存状态。
 - vanilla profiler section 全覆盖 + profiling metrics recorder/output。
 - DebugOptionsScreen narration / focus / 完整 widget styling polish。
 - native pause tick-freeze eligibility 与 PauseScreen 剩余 action/subscreen。
