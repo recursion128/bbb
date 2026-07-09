@@ -244,6 +244,7 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
                 "item.container.loot_table.unknown": "Unknown contents",
                 "item.container.item_count": "%s x%s",
                 "item.container.more_items": "and %s more...",
+                "instrument.minecraft.ponder_goat_horn": "Ponder",
                 "filled_map.id": "Id #%s",
                 "filled_map.level": "(Level %s/%s)",
                 "filled_map.locked": "Locked",
@@ -426,6 +427,42 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
             name_line("Test Combo", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
             tooltip_line("minecraft:test_combo", TOOLTIP_TEXT_DARK_GRAY),
             tooltip_line("13 component(s)", TOOLTIP_TEXT_DARK_GRAY),
+        ])
+    );
+    assert_eq!(
+        runtime.tooltip_lines_for_stack(&ItemStackSummary {
+            item_id: Some(0),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                instrument_id: Some(0),
+                ..DataComponentPatchSummary::default()
+            },
+        }),
+        Some(vec![
+            name_line("Test Combo", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
+            tooltip_line("Ponder", TOOLTIP_TEXT_GRAY),
+        ])
+    );
+    assert_eq!(
+        runtime.tooltip_lines_for_stack(&ItemStackSummary {
+            item_id: Some(0),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                instrument_description: Some("Inline Horn".to_string()),
+                instrument_description_styled: Some(vec![bbb_protocol::StyledTextRun {
+                    text: "Inline Horn".to_string(),
+                    style: bbb_protocol::ComponentStyle {
+                        italic: Some(true),
+                        color: Some(0xFF_AA_00),
+                        ..bbb_protocol::ComponentStyle::default()
+                    },
+                }]),
+                ..DataComponentPatchSummary::default()
+            },
+        }),
+        Some(vec![
+            name_line("Test Combo", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
+            italic_tooltip_line("Inline Horn", TOOLTIP_TEXT_GRAY, 0xFF_AA_00),
         ])
     );
     let map_stack = ItemStackSummary {

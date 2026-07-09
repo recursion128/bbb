@@ -158,6 +158,12 @@ pub struct DataComponentPatchSummary {
     #[serde(default)]
     pub armor_trim_pattern_direct: Option<TrimPatternSummary>,
     #[serde(default)]
+    pub instrument_id: Option<i32>,
+    #[serde(default)]
+    pub instrument_description: Option<String>,
+    #[serde(default)]
+    pub instrument_description_styled: Option<Vec<StyledTextRun>>,
+    #[serde(default)]
     pub jukebox_song_id: Option<i32>,
     #[serde(default)]
     pub jukebox_direct_song: Option<JukeboxSongSummary>,
@@ -681,6 +687,12 @@ fn decode_typed_data_component_patch_summary(
                 summary.armor_trim_material_direct = trim.material_direct;
                 summary.armor_trim_pattern_id = trim.pattern_id;
                 summary.armor_trim_pattern_direct = trim.pattern_direct;
+            }
+            61 => {
+                let instrument = decode_instrument_component_summary(decoder)?;
+                summary.instrument_id = instrument.registry_id;
+                summary.instrument_description = instrument.description;
+                summary.instrument_description_styled = instrument.description_styled;
             }
             64 => {
                 let song = decode_jukebox_song_holder(decoder)?;
@@ -1716,16 +1728,45 @@ fn decode_typed_entity_data(decoder: &mut Decoder<'_>) -> Result<()> {
     skip_nbt_tag_from_decoder(decoder)
 }
 
-fn decode_instrument_component(decoder: &mut Decoder<'_>) -> Result<()> {
-    decode_holder_with_direct(decoder, decode_direct_instrument)
+struct InstrumentComponentSummary {
+    registry_id: Option<i32>,
+    description: Option<String>,
+    description_styled: Option<Vec<StyledTextRun>>,
 }
 
-fn decode_direct_instrument(decoder: &mut Decoder<'_>) -> Result<()> {
+fn decode_instrument_component(decoder: &mut Decoder<'_>) -> Result<()> {
+    let _ = decode_instrument_component_summary(decoder)?;
+    Ok(())
+}
+
+fn decode_instrument_component_summary(
+    decoder: &mut Decoder<'_>,
+) -> Result<InstrumentComponentSummary> {
+    let id = decoder.read_var_i32()?;
+    if id < 0 {
+        return Err(ProtocolError::NegativeLength(id));
+    }
+    if id == 0 {
+        let description_styled = decode_direct_instrument_description(decoder)?;
+        Ok(InstrumentComponentSummary {
+            registry_id: None,
+            description: Some(styled_runs_summary_text(&description_styled)),
+            description_styled: Some(description_styled),
+        })
+    } else {
+        Ok(InstrumentComponentSummary {
+            registry_id: Some(id - 1),
+            description: None,
+            description_styled: None,
+        })
+    }
+}
+
+fn decode_direct_instrument_description(decoder: &mut Decoder<'_>) -> Result<Vec<StyledTextRun>> {
     decode_sound_event_holder(decoder)?;
     decoder.read_f32()?;
     decoder.read_f32()?;
-    decode_component_summary_from_decoder(decoder)?;
-    Ok(())
+    decode_styled_component_summary_from_decoder(decoder)
 }
 
 fn decode_trim_material_holder(decoder: &mut Decoder<'_>) -> Result<()> {
@@ -2514,6 +2555,57 @@ mod tests {
                 added: 1,
                 added_type_ids: vec![64],
                 jukebox_song_id: Some(2),
+                ..DataComponentPatchSummary::default()
+            }
+        );
+        assert!(decoder.is_empty());
+    }
+
+    #[test]
+    fn decodes_instrument_holder_id() {
+        let mut payload = Encoder::new();
+        payload.write_var_i32(1);
+        payload.write_var_i32(0);
+        payload.write_var_i32(61);
+        payload.write_var_i32(6);
+
+        let payload = payload.into_inner();
+        let mut decoder = Decoder::new(&payload);
+        let patch = decode_data_component_patch_summary(&mut decoder).unwrap();
+        assert_eq!(
+            patch,
+            DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![61],
+                instrument_id: Some(5),
+                ..DataComponentPatchSummary::default()
+            }
+        );
+        assert!(decoder.is_empty());
+    }
+
+    #[test]
+    fn decodes_inline_instrument_description() {
+        let mut payload = Encoder::new();
+        payload.write_var_i32(1);
+        payload.write_var_i32(0);
+        payload.write_var_i32(61);
+        payload.write_var_i32(0);
+        payload.write_var_i32(1);
+        payload.write_f32(7.0);
+        payload.write_f32(256.0);
+        payload.write_bytes(&nbt_string_root("Custom horn"));
+
+        let payload = payload.into_inner();
+        let mut decoder = Decoder::new(&payload);
+        let patch = decode_data_component_patch_summary(&mut decoder).unwrap();
+        assert_eq!(
+            patch,
+            DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![61],
+                instrument_description: Some("Custom horn".to_string()),
+                instrument_description_styled: Some(plain_runs("Custom horn")),
                 ..DataComponentPatchSummary::default()
             }
         );
@@ -3842,6 +3934,8 @@ mod tests {
                 container_item_count: Some(1),
                 armor_trim_material_id: Some(1),
                 armor_trim_pattern_id: Some(2),
+                instrument_description: Some("Instrument".to_string()),
+                instrument_description_styled: Some(plain_runs("Instrument")),
                 jukebox_direct_song: Some(JukeboxSongSummary {
                     sound_event: SoundEventSummary {
                         registry_id: Some(0),

@@ -6135,6 +6135,17 @@
   `filled_map.unknown` / `filled_map.id` / `filled_map.locked` /
   `filled_map.scale` / `filled_map.level` 行。边界：`TooltipDisplay`
   hidden-components 与其它 component provider tooltip 仍未完成。
+- [x] advanced tooltip instrument description line（P2 protocol + item-runtime
+  slice，2026-07-09）：依据 `ItemStack.addDetailsToTooltip` 在 tropical-fish
+  pattern 之后、map-id 之前调用 `DataComponents.INSTRUMENT` provider，以及
+  `InstrumentComponent.addToTooltip` 把 instrument description 合并为灰色行；
+  `Instrument.STREAM_CODEC` 使用 `ByteBufCodecs.holder`，所以非零 holder id
+  保留为 `holder_id - 1`。protocol summary 现在记录 decoded
+  `minecraft:instrument` registry id 或 direct description styled runs，native
+  item tooltip 把 vanilla goat-horn instrument ids 映射为本地化
+  `instrument.minecraft.*` 行，并按灰色 fallback 投影 direct description。
+  边界：非 vanilla goat-horn 的动态 registry-key description resolution、
+  `TooltipDisplay` hidden-components 与其它 component provider tooltip 仍未完成。
 - [x] debug overlay F3+I local entity transform NBT capture（P2
   native/world slice，2026-07-08）：依据
   `KeyboardHandler.copyRecreateCommand(addNbt, pullFromServer)` 在 entity hit

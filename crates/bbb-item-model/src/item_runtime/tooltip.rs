@@ -25,6 +25,25 @@ const LORE_STYLE: ComponentStyle = ComponentStyle {
 };
 const OMINOUS_BOTTLE_BAD_OMEN_DURATION_TICKS: i32 = 120_000;
 const DEFAULT_TOOLTIP_TICKRATE: f32 = 20.0;
+const INSTRUMENT_DESCRIPTION_STYLE: ComponentStyle = ComponentStyle {
+    bold: None,
+    italic: None,
+    underlined: None,
+    strikethrough: None,
+    obfuscated: None,
+    color: Some(0xAA_AA_AA),
+    click_event: None,
+};
+const VANILLA_INSTRUMENT_KEYS: &[&str] = &[
+    "minecraft:ponder_goat_horn",
+    "minecraft:sing_goat_horn",
+    "minecraft:seek_goat_horn",
+    "minecraft:feel_goat_horn",
+    "minecraft:admire_goat_horn",
+    "minecraft:call_goat_horn",
+    "minecraft:yearn_goat_horn",
+    "minecraft:dream_goat_horn",
+];
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct NativeItemTooltipLine {
@@ -263,6 +282,75 @@ fn push_map_id_tooltip_lines(
             translate_with_two_args(language, "filled_map.level", &scale.to_string(), "4"),
             TOOLTIP_TEXT_GRAY,
         ));
+    }
+}
+
+fn push_instrument_tooltip_lines(
+    language: &LanguageCatalog,
+    component_patch: &DataComponentPatchSummary,
+    lines: &mut Vec<NativeItemTooltipLine>,
+) {
+    if let Some(description) = &component_patch.instrument_description {
+        lines.push(NativeItemTooltipLine {
+            text: description.clone(),
+            tint: TOOLTIP_TEXT_GRAY,
+            runs: hud_runs_from_component(
+                component_patch
+                    .instrument_description_styled
+                    .as_deref()
+                    .unwrap_or(&[]),
+                description,
+                &INSTRUMENT_DESCRIPTION_STYLE,
+            ),
+        });
+        return;
+    }
+
+    let Some(instrument_key) = component_patch
+        .instrument_id
+        .and_then(vanilla_instrument_key)
+    else {
+        return;
+    };
+    lines.push(NativeItemTooltipLine::plain(
+        language
+            .get_or_key(&description_key("instrument", instrument_key))
+            .to_string(),
+        TOOLTIP_TEXT_GRAY,
+    ));
+}
+
+fn vanilla_instrument_key(registry_id: i32) -> Option<&'static str> {
+    let index = usize::try_from(registry_id).ok()?;
+    VANILLA_INSTRUMENT_KEYS.get(index).copied()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn vanilla_instrument_keys_follow_26_1_goat_horn_registry_order() {
+        assert_eq!(
+            VANILLA_INSTRUMENT_KEYS,
+            &[
+                "minecraft:ponder_goat_horn",
+                "minecraft:sing_goat_horn",
+                "minecraft:seek_goat_horn",
+                "minecraft:feel_goat_horn",
+                "minecraft:admire_goat_horn",
+                "minecraft:call_goat_horn",
+                "minecraft:yearn_goat_horn",
+                "minecraft:dream_goat_horn",
+            ]
+        );
+        assert_eq!(
+            vanilla_instrument_key(0),
+            Some("minecraft:ponder_goat_horn")
+        );
+        assert_eq!(vanilla_instrument_key(7), Some("minecraft:dream_goat_horn"));
+        assert_eq!(vanilla_instrument_key(8), None);
+        assert_eq!(vanilla_instrument_key(-1), None);
     }
 }
 
@@ -1023,6 +1111,7 @@ impl NativeItemRuntime {
                 .map(|run| hud_run_from_component(run, &name_wrapper))
                 .collect(),
         }];
+        push_instrument_tooltip_lines(&self.language, &stack.component_patch, &mut lines);
         push_map_id_tooltip_lines(&self.language, &stack.component_patch, options, &mut lines);
         push_bees_tooltip_lines(&self.language, stack.component_patch.bees_count, &mut lines);
         push_container_loot_tooltip_lines(
