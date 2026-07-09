@@ -1131,7 +1131,8 @@ When an agent does any of the following, update this file in the same slice:
     hover/first-mouse/cursor capture, F3+F4 GameModeSwitcher screen
     interruption parity, F3+F4 GameModeSwitcher mouse-release not-needed
     decision, F3+F4 GameModeSwitcher item icon parity, no-menu
-    PauseScreen(false) input/cursor/render shell, SharedConstants DEBUG_HOTKEYS /
+    PauseScreen(false) input/cursor/render shell, ordinary-Escape
+    PauseScreen(true) title/menu-state shell, SharedConstants DEBUG_HOTKEYS /
     DEBUG_FEATURE_COUNT gated dev hotkeys, DebugOptionsScreen
     input/search/list/profile/status/done screen shell,
     DebugOptionsScreen scrollbar/not-allowed tooltip polish, and ordinary F3 keymap audit:
@@ -1143,7 +1144,8 @@ When an agent does any of the following, update this file in the same slice:
     ProfileResults tree navigation, profiling metrics recorder/output,
     DebugOptionsScreen narration/EditBox mouse selection/full widget styling
     polish, and native pause
-    tick-freeze eligibility/full PauseScreen menu remain (large, low priority).
+    tick-freeze eligibility/full PauseScreen menu buttons/actions remain (large,
+    low priority).
 - Evidence / boundary:
   - Done 2026-07-08 — Debug overlay advanced tooltip component-count display.
     Vanilla anchors: `ItemStack.addDetailsToTooltip` appends the dark-gray
@@ -1857,8 +1859,21 @@ When an agent does any of the following, update this file in the same slice:
     `HudPauseScreen` with `show_pause_menu = false`; the screen consumes
     gameplay keys, lets global F3 handling continue, and closes on Escape.
     Boundary: tick freezing, singleplayer pause eligibility, server/realm
-    differences, and the full `PauseScreen(true)` menu/buttons remain future
-    work.
+    differences, and the full `PauseScreen(true)` buttons/actions remain future
+    work; ordinary Escape now covers the menu-state title shell.
+  - Done 2026-07-09 — Native ordinary-Escape `PauseScreen(true)` title shell.
+    Vanilla anchors: ordinary `Minecraft.pauseGame(false)` opens
+    `new PauseScreen(true)` when no screen is active, `PauseScreen(true)` uses
+    `menu.game` (`Game Menu`), creates pause-menu widgets, and places the title
+    at y=40; debug F3+Esc still calls `pauseGame(true)` and opens
+    `PauseScreen(false)` when the game can really pause. bbb now opens a native
+    pause screen with `show_pause_menu = true` on ordinary Escape after active
+    screens/containers decline the key, releases cursor capture and active
+    input through the runtime entry path, releases Escape from pressed state,
+    and projects the `Game Menu` title through the existing y=40 HUD path.
+    Boundary: tick freezing, singleplayer-vs-server eligibility, dim
+    background, buttons/actions, music toast, disconnect/report/options
+    sub-screens, and close/recapture policy remain future work.
   - Done 2026-07-08 — Debug overlay F3+F6 debug-options request shell.
     Vanilla anchors: `Options.keyDebugDebugOptions` binds key code 295 (F6),
     and `KeyboardHandler.handleDebugKeys` toggles an existing
@@ -2950,6 +2965,9 @@ When an agent does any of the following, update this file in the same slice:
     interruption parity, the mouse-release not-needed decision, and item icons.
     F3+Esc now opens the native no-menu `PauseScreen(false)` shell, releases
     cursor capture, consumes gameplay keys, and renders the `Game Paused` title.
+    Ordinary Escape now releases cursor capture, opens the native
+    `PauseScreen(true)` title/menu-state shell, and renders the `Game Menu`
+    title after active screens/containers decline the key.
     Startup `--debug-hotkeys` / `--debug-feature-count` now enable the vanilla
     `SharedConstants`-gated dev hotkeys; E/O/V toggle chunk-section debug entry
     statuses, F disables fog, L updates smart-cull HUD state, U and
@@ -3016,7 +3034,7 @@ When an agent does any of the following, update this file in the same slice:
     DebugOptionsScreen narration/EditBox mouse selection/full widget styling
     polish, native pause
     tick-freeze eligibility/full
-    PauseScreen menu.
+    PauseScreen menu buttons/actions.
   - Done 2026-07-08 — Jumpable-vehicle contextual bar. Vanilla anchors:
     `Gui.willPrioritizeJumpInfo` / `nextContextualInfoState` select
     `JUMPABLE_VEHICLE` when `player.getJumpRidingScale() > 0` or the

@@ -5361,7 +5361,19 @@
   让该 screen 消费普通 gameplay key、允许 F3 全局 debug 继续处理、Escape
   关闭；runtime 投影 `HudPauseScreen { show_pause_menu: false }`，renderer 绘制
   centered title。边界：tick freeze、singleplayer pause eligibility、server/realm
-  差异、以及完整 `PauseScreen(true)` menu/buttons 仍未实现。
+  差异、以及完整 `PauseScreen(true)` buttons/actions 仍未实现；ordinary Escape
+  的 menu-state title shell 后续已由独立 slice 补齐。
+- [x] native ordinary-Escape PauseScreen(true) title/menu-state shell（P2
+  input/runtime/renderer slice，2026-07-09）：依据 `Minecraft.pauseGame(false)`
+  在无 active screen 时打开 `new PauseScreen(true)`，以及 `PauseScreen(true)`
+  使用 `menu.game` / `Game Menu`、创建 pause-menu widgets、title y=40 的行为。
+  `ClientInputState` 现在在 active screens/containers 都未消费普通 Escape 后打开
+  `DebugPauseScreenState { show_pause_menu: true }` 并释放 Escape pressed state；
+  runtime 入口释放 cursor capture / active input，runtime 投影 `Game Menu`，
+  renderer 复用已有 y=40 title projection。F3+Esc 仍走 `PauseScreen(false)`
+  no-menu 路径。边界：tick freeze、singleplayer-vs-server eligibility、dim
+  background、buttons/actions、music toast、disconnect/report/options sub-screens、
+  以及 close/recapture policy 仍未实现。
 - [x] debug overlay F3+B entity AABB hitbox outline rendering（P2
   renderer/runtime slice，2026-07-08）：依据
   `DebugScreenEntries.ENTITY_HITBOXES` 由 `KeyboardHandler.handleDebugKeys`

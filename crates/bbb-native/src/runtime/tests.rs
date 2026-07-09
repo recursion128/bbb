@@ -5834,6 +5834,16 @@ fn hud_pause_screen_projects_no_menu_title() {
 }
 
 #[test]
+fn hud_pause_screen_projects_menu_title() {
+    let mut input = ClientInputState::new(true);
+    input.open_debug_pause_screen_with_menu();
+
+    let screen = hud_pause_screen(&input).expect("pause screen");
+    assert_eq!(screen.title, "Game Menu");
+    assert!(screen.show_pause_menu);
+}
+
+#[test]
 fn hud_debug_options_screen_projects_visible_rows_and_suppresses_pause() {
     let mut input = ClientInputState::new(true);
     let world = WorldStore::new();

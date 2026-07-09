@@ -3425,6 +3425,30 @@ fn debug_pause_screen_consumes_gameplay_keys_and_escape_closes() {
 }
 
 #[test]
+fn escape_opens_pause_screen_with_menu() {
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &None,
+        PhysicalKey::Code(KeyCode::Escape),
+        ElementState::Pressed,
+    );
+
+    assert_eq!(
+        input.debug_pause_screen(),
+        Some(DebugPauseScreenState {
+            show_pause_menu: true
+        })
+    );
+    assert!(!input.pressed_keys.contains(&KeyCode::Escape));
+}
+
+#[test]
 fn debug_pause_screen_still_allows_global_f3_overlay_toggle() {
     let mut input = ClientInputState::new(true);
     let mut counters = NetCounters::default();

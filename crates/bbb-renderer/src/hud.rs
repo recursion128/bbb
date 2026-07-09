@@ -116,8 +116,9 @@ pub struct HudDebugOverlay {
     pub show_lightmap_preview: bool,
 }
 
-/// Vanilla `PauseScreen(false)` render-state: the no-menu debug pause screen
-/// only submits the centered title row and skips the dim background/buttons.
+/// Vanilla `PauseScreen` render-state shell: no-menu debug pause screens only submit the centered
+/// title row, while menu pause screens currently share the title projection and keep menu buttons as
+/// future work.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct HudPauseScreen {
     pub title: String,

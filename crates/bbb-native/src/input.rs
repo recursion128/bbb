@@ -1279,6 +1279,13 @@ impl ClientInputState {
         });
     }
 
+    pub(crate) fn open_debug_pause_screen_with_menu(&mut self) {
+        self.debug_options_screen = None;
+        self.debug_pause_screen = Some(DebugPauseScreenState {
+            show_pause_menu: true,
+        });
+    }
+
     pub(crate) fn close_debug_pause_screen(&mut self) {
         self.debug_pause_screen = None;
     }
@@ -3636,6 +3643,11 @@ pub(crate) fn handle_key_input_with_item_runtime(
     }
 
     if pressed {
+        if matches!(code, KeyCode::Escape) {
+            input.set_key_down(code, false);
+            input.open_debug_pause_screen_with_menu();
+            return;
+        }
         input.record_debug_profiler_chart_navigation_key(code);
         if let Some(slot) = hotbar_slot_for_key(code) {
             if world.local_player_is_spectator() {

@@ -678,17 +678,16 @@ fn main() -> Result<()> {
                         set_cursor_capture(&window, &mut cursor_captured, false);
                         return;
                     }
-                    if matches!(event.state, ElementState::Pressed)
+                    let ordinary_pause_escape = matches!(event.state, ElementState::Pressed)
                         && matches!(event.physical_key, PhysicalKey::Code(KeyCode::Escape))
-                        && cursor_captured
                         && !input.command_entry_is_active()
                         && !sign_editor_open
                         && !book_open
                         && !advancements_open
                         && !debug_options_open
                         && !pause_open
-                        && !world_wants_cursor(&world)
-                    {
+                        && !world_wants_cursor(&world);
+                    if ordinary_pause_escape {
                         set_cursor_capture(&window, &mut cursor_captured, false);
                         release_active_input(
                             &mut input,
@@ -696,7 +695,6 @@ fn main() -> Result<()> {
                             &mut net_counters,
                             &net_commands,
                         );
-                        return;
                     }
                     if sign_editor_open
                         || book_open
@@ -713,6 +711,7 @@ fn main() -> Result<()> {
                         && !advancements_open
                         && !debug_options_open
                         && !pause_open
+                        && !ordinary_pause_escape
                     {
                         return;
                     }
