@@ -6539,6 +6539,13 @@
   potion custom effects 投影为红/蓝本地化 effect 行。边界：base potion holder
   effect lists、potion attribute modifier sub-lines、非 20 TPS 动态 tooltip duration、
   `TooltipDisplay` hidden-components 与其它 component provider tooltip 仍未完成。
+- [x] advanced tooltip base potion holder effect lines（P2 item-runtime slice，
+  2026-07-09）：依据 `PotionContents.getAllEffects` 先返回 base potion holder
+  effects、再返回 custom effects，以及 vanilla `Potions` 注册顺序，native item tooltip
+  现在把 built-in `potion_id` 映射为 base effect 列表，在 custom effects 之前输出红/蓝
+  本地化 effect 行，并对 present empty potion contents 输出灰色 `effect.none`。边界：
+  potion attribute modifier sub-lines、非 20 TPS 动态 tooltip duration 与
+  custom/datapack potion registry remap 仍属后续。
 - [x] creative tooltip suspicious-stew effect lines（P2 protocol + item-runtime
   + native slice，2026-07-09）：依据 `ItemStack.addDetailsToTooltip` 在
   unbreakable/ominous bottle 之后调用 `DataComponents.SUSPICIOUS_STEW_EFFECTS`

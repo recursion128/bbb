@@ -247,6 +247,8 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
                 "item.unbreakable": "Unbreakable",
                 "item.intangible": "Intangible",
                 "effect.minecraft.bad_omen": "Bad Omen",
+                "effect.minecraft.night_vision": "Night Vision",
+                "effect.none": "No Effects",
                 "effect.minecraft.poison": "Poison",
                 "potion.potency.1": "II",
                 "potion.potency.3": "IV",
@@ -948,6 +950,65 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
             name_line("Test Combo", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
             tooltip_line("Poison II (00:10)", TOOLTIP_TEXT_RED),
             lore_line("After potion"),
+        ])
+    );
+    assert_eq!(
+        runtime.tooltip_lines_for_stack(&ItemStackSummary {
+            item_id: Some(0),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                potion_id: Some(4),
+                lore: vec!["After base potion".to_string()],
+                ..DataComponentPatchSummary::default()
+            },
+        }),
+        Some(vec![
+            name_line("Test Combo", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
+            tooltip_line("Night Vision (03:00)", TOOLTIP_TEXT_BLUE),
+            lore_line("After base potion"),
+        ])
+    );
+    assert_eq!(
+        runtime.tooltip_lines_for_stack(&ItemStackSummary {
+            item_id: Some(0),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                potion_id: Some(4),
+                potion_custom_effects: vec![MobEffectInstanceSummary {
+                    effect_id: 18,
+                    amplifier: 0,
+                    duration: 200,
+                    ambient: false,
+                    show_particles: true,
+                    show_icon: true,
+                    hidden_effect: None,
+                }],
+                lore: vec!["After mixed potion".to_string()],
+                ..DataComponentPatchSummary::default()
+            },
+        }),
+        Some(vec![
+            name_line("Test Combo", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
+            tooltip_line("Night Vision (03:00)", TOOLTIP_TEXT_BLUE),
+            tooltip_line("Poison (00:10)", TOOLTIP_TEXT_RED),
+            lore_line("After mixed potion"),
+        ])
+    );
+    assert_eq!(
+        runtime.tooltip_lines_for_stack(&ItemStackSummary {
+            item_id: Some(0),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                potion_id: Some(0),
+                potion_custom_effect_count: Some(0),
+                lore: vec!["After empty potion".to_string()],
+                ..DataComponentPatchSummary::default()
+            },
+        }),
+        Some(vec![
+            name_line("Test Combo", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
+            tooltip_line("No Effects", TOOLTIP_TEXT_GRAY),
+            lore_line("After empty potion"),
         ])
     );
     let suspicious_stew_stack = ItemStackSummary {

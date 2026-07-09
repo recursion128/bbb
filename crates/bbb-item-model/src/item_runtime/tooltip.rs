@@ -1,9 +1,6 @@
 use bbb_protocol::{
     entity_types::vanilla_entity_type_allowed_in_peaceful,
-    packets::{
-        AdventureModePredicateSummary, MobEffectInstanceSummary, PaintingVariantSummary,
-        SuspiciousStewEffectSummary,
-    },
+    packets::{AdventureModePredicateSummary, PaintingVariantSummary, SuspiciousStewEffectSummary},
     ComponentStyle, StyledTextRun,
 };
 use bbb_world::RegistrySet;
@@ -285,6 +282,69 @@ const VANILLA_ENCHANTMENT_TOOLTIP_ORDER: &[&str] = &[
     "minecraft:infinity",
     "minecraft:mending",
 ];
+const VANILLA_POTION_EFFECTS_BY_ID: &[&[VanillaPotionEffect]] = &[
+    &[],
+    &[],
+    &[],
+    &[],
+    &[potion_effect(15, 3600, 0)],
+    &[potion_effect(15, 9600, 0)],
+    &[potion_effect(13, 3600, 0)],
+    &[potion_effect(13, 9600, 0)],
+    &[potion_effect(7, 3600, 0)],
+    &[potion_effect(7, 9600, 0)],
+    &[potion_effect(7, 1800, 1)],
+    &[potion_effect(11, 3600, 0)],
+    &[potion_effect(11, 9600, 0)],
+    &[potion_effect(0, 3600, 0)],
+    &[potion_effect(0, 9600, 0)],
+    &[potion_effect(0, 1800, 1)],
+    &[potion_effect(1, 1800, 0)],
+    &[potion_effect(1, 4800, 0)],
+    &[potion_effect(1, 400, 3)],
+    &[potion_effect(1, 400, 3), potion_effect(10, 400, 2)],
+    &[potion_effect(1, 800, 3), potion_effect(10, 800, 2)],
+    &[potion_effect(1, 400, 5), potion_effect(10, 400, 3)],
+    &[potion_effect(12, 3600, 0)],
+    &[potion_effect(12, 9600, 0)],
+    &[potion_effect(5, 1, 0)],
+    &[potion_effect(5, 1, 1)],
+    &[potion_effect(6, 1, 0)],
+    &[potion_effect(6, 1, 1)],
+    &[potion_effect(18, 900, 0)],
+    &[potion_effect(18, 1800, 0)],
+    &[potion_effect(18, 432, 1)],
+    &[potion_effect(9, 900, 0)],
+    &[potion_effect(9, 1800, 0)],
+    &[potion_effect(9, 450, 1)],
+    &[potion_effect(4, 3600, 0)],
+    &[potion_effect(4, 9600, 0)],
+    &[potion_effect(4, 1800, 1)],
+    &[potion_effect(17, 1800, 0)],
+    &[potion_effect(17, 4800, 0)],
+    &[potion_effect(25, 6000, 0)],
+    &[potion_effect(27, 1800, 0)],
+    &[potion_effect(27, 4800, 0)],
+    &[potion_effect(34, 3600, 0)],
+    &[potion_effect(35, 3600, 0)],
+    &[potion_effect(36, 3600, 0)],
+    &[potion_effect(37, 3600, 0)],
+];
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct VanillaPotionEffect {
+    effect_id: i32,
+    duration: i32,
+    amplifier: i32,
+}
+
+const fn potion_effect(effect_id: i32, duration: i32, amplifier: i32) -> VanillaPotionEffect {
+    VanillaPotionEffect {
+        effect_id,
+        duration,
+        amplifier,
+    }
+}
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct NativeItemTooltipLine {
@@ -1125,6 +1185,30 @@ mod tests {
     }
 
     #[test]
+    fn vanilla_potion_effects_follow_26_1_bootstrap_order() {
+        assert_eq!(VANILLA_POTION_EFFECTS_BY_ID.len(), 46);
+        assert_eq!(vanilla_potion_effects(0), Some(&[][..]));
+        assert_eq!(
+            vanilla_potion_effects(4),
+            Some(&[potion_effect(15, 3600, 0)][..])
+        );
+        assert_eq!(
+            vanilla_potion_effects(19),
+            Some(&[potion_effect(1, 400, 3), potion_effect(10, 400, 2)][..])
+        );
+        assert_eq!(
+            vanilla_potion_effects(24),
+            Some(&[potion_effect(5, 1, 0)][..])
+        );
+        assert_eq!(
+            vanilla_potion_effects(45),
+            Some(&[potion_effect(37, 3600, 0)][..])
+        );
+        assert_eq!(vanilla_potion_effects(46), None);
+        assert_eq!(vanilla_potion_effects(-1), None);
+    }
+
+    #[test]
     fn vanilla_enchantment_tables_follow_26_1_registry_and_tooltip_order() {
         assert_eq!(
             VANILLA_ENCHANTMENT_KEYS_AND_MAX_LEVELS,
@@ -1326,15 +1410,67 @@ fn push_potion_contents_tooltip_lines(
     component_patch: &DataComponentPatchSummary,
     lines: &mut Vec<NativeItemTooltipLine>,
 ) {
+    let mut has_effect_entries = false;
+    if let Some(potion_id) = component_patch.potion_id {
+        if let Some(effects) = vanilla_potion_effects(potion_id) {
+            has_effect_entries |= !effects.is_empty();
+            for effect in effects {
+                push_potion_effect_tooltip_line(
+                    language,
+                    effect.effect_id,
+                    effect.amplifier,
+                    effect.duration,
+                    lines,
+                );
+            }
+        }
+    }
+    has_effect_entries |= !component_patch.potion_custom_effects.is_empty();
     for effect in &component_patch.potion_custom_effects {
-        let Some(effect_key) = vanilla_mob_effect_key(effect.effect_id) else {
-            continue;
-        };
+        push_potion_effect_tooltip_line(
+            language,
+            effect.effect_id,
+            effect.amplifier,
+            effect.duration,
+            lines,
+        );
+    }
+    if !has_effect_entries && potion_contents_component_present(component_patch) {
         lines.push(NativeItemTooltipLine::plain(
-            potion_effect_tooltip_text(language, effect_key, effect.amplifier, effect.duration),
-            mob_effect_tooltip_tint(effect),
+            language.get_or_key("effect.none").to_string(),
+            TOOLTIP_TEXT_GRAY,
         ));
     }
+}
+
+fn vanilla_potion_effects(potion_id: i32) -> Option<&'static [VanillaPotionEffect]> {
+    usize::try_from(potion_id)
+        .ok()
+        .and_then(|index| VANILLA_POTION_EFFECTS_BY_ID.get(index).copied())
+}
+
+fn potion_contents_component_present(component_patch: &DataComponentPatchSummary) -> bool {
+    component_patch.potion_id.is_some()
+        || component_patch.potion_custom_color.is_some()
+        || component_patch.potion_custom_effect_count.is_some()
+        || component_patch.potion_custom_name.is_some()
+        || !component_patch.potion_custom_effects.is_empty()
+}
+
+fn push_potion_effect_tooltip_line(
+    language: &LanguageCatalog,
+    effect_id: i32,
+    amplifier: i32,
+    duration: i32,
+    lines: &mut Vec<NativeItemTooltipLine>,
+) {
+    let Some(effect_key) = vanilla_mob_effect_key(effect_id) else {
+        return;
+    };
+    lines.push(NativeItemTooltipLine::plain(
+        potion_effect_tooltip_text(language, effect_key, amplifier, duration),
+        mob_effect_tooltip_tint_for_id(effect_id),
+    ));
 }
 
 fn push_suspicious_stew_tooltip_lines(
@@ -1383,10 +1519,6 @@ fn potion_effect_tooltip_text(
     }
 
     effect
-}
-
-fn mob_effect_tooltip_tint(effect: &MobEffectInstanceSummary) -> [f32; 4] {
-    mob_effect_tooltip_tint_for_id(effect.effect_id)
 }
 
 fn mob_effect_tooltip_tint_for_id(effect_id: i32) -> [f32; 4] {

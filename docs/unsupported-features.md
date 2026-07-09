@@ -1155,7 +1155,7 @@ When an agent does any of the following, update this file in the same slice:
     painting variant rows, spawner block-entity rows, entity-data peaceful
     warning, adventure-mode can-break/can-place direct block rows and unknown
     row, dynamic profile line, intangible projectile line, and ominous bottle
-    amplifier line, potion custom-effect lines, creative suspicious-stew effect lines,
+    amplifier line, potion effect lines, creative suspicious-stew effect lines,
     map-id lines, instrument description lines, tropical-fish pattern lines,
     banner-pattern rows, pot-decoration rows,
     F3+I full local entity saveWithoutId parity, full vanilla profiler section coverage,
@@ -1363,9 +1363,19 @@ When an agent does any of the following, update this file in the same slice:
     shares the vanilla 26.1 mob-effect id/key/category table between
     item-model exact predicates and tooltip projection, then emits decoded
     potion custom effects in vanilla provider order. Boundary: base potion
-    holder effect lists, potion attribute modifier sub-lines, dynamic
-    non-20-TPS duration, `TooltipDisplay` hiding, and remaining component
-    providers remain future work.
+    holder effect lists are covered by the later entry below; potion attribute
+    modifier sub-lines, dynamic non-20-TPS duration, `TooltipDisplay` hiding,
+    and remaining component providers remain future work.
+  - Done 2026-07-09 — Advanced tooltip base potion holder effect lines. Vanilla
+    anchors: `PotionContents.addToTooltip` delegates to
+    `PotionContents.addPotionTooltip(this.getAllEffects(), ...)`, and
+    `getAllEffects` yields the base potion holder effects before custom effects.
+    Vanilla `Potions` registers the built-in potion holder order and effect
+    lists. bbb now resolves built-in `potion_id` values through that order, emits
+    base potion effect rows before custom effect rows, and emits gray
+    `effect.none` for present empty potion contents. Boundary: potion attribute
+    modifier sub-lines, dynamic non-20-TPS duration, and custom/datapack potion
+    registry remaps remain future work.
   - Done 2026-07-09 — Creative tooltip suspicious-stew effect lines. Vanilla
     anchors: `ItemStack.addDetailsToTooltip` calls
     `DataComponents.SUSPICIOUS_STEW_EFFECTS` after unbreakable/ominous bottle
@@ -1376,10 +1386,9 @@ When an agent does any of the following, update this file in the same slice:
     `minecraft:suspicious_stew_effects` entries, adds
     `NativeItemTooltipOptions { advanced, creative }`, passes creative gameplay
     mode from native HUD extraction, and emits the same effect lines only for
-    creative tooltips. Boundary: base potion holder effect lists, potion
-    attribute modifier sub-lines, dynamic non-20-TPS duration,
-    `TooltipDisplay` hiding, and remaining component providers remain future
-    work.
+    creative tooltips. Boundary: potion attribute modifier sub-lines, dynamic
+    non-20-TPS duration, `TooltipDisplay` hiding, and remaining component
+    providers remain future work.
   - Done 2026-07-09 — Advanced tooltip rocket firework explosion grouping.
     Vanilla anchors: `Fireworks.addToTooltip` walks the `explosions` list,
     coalesces adjacent equal `FireworkExplosion` values, emits gray
@@ -2683,7 +2692,7 @@ When an agent does any of the following, update this file in the same slice:
     charged-projectiles headers, container-loot unknown-content line, container
     item-count/more rows, jukebox song descriptions, armor trim rows,
     stored/enchantment rows, dynamic profile line, intangible projectile line, and ominous bottle
-    amplifier line, potion custom-effect lines, and creative suspicious-stew
+    amplifier line, potion effect lines, and creative suspicious-stew
     effect lines, map-id lines, instrument description lines, tropical-fish
     pattern lines, banner-pattern rows, and pot-decoration rows.
   - Done 2026-07-08 — Debug overlay F3+C copy-location clipboard action and
@@ -2953,7 +2962,7 @@ When an agent does any of the following, update this file in the same slice:
     plus charged-projectiles headers, container-loot unknown-content line,
     container item-count/more rows, jukebox song descriptions, armor trim rows,
     stored/enchantment rows, dynamic profile line,
-    intangible projectile line, and ominous bottle amplifier line, potion custom-effect lines, and creative
+    intangible projectile line, and ominous bottle amplifier line, potion effect lines, and creative
     suspicious-stew effect lines, map-id lines, instrument description lines,
     tropical-fish pattern lines, banner-pattern rows, and pot-decoration rows
     are covered by later entries.
@@ -3637,7 +3646,7 @@ When an agent does any of the following, update this file in the same slice:
     lines, charged-projectiles headers, container-loot unknown-content line,
     container item-count/more rows, jukebox song descriptions, armor trim rows,
     stored/enchantment rows, dynamic profile line,
-    intangible projectile line, and ominous bottle amplifier line, potion custom-effect lines, and creative
+    intangible projectile line, and ominous bottle amplifier line, potion effect lines, and creative
     suspicious-stew effect lines, map-id lines, and instrument description
     lines, tropical-fish pattern lines, banner-pattern rows, pot-decoration
     rows, F3+I full local entity saveWithoutId parity, full vanilla profiler section coverage,
