@@ -3070,6 +3070,87 @@ fn f3_f4_game_mode_switcher_cycles_with_additional_f4_presses() {
 }
 
 #[test]
+fn f3_f4_game_mode_switcher_does_not_open_over_existing_screen() {
+    #[derive(Debug, Clone, Copy)]
+    enum ExistingScreen {
+        Chat,
+        LocalInventory,
+        Book,
+        Dialog,
+        Advancements,
+        SignEditor,
+    }
+
+    for existing_screen in [
+        ExistingScreen::Chat,
+        ExistingScreen::LocalInventory,
+        ExistingScreen::Book,
+        ExistingScreen::Dialog,
+        ExistingScreen::Advancements,
+        ExistingScreen::SignEditor,
+    ] {
+        let commands = None;
+        let mut input = ClientInputState::new(true);
+        let mut counters = NetCounters::default();
+        let mut world = world_with_debug_player(false);
+        grant_debug_recreate_nbt_permission(&mut world);
+
+        match existing_screen {
+            ExistingScreen::Chat => handle_key_input(
+                &mut input,
+                &mut counters,
+                &mut world,
+                &commands,
+                PhysicalKey::Code(KeyCode::KeyT),
+                ElementState::Pressed,
+            ),
+            ExistingScreen::LocalInventory => {
+                assert!(world.open_local_inventory());
+            }
+            ExistingScreen::Book => open_test_book_screen(&mut world, vec!["First"]),
+            ExistingScreen::Dialog => world.apply_show_dialog(ProtocolShowDialog {
+                dialog: DialogHolder::Reference { registry_id: 11 },
+            }),
+            ExistingScreen::Advancements => {
+                assert!(world.open_advancements_screen());
+            }
+            ExistingScreen::SignEditor => world.apply_open_sign_editor(OpenSignEditor {
+                pos: ProtocolBlockPos { x: 1, y: 2, z: 3 },
+                is_front_text: true,
+            }),
+        }
+
+        assert!(input.handle_debug_overlay_key(
+            PhysicalKey::Code(KeyCode::F3),
+            ElementState::Pressed,
+            Some(&mut world),
+            None
+        ));
+        assert!(
+            !input.handle_debug_overlay_key(
+                PhysicalKey::Code(KeyCode::F4),
+                ElementState::Pressed,
+                Some(&mut world),
+                None
+            ),
+            "F3+F4 should not be a debug action over {existing_screen:?}"
+        );
+        assert_eq!(input.debug_game_mode_switcher_selected(), None);
+        assert!(world.client_chat().messages.is_empty());
+        assert!(input.handle_debug_overlay_key(
+            PhysicalKey::Code(KeyCode::F3),
+            ElementState::Released,
+            Some(&mut world),
+            None
+        ));
+        assert!(
+            input.debug_overlay_visible(),
+            "blocked F4 should leave F3 release as an ordinary overlay toggle over {existing_screen:?}"
+        );
+    }
+}
+
+#[test]
 fn f3_f4_game_mode_switcher_hover_uses_first_mouse_suppression() {
     let (tx, mut rx) = mpsc::channel(1);
     let commands = Some(tx);

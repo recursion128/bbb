@@ -1124,7 +1124,7 @@ impl ClientInputState {
                 let Some(world) = world.as_deref_mut() else {
                     return false;
                 };
-                if world.level_info().is_none() {
+                if !self.debug_game_mode_switcher_can_open(world) {
                     return false;
                 }
                 if !world.local_player_has_gamemaster_permission() {
@@ -1287,6 +1287,19 @@ impl ClientInputState {
         world.is_some_and(|world| {
             world.local_player_id().is_some() && !world.local_player_has_reduced_debug_info()
         })
+    }
+
+    fn debug_game_mode_switcher_can_open(&self, world: &WorldStore) -> bool {
+        world.level_info().is_some() && !self.debug_game_mode_switcher_blocked_by_screen(world)
+    }
+
+    fn debug_game_mode_switcher_blocked_by_screen(&self, world: &WorldStore) -> bool {
+        self.command_entry_is_active()
+            || self.sign_editor_is_active_or_pending(world)
+            || world.open_container_id().is_some()
+            || world.current_dialog().is_some()
+            || world.current_book().is_some()
+            || world.advancements_screen_is_open()
     }
 
     fn next_debug_query_transaction_id(&mut self) -> i32 {
