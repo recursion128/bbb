@@ -1,5 +1,6 @@
 use std::{
     collections::{BTreeMap, HashSet},
+    path::PathBuf,
     time::{Duration, Instant},
 };
 
@@ -233,6 +234,7 @@ pub(crate) struct ClientInputState {
     advancement_mouse_left_down: bool,
     advancement_is_scrolling: bool,
     debug_entries: DebugScreenEntryList,
+    debug_profile_store_path: Option<PathBuf>,
     debug_modifier_down: bool,
     debug_modifier_used: bool,
     debug_profiler_chart_visible: bool,
@@ -684,7 +686,7 @@ impl ClientInputState {
         entry: DebugScreenEntryId,
         status: DebugScreenEntryStatus,
     ) {
-        self.debug_entries.set_status(entry, status);
+        self.set_debug_screen_entry_status_inner(entry, status);
     }
 
     #[cfg(test)]
@@ -697,6 +699,40 @@ impl ClientInputState {
 
     pub(crate) fn load_debug_screen_profile(&mut self, profile: DebugScreenProfile) {
         self.debug_entries.load_profile(profile);
+        self.persist_debug_screen_entries();
+    }
+
+    pub(crate) fn set_debug_screen_entries(&mut self, entries: DebugScreenEntryList) {
+        self.debug_entries = entries;
+    }
+
+    pub(crate) fn set_debug_profile_store_path(&mut self, path: PathBuf) {
+        self.debug_profile_store_path = Some(path);
+    }
+
+    fn toggle_debug_screen_entry_status(&mut self, entry: DebugScreenEntryId) -> bool {
+        let enabled = self.debug_entries.toggle_status(entry);
+        self.persist_debug_screen_entries();
+        enabled
+    }
+
+    #[cfg(test)]
+    fn set_debug_screen_entry_status_inner(
+        &mut self,
+        entry: DebugScreenEntryId,
+        status: DebugScreenEntryStatus,
+    ) {
+        self.debug_entries.set_status(entry, status);
+        self.persist_debug_screen_entries();
+    }
+
+    fn persist_debug_screen_entries(&self) {
+        let Some(path) = &self.debug_profile_store_path else {
+            return;
+        };
+        if let Err(err) = self.debug_entries.save_to_debug_profile_file(path) {
+            tracing::warn!(?err, path = %path.display(), "failed to save debug profile store");
+        }
     }
 
     pub(crate) fn debug_advanced_item_tooltips(&self) -> bool {
@@ -973,9 +1009,8 @@ impl ClientInputState {
                 if !Self::debug_world_status_toggles_allowed(world.as_deref()) {
                     return false;
                 }
-                let enabled = self
-                    .debug_entries
-                    .toggle_status(DebugScreenEntryId::EntityHitboxes);
+                let enabled =
+                    self.toggle_debug_screen_entry_status(DebugScreenEntryId::EntityHitboxes);
                 push_debug_feedback_chat_message(
                     world.as_deref_mut(),
                     if enabled {
@@ -990,9 +1025,8 @@ impl ClientInputState {
                 if !Self::debug_world_status_toggles_allowed(world.as_deref()) {
                     return false;
                 }
-                let enabled = self
-                    .debug_entries
-                    .toggle_status(DebugScreenEntryId::ChunkBorders);
+                let enabled =
+                    self.toggle_debug_screen_entry_status(DebugScreenEntryId::ChunkBorders);
                 push_debug_feedback_chat_message(
                     world.as_deref_mut(),
                     if enabled {

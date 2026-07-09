@@ -105,6 +105,8 @@ pub(crate) struct Args {
     pub(crate) advanced_item_tooltips: bool,
     #[arg(long = "debug-profile", value_enum, default_value = "default")]
     pub(crate) debug_profile: DebugScreenProfileArg,
+    #[arg(long = "debug-profile-store", value_name = "PATH")]
+    pub(crate) debug_profile_store: Option<PathBuf>,
     #[arg(long = "debug-show-local-server-entity-hit-boxes")]
     pub(crate) debug_show_local_server_entity_hit_boxes: bool,
 }
@@ -569,6 +571,23 @@ mod tests {
 
         let args = Args::try_parse_from(["bbb-native", "--debug-profile", "performance"]).unwrap();
         assert_eq!(args.debug_profile, DebugScreenProfileArg::Performance);
+    }
+
+    #[test]
+    fn args_accept_debug_profile_store_startup_option() {
+        let default_args = Args::try_parse_from(["bbb-native"]).unwrap();
+        assert_eq!(default_args.debug_profile_store, None);
+
+        let args = Args::try_parse_from([
+            "bbb-native",
+            "--debug-profile-store",
+            "/tmp/debug-profile.json",
+        ])
+        .unwrap();
+        assert_eq!(
+            args.debug_profile_store,
+            Some(PathBuf::from("/tmp/debug-profile.json"))
+        );
     }
 
     #[test]

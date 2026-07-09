@@ -316,6 +316,7 @@ Screen Render Surfaces" 条目）：
   shell、looking-at entity-tags debug entry shell、chunk-render-stats debug
   entry shell、entity-render-stats debug entry shell、particle-render-stats
   debug entry shell、chunk-source-stats debug entry shell、
+  debug-profile.json persistence、
   F3+I local block-entity NBT capture、
   advanced tooltip component-count display、F3+I local entity transform NBT
   capture、debug feedback styled prefix baseline、
@@ -323,7 +324,7 @@ Screen Render Surfaces" 条目）：
   profiler chart numeric-key routing shell、F3+N spectator change-game-mode
   request routing、F3+F4 GameModeSwitcher input/command shell、ordinary F3
   keymap audit 已完成；
-  剩余 individual non-default debug entry renderers/profile persistence、
+  剩余 individual non-default debug entry renderers、
   entity hitbox local-server mirror green boxes/delta arrows and 3D debug-text
   billboard rendering、advanced tooltip component-specific full
   parity/persistence、F3+I full local entity saveWithoutId parity、profiler data

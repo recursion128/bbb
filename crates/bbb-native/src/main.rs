@@ -56,6 +56,7 @@ use bbb_item_model::default_player_skin_cache_dir;
 use bbb_item_model::NativeItemRuntime;
 use code_of_conduct::{default_code_of_conduct_store_path, CodeOfConductAcceptance};
 use code_of_conduct_overlay::CodeOfConductOverlayState;
+use debug_entries::DebugScreenEntryList;
 use entity_assets::load_entity_model_textures;
 use hud_assets::load_hud_textures;
 use input::{
@@ -303,7 +304,23 @@ fn main() -> Result<()> {
     let window = build_window(&event_loop)?;
     window.set_ime_allowed(true);
     let mut input = ClientInputState::new(window.has_focus());
-    input.load_debug_screen_profile(args.debug_profile.into());
+    let startup_debug_profile = args.debug_profile.into();
+    if let Some(path) = args.debug_profile_store.clone() {
+        input.set_debug_profile_store_path(path.clone());
+        match DebugScreenEntryList::load_from_debug_profile_file(&path, startup_debug_profile) {
+            Ok(entries) => input.set_debug_screen_entries(entries),
+            Err(err) => {
+                tracing::warn!(
+                    ?err,
+                    path = %path.display(),
+                    "resetting debug profile store to startup profile"
+                );
+                input.load_debug_screen_profile(startup_debug_profile);
+            }
+        }
+    } else {
+        input.load_debug_screen_profile(startup_debug_profile);
+    }
     input.set_debug_advanced_item_tooltips(args.advanced_item_tooltips);
     input.set_debug_show_local_server_entity_hit_boxes(
         args.debug_show_local_server_entity_hit_boxes,

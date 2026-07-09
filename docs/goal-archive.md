@@ -5437,7 +5437,7 @@
   FPS / TPS、player position 与 section-relative position、right-column
   memory/system/performance groups、以及 3D crosshair state。边界：
   debug-entry status/profile model 已由后续 slice 覆盖；具体 advanced entry
-  renderers、以及 `DebugOptionsScreen` profile 持久化仍未实现。
+  renderers、以及 `DebugOptionsScreen` 编辑界面仍未实现。
 - [x] debug overlay debug-entry status/profile model（P2 native/runtime slice，
   2026-07-09）：依据 `DebugScreenEntryList` 的 `ALWAYS_ON` / `IN_OVERLAY` /
   `NEVER` 状态、`DebugScreenEntries.PROFILES` 的 default/performance profile、
@@ -5448,8 +5448,20 @@
   profile，默认 profile 继续驱动已有 overlay entry，performance profile 的 FPS
   `ALWAYS_ON` 可在 overlay 隐藏时投影，custom status 有 focused test，
   reduced-debug 会过滤 position、3D crosshair 与 renderer entries。边界：
-  actual `DebugOptionsScreen`、`debug-profile.json` 持久化，以及 chunk
-  generation stats 等剩余 individual non-default entry renderers 仍待后续。
+  actual `DebugOptionsScreen`、chunk generation stats 等剩余 individual
+  non-default entry renderers 仍待后续。
+- [x] debug overlay debug-profile.json persistence（P2 native/runtime slice，
+  2026-07-09）：依据 `DebugScreenEntryList` 读写 game directory 下
+  `debug-profile.json`、`DataFixTypes.DEBUG_PROFILE.wrapCodec` 保存
+  `DataVersion`、`SerializedOptions` 的 optional `profile` / `custom` 字段、
+  `DebugScreenEntryStatus` 序列化名 `alwaysOn` / `inOverlay` / `never`、
+  `setStatus` 立即保存，以及 vanilla datafix 中 `inF3`→`inOverlay` 与
+  `looking_at_block` / `looking_at_fluid` split。native 现在支持显式启动参数
+  `--debug-profile-store PATH`，读取 vanilla-shaped profile/custom JSON，
+  写回当前 `DataVersion`，F3+B/F3+G status toggle 会保存 custom 状态，未知
+  custom entry 会在写回时保留，历史 `inF3` 与 looking-at split key 会折叠到当前
+  id。边界：不做默认 game-directory 自动发现、不实现完整 DataFixer 链、不提供
+  in-game `DebugOptionsScreen`；未实现 entry 的 custom 状态只保留不渲染。
 - [x] debug overlay performance-profile GPU utilization entry shell（P2
   native/runtime slice，2026-07-09）：依据
   `DebugScreenEntries.GPU_UTILIZATION`、performance profile 中该 entry 的
@@ -5470,8 +5482,8 @@
   performance profiles 中保持 `Never`，reduced-debug 下按
   `DebugScreenEntry.isAllowed` 默认语义过滤；custom status 启用时，从
   `WorldStore::world_time().day_time / 24000` 投影 `Day #N`。边界：实际
-  `DebugOptionsScreen` / `debug-profile.json` 持久化尚未实现；更完整 clock
-  timeline registry/display parity 留给后续。
+  `DebugOptionsScreen` 尚未实现；更完整 clock timeline registry/display parity
+  留给后续。
 - [x] debug overlay detailed-memory entry shell（P2 native/runtime slice，
   2026-07-09）：依据 `DebugScreenEntries.DETAILED_MEMORY` 注册
   `DebugEntryDetailedMemory`，该 entry 读取 `MemoryMXBean`
@@ -5483,8 +5495,7 @@
   中保持 `Never`，reduced-debug 下允许 custom status 启用；启用时在右列追加
   vanilla-shaped heap / non-heap 两行。边界：bbb 没有 JVM `MemoryMXBean`，
   数值来自 Linux `/proc` native process memory 字段，不是 Java heap /
-  non-heap pool 精确等价；完整 group layout、`DebugOptionsScreen` 和
-  `debug-profile.json` 持久化仍待后续。
+  non-heap pool 精确等价；完整 group layout 和 `DebugOptionsScreen` 仍待后续。
 - [x] debug overlay light-levels entry shell（P2 native/runtime slice，
   2026-07-09）：依据 `DebugScreenEntries.LIGHT_LEVELS` 注册
   `DebugEntryLight`，该 entry 使用 camera entity `blockPosition()`，调用
@@ -5497,8 +5508,8 @@
   `DebugScreenEntry.isAllowed` 过滤；custom status 启用时，从 camera feet block
   的 loaded chunk light 投影 client light 行。边界：vanilla 在
   `SharedConstants.DEBUG_SHOW_SERVER_DEBUG_VALUES` 下追加的 `Server Light` 行
-  需要 local-server light mirror；完整 group layout、`DebugOptionsScreen` 和
-  `debug-profile.json` 持久化仍待后续。
+  需要 local-server light mirror；完整 group layout 和 `DebugOptionsScreen`
+  仍待后续。
 - [x] debug overlay heightmap entry shell（P2 native/runtime slice，
   2026-07-09）：依据 `DebugScreenEntries.HEIGHTMAP` 注册
   `DebugEntryHeightmap`；该 entry 使用 camera entity `blockPosition()`，要求
@@ -5514,7 +5525,7 @@
   status 启用时从 camera-feet loaded chunk heightmaps 投影 client row，
   server row 仍显示 `??`。边界：client heightmap 缺失或 malformed 时同样显示
   `??`；完整 group layout、local-server heightmap mirror 与
-  `DebugOptionsScreen` / `debug-profile.json` 持久化仍待后续。
+  `DebugOptionsScreen` 仍待后续。
 - [x] debug overlay biome entry shell（P2 native/runtime slice，2026-07-09）：
   依据 `DebugScreenEntries.BIOME` 注册 `DebugEntryBiome`，该 entry 使用 camera
   entity `blockPosition()`、检查 build height，并从
@@ -5539,7 +5550,7 @@
   20-block debug range 从 camera raycast，并把 loaded block state 的坐标、名称
   与属性投影为左列纯文本。边界：当前 debug text model 不承载 vanilla 的
   underline / boolean green-red styling；server debug values、完整 group
-  layout、`DebugOptionsScreen` / `debug-profile.json` 持久化仍待后续。
+  layout 与 `DebugOptionsScreen` 仍待后续。
 - [x] debug overlay looking-at block-tags entry shell（P2 native/runtime
   slice，2026-07-09）：依据
   `DebugScreenEntries.LOOKING_AT_BLOCK_TAGS` 注册
@@ -5554,8 +5565,7 @@
   `UpdateTags` 把命中 block name 映射到 tag raw id，并投影匹配的 `#tag`
   左列纯文本。边界：该 entry 需要 block registry content 与 block tag packets
   才能解析；当前 tag 顺序跟随存储 map 顺序，精确 vanilla holder tag iteration
-  order、完整 group layout、`DebugOptionsScreen` / `debug-profile.json` 持久化
-  仍待后续。
+  order、完整 group layout 与 `DebugOptionsScreen` 仍待后续。
 - [x] debug overlay looking-at fluid-state entry shell（P2 native/runtime
   slice，2026-07-09）：依据
   `DebugScreenEntries.LOOKING_AT_FLUID_STATE` 注册
@@ -5572,8 +5582,7 @@
   water/lava source 或 flowing state 投影为左列纯文本。边界：当前 picking 使用
   loaded fluid cell 的 own-height box，尚未实现完整 vanilla
   `ClipContext.Fluid.ANY` shape 语义（例如 same-fluid-above full-height
-  clipping）；boolean styling、完整 group layout、`DebugOptionsScreen` /
-  `debug-profile.json` 持久化仍待后续。
+  clipping）；boolean styling、完整 group layout 与 `DebugOptionsScreen` 仍待后续。
 - [x] debug overlay looking-at fluid-tags entry shell（P2 native/runtime
   slice，2026-07-09）：依据
   `DebugScreenEntries.LOOKING_AT_FLUID_TAGS` 注册
@@ -5588,7 +5597,7 @@
   name 映射到 tag raw id，并投影匹配的 `#tag` 左列纯文本。边界：该 entry 需要
   fluid registry content 与 fluid tag packets 才能解析；当前 tag 顺序跟随存储
   map 顺序，精确 vanilla holder tag iteration order、完整 fluid clip parity、
-  group layout 与 `DebugOptionsScreen` / `debug-profile.json` 持久化仍待后续。
+  group layout 与 `DebugOptionsScreen` 仍待后续。
 - [x] debug overlay looking-at entity entry shell（P2 native/runtime slice，
   2026-07-09）：依据 `DebugScreenEntries.LOOKING_AT_ENTITY` 注册
   `DebugEntryLookingAtEntity`；`Minecraft` 每帧用
@@ -5603,8 +5612,8 @@
   `minecraft:entity_type` registry content 或 vanilla 26.1 id table 解析
   entity type，并投影 target entity 注册名左列纯文本。边界：当前 debug text
   model 不承载 vanilla underline styling；完整 group layout、
-  `DebugOptionsScreen` / `debug-profile.json` 持久化，以及 shared crosshair
-  entity raycast 的更深 parity gap 仍待后续。
+  `DebugOptionsScreen`，以及 shared crosshair entity raycast 的更深 parity gap
+  仍待后续。
 - [x] debug overlay looking-at entity-tags entry shell（P2 native/runtime
   slice，2026-07-09）：依据
   `DebugScreenEntries.LOOKING_AT_ENTITY_TAGS` 注册
@@ -5618,8 +5627,8 @@
   从已跟踪的 `minecraft:entity_type` `UpdateTags` 解析匹配 tags，并投影
   `#tag` 左列纯文本。边界：该 entry 需要 entity type tag packets 才能列出
   tags；当前 tag 顺序跟随存储 map 顺序，精确 vanilla holder tag iteration
-  order、完整 group layout、`DebugOptionsScreen` / `debug-profile.json`
-  持久化，以及 shared crosshair entity raycast 的更深 parity gap 仍待后续。
+  order、完整 group layout、`DebugOptionsScreen`，以及 shared crosshair entity
+  raycast 的更深 parity gap 仍待后续。
 - [x] debug overlay chunk-render-stats entry shell（P2 native/runtime slice，
   2026-07-09）：依据 `DebugScreenEntries.CHUNK_RENDER_STATS` 注册
   `DebugEntryChunkRenderStats`；该 entry 调用
@@ -5635,8 +5644,7 @@
   边界：当前尚未 mirror vanilla `ViewArea` total section count、smart-cull
   flag 或 section buffer pool free count，因此 `uploaded_sections` 与
   `aB: 00` 仍是 shell；精确 frame timing、完整 group layout、
-  `DebugOptionsScreen` / `debug-profile.json` 持久化、chunk generation stats
-  仍待后续。
+  `DebugOptionsScreen`、chunk generation stats 仍待后续。
 - [x] debug overlay entity-render-stats entry shell（P2 native/runtime slice，
   2026-07-09）：依据 `DebugScreenEntries.ENTITY_RENDER_STATS` 注册
   `DebugEntryEntityRenderStats`；该 entry 调用
@@ -5654,8 +5662,8 @@
   左列纯文本。边界：当前尚未 mirror vanilla
   `LevelRenderState.lastEntityRenderStateCount`，因此 rendered numerator
   暂用 tracked entity count；如果尚未收到 simulation-distance packet，该行
-  目前显示 `SD: 0`。精确 frame timing、完整 group layout、
-  `DebugOptionsScreen` / `debug-profile.json` 持久化仍待后续。
+  目前显示 `SD: 0`。精确 frame timing、完整 group layout 与
+  `DebugOptionsScreen` 仍待后续。
 - [x] debug overlay particle-render-stats entry shell（P2 native/runtime slice，
   2026-07-09）：依据 `DebugScreenEntries.PARTICLE_RENDER_STATS` 注册
   `DebugEntryParticleRenderStats`；该 entry 输出 `P: ` 加
@@ -5666,8 +5674,7 @@
   `ParticleRenderStats` entry id，default / performance profiles 中保持
   `Never`，reduced-debug 下过滤；custom status 启用时，基于 renderer
   particle counters 投影 `P: active_particle_instances` 左列纯文本。边界：
-  精确 frame timing、完整 group layout、`DebugOptionsScreen` /
-  `debug-profile.json` 持久化仍待后续。
+  精确 frame timing、完整 group layout 与 `DebugOptionsScreen` 仍待后续。
 - [x] debug overlay chunk-source-stats entry shell（P2 native/runtime slice，
   2026-07-09）：依据 `DebugScreenEntries.CHUNK_SOURCE_STATS` 注册
   `DebugEntryChunkSourceStats`；该 entry 输出 client level 的
@@ -5686,7 +5693,7 @@
   边界：当前尚未 mirror vanilla entity section storage，所以
   `sectionCount` 为 `0`；也还没有 integrated server
   `ServerLevel.gatherChunkSourceStats()` line。精确 frame timing、完整 group
-  layout、`DebugOptionsScreen` / `debug-profile.json` 持久化仍待后续。
+  layout 与 `DebugOptionsScreen` 仍待后续。
 - [x] debug overlay F3+B local-server missing-entity label data and startup
   flag（P2 native/renderer slice，2026-07-09）：依据
   `SharedConstants.DEBUG_SHOW_LOCAL_SERVER_ENTITY_HIT_BOXES =

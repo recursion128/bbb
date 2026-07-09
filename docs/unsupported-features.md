@@ -1111,14 +1111,16 @@ When an agent does any of the following, update this file in the same slice:
     3D crosshair rendering, default-profile debug entry coverage,
     performance-profile GPU utilization entry shell, day-count debug entry
     shell, detailed-memory debug entry shell, light-levels debug entry shell,
-    biome debug entry shell, F3+I
-    local block-entity NBT capture, advanced tooltip component-count display,
-    F3+I local entity transform NBT capture, debug feedback styled prefix
-    baseline, F3+S dynamic texture dump clickable/open-file feedback payload,
-    profiler chart numeric-key routing shell, and F3+N spectator
+    heightmap debug entry shell, biome debug entry shell, looking-at
+    block/fluid/entity state+tag entry shells, chunk/entity/particle render
+    stats entry shells, chunk-source-stats entry shell, debug-profile.json
+    persistence, F3+I local block-entity NBT capture, advanced tooltip
+    component-count display, F3+I local entity transform NBT capture, debug
+    feedback styled prefix baseline, F3+S dynamic texture dump clickable/open-file
+    feedback payload, profiler chart numeric-key routing shell, and F3+N spectator
     change-game-mode request routing, and F3+F4 GameModeSwitcher input/command
     shell, and ordinary F3 keymap audit:
-    remaining individual non-default debug entry renderers/profile persistence,
+    remaining individual non-default debug entry renderers,
     entity hitbox local-server mirror green boxes/delta arrows and 3D debug-text
     billboard rendering,
     advanced tooltip component-specific full parity/persistence,
@@ -1165,9 +1167,21 @@ When an agent does any of the following, update this file in the same slice:
     F3+B/F3+G toggle routing through vanilla status semantics, reduced-debug
     filtering for position/3D-crosshair/renderer entries, and HUD projection of
     implemented always-on text entries even when the F3 overlay is hidden.
-    Boundary: actual `DebugOptionsScreen`, persisted
-    `debug-profile.json`, and remaining individual non-default entry renderers
-    such as chunk generation stats remain future work.
+    Boundary: actual `DebugOptionsScreen` and remaining individual non-default
+    entry renderers such as chunk generation stats remain future work.
+  - Done 2026-07-09 — Debug overlay debug-profile.json persistence.
+    Vanilla anchors: `DebugScreenEntryList` reads `debug-profile.json`,
+    `DataFixTypes.DEBUG_PROFILE.wrapCodec` adds `DataVersion`,
+    `SerializedOptions` stores optional `profile` or `custom`, status strings
+    are `alwaysOn`, `inOverlay`, and `never`, `setStatus` saves immediately,
+    and the vanilla datafixes map historical `inF3` to `inOverlay` plus
+    `looking_at_block` / `looking_at_fluid` to the split state entries. bbb now
+    supports explicit startup `--debug-profile-store PATH`, loads vanilla-shaped
+    profile/custom JSON with `DataVersion`, preserves unknown custom entries on
+    write-back, writes current `DataVersion`, and persists F3+B/F3+G status
+    toggles. Boundary: there is no default game-directory auto-discovery, no
+    in-game `DebugOptionsScreen`, no full DataFixer chain, and unimplemented
+    entries are preserved in the file but not rendered.
   - Done 2026-07-09 — Debug overlay performance-profile GPU utilization entry
     shell. Vanilla anchors: `DebugScreenEntries.GPU_UTILIZATION` registers
     `DebugEntryGpuUtilization`, the performance profile enables it
@@ -1189,8 +1203,8 @@ When an agent does any of the following, update this file in the same slice:
     profiles, filters it under reduced-debug info like the default
     `DebugScreenEntry.isAllowed`, and projects custom-enabled day count as
     `Day #<world day_time / 24000>` when world time exists. Boundary: no
-    `DebugOptionsScreen` or debug-profile persistence yet; broader clock
-    timeline registry/display parity remains future work.
+    `DebugOptionsScreen` yet; broader clock timeline registry/display parity
+    remains future work.
   - Done 2026-07-09 — Debug overlay detailed-memory entry shell. Vanilla
     anchors: `DebugScreenEntries.DETAILED_MEMORY` registers
     `DebugEntryDetailedMemory`; the entry reads `MemoryMXBean`
@@ -1203,7 +1217,7 @@ When an agent does any of the following, update this file in the same slice:
     projects custom-enabled native process memory in the same two-row field
     shape. Boundary: bbb is a native client with no JVM `MemoryMXBean`, so the
     numbers come from Linux `/proc` process fields rather than exact Java heap /
-    non-heap pools; full group layout/persistence still belongs to the future
+    non-heap pools; full group layout still belongs to future
     `DebugOptionsScreen` work.
   - Done 2026-07-09 — Debug overlay light-levels entry shell. Vanilla
     anchors: `DebugScreenEntries.LIGHT_LEVELS` registers `DebugEntryLight`;
@@ -1217,8 +1231,8 @@ When an agent does any of the following, update this file in the same slice:
     info, and projects custom-enabled client light from the loaded camera feet
     block. Boundary: vanilla's optional `Server Light` row behind
     `SharedConstants.DEBUG_SHOW_SERVER_DEBUG_VALUES` needs a local-server light
-    mirror and remains future work; full debug group layout/persistence still
-    belongs to `DebugOptionsScreen`.
+    mirror and remains future work; full debug group layout still belongs to
+    `DebugOptionsScreen`.
   - Done 2026-07-09 — Debug overlay heightmap entry shell. Vanilla anchors:
     `DebugScreenEntries.HEIGHTMAP` registers `DebugEntryHeightmap`; it reads
     the camera entity `blockPosition()`, requires a loaded client chunk, adds
@@ -1232,8 +1246,8 @@ When an agent does any of the following, update this file in the same slice:
     `sample_heightmap_first_available` query over decoded chunk heightmaps, and
     projects the client row from loaded camera-feet chunk heightmaps while the
     server row remains `??`. Boundary: missing or malformed client heightmaps
-    are also shown as `??`; exact group layout, local-server heightmap mirror,
-    and profile persistence remain future work.
+    are also shown as `??`; exact group layout and local-server heightmap mirror
+    remain future work.
   - Done 2026-07-09 — Debug overlay biome entry shell. Vanilla anchors:
     `DebugScreenEntries.BIOME` registers `DebugEntryBiome`; the entry reads the
     camera entity `blockPosition()`, checks build height, and formats
@@ -1258,8 +1272,7 @@ When an agent does any of the following, update this file in the same slice:
     projects the loaded block state's name/properties as plain left-column
     lines when custom-enabled. Boundary: vanilla underline and boolean
     green/red text styling are not represented by the current plain debug text
-    model. Server debug values, exact group layout, and profile persistence
-    remain future work.
+    model. Server debug values and exact group layout remain future work.
   - Done 2026-07-09 — Debug overlay looking-at block-tags entry shell.
     Vanilla anchors: `DebugScreenEntries.LOOKING_AT_BLOCK_TAGS` registers
     `DebugEntryLookingAt.BlockTagInfo`; it uses the same
@@ -1274,8 +1287,8 @@ When an agent does any of the following, update this file in the same slice:
     plain `#tag` left-column lines when custom-enabled. Boundary: this entry
     needs block registry content and block tag packets before it can map a
     block name to raw tag ids; current tag order follows the stored tag map
-    order, while exact vanilla holder tag iteration order, group layout, and
-    profile persistence remain future work.
+    order, while exact vanilla holder tag iteration order and group layout
+    remain future work.
   - Done 2026-07-09 — Debug overlay looking-at fluid-state entry shell.
     Vanilla anchors: `DebugScreenEntries.LOOKING_AT_FLUID_STATE` registers
     `DebugEntryLookingAt.FluidStateInfo`; it uses
@@ -1291,8 +1304,8 @@ When an agent does any of the following, update this file in the same slice:
     flowing state as plain left-column lines. Boundary: current picking uses
     the loaded fluid cell's own-height box and does not yet implement full
     vanilla `ClipContext.Fluid.ANY` shape semantics such as same-fluid-above
-    full-height clipping; boolean styling, exact group layout, and profile
-    persistence remain future work.
+    full-height clipping; boolean styling and exact group layout remain future
+    work.
   - Done 2026-07-09 — Debug overlay looking-at fluid-tags entry shell.
     Vanilla anchors: `DebugScreenEntries.LOOKING_AT_FLUID_TAGS` registers
     `DebugEntryLookingAt.FluidTagInfo`; it uses the same
@@ -1307,8 +1320,8 @@ When an agent does any of the following, update this file in the same slice:
     left-column lines when custom-enabled. Boundary: this entry needs fluid
     registry content and fluid tag packets before it can map a fluid name to
     raw tag ids; current tag order follows the stored tag map order, while
-    exact vanilla holder tag iteration order, full fluid clip parity, group
-    layout, and profile persistence remain future work.
+    exact vanilla holder tag iteration order, full fluid clip parity, and group
+    layout remain future work.
   - Done 2026-07-09 — Debug overlay looking-at entity entry shell. Vanilla
     anchors: `DebugScreenEntries.LOOKING_AT_ENTITY` registers
     `DebugEntryLookingAtEntity`; `Minecraft` updates `crosshairPickEntity`
@@ -1321,9 +1334,8 @@ When an agent does any of the following, update this file in the same slice:
     entity type through tracked `minecraft:entity_type` registry content or the
     vanilla 26.1 id table, and projects the target entity name as plain
     left-column text when custom-enabled. Boundary: current text cannot carry
-    vanilla underline styling; exact group layout, profile persistence, and any
-    deeper parity gaps in the shared crosshair entity raycast remain future
-    work.
+    vanilla underline styling; exact group layout and any deeper parity gaps in
+    the shared crosshair entity raycast remain future work.
   - Done 2026-07-09 — Debug overlay looking-at entity-tags entry shell.
     Vanilla anchors: `DebugScreenEntries.LOOKING_AT_ENTITY_TAGS` registers
     `DebugEntryLookingAtEntityTags`; it reads the same `crosshairPickEntity` as
@@ -1337,8 +1349,7 @@ When an agent does any of the following, update this file in the same slice:
     left-column text when custom-enabled. Boundary: this entry needs entity
     type tag packets before it can list tags; current tag order follows the
     stored tag map order, while exact vanilla holder tag iteration order, group
-    layout, profile persistence, and deeper shared crosshair raycast parity
-    remain future work.
+    layout, and deeper shared crosshair raycast parity remain future work.
   - Done 2026-07-09 — Debug overlay chunk-render-stats entry shell. Vanilla
     anchors: `DebugScreenEntries.CHUNK_RENDER_STATS` registers
     `DebugEntryChunkRenderStats`; it calls
@@ -1354,8 +1365,7 @@ When an agent does any of the following, update this file in the same slice:
     terrain counters when custom-enabled. Boundary: bbb does not yet mirror the
     vanilla `ViewArea` total section count, smart-cull flag, or section buffer
     pool free count, so `uploaded_sections` and `aB: 00` are a shell; exact
-    frame timing, group layout, profile persistence, and chunk generation
-    stats remain future work.
+    frame timing, group layout, and chunk generation stats remain future work.
   - Done 2026-07-09 — Debug overlay entity-render-stats entry shell. Vanilla
     anchors: `DebugScreenEntries.ENTITY_RENDER_STATS` registers
     `DebugEntryEntityRenderStats`; it calls
@@ -1373,8 +1383,8 @@ When an agent does any of the following, update this file in the same slice:
     world state when custom-enabled. Boundary: bbb does not yet mirror vanilla
     `LevelRenderState.lastEntityRenderStateCount`, so the rendered numerator
     is a shell using tracked entity count; if no simulation-distance packet has
-    arrived the line currently uses `SD: 0`. Exact frame timing, group layout,
-    and profile persistence remain future work.
+    arrived the line currently uses `SD: 0`. Exact frame timing and group layout
+    remain future work.
   - Done 2026-07-09 — Debug overlay particle-render-stats entry shell.
     Vanilla anchors: `DebugScreenEntries.PARTICLE_RENDER_STATS` registers
     `DebugEntryParticleRenderStats`; it emits
@@ -1386,7 +1396,7 @@ When an agent does any of the following, update this file in the same slice:
     default/performance profiles, filters it under reduced-debug info, and
     projects `P: active_particle_instances` from renderer particle counters
     when custom-enabled. Boundary: exact frame timing, group layout, and
-    `DebugOptionsScreen` / `debug-profile.json` persistence remain future work.
+    `DebugOptionsScreen` remain future work.
   - Done 2026-07-09 — Debug overlay chunk-source-stats entry shell. Vanilla
     anchors: `DebugScreenEntries.CHUNK_SOURCE_STATS` registers
     `DebugEntryChunkSourceStats`; it emits the client level
@@ -1405,8 +1415,7 @@ When an agent does any of the following, update this file in the same slice:
     custom-enabled. Boundary: bbb does not yet mirror vanilla entity section
     storage, so `sectionCount` is `0`; it also has no integrated server
     `ServerLevel.gatherChunkSourceStats()` line yet. Exact frame timing, group
-    layout, and `DebugOptionsScreen` / `debug-profile.json` persistence remain
-    future work.
+    layout, and `DebugOptionsScreen` remain future work.
   - Done 2026-07-09 — Debug overlay F3+B local-server missing-entity label
     data and startup flag. Vanilla anchors:
     `SharedConstants.DEBUG_SHOW_LOCAL_SERVER_ENTITY_HIT_BOXES =
@@ -2617,11 +2626,13 @@ When an agent does any of the following, update this file in the same slice:
     statuses for implemented entries, startup `--debug-profile`, vanilla
     `toggleStatus` semantics, and reduced-debug filtering. The performance
     profile now projects the `GPU: 0%` utilization entry shell when the overlay
-    is visible, and custom-enabled day-count projects `Day #N` from the
-    overworld day clock. Custom-enabled detailed memory now renders the
-    vanilla-shaped heap/non-heap rows from native process memory.
-    Custom-enabled light levels now render the client light row from the
-    camera feet block, and custom-enabled biome renders the loaded camera feet
+    is visible, and `--debug-profile-store PATH` now reads/writes vanilla-shaped
+    `debug-profile.json` data for custom statuses. Custom-enabled day-count
+    projects `Day #N` from the overworld day clock. Custom-enabled detailed
+    memory now renders the vanilla-shaped heap/non-heap rows from native process
+    memory. Custom-enabled light levels now render the client light row from the
+    camera feet block, custom-enabled heightmap renders the client `CH` row and
+    server `SH` unknowns, and custom-enabled biome renders the loaded camera feet
     biome registry key. Custom-enabled looking-at block state now renders the
     targeted block position, registry name, and state properties; custom-enabled
     looking-at block tags now renders tracked `#tag` rows for the target block.
@@ -2643,8 +2654,8 @@ When an agent does any of the following, update this file in the same slice:
     remaining combo work is limited to debug-flag gated dev hotkeys. The
     remaining open surfaces in
     this ledger row
-    are remaining individual non-default debug entry renderers/profile
-    persistence, entity hitbox local-server mirror green boxes/delta arrows and
+    are remaining individual non-default debug entry renderers, entity hitbox
+    local-server mirror green boxes/delta arrows and
     3D debug-text billboard rendering,
     advanced tooltip component-specific full parity/persistence, F3+I full
     local entity saveWithoutId parity, profiler data sampling and

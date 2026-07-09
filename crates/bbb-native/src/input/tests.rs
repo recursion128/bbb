@@ -999,6 +999,51 @@ fn f3_debug_status_key_uses_in_overlay_status_when_overlay_is_visible() {
 }
 
 #[test]
+fn f3_debug_status_toggle_persists_debug_profile_store() {
+    let commands = None;
+    let path = unique_input_temp_dir("debug-profile-store").join("debug-profile.json");
+    let mut input = ClientInputState::new(true);
+    input.set_debug_profile_store_path(path.clone());
+    let mut counters = NetCounters::default();
+    let mut world = world_with_debug_player(false);
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::KeyB),
+        ElementState::Pressed,
+    );
+
+    let value: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(&path).unwrap())
+        .expect("debug profile json parses");
+    assert!(value.get("profile").is_none());
+    assert_eq!(
+        value["custom"]["minecraft:entity_hitboxes"].as_str(),
+        Some("alwaysOn")
+    );
+
+    let loaded =
+        DebugScreenEntryList::load_from_debug_profile_file(&path, DebugScreenProfile::Default)
+            .unwrap();
+    assert_eq!(
+        loaded.status(DebugScreenEntryId::EntityHitboxes),
+        DebugScreenEntryStatus::AlwaysOn
+    );
+    let _ = std::fs::remove_file(&path);
+    let _ = std::fs::remove_dir(path.parent().unwrap());
+}
+
+#[test]
 fn custom_debug_screen_entry_status_drives_entry_visibility() {
     let mut input = ClientInputState::new(true);
 
