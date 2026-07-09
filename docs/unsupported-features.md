@@ -1160,7 +1160,7 @@ When an agent does any of the following, update this file in the same slice:
     suspicious-stew effect lines, map-id lines, instrument description lines,
     tropical-fish pattern lines,
     banner-pattern rows, pot-decoration rows,
-    remaining F3+I full local entity saveWithoutId parity beyond local creeper Mob/Creeper save fields,
+    remaining F3+I full local entity saveWithoutId parity beyond local creeper/slime-family save fields,
     full vanilla profiler section coverage,
     profiling metrics recorder/output,
     DebugOptionsScreen narration/full widget styling polish, and native pause
@@ -2768,6 +2768,16 @@ When an agent does any of the following, update this file in the same slice:
     persistence, drop chances, leash/home, loot-table, custom data, passengers,
     and other entity-specific `addAdditionalSaveData` fields still need local
     state owners before full `saveWithoutId` parity.
+  - Done 2026-07-09 — Debug overlay F3+I local slime-family save fields.
+    Vanilla anchors: `Slime.addAdditionalSaveData` calls `Mob` save data, then
+    writes `Size` as `getSize() - 1` and `wasOnGround`; `MagmaCube` inherits
+    that save implementation. bbb now appends the same local Mob fields plus
+    `Size` and default `wasOnGround` for authorized Shift+F3+I slime and magma
+    cube recreate commands, deriving size from synced slime metadata id 16 and
+    preserving the vanilla 1..127 size clamp before saving. Boundary:
+    non-default `wasOnGround`, broader Mob save data, passengers, and other
+    entity-specific `addAdditionalSaveData` fields still need local state owners
+    before full `saveWithoutId` parity.
   - Done 2026-07-08 — Debug feedback styled prefix baseline.
     Vanilla anchors: `KeyboardHandler.decorateDebugComponent` prepends the
     translatable `debug.prefix` component with `ChatFormatting.YELLOW` and
@@ -3788,7 +3798,7 @@ When an agent does any of the following, update this file in the same slice:
     intangible projectile line, and ominous bottle amplifier line, potion effect lines, and creative
     suspicious-stew effect lines, map-id lines, and instrument description
     lines, tropical-fish pattern lines, banner-pattern rows, pot-decoration
-    rows, remaining F3+I full local entity saveWithoutId parity beyond local creeper Mob/Creeper save fields,
+    rows, remaining F3+I full local entity saveWithoutId parity beyond local creeper/slime-family save fields,
     full vanilla profiler section coverage,
     profiling metrics recorder/output,
     DebugOptionsScreen narration/full widget styling polish, native pause

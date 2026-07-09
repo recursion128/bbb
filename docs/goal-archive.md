@@ -6239,6 +6239,14 @@
   pickup/persistence、drop chances、leash/home、loot table、custom data、
   passengers 以及其他 entity-specific `addAdditionalSaveData` 仍待本地 state
   owner 后才能关闭完整 `saveWithoutId` parity。
+- [x] debug overlay F3+I local slime-family save fields（P2 native slice，
+  2026-07-09）：依据 `Slime.addAdditionalSaveData` 先调用 `Mob` 保存链，再以
+  `getSize() - 1` 写 `Size`，并写 `wasOnGround`；`MagmaCube` 继承同一实现。
+  native 现在对授权 Shift+F3+I 本地 slime / magma cube recreate command 追加
+  Mob 字段、`Size` 和默认 `wasOnGround`，其中 size 来自 slime metadata id 16，
+  并按 vanilla 1..127 clamp 后再保存。边界：非默认 `wasOnGround`、更广泛的
+  Mob save data、passengers 以及其他 entity-specific `addAdditionalSaveData`
+  仍待本地 state owner 后才能关闭完整 `saveWithoutId` parity。
 - [x] debug feedback styled prefix baseline（P2 world/native/control slice，
   2026-07-08）：依据 `KeyboardHandler.decorateDebugComponent` 用
   `debug.prefix` 生成 yellow + bold 的 `[Debug]:` 前缀，再追加空格和反馈

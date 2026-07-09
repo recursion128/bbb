@@ -7,7 +7,10 @@ use std::{
 use bbb_control::NetCounters;
 use bbb_net::NetCommand;
 use bbb_protocol::{
-    entity_types::{vanilla_entity_resource_id_for_type_id, VANILLA_ENTITY_TYPE_CREEPER_ID},
+    entity_types::{
+        vanilla_entity_resource_id_for_type_id, VANILLA_ENTITY_TYPE_CREEPER_ID,
+        VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID, VANILLA_ENTITY_TYPE_SLIME_ID,
+    },
     packets::{
         BlockEntityTagQuery, BlockPos as ProtocolBlockPos, ChangeGameModeCommand,
         Direction as ProtocolDirection, EntityDataValueKind, EntityTagQuery, GameType,
@@ -195,6 +198,11 @@ const CREEPER_DEFAULT_FUSE: i16 = 30;
 const CREEPER_DEFAULT_EXPLOSION_RADIUS: i8 = 3;
 const CREEPER_DEFAULT_POWERED: bool = false;
 const CREEPER_DEFAULT_IGNITED: bool = false;
+const SLIME_SIZE_DATA_ID: u8 = 16;
+const SLIME_DEFAULT_SIZE: i32 = 1;
+const SLIME_MIN_SIZE: i32 = 1;
+const SLIME_MAX_SIZE: i32 = 127;
+const SLIME_DEFAULT_WAS_ON_GROUND: bool = false;
 const SIGN_LINE_MAX_LENGTH: usize = 384;
 const BOOK_SCREEN_WIDTH: i32 = 192;
 const BOOK_SCREEN_HEIGHT: i32 = 192;
@@ -3499,9 +3507,16 @@ fn debug_local_entity_pretty_snbt(entity: &EntityState) -> Option<String> {
 }
 
 fn debug_push_entity_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
-    if entity.entity_type_id == VANILLA_ENTITY_TYPE_CREEPER_ID {
-        debug_push_mob_additional_save_data(entity, fields);
-        debug_push_creeper_additional_save_data(entity, fields);
+    match entity.entity_type_id {
+        VANILLA_ENTITY_TYPE_CREEPER_ID => {
+            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_creeper_additional_save_data(entity, fields);
+        }
+        VANILLA_ENTITY_TYPE_SLIME_ID | VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID => {
+            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_slime_additional_save_data(entity, fields);
+        }
+        _ => {}
     }
 }
 
@@ -3535,6 +3550,17 @@ fn debug_push_creeper_additional_save_data(entity: &EntityState, fields: &mut Ve
         "ExplosionRadius: {CREEPER_DEFAULT_EXPLOSION_RADIUS}b"
     ));
     fields.push(format!("ignited: {}", debug_snbt_bool(ignited)));
+}
+
+fn debug_push_slime_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
+    let size = debug_entity_data_int_present(entity, SLIME_SIZE_DATA_ID)
+        .unwrap_or(SLIME_DEFAULT_SIZE)
+        .clamp(SLIME_MIN_SIZE, SLIME_MAX_SIZE);
+    fields.push(format!("Size: {}", size - 1));
+    fields.push(format!(
+        "wasOnGround: {}",
+        debug_snbt_bool(SLIME_DEFAULT_WAS_ON_GROUND)
+    ));
 }
 
 fn debug_entity_data_byte_present(entity: &EntityState, data_id: u8) -> Option<i8> {
