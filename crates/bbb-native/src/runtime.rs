@@ -319,6 +319,7 @@ const BEACON_PRIMARY_EFFECT_ROWS: [&[i32]; 3] = [
     &[BEACON_EFFECT_STRENGTH_ID],
 ];
 const BEACON_SECONDARY_EFFECTS: &[i32] = &[BEACON_EFFECT_REGENERATION_ID];
+const VANILLA_OVERWORLD_DAY_PERIOD_TICKS: i64 = 24_000;
 const BEACON_CONFIRM_BUTTON_X: i32 = 164;
 const BEACON_CANCEL_BUTTON_X: i32 = 190;
 const BEACON_ACTION_BUTTON_Y: i32 = 107;
@@ -3083,6 +3084,11 @@ fn hud_debug_overlay(
             left_lines.push(tps_line);
         }
     }
+    if entry_enabled(DebugScreenEntryId::DayCount) {
+        if let Some(day_count_line) = hud_debug_day_count_line(world) {
+            left_lines.push(day_count_line);
+        }
+    }
     let debug_crosshair = camera_pose
         .filter(|_| entry_enabled(DebugScreenEntryId::ThreeDimensionalCrosshair))
         .map(hud_debug_crosshair);
@@ -3435,6 +3441,14 @@ fn hud_debug_tps_line(world: &WorldStore) -> Option<String> {
     let brand = world.server_brand().unwrap_or("unknown");
 
     Some(format!("\"{brand}\" server{run_status}, 0 tx, 0 rx"))
+}
+
+fn hud_debug_day_count_line(world: &WorldStore) -> Option<String> {
+    let day_time = world.world_time()?.day_time;
+    Some(format!(
+        "Day #{}",
+        day_time / VANILLA_OVERWORLD_DAY_PERIOD_TICKS
+    ))
 }
 
 fn hud_debug_visibility_label(visible: bool) -> &'static str {

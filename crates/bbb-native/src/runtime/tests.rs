@@ -1139,6 +1139,34 @@ fn hud_debug_overlay_projects_performance_profile_gpu_utilization_when_overlay_v
 }
 
 #[test]
+fn hud_debug_overlay_projects_custom_day_count_entry_from_world_day_clock() {
+    let mut world = world_with_dimension_height(0, "minecraft:overworld", 384);
+    set_world_day_time(&mut world, 48_123);
+    let mut input = ClientInputState::new(true);
+    input.set_debug_screen_entry_status(
+        DebugScreenEntryId::DayCount,
+        crate::debug_entries::DebugScreenEntryStatus::AlwaysOn,
+    );
+
+    let overlay = hud_debug_overlay(
+        &input,
+        &world,
+        None,
+        winit::dpi::PhysicalSize::new(320, 240),
+        &HudDebugFpsSampler::default(),
+        VANILLA_UNLIMITED_FRAMERATE_LIMIT,
+        false,
+        &HudDebugNetworkSampler::default(),
+        &HudDebugTpsSampler::default(),
+        &NetCounters::default(),
+    )
+    .expect("custom day-count entry should show while always-on");
+
+    assert_eq!(overlay.left_lines, vec!["Day #2".to_string()]);
+    assert!(overlay.right_lines.is_empty());
+}
+
+#[test]
 fn hud_debug_overlay_filters_default_entries_in_reduced_debug_info() {
     let world =
         world_with_dimension_height_and_reduced_debug_info(0, "minecraft:overworld", 384, true);

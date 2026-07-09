@@ -21,6 +21,7 @@ pub(crate) enum DebugScreenEntryId {
     SystemSpecs,
     PlayerPosition,
     PlayerSectionPosition,
+    DayCount,
     SimplePerformanceImpactors,
     EntityHitboxes,
     ChunkBorders,
@@ -224,6 +225,10 @@ mod tests {
             entries.status(DebugScreenEntryId::EntityHitboxes),
             DebugScreenEntryStatus::Never
         );
+        assert_eq!(
+            entries.status(DebugScreenEntryId::DayCount),
+            DebugScreenEntryStatus::Never
+        );
         assert!(entries.is_using_profile(DebugScreenProfile::Default));
     }
 
@@ -278,5 +283,10 @@ mod tests {
         assert!(entries.is_currently_enabled(DebugScreenEntryId::PlayerSectionPosition, true));
         assert!(!entries.is_currently_enabled(DebugScreenEntryId::PlayerPosition, true));
         assert!(!entries.is_currently_enabled(DebugScreenEntryId::ThreeDimensionalCrosshair, true));
+        entries.set_status(
+            DebugScreenEntryId::DayCount,
+            DebugScreenEntryStatus::AlwaysOn,
+        );
+        assert!(!entries.is_currently_enabled(DebugScreenEntryId::DayCount, true));
     }
 }

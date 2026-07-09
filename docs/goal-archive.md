@@ -5462,6 +5462,17 @@
   FPS，overlay visible 时显示 GPU entry shell。边界：真实 GPU timer-query
   utilization sampling、超过 100% 时的红色 styling、以及 metrics recorder 输出
   仍待后续 profiler/metrics slice。
+- [x] debug overlay day-count entry shell（P2 native/runtime slice，
+  2026-07-09）：依据 `DebugScreenEntries.DAY_COUNT` 注册
+  `DebugEntryDayCount`，该 entry 读取 `Timelines.OVERWORLD_DAY`；
+  `Timelines.bootstrap` 对该 timeline 使用 overworld clock 并
+  `setPeriodTicks(24000)`，`Timeline.getPeriodCount` 则用 clock total ticks /
+  period ticks。native 现在有非 profile 默认项 `DayCount` entry id，default /
+  performance profiles 中保持 `Never`，reduced-debug 下按
+  `DebugScreenEntry.isAllowed` 默认语义过滤；custom status 启用时，从
+  `WorldStore::world_time().day_time / 24000` 投影 `Day #N`。边界：实际
+  `DebugOptionsScreen` / `debug-profile.json` 持久化尚未实现；更完整 clock
+  timeline registry/display parity 留给后续。
 - [x] debug overlay F3+B local-server missing-entity label data and startup
   flag（P2 native/renderer slice，2026-07-09）：依据
   `SharedConstants.DEBUG_SHOW_LOCAL_SERVER_ENTITY_HIT_BOXES =

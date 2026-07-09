@@ -1109,7 +1109,8 @@ When an agent does any of the following, update this file in the same slice:
     rendering, F3+3 network ping/bandwidth chart
     rendering, configured-framerate FPS guide, vsync FPS debug text/config,
     3D crosshair rendering, default-profile debug entry coverage,
-    performance-profile GPU utilization entry shell, F3+I
+    performance-profile GPU utilization entry shell, day-count debug entry
+    shell, F3+I
     local block-entity NBT capture, advanced tooltip component-count display,
     F3+I local entity transform NBT capture, debug feedback styled prefix
     baseline, F3+S dynamic texture dump clickable/open-file feedback payload,
@@ -1178,6 +1179,17 @@ When an agent does any of the following, update this file in the same slice:
     mode still only shows the always-on FPS line. Boundary: actual GPU timer
     query utilization sampling and red over-100 styling remain future
     profiler/metrics work.
+  - Done 2026-07-09 — Debug overlay day-count entry shell. Vanilla anchors:
+    `DebugScreenEntries.DAY_COUNT` registers `DebugEntryDayCount`, which reads
+    `Timelines.OVERWORLD_DAY`; that timeline is built on the overworld clock
+    with `setPeriodTicks(24000)`, and `Timeline.getPeriodCount` returns
+    `clockManager.getTotalTicks(clock) / periodTicks`. bbb now has a
+    non-profile `DayCount` entry id, keeps it `Never` in default/performance
+    profiles, filters it under reduced-debug info like the default
+    `DebugScreenEntry.isAllowed`, and projects custom-enabled day count as
+    `Day #<world day_time / 24000>` when world time exists. Boundary: no
+    `DebugOptionsScreen` or debug-profile persistence yet; broader clock
+    timeline registry/display parity remains future work.
   - Done 2026-07-09 — Debug overlay F3+B local-server missing-entity label
     data and startup flag. Vanilla anchors:
     `SharedConstants.DEBUG_SHOW_LOCAL_SERVER_ENTITY_HIT_BOXES =
@@ -2388,7 +2400,8 @@ When an agent does any of the following, update this file in the same slice:
     statuses for implemented entries, startup `--debug-profile`, vanilla
     `toggleStatus` semantics, and reduced-debug filtering. The performance
     profile now projects the `GPU: 0%` utilization entry shell when the overlay
-    is visible. F3+B local-server
+    is visible, and custom-enabled day-count projects `Day #N` from the
+    overworld day clock. F3+B local-server
     debug mode now has startup `--debug-show-local-server-entity-hit-boxes`
     plus client-side `Missing Server Entity` label data when no local-server
     entity mirror exists. The
