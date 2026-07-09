@@ -21,7 +21,7 @@ use bbb_protocol::{
         VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID, VANILLA_ENTITY_TYPE_INTERACTION_ID,
         VANILLA_ENTITY_TYPE_IRON_GOLEM_ID, VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID,
         VANILLA_ENTITY_TYPE_MOOSHROOM_ID, VANILLA_ENTITY_TYPE_OCELOT_ID,
-        VANILLA_ENTITY_TYPE_PHANTOM_ID, VANILLA_ENTITY_TYPE_PIG_ID,
+        VANILLA_ENTITY_TYPE_PANDA_ID, VANILLA_ENTITY_TYPE_PHANTOM_ID, VANILLA_ENTITY_TYPE_PIG_ID,
         VANILLA_ENTITY_TYPE_POLAR_BEAR_ID, VANILLA_ENTITY_TYPE_PUFFERFISH_ID,
         VANILLA_ENTITY_TYPE_RABBIT_ID, VANILLA_ENTITY_TYPE_RAVAGER_ID,
         VANILLA_ENTITY_TYPE_SALMON_ID, VANILLA_ENTITY_TYPE_SHEEP_ID,
@@ -251,6 +251,9 @@ const DOLPHIN_DEFAULT_GOT_FISH: bool = false;
 const DOLPHIN_DEFAULT_MOISTNESS: i32 = 2400;
 const FROG_VARIANT_DATA_ID: u8 = 18;
 const FROG_DEFAULT_VARIANT_ID: i32 = 0;
+const PANDA_MAIN_GENE_DATA_ID: u8 = 21;
+const PANDA_HIDDEN_GENE_DATA_ID: u8 = 22;
+const PANDA_DEFAULT_GENE_ID: i32 = 0;
 const CREEPER_POWERED_DATA_ID: u8 = 17;
 const CREEPER_IGNITED_DATA_ID: u8 = 18;
 const CREEPER_DEFAULT_FUSE: i16 = 30;
@@ -3769,6 +3772,12 @@ fn debug_push_entity_additional_save_data(entity: &EntityState, fields: &mut Vec
             debug_push_animal_additional_save_data(fields);
             debug_push_ocelot_additional_save_data(entity, fields);
         }
+        VANILLA_ENTITY_TYPE_PANDA_ID => {
+            debug_push_mob_additional_save_data(entity, fields);
+            debug_push_ageable_mob_additional_save_data(entity, fields);
+            debug_push_animal_additional_save_data(fields);
+            debug_push_panda_additional_save_data(entity, fields);
+        }
         VANILLA_ENTITY_TYPE_PHANTOM_ID => {
             debug_push_mob_additional_save_data(entity, fields);
             debug_push_phantom_additional_save_data(entity, fields);
@@ -4048,6 +4057,35 @@ fn debug_frog_variant_resource_id(variant: i32) -> &'static str {
         1 => "minecraft:warm",
         2 => "minecraft:cold",
         _ => "minecraft:temperate",
+    }
+}
+
+fn debug_push_panda_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
+    let main_gene = debug_entity_data_byte_present(entity, PANDA_MAIN_GENE_DATA_ID)
+        .map(i32::from)
+        .unwrap_or(PANDA_DEFAULT_GENE_ID);
+    let hidden_gene = debug_entity_data_byte_present(entity, PANDA_HIDDEN_GENE_DATA_ID)
+        .map(i32::from)
+        .unwrap_or(PANDA_DEFAULT_GENE_ID);
+    fields.push(format!(
+        "MainGene: {}",
+        debug_snbt_string(debug_panda_gene_name(main_gene))
+    ));
+    fields.push(format!(
+        "HiddenGene: {}",
+        debug_snbt_string(debug_panda_gene_name(hidden_gene))
+    ));
+}
+
+fn debug_panda_gene_name(gene: i32) -> &'static str {
+    match gene {
+        1 => "lazy",
+        2 => "worried",
+        3 => "playful",
+        4 => "brown",
+        5 => "weak",
+        6 => "aggressive",
+        _ => "normal",
     }
 }
 
