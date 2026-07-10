@@ -65,7 +65,7 @@ static VANILLA_DATA_COMPONENTS: &[DataComponentDescriptor] = &[
         true,
         decode_minimum_attack_charge,
     ),
-    component(8, "minecraft:damage_type", true, skip_holder_registry),
+    component(8, "minecraft:damage_type", true, decode_damage_type),
     component(9, "minecraft:item_name", true, decode_item_name),
     component(10, "minecraft:item_model", true, decode_item_model),
     component(11, "minecraft:lore", true, decode_lore_component),
@@ -500,6 +500,15 @@ fn decode_minimum_attack_charge(
     summary: &mut DataComponentPatchSummary,
 ) -> Result<()> {
     summary.minimum_attack_charge_bits = Some(decoder.read_f32()?.to_bits());
+    Ok(())
+}
+
+fn decode_damage_type(
+    _type_id: i32,
+    decoder: &mut Decoder<'_>,
+    summary: &mut DataComponentPatchSummary,
+) -> Result<()> {
+    summary.damage_type_id = Some(decode_holder_registry_id(decoder)?);
     Ok(())
 }
 
@@ -1267,14 +1276,6 @@ fn skip_unit(
     _summary: &mut DataComponentPatchSummary,
 ) -> Result<()> {
     Ok(())
-}
-
-fn skip_holder_registry(
-    _type_id: i32,
-    decoder: &mut Decoder<'_>,
-    _summary: &mut DataComponentPatchSummary,
-) -> Result<()> {
-    decode_holder_registry(decoder)
 }
 
 fn skip_tool(

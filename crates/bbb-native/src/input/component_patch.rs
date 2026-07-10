@@ -16,6 +16,59 @@ const fn encoder(type_id: i32, encode: PersistentSnbtEncoder) -> PersistentSnbtE
     PersistentSnbtEncoderDescriptor { type_id, encode }
 }
 
+const VANILLA_DAMAGE_TYPE_RESOURCE_IDS: [&str; 50] = [
+    "minecraft:in_fire",
+    "minecraft:campfire",
+    "minecraft:lightning_bolt",
+    "minecraft:on_fire",
+    "minecraft:lava",
+    "minecraft:hot_floor",
+    "minecraft:in_wall",
+    "minecraft:cramming",
+    "minecraft:drown",
+    "minecraft:starve",
+    "minecraft:cactus",
+    "minecraft:fall",
+    "minecraft:ender_pearl",
+    "minecraft:fly_into_wall",
+    "minecraft:out_of_world",
+    "minecraft:generic",
+    "minecraft:magic",
+    "minecraft:wither",
+    "minecraft:dragon_breath",
+    "minecraft:dry_out",
+    "minecraft:sweet_berry_bush",
+    "minecraft:freeze",
+    "minecraft:stalagmite",
+    "minecraft:falling_block",
+    "minecraft:falling_anvil",
+    "minecraft:falling_stalactite",
+    "minecraft:sting",
+    "minecraft:mob_attack",
+    "minecraft:mob_attack_no_aggro",
+    "minecraft:player_attack",
+    "minecraft:spear",
+    "minecraft:arrow",
+    "minecraft:trident",
+    "minecraft:mob_projectile",
+    "minecraft:spit",
+    "minecraft:fireworks",
+    "minecraft:unattributed_fireball",
+    "minecraft:fireball",
+    "minecraft:wither_skull",
+    "minecraft:thrown",
+    "minecraft:indirect_magic",
+    "minecraft:thorns",
+    "minecraft:explosion",
+    "minecraft:player_explosion",
+    "minecraft:sonic_boom",
+    "minecraft:bad_respawn_point",
+    "minecraft:outside_border",
+    "minecraft:generic_kill",
+    "minecraft:wind_charge",
+    "minecraft:mace_smash",
+];
+
 static PERSISTENT_SNBT_ENCODERS: &[PersistentSnbtEncoderDescriptor] = &[
     encoder(0, encode_custom_data),
     encoder(1, encode_max_stack_size),
@@ -24,6 +77,7 @@ static PERSISTENT_SNBT_ENCODERS: &[PersistentSnbtEncoderDescriptor] = &[
     encoder(4, encode_unit),
     encoder(5, encode_use_effects),
     encoder(7, encode_minimum_attack_charge),
+    encoder(8, encode_damage_type),
     encoder(10, encode_item_model),
     encoder(12, encode_rarity),
     encoder(13, encode_enchantments),
@@ -191,6 +245,22 @@ fn encode_minimum_attack_charge(
     _item_runtime: Option<&NativeItemRuntime>,
 ) -> Option<String> {
     debug_range_checked_float_component_snbt(patch.minimum_attack_charge_bits?, 0.0, Some(1.0))
+}
+
+fn encode_damage_type(
+    _type_id: i32,
+    patch: &bbb_protocol::packets::DataComponentPatchSummary,
+    _item_runtime: Option<&NativeItemRuntime>,
+) -> Option<String> {
+    Some(debug_snbt_string(damage_type_resource_id(
+        patch.damage_type_id?,
+    )?))
+}
+
+fn damage_type_resource_id(id: i32) -> Option<&'static str> {
+    VANILLA_DAMAGE_TYPE_RESOURCE_IDS
+        .get(usize::try_from(id).ok()?)
+        .copied()
 }
 
 fn encode_item_model(
@@ -834,7 +904,7 @@ mod tests {
 
     #[test]
     fn encoder_registry_is_unique_sorted_and_persistent() {
-        assert_eq!(PERSISTENT_SNBT_ENCODERS.len(), 97);
+        assert_eq!(PERSISTENT_SNBT_ENCODERS.len(), 98);
         let mut ids = HashSet::new();
         let mut previous = None;
         for descriptor in PERSISTENT_SNBT_ENCODERS {
@@ -863,6 +933,78 @@ mod tests {
             encode_added_component_value_snbt(1, &patch, None),
             Some("64".to_string())
         );
+        assert_eq!(encode_added_component_value_snbt(28, &patch, None), None);
+    }
+
+    #[test]
+    fn damage_type_encoder_follows_vanilla_bootstrap_order() {
+        assert_eq!(
+            VANILLA_DAMAGE_TYPE_RESOURCE_IDS,
+            [
+                "minecraft:in_fire",
+                "minecraft:campfire",
+                "minecraft:lightning_bolt",
+                "minecraft:on_fire",
+                "minecraft:lava",
+                "minecraft:hot_floor",
+                "minecraft:in_wall",
+                "minecraft:cramming",
+                "minecraft:drown",
+                "minecraft:starve",
+                "minecraft:cactus",
+                "minecraft:fall",
+                "minecraft:ender_pearl",
+                "minecraft:fly_into_wall",
+                "minecraft:out_of_world",
+                "minecraft:generic",
+                "minecraft:magic",
+                "minecraft:wither",
+                "minecraft:dragon_breath",
+                "minecraft:dry_out",
+                "minecraft:sweet_berry_bush",
+                "minecraft:freeze",
+                "minecraft:stalagmite",
+                "minecraft:falling_block",
+                "minecraft:falling_anvil",
+                "minecraft:falling_stalactite",
+                "minecraft:sting",
+                "minecraft:mob_attack",
+                "minecraft:mob_attack_no_aggro",
+                "minecraft:player_attack",
+                "minecraft:spear",
+                "minecraft:arrow",
+                "minecraft:trident",
+                "minecraft:mob_projectile",
+                "minecraft:spit",
+                "minecraft:fireworks",
+                "minecraft:unattributed_fireball",
+                "minecraft:fireball",
+                "minecraft:wither_skull",
+                "minecraft:thrown",
+                "minecraft:indirect_magic",
+                "minecraft:thorns",
+                "minecraft:explosion",
+                "minecraft:player_explosion",
+                "minecraft:sonic_boom",
+                "minecraft:bad_respawn_point",
+                "minecraft:outside_border",
+                "minecraft:generic_kill",
+                "minecraft:wind_charge",
+                "minecraft:mace_smash",
+            ]
+        );
+
+        let mut patch = bbb_protocol::packets::DataComponentPatchSummary {
+            damage_type_id: Some(49),
+            ..Default::default()
+        };
+        assert_eq!(
+            encode_added_component_value_snbt(8, &patch, None),
+            Some("\"minecraft:mace_smash\"".to_string())
+        );
+        patch.damage_type_id = Some(50);
+        assert_eq!(encode_added_component_value_snbt(8, &patch, None), None);
+        patch.damage_type_id = Some(-1);
         assert_eq!(encode_added_component_value_snbt(8, &patch, None), None);
     }
 

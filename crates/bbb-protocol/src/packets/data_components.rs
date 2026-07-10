@@ -55,6 +55,8 @@ pub struct DataComponentPatchSummary {
     #[serde(default)]
     pub damage: Option<i32>,
     #[serde(default)]
+    pub damage_type_id: Option<i32>,
+    #[serde(default)]
     pub repair_cost: Option<i32>,
     #[serde(default)]
     pub intangible_projectile: bool,
@@ -1009,10 +1011,6 @@ fn read_nbt_len(decoder: &mut Decoder<'_>) -> Result<usize> {
 fn decode_data_component_value(decoder: &mut Decoder<'_>, type_id: i32) -> Result<()> {
     let mut ignored = DataComponentPatchSummary::default();
     data_component_descriptor_or_error(type_id)?.decode(decoder, &mut ignored)
-}
-fn decode_holder_registry(decoder: &mut Decoder<'_>) -> Result<()> {
-    decoder.read_var_i32()?;
-    Ok(())
 }
 
 fn decode_holder_registry_id(decoder: &mut Decoder<'_>) -> Result<i32> {
@@ -3213,6 +3211,29 @@ mod tests {
                 },
             }]]
         );
+    }
+
+    #[test]
+    fn decodes_damage_type_holder_registry_id() {
+        let mut payload = Encoder::new();
+        payload.write_var_i32(1);
+        payload.write_var_i32(0);
+        payload.write_var_i32(8);
+        payload.write_var_i32(49);
+
+        let payload = payload.into_inner();
+        let mut decoder = Decoder::new(&payload);
+        let patch = decode_data_component_patch_summary(&mut decoder).unwrap();
+        assert_eq!(
+            patch,
+            DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![8],
+                damage_type_id: Some(49),
+                ..DataComponentPatchSummary::default()
+            }
+        );
+        assert!(decoder.is_empty());
     }
 
     #[test]

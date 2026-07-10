@@ -248,6 +248,7 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   simple-resource (including tooltip-style/note-block-sound and vanilla/direct
   break-sound)/food/consumable/death-protection/potion-contents/suspicious-stew-effects/
   damage-resistant-tag/weapon/
+  damage-type-named-holder/
   piercing-weapon/kinetic-weapon/
   repairable/use-effects/use-remainder/
   use-cooldown/tooltip-display/attack-range/

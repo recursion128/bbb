@@ -9173,3 +9173,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   entity save 与 component encoders 共用可校验查询，实体越界显式保留 black/classic
   fallback，component unknown id 安全省略。大型 component patch test 从 95 扩展到
   97 个 added entry，并覆盖 all_black/royal 与查询边界。
+
+## 2026-07-10：ItemStack damage-type descriptor and save
+
+- [x] minecraft:damage_type 的 descriptor decode 与 named-holder 持久化（P2
+  protocol + native input）：依据 vanilla 26.1 `DamageType.CODEC/STREAM_CODEC` 与
+  `DamageTypes.bootstrap` 的 50 项实际注册顺序，protocol type id 8 不再 skip
+  holder，而是写入独立 `damage_type_id`；native encoder 使用经整表测试锁定的
+  bootstrap 顺序，支持 mace_smash 边界并对 unknown id 安全省略。大型 component
+  patch test 从 97 扩展到 98 个 added entry；unsupported-added 分发测试继续由
+  尚未实现的 tool type id 28 覆盖，不改变 removal catalog 验证。

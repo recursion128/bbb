@@ -8738,9 +8738,9 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
         EquipmentAssetCatalog::default(),
     );
     let patch = DataComponentPatchSummary {
-        added: 97,
+        added: 98,
         added_type_ids: vec![
-            0, 1, 2, 3, 4, 5, 7, 10, 12, 13, 16, 17, 18, 19, 21, 22, 23, 24, 25, 26, 27, 29, 30,
+            0, 1, 2, 3, 4, 5, 7, 8, 10, 12, 13, 16, 17, 18, 19, 21, 22, 23, 24, 25, 26, 27, 29, 30,
             31, 33, 34, 35, 36, 38, 39, 40, 42, 43, 44, 45, 46, 47, 49, 50, 51, 52, 53, 54, 56, 57,
             58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79,
             80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100,
@@ -8800,6 +8800,7 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
         max_stack_size: Some(64),
         max_damage: Some(100),
         damage: Some(7),
+        damage_type_id: Some(49),
         unbreakable: true,
         use_effects: Some(bbb_protocol::packets::UseEffectsSummary {
             can_sprint: true,
@@ -9264,6 +9265,7 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
          \"minecraft:use_effects\": {can_sprint: 1b, interact_vibrations: 0b, \
          speed_multiplier: 1.0f}, \
          \"minecraft:minimum_attack_charge\": 0.75f, \
+         \"minecraft:damage_type\": \"minecraft:mace_smash\", \
          \"minecraft:item_model\": \"minecraft:custom/diamond\", \
          \"minecraft:rarity\": \"rare\", \
          \"minecraft:enchantments\": {\"minecraft:density\": 4, \
@@ -9752,7 +9754,7 @@ fn item_stack_snbt_preserves_all_persistent_component_removals() {
 fn component_patch_dispatch_uses_encoder_registry_and_catalog_metadata() {
     let patch = DataComponentPatchSummary {
         added: 2,
-        added_type_ids: vec![1, 8],
+        added_type_ids: vec![1, 28],
         removed_type_ids: vec![8, 20],
         max_stack_size: Some(64),
         ..DataComponentPatchSummary::default()
