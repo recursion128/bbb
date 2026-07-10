@@ -233,8 +233,8 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   non-default private or otherwise unobserved scalar/flag/timer/counter
   projection,
   remaining registry-backed
-  entity-data projection (the fixed vanilla entity-type catalog is generated;
-  server dynamic-registry ordering remains), packed variant
+  entity-data projection (the fixed vanilla entity/block-entity type catalogs
+  are generated; server dynamic-registry ordering remains), packed variant
   projection, remaining codec-backed SNBT projection (component removals are complete;
   added values still include `AbstractArrow`
   `inBlockState` and `item`, remaining data-component patch entries (including

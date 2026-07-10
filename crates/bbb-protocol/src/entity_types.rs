@@ -1239,6 +1239,8 @@ mod tests {
             .arg(manifest_dir.join("src/damage_types.rs"))
             .arg("--entity-types-output")
             .arg(manifest_dir.join("src/entity_types.rs"))
+            .arg("--block-entity-types-output")
+            .arg(manifest_dir.join("src/block_entity_types.rs"))
             .status()
             .unwrap();
         assert!(status.success());

@@ -9287,3 +9287,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   手写数字、运行时 `include_str!` 自解析和独立 peaceful match；连续/唯一/固定长度、
   属性计数、边界与 regeneration tests 锁定生成物。未增加实体行为支持，服务器动态
   registry remap 及核心 registry 队列其余子项继续由账本跟踪。
+
+## 2026-07-10：Vanilla block-entity-type registry catalog generation
+
+- [x] core built-in registry catalog 的 block-entity-type 子项（P1 mechanical
+  vanilla data）：扩展统一生成器，从 vanilla 26.1 `BlockEntityType.java` 的 49 个
+  静态 `register` 调用生成 checked-in id/resource/order/constant-name descriptor，
+  以 `bbb-protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPES` 替代私有 49 项
+  字面量数组；原 type-id 查询函数及 native consumer 保持兼容，连续/唯一/固定长度、
+  wire 边界与 regeneration tests 锁定生成物。未增加 block entity 行为支持，核心
+  registry 队列的 component/predicate/particle 子项仍保留。
