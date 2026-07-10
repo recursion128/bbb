@@ -6595,27 +6595,26 @@ fn debug_push_cow_additional_save_data(entity: &EntityState, fields: &mut Vec<St
     .unwrap_or(COW_DEFAULT_SOUND_VARIANT_ID);
     fields.push(format!(
         "variant: {}",
-        debug_snbt_string(debug_cow_variant_resource_id(variant))
+        debug_snbt_string(cow_variant_resource_id(variant).unwrap_or("minecraft:temperate"))
     ));
     fields.push(format!(
         "sound_variant: {}",
-        debug_snbt_string(debug_cow_sound_variant_resource_id(sound_variant))
+        debug_snbt_string(
+            cow_sound_variant_resource_id(sound_variant).unwrap_or("minecraft:classic")
+        )
     ));
 }
 
-fn debug_cow_variant_resource_id(variant: i32) -> &'static str {
-    match variant {
-        1 => "minecraft:warm",
-        2 => "minecraft:cold",
-        _ => "minecraft:temperate",
-    }
+fn cow_variant_resource_id(variant: i32) -> Option<&'static str> {
+    ["minecraft:temperate", "minecraft:warm", "minecraft:cold"]
+        .get(usize::try_from(variant).ok()?)
+        .copied()
 }
 
-fn debug_cow_sound_variant_resource_id(variant: i32) -> &'static str {
-    match variant {
-        1 => "minecraft:moody",
-        _ => "minecraft:classic",
-    }
+fn cow_sound_variant_resource_id(variant: i32) -> Option<&'static str> {
+    ["minecraft:classic", "minecraft:moody"]
+        .get(usize::try_from(variant).ok()?)
+        .copied()
 }
 
 fn debug_push_mooshroom_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {

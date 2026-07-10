@@ -9143,3 +9143,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   entity save 与 component encoders 共用两组可校验资源查询，并分别保留
   temperate/classic fallback 或对 unknown id 安全省略。大型 component patch test
   从 89 扩展到 91 个 added entry，并覆盖双 descriptor 顺序与 bootstrap 边界。
+
+## 2026-07-10：ItemStack cow variant descriptors and save
+
+- [x] minecraft:cow/variant 与 minecraft:cow/sound_variant 的 descriptor decode
+  与 named-holder 持久化（P2 protocol + native input）：依据 vanilla 26.1 两个
+  fixed-registry Codec 及 bootstrap 顺序（variant 为 temperate/warm/cold，sound
+  为 classic/moody），protocol type id 95/96 分别写入独立 holder id；native
+  entity save 与 component encoders 共用可校验查询，分别保持默认 fallback 或
+  unknown-id 省略。大型 component patch test 从 91 扩展到 93 个 added entry，
+  并覆盖双 descriptor 与 cold/moody 分支。
