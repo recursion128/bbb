@@ -19,6 +19,10 @@ use bbb_protocol::packets::{
 use serde::{Deserialize, Serialize};
 
 pub(crate) use super::schema::VANILLA_ENTITY_POSE_DATA_ID as ENTITY_DATA_POSE_ID;
+use super::schema::{
+    VANILLA_AGEABLE_MOB_BABY_DATA_ID as AGEABLE_MOB_BABY_DATA_ID,
+    VANILLA_AGEABLE_MOB_DEFAULT_BABY as AGEABLE_MOB_DEFAULT_BABY,
+};
 use super::{
     is_vanilla_boat_type, is_vanilla_minecart_type, EntityClientAnimationState, EntityVec3,
 };
@@ -35,7 +39,6 @@ pub(crate) const ITEM_FRAME_ENTITY_TYPE_IDS: [i32; 2] = [
     VANILLA_ENTITY_TYPE_GLOW_ITEM_FRAME_ID,
 ];
 
-const AGEABLE_MOB_BABY_DATA_ID: u8 = 16;
 const PIGLIN_BABY_DATA_ID: u8 = 17;
 const ZOMBIE_BABY_DATA_ID: u8 = 16;
 const INTERACTION_DATA_WIDTH_ID: u8 = 8;
@@ -637,7 +640,11 @@ fn polar_bear_pick_bounds(
     data_values: &[EntityDataValue],
     client_animations: Option<EntityClientAnimationState>,
 ) -> Option<EntityPickBoundsState> {
-    let bounds = if entity_data_bool(data_values, AGEABLE_MOB_BABY_DATA_ID, false) {
+    let bounds = if entity_data_bool(
+        data_values,
+        AGEABLE_MOB_BABY_DATA_ID,
+        AGEABLE_MOB_DEFAULT_BABY,
+    ) {
         vanilla_pick_bounds_for_type(VANILLA_ENTITY_TYPE_POLAR_BEAR_ID)?
             .scale_dimensions(DEFAULT_AGEABLE_BABY_SCALE)
     } else {
@@ -726,7 +733,11 @@ fn camel_pick_bounds(
     let bounds = EntityPickBoundsState::from_base_size(1.7, height, 0.0);
 
     if entity_type_id == VANILLA_ENTITY_TYPE_CAMEL_ID
-        && entity_data_bool(data_values, AGEABLE_MOB_BABY_DATA_ID, false)
+        && entity_data_bool(
+            data_values,
+            AGEABLE_MOB_BABY_DATA_ID,
+            AGEABLE_MOB_DEFAULT_BABY,
+        )
     {
         bounds.scale_dimensions(CAMEL_BABY_SCALE)
     } else {
@@ -736,7 +747,11 @@ fn camel_pick_bounds(
 
 fn camel_age_scale(entity_type_id: i32, data_values: &[EntityDataValue]) -> f32 {
     if entity_type_id == VANILLA_ENTITY_TYPE_CAMEL_ID
-        && entity_data_bool(data_values, AGEABLE_MOB_BABY_DATA_ID, false)
+        && entity_data_bool(
+            data_values,
+            AGEABLE_MOB_BABY_DATA_ID,
+            AGEABLE_MOB_DEFAULT_BABY,
+        )
     {
         CAMEL_BABY_SCALE
     } else {
@@ -819,7 +834,11 @@ fn goat_pick_bounds(data_values: &[EntityDataValue]) -> EntityPickBoundsState {
         EntityPickBoundsState::from_base_size(0.9, 1.3, 0.0)
     };
 
-    if entity_data_bool(data_values, AGEABLE_MOB_BABY_DATA_ID, false) {
+    if entity_data_bool(
+        data_values,
+        AGEABLE_MOB_BABY_DATA_ID,
+        AGEABLE_MOB_DEFAULT_BABY,
+    ) {
         bounds.scale_dimensions(GOAT_BABY_SCALE)
     } else {
         bounds
@@ -840,7 +859,11 @@ fn sniffer_pick_bounds(data_values: &[EntityDataValue]) -> EntityPickBoundsState
     };
     let bounds = EntityPickBoundsState::from_base_size(1.9, height, 0.0);
 
-    if entity_data_bool(data_values, AGEABLE_MOB_BABY_DATA_ID, false) {
+    if entity_data_bool(
+        data_values,
+        AGEABLE_MOB_BABY_DATA_ID,
+        AGEABLE_MOB_DEFAULT_BABY,
+    ) {
         bounds.scale_dimensions(DEFAULT_AGEABLE_BABY_SCALE)
     } else {
         bounds
@@ -894,9 +917,11 @@ pub(crate) fn vanilla_is_baby(entity_type_id: i32, data_values: &[EntityDataValu
         | VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID
         | VANILLA_ENTITY_TYPE_WOLF_ID
         | VANILLA_ENTITY_TYPE_ZOGLIN_ID
-        | VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID => {
-            entity_data_bool(data_values, AGEABLE_MOB_BABY_DATA_ID, false)
-        }
+        | VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID => entity_data_bool(
+            data_values,
+            AGEABLE_MOB_BABY_DATA_ID,
+            AGEABLE_MOB_DEFAULT_BABY,
+        ),
         _ => false,
     }
 }

@@ -35,6 +35,8 @@ use bbb_world::{
     EntityPickTargetState, GuardianBeamSource as WorldGuardianBeamSource,
     LlamaBodyDecorColor as WorldLlamaBodyDecorColor, RegistryContentState,
     WolfArmorCrackiness as WorldWolfArmorCrackiness, WorldStore,
+    VANILLA_AGEABLE_MOB_BABY_DATA_ID as AGEABLE_MOB_BABY_DATA_ID,
+    VANILLA_AGEABLE_MOB_DEFAULT_BABY as AGEABLE_MOB_DEFAULT_BABY,
     VANILLA_AVATAR_DEFAULT_MODEL_CUSTOMIZATION as AVATAR_PLAYER_DEFAULT_MODEL_CUSTOMIZATION,
     VANILLA_AVATAR_MODEL_CUSTOMIZATION_DATA_ID as AVATAR_MODEL_CUSTOMIZATION_DATA_ID,
     VANILLA_ENTITY_CUSTOM_NAME_DATA_ID as ENTITY_CUSTOM_NAME_DATA_ID,
@@ -74,7 +76,6 @@ const ENTITY_EYE_HEIGHT_PADDING: f32 = 0.01;
 const ENTITY_VIEW_VECTOR_LENGTH: f32 = 2.0;
 const ENTITY_POSITION_POINT_SIZE: f32 = 2.0;
 const MANNEQUIN_DEFAULT_MODEL_CUSTOMIZATION: i8 = PlayerModelPartVisibility::ALL_MASK as i8;
-const AGEABLE_MOB_BABY_DATA_ID: u8 = 16;
 const ZOMBIE_BABY_DATA_ID: u8 = 16;
 /// Vanilla `Zombie.DATA_DROWNED_CONVERSION_ID` (synced boolean): `Entity` 0..=7,
 /// `LivingEntity` 8..=14, `Mob` 15, `Zombie` baby 16 / special-type 17 /

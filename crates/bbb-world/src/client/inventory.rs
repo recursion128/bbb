@@ -35,7 +35,10 @@ use bbb_protocol::packets::{
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 
-use crate::entities::{EntityStore, ATTACK_SWING_DURATION};
+use crate::entities::{
+    EntityStore, ATTACK_SWING_DURATION, VANILLA_AGEABLE_MOB_BABY_DATA_ID,
+    VANILLA_AGEABLE_MOB_DEFAULT_BABY,
+};
 use crate::item_profiles::{
     clamp_vanilla_item_max_stack_size, ItemProfiles, VANILLA_DEFAULT_MAX_STACK_SIZE,
 };
@@ -219,7 +222,6 @@ const QUICKCRAFT_TYPE_CLONE: i8 = 2;
 const QUICKCRAFT_HEADER_START: i8 = 0;
 const QUICKCRAFT_HEADER_CONTINUE: i8 = 1;
 const QUICKCRAFT_HEADER_END: i8 = 2;
-const VANILLA_AGEABLE_MOB_BABY_DATA_ID: u8 = 16;
 const VANILLA_MOUNT_TAME_FLAGS_DATA_ID: u8 = 18;
 const VANILLA_ABSTRACT_HORSE_TAME_FLAG: i8 = 2;
 const VANILLA_TAMABLE_ANIMAL_TAME_FLAG: i8 = 4;

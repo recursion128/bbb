@@ -52,6 +52,8 @@ pub use schema::{
     vanilla_entity_metadata_field, vanilla_entity_metadata_schema, VanillaEntityMetadataDefault,
     VanillaEntityMetadataFamily, VanillaEntityMetadataFamilySchema,
     VanillaEntityMetadataFieldSchema, VanillaEntityMetadataFlagSchema,
+    VANILLA_AGEABLE_MOB_AGE_LOCKED_DATA_ID, VANILLA_AGEABLE_MOB_BABY_DATA_ID,
+    VANILLA_AGEABLE_MOB_DEFAULT_AGE_LOCKED, VANILLA_AGEABLE_MOB_DEFAULT_BABY,
     VANILLA_AVATAR_DEFAULT_MODEL_CUSTOMIZATION, VANILLA_AVATAR_MAIN_HAND_DATA_ID,
     VANILLA_AVATAR_MODEL_CUSTOMIZATION_DATA_ID, VANILLA_AVATAR_MODEL_PART_CAPE,
     VANILLA_AVATAR_MODEL_PART_HAT, VANILLA_AVATAR_MODEL_PART_JACKET,

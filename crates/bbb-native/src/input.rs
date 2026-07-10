@@ -85,6 +85,10 @@ use bbb_protocol::{
 use bbb_world::{
     BlockPos, EntityState, EntityVec3, LocalPlayerInputState, LocalPlayerPoseState,
     TagQueryResponseState, WorldStore,
+    VANILLA_AGEABLE_MOB_AGE_LOCKED_DATA_ID as AGEABLE_MOB_AGE_LOCKED_DATA_ID,
+    VANILLA_AGEABLE_MOB_BABY_DATA_ID as AGEABLE_MOB_BABY_DATA_ID,
+    VANILLA_AGEABLE_MOB_DEFAULT_AGE_LOCKED as AGEABLE_MOB_DEFAULT_AGE_LOCKED,
+    VANILLA_AGEABLE_MOB_DEFAULT_BABY as AGEABLE_MOB_DEFAULT_BABY,
     VANILLA_ENTITY_AIR_SUPPLY_DATA_ID as ENTITY_AIR_SUPPLY_DATA_ID,
     VANILLA_ENTITY_CUSTOM_NAME_DATA_ID as ENTITY_CUSTOM_NAME_DATA_ID,
     VANILLA_ENTITY_CUSTOM_NAME_VISIBLE_DATA_ID as ENTITY_CUSTOM_NAME_VISIBLE_DATA_ID,
@@ -347,12 +351,9 @@ const ARMOR_STAND_DEFAULT_LEFT_LEG_POSE: [f32; 3] = [-1.0, 0.0, -1.0];
 const ARMOR_STAND_DEFAULT_RIGHT_LEG_POSE: [f32; 3] = [1.0, 0.0, 1.0];
 const MOB_DEFAULT_CAN_PICK_UP_LOOT: bool = false;
 const MOB_DEFAULT_PERSISTENCE_REQUIRED: bool = false;
-const AGEABLE_MOB_BABY_DATA_ID: u8 = 16;
-const AGEABLE_MOB_AGE_LOCKED_DATA_ID: u8 = 17;
 const AGEABLE_MOB_CLIENT_ADULT_AGE: i32 = 1;
 const AGEABLE_MOB_CLIENT_BABY_AGE: i32 = -1;
 const AGEABLE_MOB_DEFAULT_FORCED_AGE: i32 = 0;
-const AGEABLE_MOB_DEFAULT_AGE_LOCKED: bool = false;
 const ANIMAL_DEFAULT_IN_LOVE: i32 = 0;
 const ALLAY_VIBRATION_SELECTOR_DEFAULT_TICK: i64 = -1;
 const ALLAY_VIBRATION_DEFAULT_EVENT_DELAY: i32 = 0;
@@ -6198,7 +6199,8 @@ fn debug_mob_default_persistence_required(entity_type_id: i32) -> bool {
 }
 
 fn debug_push_ageable_mob_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
-    let is_baby = debug_entity_data_bool_present(entity, AGEABLE_MOB_BABY_DATA_ID).unwrap_or(false);
+    let is_baby = debug_entity_data_bool_present(entity, AGEABLE_MOB_BABY_DATA_ID)
+        .unwrap_or(AGEABLE_MOB_DEFAULT_BABY);
     let age = if is_baby {
         AGEABLE_MOB_CLIENT_BABY_AGE
     } else {

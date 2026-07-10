@@ -43,7 +43,11 @@ pub(super) fn mount_nautilus_can_use_equipment_slots(
 }
 
 pub(super) fn mount_entity_is_ageable_baby(data_values: &[ProtocolEntityDataValue]) -> bool {
-    entity_data_bool(data_values, VANILLA_AGEABLE_MOB_BABY_DATA_ID, false)
+    entity_data_bool(
+        data_values,
+        VANILLA_AGEABLE_MOB_BABY_DATA_ID,
+        VANILLA_AGEABLE_MOB_DEFAULT_BABY,
+    )
 }
 
 pub(super) fn entity_data_bool(

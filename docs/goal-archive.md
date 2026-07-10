@@ -9466,3 +9466,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   与 Mob 分支在 id 15 的合法复用、parent 查询边界和全部 serializer/default。focused tests
   复验 world player projections 及 native player/mannequin render-state 行为；未迁移
   ageable 分支或具体 entity 子类字段。
+
+## 2026-07-10：Entity metadata schema phase 4（AgeableMob）
+
+- [x] entity metadata schema 的标准 ageable 分支：核对 `AgeableMob extends PathfinderMob
+  extends Mob` 且中间层无 accessor，新增 parent=`Mob`、inherited-field count 16，集中声明
+  `DATA_BABY_ID`/`AGE_LOCKED` BOOLEAN ids 16/17 与 false/false 默认值。world dimensions、
+  mount inventory slot gating、native entity-scene baby model 与 F3+I age save projection 删除
+  本地 id/default 副本；schema/focused tests 复验继承 offset、serializer/default、mount/bounds、
+  chicken model 和 axolotl save-NBT。Zombie/AbstractPiglin 等不继承 `AgeableMob` 的具体 baby
+  accessor 仍留给各自 family slice。

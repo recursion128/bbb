@@ -13,6 +13,7 @@ pub enum VanillaEntityMetadataFamily {
     Entity,
     LivingEntity,
     Mob,
+    AgeableMob,
     Avatar,
     Player,
 }
@@ -73,6 +74,8 @@ pub const VANILLA_LIVING_ENTITY_ARROW_COUNT_DATA_ID: u8 = 12;
 pub const VANILLA_LIVING_ENTITY_STINGER_COUNT_DATA_ID: u8 = 13;
 pub const VANILLA_LIVING_ENTITY_SLEEPING_POS_DATA_ID: u8 = 14;
 pub const VANILLA_MOB_FLAGS_DATA_ID: u8 = 15;
+pub const VANILLA_AGEABLE_MOB_BABY_DATA_ID: u8 = 16;
+pub const VANILLA_AGEABLE_MOB_AGE_LOCKED_DATA_ID: u8 = 17;
 pub const VANILLA_AVATAR_MAIN_HAND_DATA_ID: u8 = 15;
 pub const VANILLA_AVATAR_MODEL_CUSTOMIZATION_DATA_ID: u8 = 16;
 pub const VANILLA_PLAYER_ABSORPTION_DATA_ID: u8 = 17;
@@ -105,6 +108,8 @@ pub const VANILLA_AVATAR_MODEL_PART_HAT: i8 = 1 << 6;
 pub const VANILLA_HUMANOID_ARM_LEFT_ID: i32 = 0;
 pub const VANILLA_HUMANOID_ARM_RIGHT_ID: i32 = 1;
 pub const VANILLA_AVATAR_DEFAULT_MODEL_CUSTOMIZATION: i8 = 0;
+pub const VANILLA_AGEABLE_MOB_DEFAULT_BABY: bool = false;
+pub const VANILLA_AGEABLE_MOB_DEFAULT_AGE_LOCKED: bool = false;
 pub const VANILLA_PLAYER_DEFAULT_ABSORPTION: f32 = 0.0;
 pub const VANILLA_PLAYER_DEFAULT_SCORE: i32 = 0;
 
@@ -290,6 +295,21 @@ const MOB_FLAGS: &[VanillaEntityMetadataFlagSchema] = &[
     },
 ];
 
+const AGEABLE_MOB_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_BABY_ID",
+        data_id: VANILLA_AGEABLE_MOB_BABY_DATA_ID,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+        default: VanillaEntityMetadataDefault::Boolean(VANILLA_AGEABLE_MOB_DEFAULT_BABY),
+    },
+    VanillaEntityMetadataFieldSchema {
+        name: "AGE_LOCKED",
+        data_id: VANILLA_AGEABLE_MOB_AGE_LOCKED_DATA_ID,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+        default: VanillaEntityMetadataDefault::Boolean(VANILLA_AGEABLE_MOB_DEFAULT_AGE_LOCKED),
+    },
+];
+
 const AVATAR_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[
     VanillaEntityMetadataFieldSchema {
         name: "DATA_PLAYER_MAIN_HAND",
@@ -395,6 +415,14 @@ const MOB_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamil
     own_flags: MOB_FLAGS,
 };
 
+const AGEABLE_MOB_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamilySchema {
+    family: VanillaEntityMetadataFamily::AgeableMob,
+    parent: Some(VanillaEntityMetadataFamily::Mob),
+    inherited_field_count: MOB_SCHEMA.inherited_field_count + MOB_FIELDS.len() as u8,
+    own_fields: AGEABLE_MOB_FIELDS,
+    own_flags: &[],
+};
+
 const AVATAR_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamilySchema {
     family: VanillaEntityMetadataFamily::Avatar,
     parent: Some(VanillaEntityMetadataFamily::LivingEntity),
@@ -419,6 +447,7 @@ pub const fn vanilla_entity_metadata_schema(
         VanillaEntityMetadataFamily::Entity => &ENTITY_SCHEMA,
         VanillaEntityMetadataFamily::LivingEntity => &LIVING_ENTITY_SCHEMA,
         VanillaEntityMetadataFamily::Mob => &MOB_SCHEMA,
+        VanillaEntityMetadataFamily::AgeableMob => &AGEABLE_MOB_SCHEMA,
         VanillaEntityMetadataFamily::Avatar => &AVATAR_SCHEMA,
         VanillaEntityMetadataFamily::Player => &PLAYER_SCHEMA,
     }
@@ -479,6 +508,18 @@ mod tests {
                 .map(|field| field.data_id)
                 .collect::<Vec<_>>(),
             vec![15]
+        );
+
+        let ageable = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::AgeableMob);
+        assert_eq!(ageable.parent, Some(VanillaEntityMetadataFamily::Mob));
+        assert_eq!(ageable.inherited_field_count, 16);
+        assert_eq!(
+            ageable
+                .own_fields
+                .iter()
+                .map(|field| field.data_id)
+                .collect::<Vec<_>>(),
+            (16..=17).collect::<Vec<_>>()
         );
 
         let avatar = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Avatar);
@@ -620,6 +661,23 @@ mod tests {
                 serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 default: VanillaEntityMetadataDefault::Byte(0),
             }]
+        );
+        assert_eq!(
+            vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::AgeableMob).own_fields,
+            &[
+                VanillaEntityMetadataFieldSchema {
+                    name: "DATA_BABY_ID",
+                    data_id: 16,
+                    serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+                    default: VanillaEntityMetadataDefault::Boolean(false),
+                },
+                VanillaEntityMetadataFieldSchema {
+                    name: "AGE_LOCKED",
+                    data_id: 17,
+                    serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+                    default: VanillaEntityMetadataDefault::Boolean(false),
+                },
+            ]
         );
         assert_eq!(
             vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Avatar).own_fields,
@@ -831,6 +889,7 @@ mod tests {
             VanillaEntityMetadataFamily::Entity,
             VanillaEntityMetadataFamily::LivingEntity,
             VanillaEntityMetadataFamily::Mob,
+            VanillaEntityMetadataFamily::AgeableMob,
             VanillaEntityMetadataFamily::Avatar,
             VanillaEntityMetadataFamily::Player,
         ] {

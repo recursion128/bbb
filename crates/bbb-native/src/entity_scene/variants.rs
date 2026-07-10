@@ -1224,7 +1224,7 @@ pub(super) fn tropical_fish_pattern_color(
 }
 
 pub(super) fn ageable_baby(values: &[bbb_protocol::packets::EntityDataValue]) -> bool {
-    entity_data_bool(values, AGEABLE_MOB_BABY_DATA_ID, false)
+    entity_data_bool(values, AGEABLE_MOB_BABY_DATA_ID, AGEABLE_MOB_DEFAULT_BABY)
 }
 
 /// Vanilla `ArmadilloModel.setupAnim` `isHidingInShell` swap, projected from the synced
