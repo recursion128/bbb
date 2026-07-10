@@ -15,6 +15,10 @@ use bbb_item_model::{
 use bbb_net::{NetCommand, NetEvent};
 use bbb_protocol::{
     codec::Decoder,
+    entity_types::{
+        VANILLA_ENTITY_TYPE_CAVE_SPIDER_ID, VANILLA_ENTITY_TYPE_CREEPER_ID,
+        VANILLA_ENTITY_TYPE_ENDERMAN_ID, VANILLA_ENTITY_TYPE_SPIDER_ID,
+    },
     packets::{
         AdvancementFrameType, GameType, ItemCostSummary, ItemStackSummary,
         MapPostProcessingSummary, RemoteDebugSampleType, SlotDisplaySummary, Vec3d,
@@ -2173,6 +2177,10 @@ pub(crate) fn pump_network_and_terrain(
     let enchantment_keys = world_enchantment_keys(world);
     let attribute_keys = world_attribute_keys(world);
     let camera_pose = camera_pose_from_world(world);
+    // Vanilla `GameRenderer.checkEntityPostEffect` stores this independently from the
+    // post-chain active toggle. bbb is currently first-person-only, so the current camera
+    // entity is the complete input to the same-frame renderer mirror.
+    let current_post_effect_id = current_post_effect_id_from_world(world);
     let renderer_counters = renderer.counters();
     let hud_audio_counters = audio_events
         .as_deref()
@@ -2196,6 +2204,7 @@ pub(crate) fn pump_network_and_terrain(
             hud_debug_tps_sampler,
             net_counters,
             &hud_audio_counters,
+            current_post_effect_id,
         ),
         input
             .debug_profiler_chart_visible()
@@ -2500,6 +2509,7 @@ pub(crate) fn pump_network_and_terrain(
             sign_text_surfaces,
             entity_model_instances: entity_instances,
             camera_pose,
+            current_post_effect_id: current_post_effect_id.map(str::to_owned),
             shader_game_time_ticks,
             cloud_frame,
             weather_render_state,
@@ -3284,6 +3294,7 @@ fn hud_debug_overlay(
         tps_sampler,
         net_counters,
         &audio_counters,
+        current_post_effect_id_from_world(world),
     )
 }
 
@@ -3304,6 +3315,7 @@ fn hud_debug_overlay_at_partial_tick(
     tps_sampler: &HudDebugTpsSampler,
     net_counters: &NetCounters,
     audio_counters: &AudioCounters,
+    current_post_effect_id: Option<&str>,
 ) -> Option<HudDebugOverlay> {
     let reduced_debug_info = world.local_player_has_reduced_debug_info();
     let entry_enabled = |entry| input.debug_screen_entry_enabled(entry, reduced_debug_info);
@@ -3424,6 +3436,11 @@ fn hud_debug_overlay_at_partial_tick(
     }
     if entry_enabled(DebugScreenEntryId::SoundMood) {
         left_lines.push(hud_debug_sound_mood_line(audio_counters));
+    }
+    if entry_enabled(DebugScreenEntryId::PostEffect) {
+        if let Some(post_effect_line) = hud_debug_post_effect_line(current_post_effect_id) {
+            left_lines.push(post_effect_line);
+        }
     }
     let debug_crosshair = camera_pose
         .filter(|_| entry_enabled(DebugScreenEntryId::ThreeDimensionalCrosshair))
@@ -4244,6 +4261,22 @@ fn hud_debug_sound_mood_line(counters: &AudioCounters) -> String {
         counters.sound_streaming_channels_capacity,
         counters.sound_mood_percent.min(100)
     )
+}
+
+fn hud_debug_post_effect_line(current_post_effect_id: Option<&str>) -> Option<String> {
+    Some(format!("Post: {}", current_post_effect_id?))
+}
+
+fn current_post_effect_id_from_world(world: &WorldStore) -> Option<&'static str> {
+    let camera_entity_id = world.local_player().camera.entity_id?;
+    match world.entity_type_id(camera_entity_id)? {
+        VANILLA_ENTITY_TYPE_CREEPER_ID => Some("minecraft:creeper"),
+        VANILLA_ENTITY_TYPE_CAVE_SPIDER_ID | VANILLA_ENTITY_TYPE_SPIDER_ID => {
+            Some("minecraft:spider")
+        }
+        VANILLA_ENTITY_TYPE_ENDERMAN_ID => Some("minecraft:invert"),
+        _ => None,
+    }
 }
 
 fn hud_debug_sound_cache_bytes_to_mebibytes(bytes: u64) -> u64 {

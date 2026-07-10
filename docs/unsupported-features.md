@@ -185,6 +185,9 @@ Environment:
 
 - Expand custom-dimension `EnvironmentAttributes` maps instead of collapsing
   them to the built-in dimension profile.
+- Implement the creeper/spider/invert spectator post chains, the independent
+  F4 `effectActive` toggle, and the perspective-change clear lifecycle. The
+  renderer-owned current id currently drives only the debug entry mirror.
 
 ## HUD overlay and screen render surfaces
 
@@ -376,10 +379,9 @@ back into a todo. Do not delete these.
 - **Stratum/blur depth-clear** (`GuiRenderer.java`, before/after blur). Restart
   when a blur-backed screen exists.
 - **Client-only debug entries with no HUD line**: LocalDifficulty,
-  EntitySpawnCounts, ChunkGenerationStats, PostEffect. Restart when an integrated
+  EntitySpawnCounts, ChunkGenerationStats. Restart when an integrated
   local-server mirror (`ServerLevel`, `NaturalSpawner.SpawnState`,
-  `ChunkGenerator` / `RandomState` / `BiomeSource`) or a renderer
-  post-chain/current-post-effect mirror exists.
+  `ChunkGenerator` / `RandomState` / `BiomeSource`) exists.
 
 ## Block entities and terrain
 

@@ -192,6 +192,7 @@ pub struct Renderer {
     pub(super) counters: RendererCounters,
     pub(super) started_at: Instant,
     pub(super) shader_game_time_ticks: f64,
+    pub(super) current_post_effect_id: Option<String>,
     pub(super) main_target: MainTarget,
     pub(super) translucent_target: TranslucentTarget,
     pub(super) item_entity_target: ItemEntityTarget,
@@ -1255,6 +1256,7 @@ impl Renderer {
             },
             started_at: Instant::now(),
             shader_game_time_ticks: 0.0,
+            current_post_effect_id: None,
             main_target,
             translucent_target,
             item_entity_target,
@@ -1774,6 +1776,14 @@ impl Renderer {
 
     pub fn counters(&self) -> RendererCounters {
         self.counters.clone()
+    }
+
+    pub fn set_current_post_effect_id(&mut self, id: Option<String>) {
+        self.current_post_effect_id = id;
+    }
+
+    pub fn current_post_effect_id(&self) -> Option<&str> {
+        self.current_post_effect_id.as_deref()
     }
 
     pub fn set_camera_pose(&mut self, pose: Option<CameraPose>) {

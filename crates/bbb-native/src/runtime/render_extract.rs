@@ -835,6 +835,7 @@ pub(crate) struct RendererFrame {
     pub(crate) sign_text_surfaces: Vec<SignTextSurface>,
     pub(crate) entity_model_instances: Vec<EntityModelInstance>,
     pub(crate) camera_pose: Option<CameraPose>,
+    pub(crate) current_post_effect_id: Option<String>,
     pub(crate) shader_game_time_ticks: f64,
     pub(crate) cloud_frame: CloudFrame,
     pub(crate) weather_render_state: WeatherRenderState,
@@ -934,6 +935,7 @@ pub(crate) fn apply_renderer_frame(renderer: &mut Renderer, frame: RendererFrame
     renderer.set_sign_text_surfaces(frame.sign_text_surfaces);
     renderer.set_entity_model_instances(frame.entity_model_instances);
     renderer.set_camera_pose(frame.camera_pose);
+    renderer.set_current_post_effect_id(frame.current_post_effect_id);
     renderer.set_shader_game_time_ticks(frame.shader_game_time_ticks);
     renderer.set_cloud_frame(frame.cloud_frame);
     renderer.set_weather_render_state(frame.weather_render_state);

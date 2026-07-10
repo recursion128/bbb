@@ -1751,6 +1751,7 @@ fn hud_debug_overlay_projects_custom_chunk_render_stats_under_reduced_debug_info
         &HudDebugTpsSampler::default(),
         &NetCounters::default(),
         &AudioCounters::default(),
+        None,
     )
     .expect("chunk render stats should be allowed under reduced debug info");
 
@@ -1865,6 +1866,7 @@ fn hud_debug_overlay_projects_custom_particle_render_stats() {
         &HudDebugTpsSampler::default(),
         &NetCounters::default(),
         &AudioCounters::default(),
+        None,
     )
     .expect("particle render stats should show outside reduced debug info");
 
@@ -1960,6 +1962,7 @@ fn hud_debug_overlay_projects_custom_sound_cache_under_reduced_debug_info() {
         &HudDebugTpsSampler::default(),
         &NetCounters::default(),
         &audio_counters,
+        None,
     )
     .expect("sound cache should be allowed under reduced debug info");
 
@@ -2009,6 +2012,7 @@ fn hud_debug_overlay_projects_custom_sound_mood() {
         &HudDebugTpsSampler::default(),
         &NetCounters::default(),
         &audio_counters,
+        None,
     )
     .expect("custom sound mood entry should show while always-on");
 
@@ -2045,6 +2049,78 @@ fn hud_debug_overlay_suppresses_post_effect_without_current_effect() {
         overlay.is_none(),
         "post-effect entry should not render until a current post effect exists"
     );
+}
+
+#[test]
+fn hud_debug_post_effect_tracks_vanilla_camera_entity_families() {
+    let mut world = world_with_dimension_height(0, "minecraft:overworld", 384);
+    for (entity_id, entity_type_id, expected) in [
+        (100, VANILLA_ENTITY_TYPE_CREEPER_ID, "minecraft:creeper"),
+        (101, VANILLA_ENTITY_TYPE_SPIDER_ID, "minecraft:spider"),
+        (102, VANILLA_ENTITY_TYPE_CAVE_SPIDER_ID, "minecraft:spider"),
+        (103, VANILLA_ENTITY_TYPE_ENDERMAN_ID, "minecraft:invert"),
+    ] {
+        world.apply_add_entity(test_add_entity(entity_id, entity_type_id));
+        assert!(world.apply_set_camera(bbb_protocol::packets::SetCamera {
+            camera_id: entity_id,
+        }));
+        assert_eq!(current_post_effect_id_from_world(&world), Some(expected));
+        assert_eq!(
+            hud_debug_post_effect_line(Some(expected)).as_deref(),
+            Some(format!("Post: {expected}").as_str())
+        );
+    }
+
+    let mut input = ClientInputState::new(true);
+    input.set_debug_screen_entry_status(
+        DebugScreenEntryId::PostEffect,
+        crate::debug_entries::DebugScreenEntryStatus::AlwaysOn,
+    );
+    let overlay = hud_debug_overlay(
+        &input,
+        &world,
+        None,
+        winit::dpi::PhysicalSize::new(320, 240),
+        &HudDebugFpsSampler::default(),
+        VANILLA_UNLIMITED_FRAMERATE_LIMIT,
+        true,
+        &HudDebugNetworkSampler::default(),
+        &HudDebugTpsSampler::default(),
+        &NetCounters::default(),
+    )
+    .expect("current enderman camera post effect should render");
+    assert_eq!(overlay.left_lines, vec!["Post: minecraft:invert"]);
+
+    world.apply_add_entity(test_add_entity(104, VANILLA_26_1_PLAYER_ENTITY_TYPE_ID));
+    assert!(world.apply_set_camera(bbb_protocol::packets::SetCamera { camera_id: 104 }));
+    assert_eq!(current_post_effect_id_from_world(&world), None);
+}
+
+#[test]
+fn hud_debug_post_effect_is_filtered_by_reduced_debug_info() {
+    let mut world =
+        world_with_dimension_height_and_reduced_debug_info(0, "minecraft:overworld", 384, true);
+    world.apply_add_entity(test_add_entity(100, VANILLA_ENTITY_TYPE_CREEPER_ID));
+    assert!(world.apply_set_camera(bbb_protocol::packets::SetCamera { camera_id: 100 }));
+    let mut input = ClientInputState::new(true);
+    input.set_debug_screen_entry_status(
+        DebugScreenEntryId::PostEffect,
+        crate::debug_entries::DebugScreenEntryStatus::AlwaysOn,
+    );
+
+    assert!(hud_debug_overlay(
+        &input,
+        &world,
+        None,
+        winit::dpi::PhysicalSize::new(320, 240),
+        &HudDebugFpsSampler::default(),
+        VANILLA_UNLIMITED_FRAMERATE_LIMIT,
+        true,
+        &HudDebugNetworkSampler::default(),
+        &HudDebugTpsSampler::default(),
+        &NetCounters::default(),
+    )
+    .is_none());
 }
 
 #[test]
@@ -2798,6 +2874,7 @@ fn hud_debug_overlay_projects_game_mode_switcher_item_icons() {
         &HudDebugTpsSampler::default(),
         &NetCounters::default(),
         &AudioCounters::default(),
+        None,
     )
     .expect("game mode switcher should project with runtime icons");
     let switcher = overlay.game_mode_switcher.expect("switcher render state");
@@ -3534,6 +3611,27 @@ fn renderer_frame_item_and_entity_projections_extract_after_tick_advances() {
             "item/entity RendererFrame fields should read the post-tick world snapshot"
         );
     }
+}
+
+#[test]
+fn renderer_frame_commits_the_same_current_post_effect_used_by_hud() {
+    let runtime_source = include_str!("../runtime.rs");
+    let extraction = runtime_source
+        .find("let current_post_effect_id = current_post_effect_id_from_world(world);")
+        .expect("pump should extract the current post effect once per frame");
+    let hud_projection = runtime_source
+        .find("            current_post_effect_id,\n")
+        .expect("HUD should consume the same-frame current post effect");
+    let frame_projection = runtime_source
+        .find("current_post_effect_id: current_post_effect_id.map(str::to_owned),")
+        .expect("RendererFrame should carry the same current post effect");
+    assert!(extraction < hud_projection && hud_projection < frame_projection);
+
+    let frame_source = include_str!("render_extract.rs");
+    assert!(frame_source.contains("pub(crate) current_post_effect_id: Option<String>"));
+    assert!(
+        frame_source.contains("renderer.set_current_post_effect_id(frame.current_post_effect_id);")
+    );
 }
 
 #[test]
