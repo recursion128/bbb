@@ -8406,3 +8406,19 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   统一控制。native hovered-inventory tooltip 直接从 canonical world registry 解析当前 stack，
   focused tests 覆盖 registry NBT 双 effect 顺序、七种 value 计算、Efficiency III 的
   `+10 Mining Efficiency` HUD 行和 hidden-component 压制；item tooltip 属性账本已清零。
+
+## 2026-07-10：F3+I projectile parent save lifecycle
+
+- [x] F3+I projectile parent 保存链与 throwable/fireball 分类（P2 native input）：依据
+  vanilla 26.1 `Projectile.getAddEntityPacket` / `recreateFromPacket` / `tick` /
+  `addAdditionalSaveData`、`ThrowableItemProjectile.addAdditionalSaveData` 与
+  `Fireball.addAdditionalSaveData`，已有 arrow/trident/llama-spit/shulker-bullet/hurting-
+  projectile 保存链现在会从 add-entity data id 解析仍在 client level 中的 owner UUID，按
+  `UUIDUtil.CODEC` 输出 `Owner: [I; ...]`，并从 canonical client age 在首次 client tick 前后
+  精确输出 `HasBeenShot: 0b/1b`。同时补齐 small fireball、egg、ender pearl、experience
+  bottle、lingering/splash potion 与 snowball 的 parent-chain 分类；七者按 constructor 默认
+  `ItemStack.CODEC` 输出省略默认 count/components 的 `Item: {id: ...}`，large fireball 也补齐
+  同一必写 fire-charge item，字段顺序保持 Projectile→AbstractHurtingProjectile→Fireball→
+  LargeFireball。focused tests 覆盖七种新实体、owner UUID、first-tick 翻转与 large-fireball
+  clipboard 命令。边界：未解析/迟到 owner、sticky `LeftOwner`、非默认 metadata item stack
+  components，以及尚未分类的 firework projectile 仍留在 F3+I 总账本。

@@ -13,11 +13,13 @@ use bbb_protocol::entity_types::{
     VANILLA_ENTITY_TYPE_CREAKING_ID, VANILLA_ENTITY_TYPE_CREEPER_ID,
     VANILLA_ENTITY_TYPE_DOLPHIN_ID, VANILLA_ENTITY_TYPE_DONKEY_ID,
     VANILLA_ENTITY_TYPE_DRAGON_FIREBALL_ID, VANILLA_ENTITY_TYPE_DROWNED_ID,
-    VANILLA_ENTITY_TYPE_ELDER_GUARDIAN_ID, VANILLA_ENTITY_TYPE_ENDERMAN_ID,
-    VANILLA_ENTITY_TYPE_ENDERMITE_ID, VANILLA_ENTITY_TYPE_END_CRYSTAL_ID,
+    VANILLA_ENTITY_TYPE_EGG_ID, VANILLA_ENTITY_TYPE_ELDER_GUARDIAN_ID,
+    VANILLA_ENTITY_TYPE_ENDERMAN_ID, VANILLA_ENTITY_TYPE_ENDERMITE_ID,
+    VANILLA_ENTITY_TYPE_ENDER_PEARL_ID, VANILLA_ENTITY_TYPE_END_CRYSTAL_ID,
     VANILLA_ENTITY_TYPE_EVOKER_FANGS_ID, VANILLA_ENTITY_TYPE_EVOKER_ID,
-    VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID, VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID,
-    VANILLA_ENTITY_TYPE_FIREBALL_ID, VANILLA_ENTITY_TYPE_FOX_ID, VANILLA_ENTITY_TYPE_FROG_ID,
+    VANILLA_ENTITY_TYPE_EXPERIENCE_BOTTLE_ID, VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID,
+    VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID, VANILLA_ENTITY_TYPE_FIREBALL_ID,
+    VANILLA_ENTITY_TYPE_FOX_ID, VANILLA_ENTITY_TYPE_FROG_ID,
     VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID, VANILLA_ENTITY_TYPE_GHAST_ID,
     VANILLA_ENTITY_TYPE_GIANT_ID, VANILLA_ENTITY_TYPE_GLOW_ITEM_FRAME_ID,
     VANILLA_ENTITY_TYPE_GLOW_SQUID_ID, VANILLA_ENTITY_TYPE_GOAT_ID,
@@ -25,21 +27,23 @@ use bbb_protocol::entity_types::{
     VANILLA_ENTITY_TYPE_HOGLIN_ID, VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID,
     VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_HUSK_ID, VANILLA_ENTITY_TYPE_ILLUSIONER_ID,
     VANILLA_ENTITY_TYPE_INTERACTION_ID, VANILLA_ENTITY_TYPE_IRON_GOLEM_ID,
-    VANILLA_ENTITY_TYPE_ITEM_FRAME_ID, VANILLA_ENTITY_TYPE_LLAMA_ID,
-    VANILLA_ENTITY_TYPE_LLAMA_SPIT_ID, VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID,
-    VANILLA_ENTITY_TYPE_MINECART_ID, VANILLA_ENTITY_TYPE_MOOSHROOM_ID, VANILLA_ENTITY_TYPE_MULE_ID,
-    VANILLA_ENTITY_TYPE_NAUTILUS_ID, VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
-    VANILLA_ENTITY_TYPE_OCELOT_ID, VANILLA_ENTITY_TYPE_PANDA_ID, VANILLA_ENTITY_TYPE_PARCHED_ID,
-    VANILLA_ENTITY_TYPE_PARROT_ID, VANILLA_ENTITY_TYPE_PHANTOM_ID,
+    VANILLA_ENTITY_TYPE_ITEM_FRAME_ID, VANILLA_ENTITY_TYPE_LINGERING_POTION_ID,
+    VANILLA_ENTITY_TYPE_LLAMA_ID, VANILLA_ENTITY_TYPE_LLAMA_SPIT_ID,
+    VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID, VANILLA_ENTITY_TYPE_MINECART_ID,
+    VANILLA_ENTITY_TYPE_MOOSHROOM_ID, VANILLA_ENTITY_TYPE_MULE_ID, VANILLA_ENTITY_TYPE_NAUTILUS_ID,
+    VANILLA_ENTITY_TYPE_OAK_BOAT_ID, VANILLA_ENTITY_TYPE_OCELOT_ID, VANILLA_ENTITY_TYPE_PANDA_ID,
+    VANILLA_ENTITY_TYPE_PARCHED_ID, VANILLA_ENTITY_TYPE_PARROT_ID, VANILLA_ENTITY_TYPE_PHANTOM_ID,
     VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID, VANILLA_ENTITY_TYPE_PIGLIN_ID, VANILLA_ENTITY_TYPE_PIG_ID,
     VANILLA_ENTITY_TYPE_PILLAGER_ID, VANILLA_ENTITY_TYPE_POLAR_BEAR_ID,
     VANILLA_ENTITY_TYPE_PUFFERFISH_ID, VANILLA_ENTITY_TYPE_RABBIT_ID,
     VANILLA_ENTITY_TYPE_RAVAGER_ID, VANILLA_ENTITY_TYPE_SALMON_ID, VANILLA_ENTITY_TYPE_SHEEP_ID,
     VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID, VANILLA_ENTITY_TYPE_SHULKER_ID,
     VANILLA_ENTITY_TYPE_SILVERFISH_ID, VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID,
-    VANILLA_ENTITY_TYPE_SKELETON_ID, VANILLA_ENTITY_TYPE_SLIME_ID, VANILLA_ENTITY_TYPE_SNIFFER_ID,
-    VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID, VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID,
-    VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID, VANILLA_ENTITY_TYPE_SPIDER_ID,
+    VANILLA_ENTITY_TYPE_SKELETON_ID, VANILLA_ENTITY_TYPE_SLIME_ID,
+    VANILLA_ENTITY_TYPE_SMALL_FIREBALL_ID, VANILLA_ENTITY_TYPE_SNIFFER_ID,
+    VANILLA_ENTITY_TYPE_SNOWBALL_ID, VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID,
+    VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID, VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID,
+    VANILLA_ENTITY_TYPE_SPIDER_ID, VANILLA_ENTITY_TYPE_SPLASH_POTION_ID,
     VANILLA_ENTITY_TYPE_SQUID_ID, VANILLA_ENTITY_TYPE_STRAY_ID, VANILLA_ENTITY_TYPE_STRIDER_ID,
     VANILLA_ENTITY_TYPE_TADPOLE_ID, VANILLA_ENTITY_TYPE_TNT_ID,
     VANILLA_ENTITY_TYPE_TNT_MINECART_ID, VANILLA_ENTITY_TYPE_TRADER_LLAMA_ID,
@@ -8306,7 +8310,8 @@ fn shift_f3_i_with_permission_copies_local_fireball_save_nbt_to_clipboard() {
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
              Invulnerable: 0b, PortalCooldown: 0, HasBeenShot: 0b, \
-             acceleration_power: 0.75d, ExplosionPower: 1b}"
+             acceleration_power: 0.75d, Item: {id: \"minecraft:fire_charge\"}, \
+             ExplosionPower: 1b}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
@@ -8316,6 +8321,75 @@ fn shift_f3_i_with_permission_copies_local_fireball_save_nbt_to_clipboard() {
         messages[0].content,
         "[Debug]: Copied client-side entity data to clipboard"
     );
+}
+
+#[test]
+fn local_projectile_save_tracks_spawn_owner_first_tick_and_default_item_stack() {
+    let mut world = WorldStore::new();
+    world.apply_add_entity(AddEntity {
+        id: 70,
+        uuid: Uuid::from_u128(70),
+        entity_type_id: VANILLA_ENTITY_TYPE_COW_ID,
+        position: ProtocolVec3d::default(),
+        delta_movement: ProtocolVec3d::default(),
+        x_rot: 0.0,
+        y_rot: 0.0,
+        y_head_rot: 0.0,
+        data: 0,
+    });
+    let cases = [
+        (
+            VANILLA_ENTITY_TYPE_SMALL_FIREBALL_ID,
+            "minecraft:fire_charge",
+        ),
+        (VANILLA_ENTITY_TYPE_EGG_ID, "minecraft:egg"),
+        (VANILLA_ENTITY_TYPE_ENDER_PEARL_ID, "minecraft:ender_pearl"),
+        (
+            VANILLA_ENTITY_TYPE_EXPERIENCE_BOTTLE_ID,
+            "minecraft:experience_bottle",
+        ),
+        (
+            VANILLA_ENTITY_TYPE_LINGERING_POTION_ID,
+            "minecraft:lingering_potion",
+        ),
+        (VANILLA_ENTITY_TYPE_SNOWBALL_ID, "minecraft:snowball"),
+        (
+            VANILLA_ENTITY_TYPE_SPLASH_POTION_ID,
+            "minecraft:splash_potion",
+        ),
+    ];
+    for (index, (entity_type_id, _)) in cases.iter().enumerate() {
+        let id = 71 + index as i32;
+        world.apply_add_entity(AddEntity {
+            id,
+            uuid: Uuid::from_u128(id as u128),
+            entity_type_id: *entity_type_id,
+            position: ProtocolVec3d {
+                x: index as f64,
+                y: 1.0,
+                z: 0.0,
+            },
+            delta_movement: ProtocolVec3d::default(),
+            x_rot: 0.0,
+            y_rot: 0.0,
+            y_head_rot: 0.0,
+            data: 70,
+        });
+    }
+
+    for (index, (_, item_id)) in cases.iter().enumerate() {
+        let entity = world.probe_entity(71 + index as i32).unwrap();
+        let snbt = debug_local_entity_pretty_snbt(&world, &entity).unwrap();
+        assert!(snbt.contains("Owner: [I; 0, 0, 0, 70], HasBeenShot: 0b"));
+        assert!(snbt.contains(&format!("Item: {{id: \"{item_id}\"}}")));
+    }
+
+    world.advance_entity_client_animations(1);
+    for index in 0..cases.len() {
+        let entity = world.probe_entity(71 + index as i32).unwrap();
+        let snbt = debug_local_entity_pretty_snbt(&world, &entity).unwrap();
+        assert!(snbt.contains("Owner: [I; 0, 0, 0, 70], HasBeenShot: 1b"));
+    }
 }
 
 #[test]
