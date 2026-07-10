@@ -63,6 +63,7 @@ static PERSISTENT_SNBT_ENCODERS: &[PersistentSnbtEncoderDescriptor] = &[
     encoder(58, encode_entity_data),
     encoder(59, encode_codec_backed_nbt),
     encoder(60, encode_block_entity_data),
+    encoder(61, encode_instrument),
     encoder(63, encode_ominous_bottle_amplifier),
     encoder(65, encode_provides_banner_patterns),
     encoder(66, encode_codec_backed_nbt),
@@ -421,6 +422,16 @@ fn encode_block_entity_data(
     debug_block_entity_data_component_snbt(patch)
 }
 
+fn encode_instrument(
+    _type_id: i32,
+    patch: &bbb_protocol::packets::DataComponentPatchSummary,
+    _item_runtime: Option<&NativeItemRuntime>,
+) -> Option<String> {
+    Some(debug_snbt_string(vanilla_instrument_resource_id(
+        patch.instrument_id?,
+    )?))
+}
+
 fn encode_charged_projectiles(
     _type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
@@ -688,7 +699,7 @@ mod tests {
 
     #[test]
     fn encoder_registry_is_unique_sorted_and_persistent() {
-        assert_eq!(PERSISTENT_SNBT_ENCODERS.len(), 78);
+        assert_eq!(PERSISTENT_SNBT_ENCODERS.len(), 79);
         let mut ids = HashSet::new();
         let mut previous = None;
         for descriptor in PERSISTENT_SNBT_ENCODERS {
@@ -829,5 +840,23 @@ mod tests {
             encode_added_component_value_snbt(72, &patch, None),
             Some("[]".to_string())
         );
+    }
+
+    #[test]
+    fn instrument_encoder_supports_vanilla_named_holders_only() {
+        let mut patch = bbb_protocol::packets::DataComponentPatchSummary {
+            instrument_id: Some(5),
+            ..Default::default()
+        };
+        assert_eq!(
+            encode_added_component_value_snbt(61, &patch, None),
+            Some("\"minecraft:call_goat_horn\"".to_string())
+        );
+
+        patch.instrument_id = Some(8);
+        assert_eq!(encode_added_component_value_snbt(61, &patch, None), None);
+        patch.instrument_id = None;
+        patch.instrument_description = Some("Custom horn".to_string());
+        assert_eq!(encode_added_component_value_snbt(61, &patch, None), None);
     }
 }

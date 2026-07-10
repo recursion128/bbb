@@ -9020,3 +9020,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   个 added entry，另覆盖空列表、unknown named holder 与不完整 direct holder
   的整组件安全省略。动态 datapack BannerPattern 排序仍保留在 registry-backed
   总账本。
+
+## 2026-07-10：ItemStack named instrument save codec
+
+- [x] minecraft:instrument 的 vanilla named-holder 持久化分支（P2 item-model +
+  native input）：依据 vanilla 26.1 `InstrumentComponent.CODEC` 与
+  `Instrument.CODEC`，item-model 从既有 8 项 goat-horn bootstrap 表暴露唯一的
+  resource-id 查询，tooltip named-holder 解析委托同一入口；native type id 61
+  encoder 对 named holder 输出资源 ID。大型 component patch test 从 78 扩展到
+  79 个 added entry，并覆盖 unknown id 与 direct holder 的安全省略。direct
+  Instrument 仍缺 sound_event/use_duration/range 和可无损回写的 description 树，
+  动态 datapack Instrument 排序也仍保留在 registry-backed 总账本。

@@ -112,8 +112,8 @@ use crate::entity_scene::WITHER_SKULL_DANGEROUS_DATA_ID;
 use crate::terrain_runtime::TerrainUploadState;
 use bbb_item_model::{
     vanilla_banner_pattern_resource_id, vanilla_enchantment_resource_id,
-    vanilla_mob_effect_resource_id, vanilla_potion_resource_id, ItemModelKeybindContext,
-    NativeItemRuntime,
+    vanilla_instrument_resource_id, vanilla_mob_effect_resource_id, vanilla_potion_resource_id,
+    ItemModelKeybindContext, NativeItemRuntime,
 };
 pub(crate) use bundle::select_bundle_item;
 use commands::*;

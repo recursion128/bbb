@@ -848,7 +848,7 @@ fn push_instrument_tooltip_lines(
 
     let Some(instrument_key) = component_patch
         .instrument_id
-        .and_then(vanilla_instrument_key)
+        .and_then(vanilla_instrument_resource_id)
     else {
         return;
     };
@@ -860,7 +860,7 @@ fn push_instrument_tooltip_lines(
     ));
 }
 
-fn vanilla_instrument_key(registry_id: i32) -> Option<&'static str> {
+pub fn vanilla_instrument_resource_id(registry_id: i32) -> Option<&'static str> {
     let index = usize::try_from(registry_id).ok()?;
     VANILLA_INSTRUMENT_KEYS.get(index).copied()
 }
@@ -1357,12 +1357,15 @@ mod tests {
             ]
         );
         assert_eq!(
-            vanilla_instrument_key(0),
+            vanilla_instrument_resource_id(0),
             Some("minecraft:ponder_goat_horn")
         );
-        assert_eq!(vanilla_instrument_key(7), Some("minecraft:dream_goat_horn"));
-        assert_eq!(vanilla_instrument_key(8), None);
-        assert_eq!(vanilla_instrument_key(-1), None);
+        assert_eq!(
+            vanilla_instrument_resource_id(7),
+            Some("minecraft:dream_goat_horn")
+        );
+        assert_eq!(vanilla_instrument_resource_id(8), None);
+        assert_eq!(vanilla_instrument_resource_id(-1), None);
     }
 
     #[test]

@@ -8738,12 +8738,12 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
         EquipmentAssetCatalog::default(),
     );
     let patch = DataComponentPatchSummary {
-        added: 78,
+        added: 79,
         added_type_ids: vec![
             0, 1, 2, 3, 4, 5, 7, 10, 12, 13, 17, 18, 19, 21, 22, 23, 24, 25, 26, 27, 29, 30, 31,
             33, 34, 35, 36, 38, 39, 40, 42, 43, 44, 45, 46, 47, 49, 50, 51, 52, 53, 54, 57, 58, 59,
-            60, 63, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 84, 85, 86, 87,
-            88, 89, 90, 91, 92, 101, 103, 104, 107, 108, 109,
+            60, 61, 63, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 84, 85, 86,
+            87, 88, 89, 90, 91, 92, 101, 103, 104, 107, 108, 109,
         ],
         removed_type_ids: vec![6],
         custom_data: Some(NbtSummaryValue::Compound(vec![
@@ -9003,6 +9003,7 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
                 value: NbtSummaryValue::Short(4),
             },
         ])),
+        instrument_id: Some(5),
         charged_projectiles_items: vec![
             bbb_protocol::packets::ItemStackTemplateSummary {
                 item_id: 2,
@@ -9295,6 +9296,7 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
          \"minecraft:bucket_entity_data\": {Health: 5s}, \
          \"minecraft:block_entity_data\": {Delay: 20s, SpawnCount: 4s, \
          id: \"minecraft:mob_spawner\"}, \
+         \"minecraft:instrument\": \"minecraft:call_goat_horn\", \
          \"minecraft:ominous_bottle_amplifier\": 3, \
          \"minecraft:provides_banner_patterns\": \"#minecraft:pattern_item/flower\", \
          \"minecraft:recipes\": [\"minecraft:bread\", \"minecraft:torch\"], \

@@ -235,7 +235,8 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   entity-data projection (including dynamic-registry ordering), packed variant
   projection, remaining codec-backed SNBT projection (component removals are complete;
   added values still include `AbstractArrow`
-  `inBlockState` and `item`, remaining data-component patch entries (implemented
+  `inBlockState` and `item`, remaining data-component patch entries (including
+  direct instrument holders; implemented
   through the protocol component descriptor catalog and native persistent SNBT
   encoder registry)
   beyond the supported custom-NBT/primitive (including repair-cost/enchantable/glider,
@@ -252,6 +253,7 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   recipes/lock/container-loot)/bees/
   charged-projectile/bundle/writable-book/lodestone/profile/banner-pattern-provider-tag/
   banner-pattern-layers/
+  instrument-named-holder/
   pot-decoration/
   container/block-state/built-in animal/color enum (wolf/cat collars, fox,
   salmon, parrot, mooshroom, rabbit, horse, llama, axolotl, sheep, shulker,
