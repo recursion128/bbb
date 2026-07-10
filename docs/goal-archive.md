@@ -8546,3 +8546,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   resource/color/map/两类 fireworks codec、默认字段省略和精确顺序；既有 firework
   lifecycle/component test 继续通过。styled component、registry holder、复杂嵌套结构及
   其余 component 类型仍留在缩窄后的 codec 总账本。
+
+## 2026-07-10：ItemStack custom-data recursive SNBT
+
+- [x] `minecraft:custom_data` 持久化 component（P2 native input）：依据 vanilla 26.1
+  `CustomData.CODEC` / `DataComponentPatch.CODEC` 与 protocol 已保留的 `NbtSummaryValue`
+  完整类型树，stack SNBT helper 现在递归输出 byte/short/int/long/float/double/string、
+  list/compound、byte/int/long typed arrays，保持 compound wire order、合法 key quoting、
+  字符串转义、signed zero 及 NaN/Infinity。primitive component focused test 扩展为 15 个
+  added entry，并覆盖嵌套 compound、三类数组、同质 double list、全部数值 suffix 和
+  quoted key/value；custom-data 从剩余 component 总账本移入已支持子集。

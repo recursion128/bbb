@@ -73,8 +73,8 @@ use bbb_protocol::{
         Direction as ProtocolDirection, EntityDataEnumSerializer, EntityDataRegistryHolder,
         EntityDataValueKind, EntityTagQuery, FireworkExplosionShapeSummary,
         FireworkExplosionSummary, GameType, InteractionHand, ItemRaritySummary, ItemStackSummary,
-        PlayerActionKind, PlayerCommandAction, PlayerInput, RecipeBookType, SeenAdvancements,
-        SignUpdate,
+        NbtSummaryValue, PlayerActionKind, PlayerCommandAction, PlayerInput, RecipeBookType,
+        SeenAdvancements, SignUpdate,
     },
     ComponentClickEvent, ComponentStyle, StyledTextRun, MC_BUILD_TIME, MC_DATA_PACK_FORMAT,
     MC_DATA_VERSION, MC_DATA_VERSION_SERIES, MC_RESOURCE_PACK_FORMAT, MC_STABLE, MC_VERSION,
@@ -4620,6 +4620,7 @@ fn debug_supported_added_component_snbt(
 ) -> Option<String> {
     let resource_id = debug_supported_component_resource_id(type_id)?;
     let value = match type_id {
+        0 => debug_nbt_summary_snbt(patch.custom_data.as_ref()?),
         1 => patch.max_stack_size?.to_string(),
         2 => patch.max_damage?.to_string(),
         3 => patch.damage?.to_string(),
@@ -4652,6 +4653,7 @@ fn debug_supported_added_component_snbt(
 
 fn debug_supported_component_resource_id(type_id: i32) -> Option<&'static str> {
     Some(match type_id {
+        0 => "minecraft:custom_data",
         1 => "minecraft:max_stack_size",
         2 => "minecraft:max_damage",
         3 => "minecraft:damage",
@@ -4669,6 +4671,92 @@ fn debug_supported_component_resource_id(type_id: i32) -> Option<&'static str> {
         FIREWORKS_COMPONENT_TYPE_ID => "minecraft:fireworks",
         _ => return None,
     })
+}
+
+fn debug_nbt_summary_snbt(value: &NbtSummaryValue) -> String {
+    match value {
+        NbtSummaryValue::Byte(value) => format!("{value}b"),
+        NbtSummaryValue::Short(value) => format!("{value}s"),
+        NbtSummaryValue::Int(value) => value.to_string(),
+        NbtSummaryValue::Long(value) => format!("{value}L"),
+        NbtSummaryValue::Float(bits) => {
+            format!("{}f", debug_nbt_java_float_string(f32::from_bits(*bits)))
+        }
+        NbtSummaryValue::Double(bits) => {
+            format!("{}d", debug_nbt_java_double_string(f64::from_bits(*bits)))
+        }
+        NbtSummaryValue::ByteArray(values) => format!(
+            "[B;{}]",
+            debug_typed_nbt_array_body(values, |value| format!("{value}B"))
+        ),
+        NbtSummaryValue::String(value) => debug_snbt_string(value),
+        NbtSummaryValue::List(values) => format!(
+            "[{}]",
+            values
+                .iter()
+                .map(debug_nbt_summary_snbt)
+                .collect::<Vec<_>>()
+                .join(", ")
+        ),
+        NbtSummaryValue::Compound(entries) => format!(
+            "{{{}}}",
+            entries
+                .iter()
+                .map(|entry| format!(
+                    "{}: {}",
+                    debug_snbt_compound_key(&entry.name),
+                    debug_nbt_summary_snbt(&entry.value)
+                ))
+                .collect::<Vec<_>>()
+                .join(", ")
+        ),
+        NbtSummaryValue::IntArray(values) => {
+            format!("[I;{}]", debug_typed_nbt_array_body(values, i32::to_string))
+        }
+        NbtSummaryValue::LongArray(values) => format!(
+            "[L;{}]",
+            debug_typed_nbt_array_body(values, |value| format!("{value}L"))
+        ),
+    }
+}
+
+fn debug_typed_nbt_array_body<T>(values: &[T], format_value: impl Fn(&T) -> String) -> String {
+    if values.is_empty() {
+        String::new()
+    } else {
+        format!(
+            " {}",
+            values
+                .iter()
+                .map(format_value)
+                .collect::<Vec<_>>()
+                .join(", ")
+        )
+    }
+}
+
+fn debug_nbt_java_float_string(value: f32) -> String {
+    if value.is_nan() {
+        "NaN".to_string()
+    } else if value == f32::INFINITY {
+        "Infinity".to_string()
+    } else if value == f32::NEG_INFINITY {
+        "-Infinity".to_string()
+    } else {
+        format!("{value:?}")
+    }
+}
+
+fn debug_nbt_java_double_string(value: f64) -> String {
+    if value.is_nan() {
+        "NaN".to_string()
+    } else if value == f64::INFINITY {
+        "Infinity".to_string()
+    } else if value == f64::NEG_INFINITY {
+        "-Infinity".to_string()
+    } else {
+        format!("{value:?}")
+    }
 }
 
 fn debug_fireworks_component_snbt(

@@ -72,14 +72,15 @@ use bbb_protocol::packets::{
     FilterMask, FilterMaskKind, FireworkExplosionShapeSummary, FireworkExplosionSummary,
     GameEvent as ProtocolGameEvent, HashedComponentPatch, HashedItemStack, HashedStack,
     ItemStackSummary as ProtocolItemStackSummary, LastSeenMessagesUpdate, MessageSignature,
-    OpenBook, OpenScreen as ProtocolOpenScreen, OpenSignEditor, PackedMessageSignature, PaddleBoat,
-    PlayLogin, PlayerAbilities, PlayerAbilitiesCommand, PlayerAction, PlayerChat, PlayerCommand,
-    PlayerHealth, ProjectilePower as ProtocolProjectilePower,
-    RemoveEntities as ProtocolRemoveEntities, RenameItem, SeenAdvancements, SelectBundleItem,
-    SetCursorItem as ProtocolSetCursorItem, SetEntityData as ProtocolSetEntityData, SetEntityLink,
-    SetEquipment, SetPassengers, SetPlayerInventory as ProtocolSetPlayerInventory,
-    ShowDialog as ProtocolShowDialog, SignUpdate, SignedMessageBody, TagQuery, UpdateAdvancements,
-    Vec3d as ProtocolVec3d, WrittenBookContentSummary,
+    NbtSummaryEntry, OpenBook, OpenScreen as ProtocolOpenScreen, OpenSignEditor,
+    PackedMessageSignature, PaddleBoat, PlayLogin, PlayerAbilities, PlayerAbilitiesCommand,
+    PlayerAction, PlayerChat, PlayerCommand, PlayerHealth,
+    ProjectilePower as ProtocolProjectilePower, RemoveEntities as ProtocolRemoveEntities,
+    RenameItem, SeenAdvancements, SelectBundleItem, SetCursorItem as ProtocolSetCursorItem,
+    SetEntityData as ProtocolSetEntityData, SetEntityLink, SetEquipment, SetPassengers,
+    SetPlayerInventory as ProtocolSetPlayerInventory, ShowDialog as ProtocolShowDialog, SignUpdate,
+    SignedMessageBody, TagQuery, UpdateAdvancements, Vec3d as ProtocolVec3d,
+    WrittenBookContentSummary,
 };
 use bbb_protocol::packets::{ChatTypeBound, ChatTypeHolder};
 use bbb_protocol::{
@@ -8524,9 +8525,59 @@ fn local_firework_save_uses_parent_lifecycle_synced_item_codec_and_client_life()
 #[test]
 fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
     let patch = DataComponentPatchSummary {
-        added: 14,
-        added_type_ids: vec![1, 2, 3, 4, 10, 12, 21, 22, 44, 45, 46, 63, 68, 69],
+        added: 15,
+        added_type_ids: vec![0, 1, 2, 3, 4, 10, 12, 21, 22, 44, 45, 46, 63, 68, 69],
         removed_type_ids: vec![6],
+        custom_data: Some(NbtSummaryValue::Compound(vec![
+            NbtSummaryEntry {
+                name: "answer".to_string(),
+                value: NbtSummaryValue::Int(42),
+            },
+            NbtSummaryEntry {
+                name: "quoted key".to_string(),
+                value: NbtSummaryValue::String("A 'diamond'".to_string()),
+            },
+            NbtSummaryEntry {
+                name: "arrays".to_string(),
+                value: NbtSummaryValue::Compound(vec![
+                    NbtSummaryEntry {
+                        name: "bytes".to_string(),
+                        value: NbtSummaryValue::ByteArray(vec![-1, 2]),
+                    },
+                    NbtSummaryEntry {
+                        name: "ints".to_string(),
+                        value: NbtSummaryValue::IntArray(vec![3, 4]),
+                    },
+                    NbtSummaryEntry {
+                        name: "longs".to_string(),
+                        value: NbtSummaryValue::LongArray(vec![5, 6]),
+                    },
+                ]),
+            },
+            NbtSummaryEntry {
+                name: "numbers".to_string(),
+                value: NbtSummaryValue::List(vec![
+                    NbtSummaryValue::Double(f64::INFINITY.to_bits()),
+                    NbtSummaryValue::Double((-0.0_f64).to_bits()),
+                ]),
+            },
+            NbtSummaryEntry {
+                name: "nan".to_string(),
+                value: NbtSummaryValue::Float(f32::NAN.to_bits()),
+            },
+            NbtSummaryEntry {
+                name: "short".to_string(),
+                value: NbtSummaryValue::Short(7),
+            },
+            NbtSummaryEntry {
+                name: "long".to_string(),
+                value: NbtSummaryValue::Long(8),
+            },
+            NbtSummaryEntry {
+                name: "byte".to_string(),
+                value: NbtSummaryValue::Byte(1),
+            },
+        ])),
         max_stack_size: Some(64),
         max_damage: Some(100),
         damage: Some(7),
@@ -8557,6 +8608,9 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
     assert_eq!(
         debug_item_stack_snbt("minecraft:diamond", stack.count, Some(&stack)),
         "{id: \"minecraft:diamond\", count: 2, components: {\
+         \"minecraft:custom_data\": {answer: 42, \"quoted key\": \"A 'diamond'\", \
+         arrays: {bytes: [B; -1B, 2B], ints: [I; 3, 4], longs: [L; 5L, 6L]}, \
+         numbers: [Infinityd, -0.0d], nan: NaNf, short: 7s, long: 8L, byte: 1b}, \
          \"minecraft:max_stack_size\": 64, \"minecraft:max_damage\": 100, \
          \"minecraft:damage\": 7, \"minecraft:unbreakable\": {}, \
          \"minecraft:item_model\": \"minecraft:custom/diamond\", \
