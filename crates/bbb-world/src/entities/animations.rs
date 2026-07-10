@@ -25,6 +25,12 @@ use super::schema::{
     VANILLA_ABSTRACT_ARROW_IN_GROUND_DATA_ID as ABSTRACT_ARROW_IN_GROUND_DATA_ID,
     VANILLA_SHULKER_DEFAULT_PEEK as SHULKER_DEFAULT_PEEK,
     VANILLA_SHULKER_PEEK_DATA_ID as SHULKER_PEEK_DATA_ID,
+    VANILLA_VEHICLE_DAMAGE_DATA_ID as VEHICLE_DAMAGE_DATA_ID,
+    VANILLA_VEHICLE_DEFAULT_DAMAGE as VEHICLE_DEFAULT_DAMAGE,
+    VANILLA_VEHICLE_DEFAULT_HURT_DIR as VEHICLE_DEFAULT_HURT_DIR,
+    VANILLA_VEHICLE_DEFAULT_HURT_TIME as VEHICLE_DEFAULT_HURT_TIME,
+    VANILLA_VEHICLE_HURT_DIR_DATA_ID as VEHICLE_HURT_DIR_DATA_ID,
+    VANILLA_VEHICLE_HURT_TIME_DATA_ID as VEHICLE_HURT_TIME_DATA_ID,
 };
 use super::{
     is_vanilla_boat_type, is_vanilla_vehicle_entity_type, EntityTransform, EntityVec3,
@@ -39,11 +45,6 @@ use super::{
 };
 use bbb_protocol::entity_types::*;
 
-/// Vanilla `VehicleEntity.DATA_ID_HURT` / `DATA_ID_HURTDIR` / `DATA_ID_DAMAGE`:
-/// the vehicle damage-roll accessors after base `Entity` ids `0..=7`.
-const VEHICLE_HURT_TIME_DATA_ID: u8 = 8;
-const VEHICLE_HURT_DIR_DATA_ID: u8 = 9;
-const VEHICLE_DAMAGE_DATA_ID: u8 = 10;
 /// Vanilla `AbstractBoat.DATA_ID_PADDLE_LEFT` / `DATA_ID_PADDLE_RIGHT`: boat accessors after
 /// base `Entity` ids `0..=7` plus `VehicleEntity` ids `8..=10`.
 const ABSTRACT_BOAT_PADDLE_LEFT_DATA_ID: u8 = 11;
@@ -560,9 +561,18 @@ pub struct BoatDamageAnimationState {
 impl BoatDamageAnimationState {
     fn from_metadata(data_values: &[EntityDataValue]) -> Self {
         Self {
-            hurt_time: entity_data_int(data_values, VEHICLE_HURT_TIME_DATA_ID, 0),
-            hurt_dir: entity_data_int(data_values, VEHICLE_HURT_DIR_DATA_ID, 1),
-            damage: entity_data_float(data_values, VEHICLE_DAMAGE_DATA_ID).unwrap_or(0.0),
+            hurt_time: entity_data_int(
+                data_values,
+                VEHICLE_HURT_TIME_DATA_ID,
+                VEHICLE_DEFAULT_HURT_TIME,
+            ),
+            hurt_dir: entity_data_int(
+                data_values,
+                VEHICLE_HURT_DIR_DATA_ID,
+                VEHICLE_DEFAULT_HURT_DIR,
+            ),
+            damage: entity_data_float(data_values, VEHICLE_DAMAGE_DATA_ID)
+                .unwrap_or(VEHICLE_DEFAULT_DAMAGE),
         }
     }
 

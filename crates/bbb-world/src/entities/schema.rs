@@ -23,6 +23,7 @@ pub enum VanillaEntityMetadataFamily {
     AbstractHorse,
     ArmorStand,
     AbstractArrow,
+    VehicleEntity,
     HangingEntity,
     ItemFrame,
     Avatar,
@@ -108,6 +109,9 @@ pub const VANILLA_ARMOR_STAND_RIGHT_LEG_POSE_DATA_ID: u8 = 21;
 pub const VANILLA_ABSTRACT_ARROW_FLAGS_DATA_ID: u8 = 8;
 pub const VANILLA_ABSTRACT_ARROW_PIERCE_LEVEL_DATA_ID: u8 = 9;
 pub const VANILLA_ABSTRACT_ARROW_IN_GROUND_DATA_ID: u8 = 10;
+pub const VANILLA_VEHICLE_HURT_TIME_DATA_ID: u8 = 8;
+pub const VANILLA_VEHICLE_HURT_DIR_DATA_ID: u8 = 9;
+pub const VANILLA_VEHICLE_DAMAGE_DATA_ID: u8 = 10;
 pub const VANILLA_HANGING_ENTITY_DIRECTION_DATA_ID: u8 = 8;
 pub const VANILLA_ITEM_FRAME_ITEM_DATA_ID: u8 = 9;
 pub const VANILLA_ITEM_FRAME_ROTATION_DATA_ID: u8 = 10;
@@ -167,6 +171,9 @@ pub const VANILLA_ABSTRACT_HORSE_DEFAULT_FLAGS: i8 = 0;
 pub const VANILLA_ABSTRACT_ARROW_DEFAULT_FLAGS: i8 = 0;
 pub const VANILLA_ABSTRACT_ARROW_DEFAULT_PIERCE_LEVEL: i8 = 0;
 pub const VANILLA_ABSTRACT_ARROW_DEFAULT_IN_GROUND: bool = false;
+pub const VANILLA_VEHICLE_DEFAULT_HURT_TIME: i32 = 0;
+pub const VANILLA_VEHICLE_DEFAULT_HURT_DIR: i32 = 1;
+pub const VANILLA_VEHICLE_DEFAULT_DAMAGE: f32 = 0.0;
 pub const VANILLA_ARMOR_STAND_DEFAULT_CLIENT_FLAGS: i8 = 0;
 pub const VANILLA_ARMOR_STAND_DEFAULT_HEAD_POSE: [f32; 3] = [0.0, 0.0, 0.0];
 pub const VANILLA_ARMOR_STAND_DEFAULT_BODY_POSE: [f32; 3] = [0.0, 0.0, 0.0];
@@ -567,6 +574,27 @@ const ABSTRACT_ARROW_FLAGS: &[VanillaEntityMetadataFlagSchema] = &[
     },
 ];
 
+const VEHICLE_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_ID_HURT",
+        data_id: VANILLA_VEHICLE_HURT_TIME_DATA_ID,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+        default: VanillaEntityMetadataDefault::Int(VANILLA_VEHICLE_DEFAULT_HURT_TIME),
+    },
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_ID_HURTDIR",
+        data_id: VANILLA_VEHICLE_HURT_DIR_DATA_ID,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+        default: VanillaEntityMetadataDefault::Int(VANILLA_VEHICLE_DEFAULT_HURT_DIR),
+    },
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_ID_DAMAGE",
+        data_id: VANILLA_VEHICLE_DAMAGE_DATA_ID,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_FLOAT_ID,
+        default: VanillaEntityMetadataDefault::Float(VANILLA_VEHICLE_DEFAULT_DAMAGE),
+    },
+];
+
 const HANGING_ENTITY_FIELDS: &[VanillaEntityMetadataFieldSchema] =
     &[VanillaEntityMetadataFieldSchema {
         name: "DATA_DIRECTION",
@@ -757,6 +785,14 @@ const ABSTRACT_ARROW_SCHEMA: VanillaEntityMetadataFamilySchema =
         own_flags: ABSTRACT_ARROW_FLAGS,
     };
 
+const VEHICLE_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamilySchema {
+    family: VanillaEntityMetadataFamily::VehicleEntity,
+    parent: Some(VanillaEntityMetadataFamily::Entity),
+    inherited_field_count: ENTITY_FIELDS.len() as u8,
+    own_fields: VEHICLE_FIELDS,
+    own_flags: &[],
+};
+
 const HANGING_ENTITY_SCHEMA: VanillaEntityMetadataFamilySchema =
     VanillaEntityMetadataFamilySchema {
         family: VanillaEntityMetadataFamily::HangingEntity,
@@ -806,6 +842,7 @@ pub const fn vanilla_entity_metadata_schema(
         VanillaEntityMetadataFamily::AbstractHorse => &ABSTRACT_HORSE_SCHEMA,
         VanillaEntityMetadataFamily::ArmorStand => &ARMOR_STAND_SCHEMA,
         VanillaEntityMetadataFamily::AbstractArrow => &ABSTRACT_ARROW_SCHEMA,
+        VanillaEntityMetadataFamily::VehicleEntity => &VEHICLE_SCHEMA,
         VanillaEntityMetadataFamily::HangingEntity => &HANGING_ENTITY_SCHEMA,
         VanillaEntityMetadataFamily::ItemFrame => &ITEM_FRAME_SCHEMA,
         VanillaEntityMetadataFamily::Avatar => &AVATAR_SCHEMA,
@@ -944,6 +981,18 @@ mod tests {
         assert_eq!(abstract_arrow.inherited_field_count, 8);
         assert_eq!(
             abstract_arrow
+                .own_fields
+                .iter()
+                .map(|field| field.data_id)
+                .collect::<Vec<_>>(),
+            (8..=10).collect::<Vec<_>>()
+        );
+
+        let vehicle = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::VehicleEntity);
+        assert_eq!(vehicle.parent, Some(VanillaEntityMetadataFamily::Entity));
+        assert_eq!(vehicle.inherited_field_count, 8);
+        assert_eq!(
+            vehicle
                 .own_fields
                 .iter()
                 .map(|field| field.data_id)
@@ -1263,6 +1312,29 @@ mod tests {
             ]
         );
         assert_eq!(
+            vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::VehicleEntity).own_fields,
+            &[
+                VanillaEntityMetadataFieldSchema {
+                    name: "DATA_ID_HURT",
+                    data_id: 8,
+                    serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+                    default: VanillaEntityMetadataDefault::Int(0),
+                },
+                VanillaEntityMetadataFieldSchema {
+                    name: "DATA_ID_HURTDIR",
+                    data_id: 9,
+                    serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+                    default: VanillaEntityMetadataDefault::Int(1),
+                },
+                VanillaEntityMetadataFieldSchema {
+                    name: "DATA_ID_DAMAGE",
+                    data_id: 10,
+                    serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_FLOAT_ID,
+                    default: VanillaEntityMetadataDefault::Float(0.0),
+                },
+            ]
+        );
+        assert_eq!(
             vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::HangingEntity).own_fields,
             &[VanillaEntityMetadataFieldSchema {
                 name: "DATA_DIRECTION",
@@ -1575,6 +1647,7 @@ mod tests {
             VanillaEntityMetadataFamily::AbstractHorse,
             VanillaEntityMetadataFamily::ArmorStand,
             VanillaEntityMetadataFamily::AbstractArrow,
+            VanillaEntityMetadataFamily::VehicleEntity,
             VanillaEntityMetadataFamily::HangingEntity,
             VanillaEntityMetadataFamily::ItemFrame,
             VanillaEntityMetadataFamily::Avatar,

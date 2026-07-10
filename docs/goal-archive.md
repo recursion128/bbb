@@ -9546,3 +9546,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   F3+I save projection 删除本地 ids/defaults/masks，统一引用 schema；focused tests 锁定继承
   offset、serializer/default/masks、no-physics/in-ground lifecycle、impact shake 和三类 save-NBT。
   Arrow/Trident 自有字段及 life/shake/pickup/damage 等非 metadata save state 保持原语义边界。
+
+## 2026-07-10：Entity metadata schema phase 12（VehicleEntity）
+
+- [x] entity metadata schema 的 vehicle 父链：新增 `Entity -> VehicleEntity` family，集中
+  声明 INT hurt-time id 8/default 0、INT hurt-dir id 9/default 1 与 FLOAT damage id 10/default
+  0.0。world boat/minecart damage-roll 动画删除本地 ids/defaults，统一引用 schema；focused
+  world/native projection tests 锁定继承 offset、serializer/default、动画 tick 衰减、partial-tick
+  roll 参数以及 boat/minecart render state。具体 AbstractBoat/AbstractMinecart 字段留在后续
+  family slice，未改变 damage-roll 公式或渲染行为。
