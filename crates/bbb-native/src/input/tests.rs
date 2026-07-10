@@ -8524,10 +8524,26 @@ fn local_firework_save_uses_parent_lifecycle_synced_item_codec_and_client_life()
 
 #[test]
 fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
+    let registry: ItemRegistryCatalog = serde_json::from_value(serde_json::json!({
+        "resource_ids": [
+            "minecraft:angler_pottery_sherd",
+            "minecraft:archer_pottery_sherd"
+        ],
+        "protocol_ids": {
+            "minecraft:angler_pottery_sherd": 0,
+            "minecraft:archer_pottery_sherd": 1
+        }
+    }))
+    .unwrap();
+    let item_runtime = NativeItemRuntime::for_test_with_registry_and_equipment_assets(
+        registry,
+        EquipmentAssetCatalog::default(),
+    );
     let patch = DataComponentPatchSummary {
-        added: 23,
+        added: 24,
         added_type_ids: vec![
-            0, 1, 2, 3, 4, 10, 12, 17, 21, 22, 44, 45, 46, 54, 63, 67, 68, 69, 70, 76, 88, 89, 90,
+            0, 1, 2, 3, 4, 10, 12, 17, 21, 22, 44, 45, 46, 54, 63, 67, 68, 69, 70, 74, 76, 88, 89,
+            90,
         ],
         removed_type_ids: vec![6],
         custom_data: Some(NbtSummaryValue::Compound(vec![
@@ -8637,6 +8653,7 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
                 model: Some(bbb_protocol::packets::PlayerModelTypeSummary::Slim),
             },
         }),
+        pot_decorations_item_ids: vec![0, 1],
         block_state_properties: BTreeMap::from([
             ("facing".to_string(), "south".to_string()),
             ("quoted key".to_string(), "value with 'quote'".to_string()),
@@ -8653,7 +8670,12 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
     };
 
     assert_eq!(
-        debug_item_stack_snbt("minecraft:diamond", stack.count, Some(&stack)),
+        debug_item_stack_snbt(
+            "minecraft:diamond",
+            stack.count,
+            Some(&stack),
+            Some(&item_runtime),
+        ),
         "{id: \"minecraft:diamond\", count: 2, components: {\
          \"minecraft:custom_data\": {answer: 42, \"quoted key\": \"A 'diamond'\", \
          arrays: {bytes: [B; -1B, 2B], ints: [I; 3, 4], longs: [L; 5L, 6L]}, \
@@ -8680,12 +8702,47 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
          signature: \"skin-signature\"}], \
          texture: \"minecraft:entity/player/wide/steve\", \
          elytra: \"minecraft:entity/player/elytra\", model: \"slim\"}, \
+         \"minecraft:pot_decorations\": [\"minecraft:angler_pottery_sherd\", \
+         \"minecraft:archer_pottery_sherd\", \"minecraft:brick\", \"minecraft:brick\"], \
          \"minecraft:block_state\": {facing: \"south\", \
          \"quoted key\": \"value with 'quote'\"}, \
          \"minecraft:tropical_fish/pattern\": \"stripey\", \
          \"minecraft:tropical_fish/base_color\": \"orange\", \
          \"minecraft:tropical_fish/pattern_color\": \"white\", \
          \"!minecraft:custom_name\": {}}}"
+    );
+}
+
+#[test]
+fn item_stack_snbt_omits_pot_decorations_with_unknown_registry_id() {
+    let registry: ItemRegistryCatalog = serde_json::from_value(serde_json::json!({
+        "resource_ids": ["minecraft:brick"],
+        "protocol_ids": {"minecraft:brick": 0}
+    }))
+    .unwrap();
+    let item_runtime = NativeItemRuntime::for_test_with_registry_and_equipment_assets(
+        registry,
+        EquipmentAssetCatalog::default(),
+    );
+    let stack = ProtocolItemStackSummary {
+        item_id: Some(0),
+        count: 1,
+        component_patch: DataComponentPatchSummary {
+            added: 1,
+            added_type_ids: vec![74],
+            pot_decorations_item_ids: vec![99],
+            ..DataComponentPatchSummary::default()
+        },
+    };
+
+    assert_eq!(
+        debug_item_stack_snbt(
+            "minecraft:decorated_pot",
+            stack.count,
+            Some(&stack),
+            Some(&item_runtime),
+        ),
+        "{id: \"minecraft:decorated_pot\"}"
     );
 }
 

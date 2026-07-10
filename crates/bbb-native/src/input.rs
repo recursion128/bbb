@@ -261,6 +261,7 @@ const WRITABLE_BOOK_CONTENT_COMPONENT_TYPE_ID: i32 = 54;
 const LODESTONE_TRACKER_COMPONENT_TYPE_ID: i32 = 67;
 const FIREWORKS_COMPONENT_TYPE_ID: i32 = 69;
 const PROFILE_COMPONENT_TYPE_ID: i32 = 70;
+const POT_DECORATIONS_COMPONENT_TYPE_ID: i32 = 74;
 const BLOCK_STATE_COMPONENT_TYPE_ID: i32 = 76;
 const TROPICAL_FISH_PATTERN_COMPONENT_TYPE_ID: i32 = 88;
 const TROPICAL_FISH_BASE_COLOR_COMPONENT_TYPE_ID: i32 = 89;
@@ -4589,8 +4590,8 @@ fn debug_firework_rocket_item_stack(
         .and_then(|item_id| item_runtime.and_then(|runtime| runtime.item_resource_id(item_id)))
         .unwrap_or("minecraft:firework_rocket");
     stack.map_or_else(
-        || debug_item_stack_snbt("minecraft:firework_rocket", 1, None),
-        |stack| debug_item_stack_snbt(resource_id, stack.count, Some(stack)),
+        || debug_item_stack_snbt("minecraft:firework_rocket", 1, None, item_runtime),
+        |stack| debug_item_stack_snbt(resource_id, stack.count, Some(stack), item_runtime),
     )
 }
 
@@ -4598,23 +4599,29 @@ fn debug_item_stack_snbt(
     resource_id: &str,
     count: i32,
     stack: Option<&ItemStackSummary>,
+    item_runtime: Option<&NativeItemRuntime>,
 ) -> String {
     let mut fields = vec![format!("id: {}", debug_snbt_string(resource_id))];
     if count != 1 {
         fields.push(format!("count: {count}"));
     }
-    if let Some(components) = stack.and_then(debug_supported_component_patch_snbt) {
+    if let Some(components) =
+        stack.and_then(|stack| debug_supported_component_patch_snbt(stack, item_runtime))
+    {
         fields.push(format!("components: {components}"));
     }
     format!("{{{}}}", fields.join(", "))
 }
 
-fn debug_supported_component_patch_snbt(stack: &ItemStackSummary) -> Option<String> {
+fn debug_supported_component_patch_snbt(
+    stack: &ItemStackSummary,
+    item_runtime: Option<&NativeItemRuntime>,
+) -> Option<String> {
     let patch = &stack.component_patch;
     let mut fields = patch
         .added_type_ids
         .iter()
-        .filter_map(|type_id| debug_supported_added_component_snbt(*type_id, patch))
+        .filter_map(|type_id| debug_supported_added_component_snbt(*type_id, patch, item_runtime))
         .collect::<Vec<_>>();
     fields.extend(patch.removed_type_ids.iter().filter_map(|type_id| {
         debug_supported_component_resource_id(*type_id)
@@ -4626,6 +4633,7 @@ fn debug_supported_component_patch_snbt(stack: &ItemStackSummary) -> Option<Stri
 fn debug_supported_added_component_snbt(
     type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
+    item_runtime: Option<&NativeItemRuntime>,
 ) -> Option<String> {
     let resource_id = debug_supported_component_resource_id(type_id)?;
     let value = match type_id {
@@ -4661,6 +4669,9 @@ fn debug_supported_added_component_snbt(
         }),
         FIREWORKS_COMPONENT_TYPE_ID => debug_fireworks_component_snbt(patch),
         PROFILE_COMPONENT_TYPE_ID => debug_profile_component_snbt(patch.profile.as_ref()?)?,
+        POT_DECORATIONS_COMPONENT_TYPE_ID => {
+            debug_pot_decorations_component_snbt(patch, item_runtime)?
+        }
         BLOCK_STATE_COMPONENT_TYPE_ID => format!(
             "{{{}}}",
             patch
@@ -4710,6 +4721,7 @@ fn debug_supported_component_resource_id(type_id: i32) -> Option<&'static str> {
         68 => "minecraft:firework_explosion",
         FIREWORKS_COMPONENT_TYPE_ID => "minecraft:fireworks",
         PROFILE_COMPONENT_TYPE_ID => "minecraft:profile",
+        POT_DECORATIONS_COMPONENT_TYPE_ID => "minecraft:pot_decorations",
         BLOCK_STATE_COMPONENT_TYPE_ID => "minecraft:block_state",
         TROPICAL_FISH_PATTERN_COMPONENT_TYPE_ID => "minecraft:tropical_fish/pattern",
         TROPICAL_FISH_BASE_COLOR_COMPONENT_TYPE_ID => "minecraft:tropical_fish/base_color",
@@ -4956,6 +4968,25 @@ fn debug_profile_component_snbt(profile: &ResolvableProfileSummary) -> Option<St
         ));
     }
     Some(format!("{{{}}}", fields.join(", ")))
+}
+
+fn debug_pot_decorations_component_snbt(
+    patch: &bbb_protocol::packets::DataComponentPatchSummary,
+    item_runtime: Option<&NativeItemRuntime>,
+) -> Option<String> {
+    let mut items = patch
+        .pot_decorations_item_ids
+        .iter()
+        .map(|item_id| {
+            item_runtime?
+                .item_resource_id(*item_id)
+                .map(debug_snbt_string)
+        })
+        .collect::<Option<Vec<_>>>()?;
+    while items.len() < 4 {
+        items.push(debug_snbt_string("minecraft:brick"));
+    }
+    Some(format!("[{}]", items.join(", ")))
 }
 
 fn debug_tropical_fish_pattern_name(packed_id: i32) -> &'static str {
@@ -5221,7 +5252,7 @@ fn debug_push_item_frame_additional_save_data(
     {
         fields.push(format!(
             "Item: {}",
-            debug_item_stack_snbt(resource_id, stack.count, Some(stack))
+            debug_item_stack_snbt(resource_id, stack.count, Some(stack), item_runtime)
         ));
     }
     let rotation = debug_entity_data_int_present(entity, ITEM_FRAME_ROTATION_DATA_ID)

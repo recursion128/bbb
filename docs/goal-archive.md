@@ -8618,3 +8618,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   component patch focused test 扩展到 23 个 added entry，覆盖 Partial 分支、
   signed property、body/elytra/model patch 与字段顺序；profile 从剩余 component
   总账本移入已支持子集。
+
+## 2026-07-10：ItemStack pot-decoration save codec
+
+- [x] `minecraft:pot_decorations` 持久化 component（P2 native input）：
+  依据 vanilla 26.1 `PotDecorations.CODEC`，把现有 `NativeItemRuntime`
+  registry lookup 沿私有 stack/component SNBT helpers 透传，解析 protocol type id
+  `74` 保留的 item ids；复刻构造器/ordered codec 对不足四项使用
+  `minecraft:brick` 补齐的语义，未知 registry id 则不伪造 component。
+  component patch focused test 扩展到 24 个 added entry，覆盖两项 registry
+  resolution、side order 与两个 brick fallback；该 runtime 透传也为后续嵌套 item
+  codec 提供资源解析面，pot-decoration 从剩余总账本移入已支持子集。
