@@ -48,9 +48,9 @@ use bbb_protocol::{
         VANILLA_ENTITY_TYPE_SILVERFISH_ID, VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID,
         VANILLA_ENTITY_TYPE_SKELETON_ID, VANILLA_ENTITY_TYPE_SLIME_ID,
         VANILLA_ENTITY_TYPE_SNIFFER_ID, VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID,
-        VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID, VANILLA_ENTITY_TYPE_SPIDER_ID,
-        VANILLA_ENTITY_TYPE_SQUID_ID, VANILLA_ENTITY_TYPE_STRAY_ID, VANILLA_ENTITY_TYPE_STRIDER_ID,
-        VANILLA_ENTITY_TYPE_TADPOLE_ID, VANILLA_ENTITY_TYPE_TNT_ID,
+        VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID, VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID,
+        VANILLA_ENTITY_TYPE_SPIDER_ID, VANILLA_ENTITY_TYPE_SQUID_ID, VANILLA_ENTITY_TYPE_STRAY_ID,
+        VANILLA_ENTITY_TYPE_STRIDER_ID, VANILLA_ENTITY_TYPE_TADPOLE_ID, VANILLA_ENTITY_TYPE_TNT_ID,
         VANILLA_ENTITY_TYPE_TNT_MINECART_ID, VANILLA_ENTITY_TYPE_TRADER_LLAMA_ID,
         VANILLA_ENTITY_TYPE_TRIDENT_ID, VANILLA_ENTITY_TYPE_TROPICAL_FISH_ID,
         VANILLA_ENTITY_TYPE_TURTLE_ID, VANILLA_ENTITY_TYPE_VEX_ID,
@@ -264,6 +264,13 @@ const COMMAND_BLOCK_DEFAULT_UPDATE_LAST_EXECUTION: bool = true;
 const FURNACE_MINECART_DEFAULT_PUSH: f64 = 0.0;
 const FURNACE_MINECART_DEFAULT_FUEL: i16 = 0;
 const HOPPER_MINECART_DEFAULT_ENABLED: bool = true;
+const BASE_SPAWNER_DEFAULT_DELAY: i16 = 20;
+const BASE_SPAWNER_DEFAULT_MIN_SPAWN_DELAY: i16 = 200;
+const BASE_SPAWNER_DEFAULT_MAX_SPAWN_DELAY: i16 = 800;
+const BASE_SPAWNER_DEFAULT_SPAWN_COUNT: i16 = 4;
+const BASE_SPAWNER_DEFAULT_MAX_NEARBY_ENTITIES: i16 = 6;
+const BASE_SPAWNER_DEFAULT_REQUIRED_PLAYER_RANGE: i16 = 16;
+const BASE_SPAWNER_DEFAULT_SPAWN_RANGE: i16 = 4;
 const TNT_MINECART_DEFAULT_FUSE: i32 = -1;
 const PRIMED_TNT_FUSE_DATA_ID: u8 = 8;
 const PRIMED_TNT_DEFAULT_FUSE: i16 = 80;
@@ -4081,6 +4088,10 @@ fn debug_push_entity_additional_save_data(
             debug_push_empty_container_items(fields);
             debug_push_hopper_minecart_additional_save_data(fields);
         }
+        VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID => {
+            debug_push_minecart_additional_save_data(world, entity, fields);
+            debug_push_spawner_minecart_additional_save_data(fields);
+        }
         VANILLA_ENTITY_TYPE_TNT_MINECART_ID => {
             debug_push_minecart_additional_save_data(world, entity, fields);
             debug_push_tnt_minecart_additional_save_data(entity, fields);
@@ -4518,6 +4529,25 @@ fn debug_push_hopper_minecart_additional_save_data(fields: &mut Vec<String>) {
         "Enabled: {}",
         debug_snbt_bool(HOPPER_MINECART_DEFAULT_ENABLED)
     ));
+}
+
+fn debug_push_spawner_minecart_additional_save_data(fields: &mut Vec<String>) {
+    fields.push(format!("Delay: {BASE_SPAWNER_DEFAULT_DELAY}s"));
+    fields.push(format!(
+        "MinSpawnDelay: {BASE_SPAWNER_DEFAULT_MIN_SPAWN_DELAY}s"
+    ));
+    fields.push(format!(
+        "MaxSpawnDelay: {BASE_SPAWNER_DEFAULT_MAX_SPAWN_DELAY}s"
+    ));
+    fields.push(format!("SpawnCount: {BASE_SPAWNER_DEFAULT_SPAWN_COUNT}s"));
+    fields.push(format!(
+        "MaxNearbyEntities: {BASE_SPAWNER_DEFAULT_MAX_NEARBY_ENTITIES}s"
+    ));
+    fields.push(format!(
+        "RequiredPlayerRange: {BASE_SPAWNER_DEFAULT_REQUIRED_PLAYER_RANGE}s"
+    ));
+    fields.push(format!("SpawnRange: {BASE_SPAWNER_DEFAULT_SPAWN_RANGE}s"));
+    fields.push("SpawnPotentials: []".to_string());
 }
 
 fn debug_push_tnt_minecart_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {

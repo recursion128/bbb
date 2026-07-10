@@ -214,11 +214,11 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   projection, observable non-empty entity inventory/container projection
   (including chest/hopper minecart `Items` / loot-table contents), non-default
   hopper minecart enabled state, non-default furnace minecart push/fuel fields,
-  minecart subclass spawner fields, command-block minecart non-default
-  success/track-output/custom-name/last-execution fields and exact styled
-  `LastOutput` component projection, TNT-minecart explosion power/speed-factor
-  fields, or entity-specific age and equipment projection before it can be
-  emitted.
+  spawner minecart non-default delay/count/range fields and codec-backed
+  `SpawnData` / `SpawnPotentials`, command-block minecart non-default success/
+  track-output/custom-name/last-execution fields and exact styled `LastOutput`
+  component projection, TNT-minecart explosion power/speed-factor fields, or
+  entity-specific age and equipment projection before it can be emitted.
 - Cover the full vanilla profiler section set, and add the profiling metrics
   recorder/output.
 - Finish `DebugOptionsScreen` narration, focus, and widget styling.
