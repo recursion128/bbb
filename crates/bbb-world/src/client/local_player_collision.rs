@@ -303,9 +303,9 @@ impl WorldStore {
         let max_z = block_floor(query.max_z + COLLISION_EPSILON) + 1;
 
         let mut boxes = Vec::new();
-        // Vanilla Cursor3D advances x fastest, then z, then y.
-        for y in min_y..=max_y {
-            for z in min_z..=max_z {
+        // Vanilla Cursor3D advances X fastest, then Y, then Z.
+        for z in min_z..=max_z {
+            for y in min_y..=max_y {
                 for x in min_x..=max_x {
                     let pos = BlockPos { x, y, z };
                     let Some(block) = self.probe_block(pos) else {
@@ -3943,6 +3943,36 @@ mod tests {
     fn debug_camera_block_collision_boxes_require_a_camera_entity_pose() {
         let world = empty_world();
         assert!(world.debug_camera_block_collision_boxes(6.0).is_empty());
+    }
+
+    #[test]
+    fn debug_camera_block_collision_boxes_follow_vanilla_cursor_x_y_z_order() {
+        let mut world = empty_world();
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: bbb_protocol::packets::Vec3d {
+                x: 0.5,
+                y: 1.0,
+                z: 0.5,
+            },
+            ..LocalPlayerPoseState::default()
+        });
+        let stone = vanilla_block_state_id("minecraft:stone", []);
+        set_block(&mut world, BlockPos { x: 0, y: 1, z: 0 }, stone);
+        set_block(&mut world, BlockPos { x: 0, y: 0, z: 1 }, stone);
+
+        assert_eq!(
+            world.debug_camera_block_collision_boxes(2.0),
+            [
+                WorldCollisionBox {
+                    min: [0.0, 1.0, 0.0],
+                    max: [1.0, 2.0, 1.0],
+                },
+                WorldCollisionBox {
+                    min: [0.0, 0.0, 1.0],
+                    max: [1.0, 1.0, 2.0],
+                },
+            ]
+        );
     }
 
     #[test]

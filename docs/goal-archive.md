@@ -8179,3 +8179,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   reduced-debug gate、向上越界 piston-head legacy 分叉、fence 特例、红/青坐标、颜色
   与 frame 提交顺序。剩余工作是 nearby remote entity 的 canonical support lifecycle、
   green/id-bias highlights 和 100 ms entity-membership cache。
+
+## 2026-07-10：Collision debug Cursor3D traversal order
+
+- [x] `visualize_collision_boxes` block shape 顺序回归（P2 world）：复核 vanilla
+  26.1 `BlockCollisions` 与 `Cursor3D.advance` 后，修正 debug block collision 扫描从
+  X→Z→Y 为 X 最快、Y 次之、Z 最慢；这会稳定决定跨 section Y/Z 的 shape 与后续
+  white stroke 提交顺序。focused test 在 `(x=0,y=1,z=0)` 与
+  `(x=0,y=0,z=1)` 放置 full blocks，锁定前者先于后者，避免同 Y 平面的旧测试掩盖
+  轴序偏差。
