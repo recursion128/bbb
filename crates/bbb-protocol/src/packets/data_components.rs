@@ -106,6 +106,10 @@ pub struct DataComponentPatchSummary {
     #[serde(default)]
     pub use_remainder: Option<Box<ItemStackTemplateSummary>>,
     #[serde(default)]
+    pub damage_resistant_type_registry_ids: Vec<i32>,
+    #[serde(default)]
+    pub damage_resistant_type_tag: Option<String>,
+    #[serde(default)]
     pub weapon_item_damage_per_attack: Option<i32>,
     #[serde(default)]
     pub weapon_disable_blocking_seconds_bits: Option<u32>,
@@ -843,6 +847,11 @@ fn decode_typed_data_component_patch_summary(
             }
             25 => {
                 summary.use_remainder = Some(Box::new(decode_item_stack_template(decoder)?));
+            }
+            27 => {
+                let types = decode_holder_set_summary(decoder)?;
+                summary.damage_resistant_type_registry_ids = types.registry_ids;
+                summary.damage_resistant_type_tag = types.tag;
             }
             29 => {
                 summary.weapon_item_damage_per_attack = Some(decoder.read_var_i32()?);
@@ -3745,6 +3754,42 @@ mod tests {
                 ..DataComponentPatchSummary::default()
             }
         );
+        assert!(decoder.is_empty());
+    }
+
+    #[test]
+    fn decodes_damage_resistant_holder_sets() {
+        let mut payload = Encoder::new();
+        payload.write_var_i32(1);
+        payload.write_var_i32(0);
+        payload.write_var_i32(27);
+        write_holder_set_tag(&mut payload, "minecraft:is_fire");
+
+        let payload = payload.into_inner();
+        let mut decoder = Decoder::new(&payload);
+        let patch = decode_data_component_patch_summary(&mut decoder).unwrap();
+        assert_eq!(
+            patch,
+            DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![27],
+                damage_resistant_type_tag: Some("minecraft:is_fire".to_string()),
+                ..DataComponentPatchSummary::default()
+            }
+        );
+        assert!(decoder.is_empty());
+
+        let mut payload = Encoder::new();
+        payload.write_var_i32(1);
+        payload.write_var_i32(0);
+        payload.write_var_i32(27);
+        write_holder_set_ids(&mut payload, &[2, 4]);
+
+        let payload = payload.into_inner();
+        let mut decoder = Decoder::new(&payload);
+        let patch = decode_data_component_patch_summary(&mut decoder).unwrap();
+        assert_eq!(patch.damage_resistant_type_registry_ids, vec![2, 4]);
+        assert_eq!(patch.damage_resistant_type_tag, None);
         assert!(decoder.is_empty());
     }
 

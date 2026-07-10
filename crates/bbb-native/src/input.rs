@@ -4676,6 +4676,7 @@ fn debug_supported_added_component_snbt(
         23 => debug_food_component_snbt(patch)?,
         25 => debug_item_stack_template_snbt(patch.use_remainder.as_deref()?, item_runtime)?,
         26 => debug_use_cooldown_component_snbt(patch)?,
+        27 => debug_damage_resistant_component_snbt(patch)?,
         29 => debug_weapon_component_snbt(patch)?,
         30 => debug_attack_range_component_snbt(patch.attack_range?)?,
         31 => {
@@ -4784,6 +4785,7 @@ fn debug_supported_component_resource_id(type_id: i32) -> Option<&'static str> {
         23 => "minecraft:food",
         25 => "minecraft:use_remainder",
         26 => "minecraft:use_cooldown",
+        27 => "minecraft:damage_resistant",
         29 => "minecraft:weapon",
         30 => "minecraft:attack_range",
         31 => "minecraft:enchantable",
@@ -5275,6 +5277,19 @@ fn debug_repairable_component_snbt(
         }
     };
     Some(format!("{{items: {items}}}"))
+}
+
+fn debug_damage_resistant_component_snbt(
+    patch: &bbb_protocol::packets::DataComponentPatchSummary,
+) -> Option<String> {
+    let types = if let Some(tag) = patch.damage_resistant_type_tag.as_deref() {
+        debug_snbt_string(&format!("#{tag}"))
+    } else if patch.damage_resistant_type_registry_ids.is_empty() {
+        "[]".to_string()
+    } else {
+        return None;
+    };
+    Some(format!("{{types: {types}}}"))
 }
 
 fn debug_item_stack_template_snbt(

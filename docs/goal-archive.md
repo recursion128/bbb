@@ -8903,3 +8903,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   test 从 68 扩展到 69 个 added entry，另覆盖默认空 compound、负顶层 tick 与
   负 condition duration fallback。自定义 SoundEvent 排序仍留在动态 registry
   总账本。
+
+## 2026-07-10：ItemStack damage-resistant named holder-set save
+
+- [x] minecraft:damage_resistant 的 named-tag/empty HolderSet 分支（P2 protocol
+  + native input）：依据 vanilla 26.1 DamageResistant.CODEC/STREAM_CODEC，
+  protocol 将 type id 27 的 DamageType holder set 完整保留为 ordered registry
+  ids 或规范化 tag；native 对不依赖 registry 顺序的 #tag 与空 direct list 输出
+  types 字段，对非空 direct ids 安全省略。protocol focused test 覆盖 is_fire tag
+  与两个 direct ids；native component patch test 从 69 扩展到 70 个 added
+  entry，另覆盖空 list 与 unresolved direct-id fallback。非空 direct holder 的
+  key 还原仍留在动态 DamageType registry 总账本。

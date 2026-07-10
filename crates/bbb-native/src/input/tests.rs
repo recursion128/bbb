@@ -8588,12 +8588,12 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
         EquipmentAssetCatalog::default(),
     );
     let patch = DataComponentPatchSummary {
-        added: 69,
+        added: 70,
         added_type_ids: vec![
-            0, 1, 2, 3, 4, 5, 7, 10, 12, 17, 18, 19, 21, 22, 23, 25, 26, 29, 30, 31, 33, 34, 35,
-            38, 39, 40, 43, 44, 45, 46, 47, 49, 50, 52, 54, 57, 58, 59, 60, 63, 66, 67, 68, 69, 70,
-            71, 73, 74, 75, 76, 77, 78, 79, 80, 84, 85, 86, 87, 88, 89, 90, 91, 92, 101, 103, 104,
-            107, 108, 109,
+            0, 1, 2, 3, 4, 5, 7, 10, 12, 17, 18, 19, 21, 22, 23, 25, 26, 27, 29, 30, 31, 33, 34,
+            35, 38, 39, 40, 43, 44, 45, 46, 47, 49, 50, 52, 54, 57, 58, 59, 60, 63, 66, 67, 68, 69,
+            70, 71, 73, 74, 75, 76, 77, 78, 79, 80, 84, 85, 86, 87, 88, 89, 90, 91, 92, 101, 103,
+            104, 107, 108, 109,
         ],
         removed_type_ids: vec![6],
         custom_data: Some(NbtSummaryValue::Compound(vec![
@@ -8678,6 +8678,7 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
         use_cooldown_seconds_bits: Some(1.25_f32.to_bits()),
         use_cooldown_ticks: Some(25),
         use_cooldown_group: Some("minecraft:ender_pearl".to_string()),
+        damage_resistant_type_tag: Some("minecraft:is_fire".to_string()),
         weapon_item_damage_per_attack: Some(3),
         weapon_disable_blocking_seconds_bits: Some(5.0_f32.to_bits()),
         attack_range: Some(bbb_protocol::packets::AttackRangeSummary {
@@ -8993,6 +8994,7 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
          \"minecraft:use_remainder\": {id: \"minecraft:arrow\"}, \
          \"minecraft:use_cooldown\": {seconds: 1.25f, \
          cooldown_group: \"minecraft:ender_pearl\"}, \
+         \"minecraft:damage_resistant\": {types: \"#minecraft:is_fire\"}, \
          \"minecraft:weapon\": {item_damage_per_attack: 3, \
          disable_blocking_for_seconds: 5.0f}, \
          \"minecraft:attack_range\": {min_reach: 2.0f, max_reach: 4.5f, \
@@ -9120,6 +9122,18 @@ fn item_stack_snbt_preserves_repairable_holder_set_shapes() {
         debug_repairable_component_snbt(&patch, Some(&item_runtime)),
         None
     );
+}
+
+#[test]
+fn item_stack_snbt_preserves_resolvable_damage_resistant_holder_sets() {
+    let mut patch = DataComponentPatchSummary::default();
+    assert_eq!(
+        debug_damage_resistant_component_snbt(&patch),
+        Some("{types: []}".to_string())
+    );
+
+    patch.damage_resistant_type_registry_ids = vec![0];
+    assert_eq!(debug_damage_resistant_component_snbt(&patch), None);
 }
 
 #[test]
