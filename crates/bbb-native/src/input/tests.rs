@@ -8738,13 +8738,13 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
         EquipmentAssetCatalog::default(),
     );
     let patch = DataComponentPatchSummary {
-        added: 103,
+        added: 105,
         added_type_ids: vec![
-            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 16, 17, 18, 19, 21, 22, 23, 24, 25, 26,
-            27, 28, 29, 30, 31, 33, 34, 35, 36, 38, 39, 40, 42, 43, 44, 45, 46, 47, 49, 50, 51, 52,
-            53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74,
-            75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96,
-            97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109,
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 21, 22, 23, 24,
+            25, 26, 27, 28, 29, 30, 31, 33, 34, 35, 36, 38, 39, 40, 42, 43, 44, 45, 46, 47, 49, 50,
+            51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72,
+            73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94,
+            95, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109,
         ],
         removed_type_ids: vec![32],
         custom_data: Some(NbtSummaryValue::Compound(vec![
@@ -8847,6 +8847,43 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
                 level: 3,
             },
         ],
+        can_place_on: Some(bbb_protocol::packets::AdventureModePredicateSummary {
+            unknown: false,
+            block_registry_ids: vec![1],
+            unresolved_block_tag_count: 0,
+        }),
+        can_place_on_persistent: Some(bbb_protocol::packets::AdventureModePredicateDataSummary {
+            predicates: vec![bbb_protocol::packets::BlockPredicateSummary {
+                blocks: Some(bbb_protocol::packets::BlockHolderSetSummary {
+                    registry_ids: vec![1],
+                    tag: None,
+                }),
+                exact_components: Some(Box::new(DataComponentPatchSummary {
+                    added: 1,
+                    added_type_ids: vec![1],
+                    max_stack_size: Some(16),
+                    ..DataComponentPatchSummary::default()
+                })),
+                ..Default::default()
+            }],
+        }),
+        can_break: Some(bbb_protocol::packets::AdventureModePredicateSummary {
+            unknown: true,
+            block_registry_ids: Vec::new(),
+            unresolved_block_tag_count: 1,
+        }),
+        can_break_persistent: Some(bbb_protocol::packets::AdventureModePredicateDataSummary {
+            predicates: vec![
+                bbb_protocol::packets::BlockPredicateSummary::default(),
+                bbb_protocol::packets::BlockPredicateSummary {
+                    blocks: Some(bbb_protocol::packets::BlockHolderSetSummary {
+                        registry_ids: Vec::new(),
+                        tag: Some("minecraft:mineable/pickaxe".to_string()),
+                    }),
+                    ..Default::default()
+                },
+            ],
+        }),
         attribute_modifiers: vec![
             bbb_protocol::packets::AttributeModifierSummary {
                 attribute_id: 2,
@@ -9339,6 +9376,9 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
          \"minecraft:rarity\": \"rare\", \
          \"minecraft:enchantments\": {\"minecraft:density\": 4, \
          \"minecraft:swift_sneak\": 3}, \
+         \"minecraft:can_place_on\": {blocks: \"minecraft:stone\", components: \
+         {\"minecraft:max_stack_size\": 16}}, \
+         \"minecraft:can_break\": [{}, {blocks: \"#minecraft:mineable/pickaxe\"}], \
          \"minecraft:attribute_modifiers\": [{type: \"minecraft:attack_damage\", \
          id: \"minecraft:base_attack_damage\", amount: 3.5d, operation: \"add_value\"}, \
          {type: \"minecraft:knockback_resistance\", id: \"minecraft:test/hidden\", \

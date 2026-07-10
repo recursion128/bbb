@@ -9215,3 +9215,17 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   与 Codec defaults，并对 unknown block、非 positive speed、negative damage 安全省略。
   大型 component patch test 从 102 扩展到 103 个 added entry，removal/unsupported
   样例移至尚未实现的 equippable type id 32。
+
+## 2026-07-10：ItemStack adventure-mode predicate components save
+
+- [x] minecraft:can_place_on / minecraft:can_break 的无损 persistent 摘要与 SNBT
+  （P2 protocol + native input）：依据 vanilla 26.1 `AdventureModePredicate.CODEC/
+  STREAM_CODEC`、`BlockPredicate`、`StatePropertiesPredicate`、
+  `DataComponentMatchers`，保留现有 tooltip 聚合 summary，同时新增有序 predicate
+  数据，覆盖 block holder set、exact/ranged state、NBT、exact component map 与
+  concrete/any-value partial matcher。native encoder 遵循 compact single/list、
+  flattened NBT predicate、registry-aware partial codec NBT、optional field 与
+  transient exact-component 过滤语义；unknown block、重复 map key、无 encoder 的
+  nested persistent component、缺失 partial codec NBT 或空顶层 list 均安全省略。
+  另以 `DataComponentPredicates.java` 锁定 15 项 predicate type 注册顺序。大型
+  component patch test 从 103 扩展到 105 个 added entry。

@@ -11,20 +11,23 @@ use crate::{
 const MAX_CONTAINER_ITEMS: usize = 1024;
 
 pub use data_components::{
-    decode_profile_textures_from_properties, AdventureModePredicateSummary, AttackRangeSummary,
-    AttributeModifierSummary, BannerPatternLayerSummary, BeeOccupantSummary, ConsumableSummary,
-    ConsumeEffectSummary, CustomModelDataFloats, DataComponentPatchSummary,
-    FireworkExplosionShapeSummary, FireworkExplosionSummary, GameProfilePropertySummary,
-    ItemContainerSlotSummary, ItemEnchantmentSummary, ItemRaritySummary, ItemStackTemplateSummary,
-    ItemUseAnimationSummary, JukeboxSongSummary, KineticWeaponConditionSummary,
-    KineticWeaponSummary, LodestoneTargetSummary, MapPostProcessingSummary,
-    MobEffectDetailsSummary, MobEffectInstanceSummary, NbtSummaryEntry, NbtSummaryValue,
-    PaintingVariantSummary, PiercingWeaponSummary, PlayerModelTypeSummary, PlayerSkinPatchSummary,
+    decode_profile_textures_from_properties, AdventureModePredicateDataSummary,
+    AdventureModePredicateSummary, AttackRangeSummary, AttributeModifierSummary,
+    BannerPatternLayerSummary, BeeOccupantSummary, BlockHolderSetSummary, BlockPredicateSummary,
+    ConsumableSummary, ConsumeEffectSummary, CustomModelDataFloats, DataComponentPatchSummary,
+    DataComponentPredicateTypeSummary, FireworkExplosionShapeSummary, FireworkExplosionSummary,
+    GameProfilePropertySummary, ItemContainerSlotSummary, ItemEnchantmentSummary,
+    ItemRaritySummary, ItemStackTemplateSummary, ItemUseAnimationSummary, JukeboxSongSummary,
+    KineticWeaponConditionSummary, KineticWeaponSummary, LodestoneTargetSummary,
+    MapPostProcessingSummary, MobEffectDetailsSummary, MobEffectInstanceSummary, NbtSummaryEntry,
+    NbtSummaryValue, PaintingVariantSummary, PartialDataComponentPredicateSummary,
+    PiercingWeaponSummary, PlayerModelTypeSummary, PlayerSkinPatchSummary,
     ProfileSkinTextureSummary, ProfileTextureSummary, ProfileTexturesSummary,
     ResolvableProfileKindSummary, ResolvableProfileSummary, ResourceTextureSummary,
-    SoundEventSummary, SuspiciousStewEffectSummary, SwingAnimationSummary,
-    SwingAnimationTypeSummary, ToolRuleSummary, ToolSummary, TrimMaterialSummary,
-    TrimPatternSummary, UseEffectsSummary, WrittenBookContentSummary,
+    SoundEventSummary, StatePropertyMatcherSummary, StatePropertyValueMatcherSummary,
+    SuspiciousStewEffectSummary, SwingAnimationSummary, SwingAnimationTypeSummary, ToolRuleSummary,
+    ToolSummary, TrimMaterialSummary, TrimPatternSummary, UseEffectsSummary,
+    WrittenBookContentSummary,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

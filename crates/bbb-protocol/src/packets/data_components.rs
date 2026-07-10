@@ -340,7 +340,11 @@ pub struct DataComponentPatchSummary {
     #[serde(default)]
     pub can_place_on: Option<AdventureModePredicateSummary>,
     #[serde(default)]
+    pub can_place_on_persistent: Option<AdventureModePredicateDataSummary>,
+    #[serde(default)]
     pub can_break: Option<AdventureModePredicateSummary>,
+    #[serde(default)]
+    pub can_break_persistent: Option<AdventureModePredicateDataSummary>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -434,6 +438,64 @@ pub struct AdventureModePredicateSummary {
     pub block_registry_ids: Vec<i32>,
     #[serde(default)]
     pub unresolved_block_tag_count: usize,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AdventureModePredicateDataSummary {
+    #[serde(default)]
+    pub predicates: Vec<BlockPredicateSummary>,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct BlockPredicateSummary {
+    #[serde(default)]
+    pub blocks: Option<BlockHolderSetSummary>,
+    #[serde(default)]
+    pub state: Option<Vec<StatePropertyMatcherSummary>>,
+    #[serde(default)]
+    pub nbt: Option<NbtSummaryValue>,
+    #[serde(default)]
+    pub exact_components: Option<Box<DataComponentPatchSummary>>,
+    #[serde(default)]
+    pub partial_components: Vec<PartialDataComponentPredicateSummary>,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct BlockHolderSetSummary {
+    #[serde(default)]
+    pub registry_ids: Vec<i32>,
+    #[serde(default)]
+    pub tag: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct StatePropertyMatcherSummary {
+    pub name: String,
+    pub value: StatePropertyValueMatcherSummary,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum StatePropertyValueMatcherSummary {
+    Exact(String),
+    Range {
+        #[serde(default)]
+        min: Option<String>,
+        #[serde(default)]
+        max: Option<String>,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PartialDataComponentPredicateSummary {
+    pub predicate_type: DataComponentPredicateTypeSummary,
+    #[serde(default)]
+    pub wire_value: Option<NbtSummaryValue>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum DataComponentPredicateTypeSummary {
+    Concrete(i32),
+    AnyComponent(i32),
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -1052,7 +1114,6 @@ fn decode_holder_set_summary(decoder: &mut Decoder<'_>) -> Result<HolderSetSumma
         let tag = read_resource_location(decoder)?;
         return Ok(HolderSetSummary {
             registry_ids: Vec::new(),
-            unresolved_tag_count: 1,
             tag: Some(tag),
         });
     }
@@ -1070,7 +1131,6 @@ fn decode_holder_set_summary(decoder: &mut Decoder<'_>) -> Result<HolderSetSumma
     }
     Ok(HolderSetSummary {
         registry_ids,
-        unresolved_tag_count: 0,
         tag: None,
     })
 }
@@ -1226,82 +1286,126 @@ fn decode_map_post_processing(decoder: &mut Decoder<'_>) -> Result<MapPostProces
 
 fn decode_adventure_mode_predicate_summary(
     decoder: &mut Decoder<'_>,
-) -> Result<AdventureModePredicateSummary> {
+) -> Result<(
+    AdventureModePredicateSummary,
+    AdventureModePredicateDataSummary,
+)> {
     let count = read_bounded_len(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
     let mut summary = AdventureModePredicateSummary::default();
+    let mut predicates = Vec::with_capacity(count);
     for _ in 0..count {
         let predicate = decode_block_predicate_summary(decoder)?;
-        let Some(blocks) = predicate.blocks else {
+        let Some(blocks) = &predicate.blocks else {
             summary.unknown = true;
+            predicates.push(predicate);
             continue;
         };
-        summary.unresolved_block_tag_count += blocks.unresolved_tag_count;
-        for registry_id in blocks.registry_ids {
+        summary.unresolved_block_tag_count += usize::from(blocks.tag.is_some());
+        for registry_id in &blocks.registry_ids {
             if !summary.block_registry_ids.contains(&registry_id) {
-                summary.block_registry_ids.push(registry_id);
+                summary.block_registry_ids.push(*registry_id);
             }
         }
+        predicates.push(predicate);
     }
-    Ok(summary)
-}
-
-struct BlockPredicateSummary {
-    blocks: Option<HolderSetSummary>,
+    Ok((summary, AdventureModePredicateDataSummary { predicates }))
 }
 
 #[derive(Default)]
 struct HolderSetSummary {
     registry_ids: Vec<i32>,
-    unresolved_tag_count: usize,
     tag: Option<String>,
 }
 
 fn decode_block_predicate_summary(decoder: &mut Decoder<'_>) -> Result<BlockPredicateSummary> {
     let blocks = if decoder.read_bool()? {
-        Some(decode_holder_set_summary(decoder)?)
+        let blocks = decode_holder_set_summary(decoder)?;
+        Some(BlockHolderSetSummary {
+            registry_ids: blocks.registry_ids,
+            tag: blocks.tag,
+        })
     } else {
         None
     };
-    if decoder.read_bool()? {
-        decode_state_properties_predicate(decoder)?;
-    }
-    if decoder.read_bool()? {
-        skip_nbt_tag_from_decoder(decoder)?;
-    }
-    decode_data_component_matchers(decoder)?;
-    Ok(BlockPredicateSummary { blocks })
-}
-
-fn decode_state_properties_predicate(decoder: &mut Decoder<'_>) -> Result<()> {
-    let count = read_bounded_len(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
-    for _ in 0..count {
-        decoder.read_string(MAX_STRING_CHARS)?;
-        decode_state_property_value_matcher(decoder)?;
-    }
-    Ok(())
-}
-
-fn decode_state_property_value_matcher(decoder: &mut Decoder<'_>) -> Result<()> {
-    if decoder.read_bool()? {
-        decoder.read_string(MAX_STRING_CHARS)?;
+    let state = if decoder.read_bool()? {
+        Some(decode_state_properties_predicate(decoder)?)
     } else {
-        decode_optional_string(decoder, MAX_STRING_CHARS)?;
-        decode_optional_string(decoder, MAX_STRING_CHARS)?;
-    }
-    Ok(())
+        None
+    };
+    let nbt = if decoder.read_bool()? {
+        decode_nbt_summary_from_decoder(decoder)?
+    } else {
+        None
+    };
+    let (exact_components, partial_components) = decode_data_component_matchers(decoder)?;
+    Ok(BlockPredicateSummary {
+        blocks,
+        state,
+        nbt,
+        exact_components,
+        partial_components,
+    })
 }
 
-fn decode_data_component_matchers(decoder: &mut Decoder<'_>) -> Result<()> {
+fn decode_state_properties_predicate(
+    decoder: &mut Decoder<'_>,
+) -> Result<Vec<StatePropertyMatcherSummary>> {
+    let count = read_bounded_len(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
+    let mut properties = Vec::with_capacity(count);
+    for _ in 0..count {
+        properties.push(StatePropertyMatcherSummary {
+            name: decoder.read_string(MAX_STRING_CHARS)?,
+            value: decode_state_property_value_matcher(decoder)?,
+        });
+    }
+    Ok(properties)
+}
+
+fn decode_state_property_value_matcher(
+    decoder: &mut Decoder<'_>,
+) -> Result<StatePropertyValueMatcherSummary> {
+    if decoder.read_bool()? {
+        Ok(StatePropertyValueMatcherSummary::Exact(
+            decoder.read_string(MAX_STRING_CHARS)?,
+        ))
+    } else {
+        Ok(StatePropertyValueMatcherSummary::Range {
+            min: decode_optional_string_value(decoder, MAX_STRING_CHARS)?,
+            max: decode_optional_string_value(decoder, MAX_STRING_CHARS)?,
+        })
+    }
+}
+
+fn decode_data_component_matchers(
+    decoder: &mut Decoder<'_>,
+) -> Result<(
+    Option<Box<DataComponentPatchSummary>>,
+    Vec<PartialDataComponentPredicateSummary>,
+)> {
     let exact_count = read_bounded_len(decoder, MAX_DATA_COMPONENT_PREDICATE_ENTRIES)?;
-    decode_typed_data_component_list(decoder, exact_count)?;
+    let exact_components = if exact_count == 0 {
+        None
+    } else {
+        let mut summary = decode_typed_data_component_patch_summary(decoder, exact_count)?;
+        summary.added = exact_count;
+        Some(Box::new(summary))
+    };
 
     let partial_count = read_bounded_len(decoder, MAX_PARTIAL_DATA_COMPONENT_PREDICATES)?;
+    let mut partial_components = Vec::with_capacity(partial_count);
     for _ in 0..partial_count {
-        decoder.read_bool()?;
-        decoder.read_var_i32()?;
-        skip_nbt_tag_from_decoder(decoder)?;
+        let concrete = decoder.read_bool()?;
+        let type_id = decoder.read_var_i32()?;
+        partial_components.push(PartialDataComponentPredicateSummary {
+            predicate_type: if concrete {
+                DataComponentPredicateTypeSummary::Concrete(type_id)
+            } else {
+                DataComponentPredicateTypeSummary::AnyComponent(type_id)
+            },
+            wire_value: decode_nbt_summary_from_decoder(decoder)?,
+        });
     }
-    Ok(())
+    Ok((exact_components, partial_components))
 }
 
 fn decode_attribute_modifiers(decoder: &mut Decoder<'_>) -> Result<Vec<AttributeModifierSummary>> {
@@ -2438,11 +2542,6 @@ fn decode_string_map(decoder: &mut Decoder<'_>, max: usize) -> Result<BTreeMap<S
         entries.insert(key, value);
     }
     Ok(entries)
-}
-
-fn decode_optional_string(decoder: &mut Decoder<'_>, max_chars: usize) -> Result<()> {
-    let _ = decode_optional_string_value(decoder, max_chars)?;
-    Ok(())
 }
 
 fn decode_optional_string_value(
@@ -4182,10 +4281,19 @@ mod tests {
         payload.write_var_i32(1);
         payload.write_var_i32(1);
         payload.write_var_i32(64);
-        payload.write_var_i32(1);
+        payload.write_var_i32(2);
         payload.write_bool(false);
         payload.write_var_i32(6);
         payload.write_bytes(&empty_nbt_compound_root());
+        payload.write_bool(true);
+        payload.write_var_i32(0);
+        let mut partial_damage = vec![10];
+        partial_damage.push(10);
+        write_mutf8(&mut partial_damage, "durability");
+        write_named_nbt_int(&mut partial_damage, "min", 1);
+        partial_damage.push(0);
+        partial_damage.push(0);
+        payload.write_bytes(&partial_damage);
 
         payload.write_var_i32(15);
         payload.write_var_i32(1);
@@ -4216,10 +4324,59 @@ mod tests {
                     block_registry_ids: vec![1],
                     unresolved_block_tag_count: 0,
                 }),
+                can_place_on_persistent: Some(AdventureModePredicateDataSummary {
+                    predicates: vec![BlockPredicateSummary {
+                        blocks: Some(BlockHolderSetSummary {
+                            registry_ids: vec![1],
+                            tag: None,
+                        }),
+                        state: Some(vec![
+                            StatePropertyMatcherSummary {
+                                name: "facing".to_string(),
+                                value: StatePropertyValueMatcherSummary::Exact("north".to_string(),),
+                            },
+                            StatePropertyMatcherSummary {
+                                name: "age".to_string(),
+                                value: StatePropertyValueMatcherSummary::Range {
+                                    min: Some("1".to_string()),
+                                    max: Some("3".to_string()),
+                                },
+                            },
+                        ]),
+                        nbt: Some(NbtSummaryValue::Compound(Vec::new())),
+                        exact_components: Some(Box::new(DataComponentPatchSummary {
+                            added: 1,
+                            added_type_ids: vec![1],
+                            max_stack_size: Some(64),
+                            ..DataComponentPatchSummary::default()
+                        })),
+                        partial_components: vec![
+                            PartialDataComponentPredicateSummary {
+                                predicate_type: DataComponentPredicateTypeSummary::AnyComponent(6),
+                                wire_value: Some(NbtSummaryValue::Compound(Vec::new())),
+                            },
+                            PartialDataComponentPredicateSummary {
+                                predicate_type: DataComponentPredicateTypeSummary::Concrete(0),
+                                wire_value: Some(NbtSummaryValue::Compound(vec![
+                                    NbtSummaryEntry {
+                                        name: "durability".to_string(),
+                                        value: NbtSummaryValue::Compound(vec![NbtSummaryEntry {
+                                            name: "min".to_string(),
+                                            value: NbtSummaryValue::Int(1),
+                                        }]),
+                                    }
+                                ])),
+                            },
+                        ],
+                    }],
+                }),
                 can_break: Some(AdventureModePredicateSummary {
                     unknown: true,
                     block_registry_ids: Vec::new(),
                     unresolved_block_tag_count: 0,
+                }),
+                can_break_persistent: Some(AdventureModePredicateDataSummary {
+                    predicates: vec![BlockPredicateSummary::default()],
                 }),
                 attribute_modifiers: vec![
                     AttributeModifierSummary {

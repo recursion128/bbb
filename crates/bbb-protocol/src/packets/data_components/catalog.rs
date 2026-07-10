@@ -562,7 +562,9 @@ fn decode_can_place_on(
     decoder: &mut Decoder<'_>,
     summary: &mut DataComponentPatchSummary,
 ) -> Result<()> {
-    summary.can_place_on = Some(decode_adventure_mode_predicate_summary(decoder)?);
+    let (tooltip, persistent) = decode_adventure_mode_predicate_summary(decoder)?;
+    summary.can_place_on = Some(tooltip);
+    summary.can_place_on_persistent = Some(persistent);
     Ok(())
 }
 
@@ -571,7 +573,9 @@ fn decode_can_break(
     decoder: &mut Decoder<'_>,
     summary: &mut DataComponentPatchSummary,
 ) -> Result<()> {
-    summary.can_break = Some(decode_adventure_mode_predicate_summary(decoder)?);
+    let (tooltip, persistent) = decode_adventure_mode_predicate_summary(decoder)?;
+    summary.can_break = Some(tooltip);
+    summary.can_break_persistent = Some(persistent);
     Ok(())
 }
 

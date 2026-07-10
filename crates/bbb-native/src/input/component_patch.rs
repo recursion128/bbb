@@ -85,6 +85,8 @@ static PERSISTENT_SNBT_ENCODERS: &[PersistentSnbtEncoderDescriptor] = &[
     encoder(11, encode_lore),
     encoder(12, encode_rarity),
     encoder(13, encode_enchantments),
+    encoder(14, encode_adventure_mode_predicate),
+    encoder(15, encode_adventure_mode_predicate),
     encoder(16, encode_attribute_modifiers),
     encoder(17, encode_custom_model_data),
     encoder(18, encode_tooltip_display),
@@ -343,6 +345,142 @@ fn encode_enchantments(
         })
         .collect::<Option<Vec<_>>>()?;
     Some(format!("{{{}}}", entries.join(", ")))
+}
+
+fn encode_adventure_mode_predicate(
+    type_id: i32,
+    patch: &bbb_protocol::packets::DataComponentPatchSummary,
+    item_runtime: Option<&NativeItemRuntime>,
+) -> Option<String> {
+    let predicate = match type_id {
+        14 => patch.can_place_on_persistent.as_ref()?,
+        15 => patch.can_break_persistent.as_ref()?,
+        _ => return None,
+    };
+    let predicates = predicate
+        .predicates
+        .iter()
+        .map(|predicate| block_predicate_snbt(predicate, item_runtime))
+        .collect::<Option<Vec<_>>>()?;
+    match predicates.as_slice() {
+        [] => None,
+        [predicate] => Some(predicate.clone()),
+        predicates => Some(format!("[{}]", predicates.join(", "))),
+    }
+}
+
+fn block_predicate_snbt(
+    predicate: &bbb_protocol::packets::BlockPredicateSummary,
+    item_runtime: Option<&NativeItemRuntime>,
+) -> Option<String> {
+    let blocks = BlockStateRegistry::vanilla_26_1();
+    let mut fields = Vec::new();
+    if let Some(holder_set) = &predicate.blocks {
+        fields.push(format!(
+            "blocks: {}",
+            block_holder_set_snbt(&blocks, &holder_set.registry_ids, holder_set.tag.as_deref())?
+        ));
+    }
+    if let Some(state) = &predicate.state {
+        let mut names = HashSet::new();
+        let state = state
+            .iter()
+            .map(|matcher| {
+                names.insert(matcher.name.as_str()).then_some(())?;
+                let value = match &matcher.value {
+                    bbb_protocol::packets::StatePropertyValueMatcherSummary::Exact(value) => {
+                        debug_snbt_string(value)
+                    }
+                    bbb_protocol::packets::StatePropertyValueMatcherSummary::Range { min, max } => {
+                        let mut fields = Vec::new();
+                        if let Some(min) = min {
+                            fields.push(format!("min: {}", debug_snbt_string(min)));
+                        }
+                        if let Some(max) = max {
+                            fields.push(format!("max: {}", debug_snbt_string(max)));
+                        }
+                        format!("{{{}}}", fields.join(", "))
+                    }
+                };
+                Some(format!("{}: {value}", debug_snbt_string(&matcher.name)))
+            })
+            .collect::<Option<Vec<_>>>()?;
+        fields.push(format!("state: {{{}}}", state.join(", ")));
+    }
+    if let Some(nbt) = &predicate.nbt {
+        if !matches!(nbt, bbb_protocol::packets::NbtSummaryValue::Compound(_)) {
+            return None;
+        }
+        fields.push(format!(
+            "nbt: {}",
+            debug_snbt_string(&debug_nbt_summary_snbt(nbt))
+        ));
+    }
+    if let Some(exact) = &predicate.exact_components {
+        let exact = exact_component_predicate_snbt(exact, item_runtime)?;
+        if !exact.is_empty() {
+            fields.push(format!("components: {{{}}}", exact.join(", ")));
+        }
+    }
+    if !predicate.partial_components.is_empty() {
+        let mut resource_ids = HashSet::new();
+        let partial = predicate
+            .partial_components
+            .iter()
+            .map(|predicate| {
+                let resource_id = match predicate.predicate_type {
+                    bbb_protocol::packets::DataComponentPredicateTypeSummary::Concrete(type_id) => {
+                        bbb_protocol::data_component_types::vanilla_data_component_predicate_resource_id(type_id)?
+                    }
+                    bbb_protocol::packets::DataComponentPredicateTypeSummary::AnyComponent(type_id) => {
+                        bbb_protocol::data_component_types::vanilla_data_component_descriptor(type_id)?
+                            .resource_id()
+                    }
+                };
+                resource_ids.insert(resource_id).then_some(())?;
+                Some(format!(
+                    "{}: {}",
+                    debug_snbt_string(resource_id),
+                    partial_data_component_predicate_snbt(predicate)?
+                ))
+            })
+            .collect::<Option<Vec<_>>>()?;
+        fields.push(format!("predicates: {{{}}}", partial.join(", ")));
+    }
+    Some(format!("{{{}}}", fields.join(", ")))
+}
+
+fn exact_component_predicate_snbt(
+    patch: &bbb_protocol::packets::DataComponentPatchSummary,
+    item_runtime: Option<&NativeItemRuntime>,
+) -> Option<Vec<String>> {
+    if !patch.removed_type_ids.is_empty() {
+        return None;
+    }
+    let mut resource_ids = HashSet::new();
+    let mut fields = Vec::new();
+    for type_id in &patch.added_type_ids {
+        let descriptor =
+            bbb_protocol::data_component_types::vanilla_data_component_descriptor(*type_id)?;
+        if !descriptor.is_persistent() {
+            continue;
+        }
+        resource_ids
+            .insert(descriptor.resource_id())
+            .then_some(())?;
+        let value = encode_added_component_value_snbt(*type_id, patch, item_runtime)?;
+        fields.push(format!(
+            "{}: {value}",
+            debug_snbt_string(descriptor.resource_id())
+        ));
+    }
+    Some(fields)
+}
+
+fn partial_data_component_predicate_snbt(
+    predicate: &bbb_protocol::packets::PartialDataComponentPredicateSummary,
+) -> Option<String> {
+    Some(debug_nbt_summary_snbt(predicate.wire_value.as_ref()?))
 }
 
 fn encode_attribute_modifiers(
@@ -1093,7 +1231,7 @@ mod tests {
 
     #[test]
     fn encoder_registry_is_unique_sorted_and_persistent() {
-        assert_eq!(PERSISTENT_SNBT_ENCODERS.len(), 103);
+        assert_eq!(PERSISTENT_SNBT_ENCODERS.len(), 105);
         let mut ids = HashSet::new();
         let mut previous = None;
         for descriptor in PERSISTENT_SNBT_ENCODERS {
@@ -1123,6 +1261,152 @@ mod tests {
             Some("64".to_string())
         );
         assert_eq!(encode_added_component_value_snbt(32, &patch, None), None);
+    }
+
+    #[test]
+    fn adventure_mode_predicate_encoder_preserves_codec_fields_and_compact_lists() {
+        use bbb_protocol::packets::{
+            AdventureModePredicateDataSummary, BlockHolderSetSummary, BlockPredicateSummary,
+            DataComponentPatchSummary, DataComponentPredicateTypeSummary, NbtSummaryEntry,
+            NbtSummaryValue, PartialDataComponentPredicateSummary, StatePropertyMatcherSummary,
+            StatePropertyValueMatcherSummary,
+        };
+
+        let rich_predicate = BlockPredicateSummary {
+            blocks: Some(BlockHolderSetSummary {
+                registry_ids: vec![1],
+                tag: None,
+            }),
+            state: Some(vec![
+                StatePropertyMatcherSummary {
+                    name: "facing".to_string(),
+                    value: StatePropertyValueMatcherSummary::Exact("north".to_string()),
+                },
+                StatePropertyMatcherSummary {
+                    name: "age".to_string(),
+                    value: StatePropertyValueMatcherSummary::Range {
+                        min: Some("1".to_string()),
+                        max: Some("3".to_string()),
+                    },
+                },
+            ]),
+            nbt: Some(NbtSummaryValue::Compound(Vec::new())),
+            exact_components: Some(Box::new(DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![1],
+                max_stack_size: Some(64),
+                ..Default::default()
+            })),
+            partial_components: vec![
+                PartialDataComponentPredicateSummary {
+                    predicate_type: DataComponentPredicateTypeSummary::AnyComponent(6),
+                    wire_value: Some(NbtSummaryValue::Compound(Vec::new())),
+                },
+                PartialDataComponentPredicateSummary {
+                    predicate_type: DataComponentPredicateTypeSummary::Concrete(0),
+                    wire_value: Some(NbtSummaryValue::Compound(vec![NbtSummaryEntry {
+                        name: "durability".to_string(),
+                        value: NbtSummaryValue::Compound(vec![NbtSummaryEntry {
+                            name: "min".to_string(),
+                            value: NbtSummaryValue::Int(1),
+                        }]),
+                    }])),
+                },
+            ],
+        };
+        let mut patch = DataComponentPatchSummary {
+            can_place_on_persistent: Some(AdventureModePredicateDataSummary {
+                predicates: vec![rich_predicate],
+            }),
+            can_break_persistent: Some(AdventureModePredicateDataSummary {
+                predicates: vec![
+                    BlockPredicateSummary::default(),
+                    BlockPredicateSummary {
+                        blocks: Some(BlockHolderSetSummary {
+                            registry_ids: Vec::new(),
+                            tag: Some("minecraft:mineable/pickaxe".to_string()),
+                        }),
+                        ..Default::default()
+                    },
+                ],
+            }),
+            ..Default::default()
+        };
+        assert_eq!(
+            encode_added_component_value_snbt(14, &patch, None),
+            Some(
+                "{blocks: \"minecraft:stone\", state: {\"facing\": \"north\", \
+                 \"age\": {min: \"1\", max: \"3\"}}, nbt: \"{}\", components: \
+                 {\"minecraft:max_stack_size\": 64}, predicates: \
+                 {\"minecraft:custom_name\": {}, \"minecraft:damage\": \
+                 {durability: {min: 1}}}}"
+                    .to_string()
+            )
+        );
+        assert_eq!(
+            encode_added_component_value_snbt(15, &patch, None),
+            Some("[{}, {blocks: \"#minecraft:mineable/pickaxe\"}]".to_string())
+        );
+
+        let mut transient_exact = patch.clone();
+        transient_exact
+            .can_place_on_persistent
+            .as_mut()
+            .unwrap()
+            .predicates[0]
+            .exact_components = Some(Box::new(DataComponentPatchSummary {
+            added: 1,
+            added_type_ids: vec![20],
+            ..Default::default()
+        }));
+        assert!(
+            !encode_added_component_value_snbt(14, &transient_exact, None)
+                .unwrap()
+                .contains("components:")
+        );
+
+        let mut unsupported_exact = patch.clone();
+        unsupported_exact
+            .can_place_on_persistent
+            .as_mut()
+            .unwrap()
+            .predicates[0]
+            .exact_components = Some(Box::new(DataComponentPatchSummary {
+            added: 1,
+            added_type_ids: vec![32],
+            ..Default::default()
+        }));
+        assert_eq!(
+            encode_added_component_value_snbt(14, &unsupported_exact, None),
+            None
+        );
+
+        let mut invalid_partial = patch.clone();
+        invalid_partial
+            .can_place_on_persistent
+            .as_mut()
+            .unwrap()
+            .predicates[0]
+            .partial_components[1]
+            .wire_value = None;
+        assert_eq!(
+            encode_added_component_value_snbt(14, &invalid_partial, None),
+            None
+        );
+
+        patch.can_place_on_persistent.as_mut().unwrap().predicates[0]
+            .blocks
+            .as_mut()
+            .unwrap()
+            .registry_ids[0] = 1168;
+        assert_eq!(encode_added_component_value_snbt(14, &patch, None), None);
+        patch
+            .can_break_persistent
+            .as_mut()
+            .unwrap()
+            .predicates
+            .clear();
+        assert_eq!(encode_added_component_value_snbt(15, &patch, None), None);
     }
 
     #[test]
