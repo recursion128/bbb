@@ -1,4 +1,5 @@
 use super::*;
+use bbb_world::BlockStateRegistry;
 
 type PersistentSnbtEncoder = fn(
     i32,
@@ -95,6 +96,7 @@ static PERSISTENT_SNBT_ENCODERS: &[PersistentSnbtEncoderDescriptor] = &[
     encoder(25, encode_use_remainder),
     encoder(26, encode_use_cooldown),
     encoder(27, encode_damage_resistant),
+    encoder(28, encode_tool),
     encoder(29, encode_weapon),
     encoder(30, encode_attack_range),
     encoder(31, encode_enchantable),
@@ -453,6 +455,89 @@ fn encode_damage_resistant(
     _item_runtime: Option<&NativeItemRuntime>,
 ) -> Option<String> {
     debug_damage_resistant_component_snbt(patch)
+}
+
+fn encode_tool(
+    _type_id: i32,
+    patch: &bbb_protocol::packets::DataComponentPatchSummary,
+    _item_runtime: Option<&NativeItemRuntime>,
+) -> Option<String> {
+    let tool = patch.tool.as_ref()?;
+    if tool.damage_per_block < 0 {
+        return None;
+    }
+    let blocks = BlockStateRegistry::vanilla_26_1();
+    let rules = tool
+        .rules
+        .iter()
+        .map(|rule| {
+            let mut fields = vec![format!(
+                "blocks: {}",
+                block_holder_set_snbt(
+                    &blocks,
+                    &rule.block_registry_ids,
+                    rule.block_tag.as_deref()
+                )?
+            )];
+            if let Some(bits) = rule.speed_bits {
+                let speed = f32::from_bits(bits);
+                if speed <= 0.0 || !speed.is_finite() {
+                    return None;
+                }
+                fields.push(format!("speed: {}", debug_snbt_float(speed)?));
+            }
+            if let Some(correct_for_drops) = rule.correct_for_drops {
+                fields.push(format!(
+                    "correct_for_drops: {}",
+                    debug_snbt_bool(correct_for_drops)
+                ));
+            }
+            Some(format!("{{{}}}", fields.join(", ")))
+        })
+        .collect::<Option<Vec<_>>>()?
+        .join(", ");
+    let mut fields = vec![format!("rules: [{rules}]")];
+    if tool.default_mining_speed_bits != 1.0_f32.to_bits() {
+        fields.push(format!(
+            "default_mining_speed: {}",
+            debug_snbt_float(f32::from_bits(tool.default_mining_speed_bits))?
+        ));
+    }
+    if tool.damage_per_block != 1 {
+        fields.push(format!("damage_per_block: {}", tool.damage_per_block));
+    }
+    if !tool.can_destroy_blocks_in_creative {
+        fields.push("can_destroy_blocks_in_creative: 0b".to_string());
+    }
+    Some(format!("{{{}}}", fields.join(", ")))
+}
+
+fn block_holder_set_snbt(
+    blocks: &BlockStateRegistry,
+    registry_ids: &[i32],
+    tag: Option<&str>,
+) -> Option<String> {
+    if let Some(tag) = tag {
+        return registry_ids
+            .is_empty()
+            .then(|| debug_snbt_string(&format!("#{tag}")));
+    }
+    let resource_ids = registry_ids
+        .iter()
+        .map(|id| blocks.block_name_by_registry_id(*id))
+        .collect::<Option<Vec<_>>>()?;
+    Some(match resource_ids.as_slice() {
+        [] => "[]".to_string(),
+        [resource_id] => debug_snbt_string(resource_id),
+        resource_ids => format!(
+            "[{}]",
+            resource_ids
+                .iter()
+                .map(|resource_id| debug_snbt_string(resource_id))
+                .collect::<Vec<_>>()
+                .join(", ")
+        ),
+    })
 }
 
 fn encode_weapon(
@@ -1008,7 +1093,7 @@ mod tests {
 
     #[test]
     fn encoder_registry_is_unique_sorted_and_persistent() {
-        assert_eq!(PERSISTENT_SNBT_ENCODERS.len(), 102);
+        assert_eq!(PERSISTENT_SNBT_ENCODERS.len(), 103);
         let mut ids = HashSet::new();
         let mut previous = None;
         for descriptor in PERSISTENT_SNBT_ENCODERS {
@@ -1037,6 +1122,54 @@ mod tests {
             encode_added_component_value_snbt(1, &patch, None),
             Some("64".to_string())
         );
+        assert_eq!(encode_added_component_value_snbt(32, &patch, None), None);
+    }
+
+    #[test]
+    fn tool_encoder_resolves_block_holders_and_validates_codec_ranges() {
+        let mut patch = bbb_protocol::packets::DataComponentPatchSummary {
+            tool: Some(bbb_protocol::packets::ToolSummary {
+                rules: vec![
+                    bbb_protocol::packets::ToolRuleSummary {
+                        block_registry_ids: Vec::new(),
+                        block_tag: Some("minecraft:mineable/pickaxe".to_string()),
+                        speed_bits: Some(8.0_f32.to_bits()),
+                        correct_for_drops: Some(true),
+                    },
+                    bbb_protocol::packets::ToolRuleSummary {
+                        block_registry_ids: vec![1, 193],
+                        block_tag: None,
+                        speed_bits: None,
+                        correct_for_drops: Some(false),
+                    },
+                ],
+                default_mining_speed_bits: 1.5_f32.to_bits(),
+                damage_per_block: 2,
+                can_destroy_blocks_in_creative: false,
+            }),
+            ..Default::default()
+        };
+        assert_eq!(
+            encode_added_component_value_snbt(28, &patch, None),
+            Some(
+                "{rules: [{blocks: \"#minecraft:mineable/pickaxe\", speed: 8.0f, \
+                 correct_for_drops: 1b}, {blocks: [\"minecraft:stone\", \
+                 \"minecraft:obsidian\"], correct_for_drops: 0b}], \
+                 default_mining_speed: 1.5f, damage_per_block: 2, \
+                 can_destroy_blocks_in_creative: 0b}"
+                    .to_string()
+            )
+        );
+
+        patch.tool.as_mut().unwrap().rules[1].block_registry_ids[1] = 1168;
+        assert_eq!(encode_added_component_value_snbt(28, &patch, None), None);
+        patch.tool.as_mut().unwrap().rules[1].block_registry_ids[1] = 193;
+        patch.tool.as_mut().unwrap().rules[0].speed_bits = Some(0.0_f32.to_bits());
+        assert_eq!(encode_added_component_value_snbt(28, &patch, None), None);
+        patch.tool.as_mut().unwrap().rules[0].speed_bits = Some(f32::INFINITY.to_bits());
+        assert_eq!(encode_added_component_value_snbt(28, &patch, None), None);
+        patch.tool.as_mut().unwrap().rules[0].speed_bits = Some(8.0_f32.to_bits());
+        patch.tool.as_mut().unwrap().damage_per_block = -1;
         assert_eq!(encode_added_component_value_snbt(28, &patch, None), None);
     }
 

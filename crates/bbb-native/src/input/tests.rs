@@ -8738,15 +8738,15 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
         EquipmentAssetCatalog::default(),
     );
     let patch = DataComponentPatchSummary {
-        added: 102,
+        added: 103,
         added_type_ids: vec![
             0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 16, 17, 18, 19, 21, 22, 23, 24, 25, 26,
-            27, 29, 30, 31, 33, 34, 35, 36, 38, 39, 40, 42, 43, 44, 45, 46, 47, 49, 50, 51, 52, 53,
-            54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75,
-            76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97,
-            98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109,
+            27, 28, 29, 30, 31, 33, 34, 35, 36, 38, 39, 40, 42, 43, 44, 45, 46, 47, 49, 50, 51, 52,
+            53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74,
+            75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96,
+            97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109,
         ],
-        removed_type_ids: vec![28],
+        removed_type_ids: vec![32],
         custom_data: Some(NbtSummaryValue::Compound(vec![
             NbtSummaryEntry {
                 name: "answer".to_string(),
@@ -8930,6 +8930,25 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
         use_cooldown_ticks: Some(25),
         use_cooldown_group: Some("minecraft:ender_pearl".to_string()),
         damage_resistant_type_tag: Some("minecraft:is_fire".to_string()),
+        tool: Some(bbb_protocol::packets::ToolSummary {
+            rules: vec![
+                bbb_protocol::packets::ToolRuleSummary {
+                    block_registry_ids: Vec::new(),
+                    block_tag: Some("minecraft:mineable/pickaxe".to_string()),
+                    speed_bits: Some(8.0_f32.to_bits()),
+                    correct_for_drops: Some(true),
+                },
+                bbb_protocol::packets::ToolRuleSummary {
+                    block_registry_ids: vec![1, 193],
+                    block_tag: None,
+                    speed_bits: None,
+                    correct_for_drops: Some(false),
+                },
+            ],
+            default_mining_speed_bits: 1.5_f32.to_bits(),
+            damage_per_block: 2,
+            can_destroy_blocks_in_creative: false,
+        }),
         weapon_item_damage_per_attack: Some(3),
         weapon_disable_blocking_seconds_bits: Some(5.0_f32.to_bits()),
         attack_range: Some(bbb_protocol::packets::AttackRangeSummary {
@@ -9349,6 +9368,10 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
          \"minecraft:use_cooldown\": {seconds: 1.25f, \
          cooldown_group: \"minecraft:ender_pearl\"}, \
          \"minecraft:damage_resistant\": {types: \"#minecraft:is_fire\"}, \
+         \"minecraft:tool\": {rules: [{blocks: \"#minecraft:mineable/pickaxe\", \
+         speed: 8.0f, correct_for_drops: 1b}, {blocks: [\"minecraft:stone\", \
+         \"minecraft:obsidian\"], correct_for_drops: 0b}], default_mining_speed: 1.5f, \
+         damage_per_block: 2, can_destroy_blocks_in_creative: 0b}, \
          \"minecraft:weapon\": {item_damage_per_attack: 3, \
          disable_blocking_for_seconds: 5.0f}, \
          \"minecraft:attack_range\": {min_reach: 2.0f, max_reach: 4.5f, \
@@ -9462,7 +9485,7 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
          \"minecraft:cat/collar\": \"black\", \
          \"minecraft:sheep/color\": \"cyan\", \
          \"minecraft:shulker/color\": \"white\", \
-         \"!minecraft:tool\": {}}}"
+         \"!minecraft:equippable\": {}}}"
                 .to_string()
         )
     );
@@ -9808,7 +9831,7 @@ fn item_stack_snbt_preserves_all_persistent_component_removals() {
 fn component_patch_dispatch_uses_encoder_registry_and_catalog_metadata() {
     let patch = DataComponentPatchSummary {
         added: 2,
-        added_type_ids: vec![1, 28],
+        added_type_ids: vec![1, 32],
         removed_type_ids: vec![8, 20],
         max_stack_size: Some(64),
         ..DataComponentPatchSummary::default()

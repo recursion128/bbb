@@ -23,8 +23,8 @@ pub use data_components::{
     ProfileSkinTextureSummary, ProfileTextureSummary, ProfileTexturesSummary,
     ResolvableProfileKindSummary, ResolvableProfileSummary, ResourceTextureSummary,
     SoundEventSummary, SuspiciousStewEffectSummary, SwingAnimationSummary,
-    SwingAnimationTypeSummary, TrimMaterialSummary, TrimPatternSummary, UseEffectsSummary,
-    WrittenBookContentSummary,
+    SwingAnimationTypeSummary, ToolRuleSummary, ToolSummary, TrimMaterialSummary,
+    TrimPatternSummary, UseEffectsSummary, WrittenBookContentSummary,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

@@ -130,7 +130,7 @@ static VANILLA_DATA_COMPONENTS: &[DataComponentDescriptor] = &[
         true,
         decode_damage_resistant,
     ),
-    component(28, "minecraft:tool", true, skip_tool),
+    component(28, "minecraft:tool", true, decode_tool_component),
     component(29, "minecraft:weapon", true, decode_weapon_component),
     component(
         30,
@@ -1285,12 +1285,13 @@ fn skip_unit(
     Ok(())
 }
 
-fn skip_tool(
+fn decode_tool_component(
     _type_id: i32,
     decoder: &mut Decoder<'_>,
-    _summary: &mut DataComponentPatchSummary,
+    summary: &mut DataComponentPatchSummary,
 ) -> Result<()> {
-    decode_tool(decoder)
+    summary.tool = Some(decode_tool(decoder)?);
+    Ok(())
 }
 
 fn skip_equippable(

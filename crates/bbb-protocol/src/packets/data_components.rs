@@ -134,6 +134,8 @@ pub struct DataComponentPatchSummary {
     #[serde(default)]
     pub damage_resistant_type_tag: Option<String>,
     #[serde(default)]
+    pub tool: Option<ToolSummary>,
+    #[serde(default)]
     pub weapon_item_damage_per_attack: Option<i32>,
     #[serde(default)]
     pub weapon_disable_blocking_seconds_bits: Option<u32>,
@@ -515,6 +517,26 @@ pub struct AttackRangeSummary {
     pub max_creative_reach: f32,
     pub hitbox_margin: f32,
     pub mob_factor: f32,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ToolSummary {
+    pub rules: Vec<ToolRuleSummary>,
+    pub default_mining_speed_bits: u32,
+    pub damage_per_block: i32,
+    pub can_destroy_blocks_in_creative: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ToolRuleSummary {
+    #[serde(default)]
+    pub block_registry_ids: Vec<i32>,
+    #[serde(default)]
+    pub block_tag: Option<String>,
+    #[serde(default)]
+    pub speed_bits: Option<u32>,
+    #[serde(default)]
+    pub correct_for_drops: Option<bool>,
 }
 
 impl PartialEq for AttackRangeSummary {
@@ -1079,18 +1101,18 @@ fn decode_optional_i32_value(decoder: &mut Decoder<'_>) -> Result<Option<i32>> {
     Ok(None)
 }
 
-fn decode_optional_f32(decoder: &mut Decoder<'_>) -> Result<()> {
+fn decode_optional_f32_bits(decoder: &mut Decoder<'_>) -> Result<Option<u32>> {
     if decoder.read_bool()? {
-        decoder.read_f32()?;
+        return Ok(Some(decoder.read_f32()?.to_bits()));
     }
-    Ok(())
+    Ok(None)
 }
 
-fn decode_optional_bool(decoder: &mut Decoder<'_>) -> Result<()> {
+fn decode_optional_bool_value(decoder: &mut Decoder<'_>) -> Result<Option<bool>> {
     if decoder.read_bool()? {
-        decoder.read_bool()?;
+        return Ok(Some(decoder.read_bool()?));
     }
-    Ok(())
+    Ok(None)
 }
 
 fn decode_optional_holder_set(decoder: &mut Decoder<'_>) -> Result<()> {
@@ -1528,17 +1550,24 @@ fn decode_item_container_contents(
     Ok(ItemContainerContentsSummary { items, slots })
 }
 
-fn decode_tool(decoder: &mut Decoder<'_>) -> Result<()> {
+fn decode_tool(decoder: &mut Decoder<'_>) -> Result<ToolSummary> {
     let rule_count = read_bounded_len(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
+    let mut rules = Vec::with_capacity(rule_count);
     for _ in 0..rule_count {
-        decode_holder_set(decoder)?;
-        decode_optional_f32(decoder)?;
-        decode_optional_bool(decoder)?;
+        let blocks = decode_holder_set_summary(decoder)?;
+        rules.push(ToolRuleSummary {
+            block_registry_ids: blocks.registry_ids,
+            block_tag: blocks.tag,
+            speed_bits: decode_optional_f32_bits(decoder)?,
+            correct_for_drops: decode_optional_bool_value(decoder)?,
+        });
     }
-    decoder.read_f32()?;
-    decoder.read_var_i32()?;
-    decoder.read_bool()?;
-    Ok(())
+    Ok(ToolSummary {
+        rules,
+        default_mining_speed_bits: decoder.read_f32()?.to_bits(),
+        damage_per_block: decoder.read_var_i32()?,
+        can_destroy_blocks_in_creative: decoder.read_bool()?,
+    })
 }
 
 struct UseCooldownSummary {
@@ -3668,6 +3697,65 @@ mod tests {
     }
 
     #[test]
+    fn decodes_tool_rules_and_defaults_in_wire_order() {
+        let mut payload = Encoder::new();
+        payload.write_var_i32(1);
+        payload.write_var_i32(0);
+        payload.write_var_i32(28);
+        payload.write_var_i32(2);
+
+        payload.write_var_i32(0);
+        payload.write_string("minecraft:mineable/pickaxe");
+        payload.write_bool(true);
+        payload.write_f32(8.0);
+        payload.write_bool(true);
+        payload.write_bool(true);
+
+        payload.write_var_i32(3);
+        payload.write_var_i32(1);
+        payload.write_var_i32(193);
+        payload.write_bool(false);
+        payload.write_bool(true);
+        payload.write_bool(false);
+
+        payload.write_f32(1.5);
+        payload.write_var_i32(2);
+        payload.write_bool(false);
+
+        let payload = payload.into_inner();
+        let mut decoder = Decoder::new(&payload);
+        let patch = decode_data_component_patch_summary(&mut decoder).unwrap();
+        assert_eq!(
+            patch,
+            DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![28],
+                tool: Some(ToolSummary {
+                    rules: vec![
+                        ToolRuleSummary {
+                            block_registry_ids: Vec::new(),
+                            block_tag: Some("minecraft:mineable/pickaxe".to_string()),
+                            speed_bits: Some(8.0_f32.to_bits()),
+                            correct_for_drops: Some(true),
+                        },
+                        ToolRuleSummary {
+                            block_registry_ids: vec![1, 193],
+                            block_tag: None,
+                            speed_bits: None,
+                            correct_for_drops: Some(false),
+                        },
+                    ],
+                    default_mining_speed_bits: 1.5_f32.to_bits(),
+                    damage_per_block: 2,
+                    can_destroy_blocks_in_creative: false,
+                }),
+                ..DataComponentPatchSummary::default()
+            }
+        );
+        assert!(decoder.is_empty());
+    }
+
+    #[test]
     fn decodes_swing_animation_component_summary() {
         let mut payload = Encoder::new();
         payload.write_var_i32(1);
@@ -4966,6 +5054,17 @@ mod tests {
                     count: 1,
                     component_patch: DataComponentPatchSummary::default(),
                 })),
+                tool: Some(ToolSummary {
+                    rules: vec![ToolRuleSummary {
+                        block_registry_ids: vec![5],
+                        block_tag: None,
+                        speed_bits: Some(8.0_f32.to_bits()),
+                        correct_for_drops: Some(true),
+                    }],
+                    default_mining_speed_bits: 1.0_f32.to_bits(),
+                    damage_per_block: 1,
+                    can_destroy_blocks_in_creative: true,
+                }),
                 weapon_item_damage_per_attack: Some(1),
                 weapon_disable_blocking_seconds_bits: Some(0.5_f32.to_bits()),
                 attack_range: Some(AttackRangeSummary {

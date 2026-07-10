@@ -9204,3 +9204,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   输出 filterable `{raw, filtered?}`、遵循 generation/pages/resolved codec 默认值，
   并对 generation 越界、向量错位或缺 tree 安全省略。大型 component patch test
   从 101 扩展到 102 个 added entry，覆盖 primitive/compound/filtered 页面顺序。
+
+## 2026-07-10：ItemStack tool component decode and save
+
+- [x] minecraft:tool 的 structured decode 与 persistent SNBT（P2 protocol +
+  native input）：依据 vanilla 26.1 `Tool.CODEC/STREAM_CODEC`，protocol type id 28
+  不再 skip，而是保留有序 rules、block holder set（tag/direct IDs）、optional
+  speed/correct_for_drops 及顶层默认字段；native encoder 复用 bbb-world 内嵌 26.1
+  block registry（1168 项、OnceLock）解析 direct holders，遵循 compact holder-list
+  与 Codec defaults，并对 unknown block、非 positive speed、negative damage 安全省略。
+  大型 component patch test 从 102 扩展到 103 个 added entry，removal/unsupported
+  样例移至尚未实现的 equippable type id 32。

@@ -249,6 +249,7 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   break-sound)/exact-component-tree (custom-name/item-name/lore)/
   food/consumable/death-protection/potion-contents/suspicious-stew-effects/
   damage-resistant-tag/weapon/
+  tool-block-holder-rules/
   damage-type-named-holder/
   piercing-weapon/kinetic-weapon/
   repairable/use-effects/use-remainder/
