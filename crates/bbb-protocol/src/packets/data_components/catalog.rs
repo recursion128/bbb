@@ -891,7 +891,10 @@ fn decode_written_book_content_component(
     decoder: &mut Decoder<'_>,
     summary: &mut DataComponentPatchSummary,
 ) -> Result<()> {
-    summary.written_book = Some(decode_written_book_content(decoder)?);
+    let written_book = decode_written_book_content(decoder)?;
+    summary.written_book = Some(written_book.content);
+    summary.written_book_pages_nbt = written_book.pages_nbt;
+    summary.written_book_page_filters_nbt = written_book.page_filters_nbt;
     Ok(())
 }
 

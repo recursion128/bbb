@@ -117,6 +117,7 @@ static PERSISTENT_SNBT_ENCODERS: &[PersistentSnbtEncoderDescriptor] = &[
     encoder(52, encode_potion_duration_scale),
     encoder(53, encode_suspicious_stew_effects),
     encoder(54, encode_writable_book_content),
+    encoder(55, encode_written_book_content),
     encoder(56, encode_armor_trim),
     encoder(57, encode_codec_backed_nbt),
     encoder(58, encode_entity_data),
@@ -670,6 +671,74 @@ fn encode_writable_book_content(
     Some(debug_writable_book_content_component_snbt(patch))
 }
 
+fn encode_written_book_content(
+    _type_id: i32,
+    patch: &bbb_protocol::packets::DataComponentPatchSummary,
+    _item_runtime: Option<&NativeItemRuntime>,
+) -> Option<String> {
+    let book = patch.written_book.as_ref()?;
+    if book.title.chars().count() > 32 || !(0..=3).contains(&book.generation) {
+        return None;
+    }
+    let page_count = book.pages.len();
+    if book.page_filters.len() != page_count
+        || patch.written_book_pages_nbt.len() != page_count
+        || patch.written_book_page_filters_nbt.len() != page_count
+    {
+        return None;
+    }
+
+    let mut fields = vec![format!(
+        "title: {}",
+        filterable_string_snbt(&book.title, book.title_filter.as_deref())
+    )];
+    fields.push(format!("author: {}", debug_snbt_string(&book.author)));
+    if book.generation != 0 {
+        fields.push(format!("generation: {}", book.generation));
+    }
+    if page_count != 0 {
+        let pages = (0..page_count)
+            .map(|index| {
+                let raw = patch.written_book_pages_nbt[index].as_ref()?;
+                let filtered = match (
+                    book.page_filters[index].as_ref(),
+                    patch.written_book_page_filters_nbt[index].as_ref(),
+                ) {
+                    (None, None) => None,
+                    (Some(_), Some(filtered)) => Some(filtered),
+                    _ => return None,
+                };
+                Some(filterable_component_snbt(raw, filtered))
+            })
+            .collect::<Option<Vec<_>>>()?
+            .join(", ");
+        fields.push(format!("pages: [{pages}]"));
+    }
+    if book.resolved {
+        fields.push("resolved: 1b".to_string());
+    }
+    Some(format!("{{{}}}", fields.join(", ")))
+}
+
+fn filterable_string_snbt(raw: &str, filtered: Option<&str>) -> String {
+    let mut fields = vec![format!("raw: {}", debug_snbt_string(raw))];
+    if let Some(filtered) = filtered {
+        fields.push(format!("filtered: {}", debug_snbt_string(filtered)));
+    }
+    format!("{{{}}}", fields.join(", "))
+}
+
+fn filterable_component_snbt(
+    raw: &bbb_protocol::packets::NbtSummaryValue,
+    filtered: Option<&bbb_protocol::packets::NbtSummaryValue>,
+) -> String {
+    let mut fields = vec![format!("raw: {}", debug_nbt_summary_snbt(raw))];
+    if let Some(filtered) = filtered {
+        fields.push(format!("filtered: {}", debug_nbt_summary_snbt(filtered)));
+    }
+    format!("{{{}}}", fields.join(", "))
+}
+
 fn encode_armor_trim(
     _type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
@@ -939,7 +1008,7 @@ mod tests {
 
     #[test]
     fn encoder_registry_is_unique_sorted_and_persistent() {
-        assert_eq!(PERSISTENT_SNBT_ENCODERS.len(), 101);
+        assert_eq!(PERSISTENT_SNBT_ENCODERS.len(), 102);
         let mut ids = HashSet::new();
         let mut previous = None;
         for descriptor in PERSISTENT_SNBT_ENCODERS {
@@ -1094,6 +1163,66 @@ mod tests {
         assert_eq!(encode_added_component_value_snbt(6, &patch, None), None);
         patch.lore_nbt.pop();
         assert_eq!(encode_added_component_value_snbt(11, &patch, None), None);
+    }
+
+    #[test]
+    fn written_book_encoder_preserves_filterable_component_trees_and_codec_defaults() {
+        let mut patch = bbb_protocol::packets::DataComponentPatchSummary {
+            written_book: Some(bbb_protocol::packets::WrittenBookContentSummary {
+                title: "Guide".to_string(),
+                title_filter: Some("Filtered Guide".to_string()),
+                author: "Alex".to_string(),
+                generation: 2,
+                pages: vec!["Chapter".to_string()],
+                page_filters: vec![Some("Filtered Chapter".to_string())],
+                resolved: true,
+            }),
+            written_book_pages_nbt: vec![Some(bbb_protocol::packets::NbtSummaryValue::Compound(
+                vec![bbb_protocol::packets::NbtSummaryEntry {
+                    name: "translate".to_string(),
+                    value: bbb_protocol::packets::NbtSummaryValue::String(
+                        "book.example.chapter".to_string(),
+                    ),
+                }],
+            ))],
+            written_book_page_filters_nbt: vec![Some(
+                bbb_protocol::packets::NbtSummaryValue::String("Filtered Chapter".to_string()),
+            )],
+            ..Default::default()
+        };
+        assert_eq!(
+            encode_added_component_value_snbt(55, &patch, None),
+            Some(
+                "{title: {raw: \"Guide\", filtered: \"Filtered Guide\"}, \
+                 author: \"Alex\", generation: 2, pages: [{raw: \
+                 {translate: \"book.example.chapter\"}, filtered: \
+                 \"Filtered Chapter\"}], resolved: 1b}"
+                    .to_string()
+            )
+        );
+
+        let default_patch = bbb_protocol::packets::DataComponentPatchSummary {
+            written_book: Some(bbb_protocol::packets::WrittenBookContentSummary {
+                title: "".to_string(),
+                title_filter: None,
+                author: "".to_string(),
+                generation: 0,
+                pages: Vec::new(),
+                page_filters: Vec::new(),
+                resolved: false,
+            }),
+            ..Default::default()
+        };
+        assert_eq!(
+            encode_added_component_value_snbt(55, &default_patch, None),
+            Some("{title: {raw: \"\"}, author: \"\"}".to_string())
+        );
+
+        patch.written_book.as_mut().unwrap().generation = 4;
+        assert_eq!(encode_added_component_value_snbt(55, &patch, None), None);
+        patch.written_book.as_mut().unwrap().generation = 0;
+        patch.written_book_pages_nbt[0] = None;
+        assert_eq!(encode_added_component_value_snbt(55, &patch, None), None);
     }
 
     #[test]

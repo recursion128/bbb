@@ -6,7 +6,7 @@ use super::{chunks, normalize_resource_location, read_resource_location};
 use crate::{
     codec::{Decoder, ProtocolError, Result},
     component::{
-        decode_component_summary_from_decoder, decode_styled_component_summary_from_decoder,
+        decode_styled_component_summary_from_decoder,
         decode_styled_component_summary_with_nbt_from_decoder, skip_nbt_tag_from_decoder,
         styled_runs_summary_text, StyledTextRun,
     },
@@ -281,6 +281,12 @@ pub struct DataComponentPatchSummary {
     pub writable_book_page_filters: Vec<Option<String>>,
     #[serde(default)]
     pub written_book: Option<WrittenBookContentSummary>,
+    /// Exact unnamed-NBT raw Component tree for each written-book page.
+    #[serde(default)]
+    pub written_book_pages_nbt: Vec<Option<NbtSummaryValue>>,
+    /// Exact unnamed-NBT filtered Component tree aligned with written-book pages.
+    #[serde(default)]
+    pub written_book_page_filters_nbt: Vec<Option<NbtSummaryValue>>,
     #[serde(default)]
     pub block_state_properties: BTreeMap<String, String>,
     #[serde(default)]
@@ -2264,27 +2270,41 @@ fn decode_writable_book_content(decoder: &mut Decoder<'_>) -> Result<WritableBoo
     Ok(out)
 }
 
-fn decode_written_book_content(decoder: &mut Decoder<'_>) -> Result<WrittenBookContentSummary> {
+struct DecodedWrittenBookContent {
+    content: WrittenBookContentSummary,
+    pages_nbt: Vec<Option<NbtSummaryValue>>,
+    page_filters_nbt: Vec<Option<NbtSummaryValue>>,
+}
+
+fn decode_written_book_content(decoder: &mut Decoder<'_>) -> Result<DecodedWrittenBookContent> {
     let title = decode_filterable_string_summary(decoder, MAX_WRITTEN_BOOK_TITLE_CHARS)?;
     let author = decoder.read_string(MAX_STRING_CHARS)?;
     let generation = decoder.read_var_i32()?;
     let pages = read_bounded_len(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
     let mut page_values = Vec::with_capacity(pages);
     let mut page_filters = Vec::with_capacity(pages);
+    let mut pages_nbt = Vec::with_capacity(pages);
+    let mut page_filters_nbt = Vec::with_capacity(pages);
     for _ in 0..pages {
         let page = decode_filterable_component_summary(decoder)?;
         page_values.push(page.raw);
         page_filters.push(page.filtered);
+        pages_nbt.push(page.raw_nbt);
+        page_filters_nbt.push(page.filtered_nbt);
     }
     let resolved = decoder.read_bool()?;
-    Ok(WrittenBookContentSummary {
-        title: title.raw,
-        title_filter: title.filtered,
-        author,
-        generation,
-        pages: page_values,
-        page_filters,
-        resolved,
+    Ok(DecodedWrittenBookContent {
+        content: WrittenBookContentSummary {
+            title: title.raw,
+            title_filter: title.filtered,
+            author,
+            generation,
+            pages: page_values,
+            page_filters,
+            resolved,
+        },
+        pages_nbt,
+        page_filters_nbt,
     })
 }
 
@@ -2302,16 +2322,31 @@ fn decode_filterable_string_summary(
     Ok(FilterableStringSummary { raw, filtered })
 }
 
+struct FilterableComponentSummary {
+    raw: String,
+    raw_nbt: Option<NbtSummaryValue>,
+    filtered: Option<String>,
+    filtered_nbt: Option<NbtSummaryValue>,
+}
+
 fn decode_filterable_component_summary(
     decoder: &mut Decoder<'_>,
-) -> Result<FilterableStringSummary> {
-    let raw = decode_component_summary_from_decoder(decoder)?;
-    let filtered = if decoder.read_bool()? {
-        Some(decode_component_summary_from_decoder(decoder)?)
+) -> Result<FilterableComponentSummary> {
+    let (raw_runs, raw_nbt) = decode_styled_component_summary_with_nbt_from_decoder(decoder)?;
+    let raw = styled_runs_summary_text(&raw_runs);
+    let (filtered, filtered_nbt) = if decoder.read_bool()? {
+        let (filtered_runs, filtered_nbt) =
+            decode_styled_component_summary_with_nbt_from_decoder(decoder)?;
+        (Some(styled_runs_summary_text(&filtered_runs)), filtered_nbt)
     } else {
-        None
+        (None, None)
     };
-    Ok(FilterableStringSummary { raw, filtered })
+    Ok(FilterableComponentSummary {
+        raw,
+        raw_nbt,
+        filtered,
+        filtered_nbt,
+    })
 }
 
 fn decode_optional_component_summary(
@@ -4987,6 +5022,10 @@ mod tests {
                     page_filters: vec![Some("Filtered".to_string())],
                     resolved: true,
                 }),
+                written_book_pages_nbt: vec![Some(NbtSummaryValue::String("Page".to_string(),))],
+                written_book_page_filters_nbt: vec![Some(NbtSummaryValue::String(
+                    "Filtered".to_string(),
+                ))],
                 charged_projectiles_items: vec![
                     ItemStackTemplateSummary {
                         item_id: 50,
@@ -5102,6 +5141,14 @@ mod tests {
                     page_filters: vec![None, Some("Filtered chapter two".to_string())],
                     resolved: true,
                 }),
+                written_book_pages_nbt: vec![
+                    Some(NbtSummaryValue::String("Chapter one".to_string())),
+                    Some(NbtSummaryValue::String("Raw chapter two".to_string())),
+                ],
+                written_book_page_filters_nbt: vec![
+                    None,
+                    Some(NbtSummaryValue::String("Filtered chapter two".to_string(),)),
+                ],
                 ..DataComponentPatchSummary::default()
             }
         );

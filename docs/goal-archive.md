@@ -9194,3 +9194,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   输出精确 SNBT。缺失或不完整 tree 安全省略，不从 flattened text 反推原树。
   大型 component patch test 从 98 扩展到 101 个 added entry，removal 样例移至
   尚未实现的 tool type id 28，并覆盖 compound/string/lore-list wire order。
+
+## 2026-07-10：ItemStack written-book exact Component-tree save
+
+- [x] minecraft:written_book_content 的 persistent SNBT（P2 protocol + native
+  input）：依据 vanilla 26.1 `WrittenBookContent.CODEC/STREAM_CODEC` 与
+  `Filterable.codec`，protocol 在既有 title/author/generation/plain-page summary
+  外按页保留 raw/filtered exact Component NBT tree；native type id 55 encoder
+  输出 filterable `{raw, filtered?}`、遵循 generation/pages/resolved codec 默认值，
+  并对 generation 越界、向量错位或缺 tree 安全省略。大型 component patch test
+  从 101 扩展到 102 个 added entry，覆盖 primitive/compound/filtered 页面顺序。

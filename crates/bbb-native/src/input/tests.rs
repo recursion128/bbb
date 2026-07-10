@@ -8738,13 +8738,13 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
         EquipmentAssetCatalog::default(),
     );
     let patch = DataComponentPatchSummary {
-        added: 101,
+        added: 102,
         added_type_ids: vec![
             0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 16, 17, 18, 19, 21, 22, 23, 24, 25, 26,
             27, 29, 30, 31, 33, 34, 35, 36, 38, 39, 40, 42, 43, 44, 45, 46, 47, 49, 50, 51, 52, 53,
-            54, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76,
-            77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98,
-            99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109,
+            54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75,
+            76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97,
+            98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109,
         ],
         removed_type_ids: vec![28],
         custom_data: Some(NbtSummaryValue::Compound(vec![
@@ -9128,6 +9128,26 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
         ],
         writable_book_pages: vec!["first\npage".to_string(), "second raw".to_string()],
         writable_book_page_filters: vec![None, Some("second filtered".to_string())],
+        written_book: Some(WrittenBookContentSummary {
+            title: "Guide".to_string(),
+            title_filter: Some("Filtered Guide".to_string()),
+            author: "Alex".to_string(),
+            generation: 2,
+            pages: vec!["Chapter one".to_string(), "Raw chapter two".to_string()],
+            page_filters: vec![None, Some("Filtered chapter two".to_string())],
+            resolved: true,
+        }),
+        written_book_pages_nbt: vec![
+            Some(NbtSummaryValue::String("Chapter one".to_string())),
+            Some(NbtSummaryValue::Compound(vec![NbtSummaryEntry {
+                name: "text".to_string(),
+                value: NbtSummaryValue::String("Raw chapter two".to_string()),
+            }])),
+        ],
+        written_book_page_filters_nbt: vec![
+            None,
+            Some(NbtSummaryValue::String("Filtered chapter two".to_string())),
+        ],
         armor_trim_material_id: Some(1),
         armor_trim_pattern_id: Some(17),
         ominous_bottle_amplifier: Some(3),
@@ -9368,6 +9388,10 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
          {id: \"minecraft:poison\", duration: 200}], \
          \"minecraft:writable_book_content\": {pages: [{raw: \"first\\npage\"}, \
          {raw: \"second raw\", filtered: \"second filtered\"}]}, \
+         \"minecraft:written_book_content\": {title: {raw: \"Guide\", filtered: \
+         \"Filtered Guide\"}, author: \"Alex\", generation: 2, pages: \
+         [{raw: \"Chapter one\"}, {raw: {text: \"Raw chapter two\"}, filtered: \
+         \"Filtered chapter two\"}], resolved: 1b}, \
          \"minecraft:trim\": {material: \"minecraft:iron\", pattern: \"minecraft:bolt\"}, \
          \"minecraft:debug_stick_state\": {\"minecraft:stone\": \"facing\"}, \
          \"minecraft:entity_data\": {NoAI: 1b, Health: 20.0f, \

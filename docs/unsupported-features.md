@@ -256,7 +256,8 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   swing-animation/resource/color (including dye/base-color)/map/ominous/firework/custom-model-data/
   codec-backed-NBT (map-decorations/debug-stick/entity-data/bucket-data/block-entity-data/
   recipes/lock/container-loot)/bees/
-  charged-projectile/bundle/writable-book/lodestone/profile/banner-pattern-provider-tag/
+  charged-projectile/bundle/writable-book/written-book-exact-component-trees/
+  lodestone/profile/banner-pattern-provider-tag/
   banner-pattern-layers/
   trim-named-holders/
   instrument-named-holder/
