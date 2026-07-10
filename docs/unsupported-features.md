@@ -244,7 +244,9 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   codec-backed-NBT (map-decorations/debug-stick/entity-data/bucket-data/block-entity-data/
   recipes/lock/container-loot)/bees/
   charged-projectile/bundle/writable-book/lodestone/profile/pot-decoration/
-  container/block-state/tropical-fish-enum subset on throwable/firework/
+  container/block-state/built-in animal/color enum (wolf/cat collars, fox,
+  salmon, parrot, mooshroom, rabbit, horse, llama, axolotl, sheep, shulker,
+  and tropical-fish) subset on throwable/firework/
   item-frame item stacks, falling-block `TileEntityData`,
   and non-default `VibrationSystem.Data` listener payloads),
   remaining entity-specific

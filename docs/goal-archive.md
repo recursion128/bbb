@@ -8832,3 +8832,15 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   均输出 `!resource` 空 compound，不再受 added-value 支持子集限制。focused test
   覆盖未实现 added codec 的 damage-type/break-sound/shulker-color removal，并确认
   三个 transient 与 unknown id 被省略；账本明确 removal 已完整、剩余仅 added value。
+
+## 2026-07-10：ItemStack built-in animal/color enum save codecs
+
+- [x] 12 个持久化内建 enum component（P2 protocol + native input）：覆盖
+  wolf/collar、fox/variant、salmon/size、parrot/variant、mooshroom/variant、
+  rabbit/variant、horse/variant、llama/variant、axolotl/variant、cat/collar、
+  sheep/color 与 shulker/color。protocol 按 DataComponentType id 保留规范化 enum
+  id，并逐项复刻 vanilla 26.1 的 ZERO、CLAMP、WRAP 与 Rabbit sparse/default
+  策略（含 99=evil）；native 输出各枚举 CODEC 的持久化名称。protocol focused
+  test 覆盖 12 项及各类越界行为；native component patch test 从 52 扩展到
+  64 个 added entry，覆盖全部资源名、持久化值与 wire order；该族与既有三个
+  tropical-fish enum 一并移入已支持子集。

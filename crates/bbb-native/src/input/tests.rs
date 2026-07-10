@@ -8568,11 +8568,11 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
         EquipmentAssetCatalog::default(),
     );
     let patch = DataComponentPatchSummary {
-        added: 52,
+        added: 64,
         added_type_ids: vec![
             0, 1, 2, 3, 4, 5, 7, 10, 12, 17, 18, 19, 21, 22, 23, 25, 26, 30, 31, 34, 35, 40, 43,
             44, 45, 46, 47, 49, 50, 52, 54, 57, 58, 59, 60, 63, 66, 67, 68, 69, 70, 71, 73, 74, 75,
-            76, 77, 78, 79, 88, 89, 90,
+            76, 77, 78, 79, 84, 85, 86, 87, 88, 89, 90, 91, 92, 101, 103, 104, 107, 108, 109,
         ],
         removed_type_ids: vec![6],
         custom_data: Some(NbtSummaryValue::Compound(vec![
@@ -8874,6 +8874,20 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
         tropical_fish_pattern_id: Some(257),
         tropical_fish_base_color_id: Some(1),
         tropical_fish_pattern_color_id: Some(99),
+        builtin_enum_component_ids: BTreeMap::from([
+            (84, 14),
+            (85, 1),
+            (86, 2),
+            (87, 4),
+            (91, 1),
+            (92, 99),
+            (101, 6),
+            (103, 3),
+            (104, 4),
+            (107, 15),
+            (108, 9),
+            (109, 0),
+        ]),
         ..DataComponentPatchSummary::default()
     };
     let stack = ProtocolItemStackSummary {
@@ -8964,9 +8978,21 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
          \"minecraft:lock\": {}, \
          \"minecraft:container_loot\": {loot_table: \
          \"minecraft:chests/simple_dungeon\", seed: 9L}, \
+         \"minecraft:wolf/collar\": \"red\", \
+         \"minecraft:fox/variant\": \"snow\", \
+         \"minecraft:salmon/size\": \"large\", \
+         \"minecraft:parrot/variant\": \"gray\", \
          \"minecraft:tropical_fish/pattern\": \"stripey\", \
          \"minecraft:tropical_fish/base_color\": \"orange\", \
          \"minecraft:tropical_fish/pattern_color\": \"white\", \
+         \"minecraft:mooshroom/variant\": \"brown\", \
+         \"minecraft:rabbit/variant\": \"evil\", \
+         \"minecraft:horse/variant\": \"dark_brown\", \
+         \"minecraft:llama/variant\": \"gray\", \
+         \"minecraft:axolotl/variant\": \"blue\", \
+         \"minecraft:cat/collar\": \"black\", \
+         \"minecraft:sheep/color\": \"cyan\", \
+         \"minecraft:shulker/color\": \"white\", \
          \"!minecraft:custom_name\": {}}}"
                 .to_string()
         )

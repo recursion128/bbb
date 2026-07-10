@@ -4750,6 +4750,10 @@ fn debug_supported_added_component_snbt(
         TROPICAL_FISH_PATTERN_COLOR_COMPONENT_TYPE_ID => {
             debug_snbt_string(debug_dye_color_name(patch.tropical_fish_pattern_color_id?))
         }
+        84 | 85 | 86 | 87 | 91 | 92 | 101 | 103 | 104 | 107 | 108 | 109 => {
+            let id = *patch.builtin_enum_component_ids.get(&type_id)?;
+            debug_snbt_string(debug_builtin_enum_component_name(type_id, id)?)
+        }
         _ => return None,
     };
     Some(format!("{}: {value}", debug_snbt_string(resource_id)))
@@ -4807,9 +4811,21 @@ fn debug_supported_component_resource_id(type_id: i32) -> Option<&'static str> {
         77 => "minecraft:bees",
         78 => "minecraft:lock",
         79 => "minecraft:container_loot",
+        84 => "minecraft:wolf/collar",
+        85 => "minecraft:fox/variant",
+        86 => "minecraft:salmon/size",
+        87 => "minecraft:parrot/variant",
         TROPICAL_FISH_PATTERN_COMPONENT_TYPE_ID => "minecraft:tropical_fish/pattern",
         TROPICAL_FISH_BASE_COLOR_COMPONENT_TYPE_ID => "minecraft:tropical_fish/base_color",
         TROPICAL_FISH_PATTERN_COLOR_COMPONENT_TYPE_ID => "minecraft:tropical_fish/pattern_color",
+        91 => "minecraft:mooshroom/variant",
+        92 => "minecraft:rabbit/variant",
+        101 => "minecraft:horse/variant",
+        103 => "minecraft:llama/variant",
+        104 => "minecraft:axolotl/variant",
+        107 => "minecraft:cat/collar",
+        108 => "minecraft:sheep/color",
+        109 => "minecraft:shulker/color",
         _ => return None,
     })
 }
@@ -5402,6 +5418,64 @@ fn debug_dye_color_name(id: i32) -> &'static str {
         15 => "black",
         _ => "white",
     }
+}
+
+fn debug_builtin_enum_component_name(type_id: i32, id: i32) -> Option<&'static str> {
+    Some(match type_id {
+        84 | 107 | 108 | 109 => debug_dye_color_name(id),
+        85 => match id {
+            1 => "snow",
+            _ => "red",
+        },
+        86 => match id.clamp(0, 2) {
+            0 => "small",
+            1 => "medium",
+            _ => "large",
+        },
+        87 => match id.clamp(0, 4) {
+            0 => "red_blue",
+            1 => "blue",
+            2 => "green",
+            3 => "yellow_blue",
+            _ => "gray",
+        },
+        91 => match id {
+            i32::MIN..=0 => "red",
+            _ => "brown",
+        },
+        92 => match id {
+            1 => "white",
+            2 => "black",
+            3 => "white_splotched",
+            4 => "gold",
+            5 => "salt",
+            99 => "evil",
+            _ => "brown",
+        },
+        101 => match id.rem_euclid(7) {
+            0 => "white",
+            1 => "creamy",
+            2 => "chestnut",
+            3 => "brown",
+            4 => "black",
+            5 => "gray",
+            _ => "dark_brown",
+        },
+        103 => match id.clamp(0, 3) {
+            0 => "creamy",
+            1 => "white",
+            2 => "brown",
+            _ => "gray",
+        },
+        104 => match id {
+            1 => "wild",
+            2 => "gold",
+            3 => "cyan",
+            4 => "blue",
+            _ => "lucy",
+        },
+        _ => return None,
+    })
 }
 
 fn debug_fireworks_component_snbt(

@@ -205,6 +205,10 @@ pub struct DataComponentPatchSummary {
     pub tropical_fish_base_color_id: Option<i32>,
     #[serde(default)]
     pub tropical_fish_pattern_color_id: Option<i32>,
+    /// Normalized network enum ids for persistent built-in animal/color
+    /// components, keyed by their `DataComponentType` protocol id.
+    #[serde(default)]
+    pub builtin_enum_component_ids: BTreeMap<i32, i32>,
     #[serde(default)]
     pub instrument_id: Option<i32>,
     #[serde(default)]
@@ -854,6 +858,12 @@ fn decode_typed_data_component_patch_summary(
             90 => {
                 summary.tropical_fish_pattern_color_id = Some(decoder.read_var_i32()?);
             }
+            84 | 85 | 86 | 87 | 91 | 92 | 101 | 103 | 104 | 107 | 108 | 109 => {
+                let id = decoder.read_var_i32()?;
+                summary
+                    .builtin_enum_component_ids
+                    .insert(type_id, normalize_builtin_enum_component_id(type_id, id));
+            }
             61 => {
                 let instrument = decode_instrument_component_summary(decoder)?;
                 summary.instrument_id = instrument.registry_id;
@@ -1471,6 +1481,28 @@ fn normalize_dye_color_id(id: i32) -> i32 {
         id
     } else {
         0
+    }
+}
+
+fn normalize_builtin_enum_component_id(type_id: i32, id: i32) -> i32 {
+    match type_id {
+        // DyeColor, Fox.Variant, and Axolotl.Variant use ZERO.
+        84 | 107 | 108 | 109 => normalize_dye_color_id(id),
+        85 => (0..=1).contains(&id).then_some(id).unwrap_or(0),
+        104 => (0..=4).contains(&id).then_some(id).unwrap_or(0),
+        // Salmon, Parrot, MushroomCow, and Llama use CLAMP.
+        86 => id.clamp(0, 2),
+        87 => id.clamp(0, 4),
+        91 => id.clamp(0, 1),
+        103 => id.clamp(0, 3),
+        // Rabbit is sparse and falls back to its BROWN default.
+        92 => match id {
+            0..=5 | 99 => id,
+            _ => 0,
+        },
+        // Horse.Variant uses WRAP over its seven continuous ids.
+        101 => id.rem_euclid(7),
+        _ => id,
     }
 }
 
@@ -4108,13 +4140,27 @@ mod tests {
     #[test]
     fn decodes_animal_variant_data_components() {
         let mut payload = Encoder::new();
-        let component_ids = [85, 86, 87, 88, 91, 92, 101, 103, 104];
-        payload.write_var_i32(component_ids.len() as i32);
+        let components = [
+            (84, 14),
+            (85, -1),
+            (86, 99),
+            (87, 99),
+            (88, 3),
+            (91, -1),
+            (92, 99),
+            (101, -1),
+            (103, 99),
+            (104, 99),
+            (107, 15),
+            (108, 9),
+            (109, -1),
+        ];
+        payload.write_var_i32(components.len() as i32);
         payload.write_var_i32(0);
 
-        for (index, component_id) in component_ids.iter().enumerate() {
-            payload.write_var_i32(*component_id);
-            payload.write_var_i32(index as i32);
+        for (component_id, value) in components {
+            payload.write_var_i32(component_id);
+            payload.write_var_i32(value);
         }
 
         let payload = payload.into_inner();
@@ -4123,10 +4169,24 @@ mod tests {
         assert_eq!(
             patch,
             DataComponentPatchSummary {
-                added: component_ids.len(),
-                added_type_ids: component_ids.to_vec(),
+                added: components.len(),
+                added_type_ids: components.iter().map(|(type_id, _)| *type_id).collect(),
                 removed_type_ids: Vec::new(),
                 tropical_fish_pattern_id: Some(3),
+                builtin_enum_component_ids: BTreeMap::from([
+                    (84, 14),
+                    (85, 0),
+                    (86, 2),
+                    (87, 4),
+                    (91, 0),
+                    (92, 99),
+                    (101, 6),
+                    (103, 3),
+                    (104, 0),
+                    (107, 15),
+                    (108, 9),
+                    (109, 0),
+                ]),
                 ..DataComponentPatchSummary::default()
             }
         );
