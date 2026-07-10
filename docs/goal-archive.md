@@ -8391,3 +8391,18 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   下发 description id / sentiment payload；tooltip 使用已核对 `Attributes.java` 顺序的 35 项
   built-in table 即为完整 26.1 surface。开放账本已删除不存在的 custom definition 缺口，只
   保留 dynamic enchantment effects 对 attribute modifiers 的真实工作。
+
+## 2026-07-10：Enchantment attribute effect tooltip
+
+- [x] 附魔属性修饰 tooltip（P2 world/item-runtime/native）：依据 vanilla 26.1
+  `EnchantmentHelper.forEachModifier`、`EnchantmentAttributeEffect`、
+  `LevelBasedValue` 与 `ItemStack.forEachModifier`，world 现在按 stack enchantment holder
+  顺序读取同步 `minecraft:enchantment` registry 的原始 NBT，解析 definition slots 和
+  `minecraft:attributes` effect list，并完整计算 constant / clamped / exponent / fraction /
+  levels_squared / linear / lookup 七种 level value；modifier id 按原版追加 `/<slot>`，无数据、
+  越界或非法 entry 安全忽略。item runtime 在每个 `EquipmentSlotGroup` 中保持 prototype/patch
+  modifier 在前、enchantment effect 在后的顺序，复用静态 attribute description/sentiment、
+  operation 百分比与零值压制，并继续受 `TooltipDisplay` 的 `ATTRIBUTE_MODIFIERS` hidden gate
+  统一控制。native hovered-inventory tooltip 直接从 canonical world registry 解析当前 stack，
+  focused tests 覆盖 registry NBT 双 effect 顺序、七种 value 计算、Efficiency III 的
+  `+10 Mining Efficiency` HUD 行和 hidden-component 压制；item tooltip 属性账本已清零。

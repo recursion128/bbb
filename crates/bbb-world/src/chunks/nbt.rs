@@ -6,9 +6,11 @@ const MAX_NBT_DEPTH: usize = 64;
 const MAX_NBT_LIST_ITEMS: usize = 4096;
 
 #[derive(Debug, Clone, PartialEq)]
-pub(super) enum NbtValue {
+pub(crate) enum NbtValue {
+    Byte(i8),
     Short(i16),
     Int(i32),
+    Float(f32),
     Double(f64),
     Long(i64),
     String(String),
@@ -18,7 +20,7 @@ pub(super) enum NbtValue {
     Other,
 }
 
-pub(super) fn decode_nbt_root(raw_nbt: &[u8]) -> Result<Option<NbtValue>> {
+pub(crate) fn decode_nbt_root(raw_nbt: &[u8]) -> Result<Option<NbtValue>> {
     let mut decoder = Decoder::new(raw_nbt);
     let root = read_nbt_any(&mut decoder)?;
     if !decoder.is_empty() {
@@ -29,7 +31,7 @@ pub(super) fn decode_nbt_root(raw_nbt: &[u8]) -> Result<Option<NbtValue>> {
     Ok(root)
 }
 
-pub(super) fn find_entry<'a>(entries: &'a [(String, NbtValue)], key: &str) -> Option<&'a NbtValue> {
+pub(crate) fn find_entry<'a>(entries: &'a [(String, NbtValue)], key: &str) -> Option<&'a NbtValue> {
     entries.iter().find(|(name, _)| name == key).map(|(_, v)| v)
 }
 
@@ -49,16 +51,10 @@ fn read_nbt_payload(decoder: &mut Decoder<'_>, tag_id: u8, depth: usize) -> Resu
     }
 
     match tag_id {
-        1 => {
-            decoder.read_exact(1, "nbt byte")?;
-            Ok(NbtValue::Other)
-        }
+        1 => Ok(NbtValue::Byte(decoder.read_i8()?)),
         2 => Ok(NbtValue::Short(decoder.read_i16()?)),
         3 => Ok(NbtValue::Int(decoder.read_i32()?)),
-        5 => {
-            decoder.read_exact(4, "nbt float")?;
-            Ok(NbtValue::Other)
-        }
+        5 => Ok(NbtValue::Float(decoder.read_f32()?)),
         4 => Ok(NbtValue::Long(decoder.read_i64()?)),
         6 => Ok(NbtValue::Double(decoder.read_f64()?)),
         7 => {

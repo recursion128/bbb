@@ -222,9 +222,6 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   `null` and emits the red `Missing Server Entity` 3D billboard instead. bbb
   owns no integrated server and implements that missing-label branch. Reopen
   with an in-process integrated server boundary.
-- Complete item-tooltip attribute and warning projection from vanilla
-  `ItemStack.forEachModifier` and `ItemStack.addDetailsToTooltip`: include
-  enchantment-provided attribute effects.
 - Extend F3+I local entity capture across the remaining vanilla
   `addAdditionalSaveData` entity families whose saved state still needs
   non-equine specialized parent-chain classification, remaining owner/target/reference

@@ -36,6 +36,7 @@ use winit::{
 
 const TOOLTIP_TEST_WHITE: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
 const TOOLTIP_TEST_AQUA: [f32; 4] = [85.0 / 255.0, 1.0, 1.0, 1.0];
+const TOOLTIP_TEST_BLUE: [f32; 4] = [85.0 / 255.0, 85.0 / 255.0, 1.0, 1.0];
 const TOOLTIP_TEST_DARK_PURPLE: [f32; 4] = [170.0 / 255.0, 0.0, 170.0 / 255.0, 1.0];
 const TOOLTIP_TEST_GRAY: [f32; 4] = [170.0 / 255.0, 170.0 / 255.0, 170.0 / 255.0, 1.0];
 const TOOLTIP_TEST_DARK_GRAY: [f32; 4] = [85.0 / 255.0, 85.0 / 255.0, 85.0 / 255.0, 1.0];
@@ -9385,6 +9386,52 @@ fn hud_inventory_tooltip_uses_local_player_base_attributes_for_default_weapon() 
 }
 
 #[test]
+fn hud_inventory_tooltip_applies_synced_enchantment_attribute_effects() {
+    let root = unique_runtime_temp_dir("inventory-enchantment-attribute-tooltip");
+    write_runtime_tooltip_item_assets(&root);
+    let item_runtime =
+        NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+    let mut world = WorldStore::new();
+    world.record_registry_data(bbb_protocol::packets::RegistryData {
+        registry: "minecraft:enchantment".to_string(),
+        entries: vec![bbb_protocol::packets::RegistryDataEntry {
+            id: "minecraft:efficiency".to_string(),
+            raw_data: Some(efficiency_enchantment_attribute_nbt()),
+        }],
+        raw_payload_len: 0,
+    });
+    let mut stack = item_stack(0, 1);
+    stack.component_patch.enchantments = vec![bbb_protocol::packets::ItemEnchantmentSummary {
+        holder_id: 0,
+        level: 3,
+    }];
+    world.apply_set_player_inventory(bbb_protocol::packets::SetPlayerInventory {
+        slot: 0,
+        item: stack,
+    });
+    assert!(world.open_local_inventory());
+
+    let screen = hud_inventory_screen(&world, Some(&item_runtime), Some(36), 0.0).unwrap();
+    assert_eq!(
+        screen.tooltip,
+        Some(HudInventoryTooltip {
+            slot_id: 36,
+            x: 8,
+            y: 142,
+            lines: vec![
+                tooltip_name_line("Test Combo", TOOLTIP_TEST_AQUA, 0x55_FF_FF, false),
+                tooltip_plain_line("Efficiency III", TOOLTIP_TEST_GRAY),
+                tooltip_plain_line("", TOOLTIP_TEST_WHITE),
+                tooltip_plain_line("When in Main Hand:", TOOLTIP_TEST_GRAY),
+                tooltip_plain_line("+10 Mining Efficiency", TOOLTIP_TEST_BLUE),
+            ],
+        })
+    );
+
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
 fn hud_inventory_tooltip_gates_operator_nbt_warning_on_local_permission() {
     let root = unique_runtime_temp_dir("inventory-operator-nbt-warning");
     write_runtime_tooltip_item_assets(&root);
@@ -15551,6 +15598,50 @@ fn record_enchantment_registry(world: &mut WorldStore) {
     });
 }
 
+fn efficiency_enchantment_attribute_nbt() -> Vec<u8> {
+    let mut out = vec![10];
+    out.push(9);
+    write_enchantment_nbt_string(&mut out, "slots");
+    out.push(8);
+    out.extend(1i32.to_be_bytes());
+    write_enchantment_nbt_string(&mut out, "mainhand");
+
+    out.push(10);
+    write_enchantment_nbt_string(&mut out, "effects");
+    out.push(9);
+    write_enchantment_nbt_string(&mut out, "minecraft:attributes");
+    out.push(10);
+    out.extend(1i32.to_be_bytes());
+    out.push(10);
+    write_enchantment_nbt_string(&mut out, "amount");
+    out.push(8);
+    write_enchantment_nbt_string(&mut out, "type");
+    write_enchantment_nbt_string(&mut out, "minecraft:levels_squared");
+    out.push(5);
+    write_enchantment_nbt_string(&mut out, "added");
+    out.extend(1.0f32.to_be_bytes());
+    out.push(0);
+    for (name, value) in [
+        ("attribute", "minecraft:mining_efficiency"),
+        ("id", "minecraft:enchantment.efficiency"),
+        ("operation", "add_value"),
+    ] {
+        out.push(8);
+        write_enchantment_nbt_string(&mut out, name);
+        write_enchantment_nbt_string(&mut out, value);
+    }
+    out.push(0);
+    out.push(0);
+    out.push(0);
+    out
+}
+
+fn write_enchantment_nbt_string(out: &mut Vec<u8>, value: &str) {
+    let bytes = value.as_bytes();
+    out.extend((bytes.len() as u16).to_be_bytes());
+    out.extend(bytes);
+}
+
 fn merchant_offers(
     container_id: i32,
     offer_count: usize,
@@ -16194,9 +16285,13 @@ fn write_runtime_tooltip_item_assets(root: &Path) {
             "item.disabled": "Disabled item",
             "item.durability": "Durability: %s / %s",
             "item.components": "%s component(s)",
+            "enchantment.minecraft.efficiency": "Efficiency",
+            "enchantment.level.3": "III",
+            "attribute.modifier.plus.0": "+%s %s",
             "attribute.modifier.equals.0": "%s %s",
             "attribute.name.attack_damage": "Attack Damage",
             "attribute.name.attack_speed": "Attack Speed",
+            "attribute.name.mining_efficiency": "Mining Efficiency",
             "item.modifiers.mainhand": "When in Main Hand:",
             "item.op_warning.line1": "Operator data",
             "item.op_warning.line2": "Can alter commands",

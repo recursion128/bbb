@@ -8849,6 +8849,8 @@ fn hud_inventory_tooltip(
             locked: map.locked,
         });
     let enchantment_keys = world_enchantment_keys(world);
+    let enchantment_attribute_modifiers =
+        world.enchantment_attribute_modifiers(&slot.item.component_patch.enchantments);
     let attribute_keys = world_attribute_keys(world);
     let attack_damage_id = registry_key_id(
         attribute_keys.as_deref(),
@@ -8869,6 +8871,7 @@ fn hud_inventory_tooltip(
             peaceful,
             map_data,
             enchantment_keys: enchantment_keys.as_deref(),
+            enchantment_attribute_modifiers: Some(&enchantment_attribute_modifiers),
             attribute_keys: attribute_keys.as_deref(),
             player_base_attack_damage: Some(
                 world

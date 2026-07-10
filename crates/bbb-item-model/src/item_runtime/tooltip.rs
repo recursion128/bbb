@@ -6,7 +6,7 @@ use bbb_protocol::{
     },
     ComponentStyle, StyledTextRun,
 };
-use bbb_world::RegistrySet;
+use bbb_world::{EnchantmentAttributeModifier, RegistrySet};
 
 use super::attributes::{
     vanilla_attribute, vanilla_attribute_for_key, VanillaAttribute, VanillaAttributeSentiment,
@@ -487,6 +487,7 @@ pub struct NativeItemTooltipOptions<'a> {
     pub peaceful: bool,
     pub map_data: Option<NativeItemMapTooltipData>,
     pub enchantment_keys: Option<&'a [String]>,
+    pub enchantment_attribute_modifiers: Option<&'a [EnchantmentAttributeModifier]>,
     pub attribute_keys: Option<&'a [String]>,
     pub player_base_attack_damage: Option<f64>,
     pub player_base_attack_speed: Option<f64>,
@@ -1955,6 +1956,7 @@ fn format_attribute_modifier_amount(amount: f64) -> String {
 fn push_stack_attribute_modifiers_tooltip_lines(
     language: &LanguageCatalog,
     modifiers: &[AttributeModifierSummary],
+    enchantment_modifiers: &[EnchantmentAttributeModifier],
     options: NativeItemTooltipOptions<'_>,
     lines: &mut Vec<NativeItemTooltipLine>,
 ) {
@@ -1962,7 +1964,7 @@ fn push_stack_attribute_modifiers_tooltip_lines(
         let Ok(slot_id) = i32::try_from(slot_id) else {
             continue;
         };
-        let mut first = true;
+        let mut section_lines = Vec::new();
         for modifier in modifiers
             .iter()
             .filter(|modifier| modifier.slot_id == slot_id)
@@ -1974,20 +1976,28 @@ fn push_stack_attribute_modifiers_tooltip_lines(
             else {
                 continue;
             };
-            if first {
-                lines.push(NativeItemTooltipLine::plain(
-                    String::new(),
-                    TOOLTIP_TEXT_WHITE,
-                ));
-                lines.push(NativeItemTooltipLine::plain(
-                    language
-                        .get_or_key(&format!("item.modifiers.{slot_key}"))
-                        .to_string(),
-                    TOOLTIP_TEXT_GRAY,
-                ));
-                first = false;
-            }
-            lines.push(line);
+            section_lines.push(line);
+        }
+        section_lines.extend(
+            enchantment_modifiers
+                .iter()
+                .filter(|modifier| modifier.slot == slot_key)
+                .filter_map(|modifier| {
+                    enchantment_attribute_modifier_tooltip_line(language, modifier, options)
+                }),
+        );
+        if !section_lines.is_empty() {
+            lines.push(NativeItemTooltipLine::plain(
+                String::new(),
+                TOOLTIP_TEXT_WHITE,
+            ));
+            lines.push(NativeItemTooltipLine::plain(
+                language
+                    .get_or_key(&format!("item.modifiers.{slot_key}"))
+                    .to_string(),
+                TOOLTIP_TEXT_GRAY,
+            ));
+            lines.extend(section_lines);
         }
     }
 }
@@ -2013,8 +2023,40 @@ fn stack_attribute_modifier_tooltip_line(
     }
 
     let attribute = tooltip_attribute(modifier.attribute_id, options.attribute_keys)?;
-    let raw_amount = f64::from_bits(modifier.amount_bits);
-    let (amount, display_with_base) = match modifier.modifier_id.as_str() {
+    numeric_attribute_modifier_tooltip_line(
+        language,
+        attribute,
+        &modifier.modifier_id,
+        f64::from_bits(modifier.amount_bits),
+        modifier.operation_id,
+        options,
+    )
+}
+
+fn enchantment_attribute_modifier_tooltip_line(
+    language: &LanguageCatalog,
+    modifier: &EnchantmentAttributeModifier,
+    options: NativeItemTooltipOptions<'_>,
+) -> Option<NativeItemTooltipLine> {
+    numeric_attribute_modifier_tooltip_line(
+        language,
+        vanilla_attribute_for_key(&modifier.attribute)?,
+        &modifier.modifier_id,
+        modifier.amount,
+        modifier.operation_id,
+        options,
+    )
+}
+
+fn numeric_attribute_modifier_tooltip_line(
+    language: &LanguageCatalog,
+    attribute: VanillaAttribute,
+    modifier_id: &str,
+    raw_amount: f64,
+    operation_id: i32,
+    options: NativeItemTooltipOptions<'_>,
+) -> Option<NativeItemTooltipLine> {
+    let (amount, display_with_base) = match modifier_id {
         "minecraft:base_attack_damage" => options
             .player_base_attack_damage
             .map(|base| (raw_amount + base, true))
@@ -2028,7 +2070,7 @@ fn stack_attribute_modifier_tooltip_line(
     if amount == 0.0 && !display_with_base {
         return None;
     }
-    let mut display_amount = if modifier.operation_id == 1 || modifier.operation_id == 2 {
+    let mut display_amount = if operation_id == 1 || operation_id == 2 {
         amount * 100.0
     } else if attribute.key == "minecraft:knockback_resistance" {
         amount * 10.0
@@ -2038,7 +2080,7 @@ fn stack_attribute_modifier_tooltip_line(
     if display_with_base {
         let text = translate_with_two_args(
             language,
-            &format!("attribute.modifier.equals.{}", modifier.operation_id),
+            &format!("attribute.modifier.equals.{operation_id}"),
             &format_attribute_modifier_amount(display_amount),
             language.get_or_key(attribute.description_key),
         )
@@ -2065,7 +2107,7 @@ fn stack_attribute_modifier_tooltip_line(
     let attribute_name = language.get_or_key(attribute.description_key).to_string();
     let text = translate_with_two_args(
         language,
-        &format!("{key_prefix}.{}", modifier.operation_id),
+        &format!("{key_prefix}.{operation_id}"),
         &amount,
         &attribute_name,
     )
@@ -3166,7 +3208,13 @@ impl NativeItemRuntime {
             let modifiers =
                 effective_attribute_modifiers(Some(component_patch), default_modifiers.as_slice())
                     .unwrap_or_default();
-            push_stack_attribute_modifiers_tooltip_lines(&self.language, modifiers, options, lines);
+            push_stack_attribute_modifiers_tooltip_lines(
+                &self.language,
+                modifiers,
+                options.enchantment_attribute_modifiers.unwrap_or_default(),
+                options,
+                lines,
+            );
         }
         if shows(COMPONENT_INTANGIBLE_PROJECTILE_TYPE_ID) {
             push_intangible_projectile_tooltip_line(

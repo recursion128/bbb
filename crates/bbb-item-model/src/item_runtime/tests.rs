@@ -345,6 +345,8 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
                 "effect.minecraft.poison": "Poison",
                 "effect.minecraft.speed": "Speed",
                 "effect.minecraft.weakness": "Weakness",
+                "enchantment.minecraft.efficiency": "Efficiency",
+                "enchantment.level.3": "III",
                 "potion.potency.1": "II",
                 "potion.potency.3": "IV",
                 "potion.withAmplifier": "%s %s",
@@ -359,6 +361,7 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
                 "item.modifiers.offhand": "When in Off Hand:",
                 "attribute.name.attack_damage": "Attack Damage",
                 "attribute.name.attack_speed": "Attack Speed",
+                "attribute.name.mining_efficiency": "Mining Efficiency",
                 "attribute.name.knockback_resistance": "Knockback Resistance",
                 "attribute.name.movement_speed": "Speed",
                 "item.durability": "Durability: %s / %s",
@@ -918,6 +921,61 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
             tooltip_line("", TOOLTIP_TEXT_WHITE),
             tooltip_line("When in Main Hand:", TOOLTIP_TEXT_GRAY),
             tooltip_line("+2 Attack Damage", TOOLTIP_TEXT_BLUE),
+        ])
+    );
+    let enchantment_attribute_modifiers = vec![bbb_world::EnchantmentAttributeModifier {
+        attribute: "minecraft:mining_efficiency".to_string(),
+        modifier_id: "minecraft:enchantment.efficiency/mainhand".to_string(),
+        amount: 10.0,
+        operation_id: 0,
+        slot: "mainhand".to_string(),
+    }];
+    let efficiency_enchantment_keys = ["minecraft:efficiency".to_string()];
+    let enchanted_stack = ItemStackSummary {
+        item_id: Some(0),
+        count: 1,
+        component_patch: DataComponentPatchSummary {
+            enchantments: vec![bbb_protocol::packets::ItemEnchantmentSummary {
+                holder_id: 0,
+                level: 3,
+            }],
+            ..DataComponentPatchSummary::default()
+        },
+    };
+    assert_eq!(
+        runtime.tooltip_lines_for_stack_with_context(
+            &enchanted_stack,
+            NativeItemTooltipOptions {
+                enchantment_keys: Some(&efficiency_enchantment_keys),
+                enchantment_attribute_modifiers: Some(&enchantment_attribute_modifiers),
+                ..NativeItemTooltipOptions::default()
+            },
+        ),
+        Some(vec![
+            name_line("Test Combo", TOOLTIP_TEXT_AQUA, 0x55_FF_FF, false),
+            tooltip_line("Efficiency III", TOOLTIP_TEXT_GRAY),
+            tooltip_line("", TOOLTIP_TEXT_WHITE),
+            tooltip_line("When in Main Hand:", TOOLTIP_TEXT_GRAY),
+            tooltip_line("+10 Mining Efficiency", TOOLTIP_TEXT_BLUE),
+        ])
+    );
+    let mut hidden_enchanted_stack = enchanted_stack;
+    hidden_enchanted_stack
+        .component_patch
+        .tooltip_hidden_component_type_ids
+        .push(16);
+    assert_eq!(
+        runtime.tooltip_lines_for_stack_with_context(
+            &hidden_enchanted_stack,
+            NativeItemTooltipOptions {
+                enchantment_keys: Some(&efficiency_enchantment_keys),
+                enchantment_attribute_modifiers: Some(&enchantment_attribute_modifiers),
+                ..NativeItemTooltipOptions::default()
+            },
+        ),
+        Some(vec![
+            name_line("Test Combo", TOOLTIP_TEXT_AQUA, 0x55_FF_FF, false),
+            tooltip_line("Efficiency III", TOOLTIP_TEXT_GRAY),
         ])
     );
     for component_patch in [
