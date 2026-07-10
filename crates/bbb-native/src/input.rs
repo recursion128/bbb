@@ -276,6 +276,8 @@ const COMMAND_BLOCK_DEFAULT_TRACK_OUTPUT: bool = true;
 const COMMAND_BLOCK_DEFAULT_UPDATE_LAST_EXECUTION: bool = true;
 const FURNACE_MINECART_DEFAULT_PUSH: f64 = 0.0;
 const FURNACE_MINECART_DEFAULT_FUEL: i16 = 0;
+/// `MinecartHopper.enabled` changes only from the server-side activator-rail
+/// callback or NBT load and is not synchronized to the client.
 const HOPPER_MINECART_DEFAULT_ENABLED: bool = true;
 const BASE_SPAWNER_DEFAULT_DELAY: i16 = 20;
 const BASE_SPAWNER_DEFAULT_MIN_SPAWN_DELAY: i16 = 200;
@@ -4820,6 +4822,9 @@ fn debug_push_tnt_minecart_additional_save_data(entity: &EntityState, fields: &m
         .minecart_tnt_fuse
         .map_or(TNT_MINECART_DEFAULT_FUSE, |fuse| fuse.fuse_remaining_ticks);
     fields.push(format!("fuse: {fuse}"));
+    // `explosionPowerBase` and `explosionSpeedFactor` are server-private NBT
+    // fields. Their client constructor defaults are exactly the values for
+    // which vanilla omits both optional save keys.
 }
 
 fn debug_push_item_frame_additional_save_data(

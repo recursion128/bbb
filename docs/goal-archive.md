@@ -8518,3 +8518,17 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   focused item-frame test 覆盖 `minecraft:diamond` metadata stack、字段顺序与 registry
   解析；空 glow-item-frame 仍省略 `Item`。任意非-fireworks component patch 的精确 codec
   SNBT 继续留在总账本，非空 item-frame 基础 stack 项已清零。
+
+## 2026-07-10：Hopper/TNT minecart server-private save audit
+
+- [x] Hopper/TNT minecart 私有保存字段边界（P2 native input + ledger）：逐写入点核对
+  vanilla 26.1 `MinecartHopper.activateMinecart` / `setEnabled` / save/load、old/new minecart
+  behavior，以及 `MinecartTNT` 的 field declaration / tick / explode / save/load。
+  `MinecartHopper.enabled` 只可能由接收 `ServerLevel` 的 activator-rail callback 或服务端
+  NBT load 改写，不进入 add-entity/metadata；external client 因而始终精确保存 constructor
+  `Enabled: 1b`。TNT minecart 的 `explosionPowerBase` / `explosionSpeedFactor` 除 NBT read
+  外没有写入，也不经协议同步；client 固定为 `4.0f / 1.0f`，恰好使 vanilla save 省略
+  `explosion_power` / `explosion_speed_factor`。代码注释固化这两个 ownership 边界，现有
+  focused hopper/TNT clipboard tests 覆盖准确默认输出，两项从账本转为 not-needed。
+  Furnace minecart 没有一并清零：`MultiPlayerGameMode.interact` 发包后会在客户端调用
+  `player.interactOn`，本地加燃料可预测修改 `fuel` / `push`，仍需实现该真实客户端路径。
