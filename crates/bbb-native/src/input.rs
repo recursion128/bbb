@@ -4645,6 +4645,7 @@ fn debug_supported_added_component_snbt(
         2 => patch.max_damage?.to_string(),
         3 => patch.damage?.to_string(),
         4 => "{}".to_string(),
+        5 => debug_use_effects_component_snbt(patch.use_effects?),
         10 => debug_snbt_string(patch.item_model.as_deref()?),
         12 => debug_snbt_string(match patch.rarity? {
             ItemRaritySummary::Common => "common",
@@ -4718,6 +4719,7 @@ fn debug_supported_component_resource_id(type_id: i32) -> Option<&'static str> {
         2 => "minecraft:max_damage",
         3 => "minecraft:damage",
         4 => "minecraft:unbreakable",
+        5 => "minecraft:use_effects",
         6 => "minecraft:custom_name",
         10 => "minecraft:item_model",
         12 => "minecraft:rarity",
@@ -4829,6 +4831,23 @@ fn debug_nbt_java_double_string(value: f64) -> String {
     } else {
         format!("{value:?}")
     }
+}
+
+fn debug_use_effects_component_snbt(effects: bbb_protocol::packets::UseEffectsSummary) -> String {
+    let mut fields = Vec::new();
+    if effects.can_sprint {
+        fields.push(format!("can_sprint: {}", debug_snbt_bool(true)));
+    }
+    if !effects.interact_vibrations {
+        fields.push(format!("interact_vibrations: {}", debug_snbt_bool(false)));
+    }
+    if effects.speed_multiplier.to_bits() != 0.2_f32.to_bits() {
+        fields.push(format!(
+            "speed_multiplier: {}f",
+            debug_nbt_java_float_string(effects.speed_multiplier)
+        ));
+    }
+    format!("{{{}}}", fields.join(", "))
 }
 
 fn debug_custom_model_data_component_snbt(

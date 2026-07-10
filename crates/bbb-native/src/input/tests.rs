@@ -8544,10 +8544,10 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
         EquipmentAssetCatalog::default(),
     );
     let patch = DataComponentPatchSummary {
-        added: 27,
+        added: 28,
         added_type_ids: vec![
-            0, 1, 2, 3, 4, 10, 12, 17, 21, 22, 44, 45, 46, 49, 50, 54, 63, 67, 68, 69, 70, 74, 75,
-            76, 88, 89, 90,
+            0, 1, 2, 3, 4, 5, 10, 12, 17, 21, 22, 44, 45, 46, 49, 50, 54, 63, 67, 68, 69, 70, 74,
+            75, 76, 88, 89, 90,
         ],
         removed_type_ids: vec![6],
         custom_data: Some(NbtSummaryValue::Compound(vec![
@@ -8604,6 +8604,11 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
         max_damage: Some(100),
         damage: Some(7),
         unbreakable: true,
+        use_effects: Some(bbb_protocol::packets::UseEffectsSummary {
+            can_sprint: true,
+            interact_vibrations: false,
+            speed_multiplier: 1.0,
+        }),
         item_model: Some("minecraft:custom/diamond".to_string()),
         rarity: Some(ItemRaritySummary::Rare),
         custom_model_data_floats: vec![1.0, -0.0, f32::INFINITY, f32::NAN].into(),
@@ -8619,7 +8624,16 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
             bbb_protocol::packets::ItemStackTemplateSummary {
                 item_id: 2,
                 count: 1,
-                component_patch: DataComponentPatchSummary::default(),
+                component_patch: DataComponentPatchSummary {
+                    added: 1,
+                    added_type_ids: vec![5],
+                    use_effects: Some(bbb_protocol::packets::UseEffectsSummary {
+                        can_sprint: false,
+                        interact_vibrations: true,
+                        speed_multiplier: 0.2,
+                    }),
+                    ..DataComponentPatchSummary::default()
+                },
             },
             bbb_protocol::packets::ItemStackTemplateSummary {
                 item_id: 3,
@@ -8738,6 +8752,8 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
          numbers: [Infinityd, -0.0d], nan: NaNf, short: 7s, long: 8L, byte: 1b}, \
          \"minecraft:max_stack_size\": 64, \"minecraft:max_damage\": 100, \
          \"minecraft:damage\": 7, \"minecraft:unbreakable\": {}, \
+         \"minecraft:use_effects\": {can_sprint: 1b, interact_vibrations: 0b, \
+         speed_multiplier: 1.0f}, \
          \"minecraft:item_model\": \"minecraft:custom/diamond\", \
          \"minecraft:rarity\": \"rare\", \
          \"minecraft:custom_model_data\": {floats: [1.0f, -0.0f, Infinityf, NaNf], \
@@ -8745,7 +8761,8 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
          colors: [1122867, 4478310]}, \"minecraft:enchantment_glint_override\": 0b, \
          \"minecraft:intangible_projectile\": {}, \"minecraft:dyed_color\": 1122867, \
          \"minecraft:map_color\": 4478310, \"minecraft:map_id\": 42, \
-         \"minecraft:charged_projectiles\": [{id: \"minecraft:arrow\"}, \
+         \"minecraft:charged_projectiles\": [{id: \"minecraft:arrow\", \
+         components: {\"minecraft:use_effects\": {}}}, \
          {id: \"minecraft:firework_star\", count: 2, \
          components: {\"minecraft:damage\": 7}}], \
          \"minecraft:bundle_contents\": [{id: \"minecraft:arrow\", count: 3, \

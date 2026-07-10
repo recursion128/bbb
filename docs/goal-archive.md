@@ -8662,3 +8662,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   非空；native focused tests 扩展到 27 个 added entry，覆盖 slot 2、递归
   template patch 与未知 item fallback。container 从剩余 component 总账本移入
   已支持子集。
+
+## 2026-07-10：ItemStack use-effects save codec
+
+- [x] `minecraft:use_effects` 持久化 component（P2 native input）：
+  依据 vanilla 26.1 `UseEffects.CODEC` 与 protocol 已保留的 type id `5`
+  三字段，按 can_sprint/interact_vibrations/speed_multiplier 顺序仅输出偏离
+  `false/true/0.2f` 的值。component patch focused test 扩展到 28 个 added
+  entry，覆盖两种 boolean byte tags、float suffix 与默认省略路径；
+  use-effects 从剩余 component 总账本移入已支持子集。
