@@ -27,3 +27,5 @@ tarpaulin-report.html
 *.log
 *.pid
 *.dmp
+.claude/
+.codex/
