@@ -99,6 +99,7 @@ use crate::debug_entries::{
 
 mod bundle;
 mod commands;
+mod component_patch;
 mod inventory;
 mod mouse;
 mod movement;
@@ -129,6 +130,7 @@ pub(crate) use commands::{
     queue_set_creative_mode_slot_command, queue_sign_update_command, queue_spectate_entity_command,
     queue_teleport_to_entity_command, queue_vehicle_move_command, select_hotbar_slot,
 };
+use component_patch::encode_added_component_value_snbt;
 #[cfg(test)]
 pub(crate) use inventory::handle_inventory_mouse_input;
 pub(crate) use inventory::{
@@ -260,19 +262,6 @@ const FIREBALL_DEFAULT_EXPLOSION_POWER: i8 = 1;
 const FIREWORK_ROCKET_ITEM_DATA_ID: u8 = 8;
 const FIREWORK_ROCKET_SHOT_AT_ANGLE_DATA_ID: u8 = 10;
 const FIREWORK_ROCKET_DEFAULT_LIFETIME: i32 = 0;
-const CUSTOM_MODEL_DATA_COMPONENT_TYPE_ID: i32 = 17;
-const CHARGED_PROJECTILES_COMPONENT_TYPE_ID: i32 = 49;
-const BUNDLE_CONTENTS_COMPONENT_TYPE_ID: i32 = 50;
-const WRITABLE_BOOK_CONTENT_COMPONENT_TYPE_ID: i32 = 54;
-const LODESTONE_TRACKER_COMPONENT_TYPE_ID: i32 = 67;
-const FIREWORKS_COMPONENT_TYPE_ID: i32 = 69;
-const PROFILE_COMPONENT_TYPE_ID: i32 = 70;
-const POT_DECORATIONS_COMPONENT_TYPE_ID: i32 = 74;
-const CONTAINER_COMPONENT_TYPE_ID: i32 = 75;
-const BLOCK_STATE_COMPONENT_TYPE_ID: i32 = 76;
-const TROPICAL_FISH_PATTERN_COMPONENT_TYPE_ID: i32 = 88;
-const TROPICAL_FISH_BASE_COLOR_COMPONENT_TYPE_ID: i32 = 89;
-const TROPICAL_FISH_PATTERN_COLOR_COMPONENT_TYPE_ID: i32 = 90;
 /// The remaining falling-block save scalars are not synchronized by add-entity
 /// or metadata. Their client constructor values cannot be changed by any
 /// reachable client behavior; only `time` advances in `tick`.
@@ -4638,8 +4627,14 @@ fn debug_supported_component_patch_snbt(
         .filter_map(|type_id| debug_supported_added_component_snbt(*type_id, patch, item_runtime))
         .collect::<Vec<_>>();
     fields.extend(patch.removed_type_ids.iter().filter_map(|type_id| {
-        debug_persistent_component_resource_id(*type_id)
-            .map(|resource_id| format!("{}: {{}}", debug_snbt_string(&format!("!{resource_id}"))))
+        let descriptor =
+            bbb_protocol::data_component_types::vanilla_data_component_descriptor(*type_id)?;
+        descriptor.is_persistent().then(|| {
+            format!(
+                "{}: {{}}",
+                debug_snbt_string(&format!("!{}", descriptor.resource_id()))
+            )
+        })
     }));
     (!fields.is_empty()).then(|| format!("{{{}}}", fields.join(", ")))
 }
@@ -4649,220 +4644,13 @@ fn debug_supported_added_component_snbt(
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
     item_runtime: Option<&NativeItemRuntime>,
 ) -> Option<String> {
-    let resource_id = debug_supported_component_resource_id(type_id)?;
-    let value = match type_id {
-        0 => debug_nbt_summary_snbt(patch.custom_data.as_ref()?),
-        1 => patch
-            .max_stack_size
-            .filter(|value| (1..=99).contains(value))?
-            .to_string(),
-        2 => patch.max_damage.filter(|value| *value > 0)?.to_string(),
-        3 => patch.damage.filter(|value| *value >= 0)?.to_string(),
-        4 => "{}".to_string(),
-        5 => debug_use_effects_component_snbt(patch.use_effects?)?,
-        7 => debug_range_checked_float_component_snbt(
-            patch.minimum_attack_charge_bits?,
-            0.0,
-            Some(1.0),
-        )?,
-        10 => debug_snbt_string(patch.item_model.as_deref()?),
-        12 => debug_snbt_string(match patch.rarity? {
-            ItemRaritySummary::Common => "common",
-            ItemRaritySummary::Uncommon => "uncommon",
-            ItemRaritySummary::Rare => "rare",
-            ItemRaritySummary::Epic => "epic",
-        }),
-        CUSTOM_MODEL_DATA_COMPONENT_TYPE_ID => debug_custom_model_data_component_snbt(patch),
-        18 => debug_tooltip_display_component_snbt(patch)?,
-        19 => patch.repair_cost.filter(|value| *value >= 0)?.to_string(),
-        21 => debug_snbt_bool(patch.enchantment_glint_override?).to_string(),
-        22 => "{}".to_string(),
-        23 => debug_food_component_snbt(patch)?,
-        24 => debug_consumable_component_snbt(patch)?,
-        25 => debug_item_stack_template_snbt(patch.use_remainder.as_deref()?, item_runtime)?,
-        26 => debug_use_cooldown_component_snbt(patch)?,
-        27 => debug_damage_resistant_component_snbt(patch)?,
-        29 => debug_weapon_component_snbt(patch)?,
-        30 => debug_attack_range_component_snbt(patch.attack_range?)?,
-        31 => {
-            let value = patch.enchantable_value.filter(|value| *value > 0)?;
-            format!("{{value: {value}}}")
-        }
-        33 => debug_repairable_component_snbt(patch, item_runtime)?,
-        34 => "{}".to_string(),
-        35 => debug_snbt_string(patch.tooltip_style.as_deref()?),
-        36 => debug_death_protection_component_snbt(patch)?,
-        38 => debug_piercing_weapon_component_snbt(patch.piercing_weapon.as_ref()?)?,
-        39 => debug_kinetic_weapon_component_snbt(patch.kinetic_weapon.as_ref()?)?,
-        40 => debug_swing_animation_component_snbt(patch.swing_animation?)?,
-        43 => debug_snbt_string(debug_dye_color_name(patch.dye_color_id?)),
-        44 => patch.dyed_color?.to_string(),
-        45 => patch.map_color?.to_string(),
-        46 => patch.map_id?.to_string(),
-        47 | 57 | 59 | 66 | 78 | 79 => {
-            debug_nbt_summary_snbt(patch.codec_backed_nbt.get(&type_id)?)
-        }
-        58 => debug_entity_data_component_snbt(patch)?,
-        60 => debug_block_entity_data_component_snbt(patch)?,
-        CHARGED_PROJECTILES_COMPONENT_TYPE_ID => {
-            debug_item_stack_template_list_snbt(&patch.charged_projectiles_items, item_runtime)?
-        }
-        BUNDLE_CONTENTS_COMPONENT_TYPE_ID => {
-            debug_item_stack_template_list_snbt(&patch.bundle_contents_items, item_runtime)?
-        }
-        51 => debug_potion_contents_component_snbt(patch)?,
-        52 => {
-            debug_range_checked_float_component_snbt(patch.potion_duration_scale_bits?, 0.0, None)?
-        }
-        WRITABLE_BOOK_CONTENT_COMPONENT_TYPE_ID => {
-            debug_writable_book_content_component_snbt(patch)
-        }
-        63 => patch
-            .ominous_bottle_amplifier
-            .filter(|value| (0..=4).contains(value))?
-            .to_string(),
-        65 => debug_provides_banner_patterns_component_snbt(patch)?,
-        LODESTONE_TRACKER_COMPONENT_TYPE_ID => debug_lodestone_tracker_component_snbt(patch),
-        68 => debug_firework_explosion_snbt(&FireworkExplosionSummary {
-            shape: patch.firework_explosion_shape?,
-            colors: patch.firework_explosion_colors.clone(),
-            fade_colors: patch.firework_explosion_fade_colors.clone(),
-            has_trail: patch.firework_explosion_has_trail.unwrap_or(false),
-            has_twinkle: patch.firework_explosion_has_twinkle.unwrap_or(false),
-        }),
-        FIREWORKS_COMPONENT_TYPE_ID => debug_fireworks_component_snbt(patch),
-        PROFILE_COMPONENT_TYPE_ID => debug_profile_component_snbt(patch.profile.as_ref()?)?,
-        71 => debug_snbt_string(patch.note_block_sound.as_deref()?),
-        73 => debug_snbt_string(debug_dye_color_name(patch.base_color_id?)),
-        POT_DECORATIONS_COMPONENT_TYPE_ID => {
-            debug_pot_decorations_component_snbt(patch, item_runtime)?
-        }
-        CONTAINER_COMPONENT_TYPE_ID => {
-            debug_item_container_contents_component_snbt(patch, item_runtime)?
-        }
-        BLOCK_STATE_COMPONENT_TYPE_ID => format!(
-            "{{{}}}",
-            patch
-                .block_state_properties
-                .iter()
-                .map(|(name, value)| format!(
-                    "{}: {}",
-                    debug_snbt_compound_key(name),
-                    debug_snbt_string(value)
-                ))
-                .collect::<Vec<_>>()
-                .join(", ")
-        ),
-        77 => debug_bees_component_snbt(&patch.bees)?,
-        80 => debug_sound_event_component_snbt(patch.break_sound.as_ref()?)?,
-        TROPICAL_FISH_PATTERN_COMPONENT_TYPE_ID => debug_snbt_string(
-            debug_tropical_fish_pattern_name(patch.tropical_fish_pattern_id?),
-        ),
-        TROPICAL_FISH_BASE_COLOR_COMPONENT_TYPE_ID => {
-            debug_snbt_string(debug_dye_color_name(patch.tropical_fish_base_color_id?))
-        }
-        TROPICAL_FISH_PATTERN_COLOR_COMPONENT_TYPE_ID => {
-            debug_snbt_string(debug_dye_color_name(patch.tropical_fish_pattern_color_id?))
-        }
-        84 | 85 | 86 | 87 | 91 | 92 | 101 | 103 | 104 | 107 | 108 | 109 => {
-            let id = *patch.builtin_enum_component_ids.get(&type_id)?;
-            debug_snbt_string(debug_builtin_enum_component_name(type_id, id)?)
-        }
-        _ => return None,
-    };
-    Some(format!("{}: {value}", debug_snbt_string(resource_id)))
-}
-
-fn debug_supported_component_resource_id(type_id: i32) -> Option<&'static str> {
-    Some(match type_id {
-        0 => "minecraft:custom_data",
-        1 => "minecraft:max_stack_size",
-        2 => "minecraft:max_damage",
-        3 => "minecraft:damage",
-        4 => "minecraft:unbreakable",
-        5 => "minecraft:use_effects",
-        6 => "minecraft:custom_name",
-        7 => "minecraft:minimum_attack_charge",
-        10 => "minecraft:item_model",
-        12 => "minecraft:rarity",
-        CUSTOM_MODEL_DATA_COMPONENT_TYPE_ID => "minecraft:custom_model_data",
-        18 => "minecraft:tooltip_display",
-        19 => "minecraft:repair_cost",
-        21 => "minecraft:enchantment_glint_override",
-        22 => "minecraft:intangible_projectile",
-        23 => "minecraft:food",
-        24 => "minecraft:consumable",
-        25 => "minecraft:use_remainder",
-        26 => "minecraft:use_cooldown",
-        27 => "minecraft:damage_resistant",
-        29 => "minecraft:weapon",
-        30 => "minecraft:attack_range",
-        31 => "minecraft:enchantable",
-        33 => "minecraft:repairable",
-        34 => "minecraft:glider",
-        35 => "minecraft:tooltip_style",
-        36 => "minecraft:death_protection",
-        38 => "minecraft:piercing_weapon",
-        39 => "minecraft:kinetic_weapon",
-        40 => "minecraft:swing_animation",
-        43 => "minecraft:dye",
-        44 => "minecraft:dyed_color",
-        45 => "minecraft:map_color",
-        46 => "minecraft:map_id",
-        47 => "minecraft:map_decorations",
-        CHARGED_PROJECTILES_COMPONENT_TYPE_ID => "minecraft:charged_projectiles",
-        BUNDLE_CONTENTS_COMPONENT_TYPE_ID => "minecraft:bundle_contents",
-        51 => "minecraft:potion_contents",
-        52 => "minecraft:potion_duration_scale",
-        WRITABLE_BOOK_CONTENT_COMPONENT_TYPE_ID => "minecraft:writable_book_content",
-        57 => "minecraft:debug_stick_state",
-        58 => "minecraft:entity_data",
-        59 => "minecraft:bucket_entity_data",
-        60 => "minecraft:block_entity_data",
-        63 => "minecraft:ominous_bottle_amplifier",
-        65 => "minecraft:provides_banner_patterns",
-        66 => "minecraft:recipes",
-        LODESTONE_TRACKER_COMPONENT_TYPE_ID => "minecraft:lodestone_tracker",
-        68 => "minecraft:firework_explosion",
-        FIREWORKS_COMPONENT_TYPE_ID => "minecraft:fireworks",
-        PROFILE_COMPONENT_TYPE_ID => "minecraft:profile",
-        71 => "minecraft:note_block_sound",
-        73 => "minecraft:base_color",
-        POT_DECORATIONS_COMPONENT_TYPE_ID => "minecraft:pot_decorations",
-        CONTAINER_COMPONENT_TYPE_ID => "minecraft:container",
-        BLOCK_STATE_COMPONENT_TYPE_ID => "minecraft:block_state",
-        77 => "minecraft:bees",
-        78 => "minecraft:lock",
-        79 => "minecraft:container_loot",
-        80 => "minecraft:break_sound",
-        84 => "minecraft:wolf/collar",
-        85 => "minecraft:fox/variant",
-        86 => "minecraft:salmon/size",
-        87 => "minecraft:parrot/variant",
-        TROPICAL_FISH_PATTERN_COMPONENT_TYPE_ID => "minecraft:tropical_fish/pattern",
-        TROPICAL_FISH_BASE_COLOR_COMPONENT_TYPE_ID => "minecraft:tropical_fish/base_color",
-        TROPICAL_FISH_PATTERN_COLOR_COMPONENT_TYPE_ID => "minecraft:tropical_fish/pattern_color",
-        91 => "minecraft:mooshroom/variant",
-        92 => "minecraft:rabbit/variant",
-        101 => "minecraft:horse/variant",
-        103 => "minecraft:llama/variant",
-        104 => "minecraft:axolotl/variant",
-        107 => "minecraft:cat/collar",
-        108 => "minecraft:sheep/color",
-        109 => "minecraft:shulker/color",
-        _ => return None,
-    })
-}
-
-fn debug_persistent_component_resource_id(type_id: i32) -> Option<&'static str> {
-    bbb_protocol::data_component_types::vanilla_data_component_type_is_persistent(type_id).then(
-        || {
-            bbb_protocol::data_component_types::vanilla_data_component_resource_id_for_type_id(
-                type_id,
-            )
-            .expect("known persistent component type has a resource id")
-        },
-    )
+    let descriptor =
+        bbb_protocol::data_component_types::vanilla_data_component_descriptor(type_id)?;
+    let value = encode_added_component_value_snbt(type_id, patch, item_runtime)?;
+    Some(format!(
+        "{}: {value}",
+        debug_snbt_string(descriptor.resource_id())
+    ))
 }
 
 fn debug_nbt_summary_snbt(value: &NbtSummaryValue) -> String {

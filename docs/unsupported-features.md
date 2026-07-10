@@ -235,7 +235,9 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   entity-data projection (including dynamic-registry ordering), packed variant
   projection, remaining codec-backed SNBT projection (component removals are complete;
   added values still include `AbstractArrow`
-  `inBlockState` and `item`, remaining data-component patch entries
+  `inBlockState` and `item`, remaining data-component patch entries (implemented
+  through the protocol component descriptor catalog and native persistent SNBT
+  encoder registry)
   beyond the supported custom-NBT/primitive (including repair-cost/enchantable/glider,
   minimum-attack-charge/potion-duration-scale)/
   simple-resource (including tooltip-style/note-block-sound and vanilla/direct

@@ -8453,7 +8453,7 @@ fn local_firework_save_uses_parent_lifecycle_synced_item_codec_and_client_life()
 
     let mut component_patch = DataComponentPatchSummary::default();
     component_patch.added = 1;
-    component_patch.added_type_ids = vec![FIREWORKS_COMPONENT_TYPE_ID];
+    component_patch.added_type_ids = vec![69];
     component_patch.fireworks_flight_duration = Some(2);
     component_patch.fireworks_explosions_count = Some(1);
     component_patch.fireworks_explosions = vec![FireworkExplosionSummary {
@@ -8494,7 +8494,7 @@ fn local_firework_save_uses_parent_lifecycle_synced_item_codec_and_client_life()
     ));
 
     let removed_fireworks_patch = DataComponentPatchSummary {
-        removed_type_ids: vec![FIREWORKS_COMPONENT_TYPE_ID],
+        removed_type_ids: vec![69],
         ..DataComponentPatchSummary::default()
     };
     assert!(world.apply_set_entity_data(ProtocolSetEntityData {
@@ -9632,6 +9632,26 @@ fn item_stack_snbt_preserves_all_persistent_component_removals() {
             "{id: \"minecraft:stone\", components: {\
              \"!minecraft:damage_type\": {}, \"!minecraft:break_sound\": {}, \
              \"!minecraft:shulker/color\": {}}}"
+                .to_string()
+        )
+    );
+}
+
+#[test]
+fn component_patch_dispatch_uses_encoder_registry_and_catalog_metadata() {
+    let patch = DataComponentPatchSummary {
+        added: 2,
+        added_type_ids: vec![1, 8],
+        removed_type_ids: vec![8, 20],
+        max_stack_size: Some(64),
+        ..DataComponentPatchSummary::default()
+    };
+
+    assert_eq!(
+        debug_supported_component_patch_snbt(&patch, None),
+        Some(
+            "{\"minecraft:max_stack_size\": 64, \
+             \"!minecraft:damage_type\": {}}"
                 .to_string()
         )
     );

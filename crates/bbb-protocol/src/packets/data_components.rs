@@ -12,6 +12,8 @@ use crate::{
 };
 use uuid::Uuid;
 
+pub(crate) mod catalog;
+
 pub(crate) const MAX_DATA_COMPONENT_PATCH_ENTRIES: usize = 1024;
 pub(crate) const MAX_DATA_COMPONENT_PREDICATE_ENTRIES: usize = 1024;
 const MAX_DATA_COMPONENT_LIST_ITEMS: usize = 4096;
@@ -803,321 +805,18 @@ fn decode_typed_data_component_patch_summary(
     };
     for _ in 0..count {
         let type_id = decoder.read_var_i32()?;
-        match type_id {
-            0 => {
-                summary.custom_data = decode_nbt_summary_from_decoder(decoder)?;
-            }
-            1 => {
-                summary.max_stack_size = Some(decoder.read_var_i32()?);
-            }
-            2 => {
-                summary.max_damage = Some(decoder.read_var_i32()?);
-            }
-            3 => {
-                summary.damage = Some(decoder.read_var_i32()?);
-            }
-            19 => {
-                summary.repair_cost = Some(decoder.read_var_i32()?);
-            }
-            4 => {
-                summary.unbreakable = true;
-            }
-            7 => {
-                summary.minimum_attack_charge_bits = Some(decoder.read_f32()?.to_bits());
-            }
-            22 => {
-                summary.intangible_projectile = true;
-                skip_nbt_tag_from_decoder(decoder)?;
-            }
-            63 => {
-                summary.ominous_bottle_amplifier = Some(decoder.read_var_i32()?);
-            }
-            6 => {
-                let runs = decode_styled_component_summary_from_decoder(decoder)?;
-                summary.custom_name = Some(styled_runs_summary_text(&runs));
-                summary.custom_name_styled = Some(runs);
-            }
-            9 => {
-                let runs = decode_styled_component_summary_from_decoder(decoder)?;
-                summary.item_name = Some(styled_runs_summary_text(&runs));
-                summary.item_name_styled = Some(runs);
-            }
-            10 => {
-                summary.item_model = Some(read_resource_location(decoder)?);
-            }
-            35 => {
-                summary.tooltip_style = Some(read_resource_location(decoder)?);
-            }
-            71 => {
-                summary.note_block_sound = Some(read_resource_location(decoder)?);
-            }
-            11 => {
-                summary.lore_styled = decode_lore(decoder)?;
-                summary.lore = summary
-                    .lore_styled
-                    .iter()
-                    .map(|line| styled_runs_summary_text(line))
-                    .collect();
-            }
-            12 => {
-                summary.rarity = Some(decode_item_rarity(decoder)?);
-            }
-            26 => {
-                let cooldown = decode_use_cooldown_summary(decoder)?;
-                summary.use_cooldown_seconds_bits = Some(cooldown.seconds_bits);
-                summary.use_cooldown_ticks = Some(cooldown.ticks);
-                summary.use_cooldown_group = cooldown.cooldown_group;
-            }
-            5 => {
-                summary.use_effects = Some(decode_use_effects_summary(decoder)?);
-            }
-            23 => {
-                summary.food_nutrition = Some(decoder.read_var_i32()?);
-                summary.food_saturation_bits = Some(decoder.read_f32()?.to_bits());
-                summary.food_can_always_eat = decoder.read_bool()?;
-            }
-            24 => {
-                let consumable = decode_consumable_component_summary(decoder)?;
-                summary.consumable = Some(consumable.summary);
-                summary.consumable_sound = Some(consumable.sound);
-                summary.consumable_has_consume_particles = Some(consumable.has_consume_particles);
-                summary.consumable_effect_count = Some(consumable.effect_count);
-                summary.consumable_effects = consumable.effects;
-            }
-            25 => {
-                summary.use_remainder = Some(Box::new(decode_item_stack_template(decoder)?));
-            }
-            27 => {
-                let types = decode_holder_set_summary(decoder)?;
-                summary.damage_resistant_type_registry_ids = types.registry_ids;
-                summary.damage_resistant_type_tag = types.tag;
-            }
-            29 => {
-                summary.weapon_item_damage_per_attack = Some(decoder.read_var_i32()?);
-                summary.weapon_disable_blocking_seconds_bits = Some(decoder.read_f32()?.to_bits());
-            }
-            30 => {
-                summary.attack_range = Some(decode_attack_range_summary(decoder)?);
-            }
-            31 => {
-                summary.enchantable_value = Some(decoder.read_var_i32()?);
-            }
-            33 => {
-                let items = decode_holder_set_summary(decoder)?;
-                summary.repairable_item_registry_ids = items.registry_ids;
-                summary.repairable_item_tag = items.tag;
-            }
-            36 => {
-                summary.death_protection_effects = decode_consume_effect_list_summary(decoder)?;
-            }
-            38 => {
-                summary.piercing_weapon = Some(decode_piercing_weapon_summary(decoder)?);
-            }
-            39 => {
-                summary.kinetic_weapon = Some(decode_kinetic_weapon_summary(decoder)?);
-            }
-            40 => {
-                summary.swing_animation = Some(decode_swing_animation(decoder)?);
-            }
-            17 => {
-                let (floats, flags, strings, colors) = decode_custom_model_data(decoder)?;
-                summary.custom_model_data_floats = floats.into();
-                summary.custom_model_data_flags = flags;
-                summary.custom_model_data_strings = strings;
-                summary.custom_model_data_colors = colors;
-            }
-            18 => {
-                let (hide_tooltip, hidden_components) = decode_tooltip_display_summary(decoder)?;
-                summary.tooltip_hide_tooltip = hide_tooltip;
-                summary.tooltip_hidden_component_type_ids = hidden_components;
-            }
-            44 => {
-                summary.dyed_color = Some(decoder.read_i32()?);
-            }
-            43 => {
-                summary.dye_color_id = Some(normalize_dye_color_id(decoder.read_var_i32()?));
-            }
-            73 => {
-                summary.base_color_id = Some(normalize_dye_color_id(decoder.read_var_i32()?));
-            }
-            45 => {
-                summary.map_color = Some(decoder.read_i32()?);
-            }
-            52 => {
-                summary.potion_duration_scale_bits = Some(decoder.read_f32()?.to_bits());
-            }
-            49 => {
-                summary.charged_projectiles_items =
-                    decode_item_stack_template_list(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
-            }
-            56 => {
-                let trim = decode_armor_trim(decoder)?;
-                summary.armor_trim_material_id = trim.material_id;
-                summary.armor_trim_material_direct = trim.material_direct.map(Box::new);
-                summary.armor_trim_pattern_id = trim.pattern_id;
-                summary.armor_trim_pattern_direct = trim.pattern_direct.map(Box::new);
-            }
-            88 => {
-                summary.tropical_fish_pattern_id = Some(decoder.read_var_i32()?);
-            }
-            89 => {
-                summary.tropical_fish_base_color_id = Some(decoder.read_var_i32()?);
-            }
-            90 => {
-                summary.tropical_fish_pattern_color_id = Some(decoder.read_var_i32()?);
-            }
-            84 | 85 | 86 | 87 | 91 | 92 | 101 | 103 | 104 | 107 | 108 | 109 => {
-                let id = decoder.read_var_i32()?;
-                summary
-                    .builtin_enum_component_ids
-                    .insert(type_id, normalize_builtin_enum_component_id(type_id, id));
-            }
-            61 => {
-                let instrument = decode_instrument_component_summary(decoder)?;
-                summary.instrument_id = instrument.registry_id;
-                summary.instrument_description = instrument.description;
-                summary.instrument_description_styled = instrument.description_styled;
-            }
-            64 => {
-                let song = decode_jukebox_song_holder(decoder)?;
-                summary.jukebox_song_id = song.registry_id;
-                summary.jukebox_direct_song = song.direct.map(Box::new);
-            }
-            50 => {
-                summary.bundle_contents_items =
-                    decode_item_stack_template_list(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
-                summary.bundle_contents_item_count = Some(summary.bundle_contents_items.len());
-            }
-            51 => {
-                let potion = decode_potion_contents(decoder)?;
-                summary.potion_id = potion.potion_id;
-                summary.potion_custom_color = potion.custom_color;
-                summary.potion_custom_effect_count = Some(potion.custom_effects.len());
-                summary.potion_custom_effects = potion.custom_effects;
-                summary.potion_custom_name = potion.custom_name;
-            }
-            53 => {
-                summary.suspicious_stew_effects = decode_suspicious_stew_effects(decoder)?;
-            }
-            68 => {
-                let explosion = decode_firework_explosion(decoder)?;
-                summary.firework_explosion_colors = explosion.colors;
-                summary.firework_explosion_fade_colors = explosion.fade_colors;
-                summary.firework_explosion_shape = Some(explosion.shape);
-                summary.firework_explosion_has_trail = Some(explosion.has_trail);
-                summary.firework_explosion_has_twinkle = Some(explosion.has_twinkle);
-            }
-            69 => {
-                let fireworks = decode_fireworks(decoder)?;
-                summary.fireworks_flight_duration = Some(fireworks.flight_duration);
-                summary.fireworks_explosions_count = Some(fireworks.explosions.len());
-                summary.fireworks_explosions = fireworks.explosions;
-            }
-            70 => {
-                summary.profile = Some(decode_resolvable_profile(decoder)?);
-            }
-            13 => {
-                summary.enchantments = decode_varint_map(decoder)?;
-            }
-            14 => {
-                summary.can_place_on = Some(decode_adventure_mode_predicate_summary(decoder)?);
-            }
-            15 => {
-                summary.can_break = Some(decode_adventure_mode_predicate_summary(decoder)?);
-            }
-            42 => {
-                summary.stored_enchantments = decode_varint_map(decoder)?;
-            }
-            16 => {
-                summary.attribute_modifiers = decode_attribute_modifiers(decoder)?;
-            }
-            21 => {
-                summary.enchantment_glint_override = Some(decoder.read_bool()?);
-            }
-            46 => {
-                summary.map_id = Some(decoder.read_var_i32()?);
-            }
-            48 => {
-                summary.map_post_processing = Some(decode_map_post_processing(decoder)?);
-            }
-            54 => {
-                let writable_book = decode_writable_book_content(decoder)?;
-                summary.writable_book_pages = writable_book.pages;
-                summary.writable_book_page_filters = writable_book.page_filters;
-            }
-            55 => {
-                summary.written_book = Some(decode_written_book_content(decoder)?);
-            }
-            67 => {
-                let (target, tracked) = decode_lodestone_tracker(decoder)?;
-                summary.lodestone_target = target;
-                summary.lodestone_tracked = Some(tracked);
-            }
-            76 => {
-                summary.block_state_properties =
-                    decode_string_map(decoder, MAX_BLOCK_STATE_PROPERTIES)?;
-            }
-            75 => {
-                let container = decode_item_container_contents(decoder)?;
-                summary.container_item_count = Some(container.items.len());
-                summary.container_items = container.items;
-                summary.container_slots = container.slots;
-            }
-            72 => {
-                summary.banner_pattern_layers = decode_banner_pattern_layers_summary(decoder)?;
-            }
-            65 => {
-                let patterns = decode_holder_set_summary(decoder)?;
-                summary.provides_banner_pattern_registry_ids = patterns.registry_ids;
-                summary.provides_banner_pattern_tag = patterns.tag;
-            }
-            74 => {
-                summary.pot_decorations_item_ids = decode_pot_decorations_item_ids(decoder)?;
-            }
-            79 => {
-                summary.container_loot = true;
-                if let Some(value) = decode_nbt_summary_from_decoder(decoder)? {
-                    summary.codec_backed_nbt.insert(type_id, value);
-                }
-            }
-            80 => {
-                summary.break_sound = Some(decode_sound_event_holder_summary(decoder)?);
-            }
-            47 | 57 | 59 | 66 | 78 => {
-                if let Some(value) = decode_nbt_summary_from_decoder(decoder)? {
-                    summary.codec_backed_nbt.insert(type_id, value);
-                }
-            }
-            77 => {
-                summary.bees_present = true;
-                summary.bees = decode_bees(decoder)?;
-                summary.bees_count = summary.bees.len();
-            }
-            58 => {
-                let entity_data = decode_typed_entity_data_summary(decoder)?;
-                summary.entity_data_entity_type_id = Some(entity_data.type_id);
-                summary.entity_data_tag = entity_data.tag;
-            }
-            60 => {
-                let block_entity_data = decode_typed_entity_data_summary(decoder)?;
-                summary.block_entity_data_type_id = Some(block_entity_data.type_id);
-                summary.block_entity_spawn_entity_type =
-                    typed_entity_data_spawn_entity_type(block_entity_data.tag.as_ref());
-                summary.block_entity_data_tag = block_entity_data.tag;
-            }
-            83 => {
-                summary.villager_variant_id = Some(decode_holder_registry_id(decoder)?);
-            }
-            102 => {
-                let painting = decode_painting_variant_holder_summary(decoder)?;
-                summary.painting_variant_id = painting.registry_id;
-                summary.painting_variant_direct = painting.direct;
-            }
-            _ => decode_data_component_value(decoder, type_id)?,
-        }
+        data_component_descriptor_or_error(type_id)?.decode(decoder, &mut summary)?;
         summary.added_type_ids.push(type_id);
     }
     Ok(summary)
+}
+
+fn data_component_descriptor_or_error(
+    type_id: i32,
+) -> Result<&'static catalog::DataComponentDescriptor> {
+    catalog::vanilla_data_component_descriptor(type_id).ok_or_else(|| {
+        ProtocolError::InvalidData(format!("unsupported data component type id {type_id}"))
+    })
 }
 
 fn decode_nbt_summary_from_decoder(decoder: &mut Decoder<'_>) -> Result<Option<NbtSummaryValue>> {
@@ -1278,172 +977,9 @@ fn read_nbt_len(decoder: &mut Decoder<'_>) -> Result<usize> {
 }
 
 fn decode_data_component_value(decoder: &mut Decoder<'_>, type_id: i32) -> Result<()> {
-    match type_id {
-        // These components use DataComponentType's codec-backed stream codec,
-        // which serializes one NBT tag through ByteBufCodecs.fromCodec*.
-        // custom_data, intangible_projectile, map_decorations, debug_stick_state,
-        // bucket_entity_data, recipes, lock, and container_loot.
-        0 | 22 | 47 | 57 | 59 | 66 | 78 | 79 => skip_nbt_tag_from_decoder(decoder)?,
-        // 26.1 DataComponents: max_stack_size, max_damage, damage, repair_cost,
-        // additional_trade_cost, map_id, ominous_bottle_amplifier, enchantable.
-        1 | 2 | 3 | 19 | 31 | 41 | 46 | 63 => {
-            decoder.read_var_i32()?;
-        }
-        // use_effects.
-        5 => decode_use_effects(decoder)?,
-        // unbreakable, creative_slot_lock, glider use Unit.STREAM_CODEC.
-        4 | 20 | 34 => {}
-        // damage_type and holderRegistry-backed entity variants.
-        8 | 81 | 82 | 83 | 93 | 94 | 95 | 96 | 97 | 98 | 99 | 100 | 105 | 106 => {
-            decode_holder_registry(decoder)?
-        }
-        // custom_name and item_name use ComponentSerialization.STREAM_CODEC.
-        6 | 9 => {
-            decode_component_summary_from_decoder(decoder)?;
-        }
-        // lore: list(256) of ComponentSerialization.STREAM_CODEC.
-        11 => {
-            let _ = decode_lore(decoder)?;
-        }
-        // minimum_attack_charge and potion_duration_scale.
-        7 | 52 => {
-            decoder.read_f32()?;
-        }
-        // item_model, tooltip_style, note_block_sound.
-        10 | 35 | 71 => {
-            decode_identifier(decoder)?;
-        }
-        // rarity uses ByIdMap.OutOfBoundsStrategy.ZERO.
-        12 => {
-            let _ = decode_item_rarity(decoder)?;
-        }
-        // dye, animal variant enums, collars,
-        // tropical fish colors, sheep_color, shulker_color.
-        43 | 73 | 84 | 85 | 86 | 87 | 88 | 89 | 90 | 91 | 92 | 101 | 103 | 104 | 107 | 108
-        | 109 => {
-            decoder.read_var_i32()?;
-        }
-        // map_post_processing uses ByIdMap.OutOfBoundsStrategy.ZERO.
-        48 => {
-            let _ = decode_map_post_processing(decoder)?;
-        }
-        // enchantments and stored_enchantments: map(enchantment holder id -> level).
-        13 | 42 => {
-            let _ = decode_varint_map(decoder)?;
-        }
-        // can_place_on and can_break.
-        14 | 15 => decode_adventure_mode_predicate(decoder)?,
-        // attribute_modifiers.
-        16 => {
-            let _ = decode_attribute_modifiers(decoder)?;
-        }
-        // custom_model_data: floats, flags, strings, colors.
-        17 => {
-            let _ = decode_custom_model_data(decoder)?;
-        }
-        // tooltip_display: bool + collection of data component type ids.
-        18 => decode_tooltip_display(decoder)?,
-        // enchantment_glint_override.
-        21 => {
-            decoder.read_bool()?;
-        }
-        // food, consumable, use_remainder.
-        23 => decode_food(decoder)?,
-        24 => decode_consumable(decoder)?,
-        25 => decode_use_remainder(decoder)?,
-        // use_cooldown.
-        26 => decode_use_cooldown(decoder)?,
-        // tool: rules, default mining speed, damage per block, creative flag.
-        28 => decode_tool(decoder)?,
-        // damage_resistant and repairable are holder sets.
-        27 | 33 => decode_holder_set(decoder)?,
-        // weapon.
-        29 => decode_weapon(decoder)?,
-        // attack_range.
-        30 => decode_attack_range(decoder)?,
-        // equippable.
-        32 => decode_equippable(decoder)?,
-        // death_protection, blocks_attacks, piercing_weapon, and kinetic_weapon.
-        36 => decode_death_protection(decoder)?,
-        37 => decode_blocks_attacks(decoder)?,
-        38 => decode_piercing_weapon(decoder)?,
-        39 => decode_kinetic_weapon(decoder)?,
-        // swing_animation.
-        40 => {
-            let _ = decode_swing_animation(decoder)?;
-        }
-        // dyed_color and map_color.
-        44 | 45 => {
-            decoder.read_i32()?;
-        }
-        // charged_projectiles and bundle_contents.
-        49 | 50 => {
-            let _ = decode_item_stack_template_list(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
-        }
-        // potion_contents.
-        51 => {
-            decode_potion_contents(decoder)?;
-        }
-        // suspicious_stew_effects.
-        53 => {
-            let _ = decode_suspicious_stew_effects(decoder)?;
-        }
-        // writable_book_content and written_book_content.
-        54 => {
-            let _ = decode_writable_book_content(decoder)?;
-        }
-        55 => {
-            let _ = decode_written_book_content(decoder)?;
-        }
-        // trim.
-        56 => {
-            decode_armor_trim(decoder)?;
-        }
-        // entity_data and block_entity_data.
-        58 | 60 => decode_typed_entity_data(decoder)?,
-        // instrument, trim material, jukebox playable, break sound, painting variant.
-        61 => decode_instrument_component(decoder)?,
-        62 => decode_trim_material_holder(decoder)?,
-        64 => decode_jukebox_playable(decoder)?,
-        65 => decode_holder_set(decoder)?,
-        67 => {
-            let _ = decode_lodestone_tracker(decoder)?;
-        }
-        70 => {
-            let _ = decode_resolvable_profile(decoder)?;
-        }
-        80 => decode_sound_event_holder(decoder)?,
-        102 => decode_painting_variant_holder(decoder)?,
-        // firework_explosion and fireworks.
-        68 => {
-            decode_firework_explosion(decoder)?;
-        }
-        69 => {
-            let _ = decode_fireworks(decoder)?;
-        }
-        // banner_patterns, pot_decorations, and bees.
-        72 => decode_banner_pattern_layers(decoder)?,
-        74 => decode_pot_decorations(decoder)?,
-        77 => {
-            let _ = decode_bees(decoder)?;
-        }
-        // block_state.
-        76 => {
-            let _ = decode_string_map(decoder, MAX_BLOCK_STATE_PROPERTIES)?;
-        }
-        // container.
-        75 => {
-            let _ = decode_item_container_contents(decoder)?;
-        }
-        other => {
-            return Err(ProtocolError::InvalidData(format!(
-                "unsupported data component type id {other}"
-            )))
-        }
-    }
-    Ok(())
+    let mut ignored = DataComponentPatchSummary::default();
+    data_component_descriptor_or_error(type_id)?.decode(decoder, &mut ignored)
 }
-
 fn decode_holder_registry(decoder: &mut Decoder<'_>) -> Result<()> {
     decoder.read_var_i32()?;
     Ok(())
@@ -1650,11 +1186,6 @@ fn decode_map_post_processing(decoder: &mut Decoder<'_>) -> Result<MapPostProces
     })
 }
 
-fn decode_adventure_mode_predicate(decoder: &mut Decoder<'_>) -> Result<()> {
-    let _ = decode_adventure_mode_predicate_summary(decoder)?;
-    Ok(())
-}
-
 fn decode_adventure_mode_predicate_summary(
     decoder: &mut Decoder<'_>,
 ) -> Result<AdventureModePredicateSummary> {
@@ -1815,11 +1346,6 @@ fn decode_custom_model_data(
     Ok((float_values, flag_values, string_values, color_values))
 }
 
-fn decode_use_effects(decoder: &mut Decoder<'_>) -> Result<()> {
-    let _ = decode_use_effects_summary(decoder)?;
-    Ok(())
-}
-
 fn decode_use_effects_summary(decoder: &mut Decoder<'_>) -> Result<UseEffectsSummary> {
     let summary = UseEffectsSummary {
         can_sprint: decoder.read_bool()?,
@@ -1827,22 +1353,6 @@ fn decode_use_effects_summary(decoder: &mut Decoder<'_>) -> Result<UseEffectsSum
         speed_multiplier: decoder.read_f32()?,
     };
     Ok(summary)
-}
-
-fn decode_food(decoder: &mut Decoder<'_>) -> Result<()> {
-    decoder.read_var_i32()?;
-    decoder.read_f32()?;
-    decoder.read_bool()?;
-    Ok(())
-}
-
-fn decode_consumable(decoder: &mut Decoder<'_>) -> Result<()> {
-    let _ = decode_consumable_summary(decoder)?;
-    Ok(())
-}
-
-fn decode_consumable_summary(decoder: &mut Decoder<'_>) -> Result<ConsumableSummary> {
-    decode_consumable_component_summary(decoder).map(|summary| summary.summary)
 }
 
 struct ConsumableComponentSummary {
@@ -1939,11 +1449,6 @@ fn decode_consume_effect_list_summary(
     Ok(effects)
 }
 
-fn decode_use_remainder(decoder: &mut Decoder<'_>) -> Result<()> {
-    let _ = decode_item_stack_template(decoder)?;
-    Ok(())
-}
-
 fn decode_item_stack_template(decoder: &mut Decoder<'_>) -> Result<ItemStackTemplateSummary> {
     let item_id = decoder.read_var_i32()?;
     if item_id < 0 {
@@ -2020,11 +1525,6 @@ fn decode_tool(decoder: &mut Decoder<'_>) -> Result<()> {
     Ok(())
 }
 
-fn decode_use_cooldown(decoder: &mut Decoder<'_>) -> Result<()> {
-    decoder.read_f32()?;
-    decode_optional_identifier(decoder)
-}
-
 struct UseCooldownSummary {
     seconds_bits: u32,
     ticks: i32,
@@ -2040,17 +1540,6 @@ fn decode_use_cooldown_summary(decoder: &mut Decoder<'_>) -> Result<UseCooldownS
     })
 }
 
-fn decode_weapon(decoder: &mut Decoder<'_>) -> Result<()> {
-    decoder.read_var_i32()?;
-    decoder.read_f32()?;
-    Ok(())
-}
-
-fn decode_attack_range(decoder: &mut Decoder<'_>) -> Result<()> {
-    let _ = decode_attack_range_summary(decoder)?;
-    Ok(())
-}
-
 fn decode_attack_range_summary(decoder: &mut Decoder<'_>) -> Result<AttackRangeSummary> {
     Ok(AttackRangeSummary {
         min_reach: decoder.read_f32()?,
@@ -2060,11 +1549,6 @@ fn decode_attack_range_summary(decoder: &mut Decoder<'_>) -> Result<AttackRangeS
         hitbox_margin: decoder.read_f32()?,
         mob_factor: decoder.read_f32()?,
     })
-}
-
-fn decode_death_protection(decoder: &mut Decoder<'_>) -> Result<()> {
-    let _ = decode_consume_effect_list_summary(decoder)?;
-    Ok(())
 }
 
 fn decode_blocks_attacks(decoder: &mut Decoder<'_>) -> Result<()> {
@@ -2098,11 +1582,6 @@ fn decode_item_damage_function(decoder: &mut Decoder<'_>) -> Result<()> {
     Ok(())
 }
 
-fn decode_piercing_weapon(decoder: &mut Decoder<'_>) -> Result<()> {
-    let _ = decode_piercing_weapon_summary(decoder)?;
-    Ok(())
-}
-
 fn decode_piercing_weapon_summary(decoder: &mut Decoder<'_>) -> Result<PiercingWeaponSummary> {
     Ok(PiercingWeaponSummary {
         deals_knockback: decoder.read_bool()?,
@@ -2110,11 +1589,6 @@ fn decode_piercing_weapon_summary(decoder: &mut Decoder<'_>) -> Result<PiercingW
         sound: decode_optional_sound_event_holder_summary(decoder)?,
         hit_sound: decode_optional_sound_event_holder_summary(decoder)?,
     })
-}
-
-fn decode_kinetic_weapon(decoder: &mut Decoder<'_>) -> Result<()> {
-    let _ = decode_kinetic_weapon_summary(decoder)?;
-    Ok(())
 }
 
 fn decode_kinetic_weapon_summary(decoder: &mut Decoder<'_>) -> Result<KineticWeaponSummary> {
@@ -2211,11 +1685,6 @@ struct TypedEntityDataSummary {
     tag: Option<NbtSummaryValue>,
 }
 
-fn decode_typed_entity_data(decoder: &mut Decoder<'_>) -> Result<()> {
-    let _ = decode_typed_entity_data_summary(decoder)?;
-    Ok(())
-}
-
 fn decode_typed_entity_data_summary(decoder: &mut Decoder<'_>) -> Result<TypedEntityDataSummary> {
     let type_id = decode_holder_registry_id(decoder)?;
     Ok(TypedEntityDataSummary {
@@ -2252,11 +1721,6 @@ struct InstrumentComponentSummary {
     registry_id: Option<i32>,
     description: Option<String>,
     description_styled: Option<Vec<StyledTextRun>>,
-}
-
-fn decode_instrument_component(decoder: &mut Decoder<'_>) -> Result<()> {
-    let _ = decode_instrument_component_summary(decoder)?;
-    Ok(())
 }
 
 fn decode_instrument_component_summary(
@@ -2358,10 +1822,6 @@ fn decode_direct_trim_pattern_summary(decoder: &mut Decoder<'_>) -> Result<TrimP
         description_styled: Some(description_styled.into_boxed_slice()),
         decal,
     })
-}
-
-fn decode_jukebox_playable(decoder: &mut Decoder<'_>) -> Result<()> {
-    decode_holder_with_direct(decoder, decode_direct_jukebox_song)
 }
 
 struct JukeboxSongHolderSummary {
@@ -2522,11 +1982,6 @@ fn decode_optional_player_model_type(
     Ok(None)
 }
 
-fn decode_direct_jukebox_song(decoder: &mut Decoder<'_>) -> Result<()> {
-    let _ = decode_direct_jukebox_song_summary(decoder)?;
-    Ok(())
-}
-
 fn decode_direct_jukebox_song_summary(decoder: &mut Decoder<'_>) -> Result<JukeboxSongSummary> {
     let sound_event = decode_sound_event_holder_summary(decoder)?;
     let description_styled = decode_styled_component_summary_from_decoder(decoder)?;
@@ -2577,11 +2032,6 @@ fn decode_direct_sound_event_summary(decoder: &mut Decoder<'_>) -> Result<SoundE
     })
 }
 
-fn decode_banner_pattern_layers(decoder: &mut Decoder<'_>) -> Result<()> {
-    let _ = decode_banner_pattern_layers_summary(decoder)?;
-    Ok(())
-}
-
 fn decode_banner_pattern_layers_summary(
     decoder: &mut Decoder<'_>,
 ) -> Result<Vec<BannerPatternLayerSummary>> {
@@ -2621,11 +2071,6 @@ fn decode_banner_pattern_holder(decoder: &mut Decoder<'_>) -> Result<BannerPatte
     }
 }
 
-fn decode_pot_decorations(decoder: &mut Decoder<'_>) -> Result<()> {
-    let _ = decode_pot_decorations_item_ids(decoder)?;
-    Ok(())
-}
-
 fn decode_pot_decorations_item_ids(decoder: &mut Decoder<'_>) -> Result<Vec<i32>> {
     let item_count = read_bounded_len(decoder, MAX_POT_DECORATIONS)?;
     let mut item_ids = Vec::with_capacity(item_count);
@@ -2648,11 +2093,6 @@ fn decode_bees(decoder: &mut Decoder<'_>) -> Result<Vec<BeeOccupantSummary>> {
         });
     }
     Ok(bees)
-}
-
-fn decode_painting_variant_holder(decoder: &mut Decoder<'_>) -> Result<()> {
-    let _ = decode_painting_variant_holder_summary(decoder)?;
-    Ok(())
 }
 
 struct PaintingVariantHolderSummary {
@@ -2944,11 +2384,6 @@ fn decode_optional_string_value(
         return decoder.read_string(max_chars).map(Some);
     }
     Ok(None)
-}
-
-fn decode_tooltip_display(decoder: &mut Decoder<'_>) -> Result<()> {
-    let _ = decode_tooltip_display_summary(decoder)?;
-    Ok(())
 }
 
 fn decode_tooltip_display_summary(decoder: &mut Decoder<'_>) -> Result<(bool, Vec<i32>)> {

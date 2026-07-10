@@ -8973,3 +8973,15 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   暴露窄 resource-id 查询。native component patch test 从 73 扩展到 74 个
   added entry，覆盖 base potion、custom color、effect details 与 custom name，
   另覆盖默认空 compound、effect count mismatch 和 unknown potion id 的安全省略。
+
+## 2026-07-10：Data component descriptor dispatch 重构
+
+- [x] 26.1 component patch 的 descriptor 自动分发（P2 protocol + native
+  input）：依据 vanilla `DataComponentType`、`DataComponents` 与
+  `DataComponentPatch`，protocol 建立 110 项顺序锁定的 catalog，统一拥有 type
+  id、resource id、persistent/transient 属性与 wire decode handler；patch added
+  循环只查询 descriptor 并调用 handler，继续投影到兼容的
+  `DataComponentPatchSummary`。native 将既有 74 项 persistent SNBT added-value
+  encoder 移入独立 registry，资源名和 removal 持久性均只查询 protocol catalog；
+  未注册 added value 与 transient removal 继续安全省略。该切片只重构分发机制，
+  没有新增或误标任何 component codec 支持。
