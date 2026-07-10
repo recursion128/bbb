@@ -11,6 +11,7 @@ use bbb_protocol::entity_poses::VANILLA_ENTITY_POSE_STANDING_ID;
 pub enum VanillaEntityMetadataFamily {
     Entity,
     LivingEntity,
+    Mob,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -66,6 +67,7 @@ pub const VANILLA_LIVING_ENTITY_EFFECT_AMBIENCE_DATA_ID: u8 = 11;
 pub const VANILLA_LIVING_ENTITY_ARROW_COUNT_DATA_ID: u8 = 12;
 pub const VANILLA_LIVING_ENTITY_STINGER_COUNT_DATA_ID: u8 = 13;
 pub const VANILLA_LIVING_ENTITY_SLEEPING_POS_DATA_ID: u8 = 14;
+pub const VANILLA_MOB_FLAGS_DATA_ID: u8 = 15;
 
 pub const VANILLA_ENTITY_SHARED_FLAG_ON_FIRE: i8 = 1 << 0;
 pub const VANILLA_ENTITY_SHARED_FLAG_SHIFT_KEY_DOWN: i8 = 1 << 1;
@@ -78,6 +80,9 @@ pub const VANILLA_ENTITY_SHARED_FLAG_FALL_FLYING: i8 = 0x80_u8 as i8;
 pub const VANILLA_LIVING_ENTITY_FLAG_IS_USING: i8 = 1 << 0;
 pub const VANILLA_LIVING_ENTITY_FLAG_OFF_HAND: i8 = 1 << 1;
 pub const VANILLA_LIVING_ENTITY_FLAG_SPIN_ATTACK: i8 = 1 << 2;
+pub const VANILLA_MOB_FLAG_NO_AI: i8 = 1 << 0;
+pub const VANILLA_MOB_FLAG_LEFT_HANDED: i8 = 1 << 1;
+pub const VANILLA_MOB_FLAG_AGGRESSIVE: i8 = 1 << 2;
 
 /// Vanilla `Entity.getMaxAirSupply()` default. Individual entity classes can override this
 /// virtual value, so the field schema records `MaxAirSupply` rather than fixing every entity to
@@ -236,6 +241,31 @@ const LIVING_ENTITY_FLAGS: &[VanillaEntityMetadataFlagSchema] = &[
     },
 ];
 
+const MOB_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[VanillaEntityMetadataFieldSchema {
+    name: "DATA_MOB_FLAGS_ID",
+    data_id: VANILLA_MOB_FLAGS_DATA_ID,
+    serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+    default: VanillaEntityMetadataDefault::Byte(0),
+}];
+
+const MOB_FLAGS: &[VanillaEntityMetadataFlagSchema] = &[
+    VanillaEntityMetadataFlagSchema {
+        name: "MOB_FLAG_NO_AI",
+        data_id: VANILLA_MOB_FLAGS_DATA_ID,
+        mask: VANILLA_MOB_FLAG_NO_AI,
+    },
+    VanillaEntityMetadataFlagSchema {
+        name: "MOB_FLAG_LEFTHANDED",
+        data_id: VANILLA_MOB_FLAGS_DATA_ID,
+        mask: VANILLA_MOB_FLAG_LEFT_HANDED,
+    },
+    VanillaEntityMetadataFlagSchema {
+        name: "MOB_FLAG_AGGRESSIVE",
+        data_id: VANILLA_MOB_FLAGS_DATA_ID,
+        mask: VANILLA_MOB_FLAG_AGGRESSIVE,
+    },
+];
+
 const ENTITY_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamilySchema {
     family: VanillaEntityMetadataFamily::Entity,
     parent: None,
@@ -252,12 +282,22 @@ const LIVING_ENTITY_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMet
     own_flags: LIVING_ENTITY_FLAGS,
 };
 
+const MOB_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamilySchema {
+    family: VanillaEntityMetadataFamily::Mob,
+    parent: Some(VanillaEntityMetadataFamily::LivingEntity),
+    inherited_field_count: LIVING_ENTITY_SCHEMA.inherited_field_count
+        + LIVING_ENTITY_FIELDS.len() as u8,
+    own_fields: MOB_FIELDS,
+    own_flags: MOB_FLAGS,
+};
+
 pub const fn vanilla_entity_metadata_schema(
     family: VanillaEntityMetadataFamily,
 ) -> &'static VanillaEntityMetadataFamilySchema {
     match family {
         VanillaEntityMetadataFamily::Entity => &ENTITY_SCHEMA,
         VanillaEntityMetadataFamily::LivingEntity => &LIVING_ENTITY_SCHEMA,
+        VanillaEntityMetadataFamily::Mob => &MOB_SCHEMA,
     }
 }
 
@@ -283,7 +323,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn entity_and_living_entity_fields_match_vanilla_define_id_order() {
+    fn base_family_fields_match_vanilla_define_id_order() {
         let entity = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Entity);
         assert_eq!(entity.inherited_field_count, 0);
         assert_eq!(
@@ -305,6 +345,17 @@ mod tests {
                 .map(|field| field.data_id)
                 .collect::<Vec<_>>(),
             (8..=14).collect::<Vec<_>>()
+        );
+
+        let mob = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Mob);
+        assert_eq!(mob.parent, Some(VanillaEntityMetadataFamily::LivingEntity));
+        assert_eq!(mob.inherited_field_count, 15);
+        assert_eq!(
+            mob.own_fields
+                .iter()
+                .map(|field| field.data_id)
+                .collect::<Vec<_>>(),
+            vec![15]
         );
     }
 
@@ -411,10 +462,19 @@ mod tests {
             ]
         );
         assert_eq!(VANILLA_ENTITY_DEFAULT_MAX_AIR_SUPPLY_TICKS, 300);
+        assert_eq!(
+            vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Mob).own_fields,
+            &[VanillaEntityMetadataFieldSchema {
+                name: "DATA_MOB_FLAGS_ID",
+                data_id: 15,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+                default: VanillaEntityMetadataDefault::Byte(0),
+            }]
+        );
     }
 
     #[test]
-    fn living_entity_queries_include_entity_fields_and_flags_are_unique() {
+    fn family_queries_include_parent_fields_and_flags_are_unique() {
         assert_eq!(
             vanilla_entity_metadata_field(
                 VanillaEntityMetadataFamily::LivingEntity,
@@ -428,6 +488,14 @@ mod tests {
             VANILLA_LIVING_ENTITY_FLAGS_DATA_ID
         )
         .is_none());
+        assert_eq!(
+            vanilla_entity_metadata_field(
+                VanillaEntityMetadataFamily::Mob,
+                VANILLA_LIVING_ENTITY_HEALTH_DATA_ID
+            )
+            .map(|field| field.name),
+            Some("DATA_HEALTH_ID")
+        );
 
         assert_eq!(
             vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Entity).own_flags,
@@ -489,10 +557,31 @@ mod tests {
                 },
             ]
         );
+        assert_eq!(
+            vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Mob).own_flags,
+            &[
+                VanillaEntityMetadataFlagSchema {
+                    name: "MOB_FLAG_NO_AI",
+                    data_id: 15,
+                    mask: 1,
+                },
+                VanillaEntityMetadataFlagSchema {
+                    name: "MOB_FLAG_LEFTHANDED",
+                    data_id: 15,
+                    mask: 2,
+                },
+                VanillaEntityMetadataFlagSchema {
+                    name: "MOB_FLAG_AGGRESSIVE",
+                    data_id: 15,
+                    mask: 4,
+                },
+            ]
+        );
 
         for family in [
             VanillaEntityMetadataFamily::Entity,
             VanillaEntityMetadataFamily::LivingEntity,
+            VanillaEntityMetadataFamily::Mob,
         ] {
             let flags = vanilla_entity_metadata_schema(family).own_flags;
             for (index, flag) in flags.iter().enumerate() {

@@ -9446,3 +9446,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   统一引用 schema；测试锁定 `Entity` 0..=7、`LivingEntity` 8..=14 的继承偏移、serializer、
   默认值和 flag 唯一性，并复验 invisibility/glowing/health/SNBT 投影。未迁移 `Mob`、
   `Avatar` 及具体实体子类 schema，也未改变 entity-data wire codec 或现有投影行为。
+
+## 2026-07-10：Entity metadata schema phase 2（Mob）
+
+- [x] entity metadata schema 的 `Mob` 继承层：按 vanilla 26.1 `Mob.java` 将父 family
+  设为 `LivingEntity`，锁定 inherited-field count 15、`DATA_MOB_FLAGS_ID` BYTE id 15/
+  default 0，以及 no-AI/left-handed/aggressive 三个 mask 1/2/4。world entity store 的
+  aggressive/main-arm 投影与 native F3+I mob save fields 删除本地常量，统一引用 schema；
+  focused tests 复验继承查询、flag serializer/唯一性、全部既有 combat/mob projection 和
+  creeper save-NBT。未迁移 `AgeableMob`、`Avatar`、`Player` 或具体 mob 子类字段。

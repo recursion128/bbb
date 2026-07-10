@@ -91,6 +91,8 @@ use crate::entities::schema::{
     VANILLA_LIVING_ENTITY_FLAG_OFF_HAND as LIVING_ENTITY_FLAG_OFF_HAND,
     VANILLA_LIVING_ENTITY_FLAG_SPIN_ATTACK as LIVING_ENTITY_FLAG_SPIN_ATTACK,
     VANILLA_LIVING_ENTITY_HEALTH_DATA_ID, VANILLA_LIVING_ENTITY_SLEEPING_POS_DATA_ID,
+    VANILLA_MOB_FLAGS_DATA_ID, VANILLA_MOB_FLAG_AGGRESSIVE as MOB_FLAG_AGGRESSIVE,
+    VANILLA_MOB_FLAG_LEFT_HANDED as MOB_FLAG_LEFTHANDED,
 };
 use crate::registries::RegistrySet;
 use crate::ItemEquipmentSlot;
@@ -275,15 +277,6 @@ fn vanilla_mob_item_in_hand_layer_type(entity_type_id: i32) -> bool {
         )
 }
 
-/// Vanilla `Mob.DATA_MOB_FLAGS_ID` data id (15): the byte holding the no-AI /
-/// left-handed / aggressive flags.
-const VANILLA_MOB_FLAGS_DATA_ID: u8 = 15;
-
-/// Vanilla `Mob.MOB_FLAG_AGGRESSIVE` (4): the `DATA_MOB_FLAGS_ID` bit set while a mob is
-/// in its aggressive AI state (`Mob.isAggressive`).
-const MOB_FLAG_AGGRESSIVE: i8 = 4;
-/// Vanilla `Mob.MOB_FLAG_LEFTHANDED` (2): flips `Mob.getMainArm()` from RIGHT to LEFT.
-const MOB_FLAG_LEFTHANDED: i8 = 2;
 /// Vanilla `Avatar.DATA_PLAYER_MAIN_HAND` data id (15): `HumanoidArm.LEFT` (0) or RIGHT (1).
 const VANILLA_AVATAR_MAIN_HAND_DATA_ID: u8 = 15;
 const VANILLA_HUMANOID_ARM_LEFT_ID: i32 = 0;
