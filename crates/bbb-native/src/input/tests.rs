@@ -1,5 +1,6 @@
 use super::*;
 use bbb_item_model::NativeItemRuntime;
+use bbb_pack::{EquipmentAssetCatalog, ItemRegistryCatalog};
 use bbb_protocol::entity_types::{
     VANILLA_ENTITY_TYPE_ALLAY_ID, VANILLA_ENTITY_TYPE_ARMADILLO_ID,
     VANILLA_ENTITY_TYPE_ARMOR_STAND_ID, VANILLA_ENTITY_TYPE_ARROW_ID,
@@ -19,13 +20,14 @@ use bbb_protocol::entity_types::{
     VANILLA_ENTITY_TYPE_EVOKER_FANGS_ID, VANILLA_ENTITY_TYPE_EVOKER_ID,
     VANILLA_ENTITY_TYPE_EXPERIENCE_BOTTLE_ID, VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID,
     VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID, VANILLA_ENTITY_TYPE_FIREBALL_ID,
-    VANILLA_ENTITY_TYPE_FOX_ID, VANILLA_ENTITY_TYPE_FROG_ID,
-    VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID, VANILLA_ENTITY_TYPE_GHAST_ID,
-    VANILLA_ENTITY_TYPE_GIANT_ID, VANILLA_ENTITY_TYPE_GLOW_ITEM_FRAME_ID,
-    VANILLA_ENTITY_TYPE_GLOW_SQUID_ID, VANILLA_ENTITY_TYPE_GOAT_ID,
-    VANILLA_ENTITY_TYPE_GUARDIAN_ID, VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID,
-    VANILLA_ENTITY_TYPE_HOGLIN_ID, VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID,
-    VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_HUSK_ID, VANILLA_ENTITY_TYPE_ILLUSIONER_ID,
+    VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID, VANILLA_ENTITY_TYPE_FOX_ID,
+    VANILLA_ENTITY_TYPE_FROG_ID, VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID,
+    VANILLA_ENTITY_TYPE_GHAST_ID, VANILLA_ENTITY_TYPE_GIANT_ID,
+    VANILLA_ENTITY_TYPE_GLOW_ITEM_FRAME_ID, VANILLA_ENTITY_TYPE_GLOW_SQUID_ID,
+    VANILLA_ENTITY_TYPE_GOAT_ID, VANILLA_ENTITY_TYPE_GUARDIAN_ID,
+    VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID, VANILLA_ENTITY_TYPE_HOGLIN_ID,
+    VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID, VANILLA_ENTITY_TYPE_HORSE_ID,
+    VANILLA_ENTITY_TYPE_HUSK_ID, VANILLA_ENTITY_TYPE_ILLUSIONER_ID,
     VANILLA_ENTITY_TYPE_INTERACTION_ID, VANILLA_ENTITY_TYPE_IRON_GOLEM_ID,
     VANILLA_ENTITY_TYPE_ITEM_FRAME_ID, VANILLA_ENTITY_TYPE_LINGERING_POTION_ID,
     VANILLA_ENTITY_TYPE_LLAMA_ID, VANILLA_ENTITY_TYPE_LLAMA_SPIT_ID,
@@ -67,17 +69,17 @@ use bbb_protocol::packets::{
     DialogHolder, EntityDataEnumSerializer, EntityDataRegistryHolder,
     EntityDataValue as ProtocolEntityDataValue, EntityDataValueKind,
     EntityEvent as ProtocolEntityEvent, EntityTagQuery, EquipmentSlot, EquipmentSlotUpdate,
-    FilterMask, FilterMaskKind, GameEvent as ProtocolGameEvent, HashedComponentPatch,
-    HashedItemStack, HashedStack, ItemStackSummary as ProtocolItemStackSummary,
-    LastSeenMessagesUpdate, MessageSignature, OpenBook, OpenScreen as ProtocolOpenScreen,
-    OpenSignEditor, PackedMessageSignature, PaddleBoat, PlayLogin, PlayerAbilities,
-    PlayerAbilitiesCommand, PlayerAction, PlayerChat, PlayerCommand, PlayerHealth,
-    ProjectilePower as ProtocolProjectilePower, RemoveEntities as ProtocolRemoveEntities,
-    RenameItem, SeenAdvancements, SelectBundleItem, SetCursorItem as ProtocolSetCursorItem,
-    SetEntityData as ProtocolSetEntityData, SetEntityLink, SetEquipment, SetPassengers,
-    SetPlayerInventory as ProtocolSetPlayerInventory, ShowDialog as ProtocolShowDialog, SignUpdate,
-    SignedMessageBody, TagQuery, UpdateAdvancements, Vec3d as ProtocolVec3d,
-    WrittenBookContentSummary,
+    FilterMask, FilterMaskKind, FireworkExplosionShapeSummary, FireworkExplosionSummary,
+    GameEvent as ProtocolGameEvent, HashedComponentPatch, HashedItemStack, HashedStack,
+    ItemStackSummary as ProtocolItemStackSummary, LastSeenMessagesUpdate, MessageSignature,
+    OpenBook, OpenScreen as ProtocolOpenScreen, OpenSignEditor, PackedMessageSignature, PaddleBoat,
+    PlayLogin, PlayerAbilities, PlayerAbilitiesCommand, PlayerAction, PlayerChat, PlayerCommand,
+    PlayerHealth, ProjectilePower as ProtocolProjectilePower,
+    RemoveEntities as ProtocolRemoveEntities, RenameItem, SeenAdvancements, SelectBundleItem,
+    SetCursorItem as ProtocolSetCursorItem, SetEntityData as ProtocolSetEntityData, SetEntityLink,
+    SetEquipment, SetPassengers, SetPlayerInventory as ProtocolSetPlayerInventory,
+    ShowDialog as ProtocolShowDialog, SignUpdate, SignedMessageBody, TagQuery, UpdateAdvancements,
+    Vec3d as ProtocolVec3d, WrittenBookContentSummary,
 };
 use bbb_protocol::packets::{ChatTypeBound, ChatTypeHolder};
 use bbb_protocol::{
@@ -8380,7 +8382,7 @@ fn local_projectile_save_tracks_spawn_owner_first_tick_and_default_item_stack() 
 
     for (index, (_, item_id)) in cases.iter().enumerate() {
         let entity = world.probe_entity(71 + index as i32).unwrap();
-        let snbt = debug_local_entity_pretty_snbt(&world, &entity).unwrap();
+        let snbt = debug_local_entity_pretty_snbt(&world, None, &entity).unwrap();
         assert!(snbt.contains("Owner: [I; 0, 0, 0, 70], HasBeenShot: 0b"));
         assert!(snbt.contains(&format!("Item: {{id: \"{item_id}\"}}")));
     }
@@ -8388,7 +8390,7 @@ fn local_projectile_save_tracks_spawn_owner_first_tick_and_default_item_stack() 
     world.advance_entity_client_animations(1);
     for index in 0..cases.len() {
         let entity = world.probe_entity(71 + index as i32).unwrap();
-        let snbt = debug_local_entity_pretty_snbt(&world, &entity).unwrap();
+        let snbt = debug_local_entity_pretty_snbt(&world, None, &entity).unwrap();
         assert!(snbt.contains("Owner: [I; 0, 0, 0, 70], HasBeenShot: 1b"));
         assert!(!snbt.contains("LeftOwner"));
     }
@@ -8402,9 +8404,121 @@ fn local_projectile_save_tracks_spawn_owner_first_tick_and_default_item_stack() 
     world.advance_entity_client_animations(1);
     for index in 0..cases.len() {
         let entity = world.probe_entity(71 + index as i32).unwrap();
-        let snbt = debug_local_entity_pretty_snbt(&world, &entity).unwrap();
+        let snbt = debug_local_entity_pretty_snbt(&world, None, &entity).unwrap();
         assert!(snbt.contains("Owner: [I; 0, 0, 0, 70], LeftOwner: 1b, HasBeenShot: 1b"));
     }
+}
+
+#[test]
+fn local_firework_save_uses_parent_lifecycle_synced_item_codec_and_client_life() {
+    let registry: ItemRegistryCatalog = serde_json::from_value(serde_json::json!({
+        "resource_ids": ["minecraft:firework_rocket"],
+        "protocol_ids": {"minecraft:firework_rocket": 42}
+    }))
+    .unwrap();
+    let item_runtime = NativeItemRuntime::for_test_with_registry_and_equipment_assets(
+        registry,
+        EquipmentAssetCatalog::default(),
+    );
+    let mut world = WorldStore::new();
+    world.apply_add_entity(AddEntity {
+        id: 90,
+        uuid: Uuid::from_u128(90),
+        entity_type_id: VANILLA_ENTITY_TYPE_COW_ID,
+        position: ProtocolVec3d::default(),
+        delta_movement: ProtocolVec3d::default(),
+        x_rot: 0.0,
+        y_rot: 0.0,
+        y_head_rot: 0.0,
+        data: 0,
+    });
+    world.apply_add_entity(AddEntity {
+        id: 91,
+        uuid: Uuid::from_u128(91),
+        entity_type_id: VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID,
+        position: ProtocolVec3d::default(),
+        delta_movement: ProtocolVec3d::default(),
+        x_rot: 0.0,
+        y_rot: 0.0,
+        y_head_rot: 0.0,
+        data: 90,
+    });
+    let entity = world.probe_entity(91).unwrap();
+    let snbt = debug_local_entity_pretty_snbt(&world, Some(&item_runtime), &entity).unwrap();
+    assert!(snbt.contains(
+        "Owner: [I; 0, 0, 0, 90], HasBeenShot: 0b, Life: 0, LifeTime: 0, \
+         FireworksItem: {id: \"minecraft:firework_rocket\"}, ShotAtAngle: 0b"
+    ));
+
+    let mut component_patch = DataComponentPatchSummary::default();
+    component_patch.added = 1;
+    component_patch.added_type_ids = vec![FIREWORKS_COMPONENT_TYPE_ID];
+    component_patch.fireworks_flight_duration = Some(2);
+    component_patch.fireworks_explosions_count = Some(1);
+    component_patch.fireworks_explosions = vec![FireworkExplosionSummary {
+        shape: FireworkExplosionShapeSummary::Star,
+        colors: vec![0x11_22_33, 0x44_55_66],
+        fade_colors: vec![0x77_88_99],
+        has_trail: true,
+        has_twinkle: true,
+    }];
+    assert!(world.apply_set_entity_data(ProtocolSetEntityData {
+        id: 91,
+        values: vec![
+            ProtocolEntityDataValue {
+                data_id: FIREWORK_ROCKET_ITEM_DATA_ID,
+                serializer_id: 7,
+                value: EntityDataValueKind::ItemStack(ProtocolItemStackSummary {
+                    item_id: Some(42),
+                    count: 2,
+                    component_patch,
+                }),
+            },
+            ProtocolEntityDataValue {
+                data_id: FIREWORK_ROCKET_SHOT_AT_ANGLE_DATA_ID,
+                serializer_id: 8,
+                value: EntityDataValueKind::Boolean(true),
+            },
+        ],
+    }));
+
+    let entity = world.probe_entity(91).unwrap();
+    let snbt = debug_local_entity_pretty_snbt(&world, Some(&item_runtime), &entity).unwrap();
+    assert!(snbt.contains(
+        "Owner: [I; 0, 0, 0, 90], HasBeenShot: 0b, Life: 0, LifeTime: 0, \
+         FireworksItem: {id: \"minecraft:firework_rocket\", count: 2, components: \
+         {\"minecraft:fireworks\": {flight_duration: 2, explosions: \
+         [{shape: \"star\", colors: [1122867, 4478310], fade_colors: [7833753], \
+         has_trail: 1b, has_twinkle: 1b}]}}}, ShotAtAngle: 1b"
+    ));
+
+    let removed_fireworks_patch = DataComponentPatchSummary {
+        removed_type_ids: vec![FIREWORKS_COMPONENT_TYPE_ID],
+        ..DataComponentPatchSummary::default()
+    };
+    assert!(world.apply_set_entity_data(ProtocolSetEntityData {
+        id: 91,
+        values: vec![ProtocolEntityDataValue {
+            data_id: FIREWORK_ROCKET_ITEM_DATA_ID,
+            serializer_id: 7,
+            value: EntityDataValueKind::ItemStack(ProtocolItemStackSummary {
+                item_id: Some(42),
+                count: 1,
+                component_patch: removed_fireworks_patch,
+            }),
+        }],
+    }));
+    let entity = world.probe_entity(91).unwrap();
+    let snbt = debug_local_entity_pretty_snbt(&world, Some(&item_runtime), &entity).unwrap();
+    assert!(snbt.contains(
+        "FireworksItem: {id: \"minecraft:firework_rocket\", components: \
+         {\"!minecraft:fireworks\": {}}}, ShotAtAngle: 1b"
+    ));
+
+    world.advance_entity_client_animations(1);
+    let entity = world.probe_entity(91).unwrap();
+    let snbt = debug_local_entity_pretty_snbt(&world, Some(&item_runtime), &entity).unwrap();
+    assert!(snbt.contains("Owner: [I; 0, 0, 0, 90], HasBeenShot: 1b, Life: 1, LifeTime: 0"));
 }
 
 #[test]

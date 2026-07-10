@@ -27,23 +27,24 @@ use bbb_protocol::{
         VANILLA_ENTITY_TYPE_EVOKER_FANGS_ID, VANILLA_ENTITY_TYPE_EVOKER_ID,
         VANILLA_ENTITY_TYPE_EXPERIENCE_BOTTLE_ID, VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID,
         VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID, VANILLA_ENTITY_TYPE_FIREBALL_ID,
-        VANILLA_ENTITY_TYPE_FOX_ID, VANILLA_ENTITY_TYPE_FROG_ID,
-        VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID, VANILLA_ENTITY_TYPE_GHAST_ID,
-        VANILLA_ENTITY_TYPE_GIANT_ID, VANILLA_ENTITY_TYPE_GLOW_ITEM_FRAME_ID,
-        VANILLA_ENTITY_TYPE_GLOW_SQUID_ID, VANILLA_ENTITY_TYPE_GOAT_ID,
-        VANILLA_ENTITY_TYPE_GUARDIAN_ID, VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID,
-        VANILLA_ENTITY_TYPE_HOGLIN_ID, VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID,
-        VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_HUSK_ID,
-        VANILLA_ENTITY_TYPE_ILLUSIONER_ID, VANILLA_ENTITY_TYPE_INTERACTION_ID,
-        VANILLA_ENTITY_TYPE_IRON_GOLEM_ID, VANILLA_ENTITY_TYPE_ITEM_FRAME_ID,
-        VANILLA_ENTITY_TYPE_LINGERING_POTION_ID, VANILLA_ENTITY_TYPE_LLAMA_ID,
-        VANILLA_ENTITY_TYPE_LLAMA_SPIT_ID, VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID,
-        VANILLA_ENTITY_TYPE_MINECART_ID, VANILLA_ENTITY_TYPE_MOOSHROOM_ID,
-        VANILLA_ENTITY_TYPE_MULE_ID, VANILLA_ENTITY_TYPE_NAUTILUS_ID,
-        VANILLA_ENTITY_TYPE_OCELOT_ID, VANILLA_ENTITY_TYPE_PANDA_ID,
-        VANILLA_ENTITY_TYPE_PARCHED_ID, VANILLA_ENTITY_TYPE_PARROT_ID,
-        VANILLA_ENTITY_TYPE_PHANTOM_ID, VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID,
-        VANILLA_ENTITY_TYPE_PIGLIN_ID, VANILLA_ENTITY_TYPE_PIG_ID, VANILLA_ENTITY_TYPE_PILLAGER_ID,
+        VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID, VANILLA_ENTITY_TYPE_FOX_ID,
+        VANILLA_ENTITY_TYPE_FROG_ID, VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID,
+        VANILLA_ENTITY_TYPE_GHAST_ID, VANILLA_ENTITY_TYPE_GIANT_ID,
+        VANILLA_ENTITY_TYPE_GLOW_ITEM_FRAME_ID, VANILLA_ENTITY_TYPE_GLOW_SQUID_ID,
+        VANILLA_ENTITY_TYPE_GOAT_ID, VANILLA_ENTITY_TYPE_GUARDIAN_ID,
+        VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID, VANILLA_ENTITY_TYPE_HOGLIN_ID,
+        VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID, VANILLA_ENTITY_TYPE_HORSE_ID,
+        VANILLA_ENTITY_TYPE_HUSK_ID, VANILLA_ENTITY_TYPE_ILLUSIONER_ID,
+        VANILLA_ENTITY_TYPE_INTERACTION_ID, VANILLA_ENTITY_TYPE_IRON_GOLEM_ID,
+        VANILLA_ENTITY_TYPE_ITEM_FRAME_ID, VANILLA_ENTITY_TYPE_LINGERING_POTION_ID,
+        VANILLA_ENTITY_TYPE_LLAMA_ID, VANILLA_ENTITY_TYPE_LLAMA_SPIT_ID,
+        VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID, VANILLA_ENTITY_TYPE_MINECART_ID,
+        VANILLA_ENTITY_TYPE_MOOSHROOM_ID, VANILLA_ENTITY_TYPE_MULE_ID,
+        VANILLA_ENTITY_TYPE_NAUTILUS_ID, VANILLA_ENTITY_TYPE_OCELOT_ID,
+        VANILLA_ENTITY_TYPE_PANDA_ID, VANILLA_ENTITY_TYPE_PARCHED_ID,
+        VANILLA_ENTITY_TYPE_PARROT_ID, VANILLA_ENTITY_TYPE_PHANTOM_ID,
+        VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID, VANILLA_ENTITY_TYPE_PIGLIN_ID,
+        VANILLA_ENTITY_TYPE_PIG_ID, VANILLA_ENTITY_TYPE_PILLAGER_ID,
         VANILLA_ENTITY_TYPE_POLAR_BEAR_ID, VANILLA_ENTITY_TYPE_PUFFERFISH_ID,
         VANILLA_ENTITY_TYPE_RABBIT_ID, VANILLA_ENTITY_TYPE_RAVAGER_ID,
         VANILLA_ENTITY_TYPE_SALMON_ID, VANILLA_ENTITY_TYPE_SHEEP_ID,
@@ -70,9 +71,9 @@ use bbb_protocol::{
     packets::{
         BlockEntityTagQuery, BlockPos as ProtocolBlockPos, ChangeGameModeCommand,
         Direction as ProtocolDirection, EntityDataEnumSerializer, EntityDataRegistryHolder,
-        EntityDataValueKind, EntityTagQuery, GameType, InteractionHand, ItemStackSummary,
-        PlayerActionKind, PlayerCommandAction, PlayerInput, RecipeBookType, SeenAdvancements,
-        SignUpdate,
+        EntityDataValueKind, EntityTagQuery, FireworkExplosionShapeSummary,
+        FireworkExplosionSummary, GameType, InteractionHand, ItemStackSummary, PlayerActionKind,
+        PlayerCommandAction, PlayerInput, RecipeBookType, SeenAdvancements, SignUpdate,
     },
     ComponentClickEvent, ComponentStyle, StyledTextRun, MC_BUILD_TIME, MC_DATA_PACK_FORMAT,
     MC_DATA_VERSION, MC_DATA_VERSION_SERIES, MC_RESOURCE_PACK_FORMAT, MC_STABLE, MC_VERSION,
@@ -250,6 +251,10 @@ const ENTITY_DEFAULT_INVULNERABLE: bool = false;
 const ENTITY_DEFAULT_PORTAL_COOLDOWN: i32 = 0;
 const HURTING_PROJECTILE_DEFAULT_ACCELERATION_POWER: f64 = 0.1;
 const FIREBALL_DEFAULT_EXPLOSION_POWER: i8 = 1;
+const FIREWORK_ROCKET_ITEM_DATA_ID: u8 = 8;
+const FIREWORK_ROCKET_SHOT_AT_ANGLE_DATA_ID: u8 = 10;
+const FIREWORK_ROCKET_DEFAULT_LIFETIME: i32 = 0;
+const FIREWORKS_COMPONENT_TYPE_ID: i32 = 69;
 const FALLING_BLOCK_DEFAULT_TIME: i32 = 0;
 const FALLING_BLOCK_DEFAULT_DROP_ITEM: bool = true;
 const FALLING_BLOCK_DEFAULT_HURT_ENTITIES: bool = false;
@@ -2087,6 +2092,7 @@ impl ClientInputState {
             terrain_upload,
             clipboard,
             None,
+            None,
         )
     }
 
@@ -2097,6 +2103,7 @@ impl ClientInputState {
         world: Option<&mut WorldStore>,
         terrain_upload: Option<&mut TerrainUploadState>,
         clipboard: Option<&mut dyn DebugClipboard>,
+        item_runtime: Option<&NativeItemRuntime>,
         counters: &mut NetCounters,
         net_commands: &Option<mpsc::Sender<NetCommand>>,
     ) -> bool {
@@ -2106,6 +2113,7 @@ impl ClientInputState {
             world,
             terrain_upload,
             clipboard,
+            item_runtime,
             Some(DebugNetContext {
                 counters,
                 net_commands,
@@ -2120,6 +2128,7 @@ impl ClientInputState {
         mut world: Option<&mut WorldStore>,
         terrain_upload: Option<&mut TerrainUploadState>,
         clipboard: Option<&mut dyn DebugClipboard>,
+        item_runtime: Option<&NativeItemRuntime>,
         mut net_context: Option<DebugNetContext<'_>>,
     ) -> bool {
         if !self.focused {
@@ -2171,6 +2180,7 @@ impl ClientInputState {
                 world,
                 terrain_upload,
                 clipboard,
+                item_runtime,
                 net_context.as_mut(),
             )
         {
@@ -2191,6 +2201,7 @@ impl ClientInputState {
         mut world: Option<&mut WorldStore>,
         mut terrain_upload: Option<&mut TerrainUploadState>,
         mut clipboard: Option<&mut dyn DebugClipboard>,
+        item_runtime: Option<&NativeItemRuntime>,
         net_context: Option<&mut DebugNetContext<'_>>,
     ) -> bool {
         if self.debug_hotkeys_enabled && self.handle_shared_debug_hotkey(code, world.as_deref_mut())
@@ -2376,9 +2387,9 @@ impl ClientInputState {
                         }
                     }
                 } else {
-                    let command = world
-                        .as_deref()
-                        .and_then(|world| debug_copy_recreate_command(world, add_nbt));
+                    let command = world.as_deref().and_then(|world| {
+                        debug_copy_recreate_command(world, item_runtime, add_nbt)
+                    });
                     if let (Some(copy), Some(clipboard)) = (command, clipboard.as_deref_mut()) {
                         if clipboard.set_debug_clipboard_text(&copy.command) {
                             push_debug_feedback_chat_message(
@@ -3627,11 +3638,15 @@ struct DebugRecreateCopy {
     feedback_message: &'static str,
 }
 
-fn debug_copy_recreate_command(world: &WorldStore, add_nbt: bool) -> Option<DebugRecreateCopy> {
+fn debug_copy_recreate_command(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    add_nbt: bool,
+) -> Option<DebugRecreateCopy> {
     match debug_recreate_target(world)? {
         DebugRecreateTarget::Block(pos) => debug_copy_recreate_block_command(world, pos, add_nbt),
         DebugRecreateTarget::Entity(entity_id) => {
-            debug_copy_recreate_entity_command(world, entity_id, add_nbt)
+            debug_copy_recreate_entity_command(world, item_runtime, entity_id, add_nbt)
         }
     }
 }
@@ -3755,6 +3770,7 @@ fn debug_copy_recreate_server_block_command(
 
 fn debug_copy_recreate_entity_command(
     world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
     entity_id: i32,
     add_nbt: bool,
 ) -> Option<DebugRecreateCopy> {
@@ -3765,7 +3781,7 @@ fn debug_copy_recreate_entity_command(
         entity_type, entity.position.x, entity.position.y, entity.position.z
     );
     if add_nbt {
-        if let Some(snbt) = debug_local_entity_pretty_snbt(world, &entity) {
+        if let Some(snbt) = debug_local_entity_pretty_snbt(world, item_runtime, &entity) {
             command.push(' ');
             command.push_str(&snbt);
         }
@@ -3776,7 +3792,11 @@ fn debug_copy_recreate_entity_command(
     })
 }
 
-fn debug_local_entity_pretty_snbt(world: &WorldStore, entity: &EntityState) -> Option<String> {
+fn debug_local_entity_pretty_snbt(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    entity: &EntityState,
+) -> Option<String> {
     let mut fields = Vec::new();
     if let Some(motion) = debug_snbt_vec3d("Motion", entity.delta_movement) {
         fields.push(motion);
@@ -3827,12 +3847,13 @@ fn debug_local_entity_pretty_snbt(world: &WorldStore, entity: &EntityState) -> O
             fields.push(format!("TicksFrozen: {ticks_frozen}"));
         }
     }
-    debug_push_entity_additional_save_data(world, entity, &mut fields);
+    debug_push_entity_additional_save_data(world, item_runtime, entity, &mut fields);
     Some(format!("{{{}}}", fields.join(", ")))
 }
 
 fn debug_push_entity_additional_save_data(
     world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
     entity: &EntityState,
     fields: &mut Vec<String>,
 ) {
@@ -4085,6 +4106,9 @@ fn debug_push_entity_additional_save_data(
         VANILLA_ENTITY_TYPE_FIREBALL_ID => {
             debug_push_abstract_hurting_projectile_additional_save_data(entity, fields);
             debug_push_fireball_additional_save_data(fields);
+        }
+        VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID => {
+            debug_push_firework_rocket_additional_save_data(entity, item_runtime, fields);
         }
         VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID => {
             debug_push_falling_block_additional_save_data(world, entity, fields);
@@ -4510,6 +4534,136 @@ fn debug_push_fireball_additional_save_data(fields: &mut Vec<String>) {
     fields.push(format!(
         "ExplosionPower: {FIREBALL_DEFAULT_EXPLOSION_POWER}b"
     ));
+}
+
+fn debug_push_firework_rocket_additional_save_data(
+    entity: &EntityState,
+    item_runtime: Option<&NativeItemRuntime>,
+    fields: &mut Vec<String>,
+) {
+    debug_push_projectile_additional_save_data(entity, fields);
+    fields.push(format!(
+        "Life: {}",
+        entity.client_animations.age_ticks.min(i32::MAX as u32)
+    ));
+    fields.push(format!("LifeTime: {FIREWORK_ROCKET_DEFAULT_LIFETIME}"));
+    fields.push(format!(
+        "FireworksItem: {}",
+        debug_firework_rocket_item_stack(entity, item_runtime)
+    ));
+    let shot_at_angle =
+        debug_entity_data_bool_present(entity, FIREWORK_ROCKET_SHOT_AT_ANGLE_DATA_ID)
+            .unwrap_or(false);
+    fields.push(format!("ShotAtAngle: {}", debug_snbt_bool(shot_at_angle)));
+}
+
+fn debug_firework_rocket_item_stack(
+    entity: &EntityState,
+    item_runtime: Option<&NativeItemRuntime>,
+) -> String {
+    let stack = debug_entity_data_item_stack_present(entity, FIREWORK_ROCKET_ITEM_DATA_ID);
+    let resource_id = stack
+        .and_then(|stack| stack.item_id)
+        .and_then(|item_id| item_runtime.and_then(|runtime| runtime.item_resource_id(item_id)))
+        .unwrap_or("minecraft:firework_rocket");
+    let count = stack.map_or(1, |stack| stack.count);
+    let mut fields = vec![format!("id: {}", debug_snbt_string(resource_id))];
+    if count != 1 {
+        fields.push(format!("count: {count}"));
+    }
+    if let Some(components) = stack.and_then(debug_firework_component_patch_snbt) {
+        fields.push(format!("components: {components}"));
+    }
+    format!("{{{}}}", fields.join(", "))
+}
+
+fn debug_firework_component_patch_snbt(stack: &ItemStackSummary) -> Option<String> {
+    let patch = &stack.component_patch;
+    let fireworks_added = patch.added_type_ids.contains(&FIREWORKS_COMPONENT_TYPE_ID)
+        || patch.fireworks_flight_duration.is_some()
+        || patch.fireworks_explosions_count.is_some();
+    let fireworks_removed = patch
+        .removed_type_ids
+        .contains(&FIREWORKS_COMPONENT_TYPE_ID);
+    if !fireworks_added && !fireworks_removed {
+        return None;
+    }
+
+    let mut fields = Vec::new();
+    if fireworks_added {
+        let mut fireworks = Vec::new();
+        let flight_duration = patch.fireworks_flight_duration.unwrap_or(0);
+        if flight_duration != 0 {
+            fireworks.push(format!("flight_duration: {flight_duration}"));
+        }
+        if !patch.fireworks_explosions.is_empty() {
+            let explosions = patch
+                .fireworks_explosions
+                .iter()
+                .map(debug_firework_explosion_snbt)
+                .collect::<Vec<_>>()
+                .join(", ");
+            fireworks.push(format!("explosions: [{explosions}]"));
+        }
+        fields.push(format!(
+            "{}: {{{}}}",
+            debug_snbt_string("minecraft:fireworks"),
+            fireworks.join(", ")
+        ));
+    }
+    if fireworks_removed {
+        fields.push(format!(
+            "{}: {{}}",
+            debug_snbt_string("!minecraft:fireworks")
+        ));
+    }
+    Some(format!("{{{}}}", fields.join(", ")))
+}
+
+fn debug_firework_explosion_snbt(explosion: &FireworkExplosionSummary) -> String {
+    let mut fields = vec![format!(
+        "shape: {}",
+        debug_snbt_string(debug_firework_explosion_shape_name(explosion.shape))
+    )];
+    if !explosion.colors.is_empty() {
+        fields.push(format!(
+            "colors: [{}]",
+            explosion
+                .colors
+                .iter()
+                .map(i32::to_string)
+                .collect::<Vec<_>>()
+                .join(", ")
+        ));
+    }
+    if !explosion.fade_colors.is_empty() {
+        fields.push(format!(
+            "fade_colors: [{}]",
+            explosion
+                .fade_colors
+                .iter()
+                .map(i32::to_string)
+                .collect::<Vec<_>>()
+                .join(", ")
+        ));
+    }
+    if explosion.has_trail {
+        fields.push(format!("has_trail: {}", debug_snbt_bool(true)));
+    }
+    if explosion.has_twinkle {
+        fields.push(format!("has_twinkle: {}", debug_snbt_bool(true)));
+    }
+    format!("{{{}}}", fields.join(", "))
+}
+
+fn debug_firework_explosion_shape_name(shape: FireworkExplosionShapeSummary) -> &'static str {
+    match shape {
+        FireworkExplosionShapeSummary::SmallBall => "small_ball",
+        FireworkExplosionShapeSummary::LargeBall => "large_ball",
+        FireworkExplosionShapeSummary::Star => "star",
+        FireworkExplosionShapeSummary::Creeper => "creeper",
+        FireworkExplosionShapeSummary::Burst => "burst",
+    }
 }
 
 fn debug_push_item_stack_id(fields: &mut Vec<String>, key: &str, item_id: &str) {
@@ -5852,6 +6006,20 @@ fn debug_entity_data_bool_present(entity: &EntityState, data_id: u8) -> Option<b
         })
 }
 
+fn debug_entity_data_item_stack_present(
+    entity: &EntityState,
+    data_id: u8,
+) -> Option<&ItemStackSummary> {
+    entity
+        .data_values
+        .iter()
+        .find(|value| value.data_id == data_id)
+        .and_then(|value| match &value.value {
+            EntityDataValueKind::ItemStack(stack) => Some(stack),
+            _ => None,
+        })
+}
+
 fn debug_entity_data_string_present(entity: &EntityState, data_id: u8) -> Option<&str> {
     entity
         .data_values
@@ -6837,6 +7005,7 @@ pub(crate) fn handle_key_input_with_item_runtime(
         Some(world),
         None,
         None,
+        item_runtime,
         counters,
         net_commands,
     ) {

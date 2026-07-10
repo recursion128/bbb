@@ -544,6 +544,7 @@ fn main() -> Result<()> {
                         Some(&mut world),
                         Some(&mut terrain_upload),
                         Some(&mut debug_clipboard),
+                        item_runtime.as_ref(),
                         &mut net_counters,
                         &net_commands,
                     ) {

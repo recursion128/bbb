@@ -225,9 +225,8 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
 - Extend F3+I local entity capture across the remaining vanilla
   `addAdditionalSaveData` entity families whose saved state still needs
   non-equine specialized parent-chain classification, remaining owner/target/reference
-  projection, remaining delayed/fence-knot leash projection, remaining firework-projectile
-  F3+I parent/specialized classification (the canonical projectile owner / `LeftOwner` /
-  `HasBeenShot` lifecycle is available for it), non-default private projectile flags such as
+  projection, remaining delayed/fence-knot leash projection, non-default private
+  projectile flags such as
   `ThrownTrident.dealtDamage`, non-default private or otherwise unobserved
   scalar/flag/timer/counter projection (including `PrimedTnt.explosionPower` and
   item-frame `dropChance` / `fixed`, plus non-default `SpectralArrow.duration`,
@@ -236,8 +235,9 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   remaining registry-backed
   entity-data projection (including dynamic-registry ordering), packed variant
   projection, remaining codec-backed SNBT projection (including `AbstractArrow`
-  `inBlockState`, `item`, and `weapon`, falling-block `TileEntityData`, and
-  non-default `VibrationSystem.Data` listener payloads),
+  `inBlockState`, `item`, and `weapon`, arbitrary non-fireworks data-component
+  patch entries on throwable/firework item stacks, falling-block `TileEntityData`,
+  and non-default `VibrationSystem.Data` listener payloads),
   remaining entity-specific
   constructor/default save values, LivingEntity parent health/equipment/effect/attribute
   projection, observable non-empty entity inventory/container projection

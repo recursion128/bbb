@@ -8421,8 +8421,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   同一必写 fire-charge item，字段顺序保持 Projectile→AbstractHurtingProjectile→Fireball→
   LargeFireball。focused tests 覆盖七种新实体、owner UUID、first-tick 翻转与 large-fireball
   clipboard 命令。该 slice 当时的未解析/迟到 owner 与 sticky `LeftOwner` 已由下节关闭；
-  非默认 metadata item stack components，以及尚未分类的 firework projectile 仍留在
-  F3+I 总账本。
+  非默认 metadata item stack components 仍留在 F3+I 总账本；firework projectile
+  分类已由后续小节关闭。
 
 ## 2026-07-10：F3+I canonical projectile owner/LeftOwner lifecycle
 
@@ -8438,6 +8438,23 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   canonical state 输出 `Owner` / 条件 `LeftOwner` / `HasBeenShot`，owner 移除后不再丢失
   UUID。focused world tests 覆盖 owner 在远端但根 boat 仍相交、离开后 sticky、owner
   移除/同 UUID 重生、clone 保留及迟到 owner；native test 覆盖七类 throwable/fireball 的
-  首 tick 与 owner 移除后的完整 SNBT 顺序。firework 专属 F3+I 分类仍留总账本；完整
+  首 tick 与 owner 移除后的完整 SNBT 顺序。firework 专属 F3+I 分类已由下节关闭；完整
   projectile client motion/gravity/drag 另记 feature ledger，当前 lifecycle 会在 canonical
   transform 分离时精确翻转。
+
+## 2026-07-10：F3+I firework projectile save chain
+
+- [x] FireworkRocketEntity 完整分类与常用 ItemStack codec（P2 native input）：依据 vanilla
+  26.1 `FireworkRocketEntity.tick` / `addAdditionalSaveData`、`ItemStack.MAP_CODEC`、
+  `DataComponentPatch.CODEC`、`Fireworks.CODEC` 与 `FireworkExplosion.CODEC`，F3+I 现按
+  Projectile→FireworkRocketEntity 顺序输出 canonical `Owner` / `LeftOwner` /
+  `HasBeenShot`、client age 对应的 `Life`、client constructor 私有默认 `LifeTime: 0`、必写
+  `FireworksItem` 与 synced `ShotAtAngle`。debug recreate 路径新增只读
+  `NativeItemRuntime` registry context，使 metadata item protocol id 在真实运行时解析为资源
+  id；无 metadata 时使用 vanilla default `minecraft:firework_rocket`。ItemStack codec 支持
+  count 默认省略，以及 type id 69 的 `minecraft:fireworks` patch：flight duration、按序
+  explosions、shape、colors/fade colors、trail/twinkle 和 removal key 都按 persistent codec
+  的默认省略与字段顺序输出。focused test 覆盖默认 stack、非默认 count、Star explosion、
+  双 color/fade、trail/twinkle、shot-at-angle 及首 tick Life/HasBeenShot 翻转。任意其他
+  data-component patch 类型、无 item registry context 时的非默认 item id 仍留 codec 总账本；
+  firework projectile parent/specialized 分类项已清零。
