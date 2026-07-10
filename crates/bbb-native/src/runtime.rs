@@ -8880,6 +8880,7 @@ fn hud_inventory_tooltip(
                     .local_player_attribute_base_value(attack_speed_id)
                     .unwrap_or(4.0),
             ),
+            gamemaster_permission: world.local_player_has_gamemaster_permission(),
             tooltip_tick_rate: Some(world.ticking().tick_rate),
         },
     )?;

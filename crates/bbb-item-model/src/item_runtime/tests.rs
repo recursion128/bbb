@@ -173,6 +173,21 @@ fn lore_line(text: &str) -> NativeItemTooltipLine {
     }
 }
 
+fn operator_warning_line(text: &str, bold: bool) -> NativeItemTooltipLine {
+    NativeItemTooltipLine {
+        text: text.to_string(),
+        tint: TOOLTIP_TEXT_RED,
+        runs: vec![HudStyledTextRun {
+            text: text.to_string(),
+            style: HudTextStyle {
+                bold,
+                ..HudTextStyle::default()
+            },
+            color: Some(0xFF_55_55),
+        }],
+    }
+}
+
 #[test]
 fn item_texture_state_indexes_textures_and_uses_missing_fallback() {
     let missing = SpriteImage::new("minecraft:missingno", 1, 1, vec![0, 0, 0, 255]).unwrap();
@@ -2626,6 +2641,160 @@ fn native_item_runtime_shows_entity_data_peaceful_warning() {
             false
         )])
     );
+
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn native_item_runtime_shows_operator_only_nbt_warnings() {
+    let root = unique_temp_dir("item-runtime-op-nbt-warning");
+    let assets = assets_dir(&root);
+    write_item_atlases(&assets);
+    write_json(
+        &root
+            .join("sources")
+            .join(bbb_pack::MC_VERSION)
+            .join("net")
+            .join("minecraft")
+            .join("world")
+            .join("item")
+            .join("Items.java"),
+        r#"public class Items {
+                public static final Item COMMAND_BLOCK = registerBlock(Blocks.COMMAND_BLOCK, GameMasterBlockItem::new, new Item.Properties());
+                public static final Item STONE = registerBlock(Blocks.STONE);
+                public static final Item FALLING_BLOCK_SPAWN_EGG = registerSpawnEgg(EntityType.FALLING_BLOCK);
+                public static final Item ZOMBIE_SPAWN_EGG = registerSpawnEgg(EntityType.ZOMBIE);
+                public static final Item STICK = registerItem("stick");
+            }"#,
+    );
+    write_json(
+        &assets.join("lang").join("en_us.json"),
+        r#"{
+                "block.minecraft.command_block": "Command Block",
+                "block.minecraft.stone": "Stone",
+                "item.minecraft.falling_block_spawn_egg": "Falling Block Spawn Egg",
+                "item.minecraft.zombie_spawn_egg": "Zombie Spawn Egg",
+                "item.minecraft.stick": "Stick",
+                "item.op_warning.line1": "Operator data",
+                "item.op_warning.line2": "Can alter commands",
+                "item.op_warning.line3": "Use with care"
+            }"#,
+    );
+    let runtime = NativeItemRuntime::load(&PackRoots::from_root(&root).unwrap()).unwrap();
+    let warnings = vec![
+        operator_warning_line("Operator data", true),
+        operator_warning_line("Can alter commands", false),
+        operator_warning_line("Use with care", false),
+    ];
+    let op_options = NativeItemTooltipOptions {
+        gamemaster_permission: true,
+        ..NativeItemTooltipOptions::default()
+    };
+    let command_block = ItemStackSummary {
+        item_id: Some(0),
+        count: 1,
+        component_patch: DataComponentPatchSummary {
+            block_entity_data_type_id: Some(23),
+            ..DataComponentPatchSummary::default()
+        },
+    };
+    let mut named_warnings = vec![name_line(
+        "Command Block",
+        TOOLTIP_TEXT_WHITE,
+        0xFF_FF_FF,
+        false,
+    )];
+    named_warnings.extend(warnings.clone());
+    assert_eq!(
+        runtime.tooltip_lines_for_stack_with_context(&command_block, op_options),
+        Some(named_warnings)
+    );
+    assert_eq!(
+        runtime.tooltip_lines_for_stack(&command_block),
+        Some(vec![name_line(
+            "Command Block",
+            TOOLTIP_TEXT_WHITE,
+            0xFF_FF_FF,
+            false,
+        )])
+    );
+
+    let falling_block_egg = ItemStackSummary {
+        item_id: Some(2),
+        count: 1,
+        component_patch: DataComponentPatchSummary {
+            entity_data_entity_type_id: Some(
+                bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID,
+            ),
+            ..DataComponentPatchSummary::default()
+        },
+    };
+    let mut egg_warnings = vec![name_line(
+        "Falling Block Spawn Egg",
+        TOOLTIP_TEXT_WHITE,
+        0xFF_FF_FF,
+        false,
+    )];
+    egg_warnings.extend(warnings.clone());
+    assert_eq!(
+        runtime.tooltip_lines_for_stack_with_context(&falling_block_egg, op_options),
+        Some(egg_warnings)
+    );
+
+    for stack in [
+        ItemStackSummary {
+            item_id: Some(1),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                block_entity_data_type_id: Some(0),
+                ..DataComponentPatchSummary::default()
+            },
+        },
+        ItemStackSummary {
+            item_id: Some(3),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                entity_data_entity_type_id: Some(
+                    bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+                ),
+                ..DataComponentPatchSummary::default()
+            },
+        },
+        ItemStackSummary {
+            item_id: Some(4),
+            count: 1,
+            component_patch: command_block.component_patch.clone(),
+        },
+        ItemStackSummary {
+            item_id: Some(0),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                removed_type_ids: vec![60],
+                ..command_block.component_patch.clone()
+            },
+        },
+    ] {
+        assert_eq!(
+            runtime
+                .tooltip_lines_for_stack_with_context(&stack, op_options)
+                .unwrap()
+                .len(),
+            1
+        );
+    }
+
+    let hidden_command_block = ItemStackSummary {
+        component_patch: DataComponentPatchSummary {
+            tooltip_hide_tooltip: true,
+            ..command_block.component_patch.clone()
+        },
+        ..command_block
+    };
+    assert_eq!(
+        runtime.tooltip_lines_for_stack_with_context(&hidden_command_block, op_options),
+        Some(warnings)
+    );
+    assert_eq!(runtime.tooltip_lines_for_stack(&hidden_command_block), None);
 
     std::fs::remove_dir_all(root).unwrap();
 }

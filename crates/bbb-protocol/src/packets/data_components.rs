@@ -210,6 +210,8 @@ pub struct DataComponentPatchSummary {
     #[serde(default)]
     pub block_entity_spawn_entity_type: Option<String>,
     #[serde(default)]
+    pub block_entity_data_type_id: Option<i32>,
+    #[serde(default)]
     pub entity_data_entity_type_id: Option<i32>,
     #[serde(default)]
     pub can_place_on: Option<AdventureModePredicateSummary>,
@@ -878,6 +880,7 @@ fn decode_typed_data_component_patch_summary(
             }
             60 => {
                 let block_entity_data = decode_typed_entity_data_summary(decoder)?;
+                summary.block_entity_data_type_id = Some(block_entity_data.type_id);
                 summary.block_entity_spawn_entity_type =
                     typed_entity_data_spawn_entity_type(block_entity_data.tag.as_ref());
             }
@@ -4170,6 +4173,7 @@ mod tests {
                 added_type_ids: component_ids.to_vec(),
                 removed_type_ids: Vec::new(),
                 entity_data_entity_type_id: Some(1),
+                block_entity_data_type_id: Some(2),
                 block_entity_spawn_entity_type: Some("minecraft:zombie".to_string()),
                 ..DataComponentPatchSummary::default()
             }

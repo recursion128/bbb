@@ -8351,3 +8351,18 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   registry 下默认铁剑的 `6 Attack Damage` / `1.6 Attack Speed` equals 行、显式 component
   replacement、remove、`TooltipDisplay` hide、pack tool/armor key 与 world base-not-effective
   query。剩余 tooltip attribute 工作收敛为 enchantment effects 与 custom/datapack definition。
+
+## 2026-07-10：Operator-only item NBT warning
+
+- [x] `Item.shouldPrintOpWarning` tooltip（P2 protocol/pack/item-runtime/native）：依据 vanilla
+  26.1 `BlockItem.shouldPrintOpWarning`、`SpawnEggItem.shouldPrintOpWarning`、
+  `BlockEntityType.OP_ONLY_CUSTOM_DATA` 与 `EntityType.OP_ONLY_CUSTOM_DATA`，protocol typed
+  `BLOCK_ENTITY_DATA` summary 现在保留 holder type id；pack catalog 从 `Items.java` 注册表达式
+  精确记录 `registerBlock` / weathering block items 与 `registerSpawnEgg` items。item runtime 只在
+  local player 具备 COMMANDS_GAMEMASTER 权限时，对 sign/hanging-sign/spawner/command-block/
+  lectern/trial-spawner block-entity type，或 falling-block/command-block-minecart/spawner-minecart
+  entity type输出红色三行 `item.op_warning.*`，首行 bold；普通 item 即使携带同 component 也不
+  触发。非 creative `TooltipDisplay.hideTooltip` 仍按 `ItemStack.getTooltipLines` 只保留 warning，
+  component removal 则压制 warning。native HUD 直接使用已有 permission-level state；focused
+  tests 覆盖 wire type id、item class 分类、正反 type/permission/removal、hide-tooltip only-warning
+  以及 entity event 26 前后的 native tooltip 切换。

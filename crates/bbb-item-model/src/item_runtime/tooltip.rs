@@ -105,6 +105,12 @@ const COMPONENT_CONTAINER_LOOT_TYPE_ID: i32 = 79;
 const COMPONENT_TROPICAL_FISH_PATTERN_TYPE_ID: i32 = 88;
 const COMPONENT_PAINTING_VARIANT_TYPE_ID: i32 = 102;
 const COMPONENT_BLOCK_ENTITY_DATA_TYPE_ID: i32 = 60;
+const OP_ONLY_BLOCK_ENTITY_TYPE_IDS: &[i32] = &[7, 8, 9, 23, 30, 44];
+const OP_ONLY_ENTITY_TYPE_IDS: &[i32] = &[
+    bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID,
+    bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID,
+    bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID,
+];
 const EQUIPMENT_SLOT_GROUP_KEYS: &[&str] = &[
     "any", "mainhand", "offhand", "hand", "feet", "legs", "chest", "head", "armor", "body",
     "saddle",
@@ -484,6 +490,7 @@ pub struct NativeItemTooltipOptions<'a> {
     pub attribute_keys: Option<&'a [String]>,
     pub player_base_attack_damage: Option<f64>,
     pub player_base_attack_speed: Option<f64>,
+    pub gamemaster_permission: bool,
     pub tooltip_tick_rate: Option<f32>,
 }
 
@@ -1127,6 +1134,34 @@ fn colored_component_tooltip_line(text: String, color: u32) -> NativeItemTooltip
             style: HudTextStyle::default(),
             color: Some(color),
         }],
+    }
+}
+
+fn push_operator_nbt_warning_tooltip_lines(
+    language: &LanguageCatalog,
+    lines: &mut Vec<NativeItemTooltipLine>,
+) {
+    for (index, key) in [
+        "item.op_warning.line1",
+        "item.op_warning.line2",
+        "item.op_warning.line3",
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        let text = language.get_or_key(key).to_string();
+        lines.push(NativeItemTooltipLine {
+            text: text.clone(),
+            tint: TOOLTIP_TEXT_RED,
+            runs: vec![HudStyledTextRun {
+                text,
+                style: HudTextStyle {
+                    bold: index == 0,
+                    ..HudTextStyle::default()
+                },
+                color: Some(TOOLTIP_RED_TEXT_COLOR),
+            }],
+        });
     }
 }
 
@@ -3222,6 +3257,40 @@ impl NativeItemRuntime {
                 lines,
             );
         }
+        if self.should_print_operator_nbt_warning(item_id, component_patch, options) {
+            push_operator_nbt_warning_tooltip_lines(&self.language, lines);
+        }
+    }
+
+    fn should_print_operator_nbt_warning(
+        &self,
+        item_id: &str,
+        component_patch: &DataComponentPatchSummary,
+        options: NativeItemTooltipOptions<'_>,
+    ) -> bool {
+        if !options.gamemaster_permission {
+            return false;
+        }
+        let Some(registry) = self.registry.as_ref() else {
+            return false;
+        };
+        if registry.is_block_item(item_id)
+            && !component_patch
+                .removed_type_ids
+                .contains(&COMPONENT_BLOCK_ENTITY_DATA_TYPE_ID)
+            && component_patch
+                .block_entity_data_type_id
+                .is_some_and(|type_id| OP_ONLY_BLOCK_ENTITY_TYPE_IDS.contains(&type_id))
+        {
+            return true;
+        }
+        registry.is_spawn_egg_item(item_id)
+            && !component_patch
+                .removed_type_ids
+                .contains(&COMPONENT_ENTITY_DATA_TYPE_ID)
+            && component_patch
+                .entity_data_entity_type_id
+                .is_some_and(|type_id| OP_ONLY_ENTITY_TYPE_IDS.contains(&type_id))
     }
 
     fn template_hover_name_arg(&self, item: &ItemStackTemplateSummary) -> Option<TooltipTextArg> {
@@ -3414,7 +3483,11 @@ impl NativeItemRuntime {
         let protocol_id = stack.item_id?;
         let item_id = self.registry.as_ref()?.resource_id(protocol_id)?;
         if stack.component_patch.tooltip_hide_tooltip && !options.creative {
-            return None;
+            let mut lines = Vec::new();
+            if self.should_print_operator_nbt_warning(item_id, &stack.component_patch, options) {
+                push_operator_nbt_warning_tooltip_lines(&self.language, &mut lines);
+            }
+            return (!lines.is_empty()).then_some(lines);
         }
 
         // Vanilla `ItemStack.getStyledHoverName`: the hover name is wrapped in

@@ -40,6 +40,7 @@ const TOOLTIP_TEST_DARK_PURPLE: [f32; 4] = [170.0 / 255.0, 0.0, 170.0 / 255.0, 1
 const TOOLTIP_TEST_GRAY: [f32; 4] = [170.0 / 255.0, 170.0 / 255.0, 170.0 / 255.0, 1.0];
 const TOOLTIP_TEST_DARK_GRAY: [f32; 4] = [85.0 / 255.0, 85.0 / 255.0, 85.0 / 255.0, 1.0];
 const TOOLTIP_TEST_DARK_GREEN: [f32; 4] = [0.0, 170.0 / 255.0, 0.0, 1.0];
+const TOOLTIP_TEST_RED: [f32; 4] = [1.0, 85.0 / 255.0, 85.0 / 255.0, 1.0];
 const VANILLA_26_1_PLAYER_ENTITY_TYPE_ID: i32 = 155;
 const VANILLA_26_1_FISHING_BOBBER_ENTITY_TYPE_ID: i32 = 156;
 const SOURCE_WATER_BLOCK_STATE_ID: i32 = 86;
@@ -91,6 +92,21 @@ fn tooltip_plain_line(text: &str, tint: [f32; 4]) -> HudInventoryTooltipLine {
         text: text.to_string(),
         tint,
         runs: vec![bbb_renderer::HudStyledTextRun::plain(text)],
+    }
+}
+
+fn tooltip_operator_warning_line(text: &str, bold: bool) -> HudInventoryTooltipLine {
+    HudInventoryTooltipLine {
+        text: text.to_string(),
+        tint: TOOLTIP_TEST_RED,
+        runs: vec![bbb_renderer::HudStyledTextRun {
+            text: text.to_string(),
+            style: bbb_renderer::HudTextStyle {
+                bold,
+                ..Default::default()
+            },
+            color: Some(0xFF_55_55),
+        }],
     }
 }
 
@@ -9354,6 +9370,68 @@ fn hud_inventory_tooltip_uses_local_player_base_attributes_for_default_weapon() 
 }
 
 #[test]
+fn hud_inventory_tooltip_gates_operator_nbt_warning_on_local_permission() {
+    let root = unique_runtime_temp_dir("inventory-operator-nbt-warning");
+    write_runtime_tooltip_item_assets(&root);
+    let item_runtime =
+        NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    attach_lightmap_local_player(&mut world, 42);
+    let command_block = bbb_protocol::packets::ItemStackSummary {
+        item_id: Some(2),
+        count: 1,
+        component_patch: DataComponentPatchSummary {
+            block_entity_data_type_id: Some(23),
+            ..DataComponentPatchSummary::default()
+        },
+    };
+    world.apply_set_player_inventory(bbb_protocol::packets::SetPlayerInventory {
+        slot: 0,
+        item: command_block.clone(),
+    });
+    assert!(world.open_local_inventory());
+
+    let screen = hud_inventory_screen(&world, Some(&item_runtime), Some(36), 0.0).unwrap();
+    assert_eq!(screen.tooltip.as_ref().unwrap().lines.len(), 1);
+
+    assert!(
+        world.apply_entity_event(bbb_protocol::packets::EntityEvent {
+            entity_id: 42,
+            event_id: 26,
+        })
+    );
+    let warning_lines = vec![
+        tooltip_operator_warning_line("Operator data", true),
+        tooltip_operator_warning_line("Can alter commands", false),
+        tooltip_operator_warning_line("Use with care", false),
+    ];
+    let screen = hud_inventory_screen(&world, Some(&item_runtime), Some(36), 0.0).unwrap();
+    let mut expected_lines = vec![tooltip_name_line(
+        "Command Block",
+        TOOLTIP_TEST_WHITE,
+        0xFF_FF_FF,
+        false,
+    )];
+    expected_lines.extend(warning_lines.clone());
+    assert_eq!(screen.tooltip.as_ref().unwrap().lines, expected_lines);
+
+    world.apply_set_player_inventory(bbb_protocol::packets::SetPlayerInventory {
+        slot: 0,
+        item: bbb_protocol::packets::ItemStackSummary {
+            component_patch: DataComponentPatchSummary {
+                tooltip_hide_tooltip: true,
+                ..command_block.component_patch.clone()
+            },
+            ..command_block
+        },
+    });
+    let screen = hud_inventory_screen(&world, Some(&item_runtime), Some(36), 0.0).unwrap();
+    assert_eq!(screen.tooltip.as_ref().unwrap().lines, warning_lines);
+
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
 fn hud_inventory_screen_projects_generic_container_layout() {
     let mut world = WorldStore::new();
     world.apply_open_screen(bbb_protocol::packets::OpenScreen {
@@ -16097,12 +16175,16 @@ fn write_runtime_tooltip_item_assets(root: &Path) {
         r#"{
             "item.minecraft.test_combo": "Test Combo",
             "item.minecraft.test_sword": "Test Sword",
+            "block.minecraft.command_block": "Command Block",
             "item.durability": "Durability: %s / %s",
             "item.components": "%s component(s)",
             "attribute.modifier.equals.0": "%s %s",
             "attribute.name.attack_damage": "Attack Damage",
             "attribute.name.attack_speed": "Attack Speed",
-            "item.modifiers.mainhand": "When in Main Hand:"
+            "item.modifiers.mainhand": "When in Main Hand:",
+            "item.op_warning.line1": "Operator data",
+            "item.op_warning.line2": "Can alter commands",
+            "item.op_warning.line3": "Use with care"
         }"#,
     );
     write_runtime_png(
@@ -16121,6 +16203,7 @@ fn write_runtime_tooltip_item_assets(root: &Path) {
         r#"public class Items {
             public static final Item TEST_COMBO = registerItem("test_combo");
             public static final Item TEST_SWORD = registerItem("test_sword", new Item.Properties().sword(ToolMaterial.IRON, 3.0F, -2.4F));
+            public static final Item COMMAND_BLOCK = registerBlock(Blocks.COMMAND_BLOCK, GameMasterBlockItem::new, new Item.Properties());
         }"#,
     );
 }

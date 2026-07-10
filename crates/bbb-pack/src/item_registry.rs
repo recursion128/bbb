@@ -56,6 +56,10 @@ pub struct ItemRegistryCatalog {
     #[serde(default)]
     default_component_type_ids: BTreeMap<String, BTreeSet<i32>>,
     #[serde(default)]
+    block_items: BTreeSet<String>,
+    #[serde(default)]
+    spawn_egg_items: BTreeSet<String>,
+    #[serde(default)]
     default_equipment_slots: BTreeMap<String, ItemEquipmentSlot>,
     /// Resource id → humanoid armor equipment-asset name (`ArmorMaterials.<MAT>` →
     /// `EquipmentAssets.<MAT>`, the lowercased material, e.g. `iron` / `chainmail` / `turtle_scute`),
@@ -293,6 +297,8 @@ impl ItemRegistryCatalog {
         let mut max_stack_size = BTreeMap::new();
         let mut default_item_name_translation_keys = BTreeMap::new();
         let mut default_component_type_ids = BTreeMap::new();
+        let mut block_items = BTreeSet::new();
+        let mut spawn_egg_items = BTreeSet::new();
         let mut default_equipment_slots = BTreeMap::new();
         let mut humanoid_armor_assets = BTreeMap::new();
         let mut equippable_assets = BTreeMap::new();
@@ -311,6 +317,11 @@ impl ItemRegistryCatalog {
             let field = capture.get(2).unwrap().as_str();
             let expression = capture.get(3).unwrap().as_str();
             let ids = resource_ids_for_declaration(kind, field, expression, item_id_constants)?;
+            let trimmed_expression = expression.trim_start();
+            let is_block_item = kind == "WeatheringCopperItems"
+                || trimmed_expression.starts_with("registerBlock")
+                || expression.contains("createBlockItemWithCustomItemName(");
+            let is_spawn_egg_item = trimmed_expression.starts_with("registerSpawnEgg");
             let default_item_name = default_item_name_for_declaration(kind, expression)?;
             let default_components = default_component_type_ids_for_declaration(expression)?;
             let stack_size = max_stack_size_for_declaration(expression)?;
@@ -337,6 +348,12 @@ impl ItemRegistryCatalog {
                 }
             }
             for resource_id in &ids {
+                if is_block_item {
+                    block_items.insert(resource_id.clone());
+                }
+                if is_spawn_egg_item {
+                    spawn_egg_items.insert(resource_id.clone());
+                }
                 max_stack_size.insert(resource_id.clone(), stack_size);
                 default_item_name_translation_keys.insert(
                     resource_id.clone(),
@@ -415,6 +432,8 @@ impl ItemRegistryCatalog {
             max_stack_size,
             default_item_name_translation_keys,
             default_component_type_ids,
+            block_items,
+            spawn_egg_items,
             default_equipment_slots,
             humanoid_armor_assets,
             equippable_assets,
@@ -445,6 +464,18 @@ impl ItemRegistryCatalog {
 
     pub fn resource_ids(&self) -> &[String] {
         &self.resource_ids
+    }
+
+    pub fn is_block_item(&self, resource_id: &str) -> bool {
+        ResourceLocation::parse(resource_id)
+            .ok()
+            .is_some_and(|id| self.block_items.contains(&id.id()))
+    }
+
+    pub fn is_spawn_egg_item(&self, resource_id: &str) -> bool {
+        ResourceLocation::parse(resource_id)
+            .ok()
+            .is_some_and(|id| self.spawn_egg_items.contains(&id.id()))
     }
 
     pub fn max_damage(&self, resource_id: &str) -> Option<i32> {
@@ -1817,6 +1848,11 @@ mod tests {
         assert_eq!(catalog.resource_id(14), Some("minecraft:elytra"));
         assert_eq!(catalog.resource_id(15), Some("minecraft:ender_pearl"));
         assert_eq!(catalog.resource_id(16), Some("minecraft:iron_sword"));
+        assert!(catalog.is_block_item("minecraft:air"));
+        assert!(catalog.is_block_item("minecraft:waxed_oxidized_copper_bars"));
+        assert!(catalog.is_block_item("minecraft:pumpkin_seeds"));
+        assert!(catalog.is_spawn_egg_item("minecraft:creeper_spawn_egg"));
+        assert!(!catalog.is_spawn_egg_item("minecraft:trial_key"));
         assert_eq!(catalog.protocol_id("trial_key"), Some(2));
         assert_eq!(catalog.protocol_id("minecraft:ominous_bottle"), Some(3));
         assert_eq!(catalog.protocol_id("minecraft:pumpkin_seeds"), Some(4));
