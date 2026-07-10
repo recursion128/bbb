@@ -246,6 +246,7 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   enchantments/stored-enchantments/
   adventure-mode-predicate (block/state/NBT/exact/partial matchers)/
   equippable (slot/sound/asset/entity-holder/default flags)/
+  blocks-attacks (damage-reduction/item-damage/damage-type-holder/sound)/
   attribute-modifiers-named-holder-default-hidden-display/
   simple-resource (including tooltip-style/note-block-sound and vanilla/direct
   break-sound)/exact-component-tree (custom-name/item-name/lore)/

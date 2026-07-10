@@ -9240,3 +9240,15 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   逻辑，按 named-holder 默认值省略字段，并对 invalid slot/entity holder 安全省略。
   大型 component patch test 从 105 扩展到 106 个 added entry，removal/unsupported
   样例移至最后一个尚未实现的 blocks_attacks type id 37。
+
+## 2026-07-10：ItemStack blocks-attacks component decode and save
+
+- [x] minecraft:blocks_attacks 的 structured decode 与 persistent SNBT（P2 protocol
+  + native input）：依据 vanilla 26.1 `BlocksAttacks.CODEC/STREAM_CODEC`，protocol
+  type id 37 不再 skip，bit-exact 保留 block delay/cooldown、ordered damage
+  reductions、item-damage function、damage-type holder sets 与 optional sounds；
+  native encoder 遵循默认 reduction/item-damage record、non-negative/positive float
+  约束与 holder compact-list，并对 invalid float/holder 安全省略。大型 component
+  patch test 从 106 扩展到全部 107 个 persistent catalog type id；encoder registry
+  同步达到 107 项。仍未实现的 direct-holder/override-display 等值变体继续按账本
+  跟踪并安全省略，不以本切片误标为完成。

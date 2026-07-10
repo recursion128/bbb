@@ -152,6 +152,8 @@ pub struct DataComponentPatchSummary {
     #[serde(default)]
     pub death_protection_effects: Vec<ConsumeEffectSummary>,
     #[serde(default)]
+    pub blocks_attacks: Option<BlocksAttacksSummary>,
+    #[serde(default)]
     pub piercing_weapon: Option<PiercingWeaponSummary>,
     #[serde(default)]
     pub kinetic_weapon: Option<KineticWeaponSummary>,
@@ -623,6 +625,44 @@ pub struct EquippableSummary {
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct EntityTypeHolderSetSummary {
+    #[serde(default)]
+    pub registry_ids: Vec<i32>,
+    #[serde(default)]
+    pub tag: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct BlocksAttacksSummary {
+    pub block_delay_seconds_bits: u32,
+    pub disable_cooldown_scale_bits: u32,
+    pub damage_reductions: Vec<DamageReductionSummary>,
+    pub item_damage: ItemDamageFunctionSummary,
+    #[serde(default)]
+    pub bypassed_by: Option<DamageTypeHolderSetSummary>,
+    #[serde(default)]
+    pub block_sound: Option<SoundEventSummary>,
+    #[serde(default)]
+    pub disable_sound: Option<SoundEventSummary>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DamageReductionSummary {
+    pub horizontal_blocking_angle_bits: u32,
+    #[serde(default)]
+    pub damage_types: Option<DamageTypeHolderSetSummary>,
+    pub base_bits: u32,
+    pub factor_bits: u32,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ItemDamageFunctionSummary {
+    pub threshold_bits: u32,
+    pub base_bits: u32,
+    pub factor_bits: u32,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DamageTypeHolderSetSummary {
     #[serde(default)]
     pub registry_ids: Vec<i32>,
     #[serde(default)]
@@ -1128,11 +1168,6 @@ fn decode_holder_registry_id(decoder: &mut Decoder<'_>) -> Result<i32> {
     Ok(id)
 }
 
-fn decode_holder_set(decoder: &mut Decoder<'_>) -> Result<()> {
-    let _ = decode_holder_set_summary(decoder)?;
-    Ok(())
-}
-
 fn decode_holder_set_summary(decoder: &mut Decoder<'_>) -> Result<HolderSetSummary> {
     let encoded_count = decoder.read_var_i32()?;
     if encoded_count < 0 {
@@ -1189,18 +1224,6 @@ fn decode_optional_bool_value(decoder: &mut Decoder<'_>) -> Result<Option<bool>>
         return Ok(Some(decoder.read_bool()?));
     }
     Ok(None)
-}
-
-fn decode_optional_holder_set(decoder: &mut Decoder<'_>) -> Result<()> {
-    if decoder.read_bool()? {
-        decode_holder_set(decoder)?;
-    }
-    Ok(())
-}
-
-fn decode_optional_sound_event_holder(decoder: &mut Decoder<'_>) -> Result<()> {
-    let _ = decode_optional_sound_event_holder_summary(decoder)?;
-    Ok(())
 }
 
 fn decode_optional_sound_event_holder_summary(
@@ -1716,35 +1739,55 @@ fn decode_attack_range_summary(decoder: &mut Decoder<'_>) -> Result<AttackRangeS
     })
 }
 
-fn decode_blocks_attacks(decoder: &mut Decoder<'_>) -> Result<()> {
-    decoder.read_f32()?;
-    decoder.read_f32()?;
+fn decode_blocks_attacks(decoder: &mut Decoder<'_>) -> Result<BlocksAttacksSummary> {
+    let block_delay_seconds_bits = decoder.read_f32()?.to_bits();
+    let disable_cooldown_scale_bits = decoder.read_f32()?.to_bits();
 
     let reduction_count = read_bounded_len(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
+    let mut damage_reductions = Vec::with_capacity(reduction_count);
     for _ in 0..reduction_count {
-        decode_damage_reduction(decoder)?;
+        damage_reductions.push(decode_damage_reduction(decoder)?);
     }
 
-    decode_item_damage_function(decoder)?;
-    decode_optional_holder_set(decoder)?;
-    decode_optional_sound_event_holder(decoder)?;
-    decode_optional_sound_event_holder(decoder)?;
-    Ok(())
+    Ok(BlocksAttacksSummary {
+        block_delay_seconds_bits,
+        disable_cooldown_scale_bits,
+        damage_reductions,
+        item_damage: decode_item_damage_function(decoder)?,
+        bypassed_by: decode_optional_damage_type_holder_set(decoder)?,
+        block_sound: decode_optional_sound_event_holder_summary(decoder)?,
+        disable_sound: decode_optional_sound_event_holder_summary(decoder)?,
+    })
 }
 
-fn decode_damage_reduction(decoder: &mut Decoder<'_>) -> Result<()> {
-    decoder.read_f32()?;
-    decode_optional_holder_set(decoder)?;
-    decoder.read_f32()?;
-    decoder.read_f32()?;
-    Ok(())
+fn decode_damage_reduction(decoder: &mut Decoder<'_>) -> Result<DamageReductionSummary> {
+    Ok(DamageReductionSummary {
+        horizontal_blocking_angle_bits: decoder.read_f32()?.to_bits(),
+        damage_types: decode_optional_damage_type_holder_set(decoder)?,
+        base_bits: decoder.read_f32()?.to_bits(),
+        factor_bits: decoder.read_f32()?.to_bits(),
+    })
 }
 
-fn decode_item_damage_function(decoder: &mut Decoder<'_>) -> Result<()> {
-    decoder.read_f32()?;
-    decoder.read_f32()?;
-    decoder.read_f32()?;
-    Ok(())
+fn decode_item_damage_function(decoder: &mut Decoder<'_>) -> Result<ItemDamageFunctionSummary> {
+    Ok(ItemDamageFunctionSummary {
+        threshold_bits: decoder.read_f32()?.to_bits(),
+        base_bits: decoder.read_f32()?.to_bits(),
+        factor_bits: decoder.read_f32()?.to_bits(),
+    })
+}
+
+fn decode_optional_damage_type_holder_set(
+    decoder: &mut Decoder<'_>,
+) -> Result<Option<DamageTypeHolderSetSummary>> {
+    if !decoder.read_bool()? {
+        return Ok(None);
+    }
+    let holder_set = decode_holder_set_summary(decoder)?;
+    Ok(Some(DamageTypeHolderSetSummary {
+        registry_ids: holder_set.registry_ids,
+        tag: holder_set.tag,
+    }))
 }
 
 fn decode_piercing_weapon_summary(decoder: &mut Decoder<'_>) -> Result<PiercingWeaponSummary> {
@@ -4571,6 +4614,34 @@ mod tests {
                         },
                     },
                 ],
+                blocks_attacks: Some(BlocksAttacksSummary {
+                    block_delay_seconds_bits: 0.25_f32.to_bits(),
+                    disable_cooldown_scale_bits: 1.5_f32.to_bits(),
+                    damage_reductions: vec![DamageReductionSummary {
+                        horizontal_blocking_angle_bits: 90.0_f32.to_bits(),
+                        damage_types: Some(DamageTypeHolderSetSummary {
+                            registry_ids: Vec::new(),
+                            tag: Some("minecraft:bypasses_shield".to_string()),
+                        }),
+                        base_bits: 1.0_f32.to_bits(),
+                        factor_bits: 0.5_f32.to_bits(),
+                    }],
+                    item_damage: ItemDamageFunctionSummary {
+                        threshold_bits: 1.0_f32.to_bits(),
+                        base_bits: 0.0_f32.to_bits(),
+                        factor_bits: 1.0_f32.to_bits(),
+                    },
+                    bypassed_by: Some(DamageTypeHolderSetSummary {
+                        registry_ids: vec![3],
+                        tag: None,
+                    }),
+                    block_sound: Some(SoundEventSummary {
+                        registry_id: None,
+                        sound_id: Some("minecraft:item.shield.block".to_string()),
+                        fixed_range_bits: None,
+                    }),
+                    disable_sound: None,
+                }),
                 piercing_weapon: Some(PiercingWeaponSummary {
                     deals_knockback: true,
                     dismounts: true,

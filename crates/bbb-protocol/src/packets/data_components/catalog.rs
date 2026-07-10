@@ -154,7 +154,12 @@ static VANILLA_DATA_COMPONENTS: &[DataComponentDescriptor] = &[
         true,
         decode_death_protection_component,
     ),
-    component(37, "minecraft:blocks_attacks", true, skip_blocks_attacks),
+    component(
+        37,
+        "minecraft:blocks_attacks",
+        true,
+        decode_blocks_attacks_component,
+    ),
     component(
         38,
         "minecraft:piercing_weapon",
@@ -1312,12 +1317,13 @@ fn decode_equippable_component(
     Ok(())
 }
 
-fn skip_blocks_attacks(
+fn decode_blocks_attacks_component(
     _type_id: i32,
     decoder: &mut Decoder<'_>,
-    _summary: &mut DataComponentPatchSummary,
+    summary: &mut DataComponentPatchSummary,
 ) -> Result<()> {
-    decode_blocks_attacks(decoder)
+    summary.blocks_attacks = Some(decode_blocks_attacks(decoder)?);
+    Ok(())
 }
 
 fn decode_provides_trim_material(

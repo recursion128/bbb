@@ -8738,15 +8738,15 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
         EquipmentAssetCatalog::default(),
     );
     let patch = DataComponentPatchSummary {
-        added: 106,
+        added: 107,
         added_type_ids: vec![
             0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 21, 22, 23, 24,
-            25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 38, 39, 40, 42, 43, 44, 45, 46, 47, 49,
-            50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71,
-            72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93,
-            94, 95, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109,
+            25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 42, 43, 44, 45, 46, 47,
+            49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70,
+            71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92,
+            93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109,
         ],
-        removed_type_ids: vec![37],
+        removed_type_ids: Vec::new(),
         custom_data: Some(NbtSummaryValue::Compound(vec![
             NbtSummaryEntry {
                 name: "answer".to_string(),
@@ -9023,6 +9023,34 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
         }),
         repairable_item_registry_ids: vec![0, 1],
         tooltip_style: Some("minecraft:rare".to_string()),
+        blocks_attacks: Some(bbb_protocol::packets::BlocksAttacksSummary {
+            block_delay_seconds_bits: 0.25_f32.to_bits(),
+            disable_cooldown_scale_bits: 1.5_f32.to_bits(),
+            damage_reductions: vec![bbb_protocol::packets::DamageReductionSummary {
+                horizontal_blocking_angle_bits: 90.0_f32.to_bits(),
+                damage_types: Some(bbb_protocol::packets::DamageTypeHolderSetSummary {
+                    registry_ids: Vec::new(),
+                    tag: Some("minecraft:bypasses_shield".to_string()),
+                }),
+                base_bits: 1.0_f32.to_bits(),
+                factor_bits: 0.5_f32.to_bits(),
+            }],
+            item_damage: bbb_protocol::packets::ItemDamageFunctionSummary {
+                threshold_bits: 1.0_f32.to_bits(),
+                base_bits: 0.0_f32.to_bits(),
+                factor_bits: 1.0_f32.to_bits(),
+            },
+            bypassed_by: Some(bbb_protocol::packets::DamageTypeHolderSetSummary {
+                registry_ids: vec![3],
+                tag: None,
+            }),
+            block_sound: Some(bbb_protocol::packets::SoundEventSummary {
+                registry_id: None,
+                sound_id: Some("minecraft:item.shield.block".to_string()),
+                fixed_range_bits: None,
+            }),
+            disable_sound: None,
+        }),
         piercing_weapon: Some(bbb_protocol::packets::PiercingWeaponSummary {
             deals_knockback: false,
             dismounts: true,
@@ -9452,6 +9480,11 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
          \"minecraft:archer_pottery_sherd\"]}, \"minecraft:glider\": {}, \
          \"minecraft:tooltip_style\": \"minecraft:rare\", \
          \"minecraft:death_protection\": {}, \
+         \"minecraft:blocks_attacks\": {block_delay_seconds: 0.25f, \
+         disable_cooldown_scale: 1.5f, damage_reductions: \
+         [{type: \"#minecraft:bypasses_shield\", base: 1.0f, factor: 0.5f}], \
+         bypassed_by: \"minecraft:on_fire\", block_sound: \
+         {sound_id: \"minecraft:item.shield.block\"}}, \
          \"minecraft:piercing_weapon\": {deals_knockback: 0b, dismounts: 1b, \
          sound: {sound_id: \"minecraft:item.trident.throw\"}, \
          hit_sound: \"minecraft:ambient.cave\"}, \
@@ -9554,8 +9587,7 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
          \"minecraft:cat/sound_variant\": \"minecraft:royal\", \
          \"minecraft:cat/collar\": \"black\", \
          \"minecraft:sheep/color\": \"cyan\", \
-         \"minecraft:shulker/color\": \"white\", \
-         \"!minecraft:blocks_attacks\": {}}}"
+         \"minecraft:shulker/color\": \"white\"}}"
                 .to_string()
         )
     );
@@ -9901,7 +9933,7 @@ fn item_stack_snbt_preserves_all_persistent_component_removals() {
 fn component_patch_dispatch_uses_encoder_registry_and_catalog_metadata() {
     let patch = DataComponentPatchSummary {
         added: 2,
-        added_type_ids: vec![1, 37],
+        added_type_ids: vec![1, 20],
         removed_type_ids: vec![8, 20],
         max_stack_size: Some(64),
         ..DataComponentPatchSummary::default()

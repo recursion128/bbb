@@ -107,6 +107,7 @@ static PERSISTENT_SNBT_ENCODERS: &[PersistentSnbtEncoderDescriptor] = &[
     encoder(34, encode_unit),
     encoder(35, encode_tooltip_style),
     encoder(36, encode_death_protection),
+    encoder(37, encode_blocks_attacks),
     encoder(38, encode_piercing_weapon),
     encoder(39, encode_kinetic_weapon),
     encoder(40, encode_swing_animation),
@@ -826,6 +827,143 @@ fn encode_death_protection(
     debug_death_protection_component_snbt(patch)
 }
 
+fn encode_blocks_attacks(
+    _type_id: i32,
+    patch: &bbb_protocol::packets::DataComponentPatchSummary,
+    _item_runtime: Option<&NativeItemRuntime>,
+) -> Option<String> {
+    let blocks_attacks = patch.blocks_attacks.as_ref()?;
+    let block_delay = f32::from_bits(blocks_attacks.block_delay_seconds_bits);
+    let disable_cooldown = f32::from_bits(blocks_attacks.disable_cooldown_scale_bits);
+    if block_delay < 0.0
+        || !block_delay.is_finite()
+        || disable_cooldown < 0.0
+        || !disable_cooldown.is_finite()
+    {
+        return None;
+    }
+    let mut fields = Vec::new();
+    if blocks_attacks.block_delay_seconds_bits != 0.0_f32.to_bits() {
+        fields.push(format!(
+            "block_delay_seconds: {}",
+            debug_snbt_float(block_delay)?
+        ));
+    }
+    if blocks_attacks.disable_cooldown_scale_bits != 1.0_f32.to_bits() {
+        fields.push(format!(
+            "disable_cooldown_scale: {}",
+            debug_snbt_float(disable_cooldown)?
+        ));
+    }
+    let default_reductions = matches!(
+        blocks_attacks.damage_reductions.as_slice(),
+        [reduction]
+            if reduction.horizontal_blocking_angle_bits == 90.0_f32.to_bits()
+                && reduction.damage_types.is_none()
+                && reduction.base_bits == 0.0_f32.to_bits()
+                && reduction.factor_bits == 1.0_f32.to_bits()
+    );
+    if !default_reductions {
+        let reductions = blocks_attacks
+            .damage_reductions
+            .iter()
+            .map(damage_reduction_snbt)
+            .collect::<Option<Vec<_>>>()?
+            .join(", ");
+        fields.push(format!("damage_reductions: [{reductions}]"));
+    }
+    let item_damage = &blocks_attacks.item_damage;
+    let threshold = f32::from_bits(item_damage.threshold_bits);
+    if threshold < 0.0 || !threshold.is_finite() {
+        return None;
+    }
+    let default_item_damage = item_damage.threshold_bits == 1.0_f32.to_bits()
+        && item_damage.base_bits == 0.0_f32.to_bits()
+        && item_damage.factor_bits == 1.0_f32.to_bits();
+    if !default_item_damage {
+        fields.push(format!(
+            "item_damage: {{threshold: {}, base: {}, factor: {}}}",
+            debug_snbt_float(threshold)?,
+            debug_snbt_float(f32::from_bits(item_damage.base_bits))?,
+            debug_snbt_float(f32::from_bits(item_damage.factor_bits))?
+        ));
+    }
+    if let Some(bypassed_by) = &blocks_attacks.bypassed_by {
+        fields.push(format!(
+            "bypassed_by: {}",
+            damage_type_holder_set_snbt(&bypassed_by.registry_ids, bypassed_by.tag.as_deref())?
+        ));
+    }
+    if let Some(block_sound) = &blocks_attacks.block_sound {
+        fields.push(format!(
+            "block_sound: {}",
+            debug_sound_event_component_snbt(block_sound)?
+        ));
+    }
+    if let Some(disable_sound) = &blocks_attacks.disable_sound {
+        fields.push(format!(
+            "disabled_sound: {}",
+            debug_sound_event_component_snbt(disable_sound)?
+        ));
+    }
+    Some(format!("{{{}}}", fields.join(", ")))
+}
+
+fn damage_reduction_snbt(
+    reduction: &bbb_protocol::packets::DamageReductionSummary,
+) -> Option<String> {
+    let angle = f32::from_bits(reduction.horizontal_blocking_angle_bits);
+    if angle <= 0.0 || !angle.is_finite() {
+        return None;
+    }
+    let mut fields = Vec::new();
+    if reduction.horizontal_blocking_angle_bits != 90.0_f32.to_bits() {
+        fields.push(format!(
+            "horizontal_blocking_angle: {}",
+            debug_snbt_float(angle)?
+        ));
+    }
+    if let Some(damage_types) = &reduction.damage_types {
+        fields.push(format!(
+            "type: {}",
+            damage_type_holder_set_snbt(&damage_types.registry_ids, damage_types.tag.as_deref())?
+        ));
+    }
+    fields.push(format!(
+        "base: {}",
+        debug_snbt_float(f32::from_bits(reduction.base_bits))?
+    ));
+    fields.push(format!(
+        "factor: {}",
+        debug_snbt_float(f32::from_bits(reduction.factor_bits))?
+    ));
+    Some(format!("{{{}}}", fields.join(", ")))
+}
+
+fn damage_type_holder_set_snbt(registry_ids: &[i32], tag: Option<&str>) -> Option<String> {
+    if let Some(tag) = tag {
+        return registry_ids
+            .is_empty()
+            .then(|| debug_snbt_string(&format!("#{tag}")));
+    }
+    let resource_ids = registry_ids
+        .iter()
+        .map(|id| damage_type_resource_id(*id))
+        .collect::<Option<Vec<_>>>()?;
+    Some(match resource_ids.as_slice() {
+        [] => "[]".to_string(),
+        [resource_id] => debug_snbt_string(resource_id),
+        resource_ids => format!(
+            "[{}]",
+            resource_ids
+                .iter()
+                .map(|resource_id| debug_snbt_string(resource_id))
+                .collect::<Vec<_>>()
+                .join(", ")
+        ),
+    })
+}
+
 fn encode_piercing_weapon(
     _type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
@@ -1330,7 +1468,7 @@ mod tests {
 
     #[test]
     fn encoder_registry_is_unique_sorted_and_persistent() {
-        assert_eq!(PERSISTENT_SNBT_ENCODERS.len(), 106);
+        assert_eq!(PERSISTENT_SNBT_ENCODERS.len(), 107);
         let mut ids = HashSet::new();
         let mut previous = None;
         for descriptor in PERSISTENT_SNBT_ENCODERS {
@@ -1359,7 +1497,7 @@ mod tests {
             encode_added_component_value_snbt(1, &patch, None),
             Some("64".to_string())
         );
-        assert_eq!(encode_added_component_value_snbt(32, &patch, None), None);
+        assert_eq!(encode_added_component_value_snbt(20, &patch, None), None);
     }
 
     #[test]
@@ -1642,6 +1780,92 @@ mod tests {
             tag: None,
         });
         assert_eq!(encode_added_component_value_snbt(32, &patch, None), None);
+    }
+
+    #[test]
+    fn blocks_attacks_encoder_preserves_reductions_holders_and_defaults() {
+        use bbb_protocol::packets::{
+            BlocksAttacksSummary, DamageReductionSummary, DamageTypeHolderSetSummary,
+            DataComponentPatchSummary, ItemDamageFunctionSummary, SoundEventSummary,
+        };
+
+        let mut patch = DataComponentPatchSummary {
+            blocks_attacks: Some(BlocksAttacksSummary {
+                block_delay_seconds_bits: 0.25_f32.to_bits(),
+                disable_cooldown_scale_bits: 1.5_f32.to_bits(),
+                damage_reductions: vec![DamageReductionSummary {
+                    horizontal_blocking_angle_bits: 90.0_f32.to_bits(),
+                    damage_types: Some(DamageTypeHolderSetSummary {
+                        registry_ids: Vec::new(),
+                        tag: Some("minecraft:bypasses_shield".to_string()),
+                    }),
+                    base_bits: 1.0_f32.to_bits(),
+                    factor_bits: 0.5_f32.to_bits(),
+                }],
+                item_damage: ItemDamageFunctionSummary {
+                    threshold_bits: 1.0_f32.to_bits(),
+                    base_bits: 0.0_f32.to_bits(),
+                    factor_bits: 1.0_f32.to_bits(),
+                },
+                bypassed_by: Some(DamageTypeHolderSetSummary {
+                    registry_ids: vec![3],
+                    tag: None,
+                }),
+                block_sound: Some(SoundEventSummary {
+                    registry_id: None,
+                    sound_id: Some("minecraft:item.shield.block".to_string()),
+                    fixed_range_bits: None,
+                }),
+                disable_sound: None,
+            }),
+            ..Default::default()
+        };
+        assert_eq!(
+            encode_added_component_value_snbt(37, &patch, None),
+            Some(
+                "{block_delay_seconds: 0.25f, disable_cooldown_scale: 1.5f, \
+                 damage_reductions: [{type: \"#minecraft:bypasses_shield\", \
+                 base: 1.0f, factor: 0.5f}], bypassed_by: \"minecraft:on_fire\", \
+                 block_sound: {sound_id: \"minecraft:item.shield.block\"}}"
+                    .to_string()
+            )
+        );
+
+        patch.blocks_attacks = Some(BlocksAttacksSummary {
+            block_delay_seconds_bits: 0.0_f32.to_bits(),
+            disable_cooldown_scale_bits: 1.0_f32.to_bits(),
+            damage_reductions: vec![DamageReductionSummary {
+                horizontal_blocking_angle_bits: 90.0_f32.to_bits(),
+                damage_types: None,
+                base_bits: 0.0_f32.to_bits(),
+                factor_bits: 1.0_f32.to_bits(),
+            }],
+            item_damage: ItemDamageFunctionSummary {
+                threshold_bits: 1.0_f32.to_bits(),
+                base_bits: 0.0_f32.to_bits(),
+                factor_bits: 1.0_f32.to_bits(),
+            },
+            bypassed_by: None,
+            block_sound: None,
+            disable_sound: None,
+        });
+        assert_eq!(
+            encode_added_component_value_snbt(37, &patch, None),
+            Some("{}".to_string())
+        );
+
+        patch.blocks_attacks.as_mut().unwrap().damage_reductions[0]
+            .horizontal_blocking_angle_bits = 0.0_f32.to_bits();
+        assert_eq!(encode_added_component_value_snbt(37, &patch, None), None);
+        patch.blocks_attacks.as_mut().unwrap().damage_reductions[0]
+            .horizontal_blocking_angle_bits = 90.0_f32.to_bits();
+        patch
+            .blocks_attacks
+            .as_mut()
+            .unwrap()
+            .item_damage
+            .threshold_bits = f32::INFINITY.to_bits();
+        assert_eq!(encode_added_component_value_snbt(37, &patch, None), None);
     }
 
     #[test]
