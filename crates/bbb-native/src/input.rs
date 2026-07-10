@@ -4681,6 +4681,7 @@ fn debug_supported_added_component_snbt(
             let value = patch.enchantable_value.filter(|value| *value > 0)?;
             format!("{{value: {value}}}")
         }
+        33 => debug_repairable_component_snbt(patch, item_runtime)?,
         34 => "{}".to_string(),
         35 => debug_snbt_string(patch.tooltip_style.as_deref()?),
         40 => debug_swing_animation_component_snbt(patch.swing_animation?)?,
@@ -4781,6 +4782,7 @@ fn debug_supported_component_resource_id(type_id: i32) -> Option<&'static str> {
         26 => "minecraft:use_cooldown",
         30 => "minecraft:attack_range",
         31 => "minecraft:enchantable",
+        33 => "minecraft:repairable",
         34 => "minecraft:glider",
         35 => "minecraft:tooltip_style",
         40 => "minecraft:swing_animation",
@@ -5214,6 +5216,34 @@ fn debug_item_stack_template_list_snbt(
         .collect::<Option<Vec<_>>>()?
         .join(", ");
     Some(format!("[{items}]"))
+}
+
+fn debug_repairable_component_snbt(
+    patch: &bbb_protocol::packets::DataComponentPatchSummary,
+    item_runtime: Option<&NativeItemRuntime>,
+) -> Option<String> {
+    let items = if let Some(tag) = patch.repairable_item_tag.as_deref() {
+        debug_snbt_string(&format!("#{tag}"))
+    } else {
+        let resource_ids = patch
+            .repairable_item_registry_ids
+            .iter()
+            .map(|item_id| item_runtime?.item_resource_id(*item_id))
+            .collect::<Option<Vec<_>>>()?;
+        match resource_ids.as_slice() {
+            [] => "[]".to_string(),
+            [resource_id] => debug_snbt_string(resource_id),
+            resource_ids => format!(
+                "[{}]",
+                resource_ids
+                    .iter()
+                    .map(|resource_id| debug_snbt_string(resource_id))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ),
+        }
+    };
+    Some(format!("{{items: {items}}}"))
 }
 
 fn debug_item_stack_template_snbt(

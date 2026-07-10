@@ -8844,3 +8844,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   test 覆盖 12 项及各类越界行为；native component patch test 从 52 扩展到
   64 个 added entry，覆盖全部资源名、持久化值与 wire order；该族与既有三个
   tropical-fish enum 一并移入已支持子集。
+
+## 2026-07-10：ItemStack repairable save codec
+
+- [x] minecraft:repairable 持久化 component（P2 protocol + native input）：
+  依据 vanilla 26.1 Repairable.CODEC/STREAM_CODEC 与 HolderSetCodec，protocol
+  将 type id 33 的 item holder set 保留为 ordered registry ids 或规范化 tag；
+  native 通过现有 ItemRegistryCatalog 还原直接 holder 资源名，并复刻 compact
+  list codec 的 tag、单元素、多元素与空列表形状。protocol focused test 覆盖
+  direct holders 与 repairs_leather_armor tag；native component patch test 从
+  64 扩展到 65 个 added entry，另覆盖四种 holder-set 形状与 unknown item id
+  fallback；repairable 从剩余 component 总账本移入已支持子集。

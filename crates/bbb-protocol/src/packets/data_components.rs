@@ -108,6 +108,10 @@ pub struct DataComponentPatchSummary {
     #[serde(default)]
     pub enchantable_value: Option<i32>,
     #[serde(default)]
+    pub repairable_item_registry_ids: Vec<i32>,
+    #[serde(default)]
+    pub repairable_item_tag: Option<String>,
+    #[serde(default)]
     pub swing_animation: Option<SwingAnimationSummary>,
     #[serde(default)]
     pub custom_model_data_floats: CustomModelDataFloats,
@@ -808,6 +812,11 @@ fn decode_typed_data_component_patch_summary(
             31 => {
                 summary.enchantable_value = Some(decoder.read_var_i32()?);
             }
+            33 => {
+                let items = decode_holder_set_summary(decoder)?;
+                summary.repairable_item_registry_ids = items.registry_ids;
+                summary.repairable_item_tag = items.tag;
+            }
             40 => {
                 summary.swing_animation = Some(decode_swing_animation(decoder)?);
             }
@@ -1366,10 +1375,11 @@ fn decode_holder_set_summary(decoder: &mut Decoder<'_>) -> Result<HolderSetSumma
         return Err(ProtocolError::NegativeLength(encoded_count));
     }
     if encoded_count == 0 {
-        decode_identifier(decoder)?;
+        let tag = read_resource_location(decoder)?;
         return Ok(HolderSetSummary {
             registry_ids: Vec::new(),
             unresolved_tag_count: 1,
+            tag: Some(tag),
         });
     }
 
@@ -1387,6 +1397,7 @@ fn decode_holder_set_summary(decoder: &mut Decoder<'_>) -> Result<HolderSetSumma
     Ok(HolderSetSummary {
         registry_ids,
         unresolved_tag_count: 0,
+        tag: None,
     })
 }
 
@@ -1559,6 +1570,7 @@ struct BlockPredicateSummary {
 struct HolderSetSummary {
     registry_ids: Vec<i32>,
     unresolved_tag_count: usize,
+    tag: Option<String>,
 }
 
 fn decode_block_predicate_summary(decoder: &mut Decoder<'_>) -> Result<BlockPredicateSummary> {
@@ -3586,6 +3598,49 @@ mod tests {
                     hitbox_margin: 0.125,
                     mob_factor: 0.5,
                 }),
+                ..DataComponentPatchSummary::default()
+            }
+        );
+        assert!(decoder.is_empty());
+    }
+
+    #[test]
+    fn decodes_repairable_item_holder_sets() {
+        let mut payload = Encoder::new();
+        payload.write_var_i32(1);
+        payload.write_var_i32(0);
+        payload.write_var_i32(33);
+        write_holder_set_ids(&mut payload, &[1, 193]);
+
+        let payload = payload.into_inner();
+        let mut decoder = Decoder::new(&payload);
+        let patch = decode_data_component_patch_summary(&mut decoder).unwrap();
+        assert_eq!(
+            patch,
+            DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![33],
+                repairable_item_registry_ids: vec![1, 193],
+                ..DataComponentPatchSummary::default()
+            }
+        );
+        assert!(decoder.is_empty());
+
+        let mut payload = Encoder::new();
+        payload.write_var_i32(1);
+        payload.write_var_i32(0);
+        payload.write_var_i32(33);
+        write_holder_set_tag(&mut payload, "minecraft:repairs_leather_armor");
+
+        let payload = payload.into_inner();
+        let mut decoder = Decoder::new(&payload);
+        let patch = decode_data_component_patch_summary(&mut decoder).unwrap();
+        assert_eq!(
+            patch,
+            DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![33],
+                repairable_item_tag: Some("minecraft:repairs_leather_armor".to_string()),
                 ..DataComponentPatchSummary::default()
             }
         );

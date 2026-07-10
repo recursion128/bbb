@@ -8568,11 +8568,11 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
         EquipmentAssetCatalog::default(),
     );
     let patch = DataComponentPatchSummary {
-        added: 64,
+        added: 65,
         added_type_ids: vec![
-            0, 1, 2, 3, 4, 5, 7, 10, 12, 17, 18, 19, 21, 22, 23, 25, 26, 30, 31, 34, 35, 40, 43,
-            44, 45, 46, 47, 49, 50, 52, 54, 57, 58, 59, 60, 63, 66, 67, 68, 69, 70, 71, 73, 74, 75,
-            76, 77, 78, 79, 84, 85, 86, 87, 88, 89, 90, 91, 92, 101, 103, 104, 107, 108, 109,
+            0, 1, 2, 3, 4, 5, 7, 10, 12, 17, 18, 19, 21, 22, 23, 25, 26, 30, 31, 33, 34, 35, 40,
+            43, 44, 45, 46, 47, 49, 50, 52, 54, 57, 58, 59, 60, 63, 66, 67, 68, 69, 70, 71, 73, 74,
+            75, 76, 77, 78, 79, 84, 85, 86, 87, 88, 89, 90, 91, 92, 101, 103, 104, 107, 108, 109,
         ],
         removed_type_ids: vec![6],
         custom_data: Some(NbtSummaryValue::Compound(vec![
@@ -8666,6 +8666,7 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
             mob_factor: 0.5,
         }),
         enchantable_value: Some(15),
+        repairable_item_registry_ids: vec![0, 1],
         tooltip_style: Some("minecraft:rare".to_string()),
         swing_animation: Some(bbb_protocol::packets::SwingAnimationSummary {
             animation_type: bbb_protocol::packets::SwingAnimationTypeSummary::Stab,
@@ -8930,7 +8931,9 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
          \"minecraft:attack_range\": {min_reach: 2.0f, max_reach: 4.5f, \
          min_creative_reach: 2.0f, max_creative_reach: 6.5f, \
          hitbox_margin: 0.125f, mob_factor: 0.5f}, \
-         \"minecraft:enchantable\": {value: 15}, \"minecraft:glider\": {}, \
+         \"minecraft:enchantable\": {value: 15}, \
+         \"minecraft:repairable\": {items: [\"minecraft:angler_pottery_sherd\", \
+         \"minecraft:archer_pottery_sherd\"]}, \"minecraft:glider\": {}, \
          \"minecraft:tooltip_style\": \"minecraft:rare\", \
          \"minecraft:swing_animation\": {type: \"stab\", duration: 17}, \
          \"minecraft:dye\": \"red\", \"minecraft:dyed_color\": 1122867, \
@@ -8996,6 +8999,50 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
          \"!minecraft:custom_name\": {}}}"
                 .to_string()
         )
+    );
+}
+
+#[test]
+fn item_stack_snbt_preserves_repairable_holder_set_shapes() {
+    let registry: ItemRegistryCatalog = serde_json::from_value(serde_json::json!({
+        "resource_ids": ["minecraft:iron_ingot", "minecraft:diamond"],
+        "protocol_ids": {
+            "minecraft:iron_ingot": 0,
+            "minecraft:diamond": 1
+        }
+    }))
+    .unwrap();
+    let item_runtime = NativeItemRuntime::for_test_with_registry_and_equipment_assets(
+        registry,
+        EquipmentAssetCatalog::default(),
+    );
+
+    let mut patch = DataComponentPatchSummary {
+        repairable_item_tag: Some("minecraft:repairs_leather_armor".to_string()),
+        ..DataComponentPatchSummary::default()
+    };
+    assert_eq!(
+        debug_repairable_component_snbt(&patch, Some(&item_runtime)),
+        Some("{items: \"#minecraft:repairs_leather_armor\"}".to_string())
+    );
+
+    patch.repairable_item_tag = None;
+    patch.repairable_item_registry_ids = vec![0];
+    assert_eq!(
+        debug_repairable_component_snbt(&patch, Some(&item_runtime)),
+        Some("{items: \"minecraft:iron_ingot\"}".to_string())
+    );
+
+    patch.repairable_item_registry_ids.clear();
+    assert_eq!(
+        debug_repairable_component_snbt(&patch, None),
+        Some("{items: []}".to_string())
+    );
+
+    patch.repairable_item_registry_ids = vec![99];
+    assert_eq!(
+        debug_repairable_component_snbt(&patch, Some(&item_runtime)),
+        None
     );
 }
 
