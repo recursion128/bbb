@@ -152,6 +152,9 @@ use crate::{
         TerrainTextureState, TerrainUploadState,
     },
 };
+use bbb_protocol::attribute_types::{
+    VANILLA_ATTRIBUTE_ATTACK_DAMAGE_ID, VANILLA_ATTRIBUTE_ATTACK_SPEED_ID,
+};
 use bbb_protocol::entity_types::*;
 
 mod control_requests;
@@ -174,8 +177,6 @@ const VANILLA_HEIGHTMAP_WORLD_SURFACE_ID: i32 = 1;
 const VANILLA_HEIGHTMAP_OCEAN_FLOOR_ID: i32 = 3;
 const VANILLA_HEIGHTMAP_MOTION_BLOCKING_ID: i32 = 4;
 const VANILLA_HEIGHTMAP_MOTION_BLOCKING_NO_LEAVES_ID: i32 = 5;
-const VANILLA_ATTRIBUTE_ATTACK_DAMAGE_ID: i32 = 2;
-const VANILLA_ATTRIBUTE_ATTACK_SPEED_ID: i32 = 4;
 const VANILLA_TIMELINE_NIGHT_SKY_LIGHT_COLOR: i32 = argb_color(255, 122, 122, 255);
 const VANILLA_WEATHER_SKY_LIGHT_FACTOR: f32 = 0.24;
 const VANILLA_WEATHER_RAIN_ALPHA: f32 = 0.3125;

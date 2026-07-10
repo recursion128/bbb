@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 
+use bbb_protocol::attribute_types::VANILLA_ATTRIBUTE_MAX_HEALTH_ID;
 use bbb_protocol::packets::{
     AddEntity as ProtocolAddEntity, AttributeSnapshot as ProtocolAttributeSnapshot,
     EntityDataValue as ProtocolEntityDataValue, EntityDataValueKind,
@@ -86,13 +87,6 @@ pub(crate) const VANILLA_ITEM_EGG_ID: i32 = 1032;
 /// Vanilla 26.1 `Items.SNOWBALL` protocol id from `Items.java` registry order.
 pub(crate) const VANILLA_ITEM_SNOWBALL_ID: i32 = 1017;
 
-/// `BuiltInRegistries.ATTRIBUTE` registration index for `minecraft:max_health`:
-/// `Attributes.java` registers in field-declaration order, so counting from
-/// `armor`=0 → ... → `luck`=17, `max_absorption`=18, `max_health`=19
-/// (Attributes.java:58-60). Consistent with the sibling hand-derived ids
-/// (armor `0` in `local_player.rs`, gravity `14` / movement_speed `22` in
-/// `local_player_movement.rs`).
-const VANILLA_ATTRIBUTE_MAX_HEALTH_ID: i32 = 19;
 /// Vanilla `Attributes.MAX_HEALTH` `RangedAttribute` default value
 /// (`20.0`, Attributes.java:59).
 const VANILLA_DEFAULT_MAX_HEALTH: f64 = 20.0;

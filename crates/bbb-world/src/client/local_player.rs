@@ -1,3 +1,4 @@
+use bbb_protocol::attribute_types::VANILLA_ATTRIBUTE_ARMOR_ID;
 use bbb_protocol::packets::{
     DataComponentPatchSummary, Direction as ProtocolDirection, EntityAnchor, InteractionHand,
     ItemStackSummary as ProtocolItemStackSummary, PlayerAbilities as ProtocolPlayerAbilities,
@@ -23,13 +24,6 @@ const SWIMMING_EYE_HEIGHT: f64 = 0.4;
 const STANDING_BODY_HEIGHT: f64 = 1.8;
 const CROUCHING_BODY_HEIGHT: f64 = 1.5;
 const SWIMMING_BODY_HEIGHT: f64 = 0.6;
-
-/// `BuiltInRegistries.ATTRIBUTE` registration index for `minecraft:armor`: it is
-/// the first attribute registered (`Attributes.ARMOR`, Attributes.java:10), so
-/// index `0`. Sibling ids (gravity `14`, jump_strength `15`, movement_speed `22`)
-/// are already hand-derived from this same registration order in
-/// `local_player_movement.rs`.
-const VANILLA_ATTRIBUTE_ARMOR_ID: i32 = 0;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct LocalPlayerState {

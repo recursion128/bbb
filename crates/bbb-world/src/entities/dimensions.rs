@@ -1,3 +1,4 @@
+use bbb_protocol::attribute_types::VANILLA_ATTRIBUTE_SCALE_ID;
 use bbb_protocol::packets::{
     AttributeSnapshot, EntityDataEnumSerializer, EntityDataValue, EntityDataValueKind,
 };
@@ -54,7 +55,6 @@ const HORSE_BABY_SCALE: f32 = 0.7;
 const SHULKER_ATTACH_FACE_DATA_ID: u8 = 16;
 const SHULKER_MAX_SCALE: f32 = 3.0;
 const DEFAULT_AGEABLE_BABY_SCALE: f32 = 0.5;
-const VANILLA_ATTRIBUTE_SCALE_ID: i32 = 25;
 const VANILLA_SCALE_MIN: f64 = 0.0625;
 const VANILLA_SCALE_MAX: f64 = 16.0;
 const VANILLA_POSE_FALL_FLYING_ID: i32 = 1;

@@ -712,6 +712,8 @@ vanilla evidence. Deleting one of these re-opens work already decided against.
   `minecraft:attribute` through `BuiltInRegistries.registerSimple`; `Attribute`
   has no direct element codec and the registry is absent from both
   `RegistryDataLoader.WORLDGEN_REGISTRIES` and `SYNCHRONIZED_REGISTRIES`.
+  The fixed 35-entry vanilla catalog is generated; this item covers non-vanilla
+  definitions rather than built-in id/resource metadata.
   Attribute holders therefore use the fixed client built-in registry, so no
   server/datapack description or sentiment payload exists to project.
 - **Accepting malformed or unsupported custom resource-pack declarations.**

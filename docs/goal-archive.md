@@ -9329,3 +9329,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   同一 catalog，删除第二份 117 项资源表。连续/唯一/固定长度、28 项 override limiter、
   const 反查、native facade 与 renderer coverage tests 锁定消费；未改变 particle wire
   option codec 或渲染行为。
+
+## 2026-07-10：Vanilla attribute numeric-id catalog generation
+
+- [x] gameplay numeric-id catalog 的 attribute 子项（P1 mechanical vanilla
+  data）：新增 `scripts/generate-gameplay-id-catalog.py`，从 vanilla 26.1
+  `Attributes.java` 的 35 个静态 `register` 调用生成 checked-in id/resource/order/
+  constant-name/description-key/sentiment/syncable metadata。item-model tooltip 删除 35 项
+  平行表并投影 protocol catalog；world local movement/destroy、scale/armor/max-health 与
+  native attack 属性路径删除生产裸数字，统一引用生成常量。连续/唯一/固定长度、
+  sentiment/syncable 计数、查询边界及 regeneration tests 锁定生成物；未改变 attribute
+  计算、modifier 顺序或 custom/datapack attribute 边界。

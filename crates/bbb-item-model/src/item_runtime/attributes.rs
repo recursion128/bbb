@@ -1,9 +1,4 @@
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum VanillaAttributeSentiment {
-    Positive,
-    Neutral,
-    Negative,
-}
+pub(super) use bbb_protocol::attribute_types::AttributeSentiment as VanillaAttributeSentiment;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) struct VanillaAttribute {
@@ -11,184 +6,6 @@ pub(super) struct VanillaAttribute {
     pub description_key: &'static str,
     pub sentiment: VanillaAttributeSentiment,
 }
-
-const VANILLA_ATTRIBUTES: &[VanillaAttribute] = &[
-    attribute(
-        "minecraft:armor",
-        "attribute.name.armor",
-        VanillaAttributeSentiment::Positive,
-    ),
-    attribute(
-        "minecraft:armor_toughness",
-        "attribute.name.armor_toughness",
-        VanillaAttributeSentiment::Positive,
-    ),
-    attribute(
-        "minecraft:attack_damage",
-        "attribute.name.attack_damage",
-        VanillaAttributeSentiment::Positive,
-    ),
-    attribute(
-        "minecraft:attack_knockback",
-        "attribute.name.attack_knockback",
-        VanillaAttributeSentiment::Positive,
-    ),
-    attribute(
-        "minecraft:attack_speed",
-        "attribute.name.attack_speed",
-        VanillaAttributeSentiment::Positive,
-    ),
-    attribute(
-        "minecraft:block_break_speed",
-        "attribute.name.block_break_speed",
-        VanillaAttributeSentiment::Positive,
-    ),
-    attribute(
-        "minecraft:block_interaction_range",
-        "attribute.name.block_interaction_range",
-        VanillaAttributeSentiment::Positive,
-    ),
-    attribute(
-        "minecraft:burning_time",
-        "attribute.name.burning_time",
-        VanillaAttributeSentiment::Negative,
-    ),
-    attribute(
-        "minecraft:camera_distance",
-        "attribute.name.camera_distance",
-        VanillaAttributeSentiment::Positive,
-    ),
-    attribute(
-        "minecraft:explosion_knockback_resistance",
-        "attribute.name.explosion_knockback_resistance",
-        VanillaAttributeSentiment::Positive,
-    ),
-    attribute(
-        "minecraft:entity_interaction_range",
-        "attribute.name.entity_interaction_range",
-        VanillaAttributeSentiment::Positive,
-    ),
-    attribute(
-        "minecraft:fall_damage_multiplier",
-        "attribute.name.fall_damage_multiplier",
-        VanillaAttributeSentiment::Negative,
-    ),
-    attribute(
-        "minecraft:flying_speed",
-        "attribute.name.flying_speed",
-        VanillaAttributeSentiment::Positive,
-    ),
-    attribute(
-        "minecraft:follow_range",
-        "attribute.name.follow_range",
-        VanillaAttributeSentiment::Positive,
-    ),
-    attribute(
-        "minecraft:gravity",
-        "attribute.name.gravity",
-        VanillaAttributeSentiment::Neutral,
-    ),
-    attribute(
-        "minecraft:jump_strength",
-        "attribute.name.jump_strength",
-        VanillaAttributeSentiment::Positive,
-    ),
-    attribute(
-        "minecraft:knockback_resistance",
-        "attribute.name.knockback_resistance",
-        VanillaAttributeSentiment::Positive,
-    ),
-    attribute(
-        "minecraft:luck",
-        "attribute.name.luck",
-        VanillaAttributeSentiment::Positive,
-    ),
-    attribute(
-        "minecraft:max_absorption",
-        "attribute.name.max_absorption",
-        VanillaAttributeSentiment::Positive,
-    ),
-    attribute(
-        "minecraft:max_health",
-        "attribute.name.max_health",
-        VanillaAttributeSentiment::Positive,
-    ),
-    attribute(
-        "minecraft:mining_efficiency",
-        "attribute.name.mining_efficiency",
-        VanillaAttributeSentiment::Positive,
-    ),
-    attribute(
-        "minecraft:movement_efficiency",
-        "attribute.name.movement_efficiency",
-        VanillaAttributeSentiment::Positive,
-    ),
-    attribute(
-        "minecraft:movement_speed",
-        "attribute.name.movement_speed",
-        VanillaAttributeSentiment::Positive,
-    ),
-    attribute(
-        "minecraft:oxygen_bonus",
-        "attribute.name.oxygen_bonus",
-        VanillaAttributeSentiment::Positive,
-    ),
-    attribute(
-        "minecraft:safe_fall_distance",
-        "attribute.name.safe_fall_distance",
-        VanillaAttributeSentiment::Positive,
-    ),
-    attribute(
-        "minecraft:scale",
-        "attribute.name.scale",
-        VanillaAttributeSentiment::Neutral,
-    ),
-    attribute(
-        "minecraft:sneaking_speed",
-        "attribute.name.sneaking_speed",
-        VanillaAttributeSentiment::Positive,
-    ),
-    attribute(
-        "minecraft:spawn_reinforcements",
-        "attribute.name.spawn_reinforcements",
-        VanillaAttributeSentiment::Positive,
-    ),
-    attribute(
-        "minecraft:step_height",
-        "attribute.name.step_height",
-        VanillaAttributeSentiment::Positive,
-    ),
-    attribute(
-        "minecraft:submerged_mining_speed",
-        "attribute.name.submerged_mining_speed",
-        VanillaAttributeSentiment::Positive,
-    ),
-    attribute(
-        "minecraft:sweeping_damage_ratio",
-        "attribute.name.sweeping_damage_ratio",
-        VanillaAttributeSentiment::Positive,
-    ),
-    attribute(
-        "minecraft:tempt_range",
-        "attribute.name.tempt_range",
-        VanillaAttributeSentiment::Positive,
-    ),
-    attribute(
-        "minecraft:water_movement_efficiency",
-        "attribute.name.water_movement_efficiency",
-        VanillaAttributeSentiment::Positive,
-    ),
-    attribute(
-        "minecraft:waypoint_transmit_range",
-        "attribute.name.waypoint_transmit_range",
-        VanillaAttributeSentiment::Neutral,
-    ),
-    attribute(
-        "minecraft:waypoint_receive_range",
-        "attribute.name.waypoint_receive_range",
-        VanillaAttributeSentiment::Neutral,
-    ),
-];
 
 const fn attribute(
     key: &'static str,
@@ -202,28 +19,27 @@ const fn attribute(
     }
 }
 
+fn project_attribute(
+    entry: &bbb_protocol::attribute_types::AttributeTypeCatalogEntry,
+) -> VanillaAttribute {
+    attribute(entry.resource_id, entry.description_key, entry.sentiment)
+}
+
 pub(super) fn vanilla_attribute(attribute_id: i32) -> Option<VanillaAttribute> {
-    usize::try_from(attribute_id)
-        .ok()
-        .and_then(|index| VANILLA_ATTRIBUTES.get(index).copied())
+    bbb_protocol::attribute_types::vanilla_attribute_type(attribute_id).map(project_attribute)
 }
 
 pub fn vanilla_attribute_resource_id(attribute_id: i32) -> Option<&'static str> {
-    vanilla_attribute(attribute_id).map(|attribute| attribute.key)
+    Some(bbb_protocol::attribute_types::vanilla_attribute_type(attribute_id)?.resource_id)
 }
 
 pub(super) fn vanilla_attribute_for_key(key: &str) -> Option<VanillaAttribute> {
-    VANILLA_ATTRIBUTES
-        .iter()
-        .find(|attribute| attribute.key == key)
-        .copied()
+    bbb_protocol::attribute_types::vanilla_attribute_type_for_resource_id(key)
+        .map(project_attribute)
 }
 
 pub(super) fn vanilla_attribute_id_for_key(key: &str) -> Option<i32> {
-    VANILLA_ATTRIBUTES
-        .iter()
-        .position(|attribute| attribute.key == key)
-        .and_then(|index| i32::try_from(index).ok())
+    Some(bbb_protocol::attribute_types::vanilla_attribute_type_for_resource_id(key)?.id)
 }
 
 #[cfg(test)]
@@ -232,7 +48,10 @@ mod tests {
 
     #[test]
     fn vanilla_attributes_follow_26_1_bootstrap_order() {
-        assert_eq!(VANILLA_ATTRIBUTES.len(), 35);
+        assert_eq!(
+            bbb_protocol::attribute_types::VANILLA_ATTRIBUTE_TYPES.len(),
+            35
+        );
         assert_eq!(
             vanilla_attribute_resource_id(2),
             Some("minecraft:attack_damage")

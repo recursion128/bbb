@@ -6,6 +6,7 @@ pub use component::{
     ComponentClickEvent, ComponentStyle, SignBlockEntityNbt, SignTextNbt, StyledTextRun,
 };
 
+pub mod attribute_types;
 pub mod block_entity_types;
 pub mod codec;
 pub mod damage_types;
