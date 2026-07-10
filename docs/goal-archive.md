@@ -8154,3 +8154,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   can-move metadata；仍统一排除同一 root vehicle。tests 覆盖 spectated minecart 的
   cow/parrot/horse 纳入、armor-stand/bat 排除、horse vehicle 切换与 ladder gate。
   ledger 相应只保留 `CollisionBoxRenderer` 的 vanilla 100ms refresh cache。
+
+## 2026-07-10：Collision debug refresh cache
+
+- [x] `visualize_collision_boxes` 的 100 ms shape cache（P2 native slice）：依据
+  vanilla 26.1 `CollisionBoxRenderer.emitGizmos`，native renderer extraction 首次启用时
+  立即收集相机实体 6 格范围内的 collision shapes，此后仅在单调时钟距上次收集严格
+  大于 100 ms 时更新，间隔内复用同一批 white 2.5px stroke lines。entry 禁用或被
+  reduced-debug gate 屏蔽时清空 cache，重新启用会像 vanilla 重建 debug renderer 一样
+  立即收集。确定性测试覆盖恰好 100 ms 不刷新、100 ms + 1 ns 刷新、禁用清空和同刻
+  重新启用刷新；`visualize_collision_boxes` 已无剩余 ledger gap。

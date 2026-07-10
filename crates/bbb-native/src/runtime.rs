@@ -805,6 +805,41 @@ pub(crate) struct HudDebugTpsSampler {
     tick_time_subscribed: bool,
 }
 
+const DEBUG_COLLISION_REFRESH_INTERVAL: Duration = Duration::from_millis(100);
+
+#[derive(Debug, Default)]
+pub(crate) struct DebugCollisionCache {
+    last_update_at: Option<Instant>,
+    lines: Vec<DebugLine>,
+}
+
+impl DebugCollisionCache {
+    fn lines(
+        &mut self,
+        input: &ClientInputState,
+        world: &WorldStore,
+        now: Instant,
+    ) -> Vec<DebugLine> {
+        if !debug_collision_entry_enabled(input, world) {
+            self.reset();
+            return Vec::new();
+        }
+        let refresh = self.last_update_at.is_none_or(|last_update_at| {
+            now.saturating_duration_since(last_update_at) > DEBUG_COLLISION_REFRESH_INTERVAL
+        });
+        if refresh {
+            self.last_update_at = Some(now);
+            self.lines = collect_debug_collision_lines(world);
+        }
+        self.lines.clone()
+    }
+
+    fn reset(&mut self) {
+        self.last_update_at = None;
+        self.lines.clear();
+    }
+}
+
 impl HudDebugTpsSampler {
     fn record_net_event(&mut self, event: &NetEvent) {
         match event {
@@ -1822,6 +1857,7 @@ pub(crate) fn pump_network_and_terrain(
     hud_debug_fps_sampler: &mut HudDebugFpsSampler,
     hud_debug_network_sampler: &mut HudDebugNetworkSampler,
     hud_debug_tps_sampler: &mut HudDebugTpsSampler,
+    debug_collision_cache: &mut DebugCollisionCache,
     lightmap_ticks: &mut LightmapTickState,
     level_event_sound_random: &mut LevelEventSoundRandomState,
     terrain_upload: &mut TerrainUploadState,
@@ -2437,7 +2473,7 @@ pub(crate) fn pump_network_and_terrain(
     let mut debug_filled_boxes = debug_water_boxes(&debug_water_samples);
     debug_filled_boxes.extend(debug_heightmap_boxes(input, world, camera_pose));
     let debug_text_billboards = debug_water_amount_billboards(&debug_water_samples);
-    let debug_lines = debug_collision_lines(input, world);
+    let debug_lines = debug_collision_cache.lines(input, world, now);
     // Vanilla `LevelRenderer.extractBlockDestroyAnimation` reads block-breaking state during
     // render extract, after the client tick; local destroy overlay ticks are advanced above.
     let block_destroy_overlays = block_destroy_overlays_from_world(world, terrain_textures);
@@ -4088,14 +4124,14 @@ fn debug_water_amount_billboards(samples: &[DebugWaterSample]) -> Vec<DebugTextB
 const DEBUG_COLLISION_QUERY_RADIUS: f64 = 6.0;
 const DEBUG_COLLISION_COLOR: [u8; 4] = [255; 4];
 
-fn debug_collision_lines(input: &ClientInputState, world: &WorldStore) -> Vec<DebugLine> {
-    if !input.debug_screen_entry_enabled(
+fn debug_collision_entry_enabled(input: &ClientInputState, world: &WorldStore) -> bool {
+    input.debug_screen_entry_enabled(
         DebugScreenEntryId::VisualizeCollisionBoxes,
         world.local_player_has_reduced_debug_info(),
-    ) {
-        return Vec::new();
-    }
+    )
+}
 
+fn collect_debug_collision_lines(world: &WorldStore) -> Vec<DebugLine> {
     world
         .debug_camera_collision_boxes(DEBUG_COLLISION_QUERY_RADIUS)
         .into_iter()

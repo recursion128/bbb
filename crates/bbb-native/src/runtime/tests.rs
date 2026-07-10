@@ -3488,13 +3488,15 @@ fn debug_collision_lines_project_vanilla_white_stroke_cuboids_and_gates() {
         .expect("vanilla stone state");
     set_lightmap_test_block(&mut world, BlockPos { x: 0, y: 0, z: 0 }, stone);
 
+    let now = Instant::now();
+    let mut cache = DebugCollisionCache::default();
     let mut input = ClientInputState::new(true);
-    assert!(debug_collision_lines(&input, &world).is_empty());
+    assert!(cache.lines(&input, &world, now).is_empty());
     input.set_debug_screen_entry_status(
         DebugScreenEntryId::VisualizeCollisionBoxes,
         crate::debug_entries::DebugScreenEntryStatus::AlwaysOn,
     );
-    let lines = debug_collision_lines(&input, &world);
+    let lines = cache.lines(&input, &world, now);
     assert_eq!(lines.len(), 12);
     assert_eq!(
         lines[0],
@@ -3509,7 +3511,57 @@ fn debug_collision_lines_project_vanilla_white_stroke_cuboids_and_gates() {
     reduced.set_local_player_pose(local_player_pose([0.5, 0.0, 0.5], 0.0, 0.0));
     reduced.insert_decoded_chunk(empty_lightmap_test_chunk(reduced.dimension()));
     set_lightmap_test_block(&mut reduced, BlockPos { x: 0, y: 0, z: 0 }, stone);
-    assert!(debug_collision_lines(&input, &reduced).is_empty());
+    assert!(cache.lines(&input, &reduced, now).is_empty());
+}
+
+#[test]
+fn debug_collision_cache_matches_vanilla_strict_refresh_interval_and_resets() {
+    assert_eq!(DEBUG_COLLISION_REFRESH_INTERVAL, Duration::from_millis(100));
+
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    world.set_local_player_pose(local_player_pose([0.5, 0.0, 0.5], 0.0, 0.0));
+    world.insert_decoded_chunk(empty_lightmap_test_chunk(world.dimension()));
+    let stone = world
+        .registries()
+        .block_state_id_by_name_and_properties("minecraft:stone", &BTreeMap::new())
+        .expect("vanilla stone state");
+    set_lightmap_test_block(&mut world, BlockPos { x: 0, y: 0, z: 0 }, stone);
+
+    let mut input = ClientInputState::new(true);
+    input.set_debug_screen_entry_status(
+        DebugScreenEntryId::VisualizeCollisionBoxes,
+        crate::debug_entries::DebugScreenEntryStatus::AlwaysOn,
+    );
+    let start = Instant::now();
+    let mut cache = DebugCollisionCache::default();
+    assert_eq!(cache.lines(&input, &world, start).len(), 12);
+
+    set_lightmap_test_block(&mut world, BlockPos { x: 1, y: 0, z: 0 }, stone);
+    assert_eq!(
+        cache
+            .lines(&input, &world, start + DEBUG_COLLISION_REFRESH_INTERVAL)
+            .len(),
+        12,
+        "vanilla refreshes only after more than 100 ms"
+    );
+    let refreshed_at = start + DEBUG_COLLISION_REFRESH_INTERVAL + Duration::from_nanos(1);
+    assert_eq!(cache.lines(&input, &world, refreshed_at).len(), 24);
+
+    input.set_debug_screen_entry_status(
+        DebugScreenEntryId::VisualizeCollisionBoxes,
+        crate::debug_entries::DebugScreenEntryStatus::Never,
+    );
+    assert!(cache.lines(&input, &world, refreshed_at).is_empty());
+    set_lightmap_test_block(&mut world, BlockPos { x: 2, y: 0, z: 0 }, stone);
+    input.set_debug_screen_entry_status(
+        DebugScreenEntryId::VisualizeCollisionBoxes,
+        crate::debug_entries::DebugScreenEntryStatus::AlwaysOn,
+    );
+    assert_eq!(
+        cache.lines(&input, &world, refreshed_at).len(),
+        36,
+        "re-enabling creates a fresh renderer cache and refreshes immediately"
+    );
 }
 
 #[test]
@@ -3938,8 +3990,8 @@ fn renderer_frame_commits_debug_gizmos_from_one_water_sample_snapshot() {
         .find("let debug_text_billboards = debug_water_amount_billboards(&debug_water_samples);")
         .expect("pump should project water amount labels from the same samples");
     let lines = runtime_source
-        .find("let debug_lines = debug_collision_lines(input, world);")
-        .expect("pump should project collision debug lines");
+        .find("let debug_lines = debug_collision_cache.lines(input, world, now);")
+        .expect("pump should project cached collision debug lines");
     let frame = runtime_source
         .find("            debug_filled_boxes,\n")
         .expect("RendererFrame should carry debug filled boxes");
