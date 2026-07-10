@@ -8366,3 +8366,17 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   component removal 则压制 warning。native HUD 直接使用已有 permission-level state；focused
   tests 覆盖 wire type id、item class 分类、正反 type/permission/removal、hide-tooltip only-warning
   以及 entity event 26 前后的 native tooltip 切换。
+
+## 2026-07-10：Feature-disabled item tooltip
+
+- [x] `item.disabled` tooltip（P2 world/item-runtime/native）：依据 vanilla 26.1
+  `ItemStack.addDetailsToTooltip` 在 advanced details 后、operator warning 前检查
+  `item.isEnabled(player.level().enabledFeatures())`，以及 `FeatureFlags.DEFAULT_FLAGS =
+  VANILLA_SET`。完整审计 `Items.java`、`Blocks.java` 与 `EntityType.java` 确认 26.1 内建
+  item/block/spawn egg 均未赋予非-vanilla required feature，因此 native 只需以
+  `minecraft:vanilla` 是否启用判定全部 1506 个 item。world 的空白默认 feature state 现在
+  与 vanilla 默认配置一致包含 `minecraft:vanilla`，configuration
+  `UpdateEnabledFeatures` 仍会原样替换集合；item runtime 在明确 disabled 时追加红色
+  `item.disabled`，非 creative hide-tooltip 早退仍不会输出该行。focused tests 覆盖默认
+  VANILLA_SET、feature packet 移除/恢复 vanilla 的 native hovered-item 行，以及独立
+  item-runtime disabled projection；账本已移除该项。

@@ -224,8 +224,8 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   with an in-process integrated server boundary.
 - Complete item-tooltip attribute and warning projection from vanilla
   `ItemStack.forEachModifier` and `ItemStack.addDetailsToTooltip`: include
-  enchantment-provided attribute effects, feature-disabled item warnings, and
-  custom/datapack attribute definition descriptions and sentiments.
+  enchantment-provided attribute effects and custom/datapack attribute
+  definition descriptions and sentiments.
 - Extend F3+I local entity capture across the remaining vanilla
   `addAdditionalSaveData` entity families whose saved state still needs
   non-equine specialized parent-chain classification, remaining owner/target/reference

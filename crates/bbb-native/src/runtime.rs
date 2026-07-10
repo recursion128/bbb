@@ -8881,6 +8881,7 @@ fn hud_inventory_tooltip(
                     .unwrap_or(4.0),
             ),
             gamemaster_permission: world.local_player_has_gamemaster_permission(),
+            item_disabled: !world.is_feature_enabled("minecraft:vanilla"),
             tooltip_tick_rate: Some(world.ticking().tick_rate),
         },
     )?;

@@ -338,6 +338,7 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
                 "painting.random": "Random variant",
                 "item.unbreakable": "Unbreakable",
                 "item.intangible": "Intangible",
+                "item.disabled": "Disabled item",
                 "effect.minecraft.bad_omen": "Bad Omen",
                 "effect.minecraft.night_vision": "Night Vision",
                 "effect.none": "No Effects",
@@ -765,6 +766,23 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
             0xFF_FF_FF,
             false
         )])
+    );
+    assert_eq!(
+        runtime.tooltip_lines_for_stack_with_context(
+            &ItemStackSummary {
+                item_id: Some(0),
+                count: 1,
+                component_patch: DataComponentPatchSummary::default(),
+            },
+            NativeItemTooltipOptions {
+                item_disabled: true,
+                ..NativeItemTooltipOptions::default()
+            },
+        ),
+        Some(vec![
+            name_line("Test Combo", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
+            tooltip_line("Disabled item", TOOLTIP_TEXT_RED),
+        ])
     );
     assert_eq!(
         runtime.tooltip_lines_for_stack(&ItemStackSummary {

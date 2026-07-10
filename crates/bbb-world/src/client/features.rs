@@ -7,12 +7,21 @@ use serde::{Deserialize, Serialize};
 
 use crate::WorldStore;
 
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ClientFeatureState {
     #[serde(default)]
     pub enabled: BTreeSet<String>,
     #[serde(default)]
     pub known_packs: ClientKnownPacksState,
+}
+
+impl Default for ClientFeatureState {
+    fn default() -> Self {
+        Self {
+            enabled: BTreeSet::from(["minecraft:vanilla".to_string()]),
+            known_packs: ClientKnownPacksState::default(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -107,6 +116,10 @@ mod tests {
     #[test]
     fn update_enabled_features_replaces_known_feature_set_and_ignores_unknowns() {
         let mut store = WorldStore::new();
+        assert_eq!(
+            store.enabled_feature_list(),
+            vec!["minecraft:vanilla".to_string()]
+        );
 
         store.apply_update_enabled_features(UpdateEnabledFeatures {
             features: vec![

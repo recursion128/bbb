@@ -9256,6 +9256,21 @@ fn hud_inventory_screen_projects_hovered_item_tooltip_name() {
         })
     );
 
+    world.apply_update_enabled_features(bbb_protocol::packets::UpdateEnabledFeatures {
+        features: vec!["minecraft:trade_rebalance".to_string()],
+    });
+    let screen = hud_inventory_screen(&world, Some(&item_runtime), Some(36), 0.0).unwrap();
+    assert_eq!(
+        screen.tooltip.as_ref().unwrap().lines,
+        vec![
+            tooltip_name_line("Test Combo", TOOLTIP_TEST_WHITE, 0xFF_FF_FF, false),
+            tooltip_plain_line("Disabled item", TOOLTIP_TEST_RED),
+        ]
+    );
+    world.apply_update_enabled_features(bbb_protocol::packets::UpdateEnabledFeatures {
+        features: vec!["minecraft:vanilla".to_string()],
+    });
+
     let mut damaged_stack = item_stack(0, 1);
     damaged_stack.component_patch.max_damage = Some(20);
     damaged_stack.component_patch.damage = Some(3);
@@ -16176,6 +16191,7 @@ fn write_runtime_tooltip_item_assets(root: &Path) {
             "item.minecraft.test_combo": "Test Combo",
             "item.minecraft.test_sword": "Test Sword",
             "block.minecraft.command_block": "Command Block",
+            "item.disabled": "Disabled item",
             "item.durability": "Durability: %s / %s",
             "item.components": "%s component(s)",
             "attribute.modifier.equals.0": "%s %s",

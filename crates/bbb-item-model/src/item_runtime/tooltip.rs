@@ -491,6 +491,7 @@ pub struct NativeItemTooltipOptions<'a> {
     pub player_base_attack_damage: Option<f64>,
     pub player_base_attack_speed: Option<f64>,
     pub gamemaster_permission: bool,
+    pub item_disabled: bool,
     pub tooltip_tick_rate: Option<f32>,
 }
 
@@ -3256,6 +3257,12 @@ impl NativeItemRuntime {
                 shows(COMPONENT_DAMAGE_TYPE_ID),
                 lines,
             );
+        }
+        if options.item_disabled {
+            lines.push(NativeItemTooltipLine::plain(
+                self.language.get_or_key("item.disabled").to_string(),
+                TOOLTIP_TEXT_RED,
+            ));
         }
         if self.should_print_operator_nbt_warning(item_id, component_patch, options) {
             push_operator_nbt_warning_tooltip_lines(&self.language, lines);
