@@ -208,6 +208,20 @@ pub(super) fn vanilla_attribute(attribute_id: i32) -> Option<VanillaAttribute> {
         .and_then(|index| VANILLA_ATTRIBUTES.get(index).copied())
 }
 
+pub(super) fn vanilla_attribute_for_key(key: &str) -> Option<VanillaAttribute> {
+    VANILLA_ATTRIBUTES
+        .iter()
+        .find(|attribute| attribute.key == key)
+        .copied()
+}
+
+pub(super) fn vanilla_attribute_id_for_key(key: &str) -> Option<i32> {
+    VANILLA_ATTRIBUTES
+        .iter()
+        .position(|attribute| attribute.key == key)
+        .and_then(|index| i32::try_from(index).ok())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -238,6 +252,18 @@ mod tests {
                 "attribute.name.scale",
                 VanillaAttributeSentiment::Neutral,
             ))
+        );
+        assert_eq!(
+            vanilla_attribute_for_key("minecraft:attack_damage"),
+            vanilla_attribute(2)
+        );
+        assert_eq!(
+            vanilla_attribute_id_for_key("minecraft:attack_speed"),
+            Some(4)
+        );
+        assert_eq!(
+            vanilla_attribute_id_for_key("minecraft:generic.attack_speed"),
+            None
         );
         assert_eq!(
             vanilla_attribute(34),

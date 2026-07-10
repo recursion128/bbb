@@ -10,6 +10,7 @@ pub(super) fn default_attribute_modifier_summary(
                 .position(|key| key == &modifier.attribute_key)
                 .and_then(|index| i32::try_from(index).ok())
         })
+        .or_else(|| super::attributes::vanilla_attribute_id_for_key(&modifier.attribute_key))
         .unwrap_or(-1);
     AttributeModifierSummary {
         attribute_id,

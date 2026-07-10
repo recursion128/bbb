@@ -174,6 +174,8 @@ const VANILLA_HEIGHTMAP_WORLD_SURFACE_ID: i32 = 1;
 const VANILLA_HEIGHTMAP_OCEAN_FLOOR_ID: i32 = 3;
 const VANILLA_HEIGHTMAP_MOTION_BLOCKING_ID: i32 = 4;
 const VANILLA_HEIGHTMAP_MOTION_BLOCKING_NO_LEAVES_ID: i32 = 5;
+const VANILLA_ATTRIBUTE_ATTACK_DAMAGE_ID: i32 = 2;
+const VANILLA_ATTRIBUTE_ATTACK_SPEED_ID: i32 = 4;
 const VANILLA_TIMELINE_NIGHT_SKY_LIGHT_COLOR: i32 = argb_color(255, 122, 122, 255);
 const VANILLA_WEATHER_SKY_LIGHT_FACTOR: f32 = 0.24;
 const VANILLA_WEATHER_RAIN_ALPHA: f32 = 0.3125;
@@ -8847,6 +8849,17 @@ fn hud_inventory_tooltip(
             locked: map.locked,
         });
     let enchantment_keys = world_enchantment_keys(world);
+    let attribute_keys = world_attribute_keys(world);
+    let attack_damage_id = registry_key_id(
+        attribute_keys.as_deref(),
+        "minecraft:attack_damage",
+        VANILLA_ATTRIBUTE_ATTACK_DAMAGE_ID,
+    );
+    let attack_speed_id = registry_key_id(
+        attribute_keys.as_deref(),
+        "minecraft:attack_speed",
+        VANILLA_ATTRIBUTE_ATTACK_SPEED_ID,
+    );
     let peaceful = world.difficulty().difficulty == "peaceful";
     let lines = item_runtime?.tooltip_lines_for_stack_with_context(
         &slot.item,
@@ -8856,6 +8869,17 @@ fn hud_inventory_tooltip(
             peaceful,
             map_data,
             enchantment_keys: enchantment_keys.as_deref(),
+            attribute_keys: attribute_keys.as_deref(),
+            player_base_attack_damage: Some(
+                world
+                    .local_player_attribute_base_value(attack_damage_id)
+                    .unwrap_or(1.0),
+            ),
+            player_base_attack_speed: Some(
+                world
+                    .local_player_attribute_base_value(attack_speed_id)
+                    .unwrap_or(4.0),
+            ),
             tooltip_tick_rate: Some(world.ticking().tick_rate),
         },
     )?;
@@ -10876,6 +10900,12 @@ fn world_attribute_keys(world: &WorldStore) -> Option<Vec<String>> {
                 .map(|entry| entry.id.clone())
                 .collect()
         })
+}
+
+fn registry_key_id(keys: Option<&[String]>, key: &str, fallback: i32) -> i32 {
+    keys.and_then(|keys| keys.iter().position(|candidate| candidate == key))
+        .and_then(|index| i32::try_from(index).ok())
+        .unwrap_or(fallback)
 }
 
 fn local_player_fishing_rod_casts_item(

@@ -4378,7 +4378,7 @@ fn item_stack_matches_attribute_modifiers_value(
     })
 }
 
-fn effective_attribute_modifiers<'a>(
+pub(super) fn effective_attribute_modifiers<'a>(
     component_patch: Option<&'a DataComponentPatchSummary>,
     default_attribute_modifiers: &'a [AttributeModifierSummary],
 ) -> Option<&'a [AttributeModifierSummary]> {

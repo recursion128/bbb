@@ -1292,14 +1292,14 @@ fn armor_default_attribute_modifiers(
     let slot_id = armor_type_slot_group_id(armor_type)?;
     let mut modifiers = vec![
         ItemDefaultAttributeModifier {
-            attribute_key: "minecraft:generic.armor".to_string(),
+            attribute_key: "minecraft:armor".to_string(),
             modifier_id: modifier_id.clone(),
             amount_bits: f64::from(armor_material_defense(material, armor_type)?).to_bits(),
             operation_id: 0,
             slot_id,
         },
         ItemDefaultAttributeModifier {
-            attribute_key: "minecraft:generic.armor_toughness".to_string(),
+            attribute_key: "minecraft:armor_toughness".to_string(),
             modifier_id: modifier_id.clone(),
             amount_bits: f64::from(armor_material_toughness(material)?).to_bits(),
             operation_id: 0,
@@ -1309,7 +1309,7 @@ fn armor_default_attribute_modifiers(
     let knockback_resistance = armor_material_knockback_resistance(material)?;
     if knockback_resistance > 0.0 {
         modifiers.push(ItemDefaultAttributeModifier {
-            attribute_key: "minecraft:generic.knockback_resistance".to_string(),
+            attribute_key: "minecraft:knockback_resistance".to_string(),
             modifier_id,
             amount_bits: f64::from(knockback_resistance).to_bits(),
             operation_id: 0,
@@ -1390,14 +1390,14 @@ fn attribute_modifier_entries(
 ) -> Vec<ItemDefaultAttributeModifier> {
     vec![
         ItemDefaultAttributeModifier {
-            attribute_key: "minecraft:generic.attack_damage".to_string(),
+            attribute_key: "minecraft:attack_damage".to_string(),
             modifier_id: "minecraft:base_attack_damage".to_string(),
             amount_bits: attack_damage.to_bits(),
             operation_id: 0,
             slot_id: 1,
         },
         ItemDefaultAttributeModifier {
-            attribute_key: "minecraft:generic.attack_speed".to_string(),
+            attribute_key: "minecraft:attack_speed".to_string(),
             modifier_id: "minecraft:base_attack_speed".to_string(),
             amount_bits: attack_speed.to_bits(),
             operation_id: 0,
@@ -2080,14 +2080,14 @@ mod tests {
             amounts("minecraft:iron_sword"),
             vec![
                 (
-                    "minecraft:generic.attack_damage",
+                    "minecraft:attack_damage",
                     "minecraft:base_attack_damage",
                     5.0,
                     0,
                     1,
                 ),
                 (
-                    "minecraft:generic.attack_speed",
+                    "minecraft:attack_speed",
                     "minecraft:base_attack_speed",
                     f64::from(-2.4_f32),
                     0,
@@ -2099,14 +2099,14 @@ mod tests {
             amounts("minecraft:iron_shovel"),
             vec![
                 (
-                    "minecraft:generic.attack_damage",
+                    "minecraft:attack_damage",
                     "minecraft:base_attack_damage",
                     3.5,
                     0,
                     1,
                 ),
                 (
-                    "minecraft:generic.attack_speed",
+                    "minecraft:attack_speed",
                     "minecraft:base_attack_speed",
                     -3.0,
                     0,
@@ -2118,14 +2118,14 @@ mod tests {
             amounts("minecraft:wooden_spear"),
             vec![
                 (
-                    "minecraft:generic.attack_damage",
+                    "minecraft:attack_damage",
                     "minecraft:base_attack_damage",
                     0.0,
                     0,
                     1,
                 ),
                 (
-                    "minecraft:generic.attack_speed",
+                    "minecraft:attack_speed",
                     "minecraft:base_attack_speed",
                     f64::from(1.0_f32 / 0.65_f32) - 4.0,
                     0,
@@ -2185,15 +2185,9 @@ mod tests {
         assert_eq!(
             entries("minecraft:diamond_helmet"),
             vec![
+                ("minecraft:armor", "minecraft:armor.helmet", 3.0, 0, 7,),
                 (
-                    "minecraft:generic.armor",
-                    "minecraft:armor.helmet",
-                    3.0,
-                    0,
-                    7,
-                ),
-                (
-                    "minecraft:generic.armor_toughness",
+                    "minecraft:armor_toughness",
                     "minecraft:armor.helmet",
                     2.0,
                     0,
@@ -2204,22 +2198,16 @@ mod tests {
         assert_eq!(
             entries("minecraft:netherite_chestplate"),
             vec![
+                ("minecraft:armor", "minecraft:armor.chestplate", 8.0, 0, 6,),
                 (
-                    "minecraft:generic.armor",
-                    "minecraft:armor.chestplate",
-                    8.0,
-                    0,
-                    6,
-                ),
-                (
-                    "minecraft:generic.armor_toughness",
+                    "minecraft:armor_toughness",
                     "minecraft:armor.chestplate",
                     3.0,
                     0,
                     6,
                 ),
                 (
-                    "minecraft:generic.knockback_resistance",
+                    "minecraft:knockback_resistance",
                     "minecraft:armor.chestplate",
                     f64::from(0.1_f32),
                     0,
@@ -2230,15 +2218,9 @@ mod tests {
         assert_eq!(
             entries("minecraft:horse_armor"),
             vec![
+                ("minecraft:armor", "minecraft:armor.body", 11.0, 0, 9,),
                 (
-                    "minecraft:generic.armor",
-                    "minecraft:armor.body",
-                    11.0,
-                    0,
-                    9,
-                ),
-                (
-                    "minecraft:generic.armor_toughness",
+                    "minecraft:armor_toughness",
                     "minecraft:armor.body",
                     2.0,
                     0,
@@ -2293,14 +2275,14 @@ mod tests {
             amounts("minecraft:mace"),
             vec![
                 (
-                    "minecraft:generic.attack_damage",
+                    "minecraft:attack_damage",
                     "minecraft:base_attack_damage",
                     5.0,
                     0,
                     1,
                 ),
                 (
-                    "minecraft:generic.attack_speed",
+                    "minecraft:attack_speed",
                     "minecraft:base_attack_speed",
                     f64::from(-3.4_f32),
                     0,
@@ -2312,14 +2294,14 @@ mod tests {
             amounts("minecraft:trident"),
             vec![
                 (
-                    "minecraft:generic.attack_damage",
+                    "minecraft:attack_damage",
                     "minecraft:base_attack_damage",
                     8.0,
                     0,
                     1,
                 ),
                 (
-                    "minecraft:generic.attack_speed",
+                    "minecraft:attack_speed",
                     "minecraft:base_attack_speed",
                     f64::from(-2.9_f32),
                     0,

@@ -1398,6 +1398,16 @@ impl EntityStore {
             .map(vanilla_attribute_value)
     }
 
+    pub(crate) fn attribute_base_value(&self, id: i32, attribute_id: i32) -> Option<f64> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let attributes = self.ecs.get::<&EntityAttributes>(entity).ok()?;
+        attributes
+            .attributes
+            .iter()
+            .find(|attribute| attribute.attribute_id == attribute_id)
+            .map(|attribute| attribute.base)
+    }
+
     pub(crate) fn attribute_has_modifier(
         &self,
         id: i32,

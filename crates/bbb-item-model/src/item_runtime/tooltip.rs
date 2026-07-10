@@ -8,7 +8,10 @@ use bbb_protocol::{
 };
 use bbb_world::RegistrySet;
 
-use super::attributes::{vanilla_attribute, VanillaAttributeSentiment};
+use super::attributes::{
+    vanilla_attribute, vanilla_attribute_for_key, VanillaAttribute, VanillaAttributeSentiment,
+};
+use super::icon_model::effective_attribute_modifiers;
 use super::icon_model::{
     VANILLA_TRIM_MATERIAL_COLORS, VANILLA_TRIM_MATERIAL_KEYS, VANILLA_TRIM_PATTERN_KEYS,
 };
@@ -478,6 +481,9 @@ pub struct NativeItemTooltipOptions<'a> {
     pub peaceful: bool,
     pub map_data: Option<NativeItemMapTooltipData>,
     pub enchantment_keys: Option<&'a [String]>,
+    pub attribute_keys: Option<&'a [String]>,
+    pub player_base_attack_damage: Option<f64>,
+    pub player_base_attack_speed: Option<f64>,
     pub tooltip_tick_rate: Option<f32>,
 }
 
@@ -1913,6 +1919,7 @@ fn format_attribute_modifier_amount(amount: f64) -> String {
 fn push_stack_attribute_modifiers_tooltip_lines(
     language: &LanguageCatalog,
     modifiers: &[AttributeModifierSummary],
+    options: NativeItemTooltipOptions<'_>,
     lines: &mut Vec<NativeItemTooltipLine>,
 ) {
     for (slot_id, slot_key) in EQUIPMENT_SLOT_GROUP_KEYS.iter().copied().enumerate() {
@@ -1927,7 +1934,8 @@ fn push_stack_attribute_modifiers_tooltip_lines(
             if modifier.display_id == 1 {
                 continue;
             }
-            let Some(line) = stack_attribute_modifier_tooltip_line(language, modifier) else {
+            let Some(line) = stack_attribute_modifier_tooltip_line(language, modifier, options)
+            else {
                 continue;
             };
             if first {
@@ -1951,6 +1959,7 @@ fn push_stack_attribute_modifiers_tooltip_lines(
 fn stack_attribute_modifier_tooltip_line(
     language: &LanguageCatalog,
     modifier: &AttributeModifierSummary,
+    options: NativeItemTooltipOptions<'_>,
 ) -> Option<NativeItemTooltipLine> {
     if modifier.display_id == 2 {
         return modifier
@@ -1967,9 +1976,20 @@ fn stack_attribute_modifier_tooltip_line(
             });
     }
 
-    let attribute = vanilla_attribute(modifier.attribute_id)?;
-    let amount = f64::from_bits(modifier.amount_bits);
-    if amount == 0.0 {
+    let attribute = tooltip_attribute(modifier.attribute_id, options.attribute_keys)?;
+    let raw_amount = f64::from_bits(modifier.amount_bits);
+    let (amount, display_with_base) = match modifier.modifier_id.as_str() {
+        "minecraft:base_attack_damage" => options
+            .player_base_attack_damage
+            .map(|base| (raw_amount + base, true))
+            .unwrap_or((raw_amount, false)),
+        "minecraft:base_attack_speed" => options
+            .player_base_attack_speed
+            .map(|base| (raw_amount + base, true))
+            .unwrap_or((raw_amount, false)),
+        _ => (raw_amount, false),
+    };
+    if amount == 0.0 && !display_with_base {
         return None;
     }
     let mut display_amount = if modifier.operation_id == 1 || modifier.operation_id == 2 {
@@ -1979,6 +1999,20 @@ fn stack_attribute_modifier_tooltip_line(
     } else {
         amount
     };
+    if display_with_base {
+        let text = translate_with_two_args(
+            language,
+            &format!("attribute.modifier.equals.{}", modifier.operation_id),
+            &format_attribute_modifier_amount(display_amount),
+            language.get_or_key(attribute.description_key),
+        )
+        .replace("%%", "%");
+        return Some(NativeItemTooltipLine::plain(
+            format!(" {text}"),
+            TOOLTIP_TEXT_DARK_GREEN,
+        ));
+    }
+
     let (key_prefix, tint) = if amount > 0.0 {
         (
             "attribute.modifier.plus",
@@ -2001,6 +2035,19 @@ fn stack_attribute_modifier_tooltip_line(
     )
     .replace("%%", "%");
     Some(NativeItemTooltipLine::plain(text, tint))
+}
+
+fn tooltip_attribute(
+    attribute_id: i32,
+    attribute_keys: Option<&[String]>,
+) -> Option<VanillaAttribute> {
+    match attribute_keys {
+        Some(keys) => usize::try_from(attribute_id)
+            .ok()
+            .and_then(|index| keys.get(index))
+            .and_then(|key| vanilla_attribute_for_key(key)),
+        None => vanilla_attribute(attribute_id),
+    }
 }
 
 fn stack_attribute_modifier_tint(
@@ -3078,11 +3125,12 @@ impl NativeItemRuntime {
             );
         }
         if shows(COMPONENT_ATTRIBUTE_MODIFIERS_TYPE_ID) {
-            push_stack_attribute_modifiers_tooltip_lines(
-                &self.language,
-                &component_patch.attribute_modifiers,
-                lines,
-            );
+            let default_modifiers =
+                self.default_attribute_modifiers_for_resource_id(item_id, options.attribute_keys);
+            let modifiers =
+                effective_attribute_modifiers(Some(component_patch), default_modifiers.as_slice())
+                    .unwrap_or_default();
+            push_stack_attribute_modifiers_tooltip_lines(&self.language, modifiers, options, lines);
         }
         if shows(COMPONENT_INTANGIBLE_PROJECTILE_TYPE_ID) {
             push_intangible_projectile_tooltip_line(

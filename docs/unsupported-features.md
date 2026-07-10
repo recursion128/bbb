@@ -223,11 +223,10 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   owns no integrated server and implements that missing-label branch. Reopen
   with an in-process integrated server boundary.
 - Complete item-tooltip attribute and warning projection from vanilla
-  `ItemStack.forEachModifier`, `ItemAttributeModifiers.Display.Default.apply`,
-  `Item.shouldPrintOpWarning`, and `ItemStack.addDetailsToTooltip`: include
-  enchantment-provided attribute effects, player-aware base attack damage/speed
-  `equals` rows, operator-only block/entity NBT warnings, feature-disabled item
-  warnings, and dynamic-registry attribute names.
+  `ItemStack.forEachModifier`, `Item.shouldPrintOpWarning`, and
+  `ItemStack.addDetailsToTooltip`: include enchantment-provided attribute effects,
+  operator-only block/entity NBT warnings, feature-disabled item warnings, and
+  custom/datapack attribute definition descriptions and sentiments.
 - Extend F3+I local entity capture across the remaining vanilla
   `addAdditionalSaveData` entity families whose saved state still needs
   non-equine specialized parent-chain classification, remaining owner/target/reference

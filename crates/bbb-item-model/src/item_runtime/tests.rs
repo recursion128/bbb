@@ -312,6 +312,7 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
         &assets.join("lang").join("en_us.json"),
         r#"{
                 "item.minecraft.test_combo": "Test Combo",
+                "item.minecraft.test_sword_item": "Test Sword",
                 "item.minecraft.disc_fragment_5": "Disc Fragment",
                 "item.minecraft.disc_fragment_5.desc": "Music Disc - 5",
                 "item.minecraft.painting": "Painting",
@@ -337,6 +338,7 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
                 "attribute.modifier.plus.2": "+%s%% %s",
                 "attribute.modifier.take.0": "-%s %s",
                 "attribute.modifier.take.2": "-%s%% %s",
+                "attribute.modifier.equals.0": "%s %s",
                 "item.modifiers.mainhand": "When in Main Hand:",
                 "item.modifiers.offhand": "When in Off Hand:",
                 "attribute.name.attack_damage": "Attack Damage",
@@ -452,9 +454,9 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
     let runtime = NativeItemRuntime::load(&PackRoots::from_root(&root).unwrap()).unwrap();
 
     assert_eq!(runtime.item_definition_count(), 1);
-    assert_eq!(runtime.item_registry_count(), 3);
+    assert_eq!(runtime.item_registry_count(), 4);
     assert_eq!(runtime.item_equipment_slot_count(), 1);
-    assert_eq!(runtime.item_mining_profile_count(), 0);
+    assert_eq!(runtime.item_mining_profile_count(), 1);
     assert_eq!(
         runtime.item_equipment_slots_by_protocol_id(),
         BTreeMap::from([(0, WorldItemEquipmentSlot::Chest)])
@@ -493,6 +495,7 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
             ),
             (1, vec![MISSING_TEXTURE_ID.to_string()]),
             (2, vec![MISSING_TEXTURE_ID.to_string()]),
+            (3, vec![MISSING_TEXTURE_ID.to_string()]),
         ])
     );
     assert_eq!(
@@ -801,6 +804,7 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
         item_id: Some(0),
         count: 1,
         component_patch: DataComponentPatchSummary {
+            added_type_ids: vec![16],
             attribute_modifiers: vec![
                 stack_attribute_modifier(2, 3.0, 0, 1, 0, None),
                 stack_attribute_modifier(4, -0.2, 2, 1, 0, None),
@@ -840,6 +844,72 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
             tooltip_line("Intangible", TOOLTIP_TEXT_GRAY),
         ])
     );
+    let remapped_attribute_keys = vec![
+        "minecraft:attack_speed".to_string(),
+        "minecraft:attack_damage".to_string(),
+    ];
+    let default_sword_stack = ItemStackSummary {
+        item_id: Some(3),
+        count: 1,
+        component_patch: DataComponentPatchSummary::default(),
+    };
+    assert_eq!(
+        runtime.tooltip_lines_for_stack_with_context(
+            &default_sword_stack,
+            NativeItemTooltipOptions {
+                attribute_keys: Some(&remapped_attribute_keys),
+                player_base_attack_damage: Some(1.0),
+                player_base_attack_speed: Some(4.0),
+                ..NativeItemTooltipOptions::default()
+            },
+        ),
+        Some(vec![
+            name_line("Test Sword", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
+            tooltip_line("", TOOLTIP_TEXT_WHITE),
+            tooltip_line("When in Main Hand:", TOOLTIP_TEXT_GRAY),
+            tooltip_line(" 6 Attack Damage", TOOLTIP_TEXT_DARK_GREEN),
+            tooltip_line(" 1.6 Attack Speed", TOOLTIP_TEXT_DARK_GREEN),
+        ])
+    );
+    assert_eq!(
+        runtime.tooltip_lines_for_stack(&ItemStackSummary {
+            component_patch: DataComponentPatchSummary {
+                added_type_ids: vec![16],
+                attribute_modifiers: vec![stack_attribute_modifier(2, 2.0, 0, 1, 0, None)],
+                ..DataComponentPatchSummary::default()
+            },
+            ..default_sword_stack.clone()
+        }),
+        Some(vec![
+            name_line("Test Sword", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
+            tooltip_line("", TOOLTIP_TEXT_WHITE),
+            tooltip_line("When in Main Hand:", TOOLTIP_TEXT_GRAY),
+            tooltip_line("+2 Attack Damage", TOOLTIP_TEXT_BLUE),
+        ])
+    );
+    for component_patch in [
+        DataComponentPatchSummary {
+            removed_type_ids: vec![16],
+            ..DataComponentPatchSummary::default()
+        },
+        DataComponentPatchSummary {
+            tooltip_hidden_component_type_ids: vec![16],
+            ..DataComponentPatchSummary::default()
+        },
+    ] {
+        assert_eq!(
+            runtime.tooltip_lines_for_stack(&ItemStackSummary {
+                component_patch,
+                ..default_sword_stack.clone()
+            }),
+            Some(vec![name_line(
+                "Test Sword",
+                TOOLTIP_TEXT_WHITE,
+                0xFF_FF_FF,
+                false,
+            )])
+        );
+    }
     assert_eq!(
         runtime.tooltip_lines_for_stack(&ItemStackSummary {
             component_patch: DataComponentPatchSummary {
@@ -4393,10 +4463,10 @@ fn native_item_runtime_resolves_component_condition_predicates() {
         "minecraft:mending".to_string(),
     ];
     let attribute_keys = [
-        "minecraft:generic.attack_damage".to_string(),
-        "minecraft:generic.scale".to_string(),
-        "minecraft:generic.armor".to_string(),
-        "minecraft:generic.attack_speed".to_string(),
+        "minecraft:attack_damage".to_string(),
+        "minecraft:scale".to_string(),
+        "minecraft:armor".to_string(),
+        "minecraft:attack_speed".to_string(),
     ];
     let healing_potion_id = 24;
     let selected_with_trim_keys = |item_id, component_patch| {
@@ -10618,7 +10688,7 @@ fn write_component_condition_fixture(root: &Path) {
             .join("component_condition_damage_attributes.json"),
         r#"{
                 "values": [
-                    "minecraft:generic.attack_damage"
+                    "minecraft:attack_damage"
                 ]
             }"#,
     );
@@ -11572,7 +11642,7 @@ fn write_component_condition_fixture(root: &Path) {
                                         "components": {
                                             "minecraft:attribute_modifiers": [
                                                 {
-                                                    "type": "minecraft:generic.attack_damage",
+                                                    "type": "minecraft:attack_damage",
                                                     "id": "minecraft:test/attack",
                                                     "amount": 2.5,
                                                     "operation": "add_value",
@@ -11582,7 +11652,7 @@ fn write_component_condition_fixture(root: &Path) {
                                                     }
                                                 },
                                                 {
-                                                    "type": "minecraft:generic.scale",
+                                                    "type": "minecraft:scale",
                                                     "id": "minecraft:test/scale",
                                                     "amount": 1.25,
                                                     "operation": "add_multiplied_base",
@@ -13039,7 +13109,7 @@ fn write_component_condition_fixture(root: &Path) {
                         "modifiers": {
                             "contains": [
                                 {
-                                    "attribute": "minecraft:generic.attack_damage",
+                                    "attribute": "minecraft:attack_damage",
                                     "id": "minecraft:test/speed"
                                 }
                             ]
@@ -13075,7 +13145,7 @@ fn write_component_condition_fixture(root: &Path) {
                                                 "modifiers": {
                                                     "contains": [
                                                         {
-                                                            "attribute": "minecraft:generic.attack_damage",
+                                                            "attribute": "minecraft:attack_damage",
                                                             "id": "minecraft:test/speed"
                                                         }
                                                     ]
@@ -13161,7 +13231,7 @@ fn write_component_condition_fixture(root: &Path) {
                                                 "modifiers": {
                                                     "contains": [
                                                         {
-                                                            "attribute": "minecraft:generic.attack_damage",
+                                                            "attribute": "minecraft:attack_damage",
                                                             "id": "minecraft:test/speed"
                                                         }
                                                     ]
@@ -13269,7 +13339,7 @@ fn write_component_condition_fixture(root: &Path) {
                         "modifiers": {
                             "contains": [
                                 {
-                                    "attribute": "minecraft:generic.attack_damage",
+                                    "attribute": "minecraft:attack_damage",
                                     "id": "minecraft:base_attack_damage",
                                     "amount": 5.0,
                                     "operation": "add_value",
@@ -13309,7 +13379,7 @@ fn write_component_condition_fixture(root: &Path) {
                                                 "modifiers": {
                                                     "contains": [
                                                         {
-                                                            "attribute": "minecraft:generic.attack_damage",
+                                                            "attribute": "minecraft:attack_damage",
                                                             "id": "minecraft:base_attack_damage",
                                                             "amount": 5.0,
                                                             "operation": "add_value",
@@ -13355,7 +13425,7 @@ fn write_component_condition_fixture(root: &Path) {
                                                 "modifiers": {
                                                     "contains": [
                                                         {
-                                                            "attribute": "minecraft:generic.attack_damage",
+                                                            "attribute": "minecraft:attack_damage",
                                                             "id": "minecraft:base_attack_damage",
                                                             "amount": 5.0,
                                                             "operation": "add_value",
@@ -13395,7 +13465,7 @@ fn write_component_condition_fixture(root: &Path) {
                         "modifiers": {
                             "contains": [
                                 {
-                                    "attribute": "minecraft:generic.armor",
+                                    "attribute": "minecraft:armor",
                                     "id": "minecraft:armor.helmet",
                                     "amount": 3.0,
                                     "operation": "add_value",
@@ -13429,7 +13499,7 @@ fn write_component_condition_fixture(root: &Path) {
                         "modifiers": {
                             "contains": [
                                 {
-                                    "attribute": "minecraft:generic.attack_speed",
+                                    "attribute": "minecraft:attack_speed",
                                     "id": "minecraft:base_attack_speed",
                                     "amount": {
                                         "min": -3.41,
@@ -16051,6 +16121,7 @@ fn write_item_registry_sources(root: &Path) {
                 public static final Item TEST_COMBO = registerItem("test_combo", new Item.Properties().equippable(EquipmentSlot.CHEST));
                 public static final Item DISC_FRAGMENT_5 = registerItem("disc_fragment_5");
                 public static final Item PAINTING = registerItem("painting");
+                public static final Item TEST_SWORD_ITEM = registerItem("test_sword_item", new Item.Properties().sword(ToolMaterial.IRON, 3.0F, -2.4F));
             }"#,
     );
 }

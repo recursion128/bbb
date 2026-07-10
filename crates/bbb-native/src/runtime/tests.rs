@@ -37,7 +37,9 @@ use winit::{
 const TOOLTIP_TEST_WHITE: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
 const TOOLTIP_TEST_AQUA: [f32; 4] = [85.0 / 255.0, 1.0, 1.0, 1.0];
 const TOOLTIP_TEST_DARK_PURPLE: [f32; 4] = [170.0 / 255.0, 0.0, 170.0 / 255.0, 1.0];
+const TOOLTIP_TEST_GRAY: [f32; 4] = [170.0 / 255.0, 170.0 / 255.0, 170.0 / 255.0, 1.0];
 const TOOLTIP_TEST_DARK_GRAY: [f32; 4] = [85.0 / 255.0, 85.0 / 255.0, 85.0 / 255.0, 1.0];
+const TOOLTIP_TEST_DARK_GREEN: [f32; 4] = [0.0, 170.0 / 255.0, 0.0, 1.0];
 const VANILLA_26_1_PLAYER_ENTITY_TYPE_ID: i32 = 155;
 const VANILLA_26_1_FISHING_BOBBER_ENTITY_TYPE_ID: i32 = 156;
 const SOURCE_WATER_BLOCK_STATE_ID: i32 = 86;
@@ -9301,6 +9303,57 @@ fn hud_inventory_screen_projects_hovered_item_tooltip_name() {
 }
 
 #[test]
+fn hud_inventory_tooltip_uses_local_player_base_attributes_for_default_weapon() {
+    let root = unique_runtime_temp_dir("inventory-default-attribute-tooltip");
+    write_runtime_tooltip_item_assets(&root);
+    let item_runtime =
+        NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    attach_lightmap_local_player(&mut world, 42);
+    assert!(
+        world.apply_update_attributes(bbb_protocol::packets::UpdateAttributes {
+            entity_id: 42,
+            attributes: vec![
+                bbb_protocol::packets::AttributeSnapshot {
+                    attribute_id: 2,
+                    base: 2.5,
+                    modifiers: Vec::new(),
+                },
+                bbb_protocol::packets::AttributeSnapshot {
+                    attribute_id: 4,
+                    base: 5.0,
+                    modifiers: Vec::new(),
+                },
+            ],
+        })
+    );
+    world.apply_set_player_inventory(bbb_protocol::packets::SetPlayerInventory {
+        slot: 0,
+        item: item_stack(1, 1),
+    });
+    assert!(world.open_local_inventory());
+
+    let screen = hud_inventory_screen(&world, Some(&item_runtime), Some(36), 0.0).unwrap();
+    assert_eq!(
+        screen.tooltip,
+        Some(HudInventoryTooltip {
+            slot_id: 36,
+            x: 8,
+            y: 142,
+            lines: vec![
+                tooltip_name_line("Test Sword", TOOLTIP_TEST_WHITE, 0xFF_FF_FF, false),
+                tooltip_plain_line("", TOOLTIP_TEST_WHITE),
+                tooltip_plain_line("When in Main Hand:", TOOLTIP_TEST_GRAY),
+                tooltip_plain_line(" 7.5 Attack Damage", TOOLTIP_TEST_DARK_GREEN),
+                tooltip_plain_line(" 2.6 Attack Speed", TOOLTIP_TEST_DARK_GREEN),
+            ],
+        })
+    );
+
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
 fn hud_inventory_screen_projects_generic_container_layout() {
     let mut world = WorldStore::new();
     world.apply_open_screen(bbb_protocol::packets::OpenScreen {
@@ -16043,8 +16096,13 @@ fn write_runtime_tooltip_item_assets(root: &Path) {
         &assets.join("lang").join("en_us.json"),
         r#"{
             "item.minecraft.test_combo": "Test Combo",
+            "item.minecraft.test_sword": "Test Sword",
             "item.durability": "Durability: %s / %s",
-            "item.components": "%s component(s)"
+            "item.components": "%s component(s)",
+            "attribute.modifier.equals.0": "%s %s",
+            "attribute.name.attack_damage": "Attack Damage",
+            "attribute.name.attack_speed": "Attack Speed",
+            "item.modifiers.mainhand": "When in Main Hand:"
         }"#,
     );
     write_runtime_png(
@@ -16062,6 +16120,7 @@ fn write_runtime_tooltip_item_assets(root: &Path) {
             .join("Items.java"),
         r#"public class Items {
             public static final Item TEST_COMBO = registerItem("test_combo");
+            public static final Item TEST_SWORD = registerItem("test_sword", new Item.Properties().sword(ToolMaterial.IRON, 3.0F, -2.4F));
         }"#,
     );
 }

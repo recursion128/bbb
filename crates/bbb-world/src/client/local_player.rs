@@ -520,6 +520,15 @@ impl WorldStore {
             .unwrap_or(0)
     }
 
+    /// Returns the server-synchronized base value for one local-player
+    /// attribute. Item tooltip projection uses the base rather than the
+    /// modifier-folded value, matching `Player.getAttributeBaseValue` in
+    /// `ItemAttributeModifiers.Display.Default.apply`.
+    pub fn local_player_attribute_base_value(&self, attribute_id: i32) -> Option<f64> {
+        self.local_player_id
+            .and_then(|id| self.entities.attribute_base_value(id, attribute_id))
+    }
+
     /// Vanilla `player.getAirSupply()` read by `Gui.extractAirBubbles`
     /// (Gui.java:889): the synced `Entity.DATA_AIR_SUPPLY_ID` int (data id 1,
     /// see `entities::VANILLA_ENTITY_AIR_SUPPLY_DATA_ID` for the derivation).
@@ -1621,6 +1630,8 @@ mod tests {
             4.0,
         );
         assert_eq!(world.local_player_armor_value(), 9);
+        assert_eq!(world.local_player_attribute_base_value(0), Some(4.0));
+        assert_eq!(world.local_player_attribute_base_value(4), None);
     }
 
     fn spawned_player_world() -> WorldStore {

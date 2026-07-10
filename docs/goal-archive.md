@@ -8336,3 +8336,18 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   `StyledTextRun`，item tooltip 原样投影颜色、粗斜体等 run style，而不再降级为白色纯文本。
   focused tests 覆盖 gold + bold override 的 wire decode 与最终 HUD run；开放账本已改写为
   具体的 attribute source/player context/operator warning/feature gate/dynamic registry 缺口。
+
+## 2026-07-10：Default item attribute tooltip 与 player-aware equals rows
+
+- [x] default `ATTRIBUTE_MODIFIERS` tooltip（P2 pack/world/item-runtime/native）：依据
+  vanilla 26.1 `ItemStack.forEachModifier` 先读取 item prototype 的 component、stack patch
+  对同 type 做 replace/remove，以及 `ItemAttributeModifiers.Display.Default.apply` 对
+  `minecraft:base_attack_damage` / `base_attack_speed` 加 `Player.getAttributeBaseValue` 并输出
+  leading-space、DARK_GREEN `attribute.modifier.equals.*` 行。pack 默认 tool/armor attribute
+  key 已从旧 `generic.*` 更正为 `Attributes.register` 的 26.1 实际 key；item runtime 现在
+  复用 component predicate 的 effective default/patch 选择，按 world `minecraft:attribute`
+  registry 顺序解析 built-in holder id；native HUD 传入同步 local-player attribute base，缺失
+  snapshot 时使用 `Player.createAttributes` 的 damage 1 / speed 4。focused tests 覆盖 remapped
+  registry 下默认铁剑的 `6 Attack Damage` / `1.6 Attack Speed` equals 行、显式 component
+  replacement、remove、`TooltipDisplay` hide、pack tool/armor key 与 world base-not-effective
+  query。剩余 tooltip attribute 工作收敛为 enchantment effects 与 custom/datapack definition。
