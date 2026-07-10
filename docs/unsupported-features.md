@@ -601,6 +601,12 @@ vanilla evidence. Deleting one of these re-opens work already decided against.
 
 ## HUD and configuration
 
+- **F3+I local fishing-bobber save NBT.** Not needed: vanilla
+  `EntityType.FISHING_BOBBER` is `.noSave().noSummon()` (`EntityType.java`),
+  `FishingHook.addAdditionalSaveData` is an empty override that does not call
+  `Projectile.addAdditionalSaveData`, and `Projectile.isPickable` only returns
+  true for `EntityTypeTags.REDIRECTABLE_PROJECTILE`; the 26.1 bootstrap tag
+  contains fireball/wind-charge variants, not `FISHING_BOBBER`.
 - **F3+F4 `GameModeSwitcherScreen` mouse-release path.** It only uses
   `mouseReleased` for `keyDebugModifier.matchesMouse(event)`, and
   `KeyMapping.matchesMouse` is true only for a `MOUSE`-type mapping. bbb's debug
