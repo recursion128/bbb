@@ -10,6 +10,7 @@ use bbb_pack::{
     ParticleSpriteCatalog, SpriteImage,
 };
 use bbb_protocol::codec::Decoder;
+use bbb_protocol::item_types::{VANILLA_ITEM_ENDER_EYE_ID, VANILLA_ITEM_SPLASH_POTION_ID};
 use bbb_protocol::packets::{
     decode_data_component_patch_summary, BlockPos, ClientParticleStatus,
     FireworkExplosionShapeSummary, FireworkExplosionSummary, ItemStackSummary, LevelEvent,
@@ -1248,9 +1249,6 @@ const FOX_EAT_HORIZONTAL_VELOCITY_RANGE: f32 = 0.1;
 const FOX_EAT_VERTICAL_VELOCITY_RANGE: f32 = 0.1;
 const FOX_EAT_VERTICAL_VELOCITY_BASE: f32 = 0.1;
 const FOX_EAT_VERTICAL_VELOCITY_OFFSET: f64 = 0.05;
-// Vanilla 26.1 BuiltInRegistries.ITEM ids from Items.java order.
-const VANILLA_ENDER_EYE_ITEM_ID: i32 = 1129;
-const VANILLA_SPLASH_POTION_ITEM_ID: i32 = 1292;
 const EMPTY_ITEM_COMPONENT_PATCH_OPTION_LEN: usize = 2;
 const ITEM_BREAK_HORIZONTAL_VELOCITY_SCALE: f64 = 0.15;
 const ITEM_BREAK_VERTICAL_VELOCITY_SCALE: f64 = 0.2;

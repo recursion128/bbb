@@ -2892,6 +2892,34 @@ mod tests {
         assert_eq!(catalog.equipment_slot("minecraft:stone"), None);
     }
 
+    #[test]
+    fn checked_in_item_catalog_matches_local_vanilla_sources_when_available() {
+        let Some(home) = std::env::var_os("HOME") else {
+            return;
+        };
+        let source_root = PathBuf::from(home).join("Work/mc-code/sources/26.1");
+        let items = source_root.join("net/minecraft/world/item/Items.java");
+        let item_ids = source_root.join("net/minecraft/references/ItemIds.java");
+        if !items.is_file() || !item_ids.is_file() {
+            return;
+        }
+
+        let catalog = ItemRegistryCatalog::load_from_java_sources(items, item_ids).unwrap();
+        assert_eq!(
+            catalog.len(),
+            bbb_protocol::item_types::VANILLA_ITEM_TYPES.len()
+        );
+        for (id, (resource_id, generated)) in catalog
+            .resource_ids()
+            .iter()
+            .zip(bbb_protocol::item_types::VANILLA_ITEM_TYPES)
+            .enumerate()
+        {
+            assert_eq!(generated.id, id as i32);
+            assert_eq!(generated.resource_id, resource_id);
+        }
+    }
+
     fn write_file(path: &Path, contents: &str) {
         fs::create_dir_all(path.parent().unwrap()).unwrap();
         fs::write(path, contents).unwrap();

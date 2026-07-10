@@ -529,7 +529,7 @@ impl ParticleCommandResolver {
         let mut batch = ParticleSpawnBatch::default();
         self.append_item_break_particles(
             &mut batch,
-            VANILLA_SPLASH_POTION_ITEM_ID,
+            VANILLA_ITEM_SPLASH_POTION_ID,
             Vec3d {
                 x: f64::from(event.pos.x) + 0.5,
                 y: f64::from(event.pos.y),
@@ -608,7 +608,7 @@ impl ParticleCommandResolver {
         let mut batch = ParticleSpawnBatch::default();
         self.append_item_break_particles(
             &mut batch,
-            VANILLA_ENDER_EYE_ITEM_ID,
+            VANILLA_ITEM_ENDER_EYE_ID,
             Vec3d {
                 x: center_x,
                 y,

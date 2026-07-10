@@ -58,6 +58,7 @@ use bbb_protocol::entity_types::{
     VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
     VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID, VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID,
 };
+use bbb_protocol::item_types::VANILLA_ITEM_ELYTRA_ID;
 use bbb_protocol::packets::BlockEntityData;
 use bbb_protocol::packets::{
     AddEntity, AdvancementDisplaySummary, AdvancementFrameType, AdvancementIconSummary,
@@ -100,7 +101,6 @@ use std::{
 };
 use uuid::Uuid;
 
-const VANILLA_26_1_ELYTRA_ITEM_ID: i32 = 14;
 const VANILLA_26_1_CAMEL_ENTITY_TYPE_ID: i32 = 19;
 const VANILLA_26_1_CAMEL_HUSK_ENTITY_TYPE_ID: i32 = 20;
 const VANILLA_26_1_HORSE_ENTITY_TYPE_ID: i32 = 66;
@@ -21074,7 +21074,7 @@ fn creative_flight_toggle_suppresses_same_jump_fall_flying_command() {
     equip_player_slot(
         &mut world,
         VANILLA_PLAYER_CHEST_EQUIPMENT_SLOT,
-        VANILLA_26_1_ELYTRA_ITEM_ID,
+        VANILLA_ITEM_ELYTRA_ID,
         1,
     );
     handle_key_input(
@@ -21111,7 +21111,7 @@ fn jump_key_queues_start_fall_flying_when_airborne_with_elytra() {
     equip_player_slot(
         &mut world,
         VANILLA_PLAYER_CHEST_EQUIPMENT_SLOT,
-        VANILLA_26_1_ELYTRA_ITEM_ID,
+        VANILLA_ITEM_ELYTRA_ID,
         1,
     );
 
@@ -21155,7 +21155,7 @@ fn jump_key_on_ground_with_elytra_only_queues_player_input() {
     equip_player_slot(
         &mut world,
         VANILLA_PLAYER_CHEST_EQUIPMENT_SLOT,
-        VANILLA_26_1_ELYTRA_ITEM_ID,
+        VANILLA_ITEM_ELYTRA_ID,
         1,
     );
 

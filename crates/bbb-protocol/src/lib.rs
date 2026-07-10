@@ -18,6 +18,7 @@ pub mod equipment_slots;
 pub mod frame;
 pub mod game_event_types;
 pub mod ids;
+pub mod item_types;
 pub mod menu_types;
 pub mod mob_effect_types;
 pub mod packet_catalog;

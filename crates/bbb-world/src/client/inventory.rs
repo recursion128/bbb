@@ -1,3 +1,4 @@
+use bbb_protocol::item_types::VANILLA_ITEM_ELYTRA_ID;
 use bbb_protocol::menu_types::{
     VANILLA_MENU_TYPE_ANVIL_ID, VANILLA_MENU_TYPE_BEACON_ID, VANILLA_MENU_TYPE_BLAST_FURNACE_ID,
     VANILLA_MENU_TYPE_BREWING_STAND_ID, VANILLA_MENU_TYPE_CARTOGRAPHY_TABLE_ID,
@@ -212,7 +213,6 @@ const VANILLA_PIERCING_WEAPON_COMPONENT_ID: i32 = 38;
 const VANILLA_SWING_ANIMATION_COMPONENT_ID: i32 = 40;
 const VANILLA_MAP_ID_COMPONENT_ID: i32 = 46;
 const NO_LOCAL_SELECTED_BUNDLE_ITEM_INDEX: i32 = -1;
-const VANILLA_ELYTRA_ITEM_ID: i32 = 14;
 const QUICKCRAFT_TYPE_CHARITABLE: i8 = 0;
 const QUICKCRAFT_TYPE_GREEDY: i8 = 1;
 const QUICKCRAFT_TYPE_CLONE: i8 = 2;
@@ -1134,7 +1134,7 @@ impl InventoryState {
             .iter()
             .find(|slot| slot.slot == PLAYER_CHEST_EQUIPMENT_SLOT)
             .is_some_and(|slot| {
-                slot.item.item_id == Some(VANILLA_ELYTRA_ITEM_ID)
+                slot.item.item_id == Some(VANILLA_ITEM_ELYTRA_ID)
                     && item_stack_is_non_empty(&slot.item)
             })
     }

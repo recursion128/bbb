@@ -751,6 +751,11 @@ vanilla evidence. Deleting one of these re-opens work already decided against.
 - **Custom sound-source enum values.** Vanilla 26.1 `SoundSource` is a closed
   Java enum whose wire value is its declaration ordinal. The generated fixed
   11-entry ordinal/name catalog has no server or datapack extension surface.
+- **Custom item registry definitions.** Vanilla 26.1 item protocol ids come
+  from the fixed client built-in `Items` registration order, not a synchronized
+  server/datapack registry. The generated 1506-entry catalog covers the vanilla
+  mapping; modded clients that change item registration order remain outside
+  the native vanilla-client target.
 - **Accepting malformed or unsupported custom resource-pack declarations.**
   Loaders reject them intentionally.
 

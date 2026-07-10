@@ -31,6 +31,7 @@ use animations::cat_is_lying;
 pub(crate) use animations::ATTACK_SWING_DURATION;
 pub use animations::{EntityClientAnimationState, PolarBearStandingAnimationState};
 pub(crate) use bbb_protocol::entity_types::*;
+pub(crate) use bbb_protocol::item_types::{VANILLA_ITEM_EGG_ID, VANILLA_ITEM_SNOWBALL_ID};
 pub(crate) use components::{
     EntityAttributes, EntityClientAnimations, EntityDamage, EntityEquipment,
     EntityHurtingProjectile, EntityIdentity, EntityLeash, EntityMetadata, EntityMinecartLerp,
@@ -82,11 +83,6 @@ pub(crate) const VANILLA_ARROW_EFFECT_COLOR_DATA_ID: u8 = 11;
 // Vanilla `ThrownTrident.ID_FOIL` (BOOLEAN): ids 8-10 from `AbstractArrow`, then
 // `ThrownTrident` adds `ID_LOYALTY` at 11 and `ID_FOIL` at 12.
 pub(crate) const VANILLA_TRIDENT_FOIL_DATA_ID: u8 = 12;
-/// Vanilla 26.1 `Items.EGG` protocol id from `bbb-pack`'s `Items.java` registry parser.
-pub(crate) const VANILLA_ITEM_EGG_ID: i32 = 1032;
-/// Vanilla 26.1 `Items.SNOWBALL` protocol id from `Items.java` registry order.
-pub(crate) const VANILLA_ITEM_SNOWBALL_ID: i32 = 1017;
-
 /// Vanilla `Attributes.MAX_HEALTH` `RangedAttribute` default value
 /// (`20.0`, Attributes.java:59).
 const VANILLA_DEFAULT_MAX_HEALTH: f64 = 20.0;

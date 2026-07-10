@@ -6472,7 +6472,7 @@ fn level_event_particles_map_vanilla_simple_side_effects() {
     assert_eq!(potion.len(), 108);
     assert_item_break_particle_command(
         &potion.commands[0],
-        VANILLA_SPLASH_POTION_ITEM_ID,
+        VANILLA_ITEM_SPLASH_POTION_ID,
         [10.5, 64.0, -2.5],
         first_item_break_particle_velocity(0),
     );
@@ -6507,7 +6507,7 @@ fn level_event_particles_map_vanilla_simple_side_effects() {
     assert_eq!(instant_potion.len(), 108);
     assert_item_break_particle_command(
         &instant_potion.commands[0],
-        VANILLA_SPLASH_POTION_ITEM_ID,
+        VANILLA_ITEM_SPLASH_POTION_ID,
         [10.5, 64.0, -2.5],
         first_item_break_particle_velocity(0),
     );
@@ -6535,7 +6535,7 @@ fn level_event_particles_map_vanilla_simple_side_effects() {
     assert_eq!(ender_eye.len(), 88);
     assert_item_break_particle_command(
         &ender_eye.commands[0],
-        VANILLA_ENDER_EYE_ITEM_ID,
+        VANILLA_ITEM_ENDER_EYE_ID,
         [10.5, 64.0, -2.5],
         first_item_break_particle_velocity(0),
     );
@@ -7542,11 +7542,11 @@ fn level_event_particles_map_vanilla_simple_side_effects() {
 fn level_event_item_break_particles_use_installed_item_sprite_ids() {
     let mut resolver = test_resolver(0);
     resolver.default_item_particle_sprite_ids.insert(
-        VANILLA_SPLASH_POTION_ITEM_ID,
+        VANILLA_ITEM_SPLASH_POTION_ID,
         vec!["minecraft:item/splash_potion".to_string()],
     );
     resolver.default_item_particle_sprite_ids.insert(
-        VANILLA_ENDER_EYE_ITEM_ID,
+        VANILLA_ITEM_ENDER_EYE_ID,
         vec!["minecraft:item/ender_eye".to_string()],
     );
     let assert_item_sprites = |command: &ParticleSpawnCommand, item_id: i32, sprite_id: &str| {
@@ -7580,7 +7580,7 @@ fn level_event_item_break_particles_use_installed_item_sprite_ids() {
     {
         assert_item_sprites(
             command,
-            VANILLA_SPLASH_POTION_ITEM_ID,
+            VANILLA_ITEM_SPLASH_POTION_ID,
             "minecraft:item/splash_potion",
         );
     }
@@ -7602,7 +7602,7 @@ fn level_event_item_break_particles_use_installed_item_sprite_ids() {
     {
         assert_item_sprites(
             command,
-            VANILLA_SPLASH_POTION_ITEM_ID,
+            VANILLA_ITEM_SPLASH_POTION_ID,
             "minecraft:item/splash_potion",
         );
     }
@@ -7623,7 +7623,7 @@ fn level_event_item_break_particles_use_installed_item_sprite_ids() {
     {
         assert_item_sprites(
             command,
-            VANILLA_ENDER_EYE_ITEM_ID,
+            VANILLA_ITEM_ENDER_EYE_ID,
             "minecraft:item/ender_eye",
         );
     }

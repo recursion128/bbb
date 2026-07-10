@@ -562,7 +562,7 @@ fn open_local_inventory_builds_container_zero_view_from_player_inventory() {
     });
     store.apply_set_player_inventory(ProtocolSetPlayerInventory {
         slot: PLAYER_CHEST_EQUIPMENT_SLOT,
-        item: item_stack(VANILLA_ELYTRA_ITEM_ID, 1),
+        item: item_stack(VANILLA_ITEM_ELYTRA_ID, 1),
     });
     store.apply_set_cursor_item(ProtocolSetCursorItem {
         item: item_stack(99, 1),
@@ -592,7 +592,7 @@ fn open_local_inventory_builds_container_zero_view_from_player_inventory() {
             .find(|slot| slot.slot == 6)
             .unwrap()
             .item,
-        item_stack(VANILLA_ELYTRA_ITEM_ID, 1)
+        item_stack(VANILLA_ITEM_ELYTRA_ID, 1)
     );
 
     let click = store
@@ -986,7 +986,7 @@ fn local_player_has_equipped_elytra_true_for_non_empty_elytra_in_chest_slot() {
 
     store.apply_set_player_inventory(ProtocolSetPlayerInventory {
         slot: PLAYER_CHEST_EQUIPMENT_SLOT,
-        item: item_stack(VANILLA_ELYTRA_ITEM_ID, 1),
+        item: item_stack(VANILLA_ITEM_ELYTRA_ID, 1),
     });
 
     assert!(store.local_player_has_equipped_elytra());
@@ -1005,7 +1005,7 @@ fn local_player_has_equipped_elytra_false_when_elytra_is_in_wrong_slot() {
 
     store.apply_set_player_inventory(ProtocolSetPlayerInventory {
         slot: PLAYER_CHEST_EQUIPMENT_SLOT - 1,
-        item: item_stack(VANILLA_ELYTRA_ITEM_ID, 1),
+        item: item_stack(VANILLA_ITEM_ELYTRA_ID, 1),
     });
 
     assert!(!store.local_player_has_equipped_elytra());
@@ -1023,7 +1023,7 @@ fn local_player_has_equipped_elytra_false_for_empty_or_count_zero_stack() {
 
     store.apply_set_player_inventory(ProtocolSetPlayerInventory {
         slot: PLAYER_CHEST_EQUIPMENT_SLOT,
-        item: item_stack(VANILLA_ELYTRA_ITEM_ID, 0),
+        item: item_stack(VANILLA_ITEM_ELYTRA_ID, 0),
     });
     assert!(!store.local_player_has_equipped_elytra());
 }

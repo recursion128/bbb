@@ -9414,3 +9414,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   ordinal 与名称双 match，并从生成模块 re-export 原公共类型路径。连续/唯一/固定长度、
   enum discriminant、`record`/`player` 特殊名称、查询边界及 regeneration tests 锁定
   生成物；未改变 sound packet wire codec、无效 ordinal 错误或跨 crate 音频行为。
+
+## 2026-07-10：Vanilla item registry catalog generation
+
+- [x] item/block 注册表消费的 item 子项（P1 mechanical vanilla data）：新增
+  `scripts/generate-item-registry-catalog.sh` 与 bbb-pack maintenance example，复用既有
+  `ItemRegistryCatalog` 对 vanilla 26.1 `Items.java` 的完整解析，生成 checked-in 1506 项
+  id/resource/order catalog 与常量。world elytra/egg/snowball、native potion/ender-eye
+  particle 路径删除生产裸数字；同时修正旧 elytra fixture id 14 被误用于生产的问题，
+  正式注册 id 为 863。protocol 连续/唯一/关键顺序测试和 pack parser 对生成目录的 1506
+  项逐项比较锁定来源；未增加 item 行为、component 或资源包功能，block/state catalog
+  仍作为下一独立子项。
