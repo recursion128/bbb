@@ -8914,3 +8914,15 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   与两个 direct ids；native component patch test 从 69 扩展到 70 个 added
   entry，另覆盖空 list 与 unresolved direct-id fallback。非空 direct holder 的
   key 还原仍留在动态 DamageType registry 总账本。
+
+## 2026-07-10：ItemStack banner-pattern provider named holder-set save
+
+- [x] minecraft:provides_banner_patterns 的 named-tag/empty HolderSet 分支（P2
+  protocol + native input）：依据 vanilla 26.1 DataComponents 使用的
+  RegistryCodecs.homogeneousList 与 ByteBufCodecs.holderSet，protocol 将 type id
+  65 完整保留为 ordered BannerPattern registry ids 或规范化 tag；native 对
+  pattern_item/* 等 #tag 与空 direct list 复刻 compact-list 形状，非空 direct
+  ids 安全省略。protocol focused tests 覆盖 no_item_required tag 与 0/42 direct
+  ids；native component patch test 从 70 扩展到 71 个 added entry，另覆盖空
+  list 与 unresolved direct-id fallback。非空 direct holder 的 key 还原仍留在
+  动态 BannerPattern registry 总账本。

@@ -194,6 +194,10 @@ pub struct DataComponentPatchSummary {
     #[serde(default)]
     pub banner_pattern_layers: Vec<BannerPatternLayerSummary>,
     #[serde(default)]
+    pub provides_banner_pattern_registry_ids: Vec<i32>,
+    #[serde(default)]
+    pub provides_banner_pattern_tag: Option<String>,
+    #[serde(default)]
     pub pot_decorations_item_ids: Vec<i32>,
     #[serde(default)]
     pub bees_present: bool,
@@ -1023,6 +1027,11 @@ fn decode_typed_data_component_patch_summary(
             }
             72 => {
                 summary.banner_pattern_layers = decode_banner_pattern_layers_summary(decoder)?;
+            }
+            65 => {
+                let patterns = decode_holder_set_summary(decoder)?;
+                summary.provides_banner_pattern_registry_ids = patterns.registry_ids;
+                summary.provides_banner_pattern_tag = patterns.tag;
             }
             74 => {
                 summary.pot_decorations_item_ids = decode_pot_decorations_item_ids(decoder)?;
@@ -4470,6 +4479,22 @@ mod tests {
     }
 
     #[test]
+    fn decodes_provides_banner_pattern_direct_holders() {
+        let mut payload = Encoder::new();
+        payload.write_var_i32(1);
+        payload.write_var_i32(0);
+        payload.write_var_i32(65);
+        write_holder_set_ids(&mut payload, &[0, 42]);
+
+        let payload = payload.into_inner();
+        let mut decoder = Decoder::new(&payload);
+        let patch = decode_data_component_patch_summary(&mut decoder).unwrap();
+        assert_eq!(patch.provides_banner_pattern_registry_ids, vec![0, 42]);
+        assert_eq!(patch.provides_banner_pattern_tag, None);
+        assert!(decoder.is_empty());
+    }
+
+    #[test]
     fn decodes_profile_and_decorative_data_components() {
         let mut payload = Encoder::new();
         let component_ids = [65, 67, 70, 72, 74, 77];
@@ -4547,6 +4572,7 @@ mod tests {
                         color_id: 11,
                     },
                 ],
+                provides_banner_pattern_tag: Some("minecraft:no_item_required".to_string()),
                 pot_decorations_item_ids: vec![1, 2, 3, 4],
                 bees_present: true,
                 bees_count: 1,

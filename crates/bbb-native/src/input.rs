@@ -4714,6 +4714,7 @@ fn debug_supported_added_component_snbt(
             .ominous_bottle_amplifier
             .filter(|value| (0..=4).contains(value))?
             .to_string(),
+        65 => debug_provides_banner_patterns_component_snbt(patch)?,
         LODESTONE_TRACKER_COMPONENT_TYPE_ID => debug_lodestone_tracker_component_snbt(patch),
         68 => debug_firework_explosion_snbt(&FireworkExplosionSummary {
             shape: patch.firework_explosion_shape?,
@@ -4809,6 +4810,7 @@ fn debug_supported_component_resource_id(type_id: i32) -> Option<&'static str> {
         59 => "minecraft:bucket_entity_data",
         60 => "minecraft:block_entity_data",
         63 => "minecraft:ominous_bottle_amplifier",
+        65 => "minecraft:provides_banner_patterns",
         66 => "minecraft:recipes",
         LODESTONE_TRACKER_COMPONENT_TYPE_ID => "minecraft:lodestone_tracker",
         68 => "minecraft:firework_explosion",
@@ -5290,6 +5292,18 @@ fn debug_damage_resistant_component_snbt(
         return None;
     };
     Some(format!("{{types: {types}}}"))
+}
+
+fn debug_provides_banner_patterns_component_snbt(
+    patch: &bbb_protocol::packets::DataComponentPatchSummary,
+) -> Option<String> {
+    if let Some(tag) = patch.provides_banner_pattern_tag.as_deref() {
+        return Some(debug_snbt_string(&format!("#{tag}")));
+    }
+    patch
+        .provides_banner_pattern_registry_ids
+        .is_empty()
+        .then(|| "[]".to_string())
 }
 
 fn debug_item_stack_template_snbt(

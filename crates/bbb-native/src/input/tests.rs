@@ -8588,12 +8588,12 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
         EquipmentAssetCatalog::default(),
     );
     let patch = DataComponentPatchSummary {
-        added: 70,
+        added: 71,
         added_type_ids: vec![
             0, 1, 2, 3, 4, 5, 7, 10, 12, 17, 18, 19, 21, 22, 23, 25, 26, 27, 29, 30, 31, 33, 34,
-            35, 38, 39, 40, 43, 44, 45, 46, 47, 49, 50, 52, 54, 57, 58, 59, 60, 63, 66, 67, 68, 69,
-            70, 71, 73, 74, 75, 76, 77, 78, 79, 80, 84, 85, 86, 87, 88, 89, 90, 91, 92, 101, 103,
-            104, 107, 108, 109,
+            35, 38, 39, 40, 43, 44, 45, 46, 47, 49, 50, 52, 54, 57, 58, 59, 60, 63, 65, 66, 67, 68,
+            69, 70, 71, 73, 74, 75, 76, 77, 78, 79, 80, 84, 85, 86, 87, 88, 89, 90, 91, 92, 101,
+            103, 104, 107, 108, 109,
         ],
         removed_type_ids: vec![6],
         custom_data: Some(NbtSummaryValue::Compound(vec![
@@ -8848,6 +8848,7 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
         writable_book_pages: vec!["first\npage".to_string(), "second raw".to_string()],
         writable_book_page_filters: vec![None, Some("second filtered".to_string())],
         ominous_bottle_amplifier: Some(3),
+        provides_banner_pattern_tag: Some("minecraft:pattern_item/flower".to_string()),
         lodestone_target: Some(bbb_protocol::packets::LodestoneTargetSummary {
             dimension: "minecraft:overworld".to_string(),
             pos: ProtocolBlockPos {
@@ -9033,6 +9034,7 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
          \"minecraft:block_entity_data\": {Delay: 20s, SpawnCount: 4s, \
          id: \"minecraft:mob_spawner\"}, \
          \"minecraft:ominous_bottle_amplifier\": 3, \
+         \"minecraft:provides_banner_patterns\": \"#minecraft:pattern_item/flower\", \
          \"minecraft:recipes\": [\"minecraft:bread\", \"minecraft:torch\"], \
          \"minecraft:lodestone_tracker\": {target: {dimension: \"minecraft:overworld\", \
          pos: [I; 10, 64, -4]}, tracked: 0b}, \
@@ -9134,6 +9136,18 @@ fn item_stack_snbt_preserves_resolvable_damage_resistant_holder_sets() {
 
     patch.damage_resistant_type_registry_ids = vec![0];
     assert_eq!(debug_damage_resistant_component_snbt(&patch), None);
+}
+
+#[test]
+fn item_stack_snbt_preserves_resolvable_banner_pattern_holder_sets() {
+    let mut patch = DataComponentPatchSummary::default();
+    assert_eq!(
+        debug_provides_banner_patterns_component_snbt(&patch),
+        Some("[]".to_string())
+    );
+
+    patch.provides_banner_pattern_registry_ids = vec![0];
+    assert_eq!(debug_provides_banner_patterns_component_snbt(&patch), None);
 }
 
 #[test]
