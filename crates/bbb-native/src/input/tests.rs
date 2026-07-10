@@ -9041,6 +9041,30 @@ fn item_stack_snbt_omits_registry_backed_components_with_unknown_ids() {
 }
 
 #[test]
+fn item_stack_snbt_omits_components_with_invalid_persistent_integer_ranges() {
+    let stack = ProtocolItemStackSummary {
+        item_id: Some(0),
+        count: 1,
+        component_patch: DataComponentPatchSummary {
+            added: 6,
+            added_type_ids: vec![1, 2, 3, 19, 31, 63],
+            max_stack_size: Some(100),
+            max_damage: Some(0),
+            damage: Some(-1),
+            repair_cost: Some(-1),
+            enchantable_value: Some(0),
+            ominous_bottle_amplifier: Some(5),
+            ..DataComponentPatchSummary::default()
+        },
+    };
+
+    assert_eq!(
+        debug_item_stack_snbt("minecraft:stone", stack.count, Some(&stack), None),
+        "{id: \"minecraft:stone\"}"
+    );
+}
+
+#[test]
 fn shift_f3_i_with_permission_copies_local_dragon_fireball_save_nbt_to_clipboard() {
     let mut input = ClientInputState::new(true);
     let mut world = world_with_debug_player(false);

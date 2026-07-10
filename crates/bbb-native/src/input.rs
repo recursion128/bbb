@@ -4641,9 +4641,12 @@ fn debug_supported_added_component_snbt(
     let resource_id = debug_supported_component_resource_id(type_id)?;
     let value = match type_id {
         0 => debug_nbt_summary_snbt(patch.custom_data.as_ref()?),
-        1 => patch.max_stack_size?.to_string(),
-        2 => patch.max_damage?.to_string(),
-        3 => patch.damage?.to_string(),
+        1 => patch
+            .max_stack_size
+            .filter(|value| (1..=99).contains(value))?
+            .to_string(),
+        2 => patch.max_damage.filter(|value| *value > 0)?.to_string(),
+        3 => patch.damage.filter(|value| *value >= 0)?.to_string(),
         4 => "{}".to_string(),
         5 => debug_use_effects_component_snbt(patch.use_effects?)?,
         7 => debug_range_checked_float_component_snbt(
@@ -4694,7 +4697,10 @@ fn debug_supported_added_component_snbt(
         WRITABLE_BOOK_CONTENT_COMPONENT_TYPE_ID => {
             debug_writable_book_content_component_snbt(patch)
         }
-        63 => patch.ominous_bottle_amplifier?.to_string(),
+        63 => patch
+            .ominous_bottle_amplifier
+            .filter(|value| (0..=4).contains(value))?
+            .to_string(),
         LODESTONE_TRACKER_COMPONENT_TYPE_ID => debug_lodestone_tracker_component_snbt(patch),
         68 => debug_firework_explosion_snbt(&FireworkExplosionSummary {
             shape: patch.firework_explosion_shape?,

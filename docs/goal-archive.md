@@ -8792,3 +8792,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   decorative component test 覆盖 bee/default compound/40/2400；native component
   patch test 扩展到 51 个 added entry，覆盖 HasNectar tag、600 ticks 与 unknown
   EntityType fallback；bees 从剩余 component 总账本移入已支持子集。
+
+## 2026-07-10：ItemStack integer component validation
+
+- [x] 已支持 integer component 的持久化范围校验（P2 native input）：复核
+  vanilla 26.1 `DataComponents` 与 `OminousBottleAmplifier.CODEC`，为
+  max-stack-size 补齐 1..99、max-damage positive、damage/repair-cost
+  non-negative、enchantable positive、ominous-bottle-amplifier 0..4 校验；
+  `MapId.CODEC` 与 `RGB_COLOR_CODEC` 明确仍接受完整 int，不额外收窄。focused
+  test 覆盖六个越界值同时安全省略，既有 51-entry valid projection 保持不变。
