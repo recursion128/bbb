@@ -9425,3 +9425,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   正式注册 id 为 863。protocol 连续/唯一/关键顺序测试和 pack parser 对生成目录的 1506
   项逐项比较锁定来源；未增加 item 行为、component 或资源包功能，block/state catalog
   仍作为下一独立子项。
+
+## 2026-07-10：Vanilla block/state registry consumption cleanup
+
+- [x] item/block 注册表消费的 block/state 子项（P1 mechanical vanilla data）：保留
+  checked-in `bbb-world/data/block_states_26_1.json` 作为 29,873 个 state / 1,168 个 block
+  的唯一权威表，不新增副本；增加按 name+properties 查询 vanilla state id 与 air state
+  id 的公共 API。native destroy/smash particle 路径删除 air=0 生产字面量并查询 embedded
+  report；renderer `TerrainCell::EMPTY` 改用明确的 -1 非注册表 sentinel。registry focused
+  tests 锁定 air 与 grass(false) 查询，未改测试夹具的具体 state 样本，也未增加 block
+  行为、模型或碰撞功能。

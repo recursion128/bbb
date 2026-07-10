@@ -7712,7 +7712,7 @@ fn level_event_destroy_block_particles_use_block_particle_options() {
     let air = resolver.resolve_level_event_particles(
         &LevelEvent {
             event_type: DESTROY_BLOCK_PARTICLES_LEVEL_EVENT,
-            data: AIR_BLOCK_STATE_ID,
+            data: vanilla_air_block_state_id(),
             ..level_event_packet(DESTROY_BLOCK_PARTICLES_LEVEL_EVENT)
         },
         &mut air_random,

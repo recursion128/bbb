@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 const VANILLA_BLOCK_STATES_JSON: &str = include_str!("../../data/block_states_26_1.json");
 static VANILLA_BLOCK_STATES: OnceLock<Arc<Vec<Option<BlockStateInfo>>>> = OnceLock::new();
 static VANILLA_BLOCK_REGISTRY_NAMES: OnceLock<Arc<Vec<String>>> = OnceLock::new();
+static VANILLA_AIR_BLOCK_STATE_ID: OnceLock<i32> = OnceLock::new();
 
 #[derive(Debug, Clone)]
 pub struct BlockStateRegistry {
@@ -85,6 +86,19 @@ impl Default for BlockStateRegistry {
     fn default() -> Self {
         Self::vanilla_26_1()
     }
+}
+
+pub fn vanilla_block_state_id(name: &str, properties: &BTreeMap<String, String>) -> Option<i32> {
+    BlockStateRegistry::vanilla_26_1()
+        .find_by_name_and_properties(name, properties)
+        .map(|state| state.id)
+}
+
+pub fn vanilla_air_block_state_id() -> i32 {
+    *VANILLA_AIR_BLOCK_STATE_ID.get_or_init(|| {
+        vanilla_block_state_id("minecraft:air", &BTreeMap::new())
+            .expect("embedded vanilla block-state registry contains air")
+    })
 }
 
 fn load_vanilla_block_states() -> Vec<Option<BlockStateInfo>> {

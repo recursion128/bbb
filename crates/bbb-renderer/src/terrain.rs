@@ -252,8 +252,10 @@ impl TerrainTransparency {
 }
 
 impl TerrainCell {
+    pub const NO_BLOCK_STATE_ID: i32 = -1;
+
     pub const EMPTY: Self = Self {
-        block_state_id: 0,
+        block_state_id: Self::NO_BLOCK_STATE_ID,
         material: TerrainMaterialClass::Empty,
         fluid: None,
         fluid_texture_indices: [0; 6],

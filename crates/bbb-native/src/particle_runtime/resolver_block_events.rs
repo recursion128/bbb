@@ -50,7 +50,7 @@ impl ParticleCommandResolver {
         context: LevelEventParticleContext,
     ) -> ParticleSpawnBatch {
         let block_state_id = event.data;
-        if block_state_id <= AIR_BLOCK_STATE_ID {
+        if block_state_id < 0 || block_state_id == vanilla_air_block_state_id() {
             return ParticleSpawnBatch::default();
         }
         if !destroy_block_effect_accepts_block_state(block_state_id) {
@@ -170,7 +170,7 @@ impl ParticleCommandResolver {
         };
         let block_state_id = context
             .block_state_id_at_event_pos
-            .unwrap_or(AIR_BLOCK_STATE_ID);
+            .unwrap_or_else(vanilla_air_block_state_id);
         let provider_accepts_spawn = terrain_particle_provider_accepts_block_state(block_state_id);
         let option_state = ParticleOptionRenderState {
             block: Some(ParticleBlockOptionState { block_state_id }),

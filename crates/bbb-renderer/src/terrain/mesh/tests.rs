@@ -8,6 +8,15 @@ use super::super::{
 use super::*;
 
 #[test]
+fn empty_cell_uses_a_non_registry_block_state_sentinel() {
+    assert_eq!(
+        TerrainCell::EMPTY.block_state_id,
+        TerrainCell::NO_BLOCK_STATE_ID
+    );
+    assert!(TerrainCell::NO_BLOCK_STATE_ID < 0);
+}
+
+#[test]
 fn meshes_single_opaque_block_as_six_faces() {
     let mut cells = vec![TerrainCell::EMPTY; 16 * 1 * 16];
     cells[cell_index(1, 0, 2, 1)] = TerrainCell::with_texture(1, TerrainMaterialClass::Opaque, 0);

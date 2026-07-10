@@ -1,6 +1,7 @@
 use bbb_protocol::packets::{
     RegistryData, RegistryDataEntry, RegistryTags, TagNetworkPayload, UpdateTags,
 };
+use std::collections::BTreeMap;
 
 use crate::{RegistryPacketEntry, RegistrySet, WorldStore};
 
@@ -29,6 +30,22 @@ fn loads_vanilla_block_state_registry() {
     assert_eq!(
         registries.block_name_by_registry_id(193),
         Some("minecraft:obsidian")
+    );
+}
+
+#[test]
+fn vanilla_block_state_queries_use_the_embedded_report() {
+    assert_eq!(crate::vanilla_air_block_state_id(), 0);
+    assert_eq!(
+        crate::vanilla_block_state_id(
+            "minecraft:grass_block",
+            &BTreeMap::from([("snowy".to_string(), "false".to_string())]),
+        ),
+        Some(9)
+    );
+    assert_eq!(
+        crate::vanilla_block_state_id("minecraft:missing", &BTreeMap::new()),
+        None
     );
 }
 

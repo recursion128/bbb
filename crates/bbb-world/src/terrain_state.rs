@@ -42,8 +42,9 @@ pub use crate::end_portal_blocks::{
 pub use crate::lectern_books::{is_lectern_block_name, LecternBookModelSourceState};
 pub use crate::position::{BlockPos, ChunkPos};
 pub use crate::registries::{
-    BlockStateInfo, BlockStateRegistry, EnchantmentAttributeModifier, RegistryContentState,
-    RegistryPacket, RegistryPacketEntry, RegistrySet, RegistryTagState,
+    vanilla_air_block_state_id, vanilla_block_state_id, BlockStateInfo, BlockStateRegistry,
+    EnchantmentAttributeModifier, RegistryContentState, RegistryPacket, RegistryPacketEntry,
+    RegistrySet, RegistryTagState,
 };
 pub use crate::shulker_box_blocks::{
     shulker_box_color_for_block_name, ShulkerBoxAnimationStatus, ShulkerBoxColorKind,

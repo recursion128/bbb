@@ -756,6 +756,11 @@ vanilla evidence. Deleting one of these re-opens work already decided against.
   server/datapack registry. The generated 1506-entry catalog covers the vanilla
   mapping; modded clients that change item registration order remain outside
   the native vanilla-client target.
+- **Custom block or block-state registry definitions.** Vanilla 26.1 block and
+  global block-state ids come from the fixed client built-in registration; the
+  checked-in 29,873-state report is the native lookup authority. Modded clients
+  that alter block registration or state definitions remain outside the vanilla
+  client target.
 - **Accepting malformed or unsupported custom resource-pack declarations.**
   Loaders reject them intentionally.
 

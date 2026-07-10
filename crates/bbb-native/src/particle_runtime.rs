@@ -24,16 +24,16 @@ use bbb_renderer::{
 };
 use bbb_world::{
     block_name_has_invisible_render_shape, block_name_is_air,
-    block_name_should_spawn_terrain_particles, AllayDuplicationParticleState,
-    AnimalLoveParticleState, ArrowEffectParticleState, BlockPos as WorldBlockPos,
-    DolphinHappyParticleState, EntityTamingParticleState, FireworkRocketExplosionParticleState,
-    FireworkRocketTrailParticleState, FoxEatParticleState, HoneyBlockParticleState,
-    LevelEventSoundRandomState, LivingEntityDrownParticleState, LivingEntityPoofParticleState,
-    LivingEntityPortalParticleState, OminousItemSpawnerParticleState, RavagerRoarParticleState,
-    SnowballHitParticleState, TakeItemEntityPickupParticleState,
-    TakeItemEntityPickupProjectileModel, TerrainLight, ThrownEggHitParticleState,
-    VaultConnectionParticleState, VillagerParticleKind, VillagerParticleState,
-    WitchMagicParticleState,
+    block_name_should_spawn_terrain_particles, vanilla_air_block_state_id,
+    AllayDuplicationParticleState, AnimalLoveParticleState, ArrowEffectParticleState,
+    BlockPos as WorldBlockPos, DolphinHappyParticleState, EntityTamingParticleState,
+    FireworkRocketExplosionParticleState, FireworkRocketTrailParticleState, FoxEatParticleState,
+    HoneyBlockParticleState, LevelEventSoundRandomState, LivingEntityDrownParticleState,
+    LivingEntityPoofParticleState, LivingEntityPortalParticleState,
+    OminousItemSpawnerParticleState, RavagerRoarParticleState, SnowballHitParticleState,
+    TakeItemEntityPickupParticleState, TakeItemEntityPickupProjectileModel, TerrainLight,
+    ThrownEggHitParticleState, VaultConnectionParticleState, VillagerParticleKind,
+    VillagerParticleState, WitchMagicParticleState,
 };
 
 use crate::{
@@ -1262,7 +1262,6 @@ const COMPOSTER_FILL_VELOCITY_SCALE: f64 = 0.02;
 const SCULK_SHRIEKER_TOP_Y: f64 = 0.5;
 const SCULK_SHRIEK_PARTICLE_COUNT: u32 = 10;
 const SCULK_SHRIEK_DELAY_STEP_TICKS: u32 = 5;
-const AIR_BLOCK_STATE_ID: i32 = 0;
 const SMASH_ATTACK_CENTER_SPEED_SCALE: f64 = 0.2_f32 as f64;
 const SMASH_ATTACK_RING_SPEED_SCALE: f64 = 0.05_f32 as f64;
 const POINTED_DRIPSTONE_DRIP_Y_OFFSET: f64 = 0.25;
