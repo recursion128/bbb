@@ -856,12 +856,17 @@ pub(super) fn entity_shaking(
     match entity_type_id {
         VANILLA_ENTITY_TYPE_ZOMBIE_ID
         | VANILLA_ENTITY_TYPE_HUSK_ID
-        | VANILLA_ENTITY_TYPE_DROWNED_ID => {
-            entity_data_bool(data_values, ZOMBIE_DROWNED_CONVERSION_DATA_ID, false)
-        }
+        | VANILLA_ENTITY_TYPE_DROWNED_ID => entity_data_bool(
+            data_values,
+            ZOMBIE_DROWNED_CONVERSION_DATA_ID,
+            ZOMBIE_DEFAULT_DROWNED_CONVERSION,
+        ),
         VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID => {
-            entity_data_bool(data_values, ZOMBIE_DROWNED_CONVERSION_DATA_ID, false)
-                || entity_data_bool(data_values, ZOMBIE_VILLAGER_CONVERTING_DATA_ID, false)
+            entity_data_bool(
+                data_values,
+                ZOMBIE_DROWNED_CONVERSION_DATA_ID,
+                ZOMBIE_DEFAULT_DROWNED_CONVERSION,
+            ) || entity_data_bool(data_values, ZOMBIE_VILLAGER_CONVERTING_DATA_ID, false)
         }
         VANILLA_ENTITY_TYPE_STRIDER_ID => {
             entity_data_bool(data_values, STRIDER_SUFFOCATING_DATA_ID, false)

@@ -18,6 +18,7 @@ pub enum VanillaEntityMetadataFamily {
     Mob,
     Slime,
     Shulker,
+    Zombie,
     AgeableMob,
     AbstractHorse,
     ArmorStand,
@@ -90,6 +91,9 @@ pub const VANILLA_SLIME_SIZE_DATA_ID: u8 = 16;
 pub const VANILLA_SHULKER_ATTACH_FACE_DATA_ID: u8 = 16;
 pub const VANILLA_SHULKER_PEEK_DATA_ID: u8 = 17;
 pub const VANILLA_SHULKER_COLOR_DATA_ID: u8 = 18;
+pub const VANILLA_ZOMBIE_BABY_DATA_ID: u8 = 16;
+pub const VANILLA_ZOMBIE_SPECIAL_TYPE_DATA_ID: u8 = 17;
+pub const VANILLA_ZOMBIE_DROWNED_CONVERSION_DATA_ID: u8 = 18;
 pub const VANILLA_AGEABLE_MOB_BABY_DATA_ID: u8 = 16;
 pub const VANILLA_AGEABLE_MOB_AGE_LOCKED_DATA_ID: u8 = 17;
 pub const VANILLA_ABSTRACT_HORSE_FLAGS_DATA_ID: u8 = 18;
@@ -148,6 +152,9 @@ pub const VANILLA_SLIME_DEFAULT_SIZE: i32 = 1;
 pub const VANILLA_SHULKER_DEFAULT_ATTACH_FACE_ID: i32 = 0;
 pub const VANILLA_SHULKER_DEFAULT_PEEK: i8 = 0;
 pub const VANILLA_SHULKER_DEFAULT_COLOR: i8 = 16;
+pub const VANILLA_ZOMBIE_DEFAULT_BABY: bool = false;
+pub const VANILLA_ZOMBIE_DEFAULT_SPECIAL_TYPE: i32 = 0;
+pub const VANILLA_ZOMBIE_DEFAULT_DROWNED_CONVERSION: bool = false;
 pub const VANILLA_AGEABLE_MOB_DEFAULT_BABY: bool = false;
 pub const VANILLA_AGEABLE_MOB_DEFAULT_AGE_LOCKED: bool = false;
 pub const VANILLA_ABSTRACT_HORSE_DEFAULT_FLAGS: i8 = 0;
@@ -370,6 +377,27 @@ const SHULKER_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[
         data_id: VANILLA_SHULKER_COLOR_DATA_ID,
         serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
         default: VanillaEntityMetadataDefault::Byte(VANILLA_SHULKER_DEFAULT_COLOR),
+    },
+];
+
+const ZOMBIE_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_BABY_ID",
+        data_id: VANILLA_ZOMBIE_BABY_DATA_ID,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+        default: VanillaEntityMetadataDefault::Boolean(VANILLA_ZOMBIE_DEFAULT_BABY),
+    },
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_SPECIAL_TYPE_ID",
+        data_id: VANILLA_ZOMBIE_SPECIAL_TYPE_DATA_ID,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+        default: VanillaEntityMetadataDefault::Int(VANILLA_ZOMBIE_DEFAULT_SPECIAL_TYPE),
+    },
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_DROWNED_CONVERSION_ID",
+        data_id: VANILLA_ZOMBIE_DROWNED_CONVERSION_DATA_ID,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+        default: VanillaEntityMetadataDefault::Boolean(VANILLA_ZOMBIE_DEFAULT_DROWNED_CONVERSION),
     },
 ];
 
@@ -642,6 +670,14 @@ const SHULKER_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataF
     own_flags: &[],
 };
 
+const ZOMBIE_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamilySchema {
+    family: VanillaEntityMetadataFamily::Zombie,
+    parent: Some(VanillaEntityMetadataFamily::Mob),
+    inherited_field_count: MOB_SCHEMA.inherited_field_count + MOB_FIELDS.len() as u8,
+    own_fields: ZOMBIE_FIELDS,
+    own_flags: &[],
+};
+
 const AGEABLE_MOB_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamilySchema {
     family: VanillaEntityMetadataFamily::AgeableMob,
     parent: Some(VanillaEntityMetadataFamily::Mob),
@@ -713,6 +749,7 @@ pub const fn vanilla_entity_metadata_schema(
         VanillaEntityMetadataFamily::Mob => &MOB_SCHEMA,
         VanillaEntityMetadataFamily::Slime => &SLIME_SCHEMA,
         VanillaEntityMetadataFamily::Shulker => &SHULKER_SCHEMA,
+        VanillaEntityMetadataFamily::Zombie => &ZOMBIE_SCHEMA,
         VanillaEntityMetadataFamily::AgeableMob => &AGEABLE_MOB_SCHEMA,
         VanillaEntityMetadataFamily::AbstractHorse => &ABSTRACT_HORSE_SCHEMA,
         VanillaEntityMetadataFamily::ArmorStand => &ARMOR_STAND_SCHEMA,
@@ -790,6 +827,18 @@ mod tests {
         assert_eq!(shulker.inherited_field_count, 16);
         assert_eq!(
             shulker
+                .own_fields
+                .iter()
+                .map(|field| field.data_id)
+                .collect::<Vec<_>>(),
+            (16..=18).collect::<Vec<_>>()
+        );
+
+        let zombie = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Zombie);
+        assert_eq!(zombie.parent, Some(VanillaEntityMetadataFamily::Mob));
+        assert_eq!(zombie.inherited_field_count, 16);
+        assert_eq!(
+            zombie
                 .own_fields
                 .iter()
                 .map(|field| field.data_id)
@@ -1022,6 +1071,29 @@ mod tests {
                     data_id: 18,
                     serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                     default: VanillaEntityMetadataDefault::Byte(16),
+                },
+            ]
+        );
+        assert_eq!(
+            vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Zombie).own_fields,
+            &[
+                VanillaEntityMetadataFieldSchema {
+                    name: "DATA_BABY_ID",
+                    data_id: 16,
+                    serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+                    default: VanillaEntityMetadataDefault::Boolean(false),
+                },
+                VanillaEntityMetadataFieldSchema {
+                    name: "DATA_SPECIAL_TYPE_ID",
+                    data_id: 17,
+                    serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+                    default: VanillaEntityMetadataDefault::Int(0),
+                },
+                VanillaEntityMetadataFieldSchema {
+                    name: "DATA_DROWNED_CONVERSION_ID",
+                    data_id: 18,
+                    serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+                    default: VanillaEntityMetadataDefault::Boolean(false),
                 },
             ]
         );
@@ -1391,6 +1463,7 @@ mod tests {
             VanillaEntityMetadataFamily::Mob,
             VanillaEntityMetadataFamily::Slime,
             VanillaEntityMetadataFamily::Shulker,
+            VanillaEntityMetadataFamily::Zombie,
             VanillaEntityMetadataFamily::AgeableMob,
             VanillaEntityMetadataFamily::AbstractHorse,
             VanillaEntityMetadataFamily::ArmorStand,

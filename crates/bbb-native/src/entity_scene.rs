@@ -63,6 +63,14 @@ use bbb_world::{
     VANILLA_SHULKER_COLOR_DATA_ID as SHULKER_COLOR_DATA_ID,
     VANILLA_SHULKER_DEFAULT_COLOR as SHULKER_DEFAULT_COLOR,
 };
+// Vanilla `Zombie.DATA_DROWNED_CONVERSION_ID`: `Entity` 0..=7, `LivingEntity` 8..=14,
+// `Mob` 15, then Zombie baby/special-type/drowned-conversion at 16..=18.
+use bbb_world::{
+    VANILLA_ZOMBIE_BABY_DATA_ID as ZOMBIE_BABY_DATA_ID,
+    VANILLA_ZOMBIE_DEFAULT_BABY as ZOMBIE_DEFAULT_BABY,
+    VANILLA_ZOMBIE_DEFAULT_DROWNED_CONVERSION as ZOMBIE_DEFAULT_DROWNED_CONVERSION,
+    VANILLA_ZOMBIE_DROWNED_CONVERSION_DATA_ID as ZOMBIE_DROWNED_CONVERSION_DATA_ID,
+};
 
 use bbb_item_model::{default_player_skin_for_profile_id, NativeItemRuntime};
 use bbb_protocol::entity_types::*;
@@ -94,11 +102,6 @@ const ENTITY_EYE_HEIGHT_PADDING: f32 = 0.01;
 const ENTITY_VIEW_VECTOR_LENGTH: f32 = 2.0;
 const ENTITY_POSITION_POINT_SIZE: f32 = 2.0;
 const MANNEQUIN_DEFAULT_MODEL_CUSTOMIZATION: i8 = PlayerModelPartVisibility::ALL_MASK as i8;
-const ZOMBIE_BABY_DATA_ID: u8 = 16;
-/// Vanilla `Zombie.DATA_DROWNED_CONVERSION_ID` (synced boolean): `Entity` 0..=7,
-/// `LivingEntity` 8..=14, `Mob` 15, `Zombie` baby 16 / special-type 17 /
-/// drowned-conversion 18. Drives `Zombie.isUnderWaterConverting()`.
-const ZOMBIE_DROWNED_CONVERSION_DATA_ID: u8 = 18;
 /// Vanilla `ZombieVillager.DATA_CONVERTING_ID` (synced boolean, id 19, right
 /// after the inherited `Zombie` ids). Drives `ZombieVillager.isConverting()`.
 const ZOMBIE_VILLAGER_CONVERTING_DATA_ID: u8 = 19;

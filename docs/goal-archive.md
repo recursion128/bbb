@@ -9526,3 +9526,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   统一引用 schema；focused tests 锁定继承 offset、serializer/default、attach-face bounds、
   peek animation、color variant、metadata attachment interpolation 与 save-NBT。未改变 peek
   clamp、teleport 插值或渲染算法。
+
+## 2026-07-10：Entity metadata schema phase 10（Zombie）
+
+- [x] entity metadata schema 的 zombie 父链：确认 `Monster`/`PathfinderMob` 不新增
+  accessor，新增 `Mob -> Zombie` family，集中声明 BOOLEAN baby id 16/default false、INT
+  special-type id 17/default 0 与 BOOLEAN drowned-conversion id 18/default false。world baby
+  pick bounds、native zombie-family model scale/drowned conversion overlay 与 F3+I save projection
+  删除本地 ids/defaults，统一引用 schema；focused tests 锁定继承 offset、serializer/default、
+  zombie/drowned/husk/zombie-villager baby model、conversion overlay、pick bounds 和 save-NBT。
+  server-private conversion timer 与 `ZombieVillager` 自有 metadata 留在各自语义边界。

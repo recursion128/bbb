@@ -1487,7 +1487,7 @@ pub(super) fn chested_horse_has_chest(values: &[bbb_protocol::packets::EntityDat
 }
 
 pub(super) fn zombie_baby(values: &[bbb_protocol::packets::EntityDataValue]) -> bool {
-    entity_data_bool(values, ZOMBIE_BABY_DATA_ID, false)
+    entity_data_bool(values, ZOMBIE_BABY_DATA_ID, ZOMBIE_DEFAULT_BABY)
 }
 
 pub(super) fn piglin_baby(values: &[bbb_protocol::packets::EntityDataValue]) -> bool {

@@ -30,6 +30,8 @@ use super::schema::{
     VANILLA_SHULKER_DEFAULT_ATTACH_FACE_ID as SHULKER_DEFAULT_ATTACH_FACE_ID,
     VANILLA_SLIME_DEFAULT_SIZE as SLIME_DEFAULT_SIZE,
     VANILLA_SLIME_SIZE_DATA_ID as SLIME_SIZE_DATA_ID,
+    VANILLA_ZOMBIE_BABY_DATA_ID as ZOMBIE_BABY_DATA_ID,
+    VANILLA_ZOMBIE_DEFAULT_BABY as ZOMBIE_DEFAULT_BABY,
 };
 use super::{
     is_vanilla_boat_type, is_vanilla_minecart_type, EntityClientAnimationState, EntityVec3,
@@ -48,7 +50,6 @@ pub(crate) const ITEM_FRAME_ENTITY_TYPE_IDS: [i32; 2] = [
 ];
 
 const PIGLIN_BABY_DATA_ID: u8 = 17;
-const ZOMBIE_BABY_DATA_ID: u8 = 16;
 const INTERACTION_DATA_WIDTH_ID: u8 = 8;
 const INTERACTION_DATA_HEIGHT_ID: u8 = 9;
 const INTERACTION_DEFAULT_WIDTH: f32 = 1.0;
@@ -882,7 +883,7 @@ pub(crate) fn vanilla_is_baby(entity_type_id: i32, data_values: &[EntityDataValu
         | VANILLA_ENTITY_TYPE_ZOMBIE_ID
         | VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID
         | VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID => {
-            entity_data_bool(data_values, ZOMBIE_BABY_DATA_ID, false)
+            entity_data_bool(data_values, ZOMBIE_BABY_DATA_ID, ZOMBIE_DEFAULT_BABY)
         }
         VANILLA_ENTITY_TYPE_PIGLIN_ID => entity_data_bool(data_values, PIGLIN_BABY_DATA_ID, false),
         VANILLA_ENTITY_TYPE_ARMADILLO_ID
