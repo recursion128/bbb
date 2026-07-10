@@ -187,6 +187,20 @@ pub(super) struct EntityModelCustomGeometrySubmission {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
+pub(super) struct EntityModelPortalSubmission {
+    pub(super) render_type: EntityModelLayerRenderType,
+    pub(super) sky_texture: EntityModelTextureRef,
+    pub(super) portal_texture: EntityModelTextureRef,
+    pub(super) tint: [f32; 4],
+    pub(super) transform: Mat4,
+    pub(super) light: [f32; 2],
+    pub(super) overlay: [f32; 2],
+    pub(super) outline_color: u32,
+    pub(super) order: i32,
+    pub(super) submit_sequence: u32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) struct ElderGuardianParticleRenderInstance {
     pub(crate) transform: Mat4,
     pub(crate) tint: [f32; 4],
@@ -372,6 +386,10 @@ pub(super) struct EntityModelTexturedMeshes {
     /// Vanilla-shaped submit metadata for no-texture custom geometry such as
     /// `EnderDragonRenderer.submitRays`.
     pub(super) custom_submissions: Vec<EntityModelCustomGeometrySubmission>,
+    /// Vanilla-shaped submit metadata for `endPortal` / `endGateway`. These pipelines bind
+    /// `end_sky.png` and `end_portal.png` together, so they cannot use either the single-texture
+    /// entity submission or no-texture custom-geometry metadata.
+    pub(super) portal_submissions: Vec<EntityModelPortalSubmission>,
     pub(super) sorted_main_translucent_draws: Vec<EntityModelTranslucentDrawRange>,
     pub(super) sorted_translucent_draws: Vec<EntityModelTexturedDrawRange>,
     pub(super) sorted_item_entity_draws: Vec<EntityModelTexturedDrawRange>,
@@ -426,6 +444,7 @@ impl EntityModelTexturedMeshes {
             end_gateway: EntityModelPortalMesh::new(),
             submissions: Vec::new(),
             custom_submissions: Vec::new(),
+            portal_submissions: Vec::new(),
             sorted_main_translucent_draws: Vec::new(),
             sorted_translucent_draws: Vec::new(),
             sorted_item_entity_draws: Vec::new(),
@@ -616,6 +635,29 @@ impl EntityModelTexturedMeshes {
         (submission, insertion_index)
     }
 
+    fn record_portal_submission_with_index(
+        &mut self,
+        render_type: EntityModelLayerRenderType,
+        transform: Mat4,
+    ) -> (EntityModelPortalSubmission, usize) {
+        let submission = EntityModelPortalSubmission {
+            render_type,
+            sky_texture: END_SKY_TEXTURE_REF,
+            portal_texture: END_PORTAL_TEXTURE_REF,
+            tint: [1.0; 4],
+            transform,
+            light: self.current_submission_light,
+            overlay: self.current_submission_overlay,
+            outline_color: self.current_submission_outline_color,
+            order: 0,
+            submit_sequence: 0,
+        };
+        let insertion_index = self.next_submission_index;
+        self.next_submission_index += 1;
+        self.portal_submissions.push(submission);
+        (submission, insertion_index)
+    }
+
     fn sorted_upload_key(
         &self,
         submission: EntityModelRenderSubmission,
@@ -662,6 +704,26 @@ impl EntityModelTexturedMeshes {
     fn custom_geometry_draw_key(
         &self,
         submission: EntityModelCustomGeometrySubmission,
+        insertion_index: usize,
+    ) -> Option<EntityModelSubmitSortKey> {
+        let camera_position = self.sort_camera_position?;
+        let position = submission.transform.transform_point3(Vec3::ZERO);
+        let camera = Vec3::from_array(camera_position);
+        let distance_sq = (position - camera).length_squared();
+        Some(EntityModelSubmitSortKey {
+            order: submission.order,
+            distance_sq: if distance_sq.is_finite() {
+                distance_sq
+            } else {
+                0.0
+            },
+            insertion_index,
+        })
+    }
+
+    fn portal_draw_key(
+        &self,
+        submission: EntityModelPortalSubmission,
         insertion_index: usize,
     ) -> Option<EntityModelSubmitSortKey> {
         let camera_position = self.sort_camera_position?;
@@ -2704,15 +2766,17 @@ pub(in crate::entity_models) fn render_end_portal_block_model(
         EndPortalModelKind::EndPortal => EntityModelLayerRenderType::EndPortal,
         EndPortalModelKind::EndGateway => EntityModelLayerRenderType::EndGateway,
     };
+    let cube_transform = end_portal_block_root_transform(instance, kind);
+    let (submission, insertion_index) =
+        meshes.record_portal_submission_with_index(render_type, cube_transform);
     if let (Some(sky), Some(portal)) = (
-        entity_model_texture_atlas_entry(atlas, END_SKY_TEXTURE_REF),
-        entity_model_texture_atlas_entry(atlas, END_PORTAL_TEXTURE_REF),
+        entity_model_texture_atlas_entry(atlas, submission.sky_texture),
+        entity_model_texture_atlas_entry(atlas, submission.portal_texture),
     ) {
-        let cube_transform = end_portal_block_root_transform(instance, kind);
-        emit_end_portal_custom_submission(
+        emit_end_portal_submission(
             meshes,
-            render_type,
-            cube_transform,
+            submission,
+            insertion_index,
             faces,
             sky.uv,
             portal.uv,
@@ -2738,32 +2802,25 @@ fn end_portal_block_root_transform(
     }
 }
 
-fn emit_end_portal_custom_submission(
+fn emit_end_portal_submission(
     meshes: &mut EntityModelTexturedMeshes,
-    render_type: EntityModelLayerRenderType,
-    transform: Mat4,
+    submission: EntityModelPortalSubmission,
+    insertion_index: usize,
     faces: [EndPortalModelFace; 2],
     sky_uv: EntityModelUvRect,
     portal_uv: EntityModelUvRect,
 ) {
-    let (submission, insertion_index) =
-        meshes.record_custom_submission_with_index(EntityModelCustomGeometrySubmission {
-            render_type,
-            transform,
-            order: 0,
-            submit_sequence: 0,
-        });
     let mut mesh = EntityModelPortalMesh::new();
     append_end_portal_cube_mesh(&mut mesh, submission.transform, faces, sky_uv, portal_uv);
     let index_count =
         u32::try_from(mesh.indices.len()).expect("end portal cube index count fits in u32");
-    let index_start = match render_type {
+    let index_start = match submission.render_type {
         EntityModelLayerRenderType::EndPortal => append_portal_mesh(&mut meshes.end_portal, mesh),
         EntityModelLayerRenderType::EndGateway => append_portal_mesh(&mut meshes.end_gateway, mesh),
-        _ => unreachable!("end portal custom submission render type"),
+        _ => unreachable!("end portal submission render type"),
     };
-    if let Some(sort_key) = meshes.custom_geometry_draw_key(submission, insertion_index) {
-        meshes.push_portal_draw_range(render_type, sort_key, index_start, index_count);
+    if let Some(sort_key) = meshes.portal_draw_key(submission, insertion_index) {
+        meshes.push_portal_draw_range(submission.render_type, sort_key, index_start, index_count);
     }
 }
 

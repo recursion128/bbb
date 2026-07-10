@@ -13,6 +13,20 @@ fn atlas_with_portal_textures() -> EntityModelTextureAtlasLayout {
     build_entity_model_texture_atlas(&images).unwrap().0
 }
 
+fn atlas_with_portal_texture_presence(
+    include_sky: bool,
+    include_portal: bool,
+) -> EntityModelTextureAtlasLayout {
+    let mut images = vec![blank_texture(END_GATEWAY_BEAM_TEXTURE_REF)];
+    if include_sky {
+        images.push(blank_texture(END_SKY_TEXTURE_REF));
+    }
+    if include_portal {
+        images.push(blank_texture(END_PORTAL_TEXTURE_REF));
+    }
+    build_entity_model_texture_atlas(&images).unwrap().0
+}
+
 fn blank_texture(texture: EntityModelTextureRef) -> EntityModelTextureImage {
     EntityModelTextureImage::new(
         texture,
@@ -48,7 +62,11 @@ fn end_portal_cube_uses_vanilla_y_axis_faces_and_transform() {
         },
         [2.0, 3.0, 4.0],
         0.0,
-    );
+    )
+    .with_light_coords((5_u32 << 4) | (12_u32 << 20))
+    .with_white_overlay_progress(0.8)
+    .with_has_red_overlay(true)
+    .with_outline_color(0xFF12_3456);
 
     let meshes = entity_model_textured_meshes(&[instance], &atlas);
 
@@ -72,9 +90,26 @@ fn end_portal_cube_uses_vanilla_y_axis_faces_and_transform() {
         .fold(f32::NEG_INFINITY, f32::max);
     assert!((min_y - 3.375).abs() < 1.0e-6);
     assert!((max_y - 3.75).abs() < 1.0e-6);
+    assert!(meshes.custom_submissions.is_empty());
+    assert_eq!(meshes.portal_submissions.len(), 1);
+    let submission = meshes.portal_submissions[0];
     assert_eq!(
-        meshes.custom_submissions[0].render_type.vanilla_name(),
-        "end_portal"
+        submission.render_type,
+        EntityModelLayerRenderType::EndPortal
+    );
+    assert_eq!(submission.render_type.vanilla_name(), "end_portal");
+    assert_eq!(submission.sky_texture, END_SKY_TEXTURE_REF);
+    assert_eq!(submission.portal_texture, END_PORTAL_TEXTURE_REF);
+    assert_eq!(submission.tint, [1.0; 4]);
+    assert_eq!(submission.light, instance.render_state.shader_light());
+    assert_eq!(submission.overlay, instance.render_state.overlay_coords());
+    assert_eq!(submission.outline_color, 0xFF12_3456);
+    assert_eq!((submission.order, submission.submit_sequence), (0, 0));
+    assert_eq!(
+        submission.transform,
+        Mat4::from_translation(Vec3::new(2.0, 3.0, 4.0))
+            * Mat4::from_translation(Vec3::new(0.0, 0.375, 0.0))
+            * Mat4::from_scale(Vec3::new(1.0, 0.375, 1.0))
     );
 }
 
@@ -110,10 +145,79 @@ fn end_gateway_cube_uses_unit_cube_faces_without_beam_when_inactive() {
         .fold(f32::NEG_INFINITY, f32::max);
     assert!((min_y - 3.0).abs() < 1.0e-6);
     assert!((max_y - 4.0).abs() < 1.0e-6);
+    assert!(meshes.custom_submissions.is_empty());
+    assert_eq!(meshes.portal_submissions.len(), 1);
+    let submission = meshes.portal_submissions[0];
     assert_eq!(
-        meshes.custom_submissions[0].render_type.vanilla_name(),
-        "end_gateway"
+        submission.render_type,
+        EntityModelLayerRenderType::EndGateway
     );
+    assert_eq!(submission.render_type.vanilla_name(), "end_gateway");
+    assert_eq!(submission.sky_texture, END_SKY_TEXTURE_REF);
+    assert_eq!(submission.portal_texture, END_PORTAL_TEXTURE_REF);
+    assert_eq!(submission.tint, [1.0; 4]);
+    assert_eq!(submission.light, instance.render_state.shader_light());
+    assert_eq!(submission.overlay, instance.render_state.overlay_coords());
+    assert_eq!(submission.outline_color, 0);
+    assert_eq!((submission.order, submission.submit_sequence), (0, 0));
+    assert_eq!(
+        submission.transform,
+        Mat4::from_translation(Vec3::new(2.0, 3.0, 4.0))
+    );
+}
+
+#[test]
+fn end_portal_submission_survives_each_missing_atlas_texture_combination() {
+    for (include_sky, include_portal) in [(false, true), (true, false), (false, false)] {
+        let atlas = atlas_with_portal_texture_presence(include_sky, include_portal);
+        for (kind, render_type) in [
+            (
+                EndPortalModelKind::EndPortal,
+                EntityModelLayerRenderType::EndPortal,
+            ),
+            (
+                EndPortalModelKind::EndGateway,
+                EntityModelLayerRenderType::EndGateway,
+            ),
+        ] {
+            let instance = EntityModelInstance::new(
+                -1,
+                EntityModelKind::EndPortalBlock {
+                    kind,
+                    faces: portal_faces(),
+                },
+                [2.0, 3.0, 4.0],
+                0.0,
+            )
+            .with_light_coords((4_u32 << 4) | (11_u32 << 20))
+            .with_white_overlay_progress(0.6)
+            .with_has_red_overlay(true)
+            .with_outline_color(0xFFAB_CDEF);
+
+            let meshes = entity_model_textured_meshes(&[instance], &atlas);
+
+            assert_eq!(
+                meshes.portal_submissions.len(),
+                1,
+                "submission must survive {kind:?}, include_sky={include_sky}, include_portal={include_portal}"
+            );
+            let submission = meshes.portal_submissions[0];
+            assert_eq!(submission.render_type, render_type);
+            assert_eq!(submission.sky_texture, END_SKY_TEXTURE_REF);
+            assert_eq!(submission.portal_texture, END_PORTAL_TEXTURE_REF);
+            assert_eq!(submission.tint, [1.0; 4]);
+            assert_eq!(submission.light, instance.render_state.shader_light());
+            assert_eq!(submission.overlay, instance.render_state.overlay_coords());
+            assert_eq!(submission.outline_color, 0xFFAB_CDEF);
+            assert_eq!((submission.order, submission.submit_sequence), (0, 0));
+            assert!(meshes.custom_submissions.is_empty());
+            assert!(meshes.end_portal.vertices.is_empty());
+            assert!(meshes.end_portal.indices.is_empty());
+            assert!(meshes.end_gateway.vertices.is_empty());
+            assert!(meshes.end_gateway.indices.is_empty());
+            assert!(meshes.sorted_main_translucent_draws.is_empty());
+        }
+    }
 }
 
 #[test]
@@ -189,7 +293,7 @@ fn end_portal_portal_draws_sort_with_camera() {
     assert_eq!(meshes.sorted_main_translucent_draws.len(), 1);
     let EntityModelTranslucentDrawRange::Portal(draw) = meshes.sorted_main_translucent_draws[0]
     else {
-        panic!("end portal should sort as portal custom geometry");
+        panic!("end portal should sort as portal texture-backed geometry");
     };
     assert_eq!(draw.render_type, EntityModelLayerRenderType::EndPortal);
     assert_eq!(draw.index_start, 0);

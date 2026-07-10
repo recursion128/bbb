@@ -138,7 +138,9 @@ Submission surfaces:
 
 - Add renderer submission surfaces for generic name-tag text, sign/display text,
   and block-feature submissions, then wire their draw ordering into vanilla's
-  `order(1).submitText` phase.
+  `order(1).submitText` phase. Texture-backed special geometry added by these
+  surfaces must record complete submission metadata before atlas lookup rather
+  than reuse the no-texture custom-geometry path.
 
 Living-entity render state:
 
