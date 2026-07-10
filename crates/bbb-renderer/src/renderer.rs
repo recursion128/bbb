@@ -89,7 +89,8 @@ use crate::{
     player_skin::{DynamicPlayerSkinImage, DynamicPlayerTextureImage},
     selection::{
         create_chunk_border_always_on_top_pipeline, create_selection_outline_gpu,
-        create_selection_pipeline, SelectionOutline, SelectionOutlineGpu,
+        create_selection_pipeline, create_translucent_debug_line_pipeline, sanitize_debug_lines,
+        DebugLine, SelectionOutline, SelectionOutlineGpu,
     },
     sky::{
         create_celestial_atlas_gpu, create_celestial_bind_group_layout, create_celestial_gpu,
@@ -258,6 +259,8 @@ pub struct Renderer {
     pub(super) frame_debug_filled_box_indices: FrameDataBuffer,
     pub(super) frame_debug_text_vertices: FrameDataBuffer,
     pub(super) frame_debug_text_indices: FrameDataBuffer,
+    pub(super) frame_debug_line_opaque_vertices: FrameDataBuffer,
+    pub(super) frame_debug_line_translucent_vertices: FrameDataBuffer,
     pub(super) frame_item_entity_vertices: FrameDataBuffer,
     pub(super) frame_hud_vertices: FrameDataBuffer,
     pub(super) weather_pipeline: wgpu::RenderPipeline,
@@ -270,6 +273,7 @@ pub struct Renderer {
     pub(super) item_model_glint_pipeline: wgpu::RenderPipeline,
     pub(super) hud_item_glint_pipeline: wgpu::RenderPipeline,
     pub(super) selection_pipeline: wgpu::RenderPipeline,
+    pub(super) translucent_debug_line_pipeline: wgpu::RenderPipeline,
     pub(super) chunk_border_always_on_top_pipeline: wgpu::RenderPipeline,
     pub(super) lightmap_pipeline: wgpu::RenderPipeline,
     pub(super) lightmap: LightmapGpu,
@@ -438,6 +442,7 @@ pub struct Renderer {
     pub(super) entity_target_outline: Option<SelectionOutlineGpu>,
     pub(super) debug_filled_boxes: Vec<DebugFilledBox>,
     pub(super) debug_text_billboards: Vec<DebugTextBillboard>,
+    pub(super) debug_lines: Vec<DebugLine>,
     pub(super) hud_crosshair: Option<HudSpriteGpu>,
     pub(super) hud_hotbar: Option<HudSpriteGpu>,
     pub(super) hud_hotbar_selection: Option<HudSpriteGpu>,
@@ -1130,6 +1135,8 @@ impl Renderer {
         );
         let selection_pipeline =
             create_selection_pipeline(&device, format, &terrain_bind_group_layout);
+        let translucent_debug_line_pipeline =
+            create_translucent_debug_line_pipeline(&device, format, &terrain_bind_group_layout);
         let chunk_border_always_on_top_pipeline =
             create_chunk_border_always_on_top_pipeline(&device, format, &terrain_bind_group_layout);
         let entity_outline_bind_group_layout = create_entity_outline_bind_group_layout(&device);
@@ -1358,6 +1365,12 @@ impl Renderer {
             ),
             frame_debug_text_vertices: FrameDataBuffer::vertex("bbb-debug-text-frame-vertices"),
             frame_debug_text_indices: FrameDataBuffer::index("bbb-debug-text-frame-indices"),
+            frame_debug_line_opaque_vertices: FrameDataBuffer::vertex(
+                "bbb-debug-line-opaque-frame-vertices",
+            ),
+            frame_debug_line_translucent_vertices: FrameDataBuffer::vertex(
+                "bbb-debug-line-translucent-frame-vertices",
+            ),
             frame_item_entity_vertices: FrameDataBuffer::vertex("bbb-item-entity-frame-vertices"),
             frame_hud_vertices: FrameDataBuffer::vertex("bbb-hud-frame-vertices"),
             weather_pipeline,
@@ -1370,6 +1383,7 @@ impl Renderer {
             item_model_glint_pipeline,
             hud_item_glint_pipeline,
             selection_pipeline,
+            translucent_debug_line_pipeline,
             chunk_border_always_on_top_pipeline,
             lightmap_pipeline,
             lightmap,
@@ -1527,6 +1541,7 @@ impl Renderer {
             entity_target_outline: None,
             debug_filled_boxes: Vec::new(),
             debug_text_billboards: Vec::new(),
+            debug_lines: Vec::new(),
             hud_crosshair: None,
             hud_hotbar: None,
             hud_hotbar_selection: None,
@@ -1860,6 +1875,12 @@ impl Renderer {
     /// entries are discarded; an empty vector clears the previous frame.
     pub fn set_debug_text_billboards(&mut self, billboards: Vec<DebugTextBillboard>) {
         self.debug_text_billboards = sanitize_debug_text_billboards(billboards);
+    }
+
+    /// Replaces this frame's gizmo line submissions. Opaque and translucent
+    /// lines are grouped into their matching vanilla depth-write pipelines.
+    pub fn set_debug_lines(&mut self, lines: Vec<DebugLine>) {
+        self.debug_lines = sanitize_debug_lines(lines);
     }
 
     pub fn set_selection_outline(&mut self, outline: Option<SelectionOutline>) {

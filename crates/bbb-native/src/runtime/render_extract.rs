@@ -6,7 +6,7 @@
 //! effects; everything GPU-facing stays in bbb-renderer.
 
 use bbb_renderer::{
-    BlockDestroyOverlay, DebugFilledBox, DebugTextBillboard, EntityModelInstance,
+    BlockDestroyOverlay, DebugFilledBox, DebugLine, DebugTextBillboard, EntityModelInstance,
     FirstPersonMapBackgroundSurface, FirstPersonMapBackgroundTexture, FirstPersonPlayerArm,
     HudActionBarText, HudAirSupply, HudBlockItemModel, HudBossBar, HudBossBarColor,
     HudBossBarOverlay, HudDebugOptionsScreen, HudDebugOverlay, HudFoodEffect, HudInventoryScreen,
@@ -846,6 +846,7 @@ pub(crate) struct RendererFrame {
     pub(crate) entity_target_outline: Option<SelectionOutline>,
     pub(crate) debug_filled_boxes: Vec<DebugFilledBox>,
     pub(crate) debug_text_billboards: Vec<DebugTextBillboard>,
+    pub(crate) debug_lines: Vec<DebugLine>,
     pub(crate) block_destroy_overlays: Vec<BlockDestroyOverlay>,
 }
 
@@ -948,5 +949,6 @@ pub(crate) fn apply_renderer_frame(renderer: &mut Renderer, frame: RendererFrame
     renderer.set_entity_target_outline(frame.entity_target_outline);
     renderer.set_debug_filled_boxes(frame.debug_filled_boxes);
     renderer.set_debug_text_billboards(frame.debug_text_billboards);
+    renderer.set_debug_lines(frame.debug_lines);
     renderer.set_block_destroy_overlays(frame.block_destroy_overlays);
 }

@@ -8102,3 +8102,20 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   sanitize、居中/left-adjust、glyph UV/坐标/RGBA/full-bright、opaque/translucent
   顺序、pipeline state/WGSL 创建、stale clear、既有 item/particle 回归、水量
   文本与 frame/step wiring。
+
+## 2026-07-10：Debug gizmo lines 与 block collision boxes
+
+- [x] `minecraft:visualize_collision_boxes` 的方块碰撞 shape stroke 子切片
+  （P2 world/native/renderer）：依据 vanilla 26.1 `CollisionBoxRenderer`、
+  `CollisionGetter.getCollisions`、`BlockCollisions`、`CuboidGizmo.emit`、
+  `DrawableGizmoPrimitives.renderLines` 与 `RenderPipelines.LINES`，world 从活动相机
+  实体 bounds 膨胀 6 格的查询区域收集相交 block collision shape 的全部 component
+  AABB；native 按 vanilla 顺序投影每个 cuboid 的 12 条白色 2.5px stroke。renderer
+  增加通用逐帧 `DebugLine` surface，按 alpha 分入 opaque depth-write 与 translucent
+  no-depth-write pipeline，使用 view-offset-Z、fog、screen-space width，并在相机近裁面
+  0.05 处截断线段；输出进入 item-entity target 并参与 transparency composite。
+  tests 覆盖 player/camera gate、膨胀范围、slab/full-block shape、cuboid 边顺序、
+  sanitize/stale clear、近裁剪、alpha pipeline 分组、RendererFrame wiring 与真实离屏
+  frame readback。vanilla `getEntityCollisions` 的实体 shape、
+  `VoxelShape.toAabbs()` union coalescing 与 100ms refresh cache 仍在 unsupported
+  ledger，未将整个 entry 标记完成。

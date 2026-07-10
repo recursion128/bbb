@@ -23,6 +23,7 @@ use crate::{
         ParticleAtlasDrawRange, ParticlePipelineVertexBatch, ParticleTextureAtlasKind,
         ParticleVertexBatches,
     },
+    selection::debug_line_vertex_batches,
     weather::{build_lightning_mesh, build_weather_mesh},
     world_border::build_world_border_mesh,
     Renderer,
@@ -85,6 +86,7 @@ struct FrameDrawStats {
     entity_model_draw_calls: u64,
     debug_filled_box_draw_calls: u64,
     debug_text_draw_calls: u64,
+    debug_line_draw_calls: u64,
     outline_composite_draw_calls: u64,
     transparency_combine_draw_calls: u64,
     transparency_blit_draw_calls: u64,
@@ -1178,15 +1180,32 @@ impl Renderer {
     }
 
     fn item_entity_line_target_pass(
-        &self,
+        &mut self,
         encoder: &mut wgpu::CommandEncoder,
         stats: &mut FrameDrawStats,
     ) {
+        let debug_line_batches = self
+            .camera_pose
+            .map_or_else(Default::default, |camera_pose| {
+                debug_line_vertex_batches(&self.debug_lines, camera_pose)
+            });
+        let has_opaque_debug_lines = self.frame_debug_line_opaque_vertices.upload(
+            &self.device,
+            &self.queue,
+            bytemuck::cast_slice(&debug_line_batches.opaque),
+        );
+        let has_translucent_debug_lines = self.frame_debug_line_translucent_vertices.upload(
+            &self.device,
+            &self.queue,
+            bytemuck::cast_slice(&debug_line_batches.translucent),
+        );
         let item_entity_view = &self.item_entity_target.view;
         if self.selection_outline.is_some()
             || self.chunk_border_outline.is_some()
             || self.entity_scene_outline.is_some()
             || self.entity_target_outline.is_some()
+            || has_opaque_debug_lines
+            || has_translucent_debug_lines
         {
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some(ITEM_ENTITY_LINE_TARGET_PASS_LABEL),
@@ -1218,6 +1237,7 @@ impl Renderer {
                 || chunk_border_has_standard_vertices
                 || self.entity_scene_outline.is_some()
                 || self.entity_target_outline.is_some()
+                || has_opaque_debug_lines
             {
                 pass.set_pipeline(&self.selection_pipeline);
                 stats.pipeline_switches += 1;
@@ -1243,6 +1263,26 @@ impl Renderer {
                     pass.draw(0..outline.vertex_count, 0..1);
                     stats.entity_target_draw_calls += 1;
                 }
+                if has_opaque_debug_lines {
+                    let buffer = self
+                        .frame_debug_line_opaque_vertices
+                        .buffer()
+                        .expect("opaque debug line vertices uploaded");
+                    pass.set_vertex_buffer(0, buffer.slice(..));
+                    pass.draw(0..debug_line_batches.opaque.len() as u32, 0..1);
+                    stats.debug_line_draw_calls += 1;
+                }
+            }
+            if has_translucent_debug_lines {
+                let buffer = self
+                    .frame_debug_line_translucent_vertices
+                    .buffer()
+                    .expect("translucent debug line vertices uploaded");
+                pass.set_pipeline(&self.translucent_debug_line_pipeline);
+                stats.pipeline_switches += 1;
+                pass.set_vertex_buffer(0, buffer.slice(..));
+                pass.draw(0..debug_line_batches.translucent.len() as u32, 0..1);
+                stats.debug_line_draw_calls += 1;
             }
             if let Some(outline) = &self.chunk_border_outline {
                 if let Some(vertex_buffer) = &outline.always_on_top_vertex_buffer {
@@ -2368,6 +2408,7 @@ impl Renderer {
             + stats.entity_model_draw_calls
             + stats.debug_filled_box_draw_calls
             + stats.debug_text_draw_calls
+            + stats.debug_line_draw_calls
             + stats.outline_composite_draw_calls
             + stats.transparency_combine_draw_calls
             + stats.transparency_blit_draw_calls

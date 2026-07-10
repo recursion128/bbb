@@ -27,7 +27,7 @@ use bbb_protocol::{
 };
 use bbb_renderer::{
     sign_text_base_color, BlockDestroyOverlay, CameraPose, ClearColor, CloudEnvironment,
-    CloudFrame, DebugFilledBox, DebugTextBillboard, EntityModelInstance, FogEnvironment,
+    CloudFrame, DebugFilledBox, DebugLine, DebugTextBillboard, EntityModelInstance, FogEnvironment,
     GuiItemLightingEntry, HudAdvancementBackgroundTexture, HudAdvancementHoverBoxSprite,
     HudAdvancementLineTexture, HudAdvancementTabSprite, HudAdvancementWidgetFrameSprite,
     HudAirSupply, HudBlockItemModel, HudDebugCrosshair, HudDebugFrameTimeChart,
@@ -2437,6 +2437,7 @@ pub(crate) fn pump_network_and_terrain(
     let mut debug_filled_boxes = debug_water_boxes(&debug_water_samples);
     debug_filled_boxes.extend(debug_heightmap_boxes(input, world, camera_pose));
     let debug_text_billboards = debug_water_amount_billboards(&debug_water_samples);
+    let debug_lines = debug_collision_lines(input, world);
     // Vanilla `LevelRenderer.extractBlockDestroyAnimation` reads block-breaking state during
     // render extract, after the client tick; local destroy overlay ticks are advanced above.
     let block_destroy_overlays = block_destroy_overlays_from_world(world, terrain_textures);
@@ -2540,6 +2541,7 @@ pub(crate) fn pump_network_and_terrain(
             entity_target_outline,
             debug_filled_boxes,
             debug_text_billboards,
+            debug_lines,
             block_destroy_overlays,
         },
     );
@@ -4078,6 +4080,31 @@ fn debug_water_amount_billboards(samples: &[DebugWaterSample]) -> Vec<DebugTextB
                 ],
                 sample.amount.to_string(),
                 [0, 0, 0, 255],
+            )
+        })
+        .collect()
+}
+
+const DEBUG_COLLISION_QUERY_RADIUS: f64 = 6.0;
+const DEBUG_COLLISION_COLOR: [u8; 4] = [255; 4];
+
+fn debug_collision_lines(input: &ClientInputState, world: &WorldStore) -> Vec<DebugLine> {
+    if !input.debug_screen_entry_enabled(
+        DebugScreenEntryId::VisualizeCollisionBoxes,
+        world.local_player_has_reduced_debug_info(),
+    ) {
+        return Vec::new();
+    }
+
+    world
+        .debug_camera_block_collision_boxes(DEBUG_COLLISION_QUERY_RADIUS)
+        .into_iter()
+        .flat_map(|collision_box| {
+            DebugLine::cuboid(
+                collision_box.min.map(|coordinate| coordinate as f32),
+                collision_box.max.map(|coordinate| coordinate as f32),
+                DEBUG_COLLISION_COLOR,
+                DebugLine::DEFAULT_WIDTH,
             )
         })
         .collect()

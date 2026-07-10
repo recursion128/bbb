@@ -3474,6 +3474,45 @@ fn debug_water_boxes_respect_reduced_debug_and_player_gates() {
 }
 
 #[test]
+fn debug_collision_lines_project_vanilla_white_stroke_cuboids_and_gates() {
+    assert_eq!(DEBUG_COLLISION_QUERY_RADIUS, 6.0);
+    assert_eq!(DEBUG_COLLISION_COLOR, [255; 4]);
+    assert_eq!(DebugLine::DEFAULT_WIDTH, 2.5);
+
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    world.set_local_player_pose(local_player_pose([0.5, 0.0, 0.5], 0.0, 0.0));
+    world.insert_decoded_chunk(empty_lightmap_test_chunk(world.dimension()));
+    let stone = world
+        .registries()
+        .block_state_id_by_name_and_properties("minecraft:stone", &BTreeMap::new())
+        .expect("vanilla stone state");
+    set_lightmap_test_block(&mut world, BlockPos { x: 0, y: 0, z: 0 }, stone);
+
+    let mut input = ClientInputState::new(true);
+    assert!(debug_collision_lines(&input, &world).is_empty());
+    input.set_debug_screen_entry_status(
+        DebugScreenEntryId::VisualizeCollisionBoxes,
+        crate::debug_entries::DebugScreenEntryStatus::AlwaysOn,
+    );
+    let lines = debug_collision_lines(&input, &world);
+    assert_eq!(lines.len(), 12);
+    assert_eq!(
+        lines[0],
+        DebugLine::new([0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [255; 4], 2.5,)
+    );
+    assert!(lines
+        .iter()
+        .all(|line| line.color == [255; 4] && line.width == 2.5));
+
+    let mut reduced =
+        world_with_dimension_height_and_reduced_debug_info(0, "minecraft:overworld", 16, true);
+    reduced.set_local_player_pose(local_player_pose([0.5, 0.0, 0.5], 0.0, 0.0));
+    reduced.insert_decoded_chunk(empty_lightmap_test_chunk(reduced.dimension()));
+    set_lightmap_test_block(&mut reduced, BlockPos { x: 0, y: 0, z: 0 }, stone);
+    assert!(debug_collision_lines(&input, &reduced).is_empty());
+}
+
+#[test]
 fn hud_boss_bar_projection_orders_by_uuid_and_maps_style_names() {
     let mut world = WorldStore::new();
     assert!(hud_boss_bars_from_world(&world).is_empty());
@@ -3898,6 +3937,9 @@ fn renderer_frame_commits_debug_gizmos_from_one_water_sample_snapshot() {
     let text = runtime_source
         .find("let debug_text_billboards = debug_water_amount_billboards(&debug_water_samples);")
         .expect("pump should project water amount labels from the same samples");
+    let lines = runtime_source
+        .find("let debug_lines = debug_collision_lines(input, world);")
+        .expect("pump should project collision debug lines");
     let frame = runtime_source
         .find("            debug_filled_boxes,\n")
         .expect("RendererFrame should carry debug filled boxes");
@@ -3906,7 +3948,8 @@ fn renderer_frame_commits_debug_gizmos_from_one_water_sample_snapshot() {
             && samples < boxes
             && boxes < heightmap_extend
             && heightmap_extend < text
-            && text < frame
+            && text < lines
+            && lines < frame
     );
 
     let frame_source = include_str!("render_extract.rs");
@@ -3916,6 +3959,8 @@ fn renderer_frame_commits_debug_gizmos_from_one_water_sample_snapshot() {
     assert!(
         frame_source.contains("renderer.set_debug_text_billboards(frame.debug_text_billboards);")
     );
+    assert!(frame_source.contains("pub(crate) debug_lines: Vec<DebugLine>"));
+    assert!(frame_source.contains("renderer.set_debug_lines(frame.debug_lines);"));
 }
 
 #[test]

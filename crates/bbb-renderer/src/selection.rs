@@ -37,6 +37,61 @@ pub struct SelectionLine {
     pub width: f32,
 }
 
+/// One world-space line submitted through vanilla's gizmo `lines()` or
+/// `linesTranslucent()` surface.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct DebugLine {
+    pub from: [f32; 3],
+    pub to: [f32; 3],
+    /// RGBA8 after extracting the components from vanilla's ARGB color.
+    pub color: [u8; 4],
+    /// Screen-space width in pixels. `GizmoStyle.stroke(...)` defaults to 2.5.
+    pub width: f32,
+}
+
+impl DebugLine {
+    pub const DEFAULT_WIDTH: f32 = 2.5;
+
+    pub fn new(from: [f32; 3], to: [f32; 3], color: [u8; 4], width: f32) -> Self {
+        Self {
+            from,
+            to,
+            color,
+            width,
+        }
+    }
+
+    /// Emits `CuboidGizmo`'s twelve stroke edges in vanilla order.
+    pub fn cuboid(min: [f32; 3], max: [f32; 3], color: [u8; 4], width: f32) -> [Self; 12] {
+        let [x0, y0, z0] = min;
+        let [x1, y1, z1] = max;
+        [
+            Self::new([x0, y0, z0], [x1, y0, z0], color, width),
+            Self::new([x0, y0, z0], [x0, y1, z0], color, width),
+            Self::new([x0, y0, z0], [x0, y0, z1], color, width),
+            Self::new([x1, y0, z0], [x1, y1, z0], color, width),
+            Self::new([x1, y1, z0], [x0, y1, z0], color, width),
+            Self::new([x0, y1, z0], [x0, y1, z1], color, width),
+            Self::new([x0, y1, z1], [x0, y0, z1], color, width),
+            Self::new([x0, y0, z1], [x1, y0, z1], color, width),
+            Self::new([x1, y0, z1], [x1, y0, z0], color, width),
+            Self::new([x0, y1, z1], [x1, y1, z1], color, width),
+            Self::new([x1, y0, z1], [x1, y1, z1], color, width),
+            Self::new([x1, y1, z0], [x1, y1, z1], color, width),
+        ]
+    }
+
+    fn sanitized(self) -> Option<Self> {
+        let finite_positions = self
+            .from
+            .iter()
+            .chain(self.to.iter())
+            .all(|coordinate| coordinate.is_finite());
+        let nonzero = self.from != self.to;
+        (finite_positions && nonzero && self.width.is_finite() && self.width > 0.0).then_some(self)
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct SelectionPoint {
     pub position: [f32; 3],
@@ -133,6 +188,8 @@ const SELECTION_OUTLINE_ALPHA: f32 = 102.0 / 255.0;
 const DEFAULT_SELECTION_OUTLINE_COLOR: [f32; 4] = [0.0, 0.0, 0.0, 102.0 / 255.0];
 const DEFAULT_SELECTION_LINE_WIDTH: f32 = 1.0;
 const SELECTION_LINES_DEPTH_WRITE: bool = true;
+const TRANSLUCENT_DEBUG_LINES_DEPTH_WRITE: bool = false;
+const DEBUG_LINE_NEAR_PLANE: f32 = 0.05;
 const CHUNK_BORDER_ALWAYS_ON_TOP_DEPTH_TEST: bool = false;
 const SELECTION_POINT_PROXY_WORLD_SCALE: f32 = 0.01;
 
@@ -242,7 +299,7 @@ pub(super) struct SelectionOutlineGpu {
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
-struct SelectionVertex {
+pub(super) struct SelectionVertex {
     position: [f32; 3],
     line_direction: [f32; 3],
     line_width: f32,
@@ -298,6 +355,89 @@ pub(super) fn create_selection_pipeline(
             wgpu::CompareFunction::LessEqual,
         ))
         .build()
+}
+
+pub(super) fn create_translucent_debug_line_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    camera_bind_group_layout: &wgpu::BindGroupLayout,
+) -> wgpu::RenderPipeline {
+    RenderPipelineBuilder::new(device, "bbb-debug-lines-translucent-pipeline")
+        .shader("bbb-debug-lines-translucent-shader", SELECTION_SHADER)
+        .layout(
+            "bbb-debug-lines-translucent-pipeline-layout",
+            &[camera_bind_group_layout],
+        )
+        .vertex_buffers(&[selection_vertex_layout()])
+        .color_target(format, Some(wgpu::BlendState::ALPHA_BLENDING))
+        .topology(wgpu::PrimitiveTopology::TriangleList)
+        .depth_stencil(depth_stencil_state(
+            DEPTH_FORMAT,
+            TRANSLUCENT_DEBUG_LINES_DEPTH_WRITE,
+            wgpu::CompareFunction::LessEqual,
+        ))
+        .build()
+}
+
+#[derive(Debug, Default)]
+pub(super) struct DebugLineVertexBatches {
+    pub(super) opaque: Vec<SelectionVertex>,
+    pub(super) translucent: Vec<SelectionVertex>,
+}
+
+pub(super) fn sanitize_debug_lines(lines: impl IntoIterator<Item = DebugLine>) -> Vec<DebugLine> {
+    lines.into_iter().filter_map(DebugLine::sanitized).collect()
+}
+
+pub(super) fn debug_line_vertex_batches(
+    lines: &[DebugLine],
+    camera_pose: crate::CameraPose,
+) -> DebugLineVertexBatches {
+    let mut batches = DebugLineVertexBatches::default();
+    for line in lines.iter().copied().filter_map(DebugLine::sanitized) {
+        let Some(line) = clip_debug_line_to_near_plane(line, camera_pose) else {
+            continue;
+        };
+        let color = line.color.map(|component| f32::from(component) / 255.0);
+        let vertices = selection_line_vertices_with_width(line.from, line.to, color, line.width);
+        if line.color[3] == 255 {
+            batches.opaque.extend(vertices);
+        } else {
+            batches.translucent.extend(vertices);
+        }
+    }
+    batches
+}
+
+fn clip_debug_line_to_near_plane(
+    mut line: DebugLine,
+    camera_pose: crate::CameraPose,
+) -> Option<DebugLine> {
+    let eye = Vec3::from_array(camera_pose.position) + Vec3::Y * camera_pose.eye_height;
+    let forward = camera_pose.billboard_axes().forward;
+    let start = Vec3::from_array(line.from);
+    let end = Vec3::from_array(line.to);
+    let start_depth = (start - eye).dot(forward);
+    let end_depth = (end - eye).dot(forward);
+    let start_behind = start_depth < DEBUG_LINE_NEAR_PLANE;
+    let end_behind = end_depth < DEBUG_LINE_NEAR_PLANE;
+    if start_behind && end_behind {
+        return None;
+    }
+    if start_behind || end_behind {
+        let denominator = end_depth - start_depth;
+        if denominator.abs() < 1.0e-9 {
+            return None;
+        }
+        let t = ((DEBUG_LINE_NEAR_PLANE - start_depth) / denominator).clamp(0.0, 1.0);
+        let intersection = start.lerp(end, t).to_array();
+        if start_behind {
+            line.from = intersection;
+        } else {
+            line.to = intersection;
+        }
+    }
+    Some(line)
 }
 
 pub(super) fn create_chunk_border_always_on_top_pipeline(
@@ -539,6 +679,119 @@ mod tests {
         // Vanilla `RenderPipelines.LINES` inherits `DepthStencilState.DEFAULT`:
         // LESS_EQUAL with depth writes enabled.
         assert!(SELECTION_LINES_DEPTH_WRITE);
+        assert!(!TRANSLUCENT_DEBUG_LINES_DEPTH_WRITE);
+    }
+
+    #[test]
+    fn debug_line_cuboid_matches_vanilla_edge_order_and_default_width() {
+        assert_eq!(DebugLine::DEFAULT_WIDTH, 2.5);
+        let lines = DebugLine::cuboid(
+            [1.0, 2.0, 3.0],
+            [4.0, 5.0, 6.0],
+            [7, 8, 9, 255],
+            DebugLine::DEFAULT_WIDTH,
+        );
+        assert_eq!(lines.len(), 12);
+        assert_eq!(lines[0].from, [1.0, 2.0, 3.0]);
+        assert_eq!(lines[0].to, [4.0, 2.0, 3.0]);
+        assert_eq!(lines[1].to, [1.0, 5.0, 3.0]);
+        assert_eq!(lines[2].to, [1.0, 2.0, 6.0]);
+        assert_eq!(lines[11].from, [4.0, 5.0, 3.0]);
+        assert_eq!(lines[11].to, [4.0, 5.0, 6.0]);
+        assert!(lines
+            .iter()
+            .all(|line| line.color == [7, 8, 9, 255] && line.width == 2.5));
+    }
+
+    #[test]
+    fn debug_line_batches_clip_the_near_plane_and_split_depth_write_groups() {
+        let camera = crate::CameraPose {
+            position: [0.0; 3],
+            y_rot: 0.0,
+            x_rot: 0.0,
+            eye_height: 0.0,
+        };
+        let batches = debug_line_vertex_batches(
+            &[
+                DebugLine::new([0.0, 0.0, -1.0], [0.0, 0.0, 1.0], [255, 255, 255, 255], 2.5),
+                DebugLine::new([1.0, 0.0, 2.0], [2.0, 0.0, 2.0], [1, 2, 3, 4], 1.0),
+                DebugLine::new([0.0, 0.0, -2.0], [1.0, 0.0, -1.0], [255; 4], 2.5),
+            ],
+            camera,
+        );
+        assert_eq!(batches.opaque.len(), 6);
+        assert_eq!(batches.translucent.len(), 6);
+        assert!((batches.opaque[0].position[2] - DEBUG_LINE_NEAR_PLANE).abs() < 1.0e-6);
+        assert_eq!(batches.opaque[0].color, [1.0; 4]);
+        assert_eq!(
+            batches.translucent[0].color,
+            [1.0 / 255.0, 2.0 / 255.0, 3.0 / 255.0, 4.0 / 255.0]
+        );
+    }
+
+    #[test]
+    fn debug_line_sanitize_and_renderer_setter_clear_invalid_or_stale_lines() {
+        let valid = DebugLine::new([0.0; 3], [1.0, 0.0, 0.0], [255; 4], 2.5);
+        assert_eq!(sanitize_debug_lines([valid]), [valid]);
+        assert!(
+            sanitize_debug_lines([DebugLine::new([0.0; 3], [0.0; 3], [255; 4], 2.5,)]).is_empty()
+        );
+        assert!(sanitize_debug_lines([DebugLine::new(
+            [f32::NAN, 0.0, 0.0],
+            [1.0, 0.0, 0.0],
+            [255; 4],
+            2.5,
+        )])
+        .is_empty());
+
+        let Some(mut renderer) = crate::Renderer::new_offscreen(16, 16) else {
+            return;
+        };
+        renderer.set_debug_lines(vec![valid]);
+        assert_eq!(renderer.debug_lines, [valid]);
+        renderer.set_debug_lines(Vec::new());
+        assert!(renderer.debug_lines.is_empty());
+    }
+
+    #[test]
+    fn debug_line_draws_through_item_entity_target_and_transparency_composite() {
+        let Some(mut renderer) = crate::Renderer::new_offscreen(64, 64) else {
+            return;
+        };
+        renderer.set_clear_color(crate::ClearColor {
+            r: 0.0,
+            g: 0.0,
+            b: 1.0,
+            a: 1.0,
+        });
+        renderer.set_camera_pose(Some(crate::CameraPose {
+            position: [0.0; 3],
+            y_rot: 0.0,
+            x_rot: 0.0,
+            eye_height: 0.0,
+        }));
+        renderer.set_debug_lines(vec![DebugLine::new(
+            [-0.5, 0.0, 2.0],
+            [0.5, 0.0, 2.0],
+            [255; 4],
+            2.5,
+        )]);
+
+        let pixels = renderer
+            .render_offscreen_frame()
+            .expect("debug line frame readback");
+        let drew_white_line = (24..40).any(|y| {
+            (16..48).any(|x| {
+                let pixel = pixels.pixel(x, y);
+                pixel[0] > 180 && pixel[1] > 180 && pixel[2] > 180
+            })
+        });
+        assert!(drew_white_line, "debug line should reach the framebuffer");
+        let corner = pixels.pixel(4, 4);
+        assert!(
+            corner[2] > 128 && corner[0] < 64,
+            "background outside the line stays blue, got {corner:?}"
+        );
     }
 
     #[test]

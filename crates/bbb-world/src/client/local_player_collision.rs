@@ -21,6 +21,14 @@ pub struct ParticleBlockFluidSurfaceSample {
     pub block_is_air: bool,
 }
 
+/// One world-space AABB from a block collision `VoxelShape` near the active
+/// camera entity. Coordinates are already moved by the owning block position.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct WorldCollisionBox {
+    pub min: [f64; 3],
+    pub max: [f64; 3],
+}
+
 impl Default for ParticleBlockFluidSurfaceSample {
     fn default() -> Self {
         Self {
@@ -89,6 +97,96 @@ pub(crate) fn block_collision_shape_is_full_block(block: &BlockProbe, pos: Block
 }
 
 impl WorldStore {
+    /// Mirrors the block half of
+    /// `level.getCollisions(cameraEntity, cameraEntity.getBoundingBox().inflate(radius))`.
+    /// Every component AABB of a shape that intersects the query bounds is
+    /// returned, including components extending beyond the query itself.
+    pub fn debug_camera_block_collision_boxes(&self, radius: f64) -> Vec<WorldCollisionBox> {
+        if !radius.is_finite() || radius < 0.0 {
+            return Vec::new();
+        }
+        let Some((camera_bounds, collision_context)) = self.debug_camera_collision_query() else {
+            return Vec::new();
+        };
+        let query = camera_bounds.inflated(radius);
+        let min_x = block_floor(query.min_x - COLLISION_EPSILON) - 1;
+        let max_x = block_floor(query.max_x + COLLISION_EPSILON) + 1;
+        let min_y = block_floor(query.min_y - COLLISION_EPSILON) - 1;
+        let max_y = block_floor(query.max_y + COLLISION_EPSILON) + 1;
+        let min_z = block_floor(query.min_z - COLLISION_EPSILON) - 1;
+        let max_z = block_floor(query.max_z + COLLISION_EPSILON) + 1;
+
+        let mut boxes = Vec::new();
+        // Vanilla Cursor3D advances x fastest, then z, then y.
+        for y in min_y..=max_y {
+            for z in min_z..=max_z {
+                for x in min_x..=max_x {
+                    let pos = BlockPos { x, y, z };
+                    let Some(block) = self.probe_block(pos) else {
+                        continue;
+                    };
+                    let Some(shape) =
+                        block_collision_shape_with_context(&block, pos, collision_context)
+                    else {
+                        continue;
+                    };
+                    if !shape
+                        .boxes()
+                        .any(|shape_box| bounds_intersects_block_box(query, pos, shape_box))
+                    {
+                        continue;
+                    }
+                    boxes.extend(shape.boxes().map(|shape_box| WorldCollisionBox {
+                        min: [
+                            f64::from(x) + shape_box.min_x,
+                            f64::from(y) + shape_box.min_y,
+                            f64::from(z) + shape_box.min_z,
+                        ],
+                        max: [
+                            f64::from(x) + shape_box.max_x,
+                            f64::from(y) + shape_box.max_y,
+                            f64::from(z) + shape_box.max_z,
+                        ],
+                    }));
+                }
+            }
+        }
+        boxes
+    }
+
+    fn debug_camera_collision_query(
+        &self,
+    ) -> Option<(LocalPlayerBounds, LocalPlayerCollisionContext)> {
+        let camera = self.local_player().camera;
+        if !camera.follows_player {
+            let camera_id = camera.entity_id?;
+            let pose = self.probe_entity_camera_pose(camera_id)?;
+            let bounds = self.entities.pick_bounds(camera_id)?;
+            let world_bounds = LocalPlayerBounds::from_min_max(
+                [
+                    pose.position.x + f64::from(bounds.min[0]),
+                    pose.position.y + f64::from(bounds.min[1]),
+                    pose.position.z + f64::from(bounds.min[2]),
+                ],
+                [
+                    pose.position.x + f64::from(bounds.max[0]),
+                    pose.position.y + f64::from(bounds.max[1]),
+                    pose.position.z + f64::from(bounds.max[2]),
+                ],
+            );
+            return Some((
+                world_bounds,
+                LocalPlayerCollisionContext::new(world_bounds.min_y, false),
+            ));
+        }
+
+        let pose = self.local_player_pose()?;
+        Some((
+            LocalPlayerBounds::for_pose(pose),
+            LocalPlayerCollisionContext::for_pose(self, pose, false),
+        ))
+    }
+
     pub(crate) fn local_player_pose_collides_with_block(
         &self,
         pos: BlockPos,
@@ -2058,6 +2156,28 @@ impl LocalPlayerBounds {
         }
     }
 
+    fn from_min_max(min: [f64; 3], max: [f64; 3]) -> Self {
+        Self {
+            min_x: min[0],
+            min_y: min[1],
+            min_z: min[2],
+            max_x: max[0],
+            max_y: max[1],
+            max_z: max[2],
+        }
+    }
+
+    fn inflated(self, amount: f64) -> Self {
+        Self {
+            min_x: self.min_x - amount,
+            min_y: self.min_y - amount,
+            min_z: self.min_z - amount,
+            max_x: self.max_x + amount,
+            max_y: self.max_y + amount,
+            max_z: self.max_z + amount,
+        }
+    }
+
     pub(super) fn moved(self, x: f64, y: f64, z: f64) -> Self {
         Self {
             min_x: self.min_x + x,
@@ -3169,6 +3289,51 @@ mod tests {
             world.particle_block_fluid_surface_height([f64::NAN, 0.25, 0.5]),
             0.0,
         );
+    }
+
+    #[test]
+    fn debug_camera_block_collision_boxes_use_inflated_player_bounds_and_shape_components() {
+        let mut world = empty_world();
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: bbb_protocol::packets::Vec3d {
+                x: 0.5,
+                y: 0.0,
+                z: 0.5,
+            },
+            ..LocalPlayerPoseState::default()
+        });
+        let slab = vanilla_block_state_id(
+            "minecraft:oak_slab",
+            [("type", "bottom"), ("waterlogged", "false")],
+        );
+        let stone = vanilla_block_state_id("minecraft:stone", []);
+        set_block(&mut world, BlockPos { x: 0, y: 0, z: 0 }, slab);
+        set_block(&mut world, BlockPos { x: 1, y: 0, z: 0 }, stone);
+        set_block(&mut world, BlockPos { x: 3, y: 0, z: 0 }, stone);
+
+        let boxes = world.debug_camera_block_collision_boxes(1.0);
+        assert_eq!(
+            boxes,
+            [
+                WorldCollisionBox {
+                    min: [0.0, 0.0, 0.0],
+                    max: [1.0, 0.5, 1.0],
+                },
+                WorldCollisionBox {
+                    min: [1.0, 0.0, 0.0],
+                    max: [2.0, 1.0, 1.0],
+                },
+            ]
+        );
+        assert!(world
+            .debug_camera_block_collision_boxes(f64::NAN)
+            .is_empty());
+    }
+
+    #[test]
+    fn debug_camera_block_collision_boxes_require_a_camera_entity_pose() {
+        let world = empty_world();
+        assert!(world.debug_camera_block_collision_boxes(6.0).is_empty());
     }
 
     fn axis_name(axis: CollisionAxis) -> &'static str {
