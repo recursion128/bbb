@@ -120,6 +120,8 @@ pub struct DataComponentPatchSummary {
     #[serde(default)]
     pub piercing_weapon: Option<PiercingWeaponSummary>,
     #[serde(default)]
+    pub kinetic_weapon: Option<KineticWeaponSummary>,
+    #[serde(default)]
     pub swing_animation: Option<SwingAnimationSummary>,
     #[serde(default)]
     pub custom_model_data_floats: CustomModelDataFloats,
@@ -323,6 +325,26 @@ pub struct PiercingWeaponSummary {
     pub dismounts: bool,
     pub sound: Option<SoundEventSummary>,
     pub hit_sound: Option<SoundEventSummary>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct KineticWeaponSummary {
+    pub contact_cooldown_ticks: i32,
+    pub delay_ticks: i32,
+    pub dismount_conditions: Option<KineticWeaponConditionSummary>,
+    pub knockback_conditions: Option<KineticWeaponConditionSummary>,
+    pub damage_conditions: Option<KineticWeaponConditionSummary>,
+    pub forward_movement_bits: u32,
+    pub damage_multiplier_bits: u32,
+    pub sound: Option<SoundEventSummary>,
+    pub hit_sound: Option<SoundEventSummary>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct KineticWeaponConditionSummary {
+    pub max_duration_ticks: i32,
+    pub min_speed_bits: u32,
+    pub min_relative_speed_bits: u32,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -839,6 +861,9 @@ fn decode_typed_data_component_patch_summary(
             }
             38 => {
                 summary.piercing_weapon = Some(decode_piercing_weapon_summary(decoder)?);
+            }
+            39 => {
+                summary.kinetic_weapon = Some(decode_kinetic_weapon_summary(decoder)?);
             }
             40 => {
                 summary.swing_animation = Some(decode_swing_animation(decoder)?);
@@ -1994,25 +2019,35 @@ fn decode_piercing_weapon_summary(decoder: &mut Decoder<'_>) -> Result<PiercingW
 }
 
 fn decode_kinetic_weapon(decoder: &mut Decoder<'_>) -> Result<()> {
-    decoder.read_var_i32()?;
-    decoder.read_var_i32()?;
-    decode_optional_kinetic_weapon_condition(decoder)?;
-    decode_optional_kinetic_weapon_condition(decoder)?;
-    decode_optional_kinetic_weapon_condition(decoder)?;
-    decoder.read_f32()?;
-    decoder.read_f32()?;
-    decode_optional_sound_event_holder(decoder)?;
-    decode_optional_sound_event_holder(decoder)?;
+    let _ = decode_kinetic_weapon_summary(decoder)?;
     Ok(())
 }
 
-fn decode_optional_kinetic_weapon_condition(decoder: &mut Decoder<'_>) -> Result<()> {
+fn decode_kinetic_weapon_summary(decoder: &mut Decoder<'_>) -> Result<KineticWeaponSummary> {
+    Ok(KineticWeaponSummary {
+        contact_cooldown_ticks: decoder.read_var_i32()?,
+        delay_ticks: decoder.read_var_i32()?,
+        dismount_conditions: decode_optional_kinetic_weapon_condition(decoder)?,
+        knockback_conditions: decode_optional_kinetic_weapon_condition(decoder)?,
+        damage_conditions: decode_optional_kinetic_weapon_condition(decoder)?,
+        forward_movement_bits: decoder.read_f32()?.to_bits(),
+        damage_multiplier_bits: decoder.read_f32()?.to_bits(),
+        sound: decode_optional_sound_event_holder_summary(decoder)?,
+        hit_sound: decode_optional_sound_event_holder_summary(decoder)?,
+    })
+}
+
+fn decode_optional_kinetic_weapon_condition(
+    decoder: &mut Decoder<'_>,
+) -> Result<Option<KineticWeaponConditionSummary>> {
     if decoder.read_bool()? {
-        decoder.read_var_i32()?;
-        decoder.read_f32()?;
-        decoder.read_f32()?;
+        return Ok(Some(KineticWeaponConditionSummary {
+            max_duration_ticks: decoder.read_var_i32()?,
+            min_speed_bits: decoder.read_f32()?.to_bits(),
+            min_relative_speed_bits: decoder.read_f32()?.to_bits(),
+        }));
     }
-    Ok(())
+    Ok(None)
 }
 
 fn decode_equippable(decoder: &mut Decoder<'_>) -> Result<()> {
@@ -4261,6 +4296,29 @@ mod tests {
                         fixed_range_bits: None,
                     }),
                     hit_sound: None,
+                }),
+                kinetic_weapon: Some(KineticWeaponSummary {
+                    contact_cooldown_ticks: 10,
+                    delay_ticks: 2,
+                    dismount_conditions: Some(KineticWeaponConditionSummary {
+                        max_duration_ticks: 20,
+                        min_speed_bits: 0.25_f32.to_bits(),
+                        min_relative_speed_bits: 0.5_f32.to_bits(),
+                    }),
+                    knockback_conditions: None,
+                    damage_conditions: Some(KineticWeaponConditionSummary {
+                        max_duration_ticks: 30,
+                        min_speed_bits: 1.0_f32.to_bits(),
+                        min_relative_speed_bits: 1.5_f32.to_bits(),
+                    }),
+                    forward_movement_bits: 0.2_f32.to_bits(),
+                    damage_multiplier_bits: 2.0_f32.to_bits(),
+                    sound: None,
+                    hit_sound: Some(SoundEventSummary {
+                        registry_id: None,
+                        sound_id: Some("minecraft:item.mace.smash_ground".to_string()),
+                        fixed_range_bits: None,
+                    }),
                 }),
                 ..DataComponentPatchSummary::default()
             }

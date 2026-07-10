@@ -8588,12 +8588,12 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
         EquipmentAssetCatalog::default(),
     );
     let patch = DataComponentPatchSummary {
-        added: 68,
+        added: 69,
         added_type_ids: vec![
             0, 1, 2, 3, 4, 5, 7, 10, 12, 17, 18, 19, 21, 22, 23, 25, 26, 29, 30, 31, 33, 34, 35,
-            38, 40, 43, 44, 45, 46, 47, 49, 50, 52, 54, 57, 58, 59, 60, 63, 66, 67, 68, 69, 70, 71,
-            73, 74, 75, 76, 77, 78, 79, 80, 84, 85, 86, 87, 88, 89, 90, 91, 92, 101, 103, 104, 107,
-            108, 109,
+            38, 39, 40, 43, 44, 45, 46, 47, 49, 50, 52, 54, 57, 58, 59, 60, 63, 66, 67, 68, 69, 70,
+            71, 73, 74, 75, 76, 77, 78, 79, 80, 84, 85, 86, 87, 88, 89, 90, 91, 92, 101, 103, 104,
+            107, 108, 109,
         ],
         removed_type_ids: vec![6],
         custom_data: Some(NbtSummaryValue::Compound(vec![
@@ -8699,6 +8699,29 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
                 sound_id: Some("minecraft:item.trident.throw".to_string()),
                 fixed_range_bits: None,
             }),
+            hit_sound: Some(bbb_protocol::packets::SoundEventSummary {
+                registry_id: Some(7),
+                sound_id: None,
+                fixed_range_bits: None,
+            }),
+        }),
+        kinetic_weapon: Some(bbb_protocol::packets::KineticWeaponSummary {
+            contact_cooldown_ticks: 12,
+            delay_ticks: 2,
+            dismount_conditions: Some(bbb_protocol::packets::KineticWeaponConditionSummary {
+                max_duration_ticks: 20,
+                min_speed_bits: 0.25_f32.to_bits(),
+                min_relative_speed_bits: 0.5_f32.to_bits(),
+            }),
+            knockback_conditions: None,
+            damage_conditions: Some(bbb_protocol::packets::KineticWeaponConditionSummary {
+                max_duration_ticks: 30,
+                min_speed_bits: 0.0_f32.to_bits(),
+                min_relative_speed_bits: 1.5_f32.to_bits(),
+            }),
+            forward_movement_bits: 0.2_f32.to_bits(),
+            damage_multiplier_bits: 2.0_f32.to_bits(),
+            sound: None,
             hit_sound: Some(bbb_protocol::packets::SoundEventSummary {
                 registry_id: Some(7),
                 sound_id: None,
@@ -8982,6 +9005,11 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
          \"minecraft:piercing_weapon\": {deals_knockback: 0b, dismounts: 1b, \
          sound: {sound_id: \"minecraft:item.trident.throw\"}, \
          hit_sound: \"minecraft:ambient.cave\"}, \
+         \"minecraft:kinetic_weapon\": {contact_cooldown_ticks: 12, delay_ticks: 2, \
+         dismount_conditions: {max_duration_ticks: 20, min_speed: 0.25f, \
+         min_relative_speed: 0.5f}, damage_conditions: {max_duration_ticks: 30, \
+         min_relative_speed: 1.5f}, forward_movement: 0.2f, \
+         damage_multiplier: 2.0f, hit_sound: \"minecraft:ambient.cave\"}, \
          \"minecraft:swing_animation\": {type: \"stab\", duration: 17}, \
          \"minecraft:dye\": \"red\", \"minecraft:dyed_color\": 1122867, \
          \"minecraft:map_color\": 4478310, \"minecraft:map_id\": 42, \
@@ -9141,6 +9169,36 @@ fn item_stack_snbt_omits_default_piercing_weapon_fields_and_unknown_sounds() {
         fixed_range_bits: None,
     });
     assert_eq!(debug_piercing_weapon_component_snbt(&weapon), None);
+}
+
+#[test]
+fn item_stack_snbt_validates_kinetic_weapon_ticks_and_omits_defaults() {
+    let mut weapon = bbb_protocol::packets::KineticWeaponSummary {
+        contact_cooldown_ticks: 10,
+        delay_ticks: 0,
+        dismount_conditions: None,
+        knockback_conditions: None,
+        damage_conditions: None,
+        forward_movement_bits: 0.0_f32.to_bits(),
+        damage_multiplier_bits: 1.0_f32.to_bits(),
+        sound: None,
+        hit_sound: None,
+    };
+    assert_eq!(
+        debug_kinetic_weapon_component_snbt(&weapon),
+        Some("{}".to_string())
+    );
+
+    weapon.contact_cooldown_ticks = -1;
+    assert_eq!(debug_kinetic_weapon_component_snbt(&weapon), None);
+
+    weapon.contact_cooldown_ticks = 10;
+    weapon.damage_conditions = Some(bbb_protocol::packets::KineticWeaponConditionSummary {
+        max_duration_ticks: -1,
+        min_speed_bits: 0.0_f32.to_bits(),
+        min_relative_speed_bits: 0.0_f32.to_bits(),
+    });
+    assert_eq!(debug_kinetic_weapon_component_snbt(&weapon), None);
 }
 
 #[test]

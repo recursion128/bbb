@@ -8890,3 +8890,16 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   true/true/direct/none；native component patch test 从 67 扩展到 68 个 added
   entry，并覆盖默认空 compound、direct + registry sound 以及 unknown sound id
   fallback。自定义服务端 SoundEvent 动态排序仍保留在 registry-backed 总账本。
+
+## 2026-07-10：ItemStack kinetic-weapon save codec
+
+- [x] minecraft:kinetic_weapon 持久化 component 的 vanilla/direct 分支（P2
+  protocol + native input）：依据 vanilla 26.1 KineticWeapon 及其 Condition
+  CODEC/STREAM_CODEC，完整保留 cooldown/delay、三种 optional condition、
+  forward-movement、damage-multiplier 与两个 optional SoundEvent holder；所有
+  float 以 bits 保存。native 复刻顶层 10/0/0.0/1.0 与 condition 0.0 默认省略、
+  required max-duration 及 NON_NEGATIVE_INT 校验。protocol combat-component
+  test 覆盖两种 condition、float 与 direct hit sound；native component patch
+  test 从 68 扩展到 69 个 added entry，另覆盖默认空 compound、负顶层 tick 与
+  负 condition duration fallback。自定义 SoundEvent 排序仍留在动态 registry
+  总账本。

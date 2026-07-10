@@ -4686,6 +4686,7 @@ fn debug_supported_added_component_snbt(
         34 => "{}".to_string(),
         35 => debug_snbt_string(patch.tooltip_style.as_deref()?),
         38 => debug_piercing_weapon_component_snbt(patch.piercing_weapon.as_ref()?)?,
+        39 => debug_kinetic_weapon_component_snbt(patch.kinetic_weapon.as_ref()?)?,
         40 => debug_swing_animation_component_snbt(patch.swing_animation?)?,
         43 => debug_snbt_string(debug_dye_color_name(patch.dye_color_id?)),
         44 => patch.dyed_color?.to_string(),
@@ -4790,6 +4791,7 @@ fn debug_supported_component_resource_id(type_id: i32) -> Option<&'static str> {
         34 => "minecraft:glider",
         35 => "minecraft:tooltip_style",
         38 => "minecraft:piercing_weapon",
+        39 => "minecraft:kinetic_weapon",
         40 => "minecraft:swing_animation",
         43 => "minecraft:dye",
         44 => "minecraft:dyed_color",
@@ -5524,6 +5526,86 @@ fn debug_piercing_weapon_component_snbt(
         fields.push(format!(
             "hit_sound: {}",
             debug_sound_event_component_snbt(sound)?
+        ));
+    }
+    Some(format!("{{{}}}", fields.join(", ")))
+}
+
+fn debug_kinetic_weapon_component_snbt(
+    weapon: &bbb_protocol::packets::KineticWeaponSummary,
+) -> Option<String> {
+    if weapon.contact_cooldown_ticks < 0 || weapon.delay_ticks < 0 {
+        return None;
+    }
+    let mut fields = Vec::new();
+    if weapon.contact_cooldown_ticks != 10 {
+        fields.push(format!(
+            "contact_cooldown_ticks: {}",
+            weapon.contact_cooldown_ticks
+        ));
+    }
+    if weapon.delay_ticks != 0 {
+        fields.push(format!("delay_ticks: {}", weapon.delay_ticks));
+    }
+    for (name, condition) in [
+        ("dismount_conditions", weapon.dismount_conditions),
+        ("knockback_conditions", weapon.knockback_conditions),
+        ("damage_conditions", weapon.damage_conditions),
+    ] {
+        if let Some(condition) = condition {
+            fields.push(format!(
+                "{name}: {}",
+                debug_kinetic_weapon_condition_snbt(condition)?
+            ));
+        }
+    }
+    if weapon.forward_movement_bits != 0.0_f32.to_bits() {
+        fields.push(format!(
+            "forward_movement: {}f",
+            debug_nbt_java_float_string(f32::from_bits(weapon.forward_movement_bits))
+        ));
+    }
+    if weapon.damage_multiplier_bits != 1.0_f32.to_bits() {
+        fields.push(format!(
+            "damage_multiplier: {}f",
+            debug_nbt_java_float_string(f32::from_bits(weapon.damage_multiplier_bits))
+        ));
+    }
+    if let Some(sound) = weapon.sound.as_ref() {
+        fields.push(format!(
+            "sound: {}",
+            debug_sound_event_component_snbt(sound)?
+        ));
+    }
+    if let Some(sound) = weapon.hit_sound.as_ref() {
+        fields.push(format!(
+            "hit_sound: {}",
+            debug_sound_event_component_snbt(sound)?
+        ));
+    }
+    Some(format!("{{{}}}", fields.join(", ")))
+}
+
+fn debug_kinetic_weapon_condition_snbt(
+    condition: bbb_protocol::packets::KineticWeaponConditionSummary,
+) -> Option<String> {
+    if condition.max_duration_ticks < 0 {
+        return None;
+    }
+    let mut fields = vec![format!(
+        "max_duration_ticks: {}",
+        condition.max_duration_ticks
+    )];
+    if condition.min_speed_bits != 0.0_f32.to_bits() {
+        fields.push(format!(
+            "min_speed: {}f",
+            debug_nbt_java_float_string(f32::from_bits(condition.min_speed_bits))
+        ));
+    }
+    if condition.min_relative_speed_bits != 0.0_f32.to_bits() {
+        fields.push(format!(
+            "min_relative_speed: {}f",
+            debug_nbt_java_float_string(f32::from_bits(condition.min_relative_speed_bits))
         ));
     }
     Some(format!("{{{}}}", fields.join(", ")))
