@@ -8544,10 +8544,10 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
         EquipmentAssetCatalog::default(),
     );
     let patch = DataComponentPatchSummary {
-        added: 25,
+        added: 26,
         added_type_ids: vec![
-            0, 1, 2, 3, 4, 10, 12, 17, 21, 22, 44, 45, 46, 49, 54, 63, 67, 68, 69, 70, 74, 76, 88,
-            89, 90,
+            0, 1, 2, 3, 4, 10, 12, 17, 21, 22, 44, 45, 46, 49, 50, 54, 63, 67, 68, 69, 70, 74, 76,
+            88, 89, 90,
         ],
         removed_type_ids: vec![6],
         custom_data: Some(NbtSummaryValue::Compound(vec![
@@ -8632,6 +8632,17 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
                 },
             },
         ],
+        bundle_contents_items: vec![bbb_protocol::packets::ItemStackTemplateSummary {
+            item_id: 2,
+            count: 3,
+            component_patch: DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![44],
+                dyed_color: Some(0x22_44_66),
+                ..DataComponentPatchSummary::default()
+            },
+        }],
+        bundle_contents_item_count: Some(1),
         writable_book_pages: vec!["first\npage".to_string(), "second raw".to_string()],
         writable_book_page_filters: vec![None, Some("second filtered".to_string())],
         ominous_bottle_amplifier: Some(3),
@@ -8713,6 +8724,8 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
          \"minecraft:charged_projectiles\": [{id: \"minecraft:arrow\"}, \
          {id: \"minecraft:firework_star\", count: 2, \
          components: {\"minecraft:damage\": 7}}], \
+         \"minecraft:bundle_contents\": [{id: \"minecraft:arrow\", count: 3, \
+         components: {\"minecraft:dyed_color\": 2245734}}], \
          \"minecraft:writable_book_content\": {pages: [{raw: \"first\\npage\"}, \
          {raw: \"second raw\", filtered: \"second filtered\"}]}, \
          \"minecraft:ominous_bottle_amplifier\": 3, \
@@ -8752,13 +8765,19 @@ fn item_stack_snbt_omits_registry_backed_components_with_unknown_item_id() {
         item_id: Some(0),
         count: 1,
         component_patch: DataComponentPatchSummary {
-            added: 2,
-            added_type_ids: vec![49, 74],
+            added: 3,
+            added_type_ids: vec![49, 50, 74],
             charged_projectiles_items: vec![bbb_protocol::packets::ItemStackTemplateSummary {
                 item_id: 99,
                 count: 1,
                 component_patch: DataComponentPatchSummary::default(),
             }],
+            bundle_contents_items: vec![bbb_protocol::packets::ItemStackTemplateSummary {
+                item_id: 99,
+                count: 1,
+                component_patch: DataComponentPatchSummary::default(),
+            }],
+            bundle_contents_item_count: Some(1),
             pot_decorations_item_ids: vec![99],
             ..DataComponentPatchSummary::default()
         },

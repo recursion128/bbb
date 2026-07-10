@@ -8640,3 +8640,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   任一未知嵌套 item id 时不伪造整个 component。focused tests 扩展到 25 个
   added entry，覆盖 count 默认省略、非默认 count 和嵌套 damage patch；
   charged-projectiles 从剩余 component 总账本移入已支持子集。
+
+## 2026-07-10：ItemStack bundle-contents save codec
+
+- [x] `minecraft:bundle_contents` 持久化 component（P2 native input）：
+  依据 vanilla 26.1 `BundleContents.CODEC`，复用 ordered
+  `ItemStackTemplate` list helper 输出 protocol type id `50` 保留的 items；
+  selected index 与 weight 均为运行时派生，不重复保存
+  `bundle_contents_item_count`。focused tests 扩展到 26 个 added entry，
+  覆盖非默认 count、嵌套 dyed-color patch 及未知 item registry fallback；
+  bundle-contents 从剩余 component 总账本移入已支持子集。

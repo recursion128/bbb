@@ -258,6 +258,7 @@ const FIREWORK_ROCKET_SHOT_AT_ANGLE_DATA_ID: u8 = 10;
 const FIREWORK_ROCKET_DEFAULT_LIFETIME: i32 = 0;
 const CUSTOM_MODEL_DATA_COMPONENT_TYPE_ID: i32 = 17;
 const CHARGED_PROJECTILES_COMPONENT_TYPE_ID: i32 = 49;
+const BUNDLE_CONTENTS_COMPONENT_TYPE_ID: i32 = 50;
 const WRITABLE_BOOK_CONTENT_COMPONENT_TYPE_ID: i32 = 54;
 const LODESTONE_TRACKER_COMPONENT_TYPE_ID: i32 = 67;
 const FIREWORKS_COMPONENT_TYPE_ID: i32 = 69;
@@ -4659,6 +4660,9 @@ fn debug_supported_added_component_snbt(
         CHARGED_PROJECTILES_COMPONENT_TYPE_ID => {
             debug_item_stack_template_list_snbt(&patch.charged_projectiles_items, item_runtime)?
         }
+        BUNDLE_CONTENTS_COMPONENT_TYPE_ID => {
+            debug_item_stack_template_list_snbt(&patch.bundle_contents_items, item_runtime)?
+        }
         WRITABLE_BOOK_CONTENT_COMPONENT_TYPE_ID => {
             debug_writable_book_content_component_snbt(patch)
         }
@@ -4720,6 +4724,7 @@ fn debug_supported_component_resource_id(type_id: i32) -> Option<&'static str> {
         45 => "minecraft:map_color",
         46 => "minecraft:map_id",
         CHARGED_PROJECTILES_COMPONENT_TYPE_ID => "minecraft:charged_projectiles",
+        BUNDLE_CONTENTS_COMPONENT_TYPE_ID => "minecraft:bundle_contents",
         WRITABLE_BOOK_CONTENT_COMPONENT_TYPE_ID => "minecraft:writable_book_content",
         63 => "minecraft:ominous_bottle_amplifier",
         LODESTONE_TRACKER_COMPONENT_TYPE_ID => "minecraft:lodestone_tracker",

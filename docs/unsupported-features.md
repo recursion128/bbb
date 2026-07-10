@@ -236,9 +236,9 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   projection, remaining codec-backed SNBT projection (including `AbstractArrow`
   `inBlockState`, `item`, and `weapon`, remaining data-component patch entries
   beyond the supported custom-NBT/primitive/resource/color/map/ominous/firework/
-  custom-model-data/charged-projectile/writable-book/lodestone/profile/
-  pot-decoration/block-state/tropical-fish-enum subset on throwable/firework/
-  item-frame item stacks, falling-block `TileEntityData`,
+  custom-model-data/charged-projectile/bundle/writable-book/lodestone/
+  profile/pot-decoration/block-state/tropical-fish-enum subset on throwable/
+  firework/item-frame item stacks, falling-block `TileEntityData`,
   and non-default `VibrationSystem.Data` listener payloads),
   remaining entity-specific
   constructor/default save values, LivingEntity parent health/equipment/effect/attribute
