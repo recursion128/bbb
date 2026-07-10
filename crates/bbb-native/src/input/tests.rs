@@ -8525,9 +8525,9 @@ fn local_firework_save_uses_parent_lifecycle_synced_item_codec_and_client_life()
 #[test]
 fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
     let patch = DataComponentPatchSummary {
-        added: 22,
+        added: 23,
         added_type_ids: vec![
-            0, 1, 2, 3, 4, 10, 12, 17, 21, 22, 44, 45, 46, 54, 63, 67, 68, 69, 76, 88, 89, 90,
+            0, 1, 2, 3, 4, 10, 12, 17, 21, 22, 44, 45, 46, 54, 63, 67, 68, 69, 70, 76, 88, 89, 90,
         ],
         removed_type_ids: vec![6],
         custom_data: Some(NbtSummaryValue::Compound(vec![
@@ -8614,6 +8614,29 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
         firework_explosion_has_twinkle: Some(false),
         fireworks_flight_duration: Some(2),
         fireworks_explosions_count: Some(0),
+        profile: Some(bbb_protocol::packets::ResolvableProfileSummary {
+            kind: bbb_protocol::packets::ResolvableProfileKindSummary::Partial,
+            uuid: Some(Uuid::from_u128(1)),
+            name: Some("Steve".to_string()),
+            properties: vec![bbb_protocol::packets::GameProfilePropertySummary {
+                name: "textures".to_string(),
+                value: "skin-value".to_string(),
+                signature: Some("skin-signature".to_string()),
+            }],
+            profile_textures: None,
+            skin_patch: bbb_protocol::packets::PlayerSkinPatchSummary {
+                body: Some(bbb_protocol::packets::ResourceTextureSummary {
+                    asset_id: "minecraft:entity/player/wide/steve".to_string(),
+                    texture_path: "unused-derived-path".to_string(),
+                }),
+                cape: None,
+                elytra: Some(bbb_protocol::packets::ResourceTextureSummary {
+                    asset_id: "minecraft:entity/player/elytra".to_string(),
+                    texture_path: "unused-derived-path".to_string(),
+                }),
+                model: Some(bbb_protocol::packets::PlayerModelTypeSummary::Slim),
+            },
+        }),
         block_state_properties: BTreeMap::from([
             ("facing".to_string(), "south".to_string()),
             ("quoted key".to_string(), "value with 'quote'".to_string()),
@@ -8652,6 +8675,11 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
          \"minecraft:firework_explosion\": {shape: \"burst\", colors: [7833753], \
          fade_colors: [11189196], has_trail: 1b}, \
          \"minecraft:fireworks\": {flight_duration: 2}, \
+         \"minecraft:profile\": {name: \"Steve\", id: [I; 0, 0, 0, 1], \
+         properties: [{name: \"textures\", value: \"skin-value\", \
+         signature: \"skin-signature\"}], \
+         texture: \"minecraft:entity/player/wide/steve\", \
+         elytra: \"minecraft:entity/player/elytra\", model: \"slim\"}, \
          \"minecraft:block_state\": {facing: \"south\", \
          \"quoted key\": \"value with 'quote'\"}, \
          \"minecraft:tropical_fish/pattern\": \"stripey\", \

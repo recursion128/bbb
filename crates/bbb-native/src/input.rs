@@ -73,8 +73,9 @@ use bbb_protocol::{
         Direction as ProtocolDirection, EntityDataEnumSerializer, EntityDataRegistryHolder,
         EntityDataValueKind, EntityTagQuery, FireworkExplosionShapeSummary,
         FireworkExplosionSummary, GameType, InteractionHand, ItemRaritySummary, ItemStackSummary,
-        NbtSummaryValue, PlayerActionKind, PlayerCommandAction, PlayerInput, RecipeBookType,
-        SeenAdvancements, SignUpdate,
+        NbtSummaryValue, PlayerActionKind, PlayerCommandAction, PlayerInput,
+        PlayerModelTypeSummary, RecipeBookType, ResolvableProfileKindSummary,
+        ResolvableProfileSummary, SeenAdvancements, SignUpdate,
     },
     ComponentClickEvent, ComponentStyle, StyledTextRun, MC_BUILD_TIME, MC_DATA_PACK_FORMAT,
     MC_DATA_VERSION, MC_DATA_VERSION_SERIES, MC_RESOURCE_PACK_FORMAT, MC_STABLE, MC_VERSION,
@@ -259,6 +260,7 @@ const CUSTOM_MODEL_DATA_COMPONENT_TYPE_ID: i32 = 17;
 const WRITABLE_BOOK_CONTENT_COMPONENT_TYPE_ID: i32 = 54;
 const LODESTONE_TRACKER_COMPONENT_TYPE_ID: i32 = 67;
 const FIREWORKS_COMPONENT_TYPE_ID: i32 = 69;
+const PROFILE_COMPONENT_TYPE_ID: i32 = 70;
 const BLOCK_STATE_COMPONENT_TYPE_ID: i32 = 76;
 const TROPICAL_FISH_PATTERN_COMPONENT_TYPE_ID: i32 = 88;
 const TROPICAL_FISH_BASE_COLOR_COMPONENT_TYPE_ID: i32 = 89;
@@ -4658,6 +4660,7 @@ fn debug_supported_added_component_snbt(
             has_twinkle: patch.firework_explosion_has_twinkle.unwrap_or(false),
         }),
         FIREWORKS_COMPONENT_TYPE_ID => debug_fireworks_component_snbt(patch),
+        PROFILE_COMPONENT_TYPE_ID => debug_profile_component_snbt(patch.profile.as_ref()?)?,
         BLOCK_STATE_COMPONENT_TYPE_ID => format!(
             "{{{}}}",
             patch
@@ -4706,6 +4709,7 @@ fn debug_supported_component_resource_id(type_id: i32) -> Option<&'static str> {
         LODESTONE_TRACKER_COMPONENT_TYPE_ID => "minecraft:lodestone_tracker",
         68 => "minecraft:firework_explosion",
         FIREWORKS_COMPONENT_TYPE_ID => "minecraft:fireworks",
+        PROFILE_COMPONENT_TYPE_ID => "minecraft:profile",
         BLOCK_STATE_COMPONENT_TYPE_ID => "minecraft:block_state",
         TROPICAL_FISH_PATTERN_COMPONENT_TYPE_ID => "minecraft:tropical_fish/pattern",
         TROPICAL_FISH_BASE_COLOR_COMPONENT_TYPE_ID => "minecraft:tropical_fish/base_color",
@@ -4894,6 +4898,64 @@ fn debug_lodestone_tracker_component_snbt(
         fields.push(format!("tracked: {}", debug_snbt_bool(false)));
     }
     format!("{{{}}}", fields.join(", "))
+}
+
+fn debug_profile_component_snbt(profile: &ResolvableProfileSummary) -> Option<String> {
+    let mut fields = Vec::new();
+    match profile.kind {
+        ResolvableProfileKindSummary::GameProfile => {
+            fields.push(format!("id: {}", debug_snbt_uuid_int_array(profile.uuid?)));
+            fields.push(format!(
+                "name: {}",
+                debug_snbt_string(profile.name.as_ref()?)
+            ));
+        }
+        ResolvableProfileKindSummary::Partial => {
+            if let Some(name) = &profile.name {
+                fields.push(format!("name: {}", debug_snbt_string(name)));
+            }
+            if let Some(uuid) = profile.uuid {
+                fields.push(format!("id: {}", debug_snbt_uuid_int_array(uuid)));
+            }
+        }
+    }
+    if !profile.properties.is_empty() {
+        let properties = profile
+            .properties
+            .iter()
+            .map(|property| {
+                let mut fields = vec![
+                    format!("name: {}", debug_snbt_string(&property.name)),
+                    format!("value: {}", debug_snbt_string(&property.value)),
+                ];
+                if let Some(signature) = &property.signature {
+                    fields.push(format!("signature: {}", debug_snbt_string(signature)));
+                }
+                format!("{{{}}}", fields.join(", "))
+            })
+            .collect::<Vec<_>>()
+            .join(", ");
+        fields.push(format!("properties: [{properties}]"));
+    }
+    if let Some(texture) = &profile.skin_patch.body {
+        fields.push(format!("texture: {}", debug_snbt_string(&texture.asset_id)));
+    }
+    if let Some(cape) = &profile.skin_patch.cape {
+        fields.push(format!("cape: {}", debug_snbt_string(&cape.asset_id)));
+    }
+    if let Some(elytra) = &profile.skin_patch.elytra {
+        fields.push(format!("elytra: {}", debug_snbt_string(&elytra.asset_id)));
+    }
+    if let Some(model) = profile.skin_patch.model {
+        fields.push(format!(
+            "model: {}",
+            debug_snbt_string(match model {
+                PlayerModelTypeSummary::Slim => "slim",
+                PlayerModelTypeSummary::Wide => "wide",
+            })
+        ));
+    }
+    Some(format!("{{{}}}", fields.join(", ")))
 }
 
 fn debug_tropical_fish_pattern_name(packed_id: i32) -> &'static str {

@@ -8606,3 +8606,15 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   `tracked != true` 时输出该默认字段。component patch focused test 扩展到
   22 个 added entry，覆盖完整 target 与非默认 false；lodestone-tracker 从剩余
   component 总账本移入已支持子集。
+
+## 2026-07-10：ItemStack profile save codec
+
+- [x] `minecraft:profile` 持久化 component（P2 native input）：依据 vanilla
+  26.1 `ResolvableProfile.CODEC`、`ExtraCodecs.STORED_GAME_PROFILE/PROPERTY_MAP`
+  与 `PlayerSkin.Patch.MAP_CODEC`，复用 protocol 已保留的 type id `70`
+  GameProfile/Partial 分支、UUID/name、ordered signed property list 和完整 skin
+  patch，输出 UUID int array、主编码 property compounds 及
+  texture/cape/elytra/model；仅供渲染的 derived `profile_textures` 不重复保存。
+  component patch focused test 扩展到 23 个 added entry，覆盖 Partial 分支、
+  signed property、body/elytra/model patch 与字段顺序；profile 从剩余 component
+  总账本移入已支持子集。

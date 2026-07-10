@@ -236,8 +236,8 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   projection, remaining codec-backed SNBT projection (including `AbstractArrow`
   `inBlockState`, `item`, and `weapon`, remaining data-component patch entries
   beyond the supported custom-NBT/primitive/resource/color/map/ominous/firework/
-  custom-model-data/writable-book/lodestone/block-state/tropical-fish-enum
-  subset on throwable/firework/item-frame item stacks, falling-block
+  custom-model-data/writable-book/lodestone/profile/block-state/
+  tropical-fish-enum subset on throwable/firework/item-frame item stacks, falling-block
   `TileEntityData`,
   and non-default `VibrationSystem.Data` listener payloads),
   remaining entity-specific
