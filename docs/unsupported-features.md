@@ -208,7 +208,8 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   remaining registry-backed
   entity-data projection (including dynamic-registry ordering), packed variant
   projection, remaining codec-backed SNBT projection (including `AbstractArrow`
-  `inBlockState`, `item`, and `weapon`, plus falling-block `TileEntityData`),
+  `inBlockState`, `item`, and `weapon`, falling-block `TileEntityData`, and
+  non-default `VibrationSystem.Data` listener payloads),
   remaining entity-specific
   constructor/default save values, LivingEntity parent health/equipment/effect/attribute
   projection, observable non-empty entity inventory/container projection
