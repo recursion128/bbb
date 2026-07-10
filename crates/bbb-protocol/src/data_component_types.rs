@@ -122,6 +122,11 @@ pub fn vanilla_data_component_resource_id_for_type_id(type_id: i32) -> Option<&'
         .and_then(|index| VANILLA_DATA_COMPONENT_TYPE_RESOURCE_IDS.get(index).copied())
 }
 
+pub fn vanilla_data_component_type_is_persistent(type_id: i32) -> bool {
+    vanilla_data_component_resource_id_for_type_id(type_id).is_some()
+        && !matches!(type_id, 20 | 41 | 48)
+}
+
 #[cfg(test)]
 mod tests {
     use std::path::PathBuf;
@@ -148,6 +153,12 @@ mod tests {
         );
         assert_eq!(vanilla_data_component_resource_id_for_type_id(-1), None);
         assert_eq!(vanilla_data_component_resource_id_for_type_id(110), None);
+        assert!(vanilla_data_component_type_is_persistent(0));
+        assert!(!vanilla_data_component_type_is_persistent(20));
+        assert!(!vanilla_data_component_type_is_persistent(41));
+        assert!(!vanilla_data_component_type_is_persistent(48));
+        assert!(vanilla_data_component_type_is_persistent(109));
+        assert!(!vanilla_data_component_type_is_persistent(110));
     }
 
     #[test]
@@ -176,5 +187,15 @@ mod tests {
         }
 
         assert_eq!(registered, VANILLA_DATA_COMPONENT_TYPE_RESOURCE_IDS);
+        let transient = source
+            .split("= register(")
+            .skip(1)
+            .take(VANILLA_DATA_COMPONENT_TYPE_RESOURCE_IDS.len())
+            .enumerate()
+            .filter_map(|(type_id, definition)| {
+                (!definition.contains(".persistent(")).then_some(type_id as i32)
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(transient, vec![20, 41, 48]);
     }
 }

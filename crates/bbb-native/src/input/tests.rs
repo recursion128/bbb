@@ -9141,6 +9141,28 @@ fn item_stack_snbt_rejects_invalid_stack_and_template_shapes() {
 }
 
 #[test]
+fn item_stack_snbt_preserves_all_persistent_component_removals() {
+    let stack = ProtocolItemStackSummary {
+        item_id: Some(0),
+        count: 1,
+        component_patch: DataComponentPatchSummary {
+            removed_type_ids: vec![8, 20, 41, 48, 80, 109, 110],
+            ..DataComponentPatchSummary::default()
+        },
+    };
+
+    assert_eq!(
+        debug_item_stack_snbt("minecraft:stone", stack.count, Some(&stack), None),
+        Some(
+            "{id: \"minecraft:stone\", components: {\
+             \"!minecraft:damage_type\": {}, \"!minecraft:break_sound\": {}, \
+             \"!minecraft:shulker/color\": {}}}"
+                .to_string()
+        )
+    );
+}
+
+#[test]
 fn shift_f3_i_with_permission_copies_local_dragon_fireball_save_nbt_to_clipboard() {
     let mut input = ClientInputState::new(true);
     let mut world = world_with_debug_player(false);

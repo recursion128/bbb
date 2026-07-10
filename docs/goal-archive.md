@@ -8822,3 +8822,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   patch test 扩展到 52 个 added entry，覆盖 enchantments/attribute-modifiers/
   transient creative-slot-lock 名称及顺序；unknown type id 安全省略整个 component；
   tooltip-display 从剩余 component 总账本移入已支持子集。
+
+## 2026-07-10：ItemStack component removal save codec
+
+- [x] 持久化 component removal 全覆盖（P2 protocol registry + native input）：
+  利用完整 110 项 DataComponentType 表，依据 vanilla 26.1 `DataComponentType`
+  transient 定义过滤仅无 persistent codec 的 creative-slot-lock（20）、
+  additional-trade-cost（41）与 map-post-processing（48）；其余 known type removal
+  均输出 `!resource` 空 compound，不再受 added-value 支持子集限制。focused test
+  覆盖未实现 added codec 的 damage-type/break-sound/shulker-color removal，并确认
+  三个 transient 与 unknown id 被省略；账本明确 removal 已完整、剩余仅 added value。

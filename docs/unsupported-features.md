@@ -233,7 +233,8 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   projection,
   remaining registry-backed
   entity-data projection (including dynamic-registry ordering), packed variant
-  projection, remaining codec-backed SNBT projection (including `AbstractArrow`
+  projection, remaining codec-backed SNBT projection (component removals are complete;
+  added values still include `AbstractArrow`
   `inBlockState`, `item`, and `weapon`, remaining data-component patch entries
   beyond the supported custom-NBT/primitive (including repair-cost/enchantable/glider,
   minimum-attack-charge/potion-duration-scale)/

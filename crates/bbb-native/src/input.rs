@@ -4634,7 +4634,7 @@ fn debug_supported_component_patch_snbt(
         .filter_map(|type_id| debug_supported_added_component_snbt(*type_id, patch, item_runtime))
         .collect::<Vec<_>>();
     fields.extend(patch.removed_type_ids.iter().filter_map(|type_id| {
-        debug_supported_component_resource_id(*type_id)
+        debug_persistent_component_resource_id(*type_id)
             .map(|resource_id| format!("{}: {{}}", debug_snbt_string(&format!("!{resource_id}"))))
     }));
     (!fields.is_empty()).then(|| format!("{{{}}}", fields.join(", ")))
@@ -4812,6 +4812,17 @@ fn debug_supported_component_resource_id(type_id: i32) -> Option<&'static str> {
         TROPICAL_FISH_PATTERN_COLOR_COMPONENT_TYPE_ID => "minecraft:tropical_fish/pattern_color",
         _ => return None,
     })
+}
+
+fn debug_persistent_component_resource_id(type_id: i32) -> Option<&'static str> {
+    bbb_protocol::data_component_types::vanilla_data_component_type_is_persistent(type_id).then(
+        || {
+            bbb_protocol::data_component_types::vanilla_data_component_resource_id_for_type_id(
+                type_id,
+            )
+            .expect("known persistent component type has a resource id")
+        },
+    )
 }
 
 fn debug_nbt_summary_snbt(value: &NbtSummaryValue) -> String {
