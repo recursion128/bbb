@@ -6616,7 +6616,7 @@ fn native_item_runtime_resolves_component_condition_predicates() {
         uv("component_condition_bundle_exact_stored_enchantments_absent")
     );
     let exact_villager_variant = DataComponentPatchSummary {
-        added_type_ids: vec![83],
+        added_type_ids: vec![81],
         villager_variant_id: Some(2),
         ..DataComponentPatchSummary::default()
     };
@@ -6638,7 +6638,7 @@ fn native_item_runtime_resolves_component_condition_predicates() {
         selected(
             93,
             named_bundle_entry(DataComponentPatchSummary {
-                removed_type_ids: vec![83],
+                removed_type_ids: vec![81],
                 ..exact_villager_variant
             })
         ),
@@ -8034,7 +8034,7 @@ fn native_item_runtime_resolves_component_condition_predicates() {
         selected(
             56,
             DataComponentPatchSummary {
-                added_type_ids: vec![83],
+                added_type_ids: vec![81],
                 villager_variant_id: Some(2),
                 ..DataComponentPatchSummary::default()
             }
@@ -8045,7 +8045,7 @@ fn native_item_runtime_resolves_component_condition_predicates() {
         selected(
             56,
             DataComponentPatchSummary {
-                added_type_ids: vec![83],
+                added_type_ids: vec![81],
                 villager_variant_id: Some(0),
                 ..DataComponentPatchSummary::default()
             }
@@ -8056,8 +8056,8 @@ fn native_item_runtime_resolves_component_condition_predicates() {
         selected(
             56,
             DataComponentPatchSummary {
-                added_type_ids: vec![83],
-                removed_type_ids: vec![83],
+                added_type_ids: vec![81],
+                removed_type_ids: vec![81],
                 villager_variant_id: Some(2),
                 ..DataComponentPatchSummary::default()
             }
@@ -8074,7 +8074,7 @@ fn native_item_runtime_resolves_component_condition_predicates() {
                     item_id: 0,
                     count: 1,
                     component_patch: DataComponentPatchSummary {
-                        added_type_ids: vec![83],
+                        added_type_ids: vec![81],
                         villager_variant_id: Some(2),
                         ..DataComponentPatchSummary::default()
                     },
@@ -8094,7 +8094,7 @@ fn native_item_runtime_resolves_component_condition_predicates() {
                     item_id: 0,
                     count: 1,
                     component_patch: DataComponentPatchSummary {
-                        added_type_ids: vec![83],
+                        added_type_ids: vec![81],
                         villager_variant_id: Some(0),
                         ..DataComponentPatchSummary::default()
                     },
@@ -8115,7 +8115,7 @@ fn native_item_runtime_resolves_component_condition_predicates() {
                         item_id: 0,
                         count: 1,
                         component_patch: DataComponentPatchSummary {
-                            added_type_ids: vec![83],
+                            added_type_ids: vec![81],
                             villager_variant_id: Some(2),
                             ..DataComponentPatchSummary::default()
                         },
@@ -8124,7 +8124,7 @@ fn native_item_runtime_resolves_component_condition_predicates() {
                         item_id: 1,
                         count: 1,
                         component_patch: DataComponentPatchSummary {
-                            added_type_ids: vec![83],
+                            added_type_ids: vec![81],
                             villager_variant_id: Some(0),
                             ..DataComponentPatchSummary::default()
                         },
@@ -8146,7 +8146,7 @@ fn native_item_runtime_resolves_component_condition_predicates() {
                         item_id: 0,
                         count: 1,
                         component_patch: DataComponentPatchSummary {
-                            added_type_ids: vec![83],
+                            added_type_ids: vec![81],
                             villager_variant_id: Some(0),
                             ..DataComponentPatchSummary::default()
                         },
@@ -8155,7 +8155,7 @@ fn native_item_runtime_resolves_component_condition_predicates() {
                         item_id: 1,
                         count: 1,
                         component_patch: DataComponentPatchSummary {
-                            added_type_ids: vec![83],
+                            added_type_ids: vec![81],
                             villager_variant_id: Some(0),
                             ..DataComponentPatchSummary::default()
                         },
@@ -8170,7 +8170,7 @@ fn native_item_runtime_resolves_component_condition_predicates() {
         selected(
             70,
             DataComponentPatchSummary {
-                added_type_ids: vec![83],
+                added_type_ids: vec![81],
                 villager_variant_id: Some(2),
                 ..DataComponentPatchSummary::default()
             }
@@ -8181,7 +8181,7 @@ fn native_item_runtime_resolves_component_condition_predicates() {
         selected(
             70,
             DataComponentPatchSummary {
-                added_type_ids: vec![83],
+                added_type_ids: vec![81],
                 villager_variant_id: Some(0),
                 ..DataComponentPatchSummary::default()
             }
@@ -8198,7 +8198,7 @@ fn native_item_runtime_resolves_component_condition_predicates() {
                     item_id: 0,
                     count: 1,
                     component_patch: DataComponentPatchSummary {
-                        added_type_ids: vec![83],
+                        added_type_ids: vec![81],
                         villager_variant_id: Some(2),
                         ..DataComponentPatchSummary::default()
                     },
@@ -8218,7 +8218,7 @@ fn native_item_runtime_resolves_component_condition_predicates() {
                     item_id: 0,
                     count: 1,
                     component_patch: DataComponentPatchSummary {
-                        added_type_ids: vec![83],
+                        added_type_ids: vec![81],
                         villager_variant_id: Some(0),
                         ..DataComponentPatchSummary::default()
                     },
@@ -8238,7 +8238,7 @@ fn native_item_runtime_resolves_component_condition_predicates() {
                     item_id: 0,
                     count: 1,
                     component_patch: DataComponentPatchSummary {
-                        added_type_ids: vec![83],
+                        added_type_ids: vec![81],
                         villager_variant_id: Some(2),
                         ..DataComponentPatchSummary::default()
                     },
@@ -8258,7 +8258,7 @@ fn native_item_runtime_resolves_component_condition_predicates() {
                     item_id: 0,
                     count: 1,
                     component_patch: DataComponentPatchSummary {
-                        added_type_ids: vec![83],
+                        added_type_ids: vec![81],
                         villager_variant_id: Some(0),
                         ..DataComponentPatchSummary::default()
                     },

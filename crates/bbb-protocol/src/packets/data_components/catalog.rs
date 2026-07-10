@@ -318,13 +318,18 @@ static VANILLA_DATA_COMPONENTS: &[DataComponentDescriptor] = &[
     component(78, "minecraft:lock", true, decode_codec_backed_nbt),
     component(79, "minecraft:container_loot", true, decode_container_loot),
     component(80, "minecraft:break_sound", true, decode_break_sound),
-    component(81, "minecraft:villager/variant", true, skip_holder_registry),
+    component(
+        81,
+        "minecraft:villager/variant",
+        true,
+        decode_villager_variant,
+    ),
     component(82, "minecraft:wolf/variant", true, skip_holder_registry),
     component(
         83,
         "minecraft:wolf/sound_variant",
         true,
-        decode_villager_variant,
+        decode_wolf_sound_variant,
     ),
     component(84, "minecraft:wolf/collar", true, decode_builtin_enum),
     component(85, "minecraft:fox/variant", true, decode_builtin_enum),
@@ -1081,6 +1086,15 @@ fn decode_villager_variant(
     summary: &mut DataComponentPatchSummary,
 ) -> Result<()> {
     summary.villager_variant_id = Some(decode_holder_registry_id(decoder)?);
+    Ok(())
+}
+
+fn decode_wolf_sound_variant(
+    _type_id: i32,
+    decoder: &mut Decoder<'_>,
+    summary: &mut DataComponentPatchSummary,
+) -> Result<()> {
+    summary.wolf_sound_variant_id = Some(decode_holder_registry_id(decoder)?);
     Ok(())
 }
 

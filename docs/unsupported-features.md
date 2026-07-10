@@ -262,7 +262,8 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   jukebox-playable-named-holder/
   painting-variant-named-holder/
   pot-decoration/
-  container/block-state/built-in animal/color enum (wolf/cat collars, fox,
+  container/block-state/villager-variant/wolf-sound-variant named holders/
+  built-in animal/color enum (wolf/cat collars, fox,
   salmon, parrot, mooshroom, rabbit, horse, llama, axolotl, sheep, shulker,
   and tropical-fish) subset on throwable/firework/
   item-frame item stacks, falling-block `TileEntityData`,

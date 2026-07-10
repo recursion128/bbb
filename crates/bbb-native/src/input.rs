@@ -115,7 +115,8 @@ use bbb_item_model::{
     vanilla_enchantment_resource_id, vanilla_instrument_resource_id,
     vanilla_mob_effect_resource_id, vanilla_painting_variant_resource_id,
     vanilla_potion_resource_id, vanilla_trim_material_resource_id,
-    vanilla_trim_pattern_resource_id, ItemModelKeybindContext, NativeItemRuntime,
+    vanilla_trim_pattern_resource_id, vanilla_villager_type_resource_id,
+    vanilla_wolf_sound_variant_resource_id, ItemModelKeybindContext, NativeItemRuntime,
 };
 pub(crate) use bundle::select_bundle_item;
 use commands::*;
@@ -6421,7 +6422,9 @@ fn debug_push_wolf_additional_save_data(entity: &EntityState, fields: &mut Vec<S
     fields.push(format!("anger_end_time: {anger_end_time}L"));
     fields.push(format!(
         "sound_variant: {}",
-        debug_snbt_string(debug_wolf_sound_variant_resource_id(sound_variant))
+        debug_snbt_string(
+            vanilla_wolf_sound_variant_resource_id(sound_variant).unwrap_or("minecraft:classic")
+        )
     ));
 }
 
@@ -6436,18 +6439,6 @@ fn debug_wolf_variant_resource_id(variant: i32) -> &'static str {
         7 => "minecraft:chestnut",
         8 => "minecraft:striped",
         _ => "minecraft:pale",
-    }
-}
-
-fn debug_wolf_sound_variant_resource_id(variant: i32) -> &'static str {
-    match variant {
-        1 => "minecraft:puglin",
-        2 => "minecraft:sad",
-        3 => "minecraft:angry",
-        4 => "minecraft:grumpy",
-        5 => "minecraft:big",
-        6 => "minecraft:cute",
-        _ => "minecraft:classic",
     }
 }
 

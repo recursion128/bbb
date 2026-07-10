@@ -9089,3 +9089,16 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   vanilla named holder 输出资源 ID。大型 component patch test 从 83 扩展到 84
   个 added entry，另覆盖 descriptor named/direct 分发、unknown id 与 direct
   description Component 无法无损回写时的安全省略；中央 patch loop 未修改。
+
+## 2026-07-10：Villager/wolf sound component id correction and save
+
+- [x] minecraft:villager/variant 与 minecraft:wolf/sound_variant descriptor
+  纠错及持久化（P2 protocol + item-model + native input）：依据 vanilla 26.1
+  `DataComponents` 注册顺序、`VillagerType.CODEC` 与 `WolfSoundVariant.CODEC`，
+  protocol 不再把 type 83 wolf sound holder 写入 villager 字段，而是由 type 81
+  写 `villager_variant_id`、type 83 写独立 `wolf_sound_variant_id`。item-model 的
+  villager component presence/exact/tag 匹配从错误的 83 修正为 81，并由 7 项
+  VillagerType/WolfSoundVariants bootstrap 表提供唯一资源查询；native registry
+  对两类 fixed-registry named holder 编码资源 ID。大型 component patch test 从
+  84 扩展到 86 个 added entry，另以 protocol、item-model、native focused tests
+  锁定两个 holder 字段不再串线。

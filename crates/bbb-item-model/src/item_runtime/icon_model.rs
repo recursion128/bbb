@@ -56,7 +56,7 @@ const LODESTONE_TRACKER_COMPONENT_ID: i32 = 67;
 const FIREWORK_EXPLOSION_COMPONENT_ID: i32 = 68;
 const FIREWORKS_COMPONENT_ID: i32 = 69;
 const CONTAINER_COMPONENT_ID: i32 = 75;
-const VILLAGER_VARIANT_COMPONENT_ID: i32 = 83;
+const VILLAGER_VARIANT_COMPONENT_ID: i32 = 81;
 
 pub(super) const VANILLA_TRIM_MATERIAL_KEYS: &[&str] = &[
     "minecraft:quartz",
@@ -181,6 +181,25 @@ const VANILLA_VILLAGER_TYPE_KEYS: &[&str] = &[
     "minecraft:swamp",
     "minecraft:taiga",
 ];
+const VANILLA_WOLF_SOUND_VARIANT_KEYS: &[&str] = &[
+    "minecraft:classic",
+    "minecraft:puglin",
+    "minecraft:sad",
+    "minecraft:angry",
+    "minecraft:grumpy",
+    "minecraft:big",
+    "minecraft:cute",
+];
+
+pub fn vanilla_villager_type_resource_id(id: i32) -> Option<&'static str> {
+    let index = usize::try_from(id).ok()?;
+    VANILLA_VILLAGER_TYPE_KEYS.get(index).copied()
+}
+
+pub fn vanilla_wolf_sound_variant_resource_id(id: i32) -> Option<&'static str> {
+    let index = usize::try_from(id).ok()?;
+    VANILLA_WOLF_SOUND_VARIANT_KEYS.get(index).copied()
+}
 const VANILLA_DEFAULT_MAX_STACK_SIZE: i32 = 64;
 const VANILLA_ABSOLUTE_MAX_STACK_SIZE: i32 = 99;
 
@@ -611,6 +630,30 @@ mod tests {
         assert_eq!(vanilla_potion_resource_id(45), Some("minecraft:infested"));
         assert_eq!(vanilla_potion_resource_id(46), None);
         assert_eq!(vanilla_potion_resource_id(-1), None);
+    }
+
+    #[test]
+    fn villager_and_wolf_sound_variants_follow_26_1_bootstrap_order() {
+        assert_eq!(
+            vanilla_villager_type_resource_id(0),
+            Some("minecraft:desert")
+        );
+        assert_eq!(
+            vanilla_villager_type_resource_id(6),
+            Some("minecraft:taiga")
+        );
+        assert_eq!(vanilla_villager_type_resource_id(7), None);
+        assert_eq!(vanilla_villager_type_resource_id(-1), None);
+        assert_eq!(
+            vanilla_wolf_sound_variant_resource_id(0),
+            Some("minecraft:classic")
+        );
+        assert_eq!(
+            vanilla_wolf_sound_variant_resource_id(6),
+            Some("minecraft:cute")
+        );
+        assert_eq!(vanilla_wolf_sound_variant_resource_id(7), None);
+        assert_eq!(vanilla_wolf_sound_variant_resource_id(-1), None);
     }
 
     #[test]
@@ -6525,10 +6568,7 @@ fn item_stack_matches_villager_variant_value(
     let Some(variant_id) = component_patch.villager_variant_id else {
         return false;
     };
-    let Ok(variant_index) = usize::try_from(variant_id) else {
-        return false;
-    };
-    let Some(variant_key) = VANILLA_VILLAGER_TYPE_KEYS.get(variant_index) else {
+    let Some(variant_key) = vanilla_villager_type_resource_id(variant_id) else {
         return false;
     };
     registry_key_holder_set_matches(Some(value), variant_key, villager_type_tags)
@@ -6549,9 +6589,8 @@ fn villager_variant_exact_match(
     }
     component_patch
         .villager_variant_id
-        .and_then(|id| usize::try_from(id).ok())
-        .and_then(|index| VANILLA_VILLAGER_TYPE_KEYS.get(index))
-        .is_some_and(|actual| *actual == expected)
+        .and_then(vanilla_villager_type_resource_id)
+        .is_some_and(|actual| actual == expected)
 }
 
 fn string_collection_predicate_matches(value: &Value, values: &[String]) -> bool {
