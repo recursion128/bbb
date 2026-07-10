@@ -8985,3 +8985,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   encoder 移入独立 registry，资源名和 removal 持久性均只查询 protocol catalog；
   未注册 added value 与 transient removal 继续安全省略。该切片只重构分发机制，
   没有新增或误标任何 component codec 支持。
+
+## 2026-07-10：ItemStack suspicious-stew-effects save codec
+
+- [x] minecraft:suspicious_stew_effects 持久化 component（P2 native input）：
+  依据 vanilla 26.1 `SuspiciousStewEffects.CODEC/STREAM_CODEC`，复用 protocol
+  已保留的 ordered MobEffect holder id 与 duration 摘要，并通过 component encoder
+  registry 注册 type id 53。native 使用既有 40 项 vanilla MobEffect 注册顺序
+  输出 entry list，复刻必需 id 与 duration=160 默认省略；native component patch
+  test 从 74 扩展到 75 个 added entry，另覆盖空列表和 unknown holder 的整组件
+  安全省略。动态 datapack MobEffect 排序仍保留在 registry-backed 总账本。

@@ -55,6 +55,7 @@ static PERSISTENT_SNBT_ENCODERS: &[PersistentSnbtEncoderDescriptor] = &[
     encoder(50, encode_bundle_contents),
     encoder(51, encode_potion_contents),
     encoder(52, encode_potion_duration_scale),
+    encoder(53, encode_suspicious_stew_effects),
     encoder(54, encode_writable_book_content),
     encoder(57, encode_codec_backed_nbt),
     encoder(58, encode_entity_data),
@@ -426,6 +427,28 @@ fn encode_potion_duration_scale(
     debug_range_checked_float_component_snbt(patch.potion_duration_scale_bits?, 0.0, None)
 }
 
+fn encode_suspicious_stew_effects(
+    _type_id: i32,
+    patch: &bbb_protocol::packets::DataComponentPatchSummary,
+    _item_runtime: Option<&NativeItemRuntime>,
+) -> Option<String> {
+    let effects = patch
+        .suspicious_stew_effects
+        .iter()
+        .map(|effect| {
+            let mut fields = vec![format!(
+                "id: {}",
+                debug_snbt_string(vanilla_mob_effect_resource_id(effect.effect_id)?)
+            )];
+            if effect.duration != 160 {
+                fields.push(format!("duration: {}", effect.duration));
+            }
+            Some(format!("{{{}}}", fields.join(", ")))
+        })
+        .collect::<Option<Vec<_>>>()?;
+    Some(format!("[{}]", effects.join(", ")))
+}
+
 fn encode_writable_book_content(
     _type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
@@ -612,7 +635,7 @@ mod tests {
 
     #[test]
     fn encoder_registry_is_unique_sorted_and_persistent() {
-        assert_eq!(PERSISTENT_SNBT_ENCODERS.len(), 74);
+        assert_eq!(PERSISTENT_SNBT_ENCODERS.len(), 75);
         let mut ids = HashSet::new();
         let mut previous = None;
         for descriptor in PERSISTENT_SNBT_ENCODERS {
@@ -642,5 +665,38 @@ mod tests {
             Some("64".to_string())
         );
         assert_eq!(encode_added_component_value_snbt(8, &patch, None), None);
+    }
+
+    #[test]
+    fn suspicious_stew_effects_use_codec_defaults_and_omit_unknown_holders() {
+        let mut patch = bbb_protocol::packets::DataComponentPatchSummary {
+            suspicious_stew_effects: vec![
+                bbb_protocol::packets::SuspiciousStewEffectSummary {
+                    effect_id: 0,
+                    duration: 160,
+                },
+                bbb_protocol::packets::SuspiciousStewEffectSummary {
+                    effect_id: 18,
+                    duration: 200,
+                },
+            ],
+            ..Default::default()
+        };
+        assert_eq!(
+            encode_added_component_value_snbt(53, &patch, None),
+            Some(
+                "[{id: \"minecraft:speed\"}, {id: \"minecraft:poison\", duration: 200}]"
+                    .to_string()
+            )
+        );
+
+        patch.suspicious_stew_effects[1].effect_id = 40;
+        assert_eq!(encode_added_component_value_snbt(53, &patch, None), None);
+
+        patch.suspicious_stew_effects.clear();
+        assert_eq!(
+            encode_added_component_value_snbt(53, &patch, None),
+            Some("[]".to_string())
+        );
     }
 }

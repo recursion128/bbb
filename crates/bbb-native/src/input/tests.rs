@@ -8738,12 +8738,12 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
         EquipmentAssetCatalog::default(),
     );
     let patch = DataComponentPatchSummary {
-        added: 74,
+        added: 75,
         added_type_ids: vec![
             0, 1, 2, 3, 4, 5, 7, 10, 12, 17, 18, 19, 21, 22, 23, 24, 25, 26, 27, 29, 30, 31, 33,
-            34, 35, 36, 38, 39, 40, 43, 44, 45, 46, 47, 49, 50, 51, 52, 54, 57, 58, 59, 60, 63, 65,
-            66, 67, 68, 69, 70, 71, 73, 74, 75, 76, 77, 78, 79, 80, 84, 85, 86, 87, 88, 89, 90, 91,
-            92, 101, 103, 104, 107, 108, 109,
+            34, 35, 36, 38, 39, 40, 43, 44, 45, 46, 47, 49, 50, 51, 52, 53, 54, 57, 58, 59, 60, 63,
+            65, 66, 67, 68, 69, 70, 71, 73, 74, 75, 76, 77, 78, 79, 80, 84, 85, 86, 87, 88, 89, 90,
+            91, 92, 101, 103, 104, 107, 108, 109,
         ],
         removed_type_ids: vec![6],
         custom_data: Some(NbtSummaryValue::Compound(vec![
@@ -9048,6 +9048,16 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
         }],
         potion_custom_name: Some("swift".to_string()),
         potion_duration_scale_bits: Some(1.5_f32.to_bits()),
+        suspicious_stew_effects: vec![
+            bbb_protocol::packets::SuspiciousStewEffectSummary {
+                effect_id: 0,
+                duration: 160,
+            },
+            bbb_protocol::packets::SuspiciousStewEffectSummary {
+                effect_id: 18,
+                duration: 200,
+            },
+        ],
         writable_book_pages: vec!["first\npage".to_string(), "second raw".to_string()],
         writable_book_page_filters: vec![None, Some("second filtered".to_string())],
         ominous_bottle_amplifier: Some(3),
@@ -9244,6 +9254,8 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
          amplifier: 1, duration: 600, ambient: 1b, show_particles: 0b, \
          show_icon: 0b}], custom_name: \"swift\"}, \
          \"minecraft:potion_duration_scale\": 1.5f, \
+         \"minecraft:suspicious_stew_effects\": [{id: \"minecraft:speed\"}, \
+         {id: \"minecraft:poison\", duration: 200}], \
          \"minecraft:writable_book_content\": {pages: [{raw: \"first\\npage\"}, \
          {raw: \"second raw\", filtered: \"second filtered\"}]}, \
          \"minecraft:debug_stick_state\": {\"minecraft:stone\": \"facing\"}, \
