@@ -8671,3 +8671,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   `false/true/0.2f` 的值。component patch focused test 扩展到 28 个 added
   entry，覆盖两种 boolean byte tags、float suffix 与默认省略路径；
   use-effects 从剩余 component 总账本移入已支持子集。
+
+## 2026-07-10：ItemStack attack-range save codec
+
+- [x] `minecraft:attack_range` 持久化 component（P2 native input）：
+  依据 vanilla 26.1 `AttackRange.CODEC` 与 protocol 已保留的 type id `30`
+  六个 bit-exact f32，先复刻各字段 codec range validation，再按
+  min/max reach、creative reach、hitbox margin、mob factor 顺序仅输出非默认值；
+  同时为 `use_effects.speed_multiplier` 补齐 0..1 validation。component patch
+  focused test 扩展到 29 个 added entry，覆盖顶层六项非默认、float suffix 与
+  nested 全默认空 compound；attack-range 从剩余 component 总账本移入已支持子集。

@@ -8544,10 +8544,10 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
         EquipmentAssetCatalog::default(),
     );
     let patch = DataComponentPatchSummary {
-        added: 28,
+        added: 29,
         added_type_ids: vec![
-            0, 1, 2, 3, 4, 5, 10, 12, 17, 21, 22, 44, 45, 46, 49, 50, 54, 63, 67, 68, 69, 70, 74,
-            75, 76, 88, 89, 90,
+            0, 1, 2, 3, 4, 5, 10, 12, 17, 21, 22, 30, 44, 45, 46, 49, 50, 54, 63, 67, 68, 69, 70,
+            74, 75, 76, 88, 89, 90,
         ],
         removed_type_ids: vec![6],
         custom_data: Some(NbtSummaryValue::Compound(vec![
@@ -8617,6 +8617,14 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
         custom_model_data_colors: vec![0x11_22_33, 0x44_55_66],
         enchantment_glint_override: Some(false),
         intangible_projectile: true,
+        attack_range: Some(bbb_protocol::packets::AttackRangeSummary {
+            min_reach: 2.0,
+            max_reach: 4.5,
+            min_creative_reach: 2.0,
+            max_creative_reach: 6.5,
+            hitbox_margin: 0.125,
+            mob_factor: 0.5,
+        }),
         dyed_color: Some(0x11_22_33),
         map_color: Some(0x44_55_66),
         map_id: Some(42),
@@ -8650,8 +8658,16 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
             item_id: 2,
             count: 3,
             component_patch: DataComponentPatchSummary {
-                added: 1,
-                added_type_ids: vec![44],
+                added: 2,
+                added_type_ids: vec![30, 44],
+                attack_range: Some(bbb_protocol::packets::AttackRangeSummary {
+                    min_reach: 0.0,
+                    max_reach: 3.0,
+                    min_creative_reach: 0.0,
+                    max_creative_reach: 5.0,
+                    hitbox_margin: 0.3,
+                    mob_factor: 1.0,
+                }),
                 dyed_color: Some(0x22_44_66),
                 ..DataComponentPatchSummary::default()
             },
@@ -8759,14 +8775,19 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
          \"minecraft:custom_model_data\": {floats: [1.0f, -0.0f, Infinityf, NaNf], \
          flags: [1b, 0b], strings: [\"variant\", \"A 'quote'\"], \
          colors: [1122867, 4478310]}, \"minecraft:enchantment_glint_override\": 0b, \
-         \"minecraft:intangible_projectile\": {}, \"minecraft:dyed_color\": 1122867, \
+         \"minecraft:intangible_projectile\": {}, \
+         \"minecraft:attack_range\": {min_reach: 2.0f, max_reach: 4.5f, \
+         min_creative_reach: 2.0f, max_creative_reach: 6.5f, \
+         hitbox_margin: 0.125f, mob_factor: 0.5f}, \
+         \"minecraft:dyed_color\": 1122867, \
          \"minecraft:map_color\": 4478310, \"minecraft:map_id\": 42, \
          \"minecraft:charged_projectiles\": [{id: \"minecraft:arrow\", \
          components: {\"minecraft:use_effects\": {}}}, \
          {id: \"minecraft:firework_star\", count: 2, \
          components: {\"minecraft:damage\": 7}}], \
          \"minecraft:bundle_contents\": [{id: \"minecraft:arrow\", count: 3, \
-         components: {\"minecraft:dyed_color\": 2245734}}], \
+         components: {\"minecraft:attack_range\": {}, \
+         \"minecraft:dyed_color\": 2245734}}], \
          \"minecraft:writable_book_content\": {pages: [{raw: \"first\\npage\"}, \
          {raw: \"second raw\", filtered: \"second filtered\"}]}, \
          \"minecraft:ominous_bottle_amplifier\": 3, \

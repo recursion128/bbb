@@ -4645,7 +4645,7 @@ fn debug_supported_added_component_snbt(
         2 => patch.max_damage?.to_string(),
         3 => patch.damage?.to_string(),
         4 => "{}".to_string(),
-        5 => debug_use_effects_component_snbt(patch.use_effects?),
+        5 => debug_use_effects_component_snbt(patch.use_effects?)?,
         10 => debug_snbt_string(patch.item_model.as_deref()?),
         12 => debug_snbt_string(match patch.rarity? {
             ItemRaritySummary::Common => "common",
@@ -4656,6 +4656,7 @@ fn debug_supported_added_component_snbt(
         CUSTOM_MODEL_DATA_COMPONENT_TYPE_ID => debug_custom_model_data_component_snbt(patch),
         21 => debug_snbt_bool(patch.enchantment_glint_override?).to_string(),
         22 => "{}".to_string(),
+        30 => debug_attack_range_component_snbt(patch.attack_range?)?,
         44 => patch.dyed_color?.to_string(),
         45 => patch.map_color?.to_string(),
         46 => patch.map_id?.to_string(),
@@ -4726,6 +4727,7 @@ fn debug_supported_component_resource_id(type_id: i32) -> Option<&'static str> {
         CUSTOM_MODEL_DATA_COMPONENT_TYPE_ID => "minecraft:custom_model_data",
         21 => "minecraft:enchantment_glint_override",
         22 => "minecraft:intangible_projectile",
+        30 => "minecraft:attack_range",
         44 => "minecraft:dyed_color",
         45 => "minecraft:map_color",
         46 => "minecraft:map_id",
@@ -4833,7 +4835,12 @@ fn debug_nbt_java_double_string(value: f64) -> String {
     }
 }
 
-fn debug_use_effects_component_snbt(effects: bbb_protocol::packets::UseEffectsSummary) -> String {
+fn debug_use_effects_component_snbt(
+    effects: bbb_protocol::packets::UseEffectsSummary,
+) -> Option<String> {
+    if !(0.0..=1.0).contains(&effects.speed_multiplier) {
+        return None;
+    }
     let mut fields = Vec::new();
     if effects.can_sprint {
         fields.push(format!("can_sprint: {}", debug_snbt_bool(true)));
@@ -4847,7 +4854,50 @@ fn debug_use_effects_component_snbt(effects: bbb_protocol::packets::UseEffectsSu
             debug_nbt_java_float_string(effects.speed_multiplier)
         ));
     }
-    format!("{{{}}}", fields.join(", "))
+    Some(format!("{{{}}}", fields.join(", ")))
+}
+
+fn debug_attack_range_component_snbt(
+    range: bbb_protocol::packets::AttackRangeSummary,
+) -> Option<String> {
+    if !(0.0..=64.0).contains(&range.min_reach)
+        || !(0.0..=64.0).contains(&range.max_reach)
+        || !(0.0..=64.0).contains(&range.min_creative_reach)
+        || !(0.0..=64.0).contains(&range.max_creative_reach)
+        || !(0.0..=1.0).contains(&range.hitbox_margin)
+        || !(0.0..=2.0).contains(&range.mob_factor)
+    {
+        return None;
+    }
+    let mut fields = Vec::new();
+    debug_push_nondefault_snbt_float(&mut fields, "min_reach", range.min_reach, 0.0);
+    debug_push_nondefault_snbt_float(&mut fields, "max_reach", range.max_reach, 3.0);
+    debug_push_nondefault_snbt_float(
+        &mut fields,
+        "min_creative_reach",
+        range.min_creative_reach,
+        0.0,
+    );
+    debug_push_nondefault_snbt_float(
+        &mut fields,
+        "max_creative_reach",
+        range.max_creative_reach,
+        5.0,
+    );
+    debug_push_nondefault_snbt_float(&mut fields, "hitbox_margin", range.hitbox_margin, 0.3);
+    debug_push_nondefault_snbt_float(&mut fields, "mob_factor", range.mob_factor, 1.0);
+    Some(format!("{{{}}}", fields.join(", ")))
+}
+
+fn debug_push_nondefault_snbt_float(
+    fields: &mut Vec<String>,
+    name: &str,
+    value: f32,
+    default: f32,
+) {
+    if value.to_bits() != default.to_bits() {
+        fields.push(format!("{name}: {}f", debug_nbt_java_float_string(value)));
+    }
 }
 
 fn debug_custom_model_data_component_snbt(
