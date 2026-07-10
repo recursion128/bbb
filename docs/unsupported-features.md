@@ -481,6 +481,10 @@ back into a todo. Do not delete these.
 
 ## Entity models and animation
 
+- **Remaining entity metadata schema families.** The checked-in schema now owns
+  `Entity` and `LivingEntity` accessors/defaults/flags, including inherited lookup.
+  `Mob`, `Avatar`, and concrete entity subclasses still keep local metadata ids and
+  masks until their family descriptors and projection migrations land.
 - **Baby `ageScale`** — the `0.5` proportions applied in model `setupAnim`,
   distinct from the projected `SCALE`-attribute `scale`.
 - **Armor trims and the remaining mob-specific armor models.**

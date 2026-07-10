@@ -18,6 +18,7 @@ use bbb_protocol::packets::{
 };
 use serde::{Deserialize, Serialize};
 
+pub(crate) use super::schema::VANILLA_ENTITY_POSE_DATA_ID as ENTITY_DATA_POSE_ID;
 use super::{
     is_vanilla_boat_type, is_vanilla_minecart_type, EntityClientAnimationState, EntityVec3,
 };
@@ -34,7 +35,6 @@ pub(crate) const ITEM_FRAME_ENTITY_TYPE_IDS: [i32; 2] = [
     VANILLA_ENTITY_TYPE_GLOW_ITEM_FRAME_ID,
 ];
 
-pub(crate) const ENTITY_DATA_POSE_ID: u8 = 6;
 const AGEABLE_MOB_BABY_DATA_ID: u8 = 16;
 const PIGLIN_BABY_DATA_ID: u8 = 17;
 const ZOMBIE_BABY_DATA_ID: u8 = 16;

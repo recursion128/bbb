@@ -25,6 +25,8 @@ use bbb_renderer::{
 };
 #[cfg(test)]
 use bbb_renderer::{EntityDynamicPlayerSkinStatus, EntityPlayerSkinModel};
+#[cfg(test)]
+use bbb_world::VANILLA_ENTITY_SHARED_FLAG_GLOWING as ENTITY_SHARED_FLAG_GLOWING;
 use bbb_world::{
     vanilla_entity_type_is_living, ArmorMaterialKind as WorldArmorMaterialKind,
     EndCrystalBeamSource as WorldEndCrystalBeamSource,
@@ -33,6 +35,11 @@ use bbb_world::{
     EntityPickTargetState, GuardianBeamSource as WorldGuardianBeamSource,
     LlamaBodyDecorColor as WorldLlamaBodyDecorColor, RegistryContentState,
     WolfArmorCrackiness as WorldWolfArmorCrackiness, WorldStore,
+    VANILLA_ENTITY_CUSTOM_NAME_DATA_ID as ENTITY_CUSTOM_NAME_DATA_ID,
+    VANILLA_ENTITY_SHARED_FLAGS_DATA_ID as ENTITY_SHARED_FLAGS_DATA_ID,
+    VANILLA_ENTITY_SHARED_FLAG_INVISIBLE as ENTITY_SHARED_FLAG_INVISIBLE,
+    VANILLA_ENTITY_SHARED_FLAG_ON_FIRE as ENTITY_SHARED_FLAG_ON_FIRE,
+    VANILLA_LIVING_ENTITY_HEALTH_DATA_ID as LIVING_ENTITY_HEALTH_DATA_ID,
 };
 
 use bbb_item_model::{default_player_skin_for_profile_id, NativeItemRuntime};
@@ -67,12 +74,6 @@ const ENTITY_POSITION_POINT_SIZE: f32 = 2.0;
 const AVATAR_MODEL_CUSTOMIZATION_DATA_ID: u8 = 16;
 const AVATAR_PLAYER_DEFAULT_MODEL_CUSTOMIZATION: i8 = 0;
 const MANNEQUIN_DEFAULT_MODEL_CUSTOMIZATION: i8 = PlayerModelPartVisibility::ALL_MASK as i8;
-const ENTITY_SHARED_FLAGS_DATA_ID: u8 = 0;
-const ENTITY_SHARED_FLAG_ON_FIRE: i8 = 0x01;
-const ENTITY_SHARED_FLAG_INVISIBLE: i8 = 0x20;
-#[cfg(test)]
-const ENTITY_SHARED_FLAG_GLOWING: i8 = 0x40;
-const ENTITY_CUSTOM_NAME_DATA_ID: u8 = 2;
 const AGEABLE_MOB_BABY_DATA_ID: u8 = 16;
 const ZOMBIE_BABY_DATA_ID: u8 = 16;
 /// Vanilla `Zombie.DATA_DROWNED_CONVERSION_ID` (synced boolean): `Entity` 0..=7,
@@ -305,9 +306,6 @@ const CAMEL_SITDOWN_DURATION_TICKS: i64 = 40;
 /// Vanilla `Camel.STANDUP_DURATION_TICKS` (52 ticks = 2.6 s `CAMEL_STANDUP`): the stand-up
 /// transition window.
 const CAMEL_STANDUP_DURATION_TICKS: i64 = 52;
-/// `LivingEntity.DATA_HEALTH_ID` — the synced current-health float.
-const LIVING_ENTITY_HEALTH_DATA_ID: u8 = 9;
-
 pub(crate) fn entity_scene_outline_from_world_at_partial_tick(
     world: &WorldStore,
     entity_partial_tick: f32,

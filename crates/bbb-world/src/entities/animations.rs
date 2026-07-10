@@ -22,7 +22,9 @@ use super::dragon::{
 };
 use super::{
     is_vanilla_boat_type, is_vanilla_vehicle_entity_type, EntityTransform, EntityVec3,
-    VANILLA_ENTITY_TYPE_TNT_MINECART_ID,
+    VANILLA_ENTITY_SHARED_FLAGS_DATA_ID, VANILLA_ENTITY_SHARED_FLAG_FALL_FLYING,
+    VANILLA_ENTITY_TYPE_TNT_MINECART_ID, VANILLA_LIVING_ENTITY_FLAGS_DATA_ID,
+    VANILLA_LIVING_ENTITY_FLAG_IS_USING, VANILLA_LIVING_ENTITY_HEALTH_DATA_ID,
 };
 use bbb_protocol::entity_types::*;
 
@@ -86,12 +88,6 @@ const PANDA_FLAG_ON_BACK: i8 = 0x10;
 const PANDA_AMOUNT_RISE_PER_TICK: f32 = 0.15;
 const PANDA_AMOUNT_FALL_PER_TICK: f32 = 0.19;
 const PANDA_ROLL_COUNTER_MAX: i32 = 32;
-/// Entities whose `updateWalkAnimation` override (`Camel`, `Creaking`, `Frog`) replaces the base
-/// distance→speed mapping.
-/// Vanilla `Entity.DATA_SHARED_FLAGS_ID`, the base entity flags byte. Bit 7 is
-/// `FLAG_FALL_FLYING`, read by `LivingEntity.isFallFlying()`.
-const ENTITY_SHARED_FLAGS_DATA_ID: u8 = 0;
-const ENTITY_FLAG_FALL_FLYING: u8 = 1 << 7;
 /// Vanilla `Sniffer.DATA_STATE`, the synced `EntityDataSerializers.SNIFFER_STATE` accessor serialized
 /// as the `Sniffer.State` ordinal VarInt. The accessor sits at id 18 (Entity 0–7, LivingEntity 8–14,
 /// Mob 15, AgeableMob 16–17, then Sniffer's first own accessor); `Sniffer.onSyncedDataUpdated` reads
@@ -263,10 +259,6 @@ pub(crate) const ATTACK_SWING_DURATION: i32 = 6;
 const fn default_attack_swing_duration() -> i32 {
     ATTACK_SWING_DURATION
 }
-/// Vanilla `LivingEntity.DATA_HEALTH_ID` synced metadata id: `Entity` defines
-/// ids `0..=7`, then `LivingEntity` adds the flags byte (8) and the health float
-/// (9). `LivingEntity.isDeadOrDying` is `getHealth() <= 0`.
-const VANILLA_ENTITY_HEALTH_DATA_ID: u8 = 9;
 /// Vanilla `LivingEntity.tickDeath` removes the entity at `deathTime >= 20`, and
 /// the death tip-over flip is fully clamped by then, so the client counter is
 /// capped here to stay bounded when no server removal arrives.
@@ -3889,7 +3881,9 @@ impl EntityClientAnimationState {
         // restoring health clears it. Only living entities carry the health float,
         // so the per-type model animations below are unaffected.
         if vanilla_living_entity_type(entity_type_id) {
-            if let Some(health) = entity_data_float(data_values, VANILLA_ENTITY_HEALTH_DATA_ID) {
+            if let Some(health) =
+                entity_data_float(data_values, VANILLA_LIVING_ENTITY_HEALTH_DATA_ID)
+            {
                 if health <= 0.0 {
                     self.death
                         .get_or_insert(DeathAnimationState { death_time: 0 });
@@ -3909,7 +3903,9 @@ impl EntityClientAnimationState {
             }
         }
         if entity_type_id == VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID {
-            if let Some(health) = entity_data_float(data_values, VANILLA_ENTITY_HEALTH_DATA_ID) {
+            if let Some(health) =
+                entity_data_float(data_values, VANILLA_LIVING_ENTITY_HEALTH_DATA_ID)
+            {
                 self.ender_dragon
                     .get_or_insert_with(EnderDragonAnimationState::default)
                     .set_dragon_dying(health <= 0.0);
@@ -5982,9 +5978,9 @@ pub(crate) fn piglin_is_charging_crossbow(data_values: &[EntityDataValue]) -> bo
 /// straight from the entity metadata in the tick loop; the type gate in `advance_client_tick` keeps this on
 /// the player.
 pub(crate) fn player_is_using_item(data_values: &[EntityDataValue]) -> bool {
-    const LIVING_ENTITY_FLAGS_DATA_ID: u8 = 8;
-    const LIVING_ENTITY_FLAG_IS_USING: i8 = 1;
-    entity_data_byte(data_values, LIVING_ENTITY_FLAGS_DATA_ID, 0) & LIVING_ENTITY_FLAG_IS_USING != 0
+    entity_data_byte(data_values, VANILLA_LIVING_ENTITY_FLAGS_DATA_ID, 0)
+        & VANILLA_LIVING_ENTITY_FLAG_IS_USING
+        != 0
 }
 
 /// Vanilla `Allay.isDancing()` (`entityData.get(DATA_DANCING)`): the synced boolean that drives the
@@ -6019,7 +6015,8 @@ pub(crate) fn creaking_is_tearing_down(data_values: &[EntityDataValue]) -> bool 
 /// Vanilla `LivingEntity.isFallFlying()` = `Entity.getSharedFlag(7)`, where
 /// `Entity.DATA_SHARED_FLAGS_ID` is metadata id `0`.
 pub(crate) fn entity_is_fall_flying(data_values: &[EntityDataValue]) -> bool {
-    entity_data_byte(data_values, ENTITY_SHARED_FLAGS_DATA_ID, 0) as u8 & ENTITY_FLAG_FALL_FLYING
+    entity_data_byte(data_values, VANILLA_ENTITY_SHARED_FLAGS_DATA_ID, 0) as u8
+        & VANILLA_ENTITY_SHARED_FLAG_FALL_FLYING as u8
         != 0
 }
 

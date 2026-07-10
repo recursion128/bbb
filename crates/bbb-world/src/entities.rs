@@ -22,6 +22,7 @@ mod metadata;
 mod movement;
 mod passengers;
 mod projectiles;
+mod schema;
 pub(crate) mod state;
 mod status;
 mod store;
@@ -47,6 +48,24 @@ use dimensions::{
 };
 pub use dragon::{DragonFlightHistorySample, DragonFlightHistoryState, EnderDragonAnimationState};
 use movement::entity_vec3;
+pub use schema::{
+    vanilla_entity_metadata_field, vanilla_entity_metadata_schema, VanillaEntityMetadataDefault,
+    VanillaEntityMetadataFamily, VanillaEntityMetadataFamilySchema,
+    VanillaEntityMetadataFieldSchema, VanillaEntityMetadataFlagSchema,
+    VANILLA_ENTITY_AIR_SUPPLY_DATA_ID, VANILLA_ENTITY_CUSTOM_NAME_DATA_ID,
+    VANILLA_ENTITY_CUSTOM_NAME_VISIBLE_DATA_ID, VANILLA_ENTITY_DEFAULT_MAX_AIR_SUPPLY_TICKS,
+    VANILLA_ENTITY_NO_GRAVITY_DATA_ID, VANILLA_ENTITY_POSE_DATA_ID,
+    VANILLA_ENTITY_SHARED_FLAGS_DATA_ID, VANILLA_ENTITY_SHARED_FLAG_FALL_FLYING,
+    VANILLA_ENTITY_SHARED_FLAG_GLOWING, VANILLA_ENTITY_SHARED_FLAG_INVISIBLE,
+    VANILLA_ENTITY_SHARED_FLAG_ON_FIRE, VANILLA_ENTITY_SHARED_FLAG_SHIFT_KEY_DOWN,
+    VANILLA_ENTITY_SHARED_FLAG_SPRINTING, VANILLA_ENTITY_SHARED_FLAG_SWIMMING,
+    VANILLA_ENTITY_SILENT_DATA_ID, VANILLA_ENTITY_TICKS_FROZEN_DATA_ID,
+    VANILLA_LIVING_ENTITY_ARROW_COUNT_DATA_ID, VANILLA_LIVING_ENTITY_EFFECT_AMBIENCE_DATA_ID,
+    VANILLA_LIVING_ENTITY_EFFECT_PARTICLES_DATA_ID, VANILLA_LIVING_ENTITY_FLAGS_DATA_ID,
+    VANILLA_LIVING_ENTITY_FLAG_IS_USING, VANILLA_LIVING_ENTITY_FLAG_OFF_HAND,
+    VANILLA_LIVING_ENTITY_FLAG_SPIN_ATTACK, VANILLA_LIVING_ENTITY_HEALTH_DATA_ID,
+    VANILLA_LIVING_ENTITY_SLEEPING_POS_DATA_ID, VANILLA_LIVING_ENTITY_STINGER_COUNT_DATA_ID,
+};
 use status::{EntityDamageEventState, MobEffectState};
 pub(crate) use store::EntityStore;
 
@@ -57,20 +76,7 @@ const VANILLA_OPAQUE_ALPHA: u32 = 0xff00_0000;
 /// Vanilla `LivingEntityRenderer.isUpsideDownName`: the custom/profile names that
 /// flip a living entity upside down (the Dinnerbone/Grumm easter egg).
 pub(crate) const VANILLA_UPSIDE_DOWN_NAMES: [&str; 2] = ["Dinnerbone", "Grumm"];
-/// Vanilla `Entity.DATA_AIR_SUPPLY_ID` (INT): the `Entity` base class defines its
-/// synched data in field-declaration order (Entity.java:255-271):
-/// `DATA_SHARED_FLAGS_ID`=0, `DATA_AIR_SUPPLY_ID`=1, `DATA_CUSTOM_NAME`=2,
-/// `DATA_CUSTOM_NAME_VISIBLE`=3, `DATA_SILENT`=4, `DATA_NO_GRAVITY`=5,
-/// `DATA_POSE`=6, `DATA_TICKS_FROZEN`=7 (matching the sibling constants below).
-pub(crate) const VANILLA_ENTITY_AIR_SUPPLY_DATA_ID: u8 = 1;
-pub(crate) const VANILLA_ENTITY_SILENT_DATA_ID: u8 = 4;
-pub(crate) const VANILLA_ENTITY_NO_GRAVITY_DATA_ID: u8 = 5;
-pub(crate) const VANILLA_ENTITY_TICKS_FROZEN_DATA_ID: u8 = 7;
-/// Vanilla `Entity.getMaxAirSupply()` = 300 ticks (Entity.java:2725-2727); the
-/// accessor is also the `DATA_AIR_SUPPLY_ID` define-time default (Entity.java:312).
-/// `Player` does not override it (only Dolphin/Axolotl/Nautilus do), so the
-/// local-player HUD max is always 300.
-pub(crate) const VANILLA_MAX_AIR_SUPPLY_TICKS: i32 = 300;
+pub(crate) use VANILLA_ENTITY_DEFAULT_MAX_AIR_SUPPLY_TICKS as VANILLA_MAX_AIR_SUPPLY_TICKS;
 pub(crate) const VANILLA_ITEM_ENTITY_STACK_DATA_ID: u8 = 8;
 
 pub fn vanilla_entity_type_is_living(entity_type_id: i32) -> bool {

@@ -9435,3 +9435,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   report；renderer `TerrainCell::EMPTY` 改用明确的 -1 非注册表 sentinel。registry focused
   tests 锁定 air 与 grass(false) 查询，未改测试夹具的具体 state 样本，也未增加 block
   行为、模型或碰撞功能。
+
+## 2026-07-10：Entity metadata schema phase 1（Entity / LivingEntity）
+
+- [x] entity metadata schema 的首个继承 family 切片（P1 mechanical vanilla
+  data）：新增 `Entity -> LivingEntity` family descriptor，集中声明 accessor name、data id、
+  serializer、define-time default、parent/inherited-field count 与共享 flag mask；按 family+id
+  查询会沿 parent 回溯，`MaxAirSupply` 保留为可被具体实体覆盖的动态默认语义。world
+  metadata/store/animation/dimensions 与 native F3+I/entity-scene 删除这两层生产常量副本，
+  统一引用 schema；测试锁定 `Entity` 0..=7、`LivingEntity` 8..=14 的继承偏移、serializer、
+  默认值和 flag 唯一性，并复验 invisibility/glowing/health/SNBT 投影。未迁移 `Mob`、
+  `Avatar` 及具体实体子类 schema，也未改变 entity-data wire codec 或现有投影行为。

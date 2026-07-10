@@ -6,10 +6,11 @@ use bbb_protocol::packets::{
 use crate::WorldStore;
 
 use super::dimensions::{vanilla_living_entity_type, VANILLA_POSE_SLEEPING_ID};
-
-const VANILLA_LIVING_ENTITY_FLAGS_DATA_ID: u8 = 8;
-const LIVING_ENTITY_FLAG_IS_USING: i8 = 0x01;
-const LIVING_ENTITY_FLAG_OFF_HAND: i8 = 0x02;
+use super::schema::{
+    VANILLA_LIVING_ENTITY_FLAGS_DATA_ID,
+    VANILLA_LIVING_ENTITY_FLAG_IS_USING as LIVING_ENTITY_FLAG_IS_USING,
+    VANILLA_LIVING_ENTITY_FLAG_OFF_HAND as LIVING_ENTITY_FLAG_OFF_HAND,
+};
 
 impl WorldStore {
     pub fn apply_set_entity_data(&mut self, packet: ProtocolSetEntityData) -> bool {

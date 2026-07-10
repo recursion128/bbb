@@ -79,6 +79,19 @@ use crate::entities::dragon::{
 use crate::entities::projectiles::{
     entity_hurting_projectile_from_state, entity_projectile_lifecycle_from_state,
 };
+use crate::entities::schema::{
+    VANILLA_ENTITY_CUSTOM_NAME_DATA_ID,
+    VANILLA_ENTITY_SHARED_FLAGS_DATA_ID as ENTITY_SHARED_FLAGS_DATA_ID,
+    VANILLA_ENTITY_SHARED_FLAG_GLOWING as ENTITY_SHARED_FLAG_GLOWING,
+    VANILLA_ENTITY_SHARED_FLAG_INVISIBLE as ENTITY_SHARED_FLAG_INVISIBLE,
+    VANILLA_ENTITY_SHARED_FLAG_SHIFT_KEY_DOWN as ENTITY_SHARED_FLAG_DESCENDING,
+    VANILLA_ENTITY_SHARED_FLAG_SPRINTING as ENTITY_SHARED_FLAG_SPRINTING,
+    VANILLA_LIVING_ENTITY_FLAGS_DATA_ID,
+    VANILLA_LIVING_ENTITY_FLAG_IS_USING as LIVING_ENTITY_FLAG_IS_USING,
+    VANILLA_LIVING_ENTITY_FLAG_OFF_HAND as LIVING_ENTITY_FLAG_OFF_HAND,
+    VANILLA_LIVING_ENTITY_FLAG_SPIN_ATTACK as LIVING_ENTITY_FLAG_SPIN_ATTACK,
+    VANILLA_LIVING_ENTITY_HEALTH_DATA_ID, VANILLA_LIVING_ENTITY_SLEEPING_POS_DATA_ID,
+};
 use crate::registries::RegistrySet;
 use crate::ItemEquipmentSlot;
 use bbb_protocol::entity_types::*;
@@ -90,15 +103,6 @@ const ABSTRACT_VILLAGER_UNHAPPY_COUNTER_DATA_ID: u8 = 18;
 /// Vanilla `Entity.getTicksRequiredToFreeze()`: the powder-snow freeze threshold
 /// at which `isFullyFrozen()` becomes true and the body starts shaking.
 const VANILLA_TICKS_REQUIRED_TO_FREEZE: i32 = 140;
-/// Vanilla `Entity.DATA_SHARED_FLAGS_ID` id 0 bit 5 (`Entity.isInvisible()`).
-const ENTITY_SHARED_FLAGS_DATA_ID: u8 = 0;
-/// Vanilla `Entity.isDescending()` delegates to shared flag bit 1.
-const ENTITY_SHARED_FLAG_DESCENDING: i8 = 1 << 1;
-/// Vanilla `Entity.DATA_SHARED_FLAGS_ID` id 0 bit 3 (`Entity.isSprinting()`).
-const ENTITY_SHARED_FLAG_SPRINTING: i8 = 1 << 3;
-const ENTITY_SHARED_FLAG_INVISIBLE: i8 = 1 << 5;
-/// Vanilla `Entity.DATA_SHARED_FLAGS_ID` id 0 bit 6 (`Entity.isCurrentlyGlowing()` on the client).
-const ENTITY_SHARED_FLAG_GLOWING: i8 = 1 << 6;
 /// Vanilla `TamableAnimal.DATA_FLAGS_ID`: Cat extends TamableAnimal, while the ocelot does not.
 const TAMABLE_ANIMAL_FLAGS_DATA_ID: u8 = 18;
 /// Vanilla `TamableAnimal.isInSittingPose()` reads `DATA_FLAGS_ID & 1`.
@@ -271,23 +275,6 @@ fn vanilla_mob_item_in_hand_layer_type(entity_type_id: i32) -> bool {
         )
 }
 
-/// Vanilla `LivingEntity.DATA_LIVING_ENTITY_FLAGS` data id (8): the byte holding
-/// the using-item / off-hand / spin-attack flags.
-const VANILLA_LIVING_ENTITY_FLAGS_DATA_ID: u8 = 8;
-
-/// Vanilla `LivingEntity.LIVING_ENTITY_FLAG_SPIN_ATTACK` (4): the
-/// `DATA_LIVING_ENTITY_FLAGS` bit set while a riptide trident spin is active
-/// (`LivingEntity.isAutoSpinAttack`).
-const LIVING_ENTITY_FLAG_SPIN_ATTACK: i8 = 4;
-
-/// Vanilla `LivingEntity.LIVING_ENTITY_FLAG_IS_USING` (1): the `DATA_LIVING_ENTITY_FLAGS` bit set while
-/// the entity is actively using an item (`LivingEntity.isUsingItem`).
-const LIVING_ENTITY_FLAG_IS_USING: i8 = 1;
-
-/// Vanilla `LivingEntity.LIVING_ENTITY_FLAG_OFF_HAND` (2): the `DATA_LIVING_ENTITY_FLAGS` bit selecting
-/// the off hand as the one using the item (`LivingEntity.getUsedItemHand`).
-const LIVING_ENTITY_FLAG_OFF_HAND: i8 = 2;
-
 /// Vanilla `Mob.DATA_MOB_FLAGS_ID` data id (15): the byte holding the no-AI /
 /// left-handed / aggressive flags.
 const VANILLA_MOB_FLAGS_DATA_ID: u8 = 15;
@@ -358,22 +345,6 @@ const VEX_FLAG_IS_CHARGING: i8 = 1;
 /// (`getInvulnerableTicks`), the fourth `WitherBoss` accessor after `Mob.DATA_MOB_FLAGS_ID` (15) and
 /// the three `DATA_TARGET_A/B/C` ints (16..=18).
 const VANILLA_WITHER_INV_DATA_ID: u8 = 19;
-
-/// Vanilla `Entity.DATA_CUSTOM_NAME` data id (2): the optional custom name
-/// component (the name-tag text), used by the Dinnerbone/Grumm upside-down check.
-const VANILLA_ENTITY_CUSTOM_NAME_DATA_ID: u8 = 2;
-
-/// Vanilla `LivingEntity.DATA_HEALTH_ID` data id (9, FLOAT): `LivingEntity`
-/// declares its accessors after the 8 `Entity` base ids (0..=7) in field order
-/// (LivingEntity.java:178-186): `DATA_LIVING_ENTITY_FLAGS`=8, `DATA_HEALTH_ID`=9,
-/// `DATA_EFFECT_PARTICLES`=10, `DATA_EFFECT_AMBIENCE_ID`=11,
-/// `DATA_ARROW_COUNT_ID`=12, `DATA_STINGER_COUNT_ID`=13, `SLEEPING_POS_ID`=14.
-/// The define-time default is `1.0F` (LivingEntity.java:314).
-const VANILLA_LIVING_ENTITY_HEALTH_DATA_ID: u8 = 9;
-
-/// Vanilla `LivingEntity.SLEEPING_POS_ID` data id (14): the optional bed position
-/// the entity is sleeping in (`getSleepingPos`).
-const VANILLA_LIVING_ENTITY_SLEEPING_POS_DATA_ID: u8 = 14;
 
 /// Vanilla `Player.DATA_PLAYER_ABSORPTION_ID` data id (17, FLOAT): after `Entity`
 /// (0..=7) and `LivingEntity` (8..=14), `Avatar` declares `DATA_PLAYER_MAIN_HAND`=15
