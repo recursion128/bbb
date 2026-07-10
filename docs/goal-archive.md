@@ -8691,3 +8691,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   none/whack/stab 持久化名。component patch focused test 扩展到 30 个 added
   entry，覆盖顶层 stab/17 与 nested 全默认空 compound；swing-animation 从
   剩余 component 总账本移入已支持子集。
+
+## 2026-07-10：ItemStack use-cooldown save codec
+
+- [x] `minecraft:use_cooldown` 持久化 component（P2 protocol + native input）：
+  依据 vanilla 26.1 `UseCooldown.CODEC` 与 `ExtraCodecs.POSITIVE_FLOAT`，在保留
+  现有派生 tick 消费面的同时新增 type id `26` 秒数的 bit-exact f32 摘要，避免
+  持久化时发生 tick 量化；native 按必需 seconds、可选 cooldown_group 顺序输出，
+  并复刻严格正且有限的秒数校验。protocol focused tests 覆盖 1.5/1.25 秒原始位，
+  component patch focused test 扩展到 31 个 added entry，覆盖 float suffix、
+  resource identifier 与字段顺序；use-cooldown 从剩余 component 总账本移入已支持
+  子集。

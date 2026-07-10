@@ -8544,10 +8544,10 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
         EquipmentAssetCatalog::default(),
     );
     let patch = DataComponentPatchSummary {
-        added: 30,
+        added: 31,
         added_type_ids: vec![
-            0, 1, 2, 3, 4, 5, 10, 12, 17, 21, 22, 30, 40, 44, 45, 46, 49, 50, 54, 63, 67, 68, 69,
-            70, 74, 75, 76, 88, 89, 90,
+            0, 1, 2, 3, 4, 5, 10, 12, 17, 21, 22, 26, 30, 40, 44, 45, 46, 49, 50, 54, 63, 67, 68,
+            69, 70, 74, 75, 76, 88, 89, 90,
         ],
         removed_type_ids: vec![6],
         custom_data: Some(NbtSummaryValue::Compound(vec![
@@ -8617,6 +8617,9 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
         custom_model_data_colors: vec![0x11_22_33, 0x44_55_66],
         enchantment_glint_override: Some(false),
         intangible_projectile: true,
+        use_cooldown_seconds_bits: Some(1.25_f32.to_bits()),
+        use_cooldown_ticks: Some(25),
+        use_cooldown_group: Some("minecraft:ender_pearl".to_string()),
         attack_range: Some(bbb_protocol::packets::AttackRangeSummary {
             min_reach: 2.0,
             max_reach: 4.5,
@@ -8784,6 +8787,8 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
          flags: [1b, 0b], strings: [\"variant\", \"A 'quote'\"], \
          colors: [1122867, 4478310]}, \"minecraft:enchantment_glint_override\": 0b, \
          \"minecraft:intangible_projectile\": {}, \
+         \"minecraft:use_cooldown\": {seconds: 1.25f, \
+         cooldown_group: \"minecraft:ender_pearl\"}, \
          \"minecraft:attack_range\": {min_reach: 2.0f, max_reach: 4.5f, \
          min_creative_reach: 2.0f, max_creative_reach: 6.5f, \
          hitbox_margin: 0.125f, mob_factor: 0.5f}, \

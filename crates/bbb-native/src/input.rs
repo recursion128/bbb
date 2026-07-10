@@ -4656,6 +4656,7 @@ fn debug_supported_added_component_snbt(
         CUSTOM_MODEL_DATA_COMPONENT_TYPE_ID => debug_custom_model_data_component_snbt(patch),
         21 => debug_snbt_bool(patch.enchantment_glint_override?).to_string(),
         22 => "{}".to_string(),
+        26 => debug_use_cooldown_component_snbt(patch)?,
         30 => debug_attack_range_component_snbt(patch.attack_range?)?,
         40 => debug_swing_animation_component_snbt(patch.swing_animation?)?,
         44 => patch.dyed_color?.to_string(),
@@ -4728,6 +4729,7 @@ fn debug_supported_component_resource_id(type_id: i32) -> Option<&'static str> {
         CUSTOM_MODEL_DATA_COMPONENT_TYPE_ID => "minecraft:custom_model_data",
         21 => "minecraft:enchantment_glint_override",
         22 => "minecraft:intangible_projectile",
+        26 => "minecraft:use_cooldown",
         30 => "minecraft:attack_range",
         40 => "minecraft:swing_animation",
         44 => "minecraft:dyed_color",
@@ -4854,6 +4856,26 @@ fn debug_use_effects_component_snbt(
         fields.push(format!(
             "speed_multiplier: {}f",
             debug_nbt_java_float_string(effects.speed_multiplier)
+        ));
+    }
+    Some(format!("{{{}}}", fields.join(", ")))
+}
+
+fn debug_use_cooldown_component_snbt(
+    patch: &bbb_protocol::packets::DataComponentPatchSummary,
+) -> Option<String> {
+    let seconds = f32::from_bits(patch.use_cooldown_seconds_bits?);
+    if !seconds.is_finite() || seconds <= 0.0 {
+        return None;
+    }
+    let mut fields = vec![format!(
+        "seconds: {}f",
+        debug_nbt_java_float_string(seconds)
+    )];
+    if let Some(cooldown_group) = &patch.use_cooldown_group {
+        fields.push(format!(
+            "cooldown_group: {}",
+            debug_snbt_string(cooldown_group)
         ));
     }
     Some(format!("{{{}}}", fields.join(", ")))

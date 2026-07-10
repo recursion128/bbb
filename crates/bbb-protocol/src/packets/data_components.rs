@@ -76,6 +76,8 @@ pub struct DataComponentPatchSummary {
     #[serde(default)]
     pub rarity: Option<ItemRaritySummary>,
     #[serde(default)]
+    pub use_cooldown_seconds_bits: Option<u32>,
+    #[serde(default)]
     pub use_cooldown_ticks: Option<i32>,
     #[serde(default)]
     pub use_cooldown_group: Option<String>,
@@ -726,6 +728,7 @@ fn decode_typed_data_component_patch_summary(
             }
             26 => {
                 let cooldown = decode_use_cooldown_summary(decoder)?;
+                summary.use_cooldown_seconds_bits = Some(cooldown.seconds_bits);
                 summary.use_cooldown_ticks = Some(cooldown.ticks);
                 summary.use_cooldown_group = cooldown.cooldown_group;
             }
@@ -1734,6 +1737,7 @@ fn decode_use_cooldown(decoder: &mut Decoder<'_>) -> Result<()> {
 }
 
 struct UseCooldownSummary {
+    seconds_bits: u32,
     ticks: i32,
     cooldown_group: Option<String>,
 }
@@ -1741,6 +1745,7 @@ struct UseCooldownSummary {
 fn decode_use_cooldown_summary(decoder: &mut Decoder<'_>) -> Result<UseCooldownSummary> {
     let seconds = decoder.read_f32()?;
     Ok(UseCooldownSummary {
+        seconds_bits: seconds.to_bits(),
         ticks: (seconds * 20.0) as i32,
         cooldown_group: decode_optional_identifier_value(decoder)?,
     })
@@ -2713,6 +2718,7 @@ mod tests {
                 item_model: Some("minecraft:diamond_sword".to_string()),
                 enchantment_glint_override: Some(true),
                 intangible_projectile: true,
+                use_cooldown_seconds_bits: Some(1.5_f32.to_bits()),
                 use_cooldown_ticks: Some(30),
                 use_cooldown_group: Some("minecraft:ender_pearl".to_string()),
                 ominous_bottle_amplifier: Some(3),
@@ -4399,6 +4405,7 @@ mod tests {
                 custom_data: Some(NbtSummaryValue::Compound(Vec::new())),
                 dyed_color: Some(0x112233),
                 map_color: Some(0x445566),
+                use_cooldown_seconds_bits: Some(1.25_f32.to_bits()),
                 use_cooldown_ticks: Some(25),
                 use_cooldown_group: Some("minecraft:ender_pearl".to_string()),
                 use_effects: Some(UseEffectsSummary {
