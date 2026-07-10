@@ -9361,3 +9361,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   input 删除完整 0..24 布局表，runtime loom 投影也引用同一 protocol catalog；现有局部
   菜单语义别名通过 import alias 保持。连续/唯一/固定长度、首尾/中间查询和 regeneration
   tests 锁定生成物；未改变 OpenScreen wire codec、菜单布局或点击预测行为。
+
+## 2026-07-10：Vanilla equipment-slot ordinal catalog generation
+
+- [x] gameplay numeric-id catalog 的 equipment-slot / slot-group 子项（P1
+  mechanical vanilla data）：扩展 `scripts/generate-gameplay-id-catalog.py`，从 vanilla
+  26.1 `EquipmentSlot.java` / `EquipmentSlotGroup.java` 生成 8 项 slot 声明 ordinal、8 项
+  显式 StreamCodec id 和 11 项 group id/name metadata。catalog 明确锁定 OFFHAND
+  ordinal=1/id=5、FEET ordinal=2/id=1 的不同语义；protocol SetEquipment ordinal、component
+  fallback、native SNBT、item-model tooltip/predicate、world enchantment definition 与 pack
+  默认护甲 modifier 均改查同一生成物。未改变公共 EquipmentSlot enum、wire fallback、
+  tooltip 顺序或装备行为。

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Generate checked-in vanilla 26.1 gameplay numeric-id catalogs.
 
-The current catalog covers attributes, mob effects, and menu types. Normal
-builds consume only the generated Rust files; this maintenance tool reads
-local vanilla sources.
+The current catalog covers attributes, mob effects, menu types, and equipment
+slot ordinals. Normal builds consume only the generated Rust files; this
+maintenance tool reads local vanilla sources.
 """
 
 from __future__ import annotations
@@ -24,11 +24,18 @@ DEFAULT_MOB_EFFECT_TYPES_OUTPUT = (
     REPO_ROOT / "crates/bbb-protocol/src/mob_effect_types.rs"
 )
 DEFAULT_MENU_TYPES_OUTPUT = REPO_ROOT / "crates/bbb-protocol/src/menu_types.rs"
+DEFAULT_EQUIPMENT_SLOTS_OUTPUT = (
+    REPO_ROOT / "crates/bbb-protocol/src/equipment_slots.rs"
+)
 ATTRIBUTE_TYPES_SOURCE = Path(
     "net/minecraft/world/entity/ai/attributes/Attributes.java"
 )
 MOB_EFFECT_TYPES_SOURCE = Path("net/minecraft/world/effect/MobEffects.java")
 MENU_TYPES_SOURCE = Path("net/minecraft/world/inventory/MenuType.java")
+EQUIPMENT_SLOTS_SOURCE = Path("net/minecraft/world/entity/EquipmentSlot.java")
+EQUIPMENT_SLOT_GROUPS_SOURCE = Path(
+    "net/minecraft/world/entity/EquipmentSlotGroup.java"
+)
 
 
 @dataclass(frozen=True)
@@ -53,6 +60,23 @@ class MenuTypeEntry:
     resource_id: str
 
 
+@dataclass(frozen=True)
+class EquipmentSlotEntry:
+    constant_name: str
+    slot_type: str
+    index: int
+    count_limit: int
+    slot_id: int
+    serialized_name: str
+
+
+@dataclass(frozen=True)
+class EquipmentSlotGroupEntry:
+    constant_name: str
+    group_id: int
+    serialized_name: str
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--source-root", type=Path, default=DEFAULT_SOURCE_ROOT)
@@ -63,6 +87,9 @@ def parse_args() -> argparse.Namespace:
         "--mob-effect-types-output", type=Path, default=DEFAULT_MOB_EFFECT_TYPES_OUTPUT
     )
     parser.add_argument("--menu-types-output", type=Path, default=DEFAULT_MENU_TYPES_OUTPUT)
+    parser.add_argument(
+        "--equipment-slots-output", type=Path, default=DEFAULT_EQUIPMENT_SLOTS_OUTPUT
+    )
     parser.add_argument("--check", action="store_true")
     return parser.parse_args()
 
@@ -185,8 +212,66 @@ def menu_type_entries(source: str) -> list[MenuTypeEntry]:
     return entries
 
 
+def equipment_slot_entries(source: str) -> list[EquipmentSlotEntry]:
+    declaration = re.compile(
+        r'^\s+([A-Z_]+)\(EquipmentSlot\.Type\.([A-Z_]+),\s*([0-9]+),\s*([0-9]+)(?:,\s*([0-9]+))?,\s*"([^"]+)"\)[,;]$',
+        re.MULTILINE,
+    )
+    entries: list[EquipmentSlotEntry] = []
+    for match in declaration.finditer(source):
+        constant_name, slot_type, index, third, explicit_id, serialized_name = (
+            match.groups()
+        )
+        entries.append(
+            EquipmentSlotEntry(
+                constant_name=constant_name,
+                slot_type=slot_type,
+                index=int(index),
+                count_limit=int(third) if explicit_id is not None else 0,
+                slot_id=int(explicit_id) if explicit_id is not None else int(third),
+                serialized_name=serialized_name,
+            )
+        )
+    if len(entries) != 8:
+        raise ValueError(f"expected 8 equipment slots, parsed {len(entries)}")
+    if len({entry.constant_name for entry in entries}) != len(entries):
+        raise ValueError("duplicate equipment slot constant")
+    if len({entry.slot_id for entry in entries}) != len(entries):
+        raise ValueError("duplicate equipment slot id")
+    if len({entry.serialized_name for entry in entries}) != len(entries):
+        raise ValueError("duplicate equipment slot serialized name")
+    return entries
+
+
+def equipment_slot_group_entries(source: str) -> list[EquipmentSlotGroupEntry]:
+    declaration = re.compile(
+        r'^\s+([A-Z_]+)\(([0-9]+),\s*"([^"]+)",', re.MULTILINE
+    )
+    entries = [
+        EquipmentSlotGroupEntry(
+            constant_name=match.group(1),
+            group_id=int(match.group(2)),
+            serialized_name=match.group(3),
+        )
+        for match in declaration.finditer(source)
+    ]
+    if len(entries) != 11:
+        raise ValueError(f"expected 11 equipment slot groups, parsed {len(entries)}")
+    if len({entry.constant_name for entry in entries}) != len(entries):
+        raise ValueError("duplicate equipment slot group constant")
+    if len({entry.group_id for entry in entries}) != len(entries):
+        raise ValueError("duplicate equipment slot group id")
+    if len({entry.serialized_name for entry in entries}) != len(entries):
+        raise ValueError("duplicate equipment slot group serialized name")
+    return entries
+
+
 def rust_string(value: str) -> str:
     return '"' + value.replace("\\", "\\\\").replace('"', '\\"') + '"'
+
+
+def rust_pascal_case(value: str) -> str:
+    return "".join(part.capitalize() for part in value.split("_"))
 
 
 def render_attributes(entries: list[AttributeEntry]) -> str:
@@ -297,6 +382,8 @@ def render_attributes(entries: list[AttributeEntry]) -> str:
             "            .arg(manifest_dir.join(\"src/mob_effect_types.rs\"))",
             "            .arg(\"--menu-types-output\")",
             "            .arg(manifest_dir.join(\"src/menu_types.rs\"))",
+            "            .arg(\"--equipment-slots-output\")",
+            "            .arg(manifest_dir.join(\"src/equipment_slots.rs\"))",
             "            .status()",
             "            .unwrap();",
             "        assert!(status.success());",
@@ -414,6 +501,8 @@ def render_mob_effects(entries: list[MobEffectEntry]) -> str:
             "            .arg(manifest_dir.join(\"src/mob_effect_types.rs\"))",
             "            .arg(\"--menu-types-output\")",
             "            .arg(manifest_dir.join(\"src/menu_types.rs\"))",
+            "            .arg(\"--equipment-slots-output\")",
+            "            .arg(manifest_dir.join(\"src/equipment_slots.rs\"))",
             "            .status()",
             "            .unwrap();",
             "        assert!(status.success());",
@@ -515,6 +604,197 @@ def render_menu_types(entries: list[MenuTypeEntry]) -> str:
             "            .arg(manifest_dir.join(\"src/mob_effect_types.rs\"))",
             "            .arg(\"--menu-types-output\")",
             "            .arg(manifest_dir.join(\"src/menu_types.rs\"))",
+            "            .arg(\"--equipment-slots-output\")",
+            "            .arg(manifest_dir.join(\"src/equipment_slots.rs\"))",
+            "            .status()",
+            "            .unwrap();",
+            "        assert!(status.success());",
+            "    }",
+            "}",
+            "",
+        )
+    )
+    return "\n".join(lines)
+
+
+def render_equipment_slots(
+    slots: list[EquipmentSlotEntry], groups: list[EquipmentSlotGroupEntry]
+) -> str:
+    lines = [
+        "// @generated by scripts/generate-gameplay-id-catalog.py; do not edit manually.",
+        "// Sources: vanilla 26.1 EquipmentSlot.java and EquipmentSlotGroup.java enum entries.",
+        "",
+        "#[derive(Debug, Clone, Copy, PartialEq, Eq)]",
+        "pub enum EquipmentSlotType {",
+        "    Hand,",
+        "    HumanoidArmor,",
+        "    AnimalArmor,",
+        "    Saddle,",
+        "}",
+        "",
+        "#[derive(Debug, Clone, Copy, PartialEq, Eq)]",
+        "pub struct EquipmentSlotCatalogEntry {",
+        "    pub ordinal: u8,",
+        "    pub id: i32,",
+        "    pub constant_name: &'static str,",
+        "    pub serialized_name: &'static str,",
+        "    pub slot_type: EquipmentSlotType,",
+        "    pub index: i32,",
+        "    pub count_limit: i32,",
+        "}",
+        "",
+    ]
+    for ordinal, entry in enumerate(slots):
+        lines.append(
+            f"pub const VANILLA_EQUIPMENT_SLOT_{entry.constant_name}_ORDINAL: u8 = {ordinal};"
+        )
+        lines.append(
+            f"pub const VANILLA_EQUIPMENT_SLOT_{entry.constant_name}_ID: i32 = {entry.slot_id};"
+        )
+    lines.extend(("", "pub const VANILLA_EQUIPMENT_SLOTS: &[EquipmentSlotCatalogEntry] = &["))
+    for ordinal, entry in enumerate(slots):
+        lines.extend(
+            (
+                "    EquipmentSlotCatalogEntry {",
+                f"        ordinal: {ordinal},",
+                f"        id: {entry.slot_id},",
+                f"        constant_name: {rust_string(entry.constant_name)},",
+                f"        serialized_name: {rust_string(entry.serialized_name)},",
+                f"        slot_type: EquipmentSlotType::{rust_pascal_case(entry.slot_type)},",
+                f"        index: {entry.index},",
+                f"        count_limit: {entry.count_limit},",
+                "    },",
+            )
+        )
+    lines.extend(
+        (
+            "];",
+            "",
+            "pub fn vanilla_equipment_slot_by_ordinal(",
+            "    ordinal: u8,",
+            ") -> Option<&'static EquipmentSlotCatalogEntry> {",
+            "    VANILLA_EQUIPMENT_SLOTS.get(usize::from(ordinal))",
+            "}",
+            "",
+            "pub fn vanilla_equipment_slot_by_id(",
+            "    id: i32,",
+            ") -> Option<&'static EquipmentSlotCatalogEntry> {",
+            "    VANILLA_EQUIPMENT_SLOTS.iter().find(|entry| entry.id == id)",
+            "}",
+            "",
+            "pub fn vanilla_equipment_slot_for_serialized_name(",
+            "    serialized_name: &str,",
+            ") -> Option<&'static EquipmentSlotCatalogEntry> {",
+            "    VANILLA_EQUIPMENT_SLOTS.iter().find(|entry| entry.serialized_name == serialized_name)",
+            "}",
+            "",
+            "#[derive(Debug, Clone, Copy, PartialEq, Eq)]",
+            "pub struct EquipmentSlotGroupCatalogEntry {",
+            "    pub id: i32,",
+            "    pub constant_name: &'static str,",
+            "    pub serialized_name: &'static str,",
+            "}",
+            "",
+        )
+    )
+    for entry in groups:
+        lines.append(
+            f"pub const VANILLA_EQUIPMENT_SLOT_GROUP_{entry.constant_name}_ID: i32 = {entry.group_id};"
+        )
+    lines.extend(
+        ("", "pub const VANILLA_EQUIPMENT_SLOT_GROUPS: &[EquipmentSlotGroupCatalogEntry] = &[")
+    )
+    for entry in groups:
+        lines.extend(
+            (
+                "    EquipmentSlotGroupCatalogEntry {",
+                f"        id: {entry.group_id},",
+                f"        constant_name: {rust_string(entry.constant_name)},",
+                f"        serialized_name: {rust_string(entry.serialized_name)},",
+                "    },",
+            )
+        )
+    lines.extend(
+        (
+            "];",
+            "",
+            "pub fn vanilla_equipment_slot_group(",
+            "    id: i32,",
+            ") -> Option<&'static EquipmentSlotGroupCatalogEntry> {",
+            "    VANILLA_EQUIPMENT_SLOT_GROUPS.get(usize::try_from(id).ok()?)",
+            "}",
+            "",
+            "pub fn vanilla_equipment_slot_group_for_serialized_name(",
+            "    serialized_name: &str,",
+            ") -> Option<&'static EquipmentSlotGroupCatalogEntry> {",
+            "    VANILLA_EQUIPMENT_SLOT_GROUPS.iter().find(|entry| entry.serialized_name == serialized_name)",
+            "}",
+            "",
+            "#[cfg(test)]",
+            "mod tests {",
+            "    use std::collections::HashSet;",
+            "    use std::path::PathBuf;",
+            "    use std::process::Command;",
+            "",
+            "    use super::*;",
+            "",
+            "    #[test]",
+            "    fn equipment_slot_catalog_preserves_distinct_ordinals_and_ids() {",
+            "        assert_eq!(VANILLA_EQUIPMENT_SLOTS.len(), 8);",
+            "        let mut ids = HashSet::new();",
+            "        let mut names = HashSet::new();",
+            "        for (ordinal, entry) in VANILLA_EQUIPMENT_SLOTS.iter().enumerate() {",
+            "            assert_eq!(entry.ordinal, ordinal as u8);",
+            "            assert!(ids.insert(entry.id));",
+            "            assert!(names.insert(entry.serialized_name));",
+            "        }",
+            "        assert_eq!(ids, HashSet::from([0, 1, 2, 3, 4, 5, 6, 7]));",
+            "        assert_eq!(VANILLA_EQUIPMENT_SLOT_OFFHAND_ORDINAL, 1);",
+            "        assert_eq!(VANILLA_EQUIPMENT_SLOT_OFFHAND_ID, 5);",
+            "        assert_eq!(VANILLA_EQUIPMENT_SLOT_FEET_ORDINAL, 2);",
+            "        assert_eq!(VANILLA_EQUIPMENT_SLOT_FEET_ID, 1);",
+            "        assert_eq!(vanilla_equipment_slot_by_ordinal(1).unwrap().serialized_name, \"offhand\");",
+            "        assert_eq!(vanilla_equipment_slot_by_id(1).unwrap().serialized_name, \"feet\");",
+            "        assert_eq!(vanilla_equipment_slot_by_ordinal(8), None);",
+            "        assert_eq!(vanilla_equipment_slot_by_id(8), None);",
+            "    }",
+            "",
+            "    #[test]",
+            "    fn equipment_slot_group_catalog_is_complete_contiguous_and_unique() {",
+            "        assert_eq!(VANILLA_EQUIPMENT_SLOT_GROUPS.len(), 11);",
+            "        let mut names = HashSet::new();",
+            "        for (id, entry) in VANILLA_EQUIPMENT_SLOT_GROUPS.iter().enumerate() {",
+            "            assert_eq!(entry.id, id as i32);",
+            "            assert!(names.insert(entry.serialized_name));",
+            "        }",
+            "        assert_eq!(VANILLA_EQUIPMENT_SLOT_GROUP_ANY_ID, 0);",
+            "        assert_eq!(VANILLA_EQUIPMENT_SLOT_GROUP_ARMOR_ID, 8);",
+            "        assert_eq!(VANILLA_EQUIPMENT_SLOT_GROUP_SADDLE_ID, 10);",
+            "        assert_eq!(vanilla_equipment_slot_group_for_serialized_name(\"body\").unwrap().id, 9);",
+            "        assert_eq!(vanilla_equipment_slot_group(-1), None);",
+            "        assert_eq!(vanilla_equipment_slot_group(11), None);",
+            "    }",
+            "",
+            "    #[test]",
+            "    fn generated_catalog_matches_local_vanilla_sources_when_available() {",
+            "        let Some(home) = std::env::var_os(\"HOME\") else { return; };",
+            "        let source_root = PathBuf::from(home).join(\"Work/mc-code/sources/26.1\");",
+            "        if !source_root.join(\"net/minecraft/world/entity/EquipmentSlot.java\").is_file() { return; }",
+            "        if !source_root.join(\"net/minecraft/world/entity/EquipmentSlotGroup.java\").is_file() { return; }",
+            "        let manifest_dir = PathBuf::from(env!(\"CARGO_MANIFEST_DIR\"));",
+            "        let repo_root = manifest_dir.ancestors().nth(2).unwrap();",
+            "        let status = Command::new(repo_root.join(\"scripts/generate-gameplay-id-catalog.py\"))",
+            "            .arg(\"--check\")",
+            "            .arg(\"--source-root\")",
+            "            .arg(source_root)",
+            "            .arg(\"--attribute-types-output\")",
+            "            .arg(manifest_dir.join(\"src/attribute_types.rs\"))",
+            "            .arg(\"--mob-effect-types-output\")",
+            "            .arg(manifest_dir.join(\"src/mob_effect_types.rs\"))",
+            "            .arg(\"--menu-types-output\")",
+            "            .arg(manifest_dir.join(\"src/menu_types.rs\"))",
+            "            .arg(\"--equipment-slots-output\")",
+            "            .arg(manifest_dir.join(\"src/equipment_slots.rs\"))",
             "            .status()",
             "            .unwrap();",
             "        assert!(status.success());",
@@ -552,6 +832,17 @@ def generate_menu_types(source_root: Path) -> str:
     return format_rust(render_menu_types(menu_type_entries(source)))
 
 
+def generate_equipment_slots(source_root: Path) -> str:
+    slots_source = (source_root / EQUIPMENT_SLOTS_SOURCE).read_text()
+    groups_source = (source_root / EQUIPMENT_SLOT_GROUPS_SOURCE).read_text()
+    return format_rust(
+        render_equipment_slots(
+            equipment_slot_entries(slots_source),
+            equipment_slot_group_entries(groups_source),
+        )
+    )
+
+
 def check_generated(path: Path, generated: str) -> bool:
     current = path.read_text() if path.exists() else ""
     if current == generated:
@@ -572,6 +863,7 @@ def main() -> int:
     generated_attributes = generate_attributes(args.source_root)
     generated_mob_effects = generate_mob_effects(args.source_root)
     generated_menu_types = generate_menu_types(args.source_root)
+    generated_equipment_slots = generate_equipment_slots(args.source_root)
     if args.check:
         matches = check_generated(
             args.attribute_types_output, generated_attributes
@@ -580,10 +872,14 @@ def main() -> int:
             args.mob_effect_types_output, generated_mob_effects
         )
         matches &= check_generated(args.menu_types_output, generated_menu_types)
+        matches &= check_generated(
+            args.equipment_slots_output, generated_equipment_slots
+        )
         return 0 if matches else 1
     args.attribute_types_output.write_text(generated_attributes)
     args.mob_effect_types_output.write_text(generated_mob_effects)
     args.menu_types_output.write_text(generated_menu_types)
+    args.equipment_slots_output.write_text(generated_equipment_slots)
     return 0
 
 

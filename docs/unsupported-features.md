@@ -728,6 +728,11 @@ vanilla evidence. Deleting one of these re-opens work already decided against.
   `SYNCHRONIZED_REGISTRIES`. The fixed 25-entry vanilla menu id/resource catalog
   is generated; OpenScreen menu ids therefore resolve against the built-in
   client registry rather than server-defined menu metadata.
+- **Custom equipment-slot or slot-group enum values.** Vanilla 26.1 defines
+  both as closed Java enums, not registries or datapack codecs. Their distinct
+  declaration ordinals / explicit ids and serialized names are generated from
+  `EquipmentSlot.java` and `EquipmentSlotGroup.java`; there is no server-owned
+  extension surface to load.
 - **Accepting malformed or unsupported custom resource-pack declarations.**
   Loaders reject them intentionally.
 

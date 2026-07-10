@@ -10,6 +10,10 @@ use crate::{
         decode_styled_component_summary_with_nbt_from_decoder, skip_nbt_tag_from_decoder,
         styled_runs_summary_text, StyledTextRun,
     },
+    equipment_slots::{
+        vanilla_equipment_slot_by_id, vanilla_equipment_slot_group,
+        VANILLA_EQUIPMENT_SLOT_GROUP_ANY_ID, VANILLA_EQUIPMENT_SLOT_MAINHAND_ID,
+    },
 };
 use uuid::Uuid;
 
@@ -1479,7 +1483,11 @@ fn decode_attribute_modifier_operation_id(decoder: &mut Decoder<'_>) -> Result<i
 
 fn decode_equipment_slot_group_id(decoder: &mut Decoder<'_>) -> Result<i32> {
     let id = decoder.read_var_i32()?;
-    Ok(if (0..=10).contains(&id) { id } else { 0 })
+    Ok(if vanilla_equipment_slot_group(id).is_some() {
+        id
+    } else {
+        VANILLA_EQUIPMENT_SLOT_GROUP_ANY_ID
+    })
 }
 
 fn decode_attribute_modifier_display(
@@ -1841,10 +1849,10 @@ fn decode_equippable(decoder: &mut Decoder<'_>) -> Result<EquippableSummary> {
         None
     };
     Ok(EquippableSummary {
-        slot_id: if (0..=7).contains(&slot_id) {
+        slot_id: if vanilla_equipment_slot_by_id(slot_id).is_some() {
             slot_id
         } else {
-            0
+            VANILLA_EQUIPMENT_SLOT_MAINHAND_ID
         },
         equip_sound,
         asset_id,

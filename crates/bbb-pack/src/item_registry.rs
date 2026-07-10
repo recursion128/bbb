@@ -4,6 +4,11 @@ use std::{
 };
 
 use anyhow::{bail, Context, Result};
+use bbb_protocol::equipment_slots::{
+    VANILLA_EQUIPMENT_SLOT_GROUP_BODY_ID, VANILLA_EQUIPMENT_SLOT_GROUP_CHEST_ID,
+    VANILLA_EQUIPMENT_SLOT_GROUP_FEET_ID, VANILLA_EQUIPMENT_SLOT_GROUP_HEAD_ID,
+    VANILLA_EQUIPMENT_SLOT_GROUP_LEGS_ID,
+};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 
@@ -1363,11 +1368,11 @@ fn armor_type_name(armor_type: &str) -> Result<&'static str> {
 
 fn armor_type_slot_group_id(armor_type: &str) -> Result<i32> {
     match armor_type {
-        "BOOTS" => Ok(4),
-        "LEGGINGS" => Ok(5),
-        "CHESTPLATE" => Ok(6),
-        "HELMET" => Ok(7),
-        "BODY" => Ok(9),
+        "BOOTS" => Ok(VANILLA_EQUIPMENT_SLOT_GROUP_FEET_ID),
+        "LEGGINGS" => Ok(VANILLA_EQUIPMENT_SLOT_GROUP_LEGS_ID),
+        "CHESTPLATE" => Ok(VANILLA_EQUIPMENT_SLOT_GROUP_CHEST_ID),
+        "HELMET" => Ok(VANILLA_EQUIPMENT_SLOT_GROUP_HEAD_ID),
+        "BODY" => Ok(VANILLA_EQUIPMENT_SLOT_GROUP_BODY_ID),
         _ => bail!("unsupported armor type ArmorType.{armor_type}"),
     }
 }

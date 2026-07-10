@@ -7,6 +7,7 @@ use bbb_pack::{
     ItemCuboidModelCatalog, ItemModelDefinition, ItemModelProperty, ItemModelPropertyKind,
     ItemTintSource, SelectCase, SoundEventRegistry, TagCatalog, TerrainColorMaps,
 };
+use bbb_protocol::equipment_slots::vanilla_equipment_slot_group_for_serialized_name;
 use bbb_protocol::packets::{
     AttributeModifierSummary, DataComponentPatchSummary, FireworkExplosionShapeSummary,
     FireworkExplosionSummary, ItemEnchantmentSummary, ItemRaritySummary, ItemStackTemplateSummary,
@@ -4617,20 +4618,7 @@ fn attribute_modifier_operation_id(value: &str) -> Option<i32> {
 }
 
 fn equipment_slot_group_id(value: &str) -> Option<i32> {
-    match value {
-        "any" => Some(0),
-        "mainhand" => Some(1),
-        "offhand" => Some(2),
-        "hand" => Some(3),
-        "feet" => Some(4),
-        "legs" => Some(5),
-        "chest" => Some(6),
-        "head" => Some(7),
-        "armor" => Some(8),
-        "body" => Some(9),
-        "saddle" => Some(10),
-        _ => None,
-    }
+    Some(vanilla_equipment_slot_group_for_serialized_name(value)?.id)
 }
 
 fn item_holder_set_is_supported(value: &Value) -> bool {

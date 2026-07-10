@@ -1,4 +1,7 @@
-use bbb_protocol::packets::ItemEnchantmentSummary;
+use bbb_protocol::{
+    equipment_slots::vanilla_equipment_slot_group_for_serialized_name,
+    packets::ItemEnchantmentSummary,
+};
 
 use crate::{
     chunks::{decode_nbt_root, find_nbt_entry, NbtValue},
@@ -6,11 +9,6 @@ use crate::{
 };
 
 const ENCHANTMENT_REGISTRY: &str = "minecraft:enchantment";
-const EQUIPMENT_SLOT_GROUPS: &[&str] = &[
-    "any", "mainhand", "offhand", "hand", "feet", "legs", "chest", "head", "armor", "body",
-    "saddle",
-];
-
 /// A concrete attribute modifier contributed by one enchanted stack entry.
 ///
 /// Slot and attribute names retain the vanilla serialized identifiers so the
@@ -165,9 +163,7 @@ fn decode_enchantment_definition(raw_data: &[u8]) -> Option<EnchantmentDefinitio
         .iter()
         .map(|value| {
             let slot = nbt_string(Some(value))?;
-            EQUIPMENT_SLOT_GROUPS
-                .contains(&slot)
-                .then(|| slot.to_string())
+            vanilla_equipment_slot_group_for_serialized_name(slot).map(|_| slot.to_string())
         })
         .collect::<Option<Vec<_>>>()?;
     let effects = nbt_compound(find_nbt_entry(&fields, "effects"))?;

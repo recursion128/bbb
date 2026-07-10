@@ -12,6 +12,7 @@ pub mod codec;
 pub mod damage_types;
 pub mod data_component_types;
 pub mod entity_types;
+pub mod equipment_slots;
 pub mod frame;
 pub mod ids;
 pub mod menu_types;

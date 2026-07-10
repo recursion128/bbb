@@ -437,6 +437,8 @@ mod tests {
             .arg(manifest_dir.join("src/mob_effect_types.rs"))
             .arg("--menu-types-output")
             .arg(manifest_dir.join("src/menu_types.rs"))
+            .arg("--equipment-slots-output")
+            .arg(manifest_dir.join("src/equipment_slots.rs"))
             .status()
             .unwrap();
         assert!(status.success());

@@ -1,5 +1,6 @@
 use bbb_protocol::{
     entity_types::vanilla_entity_type_allowed_in_peaceful,
+    equipment_slots::VANILLA_EQUIPMENT_SLOT_GROUPS,
     packets::{
         AdventureModePredicateSummary, AttributeModifierSummary, PaintingVariantSummary,
         SuspiciousStewEffectSummary,
@@ -111,11 +112,6 @@ const OP_ONLY_ENTITY_TYPE_IDS: &[i32] = &[
     bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID,
     bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID,
 ];
-const EQUIPMENT_SLOT_GROUP_KEYS: &[&str] = &[
-    "any", "mainhand", "offhand", "hand", "feet", "legs", "chest", "head", "armor", "body",
-    "saddle",
-];
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct VanillaPaintingVariant {
     key: &'static str,
@@ -2000,10 +1996,9 @@ fn push_stack_attribute_modifiers_tooltip_lines(
     options: NativeItemTooltipOptions<'_>,
     lines: &mut Vec<NativeItemTooltipLine>,
 ) {
-    for (slot_id, slot_key) in EQUIPMENT_SLOT_GROUP_KEYS.iter().copied().enumerate() {
-        let Ok(slot_id) = i32::try_from(slot_id) else {
-            continue;
-        };
+    for slot_group in VANILLA_EQUIPMENT_SLOT_GROUPS {
+        let slot_id = slot_group.id;
+        let slot_key = slot_group.serialized_name;
         let mut section_lines = Vec::new();
         for modifier in modifiers
             .iter()

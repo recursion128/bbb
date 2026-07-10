@@ -4,6 +4,12 @@ use uuid::Uuid;
 use crate::{
     codec::{Decoder, ProtocolError, Result},
     component::decode_component_summary_from_decoder,
+    equipment_slots::{
+        VANILLA_EQUIPMENT_SLOT_BODY_ORDINAL, VANILLA_EQUIPMENT_SLOT_CHEST_ORDINAL,
+        VANILLA_EQUIPMENT_SLOT_FEET_ORDINAL, VANILLA_EQUIPMENT_SLOT_HEAD_ORDINAL,
+        VANILLA_EQUIPMENT_SLOT_LEGS_ORDINAL, VANILLA_EQUIPMENT_SLOT_MAINHAND_ORDINAL,
+        VANILLA_EQUIPMENT_SLOT_OFFHAND_ORDINAL, VANILLA_EQUIPMENT_SLOT_SADDLE_ORDINAL,
+    },
 };
 
 use super::{
@@ -186,27 +192,27 @@ pub enum EquipmentSlot {
 impl EquipmentSlot {
     pub fn ordinal(self) -> u8 {
         match self {
-            Self::MainHand => 0,
-            Self::OffHand => 1,
-            Self::Feet => 2,
-            Self::Legs => 3,
-            Self::Chest => 4,
-            Self::Head => 5,
-            Self::Body => 6,
-            Self::Saddle => 7,
+            Self::MainHand => VANILLA_EQUIPMENT_SLOT_MAINHAND_ORDINAL,
+            Self::OffHand => VANILLA_EQUIPMENT_SLOT_OFFHAND_ORDINAL,
+            Self::Feet => VANILLA_EQUIPMENT_SLOT_FEET_ORDINAL,
+            Self::Legs => VANILLA_EQUIPMENT_SLOT_LEGS_ORDINAL,
+            Self::Chest => VANILLA_EQUIPMENT_SLOT_CHEST_ORDINAL,
+            Self::Head => VANILLA_EQUIPMENT_SLOT_HEAD_ORDINAL,
+            Self::Body => VANILLA_EQUIPMENT_SLOT_BODY_ORDINAL,
+            Self::Saddle => VANILLA_EQUIPMENT_SLOT_SADDLE_ORDINAL,
         }
     }
 
     fn from_ordinal(value: u8) -> Result<Self> {
         Ok(match value {
-            0 => Self::MainHand,
-            1 => Self::OffHand,
-            2 => Self::Feet,
-            3 => Self::Legs,
-            4 => Self::Chest,
-            5 => Self::Head,
-            6 => Self::Body,
-            7 => Self::Saddle,
+            VANILLA_EQUIPMENT_SLOT_MAINHAND_ORDINAL => Self::MainHand,
+            VANILLA_EQUIPMENT_SLOT_OFFHAND_ORDINAL => Self::OffHand,
+            VANILLA_EQUIPMENT_SLOT_FEET_ORDINAL => Self::Feet,
+            VANILLA_EQUIPMENT_SLOT_LEGS_ORDINAL => Self::Legs,
+            VANILLA_EQUIPMENT_SLOT_CHEST_ORDINAL => Self::Chest,
+            VANILLA_EQUIPMENT_SLOT_HEAD_ORDINAL => Self::Head,
+            VANILLA_EQUIPMENT_SLOT_BODY_ORDINAL => Self::Body,
+            VANILLA_EQUIPMENT_SLOT_SADDLE_ORDINAL => Self::Saddle,
             other => {
                 return Err(ProtocolError::InvalidData(format!(
                     "invalid equipment slot {other}"

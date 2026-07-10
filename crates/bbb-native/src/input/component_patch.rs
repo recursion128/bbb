@@ -1,5 +1,8 @@
 use super::*;
 use bbb_protocol::damage_types::vanilla_damage_type_resource_id as damage_type_resource_id;
+use bbb_protocol::equipment_slots::{
+    vanilla_equipment_slot_by_id, vanilla_equipment_slot_group, VANILLA_EQUIPMENT_SLOT_GROUP_ANY_ID,
+};
 use bbb_world::BlockStateRegistry;
 
 type PersistentSnbtEncoder = fn(
@@ -439,11 +442,7 @@ fn encode_attribute_modifiers(
             let attribute = vanilla_attribute_resource_id(modifier.attribute_id)?;
             let operation = ["add_value", "add_multiplied_base", "add_multiplied_total"]
                 .get(usize::try_from(modifier.operation_id).ok()?)?;
-            let slot = [
-                "any", "mainhand", "offhand", "hand", "feet", "legs", "chest", "head", "armor",
-                "body", "saddle",
-            ]
-            .get(usize::try_from(modifier.slot_id).ok()?)?;
+            let slot = vanilla_equipment_slot_group(modifier.slot_id)?.serialized_name;
             let mut fields = vec![
                 format!("type: {}", debug_snbt_string(attribute)),
                 format!("id: {}", debug_snbt_string(&modifier.modifier_id)),
@@ -453,7 +452,7 @@ fn encode_attribute_modifiers(
                 ),
                 format!("operation: {}", debug_snbt_string(operation)),
             ];
-            if modifier.slot_id != 0 {
+            if modifier.slot_id != VANILLA_EQUIPMENT_SLOT_GROUP_ANY_ID {
                 fields.push(format!("slot: {}", debug_snbt_string(slot)));
             }
             match modifier.display_id {
@@ -628,10 +627,7 @@ fn encode_equippable(
     _item_runtime: Option<&NativeItemRuntime>,
 ) -> Option<String> {
     let equippable = patch.equippable.as_ref()?;
-    let slot = [
-        "mainhand", "feet", "legs", "chest", "head", "offhand", "body", "saddle",
-    ]
-    .get(usize::try_from(equippable.slot_id).ok()?)?;
+    let slot = vanilla_equipment_slot_by_id(equippable.slot_id)?.serialized_name;
     let mut fields = vec![format!("slot: {}", debug_snbt_string(slot))];
     let equip_sound_is_default = equippable
         .equip_sound
