@@ -201,9 +201,9 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   owner references, left-owner flag, and non-default private `hasBeenShot`
   projection, non-default private projectile flags such as
   `ThrownTrident.dealtDamage`, non-default private or otherwise unobserved
-  scalar/timer/counter projection (including `PrimedTnt.explosionPower` and
-  non-default `SpectralArrow.duration`, plus non-default
-  `FallingBlockEntity` time/drop/hurt/cancel-drop fields and minecart
+  scalar/flag/timer/counter projection (including `PrimedTnt.explosionPower` and
+  item-frame `dropChance` / `fixed`, plus non-default `SpectralArrow.duration`,
+  non-default `FallingBlockEntity` time/drop/hurt/cancel-drop fields and minecart
   flipped/has-ticked state),
   remaining registry-backed
   entity-data projection (including dynamic-registry ordering), packed variant
@@ -212,8 +212,9 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   remaining entity-specific
   constructor/default save values, LivingEntity parent health/equipment/effect/attribute
   projection, observable non-empty entity inventory/container projection
-  (including chest/hopper minecart `Items` / loot-table contents), non-default
-  hopper minecart enabled state, non-default furnace minecart push/fuel fields,
+  (including non-empty item-frame `Item` stacks and chest/hopper minecart
+  `Items` / loot-table contents), non-default hopper minecart enabled state,
+  non-default furnace minecart push/fuel fields,
   spawner minecart non-default delay/count/range fields and codec-backed
   `SpawnData` / `SpawnPotentials`, command-block minecart non-default success/
   track-output/custom-name/last-execution fields and exact styled `LastOutput`

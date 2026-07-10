@@ -27,12 +27,13 @@ use bbb_protocol::{
         VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID, VANILLA_ENTITY_TYPE_FIREBALL_ID,
         VANILLA_ENTITY_TYPE_FOX_ID, VANILLA_ENTITY_TYPE_FROG_ID,
         VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID, VANILLA_ENTITY_TYPE_GHAST_ID,
-        VANILLA_ENTITY_TYPE_GIANT_ID, VANILLA_ENTITY_TYPE_GLOW_SQUID_ID,
-        VANILLA_ENTITY_TYPE_GOAT_ID, VANILLA_ENTITY_TYPE_GUARDIAN_ID,
-        VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID, VANILLA_ENTITY_TYPE_HOGLIN_ID,
-        VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID, VANILLA_ENTITY_TYPE_HORSE_ID,
-        VANILLA_ENTITY_TYPE_HUSK_ID, VANILLA_ENTITY_TYPE_ILLUSIONER_ID,
-        VANILLA_ENTITY_TYPE_INTERACTION_ID, VANILLA_ENTITY_TYPE_IRON_GOLEM_ID,
+        VANILLA_ENTITY_TYPE_GIANT_ID, VANILLA_ENTITY_TYPE_GLOW_ITEM_FRAME_ID,
+        VANILLA_ENTITY_TYPE_GLOW_SQUID_ID, VANILLA_ENTITY_TYPE_GOAT_ID,
+        VANILLA_ENTITY_TYPE_GUARDIAN_ID, VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID,
+        VANILLA_ENTITY_TYPE_HOGLIN_ID, VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID,
+        VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_HUSK_ID,
+        VANILLA_ENTITY_TYPE_ILLUSIONER_ID, VANILLA_ENTITY_TYPE_INTERACTION_ID,
+        VANILLA_ENTITY_TYPE_IRON_GOLEM_ID, VANILLA_ENTITY_TYPE_ITEM_FRAME_ID,
         VANILLA_ENTITY_TYPE_LLAMA_ID, VANILLA_ENTITY_TYPE_LLAMA_SPIT_ID,
         VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID, VANILLA_ENTITY_TYPE_MINECART_ID,
         VANILLA_ENTITY_TYPE_MOOSHROOM_ID, VANILLA_ENTITY_TYPE_MULE_ID,
@@ -272,6 +273,12 @@ const BASE_SPAWNER_DEFAULT_MAX_NEARBY_ENTITIES: i16 = 6;
 const BASE_SPAWNER_DEFAULT_REQUIRED_PLAYER_RANGE: i16 = 16;
 const BASE_SPAWNER_DEFAULT_SPAWN_RANGE: i16 = 4;
 const TNT_MINECART_DEFAULT_FUSE: i32 = -1;
+const HANGING_ENTITY_DIRECTION_DATA_ID: u8 = 8;
+const ITEM_FRAME_ROTATION_DATA_ID: u8 = 10;
+const ITEM_FRAME_DEFAULT_ROTATION: i8 = 0;
+const ITEM_FRAME_DEFAULT_DROP_CHANCE: f32 = 1.0;
+const ITEM_FRAME_DEFAULT_INVISIBLE: bool = false;
+const ITEM_FRAME_DEFAULT_FIXED: bool = false;
 const PRIMED_TNT_FUSE_DATA_ID: u8 = 8;
 const PRIMED_TNT_DEFAULT_FUSE: i16 = 80;
 const ABSTRACT_ARROW_FLAGS_DATA_ID: u8 = 8;
@@ -4099,6 +4106,9 @@ fn debug_push_entity_additional_save_data(
         VANILLA_ENTITY_TYPE_MINECART_ID => {
             debug_push_minecart_additional_save_data(world, entity, fields);
         }
+        VANILLA_ENTITY_TYPE_ITEM_FRAME_ID | VANILLA_ENTITY_TYPE_GLOW_ITEM_FRAME_ID => {
+            debug_push_item_frame_additional_save_data(entity, fields);
+        }
         VANILLA_ENTITY_TYPE_TNT_ID => {
             debug_push_primed_tnt_additional_save_data(world, entity, fields);
         }
@@ -4556,6 +4566,38 @@ fn debug_push_tnt_minecart_additional_save_data(entity: &EntityState, fields: &m
         .minecart_tnt_fuse
         .map_or(TNT_MINECART_DEFAULT_FUSE, |fuse| fuse.fuse_remaining_ticks);
     fields.push(format!("fuse: {fuse}"));
+}
+
+fn debug_push_item_frame_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
+    if let Some(block_pos) = debug_snbt_block_pos("block_pos", entity.position_base) {
+        fields.push(block_pos);
+    }
+    let rotation = debug_entity_data_int_present(entity, ITEM_FRAME_ROTATION_DATA_ID)
+        .map(|rotation| rotation.rem_euclid(8) as i8)
+        .unwrap_or(ITEM_FRAME_DEFAULT_ROTATION);
+    let drop_chance =
+        debug_snbt_float(ITEM_FRAME_DEFAULT_DROP_CHANCE).expect("finite item-frame drop chance");
+    let facing = debug_item_frame_facing_legacy_id(entity);
+    let invisible = debug_entity_data_byte_present(entity, ENTITY_SHARED_FLAGS_DATA_ID)
+        .map(|flags| flags & ENTITY_SHARED_FLAG_INVISIBLE != 0)
+        .unwrap_or(ITEM_FRAME_DEFAULT_INVISIBLE);
+    fields.push(format!("ItemRotation: {rotation}b"));
+    fields.push(format!("ItemDropChance: {drop_chance}"));
+    fields.push(format!("Facing: {facing}b"));
+    fields.push(format!("Invisible: {}", debug_snbt_bool(invisible)));
+    fields.push(format!(
+        "Fixed: {}",
+        debug_snbt_bool(ITEM_FRAME_DEFAULT_FIXED)
+    ));
+}
+
+fn debug_item_frame_facing_legacy_id(entity: &EntityState) -> i32 {
+    debug_entity_data_direction_legacy_id_present(entity, HANGING_ENTITY_DIRECTION_DATA_ID)
+        .unwrap_or_else(|| debug_vanilla_direction_legacy_id(entity.data))
+}
+
+fn debug_vanilla_direction_legacy_id(data: i32) -> i32 {
+    (data % 6).abs()
 }
 
 fn debug_push_primed_tnt_additional_save_data(
@@ -5735,6 +5777,19 @@ fn debug_entity_data_string_present(entity: &EntityState, data_id: u8) -> Option
         })
 }
 
+fn debug_entity_data_direction_legacy_id_present(entity: &EntityState, data_id: u8) -> Option<i32> {
+    entity
+        .data_values
+        .iter()
+        .find(|value| value.data_id == data_id)
+        .and_then(|value| match &value.value {
+            EntityDataValueKind::Direction(value) => {
+                Some(debug_vanilla_direction_legacy_id(*value))
+            }
+            _ => None,
+        })
+}
+
 fn debug_entity_data_registry_id_present(
     entity: &EntityState,
     data_id: u8,
@@ -5884,6 +5939,26 @@ fn debug_snbt_rotations(value: [f32; 3]) -> Option<String> {
         debug_snbt_float(value[1])?,
         debug_snbt_float(value[2])?
     ))
+}
+
+fn debug_snbt_block_pos(name: &str, position: EntityVec3) -> Option<String> {
+    Some(format!(
+        "{name}: [I; {}, {}, {}]",
+        debug_block_coord_i32(position.x)?,
+        debug_block_coord_i32(position.y)?,
+        debug_block_coord_i32(position.z)?
+    ))
+}
+
+fn debug_block_coord_i32(value: f64) -> Option<i32> {
+    if !value.is_finite() {
+        return None;
+    }
+    let block = value.floor();
+    if block < f64::from(i32::MIN) || block > f64::from(i32::MAX) {
+        return None;
+    }
+    Some(block as i32)
 }
 
 fn debug_snbt_double(value: f64) -> Option<String> {
