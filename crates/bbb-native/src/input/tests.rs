@@ -8522,6 +8522,55 @@ fn local_firework_save_uses_parent_lifecycle_synced_item_codec_and_client_life()
 }
 
 #[test]
+fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
+    let patch = DataComponentPatchSummary {
+        added: 14,
+        added_type_ids: vec![1, 2, 3, 4, 10, 12, 21, 22, 44, 45, 46, 63, 68, 69],
+        removed_type_ids: vec![6],
+        max_stack_size: Some(64),
+        max_damage: Some(100),
+        damage: Some(7),
+        unbreakable: true,
+        item_model: Some("minecraft:custom/diamond".to_string()),
+        rarity: Some(ItemRaritySummary::Rare),
+        enchantment_glint_override: Some(false),
+        intangible_projectile: true,
+        dyed_color: Some(0x11_22_33),
+        map_color: Some(0x44_55_66),
+        map_id: Some(42),
+        ominous_bottle_amplifier: Some(3),
+        firework_explosion_shape: Some(FireworkExplosionShapeSummary::Burst),
+        firework_explosion_colors: vec![0x77_88_99],
+        firework_explosion_fade_colors: vec![0xAA_BB_CC],
+        firework_explosion_has_trail: Some(true),
+        firework_explosion_has_twinkle: Some(false),
+        fireworks_flight_duration: Some(2),
+        fireworks_explosions_count: Some(0),
+        ..DataComponentPatchSummary::default()
+    };
+    let stack = ProtocolItemStackSummary {
+        item_id: Some(0),
+        count: 2,
+        component_patch: patch,
+    };
+
+    assert_eq!(
+        debug_item_stack_snbt("minecraft:diamond", stack.count, Some(&stack)),
+        "{id: \"minecraft:diamond\", count: 2, components: {\
+         \"minecraft:max_stack_size\": 64, \"minecraft:max_damage\": 100, \
+         \"minecraft:damage\": 7, \"minecraft:unbreakable\": {}, \
+         \"minecraft:item_model\": \"minecraft:custom/diamond\", \
+         \"minecraft:rarity\": \"rare\", \"minecraft:enchantment_glint_override\": 0b, \
+         \"minecraft:intangible_projectile\": {}, \"minecraft:dyed_color\": 1122867, \
+         \"minecraft:map_color\": 4478310, \"minecraft:map_id\": 42, \
+         \"minecraft:ominous_bottle_amplifier\": 3, \
+         \"minecraft:firework_explosion\": {shape: \"burst\", colors: [7833753], \
+         fade_colors: [11189196], has_trail: 1b}, \
+         \"minecraft:fireworks\": {flight_duration: 2}, \"!minecraft:custom_name\": {}}}"
+    );
+}
+
+#[test]
 fn shift_f3_i_with_permission_copies_local_dragon_fireball_save_nbt_to_clipboard() {
     let mut input = ClientInputState::new(true);
     let mut world = world_with_debug_player(false);

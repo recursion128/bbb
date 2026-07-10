@@ -72,8 +72,9 @@ use bbb_protocol::{
         BlockEntityTagQuery, BlockPos as ProtocolBlockPos, ChangeGameModeCommand,
         Direction as ProtocolDirection, EntityDataEnumSerializer, EntityDataRegistryHolder,
         EntityDataValueKind, EntityTagQuery, FireworkExplosionShapeSummary,
-        FireworkExplosionSummary, GameType, InteractionHand, ItemStackSummary, PlayerActionKind,
-        PlayerCommandAction, PlayerInput, RecipeBookType, SeenAdvancements, SignUpdate,
+        FireworkExplosionSummary, GameType, InteractionHand, ItemRaritySummary, ItemStackSummary,
+        PlayerActionKind, PlayerCommandAction, PlayerInput, RecipeBookType, SeenAdvancements,
+        SignUpdate,
     },
     ComponentClickEvent, ComponentStyle, StyledTextRun, MC_BUILD_TIME, MC_DATA_PACK_FORMAT,
     MC_DATA_VERSION, MC_DATA_VERSION_SERIES, MC_RESOURCE_PACK_FORMAT, MC_STABLE, MC_VERSION,
@@ -4593,53 +4594,101 @@ fn debug_item_stack_snbt(
     if count != 1 {
         fields.push(format!("count: {count}"));
     }
-    if let Some(components) = stack.and_then(debug_firework_component_patch_snbt) {
+    if let Some(components) = stack.and_then(debug_supported_component_patch_snbt) {
         fields.push(format!("components: {components}"));
     }
     format!("{{{}}}", fields.join(", "))
 }
 
-fn debug_firework_component_patch_snbt(stack: &ItemStackSummary) -> Option<String> {
+fn debug_supported_component_patch_snbt(stack: &ItemStackSummary) -> Option<String> {
     let patch = &stack.component_patch;
-    let fireworks_added = patch.added_type_ids.contains(&FIREWORKS_COMPONENT_TYPE_ID)
-        || patch.fireworks_flight_duration.is_some()
-        || patch.fireworks_explosions_count.is_some();
-    let fireworks_removed = patch
-        .removed_type_ids
-        .contains(&FIREWORKS_COMPONENT_TYPE_ID);
-    if !fireworks_added && !fireworks_removed {
-        return None;
-    }
+    let mut fields = patch
+        .added_type_ids
+        .iter()
+        .filter_map(|type_id| debug_supported_added_component_snbt(*type_id, patch))
+        .collect::<Vec<_>>();
+    fields.extend(patch.removed_type_ids.iter().filter_map(|type_id| {
+        debug_supported_component_resource_id(*type_id)
+            .map(|resource_id| format!("{}: {{}}", debug_snbt_string(&format!("!{resource_id}"))))
+    }));
+    (!fields.is_empty()).then(|| format!("{{{}}}", fields.join(", ")))
+}
 
-    let mut fields = Vec::new();
-    if fireworks_added {
-        let mut fireworks = Vec::new();
-        let flight_duration = patch.fireworks_flight_duration.unwrap_or(0);
-        if flight_duration != 0 {
-            fireworks.push(format!("flight_duration: {flight_duration}"));
-        }
-        if !patch.fireworks_explosions.is_empty() {
-            let explosions = patch
-                .fireworks_explosions
-                .iter()
-                .map(debug_firework_explosion_snbt)
-                .collect::<Vec<_>>()
-                .join(", ");
-            fireworks.push(format!("explosions: [{explosions}]"));
-        }
-        fields.push(format!(
-            "{}: {{{}}}",
-            debug_snbt_string("minecraft:fireworks"),
-            fireworks.join(", ")
-        ));
+fn debug_supported_added_component_snbt(
+    type_id: i32,
+    patch: &bbb_protocol::packets::DataComponentPatchSummary,
+) -> Option<String> {
+    let resource_id = debug_supported_component_resource_id(type_id)?;
+    let value = match type_id {
+        1 => patch.max_stack_size?.to_string(),
+        2 => patch.max_damage?.to_string(),
+        3 => patch.damage?.to_string(),
+        4 => "{}".to_string(),
+        10 => debug_snbt_string(patch.item_model.as_deref()?),
+        12 => debug_snbt_string(match patch.rarity? {
+            ItemRaritySummary::Common => "common",
+            ItemRaritySummary::Uncommon => "uncommon",
+            ItemRaritySummary::Rare => "rare",
+            ItemRaritySummary::Epic => "epic",
+        }),
+        21 => debug_snbt_bool(patch.enchantment_glint_override?).to_string(),
+        22 => "{}".to_string(),
+        44 => patch.dyed_color?.to_string(),
+        45 => patch.map_color?.to_string(),
+        46 => patch.map_id?.to_string(),
+        63 => patch.ominous_bottle_amplifier?.to_string(),
+        68 => debug_firework_explosion_snbt(&FireworkExplosionSummary {
+            shape: patch.firework_explosion_shape?,
+            colors: patch.firework_explosion_colors.clone(),
+            fade_colors: patch.firework_explosion_fade_colors.clone(),
+            has_trail: patch.firework_explosion_has_trail.unwrap_or(false),
+            has_twinkle: patch.firework_explosion_has_twinkle.unwrap_or(false),
+        }),
+        FIREWORKS_COMPONENT_TYPE_ID => debug_fireworks_component_snbt(patch),
+        _ => return None,
+    };
+    Some(format!("{}: {value}", debug_snbt_string(resource_id)))
+}
+
+fn debug_supported_component_resource_id(type_id: i32) -> Option<&'static str> {
+    Some(match type_id {
+        1 => "minecraft:max_stack_size",
+        2 => "minecraft:max_damage",
+        3 => "minecraft:damage",
+        4 => "minecraft:unbreakable",
+        6 => "minecraft:custom_name",
+        10 => "minecraft:item_model",
+        12 => "minecraft:rarity",
+        21 => "minecraft:enchantment_glint_override",
+        22 => "minecraft:intangible_projectile",
+        44 => "minecraft:dyed_color",
+        45 => "minecraft:map_color",
+        46 => "minecraft:map_id",
+        63 => "minecraft:ominous_bottle_amplifier",
+        68 => "minecraft:firework_explosion",
+        FIREWORKS_COMPONENT_TYPE_ID => "minecraft:fireworks",
+        _ => return None,
+    })
+}
+
+fn debug_fireworks_component_snbt(
+    patch: &bbb_protocol::packets::DataComponentPatchSummary,
+) -> String {
+    let mut fireworks = Vec::new();
+    let flight_duration = patch.fireworks_flight_duration.unwrap_or(0);
+    if flight_duration != 0 {
+        fireworks.push(format!("flight_duration: {flight_duration}"));
     }
-    if fireworks_removed {
-        fields.push(format!(
-            "{}: {{}}",
-            debug_snbt_string("!minecraft:fireworks")
-        ));
+    if !patch.fireworks_explosions.is_empty() {
+        let explosions = patch
+            .fireworks_explosions
+            .iter()
+            .map(debug_firework_explosion_snbt)
+            .collect::<Vec<_>>()
+            .join(", ");
+        fireworks.push(format!("explosions: [{explosions}]"));
     }
-    Some(format!("{{{}}}", fields.join(", ")))
+    format!("{{{}}}", fireworks.join(", "))
 }
 
 fn debug_firework_explosion_snbt(explosion: &FireworkExplosionSummary) -> String {

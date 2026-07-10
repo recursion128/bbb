@@ -8532,3 +8532,17 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   focused hopper/TNT clipboard tests 覆盖准确默认输出，两项从账本转为 not-needed。
   Furnace minecart 没有一并清零：`MultiPlayerGameMode.interact` 发包后会在客户端调用
   `player.interactOn`，本地加燃料可预测修改 `fuel` / `push`，仍需实现该真实客户端路径。
+
+## 2026-07-10：ItemStack primitive component-patch SNBT
+
+- [x] F3+I ItemStack 常用持久化 component patch 子集（P2 native input）：依据 vanilla
+  26.1 `DataComponents` bootstrap 顺序、`DataComponentPatch.CODEC` / `STREAM_CODEC` 与
+  各值 codec，通用 stack SNBT helper 现在按 wire 中 added 顺序、随后 removed 顺序输出
+  `max_stack_size`、`max_damage`、`damage`、`unbreakable`、`item_model`、`rarity`、
+  `enchantment_glint_override`、`intangible_projectile`、`dyed_color`、`map_color`、
+  `map_id`、`ominous_bottle_amplifier`、`firework_explosion` 与 `fireworks`；已知支持键的
+  removal 使用 `"!minecraft:...": {}`。item-frame 与 firework rocket 自动共同消费该
+  扩展。focused test 覆盖 14 个 added component、custom-name removal、unit/boolean/int/
+  resource/color/map/两类 fireworks codec、默认字段省略和精确顺序；既有 firework
+  lifecycle/component test 继续通过。styled component、registry holder、复杂嵌套结构及
+  其余 component 类型仍留在缩窄后的 codec 总账本。

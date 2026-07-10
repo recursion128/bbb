@@ -234,9 +234,9 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   remaining registry-backed
   entity-data projection (including dynamic-registry ordering), packed variant
   projection, remaining codec-backed SNBT projection (including `AbstractArrow`
-  `inBlockState`, `item`, and `weapon`, arbitrary non-fireworks data-component
-  patch entries on throwable/firework/item-frame item stacks, falling-block
-  `TileEntityData`,
+  `inBlockState`, `item`, and `weapon`, remaining data-component patch entries
+  beyond the supported primitive/resource/color/map/ominous/firework subset on
+  throwable/firework/item-frame item stacks, falling-block `TileEntityData`,
   and non-default `VibrationSystem.Data` listener payloads),
   remaining entity-specific
   constructor/default save values, LivingEntity parent health/equipment/effect/attribute
