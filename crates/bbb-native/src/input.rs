@@ -256,6 +256,7 @@ const FIREWORK_ROCKET_ITEM_DATA_ID: u8 = 8;
 const FIREWORK_ROCKET_SHOT_AT_ANGLE_DATA_ID: u8 = 10;
 const FIREWORK_ROCKET_DEFAULT_LIFETIME: i32 = 0;
 const CUSTOM_MODEL_DATA_COMPONENT_TYPE_ID: i32 = 17;
+const WRITABLE_BOOK_CONTENT_COMPONENT_TYPE_ID: i32 = 54;
 const FIREWORKS_COMPONENT_TYPE_ID: i32 = 69;
 const BLOCK_STATE_COMPONENT_TYPE_ID: i32 = 76;
 const TROPICAL_FISH_PATTERN_COMPONENT_TYPE_ID: i32 = 88;
@@ -4643,6 +4644,9 @@ fn debug_supported_added_component_snbt(
         44 => patch.dyed_color?.to_string(),
         45 => patch.map_color?.to_string(),
         46 => patch.map_id?.to_string(),
+        WRITABLE_BOOK_CONTENT_COMPONENT_TYPE_ID => {
+            debug_writable_book_content_component_snbt(patch)
+        }
         63 => patch.ominous_bottle_amplifier?.to_string(),
         68 => debug_firework_explosion_snbt(&FireworkExplosionSummary {
             shape: patch.firework_explosion_shape?,
@@ -4695,6 +4699,7 @@ fn debug_supported_component_resource_id(type_id: i32) -> Option<&'static str> {
         44 => "minecraft:dyed_color",
         45 => "minecraft:map_color",
         46 => "minecraft:map_id",
+        WRITABLE_BOOK_CONTENT_COMPONENT_TYPE_ID => "minecraft:writable_book_content",
         63 => "minecraft:ominous_bottle_amplifier",
         68 => "minecraft:firework_explosion",
         FIREWORKS_COMPONENT_TYPE_ID => "minecraft:fireworks",
@@ -4841,6 +4846,32 @@ fn debug_custom_model_data_component_snbt(
         ));
     }
     format!("{{{}}}", fields.join(", "))
+}
+
+fn debug_writable_book_content_component_snbt(
+    patch: &bbb_protocol::packets::DataComponentPatchSummary,
+) -> String {
+    if patch.writable_book_pages.is_empty() {
+        return "{}".to_string();
+    }
+    let pages = patch
+        .writable_book_pages
+        .iter()
+        .enumerate()
+        .map(|(index, raw)| {
+            let mut fields = vec![format!("raw: {}", debug_snbt_string(raw))];
+            if let Some(filtered) = patch
+                .writable_book_page_filters
+                .get(index)
+                .and_then(Option::as_deref)
+            {
+                fields.push(format!("filtered: {}", debug_snbt_string(filtered)));
+            }
+            format!("{{{}}}", fields.join(", "))
+        })
+        .collect::<Vec<_>>()
+        .join(", ");
+    format!("{{pages: [{pages}]}}")
 }
 
 fn debug_tropical_fish_pattern_name(packed_id: i32) -> &'static str {

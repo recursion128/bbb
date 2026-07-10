@@ -8525,9 +8525,9 @@ fn local_firework_save_uses_parent_lifecycle_synced_item_codec_and_client_life()
 #[test]
 fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
     let patch = DataComponentPatchSummary {
-        added: 20,
+        added: 21,
         added_type_ids: vec![
-            0, 1, 2, 3, 4, 10, 12, 17, 21, 22, 44, 45, 46, 63, 68, 69, 76, 88, 89, 90,
+            0, 1, 2, 3, 4, 10, 12, 17, 21, 22, 44, 45, 46, 54, 63, 68, 69, 76, 88, 89, 90,
         ],
         removed_type_ids: vec![6],
         custom_data: Some(NbtSummaryValue::Compound(vec![
@@ -8595,6 +8595,8 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
         dyed_color: Some(0x11_22_33),
         map_color: Some(0x44_55_66),
         map_id: Some(42),
+        writable_book_pages: vec!["first\npage".to_string(), "second raw".to_string()],
+        writable_book_page_filters: vec![None, Some("second filtered".to_string())],
         ominous_bottle_amplifier: Some(3),
         firework_explosion_shape: Some(FireworkExplosionShapeSummary::Burst),
         firework_explosion_colors: vec![0x77_88_99],
@@ -8633,6 +8635,8 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
          colors: [1122867, 4478310]}, \"minecraft:enchantment_glint_override\": 0b, \
          \"minecraft:intangible_projectile\": {}, \"minecraft:dyed_color\": 1122867, \
          \"minecraft:map_color\": 4478310, \"minecraft:map_id\": 42, \
+         \"minecraft:writable_book_content\": {pages: [{raw: \"first\\npage\"}, \
+         {raw: \"second raw\", filtered: \"second filtered\"}]}, \
          \"minecraft:ominous_bottle_amplifier\": 3, \
          \"minecraft:firework_explosion\": {shape: \"burst\", colors: [7833753], \
          fade_colors: [11189196], has_trail: 1b}, \

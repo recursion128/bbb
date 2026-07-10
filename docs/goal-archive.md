@@ -8586,3 +8586,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   `DataComponents.MAP_POST_PROCESSING` 仅注册 network stream codec，没有 persistent
   codec，因此 ItemStack save/F3+I 不应输出该瞬时 component；归类为 not-needed，
   不伪造持久化 SNBT。
+
+## 2026-07-10：ItemStack writable-book save codec
+
+- [x] `minecraft:writable_book_content` 持久化 component（P2 native input）：
+  依据 vanilla 26.1 `WritableBookContent.CODEC`、`Filterable.codec` 与 protocol
+  已保留的 type id `54` raw/filtered page 对，非空 pages 按网络顺序输出主编码
+  分支的 `{raw, filtered?}` compounds，空 pages 沿用 record 默认省略。
+  component patch focused test 扩展到 21 个 added entry，覆盖无过滤页、过滤页、
+  page-order 与换行 string escaping；writable-book 从剩余 component 总账本移入
+  已支持子集。
