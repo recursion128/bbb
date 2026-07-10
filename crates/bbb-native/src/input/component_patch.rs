@@ -102,6 +102,7 @@ static PERSISTENT_SNBT_ENCODERS: &[PersistentSnbtEncoderDescriptor] = &[
     encoder(29, encode_weapon),
     encoder(30, encode_attack_range),
     encoder(31, encode_enchantable),
+    encoder(32, encode_equippable),
     encoder(33, encode_repairable),
     encoder(34, encode_unit),
     encoder(35, encode_tooltip_style),
@@ -678,6 +679,104 @@ fn block_holder_set_snbt(
     })
 }
 
+fn encode_equippable(
+    _type_id: i32,
+    patch: &bbb_protocol::packets::DataComponentPatchSummary,
+    _item_runtime: Option<&NativeItemRuntime>,
+) -> Option<String> {
+    let equippable = patch.equippable.as_ref()?;
+    let slot = [
+        "mainhand", "feet", "legs", "chest", "head", "offhand", "body", "saddle",
+    ]
+    .get(usize::try_from(equippable.slot_id).ok()?)?;
+    let mut fields = vec![format!("slot: {}", debug_snbt_string(slot))];
+    let equip_sound_is_default = equippable
+        .equip_sound
+        .registry_id
+        .is_some_and(|registry_id| {
+            debug_vanilla_sound_event_resource_id(registry_id)
+                == Some("minecraft:item.armor.equip_generic")
+        });
+    if !equip_sound_is_default {
+        fields.push(format!(
+            "equip_sound: {}",
+            debug_sound_event_component_snbt(&equippable.equip_sound)?
+        ));
+    }
+    if let Some(asset_id) = &equippable.asset_id {
+        fields.push(format!("asset_id: {}", debug_snbt_string(asset_id)));
+    }
+    if let Some(camera_overlay) = &equippable.camera_overlay {
+        fields.push(format!(
+            "camera_overlay: {}",
+            debug_snbt_string(camera_overlay)
+        ));
+    }
+    if let Some(allowed_entities) = &equippable.allowed_entities {
+        fields.push(format!(
+            "allowed_entities: {}",
+            entity_type_holder_set_snbt(
+                &allowed_entities.registry_ids,
+                allowed_entities.tag.as_deref()
+            )?
+        ));
+    }
+    if !equippable.dispensable {
+        fields.push("dispensable: 0b".to_string());
+    }
+    if !equippable.swappable {
+        fields.push("swappable: 0b".to_string());
+    }
+    if !equippable.damage_on_hurt {
+        fields.push("damage_on_hurt: 0b".to_string());
+    }
+    if equippable.equip_on_interact {
+        fields.push("equip_on_interact: 1b".to_string());
+    }
+    if equippable.can_be_sheared {
+        fields.push("can_be_sheared: 1b".to_string());
+    }
+    let shearing_sound_is_default =
+        equippable
+            .shearing_sound
+            .registry_id
+            .is_some_and(|registry_id| {
+                debug_vanilla_sound_event_resource_id(registry_id)
+                    == Some("minecraft:item.shears.snip")
+            });
+    if !shearing_sound_is_default {
+        fields.push(format!(
+            "shearing_sound: {}",
+            debug_sound_event_component_snbt(&equippable.shearing_sound)?
+        ));
+    }
+    Some(format!("{{{}}}", fields.join(", ")))
+}
+
+fn entity_type_holder_set_snbt(registry_ids: &[i32], tag: Option<&str>) -> Option<String> {
+    if let Some(tag) = tag {
+        return registry_ids
+            .is_empty()
+            .then(|| debug_snbt_string(&format!("#{tag}")));
+    }
+    let resource_ids = registry_ids
+        .iter()
+        .map(|id| vanilla_entity_resource_id_for_type_id(*id))
+        .collect::<Option<Vec<_>>>()?;
+    Some(match resource_ids.as_slice() {
+        [] => "[]".to_string(),
+        [resource_id] => debug_snbt_string(resource_id),
+        resource_ids => format!(
+            "[{}]",
+            resource_ids
+                .iter()
+                .map(|resource_id| debug_snbt_string(resource_id))
+                .collect::<Vec<_>>()
+                .join(", ")
+        ),
+    })
+}
+
 fn encode_weapon(
     _type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
@@ -1231,7 +1330,7 @@ mod tests {
 
     #[test]
     fn encoder_registry_is_unique_sorted_and_persistent() {
-        assert_eq!(PERSISTENT_SNBT_ENCODERS.len(), 105);
+        assert_eq!(PERSISTENT_SNBT_ENCODERS.len(), 106);
         let mut ids = HashSet::new();
         let mut previous = None;
         for descriptor in PERSISTENT_SNBT_ENCODERS {
@@ -1455,6 +1554,94 @@ mod tests {
         patch.tool.as_mut().unwrap().rules[0].speed_bits = Some(8.0_f32.to_bits());
         patch.tool.as_mut().unwrap().damage_per_block = -1;
         assert_eq!(encode_added_component_value_snbt(28, &patch, None), None);
+    }
+
+    #[test]
+    fn equippable_encoder_preserves_holders_and_codec_defaults() {
+        use bbb_protocol::packets::{
+            DataComponentPatchSummary, EntityTypeHolderSetSummary, EquippableSummary,
+            SoundEventSummary,
+        };
+
+        let sound_registry_id = |resource_id| {
+            (0..2048)
+                .find(|id| debug_vanilla_sound_event_resource_id(*id) == Some(resource_id))
+                .unwrap()
+        };
+        let mut patch = DataComponentPatchSummary {
+            equippable: Some(EquippableSummary {
+                slot_id: 0,
+                equip_sound: SoundEventSummary {
+                    registry_id: Some(sound_registry_id("minecraft:item.armor.equip_generic")),
+                    sound_id: None,
+                    fixed_range_bits: None,
+                },
+                asset_id: None,
+                camera_overlay: None,
+                allowed_entities: None,
+                dispensable: true,
+                swappable: true,
+                damage_on_hurt: true,
+                equip_on_interact: false,
+                can_be_sheared: false,
+                shearing_sound: SoundEventSummary {
+                    registry_id: Some(sound_registry_id("minecraft:item.shears.snip")),
+                    sound_id: None,
+                    fixed_range_bits: None,
+                },
+            }),
+            ..Default::default()
+        };
+        assert_eq!(
+            encode_added_component_value_snbt(32, &patch, None),
+            Some("{slot: \"mainhand\"}".to_string())
+        );
+
+        patch.equippable = Some(EquippableSummary {
+            slot_id: 5,
+            equip_sound: SoundEventSummary {
+                registry_id: None,
+                sound_id: Some("minecraft:item.armor.equip_generic".to_string()),
+                fixed_range_bits: None,
+            },
+            asset_id: Some("minecraft:diamond".to_string()),
+            camera_overlay: Some("minecraft:misc/pumpkinblur".to_string()),
+            allowed_entities: Some(EntityTypeHolderSetSummary {
+                registry_ids: Vec::new(),
+                tag: Some("minecraft:skeletons".to_string()),
+            }),
+            dispensable: true,
+            swappable: false,
+            damage_on_hurt: true,
+            equip_on_interact: false,
+            can_be_sheared: true,
+            shearing_sound: SoundEventSummary {
+                registry_id: None,
+                sound_id: Some("minecraft:item.shears.snip".to_string()),
+                fixed_range_bits: None,
+            },
+        });
+        assert_eq!(
+            encode_added_component_value_snbt(32, &patch, None),
+            Some(
+                "{slot: \"offhand\", equip_sound: \
+                 {sound_id: \"minecraft:item.armor.equip_generic\"}, asset_id: \
+                 \"minecraft:diamond\", camera_overlay: \"minecraft:misc/pumpkinblur\", \
+                 allowed_entities: \"#minecraft:skeletons\", swappable: 0b, \
+                 can_be_sheared: 1b, shearing_sound: \
+                 {sound_id: \"minecraft:item.shears.snip\"}}"
+                    .to_string()
+            )
+        );
+
+        patch.equippable.as_mut().unwrap().slot_id = 8;
+        assert_eq!(encode_added_component_value_snbt(32, &patch, None), None);
+        patch.equippable.as_mut().unwrap().slot_id = 5;
+        patch.equippable.as_mut().unwrap().allowed_entities = Some(EntityTypeHolderSetSummary {
+            registry_ids: vec![10_000],
+            tag: None,
+        });
+        assert_eq!(encode_added_component_value_snbt(32, &patch, None), None);
     }
 
     #[test]

@@ -8738,15 +8738,15 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
         EquipmentAssetCatalog::default(),
     );
     let patch = DataComponentPatchSummary {
-        added: 105,
+        added: 106,
         added_type_ids: vec![
             0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 21, 22, 23, 24,
-            25, 26, 27, 28, 29, 30, 31, 33, 34, 35, 36, 38, 39, 40, 42, 43, 44, 45, 46, 47, 49, 50,
-            51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72,
-            73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94,
-            95, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109,
+            25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 38, 39, 40, 42, 43, 44, 45, 46, 47, 49,
+            50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71,
+            72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93,
+            94, 95, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109,
         ],
-        removed_type_ids: vec![32],
+        removed_type_ids: vec![37],
         custom_data: Some(NbtSummaryValue::Compound(vec![
             NbtSummaryEntry {
                 name: "answer".to_string(),
@@ -8997,6 +8997,30 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
             mob_factor: 0.5,
         }),
         enchantable_value: Some(15),
+        equippable: Some(bbb_protocol::packets::EquippableSummary {
+            slot_id: 5,
+            equip_sound: bbb_protocol::packets::SoundEventSummary {
+                registry_id: None,
+                sound_id: Some("minecraft:item.armor.equip_generic".to_string()),
+                fixed_range_bits: None,
+            },
+            asset_id: Some("minecraft:diamond".to_string()),
+            camera_overlay: Some("minecraft:misc/pumpkinblur".to_string()),
+            allowed_entities: Some(bbb_protocol::packets::EntityTypeHolderSetSummary {
+                registry_ids: Vec::new(),
+                tag: Some("minecraft:skeletons".to_string()),
+            }),
+            dispensable: true,
+            swappable: false,
+            damage_on_hurt: true,
+            equip_on_interact: false,
+            can_be_sheared: true,
+            shearing_sound: bbb_protocol::packets::SoundEventSummary {
+                registry_id: None,
+                sound_id: Some("minecraft:item.shears.snip".to_string()),
+                fixed_range_bits: None,
+            },
+        }),
         repairable_item_registry_ids: vec![0, 1],
         tooltip_style: Some("minecraft:rare".to_string()),
         piercing_weapon: Some(bbb_protocol::packets::PiercingWeaponSummary {
@@ -9418,6 +9442,12 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
          min_creative_reach: 2.0f, max_creative_reach: 6.5f, \
          hitbox_margin: 0.125f, mob_factor: 0.5f}, \
          \"minecraft:enchantable\": {value: 15}, \
+         \"minecraft:equippable\": {slot: \"offhand\", equip_sound: \
+         {sound_id: \"minecraft:item.armor.equip_generic\"}, asset_id: \
+         \"minecraft:diamond\", camera_overlay: \"minecraft:misc/pumpkinblur\", \
+         allowed_entities: \"#minecraft:skeletons\", swappable: 0b, \
+         can_be_sheared: 1b, shearing_sound: \
+         {sound_id: \"minecraft:item.shears.snip\"}}, \
          \"minecraft:repairable\": {items: [\"minecraft:angler_pottery_sherd\", \
          \"minecraft:archer_pottery_sherd\"]}, \"minecraft:glider\": {}, \
          \"minecraft:tooltip_style\": \"minecraft:rare\", \
@@ -9525,7 +9555,7 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
          \"minecraft:cat/collar\": \"black\", \
          \"minecraft:sheep/color\": \"cyan\", \
          \"minecraft:shulker/color\": \"white\", \
-         \"!minecraft:equippable\": {}}}"
+         \"!minecraft:blocks_attacks\": {}}}"
                 .to_string()
         )
     );
@@ -9871,7 +9901,7 @@ fn item_stack_snbt_preserves_all_persistent_component_removals() {
 fn component_patch_dispatch_uses_encoder_registry_and_catalog_metadata() {
     let patch = DataComponentPatchSummary {
         added: 2,
-        added_type_ids: vec![1, 32],
+        added_type_ids: vec![1, 37],
         removed_type_ids: vec![8, 20],
         max_stack_size: Some(64),
         ..DataComponentPatchSummary::default()

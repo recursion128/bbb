@@ -144,6 +144,8 @@ pub struct DataComponentPatchSummary {
     #[serde(default)]
     pub enchantable_value: Option<i32>,
     #[serde(default)]
+    pub equippable: Option<EquippableSummary>,
+    #[serde(default)]
     pub repairable_item_registry_ids: Vec<i32>,
     #[serde(default)]
     pub repairable_item_tag: Option<String>,
@@ -599,6 +601,32 @@ pub struct ToolRuleSummary {
     pub speed_bits: Option<u32>,
     #[serde(default)]
     pub correct_for_drops: Option<bool>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct EquippableSummary {
+    pub slot_id: i32,
+    pub equip_sound: SoundEventSummary,
+    #[serde(default)]
+    pub asset_id: Option<String>,
+    #[serde(default)]
+    pub camera_overlay: Option<String>,
+    #[serde(default)]
+    pub allowed_entities: Option<EntityTypeHolderSetSummary>,
+    pub dispensable: bool,
+    pub swappable: bool,
+    pub damage_on_hurt: bool,
+    pub equip_on_interact: bool,
+    pub can_be_sheared: bool,
+    pub shearing_sound: SoundEventSummary,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct EntityTypeHolderSetSummary {
+    #[serde(default)]
+    pub registry_ids: Vec<i32>,
+    #[serde(default)]
+    pub tag: Option<String>,
 }
 
 impl PartialEq for AttackRangeSummary {
@@ -1133,18 +1161,6 @@ fn decode_holder_set_summary(decoder: &mut Decoder<'_>) -> Result<HolderSetSumma
         registry_ids,
         tag: None,
     })
-}
-
-fn decode_identifier(decoder: &mut Decoder<'_>) -> Result<()> {
-    read_resource_location(decoder)?;
-    Ok(())
-}
-
-fn decode_optional_identifier(decoder: &mut Decoder<'_>) -> Result<()> {
-    if decoder.read_bool()? {
-        decode_identifier(decoder)?;
-    }
-    Ok(())
 }
 
 fn decode_optional_identifier_value(decoder: &mut Decoder<'_>) -> Result<Option<String>> {
@@ -1767,19 +1783,37 @@ fn decode_optional_kinetic_weapon_condition(
     Ok(None)
 }
 
-fn decode_equippable(decoder: &mut Decoder<'_>) -> Result<()> {
-    decoder.read_var_i32()?;
-    decode_sound_event_holder(decoder)?;
-    decode_optional_identifier(decoder)?;
-    decode_optional_identifier(decoder)?;
-    if decoder.read_bool()? {
-        decode_holder_set(decoder)?;
-    }
-    for _ in 0..5 {
-        decoder.read_bool()?;
-    }
-    decode_sound_event_holder(decoder)?;
-    Ok(())
+fn decode_equippable(decoder: &mut Decoder<'_>) -> Result<EquippableSummary> {
+    let slot_id = decoder.read_var_i32()?;
+    let equip_sound = decode_sound_event_holder_summary(decoder)?;
+    let asset_id = decode_optional_identifier_value(decoder)?;
+    let camera_overlay = decode_optional_identifier_value(decoder)?;
+    let allowed_entities = if decoder.read_bool()? {
+        let holder_set = decode_holder_set_summary(decoder)?;
+        Some(EntityTypeHolderSetSummary {
+            registry_ids: holder_set.registry_ids,
+            tag: holder_set.tag,
+        })
+    } else {
+        None
+    };
+    Ok(EquippableSummary {
+        slot_id: if (0..=7).contains(&slot_id) {
+            slot_id
+        } else {
+            0
+        },
+        equip_sound,
+        asset_id,
+        camera_overlay,
+        allowed_entities,
+        dispensable: decoder.read_bool()?,
+        swappable: decoder.read_bool()?,
+        damage_on_hurt: decoder.read_bool()?,
+        equip_on_interact: decoder.read_bool()?,
+        can_be_sheared: decoder.read_bool()?,
+        shearing_sound: decode_sound_event_holder_summary(decoder)?,
+    })
 }
 
 struct ArmorTrimSummary {
@@ -5231,6 +5265,30 @@ mod tests {
                     max_creative_reach: 5.0,
                     hitbox_margin: 0.3,
                     mob_factor: 1.0,
+                }),
+                equippable: Some(EquippableSummary {
+                    slot_id: 5,
+                    equip_sound: SoundEventSummary {
+                        registry_id: None,
+                        sound_id: Some("minecraft:item.armor.equip_generic".to_string()),
+                        fixed_range_bits: None,
+                    },
+                    asset_id: Some("minecraft:diamond".to_string()),
+                    camera_overlay: Some("minecraft:misc/pumpkinblur".to_string()),
+                    allowed_entities: Some(EntityTypeHolderSetSummary {
+                        registry_ids: Vec::new(),
+                        tag: Some("minecraft:skeletons".to_string()),
+                    }),
+                    dispensable: true,
+                    swappable: false,
+                    damage_on_hurt: true,
+                    equip_on_interact: false,
+                    can_be_sheared: true,
+                    shearing_sound: SoundEventSummary {
+                        registry_id: None,
+                        sound_id: Some("minecraft:item.shears.snip".to_string()),
+                        fixed_range_bits: None,
+                    },
                 }),
                 swing_animation: Some(SwingAnimationSummary {
                     animation_type: SwingAnimationTypeSummary::None,

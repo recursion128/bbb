@@ -9229,3 +9229,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   nested persistent component、缺失 partial codec NBT 或空顶层 list 均安全省略。
   另以 `DataComponentPredicates.java` 锁定 15 项 predicate type 注册顺序。大型
   component patch test 从 103 扩展到 105 个 added entry。
+
+## 2026-07-10：ItemStack equippable component decode and save
+
+- [x] minecraft:equippable 的 structured decode 与 persistent SNBT（P2 protocol +
+  native input）：依据 vanilla 26.1 `Equippable.CODEC/STREAM_CODEC` 与
+  `EquipmentSlot` wire id，protocol type id 32 不再 skip，保留 slot、equip/shearing
+  SoundEvent holder、equipment asset/camera identifier、entity holder set 与五个行为
+  flag；native encoder 复用统一 sound codec、entity registry 与 holder compact-list
+  逻辑，按 named-holder 默认值省略字段，并对 invalid slot/entity holder 安全省略。
+  大型 component patch test 从 105 扩展到 106 个 added entry，removal/unsupported
+  样例移至最后一个尚未实现的 blocks_attacks type id 37。

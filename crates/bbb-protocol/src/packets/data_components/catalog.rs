@@ -139,7 +139,12 @@ static VANILLA_DATA_COMPONENTS: &[DataComponentDescriptor] = &[
         decode_attack_range_component,
     ),
     component(31, "minecraft:enchantable", true, decode_enchantable),
-    component(32, "minecraft:equippable", true, skip_equippable),
+    component(
+        32,
+        "minecraft:equippable",
+        true,
+        decode_equippable_component,
+    ),
     component(33, "minecraft:repairable", true, decode_repairable),
     component(34, "minecraft:glider", true, decode_glider),
     component(35, "minecraft:tooltip_style", true, decode_tooltip_style),
@@ -1298,12 +1303,13 @@ fn decode_tool_component(
     Ok(())
 }
 
-fn skip_equippable(
+fn decode_equippable_component(
     _type_id: i32,
     decoder: &mut Decoder<'_>,
-    _summary: &mut DataComponentPatchSummary,
+    summary: &mut DataComponentPatchSummary,
 ) -> Result<()> {
-    decode_equippable(decoder)
+    summary.equippable = Some(decode_equippable(decoder)?);
+    Ok(())
 }
 
 fn skip_blocks_attacks(
