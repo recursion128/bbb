@@ -8544,10 +8544,10 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
         EquipmentAssetCatalog::default(),
     );
     let patch = DataComponentPatchSummary {
-        added: 31,
+        added: 32,
         added_type_ids: vec![
-            0, 1, 2, 3, 4, 5, 10, 12, 17, 21, 22, 26, 30, 40, 44, 45, 46, 49, 50, 54, 63, 67, 68,
-            69, 70, 74, 75, 76, 88, 89, 90,
+            0, 1, 2, 3, 4, 5, 10, 12, 17, 21, 22, 25, 26, 30, 40, 44, 45, 46, 49, 50, 54, 63, 67,
+            68, 69, 70, 74, 75, 76, 88, 89, 90,
         ],
         removed_type_ids: vec![6],
         custom_data: Some(NbtSummaryValue::Compound(vec![
@@ -8617,6 +8617,11 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
         custom_model_data_colors: vec![0x11_22_33, 0x44_55_66],
         enchantment_glint_override: Some(false),
         intangible_projectile: true,
+        use_remainder: Some(Box::new(bbb_protocol::packets::ItemStackTemplateSummary {
+            item_id: 2,
+            count: 1,
+            component_patch: DataComponentPatchSummary::default(),
+        })),
         use_cooldown_seconds_bits: Some(1.25_f32.to_bits()),
         use_cooldown_ticks: Some(25),
         use_cooldown_group: Some("minecraft:ender_pearl".to_string()),
@@ -8787,6 +8792,7 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
          flags: [1b, 0b], strings: [\"variant\", \"A 'quote'\"], \
          colors: [1122867, 4478310]}, \"minecraft:enchantment_glint_override\": 0b, \
          \"minecraft:intangible_projectile\": {}, \
+         \"minecraft:use_remainder\": {id: \"minecraft:arrow\"}, \
          \"minecraft:use_cooldown\": {seconds: 1.25f, \
          cooldown_group: \"minecraft:ender_pearl\"}, \
          \"minecraft:attack_range\": {min_reach: 2.0f, max_reach: 4.5f, \
@@ -8844,8 +8850,13 @@ fn item_stack_snbt_omits_registry_backed_components_with_unknown_item_id() {
         item_id: Some(0),
         count: 1,
         component_patch: DataComponentPatchSummary {
-            added: 4,
-            added_type_ids: vec![49, 50, 74, 75],
+            added: 5,
+            added_type_ids: vec![25, 49, 50, 74, 75],
+            use_remainder: Some(Box::new(bbb_protocol::packets::ItemStackTemplateSummary {
+                item_id: 99,
+                count: 1,
+                component_patch: DataComponentPatchSummary::default(),
+            })),
             charged_projectiles_items: vec![bbb_protocol::packets::ItemStackTemplateSummary {
                 item_id: 99,
                 count: 1,

@@ -86,6 +86,8 @@ pub struct DataComponentPatchSummary {
     #[serde(default)]
     pub consumable: Option<ConsumableSummary>,
     #[serde(default)]
+    pub use_remainder: Option<Box<ItemStackTemplateSummary>>,
+    #[serde(default)]
     pub attack_range: Option<AttackRangeSummary>,
     #[serde(default)]
     pub swing_animation: Option<SwingAnimationSummary>,
@@ -737,6 +739,9 @@ fn decode_typed_data_component_patch_summary(
             }
             24 => {
                 summary.consumable = Some(decode_consumable_summary(decoder)?);
+            }
+            25 => {
+                summary.use_remainder = Some(Box::new(decode_item_stack_template(decoder)?));
             }
             30 => {
                 summary.attack_range = Some(decode_attack_range_summary(decoder)?);
@@ -4417,6 +4422,11 @@ mod tests {
                     consume_seconds: 1.6,
                     animation: ItemUseAnimationSummary::Drink,
                 }),
+                use_remainder: Some(Box::new(ItemStackTemplateSummary {
+                    item_id: 42,
+                    count: 1,
+                    component_patch: DataComponentPatchSummary::default(),
+                })),
                 attack_range: Some(AttackRangeSummary {
                     min_reach: 0.0,
                     max_reach: 3.0,

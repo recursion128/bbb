@@ -8702,3 +8702,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   component patch focused test 扩展到 31 个 added entry，覆盖 float suffix、
   resource identifier 与字段顺序；use-cooldown 从剩余 component 总账本移入已支持
   子集。
+
+## 2026-07-10：ItemStack use-remainder save codec
+
+- [x] `minecraft:use_remainder` 持久化 component（P2 protocol + native input）：
+  依据 vanilla 26.1 `UseRemainder.CODEC` 直接复用的 `ItemStackTemplate.CODEC`，
+  将 protocol type id `25` 已完整解码但过去丢弃的 template 保留为递归 boxed
+  摘要，native 复用 item-runtime registry lookup 与 template SNBT helper 输出
+  id、非默认 count、非空 components。protocol broad component test 覆盖 item id
+  `42` 的默认 template；native focused test 扩展到 32 个 added entry，覆盖
+  已知 registry id 的默认 count/component 省略，并扩展未知 registry fallback；
+  use-remainder 从剩余 component 总账本移入已支持子集。
