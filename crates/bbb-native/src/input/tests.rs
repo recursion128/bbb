@@ -8568,11 +8568,11 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
         EquipmentAssetCatalog::default(),
     );
     let patch = DataComponentPatchSummary {
-        added: 50,
+        added: 51,
         added_type_ids: vec![
             0, 1, 2, 3, 4, 5, 7, 10, 12, 17, 19, 21, 22, 23, 25, 26, 30, 31, 34, 35, 40, 43, 44,
             45, 46, 47, 49, 50, 52, 54, 57, 58, 59, 60, 63, 66, 67, 68, 69, 70, 71, 73, 74, 75, 76,
-            78, 79, 88, 89, 90,
+            77, 78, 79, 88, 89, 90,
         ],
         removed_type_ids: vec![6],
         custom_data: Some(NbtSummaryValue::Compound(vec![
@@ -8858,6 +8858,17 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
             ("facing".to_string(), "south".to_string()),
             ("quoted key".to_string(), "value with 'quote'".to_string()),
         ]),
+        bees_present: true,
+        bees_count: 1,
+        bees: vec![bbb_protocol::packets::BeeOccupantSummary {
+            entity_type_id: bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_BEE_ID,
+            entity_data_tag: Some(NbtSummaryValue::Compound(vec![NbtSummaryEntry {
+                name: "HasNectar".to_string(),
+                value: NbtSummaryValue::Byte(1),
+            }])),
+            ticks_in_hive: 40,
+            min_ticks_in_hive: 600,
+        }],
         tropical_fish_pattern_id: Some(257),
         tropical_fish_base_color_id: Some(1),
         tropical_fish_pattern_color_id: Some(99),
@@ -8942,6 +8953,8 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
          \"minecraft:swing_animation\": {}}}}], \
          \"minecraft:block_state\": {facing: \"south\", \
          \"quoted key\": \"value with 'quote'\"}, \
+         \"minecraft:bees\": [{entity_data: {HasNectar: 1b, id: \"minecraft:bee\"}, \
+         ticks_in_hive: 40, min_ticks_in_hive: 600}], \
          \"minecraft:lock\": {}, \
          \"minecraft:container_loot\": {loot_table: \
          \"minecraft:chests/simple_dungeon\", seed: 9L}, \
@@ -8967,8 +8980,8 @@ fn item_stack_snbt_omits_registry_backed_components_with_unknown_ids() {
         item_id: Some(0),
         count: 1,
         component_patch: DataComponentPatchSummary {
-            added: 7,
-            added_type_ids: vec![25, 49, 50, 58, 60, 74, 75],
+            added: 8,
+            added_type_ids: vec![25, 49, 50, 58, 60, 74, 75, 77],
             use_remainder: Some(Box::new(bbb_protocol::packets::ItemStackTemplateSummary {
                 item_id: 99,
                 count: 1,
@@ -8989,6 +9002,14 @@ fn item_stack_snbt_omits_registry_backed_components_with_unknown_ids() {
             entity_data_tag: Some(NbtSummaryValue::Compound(Vec::new())),
             block_entity_data_type_id: Some(999),
             block_entity_data_tag: Some(NbtSummaryValue::Compound(Vec::new())),
+            bees_present: true,
+            bees_count: 1,
+            bees: vec![bbb_protocol::packets::BeeOccupantSummary {
+                entity_type_id: 999,
+                entity_data_tag: Some(NbtSummaryValue::Compound(Vec::new())),
+                ticks_in_hive: 0,
+                min_ticks_in_hive: 600,
+            }],
             pot_decorations_item_ids: vec![99],
             container_items: vec![bbb_protocol::packets::ItemStackTemplateSummary {
                 item_id: 99,

@@ -8781,3 +8781,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   entity-data test 覆盖 nested SpawnData；native component patch test 扩展到
   50 个 added entry，覆盖 mob-spawner short tags、id 末尾字段与 unknown-id
   fallback；block-entity-data 从剩余 component 总账本移入已支持子集。
+
+## 2026-07-10：ItemStack bees save codec
+
+- [x] `minecraft:bees` 持久化 component（P2 protocol + native input）：依据
+  vanilla 26.1 `Bees.CODEC` 与 `BeehiveBlockEntity.Occupant.CODEC/STREAM_CODEC`，
+  将 type id `77` 从仅保留 count 扩为 ordered occupant 列表，完整保留每项
+  EntityType id、wire compound、ticks-in-hive 与 min-ticks-in-hive；native 复用
+  TypedEntityData id 合并 helper，按 entity-data/两个必需 int 输出。protocol
+  decorative component test 覆盖 bee/default compound/40/2400；native component
+  patch test 扩展到 51 个 added entry，覆盖 HasNectar tag、600 ticks 与 unknown
+  EntityType fallback；bees 从剩余 component 总账本移入已支持子集。

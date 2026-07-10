@@ -12,11 +12,11 @@ const MAX_CONTAINER_ITEMS: usize = 1024;
 
 pub use data_components::{
     decode_profile_textures_from_properties, AdventureModePredicateSummary, AttackRangeSummary,
-    AttributeModifierSummary, BannerPatternLayerSummary, ConsumableSummary, CustomModelDataFloats,
-    DataComponentPatchSummary, FireworkExplosionShapeSummary, FireworkExplosionSummary,
-    GameProfilePropertySummary, ItemContainerSlotSummary, ItemEnchantmentSummary,
-    ItemRaritySummary, ItemStackTemplateSummary, ItemUseAnimationSummary, JukeboxSongSummary,
-    LodestoneTargetSummary, MapPostProcessingSummary, MobEffectDetailsSummary,
+    AttributeModifierSummary, BannerPatternLayerSummary, BeeOccupantSummary, ConsumableSummary,
+    CustomModelDataFloats, DataComponentPatchSummary, FireworkExplosionShapeSummary,
+    FireworkExplosionSummary, GameProfilePropertySummary, ItemContainerSlotSummary,
+    ItemEnchantmentSummary, ItemRaritySummary, ItemStackTemplateSummary, ItemUseAnimationSummary,
+    JukeboxSongSummary, LodestoneTargetSummary, MapPostProcessingSummary, MobEffectDetailsSummary,
     MobEffectInstanceSummary, NbtSummaryEntry, NbtSummaryValue, PaintingVariantSummary,
     PlayerModelTypeSummary, PlayerSkinPatchSummary, ProfileSkinTextureSummary,
     ProfileTextureSummary, ProfileTexturesSummary, ResolvableProfileKindSummary,

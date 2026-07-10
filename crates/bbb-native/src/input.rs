@@ -4726,6 +4726,7 @@ fn debug_supported_added_component_snbt(
                 .collect::<Vec<_>>()
                 .join(", ")
         ),
+        77 => debug_bees_component_snbt(&patch.bees)?,
         TROPICAL_FISH_PATTERN_COMPONENT_TYPE_ID => debug_snbt_string(
             debug_tropical_fish_pattern_name(patch.tropical_fish_pattern_id?),
         ),
@@ -4788,6 +4789,7 @@ fn debug_supported_component_resource_id(type_id: i32) -> Option<&'static str> {
         POT_DECORATIONS_COMPONENT_TYPE_ID => "minecraft:pot_decorations",
         CONTAINER_COMPONENT_TYPE_ID => "minecraft:container",
         BLOCK_STATE_COMPONENT_TYPE_ID => "minecraft:block_state",
+        77 => "minecraft:bees",
         78 => "minecraft:lock",
         79 => "minecraft:container_loot",
         TROPICAL_FISH_PATTERN_COMPONENT_TYPE_ID => "minecraft:tropical_fish/pattern",
@@ -4898,6 +4900,27 @@ fn debug_typed_entity_data_component_snbt(
         .collect::<Vec<_>>();
     fields.push(format!("id: {}", debug_snbt_string(resource_id)));
     Some(format!("{{{}}}", fields.join(", ")))
+}
+
+fn debug_bees_component_snbt(bees: &[bbb_protocol::packets::BeeOccupantSummary]) -> Option<String> {
+    let bees = bees
+        .iter()
+        .map(|bee| {
+            let resource_id = bbb_protocol::entity_types::vanilla_entity_resource_id_for_type_id(
+                bee.entity_type_id,
+            )?;
+            let entity_data = debug_typed_entity_data_component_snbt(
+                &resource_id,
+                bee.entity_data_tag.as_ref()?,
+            )?;
+            Some(format!(
+                "{{entity_data: {entity_data}, ticks_in_hive: {}, min_ticks_in_hive: {}}}",
+                bee.ticks_in_hive, bee.min_ticks_in_hive
+            ))
+        })
+        .collect::<Option<Vec<_>>>()?
+        .join(", ");
+    Some(format!("[{bees}]"))
 }
 
 fn debug_nbt_java_float_string(value: f32) -> String {

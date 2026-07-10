@@ -182,6 +182,8 @@ pub struct DataComponentPatchSummary {
     #[serde(default)]
     pub bees_count: usize,
     #[serde(default)]
+    pub bees: Vec<BeeOccupantSummary>,
+    #[serde(default)]
     pub enchantments: Vec<ItemEnchantmentSummary>,
     #[serde(default)]
     pub stored_enchantments: Vec<ItemEnchantmentSummary>,
@@ -604,6 +606,14 @@ pub struct ItemStackTemplateSummary {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct BeeOccupantSummary {
+    pub entity_type_id: i32,
+    pub entity_data_tag: Option<NbtSummaryValue>,
+    pub ticks_in_hive: i32,
+    pub min_ticks_in_hive: i32,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ItemContainerSlotSummary {
     pub slot: usize,
     pub item: ItemStackTemplateSummary,
@@ -954,7 +964,8 @@ fn decode_typed_data_component_patch_summary(
             }
             77 => {
                 summary.bees_present = true;
-                summary.bees_count = decode_bees(decoder)?;
+                summary.bees = decode_bees(decoder)?;
+                summary.bees_count = summary.bees.len();
             }
             58 => {
                 let entity_data = decode_typed_entity_data_summary(decoder)?;
@@ -2412,15 +2423,19 @@ fn decode_pot_decorations_item_ids(decoder: &mut Decoder<'_>) -> Result<Vec<i32>
     Ok(item_ids)
 }
 
-fn decode_bees(decoder: &mut Decoder<'_>) -> Result<usize> {
+fn decode_bees(decoder: &mut Decoder<'_>) -> Result<Vec<BeeOccupantSummary>> {
     let bee_count = read_bounded_len(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
+    let mut bees = Vec::with_capacity(bee_count);
     for _ in 0..bee_count {
-        decoder.read_var_i32()?;
-        skip_nbt_tag_from_decoder(decoder)?;
-        decoder.read_var_i32()?;
-        decoder.read_var_i32()?;
+        let entity_data = decode_typed_entity_data_summary(decoder)?;
+        bees.push(BeeOccupantSummary {
+            entity_type_id: entity_data.type_id,
+            entity_data_tag: entity_data.tag,
+            ticks_in_hive: decoder.read_var_i32()?,
+            min_ticks_in_hive: decoder.read_var_i32()?,
+        });
     }
-    Ok(bee_count)
+    Ok(bees)
 }
 
 fn decode_painting_variant_holder(decoder: &mut Decoder<'_>) -> Result<()> {
@@ -4212,7 +4227,7 @@ mod tests {
 
         payload.write_var_i32(77);
         payload.write_var_i32(1);
-        payload.write_var_i32(3);
+        payload.write_var_i32(11);
         payload.write_bytes(&empty_nbt_compound_root());
         payload.write_var_i32(40);
         payload.write_var_i32(2400);
@@ -4241,6 +4256,12 @@ mod tests {
                 pot_decorations_item_ids: vec![1, 2, 3, 4],
                 bees_present: true,
                 bees_count: 1,
+                bees: vec![BeeOccupantSummary {
+                    entity_type_id: 11,
+                    entity_data_tag: Some(NbtSummaryValue::Compound(Vec::new())),
+                    ticks_in_hive: 40,
+                    min_ticks_in_hive: 2400,
+                }],
                 lodestone_target: Some(LodestoneTargetSummary {
                     dimension: "minecraft:overworld".to_string(),
                     pos: chunks::BlockPos { x: 0, y: 0, z: 0 },
