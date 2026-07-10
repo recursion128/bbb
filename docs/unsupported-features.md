@@ -748,6 +748,9 @@ vanilla evidence. Deleting one of these re-opens work already decided against.
   the packet class; there is no server/datapack registration surface. The
   generated fixed catalog intentionally does not treat vibration game events
   or entity-event ids as members of this packet type map.
+- **Custom sound-source enum values.** Vanilla 26.1 `SoundSource` is a closed
+  Java enum whose wire value is its declaration ordinal. The generated fixed
+  11-entry ordinal/name catalog has no server or datapack extension surface.
 - **Accepting malformed or unsupported custom resource-pack declarations.**
   Loaders reject them intentionally.
 

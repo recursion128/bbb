@@ -23,6 +23,7 @@ pub mod mob_effect_types;
 pub mod packet_catalog;
 pub mod packets;
 pub mod particle_types;
+pub mod sound_sources;
 
 pub const MC_VERSION: &str = "26.1";
 pub const PROTOCOL_VERSION: i32 = 775;

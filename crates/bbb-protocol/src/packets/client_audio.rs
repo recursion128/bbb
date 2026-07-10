@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::codec::{Decoder, ProtocolError, Result};
+pub use crate::sound_sources::SoundSource;
 
 use super::{read_resource_location, Vec3d};
 
@@ -39,60 +40,6 @@ pub enum SoundEventHolder {
         location: String,
         fixed_range: Option<f32>,
     },
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum SoundSource {
-    Master,
-    Music,
-    Records,
-    Weather,
-    Blocks,
-    Hostile,
-    Neutral,
-    Players,
-    Ambient,
-    Voice,
-    Ui,
-}
-
-impl SoundSource {
-    pub fn as_str(self) -> &'static str {
-        match self {
-            Self::Master => "master",
-            Self::Music => "music",
-            Self::Records => "record",
-            Self::Weather => "weather",
-            Self::Blocks => "block",
-            Self::Hostile => "hostile",
-            Self::Neutral => "neutral",
-            Self::Players => "player",
-            Self::Ambient => "ambient",
-            Self::Voice => "voice",
-            Self::Ui => "ui",
-        }
-    }
-
-    fn from_ordinal(ordinal: i32) -> Result<Self> {
-        Ok(match ordinal {
-            0 => Self::Master,
-            1 => Self::Music,
-            2 => Self::Records,
-            3 => Self::Weather,
-            4 => Self::Blocks,
-            5 => Self::Hostile,
-            6 => Self::Neutral,
-            7 => Self::Players,
-            8 => Self::Ambient,
-            9 => Self::Voice,
-            10 => Self::Ui,
-            other => {
-                return Err(ProtocolError::InvalidData(format!(
-                    "invalid sound source ordinal {other}"
-                )))
-            }
-        })
-    }
 }
 
 pub(crate) fn decode_sound_event(decoder: &mut Decoder<'_>) -> Result<SoundEvent> {
@@ -159,7 +106,10 @@ fn decode_sound_event_holder(decoder: &mut Decoder<'_>) -> Result<SoundEventHold
 }
 
 fn decode_sound_source(decoder: &mut Decoder<'_>) -> Result<SoundSource> {
-    SoundSource::from_ordinal(decoder.read_var_i32()?)
+    let ordinal = decoder.read_var_i32()?;
+    SoundSource::from_ordinal(ordinal).ok_or_else(|| {
+        ProtocolError::InvalidData(format!("invalid sound source ordinal {ordinal}"))
+    })
 }
 
 fn decode_sound_position(decoder: &mut Decoder<'_>) -> Result<Vec3d> {

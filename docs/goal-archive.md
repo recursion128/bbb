@@ -9404,3 +9404,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   byte id。连续/唯一/固定长度、显式 id、查询边界及 regeneration tests 锁定生成物；
   未改变 packet wire codec、world apply 或音频/粒子行为，也未混入 vibration game-event
   registry 与 entity-event id。
+
+## 2026-07-10：Vanilla sound-source ordinal catalog generation
+
+- [x] gameplay numeric-id catalog 的 sound-source 子项（P1 mechanical vanilla
+  data）：扩展 `scripts/generate-gameplay-id-catalog.py`，从 vanilla 26.1
+  `SoundSource.java` 的 11 个 enum entry 生成 checked-in ordinal/order/constant-name/
+  serialized-name metadata 及兼容的 `SoundSource` enum。protocol 音频 packet 删除手写
+  ordinal 与名称双 match，并从生成模块 re-export 原公共类型路径。连续/唯一/固定长度、
+  enum discriminant、`record`/`player` 特殊名称、查询边界及 regeneration tests 锁定
+  生成物；未改变 sound packet wire codec、无效 ordinal 错误或跨 crate 音频行为。
