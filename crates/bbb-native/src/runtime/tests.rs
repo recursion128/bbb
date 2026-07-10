@@ -3565,6 +3565,96 @@ fn debug_collision_cache_matches_vanilla_strict_refresh_interval_and_resets() {
 }
 
 #[test]
+fn debug_supporting_block_lines_project_local_player_and_legacy_highlights() {
+    assert_eq!(DEBUG_SUPPORTING_BLOCK_OUTLINE_ALPHA, 102);
+    assert_eq!(DEBUG_SUPPORTING_BLOCK_PLAYER_OFFSET, 0.02);
+    assert_eq!(DEBUG_SUPPORTING_BLOCK_LEGACY_OFFSET, 0.04);
+
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    let mut pose = local_player_pose([0.5, 1.0, 0.5], 0.0, 0.0);
+    pose.on_ground = true;
+    world.set_local_player_pose(pose);
+    world.insert_decoded_chunk(empty_lightmap_test_chunk(world.dimension()));
+    let stone = world
+        .registries()
+        .block_state_id_by_name_and_properties("minecraft:stone", &BTreeMap::new())
+        .expect("vanilla stone state");
+    set_lightmap_test_block(&mut world, BlockPos { x: 0, y: 0, z: 0 }, stone);
+
+    let mut input = ClientInputState::new(true);
+    assert!(debug_supporting_block_lines(&input, &world).is_empty());
+    input.set_debug_screen_entry_status(
+        DebugScreenEntryId::VisualizeEntitySupportingBlocks,
+        crate::debug_entries::DebugScreenEntryStatus::AlwaysOn,
+    );
+    let lines = debug_supporting_block_lines(&input, &world);
+    assert_eq!(lines.len(), 24);
+    assert_eq!(
+        lines[0],
+        DebugLine::new(
+            [-0.04, -0.04, -0.04],
+            [1.04, -0.04, -0.04],
+            [255, 0, 0, 102],
+            2.5,
+        )
+    );
+    assert_eq!(
+        lines[12],
+        DebugLine::new([0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [255, 0, 0, 255], 2.5,)
+    );
+
+    pose.on_ground = false;
+    world.set_local_player_pose(pose);
+    assert!(debug_supporting_block_lines(&input, &world).is_empty());
+
+    let mut reduced =
+        world_with_dimension_height_and_reduced_debug_info(0, "minecraft:overworld", 16, true);
+    pose.on_ground = true;
+    reduced.set_local_player_pose(pose);
+    reduced.insert_decoded_chunk(empty_lightmap_test_chunk(reduced.dimension()));
+    set_lightmap_test_block(&mut reduced, BlockPos { x: 0, y: 0, z: 0 }, stone);
+    assert!(debug_supporting_block_lines(&input, &reduced).is_empty());
+}
+
+#[test]
+fn debug_supporting_block_lines_use_cyan_for_legacy_effect_position() {
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    let mut pose = local_player_pose([0.5, 1.25, 0.5], 0.0, 0.0);
+    pose.on_ground = true;
+    world.set_local_player_pose(pose);
+    world.insert_decoded_chunk(empty_lightmap_test_chunk(world.dimension()));
+    let piston_head = world
+        .registries()
+        .block_state_id_by_name_and_properties(
+            "minecraft:piston_head",
+            &BTreeMap::from([
+                ("facing".to_string(), "down".to_string()),
+                ("short".to_string(), "false".to_string()),
+                ("type".to_string(), "normal".to_string()),
+            ]),
+        )
+        .expect("vanilla downward piston head state");
+    set_lightmap_test_block(&mut world, BlockPos { x: 0, y: 0, z: 0 }, piston_head);
+    let mut input = ClientInputState::new(true);
+    input.set_debug_screen_entry_status(
+        DebugScreenEntryId::VisualizeEntitySupportingBlocks,
+        crate::debug_entries::DebugScreenEntryStatus::AlwaysOn,
+    );
+
+    let lines = debug_supporting_block_lines(&input, &world);
+    let cyan_outline = lines
+        .iter()
+        .filter(|line| line.color == [0, 255, 255, 102])
+        .collect::<Vec<_>>();
+    assert_eq!(cyan_outline.len(), 12);
+    assert_eq!(cyan_outline[0].from, [-0.08, 0.92, -0.08]);
+    assert_eq!(cyan_outline[0].to, [1.08, 0.92, -0.08]);
+    assert!(lines
+        .iter()
+        .all(|line| line.width == DebugLine::DEFAULT_WIDTH));
+}
+
+#[test]
 fn hud_boss_bar_projection_orders_by_uuid_and_maps_style_names() {
     let mut world = WorldStore::new();
     assert!(hud_boss_bars_from_world(&world).is_empty());
@@ -3990,8 +4080,11 @@ fn renderer_frame_commits_debug_gizmos_from_one_water_sample_snapshot() {
         .find("let debug_text_billboards = debug_water_amount_billboards(&debug_water_samples);")
         .expect("pump should project water amount labels from the same samples");
     let lines = runtime_source
-        .find("let debug_lines = debug_collision_cache.lines(input, world, now);")
+        .find("let mut debug_lines = debug_collision_cache.lines(input, world, now);")
         .expect("pump should project cached collision debug lines");
+    let support_lines = runtime_source
+        .find("debug_lines.extend(debug_supporting_block_lines(input, world));")
+        .expect("supporting-block lines should follow collision lines");
     let frame = runtime_source
         .find("            debug_filled_boxes,\n")
         .expect("RendererFrame should carry debug filled boxes");
@@ -4001,7 +4094,8 @@ fn renderer_frame_commits_debug_gizmos_from_one_water_sample_snapshot() {
             && boxes < heightmap_extend
             && heightmap_extend < text
             && text < lines
-            && lines < frame
+            && lines < support_lines
+            && support_lines < frame
     );
 
     let frame_source = include_str!("render_extract.rs");

@@ -41,7 +41,8 @@ pub use crate::client::local_player::{
     LocalPlayerLookAtState, LocalPlayerPermissionLevel, LocalPlayerPoseState, LocalPlayerState,
 };
 pub use crate::client::local_player_collision::{
-    ParticleBlockFluidSurfaceSample, WorldCollisionBox,
+    DebugLocalSupportingBlocks, DebugSupportingBlockHighlight, ParticleBlockFluidSurfaceSample,
+    WorldCollisionBox,
 };
 pub use crate::client::local_player_destroy::{
     LocalDestroyBlockFinished, WorldBlockDestroyProfile, WorldItemMiningProfile,

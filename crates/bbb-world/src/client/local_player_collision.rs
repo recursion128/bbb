@@ -24,6 +24,7 @@ const VANILLA_POSE_EMERGING_ID: i32 = 13;
 const VANILLA_POSE_DIGGING_ID: i32 = 14;
 
 const LOCAL_PLAYER_HALF_WIDTH: f64 = 0.3;
+const SUPPORTING_BLOCK_PROBE_DEPTH: f64 = 1.0e-6;
 const MAX_COLLISION_BOXES: usize = 16;
 const PX: f64 = 1.0 / 16.0;
 
@@ -41,6 +42,23 @@ pub struct ParticleBlockFluidSurfaceSample {
 pub struct WorldCollisionBox {
     pub min: [f64; 3],
     pub max: [f64; 3],
+}
+
+/// One block highlighted by vanilla's `SupportBlockRenderer`: the block cell
+/// itself is outlined separately from every component of its empty-context
+/// collision shape.
+#[derive(Debug, Clone, PartialEq)]
+pub struct DebugSupportingBlockHighlight {
+    pub pos: BlockPos,
+    pub collision_boxes: Vec<WorldCollisionBox>,
+}
+
+/// The current local player's main supporting block and, when it differs, the
+/// legacy effect block returned by `Entity.getOnPosLegacy()`.
+#[derive(Debug, Clone, PartialEq)]
+pub struct DebugLocalSupportingBlocks {
+    pub supporting: DebugSupportingBlockHighlight,
+    pub legacy_effect: Option<DebugSupportingBlockHighlight>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -111,6 +129,65 @@ pub(super) fn local_player_collides_with_context(
     false
 }
 
+fn find_supporting_block(
+    world: &WorldStore,
+    entity_position: [f64; 3],
+    bounds: LocalPlayerBounds,
+    context: LocalPlayerCollisionContext,
+) -> Option<BlockPos> {
+    if !entity_position
+        .iter()
+        .all(|coordinate| coordinate.is_finite())
+    {
+        return None;
+    }
+    let test_bounds = LocalPlayerBounds {
+        min_y: bounds.min_y - SUPPORTING_BLOCK_PROBE_DEPTH,
+        max_y: bounds.min_y,
+        ..bounds
+    };
+    let min_x = block_floor(test_bounds.min_x - COLLISION_EPSILON) - 1;
+    let max_x = block_floor(test_bounds.max_x + COLLISION_EPSILON) + 1;
+    let min_y = block_floor(test_bounds.min_y - COLLISION_EPSILON) - 1;
+    let max_y = block_floor(test_bounds.max_y + COLLISION_EPSILON) + 1;
+    let min_z = block_floor(test_bounds.min_z - COLLISION_EPSILON) - 1;
+    let max_z = block_floor(test_bounds.max_z + COLLISION_EPSILON) + 1;
+
+    let mut main_support = None;
+    let mut main_support_distance = f64::MAX;
+    // Vanilla `Cursor3D` advances X fastest, then Y, then Z. Selection is
+    // order-independent because exact distance ties use `BlockPos.compareTo`.
+    for z in min_z..=max_z {
+        for y in min_y..=max_y {
+            for x in min_x..=max_x {
+                let pos = BlockPos { x, y, z };
+                let Some(block) = world.probe_block(pos) else {
+                    continue;
+                };
+                let Some(shape) = block_collision_shape_with_context(&block, pos, context) else {
+                    continue;
+                };
+                if !bounds_intersects_block_shape(test_bounds, pos, shape) {
+                    continue;
+                }
+                let dx = f64::from(x) + 0.5 - entity_position[0];
+                let dy = f64::from(y) + 0.5 - entity_position[1];
+                let dz = f64::from(z) + 0.5 - entity_position[2];
+                let distance = dx * dx + dy * dy + dz * dz;
+                let wins_tie = distance == main_support_distance
+                    && main_support.is_none_or(|current: BlockPos| {
+                        (current.y, current.z, current.x) < (pos.y, pos.z, pos.x)
+                    });
+                if distance < main_support_distance || wins_tie {
+                    main_support = Some(pos);
+                    main_support_distance = distance;
+                }
+            }
+        }
+    }
+    main_support
+}
+
 pub(super) fn local_player_block_collision_is_empty(block: &BlockProbe) -> bool {
     block_collision_shape(block, BlockPos { x: 0, y: 0, z: 0 }).is_none()
 }
@@ -120,6 +197,69 @@ pub(crate) fn block_collision_shape_is_full_block(block: &BlockProbe, pos: Block
 }
 
 impl WorldStore {
+    /// Projects the local-player half of vanilla `SupportBlockRenderer`.
+    ///
+    /// `Entity.checkSupportingBlock` probes the one-microunit slice directly
+    /// below the entity and selects the intersecting block nearest to the
+    /// entity position, breaking exact ties toward the greatest `(y, z, x)`
+    /// `BlockPos`. The debug renderer draws this state only while
+    /// `mainSupportingBlockPos` is present.
+    pub fn debug_local_player_supporting_blocks(&self) -> Option<DebugLocalSupportingBlocks> {
+        let pose = self.local_player_pose()?;
+        if !pose.on_ground {
+            return None;
+        }
+        let bounds = LocalPlayerBounds::for_pose(pose);
+        let supporting_pos = find_supporting_block(
+            self,
+            [pose.position.x, pose.position.y, pose.position.z],
+            bounds,
+            LocalPlayerCollisionContext::for_pose(self, pose, false),
+        )?;
+        let supporting = self.debug_supporting_block_highlight(supporting_pos);
+        let legacy_pos = self.debug_legacy_on_pos(supporting_pos, pose.position.y);
+        let legacy_effect = (legacy_pos != supporting_pos)
+            .then(|| self.debug_supporting_block_highlight(legacy_pos));
+        Some(DebugLocalSupportingBlocks {
+            supporting,
+            legacy_effect,
+        })
+    }
+
+    fn debug_legacy_on_pos(&self, supporting_pos: BlockPos, entity_y: f64) -> BlockPos {
+        let keeps_support_y = self
+            .probe_block(supporting_pos)
+            .and_then(|block| block.block_name)
+            .is_some_and(|name| {
+                is_fence_block_name(&name)
+                    || is_wall_block_name(&name)
+                    || is_fence_gate_block_name(&name)
+            });
+        if keeps_support_y {
+            supporting_pos
+        } else {
+            BlockPos {
+                y: block_floor(entity_y - 0.2),
+                ..supporting_pos
+            }
+        }
+    }
+
+    fn debug_supporting_block_highlight(&self, pos: BlockPos) -> DebugSupportingBlockHighlight {
+        let collision_boxes = self
+            .probe_block(pos)
+            .and_then(|block| block_collision_shape_empty_context(&block, pos))
+            .map(BlockCollisionShape::to_aabbs)
+            .unwrap_or_default()
+            .into_iter()
+            .map(|shape_box| world_collision_box(pos, shape_box))
+            .collect();
+        DebugSupportingBlockHighlight {
+            pos,
+            collision_boxes,
+        }
+    }
+
     /// Mirrors `CollisionGetter.getCollisions`: collidable entity AABBs first,
     /// followed by coalesced block `VoxelShape.toAabbs()` boxes.
     pub fn debug_camera_collision_boxes(&self, radius: f64) -> Vec<WorldCollisionBox> {
@@ -184,18 +324,11 @@ impl WorldStore {
                     {
                         continue;
                     }
-                    boxes.extend(shape_boxes.into_iter().map(|shape_box| WorldCollisionBox {
-                        min: [
-                            f64::from(x) + shape_box.min_x,
-                            f64::from(y) + shape_box.min_y,
-                            f64::from(z) + shape_box.min_z,
-                        ],
-                        max: [
-                            f64::from(x) + shape_box.max_x,
-                            f64::from(y) + shape_box.max_y,
-                            f64::from(z) + shape_box.max_z,
-                        ],
-                    }));
+                    boxes.extend(
+                        shape_boxes
+                            .into_iter()
+                            .map(|shape_box| world_collision_box(pos, shape_box)),
+                    );
                 }
             }
         }
@@ -668,6 +801,23 @@ fn block_collision_shape_with_context(
     }
     if block.block_name.as_deref() == Some("minecraft:scaffolding") {
         return scaffolding_collision_shape(&block.block_properties, pos, context);
+    }
+    block_collision_shape(block, pos)
+}
+
+fn block_collision_shape_empty_context(
+    block: &BlockProbe,
+    pos: BlockPos,
+) -> Option<BlockCollisionShape> {
+    if block.block_name.as_deref() == Some("minecraft:powder_snow") {
+        // The empty `EntityCollisionContext` has no entity, so
+        // `PowderSnowBlock.getCollisionShape` returns `Shapes.empty()`.
+        return None;
+    }
+    if block.block_name.as_deref() == Some("minecraft:scaffolding") {
+        // `EntityCollisionContext.Empty.isAbove(..., default=true)` makes the
+        // empty context return ScaffoldingBlock.SHAPE_STABLE.
+        return Some(scaffolding_stable_collision_shape());
     }
     block_collision_shape(block, pos)
 }
@@ -2168,6 +2318,21 @@ fn world_collision_box_intersects_bounds(
         && collision_box.min[1] < bounds.max_y
         && collision_box.max[2] > bounds.min_z
         && collision_box.min[2] < bounds.max_z
+}
+
+fn world_collision_box(pos: BlockPos, shape: BlockCollisionBox) -> WorldCollisionBox {
+    WorldCollisionBox {
+        min: [
+            f64::from(pos.x) + shape.min_x,
+            f64::from(pos.y) + shape.min_y,
+            f64::from(pos.z) + shape.min_z,
+        ],
+        max: [
+            f64::from(pos.x) + shape.max_x,
+            f64::from(pos.y) + shape.max_y,
+            f64::from(pos.z) + shape.max_z,
+        ],
+    }
 }
 
 fn bounds_intersects_block_box(
@@ -3778,6 +3943,133 @@ mod tests {
     fn debug_camera_block_collision_boxes_require_a_camera_entity_pose() {
         let world = empty_world();
         assert!(world.debug_camera_block_collision_boxes(6.0).is_empty());
+    }
+
+    #[test]
+    fn debug_local_supporting_block_uses_vanilla_distance_and_block_pos_tie_break() {
+        let mut world = empty_world();
+        let stone = vanilla_block_state_id("minecraft:stone", []);
+        set_block(&mut world, BlockPos { x: 0, y: 0, z: 0 }, stone);
+        set_block(&mut world, BlockPos { x: 1, y: 0, z: 0 }, stone);
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: bbb_protocol::packets::Vec3d {
+                x: 1.0,
+                y: 1.0,
+                z: 0.5,
+            },
+            on_ground: true,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let debug = world
+            .debug_local_player_supporting_blocks()
+            .expect("grounded player should have a support block");
+        assert_eq!(debug.supporting.pos, BlockPos { x: 1, y: 0, z: 0 });
+        assert_eq!(
+            debug.supporting.collision_boxes,
+            [WorldCollisionBox {
+                min: [1.0, 0.0, 0.0],
+                max: [2.0, 1.0, 1.0],
+            }]
+        );
+        assert_eq!(debug.legacy_effect, None);
+
+        let mut airborne = world.local_player_pose().unwrap();
+        airborne.on_ground = false;
+        world.set_local_player_pose(airborne);
+        assert_eq!(world.debug_local_player_supporting_blocks(), None);
+    }
+
+    #[test]
+    fn debug_local_supporting_block_projects_legacy_effect_and_fence_exception() {
+        let mut piston_world = empty_world();
+        let piston_head = vanilla_block_state_id(
+            "minecraft:piston_head",
+            [("facing", "down"), ("short", "false"), ("type", "normal")],
+        );
+        set_block(
+            &mut piston_world,
+            BlockPos { x: 0, y: 0, z: 0 },
+            piston_head,
+        );
+        piston_world.set_local_player_pose(LocalPlayerPoseState {
+            position: bbb_protocol::packets::Vec3d {
+                x: 0.5,
+                y: 1.25,
+                z: 0.5,
+            },
+            on_ground: true,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let piston_debug = piston_world
+            .debug_local_player_supporting_blocks()
+            .expect("the upward-extending rod should support the player");
+        assert_eq!(piston_debug.supporting.pos, BlockPos { x: 0, y: 0, z: 0 });
+        assert!(!piston_debug.supporting.collision_boxes.is_empty());
+        assert_eq!(
+            piston_debug
+                .legacy_effect
+                .expect("legacy on-pos should use the floored entity position")
+                .pos,
+            BlockPos { x: 0, y: 1, z: 0 }
+        );
+
+        let mut fence_world = empty_world();
+        let fence = vanilla_block_state_id(
+            "minecraft:oak_fence",
+            [
+                ("east", "false"),
+                ("north", "false"),
+                ("south", "false"),
+                ("waterlogged", "false"),
+                ("west", "false"),
+            ],
+        );
+        set_block(&mut fence_world, BlockPos { x: 0, y: 0, z: 0 }, fence);
+        fence_world.set_local_player_pose(LocalPlayerPoseState {
+            position: bbb_protocol::packets::Vec3d {
+                x: 0.5,
+                y: 1.5,
+                z: 0.5,
+            },
+            on_ground: true,
+            ..LocalPlayerPoseState::default()
+        });
+        let fence_debug = fence_world
+            .debug_local_player_supporting_blocks()
+            .expect("fence should support the player at height 1.5");
+        assert_eq!(fence_debug.supporting.pos, BlockPos { x: 0, y: 0, z: 0 });
+        assert_eq!(fence_debug.legacy_effect, None);
+    }
+
+    #[test]
+    fn debug_supporting_highlight_uses_vanilla_empty_collision_context() {
+        let mut world = empty_world();
+        let powder_snow = vanilla_block_state_id("minecraft:powder_snow", []);
+        let scaffolding = vanilla_block_state_id(
+            "minecraft:scaffolding",
+            [
+                ("bottom", "false"),
+                ("distance", "0"),
+                ("waterlogged", "false"),
+            ],
+        );
+        let powder_pos = BlockPos { x: 0, y: 0, z: 0 };
+        let scaffolding_pos = BlockPos { x: 1, y: 0, z: 0 };
+        set_block(&mut world, powder_pos, powder_snow);
+        set_block(&mut world, scaffolding_pos, scaffolding);
+
+        assert!(block_collision_shape_empty_context(
+            &world.probe_block(powder_pos).unwrap(),
+            powder_pos,
+        )
+        .is_none());
+        assert!(block_collision_shape_empty_context(
+            &world.probe_block(scaffolding_pos).unwrap(),
+            scaffolding_pos,
+        )
+        .is_some());
     }
 
     #[test]

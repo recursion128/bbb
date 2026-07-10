@@ -2473,7 +2473,8 @@ pub(crate) fn pump_network_and_terrain(
     let mut debug_filled_boxes = debug_water_boxes(&debug_water_samples);
     debug_filled_boxes.extend(debug_heightmap_boxes(input, world, camera_pose));
     let debug_text_billboards = debug_water_amount_billboards(&debug_water_samples);
-    let debug_lines = debug_collision_cache.lines(input, world, now);
+    let mut debug_lines = debug_collision_cache.lines(input, world, now);
+    debug_lines.extend(debug_supporting_block_lines(input, world));
     // Vanilla `LevelRenderer.extractBlockDestroyAnimation` reads block-breaking state during
     // render extract, after the client tick; local destroy overlay ticks are advanced above.
     let block_destroy_overlays = block_destroy_overlays_from_world(world, terrain_textures);
@@ -4123,6 +4124,11 @@ fn debug_water_amount_billboards(samples: &[DebugWaterSample]) -> Vec<DebugTextB
 
 const DEBUG_COLLISION_QUERY_RADIUS: f64 = 6.0;
 const DEBUG_COLLISION_COLOR: [u8; 4] = [255; 4];
+const DEBUG_SUPPORTING_BLOCK_OUTLINE_ALPHA: u8 = 102;
+const DEBUG_SUPPORTING_BLOCK_PLAYER_COLOR: [u8; 4] = [255, 0, 0, 255];
+const DEBUG_SUPPORTING_BLOCK_LEGACY_COLOR: [u8; 4] = [0, 255, 255, 255];
+const DEBUG_SUPPORTING_BLOCK_PLAYER_OFFSET: f64 = 0.02;
+const DEBUG_SUPPORTING_BLOCK_LEGACY_OFFSET: f64 = 0.04;
 
 fn debug_collision_entry_enabled(input: &ClientInputState, world: &WorldStore) -> bool {
     input.debug_screen_entry_enabled(
@@ -4144,6 +4150,72 @@ fn collect_debug_collision_lines(world: &WorldStore) -> Vec<DebugLine> {
             )
         })
         .collect()
+}
+
+fn debug_supporting_block_lines(input: &ClientInputState, world: &WorldStore) -> Vec<DebugLine> {
+    if !input.debug_screen_entry_enabled(
+        DebugScreenEntryId::VisualizeEntitySupportingBlocks,
+        world.local_player_has_reduced_debug_info(),
+    ) {
+        return Vec::new();
+    }
+    let Some(debug) = world.debug_local_player_supporting_blocks() else {
+        return Vec::new();
+    };
+    let mut lines = Vec::new();
+    append_debug_supporting_block_highlight(
+        &mut lines,
+        &debug.supporting,
+        DEBUG_SUPPORTING_BLOCK_PLAYER_OFFSET,
+        DEBUG_SUPPORTING_BLOCK_PLAYER_COLOR,
+    );
+    if let Some(legacy_effect) = debug.legacy_effect.as_ref() {
+        append_debug_supporting_block_highlight(
+            &mut lines,
+            legacy_effect,
+            DEBUG_SUPPORTING_BLOCK_LEGACY_OFFSET,
+            DEBUG_SUPPORTING_BLOCK_LEGACY_COLOR,
+        );
+    }
+    lines
+}
+
+fn append_debug_supporting_block_highlight(
+    lines: &mut Vec<DebugLine>,
+    highlight: &bbb_world::DebugSupportingBlockHighlight,
+    offset: f64,
+    color: [u8; 4],
+) {
+    let BlockPos { x, y, z } = highlight.pos;
+    let outline_offset = 2.0 * offset;
+    let outline_color = [
+        color[0],
+        color[1],
+        color[2],
+        DEBUG_SUPPORTING_BLOCK_OUTLINE_ALPHA,
+    ];
+    lines.extend(DebugLine::cuboid(
+        [
+            (f64::from(x) - outline_offset) as f32,
+            (f64::from(y) - outline_offset) as f32,
+            (f64::from(z) - outline_offset) as f32,
+        ],
+        [
+            (f64::from(x) + 1.0 + outline_offset) as f32,
+            (f64::from(y) + 1.0 + outline_offset) as f32,
+            (f64::from(z) + 1.0 + outline_offset) as f32,
+        ],
+        outline_color,
+        DebugLine::DEFAULT_WIDTH,
+    ));
+    lines.extend(highlight.collision_boxes.iter().flat_map(|collision_box| {
+        DebugLine::cuboid(
+            collision_box.min.map(|coordinate| coordinate as f32),
+            collision_box.max.map(|coordinate| coordinate as f32),
+            color,
+            DebugLine::DEFAULT_WIDTH,
+        )
+    }));
 }
 
 fn chunk_min_block(position: f32) -> i32 {

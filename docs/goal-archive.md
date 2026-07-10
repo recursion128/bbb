@@ -8164,3 +8164,18 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   reduced-debug gate 屏蔽时清空 cache，重新启用会像 vanilla 重建 debug renderer 一样
   立即收集。确定性测试覆盖恰好 100 ms 不刷新、100 ms + 1 ns 刷新、禁用清空和同刻
   重新启用刷新；`visualize_collision_boxes` 已无剩余 ledger gap。
+
+## 2026-07-10：Local-player supporting-block debug highlights
+
+- [x] `visualize_entity_supporting_blocks` 的本地玩家子切片（P2 world/native）：依据
+  vanilla 26.1 `Entity.checkSupportingBlock`、`CollisionGetter.findSupportingBlock`、
+  `Entity.getOnPos` / `getOnPosLegacy` 与 `SupportBlockRenderer`，world 从玩家 bounds
+  下方 `1.0E-6` 薄层选择最近 collision shape，等距时按 `BlockPos.compareTo` 的
+  `(y,z,x)` 最大值决胜；legacy effect 位置保留 fence/wall/fence-gate 的 supporting
+  Y，其余使用 `floor(entityY-0.2)`。native 在 entry 开启且非 reduced-debug 时绘制
+  supporting block 的红色、legacy effect 的青色高亮：block cell 外扩分别为
+  `2*0.02` / `2*0.04`、alpha `floor(0.4*255)=102`，并追加 empty-context block
+  collision shape 的不透明 2.5px strokes。tests 覆盖双块等距 tie-break、airborne/
+  reduced-debug gate、向上越界 piston-head legacy 分叉、fence 特例、红/青坐标、颜色
+  与 frame 提交顺序。剩余工作是 nearby remote entity 的 canonical support lifecycle、
+  green/id-bias highlights 和 100 ms entity-membership cache。

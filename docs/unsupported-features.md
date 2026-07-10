@@ -195,7 +195,9 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
 
 - Render the remaining debug entries that are off by default:
   `chunk_section_paths`, `chunk_section_octree`,
-  `visualize_entity_supporting_blocks`,
+  track nearby remote entities' canonical `mainSupportingBlockPos` lifecycle and
+  render their green/cyan `visualize_entity_supporting_blocks` highlights with
+  entity-id bias and the vanilla 100 ms membership cache,
   `visualize_block_light_levels`, `visualize_sky_light_levels`,
   `visualize_solid_faces`, `visualize_chunks_on_server`,
   `visualize_sky_light_sections`, and `chunk_section_visibility`.
