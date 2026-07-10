@@ -257,6 +257,7 @@ const FIREWORK_ROCKET_ITEM_DATA_ID: u8 = 8;
 const FIREWORK_ROCKET_SHOT_AT_ANGLE_DATA_ID: u8 = 10;
 const FIREWORK_ROCKET_DEFAULT_LIFETIME: i32 = 0;
 const CUSTOM_MODEL_DATA_COMPONENT_TYPE_ID: i32 = 17;
+const CHARGED_PROJECTILES_COMPONENT_TYPE_ID: i32 = 49;
 const WRITABLE_BOOK_CONTENT_COMPONENT_TYPE_ID: i32 = 54;
 const LODESTONE_TRACKER_COMPONENT_TYPE_ID: i32 = 67;
 const FIREWORKS_COMPONENT_TYPE_ID: i32 = 69;
@@ -4605,8 +4606,9 @@ fn debug_item_stack_snbt(
     if count != 1 {
         fields.push(format!("count: {count}"));
     }
-    if let Some(components) =
-        stack.and_then(|stack| debug_supported_component_patch_snbt(stack, item_runtime))
+    if let Some(components) = stack
+        .map(|stack| &stack.component_patch)
+        .and_then(|patch| debug_supported_component_patch_snbt(patch, item_runtime))
     {
         fields.push(format!("components: {components}"));
     }
@@ -4614,10 +4616,9 @@ fn debug_item_stack_snbt(
 }
 
 fn debug_supported_component_patch_snbt(
-    stack: &ItemStackSummary,
+    patch: &bbb_protocol::packets::DataComponentPatchSummary,
     item_runtime: Option<&NativeItemRuntime>,
 ) -> Option<String> {
-    let patch = &stack.component_patch;
     let mut fields = patch
         .added_type_ids
         .iter()
@@ -4655,6 +4656,9 @@ fn debug_supported_added_component_snbt(
         44 => patch.dyed_color?.to_string(),
         45 => patch.map_color?.to_string(),
         46 => patch.map_id?.to_string(),
+        CHARGED_PROJECTILES_COMPONENT_TYPE_ID => {
+            debug_item_stack_template_list_snbt(&patch.charged_projectiles_items, item_runtime)?
+        }
         WRITABLE_BOOK_CONTENT_COMPONENT_TYPE_ID => {
             debug_writable_book_content_component_snbt(patch)
         }
@@ -4715,6 +4719,7 @@ fn debug_supported_component_resource_id(type_id: i32) -> Option<&'static str> {
         44 => "minecraft:dyed_color",
         45 => "minecraft:map_color",
         46 => "minecraft:map_id",
+        CHARGED_PROJECTILES_COMPONENT_TYPE_ID => "minecraft:charged_projectiles",
         WRITABLE_BOOK_CONTENT_COMPONENT_TYPE_ID => "minecraft:writable_book_content",
         63 => "minecraft:ominous_bottle_amplifier",
         LODESTONE_TRACKER_COMPONENT_TYPE_ID => "minecraft:lodestone_tracker",
@@ -4865,6 +4870,35 @@ fn debug_custom_model_data_component_snbt(
         ));
     }
     format!("{{{}}}", fields.join(", "))
+}
+
+fn debug_item_stack_template_list_snbt(
+    templates: &[bbb_protocol::packets::ItemStackTemplateSummary],
+    item_runtime: Option<&NativeItemRuntime>,
+) -> Option<String> {
+    let items = templates
+        .iter()
+        .map(|template| debug_item_stack_template_snbt(template, item_runtime))
+        .collect::<Option<Vec<_>>>()?
+        .join(", ");
+    Some(format!("[{items}]"))
+}
+
+fn debug_item_stack_template_snbt(
+    template: &bbb_protocol::packets::ItemStackTemplateSummary,
+    item_runtime: Option<&NativeItemRuntime>,
+) -> Option<String> {
+    let resource_id = item_runtime?.item_resource_id(template.item_id)?;
+    let mut fields = vec![format!("id: {}", debug_snbt_string(resource_id))];
+    if template.count != 1 {
+        fields.push(format!("count: {}", template.count));
+    }
+    if let Some(components) =
+        debug_supported_component_patch_snbt(&template.component_patch, item_runtime)
+    {
+        fields.push(format!("components: {components}"));
+    }
+    Some(format!("{{{}}}", fields.join(", ")))
 }
 
 fn debug_writable_book_content_component_snbt(

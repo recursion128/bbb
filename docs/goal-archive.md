@@ -8629,3 +8629,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   component patch focused test 扩展到 24 个 added entry，覆盖两项 registry
   resolution、side order 与两个 brick fallback；该 runtime 透传也为后续嵌套 item
   codec 提供资源解析面，pot-decoration 从剩余总账本移入已支持子集。
+
+## 2026-07-10：ItemStack charged-projectiles save codec
+
+- [x] `minecraft:charged_projectiles` 持久化 component（P2 native input）：
+  依据 vanilla 26.1 `ChargedProjectiles.CODEC` 与
+  `ItemStackTemplate.MAP_CODEC`，将 component-patch SNBT helper 解耦为直接接收
+  patch，复用 item-runtime registry lookup 递归输出 protocol type id `49`
+  保留的 ordered templates；遵循 id、非默认 count、非空 components 字段顺序，
+  任一未知嵌套 item id 时不伪造整个 component。focused tests 扩展到 25 个
+  added entry，覆盖 count 默认省略、非默认 count 和嵌套 damage patch；
+  charged-projectiles 从剩余 component 总账本移入已支持子集。

@@ -8527,11 +8527,15 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
     let registry: ItemRegistryCatalog = serde_json::from_value(serde_json::json!({
         "resource_ids": [
             "minecraft:angler_pottery_sherd",
-            "minecraft:archer_pottery_sherd"
+            "minecraft:archer_pottery_sherd",
+            "minecraft:arrow",
+            "minecraft:firework_star"
         ],
         "protocol_ids": {
             "minecraft:angler_pottery_sherd": 0,
-            "minecraft:archer_pottery_sherd": 1
+            "minecraft:archer_pottery_sherd": 1,
+            "minecraft:arrow": 2,
+            "minecraft:firework_star": 3
         }
     }))
     .unwrap();
@@ -8540,10 +8544,10 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
         EquipmentAssetCatalog::default(),
     );
     let patch = DataComponentPatchSummary {
-        added: 24,
+        added: 25,
         added_type_ids: vec![
-            0, 1, 2, 3, 4, 10, 12, 17, 21, 22, 44, 45, 46, 54, 63, 67, 68, 69, 70, 74, 76, 88, 89,
-            90,
+            0, 1, 2, 3, 4, 10, 12, 17, 21, 22, 44, 45, 46, 49, 54, 63, 67, 68, 69, 70, 74, 76, 88,
+            89, 90,
         ],
         removed_type_ids: vec![6],
         custom_data: Some(NbtSummaryValue::Compound(vec![
@@ -8611,6 +8615,23 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
         dyed_color: Some(0x11_22_33),
         map_color: Some(0x44_55_66),
         map_id: Some(42),
+        charged_projectiles_items: vec![
+            bbb_protocol::packets::ItemStackTemplateSummary {
+                item_id: 2,
+                count: 1,
+                component_patch: DataComponentPatchSummary::default(),
+            },
+            bbb_protocol::packets::ItemStackTemplateSummary {
+                item_id: 3,
+                count: 2,
+                component_patch: DataComponentPatchSummary {
+                    added: 1,
+                    added_type_ids: vec![3],
+                    damage: Some(7),
+                    ..DataComponentPatchSummary::default()
+                },
+            },
+        ],
         writable_book_pages: vec!["first\npage".to_string(), "second raw".to_string()],
         writable_book_page_filters: vec![None, Some("second filtered".to_string())],
         ominous_bottle_amplifier: Some(3),
@@ -8689,6 +8710,9 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
          colors: [1122867, 4478310]}, \"minecraft:enchantment_glint_override\": 0b, \
          \"minecraft:intangible_projectile\": {}, \"minecraft:dyed_color\": 1122867, \
          \"minecraft:map_color\": 4478310, \"minecraft:map_id\": 42, \
+         \"minecraft:charged_projectiles\": [{id: \"minecraft:arrow\"}, \
+         {id: \"minecraft:firework_star\", count: 2, \
+         components: {\"minecraft:damage\": 7}}], \
          \"minecraft:writable_book_content\": {pages: [{raw: \"first\\npage\"}, \
          {raw: \"second raw\", filtered: \"second filtered\"}]}, \
          \"minecraft:ominous_bottle_amplifier\": 3, \
@@ -8714,7 +8738,7 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
 }
 
 #[test]
-fn item_stack_snbt_omits_pot_decorations_with_unknown_registry_id() {
+fn item_stack_snbt_omits_registry_backed_components_with_unknown_item_id() {
     let registry: ItemRegistryCatalog = serde_json::from_value(serde_json::json!({
         "resource_ids": ["minecraft:brick"],
         "protocol_ids": {"minecraft:brick": 0}
@@ -8728,8 +8752,13 @@ fn item_stack_snbt_omits_pot_decorations_with_unknown_registry_id() {
         item_id: Some(0),
         count: 1,
         component_patch: DataComponentPatchSummary {
-            added: 1,
-            added_type_ids: vec![74],
+            added: 2,
+            added_type_ids: vec![49, 74],
+            charged_projectiles_items: vec![bbb_protocol::packets::ItemStackTemplateSummary {
+                item_id: 99,
+                count: 1,
+                component_patch: DataComponentPatchSummary::default(),
+            }],
             pot_decorations_item_ids: vec![99],
             ..DataComponentPatchSummary::default()
         },
