@@ -355,12 +355,12 @@ static VANILLA_DATA_COMPONENTS: &[DataComponentDescriptor] = &[
     ),
     component(91, "minecraft:mooshroom/variant", true, decode_builtin_enum),
     component(92, "minecraft:rabbit/variant", true, decode_builtin_enum),
-    component(93, "minecraft:pig/variant", true, skip_holder_registry),
+    component(93, "minecraft:pig/variant", true, decode_pig_variant),
     component(
         94,
         "minecraft:pig/sound_variant",
         true,
-        skip_holder_registry,
+        decode_pig_sound_variant,
     ),
     component(95, "minecraft:cow/variant", true, skip_holder_registry),
     component(
@@ -1122,6 +1122,24 @@ fn decode_zombie_nautilus_variant(
     summary: &mut DataComponentPatchSummary,
 ) -> Result<()> {
     summary.zombie_nautilus_variant_id = Some(decode_holder_registry_id(decoder)?);
+    Ok(())
+}
+
+fn decode_pig_variant(
+    _type_id: i32,
+    decoder: &mut Decoder<'_>,
+    summary: &mut DataComponentPatchSummary,
+) -> Result<()> {
+    summary.pig_variant_id = Some(decode_holder_registry_id(decoder)?);
+    Ok(())
+}
+
+fn decode_pig_sound_variant(
+    _type_id: i32,
+    decoder: &mut Decoder<'_>,
+    summary: &mut DataComponentPatchSummary,
+) -> Result<()> {
+    summary.pig_sound_variant_id = Some(decode_holder_registry_id(decoder)?);
     Ok(())
 }
 

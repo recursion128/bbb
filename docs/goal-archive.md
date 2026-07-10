@@ -9133,3 +9133,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   把 entity save 的 temperate/warm match 收敛为可校验共享查询，entity 越界仍
   回退 temperate，component unknown id 安全省略。大型 component patch test 从
   88 扩展到 89 个 added entry，并覆盖 descriptor warm holder 与查询边界。
+
+## 2026-07-10：ItemStack pig variant descriptors and save
+
+- [x] minecraft:pig/variant 与 minecraft:pig/sound_variant 的 descriptor decode
+  与 named-holder 持久化（P2 protocol + native input）：依据 vanilla 26.1 两个
+  fixed-registry Codec 及 bootstrap 顺序（variant 为 temperate/warm/cold，sound
+  为 classic/big/mini），protocol type id 93/94 分别写入独立 holder id；native
+  entity save 与 component encoders 共用两组可校验资源查询，并分别保留
+  temperate/classic fallback 或对 unknown id 安全省略。大型 component patch test
+  从 89 扩展到 91 个 added entry，并覆盖双 descriptor 顺序与 bootstrap 边界。

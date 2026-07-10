@@ -97,6 +97,8 @@ static PERSISTENT_SNBT_ENCODERS: &[PersistentSnbtEncoderDescriptor] = &[
     encoder(90, encode_tropical_fish_pattern_color),
     encoder(91, encode_builtin_enum),
     encoder(92, encode_builtin_enum),
+    encoder(93, encode_named_variant),
+    encoder(94, encode_named_variant),
     encoder(99, encode_named_variant),
     encoder(100, encode_named_variant),
     encoder(101, encode_builtin_enum),
@@ -749,6 +751,8 @@ fn encode_named_variant(
         81 => vanilla_villager_type_resource_id(patch.villager_variant_id?)?,
         82 => vanilla_wolf_variant_resource_id(patch.wolf_variant_id?)?,
         83 => vanilla_wolf_sound_variant_resource_id(patch.wolf_sound_variant_id?)?,
+        93 => pig_variant_resource_id(patch.pig_variant_id?)?,
+        94 => pig_sound_variant_resource_id(patch.pig_sound_variant_id?)?,
         99 => zombie_nautilus_variant_resource_id(patch.zombie_nautilus_variant_id?)?,
         100 => frog_variant_resource_id(patch.frog_variant_id?)?,
         _ => return None,
@@ -818,7 +822,7 @@ mod tests {
 
     #[test]
     fn encoder_registry_is_unique_sorted_and_persistent() {
-        assert_eq!(PERSISTENT_SNBT_ENCODERS.len(), 89);
+        assert_eq!(PERSISTENT_SNBT_ENCODERS.len(), 91);
         let mut ids = HashSet::new();
         let mut previous = None;
         for descriptor in PERSISTENT_SNBT_ENCODERS {
@@ -1164,6 +1168,8 @@ mod tests {
             wolf_sound_variant_id: Some(6),
             frog_variant_id: Some(2),
             zombie_nautilus_variant_id: Some(1),
+            pig_variant_id: Some(2),
+            pig_sound_variant_id: Some(1),
             ..Default::default()
         };
         assert_eq!(
@@ -1177,6 +1183,14 @@ mod tests {
         assert_eq!(
             encode_added_component_value_snbt(83, &patch, None),
             Some("\"minecraft:cute\"".to_string())
+        );
+        assert_eq!(
+            encode_added_component_value_snbt(93, &patch, None),
+            Some("\"minecraft:cold\"".to_string())
+        );
+        assert_eq!(
+            encode_added_component_value_snbt(94, &patch, None),
+            Some("\"minecraft:big\"".to_string())
         );
         assert_eq!(
             encode_added_component_value_snbt(99, &patch, None),
@@ -1196,6 +1210,12 @@ mod tests {
         patch.wolf_sound_variant_id = Some(7);
         assert_eq!(encode_added_component_value_snbt(83, &patch, None), None);
         patch.wolf_sound_variant_id = Some(6);
+        patch.pig_variant_id = Some(3);
+        assert_eq!(encode_added_component_value_snbt(93, &patch, None), None);
+        patch.pig_variant_id = Some(2);
+        patch.pig_sound_variant_id = Some(3);
+        assert_eq!(encode_added_component_value_snbt(94, &patch, None), None);
+        patch.pig_sound_variant_id = Some(1);
         patch.zombie_nautilus_variant_id = Some(2);
         assert_eq!(encode_added_component_value_snbt(99, &patch, None), None);
         patch.zombie_nautilus_variant_id = Some(1);

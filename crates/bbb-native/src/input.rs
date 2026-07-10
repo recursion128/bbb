@@ -6978,28 +6978,26 @@ fn debug_push_pig_additional_save_data(entity: &EntityState, fields: &mut Vec<St
     .unwrap_or(PIG_DEFAULT_SOUND_VARIANT_ID);
     fields.push(format!(
         "variant: {}",
-        debug_snbt_string(debug_pig_variant_resource_id(variant))
+        debug_snbt_string(pig_variant_resource_id(variant).unwrap_or("minecraft:temperate"))
     ));
     fields.push(format!(
         "sound_variant: {}",
-        debug_snbt_string(debug_pig_sound_variant_resource_id(sound_variant))
+        debug_snbt_string(
+            pig_sound_variant_resource_id(sound_variant).unwrap_or("minecraft:classic")
+        )
     ));
 }
 
-fn debug_pig_variant_resource_id(variant: i32) -> &'static str {
-    match variant {
-        1 => "minecraft:warm",
-        2 => "minecraft:cold",
-        _ => "minecraft:temperate",
-    }
+fn pig_variant_resource_id(variant: i32) -> Option<&'static str> {
+    ["minecraft:temperate", "minecraft:warm", "minecraft:cold"]
+        .get(usize::try_from(variant).ok()?)
+        .copied()
 }
 
-fn debug_pig_sound_variant_resource_id(variant: i32) -> &'static str {
-    match variant {
-        1 => "minecraft:big",
-        2 => "minecraft:mini",
-        _ => "minecraft:classic",
-    }
+fn pig_sound_variant_resource_id(variant: i32) -> Option<&'static str> {
+    ["minecraft:classic", "minecraft:big", "minecraft:mini"]
+        .get(usize::try_from(variant).ok()?)
+        .copied()
 }
 
 fn debug_push_pufferfish_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {

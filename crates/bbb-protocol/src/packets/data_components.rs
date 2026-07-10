@@ -282,6 +282,10 @@ pub struct DataComponentPatchSummary {
     #[serde(default)]
     pub zombie_nautilus_variant_id: Option<i32>,
     #[serde(default)]
+    pub pig_variant_id: Option<i32>,
+    #[serde(default)]
+    pub pig_sound_variant_id: Option<i32>,
+    #[serde(default)]
     pub lodestone_target: Option<LodestoneTargetSummary>,
     #[serde(default)]
     pub lodestone_tracked: Option<bool>,
@@ -3308,6 +3312,32 @@ mod tests {
                 added: 1,
                 added_type_ids: vec![99],
                 zombie_nautilus_variant_id: Some(1),
+                ..DataComponentPatchSummary::default()
+            }
+        );
+        assert!(decoder.is_empty());
+    }
+
+    #[test]
+    fn decodes_pig_variant_and_sound_holder_registry_ids() {
+        let mut payload = Encoder::new();
+        payload.write_var_i32(2);
+        payload.write_var_i32(0);
+        payload.write_var_i32(93);
+        payload.write_var_i32(2);
+        payload.write_var_i32(94);
+        payload.write_var_i32(1);
+
+        let payload = payload.into_inner();
+        let mut decoder = Decoder::new(&payload);
+        let patch = decode_data_component_patch_summary(&mut decoder).unwrap();
+        assert_eq!(
+            patch,
+            DataComponentPatchSummary {
+                added: 2,
+                added_type_ids: vec![93, 94],
+                pig_variant_id: Some(2),
+                pig_sound_variant_id: Some(1),
                 ..DataComponentPatchSummary::default()
             }
         );
