@@ -32,74 +32,69 @@ configuration UI.
 - If rendering details are ambiguous, compare against the official client behavior.
 - Do not rely on memory for protocol details when a local vanilla source file exists.
 
-## Agent Roles
+## Execution Ownership
 
-- Main agent owns task selection, planning, vanilla-source verification, worker
-  orchestration, integration, review, final tests, and commits.
-- Worker agents own bounded coding tasks with explicit file/module write scopes,
-  normally in independent git worktrees and temporary branches.
-- Explorer agents answer narrow codebase or vanilla-source questions when that can run
-  in parallel with implementation.
+- The main agent owns the complete slice by default: task selection, planning,
+  vanilla-source verification, implementation, focused tests, integration, review,
+  the final gate, and the commit.
+- Subagents are optional concurrency tools, not a default topology. Do not spawn one
+  merely because a role or execution slot is available.
+- Explorer agents are useful only for bounded, read-only questions that can be
+  investigated while the main agent continues independent critical-path work.
+- Worker agents are useful only for bounded implementation with explicit,
+  non-overlapping file/module ownership and a frozen integration contract.
+- Reviewer agents are useful for large, ambiguous, or high-risk integrated diffs;
+  they are not required for every slice.
 
-The main agent should keep the critical path moving locally while workers handle
-disjoint modules. Workers must not commit to `master`, merge into `master`, or
-rewrite git history. If a slice explicitly allows worker commits, those commits
-stay on temporary branches and the main agent remains the only merger and final
-committer.
+The main agent remains responsible for verifying critical vanilla facts and reviewing
+all integrated code. Workers must not commit to `master`, merge into `master`, or
+rewrite git history. If a slice explicitly allows worker commits, those commits stay
+on temporary branches and the main agent remains the only merger and final committer.
 
 ## Orchestration Strategy
 
-Use a single-slice, staged pipeline rather than assigning several complete features
-at once. The main bottlenecks are vanilla verification, cross-crate contracts,
-integration, and the final workspace gate; adding write-heavy agents beyond those
-boundaries usually creates more merge work than useful throughput.
+Use a single-slice pipeline rather than assigning several complete features at once.
+The default path is solo: the main agent verifies the gap and vanilla behavior,
+implements the slice, runs focused tests, updates documentation, reviews the diff,
+runs the gate, and commits without delegation.
 
-With four available agent slots, prefer this topology:
+Spawn a subagent only when the expected critical-path saving is greater than the
+setup, context-transfer, worktree, integration, and review cost. In particular, the
+following should all be true for an implementation worker:
 
-- main agent: task selection, vanilla confirmation, API contract, native/control
-  integration, review, gate, and commit; prefer the strongest general reasoning
-  model available, currently `gpt-5.6-sol` with high reasoning effort
-- `bbb_explorer`: read-only repo and vanilla-source investigation, pinned to
-  `gpt-5.6-terra` with medium reasoning effort
-- `bbb_worker`: one bounded routine protocol/world/net or renderer/input ownership
-  area, pinned to `gpt-5.6-terra` with medium reasoning effort
-- `bbb_gpu_worker`: one ambiguous GPU-state, renderer-architecture, or cross-crate
-  ownership area, pinned to `gpt-5.6-sol` with high reasoning effort
-- `bbb_reviewer`: read-only integrated-diff and test-gap review, pinned to
-  `gpt-5.6-sol` with high reasoning effort; reuse a freed implementation slot for
-  this role
+- the task has a bounded deliverable and exact owned paths;
+- its integration API, ordering constraints, and fallback behavior are already
+  frozen;
+- it does not write the same files or unstable module as the main agent or another
+  worker;
+- the main agent has useful independent work to perform while it runs; and
+- its result can be reviewed and integrated mechanically without reopening the
+  design.
 
-The project-scoped definitions live in `.codex/agents/`; `.codex/config.toml` caps
-the topology at four threads and one spawned level. If an account cannot use a pinned
-model, update the corresponding agent file to the closest available model while
-preserving the role split and reasoning tier.
-With fewer slots, keep the main agent and explorer first, then add the highest-value
-worker. With more slots, do not add overlapping writers; use extra capacity for
-read-only audit, focused testing, or review.
+Prefer the solo path for small checklist items, cohesive single-owner changes,
+serial vanilla investigation, central-module edits, and slices where the main agent
+would otherwise wait for the subagent. Never fill available agent slots for their own
+sake. When parallelism is justified, use the fewest agents needed and split by
+semantic ownership rather than checklist count.
 
-Run each slice in three stages:
+For a parallel slice, run three stages:
 
-1. **Evidence and contract**
-   - `bbb_explorer` locates the exact vanilla classes, formulas, ids, ordering, and
-     nearby repo implementation while the main agent confirms the ledger gap is real.
-   - Main agent verifies critical vanilla facts and freezes a small integration
-     contract before parallel edits: owned paths, public types/functions, ordering
-     constraints, fallback behavior, and focused test commands.
-2. **Disjoint implementation**
-   - At most two `bbb_worker` / `bbb_gpu_worker` agents edit non-overlapping modules
-     in independent worktrees.
-   - Main agent keeps the integration path moving, normally native/control frame
-     wiring, contract reconciliation, documentation, and tests that span crates.
-   - Do not start implementation of another complete slice before the current slice
-     is integrated and committed.
-3. **Review and closeout**
-   - As soon as an implementation slot becomes free, reuse it for `bbb_reviewer`
-     read-only review of the integrated diff or test-gap analysis.
-   - Workers run focused tests only. The main agent runs formatting, diff checks,
-     the authoritative full gate, and the final commit once after integration.
-   - While the full gate runs, an otherwise idle explorer may audit the next slice
-     without editing files or launching Cargo, but the next implementation waits for
-     the current commit.
+1. **Evidence and contract**: the main agent confirms the ledger gap, verifies all
+   critical vanilla facts, and freezes owned paths, public types/functions, ordering,
+   fallback behavior, and focused test commands. A read-only explorer may gather
+   additional evidence concurrently when it is not a prerequisite for all progress.
+2. **Disjoint implementation**: workers edit non-overlapping modules in independent
+   worktrees while the main agent advances a separate integration path. Use the
+   fewest workers that produce real critical-path savings. Do not start another
+   complete slice before the current slice is integrated and committed.
+3. **Review and closeout**: workers run focused tests only. The main agent reviews the
+   integrated diff, runs formatting, diff checks, the authoritative full gate, and
+   the final commit once. Add a read-only reviewer only when diff size, ambiguity, or
+   regression risk justifies the extra pass.
+
+While the full gate runs, an otherwise idle read-only agent may audit the next slice
+without editing files or launching Cargo, but the next implementation waits for the
+current commit.
 
 Parallelize by semantic ownership, not by checklist count. When a slice establishes
 a reusable renderer or world surface, prefer the next ledger item that can consume
@@ -111,24 +106,25 @@ reduces repeated architecture work.
 1. Start with `git status --short`.
 2. Identify the next slice that moves the repo closer to the native 26.1 client.
 3. Verify relevant vanilla wire format or behavior from local sources.
-4. Split implementation by disjoint ownership, usually:
+4. Identify the semantic ownership involved, usually:
    - protocol: packet ids, structs, encode/decode, protocol tests
    - world: canonical state, counters, query APIs, world tests
    - net: event/command wiring and offline probe behavior
    - native/control: drain handling, snapshot counters, runtime tests
    - renderer/input: visible or interactive behavior when the slice needs it
-5. Spawn worker agents for non-overlapping modules when parallelism helps.
+5. Keep the slice with the main agent unless it passes the parallelism criteria above.
+   If it does, spawn workers only for non-overlapping modules.
    Prefer one independent git worktree per worker, for example:
    - `../bbb-wt-renderer`
    - `../bbb-wt-world`
    - `../bbb-wt-protocol`
    Use `scripts/worker-worktree.sh create <name>` for the standard path.
-6. Give each worker worktree a temporary branch and, when tests may run in
-   parallel, a distinct external `CARGO_TARGET_DIR` to avoid Cargo lock
-   contention and preserve build cache.
-7. Main agent integrates worker changes by reviewing diffs and using patch,
-   cherry-pick, or merge from temporary branches. Main agent resolves API
-   mismatches and reviews the full integrated diff.
+6. When workers are used, give each worker worktree a temporary branch and, when
+   tests may run in parallel, a distinct external `CARGO_TARGET_DIR` to avoid Cargo
+   lock contention and preserve build cache.
+7. If worker changes exist, the main agent integrates them by reviewing diffs and
+   using patch, cherry-pick, or merge from temporary branches. Main agent resolves
+   API mismatches and reviews the full integrated diff.
 8. Workers keep assigned external Cargo build caches unless the slice explicitly
    asks for cleanup or the cache is disposable.
 9. Main agent removes temporary worktrees and branches after their diffs are
