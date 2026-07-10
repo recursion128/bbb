@@ -285,8 +285,11 @@ const TNT_MINECART_DEFAULT_FUSE: i32 = -1;
 const HANGING_ENTITY_DIRECTION_DATA_ID: u8 = 8;
 const ITEM_FRAME_ROTATION_DATA_ID: u8 = 10;
 const ITEM_FRAME_DEFAULT_ROTATION: i8 = 0;
+/// Server-private NBT field: never enters add-entity or metadata, so a remote
+/// client-side ItemFrame remains at the constructor value.
 const ITEM_FRAME_DEFAULT_DROP_CHANCE: f32 = 1.0;
 const ITEM_FRAME_DEFAULT_INVISIBLE: bool = false;
+/// Server-private NBT field with the same client-only default boundary as drop chance.
 const ITEM_FRAME_DEFAULT_FIXED: bool = false;
 const PRIMED_TNT_FUSE_DATA_ID: u8 = 8;
 const PRIMED_TNT_DEFAULT_FUSE: i16 = 80;
@@ -299,6 +302,8 @@ const ABSTRACT_ARROW_DEFAULT_SHAKE: i8 = 0;
 const ABSTRACT_ARROW_DEFAULT_PICKUP: i8 = 0;
 const ABSTRACT_ARROW_DEFAULT_DAMAGE: f64 = 2.0;
 const ABSTRACT_ARROW_DEFAULT_SOUND_EVENT: &str = "minecraft:entity.arrow.hit";
+/// Server-private NBT field used only when the server applies the glowing hit
+/// effect; the client constructor value is never synchronized or mutated.
 const SPECTRAL_ARROW_DEFAULT_DURATION: i32 = 200;
 const TRIDENT_DEFAULT_SOUND_EVENT: &str = "minecraft:item.trident.hit_ground";
 const TRIDENT_DEFAULT_DEALT_DAMAGE: bool = false;
@@ -4843,6 +4848,9 @@ fn debug_push_primed_tnt_additional_save_data(
             debug_snbt_block_state(&block_state.name, &block_state.properties)
         ));
     }
+    // Vanilla writes `explosion_power` only when its server-private field differs
+    // from 4.0. Add-entity and metadata never carry it, and client tick never
+    // mutates it, so a remote client's save correctly omits the default field.
 }
 
 fn debug_push_wither_skull_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {

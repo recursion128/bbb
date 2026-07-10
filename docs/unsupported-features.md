@@ -228,10 +228,8 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   projection, remaining delayed/fence-knot leash projection, non-default private
   projectile flags such as
   `ThrownTrident.dealtDamage`, non-default private or otherwise unobserved
-  scalar/flag/timer/counter projection (including `PrimedTnt.explosionPower` and
-  item-frame `dropChance` / `fixed`, plus non-default `SpectralArrow.duration`,
-  non-default `FallingBlockEntity` time/drop/hurt/cancel-drop fields and minecart
-  flipped/has-ticked state),
+  scalar/flag/timer/counter projection (including non-default `FallingBlockEntity`
+  time/drop/hurt/cancel-drop fields and minecart flipped/has-ticked state),
   remaining registry-backed
   entity-data projection (including dynamic-registry ordering), packed variant
   projection, remaining codec-backed SNBT projection (including `AbstractArrow`
@@ -637,6 +635,15 @@ vanilla evidence. Deleting one of these re-opens work already decided against.
 
 ## HUD and configuration
 
+- **F3+I non-default `PrimedTnt.explosionPower`, item-frame `dropChance` /
+  `fixed`, and `SpectralArrow.duration`.** Not needed on an external client:
+  vanilla 26.1 changes all four only in `readAdditionalSaveData`; none is in the
+  add-entity packet or synched entity data, and client tick/interaction does not
+  mutate them. A newly recreated remote `PrimedTnt` therefore always keeps
+  `explosionPower = 4.0` (whose save field is conditionally omitted), item/glow
+  frames keep `dropChance = 1.0` and `fixed = false` (both always written), and
+  spectral arrows keep `duration = 200` (always written). Reopen only if a
+  future protocol synchronizes one of these private fields.
 - **F3+I local fishing-bobber save NBT.** Not needed: vanilla
   `EntityType.FISHING_BOBBER` is `.noSave().noSummon()` (`EntityType.java`),
   `FishingHook.addAdditionalSaveData` is an empty override that does not call

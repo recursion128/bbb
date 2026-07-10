@@ -8458,3 +8458,15 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   双 color/fade、trail/twinkle、shot-at-angle 及首 tick Life/HasBeenShot 翻转。任意其他
   data-component patch 类型、无 item registry context 时的非默认 item id 仍留 codec 总账本；
   firework projectile parent/specialized 分类项已清零。
+
+## 2026-07-10：F3+I server-private scalar audit
+
+- [x] TNT / item-frame / spectral-arrow 私有字段边界（P2 native input + ledger）：逐字段核对
+  vanilla 26.1 `PrimedTnt`、`ItemFrame` / `GlowItemFrame` 与 `SpectralArrow` 的 field
+  declaration、constructor、`defineSynchedData`、add/recreate packet、client tick/interact、
+  `readAdditionalSaveData` 与 `addAdditionalSaveData`。`explosionPower`、`dropChance`、`fixed`
+  和 `duration` 都只可能由 server-side NBT read 改成非默认值，未进入 add-entity 或 metadata，
+  client 行为也不会改写；因此 external client 的准确本地 save 始终分别是省略默认
+  `explosion_power`、写 `ItemDropChance: 1.0f` / `Fixed: 0b`、写 `Duration: 200`。现有 F3+I
+  输出已与该唯一 client state 一致，代码注释固化 ownership，三个“非默认投影”从实现队列
+  转入 not-needed，只有协议未来新增同步时才重开。
