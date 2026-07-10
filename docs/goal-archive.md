@@ -9497,3 +9497,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   ids/default，统一引用 schema；focused tests 复验 direction spawn fallback、rotation wrap、
   empty/non-empty item、map id/pick bounds、save-NBT 和 filled-map renderer。未把 ItemFrame 的
   ids 错误压平到 Entity，父层继承 offset 由 descriptor lineage 锁定。
+
+## 2026-07-10：Entity metadata schema phase 7（Slime / MagmaCube）
+
+- [x] entity metadata schema 的 slime 分支：按 vanilla `Slime extends Mob` 新增
+  `Slime` family，集中声明 `ID_SIZE` id 16、INT serializer 与 default 1；确认
+  `MagmaCube extends Slime` 且不新增 accessor。world pick bounds/passenger offset、native
+  entity model size 与 F3+I save projection 删除本地 id/default，统一引用 schema；focused
+  tests 锁定继承 offset、serializer/default、slime/magma-cube 尺寸投影、pick bounds 和
+  save-NBT。未改变 squish 动画、size clamp 或实体行为。

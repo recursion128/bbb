@@ -16,6 +16,7 @@ pub enum VanillaEntityMetadataFamily {
     Entity,
     LivingEntity,
     Mob,
+    Slime,
     AgeableMob,
     ArmorStand,
     HangingEntity,
@@ -83,6 +84,7 @@ pub const VANILLA_LIVING_ENTITY_ARROW_COUNT_DATA_ID: u8 = 12;
 pub const VANILLA_LIVING_ENTITY_STINGER_COUNT_DATA_ID: u8 = 13;
 pub const VANILLA_LIVING_ENTITY_SLEEPING_POS_DATA_ID: u8 = 14;
 pub const VANILLA_MOB_FLAGS_DATA_ID: u8 = 15;
+pub const VANILLA_SLIME_SIZE_DATA_ID: u8 = 16;
 pub const VANILLA_AGEABLE_MOB_BABY_DATA_ID: u8 = 16;
 pub const VANILLA_AGEABLE_MOB_AGE_LOCKED_DATA_ID: u8 = 17;
 pub const VANILLA_ARMOR_STAND_CLIENT_FLAGS_DATA_ID: u8 = 15;
@@ -131,6 +133,7 @@ pub const VANILLA_AVATAR_MODEL_PART_HAT: i8 = 1 << 6;
 pub const VANILLA_HUMANOID_ARM_LEFT_ID: i32 = 0;
 pub const VANILLA_HUMANOID_ARM_RIGHT_ID: i32 = 1;
 pub const VANILLA_AVATAR_DEFAULT_MODEL_CUSTOMIZATION: i8 = 0;
+pub const VANILLA_SLIME_DEFAULT_SIZE: i32 = 1;
 pub const VANILLA_AGEABLE_MOB_DEFAULT_BABY: bool = false;
 pub const VANILLA_AGEABLE_MOB_DEFAULT_AGE_LOCKED: bool = false;
 pub const VANILLA_ARMOR_STAND_DEFAULT_CLIENT_FLAGS: i8 = 0;
@@ -326,6 +329,13 @@ const MOB_FLAGS: &[VanillaEntityMetadataFlagSchema] = &[
         mask: VANILLA_MOB_FLAG_AGGRESSIVE,
     },
 ];
+
+const SLIME_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[VanillaEntityMetadataFieldSchema {
+    name: "ID_SIZE",
+    data_id: VANILLA_SLIME_SIZE_DATA_ID,
+    serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+    default: VanillaEntityMetadataDefault::Int(VANILLA_SLIME_DEFAULT_SIZE),
+}];
 
 const AGEABLE_MOB_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[
     VanillaEntityMetadataFieldSchema {
@@ -544,6 +554,14 @@ const MOB_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamil
     own_flags: MOB_FLAGS,
 };
 
+const SLIME_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamilySchema {
+    family: VanillaEntityMetadataFamily::Slime,
+    parent: Some(VanillaEntityMetadataFamily::Mob),
+    inherited_field_count: MOB_SCHEMA.inherited_field_count + MOB_FIELDS.len() as u8,
+    own_fields: SLIME_FIELDS,
+    own_flags: &[],
+};
+
 const AGEABLE_MOB_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamilySchema {
     family: VanillaEntityMetadataFamily::AgeableMob,
     parent: Some(VanillaEntityMetadataFamily::Mob),
@@ -603,6 +621,7 @@ pub const fn vanilla_entity_metadata_schema(
         VanillaEntityMetadataFamily::Entity => &ENTITY_SCHEMA,
         VanillaEntityMetadataFamily::LivingEntity => &LIVING_ENTITY_SCHEMA,
         VanillaEntityMetadataFamily::Mob => &MOB_SCHEMA,
+        VanillaEntityMetadataFamily::Slime => &SLIME_SCHEMA,
         VanillaEntityMetadataFamily::AgeableMob => &AGEABLE_MOB_SCHEMA,
         VanillaEntityMetadataFamily::ArmorStand => &ARMOR_STAND_SCHEMA,
         VanillaEntityMetadataFamily::HangingEntity => &HANGING_ENTITY_SCHEMA,
@@ -668,6 +687,11 @@ mod tests {
                 .collect::<Vec<_>>(),
             vec![15]
         );
+
+        let slime = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Slime);
+        assert_eq!(slime.parent, Some(VanillaEntityMetadataFamily::Mob));
+        assert_eq!(slime.inherited_field_count, 16);
+        assert_eq!(slime.own_fields[0].data_id, 16);
 
         let ageable = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::AgeableMob);
         assert_eq!(ageable.parent, Some(VanillaEntityMetadataFamily::Mob));
@@ -854,6 +878,15 @@ mod tests {
                 data_id: 15,
                 serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 default: VanillaEntityMetadataDefault::Byte(0),
+            }]
+        );
+        assert_eq!(
+            vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Slime).own_fields,
+            &[VanillaEntityMetadataFieldSchema {
+                name: "ID_SIZE",
+                data_id: 16,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+                default: VanillaEntityMetadataDefault::Int(1),
             }]
         );
         assert_eq!(
@@ -1181,6 +1214,7 @@ mod tests {
             VanillaEntityMetadataFamily::Entity,
             VanillaEntityMetadataFamily::LivingEntity,
             VanillaEntityMetadataFamily::Mob,
+            VanillaEntityMetadataFamily::Slime,
             VanillaEntityMetadataFamily::AgeableMob,
             VanillaEntityMetadataFamily::ArmorStand,
             VanillaEntityMetadataFamily::HangingEntity,

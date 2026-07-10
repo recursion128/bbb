@@ -56,6 +56,8 @@ use bbb_world::{
     VANILLA_ENTITY_SHARED_FLAG_INVISIBLE as ENTITY_SHARED_FLAG_INVISIBLE,
     VANILLA_ENTITY_SHARED_FLAG_ON_FIRE as ENTITY_SHARED_FLAG_ON_FIRE,
     VANILLA_LIVING_ENTITY_HEALTH_DATA_ID as LIVING_ENTITY_HEALTH_DATA_ID,
+    VANILLA_SLIME_DEFAULT_SIZE as SLIME_DEFAULT_SIZE,
+    VANILLA_SLIME_SIZE_DATA_ID as SLIME_SIZE_DATA_ID,
 };
 
 use bbb_item_model::{default_player_skin_for_profile_id, NativeItemRuntime};
@@ -148,8 +150,6 @@ const PIGLIN_IS_DANCING_DATA_ID: u8 = 19;
 /// piglin accessor chain. `Piglin.getArmPose` returns `CROSSBOW_CHARGE` (whose pull-back pose needs the
 /// deferred use-tick state) while true, suppressing the `CROSSBOW_HOLD` level-the-crossbow pose.
 const PIGLIN_IS_CHARGING_CROSSBOW_DATA_ID: u8 = 18;
-const SLIME_SIZE_DATA_ID: u8 = 16;
-const SLIME_DEFAULT_SIZE: i32 = 1;
 // Phantom (`Phantom.ID_SIZE`, the first Mob-subclass synced data, index 16). Defaults to 0.
 const PHANTOM_SIZE_DATA_ID: u8 = 16;
 const PHANTOM_DEFAULT_SIZE: i32 = 0;
