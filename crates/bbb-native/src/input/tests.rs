@@ -8738,12 +8738,12 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
         EquipmentAssetCatalog::default(),
     );
     let patch = DataComponentPatchSummary {
-        added: 77,
+        added: 78,
         added_type_ids: vec![
             0, 1, 2, 3, 4, 5, 7, 10, 12, 13, 17, 18, 19, 21, 22, 23, 24, 25, 26, 27, 29, 30, 31,
             33, 34, 35, 36, 38, 39, 40, 42, 43, 44, 45, 46, 47, 49, 50, 51, 52, 53, 54, 57, 58, 59,
-            60, 63, 65, 66, 67, 68, 69, 70, 71, 73, 74, 75, 76, 77, 78, 79, 80, 84, 85, 86, 87, 88,
-            89, 90, 91, 92, 101, 103, 104, 107, 108, 109,
+            60, 63, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 84, 85, 86, 87,
+            88, 89, 90, 91, 92, 101, 103, 104, 107, 108, 109,
         ],
         removed_type_ids: vec![6],
         custom_data: Some(NbtSummaryValue::Compound(vec![
@@ -9116,6 +9116,20 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
             },
         }),
         note_block_sound: Some("minecraft:block.note_block.harp".to_string()),
+        banner_pattern_layers: vec![
+            bbb_protocol::packets::BannerPatternLayerSummary {
+                registry_id: Some(5),
+                asset_id: None,
+                translation_key: None,
+                color_id: 14,
+            },
+            bbb_protocol::packets::BannerPatternLayerSummary {
+                registry_id: None,
+                asset_id: Some("example:custom_banner/pattern".to_string()),
+                translation_key: Some("block.example.banner.custom".to_string()),
+                color_id: 3,
+            },
+        ],
         base_color_id: Some(3),
         pot_decorations_item_ids: vec![0, 1],
         container_items: vec![bbb_protocol::packets::ItemStackTemplateSummary {
@@ -9295,6 +9309,9 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
          texture: \"minecraft:entity/player/wide/steve\", \
          elytra: \"minecraft:entity/player/elytra\", model: \"slim\"}, \
          \"minecraft:note_block_sound\": \"minecraft:block.note_block.harp\", \
+         \"minecraft:banner_patterns\": [{pattern: \"minecraft:stripe_bottom\", \
+         color: \"red\"}, {pattern: {asset_id: \"example:custom_banner/pattern\", \
+         translation_key: \"block.example.banner.custom\"}, color: \"light_blue\"}], \
          \"minecraft:base_color\": \"light_blue\", \
          \"minecraft:pot_decorations\": [\"minecraft:angler_pottery_sherd\", \
          \"minecraft:archer_pottery_sherd\", \"minecraft:brick\", \"minecraft:brick\"], \

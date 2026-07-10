@@ -111,8 +111,9 @@ use crate::crosshair::{crosshair_target_from_camera_at_partial_tick, CrosshairTa
 use crate::entity_scene::WITHER_SKULL_DANGEROUS_DATA_ID;
 use crate::terrain_runtime::TerrainUploadState;
 use bbb_item_model::{
-    vanilla_enchantment_resource_id, vanilla_mob_effect_resource_id, vanilla_potion_resource_id,
-    ItemModelKeybindContext, NativeItemRuntime,
+    vanilla_banner_pattern_resource_id, vanilla_enchantment_resource_id,
+    vanilla_mob_effect_resource_id, vanilla_potion_resource_id, ItemModelKeybindContext,
+    NativeItemRuntime,
 };
 pub(crate) use bundle::select_bundle_item;
 use commands::*;

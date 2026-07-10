@@ -92,8 +92,8 @@ use tables::*;
 #[cfg(test)]
 use tooltip::*;
 pub use tooltip::{
-    vanilla_enchantment_resource_id, NativeItemMapTooltipData, NativeItemTooltipLine,
-    NativeItemTooltipOptions,
+    vanilla_banner_pattern_resource_id, vanilla_enchantment_resource_id, NativeItemMapTooltipData,
+    NativeItemTooltipLine, NativeItemTooltipOptions,
 };
 
 const FIREWORK_ROCKET_ITEM_ID: &str = "minecraft:firework_rocket";

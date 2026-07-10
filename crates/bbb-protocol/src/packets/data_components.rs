@@ -412,6 +412,8 @@ pub struct AdventureModePredicateSummary {
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct BannerPatternLayerSummary {
     pub registry_id: Option<i32>,
+    #[serde(default)]
+    pub asset_id: Option<String>,
     pub translation_key: Option<String>,
     pub color_id: i32,
 }
@@ -2042,8 +2044,9 @@ fn decode_banner_pattern_layers_summary(
         let color_id = decoder.read_var_i32()?;
         layers.push(BannerPatternLayerSummary {
             registry_id: pattern.registry_id,
+            asset_id: pattern.asset_id,
             translation_key: pattern.translation_key,
-            color_id,
+            color_id: normalize_dye_color_id(color_id),
         });
     }
     Ok(layers)
@@ -2051,21 +2054,24 @@ fn decode_banner_pattern_layers_summary(
 
 struct BannerPatternHolderSummary {
     registry_id: Option<i32>,
+    asset_id: Option<String>,
     translation_key: Option<String>,
 }
 
 fn decode_banner_pattern_holder(decoder: &mut Decoder<'_>) -> Result<BannerPatternHolderSummary> {
     let holder_id = decoder.read_var_i32()?;
     if holder_id == 0 {
-        let _asset_id = decode_identifier(decoder)?;
+        let asset_id = read_resource_location(decoder)?;
         let translation_key = decoder.read_string(MAX_STRING_CHARS)?;
         Ok(BannerPatternHolderSummary {
             registry_id: None,
+            asset_id: Some(asset_id),
             translation_key: Some(translation_key),
         })
     } else {
         Ok(BannerPatternHolderSummary {
             registry_id: Some(holder_id - 1),
+            asset_id: None,
             translation_key: None,
         })
     }
@@ -4056,13 +4062,15 @@ mod tests {
                 banner_pattern_layers: vec![
                     BannerPatternLayerSummary {
                         registry_id: Some(5),
+                        asset_id: None,
                         translation_key: None,
                         color_id: 14,
                     },
                     BannerPatternLayerSummary {
                         registry_id: None,
+                        asset_id: Some("example:custom_banner/pattern".to_string()),
                         translation_key: Some("block.example.banner.custom".to_string()),
-                        color_id: 999,
+                        color_id: 0,
                     },
                 ],
                 ..DataComponentPatchSummary::default()
@@ -4156,11 +4164,13 @@ mod tests {
                 banner_pattern_layers: vec![
                     BannerPatternLayerSummary {
                         registry_id: Some(4),
+                        asset_id: None,
                         translation_key: None,
                         color_id: 14,
                     },
                     BannerPatternLayerSummary {
                         registry_id: None,
+                        asset_id: Some("minecraft:stripe_bottom".to_string()),
                         translation_key: Some("block.minecraft.banner.stripe_bottom".to_string()),
                         color_id: 11,
                     },

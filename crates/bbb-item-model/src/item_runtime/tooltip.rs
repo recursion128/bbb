@@ -947,6 +947,12 @@ fn vanilla_banner_pattern_translation_key(registry_id: i32) -> Option<&'static s
     VANILLA_BANNER_PATTERN_TRANSLATION_KEYS.get(index).copied()
 }
 
+pub fn vanilla_banner_pattern_resource_id(registry_id: i32) -> Option<String> {
+    let path = vanilla_banner_pattern_translation_key(registry_id)?
+        .strip_prefix("block.minecraft.banner.")?;
+    Some(format!("minecraft:{path}"))
+}
+
 fn italic_gray_tooltip_line(text: String) -> NativeItemTooltipLine {
     NativeItemTooltipLine {
         text: text.clone(),
@@ -1447,6 +1453,11 @@ mod tests {
         );
         assert_eq!(vanilla_banner_pattern_translation_key(43), None);
         assert_eq!(vanilla_banner_pattern_translation_key(-1), None);
+        assert_eq!(
+            vanilla_banner_pattern_resource_id(5).as_deref(),
+            Some("minecraft:stripe_bottom")
+        );
+        assert_eq!(vanilla_banner_pattern_resource_id(43), None);
     }
 
     #[test]

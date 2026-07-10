@@ -9007,3 +9007,16 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   test 从 75 扩展到 77 个 added entry，并覆盖 ordered map、空 map、非法 level
   与 unknown holder 的整组件安全省略。动态 datapack Enchantment 排序仍保留在
   registry-backed 总账本。
+
+## 2026-07-10：ItemStack banner-pattern layers save codec
+
+- [x] minecraft:banner_patterns 持久化 component（P2 protocol + item-model +
+  native input）：依据 vanilla 26.1 `BannerPatternLayers.Layer`、`BannerPattern`
+  与 `DyeColor` codec，protocol 补齐 direct holder 的 asset_id 摘要，并按
+  STREAM_CODEC 的 ZERO 策略归一化越界 DyeColor id；item-model 从既有 43 项
+  banner bootstrap/translation 表派生唯一的窄 resource-id 查询。native type id
+  72 encoder 保留 ordered named/direct layers，输出 named resource 或 direct
+  asset_id/translation_key compound。大型 component patch test 从 77 扩展到 78
+  个 added entry，另覆盖空列表、unknown named holder 与不完整 direct holder
+  的整组件安全省略。动态 datapack BannerPattern 排序仍保留在 registry-backed
+  总账本。

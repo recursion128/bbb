@@ -1835,36 +1835,43 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
                 banner_pattern_layers: vec![
                     BannerPatternLayerSummary {
                         registry_id: Some(5),
+                        asset_id: None,
                         translation_key: None,
                         color_id: 14,
                     },
                     BannerPatternLayerSummary {
                         registry_id: None,
+                        asset_id: None,
                         translation_key: Some("block.test.banner.custom".to_string()),
                         color_id: 11,
                     },
                     BannerPatternLayerSummary {
                         registry_id: Some(5),
+                        asset_id: None,
                         translation_key: None,
                         color_id: 14,
                     },
                     BannerPatternLayerSummary {
                         registry_id: Some(5),
+                        asset_id: None,
                         translation_key: None,
                         color_id: 14,
                     },
                     BannerPatternLayerSummary {
                         registry_id: Some(5),
+                        asset_id: None,
                         translation_key: None,
                         color_id: 14,
                     },
                     BannerPatternLayerSummary {
                         registry_id: Some(5),
+                        asset_id: None,
                         translation_key: None,
                         color_id: 14,
                     },
                     BannerPatternLayerSummary {
                         registry_id: Some(42),
+                        asset_id: None,
                         translation_key: None,
                         color_id: 15,
                     },

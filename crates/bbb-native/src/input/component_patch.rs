@@ -71,6 +71,7 @@ static PERSISTENT_SNBT_ENCODERS: &[PersistentSnbtEncoderDescriptor] = &[
     encoder(69, encode_fireworks),
     encoder(70, encode_profile),
     encoder(71, encode_note_block_sound),
+    encoder(72, encode_banner_patterns),
     encoder(73, encode_base_color),
     encoder(74, encode_pot_decorations),
     encoder(75, encode_container),
@@ -549,6 +550,33 @@ fn encode_note_block_sound(
     Some(debug_snbt_string(patch.note_block_sound.as_deref()?))
 }
 
+fn encode_banner_patterns(
+    _type_id: i32,
+    patch: &bbb_protocol::packets::DataComponentPatchSummary,
+    _item_runtime: Option<&NativeItemRuntime>,
+) -> Option<String> {
+    let layers = patch
+        .banner_pattern_layers
+        .iter()
+        .map(|layer| {
+            let pattern = if let Some(registry_id) = layer.registry_id {
+                debug_snbt_string(&vanilla_banner_pattern_resource_id(registry_id)?)
+            } else {
+                format!(
+                    "{{asset_id: {}, translation_key: {}}}",
+                    debug_snbt_string(layer.asset_id.as_deref()?),
+                    debug_snbt_string(layer.translation_key.as_deref()?)
+                )
+            };
+            Some(format!(
+                "{{pattern: {pattern}, color: {}}}",
+                debug_snbt_string(debug_dye_color_name(layer.color_id))
+            ))
+        })
+        .collect::<Option<Vec<_>>>()?;
+    Some(format!("[{}]", layers.join(", ")))
+}
+
 fn encode_base_color(
     _type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
@@ -660,7 +688,7 @@ mod tests {
 
     #[test]
     fn encoder_registry_is_unique_sorted_and_persistent() {
-        assert_eq!(PERSISTENT_SNBT_ENCODERS.len(), 77);
+        assert_eq!(PERSISTENT_SNBT_ENCODERS.len(), 78);
         let mut ids = HashSet::new();
         let mut previous = None;
         for descriptor in PERSISTENT_SNBT_ENCODERS {
@@ -760,5 +788,46 @@ mod tests {
         assert_eq!(encode_added_component_value_snbt(42, &patch, None), None);
         patch.stored_enchantments[0].level = 256;
         assert_eq!(encode_added_component_value_snbt(42, &patch, None), None);
+    }
+
+    #[test]
+    fn banner_pattern_layers_encode_named_and_direct_holders() {
+        let mut patch = bbb_protocol::packets::DataComponentPatchSummary {
+            banner_pattern_layers: vec![
+                bbb_protocol::packets::BannerPatternLayerSummary {
+                    registry_id: Some(5),
+                    asset_id: None,
+                    translation_key: None,
+                    color_id: 14,
+                },
+                bbb_protocol::packets::BannerPatternLayerSummary {
+                    registry_id: None,
+                    asset_id: Some("example:custom_banner/pattern".to_string()),
+                    translation_key: Some("block.example.banner.custom".to_string()),
+                    color_id: 3,
+                },
+            ],
+            ..Default::default()
+        };
+        assert_eq!(
+            encode_added_component_value_snbt(72, &patch, None),
+            Some(
+                "[{pattern: \"minecraft:stripe_bottom\", color: \"red\"}, \
+                 {pattern: {asset_id: \"example:custom_banner/pattern\", \
+                 translation_key: \"block.example.banner.custom\"}, color: \"light_blue\"}]"
+                    .to_string()
+            )
+        );
+
+        patch.banner_pattern_layers[0].registry_id = Some(43);
+        assert_eq!(encode_added_component_value_snbt(72, &patch, None), None);
+        patch.banner_pattern_layers.remove(0);
+        patch.banner_pattern_layers[0].asset_id = None;
+        assert_eq!(encode_added_component_value_snbt(72, &patch, None), None);
+        patch.banner_pattern_layers.clear();
+        assert_eq!(
+            encode_added_component_value_snbt(72, &patch, None),
+            Some("[]".to_string())
+        );
     }
 }
