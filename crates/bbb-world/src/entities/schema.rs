@@ -18,6 +18,7 @@ pub enum VanillaEntityMetadataFamily {
     Mob,
     Slime,
     AgeableMob,
+    AbstractHorse,
     ArmorStand,
     HangingEntity,
     ItemFrame,
@@ -87,6 +88,7 @@ pub const VANILLA_MOB_FLAGS_DATA_ID: u8 = 15;
 pub const VANILLA_SLIME_SIZE_DATA_ID: u8 = 16;
 pub const VANILLA_AGEABLE_MOB_BABY_DATA_ID: u8 = 16;
 pub const VANILLA_AGEABLE_MOB_AGE_LOCKED_DATA_ID: u8 = 17;
+pub const VANILLA_ABSTRACT_HORSE_FLAGS_DATA_ID: u8 = 18;
 pub const VANILLA_ARMOR_STAND_CLIENT_FLAGS_DATA_ID: u8 = 15;
 pub const VANILLA_ARMOR_STAND_HEAD_POSE_DATA_ID: u8 = 16;
 pub const VANILLA_ARMOR_STAND_BODY_POSE_DATA_ID: u8 = 17;
@@ -118,6 +120,11 @@ pub const VANILLA_LIVING_ENTITY_FLAG_SPIN_ATTACK: i8 = 1 << 2;
 pub const VANILLA_MOB_FLAG_NO_AI: i8 = 1 << 0;
 pub const VANILLA_MOB_FLAG_LEFT_HANDED: i8 = 1 << 1;
 pub const VANILLA_MOB_FLAG_AGGRESSIVE: i8 = 1 << 2;
+pub const VANILLA_ABSTRACT_HORSE_FLAG_TAME: i8 = 2;
+pub const VANILLA_ABSTRACT_HORSE_FLAG_BRED: i8 = 8;
+pub const VANILLA_ABSTRACT_HORSE_FLAG_EATING: i8 = 16;
+pub const VANILLA_ABSTRACT_HORSE_FLAG_STANDING: i8 = 32;
+pub const VANILLA_ABSTRACT_HORSE_FLAG_OPEN_MOUTH: i8 = 64;
 pub const VANILLA_ARMOR_STAND_CLIENT_FLAG_SMALL: i8 = 1 << 0;
 pub const VANILLA_ARMOR_STAND_CLIENT_FLAG_SHOW_ARMS: i8 = 1 << 2;
 pub const VANILLA_ARMOR_STAND_CLIENT_FLAG_NO_BASEPLATE: i8 = 1 << 3;
@@ -136,6 +143,7 @@ pub const VANILLA_AVATAR_DEFAULT_MODEL_CUSTOMIZATION: i8 = 0;
 pub const VANILLA_SLIME_DEFAULT_SIZE: i32 = 1;
 pub const VANILLA_AGEABLE_MOB_DEFAULT_BABY: bool = false;
 pub const VANILLA_AGEABLE_MOB_DEFAULT_AGE_LOCKED: bool = false;
+pub const VANILLA_ABSTRACT_HORSE_DEFAULT_FLAGS: i8 = 0;
 pub const VANILLA_ARMOR_STAND_DEFAULT_CLIENT_FLAGS: i8 = 0;
 pub const VANILLA_ARMOR_STAND_DEFAULT_HEAD_POSE: [f32; 3] = [0.0, 0.0, 0.0];
 pub const VANILLA_ARMOR_STAND_DEFAULT_BODY_POSE: [f32; 3] = [0.0, 0.0, 0.0];
@@ -349,6 +357,42 @@ const AGEABLE_MOB_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[
         data_id: VANILLA_AGEABLE_MOB_AGE_LOCKED_DATA_ID,
         serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
         default: VanillaEntityMetadataDefault::Boolean(VANILLA_AGEABLE_MOB_DEFAULT_AGE_LOCKED),
+    },
+];
+
+const ABSTRACT_HORSE_FIELDS: &[VanillaEntityMetadataFieldSchema] =
+    &[VanillaEntityMetadataFieldSchema {
+        name: "DATA_ID_FLAGS",
+        data_id: VANILLA_ABSTRACT_HORSE_FLAGS_DATA_ID,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+        default: VanillaEntityMetadataDefault::Byte(VANILLA_ABSTRACT_HORSE_DEFAULT_FLAGS),
+    }];
+
+const ABSTRACT_HORSE_FLAGS: &[VanillaEntityMetadataFlagSchema] = &[
+    VanillaEntityMetadataFlagSchema {
+        name: "FLAG_TAME",
+        data_id: VANILLA_ABSTRACT_HORSE_FLAGS_DATA_ID,
+        mask: VANILLA_ABSTRACT_HORSE_FLAG_TAME,
+    },
+    VanillaEntityMetadataFlagSchema {
+        name: "FLAG_BRED",
+        data_id: VANILLA_ABSTRACT_HORSE_FLAGS_DATA_ID,
+        mask: VANILLA_ABSTRACT_HORSE_FLAG_BRED,
+    },
+    VanillaEntityMetadataFlagSchema {
+        name: "FLAG_EATING",
+        data_id: VANILLA_ABSTRACT_HORSE_FLAGS_DATA_ID,
+        mask: VANILLA_ABSTRACT_HORSE_FLAG_EATING,
+    },
+    VanillaEntityMetadataFlagSchema {
+        name: "FLAG_STANDING",
+        data_id: VANILLA_ABSTRACT_HORSE_FLAGS_DATA_ID,
+        mask: VANILLA_ABSTRACT_HORSE_FLAG_STANDING,
+    },
+    VanillaEntityMetadataFlagSchema {
+        name: "FLAG_OPEN_MOUTH",
+        data_id: VANILLA_ABSTRACT_HORSE_FLAGS_DATA_ID,
+        mask: VANILLA_ABSTRACT_HORSE_FLAG_OPEN_MOUTH,
     },
 ];
 
@@ -570,6 +614,16 @@ const AGEABLE_MOB_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetad
     own_flags: &[],
 };
 
+const ABSTRACT_HORSE_SCHEMA: VanillaEntityMetadataFamilySchema =
+    VanillaEntityMetadataFamilySchema {
+        family: VanillaEntityMetadataFamily::AbstractHorse,
+        parent: Some(VanillaEntityMetadataFamily::AgeableMob),
+        inherited_field_count: AGEABLE_MOB_SCHEMA.inherited_field_count
+            + AGEABLE_MOB_FIELDS.len() as u8,
+        own_fields: ABSTRACT_HORSE_FIELDS,
+        own_flags: ABSTRACT_HORSE_FLAGS,
+    };
+
 const ARMOR_STAND_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamilySchema {
     family: VanillaEntityMetadataFamily::ArmorStand,
     parent: Some(VanillaEntityMetadataFamily::LivingEntity),
@@ -623,6 +677,7 @@ pub const fn vanilla_entity_metadata_schema(
         VanillaEntityMetadataFamily::Mob => &MOB_SCHEMA,
         VanillaEntityMetadataFamily::Slime => &SLIME_SCHEMA,
         VanillaEntityMetadataFamily::AgeableMob => &AGEABLE_MOB_SCHEMA,
+        VanillaEntityMetadataFamily::AbstractHorse => &ABSTRACT_HORSE_SCHEMA,
         VanillaEntityMetadataFamily::ArmorStand => &ARMOR_STAND_SCHEMA,
         VanillaEntityMetadataFamily::HangingEntity => &HANGING_ENTITY_SCHEMA,
         VanillaEntityMetadataFamily::ItemFrame => &ITEM_FRAME_SCHEMA,
@@ -704,6 +759,15 @@ mod tests {
                 .collect::<Vec<_>>(),
             (16..=17).collect::<Vec<_>>()
         );
+
+        let abstract_horse =
+            vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::AbstractHorse);
+        assert_eq!(
+            abstract_horse.parent,
+            Some(VanillaEntityMetadataFamily::AgeableMob)
+        );
+        assert_eq!(abstract_horse.inherited_field_count, 18);
+        assert_eq!(abstract_horse.own_fields[0].data_id, 18);
 
         let armor_stand = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::ArmorStand);
         assert_eq!(
@@ -905,6 +969,15 @@ mod tests {
                     default: VanillaEntityMetadataDefault::Boolean(false),
                 },
             ]
+        );
+        assert_eq!(
+            vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::AbstractHorse).own_fields,
+            &[VanillaEntityMetadataFieldSchema {
+                name: "DATA_ID_FLAGS",
+                data_id: 18,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+                default: VanillaEntityMetadataDefault::Byte(0),
+            }]
         );
         assert_eq!(
             vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::ArmorStand).own_fields,
@@ -1145,6 +1218,36 @@ mod tests {
             ]
         );
         assert_eq!(
+            vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::AbstractHorse).own_flags,
+            &[
+                VanillaEntityMetadataFlagSchema {
+                    name: "FLAG_TAME",
+                    data_id: 18,
+                    mask: 2,
+                },
+                VanillaEntityMetadataFlagSchema {
+                    name: "FLAG_BRED",
+                    data_id: 18,
+                    mask: 8,
+                },
+                VanillaEntityMetadataFlagSchema {
+                    name: "FLAG_EATING",
+                    data_id: 18,
+                    mask: 16,
+                },
+                VanillaEntityMetadataFlagSchema {
+                    name: "FLAG_STANDING",
+                    data_id: 18,
+                    mask: 32,
+                },
+                VanillaEntityMetadataFlagSchema {
+                    name: "FLAG_OPEN_MOUTH",
+                    data_id: 18,
+                    mask: 64,
+                },
+            ]
+        );
+        assert_eq!(
             vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Avatar).own_flags,
             &[
                 VanillaEntityMetadataFlagSchema {
@@ -1216,6 +1319,7 @@ mod tests {
             VanillaEntityMetadataFamily::Mob,
             VanillaEntityMetadataFamily::Slime,
             VanillaEntityMetadataFamily::AgeableMob,
+            VanillaEntityMetadataFamily::AbstractHorse,
             VanillaEntityMetadataFamily::ArmorStand,
             VanillaEntityMetadataFamily::HangingEntity,
             VanillaEntityMetadataFamily::ItemFrame,

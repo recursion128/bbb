@@ -22,6 +22,11 @@ use super::dragon::{
 };
 use super::{
     is_vanilla_boat_type, is_vanilla_vehicle_entity_type, EntityTransform, EntityVec3,
+    VANILLA_ABSTRACT_HORSE_DEFAULT_FLAGS as ABSTRACT_HORSE_DEFAULT_FLAGS,
+    VANILLA_ABSTRACT_HORSE_FLAGS_DATA_ID as ABSTRACT_HORSE_FLAGS_DATA_ID,
+    VANILLA_ABSTRACT_HORSE_FLAG_EATING as ABSTRACT_HORSE_FLAG_EATING,
+    VANILLA_ABSTRACT_HORSE_FLAG_OPEN_MOUTH as ABSTRACT_HORSE_FLAG_OPEN_MOUTH,
+    VANILLA_ABSTRACT_HORSE_FLAG_STANDING as ABSTRACT_HORSE_FLAG_STANDING,
     VANILLA_ENTITY_SHARED_FLAGS_DATA_ID, VANILLA_ENTITY_SHARED_FLAG_FALL_FLYING,
     VANILLA_ENTITY_TYPE_TNT_MINECART_ID, VANILLA_LIVING_ENTITY_FLAGS_DATA_ID,
     VANILLA_LIVING_ENTITY_FLAG_IS_USING, VANILLA_LIVING_ENTITY_HEALTH_DATA_ID,
@@ -74,10 +79,6 @@ const WITHER_TARGET_C_DATA_ID: u8 = 18;
 /// Vanilla `AbstractHorse.DATA_ID_FLAGS` (id 18): the shared equine flags byte after
 /// `AgeableMob`'s two accessors. `AbstractHorse.tick` eases render-state eat / stand / mouth
 /// amounts toward these bits every client tick.
-const ABSTRACT_HORSE_FLAGS_DATA_ID: u8 = 18;
-const ABSTRACT_HORSE_FLAG_EATING: i8 = 0x10;
-const ABSTRACT_HORSE_FLAG_STANDING: i8 = 0x20;
-const ABSTRACT_HORSE_FLAG_OPEN_MOUTH: i8 = 0x40;
 /// Vanilla `Panda.DATA_ID_FLAGS`, the panda's synced flags byte after unhappy/sneeze/eat/gene data.
 const PANDA_FLAGS_DATA_ID: u8 = 23;
 /// Vanilla `Panda.isRolling()` / `isSitting()` / `isOnBack()` masks within `DATA_ID_FLAGS`.
@@ -6120,7 +6121,11 @@ fn vanilla_equine_type(entity_type_id: i32) -> bool {
 }
 
 fn equine_pose_flags(data_values: &[EntityDataValue]) -> (bool, bool, bool) {
-    let flags = entity_data_byte(data_values, ABSTRACT_HORSE_FLAGS_DATA_ID, 0);
+    let flags = entity_data_byte(
+        data_values,
+        ABSTRACT_HORSE_FLAGS_DATA_ID,
+        ABSTRACT_HORSE_DEFAULT_FLAGS,
+    );
     (
         flags & ABSTRACT_HORSE_FLAG_EATING != 0,
         flags & ABSTRACT_HORSE_FLAG_STANDING != 0,

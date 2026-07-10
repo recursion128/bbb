@@ -85,6 +85,11 @@ use bbb_protocol::{
 use bbb_world::{
     BlockPos, EntityState, EntityVec3, LocalPlayerInputState, LocalPlayerPoseState,
     TagQueryResponseState, WorldStore,
+    VANILLA_ABSTRACT_HORSE_DEFAULT_FLAGS as ABSTRACT_HORSE_DEFAULT_FLAGS,
+    VANILLA_ABSTRACT_HORSE_FLAGS_DATA_ID as ABSTRACT_HORSE_FLAGS_DATA_ID,
+    VANILLA_ABSTRACT_HORSE_FLAG_BRED as ABSTRACT_HORSE_FLAG_BRED,
+    VANILLA_ABSTRACT_HORSE_FLAG_EATING as ABSTRACT_HORSE_FLAG_EATING,
+    VANILLA_ABSTRACT_HORSE_FLAG_TAME as ABSTRACT_HORSE_FLAG_TAME,
     VANILLA_AGEABLE_MOB_AGE_LOCKED_DATA_ID as AGEABLE_MOB_AGE_LOCKED_DATA_ID,
     VANILLA_AGEABLE_MOB_BABY_DATA_ID as AGEABLE_MOB_BABY_DATA_ID,
     VANILLA_AGEABLE_MOB_DEFAULT_AGE_LOCKED as AGEABLE_MOB_DEFAULT_AGE_LOCKED,
@@ -362,10 +367,6 @@ const ANIMAL_DEFAULT_IN_LOVE: i32 = 0;
 const ALLAY_VIBRATION_SELECTOR_DEFAULT_TICK: i64 = -1;
 const ALLAY_VIBRATION_DEFAULT_EVENT_DELAY: i32 = 0;
 const ALLAY_DEFAULT_DUPLICATION_COOLDOWN: i64 = 0;
-const ABSTRACT_HORSE_FLAGS_DATA_ID: u8 = 18;
-const ABSTRACT_HORSE_FLAG_TAME: i8 = 2;
-const ABSTRACT_HORSE_FLAG_BRED: i8 = 8;
-const ABSTRACT_HORSE_FLAG_EATING: i8 = 16;
 const ABSTRACT_HORSE_DEFAULT_TEMPER: i32 = 0;
 const ABSTRACT_CHESTED_HORSE_CHEST_DATA_ID: u8 = 19;
 const ABSTRACT_CHESTED_HORSE_DEFAULT_HAS_CHEST: bool = false;
@@ -6231,7 +6232,8 @@ fn debug_push_allay_additional_save_data(fields: &mut Vec<String>) {
 }
 
 fn debug_push_abstract_horse_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
-    let flags = debug_entity_data_byte_present(entity, ABSTRACT_HORSE_FLAGS_DATA_ID).unwrap_or(0);
+    let flags = debug_entity_data_byte_present(entity, ABSTRACT_HORSE_FLAGS_DATA_ID)
+        .unwrap_or(ABSTRACT_HORSE_DEFAULT_FLAGS);
     fields.push(format!(
         "EatingHaystack: {}",
         debug_snbt_bool(flags & ABSTRACT_HORSE_FLAG_EATING != 0)

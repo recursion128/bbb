@@ -9506,3 +9506,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   entity model size 与 F3+I save projection 删除本地 id/default，统一引用 schema；focused
   tests 锁定继承 offset、serializer/default、slime/magma-cube 尺寸投影、pick bounds 和
   save-NBT。未改变 squish 动画、size clamp 或实体行为。
+
+## 2026-07-10：Entity metadata schema phase 8（AbstractHorse）
+
+- [x] entity metadata schema 的 equine 父链：确认 `Animal extends AgeableMob` 无 accessor，
+  新增 `AgeableMob -> AbstractHorse` family，集中声明 BYTE `DATA_ID_FLAGS` id 18、default 0
+  以及 tame/bred/eating/standing/open-mouth 五个 masks。world equine eat/stand/mouth 动画与
+  native horse-family F3+I save projection 删除本地 id/default/masks，统一引用 schema；
+  focused tests 锁定继承 offset、serializer/default/masks、动画缓动、horse/donkey/mule/
+  skeleton-horse/zombie-horse/camel/llama save-NBT 和骑乘投影。本阶段未顺带收敛 chest、
+  strength 或具体 variant accessor。
