@@ -27,7 +27,7 @@ use bbb_protocol::{
 };
 use bbb_renderer::{
     sign_text_base_color, BlockDestroyOverlay, CameraPose, ClearColor, CloudEnvironment,
-    CloudFrame, EntityModelInstance, FogEnvironment, GuiItemLightingEntry,
+    CloudFrame, DebugFilledBox, EntityModelInstance, FogEnvironment, GuiItemLightingEntry,
     HudAdvancementBackgroundTexture, HudAdvancementHoverBoxSprite, HudAdvancementLineTexture,
     HudAdvancementTabSprite, HudAdvancementWidgetFrameSprite, HudAirSupply, HudBlockItemModel,
     HudDebugCrosshair, HudDebugFrameTimeChart, HudDebugGameModeSwitcher,
@@ -609,6 +609,16 @@ const CHUNK_BORDER_YELLOW_COLOR: [f32; 4] = [1.0, 1.0, 0.0, 1.0];
 const CHUNK_BORDER_MAJOR_COLOR: [f32; 4] = [0.25, 0.25, 1.0, 1.0];
 const CHUNK_BORDER_THICK_LINE_WIDTH: f32 = 4.0;
 const CHUNK_BORDER_THIN_LINE_WIDTH: f32 = 1.0;
+const DEBUG_HEIGHTMAP_CHUNK_DISTANCE: i32 = 2;
+const DEBUG_HEIGHTMAP_BOX_HEIGHT: f32 = 3.0 / 32.0;
+const DEBUG_HEIGHTMAP_COLORS: [[u8; 4]; 6] = [
+    [255, 255, 0, 255],
+    [0, 178, 0, 255],
+    [255, 0, 255, 255],
+    [0, 0, 127, 255],
+    [0, 76, 76, 255],
+    [0, 127, 127, 255],
+];
 
 fn push_capped_hud_debug_sample<T>(samples: &mut Vec<T>, value: T, capacity: usize) {
     samples.push(value);
@@ -2417,6 +2427,7 @@ pub(crate) fn pump_network_and_terrain(
     let entity_scene_outline = debug_entity_scene_outline(input, world, entity_partial_tick);
     let entity_target_outline =
         entity_target_outline_from_camera_at_partial_tick(world, camera_pose, entity_partial_tick);
+    let debug_filled_boxes = debug_heightmap_boxes(input, world, camera_pose);
     // Vanilla `LevelRenderer.extractBlockDestroyAnimation` reads block-breaking state during
     // render extract, after the client tick; local destroy overlay ticks are advanced above.
     let block_destroy_overlays = block_destroy_overlays_from_world(world, terrain_textures);
@@ -2518,6 +2529,7 @@ pub(crate) fn pump_network_and_terrain(
             chunk_border_outline,
             entity_scene_outline,
             entity_target_outline,
+            debug_filled_boxes,
             block_destroy_overlays,
         },
     );
@@ -3882,6 +3894,73 @@ fn debug_chunk_border_outline(
         points: Vec::new(),
         text_labels: Vec::new(),
     })
+}
+
+fn debug_heightmap_boxes(
+    input: &ClientInputState,
+    world: &WorldStore,
+    camera_pose: Option<CameraPose>,
+) -> Vec<DebugFilledBox> {
+    if !input.debug_screen_entry_enabled(
+        DebugScreenEntryId::VisualizeHeightmap,
+        world.local_player_has_reduced_debug_info(),
+    ) || world.level_info().is_none()
+    {
+        return Vec::new();
+    }
+    let Some(camera_pose) = camera_pose else {
+        return Vec::new();
+    };
+    if !camera_pose.position[0].is_finite() || !camera_pose.position[2].is_finite() {
+        return Vec::new();
+    }
+
+    let center = ChunkPos {
+        x: (camera_pose.position[0].floor() as i32).div_euclid(16),
+        z: (camera_pose.position[2].floor() as i32).div_euclid(16),
+    };
+    let mut boxes = Vec::new();
+    for chunk_offset_x in -DEBUG_HEIGHTMAP_CHUNK_DISTANCE..=DEBUG_HEIGHTMAP_CHUNK_DISTANCE {
+        for chunk_offset_z in -DEBUG_HEIGHTMAP_CHUNK_DISTANCE..=DEBUG_HEIGHTMAP_CHUNK_DISTANCE {
+            let chunk_pos = ChunkPos {
+                x: center.x.saturating_add(chunk_offset_x),
+                z: center.z.saturating_add(chunk_offset_z),
+            };
+            let Some(sampler) = world.chunk_heightmap_sampler(chunk_pos) else {
+                continue;
+            };
+            let chunk_min_x = chunk_pos.x.saturating_mul(16);
+            let chunk_min_z = chunk_pos.z.saturating_mul(16);
+            for kind_id in sampler.effective_kind_ids() {
+                let Some(color) = usize::try_from(kind_id)
+                    .ok()
+                    .and_then(|index| DEBUG_HEIGHTMAP_COLORS.get(index))
+                    .copied()
+                else {
+                    continue;
+                };
+                for local_x in 0_u8..16 {
+                    for local_z in 0_u8..16 {
+                        let Some(first_available) =
+                            sampler.first_available(kind_id, local_x, local_z)
+                        else {
+                            continue;
+                        };
+                        let x = chunk_min_x.saturating_add(i32::from(local_x)) as f32;
+                        let z = chunk_min_z.saturating_add(i32::from(local_z)) as f32;
+                        let y =
+                            first_available as f32 + kind_id as f32 * DEBUG_HEIGHTMAP_BOX_HEIGHT;
+                        boxes.push(DebugFilledBox {
+                            min: [x + 0.25, y, z + 0.25],
+                            max: [x + 0.75, y + DEBUG_HEIGHTMAP_BOX_HEIGHT, z + 0.75],
+                            color,
+                        });
+                    }
+                }
+            }
+        }
+    }
+    boxes
 }
 
 fn chunk_min_block(position: f32) -> i32 {

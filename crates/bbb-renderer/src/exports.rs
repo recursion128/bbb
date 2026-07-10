@@ -12,6 +12,7 @@ pub use crate::clouds::{
     VANILLA_DEFAULT_CLOUD_HEIGHT,
 };
 pub use crate::counters::RendererCounters;
+pub use crate::debug_filled_boxes::DebugFilledBox;
 pub use crate::debug_textures::DynamicTextureDumpSummary;
 pub use crate::entity_models::{
     allay_entity_texture_refs, armadillo_entity_texture_refs, armor_stand_entity_texture_refs,

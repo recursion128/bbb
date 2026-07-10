@@ -3290,6 +3290,87 @@ fn debug_chunk_border_outline_follows_f3_g_chunk_border_toggle() {
 }
 
 #[test]
+fn debug_heightmap_boxes_follow_custom_entry_and_vanilla_order() {
+    assert_eq!(
+        DEBUG_HEIGHTMAP_COLORS,
+        [
+            [255, 255, 0, 255],
+            [0, 178, 0, 255],
+            [255, 0, 255, 255],
+            [0, 0, 127, 255],
+            [0, 76, 76, 255],
+            [0, 127, 127, 255],
+        ]
+    );
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    let min_y = world.dimension().min_y as f32;
+    let mut chunk = empty_lightmap_test_chunk(world.dimension());
+    chunk.pos = ChunkPos { x: -1, z: -1 };
+    world.insert_decoded_chunk(chunk);
+    let camera_pose = Some(CameraPose {
+        position: [-0.2, 42.0, -0.2],
+        y_rot: 0.0,
+        x_rot: 0.0,
+        eye_height: CameraPose::STANDING_EYE_HEIGHT,
+    });
+    let mut input = ClientInputState::new(true);
+
+    assert!(debug_heightmap_boxes(&input, &world, camera_pose).is_empty());
+    input.set_debug_screen_entry_status(
+        DebugScreenEntryId::VisualizeHeightmap,
+        crate::debug_entries::DebugScreenEntryStatus::AlwaysOn,
+    );
+
+    let boxes = debug_heightmap_boxes(&input, &world, camera_pose);
+    assert_eq!(boxes.len(), 4 * 16 * 16);
+    assert_eq!(
+        boxes[0],
+        DebugFilledBox {
+            min: [-15.75, min_y + 3.0 / 32.0, -15.75],
+            max: [-15.25, min_y + 6.0 / 32.0, -15.25],
+            color: [0, 178, 0, 255],
+        }
+    );
+    assert_eq!(boxes[1].min, [-15.75, min_y + 3.0 / 32.0, -14.75]);
+    assert_eq!(boxes[16].min, [-14.75, min_y + 3.0 / 32.0, -15.75]);
+    assert_eq!(
+        boxes[256],
+        DebugFilledBox {
+            min: [-15.75, min_y + 9.0 / 32.0, -15.75],
+            max: [-15.25, min_y + 12.0 / 32.0, -15.25],
+            color: [0, 0, 127, 255],
+        }
+    );
+    assert_eq!(boxes[512].color, [0, 76, 76, 255]);
+    assert_eq!(boxes[768].color, [0, 127, 127, 255]);
+}
+
+#[test]
+fn debug_heightmap_boxes_respect_reduced_debug_and_camera_gates() {
+    let mut world =
+        world_with_dimension_height_and_reduced_debug_info(0, "minecraft:overworld", 16, true);
+    world.insert_decoded_chunk(empty_lightmap_test_chunk(world.dimension()));
+    let mut input = ClientInputState::new(true);
+    input.set_debug_screen_entry_status(
+        DebugScreenEntryId::VisualizeHeightmap,
+        crate::debug_entries::DebugScreenEntryStatus::AlwaysOn,
+    );
+
+    assert!(debug_heightmap_boxes(
+        &input,
+        &world,
+        Some(CameraPose {
+            position: [0.0, 42.0, 0.0],
+            y_rot: 0.0,
+            x_rot: 0.0,
+            eye_height: CameraPose::STANDING_EYE_HEIGHT,
+        })
+    )
+    .is_empty());
+    assert!(debug_heightmap_boxes(&input, &world, None).is_empty());
+}
+
+#[test]
 fn hud_boss_bar_projection_orders_by_uuid_and_maps_style_names() {
     let mut world = WorldStore::new();
     assert!(hud_boss_bars_from_world(&world).is_empty());
@@ -3694,6 +3775,25 @@ fn renderer_frame_outlines_extract_after_input_camera_and_partial_tick() {
             "outline RendererFrame fields should read one camera pose snapshot"
         );
     }
+}
+
+#[test]
+fn renderer_frame_commits_debug_filled_boxes_from_the_camera_snapshot() {
+    let runtime_source = include_str!("../runtime.rs");
+    let camera_pose = runtime_source
+        .find("let camera_pose = camera_pose_from_world(world);")
+        .expect("pump should extract one camera pose");
+    let boxes = runtime_source
+        .find("let debug_filled_boxes = debug_heightmap_boxes(input, world, camera_pose);")
+        .expect("pump should extract debug heightmap boxes");
+    let frame = runtime_source
+        .find("            debug_filled_boxes,\n")
+        .expect("RendererFrame should carry debug filled boxes");
+    assert!(camera_pose < boxes && boxes < frame);
+
+    let frame_source = include_str!("render_extract.rs");
+    assert!(frame_source.contains("pub(crate) debug_filled_boxes: Vec<DebugFilledBox>"));
+    assert!(frame_source.contains("renderer.set_debug_filled_boxes(frame.debug_filled_boxes);"));
 }
 
 #[test]

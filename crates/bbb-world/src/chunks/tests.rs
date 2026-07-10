@@ -282,6 +282,141 @@ fn samples_requested_heightmap_kind_from_chunk_heightmap() {
 }
 
 #[test]
+fn chunk_heightmap_sampler_requires_loaded_chunk() {
+    let store = WorldStore::new();
+
+    assert!(store
+        .chunk_heightmap_sampler(ChunkPos { x: 2, z: -3 })
+        .is_none());
+}
+
+#[test]
+fn chunk_heightmap_sampler_exposes_default_final_heightmaps() {
+    let dimension = WorldDimension {
+        min_y: -32,
+        height: 16,
+    };
+    let mut store = WorldStore::with_dimension(dimension);
+    store
+        .insert_level_chunk_with_light(synthetic_local_palette_chunk_packet())
+        .unwrap();
+
+    let sampler = store
+        .chunk_heightmap_sampler(ChunkPos { x: 2, z: -3 })
+        .unwrap();
+
+    assert_eq!(
+        sampler.effective_kind_ids().collect::<Vec<_>>(),
+        vec![1, 3, 4, 5]
+    );
+    for kind_id in [1, 3, 4, 5] {
+        assert_eq!(sampler.first_available(kind_id, 2, 3), Some(-32));
+    }
+    assert_eq!(sampler.first_available(0, 2, 3), None);
+    assert_eq!(sampler.first_available(2, 2, 3), None);
+    assert_eq!(sampler.first_available(4, 16, 3), None);
+    assert_eq!(sampler.first_available(4, 2, 16), None);
+}
+
+#[test]
+fn chunk_heightmap_sampler_orders_and_samples_all_vanilla_kinds() {
+    let dimension = WorldDimension {
+        min_y: -32,
+        height: 16,
+    };
+    let mut packet = synthetic_local_palette_chunk_packet();
+    packet.chunk_data.heightmaps = (0..=5)
+        .map(|kind_id| {
+            let first_available = dimension.min_y + kind_id + 1;
+            let entries = if kind_id == 0 {
+                vec![(2, 3, first_available), (3, 2, dimension.min_y + 15)]
+            } else {
+                vec![(2, 3, first_available)]
+            };
+            heightmap_data(kind_id, dimension, &entries)
+        })
+        .collect();
+    let mut store = WorldStore::with_dimension(dimension);
+    store.insert_level_chunk_with_light(packet).unwrap();
+
+    let sampler = store
+        .chunk_heightmap_sampler(ChunkPos { x: 2, z: -3 })
+        .unwrap();
+
+    assert_eq!(
+        sampler.effective_kind_ids().collect::<Vec<_>>(),
+        vec![0, 1, 2, 3, 4, 5]
+    );
+    for kind_id in 0..=5 {
+        assert_eq!(
+            sampler.first_available(kind_id, 2, 3),
+            Some(dimension.min_y + kind_id + 1)
+        );
+    }
+    // Vanilla's local column index is x + z * 16, not z + x * 16.
+    assert_eq!(sampler.first_available(0, 3, 2), Some(-17));
+    assert_eq!(sampler.first_available(0, 2, 3), Some(-31));
+}
+
+#[test]
+fn chunk_heightmap_sampler_uses_last_duplicate_kind() {
+    let dimension = WorldDimension {
+        min_y: -32,
+        height: 16,
+    };
+    let mut packet = synthetic_local_palette_chunk_packet();
+    packet.chunk_data.heightmaps = vec![
+        heightmap_data(4, dimension, &[(2, 3, -30)]),
+        heightmap_data(4, dimension, &[(2, 3, -25)]),
+    ];
+    let mut store = WorldStore::with_dimension(dimension);
+    store.insert_level_chunk_with_light(packet).unwrap();
+
+    let sampler = store
+        .chunk_heightmap_sampler(ChunkPos { x: 2, z: -3 })
+        .unwrap();
+
+    assert_eq!(sampler.first_available(4, 2, 3), Some(-25));
+    assert_eq!(
+        store.sample_heightmap_first_available(4, 34, -45),
+        Some(-25)
+    );
+}
+
+#[test]
+fn chunk_heightmap_sampler_does_not_replace_malformed_actual_maps() {
+    let dimension = WorldDimension {
+        min_y: -32,
+        height: 16,
+    };
+    let mut packet = synthetic_local_palette_chunk_packet();
+    packet.chunk_data.heightmaps = vec![
+        ChunkHeightmapData {
+            kind_id: 0,
+            data: vec![0],
+        },
+        ChunkHeightmapData {
+            kind_id: 4,
+            data: vec![0],
+        },
+    ];
+    let mut store = WorldStore::with_dimension(dimension);
+    store.insert_level_chunk_with_light(packet).unwrap();
+
+    let sampler = store
+        .chunk_heightmap_sampler(ChunkPos { x: 2, z: -3 })
+        .unwrap();
+
+    assert_eq!(
+        sampler.effective_kind_ids().collect::<Vec<_>>(),
+        vec![0, 1, 3, 4, 5]
+    );
+    assert_eq!(sampler.first_available(0, 2, 3), None);
+    assert_eq!(sampler.first_available(4, 2, 3), None);
+    assert_eq!(sampler.first_available(3, 2, 3), Some(-32));
+}
+
+#[test]
 fn motion_blocking_height_ignores_missing_or_malformed_heightmap() {
     let dimension = WorldDimension {
         min_y: 0,
@@ -1274,6 +1409,14 @@ fn motion_blocking_heightmap(
     dimension: WorldDimension,
     entries: &[(u8, u8, i32)],
 ) -> ChunkHeightmapData {
+    heightmap_data(4, dimension, entries)
+}
+
+fn heightmap_data(
+    kind_id: i32,
+    dimension: WorldDimension,
+    entries: &[(u8, u8, i32)],
+) -> ChunkHeightmapData {
     let bits = heightmap_bits_for_dimension(dimension);
     let mut values = vec![0u64; 16 * 16];
     for &(local_x, local_z, first_available) in entries {
@@ -1281,7 +1424,7 @@ fn motion_blocking_heightmap(
         values[index] = u64::try_from(first_available - dimension.min_y).unwrap();
     }
     ChunkHeightmapData {
-        kind_id: 4,
+        kind_id,
         data: pack_fixed_values(&values, bits)
             .into_iter()
             .map(|value| value as i64)

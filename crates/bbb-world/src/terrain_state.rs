@@ -18,10 +18,10 @@ pub use crate::chest_lids::{
 };
 pub use crate::chunks::{
     decode_level_chunk_with_light, BannerPatternLayerState, BannerPatternsState, BlockEntityRecord,
-    ChunkBiomeSampler, ChunkColumn, ChunkProbeSummaryState, ChunkSection, ChunkState,
-    ChunkViewState, DecoratedPotSherdsState, HeightmapData, LightData, NbtPayloadSummary,
-    PaletteDomain, PaletteKind, PaletteValue, PalettedContainerData, SignBlockEntityTextState,
-    SignTextDyeColor, SignTextSideState, VaultConnectionParticleState,
+    ChunkBiomeSampler, ChunkColumn, ChunkHeightmapSampler, ChunkProbeSummaryState, ChunkSection,
+    ChunkState, ChunkViewState, DecoratedPotSherdsState, HeightmapData, LightData,
+    NbtPayloadSummary, PaletteDomain, PaletteKind, PaletteValue, PalettedContainerData,
+    SignBlockEntityTextState, SignTextDyeColor, SignTextSideState, VaultConnectionParticleState,
     VaultConnectionParticleTargetState, VaultSharedDataState,
 };
 pub use crate::conduit_blocks::{

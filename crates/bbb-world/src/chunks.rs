@@ -1,6 +1,7 @@
 mod banner_patterns;
 mod decode;
 mod end_gateway;
+mod heightmap;
 mod light;
 mod nbt;
 mod palette;
@@ -15,6 +16,7 @@ pub(crate) use banner_patterns::decode_banner_patterns;
 pub use decode::decode_level_chunk_with_light;
 pub(crate) use decode::{decode_biome_sections, decode_nbt_payload_summary};
 pub(crate) use end_gateway::decode_end_gateway_block_entity_data;
+pub use heightmap::ChunkHeightmapSampler;
 pub use light::LightData;
 pub(crate) use light::{merge_light_data, sample_terrain_light};
 pub use palette::{PaletteDomain, PaletteKind, PaletteValue, PalettedContainerData};

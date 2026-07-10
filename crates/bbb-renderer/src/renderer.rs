@@ -26,6 +26,9 @@ use crate::{
         CloudShape, CloudTarget, CloudTextureData, CloudTextureImage,
     },
     counters::RendererCounters,
+    debug_filled_boxes::{
+        create_debug_filled_box_pipeline, sanitize_debug_filled_boxes, DebugFilledBox,
+    },
     entity_models::{
         create_entity_model_armor_cutout_pipeline, create_entity_model_armor_entity_glint_pipeline,
         create_entity_model_armor_translucent_pipeline,
@@ -208,6 +211,7 @@ pub struct Renderer {
     pub(super) terrain_pipeline: wgpu::RenderPipeline,
     pub(super) terrain_translucent_pipeline: wgpu::RenderPipeline,
     pub(super) block_destroy_pipeline: wgpu::RenderPipeline,
+    pub(super) debug_filled_box_pipeline: wgpu::RenderPipeline,
     pub(super) entity_model_pipeline: wgpu::RenderPipeline,
     pub(super) entity_model_textured_pipeline: wgpu::RenderPipeline,
     pub(super) entity_model_textured_cull_pipeline: wgpu::RenderPipeline,
@@ -246,6 +250,8 @@ pub struct Renderer {
     pub(super) frame_lightning_indices: FrameDataBuffer,
     pub(super) frame_world_border_vertices: FrameDataBuffer,
     pub(super) frame_world_border_indices: FrameDataBuffer,
+    pub(super) frame_debug_filled_box_vertices: FrameDataBuffer,
+    pub(super) frame_debug_filled_box_indices: FrameDataBuffer,
     pub(super) frame_item_entity_vertices: FrameDataBuffer,
     pub(super) frame_hud_vertices: FrameDataBuffer,
     pub(super) weather_pipeline: wgpu::RenderPipeline,
@@ -424,6 +430,7 @@ pub struct Renderer {
     pub(super) chunk_border_outline: Option<SelectionOutlineGpu>,
     pub(super) entity_scene_outline: Option<SelectionOutlineGpu>,
     pub(super) entity_target_outline: Option<SelectionOutlineGpu>,
+    pub(super) debug_filled_boxes: Vec<DebugFilledBox>,
     pub(super) hud_crosshair: Option<HudSpriteGpu>,
     pub(super) hud_hotbar: Option<HudSpriteGpu>,
     pub(super) hud_hotbar_selection: Option<HudSpriteGpu>,
@@ -950,6 +957,8 @@ impl Renderer {
         );
         let block_destroy_pipeline =
             create_block_destroy_pipeline(&device, format, &terrain_bind_group_layout);
+        let debug_filled_box_pipeline =
+            create_debug_filled_box_pipeline(&device, format, &terrain_bind_group_layout);
         let entity_model_pipeline = create_entity_model_pipeline(
             &device,
             format,
@@ -1272,6 +1281,7 @@ impl Renderer {
             terrain_pipeline,
             terrain_translucent_pipeline,
             block_destroy_pipeline,
+            debug_filled_box_pipeline,
             entity_model_pipeline,
             entity_model_textured_pipeline,
             entity_model_textured_cull_pipeline,
@@ -1326,6 +1336,12 @@ impl Renderer {
             frame_lightning_indices: FrameDataBuffer::index("bbb-lightning-frame-indices"),
             frame_world_border_vertices: FrameDataBuffer::vertex("bbb-world-border-frame-vertices"),
             frame_world_border_indices: FrameDataBuffer::index("bbb-world-border-frame-indices"),
+            frame_debug_filled_box_vertices: FrameDataBuffer::vertex(
+                "bbb-debug-filled-box-frame-vertices",
+            ),
+            frame_debug_filled_box_indices: FrameDataBuffer::index(
+                "bbb-debug-filled-box-frame-indices",
+            ),
             frame_item_entity_vertices: FrameDataBuffer::vertex("bbb-item-entity-frame-vertices"),
             frame_hud_vertices: FrameDataBuffer::vertex("bbb-hud-frame-vertices"),
             weather_pipeline,
@@ -1493,6 +1509,7 @@ impl Renderer {
             chunk_border_outline: None,
             entity_scene_outline: None,
             entity_target_outline: None,
+            debug_filled_boxes: Vec::new(),
             hud_crosshair: None,
             hud_hotbar: None,
             hud_hotbar_selection: None,
@@ -1813,6 +1830,13 @@ impl Renderer {
 
     pub fn set_clear_color(&mut self, clear: ClearColor) {
         self.clear = clear;
+    }
+
+    /// Replaces this frame's `RenderTypes.debugFilledBox()` submissions.
+    /// Reversed bounds are normalized; non-finite and zero-volume boxes are
+    /// discarded. Passing an empty vector clears all previous geometry.
+    pub fn set_debug_filled_boxes(&mut self, boxes: Vec<DebugFilledBox>) {
+        self.debug_filled_boxes = sanitize_debug_filled_boxes(boxes);
     }
 
     pub fn set_selection_outline(&mut self, outline: Option<SelectionOutline>) {
