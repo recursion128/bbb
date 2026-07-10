@@ -65,6 +65,7 @@ static PERSISTENT_SNBT_ENCODERS: &[PersistentSnbtEncoderDescriptor] = &[
     encoder(60, encode_block_entity_data),
     encoder(61, encode_instrument),
     encoder(63, encode_ominous_bottle_amplifier),
+    encoder(64, encode_jukebox_playable),
     encoder(65, encode_provides_banner_patterns),
     encoder(66, encode_codec_backed_nbt),
     encoder(67, encode_lodestone_tracker),
@@ -507,6 +508,16 @@ fn encode_ominous_bottle_amplifier(
     )
 }
 
+fn encode_jukebox_playable(
+    _type_id: i32,
+    patch: &bbb_protocol::packets::DataComponentPatchSummary,
+    item_runtime: Option<&NativeItemRuntime>,
+) -> Option<String> {
+    Some(debug_snbt_string(
+        item_runtime?.jukebox_song_resource_id(patch.jukebox_song_id?)?,
+    ))
+}
+
 fn encode_provides_banner_patterns(
     _type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
@@ -699,7 +710,7 @@ mod tests {
 
     #[test]
     fn encoder_registry_is_unique_sorted_and_persistent() {
-        assert_eq!(PERSISTENT_SNBT_ENCODERS.len(), 79);
+        assert_eq!(PERSISTENT_SNBT_ENCODERS.len(), 80);
         let mut ids = HashSet::new();
         let mut previous = None;
         for descriptor in PERSISTENT_SNBT_ENCODERS {
@@ -858,5 +869,42 @@ mod tests {
         patch.instrument_id = None;
         patch.instrument_description = Some("Custom horn".to_string());
         assert_eq!(encode_added_component_value_snbt(61, &patch, None), None);
+    }
+
+    #[test]
+    fn jukebox_playable_encoder_uses_fixed_registry_holders_only() {
+        let item_runtime = NativeItemRuntime::empty_for_test();
+        let mut patch = bbb_protocol::packets::DataComponentPatchSummary {
+            jukebox_song_id: Some(1),
+            ..Default::default()
+        };
+        assert_eq!(
+            encode_added_component_value_snbt(64, &patch, Some(&item_runtime)),
+            Some("\"minecraft:cat\"".to_string())
+        );
+        assert_eq!(encode_added_component_value_snbt(64, &patch, None), None);
+
+        patch.jukebox_song_id = Some(21);
+        assert_eq!(
+            encode_added_component_value_snbt(64, &patch, Some(&item_runtime)),
+            None
+        );
+
+        patch.jukebox_song_id = None;
+        patch.jukebox_direct_song = Some(Box::new(bbb_protocol::packets::JukeboxSongSummary {
+            sound_event: bbb_protocol::packets::SoundEventSummary {
+                registry_id: None,
+                sound_id: Some("example:music.custom".to_string()),
+                fixed_range_bits: None,
+            },
+            description: "Custom song".to_string(),
+            description_styled: None,
+            length_in_seconds_bits: 60.0_f32.to_bits(),
+            comparator_output: 7,
+        }));
+        assert_eq!(
+            encode_added_component_value_snbt(64, &patch, Some(&item_runtime)),
+            None
+        );
     }
 }

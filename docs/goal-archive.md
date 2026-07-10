@@ -9031,3 +9031,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   79 个 added entry，并覆盖 unknown id 与 direct holder 的安全省略。direct
   Instrument 仍缺 sound_event/use_duration/range 和可无损回写的 description 树，
   动态 datapack Instrument 排序也仍保留在 registry-backed 总账本。
+
+## 2026-07-10：ItemStack named jukebox-playable save codec
+
+- [x] minecraft:jukebox_playable 的 fixed-registry named-holder 持久化分支
+  （P2 item-model + native input）：依据 vanilla 26.1 `JukeboxPlayable.CODEC`
+  与 `JukeboxSong.CODEC` 的 `RegistryFixedCodec`，NativeItemRuntime 从驱动既有
+  tooltip/audio 的 JukeboxSongRegistry 暴露窄 resource-id 查询；native type id
+  64 encoder 仅对 codec-valid named holder 输出资源 ID。大型 component patch
+  test 从 79 扩展到 80 个 added entry，并覆盖 unknown id、缺 runtime 与 direct
+  STREAM_CODEC holder 的安全省略；后者不能由 fixed-registry persistent codec
+  合法编码。动态 datapack JukeboxSong 排序仍保留在 registry-backed 总账本。

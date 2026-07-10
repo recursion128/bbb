@@ -236,7 +236,7 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   projection, remaining codec-backed SNBT projection (component removals are complete;
   added values still include `AbstractArrow`
   `inBlockState` and `item`, remaining data-component patch entries (including
-  direct instrument holders; implemented
+  direct instrument and direct jukebox-song network holders; implemented
   through the protocol component descriptor catalog and native persistent SNBT
   encoder registry)
   beyond the supported custom-NBT/primitive (including repair-cost/enchantable/glider,
@@ -254,6 +254,7 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   charged-projectile/bundle/writable-book/lodestone/profile/banner-pattern-provider-tag/
   banner-pattern-layers/
   instrument-named-holder/
+  jukebox-playable-named-holder/
   pot-decoration/
   container/block-state/built-in animal/color enum (wolf/cat collars, fox,
   salmon, parrot, mooshroom, rabbit, horse, llama, axolotl, sheep, shulker,

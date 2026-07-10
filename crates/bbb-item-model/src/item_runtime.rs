@@ -977,6 +977,12 @@ impl NativeItemRuntime {
         self.registry.as_ref()?.protocol_id(resource_id)
     }
 
+    /// The `minecraft:jukebox_song` resource id for a component holder id.
+    /// Uses the same ordered registry that drives jukebox tooltips and audio.
+    pub fn jukebox_song_resource_id(&self, registry_id: i32) -> Option<&str> {
+        self.jukebox_songs.song_id(registry_id)
+    }
+
     /// The item's own model display transform for a context (vanilla `ItemTransform`), retained from the
     /// resolved item cuboid model. `None` if the item has no registry entry or no resolved model (the
     /// caller then falls back to the parent-model default). Used to place the 3D model in hand / frame /
