@@ -47,6 +47,65 @@ rewrite git history. If a slice explicitly allows worker commits, those commits
 stay on temporary branches and the main agent remains the only merger and final
 committer.
 
+## Orchestration Strategy
+
+Use a single-slice, staged pipeline rather than assigning several complete features
+at once. The main bottlenecks are vanilla verification, cross-crate contracts,
+integration, and the final workspace gate; adding write-heavy agents beyond those
+boundaries usually creates more merge work than useful throughput.
+
+With four available agent slots, prefer this topology:
+
+- main agent: task selection, vanilla confirmation, API contract, native/control
+  integration, review, gate, and commit; prefer the strongest general reasoning
+  model available, currently `gpt-5.6-sol` with high reasoning effort
+- `bbb_explorer`: read-only repo and vanilla-source investigation, pinned to
+  `gpt-5.6-terra` with medium reasoning effort
+- `bbb_worker`: one bounded routine protocol/world/net or renderer/input ownership
+  area, pinned to `gpt-5.6-terra` with medium reasoning effort
+- `bbb_gpu_worker`: one ambiguous GPU-state, renderer-architecture, or cross-crate
+  ownership area, pinned to `gpt-5.6-sol` with high reasoning effort
+- `bbb_reviewer`: read-only integrated-diff and test-gap review, pinned to
+  `gpt-5.6-sol` with high reasoning effort; reuse a freed implementation slot for
+  this role
+
+The project-scoped definitions live in `.codex/agents/`; `.codex/config.toml` caps
+the topology at four threads and one spawned level. If an account cannot use a pinned
+model, update the corresponding agent file to the closest available model while
+preserving the role split and reasoning tier.
+With fewer slots, keep the main agent and explorer first, then add the highest-value
+worker. With more slots, do not add overlapping writers; use extra capacity for
+read-only audit, focused testing, or review.
+
+Run each slice in three stages:
+
+1. **Evidence and contract**
+   - `bbb_explorer` locates the exact vanilla classes, formulas, ids, ordering, and
+     nearby repo implementation while the main agent confirms the ledger gap is real.
+   - Main agent verifies critical vanilla facts and freezes a small integration
+     contract before parallel edits: owned paths, public types/functions, ordering
+     constraints, fallback behavior, and focused test commands.
+2. **Disjoint implementation**
+   - At most two `bbb_worker` / `bbb_gpu_worker` agents edit non-overlapping modules
+     in independent worktrees.
+   - Main agent keeps the integration path moving, normally native/control frame
+     wiring, contract reconciliation, documentation, and tests that span crates.
+   - Do not start implementation of another complete slice before the current slice
+     is integrated and committed.
+3. **Review and closeout**
+   - As soon as an implementation slot becomes free, reuse it for `bbb_reviewer`
+     read-only review of the integrated diff or test-gap analysis.
+   - Workers run focused tests only. The main agent runs formatting, diff checks,
+     the authoritative full gate, and the final commit once after integration.
+   - While the full gate runs, an otherwise idle explorer may audit the next slice
+     without editing files or launching Cargo, but the next implementation waits for
+     the current commit.
+
+Parallelize by semantic ownership, not by checklist count. When a slice establishes
+a reusable renderer or world surface, prefer the next ledger item that can consume
+that surface without violating priority order; this amortizes verification and
+reduces repeated architecture work.
+
 ## Standard Workflow
 
 1. Start with `git status --short`.
@@ -90,7 +149,13 @@ Every worker prompt should include:
 - Instruction not to revert unrelated changes.
 - Instruction not to commit or rewrite history.
 - Required focused tests.
-- Final report with changed paths and test results.
+- Required structured final report, using the applicable headings:
+  - `FACTS`: authoritative vanilla sources and behavior
+  - `CHANGED`: changed paths
+  - `API`: added or changed integration surface
+  - `TESTS`: exact commands and results
+  - `RISKS`: unverified edges or residual risk
+  - `INTEGRATION`: actions or compatibility notes for the main agent
 
 ## Worker Worktree Discipline
 
