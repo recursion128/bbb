@@ -8698,6 +8698,25 @@ fn item_stack_snbt_preserves_vanilla_consume_effects() {
 }
 
 #[test]
+fn item_stack_snbt_preserves_potion_contents_and_omits_unknown_potions() {
+    let mut patch = DataComponentPatchSummary {
+        potion_custom_effect_count: Some(0),
+        ..DataComponentPatchSummary::default()
+    };
+    assert_eq!(
+        debug_potion_contents_component_snbt(&patch),
+        Some("{}".to_string())
+    );
+
+    patch.potion_id = Some(46);
+    assert_eq!(debug_potion_contents_component_snbt(&patch), None);
+
+    patch.potion_id = None;
+    patch.potion_custom_effect_count = Some(1);
+    assert_eq!(debug_potion_contents_component_snbt(&patch), None);
+}
+
+#[test]
 fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
     let registry: ItemRegistryCatalog = serde_json::from_value(serde_json::json!({
         "resource_ids": [
@@ -8719,12 +8738,12 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
         EquipmentAssetCatalog::default(),
     );
     let patch = DataComponentPatchSummary {
-        added: 73,
+        added: 74,
         added_type_ids: vec![
             0, 1, 2, 3, 4, 5, 7, 10, 12, 17, 18, 19, 21, 22, 23, 24, 25, 26, 27, 29, 30, 31, 33,
-            34, 35, 36, 38, 39, 40, 43, 44, 45, 46, 47, 49, 50, 52, 54, 57, 58, 59, 60, 63, 65, 66,
-            67, 68, 69, 70, 71, 73, 74, 75, 76, 77, 78, 79, 80, 84, 85, 86, 87, 88, 89, 90, 91, 92,
-            101, 103, 104, 107, 108, 109,
+            34, 35, 36, 38, 39, 40, 43, 44, 45, 46, 47, 49, 50, 51, 52, 54, 57, 58, 59, 60, 63, 65,
+            66, 67, 68, 69, 70, 71, 73, 74, 75, 76, 77, 78, 79, 80, 84, 85, 86, 87, 88, 89, 90, 91,
+            92, 101, 103, 104, 107, 108, 109,
         ],
         removed_type_ids: vec![6],
         custom_data: Some(NbtSummaryValue::Compound(vec![
@@ -9015,6 +9034,19 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
             },
         }],
         bundle_contents_item_count: Some(1),
+        potion_id: Some(31),
+        potion_custom_color: Some(0x77_88_99),
+        potion_custom_effect_count: Some(1),
+        potion_custom_effects: vec![MobEffectInstanceSummary {
+            effect_id: 0,
+            amplifier: 1,
+            duration: 600,
+            ambient: true,
+            show_particles: false,
+            show_icon: false,
+            hidden_effect: None,
+        }],
+        potion_custom_name: Some("swift".to_string()),
         potion_duration_scale_bits: Some(1.5_f32.to_bits()),
         writable_book_pages: vec!["first\npage".to_string(), "second raw".to_string()],
         writable_book_page_filters: vec![None, Some("second filtered".to_string())],
@@ -9207,6 +9239,10 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
          \"minecraft:bundle_contents\": [{id: \"minecraft:arrow\", count: 3, \
          components: {\"minecraft:attack_range\": {}, \
          \"minecraft:dyed_color\": 2245734}}], \
+         \"minecraft:potion_contents\": {potion: \"minecraft:regeneration\", \
+         custom_color: 7833753, custom_effects: [{id: \"minecraft:speed\", \
+         amplifier: 1, duration: 600, ambient: 1b, show_particles: 0b, \
+         show_icon: 0b}], custom_name: \"swift\"}, \
          \"minecraft:potion_duration_scale\": 1.5f, \
          \"minecraft:writable_book_content\": {pages: [{raw: \"first\\npage\"}, \
          {raw: \"second raw\", filtered: \"second filtered\"}]}, \

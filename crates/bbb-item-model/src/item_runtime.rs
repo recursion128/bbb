@@ -65,6 +65,7 @@ use crate::{
 mod icon_model;
 mod profile_skin;
 
+pub use icon_model::vanilla_potion_resource_id;
 use icon_model::{
     contains_runtime_condition, default_item_name_translation_key,
     item_icon_model_ref_for_definition, CompassTarget, CrossbowChargeType, IconResolveContext,

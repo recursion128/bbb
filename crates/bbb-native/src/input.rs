@@ -109,7 +109,10 @@ use crate::crosshair::protocol_block_pos_from_world;
 use crate::crosshair::{crosshair_target_from_camera_at_partial_tick, CrosshairTarget};
 use crate::entity_scene::WITHER_SKULL_DANGEROUS_DATA_ID;
 use crate::terrain_runtime::TerrainUploadState;
-use bbb_item_model::{vanilla_mob_effect_resource_id, ItemModelKeybindContext, NativeItemRuntime};
+use bbb_item_model::{
+    vanilla_mob_effect_resource_id, vanilla_potion_resource_id, ItemModelKeybindContext,
+    NativeItemRuntime,
+};
 pub(crate) use bundle::select_bundle_item;
 use commands::*;
 pub(crate) use commands::{
@@ -4707,6 +4710,7 @@ fn debug_supported_added_component_snbt(
         BUNDLE_CONTENTS_COMPONENT_TYPE_ID => {
             debug_item_stack_template_list_snbt(&patch.bundle_contents_items, item_runtime)?
         }
+        51 => debug_potion_contents_component_snbt(patch)?,
         52 => {
             debug_range_checked_float_component_snbt(patch.potion_duration_scale_bits?, 0.0, None)?
         }
@@ -4808,6 +4812,7 @@ fn debug_supported_component_resource_id(type_id: i32) -> Option<&'static str> {
         47 => "minecraft:map_decorations",
         CHARGED_PROJECTILES_COMPONENT_TYPE_ID => "minecraft:charged_projectiles",
         BUNDLE_CONTENTS_COMPONENT_TYPE_ID => "minecraft:bundle_contents",
+        51 => "minecraft:potion_contents",
         52 => "minecraft:potion_duration_scale",
         WRITABLE_BOOK_CONTENT_COMPONENT_TYPE_ID => "minecraft:writable_book_content",
         57 => "minecraft:debug_stick_state",
@@ -5266,6 +5271,37 @@ fn debug_mob_effect_details_fields(
         ));
     }
     Some(fields)
+}
+
+fn debug_potion_contents_component_snbt(
+    patch: &bbb_protocol::packets::DataComponentPatchSummary,
+) -> Option<String> {
+    if patch.potion_custom_effect_count? != patch.potion_custom_effects.len() {
+        return None;
+    }
+
+    let mut fields = Vec::new();
+    if let Some(potion_id) = patch.potion_id {
+        fields.push(format!(
+            "potion: {}",
+            debug_snbt_string(vanilla_potion_resource_id(potion_id)?)
+        ));
+    }
+    if let Some(custom_color) = patch.potion_custom_color {
+        fields.push(format!("custom_color: {custom_color}"));
+    }
+    if !patch.potion_custom_effects.is_empty() {
+        let custom_effects = patch
+            .potion_custom_effects
+            .iter()
+            .map(debug_mob_effect_instance_snbt)
+            .collect::<Option<Vec<_>>>()?;
+        fields.push(format!("custom_effects: [{}]", custom_effects.join(", ")));
+    }
+    if let Some(custom_name) = patch.potion_custom_name.as_deref() {
+        fields.push(format!("custom_name: {}", debug_snbt_string(custom_name)));
+    }
+    Some(format!("{{{}}}", fields.join(", ")))
 }
 
 fn debug_range_checked_float_component_snbt(

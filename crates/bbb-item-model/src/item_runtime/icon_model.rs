@@ -166,6 +166,12 @@ const VANILLA_POTION_KEYS: &[&str] = &[
     "minecraft:oozing",
     "minecraft:infested",
 ];
+
+pub fn vanilla_potion_resource_id(potion_id: i32) -> Option<&'static str> {
+    let potion_id = usize::try_from(potion_id).ok()?;
+    VANILLA_POTION_KEYS.get(potion_id).copied()
+}
+
 const VANILLA_VILLAGER_TYPE_KEYS: &[&str] = &[
     "minecraft:desert",
     "minecraft:jungle",
@@ -598,6 +604,14 @@ fn bundle_item_weight(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn vanilla_potion_resource_ids_follow_26_1_bootstrap_order() {
+        assert_eq!(vanilla_potion_resource_id(0), Some("minecraft:water"));
+        assert_eq!(vanilla_potion_resource_id(45), Some("minecraft:infested"));
+        assert_eq!(vanilla_potion_resource_id(46), None);
+        assert_eq!(vanilla_potion_resource_id(-1), None);
+    }
 
     #[test]
     fn bundle_item_weight_treats_empty_bundle_component_as_nested_bundle() {

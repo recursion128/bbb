@@ -8963,3 +8963,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   effect、递归 details、direct/tag、非法 probability/diameter、unknown effect id 与
   amplifier clamp；现有 73 项 native component patch 投影扩展为五种效果完整
   列表。未知 MobEffect id 仍安全省略整组件。
+
+## 2026-07-10：ItemStack potion-contents save codec
+
+- [x] minecraft:potion_contents 持久化 component（P2 item-model + native
+  input）：依据 vanilla 26.1 PotionContents.FULL_CODEC/STREAM_CODEC，复用 protocol
+  已保留的 optional potion/custom-color/custom-effects/custom-name 摘要与完整
+  MobEffectInstance SNBT encoder；item-model 从既有 46 项 Potion bootstrap 表
+  暴露窄 resource-id 查询。native component patch test 从 73 扩展到 74 个
+  added entry，覆盖 base potion、custom color、effect details 与 custom name，
+  另覆盖默认空 compound、effect count mismatch 和 unknown potion id 的安全省略。
