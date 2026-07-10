@@ -9252,3 +9252,16 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   patch test 从 106 扩展到全部 107 个 persistent catalog type id；encoder registry
   同步达到 107 项。仍未实现的 direct-holder/override-display 等值变体继续按账本
   跟踪并安全省略，不以本切片误标为完成。
+
+## 2026-07-10：Vanilla packet catalog generation
+
+- [x] protocol packet id/resource/class catalog（P1 mechanical vanilla data）：新增
+  `scripts/generate-packet-catalog.py`，维护时从 vanilla 26.1 的 Handshake/Status/
+  Login/Configuration/Game `*Protocols.java` 注册顺序及全部 `*PacketTypes.java`
+  resource id 确定性生成 checked-in `bbb-protocol::packet_catalog`；普通 build/test
+  不需要工作区外源码，`ids.rs` 仅保留兼容 re-export，不再手工维护数字。
+  `--check`、本地 vanilla 可用时的 test-time regeneration check、9 个 state/direction
+  catalog 的连续/唯一/固定长度测试，以及 play clientbound 141 项与 handwritten
+  dispatch 的双向计数/逐项常量覆盖共同锁定生成物；bundle delimiter 按
+  `withBundlePacket` 的实际 wire id 0 单独生成。decode/encode handler 仍为手写，
+  未顺带扩张 packet 功能。

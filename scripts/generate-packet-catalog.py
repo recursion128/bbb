@@ -1,0 +1,361 @@
+#!/usr/bin/env python3
+"""Generate the checked-in vanilla 26.1 packet catalog.
+
+The protocol registration order comes from the five *Protocols.java files. Packet
+resource ids come from the corresponding *PacketTypes.java declarations. Normal
+builds consume only the generated Rust file; this maintenance tool is the only path
+that needs the local decompiled vanilla sources.
+"""
+
+from __future__ import annotations
+
+import argparse
+import difflib
+import re
+import subprocess
+import sys
+from dataclasses import dataclass
+from pathlib import Path
+
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+DEFAULT_SOURCE_ROOT = Path.home() / "Work/mc-code/sources/26.1"
+DEFAULT_OUTPUT = REPO_ROOT / "crates/bbb-protocol/src/packet_catalog.rs"
+PROTOCOL_ROOT = Path("net/minecraft/network/protocol")
+PROTOCOL_SPECS = (
+    ("handshake", "handshake/HandshakeProtocols.java", ("serverbound",)),
+    ("status", "status/StatusProtocols.java", ("serverbound", "clientbound")),
+    ("login", "login/LoginProtocols.java", ("serverbound", "clientbound")),
+    (
+        "configuration",
+        "configuration/ConfigurationProtocols.java",
+        ("serverbound", "clientbound"),
+    ),
+    ("play", "game/GameProtocols.java", ("serverbound", "clientbound")),
+)
+
+
+@dataclass(frozen=True)
+class Packet:
+    constant: str
+    resource_id: str
+    class_name: str
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--source-root", type=Path, default=DEFAULT_SOURCE_ROOT)
+    parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
+    parser.add_argument("--check", action="store_true")
+    return parser.parse_args()
+
+
+def packet_resource_ids(protocol_root: Path) -> dict[str, str]:
+    resources: dict[str, str] = {}
+    declaration = re.compile(
+        r"public static final PacketType<.*?>\s+(\w+)\s*=\s*"
+        r"create(?:Client|Server)bound\(\s*\"([^\"]+)\"\s*\);",
+        re.DOTALL,
+    )
+    for path in sorted(protocol_root.rglob("*PacketTypes.java")):
+        for constant, path_id in declaration.findall(path.read_text()):
+            resource_id = f"minecraft:{path_id}"
+            previous = resources.setdefault(constant, resource_id)
+            if previous != resource_id:
+                raise ValueError(
+                    f"conflicting resource ids for {constant}: {previous}, {resource_id}"
+                )
+    return resources
+
+
+def direction_block(source: str, direction: str) -> str:
+    marker = f"{direction.upper()}_TEMPLATE"
+    start = source.find(marker)
+    if start < 0:
+        raise ValueError(f"missing {marker}")
+    next_markers = [
+        position
+        for candidate in ("SERVERBOUND_TEMPLATE", "CLIENTBOUND_TEMPLATE")
+        if (position := source.find(candidate, start + len(marker))) >= 0
+    ]
+    end = min(next_markers) if next_markers else len(source)
+    return source[start:end]
+
+
+def registered_packets(
+    source: str, direction: str, resources: dict[str, str]
+) -> list[Packet]:
+    block = direction_block(source, direction)
+    packets: list[Packet] = []
+    if ".withBundlePacket(" in block:
+        bundle = re.search(
+            r"\.withBundlePacket\(\s*\w+\.(\w+)\s*,.*?"
+            r"new\s+([A-Za-z0-9_.]+)\(\)\s*\)",
+            block,
+            re.DOTALL,
+        )
+        if bundle is None:
+            raise ValueError("could not parse withBundlePacket registration")
+        bundle_type, delimiter_class = bundle.groups()
+        delimiter_type = f"{bundle_type}_DELIMITER"
+        packets.append(
+            packet_from_registration(
+                delimiter_type, delimiter_class, direction, resources
+            )
+        )
+
+    registration = re.compile(
+        r"\.addPacket\(\s*\w+\.(\w+)\s*,\s*"
+        r"([A-Za-z0-9_.]+)\.[A-Z][A-Z0-9_]*",
+        re.DOTALL,
+    )
+    for packet_type, class_name in registration.findall(block):
+        packets.append(
+            packet_from_registration(packet_type, class_name, direction, resources)
+        )
+    if not packets:
+        raise ValueError(f"no {direction} packets parsed")
+    return packets
+
+
+def packet_from_registration(
+    packet_type: str,
+    class_name: str,
+    direction: str,
+    resources: dict[str, str],
+) -> Packet:
+    prefix = direction.upper()
+    constant = (
+        packet_type
+        if packet_type.startswith(("CLIENTBOUND_", "SERVERBOUND_"))
+        else f"{prefix}_{packet_type}"
+    )
+    expected_prefix = f"{prefix}_"
+    if not constant.startswith(expected_prefix):
+        raise ValueError(f"{packet_type} registered in wrong direction {direction}")
+    try:
+        resource_id = resources[packet_type]
+    except KeyError as error:
+        raise ValueError(f"missing PacketTypes resource id for {packet_type}") from error
+    return Packet(constant, resource_id, class_name)
+
+
+def rust_string(value: str) -> str:
+    return '"' + value.replace("\\", "\\\\").replace('"', '\\"') + '"'
+
+
+def render_catalog(catalogs: dict[tuple[str, str], list[Packet]]) -> str:
+    lines = [
+        "// @generated by scripts/generate-packet-catalog.py; do not edit manually.",
+        "// Sources: vanilla 26.1 *Protocols.java registration order and *PacketTypes.java ids.",
+        "",
+        "#[derive(Debug, Clone, Copy, PartialEq, Eq)]",
+        "pub struct PacketCatalogEntry {",
+        "    pub id: i32,",
+        "    pub constant_name: &'static str,",
+        "    pub resource_id: &'static str,",
+        "    pub class_name: &'static str,",
+        "}",
+        "",
+        "#[derive(Debug, Clone, Copy, PartialEq, Eq)]",
+        "pub enum PacketState {",
+        "    Handshake,",
+        "    Status,",
+        "    Login,",
+        "    Configuration,",
+        "    Play,",
+        "}",
+        "",
+        "#[derive(Debug, Clone, Copy, PartialEq, Eq)]",
+        "pub enum PacketDirection {",
+        "    Serverbound,",
+        "    Clientbound,",
+        "}",
+        "",
+        "#[derive(Debug, Clone, Copy)]",
+        "pub struct PacketCatalog {",
+        "    pub state: PacketState,",
+        "    pub direction: PacketDirection,",
+        "    pub packets: &'static [PacketCatalogEntry],",
+        "}",
+        "",
+    ]
+    for state, _, directions in PROTOCOL_SPECS:
+        lines.append(f"pub mod {state} {{")
+        lines.append("    use super::PacketCatalogEntry;")
+        lines.append("")
+        for direction in directions:
+            packets = catalogs[(state, direction)]
+            for packet_id, packet in enumerate(packets):
+                lines.append(
+                    f"    pub const {packet.constant}: i32 = {packet_id};"
+                )
+            lines.append("")
+            array_name = f"{direction.upper()}_PACKETS"
+            lines.append(f"    pub const {array_name}: &[PacketCatalogEntry] = &[")
+            for packet_id, packet in enumerate(packets):
+                lines.extend(
+                    (
+                        "        PacketCatalogEntry {",
+                        f"            id: {packet_id},",
+                        f"            constant_name: {rust_string(packet.constant)},",
+                        f"            resource_id: {rust_string(packet.resource_id)},",
+                        f"            class_name: {rust_string(packet.class_name)},",
+                        "        },",
+                    )
+                )
+            lines.append("    ];")
+            lines.append("")
+        lines.append("}")
+        lines.append("")
+
+    lines.append("pub const VANILLA_PACKET_CATALOGS: &[PacketCatalog] = &[")
+    for state, _, directions in PROTOCOL_SPECS:
+        state_variant = state.capitalize()
+        for direction in directions:
+            direction_variant = direction.capitalize()
+            lines.extend(
+                (
+                    "    PacketCatalog {",
+                    f"        state: PacketState::{state_variant},",
+                    f"        direction: PacketDirection::{direction_variant},",
+                    f"        packets: {state}::{direction.upper()}_PACKETS,",
+                    "    },",
+                )
+            )
+    lines.append("];\n")
+    lines.extend(
+        (
+            "#[cfg(test)]",
+            "mod tests {",
+            "    use std::collections::HashSet;",
+            "    use std::path::PathBuf;",
+            "    use std::process::Command;",
+            "",
+            "    use super::*;",
+            "",
+            "    #[test]",
+            "    fn catalogs_are_contiguous_and_unique_per_state_direction() {",
+            "        assert_eq!(VANILLA_PACKET_CATALOGS.len(), 9);",
+            "        for catalog in VANILLA_PACKET_CATALOGS {",
+            "            let mut resource_ids = HashSet::new();",
+            "            for (id, packet) in catalog.packets.iter().enumerate() {",
+            "                assert_eq!(packet.id, id as i32);",
+            "                assert!(resource_ids.insert(packet.resource_id));",
+            "                assert!(packet.resource_id.starts_with(\"minecraft:\"));",
+            "                assert!(!packet.class_name.is_empty());",
+            "            }",
+            "        }",
+            "    }",
+            "",
+            "    #[test]",
+            "    fn catalog_lengths_and_play_edges_match_vanilla_26_1() {",
+            "        assert_eq!(handshake::SERVERBOUND_PACKETS.len(), 1);",
+            "        assert_eq!(status::SERVERBOUND_PACKETS.len(), 2);",
+            "        assert_eq!(status::CLIENTBOUND_PACKETS.len(), 2);",
+            "        assert_eq!(login::SERVERBOUND_PACKETS.len(), 5);",
+            "        assert_eq!(login::CLIENTBOUND_PACKETS.len(), 6);",
+            "        assert_eq!(configuration::SERVERBOUND_PACKETS.len(), 10);",
+            "        assert_eq!(configuration::CLIENTBOUND_PACKETS.len(), 20);",
+            "        assert_eq!(play::SERVERBOUND_PACKETS.len(), 69);",
+            "        assert_eq!(play::CLIENTBOUND_PACKETS.len(), 141);",
+            "        assert_eq!(",
+            "            play::CLIENTBOUND_PACKETS.first(),",
+            "            Some(&PacketCatalogEntry {",
+            "                id: 0,",
+            "                constant_name: \"CLIENTBOUND_BUNDLE_DELIMITER\",",
+            "                resource_id: \"minecraft:bundle_delimiter\",",
+            "                class_name: \"ClientboundBundleDelimiterPacket\",",
+            "            })",
+            "        );",
+            "        assert_eq!(",
+            "            play::CLIENTBOUND_PACKETS.last().map(|packet| packet.resource_id),",
+            "            Some(\"minecraft:show_dialog\")",
+            "        );",
+            "    }",
+            "",
+            "    #[test]",
+            "    fn play_clientbound_catalog_and_handwritten_dispatch_cover_each_other() {",
+            "        let dispatch = include_str!(\"packets/play_clientbound/dispatch.rs\");",
+            "        for packet in play::CLIENTBOUND_PACKETS {",
+            "            let needle = format!(\"ids::play::{}\", packet.constant_name);",
+            "            assert!(dispatch.contains(&needle), \"missing dispatch arm for {needle}\");",
+            "        }",
+            "        let dispatch_arm_count = dispatch.match_indices(\"ids::play::CLIENTBOUND_\").count();",
+            "        assert_eq!(dispatch_arm_count, play::CLIENTBOUND_PACKETS.len());",
+            "    }",
+            "",
+            "    #[test]",
+            "    fn generated_catalog_matches_local_vanilla_sources_when_available() {",
+            "        let Some(home) = std::env::var_os(\"HOME\") else {",
+            "            return;",
+            "        };",
+            "        let source_root = PathBuf::from(home).join(\"Work/mc-code/sources/26.1\");",
+            "        if !source_root",
+            "            .join(\"net/minecraft/network/protocol/game/GameProtocols.java\")",
+            "            .is_file()",
+            "        {",
+            "            return;",
+            "        }",
+            "        let manifest_dir = PathBuf::from(env!(\"CARGO_MANIFEST_DIR\"));",
+            "        let repo_root = manifest_dir.ancestors().nth(2).unwrap();",
+            "        let status = Command::new(repo_root.join(\"scripts/generate-packet-catalog.py\"))",
+            "            .arg(\"--check\")",
+            "            .arg(\"--source-root\")",
+            "            .arg(source_root)",
+            "            .arg(\"--output\")",
+            "            .arg(manifest_dir.join(\"src/packet_catalog.rs\"))",
+            "            .status()",
+            "            .unwrap();",
+            "        assert!(status.success());",
+            "    }",
+            "}",
+            "",
+        )
+    )
+    return "\n".join(lines)
+
+
+def generate(source_root: Path) -> str:
+    protocol_root = source_root / PROTOCOL_ROOT
+    resources = packet_resource_ids(protocol_root)
+    catalogs: dict[tuple[str, str], list[Packet]] = {}
+    for state, relative_path, directions in PROTOCOL_SPECS:
+        source = (protocol_root / relative_path).read_text()
+        for direction in directions:
+            catalogs[(state, direction)] = registered_packets(
+                source, direction, resources
+            )
+    rendered = render_catalog(catalogs)
+    formatted = subprocess.run(
+        ["rustfmt", "--edition", "2021", "--emit", "stdout"],
+        input=rendered,
+        text=True,
+        capture_output=True,
+        check=True,
+    )
+    return formatted.stdout
+
+
+def main() -> int:
+    args = parse_args()
+    generated = generate(args.source_root)
+    if args.check:
+        current = args.output.read_text() if args.output.exists() else ""
+        if current == generated:
+            return 0
+        sys.stderr.writelines(
+            difflib.unified_diff(
+                current.splitlines(keepends=True),
+                generated.splitlines(keepends=True),
+                fromfile=str(args.output),
+                tofile="generated",
+            )
+        )
+        return 1
+    args.output.write_text(generated)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

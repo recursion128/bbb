@@ -32,9 +32,10 @@ code, its tests, `docs/goal-archive.md`, and `git log`.
 
 Owner: `bbb-protocol`
 
-- Audit packet ids, field order, nullability, enum ordinals, and serverbound
-  encoders against `<MC_CODE_ROOT>/sources/26.1/`, adding focused encode/decode
-  tests with each packet slice.
+- Audit field order, nullability, enum ordinals, and serverbound encoders against
+  `<MC_CODE_ROOT>/sources/26.1/`, adding focused encode/decode tests with each
+  packet slice; keep handwritten handler coverage aligned with the generated
+  packet catalog as unsupported families are implemented.
 - Cover the required paths end to end: login, configuration, play, movement,
   inventory, chat, resource-pack, interaction, command suggestion.
 

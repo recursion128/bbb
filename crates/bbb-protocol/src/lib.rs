@@ -12,6 +12,7 @@ pub mod data_component_types;
 pub mod entity_types;
 pub mod frame;
 pub mod ids;
+pub mod packet_catalog;
 pub mod packets;
 
 pub const MC_VERSION: &str = "26.1";
