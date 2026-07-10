@@ -13,8 +13,9 @@ pub use crate::entities::{
     ItemFrameRenderState, LivingEntityDrownParticleState, LivingEntityPoofParticleState,
     LivingEntityPortalParticleState, LlamaBodyDecorColor, MinecartDisplayBlockState,
     OminousItemSpawnerItemState, OminousItemSpawnerParticleState, PolarBearStandingAnimationState,
-    PrimedTntSmokeParticleState, ProjectilePowerUpdateState, RavagerRoarParticleState,
-    RavagerStunParticleState, SnowballHitParticleState, TakeItemEntityPickupParticleState,
-    TakeItemEntityPickupProjectileModel, ThrownEggHitParticleState, VehicleMoveReport,
-    VillagerParticleKind, VillagerParticleState, WitchMagicParticleState, WolfArmorCrackiness,
+    PrimedTntSmokeParticleState, ProjectileLifecycleState, ProjectilePowerUpdateState,
+    RavagerRoarParticleState, RavagerStunParticleState, SnowballHitParticleState,
+    TakeItemEntityPickupParticleState, TakeItemEntityPickupProjectileModel,
+    ThrownEggHitParticleState, VehicleMoveReport, VillagerParticleKind, VillagerParticleState,
+    WitchMagicParticleState, WolfArmorCrackiness,
 };

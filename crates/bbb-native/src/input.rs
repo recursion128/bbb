@@ -4077,13 +4077,13 @@ fn debug_push_entity_additional_save_data(
             debug_push_evoker_fangs_additional_save_data(fields);
         }
         VANILLA_ENTITY_TYPE_DRAGON_FIREBALL_ID => {
-            debug_push_abstract_hurting_projectile_additional_save_data(world, entity, fields);
+            debug_push_abstract_hurting_projectile_additional_save_data(entity, fields);
         }
         VANILLA_ENTITY_TYPE_BREEZE_WIND_CHARGE_ID | VANILLA_ENTITY_TYPE_WIND_CHARGE_ID => {
-            debug_push_abstract_hurting_projectile_additional_save_data(world, entity, fields);
+            debug_push_abstract_hurting_projectile_additional_save_data(entity, fields);
         }
         VANILLA_ENTITY_TYPE_FIREBALL_ID => {
-            debug_push_abstract_hurting_projectile_additional_save_data(world, entity, fields);
+            debug_push_abstract_hurting_projectile_additional_save_data(entity, fields);
             debug_push_fireball_additional_save_data(fields);
         }
         VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID => {
@@ -4130,10 +4130,10 @@ fn debug_push_entity_additional_save_data(
             debug_push_armor_stand_additional_save_data(entity, fields);
         }
         VANILLA_ENTITY_TYPE_LLAMA_SPIT_ID => {
-            debug_push_projectile_additional_save_data(world, entity, fields);
+            debug_push_projectile_additional_save_data(entity, fields);
         }
         VANILLA_ENTITY_TYPE_ARROW_ID => {
-            debug_push_projectile_additional_save_data(world, entity, fields);
+            debug_push_projectile_additional_save_data(entity, fields);
             debug_push_abstract_arrow_additional_save_data(
                 entity,
                 fields,
@@ -4141,7 +4141,7 @@ fn debug_push_entity_additional_save_data(
             );
         }
         VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID => {
-            debug_push_projectile_additional_save_data(world, entity, fields);
+            debug_push_projectile_additional_save_data(entity, fields);
             debug_push_abstract_arrow_additional_save_data(
                 entity,
                 fields,
@@ -4150,7 +4150,7 @@ fn debug_push_entity_additional_save_data(
             debug_push_spectral_arrow_additional_save_data(fields);
         }
         VANILLA_ENTITY_TYPE_TRIDENT_ID => {
-            debug_push_projectile_additional_save_data(world, entity, fields);
+            debug_push_projectile_additional_save_data(entity, fields);
             debug_push_abstract_arrow_additional_save_data(
                 entity,
                 fields,
@@ -4159,35 +4159,35 @@ fn debug_push_entity_additional_save_data(
             debug_push_trident_additional_save_data(fields);
         }
         VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID => {
-            debug_push_projectile_additional_save_data(world, entity, fields);
+            debug_push_projectile_additional_save_data(entity, fields);
             debug_push_shulker_bullet_additional_save_data(fields);
         }
         VANILLA_ENTITY_TYPE_SMALL_FIREBALL_ID => {
-            debug_push_abstract_hurting_projectile_additional_save_data(world, entity, fields);
+            debug_push_abstract_hurting_projectile_additional_save_data(entity, fields);
             debug_push_item_stack_id(fields, "Item", "minecraft:fire_charge");
         }
         VANILLA_ENTITY_TYPE_EGG_ID => {
-            debug_push_projectile_additional_save_data(world, entity, fields);
+            debug_push_projectile_additional_save_data(entity, fields);
             debug_push_item_stack_id(fields, "Item", "minecraft:egg");
         }
         VANILLA_ENTITY_TYPE_ENDER_PEARL_ID => {
-            debug_push_projectile_additional_save_data(world, entity, fields);
+            debug_push_projectile_additional_save_data(entity, fields);
             debug_push_item_stack_id(fields, "Item", "minecraft:ender_pearl");
         }
         VANILLA_ENTITY_TYPE_EXPERIENCE_BOTTLE_ID => {
-            debug_push_projectile_additional_save_data(world, entity, fields);
+            debug_push_projectile_additional_save_data(entity, fields);
             debug_push_item_stack_id(fields, "Item", "minecraft:experience_bottle");
         }
         VANILLA_ENTITY_TYPE_LINGERING_POTION_ID => {
-            debug_push_projectile_additional_save_data(world, entity, fields);
+            debug_push_projectile_additional_save_data(entity, fields);
             debug_push_item_stack_id(fields, "Item", "minecraft:lingering_potion");
         }
         VANILLA_ENTITY_TYPE_SNOWBALL_ID => {
-            debug_push_projectile_additional_save_data(world, entity, fields);
+            debug_push_projectile_additional_save_data(entity, fields);
             debug_push_item_stack_id(fields, "Item", "minecraft:snowball");
         }
         VANILLA_ENTITY_TYPE_SPLASH_POTION_ID => {
-            debug_push_projectile_additional_save_data(world, entity, fields);
+            debug_push_projectile_additional_save_data(entity, fields);
             debug_push_item_stack_id(fields, "Item", "minecraft:splash_potion");
         }
         VANILLA_ENTITY_TYPE_IRON_GOLEM_ID => {
@@ -4329,7 +4329,7 @@ fn debug_push_entity_additional_save_data(
             debug_push_wither_additional_save_data(entity, fields);
         }
         VANILLA_ENTITY_TYPE_WITHER_SKULL_ID => {
-            debug_push_abstract_hurting_projectile_additional_save_data(world, entity, fields);
+            debug_push_abstract_hurting_projectile_additional_save_data(entity, fields);
             debug_push_wither_skull_additional_save_data(entity, fields);
         }
         VANILLA_ENTITY_TYPE_ZOMBIE_ID => {
@@ -4437,19 +4437,17 @@ fn debug_push_evoker_fangs_additional_save_data(fields: &mut Vec<String>) {
     fields.push("Warmup: 0".to_string());
 }
 
-fn debug_push_projectile_additional_save_data(
-    world: &WorldStore,
-    entity: &EntityState,
-    fields: &mut Vec<String>,
-) {
-    if entity.data != 0 {
-        if let Some(owner) = world.probe_entity(entity.data) {
-            fields.push(format!("Owner: {}", debug_snbt_uuid_int_array(owner.uuid)));
-        }
+fn debug_push_projectile_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
+    let lifecycle = entity.projectile_lifecycle;
+    if let Some(owner_uuid) = lifecycle.and_then(|projectile| projectile.owner_uuid) {
+        fields.push(format!("Owner: {}", debug_snbt_uuid_int_array(owner_uuid)));
+    }
+    if lifecycle.is_some_and(|projectile| projectile.left_owner) {
+        fields.push(format!("LeftOwner: {}", debug_snbt_bool(true)));
     }
     fields.push(format!(
         "HasBeenShot: {}",
-        debug_snbt_bool(entity.client_animations.age_ticks > 0)
+        debug_snbt_bool(lifecycle.is_some_and(|projectile| projectile.has_been_shot))
     ));
 }
 
@@ -4494,11 +4492,10 @@ fn debug_push_trident_additional_save_data(fields: &mut Vec<String>) {
 }
 
 fn debug_push_abstract_hurting_projectile_additional_save_data(
-    world: &WorldStore,
     entity: &EntityState,
     fields: &mut Vec<String>,
 ) {
-    debug_push_projectile_additional_save_data(world, entity, fields);
+    debug_push_projectile_additional_save_data(entity, fields);
     let acceleration_power = entity
         .hurting_projectile
         .map(|projectile| projectile.acceleration_power)

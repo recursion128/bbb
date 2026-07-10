@@ -18,9 +18,9 @@ use super::{
     EntityBlockModelState, EntityCameraPoseState, EntityClientAnimationState,
     EntityClientAnimations, EntityDamage, EntityEquipment, EntityHurtingProjectile, EntityIdentity,
     EntityLeash, EntityMetadata, EntityMinecartLerp, EntityMobEffects, EntityModelSourceState,
-    EntityMount, EntityState, EntitySupportingBlock, EntityTransform, EntityTransformState,
-    EntityTransientEvents, EvokerFangsCritParticleState, FallingBlockModelState,
-    FireworkRocketExplosionParticleState, FireworkRocketItemState,
+    EntityMount, EntityProjectileLifecycle, EntityState, EntitySupportingBlock, EntityTransform,
+    EntityTransformState, EntityTransientEvents, EvokerFangsCritParticleState,
+    FallingBlockModelState, FireworkRocketExplosionParticleState, FireworkRocketItemState,
     FireworkRocketTrailParticleState, FoxEatParticleState, ItemEntityStackState,
     ItemFrameRenderState, LlamaBodyDecorColor, LocalPlayerAttackSwingState,
     MinecartDisplayBlockState, OminousItemSpawnerItemState, OminousItemSpawnerParticleState,
@@ -72,7 +72,9 @@ use crate::entities::dragon::{
     ender_dragon_parent_pick_target, ender_dragon_part_parent_id,
     ender_dragon_part_pick_targets_at_partial_tick,
 };
-use crate::entities::projectiles::entity_hurting_projectile_from_state;
+use crate::entities::projectiles::{
+    entity_hurting_projectile_from_state, entity_projectile_lifecycle_from_state,
+};
 use crate::registries::RegistrySet;
 use crate::ItemEquipmentSlot;
 use bbb_protocol::entity_types::*;
@@ -401,9 +403,9 @@ const VANILLA_PLAYER_SHOULDER_PARROT_RIGHT_DATA_ID: u8 = 20;
 const VANILLA_AVATAR_CAPE_PART_MASK: i8 = 0x01;
 
 pub(crate) struct EntityStore {
-    ecs: World,
-    by_protocol_id: BTreeMap<i32, Entity>,
-    order: Vec<i32>,
+    pub(super) ecs: World,
+    pub(super) by_protocol_id: BTreeMap<i32, Entity>,
+    pub(super) order: Vec<i32>,
     pending_ravager_stun_particles: Vec<RavagerStunParticleState>,
     pending_evoker_fangs_crit_particles: Vec<EvokerFangsCritParticleState>,
     pending_firework_rocket_trail_particles: Vec<FireworkRocketTrailParticleState>,
@@ -436,6 +438,11 @@ impl EntityStore {
         let id = identity.id;
         let entity_type_id = identity.entity_type_id;
         let fresh_projectile = entity_hurting_projectile_from_state(entity_type_id, None);
+        let fresh_projectile_lifecycle = entity_projectile_lifecycle_from_state(
+            entity_type_id,
+            None,
+            self.uuid_for_protocol_id(identity.data),
+        );
 
         if let Some(entity) = self.by_protocol_id.get(&id).copied() {
             if let Ok(mut existing) = self.ecs.get::<&mut EntityIdentity>(entity) {
@@ -489,6 +496,22 @@ impl EntityStore {
             } else {
                 let _ = self.ecs.remove_one::<EntityHurtingProjectile>(entity);
             }
+            if let Some(projectile) = fresh_projectile_lifecycle {
+                let updated = {
+                    if let Ok(mut existing) = self.ecs.get::<&mut EntityProjectileLifecycle>(entity)
+                    {
+                        *existing = projectile;
+                        true
+                    } else {
+                        false
+                    }
+                };
+                if !updated {
+                    let _ = self.ecs.insert_one(entity, projectile);
+                }
+            } else {
+                let _ = self.ecs.remove_one::<EntityProjectileLifecycle>(entity);
+            }
             return;
         }
 
@@ -515,11 +538,15 @@ impl EntityStore {
         if let Some(projectile) = fresh_projectile {
             let _ = self.ecs.insert_one(entity, projectile);
         }
+        if let Some(projectile) = fresh_projectile_lifecycle {
+            let _ = self.ecs.insert_one(entity, projectile);
+        }
         self.by_protocol_id.insert(id, entity);
     }
 
     fn spawn_components(&mut self, state: EntityState) {
         let id = state.id;
+        let spawn_owner_uuid = self.uuid_for_protocol_id(state.data);
         let entity = self.ecs.spawn((
             EntityIdentity::from(&state),
             EntityTransform::from(&state),
@@ -547,6 +574,13 @@ impl EntityStore {
         {
             let _ = self.ecs.insert_one(entity, projectile);
         }
+        if let Some(projectile) = entity_projectile_lifecycle_from_state(
+            state.entity_type_id,
+            state.projectile_lifecycle,
+            spawn_owner_uuid,
+        ) {
+            let _ = self.ecs.insert_one(entity, projectile);
+        }
         self.by_protocol_id.insert(id, entity);
     }
 
@@ -569,6 +603,14 @@ impl EntityStore {
             .get::<&EntityIdentity>(entity)
             .ok()
             .map(|identity| identity.entity_type_id)
+    }
+
+    fn uuid_for_protocol_id(&self, id: i32) -> Option<Uuid> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        self.ecs
+            .get::<&EntityIdentity>(entity)
+            .ok()
+            .map(|identity| identity.uuid)
     }
 
     pub(crate) fn player_rideable_jumping_cooldown(
@@ -724,7 +766,7 @@ impl EntityStore {
         self.metadata_bool(id, data_id, default)
     }
 
-    fn metadata_byte(&self, id: i32, data_id: u8, default: i8) -> Option<i8> {
+    pub(super) fn metadata_byte(&self, id: i32, data_id: u8, default: i8) -> Option<i8> {
         let entity = self.by_protocol_id.get(&id).copied()?;
         let metadata = self.ecs.get::<&EntityMetadata>(entity).ok()?;
         Some(
@@ -3645,6 +3687,7 @@ impl EntityStore {
             let _ = self.ecs.remove_one::<EntityMinecartLerp>(entity);
         }
         self.sync_hurting_projectile_from_state(entity, state);
+        self.sync_projectile_lifecycle_from_state(entity, state);
     }
 
     fn sync_hurting_projectile_from_state(&mut self, entity: Entity, state: &EntityState) {
@@ -3667,6 +3710,29 @@ impl EntityStore {
         }
     }
 
+    fn sync_projectile_lifecycle_from_state(&mut self, entity: Entity, state: &EntityState) {
+        let projectile = entity_projectile_lifecycle_from_state(
+            state.entity_type_id,
+            state.projectile_lifecycle,
+            self.uuid_for_protocol_id(state.data),
+        );
+        if let Some(projectile) = projectile {
+            let updated = {
+                if let Ok(mut existing) = self.ecs.get::<&mut EntityProjectileLifecycle>(entity) {
+                    *existing = projectile;
+                    true
+                } else {
+                    false
+                }
+            };
+            if !updated {
+                let _ = self.ecs.insert_one(entity, projectile);
+            }
+        } else {
+            let _ = self.ecs.remove_one::<EntityProjectileLifecycle>(entity);
+        }
+    }
+
     fn project_entity(&self, entity: Entity) -> Option<EntityState> {
         let identity = self.ecs.get::<&EntityIdentity>(entity).ok()?;
         let transform = self.ecs.get::<&EntityTransform>(entity).ok()?;
@@ -3682,6 +3748,7 @@ impl EntityStore {
         let supporting_block = self.ecs.get::<&EntitySupportingBlock>(entity).ok()?;
         let minecart_lerp = self.ecs.get::<&EntityMinecartLerp>(entity).ok();
         let hurting_projectile = self.ecs.get::<&EntityHurtingProjectile>(entity).ok();
+        let projectile_lifecycle = self.ecs.get::<&EntityProjectileLifecycle>(entity).ok();
 
         let mut state = EntityState {
             id: identity.id,
@@ -3713,6 +3780,7 @@ impl EntityStore {
             minecart_lerp_old_step: None,
             minecart_lerp_delay: 0,
             hurting_projectile: None,
+            projectile_lifecycle: None,
         };
         (*transform).write_to_state(&mut state);
         (*metadata).clone().write_to_state(&mut state);
@@ -3729,6 +3797,9 @@ impl EntityStore {
             (*minecart_lerp).clone().write_to_state(&mut state);
         }
         if let Some(projectile) = hurting_projectile {
+            (*projectile).write_to_state(&mut state);
+        }
+        if let Some(projectile) = projectile_lifecycle {
             (*projectile).write_to_state(&mut state);
         }
         Some(state)
@@ -3806,6 +3877,9 @@ impl Clone for EntityStore {
                 let _ = store.ecs.insert_one(cloned, (*lerp).clone());
             }
             if let Ok(projectile) = self.ecs.get::<&EntityHurtingProjectile>(entity) {
+                let _ = store.ecs.insert_one(cloned, *projectile);
+            }
+            if let Ok(projectile) = self.ecs.get::<&EntityProjectileLifecycle>(entity) {
                 let _ = store.ecs.insert_one(cloned, *projectile);
             }
             store.by_protocol_id.insert(id, cloned);

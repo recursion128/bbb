@@ -8420,5 +8420,24 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   `ItemStack.CODEC` 输出省略默认 count/components 的 `Item: {id: ...}`，large fireball 也补齐
   同一必写 fire-charge item，字段顺序保持 Projectile→AbstractHurtingProjectile→Fireball→
   LargeFireball。focused tests 覆盖七种新实体、owner UUID、first-tick 翻转与 large-fireball
-  clipboard 命令。边界：未解析/迟到 owner、sticky `LeftOwner`、非默认 metadata item stack
-  components，以及尚未分类的 firework projectile 仍留在 F3+I 总账本。
+  clipboard 命令。该 slice 当时的未解析/迟到 owner 与 sticky `LeftOwner` 已由下节关闭；
+  非默认 metadata item stack components，以及尚未分类的 firework projectile 仍留在
+  F3+I 总账本。
+
+## 2026-07-10：F3+I canonical projectile owner/LeftOwner lifecycle
+
+- [x] Projectile 父类 canonical lifecycle（P2 world + native input）：依据 vanilla 26.1
+  `Projectile.recreateFromPacket`、`EntityReference`、`tick`、`checkLeftOwner` 与
+  `isOutsideOwnerCollisionRange`，所有可保存 Projectile 类型在 add-entity 时一次性把 data
+  owner id 解析成 UUID reference；未解析/迟到 owner 保持为空，已解析 owner 即使移除或按
+  同 UUID 换 id 也可保留/重解析。world 独立 projectile lifecycle component 持有
+  `owner_uuid`、sticky `left_owner` 与 `has_been_shot`，client tick 使用真实 EntityType
+  bounding box、`expandTowards(delta).inflate(1)`、owner 根载具递归乘客图与 vanilla
+  pickable gate（含 spectator player / marker armor stand）推进；renderer pick 表故意缺少的
+  non-pickable projectile 由 26.1 `EntityType.Builder.sized` 专属尺寸补足。F3+I 现从该
+  canonical state 输出 `Owner` / 条件 `LeftOwner` / `HasBeenShot`，owner 移除后不再丢失
+  UUID。focused world tests 覆盖 owner 在远端但根 boat 仍相交、离开后 sticky、owner
+  移除/同 UUID 重生、clone 保留及迟到 owner；native test 覆盖七类 throwable/fireball 的
+  首 tick 与 owner 移除后的完整 SNBT 顺序。firework 专属 F3+I 分类仍留总账本；完整
+  projectile client motion/gravity/drag 另记 feature ledger，当前 lifecycle 会在 canonical
+  transform 分离时精确翻转。

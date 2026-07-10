@@ -8,7 +8,10 @@ use bbb_protocol::packets::{
 use uuid::Uuid;
 
 use super::status::{EntityDamageEventState, MobEffectState};
-use super::{EntityClientAnimationState, EntityState, EntityVec3, HurtingProjectileState};
+use super::{
+    EntityClientAnimationState, EntityState, EntityVec3, HurtingProjectileState,
+    ProjectileLifecycleState,
+};
 use crate::BlockPos;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -96,6 +99,13 @@ pub(crate) struct EntityMinecartLerp {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) struct EntityHurtingProjectile {
     pub(crate) acceleration_power: f64,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct EntityProjectileLifecycle {
+    pub(crate) owner_uuid: Option<Uuid>,
+    pub(crate) left_owner: bool,
+    pub(crate) has_been_shot: bool,
 }
 
 impl From<&EntityState> for EntityIdentity {
@@ -349,6 +359,26 @@ impl From<EntityHurtingProjectile> for HurtingProjectileState {
     }
 }
 
+impl From<ProjectileLifecycleState> for EntityProjectileLifecycle {
+    fn from(state: ProjectileLifecycleState) -> Self {
+        Self {
+            owner_uuid: state.owner_uuid,
+            left_owner: state.left_owner,
+            has_been_shot: state.has_been_shot,
+        }
+    }
+}
+
+impl From<EntityProjectileLifecycle> for ProjectileLifecycleState {
+    fn from(projectile: EntityProjectileLifecycle) -> Self {
+        Self {
+            owner_uuid: projectile.owner_uuid,
+            left_owner: projectile.left_owner,
+            has_been_shot: projectile.has_been_shot,
+        }
+    }
+}
+
 impl EntityTransform {
     pub(crate) fn write_to_state(self, state: &mut EntityState) {
         state.position = self.position;
@@ -436,5 +466,11 @@ impl EntityMinecartLerp {
 impl EntityHurtingProjectile {
     pub(crate) fn write_to_state(self, state: &mut EntityState) {
         state.hurting_projectile = Some(HurtingProjectileState::from(self));
+    }
+}
+
+impl EntityProjectileLifecycle {
+    pub(crate) fn write_to_state(self, state: &mut EntityState) {
+        state.projectile_lifecycle = Some(ProjectileLifecycleState::from(self));
     }
 }

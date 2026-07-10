@@ -1,16 +1,69 @@
+use std::collections::{HashMap, HashSet};
+
 use bbb_protocol::packets::ProjectilePower as ProtocolProjectilePower;
+
+use uuid::Uuid;
 
 use crate::{HurtingProjectileState, ProjectilePowerUpdateState, WorldStore};
 
 use super::{
-    EntityHurtingProjectile, VANILLA_ENTITY_TYPE_BREEZE_WIND_CHARGE_ID,
-    VANILLA_ENTITY_TYPE_DRAGON_FIREBALL_ID, VANILLA_ENTITY_TYPE_FIREBALL_ID,
-    VANILLA_ENTITY_TYPE_SMALL_FIREBALL_ID, VANILLA_ENTITY_TYPE_WIND_CHARGE_ID,
+    is_vanilla_boat_type, is_vanilla_minecart_type, vanilla_living_entity_type,
+    EntityHurtingProjectile, EntityIdentity, EntityMount, EntityPickBoundsState,
+    EntityProjectileLifecycle, EntityStore, EntityTransform, EntityVec3, ProjectileLifecycleState,
+    VANILLA_ENTITY_TYPE_ARMOR_STAND_ID, VANILLA_ENTITY_TYPE_ARROW_ID,
+    VANILLA_ENTITY_TYPE_BREEZE_WIND_CHARGE_ID, VANILLA_ENTITY_TYPE_DRAGON_FIREBALL_ID,
+    VANILLA_ENTITY_TYPE_EGG_ID, VANILLA_ENTITY_TYPE_ENDER_PEARL_ID,
+    VANILLA_ENTITY_TYPE_END_CRYSTAL_ID, VANILLA_ENTITY_TYPE_EXPERIENCE_BOTTLE_ID,
+    VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID, VANILLA_ENTITY_TYPE_FIREBALL_ID,
+    VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID, VANILLA_ENTITY_TYPE_GLOW_ITEM_FRAME_ID,
+    VANILLA_ENTITY_TYPE_INTERACTION_ID, VANILLA_ENTITY_TYPE_ITEM_FRAME_ID,
+    VANILLA_ENTITY_TYPE_LEASH_KNOT_ID, VANILLA_ENTITY_TYPE_LINGERING_POTION_ID,
+    VANILLA_ENTITY_TYPE_LLAMA_SPIT_ID, VANILLA_ENTITY_TYPE_PAINTING_ID,
+    VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID,
+    VANILLA_ENTITY_TYPE_SMALL_FIREBALL_ID, VANILLA_ENTITY_TYPE_SNOWBALL_ID,
+    VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID, VANILLA_ENTITY_TYPE_SPLASH_POTION_ID,
+    VANILLA_ENTITY_TYPE_TNT_ID, VANILLA_ENTITY_TYPE_TRIDENT_ID, VANILLA_ENTITY_TYPE_WIND_CHARGE_ID,
     VANILLA_ENTITY_TYPE_WITHER_SKULL_ID,
 };
 
 const DEFAULT_HURTING_PROJECTILE_ACCELERATION_POWER: f64 = 0.1;
 const DEFAULT_WIND_CHARGE_ACCELERATION_POWER: f64 = 0.0;
+/// Vanilla `ArmorStand.DATA_CLIENT_FLAGS` marker bit. Marker armor stands override
+/// `LivingEntity.isPickable()` to false and therefore do not retain a projectile
+/// inside its owner's collision graph.
+const ARMOR_STAND_CLIENT_FLAGS_DATA_ID: u8 = 15;
+const ARMOR_STAND_MARKER_FLAG: i8 = 0x10;
+
+#[derive(Debug, Clone, Copy)]
+struct EntityAabb {
+    min: [f64; 3],
+    max: [f64; 3],
+}
+
+impl EntityAabb {
+    fn expand_towards_and_inflate(self, delta: EntityVec3, amount: f64) -> Self {
+        let mut bounds = self;
+        for (axis, delta) in [delta.x, delta.y, delta.z].into_iter().enumerate() {
+            if delta < 0.0 {
+                bounds.min[axis] += delta;
+            } else {
+                bounds.max[axis] += delta;
+            }
+            bounds.min[axis] -= amount;
+            bounds.max[axis] += amount;
+        }
+        bounds
+    }
+
+    fn intersects(self, other: Self) -> bool {
+        self.min[0] < other.max[0]
+            && self.max[0] > other.min[0]
+            && self.min[1] < other.max[1]
+            && self.max[1] > other.min[1]
+            && self.min[2] < other.max[2]
+            && self.max[2] > other.min[2]
+    }
+}
 
 impl WorldStore {
     pub fn apply_projectile_power(&mut self, packet: ProtocolProjectilePower) -> bool {
@@ -63,6 +116,270 @@ pub(crate) fn entity_hurting_projectile_from_state(
         .map(EntityHurtingProjectile::from)
 }
 
+pub(crate) fn entity_projectile_lifecycle_from_state(
+    entity_type_id: i32,
+    state: Option<ProjectileLifecycleState>,
+    spawn_owner_uuid: Option<Uuid>,
+) -> Option<EntityProjectileLifecycle> {
+    if !is_vanilla_saved_projectile_type(entity_type_id) {
+        return None;
+    }
+    Some(EntityProjectileLifecycle::from(state.unwrap_or(
+        ProjectileLifecycleState {
+            owner_uuid: spawn_owner_uuid,
+            left_owner: false,
+            has_been_shot: false,
+        },
+    )))
+}
+
+pub(crate) fn is_vanilla_saved_projectile_type(entity_type_id: i32) -> bool {
+    matches!(
+        entity_type_id,
+        VANILLA_ENTITY_TYPE_ARROW_ID
+            | VANILLA_ENTITY_TYPE_BREEZE_WIND_CHARGE_ID
+            | VANILLA_ENTITY_TYPE_DRAGON_FIREBALL_ID
+            | VANILLA_ENTITY_TYPE_EGG_ID
+            | VANILLA_ENTITY_TYPE_ENDER_PEARL_ID
+            | VANILLA_ENTITY_TYPE_EXPERIENCE_BOTTLE_ID
+            | VANILLA_ENTITY_TYPE_FIREBALL_ID
+            | VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID
+            | VANILLA_ENTITY_TYPE_LINGERING_POTION_ID
+            | VANILLA_ENTITY_TYPE_LLAMA_SPIT_ID
+            | VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID
+            | VANILLA_ENTITY_TYPE_SMALL_FIREBALL_ID
+            | VANILLA_ENTITY_TYPE_SNOWBALL_ID
+            | VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID
+            | VANILLA_ENTITY_TYPE_SPLASH_POTION_ID
+            | VANILLA_ENTITY_TYPE_TRIDENT_ID
+            | VANILLA_ENTITY_TYPE_WIND_CHARGE_ID
+            | VANILLA_ENTITY_TYPE_WITHER_SKULL_ID
+    )
+}
+
+/// Vanilla 26.1 `EntityType.Builder.sized` dimensions for every saveable
+/// `Projectile` subtype. Some are intentionally absent from the renderer's pick
+/// table because `Projectile.isPickable()` is false, but `Projectile.LeftOwner`
+/// still uses their real bounding box.
+pub(crate) fn vanilla_saved_projectile_bounds(
+    entity_type_id: i32,
+) -> Option<EntityPickBoundsState> {
+    let size = match entity_type_id {
+        VANILLA_ENTITY_TYPE_ARROW_ID
+        | VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID
+        | VANILLA_ENTITY_TYPE_TRIDENT_ID => 0.5,
+        VANILLA_ENTITY_TYPE_DRAGON_FIREBALL_ID | VANILLA_ENTITY_TYPE_FIREBALL_ID => 1.0,
+        VANILLA_ENTITY_TYPE_BREEZE_WIND_CHARGE_ID
+        | VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID
+        | VANILLA_ENTITY_TYPE_SMALL_FIREBALL_ID
+        | VANILLA_ENTITY_TYPE_WIND_CHARGE_ID
+        | VANILLA_ENTITY_TYPE_WITHER_SKULL_ID => 0.3125,
+        VANILLA_ENTITY_TYPE_EGG_ID
+        | VANILLA_ENTITY_TYPE_ENDER_PEARL_ID
+        | VANILLA_ENTITY_TYPE_EXPERIENCE_BOTTLE_ID
+        | VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID
+        | VANILLA_ENTITY_TYPE_LINGERING_POTION_ID
+        | VANILLA_ENTITY_TYPE_LLAMA_SPIT_ID
+        | VANILLA_ENTITY_TYPE_SNOWBALL_ID
+        | VANILLA_ENTITY_TYPE_SPLASH_POTION_ID => 0.25,
+        _ => return None,
+    };
+    Some(EntityPickBoundsState::from_base_size(size, size, 0.0))
+}
+
+impl EntityStore {
+    /// Advances vanilla `Projectile.tick`'s client-owned parent state. The owner
+    /// reference is fixed from the add-entity packet, while `LeftOwner` becomes
+    /// sticky once the swept/inflated projectile box no longer intersects any
+    /// pickable member of the owner's root-vehicle passenger graph.
+    pub(crate) fn advance_projectile_lifecycles(
+        &mut self,
+        ticks: u32,
+        spectator_player_uuids: &HashSet<Uuid>,
+    ) {
+        if ticks == 0 {
+            return;
+        }
+        let outside_owner_by_id =
+            self.projectile_outside_owner_collision_by_id(spectator_player_uuids);
+        for (_, (identity, projectile)) in self
+            .ecs
+            .query_mut::<(&EntityIdentity, &mut EntityProjectileLifecycle)>()
+        {
+            projectile.has_been_shot = true;
+            if !projectile.left_owner {
+                projectile.left_owner = outside_owner_by_id
+                    .get(&identity.id)
+                    .copied()
+                    .unwrap_or(true);
+            }
+        }
+    }
+
+    fn projectile_outside_owner_collision_by_id(
+        &self,
+        spectator_player_uuids: &HashSet<Uuid>,
+    ) -> HashMap<i32, bool> {
+        let mut outside = HashMap::new();
+        for id in &self.order {
+            let Some(entity) = self.by_protocol_id.get(id).copied() else {
+                continue;
+            };
+            let (identity, transform, projectile) = {
+                let Ok(identity) = self.ecs.get::<&EntityIdentity>(entity) else {
+                    continue;
+                };
+                let Ok(transform) = self.ecs.get::<&EntityTransform>(entity) else {
+                    continue;
+                };
+                let Ok(projectile) = self.ecs.get::<&EntityProjectileLifecycle>(entity) else {
+                    continue;
+                };
+                ((*identity).clone(), *transform, *projectile)
+            };
+            if projectile.left_owner {
+                continue;
+            }
+            let is_outside = projectile.owner_uuid.is_none_or(|owner_uuid| {
+                let Some(owner_id) = self.protocol_id_for_uuid(owner_uuid) else {
+                    return true;
+                };
+                let Some(projectile_box) = self.entity_aabb(identity.id) else {
+                    return true;
+                };
+                let swept_projectile_box =
+                    projectile_box.expand_towards_and_inflate(transform.delta_movement, 1.0);
+                let root_id = self.root_vehicle_id(owner_id);
+                self.self_and_passenger_ids(root_id)
+                    .into_iter()
+                    .all(|candidate_id| {
+                        !self.entity_is_pickable_for_owner_collision(
+                            candidate_id,
+                            spectator_player_uuids,
+                        ) || self.entity_aabb(candidate_id).is_none_or(|candidate_box| {
+                            !swept_projectile_box.intersects(candidate_box)
+                        })
+                    })
+            });
+            outside.insert(identity.id, is_outside);
+        }
+        outside
+    }
+
+    fn protocol_id_for_uuid(&self, uuid: Uuid) -> Option<i32> {
+        self.order.iter().find_map(|id| {
+            let entity = self.by_protocol_id.get(id).copied()?;
+            let identity = self.ecs.get::<&EntityIdentity>(entity).ok()?;
+            (identity.uuid == uuid).then_some(identity.id)
+        })
+    }
+
+    fn root_vehicle_id(&self, id: i32) -> i32 {
+        let mut root_id = id;
+        let mut visited = Vec::new();
+        while !visited.contains(&root_id) {
+            visited.push(root_id);
+            let Some(vehicle_id) = self
+                .by_protocol_id
+                .get(&root_id)
+                .and_then(|entity| self.ecs.get::<&EntityMount>(*entity).ok())
+                .and_then(|mount| mount.vehicle_id)
+            else {
+                break;
+            };
+            root_id = vehicle_id;
+        }
+        root_id
+    }
+
+    fn self_and_passenger_ids(&self, root_id: i32) -> Vec<i32> {
+        let mut ids = Vec::new();
+        let mut pending = vec![root_id];
+        while let Some(id) = pending.pop() {
+            if ids.contains(&id) {
+                continue;
+            }
+            ids.push(id);
+            if let Some(mount) = self
+                .by_protocol_id
+                .get(&id)
+                .and_then(|entity| self.ecs.get::<&EntityMount>(*entity).ok())
+            {
+                pending.extend(mount.passengers.iter().copied());
+            }
+        }
+        ids
+    }
+
+    fn entity_aabb(&self, id: i32) -> Option<EntityAabb> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let identity = self.ecs.get::<&EntityIdentity>(entity).ok()?;
+        let transform = self.ecs.get::<&EntityTransform>(entity).ok()?;
+        let bounds = self
+            .pick_bounds(id)
+            .or_else(|| vanilla_saved_projectile_bounds(identity.entity_type_id))?;
+        Some(EntityAabb {
+            min: [
+                transform.position.x + f64::from(bounds.min[0]),
+                transform.position.y + f64::from(bounds.min[1]),
+                transform.position.z + f64::from(bounds.min[2]),
+            ],
+            max: [
+                transform.position.x + f64::from(bounds.max[0]),
+                transform.position.y + f64::from(bounds.max[1]),
+                transform.position.z + f64::from(bounds.max[2]),
+            ],
+        })
+    }
+
+    fn entity_is_pickable_for_owner_collision(
+        &self,
+        id: i32,
+        spectator_player_uuids: &HashSet<Uuid>,
+    ) -> bool {
+        let Some(entity) = self.by_protocol_id.get(&id).copied() else {
+            return false;
+        };
+        let Ok(identity) = self.ecs.get::<&EntityIdentity>(entity) else {
+            return false;
+        };
+        if vanilla_living_entity_type(identity.entity_type_id) {
+            if identity.entity_type_id == VANILLA_ENTITY_TYPE_PLAYER_ID
+                && spectator_player_uuids.contains(&identity.uuid)
+            {
+                return false;
+            }
+            if identity.entity_type_id == VANILLA_ENTITY_TYPE_ARMOR_STAND_ID
+                && self
+                    .metadata_byte(id, ARMOR_STAND_CLIENT_FLAGS_DATA_ID, 0)
+                    .unwrap_or(0)
+                    & ARMOR_STAND_MARKER_FLAG
+                    != 0
+            {
+                return false;
+            }
+            return true;
+        }
+        is_vanilla_boat_type(identity.entity_type_id)
+            || is_vanilla_minecart_type(identity.entity_type_id)
+            || matches!(
+                identity.entity_type_id,
+                VANILLA_ENTITY_TYPE_END_CRYSTAL_ID
+                    | VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID
+                    | VANILLA_ENTITY_TYPE_GLOW_ITEM_FRAME_ID
+                    | VANILLA_ENTITY_TYPE_INTERACTION_ID
+                    | VANILLA_ENTITY_TYPE_ITEM_FRAME_ID
+                    | VANILLA_ENTITY_TYPE_LEASH_KNOT_ID
+                    | VANILLA_ENTITY_TYPE_PAINTING_ID
+                    | VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID
+                    | VANILLA_ENTITY_TYPE_TNT_ID
+                    | VANILLA_ENTITY_TYPE_BREEZE_WIND_CHARGE_ID
+                    | VANILLA_ENTITY_TYPE_FIREBALL_ID
+                    | VANILLA_ENTITY_TYPE_WIND_CHARGE_ID
+            )
+    }
+}
+
 fn is_vanilla_hurting_projectile_type(entity_type_id: i32) -> bool {
     matches!(
         entity_type_id,
@@ -86,7 +403,12 @@ fn is_vanilla_wind_charge_type(entity_type_id: i32) -> bool {
 mod tests {
     use super::*;
     use crate::WorldStore;
-    use bbb_protocol::packets::{AddEntity as ProtocolAddEntity, Vec3d as ProtocolVec3d};
+    use bbb_protocol::entity_types::{VANILLA_ENTITY_TYPE_COW_ID, VANILLA_ENTITY_TYPE_OAK_BOAT_ID};
+    use bbb_protocol::packets::{
+        AddEntity as ProtocolAddEntity, EntityPositionSync as ProtocolEntityPositionSync,
+        RemoveEntities as ProtocolRemoveEntities, SetPassengers as ProtocolSetPassengers,
+        Vec3d as ProtocolVec3d,
+    };
     use uuid::Uuid;
 
     #[test]
@@ -170,17 +492,178 @@ mod tests {
         );
     }
 
+    #[test]
+    fn projectile_parent_lifecycle_tracks_owner_vehicle_collision_and_stays_sticky() {
+        let mut store = WorldStore::new();
+        store.apply_add_entity(protocol_add_entity(
+            10,
+            VANILLA_ENTITY_TYPE_COW_ID,
+            ProtocolVec3d {
+                x: 8.0,
+                y: 0.0,
+                z: 0.0,
+            },
+            0,
+        ));
+        store.apply_add_entity(protocol_add_entity(
+            11,
+            VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+            ProtocolVec3d::default(),
+            0,
+        ));
+        assert!(store.apply_set_passengers(ProtocolSetPassengers {
+            vehicle_id: 11,
+            passenger_ids: vec![10],
+        }));
+        store.apply_add_entity(protocol_add_entity(
+            12,
+            VANILLA_ENTITY_TYPE_EGG_ID,
+            ProtocolVec3d::default(),
+            10,
+        ));
+
+        assert_eq!(
+            store.probe_entity(12).unwrap().projectile_lifecycle,
+            Some(ProjectileLifecycleState {
+                owner_uuid: Some(Uuid::from_u128(10)),
+                left_owner: false,
+                has_been_shot: false,
+            })
+        );
+        store.advance_entity_client_animations(1);
+        assert_eq!(
+            store.probe_entity(12).unwrap().projectile_lifecycle,
+            Some(ProjectileLifecycleState {
+                owner_uuid: Some(Uuid::from_u128(10)),
+                left_owner: false,
+                has_been_shot: true,
+            })
+        );
+
+        assert_eq!(
+            store.apply_remove_entities(ProtocolRemoveEntities {
+                entity_ids: vec![10],
+            }),
+            1
+        );
+        let mut replacement_owner =
+            protocol_add_entity(14, VANILLA_ENTITY_TYPE_COW_ID, ProtocolVec3d::default(), 0);
+        replacement_owner.uuid = Uuid::from_u128(10);
+        store.apply_add_entity(replacement_owner);
+        store.advance_entity_client_animations(1);
+        assert!(
+            !store
+                .probe_entity(12)
+                .unwrap()
+                .projectile_lifecycle
+                .unwrap()
+                .left_owner
+        );
+
+        assert!(
+            store.apply_entity_position_sync(ProtocolEntityPositionSync {
+                id: 12,
+                position: ProtocolVec3d {
+                    x: 20.0,
+                    y: 0.0,
+                    z: 0.0,
+                },
+                delta_movement: ProtocolVec3d::default(),
+                y_rot: 0.0,
+                x_rot: 0.0,
+                on_ground: false,
+            })
+        );
+        store.advance_entity_client_animations(1);
+        assert!(
+            store
+                .probe_entity(12)
+                .unwrap()
+                .projectile_lifecycle
+                .unwrap()
+                .left_owner
+        );
+
+        assert!(
+            store.apply_entity_position_sync(ProtocolEntityPositionSync {
+                id: 14,
+                position: ProtocolVec3d {
+                    x: 20.0,
+                    y: 0.0,
+                    z: 0.0,
+                },
+                delta_movement: ProtocolVec3d::default(),
+                y_rot: 0.0,
+                x_rot: 0.0,
+                on_ground: false,
+            })
+        );
+        store.advance_entity_client_animations(1);
+        assert_eq!(
+            store.clone().probe_entity(12).unwrap().projectile_lifecycle,
+            Some(ProjectileLifecycleState {
+                owner_uuid: Some(Uuid::from_u128(10)),
+                left_owner: true,
+                has_been_shot: true,
+            })
+        );
+    }
+
+    #[test]
+    fn projectile_without_spawn_resolved_owner_leaves_on_first_tick() {
+        let mut store = WorldStore::new();
+        store.apply_add_entity(protocol_add_entity(
+            20,
+            VANILLA_ENTITY_TYPE_EGG_ID,
+            ProtocolVec3d::default(),
+            404,
+        ));
+        store.apply_add_entity(protocol_add_entity(
+            404,
+            VANILLA_ENTITY_TYPE_COW_ID,
+            ProtocolVec3d::default(),
+            0,
+        ));
+
+        assert_eq!(
+            store.probe_entity(20).unwrap().projectile_lifecycle,
+            Some(ProjectileLifecycleState {
+                owner_uuid: None,
+                left_owner: false,
+                has_been_shot: false,
+            })
+        );
+        store.advance_entity_client_animations(1);
+        assert_eq!(
+            store.probe_entity(20).unwrap().projectile_lifecycle,
+            Some(ProjectileLifecycleState {
+                owner_uuid: None,
+                left_owner: true,
+                has_been_shot: true,
+            })
+        );
+    }
+
     fn protocol_add_entity_with_type(id: i32, entity_type_id: i32) -> ProtocolAddEntity {
+        protocol_add_entity(id, entity_type_id, ProtocolVec3d::default(), 0)
+    }
+
+    fn protocol_add_entity(
+        id: i32,
+        entity_type_id: i32,
+        position: ProtocolVec3d,
+        data: i32,
+    ) -> ProtocolAddEntity {
         ProtocolAddEntity {
             id,
             uuid: Uuid::from_u128(id as u128),
             entity_type_id,
-            position: ProtocolVec3d::default(),
+            position,
             delta_movement: ProtocolVec3d::default(),
             x_rot: 0.0,
             y_rot: 0.0,
             y_head_rot: 0.0,
-            data: 0,
+            data,
         }
     }
 }

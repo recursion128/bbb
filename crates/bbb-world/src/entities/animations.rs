@@ -6076,6 +6076,14 @@ impl WorldStore {
                 )
             })
             .collect();
+        let spectator_player_uuids: std::collections::HashSet<_> = self
+            .player_info()
+            .entries
+            .iter()
+            .filter_map(|(uuid, info)| info.is_spectator().then_some(*uuid))
+            .collect();
+        self.entities
+            .advance_projectile_lifecycles(ticks, &spectator_player_uuids);
         self.entities
             .advance_client_animations(ticks, &in_water_by_id);
         self.counters.minecart_lerp_steps_tracked = self.entities.total_minecart_lerp_steps();

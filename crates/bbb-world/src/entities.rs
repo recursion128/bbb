@@ -33,7 +33,8 @@ pub(crate) use bbb_protocol::entity_types::*;
 pub(crate) use components::{
     EntityAttributes, EntityClientAnimations, EntityDamage, EntityEquipment,
     EntityHurtingProjectile, EntityIdentity, EntityLeash, EntityMetadata, EntityMinecartLerp,
-    EntityMobEffects, EntityMount, EntitySupportingBlock, EntityTransform, EntityTransientEvents,
+    EntityMobEffects, EntityMount, EntityProjectileLifecycle, EntitySupportingBlock,
+    EntityTransform, EntityTransientEvents,
 };
 pub use dimensions::EntityPickBoundsState;
 pub(crate) use dimensions::{
@@ -372,6 +373,8 @@ pub struct EntityState {
     pub minecart_lerp_delay: i32,
     #[serde(default)]
     pub hurting_projectile: Option<HurtingProjectileState>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub projectile_lifecycle: Option<ProjectileLifecycleState>,
 }
 
 fn bool_is_false(value: &bool) -> bool {
@@ -381,6 +384,15 @@ fn bool_is_false(value: &bool) -> bool {
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct HurtingProjectileState {
     pub acceleration_power: f64,
+}
+
+/// Client-owned state from vanilla `Projectile`: the spawn-resolved owner
+/// reference and the two sticky/ticked fields written by `saveWithoutId`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ProjectileLifecycleState {
+    pub owner_uuid: Option<Uuid>,
+    pub left_owner: bool,
+    pub has_been_shot: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]

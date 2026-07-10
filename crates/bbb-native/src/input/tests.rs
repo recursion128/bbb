@@ -72,11 +72,12 @@ use bbb_protocol::packets::{
     LastSeenMessagesUpdate, MessageSignature, OpenBook, OpenScreen as ProtocolOpenScreen,
     OpenSignEditor, PackedMessageSignature, PaddleBoat, PlayLogin, PlayerAbilities,
     PlayerAbilitiesCommand, PlayerAction, PlayerChat, PlayerCommand, PlayerHealth,
-    ProjectilePower as ProtocolProjectilePower, RenameItem, SeenAdvancements, SelectBundleItem,
-    SetCursorItem as ProtocolSetCursorItem, SetEntityData as ProtocolSetEntityData, SetEntityLink,
-    SetEquipment, SetPassengers, SetPlayerInventory as ProtocolSetPlayerInventory,
-    ShowDialog as ProtocolShowDialog, SignUpdate, SignedMessageBody, TagQuery, UpdateAdvancements,
-    Vec3d as ProtocolVec3d, WrittenBookContentSummary,
+    ProjectilePower as ProtocolProjectilePower, RemoveEntities as ProtocolRemoveEntities,
+    RenameItem, SeenAdvancements, SelectBundleItem, SetCursorItem as ProtocolSetCursorItem,
+    SetEntityData as ProtocolSetEntityData, SetEntityLink, SetEquipment, SetPassengers,
+    SetPlayerInventory as ProtocolSetPlayerInventory, ShowDialog as ProtocolShowDialog, SignUpdate,
+    SignedMessageBody, TagQuery, UpdateAdvancements, Vec3d as ProtocolVec3d,
+    WrittenBookContentSummary,
 };
 use bbb_protocol::packets::{ChatTypeBound, ChatTypeHolder};
 use bbb_protocol::{
@@ -8365,7 +8366,7 @@ fn local_projectile_save_tracks_spawn_owner_first_tick_and_default_item_stack() 
             uuid: Uuid::from_u128(id as u128),
             entity_type_id: *entity_type_id,
             position: ProtocolVec3d {
-                x: index as f64,
+                x: 0.0,
                 y: 1.0,
                 z: 0.0,
             },
@@ -8389,6 +8390,20 @@ fn local_projectile_save_tracks_spawn_owner_first_tick_and_default_item_stack() 
         let entity = world.probe_entity(71 + index as i32).unwrap();
         let snbt = debug_local_entity_pretty_snbt(&world, &entity).unwrap();
         assert!(snbt.contains("Owner: [I; 0, 0, 0, 70], HasBeenShot: 1b"));
+        assert!(!snbt.contains("LeftOwner"));
+    }
+
+    assert_eq!(
+        world.apply_remove_entities(ProtocolRemoveEntities {
+            entity_ids: vec![70],
+        }),
+        1
+    );
+    world.advance_entity_client_animations(1);
+    for index in 0..cases.len() {
+        let entity = world.probe_entity(71 + index as i32).unwrap();
+        let snbt = debug_local_entity_pretty_snbt(&world, &entity).unwrap();
+        assert!(snbt.contains("Owner: [I; 0, 0, 0, 70], LeftOwner: 1b, HasBeenShot: 1b"));
     }
 }
 

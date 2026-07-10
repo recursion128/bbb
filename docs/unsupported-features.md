@@ -225,9 +225,9 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
 - Extend F3+I local entity capture across the remaining vanilla
   `addAdditionalSaveData` entity families whose saved state still needs
   non-equine specialized parent-chain classification, remaining owner/target/reference
-  projection, remaining delayed/fence-knot leash projection, remaining projectile
-  owner references, left-owner flag, and non-default private `hasBeenShot`
-  projection, non-default private projectile flags such as
+  projection, remaining delayed/fence-knot leash projection, remaining firework-projectile
+  F3+I parent/specialized classification (the canonical projectile owner / `LeftOwner` /
+  `HasBeenShot` lifecycle is available for it), non-default private projectile flags such as
   `ThrownTrident.dealtDamage`, non-default private or otherwise unobserved
   scalar/flag/timer/counter projection (including `PrimedTnt.explosionPower` and
   item-frame `dropChance` / `fixed`, plus non-default `SpectralArrow.duration`,
@@ -475,6 +475,13 @@ back into a todo. Do not delete these.
 - **Local TNT movement / fuse countdown simulation.** The current slice consumes
   world entity position and synced/default fuse metadata. Restart with broader
   entity-physics parity.
+- **Client projectile movement / gravity / drag tick parity.** Canonical
+  `Projectile` parent lifecycle now consumes the current transform, delta, real
+  type bounds, and owner mount graph, but bbb does not yet advance every remote
+  projectile subclass between server movement packets. `LeftOwner` is sticky
+  and exact once the canonical projectile box separates; completing per-subclass
+  client motion will make that separation occur at vanilla's intermediate tick
+  instead of the next authoritative transform update.
 - **Dedicated dragon-fireball / fishing-hook / experience-orb renderers**: their
   textured camera quads and renderer-specific lighting/tint/line behavior.
 - **Minecart spawner animated block-entity display content.** Classified as
