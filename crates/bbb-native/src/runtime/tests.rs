@@ -3474,6 +3474,86 @@ fn debug_water_boxes_respect_reduced_debug_and_player_gates() {
 }
 
 #[test]
+fn debug_light_billboards_match_vanilla_scan_filters_positions_and_colors() {
+    assert_eq!(DEBUG_LIGHT_SCAN_RADIUS, 10);
+    assert_eq!(DEBUG_LIGHT_SECTION_LABEL_SCALE, 4.8);
+
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    world.set_local_player_pose(local_player_pose([0.25, 0.0, 0.25], 0.0, 0.0));
+    let mut chunk = empty_lightmap_test_chunk(world.dimension());
+    let mut sky = vec![0xff; TEST_LIGHT_ARRAY_BYTES];
+    let mut block = vec![0; TEST_LIGHT_ARRAY_BYTES];
+    let nibble_index = section_block_index(0, 1, 0);
+    set_test_light_nibble(&mut sky, nibble_index, 4);
+    set_test_light_nibble(&mut block, nibble_index, 13);
+    let light_section_index = 0 - (world.dimension().min_section_y() - 1);
+    let light_mask = single_bit_mask(usize::try_from(light_section_index).unwrap());
+    chunk.light = LightData {
+        sky_y_mask: light_mask.clone(),
+        block_y_mask: light_mask,
+        empty_sky_y_mask: Vec::new(),
+        empty_block_y_mask: Vec::new(),
+        sky_updates: vec![sky],
+        block_updates: vec![block],
+    };
+    world.insert_decoded_chunk(chunk);
+    let camera_pose = camera_pose_from_world(&world);
+    let mut input = ClientInputState::new(true);
+    input.set_debug_screen_entry_status(
+        DebugScreenEntryId::VisualizeBlockLightLevels,
+        crate::debug_entries::DebugScreenEntryStatus::AlwaysOn,
+    );
+
+    let block_only = debug_light_level_billboards(&input, &world, camera_pose);
+    let section_labels = block_only
+        .iter()
+        .filter(|billboard| billboard.scale == DEBUG_LIGHT_SECTION_LABEL_SCALE)
+        .collect::<Vec<_>>();
+    assert_eq!(section_labels.len(), 8);
+    assert!(section_labels.iter().all(|billboard| {
+        billboard.text == "2" && billboard.color == DEBUG_LIGHT_SECTION_LABEL_COLOR
+    }));
+    assert_eq!(section_labels[0].position, [-8.0, -8.0, -8.0]);
+    let block_label = block_only
+        .iter()
+        .find(|billboard| billboard.text == "13")
+        .expect("non-zero block light should be labeled");
+    assert_eq!(block_label.position, [0.5, 1.5, 0.5]);
+    assert_eq!(block_label.color, [243, 221, 0, 255]);
+    assert_eq!(block_label.scale, DebugTextBillboard::DEFAULT_SCALE);
+    assert!(!block_only.iter().any(|billboard| billboard.text == "4"));
+
+    input.set_debug_screen_entry_status(
+        DebugScreenEntryId::VisualizeSkyLightLevels,
+        crate::debug_entries::DebugScreenEntryStatus::AlwaysOn,
+    );
+    let both = debug_light_level_billboards(&input, &world, camera_pose);
+    assert_eq!(both.len(), 10);
+    let sky_label = both
+        .iter()
+        .find(|billboard| billboard.text == "4")
+        .expect("non-full sky light should be labeled");
+    assert_eq!(sky_label.position, [0.5, 1.25, 0.5]);
+    assert_eq!(sky_label.color, [0, 68, 255, 255]);
+    let sky_index = both
+        .iter()
+        .position(|billboard| billboard.text == "4")
+        .unwrap();
+    let block_index = both
+        .iter()
+        .position(|billboard| billboard.text == "13")
+        .unwrap();
+    assert_eq!(block_index, sky_index + 1);
+
+    let mut reduced =
+        world_with_dimension_height_and_reduced_debug_info(0, "minecraft:overworld", 16, true);
+    reduced.set_local_player_pose(local_player_pose([0.25, 0.0, 0.25], 0.0, 0.0));
+    assert!(
+        debug_light_level_billboards(&input, &reduced, camera_pose_from_world(&reduced)).is_empty()
+    );
+}
+
+#[test]
 fn debug_collision_lines_project_vanilla_white_stroke_cuboids_and_gates() {
     assert_eq!(DEBUG_COLLISION_QUERY_RADIUS, 6.0);
     assert_eq!(DEBUG_COLLISION_COLOR, [255; 4]);
@@ -4212,8 +4292,13 @@ fn renderer_frame_commits_debug_gizmos_from_one_water_sample_snapshot() {
         .find("debug_filled_boxes.extend(debug_heightmap_boxes(input, world, camera_pose));")
         .expect("heightmap boxes should follow water boxes");
     let text = runtime_source
-        .find("let debug_text_billboards = debug_water_amount_billboards(&debug_water_samples);")
+        .find(
+            "let mut debug_text_billboards = debug_water_amount_billboards(&debug_water_samples);",
+        )
         .expect("pump should project water amount labels from the same samples");
+    let light_text = runtime_source
+        .find("debug_text_billboards.extend(debug_light_level_billboards(input, world, camera_pose));")
+        .expect("light debug labels should follow water labels");
     let lines = runtime_source
         .find("let mut debug_lines = debug_collision_cache.lines(input, world, now);")
         .expect("pump should project cached collision debug lines");
@@ -4228,7 +4313,8 @@ fn renderer_frame_commits_debug_gizmos_from_one_water_sample_snapshot() {
             && samples < boxes
             && boxes < heightmap_extend
             && heightmap_extend < text
-            && text < lines
+            && text < light_text
+            && light_text < lines
             && lines < support_lines
             && support_lines < frame
     );

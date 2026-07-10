@@ -3292,6 +3292,7 @@ fn local_player_in_nether_lava_current_uses_fast_lava_push() {
         dimension: "minecraft:the_nether".to_string(),
         dimension_type_id: 1,
         dimension_type_name: Some("minecraft:the_nether".to_string()),
+        has_sky_light: false,
         cardinal_lighting: WorldCardinalLighting::Nether,
         last_death_location: None,
         sea_level: 32,

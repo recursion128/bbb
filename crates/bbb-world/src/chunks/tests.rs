@@ -248,6 +248,62 @@ fn samples_block_light_at_world_position_and_reports_unloaded() {
 }
 
 #[test]
+fn debug_sky_light_section_status_tracks_data_and_neighbor_sections() {
+    let mut store = WorldStore::with_dimension(WorldDimension {
+        min_y: 0,
+        height: 16,
+    });
+    store
+        .insert_level_chunk_with_light(synthetic_local_palette_chunk_packet())
+        .unwrap();
+
+    assert_eq!(store.debug_sky_light_section_status([2, 0, -3]), "0");
+    assert_eq!(store.debug_sky_light_section_status([1, 0, -3]), "1");
+    assert_eq!(store.debug_sky_light_section_status([0, 0, -3]), "2");
+}
+
+#[test]
+fn debug_light_sampling_reads_the_light_engine_vertical_padding() {
+    let mut store = WorldStore::with_dimension(WorldDimension {
+        min_y: 0,
+        height: 16,
+    });
+    store
+        .insert_level_chunk_with_light(synthetic_local_palette_chunk_packet())
+        .unwrap();
+    let index = section_block_index(2, 15, 3);
+    let mut sky = vec![0; LIGHT_ARRAY_BYTES];
+    let mut block = vec![0; LIGHT_ARRAY_BYTES];
+    set_light_nibble(&mut sky, index, 4);
+    set_light_nibble(&mut block, index, 13);
+    store
+        .apply_light_update(ProtocolLightUpdate {
+            chunk_x: 2,
+            chunk_z: -3,
+            light_data: light_update_data(&[0b1], &[0b1], &[], &[], vec![sky], vec![block]),
+        })
+        .unwrap();
+    let below_world = BlockPos {
+        x: 34,
+        y: -1,
+        z: -45,
+    };
+
+    assert_eq!(store.sample_block_light(below_world), None);
+    assert_eq!(
+        store.sample_debug_light(below_world),
+        Some(TerrainLight { sky: 4, block: 13 })
+    );
+    assert_eq!(
+        store.sample_debug_light(BlockPos {
+            y: -17,
+            ..below_world
+        }),
+        None
+    );
+}
+
+#[test]
 fn samples_motion_blocking_height_from_chunk_heightmap() {
     let dimension = WorldDimension {
         min_y: 0,

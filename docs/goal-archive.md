@@ -8246,3 +8246,23 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   4 格落到 powder snow，锁定没有 `FALLING_COLLISION_SHAPE` support。local-player high-fall
   与 falling-block type 分支已覆盖；本地可控载具属于 ledger 既有 full boat/vehicle physics
   项。`visualize_entity_supporting_blocks` 不再有独立 remote gap。
+
+## 2026-07-10：Debug block/sky light-level billboards
+
+- [x] `visualize_block_light_levels` / `visualize_sky_light_levels`（P2 world/native）：
+  依据 vanilla 26.1 `LightDebugRenderer`，native 以 active camera eye 所在 block 为中心按
+  X→Y→Z 遍历 21³ 区域；sky 只显示非 15 值于 `(x+0.5,y+0.25,z+0.5)`，颜色从蓝到青，
+  block 只显示非 0 值于 block center，颜色从暗红到黄，均复用 `ARGB.srgbLerp` 精确整数
+  floor。每个首遇 section 还在 section center 输出红色 scale 4.8 的 sky LightEngine debug
+  type；world 从 dimension-type registry 的 `has_skylight` 和 loaded non-empty section 的
+  26 邻域重建 `0`（data）、`1`（neighbor-only）、`2`（absent）与 `n/a`（无 sky engine），
+  并为 build-height 边缘扫描保留 LightEngine 上下各一 section 的 light-data padding。
+  focused tests 锁定 camera-eye anchor、8 个 section 的首遇集合、默认值过滤、sky-before-
+  block 顺序、亮度 4/13 的位置与 RGBA、reduced-debug gate、registry/built-in no-skylight，
+  以及 section data/neighbor/absent 状态；两个 light-level entry 已从 ledger 删除。
+- [x] `chunk_section_paths` / `chunk_section_octree` / `chunk_section_visibility` 可执行性审计：
+  当前 renderer 把每 chunk 合并成 layer-wide mesh，`visible_sections` 仅镜像 uploaded 数，
+  不拥有 vanilla `SectionOcclusionGraph.Node` 的 step/source direction、octree node 或 compiled
+  section `facesCanSeeEachother`。ledger 将三项标为 deferred，并以 per-section residency +
+  repo-native occlusion graph/octree/face-visibility matrix 作为重启判据，避免用 Manhattan BFS
+  或 mesh bounds 伪造 debug 数据。

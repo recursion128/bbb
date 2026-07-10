@@ -45,6 +45,8 @@ pub struct WorldLevelInfo {
     pub dimension: String,
     pub dimension_type_id: i32,
     pub dimension_type_name: Option<String>,
+    #[serde(default = "world_level_has_sky_light_default")]
+    pub has_sky_light: bool,
     #[serde(default)]
     pub cardinal_lighting: WorldCardinalLighting,
     #[serde(default)]
@@ -64,9 +66,17 @@ pub enum WorldCardinalLighting {
 }
 
 impl WorldLevelInfo {
+    pub fn has_sky_light(&self) -> bool {
+        self.has_sky_light
+    }
+
     pub fn cardinal_lighting(&self) -> WorldCardinalLighting {
         self.cardinal_lighting
     }
+}
+
+const fn world_level_has_sky_light_default() -> bool {
+    true
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -368,6 +378,8 @@ impl WorldStore {
 
     fn apply_spawn_info(&mut self, spawn_info: &ProtocolSpawnInfo) {
         let profile = dimension_profile(spawn_info.dimension_type_id, &spawn_info.dimension);
+        let has_sky_light =
+            self.dimension_type_has_sky_light(spawn_info.dimension_type_id, &spawn_info.dimension);
         let cardinal_lighting = self
             .dimension_type_cardinal_lighting(spawn_info.dimension_type_id, &spawn_info.dimension);
         let dimension_key_changed = self
@@ -382,6 +394,7 @@ impl WorldStore {
             dimension: spawn_info.dimension.clone(),
             dimension_type_id: spawn_info.dimension_type_id,
             dimension_type_name: profile.name.map(str::to_string),
+            has_sky_light,
             cardinal_lighting,
             last_death_location: spawn_info
                 .last_death_location
@@ -407,6 +420,14 @@ impl WorldStore {
             dimension_type_id,
         )
         .unwrap_or_else(|| built_in_dimension_cardinal_lighting(dimension_type_id, dimension))
+    }
+
+    fn dimension_type_has_sky_light(&self, dimension_type_id: i32, dimension: &str) -> bool {
+        dimension_type_has_sky_light_from_registry(
+            self.registry_content("minecraft:dimension_type"),
+            dimension_type_id,
+        )
+        .unwrap_or_else(|| built_in_dimension_has_sky_light(dimension_type_id, dimension))
     }
 
     fn set_game_type_from_spawn_info(&mut self, game_type: i32, previous_game_type: i32) {
@@ -608,6 +629,13 @@ fn built_in_dimension_cardinal_lighting(
     }
 }
 
+fn built_in_dimension_has_sky_light(dimension_type_id: i32, dimension: &str) -> bool {
+    !matches!(
+        dimension_profile(dimension_type_id, dimension).name,
+        Some("minecraft:the_nether" | "minecraft:the_end")
+    )
+}
+
 fn dimension_type_cardinal_lighting_from_registry(
     registry: Option<&crate::RegistryContentState>,
     dimension_type_id: i32,
@@ -617,6 +645,17 @@ fn dimension_type_cardinal_lighting_from_registry(
     let entry = registry.entries.get(index)?;
     let raw_data = entry.raw_data()?;
     dimension_type_cardinal_lighting_from_nbt(raw_data)
+}
+
+fn dimension_type_has_sky_light_from_registry(
+    registry: Option<&crate::RegistryContentState>,
+    dimension_type_id: i32,
+) -> Option<bool> {
+    let registry = registry?;
+    let index = usize::try_from(dimension_type_id).ok()?;
+    let entry = registry.entries.get(index)?;
+    let raw_data = entry.raw_data()?;
+    read_nbt_root_byte_field(raw_data, "has_skylight")?.map(|value| value != 0)
 }
 
 fn dimension_type_cardinal_lighting_from_nbt(raw_data: &[u8]) -> Option<WorldCardinalLighting> {
@@ -653,6 +692,31 @@ fn read_nbt_root_string_field(raw_data: &[u8], field: &str) -> Option<Option<Str
             }
             let value = read_nbt_modified_utf8(&mut decoder)?;
             return Some(Some(value));
+        }
+        skip_nbt_payload(&mut decoder, tag_id, 0)?;
+    }
+
+    decoder.is_empty().then_some(None)
+}
+
+fn read_nbt_root_byte_field(raw_data: &[u8], field: &str) -> Option<Option<u8>> {
+    let mut decoder = Decoder::new(raw_data);
+    let root_type = decoder.read_u8().ok()?;
+    if root_type != 10 {
+        return None;
+    }
+
+    loop {
+        let tag_id = decoder.read_u8().ok()?;
+        if tag_id == 0 {
+            break;
+        }
+        let name = read_nbt_modified_utf8(&mut decoder)?;
+        if name == field {
+            if tag_id != 1 {
+                return None;
+            }
+            return Some(Some(decoder.read_u8().ok()?));
         }
         skip_nbt_payload(&mut decoder, tag_id, 0)?;
     }
@@ -1053,6 +1117,7 @@ mod tests {
             dimension: "minecraft:the_nether".to_string(),
             dimension_type_id: 1,
             dimension_type_name: Some("minecraft:the_nether".to_string()),
+            has_sky_light: false,
             cardinal_lighting: WorldCardinalLighting::Nether,
             last_death_location: None,
             sea_level: 32,
@@ -1527,6 +1592,8 @@ mod tests {
     fn spawn_info_uses_builtin_cardinal_lighting_when_dimension_type_registry_is_missing() {
         let mut nether = WorldStore::new();
         nether.apply_login(&login_packet(1, "minecraft:custom_nether_key"));
+        assert!(!nether.level_info().unwrap().has_sky_light());
+        assert_eq!(nether.debug_sky_light_section_status([0, 0, 0]), "n/a");
         assert_eq!(
             nether.level_info().unwrap().cardinal_lighting(),
             WorldCardinalLighting::Nether
@@ -1534,6 +1601,7 @@ mod tests {
 
         let mut remapped_nether = WorldStore::new();
         remapped_nether.apply_login(&login_packet(7, "minecraft:the_nether"));
+        assert!(!remapped_nether.level_info().unwrap().has_sky_light());
         assert_eq!(
             remapped_nether.level_info().unwrap().cardinal_lighting(),
             WorldCardinalLighting::Nether
@@ -1541,10 +1609,15 @@ mod tests {
 
         let mut end = WorldStore::new();
         end.apply_login(&login_packet(2, "minecraft:the_end"));
+        assert!(!end.level_info().unwrap().has_sky_light());
         assert_eq!(
             end.level_info().unwrap().cardinal_lighting(),
             WorldCardinalLighting::Default
         );
+
+        let mut overworld = WorldStore::new();
+        overworld.apply_login(&login_packet(0, "minecraft:overworld"));
+        assert!(overworld.level_info().unwrap().has_sky_light());
     }
 
     #[test]
@@ -1552,16 +1625,21 @@ mod tests {
         let mut custom_nether = WorldStore::new();
         record_custom_dimension_type_registry(
             &mut custom_nether,
-            dimension_type_nbt(Some("nether")),
+            dimension_type_nbt(Some("nether"), Some(false)),
         );
         custom_nether.apply_login(&login_packet(4, "example:custom"));
+        assert!(!custom_nether.level_info().unwrap().has_sky_light());
+        assert_eq!(
+            custom_nether.debug_sky_light_section_status([0, 0, 0]),
+            "n/a"
+        );
         assert_eq!(
             custom_nether.level_info().unwrap().cardinal_lighting(),
             WorldCardinalLighting::Nether
         );
 
         let mut omitted_field = WorldStore::new();
-        record_custom_dimension_type_registry(&mut omitted_field, dimension_type_nbt(None));
+        record_custom_dimension_type_registry(&mut omitted_field, dimension_type_nbt(None, None));
         omitted_field.apply_login(&login_packet(4, "minecraft:the_nether"));
         assert_eq!(
             omitted_field.level_info().unwrap().cardinal_lighting(),
@@ -1636,11 +1714,16 @@ mod tests {
         }
     }
 
-    fn dimension_type_nbt(cardinal_light: Option<&str>) -> Vec<u8> {
+    fn dimension_type_nbt(cardinal_light: Option<&str>, has_sky_light: Option<bool>) -> Vec<u8> {
         let mut payload = vec![10];
         payload.push(3);
         write_nbt_string(&mut payload, "height");
         payload.extend_from_slice(&384_i32.to_be_bytes());
+        if let Some(has_sky_light) = has_sky_light {
+            payload.push(1);
+            write_nbt_string(&mut payload, "has_skylight");
+            payload.push(u8::from(has_sky_light));
+        }
         if let Some(cardinal_light) = cardinal_light {
             payload.push(8);
             write_nbt_string(&mut payload, "cardinal_light");

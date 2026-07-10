@@ -194,10 +194,15 @@ Environment:
 Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
 
 - Render the remaining debug entries that are off by default:
-  `chunk_section_paths`, `chunk_section_octree`,
-  `visualize_block_light_levels`, `visualize_sky_light_levels`,
-  `visualize_solid_faces`, `visualize_chunks_on_server`,
-  `visualize_sky_light_sections`, and `chunk_section_visibility`.
+  `visualize_solid_faces`, `visualize_chunks_on_server`, and
+  `visualize_sky_light_sections`.
+- `chunk_section_paths`, `chunk_section_octree`, and
+  `chunk_section_visibility` are `deferred` until the renderer retains
+  per-section residency plus a repo-native `SectionOcclusionGraph`/octree and
+  compiled-section face-visibility matrix. Restart when terrain upload no
+  longer collapses each chunk into layer-wide meshes and can expose vanilla
+  node step/source directions, octree node bounds/depth/frustum state, and
+  `facesCanSeeEachother` without reconstructing them heuristically.
 - Remote `visualize_entity_supporting_blocks` `fallDistance > 2.5` powder-snow
   support is `not-needed`: vanilla position/move/teleport packets update a
   server-authoritative remote entity through `moveOrInterpolateTo` and

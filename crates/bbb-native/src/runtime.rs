@@ -1290,6 +1290,16 @@ const fn rgba32(color: i32) -> [f32; 4] {
     ]
 }
 
+const fn argb_to_rgba8(color: i32) -> [u8; 4] {
+    let argb = color as u32;
+    [
+        ((argb >> 16) & 0xff) as u8,
+        ((argb >> 8) & 0xff) as u8,
+        (argb & 0xff) as u8,
+        ((argb >> 24) & 0xff) as u8,
+    ]
+}
+
 const fn argb_color(alpha: i32, red: i32, green: i32, blue: i32) -> i32 {
     ((((alpha & 0xff) as u32) << 24)
         | (((red & 0xff) as u32) << 16)
@@ -2509,7 +2519,8 @@ pub(crate) fn pump_network_and_terrain(
     let debug_water_samples = debug_water_samples(input, world);
     let mut debug_filled_boxes = debug_water_boxes(&debug_water_samples);
     debug_filled_boxes.extend(debug_heightmap_boxes(input, world, camera_pose));
-    let debug_text_billboards = debug_water_amount_billboards(&debug_water_samples);
+    let mut debug_text_billboards = debug_water_amount_billboards(&debug_water_samples);
+    debug_text_billboards.extend(debug_light_level_billboards(input, world, camera_pose));
     let mut debug_lines = debug_collision_cache.lines(input, world, now);
     debug_lines.extend(debug_supporting_block_cache.lines(input, world, now));
     // Vanilla `LevelRenderer.extractBlockDestroyAnimation` reads block-breaking state during
@@ -4157,6 +4168,106 @@ fn debug_water_amount_billboards(samples: &[DebugWaterSample]) -> Vec<DebugTextB
             )
         })
         .collect()
+}
+
+const DEBUG_LIGHT_SCAN_RADIUS: i32 = 10;
+const DEBUG_LIGHT_SECTION_LABEL_SCALE: f32 = 4.8;
+const DEBUG_LIGHT_SECTION_LABEL_COLOR: [u8; 4] = [255, 0, 0, 255];
+const DEBUG_LIGHT_SKY_FROM_COLOR: i32 = argb_color(255, 0, 0, 255);
+const DEBUG_LIGHT_SKY_TO_COLOR: i32 = argb_color(255, 0, 255, 255);
+const DEBUG_LIGHT_BLOCK_FROM_COLOR: i32 = argb_color(255, 170, 0, 0);
+const DEBUG_LIGHT_BLOCK_TO_COLOR: i32 = argb_color(255, 255, 255, 0);
+
+fn debug_light_level_billboards(
+    input: &ClientInputState,
+    world: &WorldStore,
+    camera_pose: Option<CameraPose>,
+) -> Vec<DebugTextBillboard> {
+    let reduced_debug_info = world.local_player_has_reduced_debug_info();
+    let show_block_light = input.debug_screen_entry_enabled(
+        DebugScreenEntryId::VisualizeBlockLightLevels,
+        reduced_debug_info,
+    );
+    let show_sky_light = input.debug_screen_entry_enabled(
+        DebugScreenEntryId::VisualizeSkyLightLevels,
+        reduced_debug_info,
+    );
+    if (!show_block_light && !show_sky_light) || world.level_info().is_none() {
+        return Vec::new();
+    }
+    let Some(camera_eye) = camera_pose.map(camera_eye_position) else {
+        return Vec::new();
+    };
+    if !camera_eye.iter().all(|coordinate| coordinate.is_finite()) {
+        return Vec::new();
+    }
+    let center = BlockPos {
+        x: camera_eye[0].floor() as i32,
+        y: camera_eye[1].floor() as i32,
+        z: camera_eye[2].floor() as i32,
+    };
+    let has_sky_light = world
+        .level_info()
+        .is_some_and(bbb_world::WorldLevelInfo::has_sky_light);
+    let mut seen_sections = Vec::new();
+    let mut billboards = Vec::new();
+    // `BlockPos.betweenClosed`: x advances fastest, then y, then z.
+    for z in center.z.saturating_sub(DEBUG_LIGHT_SCAN_RADIUS)
+        ..=center.z.saturating_add(DEBUG_LIGHT_SCAN_RADIUS)
+    {
+        for y in center.y.saturating_sub(DEBUG_LIGHT_SCAN_RADIUS)
+            ..=center.y.saturating_add(DEBUG_LIGHT_SCAN_RADIUS)
+        {
+            for x in center.x.saturating_sub(DEBUG_LIGHT_SCAN_RADIUS)
+                ..=center.x.saturating_add(DEBUG_LIGHT_SCAN_RADIUS)
+            {
+                let pos = BlockPos { x, y, z };
+                let section = [x.div_euclid(16), y.div_euclid(16), z.div_euclid(16)];
+                if !seen_sections.contains(&section) {
+                    seen_sections.push(section);
+                    let mut billboard = DebugTextBillboard::centered(
+                        section.map(|coordinate| {
+                            coordinate.saturating_mul(16).saturating_add(8) as f32
+                        }),
+                        world.debug_sky_light_section_status(section),
+                        DEBUG_LIGHT_SECTION_LABEL_COLOR,
+                    );
+                    billboard.scale = DEBUG_LIGHT_SECTION_LABEL_SCALE;
+                    billboards.push(billboard);
+                }
+
+                let light = world
+                    .sample_debug_light(pos)
+                    .unwrap_or(TerrainLight::FULL_BRIGHT);
+                let sky_brightness = if has_sky_light { light.sky } else { 0 };
+                if show_sky_light && sky_brightness != 15 {
+                    let color = argb_srgb_lerp(
+                        f32::from(sky_brightness) / 15.0,
+                        DEBUG_LIGHT_SKY_FROM_COLOR,
+                        DEBUG_LIGHT_SKY_TO_COLOR,
+                    );
+                    billboards.push(DebugTextBillboard::centered(
+                        [x as f32 + 0.5, y as f32 + 0.25, z as f32 + 0.5],
+                        sky_brightness.to_string(),
+                        argb_to_rgba8(color),
+                    ));
+                }
+                if show_block_light && light.block != 0 {
+                    let color = argb_srgb_lerp(
+                        f32::from(light.block) / 15.0,
+                        DEBUG_LIGHT_BLOCK_FROM_COLOR,
+                        DEBUG_LIGHT_BLOCK_TO_COLOR,
+                    );
+                    billboards.push(DebugTextBillboard::centered(
+                        [x as f32 + 0.5, y as f32 + 0.5, z as f32 + 0.5],
+                        light.block.to_string(),
+                        argb_to_rgba8(color),
+                    ));
+                }
+            }
+        }
+    }
+    billboards
 }
 
 const DEBUG_COLLISION_QUERY_RADIUS: f64 = 6.0;

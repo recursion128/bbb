@@ -476,6 +476,27 @@ impl WorldStore {
         if !self.dimension.contains_y(pos.y) {
             return None;
         }
+        self.sample_stored_light(pos)
+    }
+
+    /// Samples the light engine's one-section vertical padding used by debug
+    /// queries. `LightDebugRenderer` can scan below/above the playable build
+    /// height while the camera is near an edge; vanilla retains light data for
+    /// those padding sections even though block probes reject them.
+    pub fn sample_debug_light(&self, pos: BlockPos) -> Option<TerrainLight> {
+        let min_y = self.dimension.min_y.saturating_sub(16);
+        let max_y = self
+            .dimension
+            .min_y
+            .saturating_add(self.dimension.height)
+            .saturating_add(16);
+        if pos.y < min_y || pos.y >= max_y {
+            return None;
+        }
+        self.sample_stored_light(pos)
+    }
+
+    fn sample_stored_light(&self, pos: BlockPos) -> Option<TerrainLight> {
         let chunk_pos = ChunkPos {
             x: pos.x.div_euclid(16),
             z: pos.z.div_euclid(16),
@@ -490,6 +511,54 @@ impl WorldStore {
             pos.y,
             local_z,
         ))
+    }
+
+    /// Mirrors the sky `LightEngine.getDebugData` section type consumed by
+    /// `LightDebugRenderer`: `0` has block data, `1` exists only because a
+    /// neighbouring section has data, `2` is absent, and dimensions without a
+    /// sky light engine report `n/a`.
+    pub fn debug_sky_light_section_status(&self, section: [i32; 3]) -> &'static str {
+        if self
+            .level_info()
+            .is_some_and(|level| !level.has_sky_light())
+        {
+            return "n/a";
+        }
+        if self.debug_light_section_has_data(section) {
+            return "0";
+        }
+        for offset_z in -1..=1 {
+            for offset_y in -1..=1 {
+                for offset_x in -1..=1 {
+                    if (offset_x, offset_y, offset_z) == (0, 0, 0) {
+                        continue;
+                    }
+                    if self.debug_light_section_has_data([
+                        section[0].saturating_add(offset_x),
+                        section[1].saturating_add(offset_y),
+                        section[2].saturating_add(offset_z),
+                    ]) {
+                        return "1";
+                    }
+                }
+            }
+        }
+        "2"
+    }
+
+    fn debug_light_section_has_data(&self, section: [i32; 3]) -> bool {
+        let Some(section_index) = section[1]
+            .checked_sub(self.dimension.min_section_y())
+            .and_then(|index| usize::try_from(index).ok())
+        else {
+            return false;
+        };
+        self.probe_chunk(ChunkPos {
+            x: section[0],
+            z: section[2],
+        })
+        .and_then(|chunk| chunk.sections.get(section_index))
+        .is_some_and(|section| section.non_empty_block_count != 0)
     }
 
     /// Samples a vanilla heightmap first-available height from the chunk
