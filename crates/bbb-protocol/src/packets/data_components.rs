@@ -90,6 +90,12 @@ pub struct DataComponentPatchSummary {
     #[serde(default)]
     pub use_effects: Option<UseEffectsSummary>,
     #[serde(default)]
+    pub food_nutrition: Option<i32>,
+    #[serde(default)]
+    pub food_saturation_bits: Option<u32>,
+    #[serde(default)]
+    pub food_can_always_eat: bool,
+    #[serde(default)]
     pub consumable: Option<ConsumableSummary>,
     #[serde(default)]
     pub use_remainder: Option<Box<ItemStackTemplateSummary>>,
@@ -753,6 +759,11 @@ fn decode_typed_data_component_patch_summary(
             }
             5 => {
                 summary.use_effects = Some(decode_use_effects_summary(decoder)?);
+            }
+            23 => {
+                summary.food_nutrition = Some(decoder.read_var_i32()?);
+                summary.food_saturation_bits = Some(decoder.read_f32()?.to_bits());
+                summary.food_can_always_eat = decoder.read_bool()?;
             }
             24 => {
                 summary.consumable = Some(decode_consumable_summary(decoder)?);
@@ -4451,6 +4462,9 @@ mod tests {
                     interact_vibrations: false,
                     speed_multiplier: 0.5,
                 }),
+                food_nutrition: Some(6),
+                food_saturation_bits: Some(7.2_f32.to_bits()),
+                food_can_always_eat: true,
                 consumable: Some(ConsumableSummary {
                     consume_seconds: 1.6,
                     animation: ItemUseAnimationSummary::Drink,

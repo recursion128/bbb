@@ -236,7 +236,7 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   projection, remaining codec-backed SNBT projection (including `AbstractArrow`
   `inBlockState`, `item`, and `weapon`, remaining data-component patch entries
   beyond the supported custom-NBT/primitive (including repair-cost/enchantable/glider)/
-  simple-resource (including tooltip-style/note-block-sound)/use-effects/use-remainder/
+  simple-resource (including tooltip-style/note-block-sound)/food/use-effects/use-remainder/
   use-cooldown/attack-range/
   swing-animation/resource/color/map/ominous/firework/custom-model-data/
   charged-projectile/bundle/writable-book/lodestone/profile/pot-decoration/

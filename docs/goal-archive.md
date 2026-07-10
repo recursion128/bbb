@@ -8725,3 +8725,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   扩展到 16 个 entries；native component patch test 从 32 扩展到 37 个 added
   entries，覆盖五类持久化形状及 wire order；这些 simple component 从剩余总账本
   移入已支持子集。
+
+## 2026-07-10：ItemStack food save codec
+
+- [x] `minecraft:food` 持久化 component（P2 protocol + native input）：依据
+  vanilla 26.1 `FoodProperties.DIRECT_CODEC/DIRECT_STREAM_CODEC`，保留 protocol
+  type id `23` 的非负 nutrition、bit-exact saturation f32 与 can-always-eat flag；
+  native 按两个必需字段和默认 false 的可选 boolean 顺序输出，并对 nutrition
+  复刻 non-negative validation。protocol broad component test 覆盖 `6/7.2f/true`；
+  native component patch test 扩展到 38 个 added entry，覆盖 float suffix、
+  boolean byte tag 与字段顺序；food 从剩余 component 总账本移入已支持子集。

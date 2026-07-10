@@ -4657,6 +4657,7 @@ fn debug_supported_added_component_snbt(
         19 => patch.repair_cost.filter(|value| *value >= 0)?.to_string(),
         21 => debug_snbt_bool(patch.enchantment_glint_override?).to_string(),
         22 => "{}".to_string(),
+        23 => debug_food_component_snbt(patch)?,
         25 => debug_item_stack_template_snbt(patch.use_remainder.as_deref()?, item_runtime)?,
         26 => debug_use_cooldown_component_snbt(patch)?,
         30 => debug_attack_range_component_snbt(patch.attack_range?)?,
@@ -4739,6 +4740,7 @@ fn debug_supported_component_resource_id(type_id: i32) -> Option<&'static str> {
         19 => "minecraft:repair_cost",
         21 => "minecraft:enchantment_glint_override",
         22 => "minecraft:intangible_projectile",
+        23 => "minecraft:food",
         25 => "minecraft:use_remainder",
         26 => "minecraft:use_cooldown",
         30 => "minecraft:attack_range",
@@ -4872,6 +4874,21 @@ fn debug_use_effects_component_snbt(
             "speed_multiplier: {}f",
             debug_nbt_java_float_string(effects.speed_multiplier)
         ));
+    }
+    Some(format!("{{{}}}", fields.join(", ")))
+}
+
+fn debug_food_component_snbt(
+    patch: &bbb_protocol::packets::DataComponentPatchSummary,
+) -> Option<String> {
+    let nutrition = patch.food_nutrition.filter(|value| *value >= 0)?;
+    let saturation = f32::from_bits(patch.food_saturation_bits?);
+    let mut fields = vec![
+        format!("nutrition: {nutrition}"),
+        format!("saturation: {}f", debug_nbt_java_float_string(saturation)),
+    ];
+    if patch.food_can_always_eat {
+        fields.push(format!("can_always_eat: {}", debug_snbt_bool(true)));
     }
     Some(format!("{{{}}}", fields.join(", ")))
 }

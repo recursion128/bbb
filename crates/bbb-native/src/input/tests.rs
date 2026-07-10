@@ -8544,10 +8544,10 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
         EquipmentAssetCatalog::default(),
     );
     let patch = DataComponentPatchSummary {
-        added: 37,
+        added: 38,
         added_type_ids: vec![
-            0, 1, 2, 3, 4, 5, 10, 12, 17, 19, 21, 22, 25, 26, 30, 31, 34, 35, 40, 44, 45, 46, 49,
-            50, 54, 63, 67, 68, 69, 70, 71, 74, 75, 76, 88, 89, 90,
+            0, 1, 2, 3, 4, 5, 10, 12, 17, 19, 21, 22, 23, 25, 26, 30, 31, 34, 35, 40, 44, 45, 46,
+            49, 50, 54, 63, 67, 68, 69, 70, 71, 74, 75, 76, 88, 89, 90,
         ],
         removed_type_ids: vec![6],
         custom_data: Some(NbtSummaryValue::Compound(vec![
@@ -8618,6 +8618,9 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
         repair_cost: Some(5),
         enchantment_glint_override: Some(false),
         intangible_projectile: true,
+        food_nutrition: Some(6),
+        food_saturation_bits: Some(7.2_f32.to_bits()),
+        food_can_always_eat: true,
         use_remainder: Some(Box::new(bbb_protocol::packets::ItemStackTemplateSummary {
             item_id: 2,
             count: 1,
@@ -8797,6 +8800,7 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
          colors: [1122867, 4478310]}, \"minecraft:repair_cost\": 5, \
          \"minecraft:enchantment_glint_override\": 0b, \
          \"minecraft:intangible_projectile\": {}, \
+         \"minecraft:food\": {nutrition: 6, saturation: 7.2f, can_always_eat: 1b}, \
          \"minecraft:use_remainder\": {id: \"minecraft:arrow\"}, \
          \"minecraft:use_cooldown\": {seconds: 1.25f, \
          cooldown_group: \"minecraft:ender_pearl\"}, \
