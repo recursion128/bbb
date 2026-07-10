@@ -9276,3 +9276,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   查询 protocol catalog；生成检查、连续/唯一/固定长度及 bootstrap-vs-declaration
   顺序测试锁定来源，unknown id 仍安全省略。动态服务器 registry remap 及核心
   registry 队列的 entity/block-entity/component/predicate/particle 子项仍保留在账本。
+
+## 2026-07-10：Vanilla entity-type registry catalog generation
+
+- [x] core built-in registry catalog 的 entity-type 子项（P1 mechanical vanilla
+  data）：扩展 `scripts/generate-core-registry-catalog.py`，从 vanilla 26.1
+  `EntityType.java` 的 157 个静态 `register` 调用确定性生成 id/resource/order 及
+  37 项 `.notInPeaceful()` metadata。checked-in `bbb-protocol::entity_types` 保留全部
+  既有 `VANILLA_ENTITY_TYPE_*_ID` 和查询函数兼容面，同时以统一 descriptor 表替代
+  手写数字、运行时 `include_str!` 自解析和独立 peaceful match；连续/唯一/固定长度、
+  属性计数、边界与 regeneration tests 锁定生成物。未增加实体行为支持，服务器动态
+  registry remap 及核心 registry 队列其余子项继续由账本跟踪。

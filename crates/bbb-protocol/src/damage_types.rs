@@ -326,6 +326,8 @@ mod tests {
             .arg(source_root)
             .arg("--damage-types-output")
             .arg(manifest_dir.join("src/damage_types.rs"))
+            .arg("--entity-types-output")
+            .arg(manifest_dir.join("src/entity_types.rs"))
             .status()
             .unwrap();
         assert!(status.success());
