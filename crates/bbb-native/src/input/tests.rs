@@ -8567,6 +8567,35 @@ fn item_stack_snbt_validates_and_omits_default_weapon_fields() {
 }
 
 #[test]
+fn item_stack_snbt_preserves_effect_free_consumables_and_omits_defaults() {
+    let mut patch = DataComponentPatchSummary {
+        consumable: Some(bbb_protocol::packets::ConsumableSummary {
+            consume_seconds: 1.6,
+            animation: bbb_protocol::packets::ItemUseAnimationSummary::Eat,
+        }),
+        consumable_sound: Some(bbb_protocol::packets::SoundEventSummary {
+            registry_id: Some(696),
+            sound_id: None,
+            fixed_range_bits: None,
+        }),
+        consumable_has_consume_particles: Some(true),
+        consumable_effect_count: Some(0),
+        ..DataComponentPatchSummary::default()
+    };
+    assert_eq!(
+        debug_consumable_component_snbt(&patch),
+        Some("{}".to_string())
+    );
+
+    patch.consumable_effect_count = Some(1);
+    assert_eq!(debug_consumable_component_snbt(&patch), None);
+
+    patch.consumable_effect_count = Some(0);
+    patch.consumable.as_mut().unwrap().consume_seconds = -0.0;
+    assert_eq!(debug_consumable_component_snbt(&patch), None);
+}
+
+#[test]
 fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
     let registry: ItemRegistryCatalog = serde_json::from_value(serde_json::json!({
         "resource_ids": [
@@ -8588,12 +8617,12 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
         EquipmentAssetCatalog::default(),
     );
     let patch = DataComponentPatchSummary {
-        added: 71,
+        added: 72,
         added_type_ids: vec![
-            0, 1, 2, 3, 4, 5, 7, 10, 12, 17, 18, 19, 21, 22, 23, 25, 26, 27, 29, 30, 31, 33, 34,
-            35, 38, 39, 40, 43, 44, 45, 46, 47, 49, 50, 52, 54, 57, 58, 59, 60, 63, 65, 66, 67, 68,
-            69, 70, 71, 73, 74, 75, 76, 77, 78, 79, 80, 84, 85, 86, 87, 88, 89, 90, 91, 92, 101,
-            103, 104, 107, 108, 109,
+            0, 1, 2, 3, 4, 5, 7, 10, 12, 17, 18, 19, 21, 22, 23, 24, 25, 26, 27, 29, 30, 31, 33,
+            34, 35, 38, 39, 40, 43, 44, 45, 46, 47, 49, 50, 52, 54, 57, 58, 59, 60, 63, 65, 66, 67,
+            68, 69, 70, 71, 73, 74, 75, 76, 77, 78, 79, 80, 84, 85, 86, 87, 88, 89, 90, 91, 92,
+            101, 103, 104, 107, 108, 109,
         ],
         removed_type_ids: vec![6],
         custom_data: Some(NbtSummaryValue::Compound(vec![
@@ -8670,6 +8699,17 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
         food_nutrition: Some(6),
         food_saturation_bits: Some(7.2_f32.to_bits()),
         food_can_always_eat: true,
+        consumable: Some(bbb_protocol::packets::ConsumableSummary {
+            consume_seconds: 0.8,
+            animation: bbb_protocol::packets::ItemUseAnimationSummary::Drink,
+        }),
+        consumable_sound: Some(bbb_protocol::packets::SoundEventSummary {
+            registry_id: None,
+            sound_id: Some("minecraft:entity.generic.drink".to_string()),
+            fixed_range_bits: None,
+        }),
+        consumable_has_consume_particles: Some(false),
+        consumable_effect_count: Some(0),
         use_remainder: Some(Box::new(bbb_protocol::packets::ItemStackTemplateSummary {
             item_id: 2,
             count: 1,
@@ -8992,6 +9032,9 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
          \"minecraft:enchantment_glint_override\": 0b, \
          \"minecraft:intangible_projectile\": {}, \
          \"minecraft:food\": {nutrition: 6, saturation: 7.2f, can_always_eat: 1b}, \
+         \"minecraft:consumable\": {consume_seconds: 0.8f, animation: \"drink\", \
+         sound: {sound_id: \"minecraft:entity.generic.drink\"}, \
+         has_consume_particles: 0b}, \
          \"minecraft:use_remainder\": {id: \"minecraft:arrow\"}, \
          \"minecraft:use_cooldown\": {seconds: 1.25f, \
          cooldown_group: \"minecraft:ender_pearl\"}, \

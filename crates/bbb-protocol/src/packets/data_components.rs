@@ -104,6 +104,12 @@ pub struct DataComponentPatchSummary {
     #[serde(default)]
     pub consumable: Option<ConsumableSummary>,
     #[serde(default)]
+    pub consumable_sound: Option<SoundEventSummary>,
+    #[serde(default)]
+    pub consumable_has_consume_particles: Option<bool>,
+    #[serde(default)]
+    pub consumable_effect_count: Option<usize>,
+    #[serde(default)]
     pub use_remainder: Option<Box<ItemStackTemplateSummary>>,
     #[serde(default)]
     pub damage_resistant_type_registry_ids: Vec<i32>,
@@ -847,7 +853,11 @@ fn decode_typed_data_component_patch_summary(
                 summary.food_can_always_eat = decoder.read_bool()?;
             }
             24 => {
-                summary.consumable = Some(decode_consumable_summary(decoder)?);
+                let consumable = decode_consumable_component_summary(decoder)?;
+                summary.consumable = Some(consumable.summary);
+                summary.consumable_sound = Some(consumable.sound);
+                summary.consumable_has_consume_particles = Some(consumable.has_consume_particles);
+                summary.consumable_effect_count = Some(consumable.effect_count);
             }
             25 => {
                 summary.use_remainder = Some(Box::new(decode_item_stack_template(decoder)?));
@@ -1804,18 +1814,36 @@ fn decode_consumable(decoder: &mut Decoder<'_>) -> Result<()> {
 }
 
 fn decode_consumable_summary(decoder: &mut Decoder<'_>) -> Result<ConsumableSummary> {
+    decode_consumable_component_summary(decoder).map(|summary| summary.summary)
+}
+
+struct ConsumableComponentSummary {
+    summary: ConsumableSummary,
+    sound: SoundEventSummary,
+    has_consume_particles: bool,
+    effect_count: usize,
+}
+
+fn decode_consumable_component_summary(
+    decoder: &mut Decoder<'_>,
+) -> Result<ConsumableComponentSummary> {
     let consume_seconds = decoder.read_f32()?;
     let animation = decode_item_use_animation_summary(decoder)?;
-    decode_sound_event_holder(decoder)?;
-    decoder.read_bool()?;
+    let sound = decode_sound_event_holder_summary(decoder)?;
+    let has_consume_particles = decoder.read_bool()?;
 
     let effect_count = read_bounded_len(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
     for _ in 0..effect_count {
         decode_consume_effect(decoder)?;
     }
-    Ok(ConsumableSummary {
-        consume_seconds,
-        animation,
+    Ok(ConsumableComponentSummary {
+        summary: ConsumableSummary {
+            consume_seconds,
+            animation,
+        },
+        sound,
+        has_consume_particles,
+        effect_count,
     })
 }
 
@@ -3891,6 +3919,13 @@ mod tests {
                     consume_seconds: 0.8,
                     animation: ItemUseAnimationSummary::Drink,
                 }),
+                consumable_sound: Some(SoundEventSummary {
+                    registry_id: None,
+                    sound_id: Some("minecraft:entity.generic.drink".to_string()),
+                    fixed_range_bits: None,
+                }),
+                consumable_has_consume_particles: Some(true),
+                consumable_effect_count: Some(0),
                 ..DataComponentPatchSummary::default()
             }
         );
@@ -4970,6 +5005,13 @@ mod tests {
                     consume_seconds: 1.6,
                     animation: ItemUseAnimationSummary::Drink,
                 }),
+                consumable_sound: Some(SoundEventSummary {
+                    registry_id: None,
+                    sound_id: Some("minecraft:entity.generic.drink".to_string()),
+                    fixed_range_bits: None,
+                }),
+                consumable_has_consume_particles: Some(true),
+                consumable_effect_count: Some(5),
                 use_remainder: Some(Box::new(ItemStackTemplateSummary {
                     item_id: 42,
                     count: 1,

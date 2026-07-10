@@ -8926,3 +8926,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   ids；native component patch test 从 70 扩展到 71 个 added entry，另覆盖空
   list 与 unresolved direct-id fallback。非空 direct holder 的 key 还原仍留在
   动态 BannerPattern registry 总账本。
+
+## 2026-07-10：ItemStack effect-free consumable save codec
+
+- [x] minecraft:consumable 的无 on_consume_effects 分支（P2 protocol + native
+  input）：依据 vanilla 26.1 Consumable.CODEC/STREAM_CODEC，protocol 除既有
+  consume_seconds/animation 外完整保留 SoundEvent holder、粒子 flag 与效果
+  数量；native 复刻非负 float 校验、全部 12 种动画名，以及 1.6/eat/
+  generic-eat/true 默认省略，并复用 vanilla/direct SoundEvent 输出。protocol
+  focused tests 覆盖空和五项效果列表；native component patch test 从 71 扩展
+  到 72 个 added entry，并覆盖默认空 compound、direct sound、负零与非空效果
+  的安全省略。五种 consume-effect payload 的持久化仍留在剩余 component 总账本。

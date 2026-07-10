@@ -4674,6 +4674,7 @@ fn debug_supported_added_component_snbt(
         21 => debug_snbt_bool(patch.enchantment_glint_override?).to_string(),
         22 => "{}".to_string(),
         23 => debug_food_component_snbt(patch)?,
+        24 => debug_consumable_component_snbt(patch)?,
         25 => debug_item_stack_template_snbt(patch.use_remainder.as_deref()?, item_runtime)?,
         26 => debug_use_cooldown_component_snbt(patch)?,
         27 => debug_damage_resistant_component_snbt(patch)?,
@@ -4784,6 +4785,7 @@ fn debug_supported_component_resource_id(type_id: i32) -> Option<&'static str> {
         21 => "minecraft:enchantment_glint_override",
         22 => "minecraft:intangible_projectile",
         23 => "minecraft:food",
+        24 => "minecraft:consumable",
         25 => "minecraft:use_remainder",
         26 => "minecraft:use_cooldown",
         27 => "minecraft:damage_resistant",
@@ -5036,6 +5038,58 @@ fn debug_food_component_snbt(
     ];
     if patch.food_can_always_eat {
         fields.push(format!("can_always_eat: {}", debug_snbt_bool(true)));
+    }
+    Some(format!("{{{}}}", fields.join(", ")))
+}
+
+fn debug_consumable_component_snbt(
+    patch: &bbb_protocol::packets::DataComponentPatchSummary,
+) -> Option<String> {
+    if patch.consumable_effect_count? != 0 {
+        return None;
+    }
+    let consumable = patch.consumable?;
+    let consume_seconds = debug_range_checked_float_component_snbt(
+        consumable.consume_seconds.to_bits(),
+        0.0,
+        Some(f32::MAX),
+    )?;
+    let sound = patch.consumable_sound.as_ref()?;
+    let has_consume_particles = patch.consumable_has_consume_particles?;
+    let mut fields = Vec::new();
+    if consumable.consume_seconds.to_bits() != 1.6_f32.to_bits() {
+        fields.push(format!("consume_seconds: {consume_seconds}"));
+    }
+    if consumable.animation != bbb_protocol::packets::ItemUseAnimationSummary::Eat {
+        fields.push(format!(
+            "animation: {}",
+            debug_snbt_string(match consumable.animation {
+                bbb_protocol::packets::ItemUseAnimationSummary::None => "none",
+                bbb_protocol::packets::ItemUseAnimationSummary::Eat => "eat",
+                bbb_protocol::packets::ItemUseAnimationSummary::Drink => "drink",
+                bbb_protocol::packets::ItemUseAnimationSummary::Block => "block",
+                bbb_protocol::packets::ItemUseAnimationSummary::Bow => "bow",
+                bbb_protocol::packets::ItemUseAnimationSummary::Trident => "trident",
+                bbb_protocol::packets::ItemUseAnimationSummary::Crossbow => "crossbow",
+                bbb_protocol::packets::ItemUseAnimationSummary::Spyglass => "spyglass",
+                bbb_protocol::packets::ItemUseAnimationSummary::TootHorn => "toot_horn",
+                bbb_protocol::packets::ItemUseAnimationSummary::Brush => "brush",
+                bbb_protocol::packets::ItemUseAnimationSummary::Bundle => "bundle",
+                bbb_protocol::packets::ItemUseAnimationSummary::Spear => "spear",
+            })
+        ));
+    }
+    let is_default_sound = sound.registry_id.is_some_and(|registry_id| {
+        debug_vanilla_sound_event_resource_id(registry_id) == Some("minecraft:entity.generic.eat")
+    });
+    if !is_default_sound {
+        fields.push(format!(
+            "sound: {}",
+            debug_sound_event_component_snbt(sound)?
+        ));
+    }
+    if !has_consume_particles {
+        fields.push("has_consume_particles: 0b".to_string());
     }
     Some(format!("{{{}}}", fields.join(", ")))
 }
@@ -5514,11 +5568,7 @@ fn debug_sound_event_component_snbt(
     sound_event: &bbb_protocol::packets::SoundEventSummary,
 ) -> Option<String> {
     if let Some(registry_id) = sound_event.registry_id {
-        static VANILLA_SOUND_EVENTS: std::sync::OnceLock<bbb_pack::SoundEventRegistry> =
-            std::sync::OnceLock::new();
-        let resource_id = VANILLA_SOUND_EVENTS
-            .get_or_init(bbb_pack::SoundEventRegistry::vanilla_26_1)
-            .event_id(registry_id)?;
+        let resource_id = debug_vanilla_sound_event_resource_id(registry_id)?;
         return Some(debug_snbt_string(resource_id));
     }
 
@@ -5533,6 +5583,14 @@ fn debug_sound_event_component_snbt(
         ));
     }
     Some(format!("{{{}}}", fields.join(", ")))
+}
+
+fn debug_vanilla_sound_event_resource_id(registry_id: i32) -> Option<&'static str> {
+    static VANILLA_SOUND_EVENTS: std::sync::OnceLock<bbb_pack::SoundEventRegistry> =
+        std::sync::OnceLock::new();
+    VANILLA_SOUND_EVENTS
+        .get_or_init(bbb_pack::SoundEventRegistry::vanilla_26_1)
+        .event_id(registry_id)
 }
 
 fn debug_piercing_weapon_component_snbt(
