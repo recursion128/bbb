@@ -208,6 +208,109 @@ pub(crate) fn block_collision_shape_is_full_block(block: &BlockProbe, pos: Block
 }
 
 impl WorldStore {
+    /// Exact empty-hand `ScaffoldingBlock.getShape(...).toAabbs()` projection,
+    /// derived from the same shape constants and voxel-union merge used by
+    /// collision queries. `None` means the probe is not valid scaffolding.
+    pub fn debug_scaffolding_outline_shape_boxes(
+        &self,
+        block: &BlockProbe,
+    ) -> Option<Vec<([f64; 3], [f64; 3])>> {
+        if block.block_name.as_deref() != Some("minecraft:scaffolding") {
+            return None;
+        }
+        let bottom = bool_property(&block.block_properties, "bottom")?;
+        let stable = scaffolding_stable_collision_shape();
+        let mut builder = BlockCollisionShapeBuilder::new();
+        if bottom {
+            builder.push(BlockCollisionBox::SCAFFOLDING_UNSTABLE_BOTTOM);
+        }
+        for shape_box in stable.boxes() {
+            builder.push(shape_box);
+        }
+        if bottom {
+            let north_brace = BlockCollisionBox {
+                min_x: 0.0,
+                min_y: 7.0 * PX,
+                min_z: 0.0,
+                max_x: 1.0,
+                max_y: 9.0 * PX,
+                max_z: 2.0 * PX,
+            };
+            let mut brace = north_brace;
+            for _ in 0..4 {
+                builder.push(brace);
+                brace = brace.rotate_y_90();
+            }
+        }
+        Some(
+            builder
+                .build()
+                .to_aabbs()
+                .into_iter()
+                .map(|shape_box| {
+                    (
+                        [shape_box.min_x, shape_box.min_y, shape_box.min_z],
+                        [shape_box.max_x, shape_box.max_y, shape_box.max_z],
+                    )
+                })
+                .collect(),
+        )
+    }
+
+    /// Mirrors `BlockState.isFaceSturdy(level, pos, direction,
+    /// SupportType.FULL)` for `SolidFaceRenderer`'s vanilla direction order:
+    /// west, south, east, north, down, up.
+    pub fn debug_block_sturdy_faces(&self, block: &BlockProbe) -> [bool; 6] {
+        let Some(block_name) = block.block_name.as_deref() else {
+            return [false; 6];
+        };
+        if is_soul_sand_or_mud_block_name(block_name) {
+            return [true; 6];
+        }
+        if is_leaves_block_name(block_name)
+            || block_name == "minecraft:chorus_flower"
+            || is_hanging_sign_block_name(block_name)
+            || is_fence_gate_block_name(block_name)
+        {
+            return [false; 6];
+        }
+        if block_name == "minecraft:snow" {
+            let full = block
+                .block_properties
+                .get("layers")
+                .and_then(|value| value.parse::<u8>().ok())
+                == Some(8);
+            return if full {
+                [true; 6]
+            } else {
+                [false, false, false, false, true, false]
+            };
+        }
+        if is_shulker_box_block_name(block_name) {
+            let open = self
+                .shulker_box_lids
+                .iter()
+                .find(|lid| lid.pos == block.pos)
+                .is_some_and(|lid| lid.status != crate::ShulkerBoxAnimationStatus::Closed);
+            if !open {
+                return [true; 6];
+            }
+            let Some(support_direction) = block
+                .block_properties
+                .get("facing")
+                .and_then(|facing| BlockDirection::parse(facing))
+                .map(BlockDirection::opposite)
+            else {
+                return [false; 6];
+            };
+            return DEBUG_SOLID_FACE_DIRECTIONS.map(|direction| direction == support_direction);
+        }
+
+        block_collision_shape_empty_context(block, block.pos)
+            .map(BlockCollisionShape::full_face_flags)
+            .unwrap_or([false; 6])
+    }
+
     /// Mirrors `level.getEntities(cameraEntity,
     /// cameraEntity.getBoundingBox().inflate(radius))` for
     /// `SupportBlockRenderer`'s cached nearby-entity membership.
@@ -1454,6 +1557,18 @@ fn is_farmland_or_dirt_path_block_name(block_name: &str) -> bool {
 
 fn is_soul_sand_or_mud_block_name(block_name: &str) -> bool {
     matches!(block_name, "minecraft:soul_sand" | "minecraft:mud")
+}
+
+fn is_hanging_sign_block_name(block_name: &str) -> bool {
+    block_name
+        .strip_prefix("minecraft:")
+        .is_some_and(|path| path.ends_with("_hanging_sign"))
+}
+
+fn is_shulker_box_block_name(block_name: &str) -> bool {
+    block_name
+        .strip_prefix("minecraft:")
+        .is_some_and(|path| path == "shulker_box" || path.ends_with("_shulker_box"))
 }
 
 fn is_door_block_name(block_name: &str) -> bool {
@@ -2719,7 +2834,27 @@ impl BlockDirection {
             _ => None,
         }
     }
+
+    fn opposite(self) -> Self {
+        match self {
+            Self::North => Self::South,
+            Self::East => Self::West,
+            Self::South => Self::North,
+            Self::West => Self::East,
+            Self::Up => Self::Down,
+            Self::Down => Self::Up,
+        }
+    }
 }
+
+const DEBUG_SOLID_FACE_DIRECTIONS: [BlockDirection; 6] = [
+    BlockDirection::West,
+    BlockDirection::South,
+    BlockDirection::East,
+    BlockDirection::North,
+    BlockDirection::Down,
+    BlockDirection::Up,
+];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum StairShapeKind {
@@ -2965,6 +3100,89 @@ impl BlockCollisionShape {
     fn is_full_block(self) -> bool {
         let mut boxes = self.boxes();
         matches!(boxes.next(), Some(BlockCollisionBox::FULL)) && boxes.next().is_none()
+    }
+
+    fn full_face_flags(self) -> [bool; 6] {
+        DEBUG_SOLID_FACE_DIRECTIONS.map(|direction| self.has_full_face(direction))
+    }
+
+    /// Mirrors `Block.isFaceFull(shape, direction)`: sample the boundary
+    /// slice selected by `VoxelShape.getFaceShape`, then require its union to
+    /// cover the complete unit square.
+    fn has_full_face(self, direction: BlockDirection) -> bool {
+        const NEGATIVE_FACE_SAMPLE: f64 = 1.0e-7;
+        const POSITIVE_FACE_SAMPLE: f64 = 0.999_999_9;
+
+        let face_boxes = self
+            .boxes()
+            .filter(|shape_box| {
+                let (min, max, sample) = match direction {
+                    BlockDirection::West => {
+                        (shape_box.min_x, shape_box.max_x, NEGATIVE_FACE_SAMPLE)
+                    }
+                    BlockDirection::South => {
+                        (shape_box.min_z, shape_box.max_z, POSITIVE_FACE_SAMPLE)
+                    }
+                    BlockDirection::East => {
+                        (shape_box.min_x, shape_box.max_x, POSITIVE_FACE_SAMPLE)
+                    }
+                    BlockDirection::North => {
+                        (shape_box.min_z, shape_box.max_z, NEGATIVE_FACE_SAMPLE)
+                    }
+                    BlockDirection::Down => {
+                        (shape_box.min_y, shape_box.max_y, NEGATIVE_FACE_SAMPLE)
+                    }
+                    BlockDirection::Up => (shape_box.min_y, shape_box.max_y, POSITIVE_FACE_SAMPLE),
+                };
+                min <= sample && sample < max
+            })
+            .collect::<Vec<_>>();
+        if face_boxes.is_empty() {
+            return false;
+        }
+
+        let projection = |shape_box: BlockCollisionBox| match direction {
+            BlockDirection::West | BlockDirection::East => [
+                shape_box.min_y,
+                shape_box.max_y,
+                shape_box.min_z,
+                shape_box.max_z,
+            ],
+            BlockDirection::South | BlockDirection::North => [
+                shape_box.min_x,
+                shape_box.max_x,
+                shape_box.min_y,
+                shape_box.max_y,
+            ],
+            BlockDirection::Down | BlockDirection::Up => [
+                shape_box.min_x,
+                shape_box.max_x,
+                shape_box.min_z,
+                shape_box.max_z,
+            ],
+        };
+        let mut u_coords = vec![0.0, 1.0];
+        let mut v_coords = vec![0.0, 1.0];
+        for shape_box in &face_boxes {
+            let [u0, u1, v0, v1] = projection(*shape_box);
+            u_coords.extend([u0.clamp(0.0, 1.0), u1.clamp(0.0, 1.0)]);
+            v_coords.extend([v0.clamp(0.0, 1.0), v1.clamp(0.0, 1.0)]);
+        }
+        u_coords.sort_by(f64::total_cmp);
+        u_coords.dedup_by(|left, right| *left == *right);
+        v_coords.sort_by(f64::total_cmp);
+        v_coords.dedup_by(|left, right| *left == *right);
+
+        u_coords.windows(2).all(|u| {
+            v_coords.windows(2).all(|v| {
+                let midpoint_u = (u[0] + u[1]) * 0.5;
+                let midpoint_v = (v[0] + v[1]) * 0.5;
+                face_boxes.iter().any(|shape_box| {
+                    let [u0, u1, v0, v1] = projection(*shape_box);
+                    midpoint_u >= u0 && midpoint_u < u1 && midpoint_v >= v0 && midpoint_v < v1
+                })
+            })
+        })
     }
 
     fn max_y_at(self, local_x: f64, local_z: f64) -> f64 {
@@ -4874,6 +5092,132 @@ mod tests {
                 },
             ]
         );
+    }
+
+    #[test]
+    fn debug_solid_faces_use_full_support_shapes_and_vanilla_overrides() {
+        let mut world = empty_world();
+        let pos = BlockPos { x: 0, y: 0, z: 0 };
+        let cases = [
+            (vanilla_block_state_id("minecraft:stone", []), [true; 6]),
+            (
+                vanilla_block_state_id(
+                    "minecraft:oak_slab",
+                    [("type", "bottom"), ("waterlogged", "false")],
+                ),
+                [false, false, false, false, true, false],
+            ),
+            (
+                vanilla_block_state_id("minecraft:snow", [("layers", "1")]),
+                [false, false, false, false, true, false],
+            ),
+            (
+                vanilla_block_state_id("minecraft:snow", [("layers", "8")]),
+                [true; 6],
+            ),
+            (vanilla_block_state_id("minecraft:soul_sand", []), [true; 6]),
+            (
+                vanilla_block_state_id(
+                    "minecraft:oak_leaves",
+                    [
+                        ("distance", "7"),
+                        ("persistent", "false"),
+                        ("waterlogged", "false"),
+                    ],
+                ),
+                [false; 6],
+            ),
+            (
+                vanilla_block_state_id(
+                    "minecraft:oak_fence_gate",
+                    [
+                        ("facing", "north"),
+                        ("in_wall", "false"),
+                        ("open", "false"),
+                        ("powered", "false"),
+                    ],
+                ),
+                [false; 6],
+            ),
+            (
+                vanilla_block_state_id(
+                    "minecraft:scaffolding",
+                    [
+                        ("bottom", "false"),
+                        ("distance", "0"),
+                        ("waterlogged", "false"),
+                    ],
+                ),
+                [false, false, false, false, false, true],
+            ),
+        ];
+
+        for (block_state_id, expected) in cases {
+            set_block(&mut world, pos, block_state_id);
+            let probe = world.probe_block(pos).expect("test block probe");
+            assert_eq!(world.debug_block_sturdy_faces(&probe), expected);
+        }
+    }
+
+    #[test]
+    fn debug_solid_faces_track_open_shulker_support_direction() {
+        let mut world = empty_world();
+        let pos = BlockPos { x: 0, y: 0, z: 0 };
+        let shulker = vanilla_block_state_id("minecraft:shulker_box", [("facing", "east")]);
+        set_block(&mut world, pos, shulker);
+        let probe = world.probe_block(pos).expect("closed shulker probe");
+        assert_eq!(world.debug_block_sturdy_faces(&probe), [true; 6]);
+
+        world.apply_block_event(bbb_protocol::packets::BlockEvent {
+            pos: bbb_protocol::packets::BlockPos { x: 0, y: 0, z: 0 },
+            b0: 1,
+            b1: 1,
+            block_id: 0,
+        });
+        let probe = world.probe_block(pos).expect("opening shulker probe");
+        assert_eq!(
+            world.debug_block_sturdy_faces(&probe),
+            [true, false, false, false, false, false]
+        );
+    }
+
+    #[test]
+    fn debug_scaffolding_outline_boxes_reuse_vanilla_voxel_union_merge() {
+        let mut world = empty_world();
+        let pos = BlockPos { x: 0, y: 0, z: 0 };
+        let stable = vanilla_block_state_id(
+            "minecraft:scaffolding",
+            [
+                ("bottom", "false"),
+                ("distance", "0"),
+                ("waterlogged", "false"),
+            ],
+        );
+        set_block(&mut world, pos, stable);
+        let probe = world.probe_block(pos).expect("stable scaffolding probe");
+        let boxes = world
+            .debug_scaffolding_outline_shape_boxes(&probe)
+            .expect("stable scaffolding outline boxes");
+        assert_eq!(boxes.len(), 7);
+        assert_eq!(boxes[0], ([0.0, 0.0, 0.0], [0.125, 1.0, 0.125]));
+        assert_eq!(boxes[4], ([0.0, 0.875, 0.125], [1.0, 1.0, 0.875]));
+
+        let unstable = vanilla_block_state_id(
+            "minecraft:scaffolding",
+            [
+                ("bottom", "true"),
+                ("distance", "1"),
+                ("waterlogged", "false"),
+            ],
+        );
+        set_block(&mut world, pos, unstable);
+        let probe = world.probe_block(pos).expect("bottom scaffolding probe");
+        let boxes = world
+            .debug_scaffolding_outline_shape_boxes(&probe)
+            .expect("bottom scaffolding outline boxes");
+        assert_eq!(boxes.len(), 12);
+        assert_eq!(boxes[0], ([0.0, 0.0, 0.0], [1.0, 0.125, 1.0]));
+        assert_eq!(boxes[5], ([0.0, 0.4375, 0.125], [0.125, 0.5625, 0.875]));
     }
 
     #[test]

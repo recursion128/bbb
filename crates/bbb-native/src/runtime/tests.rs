@@ -3554,6 +3554,82 @@ fn debug_light_billboards_match_vanilla_scan_filters_positions_and_colors() {
 }
 
 #[test]
+fn debug_solid_face_rects_match_vanilla_scan_faces_inflate_and_gates() {
+    assert_eq!(DEBUG_SOLID_FACE_SCAN_RADIUS, 6);
+    assert_eq!(DEBUG_SOLID_FACE_INFLATE, 0.002);
+    assert_eq!(DEBUG_SOLID_FACE_COLOR, [255, 0, 0, 128]);
+
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    world.set_local_player_pose(local_player_pose([0.5, 0.0, 0.5], 0.0, 0.0));
+    world.insert_decoded_chunk(empty_lightmap_test_chunk(world.dimension()));
+    let stone = world
+        .registries()
+        .block_state_id_by_name_and_properties("minecraft:stone", &BTreeMap::new())
+        .expect("vanilla stone state");
+    set_lightmap_test_block(&mut world, BlockPos { x: 0, y: 0, z: 0 }, stone);
+    let camera_pose = camera_pose_from_world(&world);
+    let mut input = ClientInputState::new(true);
+    assert!(debug_solid_face_rects(&input, &world, camera_pose).is_empty());
+    input.set_debug_screen_entry_status(
+        DebugScreenEntryId::VisualizeSolidFaces,
+        crate::debug_entries::DebugScreenEntryStatus::AlwaysOn,
+    );
+
+    let rects = debug_solid_face_rects(&input, &world, camera_pose);
+    assert_eq!(rects.len(), 6);
+    assert_eq!(
+        rects[0],
+        DebugFilledRect {
+            corners: [
+                [-0.002, -0.002, -0.002],
+                [-0.002, -0.002, 1.002],
+                [-0.002, 1.002, 1.002],
+                [-0.002, 1.002, -0.002],
+            ],
+            color: DEBUG_SOLID_FACE_COLOR,
+        }
+    );
+    assert_eq!(
+        rects[5].corners,
+        [
+            [-0.002, 1.002, -0.002],
+            [-0.002, 1.002, 1.002],
+            [1.002, 1.002, 1.002],
+            [1.002, 1.002, -0.002],
+        ]
+    );
+    assert!(rects
+        .iter()
+        .all(|rect| rect.color == DEBUG_SOLID_FACE_COLOR));
+
+    let scaffolding = world
+        .registries()
+        .block_state_id_by_name_and_properties(
+            "minecraft:scaffolding",
+            &BTreeMap::from([
+                ("bottom".to_owned(), "false".to_owned()),
+                ("distance".to_owned(), "0".to_owned()),
+                ("waterlogged".to_owned(), "false".to_owned()),
+            ]),
+        )
+        .expect("vanilla stable scaffolding state");
+    set_lightmap_test_block(&mut world, BlockPos { x: 0, y: 0, z: 0 }, scaffolding);
+    let scaffolding_rects = debug_solid_face_rects(&input, &world, camera_pose);
+    assert_eq!(scaffolding_rects.len(), 7);
+    assert!(scaffolding_rects.iter().all(|rect| {
+        rect.color == DEBUG_SOLID_FACE_COLOR && rect.corners.iter().all(|corner| corner[1] > 0.99)
+    }));
+
+    let mut reduced =
+        world_with_dimension_height_and_reduced_debug_info(0, "minecraft:overworld", 16, true);
+    reduced.set_local_player_pose(local_player_pose([0.5, 0.0, 0.5], 0.0, 0.0));
+    reduced.insert_decoded_chunk(empty_lightmap_test_chunk(reduced.dimension()));
+    set_lightmap_test_block(&mut reduced, BlockPos { x: 0, y: 0, z: 0 }, stone);
+    assert!(debug_solid_face_rects(&input, &reduced, camera_pose_from_world(&reduced)).is_empty());
+    assert!(debug_solid_face_rects(&input, &world, None).is_empty());
+}
+
+#[test]
 fn debug_collision_lines_project_vanilla_white_stroke_cuboids_and_gates() {
     assert_eq!(DEBUG_COLLISION_QUERY_RADIUS, 6.0);
     assert_eq!(DEBUG_COLLISION_COLOR, [255; 4]);
@@ -4291,6 +4367,9 @@ fn renderer_frame_commits_debug_gizmos_from_one_water_sample_snapshot() {
     let heightmap_extend = runtime_source
         .find("debug_filled_boxes.extend(debug_heightmap_boxes(input, world, camera_pose));")
         .expect("heightmap boxes should follow water boxes");
+    let solid_faces = runtime_source
+        .find("let debug_filled_rects = debug_solid_face_rects(input, world, camera_pose);")
+        .expect("pump should project solid-face rectangles");
     let text = runtime_source
         .find(
             "let mut debug_text_billboards = debug_water_amount_billboards(&debug_water_samples);",
@@ -4312,7 +4391,8 @@ fn renderer_frame_commits_debug_gizmos_from_one_water_sample_snapshot() {
         camera_pose < samples
             && samples < boxes
             && boxes < heightmap_extend
-            && heightmap_extend < text
+            && heightmap_extend < solid_faces
+            && solid_faces < text
             && text < light_text
             && light_text < lines
             && lines < support_lines
@@ -4322,6 +4402,8 @@ fn renderer_frame_commits_debug_gizmos_from_one_water_sample_snapshot() {
     let frame_source = include_str!("render_extract.rs");
     assert!(frame_source.contains("pub(crate) debug_filled_boxes: Vec<DebugFilledBox>"));
     assert!(frame_source.contains("renderer.set_debug_filled_boxes(frame.debug_filled_boxes);"));
+    assert!(frame_source.contains("pub(crate) debug_filled_rects: Vec<DebugFilledRect>"));
+    assert!(frame_source.contains("renderer.set_debug_filled_rects(frame.debug_filled_rects);"));
     assert!(frame_source.contains("pub(crate) debug_text_billboards: Vec<DebugTextBillboard>"));
     assert!(
         frame_source.contains("renderer.set_debug_text_billboards(frame.debug_text_billboards);")

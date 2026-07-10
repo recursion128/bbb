@@ -7,7 +7,7 @@ use crate::frame_buffers::FrameDataBuffer;
 use crate::renderer::FrameTarget;
 use crate::{
     clouds::CloudShape,
-    debug_filled_boxes::build_debug_filled_box_mesh,
+    debug_filled_boxes::build_debug_filled_mesh,
     debug_text_billboards::build_debug_text_mesh,
     entity_models::{
         upload_elder_guardian_particle_textured_mesh,
@@ -798,8 +798,11 @@ impl Renderer {
         encoder: &mut wgpu::CommandEncoder,
         stats: &mut FrameDrawStats,
     ) {
-        let mesh =
-            build_debug_filled_box_mesh(&self.debug_filled_boxes, self.camera_sort_position());
+        let mesh = build_debug_filled_mesh(
+            &self.debug_filled_boxes,
+            &self.debug_filled_rects,
+            self.camera_sort_position(),
+        );
         let vertex_count = mesh.vertices.len();
         let index_count = mesh.indices.len();
         let has_vertices = self.frame_debug_filled_box_vertices.upload(

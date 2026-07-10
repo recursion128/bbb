@@ -14,6 +14,15 @@ pub struct DebugFilledBox {
     pub color: [u8; 4],
 }
 
+/// One solid-color world-space `RectGizmo` submitted through the same
+/// `debugFilledBox` render type as cuboids. Corners are counter-clockwise when
+/// viewed from the visible side, matching vanilla `GizmoPrimitives.addQuad`.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct DebugFilledRect {
+    pub corners: [[f32; 3]; 4],
+    pub color: [u8; 4],
+}
+
 impl DebugFilledBox {
     /// Normalizes reversed bounds and rejects non-finite or zero-volume boxes.
     pub fn sanitized(self) -> Option<Self> {
@@ -33,6 +42,18 @@ impl DebugFilledBox {
             max,
             color: self.color,
         })
+    }
+}
+
+impl DebugFilledRect {
+    pub fn sanitized(self) -> Option<Self> {
+        if !self.corners.iter().flatten().all(|value| value.is_finite()) {
+            return None;
+        }
+        let a = glam::Vec3::from_array(self.corners[0]);
+        let b = glam::Vec3::from_array(self.corners[1]);
+        let c = glam::Vec3::from_array(self.corners[2]);
+        ((b - a).cross(c - a).length_squared() > f32::EPSILON).then_some(self)
     }
 }
 
@@ -120,15 +141,31 @@ pub(super) fn sanitize_debug_filled_boxes(
         .collect()
 }
 
+pub(super) fn sanitize_debug_filled_rects(
+    rects: impl IntoIterator<Item = DebugFilledRect>,
+) -> Vec<DebugFilledRect> {
+    rects
+        .into_iter()
+        .filter_map(DebugFilledRect::sanitized)
+        .collect()
+}
+
 /// Builds vanilla `CuboidGizmo`'s six outward-facing quads. When a camera is
 /// available, indices are sorted far-to-near by quad center, mirroring
 /// `RenderType.sortOnUpload()` / `MeshData.sortQuads`.
-pub(super) fn build_debug_filled_box_mesh(
+pub(super) fn build_debug_filled_mesh(
     boxes: &[DebugFilledBox],
+    rects: &[DebugFilledRect],
     camera_position: Option<[f32; 3]>,
 ) -> DebugFilledBoxMesh {
-    let mut vertices = Vec::with_capacity(boxes.len().saturating_mul(24));
-    let mut quad_centers = Vec::with_capacity(boxes.len().saturating_mul(6));
+    let mut vertices = Vec::with_capacity(
+        boxes
+            .len()
+            .saturating_mul(24)
+            .saturating_add(rects.len().saturating_mul(4)),
+    );
+    let mut quad_centers =
+        Vec::with_capacity(boxes.len().saturating_mul(6).saturating_add(rects.len()));
 
     for debug_box in boxes.iter().copied().filter_map(DebugFilledBox::sanitized) {
         let [x0, y0, z0] = debug_box.min;
@@ -150,6 +187,16 @@ pub(super) fn build_debug_filled_box_mesh(
                 color: debug_box.color,
             }));
         }
+    }
+    for rect in rects.iter().copied().filter_map(DebugFilledRect::sanitized) {
+        let center = std::array::from_fn(|axis| {
+            rect.corners.iter().map(|corner| corner[axis]).sum::<f32>() * 0.25
+        });
+        quad_centers.push(center);
+        vertices.extend(rect.corners.map(|position| DebugFilledBoxVertex {
+            position,
+            color: rect.color,
+        }));
     }
 
     let mut quad_order: Vec<usize> = (0..quad_centers.len()).collect();
@@ -180,6 +227,14 @@ pub(super) fn build_debug_filled_box_mesh(
     }
 
     DebugFilledBoxMesh { vertices, indices }
+}
+
+#[cfg(test)]
+fn build_debug_filled_box_mesh(
+    boxes: &[DebugFilledBox],
+    camera_position: Option<[f32; 3]>,
+) -> DebugFilledBoxMesh {
+    build_debug_filled_mesh(boxes, &[], camera_position)
 }
 
 pub(super) fn create_debug_filled_box_pipeline(
@@ -243,6 +298,39 @@ mod tests {
             box_from([0.0, 0.0, 0.0], [1.0, f32::INFINITY, 1.0], color).sanitized(),
             None
         );
+    }
+
+    #[test]
+    fn debug_filled_rect_sanitize_and_mesh_preserve_vanilla_quad_winding() {
+        let rect = DebugFilledRect {
+            corners: [
+                [0.0, 0.0, 0.0],
+                [1.0, 0.0, 0.0],
+                [1.0, 1.0, 0.0],
+                [0.0, 1.0, 0.0],
+            ],
+            color: [1, 2, 3, 4],
+        };
+        assert_eq!(rect.sanitized(), Some(rect));
+        assert_eq!(
+            DebugFilledRect {
+                corners: [[0.0; 3]; 4],
+                color: rect.color,
+            }
+            .sanitized(),
+            None
+        );
+        let mesh = build_debug_filled_mesh(&[], &[rect], None);
+        assert_eq!(mesh.vertices.len(), 4);
+        assert_eq!(mesh.indices, [0, 1, 2, 2, 3, 0]);
+        let a = Vec3::from_array(mesh.vertices[0].position);
+        let b = Vec3::from_array(mesh.vertices[1].position);
+        let c = Vec3::from_array(mesh.vertices[2].position);
+        assert!((b - a).cross(c - a).normalize().dot(Vec3::Z) > 0.999);
+        assert!(mesh
+            .vertices
+            .iter()
+            .all(|vertex| vertex.color == rect.color));
     }
 
     #[test]

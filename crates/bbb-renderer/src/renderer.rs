@@ -27,7 +27,8 @@ use crate::{
     },
     counters::RendererCounters,
     debug_filled_boxes::{
-        create_debug_filled_box_pipeline, sanitize_debug_filled_boxes, DebugFilledBox,
+        create_debug_filled_box_pipeline, sanitize_debug_filled_boxes, sanitize_debug_filled_rects,
+        DebugFilledBox, DebugFilledRect,
     },
     debug_text_billboards::{
         create_debug_text_pipeline, sanitize_debug_text_billboards, DebugTextBillboard,
@@ -441,6 +442,7 @@ pub struct Renderer {
     pub(super) entity_scene_outline: Option<SelectionOutlineGpu>,
     pub(super) entity_target_outline: Option<SelectionOutlineGpu>,
     pub(super) debug_filled_boxes: Vec<DebugFilledBox>,
+    pub(super) debug_filled_rects: Vec<DebugFilledRect>,
     pub(super) debug_text_billboards: Vec<DebugTextBillboard>,
     pub(super) debug_lines: Vec<DebugLine>,
     pub(super) hud_crosshair: Option<HudSpriteGpu>,
@@ -1540,6 +1542,7 @@ impl Renderer {
             entity_scene_outline: None,
             entity_target_outline: None,
             debug_filled_boxes: Vec::new(),
+            debug_filled_rects: Vec::new(),
             debug_text_billboards: Vec::new(),
             debug_lines: Vec::new(),
             hud_crosshair: None,
@@ -1869,6 +1872,12 @@ impl Renderer {
     /// discarded. Passing an empty vector clears all previous geometry.
     pub fn set_debug_filled_boxes(&mut self, boxes: Vec<DebugFilledBox>) {
         self.debug_filled_boxes = sanitize_debug_filled_boxes(boxes);
+    }
+
+    /// Replaces this frame's filled `RectGizmo` submissions. Invalid or
+    /// degenerate quads are discarded; an empty vector clears stale geometry.
+    pub fn set_debug_filled_rects(&mut self, rects: Vec<DebugFilledRect>) {
+        self.debug_filled_rects = sanitize_debug_filled_rects(rects);
     }
 
     /// Replaces this frame's camera-facing `TextGizmo` submissions. Invalid

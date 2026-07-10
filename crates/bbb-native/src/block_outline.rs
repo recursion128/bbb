@@ -100,6 +100,17 @@ pub(crate) fn block_state_shape_boxes(
         .map(|outline| outline.boxes_min_max())
 }
 
+pub(crate) fn block_probe_shape_boxes(probe: &BlockProbe) -> Option<Vec<([f64; 3], [f64; 3])>> {
+    if matches!(
+        probe.material,
+        TerrainMaterialClass::Empty | TerrainMaterialClass::Fluid
+    ) {
+        return None;
+    }
+    outline_shape_for_block(probe.block_name.as_deref(), &probe.block_properties)
+        .map(|outline| outline.boxes_min_max())
+}
+
 pub(crate) fn selection_outline_for_block(pos: BlockPos) -> SelectionOutline {
     selection_outline_for_box(pos, BlockOutlineBox::FULL)
 }

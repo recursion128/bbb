@@ -27,29 +27,29 @@ use bbb_protocol::{
 };
 use bbb_renderer::{
     sign_text_base_color, BlockDestroyOverlay, CameraPose, ClearColor, CloudEnvironment,
-    CloudFrame, DebugFilledBox, DebugLine, DebugTextBillboard, EntityModelInstance, FogEnvironment,
-    GuiItemLightingEntry, HudAdvancementBackgroundTexture, HudAdvancementHoverBoxSprite,
-    HudAdvancementLineTexture, HudAdvancementTabSprite, HudAdvancementWidgetFrameSprite,
-    HudAirSupply, HudBlockItemModel, HudDebugCrosshair, HudDebugFrameTimeChart,
-    HudDebugGameModeSwitcher, HudDebugGameModeSwitcherSlot, HudDebugNetworkCharts,
-    HudDebugOptionsEntryStatus, HudDebugOptionsRow, HudDebugOptionsScreen, HudDebugOptionsTooltip,
-    HudDebugOverlay, HudDebugProfilerChart, HudDebugTpsChart, HudDebugTpsSample, HudEntityPreview,
-    HudEntityPreviewItemDisplayContext, HudEntityPreviewItemLayer, HudEntityPreviewItemSlot,
-    HudEntityPreviewRect, HudFoodEffect, HudGameModeSwitcherMode, HudHeartKind, HudIconLayer,
-    HudInventoryBackgroundLayer, HudInventoryBackgroundTexture, HudInventoryFillLayer,
-    HudInventoryFillStage, HudInventoryGhostItem, HudInventoryItem, HudInventoryItemScissor,
-    HudInventoryScreen, HudInventorySlot, HudInventoryTextBackground,
-    HudInventoryTextInputDecoration, HudInventoryTextLabel, HudInventoryTooltip,
-    HudInventoryTooltipLine, HudItemCountLabel, HudItemDurabilityBar, HudItemFoil, HudItemIcon,
-    HudJumpBar, HudPauseScreen, HudPlayerHealth, HudSignEditorKind, HudSignEditorScreen,
-    HudStatsScreen, HudUvRect, HudVehicleHealth, LevelLighting, LightmapEnvironment,
-    LightningBoltRenderState, ParticleBlockFluidSurfaceSample, ParticleEntityTargetContext,
-    ParticleFluidKind, ParticleLocalPlayerScopeContext, ParticlePlayerMotionContext,
-    ParticleSoundEvent, ParticleSpawnBatch, ParticleSpawnCommand, Renderer, SelectionColoredBox,
-    SelectionLine, SelectionOutline, SignModelAttachment, SignModelWood, SkyEnvironment,
-    SkyMoonPhase, WeatherColumn, WeatherFrame, WeatherRenderState, DEFAULT_ARMOR_STAND_MODEL_POSE,
-    ENTITY_FULL_BRIGHT_LIGHT_COORDS, HUD_HOTBAR_SLOTS, ITEM_MODEL_NO_OVERLAY,
-    VANILLA_DEFAULT_CLOUD_COLOR, VANILLA_DEFAULT_CLOUD_HEIGHT,
+    CloudFrame, DebugFilledBox, DebugFilledRect, DebugLine, DebugTextBillboard,
+    EntityModelInstance, FogEnvironment, GuiItemLightingEntry, HudAdvancementBackgroundTexture,
+    HudAdvancementHoverBoxSprite, HudAdvancementLineTexture, HudAdvancementTabSprite,
+    HudAdvancementWidgetFrameSprite, HudAirSupply, HudBlockItemModel, HudDebugCrosshair,
+    HudDebugFrameTimeChart, HudDebugGameModeSwitcher, HudDebugGameModeSwitcherSlot,
+    HudDebugNetworkCharts, HudDebugOptionsEntryStatus, HudDebugOptionsRow, HudDebugOptionsScreen,
+    HudDebugOptionsTooltip, HudDebugOverlay, HudDebugProfilerChart, HudDebugTpsChart,
+    HudDebugTpsSample, HudEntityPreview, HudEntityPreviewItemDisplayContext,
+    HudEntityPreviewItemLayer, HudEntityPreviewItemSlot, HudEntityPreviewRect, HudFoodEffect,
+    HudGameModeSwitcherMode, HudHeartKind, HudIconLayer, HudInventoryBackgroundLayer,
+    HudInventoryBackgroundTexture, HudInventoryFillLayer, HudInventoryFillStage,
+    HudInventoryGhostItem, HudInventoryItem, HudInventoryItemScissor, HudInventoryScreen,
+    HudInventorySlot, HudInventoryTextBackground, HudInventoryTextInputDecoration,
+    HudInventoryTextLabel, HudInventoryTooltip, HudInventoryTooltipLine, HudItemCountLabel,
+    HudItemDurabilityBar, HudItemFoil, HudItemIcon, HudJumpBar, HudPauseScreen, HudPlayerHealth,
+    HudSignEditorKind, HudSignEditorScreen, HudStatsScreen, HudUvRect, HudVehicleHealth,
+    LevelLighting, LightmapEnvironment, LightningBoltRenderState, ParticleBlockFluidSurfaceSample,
+    ParticleEntityTargetContext, ParticleFluidKind, ParticleLocalPlayerScopeContext,
+    ParticlePlayerMotionContext, ParticleSoundEvent, ParticleSpawnBatch, ParticleSpawnCommand,
+    Renderer, SelectionColoredBox, SelectionLine, SelectionOutline, SignModelAttachment,
+    SignModelWood, SkyEnvironment, SkyMoonPhase, WeatherColumn, WeatherFrame, WeatherRenderState,
+    DEFAULT_ARMOR_STAND_MODEL_POSE, ENTITY_FULL_BRIGHT_LIGHT_COORDS, HUD_HOTBAR_SLOTS,
+    ITEM_MODEL_NO_OVERLAY, VANILLA_DEFAULT_CLOUD_COLOR, VANILLA_DEFAULT_CLOUD_HEIGHT,
     VANILLA_DEFAULT_LIGHTMAP_BLOCK_FACTOR, VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR,
     VANILLA_DEFAULT_LIGHTMAP_SKY_FACTOR, VANILLA_DEFAULT_LIGHTMAP_SKY_LIGHT_COLOR,
     VANILLA_MAX_RENDER_DISTANCE_CHUNKS, VANILLA_MIN_RENDER_DISTANCE_CHUNKS,
@@ -2519,6 +2519,7 @@ pub(crate) fn pump_network_and_terrain(
     let debug_water_samples = debug_water_samples(input, world);
     let mut debug_filled_boxes = debug_water_boxes(&debug_water_samples);
     debug_filled_boxes.extend(debug_heightmap_boxes(input, world, camera_pose));
+    let debug_filled_rects = debug_solid_face_rects(input, world, camera_pose);
     let mut debug_text_billboards = debug_water_amount_billboards(&debug_water_samples);
     debug_text_billboards.extend(debug_light_level_billboards(input, world, camera_pose));
     let mut debug_lines = debug_collision_cache.lines(input, world, now);
@@ -2625,6 +2626,7 @@ pub(crate) fn pump_network_and_terrain(
             entity_scene_outline,
             entity_target_outline,
             debug_filled_boxes,
+            debug_filled_rects,
             debug_text_billboards,
             debug_lines,
             block_destroy_overlays,
@@ -4268,6 +4270,112 @@ fn debug_light_level_billboards(
         }
     }
     billboards
+}
+
+const DEBUG_SOLID_FACE_SCAN_RADIUS: i32 = 6;
+const DEBUG_SOLID_FACE_INFLATE: f32 = 0.002;
+const DEBUG_SOLID_FACE_COLOR: [u8; 4] = [255, 0, 0, 128];
+
+fn debug_solid_face_rects(
+    input: &ClientInputState,
+    world: &WorldStore,
+    camera_pose: Option<CameraPose>,
+) -> Vec<DebugFilledRect> {
+    if !input.debug_screen_entry_enabled(
+        DebugScreenEntryId::VisualizeSolidFaces,
+        world.local_player_has_reduced_debug_info(),
+    ) || world.level_info().is_none()
+    {
+        return Vec::new();
+    }
+    let Some(camera_position) = camera_pose.map(camera_eye_position) else {
+        return Vec::new();
+    };
+    if !camera_position
+        .iter()
+        .all(|coordinate| coordinate.is_finite())
+    {
+        return Vec::new();
+    }
+    let center = BlockPos {
+        x: camera_position[0].floor() as i32,
+        y: camera_position[1].floor() as i32,
+        z: camera_position[2].floor() as i32,
+    };
+    let mut rects = Vec::new();
+    // `BlockPos.betweenClosed`: x advances fastest, then y, then z.
+    for z in center.z.saturating_sub(DEBUG_SOLID_FACE_SCAN_RADIUS)
+        ..=center.z.saturating_add(DEBUG_SOLID_FACE_SCAN_RADIUS)
+    {
+        for y in center.y.saturating_sub(DEBUG_SOLID_FACE_SCAN_RADIUS)
+            ..=center.y.saturating_add(DEBUG_SOLID_FACE_SCAN_RADIUS)
+        {
+            for x in center.x.saturating_sub(DEBUG_SOLID_FACE_SCAN_RADIUS)
+                ..=center.x.saturating_add(DEBUG_SOLID_FACE_SCAN_RADIUS)
+            {
+                let pos = BlockPos { x, y, z };
+                let Some(probe) = world.probe_block(pos) else {
+                    continue;
+                };
+                // Vanilla skips only `Blocks.AIR`; the other air variants
+                // naturally contribute no outline AABBs.
+                if probe.block_name.as_deref() == Some("minecraft:air") {
+                    continue;
+                }
+                let sturdy_faces = world.debug_block_sturdy_faces(&probe);
+                if !sturdy_faces.contains(&true) {
+                    continue;
+                }
+                let outline_boxes = if probe.block_name.as_deref() == Some("minecraft:scaffolding")
+                {
+                    world.debug_scaffolding_outline_shape_boxes(&probe)
+                } else {
+                    crate::block_outline::block_probe_shape_boxes(&probe)
+                };
+                let Some(outline_boxes) = outline_boxes else {
+                    continue;
+                };
+                for (outline_min, outline_max) in outline_boxes {
+                    let min = [
+                        x as f32 + outline_min[0] as f32 - DEBUG_SOLID_FACE_INFLATE,
+                        y as f32 + outline_min[1] as f32 - DEBUG_SOLID_FACE_INFLATE,
+                        z as f32 + outline_min[2] as f32 - DEBUG_SOLID_FACE_INFLATE,
+                    ];
+                    let max = [
+                        x as f32 + outline_max[0] as f32 + DEBUG_SOLID_FACE_INFLATE,
+                        y as f32 + outline_max[1] as f32 + DEBUG_SOLID_FACE_INFLATE,
+                        z as f32 + outline_max[2] as f32 + DEBUG_SOLID_FACE_INFLATE,
+                    ];
+                    for (direction_index, sturdy) in sturdy_faces.into_iter().enumerate() {
+                        if sturdy {
+                            rects.push(debug_solid_face_rect(min, max, direction_index));
+                        }
+                    }
+                }
+            }
+        }
+    }
+    rects
+}
+
+/// `RectGizmo.fromCuboidFace` corner winding in vanilla direction order:
+/// west, south, east, north, down, up.
+fn debug_solid_face_rect(min: [f32; 3], max: [f32; 3], direction: usize) -> DebugFilledRect {
+    let [x0, y0, z0] = min;
+    let [x1, y1, z1] = max;
+    let corners = match direction {
+        0 => [[x0, y0, z0], [x0, y0, z1], [x0, y1, z1], [x0, y1, z0]],
+        1 => [[x0, y0, z1], [x1, y0, z1], [x1, y1, z1], [x0, y1, z1]],
+        2 => [[x1, y0, z0], [x1, y1, z0], [x1, y1, z1], [x1, y0, z1]],
+        3 => [[x0, y0, z0], [x0, y1, z0], [x1, y1, z0], [x1, y0, z0]],
+        4 => [[x0, y0, z0], [x1, y0, z0], [x1, y0, z1], [x0, y0, z1]],
+        5 => [[x0, y1, z0], [x0, y1, z1], [x1, y1, z1], [x1, y1, z0]],
+        _ => unreachable!("solid face direction index is bounded by the six sturdy flags"),
+    };
+    DebugFilledRect {
+        corners,
+        color: DEBUG_SOLID_FACE_COLOR,
+    }
 }
 
 const DEBUG_COLLISION_QUERY_RADIUS: f64 = 6.0;

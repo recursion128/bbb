@@ -8266,3 +8266,19 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   section `facesCanSeeEachother`。ledger 将三项标为 deferred，并以 per-section residency +
   repo-native occlusion graph/octree/face-visibility matrix 作为重启判据，避免用 Manhattan BFS
   或 mesh bounds 伪造 debug 数据。
+
+## 2026-07-10：Debug solid block faces
+
+- [x] `visualize_solid_faces`（P2 world/native/renderer）：依据 vanilla 26.1
+  `SolidFaceRenderer`、`SupportType.FULL`、`Block.isFaceFull` 与
+  `RectGizmo.fromCuboidFace`，native 以 active camera eye 所在 block 为中心按
+  `BlockPos.betweenClosed` 顺序扫描 13³ 区域，对每个 `getShape().toAabbs()` 外扩
+  0.002，并按 west/south/east/north/down/up 顺序只提交 whole-state sturdy face。
+  world 从唯一 empty-context collision shape source 以 boundary slice union 覆盖判定
+  FULL face，并精确处理 soul-sand/mud、leaves、snow layers、chorus flower、hanging
+  sign、fence gate 与动态 shulker support override；scaffolding outline 保留原版 voxel
+  union 的 stable/bottom AABB 分解。renderer 新增通用 `DebugFilledRect`，与既有 filled
+  boxes 共享 alpha-blended、no-depth-write、back-face-cull pipeline 和全体 quad 的
+  far-to-near upload sort，使用原版 `0x80FF0000` RGBA 与六方向绕序。focused tests 覆盖
+  support overrides/union、open shulker direction、scaffolding AABB、13³ scan gate、inflate/
+  color/corner order、rect sanitize/mesh winding，以及 `RendererFrame` 的逐帧提交。
