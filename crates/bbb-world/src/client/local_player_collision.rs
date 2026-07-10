@@ -65,6 +65,13 @@ pub struct DebugLocalSupportingBlocks {
     pub legacy_effect: Option<DebugSupportingBlockHighlight>,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct DebugEntitySupportingBlocks {
+    pub entity_id: i32,
+    pub supporting: DebugSupportingBlockHighlight,
+    pub legacy_effect: Option<DebugSupportingBlockHighlight>,
+}
+
 #[derive(Debug, Clone, Copy)]
 struct DebugCameraCollisionQuery {
     source_entity_id: Option<i32>,
@@ -201,8 +208,64 @@ pub(crate) fn block_collision_shape_is_full_block(block: &BlockProbe, pos: Block
 }
 
 impl WorldStore {
+    /// Mirrors `level.getEntities(cameraEntity,
+    /// cameraEntity.getBoundingBox().inflate(radius))` for
+    /// `SupportBlockRenderer`'s cached nearby-entity membership.
+    pub fn debug_supporting_block_entity_ids(&self, radius: f64) -> Vec<i32> {
+        if !radius.is_finite() || radius < 0.0 {
+            return Vec::new();
+        }
+        let Some(camera) = self.debug_camera_collision_query() else {
+            return Vec::new();
+        };
+        let query = camera.bounds.inflated(radius);
+        self.entity_transforms()
+            .into_iter()
+            .filter(|transform| camera.source_entity_id != Some(transform.id))
+            .filter_map(|transform| {
+                let bounds = self.probe_entity_pick_bounds(transform.id)?;
+                world_collision_box_intersects_bounds(
+                    WorldCollisionBox {
+                        min: [
+                            transform.position.x + f64::from(bounds.min[0]),
+                            transform.position.y + f64::from(bounds.min[1]),
+                            transform.position.z + f64::from(bounds.min[2]),
+                        ],
+                        max: [
+                            transform.position.x + f64::from(bounds.max[0]),
+                            transform.position.y + f64::from(bounds.max[1]),
+                            transform.position.z + f64::from(bounds.max[2]),
+                        ],
+                    },
+                    query,
+                )
+                .then_some(transform.id)
+            })
+            .collect()
+    }
+
     pub fn entity_main_supporting_block_pos(&self, entity_id: i32) -> Option<BlockPos> {
         self.entities.supporting_block(entity_id)?.main
+    }
+
+    pub fn debug_entity_supporting_blocks(
+        &self,
+        entity_id: i32,
+    ) -> Option<DebugEntitySupportingBlocks> {
+        if self.local_player_id() == Some(entity_id) {
+            return None;
+        }
+        let supporting_pos = self.entity_main_supporting_block_pos(entity_id)?;
+        let entity_y = self.entities.transform(entity_id)?.position.y;
+        let supporting = self.debug_supporting_block_highlight(supporting_pos);
+        let legacy_pos = self.debug_legacy_on_pos(supporting_pos, entity_y);
+        let legacy_effect = (legacy_pos != supporting_pos)
+            .then(|| self.debug_supporting_block_highlight(legacy_pos));
+        Some(DebugEntitySupportingBlocks {
+            entity_id,
+            supporting,
+            legacy_effect,
+        })
     }
 
     /// Mirrors the `Entity.setOnGround` -> `checkSupportingBlock(onGround,
@@ -4100,6 +4163,42 @@ mod tests {
     }
 
     #[test]
+    fn debug_supporting_block_membership_uses_camera_bounds_inflated_by_radius() {
+        let mut world = empty_world();
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: bbb_protocol::packets::Vec3d {
+                x: 0.5,
+                y: 1.0,
+                z: 0.5,
+            },
+            ..LocalPlayerPoseState::default()
+        });
+        world.local_player_id = Some(99);
+        add_collision_test_entity(
+            &mut world,
+            99,
+            VANILLA_ENTITY_TYPE_PLAYER_ID,
+            [0.5, 1.0, 0.5],
+        );
+        add_collision_test_entity(
+            &mut world,
+            10,
+            bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_COW_ID,
+            [17.2, 1.0, 0.5],
+        );
+        add_collision_test_entity(
+            &mut world,
+            11,
+            bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_COW_ID,
+            [17.3, 1.0, 0.5],
+        );
+
+        assert_eq!(world.debug_supporting_block_entity_ids(16.0), [10]);
+        assert!(world.debug_supporting_block_entity_ids(f64::NAN).is_empty());
+        assert!(world.debug_supporting_block_entity_ids(-1.0).is_empty());
+    }
+
+    #[test]
     fn debug_local_supporting_block_uses_vanilla_distance_and_block_pos_tie_break() {
         let mut world = empty_world();
         let stone = vanilla_block_state_id("minecraft:stone", []);
@@ -4262,6 +4361,20 @@ mod tests {
             world.entity_main_supporting_block_pos(entity_id),
             Some(support_pos)
         );
+        assert_eq!(
+            world.debug_entity_supporting_blocks(entity_id),
+            Some(DebugEntitySupportingBlocks {
+                entity_id,
+                supporting: DebugSupportingBlockHighlight {
+                    pos: support_pos,
+                    collision_boxes: vec![WorldCollisionBox {
+                        min: [0.0, 0.0, 0.0],
+                        max: [1.0, 1.0, 1.0],
+                    }],
+                },
+                legacy_effect: None,
+            })
+        );
 
         let cloned = world.clone();
         assert_eq!(
@@ -4313,6 +4426,7 @@ mod tests {
         let second_missing = world.probe_entity(entity_id).unwrap();
         assert_eq!(second_missing.main_supporting_block_pos, None);
         assert!(second_missing.on_ground_no_blocks);
+        assert_eq!(world.debug_entity_supporting_blocks(entity_id), None);
 
         assert!(world.apply_entity_move(bbb_protocol::packets::EntityMove {
             id: entity_id,

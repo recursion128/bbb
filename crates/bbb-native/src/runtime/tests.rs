@@ -3581,13 +3581,15 @@ fn debug_supporting_block_lines_project_local_player_and_legacy_highlights() {
         .expect("vanilla stone state");
     set_lightmap_test_block(&mut world, BlockPos { x: 0, y: 0, z: 0 }, stone);
 
+    let now = Instant::now();
+    let mut cache = DebugSupportingBlockCache::default();
     let mut input = ClientInputState::new(true);
-    assert!(debug_supporting_block_lines(&input, &world).is_empty());
+    assert!(cache.lines(&input, &world, now).is_empty());
     input.set_debug_screen_entry_status(
         DebugScreenEntryId::VisualizeEntitySupportingBlocks,
         crate::debug_entries::DebugScreenEntryStatus::AlwaysOn,
     );
-    let lines = debug_supporting_block_lines(&input, &world);
+    let lines = cache.lines(&input, &world, now);
     assert_eq!(lines.len(), 24);
     assert_eq!(
         lines[0],
@@ -3605,7 +3607,7 @@ fn debug_supporting_block_lines_project_local_player_and_legacy_highlights() {
 
     pose.on_ground = false;
     world.set_local_player_pose(pose);
-    assert!(debug_supporting_block_lines(&input, &world).is_empty());
+    assert!(cache.lines(&input, &world, now).is_empty());
 
     let mut reduced =
         world_with_dimension_height_and_reduced_debug_info(0, "minecraft:overworld", 16, true);
@@ -3613,7 +3615,7 @@ fn debug_supporting_block_lines_project_local_player_and_legacy_highlights() {
     reduced.set_local_player_pose(pose);
     reduced.insert_decoded_chunk(empty_lightmap_test_chunk(reduced.dimension()));
     set_lightmap_test_block(&mut reduced, BlockPos { x: 0, y: 0, z: 0 }, stone);
-    assert!(debug_supporting_block_lines(&input, &reduced).is_empty());
+    assert!(cache.lines(&input, &reduced, now).is_empty());
 }
 
 #[test]
@@ -3641,7 +3643,7 @@ fn debug_supporting_block_lines_use_cyan_for_legacy_effect_position() {
         crate::debug_entries::DebugScreenEntryStatus::AlwaysOn,
     );
 
-    let lines = debug_supporting_block_lines(&input, &world);
+    let lines = DebugSupportingBlockCache::default().lines(&input, &world, Instant::now());
     let cyan_outline = lines
         .iter()
         .filter(|line| line.color == [0, 255, 255, 102])
@@ -3652,6 +3654,139 @@ fn debug_supporting_block_lines_use_cyan_for_legacy_effect_position() {
     assert!(lines
         .iter()
         .all(|line| line.width == DebugLine::DEFAULT_WIDTH));
+}
+
+#[test]
+fn debug_supporting_block_entity_bias_matches_vanilla_java_hash() {
+    assert_eq!((52.0_f64 + 0.132_453_657).to_string(), "52.132453657");
+    assert_eq!(java_string_hash_code("52.132453657"), 1_431_313_029);
+    assert!((debug_supporting_block_entity_bias(52) - 0.000_58).abs() < f64::EPSILON);
+
+    assert_eq!((41.0_f64 + 0.132_453_657).to_string(), "41.132453657");
+    assert_eq!(java_string_hash_code("41.132453657"), -1_195_785_627);
+    assert!((debug_supporting_block_entity_bias(41) + 0.012_54).abs() < f64::EPSILON);
+}
+
+#[test]
+fn debug_supporting_block_cache_keeps_membership_but_reads_live_support_state() {
+    assert_eq!(
+        DEBUG_SUPPORTING_BLOCK_REFRESH_INTERVAL,
+        Duration::from_millis(100)
+    );
+    assert_eq!(DEBUG_SUPPORTING_BLOCK_QUERY_RADIUS, 16.0);
+    assert_eq!(DEBUG_SUPPORTING_BLOCK_ENTITY_COLOR, [0, 255, 0, 255]);
+
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    world.set_local_player_pose(local_player_pose([0.5, 1.0, 0.5], 0.0, 0.0));
+    world.insert_decoded_chunk(empty_lightmap_test_chunk(world.dimension()));
+    let stone = world
+        .registries()
+        .block_state_id_by_name_and_properties("minecraft:stone", &BTreeMap::new())
+        .expect("vanilla stone state");
+    let air = world
+        .registries()
+        .block_state_id_by_name_and_properties("minecraft:air", &BTreeMap::new())
+        .expect("vanilla air state");
+    add_remote_supporting_block_test_entity(&mut world, 52, 2, 1.0, stone);
+
+    let mut input = ClientInputState::new(true);
+    input.set_debug_screen_entry_status(
+        DebugScreenEntryId::VisualizeEntitySupportingBlocks,
+        crate::debug_entries::DebugScreenEntryStatus::AlwaysOn,
+    );
+    let start = Instant::now();
+    let mut cache = DebugSupportingBlockCache::default();
+    let first = cache.lines(&input, &world, start);
+    assert_eq!(first.len(), 24);
+    assert_eq!(first[0].color, [0, 255, 0, 102]);
+    assert!((first[0].from[0] - 1.958_84).abs() < 1.0e-6);
+
+    add_remote_supporting_block_test_entity(&mut world, 53, 4, 1.0, stone);
+    assert_eq!(
+        cache
+            .lines(
+                &input,
+                &world,
+                start + DEBUG_SUPPORTING_BLOCK_REFRESH_INTERVAL,
+            )
+            .len(),
+        24,
+        "vanilla refreshes membership only after more than 100 ms"
+    );
+    let refreshed_at = start + DEBUG_SUPPORTING_BLOCK_REFRESH_INTERVAL + Duration::from_nanos(1);
+    assert_eq!(cache.lines(&input, &world, refreshed_at).len(), 48);
+
+    set_lightmap_test_block(&mut world, BlockPos { x: 2, y: 0, z: 0 }, air);
+    for _ in 0..2 {
+        assert!(world.apply_entity_move(bbb_protocol::packets::EntityMove {
+            id: 52,
+            delta_x: 0,
+            delta_y: 0,
+            delta_z: 0,
+            y_rot: None,
+            x_rot: None,
+            on_ground: true,
+        }));
+    }
+    assert_eq!(
+        cache
+            .lines(&input, &world, refreshed_at + Duration::from_millis(1))
+            .len(),
+        24,
+        "cached members still project their live supporting-block state each frame"
+    );
+
+    input.set_debug_screen_entry_status(
+        DebugScreenEntryId::VisualizeEntitySupportingBlocks,
+        crate::debug_entries::DebugScreenEntryStatus::Never,
+    );
+    assert!(cache.lines(&input, &world, refreshed_at).is_empty());
+    add_remote_supporting_block_test_entity(&mut world, 54, 6, 1.0, stone);
+    input.set_debug_screen_entry_status(
+        DebugScreenEntryId::VisualizeEntitySupportingBlocks,
+        crate::debug_entries::DebugScreenEntryStatus::AlwaysOn,
+    );
+    assert_eq!(
+        cache.lines(&input, &world, refreshed_at).len(),
+        48,
+        "re-enabling creates a fresh membership cache and refreshes immediately"
+    );
+}
+
+#[test]
+fn debug_supporting_block_remote_legacy_effect_uses_biased_cyan_outline() {
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    world.set_local_player_pose(local_player_pose([0.5, 1.0, 0.5], 0.0, 0.0));
+    world.insert_decoded_chunk(empty_lightmap_test_chunk(world.dimension()));
+    let piston_head = world
+        .registries()
+        .block_state_id_by_name_and_properties(
+            "minecraft:piston_head",
+            &BTreeMap::from([
+                ("facing".to_string(), "down".to_string()),
+                ("short".to_string(), "false".to_string()),
+                ("type".to_string(), "normal".to_string()),
+            ]),
+        )
+        .expect("vanilla downward piston head state");
+    add_remote_supporting_block_test_entity(&mut world, 41, 2, 1.25, piston_head);
+    let mut input = ClientInputState::new(true);
+    input.set_debug_screen_entry_status(
+        DebugScreenEntryId::VisualizeEntitySupportingBlocks,
+        crate::debug_entries::DebugScreenEntryStatus::AlwaysOn,
+    );
+
+    let lines = DebugSupportingBlockCache::default().lines(&input, &world, Instant::now());
+    let cyan_outline = lines
+        .iter()
+        .filter(|line| line.color == [0, 255, 255, 102])
+        .collect::<Vec<_>>();
+    assert_eq!(cyan_outline.len(), 12);
+    assert!((cyan_outline[0].from[0] - 1.945_08).abs() < 1.0e-6);
+    assert!((cyan_outline[0].from[1] - 0.945_08).abs() < 1.0e-6);
+    assert!(lines
+        .iter()
+        .any(|line| line.color == DEBUG_SUPPORTING_BLOCK_ENTITY_COLOR));
 }
 
 #[test]
@@ -4083,7 +4218,7 @@ fn renderer_frame_commits_debug_gizmos_from_one_water_sample_snapshot() {
         .find("let mut debug_lines = debug_collision_cache.lines(input, world, now);")
         .expect("pump should project cached collision debug lines");
     let support_lines = runtime_source
-        .find("debug_lines.extend(debug_supporting_block_lines(input, world));")
+        .find("debug_lines.extend(debug_supporting_block_cache.lines(input, world, now));")
         .expect("supporting-block lines should follow collision lines");
     let frame = runtime_source
         .find("            debug_filled_boxes,\n")
@@ -14869,6 +15004,48 @@ fn test_add_entity(id: i32, entity_type_id: i32) -> bbb_protocol::packets::AddEn
         y_head_rot: 0.0,
         data: 0,
     }
+}
+
+fn add_remote_supporting_block_test_entity(
+    world: &mut WorldStore,
+    entity_id: i32,
+    block_x: i32,
+    entity_y: f64,
+    block_state_id: i32,
+) {
+    let mut packet = test_add_entity(
+        entity_id,
+        bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_COW_ID,
+    );
+    packet.position = bbb_protocol::packets::Vec3d {
+        x: f64::from(block_x) + 0.5,
+        y: entity_y,
+        z: 0.5,
+    };
+    world.apply_add_entity(packet);
+    set_lightmap_test_block(
+        world,
+        BlockPos {
+            x: block_x,
+            y: 0,
+            z: 0,
+        },
+        block_state_id,
+    );
+    assert!(
+        world.apply_entity_position_sync(bbb_protocol::packets::EntityPositionSync {
+            id: entity_id,
+            position: bbb_protocol::packets::Vec3d {
+                x: f64::from(block_x) + 0.5,
+                y: entity_y,
+                z: 0.5,
+            },
+            delta_movement: bbb_protocol::packets::Vec3d::default(),
+            y_rot: 0.0,
+            x_rot: 0.0,
+            on_ground: true,
+        })
+    );
 }
 
 fn test_bool_data(data_id: u8, value: bool) -> bbb_protocol::packets::EntityDataValue {

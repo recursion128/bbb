@@ -329,6 +329,10 @@ fn book_pages_from_item(item: &ProtocolItemStackSummary) -> Option<Vec<String>> 
 const VANILLA_WRITABLE_BOOK_CONTENT_COMPONENT_ID: i32 = 54;
 
 pub fn code_of_conduct_text_hash(text: &str) -> i32 {
+    java_string_hash_code(text)
+}
+
+pub fn java_string_hash_code(text: &str) -> i32 {
     text.encode_utf16().fold(0i32, |hash, unit| {
         hash.wrapping_mul(31).wrapping_add(i32::from(unit))
     })

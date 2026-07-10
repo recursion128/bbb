@@ -8218,3 +8218,18 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   descending boots cow、falling block 与无 boots cow。边界：remote `fallDistance` 尚未
   canonical 化，故 `>2.5` 的 `FALLING_COLLISION_SHAPE` 特例，以及 green/cyan/id-bias
   renderer + 100 ms membership cache 仍在 ledger。
+
+## 2026-07-10：Remote supporting-block debug highlights
+
+- [x] `visualize_entity_supporting_blocks` 的远端实体 renderer（P2 world/native）：依据
+  vanilla 26.1 `SupportBlockRenderer`，world 以 active camera entity AABB 膨胀 16 格
+  枚举非旁观实体，并从 canonical `mainSupportingBlockPos` 每帧投影 main / legacy
+  highlight；native 独立缓存成员 ID，首次启用立即收集，之后仅在距上次收集严格大于
+  100 ms 时刷新，禁用或 reduced-debug gate 会清空。缓存只冻结成员集合，远端实体的
+  transform、support 与 block collision shape 仍逐帧读取；本地玩家继续独立逐帧读取。
+  远端 main 使用绿色、legacy 使用青色，并按
+  `0.02 * (String.valueOf(id + 0.132453657).hashCode() % 1000) / 1000` 施加 entity-id
+  bias；Java UTF-16 string hash 复用 world 既有 code-of-conduct hash 实现，避免第二份
+  source of truth。focused tests 覆盖 16 格 AABB 边界、正负 hash bias、绿色/青色 biased
+  坐标、恰好 100 ms 不刷新、100 ms + 1 ns 刷新、缓存成员的 live support 更新，以及
+  禁用后同刻重启。ledger 仅保留 remote `fallDistance > 2.5` powder-snow support edge。

@@ -75,8 +75,8 @@ use particle_runtime::{NativeParticleRuntime, ParticleEventSink};
 use runtime::{
     control_renderer_counters, publish_snapshot, pump_network_and_terrain, request_net_disconnect,
     snapshot_is_running, take_control_screenshot, ClientAnimationTickState, DebugCollisionCache,
-    HudDebugFpsSampler, HudDebugNetworkSampler, HudDebugTpsSampler, LevelEventSoundRandomState,
-    LightmapTickState,
+    DebugSupportingBlockCache, HudDebugFpsSampler, HudDebugNetworkSampler, HudDebugTpsSampler,
+    LevelEventSoundRandomState, LightmapTickState,
 };
 use sky_assets::load_sky_textures;
 use startup::{
@@ -430,6 +430,7 @@ fn main() -> Result<()> {
     let mut hud_debug_network_sampler = HudDebugNetworkSampler::default();
     let mut hud_debug_tps_sampler = HudDebugTpsSampler::default();
     let mut debug_collision_cache = DebugCollisionCache::default();
+    let mut debug_supporting_block_cache = DebugSupportingBlockCache::default();
     let mut debug_profiler = DebugProfiler::default();
     let mut lightmap_ticks = LightmapTickState::with_brightness_factor_and_hide_lightning_flash(
         args.client_gamma,
@@ -1056,6 +1057,7 @@ fn main() -> Result<()> {
                         &mut hud_debug_network_sampler,
                         &mut hud_debug_tps_sampler,
                         &mut debug_collision_cache,
+                        &mut debug_supporting_block_cache,
                         &mut lightmap_ticks,
                         &mut level_event_sound_random,
                         &mut terrain_upload,
@@ -1222,6 +1224,7 @@ fn main() -> Result<()> {
                     &mut hud_debug_network_sampler,
                     &mut hud_debug_tps_sampler,
                     &mut debug_collision_cache,
+                    &mut debug_supporting_block_cache,
                     &mut lightmap_ticks,
                     &mut level_event_sound_random,
                     &mut terrain_upload,

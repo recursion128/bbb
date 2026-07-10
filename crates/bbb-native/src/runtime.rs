@@ -55,9 +55,9 @@ use bbb_renderer::{
     VANILLA_MAX_RENDER_DISTANCE_CHUNKS, VANILLA_MIN_RENDER_DISTANCE_CHUNKS,
 };
 use bbb_world::{
-    sign_wood_and_form_for_block_name, BlockPos, BookScreenState, ChunkPos, ContainerState,
-    EvokerFangsCritParticleState, FireworkRocketTrailParticleState, ItemEquipmentSlot,
-    MerchantOfferState, MerchantOffersState, MobEffectState, MountArmorSlotKind,
+    java_string_hash_code, sign_wood_and_form_for_block_name, BlockPos, BookScreenState, ChunkPos,
+    ContainerState, EvokerFangsCritParticleState, FireworkRocketTrailParticleState,
+    ItemEquipmentSlot, MerchantOfferState, MerchantOffersState, MobEffectState, MountArmorSlotKind,
     MountInventoryKind, OminousItemSpawnerParticleState, PrimedTntSmokeParticleState,
     RavagerStunParticleState, SignBlockForm, SoundEventState, SoundHolderState, TerrainFluidKind,
     TerrainFluidState, TerrainLight, TerrainMaterialClass, WorldLevelInfo, WorldStore,
@@ -806,11 +806,19 @@ pub(crate) struct HudDebugTpsSampler {
 }
 
 const DEBUG_COLLISION_REFRESH_INTERVAL: Duration = Duration::from_millis(100);
+const DEBUG_SUPPORTING_BLOCK_REFRESH_INTERVAL: Duration = Duration::from_millis(100);
+const DEBUG_SUPPORTING_BLOCK_QUERY_RADIUS: f64 = 16.0;
 
 #[derive(Debug, Default)]
 pub(crate) struct DebugCollisionCache {
     last_update_at: Option<Instant>,
     lines: Vec<DebugLine>,
+}
+
+#[derive(Debug, Default)]
+pub(crate) struct DebugSupportingBlockCache {
+    last_update_at: Option<Instant>,
+    entity_ids: Vec<i32>,
 }
 
 impl DebugCollisionCache {
@@ -837,6 +845,34 @@ impl DebugCollisionCache {
     fn reset(&mut self) {
         self.last_update_at = None;
         self.lines.clear();
+    }
+}
+
+impl DebugSupportingBlockCache {
+    fn lines(
+        &mut self,
+        input: &ClientInputState,
+        world: &WorldStore,
+        now: Instant,
+    ) -> Vec<DebugLine> {
+        if !debug_supporting_block_entry_enabled(input, world) {
+            self.reset();
+            return Vec::new();
+        }
+        let refresh = self.last_update_at.is_none_or(|last_update_at| {
+            now.saturating_duration_since(last_update_at) > DEBUG_SUPPORTING_BLOCK_REFRESH_INTERVAL
+        });
+        if refresh {
+            self.last_update_at = Some(now);
+            self.entity_ids =
+                world.debug_supporting_block_entity_ids(DEBUG_SUPPORTING_BLOCK_QUERY_RADIUS);
+        }
+        collect_debug_supporting_block_lines(world, &self.entity_ids)
+    }
+
+    fn reset(&mut self) {
+        self.last_update_at = None;
+        self.entity_ids.clear();
     }
 }
 
@@ -1858,6 +1894,7 @@ pub(crate) fn pump_network_and_terrain(
     hud_debug_network_sampler: &mut HudDebugNetworkSampler,
     hud_debug_tps_sampler: &mut HudDebugTpsSampler,
     debug_collision_cache: &mut DebugCollisionCache,
+    debug_supporting_block_cache: &mut DebugSupportingBlockCache,
     lightmap_ticks: &mut LightmapTickState,
     level_event_sound_random: &mut LevelEventSoundRandomState,
     terrain_upload: &mut TerrainUploadState,
@@ -2474,7 +2511,7 @@ pub(crate) fn pump_network_and_terrain(
     debug_filled_boxes.extend(debug_heightmap_boxes(input, world, camera_pose));
     let debug_text_billboards = debug_water_amount_billboards(&debug_water_samples);
     let mut debug_lines = debug_collision_cache.lines(input, world, now);
-    debug_lines.extend(debug_supporting_block_lines(input, world));
+    debug_lines.extend(debug_supporting_block_cache.lines(input, world, now));
     // Vanilla `LevelRenderer.extractBlockDestroyAnimation` reads block-breaking state during
     // render extract, after the client tick; local destroy overlay ticks are advanced above.
     let block_destroy_overlays = block_destroy_overlays_from_world(world, terrain_textures);
@@ -4126,6 +4163,7 @@ const DEBUG_COLLISION_QUERY_RADIUS: f64 = 6.0;
 const DEBUG_COLLISION_COLOR: [u8; 4] = [255; 4];
 const DEBUG_SUPPORTING_BLOCK_OUTLINE_ALPHA: u8 = 102;
 const DEBUG_SUPPORTING_BLOCK_PLAYER_COLOR: [u8; 4] = [255, 0, 0, 255];
+const DEBUG_SUPPORTING_BLOCK_ENTITY_COLOR: [u8; 4] = [0, 255, 0, 255];
 const DEBUG_SUPPORTING_BLOCK_LEGACY_COLOR: [u8; 4] = [0, 255, 255, 255];
 const DEBUG_SUPPORTING_BLOCK_PLAYER_OFFSET: f64 = 0.02;
 const DEBUG_SUPPORTING_BLOCK_LEGACY_OFFSET: f64 = 0.04;
@@ -4152,32 +4190,60 @@ fn collect_debug_collision_lines(world: &WorldStore) -> Vec<DebugLine> {
         .collect()
 }
 
-fn debug_supporting_block_lines(input: &ClientInputState, world: &WorldStore) -> Vec<DebugLine> {
-    if !input.debug_screen_entry_enabled(
+fn debug_supporting_block_entry_enabled(input: &ClientInputState, world: &WorldStore) -> bool {
+    input.debug_screen_entry_enabled(
         DebugScreenEntryId::VisualizeEntitySupportingBlocks,
         world.local_player_has_reduced_debug_info(),
-    ) {
-        return Vec::new();
-    }
-    let Some(debug) = world.debug_local_player_supporting_blocks() else {
-        return Vec::new();
-    };
+    )
+}
+
+fn collect_debug_supporting_block_lines(
+    world: &WorldStore,
+    cached_entity_ids: &[i32],
+) -> Vec<DebugLine> {
     let mut lines = Vec::new();
-    append_debug_supporting_block_highlight(
-        &mut lines,
-        &debug.supporting,
-        DEBUG_SUPPORTING_BLOCK_PLAYER_OFFSET,
-        DEBUG_SUPPORTING_BLOCK_PLAYER_COLOR,
-    );
-    if let Some(legacy_effect) = debug.legacy_effect.as_ref() {
+    if let Some(debug) = world.debug_local_player_supporting_blocks() {
         append_debug_supporting_block_highlight(
             &mut lines,
-            legacy_effect,
-            DEBUG_SUPPORTING_BLOCK_LEGACY_OFFSET,
-            DEBUG_SUPPORTING_BLOCK_LEGACY_COLOR,
+            &debug.supporting,
+            DEBUG_SUPPORTING_BLOCK_PLAYER_OFFSET,
+            DEBUG_SUPPORTING_BLOCK_PLAYER_COLOR,
         );
+        if let Some(legacy_effect) = debug.legacy_effect.as_ref() {
+            append_debug_supporting_block_highlight(
+                &mut lines,
+                legacy_effect,
+                DEBUG_SUPPORTING_BLOCK_LEGACY_OFFSET,
+                DEBUG_SUPPORTING_BLOCK_LEGACY_COLOR,
+            );
+        }
+    }
+    for entity_id in cached_entity_ids {
+        let Some(debug) = world.debug_entity_supporting_blocks(*entity_id) else {
+            continue;
+        };
+        let bias = debug_supporting_block_entity_bias(*entity_id);
+        append_debug_supporting_block_highlight(
+            &mut lines,
+            &debug.supporting,
+            DEBUG_SUPPORTING_BLOCK_PLAYER_OFFSET + bias,
+            DEBUG_SUPPORTING_BLOCK_ENTITY_COLOR,
+        );
+        if let Some(legacy_effect) = debug.legacy_effect.as_ref() {
+            append_debug_supporting_block_highlight(
+                &mut lines,
+                legacy_effect,
+                DEBUG_SUPPORTING_BLOCK_LEGACY_OFFSET + bias,
+                DEBUG_SUPPORTING_BLOCK_LEGACY_COLOR,
+            );
+        }
     }
     lines
+}
+
+fn debug_supporting_block_entity_bias(entity_id: i32) -> f64 {
+    let hash_input = (f64::from(entity_id) + 0.132_453_657).to_string();
+    0.02 * f64::from(java_string_hash_code(&hash_input) % 1000) / 1000.0
 }
 
 fn append_debug_supporting_block_highlight(

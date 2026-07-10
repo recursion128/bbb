@@ -41,8 +41,8 @@ pub use crate::client::local_player::{
     LocalPlayerLookAtState, LocalPlayerPermissionLevel, LocalPlayerPoseState, LocalPlayerState,
 };
 pub use crate::client::local_player_collision::{
-    DebugLocalSupportingBlocks, DebugSupportingBlockHighlight, ParticleBlockFluidSurfaceSample,
-    WorldCollisionBox,
+    DebugEntitySupportingBlocks, DebugLocalSupportingBlocks, DebugSupportingBlockHighlight,
+    ParticleBlockFluidSurfaceSample, WorldCollisionBox,
 };
 pub use crate::client::local_player_destroy::{
     LocalDestroyBlockFinished, WorldBlockDestroyProfile, WorldItemMiningProfile,
@@ -60,8 +60,9 @@ pub use crate::client::server_presentation::{
 };
 pub use crate::client::stats::{ClientStatsState, StatValueState, StatsUpdateState};
 pub use crate::client::ui::{
-    code_of_conduct_text_hash, BookScreenState, ClientUiState, CodeOfConductState, DialogState,
-    GhostRecipeState, MountScreenState, OpenBookState, OpenSignEditorState, PongResponseState,
+    code_of_conduct_text_hash, java_string_hash_code, BookScreenState, ClientUiState,
+    CodeOfConductState, DialogState, GhostRecipeState, MountScreenState, OpenBookState,
+    OpenSignEditorState, PongResponseState,
 };
 pub use crate::client::waypoints::{
     ClientWaypointsState, WaypointDataState, WaypointEventState, WaypointState, WaypointVec3iState,
