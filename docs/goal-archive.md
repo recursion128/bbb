@@ -8309,3 +8309,17 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   focused tests 覆盖 single/adjacent voxel edge/face 拓扑、section 类型/no-sky、单 data
   section 的 6+54 faces / 12+12 edges、颜色/线宽、恰好 500 ms 不刷新、+1ns 刷新、entry
   gate 与 frame ordering；账本已无普通 off-by-default debug entry todo。
+
+## 2026-07-10：Entity-hitbox server mirror boundary 与 missing label
+
+- [x] F3+B local-server detail 审计及 3D label 收口（P2 native/renderer）：vanilla
+  26.1 `EntityHitboxDebugRenderer.getServerEntity` 只通过
+  `Minecraft.getSingleplayerServer()` / `IntegratedServer` / `ServerLevel.getEntity` 取得
+  server entity；外部多人客户端必定返回 null，因此绿色 server hitbox 和黄色
+  delta-movement arrow 在 bbb 当前边界判定为 `not-needed`，以新增进程内 integrated
+  server 为重启条件。已有启动 flag 的 null 分支继续生成红色、居中的
+  `Missing Server Entity` `SelectionTextLabel`；本 slice 将它按原版 `TextGizmo.Style`
+  默认 scale 0.32 转入共享 `DebugTextBillboard` GPU surface，并保持在 water/light labels
+  之后的 `EntityHitboxDebugRenderer` 顺序。focused tests 锁定位置、文本、RGBA、居中样式、
+  F3+B/启动 flag gate 与 `RendererFrame` 提取顺序；goal 的默认关闭 debug / local-server
+  hitbox 队列项均已移除。

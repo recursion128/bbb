@@ -199,9 +199,6 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 仍在推进（消化顺序即列出顺序，todo 见账本 "HUD overlay and screen render
 surfaces" 节；整体低优先）：
 
-- 默认关闭的 debug entry 逐项 renderer。
-- entity hitbox 的 local-server mirror（绿框 + delta 箭头）与 3D debug-text
-  billboard 绘制。
 - advanced tooltip 其余 component 专属行与选项持久化：逐条对照 vanilla
   `ItemStack.addDetailsToTooltip` 的 component 分派补齐，已实现者由代码确认。
 - F3+I 本地实体 `saveWithoutId` 继续逐实体补全：对照各实体 vanilla

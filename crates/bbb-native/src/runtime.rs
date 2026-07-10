@@ -2526,6 +2526,9 @@ pub(crate) fn pump_network_and_terrain(
     let mut debug_filled_rects = debug_solid_face_rects(input, world, camera_pose);
     let mut debug_text_billboards = debug_water_amount_billboards(&debug_water_samples);
     debug_text_billboards.extend(debug_light_level_billboards(input, world, camera_pose));
+    debug_text_billboards.extend(debug_selection_text_billboards(
+        entity_scene_outline.as_ref(),
+    ));
     let mut debug_lines = debug_collision_cache.lines(input, world, now);
     debug_lines.extend(debug_supporting_block_cache.lines(input, world, now));
     let (debug_sky_light_section_rects, debug_sky_light_section_lines) =
@@ -4278,6 +4281,24 @@ fn debug_light_level_billboards(
         }
     }
     billboards
+}
+
+fn debug_selection_text_billboards(outline: Option<&SelectionOutline>) -> Vec<DebugTextBillboard> {
+    outline
+        .into_iter()
+        .flat_map(|outline| &outline.text_labels)
+        .map(|label| {
+            let mut billboard = DebugTextBillboard::centered(
+                label.position,
+                label.text.clone(),
+                argb_to_rgba8(rgba01_to_argb(label.color)),
+            );
+            if !label.centered {
+                billboard.adjust_left = Some(0.0);
+            }
+            billboard
+        })
+        .collect()
 }
 
 const DEBUG_SOLID_FACE_SCAN_RADIUS: i32 = 6;

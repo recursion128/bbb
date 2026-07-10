@@ -3222,6 +3222,14 @@ fn debug_entity_scene_outline_includes_missing_server_label_when_startup_flag_is
         .expect("F3+B should enable entity AABB debug outlines");
     assert_eq!(outline.text_labels.len(), 1);
     assert_eq!(outline.text_labels[0].text, "Missing Server Entity");
+    assert_eq!(
+        debug_selection_text_billboards(Some(&outline)),
+        [DebugTextBillboard::centered(
+            outline.text_labels[0].position,
+            "Missing Server Entity",
+            [255, 0, 0, 255],
+        )]
+    );
 }
 
 #[test]
@@ -4474,6 +4482,9 @@ fn renderer_frame_commits_debug_gizmos_from_one_water_sample_snapshot() {
     let light_text = runtime_source
         .find("debug_text_billboards.extend(debug_light_level_billboards(input, world, camera_pose));")
         .expect("light debug labels should follow water labels");
+    let selection_text = runtime_source
+        .find("debug_text_billboards.extend(debug_selection_text_billboards(")
+        .expect("entity debug labels should use the shared 3D text surface");
     let lines = runtime_source
         .find("let mut debug_lines = debug_collision_cache.lines(input, world, now);")
         .expect("pump should project cached collision debug lines");
@@ -4499,7 +4510,8 @@ fn renderer_frame_commits_debug_gizmos_from_one_water_sample_snapshot() {
             && heightmap_extend < solid_faces
             && solid_faces < text
             && text < light_text
-            && light_text < lines
+            && light_text < selection_text
+            && selection_text < lines
             && lines < support_lines
             && support_lines < sky_light_sections
             && sky_light_sections < sky_light_rects

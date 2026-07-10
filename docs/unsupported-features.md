@@ -215,8 +215,13 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   default zero. Local-player high-fall powder snow and the falling-block type
   branch are covered; locally controlled vehicle physics stays tracked under
   the existing full boat/vehicle movement item.
-- Render the entity hitbox local-server mirror (green boxes, delta arrows) and
-  the 3D debug-text billboards.
+- Entity-hitbox local-server green boxes and delta arrows are `not-needed`:
+  vanilla 26.1 `EntityHitboxDebugRenderer.getServerEntity` returns an entity
+  only through `Minecraft.getSingleplayerServer()` -> `IntegratedServer` ->
+  `ServerLevel.getEntity`; an external multiplayer client always receives
+  `null` and emits the red `Missing Server Entity` 3D billboard instead. bbb
+  owns no integrated server and implements that missing-label branch. Reopen
+  with an in-process integrated server boundary.
 - Add the component-specific advanced-tooltip lines still missing against
   vanilla `ItemStack.addDetailsToTooltip`'s component dispatch, plus
   `TooltipDisplay` hide/hidden-component gating and options persistence.
