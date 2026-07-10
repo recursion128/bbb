@@ -106,6 +106,10 @@ pub struct DataComponentPatchSummary {
     #[serde(default)]
     pub use_remainder: Option<Box<ItemStackTemplateSummary>>,
     #[serde(default)]
+    pub weapon_item_damage_per_attack: Option<i32>,
+    #[serde(default)]
+    pub weapon_disable_blocking_seconds_bits: Option<u32>,
+    #[serde(default)]
     pub attack_range: Option<AttackRangeSummary>,
     #[serde(default)]
     pub enchantable_value: Option<i32>,
@@ -807,6 +811,10 @@ fn decode_typed_data_component_patch_summary(
             }
             25 => {
                 summary.use_remainder = Some(Box::new(decode_item_stack_template(decoder)?));
+            }
+            29 => {
+                summary.weapon_item_damage_per_attack = Some(decoder.read_var_i32()?);
+                summary.weapon_disable_blocking_seconds_bits = Some(decoder.read_f32()?.to_bits());
             }
             30 => {
                 summary.attack_range = Some(decode_attack_range_summary(decoder)?);
@@ -4802,6 +4810,8 @@ mod tests {
                     count: 1,
                     component_patch: DataComponentPatchSummary::default(),
                 })),
+                weapon_item_damage_per_attack: Some(1),
+                weapon_disable_blocking_seconds_bits: Some(0.5_f32.to_bits()),
                 attack_range: Some(AttackRangeSummary {
                     min_reach: 0.0,
                     max_reach: 3.0,

@@ -8867,3 +8867,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   从 65 扩展到 66 个 added entry，并覆盖 direct variable/fixed range 与 unknown
   registry id fallback。自定义服务端的动态 SoundEvent registry 排序仍保留在
   registry-backed 总账本，不计入本切片完成范围。
+
+## 2026-07-10：ItemStack weapon save codec
+
+- [x] minecraft:weapon 持久化 component（P2 protocol + native input）：依据
+  vanilla 26.1 Weapon.CODEC/STREAM_CODEC，protocol 将 type id 29 的
+  item_damage_per_attack 与 disable_blocking_for_seconds 从仅消费 wire 改为
+  bit-exact 摘要；native 复刻 NON_NEGATIVE_INT/NON_NEGATIVE_FLOAT 校验和
+  1/0.0 默认字段省略。既有 protocol complex-component test 覆盖 1/0.5；
+  native component patch test 从 66 扩展到 67 个 added entry，并新增默认空
+  compound、负 int、负零与 Infinity fallback 覆盖；weapon 从 AbstractArrow
+  与 component 剩余总账本移入已支持子集。

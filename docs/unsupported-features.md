@@ -235,11 +235,11 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   entity-data projection (including dynamic-registry ordering), packed variant
   projection, remaining codec-backed SNBT projection (component removals are complete;
   added values still include `AbstractArrow`
-  `inBlockState`, `item`, and `weapon`, remaining data-component patch entries
+  `inBlockState` and `item`, remaining data-component patch entries
   beyond the supported custom-NBT/primitive (including repair-cost/enchantable/glider,
   minimum-attack-charge/potion-duration-scale)/
   simple-resource (including tooltip-style/note-block-sound and vanilla/direct
-  break-sound)/food/repairable/use-effects/use-remainder/
+  break-sound)/food/weapon/repairable/use-effects/use-remainder/
   use-cooldown/tooltip-display/attack-range/
   swing-animation/resource/color (including dye/base-color)/map/ominous/firework/custom-model-data/
   codec-backed-NBT (map-decorations/debug-stick/entity-data/bucket-data/block-entity-data/

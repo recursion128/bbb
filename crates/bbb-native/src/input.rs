@@ -4676,6 +4676,7 @@ fn debug_supported_added_component_snbt(
         23 => debug_food_component_snbt(patch)?,
         25 => debug_item_stack_template_snbt(patch.use_remainder.as_deref()?, item_runtime)?,
         26 => debug_use_cooldown_component_snbt(patch)?,
+        29 => debug_weapon_component_snbt(patch)?,
         30 => debug_attack_range_component_snbt(patch.attack_range?)?,
         31 => {
             let value = patch.enchantable_value.filter(|value| *value > 0)?;
@@ -4781,6 +4782,7 @@ fn debug_supported_component_resource_id(type_id: i32) -> Option<&'static str> {
         23 => "minecraft:food",
         25 => "minecraft:use_remainder",
         26 => "minecraft:use_cooldown",
+        29 => "minecraft:weapon",
         30 => "minecraft:attack_range",
         31 => "minecraft:enchantable",
         33 => "minecraft:repairable",
@@ -5060,6 +5062,29 @@ fn debug_use_cooldown_component_snbt(
         fields.push(format!(
             "cooldown_group: {}",
             debug_snbt_string(cooldown_group)
+        ));
+    }
+    Some(format!("{{{}}}", fields.join(", ")))
+}
+
+fn debug_weapon_component_snbt(
+    patch: &bbb_protocol::packets::DataComponentPatchSummary,
+) -> Option<String> {
+    let item_damage_per_attack = patch
+        .weapon_item_damage_per_attack
+        .filter(|value| *value >= 0)?;
+    let disable_blocking_for_seconds = debug_range_checked_float_component_snbt(
+        patch.weapon_disable_blocking_seconds_bits?,
+        0.0,
+        Some(f32::MAX),
+    )?;
+    let mut fields = Vec::new();
+    if item_damage_per_attack != 1 {
+        fields.push(format!("item_damage_per_attack: {item_damage_per_attack}"));
+    }
+    if patch.weapon_disable_blocking_seconds_bits != Some(0.0_f32.to_bits()) {
+        fields.push(format!(
+            "disable_blocking_for_seconds: {disable_blocking_for_seconds}"
         ));
     }
     Some(format!("{{{}}}", fields.join(", ")))

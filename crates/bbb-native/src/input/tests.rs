@@ -8547,6 +8547,26 @@ fn range_checked_float_component_snbt_matches_vanilla_float_comparison() {
 }
 
 #[test]
+fn item_stack_snbt_validates_and_omits_default_weapon_fields() {
+    let mut patch = DataComponentPatchSummary {
+        weapon_item_damage_per_attack: Some(1),
+        weapon_disable_blocking_seconds_bits: Some(0.0_f32.to_bits()),
+        ..DataComponentPatchSummary::default()
+    };
+    assert_eq!(debug_weapon_component_snbt(&patch), Some("{}".to_string()));
+
+    patch.weapon_item_damage_per_attack = Some(-1);
+    assert_eq!(debug_weapon_component_snbt(&patch), None);
+
+    patch.weapon_item_damage_per_attack = Some(1);
+    patch.weapon_disable_blocking_seconds_bits = Some((-0.0_f32).to_bits());
+    assert_eq!(debug_weapon_component_snbt(&patch), None);
+
+    patch.weapon_disable_blocking_seconds_bits = Some(f32::INFINITY.to_bits());
+    assert_eq!(debug_weapon_component_snbt(&patch), None);
+}
+
+#[test]
 fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
     let registry: ItemRegistryCatalog = serde_json::from_value(serde_json::json!({
         "resource_ids": [
@@ -8568,12 +8588,12 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
         EquipmentAssetCatalog::default(),
     );
     let patch = DataComponentPatchSummary {
-        added: 66,
+        added: 67,
         added_type_ids: vec![
-            0, 1, 2, 3, 4, 5, 7, 10, 12, 17, 18, 19, 21, 22, 23, 25, 26, 30, 31, 33, 34, 35, 40,
-            43, 44, 45, 46, 47, 49, 50, 52, 54, 57, 58, 59, 60, 63, 66, 67, 68, 69, 70, 71, 73, 74,
-            75, 76, 77, 78, 79, 80, 84, 85, 86, 87, 88, 89, 90, 91, 92, 101, 103, 104, 107, 108,
-            109,
+            0, 1, 2, 3, 4, 5, 7, 10, 12, 17, 18, 19, 21, 22, 23, 25, 26, 29, 30, 31, 33, 34, 35,
+            40, 43, 44, 45, 46, 47, 49, 50, 52, 54, 57, 58, 59, 60, 63, 66, 67, 68, 69, 70, 71, 73,
+            74, 75, 76, 77, 78, 79, 80, 84, 85, 86, 87, 88, 89, 90, 91, 92, 101, 103, 104, 107,
+            108, 109,
         ],
         removed_type_ids: vec![6],
         custom_data: Some(NbtSummaryValue::Compound(vec![
@@ -8658,6 +8678,8 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
         use_cooldown_seconds_bits: Some(1.25_f32.to_bits()),
         use_cooldown_ticks: Some(25),
         use_cooldown_group: Some("minecraft:ender_pearl".to_string()),
+        weapon_item_damage_per_attack: Some(3),
+        weapon_disable_blocking_seconds_bits: Some(5.0_f32.to_bits()),
         attack_range: Some(bbb_protocol::packets::AttackRangeSummary {
             min_reach: 2.0,
             max_reach: 4.5,
@@ -8934,6 +8956,8 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
          \"minecraft:use_remainder\": {id: \"minecraft:arrow\"}, \
          \"minecraft:use_cooldown\": {seconds: 1.25f, \
          cooldown_group: \"minecraft:ender_pearl\"}, \
+         \"minecraft:weapon\": {item_damage_per_attack: 3, \
+         disable_blocking_for_seconds: 5.0f}, \
          \"minecraft:attack_range\": {min_reach: 2.0f, max_reach: 4.5f, \
          min_creative_reach: 2.0f, max_creative_reach: 6.5f, \
          hitbox_margin: 0.125f, mob_factor: 0.5f}, \
