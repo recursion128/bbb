@@ -8494,3 +8494,15 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   因而这些非默认值属于服务端 NBT/spawn setup 私有状态并转为 not-needed。focused test
   覆盖初始 `Time: 0` 与 7 tick 后 `Time: 7`；`TileEntityData` 和异常 air block state
   仍分别保留在 codec/异常状态账本。
+
+## 2026-07-10：F3+I minecart first-tick and flipped audit
+
+- [x] Minecart `HasTicked` / `FlippedRotation` 客户端保存状态闭环（P2 native input +
+  ledger）：依据 vanilla 26.1 `Entity.firstTick`、`AbstractMinecart.tick` / save/load 与
+  `OldMinecartBehavior` / `NewMinecartBehavior`，确认名称易误导的 `HasTicked` 实际直接写
+  internal `firstTick`：add-entity 后首次 tick 前为 `1b`，首次 tick 末置为 `0b` 并保持。
+  F3+I 现从 canonical entity client age 重建该值，所有七类 minecart 的初始期望同步
+  修正，并由 plain minecart focused test 覆盖首 tick 翻转。`flipped` 的全部非-NBT写入
+  只存在于服务端 old/new movement 分支；客户端仅消费普通或 weighted-step 插值，且协议
+  不同步该位，所以 external client 始终保持 constructor `FlippedRotation: 0b`，非默认值
+  转为 not-needed。账本已删除 minecart flipped/has-ticked 项。

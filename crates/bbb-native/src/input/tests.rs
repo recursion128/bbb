@@ -9250,7 +9250,7 @@ fn shift_f3_i_with_permission_copies_local_minecart_save_nbt_to_clipboard() {
              fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
              Invulnerable: 0b, PortalCooldown: 0, \
              DisplayState: {Name: \"minecraft:grass_block\", Properties: {snowy: \"false\"}}, \
-             DisplayOffset: 3, FlippedRotation: 0b, HasTicked: 0b}"
+             DisplayOffset: 3, FlippedRotation: 0b, HasTicked: 1b}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
@@ -9260,6 +9260,12 @@ fn shift_f3_i_with_permission_copies_local_minecart_save_nbt_to_clipboard() {
         messages[0].content,
         "[Debug]: Copied client-side entity data to clipboard"
     );
+
+    world.advance_entity_client_animations(1);
+    let command = debug_copy_recreate_entity_command(&world, None, 62, true)
+        .expect("minecart recreate command after first client tick")
+        .command;
+    assert!(command.ends_with("DisplayOffset: 3, FlippedRotation: 0b, HasTicked: 0b}"));
 }
 
 #[test]
@@ -9316,7 +9322,7 @@ fn shift_f3_i_with_permission_copies_local_chest_minecart_save_nbt_to_clipboard(
             "/summon minecraft:chest_minecart 0.00 1.00 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, FlippedRotation: 0b, HasTicked: 0b, \
+             Invulnerable: 0b, PortalCooldown: 0, FlippedRotation: 0b, HasTicked: 1b, \
              Items: []}"
         )
     );
@@ -9391,7 +9397,7 @@ fn shift_f3_i_with_permission_copies_local_command_block_minecart_save_nbt_to_cl
             "/summon minecraft:command_block_minecart 0.00 1.00 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, FlippedRotation: 0b, HasTicked: 0b, \
+             Invulnerable: 0b, PortalCooldown: 0, FlippedRotation: 0b, HasTicked: 1b, \
              Command: \"say hi\", SuccessCount: 0, TrackOutput: 1b, UpdateLastExecution: 1b}"
         )
     );
@@ -9458,7 +9464,7 @@ fn shift_f3_i_with_permission_copies_local_furnace_minecart_save_nbt_to_clipboar
             "/summon minecraft:furnace_minecart 0.00 1.00 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, FlippedRotation: 0b, HasTicked: 0b, \
+             Invulnerable: 0b, PortalCooldown: 0, FlippedRotation: 0b, HasTicked: 1b, \
              PushX: 0.0d, PushZ: 0.0d, Fuel: 0s}"
         )
     );
@@ -9525,7 +9531,7 @@ fn shift_f3_i_with_permission_copies_local_hopper_minecart_save_nbt_to_clipboard
             "/summon minecraft:hopper_minecart 0.00 1.00 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, FlippedRotation: 0b, HasTicked: 0b, \
+             Invulnerable: 0b, PortalCooldown: 0, FlippedRotation: 0b, HasTicked: 1b, \
              Items: [], Enabled: 1b}"
         )
     );
@@ -9592,7 +9598,7 @@ fn shift_f3_i_with_permission_copies_local_spawner_minecart_save_nbt_to_clipboar
             "/summon minecraft:spawner_minecart 0.00 1.00 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, FlippedRotation: 0b, HasTicked: 0b, \
+             Invulnerable: 0b, PortalCooldown: 0, FlippedRotation: 0b, HasTicked: 1b, \
              Delay: 20s, MinSpawnDelay: 200s, MaxSpawnDelay: 800s, SpawnCount: 4s, \
              MaxNearbyEntities: 6s, RequiredPlayerRange: 16s, SpawnRange: 4s, \
              SpawnPotentials: []}"
@@ -9665,7 +9671,7 @@ fn shift_f3_i_with_permission_copies_local_tnt_minecart_save_nbt_to_clipboard() 
             "/summon minecraft:tnt_minecart 0.00 1.00 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, FlippedRotation: 0b, HasTicked: 0b, \
+             Invulnerable: 0b, PortalCooldown: 0, FlippedRotation: 0b, HasTicked: 1b, \
              fuse: 80}"
         )
     );

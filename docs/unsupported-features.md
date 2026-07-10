@@ -230,7 +230,7 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   `ThrownTrident.dealtDamage` (the synced in-ground `inGroundTime > 4` client
   tick path is covered; the hit path waits on full projectile collision),
   non-default private or otherwise unobserved scalar/flag/timer/counter
-  projection (including minecart flipped/has-ticked state),
+  projection,
   remaining registry-backed
   entity-data projection (including dynamic-registry ordering), packed variant
   projection, remaining codec-backed SNBT projection (including `AbstractArrow`

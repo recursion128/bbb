@@ -266,8 +266,9 @@ const FALLING_BLOCK_DEFAULT_CANCEL_DROP: bool = false;
 const MINECART_CUSTOM_DISPLAY_BLOCK_DATA_ID: u8 = 11;
 const MINECART_DISPLAY_OFFSET_DATA_ID: u8 = 12;
 const MINECART_DEFAULT_DISPLAY_OFFSET: i32 = 6;
-const MINECART_DEFAULT_FLIPPED_ROTATION: bool = false;
-const MINECART_DEFAULT_HAS_TICKED: bool = false;
+/// `flipped` is changed only by the server branches of old/new minecart
+/// movement and is not synchronized, so a remote client retains `false`.
+const MINECART_CLIENT_FLIPPED_ROTATION: bool = false;
 const COMMAND_BLOCK_MINECART_COMMAND_DATA_ID: u8 = 13;
 const COMMAND_BLOCK_DEFAULT_COMMAND: &str = "";
 const COMMAND_BLOCK_DEFAULT_SUCCESS_COUNT: i32 = 0;
@@ -4738,11 +4739,13 @@ fn debug_push_minecart_additional_save_data(
     }
     fields.push(format!(
         "FlippedRotation: {}",
-        debug_snbt_bool(MINECART_DEFAULT_FLIPPED_ROTATION)
+        debug_snbt_bool(MINECART_CLIENT_FLIPPED_ROTATION)
     ));
+    // Despite its key name, vanilla writes the internal `Entity.firstTick`
+    // field directly: true before the first minecart tick, false afterwards.
     fields.push(format!(
         "HasTicked: {}",
-        debug_snbt_bool(MINECART_DEFAULT_HAS_TICKED)
+        debug_snbt_bool(entity.client_animations.age_ticks == 0)
     ));
 }
 
