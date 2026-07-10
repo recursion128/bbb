@@ -9265,3 +9265,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   dispatch 的双向计数/逐项常量覆盖共同锁定生成物；bundle delimiter 按
   `withBundlePacket` 的实际 wire id 0 单独生成。decode/encode handler 仍为手写，
   未顺带扩张 packet 功能。
+
+## 2026-07-10：Vanilla damage-type registry catalog generation
+
+- [x] core built-in registry catalog 的 damage-type 子项（P1 mechanical vanilla
+  data）：新增 `scripts/generate-core-registry-catalog.py`，从 vanilla 26.1
+  `DamageTypes.java` 的 key 声明取得 resource id、从 `bootstrap()` 注册顺序取得
+  0..49 holder id，确定性生成 checked-in `bbb-protocol::damage_types`。native
+  component persistent encoder 删除自身 50 项字面量表，单值与 holder-set 输出统一
+  查询 protocol catalog；生成检查、连续/唯一/固定长度及 bootstrap-vs-declaration
+  顺序测试锁定来源，unknown id 仍安全省略。动态服务器 registry remap 及核心
+  registry 队列的 entity/block-entity/component/predicate/particle 子项仍保留在账本。

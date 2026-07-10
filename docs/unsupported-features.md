@@ -254,7 +254,8 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   food/consumable/death-protection/potion-contents/suspicious-stew-effects/
   damage-resistant-tag/weapon/
   tool-block-holder-rules/
-  damage-type-named-holder/
+  damage-type-named-holder (fixed vanilla bootstrap catalog is generated;
+  dynamic-registry remapping remains)/
   piercing-weapon/kinetic-weapon/
   repairable/use-effects/use-remainder/
   use-cooldown/tooltip-display/attack-range/

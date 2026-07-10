@@ -1,4 +1,5 @@
 use super::*;
+use bbb_protocol::damage_types::vanilla_damage_type_resource_id as damage_type_resource_id;
 use bbb_world::BlockStateRegistry;
 
 type PersistentSnbtEncoder = fn(
@@ -16,59 +17,6 @@ struct PersistentSnbtEncoderDescriptor {
 const fn encoder(type_id: i32, encode: PersistentSnbtEncoder) -> PersistentSnbtEncoderDescriptor {
     PersistentSnbtEncoderDescriptor { type_id, encode }
 }
-
-const VANILLA_DAMAGE_TYPE_RESOURCE_IDS: [&str; 50] = [
-    "minecraft:in_fire",
-    "minecraft:campfire",
-    "minecraft:lightning_bolt",
-    "minecraft:on_fire",
-    "minecraft:lava",
-    "minecraft:hot_floor",
-    "minecraft:in_wall",
-    "minecraft:cramming",
-    "minecraft:drown",
-    "minecraft:starve",
-    "minecraft:cactus",
-    "minecraft:fall",
-    "minecraft:ender_pearl",
-    "minecraft:fly_into_wall",
-    "minecraft:out_of_world",
-    "minecraft:generic",
-    "minecraft:magic",
-    "minecraft:wither",
-    "minecraft:dragon_breath",
-    "minecraft:dry_out",
-    "minecraft:sweet_berry_bush",
-    "minecraft:freeze",
-    "minecraft:stalagmite",
-    "minecraft:falling_block",
-    "minecraft:falling_anvil",
-    "minecraft:falling_stalactite",
-    "minecraft:sting",
-    "minecraft:mob_attack",
-    "minecraft:mob_attack_no_aggro",
-    "minecraft:player_attack",
-    "minecraft:spear",
-    "minecraft:arrow",
-    "minecraft:trident",
-    "minecraft:mob_projectile",
-    "minecraft:spit",
-    "minecraft:fireworks",
-    "minecraft:unattributed_fireball",
-    "minecraft:fireball",
-    "minecraft:wither_skull",
-    "minecraft:thrown",
-    "minecraft:indirect_magic",
-    "minecraft:thorns",
-    "minecraft:explosion",
-    "minecraft:player_explosion",
-    "minecraft:sonic_boom",
-    "minecraft:bad_respawn_point",
-    "minecraft:outside_border",
-    "minecraft:generic_kill",
-    "minecraft:wind_charge",
-    "minecraft:mace_smash",
-];
 
 static PERSISTENT_SNBT_ENCODERS: &[PersistentSnbtEncoderDescriptor] = &[
     encoder(0, encode_custom_data),
@@ -297,12 +245,6 @@ fn encode_damage_type(
     Some(debug_snbt_string(damage_type_resource_id(
         patch.damage_type_id?,
     )?))
-}
-
-fn damage_type_resource_id(id: i32) -> Option<&'static str> {
-    VANILLA_DAMAGE_TYPE_RESOURCE_IDS
-        .get(usize::try_from(id).ok()?)
-        .copied()
 }
 
 fn encode_item_model(
@@ -1869,63 +1811,11 @@ mod tests {
     }
 
     #[test]
-    fn damage_type_encoder_follows_vanilla_bootstrap_order() {
+    fn damage_type_encoder_uses_protocol_catalog() {
         assert_eq!(
-            VANILLA_DAMAGE_TYPE_RESOURCE_IDS,
-            [
-                "minecraft:in_fire",
-                "minecraft:campfire",
-                "minecraft:lightning_bolt",
-                "minecraft:on_fire",
-                "minecraft:lava",
-                "minecraft:hot_floor",
-                "minecraft:in_wall",
-                "minecraft:cramming",
-                "minecraft:drown",
-                "minecraft:starve",
-                "minecraft:cactus",
-                "minecraft:fall",
-                "minecraft:ender_pearl",
-                "minecraft:fly_into_wall",
-                "minecraft:out_of_world",
-                "minecraft:generic",
-                "minecraft:magic",
-                "minecraft:wither",
-                "minecraft:dragon_breath",
-                "minecraft:dry_out",
-                "minecraft:sweet_berry_bush",
-                "minecraft:freeze",
-                "minecraft:stalagmite",
-                "minecraft:falling_block",
-                "minecraft:falling_anvil",
-                "minecraft:falling_stalactite",
-                "minecraft:sting",
-                "minecraft:mob_attack",
-                "minecraft:mob_attack_no_aggro",
-                "minecraft:player_attack",
-                "minecraft:spear",
-                "minecraft:arrow",
-                "minecraft:trident",
-                "minecraft:mob_projectile",
-                "minecraft:spit",
-                "minecraft:fireworks",
-                "minecraft:unattributed_fireball",
-                "minecraft:fireball",
-                "minecraft:wither_skull",
-                "minecraft:thrown",
-                "minecraft:indirect_magic",
-                "minecraft:thorns",
-                "minecraft:explosion",
-                "minecraft:player_explosion",
-                "minecraft:sonic_boom",
-                "minecraft:bad_respawn_point",
-                "minecraft:outside_border",
-                "minecraft:generic_kill",
-                "minecraft:wind_charge",
-                "minecraft:mace_smash",
-            ]
+            bbb_protocol::damage_types::vanilla_damage_type_resource_id(49),
+            Some("minecraft:mace_smash")
         );
-
         let mut patch = bbb_protocol::packets::DataComponentPatchSummary {
             damage_type_id: Some(49),
             ..Default::default()
