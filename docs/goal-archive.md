@@ -8204,3 +8204,17 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   entity-bottom 基线；descending、powder snow 所需 fall-distance、可行走 equipment/type
   输入，以及 SupportBlockRenderer 的 green/cyan/id-bias 与 100 ms membership cache 留在
   ledger。
+
+## 2026-07-10：Remote supporting-block CollisionContext inputs
+
+- [x] 远端 supporting-block 的可重建 `CollisionContext`（P2 world）：依据 vanilla
+  26.1 `Entity.isDescending`、`PowderSnowBlock.canEntityWalkOnPowderSnow` 与
+  `PowderSnowBlock.getCollisionShape`，support scan 现在从 metadata shared flag bit 1
+  投影 descending；从 `POWDER_SNOW_WALKABLE_MOBS` bootstrap 的 rabbit/endermite/
+  silverfish/fox type ids，或 living entity 的 Feet equipment + repo-native
+  `powder_snow_walkable_foot_item_ids` profile，投影可站 powder snow；falling-block entity
+  独立走 full shape。所有输入汇合到 `LocalPlayerCollisionContext::for_remote_entity`，不
+  复制 block-shape 分派。focused test 同一 powder-snow 平面覆盖 fox、boots cow、
+  descending boots cow、falling block 与无 boots cow。边界：remote `fallDistance` 尚未
+  canonical 化，故 `>2.5` 的 `FALLING_COLLISION_SHAPE` 特例，以及 green/cyan/id-bias
+  renderer + 100 ms membership cache 仍在 ledger。

@@ -2,15 +2,18 @@ use std::collections::BTreeMap;
 
 use bbb_protocol::entity_types::{
     VANILLA_ENTITY_TYPE_ARMOR_STAND_ID, VANILLA_ENTITY_TYPE_BAT_ID,
-    VANILLA_ENTITY_TYPE_CREAKING_ID, VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID,
-    VANILLA_ENTITY_TYPE_PARROT_ID, VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_SHULKER_ID,
-    VANILLA_ENTITY_TYPE_WARDEN_ID,
+    VANILLA_ENTITY_TYPE_CREAKING_ID, VANILLA_ENTITY_TYPE_ENDERMITE_ID,
+    VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID, VANILLA_ENTITY_TYPE_FOX_ID,
+    VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID, VANILLA_ENTITY_TYPE_PARROT_ID,
+    VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_RABBIT_ID, VANILLA_ENTITY_TYPE_SHULKER_ID,
+    VANILLA_ENTITY_TYPE_SILVERFISH_ID, VANILLA_ENTITY_TYPE_WARDEN_ID,
 };
+use bbb_protocol::packets::EquipmentSlot as ProtocolEquipmentSlot;
 
 use super::local_player::LocalPlayerPoseState;
 use crate::entities::{
     is_vanilla_abstract_horse_type, is_vanilla_boat_type, is_vanilla_minecart_type,
-    EntitySupportingBlock,
+    vanilla_living_entity_type, EntitySupportingBlock,
 };
 use crate::terrain::block_name_is_air;
 use crate::{BlockPos, BlockProbe, TerrainFluidKind, TerrainMaterialClass, WorldStore};
@@ -251,7 +254,12 @@ impl WorldStore {
                 transform.position.z,
             ],
             world_bounds,
-            LocalPlayerCollisionContext::new(world_bounds.min_y, false),
+            LocalPlayerCollisionContext::for_remote_entity(
+                world_bounds.min_y,
+                self.entities.is_descending(entity_id).unwrap_or(false),
+                self.remote_entity_can_walk_on_powder_snow(entity_id),
+                self.entity_type_id(entity_id) == Some(VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID),
+            ),
         );
         let main = if current.is_some() || previous.on_ground_no_blocks {
             current
@@ -264,6 +272,32 @@ impl WorldStore {
                 support.main = main;
                 support.on_ground_no_blocks = current.is_none();
             });
+    }
+
+    fn remote_entity_can_walk_on_powder_snow(&self, entity_id: i32) -> bool {
+        let Some(entity_type_id) = self.entity_type_id(entity_id) else {
+            return false;
+        };
+        if matches!(
+            entity_type_id,
+            VANILLA_ENTITY_TYPE_RABBIT_ID
+                | VANILLA_ENTITY_TYPE_ENDERMITE_ID
+                | VANILLA_ENTITY_TYPE_SILVERFISH_ID
+                | VANILLA_ENTITY_TYPE_FOX_ID
+        ) {
+            return true;
+        }
+        vanilla_living_entity_type(entity_type_id)
+            && self
+                .entities
+                .equipment_item(entity_id, ProtocolEquipmentSlot::Feet)
+                .filter(|item| item.count > 0)
+                .and_then(|item| item.item_id)
+                .is_some_and(|item_id| {
+                    self.items
+                        .powder_snow_walkable_foot_item_ids
+                        .contains(&item_id)
+                })
     }
 
     /// Projects the local-player half of vanilla `SupportBlockRenderer`.
@@ -1637,6 +1671,9 @@ fn powder_snow_collision_shape(
             BlockCollisionBox::POWDER_SNOW_FALLING,
         ));
     }
+    if context.is_falling_block {
+        return Some(BlockCollisionShape::single(BlockCollisionBox::FULL));
+    }
     if context.can_walk_on_powder_snow && context.is_above(pos, 1.0) && !context.descending {
         return Some(BlockCollisionShape::single(BlockCollisionBox::FULL));
     }
@@ -2634,6 +2671,7 @@ pub(super) struct LocalPlayerCollisionContext {
     descending: bool,
     fall_distance: f64,
     can_walk_on_powder_snow: bool,
+    is_falling_block: bool,
 }
 
 impl LocalPlayerCollisionContext {
@@ -2643,6 +2681,7 @@ impl LocalPlayerCollisionContext {
             descending,
             fall_distance: 0.0,
             can_walk_on_powder_snow: false,
+            is_falling_block: false,
         }
     }
 
@@ -2656,6 +2695,22 @@ impl LocalPlayerCollisionContext {
             descending,
             fall_distance: pose.fall_distance,
             can_walk_on_powder_snow: world.local_player_can_walk_on_powder_snow(),
+            is_falling_block: false,
+        }
+    }
+
+    fn for_remote_entity(
+        entity_bottom: f64,
+        descending: bool,
+        can_walk_on_powder_snow: bool,
+        is_falling_block: bool,
+    ) -> Self {
+        Self {
+            entity_bottom,
+            descending,
+            fall_distance: 0.0,
+            can_walk_on_powder_snow,
+            is_falling_block,
         }
     }
 
@@ -4271,6 +4326,95 @@ mod tests {
         let airborne = world.probe_entity(entity_id).unwrap();
         assert_eq!(airborne.main_supporting_block_pos, None);
         assert!(!airborne.on_ground_no_blocks);
+    }
+
+    #[test]
+    fn remote_supporting_block_context_uses_type_boots_descending_and_falling_block() {
+        const BOOTS_ITEM_ID: i32 = 43;
+
+        let mut world = empty_world();
+        world.set_powder_snow_walkable_foot_item_ids(std::collections::BTreeSet::from([
+            BOOTS_ITEM_ID,
+        ]));
+        let powder_snow = vanilla_block_state_id("minecraft:powder_snow", []);
+        let cases = [
+            (51, VANILLA_ENTITY_TYPE_FOX_ID, 0, true),
+            (
+                52,
+                bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_COW_ID,
+                2,
+                true,
+            ),
+            (
+                53,
+                bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_COW_ID,
+                4,
+                false,
+            ),
+            (54, VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID, 6, true),
+            (
+                55,
+                bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_COW_ID,
+                8,
+                false,
+            ),
+        ];
+        for (entity_id, entity_type_id, x, _) in cases {
+            set_block(&mut world, BlockPos { x, y: 0, z: 0 }, powder_snow);
+            add_collision_test_entity(
+                &mut world,
+                entity_id,
+                entity_type_id,
+                [f64::from(x) + 0.5, 1.0, 0.5],
+            );
+        }
+        for entity_id in [52, 53] {
+            assert!(
+                world.apply_set_equipment(bbb_protocol::packets::SetEquipment {
+                    entity_id,
+                    slots: vec![bbb_protocol::packets::EquipmentSlotUpdate {
+                        slot: ProtocolEquipmentSlot::Feet,
+                        item: bbb_protocol::packets::ItemStackSummary {
+                            item_id: Some(BOOTS_ITEM_ID),
+                            count: 1,
+                            component_patch: Default::default(),
+                        },
+                    }],
+                })
+            );
+        }
+        assert!(
+            world.apply_set_entity_data(bbb_protocol::packets::SetEntityData {
+                id: 53,
+                values: vec![bbb_protocol::packets::EntityDataValue {
+                    data_id: 0,
+                    serializer_id: 0,
+                    value: bbb_protocol::packets::EntityDataValueKind::Byte(1 << 1),
+                }],
+            })
+        );
+
+        for (entity_id, _, x, expected_support) in cases {
+            assert!(
+                world.apply_entity_position_sync(bbb_protocol::packets::EntityPositionSync {
+                    id: entity_id,
+                    position: bbb_protocol::packets::Vec3d {
+                        x: f64::from(x) + 0.5,
+                        y: 1.0,
+                        z: 0.5,
+                    },
+                    delta_movement: bbb_protocol::packets::Vec3d::default(),
+                    y_rot: 0.0,
+                    x_rot: 0.0,
+                    on_ground: true,
+                })
+            );
+            assert_eq!(
+                world.entity_main_supporting_block_pos(entity_id),
+                expected_support.then_some(BlockPos { x, y: 0, z: 0 }),
+                "entity {entity_id} powder-snow context"
+            );
+        }
     }
 
     #[test]

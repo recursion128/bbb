@@ -86,6 +86,8 @@ const ABSTRACT_VILLAGER_UNHAPPY_COUNTER_DATA_ID: u8 = 18;
 const VANILLA_TICKS_REQUIRED_TO_FREEZE: i32 = 140;
 /// Vanilla `Entity.DATA_SHARED_FLAGS_ID` id 0 bit 5 (`Entity.isInvisible()`).
 const ENTITY_SHARED_FLAGS_DATA_ID: u8 = 0;
+/// Vanilla `Entity.isDescending()` delegates to shared flag bit 1.
+const ENTITY_SHARED_FLAG_DESCENDING: i8 = 1 << 1;
 /// Vanilla `Entity.DATA_SHARED_FLAGS_ID` id 0 bit 3 (`Entity.isSprinting()`).
 const ENTITY_SHARED_FLAG_SPRINTING: i8 = 1 << 3;
 const ENTITY_SHARED_FLAG_INVISIBLE: i8 = 1 << 5;
@@ -688,6 +690,13 @@ impl EntityStore {
         let entity = self.by_protocol_id.get(&id).copied()?;
         let metadata = self.ecs.get::<&EntityMetadata>(entity).ok()?;
         Some(entity_is_fall_flying(&metadata.data_values))
+    }
+
+    pub(crate) fn is_descending(&self, id: i32) -> Option<bool> {
+        Some(
+            self.metadata_byte(id, ENTITY_SHARED_FLAGS_DATA_ID, 0)? & ENTITY_SHARED_FLAG_DESCENDING
+                != 0,
+        )
     }
 
     /// Vanilla `Player.getAbsorptionAmount()`: the synced
