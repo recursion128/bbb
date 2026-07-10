@@ -240,6 +240,8 @@ pub struct DataComponentPatchSummary {
     #[serde(default)]
     pub block_entity_spawn_entity_type: Option<String>,
     #[serde(default)]
+    pub block_entity_data_tag: Option<NbtSummaryValue>,
+    #[serde(default)]
     pub block_entity_data_type_id: Option<i32>,
     #[serde(default)]
     pub entity_data_tag: Option<NbtSummaryValue>,
@@ -964,6 +966,7 @@ fn decode_typed_data_component_patch_summary(
                 summary.block_entity_data_type_id = Some(block_entity_data.type_id);
                 summary.block_entity_spawn_entity_type =
                     typed_entity_data_spawn_entity_type(block_entity_data.tag.as_ref());
+                summary.block_entity_data_tag = block_entity_data.tag;
             }
             83 => {
                 summary.villager_variant_id = Some(decode_holder_registry_id(decoder)?);
@@ -4393,6 +4396,16 @@ mod tests {
                 entity_data_entity_type_id: Some(1),
                 entity_data_tag: Some(NbtSummaryValue::Compound(Vec::new())),
                 block_entity_data_type_id: Some(2),
+                block_entity_data_tag: Some(NbtSummaryValue::Compound(vec![NbtSummaryEntry {
+                    name: "SpawnData".to_string(),
+                    value: NbtSummaryValue::Compound(vec![NbtSummaryEntry {
+                        name: "entity".to_string(),
+                        value: NbtSummaryValue::Compound(vec![NbtSummaryEntry {
+                            name: "id".to_string(),
+                            value: NbtSummaryValue::String("minecraft:zombie".to_string()),
+                        }]),
+                    }]),
+                }])),
                 block_entity_spawn_entity_type: Some("minecraft:zombie".to_string()),
                 ..DataComponentPatchSummary::default()
             }

@@ -4681,6 +4681,7 @@ fn debug_supported_added_component_snbt(
             debug_nbt_summary_snbt(patch.codec_backed_nbt.get(&type_id)?)
         }
         58 => debug_entity_data_component_snbt(patch)?,
+        60 => debug_block_entity_data_component_snbt(patch)?,
         CHARGED_PROJECTILES_COMPONENT_TYPE_ID => {
             debug_item_stack_template_list_snbt(&patch.charged_projectiles_items, item_runtime)?
         }
@@ -4775,6 +4776,7 @@ fn debug_supported_component_resource_id(type_id: i32) -> Option<&'static str> {
         57 => "minecraft:debug_stick_state",
         58 => "minecraft:entity_data",
         59 => "minecraft:bucket_entity_data",
+        60 => "minecraft:block_entity_data",
         63 => "minecraft:ominous_bottle_amplifier",
         66 => "minecraft:recipes",
         LODESTONE_TRACKER_COMPONENT_TYPE_ID => "minecraft:lodestone_tracker",
@@ -4863,7 +4865,24 @@ fn debug_entity_data_component_snbt(
     let resource_id = bbb_protocol::entity_types::vanilla_entity_resource_id_for_type_id(
         patch.entity_data_entity_type_id?,
     )?;
-    let NbtSummaryValue::Compound(entries) = patch.entity_data_tag.as_ref()? else {
+    debug_typed_entity_data_component_snbt(&resource_id, patch.entity_data_tag.as_ref()?)
+}
+
+fn debug_block_entity_data_component_snbt(
+    patch: &bbb_protocol::packets::DataComponentPatchSummary,
+) -> Option<String> {
+    let resource_id =
+        bbb_protocol::block_entity_types::vanilla_block_entity_resource_id_for_type_id(
+            patch.block_entity_data_type_id?,
+        )?;
+    debug_typed_entity_data_component_snbt(resource_id, patch.block_entity_data_tag.as_ref()?)
+}
+
+fn debug_typed_entity_data_component_snbt(
+    resource_id: &str,
+    tag: &NbtSummaryValue,
+) -> Option<String> {
+    let NbtSummaryValue::Compound(entries) = tag else {
         return None;
     };
     let mut fields = entries
@@ -4877,7 +4896,7 @@ fn debug_entity_data_component_snbt(
             )
         })
         .collect::<Vec<_>>();
-    fields.push(format!("id: {}", debug_snbt_string(&resource_id)));
+    fields.push(format!("id: {}", debug_snbt_string(resource_id)));
     Some(format!("{{{}}}", fields.join(", ")))
 }
 

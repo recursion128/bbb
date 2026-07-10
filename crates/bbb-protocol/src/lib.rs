@@ -5,6 +5,7 @@ pub use component::{
     ComponentClickEvent, ComponentStyle, SignBlockEntityNbt, SignTextNbt, StyledTextRun,
 };
 
+pub mod block_entity_types;
 pub mod codec;
 pub mod entity_types;
 pub mod frame;

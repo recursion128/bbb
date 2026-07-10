@@ -8568,11 +8568,11 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
         EquipmentAssetCatalog::default(),
     );
     let patch = DataComponentPatchSummary {
-        added: 49,
+        added: 50,
         added_type_ids: vec![
             0, 1, 2, 3, 4, 5, 7, 10, 12, 17, 19, 21, 22, 23, 25, 26, 30, 31, 34, 35, 40, 43, 44,
-            45, 46, 47, 49, 50, 52, 54, 57, 58, 59, 63, 66, 67, 68, 69, 70, 71, 73, 74, 75, 76, 78,
-            79, 88, 89, 90,
+            45, 46, 47, 49, 50, 52, 54, 57, 58, 59, 60, 63, 66, 67, 68, 69, 70, 71, 73, 74, 75, 76,
+            78, 79, 88, 89, 90,
         ],
         removed_type_ids: vec![6],
         custom_data: Some(NbtSummaryValue::Compound(vec![
@@ -8722,6 +8722,17 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
             NbtSummaryEntry {
                 name: "Health".to_string(),
                 value: NbtSummaryValue::Float(20.0_f32.to_bits()),
+            },
+        ])),
+        block_entity_data_type_id: Some(9),
+        block_entity_data_tag: Some(NbtSummaryValue::Compound(vec![
+            NbtSummaryEntry {
+                name: "Delay".to_string(),
+                value: NbtSummaryValue::Short(20),
+            },
+            NbtSummaryEntry {
+                name: "SpawnCount".to_string(),
+                value: NbtSummaryValue::Short(4),
             },
         ])),
         charged_projectiles_items: vec![
@@ -8908,6 +8919,8 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
          \"minecraft:entity_data\": {NoAI: 1b, Health: 20.0f, \
          id: \"minecraft:zombie\"}, \
          \"minecraft:bucket_entity_data\": {Health: 5s}, \
+         \"minecraft:block_entity_data\": {Delay: 20s, SpawnCount: 4s, \
+         id: \"minecraft:mob_spawner\"}, \
          \"minecraft:ominous_bottle_amplifier\": 3, \
          \"minecraft:recipes\": [\"minecraft:bread\", \"minecraft:torch\"], \
          \"minecraft:lodestone_tracker\": {target: {dimension: \"minecraft:overworld\", \
@@ -8954,8 +8967,8 @@ fn item_stack_snbt_omits_registry_backed_components_with_unknown_ids() {
         item_id: Some(0),
         count: 1,
         component_patch: DataComponentPatchSummary {
-            added: 6,
-            added_type_ids: vec![25, 49, 50, 58, 74, 75],
+            added: 7,
+            added_type_ids: vec![25, 49, 50, 58, 60, 74, 75],
             use_remainder: Some(Box::new(bbb_protocol::packets::ItemStackTemplateSummary {
                 item_id: 99,
                 count: 1,
@@ -8974,6 +8987,8 @@ fn item_stack_snbt_omits_registry_backed_components_with_unknown_ids() {
             bundle_contents_item_count: Some(1),
             entity_data_entity_type_id: Some(999),
             entity_data_tag: Some(NbtSummaryValue::Compound(Vec::new())),
+            block_entity_data_type_id: Some(999),
+            block_entity_data_tag: Some(NbtSummaryValue::Compound(Vec::new())),
             pot_decorations_item_ids: vec![99],
             container_items: vec![bbb_protocol::packets::ItemStackTemplateSummary {
                 item_id: 99,

@@ -240,8 +240,8 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   simple-resource (including tooltip-style/note-block-sound)/food/use-effects/use-remainder/
   use-cooldown/attack-range/
   swing-animation/resource/color (including dye/base-color)/map/ominous/firework/custom-model-data/
-  codec-backed-NBT (map-decorations/debug-stick/entity-data/bucket-data/recipes/lock/
-  container-loot)/
+  codec-backed-NBT (map-decorations/debug-stick/entity-data/bucket-data/block-entity-data/
+  recipes/lock/container-loot)/
   charged-projectile/bundle/writable-book/lodestone/profile/pot-decoration/
   container/block-state/tropical-fish-enum subset on throwable/firework/
   item-frame item stacks, falling-block `TileEntityData`,

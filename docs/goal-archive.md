@@ -8770,3 +8770,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   native component patch test 扩展到 49 个 added entry，覆盖 zombie、byte/float
   tag 与 id 末尾字段，unknown entity id 则安全省略；entity-data 从剩余 component
   总账本移入已支持子集。
+
+## 2026-07-10：ItemStack block-entity-data save codec
+
+- [x] `minecraft:block_entity_data` 持久化 component（P2 protocol + native
+  input）：依据 vanilla 26.1 `BlockEntityType` 的 49 项注册顺序新增 protocol
+  id→resource 查询面，并依据 `TypedEntityData.codec/streamCodec` 保留 type id
+  `60` 的 wire compound、将分离的 block-entity `id` 合回。新 registry focused
+  test 覆盖 furnace/mob-spawner/vault/copper-golem-statue 及越界；protocol
+  entity-data test 覆盖 nested SpawnData；native component patch test 扩展到
+  50 个 added entry，覆盖 mob-spawner short tags、id 末尾字段与 unknown-id
+  fallback；block-entity-data 从剩余 component 总账本移入已支持子集。
