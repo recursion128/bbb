@@ -1637,7 +1637,7 @@ fn beacon_hit_test_uses_vanilla_slots() {
         ),
         Some(BeaconClickTarget::Effect {
             primary: true,
-            effect_id: BEACON_EFFECT_SPEED_ID,
+            effect_id: VANILLA_MOB_EFFECT_SPEED_ID,
         })
     );
     assert_eq!(
@@ -1649,7 +1649,7 @@ fn beacon_hit_test_uses_vanilla_slots() {
         ),
         Some(BeaconClickTarget::Effect {
             primary: false,
-            effect_id: BEACON_EFFECT_REGENERATION_ID,
+            effect_id: VANILLA_MOB_EFFECT_REGENERATION_ID,
         })
     );
     assert_eq!(
@@ -2995,8 +2995,8 @@ fn beacon_effect_clicks_update_local_selection_and_confirm_submits_it() {
     assert_eq!(
         rx.try_recv().unwrap(),
         NetCommand::SetBeacon(SetBeacon {
-            primary_effect: Some(BEACON_EFFECT_STRENGTH_ID),
-            secondary_effect: Some(BEACON_EFFECT_STRENGTH_ID),
+            primary_effect: Some(VANILLA_MOB_EFFECT_STRENGTH_ID),
+            secondary_effect: Some(VANILLA_MOB_EFFECT_STRENGTH_ID),
         })
     );
     assert_eq!(

@@ -433,6 +433,8 @@ mod tests {
             .arg(source_root)
             .arg("--attribute-types-output")
             .arg(manifest_dir.join("src/attribute_types.rs"))
+            .arg("--mob-effect-types-output")
+            .arg(manifest_dir.join("src/mob_effect_types.rs"))
             .status()
             .unwrap();
         assert!(status.success());

@@ -2,6 +2,10 @@ use bbb_protocol::attribute_types::{
     VANILLA_ATTRIBUTE_BLOCK_BREAK_SPEED_ID, VANILLA_ATTRIBUTE_MINING_EFFICIENCY_ID,
     VANILLA_ATTRIBUTE_SUBMERGED_MINING_SPEED_ID,
 };
+use bbb_protocol::mob_effect_types::{
+    VANILLA_MOB_EFFECT_CONDUIT_POWER_ID, VANILLA_MOB_EFFECT_HASTE_ID,
+    VANILLA_MOB_EFFECT_MINING_FATIGUE_ID,
+};
 use bbb_protocol::packets::Direction as ProtocolDirection;
 use serde::{Deserialize, Serialize};
 
@@ -10,10 +14,6 @@ use crate::{BlockPos, WorldStore};
 
 const LOCAL_DESTROY_PROGRESS_SCALE: u32 = 1_000_000;
 pub(crate) const LOCAL_DESTROY_COMPLETION_DELAY_TICKS: u8 = 5;
-const VANILLA_MOB_EFFECT_HASTE_ID: i32 = 2;
-const VANILLA_MOB_EFFECT_MINING_FATIGUE_ID: i32 = 3;
-const VANILLA_MOB_EFFECT_CONDUIT_POWER_ID: i32 = 28;
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct LocalDestroyBlockFinished {
     pub pos: BlockPos,

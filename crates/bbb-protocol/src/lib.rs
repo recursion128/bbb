@@ -14,6 +14,7 @@ pub mod data_component_types;
 pub mod entity_types;
 pub mod frame;
 pub mod ids;
+pub mod mob_effect_types;
 pub mod packet_catalog;
 pub mod packets;
 pub mod particle_types;

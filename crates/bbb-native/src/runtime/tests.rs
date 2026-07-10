@@ -12049,8 +12049,8 @@ fn hud_inventory_screen_projects_local_beacon_effect_selection() {
         None,
         InventoryHudLocalState {
             beacon_effect_selection: Some((
-                Some(BEACON_EFFECT_STRENGTH_ID),
-                Some(BEACON_EFFECT_STRENGTH_ID),
+                Some(VANILLA_MOB_EFFECT_STRENGTH_ID),
+                Some(VANILLA_MOB_EFFECT_STRENGTH_ID),
             )),
             ..InventoryHudLocalState::default()
         },

@@ -9340,3 +9340,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   native attack 属性路径删除生产裸数字，统一引用生成常量。连续/唯一/固定长度、
   sentiment/syncable 计数、查询边界及 regeneration tests 锁定生成物；未改变 attribute
   计算、modifier 顺序或 custom/datapack attribute 边界。
+
+## 2026-07-10：Vanilla mob-effect numeric-id catalog generation
+
+- [x] gameplay numeric-id catalog 的 mob-effect 子项（P1 mechanical vanilla
+  data）：扩展 `scripts/generate-gameplay-id-catalog.py`，从 vanilla 26.1
+  `MobEffects.java` 的 40 个静态 `register` 调用生成 checked-in id/resource/order/
+  constant-name/category metadata。item-model 删除 40 项 resource/category 平行表并投影
+  protocol catalog，既有 12 组效果属性 modifier 语义表保留但改用生成常量分发；world
+  movement/destroy/inventory 与 native lightmap/HUD/beacon 路径删除生产裸数字。连续/唯一/
+  固定长度、20 beneficial/16 harmful/4 neutral 分类计数、查询边界及 regeneration tests
+  锁定生成物；未改变效果 wire codec、属性运算、HUD 行为或 custom 定义边界。

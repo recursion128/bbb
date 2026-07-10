@@ -1,3 +1,7 @@
+use bbb_protocol::mob_effect_types::{
+    VANILLA_MOB_EFFECT_CONDUIT_POWER_ID, VANILLA_MOB_EFFECT_HASTE_ID,
+    VANILLA_MOB_EFFECT_MINING_FATIGUE_ID,
+};
 use bbb_protocol::packets::{
     AttackRangeSummary as ProtocolAttackRangeSummary, ContainerClick as ProtocolContainerClick,
     ContainerClose as ProtocolContainerClose, ContainerInput as ProtocolContainerInput,
@@ -217,9 +221,6 @@ const VANILLA_ATTACK_RANGE_COMPONENT_ID: i32 = 30;
 const VANILLA_PIERCING_WEAPON_COMPONENT_ID: i32 = 38;
 const VANILLA_SWING_ANIMATION_COMPONENT_ID: i32 = 40;
 const VANILLA_MAP_ID_COMPONENT_ID: i32 = 46;
-const VANILLA_MOB_EFFECT_HASTE_ID: i32 = 2;
-const VANILLA_MOB_EFFECT_MINING_FATIGUE_ID: i32 = 3;
-const VANILLA_MOB_EFFECT_CONDUIT_POWER_ID: i32 = 28;
 const NO_LOCAL_SELECTED_BUNDLE_ITEM_INDEX: i32 = -1;
 const VANILLA_ELYTRA_ITEM_ID: i32 = 14;
 const QUICKCRAFT_TYPE_CHARITABLE: i8 = 0;

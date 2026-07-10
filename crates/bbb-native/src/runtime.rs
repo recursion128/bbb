@@ -156,6 +156,13 @@ use bbb_protocol::attribute_types::{
     VANILLA_ATTRIBUTE_ATTACK_DAMAGE_ID, VANILLA_ATTRIBUTE_ATTACK_SPEED_ID,
 };
 use bbb_protocol::entity_types::*;
+use bbb_protocol::mob_effect_types::{
+    VANILLA_MOB_EFFECT_CONDUIT_POWER_ID, VANILLA_MOB_EFFECT_DARKNESS_ID,
+    VANILLA_MOB_EFFECT_HASTE_ID, VANILLA_MOB_EFFECT_HUNGER_ID, VANILLA_MOB_EFFECT_JUMP_BOOST_ID,
+    VANILLA_MOB_EFFECT_NIGHT_VISION_ID, VANILLA_MOB_EFFECT_POISON_ID,
+    VANILLA_MOB_EFFECT_REGENERATION_ID, VANILLA_MOB_EFFECT_RESISTANCE_ID,
+    VANILLA_MOB_EFFECT_SPEED_ID, VANILLA_MOB_EFFECT_STRENGTH_ID, VANILLA_MOB_EFFECT_WITHER_ID,
+};
 
 mod control_requests;
 mod debug_light_sections;
@@ -301,19 +308,6 @@ const VANILLA_OVERWORLD_STAR_BRIGHTNESS_KEYFRAMES: [(i64, f32); 12] = [
     (23_758, 0.101),
 ];
 const VANILLA_LIGHTMAP_RENDER_PARTIAL_TICK: f32 = 1.0;
-const VANILLA_MOB_EFFECT_NIGHT_VISION_ID: i32 = 15;
-/// `BuiltInRegistries.MOB_EFFECT` id for `hunger` (0-indexed registration order,
-/// MobEffects.java:70; the `holderRegistry` stream codec writes the raw id).
-const VANILLA_MOB_EFFECT_HUNGER_ID: i32 = 16;
-/// `BuiltInRegistries.MOB_EFFECT` 0-indexed registration ids driving the heart
-/// sprite variants (MobEffects.java: `regeneration`=9 :54, `poison`=18 :76,
-/// `wither`=19 :77; consistent with the sibling hand-derived ids
-/// night_vision=15 / hunger=16 and the movement module's jump_boost=7 etc.).
-const VANILLA_MOB_EFFECT_REGENERATION_ID: i32 = 9;
-const VANILLA_MOB_EFFECT_POISON_ID: i32 = 18;
-const VANILLA_MOB_EFFECT_WITHER_ID: i32 = 19;
-const VANILLA_MOB_EFFECT_CONDUIT_POWER_ID: i32 = 28;
-const VANILLA_MOB_EFFECT_DARKNESS_ID: i32 = 32;
 const VANILLA_NIGHT_VISION_FULL_STRENGTH_TICKS: i32 = 200;
 const VANILLA_DARKNESS_BLEND_OUT_ADVANCE_TICKS: i32 = 22;
 const VANILLA_DARKNESS_EFFECT_SCALE_OPTION: f32 = 1.0;
@@ -336,18 +330,15 @@ const BEACON_PRIMARY_EFFECT_Y: i32 = 22;
 const BEACON_PRIMARY_EFFECT_ROW_SPACING: i32 = 25;
 const BEACON_SECONDARY_EFFECT_CENTER_X: i32 = 167;
 const BEACON_SECONDARY_EFFECT_Y: i32 = 47;
-const BEACON_EFFECT_SPEED_ID: i32 = 0;
-const BEACON_EFFECT_HASTE_ID: i32 = 2;
-const BEACON_EFFECT_STRENGTH_ID: i32 = 4;
-const BEACON_EFFECT_JUMP_BOOST_ID: i32 = 7;
-const BEACON_EFFECT_REGENERATION_ID: i32 = 9;
-const BEACON_EFFECT_RESISTANCE_ID: i32 = 10;
 const BEACON_PRIMARY_EFFECT_ROWS: [&[i32]; 3] = [
-    &[BEACON_EFFECT_SPEED_ID, BEACON_EFFECT_HASTE_ID],
-    &[BEACON_EFFECT_RESISTANCE_ID, BEACON_EFFECT_JUMP_BOOST_ID],
-    &[BEACON_EFFECT_STRENGTH_ID],
+    &[VANILLA_MOB_EFFECT_SPEED_ID, VANILLA_MOB_EFFECT_HASTE_ID],
+    &[
+        VANILLA_MOB_EFFECT_RESISTANCE_ID,
+        VANILLA_MOB_EFFECT_JUMP_BOOST_ID,
+    ],
+    &[VANILLA_MOB_EFFECT_STRENGTH_ID],
 ];
-const BEACON_SECONDARY_EFFECTS: &[i32] = &[BEACON_EFFECT_REGENERATION_ID];
+const BEACON_SECONDARY_EFFECTS: &[i32] = &[VANILLA_MOB_EFFECT_REGENERATION_ID];
 const VANILLA_OVERWORLD_DAY_PERIOD_TICKS: i64 = 24_000;
 const BEACON_CONFIRM_BUTTON_X: i32 = 164;
 const BEACON_CANCEL_BUTTON_X: i32 = 190;
@@ -10178,12 +10169,16 @@ fn beacon_effect_buttons(primary_effect: Option<i32>) -> Vec<BeaconEffectButton>
 
 fn beacon_effect_icon_texture(effect_id: i32) -> Option<HudInventoryBackgroundTexture> {
     match effect_id {
-        BEACON_EFFECT_SPEED_ID => Some(HudInventoryBackgroundTexture::BeaconEffectSpeed),
-        BEACON_EFFECT_HASTE_ID => Some(HudInventoryBackgroundTexture::BeaconEffectHaste),
-        BEACON_EFFECT_RESISTANCE_ID => Some(HudInventoryBackgroundTexture::BeaconEffectResistance),
-        BEACON_EFFECT_JUMP_BOOST_ID => Some(HudInventoryBackgroundTexture::BeaconEffectJumpBoost),
-        BEACON_EFFECT_STRENGTH_ID => Some(HudInventoryBackgroundTexture::BeaconEffectStrength),
-        BEACON_EFFECT_REGENERATION_ID => {
+        VANILLA_MOB_EFFECT_SPEED_ID => Some(HudInventoryBackgroundTexture::BeaconEffectSpeed),
+        VANILLA_MOB_EFFECT_HASTE_ID => Some(HudInventoryBackgroundTexture::BeaconEffectHaste),
+        VANILLA_MOB_EFFECT_RESISTANCE_ID => {
+            Some(HudInventoryBackgroundTexture::BeaconEffectResistance)
+        }
+        VANILLA_MOB_EFFECT_JUMP_BOOST_ID => {
+            Some(HudInventoryBackgroundTexture::BeaconEffectJumpBoost)
+        }
+        VANILLA_MOB_EFFECT_STRENGTH_ID => Some(HudInventoryBackgroundTexture::BeaconEffectStrength),
+        VANILLA_MOB_EFFECT_REGENERATION_ID => {
             Some(HudInventoryBackgroundTexture::BeaconEffectRegeneration)
         }
         _ => None,
