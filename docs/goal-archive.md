@@ -9455,3 +9455,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   aggressive/main-arm 投影与 native F3+I mob save fields 删除本地常量，统一引用 schema；
   focused tests 复验继承查询、flag serializer/唯一性、全部既有 combat/mob projection 和
   creeper save-NBT。未迁移 `AgeableMob`、`Avatar`、`Player` 或具体 mob 子类字段。
+
+## 2026-07-10：Entity metadata schema phase 3（Avatar / Player）
+
+- [x] entity metadata schema 的玩家分支：新增 `LivingEntity -> Avatar -> Player` lineage，
+  集中声明 Avatar 的 HUMANOID_ARM/BYTE ids 15..16、RIGHT/default-model-parts 默认值与七个
+  `PlayerModelPart` masks，以及 Player 的 FLOAT/INT/OPTIONAL_UNSIGNED_INT ids 17..20 和
+  0/0/none/none 默认值。world main-arm、absorption、cape、shoulder-parrot 与 native
+  entity-scene model-parts 消费者删除本地 id/default/mask 副本；schema tests 锁定玩家分支
+  与 Mob 分支在 id 15 的合法复用、parent 查询边界和全部 serializer/default。focused tests
+  复验 world player projections 及 native player/mannequin render-state 行为；未迁移
+  ageable 分支或具体 entity 子类字段。

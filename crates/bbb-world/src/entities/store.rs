@@ -80,19 +80,25 @@ use crate::entities::projectiles::{
     entity_hurting_projectile_from_state, entity_projectile_lifecycle_from_state,
 };
 use crate::entities::schema::{
+    VANILLA_AVATAR_DEFAULT_MODEL_CUSTOMIZATION, VANILLA_AVATAR_MAIN_HAND_DATA_ID,
+    VANILLA_AVATAR_MODEL_CUSTOMIZATION_DATA_ID,
+    VANILLA_AVATAR_MODEL_PART_CAPE as VANILLA_AVATAR_CAPE_PART_MASK,
     VANILLA_ENTITY_CUSTOM_NAME_DATA_ID,
     VANILLA_ENTITY_SHARED_FLAGS_DATA_ID as ENTITY_SHARED_FLAGS_DATA_ID,
     VANILLA_ENTITY_SHARED_FLAG_GLOWING as ENTITY_SHARED_FLAG_GLOWING,
     VANILLA_ENTITY_SHARED_FLAG_INVISIBLE as ENTITY_SHARED_FLAG_INVISIBLE,
     VANILLA_ENTITY_SHARED_FLAG_SHIFT_KEY_DOWN as ENTITY_SHARED_FLAG_DESCENDING,
     VANILLA_ENTITY_SHARED_FLAG_SPRINTING as ENTITY_SHARED_FLAG_SPRINTING,
+    VANILLA_HUMANOID_ARM_LEFT_ID, VANILLA_HUMANOID_ARM_RIGHT_ID,
     VANILLA_LIVING_ENTITY_FLAGS_DATA_ID,
     VANILLA_LIVING_ENTITY_FLAG_IS_USING as LIVING_ENTITY_FLAG_IS_USING,
     VANILLA_LIVING_ENTITY_FLAG_OFF_HAND as LIVING_ENTITY_FLAG_OFF_HAND,
     VANILLA_LIVING_ENTITY_FLAG_SPIN_ATTACK as LIVING_ENTITY_FLAG_SPIN_ATTACK,
     VANILLA_LIVING_ENTITY_HEALTH_DATA_ID, VANILLA_LIVING_ENTITY_SLEEPING_POS_DATA_ID,
     VANILLA_MOB_FLAGS_DATA_ID, VANILLA_MOB_FLAG_AGGRESSIVE as MOB_FLAG_AGGRESSIVE,
-    VANILLA_MOB_FLAG_LEFT_HANDED as MOB_FLAG_LEFTHANDED,
+    VANILLA_MOB_FLAG_LEFT_HANDED as MOB_FLAG_LEFTHANDED, VANILLA_PLAYER_ABSORPTION_DATA_ID,
+    VANILLA_PLAYER_DEFAULT_ABSORPTION, VANILLA_PLAYER_SHOULDER_PARROT_LEFT_DATA_ID,
+    VANILLA_PLAYER_SHOULDER_PARROT_RIGHT_DATA_ID,
 };
 use crate::registries::RegistrySet;
 use crate::ItemEquipmentSlot;
@@ -277,11 +283,6 @@ fn vanilla_mob_item_in_hand_layer_type(entity_type_id: i32) -> bool {
         )
 }
 
-/// Vanilla `Avatar.DATA_PLAYER_MAIN_HAND` data id (15): `HumanoidArm.LEFT` (0) or RIGHT (1).
-const VANILLA_AVATAR_MAIN_HAND_DATA_ID: u8 = 15;
-const VANILLA_HUMANOID_ARM_LEFT_ID: i32 = 0;
-const VANILLA_HUMANOID_ARM_RIGHT_ID: i32 = 1;
-
 /// Vanilla `SnowGolem.DATA_PUMPKIN_ID` data id (16): the byte holding the carved-pumpkin-head flag.
 const VANILLA_SNOW_GOLEM_PUMPKIN_DATA_ID: u8 = 16;
 
@@ -339,32 +340,9 @@ const VEX_FLAG_IS_CHARGING: i8 = 1;
 /// the three `DATA_TARGET_A/B/C` ints (16..=18).
 const VANILLA_WITHER_INV_DATA_ID: u8 = 19;
 
-/// Vanilla `Player.DATA_PLAYER_ABSORPTION_ID` data id (17, FLOAT): after `Entity`
-/// (0..=7) and `LivingEntity` (8..=14), `Avatar` declares `DATA_PLAYER_MAIN_HAND`=15
-/// and `DATA_PLAYER_MODE_CUSTOMISATION`=16 (Avatar.java:38-39), then `Player`
-/// declares `DATA_PLAYER_ABSORPTION_ID`=17, `DATA_SCORE_ID`=18, and the two
-/// shoulder-parrot ids 19/20 below (Player.java:134-139). The define-time
-/// default is `0.0F` (Player.java:224).
-const VANILLA_PLAYER_ABSORPTION_DATA_ID: u8 = 17;
-
 /// Vanilla `EndCrystal.DATA_BEAM_TARGET` data id (8): optional block target for the dragon-healing
 /// beam. `DATA_SHOW_BOTTOM` follows at id 9.
 const END_CRYSTAL_BEAM_TARGET_DATA_ID: u8 = 8;
-
-/// Vanilla `Avatar.DATA_PLAYER_MODE_CUSTOMISATION` data id (16): the byte of shown
-/// player model parts, read by the player upside-down check for the cape part.
-const VANILLA_AVATAR_MODEL_CUSTOMIZATION_DATA_ID: u8 = 16;
-/// Vanilla `Player.DATA_SHOULDER_PARROT_LEFT` data id (19): an `OPTIONAL_UNSIGNED_INT`
-/// storing the left-shoulder `Parrot.Variant` id. The wire value is already decoded by
-/// `bbb-protocol` as `None` for zero or `Some(id)` for value minus one.
-const VANILLA_PLAYER_SHOULDER_PARROT_LEFT_DATA_ID: u8 = 19;
-/// Vanilla `Player.DATA_SHOULDER_PARROT_RIGHT` data id (20): the mirrored right-shoulder
-/// `OPTIONAL_UNSIGNED_INT` variant id.
-const VANILLA_PLAYER_SHOULDER_PARROT_RIGHT_DATA_ID: u8 = 20;
-
-/// Vanilla `PlayerModelPart.CAPE` mask (`1 << 0`): the cape-shown bit that gates
-/// `AvatarRenderer.isEntityUpsideDown` to `isPlayerUpsideDown`.
-const VANILLA_AVATAR_CAPE_PART_MASK: i8 = 0x01;
 
 pub(crate) struct EntityStore {
     pub(super) ecs: World,
@@ -709,7 +687,11 @@ impl EntityStore {
     /// `DATA_PLAYER_ABSORPTION_ID` float, defaulting to the define-time `0.0F`
     /// (Player.java:224).
     pub(crate) fn player_absorption(&self, id: i32) -> Option<f32> {
-        self.metadata_float(id, VANILLA_PLAYER_ABSORPTION_DATA_ID, 0.0)
+        self.metadata_float(
+            id,
+            VANILLA_PLAYER_ABSORPTION_DATA_ID,
+            VANILLA_PLAYER_DEFAULT_ABSORPTION,
+        )
     }
 
     pub(crate) fn metadata_int_for_entity(
@@ -789,8 +771,12 @@ impl EntityStore {
             return None;
         }
         let cape_shown = self
-            .metadata_byte(id, VANILLA_AVATAR_MODEL_CUSTOMIZATION_DATA_ID, 0)
-            .unwrap_or(0)
+            .metadata_byte(
+                id,
+                VANILLA_AVATAR_MODEL_CUSTOMIZATION_DATA_ID,
+                VANILLA_AVATAR_DEFAULT_MODEL_CUSTOMIZATION,
+            )
+            .unwrap_or(VANILLA_AVATAR_DEFAULT_MODEL_CUSTOMIZATION)
             & VANILLA_AVATAR_CAPE_PART_MASK
             != 0;
         Some((identity.uuid, cape_shown))

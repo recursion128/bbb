@@ -1,8 +1,9 @@
 use bbb_protocol::entity_data_serializers::{
     VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID, VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-    VANILLA_ENTITY_DATA_SERIALIZER_FLOAT_ID, VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
-    VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_BLOCK_POS_ID,
+    VANILLA_ENTITY_DATA_SERIALIZER_FLOAT_ID, VANILLA_ENTITY_DATA_SERIALIZER_HUMANOID_ARM_ID,
+    VANILLA_ENTITY_DATA_SERIALIZER_INT_ID, VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_BLOCK_POS_ID,
     VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_COMPONENT_ID,
+    VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_UNSIGNED_INT_ID,
     VANILLA_ENTITY_DATA_SERIALIZER_PARTICLES_ID, VANILLA_ENTITY_DATA_SERIALIZER_POSE_ID,
 };
 use bbb_protocol::entity_poses::VANILLA_ENTITY_POSE_STANDING_ID;
@@ -12,6 +13,8 @@ pub enum VanillaEntityMetadataFamily {
     Entity,
     LivingEntity,
     Mob,
+    Avatar,
+    Player,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -24,6 +27,8 @@ pub enum VanillaEntityMetadataDefault {
     ParticlesEmpty,
     Pose(i32),
     OptionalBlockPosNone,
+    OptionalUnsignedIntNone,
+    HumanoidArm(i32),
     MaxAirSupply,
 }
 
@@ -68,6 +73,12 @@ pub const VANILLA_LIVING_ENTITY_ARROW_COUNT_DATA_ID: u8 = 12;
 pub const VANILLA_LIVING_ENTITY_STINGER_COUNT_DATA_ID: u8 = 13;
 pub const VANILLA_LIVING_ENTITY_SLEEPING_POS_DATA_ID: u8 = 14;
 pub const VANILLA_MOB_FLAGS_DATA_ID: u8 = 15;
+pub const VANILLA_AVATAR_MAIN_HAND_DATA_ID: u8 = 15;
+pub const VANILLA_AVATAR_MODEL_CUSTOMIZATION_DATA_ID: u8 = 16;
+pub const VANILLA_PLAYER_ABSORPTION_DATA_ID: u8 = 17;
+pub const VANILLA_PLAYER_SCORE_DATA_ID: u8 = 18;
+pub const VANILLA_PLAYER_SHOULDER_PARROT_LEFT_DATA_ID: u8 = 19;
+pub const VANILLA_PLAYER_SHOULDER_PARROT_RIGHT_DATA_ID: u8 = 20;
 
 pub const VANILLA_ENTITY_SHARED_FLAG_ON_FIRE: i8 = 1 << 0;
 pub const VANILLA_ENTITY_SHARED_FLAG_SHIFT_KEY_DOWN: i8 = 1 << 1;
@@ -83,6 +94,19 @@ pub const VANILLA_LIVING_ENTITY_FLAG_SPIN_ATTACK: i8 = 1 << 2;
 pub const VANILLA_MOB_FLAG_NO_AI: i8 = 1 << 0;
 pub const VANILLA_MOB_FLAG_LEFT_HANDED: i8 = 1 << 1;
 pub const VANILLA_MOB_FLAG_AGGRESSIVE: i8 = 1 << 2;
+pub const VANILLA_AVATAR_MODEL_PART_CAPE: i8 = 1 << 0;
+pub const VANILLA_AVATAR_MODEL_PART_JACKET: i8 = 1 << 1;
+pub const VANILLA_AVATAR_MODEL_PART_LEFT_SLEEVE: i8 = 1 << 2;
+pub const VANILLA_AVATAR_MODEL_PART_RIGHT_SLEEVE: i8 = 1 << 3;
+pub const VANILLA_AVATAR_MODEL_PART_LEFT_PANTS_LEG: i8 = 1 << 4;
+pub const VANILLA_AVATAR_MODEL_PART_RIGHT_PANTS_LEG: i8 = 1 << 5;
+pub const VANILLA_AVATAR_MODEL_PART_HAT: i8 = 1 << 6;
+
+pub const VANILLA_HUMANOID_ARM_LEFT_ID: i32 = 0;
+pub const VANILLA_HUMANOID_ARM_RIGHT_ID: i32 = 1;
+pub const VANILLA_AVATAR_DEFAULT_MODEL_CUSTOMIZATION: i8 = 0;
+pub const VANILLA_PLAYER_DEFAULT_ABSORPTION: f32 = 0.0;
+pub const VANILLA_PLAYER_DEFAULT_SCORE: i32 = 0;
 
 /// Vanilla `Entity.getMaxAirSupply()` default. Individual entity classes can override this
 /// virtual value, so the field schema records `MaxAirSupply` rather than fixing every entity to
@@ -266,6 +290,86 @@ const MOB_FLAGS: &[VanillaEntityMetadataFlagSchema] = &[
     },
 ];
 
+const AVATAR_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_PLAYER_MAIN_HAND",
+        data_id: VANILLA_AVATAR_MAIN_HAND_DATA_ID,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_HUMANOID_ARM_ID,
+        default: VanillaEntityMetadataDefault::HumanoidArm(VANILLA_HUMANOID_ARM_RIGHT_ID),
+    },
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_PLAYER_MODE_CUSTOMISATION",
+        data_id: VANILLA_AVATAR_MODEL_CUSTOMIZATION_DATA_ID,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+        default: VanillaEntityMetadataDefault::Byte(VANILLA_AVATAR_DEFAULT_MODEL_CUSTOMIZATION),
+    },
+];
+
+const AVATAR_FLAGS: &[VanillaEntityMetadataFlagSchema] = &[
+    VanillaEntityMetadataFlagSchema {
+        name: "MODEL_PART_CAPE",
+        data_id: VANILLA_AVATAR_MODEL_CUSTOMIZATION_DATA_ID,
+        mask: VANILLA_AVATAR_MODEL_PART_CAPE,
+    },
+    VanillaEntityMetadataFlagSchema {
+        name: "MODEL_PART_JACKET",
+        data_id: VANILLA_AVATAR_MODEL_CUSTOMIZATION_DATA_ID,
+        mask: VANILLA_AVATAR_MODEL_PART_JACKET,
+    },
+    VanillaEntityMetadataFlagSchema {
+        name: "MODEL_PART_LEFT_SLEEVE",
+        data_id: VANILLA_AVATAR_MODEL_CUSTOMIZATION_DATA_ID,
+        mask: VANILLA_AVATAR_MODEL_PART_LEFT_SLEEVE,
+    },
+    VanillaEntityMetadataFlagSchema {
+        name: "MODEL_PART_RIGHT_SLEEVE",
+        data_id: VANILLA_AVATAR_MODEL_CUSTOMIZATION_DATA_ID,
+        mask: VANILLA_AVATAR_MODEL_PART_RIGHT_SLEEVE,
+    },
+    VanillaEntityMetadataFlagSchema {
+        name: "MODEL_PART_LEFT_PANTS_LEG",
+        data_id: VANILLA_AVATAR_MODEL_CUSTOMIZATION_DATA_ID,
+        mask: VANILLA_AVATAR_MODEL_PART_LEFT_PANTS_LEG,
+    },
+    VanillaEntityMetadataFlagSchema {
+        name: "MODEL_PART_RIGHT_PANTS_LEG",
+        data_id: VANILLA_AVATAR_MODEL_CUSTOMIZATION_DATA_ID,
+        mask: VANILLA_AVATAR_MODEL_PART_RIGHT_PANTS_LEG,
+    },
+    VanillaEntityMetadataFlagSchema {
+        name: "MODEL_PART_HAT",
+        data_id: VANILLA_AVATAR_MODEL_CUSTOMIZATION_DATA_ID,
+        mask: VANILLA_AVATAR_MODEL_PART_HAT,
+    },
+];
+
+const PLAYER_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_PLAYER_ABSORPTION_ID",
+        data_id: VANILLA_PLAYER_ABSORPTION_DATA_ID,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_FLOAT_ID,
+        default: VanillaEntityMetadataDefault::Float(VANILLA_PLAYER_DEFAULT_ABSORPTION),
+    },
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_SCORE_ID",
+        data_id: VANILLA_PLAYER_SCORE_DATA_ID,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+        default: VanillaEntityMetadataDefault::Int(VANILLA_PLAYER_DEFAULT_SCORE),
+    },
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_SHOULDER_PARROT_LEFT",
+        data_id: VANILLA_PLAYER_SHOULDER_PARROT_LEFT_DATA_ID,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_UNSIGNED_INT_ID,
+        default: VanillaEntityMetadataDefault::OptionalUnsignedIntNone,
+    },
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_SHOULDER_PARROT_RIGHT",
+        data_id: VANILLA_PLAYER_SHOULDER_PARROT_RIGHT_DATA_ID,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_UNSIGNED_INT_ID,
+        default: VanillaEntityMetadataDefault::OptionalUnsignedIntNone,
+    },
+];
+
 const ENTITY_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamilySchema {
     family: VanillaEntityMetadataFamily::Entity,
     parent: None,
@@ -291,6 +395,23 @@ const MOB_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamil
     own_flags: MOB_FLAGS,
 };
 
+const AVATAR_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamilySchema {
+    family: VanillaEntityMetadataFamily::Avatar,
+    parent: Some(VanillaEntityMetadataFamily::LivingEntity),
+    inherited_field_count: LIVING_ENTITY_SCHEMA.inherited_field_count
+        + LIVING_ENTITY_FIELDS.len() as u8,
+    own_fields: AVATAR_FIELDS,
+    own_flags: AVATAR_FLAGS,
+};
+
+const PLAYER_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamilySchema {
+    family: VanillaEntityMetadataFamily::Player,
+    parent: Some(VanillaEntityMetadataFamily::Avatar),
+    inherited_field_count: AVATAR_SCHEMA.inherited_field_count + AVATAR_FIELDS.len() as u8,
+    own_fields: PLAYER_FIELDS,
+    own_flags: &[],
+};
+
 pub const fn vanilla_entity_metadata_schema(
     family: VanillaEntityMetadataFamily,
 ) -> &'static VanillaEntityMetadataFamilySchema {
@@ -298,6 +419,8 @@ pub const fn vanilla_entity_metadata_schema(
         VanillaEntityMetadataFamily::Entity => &ENTITY_SCHEMA,
         VanillaEntityMetadataFamily::LivingEntity => &LIVING_ENTITY_SCHEMA,
         VanillaEntityMetadataFamily::Mob => &MOB_SCHEMA,
+        VanillaEntityMetadataFamily::Avatar => &AVATAR_SCHEMA,
+        VanillaEntityMetadataFamily::Player => &PLAYER_SCHEMA,
     }
 }
 
@@ -356,6 +479,33 @@ mod tests {
                 .map(|field| field.data_id)
                 .collect::<Vec<_>>(),
             vec![15]
+        );
+
+        let avatar = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Avatar);
+        assert_eq!(
+            avatar.parent,
+            Some(VanillaEntityMetadataFamily::LivingEntity)
+        );
+        assert_eq!(avatar.inherited_field_count, 15);
+        assert_eq!(
+            avatar
+                .own_fields
+                .iter()
+                .map(|field| field.data_id)
+                .collect::<Vec<_>>(),
+            (15..=16).collect::<Vec<_>>()
+        );
+
+        let player = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Player);
+        assert_eq!(player.parent, Some(VanillaEntityMetadataFamily::Avatar));
+        assert_eq!(player.inherited_field_count, 17);
+        assert_eq!(
+            player
+                .own_fields
+                .iter()
+                .map(|field| field.data_id)
+                .collect::<Vec<_>>(),
+            (17..=20).collect::<Vec<_>>()
         );
     }
 
@@ -471,6 +621,52 @@ mod tests {
                 default: VanillaEntityMetadataDefault::Byte(0),
             }]
         );
+        assert_eq!(
+            vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Avatar).own_fields,
+            &[
+                VanillaEntityMetadataFieldSchema {
+                    name: "DATA_PLAYER_MAIN_HAND",
+                    data_id: 15,
+                    serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_HUMANOID_ARM_ID,
+                    default: VanillaEntityMetadataDefault::HumanoidArm(1),
+                },
+                VanillaEntityMetadataFieldSchema {
+                    name: "DATA_PLAYER_MODE_CUSTOMISATION",
+                    data_id: 16,
+                    serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+                    default: VanillaEntityMetadataDefault::Byte(0),
+                },
+            ]
+        );
+        assert_eq!(
+            vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Player).own_fields,
+            &[
+                VanillaEntityMetadataFieldSchema {
+                    name: "DATA_PLAYER_ABSORPTION_ID",
+                    data_id: 17,
+                    serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_FLOAT_ID,
+                    default: VanillaEntityMetadataDefault::Float(0.0),
+                },
+                VanillaEntityMetadataFieldSchema {
+                    name: "DATA_SCORE_ID",
+                    data_id: 18,
+                    serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+                    default: VanillaEntityMetadataDefault::Int(0),
+                },
+                VanillaEntityMetadataFieldSchema {
+                    name: "DATA_SHOULDER_PARROT_LEFT",
+                    data_id: 19,
+                    serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_UNSIGNED_INT_ID,
+                    default: VanillaEntityMetadataDefault::OptionalUnsignedIntNone,
+                },
+                VanillaEntityMetadataFieldSchema {
+                    name: "DATA_SHOULDER_PARROT_RIGHT",
+                    data_id: 20,
+                    serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_UNSIGNED_INT_ID,
+                    default: VanillaEntityMetadataDefault::OptionalUnsignedIntNone,
+                },
+            ]
+        );
     }
 
     #[test]
@@ -496,6 +692,19 @@ mod tests {
             .map(|field| field.name),
             Some("DATA_HEALTH_ID")
         );
+        assert_eq!(
+            vanilla_entity_metadata_field(
+                VanillaEntityMetadataFamily::Player,
+                VANILLA_AVATAR_MAIN_HAND_DATA_ID
+            )
+            .map(|field| field.name),
+            Some("DATA_PLAYER_MAIN_HAND")
+        );
+        assert!(vanilla_entity_metadata_field(
+            VanillaEntityMetadataFamily::Mob,
+            VANILLA_AVATAR_MODEL_CUSTOMIZATION_DATA_ID
+        )
+        .is_none());
 
         assert_eq!(
             vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Entity).own_flags,
@@ -577,11 +786,53 @@ mod tests {
                 },
             ]
         );
+        assert_eq!(
+            vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Avatar).own_flags,
+            &[
+                VanillaEntityMetadataFlagSchema {
+                    name: "MODEL_PART_CAPE",
+                    data_id: 16,
+                    mask: 1,
+                },
+                VanillaEntityMetadataFlagSchema {
+                    name: "MODEL_PART_JACKET",
+                    data_id: 16,
+                    mask: 2,
+                },
+                VanillaEntityMetadataFlagSchema {
+                    name: "MODEL_PART_LEFT_SLEEVE",
+                    data_id: 16,
+                    mask: 4,
+                },
+                VanillaEntityMetadataFlagSchema {
+                    name: "MODEL_PART_RIGHT_SLEEVE",
+                    data_id: 16,
+                    mask: 8,
+                },
+                VanillaEntityMetadataFlagSchema {
+                    name: "MODEL_PART_LEFT_PANTS_LEG",
+                    data_id: 16,
+                    mask: 16,
+                },
+                VanillaEntityMetadataFlagSchema {
+                    name: "MODEL_PART_RIGHT_PANTS_LEG",
+                    data_id: 16,
+                    mask: 32,
+                },
+                VanillaEntityMetadataFlagSchema {
+                    name: "MODEL_PART_HAT",
+                    data_id: 16,
+                    mask: 64,
+                },
+            ]
+        );
 
         for family in [
             VanillaEntityMetadataFamily::Entity,
             VanillaEntityMetadataFamily::LivingEntity,
             VanillaEntityMetadataFamily::Mob,
+            VanillaEntityMetadataFamily::Avatar,
+            VanillaEntityMetadataFamily::Player,
         ] {
             let flags = vanilla_entity_metadata_schema(family).own_flags;
             for (index, flag) in flags.iter().enumerate() {
