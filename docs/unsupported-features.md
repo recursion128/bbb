@@ -222,9 +222,12 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   `null` and emits the red `Missing Server Entity` 3D billboard instead. bbb
   owns no integrated server and implements that missing-label branch. Reopen
   with an in-process integrated server boundary.
-- Add the component-specific advanced-tooltip lines still missing against
-  vanilla `ItemStack.addDetailsToTooltip`'s component dispatch, plus
-  `TooltipDisplay` hide/hidden-component gating and options persistence.
+- Complete item-tooltip attribute and warning projection from vanilla
+  `ItemStack.forEachModifier`, `ItemAttributeModifiers.Display.Default.apply`,
+  `Item.shouldPrintOpWarning`, and `ItemStack.addDetailsToTooltip`: include
+  enchantment-provided attribute effects, player-aware base attack damage/speed
+  `equals` rows, operator-only block/entity NBT warnings, feature-disabled item
+  warnings, and dynamic-registry attribute names.
 - Extend F3+I local entity capture across the remaining vanilla
   `addAdditionalSaveData` entity families whose saved state still needs
   non-equine specialized parent-chain classification, remaining owner/target/reference

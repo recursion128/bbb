@@ -1956,7 +1956,15 @@ fn stack_attribute_modifier_tooltip_line(
         return modifier
             .display_text
             .as_ref()
-            .map(|text| NativeItemTooltipLine::plain(text.clone(), TOOLTIP_TEXT_WHITE));
+            .map(|text| NativeItemTooltipLine {
+                text: text.clone(),
+                tint: TOOLTIP_TEXT_WHITE,
+                runs: hud_runs_from_component(
+                    modifier.display_text_styled.as_deref().unwrap_or_default(),
+                    text,
+                    &ComponentStyle::default(),
+                ),
+            });
     }
 
     let attribute = vanilla_attribute(modifier.attribute_id)?;

@@ -19,6 +19,7 @@ pub(super) fn default_attribute_modifier_summary(
         slot_id: modifier.slot_id,
         display_id: 0,
         display_text: None,
+        display_text_styled: None,
     }
 }
 

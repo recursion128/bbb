@@ -8323,3 +8323,16 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   之后的 `EntityHitboxDebugRenderer` 顺序。focused tests 锁定位置、文本、RGBA、居中样式、
   F3+B/启动 flag gate 与 `RendererFrame` 提取顺序；goal 的默认关闭 debug / local-server
   hitbox 队列项均已移除。
+
+## 2026-07-10：Advanced-tooltip component dispatch audit 与 styled attribute override
+
+- [x] advanced tooltip component 分派收口（P2 protocol/item-runtime）：逐项核对 vanilla
+  26.1 `ItemStack.addDetailsToTooltip` 后，确认全部 `addToTooltip` / unit component、三个
+  item-specific `appendHoverText`、spawner、adventure predicate、advanced damage/id/count
+  与 `TooltipDisplay` hide/hidden-component gate 均已有实现；vanilla options-file 持久化按
+  本仓库 command-line startup 配置边界继续保持 `not-needed`。本 slice 补齐最后一个已知
+  component 表达差异：`ItemAttributeModifiers.Display.OverrideText` 的
+  `ComponentSerialization.STREAM_CODEC` 现在同时保留 plain summary 与完整继承后的
+  `StyledTextRun`，item tooltip 原样投影颜色、粗斜体等 run style，而不再降级为白色纯文本。
+  focused tests 覆盖 gold + bold override 的 wire decode 与最终 HUD run；开放账本已改写为
+  具体的 attribute source/player context/operator warning/feature gate/dynamic registry 缺口。

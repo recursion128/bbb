@@ -2,7 +2,7 @@ use super::*;
 use crate::skin_runtime::{
     AsyncDynamicPlayerSkinRuntime, AsyncDynamicPlayerTextureRuntime, SkinPngFetcher,
 };
-use bbb_protocol::StyledTextRun;
+use bbb_protocol::{ComponentStyle, StyledTextRun};
 use chrono::TimeZone;
 use std::{
     collections::BTreeMap,
@@ -785,6 +785,16 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
             slot_id,
             display_id,
             display_text: display_text.map(str::to_string),
+            display_text_styled: (display_id == 2).then(|| {
+                vec![StyledTextRun {
+                    text: display_text.unwrap_or_default().to_string(),
+                    style: ComponentStyle {
+                        bold: Some(true),
+                        color: Some(0xFF_AA_00),
+                        ..ComponentStyle::default()
+                    },
+                }]
+            }),
         }
     };
     let attribute_modifier_stack = ItemStackSummary {
@@ -814,7 +824,18 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
             tooltip_line("-20% Attack Speed", TOOLTIP_TEXT_RED),
             tooltip_line("", TOOLTIP_TEXT_WHITE),
             tooltip_line("When in Off Hand:", TOOLTIP_TEXT_GRAY),
-            tooltip_line("Heavy hit", TOOLTIP_TEXT_WHITE),
+            NativeItemTooltipLine {
+                text: "Heavy hit".to_string(),
+                tint: TOOLTIP_TEXT_WHITE,
+                runs: vec![HudStyledTextRun {
+                    text: "Heavy hit".to_string(),
+                    style: HudTextStyle {
+                        bold: true,
+                        ..HudTextStyle::default()
+                    },
+                    color: Some(0xFF_AA_00),
+                }],
+            },
             tooltip_line("+5 Knockback Resistance", TOOLTIP_TEXT_BLUE),
             tooltip_line("Intangible", TOOLTIP_TEXT_GRAY),
         ])
@@ -6362,6 +6383,7 @@ fn native_item_runtime_resolves_component_condition_predicates() {
                 slot_id: 1,
                 display_id: 1,
                 display_text: None,
+                display_text_styled: None,
             },
             AttributeModifierSummary {
                 attribute_id: 1,
@@ -6371,6 +6393,7 @@ fn native_item_runtime_resolves_component_condition_predicates() {
                 slot_id: 3,
                 display_id: 2,
                 display_text: Some("Heavy hit".to_string()),
+                display_text_styled: None,
             },
         ],
         ..DataComponentPatchSummary::default()
@@ -7933,6 +7956,7 @@ fn native_item_runtime_resolves_component_condition_predicates() {
             slot_id,
             display_id: 0,
             display_text: None,
+            display_text_styled: None,
         };
     let modifier = |id: &str, amount: f64, operation_id, slot_id| AttributeModifierSummary {
         attribute_id: 7,
@@ -7942,6 +7966,7 @@ fn native_item_runtime_resolves_component_condition_predicates() {
         slot_id,
         display_id: 0,
         display_text: None,
+        display_text_styled: None,
     };
     assert_eq!(
         selected(59, DataComponentPatchSummary::default()),

@@ -527,6 +527,8 @@ pub struct AttributeModifierSummary {
     pub display_id: i32,
     #[serde(default)]
     pub display_text: Option<String>,
+    #[serde(default)]
+    pub display_text_styled: Option<Vec<StyledTextRun>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -1478,7 +1480,8 @@ fn decode_attribute_modifiers(decoder: &mut Decoder<'_>) -> Result<Vec<Attribute
         let amount_bits = decoder.read_f64()?.to_bits();
         let operation_id = decode_attribute_modifier_operation_id(decoder)?;
         let slot_id = decode_equipment_slot_group_id(decoder)?;
-        let (display_id, display_text) = decode_attribute_modifier_display(decoder)?;
+        let (display_id, display_text, display_text_styled) =
+            decode_attribute_modifier_display(decoder)?;
         modifiers.push(AttributeModifierSummary {
             attribute_id,
             modifier_id,
@@ -1487,6 +1490,7 @@ fn decode_attribute_modifiers(decoder: &mut Decoder<'_>) -> Result<Vec<Attribute
             slot_id,
             display_id,
             display_text,
+            display_text_styled,
         });
     }
     Ok(modifiers)
@@ -1502,15 +1506,18 @@ fn decode_equipment_slot_group_id(decoder: &mut Decoder<'_>) -> Result<i32> {
     Ok(if (0..=10).contains(&id) { id } else { 0 })
 }
 
-fn decode_attribute_modifier_display(decoder: &mut Decoder<'_>) -> Result<(i32, Option<String>)> {
+fn decode_attribute_modifier_display(
+    decoder: &mut Decoder<'_>,
+) -> Result<(i32, Option<String>, Option<Vec<StyledTextRun>>)> {
     let display_id = decoder.read_var_i32()?;
     match display_id {
         2 => {
-            let display_text = decode_component_summary_from_decoder(decoder)?;
-            Ok((2, Some(display_text)))
+            let display_text_styled = decode_styled_component_summary_from_decoder(decoder)?;
+            let display_text = styled_runs_summary_text(&display_text_styled);
+            Ok((2, Some(display_text), Some(display_text_styled)))
         }
-        0 | 1 => Ok((display_id, None)),
-        _ => Ok((0, None)),
+        0 | 1 => Ok((display_id, None, None)),
+        _ => Ok((0, None, None)),
     }
 }
 
@@ -3714,6 +3721,7 @@ mod tests {
                         slot_id: 1,
                         display_id: 0,
                         display_text: None,
+                        display_text_styled: None,
                     },
                     AttributeModifierSummary {
                         attribute_id: 7,
@@ -3723,6 +3731,7 @@ mod tests {
                         slot_id: 1,
                         display_id: 1,
                         display_text: None,
+                        display_text_styled: None,
                     },
                     AttributeModifierSummary {
                         attribute_id: 7,
@@ -3732,6 +3741,14 @@ mod tests {
                         slot_id: 1,
                         display_id: 2,
                         display_text: Some("Override".to_string()),
+                        display_text_styled: Some(vec![StyledTextRun {
+                            text: "Override".to_string(),
+                            style: crate::ComponentStyle {
+                                bold: Some(true),
+                                color: Some(0xFF_AA_00),
+                                ..Default::default()
+                            },
+                        }]),
                     },
                 ],
                 ..DataComponentPatchSummary::default()
@@ -4840,7 +4857,12 @@ mod tests {
         payload.write_var_i32(1);
         payload.write_var_i32(display_type);
         if let Some(text) = display_text {
-            payload.write_bytes(&nbt_string_root(text));
+            let mut styled_text = vec![10u8];
+            write_named_nbt_string(&mut styled_text, "text", text);
+            write_named_nbt_byte(&mut styled_text, "bold", 1);
+            write_named_nbt_string(&mut styled_text, "color", "gold");
+            styled_text.push(0);
+            payload.write_bytes(&styled_text);
         }
     }
 

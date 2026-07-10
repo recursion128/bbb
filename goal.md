@@ -199,8 +199,10 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 仍在推进（消化顺序即列出顺序，todo 见账本 "HUD overlay and screen render
 surfaces" 节；整体低优先）：
 
-- advanced tooltip 其余 component 专属行与选项持久化：逐条对照 vanilla
-  `ItemStack.addDetailsToTooltip` 的 component 分派补齐，已实现者由代码确认。
+- item tooltip 剩余属性与警告 parity：补齐 vanilla `ItemStack.forEachModifier`
+  注入的 enchantment attribute effects、player-aware base attack damage/speed
+  `equals` 行、`shouldPrintOpWarning` 的 operator-only NBT 警告、feature-disabled
+  item 行，以及 dynamic registry attribute 名称映射。
 - F3+I 本地实体 `saveWithoutId` 继续逐实体补全：对照各实体 vanilla
   `addAdditionalSaveData`，推进剩余实体族中仍需额外本地 owner、private timer /
   reference 投影、registry-backed variant 投影、codec-backed SNBT 投影，或实体
