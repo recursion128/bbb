@@ -241,8 +241,8 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   attribute-modifier override-display Component trees, direct instrument,
   direct trim material/pattern, direct provides-trim-material, direct jukebox-song,
   and direct painting-variant network holders; implemented
-  through the protocol component descriptor catalog and native persistent SNBT
-  encoder registry)
+  through the protocol generated-metadata/handler descriptor catalog and native
+  persistent SNBT encoder registry)
   beyond the supported custom-NBT/primitive (including repair-cost/enchantable/glider,
   minimum-attack-charge/potion-duration-scale)/
   enchantments/stored-enchantments/

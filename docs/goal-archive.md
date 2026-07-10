@@ -9307,3 +9307,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   私有 15 项字面量数组与测试内整表副本；原 resource-id 查询 API 保持兼容，并以
   连续/唯一/固定长度、首尾边界和 regeneration tests 锁定生成物。本提交未改 110 项
   data-component codec handler 绑定，后者仍作为核心 registry 队列的独立子项保留。
+
+## 2026-07-10：Vanilla data-component type metadata generation
+
+- [x] core built-in registry catalog 的 data-component type 子项（P1 mechanical
+  vanilla data）：统一生成器从 vanilla 26.1 `DataComponents.java` 的 110 个静态
+  `register` 调用生成 checked-in type-id/resource/order/persistent metadata，三项
+  transient 精确为 20/41/48。protocol component catalog 删除重复的 id/resource/
+  persistent 参数，仅保留按注册顺序的 wire decode handler registry，并在一次性
+  descriptor 初始化时与生成 metadata 自动绑定；既有 descriptor slice/query、patch
+  dispatch、summary 与 native encoder consumer 均保持兼容。生成、连续/唯一/属性、
+  110-handler 覆盖与 dispatch tests 锁定绑定；未增加新 component 功能。
