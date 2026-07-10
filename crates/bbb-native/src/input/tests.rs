@@ -8596,6 +8596,59 @@ fn item_stack_snbt_preserves_effect_free_consumables_and_omits_defaults() {
 }
 
 #[test]
+fn item_stack_snbt_preserves_registry_independent_consume_effects() {
+    let effects = vec![
+        ConsumeEffectSummary::ClearAllEffects,
+        ConsumeEffectSummary::TeleportRandomly {
+            diameter_bits: 16.0_f32.to_bits(),
+        },
+        ConsumeEffectSummary::PlaySound {
+            sound: bbb_protocol::packets::SoundEventSummary {
+                registry_id: None,
+                sound_id: Some("minecraft:item.honey_bottle.drink".to_string()),
+                fixed_range_bits: None,
+            },
+        },
+    ];
+    let mut patch = DataComponentPatchSummary {
+        consumable: Some(bbb_protocol::packets::ConsumableSummary {
+            consume_seconds: 1.6,
+            animation: bbb_protocol::packets::ItemUseAnimationSummary::Eat,
+        }),
+        consumable_sound: Some(bbb_protocol::packets::SoundEventSummary {
+            registry_id: Some(696),
+            sound_id: None,
+            fixed_range_bits: None,
+        }),
+        consumable_has_consume_particles: Some(true),
+        consumable_effect_count: Some(effects.len()),
+        consumable_effects: effects.clone(),
+        death_protection_effects: effects,
+        ..DataComponentPatchSummary::default()
+    };
+    let effect_list = "[{type: \"minecraft:clear_all_effects\"}, \
+        {type: \"minecraft:teleport_randomly\"}, \
+        {type: \"minecraft:play_sound\", sound: \
+        {sound_id: \"minecraft:item.honey_bottle.drink\"}}]";
+    assert_eq!(
+        debug_consumable_component_snbt(&patch),
+        Some(format!("{{on_consume_effects: {effect_list}}}"))
+    );
+    assert_eq!(
+        debug_death_protection_component_snbt(&patch),
+        Some(format!("{{death_effects: {effect_list}}}"))
+    );
+
+    patch.consumable_effects[1] = ConsumeEffectSummary::TeleportRandomly {
+        diameter_bits: 0.0_f32.to_bits(),
+    };
+    assert_eq!(debug_consumable_component_snbt(&patch), None);
+
+    patch.death_protection_effects = vec![ConsumeEffectSummary::ApplyEffectsUnsupported];
+    assert_eq!(debug_death_protection_component_snbt(&patch), None);
+}
+
+#[test]
 fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
     let registry: ItemRegistryCatalog = serde_json::from_value(serde_json::json!({
         "resource_ids": [
@@ -8617,11 +8670,11 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
         EquipmentAssetCatalog::default(),
     );
     let patch = DataComponentPatchSummary {
-        added: 72,
+        added: 73,
         added_type_ids: vec![
             0, 1, 2, 3, 4, 5, 7, 10, 12, 17, 18, 19, 21, 22, 23, 24, 25, 26, 27, 29, 30, 31, 33,
-            34, 35, 38, 39, 40, 43, 44, 45, 46, 47, 49, 50, 52, 54, 57, 58, 59, 60, 63, 65, 66, 67,
-            68, 69, 70, 71, 73, 74, 75, 76, 77, 78, 79, 80, 84, 85, 86, 87, 88, 89, 90, 91, 92,
+            34, 35, 36, 38, 39, 40, 43, 44, 45, 46, 47, 49, 50, 52, 54, 57, 58, 59, 60, 63, 65, 66,
+            67, 68, 69, 70, 71, 73, 74, 75, 76, 77, 78, 79, 80, 84, 85, 86, 87, 88, 89, 90, 91, 92,
             101, 103, 104, 107, 108, 109,
         ],
         removed_type_ids: vec![6],
@@ -8709,7 +8762,20 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
             fixed_range_bits: None,
         }),
         consumable_has_consume_particles: Some(false),
-        consumable_effect_count: Some(0),
+        consumable_effect_count: Some(3),
+        consumable_effects: vec![
+            ConsumeEffectSummary::ClearAllEffects,
+            ConsumeEffectSummary::TeleportRandomly {
+                diameter_bits: 8.0_f32.to_bits(),
+            },
+            ConsumeEffectSummary::PlaySound {
+                sound: bbb_protocol::packets::SoundEventSummary {
+                    registry_id: None,
+                    sound_id: Some("minecraft:item.honey_bottle.drink".to_string()),
+                    fixed_range_bits: None,
+                },
+            },
+        ],
         use_remainder: Some(Box::new(bbb_protocol::packets::ItemStackTemplateSummary {
             item_id: 2,
             count: 1,
@@ -9034,7 +9100,11 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
          \"minecraft:food\": {nutrition: 6, saturation: 7.2f, can_always_eat: 1b}, \
          \"minecraft:consumable\": {consume_seconds: 0.8f, animation: \"drink\", \
          sound: {sound_id: \"minecraft:entity.generic.drink\"}, \
-         has_consume_particles: 0b}, \
+         has_consume_particles: 0b, on_consume_effects: \
+         [{type: \"minecraft:clear_all_effects\"}, \
+         {type: \"minecraft:teleport_randomly\", diameter: 8.0f}, \
+         {type: \"minecraft:play_sound\", sound: \
+         {sound_id: \"minecraft:item.honey_bottle.drink\"}}]}, \
          \"minecraft:use_remainder\": {id: \"minecraft:arrow\"}, \
          \"minecraft:use_cooldown\": {seconds: 1.25f, \
          cooldown_group: \"minecraft:ender_pearl\"}, \
@@ -9048,6 +9118,7 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
          \"minecraft:repairable\": {items: [\"minecraft:angler_pottery_sherd\", \
          \"minecraft:archer_pottery_sherd\"]}, \"minecraft:glider\": {}, \
          \"minecraft:tooltip_style\": \"minecraft:rare\", \
+         \"minecraft:death_protection\": {}, \
          \"minecraft:piercing_weapon\": {deals_knockback: 0b, dismounts: 1b, \
          sound: {sound_id: \"minecraft:item.trident.throw\"}, \
          hit_sound: \"minecraft:ambient.cave\"}, \

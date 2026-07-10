@@ -110,6 +110,8 @@ pub struct DataComponentPatchSummary {
     #[serde(default)]
     pub consumable_effect_count: Option<usize>,
     #[serde(default)]
+    pub consumable_effects: Vec<ConsumeEffectSummary>,
+    #[serde(default)]
     pub use_remainder: Option<Box<ItemStackTemplateSummary>>,
     #[serde(default)]
     pub damage_resistant_type_registry_ids: Vec<i32>,
@@ -127,6 +129,8 @@ pub struct DataComponentPatchSummary {
     pub repairable_item_registry_ids: Vec<i32>,
     #[serde(default)]
     pub repairable_item_tag: Option<String>,
+    #[serde(default)]
+    pub death_protection_effects: Vec<ConsumeEffectSummary>,
     #[serde(default)]
     pub piercing_weapon: Option<PiercingWeaponSummary>,
     #[serde(default)]
@@ -539,6 +543,16 @@ impl PartialEq for ConsumableSummary {
 
 impl Eq for ConsumableSummary {}
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum ConsumeEffectSummary {
+    ApplyEffectsUnsupported,
+    RemoveEffectsUnsupported,
+    ClearAllEffects,
+    TeleportRandomly { diameter_bits: u32 },
+    PlaySound { sound: SoundEventSummary },
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ItemUseAnimationSummary {
@@ -858,6 +872,7 @@ fn decode_typed_data_component_patch_summary(
                 summary.consumable_sound = Some(consumable.sound);
                 summary.consumable_has_consume_particles = Some(consumable.has_consume_particles);
                 summary.consumable_effect_count = Some(consumable.effect_count);
+                summary.consumable_effects = consumable.effects;
             }
             25 => {
                 summary.use_remainder = Some(Box::new(decode_item_stack_template(decoder)?));
@@ -881,6 +896,9 @@ fn decode_typed_data_component_patch_summary(
                 let items = decode_holder_set_summary(decoder)?;
                 summary.repairable_item_registry_ids = items.registry_ids;
                 summary.repairable_item_tag = items.tag;
+            }
+            36 => {
+                summary.death_protection_effects = decode_consume_effect_list_summary(decoder)?;
             }
             38 => {
                 summary.piercing_weapon = Some(decode_piercing_weapon_summary(decoder)?);
@@ -1822,6 +1840,7 @@ struct ConsumableComponentSummary {
     sound: SoundEventSummary,
     has_consume_particles: bool,
     effect_count: usize,
+    effects: Vec<ConsumeEffectSummary>,
 }
 
 fn decode_consumable_component_summary(
@@ -1833,8 +1852,9 @@ fn decode_consumable_component_summary(
     let has_consume_particles = decoder.read_bool()?;
 
     let effect_count = read_bounded_len(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
+    let mut effects = Vec::with_capacity(effect_count);
     for _ in 0..effect_count {
-        decode_consume_effect(decoder)?;
+        effects.push(decode_consume_effect_summary(decoder)?);
     }
     Ok(ConsumableComponentSummary {
         summary: ConsumableSummary {
@@ -1844,6 +1864,7 @@ fn decode_consumable_component_summary(
         sound,
         has_consume_particles,
         effect_count,
+        effects,
     })
 }
 
@@ -1864,7 +1885,7 @@ fn decode_item_use_animation_summary(decoder: &mut Decoder<'_>) -> Result<ItemUs
     })
 }
 
-fn decode_consume_effect(decoder: &mut Decoder<'_>) -> Result<()> {
+fn decode_consume_effect_summary(decoder: &mut Decoder<'_>) -> Result<ConsumeEffectSummary> {
     match decoder.read_var_i32()? {
         0 => {
             let effect_count = read_bounded_len(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
@@ -1872,20 +1893,34 @@ fn decode_consume_effect(decoder: &mut Decoder<'_>) -> Result<()> {
                 decode_mob_effect_instance(decoder)?;
             }
             decoder.read_f32()?;
+            Ok(ConsumeEffectSummary::ApplyEffectsUnsupported)
         }
-        1 => decode_holder_set(decoder)?,
-        2 => {}
-        3 => {
-            decoder.read_f32()?;
+        1 => {
+            decode_holder_set(decoder)?;
+            Ok(ConsumeEffectSummary::RemoveEffectsUnsupported)
         }
-        4 => decode_sound_event_holder(decoder)?,
-        other => {
-            return Err(ProtocolError::InvalidData(format!(
-                "invalid consume effect type id {other}"
-            )));
-        }
+        2 => Ok(ConsumeEffectSummary::ClearAllEffects),
+        3 => Ok(ConsumeEffectSummary::TeleportRandomly {
+            diameter_bits: decoder.read_f32()?.to_bits(),
+        }),
+        4 => Ok(ConsumeEffectSummary::PlaySound {
+            sound: decode_sound_event_holder_summary(decoder)?,
+        }),
+        other => Err(ProtocolError::InvalidData(format!(
+            "invalid consume effect type id {other}"
+        ))),
     }
-    Ok(())
+}
+
+fn decode_consume_effect_list_summary(
+    decoder: &mut Decoder<'_>,
+) -> Result<Vec<ConsumeEffectSummary>> {
+    let effect_count = read_bounded_len(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
+    let mut effects = Vec::with_capacity(effect_count);
+    for _ in 0..effect_count {
+        effects.push(decode_consume_effect_summary(decoder)?);
+    }
+    Ok(effects)
 }
 
 fn decode_use_remainder(decoder: &mut Decoder<'_>) -> Result<()> {
@@ -2012,10 +2047,7 @@ fn decode_attack_range_summary(decoder: &mut Decoder<'_>) -> Result<AttackRangeS
 }
 
 fn decode_death_protection(decoder: &mut Decoder<'_>) -> Result<()> {
-    let effect_count = read_bounded_len(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
-    for _ in 0..effect_count {
-        decode_consume_effect(decoder)?;
-    }
+    let _ = decode_consume_effect_list_summary(decoder)?;
     Ok(())
 }
 
@@ -3933,6 +3965,49 @@ mod tests {
     }
 
     #[test]
+    fn decodes_registry_independent_death_protection_effects() {
+        let mut payload = Encoder::new();
+        payload.write_var_i32(1);
+        payload.write_var_i32(0);
+
+        payload.write_var_i32(36);
+        payload.write_var_i32(3);
+        payload.write_var_i32(2);
+        payload.write_var_i32(3);
+        payload.write_f32(8.0);
+        payload.write_var_i32(4);
+        write_direct_sound_event(&mut payload, "minecraft:item.totem.use", Some(16.0));
+
+        let payload = payload.into_inner();
+        let mut decoder = Decoder::new(&payload);
+        let patch = decode_data_component_patch_summary(&mut decoder).unwrap();
+
+        assert_eq!(
+            patch,
+            DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![36],
+                removed_type_ids: Vec::new(),
+                death_protection_effects: vec![
+                    ConsumeEffectSummary::ClearAllEffects,
+                    ConsumeEffectSummary::TeleportRandomly {
+                        diameter_bits: 8.0_f32.to_bits(),
+                    },
+                    ConsumeEffectSummary::PlaySound {
+                        sound: SoundEventSummary {
+                            registry_id: None,
+                            sound_id: Some("minecraft:item.totem.use".to_string()),
+                            fixed_range_bits: Some(16.0_f32.to_bits()),
+                        },
+                    },
+                ],
+                ..DataComponentPatchSummary::default()
+            }
+        );
+        assert!(decoder.is_empty());
+    }
+
+    #[test]
     fn decodes_item_rarity_out_of_bounds_as_common() {
         let mut payload = Encoder::new();
         payload.write_var_i32(1);
@@ -4376,6 +4451,16 @@ mod tests {
                 added: 4,
                 added_type_ids: vec![36, 37, 38, 39],
                 removed_type_ids: Vec::new(),
+                death_protection_effects: vec![
+                    ConsumeEffectSummary::ClearAllEffects,
+                    ConsumeEffectSummary::PlaySound {
+                        sound: SoundEventSummary {
+                            registry_id: None,
+                            sound_id: Some("minecraft:item.totem.use".to_string()),
+                            fixed_range_bits: None,
+                        },
+                    },
+                ],
                 piercing_weapon: Some(PiercingWeaponSummary {
                     deals_knockback: true,
                     dismounts: true,
@@ -5012,6 +5097,21 @@ mod tests {
                 }),
                 consumable_has_consume_particles: Some(true),
                 consumable_effect_count: Some(5),
+                consumable_effects: vec![
+                    ConsumeEffectSummary::ApplyEffectsUnsupported,
+                    ConsumeEffectSummary::RemoveEffectsUnsupported,
+                    ConsumeEffectSummary::ClearAllEffects,
+                    ConsumeEffectSummary::TeleportRandomly {
+                        diameter_bits: 16.0_f32.to_bits(),
+                    },
+                    ConsumeEffectSummary::PlaySound {
+                        sound: SoundEventSummary {
+                            registry_id: None,
+                            sound_id: Some("minecraft:item.honey_bottle.drink".to_string()),
+                            fixed_range_bits: None,
+                        },
+                    },
+                ],
                 use_remainder: Some(Box::new(ItemStackTemplateSummary {
                     item_id: 42,
                     count: 1,

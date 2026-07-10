@@ -8937,3 +8937,15 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   focused tests 覆盖空和五项效果列表；native component patch test 从 71 扩展
   到 72 个 added entry，并覆盖默认空 compound、direct sound、负零与非空效果
   的安全省略。五种 consume-effect payload 的持久化仍留在剩余 component 总账本。
+
+## 2026-07-10：ItemStack registry-independent consume-effect save codecs
+
+- [x] consumable/death-protection 的 clear-all/teleport-randomly/play-sound
+  分支（P2 protocol + native input）：依据 vanilla 26.1 ConsumeEffect 内建注册
+  顺序与三个 MapCodec/STREAM_CODEC，protocol 新增结构化效果摘要并为 type id
+  36 保留 ordered death_effects；native 输出 codec dispatch 的 type 字段，复刻
+  teleport diameter 的正 float 校验与 16.0 默认省略，并复用 vanilla/direct
+  SoundEvent holder。protocol focused tests 覆盖五种 wire variant 及三种支持
+  分支；native component patch test 从 72 扩展到 73 个 added entry，并覆盖
+  consumable/death-protection 列表、非法零 diameter 与不支持效果的整组件安全
+  省略。apply-effects/remove-effects 仍留在动态 MobEffect registry 总账本。

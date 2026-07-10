@@ -70,12 +70,12 @@ use bbb_protocol::{
     },
     packets::{
         BlockEntityTagQuery, BlockPos as ProtocolBlockPos, ChangeGameModeCommand,
-        Direction as ProtocolDirection, EntityDataEnumSerializer, EntityDataRegistryHolder,
-        EntityDataValueKind, EntityTagQuery, FireworkExplosionShapeSummary,
-        FireworkExplosionSummary, GameType, InteractionHand, ItemRaritySummary, ItemStackSummary,
-        NbtSummaryValue, PlayerActionKind, PlayerCommandAction, PlayerInput,
-        PlayerModelTypeSummary, RecipeBookType, ResolvableProfileKindSummary,
-        ResolvableProfileSummary, SeenAdvancements, SignUpdate,
+        ConsumeEffectSummary, Direction as ProtocolDirection, EntityDataEnumSerializer,
+        EntityDataRegistryHolder, EntityDataValueKind, EntityTagQuery,
+        FireworkExplosionShapeSummary, FireworkExplosionSummary, GameType, InteractionHand,
+        ItemRaritySummary, ItemStackSummary, NbtSummaryValue, PlayerActionKind,
+        PlayerCommandAction, PlayerInput, PlayerModelTypeSummary, RecipeBookType,
+        ResolvableProfileKindSummary, ResolvableProfileSummary, SeenAdvancements, SignUpdate,
     },
     ComponentClickEvent, ComponentStyle, StyledTextRun, MC_BUILD_TIME, MC_DATA_PACK_FORMAT,
     MC_DATA_VERSION, MC_DATA_VERSION_SERIES, MC_RESOURCE_PACK_FORMAT, MC_STABLE, MC_VERSION,
@@ -4687,6 +4687,7 @@ fn debug_supported_added_component_snbt(
         33 => debug_repairable_component_snbt(patch, item_runtime)?,
         34 => "{}".to_string(),
         35 => debug_snbt_string(patch.tooltip_style.as_deref()?),
+        36 => debug_death_protection_component_snbt(patch)?,
         38 => debug_piercing_weapon_component_snbt(patch.piercing_weapon.as_ref()?)?,
         39 => debug_kinetic_weapon_component_snbt(patch.kinetic_weapon.as_ref()?)?,
         40 => debug_swing_animation_component_snbt(patch.swing_animation?)?,
@@ -4795,6 +4796,7 @@ fn debug_supported_component_resource_id(type_id: i32) -> Option<&'static str> {
         33 => "minecraft:repairable",
         34 => "minecraft:glider",
         35 => "minecraft:tooltip_style",
+        36 => "minecraft:death_protection",
         38 => "minecraft:piercing_weapon",
         39 => "minecraft:kinetic_weapon",
         40 => "minecraft:swing_animation",
@@ -5045,9 +5047,10 @@ fn debug_food_component_snbt(
 fn debug_consumable_component_snbt(
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
 ) -> Option<String> {
-    if patch.consumable_effect_count? != 0 {
+    if patch.consumable_effect_count? != patch.consumable_effects.len() {
         return None;
     }
+    let on_consume_effects = debug_consume_effects_snbt(&patch.consumable_effects)?;
     let consumable = patch.consumable?;
     let consume_seconds = debug_range_checked_float_component_snbt(
         consumable.consume_seconds.to_bits(),
@@ -5091,7 +5094,62 @@ fn debug_consumable_component_snbt(
     if !has_consume_particles {
         fields.push("has_consume_particles: 0b".to_string());
     }
+    if !patch.consumable_effects.is_empty() {
+        fields.push(format!("on_consume_effects: {on_consume_effects}"));
+    }
     Some(format!("{{{}}}", fields.join(", ")))
+}
+
+fn debug_death_protection_component_snbt(
+    patch: &bbb_protocol::packets::DataComponentPatchSummary,
+) -> Option<String> {
+    let death_effects = debug_consume_effects_snbt(&patch.death_protection_effects)?;
+    if patch.death_protection_effects.is_empty() {
+        Some("{}".to_string())
+    } else {
+        Some(format!("{{death_effects: {death_effects}}}"))
+    }
+}
+
+fn debug_consume_effects_snbt(effects: &[ConsumeEffectSummary]) -> Option<String> {
+    let effects = effects
+        .iter()
+        .map(debug_consume_effect_snbt)
+        .collect::<Option<Vec<_>>>()?;
+    Some(format!("[{}]", effects.join(", ")))
+}
+
+fn debug_consume_effect_snbt(effect: &ConsumeEffectSummary) -> Option<String> {
+    match effect {
+        ConsumeEffectSummary::ApplyEffectsUnsupported
+        | ConsumeEffectSummary::RemoveEffectsUnsupported => None,
+        ConsumeEffectSummary::ClearAllEffects => Some(format!(
+            "{{type: {}}}",
+            debug_snbt_string("minecraft:clear_all_effects")
+        )),
+        ConsumeEffectSummary::TeleportRandomly { diameter_bits } => {
+            let diameter = f32::from_bits(*diameter_bits);
+            if !diameter.is_finite() || !diameter.total_cmp(&0.0).is_gt() {
+                return None;
+            }
+            let mut fields = vec![format!(
+                "type: {}",
+                debug_snbt_string("minecraft:teleport_randomly")
+            )];
+            if *diameter_bits != 16.0_f32.to_bits() {
+                fields.push(format!(
+                    "diameter: {}f",
+                    debug_nbt_java_float_string(diameter)
+                ));
+            }
+            Some(format!("{{{}}}", fields.join(", ")))
+        }
+        ConsumeEffectSummary::PlaySound { sound } => Some(format!(
+            "{{type: {}, sound: {}}}",
+            debug_snbt_string("minecraft:play_sound"),
+            debug_sound_event_component_snbt(sound)?
+        )),
+    }
 }
 
 fn debug_range_checked_float_component_snbt(

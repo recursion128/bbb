@@ -239,7 +239,8 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   beyond the supported custom-NBT/primitive (including repair-cost/enchantable/glider,
   minimum-attack-charge/potion-duration-scale)/
   simple-resource (including tooltip-style/note-block-sound and vanilla/direct
-  break-sound)/food/effect-free-consumable/damage-resistant-tag/weapon/
+  break-sound)/food/registry-independent-consumable+death-protection/
+  damage-resistant-tag/weapon/
   piercing-weapon/kinetic-weapon/
   repairable/use-effects/use-remainder/
   use-cooldown/tooltip-display/attack-range/
