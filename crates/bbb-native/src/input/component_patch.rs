@@ -66,6 +66,7 @@ static PERSISTENT_SNBT_ENCODERS: &[PersistentSnbtEncoderDescriptor] = &[
     encoder(59, encode_codec_backed_nbt),
     encoder(60, encode_block_entity_data),
     encoder(61, encode_instrument),
+    encoder(62, encode_provides_trim_material),
     encoder(63, encode_ominous_bottle_amplifier),
     encoder(64, encode_jukebox_playable),
     encoder(65, encode_provides_banner_patterns),
@@ -476,6 +477,19 @@ fn encode_instrument(
     )?))
 }
 
+fn encode_provides_trim_material(
+    _type_id: i32,
+    patch: &bbb_protocol::packets::DataComponentPatchSummary,
+    _item_runtime: Option<&NativeItemRuntime>,
+) -> Option<String> {
+    if patch.provides_trim_material_direct.is_some() {
+        return None;
+    }
+    Some(debug_snbt_string(vanilla_trim_material_resource_id(
+        patch.provides_trim_material_id?,
+    )?))
+}
+
 fn encode_charged_projectiles(
     _type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
@@ -783,7 +797,7 @@ mod tests {
 
     #[test]
     fn encoder_registry_is_unique_sorted_and_persistent() {
-        assert_eq!(PERSISTENT_SNBT_ENCODERS.len(), 83);
+        assert_eq!(PERSISTENT_SNBT_ENCODERS.len(), 84);
         let mut ids = HashSet::new();
         let mut previous = None;
         for descriptor in PERSISTENT_SNBT_ENCODERS {
@@ -995,6 +1009,30 @@ mod tests {
         patch.instrument_id = None;
         patch.instrument_description = Some("Custom horn".to_string());
         assert_eq!(encode_added_component_value_snbt(61, &patch, None), None);
+    }
+
+    #[test]
+    fn provides_trim_material_encoder_supports_vanilla_named_holders_only() {
+        let mut patch = bbb_protocol::packets::DataComponentPatchSummary {
+            provides_trim_material_id: Some(10),
+            ..Default::default()
+        };
+        assert_eq!(
+            encode_added_component_value_snbt(62, &patch, None),
+            Some("\"minecraft:resin\"".to_string())
+        );
+
+        patch.provides_trim_material_id = Some(11);
+        assert_eq!(encode_added_component_value_snbt(62, &patch, None), None);
+        patch.provides_trim_material_id = None;
+        patch.provides_trim_material_direct =
+            Some(Box::new(bbb_protocol::packets::TrimMaterialSummary {
+                asset_name: "custom".to_string(),
+                override_armor_assets: Default::default(),
+                description: "Custom material".to_string(),
+                description_styled: None,
+            }));
+        assert_eq!(encode_added_component_value_snbt(62, &patch, None), None);
     }
 
     #[test]

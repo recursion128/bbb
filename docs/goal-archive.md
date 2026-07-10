@@ -9078,3 +9078,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   component patch test 从 82 扩展到 83 个 added entry，并覆盖 unknown id 与
   direct network holder 的安全省略；后者不能由 fixed-registry persistent codec
   合法编码。
+
+## 2026-07-10：ItemStack provides-trim-material descriptor codec
+
+- [x] minecraft:provides_trim_material 的 descriptor decode 与 named-holder
+  持久化分支（P2 protocol + native input）：依据 vanilla 26.1
+  `TrimMaterial.STREAM_CODEC/CODEC`，protocol type id 62 descriptor 从旧的
+  decode-and-discard skip handler 改为复用 ArmorTrim 已有 holder decoder，并在
+  兼容 summary 中保留 named id 或 direct payload；native encoder registry 对已知
+  vanilla named holder 输出资源 ID。大型 component patch test 从 83 扩展到 84
+  个 added entry，另覆盖 descriptor named/direct 分发、unknown id 与 direct
+  description Component 无法无损回写时的安全省略；中央 patch loop 未修改。

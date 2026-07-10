@@ -234,6 +234,10 @@ pub struct DataComponentPatchSummary {
     #[serde(default)]
     pub armor_trim_pattern_direct: Option<Box<TrimPatternSummary>>,
     #[serde(default)]
+    pub provides_trim_material_id: Option<i32>,
+    #[serde(default)]
+    pub provides_trim_material_direct: Option<Box<TrimMaterialSummary>>,
+    #[serde(default)]
     pub tropical_fish_pattern_id: Option<i32>,
     #[serde(default)]
     pub tropical_fish_base_color_id: Option<i32>,
@@ -995,20 +999,6 @@ fn decode_holder_registry_id(decoder: &mut Decoder<'_>) -> Result<i32> {
     Ok(id)
 }
 
-fn decode_holder_with_direct(
-    decoder: &mut Decoder<'_>,
-    decode_direct: fn(&mut Decoder<'_>) -> Result<()>,
-) -> Result<()> {
-    let id = decoder.read_var_i32()?;
-    if id < 0 {
-        return Err(ProtocolError::NegativeLength(id));
-    }
-    if id == 0 {
-        decode_direct(decoder)?;
-    }
-    Ok(())
-}
-
 fn decode_holder_set(decoder: &mut Decoder<'_>) -> Result<()> {
     let _ = decode_holder_set_summary(decoder)?;
     Ok(())
@@ -1753,15 +1743,6 @@ fn decode_direct_instrument_description(decoder: &mut Decoder<'_>) -> Result<Vec
     decoder.read_f32()?;
     decoder.read_f32()?;
     decode_styled_component_summary_from_decoder(decoder)
-}
-
-fn decode_trim_material_holder(decoder: &mut Decoder<'_>) -> Result<()> {
-    decode_holder_with_direct(decoder, decode_direct_trim_material)
-}
-
-fn decode_direct_trim_material(decoder: &mut Decoder<'_>) -> Result<()> {
-    let _ = decode_direct_trim_material_summary(decoder)?;
-    Ok(())
 }
 
 fn decode_direct_trim_material_summary(decoder: &mut Decoder<'_>) -> Result<TrimMaterialSummary> {
@@ -2993,6 +2974,64 @@ mod tests {
                     ),
                 })),
                 armor_trim_pattern_id: Some(0),
+                ..DataComponentPatchSummary::default()
+            }
+        );
+        assert!(decoder.is_empty());
+    }
+
+    #[test]
+    fn decodes_provides_trim_material_named_holder() {
+        let mut payload = Encoder::new();
+        payload.write_var_i32(1);
+        payload.write_var_i32(0);
+        payload.write_var_i32(62);
+        payload.write_var_i32(11);
+
+        let payload = payload.into_inner();
+        let mut decoder = Decoder::new(&payload);
+        let patch = decode_data_component_patch_summary(&mut decoder).unwrap();
+        assert_eq!(
+            patch,
+            DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![62],
+                provides_trim_material_id: Some(10),
+                ..DataComponentPatchSummary::default()
+            }
+        );
+        assert!(decoder.is_empty());
+    }
+
+    #[test]
+    fn decodes_provides_trim_material_direct_holder() {
+        let mut styled_material = vec![10u8];
+        write_named_nbt_string(&mut styled_material, "text", "Template material");
+        styled_material.push(0);
+
+        let mut payload = Encoder::new();
+        payload.write_var_i32(1);
+        payload.write_var_i32(0);
+        payload.write_var_i32(62);
+        payload.write_var_i32(0);
+        payload.write_string("template_material");
+        payload.write_var_i32(0);
+        payload.write_bytes(&styled_material);
+
+        let payload = payload.into_inner();
+        let mut decoder = Decoder::new(&payload);
+        let patch = decode_data_component_patch_summary(&mut decoder).unwrap();
+        assert_eq!(
+            patch,
+            DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![62],
+                provides_trim_material_direct: Some(Box::new(TrimMaterialSummary {
+                    asset_name: "template_material".to_string(),
+                    override_armor_assets: BTreeMap::new(),
+                    description: "Template material".to_string(),
+                    description_styled: Some(plain_runs("Template material").into_boxed_slice()),
+                })),
                 ..DataComponentPatchSummary::default()
             }
         );

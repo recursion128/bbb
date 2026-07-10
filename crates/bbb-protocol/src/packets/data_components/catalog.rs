@@ -258,7 +258,7 @@ static VANILLA_DATA_COMPONENTS: &[DataComponentDescriptor] = &[
         62,
         "minecraft:provides_trim_material",
         true,
-        skip_trim_material_holder,
+        decode_provides_trim_material,
     ),
     component(
         63,
@@ -1183,12 +1183,15 @@ fn skip_blocks_attacks(
     decode_blocks_attacks(decoder)
 }
 
-fn skip_trim_material_holder(
+fn decode_provides_trim_material(
     _type_id: i32,
     decoder: &mut Decoder<'_>,
-    _summary: &mut DataComponentPatchSummary,
+    summary: &mut DataComponentPatchSummary,
 ) -> Result<()> {
-    decode_trim_material_holder(decoder)
+    let material = decode_trim_material_holder_summary(decoder)?;
+    summary.provides_trim_material_id = material.registry_id;
+    summary.provides_trim_material_direct = material.direct.map(Box::new);
+    Ok(())
 }
 
 #[cfg(test)]
