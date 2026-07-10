@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Generate checked-in vanilla 26.1 gameplay numeric-id catalogs.
 
-The current catalog covers attributes, mob effects, menu types, and equipment
-slot ordinals. Normal builds consume only the generated Rust files; this
-maintenance tool reads local vanilla sources.
+The current catalog covers attributes, mob effects, menu types, equipment slot
+ordinals, and entity poses. Normal builds consume only the generated Rust
+files; this maintenance tool reads local vanilla sources.
 """
 
 from __future__ import annotations
@@ -27,6 +27,7 @@ DEFAULT_MENU_TYPES_OUTPUT = REPO_ROOT / "crates/bbb-protocol/src/menu_types.rs"
 DEFAULT_EQUIPMENT_SLOTS_OUTPUT = (
     REPO_ROOT / "crates/bbb-protocol/src/equipment_slots.rs"
 )
+DEFAULT_ENTITY_POSES_OUTPUT = REPO_ROOT / "crates/bbb-protocol/src/entity_poses.rs"
 ATTRIBUTE_TYPES_SOURCE = Path(
     "net/minecraft/world/entity/ai/attributes/Attributes.java"
 )
@@ -36,6 +37,7 @@ EQUIPMENT_SLOTS_SOURCE = Path("net/minecraft/world/entity/EquipmentSlot.java")
 EQUIPMENT_SLOT_GROUPS_SOURCE = Path(
     "net/minecraft/world/entity/EquipmentSlotGroup.java"
 )
+ENTITY_POSES_SOURCE = Path("net/minecraft/world/entity/Pose.java")
 
 
 @dataclass(frozen=True)
@@ -77,6 +79,13 @@ class EquipmentSlotGroupEntry:
     serialized_name: str
 
 
+@dataclass(frozen=True)
+class EntityPoseEntry:
+    constant_name: str
+    pose_id: int
+    serialized_name: str
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--source-root", type=Path, default=DEFAULT_SOURCE_ROOT)
@@ -89,6 +98,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--menu-types-output", type=Path, default=DEFAULT_MENU_TYPES_OUTPUT)
     parser.add_argument(
         "--equipment-slots-output", type=Path, default=DEFAULT_EQUIPMENT_SLOTS_OUTPUT
+    )
+    parser.add_argument(
+        "--entity-poses-output", type=Path, default=DEFAULT_ENTITY_POSES_OUTPUT
     )
     parser.add_argument("--check", action="store_true")
     return parser.parse_args()
@@ -266,6 +278,29 @@ def equipment_slot_group_entries(source: str) -> list[EquipmentSlotGroupEntry]:
     return entries
 
 
+def entity_pose_entries(source: str) -> list[EntityPoseEntry]:
+    declaration = re.compile(
+        r'^\s+([A-Z_]+)\(([0-9]+),\s*"([^"]+)"\)[,;]$', re.MULTILINE
+    )
+    entries = [
+        EntityPoseEntry(
+            constant_name=match.group(1),
+            pose_id=int(match.group(2)),
+            serialized_name=match.group(3),
+        )
+        for match in declaration.finditer(source)
+    ]
+    if len(entries) != 18:
+        raise ValueError(f"expected 18 entity poses, parsed {len(entries)}")
+    if len({entry.constant_name for entry in entries}) != len(entries):
+        raise ValueError("duplicate entity pose constant")
+    if len({entry.pose_id for entry in entries}) != len(entries):
+        raise ValueError("duplicate entity pose id")
+    if len({entry.serialized_name for entry in entries}) != len(entries):
+        raise ValueError("duplicate entity pose serialized name")
+    return entries
+
+
 def rust_string(value: str) -> str:
     return '"' + value.replace("\\", "\\\\").replace('"', '\\"') + '"'
 
@@ -384,6 +419,8 @@ def render_attributes(entries: list[AttributeEntry]) -> str:
             "            .arg(manifest_dir.join(\"src/menu_types.rs\"))",
             "            .arg(\"--equipment-slots-output\")",
             "            .arg(manifest_dir.join(\"src/equipment_slots.rs\"))",
+            "            .arg(\"--entity-poses-output\")",
+            "            .arg(manifest_dir.join(\"src/entity_poses.rs\"))",
             "            .status()",
             "            .unwrap();",
             "        assert!(status.success());",
@@ -503,6 +540,8 @@ def render_mob_effects(entries: list[MobEffectEntry]) -> str:
             "            .arg(manifest_dir.join(\"src/menu_types.rs\"))",
             "            .arg(\"--equipment-slots-output\")",
             "            .arg(manifest_dir.join(\"src/equipment_slots.rs\"))",
+            "            .arg(\"--entity-poses-output\")",
+            "            .arg(manifest_dir.join(\"src/entity_poses.rs\"))",
             "            .status()",
             "            .unwrap();",
             "        assert!(status.success());",
@@ -606,6 +645,8 @@ def render_menu_types(entries: list[MenuTypeEntry]) -> str:
             "            .arg(manifest_dir.join(\"src/menu_types.rs\"))",
             "            .arg(\"--equipment-slots-output\")",
             "            .arg(manifest_dir.join(\"src/equipment_slots.rs\"))",
+            "            .arg(\"--entity-poses-output\")",
+            "            .arg(manifest_dir.join(\"src/entity_poses.rs\"))",
             "            .status()",
             "            .unwrap();",
             "        assert!(status.success());",
@@ -795,6 +836,113 @@ def render_equipment_slots(
             "            .arg(manifest_dir.join(\"src/menu_types.rs\"))",
             "            .arg(\"--equipment-slots-output\")",
             "            .arg(manifest_dir.join(\"src/equipment_slots.rs\"))",
+            "            .arg(\"--entity-poses-output\")",
+            "            .arg(manifest_dir.join(\"src/entity_poses.rs\"))",
+            "            .status()",
+            "            .unwrap();",
+            "        assert!(status.success());",
+            "    }",
+            "}",
+            "",
+        )
+    )
+    return "\n".join(lines)
+
+
+def render_entity_poses(entries: list[EntityPoseEntry]) -> str:
+    lines = [
+        "// @generated by scripts/generate-gameplay-id-catalog.py; do not edit manually.",
+        "// Source: vanilla 26.1 Pose.java enum entries.",
+        "",
+        "#[derive(Debug, Clone, Copy, PartialEq, Eq)]",
+        "pub struct EntityPoseCatalogEntry {",
+        "    pub id: i32,",
+        "    pub constant_name: &'static str,",
+        "    pub serialized_name: &'static str,",
+        "}",
+        "",
+    ]
+    for entry in entries:
+        lines.append(
+            f"pub const VANILLA_ENTITY_POSE_{entry.constant_name}_ID: i32 = {entry.pose_id};"
+        )
+    lines.extend(("", "pub const VANILLA_ENTITY_POSES: &[EntityPoseCatalogEntry] = &["))
+    for entry in entries:
+        lines.extend(
+            (
+                "    EntityPoseCatalogEntry {",
+                f"        id: {entry.pose_id},",
+                f"        constant_name: {rust_string(entry.constant_name)},",
+                f"        serialized_name: {rust_string(entry.serialized_name)},",
+                "    },",
+            )
+        )
+    lines.extend(
+        (
+            "];",
+            "",
+            "pub fn vanilla_entity_pose(id: i32) -> Option<&'static EntityPoseCatalogEntry> {",
+            "    VANILLA_ENTITY_POSES.get(usize::try_from(id).ok()?)",
+            "}",
+            "",
+            "pub fn vanilla_entity_pose_for_serialized_name(",
+            "    serialized_name: &str,",
+            ") -> Option<&'static EntityPoseCatalogEntry> {",
+            "    VANILLA_ENTITY_POSES.iter().find(|entry| entry.serialized_name == serialized_name)",
+            "}",
+            "",
+            "#[cfg(test)]",
+            "mod tests {",
+            "    use std::collections::HashSet;",
+            "    use std::path::PathBuf;",
+            "    use std::process::Command;",
+            "",
+            "    use super::*;",
+            "",
+            "    #[test]",
+            "    fn entity_pose_catalog_is_complete_contiguous_and_unique() {",
+            "        assert_eq!(VANILLA_ENTITY_POSES.len(), 18);",
+            "        let mut constants = HashSet::new();",
+            "        let mut names = HashSet::new();",
+            "        for (id, entry) in VANILLA_ENTITY_POSES.iter().enumerate() {",
+            "            assert_eq!(entry.id, id as i32);",
+            "            assert!(constants.insert(entry.constant_name));",
+            "            assert!(names.insert(entry.serialized_name));",
+            "        }",
+            "    }",
+            "",
+            "    #[test]",
+            "    fn entity_pose_catalog_preserves_vanilla_order() {",
+            "        assert_eq!(VANILLA_ENTITY_POSE_STANDING_ID, 0);",
+            "        assert_eq!(VANILLA_ENTITY_POSE_CROUCHING_ID, 5);",
+            "        assert_eq!(VANILLA_ENTITY_POSE_INHALING_ID, 17);",
+            "        assert_eq!(vanilla_entity_pose(13).unwrap().serialized_name, \"emerging\");",
+            "        assert_eq!(vanilla_entity_pose_for_serialized_name(\"long_jumping\").unwrap().id, 6);",
+            "        assert_eq!(vanilla_entity_pose(-1), None);",
+            "        assert_eq!(vanilla_entity_pose(18), None);",
+            "    }",
+            "",
+            "    #[test]",
+            "    fn generated_catalog_matches_local_vanilla_sources_when_available() {",
+            "        let Some(home) = std::env::var_os(\"HOME\") else { return; };",
+            "        let source_root = PathBuf::from(home).join(\"Work/mc-code/sources/26.1\");",
+            "        if !source_root.join(\"net/minecraft/world/entity/Pose.java\").is_file() { return; }",
+            "        let manifest_dir = PathBuf::from(env!(\"CARGO_MANIFEST_DIR\"));",
+            "        let repo_root = manifest_dir.ancestors().nth(2).unwrap();",
+            "        let status = Command::new(repo_root.join(\"scripts/generate-gameplay-id-catalog.py\"))",
+            "            .arg(\"--check\")",
+            "            .arg(\"--source-root\")",
+            "            .arg(source_root)",
+            "            .arg(\"--attribute-types-output\")",
+            "            .arg(manifest_dir.join(\"src/attribute_types.rs\"))",
+            "            .arg(\"--mob-effect-types-output\")",
+            "            .arg(manifest_dir.join(\"src/mob_effect_types.rs\"))",
+            "            .arg(\"--menu-types-output\")",
+            "            .arg(manifest_dir.join(\"src/menu_types.rs\"))",
+            "            .arg(\"--equipment-slots-output\")",
+            "            .arg(manifest_dir.join(\"src/equipment_slots.rs\"))",
+            "            .arg(\"--entity-poses-output\")",
+            "            .arg(manifest_dir.join(\"src/entity_poses.rs\"))",
             "            .status()",
             "            .unwrap();",
             "        assert!(status.success());",
@@ -843,6 +991,11 @@ def generate_equipment_slots(source_root: Path) -> str:
     )
 
 
+def generate_entity_poses(source_root: Path) -> str:
+    source = (source_root / ENTITY_POSES_SOURCE).read_text()
+    return format_rust(render_entity_poses(entity_pose_entries(source)))
+
+
 def check_generated(path: Path, generated: str) -> bool:
     current = path.read_text() if path.exists() else ""
     if current == generated:
@@ -864,6 +1017,7 @@ def main() -> int:
     generated_mob_effects = generate_mob_effects(args.source_root)
     generated_menu_types = generate_menu_types(args.source_root)
     generated_equipment_slots = generate_equipment_slots(args.source_root)
+    generated_entity_poses = generate_entity_poses(args.source_root)
     if args.check:
         matches = check_generated(
             args.attribute_types_output, generated_attributes
@@ -875,11 +1029,13 @@ def main() -> int:
         matches &= check_generated(
             args.equipment_slots_output, generated_equipment_slots
         )
+        matches &= check_generated(args.entity_poses_output, generated_entity_poses)
         return 0 if matches else 1
     args.attribute_types_output.write_text(generated_attributes)
     args.mob_effect_types_output.write_text(generated_mob_effects)
     args.menu_types_output.write_text(generated_menu_types)
     args.equipment_slots_output.write_text(generated_equipment_slots)
+    args.entity_poses_output.write_text(generated_entity_poses)
     return 0
 
 

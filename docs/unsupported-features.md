@@ -733,6 +733,10 @@ vanilla evidence. Deleting one of these re-opens work already decided against.
   declaration ordinals / explicit ids and serialized names are generated from
   `EquipmentSlot.java` and `EquipmentSlotGroup.java`; there is no server-owned
   extension surface to load.
+- **Custom entity-pose enum values.** Vanilla 26.1 `Pose` is a closed Java enum
+  whose id-mapped stream codec uses its 18 explicit ids. The fixed id/name
+  catalog is generated from `Pose.java`; it has no registry or datapack
+  extension surface.
 - **Accepting malformed or unsupported custom resource-pack declarations.**
   Loaders reject them intentionally.
 

@@ -9372,3 +9372,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   fallback、native SNBT、item-model tooltip/predicate、world enchantment definition 与 pack
   默认护甲 modifier 均改查同一生成物。未改变公共 EquipmentSlot enum、wire fallback、
   tooltip 顺序或装备行为。
+
+## 2026-07-10：Vanilla entity-pose numeric-id catalog generation
+
+- [x] gameplay numeric-id catalog 的 entity-pose 子项（P1 mechanical vanilla
+  data）：扩展 `scripts/generate-gameplay-id-catalog.py`，从 vanilla 26.1 `Pose.java`
+  的 18 个 enum entry 生成 checked-in id/order/constant-name/serialized-name metadata。
+  world dimensions、animation state、entity store 与 local collision 删除 25 项生产裸 pose
+  常量，现有跨模块 sleeping/crouching 可见性通过生成常量 re-export 保持。连续/唯一/
+  固定长度、首尾/中间查询及 regeneration tests 锁定生成物；未改变 entity-data serializer
+  的异常值策略、pick bounds、动画或碰撞行为。

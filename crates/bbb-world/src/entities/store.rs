@@ -3,6 +3,10 @@ use std::{
     fmt,
 };
 
+use bbb_protocol::entity_poses::{
+    VANILLA_ENTITY_POSE_STANDING_ID as VANILLA_POSE_STANDING_ID,
+    VANILLA_ENTITY_POSE_SWIMMING_ID as VANILLA_POSE_SWIMMING_ID,
+};
 use bbb_protocol::packets::AttributeSnapshot as ProtocolAttributeSnapshot;
 use hecs::{Entity, World};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -106,10 +110,6 @@ const TAMABLE_ANIMAL_SITTING_FLAG: i8 = 0x01;
 /// and therefore feed `ItemInHandLayer` through `getItemHeldByArm`.
 /// Vanilla 26.1 `EvokerRenderer` installs an `ItemInHandLayer` over the illager model.
 /// Vanilla 26.1 `ZombifiedPiglinRenderer` extends `HumanoidMobRenderer`.
-/// Vanilla `Pose.STANDING` ordinal, used by camel walk-animation gating.
-const VANILLA_POSE_STANDING_ID: i32 = 0;
-/// Vanilla `Pose.SWIMMING` ordinal, used by player cape bob suppression.
-const VANILLA_POSE_SWIMMING_ID: i32 = 3;
 /// Vanilla `Shulker.DATA_ATTACH_FACE_ID` (Direction), declared before peek and color metadata.
 const SHULKER_ATTACH_FACE_DATA_ID: u8 = 16;
 /// Vanilla `AbstractMinecart.DATA_ID_CUSTOM_DISPLAY_BLOCK` optional block-state metadata.

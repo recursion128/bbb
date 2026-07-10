@@ -309,6 +309,8 @@ mod tests {
             .arg(manifest_dir.join("src/menu_types.rs"))
             .arg("--equipment-slots-output")
             .arg(manifest_dir.join("src/equipment_slots.rs"))
+            .arg("--entity-poses-output")
+            .arg(manifest_dir.join("src/entity_poses.rs"))
             .status()
             .unwrap();
         assert!(status.success());

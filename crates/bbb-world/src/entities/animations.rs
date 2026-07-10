@@ -1,3 +1,16 @@
+use bbb_protocol::entity_poses::{
+    VANILLA_ENTITY_POSE_CROAKING_ID as VANILLA_POSE_CROAKING_ID,
+    VANILLA_ENTITY_POSE_DIGGING_ID as VANILLA_POSE_DIGGING_ID,
+    VANILLA_ENTITY_POSE_EMERGING_ID as VANILLA_POSE_EMERGING_ID,
+    VANILLA_ENTITY_POSE_INHALING_ID as VANILLA_POSE_INHALING_ID,
+    VANILLA_ENTITY_POSE_LONG_JUMPING_ID as VANILLA_POSE_LONG_JUMPING_ID,
+    VANILLA_ENTITY_POSE_ROARING_ID as VANILLA_POSE_ROARING_ID,
+    VANILLA_ENTITY_POSE_SHOOTING_ID as VANILLA_POSE_SHOOTING_ID,
+    VANILLA_ENTITY_POSE_SLIDING_ID as VANILLA_POSE_SLIDING_ID,
+    VANILLA_ENTITY_POSE_SNIFFING_ID as VANILLA_POSE_SNIFFING_ID,
+    VANILLA_ENTITY_POSE_SWIMMING_ID as VANILLA_POSE_SWIMMING_ID,
+    VANILLA_ENTITY_POSE_USING_TONGUE_ID as VANILLA_POSE_USING_TONGUE_ID,
+};
 use bbb_protocol::packets::{EntityDataEnumSerializer, EntityDataValue, EntityDataValueKind};
 use serde::{Deserialize, Serialize};
 
@@ -75,31 +88,10 @@ const PANDA_AMOUNT_FALL_PER_TICK: f32 = 0.19;
 const PANDA_ROLL_COUNTER_MAX: i32 = 32;
 /// Entities whose `updateWalkAnimation` override (`Camel`, `Creaking`, `Frog`) replaces the base
 /// distance→speed mapping.
-/// Vanilla `Pose.CROAKING` ordinal (`Pose.CROAKING(8, …)`), the synced `DATA_POSE` int value that
-/// `Frog.onSyncedDataUpdated` reads to start/stop `croakAnimationState` (`animateWhen(pose ==
-/// CROAKING, tickCount)`).
-const VANILLA_POSE_CROAKING_ID: i32 = 8;
-/// Vanilla `Pose.SWIMMING` ordinal, the synced `DATA_POSE` value that makes
-/// `Entity.isVisuallySwimming()` true and ramps `LivingEntity.swimAmount`.
-const VANILLA_POSE_SWIMMING_ID: i32 = 3;
-/// Vanilla `Pose.USING_TONGUE` ordinal (`Pose.USING_TONGUE(9, …)`), the synced `DATA_POSE` int value
-/// that `Frog.onSyncedDataUpdated` reads to start/stop `tongueAnimationState` (`pose == USING_TONGUE`
-/// starts it, otherwise stops it).
-const VANILLA_POSE_USING_TONGUE_ID: i32 = 9;
-/// Vanilla `Pose.LONG_JUMPING` ordinal (`Pose.LONG_JUMPING(6, …)`), the synced `DATA_POSE` int value
-/// that `Frog.onSyncedDataUpdated` reads to start/stop `jumpAnimationState` (`pose == LONG_JUMPING`
-/// starts it, otherwise stops it).
-const VANILLA_POSE_LONG_JUMPING_ID: i32 = 6;
 /// Vanilla `Entity.DATA_SHARED_FLAGS_ID`, the base entity flags byte. Bit 7 is
 /// `FLAG_FALL_FLYING`, read by `LivingEntity.isFallFlying()`.
 const ENTITY_SHARED_FLAGS_DATA_ID: u8 = 0;
 const ENTITY_FLAG_FALL_FLYING: u8 = 1 << 7;
-/// Vanilla `Pose.SLIDING`/`SHOOTING`/`INHALING` ordinals (`Pose.SLIDING(15, …)`, `SHOOTING(16, …)`,
-/// `INHALING(17, …)`), the synced `DATA_POSE` int values that `Breeze.onSyncedDataUpdated` reads to
-/// `startIfStopped` the matching action one-shot, and `LONG_JUMPING(6)` for the jump.
-const VANILLA_POSE_SLIDING_ID: i32 = 15;
-const VANILLA_POSE_SHOOTING_ID: i32 = 16;
-const VANILLA_POSE_INHALING_ID: i32 = 17;
 /// Vanilla `Sniffer.DATA_STATE`, the synced `EntityDataSerializers.SNIFFER_STATE` accessor serialized
 /// as the `Sniffer.State` ordinal VarInt. The accessor sits at id 18 (Entity 0–7, LivingEntity 8–14,
 /// Mob 15, AgeableMob 16–17, then Sniffer's first own accessor); `Sniffer.onSyncedDataUpdated` reads
@@ -305,22 +297,6 @@ const WARDEN_ANGER_LEVEL_DATA_ID: u8 = 16;
 /// Vanilla `AngerLevel.ANGRY.getMinimumAnger()`: the anger at which the heartbeat
 /// reaches its fastest, used to normalise `getHeartBeatDelay`.
 const WARDEN_ANGRY_MINIMUM_ANGER: i32 = 80;
-/// Vanilla `Pose.ROARING` ordinal, the synced `DATA_POSE` int value that
-/// `Warden.onSyncedDataUpdated` reads to `.start()` the `roarAnimationState` when
-/// the pose CHANGES to it (the 4.2s `WARDEN_ROAR` keyframe animation).
-const VANILLA_POSE_ROARING_ID: i32 = 11;
-/// Vanilla `Pose.SNIFFING` ordinal, the synced `DATA_POSE` int value that
-/// `Warden.onSyncedDataUpdated` reads to `.start()` the `sniffAnimationState` when
-/// the pose CHANGES to it (the 4.16s `WARDEN_SNIFF` keyframe animation).
-const VANILLA_POSE_SNIFFING_ID: i32 = 12;
-/// Vanilla `Pose.EMERGING` ordinal, the synced `DATA_POSE` int value that
-/// `Warden.onSyncedDataUpdated` reads to `.start()` the `emergeAnimationState` when
-/// the pose CHANGES to it (the 6.68s `WARDEN_EMERGE` spawn keyframe animation).
-const VANILLA_POSE_EMERGING_ID: i32 = 13;
-/// Vanilla `Pose.DIGGING` ordinal, the synced `DATA_POSE` int value that
-/// `Warden.onSyncedDataUpdated` reads to `.start()` the `diggingAnimationState` when
-/// the pose CHANGES to it (the 5.0s `WARDEN_DIG` despawn keyframe animation).
-const VANILLA_POSE_DIGGING_ID: i32 = 14;
 /// Vanilla `Warden.handleEntityEvent(4)`: `roarAnimationState.stop()` then
 /// `attackAnimationState.start(tickCount)` — the melee attack swing (the 0.33333s
 /// `WARDEN_ATTACK` keyframe animation), which also cancels any running roar.
