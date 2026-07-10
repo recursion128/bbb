@@ -4592,10 +4592,14 @@ fn debug_firework_rocket_item_stack(
         .and_then(|stack| stack.item_id)
         .and_then(|item_id| item_runtime.and_then(|runtime| runtime.item_resource_id(item_id)))
         .unwrap_or("minecraft:firework_rocket");
-    stack.map_or_else(
-        || debug_item_stack_snbt("minecraft:firework_rocket", 1, None, item_runtime),
-        |stack| debug_item_stack_snbt(resource_id, stack.count, Some(stack), item_runtime),
-    )
+    stack
+        .and_then(|stack| {
+            debug_item_stack_snbt(resource_id, stack.count, Some(stack), item_runtime)
+        })
+        .unwrap_or_else(|| {
+            debug_item_stack_snbt("minecraft:firework_rocket", 1, None, item_runtime)
+                .expect("default firework item stack is valid")
+        })
 }
 
 fn debug_item_stack_snbt(
@@ -4603,7 +4607,10 @@ fn debug_item_stack_snbt(
     count: i32,
     stack: Option<&ItemStackSummary>,
     item_runtime: Option<&NativeItemRuntime>,
-) -> String {
+) -> Option<String> {
+    if resource_id == "minecraft:air" || !(1..=99).contains(&count) {
+        return None;
+    }
     let mut fields = vec![format!("id: {}", debug_snbt_string(resource_id))];
     if count != 1 {
         fields.push(format!("count: {count}"));
@@ -4614,7 +4621,7 @@ fn debug_item_stack_snbt(
     {
         fields.push(format!("components: {components}"));
     }
-    format!("{{{}}}", fields.join(", "))
+    Some(format!("{{{}}}", fields.join(", ")))
 }
 
 fn debug_supported_component_patch_snbt(
@@ -5158,7 +5165,13 @@ fn debug_item_stack_template_snbt(
     template: &bbb_protocol::packets::ItemStackTemplateSummary,
     item_runtime: Option<&NativeItemRuntime>,
 ) -> Option<String> {
+    if !(1..=99).contains(&template.count) {
+        return None;
+    }
     let resource_id = item_runtime?.item_resource_id(template.item_id)?;
+    if resource_id == "minecraft:air" {
+        return None;
+    }
     let mut fields = vec![format!("id: {}", debug_snbt_string(resource_id))];
     if template.count != 1 {
         fields.push(format!("count: {}", template.count));
@@ -5573,10 +5586,11 @@ fn debug_push_item_frame_additional_save_data(
             Some((stack, resource_id))
         })
     {
-        fields.push(format!(
-            "Item: {}",
+        if let Some(item) =
             debug_item_stack_snbt(resource_id, stack.count, Some(stack), item_runtime)
-        ));
+        {
+            fields.push(format!("Item: {item}"));
+        }
     }
     let rotation = debug_entity_data_int_present(entity, ITEM_FRAME_ROTATION_DATA_ID)
         .map(|rotation| rotation.rem_euclid(8) as i8)

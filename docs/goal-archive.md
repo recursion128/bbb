@@ -8801,3 +8801,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   non-negative、enchantable positive、ominous-bottle-amplifier 0..4 校验；
   `MapId.CODEC` 与 `RGB_COLOR_CODEC` 明确仍接受完整 int，不额外收窄。focused
   test 覆盖六个越界值同时安全省略，既有 51-entry valid projection 保持不变。
+
+## 2026-07-10：ItemStack persistent shape validation
+
+- [x] 顶层 ItemStack 与 nested `ItemStackTemplate` 持久化形状校验（P2 native
+  input）：依据 vanilla 26.1 `ItemStack.MAP_CODEC` 与
+  `ItemStackTemplate.MAP_CODEC`/constructor，为两者补齐 count 1..99，并拒绝
+  air；顶层 helper 改为可失败，item-frame 在无有效 stack 时省略 Item，firework
+  则回退原版默认 rocket stack。focused test 覆盖顶层 air/count 100，以及
+  use-remainder/charged-projectiles/bundle/container 中的 air、0、100 template，
+  四个无效 component 均安全省略。

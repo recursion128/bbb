@@ -8887,7 +8887,8 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
             Some(&stack),
             Some(&item_runtime),
         ),
-        "{id: \"minecraft:diamond\", count: 2, components: {\
+        Some(
+            "{id: \"minecraft:diamond\", count: 2, components: {\
          \"minecraft:custom_data\": {answer: 42, \"quoted key\": \"A 'diamond'\", \
          arrays: {bytes: [B; -1B, 2B], ints: [I; 3, 4], longs: [L; 5L, 6L]}, \
          numbers: [Infinityd, -0.0d], nan: NaNf, short: 7s, long: 8L, byte: 1b}, \
@@ -8962,6 +8963,8 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
          \"minecraft:tropical_fish/base_color\": \"orange\", \
          \"minecraft:tropical_fish/pattern_color\": \"white\", \
          \"!minecraft:custom_name\": {}}}"
+                .to_string()
+        )
     );
 }
 
@@ -9036,7 +9039,7 @@ fn item_stack_snbt_omits_registry_backed_components_with_unknown_ids() {
             Some(&stack),
             Some(&item_runtime),
         ),
-        "{id: \"minecraft:decorated_pot\"}"
+        Some("{id: \"minecraft:decorated_pot\"}".to_string())
     );
 }
 
@@ -9060,7 +9063,74 @@ fn item_stack_snbt_omits_components_with_invalid_persistent_integer_ranges() {
 
     assert_eq!(
         debug_item_stack_snbt("minecraft:stone", stack.count, Some(&stack), None),
-        "{id: \"minecraft:stone\"}"
+        Some("{id: \"minecraft:stone\"}".to_string())
+    );
+}
+
+#[test]
+fn item_stack_snbt_rejects_invalid_stack_and_template_shapes() {
+    assert_eq!(debug_item_stack_snbt("minecraft:air", 1, None, None), None);
+    assert_eq!(
+        debug_item_stack_snbt("minecraft:stone", 100, None, None),
+        None
+    );
+
+    let registry: ItemRegistryCatalog = serde_json::from_value(serde_json::json!({
+        "resource_ids": ["minecraft:air", "minecraft:arrow", "minecraft:stone"],
+        "protocol_ids": {
+            "minecraft:air": 0,
+            "minecraft:arrow": 1,
+            "minecraft:stone": 2
+        }
+    }))
+    .unwrap();
+    let item_runtime = NativeItemRuntime::for_test_with_registry_and_equipment_assets(
+        registry,
+        EquipmentAssetCatalog::default(),
+    );
+    let stack = ProtocolItemStackSummary {
+        item_id: Some(2),
+        count: 1,
+        component_patch: DataComponentPatchSummary {
+            added: 4,
+            added_type_ids: vec![25, 49, 50, 75],
+            use_remainder: Some(Box::new(bbb_protocol::packets::ItemStackTemplateSummary {
+                item_id: 0,
+                count: 1,
+                component_patch: DataComponentPatchSummary::default(),
+            })),
+            charged_projectiles_items: vec![bbb_protocol::packets::ItemStackTemplateSummary {
+                item_id: 1,
+                count: 100,
+                component_patch: DataComponentPatchSummary::default(),
+            }],
+            bundle_contents_items: vec![bbb_protocol::packets::ItemStackTemplateSummary {
+                item_id: 1,
+                count: 0,
+                component_patch: DataComponentPatchSummary::default(),
+            }],
+            bundle_contents_item_count: Some(1),
+            container_slots: vec![bbb_protocol::packets::ItemContainerSlotSummary {
+                slot: 0,
+                item: bbb_protocol::packets::ItemStackTemplateSummary {
+                    item_id: 0,
+                    count: 1,
+                    component_patch: DataComponentPatchSummary::default(),
+                },
+            }],
+            container_item_count: Some(1),
+            ..DataComponentPatchSummary::default()
+        },
+    };
+
+    assert_eq!(
+        debug_item_stack_snbt(
+            "minecraft:stone",
+            stack.count,
+            Some(&stack),
+            Some(&item_runtime),
+        ),
+        Some("{id: \"minecraft:stone\"}".to_string())
     );
 }
 
