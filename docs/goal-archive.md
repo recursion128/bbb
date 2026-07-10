@@ -8233,3 +8233,16 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   source of truth。focused tests 覆盖 16 格 AABB 边界、正负 hash bias、绿色/青色 biased
   坐标、恰好 100 ms 不刷新、100 ms + 1 ns 刷新、缓存成员的 live support 更新，以及
   禁用后同刻重启。ledger 仅保留 remote `fallDistance > 2.5` powder-snow support edge。
+
+## 2026-07-10：Remote supporting-block fall-distance not-needed
+
+- [x] 远端 `fallDistance > 2.5` powder-snow support edge 判定为 `not-needed`（P2
+  world audit）：vanilla 26.1 的 `ClientPacketListener.handleEntityPositionSync`、
+  `handleMoveEntity` 与 `handleTeleportEntity` 对 server-authoritative remote entity 只走
+  `moveOrInterpolateTo` / `setOnGround`；`InterpolationHandler.interpolate` 只调用 `setPos`，
+  而 `Entity.move` 仅在 `isLocalInstanceAuthoritative()` 时调用 `checkFallDamage`。因此远端
+  entity 的 `fallDistance` 从默认 0 不会由 packet displacement 或 synced velocity 增长，
+  不能在 repo 内虚构累加器。focused regression 让普通 cow 经 relative move packet 下落
+  4 格落到 powder snow，锁定没有 `FALLING_COLLISION_SHAPE` support。local-player high-fall
+  与 falling-block type 分支已覆盖；本地可控载具属于 ledger 既有 full boat/vehicle physics
+  项。`visualize_entity_supporting_blocks` 不再有独立 remote gap。

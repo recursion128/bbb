@@ -195,10 +195,17 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
 
 - Render the remaining debug entries that are off by default:
   `chunk_section_paths`, `chunk_section_octree`,
-  cover the remote `fallDistance > 2.5` powder-snow support edge,
   `visualize_block_light_levels`, `visualize_sky_light_levels`,
   `visualize_solid_faces`, `visualize_chunks_on_server`,
   `visualize_sky_light_sections`, and `chunk_section_visibility`.
+- Remote `visualize_entity_supporting_blocks` `fallDistance > 2.5` powder-snow
+  support is `not-needed`: vanilla position/move/teleport packets update a
+  server-authoritative remote entity through `moveOrInterpolateTo` and
+  `setOnGround`; interpolation uses `setPos`, and only locally authoritative
+  `Entity.move` calls `checkFallDamage`, so remote `fallDistance` remains its
+  default zero. Local-player high-fall powder snow and the falling-block type
+  branch are covered; locally controlled vehicle physics stays tracked under
+  the existing full boat/vehicle movement item.
 - Render the entity hitbox local-server mirror (green boxes, delta arrows) and
   the 3D debug-text billboards.
 - Add the component-specific advanced-tooltip lines still missing against

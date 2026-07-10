@@ -4532,6 +4532,78 @@ mod tests {
     }
 
     #[test]
+    fn remote_packet_fall_delta_does_not_create_powder_snow_falling_shape() {
+        let mut world = empty_world();
+        let entity_id = 56;
+        let powder_snow = vanilla_block_state_id("minecraft:powder_snow", []);
+        set_block(&mut world, BlockPos { x: 10, y: 0, z: 0 }, powder_snow);
+        add_collision_test_entity(
+            &mut world,
+            entity_id,
+            bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_COW_ID,
+            [10.5, 5.0, 0.5],
+        );
+
+        // Vanilla remote packet handlers call moveOrInterpolateTo/setOnGround;
+        // neither packet displacement nor synced velocity runs checkFallDamage
+        // on a server-authoritative client entity, so fallDistance stays zero.
+        assert!(world.apply_entity_move(bbb_protocol::packets::EntityMove {
+            id: entity_id,
+            delta_x: 0,
+            delta_y: -16_384,
+            delta_z: 0,
+            y_rot: None,
+            x_rot: None,
+            on_ground: true,
+        }));
+        assert_eq!(
+            world.probe_entity(entity_id).unwrap().position.y,
+            1.0,
+            "the packet moves the entity downward by four blocks"
+        );
+        assert_eq!(world.entity_main_supporting_block_pos(entity_id), None);
+
+        let velocity_entity_id = 57;
+        set_block(&mut world, BlockPos { x: 12, y: 0, z: 0 }, powder_snow);
+        add_collision_test_entity(
+            &mut world,
+            velocity_entity_id,
+            bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_COW_ID,
+            [12.5, 1.0, 0.5],
+        );
+        assert!(
+            world.apply_entity_position_sync(bbb_protocol::packets::EntityPositionSync {
+                id: velocity_entity_id,
+                position: bbb_protocol::packets::Vec3d {
+                    x: 12.5,
+                    y: 1.0,
+                    z: 0.5,
+                },
+                delta_movement: bbb_protocol::packets::Vec3d {
+                    x: 0.0,
+                    y: -4.0,
+                    z: 0.0,
+                },
+                y_rot: 0.0,
+                x_rot: 0.0,
+                on_ground: true,
+            })
+        );
+        assert_eq!(
+            world
+                .probe_entity(velocity_entity_id)
+                .unwrap()
+                .delta_movement
+                .y,
+            -4.0
+        );
+        assert_eq!(
+            world.entity_main_supporting_block_pos(velocity_entity_id),
+            None
+        );
+    }
+
+    #[test]
     fn debug_camera_collision_boxes_prepend_collidable_entities_and_exclude_same_vehicle() {
         let mut world = empty_world();
         world.set_local_player_pose(LocalPlayerPoseState {
