@@ -670,6 +670,16 @@ impl EntityStore {
         self.metadata_float(id, VANILLA_LIVING_ENTITY_HEALTH_DATA_ID, 1.0)
     }
 
+    pub(crate) fn is_baby(&self, id: i32) -> Option<bool> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let identity = self.ecs.get::<&EntityIdentity>(entity).ok()?;
+        let metadata = self.ecs.get::<&EntityMetadata>(entity).ok()?;
+        Some(vanilla_is_baby(
+            identity.entity_type_id,
+            &metadata.data_values,
+        ))
+    }
+
     /// Vanilla `Player.getAbsorptionAmount()`: the synced
     /// `DATA_PLAYER_ABSORPTION_ID` float, defaulting to the define-time `0.0F`
     /// (Player.java:224).

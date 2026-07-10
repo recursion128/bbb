@@ -195,8 +195,9 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
 
 - Render the remaining debug entries that are off by default:
   `chunk_section_paths`, `chunk_section_octree`, `visualize_collision_boxes`
-  entity-collision shapes and vanilla 100 ms refresh cache (exact block collision
-  `VoxelShape.toAabbs()` strokes are implemented),
+  spectated boat/minecart `isPushable` entity-collision expansion and vanilla 100 ms
+  refresh cache (exact block shapes and ordinary camera-source entity collisions are
+  implemented),
   `visualize_entity_supporting_blocks`,
   `visualize_block_light_levels`, `visualize_sky_light_levels`,
   `visualize_solid_faces`, `visualize_chunks_on_server`,

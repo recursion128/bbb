@@ -4097,7 +4097,7 @@ fn debug_collision_lines(input: &ClientInputState, world: &WorldStore) -> Vec<De
     }
 
     world
-        .debug_camera_block_collision_boxes(DEBUG_COLLISION_QUERY_RADIUS)
+        .debug_camera_collision_boxes(DEBUG_COLLISION_QUERY_RADIUS)
         .into_iter()
         .flat_map(|collision_box| {
             DebugLine::cuboid(

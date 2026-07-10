@@ -1,6 +1,12 @@
 use std::collections::BTreeMap;
 
+use bbb_protocol::entity_types::{
+    VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
+    VANILLA_ENTITY_TYPE_SHULKER_ID,
+};
+
 use super::local_player::LocalPlayerPoseState;
+use crate::entities::is_vanilla_boat_type;
 use crate::terrain::block_name_is_air;
 use crate::{BlockPos, BlockProbe, TerrainFluidKind, TerrainMaterialClass, WorldStore};
 
@@ -8,6 +14,7 @@ pub(super) const COLLISION_EPSILON: f64 = 1.0e-7;
 const VANILLA_COLLISION_CONTEXT_ABOVE_EPSILON: f64 = 1.0e-5;
 const LOCAL_PLAYER_POWDER_SNOW_FALLING_COLLISION_FALL_DISTANCE: f64 = 2.5;
 const LOCAL_PLAYER_POWDER_SNOW_FALLING_COLLISION_HEIGHT: f64 = 0.9;
+const HAPPY_GHAST_STAYS_STILL_DATA_ID: u8 = 18;
 
 const LOCAL_PLAYER_HALF_WIDTH: f64 = 0.3;
 const MAX_COLLISION_BOXES: usize = 16;
@@ -21,12 +28,21 @@ pub struct ParticleBlockFluidSurfaceSample {
     pub block_is_air: bool,
 }
 
-/// One world-space AABB from a block collision `VoxelShape` near the active
-/// camera entity. Coordinates are already moved by the owning block position.
+/// One world-space AABB from `CollisionGetter.getCollisions` near the active
+/// camera entity.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct WorldCollisionBox {
     pub min: [f64; 3],
     pub max: [f64; 3],
+}
+
+#[derive(Debug, Clone, Copy)]
+struct DebugCameraCollisionQuery {
+    source_entity_id: Option<i32>,
+    source_entity_type_id: i32,
+    source_position: [f64; 3],
+    bounds: LocalPlayerBounds,
+    block_context: LocalPlayerCollisionContext,
 }
 
 impl Default for ParticleBlockFluidSurfaceSample {
@@ -97,6 +113,20 @@ pub(crate) fn block_collision_shape_is_full_block(block: &BlockProbe, pos: Block
 }
 
 impl WorldStore {
+    /// Mirrors `CollisionGetter.getCollisions`: collidable entity AABBs first,
+    /// followed by coalesced block `VoxelShape.toAabbs()` boxes.
+    pub fn debug_camera_collision_boxes(&self, radius: f64) -> Vec<WorldCollisionBox> {
+        if !radius.is_finite() || radius < 0.0 {
+            return Vec::new();
+        }
+        let Some(camera) = self.debug_camera_collision_query() else {
+            return Vec::new();
+        };
+        let mut boxes = self.debug_camera_entity_collision_boxes_for_query(camera, radius);
+        boxes.extend(self.debug_camera_block_collision_boxes_for_query(camera, radius));
+        boxes
+    }
+
     /// Mirrors the block half of
     /// `level.getCollisions(cameraEntity, cameraEntity.getBoundingBox().inflate(radius))`.
     /// Every coalesced `VoxelShape.toAabbs()` box of a shape that intersects
@@ -106,10 +136,18 @@ impl WorldStore {
         if !radius.is_finite() || radius < 0.0 {
             return Vec::new();
         }
-        let Some((camera_bounds, collision_context)) = self.debug_camera_collision_query() else {
+        let Some(camera) = self.debug_camera_collision_query() else {
             return Vec::new();
         };
-        let query = camera_bounds.inflated(radius);
+        self.debug_camera_block_collision_boxes_for_query(camera, radius)
+    }
+
+    fn debug_camera_block_collision_boxes_for_query(
+        &self,
+        camera: DebugCameraCollisionQuery,
+        radius: f64,
+    ) -> Vec<WorldCollisionBox> {
+        let query = camera.bounds.inflated(radius);
         let min_x = block_floor(query.min_x - COLLISION_EPSILON) - 1;
         let max_x = block_floor(query.max_x + COLLISION_EPSILON) + 1;
         let min_y = block_floor(query.min_y - COLLISION_EPSILON) - 1;
@@ -127,7 +165,7 @@ impl WorldStore {
                         continue;
                     };
                     let Some(shape) =
-                        block_collision_shape_with_context(&block, pos, collision_context)
+                        block_collision_shape_with_context(&block, pos, camera.block_context)
                     else {
                         continue;
                     };
@@ -157,13 +195,122 @@ impl WorldStore {
         boxes
     }
 
-    fn debug_camera_collision_query(
+    fn debug_camera_entity_collision_boxes_for_query(
         &self,
-    ) -> Option<(LocalPlayerBounds, LocalPlayerCollisionContext)> {
+        camera: DebugCameraCollisionQuery,
+        radius: f64,
+    ) -> Vec<WorldCollisionBox> {
+        let query = camera.bounds.inflated(radius + COLLISION_EPSILON);
+        self.entity_pick_targets()
+            .into_iter()
+            .filter_map(|target| {
+                if camera.source_entity_id == Some(target.entity_id)
+                    || self.debug_entities_share_root_vehicle(
+                        camera.source_entity_id,
+                        target.entity_id,
+                    )
+                {
+                    return None;
+                }
+                let target_type = self.entity_type_id(target.entity_id)?;
+                let target_box = WorldCollisionBox {
+                    min: [
+                        target.position.x + f64::from(target.bounds.min[0]),
+                        target.position.y + f64::from(target.bounds.min[1]),
+                        target.position.z + f64::from(target.bounds.min[2]),
+                    ],
+                    max: [
+                        target.position.x + f64::from(target.bounds.max[0]),
+                        target.position.y + f64::from(target.bounds.max[1]),
+                        target.position.z + f64::from(target.bounds.max[2]),
+                    ],
+                };
+                if !self.debug_entity_can_be_collided_with(
+                    camera,
+                    target.entity_id,
+                    target_type,
+                    target_box,
+                ) || !world_collision_box_intersects_bounds(target_box, query)
+                {
+                    return None;
+                }
+                Some(target_box)
+            })
+            .collect()
+    }
+
+    fn debug_entity_can_be_collided_with(
+        &self,
+        camera: DebugCameraCollisionQuery,
+        target_id: i32,
+        target_type: i32,
+        target_box: WorldCollisionBox,
+    ) -> bool {
+        if is_vanilla_boat_type(target_type) {
+            return true;
+        }
+        if target_type == VANILLA_ENTITY_TYPE_SHULKER_ID {
+            return self
+                .entities
+                .living_entity_health(target_id)
+                .is_some_and(|health| health > 0.0);
+        }
+        if target_type != VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID
+            || self.entities.is_baby(target_id).unwrap_or(false)
+            || !self
+                .entities
+                .living_entity_health(target_id)
+                .is_some_and(|health| health > 0.0)
+        {
+            return false;
+        }
+
+        let player_is_above = camera.source_entity_type_id == VANILLA_ENTITY_TYPE_PLAYER_ID
+            && camera.source_position[1] >= target_box.max[1];
+        let happy_ghast_vehicle_pair = camera.source_entity_type_id
+            == VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID
+            && self
+                .entities
+                .mount(target_id)
+                .is_some_and(|mount| !mount.passengers.is_empty());
+        let stays_still = self
+            .entities
+            .metadata_bool_for_entity(target_id, HAPPY_GHAST_STAYS_STILL_DATA_ID, false)
+            .unwrap_or(false);
+        player_is_above || happy_ghast_vehicle_pair || stays_still
+    }
+
+    fn debug_entities_share_root_vehicle(&self, source_id: Option<i32>, target_id: i32) -> bool {
+        let Some(source_id) = source_id else {
+            return false;
+        };
+        matches!(
+            (
+                self.debug_entity_root_vehicle_id(source_id),
+                self.debug_entity_root_vehicle_id(target_id),
+            ),
+            (Some(source_root), Some(target_root)) if source_root == target_root
+        )
+    }
+
+    fn debug_entity_root_vehicle_id(&self, entity_id: i32) -> Option<i32> {
+        let mut root = entity_id;
+        for _ in 0..=self.entity_count() {
+            let mount = self.entities.mount(root)?;
+            let Some(vehicle_id) = mount.vehicle_id else {
+                return Some(root);
+            };
+            root = vehicle_id;
+        }
+        None
+    }
+
+    fn debug_camera_collision_query(&self) -> Option<DebugCameraCollisionQuery> {
         let camera = self.local_player().camera;
         if !camera.follows_player {
             let camera_id = camera.entity_id?;
             let pose = self.probe_entity_camera_pose(camera_id)?;
+            let entity_type_id = self.entity_type_id(camera_id)?;
             let bounds = self.entities.pick_bounds(camera_id)?;
             let world_bounds = LocalPlayerBounds::from_min_max(
                 [
@@ -177,17 +324,23 @@ impl WorldStore {
                     pose.position.z + f64::from(bounds.max[2]),
                 ],
             );
-            return Some((
-                world_bounds,
-                LocalPlayerCollisionContext::new(world_bounds.min_y, false),
-            ));
+            return Some(DebugCameraCollisionQuery {
+                source_entity_id: Some(camera_id),
+                source_entity_type_id: entity_type_id,
+                source_position: [pose.position.x, pose.position.y, pose.position.z],
+                bounds: world_bounds,
+                block_context: LocalPlayerCollisionContext::new(world_bounds.min_y, false),
+            });
         }
 
         let pose = self.local_player_pose()?;
-        Some((
-            LocalPlayerBounds::for_pose(pose),
-            LocalPlayerCollisionContext::for_pose(self, pose, false),
-        ))
+        Some(DebugCameraCollisionQuery {
+            source_entity_id: self.local_player_id(),
+            source_entity_type_id: VANILLA_ENTITY_TYPE_PLAYER_ID,
+            source_position: [pose.position.x, pose.position.y, pose.position.z],
+            bounds: LocalPlayerBounds::for_pose(pose),
+            block_context: LocalPlayerCollisionContext::for_pose(self, pose, false),
+        })
     }
 
     pub(crate) fn local_player_pose_collides_with_block(
@@ -1868,6 +2021,18 @@ fn bounds_intersects_block_shape(
         .any(|shape_box| bounds_intersects_block_box(bounds, pos, shape_box))
 }
 
+fn world_collision_box_intersects_bounds(
+    collision_box: WorldCollisionBox,
+    bounds: LocalPlayerBounds,
+) -> bool {
+    collision_box.max[0] > bounds.min_x
+        && collision_box.min[0] < bounds.max_x
+        && collision_box.max[1] > bounds.min_y
+        && collision_box.min[1] < bounds.max_y
+        && collision_box.max[2] > bounds.min_z
+        && collision_box.min[2] < bounds.max_z
+}
+
 fn bounds_intersects_block_box(
     bounds: LocalPlayerBounds,
     pos: BlockPos,
@@ -3479,6 +3644,123 @@ mod tests {
     }
 
     #[test]
+    fn debug_camera_collision_boxes_prepend_collidable_entities_and_exclude_same_vehicle() {
+        let mut world = empty_world();
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: bbb_protocol::packets::Vec3d {
+                x: 0.5,
+                y: 0.0,
+                z: 0.5,
+            },
+            ..LocalPlayerPoseState::default()
+        });
+        world.local_player_id = Some(99);
+        add_collision_test_entity(
+            &mut world,
+            99,
+            VANILLA_ENTITY_TYPE_PLAYER_ID,
+            [0.5, 0.0, 0.5],
+        );
+        add_collision_test_entity(
+            &mut world,
+            10,
+            bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+            [2.5, 0.0, 0.5],
+        );
+        add_collision_test_entity(
+            &mut world,
+            11,
+            VANILLA_ENTITY_TYPE_SHULKER_ID,
+            [4.5, 0.0, 0.5],
+        );
+        add_collision_test_entity(
+            &mut world,
+            12,
+            bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_COW_ID,
+            [5.5, 0.0, 0.5],
+        );
+
+        let expected = world
+            .entity_pick_targets()
+            .into_iter()
+            .filter(|target| matches!(target.entity_id, 10 | 11))
+            .map(world_collision_box_from_pick_target)
+            .collect::<Vec<_>>();
+        assert_eq!(world.debug_camera_collision_boxes(6.0), expected);
+
+        assert!(
+            world.apply_set_passengers(bbb_protocol::packets::SetPassengers {
+                vehicle_id: 10,
+                passenger_ids: vec![99],
+            })
+        );
+        let boxes = world.debug_camera_collision_boxes(6.0);
+        assert_eq!(boxes, expected[1..]);
+    }
+
+    #[test]
+    fn happy_ghast_collision_requires_adult_alive_and_player_above_or_stays_still() {
+        let mut world = empty_world();
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: bbb_protocol::packets::Vec3d {
+                x: 0.5,
+                y: 0.0,
+                z: 0.5,
+            },
+            ..LocalPlayerPoseState::default()
+        });
+        add_collision_test_entity(
+            &mut world,
+            20,
+            VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID,
+            [2.5, 0.0, 0.5],
+        );
+        assert!(world.debug_camera_collision_boxes(6.0).is_empty());
+
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: bbb_protocol::packets::Vec3d {
+                x: 0.5,
+                y: 4.0,
+                z: 0.5,
+            },
+            ..LocalPlayerPoseState::default()
+        });
+        assert_eq!(world.debug_camera_collision_boxes(6.0).len(), 1);
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: bbb_protocol::packets::Vec3d {
+                x: 0.5,
+                y: 0.0,
+                z: 0.5,
+            },
+            ..LocalPlayerPoseState::default()
+        });
+
+        assert!(
+            world.apply_set_entity_data(bbb_protocol::packets::SetEntityData {
+                id: 20,
+                values: vec![bbb_protocol::packets::EntityDataValue {
+                    data_id: HAPPY_GHAST_STAYS_STILL_DATA_ID,
+                    serializer_id: 8,
+                    value: bbb_protocol::packets::EntityDataValueKind::Boolean(true),
+                }],
+            })
+        );
+        assert_eq!(world.debug_camera_collision_boxes(6.0).len(), 1);
+
+        assert!(
+            world.apply_set_entity_data(bbb_protocol::packets::SetEntityData {
+                id: 20,
+                values: vec![bbb_protocol::packets::EntityDataValue {
+                    data_id: 16,
+                    serializer_id: 8,
+                    value: bbb_protocol::packets::EntityDataValueKind::Boolean(true),
+                }],
+            })
+        );
+        assert!(world.debug_camera_collision_boxes(6.0).is_empty());
+    }
+
+    #[test]
     fn collision_shape_to_aabbs_coalesces_overlapping_union_cells_like_vanilla() {
         let shape = BlockCollisionShape::from_boxes([
             Some(BlockCollisionBox {
@@ -3583,6 +3865,50 @@ mod tests {
             CollisionAxis::X => "x",
             CollisionAxis::Y => "y",
             CollisionAxis::Z => "z",
+        }
+    }
+
+    fn add_collision_test_entity(
+        world: &mut WorldStore,
+        id: i32,
+        entity_type_id: i32,
+        position: [f64; 3],
+    ) {
+        world.apply_add_entity(bbb_protocol::packets::AddEntity {
+            id,
+            uuid: uuid::Uuid::from_u128(id as u128 + 1),
+            entity_type_id,
+            position: bbb_protocol::packets::Vec3d {
+                x: position[0],
+                y: position[1],
+                z: position[2],
+            },
+            delta_movement: bbb_protocol::packets::Vec3d {
+                x: 0.0,
+                y: 0.0,
+                z: 0.0,
+            },
+            x_rot: 0.0,
+            y_rot: 0.0,
+            y_head_rot: 0.0,
+            data: 0,
+        });
+    }
+
+    fn world_collision_box_from_pick_target(
+        target: crate::EntityPickTargetState,
+    ) -> WorldCollisionBox {
+        WorldCollisionBox {
+            min: [
+                target.position.x + f64::from(target.bounds.min[0]),
+                target.position.y + f64::from(target.bounds.min[1]),
+                target.position.z + f64::from(target.bounds.min[2]),
+            ],
+            max: [
+                target.position.x + f64::from(target.bounds.max[0]),
+                target.position.y + f64::from(target.bounds.max[1]),
+                target.position.z + f64::from(target.bounds.max[2]),
+            ],
         }
     }
 

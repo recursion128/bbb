@@ -8130,3 +8130,16 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   产生内部 cuboid stroke，非矩形与不相连 union 保持 vanilla 的确定性 AABB 分解
   顺序。tests 覆盖重叠 union 合一、L 形 union 分解以及 camera query/native stroke
   回归。ledger 相应只保留实体 collision shapes 与 100ms refresh cache。
+
+## 2026-07-10：Collision debug entity AABBs
+
+- [x] `visualize_collision_boxes` 的 ordinary camera-source entity collision 主路径
+  （P2 world/native slice）：依据 vanilla 26.1 `EntityGetter.getEntityCollisions`、
+  `Entity.canCollideWith`、`Boat.canBeCollidedWith`、`Shulker.canBeCollidedWith` 与
+  `HappyGhast.canBeCollidedWith`，world 在 block shape 之前按 entity storage 顺序提交
+  查询 AABB 内可碰撞实体的当前 bounds，排除 source、spectator 与同一 root vehicle。
+  boat 始终可碰撞；shulker 要求存活；happy ghast 要求 adult+alive，并满足 player 位于
+  顶面以上、stays-still，或 happy-ghast vehicle pair。native 改用完整 collision query，
+  仍统一投影为 white 2.5px cuboid strokes。tests 覆盖 entity-before-block 集合、cow
+  排除、boat/shulker 纳入、同车排除和 happy-ghast metadata gates。ledger 仅保留相机
+  本身是 boat/minecart 时 `canVehicleCollide` 的 `isPushable` 扩展及 100ms cache。
