@@ -238,7 +238,8 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   `inBlockState`, `item`, and `weapon`, remaining data-component patch entries
   beyond the supported custom-NBT/primitive (including repair-cost/enchantable/glider,
   minimum-attack-charge/potion-duration-scale)/
-  simple-resource (including tooltip-style/note-block-sound)/food/repairable/use-effects/use-remainder/
+  simple-resource (including tooltip-style/note-block-sound and vanilla/direct
+  break-sound)/food/repairable/use-effects/use-remainder/
   use-cooldown/tooltip-display/attack-range/
   swing-animation/resource/color (including dye/base-color)/map/ominous/firework/custom-model-data/
   codec-backed-NBT (map-decorations/debug-stick/entity-data/bucket-data/block-entity-data/

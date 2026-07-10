@@ -8568,11 +8568,12 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
         EquipmentAssetCatalog::default(),
     );
     let patch = DataComponentPatchSummary {
-        added: 65,
+        added: 66,
         added_type_ids: vec![
             0, 1, 2, 3, 4, 5, 7, 10, 12, 17, 18, 19, 21, 22, 23, 25, 26, 30, 31, 33, 34, 35, 40,
             43, 44, 45, 46, 47, 49, 50, 52, 54, 57, 58, 59, 60, 63, 66, 67, 68, 69, 70, 71, 73, 74,
-            75, 76, 77, 78, 79, 84, 85, 86, 87, 88, 89, 90, 91, 92, 101, 103, 104, 107, 108, 109,
+            75, 76, 77, 78, 79, 80, 84, 85, 86, 87, 88, 89, 90, 91, 92, 101, 103, 104, 107, 108,
+            109,
         ],
         removed_type_ids: vec![6],
         custom_data: Some(NbtSummaryValue::Compound(vec![
@@ -8875,6 +8876,11 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
         tropical_fish_pattern_id: Some(257),
         tropical_fish_base_color_id: Some(1),
         tropical_fish_pattern_color_id: Some(99),
+        break_sound: Some(bbb_protocol::packets::SoundEventSummary {
+            registry_id: Some(7),
+            sound_id: None,
+            fixed_range_bits: None,
+        }),
         builtin_enum_component_ids: BTreeMap::from([
             (84, 14),
             (85, 1),
@@ -8981,6 +8987,7 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
          \"minecraft:lock\": {}, \
          \"minecraft:container_loot\": {loot_table: \
          \"minecraft:chests/simple_dungeon\", seed: 9L}, \
+         \"minecraft:break_sound\": \"minecraft:ambient.cave\", \
          \"minecraft:wolf/collar\": \"red\", \
          \"minecraft:fox/variant\": \"snow\", \
          \"minecraft:salmon/size\": \"large\", \
@@ -9042,6 +9049,34 @@ fn item_stack_snbt_preserves_repairable_holder_set_shapes() {
     patch.repairable_item_registry_ids = vec![99];
     assert_eq!(
         debug_repairable_component_snbt(&patch, Some(&item_runtime)),
+        None
+    );
+}
+
+#[test]
+fn item_stack_snbt_preserves_break_sound_holder_shapes() {
+    assert_eq!(
+        debug_sound_event_component_snbt(&bbb_protocol::packets::SoundEventSummary {
+            registry_id: None,
+            sound_id: Some("example:item.custom_break".to_string()),
+            fixed_range_bits: Some(16.0_f32.to_bits()),
+        }),
+        Some("{sound_id: \"example:item.custom_break\", range: 16.0f}".to_string())
+    );
+    assert_eq!(
+        debug_sound_event_component_snbt(&bbb_protocol::packets::SoundEventSummary {
+            registry_id: None,
+            sound_id: Some("example:item.variable_break".to_string()),
+            fixed_range_bits: None,
+        }),
+        Some("{sound_id: \"example:item.variable_break\"}".to_string())
+    );
+    assert_eq!(
+        debug_sound_event_component_snbt(&bbb_protocol::packets::SoundEventSummary {
+            registry_id: Some(1902),
+            sound_id: None,
+            fixed_range_bits: None,
+        }),
         None
     );
 }

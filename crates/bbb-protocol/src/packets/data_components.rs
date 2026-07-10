@@ -45,6 +45,8 @@ pub struct DataComponentPatchSummary {
     #[serde(default)]
     pub codec_backed_nbt: BTreeMap<i32, NbtSummaryValue>,
     #[serde(default)]
+    pub break_sound: Option<SoundEventSummary>,
+    #[serde(default)]
     pub max_stack_size: Option<i32>,
     #[serde(default)]
     pub max_damage: Option<i32>,
@@ -975,6 +977,9 @@ fn decode_typed_data_component_patch_summary(
                 if let Some(value) = decode_nbt_summary_from_decoder(decoder)? {
                     summary.codec_backed_nbt.insert(type_id, value);
                 }
+            }
+            80 => {
+                summary.break_sound = Some(decode_sound_event_holder_summary(decoder)?);
             }
             47 | 57 | 59 | 66 | 78 => {
                 if let Some(value) = decode_nbt_summary_from_decoder(decoder)? {
@@ -3567,6 +3572,33 @@ mod tests {
     }
 
     #[test]
+    fn decodes_break_sound_registry_holder() {
+        let mut payload = Encoder::new();
+        payload.write_var_i32(1);
+        payload.write_var_i32(0);
+        payload.write_var_i32(80);
+        payload.write_var_i32(8);
+
+        let payload = payload.into_inner();
+        let mut decoder = Decoder::new(&payload);
+        let patch = decode_data_component_patch_summary(&mut decoder).unwrap();
+        assert_eq!(
+            patch,
+            DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![80],
+                break_sound: Some(SoundEventSummary {
+                    registry_id: Some(7),
+                    sound_id: None,
+                    fixed_range_bits: None,
+                }),
+                ..DataComponentPatchSummary::default()
+            }
+        );
+        assert!(decoder.is_empty());
+    }
+
+    #[test]
     fn decodes_attack_range_component_summary() {
         let mut payload = Encoder::new();
         payload.write_var_i32(1);
@@ -4871,6 +4903,11 @@ mod tests {
                     length_in_seconds_bits: 120.0f32.to_bits(),
                     comparator_output: 15,
                 })),
+                break_sound: Some(SoundEventSummary {
+                    registry_id: None,
+                    sound_id: Some("minecraft:block.note_block.harp".to_string()),
+                    fixed_range_bits: Some(16.0_f32.to_bits()),
+                }),
                 block_state_properties: BTreeMap::from([
                     ("facing".to_string(), "north".to_string()),
                     ("lit".to_string(), "true".to_string()),

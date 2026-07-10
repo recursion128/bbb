@@ -8855,3 +8855,15 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   direct holders 与 repairs_leather_armor tag；native component patch test 从
   64 扩展到 65 个 added entry，另覆盖四种 holder-set 形状与 unknown item id
   fallback；repairable 从剩余 component 总账本移入已支持子集。
+
+## 2026-07-10：ItemStack break-sound save codec
+
+- [x] minecraft:break_sound 持久化 component 的 vanilla/direct 分支（P2
+  protocol + native input）：依据 vanilla 26.1 SoundEvent.CODEC/STREAM_CODEC，
+  protocol 将 type id 80 从仅消费 wire 扩为完整 Holder 摘要；native 复用
+  bbb-pack 的 1902 项 26.1 SoundEvent 注册表还原 registry holder，并把 direct
+  holder 输出为 sound_id 与 bit-exact optional range compound。protocol focused
+  tests 覆盖 registry 与 direct fixed-range holder；native component patch test
+  从 65 扩展到 66 个 added entry，并覆盖 direct variable/fixed range 与 unknown
+  registry id fallback。自定义服务端的动态 SoundEvent registry 排序仍保留在
+  registry-backed 总账本，不计入本切片完成范围。

@@ -4742,6 +4742,7 @@ fn debug_supported_added_component_snbt(
                 .join(", ")
         ),
         77 => debug_bees_component_snbt(&patch.bees)?,
+        80 => debug_sound_event_component_snbt(patch.break_sound.as_ref()?)?,
         TROPICAL_FISH_PATTERN_COMPONENT_TYPE_ID => debug_snbt_string(
             debug_tropical_fish_pattern_name(patch.tropical_fish_pattern_id?),
         ),
@@ -4813,6 +4814,7 @@ fn debug_supported_component_resource_id(type_id: i32) -> Option<&'static str> {
         77 => "minecraft:bees",
         78 => "minecraft:lock",
         79 => "minecraft:container_loot",
+        80 => "minecraft:break_sound",
         84 => "minecraft:wolf/collar",
         85 => "minecraft:fox/variant",
         86 => "minecraft:salmon/size",
@@ -5448,6 +5450,31 @@ fn debug_dye_color_name(id: i32) -> &'static str {
         15 => "black",
         _ => "white",
     }
+}
+
+fn debug_sound_event_component_snbt(
+    sound_event: &bbb_protocol::packets::SoundEventSummary,
+) -> Option<String> {
+    if let Some(registry_id) = sound_event.registry_id {
+        static VANILLA_SOUND_EVENTS: std::sync::OnceLock<bbb_pack::SoundEventRegistry> =
+            std::sync::OnceLock::new();
+        let resource_id = VANILLA_SOUND_EVENTS
+            .get_or_init(bbb_pack::SoundEventRegistry::vanilla_26_1)
+            .event_id(registry_id)?;
+        return Some(debug_snbt_string(resource_id));
+    }
+
+    let mut fields = vec![format!(
+        "sound_id: {}",
+        debug_snbt_string(sound_event.sound_id.as_deref()?)
+    )];
+    if let Some(bits) = sound_event.fixed_range_bits {
+        fields.push(format!(
+            "range: {}f",
+            debug_nbt_java_float_string(f32::from_bits(bits))
+        ));
+    }
+    Some(format!("{{{}}}", fields.join(", ")))
 }
 
 fn debug_builtin_enum_component_name(type_id: i32, id: i32) -> Option<&'static str> {
