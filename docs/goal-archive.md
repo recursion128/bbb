@@ -9351,3 +9351,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   movement/destroy/inventory 与 native lightmap/HUD/beacon 路径删除生产裸数字。连续/唯一/
   固定长度、20 beneficial/16 harmful/4 neutral 分类计数、查询边界及 regeneration tests
   锁定生成物；未改变效果 wire codec、属性运算、HUD 行为或 custom 定义边界。
+
+## 2026-07-10：Vanilla menu-type numeric-id catalog generation
+
+- [x] gameplay numeric-id catalog 的 menu-type 子项（P1 mechanical vanilla
+  data）：扩展 `scripts/generate-gameplay-id-catalog.py`，从 vanilla 26.1
+  `MenuType.java` 的 25 个静态 `register` 调用生成 checked-in id/resource/order/
+  constant-name metadata。world inventory 删除 20 项预测/quick-move 常量副本，native
+  input 删除完整 0..24 布局表，runtime loom 投影也引用同一 protocol catalog；现有局部
+  菜单语义别名通过 import alias 保持。连续/唯一/固定长度、首尾/中间查询和 regeneration
+  tests 锁定生成物；未改变 OpenScreen wire codec、菜单布局或点击预测行为。

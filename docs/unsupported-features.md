@@ -722,6 +722,12 @@ vanilla evidence. Deleting one of these re-opens work already decided against.
   `SYNCHRONIZED_REGISTRIES`. The fixed 40-entry vanilla id/resource/category
   catalog is generated; effect holders therefore resolve against the built-in
   client registry rather than server-defined effect metadata.
+- **Custom/datapack menu-type definitions.** Vanilla 26.1 registers
+  `minecraft:menu` through `BuiltInRegistries.registerSimple`, and the registry
+  is absent from both `RegistryDataLoader.WORLDGEN_REGISTRIES` and
+  `SYNCHRONIZED_REGISTRIES`. The fixed 25-entry vanilla menu id/resource catalog
+  is generated; OpenScreen menu ids therefore resolve against the built-in
+  client registry rather than server-defined menu metadata.
 - **Accepting malformed or unsupported custom resource-pack declarations.**
   Loaders reject them intentionally.
 
