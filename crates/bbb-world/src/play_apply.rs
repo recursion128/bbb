@@ -6,6 +6,7 @@
 //! (audio sinks, particle sinks, serverbound acknowledgements); world
 //! mutation and the deterministic level-event random stream live here.
 
+use bbb_protocol::game_event_types::VANILLA_CLIENT_GAME_EVENT_GUARDIAN_ELDER_EFFECT_ID;
 use bbb_protocol::packets::{
     ChatAcknowledgement, GameEvent as ProtocolGameEvent, LevelEvent as ProtocolLevelEvent,
     PlayClientbound, Vec3d as ProtocolVec3d,
@@ -60,7 +61,6 @@ const CRITICAL_HIT_ANIMATION_ACTION: u8 = 4;
 const MAGIC_CRITICAL_HIT_ANIMATION_ACTION: u8 = 5;
 const TRACKING_EMITTER_DEFAULT_LIFETIME_TICKS: u32 = 3;
 const TOTEM_TRACKING_EMITTER_LIFETIME_TICKS: u32 = 30;
-const GUARDIAN_ELDER_EFFECT_GAME_EVENT: u8 = 10;
 const ARROW_EFFECT_CLEAR_EVENT_ID: i8 = 0;
 const ATTACK_SOUND_EVENT_ID: i8 = 4;
 const THROWN_ITEM_HIT_EVENT_ID: i8 = 3;
@@ -919,7 +919,7 @@ impl WorldStore {
         &self,
         event: ProtocolGameEvent,
     ) -> Option<ProtocolVec3d> {
-        (event.event_id == GUARDIAN_ELDER_EFFECT_GAME_EVENT)
+        (event.event_id == VANILLA_CLIENT_GAME_EVENT_GUARDIAN_ELDER_EFFECT_ID)
             .then(|| self.local_player_pose().map(|pose| pose.position))
             .flatten()
     }

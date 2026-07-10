@@ -2,6 +2,11 @@ use std::collections::BTreeMap;
 
 use bbb_protocol::{
     entity_types::*,
+    game_event_types::{
+        VANILLA_CLIENT_GAME_EVENT_GUARDIAN_ELDER_EFFECT_ID,
+        VANILLA_CLIENT_GAME_EVENT_PLAY_ARROW_HIT_SOUND_ID,
+        VANILLA_CLIENT_GAME_EVENT_PUFFER_FISH_STING_ID,
+    },
     packets::{
         GameEvent as ProtocolGameEvent, LevelEvent as ProtocolLevelEvent,
         SoundEntityEvent as ProtocolSoundEntityEvent, SoundEvent as ProtocolSoundEvent,
@@ -21,9 +26,6 @@ const SCULK_SHRIEKER_LEVEL_EVENT: i32 = 3007;
 const VAULT_ACTIVATE_LEVEL_EVENT: i32 = 3015;
 const VAULT_DEACTIVATE_LEVEL_EVENT: i32 = 3016;
 const COBWEB_PLACE_LEVEL_EVENT: i32 = 3018;
-const PLAY_ARROW_HIT_SOUND_GAME_EVENT: u8 = 6;
-const PUFFER_FISH_STING_GAME_EVENT: u8 = 9;
-const GUARDIAN_ELDER_EFFECT_GAME_EVENT: u8 = 10;
 const ARROW_HIT_PLAYER_SOUND_EVENT: &str = "minecraft:entity.arrow.hit_player";
 const PUFFER_FISH_STING_SOUND_EVENT: &str = "minecraft:entity.puffer_fish.sting";
 const ELDER_GUARDIAN_CURSE_SOUND_EVENT: &str = "minecraft:entity.elder_guardian.curse";
@@ -587,27 +589,31 @@ impl WorldStore {
             z: feet_position.z,
         };
         let (sound, source, position, volume, pitch) = match event.event_id {
-            PLAY_ARROW_HIT_SOUND_GAME_EVENT => (
+            VANILLA_CLIENT_GAME_EVENT_PLAY_ARROW_HIT_SOUND_ID => (
                 ARROW_HIT_PLAYER_SOUND_EVENT,
                 SoundSource::Players,
                 eye_position,
                 0.18,
                 0.45,
             ),
-            PUFFER_FISH_STING_GAME_EVENT => (
+            VANILLA_CLIENT_GAME_EVENT_PUFFER_FISH_STING_ID => (
                 PUFFER_FISH_STING_SOUND_EVENT,
                 SoundSource::Neutral,
                 feet_position,
                 1.0,
                 1.0,
             ),
-            GUARDIAN_ELDER_EFFECT_GAME_EVENT if game_event_param_floor(event.param) == Some(1) => (
-                ELDER_GUARDIAN_CURSE_SOUND_EVENT,
-                SoundSource::Hostile,
-                feet_position,
-                1.0,
-                1.0,
-            ),
+            VANILLA_CLIENT_GAME_EVENT_GUARDIAN_ELDER_EFFECT_ID
+                if game_event_param_floor(event.param) == Some(1) =>
+            {
+                (
+                    ELDER_GUARDIAN_CURSE_SOUND_EVENT,
+                    SoundSource::Hostile,
+                    feet_position,
+                    1.0,
+                    1.0,
+                )
+            }
             _ => return None,
         };
         let state = SoundEventState {

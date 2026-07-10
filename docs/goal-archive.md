@@ -9393,3 +9393,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   常量，删除生产裸数字来源。连续/唯一/固定长度、关键注册顺序、查询边界及
   regeneration tests 锁定生成物；未改变任何 serializer wire codec、unknown-id 错误或
   entity-data 投影行为。
+
+## 2026-07-10：Vanilla client game-event type numeric-id catalog generation
+
+- [x] gameplay numeric-id catalog 的 client game-event type 子项（P1 mechanical
+  vanilla data）：扩展 `scripts/generate-gameplay-id-catalog.py`，从 vanilla 26.1
+  `ClientboundGameEventPacket.java` 的 14 个 `Type` 声明生成 checked-in
+  id/order/constant-name metadata。world 的天气、game mode、immediate-respawn、limited-
+  crafting、三种定位音效及 elder-guardian 特效判断均改用同一组生成常量，删除生产裸
+  byte id。连续/唯一/固定长度、显式 id、查询边界及 regeneration tests 锁定生成物；
+  未改变 packet wire codec、world apply 或音频/粒子行为，也未混入 vibration game-event
+  registry 与 entity-event id。

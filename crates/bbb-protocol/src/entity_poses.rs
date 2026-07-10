@@ -198,6 +198,8 @@ mod tests {
             .arg(manifest_dir.join("src/entity_poses.rs"))
             .arg("--entity-data-serializers-output")
             .arg(manifest_dir.join("src/entity_data_serializers.rs"))
+            .arg("--game-event-types-output")
+            .arg(manifest_dir.join("src/game_event_types.rs"))
             .status()
             .unwrap();
         assert!(status.success());

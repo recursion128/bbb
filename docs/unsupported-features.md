@@ -743,6 +743,11 @@ vanilla evidence. Deleting one of these re-opens work already decided against.
   fixed 43-entry vanilla id/order catalog is generated from that block;
   serializer wire codecs remain explicit protocol semantics rather than
   dynamically supplied definitions.
+- **Custom client game-event packet types.** Vanilla 26.1 declares the 14
+  `ClientboundGameEventPacket.Type` instances and their byte ids directly in
+  the packet class; there is no server/datapack registration surface. The
+  generated fixed catalog intentionally does not treat vibration game events
+  or entity-event ids as members of this packet type map.
 - **Accepting malformed or unsupported custom resource-pack declarations.**
   Loaders reject them intentionally.
 

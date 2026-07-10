@@ -1,4 +1,10 @@
 use bbb_protocol::codec::Decoder;
+use bbb_protocol::game_event_types::{
+    VANILLA_CLIENT_GAME_EVENT_CHANGE_GAME_MODE_ID, VANILLA_CLIENT_GAME_EVENT_IMMEDIATE_RESPAWN_ID,
+    VANILLA_CLIENT_GAME_EVENT_LIMITED_CRAFTING_ID, VANILLA_CLIENT_GAME_EVENT_RAIN_LEVEL_CHANGE_ID,
+    VANILLA_CLIENT_GAME_EVENT_START_RAINING_ID, VANILLA_CLIENT_GAME_EVENT_STOP_RAINING_ID,
+    VANILLA_CLIENT_GAME_EVENT_THUNDER_LEVEL_CHANGE_ID,
+};
 use bbb_protocol::packets::{
     ClockUpdate as ProtocolClockUpdate, CommonPlayerSpawnInfo as ProtocolSpawnInfo,
     GameEvent as ProtocolGameEvent, PlayLogin as ProtocolPlayLogin, PlayTime as ProtocolPlayTime,
@@ -252,28 +258,28 @@ impl WorldStore {
         self.weather.last_game_event_param = event.param;
 
         match event.event_id {
-            1 => {
+            VANILLA_CLIENT_GAME_EVENT_START_RAINING_ID => {
                 self.weather.rain_level = 0.0;
                 self.weather.raining = false;
             }
-            2 => {
+            VANILLA_CLIENT_GAME_EVENT_STOP_RAINING_ID => {
                 self.weather.rain_level = 1.0;
                 self.weather.raining = true;
             }
-            7 => {
+            VANILLA_CLIENT_GAME_EVENT_RAIN_LEVEL_CHANGE_ID => {
                 self.weather.rain_level = event.param.clamp(0.0, 1.0);
                 self.weather.raining = self.weather.rain_level > 0.0;
             }
-            8 => {
+            VANILLA_CLIENT_GAME_EVENT_THUNDER_LEVEL_CHANGE_ID => {
                 self.weather.thunder_level = event.param.clamp(0.0, 1.0);
             }
-            3 => {
+            VANILLA_CLIENT_GAME_EVENT_CHANGE_GAME_MODE_ID => {
                 self.set_game_type_from_game_event_param(event.param);
             }
-            11 => {
+            VANILLA_CLIENT_GAME_EVENT_IMMEDIATE_RESPAWN_ID => {
                 self.gameplay.show_death_screen = event.param == 0.0;
             }
-            12 => {
+            VANILLA_CLIENT_GAME_EVENT_LIMITED_CRAFTING_ID => {
                 self.gameplay.do_limited_crafting = event.param == 1.0;
             }
             _ => {}
