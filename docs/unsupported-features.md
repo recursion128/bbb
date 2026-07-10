@@ -246,7 +246,8 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   beyond the supported custom-NBT/primitive (including repair-cost/enchantable/glider,
   minimum-attack-charge/potion-duration-scale)/
   enchantments/stored-enchantments/
-  adventure-mode-predicate (block/state/NBT/exact/partial matchers)/
+  adventure-mode-predicate (block/state/NBT/exact/partial matchers; its 15
+  predicate-type ids/resources are generated)/
   equippable (slot/sound/asset/entity-holder/default flags)/
   blocks-attacks (damage-reduction/item-damage/damage-type-holder/sound)/
   attribute-modifiers-named-holder-default-hidden-display/

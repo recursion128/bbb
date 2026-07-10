@@ -9297,3 +9297,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   字面量数组；原 type-id 查询函数及 native consumer 保持兼容，连续/唯一/固定长度、
   wire 边界与 regeneration tests 锁定生成物。未增加 block entity 行为支持，核心
   registry 队列的 component/predicate/particle 子项仍保留。
+
+## 2026-07-10：Vanilla data-component-predicate type catalog generation
+
+- [x] core built-in registry catalog 的 data-component-predicate type 子项（P1
+  mechanical vanilla data）：统一生成器从 vanilla 26.1
+  `DataComponentPredicates.java` 的 15 个静态 `register` 调用生成 checked-in
+  type-id/resource/order/constant-name descriptor，替代 `data_component_types.rs` 的
+  私有 15 项字面量数组与测试内整表副本；原 resource-id 查询 API 保持兼容，并以
+  连续/唯一/固定长度、首尾边界和 regeneration tests 锁定生成物。本提交未改 110 项
+  data-component codec handler 绑定，后者仍作为核心 registry 队列的独立子项保留。
