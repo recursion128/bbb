@@ -224,8 +224,7 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   with an in-process integrated server boundary.
 - Complete item-tooltip attribute and warning projection from vanilla
   `ItemStack.forEachModifier` and `ItemStack.addDetailsToTooltip`: include
-  enchantment-provided attribute effects and custom/datapack attribute
-  definition descriptions and sentiments.
+  enchantment-provided attribute effects.
 - Extend F3+I local entity capture across the remaining vanilla
   `addAdditionalSaveData` entity families whose saved state still needs
   non-equine specialized parent-chain classification, remaining owner/target/reference
@@ -650,6 +649,12 @@ vanilla evidence. Deleting one of these re-opens work already decided against.
 - **In-game options UI and vanilla options-file persistence.** Configuration
   stays at command-line startup (for example `--advanced-item-tooltips`); bbb
   does not add an in-game configuration UI or call vanilla `Options.save()`.
+- **Custom/datapack attribute tooltip definitions.** Vanilla 26.1 registers
+  `minecraft:attribute` through `BuiltInRegistries.registerSimple`; `Attribute`
+  has no direct element codec and the registry is absent from both
+  `RegistryDataLoader.WORLDGEN_REGISTRIES` and `SYNCHRONIZED_REGISTRIES`.
+  Attribute holders therefore use the fixed client built-in registry, so no
+  server/datapack description or sentiment payload exists to project.
 - **Accepting malformed or unsupported custom resource-pack declarations.**
   Loaders reject them intentionally.
 

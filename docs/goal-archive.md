@@ -8380,3 +8380,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   `item.disabled`，非 creative hide-tooltip 早退仍不会输出该行。focused tests 覆盖默认
   VANILLA_SET、feature packet 移除/恢复 vanilla 的 native hovered-item 行，以及独立
   item-runtime disabled projection；账本已移除该项。
+
+## 2026-07-10：Custom/datapack attribute definition not-needed audit
+
+- [x] custom/datapack attribute tooltip definition 判定为 `not-needed`（P2 protocol/runtime
+  audit）：vanilla 26.1 `BuiltInRegistries.ATTRIBUTE` 由 `registerSimple` 在客户端静态注册；
+  `Attribute` 只提供按名 holder codec / registry holder stream codec，没有 direct element
+  codec，且 `RegistryDataLoader.WORLDGEN_REGISTRIES` 与 `SYNCHRONIZED_REGISTRIES` 均不含
+  `Registries.ATTRIBUTE`。因此服务器/datapack 不能添加或重排 attribute definition，也不会
+  下发 description id / sentiment payload；tooltip 使用已核对 `Attributes.java` 顺序的 35 项
+  built-in table 即为完整 26.1 surface。开放账本已删除不存在的 custom definition 缺口，只
+  保留 dynamic enchantment effects 对 attribute modifiers 的真实工作。

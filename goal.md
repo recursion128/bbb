@@ -199,9 +199,8 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 仍在推进（消化顺序即列出顺序，todo 见账本 "HUD overlay and screen render
 surfaces" 节；整体低优先）：
 
-- item tooltip 剩余属性与警告 parity：补齐 vanilla `ItemStack.forEachModifier`
-  注入的 enchantment attribute effects，以及 custom/datapack attribute
-  definition 的 description/sentiment 投影。
+- item tooltip 剩余属性 parity：补齐 vanilla `ItemStack.forEachModifier`
+  注入的 enchantment attribute effects。
 - F3+I 本地实体 `saveWithoutId` 继续逐实体补全：对照各实体 vanilla
   `addAdditionalSaveData`，推进剩余实体族中仍需额外本地 owner、private timer /
   reference 投影、registry-backed variant 投影、codec-backed SNBT 投影，或实体
