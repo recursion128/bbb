@@ -17,6 +17,7 @@ pub enum VanillaEntityMetadataFamily {
     LivingEntity,
     Mob,
     Slime,
+    Shulker,
     AgeableMob,
     AbstractHorse,
     ArmorStand,
@@ -86,6 +87,9 @@ pub const VANILLA_LIVING_ENTITY_STINGER_COUNT_DATA_ID: u8 = 13;
 pub const VANILLA_LIVING_ENTITY_SLEEPING_POS_DATA_ID: u8 = 14;
 pub const VANILLA_MOB_FLAGS_DATA_ID: u8 = 15;
 pub const VANILLA_SLIME_SIZE_DATA_ID: u8 = 16;
+pub const VANILLA_SHULKER_ATTACH_FACE_DATA_ID: u8 = 16;
+pub const VANILLA_SHULKER_PEEK_DATA_ID: u8 = 17;
+pub const VANILLA_SHULKER_COLOR_DATA_ID: u8 = 18;
 pub const VANILLA_AGEABLE_MOB_BABY_DATA_ID: u8 = 16;
 pub const VANILLA_AGEABLE_MOB_AGE_LOCKED_DATA_ID: u8 = 17;
 pub const VANILLA_ABSTRACT_HORSE_FLAGS_DATA_ID: u8 = 18;
@@ -141,6 +145,9 @@ pub const VANILLA_HUMANOID_ARM_LEFT_ID: i32 = 0;
 pub const VANILLA_HUMANOID_ARM_RIGHT_ID: i32 = 1;
 pub const VANILLA_AVATAR_DEFAULT_MODEL_CUSTOMIZATION: i8 = 0;
 pub const VANILLA_SLIME_DEFAULT_SIZE: i32 = 1;
+pub const VANILLA_SHULKER_DEFAULT_ATTACH_FACE_ID: i32 = 0;
+pub const VANILLA_SHULKER_DEFAULT_PEEK: i8 = 0;
+pub const VANILLA_SHULKER_DEFAULT_COLOR: i8 = 16;
 pub const VANILLA_AGEABLE_MOB_DEFAULT_BABY: bool = false;
 pub const VANILLA_AGEABLE_MOB_DEFAULT_AGE_LOCKED: bool = false;
 pub const VANILLA_ABSTRACT_HORSE_DEFAULT_FLAGS: i8 = 0;
@@ -344,6 +351,27 @@ const SLIME_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[VanillaEntityMetadat
     serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
     default: VanillaEntityMetadataDefault::Int(VANILLA_SLIME_DEFAULT_SIZE),
 }];
+
+const SHULKER_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_ATTACH_FACE_ID",
+        data_id: VANILLA_SHULKER_ATTACH_FACE_DATA_ID,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_DIRECTION_ID,
+        default: VanillaEntityMetadataDefault::Direction(VANILLA_SHULKER_DEFAULT_ATTACH_FACE_ID),
+    },
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_PEEK_ID",
+        data_id: VANILLA_SHULKER_PEEK_DATA_ID,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+        default: VanillaEntityMetadataDefault::Byte(VANILLA_SHULKER_DEFAULT_PEEK),
+    },
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_COLOR_ID",
+        data_id: VANILLA_SHULKER_COLOR_DATA_ID,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+        default: VanillaEntityMetadataDefault::Byte(VANILLA_SHULKER_DEFAULT_COLOR),
+    },
+];
 
 const AGEABLE_MOB_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[
     VanillaEntityMetadataFieldSchema {
@@ -606,6 +634,14 @@ const SLIME_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFam
     own_flags: &[],
 };
 
+const SHULKER_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamilySchema {
+    family: VanillaEntityMetadataFamily::Shulker,
+    parent: Some(VanillaEntityMetadataFamily::Mob),
+    inherited_field_count: MOB_SCHEMA.inherited_field_count + MOB_FIELDS.len() as u8,
+    own_fields: SHULKER_FIELDS,
+    own_flags: &[],
+};
+
 const AGEABLE_MOB_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamilySchema {
     family: VanillaEntityMetadataFamily::AgeableMob,
     parent: Some(VanillaEntityMetadataFamily::Mob),
@@ -676,6 +712,7 @@ pub const fn vanilla_entity_metadata_schema(
         VanillaEntityMetadataFamily::LivingEntity => &LIVING_ENTITY_SCHEMA,
         VanillaEntityMetadataFamily::Mob => &MOB_SCHEMA,
         VanillaEntityMetadataFamily::Slime => &SLIME_SCHEMA,
+        VanillaEntityMetadataFamily::Shulker => &SHULKER_SCHEMA,
         VanillaEntityMetadataFamily::AgeableMob => &AGEABLE_MOB_SCHEMA,
         VanillaEntityMetadataFamily::AbstractHorse => &ABSTRACT_HORSE_SCHEMA,
         VanillaEntityMetadataFamily::ArmorStand => &ARMOR_STAND_SCHEMA,
@@ -747,6 +784,18 @@ mod tests {
         assert_eq!(slime.parent, Some(VanillaEntityMetadataFamily::Mob));
         assert_eq!(slime.inherited_field_count, 16);
         assert_eq!(slime.own_fields[0].data_id, 16);
+
+        let shulker = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Shulker);
+        assert_eq!(shulker.parent, Some(VanillaEntityMetadataFamily::Mob));
+        assert_eq!(shulker.inherited_field_count, 16);
+        assert_eq!(
+            shulker
+                .own_fields
+                .iter()
+                .map(|field| field.data_id)
+                .collect::<Vec<_>>(),
+            (16..=18).collect::<Vec<_>>()
+        );
 
         let ageable = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::AgeableMob);
         assert_eq!(ageable.parent, Some(VanillaEntityMetadataFamily::Mob));
@@ -952,6 +1001,29 @@ mod tests {
                 serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
                 default: VanillaEntityMetadataDefault::Int(1),
             }]
+        );
+        assert_eq!(
+            vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Shulker).own_fields,
+            &[
+                VanillaEntityMetadataFieldSchema {
+                    name: "DATA_ATTACH_FACE_ID",
+                    data_id: 16,
+                    serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_DIRECTION_ID,
+                    default: VanillaEntityMetadataDefault::Direction(0),
+                },
+                VanillaEntityMetadataFieldSchema {
+                    name: "DATA_PEEK_ID",
+                    data_id: 17,
+                    serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+                    default: VanillaEntityMetadataDefault::Byte(0),
+                },
+                VanillaEntityMetadataFieldSchema {
+                    name: "DATA_COLOR_ID",
+                    data_id: 18,
+                    serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+                    default: VanillaEntityMetadataDefault::Byte(16),
+                },
+            ]
         );
         assert_eq!(
             vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::AgeableMob).own_fields,
@@ -1318,6 +1390,7 @@ mod tests {
             VanillaEntityMetadataFamily::LivingEntity,
             VanillaEntityMetadataFamily::Mob,
             VanillaEntityMetadataFamily::Slime,
+            VanillaEntityMetadataFamily::Shulker,
             VanillaEntityMetadataFamily::AgeableMob,
             VanillaEntityMetadataFamily::AbstractHorse,
             VanillaEntityMetadataFamily::ArmorStand,

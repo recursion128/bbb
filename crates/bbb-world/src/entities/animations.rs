@@ -20,6 +20,10 @@ use super::dimensions::{entity_data_pose, vanilla_living_entity_type};
 use super::dragon::{
     EnderDragonAnimationState, ENDER_DRAGON_PHASE_DATA_ID, ENDER_DRAGON_PHASE_HOVERING_ID,
 };
+use super::schema::{
+    VANILLA_SHULKER_DEFAULT_PEEK as SHULKER_DEFAULT_PEEK,
+    VANILLA_SHULKER_PEEK_DATA_ID as SHULKER_PEEK_DATA_ID,
+};
 use super::{
     is_vanilla_boat_type, is_vanilla_vehicle_entity_type, EntityTransform, EntityVec3,
     VANILLA_ABSTRACT_HORSE_DEFAULT_FLAGS as ABSTRACT_HORSE_DEFAULT_FLAGS,
@@ -131,7 +135,6 @@ const CREEPER_IGNITED_DATA_ID: u8 = 18;
 /// Vanilla `Creeper.DEFAULT_MAX_SWELL`. `getSwelling` divides the lerped swell
 /// by `maxSwell - 2`.
 const CREEPER_MAX_SWELL: i32 = 30;
-const SHULKER_PEEK_DATA_ID: u8 = 17;
 const SHULKER_PEEK_PER_TICK: f32 = 0.05;
 const SHULKER_MAX_PEEK_AMOUNT: f32 = 1.0;
 /// Vanilla `Bee.DATA_FLAGS_ID` synced metadata id: `Entity` (`0..=7`),
@@ -6092,7 +6095,9 @@ fn entity_data_bool(data_values: &[EntityDataValue], data_id: u8, default: bool)
 }
 
 fn shulker_target_peek_amount(data_values: &[EntityDataValue]) -> f32 {
-    f32::from(entity_data_byte(data_values, SHULKER_PEEK_DATA_ID, 0).clamp(0, 100)) * 0.01
+    f32::from(
+        entity_data_byte(data_values, SHULKER_PEEK_DATA_ID, SHULKER_DEFAULT_PEEK).clamp(0, 100),
+    ) * 0.01
 }
 
 /// Vanilla `Bee.isRolling()` = `getFlag(FLAG_ROLL)` = `(flags & 2) != 0`.

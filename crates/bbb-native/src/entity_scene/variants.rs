@@ -173,7 +173,7 @@ pub(super) fn rabbit_model_kind(
 pub(super) fn shulker_model_kind(
     values: &[bbb_protocol::packets::EntityDataValue],
 ) -> EntityModelKind {
-    let color_id = entity_data_byte(values, SHULKER_COLOR_DATA_ID, 16);
+    let color_id = entity_data_byte(values, SHULKER_COLOR_DATA_ID, SHULKER_DEFAULT_COLOR);
     let color = (0..=15)
         .contains(&color_id)
         .then(|| EntityDyeColor::from_vanilla_id(color_id as i32));

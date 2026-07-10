@@ -132,6 +132,14 @@ use bbb_world::{
     VANILLA_SLIME_DEFAULT_SIZE as SLIME_DEFAULT_SIZE,
     VANILLA_SLIME_SIZE_DATA_ID as SLIME_SIZE_DATA_ID,
 };
+use bbb_world::{
+    VANILLA_SHULKER_ATTACH_FACE_DATA_ID as SHULKER_ATTACH_FACE_DATA_ID,
+    VANILLA_SHULKER_COLOR_DATA_ID as SHULKER_COLOR_DATA_ID,
+    VANILLA_SHULKER_DEFAULT_ATTACH_FACE_ID as SHULKER_DEFAULT_ATTACH_FACE,
+    VANILLA_SHULKER_DEFAULT_COLOR as SHULKER_DEFAULT_COLOR,
+    VANILLA_SHULKER_DEFAULT_PEEK as SHULKER_DEFAULT_PEEK,
+    VANILLA_SHULKER_PEEK_DATA_ID as SHULKER_PEEK_DATA_ID,
+};
 use tokio::sync::mpsc;
 use winit::{
     dpi::{PhysicalPosition, PhysicalSize},
@@ -472,12 +480,6 @@ const CREEPER_DEFAULT_EXPLOSION_RADIUS: i8 = 3;
 const CREEPER_DEFAULT_POWERED: bool = false;
 const CREEPER_DEFAULT_IGNITED: bool = false;
 const CREAKING_HOME_POS_DATA_ID: u8 = 19;
-const SHULKER_ATTACH_FACE_DATA_ID: u8 = 16;
-const SHULKER_PEEK_DATA_ID: u8 = 17;
-const SHULKER_COLOR_DATA_ID: u8 = 18;
-const SHULKER_DEFAULT_ATTACH_FACE: i8 = 0;
-const SHULKER_DEFAULT_PEEK: i8 = 0;
-const SHULKER_DEFAULT_COLOR: i8 = 16;
 const SHEEP_WOOL_DATA_ID: u8 = 18;
 const SHEEP_WOOL_COLOR_MASK: u8 = 0x0f;
 const SHEEP_WOOL_SHEARED_FLAG: u8 = 0x10;
@@ -6745,7 +6747,7 @@ fn debug_push_creaking_additional_save_data(entity: &EntityState, fields: &mut V
 
 fn debug_push_shulker_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
     let attach_face = debug_entity_data_direction_present(entity, SHULKER_ATTACH_FACE_DATA_ID)
-        .unwrap_or(SHULKER_DEFAULT_ATTACH_FACE);
+        .unwrap_or(SHULKER_DEFAULT_ATTACH_FACE as i8);
     let peek = debug_entity_data_byte_present(entity, SHULKER_PEEK_DATA_ID)
         .unwrap_or(SHULKER_DEFAULT_PEEK);
     let color = debug_entity_data_byte_present(entity, SHULKER_COLOR_DATA_ID)

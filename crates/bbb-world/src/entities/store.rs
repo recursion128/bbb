@@ -16,6 +16,8 @@ use bbb_protocol::packets::EntityDataValueKind;
 use bbb_protocol::packets::EquipmentSlot as ProtocolEquipmentSlot;
 use bbb_protocol::packets::ItemStackSummary;
 
+use super::schema::VANILLA_SHULKER_ATTACH_FACE_DATA_ID as SHULKER_ATTACH_FACE_DATA_ID;
+
 use super::{
     is_vanilla_abstract_nautilus_type, is_vanilla_can_wear_horse_armor_type, is_vanilla_llama_type,
     is_vanilla_minecart_type, ArmorMaterialKind, EntityAttachmentFace, EntityAttributes,
@@ -123,7 +125,6 @@ const TAMABLE_ANIMAL_SITTING_FLAG: i8 = 0x01;
 /// Vanilla 26.1 `EvokerRenderer` installs an `ItemInHandLayer` over the illager model.
 /// Vanilla 26.1 `ZombifiedPiglinRenderer` extends `HumanoidMobRenderer`.
 /// Vanilla `Shulker.DATA_ATTACH_FACE_ID` (Direction), declared before peek and color metadata.
-const SHULKER_ATTACH_FACE_DATA_ID: u8 = 16;
 /// Vanilla `AbstractMinecart.DATA_ID_CUSTOM_DISPLAY_BLOCK` optional block-state metadata.
 const MINECART_CUSTOM_DISPLAY_BLOCK_DATA_ID: u8 = 11;
 /// Vanilla `AbstractMinecart.DATA_ID_DISPLAY_OFFSET` int metadata.

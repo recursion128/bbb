@@ -59,6 +59,10 @@ use bbb_world::{
     VANILLA_SLIME_DEFAULT_SIZE as SLIME_DEFAULT_SIZE,
     VANILLA_SLIME_SIZE_DATA_ID as SLIME_SIZE_DATA_ID,
 };
+use bbb_world::{
+    VANILLA_SHULKER_COLOR_DATA_ID as SHULKER_COLOR_DATA_ID,
+    VANILLA_SHULKER_DEFAULT_COLOR as SHULKER_DEFAULT_COLOR,
+};
 
 use bbb_item_model::{default_player_skin_for_profile_id, NativeItemRuntime};
 use bbb_protocol::entity_types::*;
@@ -197,7 +201,6 @@ const RABBIT_TYPE_DATA_ID: u8 = 18;
 // Vanilla Shulker.DATA_COLOR_ID (18, BYTE): after Mob.DATA_MOB_FLAGS_ID (15) and the two `Shulker`
 // accessors DATA_ATTACH_FACE_ID (16) / DATA_PEEK_ID (17). `getColor()` returns the dye for 0..=15
 // and `null` (the default, byte 16) otherwise.
-const SHULKER_COLOR_DATA_ID: u8 = 18;
 // Vanilla Parrot.DATA_VARIANT_ID (20, INT): after Mob.DATA_MOB_FLAGS_ID (15), the two AgeableMob
 // accessors DATA_BABY_ID (16) / AGE_LOCKED (17), and the two TamableAnimal accessors DATA_FLAGS_ID
 // (18) / DATA_OWNERUUID_ID (19).

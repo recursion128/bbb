@@ -9516,3 +9516,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   focused tests 锁定继承 offset、serializer/default/masks、动画缓动、horse/donkey/mule/
   skeleton-horse/zombie-horse/camel/llama save-NBT 和骑乘投影。本阶段未顺带收敛 chest、
   strength 或具体 variant accessor。
+
+## 2026-07-10：Entity metadata schema phase 9（Shulker）
+
+- [x] entity metadata schema 的 shulker 分支：确认 `AbstractGolem`/`PathfinderMob` 不新增
+  accessor，新增 `Mob -> Shulker` family，集中声明 DIRECTION attach-face id 16/default
+  DOWN(3D id 0)、BYTE peek id 17/default 0 与 BYTE color id 18/default 16。world attachment
+  lerp、pick bounds、peek 动画与 native color texture/F3+I save projection 删除本地 ids/defaults，
+  统一引用 schema；focused tests 锁定继承 offset、serializer/default、attach-face bounds、
+  peek animation、color variant、metadata attachment interpolation 与 save-NBT。未改变 peek
+  clamp、teleport 插值或渲染算法。

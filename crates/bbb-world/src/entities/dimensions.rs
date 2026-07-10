@@ -26,6 +26,8 @@ use super::schema::{
     VANILLA_ARMOR_STAND_CLIENT_FLAG_MARKER as ARMOR_STAND_CLIENT_FLAG_MARKER,
     VANILLA_ARMOR_STAND_CLIENT_FLAG_SMALL as ARMOR_STAND_CLIENT_FLAG_SMALL,
     VANILLA_ARMOR_STAND_DEFAULT_CLIENT_FLAGS as ARMOR_STAND_DEFAULT_CLIENT_FLAGS,
+    VANILLA_SHULKER_ATTACH_FACE_DATA_ID as SHULKER_ATTACH_FACE_DATA_ID,
+    VANILLA_SHULKER_DEFAULT_ATTACH_FACE_ID as SHULKER_DEFAULT_ATTACH_FACE_ID,
     VANILLA_SLIME_DEFAULT_SIZE as SLIME_DEFAULT_SIZE,
     VANILLA_SLIME_SIZE_DATA_ID as SLIME_SIZE_DATA_ID,
 };
@@ -68,7 +70,6 @@ const GOAT_BABY_SCALE: f32 = 0.55;
 const HAPPY_GHAST_BABY_SCALE: f32 = 0.2375;
 const HAPPY_GHAST_MAX_SCALE: f32 = 1.0;
 const HORSE_BABY_SCALE: f32 = 0.7;
-const SHULKER_ATTACH_FACE_DATA_ID: u8 = 16;
 const SHULKER_MAX_SCALE: f32 = 3.0;
 const DEFAULT_AGEABLE_BABY_SCALE: f32 = 0.5;
 const VANILLA_SCALE_MIN: f64 = 0.0625;
@@ -662,7 +663,7 @@ fn shulker_pick_bounds(
     client_animations: Option<EntityClientAnimationState>,
 ) -> EntityPickBoundsState {
     let direction = entity_data_direction(data_values, SHULKER_ATTACH_FACE_DATA_ID)
-        .unwrap_or(VanillaDirection::Down)
+        .unwrap_or_else(|| vanilla_direction_from_3d_data(SHULKER_DEFAULT_ATTACH_FACE_ID))
         .opposite();
     let peek_amount = client_animations
         .and_then(|animations| animations.shulker_peek)

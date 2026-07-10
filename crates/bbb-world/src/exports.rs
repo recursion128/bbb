@@ -51,6 +51,11 @@ pub use crate::entities::{
     VANILLA_ABSTRACT_HORSE_FLAG_OPEN_MOUTH, VANILLA_ABSTRACT_HORSE_FLAG_STANDING,
     VANILLA_ABSTRACT_HORSE_FLAG_TAME,
 };
+pub use crate::entities::{
+    VANILLA_SHULKER_ATTACH_FACE_DATA_ID, VANILLA_SHULKER_COLOR_DATA_ID,
+    VANILLA_SHULKER_DEFAULT_ATTACH_FACE_ID, VANILLA_SHULKER_DEFAULT_COLOR,
+    VANILLA_SHULKER_DEFAULT_PEEK, VANILLA_SHULKER_PEEK_DATA_ID,
+};
 pub use crate::maps::*;
 pub use crate::play_apply::{
     advance_dragon_fireball_explode_level_event_particle_randoms,
