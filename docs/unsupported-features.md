@@ -193,8 +193,7 @@ Environment:
 
 Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
 
-- Render the remaining debug entries that are off by default:
-  `visualize_chunks_on_server` and `visualize_sky_light_sections`.
+- Render the remaining off-by-default `visualize_sky_light_sections` debug entry.
 - `chunk_section_paths`, `chunk_section_octree`, and
   `chunk_section_visibility` are `deferred` until the renderer retains
   per-section residency plus a repo-native `SectionOcclusionGraph`/octree and
@@ -202,6 +201,13 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   longer collapses each chunk into layer-wide meshes and can expose vanilla
   node step/source directions, octree node bounds/depth/frustum state, and
   `facesCanSeeEachother` without reconstructing them heuristically.
+- `visualize_chunks_on_server` is `not-needed`: vanilla 26.1
+  `ChunkDebugRenderer.emitGizmos` refreshes data only when
+  `Minecraft.getSingleplayerServer()` returns an `IntegratedServer`, and its
+  `ChunkData` reads `ServerLevel` / `ServerChunkCache` directly on that server's
+  executor. bbb is an external native client and owns no integrated-server or
+  server chunk-cache surface, so vanilla-equivalent behavior is an empty
+  renderer. Reopen if the repo gains an in-process integrated server boundary.
 - Remote `visualize_entity_supporting_blocks` `fallDistance > 2.5` powder-snow
   support is `not-needed`: vanilla position/move/teleport packets update a
   server-authoritative remote entity through `moveOrInterpolateTo` and

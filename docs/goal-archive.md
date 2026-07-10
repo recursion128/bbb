@@ -8282,3 +8282,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   far-to-near upload sort，使用原版 `0x80FF0000` RGBA 与六方向绕序。focused tests 覆盖
   support overrides/union、open shulker direction、scaffolding AABB、13³ scan gate、inflate/
   color/corner order、rect sanitize/mesh winding，以及 `RendererFrame` 的逐帧提交。
+
+## 2026-07-10：Server-chunk debug not-needed audit
+
+- [x] `visualize_chunks_on_server` 判定为 `not-needed`（P2 runtime audit）：vanilla
+  26.1 `ChunkDebugRenderer.emitGizmos` 每 3 秒只在
+  `Minecraft.getSingleplayerServer()` 返回 `IntegratedServer` 时构建 `ChunkData`，并在
+  integrated-server executor 上直接读取 `ServerLevel` / `ServerChunkCache`；多人客户端
+  下 data 被置空且不发出任何 billboard。bbb 是外部 native client，crate/runtime 中没有
+  integrated server 或 server chunk-cache owner，因此空 renderer 已与当前边界的 vanilla
+  行为一致；账本保留以“新增进程内 integrated server boundary”为重启条件。
