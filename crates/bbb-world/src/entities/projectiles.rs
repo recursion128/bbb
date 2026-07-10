@@ -7,6 +7,11 @@ use uuid::Uuid;
 use crate::{HurtingProjectileState, ProjectilePowerUpdateState, WorldStore};
 
 use super::schema::{
+    VANILLA_ABSTRACT_ARROW_DEFAULT_FLAGS as ABSTRACT_ARROW_DEFAULT_FLAGS,
+    VANILLA_ABSTRACT_ARROW_DEFAULT_IN_GROUND as ABSTRACT_ARROW_DEFAULT_IN_GROUND,
+    VANILLA_ABSTRACT_ARROW_FLAGS_DATA_ID as ABSTRACT_ARROW_FLAGS_DATA_ID,
+    VANILLA_ABSTRACT_ARROW_FLAG_NO_PHYSICS as ABSTRACT_ARROW_FLAG_NO_PHYSICS,
+    VANILLA_ABSTRACT_ARROW_IN_GROUND_DATA_ID as ABSTRACT_ARROW_IN_GROUND_DATA_ID,
     VANILLA_ARMOR_STAND_CLIENT_FLAGS_DATA_ID as ARMOR_STAND_CLIENT_FLAGS_DATA_ID,
     VANILLA_ARMOR_STAND_CLIENT_FLAG_MARKER as ARMOR_STAND_MARKER_FLAG,
     VANILLA_ARMOR_STAND_DEFAULT_CLIENT_FLAGS as ARMOR_STAND_DEFAULT_CLIENT_FLAGS,
@@ -33,11 +38,6 @@ use super::{
 
 const DEFAULT_HURTING_PROJECTILE_ACCELERATION_POWER: f64 = 0.1;
 const DEFAULT_WIND_CHARGE_ACCELERATION_POWER: f64 = 0.0;
-/// Vanilla 26.1 `AbstractArrow` metadata ids and the `FLAG_NOPHYSICS` bit.
-const ABSTRACT_ARROW_FLAGS_DATA_ID: u8 = 8;
-const ABSTRACT_ARROW_IN_GROUND_DATA_ID: u8 = 10;
-const ABSTRACT_ARROW_FLAG_NO_PHYSICS: i8 = 0x02;
-
 #[derive(Debug, Clone, Copy)]
 struct EntityAabb {
     min: [f64; 3],
@@ -244,10 +244,16 @@ impl EntityStore {
                 if identity.entity_type_id != VANILLA_ENTITY_TYPE_TRIDENT_ID {
                     return None;
                 }
-                let in_ground =
-                    self.metadata_bool_for_entity(*id, ABSTRACT_ARROW_IN_GROUND_DATA_ID, false)?;
-                let physics_enabled = self.metadata_byte(*id, ABSTRACT_ARROW_FLAGS_DATA_ID, 0)?
-                    & ABSTRACT_ARROW_FLAG_NO_PHYSICS
+                let in_ground = self.metadata_bool_for_entity(
+                    *id,
+                    ABSTRACT_ARROW_IN_GROUND_DATA_ID,
+                    ABSTRACT_ARROW_DEFAULT_IN_GROUND,
+                )?;
+                let physics_enabled = self.metadata_byte(
+                    *id,
+                    ABSTRACT_ARROW_FLAGS_DATA_ID,
+                    ABSTRACT_ARROW_DEFAULT_FLAGS,
+                )? & ABSTRACT_ARROW_FLAG_NO_PHYSICS
                     == 0;
                 Some((*id, in_ground && physics_enabled))
             })

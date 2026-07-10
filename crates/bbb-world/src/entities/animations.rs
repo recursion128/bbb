@@ -21,6 +21,8 @@ use super::dragon::{
     EnderDragonAnimationState, ENDER_DRAGON_PHASE_DATA_ID, ENDER_DRAGON_PHASE_HOVERING_ID,
 };
 use super::schema::{
+    VANILLA_ABSTRACT_ARROW_DEFAULT_IN_GROUND as ABSTRACT_ARROW_DEFAULT_IN_GROUND,
+    VANILLA_ABSTRACT_ARROW_IN_GROUND_DATA_ID as ABSTRACT_ARROW_IN_GROUND_DATA_ID,
     VANILLA_SHULKER_DEFAULT_PEEK as SHULKER_DEFAULT_PEEK,
     VANILLA_SHULKER_PEEK_DATA_ID as SHULKER_PEEK_DATA_ID,
 };
@@ -55,7 +57,6 @@ const BOAT_PADDLE_ADVANCE_PER_TICK: f32 = std::f32::consts::PI / 8.0;
 /// Vanilla `AbstractArrow.IN_GROUND`, the synced boolean after `ID_FLAGS` (`8`) and
 /// `PIERCE_LEVEL` (`9`). `onSyncedDataUpdated(IN_GROUND)` starts `shakeTime = 7`
 /// when the arrow is no longer on its first tick and the current shake has settled.
-const ABSTRACT_ARROW_IN_GROUND_DATA_ID: u8 = 10;
 const ARROW_SHAKE_TICKS: i32 = 7;
 /// Vanilla `ArmorStand.handleEntityEvent(32)`: client-side hit wobble.
 const ARMOR_STAND_HIT_EVENT_ID: i8 = 32;
@@ -3851,7 +3852,11 @@ impl EntityClientAnimationState {
             && updated_values
                 .iter()
                 .any(|value| value.data_id == ABSTRACT_ARROW_IN_GROUND_DATA_ID)
-            && entity_data_bool(data_values, ABSTRACT_ARROW_IN_GROUND_DATA_ID, false)
+            && entity_data_bool(
+                data_values,
+                ABSTRACT_ARROW_IN_GROUND_DATA_ID,
+                ABSTRACT_ARROW_DEFAULT_IN_GROUND,
+            )
             && self
                 .arrow_shake
                 .map_or(true, ArrowShakeAnimationState::is_settled)

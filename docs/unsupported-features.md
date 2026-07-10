@@ -484,10 +484,10 @@ back into a todo. Do not delete these.
 - **Remaining entity metadata schema families.** The checked-in schema now owns
   `Entity`, `LivingEntity`, `Mob`, `Avatar`, and `Player` accessors/defaults/flags,
   plus the `AgeableMob -> AbstractHorse`, `ArmorStand`, `Slime` (also consumed by `MagmaCube`),
-  `Shulker`, `Zombie`, and `HangingEntity -> ItemFrame` branches, including inherited lookup.
-  Remaining concrete entity subclasses (including other non-`AgeableMob` baby flags, zombie
-  subclasses, and concrete equine variants) still keep local metadata ids and masks until their
-  family descriptors and projection migrations land.
+  `Shulker`, `Zombie`, `Entity -> AbstractArrow`, and `HangingEntity -> ItemFrame` branches,
+  including inherited lookup. Remaining concrete entity subclasses (including other
+  non-`AgeableMob` baby flags, zombie/projectile subclasses, and concrete equine variants) still
+  keep local metadata ids and masks until their family descriptors and projection migrations land.
 - **Baby `ageScale`** — the `0.5` proportions applied in model `setupAnim`,
   distinct from the projected `SCALE`-attribute `scale`.
 - **Armor trims and the remaining mob-specific armor models.**

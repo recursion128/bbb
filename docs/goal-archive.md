@@ -9536,3 +9536,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   删除本地 ids/defaults，统一引用 schema；focused tests 锁定继承 offset、serializer/default、
   zombie/drowned/husk/zombie-villager baby model、conversion overlay、pick bounds 和 save-NBT。
   server-private conversion timer 与 `ZombieVillager` 自有 metadata 留在各自语义边界。
+
+## 2026-07-10：Entity metadata schema phase 11（AbstractArrow）
+
+- [x] entity metadata schema 的 projectile 父链：确认 `Projectile extends Entity` 无
+  accessor，新增 `Entity -> AbstractArrow` family，集中声明 BYTE flags id 8/default 0、BYTE
+  pierce-level id 9/default 0、BOOLEAN in-ground id 10/default false，以及 crit/no-physics masks
+  1/2。world projectile physics/lifecycle 与 impact shake、native Arrow/SpectralArrow/Trident
+  F3+I save projection 删除本地 ids/defaults/masks，统一引用 schema；focused tests 锁定继承
+  offset、serializer/default/masks、no-physics/in-ground lifecycle、impact shake 和三类 save-NBT。
+  Arrow/Trident 自有字段及 life/shake/pickup/damage 等非 metadata save state 保持原语义边界。

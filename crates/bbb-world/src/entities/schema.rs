@@ -22,6 +22,7 @@ pub enum VanillaEntityMetadataFamily {
     AgeableMob,
     AbstractHorse,
     ArmorStand,
+    AbstractArrow,
     HangingEntity,
     ItemFrame,
     Avatar,
@@ -104,6 +105,9 @@ pub const VANILLA_ARMOR_STAND_LEFT_ARM_POSE_DATA_ID: u8 = 18;
 pub const VANILLA_ARMOR_STAND_RIGHT_ARM_POSE_DATA_ID: u8 = 19;
 pub const VANILLA_ARMOR_STAND_LEFT_LEG_POSE_DATA_ID: u8 = 20;
 pub const VANILLA_ARMOR_STAND_RIGHT_LEG_POSE_DATA_ID: u8 = 21;
+pub const VANILLA_ABSTRACT_ARROW_FLAGS_DATA_ID: u8 = 8;
+pub const VANILLA_ABSTRACT_ARROW_PIERCE_LEVEL_DATA_ID: u8 = 9;
+pub const VANILLA_ABSTRACT_ARROW_IN_GROUND_DATA_ID: u8 = 10;
 pub const VANILLA_HANGING_ENTITY_DIRECTION_DATA_ID: u8 = 8;
 pub const VANILLA_ITEM_FRAME_ITEM_DATA_ID: u8 = 9;
 pub const VANILLA_ITEM_FRAME_ROTATION_DATA_ID: u8 = 10;
@@ -133,6 +137,8 @@ pub const VANILLA_ABSTRACT_HORSE_FLAG_BRED: i8 = 8;
 pub const VANILLA_ABSTRACT_HORSE_FLAG_EATING: i8 = 16;
 pub const VANILLA_ABSTRACT_HORSE_FLAG_STANDING: i8 = 32;
 pub const VANILLA_ABSTRACT_HORSE_FLAG_OPEN_MOUTH: i8 = 64;
+pub const VANILLA_ABSTRACT_ARROW_FLAG_CRIT: i8 = 1;
+pub const VANILLA_ABSTRACT_ARROW_FLAG_NO_PHYSICS: i8 = 2;
 pub const VANILLA_ARMOR_STAND_CLIENT_FLAG_SMALL: i8 = 1 << 0;
 pub const VANILLA_ARMOR_STAND_CLIENT_FLAG_SHOW_ARMS: i8 = 1 << 2;
 pub const VANILLA_ARMOR_STAND_CLIENT_FLAG_NO_BASEPLATE: i8 = 1 << 3;
@@ -158,6 +164,9 @@ pub const VANILLA_ZOMBIE_DEFAULT_DROWNED_CONVERSION: bool = false;
 pub const VANILLA_AGEABLE_MOB_DEFAULT_BABY: bool = false;
 pub const VANILLA_AGEABLE_MOB_DEFAULT_AGE_LOCKED: bool = false;
 pub const VANILLA_ABSTRACT_HORSE_DEFAULT_FLAGS: i8 = 0;
+pub const VANILLA_ABSTRACT_ARROW_DEFAULT_FLAGS: i8 = 0;
+pub const VANILLA_ABSTRACT_ARROW_DEFAULT_PIERCE_LEVEL: i8 = 0;
+pub const VANILLA_ABSTRACT_ARROW_DEFAULT_IN_GROUND: bool = false;
 pub const VANILLA_ARMOR_STAND_DEFAULT_CLIENT_FLAGS: i8 = 0;
 pub const VANILLA_ARMOR_STAND_DEFAULT_HEAD_POSE: [f32; 3] = [0.0, 0.0, 0.0];
 pub const VANILLA_ARMOR_STAND_DEFAULT_BODY_POSE: [f32; 3] = [0.0, 0.0, 0.0];
@@ -524,6 +533,40 @@ const ARMOR_STAND_FLAGS: &[VanillaEntityMetadataFlagSchema] = &[
     },
 ];
 
+const ABSTRACT_ARROW_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[
+    VanillaEntityMetadataFieldSchema {
+        name: "ID_FLAGS",
+        data_id: VANILLA_ABSTRACT_ARROW_FLAGS_DATA_ID,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+        default: VanillaEntityMetadataDefault::Byte(VANILLA_ABSTRACT_ARROW_DEFAULT_FLAGS),
+    },
+    VanillaEntityMetadataFieldSchema {
+        name: "PIERCE_LEVEL",
+        data_id: VANILLA_ABSTRACT_ARROW_PIERCE_LEVEL_DATA_ID,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+        default: VanillaEntityMetadataDefault::Byte(VANILLA_ABSTRACT_ARROW_DEFAULT_PIERCE_LEVEL),
+    },
+    VanillaEntityMetadataFieldSchema {
+        name: "IN_GROUND",
+        data_id: VANILLA_ABSTRACT_ARROW_IN_GROUND_DATA_ID,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+        default: VanillaEntityMetadataDefault::Boolean(VANILLA_ABSTRACT_ARROW_DEFAULT_IN_GROUND),
+    },
+];
+
+const ABSTRACT_ARROW_FLAGS: &[VanillaEntityMetadataFlagSchema] = &[
+    VanillaEntityMetadataFlagSchema {
+        name: "FLAG_CRIT",
+        data_id: VANILLA_ABSTRACT_ARROW_FLAGS_DATA_ID,
+        mask: VANILLA_ABSTRACT_ARROW_FLAG_CRIT,
+    },
+    VanillaEntityMetadataFlagSchema {
+        name: "FLAG_NOPHYSICS",
+        data_id: VANILLA_ABSTRACT_ARROW_FLAGS_DATA_ID,
+        mask: VANILLA_ABSTRACT_ARROW_FLAG_NO_PHYSICS,
+    },
+];
+
 const HANGING_ENTITY_FIELDS: &[VanillaEntityMetadataFieldSchema] =
     &[VanillaEntityMetadataFieldSchema {
         name: "DATA_DIRECTION",
@@ -705,6 +748,15 @@ const ARMOR_STAND_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetad
     own_flags: ARMOR_STAND_FLAGS,
 };
 
+const ABSTRACT_ARROW_SCHEMA: VanillaEntityMetadataFamilySchema =
+    VanillaEntityMetadataFamilySchema {
+        family: VanillaEntityMetadataFamily::AbstractArrow,
+        parent: Some(VanillaEntityMetadataFamily::Entity),
+        inherited_field_count: ENTITY_FIELDS.len() as u8,
+        own_fields: ABSTRACT_ARROW_FIELDS,
+        own_flags: ABSTRACT_ARROW_FLAGS,
+    };
+
 const HANGING_ENTITY_SCHEMA: VanillaEntityMetadataFamilySchema =
     VanillaEntityMetadataFamilySchema {
         family: VanillaEntityMetadataFamily::HangingEntity,
@@ -753,6 +805,7 @@ pub const fn vanilla_entity_metadata_schema(
         VanillaEntityMetadataFamily::AgeableMob => &AGEABLE_MOB_SCHEMA,
         VanillaEntityMetadataFamily::AbstractHorse => &ABSTRACT_HORSE_SCHEMA,
         VanillaEntityMetadataFamily::ArmorStand => &ARMOR_STAND_SCHEMA,
+        VanillaEntityMetadataFamily::AbstractArrow => &ABSTRACT_ARROW_SCHEMA,
         VanillaEntityMetadataFamily::HangingEntity => &HANGING_ENTITY_SCHEMA,
         VanillaEntityMetadataFamily::ItemFrame => &ITEM_FRAME_SCHEMA,
         VanillaEntityMetadataFamily::Avatar => &AVATAR_SCHEMA,
@@ -880,6 +933,22 @@ mod tests {
                 .map(|field| field.data_id)
                 .collect::<Vec<_>>(),
             (15..=21).collect::<Vec<_>>()
+        );
+
+        let abstract_arrow =
+            vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::AbstractArrow);
+        assert_eq!(
+            abstract_arrow.parent,
+            Some(VanillaEntityMetadataFamily::Entity)
+        );
+        assert_eq!(abstract_arrow.inherited_field_count, 8);
+        assert_eq!(
+            abstract_arrow
+                .own_fields
+                .iter()
+                .map(|field| field.data_id)
+                .collect::<Vec<_>>(),
+            (8..=10).collect::<Vec<_>>()
         );
 
         let hanging = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::HangingEntity);
@@ -1171,6 +1240,29 @@ mod tests {
             ]
         );
         assert_eq!(
+            vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::AbstractArrow).own_fields,
+            &[
+                VanillaEntityMetadataFieldSchema {
+                    name: "ID_FLAGS",
+                    data_id: 8,
+                    serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+                    default: VanillaEntityMetadataDefault::Byte(0),
+                },
+                VanillaEntityMetadataFieldSchema {
+                    name: "PIERCE_LEVEL",
+                    data_id: 9,
+                    serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+                    default: VanillaEntityMetadataDefault::Byte(0),
+                },
+                VanillaEntityMetadataFieldSchema {
+                    name: "IN_GROUND",
+                    data_id: 10,
+                    serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+                    default: VanillaEntityMetadataDefault::Boolean(false),
+                },
+            ]
+        );
+        assert_eq!(
             vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::HangingEntity).own_fields,
             &[VanillaEntityMetadataFieldSchema {
                 name: "DATA_DIRECTION",
@@ -1392,6 +1484,21 @@ mod tests {
             ]
         );
         assert_eq!(
+            vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::AbstractArrow).own_flags,
+            &[
+                VanillaEntityMetadataFlagSchema {
+                    name: "FLAG_CRIT",
+                    data_id: 8,
+                    mask: 1,
+                },
+                VanillaEntityMetadataFlagSchema {
+                    name: "FLAG_NOPHYSICS",
+                    data_id: 8,
+                    mask: 2,
+                },
+            ]
+        );
+        assert_eq!(
             vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Avatar).own_flags,
             &[
                 VanillaEntityMetadataFlagSchema {
@@ -1467,6 +1574,7 @@ mod tests {
             VanillaEntityMetadataFamily::AgeableMob,
             VanillaEntityMetadataFamily::AbstractHorse,
             VanillaEntityMetadataFamily::ArmorStand,
+            VanillaEntityMetadataFamily::AbstractArrow,
             VanillaEntityMetadataFamily::HangingEntity,
             VanillaEntityMetadataFamily::ItemFrame,
             VanillaEntityMetadataFamily::Avatar,

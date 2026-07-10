@@ -133,6 +133,15 @@ use bbb_world::{
     VANILLA_SLIME_SIZE_DATA_ID as SLIME_SIZE_DATA_ID,
 };
 use bbb_world::{
+    VANILLA_ABSTRACT_ARROW_DEFAULT_FLAGS as ABSTRACT_ARROW_DEFAULT_FLAGS,
+    VANILLA_ABSTRACT_ARROW_DEFAULT_IN_GROUND as ABSTRACT_ARROW_DEFAULT_IN_GROUND,
+    VANILLA_ABSTRACT_ARROW_DEFAULT_PIERCE_LEVEL as ABSTRACT_ARROW_DEFAULT_PIERCE_LEVEL,
+    VANILLA_ABSTRACT_ARROW_FLAGS_DATA_ID as ABSTRACT_ARROW_FLAGS_DATA_ID,
+    VANILLA_ABSTRACT_ARROW_FLAG_CRIT as ABSTRACT_ARROW_FLAG_CRIT,
+    VANILLA_ABSTRACT_ARROW_IN_GROUND_DATA_ID as ABSTRACT_ARROW_IN_GROUND_DATA_ID,
+    VANILLA_ABSTRACT_ARROW_PIERCE_LEVEL_DATA_ID as ABSTRACT_ARROW_PIERCE_LEVEL_DATA_ID,
+};
+use bbb_world::{
     VANILLA_SHULKER_ATTACH_FACE_DATA_ID as SHULKER_ATTACH_FACE_DATA_ID,
     VANILLA_SHULKER_COLOR_DATA_ID as SHULKER_COLOR_DATA_ID,
     VANILLA_SHULKER_DEFAULT_ATTACH_FACE_ID as SHULKER_DEFAULT_ATTACH_FACE,
@@ -355,10 +364,6 @@ const ITEM_FRAME_DEFAULT_INVISIBLE: bool = false;
 const ITEM_FRAME_DEFAULT_FIXED: bool = false;
 const PRIMED_TNT_FUSE_DATA_ID: u8 = 8;
 const PRIMED_TNT_DEFAULT_FUSE: i16 = 80;
-const ABSTRACT_ARROW_FLAGS_DATA_ID: u8 = 8;
-const ABSTRACT_ARROW_PIERCE_LEVEL_DATA_ID: u8 = 9;
-const ABSTRACT_ARROW_IN_GROUND_DATA_ID: u8 = 10;
-const ABSTRACT_ARROW_FLAG_CRIT: i8 = 1;
 const ABSTRACT_ARROW_DEFAULT_LIFE: i16 = 0;
 const ABSTRACT_ARROW_DEFAULT_SHAKE: i8 = 0;
 const ABSTRACT_ARROW_DEFAULT_PICKUP: i8 = 0;
@@ -4510,11 +4515,12 @@ fn debug_push_abstract_arrow_additional_save_data(
     fields: &mut Vec<String>,
     default_sound_event: &str,
 ) {
-    let flags = debug_entity_data_byte_present(entity, ABSTRACT_ARROW_FLAGS_DATA_ID).unwrap_or(0);
-    let in_ground =
-        debug_entity_data_bool_present(entity, ABSTRACT_ARROW_IN_GROUND_DATA_ID).unwrap_or(false);
-    let pierce_level =
-        debug_entity_data_byte_present(entity, ABSTRACT_ARROW_PIERCE_LEVEL_DATA_ID).unwrap_or(0);
+    let flags = debug_entity_data_byte_present(entity, ABSTRACT_ARROW_FLAGS_DATA_ID)
+        .unwrap_or(ABSTRACT_ARROW_DEFAULT_FLAGS);
+    let in_ground = debug_entity_data_bool_present(entity, ABSTRACT_ARROW_IN_GROUND_DATA_ID)
+        .unwrap_or(ABSTRACT_ARROW_DEFAULT_IN_GROUND);
+    let pierce_level = debug_entity_data_byte_present(entity, ABSTRACT_ARROW_PIERCE_LEVEL_DATA_ID)
+        .unwrap_or(ABSTRACT_ARROW_DEFAULT_PIERCE_LEVEL);
     let damage = debug_snbt_double(ABSTRACT_ARROW_DEFAULT_DAMAGE)
         .expect("finite abstract arrow default damage");
 
