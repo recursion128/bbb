@@ -1,12 +1,16 @@
 use std::collections::BTreeMap;
 
 use bbb_protocol::entity_types::{
-    VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
-    VANILLA_ENTITY_TYPE_SHULKER_ID,
+    VANILLA_ENTITY_TYPE_ARMOR_STAND_ID, VANILLA_ENTITY_TYPE_BAT_ID,
+    VANILLA_ENTITY_TYPE_CREAKING_ID, VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID,
+    VANILLA_ENTITY_TYPE_PARROT_ID, VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_SHULKER_ID,
+    VANILLA_ENTITY_TYPE_WARDEN_ID,
 };
 
 use super::local_player::LocalPlayerPoseState;
-use crate::entities::is_vanilla_boat_type;
+use crate::entities::{
+    is_vanilla_abstract_horse_type, is_vanilla_boat_type, is_vanilla_minecart_type,
+};
 use crate::terrain::block_name_is_air;
 use crate::{BlockPos, BlockProbe, TerrainFluidKind, TerrainMaterialClass, WorldStore};
 
@@ -15,6 +19,9 @@ const VANILLA_COLLISION_CONTEXT_ABOVE_EPSILON: f64 = 1.0e-5;
 const LOCAL_PLAYER_POWDER_SNOW_FALLING_COLLISION_FALL_DISTANCE: f64 = 2.5;
 const LOCAL_PLAYER_POWDER_SNOW_FALLING_COLLISION_HEIGHT: f64 = 0.9;
 const HAPPY_GHAST_STAYS_STILL_DATA_ID: u8 = 18;
+const CREAKING_CAN_MOVE_DATA_ID: u8 = 16;
+const VANILLA_POSE_EMERGING_ID: i32 = 13;
+const VANILLA_POSE_DIGGING_ID: i32 = 14;
 
 const LOCAL_PLAYER_HALF_WIDTH: f64 = 0.3;
 const MAX_COLLISION_BOXES: usize = 16;
@@ -225,10 +232,11 @@ impl WorldStore {
                         target.position.z + f64::from(target.bounds.max[2]),
                     ],
                 };
-                if !self.debug_entity_can_be_collided_with(
+                if !self.debug_entities_can_collide(
                     camera,
                     target.entity_id,
                     target_type,
+                    [target.position.x, target.position.y, target.position.z],
                     target_box,
                 ) || !world_collision_box_intersects_bounds(target_box, query)
                 {
@@ -237,6 +245,25 @@ impl WorldStore {
                 Some(target_box)
             })
             .collect()
+    }
+
+    fn debug_entities_can_collide(
+        &self,
+        camera: DebugCameraCollisionQuery,
+        target_id: i32,
+        target_type: i32,
+        target_position: [f64; 3],
+        target_box: WorldCollisionBox,
+    ) -> bool {
+        let can_be_collided_with =
+            self.debug_entity_can_be_collided_with(camera, target_id, target_type, target_box);
+        if !is_vanilla_boat_type(camera.source_entity_type_id)
+            && !is_vanilla_minecart_type(camera.source_entity_type_id)
+        {
+            return can_be_collided_with;
+        }
+        can_be_collided_with
+            || self.debug_entity_is_pushable(target_id, target_type, target_position)
     }
 
     fn debug_entity_can_be_collided_with(
@@ -278,6 +305,88 @@ impl WorldStore {
             .metadata_bool_for_entity(target_id, HAPPY_GHAST_STAYS_STILL_DATA_ID, false)
             .unwrap_or(false);
         player_is_above || happy_ghast_vehicle_pair || stays_still
+    }
+
+    fn debug_entity_is_pushable(
+        &self,
+        target_id: i32,
+        target_type: i32,
+        target_position: [f64; 3],
+    ) -> bool {
+        if is_vanilla_boat_type(target_type) || is_vanilla_minecart_type(target_type) {
+            return true;
+        }
+        if target_type == VANILLA_ENTITY_TYPE_PARROT_ID {
+            return true;
+        }
+        if matches!(
+            target_type,
+            VANILLA_ENTITY_TYPE_BAT_ID | VANILLA_ENTITY_TYPE_ARMOR_STAND_ID
+        ) {
+            return false;
+        }
+        if is_vanilla_abstract_horse_type(target_type) {
+            return self
+                .entities
+                .mount(target_id)
+                .is_some_and(|mount| mount.passengers.is_empty());
+        }
+        if !crate::vanilla_entity_type_is_living(target_type)
+            || !self
+                .entities
+                .living_entity_health(target_id)
+                .is_some_and(|health| health > 0.0)
+            || self.debug_living_entity_on_climbable(target_id, target_position)
+        {
+            return false;
+        }
+        if target_type == VANILLA_ENTITY_TYPE_WARDEN_ID
+            && self.entities.pose(target_id).is_some_and(|pose| {
+                matches!(pose, VANILLA_POSE_EMERGING_ID | VANILLA_POSE_DIGGING_ID)
+            })
+        {
+            return false;
+        }
+        if target_type == VANILLA_ENTITY_TYPE_CREAKING_ID
+            && !self
+                .entities
+                .metadata_bool_for_entity(target_id, CREAKING_CAN_MOVE_DATA_ID, true)
+                .unwrap_or(true)
+        {
+            return false;
+        }
+        true
+    }
+
+    fn debug_living_entity_on_climbable(&self, entity_id: i32, position: [f64; 3]) -> bool {
+        let pos = BlockPos {
+            x: block_floor(position[0]),
+            y: block_floor(position[1]),
+            z: block_floor(position[2]),
+        };
+        let Some(block) = self.probe_block(pos) else {
+            return false;
+        };
+        let Some(block_name) = block.block_name.as_deref() else {
+            return false;
+        };
+        if debug_climbable_block_name(block_name) {
+            return !(self.entities.is_fall_flying(entity_id).unwrap_or(false)
+                && debug_can_glide_through_block_name(block_name));
+        }
+        if !is_trapdoor_block_name(block_name)
+            || block.block_properties.get("open").map(String::as_str) != Some("true")
+        {
+            return false;
+        }
+        let Some(below) = self.probe_block(BlockPos {
+            y: pos.y.saturating_sub(1),
+            ..pos
+        }) else {
+            return false;
+        };
+        below.block_name.as_deref() == Some("minecraft:ladder")
+            && below.block_properties.get("facing") == block.block_properties.get("facing")
     }
 
     fn debug_entities_share_root_vehicle(&self, source_id: Option<i32>, target_id: i32) -> bool {
@@ -971,6 +1080,34 @@ fn is_chain_block_name(block_name: &str) -> bool {
 
 fn is_ladder_block_name(block_name: &str) -> bool {
     block_name == "minecraft:ladder"
+}
+
+fn debug_climbable_block_name(block_name: &str) -> bool {
+    matches!(
+        block_name,
+        "minecraft:ladder"
+            | "minecraft:vine"
+            | "minecraft:scaffolding"
+            | "minecraft:weeping_vines"
+            | "minecraft:weeping_vines_plant"
+            | "minecraft:twisting_vines"
+            | "minecraft:twisting_vines_plant"
+            | "minecraft:cave_vines"
+            | "minecraft:cave_vines_plant"
+    )
+}
+
+fn debug_can_glide_through_block_name(block_name: &str) -> bool {
+    matches!(
+        block_name,
+        "minecraft:vine"
+            | "minecraft:weeping_vines"
+            | "minecraft:weeping_vines_plant"
+            | "minecraft:twisting_vines"
+            | "minecraft:twisting_vines_plant"
+            | "minecraft:cave_vines"
+            | "minecraft:cave_vines_plant"
+    )
 }
 
 fn is_lantern_block_name(block_name: &str) -> bool {
@@ -3758,6 +3895,96 @@ mod tests {
             })
         );
         assert!(world.debug_camera_collision_boxes(6.0).is_empty());
+    }
+
+    #[test]
+    fn spectated_minecart_collision_expands_to_pushable_entities() {
+        let mut world = empty_world();
+        add_collision_test_entity(
+            &mut world,
+            30,
+            bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_MINECART_ID,
+            [0.5, 0.0, 0.5],
+        );
+        add_collision_test_entity(
+            &mut world,
+            31,
+            bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_COW_ID,
+            [2.5, 0.0, 0.5],
+        );
+        add_collision_test_entity(
+            &mut world,
+            32,
+            VANILLA_ENTITY_TYPE_ARMOR_STAND_ID,
+            [3.5, 0.0, 0.5],
+        );
+        add_collision_test_entity(&mut world, 33, VANILLA_ENTITY_TYPE_BAT_ID, [4.5, 0.0, 0.5]);
+        add_collision_test_entity(
+            &mut world,
+            34,
+            VANILLA_ENTITY_TYPE_PARROT_ID,
+            [5.5, 0.0, 0.5],
+        );
+        add_collision_test_entity(
+            &mut world,
+            35,
+            bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_HORSE_ID,
+            [6.5, 0.0, 0.5],
+        );
+        world.local_player.camera = crate::CameraState {
+            entity_id: Some(30),
+            follows_player: false,
+            entity_known: true,
+        };
+
+        let expected_ids = [31, 34, 35];
+        let expected = world
+            .entity_pick_targets()
+            .into_iter()
+            .filter(|target| expected_ids.contains(&target.entity_id))
+            .map(world_collision_box_from_pick_target)
+            .collect::<Vec<_>>();
+        assert_eq!(world.debug_camera_collision_boxes(6.0), expected);
+
+        assert!(
+            world.apply_set_passengers(bbb_protocol::packets::SetPassengers {
+                vehicle_id: 35,
+                passenger_ids: vec![31],
+            })
+        );
+        let horse_box = world
+            .entity_pick_targets()
+            .into_iter()
+            .find(|target| target.entity_id == 35)
+            .map(world_collision_box_from_pick_target)
+            .expect("horse bounds");
+        assert!(!world.debug_camera_collision_boxes(6.0).contains(&horse_box));
+    }
+
+    #[test]
+    fn living_pushability_rejects_entities_on_climbable_blocks() {
+        let mut world = empty_world();
+        add_collision_test_entity(
+            &mut world,
+            40,
+            bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_COW_ID,
+            [0.5, 0.0, 0.5],
+        );
+        assert!(world.debug_entity_is_pushable(
+            40,
+            bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_COW_ID,
+            [0.5, 0.0, 0.5],
+        ));
+        let ladder = vanilla_block_state_id(
+            "minecraft:ladder",
+            [("facing", "north"), ("waterlogged", "false")],
+        );
+        set_block(&mut world, BlockPos { x: 0, y: 0, z: 0 }, ladder);
+        assert!(!world.debug_entity_is_pushable(
+            40,
+            bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_COW_ID,
+            [0.5, 0.0, 0.5],
+        ));
     }
 
     #[test]

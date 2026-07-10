@@ -680,6 +680,12 @@ impl EntityStore {
         ))
     }
 
+    pub(crate) fn is_fall_flying(&self, id: i32) -> Option<bool> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let metadata = self.ecs.get::<&EntityMetadata>(entity).ok()?;
+        Some(entity_is_fall_flying(&metadata.data_values))
+    }
+
     /// Vanilla `Player.getAbsorptionAmount()`: the synced
     /// `DATA_PLAYER_ABSORPTION_ID` float, defaulting to the define-time `0.0F`
     /// (Player.java:224).

@@ -8143,3 +8143,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   仍统一投影为 white 2.5px cuboid strokes。tests 覆盖 entity-before-block 集合、cow
   排除、boat/shulker 纳入、同车排除和 happy-ghast metadata gates。ledger 仅保留相机
   本身是 boat/minecart 时 `canVehicleCollide` 的 `isPushable` 扩展及 100ms cache。
+
+## 2026-07-10：Vehicle-source collision debug predicates
+
+- [x] spectated boat/minecart 的 `canVehicleCollide`（P2 world slice）：依据 vanilla
+  26.1 `AbstractBoat.canVehicleCollide`、`Entity.isPushable` 及全部 override，在既有
+  `canBeCollidedWith` 之外纳入 pushable target。实现覆盖 living alive/spectator/
+  climbable gate、fall-flying 穿 vines、matching ladder+open-trapdoor、boat/minecart、
+  bat、armor stand、parrot、horse vehicle、warden digging/emerging pose 与 creaking
+  can-move metadata；仍统一排除同一 root vehicle。tests 覆盖 spectated minecart 的
+  cow/parrot/horse 纳入、armor-stand/bat 排除、horse vehicle 切换与 ladder gate。
+  ledger 相应只保留 `CollisionBoxRenderer` 的 vanilla 100ms refresh cache。
