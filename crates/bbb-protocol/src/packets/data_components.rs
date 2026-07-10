@@ -280,6 +280,8 @@ pub struct DataComponentPatchSummary {
     #[serde(default)]
     pub frog_variant_id: Option<i32>,
     #[serde(default)]
+    pub zombie_nautilus_variant_id: Option<i32>,
+    #[serde(default)]
     pub lodestone_target: Option<LodestoneTargetSummary>,
     #[serde(default)]
     pub lodestone_tracked: Option<bool>,
@@ -3283,6 +3285,29 @@ mod tests {
                 added: 1,
                 added_type_ids: vec![100],
                 frog_variant_id: Some(2),
+                ..DataComponentPatchSummary::default()
+            }
+        );
+        assert!(decoder.is_empty());
+    }
+
+    #[test]
+    fn decodes_zombie_nautilus_variant_holder_registry_id() {
+        let mut payload = Encoder::new();
+        payload.write_var_i32(1);
+        payload.write_var_i32(0);
+        payload.write_var_i32(99);
+        payload.write_var_i32(1);
+
+        let payload = payload.into_inner();
+        let mut decoder = Decoder::new(&payload);
+        let patch = decode_data_component_patch_summary(&mut decoder).unwrap();
+        assert_eq!(
+            patch,
+            DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![99],
+                zombie_nautilus_variant_id: Some(1),
                 ..DataComponentPatchSummary::default()
             }
         );

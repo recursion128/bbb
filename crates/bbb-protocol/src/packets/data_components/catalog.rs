@@ -380,7 +380,7 @@ static VANILLA_DATA_COMPONENTS: &[DataComponentDescriptor] = &[
         99,
         "minecraft:zombie_nautilus/variant",
         true,
-        skip_holder_registry,
+        decode_zombie_nautilus_variant,
     ),
     component(100, "minecraft:frog/variant", true, decode_frog_variant),
     component(101, "minecraft:horse/variant", true, decode_builtin_enum),
@@ -1113,6 +1113,15 @@ fn decode_frog_variant(
     summary: &mut DataComponentPatchSummary,
 ) -> Result<()> {
     summary.frog_variant_id = Some(decode_holder_registry_id(decoder)?);
+    Ok(())
+}
+
+fn decode_zombie_nautilus_variant(
+    _type_id: i32,
+    decoder: &mut Decoder<'_>,
+    summary: &mut DataComponentPatchSummary,
+) -> Result<()> {
+    summary.zombie_nautilus_variant_id = Some(decode_holder_registry_id(decoder)?);
     Ok(())
 }
 

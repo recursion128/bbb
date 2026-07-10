@@ -9123,3 +9123,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   三项 match 收敛为可校验的共享资源查询，entity 仍对非法 id 回退 temperate，
   component encoder 则安全省略 unknown id。大型 component patch test 从 87
   扩展到 88 个 added entry，并覆盖 descriptor holder、cold 分支与边界。
+
+## 2026-07-10：ItemStack zombie-nautilus-variant descriptor and save
+
+- [x] minecraft:zombie_nautilus/variant 的 descriptor decode 与 named-holder
+  持久化（P2 protocol + native input）：依据 vanilla 26.1
+  `ZombieNautilusVariant.CODEC/STREAM_CODEC` 与两项 bootstrap 顺序，protocol
+  type id 99 不再 skip holder，而是写入独立 `zombie_nautilus_variant_id`；native
+  把 entity save 的 temperate/warm match 收敛为可校验共享查询，entity 越界仍
+  回退 temperate，component unknown id 安全省略。大型 component patch test 从
+  88 扩展到 89 个 added entry，并覆盖 descriptor warm holder 与查询边界。

@@ -6438,15 +6438,16 @@ fn debug_push_zombie_nautilus_additional_save_data(entity: &EntityState, fields:
     .unwrap_or(ZOMBIE_NAUTILUS_DEFAULT_VARIANT_ID);
     fields.push(format!(
         "variant: {}",
-        debug_snbt_string(debug_zombie_nautilus_variant_resource_id(variant))
+        debug_snbt_string(
+            zombie_nautilus_variant_resource_id(variant).unwrap_or("minecraft:temperate")
+        )
     ));
 }
 
-fn debug_zombie_nautilus_variant_resource_id(variant: i32) -> &'static str {
-    match variant {
-        1 => "minecraft:warm",
-        _ => "minecraft:temperate",
-    }
+fn zombie_nautilus_variant_resource_id(variant: i32) -> Option<&'static str> {
+    ["minecraft:temperate", "minecraft:warm"]
+        .get(usize::try_from(variant).ok()?)
+        .copied()
 }
 
 fn debug_dye_color_legacy_save_id(color: i32) -> i32 {
