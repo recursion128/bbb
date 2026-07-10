@@ -8556,3 +8556,11 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   字符串转义、signed zero 及 NaN/Infinity。primitive component focused test 扩展为 15 个
   added entry，并覆盖嵌套 compound、三类数组、同质 double list、全部数值 suffix 和
   quoted key/value；custom-data 从剩余 component 总账本移入已支持子集。
+
+## 2026-07-10：ItemStack block-state component save codec
+
+- [x] `minecraft:block_state` 持久化 component（P2 native input）：依据 vanilla 26.1
+  `DataComponents.BLOCK_STATE` 与 `BlockItemStateProperties.CODEC`，复用 protocol 已保留
+  的 type id `76` / string map，把属性映射输出为 SNBT compound；component patch
+  focused test 扩展到 16 个 added entry，覆盖 wire-order placement、compound key quoting
+  与 string value escaping。block-state 从剩余 component 总账本移入已支持子集。

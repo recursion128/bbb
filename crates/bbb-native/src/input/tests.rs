@@ -8525,8 +8525,8 @@ fn local_firework_save_uses_parent_lifecycle_synced_item_codec_and_client_life()
 #[test]
 fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
     let patch = DataComponentPatchSummary {
-        added: 15,
-        added_type_ids: vec![0, 1, 2, 3, 4, 10, 12, 21, 22, 44, 45, 46, 63, 68, 69],
+        added: 16,
+        added_type_ids: vec![0, 1, 2, 3, 4, 10, 12, 21, 22, 44, 45, 46, 63, 68, 69, 76],
         removed_type_ids: vec![6],
         custom_data: Some(NbtSummaryValue::Compound(vec![
             NbtSummaryEntry {
@@ -8597,6 +8597,10 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
         firework_explosion_has_twinkle: Some(false),
         fireworks_flight_duration: Some(2),
         fireworks_explosions_count: Some(0),
+        block_state_properties: BTreeMap::from([
+            ("facing".to_string(), "south".to_string()),
+            ("quoted key".to_string(), "value with 'quote'".to_string()),
+        ]),
         ..DataComponentPatchSummary::default()
     };
     let stack = ProtocolItemStackSummary {
@@ -8620,7 +8624,9 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
          \"minecraft:ominous_bottle_amplifier\": 3, \
          \"minecraft:firework_explosion\": {shape: \"burst\", colors: [7833753], \
          fade_colors: [11189196], has_trail: 1b}, \
-         \"minecraft:fireworks\": {flight_duration: 2}, \"!minecraft:custom_name\": {}}}"
+         \"minecraft:fireworks\": {flight_duration: 2}, \
+         \"minecraft:block_state\": {facing: \"south\", \
+         \"quoted key\": \"value with 'quote'\"}, \"!minecraft:custom_name\": {}}}"
     );
 }
 

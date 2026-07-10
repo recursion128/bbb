@@ -4646,6 +4646,19 @@ fn debug_supported_added_component_snbt(
             has_twinkle: patch.firework_explosion_has_twinkle.unwrap_or(false),
         }),
         FIREWORKS_COMPONENT_TYPE_ID => debug_fireworks_component_snbt(patch),
+        76 => format!(
+            "{{{}}}",
+            patch
+                .block_state_properties
+                .iter()
+                .map(|(name, value)| format!(
+                    "{}: {}",
+                    debug_snbt_compound_key(name),
+                    debug_snbt_string(value)
+                ))
+                .collect::<Vec<_>>()
+                .join(", ")
+        ),
         _ => return None,
     };
     Some(format!("{}: {value}", debug_snbt_string(resource_id)))
@@ -4669,6 +4682,7 @@ fn debug_supported_component_resource_id(type_id: i32) -> Option<&'static str> {
         63 => "minecraft:ominous_bottle_amplifier",
         68 => "minecraft:firework_explosion",
         FIREWORKS_COMPONENT_TYPE_ID => "minecraft:fireworks",
+        76 => "minecraft:block_state",
         _ => return None,
     })
 }
