@@ -18,11 +18,12 @@ pub use data_components::{
     ItemEnchantmentSummary, ItemRaritySummary, ItemStackTemplateSummary, ItemUseAnimationSummary,
     JukeboxSongSummary, LodestoneTargetSummary, MapPostProcessingSummary, MobEffectDetailsSummary,
     MobEffectInstanceSummary, NbtSummaryEntry, NbtSummaryValue, PaintingVariantSummary,
-    PlayerModelTypeSummary, PlayerSkinPatchSummary, ProfileSkinTextureSummary,
-    ProfileTextureSummary, ProfileTexturesSummary, ResolvableProfileKindSummary,
-    ResolvableProfileSummary, ResourceTextureSummary, SoundEventSummary,
-    SuspiciousStewEffectSummary, SwingAnimationSummary, SwingAnimationTypeSummary,
-    TrimMaterialSummary, TrimPatternSummary, UseEffectsSummary, WrittenBookContentSummary,
+    PiercingWeaponSummary, PlayerModelTypeSummary, PlayerSkinPatchSummary,
+    ProfileSkinTextureSummary, ProfileTextureSummary, ProfileTexturesSummary,
+    ResolvableProfileKindSummary, ResolvableProfileSummary, ResourceTextureSummary,
+    SoundEventSummary, SuspiciousStewEffectSummary, SwingAnimationSummary,
+    SwingAnimationTypeSummary, TrimMaterialSummary, TrimPatternSummary, UseEffectsSummary,
+    WrittenBookContentSummary,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

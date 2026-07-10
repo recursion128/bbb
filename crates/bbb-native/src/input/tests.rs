@@ -8588,11 +8588,11 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
         EquipmentAssetCatalog::default(),
     );
     let patch = DataComponentPatchSummary {
-        added: 67,
+        added: 68,
         added_type_ids: vec![
             0, 1, 2, 3, 4, 5, 7, 10, 12, 17, 18, 19, 21, 22, 23, 25, 26, 29, 30, 31, 33, 34, 35,
-            40, 43, 44, 45, 46, 47, 49, 50, 52, 54, 57, 58, 59, 60, 63, 66, 67, 68, 69, 70, 71, 73,
-            74, 75, 76, 77, 78, 79, 80, 84, 85, 86, 87, 88, 89, 90, 91, 92, 101, 103, 104, 107,
+            38, 40, 43, 44, 45, 46, 47, 49, 50, 52, 54, 57, 58, 59, 60, 63, 66, 67, 68, 69, 70, 71,
+            73, 74, 75, 76, 77, 78, 79, 80, 84, 85, 86, 87, 88, 89, 90, 91, 92, 101, 103, 104, 107,
             108, 109,
         ],
         removed_type_ids: vec![6],
@@ -8691,6 +8691,20 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
         enchantable_value: Some(15),
         repairable_item_registry_ids: vec![0, 1],
         tooltip_style: Some("minecraft:rare".to_string()),
+        piercing_weapon: Some(bbb_protocol::packets::PiercingWeaponSummary {
+            deals_knockback: false,
+            dismounts: true,
+            sound: Some(bbb_protocol::packets::SoundEventSummary {
+                registry_id: None,
+                sound_id: Some("minecraft:item.trident.throw".to_string()),
+                fixed_range_bits: None,
+            }),
+            hit_sound: Some(bbb_protocol::packets::SoundEventSummary {
+                registry_id: Some(7),
+                sound_id: None,
+                fixed_range_bits: None,
+            }),
+        }),
         swing_animation: Some(bbb_protocol::packets::SwingAnimationSummary {
             animation_type: bbb_protocol::packets::SwingAnimationTypeSummary::Stab,
             duration: 17,
@@ -8965,6 +8979,9 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
          \"minecraft:repairable\": {items: [\"minecraft:angler_pottery_sherd\", \
          \"minecraft:archer_pottery_sherd\"]}, \"minecraft:glider\": {}, \
          \"minecraft:tooltip_style\": \"minecraft:rare\", \
+         \"minecraft:piercing_weapon\": {deals_knockback: 0b, dismounts: 1b, \
+         sound: {sound_id: \"minecraft:item.trident.throw\"}, \
+         hit_sound: \"minecraft:ambient.cave\"}, \
          \"minecraft:swing_animation\": {type: \"stab\", duration: 17}, \
          \"minecraft:dye\": \"red\", \"minecraft:dyed_color\": 1122867, \
          \"minecraft:map_color\": 4478310, \"minecraft:map_id\": 42, \
@@ -9103,6 +9120,27 @@ fn item_stack_snbt_preserves_break_sound_holder_shapes() {
         }),
         None
     );
+}
+
+#[test]
+fn item_stack_snbt_omits_default_piercing_weapon_fields_and_unknown_sounds() {
+    let mut weapon = bbb_protocol::packets::PiercingWeaponSummary {
+        deals_knockback: true,
+        dismounts: false,
+        sound: None,
+        hit_sound: None,
+    };
+    assert_eq!(
+        debug_piercing_weapon_component_snbt(&weapon),
+        Some("{}".to_string())
+    );
+
+    weapon.sound = Some(bbb_protocol::packets::SoundEventSummary {
+        registry_id: Some(1902),
+        sound_id: None,
+        fixed_range_bits: None,
+    });
+    assert_eq!(debug_piercing_weapon_component_snbt(&weapon), None);
 }
 
 #[test]

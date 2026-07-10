@@ -8878,3 +8878,15 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   native component patch test 从 66 扩展到 67 个 added entry，并新增默认空
   compound、负 int、负零与 Infinity fallback 覆盖；weapon 从 AbstractArrow
   与 component 剩余总账本移入已支持子集。
+
+## 2026-07-10：ItemStack piercing-weapon save codec
+
+- [x] minecraft:piercing_weapon 持久化 component 的 vanilla/direct 分支（P2
+  protocol + native input）：依据 vanilla 26.1
+  PiercingWeapon.CODEC/STREAM_CODEC，新增 deals_knockback、dismounts 与两个
+  optional SoundEvent holder 的完整摘要，并从 inventory surface 重导出。native
+  复刻 true/false 默认字段省略，复用 break-sound 的 direct compound 与 1902 项
+  vanilla registry key 还原。protocol combat-component test 覆盖
+  true/true/direct/none；native component patch test 从 67 扩展到 68 个 added
+  entry，并覆盖默认空 compound、direct + registry sound 以及 unknown sound id
+  fallback。自定义服务端 SoundEvent 动态排序仍保留在 registry-backed 总账本。

@@ -118,6 +118,8 @@ pub struct DataComponentPatchSummary {
     #[serde(default)]
     pub repairable_item_tag: Option<String>,
     #[serde(default)]
+    pub piercing_weapon: Option<PiercingWeaponSummary>,
+    #[serde(default)]
     pub swing_animation: Option<SwingAnimationSummary>,
     #[serde(default)]
     pub custom_model_data_floats: CustomModelDataFloats,
@@ -313,6 +315,14 @@ pub struct SoundEventSummary {
     pub registry_id: Option<i32>,
     pub sound_id: Option<String>,
     pub fixed_range_bits: Option<u32>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PiercingWeaponSummary {
+    pub deals_knockback: bool,
+    pub dismounts: bool,
+    pub sound: Option<SoundEventSummary>,
+    pub hit_sound: Option<SoundEventSummary>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -826,6 +836,9 @@ fn decode_typed_data_component_patch_summary(
                 let items = decode_holder_set_summary(decoder)?;
                 summary.repairable_item_registry_ids = items.registry_ids;
                 summary.repairable_item_tag = items.tag;
+            }
+            38 => {
+                summary.piercing_weapon = Some(decode_piercing_weapon_summary(decoder)?);
             }
             40 => {
                 summary.swing_animation = Some(decode_swing_animation(decoder)?);
@@ -1462,10 +1475,17 @@ fn decode_optional_holder_set(decoder: &mut Decoder<'_>) -> Result<()> {
 }
 
 fn decode_optional_sound_event_holder(decoder: &mut Decoder<'_>) -> Result<()> {
-    if decoder.read_bool()? {
-        decode_sound_event_holder(decoder)?;
-    }
+    let _ = decode_optional_sound_event_holder_summary(decoder)?;
     Ok(())
+}
+
+fn decode_optional_sound_event_holder_summary(
+    decoder: &mut Decoder<'_>,
+) -> Result<Option<SoundEventSummary>> {
+    if decoder.read_bool()? {
+        return decode_sound_event_holder_summary(decoder).map(Some);
+    }
+    Ok(None)
 }
 
 fn decode_optional_global_pos(decoder: &mut Decoder<'_>) -> Result<Option<LodestoneTargetSummary>> {
@@ -1960,11 +1980,17 @@ fn decode_item_damage_function(decoder: &mut Decoder<'_>) -> Result<()> {
 }
 
 fn decode_piercing_weapon(decoder: &mut Decoder<'_>) -> Result<()> {
-    decoder.read_bool()?;
-    decoder.read_bool()?;
-    decode_optional_sound_event_holder(decoder)?;
-    decode_optional_sound_event_holder(decoder)?;
+    let _ = decode_piercing_weapon_summary(decoder)?;
     Ok(())
+}
+
+fn decode_piercing_weapon_summary(decoder: &mut Decoder<'_>) -> Result<PiercingWeaponSummary> {
+    Ok(PiercingWeaponSummary {
+        deals_knockback: decoder.read_bool()?,
+        dismounts: decoder.read_bool()?,
+        sound: decode_optional_sound_event_holder_summary(decoder)?,
+        hit_sound: decode_optional_sound_event_holder_summary(decoder)?,
+    })
 }
 
 fn decode_kinetic_weapon(decoder: &mut Decoder<'_>) -> Result<()> {
@@ -4226,6 +4252,16 @@ mod tests {
                 added: 4,
                 added_type_ids: vec![36, 37, 38, 39],
                 removed_type_ids: Vec::new(),
+                piercing_weapon: Some(PiercingWeaponSummary {
+                    deals_knockback: true,
+                    dismounts: true,
+                    sound: Some(SoundEventSummary {
+                        registry_id: None,
+                        sound_id: Some("minecraft:item.mace.smash_air".to_string()),
+                        fixed_range_bits: None,
+                    }),
+                    hit_sound: None,
+                }),
                 ..DataComponentPatchSummary::default()
             }
         );

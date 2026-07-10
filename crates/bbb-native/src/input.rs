@@ -4685,6 +4685,7 @@ fn debug_supported_added_component_snbt(
         33 => debug_repairable_component_snbt(patch, item_runtime)?,
         34 => "{}".to_string(),
         35 => debug_snbt_string(patch.tooltip_style.as_deref()?),
+        38 => debug_piercing_weapon_component_snbt(patch.piercing_weapon.as_ref()?)?,
         40 => debug_swing_animation_component_snbt(patch.swing_animation?)?,
         43 => debug_snbt_string(debug_dye_color_name(patch.dye_color_id?)),
         44 => patch.dyed_color?.to_string(),
@@ -4788,6 +4789,7 @@ fn debug_supported_component_resource_id(type_id: i32) -> Option<&'static str> {
         33 => "minecraft:repairable",
         34 => "minecraft:glider",
         35 => "minecraft:tooltip_style",
+        38 => "minecraft:piercing_weapon",
         40 => "minecraft:swing_animation",
         43 => "minecraft:dye",
         44 => "minecraft:dyed_color",
@@ -5497,6 +5499,31 @@ fn debug_sound_event_component_snbt(
         fields.push(format!(
             "range: {}f",
             debug_nbt_java_float_string(f32::from_bits(bits))
+        ));
+    }
+    Some(format!("{{{}}}", fields.join(", ")))
+}
+
+fn debug_piercing_weapon_component_snbt(
+    weapon: &bbb_protocol::packets::PiercingWeaponSummary,
+) -> Option<String> {
+    let mut fields = Vec::new();
+    if !weapon.deals_knockback {
+        fields.push("deals_knockback: 0b".to_string());
+    }
+    if weapon.dismounts {
+        fields.push("dismounts: 1b".to_string());
+    }
+    if let Some(sound) = weapon.sound.as_ref() {
+        fields.push(format!(
+            "sound: {}",
+            debug_sound_event_component_snbt(sound)?
+        ));
+    }
+    if let Some(sound) = weapon.hit_sound.as_ref() {
+        fields.push(format!(
+            "hit_sound: {}",
+            debug_sound_event_component_snbt(sound)?
         ));
     }
     Some(format!("{{{}}}", fields.join(", ")))
