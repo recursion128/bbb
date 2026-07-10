@@ -9153,3 +9153,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   entity save 与 component encoders 共用可校验查询，分别保持默认 fallback 或
   unknown-id 省略。大型 component patch test 从 91 扩展到 93 个 added entry，
   并覆盖双 descriptor 与 cold/moody 分支。
+
+## 2026-07-10：ItemStack chicken variant descriptors and save
+
+- [x] minecraft:chicken/variant 与 minecraft:chicken/sound_variant 的
+  descriptor decode 与 named-holder 持久化（P2 protocol + native input）：依据
+  vanilla 26.1 fixed-registry Codec 及 bootstrap 顺序（variant 为
+  temperate/warm/cold，sound 为 classic/picky），protocol type id 97/98 分别
+  写入独立 holder id；native entity save 与 component encoders 共用可校验查询，
+  保持默认 fallback 或 unknown-id 省略。大型 component patch test 从 93 扩展到
+  95 个 added entry，并覆盖双 descriptor 与 cold/picky 分支。

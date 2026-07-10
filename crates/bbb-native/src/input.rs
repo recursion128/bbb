@@ -6557,27 +6557,26 @@ fn debug_push_chicken_additional_save_data(entity: &EntityState, fields: &mut Ve
     fields.push(format!("EggLayTime: {CHICKEN_DEFAULT_EGG_LAY_TIME}"));
     fields.push(format!(
         "variant: {}",
-        debug_snbt_string(debug_chicken_variant_resource_id(variant))
+        debug_snbt_string(chicken_variant_resource_id(variant).unwrap_or("minecraft:temperate"))
     ));
     fields.push(format!(
         "sound_variant: {}",
-        debug_snbt_string(debug_chicken_sound_variant_resource_id(sound_variant))
+        debug_snbt_string(
+            chicken_sound_variant_resource_id(sound_variant).unwrap_or("minecraft:classic")
+        )
     ));
 }
 
-fn debug_chicken_variant_resource_id(variant: i32) -> &'static str {
-    match variant {
-        1 => "minecraft:warm",
-        2 => "minecraft:cold",
-        _ => "minecraft:temperate",
-    }
+fn chicken_variant_resource_id(variant: i32) -> Option<&'static str> {
+    ["minecraft:temperate", "minecraft:warm", "minecraft:cold"]
+        .get(usize::try_from(variant).ok()?)
+        .copied()
 }
 
-fn debug_chicken_sound_variant_resource_id(variant: i32) -> &'static str {
-    match variant {
-        1 => "minecraft:picky",
-        _ => "minecraft:classic",
-    }
+fn chicken_sound_variant_resource_id(variant: i32) -> Option<&'static str> {
+    ["minecraft:classic", "minecraft:picky"]
+        .get(usize::try_from(variant).ok()?)
+        .copied()
 }
 
 fn debug_push_cow_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {

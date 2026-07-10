@@ -264,7 +264,7 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   pot-decoration/
   container/block-state/villager-variant/wolf-variant/wolf-sound-variant/
   pig-variant/pig-sound-variant/cow-variant/cow-sound-variant/
-  zombie-nautilus-variant/frog-variant named holders/
+  chicken-variant/chicken-sound-variant/zombie-nautilus-variant/frog-variant named holders/
   built-in animal/color enum (wolf/cat collars, fox,
   salmon, parrot, mooshroom, rabbit, horse, llama, axolotl, sheep, shulker,
   and tropical-fish) subset on throwable/firework/

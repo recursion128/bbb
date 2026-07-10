@@ -369,12 +369,17 @@ static VANILLA_DATA_COMPONENTS: &[DataComponentDescriptor] = &[
         true,
         decode_cow_sound_variant,
     ),
-    component(97, "minecraft:chicken/variant", true, skip_holder_registry),
+    component(
+        97,
+        "minecraft:chicken/variant",
+        true,
+        decode_chicken_variant,
+    ),
     component(
         98,
         "minecraft:chicken/sound_variant",
         true,
-        skip_holder_registry,
+        decode_chicken_sound_variant,
     ),
     component(
         99,
@@ -1158,6 +1163,24 @@ fn decode_cow_sound_variant(
     summary: &mut DataComponentPatchSummary,
 ) -> Result<()> {
     summary.cow_sound_variant_id = Some(decode_holder_registry_id(decoder)?);
+    Ok(())
+}
+
+fn decode_chicken_variant(
+    _type_id: i32,
+    decoder: &mut Decoder<'_>,
+    summary: &mut DataComponentPatchSummary,
+) -> Result<()> {
+    summary.chicken_variant_id = Some(decode_holder_registry_id(decoder)?);
+    Ok(())
+}
+
+fn decode_chicken_sound_variant(
+    _type_id: i32,
+    decoder: &mut Decoder<'_>,
+    summary: &mut DataComponentPatchSummary,
+) -> Result<()> {
+    summary.chicken_sound_variant_id = Some(decode_holder_registry_id(decoder)?);
     Ok(())
 }
 

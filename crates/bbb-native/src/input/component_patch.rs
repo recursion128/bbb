@@ -101,6 +101,8 @@ static PERSISTENT_SNBT_ENCODERS: &[PersistentSnbtEncoderDescriptor] = &[
     encoder(94, encode_named_variant),
     encoder(95, encode_named_variant),
     encoder(96, encode_named_variant),
+    encoder(97, encode_named_variant),
+    encoder(98, encode_named_variant),
     encoder(99, encode_named_variant),
     encoder(100, encode_named_variant),
     encoder(101, encode_builtin_enum),
@@ -757,6 +759,8 @@ fn encode_named_variant(
         94 => pig_sound_variant_resource_id(patch.pig_sound_variant_id?)?,
         95 => cow_variant_resource_id(patch.cow_variant_id?)?,
         96 => cow_sound_variant_resource_id(patch.cow_sound_variant_id?)?,
+        97 => chicken_variant_resource_id(patch.chicken_variant_id?)?,
+        98 => chicken_sound_variant_resource_id(patch.chicken_sound_variant_id?)?,
         99 => zombie_nautilus_variant_resource_id(patch.zombie_nautilus_variant_id?)?,
         100 => frog_variant_resource_id(patch.frog_variant_id?)?,
         _ => return None,
@@ -826,7 +830,7 @@ mod tests {
 
     #[test]
     fn encoder_registry_is_unique_sorted_and_persistent() {
-        assert_eq!(PERSISTENT_SNBT_ENCODERS.len(), 93);
+        assert_eq!(PERSISTENT_SNBT_ENCODERS.len(), 95);
         let mut ids = HashSet::new();
         let mut previous = None;
         for descriptor in PERSISTENT_SNBT_ENCODERS {
@@ -1176,6 +1180,8 @@ mod tests {
             pig_sound_variant_id: Some(1),
             cow_variant_id: Some(2),
             cow_sound_variant_id: Some(1),
+            chicken_variant_id: Some(2),
+            chicken_sound_variant_id: Some(1),
             ..Default::default()
         };
         assert_eq!(
@@ -1207,6 +1213,14 @@ mod tests {
             Some("\"minecraft:moody\"".to_string())
         );
         assert_eq!(
+            encode_added_component_value_snbt(97, &patch, None),
+            Some("\"minecraft:cold\"".to_string())
+        );
+        assert_eq!(
+            encode_added_component_value_snbt(98, &patch, None),
+            Some("\"minecraft:picky\"".to_string())
+        );
+        assert_eq!(
             encode_added_component_value_snbt(99, &patch, None),
             Some("\"minecraft:warm\"".to_string())
         );
@@ -1236,6 +1250,12 @@ mod tests {
         patch.cow_sound_variant_id = Some(2);
         assert_eq!(encode_added_component_value_snbt(96, &patch, None), None);
         patch.cow_sound_variant_id = Some(1);
+        patch.chicken_variant_id = Some(3);
+        assert_eq!(encode_added_component_value_snbt(97, &patch, None), None);
+        patch.chicken_variant_id = Some(2);
+        patch.chicken_sound_variant_id = Some(2);
+        assert_eq!(encode_added_component_value_snbt(98, &patch, None), None);
+        patch.chicken_sound_variant_id = Some(1);
         patch.zombie_nautilus_variant_id = Some(2);
         assert_eq!(encode_added_component_value_snbt(99, &patch, None), None);
         patch.zombie_nautilus_variant_id = Some(1);
