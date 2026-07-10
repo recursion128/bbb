@@ -117,7 +117,12 @@ use bbb_world::{
     VANILLA_ENTITY_SHARED_FLAG_INVISIBLE as ENTITY_SHARED_FLAG_INVISIBLE,
     VANILLA_ENTITY_SILENT_DATA_ID as ENTITY_SILENT_DATA_ID,
     VANILLA_ENTITY_TICKS_FROZEN_DATA_ID as ENTITY_TICKS_FROZEN_DATA_ID,
-    VANILLA_EXPERIENCE_ORB_VALUE_DATA_ID, VANILLA_MOB_FLAGS_DATA_ID as MOB_FLAGS_DATA_ID,
+    VANILLA_EXPERIENCE_ORB_VALUE_DATA_ID,
+    VANILLA_HANGING_ENTITY_DIRECTION_DATA_ID as HANGING_ENTITY_DIRECTION_DATA_ID,
+    VANILLA_ITEM_FRAME_DEFAULT_ROTATION,
+    VANILLA_ITEM_FRAME_ITEM_DATA_ID as ITEM_FRAME_ITEM_DATA_ID,
+    VANILLA_ITEM_FRAME_ROTATION_DATA_ID as ITEM_FRAME_ROTATION_DATA_ID,
+    VANILLA_MOB_FLAGS_DATA_ID as MOB_FLAGS_DATA_ID,
     VANILLA_MOB_FLAG_LEFT_HANDED as MOB_FLAG_LEFT_HANDED, VANILLA_MOB_FLAG_NO_AI as MOB_FLAG_NO_AI,
 };
 use tokio::sync::mpsc;
@@ -323,10 +328,6 @@ const BASE_SPAWNER_DEFAULT_MAX_NEARBY_ENTITIES: i16 = 6;
 const BASE_SPAWNER_DEFAULT_REQUIRED_PLAYER_RANGE: i16 = 16;
 const BASE_SPAWNER_DEFAULT_SPAWN_RANGE: i16 = 4;
 const TNT_MINECART_DEFAULT_FUSE: i32 = -1;
-const HANGING_ENTITY_DIRECTION_DATA_ID: u8 = 8;
-const ITEM_FRAME_ITEM_DATA_ID: u8 = 9;
-const ITEM_FRAME_ROTATION_DATA_ID: u8 = 10;
-const ITEM_FRAME_DEFAULT_ROTATION: i8 = 0;
 /// Server-private NBT field: never enters add-entity or metadata, so a remote
 /// client-side ItemFrame remains at the constructor value.
 const ITEM_FRAME_DEFAULT_DROP_CHANCE: f32 = 1.0;
@@ -5989,7 +5990,7 @@ fn debug_push_item_frame_additional_save_data(
     }
     let rotation = debug_entity_data_int_present(entity, ITEM_FRAME_ROTATION_DATA_ID)
         .map(|rotation| rotation.rem_euclid(8) as i8)
-        .unwrap_or(ITEM_FRAME_DEFAULT_ROTATION);
+        .unwrap_or(VANILLA_ITEM_FRAME_DEFAULT_ROTATION as i8);
     let drop_chance =
         debug_snbt_float(ITEM_FRAME_DEFAULT_DROP_CHANCE).expect("finite item-frame drop chance");
     let facing = debug_item_frame_facing_legacy_id(entity);

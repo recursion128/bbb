@@ -1,15 +1,18 @@
 use bbb_protocol::packets::{EntityDataValue, EntityDataValueKind, ItemStackSummary};
 
-use crate::entities::{EntityVec3, ItemFrameFacing};
+use crate::entities::{
+    EntityVec3, ItemFrameFacing,
+    VANILLA_HANGING_ENTITY_DIRECTION_DATA_ID as HANGING_DATA_DIRECTION_ID,
+    VANILLA_ITEM_FRAME_DEFAULT_ROTATION,
+    VANILLA_ITEM_FRAME_ITEM_DATA_ID as ITEM_FRAME_DATA_ITEM_ID,
+    VANILLA_ITEM_FRAME_ROTATION_DATA_ID as ITEM_FRAME_DATA_ROTATION_ID,
+};
 
 use super::{
     entity_data_direction, vanilla_direction_from_3d_data, EntityPickBoundsState, VanillaAxis,
     VanillaDirection,
 };
 
-const HANGING_DATA_DIRECTION_ID: u8 = 8;
-const ITEM_FRAME_DATA_ITEM_ID: u8 = 9;
-const ITEM_FRAME_DATA_ROTATION_ID: u8 = 10;
 const PAINTING_DATA_VARIANT_ID: u8 = 9;
 const ITEM_FRAME_DEPTH: f32 = 0.0625;
 const ITEM_FRAME_DEFAULT_SIZE: f32 = 0.75;
@@ -149,7 +152,7 @@ pub(crate) fn item_frame_rotation(data_values: &[EntityDataValue]) -> u8 {
             EntityDataValueKind::Int(rotation) => Some(rotation.rem_euclid(8) as u8),
             _ => None,
         })
-        .unwrap_or(0)
+        .unwrap_or(VANILLA_ITEM_FRAME_DEFAULT_ROTATION as u8)
 }
 
 /// The non-empty item displayed in the frame (vanilla `ItemFrame.getItem`, the `DATA_ITEM` datum), or

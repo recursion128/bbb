@@ -9487,3 +9487,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   marker/small pick bounds、model flags/pose 与完整 save-NBT；schema tests 锁定直接继承偏移、
   serializer 和所有非标量默认值。`schema.rs` 超过 1000 行后按组织规范审查，仍是单一明确
   semantic owner，未为行数制造无收益拆分。
+
+## 2026-07-10：Entity metadata schema phase 6（HangingEntity / ItemFrame）
+
+- [x] entity metadata schema 的 block-attached 分支：确认 `BlockAttachedEntity` 无
+  accessor，新增 `Entity -> HangingEntity -> ItemFrame` lineage，集中声明 DIRECTION id 8/
+  SOUTH(3) default 与 ITEM_STACK/INT ids 9/10、empty/0 defaults。world block-attached
+  direction/item/rotation/map projection 与 native F3+I item-frame save projection 删除本地
+  ids/default，统一引用 schema；focused tests 复验 direction spawn fallback、rotation wrap、
+  empty/non-empty item、map id/pick bounds、save-NBT 和 filled-map renderer。未把 ItemFrame 的
+  ids 错误压平到 Entity，父层继承 offset 由 descriptor lineage 锁定。

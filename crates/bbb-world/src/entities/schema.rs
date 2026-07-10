@@ -1,7 +1,9 @@
 use bbb_protocol::entity_data_serializers::{
     VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID, VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-    VANILLA_ENTITY_DATA_SERIALIZER_FLOAT_ID, VANILLA_ENTITY_DATA_SERIALIZER_HUMANOID_ARM_ID,
-    VANILLA_ENTITY_DATA_SERIALIZER_INT_ID, VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_BLOCK_POS_ID,
+    VANILLA_ENTITY_DATA_SERIALIZER_DIRECTION_ID, VANILLA_ENTITY_DATA_SERIALIZER_FLOAT_ID,
+    VANILLA_ENTITY_DATA_SERIALIZER_HUMANOID_ARM_ID, VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+    VANILLA_ENTITY_DATA_SERIALIZER_ITEM_STACK_ID,
+    VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_BLOCK_POS_ID,
     VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_COMPONENT_ID,
     VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_UNSIGNED_INT_ID,
     VANILLA_ENTITY_DATA_SERIALIZER_PARTICLES_ID, VANILLA_ENTITY_DATA_SERIALIZER_POSE_ID,
@@ -16,6 +18,8 @@ pub enum VanillaEntityMetadataFamily {
     Mob,
     AgeableMob,
     ArmorStand,
+    HangingEntity,
+    ItemFrame,
     Avatar,
     Player,
 }
@@ -33,6 +37,8 @@ pub enum VanillaEntityMetadataDefault {
     OptionalUnsignedIntNone,
     HumanoidArm(i32),
     Rotations([f32; 3]),
+    Direction(i32),
+    ItemStackEmpty,
     MaxAirSupply,
 }
 
@@ -86,6 +92,9 @@ pub const VANILLA_ARMOR_STAND_LEFT_ARM_POSE_DATA_ID: u8 = 18;
 pub const VANILLA_ARMOR_STAND_RIGHT_ARM_POSE_DATA_ID: u8 = 19;
 pub const VANILLA_ARMOR_STAND_LEFT_LEG_POSE_DATA_ID: u8 = 20;
 pub const VANILLA_ARMOR_STAND_RIGHT_LEG_POSE_DATA_ID: u8 = 21;
+pub const VANILLA_HANGING_ENTITY_DIRECTION_DATA_ID: u8 = 8;
+pub const VANILLA_ITEM_FRAME_ITEM_DATA_ID: u8 = 9;
+pub const VANILLA_ITEM_FRAME_ROTATION_DATA_ID: u8 = 10;
 pub const VANILLA_AVATAR_MAIN_HAND_DATA_ID: u8 = 15;
 pub const VANILLA_AVATAR_MODEL_CUSTOMIZATION_DATA_ID: u8 = 16;
 pub const VANILLA_PLAYER_ABSORPTION_DATA_ID: u8 = 17;
@@ -131,6 +140,8 @@ pub const VANILLA_ARMOR_STAND_DEFAULT_LEFT_ARM_POSE: [f32; 3] = [-10.0, 0.0, -10
 pub const VANILLA_ARMOR_STAND_DEFAULT_RIGHT_ARM_POSE: [f32; 3] = [-15.0, 0.0, 10.0];
 pub const VANILLA_ARMOR_STAND_DEFAULT_LEFT_LEG_POSE: [f32; 3] = [-1.0, 0.0, -1.0];
 pub const VANILLA_ARMOR_STAND_DEFAULT_RIGHT_LEG_POSE: [f32; 3] = [1.0, 0.0, 1.0];
+pub const VANILLA_HANGING_ENTITY_DEFAULT_DIRECTION_ID: i32 = 3;
+pub const VANILLA_ITEM_FRAME_DEFAULT_ROTATION: i32 = 0;
 pub const VANILLA_PLAYER_DEFAULT_ABSORPTION: f32 = 0.0;
 pub const VANILLA_PLAYER_DEFAULT_SCORE: i32 = 0;
 
@@ -403,6 +414,31 @@ const ARMOR_STAND_FLAGS: &[VanillaEntityMetadataFlagSchema] = &[
     },
 ];
 
+const HANGING_ENTITY_FIELDS: &[VanillaEntityMetadataFieldSchema] =
+    &[VanillaEntityMetadataFieldSchema {
+        name: "DATA_DIRECTION",
+        data_id: VANILLA_HANGING_ENTITY_DIRECTION_DATA_ID,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_DIRECTION_ID,
+        default: VanillaEntityMetadataDefault::Direction(
+            VANILLA_HANGING_ENTITY_DEFAULT_DIRECTION_ID,
+        ),
+    }];
+
+const ITEM_FRAME_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_ITEM",
+        data_id: VANILLA_ITEM_FRAME_ITEM_DATA_ID,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_ITEM_STACK_ID,
+        default: VanillaEntityMetadataDefault::ItemStackEmpty,
+    },
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_ROTATION",
+        data_id: VANILLA_ITEM_FRAME_ROTATION_DATA_ID,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+        default: VanillaEntityMetadataDefault::Int(VANILLA_ITEM_FRAME_DEFAULT_ROTATION),
+    },
+];
+
 const AVATAR_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[
     VanillaEntityMetadataFieldSchema {
         name: "DATA_PLAYER_MAIN_HAND",
@@ -525,6 +561,24 @@ const ARMOR_STAND_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetad
     own_flags: ARMOR_STAND_FLAGS,
 };
 
+const HANGING_ENTITY_SCHEMA: VanillaEntityMetadataFamilySchema =
+    VanillaEntityMetadataFamilySchema {
+        family: VanillaEntityMetadataFamily::HangingEntity,
+        parent: Some(VanillaEntityMetadataFamily::Entity),
+        inherited_field_count: ENTITY_FIELDS.len() as u8,
+        own_fields: HANGING_ENTITY_FIELDS,
+        own_flags: &[],
+    };
+
+const ITEM_FRAME_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamilySchema {
+    family: VanillaEntityMetadataFamily::ItemFrame,
+    parent: Some(VanillaEntityMetadataFamily::HangingEntity),
+    inherited_field_count: HANGING_ENTITY_SCHEMA.inherited_field_count
+        + HANGING_ENTITY_FIELDS.len() as u8,
+    own_fields: ITEM_FRAME_FIELDS,
+    own_flags: &[],
+};
+
 const AVATAR_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamilySchema {
     family: VanillaEntityMetadataFamily::Avatar,
     parent: Some(VanillaEntityMetadataFamily::LivingEntity),
@@ -551,6 +605,8 @@ pub const fn vanilla_entity_metadata_schema(
         VanillaEntityMetadataFamily::Mob => &MOB_SCHEMA,
         VanillaEntityMetadataFamily::AgeableMob => &AGEABLE_MOB_SCHEMA,
         VanillaEntityMetadataFamily::ArmorStand => &ARMOR_STAND_SCHEMA,
+        VanillaEntityMetadataFamily::HangingEntity => &HANGING_ENTITY_SCHEMA,
+        VanillaEntityMetadataFamily::ItemFrame => &ITEM_FRAME_SCHEMA,
         VanillaEntityMetadataFamily::Avatar => &AVATAR_SCHEMA,
         VanillaEntityMetadataFamily::Player => &PLAYER_SCHEMA,
     }
@@ -638,6 +694,26 @@ mod tests {
                 .map(|field| field.data_id)
                 .collect::<Vec<_>>(),
             (15..=21).collect::<Vec<_>>()
+        );
+
+        let hanging = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::HangingEntity);
+        assert_eq!(hanging.parent, Some(VanillaEntityMetadataFamily::Entity));
+        assert_eq!(hanging.inherited_field_count, 8);
+        assert_eq!(hanging.own_fields[0].data_id, 8);
+
+        let item_frame = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::ItemFrame);
+        assert_eq!(
+            item_frame.parent,
+            Some(VanillaEntityMetadataFamily::HangingEntity)
+        );
+        assert_eq!(item_frame.inherited_field_count, 9);
+        assert_eq!(
+            item_frame
+                .own_fields
+                .iter()
+                .map(|field| field.data_id)
+                .collect::<Vec<_>>(),
+            (9..=10).collect::<Vec<_>>()
         );
 
         let avatar = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Avatar);
@@ -841,6 +917,32 @@ mod tests {
                     data_id: 21,
                     serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_ROTATIONS_ID,
                     default: VanillaEntityMetadataDefault::Rotations([1.0, 0.0, 1.0]),
+                },
+            ]
+        );
+        assert_eq!(
+            vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::HangingEntity).own_fields,
+            &[VanillaEntityMetadataFieldSchema {
+                name: "DATA_DIRECTION",
+                data_id: 8,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_DIRECTION_ID,
+                default: VanillaEntityMetadataDefault::Direction(3),
+            }]
+        );
+        assert_eq!(
+            vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::ItemFrame).own_fields,
+            &[
+                VanillaEntityMetadataFieldSchema {
+                    name: "DATA_ITEM",
+                    data_id: 9,
+                    serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_ITEM_STACK_ID,
+                    default: VanillaEntityMetadataDefault::ItemStackEmpty,
+                },
+                VanillaEntityMetadataFieldSchema {
+                    name: "DATA_ROTATION",
+                    data_id: 10,
+                    serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+                    default: VanillaEntityMetadataDefault::Int(0),
                 },
             ]
         );
@@ -1081,6 +1183,8 @@ mod tests {
             VanillaEntityMetadataFamily::Mob,
             VanillaEntityMetadataFamily::AgeableMob,
             VanillaEntityMetadataFamily::ArmorStand,
+            VanillaEntityMetadataFamily::HangingEntity,
+            VanillaEntityMetadataFamily::ItemFrame,
             VanillaEntityMetadataFamily::Avatar,
             VanillaEntityMetadataFamily::Player,
         ] {
