@@ -8525,9 +8525,9 @@ fn local_firework_save_uses_parent_lifecycle_synced_item_codec_and_client_life()
 #[test]
 fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
     let patch = DataComponentPatchSummary {
-        added: 17,
+        added: 20,
         added_type_ids: vec![
-            0, 1, 2, 3, 4, 10, 12, 17, 21, 22, 44, 45, 46, 63, 68, 69, 76,
+            0, 1, 2, 3, 4, 10, 12, 17, 21, 22, 44, 45, 46, 63, 68, 69, 76, 88, 89, 90,
         ],
         removed_type_ids: vec![6],
         custom_data: Some(NbtSummaryValue::Compound(vec![
@@ -8607,6 +8607,9 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
             ("facing".to_string(), "south".to_string()),
             ("quoted key".to_string(), "value with 'quote'".to_string()),
         ]),
+        tropical_fish_pattern_id: Some(257),
+        tropical_fish_base_color_id: Some(1),
+        tropical_fish_pattern_color_id: Some(99),
         ..DataComponentPatchSummary::default()
     };
     let stack = ProtocolItemStackSummary {
@@ -8635,7 +8638,11 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
          fade_colors: [11189196], has_trail: 1b}, \
          \"minecraft:fireworks\": {flight_duration: 2}, \
          \"minecraft:block_state\": {facing: \"south\", \
-         \"quoted key\": \"value with 'quote'\"}, \"!minecraft:custom_name\": {}}}"
+         \"quoted key\": \"value with 'quote'\"}, \
+         \"minecraft:tropical_fish/pattern\": \"stripey\", \
+         \"minecraft:tropical_fish/base_color\": \"orange\", \
+         \"minecraft:tropical_fish/pattern_color\": \"white\", \
+         \"!minecraft:custom_name\": {}}}"
     );
 }
 

@@ -258,6 +258,9 @@ const FIREWORK_ROCKET_DEFAULT_LIFETIME: i32 = 0;
 const CUSTOM_MODEL_DATA_COMPONENT_TYPE_ID: i32 = 17;
 const FIREWORKS_COMPONENT_TYPE_ID: i32 = 69;
 const BLOCK_STATE_COMPONENT_TYPE_ID: i32 = 76;
+const TROPICAL_FISH_PATTERN_COMPONENT_TYPE_ID: i32 = 88;
+const TROPICAL_FISH_BASE_COLOR_COMPONENT_TYPE_ID: i32 = 89;
+const TROPICAL_FISH_PATTERN_COLOR_COMPONENT_TYPE_ID: i32 = 90;
 /// The remaining falling-block save scalars are not synchronized by add-entity
 /// or metadata. Their client constructor values cannot be changed by any
 /// reachable client behavior; only `time` advances in `tick`.
@@ -4662,6 +4665,15 @@ fn debug_supported_added_component_snbt(
                 .collect::<Vec<_>>()
                 .join(", ")
         ),
+        TROPICAL_FISH_PATTERN_COMPONENT_TYPE_ID => debug_snbt_string(
+            debug_tropical_fish_pattern_name(patch.tropical_fish_pattern_id?),
+        ),
+        TROPICAL_FISH_BASE_COLOR_COMPONENT_TYPE_ID => {
+            debug_snbt_string(debug_dye_color_name(patch.tropical_fish_base_color_id?))
+        }
+        TROPICAL_FISH_PATTERN_COLOR_COMPONENT_TYPE_ID => {
+            debug_snbt_string(debug_dye_color_name(patch.tropical_fish_pattern_color_id?))
+        }
         _ => return None,
     };
     Some(format!("{}: {value}", debug_snbt_string(resource_id)))
@@ -4687,6 +4699,9 @@ fn debug_supported_component_resource_id(type_id: i32) -> Option<&'static str> {
         68 => "minecraft:firework_explosion",
         FIREWORKS_COMPONENT_TYPE_ID => "minecraft:fireworks",
         BLOCK_STATE_COMPONENT_TYPE_ID => "minecraft:block_state",
+        TROPICAL_FISH_PATTERN_COMPONENT_TYPE_ID => "minecraft:tropical_fish/pattern",
+        TROPICAL_FISH_BASE_COLOR_COMPONENT_TYPE_ID => "minecraft:tropical_fish/base_color",
+        TROPICAL_FISH_PATTERN_COLOR_COMPONENT_TYPE_ID => "minecraft:tropical_fish/pattern_color",
         _ => return None,
     })
 }
@@ -4826,6 +4841,46 @@ fn debug_custom_model_data_component_snbt(
         ));
     }
     format!("{{{}}}", fields.join(", "))
+}
+
+fn debug_tropical_fish_pattern_name(packed_id: i32) -> &'static str {
+    match packed_id {
+        0 => "kob",
+        256 => "sunstreak",
+        512 => "snooper",
+        768 => "dasher",
+        1024 => "brinely",
+        1280 => "spotty",
+        1 => "flopper",
+        257 => "stripey",
+        513 => "glitter",
+        769 => "blockfish",
+        1025 => "betty",
+        1281 => "clayfish",
+        _ => "kob",
+    }
+}
+
+fn debug_dye_color_name(id: i32) -> &'static str {
+    match id {
+        0 => "white",
+        1 => "orange",
+        2 => "magenta",
+        3 => "light_blue",
+        4 => "yellow",
+        5 => "lime",
+        6 => "pink",
+        7 => "gray",
+        8 => "light_gray",
+        9 => "cyan",
+        10 => "purple",
+        11 => "blue",
+        12 => "brown",
+        13 => "green",
+        14 => "red",
+        15 => "black",
+        _ => "white",
+    }
 }
 
 fn debug_fireworks_component_snbt(

@@ -8573,3 +8573,16 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   component patch focused test 扩展到 17 个 added entry，覆盖 signed zero、
   NaN/Infinity float suffix、boolean byte tags、string escaping 与 RGB int。
   custom-model-data 从剩余 component 总账本移入已支持子集。
+
+## 2026-07-10：ItemStack tropical-fish enum save codecs
+
+- [x] tropical-fish 三项持久化 component（P2 native input）：依据 vanilla 26.1
+  `TropicalFish.Pattern.CODEC/STREAM_CODEC`、`DyeColor.CODEC/STREAM_CODEC` 与
+  `DataComponents` type ids `88..90`，把 protocol 已保留的 packed pattern 和两种
+  color id 输出为 codec string；显式复刻 sparse pattern 非法值回退 `kob` 与连续
+  DyeColor 越界回退 `white`。component patch focused test 扩展到 20 个 added
+  entry，覆盖 `257 -> stripey`、`1 -> orange` 和越界颜色 fallback。
+- [x] `minecraft:map_post_processing` 保存边界审计：vanilla
+  `DataComponents.MAP_POST_PROCESSING` 仅注册 network stream codec，没有 persistent
+  codec，因此 ItemStack save/F3+I 不应输出该瞬时 component；归类为 not-needed，
+  不伪造持久化 SNBT。
