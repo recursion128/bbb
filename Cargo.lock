@@ -366,6 +366,7 @@ name = "bbb-renderer"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "bbb-protocol",
  "bbb-render-types",
  "bytemuck",
  "glam 0.29.3",

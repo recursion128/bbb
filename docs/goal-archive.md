@@ -9318,3 +9318,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   descriptor 初始化时与生成 metadata 自动绑定；既有 descriptor slice/query、patch
   dispatch、summary 与 native encoder consumer 均保持兼容。生成、连续/唯一/属性、
   110-handler 覆盖与 dispatch tests 锁定绑定；未增加新 component 功能。
+
+## 2026-07-10：Vanilla particle-type registry catalog generation
+
+- [x] core built-in registry catalog 的 particle-type 子项（P1 mechanical vanilla
+  data）：统一生成器从 vanilla 26.1 `ParticleTypes.java` 的 117 个静态 `register`
+  调用生成 checked-in id/resource/order/constant-name/override-limiter metadata。
+  native `ParticleTypeInfo` 与 compile-time ID 宏改为委托 protocol catalog，删除生产
+  117 项 `(resource, bool)` 副本；renderer provider 覆盖测试通过 dev-dependency 遍历
+  同一 catalog，删除第二份 117 项资源表。连续/唯一/固定长度、28 项 override limiter、
+  const 反查、native facade 与 renderer coverage tests 锁定消费；未改变 particle wire
+  option codec 或渲染行为。

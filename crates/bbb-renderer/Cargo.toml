@@ -17,4 +17,5 @@ wgpu = { workspace = true }
 winit = { workspace = true }
 
 [dev-dependencies]
+bbb-protocol = { path = "../bbb-protocol" }
 pollster = "0.3"

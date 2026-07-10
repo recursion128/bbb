@@ -15,6 +15,7 @@ pub mod frame;
 pub mod ids;
 pub mod packet_catalog;
 pub mod packets;
+pub mod particle_types;
 
 pub const MC_VERSION: &str = "26.1";
 pub const PROTOCOL_VERSION: i32 = 775;

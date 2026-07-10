@@ -40,9 +40,9 @@ pub(super) const TRIAL_SPAWNER_DETECT_PLAYER_OMINOUS_LEVEL_EVENT: i32 = 3019;
 pub(super) const TRIAL_SPAWNER_OMINOUS_ACTIVATE_LEVEL_EVENT: i32 = 3020;
 pub(super) const TRIAL_SPAWNER_SPAWN_ITEM_LEVEL_EVENT: i32 = 3021;
 particle_type_ids! {
-    // Every id below is derived from `PARTICLE_TYPES_26_1` (index == id); the
-    // generated test reasserts each pairing and guards the registry length so a
-    // reorder or truncation cannot drift these constants silently.
+    // Every id below is derived from the generated protocol particle catalog;
+    // the generated test reasserts each pairing and guards the registry length
+    // so a reorder or truncation cannot drift these constants silently.
     expect_registry_len = 117;
 
     pub(super) const ANGRY_VILLAGER_PARTICLE_TYPE_ID = "minecraft:angry_villager";
