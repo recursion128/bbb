@@ -3371,7 +3371,7 @@ fn debug_heightmap_boxes_respect_reduced_debug_and_camera_gates() {
 }
 
 #[test]
-fn debug_water_boxes_follow_player_scan_order_and_vanilla_fluid_height() {
+fn debug_water_surfaces_follow_player_scan_order_and_vanilla_fluid_height() {
     assert_eq!(DEBUG_WATER_SCAN_RADIUS, 10);
     assert_eq!(DEBUG_WATER_BOX_INSET, 0.01);
     assert_eq!(DEBUG_WATER_BOX_COLOR, [0, 255, 0, 38]);
@@ -3411,13 +3411,14 @@ fn debug_water_boxes_follow_player_scan_order_and_vanilla_fluid_height() {
     set_lightmap_test_block(&mut world, BlockPos { x: 2, y: 0, z: 0 }, lava);
 
     let mut input = ClientInputState::new(true);
-    assert!(debug_water_boxes(&input, &world).is_empty());
+    assert!(debug_water_samples(&input, &world).is_empty());
     input.set_debug_screen_entry_status(
         DebugScreenEntryId::VisualizeWaterLevels,
         crate::debug_entries::DebugScreenEntryStatus::AlwaysOn,
     );
 
-    let boxes = debug_water_boxes(&input, &world);
+    let samples = debug_water_samples(&input, &world);
+    let boxes = debug_water_boxes(&samples);
     assert_eq!(boxes.len(), 3, "lava is not in FluidTags.WATER");
     assert_eq!(
         boxes[0],
@@ -3432,6 +3433,21 @@ fn debug_water_boxes_follow_player_scan_order_and_vanilla_fluid_height() {
     assert!((boxes[1].max[1] - 5.0 / 9.0).abs() < 1e-6);
     assert_eq!(boxes[2].min, [0.01, 1.01, 0.01]);
     assert!((boxes[2].max[1] - (1.0 + 8.0 / 9.0)).abs() < 1e-6);
+
+    let labels = debug_water_amount_billboards(&samples);
+    assert_eq!(labels.len(), 3);
+    assert_eq!(
+        labels[0],
+        DebugTextBillboard::centered([0.5, 1.0, 0.5], "8", [0, 0, 0, 255])
+    );
+    assert_eq!(labels[1].text, "5");
+    assert_eq!(labels[1].position[0], 1.5);
+    assert!((labels[1].position[1] - 5.0 / 9.0).abs() < 1e-6);
+    assert_eq!(labels[2].text, "8");
+    assert!((labels[2].position[1] - (1.0 + 8.0 / 9.0)).abs() < 1e-6);
+    assert!(labels.iter().all(|label| {
+        label.scale == DebugTextBillboard::DEFAULT_SCALE && label.adjust_left.is_none()
+    }));
 }
 
 #[test]
@@ -3450,11 +3466,11 @@ fn debug_water_boxes_respect_reduced_debug_and_player_gates() {
         DebugScreenEntryId::VisualizeWaterLevels,
         crate::debug_entries::DebugScreenEntryStatus::AlwaysOn,
     );
-    assert!(debug_water_boxes(&input, &world).is_empty());
+    assert!(debug_water_samples(&input, &world).is_empty());
 
     let mut no_player = world_with_dimension(0, "minecraft:overworld");
     no_player.insert_decoded_chunk(empty_lightmap_test_chunk(no_player.dimension()));
-    assert!(debug_water_boxes(&input, &no_player).is_empty());
+    assert!(debug_water_samples(&input, &no_player).is_empty());
 }
 
 #[test]
@@ -3865,25 +3881,41 @@ fn renderer_frame_outlines_extract_after_input_camera_and_partial_tick() {
 }
 
 #[test]
-fn renderer_frame_commits_debug_filled_boxes_from_the_camera_snapshot() {
+fn renderer_frame_commits_debug_gizmos_from_one_water_sample_snapshot() {
     let runtime_source = include_str!("../runtime.rs");
     let camera_pose = runtime_source
         .find("let camera_pose = camera_pose_from_world(world);")
         .expect("pump should extract one camera pose");
+    let samples = runtime_source
+        .find("let debug_water_samples = debug_water_samples(input, world);")
+        .expect("pump should extract water samples once");
     let boxes = runtime_source
-        .find("let mut debug_filled_boxes = debug_water_boxes(input, world);")
-        .expect("pump should extract debug water boxes");
+        .find("let mut debug_filled_boxes = debug_water_boxes(&debug_water_samples);")
+        .expect("pump should project debug water boxes");
     let heightmap_extend = runtime_source
         .find("debug_filled_boxes.extend(debug_heightmap_boxes(input, world, camera_pose));")
         .expect("heightmap boxes should follow water boxes");
+    let text = runtime_source
+        .find("let debug_text_billboards = debug_water_amount_billboards(&debug_water_samples);")
+        .expect("pump should project water amount labels from the same samples");
     let frame = runtime_source
         .find("            debug_filled_boxes,\n")
         .expect("RendererFrame should carry debug filled boxes");
-    assert!(camera_pose < boxes && boxes < heightmap_extend && heightmap_extend < frame);
+    assert!(
+        camera_pose < samples
+            && samples < boxes
+            && boxes < heightmap_extend
+            && heightmap_extend < text
+            && text < frame
+    );
 
     let frame_source = include_str!("render_extract.rs");
     assert!(frame_source.contains("pub(crate) debug_filled_boxes: Vec<DebugFilledBox>"));
     assert!(frame_source.contains("renderer.set_debug_filled_boxes(frame.debug_filled_boxes);"));
+    assert!(frame_source.contains("pub(crate) debug_text_billboards: Vec<DebugTextBillboard>"));
+    assert!(
+        frame_source.contains("renderer.set_debug_text_billboards(frame.debug_text_billboards);")
+    );
 }
 
 #[test]

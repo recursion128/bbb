@@ -321,7 +321,7 @@ impl Renderer {
         };
         item_entity_billboard_vertices(
             &self.item_entity_billboards,
-            camera_billboard_axes(pose),
+            pose.billboard_axes(),
             ITEM_ENTITY_BILLBOARD_SIZE,
         )
     }
@@ -429,45 +429,9 @@ fn sanitize_item_entity_light(light: [f32; 2]) -> [f32; 2] {
     ]
 }
 
-#[derive(Debug, Clone, Copy)]
-struct ItemEntityBillboardAxes {
-    forward: Vec3,
-    right: Vec3,
-    up: Vec3,
-}
-
-fn camera_billboard_axes(pose: crate::CameraPose) -> ItemEntityBillboardAxes {
-    let yaw = pose.y_rot.to_radians();
-    let pitch = pose.x_rot.to_radians();
-    let cos_pitch = pitch.cos();
-    let forward =
-        Vec3::new(-yaw.sin() * cos_pitch, -pitch.sin(), yaw.cos() * cos_pitch).normalize_or_zero();
-    let forward = if forward.length_squared() > 0.0 {
-        forward
-    } else {
-        Vec3::Z
-    };
-    let right = Vec3::Y.cross(forward).normalize_or_zero();
-    let right = if right.length_squared() > 0.0 {
-        right
-    } else {
-        Vec3::X
-    };
-    let up = forward.cross(right).normalize_or_zero();
-    ItemEntityBillboardAxes {
-        forward,
-        right,
-        up: if up.length_squared() > 0.0 {
-            up
-        } else {
-            Vec3::Y
-        },
-    }
-}
-
 fn item_entity_billboard_vertices(
     billboards: &[ItemEntityBillboard],
-    axes: ItemEntityBillboardAxes,
+    axes: crate::camera::CameraBillboardAxes,
     base_size: f32,
 ) -> Vec<ItemEntityVertex> {
     let mut vertices = Vec::new();
@@ -488,12 +452,12 @@ fn item_entity_billboard_vertices(
 }
 
 fn item_entity_layer_axes(
-    axes: ItemEntityBillboardAxes,
+    axes: crate::camera::CameraBillboardAxes,
     orientation: ItemEntityBillboardOrientation,
-) -> ItemEntityBillboardAxes {
+) -> crate::camera::CameraBillboardAxes {
     match orientation {
         ItemEntityBillboardOrientation::CameraFacing => axes,
-        ItemEntityBillboardOrientation::FireworkShotAtAngle => ItemEntityBillboardAxes {
+        ItemEntityBillboardOrientation::FireworkShotAtAngle => crate::camera::CameraBillboardAxes {
             forward: axes.up,
             right: axes.right,
             up: -axes.forward,
@@ -505,7 +469,7 @@ fn item_entity_layer_vertices(
     position: [f32; 3],
     layer: &ItemEntityBillboardLayer,
     light: [f32; 2],
-    axes: ItemEntityBillboardAxes,
+    axes: crate::camera::CameraBillboardAxes,
     size: f32,
 ) -> [ItemEntityVertex; 6] {
     let center = Vec3::from_array(position);
@@ -654,7 +618,7 @@ mod tests {
 
         let vertices = item_entity_billboard_vertices(
             &billboards,
-            ItemEntityBillboardAxes {
+            crate::camera::CameraBillboardAxes {
                 forward: Vec3::Z,
                 right: Vec3::X,
                 up: Vec3::Y,
@@ -694,7 +658,7 @@ mod tests {
                 ITEM_ENTITY_TINT_WHITE,
             )],
         };
-        let axes = ItemEntityBillboardAxes {
+        let axes = crate::camera::CameraBillboardAxes {
             forward: Vec3::Z,
             right: Vec3::X,
             up: Vec3::Y,
@@ -725,7 +689,7 @@ mod tests {
 
         let vertices = item_entity_billboard_vertices(
             &billboards,
-            ItemEntityBillboardAxes {
+            crate::camera::CameraBillboardAxes {
                 forward: Vec3::Z,
                 right: Vec3::X,
                 up: Vec3::Y,

@@ -469,30 +469,10 @@ pub(super) struct ParticleBillboardAxes {
 }
 
 fn camera_billboard_axes(pose: crate::CameraPose) -> ParticleBillboardAxes {
-    let yaw = pose.y_rot.to_radians();
-    let pitch = pose.x_rot.to_radians();
-    let cos_pitch = pitch.cos();
-    let forward =
-        Vec3::new(-yaw.sin() * cos_pitch, -pitch.sin(), yaw.cos() * cos_pitch).normalize_or_zero();
-    let forward = if forward.length_squared() > 0.0 {
-        forward
-    } else {
-        Vec3::Z
-    };
-    let right = Vec3::Y.cross(forward).normalize_or_zero();
-    let right = if right.length_squared() > 0.0 {
-        right
-    } else {
-        Vec3::X
-    };
-    let up = forward.cross(right).normalize_or_zero();
+    let axes = pose.billboard_axes();
     ParticleBillboardAxes {
-        right,
-        up: if up.length_squared() > 0.0 {
-            up
-        } else {
-            Vec3::Y
-        },
+        right: axes.right,
+        up: axes.up,
     }
 }
 

@@ -8,6 +8,7 @@ use crate::renderer::FrameTarget;
 use crate::{
     clouds::CloudShape,
     debug_filled_boxes::build_debug_filled_box_mesh,
+    debug_text_billboards::build_debug_text_mesh,
     entity_models::{
         upload_elder_guardian_particle_textured_mesh,
         upload_experience_orb_pickup_particle_textured_mesh,
@@ -54,6 +55,7 @@ const ENTITY_OUTLINE_COMPOSITE_PASS_LABEL: &str = "bbb-native-entity-outline-com
 const CLOUDS_PASS_LABEL: &str = "bbb-native-clouds-pass";
 const ENTITY_TRANSLUCENT_FEATURE_PASS_LABEL: &str = "bbb-native-entity-translucent-feature-pass";
 const DEBUG_FILLED_BOX_PASS_LABEL: &str = "bbb-native-debug-filled-box-pass";
+const DEBUG_TEXT_PASS_LABEL: &str = "bbb-native-debug-text-pass";
 const TRANSLUCENT_TARGET_PASS_LABEL: &str = "bbb-native-translucent-target-pass";
 const ITEM_ENTITY_TARGET_PASS_LABEL: &str = "bbb-native-item-entity-target-pass";
 const ITEM_ENTITY_LINE_TARGET_PASS_LABEL: &str = "bbb-native-item-entity-line-target-pass";
@@ -82,6 +84,7 @@ struct FrameDrawStats {
     sky_draw_calls: u64,
     entity_model_draw_calls: u64,
     debug_filled_box_draw_calls: u64,
+    debug_text_draw_calls: u64,
     outline_composite_draw_calls: u64,
     transparency_combine_draw_calls: u64,
     transparency_blit_draw_calls: u64,
@@ -120,6 +123,7 @@ impl Renderer {
         self.copy_main_depth_to_feature_targets(&mut encoder);
         self.entity_translucent_feature_pass(&mut encoder, &mut stats);
         self.debug_filled_box_pass(&mut encoder, &mut stats);
+        self.debug_text_pass(&mut encoder, &mut stats);
         self.item_entity_target_pass(&mut encoder, &mut stats);
         self.block_destroy_overlay_pass(&mut encoder, &mut stats);
         self.entity_outline_target_pass(&mut encoder, &mut stats);
@@ -848,6 +852,75 @@ impl Renderer {
         pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint32);
         pass.draw_indexed(0..index_count as u32, 0, 0..1);
         stats.debug_filled_box_draw_calls += 1;
+    }
+
+    fn debug_text_pass(&mut self, encoder: &mut wgpu::CommandEncoder, stats: &mut FrameDrawStats) {
+        let (Some(camera_pose), Some(font_atlas)) = (
+            self.camera_pose,
+            self.item_frame_map_text_font_atlas.as_ref(),
+        ) else {
+            return;
+        };
+        let mesh = build_debug_text_mesh(
+            &self.debug_text_billboards,
+            &self.hud_font_glyphs,
+            camera_pose,
+        );
+        let vertex_count = mesh.vertices.len();
+        let index_count = mesh.indices.len();
+        let has_vertices = self.frame_debug_text_vertices.upload(
+            &self.device,
+            &self.queue,
+            bytemuck::cast_slice(&mesh.vertices),
+        );
+        let has_indices = self.frame_debug_text_indices.upload(
+            &self.device,
+            &self.queue,
+            bytemuck::cast_slice(&mesh.indices),
+        );
+        if !has_vertices || !has_indices {
+            debug_assert_eq!(vertex_count, 0);
+            debug_assert_eq!(index_count, 0);
+            return;
+        }
+
+        let vertex_buffer = self
+            .frame_debug_text_vertices
+            .buffer()
+            .expect("debug text vertices uploaded");
+        let index_buffer = self
+            .frame_debug_text_indices
+            .buffer()
+            .expect("debug text indices uploaded");
+        let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some(DEBUG_TEXT_PASS_LABEL),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: &self.main_target.view,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Load,
+                    store: wgpu::StoreOp::Store,
+                },
+            })],
+            depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                view: &self.depth.view,
+                depth_ops: Some(wgpu::Operations {
+                    load: wgpu::LoadOp::Load,
+                    store: wgpu::StoreOp::Store,
+                }),
+                stencil_ops: None,
+            }),
+            occlusion_query_set: None,
+            timestamp_writes: None,
+        });
+        pass.set_pipeline(&self.debug_text_pipeline);
+        stats.pipeline_switches += 1;
+        pass.set_bind_group(0, &font_atlas.bind_group, &[]);
+        pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
+        pass.set_vertex_buffer(0, vertex_buffer.slice(..));
+        pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+        pass.draw_indexed(0..index_count as u32, 0, 0..1);
+        stats.debug_text_draw_calls += 1;
     }
 
     fn item_entity_target_pass(
@@ -2294,6 +2367,7 @@ impl Renderer {
             + stats.sky_draw_calls
             + stats.entity_model_draw_calls
             + stats.debug_filled_box_draw_calls
+            + stats.debug_text_draw_calls
             + stats.outline_composite_draw_calls
             + stats.transparency_combine_draw_calls
             + stats.transparency_blit_draw_calls
@@ -3178,6 +3252,7 @@ mod tests {
         "copy_main_depth_to_feature_targets",
         "entity_translucent_feature_pass",
         "debug_filled_box_pass",
+        "debug_text_pass",
         "item_entity_target_pass",
         "block_destroy_overlay_pass",
         "entity_outline_target_pass",
@@ -3297,7 +3372,7 @@ mod tests {
     }
 
     #[test]
-    fn debug_filled_box_pass_runs_after_translucent_features_before_translucent_terrain() {
+    fn debug_gizmo_passes_run_after_translucent_features_before_translucent_terrain() {
         let entity_features = FRAME_STEPS
             .iter()
             .position(|step| *step == "entity_translucent_feature_pass")
@@ -3306,12 +3381,17 @@ mod tests {
             .iter()
             .position(|step| *step == "debug_filled_box_pass")
             .expect("debug filled box step");
+        let debug_text = FRAME_STEPS
+            .iter()
+            .position(|step| *step == "debug_text_pass")
+            .expect("debug text step");
         let translucent_terrain = FRAME_STEPS
             .iter()
             .position(|step| *step == "translucent_target_pass")
             .expect("translucent terrain step");
         assert!(entity_features < debug_boxes);
-        assert!(debug_boxes < translucent_terrain);
+        assert!(debug_boxes < debug_text);
+        assert!(debug_text < translucent_terrain);
 
         let source = include_str!("render.rs");
         let pass_start = source
@@ -3319,12 +3399,24 @@ mod tests {
             .expect("dedicated debug filled box pass");
         let pass_end = pass_start
             + source[pass_start..]
-                .find("\n    }\n\n    fn item_entity_target_pass(")
-                .expect("debug filled box pass ends before item target");
+                .find("\n    }\n\n    fn debug_text_pass(")
+                .expect("debug filled box pass ends before debug text");
         let pass_body = &source[pass_start..pass_end];
         assert!(pass_body.contains("self.camera_sort_position()"));
         assert!(pass_body.contains("view: &self.main_target.view"));
         assert!(pass_body.contains("view: &self.depth.view"));
+
+        let text_start = source
+            .find("fn debug_text_pass(")
+            .expect("dedicated debug text pass");
+        let text_end = text_start
+            + source[text_start..]
+                .find("\n    }\n\n    fn item_entity_target_pass(")
+                .expect("debug text pass ends before item target");
+        let text_body = &source[text_start..text_end];
+        assert!(text_body.contains("self.item_frame_map_text_font_atlas.as_ref()"));
+        assert!(text_body.contains("view: &self.main_target.view"));
+        assert!(text_body.contains("view: &self.depth.view"));
     }
 
     fn depth_copy_to(source: &str, target_depth_texture: &str) -> usize {

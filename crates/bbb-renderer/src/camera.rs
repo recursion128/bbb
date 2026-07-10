@@ -268,6 +268,49 @@ pub struct CameraPose {
 
 impl CameraPose {
     pub const STANDING_EYE_HEIGHT: f32 = 1.62;
+
+    pub(crate) fn billboard_axes(self) -> CameraBillboardAxes {
+        let yaw = self.y_rot.to_radians();
+        let pitch = self.x_rot.to_radians();
+        let cos_pitch = pitch.cos();
+        let forward = Vec3::new(-yaw.sin() * cos_pitch, -pitch.sin(), yaw.cos() * cos_pitch)
+            .normalize_or_zero();
+        let forward = if forward.length_squared() > 0.0 {
+            forward
+        } else {
+            Vec3::Z
+        };
+        // Camera.setRotation uses `rotationYXZ(PI-yaw, -pitch, 0)`; local +X
+        // therefore maps to screen-right (`forward x world-up`), which is -X
+        // for vanilla yaw 0 (looking south). The older `Y x forward` formula
+        // produced screen-left and back-facing culled quads.
+        let right = forward.cross(Vec3::Y).normalize_or_zero();
+        let right = if right.length_squared() > 0.0 {
+            right
+        } else {
+            Vec3::X
+        };
+        let up = right.cross(forward).normalize_or_zero();
+        CameraBillboardAxes {
+            forward,
+            right,
+            up: if up.length_squared() > 0.0 {
+                up
+            } else {
+                Vec3::Y
+            },
+        }
+    }
+}
+
+/// Camera-facing basis shared by item, particle, and debug-text billboards.
+/// `forward` points from the camera into the scene; `right`/`up` are the
+/// billboard plane axes used after vanilla's camera-orientation transform.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct CameraBillboardAxes {
+    pub(crate) forward: Vec3,
+    pub(crate) right: Vec3,
+    pub(crate) up: Vec3,
 }
 
 #[repr(C)]
@@ -863,6 +906,38 @@ mod tests {
             actual.abs_diff_eq(expected, 1.0e-5),
             "expected {expected:?}, got {actual:?}"
         );
+    }
+
+    #[test]
+    fn camera_billboard_axes_match_vanilla_camera_rotation_and_front_winding() {
+        let south = CameraPose {
+            position: [0.0; 3],
+            y_rot: 0.0,
+            x_rot: 0.0,
+            eye_height: 0.0,
+        }
+        .billboard_axes();
+        assert!(south.forward.abs_diff_eq(Vec3::Z, 1.0e-6));
+        assert!(south.right.abs_diff_eq(Vec3::NEG_X, 1.0e-6));
+        assert!(south.up.abs_diff_eq(Vec3::Y, 1.0e-6));
+        assert!(south
+            .right
+            .cross(south.up)
+            .abs_diff_eq(-south.forward, 1.0e-6));
+
+        let west = CameraPose {
+            y_rot: 90.0,
+            ..CameraPose {
+                position: [0.0; 3],
+                y_rot: 0.0,
+                x_rot: 0.0,
+                eye_height: 0.0,
+            }
+        }
+        .billboard_axes();
+        assert!(west.forward.abs_diff_eq(Vec3::NEG_X, 1.0e-6));
+        assert!(west.right.abs_diff_eq(Vec3::NEG_Z, 1.0e-6));
+        assert!(west.up.abs_diff_eq(Vec3::Y, 1.0e-6));
     }
 
     #[test]

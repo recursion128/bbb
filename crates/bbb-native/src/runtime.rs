@@ -27,13 +27,13 @@ use bbb_protocol::{
 };
 use bbb_renderer::{
     sign_text_base_color, BlockDestroyOverlay, CameraPose, ClearColor, CloudEnvironment,
-    CloudFrame, DebugFilledBox, EntityModelInstance, FogEnvironment, GuiItemLightingEntry,
-    HudAdvancementBackgroundTexture, HudAdvancementHoverBoxSprite, HudAdvancementLineTexture,
-    HudAdvancementTabSprite, HudAdvancementWidgetFrameSprite, HudAirSupply, HudBlockItemModel,
-    HudDebugCrosshair, HudDebugFrameTimeChart, HudDebugGameModeSwitcher,
-    HudDebugGameModeSwitcherSlot, HudDebugNetworkCharts, HudDebugOptionsEntryStatus,
-    HudDebugOptionsRow, HudDebugOptionsScreen, HudDebugOptionsTooltip, HudDebugOverlay,
-    HudDebugProfilerChart, HudDebugTpsChart, HudDebugTpsSample, HudEntityPreview,
+    CloudFrame, DebugFilledBox, DebugTextBillboard, EntityModelInstance, FogEnvironment,
+    GuiItemLightingEntry, HudAdvancementBackgroundTexture, HudAdvancementHoverBoxSprite,
+    HudAdvancementLineTexture, HudAdvancementTabSprite, HudAdvancementWidgetFrameSprite,
+    HudAirSupply, HudBlockItemModel, HudDebugCrosshair, HudDebugFrameTimeChart,
+    HudDebugGameModeSwitcher, HudDebugGameModeSwitcherSlot, HudDebugNetworkCharts,
+    HudDebugOptionsEntryStatus, HudDebugOptionsRow, HudDebugOptionsScreen, HudDebugOptionsTooltip,
+    HudDebugOverlay, HudDebugProfilerChart, HudDebugTpsChart, HudDebugTpsSample, HudEntityPreview,
     HudEntityPreviewItemDisplayContext, HudEntityPreviewItemLayer, HudEntityPreviewItemSlot,
     HudEntityPreviewRect, HudFoodEffect, HudGameModeSwitcherMode, HudHeartKind, HudIconLayer,
     HudInventoryBackgroundLayer, HudInventoryBackgroundTexture, HudInventoryFillLayer,
@@ -2433,8 +2433,10 @@ pub(crate) fn pump_network_and_terrain(
     // Vanilla `DebugRenderer.refreshRendererList` registers WaterDebugRenderer
     // before HeightMapRenderer, so their shared debugFilledBox submissions keep
     // that renderer order when both custom entries are enabled.
-    let mut debug_filled_boxes = debug_water_boxes(input, world);
+    let debug_water_samples = debug_water_samples(input, world);
+    let mut debug_filled_boxes = debug_water_boxes(&debug_water_samples);
     debug_filled_boxes.extend(debug_heightmap_boxes(input, world, camera_pose));
+    let debug_text_billboards = debug_water_amount_billboards(&debug_water_samples);
     // Vanilla `LevelRenderer.extractBlockDestroyAnimation` reads block-breaking state during
     // render extract, after the client tick; local destroy overlay ticks are advanced above.
     let block_destroy_overlays = block_destroy_overlays_from_world(world, terrain_textures);
@@ -2537,6 +2539,7 @@ pub(crate) fn pump_network_and_terrain(
             entity_scene_outline,
             entity_target_outline,
             debug_filled_boxes,
+            debug_text_billboards,
             block_destroy_overlays,
         },
     );
@@ -3970,7 +3973,14 @@ fn debug_heightmap_boxes(
     boxes
 }
 
-fn debug_water_boxes(input: &ClientInputState, world: &WorldStore) -> Vec<DebugFilledBox> {
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct DebugWaterSample {
+    pos: BlockPos,
+    amount: u8,
+    height: f64,
+}
+
+fn debug_water_samples(input: &ClientInputState, world: &WorldStore) -> Vec<DebugWaterSample> {
     if !input.debug_screen_entry_enabled(
         DebugScreenEntryId::VisualizeWaterLevels,
         world.local_player_has_reduced_debug_info(),
@@ -4010,7 +4020,7 @@ fn debug_water_boxes(input: &ClientInputState, world: &WorldStore) -> Vec<DebugF
         z: center.z.saturating_add(DEBUG_WATER_SCAN_RADIUS),
     };
 
-    let mut boxes = Vec::new();
+    let mut samples = Vec::new();
     // `BlockPos.betweenClosed`: x advances fastest, then y, then z.
     for z in min.z..=max.z {
         for y in min.y..=max.y {
@@ -4022,23 +4032,55 @@ fn debug_water_boxes(input: &ClientInputState, world: &WorldStore) -> Vec<DebugF
                 if fluid.kind != TerrainFluidKind::Water {
                     continue;
                 }
-                boxes.push(DebugFilledBox {
-                    min: [
-                        x as f32 + DEBUG_WATER_BOX_INSET,
-                        y as f32 + DEBUG_WATER_BOX_INSET,
-                        z as f32 + DEBUG_WATER_BOX_INSET,
-                    ],
-                    max: [
-                        x as f32 + (1.0 - DEBUG_WATER_BOX_INSET),
-                        y as f32 + height as f32,
-                        z as f32 + (1.0 - DEBUG_WATER_BOX_INSET),
-                    ],
-                    color: DEBUG_WATER_BOX_COLOR,
+                samples.push(DebugWaterSample {
+                    pos,
+                    amount: fluid.amount,
+                    height,
                 });
             }
         }
     }
-    boxes
+    samples
+}
+
+fn debug_water_boxes(samples: &[DebugWaterSample]) -> Vec<DebugFilledBox> {
+    samples
+        .iter()
+        .map(|sample| {
+            let BlockPos { x, y, z } = sample.pos;
+            DebugFilledBox {
+                min: [
+                    x as f32 + DEBUG_WATER_BOX_INSET,
+                    y as f32 + DEBUG_WATER_BOX_INSET,
+                    z as f32 + DEBUG_WATER_BOX_INSET,
+                ],
+                max: [
+                    x as f32 + (1.0 - DEBUG_WATER_BOX_INSET),
+                    y as f32 + sample.height as f32,
+                    z as f32 + (1.0 - DEBUG_WATER_BOX_INSET),
+                ],
+                color: DEBUG_WATER_BOX_COLOR,
+            }
+        })
+        .collect()
+}
+
+fn debug_water_amount_billboards(samples: &[DebugWaterSample]) -> Vec<DebugTextBillboard> {
+    samples
+        .iter()
+        .map(|sample| {
+            let BlockPos { x, y, z } = sample.pos;
+            DebugTextBillboard::centered(
+                [
+                    x as f32 + 0.5,
+                    y as f32 + sample.height as f32,
+                    z as f32 + 0.5,
+                ],
+                sample.amount.to_string(),
+                [0, 0, 0, 255],
+            )
+        })
+        .collect()
 }
 
 fn chunk_min_block(position: f32) -> i32 {

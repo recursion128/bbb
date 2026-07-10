@@ -29,6 +29,9 @@ use crate::{
     debug_filled_boxes::{
         create_debug_filled_box_pipeline, sanitize_debug_filled_boxes, DebugFilledBox,
     },
+    debug_text_billboards::{
+        create_debug_text_pipeline, sanitize_debug_text_billboards, DebugTextBillboard,
+    },
     entity_models::{
         create_entity_model_armor_cutout_pipeline, create_entity_model_armor_entity_glint_pipeline,
         create_entity_model_armor_translucent_pipeline,
@@ -212,6 +215,7 @@ pub struct Renderer {
     pub(super) terrain_translucent_pipeline: wgpu::RenderPipeline,
     pub(super) block_destroy_pipeline: wgpu::RenderPipeline,
     pub(super) debug_filled_box_pipeline: wgpu::RenderPipeline,
+    pub(super) debug_text_pipeline: wgpu::RenderPipeline,
     pub(super) entity_model_pipeline: wgpu::RenderPipeline,
     pub(super) entity_model_textured_pipeline: wgpu::RenderPipeline,
     pub(super) entity_model_textured_cull_pipeline: wgpu::RenderPipeline,
@@ -252,6 +256,8 @@ pub struct Renderer {
     pub(super) frame_world_border_indices: FrameDataBuffer,
     pub(super) frame_debug_filled_box_vertices: FrameDataBuffer,
     pub(super) frame_debug_filled_box_indices: FrameDataBuffer,
+    pub(super) frame_debug_text_vertices: FrameDataBuffer,
+    pub(super) frame_debug_text_indices: FrameDataBuffer,
     pub(super) frame_item_entity_vertices: FrameDataBuffer,
     pub(super) frame_hud_vertices: FrameDataBuffer,
     pub(super) weather_pipeline: wgpu::RenderPipeline,
@@ -431,6 +437,7 @@ pub struct Renderer {
     pub(super) entity_scene_outline: Option<SelectionOutlineGpu>,
     pub(super) entity_target_outline: Option<SelectionOutlineGpu>,
     pub(super) debug_filled_boxes: Vec<DebugFilledBox>,
+    pub(super) debug_text_billboards: Vec<DebugTextBillboard>,
     pub(super) hud_crosshair: Option<HudSpriteGpu>,
     pub(super) hud_hotbar: Option<HudSpriteGpu>,
     pub(super) hud_hotbar_selection: Option<HudSpriteGpu>,
@@ -959,6 +966,12 @@ impl Renderer {
             create_block_destroy_pipeline(&device, format, &terrain_bind_group_layout);
         let debug_filled_box_pipeline =
             create_debug_filled_box_pipeline(&device, format, &terrain_bind_group_layout);
+        let debug_text_pipeline = create_debug_text_pipeline(
+            &device,
+            format,
+            &terrain_bind_group_layout,
+            &lightmap_sample_bind_group_layout,
+        );
         let entity_model_pipeline = create_entity_model_pipeline(
             &device,
             format,
@@ -1282,6 +1295,7 @@ impl Renderer {
             terrain_translucent_pipeline,
             block_destroy_pipeline,
             debug_filled_box_pipeline,
+            debug_text_pipeline,
             entity_model_pipeline,
             entity_model_textured_pipeline,
             entity_model_textured_cull_pipeline,
@@ -1342,6 +1356,8 @@ impl Renderer {
             frame_debug_filled_box_indices: FrameDataBuffer::index(
                 "bbb-debug-filled-box-frame-indices",
             ),
+            frame_debug_text_vertices: FrameDataBuffer::vertex("bbb-debug-text-frame-vertices"),
+            frame_debug_text_indices: FrameDataBuffer::index("bbb-debug-text-frame-indices"),
             frame_item_entity_vertices: FrameDataBuffer::vertex("bbb-item-entity-frame-vertices"),
             frame_hud_vertices: FrameDataBuffer::vertex("bbb-hud-frame-vertices"),
             weather_pipeline,
@@ -1510,6 +1526,7 @@ impl Renderer {
             entity_scene_outline: None,
             entity_target_outline: None,
             debug_filled_boxes: Vec::new(),
+            debug_text_billboards: Vec::new(),
             hud_crosshair: None,
             hud_hotbar: None,
             hud_hotbar_selection: None,
@@ -1837,6 +1854,12 @@ impl Renderer {
     /// discarded. Passing an empty vector clears all previous geometry.
     pub fn set_debug_filled_boxes(&mut self, boxes: Vec<DebugFilledBox>) {
         self.debug_filled_boxes = sanitize_debug_filled_boxes(boxes);
+    }
+
+    /// Replaces this frame's camera-facing `TextGizmo` submissions. Invalid
+    /// entries are discarded; an empty vector clears the previous frame.
+    pub fn set_debug_text_billboards(&mut self, billboards: Vec<DebugTextBillboard>) {
+        self.debug_text_billboards = sanitize_debug_text_billboards(billboards);
     }
 
     pub fn set_selection_outline(&mut self, outline: Option<SelectionOutline>) {

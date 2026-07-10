@@ -3,6 +3,7 @@ mod camera;
 mod clouds;
 mod counters;
 mod debug_filled_boxes;
+mod debug_text_billboards;
 mod debug_textures;
 mod entity_models;
 mod exports;

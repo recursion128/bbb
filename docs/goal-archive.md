@@ -8084,3 +8084,21 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   WaterRenderer→HeightMapRenderer 提交顺序。tests 覆盖 source/flowing/上方同类
   水柱、lava 排除、迭代顺序、toggle/reduced-debug/player gate 与 frame 提取顺序。
   水量数字仍留在账本，待通用 3D debug-text billboard GPU surface 落地。
+
+## 2026-07-10：Debug text billboards 与 water amount labels
+
+- [x] `minecraft:visualize_water_levels` 水量数字及通用 `TextGizmo` GPU surface
+  （P2 native/renderer slice）：依据 vanilla 26.1 `TextGizmo.Style`、
+  `DrawableGizmoPrimitives.renderTexts`、`BakedSheetGlyph.render` 与
+  `RenderPipelines.TEXT`，renderer 将字体像素按 `scale/16` 绕 camera orientation
+  billboard 化、翻转 Y，支持 `Font.width/2` 居中及 `-adjustLeft/scale` 左偏移；
+  glyph 使用 HUD 的 first-provider-wins metrics 与同源 `font/default` atlas，走
+  full-bright lightmap、alpha cutout/blend、fog、`LessEqual` depth-write、back-face
+  cull。opaque group 先于 translucent group且组内稳定，逐帧 `FrameDataBuffer`
+  复用并由 `RendererFrame` 空提交清除 stale 状态；debug box→text pass 顺序与
+  vanilla gizmo group 一致。native 将 water 扫描收敛成一次确定性 sample，再同时
+  投影 filled boxes 与位于 `[x+0.5,y+getHeight,z+0.5]` 的黑色 amount 文本。
+  camera owner 统一 item/particle/debug 三类 billboard 轴公式。tests 覆盖文字
+  sanitize、居中/left-adjust、glyph UV/坐标/RGBA/full-bright、opaque/translucent
+  顺序、pipeline state/WGSL 创建、stale clear、既有 item/particle 回归、水量
+  文本与 frame/step wiring。
