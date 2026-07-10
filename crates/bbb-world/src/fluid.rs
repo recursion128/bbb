@@ -26,6 +26,17 @@ pub(crate) fn fluid_height_at(world: &WorldStore, pos: BlockPos, fluid: TerrainF
     }
 }
 
+impl WorldStore {
+    /// Samples a loaded block's fluid state together with vanilla
+    /// `FluidState.getHeight(level, pos)`. Keeping the neighbour-column check
+    /// in `bbb-world` gives movement, effects, and renderer projections one
+    /// authoritative `FlowingFluid.getHeight` implementation.
+    pub fn fluid_state_and_height_at(&self, pos: BlockPos) -> Option<(TerrainFluidState, f64)> {
+        let fluid = self.probe_block(pos)?.fluid?;
+        Some((fluid, fluid_height_at(self, pos, fluid)))
+    }
+}
+
 /// Vanilla `Entity.isInWater()` (`Entity.wasTouchingWater`, refreshed each tick by
 /// `updateFluidStateAndDoFluidPushing(FluidTags.WATER, ...)`): the entity's bounding box,
 /// deflated by [`FLUID_INTERACTION_BOX_DEFLATE`], is scanned block by block and the entity
@@ -142,6 +153,45 @@ mod tests {
             [0.25, 0.5, 0.25],
             [0.75, 0.8, 0.75]
         ));
+    }
+
+    #[test]
+    fn fluid_state_and_height_at_uses_same_fluid_above_and_level_height() {
+        let mut world = empty_world();
+        set_block(
+            &mut world,
+            BlockPos { x: 0, y: 0, z: 0 },
+            SOURCE_WATER_BLOCK_STATE_ID,
+        );
+        set_block(
+            &mut world,
+            BlockPos { x: 0, y: 1, z: 0 },
+            SOURCE_WATER_BLOCK_STATE_ID,
+        );
+        set_block(
+            &mut world,
+            BlockPos { x: 1, y: 0, z: 0 },
+            FLOWING_WATER_LEVEL_3_BLOCK_STATE_ID,
+        );
+
+        assert_eq!(
+            world.fluid_state_and_height_at(BlockPos { x: 0, y: 0, z: 0 }),
+            Some((
+                TerrainFluidState::new(TerrainFluidKind::Water, 8, false),
+                1.0,
+            ))
+        );
+        assert_eq!(
+            world.fluid_state_and_height_at(BlockPos { x: 1, y: 0, z: 0 }),
+            Some((
+                TerrainFluidState::new(TerrainFluidKind::Water, 5, false),
+                5.0 / 9.0,
+            ))
+        );
+        assert_eq!(
+            world.fluid_state_and_height_at(BlockPos { x: 2, y: 0, z: 0 }),
+            None
+        );
     }
 
     #[test]

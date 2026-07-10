@@ -8070,3 +8070,17 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   `LessEqual`、no-depth-write、back-face cull、view-offset、no-fog 语义绘制。
   tests 覆盖 world packed sampler、toggle/reduced-debug/负 chunk 提取、box
   坐标/颜色/order、geometry winding/pipeline state、frame step 与 stale clear。
+
+## 2026-07-10：Debug water-level filled boxes
+
+- [x] `minecraft:visualize_water_levels` 水面 filled-box 几何（P2
+  world/native/renderer slice）：依据 vanilla 26.1 `WaterDebugRenderer`，native
+  以 `LocalPlayer.blockPosition()`（不随 camera entity）为中心，按
+  `BlockPos.betweenClosed` 的 x→y→z 快序扫描 `[-10,10]^3`；world 新增窄
+  `fluid_state_and_height_at` 查询并委托既有唯一 `FlowingFluid.getHeight`
+  语义，同类流体在上方时取 1.0，否则取 amount/9。仅 water tag 状态生成
+  `[x/y/z+0.01]..[x/z+0.99,y+height]`、RGBA `[0,255,0,38]` 的
+  `debugFilledBox`，lava 与未加载块忽略；与 heightmap 同开时保持 vanilla
+  WaterRenderer→HeightMapRenderer 提交顺序。tests 覆盖 source/flowing/上方同类
+  水柱、lava 排除、迭代顺序、toggle/reduced-debug/player gate 与 frame 提取顺序。
+  水量数字仍留在账本，待通用 3D debug-text billboard GPU surface 落地。

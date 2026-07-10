@@ -611,6 +611,9 @@ const CHUNK_BORDER_THICK_LINE_WIDTH: f32 = 4.0;
 const CHUNK_BORDER_THIN_LINE_WIDTH: f32 = 1.0;
 const DEBUG_HEIGHTMAP_CHUNK_DISTANCE: i32 = 2;
 const DEBUG_HEIGHTMAP_BOX_HEIGHT: f32 = 3.0 / 32.0;
+const DEBUG_WATER_SCAN_RADIUS: i32 = 10;
+const DEBUG_WATER_BOX_INSET: f32 = 0.01;
+const DEBUG_WATER_BOX_COLOR: [u8; 4] = [0, 255, 0, 38];
 const DEBUG_HEIGHTMAP_COLORS: [[u8; 4]; 6] = [
     [255, 255, 0, 255],
     [0, 178, 0, 255],
@@ -2427,7 +2430,11 @@ pub(crate) fn pump_network_and_terrain(
     let entity_scene_outline = debug_entity_scene_outline(input, world, entity_partial_tick);
     let entity_target_outline =
         entity_target_outline_from_camera_at_partial_tick(world, camera_pose, entity_partial_tick);
-    let debug_filled_boxes = debug_heightmap_boxes(input, world, camera_pose);
+    // Vanilla `DebugRenderer.refreshRendererList` registers WaterDebugRenderer
+    // before HeightMapRenderer, so their shared debugFilledBox submissions keep
+    // that renderer order when both custom entries are enabled.
+    let mut debug_filled_boxes = debug_water_boxes(input, world);
+    debug_filled_boxes.extend(debug_heightmap_boxes(input, world, camera_pose));
     // Vanilla `LevelRenderer.extractBlockDestroyAnimation` reads block-breaking state during
     // render extract, after the client tick; local destroy overlay ticks are advanced above.
     let block_destroy_overlays = block_destroy_overlays_from_world(world, terrain_textures);
@@ -3957,6 +3964,77 @@ fn debug_heightmap_boxes(
                         });
                     }
                 }
+            }
+        }
+    }
+    boxes
+}
+
+fn debug_water_boxes(input: &ClientInputState, world: &WorldStore) -> Vec<DebugFilledBox> {
+    if !input.debug_screen_entry_enabled(
+        DebugScreenEntryId::VisualizeWaterLevels,
+        world.local_player_has_reduced_debug_info(),
+    ) || world.level_info().is_none()
+    {
+        return Vec::new();
+    }
+    // Vanilla WaterDebugRenderer anchors the 21^3 scan on
+    // `minecraft.player.blockPosition()`, not the active camera entity.
+    let Some(player_pose) = world.local_player_pose() else {
+        return Vec::new();
+    };
+    let player_position = [
+        player_pose.position.x,
+        player_pose.position.y,
+        player_pose.position.z,
+    ];
+    if !player_position
+        .iter()
+        .all(|coordinate| coordinate.is_finite())
+    {
+        return Vec::new();
+    }
+    let center = BlockPos {
+        x: player_position[0].floor() as i32,
+        y: player_position[1].floor() as i32,
+        z: player_position[2].floor() as i32,
+    };
+    let min = BlockPos {
+        x: center.x.saturating_sub(DEBUG_WATER_SCAN_RADIUS),
+        y: center.y.saturating_sub(DEBUG_WATER_SCAN_RADIUS),
+        z: center.z.saturating_sub(DEBUG_WATER_SCAN_RADIUS),
+    };
+    let max = BlockPos {
+        x: center.x.saturating_add(DEBUG_WATER_SCAN_RADIUS),
+        y: center.y.saturating_add(DEBUG_WATER_SCAN_RADIUS),
+        z: center.z.saturating_add(DEBUG_WATER_SCAN_RADIUS),
+    };
+
+    let mut boxes = Vec::new();
+    // `BlockPos.betweenClosed`: x advances fastest, then y, then z.
+    for z in min.z..=max.z {
+        for y in min.y..=max.y {
+            for x in min.x..=max.x {
+                let pos = BlockPos { x, y, z };
+                let Some((fluid, height)) = world.fluid_state_and_height_at(pos) else {
+                    continue;
+                };
+                if fluid.kind != TerrainFluidKind::Water {
+                    continue;
+                }
+                boxes.push(DebugFilledBox {
+                    min: [
+                        x as f32 + DEBUG_WATER_BOX_INSET,
+                        y as f32 + DEBUG_WATER_BOX_INSET,
+                        z as f32 + DEBUG_WATER_BOX_INSET,
+                    ],
+                    max: [
+                        x as f32 + (1.0 - DEBUG_WATER_BOX_INSET),
+                        y as f32 + height as f32,
+                        z as f32 + (1.0 - DEBUG_WATER_BOX_INSET),
+                    ],
+                    color: DEBUG_WATER_BOX_COLOR,
+                });
             }
         }
     }
