@@ -8811,3 +8811,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   则回退原版默认 rocket stack。focused test 覆盖顶层 air/count 100，以及
   use-remainder/charged-projectiles/bundle/container 中的 air、0、100 template，
   四个无效 component 均安全省略。
+
+## 2026-07-10：ItemStack tooltip-display save codec
+
+- [x] `minecraft:tooltip_display` 持久化 component（P2 protocol + native
+  input）：依据 vanilla 26.1 `DataComponents` 的 110 项注册顺序新增
+  DataComponentType id→resource 查询面，并用本地 `DataComponents.java` 解析测试
+  逐项锁定；依据 `TooltipDisplay.CODEC` 将 type id `18` 已保留的 hide flag 与
+  ordered hidden type ids 输出为默认省略的 boolean/list fields。native component
+  patch test 扩展到 52 个 added entry，覆盖 enchantments/attribute-modifiers/
+  transient creative-slot-lock 名称及顺序；unknown type id 安全省略整个 component；
+  tooltip-display 从剩余 component 总账本移入已支持子集。

@@ -4669,6 +4669,7 @@ fn debug_supported_added_component_snbt(
             ItemRaritySummary::Epic => "epic",
         }),
         CUSTOM_MODEL_DATA_COMPONENT_TYPE_ID => debug_custom_model_data_component_snbt(patch),
+        18 => debug_tooltip_display_component_snbt(patch)?,
         19 => patch.repair_cost.filter(|value| *value >= 0)?.to_string(),
         21 => debug_snbt_bool(patch.enchantment_glint_override?).to_string(),
         22 => "{}".to_string(),
@@ -4767,6 +4768,7 @@ fn debug_supported_component_resource_id(type_id: i32) -> Option<&'static str> {
         10 => "minecraft:item_model",
         12 => "minecraft:rarity",
         CUSTOM_MODEL_DATA_COMPONENT_TYPE_ID => "minecraft:custom_model_data",
+        18 => "minecraft:tooltip_display",
         19 => "minecraft:repair_cost",
         21 => "minecraft:enchantment_glint_override",
         22 => "minecraft:intangible_projectile",
@@ -5147,6 +5149,32 @@ fn debug_custom_model_data_component_snbt(
         ));
     }
     format!("{{{}}}", fields.join(", "))
+}
+
+fn debug_tooltip_display_component_snbt(
+    patch: &bbb_protocol::packets::DataComponentPatchSummary,
+) -> Option<String> {
+    let hidden_components = patch
+        .tooltip_hidden_component_type_ids
+        .iter()
+        .map(|type_id| {
+            bbb_protocol::data_component_types::vanilla_data_component_resource_id_for_type_id(
+                *type_id,
+            )
+            .map(debug_snbt_string)
+        })
+        .collect::<Option<Vec<_>>>()?;
+    let mut fields = Vec::new();
+    if patch.tooltip_hide_tooltip {
+        fields.push(format!("hide_tooltip: {}", debug_snbt_bool(true)));
+    }
+    if !hidden_components.is_empty() {
+        fields.push(format!(
+            "hidden_components: [{}]",
+            hidden_components.join(", ")
+        ));
+    }
+    Some(format!("{{{}}}", fields.join(", ")))
 }
 
 fn debug_item_stack_template_list_snbt(

@@ -8568,11 +8568,11 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
         EquipmentAssetCatalog::default(),
     );
     let patch = DataComponentPatchSummary {
-        added: 51,
+        added: 52,
         added_type_ids: vec![
-            0, 1, 2, 3, 4, 5, 7, 10, 12, 17, 19, 21, 22, 23, 25, 26, 30, 31, 34, 35, 40, 43, 44,
-            45, 46, 47, 49, 50, 52, 54, 57, 58, 59, 60, 63, 66, 67, 68, 69, 70, 71, 73, 74, 75, 76,
-            77, 78, 79, 88, 89, 90,
+            0, 1, 2, 3, 4, 5, 7, 10, 12, 17, 18, 19, 21, 22, 23, 25, 26, 30, 31, 34, 35, 40, 43,
+            44, 45, 46, 47, 49, 50, 52, 54, 57, 58, 59, 60, 63, 66, 67, 68, 69, 70, 71, 73, 74, 75,
+            76, 77, 78, 79, 88, 89, 90,
         ],
         removed_type_ids: vec![6],
         custom_data: Some(NbtSummaryValue::Compound(vec![
@@ -8641,6 +8641,8 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
         custom_model_data_flags: vec![true, false],
         custom_model_data_strings: vec!["variant".to_string(), "A 'quote'".to_string()],
         custom_model_data_colors: vec![0x11_22_33, 0x44_55_66],
+        tooltip_hide_tooltip: true,
+        tooltip_hidden_component_type_ids: vec![13, 16, 20],
         repair_cost: Some(5),
         enchantment_glint_override: Some(false),
         intangible_projectile: true,
@@ -8901,7 +8903,10 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
          \"minecraft:rarity\": \"rare\", \
          \"minecraft:custom_model_data\": {floats: [1.0f, -0.0f, Infinityf, NaNf], \
          flags: [1b, 0b], strings: [\"variant\", \"A 'quote'\"], \
-         colors: [1122867, 4478310]}, \"minecraft:repair_cost\": 5, \
+         colors: [1122867, 4478310]}, \
+         \"minecraft:tooltip_display\": {hide_tooltip: 1b, hidden_components: \
+         [\"minecraft:enchantments\", \"minecraft:attribute_modifiers\", \
+         \"minecraft:creative_slot_lock\"]}, \"minecraft:repair_cost\": 5, \
          \"minecraft:enchantment_glint_override\": 0b, \
          \"minecraft:intangible_projectile\": {}, \
          \"minecraft:food\": {nutrition: 6, saturation: 7.2f, can_always_eat: 1b}, \
@@ -8983,8 +8988,9 @@ fn item_stack_snbt_omits_registry_backed_components_with_unknown_ids() {
         item_id: Some(0),
         count: 1,
         component_patch: DataComponentPatchSummary {
-            added: 8,
-            added_type_ids: vec![25, 49, 50, 58, 60, 74, 75, 77],
+            added: 9,
+            added_type_ids: vec![18, 25, 49, 50, 58, 60, 74, 75, 77],
+            tooltip_hidden_component_type_ids: vec![999],
             use_remainder: Some(Box::new(bbb_protocol::packets::ItemStackTemplateSummary {
                 item_id: 99,
                 count: 1,
