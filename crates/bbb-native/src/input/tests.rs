@@ -8525,9 +8525,9 @@ fn local_firework_save_uses_parent_lifecycle_synced_item_codec_and_client_life()
 #[test]
 fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
     let patch = DataComponentPatchSummary {
-        added: 21,
+        added: 22,
         added_type_ids: vec![
-            0, 1, 2, 3, 4, 10, 12, 17, 21, 22, 44, 45, 46, 54, 63, 68, 69, 76, 88, 89, 90,
+            0, 1, 2, 3, 4, 10, 12, 17, 21, 22, 44, 45, 46, 54, 63, 67, 68, 69, 76, 88, 89, 90,
         ],
         removed_type_ids: vec![6],
         custom_data: Some(NbtSummaryValue::Compound(vec![
@@ -8598,6 +8598,15 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
         writable_book_pages: vec!["first\npage".to_string(), "second raw".to_string()],
         writable_book_page_filters: vec![None, Some("second filtered".to_string())],
         ominous_bottle_amplifier: Some(3),
+        lodestone_target: Some(bbb_protocol::packets::LodestoneTargetSummary {
+            dimension: "minecraft:overworld".to_string(),
+            pos: ProtocolBlockPos {
+                x: 10,
+                y: 64,
+                z: -4,
+            },
+        }),
+        lodestone_tracked: Some(false),
         firework_explosion_shape: Some(FireworkExplosionShapeSummary::Burst),
         firework_explosion_colors: vec![0x77_88_99],
         firework_explosion_fade_colors: vec![0xAA_BB_CC],
@@ -8638,6 +8647,8 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
          \"minecraft:writable_book_content\": {pages: [{raw: \"first\\npage\"}, \
          {raw: \"second raw\", filtered: \"second filtered\"}]}, \
          \"minecraft:ominous_bottle_amplifier\": 3, \
+         \"minecraft:lodestone_tracker\": {target: {dimension: \"minecraft:overworld\", \
+         pos: [I; 10, 64, -4]}, tracked: 0b}, \
          \"minecraft:firework_explosion\": {shape: \"burst\", colors: [7833753], \
          fade_colors: [11189196], has_trail: 1b}, \
          \"minecraft:fireworks\": {flight_duration: 2}, \

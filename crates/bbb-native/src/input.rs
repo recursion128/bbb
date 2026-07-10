@@ -257,6 +257,7 @@ const FIREWORK_ROCKET_SHOT_AT_ANGLE_DATA_ID: u8 = 10;
 const FIREWORK_ROCKET_DEFAULT_LIFETIME: i32 = 0;
 const CUSTOM_MODEL_DATA_COMPONENT_TYPE_ID: i32 = 17;
 const WRITABLE_BOOK_CONTENT_COMPONENT_TYPE_ID: i32 = 54;
+const LODESTONE_TRACKER_COMPONENT_TYPE_ID: i32 = 67;
 const FIREWORKS_COMPONENT_TYPE_ID: i32 = 69;
 const BLOCK_STATE_COMPONENT_TYPE_ID: i32 = 76;
 const TROPICAL_FISH_PATTERN_COMPONENT_TYPE_ID: i32 = 88;
@@ -4648,6 +4649,7 @@ fn debug_supported_added_component_snbt(
             debug_writable_book_content_component_snbt(patch)
         }
         63 => patch.ominous_bottle_amplifier?.to_string(),
+        LODESTONE_TRACKER_COMPONENT_TYPE_ID => debug_lodestone_tracker_component_snbt(patch),
         68 => debug_firework_explosion_snbt(&FireworkExplosionSummary {
             shape: patch.firework_explosion_shape?,
             colors: patch.firework_explosion_colors.clone(),
@@ -4701,6 +4703,7 @@ fn debug_supported_component_resource_id(type_id: i32) -> Option<&'static str> {
         46 => "minecraft:map_id",
         WRITABLE_BOOK_CONTENT_COMPONENT_TYPE_ID => "minecraft:writable_book_content",
         63 => "minecraft:ominous_bottle_amplifier",
+        LODESTONE_TRACKER_COMPONENT_TYPE_ID => "minecraft:lodestone_tracker",
         68 => "minecraft:firework_explosion",
         FIREWORKS_COMPONENT_TYPE_ID => "minecraft:fireworks",
         BLOCK_STATE_COMPONENT_TYPE_ID => "minecraft:block_state",
@@ -4872,6 +4875,25 @@ fn debug_writable_book_content_component_snbt(
         .collect::<Vec<_>>()
         .join(", ");
     format!("{{pages: [{pages}]}}")
+}
+
+fn debug_lodestone_tracker_component_snbt(
+    patch: &bbb_protocol::packets::DataComponentPatchSummary,
+) -> String {
+    let mut fields = Vec::new();
+    if let Some(target) = &patch.lodestone_target {
+        fields.push(format!(
+            "target: {{dimension: {}, pos: [I; {}, {}, {}]}}",
+            debug_snbt_string(&target.dimension),
+            target.pos.x,
+            target.pos.y,
+            target.pos.z
+        ));
+    }
+    if !patch.lodestone_tracked.unwrap_or(true) {
+        fields.push(format!("tracked: {}", debug_snbt_bool(false)));
+    }
+    format!("{{{}}}", fields.join(", "))
 }
 
 fn debug_tropical_fish_pattern_name(packed_id: i32) -> &'static str {

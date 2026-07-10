@@ -8596,3 +8596,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   component patch focused test 扩展到 21 个 added entry，覆盖无过滤页、过滤页、
   page-order 与换行 string escaping；writable-book 从剩余 component 总账本移入
   已支持子集。
+
+## 2026-07-10：ItemStack lodestone-tracker save codec
+
+- [x] `minecraft:lodestone_tracker` 持久化 component（P2 native input）：
+  依据 vanilla 26.1 `LodestoneTracker.CODEC`、`GlobalPos.CODEC` 与
+  `BlockPos.CODEC`，复用 protocol 已保留的 type id `67` target/tracked，
+  将可选 target 输出为 dimension resource string + int-array position，并仅在
+  `tracked != true` 时输出该默认字段。component patch focused test 扩展到
+  22 个 added entry，覆盖完整 target 与非默认 false；lodestone-tracker 从剩余
+  component 总账本移入已支持子集。
