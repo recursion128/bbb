@@ -294,6 +294,10 @@ pub struct DataComponentPatchSummary {
     #[serde(default)]
     pub chicken_sound_variant_id: Option<i32>,
     #[serde(default)]
+    pub cat_variant_id: Option<i32>,
+    #[serde(default)]
+    pub cat_sound_variant_id: Option<i32>,
+    #[serde(default)]
     pub lodestone_target: Option<LodestoneTargetSummary>,
     #[serde(default)]
     pub lodestone_tracked: Option<bool>,
@@ -3398,6 +3402,32 @@ mod tests {
                 added_type_ids: vec![97, 98],
                 chicken_variant_id: Some(2),
                 chicken_sound_variant_id: Some(1),
+                ..DataComponentPatchSummary::default()
+            }
+        );
+        assert!(decoder.is_empty());
+    }
+
+    #[test]
+    fn decodes_cat_variant_and_sound_holder_registry_ids() {
+        let mut payload = Encoder::new();
+        payload.write_var_i32(2);
+        payload.write_var_i32(0);
+        payload.write_var_i32(105);
+        payload.write_var_i32(10);
+        payload.write_var_i32(106);
+        payload.write_var_i32(1);
+
+        let payload = payload.into_inner();
+        let mut decoder = Decoder::new(&payload);
+        let patch = decode_data_component_patch_summary(&mut decoder).unwrap();
+        assert_eq!(
+            patch,
+            DataComponentPatchSummary {
+                added: 2,
+                added_type_ids: vec![105, 106],
+                cat_variant_id: Some(10),
+                cat_sound_variant_id: Some(1),
                 ..DataComponentPatchSummary::default()
             }
         );

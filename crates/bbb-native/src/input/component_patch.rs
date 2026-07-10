@@ -109,6 +109,8 @@ static PERSISTENT_SNBT_ENCODERS: &[PersistentSnbtEncoderDescriptor] = &[
     encoder(102, encode_painting_variant),
     encoder(103, encode_builtin_enum),
     encoder(104, encode_builtin_enum),
+    encoder(105, encode_named_variant),
+    encoder(106, encode_named_variant),
     encoder(107, encode_builtin_enum),
     encoder(108, encode_builtin_enum),
     encoder(109, encode_builtin_enum),
@@ -763,6 +765,8 @@ fn encode_named_variant(
         98 => chicken_sound_variant_resource_id(patch.chicken_sound_variant_id?)?,
         99 => zombie_nautilus_variant_resource_id(patch.zombie_nautilus_variant_id?)?,
         100 => frog_variant_resource_id(patch.frog_variant_id?)?,
+        105 => cat_variant_resource_id(patch.cat_variant_id?)?,
+        106 => cat_sound_variant_resource_id(patch.cat_sound_variant_id?)?,
         _ => return None,
     };
     Some(debug_snbt_string(resource_id))
@@ -830,7 +834,7 @@ mod tests {
 
     #[test]
     fn encoder_registry_is_unique_sorted_and_persistent() {
-        assert_eq!(PERSISTENT_SNBT_ENCODERS.len(), 95);
+        assert_eq!(PERSISTENT_SNBT_ENCODERS.len(), 97);
         let mut ids = HashSet::new();
         let mut previous = None;
         for descriptor in PERSISTENT_SNBT_ENCODERS {
@@ -1182,6 +1186,8 @@ mod tests {
             cow_sound_variant_id: Some(1),
             chicken_variant_id: Some(2),
             chicken_sound_variant_id: Some(1),
+            cat_variant_id: Some(10),
+            cat_sound_variant_id: Some(1),
             ..Default::default()
         };
         assert_eq!(
@@ -1228,6 +1234,14 @@ mod tests {
             encode_added_component_value_snbt(100, &patch, None),
             Some("\"minecraft:cold\"".to_string())
         );
+        assert_eq!(
+            encode_added_component_value_snbt(105, &patch, None),
+            Some("\"minecraft:all_black\"".to_string())
+        );
+        assert_eq!(
+            encode_added_component_value_snbt(106, &patch, None),
+            Some("\"minecraft:royal\"".to_string())
+        );
 
         patch.villager_variant_id = Some(7);
         assert_eq!(encode_added_component_value_snbt(81, &patch, None), None);
@@ -1261,5 +1275,10 @@ mod tests {
         patch.zombie_nautilus_variant_id = Some(1);
         patch.frog_variant_id = Some(3);
         assert_eq!(encode_added_component_value_snbt(100, &patch, None), None);
+        patch.cat_variant_id = Some(11);
+        assert_eq!(encode_added_component_value_snbt(105, &patch, None), None);
+        patch.cat_variant_id = Some(10);
+        patch.cat_sound_variant_id = Some(2);
+        assert_eq!(encode_added_component_value_snbt(106, &patch, None), None);
     }
 }

@@ -6329,36 +6329,39 @@ fn debug_push_cat_additional_save_data(entity: &EntityState, fields: &mut Vec<St
         .unwrap_or(CAT_DEFAULT_COLLAR_COLOR_ID);
     fields.push(format!(
         "variant: {}",
-        debug_snbt_string(debug_cat_variant_resource_id(variant))
+        debug_snbt_string(cat_variant_resource_id(variant).unwrap_or("minecraft:black"))
     ));
     fields.push(format!(
         "sound_variant: {}",
-        debug_snbt_string(debug_cat_sound_variant_resource_id(sound_variant))
+        debug_snbt_string(
+            cat_sound_variant_resource_id(sound_variant).unwrap_or("minecraft:classic")
+        )
     ));
     fields.push(format!("CollarColor: {collar_color}b"));
 }
 
-fn debug_cat_variant_resource_id(variant: i32) -> &'static str {
-    match variant {
-        0 => "minecraft:tabby",
-        2 => "minecraft:red",
-        3 => "minecraft:siamese",
-        4 => "minecraft:british_shorthair",
-        5 => "minecraft:calico",
-        6 => "minecraft:persian",
-        7 => "minecraft:ragdoll",
-        8 => "minecraft:white",
-        9 => "minecraft:jellie",
-        10 => "minecraft:all_black",
-        _ => "minecraft:black",
-    }
+fn cat_variant_resource_id(variant: i32) -> Option<&'static str> {
+    [
+        "minecraft:tabby",
+        "minecraft:black",
+        "minecraft:red",
+        "minecraft:siamese",
+        "minecraft:british_shorthair",
+        "minecraft:calico",
+        "minecraft:persian",
+        "minecraft:ragdoll",
+        "minecraft:white",
+        "minecraft:jellie",
+        "minecraft:all_black",
+    ]
+    .get(usize::try_from(variant).ok()?)
+    .copied()
 }
 
-fn debug_cat_sound_variant_resource_id(variant: i32) -> &'static str {
-    match variant {
-        1 => "minecraft:royal",
-        _ => "minecraft:classic",
-    }
+fn cat_sound_variant_resource_id(variant: i32) -> Option<&'static str> {
+    ["minecraft:classic", "minecraft:royal"]
+        .get(usize::try_from(variant).ok()?)
+        .copied()
 }
 
 fn debug_push_fox_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {

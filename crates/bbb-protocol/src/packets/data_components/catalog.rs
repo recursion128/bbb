@@ -397,12 +397,12 @@ static VANILLA_DATA_COMPONENTS: &[DataComponentDescriptor] = &[
     ),
     component(103, "minecraft:llama/variant", true, decode_builtin_enum),
     component(104, "minecraft:axolotl/variant", true, decode_builtin_enum),
-    component(105, "minecraft:cat/variant", true, skip_holder_registry),
+    component(105, "minecraft:cat/variant", true, decode_cat_variant),
     component(
         106,
         "minecraft:cat/sound_variant",
         true,
-        skip_holder_registry,
+        decode_cat_sound_variant,
     ),
     component(107, "minecraft:cat/collar", true, decode_builtin_enum),
     component(108, "minecraft:sheep/color", true, decode_builtin_enum),
@@ -1181,6 +1181,24 @@ fn decode_chicken_sound_variant(
     summary: &mut DataComponentPatchSummary,
 ) -> Result<()> {
     summary.chicken_sound_variant_id = Some(decode_holder_registry_id(decoder)?);
+    Ok(())
+}
+
+fn decode_cat_variant(
+    _type_id: i32,
+    decoder: &mut Decoder<'_>,
+    summary: &mut DataComponentPatchSummary,
+) -> Result<()> {
+    summary.cat_variant_id = Some(decode_holder_registry_id(decoder)?);
+    Ok(())
+}
+
+fn decode_cat_sound_variant(
+    _type_id: i32,
+    decoder: &mut Decoder<'_>,
+    summary: &mut DataComponentPatchSummary,
+) -> Result<()> {
+    summary.cat_sound_variant_id = Some(decode_holder_registry_id(decoder)?);
     Ok(())
 }
 

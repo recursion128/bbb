@@ -9163,3 +9163,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   写入独立 holder id；native entity save 与 component encoders 共用可校验查询，
   保持默认 fallback 或 unknown-id 省略。大型 component patch test 从 93 扩展到
   95 个 added entry，并覆盖双 descriptor 与 cold/picky 分支。
+
+## 2026-07-10：ItemStack cat variant descriptors and save
+
+- [x] minecraft:cat/variant 与 minecraft:cat/sound_variant 的 descriptor decode
+  与 named-holder 持久化（P2 protocol + native input）：依据 vanilla 26.1 两个
+  fixed-registry Codec 及 bootstrap 顺序（variant 为 tabby 至 all_black 的 11 项，
+  sound 为 classic/royal），protocol type id 105/106 分别写入独立 holder id；native
+  entity save 与 component encoders 共用可校验查询，实体越界显式保留 black/classic
+  fallback，component unknown id 安全省略。大型 component patch test 从 95 扩展到
+  97 个 added entry，并覆盖 all_black/royal 与查询边界。
