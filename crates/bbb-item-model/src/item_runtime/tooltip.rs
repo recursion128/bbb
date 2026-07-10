@@ -1685,6 +1685,12 @@ mod tests {
             Some("minecraft:sharpness")
         );
         assert_eq!(
+            vanilla_enchantment_resource_id(42),
+            Some("minecraft:vanishing_curse")
+        );
+        assert_eq!(vanilla_enchantment_resource_id(43), None);
+        assert_eq!(vanilla_enchantment_resource_id(-1), None);
+        assert_eq!(
             vanilla_enchantment_max_level("minecraft:sharpness"),
             Some(5)
         );
@@ -2716,6 +2722,11 @@ fn enchantment_key_for_holder<'a>(
     if let Some(enchantment_keys) = enchantment_keys {
         return enchantment_keys.get(index).map(String::as_str);
     }
+    vanilla_enchantment_resource_id(holder_id)
+}
+
+pub fn vanilla_enchantment_resource_id(holder_id: i32) -> Option<&'static str> {
+    let index = usize::try_from(holder_id).ok()?;
     VANILLA_ENCHANTMENT_KEYS_AND_MAX_LEVELS
         .get(index)
         .map(|(key, _)| *key)

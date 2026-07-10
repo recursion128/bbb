@@ -8995,3 +8995,15 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   输出 entry list，复刻必需 id 与 duration=160 默认省略；native component patch
   test 从 74 扩展到 75 个 added entry，另覆盖空列表和 unknown holder 的整组件
   安全省略。动态 datapack MobEffect 排序仍保留在 registry-backed 总账本。
+
+## 2026-07-10：ItemStack enchantment map save codecs
+
+- [x] minecraft:enchantments 与 minecraft:stored_enchantments 持久化 component
+  （P2 item-model + native input）：依据 vanilla 26.1
+  `ItemEnchantments.CODEC/STREAM_CODEC`，item-model 从既有 43 项 vanilla
+  Enchantment 注册顺序表暴露唯一的窄 resource-id 查询，既有 tooltip holder
+  解析委托同一入口；native component encoder registry 让 type id 13/42 共享
+  unbounded-map encoder，复刻 1..255 persistent level 范围。大型 component patch
+  test 从 75 扩展到 77 个 added entry，并覆盖 ordered map、空 map、非法 level
+  与 unknown holder 的整组件安全省略。动态 datapack Enchantment 排序仍保留在
+  registry-backed 总账本。

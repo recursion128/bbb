@@ -26,6 +26,7 @@ static PERSISTENT_SNBT_ENCODERS: &[PersistentSnbtEncoderDescriptor] = &[
     encoder(7, encode_minimum_attack_charge),
     encoder(10, encode_item_model),
     encoder(12, encode_rarity),
+    encoder(13, encode_enchantments),
     encoder(17, encode_custom_model_data),
     encoder(18, encode_tooltip_display),
     encoder(19, encode_repair_cost),
@@ -46,6 +47,7 @@ static PERSISTENT_SNBT_ENCODERS: &[PersistentSnbtEncoderDescriptor] = &[
     encoder(38, encode_piercing_weapon),
     encoder(39, encode_kinetic_weapon),
     encoder(40, encode_swing_animation),
+    encoder(42, encode_enchantments),
     encoder(43, encode_dye),
     encoder(44, encode_dyed_color),
     encoder(45, encode_map_color),
@@ -190,6 +192,29 @@ fn encode_rarity(
         ItemRaritySummary::Rare => "rare",
         ItemRaritySummary::Epic => "epic",
     }))
+}
+
+fn encode_enchantments(
+    type_id: i32,
+    patch: &bbb_protocol::packets::DataComponentPatchSummary,
+    _item_runtime: Option<&NativeItemRuntime>,
+) -> Option<String> {
+    let enchantments = match type_id {
+        13 => &patch.enchantments,
+        42 => &patch.stored_enchantments,
+        _ => return None,
+    };
+    let entries = enchantments
+        .iter()
+        .map(|enchantment| {
+            let level = (1..=255)
+                .contains(&enchantment.level)
+                .then_some(enchantment.level)?;
+            let resource_id = vanilla_enchantment_resource_id(enchantment.holder_id)?;
+            Some(format!("{}: {level}", debug_snbt_string(resource_id)))
+        })
+        .collect::<Option<Vec<_>>>()?;
+    Some(format!("{{{}}}", entries.join(", ")))
 }
 
 fn encode_custom_model_data(
@@ -635,7 +660,7 @@ mod tests {
 
     #[test]
     fn encoder_registry_is_unique_sorted_and_persistent() {
-        assert_eq!(PERSISTENT_SNBT_ENCODERS.len(), 75);
+        assert_eq!(PERSISTENT_SNBT_ENCODERS.len(), 77);
         let mut ids = HashSet::new();
         let mut previous = None;
         for descriptor in PERSISTENT_SNBT_ENCODERS {
@@ -698,5 +723,42 @@ mod tests {
             encode_added_component_value_snbt(53, &patch, None),
             Some("[]".to_string())
         );
+    }
+
+    #[test]
+    fn enchantment_components_share_map_codec_and_validate_persistent_values() {
+        let mut patch = bbb_protocol::packets::DataComponentPatchSummary {
+            enchantments: vec![bbb_protocol::packets::ItemEnchantmentSummary {
+                holder_id: 37,
+                level: 4,
+            }],
+            stored_enchantments: vec![bbb_protocol::packets::ItemEnchantmentSummary {
+                holder_id: 13,
+                level: 5,
+            }],
+            ..Default::default()
+        };
+        assert_eq!(
+            encode_added_component_value_snbt(13, &patch, None),
+            Some("{\"minecraft:density\": 4}".to_string())
+        );
+        assert_eq!(
+            encode_added_component_value_snbt(42, &patch, None),
+            Some("{\"minecraft:sharpness\": 5}".to_string())
+        );
+
+        patch.enchantments.clear();
+        assert_eq!(
+            encode_added_component_value_snbt(13, &patch, None),
+            Some("{}".to_string())
+        );
+
+        patch.stored_enchantments[0].holder_id = 43;
+        assert_eq!(encode_added_component_value_snbt(42, &patch, None), None);
+        patch.stored_enchantments[0].holder_id = 13;
+        patch.stored_enchantments[0].level = 0;
+        assert_eq!(encode_added_component_value_snbt(42, &patch, None), None);
+        patch.stored_enchantments[0].level = 256;
+        assert_eq!(encode_added_component_value_snbt(42, &patch, None), None);
     }
 }

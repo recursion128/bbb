@@ -240,6 +240,7 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   encoder registry)
   beyond the supported custom-NBT/primitive (including repair-cost/enchantable/glider,
   minimum-attack-charge/potion-duration-scale)/
+  enchantments/stored-enchantments/
   simple-resource (including tooltip-style/note-block-sound and vanilla/direct
   break-sound)/food/consumable/death-protection/potion-contents/suspicious-stew-effects/
   damage-resistant-tag/weapon/

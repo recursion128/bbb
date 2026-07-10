@@ -8738,12 +8738,12 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
         EquipmentAssetCatalog::default(),
     );
     let patch = DataComponentPatchSummary {
-        added: 75,
+        added: 77,
         added_type_ids: vec![
-            0, 1, 2, 3, 4, 5, 7, 10, 12, 17, 18, 19, 21, 22, 23, 24, 25, 26, 27, 29, 30, 31, 33,
-            34, 35, 36, 38, 39, 40, 43, 44, 45, 46, 47, 49, 50, 51, 52, 53, 54, 57, 58, 59, 60, 63,
-            65, 66, 67, 68, 69, 70, 71, 73, 74, 75, 76, 77, 78, 79, 80, 84, 85, 86, 87, 88, 89, 90,
-            91, 92, 101, 103, 104, 107, 108, 109,
+            0, 1, 2, 3, 4, 5, 7, 10, 12, 13, 17, 18, 19, 21, 22, 23, 24, 25, 26, 27, 29, 30, 31,
+            33, 34, 35, 36, 38, 39, 40, 42, 43, 44, 45, 46, 47, 49, 50, 51, 52, 53, 54, 57, 58, 59,
+            60, 63, 65, 66, 67, 68, 69, 70, 71, 73, 74, 75, 76, 77, 78, 79, 80, 84, 85, 86, 87, 88,
+            89, 90, 91, 92, 101, 103, 104, 107, 108, 109,
         ],
         removed_type_ids: vec![6],
         custom_data: Some(NbtSummaryValue::Compound(vec![
@@ -8808,6 +8808,16 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
         minimum_attack_charge_bits: Some(0.75_f32.to_bits()),
         item_model: Some("minecraft:custom/diamond".to_string()),
         rarity: Some(ItemRaritySummary::Rare),
+        enchantments: vec![
+            bbb_protocol::packets::ItemEnchantmentSummary {
+                holder_id: 37,
+                level: 4,
+            },
+            bbb_protocol::packets::ItemEnchantmentSummary {
+                holder_id: 12,
+                level: 3,
+            },
+        ],
         custom_model_data_floats: vec![1.0, -0.0, f32::INFINITY, f32::NAN].into(),
         custom_model_data_flags: vec![true, false],
         custom_model_data_strings: vec!["variant".to_string(), "A 'quote'".to_string()],
@@ -8923,6 +8933,10 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
             animation_type: bbb_protocol::packets::SwingAnimationTypeSummary::Stab,
             duration: 17,
         }),
+        stored_enchantments: vec![bbb_protocol::packets::ItemEnchantmentSummary {
+            holder_id: 13,
+            level: 5,
+        }],
         dye_color_id: Some(14),
         dyed_color: Some(0x11_22_33),
         map_color: Some(0x44_55_66),
@@ -9196,6 +9210,8 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
          \"minecraft:minimum_attack_charge\": 0.75f, \
          \"minecraft:item_model\": \"minecraft:custom/diamond\", \
          \"minecraft:rarity\": \"rare\", \
+         \"minecraft:enchantments\": {\"minecraft:density\": 4, \
+         \"minecraft:swift_sneak\": 3}, \
          \"minecraft:custom_model_data\": {floats: [1.0f, -0.0f, Infinityf, NaNf], \
          flags: [1b, 0b], strings: [\"variant\", \"A 'quote'\"], \
          colors: [1122867, 4478310]}, \
@@ -9239,6 +9255,7 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
          min_relative_speed: 1.5f}, forward_movement: 0.2f, \
          damage_multiplier: 2.0f, hit_sound: \"minecraft:ambient.cave\"}, \
          \"minecraft:swing_animation\": {type: \"stab\", duration: 17}, \
+         \"minecraft:stored_enchantments\": {\"minecraft:sharpness\": 5}, \
          \"minecraft:dye\": \"red\", \"minecraft:dyed_color\": 1122867, \
          \"minecraft:map_color\": 4478310, \"minecraft:map_id\": 42, \
          \"minecraft:map_decorations\": {}, \

@@ -12,10 +12,11 @@ mod profile_resolver;
 mod skin_runtime;
 
 pub use item_runtime::{
-    default_player_skin_for_profile_id, vanilla_mob_effect_resource_id, vanilla_potion_resource_id,
-    GeneratedItemLayer, ItemAtlasIcon, ItemAtlasIconLayer, ItemAtlasSpriteUv, ItemAtlasUvRect,
-    ItemModelCompassContext, ItemModelCompassTarget, ItemModelKeybindContext, ItemModelTimeContext,
-    ItemModelUseContext, NativeDynamicPlayerSkinDownload, NativeDynamicPlayerTextureDownload,
-    NativeItemMapTooltipData, NativeItemRuntime, NativeItemTooltipLine, NativeItemTooltipOptions,
+    default_player_skin_for_profile_id, vanilla_enchantment_resource_id,
+    vanilla_mob_effect_resource_id, vanilla_potion_resource_id, GeneratedItemLayer, ItemAtlasIcon,
+    ItemAtlasIconLayer, ItemAtlasSpriteUv, ItemAtlasUvRect, ItemModelCompassContext,
+    ItemModelCompassTarget, ItemModelKeybindContext, ItemModelTimeContext, ItemModelUseContext,
+    NativeDynamicPlayerSkinDownload, NativeDynamicPlayerTextureDownload, NativeItemMapTooltipData,
+    NativeItemRuntime, NativeItemTooltipLine, NativeItemTooltipOptions,
 };
 pub use skin_runtime::{default_player_skin_cache_dir, DynamicPlayerTextureKind};

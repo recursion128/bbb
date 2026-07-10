@@ -91,7 +91,10 @@ pub use profiles::{NativeDynamicPlayerSkinDownload, NativeDynamicPlayerTextureDo
 use tables::*;
 #[cfg(test)]
 use tooltip::*;
-pub use tooltip::{NativeItemMapTooltipData, NativeItemTooltipLine, NativeItemTooltipOptions};
+pub use tooltip::{
+    vanilla_enchantment_resource_id, NativeItemMapTooltipData, NativeItemTooltipLine,
+    NativeItemTooltipOptions,
+};
 
 const FIREWORK_ROCKET_ITEM_ID: &str = "minecraft:firework_rocket";
 
