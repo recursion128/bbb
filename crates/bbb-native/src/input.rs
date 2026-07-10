@@ -16,15 +16,16 @@ use bbb_protocol::{
         VANILLA_ENTITY_TYPE_CAMEL_ID, VANILLA_ENTITY_TYPE_CAT_ID,
         VANILLA_ENTITY_TYPE_CAVE_SPIDER_ID, VANILLA_ENTITY_TYPE_CHEST_MINECART_ID,
         VANILLA_ENTITY_TYPE_CHICKEN_ID, VANILLA_ENTITY_TYPE_COD_ID,
-        VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID, VANILLA_ENTITY_TYPE_COW_ID,
-        VANILLA_ENTITY_TYPE_CREAKING_ID, VANILLA_ENTITY_TYPE_CREEPER_ID,
-        VANILLA_ENTITY_TYPE_DOLPHIN_ID, VANILLA_ENTITY_TYPE_DONKEY_ID,
-        VANILLA_ENTITY_TYPE_DRAGON_FIREBALL_ID, VANILLA_ENTITY_TYPE_DROWNED_ID,
-        VANILLA_ENTITY_TYPE_ELDER_GUARDIAN_ID, VANILLA_ENTITY_TYPE_ENDERMAN_ID,
-        VANILLA_ENTITY_TYPE_ENDERMITE_ID, VANILLA_ENTITY_TYPE_END_CRYSTAL_ID,
-        VANILLA_ENTITY_TYPE_EVOKER_FANGS_ID, VANILLA_ENTITY_TYPE_EVOKER_ID,
-        VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID, VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID,
-        VANILLA_ENTITY_TYPE_FIREBALL_ID, VANILLA_ENTITY_TYPE_FOX_ID, VANILLA_ENTITY_TYPE_FROG_ID,
+        VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID, VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID,
+        VANILLA_ENTITY_TYPE_COW_ID, VANILLA_ENTITY_TYPE_CREAKING_ID,
+        VANILLA_ENTITY_TYPE_CREEPER_ID, VANILLA_ENTITY_TYPE_DOLPHIN_ID,
+        VANILLA_ENTITY_TYPE_DONKEY_ID, VANILLA_ENTITY_TYPE_DRAGON_FIREBALL_ID,
+        VANILLA_ENTITY_TYPE_DROWNED_ID, VANILLA_ENTITY_TYPE_ELDER_GUARDIAN_ID,
+        VANILLA_ENTITY_TYPE_ENDERMAN_ID, VANILLA_ENTITY_TYPE_ENDERMITE_ID,
+        VANILLA_ENTITY_TYPE_END_CRYSTAL_ID, VANILLA_ENTITY_TYPE_EVOKER_FANGS_ID,
+        VANILLA_ENTITY_TYPE_EVOKER_ID, VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID,
+        VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID, VANILLA_ENTITY_TYPE_FIREBALL_ID,
+        VANILLA_ENTITY_TYPE_FOX_ID, VANILLA_ENTITY_TYPE_FROG_ID,
         VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID, VANILLA_ENTITY_TYPE_GHAST_ID,
         VANILLA_ENTITY_TYPE_GIANT_ID, VANILLA_ENTITY_TYPE_GLOW_SQUID_ID,
         VANILLA_ENTITY_TYPE_GOAT_ID, VANILLA_ENTITY_TYPE_GUARDIAN_ID,
@@ -255,6 +256,11 @@ const MINECART_DISPLAY_OFFSET_DATA_ID: u8 = 12;
 const MINECART_DEFAULT_DISPLAY_OFFSET: i32 = 6;
 const MINECART_DEFAULT_FLIPPED_ROTATION: bool = false;
 const MINECART_DEFAULT_HAS_TICKED: bool = false;
+const COMMAND_BLOCK_MINECART_COMMAND_DATA_ID: u8 = 13;
+const COMMAND_BLOCK_DEFAULT_COMMAND: &str = "";
+const COMMAND_BLOCK_DEFAULT_SUCCESS_COUNT: i32 = 0;
+const COMMAND_BLOCK_DEFAULT_TRACK_OUTPUT: bool = true;
+const COMMAND_BLOCK_DEFAULT_UPDATE_LAST_EXECUTION: bool = true;
 const FURNACE_MINECART_DEFAULT_PUSH: f64 = 0.0;
 const FURNACE_MINECART_DEFAULT_FUEL: i16 = 0;
 const HOPPER_MINECART_DEFAULT_ENABLED: bool = true;
@@ -4062,6 +4068,10 @@ fn debug_push_entity_additional_save_data(
             debug_push_minecart_additional_save_data(world, entity, fields);
             debug_push_empty_container_items(fields);
         }
+        VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID => {
+            debug_push_minecart_additional_save_data(world, entity, fields);
+            debug_push_command_block_minecart_additional_save_data(entity, fields);
+        }
         VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID => {
             debug_push_minecart_additional_save_data(world, entity, fields);
             debug_push_furnace_minecart_additional_save_data(fields);
@@ -4472,6 +4482,26 @@ fn debug_push_minecart_additional_save_data(
     fields.push(format!(
         "HasTicked: {}",
         debug_snbt_bool(MINECART_DEFAULT_HAS_TICKED)
+    ));
+}
+
+fn debug_push_command_block_minecart_additional_save_data(
+    entity: &EntityState,
+    fields: &mut Vec<String>,
+) {
+    let command = debug_entity_data_string_present(entity, COMMAND_BLOCK_MINECART_COMMAND_DATA_ID)
+        .unwrap_or(COMMAND_BLOCK_DEFAULT_COMMAND);
+    fields.push(format!("Command: {}", debug_snbt_string(command)));
+    fields.push(format!(
+        "SuccessCount: {COMMAND_BLOCK_DEFAULT_SUCCESS_COUNT}"
+    ));
+    fields.push(format!(
+        "TrackOutput: {}",
+        debug_snbt_bool(COMMAND_BLOCK_DEFAULT_TRACK_OUTPUT)
+    ));
+    fields.push(format!(
+        "UpdateLastExecution: {}",
+        debug_snbt_bool(COMMAND_BLOCK_DEFAULT_UPDATE_LAST_EXECUTION)
     ));
 }
 
@@ -5660,6 +5690,17 @@ fn debug_entity_data_bool_present(entity: &EntityState, data_id: u8) -> Option<b
         .find(|value| value.data_id == data_id)
         .and_then(|value| match &value.value {
             EntityDataValueKind::Boolean(value) => Some(*value),
+            _ => None,
+        })
+}
+
+fn debug_entity_data_string_present(entity: &EntityState, data_id: u8) -> Option<&str> {
+    entity
+        .data_values
+        .iter()
+        .find(|value| value.data_id == data_id)
+        .and_then(|value| match &value.value {
+            EntityDataValueKind::String(value) => Some(value.as_str()),
             _ => None,
         })
 }
