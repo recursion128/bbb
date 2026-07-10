@@ -55,6 +55,8 @@ pub struct DataComponentPatchSummary {
     #[serde(default)]
     pub unbreakable: bool,
     #[serde(default)]
+    pub minimum_attack_charge_bits: Option<u32>,
+    #[serde(default)]
     pub ominous_bottle_amplifier: Option<i32>,
     #[serde(default)]
     pub custom_name: Option<String>,
@@ -120,6 +122,10 @@ pub struct DataComponentPatchSummary {
     #[serde(default)]
     pub dyed_color: Option<i32>,
     #[serde(default)]
+    pub dye_color_id: Option<i32>,
+    #[serde(default)]
+    pub base_color_id: Option<i32>,
+    #[serde(default)]
     pub map_color: Option<i32>,
     #[serde(default)]
     pub potion_custom_color: Option<i32>,
@@ -131,6 +137,8 @@ pub struct DataComponentPatchSummary {
     pub potion_custom_effects: Vec<MobEffectInstanceSummary>,
     #[serde(default)]
     pub potion_custom_name: Option<String>,
+    #[serde(default)]
+    pub potion_duration_scale_bits: Option<u32>,
     #[serde(default)]
     pub suspicious_stew_effects: Vec<SuspiciousStewEffectSummary>,
     #[serde(default)]
@@ -714,6 +722,9 @@ fn decode_typed_data_component_patch_summary(
             4 => {
                 summary.unbreakable = true;
             }
+            7 => {
+                summary.minimum_attack_charge_bits = Some(decoder.read_f32()?.to_bits());
+            }
             22 => {
                 summary.intangible_projectile = true;
                 skip_nbt_tag_from_decoder(decoder)?;
@@ -795,8 +806,17 @@ fn decode_typed_data_component_patch_summary(
             44 => {
                 summary.dyed_color = Some(decoder.read_i32()?);
             }
+            43 => {
+                summary.dye_color_id = Some(normalize_dye_color_id(decoder.read_var_i32()?));
+            }
+            73 => {
+                summary.base_color_id = Some(normalize_dye_color_id(decoder.read_var_i32()?));
+            }
             45 => {
                 summary.map_color = Some(decoder.read_i32()?);
+            }
+            52 => {
+                summary.potion_duration_scale_bits = Some(decoder.read_f32()?.to_bits());
             }
             49 => {
                 summary.charged_projectiles_items =
@@ -1418,6 +1438,14 @@ fn decode_item_rarity(decoder: &mut Decoder<'_>) -> Result<ItemRaritySummary> {
         3 => ItemRaritySummary::Epic,
         _ => ItemRaritySummary::Common,
     })
+}
+
+fn normalize_dye_color_id(id: i32) -> i32 {
+    if (0..=15).contains(&id) {
+        id
+    } else {
+        0
+    }
 }
 
 fn decode_varint_map(decoder: &mut Decoder<'_>) -> Result<Vec<ItemEnchantmentSummary>> {
@@ -2775,6 +2803,39 @@ mod tests {
                 ..DataComponentPatchSummary::default()
             }
         );
+        assert!(decoder.is_empty());
+    }
+
+    #[test]
+    fn decodes_float_and_dye_data_component_values() {
+        let mut payload = Encoder::new();
+        payload.write_var_i32(4);
+        payload.write_var_i32(0);
+        payload.write_var_i32(7);
+        payload.write_f32(0.75);
+        payload.write_var_i32(43);
+        payload.write_var_i32(14);
+        payload.write_var_i32(52);
+        payload.write_f32(1.5);
+        payload.write_var_i32(73);
+        payload.write_var_i32(3);
+
+        let payload = payload.into_inner();
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(
+            decode_data_component_patch_summary(&mut decoder).unwrap(),
+            DataComponentPatchSummary {
+                added: 4,
+                added_type_ids: vec![7, 43, 52, 73],
+                minimum_attack_charge_bits: Some(0.75_f32.to_bits()),
+                dye_color_id: Some(14),
+                potion_duration_scale_bits: Some(1.5_f32.to_bits()),
+                base_color_id: Some(3),
+                ..DataComponentPatchSummary::default()
+            }
+        );
+        assert_eq!(normalize_dye_color_id(-1), 0);
+        assert_eq!(normalize_dye_color_id(16), 0);
         assert!(decoder.is_empty());
     }
 

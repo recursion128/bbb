@@ -8523,6 +8523,30 @@ fn local_firework_save_uses_parent_lifecycle_synced_item_codec_and_client_life()
 }
 
 #[test]
+fn range_checked_float_component_snbt_matches_vanilla_float_comparison() {
+    assert_eq!(
+        debug_range_checked_float_component_snbt(0.0_f32.to_bits(), 0.0, Some(1.0)),
+        Some("0.0f".to_string())
+    );
+    assert_eq!(
+        debug_range_checked_float_component_snbt(1.0_f32.to_bits(), 0.0, Some(1.0)),
+        Some("1.0f".to_string())
+    );
+    assert_eq!(
+        debug_range_checked_float_component_snbt((-0.0_f32).to_bits(), 0.0, Some(1.0)),
+        None
+    );
+    assert_eq!(
+        debug_range_checked_float_component_snbt(f32::NAN.to_bits(), 0.0, None),
+        None
+    );
+    assert_eq!(
+        debug_range_checked_float_component_snbt(f32::INFINITY.to_bits(), 0.0, None),
+        None
+    );
+}
+
+#[test]
 fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
     let registry: ItemRegistryCatalog = serde_json::from_value(serde_json::json!({
         "resource_ids": [
@@ -8544,10 +8568,10 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
         EquipmentAssetCatalog::default(),
     );
     let patch = DataComponentPatchSummary {
-        added: 38,
+        added: 42,
         added_type_ids: vec![
-            0, 1, 2, 3, 4, 5, 10, 12, 17, 19, 21, 22, 23, 25, 26, 30, 31, 34, 35, 40, 44, 45, 46,
-            49, 50, 54, 63, 67, 68, 69, 70, 71, 74, 75, 76, 88, 89, 90,
+            0, 1, 2, 3, 4, 5, 7, 10, 12, 17, 19, 21, 22, 23, 25, 26, 30, 31, 34, 35, 40, 43, 44,
+            45, 46, 49, 50, 52, 54, 63, 67, 68, 69, 70, 71, 73, 74, 75, 76, 88, 89, 90,
         ],
         removed_type_ids: vec![6],
         custom_data: Some(NbtSummaryValue::Compound(vec![
@@ -8609,6 +8633,7 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
             interact_vibrations: false,
             speed_multiplier: 1.0,
         }),
+        minimum_attack_charge_bits: Some(0.75_f32.to_bits()),
         item_model: Some("minecraft:custom/diamond".to_string()),
         rarity: Some(ItemRaritySummary::Rare),
         custom_model_data_floats: vec![1.0, -0.0, f32::INFINITY, f32::NAN].into(),
@@ -8643,6 +8668,7 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
             animation_type: bbb_protocol::packets::SwingAnimationTypeSummary::Stab,
             duration: 17,
         }),
+        dye_color_id: Some(14),
         dyed_color: Some(0x11_22_33),
         map_color: Some(0x44_55_66),
         map_id: Some(42),
@@ -8691,6 +8717,7 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
             },
         }],
         bundle_contents_item_count: Some(1),
+        potion_duration_scale_bits: Some(1.5_f32.to_bits()),
         writable_book_pages: vec!["first\npage".to_string(), "second raw".to_string()],
         writable_book_page_filters: vec![None, Some("second filtered".to_string())],
         ominous_bottle_amplifier: Some(3),
@@ -8734,6 +8761,7 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
             },
         }),
         note_block_sound: Some("minecraft:block.note_block.harp".to_string()),
+        base_color_id: Some(3),
         pot_decorations_item_ids: vec![0, 1],
         container_items: vec![bbb_protocol::packets::ItemStackTemplateSummary {
             item_id: 3,
@@ -8793,6 +8821,7 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
          \"minecraft:damage\": 7, \"minecraft:unbreakable\": {}, \
          \"minecraft:use_effects\": {can_sprint: 1b, interact_vibrations: 0b, \
          speed_multiplier: 1.0f}, \
+         \"minecraft:minimum_attack_charge\": 0.75f, \
          \"minecraft:item_model\": \"minecraft:custom/diamond\", \
          \"minecraft:rarity\": \"rare\", \
          \"minecraft:custom_model_data\": {floats: [1.0f, -0.0f, Infinityf, NaNf], \
@@ -8810,7 +8839,7 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
          \"minecraft:enchantable\": {value: 15}, \"minecraft:glider\": {}, \
          \"minecraft:tooltip_style\": \"minecraft:rare\", \
          \"minecraft:swing_animation\": {type: \"stab\", duration: 17}, \
-         \"minecraft:dyed_color\": 1122867, \
+         \"minecraft:dye\": \"red\", \"minecraft:dyed_color\": 1122867, \
          \"minecraft:map_color\": 4478310, \"minecraft:map_id\": 42, \
          \"minecraft:charged_projectiles\": [{id: \"minecraft:arrow\", \
          components: {\"minecraft:use_effects\": {}}}, \
@@ -8819,6 +8848,7 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
          \"minecraft:bundle_contents\": [{id: \"minecraft:arrow\", count: 3, \
          components: {\"minecraft:attack_range\": {}, \
          \"minecraft:dyed_color\": 2245734}}], \
+         \"minecraft:potion_duration_scale\": 1.5f, \
          \"minecraft:writable_book_content\": {pages: [{raw: \"first\\npage\"}, \
          {raw: \"second raw\", filtered: \"second filtered\"}]}, \
          \"minecraft:ominous_bottle_amplifier\": 3, \
@@ -8833,6 +8863,7 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
          texture: \"minecraft:entity/player/wide/steve\", \
          elytra: \"minecraft:entity/player/elytra\", model: \"slim\"}, \
          \"minecraft:note_block_sound\": \"minecraft:block.note_block.harp\", \
+         \"minecraft:base_color\": \"light_blue\", \
          \"minecraft:pot_decorations\": [\"minecraft:angler_pottery_sherd\", \
          \"minecraft:archer_pottery_sherd\", \"minecraft:brick\", \"minecraft:brick\"], \
          \"minecraft:container\": [{slot: 2, item: {id: \"minecraft:firework_star\", \

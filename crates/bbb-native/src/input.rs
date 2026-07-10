@@ -4646,6 +4646,11 @@ fn debug_supported_added_component_snbt(
         3 => patch.damage?.to_string(),
         4 => "{}".to_string(),
         5 => debug_use_effects_component_snbt(patch.use_effects?)?,
+        7 => debug_range_checked_float_component_snbt(
+            patch.minimum_attack_charge_bits?,
+            0.0,
+            Some(1.0),
+        )?,
         10 => debug_snbt_string(patch.item_model.as_deref()?),
         12 => debug_snbt_string(match patch.rarity? {
             ItemRaritySummary::Common => "common",
@@ -4668,6 +4673,7 @@ fn debug_supported_added_component_snbt(
         34 => "{}".to_string(),
         35 => debug_snbt_string(patch.tooltip_style.as_deref()?),
         40 => debug_swing_animation_component_snbt(patch.swing_animation?)?,
+        43 => debug_snbt_string(debug_dye_color_name(patch.dye_color_id?)),
         44 => patch.dyed_color?.to_string(),
         45 => patch.map_color?.to_string(),
         46 => patch.map_id?.to_string(),
@@ -4676,6 +4682,9 @@ fn debug_supported_added_component_snbt(
         }
         BUNDLE_CONTENTS_COMPONENT_TYPE_ID => {
             debug_item_stack_template_list_snbt(&patch.bundle_contents_items, item_runtime)?
+        }
+        52 => {
+            debug_range_checked_float_component_snbt(patch.potion_duration_scale_bits?, 0.0, None)?
         }
         WRITABLE_BOOK_CONTENT_COMPONENT_TYPE_ID => {
             debug_writable_book_content_component_snbt(patch)
@@ -4692,6 +4701,7 @@ fn debug_supported_added_component_snbt(
         FIREWORKS_COMPONENT_TYPE_ID => debug_fireworks_component_snbt(patch),
         PROFILE_COMPONENT_TYPE_ID => debug_profile_component_snbt(patch.profile.as_ref()?)?,
         71 => debug_snbt_string(patch.note_block_sound.as_deref()?),
+        73 => debug_snbt_string(debug_dye_color_name(patch.base_color_id?)),
         POT_DECORATIONS_COMPONENT_TYPE_ID => {
             debug_pot_decorations_component_snbt(patch, item_runtime)?
         }
@@ -4734,6 +4744,7 @@ fn debug_supported_component_resource_id(type_id: i32) -> Option<&'static str> {
         4 => "minecraft:unbreakable",
         5 => "minecraft:use_effects",
         6 => "minecraft:custom_name",
+        7 => "minecraft:minimum_attack_charge",
         10 => "minecraft:item_model",
         12 => "minecraft:rarity",
         CUSTOM_MODEL_DATA_COMPONENT_TYPE_ID => "minecraft:custom_model_data",
@@ -4748,11 +4759,13 @@ fn debug_supported_component_resource_id(type_id: i32) -> Option<&'static str> {
         34 => "minecraft:glider",
         35 => "minecraft:tooltip_style",
         40 => "minecraft:swing_animation",
+        43 => "minecraft:dye",
         44 => "minecraft:dyed_color",
         45 => "minecraft:map_color",
         46 => "minecraft:map_id",
         CHARGED_PROJECTILES_COMPONENT_TYPE_ID => "minecraft:charged_projectiles",
         BUNDLE_CONTENTS_COMPONENT_TYPE_ID => "minecraft:bundle_contents",
+        52 => "minecraft:potion_duration_scale",
         WRITABLE_BOOK_CONTENT_COMPONENT_TYPE_ID => "minecraft:writable_book_content",
         63 => "minecraft:ominous_bottle_amplifier",
         LODESTONE_TRACKER_COMPONENT_TYPE_ID => "minecraft:lodestone_tracker",
@@ -4760,6 +4773,7 @@ fn debug_supported_component_resource_id(type_id: i32) -> Option<&'static str> {
         FIREWORKS_COMPONENT_TYPE_ID => "minecraft:fireworks",
         PROFILE_COMPONENT_TYPE_ID => "minecraft:profile",
         71 => "minecraft:note_block_sound",
+        73 => "minecraft:base_color",
         POT_DECORATIONS_COMPONENT_TYPE_ID => "minecraft:pot_decorations",
         CONTAINER_COMPONENT_TYPE_ID => "minecraft:container",
         BLOCK_STATE_COMPONENT_TYPE_ID => "minecraft:block_state",
@@ -4891,6 +4905,21 @@ fn debug_food_component_snbt(
         fields.push(format!("can_always_eat: {}", debug_snbt_bool(true)));
     }
     Some(format!("{{{}}}", fields.join(", ")))
+}
+
+fn debug_range_checked_float_component_snbt(
+    bits: u32,
+    min: f32,
+    max: Option<f32>,
+) -> Option<String> {
+    let value = f32::from_bits(bits);
+    if !value.is_finite()
+        || value.total_cmp(&min).is_lt()
+        || max.is_some_and(|max| value.total_cmp(&max).is_gt())
+    {
+        return None;
+    }
+    Some(format!("{}f", debug_nbt_java_float_string(value)))
 }
 
 fn debug_use_cooldown_component_snbt(

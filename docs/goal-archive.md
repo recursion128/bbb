@@ -8735,3 +8735,15 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   复刻 non-negative validation。protocol broad component test 覆盖 `6/7.2f/true`；
   native component patch test 扩展到 38 个 added entry，覆盖 float suffix、
   boolean byte tag 与字段顺序；food 从剩余 component 总账本移入已支持子集。
+
+## 2026-07-10：ItemStack float and dye component codecs
+
+- [x] 四个标量/枚举持久化 component（P2 protocol + native input）：依据
+  vanilla 26.1 `DataComponents`、`ExtraCodecs.floatRange/NON_NEGATIVE_FLOAT`
+  与 `DyeColor.STREAM_CODEC/CODEC`，bit-exact 保留 type id `7`
+  minimum-attack-charge 和 `52` potion-duration-scale，并保留 type id `43` dye、
+  `73` base-color 的 DyeColor id（network 越界按 ZERO 归一为 white）。native
+  复刻 0..1 / 非负有限 float validation，输出 float suffix 与持久化颜色名。
+  protocol focused test 覆盖四项和 DyeColor 越界；native component patch test
+  扩展到 42 个 added entry，覆盖 `0.75f/1.5f`、red/light-blue 与 wire order；
+  四项从剩余 component 总账本移入已支持子集。

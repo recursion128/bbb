@@ -235,10 +235,11 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   entity-data projection (including dynamic-registry ordering), packed variant
   projection, remaining codec-backed SNBT projection (including `AbstractArrow`
   `inBlockState`, `item`, and `weapon`, remaining data-component patch entries
-  beyond the supported custom-NBT/primitive (including repair-cost/enchantable/glider)/
+  beyond the supported custom-NBT/primitive (including repair-cost/enchantable/glider,
+  minimum-attack-charge/potion-duration-scale)/
   simple-resource (including tooltip-style/note-block-sound)/food/use-effects/use-remainder/
   use-cooldown/attack-range/
-  swing-animation/resource/color/map/ominous/firework/custom-model-data/
+  swing-animation/resource/color (including dye/base-color)/map/ominous/firework/custom-model-data/
   charged-projectile/bundle/writable-book/lodestone/profile/pot-decoration/
   container/block-state/tropical-fish-enum subset on throwable/firework/
   item-frame item stacks, falling-block `TileEntityData`,
