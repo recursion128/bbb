@@ -8713,3 +8713,15 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   `42` 的默认 template；native focused test 扩展到 32 个 added entry，覆盖
   已知 registry id 的默认 count/component 省略，并扩展未知 registry fallback；
   use-remainder 从剩余 component 总账本移入已支持子集。
+
+## 2026-07-10：ItemStack simple persistent component codecs
+
+- [x] 五个简单持久化 component（P2 protocol + native input）：依据 vanilla
+  26.1 `DataComponents` 注册 codec，保留 type id `19` repair-cost 非负整数、
+  `31` enchantable 正整数、`35` tooltip-style identifier 与 `71`
+  note-block-sound identifier；type id `34` glider 则直接复用 patch presence。
+  native 分别输出整数、`{value}` record、Unit 空 compound 与 resource string，
+  并复刻 repair-cost/enchantable 的非负/正数校验。protocol focused test 从 11
+  扩展到 16 个 entries；native component patch test 从 32 扩展到 37 个 added
+  entries，覆盖五类持久化形状及 wire order；这些 simple component 从剩余总账本
+  移入已支持子集。

@@ -49,6 +49,8 @@ pub struct DataComponentPatchSummary {
     #[serde(default)]
     pub damage: Option<i32>,
     #[serde(default)]
+    pub repair_cost: Option<i32>,
+    #[serde(default)]
     pub intangible_projectile: bool,
     #[serde(default)]
     pub unbreakable: bool,
@@ -67,6 +69,10 @@ pub struct DataComponentPatchSummary {
     pub item_name_styled: Option<Vec<StyledTextRun>>,
     #[serde(default)]
     pub item_model: Option<String>,
+    #[serde(default)]
+    pub tooltip_style: Option<String>,
+    #[serde(default)]
+    pub note_block_sound: Option<String>,
     #[serde(default)]
     pub lore: Vec<String>,
     /// Styled-run projection of `lore` (same decode, style kept), one run
@@ -89,6 +95,8 @@ pub struct DataComponentPatchSummary {
     pub use_remainder: Option<Box<ItemStackTemplateSummary>>,
     #[serde(default)]
     pub attack_range: Option<AttackRangeSummary>,
+    #[serde(default)]
+    pub enchantable_value: Option<i32>,
     #[serde(default)]
     pub swing_animation: Option<SwingAnimationSummary>,
     #[serde(default)]
@@ -694,6 +702,9 @@ fn decode_typed_data_component_patch_summary(
             3 => {
                 summary.damage = Some(decoder.read_var_i32()?);
             }
+            19 => {
+                summary.repair_cost = Some(decoder.read_var_i32()?);
+            }
             4 => {
                 summary.unbreakable = true;
             }
@@ -716,6 +727,12 @@ fn decode_typed_data_component_patch_summary(
             }
             10 => {
                 summary.item_model = Some(read_resource_location(decoder)?);
+            }
+            35 => {
+                summary.tooltip_style = Some(read_resource_location(decoder)?);
+            }
+            71 => {
+                summary.note_block_sound = Some(read_resource_location(decoder)?);
             }
             11 => {
                 summary.lore_styled = decode_lore(decoder)?;
@@ -745,6 +762,9 @@ fn decode_typed_data_component_patch_summary(
             }
             30 => {
                 summary.attack_range = Some(decode_attack_range_summary(decoder)?);
+            }
+            31 => {
+                summary.enchantable_value = Some(decoder.read_var_i32()?);
             }
             40 => {
                 summary.swing_animation = Some(decode_swing_animation(decoder)?);
@@ -2677,7 +2697,7 @@ mod tests {
     #[test]
     fn decodes_supported_data_component_patch_values() {
         let mut payload = Encoder::new();
-        payload.write_var_i32(11);
+        payload.write_var_i32(16);
         payload.write_var_i32(2);
         payload.write_var_i32(1);
         payload.write_var_i32(64);
@@ -2690,6 +2710,8 @@ mod tests {
         payload.write_bytes(&nbt_string_root("Named"));
         payload.write_var_i32(10);
         payload.write_string("minecraft:diamond_sword");
+        payload.write_var_i32(19);
+        payload.write_var_i32(5);
         payload.write_var_i32(21);
         payload.write_bool(true);
         payload.write_var_i32(22);
@@ -2698,8 +2720,15 @@ mod tests {
         payload.write_f32(1.5);
         payload.write_bool(true);
         payload.write_string("minecraft:ender_pearl");
+        payload.write_var_i32(31);
+        payload.write_var_i32(15);
+        payload.write_var_i32(34);
+        payload.write_var_i32(35);
+        payload.write_string("minecraft:rare");
         payload.write_var_i32(63);
         payload.write_var_i32(3);
+        payload.write_var_i32(71);
+        payload.write_string("minecraft:block.note_block.harp");
         payload.write_var_i32(79);
         payload.write_bytes(&empty_nbt_compound_root());
         payload.write_var_i32(3);
@@ -2711,12 +2740,13 @@ mod tests {
         assert_eq!(
             patch,
             DataComponentPatchSummary {
-                added: 11,
-                added_type_ids: vec![1, 2, 3, 4, 6, 10, 21, 22, 26, 63, 79],
+                added: 16,
+                added_type_ids: vec![1, 2, 3, 4, 6, 10, 19, 21, 22, 26, 31, 34, 35, 63, 71, 79,],
                 removed_type_ids: vec![3, 12],
                 max_stack_size: Some(64),
                 max_damage: Some(432),
                 damage: Some(431),
+                repair_cost: Some(5),
                 unbreakable: true,
                 custom_name: Some("Named".to_string()),
                 custom_name_styled: Some(plain_runs("Named")),
@@ -2726,6 +2756,9 @@ mod tests {
                 use_cooldown_seconds_bits: Some(1.5_f32.to_bits()),
                 use_cooldown_ticks: Some(30),
                 use_cooldown_group: Some("minecraft:ender_pearl".to_string()),
+                enchantable_value: Some(15),
+                tooltip_style: Some("minecraft:rare".to_string()),
+                note_block_sound: Some("minecraft:block.note_block.harp".to_string()),
                 ominous_bottle_amplifier: Some(3),
                 container_loot: true,
                 ..DataComponentPatchSummary::default()

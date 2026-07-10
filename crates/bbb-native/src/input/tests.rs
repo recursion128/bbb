@@ -8544,10 +8544,10 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
         EquipmentAssetCatalog::default(),
     );
     let patch = DataComponentPatchSummary {
-        added: 32,
+        added: 37,
         added_type_ids: vec![
-            0, 1, 2, 3, 4, 5, 10, 12, 17, 21, 22, 25, 26, 30, 40, 44, 45, 46, 49, 50, 54, 63, 67,
-            68, 69, 70, 74, 75, 76, 88, 89, 90,
+            0, 1, 2, 3, 4, 5, 10, 12, 17, 19, 21, 22, 25, 26, 30, 31, 34, 35, 40, 44, 45, 46, 49,
+            50, 54, 63, 67, 68, 69, 70, 71, 74, 75, 76, 88, 89, 90,
         ],
         removed_type_ids: vec![6],
         custom_data: Some(NbtSummaryValue::Compound(vec![
@@ -8615,6 +8615,7 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
         custom_model_data_flags: vec![true, false],
         custom_model_data_strings: vec!["variant".to_string(), "A 'quote'".to_string()],
         custom_model_data_colors: vec![0x11_22_33, 0x44_55_66],
+        repair_cost: Some(5),
         enchantment_glint_override: Some(false),
         intangible_projectile: true,
         use_remainder: Some(Box::new(bbb_protocol::packets::ItemStackTemplateSummary {
@@ -8633,6 +8634,8 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
             hitbox_margin: 0.125,
             mob_factor: 0.5,
         }),
+        enchantable_value: Some(15),
+        tooltip_style: Some("minecraft:rare".to_string()),
         swing_animation: Some(bbb_protocol::packets::SwingAnimationSummary {
             animation_type: bbb_protocol::packets::SwingAnimationTypeSummary::Stab,
             duration: 17,
@@ -8727,6 +8730,7 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
                 model: Some(bbb_protocol::packets::PlayerModelTypeSummary::Slim),
             },
         }),
+        note_block_sound: Some("minecraft:block.note_block.harp".to_string()),
         pot_decorations_item_ids: vec![0, 1],
         container_items: vec![bbb_protocol::packets::ItemStackTemplateSummary {
             item_id: 3,
@@ -8790,7 +8794,8 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
          \"minecraft:rarity\": \"rare\", \
          \"minecraft:custom_model_data\": {floats: [1.0f, -0.0f, Infinityf, NaNf], \
          flags: [1b, 0b], strings: [\"variant\", \"A 'quote'\"], \
-         colors: [1122867, 4478310]}, \"minecraft:enchantment_glint_override\": 0b, \
+         colors: [1122867, 4478310]}, \"minecraft:repair_cost\": 5, \
+         \"minecraft:enchantment_glint_override\": 0b, \
          \"minecraft:intangible_projectile\": {}, \
          \"minecraft:use_remainder\": {id: \"minecraft:arrow\"}, \
          \"minecraft:use_cooldown\": {seconds: 1.25f, \
@@ -8798,6 +8803,8 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
          \"minecraft:attack_range\": {min_reach: 2.0f, max_reach: 4.5f, \
          min_creative_reach: 2.0f, max_creative_reach: 6.5f, \
          hitbox_margin: 0.125f, mob_factor: 0.5f}, \
+         \"minecraft:enchantable\": {value: 15}, \"minecraft:glider\": {}, \
+         \"minecraft:tooltip_style\": \"minecraft:rare\", \
          \"minecraft:swing_animation\": {type: \"stab\", duration: 17}, \
          \"minecraft:dyed_color\": 1122867, \
          \"minecraft:map_color\": 4478310, \"minecraft:map_id\": 42, \
@@ -8821,6 +8828,7 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
          signature: \"skin-signature\"}], \
          texture: \"minecraft:entity/player/wide/steve\", \
          elytra: \"minecraft:entity/player/elytra\", model: \"slim\"}, \
+         \"minecraft:note_block_sound\": \"minecraft:block.note_block.harp\", \
          \"minecraft:pot_decorations\": [\"minecraft:angler_pottery_sherd\", \
          \"minecraft:archer_pottery_sherd\", \"minecraft:brick\", \"minecraft:brick\"], \
          \"minecraft:container\": [{slot: 2, item: {id: \"minecraft:firework_star\", \

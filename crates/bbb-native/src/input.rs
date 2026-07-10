@@ -4654,11 +4654,18 @@ fn debug_supported_added_component_snbt(
             ItemRaritySummary::Epic => "epic",
         }),
         CUSTOM_MODEL_DATA_COMPONENT_TYPE_ID => debug_custom_model_data_component_snbt(patch),
+        19 => patch.repair_cost.filter(|value| *value >= 0)?.to_string(),
         21 => debug_snbt_bool(patch.enchantment_glint_override?).to_string(),
         22 => "{}".to_string(),
         25 => debug_item_stack_template_snbt(patch.use_remainder.as_deref()?, item_runtime)?,
         26 => debug_use_cooldown_component_snbt(patch)?,
         30 => debug_attack_range_component_snbt(patch.attack_range?)?,
+        31 => {
+            let value = patch.enchantable_value.filter(|value| *value > 0)?;
+            format!("{{value: {value}}}")
+        }
+        34 => "{}".to_string(),
+        35 => debug_snbt_string(patch.tooltip_style.as_deref()?),
         40 => debug_swing_animation_component_snbt(patch.swing_animation?)?,
         44 => patch.dyed_color?.to_string(),
         45 => patch.map_color?.to_string(),
@@ -4683,6 +4690,7 @@ fn debug_supported_added_component_snbt(
         }),
         FIREWORKS_COMPONENT_TYPE_ID => debug_fireworks_component_snbt(patch),
         PROFILE_COMPONENT_TYPE_ID => debug_profile_component_snbt(patch.profile.as_ref()?)?,
+        71 => debug_snbt_string(patch.note_block_sound.as_deref()?),
         POT_DECORATIONS_COMPONENT_TYPE_ID => {
             debug_pot_decorations_component_snbt(patch, item_runtime)?
         }
@@ -4728,11 +4736,15 @@ fn debug_supported_component_resource_id(type_id: i32) -> Option<&'static str> {
         10 => "minecraft:item_model",
         12 => "minecraft:rarity",
         CUSTOM_MODEL_DATA_COMPONENT_TYPE_ID => "minecraft:custom_model_data",
+        19 => "minecraft:repair_cost",
         21 => "minecraft:enchantment_glint_override",
         22 => "minecraft:intangible_projectile",
         25 => "minecraft:use_remainder",
         26 => "minecraft:use_cooldown",
         30 => "minecraft:attack_range",
+        31 => "minecraft:enchantable",
+        34 => "minecraft:glider",
+        35 => "minecraft:tooltip_style",
         40 => "minecraft:swing_animation",
         44 => "minecraft:dyed_color",
         45 => "minecraft:map_color",
@@ -4745,6 +4757,7 @@ fn debug_supported_component_resource_id(type_id: i32) -> Option<&'static str> {
         68 => "minecraft:firework_explosion",
         FIREWORKS_COMPONENT_TYPE_ID => "minecraft:fireworks",
         PROFILE_COMPONENT_TYPE_ID => "minecraft:profile",
+        71 => "minecraft:note_block_sound",
         POT_DECORATIONS_COMPONENT_TYPE_ID => "minecraft:pot_decorations",
         CONTAINER_COMPONENT_TYPE_ID => "minecraft:container",
         BLOCK_STATE_COMPONENT_TYPE_ID => "minecraft:block_state",
