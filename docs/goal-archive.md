@@ -8949,3 +8949,17 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   分支；native component patch test 从 72 扩展到 73 个 added entry，并覆盖
   consumable/death-protection 列表、非法零 diameter 与不支持效果的整组件安全
   省略。apply-effects/remove-effects 仍留在动态 MobEffect registry 总账本。
+
+## 2026-07-10：ItemStack full vanilla consume-effect save codecs
+
+- [x] consumable/death-protection 的 apply-effects/remove-effects 分支（P2
+  protocol + item-model + native input）：依据 vanilla 26.1
+  ApplyStatusEffectsConsumeEffect、RemoveStatusEffectsConsumeEffect 与
+  MobEffectInstance.Details codec，protocol 完整保留 ordered effect instance、
+  probability、holder-set direct ids/tag 及递归 hidden_effect，并复刻构造时
+  amplifier 0..255 clamp。item-model 暴露既有 40 项 vanilla MobEffect 注册顺序
+  的窄查询面；native 复刻 probability 0..1、各 details 默认字段、始终编码的
+  show_icon、compact holder-set 及 named tag。focused tests 覆盖五种 consume
+  effect、递归 details、direct/tag、非法 probability/diameter、unknown effect id 与
+  amplifier clamp；现有 73 项 native component patch 投影扩展为五种效果完整
+  列表。未知 MobEffect id 仍安全省略整组件。

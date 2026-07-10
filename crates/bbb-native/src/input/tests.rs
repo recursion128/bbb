@@ -8596,8 +8596,31 @@ fn item_stack_snbt_preserves_effect_free_consumables_and_omits_defaults() {
 }
 
 #[test]
-fn item_stack_snbt_preserves_registry_independent_consume_effects() {
+fn item_stack_snbt_preserves_vanilla_consume_effects() {
     let effects = vec![
+        ConsumeEffectSummary::ApplyEffects {
+            effects: vec![MobEffectInstanceSummary {
+                effect_id: 9,
+                amplifier: 1,
+                duration: 200,
+                ambient: false,
+                show_particles: true,
+                show_icon: true,
+                hidden_effect: Some(Box::new(MobEffectDetailsSummary {
+                    amplifier: 0,
+                    duration: 40,
+                    ambient: true,
+                    show_particles: false,
+                    show_icon: false,
+                    hidden_effect: None,
+                })),
+            }],
+            probability_bits: 0.75_f32.to_bits(),
+        },
+        ConsumeEffectSummary::RemoveEffects {
+            effect_registry_ids: Vec::new(),
+            effect_tag: Some("minecraft:test_effects".to_string()),
+        },
         ConsumeEffectSummary::ClearAllEffects,
         ConsumeEffectSummary::TeleportRandomly {
             diameter_bits: 16.0_f32.to_bits(),
@@ -8626,7 +8649,13 @@ fn item_stack_snbt_preserves_registry_independent_consume_effects() {
         death_protection_effects: effects,
         ..DataComponentPatchSummary::default()
     };
-    let effect_list = "[{type: \"minecraft:clear_all_effects\"}, \
+    let effect_list = "[{type: \"minecraft:apply_effects\", effects: \
+        [{id: \"minecraft:regeneration\", amplifier: 1, duration: 200, \
+        show_icon: 1b, hidden_effect: {duration: 40, ambient: 1b, \
+        show_particles: 0b, show_icon: 0b}}], probability: 0.75f}, \
+        {type: \"minecraft:remove_effects\", effects: \
+        \"#minecraft:test_effects\"}, \
+        {type: \"minecraft:clear_all_effects\"}, \
         {type: \"minecraft:teleport_randomly\"}, \
         {type: \"minecraft:play_sound\", sound: \
         {sound_id: \"minecraft:item.honey_bottle.drink\"}}]";
@@ -8639,12 +8668,32 @@ fn item_stack_snbt_preserves_registry_independent_consume_effects() {
         Some(format!("{{death_effects: {effect_list}}}"))
     );
 
-    patch.consumable_effects[1] = ConsumeEffectSummary::TeleportRandomly {
+    patch.consumable_effects[3] = ConsumeEffectSummary::TeleportRandomly {
         diameter_bits: 0.0_f32.to_bits(),
     };
     assert_eq!(debug_consumable_component_snbt(&patch), None);
 
-    patch.death_protection_effects = vec![ConsumeEffectSummary::ApplyEffectsUnsupported];
+    patch.consumable_effects[3] = ConsumeEffectSummary::TeleportRandomly {
+        diameter_bits: 16.0_f32.to_bits(),
+    };
+    patch.consumable_effects[0] = ConsumeEffectSummary::ApplyEffects {
+        effects: Vec::new(),
+        probability_bits: (-0.0_f32).to_bits(),
+    };
+    assert_eq!(debug_consumable_component_snbt(&patch), None);
+
+    patch.death_protection_effects = vec![ConsumeEffectSummary::ApplyEffects {
+        effects: vec![MobEffectInstanceSummary {
+            effect_id: 40,
+            amplifier: 0,
+            duration: 0,
+            ambient: false,
+            show_particles: true,
+            show_icon: true,
+            hidden_effect: None,
+        }],
+        probability_bits: 1.0_f32.to_bits(),
+    }];
     assert_eq!(debug_death_protection_component_snbt(&patch), None);
 }
 
@@ -8762,8 +8811,24 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
             fixed_range_bits: None,
         }),
         consumable_has_consume_particles: Some(false),
-        consumable_effect_count: Some(3),
+        consumable_effect_count: Some(5),
         consumable_effects: vec![
+            ConsumeEffectSummary::ApplyEffects {
+                effects: vec![MobEffectInstanceSummary {
+                    effect_id: 9,
+                    amplifier: 0,
+                    duration: 100,
+                    ambient: false,
+                    show_particles: true,
+                    show_icon: true,
+                    hidden_effect: None,
+                }],
+                probability_bits: 1.0_f32.to_bits(),
+            },
+            ConsumeEffectSummary::RemoveEffects {
+                effect_registry_ids: vec![18, 19],
+                effect_tag: None,
+            },
             ConsumeEffectSummary::ClearAllEffects,
             ConsumeEffectSummary::TeleportRandomly {
                 diameter_bits: 8.0_f32.to_bits(),
@@ -9101,7 +9166,11 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
          \"minecraft:consumable\": {consume_seconds: 0.8f, animation: \"drink\", \
          sound: {sound_id: \"minecraft:entity.generic.drink\"}, \
          has_consume_particles: 0b, on_consume_effects: \
-         [{type: \"minecraft:clear_all_effects\"}, \
+         [{type: \"minecraft:apply_effects\", effects: \
+         [{id: \"minecraft:regeneration\", duration: 100, show_icon: 1b}]}, \
+         {type: \"minecraft:remove_effects\", effects: \
+         [\"minecraft:poison\", \"minecraft:wither\"]}, \
+         {type: \"minecraft:clear_all_effects\"}, \
          {type: \"minecraft:teleport_randomly\", diameter: 8.0f}, \
          {type: \"minecraft:play_sound\", sound: \
          {sound_id: \"minecraft:item.honey_bottle.drink\"}}]}, \

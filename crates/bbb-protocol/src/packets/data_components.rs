@@ -546,11 +546,21 @@ impl Eq for ConsumableSummary {}
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum ConsumeEffectSummary {
-    ApplyEffectsUnsupported,
-    RemoveEffectsUnsupported,
+    ApplyEffects {
+        effects: Vec<MobEffectInstanceSummary>,
+        probability_bits: u32,
+    },
+    RemoveEffects {
+        effect_registry_ids: Vec<i32>,
+        effect_tag: Option<String>,
+    },
     ClearAllEffects,
-    TeleportRandomly { diameter_bits: u32 },
-    PlaySound { sound: SoundEventSummary },
+    TeleportRandomly {
+        diameter_bits: u32,
+    },
+    PlaySound {
+        sound: SoundEventSummary,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -1889,15 +1899,21 @@ fn decode_consume_effect_summary(decoder: &mut Decoder<'_>) -> Result<ConsumeEff
     match decoder.read_var_i32()? {
         0 => {
             let effect_count = read_bounded_len(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
+            let mut effects = Vec::with_capacity(effect_count);
             for _ in 0..effect_count {
-                decode_mob_effect_instance(decoder)?;
+                effects.push(decode_mob_effect_instance(decoder)?);
             }
-            decoder.read_f32()?;
-            Ok(ConsumeEffectSummary::ApplyEffectsUnsupported)
+            Ok(ConsumeEffectSummary::ApplyEffects {
+                effects,
+                probability_bits: decoder.read_f32()?.to_bits(),
+            })
         }
         1 => {
-            decode_holder_set(decoder)?;
-            Ok(ConsumeEffectSummary::RemoveEffectsUnsupported)
+            let effects = decode_holder_set_summary(decoder)?;
+            Ok(ConsumeEffectSummary::RemoveEffects {
+                effect_registry_ids: effects.registry_ids,
+                effect_tag: effects.tag,
+            })
         }
         2 => Ok(ConsumeEffectSummary::ClearAllEffects),
         3 => Ok(ConsumeEffectSummary::TeleportRandomly {
@@ -2764,7 +2780,7 @@ fn decode_mob_effect_details(
             "mob effect details exceeded max depth".to_string(),
         ));
     }
-    let amplifier = decoder.read_var_i32()?;
+    let amplifier = decoder.read_var_i32()?.clamp(0, 255);
     let duration = decoder.read_var_i32()?;
     let ambient = decoder.read_bool()?;
     let show_particles = decoder.read_bool()?;
@@ -3935,7 +3951,17 @@ mod tests {
         payload.write_var_i32(2);
         write_direct_sound_event(&mut payload, "minecraft:entity.generic.drink", None);
         payload.write_bool(true);
+        payload.write_var_i32(1);
         payload.write_var_i32(0);
+        payload.write_var_i32(1);
+        payload.write_var_i32(9);
+        payload.write_var_i32(999);
+        payload.write_var_i32(40);
+        payload.write_bool(false);
+        payload.write_bool(true);
+        payload.write_bool(true);
+        payload.write_bool(false);
+        payload.write_f32(1.0);
 
         let payload = payload.into_inner();
         let mut decoder = Decoder::new(&payload);
@@ -3957,7 +3983,19 @@ mod tests {
                     fixed_range_bits: None,
                 }),
                 consumable_has_consume_particles: Some(true),
-                consumable_effect_count: Some(0),
+                consumable_effect_count: Some(1),
+                consumable_effects: vec![ConsumeEffectSummary::ApplyEffects {
+                    effects: vec![MobEffectInstanceSummary {
+                        effect_id: 9,
+                        amplifier: 255,
+                        duration: 40,
+                        ambient: false,
+                        show_particles: true,
+                        show_icon: true,
+                        hidden_effect: None,
+                    }],
+                    probability_bits: 1.0_f32.to_bits(),
+                }],
                 ..DataComponentPatchSummary::default()
             }
         );
@@ -5098,8 +5136,22 @@ mod tests {
                 consumable_has_consume_particles: Some(true),
                 consumable_effect_count: Some(5),
                 consumable_effects: vec![
-                    ConsumeEffectSummary::ApplyEffectsUnsupported,
-                    ConsumeEffectSummary::RemoveEffectsUnsupported,
+                    ConsumeEffectSummary::ApplyEffects {
+                        effects: vec![MobEffectInstanceSummary {
+                            effect_id: 5,
+                            amplifier: 1,
+                            duration: 200,
+                            ambient: false,
+                            show_particles: true,
+                            show_icon: true,
+                            hidden_effect: None,
+                        }],
+                        probability_bits: 0.75_f32.to_bits(),
+                    },
+                    ConsumeEffectSummary::RemoveEffects {
+                        effect_registry_ids: vec![6],
+                        effect_tag: None,
+                    },
                     ConsumeEffectSummary::ClearAllEffects,
                     ConsumeEffectSummary::TeleportRandomly {
                         diameter_bits: 16.0_f32.to_bits(),

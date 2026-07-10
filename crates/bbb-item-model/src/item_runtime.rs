@@ -79,6 +79,7 @@ use crate::font::load_hud_font_atlas;
 mod attributes;
 mod icon;
 mod mob_effects;
+pub use mob_effects::vanilla_mob_effect_resource_id;
 mod profiles;
 mod tables;
 mod tooltip;

@@ -73,9 +73,10 @@ use bbb_protocol::{
         ConsumeEffectSummary, Direction as ProtocolDirection, EntityDataEnumSerializer,
         EntityDataRegistryHolder, EntityDataValueKind, EntityTagQuery,
         FireworkExplosionShapeSummary, FireworkExplosionSummary, GameType, InteractionHand,
-        ItemRaritySummary, ItemStackSummary, NbtSummaryValue, PlayerActionKind,
-        PlayerCommandAction, PlayerInput, PlayerModelTypeSummary, RecipeBookType,
-        ResolvableProfileKindSummary, ResolvableProfileSummary, SeenAdvancements, SignUpdate,
+        ItemRaritySummary, ItemStackSummary, MobEffectDetailsSummary, MobEffectInstanceSummary,
+        NbtSummaryValue, PlayerActionKind, PlayerCommandAction, PlayerInput,
+        PlayerModelTypeSummary, RecipeBookType, ResolvableProfileKindSummary,
+        ResolvableProfileSummary, SeenAdvancements, SignUpdate,
     },
     ComponentClickEvent, ComponentStyle, StyledTextRun, MC_BUILD_TIME, MC_DATA_PACK_FORMAT,
     MC_DATA_VERSION, MC_DATA_VERSION_SERIES, MC_RESOURCE_PACK_FORMAT, MC_STABLE, MC_VERSION,
@@ -108,7 +109,7 @@ use crate::crosshair::protocol_block_pos_from_world;
 use crate::crosshair::{crosshair_target_from_camera_at_partial_tick, CrosshairTarget};
 use crate::entity_scene::WITHER_SKULL_DANGEROUS_DATA_ID;
 use crate::terrain_runtime::TerrainUploadState;
-use bbb_item_model::{ItemModelKeybindContext, NativeItemRuntime};
+use bbb_item_model::{vanilla_mob_effect_resource_id, ItemModelKeybindContext, NativeItemRuntime};
 pub(crate) use bundle::select_bundle_item;
 use commands::*;
 pub(crate) use commands::{
@@ -5121,8 +5122,33 @@ fn debug_consume_effects_snbt(effects: &[ConsumeEffectSummary]) -> Option<String
 
 fn debug_consume_effect_snbt(effect: &ConsumeEffectSummary) -> Option<String> {
     match effect {
-        ConsumeEffectSummary::ApplyEffectsUnsupported
-        | ConsumeEffectSummary::RemoveEffectsUnsupported => None,
+        ConsumeEffectSummary::ApplyEffects {
+            effects,
+            probability_bits,
+        } => {
+            let probability =
+                debug_range_checked_float_component_snbt(*probability_bits, 0.0, Some(1.0))?;
+            let effects = effects
+                .iter()
+                .map(debug_mob_effect_instance_snbt)
+                .collect::<Option<Vec<_>>>()?;
+            let mut fields = vec![
+                format!("type: {}", debug_snbt_string("minecraft:apply_effects")),
+                format!("effects: [{}]", effects.join(", ")),
+            ];
+            if *probability_bits != 1.0_f32.to_bits() {
+                fields.push(format!("probability: {probability}"));
+            }
+            Some(format!("{{{}}}", fields.join(", ")))
+        }
+        ConsumeEffectSummary::RemoveEffects {
+            effect_registry_ids,
+            effect_tag,
+        } => Some(format!(
+            "{{type: {}, effects: {}}}",
+            debug_snbt_string("minecraft:remove_effects"),
+            debug_mob_effect_holder_set_snbt(effect_registry_ids, effect_tag.as_deref())?
+        )),
         ConsumeEffectSummary::ClearAllEffects => Some(format!(
             "{{type: {}}}",
             debug_snbt_string("minecraft:clear_all_effects")
@@ -5150,6 +5176,96 @@ fn debug_consume_effect_snbt(effect: &ConsumeEffectSummary) -> Option<String> {
             debug_sound_event_component_snbt(sound)?
         )),
     }
+}
+
+fn debug_mob_effect_holder_set_snbt(
+    effect_registry_ids: &[i32],
+    effect_tag: Option<&str>,
+) -> Option<String> {
+    if let Some(effect_tag) = effect_tag {
+        if !effect_registry_ids.is_empty() {
+            return None;
+        }
+        return Some(debug_snbt_string(&format!("#{effect_tag}")));
+    }
+
+    let effects = effect_registry_ids
+        .iter()
+        .map(|effect_id| vanilla_mob_effect_resource_id(*effect_id).map(debug_snbt_string))
+        .collect::<Option<Vec<_>>>()?;
+    match effects.as_slice() {
+        [] => Some("[]".to_string()),
+        [effect] => Some(effect.clone()),
+        _ => Some(format!("[{}]", effects.join(", "))),
+    }
+}
+
+fn debug_mob_effect_instance_snbt(effect: &MobEffectInstanceSummary) -> Option<String> {
+    let mut fields = vec![format!(
+        "id: {}",
+        debug_snbt_string(vanilla_mob_effect_resource_id(effect.effect_id)?)
+    )];
+    fields.extend(debug_mob_effect_details_fields(
+        effect.amplifier,
+        effect.duration,
+        effect.ambient,
+        effect.show_particles,
+        effect.show_icon,
+        effect.hidden_effect.as_deref(),
+        0,
+    )?);
+    Some(format!("{{{}}}", fields.join(", ")))
+}
+
+fn debug_mob_effect_details_snbt(
+    details: &MobEffectDetailsSummary,
+    depth: usize,
+) -> Option<String> {
+    let fields = debug_mob_effect_details_fields(
+        details.amplifier,
+        details.duration,
+        details.ambient,
+        details.show_particles,
+        details.show_icon,
+        details.hidden_effect.as_deref(),
+        depth,
+    )?;
+    Some(format!("{{{}}}", fields.join(", ")))
+}
+
+fn debug_mob_effect_details_fields(
+    amplifier: i32,
+    duration: i32,
+    ambient: bool,
+    show_particles: bool,
+    show_icon: bool,
+    hidden_effect: Option<&MobEffectDetailsSummary>,
+    depth: usize,
+) -> Option<Vec<String>> {
+    if depth > 16 || !(0..=255).contains(&amplifier) {
+        return None;
+    }
+    let mut fields = Vec::new();
+    if amplifier != 0 {
+        fields.push(format!("amplifier: {amplifier}"));
+    }
+    if duration != 0 {
+        fields.push(format!("duration: {duration}"));
+    }
+    if ambient {
+        fields.push("ambient: 1b".to_string());
+    }
+    if !show_particles {
+        fields.push("show_particles: 0b".to_string());
+    }
+    fields.push(format!("show_icon: {}", debug_snbt_bool(show_icon)));
+    if let Some(hidden_effect) = hidden_effect {
+        fields.push(format!(
+            "hidden_effect: {}",
+            debug_mob_effect_details_snbt(hidden_effect, depth + 1)?
+        ));
+    }
+    Some(fields)
 }
 
 fn debug_range_checked_float_component_snbt(
