@@ -213,8 +213,9 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   remaining entity-specific
   constructor/default save values, LivingEntity parent health/equipment/effect/attribute
   projection, observable non-empty entity inventory/container projection
-  (including non-empty item-frame `Item` stacks and chest/hopper minecart
-  `Items` / loot-table contents), non-default hopper minecart enabled state,
+  (including non-empty item-frame `Item` stacks, chest/hopper minecart
+  `Items` / loot-table contents, and chest boat/raft `Items` / loot-table
+  contents), non-default hopper minecart enabled state,
   non-default furnace minecart push/fuel fields,
   spawner minecart non-default delay/count/range fields and codec-backed
   `SpawnData` / `SpawnPotentials`, command-block minecart non-default success/
