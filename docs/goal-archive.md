@@ -9183,3 +9183,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   bootstrap 顺序，支持 mace_smash 边界并对 unknown id 安全省略。大型 component
   patch test 从 97 扩展到 98 个 added entry；unsupported-added 分发测试继续由
   尚未实现的 tool type id 28 覆盖，不改变 removal catalog 验证。
+
+## 2026-07-10：ItemStack exact Component-tree names and lore save
+
+- [x] minecraft:custom_name、minecraft:item_name 与 minecraft:lore 的完整
+  Component tree 持久化（P2 protocol + native input）：新增 protocol 语义 owner
+  `nbt_summary.rs`，把既有 `NbtSummaryValue/NbtSummaryEntry` 的外部 re-export 保持
+  不变；Component wire decoder 在继续投影 plain/styled 兼容字段的同时保留完整
+  unnamed-NBT tree，native type id 6/9/11 encoder registry 再按 persistent Codec
+  输出精确 SNBT。缺失或不完整 tree 安全省略，不从 flattened text 反推原树。
+  大型 component patch test 从 98 扩展到 101 个 added entry，removal 样例移至
+  尚未实现的 tool type id 28，并覆盖 compound/string/lore-list wire order。

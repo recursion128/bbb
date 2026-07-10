@@ -467,9 +467,11 @@ fn decode_use_effects_component(
     Ok(())
 }
 
-fn decode_styled_name(decoder: &mut Decoder<'_>) -> Result<(String, Vec<StyledTextRun>)> {
-    let runs = decode_styled_component_summary_from_decoder(decoder)?;
-    Ok((styled_runs_summary_text(&runs), runs))
+fn decode_styled_name(
+    decoder: &mut Decoder<'_>,
+) -> Result<(String, Vec<StyledTextRun>, Option<NbtSummaryValue>)> {
+    let (runs, nbt) = decode_styled_component_summary_with_nbt_from_decoder(decoder)?;
+    Ok((styled_runs_summary_text(&runs), runs, nbt))
 }
 
 fn decode_custom_name(
@@ -477,9 +479,10 @@ fn decode_custom_name(
     decoder: &mut Decoder<'_>,
     summary: &mut DataComponentPatchSummary,
 ) -> Result<()> {
-    let (text, runs) = decode_styled_name(decoder)?;
+    let (text, runs, nbt) = decode_styled_name(decoder)?;
     summary.custom_name = Some(text);
     summary.custom_name_styled = Some(runs);
+    summary.custom_name_nbt = nbt;
     Ok(())
 }
 
@@ -488,9 +491,10 @@ fn decode_item_name(
     decoder: &mut Decoder<'_>,
     summary: &mut DataComponentPatchSummary,
 ) -> Result<()> {
-    let (text, runs) = decode_styled_name(decoder)?;
+    let (text, runs, nbt) = decode_styled_name(decoder)?;
     summary.item_name = Some(text);
     summary.item_name_styled = Some(runs);
+    summary.item_name_nbt = nbt;
     Ok(())
 }
 
@@ -526,7 +530,7 @@ fn decode_lore_component(
     decoder: &mut Decoder<'_>,
     summary: &mut DataComponentPatchSummary,
 ) -> Result<()> {
-    summary.lore_styled = decode_lore(decoder)?;
+    (summary.lore_styled, summary.lore_nbt) = decode_lore(decoder)?;
     summary.lore = summary
         .lore_styled
         .iter()

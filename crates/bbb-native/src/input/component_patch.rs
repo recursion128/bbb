@@ -76,9 +76,12 @@ static PERSISTENT_SNBT_ENCODERS: &[PersistentSnbtEncoderDescriptor] = &[
     encoder(3, encode_damage),
     encoder(4, encode_unit),
     encoder(5, encode_use_effects),
+    encoder(6, encode_component_tree),
     encoder(7, encode_minimum_attack_charge),
     encoder(8, encode_damage_type),
+    encoder(9, encode_component_tree),
     encoder(10, encode_item_model),
+    encoder(11, encode_lore),
     encoder(12, encode_rarity),
     encoder(13, encode_enchantments),
     encoder(16, encode_attribute_modifiers),
@@ -237,6 +240,38 @@ fn encode_use_effects(
     _item_runtime: Option<&NativeItemRuntime>,
 ) -> Option<String> {
     debug_use_effects_component_snbt(patch.use_effects?)
+}
+
+fn encode_component_tree(
+    type_id: i32,
+    patch: &bbb_protocol::packets::DataComponentPatchSummary,
+    _item_runtime: Option<&NativeItemRuntime>,
+) -> Option<String> {
+    let component = match type_id {
+        6 => patch.custom_name_nbt.as_ref()?,
+        9 => patch.item_name_nbt.as_ref()?,
+        _ => return None,
+    };
+    Some(debug_nbt_summary_snbt(component))
+}
+
+fn encode_lore(
+    _type_id: i32,
+    patch: &bbb_protocol::packets::DataComponentPatchSummary,
+    _item_runtime: Option<&NativeItemRuntime>,
+) -> Option<String> {
+    if patch.lore_nbt.len() != patch.lore.len() {
+        return None;
+    }
+    Some(format!(
+        "[{}]",
+        patch
+            .lore_nbt
+            .iter()
+            .map(debug_nbt_summary_snbt)
+            .collect::<Vec<_>>()
+            .join(", ")
+    ))
 }
 
 fn encode_minimum_attack_charge(
@@ -904,7 +939,7 @@ mod tests {
 
     #[test]
     fn encoder_registry_is_unique_sorted_and_persistent() {
-        assert_eq!(PERSISTENT_SNBT_ENCODERS.len(), 98);
+        assert_eq!(PERSISTENT_SNBT_ENCODERS.len(), 101);
         let mut ids = HashSet::new();
         let mut previous = None;
         for descriptor in PERSISTENT_SNBT_ENCODERS {
@@ -1006,6 +1041,59 @@ mod tests {
         assert_eq!(encode_added_component_value_snbt(8, &patch, None), None);
         patch.damage_type_id = Some(-1);
         assert_eq!(encode_added_component_value_snbt(8, &patch, None), None);
+    }
+
+    #[test]
+    fn component_tree_encoders_preserve_exact_nbt_and_omit_missing_trees() {
+        let mut patch = bbb_protocol::packets::DataComponentPatchSummary {
+            custom_name_nbt: Some(bbb_protocol::packets::NbtSummaryValue::Compound(vec![
+                bbb_protocol::packets::NbtSummaryEntry {
+                    name: "translate".to_string(),
+                    value: bbb_protocol::packets::NbtSummaryValue::String(
+                        "item.example.name".to_string(),
+                    ),
+                },
+                bbb_protocol::packets::NbtSummaryEntry {
+                    name: "bold".to_string(),
+                    value: bbb_protocol::packets::NbtSummaryValue::Byte(1),
+                },
+            ])),
+            item_name_nbt: Some(bbb_protocol::packets::NbtSummaryValue::String(
+                "Exact item name".to_string(),
+            )),
+            lore: vec!["First".to_string(), "Second".to_string()],
+            lore_nbt: vec![
+                bbb_protocol::packets::NbtSummaryValue::String("First".to_string()),
+                bbb_protocol::packets::NbtSummaryValue::Compound(vec![
+                    bbb_protocol::packets::NbtSummaryEntry {
+                        name: "text".to_string(),
+                        value: bbb_protocol::packets::NbtSummaryValue::String("Second".to_string()),
+                    },
+                    bbb_protocol::packets::NbtSummaryEntry {
+                        name: "italic".to_string(),
+                        value: bbb_protocol::packets::NbtSummaryValue::Byte(0),
+                    },
+                ]),
+            ],
+            ..Default::default()
+        };
+        assert_eq!(
+            encode_added_component_value_snbt(6, &patch, None),
+            Some("{translate: \"item.example.name\", bold: 1b}".to_string())
+        );
+        assert_eq!(
+            encode_added_component_value_snbt(9, &patch, None),
+            Some("\"Exact item name\"".to_string())
+        );
+        assert_eq!(
+            encode_added_component_value_snbt(11, &patch, None),
+            Some("[\"First\", {text: \"Second\", italic: 0b}]".to_string())
+        );
+
+        patch.custom_name_nbt = None;
+        assert_eq!(encode_added_component_value_snbt(6, &patch, None), None);
+        patch.lore_nbt.pop();
+        assert_eq!(encode_added_component_value_snbt(11, &patch, None), None);
     }
 
     #[test]

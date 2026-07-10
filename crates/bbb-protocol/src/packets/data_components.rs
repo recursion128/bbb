@@ -7,10 +7,13 @@ use crate::{
     codec::{Decoder, ProtocolError, Result},
     component::{
         decode_component_summary_from_decoder, decode_styled_component_summary_from_decoder,
-        skip_nbt_tag_from_decoder, styled_runs_summary_text, StyledTextRun,
+        decode_styled_component_summary_with_nbt_from_decoder, skip_nbt_tag_from_decoder,
+        styled_runs_summary_text, StyledTextRun,
     },
 };
 use uuid::Uuid;
+
+pub use crate::nbt_summary::{NbtSummaryEntry, NbtSummaryValue};
 
 pub(crate) mod catalog;
 
@@ -72,11 +75,17 @@ pub struct DataComponentPatchSummary {
     /// `custom_name` is its plain-text concatenation.
     #[serde(default)]
     pub custom_name_styled: Option<Vec<StyledTextRun>>,
+    /// Exact unnamed-NBT Component tree used by the persistent codec.
+    #[serde(default)]
+    pub custom_name_nbt: Option<NbtSummaryValue>,
     #[serde(default)]
     pub item_name: Option<String>,
     /// Styled-run projection of `item_name` (same decode, style kept).
     #[serde(default)]
     pub item_name_styled: Option<Vec<StyledTextRun>>,
+    /// Exact unnamed-NBT Component tree used by the persistent codec.
+    #[serde(default)]
+    pub item_name_nbt: Option<NbtSummaryValue>,
     #[serde(default)]
     pub item_model: Option<String>,
     #[serde(default)]
@@ -89,6 +98,9 @@ pub struct DataComponentPatchSummary {
     /// list per lore line.
     #[serde(default)]
     pub lore_styled: Vec<Vec<StyledTextRun>>,
+    /// Exact unnamed-NBT Component trees, one per lore line.
+    #[serde(default)]
+    pub lore_nbt: Vec<NbtSummaryValue>,
     #[serde(default)]
     pub rarity: Option<ItemRaritySummary>,
     #[serde(default)]
@@ -321,29 +333,6 @@ pub struct DataComponentPatchSummary {
     pub can_place_on: Option<AdventureModePredicateSummary>,
     #[serde(default)]
     pub can_break: Option<AdventureModePredicateSummary>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(tag = "type", content = "value")]
-pub enum NbtSummaryValue {
-    Byte(i8),
-    Short(i16),
-    Int(i32),
-    Long(i64),
-    Float(u32),
-    Double(u64),
-    ByteArray(Vec<i8>),
-    String(String),
-    List(Vec<NbtSummaryValue>),
-    Compound(Vec<NbtSummaryEntry>),
-    IntArray(Vec<i32>),
-    LongArray(Vec<i64>),
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct NbtSummaryEntry {
-    pub name: String,
-    pub value: NbtSummaryValue,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -1133,13 +1122,20 @@ fn decode_global_pos(decoder: &mut Decoder<'_>) -> Result<LodestoneTargetSummary
     })
 }
 
-fn decode_lore(decoder: &mut Decoder<'_>) -> Result<Vec<Vec<StyledTextRun>>> {
+fn decode_lore(
+    decoder: &mut Decoder<'_>,
+) -> Result<(Vec<Vec<StyledTextRun>>, Vec<NbtSummaryValue>)> {
     let line_count = read_bounded_len(decoder, MAX_LORE_LINES)?;
     let mut lines = Vec::with_capacity(line_count);
+    let mut component_nbt = Vec::with_capacity(line_count);
     for _ in 0..line_count {
-        lines.push(decode_styled_component_summary_from_decoder(decoder)?);
+        let (runs, nbt) = decode_styled_component_summary_with_nbt_from_decoder(decoder)?;
+        lines.push(runs);
+        if let Some(nbt) = nbt {
+            component_nbt.push(nbt);
+        }
     }
-    Ok(lines)
+    Ok((lines, component_nbt))
 }
 
 fn decode_item_rarity(decoder: &mut Decoder<'_>) -> Result<ItemRaritySummary> {
@@ -2475,6 +2471,7 @@ mod tests {
                 unbreakable: true,
                 custom_name: Some("Named".to_string()),
                 custom_name_styled: Some(plain_runs("Named")),
+                custom_name_nbt: Some(NbtSummaryValue::String("Named".to_string())),
                 item_model: Some("minecraft:diamond_sword".to_string()),
                 enchantment_glint_override: Some(true),
                 intangible_projectile: true,
@@ -3148,10 +3145,16 @@ mod tests {
                 removed_type_ids: Vec::new(),
                 custom_name: Some("Custom Name".to_string()),
                 custom_name_styled: Some(plain_runs("Custom Name")),
+                custom_name_nbt: Some(NbtSummaryValue::String("Custom Name".to_string())),
                 item_name: Some("Item Name".to_string()),
                 item_name_styled: Some(plain_runs("Item Name")),
+                item_name_nbt: Some(NbtSummaryValue::String("Item Name".to_string())),
                 lore: vec!["Lore one".to_string(), "Lore two".to_string()],
                 lore_styled: vec![plain_runs("Lore one"), plain_runs("Lore two")],
+                lore_nbt: vec![
+                    NbtSummaryValue::String("Lore one".to_string()),
+                    NbtSummaryValue::String("Lore two".to_string()),
+                ],
                 rarity: Some(ItemRaritySummary::Rare),
                 ..DataComponentPatchSummary::default()
             }
@@ -3210,6 +3213,36 @@ mod tests {
                     ..Default::default()
                 },
             }]]
+        );
+        assert_eq!(
+            patch.custom_name_nbt,
+            Some(NbtSummaryValue::Compound(vec![
+                NbtSummaryEntry {
+                    name: "text".to_string(),
+                    value: NbtSummaryValue::String("Sword".to_string()),
+                },
+                NbtSummaryEntry {
+                    name: "bold".to_string(),
+                    value: NbtSummaryValue::Byte(1),
+                },
+                NbtSummaryEntry {
+                    name: "color".to_string(),
+                    value: NbtSummaryValue::String("gold".to_string()),
+                },
+            ]))
+        );
+        assert_eq!(
+            patch.lore_nbt,
+            vec![NbtSummaryValue::Compound(vec![
+                NbtSummaryEntry {
+                    name: "text".to_string(),
+                    value: NbtSummaryValue::String("Old blade".to_string()),
+                },
+                NbtSummaryEntry {
+                    name: "italic".to_string(),
+                    value: NbtSummaryValue::Byte(0),
+                },
+            ])]
         );
     }
 
@@ -3989,6 +4022,10 @@ mod tests {
                 tooltip_hidden_component_type_ids: vec![11, 13],
                 lore: vec!["Line one".to_string(), "Line two".to_string()],
                 lore_styled: vec![plain_runs("Line one"), plain_runs("Line two")],
+                lore_nbt: vec![
+                    NbtSummaryValue::String("Line one".to_string()),
+                    NbtSummaryValue::String("Line two".to_string()),
+                ],
                 ..DataComponentPatchSummary::default()
             }
         );

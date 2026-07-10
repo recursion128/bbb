@@ -8738,15 +8738,15 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
         EquipmentAssetCatalog::default(),
     );
     let patch = DataComponentPatchSummary {
-        added: 98,
+        added: 101,
         added_type_ids: vec![
-            0, 1, 2, 3, 4, 5, 7, 8, 10, 12, 13, 16, 17, 18, 19, 21, 22, 23, 24, 25, 26, 27, 29, 30,
-            31, 33, 34, 35, 36, 38, 39, 40, 42, 43, 44, 45, 46, 47, 49, 50, 51, 52, 53, 54, 56, 57,
-            58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79,
-            80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100,
-            101, 102, 103, 104, 105, 106, 107, 108, 109,
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 16, 17, 18, 19, 21, 22, 23, 24, 25, 26,
+            27, 29, 30, 31, 33, 34, 35, 36, 38, 39, 40, 42, 43, 44, 45, 46, 47, 49, 50, 51, 52, 53,
+            54, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76,
+            77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98,
+            99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109,
         ],
-        removed_type_ids: vec![6],
+        removed_type_ids: vec![28],
         custom_data: Some(NbtSummaryValue::Compound(vec![
             NbtSummaryEntry {
                 name: "answer".to_string(),
@@ -8801,6 +8801,33 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
         max_damage: Some(100),
         damage: Some(7),
         damage_type_id: Some(49),
+        custom_name: Some("Custom sword".to_string()),
+        custom_name_nbt: Some(NbtSummaryValue::Compound(vec![
+            NbtSummaryEntry {
+                name: "text".to_string(),
+                value: NbtSummaryValue::String("Custom sword".to_string()),
+            },
+            NbtSummaryEntry {
+                name: "bold".to_string(),
+                value: NbtSummaryValue::Byte(1),
+            },
+        ])),
+        item_name: Some("Diamond".to_string()),
+        item_name_nbt: Some(NbtSummaryValue::String("Diamond".to_string())),
+        lore: vec!["Forged".to_string(), "Sharp".to_string()],
+        lore_nbt: vec![
+            NbtSummaryValue::String("Forged".to_string()),
+            NbtSummaryValue::Compound(vec![
+                NbtSummaryEntry {
+                    name: "text".to_string(),
+                    value: NbtSummaryValue::String("Sharp".to_string()),
+                },
+                NbtSummaryEntry {
+                    name: "italic".to_string(),
+                    value: NbtSummaryValue::Byte(0),
+                },
+            ]),
+        ],
         unbreakable: true,
         use_effects: Some(bbb_protocol::packets::UseEffectsSummary {
             can_sprint: true,
@@ -9264,9 +9291,12 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
          \"minecraft:damage\": 7, \"minecraft:unbreakable\": {}, \
          \"minecraft:use_effects\": {can_sprint: 1b, interact_vibrations: 0b, \
          speed_multiplier: 1.0f}, \
+         \"minecraft:custom_name\": {text: \"Custom sword\", bold: 1b}, \
          \"minecraft:minimum_attack_charge\": 0.75f, \
          \"minecraft:damage_type\": \"minecraft:mace_smash\", \
+         \"minecraft:item_name\": \"Diamond\", \
          \"minecraft:item_model\": \"minecraft:custom/diamond\", \
+         \"minecraft:lore\": [\"Forged\", {text: \"Sharp\", italic: 0b}], \
          \"minecraft:rarity\": \"rare\", \
          \"minecraft:enchantments\": {\"minecraft:density\": 4, \
          \"minecraft:swift_sneak\": 3}, \
@@ -9408,7 +9438,7 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
          \"minecraft:cat/collar\": \"black\", \
          \"minecraft:sheep/color\": \"cyan\", \
          \"minecraft:shulker/color\": \"white\", \
-         \"!minecraft:custom_name\": {}}}"
+         \"!minecraft:tool\": {}}}"
                 .to_string()
         )
     );

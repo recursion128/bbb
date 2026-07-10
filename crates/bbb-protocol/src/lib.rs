@@ -1,4 +1,5 @@
 mod component;
+mod nbt_summary;
 
 pub use component::{
     decode_sign_block_entity_nbt, decode_styled_component_summary, styled_runs_summary_text,

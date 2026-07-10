@@ -246,7 +246,8 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   enchantments/stored-enchantments/
   attribute-modifiers-named-holder-default-hidden-display/
   simple-resource (including tooltip-style/note-block-sound and vanilla/direct
-  break-sound)/food/consumable/death-protection/potion-contents/suspicious-stew-effects/
+  break-sound)/exact-component-tree (custom-name/item-name/lore)/
+  food/consumable/death-protection/potion-contents/suspicious-stew-effects/
   damage-resistant-tag/weapon/
   damage-type-named-holder/
   piercing-weapon/kinetic-weapon/

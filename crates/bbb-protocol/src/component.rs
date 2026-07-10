@@ -1,18 +1,13 @@
 use serde::{Deserialize, Serialize};
 
-use crate::codec::{Decoder, ProtocolError, Result};
+use crate::{
+    codec::{Decoder, ProtocolError, Result},
+    nbt_summary::{NbtSummaryEntry, NbtSummaryValue},
+};
 
 const MAX_NBT_DEPTH: usize = 64;
+const MAX_NBT_ARRAY_ITEMS: usize = 4096;
 const MAX_NBT_LIST_ITEMS: usize = 4096;
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-enum NbtValue {
-    Byte(i8),
-    String(String),
-    List(Vec<NbtValue>),
-    Compound(Vec<(String, NbtValue)>),
-    Other,
-}
 
 /// The client-visible subset of vanilla `net.minecraft.network.chat.Style`
 /// (`Style.Serializer.MAP_CODEC`). Each key is `None` when the component chain
@@ -111,10 +106,18 @@ pub(crate) fn decode_component_summary_from_decoder(decoder: &mut Decoder<'_>) -
 pub(crate) fn decode_styled_component_summary_from_decoder(
     decoder: &mut Decoder<'_>,
 ) -> Result<Vec<StyledTextRun>> {
+    decode_styled_component_summary_with_nbt_from_decoder(decoder).map(|(runs, _)| runs)
+}
+
+pub(crate) fn decode_styled_component_summary_with_nbt_from_decoder(
+    decoder: &mut Decoder<'_>,
+) -> Result<(Vec<StyledTextRun>, Option<NbtSummaryValue>)> {
     let root = read_nbt_any(decoder)?;
     let mut runs = RunCollector::default();
-    append_component_runs(&root, &ComponentStyle::default(), &mut runs);
-    Ok(runs.runs)
+    if let Some(root) = &root {
+        append_component_runs(root, &ComponentStyle::default(), &mut runs);
+    }
+    Ok((runs.runs, root))
 }
 
 pub(crate) fn skip_nbt_tag_from_decoder(decoder: &mut Decoder<'_>) -> Result<()> {
@@ -192,7 +195,7 @@ pub fn decode_sign_block_entity_nbt(raw_nbt: &[u8]) -> Result<Option<SignBlockEn
             "trailing bytes after block entity nbt".to_string(),
         ));
     }
-    let NbtValue::Compound(entries) = root else {
+    let Some(NbtSummaryValue::Compound(entries)) = root else {
         return Ok(None);
     };
     let front_text = decode_sign_text_nbt(&entries, "front_text");
@@ -203,15 +206,15 @@ pub fn decode_sign_block_entity_nbt(raw_nbt: &[u8]) -> Result<Option<SignBlockEn
     Ok(Some(SignBlockEntityNbt {
         front_text,
         back_text,
-        is_waxed: matches!(find_entry(&entries, "is_waxed"), Some(NbtValue::Byte(value)) if *value != 0),
+        is_waxed: matches!(find_entry(&entries, "is_waxed"), Some(NbtSummaryValue::Byte(value)) if *value != 0),
     }))
 }
 
-fn decode_sign_text_nbt(entries: &[(String, NbtValue)], key: &str) -> Option<SignTextNbt> {
-    let NbtValue::Compound(text_entries) = find_entry(entries, key)? else {
+fn decode_sign_text_nbt(entries: &[NbtSummaryEntry], key: &str) -> Option<SignTextNbt> {
+    let NbtSummaryValue::Compound(text_entries) = find_entry(entries, key)? else {
         return None;
     };
-    let NbtValue::List(messages) = find_entry(text_entries, "messages")? else {
+    let NbtSummaryValue::List(messages) = find_entry(text_entries, "messages")? else {
         return None;
     };
     // Vanilla `SignText.LINES_CODEC` rejects any list that is not exactly four
@@ -225,7 +228,7 @@ fn decode_sign_text_nbt(entries: &[(String, NbtValue)], key: &str) -> Option<Sig
         runs.runs
     });
     let color = match find_entry(text_entries, "color") {
-        Some(NbtValue::String(color)) => Some(color.clone()),
+        Some(NbtSummaryValue::String(color)) => Some(color.clone()),
         _ => None,
     };
     Some(SignTextNbt {
@@ -233,20 +236,24 @@ fn decode_sign_text_nbt(entries: &[(String, NbtValue)], key: &str) -> Option<Sig
         color,
         has_glowing_text: matches!(
             find_entry(text_entries, "has_glowing_text"),
-            Some(NbtValue::Byte(value)) if *value != 0
+            Some(NbtSummaryValue::Byte(value)) if *value != 0
         ),
     })
 }
 
-fn read_nbt_any(decoder: &mut Decoder<'_>) -> Result<NbtValue> {
+fn read_nbt_any(decoder: &mut Decoder<'_>) -> Result<Option<NbtSummaryValue>> {
     let tag_id = decoder.read_u8()?;
     if tag_id == 0 {
-        return Ok(NbtValue::Other);
+        return Ok(None);
     }
-    read_nbt_payload(decoder, tag_id, 0)
+    read_nbt_payload(decoder, tag_id, 0).map(Some)
 }
 
-fn read_nbt_payload(decoder: &mut Decoder<'_>, tag_id: u8, depth: usize) -> Result<NbtValue> {
+fn read_nbt_payload(
+    decoder: &mut Decoder<'_>,
+    tag_id: u8,
+    depth: usize,
+) -> Result<NbtSummaryValue> {
     if depth > MAX_NBT_DEPTH {
         return Err(ProtocolError::InvalidData(
             "component nbt exceeded max depth".to_string(),
@@ -254,25 +261,24 @@ fn read_nbt_payload(decoder: &mut Decoder<'_>, tag_id: u8, depth: usize) -> Resu
     }
 
     match tag_id {
-        1 => Ok(NbtValue::Byte(decoder.read_u8()? as i8)),
-        2 => {
-            decoder.read_exact(2, "nbt short")?;
-            Ok(NbtValue::Other)
-        }
-        3 | 5 => {
-            decoder.read_exact(4, "nbt int/float")?;
-            Ok(NbtValue::Other)
-        }
-        4 | 6 => {
-            decoder.read_exact(8, "nbt long/double")?;
-            Ok(NbtValue::Other)
-        }
+        1 => Ok(NbtSummaryValue::Byte(decoder.read_i8()?)),
+        2 => Ok(NbtSummaryValue::Short(decoder.read_i16()?)),
+        3 => Ok(NbtSummaryValue::Int(decoder.read_i32()?)),
+        4 => Ok(NbtSummaryValue::Long(decoder.read_i64()?)),
+        5 => Ok(NbtSummaryValue::Float(decoder.read_f32()?.to_bits())),
+        6 => Ok(NbtSummaryValue::Double(decoder.read_f64()?.to_bits())),
         7 => {
             let len = read_nbt_len(decoder)?;
-            decoder.read_exact(len, "nbt byte array")?;
-            Ok(NbtValue::Other)
+            if len > MAX_NBT_ARRAY_ITEMS {
+                return Err(ProtocolError::PacketTooLarge(len, MAX_NBT_ARRAY_ITEMS));
+            }
+            let mut values = Vec::with_capacity(len);
+            for _ in 0..len {
+                values.push(decoder.read_i8()?);
+            }
+            Ok(NbtSummaryValue::ByteArray(values))
         }
-        8 => Ok(NbtValue::String(read_modified_utf8(decoder)?)),
+        8 => Ok(NbtSummaryValue::String(read_modified_utf8(decoder)?)),
         9 => {
             let element_type = decoder.read_u8()?;
             let len = read_nbt_len(decoder)?;
@@ -288,7 +294,7 @@ fn read_nbt_payload(decoder: &mut Decoder<'_>, tag_id: u8, depth: usize) -> Resu
             for _ in 0..len {
                 items.push(read_nbt_payload(decoder, element_type, depth + 1)?);
             }
-            Ok(NbtValue::List(items))
+            Ok(NbtSummaryValue::List(items))
         }
         10 => {
             let mut entries = Vec::new();
@@ -299,25 +305,31 @@ fn read_nbt_payload(decoder: &mut Decoder<'_>, tag_id: u8, depth: usize) -> Resu
                 }
                 let name = read_modified_utf8(decoder)?;
                 let value = read_nbt_payload(decoder, nested_type, depth + 1)?;
-                entries.push((name, value));
+                entries.push(NbtSummaryEntry { name, value });
             }
-            Ok(NbtValue::Compound(entries))
+            Ok(NbtSummaryValue::Compound(entries))
         }
         11 => {
             let len = read_nbt_len(decoder)?;
-            let byte_len = len.checked_mul(4).ok_or_else(|| {
-                ProtocolError::InvalidData("nbt int array length overflow".to_string())
-            })?;
-            decoder.read_exact(byte_len, "nbt int array")?;
-            Ok(NbtValue::Other)
+            if len > MAX_NBT_ARRAY_ITEMS {
+                return Err(ProtocolError::PacketTooLarge(len, MAX_NBT_ARRAY_ITEMS));
+            }
+            let mut values = Vec::with_capacity(len);
+            for _ in 0..len {
+                values.push(decoder.read_i32()?);
+            }
+            Ok(NbtSummaryValue::IntArray(values))
         }
         12 => {
             let len = read_nbt_len(decoder)?;
-            let byte_len = len.checked_mul(8).ok_or_else(|| {
-                ProtocolError::InvalidData("nbt long array length overflow".to_string())
-            })?;
-            decoder.read_exact(byte_len, "nbt long array")?;
-            Ok(NbtValue::Other)
+            if len > MAX_NBT_ARRAY_ITEMS {
+                return Err(ProtocolError::PacketTooLarge(len, MAX_NBT_ARRAY_ITEMS));
+            }
+            let mut values = Vec::with_capacity(len);
+            for _ in 0..len {
+                values.push(decoder.read_i64()?);
+            }
+            Ok(NbtSummaryValue::LongArray(values))
         }
         other => Err(ProtocolError::InvalidData(format!(
             "invalid component nbt tag id {other}"
@@ -416,15 +428,19 @@ impl RunCollector {
     }
 }
 
-fn append_component_runs(value: &NbtValue, inherited: &ComponentStyle, out: &mut RunCollector) {
+fn append_component_runs(
+    value: &NbtSummaryValue,
+    inherited: &ComponentStyle,
+    out: &mut RunCollector,
+) {
     match value {
-        NbtValue::String(text) => out.push(text, inherited.clone()),
-        NbtValue::List(items) => {
+        NbtSummaryValue::String(text) => out.push(text, inherited.clone()),
+        NbtSummaryValue::List(items) => {
             for item in items {
                 append_component_runs(item, inherited, out);
             }
         }
-        NbtValue::Compound(entries) => {
+        NbtSummaryValue::Compound(entries) => {
             // Vanilla component inheritance: the node's own style keys win,
             // unset keys inherit the parent chain (`Style.applyTo` inside
             // `Component.visit`); siblings in `extra` inherit this node's
@@ -435,12 +451,12 @@ fn append_component_runs(value: &NbtValue, inherited: &ComponentStyle, out: &mut
                 append_component_runs(extra, &style, out);
             }
         }
-        NbtValue::Byte(_) | NbtValue::Other => {}
+        _ => {}
     }
 }
 
 fn append_primary_component_runs(
-    entries: &[(String, NbtValue)],
+    entries: &[NbtSummaryEntry],
     style: &ComponentStyle,
     out: &mut RunCollector,
 ) {
@@ -474,7 +490,7 @@ fn append_primary_component_runs(
 /// NBT bytes (`Codec.BOOL` via `NbtOps`), the colour as a string
 /// (`TextColor.CODEC`); malformed values are treated as unset, matching the
 /// summary decoder's lenient posture.
-fn component_style_from_entries(entries: &[(String, NbtValue)]) -> ComponentStyle {
+fn component_style_from_entries(entries: &[NbtSummaryEntry]) -> ComponentStyle {
     ComponentStyle {
         bold: style_flag(entries, "bold"),
         italic: style_flag(entries, "italic"),
@@ -482,22 +498,22 @@ fn component_style_from_entries(entries: &[(String, NbtValue)]) -> ComponentStyl
         strikethrough: style_flag(entries, "strikethrough"),
         obfuscated: style_flag(entries, "obfuscated"),
         color: match find_entry(entries, "color") {
-            Some(NbtValue::String(color)) => parse_text_color(color),
+            Some(NbtSummaryValue::String(color)) => parse_text_color(color),
             _ => None,
         },
         click_event: style_click_event(entries),
     }
 }
 
-fn style_click_event(entries: &[(String, NbtValue)]) -> Option<ComponentClickEvent> {
-    let NbtValue::Compound(click_entries) = find_entry(entries, "click_event")? else {
+fn style_click_event(entries: &[NbtSummaryEntry]) -> Option<ComponentClickEvent> {
+    let NbtSummaryValue::Compound(click_entries) = find_entry(entries, "click_event")? else {
         return None;
     };
-    let Some(NbtValue::String(action)) = find_entry(click_entries, "action") else {
+    let Some(NbtSummaryValue::String(action)) = find_entry(click_entries, "action") else {
         return None;
     };
     let string_field = |key: &str| match find_entry(click_entries, key) {
-        Some(NbtValue::String(value)) => Some(value.clone()),
+        Some(NbtSummaryValue::String(value)) => Some(value.clone()),
         _ => None,
     };
     Some(match action.as_str() {
@@ -520,9 +536,9 @@ fn style_click_event(entries: &[(String, NbtValue)]) -> Option<ComponentClickEve
     })
 }
 
-fn style_flag(entries: &[(String, NbtValue)], key: &str) -> Option<bool> {
+fn style_flag(entries: &[NbtSummaryEntry], key: &str) -> Option<bool> {
     match find_entry(entries, key) {
-        Some(NbtValue::Byte(value)) => Some(*value != 0),
+        Some(NbtSummaryValue::Byte(value)) => Some(*value != 0),
         _ => None,
     }
 }
@@ -557,8 +573,11 @@ fn parse_text_color(color: &str) -> Option<u32> {
     })
 }
 
-fn find_entry<'a>(entries: &'a [(String, NbtValue)], key: &str) -> Option<&'a NbtValue> {
-    entries.iter().find(|(name, _)| name == key).map(|(_, v)| v)
+fn find_entry<'a>(entries: &'a [NbtSummaryEntry], key: &str) -> Option<&'a NbtSummaryValue> {
+    entries
+        .iter()
+        .find(|entry| entry.name == key)
+        .map(|entry| &entry.value)
 }
 
 #[cfg(test)]
