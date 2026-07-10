@@ -229,9 +229,8 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   projectile state such as the entity-hit mutation of
   `ThrownTrident.dealtDamage` (the synced in-ground `inGroundTime > 4` client
   tick path is covered; the hit path waits on full projectile collision),
-  non-default private or otherwise unobserved
-  scalar/flag/timer/counter projection (including non-default `FallingBlockEntity`
-  time/drop/hurt/cancel-drop fields and minecart flipped/has-ticked state),
+  non-default private or otherwise unobserved scalar/flag/timer/counter
+  projection (including minecart flipped/has-ticked state),
   remaining registry-backed
   entity-data projection (including dynamic-registry ordering), packed variant
   projection, remaining codec-backed SNBT projection (including `AbstractArrow`

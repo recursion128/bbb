@@ -8481,3 +8481,16 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   计数。F3+I 已改读 canonical lifecycle，focused world/native tests 覆盖第 5/6 tick
   边界、离地调用顺序、no-physics gate 与 clipboard SNBT。`onHitEntity` 的另一条客户端
   置位路径依赖尚未实现的完整 projectile motion/collision，继续留在 feature ledger。
+
+## 2026-07-10：F3+I falling-block client save scalars
+
+- [x] FallingBlockEntity 客户端保存标量闭环（P2 native input + ledger）：依据 vanilla
+  26.1 `FallingBlockEntity.tick` / `recreateFromPacket` / `causeFallDamage` / setters /
+  `readAdditionalSaveData`，F3+I 的 `Time` 现从 canonical entity client age 输出，保持
+  add-entity 后 0、每个有效 client tick 加 1 的行为。逐字段全局写入审计确认 `DropItem`、
+  `HurtEntities`、`FallHurtAmount`、`FallHurtMax` 与 `CancelDrop` 均不进入 add-entity 或
+  metadata；client constructor 固定为 `1b / 0b / 0.0f / 40 / 0b`，且客户端
+  `causeFallDamage` 被恒假的 `hurtEntities` 提前返回，无法触发 anvil `cancelDrop` 变更。
+  因而这些非默认值属于服务端 NBT/spawn setup 私有状态并转为 not-needed。focused test
+  覆盖初始 `Time: 0` 与 7 tick 后 `Time: 7`；`TileEntityData` 和异常 air block state
+  仍分别保留在 codec/异常状态账本。

@@ -255,7 +255,9 @@ const FIREWORK_ROCKET_ITEM_DATA_ID: u8 = 8;
 const FIREWORK_ROCKET_SHOT_AT_ANGLE_DATA_ID: u8 = 10;
 const FIREWORK_ROCKET_DEFAULT_LIFETIME: i32 = 0;
 const FIREWORKS_COMPONENT_TYPE_ID: i32 = 69;
-const FALLING_BLOCK_DEFAULT_TIME: i32 = 0;
+/// The remaining falling-block save scalars are not synchronized by add-entity
+/// or metadata. Their client constructor values cannot be changed by any
+/// reachable client behavior; only `time` advances in `tick`.
 const FALLING_BLOCK_DEFAULT_DROP_ITEM: bool = true;
 const FALLING_BLOCK_DEFAULT_HURT_ENTITIES: bool = false;
 const FALLING_BLOCK_DEFAULT_FALL_HURT_AMOUNT: f32 = 0.0;
@@ -4687,7 +4689,10 @@ fn debug_push_falling_block_additional_save_data(
             debug_snbt_block_state(&block_state.block.name, &block_state.block.properties)
         ));
     }
-    fields.push(format!("Time: {FALLING_BLOCK_DEFAULT_TIME}"));
+    fields.push(format!(
+        "Time: {}",
+        entity.client_animations.age_ticks.min(i32::MAX as u32)
+    ));
     fields.push(format!(
         "DropItem: {}",
         debug_snbt_bool(FALLING_BLOCK_DEFAULT_DROP_ITEM)

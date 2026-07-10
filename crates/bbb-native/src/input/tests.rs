@@ -9164,6 +9164,14 @@ fn shift_f3_i_with_permission_copies_local_falling_block_save_nbt_to_clipboard()
         messages[0].content,
         "[Debug]: Copied client-side entity data to clipboard"
     );
+
+    world.advance_entity_client_animations(7);
+    let command = debug_copy_recreate_entity_command(&world, None, 61, true)
+        .expect("falling-block recreate command after client ticks")
+        .command;
+    assert!(command.contains(
+        "BlockState: {Name: \"minecraft:sand\"}, Time: 7, DropItem: 1b, HurtEntities: 0b"
+    ));
 }
 
 #[test]
