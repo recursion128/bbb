@@ -9382,3 +9382,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   常量，现有跨模块 sleeping/crouching 可见性通过生成常量 re-export 保持。连续/唯一/
   固定长度、首尾/中间查询及 regeneration tests 锁定生成物；未改变 entity-data serializer
   的异常值策略、pick bounds、动画或碰撞行为。
+
+## 2026-07-10：Vanilla entity-data-serializer numeric-id catalog generation
+
+- [x] gameplay numeric-id catalog 的 entity-data serializer 子项（P1 mechanical
+  vanilla data）：扩展 `scripts/generate-gameplay-id-catalog.py`，从 vanilla 26.1
+  `EntityDataSerializers.java` 静态初始化块的 43 个 `registerSerializer` 调用生成
+  checked-in id/order/constant-name metadata。protocol 的普通、registry-holder 与 enum
+  serializer 分发，以及 world local movement 的 INT serializer 写入均改用同一组生成
+  常量，删除生产裸数字来源。连续/唯一/固定长度、关键注册顺序、查询边界及
+  regeneration tests 锁定生成物；未改变任何 serializer wire codec、unknown-id 错误或
+  entity-data 投影行为。

@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+use crate::entity_data_serializers::*;
 use crate::{
     codec::{Decoder, ProtocolError, Result},
     component::decode_component_summary_from_decoder,
@@ -353,18 +354,20 @@ pub enum EntityDataRegistryHolder {
 impl EntityDataRegistryHolder {
     fn from_serializer_id(serializer_id: i32) -> Option<Self> {
         Some(match serializer_id {
-            21 => Self::CatVariant,
-            22 => Self::CatSoundVariant,
-            23 => Self::CowVariant,
-            24 => Self::CowSoundVariant,
-            25 => Self::WolfVariant,
-            26 => Self::WolfSoundVariant,
-            27 => Self::FrogVariant,
-            28 => Self::PigVariant,
-            29 => Self::PigSoundVariant,
-            30 => Self::ChickenVariant,
-            31 => Self::ChickenSoundVariant,
-            32 => Self::ZombieNautilusVariant,
+            VANILLA_ENTITY_DATA_SERIALIZER_CAT_VARIANT_ID => Self::CatVariant,
+            VANILLA_ENTITY_DATA_SERIALIZER_CAT_SOUND_VARIANT_ID => Self::CatSoundVariant,
+            VANILLA_ENTITY_DATA_SERIALIZER_COW_VARIANT_ID => Self::CowVariant,
+            VANILLA_ENTITY_DATA_SERIALIZER_COW_SOUND_VARIANT_ID => Self::CowSoundVariant,
+            VANILLA_ENTITY_DATA_SERIALIZER_WOLF_VARIANT_ID => Self::WolfVariant,
+            VANILLA_ENTITY_DATA_SERIALIZER_WOLF_SOUND_VARIANT_ID => Self::WolfSoundVariant,
+            VANILLA_ENTITY_DATA_SERIALIZER_FROG_VARIANT_ID => Self::FrogVariant,
+            VANILLA_ENTITY_DATA_SERIALIZER_PIG_VARIANT_ID => Self::PigVariant,
+            VANILLA_ENTITY_DATA_SERIALIZER_PIG_SOUND_VARIANT_ID => Self::PigSoundVariant,
+            VANILLA_ENTITY_DATA_SERIALIZER_CHICKEN_VARIANT_ID => Self::ChickenVariant,
+            VANILLA_ENTITY_DATA_SERIALIZER_CHICKEN_SOUND_VARIANT_ID => Self::ChickenSoundVariant,
+            VANILLA_ENTITY_DATA_SERIALIZER_ZOMBIE_NAUTILUS_VARIANT_ID => {
+                Self::ZombieNautilusVariant
+            }
             _ => return None,
         })
     }
@@ -381,10 +384,12 @@ pub enum EntityDataEnumSerializer {
 impl EntityDataEnumSerializer {
     fn from_serializer_id(serializer_id: i32) -> Option<Self> {
         Some(match serializer_id {
-            35 => Self::SnifferState,
-            36 => Self::ArmadilloState,
-            37 => Self::CopperGolemState,
-            38 => Self::WeatheringCopperState,
+            VANILLA_ENTITY_DATA_SERIALIZER_SNIFFER_STATE_ID => Self::SnifferState,
+            VANILLA_ENTITY_DATA_SERIALIZER_ARMADILLO_STATE_ID => Self::ArmadilloState,
+            VANILLA_ENTITY_DATA_SERIALIZER_COPPER_GOLEM_STATE_ID => Self::CopperGolemState,
+            VANILLA_ENTITY_DATA_SERIALIZER_WEATHERING_COPPER_STATE_ID => {
+                Self::WeatheringCopperState
+            }
             _ => return None,
         })
     }
@@ -641,43 +646,67 @@ fn decode_entity_data_value(
     serializer_id: i32,
 ) -> Result<EntityDataValueKind> {
     Ok(match serializer_id {
-        0 => EntityDataValueKind::Byte(decoder.read_i8()?),
-        1 => EntityDataValueKind::Int(decoder.read_var_i32()?),
-        2 => EntityDataValueKind::Long(decoder.read_var_i64()?),
-        3 => EntityDataValueKind::Float(decoder.read_f32()?),
-        4 => EntityDataValueKind::String(decoder.read_string(32767)?),
-        5 => EntityDataValueKind::Component(decode_component_summary_from_decoder(decoder)?),
-        6 => EntityDataValueKind::OptionalComponent(if decoder.read_bool()? {
-            Some(decode_component_summary_from_decoder(decoder)?)
-        } else {
-            None
-        }),
-        7 => EntityDataValueKind::ItemStack(inventory::decode_item_stack_summary(decoder)?),
-        8 => EntityDataValueKind::Boolean(decoder.read_bool()?),
-        9 => EntityDataValueKind::Rotations {
+        VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID => EntityDataValueKind::Byte(decoder.read_i8()?),
+        VANILLA_ENTITY_DATA_SERIALIZER_INT_ID => EntityDataValueKind::Int(decoder.read_var_i32()?),
+        VANILLA_ENTITY_DATA_SERIALIZER_LONG_ID => {
+            EntityDataValueKind::Long(decoder.read_var_i64()?)
+        }
+        VANILLA_ENTITY_DATA_SERIALIZER_FLOAT_ID => EntityDataValueKind::Float(decoder.read_f32()?),
+        VANILLA_ENTITY_DATA_SERIALIZER_STRING_ID => {
+            EntityDataValueKind::String(decoder.read_string(32767)?)
+        }
+        VANILLA_ENTITY_DATA_SERIALIZER_COMPONENT_ID => {
+            EntityDataValueKind::Component(decode_component_summary_from_decoder(decoder)?)
+        }
+        VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_COMPONENT_ID => {
+            EntityDataValueKind::OptionalComponent(if decoder.read_bool()? {
+                Some(decode_component_summary_from_decoder(decoder)?)
+            } else {
+                None
+            })
+        }
+        VANILLA_ENTITY_DATA_SERIALIZER_ITEM_STACK_ID => {
+            EntityDataValueKind::ItemStack(inventory::decode_item_stack_summary(decoder)?)
+        }
+        VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID => {
+            EntityDataValueKind::Boolean(decoder.read_bool()?)
+        }
+        VANILLA_ENTITY_DATA_SERIALIZER_ROTATIONS_ID => EntityDataValueKind::Rotations {
             x: decoder.read_f32()?,
             y: decoder.read_f32()?,
             z: decoder.read_f32()?,
         },
-        10 => EntityDataValueKind::BlockPos(decode_block_pos(decoder.read_i64()?)),
-        11 => EntityDataValueKind::OptionalBlockPos(if decoder.read_bool()? {
-            Some(decode_block_pos(decoder.read_i64()?))
-        } else {
-            None
-        }),
-        12 => EntityDataValueKind::Direction(decoder.read_var_i32()?),
-        13 => EntityDataValueKind::OptionalLivingEntityReference(if decoder.read_bool()? {
-            Some(decoder.read_uuid()?)
-        } else {
-            None
-        }),
-        14 => EntityDataValueKind::BlockState(decoder.read_var_i32()?),
-        15 => {
+        VANILLA_ENTITY_DATA_SERIALIZER_BLOCK_POS_ID => {
+            EntityDataValueKind::BlockPos(decode_block_pos(decoder.read_i64()?))
+        }
+        VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_BLOCK_POS_ID => {
+            EntityDataValueKind::OptionalBlockPos(if decoder.read_bool()? {
+                Some(decode_block_pos(decoder.read_i64()?))
+            } else {
+                None
+            })
+        }
+        VANILLA_ENTITY_DATA_SERIALIZER_DIRECTION_ID => {
+            EntityDataValueKind::Direction(decoder.read_var_i32()?)
+        }
+        VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_LIVING_ENTITY_REFERENCE_ID => {
+            EntityDataValueKind::OptionalLivingEntityReference(if decoder.read_bool()? {
+                Some(decoder.read_uuid()?)
+            } else {
+                None
+            })
+        }
+        VANILLA_ENTITY_DATA_SERIALIZER_BLOCK_STATE_ID => {
+            EntityDataValueKind::BlockState(decoder.read_var_i32()?)
+        }
+        VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_BLOCK_STATE_ID => {
             let id = decoder.read_var_i32()?;
             EntityDataValueKind::OptionalBlockState((id != 0).then_some(id))
         }
-        16 => EntityDataValueKind::Particle(decode_particle_payload(decoder)?),
-        17 => {
+        VANILLA_ENTITY_DATA_SERIALIZER_PARTICLE_ID => {
+            EntityDataValueKind::Particle(decode_particle_payload(decoder)?)
+        }
+        VANILLA_ENTITY_DATA_SERIALIZER_PARTICLES_ID => {
             let count = decoder.read_len()?;
             if count > MAX_ENTITY_DATA_PARTICLES {
                 return Err(ProtocolError::PacketTooLarge(
@@ -691,38 +720,48 @@ fn decode_entity_data_value(
             }
             EntityDataValueKind::Particles(particles)
         }
-        18 => EntityDataValueKind::VillagerData {
+        VANILLA_ENTITY_DATA_SERIALIZER_VILLAGER_DATA_ID => EntityDataValueKind::VillagerData {
             villager_type: decoder.read_var_i32()?,
             profession: decoder.read_var_i32()?,
             level: decoder.read_var_i32()?,
         },
-        19 => {
+        VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_UNSIGNED_INT_ID => {
             let value = decoder.read_var_i32()?;
             EntityDataValueKind::OptionalUnsignedInt((value != 0).then_some(value - 1))
         }
-        20 => EntityDataValueKind::Pose(decoder.read_var_i32()?),
-        33 => EntityDataValueKind::OptionalGlobalPos(if decoder.read_bool()? {
-            Some(GlobalPosData {
-                dimension: read_resource_location(decoder)?,
-                pos: decode_block_pos(decoder.read_i64()?),
+        VANILLA_ENTITY_DATA_SERIALIZER_POSE_ID => {
+            EntityDataValueKind::Pose(decoder.read_var_i32()?)
+        }
+        VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_GLOBAL_POS_ID => {
+            EntityDataValueKind::OptionalGlobalPos(if decoder.read_bool()? {
+                Some(GlobalPosData {
+                    dimension: read_resource_location(decoder)?,
+                    pos: decode_block_pos(decoder.read_i64()?),
+                })
+            } else {
+                None
             })
-        } else {
-            None
-        }),
-        34 => EntityDataValueKind::PaintingVariant(decode_painting_variant_data(decoder)?),
-        39 => EntityDataValueKind::Vector3f {
+        }
+        VANILLA_ENTITY_DATA_SERIALIZER_PAINTING_VARIANT_ID => {
+            EntityDataValueKind::PaintingVariant(decode_painting_variant_data(decoder)?)
+        }
+        VANILLA_ENTITY_DATA_SERIALIZER_VECTOR3_ID => EntityDataValueKind::Vector3f {
             x: decoder.read_f32()?,
             y: decoder.read_f32()?,
             z: decoder.read_f32()?,
         },
-        40 => EntityDataValueKind::Quaternionf {
+        VANILLA_ENTITY_DATA_SERIALIZER_QUATERNION_ID => EntityDataValueKind::Quaternionf {
             x: decoder.read_f32()?,
             y: decoder.read_f32()?,
             z: decoder.read_f32()?,
             w: decoder.read_f32()?,
         },
-        41 => EntityDataValueKind::ResolvableProfile(decode_resolvable_profile_data(decoder)?),
-        42 => EntityDataValueKind::HumanoidArm(decoder.read_var_i32()?),
+        VANILLA_ENTITY_DATA_SERIALIZER_RESOLVABLE_PROFILE_ID => {
+            EntityDataValueKind::ResolvableProfile(decode_resolvable_profile_data(decoder)?)
+        }
+        VANILLA_ENTITY_DATA_SERIALIZER_HUMANOID_ARM_ID => {
+            EntityDataValueKind::HumanoidArm(decoder.read_var_i32()?)
+        }
         other if let Some(serializer) = EntityDataRegistryHolder::from_serializer_id(other) => {
             EntityDataValueKind::RegistryId {
                 serializer,

@@ -2,8 +2,8 @@
 """Generate checked-in vanilla 26.1 gameplay numeric-id catalogs.
 
 The current catalog covers attributes, mob effects, menu types, equipment slot
-ordinals, and entity poses. Normal builds consume only the generated Rust
-files; this maintenance tool reads local vanilla sources.
+ordinals, entity poses, and entity-data serializers. Normal builds consume only
+the generated Rust files; this maintenance tool reads local vanilla sources.
 """
 
 from __future__ import annotations
@@ -28,6 +28,9 @@ DEFAULT_EQUIPMENT_SLOTS_OUTPUT = (
     REPO_ROOT / "crates/bbb-protocol/src/equipment_slots.rs"
 )
 DEFAULT_ENTITY_POSES_OUTPUT = REPO_ROOT / "crates/bbb-protocol/src/entity_poses.rs"
+DEFAULT_ENTITY_DATA_SERIALIZERS_OUTPUT = (
+    REPO_ROOT / "crates/bbb-protocol/src/entity_data_serializers.rs"
+)
 ATTRIBUTE_TYPES_SOURCE = Path(
     "net/minecraft/world/entity/ai/attributes/Attributes.java"
 )
@@ -38,6 +41,9 @@ EQUIPMENT_SLOT_GROUPS_SOURCE = Path(
     "net/minecraft/world/entity/EquipmentSlotGroup.java"
 )
 ENTITY_POSES_SOURCE = Path("net/minecraft/world/entity/Pose.java")
+ENTITY_DATA_SERIALIZERS_SOURCE = Path(
+    "net/minecraft/network/syncher/EntityDataSerializers.java"
+)
 
 
 @dataclass(frozen=True)
@@ -86,6 +92,11 @@ class EntityPoseEntry:
     serialized_name: str
 
 
+@dataclass(frozen=True)
+class EntityDataSerializerEntry:
+    constant_name: str
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--source-root", type=Path, default=DEFAULT_SOURCE_ROOT)
@@ -101,6 +112,11 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--entity-poses-output", type=Path, default=DEFAULT_ENTITY_POSES_OUTPUT
+    )
+    parser.add_argument(
+        "--entity-data-serializers-output",
+        type=Path,
+        default=DEFAULT_ENTITY_DATA_SERIALIZERS_OUTPUT,
     )
     parser.add_argument("--check", action="store_true")
     return parser.parse_args()
@@ -301,6 +317,29 @@ def entity_pose_entries(source: str) -> list[EntityPoseEntry]:
     return entries
 
 
+def entity_data_serializer_entries(source: str) -> list[EntityDataSerializerEntry]:
+    entries = [
+        EntityDataSerializerEntry(constant_name=constant_name)
+        for constant_name in re.findall(r"registerSerializer\(([A-Z0-9_]+)\);", source)
+    ]
+    if len(entries) != 43:
+        raise ValueError(
+            f"expected 43 entity-data serializers, parsed {len(entries)}"
+        )
+    if len({entry.constant_name for entry in entries}) != len(entries):
+        raise ValueError("duplicate entity-data serializer constant")
+    declarations = set(
+        re.findall(
+            r"public static final EntityDataSerializer(?:<[^;=]+>)?\s+([A-Z0-9_]+)\s*=",
+            source,
+        )
+    )
+    missing = [entry.constant_name for entry in entries if entry.constant_name not in declarations]
+    if missing:
+        raise ValueError(f"undeclared entity-data serializers: {missing}")
+    return entries
+
+
 def rust_string(value: str) -> str:
     return '"' + value.replace("\\", "\\\\").replace('"', '\\"') + '"'
 
@@ -421,6 +460,8 @@ def render_attributes(entries: list[AttributeEntry]) -> str:
             "            .arg(manifest_dir.join(\"src/equipment_slots.rs\"))",
             "            .arg(\"--entity-poses-output\")",
             "            .arg(manifest_dir.join(\"src/entity_poses.rs\"))",
+            "            .arg(\"--entity-data-serializers-output\")",
+            "            .arg(manifest_dir.join(\"src/entity_data_serializers.rs\"))",
             "            .status()",
             "            .unwrap();",
             "        assert!(status.success());",
@@ -542,6 +583,8 @@ def render_mob_effects(entries: list[MobEffectEntry]) -> str:
             "            .arg(manifest_dir.join(\"src/equipment_slots.rs\"))",
             "            .arg(\"--entity-poses-output\")",
             "            .arg(manifest_dir.join(\"src/entity_poses.rs\"))",
+            "            .arg(\"--entity-data-serializers-output\")",
+            "            .arg(manifest_dir.join(\"src/entity_data_serializers.rs\"))",
             "            .status()",
             "            .unwrap();",
             "        assert!(status.success());",
@@ -647,6 +690,8 @@ def render_menu_types(entries: list[MenuTypeEntry]) -> str:
             "            .arg(manifest_dir.join(\"src/equipment_slots.rs\"))",
             "            .arg(\"--entity-poses-output\")",
             "            .arg(manifest_dir.join(\"src/entity_poses.rs\"))",
+            "            .arg(\"--entity-data-serializers-output\")",
+            "            .arg(manifest_dir.join(\"src/entity_data_serializers.rs\"))",
             "            .status()",
             "            .unwrap();",
             "        assert!(status.success());",
@@ -838,6 +883,8 @@ def render_equipment_slots(
             "            .arg(manifest_dir.join(\"src/equipment_slots.rs\"))",
             "            .arg(\"--entity-poses-output\")",
             "            .arg(manifest_dir.join(\"src/entity_poses.rs\"))",
+            "            .arg(\"--entity-data-serializers-output\")",
+            "            .arg(manifest_dir.join(\"src/entity_data_serializers.rs\"))",
             "            .status()",
             "            .unwrap();",
             "        assert!(status.success());",
@@ -943,6 +990,118 @@ def render_entity_poses(entries: list[EntityPoseEntry]) -> str:
             "            .arg(manifest_dir.join(\"src/equipment_slots.rs\"))",
             "            .arg(\"--entity-poses-output\")",
             "            .arg(manifest_dir.join(\"src/entity_poses.rs\"))",
+            "            .arg(\"--entity-data-serializers-output\")",
+            "            .arg(manifest_dir.join(\"src/entity_data_serializers.rs\"))",
+            "            .status()",
+            "            .unwrap();",
+            "        assert!(status.success());",
+            "    }",
+            "}",
+            "",
+        )
+    )
+    return "\n".join(lines)
+
+
+def render_entity_data_serializers(entries: list[EntityDataSerializerEntry]) -> str:
+    lines = [
+        "// @generated by scripts/generate-gameplay-id-catalog.py; do not edit manually.",
+        "// Source: vanilla 26.1 EntityDataSerializers.java static registration block.",
+        "",
+        "#[derive(Debug, Clone, Copy, PartialEq, Eq)]",
+        "pub struct EntityDataSerializerCatalogEntry {",
+        "    pub id: i32,",
+        "    pub constant_name: &'static str,",
+        "}",
+        "",
+    ]
+    for serializer_id, entry in enumerate(entries):
+        lines.append(
+            f"pub const VANILLA_ENTITY_DATA_SERIALIZER_{entry.constant_name}_ID: i32 = {serializer_id};"
+        )
+    lines.extend(
+        (
+            "",
+            "pub const VANILLA_ENTITY_DATA_SERIALIZERS: &[EntityDataSerializerCatalogEntry] = &[",
+        )
+    )
+    for serializer_id, entry in enumerate(entries):
+        lines.extend(
+            (
+                "    EntityDataSerializerCatalogEntry {",
+                f"        id: {serializer_id},",
+                f"        constant_name: {rust_string(entry.constant_name)},",
+                "    },",
+            )
+        )
+    lines.extend(
+        (
+            "];",
+            "",
+            "pub fn vanilla_entity_data_serializer(",
+            "    id: i32,",
+            ") -> Option<&'static EntityDataSerializerCatalogEntry> {",
+            "    VANILLA_ENTITY_DATA_SERIALIZERS.get(usize::try_from(id).ok()?)",
+            "}",
+            "",
+            "pub fn vanilla_entity_data_serializer_for_constant_name(",
+            "    constant_name: &str,",
+            ") -> Option<&'static EntityDataSerializerCatalogEntry> {",
+            "    VANILLA_ENTITY_DATA_SERIALIZERS.iter().find(|entry| entry.constant_name == constant_name)",
+            "}",
+            "",
+            "#[cfg(test)]",
+            "mod tests {",
+            "    use std::collections::HashSet;",
+            "    use std::path::PathBuf;",
+            "    use std::process::Command;",
+            "",
+            "    use super::*;",
+            "",
+            "    #[test]",
+            "    fn serializer_catalog_is_complete_contiguous_and_unique() {",
+            "        assert_eq!(VANILLA_ENTITY_DATA_SERIALIZERS.len(), 43);",
+            "        let mut constants = HashSet::new();",
+            "        for (id, entry) in VANILLA_ENTITY_DATA_SERIALIZERS.iter().enumerate() {",
+            "            assert_eq!(entry.id, id as i32);",
+            "            assert!(constants.insert(entry.constant_name));",
+            "        }",
+            "    }",
+            "",
+            "    #[test]",
+            "    fn serializer_catalog_preserves_vanilla_registration_order() {",
+            "        assert_eq!(VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID, 0);",
+            "        assert_eq!(VANILLA_ENTITY_DATA_SERIALIZER_POSE_ID, 20);",
+            "        assert_eq!(VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_GLOBAL_POS_ID, 33);",
+            "        assert_eq!(VANILLA_ENTITY_DATA_SERIALIZER_HUMANOID_ARM_ID, 42);",
+            "        assert_eq!(vanilla_entity_data_serializer_for_constant_name(\"PAINTING_VARIANT\").unwrap().id, 34);",
+            "        assert_eq!(vanilla_entity_data_serializer(-1), None);",
+            "        assert_eq!(vanilla_entity_data_serializer(43), None);",
+            "    }",
+            "",
+            "    #[test]",
+            "    fn generated_catalog_matches_local_vanilla_sources_when_available() {",
+            "        let Some(home) = std::env::var_os(\"HOME\") else { return; };",
+            "        let source_root = PathBuf::from(home).join(\"Work/mc-code/sources/26.1\");",
+            "        if !source_root.join(\"net/minecraft/network/syncher/EntityDataSerializers.java\").is_file() { return; }",
+            "        let manifest_dir = PathBuf::from(env!(\"CARGO_MANIFEST_DIR\"));",
+            "        let repo_root = manifest_dir.ancestors().nth(2).unwrap();",
+            "        let status = Command::new(repo_root.join(\"scripts/generate-gameplay-id-catalog.py\"))",
+            "            .arg(\"--check\")",
+            "            .arg(\"--source-root\")",
+            "            .arg(source_root)",
+            "            .arg(\"--attribute-types-output\")",
+            "            .arg(manifest_dir.join(\"src/attribute_types.rs\"))",
+            "            .arg(\"--mob-effect-types-output\")",
+            "            .arg(manifest_dir.join(\"src/mob_effect_types.rs\"))",
+            "            .arg(\"--menu-types-output\")",
+            "            .arg(manifest_dir.join(\"src/menu_types.rs\"))",
+            "            .arg(\"--equipment-slots-output\")",
+            "            .arg(manifest_dir.join(\"src/equipment_slots.rs\"))",
+            "            .arg(\"--entity-poses-output\")",
+            "            .arg(manifest_dir.join(\"src/entity_poses.rs\"))",
+            "            .arg(\"--entity-data-serializers-output\")",
+            "            .arg(manifest_dir.join(\"src/entity_data_serializers.rs\"))",
             "            .status()",
             "            .unwrap();",
             "        assert!(status.success());",
@@ -996,6 +1155,13 @@ def generate_entity_poses(source_root: Path) -> str:
     return format_rust(render_entity_poses(entity_pose_entries(source)))
 
 
+def generate_entity_data_serializers(source_root: Path) -> str:
+    source = (source_root / ENTITY_DATA_SERIALIZERS_SOURCE).read_text()
+    return format_rust(
+        render_entity_data_serializers(entity_data_serializer_entries(source))
+    )
+
+
 def check_generated(path: Path, generated: str) -> bool:
     current = path.read_text() if path.exists() else ""
     if current == generated:
@@ -1018,6 +1184,9 @@ def main() -> int:
     generated_menu_types = generate_menu_types(args.source_root)
     generated_equipment_slots = generate_equipment_slots(args.source_root)
     generated_entity_poses = generate_entity_poses(args.source_root)
+    generated_entity_data_serializers = generate_entity_data_serializers(
+        args.source_root
+    )
     if args.check:
         matches = check_generated(
             args.attribute_types_output, generated_attributes
@@ -1030,12 +1199,19 @@ def main() -> int:
             args.equipment_slots_output, generated_equipment_slots
         )
         matches &= check_generated(args.entity_poses_output, generated_entity_poses)
+        matches &= check_generated(
+            args.entity_data_serializers_output,
+            generated_entity_data_serializers,
+        )
         return 0 if matches else 1
     args.attribute_types_output.write_text(generated_attributes)
     args.mob_effect_types_output.write_text(generated_mob_effects)
     args.menu_types_output.write_text(generated_menu_types)
     args.equipment_slots_output.write_text(generated_equipment_slots)
     args.entity_poses_output.write_text(generated_entity_poses)
+    args.entity_data_serializers_output.write_text(
+        generated_entity_data_serializers
+    )
     return 0
 
 

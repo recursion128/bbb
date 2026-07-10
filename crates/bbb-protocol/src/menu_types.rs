@@ -241,6 +241,8 @@ mod tests {
             .arg(manifest_dir.join("src/equipment_slots.rs"))
             .arg("--entity-poses-output")
             .arg(manifest_dir.join("src/entity_poses.rs"))
+            .arg("--entity-data-serializers-output")
+            .arg(manifest_dir.join("src/entity_data_serializers.rs"))
             .status()
             .unwrap();
         assert!(status.success());

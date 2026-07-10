@@ -737,6 +737,12 @@ vanilla evidence. Deleting one of these re-opens work already decided against.
   whose id-mapped stream codec uses its 18 explicit ids. The fixed id/name
   catalog is generated from `Pose.java`; it has no registry or datapack
   extension surface.
+- **Custom entity-data serializers.** Vanilla 26.1 assigns the built-in ids in
+  the static `EntityDataSerializers` registration block. Its public code-level
+  registration helper is not a server- or datapack-synchronized registry. The
+  fixed 43-entry vanilla id/order catalog is generated from that block;
+  serializer wire codecs remain explicit protocol semantics rather than
+  dynamically supplied definitions.
 - **Accepting malformed or unsupported custom resource-pack declarations.**
   Loaders reject them intentionally.
 
