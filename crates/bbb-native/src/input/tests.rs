@@ -8738,12 +8738,12 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
         EquipmentAssetCatalog::default(),
     );
     let patch = DataComponentPatchSummary {
-        added: 81,
+        added: 82,
         added_type_ids: vec![
-            0, 1, 2, 3, 4, 5, 7, 10, 12, 13, 17, 18, 19, 21, 22, 23, 24, 25, 26, 27, 29, 30, 31,
-            33, 34, 35, 36, 38, 39, 40, 42, 43, 44, 45, 46, 47, 49, 50, 51, 52, 53, 54, 56, 57, 58,
-            59, 60, 61, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 84,
-            85, 86, 87, 88, 89, 90, 91, 92, 101, 103, 104, 107, 108, 109,
+            0, 1, 2, 3, 4, 5, 7, 10, 12, 13, 16, 17, 18, 19, 21, 22, 23, 24, 25, 26, 27, 29, 30,
+            31, 33, 34, 35, 36, 38, 39, 40, 42, 43, 44, 45, 46, 47, 49, 50, 51, 52, 53, 54, 56, 57,
+            58, 59, 60, 61, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80,
+            84, 85, 86, 87, 88, 89, 90, 91, 92, 101, 103, 104, 107, 108, 109,
         ],
         removed_type_ids: vec![6],
         custom_data: Some(NbtSummaryValue::Compound(vec![
@@ -8816,6 +8816,28 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
             bbb_protocol::packets::ItemEnchantmentSummary {
                 holder_id: 12,
                 level: 3,
+            },
+        ],
+        attribute_modifiers: vec![
+            bbb_protocol::packets::AttributeModifierSummary {
+                attribute_id: 2,
+                modifier_id: "minecraft:base_attack_damage".to_string(),
+                amount_bits: 3.5_f64.to_bits(),
+                operation_id: 0,
+                slot_id: 0,
+                display_id: 0,
+                display_text: None,
+                display_text_styled: None,
+            },
+            bbb_protocol::packets::AttributeModifierSummary {
+                attribute_id: 16,
+                modifier_id: "minecraft:test/hidden".to_string(),
+                amount_bits: (-0.25_f64).to_bits(),
+                operation_id: 2,
+                slot_id: 1,
+                display_id: 1,
+                display_text: None,
+                display_text_styled: None,
             },
         ],
         custom_model_data_floats: vec![1.0, -0.0, f32::INFINITY, f32::NAN].into(),
@@ -9230,6 +9252,11 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
          \"minecraft:rarity\": \"rare\", \
          \"minecraft:enchantments\": {\"minecraft:density\": 4, \
          \"minecraft:swift_sneak\": 3}, \
+         \"minecraft:attribute_modifiers\": [{type: \"minecraft:attack_damage\", \
+         id: \"minecraft:base_attack_damage\", amount: 3.5d, operation: \"add_value\"}, \
+         {type: \"minecraft:knockback_resistance\", id: \"minecraft:test/hidden\", \
+         amount: -0.25d, operation: \"add_multiplied_total\", slot: \"mainhand\", \
+         display: {type: \"hidden\"}}], \
          \"minecraft:custom_model_data\": {floats: [1.0f, -0.0f, Infinityf, NaNf], \
          flags: [1b, 0b], strings: [\"variant\", \"A 'quote'\"], \
          colors: [1122867, 4478310]}, \

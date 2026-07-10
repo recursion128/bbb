@@ -9054,3 +9054,16 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   扩展到 81 个 added entry，并覆盖两组 unknown id 与两类 direct holder 的整组件
   安全省略。direct trim 摘要缺少可无损重建 persistent Component description 的
   完整树，动态 datapack trim registry 排序也仍保留在 registry-backed 总账本。
+
+## 2026-07-10：ItemStack attribute-modifiers save codec
+
+- [x] minecraft:attribute_modifiers 的 named-attribute default/hidden display
+  持久化分支（P2 item-model + native input）：依据 vanilla 26.1
+  `ItemAttributeModifiers.Entry.CODEC`、`AttributeModifier.MAP_CODEC` 与
+  `EquipmentSlotGroup.CODEC`，item-model 从既有 35 项 Attribute bootstrap 表
+  暴露唯一 resource-id 查询；native type id 16 encoder 保留 modifier 列表和
+  字段顺序、double tag、operation/slot 枚举，按 Codec 省略 `slot=any` 与
+  `display=default`，并编码 hidden display dispatch。大型 component patch test
+  从 81 扩展到 82 个 added entry，另覆盖空列表、unknown attribute 与 override
+  display 的整组件安全省略。override display 的任意 Component 树不能由现有扁平
+  styled-run summary 无损重建，继续保留在账本。

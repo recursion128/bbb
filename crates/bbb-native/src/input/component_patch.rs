@@ -27,6 +27,7 @@ static PERSISTENT_SNBT_ENCODERS: &[PersistentSnbtEncoderDescriptor] = &[
     encoder(10, encode_item_model),
     encoder(12, encode_rarity),
     encoder(13, encode_enchantments),
+    encoder(16, encode_attribute_modifiers),
     encoder(17, encode_custom_model_data),
     encoder(18, encode_tooltip_display),
     encoder(19, encode_repair_cost),
@@ -219,6 +220,46 @@ fn encode_enchantments(
         })
         .collect::<Option<Vec<_>>>()?;
     Some(format!("{{{}}}", entries.join(", ")))
+}
+
+fn encode_attribute_modifiers(
+    _type_id: i32,
+    patch: &bbb_protocol::packets::DataComponentPatchSummary,
+    _item_runtime: Option<&NativeItemRuntime>,
+) -> Option<String> {
+    let entries = patch
+        .attribute_modifiers
+        .iter()
+        .map(|modifier| {
+            let attribute = vanilla_attribute_resource_id(modifier.attribute_id)?;
+            let operation = ["add_value", "add_multiplied_base", "add_multiplied_total"]
+                .get(usize::try_from(modifier.operation_id).ok()?)?;
+            let slot = [
+                "any", "mainhand", "offhand", "hand", "feet", "legs", "chest", "head", "armor",
+                "body", "saddle",
+            ]
+            .get(usize::try_from(modifier.slot_id).ok()?)?;
+            let mut fields = vec![
+                format!("type: {}", debug_snbt_string(attribute)),
+                format!("id: {}", debug_snbt_string(&modifier.modifier_id)),
+                format!(
+                    "amount: {}d",
+                    debug_nbt_java_double_string(f64::from_bits(modifier.amount_bits))
+                ),
+                format!("operation: {}", debug_snbt_string(operation)),
+            ];
+            if modifier.slot_id != 0 {
+                fields.push(format!("slot: {}", debug_snbt_string(slot)));
+            }
+            match modifier.display_id {
+                0 => {}
+                1 => fields.push("display: {type: \"hidden\"}".to_string()),
+                _ => return None,
+            }
+            Some(format!("{{{}}}", fields.join(", ")))
+        })
+        .collect::<Option<Vec<_>>>()?;
+    Some(format!("[{}]", entries.join(", ")))
 }
 
 fn encode_custom_model_data(
@@ -728,7 +769,7 @@ mod tests {
 
     #[test]
     fn encoder_registry_is_unique_sorted_and_persistent() {
-        assert_eq!(PERSISTENT_SNBT_ENCODERS.len(), 81);
+        assert_eq!(PERSISTENT_SNBT_ENCODERS.len(), 82);
         let mut ids = HashSet::new();
         let mut previous = None;
         for descriptor in PERSISTENT_SNBT_ENCODERS {
@@ -828,6 +869,59 @@ mod tests {
         assert_eq!(encode_added_component_value_snbt(42, &patch, None), None);
         patch.stored_enchantments[0].level = 256;
         assert_eq!(encode_added_component_value_snbt(42, &patch, None), None);
+    }
+
+    #[test]
+    fn attribute_modifier_encoder_preserves_order_defaults_and_hidden_display() {
+        let mut patch = bbb_protocol::packets::DataComponentPatchSummary {
+            attribute_modifiers: vec![
+                bbb_protocol::packets::AttributeModifierSummary {
+                    attribute_id: 2,
+                    modifier_id: "minecraft:base_attack_damage".to_string(),
+                    amount_bits: 3.5_f64.to_bits(),
+                    operation_id: 0,
+                    slot_id: 0,
+                    display_id: 0,
+                    display_text: None,
+                    display_text_styled: None,
+                },
+                bbb_protocol::packets::AttributeModifierSummary {
+                    attribute_id: 16,
+                    modifier_id: "minecraft:test/hidden".to_string(),
+                    amount_bits: (-0.25_f64).to_bits(),
+                    operation_id: 2,
+                    slot_id: 1,
+                    display_id: 1,
+                    display_text: None,
+                    display_text_styled: None,
+                },
+            ],
+            ..Default::default()
+        };
+        assert_eq!(
+            encode_added_component_value_snbt(16, &patch, None),
+            Some(
+                "[{type: \"minecraft:attack_damage\", id: \"minecraft:base_attack_damage\", \
+                 amount: 3.5d, operation: \"add_value\"}, \
+                 {type: \"minecraft:knockback_resistance\", id: \"minecraft:test/hidden\", \
+                 amount: -0.25d, operation: \"add_multiplied_total\", slot: \"mainhand\", \
+                 display: {type: \"hidden\"}}]"
+                    .to_string()
+            )
+        );
+
+        patch.attribute_modifiers[0].attribute_id = 35;
+        assert_eq!(encode_added_component_value_snbt(16, &patch, None), None);
+        patch.attribute_modifiers[0].attribute_id = 2;
+        patch.attribute_modifiers[1].display_id = 2;
+        patch.attribute_modifiers[1].display_text = Some("Override".to_string());
+        assert_eq!(encode_added_component_value_snbt(16, &patch, None), None);
+
+        patch.attribute_modifiers.clear();
+        assert_eq!(
+            encode_added_component_value_snbt(16, &patch, None),
+            Some("[]".to_string())
+        );
     }
 
     #[test]

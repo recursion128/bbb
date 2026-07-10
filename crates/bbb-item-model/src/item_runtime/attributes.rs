@@ -208,6 +208,10 @@ pub(super) fn vanilla_attribute(attribute_id: i32) -> Option<VanillaAttribute> {
         .and_then(|index| VANILLA_ATTRIBUTES.get(index).copied())
 }
 
+pub fn vanilla_attribute_resource_id(attribute_id: i32) -> Option<&'static str> {
+    vanilla_attribute(attribute_id).map(|attribute| attribute.key)
+}
+
 pub(super) fn vanilla_attribute_for_key(key: &str) -> Option<VanillaAttribute> {
     VANILLA_ATTRIBUTES
         .iter()
@@ -229,6 +233,16 @@ mod tests {
     #[test]
     fn vanilla_attributes_follow_26_1_bootstrap_order() {
         assert_eq!(VANILLA_ATTRIBUTES.len(), 35);
+        assert_eq!(
+            vanilla_attribute_resource_id(2),
+            Some("minecraft:attack_damage")
+        );
+        assert_eq!(
+            vanilla_attribute_resource_id(34),
+            Some("minecraft:waypoint_receive_range")
+        );
+        assert_eq!(vanilla_attribute_resource_id(35), None);
+        assert_eq!(vanilla_attribute_resource_id(-1), None);
         assert_eq!(
             vanilla_attribute(2),
             Some(attribute(

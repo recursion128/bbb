@@ -236,13 +236,14 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   projection, remaining codec-backed SNBT projection (component removals are complete;
   added values still include `AbstractArrow`
   `inBlockState` and `item`, remaining data-component patch entries (including
-  direct instrument, direct trim material/pattern, and direct jukebox-song
-  network holders; implemented
+  attribute-modifier override-display Component trees, direct instrument,
+  direct trim material/pattern, and direct jukebox-song network holders; implemented
   through the protocol component descriptor catalog and native persistent SNBT
   encoder registry)
   beyond the supported custom-NBT/primitive (including repair-cost/enchantable/glider,
   minimum-attack-charge/potion-duration-scale)/
   enchantments/stored-enchantments/
+  attribute-modifiers-named-holder-default-hidden-display/
   simple-resource (including tooltip-style/note-block-sound and vanilla/direct
   break-sound)/food/consumable/death-protection/potion-contents/suspicious-stew-effects/
   damage-resistant-tag/weapon/

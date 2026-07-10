@@ -78,6 +78,7 @@ use profile_skin::{entity_player_skin_model, profile_default_player_skin, profil
 use crate::font::load_hud_font_atlas;
 
 mod attributes;
+pub use attributes::vanilla_attribute_resource_id;
 mod icon;
 mod mob_effects;
 pub use mob_effects::vanilla_mob_effect_resource_id;
