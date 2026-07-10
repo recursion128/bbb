@@ -25,6 +25,7 @@ impl WorldStore {
             self.counters.entity_position_syncs_ignored += 1;
             return false;
         };
+        self.update_entity_supporting_block_from_packet(packet.id, packet.on_ground);
         self.counters.entity_position_syncs_applied += 1;
         true
     }
@@ -53,6 +54,7 @@ impl WorldStore {
             self.counters.entity_moves_ignored += 1;
             return false;
         };
+        self.update_entity_supporting_block_from_packet(packet.id, packet.on_ground);
         self.counters.entity_moves_applied += 1;
         true
     }
@@ -135,6 +137,7 @@ impl WorldStore {
             self.counters.entity_teleports_ignored += 1;
             return false;
         };
+        self.update_entity_supporting_block_from_packet(packet.id, packet.on_ground);
         self.counters.entity_teleports_applied += 1;
         true
     }

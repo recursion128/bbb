@@ -33,7 +33,7 @@ pub(crate) use bbb_protocol::entity_types::*;
 pub(crate) use components::{
     EntityAttributes, EntityClientAnimations, EntityDamage, EntityEquipment,
     EntityHurtingProjectile, EntityIdentity, EntityLeash, EntityMetadata, EntityMinecartLerp,
-    EntityMobEffects, EntityMount, EntityTransform, EntityTransientEvents,
+    EntityMobEffects, EntityMount, EntitySupportingBlock, EntityTransform, EntityTransientEvents,
 };
 pub use dimensions::EntityPickBoundsState;
 pub(crate) use dimensions::{
@@ -345,6 +345,10 @@ pub struct EntityState {
     pub x_rot: f32,
     pub y_head_rot: f32,
     pub on_ground: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub main_supporting_block_pos: Option<BlockPos>,
+    #[serde(default, skip_serializing_if = "bool_is_false")]
+    pub on_ground_no_blocks: bool,
     pub data_values: Vec<ProtocolEntityDataValue>,
     pub equipment: Vec<ProtocolEquipmentSlotUpdate>,
     pub attributes: Vec<ProtocolAttributeSnapshot>,
@@ -368,6 +372,10 @@ pub struct EntityState {
     pub minecart_lerp_delay: i32,
     #[serde(default)]
     pub hurting_projectile: Option<HurtingProjectileState>,
+}
+
+fn bool_is_false(value: &bool) -> bool {
+    !*value
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]

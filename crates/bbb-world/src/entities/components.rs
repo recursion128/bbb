@@ -9,6 +9,7 @@ use uuid::Uuid;
 
 use super::status::{EntityDamageEventState, MobEffectState};
 use super::{EntityClientAnimationState, EntityState, EntityVec3, HurtingProjectileState};
+use crate::BlockPos;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct EntityIdentity {
@@ -27,6 +28,14 @@ pub(crate) struct EntityTransform {
     pub(crate) x_rot: f32,
     pub(crate) y_head_rot: f32,
     pub(crate) on_ground: Option<bool>,
+}
+
+/// Client-side `Entity.mainSupportingBlockPos` plus the private
+/// `onGroundNoBlocks` transition bit used by `Entity.checkSupportingBlock`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub(crate) struct EntitySupportingBlock {
+    pub(crate) main: Option<BlockPos>,
+    pub(crate) on_ground_no_blocks: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Default)]
@@ -110,6 +119,15 @@ impl From<&EntityState> for EntityTransform {
             x_rot: state.x_rot,
             y_head_rot: state.y_head_rot,
             on_ground: state.on_ground,
+        }
+    }
+}
+
+impl From<&EntityState> for EntitySupportingBlock {
+    fn from(state: &EntityState) -> Self {
+        Self {
+            main: state.main_supporting_block_pos,
+            on_ground_no_blocks: state.on_ground_no_blocks,
         }
     }
 }
@@ -340,6 +358,13 @@ impl EntityTransform {
         state.x_rot = self.x_rot;
         state.y_head_rot = self.y_head_rot;
         state.on_ground = self.on_ground;
+    }
+}
+
+impl EntitySupportingBlock {
+    pub(crate) fn write_to_state(self, state: &mut EntityState) {
+        state.main_supporting_block_pos = self.main;
+        state.on_ground_no_blocks = self.on_ground_no_blocks;
     }
 }
 

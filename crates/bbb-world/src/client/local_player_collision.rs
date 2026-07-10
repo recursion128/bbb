@@ -10,6 +10,7 @@ use bbb_protocol::entity_types::{
 use super::local_player::LocalPlayerPoseState;
 use crate::entities::{
     is_vanilla_abstract_horse_type, is_vanilla_boat_type, is_vanilla_minecart_type,
+    EntitySupportingBlock,
 };
 use crate::terrain::block_name_is_air;
 use crate::{BlockPos, BlockProbe, TerrainFluidKind, TerrainMaterialClass, WorldStore};
@@ -197,6 +198,74 @@ pub(crate) fn block_collision_shape_is_full_block(block: &BlockProbe, pos: Block
 }
 
 impl WorldStore {
+    pub fn entity_main_supporting_block_pos(&self, entity_id: i32) -> Option<BlockPos> {
+        self.entities.supporting_block(entity_id)?.main
+    }
+
+    /// Mirrors the `Entity.setOnGround` -> `checkSupportingBlock(onGround,
+    /// null)` call made by vanilla's three remote-entity position packet
+    /// handlers. The source-specific collision-context refinements are kept at
+    /// this single world boundary for later expansion.
+    pub(crate) fn update_entity_supporting_block_from_packet(
+        &mut self,
+        entity_id: i32,
+        on_ground: bool,
+    ) {
+        if self.local_player_id() == Some(entity_id) {
+            return;
+        }
+        let Some(previous) = self.entities.supporting_block(entity_id) else {
+            return;
+        };
+        if !on_ground {
+            let _ = self
+                .entities
+                .with_supporting_block_mut(entity_id, |support| {
+                    *support = EntitySupportingBlock::default();
+                });
+            return;
+        }
+        let Some(transform) = self.entities.transform(entity_id) else {
+            return;
+        };
+        let Some(bounds) = self.entities.pick_bounds(entity_id) else {
+            return;
+        };
+        let world_bounds = LocalPlayerBounds::from_min_max(
+            [
+                transform.position.x + f64::from(bounds.min[0]),
+                transform.position.y + f64::from(bounds.min[1]),
+                transform.position.z + f64::from(bounds.min[2]),
+            ],
+            [
+                transform.position.x + f64::from(bounds.max[0]),
+                transform.position.y + f64::from(bounds.max[1]),
+                transform.position.z + f64::from(bounds.max[2]),
+            ],
+        );
+        let current = find_supporting_block(
+            self,
+            [
+                transform.position.x,
+                transform.position.y,
+                transform.position.z,
+            ],
+            world_bounds,
+            LocalPlayerCollisionContext::new(world_bounds.min_y, false),
+        );
+        let main = if current.is_some() || previous.on_ground_no_blocks {
+            current
+        } else {
+            previous.main
+        };
+        let _ = self
+            .entities
+            .with_supporting_block_mut(entity_id, |support| {
+                support.main = main;
+                support.on_ground_no_blocks = current.is_none();
+            });
+    }
+
     /// Projects the local-player half of vanilla `SupportBlockRenderer`.
     ///
     /// `Entity.checkSupportingBlock` probes the one-microunit slice directly
@@ -4100,6 +4169,108 @@ mod tests {
             scaffolding_pos,
         )
         .is_some());
+    }
+
+    #[test]
+    fn remote_supporting_block_state_matches_packet_set_on_ground_lifecycle() {
+        let mut world = empty_world();
+        let entity_id = 41;
+        add_collision_test_entity(
+            &mut world,
+            entity_id,
+            bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_COW_ID,
+            [0.5, 1.0, 0.5],
+        );
+        let stone = vanilla_block_state_id("minecraft:stone", []);
+        let air = vanilla_block_state_id("minecraft:air", []);
+        let support_pos = BlockPos { x: 0, y: 0, z: 0 };
+        set_block(&mut world, support_pos, stone);
+
+        assert!(
+            world.apply_entity_position_sync(bbb_protocol::packets::EntityPositionSync {
+                id: entity_id,
+                position: bbb_protocol::packets::Vec3d {
+                    x: 0.5,
+                    y: 1.0,
+                    z: 0.5,
+                },
+                delta_movement: bbb_protocol::packets::Vec3d::default(),
+                y_rot: 0.0,
+                x_rot: 0.0,
+                on_ground: true,
+            })
+        );
+        let supported = world.probe_entity(entity_id).unwrap();
+        assert_eq!(supported.main_supporting_block_pos, Some(support_pos));
+        assert!(!supported.on_ground_no_blocks);
+        assert_eq!(
+            world.entity_main_supporting_block_pos(entity_id),
+            Some(support_pos)
+        );
+
+        let cloned = world.clone();
+        assert_eq!(
+            cloned
+                .probe_entity(entity_id)
+                .unwrap()
+                .main_supporting_block_pos,
+            Some(support_pos)
+        );
+        let serialized = serde_json::to_vec(&world).unwrap();
+        let decoded: WorldStore = serde_json::from_slice(&serialized).unwrap();
+        assert_eq!(
+            decoded
+                .probe_entity(entity_id)
+                .unwrap()
+                .main_supporting_block_pos,
+            Some(support_pos)
+        );
+
+        set_block(&mut world, support_pos, air);
+        assert!(world.apply_entity_move(bbb_protocol::packets::EntityMove {
+            id: entity_id,
+            delta_x: 0,
+            delta_y: 0,
+            delta_z: 0,
+            y_rot: None,
+            x_rot: None,
+            on_ground: true,
+        }));
+        let first_missing = world.probe_entity(entity_id).unwrap();
+        assert_eq!(first_missing.main_supporting_block_pos, Some(support_pos));
+        assert!(first_missing.on_ground_no_blocks);
+
+        assert!(
+            world.apply_teleport_entity(bbb_protocol::packets::TeleportEntity {
+                id: entity_id,
+                position: bbb_protocol::packets::Vec3d {
+                    x: 0.5,
+                    y: 1.0,
+                    z: 0.5,
+                },
+                delta_movement: bbb_protocol::packets::Vec3d::default(),
+                y_rot: 0.0,
+                x_rot: 0.0,
+                relatives_mask: 0,
+                on_ground: true,
+            })
+        );
+        let second_missing = world.probe_entity(entity_id).unwrap();
+        assert_eq!(second_missing.main_supporting_block_pos, None);
+        assert!(second_missing.on_ground_no_blocks);
+
+        assert!(world.apply_entity_move(bbb_protocol::packets::EntityMove {
+            id: entity_id,
+            delta_x: 0,
+            delta_y: 0,
+            delta_z: 0,
+            y_rot: None,
+            x_rot: None,
+            on_ground: false,
+        }));
+        let airborne = world.probe_entity(entity_id).unwrap();
+        assert_eq!(airborne.main_supporting_block_pos, None);
+        assert!(!airborne.on_ground_no_blocks);
     }
 
     #[test]

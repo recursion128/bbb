@@ -8188,3 +8188,19 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   white stroke 提交顺序。focused test 在 `(x=0,y=1,z=0)` 与
   `(x=0,y=0,z=1)` 放置 full blocks，锁定前者先于后者，避免同 Y 平面的旧测试掩盖
   轴序偏差。
+
+## 2026-07-10：Remote entity supporting-block canonical state
+
+- [x] 远端实体 `mainSupportingBlockPos` / `onGroundNoBlocks` canonical 组件（P2
+  world）：依据 vanilla 26.1 `ClientPacketListener.handleEntityPositionSync`、
+  `handleMoveEntity`、`handleTeleportEntity` 的 `setOnGround` 调用，以及
+  `Entity.checkSupportingBlock(onGround, null)`，三类已应用位置包现在统一在 transform
+  更新后扫描实体 bounds 下方 `1.0E-6` 薄层。找到支撑立即替换；首次无支撑且旧
+  `onGroundNoBlocks=false` 时保留旧 main support 并置 true；连续第二次无支撑才清空；
+  `onGround=false` 立即清空两者。组件随 add/re-add reset、EntityState serde、store clone
+  和 replace 路径保持一致，并提供窄 `entity_main_supporting_block_pos` 查询。focused test
+  以 position-sync 建立 stone support、move 首次丢失保留、teleport 第二次丢失清空、
+  airborne reset，另锁定 clone/JSON round-trip。边界：当前 remote collision context 只有
+  entity-bottom 基线；descending、powder snow 所需 fall-distance、可行走 equipment/type
+  输入，以及 SupportBlockRenderer 的 green/cyan/id-bias 与 100 ms membership cache 留在
+  ledger。

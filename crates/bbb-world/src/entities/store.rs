@@ -18,10 +18,11 @@ use super::{
     EntityBlockModelState, EntityCameraPoseState, EntityClientAnimationState,
     EntityClientAnimations, EntityDamage, EntityEquipment, EntityHurtingProjectile, EntityIdentity,
     EntityLeash, EntityMetadata, EntityMinecartLerp, EntityMobEffects, EntityModelSourceState,
-    EntityMount, EntityState, EntityTransform, EntityTransformState, EntityTransientEvents,
-    EvokerFangsCritParticleState, FallingBlockModelState, FireworkRocketExplosionParticleState,
-    FireworkRocketItemState, FireworkRocketTrailParticleState, FoxEatParticleState,
-    ItemEntityStackState, ItemFrameRenderState, LlamaBodyDecorColor, LocalPlayerAttackSwingState,
+    EntityMount, EntityState, EntitySupportingBlock, EntityTransform, EntityTransformState,
+    EntityTransientEvents, EvokerFangsCritParticleState, FallingBlockModelState,
+    FireworkRocketExplosionParticleState, FireworkRocketItemState,
+    FireworkRocketTrailParticleState, FoxEatParticleState, ItemEntityStackState,
+    ItemFrameRenderState, LlamaBodyDecorColor, LocalPlayerAttackSwingState,
     MinecartDisplayBlockState, OminousItemSpawnerItemState, OminousItemSpawnerParticleState,
     RavagerRoarParticleState, RavagerStunParticleState, WolfArmorCrackiness,
     VANILLA_ENTITY_AIR_SUPPLY_DATA_ID, VANILLA_ENTITY_NO_GRAVITY_DATA_ID,
@@ -455,6 +456,7 @@ impl EntityStore {
             reset::<EntityMobEffects>(&mut self.ecs, entity);
             reset::<EntityClientAnimations>(&mut self.ecs, entity);
             reset::<EntityDamage>(&mut self.ecs, entity);
+            reset::<EntitySupportingBlock>(&mut self.ecs, entity);
             if is_vanilla_minecart_type(entity_type_id) {
                 let updated = {
                     if let Ok(mut lerp) = self.ecs.get::<&mut EntityMinecartLerp>(entity) {
@@ -503,6 +505,7 @@ impl EntityStore {
             EntityMobEffects::default(),
             EntityClientAnimations::default(),
             EntityDamage::default(),
+            EntitySupportingBlock::default(),
         ));
         if is_vanilla_minecart_type(entity_type_id) {
             let _ = self.ecs.insert_one(entity, EntityMinecartLerp::default());
@@ -527,6 +530,7 @@ impl EntityStore {
             EntityMobEffects::from(&state),
             EntityClientAnimations::from(&state),
             EntityDamage::from(&state),
+            EntitySupportingBlock::from(&state),
         ));
         // Only vanilla minecart types run the new-behavior lerp, so attach `EntityMinecartLerp`
         // conditionally. This keeps the per-client-tick `query_mut::<&mut EntityMinecartLerp>` scan
@@ -3185,6 +3189,25 @@ impl EntityStore {
         Some(result)
     }
 
+    pub(crate) fn supporting_block(&self, id: i32) -> Option<EntitySupportingBlock> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        self.ecs
+            .get::<&EntitySupportingBlock>(entity)
+            .ok()
+            .map(|support| *support)
+    }
+
+    pub(crate) fn with_supporting_block_mut<R>(
+        &mut self,
+        id: i32,
+        update: impl FnOnce(&mut EntitySupportingBlock) -> R,
+    ) -> Option<R> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let mut support = self.ecs.get::<&mut EntitySupportingBlock>(entity).ok()?;
+        let result = update(&mut support);
+        Some(result)
+    }
+
     pub(crate) fn with_minecart_lerp_mut<R>(
         &mut self,
         id: i32,
@@ -3581,6 +3604,9 @@ impl EntityStore {
         if let Ok(mut damage) = self.ecs.get::<&mut EntityDamage>(entity) {
             *damage = EntityDamage::from(state);
         }
+        if let Ok(mut support) = self.ecs.get::<&mut EntitySupportingBlock>(entity) {
+            *support = EntitySupportingBlock::from(state);
+        }
         // Keep `EntityMinecartLerp` attached only while the entity is a vanilla minecart. A re-add
         // packet can in principle change an existing id's type, so mirror
         // `sync_hurting_projectile_from_state` and insert / update / remove the component to match.
@@ -3634,6 +3660,7 @@ impl EntityStore {
         let effects = self.ecs.get::<&EntityMobEffects>(entity).ok()?;
         let client_animations = self.ecs.get::<&EntityClientAnimations>(entity).ok()?;
         let damage = self.ecs.get::<&EntityDamage>(entity).ok()?;
+        let supporting_block = self.ecs.get::<&EntitySupportingBlock>(entity).ok()?;
         let minecart_lerp = self.ecs.get::<&EntityMinecartLerp>(entity).ok();
         let hurting_projectile = self.ecs.get::<&EntityHurtingProjectile>(entity).ok();
 
@@ -3649,6 +3676,8 @@ impl EntityStore {
             x_rot: transform.x_rot,
             y_head_rot: transform.y_head_rot,
             on_ground: transform.on_ground,
+            main_supporting_block_pos: None,
+            on_ground_no_blocks: false,
             data_values: Vec::new(),
             equipment: Vec::new(),
             attributes: Vec::new(),
@@ -3676,6 +3705,7 @@ impl EntityStore {
         (*effects).clone().write_to_state(&mut state);
         (*client_animations).write_to_state(&mut state);
         (*damage).write_to_state(&mut state);
+        (*supporting_block).write_to_state(&mut state);
         if let Some(minecart_lerp) = minecart_lerp {
             (*minecart_lerp).clone().write_to_state(&mut state);
         }
@@ -3721,6 +3751,7 @@ impl Clone for EntityStore {
                 Ok(effects),
                 Ok(animations),
                 Ok(damage),
+                Ok(supporting_block),
             ) = (
                 self.ecs.get::<&EntityIdentity>(entity),
                 self.ecs.get::<&EntityTransform>(entity),
@@ -3733,6 +3764,7 @@ impl Clone for EntityStore {
                 self.ecs.get::<&EntityMobEffects>(entity),
                 self.ecs.get::<&EntityClientAnimations>(entity),
                 self.ecs.get::<&EntityDamage>(entity),
+                self.ecs.get::<&EntitySupportingBlock>(entity),
             )
             else {
                 continue;
@@ -3749,6 +3781,7 @@ impl Clone for EntityStore {
                 (*effects).clone(),
                 *animations,
                 *damage,
+                *supporting_block,
             ));
             if let Ok(lerp) = self.ecs.get::<&EntityMinecartLerp>(entity) {
                 let _ = store.ecs.insert_one(cloned, (*lerp).clone());
