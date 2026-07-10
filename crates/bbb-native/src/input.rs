@@ -4680,6 +4680,7 @@ fn debug_supported_added_component_snbt(
         47 | 57 | 59 | 66 | 78 | 79 => {
             debug_nbt_summary_snbt(patch.codec_backed_nbt.get(&type_id)?)
         }
+        58 => debug_entity_data_component_snbt(patch)?,
         CHARGED_PROJECTILES_COMPONENT_TYPE_ID => {
             debug_item_stack_template_list_snbt(&patch.charged_projectiles_items, item_runtime)?
         }
@@ -4772,6 +4773,7 @@ fn debug_supported_component_resource_id(type_id: i32) -> Option<&'static str> {
         52 => "minecraft:potion_duration_scale",
         WRITABLE_BOOK_CONTENT_COMPONENT_TYPE_ID => "minecraft:writable_book_content",
         57 => "minecraft:debug_stick_state",
+        58 => "minecraft:entity_data",
         59 => "minecraft:bucket_entity_data",
         63 => "minecraft:ominous_bottle_amplifier",
         66 => "minecraft:recipes",
@@ -4853,6 +4855,30 @@ fn debug_typed_nbt_array_body<T>(values: &[T], format_value: impl Fn(&T) -> Stri
                 .join(", ")
         )
     }
+}
+
+fn debug_entity_data_component_snbt(
+    patch: &bbb_protocol::packets::DataComponentPatchSummary,
+) -> Option<String> {
+    let resource_id = bbb_protocol::entity_types::vanilla_entity_resource_id_for_type_id(
+        patch.entity_data_entity_type_id?,
+    )?;
+    let NbtSummaryValue::Compound(entries) = patch.entity_data_tag.as_ref()? else {
+        return None;
+    };
+    let mut fields = entries
+        .iter()
+        .filter(|entry| entry.name != "id")
+        .map(|entry| {
+            format!(
+                "{}: {}",
+                debug_snbt_compound_key(&entry.name),
+                debug_nbt_summary_snbt(&entry.value)
+            )
+        })
+        .collect::<Vec<_>>();
+    fields.push(format!("id: {}", debug_snbt_string(&resource_id)));
+    Some(format!("{{{}}}", fields.join(", ")))
 }
 
 fn debug_nbt_java_float_string(value: f32) -> String {

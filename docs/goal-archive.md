@@ -8759,3 +8759,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   protocol focused tests 覆盖六项、nested compound 与 string list；native
   component patch test 扩展到 48 个 added entry，覆盖六个资源名、顺序及多种
   NBT tag；该族从剩余 component 总账本移入已支持子集。
+
+## 2026-07-10：ItemStack entity-data save codec
+
+- [x] `minecraft:entity_data` 持久化 component（P2 protocol + native input）：
+  依据 vanilla 26.1 `TypedEntityData.codec/streamCodec`，在既有 type id `58`
+  EntityType holder id 之外保留 wire compound tag；native 用 repo 的静态 26.1
+  EntityType id→resource 映射，把 codec 在 stream 中分离的 `id` 字段合回 compound，
+  并过滤任何意外残留的旧 id。protocol entity-data focused test 覆盖空 tag；
+  native component patch test 扩展到 49 个 added entry，覆盖 zombie、byte/float
+  tag 与 id 末尾字段，unknown entity id 则安全省略；entity-data 从剩余 component
+  总账本移入已支持子集。

@@ -8568,11 +8568,11 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
         EquipmentAssetCatalog::default(),
     );
     let patch = DataComponentPatchSummary {
-        added: 48,
+        added: 49,
         added_type_ids: vec![
             0, 1, 2, 3, 4, 5, 7, 10, 12, 17, 19, 21, 22, 23, 25, 26, 30, 31, 34, 35, 40, 43, 44,
-            45, 46, 47, 49, 50, 52, 54, 57, 59, 63, 66, 67, 68, 69, 70, 71, 73, 74, 75, 76, 78, 79,
-            88, 89, 90,
+            45, 46, 47, 49, 50, 52, 54, 57, 58, 59, 63, 66, 67, 68, 69, 70, 71, 73, 74, 75, 76, 78,
+            79, 88, 89, 90,
         ],
         removed_type_ids: vec![6],
         custom_data: Some(NbtSummaryValue::Compound(vec![
@@ -8713,6 +8713,17 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
                 ]),
             ),
         ]),
+        entity_data_entity_type_id: Some(bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_ZOMBIE_ID),
+        entity_data_tag: Some(NbtSummaryValue::Compound(vec![
+            NbtSummaryEntry {
+                name: "NoAI".to_string(),
+                value: NbtSummaryValue::Byte(1),
+            },
+            NbtSummaryEntry {
+                name: "Health".to_string(),
+                value: NbtSummaryValue::Float(20.0_f32.to_bits()),
+            },
+        ])),
         charged_projectiles_items: vec![
             bbb_protocol::packets::ItemStackTemplateSummary {
                 item_id: 2,
@@ -8894,6 +8905,8 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
          \"minecraft:writable_book_content\": {pages: [{raw: \"first\\npage\"}, \
          {raw: \"second raw\", filtered: \"second filtered\"}]}, \
          \"minecraft:debug_stick_state\": {\"minecraft:stone\": \"facing\"}, \
+         \"minecraft:entity_data\": {NoAI: 1b, Health: 20.0f, \
+         id: \"minecraft:zombie\"}, \
          \"minecraft:bucket_entity_data\": {Health: 5s}, \
          \"minecraft:ominous_bottle_amplifier\": 3, \
          \"minecraft:recipes\": [\"minecraft:bread\", \"minecraft:torch\"], \
@@ -8927,7 +8940,7 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
 }
 
 #[test]
-fn item_stack_snbt_omits_registry_backed_components_with_unknown_item_id() {
+fn item_stack_snbt_omits_registry_backed_components_with_unknown_ids() {
     let registry: ItemRegistryCatalog = serde_json::from_value(serde_json::json!({
         "resource_ids": ["minecraft:brick"],
         "protocol_ids": {"minecraft:brick": 0}
@@ -8941,8 +8954,8 @@ fn item_stack_snbt_omits_registry_backed_components_with_unknown_item_id() {
         item_id: Some(0),
         count: 1,
         component_patch: DataComponentPatchSummary {
-            added: 5,
-            added_type_ids: vec![25, 49, 50, 74, 75],
+            added: 6,
+            added_type_ids: vec![25, 49, 50, 58, 74, 75],
             use_remainder: Some(Box::new(bbb_protocol::packets::ItemStackTemplateSummary {
                 item_id: 99,
                 count: 1,
@@ -8959,6 +8972,8 @@ fn item_stack_snbt_omits_registry_backed_components_with_unknown_item_id() {
                 component_patch: DataComponentPatchSummary::default(),
             }],
             bundle_contents_item_count: Some(1),
+            entity_data_entity_type_id: Some(999),
+            entity_data_tag: Some(NbtSummaryValue::Compound(Vec::new())),
             pot_decorations_item_ids: vec![99],
             container_items: vec![bbb_protocol::packets::ItemStackTemplateSummary {
                 item_id: 99,

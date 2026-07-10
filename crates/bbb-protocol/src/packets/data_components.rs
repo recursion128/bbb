@@ -242,6 +242,8 @@ pub struct DataComponentPatchSummary {
     #[serde(default)]
     pub block_entity_data_type_id: Option<i32>,
     #[serde(default)]
+    pub entity_data_tag: Option<NbtSummaryValue>,
+    #[serde(default)]
     pub entity_data_entity_type_id: Option<i32>,
     #[serde(default)]
     pub can_place_on: Option<AdventureModePredicateSummary>,
@@ -953,8 +955,9 @@ fn decode_typed_data_component_patch_summary(
                 summary.bees_count = decode_bees(decoder)?;
             }
             58 => {
-                summary.entity_data_entity_type_id =
-                    Some(decode_typed_entity_data_summary(decoder)?.type_id);
+                let entity_data = decode_typed_entity_data_summary(decoder)?;
+                summary.entity_data_entity_type_id = Some(entity_data.type_id);
+                summary.entity_data_tag = entity_data.tag;
             }
             60 => {
                 let block_entity_data = decode_typed_entity_data_summary(decoder)?;
@@ -4388,6 +4391,7 @@ mod tests {
                 removed_type_ids: Vec::new(),
                 codec_backed_nbt: BTreeMap::from([(59, NbtSummaryValue::Compound(Vec::new()),)]),
                 entity_data_entity_type_id: Some(1),
+                entity_data_tag: Some(NbtSummaryValue::Compound(Vec::new())),
                 block_entity_data_type_id: Some(2),
                 block_entity_spawn_entity_type: Some("minecraft:zombie".to_string()),
                 ..DataComponentPatchSummary::default()
