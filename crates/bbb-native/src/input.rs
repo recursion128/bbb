@@ -255,7 +255,9 @@ const FIREBALL_DEFAULT_EXPLOSION_POWER: i8 = 1;
 const FIREWORK_ROCKET_ITEM_DATA_ID: u8 = 8;
 const FIREWORK_ROCKET_SHOT_AT_ANGLE_DATA_ID: u8 = 10;
 const FIREWORK_ROCKET_DEFAULT_LIFETIME: i32 = 0;
+const CUSTOM_MODEL_DATA_COMPONENT_TYPE_ID: i32 = 17;
 const FIREWORKS_COMPONENT_TYPE_ID: i32 = 69;
+const BLOCK_STATE_COMPONENT_TYPE_ID: i32 = 76;
 /// The remaining falling-block save scalars are not synchronized by add-entity
 /// or metadata. Their client constructor values cannot be changed by any
 /// reachable client behavior; only `time` advances in `tick`.
@@ -4632,6 +4634,7 @@ fn debug_supported_added_component_snbt(
             ItemRaritySummary::Rare => "rare",
             ItemRaritySummary::Epic => "epic",
         }),
+        CUSTOM_MODEL_DATA_COMPONENT_TYPE_ID => debug_custom_model_data_component_snbt(patch),
         21 => debug_snbt_bool(patch.enchantment_glint_override?).to_string(),
         22 => "{}".to_string(),
         44 => patch.dyed_color?.to_string(),
@@ -4646,7 +4649,7 @@ fn debug_supported_added_component_snbt(
             has_twinkle: patch.firework_explosion_has_twinkle.unwrap_or(false),
         }),
         FIREWORKS_COMPONENT_TYPE_ID => debug_fireworks_component_snbt(patch),
-        76 => format!(
+        BLOCK_STATE_COMPONENT_TYPE_ID => format!(
             "{{{}}}",
             patch
                 .block_state_properties
@@ -4674,6 +4677,7 @@ fn debug_supported_component_resource_id(type_id: i32) -> Option<&'static str> {
         6 => "minecraft:custom_name",
         10 => "minecraft:item_model",
         12 => "minecraft:rarity",
+        CUSTOM_MODEL_DATA_COMPONENT_TYPE_ID => "minecraft:custom_model_data",
         21 => "minecraft:enchantment_glint_override",
         22 => "minecraft:intangible_projectile",
         44 => "minecraft:dyed_color",
@@ -4682,7 +4686,7 @@ fn debug_supported_component_resource_id(type_id: i32) -> Option<&'static str> {
         63 => "minecraft:ominous_bottle_amplifier",
         68 => "minecraft:firework_explosion",
         FIREWORKS_COMPONENT_TYPE_ID => "minecraft:fireworks",
-        76 => "minecraft:block_state",
+        BLOCK_STATE_COMPONENT_TYPE_ID => "minecraft:block_state",
         _ => return None,
     })
 }
@@ -4771,6 +4775,57 @@ fn debug_nbt_java_double_string(value: f64) -> String {
     } else {
         format!("{value:?}")
     }
+}
+
+fn debug_custom_model_data_component_snbt(
+    patch: &bbb_protocol::packets::DataComponentPatchSummary,
+) -> String {
+    let mut fields = Vec::new();
+    if !patch.custom_model_data_floats.is_empty() {
+        fields.push(format!(
+            "floats: [{}]",
+            patch
+                .custom_model_data_floats
+                .iter()
+                .map(|value| format!("{}f", debug_nbt_java_float_string(*value)))
+                .collect::<Vec<_>>()
+                .join(", ")
+        ));
+    }
+    if !patch.custom_model_data_flags.is_empty() {
+        fields.push(format!(
+            "flags: [{}]",
+            patch
+                .custom_model_data_flags
+                .iter()
+                .map(|value| debug_snbt_bool(*value))
+                .collect::<Vec<_>>()
+                .join(", ")
+        ));
+    }
+    if !patch.custom_model_data_strings.is_empty() {
+        fields.push(format!(
+            "strings: [{}]",
+            patch
+                .custom_model_data_strings
+                .iter()
+                .map(|value| debug_snbt_string(value))
+                .collect::<Vec<_>>()
+                .join(", ")
+        ));
+    }
+    if !patch.custom_model_data_colors.is_empty() {
+        fields.push(format!(
+            "colors: [{}]",
+            patch
+                .custom_model_data_colors
+                .iter()
+                .map(i32::to_string)
+                .collect::<Vec<_>>()
+                .join(", ")
+        ));
+    }
+    format!("{{{}}}", fields.join(", "))
 }
 
 fn debug_fireworks_component_snbt(

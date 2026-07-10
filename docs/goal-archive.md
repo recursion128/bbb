@@ -8564,3 +8564,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   的 type id `76` / string map，把属性映射输出为 SNBT compound；component patch
   focused test 扩展到 16 个 added entry，覆盖 wire-order placement、compound key quoting
   与 string value escaping。block-state 从剩余 component 总账本移入已支持子集。
+
+## 2026-07-10：ItemStack custom-model-data save codec
+
+- [x] `minecraft:custom_model_data` 持久化 component（P2 native input）：依据
+  vanilla 26.1 `CustomModelData.CODEC` 与 protocol 已保留的 type id `17` 四组
+  list，按 codec 字段顺序输出 floats/flags/strings/colors，空列表沿用默认省略。
+  component patch focused test 扩展到 17 个 added entry，覆盖 signed zero、
+  NaN/Infinity float suffix、boolean byte tags、string escaping 与 RGB int。
+  custom-model-data 从剩余 component 总账本移入已支持子集。

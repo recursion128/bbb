@@ -8525,8 +8525,10 @@ fn local_firework_save_uses_parent_lifecycle_synced_item_codec_and_client_life()
 #[test]
 fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
     let patch = DataComponentPatchSummary {
-        added: 16,
-        added_type_ids: vec![0, 1, 2, 3, 4, 10, 12, 21, 22, 44, 45, 46, 63, 68, 69, 76],
+        added: 17,
+        added_type_ids: vec![
+            0, 1, 2, 3, 4, 10, 12, 17, 21, 22, 44, 45, 46, 63, 68, 69, 76,
+        ],
         removed_type_ids: vec![6],
         custom_data: Some(NbtSummaryValue::Compound(vec![
             NbtSummaryEntry {
@@ -8584,6 +8586,10 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
         unbreakable: true,
         item_model: Some("minecraft:custom/diamond".to_string()),
         rarity: Some(ItemRaritySummary::Rare),
+        custom_model_data_floats: vec![1.0, -0.0, f32::INFINITY, f32::NAN].into(),
+        custom_model_data_flags: vec![true, false],
+        custom_model_data_strings: vec!["variant".to_string(), "A 'quote'".to_string()],
+        custom_model_data_colors: vec![0x11_22_33, 0x44_55_66],
         enchantment_glint_override: Some(false),
         intangible_projectile: true,
         dyed_color: Some(0x11_22_33),
@@ -8618,7 +8624,10 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
          \"minecraft:max_stack_size\": 64, \"minecraft:max_damage\": 100, \
          \"minecraft:damage\": 7, \"minecraft:unbreakable\": {}, \
          \"minecraft:item_model\": \"minecraft:custom/diamond\", \
-         \"minecraft:rarity\": \"rare\", \"minecraft:enchantment_glint_override\": 0b, \
+         \"minecraft:rarity\": \"rare\", \
+         \"minecraft:custom_model_data\": {floats: [1.0f, -0.0f, Infinityf, NaNf], \
+         flags: [1b, 0b], strings: [\"variant\", \"A 'quote'\"], \
+         colors: [1122867, 4478310]}, \"minecraft:enchantment_glint_override\": 0b, \
          \"minecraft:intangible_projectile\": {}, \"minecraft:dyed_color\": 1122867, \
          \"minecraft:map_color\": 4478310, \"minecraft:map_id\": 42, \
          \"minecraft:ominous_bottle_amplifier\": 3, \
