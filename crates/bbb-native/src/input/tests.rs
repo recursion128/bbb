@@ -8738,12 +8738,12 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
         EquipmentAssetCatalog::default(),
     );
     let patch = DataComponentPatchSummary {
-        added: 80,
+        added: 81,
         added_type_ids: vec![
             0, 1, 2, 3, 4, 5, 7, 10, 12, 13, 17, 18, 19, 21, 22, 23, 24, 25, 26, 27, 29, 30, 31,
-            33, 34, 35, 36, 38, 39, 40, 42, 43, 44, 45, 46, 47, 49, 50, 51, 52, 53, 54, 57, 58, 59,
-            60, 61, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 84, 85,
-            86, 87, 88, 89, 90, 91, 92, 101, 103, 104, 107, 108, 109,
+            33, 34, 35, 36, 38, 39, 40, 42, 43, 44, 45, 46, 47, 49, 50, 51, 52, 53, 54, 56, 57, 58,
+            59, 60, 61, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 84,
+            85, 86, 87, 88, 89, 90, 91, 92, 101, 103, 104, 107, 108, 109,
         ],
         removed_type_ids: vec![6],
         custom_data: Some(NbtSummaryValue::Compound(vec![
@@ -9076,6 +9076,8 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
         ],
         writable_book_pages: vec!["first\npage".to_string(), "second raw".to_string()],
         writable_book_page_filters: vec![None, Some("second filtered".to_string())],
+        armor_trim_material_id: Some(1),
+        armor_trim_pattern_id: Some(17),
         ominous_bottle_amplifier: Some(3),
         provides_banner_pattern_tag: Some("minecraft:pattern_item/flower".to_string()),
         lodestone_target: Some(bbb_protocol::packets::LodestoneTargetSummary {
@@ -9291,6 +9293,7 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
          {id: \"minecraft:poison\", duration: 200}], \
          \"minecraft:writable_book_content\": {pages: [{raw: \"first\\npage\"}, \
          {raw: \"second raw\", filtered: \"second filtered\"}]}, \
+         \"minecraft:trim\": {material: \"minecraft:iron\", pattern: \"minecraft:bolt\"}, \
          \"minecraft:debug_stick_state\": {\"minecraft:stone\": \"facing\"}, \
          \"minecraft:entity_data\": {NoAI: 1b, Health: 20.0f, \
          id: \"minecraft:zombie\"}, \

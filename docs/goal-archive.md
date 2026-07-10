@@ -9042,3 +9042,15 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   test 从 79 扩展到 80 个 added entry，并覆盖 unknown id、缺 runtime 与 direct
   STREAM_CODEC holder 的安全省略；后者不能由 fixed-registry persistent codec
   合法编码。动态 datapack JukeboxSong 排序仍保留在 registry-backed 总账本。
+
+## 2026-07-10：ItemStack named armor-trim save codec
+
+- [x] minecraft:trim 的 vanilla named-holder 持久化分支（P2 item-model +
+  native input）：依据 vanilla 26.1 `ArmorTrim.CODEC` 的 material/pattern holder
+  字段和相同 STREAM_CODEC 顺序，item-model 从既有 11 项 TrimMaterial 与 18 项
+  TrimPattern bootstrap 表暴露两组唯一 resource-id 查询，tooltip named-holder
+  解析委托同一入口；native type id 56 encoder 仅在 material/pattern 都是已知
+  named holder 时输出 `{material, pattern}`。大型 component patch test 从 80
+  扩展到 81 个 added entry，并覆盖两组 unknown id 与两类 direct holder 的整组件
+  安全省略。direct trim 摘要缺少可无损重建 persistent Component description 的
+  完整树，动态 datapack trim registry 排序也仍保留在 registry-backed 总账本。

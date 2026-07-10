@@ -1542,17 +1542,23 @@ mod tests {
                 "minecraft:bolt",
             ]
         );
-        assert_eq!(vanilla_trim_material_key(1), Some("minecraft:iron"));
-        assert_eq!(vanilla_trim_material_key(10), Some("minecraft:resin"));
-        assert_eq!(vanilla_trim_material_key(11), None);
-        assert_eq!(vanilla_trim_material_key(-1), None);
+        assert_eq!(vanilla_trim_material_resource_id(1), Some("minecraft:iron"));
+        assert_eq!(
+            vanilla_trim_material_resource_id(10),
+            Some("minecraft:resin")
+        );
+        assert_eq!(vanilla_trim_material_resource_id(11), None);
+        assert_eq!(vanilla_trim_material_resource_id(-1), None);
         assert_eq!(vanilla_trim_material_color(1), Some(0xEC_EC_EC));
         assert_eq!(vanilla_trim_material_color(11), None);
         assert_eq!(vanilla_trim_material_color(-1), None);
-        assert_eq!(vanilla_trim_pattern_key(0), Some("minecraft:sentry"));
-        assert_eq!(vanilla_trim_pattern_key(17), Some("minecraft:bolt"));
-        assert_eq!(vanilla_trim_pattern_key(18), None);
-        assert_eq!(vanilla_trim_pattern_key(-1), None);
+        assert_eq!(
+            vanilla_trim_pattern_resource_id(0),
+            Some("minecraft:sentry")
+        );
+        assert_eq!(vanilla_trim_pattern_resource_id(17), Some("minecraft:bolt"));
+        assert_eq!(vanilla_trim_pattern_resource_id(18), None);
+        assert_eq!(vanilla_trim_pattern_resource_id(-1), None);
     }
 
     #[test]
@@ -2512,7 +2518,7 @@ fn armor_trim_material_tooltip(
         return Some(ArmorTrimMaterialTooltip { description, style });
     }
     let material_id = material_id?;
-    let key = vanilla_trim_material_key(material_id)?;
+    let key = vanilla_trim_material_resource_id(material_id)?;
     let text = language
         .get_or_key(&description_key("trim_material", key))
         .to_string();
@@ -2543,7 +2549,7 @@ fn armor_trim_pattern_description(
             pattern.description_styled.as_deref(),
         ));
     }
-    let key = vanilla_trim_pattern_key(pattern_id?)?;
+    let key = vanilla_trim_pattern_resource_id(pattern_id?)?;
     let text = language
         .get_or_key(&description_key("trim_pattern", key))
         .to_string();
@@ -2580,7 +2586,7 @@ fn armor_trim_material_style(runs: &[StyledTextRun]) -> ComponentStyle {
         .unwrap_or_default()
 }
 
-fn vanilla_trim_material_key(id: i32) -> Option<&'static str> {
+pub fn vanilla_trim_material_resource_id(id: i32) -> Option<&'static str> {
     usize::try_from(id)
         .ok()
         .and_then(|index| VANILLA_TRIM_MATERIAL_KEYS.get(index).copied())
@@ -2592,7 +2598,7 @@ fn vanilla_trim_material_color(id: i32) -> Option<u32> {
         .and_then(|index| VANILLA_TRIM_MATERIAL_COLORS.get(index).copied())
 }
 
-fn vanilla_trim_pattern_key(id: i32) -> Option<&'static str> {
+pub fn vanilla_trim_pattern_resource_id(id: i32) -> Option<&'static str> {
     usize::try_from(id)
         .ok()
         .and_then(|index| VANILLA_TRIM_PATTERN_KEYS.get(index).copied())

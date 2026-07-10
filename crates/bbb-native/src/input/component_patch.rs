@@ -59,6 +59,7 @@ static PERSISTENT_SNBT_ENCODERS: &[PersistentSnbtEncoderDescriptor] = &[
     encoder(52, encode_potion_duration_scale),
     encoder(53, encode_suspicious_stew_effects),
     encoder(54, encode_writable_book_content),
+    encoder(56, encode_armor_trim),
     encoder(57, encode_codec_backed_nbt),
     encoder(58, encode_entity_data),
     encoder(59, encode_codec_backed_nbt),
@@ -495,6 +496,23 @@ fn encode_writable_book_content(
     Some(debug_writable_book_content_component_snbt(patch))
 }
 
+fn encode_armor_trim(
+    _type_id: i32,
+    patch: &bbb_protocol::packets::DataComponentPatchSummary,
+    _item_runtime: Option<&NativeItemRuntime>,
+) -> Option<String> {
+    if patch.armor_trim_material_direct.is_some() || patch.armor_trim_pattern_direct.is_some() {
+        return None;
+    }
+    let material = vanilla_trim_material_resource_id(patch.armor_trim_material_id?)?;
+    let pattern = vanilla_trim_pattern_resource_id(patch.armor_trim_pattern_id?)?;
+    Some(format!(
+        "{{material: {}, pattern: {}}}",
+        debug_snbt_string(material),
+        debug_snbt_string(pattern)
+    ))
+}
+
 fn encode_ominous_bottle_amplifier(
     _type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
@@ -710,7 +728,7 @@ mod tests {
 
     #[test]
     fn encoder_registry_is_unique_sorted_and_persistent() {
-        assert_eq!(PERSISTENT_SNBT_ENCODERS.len(), 80);
+        assert_eq!(PERSISTENT_SNBT_ENCODERS.len(), 81);
         let mut ids = HashSet::new();
         let mut previous = None;
         for descriptor in PERSISTENT_SNBT_ENCODERS {
@@ -869,6 +887,43 @@ mod tests {
         patch.instrument_id = None;
         patch.instrument_description = Some("Custom horn".to_string());
         assert_eq!(encode_added_component_value_snbt(61, &patch, None), None);
+    }
+
+    #[test]
+    fn armor_trim_encoder_supports_complete_vanilla_named_holders_only() {
+        let mut patch = bbb_protocol::packets::DataComponentPatchSummary {
+            armor_trim_material_id: Some(1),
+            armor_trim_pattern_id: Some(17),
+            ..Default::default()
+        };
+        assert_eq!(
+            encode_added_component_value_snbt(56, &patch, None),
+            Some("{material: \"minecraft:iron\", pattern: \"minecraft:bolt\"}".to_string())
+        );
+
+        patch.armor_trim_material_id = Some(11);
+        assert_eq!(encode_added_component_value_snbt(56, &patch, None), None);
+        patch.armor_trim_material_id = Some(1);
+        patch.armor_trim_pattern_id = Some(18);
+        assert_eq!(encode_added_component_value_snbt(56, &patch, None), None);
+        patch.armor_trim_pattern_id = Some(17);
+        patch.armor_trim_material_direct =
+            Some(Box::new(bbb_protocol::packets::TrimMaterialSummary {
+                asset_name: "custom".to_string(),
+                override_armor_assets: Default::default(),
+                description: "Custom material".to_string(),
+                description_styled: None,
+            }));
+        assert_eq!(encode_added_component_value_snbt(56, &patch, None), None);
+        patch.armor_trim_material_direct = None;
+        patch.armor_trim_pattern_direct =
+            Some(Box::new(bbb_protocol::packets::TrimPatternSummary {
+                asset_id: "example:custom".to_string(),
+                description: "Custom pattern".to_string(),
+                description_styled: None,
+                decal: false,
+            }));
+        assert_eq!(encode_added_component_value_snbt(56, &patch, None), None);
     }
 
     #[test]

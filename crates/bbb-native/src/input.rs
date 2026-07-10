@@ -113,7 +113,8 @@ use crate::terrain_runtime::TerrainUploadState;
 use bbb_item_model::{
     vanilla_banner_pattern_resource_id, vanilla_enchantment_resource_id,
     vanilla_instrument_resource_id, vanilla_mob_effect_resource_id, vanilla_potion_resource_id,
-    ItemModelKeybindContext, NativeItemRuntime,
+    vanilla_trim_material_resource_id, vanilla_trim_pattern_resource_id, ItemModelKeybindContext,
+    NativeItemRuntime,
 };
 pub(crate) use bundle::select_bundle_item;
 use commands::*;
