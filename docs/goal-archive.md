@@ -8681,3 +8681,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   同时为 `use_effects.speed_multiplier` 补齐 0..1 validation。component patch
   focused test 扩展到 29 个 added entry，覆盖顶层六项非默认、float suffix 与
   nested 全默认空 compound；attack-range 从剩余 component 总账本移入已支持子集。
+
+## 2026-07-10：ItemStack swing-animation save codec
+
+- [x] `minecraft:swing_animation` 持久化 component（P2 native input）：
+  依据 vanilla 26.1 `SwingAnimation.CODEC`、
+  `SwingAnimationType.CODEC` 与 protocol 已保留的 type id `40`
+  type/duration，复刻 `whack/6` 默认省略、positive-int validation 及
+  none/whack/stab 持久化名。component patch focused test 扩展到 30 个 added
+  entry，覆盖顶层 stab/17 与 nested 全默认空 compound；swing-animation 从
+  剩余 component 总账本移入已支持子集。

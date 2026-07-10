@@ -8544,10 +8544,10 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
         EquipmentAssetCatalog::default(),
     );
     let patch = DataComponentPatchSummary {
-        added: 29,
+        added: 30,
         added_type_ids: vec![
-            0, 1, 2, 3, 4, 5, 10, 12, 17, 21, 22, 30, 44, 45, 46, 49, 50, 54, 63, 67, 68, 69, 70,
-            74, 75, 76, 88, 89, 90,
+            0, 1, 2, 3, 4, 5, 10, 12, 17, 21, 22, 30, 40, 44, 45, 46, 49, 50, 54, 63, 67, 68, 69,
+            70, 74, 75, 76, 88, 89, 90,
         ],
         removed_type_ids: vec![6],
         custom_data: Some(NbtSummaryValue::Compound(vec![
@@ -8624,6 +8624,10 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
             max_creative_reach: 6.5,
             hitbox_margin: 0.125,
             mob_factor: 0.5,
+        }),
+        swing_animation: Some(bbb_protocol::packets::SwingAnimationSummary {
+            animation_type: bbb_protocol::packets::SwingAnimationTypeSummary::Stab,
+            duration: 17,
         }),
         dyed_color: Some(0x11_22_33),
         map_color: Some(0x44_55_66),
@@ -8732,9 +8736,13 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
                 item_id: 3,
                 count: 4,
                 component_patch: DataComponentPatchSummary {
-                    added: 1,
-                    added_type_ids: vec![2],
+                    added: 2,
+                    added_type_ids: vec![2, 40],
                     max_damage: Some(512),
+                    swing_animation: Some(bbb_protocol::packets::SwingAnimationSummary {
+                        animation_type: bbb_protocol::packets::SwingAnimationTypeSummary::Whack,
+                        duration: 6,
+                    }),
                     ..DataComponentPatchSummary::default()
                 },
             },
@@ -8779,6 +8787,7 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
          \"minecraft:attack_range\": {min_reach: 2.0f, max_reach: 4.5f, \
          min_creative_reach: 2.0f, max_creative_reach: 6.5f, \
          hitbox_margin: 0.125f, mob_factor: 0.5f}, \
+         \"minecraft:swing_animation\": {type: \"stab\", duration: 17}, \
          \"minecraft:dyed_color\": 1122867, \
          \"minecraft:map_color\": 4478310, \"minecraft:map_id\": 42, \
          \"minecraft:charged_projectiles\": [{id: \"minecraft:arrow\", \
@@ -8804,7 +8813,8 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
          \"minecraft:pot_decorations\": [\"minecraft:angler_pottery_sherd\", \
          \"minecraft:archer_pottery_sherd\", \"minecraft:brick\", \"minecraft:brick\"], \
          \"minecraft:container\": [{slot: 2, item: {id: \"minecraft:firework_star\", \
-         count: 4, components: {\"minecraft:max_damage\": 512}}}], \
+         count: 4, components: {\"minecraft:max_damage\": 512, \
+         \"minecraft:swing_animation\": {}}}}], \
          \"minecraft:block_state\": {facing: \"south\", \
          \"quoted key\": \"value with 'quote'\"}, \
          \"minecraft:tropical_fish/pattern\": \"stripey\", \

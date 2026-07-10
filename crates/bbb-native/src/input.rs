@@ -4657,6 +4657,7 @@ fn debug_supported_added_component_snbt(
         21 => debug_snbt_bool(patch.enchantment_glint_override?).to_string(),
         22 => "{}".to_string(),
         30 => debug_attack_range_component_snbt(patch.attack_range?)?,
+        40 => debug_swing_animation_component_snbt(patch.swing_animation?)?,
         44 => patch.dyed_color?.to_string(),
         45 => patch.map_color?.to_string(),
         46 => patch.map_id?.to_string(),
@@ -4728,6 +4729,7 @@ fn debug_supported_component_resource_id(type_id: i32) -> Option<&'static str> {
         21 => "minecraft:enchantment_glint_override",
         22 => "minecraft:intangible_projectile",
         30 => "minecraft:attack_range",
+        40 => "minecraft:swing_animation",
         44 => "minecraft:dyed_color",
         45 => "minecraft:map_color",
         46 => "minecraft:map_id",
@@ -4898,6 +4900,29 @@ fn debug_push_nondefault_snbt_float(
     if value.to_bits() != default.to_bits() {
         fields.push(format!("{name}: {}f", debug_nbt_java_float_string(value)));
     }
+}
+
+fn debug_swing_animation_component_snbt(
+    animation: bbb_protocol::packets::SwingAnimationSummary,
+) -> Option<String> {
+    if animation.duration <= 0 {
+        return None;
+    }
+    let mut fields = Vec::new();
+    if animation.animation_type != bbb_protocol::packets::SwingAnimationTypeSummary::Whack {
+        fields.push(format!(
+            "type: {}",
+            debug_snbt_string(match animation.animation_type {
+                bbb_protocol::packets::SwingAnimationTypeSummary::None => "none",
+                bbb_protocol::packets::SwingAnimationTypeSummary::Whack => "whack",
+                bbb_protocol::packets::SwingAnimationTypeSummary::Stab => "stab",
+            })
+        ));
+    }
+    if animation.duration != 6 {
+        fields.push(format!("duration: {}", animation.duration));
+    }
+    Some(format!("{{{}}}", fields.join(", ")))
 }
 
 fn debug_custom_model_data_component_snbt(
