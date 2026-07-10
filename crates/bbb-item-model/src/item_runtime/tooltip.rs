@@ -1179,6 +1179,10 @@ fn vanilla_painting_variant(id: i32) -> Option<VanillaPaintingVariant> {
         .and_then(|index| VANILLA_PAINTING_VARIANTS.get(index).copied())
 }
 
+pub fn vanilla_painting_variant_resource_id(id: i32) -> Option<&'static str> {
+    vanilla_painting_variant(id).map(|variant| variant.key)
+}
+
 fn painting_variant_translation_key(key: &str, suffix: &str) -> Option<String> {
     let (namespace, path) = key.split_once(':')?;
     Some(format!(
@@ -1466,6 +1470,16 @@ mod tests {
     #[test]
     fn vanilla_painting_variants_follow_26_1_bootstrap_order() {
         assert_eq!(VANILLA_PAINTING_VARIANTS.len(), 51);
+        assert_eq!(
+            vanilla_painting_variant_resource_id(0),
+            Some("minecraft:kebab")
+        );
+        assert_eq!(
+            vanilla_painting_variant_resource_id(50),
+            Some("minecraft:dennis")
+        );
+        assert_eq!(vanilla_painting_variant_resource_id(51), None);
+        assert_eq!(vanilla_painting_variant_resource_id(-1), None);
         assert_eq!(
             vanilla_painting_variant(0),
             Some(painting_variant("minecraft:kebab", 1, 1, true))

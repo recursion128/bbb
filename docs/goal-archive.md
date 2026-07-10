@@ -9067,3 +9067,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   从 81 扩展到 82 个 added entry，另覆盖空列表、unknown attribute 与 override
   display 的整组件安全省略。override display 的任意 Component 树不能由现有扁平
   styled-run summary 无损重建，继续保留在账本。
+
+## 2026-07-10：ItemStack named painting-variant save codec
+
+- [x] minecraft:painting/variant 的 fixed-registry named-holder 持久化分支
+  （P2 item-model + native input）：依据 vanilla 26.1 `PaintingVariant.CODEC` 的
+  `RegistryFixedCodec` 与仅供 network 使用的 direct STREAM_CODEC，item-model 从
+  既有 51 项 PaintingVariants bootstrap 表暴露唯一 resource-id 查询；native type
+  id 102 encoder 仅对 persistent codec 合法的 named holder 输出资源 ID。大型
+  component patch test 从 82 扩展到 83 个 added entry，并覆盖 unknown id 与
+  direct network holder 的安全省略；后者不能由 fixed-registry persistent codec
+  合法编码。

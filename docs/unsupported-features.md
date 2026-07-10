@@ -237,7 +237,8 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   added values still include `AbstractArrow`
   `inBlockState` and `item`, remaining data-component patch entries (including
   attribute-modifier override-display Component trees, direct instrument,
-  direct trim material/pattern, and direct jukebox-song network holders; implemented
+  direct trim material/pattern, direct jukebox-song, and direct painting-variant
+  network holders; implemented
   through the protocol component descriptor catalog and native persistent SNBT
   encoder registry)
   beyond the supported custom-NBT/primitive (including repair-cost/enchantable/glider,
@@ -258,6 +259,7 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   trim-named-holders/
   instrument-named-holder/
   jukebox-playable-named-holder/
+  painting-variant-named-holder/
   pot-decoration/
   container/block-state/built-in animal/color enum (wolf/cat collars, fox,
   salmon, parrot, mooshroom, rabbit, horse, llama, axolotl, sheep, shulker,

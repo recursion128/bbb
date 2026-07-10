@@ -8738,12 +8738,12 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
         EquipmentAssetCatalog::default(),
     );
     let patch = DataComponentPatchSummary {
-        added: 82,
+        added: 83,
         added_type_ids: vec![
             0, 1, 2, 3, 4, 5, 7, 10, 12, 13, 16, 17, 18, 19, 21, 22, 23, 24, 25, 26, 27, 29, 30,
             31, 33, 34, 35, 36, 38, 39, 40, 42, 43, 44, 45, 46, 47, 49, 50, 51, 52, 53, 54, 56, 57,
             58, 59, 60, 61, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80,
-            84, 85, 86, 87, 88, 89, 90, 91, 92, 101, 103, 104, 107, 108, 109,
+            84, 85, 86, 87, 88, 89, 90, 91, 92, 101, 102, 103, 104, 107, 108, 109,
         ],
         removed_type_ids: vec![6],
         custom_data: Some(NbtSummaryValue::Compound(vec![
@@ -9209,6 +9209,7 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
             sound_id: None,
             fixed_range_bits: None,
         }),
+        painting_variant_id: Some(50),
         builtin_enum_component_ids: BTreeMap::from([
             (84, 14),
             (85, 1),
@@ -9370,6 +9371,7 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
          \"minecraft:mooshroom/variant\": \"brown\", \
          \"minecraft:rabbit/variant\": \"evil\", \
          \"minecraft:horse/variant\": \"dark_brown\", \
+         \"minecraft:painting/variant\": \"minecraft:dennis\", \
          \"minecraft:llama/variant\": \"gray\", \
          \"minecraft:axolotl/variant\": \"blue\", \
          \"minecraft:cat/collar\": \"black\", \

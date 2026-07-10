@@ -94,6 +94,7 @@ static PERSISTENT_SNBT_ENCODERS: &[PersistentSnbtEncoderDescriptor] = &[
     encoder(91, encode_builtin_enum),
     encoder(92, encode_builtin_enum),
     encoder(101, encode_builtin_enum),
+    encoder(102, encode_painting_variant),
     encoder(103, encode_builtin_enum),
     encoder(104, encode_builtin_enum),
     encoder(107, encode_builtin_enum),
@@ -750,6 +751,19 @@ fn encode_tropical_fish_pattern_color(
     )))
 }
 
+fn encode_painting_variant(
+    _type_id: i32,
+    patch: &bbb_protocol::packets::DataComponentPatchSummary,
+    _item_runtime: Option<&NativeItemRuntime>,
+) -> Option<String> {
+    if patch.painting_variant_direct.is_some() {
+        return None;
+    }
+    Some(debug_snbt_string(vanilla_painting_variant_resource_id(
+        patch.painting_variant_id?,
+    )?))
+}
+
 fn encode_builtin_enum(
     type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
@@ -769,7 +783,7 @@ mod tests {
 
     #[test]
     fn encoder_registry_is_unique_sorted_and_persistent() {
-        assert_eq!(PERSISTENT_SNBT_ENCODERS.len(), 82);
+        assert_eq!(PERSISTENT_SNBT_ENCODERS.len(), 83);
         let mut ids = HashSet::new();
         let mut previous = None;
         for descriptor in PERSISTENT_SNBT_ENCODERS {
@@ -1055,5 +1069,31 @@ mod tests {
             encode_added_component_value_snbt(64, &patch, Some(&item_runtime)),
             None
         );
+    }
+
+    #[test]
+    fn painting_variant_encoder_uses_fixed_registry_holders_only() {
+        let mut patch = bbb_protocol::packets::DataComponentPatchSummary {
+            painting_variant_id: Some(50),
+            ..Default::default()
+        };
+        assert_eq!(
+            encode_added_component_value_snbt(102, &patch, None),
+            Some("\"minecraft:dennis\"".to_string())
+        );
+
+        patch.painting_variant_id = Some(51);
+        assert_eq!(encode_added_component_value_snbt(102, &patch, None), None);
+        patch.painting_variant_id = None;
+        patch.painting_variant_direct = Some(bbb_protocol::packets::PaintingVariantSummary {
+            width: 1,
+            height: 1,
+            asset_id: "example:custom".to_string(),
+            title: Some("Custom".to_string()),
+            title_styled: None,
+            author: None,
+            author_styled: None,
+        });
+        assert_eq!(encode_added_component_value_snbt(102, &patch, None), None);
     }
 }
