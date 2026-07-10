@@ -8650,3 +8650,15 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   `bundle_contents_item_count`。focused tests 扩展到 26 个 added entry，
   覆盖非默认 count、嵌套 dyed-color patch 及未知 item registry fallback；
   bundle-contents 从剩余 component 总账本移入已支持子集。
+
+## 2026-07-10：ItemStack container slot save codec
+
+- [x] `minecraft:container` 持久化 component（P2 protocol + native input）：
+  依据 vanilla 26.1 `ItemContainerContents.STREAM_CODEC/CODEC`，修复 protocol
+  摘要过去把 optional network list 压平成非空 items、丢失 slot index 的缺口；
+  新增兼容保留既有 `container_items` 的 `container_slots` 视图，
+  native 依 persistent codec 输出 ordered `{slot, item}` records，旧的仅扁平
+  非空摘要因无法判断洞位而安全不输出。protocol focused test 覆盖三槽中仅 slot 1
+  非空；native focused tests 扩展到 27 个 added entry，覆盖 slot 2、递归
+  template patch 与未知 item fallback。container 从剩余 component 总账本移入
+  已支持子集。

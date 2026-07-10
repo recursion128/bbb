@@ -8544,10 +8544,10 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
         EquipmentAssetCatalog::default(),
     );
     let patch = DataComponentPatchSummary {
-        added: 26,
+        added: 27,
         added_type_ids: vec![
-            0, 1, 2, 3, 4, 10, 12, 17, 21, 22, 44, 45, 46, 49, 50, 54, 63, 67, 68, 69, 70, 74, 76,
-            88, 89, 90,
+            0, 1, 2, 3, 4, 10, 12, 17, 21, 22, 44, 45, 46, 49, 50, 54, 63, 67, 68, 69, 70, 74, 75,
+            76, 88, 89, 90,
         ],
         removed_type_ids: vec![6],
         custom_data: Some(NbtSummaryValue::Compound(vec![
@@ -8686,6 +8686,30 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
             },
         }),
         pot_decorations_item_ids: vec![0, 1],
+        container_items: vec![bbb_protocol::packets::ItemStackTemplateSummary {
+            item_id: 3,
+            count: 4,
+            component_patch: DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![2],
+                max_damage: Some(512),
+                ..DataComponentPatchSummary::default()
+            },
+        }],
+        container_slots: vec![bbb_protocol::packets::ItemContainerSlotSummary {
+            slot: 2,
+            item: bbb_protocol::packets::ItemStackTemplateSummary {
+                item_id: 3,
+                count: 4,
+                component_patch: DataComponentPatchSummary {
+                    added: 1,
+                    added_type_ids: vec![2],
+                    max_damage: Some(512),
+                    ..DataComponentPatchSummary::default()
+                },
+            },
+        }],
+        container_item_count: Some(1),
         block_state_properties: BTreeMap::from([
             ("facing".to_string(), "south".to_string()),
             ("quoted key".to_string(), "value with 'quote'".to_string()),
@@ -8741,6 +8765,8 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
          elytra: \"minecraft:entity/player/elytra\", model: \"slim\"}, \
          \"minecraft:pot_decorations\": [\"minecraft:angler_pottery_sherd\", \
          \"minecraft:archer_pottery_sherd\", \"minecraft:brick\", \"minecraft:brick\"], \
+         \"minecraft:container\": [{slot: 2, item: {id: \"minecraft:firework_star\", \
+         count: 4, components: {\"minecraft:max_damage\": 512}}}], \
          \"minecraft:block_state\": {facing: \"south\", \
          \"quoted key\": \"value with 'quote'\"}, \
          \"minecraft:tropical_fish/pattern\": \"stripey\", \
@@ -8765,8 +8791,8 @@ fn item_stack_snbt_omits_registry_backed_components_with_unknown_item_id() {
         item_id: Some(0),
         count: 1,
         component_patch: DataComponentPatchSummary {
-            added: 3,
-            added_type_ids: vec![49, 50, 74],
+            added: 4,
+            added_type_ids: vec![49, 50, 74, 75],
             charged_projectiles_items: vec![bbb_protocol::packets::ItemStackTemplateSummary {
                 item_id: 99,
                 count: 1,
@@ -8779,6 +8805,20 @@ fn item_stack_snbt_omits_registry_backed_components_with_unknown_item_id() {
             }],
             bundle_contents_item_count: Some(1),
             pot_decorations_item_ids: vec![99],
+            container_items: vec![bbb_protocol::packets::ItemStackTemplateSummary {
+                item_id: 99,
+                count: 1,
+                component_patch: DataComponentPatchSummary::default(),
+            }],
+            container_slots: vec![bbb_protocol::packets::ItemContainerSlotSummary {
+                slot: 0,
+                item: bbb_protocol::packets::ItemStackTemplateSummary {
+                    item_id: 99,
+                    count: 1,
+                    component_patch: DataComponentPatchSummary::default(),
+                },
+            }],
+            container_item_count: Some(1),
             ..DataComponentPatchSummary::default()
         },
     };

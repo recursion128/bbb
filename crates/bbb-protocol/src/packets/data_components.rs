@@ -140,6 +140,8 @@ pub struct DataComponentPatchSummary {
     #[serde(default)]
     pub container_items: Vec<ItemStackTemplateSummary>,
     #[serde(default)]
+    pub container_slots: Vec<ItemContainerSlotSummary>,
+    #[serde(default)]
     pub container_item_count: Option<usize>,
     #[serde(default)]
     pub container_loot: bool,
@@ -570,6 +572,12 @@ pub struct ItemStackTemplateSummary {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ItemContainerSlotSummary {
+    pub slot: usize,
+    pub item: ItemStackTemplateSummary,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ResolvableProfileSummary {
     pub kind: ResolvableProfileKindSummary,
     pub uuid: Option<Uuid>,
@@ -857,8 +865,10 @@ fn decode_typed_data_component_patch_summary(
                     decode_string_map(decoder, MAX_BLOCK_STATE_PROPERTIES)?;
             }
             75 => {
-                summary.container_items = decode_item_container_contents(decoder)?;
-                summary.container_item_count = Some(summary.container_items.len());
+                let container = decode_item_container_contents(decoder)?;
+                summary.container_item_count = Some(container.items.len());
+                summary.container_items = container.items;
+                summary.container_slots = container.slots;
             }
             72 => {
                 summary.banner_pattern_layers = decode_banner_pattern_layers_summary(decoder)?;
@@ -1685,17 +1695,24 @@ fn decode_optional_item_stack_template(
     }
 }
 
+struct ItemContainerContentsSummary {
+    items: Vec<ItemStackTemplateSummary>,
+    slots: Vec<ItemContainerSlotSummary>,
+}
+
 fn decode_item_container_contents(
     decoder: &mut Decoder<'_>,
-) -> Result<Vec<ItemStackTemplateSummary>> {
+) -> Result<ItemContainerContentsSummary> {
     let count = read_bounded_len(decoder, MAX_CONTAINER_ITEMS)?;
     let mut items = Vec::new();
-    for _ in 0..count {
+    let mut slots = Vec::new();
+    for slot in 0..count {
         if let Some(item) = decode_optional_item_stack_template(decoder)? {
-            items.push(item);
+            items.push(item.clone());
+            slots.push(ItemContainerSlotSummary { slot, item });
         }
     }
-    Ok(items)
+    Ok(ItemContainerContentsSummary { items, slots })
 }
 
 fn decode_tool(decoder: &mut Decoder<'_>) -> Result<()> {
@@ -4469,6 +4486,14 @@ mod tests {
                     item_id: 53,
                     count: 4,
                     component_patch: DataComponentPatchSummary::default(),
+                }],
+                container_slots: vec![ItemContainerSlotSummary {
+                    slot: 1,
+                    item: ItemStackTemplateSummary {
+                        item_id: 53,
+                        count: 4,
+                        component_patch: DataComponentPatchSummary::default(),
+                    },
                 }],
                 container_item_count: Some(1),
                 armor_trim_material_id: Some(1),

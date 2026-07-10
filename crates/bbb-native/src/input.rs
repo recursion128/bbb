@@ -264,6 +264,7 @@ const LODESTONE_TRACKER_COMPONENT_TYPE_ID: i32 = 67;
 const FIREWORKS_COMPONENT_TYPE_ID: i32 = 69;
 const PROFILE_COMPONENT_TYPE_ID: i32 = 70;
 const POT_DECORATIONS_COMPONENT_TYPE_ID: i32 = 74;
+const CONTAINER_COMPONENT_TYPE_ID: i32 = 75;
 const BLOCK_STATE_COMPONENT_TYPE_ID: i32 = 76;
 const TROPICAL_FISH_PATTERN_COMPONENT_TYPE_ID: i32 = 88;
 const TROPICAL_FISH_BASE_COLOR_COMPONENT_TYPE_ID: i32 = 89;
@@ -4680,6 +4681,9 @@ fn debug_supported_added_component_snbt(
         POT_DECORATIONS_COMPONENT_TYPE_ID => {
             debug_pot_decorations_component_snbt(patch, item_runtime)?
         }
+        CONTAINER_COMPONENT_TYPE_ID => {
+            debug_item_container_contents_component_snbt(patch, item_runtime)?
+        }
         BLOCK_STATE_COMPONENT_TYPE_ID => format!(
             "{{{}}}",
             patch
@@ -4732,6 +4736,7 @@ fn debug_supported_component_resource_id(type_id: i32) -> Option<&'static str> {
         FIREWORKS_COMPONENT_TYPE_ID => "minecraft:fireworks",
         PROFILE_COMPONENT_TYPE_ID => "minecraft:profile",
         POT_DECORATIONS_COMPONENT_TYPE_ID => "minecraft:pot_decorations",
+        CONTAINER_COMPONENT_TYPE_ID => "minecraft:container",
         BLOCK_STATE_COMPONENT_TYPE_ID => "minecraft:block_state",
         TROPICAL_FISH_PATTERN_COMPONENT_TYPE_ID => "minecraft:tropical_fish/pattern",
         TROPICAL_FISH_BASE_COLOR_COMPONENT_TYPE_ID => "minecraft:tropical_fish/base_color",
@@ -5026,6 +5031,25 @@ fn debug_pot_decorations_component_snbt(
         items.push(debug_snbt_string("minecraft:brick"));
     }
     Some(format!("[{}]", items.join(", ")))
+}
+
+fn debug_item_container_contents_component_snbt(
+    patch: &bbb_protocol::packets::DataComponentPatchSummary,
+    item_runtime: Option<&NativeItemRuntime>,
+) -> Option<String> {
+    if patch.container_slots.is_empty() && !patch.container_items.is_empty() {
+        return None;
+    }
+    let slots = patch
+        .container_slots
+        .iter()
+        .map(|slot| {
+            let item = debug_item_stack_template_snbt(&slot.item, item_runtime)?;
+            Some(format!("{{slot: {}, item: {item}}}", slot.slot))
+        })
+        .collect::<Option<Vec<_>>>()?
+        .join(", ");
+    Some(format!("[{slots}]"))
 }
 
 fn debug_tropical_fish_pattern_name(packed_id: i32) -> &'static str {
