@@ -8738,12 +8738,13 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
         EquipmentAssetCatalog::default(),
     );
     let patch = DataComponentPatchSummary {
-        added: 87,
+        added: 88,
         added_type_ids: vec![
             0, 1, 2, 3, 4, 5, 7, 10, 12, 13, 16, 17, 18, 19, 21, 22, 23, 24, 25, 26, 27, 29, 30,
             31, 33, 34, 35, 36, 38, 39, 40, 42, 43, 44, 45, 46, 47, 49, 50, 51, 52, 53, 54, 56, 57,
             58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79,
-            80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 101, 102, 103, 104, 107, 108, 109,
+            80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 100, 101, 102, 103, 104, 107, 108,
+            109,
         ],
         removed_type_ids: vec![6],
         custom_data: Some(NbtSummaryValue::Compound(vec![
@@ -9214,6 +9215,7 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
         villager_variant_id: Some(2),
         wolf_variant_id: Some(8),
         wolf_sound_variant_id: Some(6),
+        frog_variant_id: Some(2),
         builtin_enum_component_ids: BTreeMap::from([
             (84, 14),
             (85, 1),
@@ -9378,6 +9380,7 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
          \"minecraft:tropical_fish/pattern_color\": \"white\", \
          \"minecraft:mooshroom/variant\": \"brown\", \
          \"minecraft:rabbit/variant\": \"evil\", \
+         \"minecraft:frog/variant\": \"minecraft:cold\", \
          \"minecraft:horse/variant\": \"dark_brown\", \
          \"minecraft:painting/variant\": \"minecraft:dennis\", \
          \"minecraft:llama/variant\": \"gray\", \

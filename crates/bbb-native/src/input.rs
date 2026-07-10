@@ -6666,16 +6666,14 @@ fn debug_push_frog_additional_save_data(entity: &EntityState, fields: &mut Vec<S
     .unwrap_or(FROG_DEFAULT_VARIANT_ID);
     fields.push(format!(
         "variant: {}",
-        debug_snbt_string(debug_frog_variant_resource_id(variant))
+        debug_snbt_string(frog_variant_resource_id(variant).unwrap_or("minecraft:temperate"))
     ));
 }
 
-fn debug_frog_variant_resource_id(variant: i32) -> &'static str {
-    match variant {
-        1 => "minecraft:warm",
-        2 => "minecraft:cold",
-        _ => "minecraft:temperate",
-    }
+fn frog_variant_resource_id(variant: i32) -> Option<&'static str> {
+    ["minecraft:temperate", "minecraft:warm", "minecraft:cold"]
+        .get(usize::try_from(variant).ok()?)
+        .copied()
 }
 
 fn debug_push_panda_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {

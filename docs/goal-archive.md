@@ -9113,3 +9113,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   查询并保持非法 id 回退 pale。大型 component patch test 从 86 扩展到 87 个
   added entry，另覆盖 bootstrap 边界、descriptor holder 投影和 encoder unknown-id
   安全省略。
+
+## 2026-07-10：ItemStack frog-variant descriptor and save
+
+- [x] minecraft:frog/variant 的 descriptor decode 与 named-holder 持久化
+  （P2 protocol + native input）：依据 vanilla 26.1
+  `FrogVariant.CODEC/STREAM_CODEC` 与 `FrogVariants.bootstrap`，protocol type id
+  100 不再 skip holder，而是写入独立 `frog_variant_id`；native 把原 entity save
+  三项 match 收敛为可校验的共享资源查询，entity 仍对非法 id 回退 temperate，
+  component encoder 则安全省略 unknown id。大型 component patch test 从 87
+  扩展到 88 个 added entry，并覆盖 descriptor holder、cold 分支与边界。
