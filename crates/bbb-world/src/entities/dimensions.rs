@@ -22,6 +22,10 @@ pub(crate) use super::schema::VANILLA_ENTITY_POSE_DATA_ID as ENTITY_DATA_POSE_ID
 use super::schema::{
     VANILLA_AGEABLE_MOB_BABY_DATA_ID as AGEABLE_MOB_BABY_DATA_ID,
     VANILLA_AGEABLE_MOB_DEFAULT_BABY as AGEABLE_MOB_DEFAULT_BABY,
+    VANILLA_ARMOR_STAND_CLIENT_FLAGS_DATA_ID as ARMOR_STAND_CLIENT_FLAGS_DATA_ID,
+    VANILLA_ARMOR_STAND_CLIENT_FLAG_MARKER as ARMOR_STAND_CLIENT_FLAG_MARKER,
+    VANILLA_ARMOR_STAND_CLIENT_FLAG_SMALL as ARMOR_STAND_CLIENT_FLAG_SMALL,
+    VANILLA_ARMOR_STAND_DEFAULT_CLIENT_FLAGS as ARMOR_STAND_DEFAULT_CLIENT_FLAGS,
 };
 use super::{
     is_vanilla_boat_type, is_vanilla_minecart_type, EntityClientAnimationState, EntityVec3,
@@ -48,11 +52,6 @@ const INTERACTION_DEFAULT_HEIGHT: f32 = 1.0;
 const SLIME_SIZE_DATA_ID: u8 = 16;
 const SLIME_BASE_SIZE: f32 = 0.52;
 const SLIME_DEFAULT_SIZE: i32 = 1;
-// `ArmorStand extends LivingEntity` (not a `Mob`): `DATA_CLIENT_FLAGS` is the first accessor after
-// `LivingEntity` (0-14) with no `Mob.DATA_MOB_FLAGS_ID` (15) in between, so it lands at 15.
-const ARMOR_STAND_CLIENT_FLAGS_DATA_ID: u8 = 15;
-const ARMOR_STAND_CLIENT_FLAG_SMALL: i8 = 1;
-const ARMOR_STAND_CLIENT_FLAG_MARKER: i8 = 16;
 const ARMOR_STAND_WIDTH: f32 = 0.5;
 const ARMOR_STAND_HEIGHT: f32 = 1.975;
 const ARMOR_STAND_SMALL_SCALE: f32 = 0.5;
@@ -1039,7 +1038,11 @@ fn armor_stand_pick_bounds(data_values: &[EntityDataValue]) -> Option<EntityPick
 }
 
 fn armor_stand_client_flags(data_values: &[EntityDataValue]) -> i8 {
-    entity_data_byte(data_values, ARMOR_STAND_CLIENT_FLAGS_DATA_ID, 0)
+    entity_data_byte(
+        data_values,
+        ARMOR_STAND_CLIENT_FLAGS_DATA_ID,
+        ARMOR_STAND_DEFAULT_CLIENT_FLAGS,
+    )
 }
 
 fn armor_stand_is_marker(data_values: &[EntityDataValue]) -> bool {

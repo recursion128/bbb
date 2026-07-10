@@ -6,6 +6,11 @@ use uuid::Uuid;
 
 use crate::{HurtingProjectileState, ProjectilePowerUpdateState, WorldStore};
 
+use super::schema::{
+    VANILLA_ARMOR_STAND_CLIENT_FLAGS_DATA_ID as ARMOR_STAND_CLIENT_FLAGS_DATA_ID,
+    VANILLA_ARMOR_STAND_CLIENT_FLAG_MARKER as ARMOR_STAND_MARKER_FLAG,
+    VANILLA_ARMOR_STAND_DEFAULT_CLIENT_FLAGS as ARMOR_STAND_DEFAULT_CLIENT_FLAGS,
+};
 use super::{
     is_vanilla_boat_type, is_vanilla_minecart_type, vanilla_living_entity_type,
     EntityHurtingProjectile, EntityIdentity, EntityMount, EntityPickBoundsState,
@@ -28,11 +33,6 @@ use super::{
 
 const DEFAULT_HURTING_PROJECTILE_ACCELERATION_POWER: f64 = 0.1;
 const DEFAULT_WIND_CHARGE_ACCELERATION_POWER: f64 = 0.0;
-/// Vanilla `ArmorStand.DATA_CLIENT_FLAGS` marker bit. Marker armor stands override
-/// `LivingEntity.isPickable()` to false and therefore do not retain a projectile
-/// inside its owner's collision graph.
-const ARMOR_STAND_CLIENT_FLAGS_DATA_ID: u8 = 15;
-const ARMOR_STAND_MARKER_FLAG: i8 = 0x10;
 /// Vanilla 26.1 `AbstractArrow` metadata ids and the `FLAG_NOPHYSICS` bit.
 const ABSTRACT_ARROW_FLAGS_DATA_ID: u8 = 8;
 const ABSTRACT_ARROW_IN_GROUND_DATA_ID: u8 = 10;
@@ -389,8 +389,12 @@ impl EntityStore {
             }
             if identity.entity_type_id == VANILLA_ENTITY_TYPE_ARMOR_STAND_ID
                 && self
-                    .metadata_byte(id, ARMOR_STAND_CLIENT_FLAGS_DATA_ID, 0)
-                    .unwrap_or(0)
+                    .metadata_byte(
+                        id,
+                        ARMOR_STAND_CLIENT_FLAGS_DATA_ID,
+                        ARMOR_STAND_DEFAULT_CLIENT_FLAGS,
+                    )
+                    .unwrap_or(ARMOR_STAND_DEFAULT_CLIENT_FLAGS)
                     & ARMOR_STAND_MARKER_FLAG
                     != 0
             {

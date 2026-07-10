@@ -5,6 +5,7 @@ use bbb_protocol::entity_data_serializers::{
     VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_COMPONENT_ID,
     VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_UNSIGNED_INT_ID,
     VANILLA_ENTITY_DATA_SERIALIZER_PARTICLES_ID, VANILLA_ENTITY_DATA_SERIALIZER_POSE_ID,
+    VANILLA_ENTITY_DATA_SERIALIZER_ROTATIONS_ID,
 };
 use bbb_protocol::entity_poses::VANILLA_ENTITY_POSE_STANDING_ID;
 
@@ -14,6 +15,7 @@ pub enum VanillaEntityMetadataFamily {
     LivingEntity,
     Mob,
     AgeableMob,
+    ArmorStand,
     Avatar,
     Player,
 }
@@ -30,6 +32,7 @@ pub enum VanillaEntityMetadataDefault {
     OptionalBlockPosNone,
     OptionalUnsignedIntNone,
     HumanoidArm(i32),
+    Rotations([f32; 3]),
     MaxAirSupply,
 }
 
@@ -76,6 +79,13 @@ pub const VANILLA_LIVING_ENTITY_SLEEPING_POS_DATA_ID: u8 = 14;
 pub const VANILLA_MOB_FLAGS_DATA_ID: u8 = 15;
 pub const VANILLA_AGEABLE_MOB_BABY_DATA_ID: u8 = 16;
 pub const VANILLA_AGEABLE_MOB_AGE_LOCKED_DATA_ID: u8 = 17;
+pub const VANILLA_ARMOR_STAND_CLIENT_FLAGS_DATA_ID: u8 = 15;
+pub const VANILLA_ARMOR_STAND_HEAD_POSE_DATA_ID: u8 = 16;
+pub const VANILLA_ARMOR_STAND_BODY_POSE_DATA_ID: u8 = 17;
+pub const VANILLA_ARMOR_STAND_LEFT_ARM_POSE_DATA_ID: u8 = 18;
+pub const VANILLA_ARMOR_STAND_RIGHT_ARM_POSE_DATA_ID: u8 = 19;
+pub const VANILLA_ARMOR_STAND_LEFT_LEG_POSE_DATA_ID: u8 = 20;
+pub const VANILLA_ARMOR_STAND_RIGHT_LEG_POSE_DATA_ID: u8 = 21;
 pub const VANILLA_AVATAR_MAIN_HAND_DATA_ID: u8 = 15;
 pub const VANILLA_AVATAR_MODEL_CUSTOMIZATION_DATA_ID: u8 = 16;
 pub const VANILLA_PLAYER_ABSORPTION_DATA_ID: u8 = 17;
@@ -97,6 +107,10 @@ pub const VANILLA_LIVING_ENTITY_FLAG_SPIN_ATTACK: i8 = 1 << 2;
 pub const VANILLA_MOB_FLAG_NO_AI: i8 = 1 << 0;
 pub const VANILLA_MOB_FLAG_LEFT_HANDED: i8 = 1 << 1;
 pub const VANILLA_MOB_FLAG_AGGRESSIVE: i8 = 1 << 2;
+pub const VANILLA_ARMOR_STAND_CLIENT_FLAG_SMALL: i8 = 1 << 0;
+pub const VANILLA_ARMOR_STAND_CLIENT_FLAG_SHOW_ARMS: i8 = 1 << 2;
+pub const VANILLA_ARMOR_STAND_CLIENT_FLAG_NO_BASEPLATE: i8 = 1 << 3;
+pub const VANILLA_ARMOR_STAND_CLIENT_FLAG_MARKER: i8 = 1 << 4;
 pub const VANILLA_AVATAR_MODEL_PART_CAPE: i8 = 1 << 0;
 pub const VANILLA_AVATAR_MODEL_PART_JACKET: i8 = 1 << 1;
 pub const VANILLA_AVATAR_MODEL_PART_LEFT_SLEEVE: i8 = 1 << 2;
@@ -110,6 +124,13 @@ pub const VANILLA_HUMANOID_ARM_RIGHT_ID: i32 = 1;
 pub const VANILLA_AVATAR_DEFAULT_MODEL_CUSTOMIZATION: i8 = 0;
 pub const VANILLA_AGEABLE_MOB_DEFAULT_BABY: bool = false;
 pub const VANILLA_AGEABLE_MOB_DEFAULT_AGE_LOCKED: bool = false;
+pub const VANILLA_ARMOR_STAND_DEFAULT_CLIENT_FLAGS: i8 = 0;
+pub const VANILLA_ARMOR_STAND_DEFAULT_HEAD_POSE: [f32; 3] = [0.0, 0.0, 0.0];
+pub const VANILLA_ARMOR_STAND_DEFAULT_BODY_POSE: [f32; 3] = [0.0, 0.0, 0.0];
+pub const VANILLA_ARMOR_STAND_DEFAULT_LEFT_ARM_POSE: [f32; 3] = [-10.0, 0.0, -10.0];
+pub const VANILLA_ARMOR_STAND_DEFAULT_RIGHT_ARM_POSE: [f32; 3] = [-15.0, 0.0, 10.0];
+pub const VANILLA_ARMOR_STAND_DEFAULT_LEFT_LEG_POSE: [f32; 3] = [-1.0, 0.0, -1.0];
+pub const VANILLA_ARMOR_STAND_DEFAULT_RIGHT_LEG_POSE: [f32; 3] = [1.0, 0.0, 1.0];
 pub const VANILLA_PLAYER_DEFAULT_ABSORPTION: f32 = 0.0;
 pub const VANILLA_PLAYER_DEFAULT_SCORE: i32 = 0;
 
@@ -310,6 +331,78 @@ const AGEABLE_MOB_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[
     },
 ];
 
+const ARMOR_STAND_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_CLIENT_FLAGS",
+        data_id: VANILLA_ARMOR_STAND_CLIENT_FLAGS_DATA_ID,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+        default: VanillaEntityMetadataDefault::Byte(VANILLA_ARMOR_STAND_DEFAULT_CLIENT_FLAGS),
+    },
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_HEAD_POSE",
+        data_id: VANILLA_ARMOR_STAND_HEAD_POSE_DATA_ID,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_ROTATIONS_ID,
+        default: VanillaEntityMetadataDefault::Rotations(VANILLA_ARMOR_STAND_DEFAULT_HEAD_POSE),
+    },
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_BODY_POSE",
+        data_id: VANILLA_ARMOR_STAND_BODY_POSE_DATA_ID,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_ROTATIONS_ID,
+        default: VanillaEntityMetadataDefault::Rotations(VANILLA_ARMOR_STAND_DEFAULT_BODY_POSE),
+    },
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_LEFT_ARM_POSE",
+        data_id: VANILLA_ARMOR_STAND_LEFT_ARM_POSE_DATA_ID,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_ROTATIONS_ID,
+        default: VanillaEntityMetadataDefault::Rotations(VANILLA_ARMOR_STAND_DEFAULT_LEFT_ARM_POSE),
+    },
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_RIGHT_ARM_POSE",
+        data_id: VANILLA_ARMOR_STAND_RIGHT_ARM_POSE_DATA_ID,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_ROTATIONS_ID,
+        default: VanillaEntityMetadataDefault::Rotations(
+            VANILLA_ARMOR_STAND_DEFAULT_RIGHT_ARM_POSE,
+        ),
+    },
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_LEFT_LEG_POSE",
+        data_id: VANILLA_ARMOR_STAND_LEFT_LEG_POSE_DATA_ID,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_ROTATIONS_ID,
+        default: VanillaEntityMetadataDefault::Rotations(VANILLA_ARMOR_STAND_DEFAULT_LEFT_LEG_POSE),
+    },
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_RIGHT_LEG_POSE",
+        data_id: VANILLA_ARMOR_STAND_RIGHT_LEG_POSE_DATA_ID,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_ROTATIONS_ID,
+        default: VanillaEntityMetadataDefault::Rotations(
+            VANILLA_ARMOR_STAND_DEFAULT_RIGHT_LEG_POSE,
+        ),
+    },
+];
+
+const ARMOR_STAND_FLAGS: &[VanillaEntityMetadataFlagSchema] = &[
+    VanillaEntityMetadataFlagSchema {
+        name: "CLIENT_FLAG_SMALL",
+        data_id: VANILLA_ARMOR_STAND_CLIENT_FLAGS_DATA_ID,
+        mask: VANILLA_ARMOR_STAND_CLIENT_FLAG_SMALL,
+    },
+    VanillaEntityMetadataFlagSchema {
+        name: "CLIENT_FLAG_SHOW_ARMS",
+        data_id: VANILLA_ARMOR_STAND_CLIENT_FLAGS_DATA_ID,
+        mask: VANILLA_ARMOR_STAND_CLIENT_FLAG_SHOW_ARMS,
+    },
+    VanillaEntityMetadataFlagSchema {
+        name: "CLIENT_FLAG_NO_BASEPLATE",
+        data_id: VANILLA_ARMOR_STAND_CLIENT_FLAGS_DATA_ID,
+        mask: VANILLA_ARMOR_STAND_CLIENT_FLAG_NO_BASEPLATE,
+    },
+    VanillaEntityMetadataFlagSchema {
+        name: "CLIENT_FLAG_MARKER",
+        data_id: VANILLA_ARMOR_STAND_CLIENT_FLAGS_DATA_ID,
+        mask: VANILLA_ARMOR_STAND_CLIENT_FLAG_MARKER,
+    },
+];
+
 const AVATAR_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[
     VanillaEntityMetadataFieldSchema {
         name: "DATA_PLAYER_MAIN_HAND",
@@ -423,6 +516,15 @@ const AGEABLE_MOB_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetad
     own_flags: &[],
 };
 
+const ARMOR_STAND_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamilySchema {
+    family: VanillaEntityMetadataFamily::ArmorStand,
+    parent: Some(VanillaEntityMetadataFamily::LivingEntity),
+    inherited_field_count: LIVING_ENTITY_SCHEMA.inherited_field_count
+        + LIVING_ENTITY_FIELDS.len() as u8,
+    own_fields: ARMOR_STAND_FIELDS,
+    own_flags: ARMOR_STAND_FLAGS,
+};
+
 const AVATAR_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamilySchema {
     family: VanillaEntityMetadataFamily::Avatar,
     parent: Some(VanillaEntityMetadataFamily::LivingEntity),
@@ -448,6 +550,7 @@ pub const fn vanilla_entity_metadata_schema(
         VanillaEntityMetadataFamily::LivingEntity => &LIVING_ENTITY_SCHEMA,
         VanillaEntityMetadataFamily::Mob => &MOB_SCHEMA,
         VanillaEntityMetadataFamily::AgeableMob => &AGEABLE_MOB_SCHEMA,
+        VanillaEntityMetadataFamily::ArmorStand => &ARMOR_STAND_SCHEMA,
         VanillaEntityMetadataFamily::Avatar => &AVATAR_SCHEMA,
         VanillaEntityMetadataFamily::Player => &PLAYER_SCHEMA,
     }
@@ -520,6 +623,21 @@ mod tests {
                 .map(|field| field.data_id)
                 .collect::<Vec<_>>(),
             (16..=17).collect::<Vec<_>>()
+        );
+
+        let armor_stand = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::ArmorStand);
+        assert_eq!(
+            armor_stand.parent,
+            Some(VanillaEntityMetadataFamily::LivingEntity)
+        );
+        assert_eq!(armor_stand.inherited_field_count, 15);
+        assert_eq!(
+            armor_stand
+                .own_fields
+                .iter()
+                .map(|field| field.data_id)
+                .collect::<Vec<_>>(),
+            (15..=21).collect::<Vec<_>>()
         );
 
         let avatar = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Avatar);
@@ -676,6 +794,53 @@ mod tests {
                     data_id: 17,
                     serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                     default: VanillaEntityMetadataDefault::Boolean(false),
+                },
+            ]
+        );
+        assert_eq!(
+            vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::ArmorStand).own_fields,
+            &[
+                VanillaEntityMetadataFieldSchema {
+                    name: "DATA_CLIENT_FLAGS",
+                    data_id: 15,
+                    serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+                    default: VanillaEntityMetadataDefault::Byte(0),
+                },
+                VanillaEntityMetadataFieldSchema {
+                    name: "DATA_HEAD_POSE",
+                    data_id: 16,
+                    serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_ROTATIONS_ID,
+                    default: VanillaEntityMetadataDefault::Rotations([0.0, 0.0, 0.0]),
+                },
+                VanillaEntityMetadataFieldSchema {
+                    name: "DATA_BODY_POSE",
+                    data_id: 17,
+                    serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_ROTATIONS_ID,
+                    default: VanillaEntityMetadataDefault::Rotations([0.0, 0.0, 0.0]),
+                },
+                VanillaEntityMetadataFieldSchema {
+                    name: "DATA_LEFT_ARM_POSE",
+                    data_id: 18,
+                    serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_ROTATIONS_ID,
+                    default: VanillaEntityMetadataDefault::Rotations([-10.0, 0.0, -10.0]),
+                },
+                VanillaEntityMetadataFieldSchema {
+                    name: "DATA_RIGHT_ARM_POSE",
+                    data_id: 19,
+                    serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_ROTATIONS_ID,
+                    default: VanillaEntityMetadataDefault::Rotations([-15.0, 0.0, 10.0]),
+                },
+                VanillaEntityMetadataFieldSchema {
+                    name: "DATA_LEFT_LEG_POSE",
+                    data_id: 20,
+                    serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_ROTATIONS_ID,
+                    default: VanillaEntityMetadataDefault::Rotations([-1.0, 0.0, -1.0]),
+                },
+                VanillaEntityMetadataFieldSchema {
+                    name: "DATA_RIGHT_LEG_POSE",
+                    data_id: 21,
+                    serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_ROTATIONS_ID,
+                    default: VanillaEntityMetadataDefault::Rotations([1.0, 0.0, 1.0]),
                 },
             ]
         );
@@ -884,12 +1049,38 @@ mod tests {
                 },
             ]
         );
+        assert_eq!(
+            vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::ArmorStand).own_flags,
+            &[
+                VanillaEntityMetadataFlagSchema {
+                    name: "CLIENT_FLAG_SMALL",
+                    data_id: 15,
+                    mask: 1,
+                },
+                VanillaEntityMetadataFlagSchema {
+                    name: "CLIENT_FLAG_SHOW_ARMS",
+                    data_id: 15,
+                    mask: 4,
+                },
+                VanillaEntityMetadataFlagSchema {
+                    name: "CLIENT_FLAG_NO_BASEPLATE",
+                    data_id: 15,
+                    mask: 8,
+                },
+                VanillaEntityMetadataFlagSchema {
+                    name: "CLIENT_FLAG_MARKER",
+                    data_id: 15,
+                    mask: 16,
+                },
+            ]
+        );
 
         for family in [
             VanillaEntityMetadataFamily::Entity,
             VanillaEntityMetadataFamily::LivingEntity,
             VanillaEntityMetadataFamily::Mob,
             VanillaEntityMetadataFamily::AgeableMob,
+            VanillaEntityMetadataFamily::ArmorStand,
             VanillaEntityMetadataFamily::Avatar,
             VanillaEntityMetadataFamily::Player,
         ] {

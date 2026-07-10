@@ -1102,7 +1102,11 @@ pub(super) fn entity_type_bounds_placeholder(
 pub(super) fn armor_stand_model_kind(
     values: &[bbb_protocol::packets::EntityDataValue],
 ) -> EntityModelKind {
-    let flags = entity_data_byte(values, ARMOR_STAND_CLIENT_FLAGS_DATA_ID, 0);
+    let flags = entity_data_byte(
+        values,
+        ARMOR_STAND_CLIENT_FLAGS_DATA_ID,
+        ARMOR_STAND_DEFAULT_CLIENT_FLAGS,
+    );
     EntityModelKind::ArmorStand {
         small: flags & ARMOR_STAND_CLIENT_FLAG_SMALL != 0,
         marker: flags & ARMOR_STAND_CLIENT_FLAG_MARKER != 0,

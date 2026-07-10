@@ -9476,3 +9476,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   本地 id/default 副本；schema/focused tests 复验继承 offset、serializer/default、mount/bounds、
   chicken model 和 axolotl save-NBT。Zombie/AbstractPiglin 等不继承 `AgeableMob` 的具体 baby
   accessor 仍留给各自 family slice。
+
+## 2026-07-10：Entity metadata schema phase 5（ArmorStand）
+
+- [x] entity metadata schema 的首个 concrete family：按 `ArmorStand extends LivingEntity`
+  直接继承关系集中声明 BYTE flags 与六个 ROTATIONS ids 15..21、四个 client flag masks 和
+  六组 vanilla default rotations；`DisabledSlots` 等非 metadata save scalar 保持 native
+  所有权。world dimensions/projectile-pick、native entity-scene 与 F3+I armor-stand save
+  projection 删除本地 ids/masks/rotation defaults，统一引用 schema。focused tests 复验
+  marker/small pick bounds、model flags/pose 与完整 save-NBT；schema tests 锁定直接继承偏移、
+  serializer 和所有非标量默认值。`schema.rs` 超过 1000 行后按组织规范审查，仍是单一明确
+  semantic owner，未为行数制造无收益拆分。
