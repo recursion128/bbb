@@ -212,9 +212,9 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   remaining entity-specific
   constructor/default save values, LivingEntity parent health/equipment/effect/attribute
   projection, observable non-empty entity inventory/container projection,
-  minecart subclass fuel/spawner/command fields, TNT-minecart explosion
-  power/speed-factor fields, or entity-specific age and equipment projection
-  before it can be emitted.
+  non-default furnace minecart push/fuel fields, minecart subclass
+  spawner/command fields, TNT-minecart explosion power/speed-factor fields,
+  or entity-specific age and equipment projection before it can be emitted.
 - Cover the full vanilla profiler section set, and add the profiling metrics
   recorder/output.
 - Finish `DebugOptionsScreen` narration, focus, and widget styling.

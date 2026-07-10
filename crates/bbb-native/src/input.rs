@@ -24,7 +24,8 @@ use bbb_protocol::{
         VANILLA_ENTITY_TYPE_END_CRYSTAL_ID, VANILLA_ENTITY_TYPE_EVOKER_FANGS_ID,
         VANILLA_ENTITY_TYPE_EVOKER_ID, VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID,
         VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID, VANILLA_ENTITY_TYPE_FIREBALL_ID,
-        VANILLA_ENTITY_TYPE_FOX_ID, VANILLA_ENTITY_TYPE_FROG_ID, VANILLA_ENTITY_TYPE_GHAST_ID,
+        VANILLA_ENTITY_TYPE_FOX_ID, VANILLA_ENTITY_TYPE_FROG_ID,
+        VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID, VANILLA_ENTITY_TYPE_GHAST_ID,
         VANILLA_ENTITY_TYPE_GIANT_ID, VANILLA_ENTITY_TYPE_GLOW_SQUID_ID,
         VANILLA_ENTITY_TYPE_GOAT_ID, VANILLA_ENTITY_TYPE_GUARDIAN_ID,
         VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID, VANILLA_ENTITY_TYPE_HOGLIN_ID,
@@ -253,6 +254,8 @@ const MINECART_DISPLAY_OFFSET_DATA_ID: u8 = 12;
 const MINECART_DEFAULT_DISPLAY_OFFSET: i32 = 6;
 const MINECART_DEFAULT_FLIPPED_ROTATION: bool = false;
 const MINECART_DEFAULT_HAS_TICKED: bool = false;
+const FURNACE_MINECART_DEFAULT_PUSH: f64 = 0.0;
+const FURNACE_MINECART_DEFAULT_FUEL: i16 = 0;
 const TNT_MINECART_DEFAULT_FUSE: i32 = -1;
 const PRIMED_TNT_FUSE_DATA_ID: u8 = 8;
 const PRIMED_TNT_DEFAULT_FUSE: i16 = 80;
@@ -4053,6 +4056,10 @@ fn debug_push_entity_additional_save_data(
         VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID => {
             debug_push_falling_block_additional_save_data(world, entity, fields);
         }
+        VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID => {
+            debug_push_minecart_additional_save_data(world, entity, fields);
+            debug_push_furnace_minecart_additional_save_data(fields);
+        }
         VANILLA_ENTITY_TYPE_TNT_MINECART_ID => {
             debug_push_minecart_additional_save_data(world, entity, fields);
             debug_push_tnt_minecart_additional_save_data(entity, fields);
@@ -4455,6 +4462,14 @@ fn debug_push_minecart_additional_save_data(
         "HasTicked: {}",
         debug_snbt_bool(MINECART_DEFAULT_HAS_TICKED)
     ));
+}
+
+fn debug_push_furnace_minecart_additional_save_data(fields: &mut Vec<String>) {
+    let push = debug_snbt_double(FURNACE_MINECART_DEFAULT_PUSH)
+        .expect("finite furnace minecart default push");
+    fields.push(format!("PushX: {push}"));
+    fields.push(format!("PushZ: {push}"));
+    fields.push(format!("Fuel: {FURNACE_MINECART_DEFAULT_FUEL}s"));
 }
 
 fn debug_push_tnt_minecart_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
