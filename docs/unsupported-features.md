@@ -226,8 +226,10 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   `addAdditionalSaveData` entity families whose saved state still needs
   non-equine specialized parent-chain classification, remaining owner/target/reference
   projection, remaining delayed/fence-knot leash projection, non-default private
-  projectile flags such as
-  `ThrownTrident.dealtDamage`, non-default private or otherwise unobserved
+  projectile state such as the entity-hit mutation of
+  `ThrownTrident.dealtDamage` (the synced in-ground `inGroundTime > 4` client
+  tick path is covered; the hit path waits on full projectile collision),
+  non-default private or otherwise unobserved
   scalar/flag/timer/counter projection (including non-default `FallingBlockEntity`
   time/drop/hurt/cancel-drop fields and minecart flipped/has-ticked state),
   remaining registry-backed

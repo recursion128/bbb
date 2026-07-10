@@ -8470,3 +8470,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   `explosion_power`、写 `ItemDropChance: 1.0f` / `Fixed: 0b`、写 `Duration: 200`。现有 F3+I
   输出已与该唯一 client state 一致，代码注释固化 ownership，三个“非默认投影”从实现队列
   转入 not-needed，只有协议未来新增同步时才重开。
+
+## 2026-07-10：F3+I trident in-ground dealt-damage lifecycle
+
+- [x] 三叉戟落地 `dealtDamage` 客户端生命周期（P2 world + native input）：依据 vanilla
+  26.1 `ThrownTrident.tick` / `onHitEntity` 与 `AbstractArrow.tick`，projectile lifecycle
+  现在保留 private `inGroundTime` / `dealtDamage`，按原版子类先检查旧计数、父类随后根据
+  synced `IN_GROUND` 与 `FLAG_NOPHYSICS` 累计或清零的顺序推进；因此连续落地第 5 tick
+  仍输出 `DealtDamage: 0b`，第 6 tick 精确翻转为 sticky `1b`，离地 tick 也会先消费旧的
+  计数。F3+I 已改读 canonical lifecycle，focused world/native tests 覆盖第 5/6 tick
+  边界、离地调用顺序、no-physics gate 与 clipboard SNBT。`onHitEntity` 的另一条客户端
+  置位路径依赖尚未实现的完整 projectile motion/collision，继续留在 feature ledger。

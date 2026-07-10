@@ -381,18 +381,27 @@ fn bool_is_false(value: &bool) -> bool {
     !*value
 }
 
+fn u32_is_zero(value: &u32) -> bool {
+    *value == 0
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct HurtingProjectileState {
     pub acceleration_power: f64,
 }
 
-/// Client-owned state from vanilla `Projectile`: the spawn-resolved owner
-/// reference and the two sticky/ticked fields written by `saveWithoutId`.
+/// Client-owned state from vanilla `Projectile` and its saveable subclasses.
+/// Besides the spawn-resolved parent fields, this retains the private trident
+/// tick state needed to reproduce `ThrownTrident.addAdditionalSaveData`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ProjectileLifecycleState {
     pub owner_uuid: Option<Uuid>,
     pub left_owner: bool,
     pub has_been_shot: bool,
+    #[serde(default, skip_serializing_if = "u32_is_zero")]
+    pub trident_in_ground_time: u32,
+    #[serde(default, skip_serializing_if = "bool_is_false")]
+    pub trident_dealt_damage: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]

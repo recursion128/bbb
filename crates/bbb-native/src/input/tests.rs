@@ -9072,6 +9072,26 @@ fn shift_f3_i_with_permission_copies_local_trident_save_nbt_to_clipboard() {
         messages[0].content,
         "[Debug]: Copied client-side entity data to clipboard"
     );
+
+    assert!(world.apply_set_entity_data(ProtocolSetEntityData {
+        id: 60,
+        values: vec![ProtocolEntityDataValue {
+            data_id: ABSTRACT_ARROW_IN_GROUND_DATA_ID,
+            serializer_id: 8,
+            value: EntityDataValueKind::Boolean(true),
+        }],
+    }));
+    world.advance_entity_client_animations(5);
+    let command = debug_copy_recreate_entity_command(&world, None, 60, true)
+        .expect("trident recreate command")
+        .command;
+    assert!(command.ends_with("inGround: 1b, pickup: 0b, damage: 2.0d, crit: 1b, PierceLevel: 4b, SoundEvent: \"minecraft:item.trident.hit_ground\", DealtDamage: 0b}"));
+
+    world.advance_entity_client_animations(1);
+    let command = debug_copy_recreate_entity_command(&world, None, 60, true)
+        .expect("trident recreate command after sixth in-ground tick")
+        .command;
+    assert!(command.ends_with("inGround: 1b, pickup: 0b, damage: 2.0d, crit: 1b, PierceLevel: 4b, SoundEvent: \"minecraft:item.trident.hit_ground\", DealtDamage: 1b}"));
 }
 
 #[test]

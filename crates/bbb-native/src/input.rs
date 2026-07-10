@@ -4185,7 +4185,7 @@ fn debug_push_entity_additional_save_data(
                 fields,
                 TRIDENT_DEFAULT_SOUND_EVENT,
             );
-            debug_push_trident_additional_save_data(fields);
+            debug_push_trident_additional_save_data(entity, fields);
         }
         VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID => {
             debug_push_projectile_additional_save_data(entity, fields);
@@ -4513,11 +4513,12 @@ fn debug_push_spectral_arrow_additional_save_data(fields: &mut Vec<String>) {
     fields.push(format!("Duration: {SPECTRAL_ARROW_DEFAULT_DURATION}"));
 }
 
-fn debug_push_trident_additional_save_data(fields: &mut Vec<String>) {
-    fields.push(format!(
-        "DealtDamage: {}",
-        debug_snbt_bool(TRIDENT_DEFAULT_DEALT_DAMAGE)
-    ));
+fn debug_push_trident_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
+    let dealt_damage = entity
+        .projectile_lifecycle
+        .map(|projectile| projectile.trident_dealt_damage)
+        .unwrap_or(TRIDENT_DEFAULT_DEALT_DAMAGE);
+    fields.push(format!("DealtDamage: {}", debug_snbt_bool(dealt_damage)));
 }
 
 fn debug_push_abstract_hurting_projectile_additional_save_data(

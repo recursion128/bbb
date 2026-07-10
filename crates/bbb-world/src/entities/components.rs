@@ -106,6 +106,8 @@ pub(crate) struct EntityProjectileLifecycle {
     pub(crate) owner_uuid: Option<Uuid>,
     pub(crate) left_owner: bool,
     pub(crate) has_been_shot: bool,
+    pub(crate) trident_in_ground_time: u32,
+    pub(crate) trident_dealt_damage: bool,
 }
 
 impl From<&EntityState> for EntityIdentity {
@@ -365,6 +367,8 @@ impl From<ProjectileLifecycleState> for EntityProjectileLifecycle {
             owner_uuid: state.owner_uuid,
             left_owner: state.left_owner,
             has_been_shot: state.has_been_shot,
+            trident_in_ground_time: state.trident_in_ground_time,
+            trident_dealt_damage: state.trident_dealt_damage,
         }
     }
 }
@@ -375,6 +379,8 @@ impl From<EntityProjectileLifecycle> for ProjectileLifecycleState {
             owner_uuid: projectile.owner_uuid,
             left_owner: projectile.left_owner,
             has_been_shot: projectile.has_been_shot,
+            trident_in_ground_time: projectile.trident_in_ground_time,
+            trident_dealt_damage: projectile.trident_dealt_damage,
         }
     }
 }

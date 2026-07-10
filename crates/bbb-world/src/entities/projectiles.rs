@@ -33,6 +33,10 @@ const DEFAULT_WIND_CHARGE_ACCELERATION_POWER: f64 = 0.0;
 /// inside its owner's collision graph.
 const ARMOR_STAND_CLIENT_FLAGS_DATA_ID: u8 = 15;
 const ARMOR_STAND_MARKER_FLAG: i8 = 0x10;
+/// Vanilla 26.1 `AbstractArrow` metadata ids and the `FLAG_NOPHYSICS` bit.
+const ABSTRACT_ARROW_FLAGS_DATA_ID: u8 = 8;
+const ABSTRACT_ARROW_IN_GROUND_DATA_ID: u8 = 10;
+const ABSTRACT_ARROW_FLAG_NO_PHYSICS: i8 = 0x02;
 
 #[derive(Debug, Clone, Copy)]
 struct EntityAabb {
@@ -129,6 +133,8 @@ pub(crate) fn entity_projectile_lifecycle_from_state(
             owner_uuid: spawn_owner_uuid,
             left_owner: false,
             has_been_shot: false,
+            trident_in_ground_time: 0,
+            trident_dealt_damage: false,
         },
     )))
 }
@@ -202,6 +208,7 @@ impl EntityStore {
         }
         let outside_owner_by_id =
             self.projectile_outside_owner_collision_by_id(spectator_player_uuids);
+        let trident_counts_in_ground_by_id = self.trident_counts_in_ground_by_id();
         for (_, (identity, projectile)) in self
             .ecs
             .query_mut::<(&EntityIdentity, &mut EntityProjectileLifecycle)>()
@@ -213,7 +220,38 @@ impl EntityStore {
                     .copied()
                     .unwrap_or(true);
             }
+            if identity.entity_type_id == VANILLA_ENTITY_TYPE_TRIDENT_ID {
+                advance_trident_lifecycle(
+                    projectile,
+                    ticks,
+                    trident_counts_in_ground_by_id
+                        .get(&identity.id)
+                        .copied()
+                        .unwrap_or(false),
+                );
+            }
         }
+    }
+
+    /// `AbstractArrow.tick` increments `inGroundTime` only while the synced
+    /// in-ground flag is set and the synced no-physics flag is clear.
+    fn trident_counts_in_ground_by_id(&self) -> HashMap<i32, bool> {
+        self.order
+            .iter()
+            .filter_map(|id| {
+                let entity = self.by_protocol_id.get(id).copied()?;
+                let identity = self.ecs.get::<&EntityIdentity>(entity).ok()?;
+                if identity.entity_type_id != VANILLA_ENTITY_TYPE_TRIDENT_ID {
+                    return None;
+                }
+                let in_ground =
+                    self.metadata_bool_for_entity(*id, ABSTRACT_ARROW_IN_GROUND_DATA_ID, false)?;
+                let physics_enabled = self.metadata_byte(*id, ABSTRACT_ARROW_FLAGS_DATA_ID, 0)?
+                    & ABSTRACT_ARROW_FLAG_NO_PHYSICS
+                    == 0;
+                Some((*id, in_ground && physics_enabled))
+            })
+            .collect()
     }
 
     fn projectile_outside_owner_collision_by_id(
@@ -380,6 +418,33 @@ impl EntityStore {
     }
 }
 
+/// Advances the private fields in vanilla call order: `ThrownTrident.tick`
+/// checks the previous `inGroundTime` before `AbstractArrow.tick` increments or
+/// resets it. The closed form preserves that order without looping large tick
+/// batches.
+fn advance_trident_lifecycle(
+    projectile: &mut EntityProjectileLifecycle,
+    ticks: u32,
+    counts_in_ground: bool,
+) {
+    debug_assert!(ticks > 0);
+    let last_checked_in_ground_time = if counts_in_ground {
+        projectile
+            .trident_in_ground_time
+            .saturating_add(ticks.saturating_sub(1))
+    } else {
+        projectile.trident_in_ground_time
+    };
+    if last_checked_in_ground_time > 4 {
+        projectile.trident_dealt_damage = true;
+    }
+    projectile.trident_in_ground_time = if counts_in_ground {
+        projectile.trident_in_ground_time.saturating_add(ticks)
+    } else {
+        0
+    };
+}
+
 fn is_vanilla_hurting_projectile_type(entity_type_id: i32) -> bool {
     matches!(
         entity_type_id,
@@ -405,9 +470,10 @@ mod tests {
     use crate::WorldStore;
     use bbb_protocol::entity_types::{VANILLA_ENTITY_TYPE_COW_ID, VANILLA_ENTITY_TYPE_OAK_BOAT_ID};
     use bbb_protocol::packets::{
-        AddEntity as ProtocolAddEntity, EntityPositionSync as ProtocolEntityPositionSync,
-        RemoveEntities as ProtocolRemoveEntities, SetPassengers as ProtocolSetPassengers,
-        Vec3d as ProtocolVec3d,
+        AddEntity as ProtocolAddEntity, EntityDataValue as ProtocolEntityDataValue,
+        EntityDataValueKind, EntityPositionSync as ProtocolEntityPositionSync,
+        RemoveEntities as ProtocolRemoveEntities, SetEntityData as ProtocolSetEntityData,
+        SetPassengers as ProtocolSetPassengers, Vec3d as ProtocolVec3d,
     };
     use uuid::Uuid;
 
@@ -528,6 +594,8 @@ mod tests {
                 owner_uuid: Some(Uuid::from_u128(10)),
                 left_owner: false,
                 has_been_shot: false,
+                trident_in_ground_time: 0,
+                trident_dealt_damage: false,
             })
         );
         store.advance_entity_client_animations(1);
@@ -537,6 +605,8 @@ mod tests {
                 owner_uuid: Some(Uuid::from_u128(10)),
                 left_owner: false,
                 has_been_shot: true,
+                trident_in_ground_time: 0,
+                trident_dealt_damage: false,
             })
         );
 
@@ -605,6 +675,8 @@ mod tests {
                 owner_uuid: Some(Uuid::from_u128(10)),
                 left_owner: true,
                 has_been_shot: true,
+                trident_in_ground_time: 0,
+                trident_dealt_damage: false,
             })
         );
     }
@@ -631,6 +703,8 @@ mod tests {
                 owner_uuid: None,
                 left_owner: false,
                 has_been_shot: false,
+                trident_in_ground_time: 0,
+                trident_dealt_damage: false,
             })
         );
         store.advance_entity_client_animations(1);
@@ -640,8 +714,81 @@ mod tests {
                 owner_uuid: None,
                 left_owner: true,
                 has_been_shot: true,
+                trident_in_ground_time: 0,
+                trident_dealt_damage: false,
             })
         );
+    }
+
+    #[test]
+    fn trident_dealt_damage_uses_previous_in_ground_time_and_physics_flag() {
+        let mut store = WorldStore::new();
+        store.apply_add_entity(protocol_add_entity_with_type(
+            30,
+            VANILLA_ENTITY_TYPE_TRIDENT_ID,
+        ));
+        store.apply_add_entity(protocol_add_entity_with_type(
+            31,
+            VANILLA_ENTITY_TYPE_TRIDENT_ID,
+        ));
+        assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+            id: 30,
+            values: vec![ProtocolEntityDataValue {
+                data_id: ABSTRACT_ARROW_IN_GROUND_DATA_ID,
+                serializer_id: 8,
+                value: EntityDataValueKind::Boolean(true),
+            }],
+        }));
+        assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+            id: 31,
+            values: vec![
+                ProtocolEntityDataValue {
+                    data_id: ABSTRACT_ARROW_FLAGS_DATA_ID,
+                    serializer_id: 0,
+                    value: EntityDataValueKind::Byte(ABSTRACT_ARROW_FLAG_NO_PHYSICS),
+                },
+                ProtocolEntityDataValue {
+                    data_id: ABSTRACT_ARROW_IN_GROUND_DATA_ID,
+                    serializer_id: 8,
+                    value: EntityDataValueKind::Boolean(true),
+                },
+            ],
+        }));
+
+        store.advance_entity_client_animations(5);
+        let grounded = store
+            .probe_entity(30)
+            .unwrap()
+            .projectile_lifecycle
+            .unwrap();
+        assert_eq!(grounded.trident_in_ground_time, 5);
+        assert!(!grounded.trident_dealt_damage);
+        let no_physics = store
+            .probe_entity(31)
+            .unwrap()
+            .projectile_lifecycle
+            .unwrap();
+        assert_eq!(no_physics.trident_in_ground_time, 0);
+        assert!(!no_physics.trident_dealt_damage);
+
+        // ThrownTrident checks the old value (5) before AbstractArrow observes
+        // this metadata transition and resets the counter.
+        assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+            id: 30,
+            values: vec![ProtocolEntityDataValue {
+                data_id: ABSTRACT_ARROW_IN_GROUND_DATA_ID,
+                serializer_id: 8,
+                value: EntityDataValueKind::Boolean(false),
+            }],
+        }));
+        store.advance_entity_client_animations(1);
+        let released = store
+            .probe_entity(30)
+            .unwrap()
+            .projectile_lifecycle
+            .unwrap();
+        assert_eq!(released.trident_in_ground_time, 0);
+        assert!(released.trident_dealt_damage);
     }
 
     fn protocol_add_entity_with_type(id: i32, entity_type_id: i32) -> ProtocolAddEntity {
