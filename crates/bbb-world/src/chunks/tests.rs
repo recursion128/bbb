@@ -260,6 +260,18 @@ fn debug_sky_light_section_status_tracks_data_and_neighbor_sections() {
     assert_eq!(store.debug_sky_light_section_status([2, 0, -3]), "0");
     assert_eq!(store.debug_sky_light_section_status([1, 0, -3]), "1");
     assert_eq!(store.debug_sky_light_section_status([0, 0, -3]), "2");
+    assert_eq!(
+        store.debug_sky_light_section_occupancy([2, 0, -3]),
+        [true, true]
+    );
+    assert_eq!(
+        store.debug_sky_light_section_occupancy([1, 0, -3]),
+        [false, true]
+    );
+    assert_eq!(
+        store.debug_sky_light_section_occupancy([0, 0, -3]),
+        [false, false]
+    );
 }
 
 #[test]

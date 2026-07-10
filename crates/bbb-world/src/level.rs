@@ -1595,6 +1595,10 @@ mod tests {
         assert!(!nether.level_info().unwrap().has_sky_light());
         assert_eq!(nether.debug_sky_light_section_status([0, 0, 0]), "n/a");
         assert_eq!(
+            nether.debug_sky_light_section_occupancy([0, 0, 0]),
+            [false, false]
+        );
+        assert_eq!(
             nether.level_info().unwrap().cardinal_lighting(),
             WorldCardinalLighting::Nether
         );

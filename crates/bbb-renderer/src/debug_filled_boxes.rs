@@ -23,6 +23,17 @@ pub struct DebugFilledRect {
     pub color: [u8; 4],
 }
 
+/// Vanilla `Direction` order used by `RectGizmo.fromCuboidFace` consumers.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum DebugCuboidFace {
+    West,
+    South,
+    East,
+    North,
+    Down,
+    Up,
+}
+
 impl DebugFilledBox {
     /// Normalizes reversed bounds and rejects non-finite or zero-volume boxes.
     pub fn sanitized(self) -> Option<Self> {
@@ -46,6 +57,26 @@ impl DebugFilledBox {
 }
 
 impl DebugFilledRect {
+    /// Exact `RectGizmo.fromCuboidFace` corner winding.
+    pub fn cuboid_face(
+        min: [f32; 3],
+        max: [f32; 3],
+        face: DebugCuboidFace,
+        color: [u8; 4],
+    ) -> Self {
+        let [x0, y0, z0] = min;
+        let [x1, y1, z1] = max;
+        let corners = match face {
+            DebugCuboidFace::West => [[x0, y0, z0], [x0, y0, z1], [x0, y1, z1], [x0, y1, z0]],
+            DebugCuboidFace::South => [[x0, y0, z1], [x1, y0, z1], [x1, y1, z1], [x0, y1, z1]],
+            DebugCuboidFace::East => [[x1, y0, z0], [x1, y1, z0], [x1, y1, z1], [x1, y0, z1]],
+            DebugCuboidFace::North => [[x0, y0, z0], [x0, y1, z0], [x1, y1, z0], [x1, y0, z0]],
+            DebugCuboidFace::Down => [[x0, y0, z0], [x1, y0, z0], [x1, y0, z1], [x0, y0, z1]],
+            DebugCuboidFace::Up => [[x0, y1, z0], [x0, y1, z1], [x1, y1, z1], [x1, y1, z0]],
+        };
+        Self { corners, color }
+    }
+
     pub fn sanitized(self) -> Option<Self> {
         if !self.corners.iter().flatten().all(|value| value.is_finite()) {
             return None;
@@ -302,15 +333,21 @@ mod tests {
 
     #[test]
     fn debug_filled_rect_sanitize_and_mesh_preserve_vanilla_quad_winding() {
-        let rect = DebugFilledRect {
-            corners: [
+        let rect = DebugFilledRect::cuboid_face(
+            [0.0, 0.0, -1.0],
+            [1.0, 1.0, 0.0],
+            DebugCuboidFace::South,
+            [1, 2, 3, 4],
+        );
+        assert_eq!(
+            rect.corners,
+            [
                 [0.0, 0.0, 0.0],
                 [1.0, 0.0, 0.0],
                 [1.0, 1.0, 0.0],
                 [0.0, 1.0, 0.0],
-            ],
-            color: [1, 2, 3, 4],
-        };
+            ]
+        );
         assert_eq!(rect.sanitized(), Some(rect));
         assert_eq!(
             DebugFilledRect {

@@ -193,7 +193,6 @@ Environment:
 
 Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
 
-- Render the remaining off-by-default `visualize_sky_light_sections` debug entry.
 - `chunk_section_paths`, `chunk_section_octree`, and
   `chunk_section_visibility` are `deferred` until the renderer retains
   per-section residency plus a repo-native `SectionOcclusionGraph`/octree and

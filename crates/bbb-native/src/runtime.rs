@@ -27,7 +27,7 @@ use bbb_protocol::{
 };
 use bbb_renderer::{
     sign_text_base_color, BlockDestroyOverlay, CameraPose, ClearColor, CloudEnvironment,
-    CloudFrame, DebugFilledBox, DebugFilledRect, DebugLine, DebugTextBillboard,
+    CloudFrame, DebugCuboidFace, DebugFilledBox, DebugFilledRect, DebugLine, DebugTextBillboard,
     EntityModelInstance, FogEnvironment, GuiItemLightingEntry, HudAdvancementBackgroundTexture,
     HudAdvancementHoverBoxSprite, HudAdvancementLineTexture, HudAdvancementTabSprite,
     HudAdvancementWidgetFrameSprite, HudAirSupply, HudBlockItemModel, HudDebugCrosshair,
@@ -155,9 +155,12 @@ use crate::{
 use bbb_protocol::entity_types::*;
 
 mod control_requests;
+mod debug_light_sections;
 mod render_extract;
 pub(crate) use render_extract::*;
 mod events;
+
+pub(crate) use debug_light_sections::DebugSkyLightSectionCache;
 
 const CLIENT_ENTITY_ANIMATION_TICK_INTERVAL: Duration = Duration::from_millis(50);
 const VANILLA_OVERWORLD_AMBIENT_LIGHT_COLOR: [f32; 3] = rgb24(-16_119_286);
@@ -1905,6 +1908,7 @@ pub(crate) fn pump_network_and_terrain(
     hud_debug_tps_sampler: &mut HudDebugTpsSampler,
     debug_collision_cache: &mut DebugCollisionCache,
     debug_supporting_block_cache: &mut DebugSupportingBlockCache,
+    debug_sky_light_section_cache: &mut DebugSkyLightSectionCache,
     lightmap_ticks: &mut LightmapTickState,
     level_event_sound_random: &mut LevelEventSoundRandomState,
     terrain_upload: &mut TerrainUploadState,
@@ -2519,11 +2523,15 @@ pub(crate) fn pump_network_and_terrain(
     let debug_water_samples = debug_water_samples(input, world);
     let mut debug_filled_boxes = debug_water_boxes(&debug_water_samples);
     debug_filled_boxes.extend(debug_heightmap_boxes(input, world, camera_pose));
-    let debug_filled_rects = debug_solid_face_rects(input, world, camera_pose);
+    let mut debug_filled_rects = debug_solid_face_rects(input, world, camera_pose);
     let mut debug_text_billboards = debug_water_amount_billboards(&debug_water_samples);
     debug_text_billboards.extend(debug_light_level_billboards(input, world, camera_pose));
     let mut debug_lines = debug_collision_cache.lines(input, world, now);
     debug_lines.extend(debug_supporting_block_cache.lines(input, world, now));
+    let (debug_sky_light_section_rects, debug_sky_light_section_lines) =
+        debug_sky_light_section_cache.gizmos(input, world, now);
+    debug_filled_rects.extend(debug_sky_light_section_rects);
+    debug_lines.extend(debug_sky_light_section_lines);
     // Vanilla `LevelRenderer.extractBlockDestroyAnimation` reads block-breaking state during
     // render extract, after the client tick; local destroy overlay ticks are advanced above.
     let block_destroy_overlays = block_destroy_overlays_from_world(world, terrain_textures);
@@ -4275,6 +4283,14 @@ fn debug_light_level_billboards(
 const DEBUG_SOLID_FACE_SCAN_RADIUS: i32 = 6;
 const DEBUG_SOLID_FACE_INFLATE: f32 = 0.002;
 const DEBUG_SOLID_FACE_COLOR: [u8; 4] = [255, 0, 0, 128];
+const DEBUG_SOLID_FACE_DIRECTIONS: [DebugCuboidFace; 6] = [
+    DebugCuboidFace::West,
+    DebugCuboidFace::South,
+    DebugCuboidFace::East,
+    DebugCuboidFace::North,
+    DebugCuboidFace::Down,
+    DebugCuboidFace::Up,
+];
 
 fn debug_solid_face_rects(
     input: &ClientInputState,
@@ -4346,9 +4362,15 @@ fn debug_solid_face_rects(
                         y as f32 + outline_max[1] as f32 + DEBUG_SOLID_FACE_INFLATE,
                         z as f32 + outline_max[2] as f32 + DEBUG_SOLID_FACE_INFLATE,
                     ];
-                    for (direction_index, sturdy) in sturdy_faces.into_iter().enumerate() {
+                    for (face, sturdy) in DEBUG_SOLID_FACE_DIRECTIONS.into_iter().zip(sturdy_faces)
+                    {
                         if sturdy {
-                            rects.push(debug_solid_face_rect(min, max, direction_index));
+                            rects.push(DebugFilledRect::cuboid_face(
+                                min,
+                                max,
+                                face,
+                                DEBUG_SOLID_FACE_COLOR,
+                            ));
                         }
                     }
                 }
@@ -4356,26 +4378,6 @@ fn debug_solid_face_rects(
         }
     }
     rects
-}
-
-/// `RectGizmo.fromCuboidFace` corner winding in vanilla direction order:
-/// west, south, east, north, down, up.
-fn debug_solid_face_rect(min: [f32; 3], max: [f32; 3], direction: usize) -> DebugFilledRect {
-    let [x0, y0, z0] = min;
-    let [x1, y1, z1] = max;
-    let corners = match direction {
-        0 => [[x0, y0, z0], [x0, y0, z1], [x0, y1, z1], [x0, y1, z0]],
-        1 => [[x0, y0, z1], [x1, y0, z1], [x1, y1, z1], [x0, y1, z1]],
-        2 => [[x1, y0, z0], [x1, y1, z0], [x1, y1, z1], [x1, y0, z1]],
-        3 => [[x0, y0, z0], [x0, y1, z0], [x1, y1, z0], [x1, y0, z0]],
-        4 => [[x0, y0, z0], [x1, y0, z0], [x1, y0, z1], [x0, y0, z1]],
-        5 => [[x0, y1, z0], [x0, y1, z1], [x1, y1, z1], [x1, y1, z0]],
-        _ => unreachable!("solid face direction index is bounded by the six sturdy flags"),
-    };
-    DebugFilledRect {
-        corners,
-        color: DEBUG_SOLID_FACE_COLOR,
-    }
 }
 
 const DEBUG_COLLISION_QUERY_RADIUS: f64 = 6.0;

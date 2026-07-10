@@ -8292,3 +8292,20 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   下 data 被置空且不发出任何 billboard。bbb 是外部 native client，crate/runtime 中没有
   integrated server 或 server chunk-cache owner，因此空 renderer 已与当前边界的 vanilla
   行为一致；账本保留以“新增进程内 integrated server boundary”为重启条件。
+
+## 2026-07-10：Sky-light section debug volume
+
+- [x] `visualize_sky_light_sections`（P2 world/native/renderer）：依据 vanilla
+  26.1 `LightSectionDebugRenderer`、`LayerLightSectionStorage.SectionState` 与
+  `DiscreteVoxelShape`，world 将 sky section 投影为 LIGHT_AND_DATA / LIGHT_ONLY /
+  EMPTY，占用判定复用已有 non-empty section 与 26-neighbour source；无 sky light engine
+  的 dimension 返回 EMPTY。native 新建 `runtime/debug_light_sections.rs` 语义 owner，以
+  local-player block section（不随 active camera）为中心缓存 21³ volume，首次立即构建，
+  此后仅在严格超过 500 ms 时刷新；23³ padded data pass 一次派生边界 LIGHT_ONLY 状态。
+  volume 严格转写 `forAllEdges(..., true)` 的三轴连续 edge merge 与 `forAllFaces` 的三轴
+  boundary-cell 顺序，先提交 LIGHT_AND_DATA、再提交完整 LIGHT shape；edge 使用原版 3px
+  opaque `[255,255,0]` / `[63,31,0]`，face 使用 alpha 63 / 31，并复用通用
+  `DebugFilledRect::cuboid_face` 绕序、全局透明 quad sort 与 `RendererFrame` 单次提交。
+  focused tests 覆盖 single/adjacent voxel edge/face 拓扑、section 类型/no-sky、单 data
+  section 的 6+54 faces / 12+12 edges、颜色/线宽、恰好 500 ms 不刷新、+1ns 刷新、entry
+  gate 与 frame ordering；账本已无普通 off-by-default debug entry todo。

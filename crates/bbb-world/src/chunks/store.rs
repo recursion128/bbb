@@ -524,8 +524,25 @@ impl WorldStore {
         {
             return "n/a";
         }
-        if self.debug_light_section_has_data(section) {
-            return "0";
+        match self.debug_sky_light_section_occupancy(section) {
+            [true, true] => "0",
+            [false, true] => "1",
+            _ => "2",
+        }
+    }
+
+    /// `LayerLightSectionStorage.SectionType` projected as
+    /// `[LIGHT_AND_DATA, LIGHT]` for `LightSectionDebugRenderer`. A dimension
+    /// without a sky light engine returns `EMPTY` (`[false, false]`).
+    pub fn debug_sky_light_section_occupancy(&self, section: [i32; 3]) -> [bool; 2] {
+        if self
+            .level_info()
+            .is_some_and(|level| !level.has_sky_light())
+        {
+            return [false, false];
+        }
+        if self.debug_sky_light_section_has_data(section) {
+            return [true, true];
         }
         for offset_z in -1..=1 {
             for offset_y in -1..=1 {
@@ -533,20 +550,29 @@ impl WorldStore {
                     if (offset_x, offset_y, offset_z) == (0, 0, 0) {
                         continue;
                     }
-                    if self.debug_light_section_has_data([
+                    if self.debug_sky_light_section_has_data([
                         section[0].saturating_add(offset_x),
                         section[1].saturating_add(offset_y),
                         section[2].saturating_add(offset_z),
                     ]) {
-                        return "1";
+                        return [false, true];
                     }
                 }
             }
         }
-        "2"
+        [false, false]
     }
 
-    fn debug_light_section_has_data(&self, section: [i32; 3]) -> bool {
+    /// Whether the sky `LayerLightSectionStorage.SectionState` carries the
+    /// `HAS_DATA_BIT` for this section. Exposed separately so volume consumers
+    /// can derive all 26-neighbour LIGHT_ONLY states in one bounded pass.
+    pub fn debug_sky_light_section_has_data(&self, section: [i32; 3]) -> bool {
+        if self
+            .level_info()
+            .is_some_and(|level| !level.has_sky_light())
+        {
+            return false;
+        }
         let Some(section_index) = section[1]
             .checked_sub(self.dimension.min_section_y())
             .and_then(|index| usize::try_from(index).ok())

@@ -3630,6 +3630,102 @@ fn debug_solid_face_rects_match_vanilla_scan_faces_inflate_and_gates() {
 }
 
 #[test]
+fn debug_sky_light_sections_match_vanilla_shapes_colors_and_refresh_cache() {
+    assert_eq!(debug_light_sections::RADIUS, 10);
+    assert_eq!(
+        debug_light_sections::REFRESH_INTERVAL,
+        Duration::from_millis(500)
+    );
+    assert_eq!(
+        debug_light_sections::LIGHT_AND_BLOCKS_FACE_COLOR,
+        [255, 255, 0, 63]
+    );
+    assert_eq!(debug_light_sections::LIGHT_ONLY_FACE_COLOR, [63, 31, 0, 31]);
+
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    world.set_local_player_pose(local_player_pose([0.5, 0.0, 0.5], 0.0, 0.0));
+    world.insert_decoded_chunk(empty_lightmap_test_chunk(world.dimension()));
+    let stone = world
+        .registries()
+        .block_state_id_by_name_and_properties("minecraft:stone", &BTreeMap::new())
+        .expect("vanilla stone state");
+    let air = world
+        .registries()
+        .block_state_id_by_name_and_properties("minecraft:air", &BTreeMap::new())
+        .expect("vanilla air state");
+    set_lightmap_test_block(&mut world, BlockPos { x: 0, y: 0, z: 0 }, stone);
+
+    let mut input = ClientInputState::new(true);
+    let mut cache = DebugSkyLightSectionCache::default();
+    let start = Instant::now();
+    assert_eq!(
+        cache.gizmos(&input, &world, start),
+        (Vec::new(), Vec::new())
+    );
+    input.set_debug_screen_entry_status(
+        DebugScreenEntryId::VisualizeSkyLightSections,
+        crate::debug_entries::DebugScreenEntryStatus::AlwaysOn,
+    );
+    let (rects, lines) = cache.gizmos(&input, &world, start);
+    // One LIGHT_AND_DATA voxel contributes 6 faces/12 edges. Its 26-neighbour
+    // LIGHT_ONLY shell makes the light shape a 3x3x3 cube: 54 boundary-cell
+    // faces and 12 merged outer edges.
+    assert_eq!(rects.len(), 60);
+    assert_eq!(lines.len(), 24);
+    assert!(rects[..6]
+        .iter()
+        .all(|rect| rect.color == debug_light_sections::LIGHT_AND_BLOCKS_FACE_COLOR));
+    assert!(rects[6..]
+        .iter()
+        .all(|rect| rect.color == debug_light_sections::LIGHT_ONLY_FACE_COLOR));
+    assert!(lines[..12]
+        .iter()
+        .all(|line| line.color == debug_light_sections::LIGHT_AND_BLOCKS_LINE_COLOR));
+    assert!(lines[12..]
+        .iter()
+        .all(|line| line.color == debug_light_sections::LIGHT_ONLY_LINE_COLOR));
+    assert!(lines
+        .iter()
+        .all(|line| line.width == debug_light_sections::LINE_WIDTH));
+
+    input.set_debug_screen_entry_status(
+        DebugScreenEntryId::VisualizeSkyLightSections,
+        crate::debug_entries::DebugScreenEntryStatus::Never,
+    );
+    assert_eq!(
+        cache.gizmos(&input, &world, start + Duration::from_millis(100)),
+        (Vec::new(), Vec::new())
+    );
+    input.set_debug_screen_entry_status(
+        DebugScreenEntryId::VisualizeSkyLightSections,
+        crate::debug_entries::DebugScreenEntryStatus::AlwaysOn,
+    );
+    let restarted_at = start + Duration::from_millis(100);
+    assert_eq!(
+        cache.gizmos(&input, &world, restarted_at),
+        (rects.clone(), lines.clone())
+    );
+
+    set_lightmap_test_block(&mut world, BlockPos { x: 0, y: 0, z: 0 }, air);
+    assert_eq!(
+        cache.gizmos(
+            &input,
+            &world,
+            restarted_at + debug_light_sections::REFRESH_INTERVAL
+        ),
+        (rects, lines)
+    );
+    assert_eq!(
+        cache.gizmos(
+            &input,
+            &world,
+            restarted_at + debug_light_sections::REFRESH_INTERVAL + Duration::from_nanos(1)
+        ),
+        (Vec::new(), Vec::new())
+    );
+}
+
+#[test]
 fn debug_collision_lines_project_vanilla_white_stroke_cuboids_and_gates() {
     assert_eq!(DEBUG_COLLISION_QUERY_RADIUS, 6.0);
     assert_eq!(DEBUG_COLLISION_COLOR, [255; 4]);
@@ -4368,7 +4464,7 @@ fn renderer_frame_commits_debug_gizmos_from_one_water_sample_snapshot() {
         .find("debug_filled_boxes.extend(debug_heightmap_boxes(input, world, camera_pose));")
         .expect("heightmap boxes should follow water boxes");
     let solid_faces = runtime_source
-        .find("let debug_filled_rects = debug_solid_face_rects(input, world, camera_pose);")
+        .find("let mut debug_filled_rects = debug_solid_face_rects(input, world, camera_pose);")
         .expect("pump should project solid-face rectangles");
     let text = runtime_source
         .find(
@@ -4384,6 +4480,15 @@ fn renderer_frame_commits_debug_gizmos_from_one_water_sample_snapshot() {
     let support_lines = runtime_source
         .find("debug_lines.extend(debug_supporting_block_cache.lines(input, world, now));")
         .expect("supporting-block lines should follow collision lines");
+    let sky_light_sections = runtime_source
+        .find("debug_sky_light_section_cache.gizmos(input, world, now);")
+        .expect("pump should read one cached sky-light-section snapshot");
+    let sky_light_rects = runtime_source
+        .find("debug_filled_rects.extend(debug_sky_light_section_rects);")
+        .expect("sky-light section faces should follow solid faces");
+    let sky_light_lines = runtime_source
+        .find("debug_lines.extend(debug_sky_light_section_lines);")
+        .expect("sky-light section edges should follow supporting-block lines");
     let frame = runtime_source
         .find("            debug_filled_boxes,\n")
         .expect("RendererFrame should carry debug filled boxes");
@@ -4396,7 +4501,10 @@ fn renderer_frame_commits_debug_gizmos_from_one_water_sample_snapshot() {
             && text < light_text
             && light_text < lines
             && lines < support_lines
-            && support_lines < frame
+            && support_lines < sky_light_sections
+            && sky_light_sections < sky_light_rects
+            && sky_light_rects < sky_light_lines
+            && sky_light_lines < frame
     );
 
     let frame_source = include_str!("render_extract.rs");
