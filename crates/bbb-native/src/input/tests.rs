@@ -8568,10 +8568,11 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
         EquipmentAssetCatalog::default(),
     );
     let patch = DataComponentPatchSummary {
-        added: 42,
+        added: 48,
         added_type_ids: vec![
             0, 1, 2, 3, 4, 5, 7, 10, 12, 17, 19, 21, 22, 23, 25, 26, 30, 31, 34, 35, 40, 43, 44,
-            45, 46, 49, 50, 52, 54, 63, 67, 68, 69, 70, 71, 73, 74, 75, 76, 88, 89, 90,
+            45, 46, 47, 49, 50, 52, 54, 57, 59, 63, 66, 67, 68, 69, 70, 71, 73, 74, 75, 76, 78, 79,
+            88, 89, 90,
         ],
         removed_type_ids: vec![6],
         custom_data: Some(NbtSummaryValue::Compound(vec![
@@ -8672,6 +8673,46 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
         dyed_color: Some(0x11_22_33),
         map_color: Some(0x44_55_66),
         map_id: Some(42),
+        codec_backed_nbt: BTreeMap::from([
+            (47, NbtSummaryValue::Compound(Vec::new())),
+            (
+                57,
+                NbtSummaryValue::Compound(vec![NbtSummaryEntry {
+                    name: "minecraft:stone".to_string(),
+                    value: NbtSummaryValue::String("facing".to_string()),
+                }]),
+            ),
+            (
+                59,
+                NbtSummaryValue::Compound(vec![NbtSummaryEntry {
+                    name: "Health".to_string(),
+                    value: NbtSummaryValue::Short(5),
+                }]),
+            ),
+            (
+                66,
+                NbtSummaryValue::List(vec![
+                    NbtSummaryValue::String("minecraft:bread".to_string()),
+                    NbtSummaryValue::String("minecraft:torch".to_string()),
+                ]),
+            ),
+            (78, NbtSummaryValue::Compound(Vec::new())),
+            (
+                79,
+                NbtSummaryValue::Compound(vec![
+                    NbtSummaryEntry {
+                        name: "loot_table".to_string(),
+                        value: NbtSummaryValue::String(
+                            "minecraft:chests/simple_dungeon".to_string(),
+                        ),
+                    },
+                    NbtSummaryEntry {
+                        name: "seed".to_string(),
+                        value: NbtSummaryValue::Long(9),
+                    },
+                ]),
+            ),
+        ]),
         charged_projectiles_items: vec![
             bbb_protocol::packets::ItemStackTemplateSummary {
                 item_id: 2,
@@ -8841,6 +8882,7 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
          \"minecraft:swing_animation\": {type: \"stab\", duration: 17}, \
          \"minecraft:dye\": \"red\", \"minecraft:dyed_color\": 1122867, \
          \"minecraft:map_color\": 4478310, \"minecraft:map_id\": 42, \
+         \"minecraft:map_decorations\": {}, \
          \"minecraft:charged_projectiles\": [{id: \"minecraft:arrow\", \
          components: {\"minecraft:use_effects\": {}}}, \
          {id: \"minecraft:firework_star\", count: 2, \
@@ -8851,7 +8893,10 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
          \"minecraft:potion_duration_scale\": 1.5f, \
          \"minecraft:writable_book_content\": {pages: [{raw: \"first\\npage\"}, \
          {raw: \"second raw\", filtered: \"second filtered\"}]}, \
+         \"minecraft:debug_stick_state\": {\"minecraft:stone\": \"facing\"}, \
+         \"minecraft:bucket_entity_data\": {Health: 5s}, \
          \"minecraft:ominous_bottle_amplifier\": 3, \
+         \"minecraft:recipes\": [\"minecraft:bread\", \"minecraft:torch\"], \
          \"minecraft:lodestone_tracker\": {target: {dimension: \"minecraft:overworld\", \
          pos: [I; 10, 64, -4]}, tracked: 0b}, \
          \"minecraft:firework_explosion\": {shape: \"burst\", colors: [7833753], \
@@ -8871,6 +8916,9 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
          \"minecraft:swing_animation\": {}}}}], \
          \"minecraft:block_state\": {facing: \"south\", \
          \"quoted key\": \"value with 'quote'\"}, \
+         \"minecraft:lock\": {}, \
+         \"minecraft:container_loot\": {loot_table: \
+         \"minecraft:chests/simple_dungeon\", seed: 9L}, \
          \"minecraft:tropical_fish/pattern\": \"stripey\", \
          \"minecraft:tropical_fish/base_color\": \"orange\", \
          \"minecraft:tropical_fish/pattern_color\": \"white\", \

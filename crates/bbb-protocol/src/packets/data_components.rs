@@ -43,6 +43,8 @@ pub struct DataComponentPatchSummary {
     #[serde(default)]
     pub custom_data: Option<NbtSummaryValue>,
     #[serde(default)]
+    pub codec_backed_nbt: BTreeMap<i32, NbtSummaryValue>,
+    #[serde(default)]
     pub max_stack_size: Option<i32>,
     #[serde(default)]
     pub max_damage: Option<i32>,
@@ -937,7 +939,14 @@ fn decode_typed_data_component_patch_summary(
             }
             79 => {
                 summary.container_loot = true;
-                skip_nbt_tag_from_decoder(decoder)?;
+                if let Some(value) = decode_nbt_summary_from_decoder(decoder)? {
+                    summary.codec_backed_nbt.insert(type_id, value);
+                }
+            }
+            47 | 57 | 59 | 66 | 78 => {
+                if let Some(value) = decode_nbt_summary_from_decoder(decoder)? {
+                    summary.codec_backed_nbt.insert(type_id, value);
+                }
             }
             77 => {
                 summary.bees_present = true;
@@ -2800,6 +2809,7 @@ mod tests {
                 note_block_sound: Some("minecraft:block.note_block.harp".to_string()),
                 ominous_bottle_amplifier: Some(3),
                 container_loot: true,
+                codec_backed_nbt: BTreeMap::from([(79, NbtSummaryValue::Compound(Vec::new()),)]),
                 ..DataComponentPatchSummary::default()
             }
         );
@@ -2836,6 +2846,77 @@ mod tests {
         );
         assert_eq!(normalize_dye_color_id(-1), 0);
         assert_eq!(normalize_dye_color_id(16), 0);
+        assert!(decoder.is_empty());
+    }
+
+    #[test]
+    fn decodes_codec_backed_nbt_component_values() {
+        let mut payload = Encoder::new();
+        payload.write_var_i32(5);
+        payload.write_var_i32(0);
+        payload.write_var_i32(47);
+        payload.write_bytes(&empty_nbt_compound_root());
+        payload.write_var_i32(57);
+        payload.write_bytes(&empty_nbt_compound_root());
+        payload.write_var_i32(59);
+        payload.write_bytes(&custom_data_nbt_root());
+        payload.write_var_i32(66);
+        payload.write_bytes(&nbt_string_list_root(&[
+            "minecraft:bread",
+            "minecraft:torch",
+        ]));
+        payload.write_var_i32(78);
+        payload.write_bytes(&empty_nbt_compound_root());
+
+        let payload = payload.into_inner();
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(
+            decode_data_component_patch_summary(&mut decoder).unwrap(),
+            DataComponentPatchSummary {
+                added: 5,
+                added_type_ids: vec![47, 57, 59, 66, 78],
+                codec_backed_nbt: BTreeMap::from([
+                    (47, NbtSummaryValue::Compound(Vec::new())),
+                    (57, NbtSummaryValue::Compound(Vec::new())),
+                    (
+                        59,
+                        NbtSummaryValue::Compound(vec![
+                            NbtSummaryEntry {
+                                name: "owner".to_string(),
+                                value: NbtSummaryValue::String("Alex".to_string()),
+                            },
+                            NbtSummaryEntry {
+                                name: "level".to_string(),
+                                value: NbtSummaryValue::Int(7),
+                            },
+                            NbtSummaryEntry {
+                                name: "nested".to_string(),
+                                value: NbtSummaryValue::Compound(vec![NbtSummaryEntry {
+                                    name: "flag".to_string(),
+                                    value: NbtSummaryValue::Byte(1),
+                                }]),
+                            },
+                            NbtSummaryEntry {
+                                name: "lore".to_string(),
+                                value: NbtSummaryValue::List(vec![
+                                    NbtSummaryValue::String("one".to_string()),
+                                    NbtSummaryValue::String("two".to_string()),
+                                ]),
+                            },
+                        ]),
+                    ),
+                    (
+                        66,
+                        NbtSummaryValue::List(vec![
+                            NbtSummaryValue::String("minecraft:bread".to_string()),
+                            NbtSummaryValue::String("minecraft:torch".to_string()),
+                        ]),
+                    ),
+                    (78, NbtSummaryValue::Compound(Vec::new())),
+                ]),
+                ..DataComponentPatchSummary::default()
+            }
+        );
         assert!(decoder.is_empty());
     }
 
@@ -4305,6 +4386,7 @@ mod tests {
                 added: component_ids.len(),
                 added_type_ids: component_ids.to_vec(),
                 removed_type_ids: Vec::new(),
+                codec_backed_nbt: BTreeMap::from([(59, NbtSummaryValue::Compound(Vec::new()),)]),
                 entity_data_entity_type_id: Some(1),
                 block_entity_data_type_id: Some(2),
                 block_entity_spawn_entity_type: Some("minecraft:zombie".to_string()),
@@ -4875,6 +4957,15 @@ mod tests {
 
     fn empty_nbt_compound_root() -> Vec<u8> {
         vec![10, 0]
+    }
+
+    fn nbt_string_list_root(values: &[&str]) -> Vec<u8> {
+        let mut out = vec![9, 8];
+        out.extend_from_slice(&(values.len() as i32).to_be_bytes());
+        for value in values {
+            write_mutf8(&mut out, value);
+        }
+        out
     }
 
     fn custom_data_nbt_root() -> Vec<u8> {

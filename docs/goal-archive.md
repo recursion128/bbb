@@ -8747,3 +8747,15 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   protocol focused test 覆盖四项和 DyeColor 越界；native component patch test
   扩展到 42 个 added entry，覆盖 `0.75f/1.5f`、red/light-blue 与 wire order；
   四项从剩余 component 总账本移入已支持子集。
+
+## 2026-07-10：ItemStack codec-backed NBT components
+
+- [x] 六个 codec-backed NBT 持久化 component（P2 protocol + native input）：
+  对 type id `47` map-decorations、`57` debug-stick-state、`59`
+  bucket-entity-data、`66` recipes、`78` lock、`79` container-loot，将协议过去
+  只跳过的 registry-aware codec NBT 完整保留为按 type id 索引的 bit-exact
+  `NbtSummaryValue`，并保留既有 container-loot presence。native 复用递归 SNBT
+  writer 输出 compound/list/string/numeric shapes，不解析或猜测其中 registry key。
+  protocol focused tests 覆盖六项、nested compound 与 string list；native
+  component patch test 扩展到 48 个 added entry，覆盖六个资源名、顺序及多种
+  NBT tag；该族从剩余 component 总账本移入已支持子集。

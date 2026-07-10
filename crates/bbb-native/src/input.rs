@@ -4677,6 +4677,9 @@ fn debug_supported_added_component_snbt(
         44 => patch.dyed_color?.to_string(),
         45 => patch.map_color?.to_string(),
         46 => patch.map_id?.to_string(),
+        47 | 57 | 59 | 66 | 78 | 79 => {
+            debug_nbt_summary_snbt(patch.codec_backed_nbt.get(&type_id)?)
+        }
         CHARGED_PROJECTILES_COMPONENT_TYPE_ID => {
             debug_item_stack_template_list_snbt(&patch.charged_projectiles_items, item_runtime)?
         }
@@ -4763,11 +4766,15 @@ fn debug_supported_component_resource_id(type_id: i32) -> Option<&'static str> {
         44 => "minecraft:dyed_color",
         45 => "minecraft:map_color",
         46 => "minecraft:map_id",
+        47 => "minecraft:map_decorations",
         CHARGED_PROJECTILES_COMPONENT_TYPE_ID => "minecraft:charged_projectiles",
         BUNDLE_CONTENTS_COMPONENT_TYPE_ID => "minecraft:bundle_contents",
         52 => "minecraft:potion_duration_scale",
         WRITABLE_BOOK_CONTENT_COMPONENT_TYPE_ID => "minecraft:writable_book_content",
+        57 => "minecraft:debug_stick_state",
+        59 => "minecraft:bucket_entity_data",
         63 => "minecraft:ominous_bottle_amplifier",
+        66 => "minecraft:recipes",
         LODESTONE_TRACKER_COMPONENT_TYPE_ID => "minecraft:lodestone_tracker",
         68 => "minecraft:firework_explosion",
         FIREWORKS_COMPONENT_TYPE_ID => "minecraft:fireworks",
@@ -4777,6 +4784,8 @@ fn debug_supported_component_resource_id(type_id: i32) -> Option<&'static str> {
         POT_DECORATIONS_COMPONENT_TYPE_ID => "minecraft:pot_decorations",
         CONTAINER_COMPONENT_TYPE_ID => "minecraft:container",
         BLOCK_STATE_COMPONENT_TYPE_ID => "minecraft:block_state",
+        78 => "minecraft:lock",
+        79 => "minecraft:container_loot",
         TROPICAL_FISH_PATTERN_COMPONENT_TYPE_ID => "minecraft:tropical_fish/pattern",
         TROPICAL_FISH_BASE_COLOR_COMPONENT_TYPE_ID => "minecraft:tropical_fish/base_color",
         TROPICAL_FISH_PATTERN_COLOR_COMPONENT_TYPE_ID => "minecraft:tropical_fish/pattern_color",
