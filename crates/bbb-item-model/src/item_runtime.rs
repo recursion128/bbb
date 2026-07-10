@@ -72,7 +72,7 @@ use icon_model::{
 };
 pub use icon_model::{
     vanilla_potion_resource_id, vanilla_villager_type_resource_id,
-    vanilla_wolf_sound_variant_resource_id,
+    vanilla_wolf_sound_variant_resource_id, vanilla_wolf_variant_resource_id,
 };
 pub use profile_skin::default_player_skin_for_profile_id;
 use profile_skin::ProfileSkinCache;

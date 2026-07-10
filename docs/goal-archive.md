@@ -9102,3 +9102,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   对两类 fixed-registry named holder 编码资源 ID。大型 component patch test 从
   84 扩展到 86 个 added entry，另以 protocol、item-model、native focused tests
   锁定两个 holder 字段不再串线。
+
+## 2026-07-10：ItemStack wolf-variant descriptor and save
+
+- [x] minecraft:wolf/variant 的 descriptor decode 与 named-holder 持久化
+  （P2 protocol + item-model + native input）：依据 vanilla 26.1
+  `WolfVariant.CODEC/STREAM_CODEC` 与 `WolfVariants.bootstrap`，protocol type id
+  82 不再 skip holder，而是写入独立 `wolf_variant_id`；item-model 从 9 项
+  bootstrap 表暴露唯一资源查询，native entity save 与 component encoder 共享该
+  查询并保持非法 id 回退 pale。大型 component patch test 从 86 扩展到 87 个
+  added entry，另覆盖 bootstrap 边界、descriptor holder 投影和 encoder unknown-id
+  安全省略。

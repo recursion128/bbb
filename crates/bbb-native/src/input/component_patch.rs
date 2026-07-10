@@ -86,6 +86,7 @@ static PERSISTENT_SNBT_ENCODERS: &[PersistentSnbtEncoderDescriptor] = &[
     encoder(79, encode_codec_backed_nbt),
     encoder(80, encode_break_sound),
     encoder(81, encode_named_variant),
+    encoder(82, encode_named_variant),
     encoder(83, encode_named_variant),
     encoder(84, encode_builtin_enum),
     encoder(85, encode_builtin_enum),
@@ -744,6 +745,7 @@ fn encode_named_variant(
 ) -> Option<String> {
     let resource_id = match type_id {
         81 => vanilla_villager_type_resource_id(patch.villager_variant_id?)?,
+        82 => vanilla_wolf_variant_resource_id(patch.wolf_variant_id?)?,
         83 => vanilla_wolf_sound_variant_resource_id(patch.wolf_sound_variant_id?)?,
         _ => return None,
     };
@@ -812,7 +814,7 @@ mod tests {
 
     #[test]
     fn encoder_registry_is_unique_sorted_and_persistent() {
-        assert_eq!(PERSISTENT_SNBT_ENCODERS.len(), 86);
+        assert_eq!(PERSISTENT_SNBT_ENCODERS.len(), 87);
         let mut ids = HashSet::new();
         let mut previous = None;
         for descriptor in PERSISTENT_SNBT_ENCODERS {
@@ -1151,15 +1153,20 @@ mod tests {
     }
 
     #[test]
-    fn villager_and_wolf_sound_variant_encoders_use_distinct_holder_fields() {
+    fn villager_and_wolf_variant_encoders_use_distinct_holder_fields() {
         let mut patch = bbb_protocol::packets::DataComponentPatchSummary {
             villager_variant_id: Some(2),
+            wolf_variant_id: Some(8),
             wolf_sound_variant_id: Some(6),
             ..Default::default()
         };
         assert_eq!(
             encode_added_component_value_snbt(81, &patch, None),
             Some("\"minecraft:plains\"".to_string())
+        );
+        assert_eq!(
+            encode_added_component_value_snbt(82, &patch, None),
+            Some("\"minecraft:striped\"".to_string())
         );
         assert_eq!(
             encode_added_component_value_snbt(83, &patch, None),
@@ -1169,6 +1176,9 @@ mod tests {
         patch.villager_variant_id = Some(7);
         assert_eq!(encode_added_component_value_snbt(81, &patch, None), None);
         patch.villager_variant_id = Some(2);
+        patch.wolf_variant_id = Some(9);
+        assert_eq!(encode_added_component_value_snbt(82, &patch, None), None);
+        patch.wolf_variant_id = Some(8);
         patch.wolf_sound_variant_id = Some(7);
         assert_eq!(encode_added_component_value_snbt(83, &patch, None), None);
     }

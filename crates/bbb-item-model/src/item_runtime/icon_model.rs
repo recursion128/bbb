@@ -190,6 +190,17 @@ const VANILLA_WOLF_SOUND_VARIANT_KEYS: &[&str] = &[
     "minecraft:big",
     "minecraft:cute",
 ];
+const VANILLA_WOLF_VARIANT_KEYS: &[&str] = &[
+    "minecraft:pale",
+    "minecraft:spotted",
+    "minecraft:snowy",
+    "minecraft:black",
+    "minecraft:ashen",
+    "minecraft:rusty",
+    "minecraft:woods",
+    "minecraft:chestnut",
+    "minecraft:striped",
+];
 
 pub fn vanilla_villager_type_resource_id(id: i32) -> Option<&'static str> {
     let index = usize::try_from(id).ok()?;
@@ -200,6 +211,12 @@ pub fn vanilla_wolf_sound_variant_resource_id(id: i32) -> Option<&'static str> {
     let index = usize::try_from(id).ok()?;
     VANILLA_WOLF_SOUND_VARIANT_KEYS.get(index).copied()
 }
+
+pub fn vanilla_wolf_variant_resource_id(id: i32) -> Option<&'static str> {
+    let index = usize::try_from(id).ok()?;
+    VANILLA_WOLF_VARIANT_KEYS.get(index).copied()
+}
+
 const VANILLA_DEFAULT_MAX_STACK_SIZE: i32 = 64;
 const VANILLA_ABSOLUTE_MAX_STACK_SIZE: i32 = 99;
 
@@ -633,7 +650,7 @@ mod tests {
     }
 
     #[test]
-    fn villager_and_wolf_sound_variants_follow_26_1_bootstrap_order() {
+    fn villager_and_wolf_variants_follow_26_1_bootstrap_order() {
         assert_eq!(
             vanilla_villager_type_resource_id(0),
             Some("minecraft:desert")
@@ -654,6 +671,13 @@ mod tests {
         );
         assert_eq!(vanilla_wolf_sound_variant_resource_id(7), None);
         assert_eq!(vanilla_wolf_sound_variant_resource_id(-1), None);
+        assert_eq!(vanilla_wolf_variant_resource_id(0), Some("minecraft:pale"));
+        assert_eq!(
+            vanilla_wolf_variant_resource_id(8),
+            Some("minecraft:striped")
+        );
+        assert_eq!(vanilla_wolf_variant_resource_id(9), None);
+        assert_eq!(vanilla_wolf_variant_resource_id(-1), None);
     }
 
     #[test]

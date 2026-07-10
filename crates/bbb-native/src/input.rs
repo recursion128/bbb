@@ -116,7 +116,8 @@ use bbb_item_model::{
     vanilla_mob_effect_resource_id, vanilla_painting_variant_resource_id,
     vanilla_potion_resource_id, vanilla_trim_material_resource_id,
     vanilla_trim_pattern_resource_id, vanilla_villager_type_resource_id,
-    vanilla_wolf_sound_variant_resource_id, ItemModelKeybindContext, NativeItemRuntime,
+    vanilla_wolf_sound_variant_resource_id, vanilla_wolf_variant_resource_id,
+    ItemModelKeybindContext, NativeItemRuntime,
 };
 pub(crate) use bundle::select_bundle_item;
 use commands::*;
@@ -6417,7 +6418,7 @@ fn debug_push_wolf_additional_save_data(entity: &EntityState, fields: &mut Vec<S
     fields.push(format!("CollarColor: {collar_color}b"));
     fields.push(format!(
         "variant: {}",
-        debug_snbt_string(debug_wolf_variant_resource_id(variant))
+        debug_snbt_string(vanilla_wolf_variant_resource_id(variant).unwrap_or("minecraft:pale"))
     ));
     fields.push(format!("anger_end_time: {anger_end_time}L"));
     fields.push(format!(
@@ -6426,20 +6427,6 @@ fn debug_push_wolf_additional_save_data(entity: &EntityState, fields: &mut Vec<S
             vanilla_wolf_sound_variant_resource_id(sound_variant).unwrap_or("minecraft:classic")
         )
     ));
-}
-
-fn debug_wolf_variant_resource_id(variant: i32) -> &'static str {
-    match variant {
-        1 => "minecraft:spotted",
-        2 => "minecraft:snowy",
-        3 => "minecraft:black",
-        4 => "minecraft:ashen",
-        5 => "minecraft:rusty",
-        6 => "minecraft:woods",
-        7 => "minecraft:chestnut",
-        8 => "minecraft:striped",
-        _ => "minecraft:pale",
-    }
 }
 
 fn debug_push_zombie_nautilus_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {

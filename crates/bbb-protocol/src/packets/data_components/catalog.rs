@@ -324,7 +324,7 @@ static VANILLA_DATA_COMPONENTS: &[DataComponentDescriptor] = &[
         true,
         decode_villager_variant,
     ),
-    component(82, "minecraft:wolf/variant", true, skip_holder_registry),
+    component(82, "minecraft:wolf/variant", true, decode_wolf_variant),
     component(
         83,
         "minecraft:wolf/sound_variant",
@@ -1095,6 +1095,15 @@ fn decode_wolf_sound_variant(
     summary: &mut DataComponentPatchSummary,
 ) -> Result<()> {
     summary.wolf_sound_variant_id = Some(decode_holder_registry_id(decoder)?);
+    Ok(())
+}
+
+fn decode_wolf_variant(
+    _type_id: i32,
+    decoder: &mut Decoder<'_>,
+    summary: &mut DataComponentPatchSummary,
+) -> Result<()> {
+    summary.wolf_variant_id = Some(decode_holder_registry_id(decoder)?);
     Ok(())
 }
 

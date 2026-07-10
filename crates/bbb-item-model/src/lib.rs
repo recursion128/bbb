@@ -17,9 +17,10 @@ pub use item_runtime::{
     vanilla_instrument_resource_id, vanilla_mob_effect_resource_id,
     vanilla_painting_variant_resource_id, vanilla_potion_resource_id,
     vanilla_trim_material_resource_id, vanilla_trim_pattern_resource_id,
-    vanilla_villager_type_resource_id, vanilla_wolf_sound_variant_resource_id, GeneratedItemLayer,
-    ItemAtlasIcon, ItemAtlasIconLayer, ItemAtlasSpriteUv, ItemAtlasUvRect, ItemModelCompassContext,
-    ItemModelCompassTarget, ItemModelKeybindContext, ItemModelTimeContext, ItemModelUseContext,
+    vanilla_villager_type_resource_id, vanilla_wolf_sound_variant_resource_id,
+    vanilla_wolf_variant_resource_id, GeneratedItemLayer, ItemAtlasIcon, ItemAtlasIconLayer,
+    ItemAtlasSpriteUv, ItemAtlasUvRect, ItemModelCompassContext, ItemModelCompassTarget,
+    ItemModelKeybindContext, ItemModelTimeContext, ItemModelUseContext,
     NativeDynamicPlayerSkinDownload, NativeDynamicPlayerTextureDownload, NativeItemMapTooltipData,
     NativeItemRuntime, NativeItemTooltipLine, NativeItemTooltipOptions,
 };

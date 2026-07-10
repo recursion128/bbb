@@ -274,6 +274,8 @@ pub struct DataComponentPatchSummary {
     #[serde(default)]
     pub villager_variant_id: Option<i32>,
     #[serde(default)]
+    pub wolf_variant_id: Option<i32>,
+    #[serde(default)]
     pub wolf_sound_variant_id: Option<i32>,
     #[serde(default)]
     pub lodestone_target: Option<LodestoneTargetSummary>,
@@ -3233,6 +3235,29 @@ mod tests {
                 added: 1,
                 added_type_ids: vec![83],
                 wolf_sound_variant_id: Some(6),
+                ..DataComponentPatchSummary::default()
+            }
+        );
+        assert!(decoder.is_empty());
+    }
+
+    #[test]
+    fn decodes_wolf_variant_holder_registry_id() {
+        let mut payload = Encoder::new();
+        payload.write_var_i32(1);
+        payload.write_var_i32(0);
+        payload.write_var_i32(82);
+        payload.write_var_i32(8);
+
+        let payload = payload.into_inner();
+        let mut decoder = Decoder::new(&payload);
+        let patch = decode_data_component_patch_summary(&mut decoder).unwrap();
+        assert_eq!(
+            patch,
+            DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![82],
+                wolf_variant_id: Some(8),
                 ..DataComponentPatchSummary::default()
             }
         );
