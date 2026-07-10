@@ -235,13 +235,14 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   entity-data projection (including dynamic-registry ordering), packed variant
   projection, remaining codec-backed SNBT projection (including `AbstractArrow`
   `inBlockState`, `item`, and `weapon`, arbitrary non-fireworks data-component
-  patch entries on throwable/firework item stacks, falling-block `TileEntityData`,
+  patch entries on throwable/firework/item-frame item stacks, falling-block
+  `TileEntityData`,
   and non-default `VibrationSystem.Data` listener payloads),
   remaining entity-specific
   constructor/default save values, LivingEntity parent health/equipment/effect/attribute
   projection, observable non-empty entity inventory/container projection
-  (including non-empty item-frame `Item` stacks, chest/hopper minecart
-  `Items` / loot-table contents, and chest boat/raft `Items` / loot-table
+  (including chest/hopper minecart `Items` / loot-table contents, and chest
+  boat/raft `Items` / loot-table
   contents), non-default hopper minecart enabled state,
   non-default furnace minecart push/fuel fields,
   spawner minecart non-default delay/count/range fields and codec-backed

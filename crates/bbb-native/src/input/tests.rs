@@ -9686,6 +9686,15 @@ fn shift_f3_i_with_permission_copies_local_tnt_minecart_save_nbt_to_clipboard() 
 
 #[test]
 fn shift_f3_i_with_permission_copies_local_item_frame_save_nbt_to_clipboard() {
+    let registry: ItemRegistryCatalog = serde_json::from_value(serde_json::json!({
+        "resource_ids": ["minecraft:diamond"],
+        "protocol_ids": {"minecraft:diamond": 0}
+    }))
+    .unwrap();
+    let item_runtime = NativeItemRuntime::for_test_with_registry_and_equipment_assets(
+        registry,
+        EquipmentAssetCatalog::default(),
+    );
     let mut input = ClientInputState::new(true);
     let mut world = world_with_debug_player(false);
     grant_debug_recreate_nbt_permission(&mut world);
@@ -9716,6 +9725,15 @@ fn shift_f3_i_with_permission_copies_local_item_frame_save_nbt_to_clipboard() {
                 data_id: ITEM_FRAME_ROTATION_DATA_ID,
                 serializer_id: 1,
                 value: EntityDataValueKind::Int(11),
+            },
+            ProtocolEntityDataValue {
+                data_id: ITEM_FRAME_ITEM_DATA_ID,
+                serializer_id: 7,
+                value: EntityDataValueKind::ItemStack(ProtocolItemStackSummary {
+                    item_id: Some(0),
+                    count: 1,
+                    component_patch: DataComponentPatchSummary::default(),
+                }),
             },
             ProtocolEntityDataValue {
                 data_id: ENTITY_SHARED_FLAGS_DATA_ID,
@@ -9769,6 +9787,18 @@ fn shift_f3_i_with_permission_copies_local_item_frame_save_nbt_to_clipboard() {
     assert_eq!(
         messages[0].content,
         "[Debug]: Copied client-side entity data to clipboard"
+    );
+
+    let entity = world.probe_entity(63).unwrap();
+    assert_eq!(item_runtime.item_resource_id(0), Some("minecraft:diamond"));
+    assert!(debug_entity_data_item_stack_present(&entity, ITEM_FRAME_ITEM_DATA_ID).is_some());
+    let snbt = debug_local_entity_pretty_snbt(&world, Some(&item_runtime), &entity).unwrap();
+    assert!(
+        snbt.contains(
+            "block_pos: [I; 0, 1, 2], Item: {id: \"minecraft:diamond\"}, \
+         ItemRotation: 3b, ItemDropChance: 1.0f"
+        ),
+        "unexpected item-frame SNBT: {snbt}"
     );
 }
 

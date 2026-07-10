@@ -286,6 +286,7 @@ const BASE_SPAWNER_DEFAULT_REQUIRED_PLAYER_RANGE: i16 = 16;
 const BASE_SPAWNER_DEFAULT_SPAWN_RANGE: i16 = 4;
 const TNT_MINECART_DEFAULT_FUSE: i32 = -1;
 const HANGING_ENTITY_DIRECTION_DATA_ID: u8 = 8;
+const ITEM_FRAME_ITEM_DATA_ID: u8 = 9;
 const ITEM_FRAME_ROTATION_DATA_ID: u8 = 10;
 const ITEM_FRAME_DEFAULT_ROTATION: i8 = 0;
 /// Server-private NBT field: never enters add-entity or metadata, so a remote
@@ -4150,7 +4151,7 @@ fn debug_push_entity_additional_save_data(
             debug_push_minecart_additional_save_data(world, entity, fields);
         }
         VANILLA_ENTITY_TYPE_ITEM_FRAME_ID | VANILLA_ENTITY_TYPE_GLOW_ITEM_FRAME_ID => {
-            debug_push_item_frame_additional_save_data(entity, fields);
+            debug_push_item_frame_additional_save_data(entity, item_runtime, fields);
         }
         VANILLA_ENTITY_TYPE_TNT_ID => {
             debug_push_primed_tnt_additional_save_data(world, entity, fields);
@@ -4575,7 +4576,17 @@ fn debug_firework_rocket_item_stack(
         .and_then(|stack| stack.item_id)
         .and_then(|item_id| item_runtime.and_then(|runtime| runtime.item_resource_id(item_id)))
         .unwrap_or("minecraft:firework_rocket");
-    let count = stack.map_or(1, |stack| stack.count);
+    stack.map_or_else(
+        || debug_item_stack_snbt("minecraft:firework_rocket", 1, None),
+        |stack| debug_item_stack_snbt(resource_id, stack.count, Some(stack)),
+    )
+}
+
+fn debug_item_stack_snbt(
+    resource_id: &str,
+    count: i32,
+    stack: Option<&ItemStackSummary>,
+) -> String {
     let mut fields = vec![format!("id: {}", debug_snbt_string(resource_id))];
     if count != 1 {
         fields.push(format!("count: {count}"));
@@ -4811,9 +4822,26 @@ fn debug_push_tnt_minecart_additional_save_data(entity: &EntityState, fields: &m
     fields.push(format!("fuse: {fuse}"));
 }
 
-fn debug_push_item_frame_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
+fn debug_push_item_frame_additional_save_data(
+    entity: &EntityState,
+    item_runtime: Option<&NativeItemRuntime>,
+    fields: &mut Vec<String>,
+) {
     if let Some(block_pos) = debug_snbt_block_pos("block_pos", entity.position_base) {
         fields.push(block_pos);
+    }
+    if let Some((stack, resource_id)) =
+        debug_entity_data_item_stack_present(entity, ITEM_FRAME_ITEM_DATA_ID).and_then(|stack| {
+            let resource_id = stack
+                .item_id
+                .and_then(|item_id| item_runtime?.item_resource_id(item_id))?;
+            Some((stack, resource_id))
+        })
+    {
+        fields.push(format!(
+            "Item: {}",
+            debug_item_stack_snbt(resource_id, stack.count, Some(stack))
+        ));
     }
     let rotation = debug_entity_data_int_present(entity, ITEM_FRAME_ROTATION_DATA_ID)
         .map(|rotation| rotation.rem_euclid(8) as i8)

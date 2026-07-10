@@ -8506,3 +8506,15 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   只存在于服务端 old/new movement 分支；客户端仅消费普通或 weighted-step 插值，且协议
   不同步该位，所以 external client 始终保持 constructor `FlippedRotation: 0b`，非默认值
   转为 not-needed。账本已删除 minecart flipped/has-ticked 项。
+
+## 2026-07-10：F3+I non-empty item-frame stack
+
+- [x] ItemFrame / GlowItemFrame 非空 `Item` 保存投影（P2 native input）：依据 vanilla
+  26.1 `ItemFrame.DATA_ITEM`、`setItem` 与 `addAdditionalSaveData`，F3+I 现在读取 metadata
+  id 9 的 `ItemStackSummary`，通过 runtime item registry 将 protocol id 还原为资源 id，
+  并在 `block_pos` 后、`ItemRotation` 前按 `ItemStack.CODEC` 输出非空 `Item`；默认 count 1
+  省略，非默认 count 与已支持的 fireworks component patch 复用 firework rocket 的 codec
+  组装。原 firework 路径也改用同一 id/count/components helper，保持既有输出不变。
+  focused item-frame test 覆盖 `minecraft:diamond` metadata stack、字段顺序与 registry
+  解析；空 glow-item-frame 仍省略 `Item`。任意非-fireworks component patch 的精确 codec
+  SNBT 继续留在总账本，非空 item-frame 基础 stack 项已清零。
