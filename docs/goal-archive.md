@@ -8119,3 +8119,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   frame readback。vanilla `getEntityCollisions` 的实体 shape、
   `VoxelShape.toAabbs()` union coalescing 与 100ms refresh cache 仍在 unsupported
   ledger，未将整个 entry 标记完成。
+
+## 2026-07-10：Block collision VoxelShape union coalescing
+
+- [x] `visualize_collision_boxes` 的精确 block `VoxelShape.toAabbs()`（P2 world
+  slice）：依据 vanilla 26.1 `VoxelShape.forAllBoxes` 与
+  `BitSetDiscreteVoxelShape.forAllBoxes(..., true)`，将既有最多 16 个 collision
+  component box 压缩为 X/Y/Z boundary cell union，再严格按 y→x→z 顺序合并连续
+  z-strip、相邻 X strip 与相邻 Y rectangle。fence/pane/wall 等重叠 component 不再
+  产生内部 cuboid stroke，非矩形与不相连 union 保持 vanilla 的确定性 AABB 分解
+  顺序。tests 覆盖重叠 union 合一、L 形 union 分解以及 camera query/native stroke
+  回归。ledger 相应只保留实体 collision shapes 与 100ms refresh cache。

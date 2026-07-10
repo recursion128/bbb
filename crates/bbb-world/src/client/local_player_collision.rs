@@ -99,8 +99,9 @@ pub(crate) fn block_collision_shape_is_full_block(block: &BlockProbe, pos: Block
 impl WorldStore {
     /// Mirrors the block half of
     /// `level.getCollisions(cameraEntity, cameraEntity.getBoundingBox().inflate(radius))`.
-    /// Every component AABB of a shape that intersects the query bounds is
-    /// returned, including components extending beyond the query itself.
+    /// Every coalesced `VoxelShape.toAabbs()` box of a shape that intersects
+    /// the query bounds is returned, including boxes extending beyond the
+    /// query itself.
     pub fn debug_camera_block_collision_boxes(&self, radius: f64) -> Vec<WorldCollisionBox> {
         if !radius.is_finite() || radius < 0.0 {
             return Vec::new();
@@ -130,13 +131,15 @@ impl WorldStore {
                     else {
                         continue;
                     };
-                    if !shape
-                        .boxes()
+                    let shape_boxes = shape.to_aabbs();
+                    if !shape_boxes
+                        .iter()
+                        .copied()
                         .any(|shape_box| bounds_intersects_block_box(query, pos, shape_box))
                     {
                         continue;
                     }
-                    boxes.extend(shape.boxes().map(|shape_box| WorldCollisionBox {
+                    boxes.extend(shape_boxes.into_iter().map(|shape_box| WorldCollisionBox {
                         min: [
                             f64::from(x) + shape_box.min_x,
                             f64::from(y) + shape_box.min_y,
@@ -2294,6 +2297,17 @@ impl BlockCollisionShape {
         self.boxes.into_iter().flatten()
     }
 
+    /// Mirrors `VoxelShape.toAabbs()`: build the coordinate-compressed union,
+    /// then apply `BitSetDiscreteVoxelShape.forAllBoxes(..., true)`'s z-strip,
+    /// x-neighbor, and y-neighbor merge order.
+    fn to_aabbs(self) -> Vec<BlockCollisionBox> {
+        let boxes = self.boxes().collect::<Vec<_>>();
+        if boxes.len() <= 1 {
+            return boxes;
+        }
+        CompressedCollisionShape::from_boxes(&boxes).merged_boxes()
+    }
+
     fn is_full_block(self) -> bool {
         let mut boxes = self.boxes();
         matches!(boxes.next(), Some(BlockCollisionBox::FULL)) && boxes.next().is_none()
@@ -2346,6 +2360,134 @@ impl BlockCollisionShape {
             BlockDirection::Down => self.map_boxes(BlockCollisionBox::rotate_x_90),
         }
     }
+}
+
+struct CompressedCollisionShape {
+    x_coords: Vec<f64>,
+    y_coords: Vec<f64>,
+    z_coords: Vec<f64>,
+    full: Vec<bool>,
+    x_size: usize,
+    y_size: usize,
+    z_size: usize,
+}
+
+impl CompressedCollisionShape {
+    fn from_boxes(boxes: &[BlockCollisionBox]) -> Self {
+        let x_coords =
+            collision_shape_axis_coords(boxes, |shape_box| [shape_box.min_x, shape_box.max_x]);
+        let y_coords =
+            collision_shape_axis_coords(boxes, |shape_box| [shape_box.min_y, shape_box.max_y]);
+        let z_coords =
+            collision_shape_axis_coords(boxes, |shape_box| [shape_box.min_z, shape_box.max_z]);
+        let x_size = x_coords.len().saturating_sub(1);
+        let y_size = y_coords.len().saturating_sub(1);
+        let z_size = z_coords.len().saturating_sub(1);
+        let mut full = vec![false; x_size.saturating_mul(y_size).saturating_mul(z_size)];
+
+        for shape_box in boxes {
+            let x0 = collision_shape_coord_index(&x_coords, shape_box.min_x);
+            let x1 = collision_shape_coord_index(&x_coords, shape_box.max_x);
+            let y0 = collision_shape_coord_index(&y_coords, shape_box.min_y);
+            let y1 = collision_shape_coord_index(&y_coords, shape_box.max_y);
+            let z0 = collision_shape_coord_index(&z_coords, shape_box.min_z);
+            let z1 = collision_shape_coord_index(&z_coords, shape_box.max_z);
+            for y in y0..y1 {
+                for x in x0..x1 {
+                    for z in z0..z1 {
+                        full[Self::index(x_size, z_size, x, y, z)] = true;
+                    }
+                }
+            }
+        }
+
+        Self {
+            x_coords,
+            y_coords,
+            z_coords,
+            full,
+            x_size,
+            y_size,
+            z_size,
+        }
+    }
+
+    fn merged_boxes(mut self) -> Vec<BlockCollisionBox> {
+        let mut boxes = Vec::new();
+        for y in 0..self.y_size {
+            for x in 0..self.x_size {
+                let mut start_z = None;
+                for z in 0..=self.z_size {
+                    if z < self.z_size && self.is_full(x, y, z) {
+                        start_z.get_or_insert(z);
+                    } else if let Some(z0) = start_z.take() {
+                        let mut x1 = x + 1;
+                        let mut y1 = y + 1;
+                        self.clear_z_strip(z0, z, x, y);
+                        while x1 < self.x_size && self.is_z_strip_full(z0, z, x1, y) {
+                            self.clear_z_strip(z0, z, x1, y);
+                            x1 += 1;
+                        }
+                        while y1 < self.y_size && self.is_xz_rectangle_full(x, x1, z0, z, y1) {
+                            for clear_x in x..x1 {
+                                self.clear_z_strip(z0, z, clear_x, y1);
+                            }
+                            y1 += 1;
+                        }
+                        boxes.push(BlockCollisionBox {
+                            min_x: self.x_coords[x],
+                            min_y: self.y_coords[y],
+                            min_z: self.z_coords[z0],
+                            max_x: self.x_coords[x1],
+                            max_y: self.y_coords[y1],
+                            max_z: self.z_coords[z],
+                        });
+                    }
+                }
+            }
+        }
+        boxes
+    }
+
+    fn index(x_size: usize, z_size: usize, x: usize, y: usize, z: usize) -> usize {
+        (y * x_size + x) * z_size + z
+    }
+
+    fn is_full(&self, x: usize, y: usize, z: usize) -> bool {
+        self.full[Self::index(self.x_size, self.z_size, x, y, z)]
+    }
+
+    fn is_z_strip_full(&self, z0: usize, z1: usize, x: usize, y: usize) -> bool {
+        (z0..z1).all(|z| self.is_full(x, y, z))
+    }
+
+    fn is_xz_rectangle_full(&self, x0: usize, x1: usize, z0: usize, z1: usize, y: usize) -> bool {
+        (x0..x1).all(|x| self.is_z_strip_full(z0, z1, x, y))
+    }
+
+    fn clear_z_strip(&mut self, z0: usize, z1: usize, x: usize, y: usize) {
+        for z in z0..z1 {
+            let index = Self::index(self.x_size, self.z_size, x, y, z);
+            self.full[index] = false;
+        }
+    }
+}
+
+fn collision_shape_axis_coords(
+    boxes: &[BlockCollisionBox],
+    axis: impl Fn(BlockCollisionBox) -> [f64; 2],
+) -> Vec<f64> {
+    let mut coords = boxes.iter().copied().flat_map(axis).collect::<Vec<_>>();
+    coords.sort_by(f64::total_cmp);
+    coords.dedup_by(|left, right| *left == *right);
+    coords
+}
+
+fn collision_shape_coord_index(coords: &[f64], target: f64) -> usize {
+    coords
+        .iter()
+        .position(|coordinate| *coordinate == target)
+        .expect("collision shape coordinate was inserted from the same box")
 }
 
 struct BlockCollisionShapeBuilder {
@@ -3334,6 +3476,106 @@ mod tests {
     fn debug_camera_block_collision_boxes_require_a_camera_entity_pose() {
         let world = empty_world();
         assert!(world.debug_camera_block_collision_boxes(6.0).is_empty());
+    }
+
+    #[test]
+    fn collision_shape_to_aabbs_coalesces_overlapping_union_cells_like_vanilla() {
+        let shape = BlockCollisionShape::from_boxes([
+            Some(BlockCollisionBox {
+                min_x: 0.0,
+                min_y: 0.0,
+                min_z: 0.0,
+                max_x: 0.75,
+                max_y: 1.0,
+                max_z: 1.0,
+            }),
+            Some(BlockCollisionBox {
+                min_x: 0.25,
+                min_y: 0.0,
+                min_z: 0.0,
+                max_x: 1.0,
+                max_y: 1.0,
+                max_z: 1.0,
+            }),
+        ]);
+        assert_eq!(shape.to_aabbs(), [BlockCollisionBox::FULL]);
+    }
+
+    #[test]
+    fn collision_shape_to_aabbs_preserves_non_rectangular_union_as_merged_boxes() {
+        let shape = BlockCollisionShape::from_boxes([
+            Some(BlockCollisionBox {
+                min_x: 0.0,
+                min_y: 0.0,
+                min_z: 0.0,
+                max_x: 0.5,
+                max_y: 1.0,
+                max_z: 1.0,
+            }),
+            Some(BlockCollisionBox {
+                min_x: 0.5,
+                min_y: 0.0,
+                min_z: 0.5,
+                max_x: 1.0,
+                max_y: 1.0,
+                max_z: 1.0,
+            }),
+        ]);
+        assert_eq!(
+            shape.to_aabbs(),
+            [
+                BlockCollisionBox {
+                    min_x: 0.0,
+                    min_y: 0.0,
+                    min_z: 0.0,
+                    max_x: 0.5,
+                    max_y: 1.0,
+                    max_z: 1.0,
+                },
+                BlockCollisionBox {
+                    min_x: 0.5,
+                    min_y: 0.0,
+                    min_z: 0.5,
+                    max_x: 1.0,
+                    max_y: 1.0,
+                    max_z: 1.0,
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn connected_fence_to_aabbs_removes_post_arm_overlap() {
+        let properties = BTreeMap::from([
+            ("north".to_owned(), "true".to_owned()),
+            ("east".to_owned(), "true".to_owned()),
+            ("south".to_owned(), "false".to_owned()),
+            ("west".to_owned(), "false".to_owned()),
+        ]);
+        let boxes = fence_collision_shape(&properties)
+            .expect("connected fence shape")
+            .to_aabbs();
+        assert_eq!(
+            boxes,
+            [
+                BlockCollisionBox {
+                    min_x: 6.0 * PX,
+                    min_y: 0.0,
+                    min_z: 0.0,
+                    max_x: 10.0 * PX,
+                    max_y: 1.5,
+                    max_z: 10.0 * PX,
+                },
+                BlockCollisionBox {
+                    min_x: 10.0 * PX,
+                    min_y: 0.0,
+                    min_z: 6.0 * PX,
+                    max_x: 1.0,
+                    max_y: 1.5,
+                    max_z: 10.0 * PX,
+                },
+            ]
+        );
     }
 
     fn axis_name(axis: CollisionAxis) -> &'static str {
