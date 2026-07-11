@@ -565,6 +565,43 @@ mod tests {
         );
     }
 
+    #[test]
+    fn configuration_custom_payload_only_leaves_brand_telemetry_open() {
+        let ledger = vanilla_packet_coverage_26_1().unwrap();
+        let packets = BTreeSet::from(["SERVERBOUND_CUSTOM_PAYLOAD", "CLIENTBOUND_CUSTOM_PAYLOAD"]);
+        let entries: Vec<_> = ledger
+            .entries
+            .iter()
+            .filter(|entry| {
+                entry.state == "configuration" && packets.contains(entry.constant_name.as_str())
+            })
+            .collect();
+        assert_eq!(entries.len(), packets.len());
+
+        let partial: BTreeSet<_> = entries
+            .iter()
+            .flat_map(|entry| {
+                entry.coverage.iter().filter_map(move |(dimension, cell)| {
+                    (cell.status == PacketCoverageStatus::Partial)
+                        .then_some((entry.constant_name.as_str(), dimension.as_str()))
+                })
+            })
+            .collect();
+        assert_eq!(
+            partial,
+            BTreeSet::from([("CLIENTBOUND_CUSTOM_PAYLOAD", "runtime_side_effect")])
+        );
+        assert_eq!(
+            entries
+                .iter()
+                .find(|entry| entry.constant_name == "SERVERBOUND_CUSTOM_PAYLOAD")
+                .unwrap()
+                .coverage["ack_response"]
+                .status,
+            PacketCoverageStatus::NotApplicable
+        );
+    }
+
     fn state_name(state: PacketState) -> &'static str {
         match state {
             PacketState::Handshake => "handshake",

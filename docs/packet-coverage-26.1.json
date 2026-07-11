@@ -857,29 +857,41 @@
       "constant_name": "SERVERBOUND_CUSTOM_PAYLOAD",
       "coverage": {
         "ack_response": {
-          "evidence": [],
+          "evidence": [
+            "vanilla:net/minecraft/server/network/ServerCommonPacketListenerImpl.java#handleCustomPayload"
+          ],
           "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "status": "not-applicable"
         },
         "command_surface": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-net/src/event_stream/login.rs#encode_configuration_brand_custom_payload"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "encoder": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/connection.rs#encode_configuration_brand_custom_payload",
+            "vanilla:net/minecraft/network/protocol/common/ServerboundCustomPayloadPacket.java#STREAM_CODEC"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "state_guard": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-net/src/event_stream.rs#login_compression_query_and_finish_follow_vanilla_state_sequence"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_configuration_brand_custom_payload",
+            "crates/bbb-net/src/event_stream.rs#login_compression_query_and_finish_follow_vanilla_state_sequence"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "serverbound",
@@ -1248,29 +1260,42 @@
       "constant_name": "CLIENTBOUND_CUSTOM_PAYLOAD",
       "coverage": {
         "canonical_apply": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/client/server_presentation.rs#apply_custom_payload"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/tests.rs#decodes_configuration_common_packets",
+            "vanilla:net/minecraft/network/protocol/common/ClientboundCustomPayloadPacket.java#CONFIG_STREAM_CODEC"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "ownership": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-net/src/event_stream/configuration.rs#ConfigurationClientbound::CustomPayload"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "runtime_side_effect": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
+          "evidence": [
+            "crates/bbb-native/src/runtime/tests.rs#hud_debug_overlay_projects_tps_server_brand_and_freeze_status",
+            "vanilla:net/minecraft/client/multiplayer/ClientCommonPacketListenerImpl.java#handleCustomPayload"
+          ],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
           "status": "partial"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/client/server_presentation.rs#custom_payload_tracks_server_brand_and_unknown_payloads",
+            "crates/bbb-net/src/probe/configuration.rs#probe_applies_configuration_packets_to_world"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "clientbound",

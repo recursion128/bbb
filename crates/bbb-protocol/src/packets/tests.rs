@@ -2538,6 +2538,36 @@ fn decodes_configuration_common_packets() {
         })
     );
 
+    let mut unknown_custom_payload = Encoder::new();
+    unknown_custom_payload.write_string("bbb:configuration_probe");
+    unknown_custom_payload.write_bytes(&[0xaa, 0xbb, 0xcc]);
+    assert_eq!(
+        decode_configuration_clientbound(
+            ids::configuration::CLIENTBOUND_CUSTOM_PAYLOAD,
+            &unknown_custom_payload.into_inner(),
+        )
+        .unwrap(),
+        ConfigurationClientbound::CustomPayload(CustomPayload {
+            id: "bbb:configuration_probe".to_string(),
+            payload: CustomPayloadBody::Unknown {
+                raw_payload: vec![0xaa, 0xbb, 0xcc],
+            },
+        })
+    );
+
+    let mut oversized_custom_payload = Encoder::new();
+    oversized_custom_payload.write_string("bbb:oversized");
+    oversized_custom_payload.write_bytes(&vec![0; 1_048_577]);
+    let error = decode_configuration_clientbound(
+        ids::configuration::CLIENTBOUND_CUSTOM_PAYLOAD,
+        &oversized_custom_payload.into_inner(),
+    )
+    .unwrap_err();
+    assert!(matches!(
+        error,
+        ProtocolError::PacketTooLarge(1_048_577, 1_048_576)
+    ));
+
     assert_eq!(
         decode_configuration_clientbound(
             ids::configuration::CLIENTBOUND_DISCONNECT,

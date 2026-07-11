@@ -56,7 +56,10 @@ Owner: `bbb-protocol`
 - Decode configuration/play dialog holders into typed `Dialog` data, render the
   corresponding screens, restore the previous screen on clear, and encode
   resource-id plus bounded optional-NBT custom click actions in the active state.
-- Complete the remaining configuration registry/tag and custom payload
+- Route the configuration/play server-brand payload into a telemetry owner if
+  client telemetry is retained; canonical brand state, HUD projection and bounded
+  unknown-payload diagnostics are already separate from that missing callback.
+- Complete the remaining configuration registry/tag
   coverage cells; then cover play, movement, inventory, chat, interaction and
   command suggestion end to end.
 

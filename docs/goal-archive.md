@@ -10933,3 +10933,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   `Dialog.CONTEXT_FREE_STREAM_CODEC` 解码、`DialogScreens` 渲染或交互完成；custom-click 也没有
   resource-id + bounded optional NBT encoder/command surface。coverage 反向门禁锁定这八个具体
   partial，只有 server 不回 acknowledgement 的事实标为 not-applicable。
+
+## 2026-07-11：configuration custom-payload coverage audit
+
+- [x] 对照 client/server custom-payload packet、`BrandPayload`、`DiscardedPayload` 与 common
+  handlers，锁定 configuration 仅注册 Brand typed codec、未知 clientbound payload 以 1 MiB
+  上限安全消费并保留诊断、serverbound unknown 上限为 32,767。新增 configuration unknown 与
+  1,048,577-byte 拒绝测试。
+- [x] LoginFinished 后的 automatic brand command、encoder、configuration state、server no-op/
+  no-ack 与 tests 全部闭合；clientbound brand/unknown 的 decode、ownership、canonical brand/
+  diagnostics 与 tests 也闭合。bbb 尚无 vanilla `TelemetryManager.onServerBrandReceived` owner，
+  因此只保留该 runtime cell partial，未把 HUD brand projection 外推为 telemetry 完成。
