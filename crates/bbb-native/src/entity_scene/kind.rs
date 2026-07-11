@@ -247,7 +247,7 @@ pub(super) fn entity_model_kind_with_time_and_registries(
             variant: AxolotlModelVariant::from_id(entity_data_int(
                 data_values,
                 AXOLOTL_VARIANT_DATA_ID,
-                0,
+                AXOLOTL_DEFAULT_VARIANT,
             )),
         },
         VANILLA_ENTITY_TYPE_BAT_ID => EntityModelKind::Bat,

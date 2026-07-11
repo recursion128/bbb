@@ -9821,3 +9821,10 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   id19/default false 与 LONG last-pose-change tick id20/default 0；world dash/dimensions、
   native sit-state/debug-save 删除手抄 synced id/default。sit/stand 时长、尺寸和 movement
   算法仍由对应行为 owner 管理。
+
+## 2026-07-11：Generated entity metadata consumer（Axolotl）
+
+- [x] 从 generated catalog 建立 `AgeableMob -> Axolotl` family：INT variant
+  id18/default 0、BOOLEAN playing-dead id19/default false、from-bucket id20/default false；
+  world animation、native model/debug-save 删除手抄 synced id/default。variant 合法范围与
+  save 映射仍由 native 语义 owner 管理。

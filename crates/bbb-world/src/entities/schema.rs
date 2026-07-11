@@ -23,6 +23,7 @@ pub enum VanillaEntityMetadataFamily {
     Shulker,
     Zombie,
     AgeableMob,
+    Axolotl,
     Bee,
     PolarBear,
     AbstractHorse,
@@ -348,6 +349,7 @@ mod tests {
             VanillaEntityMetadataFamily::Shulker,
             VanillaEntityMetadataFamily::Zombie,
             VanillaEntityMetadataFamily::AgeableMob,
+            VanillaEntityMetadataFamily::Axolotl,
             VanillaEntityMetadataFamily::Bee,
             VanillaEntityMetadataFamily::PolarBear,
             VanillaEntityMetadataFamily::AbstractHorse,
@@ -460,6 +462,19 @@ mod tests {
         assert_eq!(VANILLA_ENDERMAN_DEFAULT_CARRY_STATE, None);
         assert!(!VANILLA_ENDERMAN_DEFAULT_CREEPY);
         assert!(!VANILLA_ENDERMAN_DEFAULT_STARED_AT);
+        let axolotl = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Axolotl);
+        assert_eq!(
+            axolotl.parent,
+            Some(VanillaEntityMetadataFamily::AgeableMob)
+        );
+        assert_eq!(axolotl.inherited_field_count, 18);
+        assert_eq!(axolotl.own_fields.len(), 3);
+        assert_eq!(VANILLA_AXOLOTL_VARIANT_DATA_ID, 18);
+        assert_eq!(VANILLA_AXOLOTL_PLAYING_DEAD_DATA_ID, 19);
+        assert_eq!(VANILLA_AXOLOTL_FROM_BUCKET_DATA_ID, 20);
+        assert_eq!(VANILLA_AXOLOTL_DEFAULT_VARIANT, 0);
+        assert!(!VANILLA_AXOLOTL_DEFAULT_PLAYING_DEAD);
+        assert!(!VANILLA_AXOLOTL_DEFAULT_FROM_BUCKET);
         let bee = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Bee);
         assert_eq!(bee.parent, Some(VanillaEntityMetadataFamily::AgeableMob));
         assert_eq!(bee.inherited_field_count, 18);

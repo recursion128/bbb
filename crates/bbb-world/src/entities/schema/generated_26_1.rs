@@ -99,6 +99,12 @@ pub const VANILLA_AGEABLE_MOB_BABY_DATA_ID: u8 = GENERATED_VANILLA_AGEABLE_MOB_B
 const GENERATED_VANILLA_AGEABLE_MOB_AGE_LOCKED_DATA_ID: u8 = 17;
 pub const VANILLA_AGEABLE_MOB_AGE_LOCKED_DATA_ID: u8 =
     GENERATED_VANILLA_AGEABLE_MOB_AGE_LOCKED_DATA_ID;
+const GENERATED_VANILLA_AXOLOTL_VARIANT_DATA_ID: u8 = 18;
+pub const VANILLA_AXOLOTL_VARIANT_DATA_ID: u8 = GENERATED_VANILLA_AXOLOTL_VARIANT_DATA_ID;
+const GENERATED_VANILLA_AXOLOTL_PLAYING_DEAD_DATA_ID: u8 = 19;
+pub const VANILLA_AXOLOTL_PLAYING_DEAD_DATA_ID: u8 = GENERATED_VANILLA_AXOLOTL_PLAYING_DEAD_DATA_ID;
+const GENERATED_VANILLA_AXOLOTL_FROM_BUCKET_DATA_ID: u8 = 20;
+pub const VANILLA_AXOLOTL_FROM_BUCKET_DATA_ID: u8 = GENERATED_VANILLA_AXOLOTL_FROM_BUCKET_DATA_ID;
 const GENERATED_VANILLA_ABSTRACT_HORSE_FLAGS_DATA_ID: u8 = 18;
 pub const VANILLA_ABSTRACT_HORSE_FLAGS_DATA_ID: u8 = GENERATED_VANILLA_ABSTRACT_HORSE_FLAGS_DATA_ID;
 const GENERATED_VANILLA_CAMEL_DASH_DATA_ID: u8 = 19;
@@ -427,6 +433,13 @@ pub const VANILLA_AGEABLE_MOB_DEFAULT_BABY: bool = GENERATED_VANILLA_AGEABLE_MOB
 const GENERATED_VANILLA_AGEABLE_MOB_DEFAULT_AGE_LOCKED: bool = false;
 pub const VANILLA_AGEABLE_MOB_DEFAULT_AGE_LOCKED: bool =
     GENERATED_VANILLA_AGEABLE_MOB_DEFAULT_AGE_LOCKED;
+const GENERATED_VANILLA_AXOLOTL_DEFAULT_VARIANT: i32 = 0;
+pub const VANILLA_AXOLOTL_DEFAULT_VARIANT: i32 = GENERATED_VANILLA_AXOLOTL_DEFAULT_VARIANT;
+const GENERATED_VANILLA_AXOLOTL_DEFAULT_PLAYING_DEAD: bool = false;
+pub const VANILLA_AXOLOTL_DEFAULT_PLAYING_DEAD: bool =
+    GENERATED_VANILLA_AXOLOTL_DEFAULT_PLAYING_DEAD;
+const GENERATED_VANILLA_AXOLOTL_DEFAULT_FROM_BUCKET: bool = false;
+pub const VANILLA_AXOLOTL_DEFAULT_FROM_BUCKET: bool = GENERATED_VANILLA_AXOLOTL_DEFAULT_FROM_BUCKET;
 const GENERATED_VANILLA_ABSTRACT_HORSE_DEFAULT_FLAGS: i8 = 0;
 pub const VANILLA_ABSTRACT_HORSE_DEFAULT_FLAGS: i8 = GENERATED_VANILLA_ABSTRACT_HORSE_DEFAULT_FLAGS;
 const GENERATED_VANILLA_CAMEL_DEFAULT_DASH: bool = false;
@@ -13373,6 +13386,35 @@ const AGEABLEMOB_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetada
     own_flags: AGEABLEMOB_FLAGS,
 };
 
+const AXOLOTL_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_VARIANT",
+        data_id: 18,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+        default: VanillaEntityMetadataDefault::Int(0),
+    },
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_PLAYING_DEAD",
+        data_id: 19,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+        default: VanillaEntityMetadataDefault::Boolean(false),
+    },
+    VanillaEntityMetadataFieldSchema {
+        name: "FROM_BUCKET",
+        data_id: 20,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+        default: VanillaEntityMetadataDefault::Boolean(false),
+    },
+];
+const AXOLOTL_FLAGS: &[VanillaEntityMetadataFlagSchema] = &[];
+const AXOLOTL_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamilySchema {
+    family: VanillaEntityMetadataFamily::Axolotl,
+    parent: Some(VanillaEntityMetadataFamily::AgeableMob),
+    inherited_field_count: 18,
+    own_fields: AXOLOTL_FIELDS,
+    own_flags: AXOLOTL_FLAGS,
+};
+
 const BEE_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[
     VanillaEntityMetadataFieldSchema {
         name: "DATA_FLAGS_ID",
@@ -14366,6 +14408,7 @@ pub(super) const fn generated_entity_metadata_schema(
         VanillaEntityMetadataFamily::Shulker => &SHULKER_SCHEMA,
         VanillaEntityMetadataFamily::Zombie => &ZOMBIE_SCHEMA,
         VanillaEntityMetadataFamily::AgeableMob => &AGEABLEMOB_SCHEMA,
+        VanillaEntityMetadataFamily::Axolotl => &AXOLOTL_SCHEMA,
         VanillaEntityMetadataFamily::Bee => &BEE_SCHEMA,
         VanillaEntityMetadataFamily::PolarBear => &POLARBEAR_SCHEMA,
         VanillaEntityMetadataFamily::AbstractHorse => &ABSTRACTHORSE_SCHEMA,

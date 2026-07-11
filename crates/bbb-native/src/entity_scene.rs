@@ -76,6 +76,10 @@ pub(crate) use bbb_world::{
     VANILLA_PIGLIN_DEFAULT_DANCING as PIGLIN_DEFAULT_DANCING,
 };
 use bbb_world::{
+    VANILLA_AXOLOTL_DEFAULT_VARIANT as AXOLOTL_DEFAULT_VARIANT,
+    VANILLA_AXOLOTL_VARIANT_DATA_ID as AXOLOTL_VARIANT_DATA_ID,
+};
+use bbb_world::{
     VANILLA_BEE_ANGER_END_TIME_DATA_ID as BEE_ANGER_END_TIME_DATA_ID,
     VANILLA_BEE_DEFAULT_ANGER_END_TIME as BEE_DEFAULT_ANGER_END_TIME,
     VANILLA_BEE_DEFAULT_FLAGS as BEE_DEFAULT_FLAGS, VANILLA_BEE_FLAGS_DATA_ID as BEE_FLAGS_DATA_ID,
@@ -251,9 +255,6 @@ const FROG_VARIANT_DATA_ID: u8 = 18;
 // Vanilla Fox.DATA_TYPE_ID (18, INT): the first `Fox` accessor (`Fox extends Animal`), holding the
 // `Fox.Variant` id; `Fox.DATA_FLAGS_ID` follows at 19.
 const FOX_TYPE_DATA_ID: u8 = 18;
-// Vanilla Axolotl.DATA_VARIANT (18, INT): the first `Axolotl` accessor (`Axolotl extends Animal`),
-// holding the `Axolotl.Variant` id; DATA_PLAYING_DEAD / FROM_BUCKET follow at 19/20.
-const AXOLOTL_VARIANT_DATA_ID: u8 = 18;
 // Vanilla Rabbit.DATA_TYPE_ID (18, INT): the first `Rabbit` accessor (`Rabbit extends Animal`),
 // holding the `Rabbit.Variant` id (note EVIL is id 99).
 const RABBIT_TYPE_DATA_ID: u8 = 18;

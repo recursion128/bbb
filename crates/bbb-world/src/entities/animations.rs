@@ -31,6 +31,8 @@ use super::schema::{
     VANILLA_ABSTRACT_BOAT_PADDLE_RIGHT_DATA_ID as ABSTRACT_BOAT_PADDLE_RIGHT_DATA_ID,
     VANILLA_ALLAY_DANCING_DATA_ID as ALLAY_DANCING_DATA_ID,
     VANILLA_ALLAY_DEFAULT_DANCING as ALLAY_DEFAULT_DANCING,
+    VANILLA_AXOLOTL_DEFAULT_PLAYING_DEAD as AXOLOTL_DEFAULT_PLAYING_DEAD,
+    VANILLA_AXOLOTL_PLAYING_DEAD_DATA_ID as AXOLOTL_PLAYING_DEAD_DATA_ID,
     VANILLA_BEE_DEFAULT_FLAGS as BEE_DEFAULT_FLAGS, VANILLA_BEE_FLAGS_DATA_ID as BEE_FLAGS_DATA_ID,
     VANILLA_BEE_FLAG_ROLL as BEE_FLAG_ROLL, VANILLA_CAMEL_DASH_DATA_ID as CAMEL_DASH_DATA_ID,
     VANILLA_CAMEL_DEFAULT_DASH as CAMEL_DEFAULT_DASH,
@@ -212,11 +214,6 @@ const PLAYER_CLOAK_WALK_DISTANCE_SCALE: f32 = 0.6;
 const RABBIT_JUMP_EVENT_ID: i8 = 1;
 /// Vanilla `Rabbit.startJumping` / `handleEntityEvent(1)`: `this.jumpDuration = 15`.
 const RABBIT_JUMP_DURATION: i32 = 15;
-/// Vanilla `Axolotl.DATA_PLAYING_DEAD`, the synced `EntityDataSerializers.BOOLEAN` accessor at id 19
-/// (Entity 0–7, LivingEntity 8–14, Mob 15, AgeableMob 16–17, then `Axolotl`'s first own accessor
-/// `DATA_VARIANT` 18, `DATA_PLAYING_DEAD` 19, `FROM_BUCKET` 20). `Axolotl.tickAdultAnimations` reads
-/// `isPlayingDead()` to drive the play-dead state animator.
-const AXOLOTL_PLAYING_DEAD_DATA_ID: u8 = 19;
 /// Vanilla `Axolotl`'s four animators are each `BinaryAnimator(10, IN_OUT_SINE)`, so every factor
 /// eases between 0 and 1 over ten ticks.
 const AXOLOTL_ANIMATOR_LENGTH: i32 = 10;
@@ -6033,7 +6030,11 @@ pub(crate) fn allay_is_dancing(data_values: &[EntityDataValue]) -> bool {
 /// selects the `PLAYING_DEAD` animation state. Read straight from the entity metadata in the tick
 /// loop; non-axolotls (whose synced slot `19` is not this boolean) fall back to `false`.
 pub(crate) fn axolotl_is_playing_dead(data_values: &[EntityDataValue]) -> bool {
-    entity_data_bool(data_values, AXOLOTL_PLAYING_DEAD_DATA_ID, false)
+    entity_data_bool(
+        data_values,
+        AXOLOTL_PLAYING_DEAD_DATA_ID,
+        AXOLOTL_DEFAULT_PLAYING_DEAD,
+    )
 }
 
 /// Vanilla `Creaking.canMove()` (`entityData.get(CAN_MOVE)`): the synced boolean (default `true`)
