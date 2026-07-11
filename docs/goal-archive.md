@@ -9944,3 +9944,10 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] 从 generated catalog 建立 `AgeableMob -> AbstractVillager` family：INT
   unhappy-counter id18/default0；world villager render-state 删除手抄 synced id/default。
   交易状态、计数器时序与 villager/trader 行为仍由对应语义 owner 管理。
+
+## 2026-07-11：Generated entity metadata consumer（HappyGhast）
+
+- [x] 从 generated catalog 建立 `AgeableMob -> HappyGhast` family：BOOLEAN
+  leash-holder id18 与 stays-still id19，默认均为 false；world 本地玩家碰撞删除把
+  stays-still 手抄为 id18 的错误副本，改为读取 generated id19/default。牵绳、骑乘和
+  server-still timeout 行为仍由对应语义 owner 管理。

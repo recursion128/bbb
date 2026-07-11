@@ -114,6 +114,12 @@ pub const VANILLA_DOLPHIN_MOISTNESS_DATA_ID: u8 = GENERATED_VANILLA_DOLPHIN_MOIS
 const GENERATED_VANILLA_GLOW_SQUID_DARK_TICKS_DATA_ID: u8 = 18;
 pub const VANILLA_GLOW_SQUID_DARK_TICKS_DATA_ID: u8 =
     GENERATED_VANILLA_GLOW_SQUID_DARK_TICKS_DATA_ID;
+const GENERATED_VANILLA_HAPPY_GHAST_IS_LEASH_HOLDER_DATA_ID: u8 = 18;
+pub const VANILLA_HAPPY_GHAST_IS_LEASH_HOLDER_DATA_ID: u8 =
+    GENERATED_VANILLA_HAPPY_GHAST_IS_LEASH_HOLDER_DATA_ID;
+const GENERATED_VANILLA_HAPPY_GHAST_STAYS_STILL_DATA_ID: u8 = 19;
+pub const VANILLA_HAPPY_GHAST_STAYS_STILL_DATA_ID: u8 =
+    GENERATED_VANILLA_HAPPY_GHAST_STAYS_STILL_DATA_ID;
 const GENERATED_VANILLA_GOAT_SCREAMING_DATA_ID: u8 = 18;
 pub const VANILLA_GOAT_SCREAMING_DATA_ID: u8 = GENERATED_VANILLA_GOAT_SCREAMING_DATA_ID;
 const GENERATED_VANILLA_GOAT_LEFT_HORN_DATA_ID: u8 = 19;
@@ -599,6 +605,12 @@ pub const VANILLA_DOLPHIN_DEFAULT_MOISTNESS: i32 = GENERATED_VANILLA_DOLPHIN_DEF
 const GENERATED_VANILLA_GLOW_SQUID_DEFAULT_DARK_TICKS: i32 = 0;
 pub const VANILLA_GLOW_SQUID_DEFAULT_DARK_TICKS: i32 =
     GENERATED_VANILLA_GLOW_SQUID_DEFAULT_DARK_TICKS;
+const GENERATED_VANILLA_HAPPY_GHAST_DEFAULT_IS_LEASH_HOLDER: bool = false;
+pub const VANILLA_HAPPY_GHAST_DEFAULT_IS_LEASH_HOLDER: bool =
+    GENERATED_VANILLA_HAPPY_GHAST_DEFAULT_IS_LEASH_HOLDER;
+const GENERATED_VANILLA_HAPPY_GHAST_DEFAULT_STAYS_STILL: bool = false;
+pub const VANILLA_HAPPY_GHAST_DEFAULT_STAYS_STILL: bool =
+    GENERATED_VANILLA_HAPPY_GHAST_DEFAULT_STAYS_STILL;
 const GENERATED_VANILLA_GOAT_DEFAULT_SCREAMING: bool = false;
 pub const VANILLA_GOAT_DEFAULT_SCREAMING: bool = GENERATED_VANILLA_GOAT_DEFAULT_SCREAMING;
 const GENERATED_VANILLA_GOAT_DEFAULT_HAS_LEFT_HORN: bool = true;
@@ -13871,6 +13883,29 @@ const GLOWSQUID_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadat
     own_flags: GLOWSQUID_FLAGS,
 };
 
+const HAPPYGHAST_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[
+    VanillaEntityMetadataFieldSchema {
+        name: "IS_LEASH_HOLDER",
+        data_id: 18,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+        default: VanillaEntityMetadataDefault::Boolean(false),
+    },
+    VanillaEntityMetadataFieldSchema {
+        name: "STAYS_STILL",
+        data_id: 19,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+        default: VanillaEntityMetadataDefault::Boolean(false),
+    },
+];
+const HAPPYGHAST_FLAGS: &[VanillaEntityMetadataFlagSchema] = &[];
+const HAPPYGHAST_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamilySchema {
+    family: VanillaEntityMetadataFamily::HappyGhast,
+    parent: Some(VanillaEntityMetadataFamily::AgeableMob),
+    inherited_field_count: 18,
+    own_fields: HAPPYGHAST_FIELDS,
+    own_flags: HAPPYGHAST_FLAGS,
+};
+
 const GOAT_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[
     VanillaEntityMetadataFieldSchema {
         name: "DATA_IS_SCREAMING_GOAT",
@@ -15233,6 +15268,7 @@ pub(super) const fn generated_entity_metadata_schema(
         VanillaEntityMetadataFamily::Bee => &BEE_SCHEMA,
         VanillaEntityMetadataFamily::Dolphin => &DOLPHIN_SCHEMA,
         VanillaEntityMetadataFamily::GlowSquid => &GLOWSQUID_SCHEMA,
+        VanillaEntityMetadataFamily::HappyGhast => &HAPPYGHAST_SCHEMA,
         VanillaEntityMetadataFamily::Goat => &GOAT_SCHEMA,
         VanillaEntityMetadataFamily::Fox => &FOX_SCHEMA,
         VanillaEntityMetadataFamily::CopperGolem => &COPPERGOLEM_SCHEMA,

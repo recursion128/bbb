@@ -28,6 +28,7 @@ pub enum VanillaEntityMetadataFamily {
     Bee,
     Dolphin,
     GlowSquid,
+    HappyGhast,
     Goat,
     Fox,
     CopperGolem,
@@ -373,6 +374,7 @@ mod tests {
             VanillaEntityMetadataFamily::Bee,
             VanillaEntityMetadataFamily::Dolphin,
             VanillaEntityMetadataFamily::GlowSquid,
+            VanillaEntityMetadataFamily::HappyGhast,
             VanillaEntityMetadataFamily::Goat,
             VanillaEntityMetadataFamily::Fox,
             VanillaEntityMetadataFamily::CopperGolem,
@@ -557,6 +559,17 @@ mod tests {
         assert_eq!(glow_squid.own_fields.len(), 1);
         assert_eq!(VANILLA_GLOW_SQUID_DARK_TICKS_DATA_ID, 18);
         assert_eq!(VANILLA_GLOW_SQUID_DEFAULT_DARK_TICKS, 0);
+        let happy_ghast = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::HappyGhast);
+        assert_eq!(
+            happy_ghast.parent,
+            Some(VanillaEntityMetadataFamily::AgeableMob)
+        );
+        assert_eq!(happy_ghast.inherited_field_count, 18);
+        assert_eq!(happy_ghast.own_fields.len(), 2);
+        assert_eq!(VANILLA_HAPPY_GHAST_IS_LEASH_HOLDER_DATA_ID, 18);
+        assert_eq!(VANILLA_HAPPY_GHAST_STAYS_STILL_DATA_ID, 19);
+        assert!(!VANILLA_HAPPY_GHAST_DEFAULT_IS_LEASH_HOLDER);
+        assert!(!VANILLA_HAPPY_GHAST_DEFAULT_STAYS_STILL);
         let goat = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Goat);
         assert_eq!(goat.parent, Some(VanillaEntityMetadataFamily::AgeableMob));
         assert_eq!(goat.inherited_field_count, 18);

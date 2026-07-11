@@ -15,10 +15,13 @@ use bbb_protocol::entity_types::{
 use bbb_protocol::packets::EquipmentSlot as ProtocolEquipmentSlot;
 
 use super::local_player::LocalPlayerPoseState;
+#[cfg(test)]
+use crate::entities::VANILLA_HAPPY_GHAST_IS_LEASH_HOLDER_DATA_ID;
 use crate::entities::{
     is_vanilla_abstract_horse_type, is_vanilla_boat_type, is_vanilla_minecart_type,
     vanilla_living_entity_type, EntitySupportingBlock, VANILLA_CREAKING_CAN_MOVE_DATA_ID,
-    VANILLA_CREAKING_DEFAULT_CAN_MOVE,
+    VANILLA_CREAKING_DEFAULT_CAN_MOVE, VANILLA_HAPPY_GHAST_DEFAULT_STAYS_STILL,
+    VANILLA_HAPPY_GHAST_STAYS_STILL_DATA_ID,
 };
 use crate::terrain::block_name_is_air;
 use crate::{BlockPos, BlockProbe, TerrainFluidKind, TerrainMaterialClass, WorldStore};
@@ -27,7 +30,6 @@ pub(super) const COLLISION_EPSILON: f64 = 1.0e-7;
 const VANILLA_COLLISION_CONTEXT_ABOVE_EPSILON: f64 = 1.0e-5;
 const LOCAL_PLAYER_POWDER_SNOW_FALLING_COLLISION_FALL_DISTANCE: f64 = 2.5;
 const LOCAL_PLAYER_POWDER_SNOW_FALLING_COLLISION_HEIGHT: f64 = 0.9;
-const HAPPY_GHAST_STAYS_STILL_DATA_ID: u8 = 18;
 const LOCAL_PLAYER_HALF_WIDTH: f64 = 0.3;
 const SUPPORTING_BLOCK_PROBE_DEPTH: f64 = 1.0e-6;
 const MAX_COLLISION_BOXES: usize = 16;
@@ -705,8 +707,12 @@ impl WorldStore {
                 .is_some_and(|mount| !mount.passengers.is_empty());
         let stays_still = self
             .entities
-            .metadata_bool_for_entity(target_id, HAPPY_GHAST_STAYS_STILL_DATA_ID, false)
-            .unwrap_or(false);
+            .metadata_bool_for_entity(
+                target_id,
+                VANILLA_HAPPY_GHAST_STAYS_STILL_DATA_ID,
+                VANILLA_HAPPY_GHAST_DEFAULT_STAYS_STILL,
+            )
+            .unwrap_or(VANILLA_HAPPY_GHAST_DEFAULT_STAYS_STILL);
         player_is_above || happy_ghast_vehicle_pair || stays_still
     }
 
@@ -4922,7 +4928,19 @@ mod tests {
             world.apply_set_entity_data(bbb_protocol::packets::SetEntityData {
                 id: 20,
                 values: vec![bbb_protocol::packets::EntityDataValue {
-                    data_id: HAPPY_GHAST_STAYS_STILL_DATA_ID,
+                    data_id: VANILLA_HAPPY_GHAST_IS_LEASH_HOLDER_DATA_ID,
+                    serializer_id: 8,
+                    value: bbb_protocol::packets::EntityDataValueKind::Boolean(true),
+                }],
+            })
+        );
+        assert!(world.debug_camera_collision_boxes(6.0).is_empty());
+
+        assert!(
+            world.apply_set_entity_data(bbb_protocol::packets::SetEntityData {
+                id: 20,
+                values: vec![bbb_protocol::packets::EntityDataValue {
+                    data_id: VANILLA_HAPPY_GHAST_STAYS_STILL_DATA_ID,
                     serializer_id: 8,
                     value: bbb_protocol::packets::EntityDataValueKind::Boolean(true),
                 }],
