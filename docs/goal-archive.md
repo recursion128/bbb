@@ -10461,3 +10461,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   原 `InvalidData` 诊断。generated tests 锁定 enum/catalog 一一对应并递归拒绝 production
   source 重建 `EquipmentSlot` enum/impl；world equipment projection focused tests 不改语义
   通过，slot-group/component 语义未改。
+
+## 2026-07-11：Generated difficulty catalog
+
+- [x] gameplay-id extractor 通过共享 Tree-sitter frontend 读取 vanilla `Difficulty` enum 的
+  四项 explicit id/serialized name，并从 `BY_ID` CST 调用参数验证
+  `ByIdMap.OutOfBoundsStrategy.WRAP`。生成的 typed enum/catalog 统一拥有 id、name 与负数/越界
+  wrap fallback；protocol `ChangeDifficulty` 继续通过 `bbb_protocol::packets::Difficulty`
+  re-export 保持 API，删除 id/from-id match，world HUD 删除第二份 name match。fixtures、
+  生成顺序/唯一性/wrap 测试和 production-source 反向扫描锁定权威；difficulty packet 编解码、
+  control 权限与 HUD 行为未由生成层接管。

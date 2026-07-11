@@ -377,12 +377,7 @@ fn boss_bar_overlay_name(overlay: ProtocolBossBarOverlay) -> &'static str {
 }
 
 fn difficulty_name(difficulty: ProtocolDifficulty) -> &'static str {
-    match difficulty {
-        ProtocolDifficulty::Peaceful => "peaceful",
-        ProtocolDifficulty::Easy => "easy",
-        ProtocolDifficulty::Normal => "normal",
-        ProtocolDifficulty::Hard => "hard",
-    }
+    difficulty.serialized_name()
 }
 
 #[cfg(test)]

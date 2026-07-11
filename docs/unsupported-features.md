@@ -57,7 +57,8 @@ Owner: `scripts/` + each generated catalog's semantic crate
   catalog; block-entity numeric aliases and current vault consumers likewise derive
   from the generated catalog. Heightmap explicit ids/keys/usage, GameType explicit
   ids/serialized names/nullable sentinel, and player-info action wire-bit ordinals are
-  generated as well.
+  generated as well. Difficulty ids/serialized names/WRAP fallback now share a
+  generated owner too.
   The remaining cross-crate registry/ordinal audit stays open.
 
 ## Unknown clientbound packets in login, configuration, and play
@@ -750,6 +751,10 @@ vanilla evidence. Deleting one of these re-opens work already decided against.
   `SYNCHRONIZED_REGISTRIES`. The fixed 25-entry vanilla menu id/resource catalog
   is generated; OpenScreen menu ids therefore resolve against the built-in
   client registry rather than server-defined menu metadata.
+- **Custom difficulty enum values.** Vanilla 26.1 `Difficulty` is a closed Java
+  enum with four explicit ids/names and `ByIdMap.OutOfBoundsStrategy.WRAP`;
+  protocol/world consume the generated catalog and there is no server/datapack
+  definition surface to load.
 - **Custom equipment-slot or slot-group enum values.** Vanilla 26.1 defines
   both as closed Java enums, not registries or datapack codecs. Their distinct
   declaration ordinals / explicit ids and serialized names are generated from

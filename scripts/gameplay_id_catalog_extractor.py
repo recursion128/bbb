@@ -96,6 +96,13 @@ class PlayerInfoActionEntry:
     ordinal: int
 
 
+@dataclass(frozen=True)
+class DifficultyEntry:
+    constant_name: str
+    difficulty_id: int
+    serialized_name: str
+
+
 def _fail(source: JavaSource, expression: JavaExpression, message: str) -> None:
     span = expression.span
     raise GameplayIdExtractionError(
@@ -394,6 +401,55 @@ def player_info_action_entries(
         )
     _validate(entries, "player-info action", "ordinal")
     return entries
+
+
+def difficulty_entries(
+    source: JavaSource, expected_count: int = 4
+) -> list[DifficultyEntry]:
+    entries = []
+    for name, arguments in _enum_constants(source):
+        if len(arguments) != 2:
+            _fail(source, arguments[0], f"difficulty {name} must have two arguments")
+        entries.append(
+            DifficultyEntry(
+                name,
+                _integer(source, arguments[0]),
+                _string(source, arguments[1]),
+            )
+        )
+    if len(entries) != expected_count:
+        raise GameplayIdExtractionError(
+            f"expected {expected_count} difficulties, extracted {len(entries)}"
+        )
+    _validate(entries, "difficulty", "difficulty_id")
+    _validate(entries, "difficulty", "serialized_name")
+    if [entry.difficulty_id for entry in entries] != list(range(expected_count)):
+        raise GameplayIdExtractionError("difficulty ids are not contiguous declaration order")
+    return entries
+
+
+def difficulty_out_of_bounds_strategy(source: JavaSource) -> str:
+    fields = [field for field in source.fields if field.name == "BY_ID"]
+    if len(fields) != 1 or fields[0].initializer is None:
+        raise GameplayIdExtractionError(
+            f"{source.relative_path}: expected one initialized BY_ID field"
+        )
+    initializer = fields[0].initializer
+    if initializer.node.type != "method_invocation":
+        _fail(source, initializer, "difficulty BY_ID must be a method invocation")
+    name = initializer.node.child_by_field_name("name")
+    arguments = initializer.node.child_by_field_name("arguments")
+    if (
+        name is None
+        or source.text(name) != "continuous"
+        or arguments is None
+        or len(arguments.named_children) != 3
+    ):
+        _fail(source, initializer, "difficulty BY_ID must call ByIdMap.continuous")
+    strategy = source.expression(arguments.named_children[-1]).canonical.rsplit(".", 1)[-1]
+    if strategy != "WRAP":
+        _fail(source, initializer, f"unsupported difficulty id strategy {strategy}")
+    return strategy
 
 
 def equipment_slot_entries(

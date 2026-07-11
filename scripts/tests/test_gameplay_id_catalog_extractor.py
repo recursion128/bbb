@@ -12,6 +12,8 @@ from gameplay_id_catalog_extractor import (  # noqa: E402
     GameplayIdExtractionError,
     attribute_entries,
     client_game_event_type_entries,
+    difficulty_entries,
+    difficulty_out_of_bounds_strategy,
     entity_data_serializer_entries,
     entity_pose_entries,
     equipment_slot_entries,
@@ -186,6 +188,26 @@ public class ClientboundPlayerInfoUpdatePacket {
             [entry.constant_name for entry in player_info_action_entries(source, 3)],
             ["ADD_PLAYER", "UPDATE_LIST_ORDER", "UPDATE_HAT"],
         )
+
+    def test_difficulties_preserve_ids_names_and_wrap_strategy(self) -> None:
+        source = parse_source(
+            "fixture/Difficulty.java",
+            b"""
+package fixture;
+public enum Difficulty {
+  PEACEFUL(0, "peaceful"), EASY(1, "easy"),
+  NORMAL(2, "normal"), HARD(3, "hard");
+  private static final IntFunction<Difficulty> BY_ID = ByIdMap.continuous(
+      Difficulty::getId, values(), ByIdMap.OutOfBoundsStrategy.WRAP);
+  Difficulty(int id, String key) {}
+}
+""",
+        )
+        self.assertEqual(
+            [(entry.difficulty_id, entry.serialized_name) for entry in difficulty_entries(source)],
+            [(0, "peaceful"), (1, "easy"), (2, "normal"), (3, "hard")],
+        )
+        self.assertEqual(difficulty_out_of_bounds_strategy(source), "WRAP")
 
     def test_unsupported_register_shape_reports_source_span(self) -> None:
         source = parse_source(

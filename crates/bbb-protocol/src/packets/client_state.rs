@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+pub use crate::difficulties::Difficulty;
 use crate::{
     codec::{Decoder, ProtocolError, Result},
     component::decode_component_summary_from_decoder,
@@ -176,35 +177,6 @@ impl BossEventFlags {
 pub struct ChangeDifficulty {
     pub difficulty: Difficulty,
     pub locked: bool,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum Difficulty {
-    Peaceful,
-    Easy,
-    Normal,
-    Hard,
-}
-
-impl Difficulty {
-    pub fn id(self) -> i32 {
-        match self {
-            Self::Peaceful => 0,
-            Self::Easy => 1,
-            Self::Normal => 2,
-            Self::Hard => 3,
-        }
-    }
-
-    fn from_id(id: i32) -> Self {
-        match id.rem_euclid(4) {
-            0 => Self::Peaceful,
-            1 => Self::Easy,
-            2 => Self::Normal,
-            3 => Self::Hard,
-            _ => unreachable!("rem_euclid(4) is always in 0..4"),
-        }
-    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
