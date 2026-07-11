@@ -10130,3 +10130,11 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   以 `DATA_ITEM_STACK` 自动解析到 `ThrowableItemProjectile`、`EyeOfEnder` 或 `Fireball`
   descriptor；测试锁定 owner/serializer/index 与非适用类型拒绝。各 leaf 的
   `getDefaultItem()` 仍保持 unresolved，未用源码名称猜默认物品。
+
+## 2026-07-11：Generated Skeleton freeze-conversion metadata
+
+- [x] 由 Tree-sitter catalog 建立 `Mob -> Skeleton` family，生成
+  `DATA_STRAY_CONVERSION_ID` id16/default false。native `entity_shaking` 按 vanilla
+  `Skeleton.isShaking` / `AbstractSkeletonRenderer.extractRenderState` 消费同步 boolean；默认
+  不摇、true 时复用现有 body shake。300-tick conversionTime、powder-snow 判定和实体转换仍为
+  server authority，客户端没有模拟。

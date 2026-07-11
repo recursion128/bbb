@@ -344,6 +344,9 @@ const GENERATED_VANILLA_PHANTOM_SIZE_DATA_ID: u8 = 16;
 pub const VANILLA_PHANTOM_SIZE_DATA_ID: u8 = GENERATED_VANILLA_PHANTOM_SIZE_DATA_ID;
 const GENERATED_VANILLA_BOGGED_SHEARED_DATA_ID: u8 = 16;
 pub const VANILLA_BOGGED_SHEARED_DATA_ID: u8 = GENERATED_VANILLA_BOGGED_SHEARED_DATA_ID;
+const GENERATED_VANILLA_SKELETON_STRAY_CONVERSION_DATA_ID: u8 = 16;
+pub const VANILLA_SKELETON_STRAY_CONVERSION_DATA_ID: u8 =
+    GENERATED_VANILLA_SKELETON_STRAY_CONVERSION_DATA_ID;
 const GENERATED_VANILLA_GHAST_CHARGING_DATA_ID: u8 = 16;
 pub const VANILLA_GHAST_CHARGING_DATA_ID: u8 = GENERATED_VANILLA_GHAST_CHARGING_DATA_ID;
 const GENERATED_VANILLA_VEX_FLAGS_DATA_ID: u8 = 16;
@@ -920,6 +923,9 @@ const GENERATED_VANILLA_PHANTOM_DEFAULT_SIZE: i32 = 0;
 pub const VANILLA_PHANTOM_DEFAULT_SIZE: i32 = GENERATED_VANILLA_PHANTOM_DEFAULT_SIZE;
 const GENERATED_VANILLA_BOGGED_DEFAULT_SHEARED: bool = false;
 pub const VANILLA_BOGGED_DEFAULT_SHEARED: bool = GENERATED_VANILLA_BOGGED_DEFAULT_SHEARED;
+const GENERATED_VANILLA_SKELETON_DEFAULT_STRAY_CONVERSION: bool = false;
+pub const VANILLA_SKELETON_DEFAULT_STRAY_CONVERSION: bool =
+    GENERATED_VANILLA_SKELETON_DEFAULT_STRAY_CONVERSION;
 const GENERATED_VANILLA_GHAST_DEFAULT_CHARGING: bool = false;
 pub const VANILLA_GHAST_DEFAULT_CHARGING: bool = GENERATED_VANILLA_GHAST_DEFAULT_CHARGING;
 const GENERATED_VANILLA_VEX_DEFAULT_FLAGS: i8 = 0;
@@ -15446,6 +15452,21 @@ const BOGGED_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFa
     own_flags: BOGGED_FLAGS,
 };
 
+const SKELETON_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[VanillaEntityMetadataFieldSchema {
+    name: "DATA_STRAY_CONVERSION_ID",
+    data_id: 16,
+    serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+    default: VanillaEntityMetadataDefault::Boolean(false),
+}];
+const SKELETON_FLAGS: &[VanillaEntityMetadataFlagSchema] = &[];
+const SKELETON_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamilySchema {
+    family: VanillaEntityMetadataFamily::Skeleton,
+    parent: Some(VanillaEntityMetadataFamily::Mob),
+    inherited_field_count: 16,
+    own_fields: SKELETON_FIELDS,
+    own_flags: SKELETON_FLAGS,
+};
+
 const GHAST_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[VanillaEntityMetadataFieldSchema {
     name: "DATA_IS_CHARGING",
     data_id: 16,
@@ -16055,6 +16076,7 @@ pub(super) const fn generated_entity_metadata_schema(
         VanillaEntityMetadataFamily::Bat => &BAT_SCHEMA,
         VanillaEntityMetadataFamily::Phantom => &PHANTOM_SCHEMA,
         VanillaEntityMetadataFamily::Bogged => &BOGGED_SCHEMA,
+        VanillaEntityMetadataFamily::Skeleton => &SKELETON_SCHEMA,
         VanillaEntityMetadataFamily::Ghast => &GHAST_SCHEMA,
         VanillaEntityMetadataFamily::Vex => &VEX_SCHEMA,
         VanillaEntityMetadataFamily::Creaking => &CREAKING_SCHEMA,

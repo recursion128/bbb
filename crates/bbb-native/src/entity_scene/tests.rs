@@ -1197,6 +1197,34 @@ fn entity_model_instances_shake_striders_while_suffocating() {
 }
 
 #[test]
+fn entity_model_instances_shake_skeletons_while_freeze_converting() {
+    let mut world = WorldStore::new();
+    world.apply_add_entity(protocol_add_entity(
+        87,
+        VANILLA_ENTITY_TYPE_SKELETON_ID,
+        [1.0, 64.0, -2.0],
+    ));
+    world.advance_entity_client_animations(2);
+
+    let body_rot = |world: &WorldStore| {
+        entity_model_instances_from_world_at_partial_tick(world, None, 0.0)
+            .into_iter()
+            .find(|instance| instance.entity_id == 87)
+            .unwrap()
+            .render_state
+            .body_rot
+    };
+    assert_eq!(body_rot(&world), 0.0);
+
+    assert!(world.apply_set_entity_data(SetEntityData {
+        id: 87,
+        values: vec![protocol_bool_data(SKELETON_STRAY_CONVERSION_DATA_ID, true,)],
+    }));
+    let expected_shake = (2.0_f32 * 3.25).cos() * std::f32::consts::PI * 0.4;
+    assert!((body_rot(&world) - expected_shake).abs() < 1e-6);
+}
+
+#[test]
 fn entity_model_instances_shake_piglins_and_hoglins_while_zombifying() {
     fn dimension_world(dimension_type_id: i32, dimension: &str) -> WorldStore {
         let mut world = WorldStore::new();

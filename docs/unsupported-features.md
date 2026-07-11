@@ -160,7 +160,6 @@ Living-entity render state:
 
 - Track and apply the fall-flying and swimming `head.xRot` overrides in the
   head-look projection; both currently default upright.
-- Project the base-`Skeleton` freeze-conversion shake from client data.
   `LivingEntityRenderer.isShaking` reads it, but `conversionTime` is currently
   server-side only.
 - Project guardian eye target tracking (`lookAtPosition` / `lookDirection` /
@@ -502,7 +501,7 @@ back into a todo. Do not delete these.
   `Sniffer` / `Turtle`,
   `ArmorStand`,
   `Slime` (also consumed by `MagmaCube`), `Shulker`, `Zombie`, `Mob -> Guardian` /
-  `SnowGolem` / `Bat` /
+  `SnowGolem` / `Bat` / `Skeleton` /
   `Phantom` / `Bogged` / `Ghast` / `Vex` / `Creaking` / `Zoglin` / `CopperGolem` / `IronGolem`,
   `AgeableMob -> Strider` / `Hoglin`, `Mob -> AbstractFish -> Salmon` / `TropicalFish` /
   `Pufferfish` / `Tadpole`,

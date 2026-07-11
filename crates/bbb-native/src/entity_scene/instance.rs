@@ -842,8 +842,8 @@ pub(super) fn entity_body_shake_degrees(age_ticks: u32, is_shaking: bool) -> f32
 /// true when the entity is not immune to zombification and the dimension's
 /// `EnvironmentAttributes.PIGLINS_ZOMBIFY` value is true. `NoAI` is not synced to
 /// this client projection, matching the rest of the network-visible entity state.
-/// The base-`Skeleton` freeze-conversion shake remains deferred because it is a
-/// server-side `conversionTime`.
+/// `AbstractSkeletonRenderer` also projects the base skeleton's synced freeze-conversion boolean;
+/// the server-only countdown is not needed for the client shake.
 pub(super) fn entity_shaking(
     entity_type_id: i32,
     data_values: &[bbb_protocol::packets::EntityDataValue],
@@ -854,6 +854,11 @@ pub(super) fn entity_shaking(
         return true;
     }
     match entity_type_id {
+        VANILLA_ENTITY_TYPE_SKELETON_ID => entity_data_bool(
+            data_values,
+            SKELETON_STRAY_CONVERSION_DATA_ID,
+            SKELETON_DEFAULT_STRAY_CONVERSION,
+        ),
         VANILLA_ENTITY_TYPE_ZOMBIE_ID
         | VANILLA_ENTITY_TYPE_HUSK_ID
         | VANILLA_ENTITY_TYPE_DROWNED_ID => entity_data_bool(

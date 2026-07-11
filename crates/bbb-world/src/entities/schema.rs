@@ -76,6 +76,7 @@ pub enum VanillaEntityMetadataFamily {
     Bat,
     Phantom,
     Bogged,
+    Skeleton,
     Ghast,
     Vex,
     Creaking,
@@ -596,6 +597,7 @@ mod tests {
             VanillaEntityMetadataFamily::Bat,
             VanillaEntityMetadataFamily::Phantom,
             VanillaEntityMetadataFamily::Bogged,
+            VanillaEntityMetadataFamily::Skeleton,
             VanillaEntityMetadataFamily::Ghast,
             VanillaEntityMetadataFamily::Vex,
             VanillaEntityMetadataFamily::Creaking,
@@ -1856,6 +1858,21 @@ mod tests {
         );
         assert_eq!(VANILLA_BOGGED_SHEARED_DATA_ID, 16);
         assert!(!VANILLA_BOGGED_DEFAULT_SHEARED);
+        let skeleton = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Skeleton);
+        assert_eq!(skeleton.parent, Some(VanillaEntityMetadataFamily::Mob));
+        assert_eq!(skeleton.inherited_field_count, 16);
+        assert_eq!(VANILLA_SKELETON_STRAY_CONVERSION_DATA_ID, 16);
+        assert!(!VANILLA_SKELETON_DEFAULT_STRAY_CONVERSION);
+        assert_eq!(
+            skeleton.own_fields,
+            &[VanillaEntityMetadataFieldSchema {
+                name: "DATA_STRAY_CONVERSION_ID",
+                data_id: 16,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+                default: VanillaEntityMetadataDefault::Boolean(false),
+            }]
+        );
         let ghast = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Ghast);
         assert_eq!(ghast.parent, Some(VanillaEntityMetadataFamily::Mob));
         assert_eq!(ghast.inherited_field_count, 16);
