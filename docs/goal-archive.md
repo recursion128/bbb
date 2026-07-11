@@ -10413,3 +10413,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   production `.rs`，排除明确的 test wire fixtures 与不同 registry 的 entity-data serializer，
   阻止裸 component id 回流。descriptor/wire codec、persistent SNBT 与运行时 fallback 均未
   改变，也未把 named id catalog 冒充 component 行为实现。
+
+## 2026-07-11：Unified block-entity numeric aliases
+
+- [x] core-registry generator 为 49 项 `BlockEntityType.java` catalog 生成
+  `VANILLA_BLOCK_ENTITY_TYPE_*_ID` compatibility aliases；world chunk store、level-event
+  apply/audio 与 native event dispatcher 的四份 vault=45 手写常量改为引用生成 owner。
+  跨 crate production-source 结构门禁同时拒绝新的 block-entity type 数字常量，测试 fixture
+  仍可保留明确 wire 样本。block-entity packet decode、world state 与 vault presentation 行为
+  均未改变。

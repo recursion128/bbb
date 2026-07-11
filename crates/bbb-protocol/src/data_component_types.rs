@@ -940,6 +940,7 @@ mod tests {
                 }
                 let display = path.to_string_lossy();
                 if display.ends_with("/data_component_types.rs")
+                    || display.ends_with("/block_entity_types.rs")
                     || display.ends_with("/entity_data_serializers.rs")
                     || display.ends_with("/tests.rs")
                     || display.contains("/tests/")
@@ -962,7 +963,8 @@ mod tests {
                     let line_start = source[..offset].rfind('\n').map_or(0, |index| index + 1);
                     let declaration = &source[line_start..offset];
                     let value = source[offset + ": i32 =".len()..].trim_start();
-                    if declaration.contains("COMPONENT")
+                    if (declaration.contains("COMPONENT")
+                        || declaration.contains("BLOCK_ENTITY_TYPE_ID"))
                         && value.as_bytes().first().is_some_and(u8::is_ascii_digit)
                     {
                         let line_number = source[..offset]

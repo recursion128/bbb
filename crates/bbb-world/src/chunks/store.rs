@@ -33,8 +33,8 @@ use super::{
     sign_text::decode_sign_block_entity_text,
 };
 
-// Vanilla 26.1 BlockEntityType registry order in BlockEntityType.java.
-const VANILLA_VAULT_BLOCK_ENTITY_TYPE_ID: i32 = 45;
+const VANILLA_VAULT_BLOCK_ENTITY_TYPE_ID: i32 =
+    bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_VAULT_ID;
 
 impl WorldStore {
     pub fn insert_level_chunk_with_light(

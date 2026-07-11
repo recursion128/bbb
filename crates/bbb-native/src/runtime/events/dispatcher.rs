@@ -39,8 +39,8 @@ const BEE_GROWTH_PARTICLES_LEVEL_EVENT: i32 = 2011;
 const TURTLE_EGG_PLACEMENT_PARTICLES_LEVEL_EVENT: i32 = 2012;
 const VAULT_ACTIVATE_LEVEL_EVENT: i32 = 3015;
 const POINTED_DRIPSTONE_ROOT_SEARCH_LENGTH: i32 = 11;
-// Vanilla 26.1 BlockEntityType registry order in BlockEntityType.java.
-const VANILLA_VAULT_BLOCK_ENTITY_TYPE_ID: i32 = 45;
+const VANILLA_VAULT_BLOCK_ENTITY_TYPE_ID: i32 =
+    bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_VAULT_ID;
 
 #[cfg(test)]
 pub(in crate::runtime) fn drain_net_events(

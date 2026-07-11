@@ -283,8 +283,12 @@ def render_block_entity_types(entries: list[RegistryEntry]) -> str:
         "    pub resource_id: &'static str,",
         "}",
         "",
-        "pub const VANILLA_BLOCK_ENTITY_TYPES: &[BlockEntityTypeCatalogEntry] = &[",
     ]
+    for entry_id, entry in enumerate(entries):
+        lines.append(
+            f"pub const VANILLA_BLOCK_ENTITY_TYPE_{entry.constant_name}_ID: i32 = {entry_id};"
+        )
+    lines.extend(("", "pub const VANILLA_BLOCK_ENTITY_TYPES: &[BlockEntityTypeCatalogEntry] = &["))
     for entry_id, entry in enumerate(entries):
         lines.extend(
             (
@@ -333,6 +337,7 @@ def render_block_entity_types(entries: list[RegistryEntry]) -> str:
             "        assert_eq!(vanilla_block_entity_resource_id_for_type_id(0), Some(\"minecraft:furnace\"));",
             "        assert_eq!(vanilla_block_entity_resource_id_for_type_id(9), Some(\"minecraft:mob_spawner\"));",
             "        assert_eq!(vanilla_block_entity_resource_id_for_type_id(45), Some(\"minecraft:vault\"));",
+            "        assert_eq!(VANILLA_BLOCK_ENTITY_TYPE_VAULT_ID, 45);",
             "        assert_eq!(vanilla_block_entity_resource_id_for_type_id(48), Some(\"minecraft:copper_golem_statue\"));",
             "        assert_eq!(vanilla_block_entity_resource_id_for_type_id(-1), None);",
             "        assert_eq!(vanilla_block_entity_resource_id_for_type_id(49), None);",
@@ -466,7 +471,7 @@ def render_data_component_types(
             "                if path.is_dir() { visit(&path, violations); continue; }",
             "                if path.extension().and_then(|value| value.to_str()) != Some(\"rs\") { continue; }",
             "                let display = path.to_string_lossy();",
-            "                if display.ends_with(\"/data_component_types.rs\") || display.ends_with(\"/entity_data_serializers.rs\") || display.ends_with(\"/tests.rs\") || display.contains(\"/tests/\") { continue; }",
+            "                if display.ends_with(\"/data_component_types.rs\") || display.ends_with(\"/block_entity_types.rs\") || display.ends_with(\"/entity_data_serializers.rs\") || display.ends_with(\"/tests.rs\") || display.contains(\"/tests/\") { continue; }",
             "                let source = fs::read_to_string(&path).unwrap();",
             "                if display.ends_with(\"/input/component_patch.rs\") {",
             "                    for (offset, _) in source.match_indices(\"encoder(\") {",
@@ -480,7 +485,7 @@ def render_data_component_types(
             "                    let line_start = source[..offset].rfind('\\n').map_or(0, |index| index + 1);",
             "                    let declaration = &source[line_start..offset];",
             "                    let value = source[offset + \": i32 =\".len()..].trim_start();",
-            "                    if declaration.contains(\"COMPONENT\") && value.as_bytes().first().is_some_and(u8::is_ascii_digit) {",
+            "                    if (declaration.contains(\"COMPONENT\") || declaration.contains(\"BLOCK_ENTITY_TYPE_ID\")) && value.as_bytes().first().is_some_and(u8::is_ascii_digit) {",
             "                        let line_number = source[..offset].bytes().filter(|byte| *byte == b'\\n').count() + 1;",
             "                        violations.push(format!(\"{}:{}: {}\", display, line_number, declaration.trim()));",
             "                    }",
