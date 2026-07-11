@@ -425,6 +425,8 @@ def render_equipment_slots(
         "// Update: scripts/vanilla-source-tools.sh scripts/generate-gameplay-id-catalog.py",
         "// Check: scripts/vanilla-source-tools.sh scripts/generate-gameplay-id-catalog.py --check",
         "",
+        "use serde::{Deserialize, Serialize};",
+        "",
         "#[derive(Debug, Clone, Copy, PartialEq, Eq)]",
         "pub enum EquipmentSlotType {",
         "    Hand,",
@@ -442,6 +444,7 @@ def render_equipment_slots(
         "    pub slot_type: EquipmentSlotType,",
         "    pub index: i32,",
         "    pub count_limit: i32,",
+        "    pub slot: EquipmentSlot,",
         "}",
         "",
     ]
@@ -452,8 +455,34 @@ def render_equipment_slots(
         lines.append(
             f"pub const VANILLA_EQUIPMENT_SLOT_{entry.constant_name}_ID: i32 = {entry.slot_id};"
         )
-    lines.extend(("", "pub const VANILLA_EQUIPMENT_SLOTS: &[EquipmentSlotCatalogEntry] = &["))
+    lines.extend(
+        (
+            "",
+            "#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]",
+            "#[repr(u8)]",
+            "pub enum EquipmentSlot {",
+        )
+    )
     for ordinal, entry in enumerate(slots):
+        variant = {
+            "MAINHAND": "MainHand",
+            "OFFHAND": "OffHand",
+        }.get(entry.constant_name, rust_pascal_case(entry.constant_name))
+        lines.append(
+            f"    {variant} = VANILLA_EQUIPMENT_SLOT_{entry.constant_name}_ORDINAL,"
+        )
+    lines.extend(
+        (
+            "}",
+            "",
+            "pub const VANILLA_EQUIPMENT_SLOTS: &[EquipmentSlotCatalogEntry] = &[",
+        )
+    )
+    for ordinal, entry in enumerate(slots):
+        variant = {
+            "MAINHAND": "MainHand",
+            "OFFHAND": "OffHand",
+        }.get(entry.constant_name, rust_pascal_case(entry.constant_name))
         lines.extend(
             (
                 "    EquipmentSlotCatalogEntry {",
@@ -464,6 +493,7 @@ def render_equipment_slots(
                 f"        slot_type: EquipmentSlotType::{rust_pascal_case(entry.slot_type)},",
                 f"        index: {entry.index},",
                 f"        count_limit: {entry.count_limit},",
+                f"        slot: EquipmentSlot::{variant},",
                 "    },",
             )
         )
@@ -487,6 +517,16 @@ def render_equipment_slots(
             "    serialized_name: &str,",
             ") -> Option<&'static EquipmentSlotCatalogEntry> {",
             "    VANILLA_EQUIPMENT_SLOTS.iter().find(|entry| entry.serialized_name == serialized_name)",
+            "}",
+            "",
+            "impl EquipmentSlot {",
+            "    pub const fn ordinal(self) -> u8 {",
+            "        self as u8",
+            "    }",
+            "",
+            "    pub(crate) fn from_ordinal(ordinal: u8) -> Option<Self> {",
+            "        vanilla_equipment_slot_by_ordinal(ordinal).map(|entry| entry.slot)",
+            "    }",
             "}",
             "",
             "#[derive(Debug, Clone, Copy, PartialEq, Eq)]",
@@ -533,7 +573,7 @@ def render_equipment_slots(
             "",
             "#[cfg(test)]",
             "mod tests {",
-            "    use std::collections::HashSet;",
+            "    use std::{collections::HashSet, fs, path::Path};",
             "",
             "    use super::*;",
             "",
@@ -544,6 +584,7 @@ def render_equipment_slots(
             "        let mut names = HashSet::new();",
             "        for (ordinal, entry) in VANILLA_EQUIPMENT_SLOTS.iter().enumerate() {",
             "            assert_eq!(entry.ordinal, ordinal as u8);",
+            "            assert_eq!(entry.slot.ordinal(), entry.ordinal);",
             "            assert!(ids.insert(entry.id));",
             "            assert!(names.insert(entry.serialized_name));",
             "        }",
@@ -556,6 +597,8 @@ def render_equipment_slots(
             "        assert_eq!(vanilla_equipment_slot_by_id(1).unwrap().serialized_name, \"feet\");",
             "        assert_eq!(vanilla_equipment_slot_by_ordinal(8), None);",
             "        assert_eq!(vanilla_equipment_slot_by_id(8), None);",
+            "        assert_eq!(EquipmentSlot::from_ordinal(1), Some(EquipmentSlot::OffHand));",
+            "        assert_eq!(EquipmentSlot::from_ordinal(8), None);",
             "    }",
             "",
             "    #[test]",
@@ -572,6 +615,25 @@ def render_equipment_slots(
             "        assert_eq!(vanilla_equipment_slot_group_for_serialized_name(\"body\").unwrap().id, 9);",
             "        assert_eq!(vanilla_equipment_slot_group(-1), None);",
             "        assert_eq!(vanilla_equipment_slot_group(11), None);",
+            "    }",
+            "",
+            "    #[test]",
+            "    fn production_sources_do_not_redeclare_equipment_slot_ordinals() {",
+            "        fn visit(directory: &Path, violations: &mut Vec<String>) {",
+            "            for entry in fs::read_dir(directory).unwrap() {",
+            "                let path = entry.unwrap().path();",
+            "                if path.is_dir() { visit(&path, violations); continue; }",
+            "                if path.extension().and_then(|value| value.to_str()) != Some(\"rs\") { continue; }",
+            "                let display = path.to_string_lossy();",
+            "                if display.ends_with(\"/equipment_slots.rs\") || display.ends_with(\"/tests.rs\") || display.contains(\"/tests/\") { continue; }",
+            "                let source = fs::read_to_string(&path).unwrap();",
+            "                let production = source.split(\"#[cfg(test)]\").next().unwrap_or(&source);",
+            "                if production.contains(\"enum EquipmentSlot\") || production.contains(\"impl EquipmentSlot\") { violations.push(display.to_string()); }",
+            "            }",
+            "        }",
+            "        let mut violations = Vec::new();",
+            "        visit(Path::new(env!(\"CARGO_MANIFEST_DIR\")).parent().unwrap(), &mut violations);",
+            "        assert!(violations.is_empty(), \"parallel equipment-slot ordinal owners: {violations:?}\");",
             "    }",
             "}",
             "",

@@ -753,8 +753,9 @@ vanilla evidence. Deleting one of these re-opens work already decided against.
 - **Custom equipment-slot or slot-group enum values.** Vanilla 26.1 defines
   both as closed Java enums, not registries or datapack codecs. Their distinct
   declaration ordinals / explicit ids and serialized names are generated from
-  `EquipmentSlot.java` and `EquipmentSlotGroup.java`; there is no server-owned
-  extension surface to load.
+  `EquipmentSlot.java` and `EquipmentSlotGroup.java`; the packet-facing typed
+  equipment-slot enum and wire ordinal lookup share that generated owner. There
+  is no server-owned extension surface to load.
 - **Custom entity-pose enum values.** Vanilla 26.1 `Pose` is a closed Java enum
   whose id-mapped stream codec uses its 18 explicit ids. The fixed id/name
   catalog is generated from `Pose.java`; it has no registry or datapack

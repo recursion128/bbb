@@ -3,6 +3,8 @@
 // Update: scripts/vanilla-source-tools.sh scripts/generate-gameplay-id-catalog.py
 // Check: scripts/vanilla-source-tools.sh scripts/generate-gameplay-id-catalog.py --check
 
+use serde::{Deserialize, Serialize};
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EquipmentSlotType {
     Hand,
@@ -20,6 +22,7 @@ pub struct EquipmentSlotCatalogEntry {
     pub slot_type: EquipmentSlotType,
     pub index: i32,
     pub count_limit: i32,
+    pub slot: EquipmentSlot,
 }
 
 pub const VANILLA_EQUIPMENT_SLOT_MAINHAND_ORDINAL: u8 = 0;
@@ -39,6 +42,19 @@ pub const VANILLA_EQUIPMENT_SLOT_BODY_ID: i32 = 6;
 pub const VANILLA_EQUIPMENT_SLOT_SADDLE_ORDINAL: u8 = 7;
 pub const VANILLA_EQUIPMENT_SLOT_SADDLE_ID: i32 = 7;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[repr(u8)]
+pub enum EquipmentSlot {
+    MainHand = VANILLA_EQUIPMENT_SLOT_MAINHAND_ORDINAL,
+    OffHand = VANILLA_EQUIPMENT_SLOT_OFFHAND_ORDINAL,
+    Feet = VANILLA_EQUIPMENT_SLOT_FEET_ORDINAL,
+    Legs = VANILLA_EQUIPMENT_SLOT_LEGS_ORDINAL,
+    Chest = VANILLA_EQUIPMENT_SLOT_CHEST_ORDINAL,
+    Head = VANILLA_EQUIPMENT_SLOT_HEAD_ORDINAL,
+    Body = VANILLA_EQUIPMENT_SLOT_BODY_ORDINAL,
+    Saddle = VANILLA_EQUIPMENT_SLOT_SADDLE_ORDINAL,
+}
+
 pub const VANILLA_EQUIPMENT_SLOTS: &[EquipmentSlotCatalogEntry] = &[
     EquipmentSlotCatalogEntry {
         ordinal: 0,
@@ -48,6 +64,7 @@ pub const VANILLA_EQUIPMENT_SLOTS: &[EquipmentSlotCatalogEntry] = &[
         slot_type: EquipmentSlotType::Hand,
         index: 0,
         count_limit: 0,
+        slot: EquipmentSlot::MainHand,
     },
     EquipmentSlotCatalogEntry {
         ordinal: 1,
@@ -57,6 +74,7 @@ pub const VANILLA_EQUIPMENT_SLOTS: &[EquipmentSlotCatalogEntry] = &[
         slot_type: EquipmentSlotType::Hand,
         index: 1,
         count_limit: 0,
+        slot: EquipmentSlot::OffHand,
     },
     EquipmentSlotCatalogEntry {
         ordinal: 2,
@@ -66,6 +84,7 @@ pub const VANILLA_EQUIPMENT_SLOTS: &[EquipmentSlotCatalogEntry] = &[
         slot_type: EquipmentSlotType::HumanoidArmor,
         index: 0,
         count_limit: 1,
+        slot: EquipmentSlot::Feet,
     },
     EquipmentSlotCatalogEntry {
         ordinal: 3,
@@ -75,6 +94,7 @@ pub const VANILLA_EQUIPMENT_SLOTS: &[EquipmentSlotCatalogEntry] = &[
         slot_type: EquipmentSlotType::HumanoidArmor,
         index: 1,
         count_limit: 1,
+        slot: EquipmentSlot::Legs,
     },
     EquipmentSlotCatalogEntry {
         ordinal: 4,
@@ -84,6 +104,7 @@ pub const VANILLA_EQUIPMENT_SLOTS: &[EquipmentSlotCatalogEntry] = &[
         slot_type: EquipmentSlotType::HumanoidArmor,
         index: 2,
         count_limit: 1,
+        slot: EquipmentSlot::Chest,
     },
     EquipmentSlotCatalogEntry {
         ordinal: 5,
@@ -93,6 +114,7 @@ pub const VANILLA_EQUIPMENT_SLOTS: &[EquipmentSlotCatalogEntry] = &[
         slot_type: EquipmentSlotType::HumanoidArmor,
         index: 3,
         count_limit: 1,
+        slot: EquipmentSlot::Head,
     },
     EquipmentSlotCatalogEntry {
         ordinal: 6,
@@ -102,6 +124,7 @@ pub const VANILLA_EQUIPMENT_SLOTS: &[EquipmentSlotCatalogEntry] = &[
         slot_type: EquipmentSlotType::AnimalArmor,
         index: 0,
         count_limit: 1,
+        slot: EquipmentSlot::Body,
     },
     EquipmentSlotCatalogEntry {
         ordinal: 7,
@@ -111,6 +134,7 @@ pub const VANILLA_EQUIPMENT_SLOTS: &[EquipmentSlotCatalogEntry] = &[
         slot_type: EquipmentSlotType::Saddle,
         index: 0,
         count_limit: 1,
+        slot: EquipmentSlot::Saddle,
     },
 ];
 
@@ -130,6 +154,16 @@ pub fn vanilla_equipment_slot_for_serialized_name(
     VANILLA_EQUIPMENT_SLOTS
         .iter()
         .find(|entry| entry.serialized_name == serialized_name)
+}
+
+impl EquipmentSlot {
+    pub const fn ordinal(self) -> u8 {
+        self as u8
+    }
+
+    pub(crate) fn from_ordinal(ordinal: u8) -> Option<Self> {
+        vanilla_equipment_slot_by_ordinal(ordinal).map(|entry| entry.slot)
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -223,7 +257,7 @@ pub fn vanilla_equipment_slot_group_for_serialized_name(
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashSet;
+    use std::{collections::HashSet, fs, path::Path};
 
     use super::*;
 
@@ -234,6 +268,7 @@ mod tests {
         let mut names = HashSet::new();
         for (ordinal, entry) in VANILLA_EQUIPMENT_SLOTS.iter().enumerate() {
             assert_eq!(entry.ordinal, ordinal as u8);
+            assert_eq!(entry.slot.ordinal(), entry.ordinal);
             assert!(ids.insert(entry.id));
             assert!(names.insert(entry.serialized_name));
         }
@@ -254,6 +289,8 @@ mod tests {
         );
         assert_eq!(vanilla_equipment_slot_by_ordinal(8), None);
         assert_eq!(vanilla_equipment_slot_by_id(8), None);
+        assert_eq!(EquipmentSlot::from_ordinal(1), Some(EquipmentSlot::OffHand));
+        assert_eq!(EquipmentSlot::from_ordinal(8), None);
     }
 
     #[test]
@@ -275,5 +312,44 @@ mod tests {
         );
         assert_eq!(vanilla_equipment_slot_group(-1), None);
         assert_eq!(vanilla_equipment_slot_group(11), None);
+    }
+
+    #[test]
+    fn production_sources_do_not_redeclare_equipment_slot_ordinals() {
+        fn visit(directory: &Path, violations: &mut Vec<String>) {
+            for entry in fs::read_dir(directory).unwrap() {
+                let path = entry.unwrap().path();
+                if path.is_dir() {
+                    visit(&path, violations);
+                    continue;
+                }
+                if path.extension().and_then(|value| value.to_str()) != Some("rs") {
+                    continue;
+                }
+                let display = path.to_string_lossy();
+                if display.ends_with("/equipment_slots.rs")
+                    || display.ends_with("/tests.rs")
+                    || display.contains("/tests/")
+                {
+                    continue;
+                }
+                let source = fs::read_to_string(&path).unwrap();
+                let production = source.split("#[cfg(test)]").next().unwrap_or(&source);
+                if production.contains("enum EquipmentSlot")
+                    || production.contains("impl EquipmentSlot")
+                {
+                    violations.push(display.to_string());
+                }
+            }
+        }
+        let mut violations = Vec::new();
+        visit(
+            Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap(),
+            &mut violations,
+        );
+        assert!(
+            violations.is_empty(),
+            "parallel equipment-slot ordinal owners: {violations:?}"
+        );
     }
 }

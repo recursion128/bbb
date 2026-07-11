@@ -2,15 +2,10 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::entity_data_serializers::*;
+pub use crate::equipment_slots::EquipmentSlot;
 use crate::{
     codec::{Decoder, ProtocolError, Result},
     component::decode_component_summary_from_decoder,
-    equipment_slots::{
-        VANILLA_EQUIPMENT_SLOT_BODY_ORDINAL, VANILLA_EQUIPMENT_SLOT_CHEST_ORDINAL,
-        VANILLA_EQUIPMENT_SLOT_FEET_ORDINAL, VANILLA_EQUIPMENT_SLOT_HEAD_ORDINAL,
-        VANILLA_EQUIPMENT_SLOT_LEGS_ORDINAL, VANILLA_EQUIPMENT_SLOT_MAINHAND_ORDINAL,
-        VANILLA_EQUIPMENT_SLOT_OFFHAND_ORDINAL, VANILLA_EQUIPMENT_SLOT_SADDLE_ORDINAL,
-    },
 };
 
 use super::{
@@ -176,51 +171,6 @@ pub struct AttributeModifier {
     pub id: String,
     pub amount: f64,
     pub operation_id: i32,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
-pub enum EquipmentSlot {
-    MainHand,
-    OffHand,
-    Feet,
-    Legs,
-    Chest,
-    Head,
-    Body,
-    Saddle,
-}
-
-impl EquipmentSlot {
-    pub fn ordinal(self) -> u8 {
-        match self {
-            Self::MainHand => VANILLA_EQUIPMENT_SLOT_MAINHAND_ORDINAL,
-            Self::OffHand => VANILLA_EQUIPMENT_SLOT_OFFHAND_ORDINAL,
-            Self::Feet => VANILLA_EQUIPMENT_SLOT_FEET_ORDINAL,
-            Self::Legs => VANILLA_EQUIPMENT_SLOT_LEGS_ORDINAL,
-            Self::Chest => VANILLA_EQUIPMENT_SLOT_CHEST_ORDINAL,
-            Self::Head => VANILLA_EQUIPMENT_SLOT_HEAD_ORDINAL,
-            Self::Body => VANILLA_EQUIPMENT_SLOT_BODY_ORDINAL,
-            Self::Saddle => VANILLA_EQUIPMENT_SLOT_SADDLE_ORDINAL,
-        }
-    }
-
-    fn from_ordinal(value: u8) -> Result<Self> {
-        Ok(match value {
-            VANILLA_EQUIPMENT_SLOT_MAINHAND_ORDINAL => Self::MainHand,
-            VANILLA_EQUIPMENT_SLOT_OFFHAND_ORDINAL => Self::OffHand,
-            VANILLA_EQUIPMENT_SLOT_FEET_ORDINAL => Self::Feet,
-            VANILLA_EQUIPMENT_SLOT_LEGS_ORDINAL => Self::Legs,
-            VANILLA_EQUIPMENT_SLOT_CHEST_ORDINAL => Self::Chest,
-            VANILLA_EQUIPMENT_SLOT_HEAD_ORDINAL => Self::Head,
-            VANILLA_EQUIPMENT_SLOT_BODY_ORDINAL => Self::Body,
-            VANILLA_EQUIPMENT_SLOT_SADDLE_ORDINAL => Self::Saddle,
-            other => {
-                return Err(ProtocolError::InvalidData(format!(
-                    "invalid equipment slot {other}"
-                )))
-            }
-        })
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -612,7 +562,9 @@ pub(super) fn decode_set_equipment(decoder: &mut Decoder<'_>) -> Result<SetEquip
 
         let raw_slot = decoder.read_u8()?;
         let should_continue = raw_slot & 0x80 != 0;
-        let slot = EquipmentSlot::from_ordinal(raw_slot & 0x7f)?;
+        let slot = EquipmentSlot::from_ordinal(raw_slot & 0x7f).ok_or_else(|| {
+            ProtocolError::InvalidData(format!("invalid equipment slot {}", raw_slot & 0x7f))
+        })?;
         let item = inventory::decode_item_stack_summary(decoder)?;
         slots.push(EquipmentSlotUpdate { slot, item });
 

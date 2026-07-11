@@ -10451,3 +10451,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   继续通过 `bbb_protocol::packets::PlayerInfoAction` re-export 保持跨 crate API 兼容；原字段
   reader/apply 语义不变。production-source 结构测试阻止另建 enum/impl/数字 alias，本切片未
   把 enum 声明顺序生成扩张为 packet codec 自动生成。
+
+## 2026-07-11：Unified equipment-slot typed enum
+
+- [x] 扩展既有 `EquipmentSlot.java` generated catalog，使同一 owner 同时生成八项 typed
+  `EquipmentSlot`、ordinal/id/name metadata 与 ordinal lookup；保留 `MainHand`/`OffHand`
+  公共变体拼写、serde/order traits 和 `bbb_protocol::packets::EquipmentSlot` re-export。
+  protocol entity equipment decoder 删除第二个 enum 及正反 ordinal match，非法 slot 仍返回
+  原 `InvalidData` 诊断。generated tests 锁定 enum/catalog 一一对应并递归拒绝 production
+  source 重建 `EquipmentSlot` enum/impl；world equipment projection focused tests 不改语义
+  通过，slot-group/component 语义未改。
