@@ -59,9 +59,14 @@ Owner: `bbb-protocol`
 - Route the configuration/play server-brand payload into a telemetry owner if
   client telemetry is retained; canonical brand state, HUD projection and bounded
   unknown-payload diagnostics are already separate from that missing callback.
-- Complete the remaining configuration registry/tag
-  coverage cells; then cover play, movement, inventory, chat, interaction and
-  command suggestion end to end.
+- Build the received configuration registry entries and tags into a frozen,
+  typed `RegistryAccess`: decode each synchronized registry with its element
+  codec, merge known-pack stubs, resolve numeric tag ids to holders, apply pending
+  static tags and data-component initializers, and preserve reconnect replacement
+  semantics. Raw NBT summaries and a few derived audio registries are not that
+  runtime.
+- Then cover play, movement, inventory, chat, interaction and command suggestion
+  end to end.
 
 ## Vanilla Java generator frontend migration
 

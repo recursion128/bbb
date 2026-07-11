@@ -10944,3 +10944,15 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   no-ack 与 tests 全部闭合；clientbound brand/unknown 的 decode、ownership、canonical brand/
   diagnostics 与 tests 也闭合。bbb 尚无 vanilla `TelemetryManager.onServerBrandReceived` owner，
   因此只保留该 runtime cell partial，未把 HUD brand projection 外推为 telemetry 完成。
+
+## 2026-07-11：configuration registry-data/update-tags authority audit
+
+- [x] 对照 `ClientboundRegistryDataPacket`、`RegistrySynchronization.PackedRegistryEntry`、
+  `ClientboundUpdateTagsPacket` 与 `RegistryDataCollector`，锁定 registry/entry ids、optional NBT、
+  tag registry/map/int-id-list wire 与 collector append/replace 语义；新增 registry 131,073 项及
+  tags 1,025 registry/65,537 tag/1,000,001 entry 的分配前拒绝测试。
+- [x] 两行 decode、configuration ownership 与 tests 已闭合；update-tags numeric membership 的
+  canonical replace 也闭合。registry-data 仍只积累 raw NBT/known stub 摘要并派生少数 audio IDs，
+  未构建 typed `RegistryAccess`；tag ids 也未统一解析为 holders 或应用 pending static tags/
+  component initializers。反向 coverage 门禁锁定 registry canonical/runtime 与 tags runtime 三格
+  partial，未用 raw projection 冒充 playable registry foundation。

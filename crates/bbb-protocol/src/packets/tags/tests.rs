@@ -1,6 +1,6 @@
 use super::*;
 use crate::{
-    codec::Encoder,
+    codec::{Encoder, ProtocolError},
     ids,
     packets::{
         decode_configuration_clientbound, decode_play_clientbound, ConfigurationClientbound,
@@ -82,6 +82,48 @@ fn rejects_update_tags_with_trailing_bytes() {
     assert!(err
         .to_string()
         .contains("trailing bytes after update tags packet"));
+}
+
+#[test]
+fn rejects_update_tags_collection_counts_before_allocation() {
+    let mut registries = Encoder::new();
+    registries.write_var_i32(1_025);
+    let error = decode_configuration_clientbound(
+        ids::configuration::CLIENTBOUND_UPDATE_TAGS,
+        &registries.into_inner(),
+    )
+    .unwrap_err();
+    assert!(matches!(error, ProtocolError::PacketTooLarge(1_025, 1_024)));
+
+    let mut tags = Encoder::new();
+    tags.write_var_i32(1);
+    tags.write_string("minecraft:item");
+    tags.write_var_i32(65_537);
+    let error = decode_configuration_clientbound(
+        ids::configuration::CLIENTBOUND_UPDATE_TAGS,
+        &tags.into_inner(),
+    )
+    .unwrap_err();
+    assert!(matches!(
+        error,
+        ProtocolError::PacketTooLarge(65_537, 65_536)
+    ));
+
+    let mut entries = Encoder::new();
+    entries.write_var_i32(1);
+    entries.write_string("minecraft:item");
+    entries.write_var_i32(1);
+    entries.write_string("minecraft:logs");
+    entries.write_var_i32(1_000_001);
+    let error = decode_configuration_clientbound(
+        ids::configuration::CLIENTBOUND_UPDATE_TAGS,
+        &entries.into_inner(),
+    )
+    .unwrap_err();
+    assert!(matches!(
+        error,
+        ProtocolError::PacketTooLarge(1_000_001, 1_000_000)
+    ));
 }
 
 fn single_update_tag_payload(registry: &str, tag: &str, entries: &[i32]) -> Vec<u8> {

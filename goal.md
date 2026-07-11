@@ -295,8 +295,8 @@ query/compression/LoginFinished → acknowledgement → configuration 路径已�
 encryption hello/key、初始 hello 的完整响应状态与 disconnect Component 语义仍为 `partial`。
 下一步继续 configuration 的 state/framing 与 handoff，不能由 offline login 成功路径外推
 在线认证或 configuration family 的完成状态。configuration 的 disconnect、keepalive/ping
-response、Finish → Play 核心控制与 cookie request/store/response 路径已闭合；registry/tag/
-dialog 等其余 configuration packet 仍须按各自语义 owner 逐格
+response、Finish → Play 核心控制与 cookie request/store/response 路径已闭合；dialog 等
+其余 configuration packet 仍须按各自语义 owner 逐格
 审计。resource-pack 的 wire/ownership/canonical projection 已审计，但下载、hash 校验、reload、
 required-pack 生命周期和运行时 pop 仍为具体 `partial`，不能把 Declined fallback 当作完成。
 known-packs offer 的 decode/ownership/canonical 路径也已审计，但 bbb 尚无本地
@@ -313,6 +313,8 @@ dialog unit clear 的 wire/ownership/canonical projection 已闭合，但 previo
 show-dialog 仍缺 `Dialog` semantic codec/screen，custom-click 仍缺 NBT encoder 与 command surface。
 configuration custom-payload 的 Brand/Discarded wire、自动 brand send、canonical server brand 与
 diagnostics 已闭合；仅 vanilla telemetry callback 保持 runtime partial。
+configuration registry-data/update-tags 的 wire、ownership、packet projection 与 tests 已审计；
+完整 `RegistryAccess`/typed codec/holder tags/component initializer 仍是明确 canonical/runtime partial。
 
 matrix inventory + state/framing + required login/config/play handoff 是本队列的 foundation
 milestone；完成后即可进入 RegistryAccess/playable foundation，不等待全部长尾 packet

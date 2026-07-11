@@ -2839,6 +2839,22 @@ fn decodes_configuration_registry_data_entries() {
 }
 
 #[test]
+fn rejects_configuration_registry_data_entry_count_before_allocation() {
+    let mut payload = Encoder::new();
+    payload.write_string("minecraft:worldgen/biome");
+    payload.write_var_i32(131_073);
+    let error = decode_configuration_clientbound(
+        ids::configuration::CLIENTBOUND_REGISTRY_DATA,
+        &payload.into_inner(),
+    )
+    .unwrap_err();
+    assert!(matches!(
+        error,
+        ProtocolError::PacketTooLarge(131_073, 131_072)
+    ));
+}
+
+#[test]
 fn rejects_invalid_configuration_registry_data_identifiers() {
     let mut invalid_registry = Encoder::new();
     invalid_registry.write_string("minecraft:Worldgen/Biome");
