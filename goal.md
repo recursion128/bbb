@@ -303,6 +303,7 @@ known-packs offer 的 decode/ownership/canonical 路径也已审计，但 bbb �
 `KnownPacksManager` 等价物，空 response 的 runtime/encoder/command 单元保持 `partial`。
 code-of-conduct 的单次展示、自动/手工接受、持久 hash、拒绝断开与 configuration-only accept
 已闭合；不再把它列作剩余 configuration gap。
+enabled-features 的 Set 去重/unknown 过滤及 reset-chat canonical clear 也已闭合。
 
 matrix inventory + state/framing + required login/config/play handoff 是本队列的 foundation
 milestone；完成后即可进入 RegistryAccess/playable foundation，不等待全部长尾 packet

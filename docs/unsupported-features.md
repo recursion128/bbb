@@ -51,7 +51,7 @@ Owner: `bbb-protocol`
 - Select matching locally available known packs and encode up to 64 selected
   entries instead of always returning an empty configuration response.
 - Complete the remaining configuration registry/tag, custom payload/report,
-  transfer, feature and dialog
+  transfer and dialog
   coverage cells; then cover play, movement, inventory, chat, interaction and
   command suggestion end to end.
 

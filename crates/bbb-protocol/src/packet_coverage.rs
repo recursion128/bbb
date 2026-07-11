@@ -423,6 +423,34 @@ mod tests {
         }
     }
 
+    #[test]
+    fn configuration_feature_and_chat_reset_packets_are_closed() {
+        let ledger = vanilla_packet_coverage_26_1().unwrap();
+        let packets = BTreeSet::from([
+            "CLIENTBOUND_RESET_CHAT",
+            "CLIENTBOUND_UPDATE_ENABLED_FEATURES",
+        ]);
+        let entries: Vec<_> = ledger
+            .entries
+            .iter()
+            .filter(|entry| {
+                entry.state == "configuration" && packets.contains(entry.constant_name.as_str())
+            })
+            .collect();
+        assert_eq!(entries.len(), packets.len());
+        for entry in entries {
+            for (dimension, cell) in &entry.coverage {
+                assert_eq!(
+                    cell.status,
+                    PacketCoverageStatus::Complete,
+                    "{}/{}",
+                    entry.constant_name,
+                    dimension
+                );
+            }
+        }
+    }
+
     fn state_name(state: PacketState) -> &'static str {
         match state {
             PacketState::Handshake => "handshake",

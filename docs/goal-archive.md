@@ -10892,3 +10892,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] protocol/net/world/native/control tests 覆盖 decode、canonical text/hash、重复包、持久接受、
   configuration-only send 与 decline disconnect；两行 coverage 全部闭合为 complete 或有
   vanilla 依据的 not-applicable。
+
+## 2026-07-11：configuration enabled-features/reset-chat audit
+
+- [x] 对照 `ClientboundUpdateEnabledFeaturesPacket` 的 `HashSet<Identifier>` 与
+  `ClientConfigurationPacketListenerImpl`，修复 protocol Vec 保留重复 feature 和按 hostile
+  count 直接预分配的问题；现在 capped allocation、resource-id normalization、排序与去重后
+  再交给 world 过滤 vanilla 26.1 已知 feature。
+- [x] reset-chat unit decode、configuration ownership 与 chat/signature canonical clear，以及
+  enabled-features decode/world state 均由 focused tests 反向锁定；两行 coverage 全部 complete。

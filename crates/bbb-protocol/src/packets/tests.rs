@@ -2648,9 +2648,10 @@ fn decodes_configuration_common_packets() {
     ));
 
     let mut features_payload = Encoder::new();
-    features_payload.write_var_i32(2);
+    features_payload.write_var_i32(3);
     features_payload.write_string("minecraft:update_1_21");
     features_payload.write_string("vanilla");
+    features_payload.write_string("minecraft:vanilla");
     assert_eq!(
         decode_configuration_clientbound(
             ids::configuration::CLIENTBOUND_UPDATE_ENABLED_FEATURES,
@@ -2664,6 +2665,15 @@ fn decodes_configuration_common_packets() {
             ],
         })
     );
+
+    let mut hostile_features = Encoder::new();
+    hostile_features.write_var_i32(i32::MAX);
+    let error = decode_configuration_clientbound(
+        ids::configuration::CLIENTBOUND_UPDATE_ENABLED_FEATURES,
+        &hostile_features.into_inner(),
+    )
+    .unwrap_err();
+    assert!(matches!(error, ProtocolError::UnexpectedEof { .. }));
 
     let mut invalid_features_payload = Encoder::new();
     invalid_features_payload.write_var_i32(1);

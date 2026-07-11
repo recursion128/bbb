@@ -547,11 +547,12 @@ fn decode_known_packs(decoder: &mut Decoder<'_>) -> Result<Vec<KnownPack>> {
 
 fn decode_update_enabled_features(decoder: &mut Decoder<'_>) -> Result<UpdateEnabledFeatures> {
     let count = decoder.read_len()?;
-    let mut features = Vec::with_capacity(count);
+    let mut features = Vec::with_capacity(count.min(65_536));
     for _ in 0..count {
         features.push(read_resource_location(decoder)?);
     }
     features.sort();
+    features.dedup();
     Ok(UpdateEnabledFeatures { features })
 }
 
