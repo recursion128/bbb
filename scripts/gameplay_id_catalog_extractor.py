@@ -219,6 +219,19 @@ class FilterMaskTypeEntry:
     serialized_name: str
 
 
+@dataclass(frozen=True)
+class WaypointOperationEntry:
+    constant_name: str
+    ordinal: int
+    serialized_name: str
+
+
+@dataclass(frozen=True)
+class WaypointDataTypeEntry:
+    constant_name: str
+    ordinal: int
+
+
 def _fail(source: JavaSource, expression: JavaExpression, message: str) -> None:
     span = expression.span
     raise GameplayIdExtractionError(
@@ -1031,6 +1044,55 @@ def filter_mask_type_entries(
     _validate(entries, "filter mask type", "ordinal")
     _validate(entries, "filter mask type", "serialized_name")
     return entries
+
+
+def waypoint_wire_type_entries(
+    packet_source: JavaSource, waypoint_source: JavaSource
+) -> tuple[list[WaypointOperationEntry], str, list[WaypointDataTypeEntry]]:
+    operation_type = _nested_enum_type(packet_source, "Operation")
+    operation_names = ["TRACK", "UNTRACK", "UPDATE"]
+    operations = []
+    for ordinal, (name, arguments) in enumerate(
+        _nested_enum_constants(packet_source, "Operation", "waypoint operation")
+    ):
+        if len(arguments) != 1:
+            expression = (
+                arguments[0] if arguments else packet_source.expression(operation_type.node)
+            )
+            _fail(packet_source, expression, f"waypoint operation {name} needs one action")
+        operations.append(WaypointOperationEntry(name, ordinal, name.lower()))
+    if [entry.constant_name for entry in operations] != operation_names:
+        raise GameplayIdExtractionError(
+            "waypoint operations differ from expected declaration order"
+        )
+    operation_strategy = _continuous_out_of_bounds_strategy_from_fields(
+        packet_source, packet_source.fields_for(operation_type), "waypoint operation"
+    )
+    if operation_strategy != "WRAP":
+        raise GameplayIdExtractionError(
+            f"unsupported waypoint operation id strategy {operation_strategy}"
+        )
+    _validate(operations, "waypoint operation", "ordinal")
+    _validate(operations, "waypoint operation", "serialized_name")
+
+    data_type = _nested_enum_type(waypoint_source, "Type")
+    data_names = ["EMPTY", "VEC3I", "CHUNK", "AZIMUTH"]
+    data_types = []
+    for ordinal, (name, arguments) in enumerate(
+        _nested_enum_constants(waypoint_source, "Type", "waypoint data type")
+    ):
+        if len(arguments) != 1:
+            expression = (
+                arguments[0] if arguments else waypoint_source.expression(data_type.node)
+            )
+            _fail(waypoint_source, expression, f"waypoint data type {name} needs one constructor")
+        data_types.append(WaypointDataTypeEntry(name, ordinal))
+    if [entry.constant_name for entry in data_types] != data_names:
+        raise GameplayIdExtractionError(
+            "waypoint data types differ from expected declaration order"
+        )
+    _validate(data_types, "waypoint data type", "ordinal")
+    return operations, operation_strategy, data_types
 
 
 def equipment_slot_entries(

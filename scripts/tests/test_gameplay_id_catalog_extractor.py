@@ -39,6 +39,7 @@ from gameplay_id_catalog_extractor import (  # noqa: E402
     scoreboard_display_slot_entries,
     scoreboard_method_entries,
     scoreboard_team_option_entries,
+    waypoint_wire_type_entries,
 )
 from vanilla_java_source import parse_source  # noqa: E402
 
@@ -688,6 +689,46 @@ public class FilterMask {
                 ("FULLY_FILTERED", 1, "fully_filtered"),
                 ("PARTIALLY_FILTERED", 2, "partially_filtered"),
             ],
+        )
+
+    def test_waypoint_wire_types_preserve_order_names_and_wrap_fallback(self) -> None:
+        packet = parse_source(
+            "fixture/ClientboundTrackedWaypointPacket.java",
+            b"""
+package fixture;
+public record ClientboundTrackedWaypointPacket() {
+  private enum Operation {
+    TRACK(Manager::track), UNTRACK(Manager::untrack), UPDATE(Manager::update);
+    public static final IntFunction<Operation> BY_ID = ByIdMap.continuous(
+        Enum::ordinal, values(), ByIdMap.OutOfBoundsStrategy.WRAP);
+  }
+}
+""",
+        )
+        waypoint = parse_source(
+            "fixture/TrackedWaypoint.java",
+            b"""
+package fixture;
+public abstract class TrackedWaypoint {
+  private enum Type {
+    EMPTY(EmptyWaypoint::new), VEC3I(Vec3iWaypoint::new),
+    CHUNK(ChunkWaypoint::new), AZIMUTH(AzimuthWaypoint::new);
+  }
+}
+""",
+        )
+        operations, strategy, data_types = waypoint_wire_type_entries(packet, waypoint)
+        self.assertEqual(strategy, "WRAP")
+        self.assertEqual(
+            [
+                (entry.constant_name, entry.ordinal, entry.serialized_name)
+                for entry in operations
+            ],
+            [("TRACK", 0, "track"), ("UNTRACK", 1, "untrack"), ("UPDATE", 2, "update")],
+        )
+        self.assertEqual(
+            [(entry.constant_name, entry.ordinal) for entry in data_types],
+            [("EMPTY", 0), ("VEC3I", 1), ("CHUNK", 2), ("AZIMUTH", 3)],
         )
 
     def test_unsupported_register_shape_reports_source_span(self) -> None:

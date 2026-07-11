@@ -45,6 +45,7 @@ pub mod scoreboard_display_slots;
 pub mod scoreboard_methods;
 pub mod scoreboard_team_options;
 pub mod sound_sources;
+pub mod waypoint_wire_types;
 
 pub const MC_VERSION: &str = "26.1";
 pub const PROTOCOL_VERSION: i32 = 775;
