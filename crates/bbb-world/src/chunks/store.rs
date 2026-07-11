@@ -12,7 +12,10 @@ use std::collections::BTreeMap;
 
 use crate::{
     protocol_block_pos, section_biome_index, section_block_index,
-    terrain::{classify_terrain_material, classify_terrain_skip_rendering, terrain_fluid_state},
+    terrain::{
+        block_name_is_air, classify_terrain_material, classify_terrain_skip_rendering,
+        terrain_fluid_state,
+    },
     BannerPatternsState, BlockEntityRecord, BlockPos, BlockProbe, ChunkColumn, ChunkPos,
     ChunkProbeSummaryState, ChunkViewState, DecoratedPotSherdsState, RegistrySet, Result,
     SignBlockEntityTextState, TerrainBlockCell, TerrainChunkSnapshot, TerrainLight,
@@ -881,12 +884,9 @@ fn vault_facing_steps(facing: &str) -> Option<(f64, f64)> {
 }
 
 fn is_empty_block_state_id(registries: &RegistrySet, block_state_id: i32) -> bool {
-    matches!(
-        registries
-            .block_state(block_state_id)
-            .map(|state| state.name.as_str()),
-        Some("minecraft:air" | "minecraft:cave_air" | "minecraft:void_air")
-    )
+    registries
+        .block_state(block_state_id)
+        .is_some_and(|state| block_name_is_air(&state.name))
 }
 
 fn is_fluid_block_state_id(registries: &RegistrySet, block_state_id: i32) -> bool {

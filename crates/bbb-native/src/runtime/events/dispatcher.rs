@@ -1246,10 +1246,10 @@ fn is_grower_bonemealable_block_name(block_name: &str) -> bool {
 }
 
 fn block_probe_is_air(probe: &bbb_world::BlockProbe) -> bool {
-    matches!(
-        probe.block_name.as_deref(),
-        Some("minecraft:air" | "minecraft:cave_air" | "minecraft:void_air")
-    )
+    probe
+        .block_name
+        .as_deref()
+        .is_some_and(bbb_world::block_name_is_air)
 }
 
 fn protocol_to_world_block_pos(pos: ProtocolBlockPos) -> bbb_world::BlockPos {

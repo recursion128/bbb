@@ -9,10 +9,7 @@ pub(super) fn falling_dust_provider_accepts_block_state(block_state_id: i32) -> 
 }
 
 fn falling_dust_provider_rejects_block_name(name: &str) -> bool {
-    !matches!(
-        name,
-        "minecraft:air" | "minecraft:cave_air" | "minecraft:void_air"
-    ) && block_name_has_invisible_render_shape(name)
+    !block_name_is_air(name) && block_name_has_invisible_render_shape(name)
 }
 
 pub(super) fn falling_dust_color_for_block_state_id(block_state_id: i32) -> Option<[f32; 4]> {
@@ -343,12 +340,11 @@ fn cake_static_map_color(name: &str) -> Option<u32> {
 }
 
 fn default_none_static_map_color(name: &str) -> Option<u32> {
+    if block_name_is_air(name) {
+        return Some(MAP_COLOR_NONE);
+    }
     let name = name.strip_prefix("minecraft:")?;
-    matches!(
-        name,
-        "air" | "cave_air" | "void_air" | "nether_portal" | "test_instance_block"
-    )
-    .then_some(MAP_COLOR_NONE)
+    matches!(name, "nether_portal" | "test_instance_block").then_some(MAP_COLOR_NONE)
 }
 
 fn wooden_sign_static_map_color(name: &str) -> Option<u32> {

@@ -16,7 +16,7 @@ use bbb_protocol::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::WorldStore;
+use crate::{block_name_is_air, WorldStore};
 
 const JUKEBOX_PLAY_LEVEL_EVENT: i32 = 1010;
 const JUKEBOX_STOP_LEVEL_EVENT: i32 = 1011;
@@ -900,7 +900,7 @@ impl WorldStore {
             return None;
         }
         let block_state = self.registries.block_state(event.data)?;
-        if is_air_block_name(&block_state.name) {
+        if block_name_is_air(&block_state.name) {
             return None;
         }
         let profile = self
@@ -1486,13 +1486,6 @@ fn direct_sound_holder(sound: &str) -> SoundHolderState {
 
 fn game_event_param_floor(param: f32) -> Option<i32> {
     param.is_finite().then_some(param.floor() as i32)
-}
-
-fn is_air_block_name(name: &str) -> bool {
-    matches!(
-        name,
-        "minecraft:air" | "minecraft:cave_air" | "minecraft:void_air"
-    )
 }
 
 fn sound_holder_state(sound: ProtocolSoundEventHolder) -> SoundHolderState {

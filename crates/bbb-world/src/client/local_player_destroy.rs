@@ -10,7 +10,7 @@ use bbb_protocol::packets::Direction as ProtocolDirection;
 use serde::{Deserialize, Serialize};
 
 use super::local_player_fluid::local_player_eye_in_water;
-use crate::{BlockPos, WorldStore};
+use crate::{block_name_is_air, BlockPos, WorldStore};
 
 const LOCAL_DESTROY_PROGRESS_SCALE: u32 = 1_000_000;
 pub(crate) const LOCAL_DESTROY_COMPLETION_DELAY_TICKS: u8 = 5;
@@ -126,12 +126,10 @@ impl WorldStore {
 
     fn local_destroy_progress_per_tick(&self, pos: BlockPos) -> Option<u32> {
         let block = self.probe_block(pos)?;
-        let block_name = match block.block_name.as_deref() {
-            Some("minecraft:air" | "minecraft:cave_air" | "minecraft:void_air") | None => {
-                return None;
-            }
-            Some(block_name) => block_name,
-        };
+        let block_name = block.block_name.as_deref()?;
+        if block_name_is_air(block_name) {
+            return None;
+        }
         let hotbar_items = self.inventory.hotbar_items();
         let selected_slot = usize::from(self.local_player.selected_hotbar_slot.min(8));
         let item = &hotbar_items[selected_slot];

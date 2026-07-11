@@ -6,7 +6,7 @@ use crate::{BlockPos, ChunkPos, PaletteKind};
 
 mod generated_26_1;
 
-use generated_26_1::VANILLA_NO_TERRAIN_PARTICLE_BLOCKS;
+use generated_26_1::{VANILLA_AIR_BLOCKS, VANILLA_NO_TERRAIN_PARTICLE_BLOCKS};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct BlockProbe {
@@ -221,10 +221,7 @@ pub fn classify_terrain_skip_rendering(
 }
 
 pub fn block_name_is_air(name: &str) -> bool {
-    matches!(
-        name,
-        "minecraft:air" | "minecraft:cave_air" | "minecraft:void_air"
-    )
+    VANILLA_AIR_BLOCKS.contains(&name)
 }
 
 pub fn block_name_should_spawn_terrain_particles(name: &str) -> bool {
@@ -294,21 +291,19 @@ fn is_copper_grate_block_name(name: &str) -> bool {
 }
 
 pub fn block_name_has_invisible_render_shape(name: &str) -> bool {
-    matches!(
-        name,
-        "minecraft:air"
-            | "minecraft:cave_air"
-            | "minecraft:void_air"
-            | "minecraft:water"
-            | "minecraft:lava"
-            | "minecraft:barrier"
-            | "minecraft:bubble_column"
-            | "minecraft:structure_void"
-            | "minecraft:end_gateway"
-            | "minecraft:end_portal"
-            | "minecraft:light"
-            | "minecraft:moving_piston"
-    )
+    block_name_is_air(name)
+        || matches!(
+            name,
+            "minecraft:water"
+                | "minecraft:lava"
+                | "minecraft:barrier"
+                | "minecraft:bubble_column"
+                | "minecraft:structure_void"
+                | "minecraft:end_gateway"
+                | "minecraft:end_portal"
+                | "minecraft:light"
+                | "minecraft:moving_piston"
+        )
 }
 
 fn is_cutout_block_name(name: &str) -> bool {

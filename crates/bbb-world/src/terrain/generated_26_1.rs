@@ -6,15 +6,22 @@
 pub(super) const VANILLA_NO_TERRAIN_PARTICLE_BLOCKS: &[&str] =
     &["minecraft:barrier", "minecraft:structure_void"];
 
+pub(super) const VANILLA_AIR_BLOCKS: &[&str] =
+    &["minecraft:air", "minecraft:void_air", "minecraft:cave_air"];
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn no_terrain_particle_membership_matches_vanilla_builder_order() {
+    fn block_builder_memberships_match_vanilla_order() {
         assert_eq!(
             VANILLA_NO_TERRAIN_PARTICLE_BLOCKS,
             &["minecraft:barrier", "minecraft:structure_void"]
+        );
+        assert_eq!(
+            VANILLA_AIR_BLOCKS,
+            &["minecraft:air", "minecraft:void_air", "minecraft:cave_air"]
         );
     }
 }

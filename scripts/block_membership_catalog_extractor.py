@@ -38,8 +38,8 @@ def _string(source: JavaSource, expression: JavaExpression) -> str:
     return value
 
 
-def no_terrain_particle_blocks(
-    source: JavaSource, expected_count: int = 2
+def _builder_property_blocks(
+    source: JavaSource, property_name: str, expected_count: int
 ) -> list[BlockMembershipEntry]:
     entries: list[BlockMembershipEntry] = []
     for field in source.fields_for("net.minecraft.world.level.block.Blocks"):
@@ -52,11 +52,11 @@ def no_terrain_particle_blocks(
             if initializer.span.start_byte <= call.span.start_byte
             and call.span.end_byte <= initializer.span.end_byte
         ]
-        if not any(call.name == "noTerrainParticles" for call in calls):
+        if not any(call.name == property_name for call in calls):
             continue
         register_calls = [call for call in calls if call.name == "register"]
         if len(register_calls) != 1 or not register_calls[0].arguments:
-            _fail(source, initializer, "unsupported noTerrainParticles block registration")
+            _fail(source, initializer, f"unsupported {property_name} block registration")
         entries.append(
             BlockMembershipEntry(
                 field.name,
@@ -66,15 +66,27 @@ def no_terrain_particle_blocks(
 
     if len(entries) != expected_count:
         raise BlockMembershipCatalogExtractionError(
-            f"{source.relative_path}: expected {expected_count} noTerrainParticles blocks, "
+            f"{source.relative_path}: expected {expected_count} {property_name} blocks, "
             f"extracted {len(entries)}"
         )
     if len({entry.constant_name for entry in entries}) != len(entries):
         raise BlockMembershipCatalogExtractionError(
-            f"{source.relative_path}: duplicate noTerrainParticles block constant"
+            f"{source.relative_path}: duplicate {property_name} block constant"
         )
     if len({entry.resource_id for entry in entries}) != len(entries):
         raise BlockMembershipCatalogExtractionError(
-            f"{source.relative_path}: duplicate noTerrainParticles block resource id"
+            f"{source.relative_path}: duplicate {property_name} block resource id"
         )
     return entries
+
+
+def no_terrain_particle_blocks(
+    source: JavaSource, expected_count: int = 2
+) -> list[BlockMembershipEntry]:
+    return _builder_property_blocks(source, "noTerrainParticles", expected_count)
+
+
+def air_blocks(
+    source: JavaSource, expected_count: int = 3
+) -> list[BlockMembershipEntry]:
+    return _builder_property_blocks(source, "air", expected_count)

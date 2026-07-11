@@ -10333,3 +10333,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   fixtures 锁定 multiline、comment/string 伪调用、固定数量、唯一性及显式失败，普通 build
   只读取 checked-in generated module。未把 block render shape、dust color、MapColor 或
   provider/GPU presentation 等独立语义纳入本切片。
+
+## 2026-07-11：Generated air block membership
+
+- [x] 扩展 block-membership extractor，从 `Blocks.java` 注册 initializer 中的 `.air()`
+  builder property 生成 AIR/VOID_AIR/CAVE_AIR 三项 resource membership；world
+  `block_name_is_air` facade 改为消费 checked-in generated 表。world chunk empty-state、local
+  destroy、block event audio 与 native debug/particle 路径删除五处重复三项 match，统一调用
+  facade；未知/缺失 block state 的既有 fallback 不变。固定数量、声明顺序、resource 唯一与
+  跨 crate focused tests 锁定消费，未按名称猜测 air class，也未改变 fluid/invisible render
+  shape 或服务器 block-state authority。
