@@ -266,7 +266,7 @@ mod tests {
     }
 
     #[test]
-    fn configuration_core_control_and_handoff_packets_are_closed() {
+    fn configuration_core_control_keeps_frozen_keepalive_deferral_open() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let core = BTreeSet::from([
             "SERVERBOUND_FINISH_CONFIGURATION",
@@ -285,19 +285,19 @@ mod tests {
             })
             .collect();
         assert_eq!(entries.len(), core.len());
-        for entry in entries {
-            for (dimension, cell) in &entry.coverage {
-                assert!(
-                    matches!(
-                        cell.status,
-                        PacketCoverageStatus::Complete | PacketCoverageStatus::NotApplicable
-                    ),
-                    "{}/{dimension} remains {:?}",
-                    entry.constant_name,
-                    cell.status
-                );
-            }
-        }
+        let partial: BTreeSet<_> = entries
+            .iter()
+            .flat_map(|entry| {
+                entry.coverage.iter().filter_map(move |(dimension, cell)| {
+                    (cell.status == PacketCoverageStatus::Partial)
+                        .then_some((entry.constant_name.as_str(), dimension.as_str()))
+                })
+            })
+            .collect();
+        assert_eq!(
+            partial,
+            BTreeSet::from([("CLIENTBOUND_KEEP_ALIVE", "runtime_side_effect")])
+        );
     }
 
     #[test]
@@ -661,6 +661,36 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn play_common_ping_is_closed_and_keepalive_deferral_stays_open() {
+        let ledger = vanilla_packet_coverage_26_1().unwrap();
+        let packets = BTreeSet::from([
+            "SERVERBOUND_KEEP_ALIVE",
+            "SERVERBOUND_PONG",
+            "CLIENTBOUND_KEEP_ALIVE",
+            "CLIENTBOUND_PING",
+        ]);
+        let entries: Vec<_> = ledger
+            .entries
+            .iter()
+            .filter(|entry| entry.state == "play" && packets.contains(entry.constant_name.as_str()))
+            .collect();
+        assert_eq!(entries.len(), packets.len());
+        let partial: BTreeSet<_> = entries
+            .iter()
+            .flat_map(|entry| {
+                entry.coverage.iter().filter_map(move |(dimension, cell)| {
+                    (cell.status == PacketCoverageStatus::Partial)
+                        .then_some((entry.constant_name.as_str(), dimension.as_str()))
+                })
+            })
+            .collect();
+        assert_eq!(
+            partial,
+            BTreeSet::from([("CLIENTBOUND_KEEP_ALIVE", "runtime_side_effect")])
+        );
     }
 
     fn state_name(state: PacketState) -> &'static str {

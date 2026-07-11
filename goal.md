@@ -294,8 +294,9 @@ production command surface 与状态切换仍保持 `partial`。offline login �
 query/compression/LoginFinished → acknowledgement → configuration 路径已逐格反审计；在线
 encryption hello/key、初始 hello 的完整响应状态与 disconnect Component 语义仍为 `partial`。
 下一步继续 configuration 的 state/framing 与 handoff，不能由 offline login 成功路径外推
-在线认证或 configuration family 的完成状态。configuration 的 disconnect、keepalive/ping
-response、Finish → Play 核心控制与 cookie request/store/response 路径已闭合；dialog 等
+在线认证或 configuration family 的完成状态。configuration 的 disconnect、ping/pong、
+Finish → Play 核心控制与 cookie request/store/response 路径已闭合；keepalive wire/response
+已闭合但 render-frozen defer/expiry 仍为具体 runtime partial；dialog 等
 其余 configuration packet 仍须按各自语义 owner 逐格
 审计。resource-pack 的 wire/ownership/canonical projection 已审计，但下载、hash 校验、reload、
 required-pack 生命周期和运行时 pop 仍为具体 `partial`，不能把 Declined fallback 当作完成。
@@ -323,6 +324,8 @@ command、resource/custom payload 等 family 分别关闭，并由 playable 或 
 场景决定下一个可执行 family。
 play chunk-batch Start/Finished → adaptive Received feedback 已按 vanilla timing calculator 闭合，
 包括 strict unit/VarInt payload consumption；它不代表 chunk data decode/apply 已完成。
+play ping/pong 的 fixed-width wire 与即时 response 已闭合；keepalive 同样完成 wire/response，
+但 configuration/play 共用的 render-frozen defer/one-minute expiry 仍保持 runtime partial。
 
 完成标准：全部 vanilla 26.1 catalog entry 都有矩阵行；所有目标客户端适用项为
 `complete`，其余只有带 vanilla 依据的 `not-applicable` 或带重启判据的窄 `deferred`；

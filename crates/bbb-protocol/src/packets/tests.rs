@@ -2209,6 +2209,44 @@ fn encodes_play_connection_lifecycle_packets() {
 }
 
 #[test]
+fn decodes_play_keep_alive_and_ping_strictly() {
+    let mut keep_alive = Encoder::new();
+    keep_alive.write_i64(-123_456_789_012_345);
+    assert_eq!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_KEEP_ALIVE, &keep_alive.into_inner())
+            .unwrap(),
+        PlayClientbound::KeepAlive {
+            id: -123_456_789_012_345,
+        }
+    );
+    let mut keep_alive = Encoder::new();
+    keep_alive.write_i64(-123_456_789_012_345);
+    keep_alive.write_u8(0);
+    assert!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_KEEP_ALIVE, &keep_alive.into_inner())
+            .unwrap_err()
+            .to_string()
+            .contains("trailing bytes after play keep alive packet")
+    );
+
+    let mut ping = Encoder::new();
+    ping.write_i32(-1_234_567);
+    assert_eq!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_PING, &ping.into_inner()).unwrap(),
+        PlayClientbound::Ping { id: -1_234_567 }
+    );
+    let mut ping = Encoder::new();
+    ping.write_i32(-1_234_567);
+    ping.write_u8(0);
+    assert!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_PING, &ping.into_inner())
+            .unwrap_err()
+            .to_string()
+            .contains("trailing bytes after play ping packet")
+    );
+}
+
+#[test]
 fn encodes_player_loaded() {
     let (id, payload) = encode_play_player_loaded();
     assert_eq!(id, ids::play::SERVERBOUND_PLAYER_LOADED);
@@ -2618,6 +2656,16 @@ fn decodes_configuration_common_packets() {
         .unwrap(),
         ConfigurationClientbound::KeepAlive { id: -123_456_789 }
     );
+    let mut trailing_keep_alive = Encoder::new();
+    trailing_keep_alive.write_i64(-123_456_789);
+    trailing_keep_alive.write_u8(0);
+    assert!(decode_configuration_clientbound(
+        ids::configuration::CLIENTBOUND_KEEP_ALIVE,
+        &trailing_keep_alive.into_inner(),
+    )
+    .unwrap_err()
+    .to_string()
+    .contains("trailing bytes after configuration keep alive packet"));
     let mut ping = Encoder::new();
     ping.write_i32(0x1234_5678);
     assert_eq!(
@@ -2625,6 +2673,16 @@ fn decodes_configuration_common_packets() {
             .unwrap(),
         ConfigurationClientbound::Ping { id: 0x1234_5678 }
     );
+    let mut trailing_ping = Encoder::new();
+    trailing_ping.write_i32(0x1234_5678);
+    trailing_ping.write_u8(0);
+    assert!(decode_configuration_clientbound(
+        ids::configuration::CLIENTBOUND_PING,
+        &trailing_ping.into_inner(),
+    )
+    .unwrap_err()
+    .to_string()
+    .contains("trailing bytes after configuration ping packet"));
 
     assert_eq!(
         encode_configuration_finish(),

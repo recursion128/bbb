@@ -10966,3 +10966,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] 修复 Start unit 与 Finished 单 VarInt decoder 接受 trailing bytes；protocol、calculator、
   RawConnection 与 probe tests 覆盖 wire 和反馈。三行 coverage 全部闭合为 complete 或有 vanilla
   依据的 not-applicable；chunk data decode/apply 未由 batch feedback 外推完成。
+
+## 2026-07-11：configuration/play keepalive-ping authority correction
+
+- [x] 对照 common keepalive/ping/pong 四个 packet 与 `ClientCommonPacketListenerImpl`，修复
+  configuration/play fixed i64 keepalive 和 i32 ping decoder 接受 trailing bytes；新增两 state
+  的正向与 trailing-byte 回归测试，play ping/pong 两行及 keepalive 的 wire/ownership/response/
+  tests 均闭合。
+- [x] 更正先前 configuration core audit 的过度结论：vanilla keepalive 使用
+  `sendWhen(!RenderSystem.isFrozenAtPollEvents(), one minute)`，bbb 目前立即发送。因此
+  configuration/play clientbound keepalive 的 runtime cell 均保留 partial；ping/pong 仍是立即
+  response。coverage 反向测试锁定该唯一差异，未改写历史或伪装成完成。

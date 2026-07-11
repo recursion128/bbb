@@ -1421,10 +1421,11 @@
         },
         "runtime_side_effect": {
           "evidence": [
-            "crates/bbb-net/src/event_stream.rs#configuration_control_responses_precede_finish_and_play_handoff"
+            "crates/bbb-net/src/event_stream.rs#configuration_control_responses_precede_finish_and_play_handoff",
+            "vanilla:net/minecraft/client/multiplayer/ClientCommonPacketListenerImpl.java#handleKeepAlive"
           ],
-          "gap": null,
-          "status": "complete"
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
         },
         "tests": {
           "evidence": [
@@ -3146,29 +3147,40 @@
       "constant_name": "SERVERBOUND_KEEP_ALIVE",
       "coverage": {
         "ack_response": {
-          "evidence": [],
+          "evidence": [
+            "vanilla:net/minecraft/server/network/ServerCommonPacketListenerImpl.java#handleKeepAlive"
+          ],
           "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "status": "not-applicable"
         },
         "command_surface": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-net/src/event_stream/play.rs#PlayClientbound::KeepAlive"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "encoder": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/serverbound.rs#encode_play_keep_alive",
+            "vanilla:net/minecraft/network/protocol/common/ServerboundKeepAlivePacket.java#STREAM_CODEC"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "state_guard": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-net/src/event_stream.rs#play_keep_alive_and_ping_send_common_responses"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_play_connection_lifecycle_packets"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "serverbound",
@@ -3741,29 +3753,40 @@
       "constant_name": "SERVERBOUND_PONG",
       "coverage": {
         "ack_response": {
-          "evidence": [],
+          "evidence": [
+            "vanilla:net/minecraft/server/network/ServerCommonPacketListenerImpl.java#handlePong"
+          ],
           "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "status": "not-applicable"
         },
         "command_surface": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-net/src/event_stream/play.rs#PlayClientbound::Ping"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "encoder": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/serverbound.rs#encode_play_pong",
+            "vanilla:net/minecraft/network/protocol/common/ServerboundPongPacket.java#STREAM_CODEC"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "state_guard": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-net/src/event_stream.rs#play_keep_alive_and_ping_send_common_responses"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_play_connection_lifecycle_packets"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "serverbound",
@@ -6148,29 +6171,41 @@
       "constant_name": "CLIENTBOUND_KEEP_ALIVE",
       "coverage": {
         "canonical_apply": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/client/multiplayer/ClientCommonPacketListenerImpl.java#handleKeepAlive"
+          ],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "not-applicable"
         },
         "decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/tests.rs#decodes_play_keep_alive_and_ping_strictly",
+            "vanilla:net/minecraft/network/protocol/common/ClientboundKeepAlivePacket.java#STREAM_CODEC"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "ownership": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-net/src/event_stream/play.rs#PlayClientbound::KeepAlive"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "runtime_side_effect": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
+          "evidence": [
+            "crates/bbb-net/src/event_stream/play.rs#encode_play_keep_alive",
+            "vanilla:net/minecraft/client/multiplayer/ClientCommonPacketListenerImpl.java#handleKeepAlive"
+          ],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
           "status": "partial"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-net/src/event_stream.rs#play_keep_alive_and_ping_send_common_responses"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "clientbound",
@@ -6743,29 +6778,41 @@
       "constant_name": "CLIENTBOUND_PING",
       "coverage": {
         "canonical_apply": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/client/multiplayer/ClientCommonPacketListenerImpl.java#handlePing"
+          ],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "not-applicable"
         },
         "decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/tests.rs#decodes_play_keep_alive_and_ping_strictly",
+            "vanilla:net/minecraft/network/protocol/common/ClientboundPingPacket.java#STREAM_CODEC"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "ownership": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-net/src/event_stream/play.rs#PlayClientbound::Ping"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "runtime_side_effect": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-net/src/event_stream/play.rs#encode_play_pong",
+            "vanilla:net/minecraft/client/multiplayer/ClientCommonPacketListenerImpl.java#handlePing"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-net/src/event_stream.rs#play_keep_alive_and_ping_send_common_responses"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "clientbound",

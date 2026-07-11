@@ -441,12 +441,26 @@ pub fn decode_configuration_clientbound(
         ids::configuration::CLIENTBOUND_FINISH_CONFIGURATION => {
             Ok(ConfigurationClientbound::Finish)
         }
-        ids::configuration::CLIENTBOUND_KEEP_ALIVE => Ok(ConfigurationClientbound::KeepAlive {
-            id: Decoder::new(payload).read_i64()?,
-        }),
-        ids::configuration::CLIENTBOUND_PING => Ok(ConfigurationClientbound::Ping {
-            id: Decoder::new(payload).read_i32()?,
-        }),
+        ids::configuration::CLIENTBOUND_KEEP_ALIVE => {
+            let mut decoder = Decoder::new(payload);
+            let id = decoder.read_i64()?;
+            if !decoder.is_empty() {
+                return Err(ProtocolError::InvalidData(
+                    "trailing bytes after configuration keep alive packet".to_string(),
+                ));
+            }
+            Ok(ConfigurationClientbound::KeepAlive { id })
+        }
+        ids::configuration::CLIENTBOUND_PING => {
+            let mut decoder = Decoder::new(payload);
+            let id = decoder.read_i32()?;
+            if !decoder.is_empty() {
+                return Err(ProtocolError::InvalidData(
+                    "trailing bytes after configuration ping packet".to_string(),
+                ));
+            }
+            Ok(ConfigurationClientbound::Ping { id })
+        }
         ids::configuration::CLIENTBOUND_RESET_CHAT => Ok(ConfigurationClientbound::ResetChat),
         ids::configuration::CLIENTBOUND_REGISTRY_DATA => {
             let mut decoder = Decoder::new(payload);

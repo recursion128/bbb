@@ -302,9 +302,16 @@ pub fn decode_play_clientbound(packet_id: i32, payload: &[u8]) -> Result<PlayCli
                 warning_time: decoder.read_var_i32()?,
             }))
         }
-        ids::play::CLIENTBOUND_KEEP_ALIVE => Ok(PlayClientbound::KeepAlive {
-            id: Decoder::new(payload).read_i64()?,
-        }),
+        ids::play::CLIENTBOUND_KEEP_ALIVE => {
+            let mut decoder = Decoder::new(payload);
+            let id = decoder.read_i64()?;
+            if !decoder.is_empty() {
+                return Err(ProtocolError::InvalidData(
+                    "trailing bytes after play keep alive packet".to_string(),
+                ));
+            }
+            Ok(PlayClientbound::KeepAlive { id })
+        }
         ids::play::CLIENTBOUND_LEVEL_PARTICLES => {
             let mut decoder = Decoder::new(payload);
             Ok(PlayClientbound::LevelParticles(
@@ -338,9 +345,16 @@ pub fn decode_play_clientbound(packet_id: i32, payload: &[u8]) -> Result<PlayCli
                 client_ui::decode_mount_screen_open(&mut decoder)?,
             ))
         }
-        ids::play::CLIENTBOUND_PING => Ok(PlayClientbound::Ping {
-            id: Decoder::new(payload).read_i32()?,
-        }),
+        ids::play::CLIENTBOUND_PING => {
+            let mut decoder = Decoder::new(payload);
+            let id = decoder.read_i32()?;
+            if !decoder.is_empty() {
+                return Err(ProtocolError::InvalidData(
+                    "trailing bytes after play ping packet".to_string(),
+                ));
+            }
+            Ok(PlayClientbound::Ping { id })
+        }
         ids::play::CLIENTBOUND_LOGIN => {
             let mut decoder = Decoder::new(payload);
             Ok(PlayClientbound::Login(decode_play_login(&mut decoder)?))
