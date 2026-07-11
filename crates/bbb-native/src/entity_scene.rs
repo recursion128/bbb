@@ -149,6 +149,10 @@ use bbb_world::{
     VANILLA_PANDA_FLAG_ON_BACK as PANDA_ON_BACK_FLAG,
     VANILLA_PANDA_FLAG_ROLLING as PANDA_ROLLING_FLAG,
 };
+use bbb_world::{
+    VANILLA_PARROT_DEFAULT_VARIANT as PARROT_DEFAULT_VARIANT,
+    VANILLA_PARROT_VARIANT_DATA_ID as PARROT_VARIANT_DATA_ID,
+};
 pub(crate) use bbb_world::{
     VANILLA_PHANTOM_DEFAULT_SIZE as PHANTOM_DEFAULT_SIZE,
     VANILLA_PHANTOM_SIZE_DATA_ID as PHANTOM_SIZE_DATA_ID,
@@ -303,10 +307,6 @@ const RABBIT_TYPE_DATA_ID: u8 = 18;
 // Vanilla Shulker.DATA_COLOR_ID (18, BYTE): after Mob.DATA_MOB_FLAGS_ID (15) and the two `Shulker`
 // accessors DATA_ATTACH_FACE_ID (16) / DATA_PEEK_ID (17). `getColor()` returns the dye for 0..=15
 // and `null` (the default, byte 16) otherwise.
-// Vanilla Parrot.DATA_VARIANT_ID (20, INT): after Mob.DATA_MOB_FLAGS_ID (15), the two AgeableMob
-// accessors DATA_BABY_ID (16) / AGE_LOCKED (17), and the two TamableAnimal accessors DATA_FLAGS_ID
-// (18) / DATA_OWNERUUID_ID (19).
-const PARROT_VARIANT_DATA_ID: u8 = 20;
 // Vanilla Cat.DATA_VARIANT_ID (20, Holder<CatVariant>): after Mob.DATA_MOB_FLAGS_ID (15), the two
 // AgeableMob accessors DATA_BABY_ID (16) / AGE_LOCKED (17), and the two TamableAnimal accessors
 // DATA_FLAGS_ID (18) / DATA_OWNERUUID_ID (19). `Cat extends TamableAnimal`; the ocelot has no breed.

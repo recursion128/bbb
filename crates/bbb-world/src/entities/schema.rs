@@ -39,6 +39,7 @@ pub enum VanillaEntityMetadataFamily {
     AbstractChestedHorse,
     Llama,
     TamableAnimal,
+    Parrot,
     ArmorStand,
     AbstractArrow,
     Arrow,
@@ -376,6 +377,7 @@ mod tests {
             VanillaEntityMetadataFamily::AbstractChestedHorse,
             VanillaEntityMetadataFamily::Llama,
             VanillaEntityMetadataFamily::TamableAnimal,
+            VanillaEntityMetadataFamily::Parrot,
             VanillaEntityMetadataFamily::ArmorStand,
             VanillaEntityMetadataFamily::AbstractArrow,
             VanillaEntityMetadataFamily::Arrow,
@@ -620,6 +622,31 @@ mod tests {
         assert_eq!(VANILLA_LLAMA_VARIANT_DATA_ID, 21);
         assert_eq!(VANILLA_LLAMA_DEFAULT_STRENGTH, 0);
         assert_eq!(VANILLA_LLAMA_DEFAULT_VARIANT, 0);
+        let parrot = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Parrot);
+        assert_eq!(
+            parrot.parent,
+            Some(VanillaEntityMetadataFamily::TamableAnimal)
+        );
+        assert_eq!(parrot.inherited_field_count, 20);
+        assert_eq!(parrot.own_fields.len(), 1);
+        assert_eq!(VANILLA_PARROT_VARIANT_DATA_ID, 20);
+        assert_eq!(VANILLA_PARROT_DEFAULT_VARIANT, 0);
+        assert_eq!(
+            VANILLA_ENTITY_METADATA_DEFAULT_RESOLVER_EVIDENCE_26_1.len(),
+            1
+        );
+        let parrot_default_evidence = VANILLA_ENTITY_METADATA_DEFAULT_RESOLVER_EVIDENCE_26_1[0];
+        assert_eq!(
+            parrot_default_evidence.java_class,
+            "net.minecraft.world.entity.animal.parrot.Parrot"
+        );
+        assert_eq!(parrot_default_evidence.accessor_name, "DATA_VARIANT_ID");
+        assert_eq!(
+            parrot_default_evidence.source_expression,
+            "Parrot.Variant.DEFAULT.id"
+        );
+        assert!(!parrot_default_evidence.evidence_member.is_empty());
+        assert!(!parrot_default_evidence.reason.is_empty());
         let polar_bear = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::PolarBear);
         assert_eq!(
             polar_bear.parent,

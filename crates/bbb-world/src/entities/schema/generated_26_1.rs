@@ -159,6 +159,8 @@ const GENERATED_VANILLA_TAMABLE_ANIMAL_FLAGS_DATA_ID: u8 = 18;
 pub const VANILLA_TAMABLE_ANIMAL_FLAGS_DATA_ID: u8 = GENERATED_VANILLA_TAMABLE_ANIMAL_FLAGS_DATA_ID;
 const GENERATED_VANILLA_TAMABLE_ANIMAL_OWNER_DATA_ID: u8 = 19;
 pub const VANILLA_TAMABLE_ANIMAL_OWNER_DATA_ID: u8 = GENERATED_VANILLA_TAMABLE_ANIMAL_OWNER_DATA_ID;
+const GENERATED_VANILLA_PARROT_VARIANT_DATA_ID: u8 = 20;
+pub const VANILLA_PARROT_VARIANT_DATA_ID: u8 = GENERATED_VANILLA_PARROT_VARIANT_DATA_ID;
 const GENERATED_VANILLA_ARMOR_STAND_CLIENT_FLAGS_DATA_ID: u8 = 15;
 pub const VANILLA_ARMOR_STAND_CLIENT_FLAGS_DATA_ID: u8 =
     GENERATED_VANILLA_ARMOR_STAND_CLIENT_FLAGS_DATA_ID;
@@ -548,6 +550,8 @@ const GENERATED_VANILLA_LLAMA_DEFAULT_VARIANT: i32 = 0;
 pub const VANILLA_LLAMA_DEFAULT_VARIANT: i32 = GENERATED_VANILLA_LLAMA_DEFAULT_VARIANT;
 const GENERATED_VANILLA_TAMABLE_ANIMAL_DEFAULT_FLAGS: i8 = 0;
 pub const VANILLA_TAMABLE_ANIMAL_DEFAULT_FLAGS: i8 = GENERATED_VANILLA_TAMABLE_ANIMAL_DEFAULT_FLAGS;
+const GENERATED_VANILLA_PARROT_DEFAULT_VARIANT: i32 = 0;
+pub const VANILLA_PARROT_DEFAULT_VARIANT: i32 = GENERATED_VANILLA_PARROT_DEFAULT_VARIANT;
 const GENERATED_VANILLA_ABSTRACT_ARROW_DEFAULT_FLAGS: i8 = 0;
 pub const VANILLA_ABSTRACT_ARROW_DEFAULT_FLAGS: i8 = GENERATED_VANILLA_ABSTRACT_ARROW_DEFAULT_FLAGS;
 const GENERATED_VANILLA_ABSTRACT_ARROW_DEFAULT_PIERCE_LEVEL: i8 = 0;
@@ -9745,7 +9749,7 @@ pub const VANILLA_ENTITY_METADATA_ACCESSORS_26_1: &[VanillaEntityMetadataAccesso
         data_id: 20,
         source_path: "net/minecraft/world/entity/animal/parrot/Parrot.java",
         default_expression: "Parrot.Variant.DEFAULT.id",
-        typed_default: None,
+        typed_default: Some(VanillaEntityMetadataDefault::Int(0)),
     },
     VanillaEntityMetadataAccessorCatalogEntry {
         owner: "net.minecraft.world.entity.animal.pig.Pig",
@@ -11485,6 +11489,16 @@ pub const VANILLA_ENTITY_METADATA_FLAGS_26_1: &[VanillaEntityMetadataFlagCatalog
         status: VanillaEntityMetadataFlagStatus::Resolved,
         diagnostic: None,
         source_path: "net/minecraft/world/entity/projectile/arrow/AbstractArrow.java",
+    },
+];
+
+pub const VANILLA_ENTITY_METADATA_DEFAULT_RESOLVER_EVIDENCE_26_1: &[VanillaEntityMetadataResolverEvidence] = &[
+    VanillaEntityMetadataResolverEvidence {
+        java_class: "net.minecraft.world.entity.animal.parrot.Parrot",
+        accessor_name: "DATA_VARIANT_ID",
+        evidence_member: "net.minecraft.world.entity.animal.parrot.Parrot.Variant.DEFAULT -> RED_BLUE",
+        source_expression: "Parrot.Variant.DEFAULT.id",
+        reason: "the synced INT default is stored in a nested enum constant rather than an integer expression",
     },
 ];
 
@@ -13951,6 +13965,21 @@ const TAMABLEANIMAL_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMet
     own_flags: TAMABLEANIMAL_FLAGS,
 };
 
+const PARROT_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[VanillaEntityMetadataFieldSchema {
+    name: "DATA_VARIANT_ID",
+    data_id: 20,
+    serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+    default: VanillaEntityMetadataDefault::Int(0),
+}];
+const PARROT_FLAGS: &[VanillaEntityMetadataFlagSchema] = &[];
+const PARROT_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamilySchema {
+    family: VanillaEntityMetadataFamily::Parrot,
+    parent: Some(VanillaEntityMetadataFamily::TamableAnimal),
+    inherited_field_count: 20,
+    own_fields: PARROT_FIELDS,
+    own_flags: PARROT_FLAGS,
+};
+
 const ARMORSTAND_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[
     VanillaEntityMetadataFieldSchema {
         name: "DATA_CLIENT_FLAGS",
@@ -14822,6 +14851,7 @@ pub(super) const fn generated_entity_metadata_schema(
         VanillaEntityMetadataFamily::AbstractChestedHorse => &ABSTRACTCHESTEDHORSE_SCHEMA,
         VanillaEntityMetadataFamily::Llama => &LLAMA_SCHEMA,
         VanillaEntityMetadataFamily::TamableAnimal => &TAMABLEANIMAL_SCHEMA,
+        VanillaEntityMetadataFamily::Parrot => &PARROT_SCHEMA,
         VanillaEntityMetadataFamily::ArmorStand => &ARMORSTAND_SCHEMA,
         VanillaEntityMetadataFamily::AbstractArrow => &ABSTRACTARROW_SCHEMA,
         VanillaEntityMetadataFamily::Arrow => &ARROW_SCHEMA,

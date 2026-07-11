@@ -168,6 +168,16 @@ def direct_children_of_type(node: Node, kinds: set[str]) -> Iterator[Node]:
     yield from (child for child in node.named_children if child.type in kinds)
 
 
+def type_body_members(node: Node) -> Iterator[Node]:
+    """Yield declarations owned directly by a type, including Java enum wrappers."""
+
+    for child in node.named_children:
+        if child.type == "enum_body_declarations":
+            yield from child.named_children
+        else:
+            yield child
+
+
 def _first_invalid_node(root: Node) -> Node | None:
     if root.type == "ERROR" or root.is_missing:
         return root
@@ -318,7 +328,11 @@ def _parse_fields(relative_path: str, source: bytes, types: Sequence[JavaType]) 
     fields: list[JavaField] = []
     owner_orders: dict[str, int] = {}
     for owner in types:
-        for declaration in direct_children_of_type(owner.body_node, {"field_declaration", "constant_declaration"}):
+        for declaration in (
+            member
+            for member in type_body_members(owner.body_node)
+            if member.type in {"field_declaration", "constant_declaration"}
+        ):
             type_node = declaration.child_by_field_name("type")
             if type_node is None:
                 raise JavaSourceError(f"{relative_path}: field lacks a type")
@@ -350,7 +364,11 @@ def _parse_methods(relative_path: str, source: bytes, types: Sequence[JavaType])
     methods: list[JavaMethod] = []
     owner_orders: dict[str, int] = {}
     for owner in types:
-        for node in direct_children_of_type(owner.body_node, {"method_declaration", "constructor_declaration"}):
+        for node in (
+            member
+            for member in type_body_members(owner.body_node)
+            if member.type in {"method_declaration", "constructor_declaration"}
+        ):
             name_node = node.child_by_field_name("name")
             parameters = node.child_by_field_name("parameters")
             if name_node is None or parameters is None:

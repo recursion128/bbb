@@ -187,7 +187,11 @@ pub(super) fn parrot_model_kind(
     values: &[bbb_protocol::packets::EntityDataValue],
 ) -> EntityModelKind {
     EntityModelKind::Parrot {
-        variant: ParrotModelVariant::from_id(entity_data_int(values, PARROT_VARIANT_DATA_ID, 0)),
+        variant: ParrotModelVariant::from_id(entity_data_int(
+            values,
+            PARROT_VARIANT_DATA_ID,
+            PARROT_DEFAULT_VARIANT,
+        )),
     }
 }
 

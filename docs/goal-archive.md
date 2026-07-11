@@ -9886,3 +9886,11 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] 从 generated catalog 建立 `AbstractFish -> Tadpole` family：BOOLEAN age-locked
   id17/default false；native debug-save 删除手抄 synced id/default。普通保存字段 `Age`
   继续由 native 保存语义 owner 管理。
+
+## 2026-07-11：Generated enum-id default resolver 与 Parrot metadata
+
+- [x] generator 新增窄 CST resolver：从 nested enum 的 `DEFAULT` 字段追踪到 enum constant，
+  再机械读取首个构造参数作为 synced INT default；resolver 锁定 accessor 原始表达式并生成
+  evidence，源码漂移时 check 失败。首个消费者 `TamableAnimal -> Parrot` 生成 variant
+  id20/default0，native model/debug-save 删除手抄 id/default。variant clamp 仍由 native owner
+  管理。

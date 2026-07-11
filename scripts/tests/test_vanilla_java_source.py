@@ -98,6 +98,23 @@ class VanillaJavaSourceFrontendTests(unittest.TestCase):
         resolve_class_hierarchy(types)
         self.assertEqual(child.types[0].superclass, "fixture.base.Parent")
 
+    def test_nested_enum_body_declarations_are_public_fields_and_methods(self) -> None:
+        raw = b"""package fixture; class Owner { enum Variant {
+            FIRST(0), SECOND(1); static final Variant DEFAULT = FIRST;
+            private final int id; Variant(int id) { this.id = id; }
+            int id() { return this.id; }
+        } }"""
+        source = parse_source("fixture/Owner.java", raw)
+        owner = "fixture.Owner.Variant"
+        self.assertEqual(
+            [(item.name, item.initializer.canonical if item.initializer else None) for item in source.fields_for(owner)],
+            [("DEFAULT", "FIRST"), ("id", None)],
+        )
+        self.assertEqual(
+            [(item.name, item.is_constructor) for item in source.methods_for(owner)],
+            [("Variant", True), ("id", False)],
+        )
+
     def test_byte_spans_and_canonical_expression_are_whitespace_stable(self) -> None:
         compact = b"package fixture; class X { int v = Factory.make(1, 2); }"
         spaced = b"package fixture; class X { int v = Factory /*x*/ . make ( 1 , 2 ); }"

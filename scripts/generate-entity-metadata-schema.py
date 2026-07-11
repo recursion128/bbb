@@ -73,6 +73,7 @@ FAMILIES = (
     ),
     FamilySpec("Llama", "net.minecraft.world.entity.animal.equine.Llama", "AbstractChestedHorse"),
     FamilySpec("TamableAnimal", "net.minecraft.world.entity.TamableAnimal", "AgeableMob"),
+    FamilySpec("Parrot", "net.minecraft.world.entity.animal.parrot.Parrot", "TamableAnimal"),
     FamilySpec("ArmorStand", "net.minecraft.world.entity.decoration.ArmorStand", "LivingEntity"),
     FamilySpec(
         "AbstractArrow",
@@ -222,6 +223,7 @@ DATA_ALIASES = {
     "VANILLA_LLAMA_VARIANT_DATA_ID": ("net.minecraft.world.entity.animal.equine.Llama", "DATA_VARIANT_ID"),
     "VANILLA_TAMABLE_ANIMAL_FLAGS_DATA_ID": ("net.minecraft.world.entity.TamableAnimal", "DATA_FLAGS_ID"),
     "VANILLA_TAMABLE_ANIMAL_OWNER_DATA_ID": ("net.minecraft.world.entity.TamableAnimal", "DATA_OWNERUUID_ID"),
+    "VANILLA_PARROT_VARIANT_DATA_ID": ("net.minecraft.world.entity.animal.parrot.Parrot", "DATA_VARIANT_ID"),
     "VANILLA_ARMOR_STAND_CLIENT_FLAGS_DATA_ID": ("net.minecraft.world.entity.decoration.ArmorStand", "DATA_CLIENT_FLAGS"),
     "VANILLA_ARMOR_STAND_HEAD_POSE_DATA_ID": ("net.minecraft.world.entity.decoration.ArmorStand", "DATA_HEAD_POSE"),
     "VANILLA_ARMOR_STAND_BODY_POSE_DATA_ID": ("net.minecraft.world.entity.decoration.ArmorStand", "DATA_BODY_POSE"),
@@ -344,6 +346,7 @@ DEFAULT_ALIASES = {
     "VANILLA_LLAMA_DEFAULT_STRENGTH": ("net.minecraft.world.entity.animal.equine.Llama", "DATA_STRENGTH_ID"),
     "VANILLA_LLAMA_DEFAULT_VARIANT": ("net.minecraft.world.entity.animal.equine.Llama", "DATA_VARIANT_ID"),
     "VANILLA_TAMABLE_ANIMAL_DEFAULT_FLAGS": ("net.minecraft.world.entity.TamableAnimal", "DATA_FLAGS_ID"),
+    "VANILLA_PARROT_DEFAULT_VARIANT": ("net.minecraft.world.entity.animal.parrot.Parrot", "DATA_VARIANT_ID"),
     "VANILLA_ABSTRACT_ARROW_DEFAULT_FLAGS": ("net.minecraft.world.entity.projectile.arrow.AbstractArrow", "ID_FLAGS"),
     "VANILLA_ABSTRACT_ARROW_DEFAULT_PIERCE_LEVEL": ("net.minecraft.world.entity.projectile.arrow.AbstractArrow", "PIERCE_LEVEL"),
     "VANILLA_ABSTRACT_ARROW_DEFAULT_IN_GROUND": ("net.minecraft.world.entity.projectile.arrow.AbstractArrow", "IN_GROUND"),
@@ -484,6 +487,18 @@ FLAG_SCHEMA_NAMES = {
 }
 
 
+ENUM_ID_DEFAULT_RESOLVERS = (
+    (
+        "net.minecraft.world.entity.animal.parrot.Parrot",
+        "DATA_VARIANT_ID",
+        "net.minecraft.world.entity.animal.parrot.Parrot.Variant",
+        "DEFAULT",
+        "Parrot.Variant.DEFAULT.id",
+        "the synced INT default is stored in a nested enum constant rather than an integer expression",
+    ),
+)
+
+
 @dataclass(frozen=True)
 class NormalizedDefault:
     rust: str
@@ -494,6 +509,17 @@ class NormalizedDefault:
 @dataclass(frozen=True)
 class ResolvedFlag:
     rust_name: str
+    owner: str
+    accessor: str
+    evidence_class: str
+    evidence_member: str
+    expression: str
+    value: int
+    reason: str
+
+
+@dataclass(frozen=True)
+class ResolvedDefaultEvidence:
     owner: str
     accessor: str
     evidence_class: str
@@ -593,7 +619,75 @@ def enum_ordinals(result: ExtractionResult, fqcn: str) -> dict[str, int]:
     }
 
 
-def normalize_default(result: ExtractionResult, accessor: Accessor) -> NormalizedDefault | None:
+def resolve_enum_id_defaults(
+    result: ExtractionResult,
+) -> tuple[dict[tuple[str, str], NormalizedDefault], list[ResolvedDefaultEvidence]]:
+    resolved: dict[tuple[str, str], NormalizedDefault] = {}
+    evidence: list[ResolvedDefaultEvidence] = []
+    for owner, accessor_name, enum_fqcn, default_field, expected_expression, reason in ENUM_ID_DEFAULT_RESOLVERS:
+        key = (owner, accessor_name)
+        if key in resolved:
+            raise ExtractionError(f"duplicate enum default resolver: {owner}.{accessor_name}")
+        accessor = accessor_for(result, owner, accessor_name)
+        if accessor.serializer != "INT":
+            raise ExtractionError(f"{owner}.{accessor_name}: enum id resolver requires INT serializer")
+        if accessor.default_expression != expected_expression:
+            raise ExtractionError(
+                f"{owner}.{accessor_name}: stale enum default resolver expression; "
+                f"expected {expected_expression!r}, found {accessor.default_expression!r}"
+            )
+        matches = [
+            (source, java_type)
+            for source in result.sources.values()
+            for java_type in source.types
+            if java_type.fqcn == enum_fqcn and java_type.kind == "enum"
+        ]
+        if len(matches) != 1:
+            raise ExtractionError(f"{enum_fqcn}: expected one enum type, found {len(matches)}")
+        enum_source, java_type = matches[0]
+        default = field_for(result, enum_fqcn, default_field)
+        if default.initializer is None or default.initializer.node.type != "identifier":
+            raise ExtractionError(f"{enum_fqcn}.{default_field}: expected enum-constant identifier initializer")
+        constant_name = enum_source.text(default.initializer.node)
+        constants = [
+            item
+            for item in java_type.body_node.named_children
+            if item.type == "enum_constant"
+            and enum_source.text(item.child_by_field_name("name")) == constant_name
+        ]
+        if len(constants) != 1:
+            raise ExtractionError(f"{enum_fqcn}.{default_field}: expected one {constant_name} enum constant")
+        arguments = constants[0].child_by_field_name("arguments")
+        if arguments is None or not arguments.named_children:
+            raise ExtractionError(f"{enum_fqcn}.{constant_name}: expected integer id constructor argument")
+        value = evaluate_integer_expression(enum_source, arguments.named_children[0], {})
+        resolved[key] = NormalizedDefault(
+            f"VanillaEntityMetadataDefault::Int({value})",
+            "i32",
+            str(value),
+        )
+        evidence.append(
+            ResolvedDefaultEvidence(
+                owner,
+                accessor_name,
+                enum_fqcn,
+                f"{default_field} -> {constant_name}",
+                expected_expression,
+                value,
+                reason,
+            )
+        )
+    return resolved, evidence
+
+
+def normalize_default(
+    result: ExtractionResult,
+    accessor: Accessor,
+    resolved_defaults: dict[tuple[str, str], NormalizedDefault],
+) -> NormalizedDefault | None:
+    resolved = resolved_defaults.get((accessor.owner, accessor.java_name))
+    if resolved is not None:
+        return resolved
     source, node = resolve_default_node(result, accessor)
     canonical = source.expression(node).canonical
     compact = canonical.replace(" ", "")
@@ -785,8 +879,9 @@ def option_string(value: str | None) -> str:
 
 def render(result: ExtractionResult) -> str:
     accessors = {(item.owner, item.java_name): item for item in result.accessors}
+    resolved_defaults, default_evidence = resolve_enum_id_defaults(result)
     normalized = {
-        key: normalize_default(result, item) for key, item in accessors.items()
+        key: normalize_default(result, item, resolved_defaults) for key, item in accessors.items()
     }
     for family in FAMILIES:
         for accessor in result.accessors:
@@ -928,6 +1023,23 @@ def render(result: ExtractionResult) -> str:
                 f"        status: VanillaEntityMetadataFlagStatus::{item.status.capitalize()},",
                 f"        diagnostic: {option_string(item.reason)},",
                 f"        source_path: {rust_string(item.source_path)},",
+                "    },",
+            ]
+        )
+    lines.extend([
+        "];",
+        "",
+        "pub const VANILLA_ENTITY_METADATA_DEFAULT_RESOLVER_EVIDENCE_26_1: &[VanillaEntityMetadataResolverEvidence] = &[",
+    ])
+    for item in default_evidence:
+        lines.extend(
+            [
+                "    VanillaEntityMetadataResolverEvidence {",
+                f"        java_class: {rust_string(item.owner)},",
+                f"        accessor_name: {rust_string(item.accessor)},",
+                f"        evidence_member: {rust_string(item.evidence_class + '.' + item.evidence_member)},",
+                f"        source_expression: {rust_string(item.expression)},",
+                f"        reason: {rust_string(item.reason)},",
                 "    },",
             ]
         )

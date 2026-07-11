@@ -497,7 +497,7 @@ back into a todo. Do not delete these.
   `Entity`, `LivingEntity`, `Mob -> Allay` / `Creeper` / `Warden` / `WitherBoss` /
   `EnderMan`,
   `Avatar`, `Player`, `AgeableMob -> AbstractHorse -> Camel` / `Horse` /
-  `AbstractChestedHorse -> Llama` / `TamableAnimal` / `PolarBear` /
+  `AbstractChestedHorse -> Llama` / `TamableAnimal -> Parrot` / `PolarBear` /
   `Bee` / `Axolotl` / `Dolphin` / `GlowSquid` / `Goat` / `Ocelot` / `Panda` / `Sheep` /
   `Turtle`,
   `ArmorStand`,
