@@ -289,7 +289,11 @@ pub(super) fn entity_model_kind_with_time_and_registries(
         }
         VANILLA_ENTITY_TYPE_FROG_ID => frog_model_kind(data_values, frog_variants),
         VANILLA_ENTITY_TYPE_GHAST_ID => EntityModelKind::Ghast {
-            charging: entity_data_bool(data_values, GHAST_IS_CHARGING_DATA_ID, false),
+            charging: entity_data_bool(
+                data_values,
+                GHAST_IS_CHARGING_DATA_ID,
+                GHAST_DEFAULT_CHARGING,
+            ),
         },
         VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID => EntityModelKind::HappyGhast,
         VANILLA_ENTITY_TYPE_GIANT_ID => EntityModelKind::Giant,

@@ -72,6 +72,10 @@ pub(crate) use bbb_world::{
     VANILLA_END_CRYSTAL_DEFAULT_SHOW_BOTTOM as END_CRYSTAL_DEFAULT_SHOW_BOTTOM,
     VANILLA_END_CRYSTAL_SHOW_BOTTOM_DATA_ID as END_CRYSTAL_SHOW_BOTTOM_DATA_ID,
 };
+use bbb_world::{
+    VANILLA_GHAST_CHARGING_DATA_ID as GHAST_IS_CHARGING_DATA_ID,
+    VANILLA_GHAST_DEFAULT_CHARGING as GHAST_DEFAULT_CHARGING,
+};
 pub(crate) use bbb_world::{
     VANILLA_PHANTOM_DEFAULT_SIZE as PHANTOM_DEFAULT_SIZE,
     VANILLA_PHANTOM_SIZE_DATA_ID as PHANTOM_SIZE_DATA_ID,
@@ -265,9 +269,6 @@ const PANDA_ON_BACK_FLAG: i8 = 0x10;
 // Vanilla Strider.DATA_SUFFOCATING (19, BOOLEAN): `Strider extends Animal`, so after Mob (15), the
 // two AgeableMob accessors (16/17), and DATA_BOOST_TIME (18) comes the cold/suffocating flag.
 const STRIDER_SUFFOCATING_DATA_ID: u8 = 19;
-// Vanilla Ghast.DATA_IS_CHARGING (16, BOOLEAN): `Ghast extends Mob` directly (NOT AgeableMob), so its
-// first own accessor lands right after Mob's DATA_MOB_FLAGS_ID (15) — index 16, no baby/age-locked slots.
-const GHAST_IS_CHARGING_DATA_ID: u8 = 16;
 // Vanilla Vex.DATA_FLAGS_ID (16, BYTE): `Vex extends Monster extends PathfinderMob extends Mob`, so its
 // first own accessor lands right after Mob's DATA_MOB_FLAGS_ID (15) — index 16. `isCharging` is bit 1.
 const VEX_FLAGS_DATA_ID: u8 = 16;

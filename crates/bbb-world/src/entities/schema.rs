@@ -34,6 +34,7 @@ pub enum VanillaEntityMetadataFamily {
     Bat,
     Phantom,
     Bogged,
+    Ghast,
     AbstractFish,
     Pufferfish,
     VehicleEntity,
@@ -311,6 +312,7 @@ mod tests {
             VanillaEntityMetadataFamily::Bat,
             VanillaEntityMetadataFamily::Phantom,
             VanillaEntityMetadataFamily::Bogged,
+            VanillaEntityMetadataFamily::Ghast,
             VanillaEntityMetadataFamily::AbstractFish,
             VanillaEntityMetadataFamily::Pufferfish,
             VanillaEntityMetadataFamily::VehicleEntity,
@@ -600,6 +602,21 @@ mod tests {
         );
         assert_eq!(VANILLA_BOGGED_SHEARED_DATA_ID, 16);
         assert!(!VANILLA_BOGGED_DEFAULT_SHEARED);
+        let ghast = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Ghast);
+        assert_eq!(ghast.parent, Some(VanillaEntityMetadataFamily::Mob));
+        assert_eq!(ghast.inherited_field_count, 16);
+        assert_eq!(
+            ghast.own_fields,
+            &[VanillaEntityMetadataFieldSchema {
+                name: "DATA_IS_CHARGING",
+                data_id: 16,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+                default: VanillaEntityMetadataDefault::Boolean(false),
+            }]
+        );
+        assert_eq!(VANILLA_GHAST_CHARGING_DATA_ID, 16);
+        assert!(!VANILLA_GHAST_DEFAULT_CHARGING);
         let abstract_fish =
             vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::AbstractFish);
         assert_eq!(abstract_fish.parent, Some(VanillaEntityMetadataFamily::Mob));

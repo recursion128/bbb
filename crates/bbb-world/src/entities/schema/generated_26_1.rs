@@ -139,6 +139,8 @@ const GENERATED_VANILLA_PHANTOM_SIZE_DATA_ID: u8 = 16;
 pub const VANILLA_PHANTOM_SIZE_DATA_ID: u8 = GENERATED_VANILLA_PHANTOM_SIZE_DATA_ID;
 const GENERATED_VANILLA_BOGGED_SHEARED_DATA_ID: u8 = 16;
 pub const VANILLA_BOGGED_SHEARED_DATA_ID: u8 = GENERATED_VANILLA_BOGGED_SHEARED_DATA_ID;
+const GENERATED_VANILLA_GHAST_CHARGING_DATA_ID: u8 = 16;
+pub const VANILLA_GHAST_CHARGING_DATA_ID: u8 = GENERATED_VANILLA_GHAST_CHARGING_DATA_ID;
 const GENERATED_VANILLA_ABSTRACT_FISH_FROM_BUCKET_DATA_ID: u8 = 16;
 pub const VANILLA_ABSTRACT_FISH_FROM_BUCKET_DATA_ID: u8 =
     GENERATED_VANILLA_ABSTRACT_FISH_FROM_BUCKET_DATA_ID;
@@ -350,6 +352,8 @@ const GENERATED_VANILLA_PHANTOM_DEFAULT_SIZE: i32 = 0;
 pub const VANILLA_PHANTOM_DEFAULT_SIZE: i32 = GENERATED_VANILLA_PHANTOM_DEFAULT_SIZE;
 const GENERATED_VANILLA_BOGGED_DEFAULT_SHEARED: bool = false;
 pub const VANILLA_BOGGED_DEFAULT_SHEARED: bool = GENERATED_VANILLA_BOGGED_DEFAULT_SHEARED;
+const GENERATED_VANILLA_GHAST_DEFAULT_CHARGING: bool = false;
+pub const VANILLA_GHAST_DEFAULT_CHARGING: bool = GENERATED_VANILLA_GHAST_DEFAULT_CHARGING;
 const GENERATED_VANILLA_ABSTRACT_FISH_DEFAULT_FROM_BUCKET: bool = false;
 pub const VANILLA_ABSTRACT_FISH_DEFAULT_FROM_BUCKET: bool =
     GENERATED_VANILLA_ABSTRACT_FISH_DEFAULT_FROM_BUCKET;
@@ -13456,6 +13460,21 @@ const BOGGED_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFa
     own_flags: BOGGED_FLAGS,
 };
 
+const GHAST_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[VanillaEntityMetadataFieldSchema {
+    name: "DATA_IS_CHARGING",
+    data_id: 16,
+    serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+    default: VanillaEntityMetadataDefault::Boolean(false),
+}];
+const GHAST_FLAGS: &[VanillaEntityMetadataFlagSchema] = &[];
+const GHAST_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamilySchema {
+    family: VanillaEntityMetadataFamily::Ghast,
+    parent: Some(VanillaEntityMetadataFamily::Mob),
+    inherited_field_count: 16,
+    own_fields: GHAST_FIELDS,
+    own_flags: GHAST_FLAGS,
+};
+
 const ABSTRACTFISH_FIELDS: &[VanillaEntityMetadataFieldSchema] =
     &[VanillaEntityMetadataFieldSchema {
         name: "FROM_BUCKET",
@@ -13730,6 +13749,7 @@ pub(super) const fn generated_entity_metadata_schema(
         VanillaEntityMetadataFamily::Bat => &BAT_SCHEMA,
         VanillaEntityMetadataFamily::Phantom => &PHANTOM_SCHEMA,
         VanillaEntityMetadataFamily::Bogged => &BOGGED_SCHEMA,
+        VanillaEntityMetadataFamily::Ghast => &GHAST_SCHEMA,
         VanillaEntityMetadataFamily::AbstractFish => &ABSTRACTFISH_SCHEMA,
         VanillaEntityMetadataFamily::Pufferfish => &PUFFERFISH_SCHEMA,
         VanillaEntityMetadataFamily::VehicleEntity => &VEHICLEENTITY_SCHEMA,

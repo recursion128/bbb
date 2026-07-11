@@ -9698,3 +9698,10 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   `DATA_SHEARED` id 16/default false 替代 native model 与 F3+I 保存投影的手抄副本；
   focused tests 锁定继承 offset、serializer/default、sheared model state 与保存语义。
   未修改剪刀交互、掉落、攻击或 renderer 算法。
+
+## 2026-07-11：Generated entity metadata consumer（Ghast）
+
+- [x] 从 generated catalog 建立 `Mob -> Ghast` compatibility family：BOOLEAN
+  `DATA_IS_CHARGING` id 16/default false 替代 native model/texture projection 的手抄值；
+  focused tests 锁定继承 offset、serializer/default 与 normal/shooting texture state。
+  未修改射击 AI、爆炸强度、移动或 renderer 算法。
