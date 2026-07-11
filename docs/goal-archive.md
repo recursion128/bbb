@@ -9600,3 +9600,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   `scripts/vanilla-source-tools.sh scripts/generate-entity-metadata-schema.py update|check`，
   使用 frozen/offline uv 环境；连续 update 无 diff。该机制迁移不代表剩余实体消费者或
   unresolved default/flag 已完成，entity metadata schema 开放队列继续保留。
+
+## 2026-07-11：Generated entity metadata consumers（Arrow / ThrownTrident）
+
+- [x] 首个 extractor 后续 consumer slice 直接从 generated catalog 建立
+  `AbstractArrow -> Arrow` 与 `AbstractArrow -> ThrownTrident` compatibility families：
+  Arrow 的 INT `ID_EFFECT_COLOR` id 11/default -1，以及 trident 的 BYTE
+  `ID_LOYALTY` id 11/default 0、BOOLEAN `ID_FOIL` id 12/default false 均不再手抄。
+  world item/projectile projection 与 native arrow texture/trident foil projection 删除本地
+  11/12/default literals，focused tests 锁定继承 offset、serializer/default 与既有 render
+  语义；未修改箭矢粒子、trident loyalty physics、碰撞或 renderer 算法。

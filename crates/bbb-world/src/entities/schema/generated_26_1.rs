@@ -101,6 +101,12 @@ pub const VANILLA_ABSTRACT_ARROW_PIERCE_LEVEL_DATA_ID: u8 =
 const GENERATED_VANILLA_ABSTRACT_ARROW_IN_GROUND_DATA_ID: u8 = 10;
 pub const VANILLA_ABSTRACT_ARROW_IN_GROUND_DATA_ID: u8 =
     GENERATED_VANILLA_ABSTRACT_ARROW_IN_GROUND_DATA_ID;
+const GENERATED_VANILLA_ARROW_EFFECT_COLOR_DATA_ID: u8 = 11;
+pub const VANILLA_ARROW_EFFECT_COLOR_DATA_ID: u8 = GENERATED_VANILLA_ARROW_EFFECT_COLOR_DATA_ID;
+const GENERATED_VANILLA_TRIDENT_LOYALTY_DATA_ID: u8 = 11;
+pub const VANILLA_TRIDENT_LOYALTY_DATA_ID: u8 = GENERATED_VANILLA_TRIDENT_LOYALTY_DATA_ID;
+const GENERATED_VANILLA_TRIDENT_FOIL_DATA_ID: u8 = 12;
+pub const VANILLA_TRIDENT_FOIL_DATA_ID: u8 = GENERATED_VANILLA_TRIDENT_FOIL_DATA_ID;
 const GENERATED_VANILLA_VEHICLE_HURT_TIME_DATA_ID: u8 = 8;
 pub const VANILLA_VEHICLE_HURT_TIME_DATA_ID: u8 = GENERATED_VANILLA_VEHICLE_HURT_TIME_DATA_ID;
 const GENERATED_VANILLA_VEHICLE_HURT_DIR_DATA_ID: u8 = 9;
@@ -266,6 +272,12 @@ pub const VANILLA_ABSTRACT_ARROW_DEFAULT_PIERCE_LEVEL: i8 =
 const GENERATED_VANILLA_ABSTRACT_ARROW_DEFAULT_IN_GROUND: bool = false;
 pub const VANILLA_ABSTRACT_ARROW_DEFAULT_IN_GROUND: bool =
     GENERATED_VANILLA_ABSTRACT_ARROW_DEFAULT_IN_GROUND;
+const GENERATED_VANILLA_ARROW_DEFAULT_EFFECT_COLOR: i32 = -1;
+pub const VANILLA_ARROW_DEFAULT_EFFECT_COLOR: i32 = GENERATED_VANILLA_ARROW_DEFAULT_EFFECT_COLOR;
+const GENERATED_VANILLA_TRIDENT_DEFAULT_LOYALTY: i8 = 0;
+pub const VANILLA_TRIDENT_DEFAULT_LOYALTY: i8 = GENERATED_VANILLA_TRIDENT_DEFAULT_LOYALTY;
+const GENERATED_VANILLA_TRIDENT_DEFAULT_FOIL: bool = false;
+pub const VANILLA_TRIDENT_DEFAULT_FOIL: bool = GENERATED_VANILLA_TRIDENT_DEFAULT_FOIL;
 const GENERATED_VANILLA_VEHICLE_DEFAULT_HURT_TIME: i32 = 0;
 pub const VANILLA_VEHICLE_DEFAULT_HURT_TIME: i32 = GENERATED_VANILLA_VEHICLE_DEFAULT_HURT_TIME;
 const GENERATED_VANILLA_VEHICLE_DEFAULT_HURT_DIR: i32 = 1;
@@ -13123,6 +13135,44 @@ const ABSTRACTARROW_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMet
     own_flags: ABSTRACTARROW_FLAGS,
 };
 
+const ARROW_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[VanillaEntityMetadataFieldSchema {
+    name: "ID_EFFECT_COLOR",
+    data_id: 11,
+    serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+    default: VanillaEntityMetadataDefault::Int(-1),
+}];
+const ARROW_FLAGS: &[VanillaEntityMetadataFlagSchema] = &[];
+const ARROW_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamilySchema {
+    family: VanillaEntityMetadataFamily::Arrow,
+    parent: Some(VanillaEntityMetadataFamily::AbstractArrow),
+    inherited_field_count: 11,
+    own_fields: ARROW_FIELDS,
+    own_flags: ARROW_FLAGS,
+};
+
+const THROWNTRIDENT_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[
+    VanillaEntityMetadataFieldSchema {
+        name: "ID_LOYALTY",
+        data_id: 11,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+        default: VanillaEntityMetadataDefault::Byte(0),
+    },
+    VanillaEntityMetadataFieldSchema {
+        name: "ID_FOIL",
+        data_id: 12,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+        default: VanillaEntityMetadataDefault::Boolean(false),
+    },
+];
+const THROWNTRIDENT_FLAGS: &[VanillaEntityMetadataFlagSchema] = &[];
+const THROWNTRIDENT_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamilySchema {
+    family: VanillaEntityMetadataFamily::ThrownTrident,
+    parent: Some(VanillaEntityMetadataFamily::AbstractArrow),
+    inherited_field_count: 11,
+    own_fields: THROWNTRIDENT_FIELDS,
+    own_flags: THROWNTRIDENT_FLAGS,
+};
+
 const VEHICLEENTITY_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[
     VanillaEntityMetadataFieldSchema {
         name: "DATA_ID_HURT",
@@ -13353,6 +13403,8 @@ pub(super) const fn generated_entity_metadata_schema(
         VanillaEntityMetadataFamily::TamableAnimal => &TAMABLEANIMAL_SCHEMA,
         VanillaEntityMetadataFamily::ArmorStand => &ARMORSTAND_SCHEMA,
         VanillaEntityMetadataFamily::AbstractArrow => &ABSTRACTARROW_SCHEMA,
+        VanillaEntityMetadataFamily::Arrow => &ARROW_SCHEMA,
+        VanillaEntityMetadataFamily::ThrownTrident => &THROWNTRIDENT_SCHEMA,
         VanillaEntityMetadataFamily::VehicleEntity => &VEHICLEENTITY_SCHEMA,
         VanillaEntityMetadataFamily::AbstractBoat => &ABSTRACTBOAT_SCHEMA,
         VanillaEntityMetadataFamily::AbstractMinecart => &ABSTRACTMINECART_SCHEMA,

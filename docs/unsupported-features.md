@@ -496,8 +496,9 @@ back into a todo. Do not delete these.
   explicit flag diagnostics. The compatibility facade currently exposes
   `Entity`, `LivingEntity`, `Mob`, `Avatar`, `Player`, `AgeableMob ->
   AbstractHorse` / `TamableAnimal`, `ArmorStand`, `Slime` (also consumed by
-  `MagmaCube`), `Shulker`, `Zombie`, `Entity -> AbstractArrow`, the `Entity ->
-  VehicleEntity -> AbstractBoat` / `AbstractMinecart` branches, and
+  `MagmaCube`), `Shulker`, `Zombie`, `Entity -> AbstractArrow -> Arrow` /
+  `ThrownTrident` leaves, the `Entity -> VehicleEntity -> AbstractBoat` /
+  `AbstractMinecart` branches, and
   `HangingEntity -> ItemFrame`. Remaining concrete entity consumers still keep
   local ids/masks until their projections migrate to generated descriptors;
   an unresolved typed default/flag diagnostic is not implementation support.

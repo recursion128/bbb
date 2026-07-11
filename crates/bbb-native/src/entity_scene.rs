@@ -49,6 +49,8 @@ use bbb_world::{
     VANILLA_ARMOR_STAND_LEFT_LEG_POSE_DATA_ID as ARMOR_STAND_LEFT_LEG_POSE_DATA_ID,
     VANILLA_ARMOR_STAND_RIGHT_ARM_POSE_DATA_ID as ARMOR_STAND_RIGHT_ARM_POSE_DATA_ID,
     VANILLA_ARMOR_STAND_RIGHT_LEG_POSE_DATA_ID as ARMOR_STAND_RIGHT_LEG_POSE_DATA_ID,
+    VANILLA_ARROW_DEFAULT_EFFECT_COLOR as ARROW_DEFAULT_EFFECT_COLOR,
+    VANILLA_ARROW_EFFECT_COLOR_DATA_ID as ARROW_EFFECT_COLOR_DATA_ID,
     VANILLA_AVATAR_DEFAULT_MODEL_CUSTOMIZATION as AVATAR_PLAYER_DEFAULT_MODEL_CUSTOMIZATION,
     VANILLA_AVATAR_MODEL_CUSTOMIZATION_DATA_ID as AVATAR_MODEL_CUSTOMIZATION_DATA_ID,
     VANILLA_ENTITY_CUSTOM_NAME_DATA_ID as ENTITY_CUSTOM_NAME_DATA_ID,
@@ -58,6 +60,8 @@ use bbb_world::{
     VANILLA_LIVING_ENTITY_HEALTH_DATA_ID as LIVING_ENTITY_HEALTH_DATA_ID,
     VANILLA_SLIME_DEFAULT_SIZE as SLIME_DEFAULT_SIZE,
     VANILLA_SLIME_SIZE_DATA_ID as SLIME_SIZE_DATA_ID,
+    VANILLA_TRIDENT_DEFAULT_FOIL as TRIDENT_DEFAULT_FOIL,
+    VANILLA_TRIDENT_FOIL_DATA_ID as TRIDENT_FOIL_DATA_ID,
 };
 use bbb_world::{
     VANILLA_SHULKER_COLOR_DATA_ID as SHULKER_COLOR_DATA_ID,
@@ -258,17 +262,10 @@ const VEX_FLAG_IS_CHARGING: i8 = 1;
 // Vanilla WitherSkull.DATA_DANGEROUS (8, BOOLEAN): `Entity` defines ids 0..=7, while `Projectile` and
 // `AbstractHurtingProjectile` add no synced accessors, so the wither skull's first own accessor lands at 8.
 pub(crate) const WITHER_SKULL_DANGEROUS_DATA_ID: u8 = 8;
-// Vanilla Arrow.ID_EFFECT_COLOR (11, INT): `Arrow extends AbstractArrow extends Projectile extends
-// Entity`, so after Entity (0-7) come the three AbstractArrow accessors ID_FLAGS (8) / PIERCE_LEVEL
-// (9) / IN_GROUND (10), then Arrow's own potion color. `getColor() > 0` marks a tipped arrow.
-const ARROW_EFFECT_COLOR_DATA_ID: u8 = 11;
 // Vanilla `AbstractArrow.IN_GROUND` (10, BOOLEAN): updating it to true after the first client tick
 // starts the seven-tick `shakeTime` impact wobble that `ArrowRenderer.extractRenderState` projects.
 #[cfg(test)]
 const ARROW_IN_GROUND_DATA_ID: u8 = 10;
-// Vanilla `ThrownTrident.ID_FOIL` (12, BOOLEAN): after Entity (0-7) and AbstractArrow's
-// ID_FLAGS / PIERCE_LEVEL / IN_GROUND (8/9/10), trident defines ID_LOYALTY (11) then ID_FOIL (12).
-const TRIDENT_FOIL_DATA_ID: u8 = 12;
 /// Vanilla `Creaking.IS_ACTIVE` data id (17, BOOLEAN): `Creaking extends Monster` (not ageable), so
 /// after `Mob.DATA_MOB_FLAGS_ID` (15) come `CAN_MOVE` (16) / `IS_ACTIVE` (17) / `IS_TEARING_DOWN`
 /// (18). The renderer's `eyesGlowing` is `isActive()` for a live creaking (the death-flicker is deferred).

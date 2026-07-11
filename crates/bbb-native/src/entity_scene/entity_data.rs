@@ -278,5 +278,5 @@ pub(super) fn thrown_trident_foil(
     values: &[bbb_protocol::packets::EntityDataValue],
 ) -> bool {
     entity_type_id == VANILLA_ENTITY_TYPE_TRIDENT_ID
-        && entity_data_bool(values, TRIDENT_FOIL_DATA_ID, false)
+        && entity_data_bool(values, TRIDENT_FOIL_DATA_ID, TRIDENT_DEFAULT_FOIL)
 }

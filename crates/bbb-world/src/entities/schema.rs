@@ -22,6 +22,8 @@ pub enum VanillaEntityMetadataFamily {
     TamableAnimal,
     ArmorStand,
     AbstractArrow,
+    Arrow,
+    ThrownTrident,
     VehicleEntity,
     AbstractBoat,
     AbstractMinecart,
@@ -285,6 +287,8 @@ mod tests {
             VanillaEntityMetadataFamily::TamableAnimal,
             VanillaEntityMetadataFamily::ArmorStand,
             VanillaEntityMetadataFamily::AbstractArrow,
+            VanillaEntityMetadataFamily::Arrow,
+            VanillaEntityMetadataFamily::ThrownTrident,
             VanillaEntityMetadataFamily::VehicleEntity,
             VanillaEntityMetadataFamily::AbstractBoat,
             VanillaEntityMetadataFamily::AbstractMinecart,
@@ -317,6 +321,33 @@ mod tests {
 
     #[test]
     fn compatibility_queries_and_virtual_defaults_preserve_existing_semantics() {
+        let arrow = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Arrow);
+        assert_eq!(
+            arrow.parent,
+            Some(VanillaEntityMetadataFamily::AbstractArrow)
+        );
+        assert_eq!(arrow.inherited_field_count, 11);
+        assert_eq!(
+            arrow.own_fields,
+            &[VanillaEntityMetadataFieldSchema {
+                name: "ID_EFFECT_COLOR",
+                data_id: 11,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+                default: VanillaEntityMetadataDefault::Int(-1),
+            }]
+        );
+        let trident = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::ThrownTrident);
+        assert_eq!(
+            trident.parent,
+            Some(VanillaEntityMetadataFamily::AbstractArrow)
+        );
+        assert_eq!(trident.inherited_field_count, 11);
+        assert_eq!(trident.own_fields.len(), 2);
+        assert_eq!(VANILLA_TRIDENT_LOYALTY_DATA_ID, 11);
+        assert_eq!(VANILLA_TRIDENT_FOIL_DATA_ID, 12);
+        assert_eq!(VANILLA_TRIDENT_DEFAULT_LOYALTY, 0);
+        assert!(!VANILLA_TRIDENT_DEFAULT_FOIL);
         assert_eq!(
             vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Entity)
                 .own_flags

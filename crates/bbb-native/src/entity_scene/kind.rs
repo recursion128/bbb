@@ -194,7 +194,12 @@ pub(super) fn entity_model_kind_with_time_and_registries(
         },
         VANILLA_ENTITY_TYPE_ARROW_ID => EntityModelKind::Arrow {
             // Vanilla `TippableArrowRenderer`: `isTipped = getColor() > 0` swaps to `arrow_tipped.png`.
-            texture: if entity_data_int(data_values, ARROW_EFFECT_COLOR_DATA_ID, -1) > 0 {
+            texture: if entity_data_int(
+                data_values,
+                ARROW_EFFECT_COLOR_DATA_ID,
+                ARROW_DEFAULT_EFFECT_COLOR,
+            ) > 0
+            {
                 ArrowModelTexture::Tipped
             } else {
                 ArrowModelTexture::Normal

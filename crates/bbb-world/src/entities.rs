@@ -106,6 +106,9 @@ pub use schema::{
     VANILLA_ABSTRACT_ARROW_DEFAULT_PIERCE_LEVEL, VANILLA_ABSTRACT_ARROW_FLAGS_DATA_ID,
     VANILLA_ABSTRACT_ARROW_FLAG_CRIT, VANILLA_ABSTRACT_ARROW_FLAG_NO_PHYSICS,
     VANILLA_ABSTRACT_ARROW_IN_GROUND_DATA_ID, VANILLA_ABSTRACT_ARROW_PIERCE_LEVEL_DATA_ID,
+    VANILLA_ARROW_DEFAULT_EFFECT_COLOR, VANILLA_ARROW_EFFECT_COLOR_DATA_ID,
+    VANILLA_TRIDENT_DEFAULT_FOIL, VANILLA_TRIDENT_DEFAULT_LOYALTY, VANILLA_TRIDENT_FOIL_DATA_ID,
+    VANILLA_TRIDENT_LOYALTY_DATA_ID,
 };
 pub use schema::{
     VANILLA_ABSTRACT_BOAT_BUBBLE_TIME_DATA_ID, VANILLA_ABSTRACT_BOAT_DEFAULT_BUBBLE_TIME,
@@ -160,12 +163,6 @@ pub fn vanilla_entity_type_is_living(entity_type_id: i32) -> bool {
     vanilla_living_entity_type(entity_type_id)
 }
 
-// Vanilla `Arrow.ID_EFFECT_COLOR` (INT): Entity data ids 0-7 are from `Entity`, ids 8-10
-// are from `AbstractArrow`, then `Arrow` adds its potion/effect color at id 11.
-pub(crate) const VANILLA_ARROW_EFFECT_COLOR_DATA_ID: u8 = 11;
-// Vanilla `ThrownTrident.ID_FOIL` (BOOLEAN): ids 8-10 from `AbstractArrow`, then
-// `ThrownTrident` adds `ID_LOYALTY` at 11 and `ID_FOIL` at 12.
-pub(crate) const VANILLA_TRIDENT_FOIL_DATA_ID: u8 = 12;
 /// Vanilla `Attributes.MAX_HEALTH` `RangedAttribute` default value
 /// (`20.0`, Attributes.java:59).
 const VANILLA_DEFAULT_MAX_HEALTH: f64 = 20.0;
@@ -2276,7 +2273,11 @@ impl WorldStore {
             VANILLA_ENTITY_TYPE_ARROW_ID => Some(TakeItemEntityPickupProjectileModel::Arrow {
                 tipped: self
                     .entities
-                    .metadata_int_for_entity(item_entity_id, VANILLA_ARROW_EFFECT_COLOR_DATA_ID, -1)
+                    .metadata_int_for_entity(
+                        item_entity_id,
+                        VANILLA_ARROW_EFFECT_COLOR_DATA_ID,
+                        VANILLA_ARROW_DEFAULT_EFFECT_COLOR,
+                    )
                     .unwrap_or(-1)
                     > 0,
             }),
@@ -2286,7 +2287,11 @@ impl WorldStore {
             VANILLA_ENTITY_TYPE_TRIDENT_ID => Some(TakeItemEntityPickupProjectileModel::Trident {
                 foil: self
                     .entities
-                    .metadata_bool_for_entity(item_entity_id, VANILLA_TRIDENT_FOIL_DATA_ID, false)
+                    .metadata_bool_for_entity(
+                        item_entity_id,
+                        VANILLA_TRIDENT_FOIL_DATA_ID,
+                        VANILLA_TRIDENT_DEFAULT_FOIL,
+                    )
                     .unwrap_or(false),
             }),
             _ => None,
