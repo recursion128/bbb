@@ -10105,3 +10105,10 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   `createRegistryKey` factory，生成诚实的
   `RegistryAny("minecraft:painting_variant")` virtual default。painting bounds 删除手抄 id9；
   未把任意 holder 猜成 Kebab，bootstrap size catalog 与动态 registry 顺序仍保持开放。
+
+## 2026-07-11：Generated FishingHook metadata
+
+- [x] 由统一 Tree-sitter accessor catalog 建立 `Entity -> FishingHook` family，生成
+  `DATA_HOOKED_ENTITY` id8/default 0 与 `DATA_BITING` id9/default false，并锁定 INT/BOOLEAN
+  serializer。该 facade 只描述服务器同步的客户端可观察字段；咬钩 RNG、运动、捕获判定与
+  权威 catch 逻辑仍由服务器或后续 client-presentation slice 管理。

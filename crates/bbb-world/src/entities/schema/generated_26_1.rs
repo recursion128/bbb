@@ -321,6 +321,11 @@ pub const VANILLA_FIREWORK_ROCKET_ATTACHED_TO_TARGET_DATA_ID: u8 =
 const GENERATED_VANILLA_FIREWORK_ROCKET_SHOT_AT_ANGLE_DATA_ID: u8 = 10;
 pub const VANILLA_FIREWORK_ROCKET_SHOT_AT_ANGLE_DATA_ID: u8 =
     GENERATED_VANILLA_FIREWORK_ROCKET_SHOT_AT_ANGLE_DATA_ID;
+const GENERATED_VANILLA_FISHING_HOOK_HOOKED_ENTITY_DATA_ID: u8 = 8;
+pub const VANILLA_FISHING_HOOK_HOOKED_ENTITY_DATA_ID: u8 =
+    GENERATED_VANILLA_FISHING_HOOK_HOOKED_ENTITY_DATA_ID;
+const GENERATED_VANILLA_FISHING_HOOK_BITING_DATA_ID: u8 = 9;
+pub const VANILLA_FISHING_HOOK_BITING_DATA_ID: u8 = GENERATED_VANILLA_FISHING_HOOK_BITING_DATA_ID;
 const GENERATED_VANILLA_GUARDIAN_MOVING_DATA_ID: u8 = 16;
 pub const VANILLA_GUARDIAN_MOVING_DATA_ID: u8 = GENERATED_VANILLA_GUARDIAN_MOVING_DATA_ID;
 const GENERATED_VANILLA_GUARDIAN_ATTACK_TARGET_DATA_ID: u8 = 17;
@@ -891,6 +896,11 @@ pub const VANILLA_FIREWORK_ROCKET_DEFAULT_ITEM_RESOURCE_ID: &str =
 const GENERATED_VANILLA_FIREWORK_ROCKET_DEFAULT_SHOT_AT_ANGLE: bool = false;
 pub const VANILLA_FIREWORK_ROCKET_DEFAULT_SHOT_AT_ANGLE: bool =
     GENERATED_VANILLA_FIREWORK_ROCKET_DEFAULT_SHOT_AT_ANGLE;
+const GENERATED_VANILLA_FISHING_HOOK_DEFAULT_HOOKED_ENTITY: i32 = 0;
+pub const VANILLA_FISHING_HOOK_DEFAULT_HOOKED_ENTITY: i32 =
+    GENERATED_VANILLA_FISHING_HOOK_DEFAULT_HOOKED_ENTITY;
+const GENERATED_VANILLA_FISHING_HOOK_DEFAULT_BITING: bool = false;
+pub const VANILLA_FISHING_HOOK_DEFAULT_BITING: bool = GENERATED_VANILLA_FISHING_HOOK_DEFAULT_BITING;
 const GENERATED_VANILLA_GUARDIAN_DEFAULT_MOVING: bool = false;
 pub const VANILLA_GUARDIAN_DEFAULT_MOVING: bool = GENERATED_VANILLA_GUARDIAN_DEFAULT_MOVING;
 const GENERATED_VANILLA_GUARDIAN_DEFAULT_ATTACK_TARGET: i32 = 0;
@@ -15283,6 +15293,29 @@ const FIREWORKROCKET_SCHEMA: VanillaEntityMetadataFamilySchema =
         own_flags: FIREWORKROCKET_FLAGS,
     };
 
+const FISHINGHOOK_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_HOOKED_ENTITY",
+        data_id: 8,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+        default: VanillaEntityMetadataDefault::Int(0),
+    },
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_BITING",
+        data_id: 9,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+        default: VanillaEntityMetadataDefault::Boolean(false),
+    },
+];
+const FISHINGHOOK_FLAGS: &[VanillaEntityMetadataFlagSchema] = &[];
+const FISHINGHOOK_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamilySchema {
+    family: VanillaEntityMetadataFamily::FishingHook,
+    parent: Some(VanillaEntityMetadataFamily::Entity),
+    inherited_field_count: 8,
+    own_fields: FISHINGHOOK_FIELDS,
+    own_flags: FISHINGHOOK_FLAGS,
+};
+
 const GUARDIAN_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[
     VanillaEntityMetadataFieldSchema {
         name: "DATA_ID_MOVING",
@@ -15994,6 +16027,7 @@ pub(super) const fn generated_entity_metadata_schema(
         VanillaEntityMetadataFamily::ItemEntity => &ITEMENTITY_SCHEMA,
         VanillaEntityMetadataFamily::PrimedTnt => &PRIMEDTNT_SCHEMA,
         VanillaEntityMetadataFamily::FireworkRocket => &FIREWORKROCKET_SCHEMA,
+        VanillaEntityMetadataFamily::FishingHook => &FISHINGHOOK_SCHEMA,
         VanillaEntityMetadataFamily::Guardian => &GUARDIAN_SCHEMA,
         VanillaEntityMetadataFamily::SnowGolem => &SNOWGOLEM_SCHEMA,
         VanillaEntityMetadataFamily::IronGolem => &IRONGOLEM_SCHEMA,

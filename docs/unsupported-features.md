@@ -511,6 +511,7 @@ back into a todo. Do not delete these.
   `Mob -> EnderDragon`,
   `Entity -> AbstractArrow -> Arrow` /
   `ThrownTrident` leaves, the `Entity -> WitherSkull` projectile leaf,
+  `Entity -> FishingHook`,
   `Entity -> EndCrystal` / `Interaction` / `ExperienceOrb` / `ItemEntity` /
   `PrimedTnt` / `FireworkRocket`, the
   `Entity -> VehicleEntity -> AbstractBoat` / `AbstractMinecart -> MinecartFurnace` branches, and
@@ -531,6 +532,9 @@ back into a todo. Do not delete these.
   Painting's `RegistryAny("minecraft:painting_variant")` virtual default records
   the registry source without guessing which holder a server/runtime selects;
   painting bootstrap sizes and dynamic-registry ordering remain separate work.
+  FishingHook's synced hooked-entity id and biting boolean now come from the
+  generated facade; client fishing motion, bite presentation, server RNG and
+  authoritative catch logic remain separate work.
 - **Baby `ageScale`** — the `0.5` proportions applied in model `setupAnim`,
   distinct from the projected `SCALE`-attribute `scale`.
 - **Armor trims and the remaining mob-specific armor models.**

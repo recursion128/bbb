@@ -68,6 +68,7 @@ pub enum VanillaEntityMetadataFamily {
     ItemEntity,
     PrimedTnt,
     FireworkRocket,
+    FishingHook,
     Guardian,
     SnowGolem,
     IronGolem,
@@ -438,6 +439,7 @@ mod tests {
             VanillaEntityMetadataFamily::ItemEntity,
             VanillaEntityMetadataFamily::PrimedTnt,
             VanillaEntityMetadataFamily::FireworkRocket,
+            VanillaEntityMetadataFamily::FishingHook,
             VanillaEntityMetadataFamily::Guardian,
             VanillaEntityMetadataFamily::SnowGolem,
             VanillaEntityMetadataFamily::IronGolem,
@@ -1545,6 +1547,35 @@ mod tests {
             "minecraft:firework_rocket"
         );
         assert!(!VANILLA_FIREWORK_ROCKET_DEFAULT_SHOT_AT_ANGLE);
+        let fishing_hook = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::FishingHook);
+        assert_eq!(
+            fishing_hook.parent,
+            Some(VanillaEntityMetadataFamily::Entity)
+        );
+        assert_eq!(fishing_hook.inherited_field_count, 8);
+        assert_eq!(VANILLA_FISHING_HOOK_HOOKED_ENTITY_DATA_ID, 8);
+        assert_eq!(VANILLA_FISHING_HOOK_BITING_DATA_ID, 9);
+        assert_eq!(VANILLA_FISHING_HOOK_DEFAULT_HOOKED_ENTITY, 0);
+        assert!(!VANILLA_FISHING_HOOK_DEFAULT_BITING);
+        assert_eq!(
+            fishing_hook.own_fields,
+            &[
+                VanillaEntityMetadataFieldSchema {
+                    name: "DATA_HOOKED_ENTITY",
+                    data_id: 8,
+                    serializer_id:
+                        bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+                    default: VanillaEntityMetadataDefault::Int(0),
+                },
+                VanillaEntityMetadataFieldSchema {
+                    name: "DATA_BITING",
+                    data_id: 9,
+                    serializer_id:
+                        bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+                    default: VanillaEntityMetadataDefault::Boolean(false),
+                },
+            ]
+        );
         let guardian = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Guardian);
         assert_eq!(guardian.parent, Some(VanillaEntityMetadataFamily::Mob));
         assert_eq!(guardian.inherited_field_count, 16);
