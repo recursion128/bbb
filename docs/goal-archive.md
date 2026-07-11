@@ -10323,3 +10323,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   不一致、重复或数量变化均令 maintenance check 显式失败。world 仍将这些输入留给 server
   authority，而普通 item default remainder 继续来自 ItemRegistryCatalog；未把完整 recipe
   matching/assemble/remainder transition 误标完成。
+
+## 2026-07-11：Generated no-terrain-particle block membership
+
+- [x] 新增 block-membership Tree-sitter extractor 与 repo-level update/check，从 26.1
+  `Blocks.java` field initializer CST 中识别 `.noTerrainParticles()` builder property，并由
+  同一 register call 提取 barrier/structure_void resource id 与声明顺序。world terrain
+  facade 删除两项手写 match，particle destroy/terrain emission 继续消费既有 bool API；
+  fixtures 锁定 multiline、comment/string 伪调用、固定数量、唯一性及显式失败，普通 build
+  只读取 checked-in generated module。未把 block render shape、dust color、MapColor 或
+  provider/GPU presentation 等独立语义纳入本切片。

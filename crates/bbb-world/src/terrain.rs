@@ -4,6 +4,10 @@ use serde::{Deserialize, Serialize};
 
 use crate::{BlockPos, ChunkPos, PaletteKind};
 
+mod generated_26_1;
+
+use generated_26_1::VANILLA_NO_TERRAIN_PARTICLE_BLOCKS;
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct BlockProbe {
     pub pos: BlockPos,
@@ -224,7 +228,7 @@ pub fn block_name_is_air(name: &str) -> bool {
 }
 
 pub fn block_name_should_spawn_terrain_particles(name: &str) -> bool {
-    !matches!(name, "minecraft:barrier" | "minecraft:structure_void")
+    !VANILLA_NO_TERRAIN_PARTICLE_BLOCKS.contains(&name)
 }
 
 pub(crate) fn terrain_fluid_state(
