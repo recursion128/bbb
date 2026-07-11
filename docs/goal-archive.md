@@ -9835,3 +9835,10 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   id18/default false、left-horn id19/default true、right-horn id20/default true；native
   model/debug-save 删除手抄 synced id/default。ram 动画、尺寸与保存字段语义仍由对应行为
   owner 管理。
+
+## 2026-07-11：Generated entity metadata consumer（Turtle）
+
+- [x] 从 generated catalog 建立 `AgeableMob -> Turtle` family：BOOLEAN has-egg
+  id18/default false、laying-egg id19/default false；native render projection/debug-save 删除
+  手抄 synced id/default。home position、lay counter 与 baby dimensions 仍由对应行为 owner
+  管理。

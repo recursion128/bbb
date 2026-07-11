@@ -149,6 +149,12 @@ use bbb_world::{
     VANILLA_TAMABLE_ANIMAL_FLAG_TAME as TAMABLE_ANIMAL_TAME_FLAG,
 };
 use bbb_world::{
+    VANILLA_TURTLE_DEFAULT_HAS_EGG as TURTLE_DEFAULT_HAS_EGG,
+    VANILLA_TURTLE_DEFAULT_LAYING_EGG as TURTLE_DEFAULT_LAYING_EGG,
+    VANILLA_TURTLE_HAS_EGG_DATA_ID as TURTLE_HAS_EGG_DATA_ID,
+    VANILLA_TURTLE_LAYING_EGG_DATA_ID as TURTLE_LAYING_EGG_DATA_ID,
+};
+use bbb_world::{
     VANILLA_VEX_DEFAULT_FLAGS as VEX_DEFAULT_FLAGS, VANILLA_VEX_FLAGS_DATA_ID as VEX_FLAGS_DATA_ID,
     VANILLA_VEX_FLAG_CHARGING as VEX_FLAG_IS_CHARGING,
 };
@@ -304,11 +310,6 @@ const PANDA_ON_BACK_FLAG: i8 = 0x10;
 // starts the seven-tick `shakeTime` impact wobble that `ArrowRenderer.extractRenderState` projects.
 #[cfg(test)]
 const ARROW_IN_GROUND_DATA_ID: u8 = 10;
-/// Vanilla `Turtle.HAS_EGG` data id (18): the synced boolean, the turtle's first own accessor
-/// after `AgeableMob.DATA_BABY_ID` (16) and `AGE_LOCKED` (17).
-const TURTLE_HAS_EGG_DATA_ID: u8 = 18;
-/// Vanilla `Turtle.LAYING_EGG` data id (19): the synced boolean declared right after `HAS_EGG`.
-const TURTLE_LAYING_EGG_DATA_ID: u8 = 19;
 const WOLF_COLLAR_COLOR_DATA_ID: u8 = 21;
 const WOLF_ANGER_END_TIME_DATA_ID: u8 = 22;
 const WOLF_DEFAULT_COLLAR_COLOR_ID: i32 = 14;

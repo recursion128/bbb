@@ -497,7 +497,7 @@ back into a todo. Do not delete these.
   `Entity`, `LivingEntity`, `Mob -> Allay` / `Creeper` / `Warden` / `WitherBoss` /
   `EnderMan`,
   `Avatar`, `Player`, `AgeableMob -> AbstractHorse -> Camel` / `TamableAnimal` / `PolarBear` /
-  `Bee` / `Axolotl` / `Goat`,
+  `Bee` / `Axolotl` / `Goat` / `Turtle`,
   `ArmorStand`,
   `Slime` (also consumed by `MagmaCube`), `Shulker`, `Zombie`, `Mob -> Guardian` /
   `SnowGolem` / `Bat` /

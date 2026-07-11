@@ -111,6 +111,10 @@ const GENERATED_VANILLA_GOAT_LEFT_HORN_DATA_ID: u8 = 19;
 pub const VANILLA_GOAT_LEFT_HORN_DATA_ID: u8 = GENERATED_VANILLA_GOAT_LEFT_HORN_DATA_ID;
 const GENERATED_VANILLA_GOAT_RIGHT_HORN_DATA_ID: u8 = 20;
 pub const VANILLA_GOAT_RIGHT_HORN_DATA_ID: u8 = GENERATED_VANILLA_GOAT_RIGHT_HORN_DATA_ID;
+const GENERATED_VANILLA_TURTLE_HAS_EGG_DATA_ID: u8 = 18;
+pub const VANILLA_TURTLE_HAS_EGG_DATA_ID: u8 = GENERATED_VANILLA_TURTLE_HAS_EGG_DATA_ID;
+const GENERATED_VANILLA_TURTLE_LAYING_EGG_DATA_ID: u8 = 19;
+pub const VANILLA_TURTLE_LAYING_EGG_DATA_ID: u8 = GENERATED_VANILLA_TURTLE_LAYING_EGG_DATA_ID;
 const GENERATED_VANILLA_ABSTRACT_HORSE_FLAGS_DATA_ID: u8 = 18;
 pub const VANILLA_ABSTRACT_HORSE_FLAGS_DATA_ID: u8 = GENERATED_VANILLA_ABSTRACT_HORSE_FLAGS_DATA_ID;
 const GENERATED_VANILLA_CAMEL_DASH_DATA_ID: u8 = 19;
@@ -452,6 +456,10 @@ const GENERATED_VANILLA_GOAT_DEFAULT_HAS_LEFT_HORN: bool = true;
 pub const VANILLA_GOAT_DEFAULT_HAS_LEFT_HORN: bool = GENERATED_VANILLA_GOAT_DEFAULT_HAS_LEFT_HORN;
 const GENERATED_VANILLA_GOAT_DEFAULT_HAS_RIGHT_HORN: bool = true;
 pub const VANILLA_GOAT_DEFAULT_HAS_RIGHT_HORN: bool = GENERATED_VANILLA_GOAT_DEFAULT_HAS_RIGHT_HORN;
+const GENERATED_VANILLA_TURTLE_DEFAULT_HAS_EGG: bool = false;
+pub const VANILLA_TURTLE_DEFAULT_HAS_EGG: bool = GENERATED_VANILLA_TURTLE_DEFAULT_HAS_EGG;
+const GENERATED_VANILLA_TURTLE_DEFAULT_LAYING_EGG: bool = false;
+pub const VANILLA_TURTLE_DEFAULT_LAYING_EGG: bool = GENERATED_VANILLA_TURTLE_DEFAULT_LAYING_EGG;
 const GENERATED_VANILLA_ABSTRACT_HORSE_DEFAULT_FLAGS: i8 = 0;
 pub const VANILLA_ABSTRACT_HORSE_DEFAULT_FLAGS: i8 = GENERATED_VANILLA_ABSTRACT_HORSE_DEFAULT_FLAGS;
 const GENERATED_VANILLA_CAMEL_DEFAULT_DASH: bool = false;
@@ -13510,6 +13518,29 @@ const POLARBEAR_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadat
     own_flags: POLARBEAR_FLAGS,
 };
 
+const TURTLE_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[
+    VanillaEntityMetadataFieldSchema {
+        name: "HAS_EGG",
+        data_id: 18,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+        default: VanillaEntityMetadataDefault::Boolean(false),
+    },
+    VanillaEntityMetadataFieldSchema {
+        name: "LAYING_EGG",
+        data_id: 19,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+        default: VanillaEntityMetadataDefault::Boolean(false),
+    },
+];
+const TURTLE_FLAGS: &[VanillaEntityMetadataFlagSchema] = &[];
+const TURTLE_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamilySchema {
+    family: VanillaEntityMetadataFamily::Turtle,
+    parent: Some(VanillaEntityMetadataFamily::AgeableMob),
+    inherited_field_count: 18,
+    own_fields: TURTLE_FIELDS,
+    own_flags: TURTLE_FLAGS,
+};
+
 const ABSTRACTHORSE_FIELDS: &[VanillaEntityMetadataFieldSchema] =
     &[VanillaEntityMetadataFieldSchema {
         name: "DATA_ID_FLAGS",
@@ -14453,6 +14484,7 @@ pub(super) const fn generated_entity_metadata_schema(
         VanillaEntityMetadataFamily::Bee => &BEE_SCHEMA,
         VanillaEntityMetadataFamily::Goat => &GOAT_SCHEMA,
         VanillaEntityMetadataFamily::PolarBear => &POLARBEAR_SCHEMA,
+        VanillaEntityMetadataFamily::Turtle => &TURTLE_SCHEMA,
         VanillaEntityMetadataFamily::AbstractHorse => &ABSTRACTHORSE_SCHEMA,
         VanillaEntityMetadataFamily::Camel => &CAMEL_SCHEMA,
         VanillaEntityMetadataFamily::TamableAnimal => &TAMABLEANIMAL_SCHEMA,

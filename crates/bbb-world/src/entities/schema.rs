@@ -27,6 +27,7 @@ pub enum VanillaEntityMetadataFamily {
     Bee,
     Goat,
     PolarBear,
+    Turtle,
     AbstractHorse,
     Camel,
     TamableAnimal,
@@ -354,6 +355,7 @@ mod tests {
             VanillaEntityMetadataFamily::Bee,
             VanillaEntityMetadataFamily::Goat,
             VanillaEntityMetadataFamily::PolarBear,
+            VanillaEntityMetadataFamily::Turtle,
             VanillaEntityMetadataFamily::AbstractHorse,
             VanillaEntityMetadataFamily::Camel,
             VanillaEntityMetadataFamily::TamableAnimal,
@@ -498,6 +500,14 @@ mod tests {
         assert!(!VANILLA_GOAT_DEFAULT_SCREAMING);
         assert!(VANILLA_GOAT_DEFAULT_HAS_LEFT_HORN);
         assert!(VANILLA_GOAT_DEFAULT_HAS_RIGHT_HORN);
+        let turtle = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Turtle);
+        assert_eq!(turtle.parent, Some(VanillaEntityMetadataFamily::AgeableMob));
+        assert_eq!(turtle.inherited_field_count, 18);
+        assert_eq!(turtle.own_fields.len(), 2);
+        assert_eq!(VANILLA_TURTLE_HAS_EGG_DATA_ID, 18);
+        assert_eq!(VANILLA_TURTLE_LAYING_EGG_DATA_ID, 19);
+        assert!(!VANILLA_TURTLE_DEFAULT_HAS_EGG);
+        assert!(!VANILLA_TURTLE_DEFAULT_LAYING_EGG);
         let camel = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Camel);
         assert_eq!(
             camel.parent,

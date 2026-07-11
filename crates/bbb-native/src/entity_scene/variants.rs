@@ -998,7 +998,7 @@ pub(super) fn turtle_has_egg(
 ) -> bool {
     entity_type_id == VANILLA_ENTITY_TYPE_TURTLE_ID
         && !ageable_baby(values)
-        && entity_data_bool(values, TURTLE_HAS_EGG_DATA_ID, false)
+        && entity_data_bool(values, TURTLE_HAS_EGG_DATA_ID, TURTLE_DEFAULT_HAS_EGG)
 }
 
 /// Vanilla `TurtleRenderState.isLayingEgg = Turtle.isLayingEgg()` (the synced `LAYING_EGG`
@@ -1009,7 +1009,7 @@ pub(super) fn turtle_laying_egg(
     values: &[bbb_protocol::packets::EntityDataValue],
 ) -> bool {
     entity_type_id == VANILLA_ENTITY_TYPE_TURTLE_ID
-        && entity_data_bool(values, TURTLE_LAYING_EGG_DATA_ID, false)
+        && entity_data_bool(values, TURTLE_LAYING_EGG_DATA_ID, TURTLE_DEFAULT_LAYING_EGG)
 }
 
 /// Vanilla `EndCrystalRenderState.showsBottom = EndCrystal.showsBottom()` (the synced
