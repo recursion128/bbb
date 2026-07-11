@@ -335,6 +335,11 @@ play 初始 position handoff 已闭合严格 position decode、canonical correct
 movement 现在只在 local player 是 controlled camera 时上报，观察远端实体不会再向服务器发送
 玩家位移。rotation packet 严格消费 payload，并按 relative flags 更新 canonical pose 后立即回发
 `Rot(false,false)`。
+vehicle movement correction 与 boat paddle/report 先加入 first-passenger-chain 必要 guard：不在
+每层第一控制位的玩家不会 snap/ack 或运行 boat input，第二乘客只发送自身 rotation。Pig/Strider/
+Horse/HappyGhast 等 entity-specific `getControllingPassenger` 条件、interpolation cancel 和完整 boat/
+非 boat locally-controlled physics 仍未统一，因此 `ClientboundMoveVehicle`、`MoveVehicle` 与
+`PaddleBoat` 的相应 canonical/runtime/command/state/response 格保持 partial。
 
 完成标准：全部 vanilla 26.1 catalog entry 都有矩阵行；所有目标客户端适用项为
 `complete`，其余只有带 vanilla 依据的 `not-applicable` 或带重启判据的窄 `deferred`；

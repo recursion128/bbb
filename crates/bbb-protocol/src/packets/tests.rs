@@ -2155,6 +2155,20 @@ fn decodes_and_encodes_move_vehicle_packets() {
     assert_eq!(decoder.read_f32().unwrap(), -12.5);
     assert!(decoder.read_bool().unwrap());
     assert!(decoder.is_empty());
+
+    let mut trailing = Encoder::new();
+    trailing.write_f64(12.5);
+    trailing.write_f64(65.25);
+    trailing.write_f64(-8.75);
+    trailing.write_f32(135.0);
+    trailing.write_f32(-12.5);
+    trailing.write_u8(0);
+    let error =
+        decode_play_clientbound(ids::play::CLIENTBOUND_MOVE_VEHICLE, &trailing.into_inner())
+            .unwrap_err();
+    assert!(error
+        .to_string()
+        .contains("trailing bytes after move vehicle packet"));
 }
 
 #[test]

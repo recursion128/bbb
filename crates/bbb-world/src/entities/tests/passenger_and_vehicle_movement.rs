@@ -658,6 +658,53 @@ fn move_vehicle_without_mount_is_noop() {
 }
 
 #[test]
+fn noncontrolling_passenger_cannot_apply_vehicle_correction_or_drive_boat() {
+    let mut store = WorldStore::new();
+    store.apply_login(&protocol_play_login(99));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        10,
+        VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity(123));
+    assert!(store.apply_set_passengers(ProtocolSetPassengers {
+        vehicle_id: 10,
+        passenger_ids: vec![123, 99],
+    }));
+    let initial = store.probe_entity(10).unwrap();
+
+    assert_eq!(store.local_player_root_boat_vehicle_id(), Some(10));
+    assert_eq!(
+        store.local_player_first_passenger_root_boat_vehicle_id(),
+        None
+    );
+    assert_eq!(
+        store.apply_move_vehicle(ProtocolMoveVehicle {
+            position: ProtocolVec3d {
+                x: 5.0,
+                y: 66.0,
+                z: -7.0,
+            },
+            y_rot: 45.0,
+            x_rot: -5.0,
+        }),
+        None
+    );
+    assert_eq!(
+        store.advance_local_boat_vehicle_input(
+            crate::LocalPlayerInputState {
+                focused: true,
+                forward: true,
+                ..crate::LocalPlayerInputState::default()
+            },
+            0.05,
+        ),
+        None
+    );
+    assert_eq!(store.probe_entity(10).unwrap(), initial);
+    assert_eq!(store.counters().vehicle_moves_ignored, 1);
+}
+
+#[test]
 fn move_vehicle_small_delta_acks_without_snap() {
     let mut store = WorldStore::new();
     store.apply_login(&protocol_play_login(99));

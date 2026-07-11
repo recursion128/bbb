@@ -445,11 +445,17 @@ pub(super) fn decode_move_entity(
 }
 
 pub(super) fn decode_move_vehicle(decoder: &mut Decoder<'_>) -> Result<MoveVehicle> {
-    Ok(MoveVehicle {
+    let update = MoveVehicle {
         position: decode_vec3d(decoder)?,
         y_rot: decoder.read_f32()?,
         x_rot: decoder.read_f32()?,
-    })
+    };
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after move vehicle packet".to_string(),
+        ));
+    }
+    Ok(update)
 }
 
 pub(super) fn decode_move_minecart_along_track(

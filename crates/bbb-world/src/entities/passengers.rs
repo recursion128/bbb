@@ -96,7 +96,7 @@ impl WorldStore {
 
     pub fn apply_move_vehicle(&mut self, packet: ProtocolMoveVehicle) -> Option<VehicleMoveReport> {
         self.counters.vehicle_moves_received += 1;
-        let Some(root_vehicle_id) = self.local_player_root_vehicle_id() else {
+        let Some(root_vehicle_id) = self.local_player_first_passenger_root_vehicle_id() else {
             self.counters.vehicle_moves_ignored += 1;
             return None;
         };
@@ -140,7 +140,7 @@ impl WorldStore {
         input: LocalPlayerInputState,
         dt_seconds: f64,
     ) -> Option<VehicleMoveReport> {
-        let vehicle_id = self.local_player_root_boat_vehicle_id()?;
+        let vehicle_id = self.local_player_first_passenger_root_boat_vehicle_id()?;
         let ticks = (dt_seconds.max(0.0) / LOCAL_BOAT_TICK_SECONDS).max(0.0);
         self.entities.with_transform_mut(vehicle_id, |transform| {
             if ticks > 0.0 {
@@ -208,6 +208,14 @@ impl WorldStore {
 
     pub fn local_player_root_boat_vehicle_id(&self) -> Option<i32> {
         let vehicle_id = self.local_player_root_vehicle_id()?;
+        self.entities
+            .entity_type_id(vehicle_id)
+            .filter(|entity_type_id| is_vanilla_boat_type(*entity_type_id))
+            .map(|_| vehicle_id)
+    }
+
+    pub fn local_player_first_passenger_root_boat_vehicle_id(&self) -> Option<i32> {
+        let vehicle_id = self.local_player_first_passenger_root_vehicle_id()?;
         self.entities
             .entity_type_id(vehicle_id)
             .filter(|entity_type_id| is_vanilla_boat_type(*entity_type_id))
@@ -305,6 +313,23 @@ impl WorldStore {
                 return Some(root_vehicle_id);
             };
             root_vehicle_id = parent_vehicle_id;
+        }
+        None
+    }
+
+    fn local_player_first_passenger_root_vehicle_id(&self) -> Option<i32> {
+        let mut passenger_id = self.local_player_id?;
+        let mut vehicle_id = self.local_player_vehicle_id?;
+        for _ in 0..self.entities.len() {
+            let mount = self.entities.mount(vehicle_id)?;
+            if mount.passengers.first().copied() != Some(passenger_id) {
+                return None;
+            }
+            passenger_id = vehicle_id;
+            let Some(parent_vehicle_id) = mount.vehicle_id else {
+                return Some(vehicle_id);
+            };
+            vehicle_id = parent_vehicle_id;
         }
         None
     }

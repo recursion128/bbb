@@ -11001,3 +11001,15 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] 对照 `ClientboundPlayerRotationPacket` 与 `ClientPacketListener.handleRotatePlayer`，将
   rotation decode 收进严格 packet codec，拒绝 trailing bytes；relative yaw、clamped pitch、
   canonical pose snap 和立即 `Rot(false,false)` 回声由 protocol/net/world tests 锁定，五格闭合。
+
+## 2026-07-11：locally-controlled vehicle packet coverage audit
+
+- [x] 对照 `Entity.isLocalInstanceAuthoritative`、`ClientPacketListener.handleMoveVehicle` 与
+  `AbstractBoat.tick`，新增从 local player 经每层 first passenger 到 root vehicle 的必要 guard。
+  server correction、boat simulation、paddle 和 vehicle report 均复用该 guard；非 controlling 的
+  第二乘客只回报自身 rotation，不再驱动车船或确认 vehicle correction。
+- [x] `ClientboundMoveVehicle` decoder 现在拒绝 trailing bytes，snap epsilon、small-delta echo、
+  no-mount/noncontrolling ignore 与 native command queue 均有测试；vehicle/paddle encoder 与 tests、
+  clientbound decode/ownership 已闭合。Pig/Strider/Horse/HappyGhast 等 entity-specific controller
+  条件、interpolation cancel、完整 boat 及非 boat locally-controlled physics 仍开放，因此对应
+  canonical/runtime/command/state/response 格保持 partial，未把 first-passenger 或 boat 近似外推。

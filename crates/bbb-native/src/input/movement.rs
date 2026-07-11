@@ -192,7 +192,10 @@ fn maybe_queue_boat_commands(
     now: Instant,
     boat_report: Option<bbb_world::VehicleMoveReport>,
 ) {
-    if world.local_player_root_boat_vehicle_id().is_none() {
+    if world
+        .local_player_first_passenger_root_boat_vehicle_id()
+        .is_none()
+    {
         input.last_paddle_boat_command_at = None;
         return;
     }
@@ -942,6 +945,38 @@ mod tests {
         assert_eq!(counters.paddle_boat_commands_queued, 2);
         assert_eq!(counters.move_vehicle_commands_queued, 2);
         assert_eq!(counters.player_move_commands_queued, 2);
+    }
+
+    #[test]
+    fn noncontrolling_boat_passenger_only_reports_player_rotation() {
+        let (tx, mut rx) = mpsc::channel(4);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        input.forward = true;
+        let mut world = world_with_local_vehicle(VANILLA_26_1_OAK_BOAT_ENTITY_TYPE_ID);
+        world.apply_add_entity(protocol_add_entity_with_type(123, 0));
+        assert!(world.apply_set_passengers(SetPassengers {
+            vehicle_id: 10,
+            passenger_ids: vec![123, 99],
+        }));
+        let mut counters = NetCounters::default();
+
+        advance_player_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            Instant::now(),
+        );
+
+        assert!(matches!(
+            rx.try_recv().unwrap(),
+            NetCommand::MovePlayer(command) if command.force_rotation_only
+        ));
+        assert!(rx.try_recv().is_err());
+        assert_eq!(counters.player_move_commands_queued, 1);
+        assert_eq!(counters.paddle_boat_commands_queued, 0);
+        assert_eq!(counters.move_vehicle_commands_queued, 0);
     }
 
     #[test]

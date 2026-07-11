@@ -136,8 +136,11 @@ Movement:
   fall-sound side effects.
 - Handle the remaining `MovePlayer.Rot` vehicle movement send edge cases.
 - Implement full vanilla boat physics, water/buoyancy/collision parity, and
-  non-boat vehicle movement only for the locally controlled instance; remote
-  vehicles remain server-transform/interpolation driven.
+  non-boat vehicle movement only for the locally controlled instance; resolve
+  entity-specific `getControllingPassenger` gates (saddle/held item/armor and
+  related state) rather than treating first passenger as sufficient, and cancel
+  active interpolation on accepted corrections. Remote vehicles remain
+  server-transform/interpolation driven.
 
 Block destroy:
 
