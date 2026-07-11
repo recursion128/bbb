@@ -101,6 +101,11 @@ pub const VANILLA_AGEABLE_MOB_AGE_LOCKED_DATA_ID: u8 =
     GENERATED_VANILLA_AGEABLE_MOB_AGE_LOCKED_DATA_ID;
 const GENERATED_VANILLA_ABSTRACT_HORSE_FLAGS_DATA_ID: u8 = 18;
 pub const VANILLA_ABSTRACT_HORSE_FLAGS_DATA_ID: u8 = GENERATED_VANILLA_ABSTRACT_HORSE_FLAGS_DATA_ID;
+const GENERATED_VANILLA_CAMEL_DASH_DATA_ID: u8 = 19;
+pub const VANILLA_CAMEL_DASH_DATA_ID: u8 = GENERATED_VANILLA_CAMEL_DASH_DATA_ID;
+const GENERATED_VANILLA_CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID: u8 = 20;
+pub const VANILLA_CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID: u8 =
+    GENERATED_VANILLA_CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID;
 const GENERATED_VANILLA_TAMABLE_ANIMAL_FLAGS_DATA_ID: u8 = 18;
 pub const VANILLA_TAMABLE_ANIMAL_FLAGS_DATA_ID: u8 = GENERATED_VANILLA_TAMABLE_ANIMAL_FLAGS_DATA_ID;
 const GENERATED_VANILLA_TAMABLE_ANIMAL_OWNER_DATA_ID: u8 = 19;
@@ -424,6 +429,11 @@ pub const VANILLA_AGEABLE_MOB_DEFAULT_AGE_LOCKED: bool =
     GENERATED_VANILLA_AGEABLE_MOB_DEFAULT_AGE_LOCKED;
 const GENERATED_VANILLA_ABSTRACT_HORSE_DEFAULT_FLAGS: i8 = 0;
 pub const VANILLA_ABSTRACT_HORSE_DEFAULT_FLAGS: i8 = GENERATED_VANILLA_ABSTRACT_HORSE_DEFAULT_FLAGS;
+const GENERATED_VANILLA_CAMEL_DEFAULT_DASH: bool = false;
+pub const VANILLA_CAMEL_DEFAULT_DASH: bool = GENERATED_VANILLA_CAMEL_DEFAULT_DASH;
+const GENERATED_VANILLA_CAMEL_DEFAULT_LAST_POSE_CHANGE_TICK: i64 = 0;
+pub const VANILLA_CAMEL_DEFAULT_LAST_POSE_CHANGE_TICK: i64 =
+    GENERATED_VANILLA_CAMEL_DEFAULT_LAST_POSE_CHANGE_TICK;
 const GENERATED_VANILLA_TAMABLE_ANIMAL_DEFAULT_FLAGS: i8 = 0;
 pub const VANILLA_TAMABLE_ANIMAL_DEFAULT_FLAGS: i8 = GENERATED_VANILLA_TAMABLE_ANIMAL_DEFAULT_FLAGS;
 const GENERATED_VANILLA_ABSTRACT_ARROW_DEFAULT_FLAGS: i8 = 0;
@@ -13459,6 +13469,29 @@ const ABSTRACTHORSE_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMet
     own_flags: ABSTRACTHORSE_FLAGS,
 };
 
+const CAMEL_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[
+    VanillaEntityMetadataFieldSchema {
+        name: "DASH",
+        data_id: 19,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+        default: VanillaEntityMetadataDefault::Boolean(false),
+    },
+    VanillaEntityMetadataFieldSchema {
+        name: "LAST_POSE_CHANGE_TICK",
+        data_id: 20,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_LONG_ID,
+        default: VanillaEntityMetadataDefault::Long(0),
+    },
+];
+const CAMEL_FLAGS: &[VanillaEntityMetadataFlagSchema] = &[];
+const CAMEL_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamilySchema {
+    family: VanillaEntityMetadataFamily::Camel,
+    parent: Some(VanillaEntityMetadataFamily::AbstractHorse),
+    inherited_field_count: 19,
+    own_fields: CAMEL_FIELDS,
+    own_flags: CAMEL_FLAGS,
+};
+
 const TAMABLEANIMAL_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[
     VanillaEntityMetadataFieldSchema {
         name: "DATA_FLAGS_ID",
@@ -14336,6 +14369,7 @@ pub(super) const fn generated_entity_metadata_schema(
         VanillaEntityMetadataFamily::Bee => &BEE_SCHEMA,
         VanillaEntityMetadataFamily::PolarBear => &POLARBEAR_SCHEMA,
         VanillaEntityMetadataFamily::AbstractHorse => &ABSTRACTHORSE_SCHEMA,
+        VanillaEntityMetadataFamily::Camel => &CAMEL_SCHEMA,
         VanillaEntityMetadataFamily::TamableAnimal => &TAMABLEANIMAL_SCHEMA,
         VanillaEntityMetadataFamily::ArmorStand => &ARMORSTAND_SCHEMA,
         VanillaEntityMetadataFamily::AbstractArrow => &ABSTRACTARROW_SCHEMA,

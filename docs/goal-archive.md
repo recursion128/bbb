@@ -9814,3 +9814,10 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   world animation/store、native render/debug-save 删除手抄 synced id/default/mask。generator
   新增机械 `LONG` typed default；pollination/hive/crop save counters 仍由 native input owner
   管理。
+
+## 2026-07-11：Generated entity metadata consumer（Camel）
+
+- [x] 从 generated catalog 建立 `AbstractHorse -> Camel` family：BOOLEAN dash
+  id19/default false 与 LONG last-pose-change tick id20/default 0；world dash/dimensions、
+  native sit-state/debug-save 删除手抄 synced id/default。sit/stand 时长、尺寸和 movement
+  算法仍由对应行为 owner 管理。

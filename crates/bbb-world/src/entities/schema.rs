@@ -26,6 +26,7 @@ pub enum VanillaEntityMetadataFamily {
     Bee,
     PolarBear,
     AbstractHorse,
+    Camel,
     TamableAnimal,
     ArmorStand,
     AbstractArrow,
@@ -350,6 +351,7 @@ mod tests {
             VanillaEntityMetadataFamily::Bee,
             VanillaEntityMetadataFamily::PolarBear,
             VanillaEntityMetadataFamily::AbstractHorse,
+            VanillaEntityMetadataFamily::Camel,
             VanillaEntityMetadataFamily::TamableAnimal,
             VanillaEntityMetadataFamily::ArmorStand,
             VanillaEntityMetadataFamily::AbstractArrow,
@@ -469,6 +471,17 @@ mod tests {
         assert_eq!(VANILLA_BEE_FLAG_ROLL, 2);
         assert_eq!(VANILLA_BEE_FLAG_HAS_STUNG, 4);
         assert_eq!(VANILLA_BEE_FLAG_HAS_NECTAR, 8);
+        let camel = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Camel);
+        assert_eq!(
+            camel.parent,
+            Some(VanillaEntityMetadataFamily::AbstractHorse)
+        );
+        assert_eq!(camel.inherited_field_count, 19);
+        assert_eq!(camel.own_fields.len(), 2);
+        assert_eq!(VANILLA_CAMEL_DASH_DATA_ID, 19);
+        assert_eq!(VANILLA_CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID, 20);
+        assert!(!VANILLA_CAMEL_DEFAULT_DASH);
+        assert_eq!(VANILLA_CAMEL_DEFAULT_LAST_POSE_CHANGE_TICK, 0);
         let polar_bear = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::PolarBear);
         assert_eq!(
             polar_bear.parent,

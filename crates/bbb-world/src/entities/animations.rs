@@ -32,7 +32,8 @@ use super::schema::{
     VANILLA_ALLAY_DANCING_DATA_ID as ALLAY_DANCING_DATA_ID,
     VANILLA_ALLAY_DEFAULT_DANCING as ALLAY_DEFAULT_DANCING,
     VANILLA_BEE_DEFAULT_FLAGS as BEE_DEFAULT_FLAGS, VANILLA_BEE_FLAGS_DATA_ID as BEE_FLAGS_DATA_ID,
-    VANILLA_BEE_FLAG_ROLL as BEE_FLAG_ROLL,
+    VANILLA_BEE_FLAG_ROLL as BEE_FLAG_ROLL, VANILLA_CAMEL_DASH_DATA_ID as CAMEL_DASH_DATA_ID,
+    VANILLA_CAMEL_DEFAULT_DASH as CAMEL_DEFAULT_DASH,
     VANILLA_CREAKING_CAN_MOVE_DATA_ID as CREAKING_CAN_MOVE_DATA_ID,
     VANILLA_CREAKING_DEFAULT_CAN_MOVE as CREAKING_DEFAULT_CAN_MOVE,
     VANILLA_CREAKING_DEFAULT_TEARING_DOWN as CREAKING_DEFAULT_TEARING_DOWN,
@@ -219,15 +220,6 @@ const AXOLOTL_PLAYING_DEAD_DATA_ID: u8 = 19;
 /// Vanilla `Axolotl`'s four animators are each `BinaryAnimator(10, IN_OUT_SINE)`, so every factor
 /// eases between 0 and 1 over ten ticks.
 const AXOLOTL_ANIMATOR_LENGTH: i32 = 10;
-/// Vanilla `Allay.DATA_DANCING`, the synced `EntityDataSerializers.BOOLEAN` accessor at id 16 (Entity
-/// 0–7, LivingEntity 8–14, Mob 15, then `Allay`'s first own accessor `DATA_DANCING`; the allay is a
-/// `PathfinderMob`, not an `AgeableMob`, so there is no baby slot). `Allay.tick` advances the dance /
-/// spin accumulators while `isDancing()`.
-/// Vanilla `Camel.DASH`, the synced `EntityDataSerializers.BOOLEAN` accessor at id 19 (Entity 0–7,
-/// LivingEntity 8–14, Mob 15, AgeableMob 16–17, `AbstractHorse.DATA_ID_FLAGS` 18, then Camel's first
-/// own accessor `DASH`; `LAST_POSE_CHANGE_TICK` follows at 20). `Camel.setupAnimationStates` reads
-/// `isDashing()` to gate the looping dash gallop.
-const CAMEL_DASH_DATA_ID: u8 = 19;
 /// Vanilla `Pillager.IS_CHARGING_CROSSBOW`, the synced `EntityDataSerializers.BOOLEAN` accessor at id 17
 /// (Entity 0–7, LivingEntity 8–14, Mob 15, `Raider.IS_CELEBRATING` 16, then `Pillager`'s first own
 /// accessor). While set, the pillager is drawing its crossbow, and the client reconstructs
@@ -5951,7 +5943,7 @@ pub(crate) fn guardian_is_moving(data_values: &[EntityDataValue]) -> bool {
 /// dash gallop. Read straight from the entity metadata in the tick loop; non-camels (whose synced slot
 /// `19` is not this boolean) fall back to `false`.
 pub(crate) fn camel_is_dashing(data_values: &[EntityDataValue]) -> bool {
-    entity_data_bool(data_values, CAMEL_DASH_DATA_ID, false)
+    entity_data_bool(data_values, CAMEL_DASH_DATA_ID, CAMEL_DEFAULT_DASH)
 }
 
 /// Vanilla `CopperGolem.getState() == IDLE`: `COPPER_GOLEM_STATE` is a synced enum id (data id 17,

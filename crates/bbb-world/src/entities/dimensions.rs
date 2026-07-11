@@ -26,6 +26,8 @@ use super::schema::{
     VANILLA_ARMOR_STAND_CLIENT_FLAG_MARKER as ARMOR_STAND_CLIENT_FLAG_MARKER,
     VANILLA_ARMOR_STAND_CLIENT_FLAG_SMALL as ARMOR_STAND_CLIENT_FLAG_SMALL,
     VANILLA_ARMOR_STAND_DEFAULT_CLIENT_FLAGS as ARMOR_STAND_DEFAULT_CLIENT_FLAGS,
+    VANILLA_CAMEL_DEFAULT_LAST_POSE_CHANGE_TICK as CAMEL_DEFAULT_LAST_POSE_CHANGE_TICK,
+    VANILLA_CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID as CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID,
     VANILLA_INTERACTION_DEFAULT_HEIGHT as INTERACTION_DEFAULT_HEIGHT,
     VANILLA_INTERACTION_DEFAULT_WIDTH as INTERACTION_DEFAULT_WIDTH,
     VANILLA_INTERACTION_HEIGHT_DATA_ID as INTERACTION_DATA_HEIGHT_ID,
@@ -66,7 +68,6 @@ const ARMOR_STAND_SMALL_SCALE: f32 = 0.5;
 const ARMADILLO_BABY_SCALE: f32 = 0.6;
 const CAMEL_SITTING_HEIGHT_DIFFERENCE: f32 = 1.43;
 const CAMEL_BABY_SCALE: f32 = 0.6;
-const CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID: u8 = 20;
 const CAMEL_SITDOWN_DURATION_TICKS: i64 = 40;
 const CAMEL_STANDUP_DURATION_TICKS: i64 = 52;
 const DOLPHIN_BABY_SCALE: f32 = 0.65;
@@ -323,8 +324,11 @@ pub(crate) fn vanilla_body_anchor_y_offset_for_entity_data(
         vanilla_pick_bounds_for_entity_data(entity_type_id, 0, data_values, attributes, None)?;
     let scale = camel_age_scale(entity_type_id, data_values)
         * vanilla_render_scale(entity_type_id, attributes);
-    let last_pose_change_tick =
-        entity_data_long(data_values, CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID, 0);
+    let last_pose_change_tick = entity_data_long(
+        data_values,
+        CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID,
+        CAMEL_DEFAULT_LAST_POSE_CHANGE_TICK,
+    );
     Some(camel_body_anchor_animation_y_offset(
         dimensions,
         scale,
@@ -529,8 +533,11 @@ fn camel_passenger_attachment_point(
 
     let scale = camel_age_scale(vehicle_entity_type_id, vehicle_data_values)
         * vanilla_render_scale(vehicle_entity_type_id, vehicle_attributes) as f32;
-    let last_pose_change_tick =
-        entity_data_long(vehicle_data_values, CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID, 0);
+    let last_pose_change_tick = entity_data_long(
+        vehicle_data_values,
+        CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID,
+        CAMEL_DEFAULT_LAST_POSE_CHANGE_TICK,
+    );
     [
         0.0,
         camel_body_anchor_animation_y_offset(

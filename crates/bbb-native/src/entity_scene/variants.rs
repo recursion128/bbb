@@ -730,7 +730,11 @@ pub(super) fn camel_sit_state(
     {
         return CamelSitState::STOPPED;
     }
-    let last_pose_change_tick = entity_data_long(values, CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID, 0);
+    let last_pose_change_tick = entity_data_long(
+        values,
+        CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID,
+        CAMEL_DEFAULT_LAST_POSE_CHANGE_TICK,
+    );
     // Vanilla `Camel.getPoseTime()` and `isCamelSitting()`.
     let pose_time = game_time - last_pose_change_tick.abs();
     let is_sitting = last_pose_change_tick < 0;

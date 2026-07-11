@@ -86,6 +86,10 @@ pub(crate) use bbb_world::{
     VANILLA_BOGGED_SHEARED_DATA_ID as BOGGED_SHEARED_DATA_ID,
 };
 use bbb_world::{
+    VANILLA_CAMEL_DEFAULT_LAST_POSE_CHANGE_TICK as CAMEL_DEFAULT_LAST_POSE_CHANGE_TICK,
+    VANILLA_CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID as CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID,
+};
+use bbb_world::{
     VANILLA_CREAKING_ACTIVE_DATA_ID as CREAKING_IS_ACTIVE_DATA_ID,
     VANILLA_CREAKING_DEFAULT_ACTIVE as CREAKING_DEFAULT_ACTIVE,
 };
@@ -311,11 +315,6 @@ const WOLF_VARIANT_DATA_ID: u8 = 23;
 /// id. `AbstractNautilus extends TamableAnimal` adds flags(18)+owner(19) then DASH(20), so the
 /// `ZombieNautilus`-own variant lands at 21.
 const ZOMBIE_NAUTILUS_VARIANT_DATA_ID: u8 = 21;
-/// `Camel.LAST_POSE_CHANGE_TICK` data id (20): the synced Long that drives the camel's
-/// sit/sit-pose/stand-up timing. Its magnitude is the game tick of the last pose change and
-/// its SIGN encodes whether the camel is sitting (`< 0` → sitting). Defined right after
-/// `Camel.DASH` (19), themselves following `AbstractHorse.DATA_ID_FLAGS` (18).
-const CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID: u8 = 20;
 /// Vanilla `Camel.SITDOWN_DURATION_TICKS` (40 ticks = 2.0 s `CAMEL_SIT`): the sit-down
 /// window, after which `CAMEL_SIT_POSE` takes over.
 const CAMEL_SITDOWN_DURATION_TICKS: i64 = 40;
