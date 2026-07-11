@@ -187,6 +187,9 @@ Commands:
 
 Inventory:
 
+- Complete the remaining ItemStack added-value component semantics consumed by
+  SetEquipment; wire-safe type presence is not sufficient for canonical item
+  state or component-driven held/armor rendering.
 - Implement the rich-tooltip `space` font provider, the remaining text styles,
   italic/complex component styles, and component-specific detail lines from
   `font/default.json`.

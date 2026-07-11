@@ -11102,3 +11102,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] action 2 的 `Player.stopSleepInBed(false,false)` 尚未应用，且 0/3/2 缺少 vanilla
   LivingEntity/Player type gates；canonical/runtime 保持 partial。4/5 只作为客户端粒子呈现，
   不外推攻击命中、伤害或任何服务端权威战斗结果。
+
+## 2026-07-11：set-equipment packet coverage audit
+
+- [x] 对照 `ClientboundSetEquipmentPacket` 锁定 entity VarInt、slot continuation bit、slot ordinal 与
+  optional ItemStack，并拒绝 trailing bytes；world 已按 LivingEntity gate 替换/清空 slot，现有
+  protocol/world/net/native tests 使 decode/ownership/tests 三格闭合。
+- [x] `DataComponentPatchSummary` 能维持全部 catalog type 的 wire 对齐，但部分 added value 尚未有
+  typed semantic projection；这会影响 canonical item 值及 component-driven equipment rendering，
+  故 canonical/runtime 保持 partial，未用 added type presence 冒充完整组件语义。

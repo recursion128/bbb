@@ -875,9 +875,8 @@ fn decodes_set_equipment_slots_and_item_stacks() {
     payload.write_var_i32(0);
     payload.write_var_i32(0);
 
-    let packet =
-        decode_play_clientbound(ids::play::CLIENTBOUND_SET_EQUIPMENT, &payload.into_inner())
-            .unwrap();
+    let payload = payload.into_inner();
+    let packet = decode_play_clientbound(ids::play::CLIENTBOUND_SET_EQUIPMENT, &payload).unwrap();
     assert_eq!(
         packet,
         PlayClientbound::SetEquipment(SetEquipment {
@@ -897,6 +896,14 @@ fn decodes_set_equipment_slots_and_item_stacks() {
                 },
             ],
         })
+    );
+    let mut trailing = payload;
+    trailing.push(0);
+    assert!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_SET_EQUIPMENT, &trailing)
+            .unwrap_err()
+            .to_string()
+            .contains("trailing bytes after set equipment packet")
     );
 }
 

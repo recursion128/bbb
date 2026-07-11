@@ -892,6 +892,46 @@
         "status": "complete"
       }
     },
+    "play/clientbound/CLIENTBOUND_SET_EQUIPMENT": {
+      "canonical_apply": {
+        "evidence": [
+          "crates/bbb-world/src/entities/metadata.rs#apply_set_equipment",
+          "crates/bbb-protocol/src/packets/data_components.rs#DataComponentPatchSummary"
+        ],
+        "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+        "status": "partial"
+      },
+      "decode": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/entities/tests.rs#decodes_set_equipment_slots_and_item_stacks",
+          "vanilla:net/minecraft/network/protocol/game/ClientboundSetEquipmentPacket.java#STREAM_CODEC"
+        ],
+        "status": "complete"
+      },
+      "ownership": {
+        "evidence": [
+          "crates/bbb-world/src/play_apply.rs#PlayClientbound::SetEquipment",
+          "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#set_equipment_ignores_non_living_entities"
+        ],
+        "status": "complete"
+      },
+      "runtime_side_effect": {
+        "evidence": [
+          "crates/bbb-world/src/entities/metadata.rs#apply_set_equipment",
+          "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleSetEquipment"
+        ],
+        "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+        "status": "partial"
+      },
+      "tests": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/entities/tests.rs#decodes_set_equipment_slots_and_item_stacks",
+          "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#set_equipment_ignores_non_living_entities",
+          "crates/bbb-native/src/entity_scene/tests.rs#entity_model_instances_project_pillager_crossbow_hold_from_either_hand"
+        ],
+        "status": "complete"
+      }
+    },
     "play/clientbound/CLIENTBOUND_PLAYER_ROTATION": {
       "canonical_apply": {
         "evidence": [

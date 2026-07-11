@@ -651,7 +651,13 @@ pub(super) fn decode_set_equipment(decoder: &mut Decoder<'_>) -> Result<SetEquip
             break;
         }
     }
-    Ok(SetEquipment { entity_id, slots })
+    let update = SetEquipment { entity_id, slots };
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after set equipment packet".to_string(),
+        ));
+    }
+    Ok(update)
 }
 
 pub(super) fn decode_set_entity_data(decoder: &mut Decoder<'_>) -> Result<SetEntityData> {
