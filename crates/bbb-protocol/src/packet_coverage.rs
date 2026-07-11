@@ -363,6 +363,36 @@ mod tests {
         );
     }
 
+    #[test]
+    fn configuration_known_packs_wire_does_not_claim_local_pack_selection() {
+        let ledger = vanilla_packet_coverage_26_1().unwrap();
+        let packets = BTreeSet::from([
+            "SERVERBOUND_SELECT_KNOWN_PACKS",
+            "CLIENTBOUND_SELECT_KNOWN_PACKS",
+        ]);
+        let partial: BTreeSet<_> = ledger
+            .entries
+            .iter()
+            .filter(|entry| {
+                entry.state == "configuration" && packets.contains(entry.constant_name.as_str())
+            })
+            .flat_map(|entry| {
+                entry.coverage.iter().filter_map(move |(dimension, cell)| {
+                    (cell.status == PacketCoverageStatus::Partial)
+                        .then_some((entry.constant_name.as_str(), dimension.as_str()))
+                })
+            })
+            .collect();
+        assert_eq!(
+            partial,
+            BTreeSet::from([
+                ("SERVERBOUND_SELECT_KNOWN_PACKS", "command_surface"),
+                ("SERVERBOUND_SELECT_KNOWN_PACKS", "encoder"),
+                ("CLIENTBOUND_SELECT_KNOWN_PACKS", "runtime_side_effect"),
+            ])
+        );
+    }
+
     fn state_name(state: PacketState) -> &'static str {
         match state {
             PacketState::Handshake => "handshake",

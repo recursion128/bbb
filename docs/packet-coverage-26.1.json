@@ -1059,29 +1059,40 @@
       "constant_name": "SERVERBOUND_SELECT_KNOWN_PACKS",
       "coverage": {
         "ack_response": {
-          "evidence": [],
+          "evidence": [
+            "vanilla:net/minecraft/client/multiplayer/ClientConfigurationPacketListenerImpl.java#handleSelectKnownPacks"
+          ],
           "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "status": "not-applicable"
         },
         "command_surface": {
-          "evidence": [],
+          "evidence": [
+            "crates/bbb-protocol/src/packets/connection.rs#encode_select_known_packs_empty"
+          ],
           "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
           "status": "partial"
         },
         "encoder": {
-          "evidence": [],
+          "evidence": [
+            "crates/bbb-protocol/src/packets/connection.rs#encode_select_known_packs_empty",
+            "vanilla:net/minecraft/network/protocol/configuration/ServerboundSelectKnownPacks.java#list(64)"
+          ],
           "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
           "status": "partial"
         },
         "state_guard": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-net/src/event_stream.rs#configuration_select_known_packs_emits_event_and_sends_empty_response"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-net/src/event_stream.rs#configuration_select_known_packs_emits_event_and_sends_empty_response"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "serverbound",
@@ -1743,29 +1754,41 @@
       "constant_name": "CLIENTBOUND_SELECT_KNOWN_PACKS",
       "coverage": {
         "canonical_apply": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/client/features.rs#apply_select_known_packs"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/tests.rs#decodes_configuration_common_packets",
+            "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#Math.min(count, 65536)"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "ownership": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-net/src/event_stream/configuration.rs#ConfigurationClientbound::SelectKnownPacks"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "runtime_side_effect": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
+          "evidence": [
+            "crates/bbb-protocol/src/packets/connection.rs#encode_select_known_packs_empty",
+            "vanilla:net/minecraft/client/multiplayer/ClientConfigurationPacketListenerImpl.java#trySelectingPacks"
+          ],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
           "status": "partial"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-net/src/event_stream.rs#configuration_select_known_packs_emits_event_and_sends_empty_response"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "clientbound",

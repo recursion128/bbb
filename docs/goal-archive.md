@@ -10874,3 +10874,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   以及 world push/response/pop projection 已有反向证据。coverage 只闭合 decode/ownership/
   canonical/encoder/tests，明确保留 push/pop runtime 与完整 response command surface partial；
   下载、校验、reload 和运行时 pack source 未被 projection 冒充完成。
+
+## 2026-07-11：configuration known-packs negotiation audit
+
+- [x] 对照 `KnownPack.STREAM_CODEC`、clientbound unbounded list 的 65,536 capped allocation、
+  serverbound 64 项上限与 `KnownPacksManager.trySelectingPacks`，修复恶意超大 clientbound count
+  会按声明值预分配内存的问题；反向测试用 `i32::MAX` count 证明在首个缺失字段安全失败。
+- [x] offer decode、configuration ownership、world offered/selected projection 与空 response wire
+  已有 evidence；coverage 明确保留本地 pack 匹配、非空 encoder/command surface 三格 partial，
+  不把“始终选择空列表”误标为完整 negotiation。

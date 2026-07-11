@@ -48,7 +48,9 @@ Owner: `bbb-protocol`
 - Complete configuration resource-pack runtime behavior: download allowed packs,
   verify hashes, apply/reload them, enforce required-pack outcomes, emit the full
   response lifecycle, and unload one/all packs on pop.
-- Complete the remaining configuration registry/tag/known-pack,
+- Select matching locally available known packs and encode up to 64 selected
+  entries instead of always returning an empty configuration response.
+- Complete the remaining configuration registry/tag,
   code-of-conduct, custom payload/report, transfer, feature and dialog
   coverage cells; then cover play, movement, inventory, chat, interaction and
   command suggestion end to end.

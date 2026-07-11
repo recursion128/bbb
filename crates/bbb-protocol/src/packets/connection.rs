@@ -534,7 +534,7 @@ pub fn decode_configuration_clientbound(
 
 fn decode_known_packs(decoder: &mut Decoder<'_>) -> Result<Vec<KnownPack>> {
     let count = decoder.read_len()?;
-    let mut packs = Vec::with_capacity(count);
+    let mut packs = Vec::with_capacity(count.min(65_536));
     for _ in 0..count {
         packs.push(KnownPack {
             namespace: decoder.read_string(32767)?,

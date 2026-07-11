@@ -299,6 +299,8 @@ response、Finish → Play 核心控制与 cookie request/store/response 路径�
 known-pack/code-of-conduct/dialog 等其余 configuration packet 仍须按各自语义 owner 逐格
 审计。resource-pack 的 wire/ownership/canonical projection 已审计，但下载、hash 校验、reload、
 required-pack 生命周期和运行时 pop 仍为具体 `partial`，不能把 Declined fallback 当作完成。
+known-packs offer 的 decode/ownership/canonical 路径也已审计，但 bbb 尚无本地
+`KnownPacksManager` 等价物，空 response 的 runtime/encoder/command 单元保持 `partial`。
 
 matrix inventory + state/framing + required login/config/play handoff 是本队列的 foundation
 milestone；完成后即可进入 RegistryAccess/playable foundation，不等待全部长尾 packet

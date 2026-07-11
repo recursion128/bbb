@@ -2695,6 +2695,15 @@ fn decodes_configuration_common_packets() {
         }
     );
 
+    let mut hostile_known_packs = Encoder::new();
+    hostile_known_packs.write_var_i32(i32::MAX);
+    let error = decode_configuration_clientbound(
+        ids::configuration::CLIENTBOUND_SELECT_KNOWN_PACKS,
+        &hostile_known_packs.into_inner(),
+    )
+    .unwrap_err();
+    assert!(matches!(error, ProtocolError::UnexpectedEof { .. }));
+
     assert_eq!(
         decode_configuration_clientbound(ids::configuration::CLIENTBOUND_CLEAR_DIALOG, &[])
             .unwrap(),
