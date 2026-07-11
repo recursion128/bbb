@@ -10193,3 +10193,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   explicit event id、comment/string 干扰与 unsupported register source-span 失败。
   八份 checked-in Rust catalog 的条目/API 保持不变，maintenance update/check 与二次
   update 零 diff；普通 Rust tests 不再探测 `$HOME` 或运行维护脚本。
+
+## 2026-07-11：Item/block registry consumer closeout
+
+- [x] 反向审计 protocol/world/native/item-model/renderer 生产消费：item numeric id 均来自
+  checked-in 1506-entry `bbb_protocol::item_types`，elytra/saddle/snowball/egg/ender-eye/
+  splash-potion 等消费使用 generated constants；block registry/state id 均经 embedded
+  `block_states_26_1.json` 的 `BlockStateRegistry`/`vanilla_block_state_id` 查询。air/grass/
+  saddle 等数字命中仅位于 test wire fixtures，未发现生产裸 item/block id 或第二份 block
+  table，因此关闭消费迁移项。`bbb-pack::ItemRegistryCatalog` 仍承担 max-stack/damage、
+  default components、equipment/mining 等更广 item semantic profile 的旧 Java 解析；该
+  frontend 迁移已单列 TODO，未被本 closeout 误标完成。
