@@ -322,7 +322,7 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
     let root = unique_temp_dir("item-runtime");
     let assets = assets_dir(&root);
     write_item_atlases(&assets);
-    write_item_registry_sources(&root);
+    write_item_registry_fixture_defaults(&root);
     write_json(
         &assets.join("lang").join("en_us.json"),
         r#"{
@@ -2432,7 +2432,7 @@ fn native_item_runtime_shows_smithing_template_append_tooltips() {
     let root = unique_temp_dir("item-runtime-smithing-template-tooltip");
     let assets = assets_dir(&root);
     write_item_atlases(&assets);
-    write_item_registry_source(
+    write_item_registry_fixture(
         &root,
         &[
             "netherite_upgrade_smithing_template",
@@ -2497,7 +2497,7 @@ fn native_item_runtime_shows_spawner_block_entity_tooltips() {
     let root = unique_temp_dir("item-runtime-spawner-tooltip");
     let assets = assets_dir(&root);
     write_item_atlases(&assets);
-    write_item_registry_source(&root, &["spawner", "trial_spawner"]);
+    write_item_registry_fixture(&root, &["spawner", "trial_spawner"]);
     write_json(
         &assets.join("lang").join("en_us.json"),
         r#"{
@@ -2576,7 +2576,7 @@ fn native_item_runtime_elides_all_brick_pot_decoration_tooltips() {
     let root = unique_temp_dir("item-runtime-pot-all-brick-tooltip");
     let assets = assets_dir(&root);
     write_item_atlases(&assets);
-    write_item_registry_source(&root, &["decorated_pot", "brick", "test_sherd"]);
+    write_item_registry_fixture(&root, &["decorated_pot", "brick", "test_sherd"]);
     write_json(
         &assets.join("lang").join("en_us.json"),
         r#"{
@@ -2632,7 +2632,7 @@ fn native_item_runtime_shows_entity_data_peaceful_warning() {
     let root = unique_temp_dir("item-runtime-entity-data-tooltip");
     let assets = assets_dir(&root);
     write_item_atlases(&assets);
-    write_item_registry_source(&root, &["zombie_spawn_egg", "pig_spawn_egg"]);
+    write_item_registry_fixture(&root, &["zombie_spawn_egg", "pig_spawn_egg"]);
     write_json(
         &assets.join("lang").join("en_us.json"),
         r#"{
@@ -2733,22 +2733,31 @@ fn native_item_runtime_shows_operator_only_nbt_warnings() {
     let root = unique_temp_dir("item-runtime-op-nbt-warning");
     let assets = assets_dir(&root);
     write_item_atlases(&assets);
-    write_json(
-        &root
-            .join("sources")
-            .join(bbb_pack::MC_VERSION)
-            .join("net")
-            .join("minecraft")
-            .join("world")
-            .join("item")
-            .join("Items.java"),
-        r#"public class Items {
-                public static final Item COMMAND_BLOCK = registerBlock(Blocks.COMMAND_BLOCK, GameMasterBlockItem::new, new Item.Properties());
-                public static final Item STONE = registerBlock(Blocks.STONE);
-                public static final Item FALLING_BLOCK_SPAWN_EGG = registerSpawnEgg(EntityType.FALLING_BLOCK);
-                public static final Item ZOMBIE_SPAWN_EGG = registerSpawnEgg(EntityType.ZOMBIE);
-                public static final Item STICK = registerItem("stick");
-            }"#,
+    write_item_registry_fixture(
+        &root,
+        &[
+            "command_block",
+            "stone",
+            "falling_block_spawn_egg",
+            "zombie_spawn_egg",
+            "stick",
+        ],
+    );
+    write_item_registry_override_with_profiles(
+        &root,
+        &[
+            "command_block",
+            "stone",
+            "falling_block_spawn_egg",
+            "zombie_spawn_egg",
+            "stick",
+        ],
+        &[
+            ("command_block", "command_block"),
+            ("stone", "stone"),
+            ("falling_block_spawn_egg", "zombie_spawn_egg"),
+            ("zombie_spawn_egg", "zombie_spawn_egg"),
+        ],
     );
     write_json(
         &assets.join("lang").join("en_us.json"),
@@ -2887,7 +2896,7 @@ fn native_item_runtime_shows_adventure_mode_predicate_tooltips() {
     let root = unique_temp_dir("item-runtime-adventure-mode-tooltip");
     let assets = assets_dir(&root);
     write_item_atlases(&assets);
-    write_item_registry_source(&root, &["diamond_pickaxe"]);
+    write_item_registry_fixture(&root, &["diamond_pickaxe"]);
     write_json(
         &assets.join("lang").join("en_us.json"),
         r#"{
@@ -2960,7 +2969,7 @@ fn special_foil_texture_detection_follows_clock_and_compasses_tag() {
     let root = unique_temp_dir("item-runtime-special-foil");
     let assets = assets_dir(&root);
     write_item_atlases(&assets);
-    write_item_registry_source(&root, &["clock", "compass", "recovery_compass", "spyglass"]);
+    write_item_registry_fixture(&root, &["clock", "compass", "recovery_compass", "spyglass"]);
     for item_id in ["clock", "compass", "recovery_compass", "spyglass"] {
         write_json(
             &assets.join("items").join(format!("{item_id}.json")),
@@ -3008,7 +3017,7 @@ fn item_display_transform_is_retained_per_item() {
     let root = unique_temp_dir("item-display-transform");
     let assets = assets_dir(&root);
     write_item_atlases(&assets);
-    write_item_registry_sources(&root);
+    write_item_registry_fixture_defaults(&root);
     write_json(
         &assets.join("items").join("test_combo.json"),
         r#"{
@@ -3134,43 +3143,31 @@ fn humanoid_armor_asset_query_excludes_head_equippable_non_armor() {
     let root = unique_temp_dir("item-runtime-humanoid-armor-asset");
     let assets = assets_dir(&root);
     write_item_atlases(&assets);
-    write_json(
-        &root
-            .join("sources")
-            .join(bbb_pack::MC_VERSION)
-            .join("net")
-            .join("minecraft")
-            .join("world")
-            .join("item")
-            .join("Items.java"),
-        r#"public class Items {
-                public static final Item DIAMOND_HELMET = registerItem(
-                    "diamond_helmet",
-                    new Item.Properties().humanoidArmor(ArmorMaterials.DIAMOND, ArmorType.HELMET)
-                );
-                public static final Item DIAMOND_CHESTPLATE = registerItem(
-                    "diamond_chestplate",
-                    new Item.Properties().humanoidArmor(ArmorMaterials.DIAMOND, ArmorType.CHESTPLATE)
-                );
-                public static final Item ELYTRA = registerItem(
-                    "elytra",
-                    new Item.Properties()
-                       .component(
-                          DataComponents.EQUIPPABLE,
-                          Equippable.builder(EquipmentSlot.CHEST)
-                             .setAsset(EquipmentAssets.ELYTRA)
-                             .build()
-                       )
-                );
-                public static final Item CARVED_PUMPKIN = registerBlock(
-                    Blocks.CARVED_PUMPKIN,
-                    p -> p.component(
-                        DataComponents.EQUIPPABLE,
-                        Equippable.builder(EquipmentSlot.HEAD).setSwappable(false).build()
-                    )
-                );
-                public static final Item STONE = registerBlock(Blocks.STONE);
-            }"#,
+    write_item_registry_fixture(
+        &root,
+        &[
+            "diamond_helmet",
+            "diamond_chestplate",
+            "elytra",
+            "carved_pumpkin",
+            "stone",
+        ],
+    );
+    write_item_registry_override_with_profiles(
+        &root,
+        &[
+            "diamond_helmet",
+            "diamond_chestplate",
+            "elytra",
+            "carved_pumpkin",
+            "stone",
+        ],
+        &[
+            ("diamond_helmet", "diamond_helmet"),
+            ("diamond_chestplate", "diamond_chestplate"),
+            ("elytra", "elytra"),
+            ("carved_pumpkin", "carved_pumpkin"),
+        ],
     );
     write_json(
         &assets.join("equipment").join("diamond.json"),
@@ -3234,7 +3231,7 @@ fn custom_head_skull_projection_resolves_static_and_profileless_player_skulls() 
     let root = unique_temp_dir("item-runtime-custom-head-skulls");
     let assets = assets_dir(&root);
     write_item_atlases(&assets);
-    write_item_registry_source(
+    write_item_registry_fixture(
         &root,
         &[
             "skeleton_skull",
@@ -3304,7 +3301,7 @@ fn custom_head_skull_projection_resolves_profiled_player_head_default_skins() {
     let root = unique_temp_dir("item-runtime-custom-profiled-player-head");
     let assets = assets_dir(&root);
     write_item_atlases(&assets);
-    write_item_registry_source(&root, &["player_head"]);
+    write_item_registry_fixture(&root, &["player_head"]);
 
     let runtime = NativeItemRuntime::load(&PackRoots::from_root(&root).unwrap()).unwrap();
     let registry = runtime.registry.as_ref().unwrap();
@@ -4026,20 +4023,14 @@ fn native_item_runtime_projects_llama_body_decor_colors() {
     let root = unique_temp_dir("item-runtime-llama-decor");
     let assets = assets_dir(&root);
     write_item_atlases(&assets);
-    write_json(
-        &root
-            .join("sources")
-            .join(bbb_pack::MC_VERSION)
-            .join("net")
-            .join("minecraft")
-            .join("world")
-            .join("item")
-            .join("Items.java"),
-        r#"public class Items {
-                public static final Item WHITE_CARPET = registerBlock(Blocks.WHITE_CARPET, p -> p.component(DataComponents.EQUIPPABLE, Equippable.llamaSwag(DyeColor.WHITE)));
-                public static final Item BLACK_CARPET = registerBlock(Blocks.BLACK_CARPET, p -> p.component(DataComponents.EQUIPPABLE, Equippable.llamaSwag(DyeColor.BLACK)));
-                public static final Item HORSE_ARMOR = registerItem("horse_armor", new Item.Properties().horseArmor(ArmorMaterials.DIAMOND));
-            }"#,
+    write_item_registry_fixture(&root, &["white_carpet", "black_carpet", "horse_armor"]);
+    write_item_registry_override_with_profiles(
+        &root,
+        &["white_carpet", "black_carpet", "horse_armor"],
+        &[
+            ("white_carpet", "white_carpet"),
+            ("black_carpet", "black_carpet"),
+        ],
     );
 
     let runtime = NativeItemRuntime::load(&PackRoots::from_root(&root).unwrap()).unwrap();
@@ -4062,22 +4053,30 @@ fn native_item_runtime_projects_nautilus_body_armor_materials() {
     let root = unique_temp_dir("item-runtime-nautilus-body-armor");
     let assets = assets_dir(&root);
     write_item_atlases(&assets);
-    write_json(
-        &root
-            .join("sources")
-            .join(bbb_pack::MC_VERSION)
-            .join("net")
-            .join("minecraft")
-            .join("world")
-            .join("item")
-            .join("Items.java"),
-        r#"public class Items {
-                public static final Item IRON_NAUTILUS_ARMOR = registerItem("iron_nautilus_armor", new Item.Properties().nautilusArmor(ArmorMaterials.IRON));
-                public static final Item GOLDEN_NAUTILUS_ARMOR = registerItem("golden_nautilus_armor", new Item.Properties().nautilusArmor(ArmorMaterials.GOLD));
-                public static final Item NETHERITE_NAUTILUS_ARMOR = registerItem("netherite_nautilus_armor", new Item.Properties().nautilusArmor(ArmorMaterials.NETHERITE).fireResistant());
-                public static final Item CHAINMAIL_NAUTILUS_ARMOR = registerItem("chainmail_nautilus_armor", new Item.Properties().nautilusArmor(ArmorMaterials.CHAINMAIL));
-                public static final Item HORSE_ARMOR = registerItem("horse_armor", new Item.Properties().horseArmor(ArmorMaterials.DIAMOND));
-            }"#,
+    write_item_registry_fixture(
+        &root,
+        &[
+            "iron_nautilus_armor",
+            "golden_nautilus_armor",
+            "netherite_nautilus_armor",
+            "chainmail_nautilus_armor",
+            "horse_armor",
+        ],
+    );
+    write_item_registry_override_with_profiles(
+        &root,
+        &[
+            "iron_nautilus_armor",
+            "golden_nautilus_armor",
+            "netherite_nautilus_armor",
+            "chainmail_nautilus_armor",
+            "horse_armor",
+        ],
+        &[
+            ("iron_nautilus_armor", "iron_nautilus_armor"),
+            ("golden_nautilus_armor", "golden_nautilus_armor"),
+            ("netherite_nautilus_armor", "netherite_nautilus_armor"),
+        ],
     );
 
     let runtime = NativeItemRuntime::load(&PackRoots::from_root(&root).unwrap()).unwrap();
@@ -4115,23 +4114,34 @@ fn native_item_runtime_projects_horse_body_armor_materials() {
     let root = unique_temp_dir("item-runtime-horse-body-armor");
     let assets = assets_dir(&root);
     write_item_atlases(&assets);
-    write_json(
-        &root
-            .join("sources")
-            .join(bbb_pack::MC_VERSION)
-            .join("net")
-            .join("minecraft")
-            .join("world")
-            .join("item")
-            .join("Items.java"),
-        r#"public class Items {
-                public static final Item LEATHER_HORSE_ARMOR = registerItem("leather_horse_armor", new Item.Properties().horseArmor(ArmorMaterials.LEATHER));
-                public static final Item COPPER_HORSE_ARMOR = registerItem("copper_horse_armor", new Item.Properties().horseArmor(ArmorMaterials.COPPER));
-                public static final Item DIAMOND_HORSE_ARMOR = registerItem("diamond_horse_armor", new Item.Properties().horseArmor(ArmorMaterials.DIAMOND));
-                public static final Item NETHERITE_HORSE_ARMOR = registerItem("netherite_horse_armor", new Item.Properties().horseArmor(ArmorMaterials.NETHERITE).fireResistant());
-                public static final Item CHAINMAIL_HORSE_ARMOR = registerItem("chainmail_horse_armor", new Item.Properties().horseArmor(ArmorMaterials.CHAINMAIL));
-                public static final Item IRON_NAUTILUS_ARMOR = registerItem("iron_nautilus_armor", new Item.Properties().nautilusArmor(ArmorMaterials.IRON));
-            }"#,
+    write_item_registry_fixture(
+        &root,
+        &[
+            "leather_horse_armor",
+            "copper_horse_armor",
+            "diamond_horse_armor",
+            "netherite_horse_armor",
+            "chainmail_horse_armor",
+            "iron_nautilus_armor",
+        ],
+    );
+    write_item_registry_override_with_profiles(
+        &root,
+        &[
+            "leather_horse_armor",
+            "copper_horse_armor",
+            "diamond_horse_armor",
+            "netherite_horse_armor",
+            "chainmail_horse_armor",
+            "iron_nautilus_armor",
+        ],
+        &[
+            ("leather_horse_armor", "leather_horse_armor"),
+            ("copper_horse_armor", "copper_horse_armor"),
+            ("diamond_horse_armor", "diamond_horse_armor"),
+            ("netherite_horse_armor", "netherite_horse_armor"),
+            ("iron_nautilus_armor", "iron_nautilus_armor"),
+        ],
     );
 
     let runtime = NativeItemRuntime::load(&PackRoots::from_root(&root).unwrap()).unwrap();
@@ -4184,19 +4194,11 @@ fn native_item_runtime_projects_wolf_body_armor_materials_and_max_damage() {
     let root = unique_temp_dir("item-runtime-wolf-body-armor");
     let assets = assets_dir(&root);
     write_item_atlases(&assets);
-    write_json(
-        &root
-            .join("sources")
-            .join(bbb_pack::MC_VERSION)
-            .join("net")
-            .join("minecraft")
-            .join("world")
-            .join("item")
-            .join("Items.java"),
-        r#"public class Items {
-                public static final Item WOLF_ARMOR = registerItem("wolf_armor", new Item.Properties().wolfArmor(ArmorMaterials.ARMADILLO_SCUTE));
-                public static final Item HORSE_ARMOR = registerItem("horse_armor", new Item.Properties().horseArmor(ArmorMaterials.DIAMOND));
-            }"#,
+    write_item_registry_fixture(&root, &["wolf_armor", "horse_armor"]);
+    write_item_registry_override_with_profiles(
+        &root,
+        &["wolf_armor", "horse_armor"],
+        &[("wolf_armor", "wolf_armor")],
     );
     write_json(
         &assets.join("equipment").join("armadillo_scute.json"),
@@ -10334,10 +10336,11 @@ fn native_item_runtime_selects_bundle_icon_from_local_selected_item() {
 }
 
 #[test]
-fn native_item_runtime_loads_assets_when_registry_source_is_missing() {
+fn native_item_runtime_loads_assets_with_empty_registry_override() {
     let root = unique_temp_dir("item-runtime-no-registry");
     let assets = assets_dir(&root);
     write_item_atlases(&assets);
+    write_item_registry_override(&root, &[]);
     write_json(
         &assets.join("items").join("test_combo.json"),
         r#"{
@@ -10438,23 +10441,8 @@ fn write_elytra_damage_condition_fixture(
 ) {
     let assets = assets_dir(root);
     write_item_atlases(&assets);
-    write_json(
-        &root
-            .join("sources")
-            .join(bbb_pack::MC_VERSION)
-            .join("net")
-            .join("minecraft")
-            .join("world")
-            .join("item")
-            .join("Items.java"),
-        r#"public class Items {
-                public static final Item ELYTRA = registerItem(
-                    "elytra",
-                    Item::new,
-                    new Item.Properties().durability(432)
-                );
-            }"#,
-    );
+    write_single_item_registry_fixture(root, "elytra");
+    write_item_registry_override_with_profiles(root, &["elytra"], &[("elytra", "elytra")]);
     write_json(
         &assets.join("items").join("elytra.json"),
         &format!(
@@ -10515,7 +10503,7 @@ fn write_elytra_damage_condition_fixture(
 fn write_wolf_armor_has_component_fixture(root: &Path) {
     let assets = assets_dir(root);
     write_item_atlases(&assets);
-    write_single_item_registry_source(root, "wolf_armor");
+    write_single_item_registry_fixture(root, "wolf_armor");
     write_json(
         &assets.join("items").join("wolf_armor.json"),
         r#"{
@@ -10544,7 +10532,7 @@ fn write_wolf_armor_has_component_fixture(root: &Path) {
 fn write_compass_has_component_fixture(root: &Path) {
     let assets = assets_dir(root);
     write_item_atlases(&assets);
-    write_single_item_registry_source(root, "compass");
+    write_single_item_registry_fixture(root, "compass");
     write_json(
         &assets.join("items").join("compass.json"),
         r#"{
@@ -10592,7 +10580,7 @@ fn write_compass_has_component_fixture(root: &Path) {
 fn write_default_has_component_fixture(root: &Path) {
     let assets = assets_dir(root);
     write_item_atlases(&assets);
-    write_item_registry_source(
+    write_item_registry_fixture(
         root,
         &[
             "has_max_stack",
@@ -10714,115 +10702,125 @@ fn write_default_has_component_fixture(root: &Path) {
 fn write_component_condition_fixture(root: &Path) {
     let assets = assets_dir(root);
     write_item_atlases(&assets);
-    write_json(
-        &root
-            .join("sources")
-            .join(bbb_pack::MC_VERSION)
-            .join("net")
-            .join("minecraft")
-            .join("world")
-            .join("item")
-            .join("Items.java"),
-        r#"public class Items {
-                public static final Item COMPONENT_CONDITION_RARITY = registerItem("component_condition_rarity");
-                public static final Item COMPONENT_CONDITION_GLINT = registerItem("component_condition_glint");
-                public static final Item COMPONENT_CONDITION_DAMAGE = registerItem("component_condition_damage", new Item.Properties().durability(10));
-                public static final Item COMPONENT_CONDITION_BUNDLE_CONTENTS = registerItem("component_condition_bundle_contents");
-                public static final Item COMPONENT_CONDITION_TRIM = registerItem("component_condition_trim");
-                public static final Item COMPONENT_CONDITION_FIREWORK_EXPLOSION = registerItem("component_condition_firework_explosion");
-                public static final Item COMPONENT_CONDITION_FIREWORKS = registerItem("component_condition_fireworks");
-                public static final Item COMPONENT_CONDITION_JUKEBOX_PLAYABLE = registerItem("component_condition_jukebox_playable");
-                public static final Item COMPONENT_CONDITION_CONTAINER = registerItem("component_condition_container");
-                public static final Item COMPONENT_CONDITION_BUNDLE_CONTENTS_CONSTRAINED = registerItem("component_condition_bundle_contents_constrained");
-                public static final Item COMPONENT_CONDITION_FIREWORK_EXPLOSION_STAR = registerItem("component_condition_firework_explosion_star");
-                public static final Item COMPONENT_CONDITION_FIREWORKS_FLIGHT = registerItem("component_condition_fireworks_flight");
-                public static final Item COMPONENT_CONDITION_FIREWORKS_EXPLOSIONS = registerItem("component_condition_fireworks_explosions");
-                public static final Item COMPONENT_CONDITION_TRIM_MATERIAL = registerItem("component_condition_trim_material");
-                public static final Item COMPONENT_CONDITION_TRIM_PATTERN = registerItem("component_condition_trim_pattern");
-                public static final Item COMPONENT_CONDITION_ENCHANTMENTS_LEVEL = registerItem("component_condition_enchantments_level");
-                public static final Item COMPONENT_CONDITION_ENCHANTMENTS_EMPTY = registerItem("component_condition_enchantments_empty");
-                public static final Item COMPONENT_CONDITION_STORED_ENCHANTMENTS_LEVEL = registerItem("component_condition_stored_enchantments_level");
-                public static final Item COMPONENT_CONDITION_STORED_ENCHANTMENTS_EMPTY = registerItem("component_condition_stored_enchantments_empty");
-                public static final Item COMPONENT_CONDITION_FIREWORKS_CONTAINS = registerItem("component_condition_fireworks_contains");
-                public static final Item COMPONENT_CONDITION_FIREWORKS_COUNT = registerItem("component_condition_fireworks_count");
-                public static final Item COMPONENT_CONDITION_BUNDLE_CONTAINS = registerItem("component_condition_bundle_contains");
-                public static final Item COMPONENT_CONDITION_BUNDLE_COUNT = registerItem("component_condition_bundle_count");
-                public static final Item COMPONENT_CONDITION_CONTAINER_CONTAINS = registerItem("component_condition_container_contains");
-                public static final Item COMPONENT_CONDITION_CONTAINER_COUNT = registerItem("component_condition_container_count");
-                public static final Item COMPONENT_CONDITION_ENCHANTMENTS_HOLDER = registerItem("component_condition_enchantments_holder");
-                public static final Item COMPONENT_CONDITION_STORED_ENCHANTMENTS_HOLDER = registerItem("component_condition_stored_enchantments_holder");
-                public static final Item ENCHANTED_BOOK = registerItem("enchanted_book");
-                public static final Item COMPONENT_CONDITION_BUNDLE_TAG_CONTAINS = registerItem("component_condition_bundle_tag_contains");
-                public static final Item COMPONENT_CONDITION_CONTAINER_TAG_COUNT = registerItem("component_condition_container_tag_count");
-                public static final Item COMPONENT_CONDITION_ENCHANTMENTS_TAG = registerItem("component_condition_enchantments_tag");
-                public static final Item COMPONENT_CONDITION_STORED_ENCHANTMENTS_TAG = registerItem("component_condition_stored_enchantments_tag");
-                public static final Item COMPONENT_CONDITION_BUNDLE_COMPONENTS = registerItem("component_condition_bundle_components");
-                public static final Item COMPONENT_CONDITION_CONTAINER_COMPONENTS = registerItem("component_condition_container_components");
-                public static final Item COMPONENT_CONDITION_TRIM_MATERIAL_TAG = registerItem("component_condition_trim_material_tag");
-                public static final Item COMPONENT_CONDITION_TRIM_PATTERN_TAG = registerItem("component_condition_trim_pattern_tag");
-                public static final Item COMPONENT_CONDITION_BUNDLE_PARTIAL_DAMAGE = registerItem("component_condition_bundle_partial_damage");
-                public static final Item COMPONENT_CONDITION_CONTAINER_PARTIAL_DAMAGE = registerItem("component_condition_container_partial_damage");
-                public static final Item COMPONENT_CONDITION_BUNDLE_PARTIAL_ANY_VALUE = registerItem("component_condition_bundle_partial_any_value");
-                public static final Item COMPONENT_CONDITION_CONTAINER_PARTIAL_ANY_VALUE = registerItem("component_condition_container_partial_any_value");
-                public static final Item COMPONENT_CONDITION_BUNDLE_PARTIAL_ENCHANTMENTS = registerItem("component_condition_bundle_partial_enchantments");
-                public static final Item COMPONENT_CONDITION_CONTAINER_PARTIAL_STORED_ENCHANTMENTS = registerItem("component_condition_container_partial_stored_enchantments");
-                public static final Item COMPONENT_CONDITION_BUNDLE_PARTIAL_FIREWORK_EXPLOSION = registerItem("component_condition_bundle_partial_firework_explosion");
-                public static final Item COMPONENT_CONDITION_CONTAINER_PARTIAL_FIREWORKS = registerItem("component_condition_container_partial_fireworks");
-                public static final Item COMPONENT_CONDITION_BUNDLE_PARTIAL_TRIM = registerItem("component_condition_bundle_partial_trim");
-                public static final Item COMPONENT_CONDITION_CONTAINER_PARTIAL_TRIM = registerItem("component_condition_container_partial_trim");
-                public static final Item COMPONENT_CONDITION_JUKEBOX_PLAYABLE_SONG = registerItem("component_condition_jukebox_playable_song");
-                public static final Item COMPONENT_CONDITION_BUNDLE_PARTIAL_JUKEBOX_PLAYABLE = registerItem("component_condition_bundle_partial_jukebox_playable");
-                public static final Item COMPONENT_CONDITION_CONTAINER_PARTIAL_JUKEBOX_PLAYABLE = registerItem("component_condition_container_partial_jukebox_playable");
-                public static final Item COMPONENT_CONDITION_POTION_CONTENTS = registerItem("component_condition_potion_contents");
-                public static final Item COMPONENT_CONDITION_BUNDLE_PARTIAL_POTION_CONTENTS = registerItem("component_condition_bundle_partial_potion_contents");
-                public static final Item COMPONENT_CONDITION_CONTAINER_PARTIAL_POTION_CONTENTS = registerItem("component_condition_container_partial_potion_contents");
-                public static final Item COMPONENT_CONDITION_WRITABLE_BOOK_PAGES = registerItem("component_condition_writable_book_pages");
-                public static final Item COMPONENT_CONDITION_WRITTEN_BOOK_CONTENT = registerItem("component_condition_written_book_content");
-                public static final Item COMPONENT_CONDITION_BUNDLE_PARTIAL_WRITABLE_BOOK = registerItem("component_condition_bundle_partial_writable_book");
-                public static final Item COMPONENT_CONDITION_CONTAINER_PARTIAL_WRITTEN_BOOK = registerItem("component_condition_container_partial_written_book");
-                public static final Item COMPONENT_CONDITION_VILLAGER_VARIANT = registerItem("component_condition_villager_variant");
-                public static final Item COMPONENT_CONDITION_BUNDLE_PARTIAL_VILLAGER_VARIANT = registerItem("component_condition_bundle_partial_villager_variant");
-                public static final Item COMPONENT_CONDITION_CONTAINER_PARTIAL_VILLAGER_VARIANT = registerItem("component_condition_container_partial_villager_variant");
-                public static final Item COMPONENT_CONDITION_ATTRIBUTE_MODIFIERS = registerItem("component_condition_attribute_modifiers");
-                public static final Item COMPONENT_CONDITION_CONTAINER_PARTIAL_ATTRIBUTE_MODIFIERS = registerItem("component_condition_container_partial_attribute_modifiers");
-                public static final Item COMPONENT_CONDITION_ATTRIBUTE_MODIFIERS_ATTRIBUTE = registerItem("component_condition_attribute_modifiers_attribute");
-                public static final Item COMPONENT_CONDITION_CONTAINER_PARTIAL_ATTRIBUTE_MODIFIERS_ATTRIBUTE = registerItem("component_condition_container_partial_attribute_modifiers_attribute");
-                public static final Item COMPONENT_CONDITION_CUSTOM_DATA = registerItem("component_condition_custom_data");
-                public static final Item COMPONENT_CONDITION_BUNDLE_PARTIAL_CUSTOM_DATA = registerItem("component_condition_bundle_partial_custom_data");
-                public static final Item COMPONENT_CONDITION_CONTAINER_PARTIAL_CUSTOM_DATA = registerItem("component_condition_container_partial_custom_data");
-                public static final Item COMPONENT_CONDITION_BUNDLE_PARTIAL_ATTRIBUTE_MODIFIERS = registerItem("component_condition_bundle_partial_attribute_modifiers");
-                public static final Item COMPONENT_CONDITION_BUNDLE_PARTIAL_ATTRIBUTE_MODIFIERS_ATTRIBUTE = registerItem("component_condition_bundle_partial_attribute_modifiers_attribute");
-                public static final Item COMPONENT_CONDITION_ATTRIBUTE_MODIFIERS_ATTRIBUTE_TAG = registerItem("component_condition_attribute_modifiers_attribute_tag");
-                public static final Item COMPONENT_CONDITION_BUNDLE_PARTIAL_ATTRIBUTE_MODIFIERS_ATTRIBUTE_TAG = registerItem("component_condition_bundle_partial_attribute_modifiers_attribute_tag");
-                public static final Item COMPONENT_CONDITION_VILLAGER_VARIANT_TAG = registerItem("component_condition_villager_variant_tag");
-                public static final Item COMPONENT_CONDITION_BUNDLE_PARTIAL_VILLAGER_VARIANT_TAG = registerItem("component_condition_bundle_partial_villager_variant_tag");
-                public static final Item COMPONENT_CONDITION_CONTAINER_PARTIAL_VILLAGER_VARIANT_TAG = registerItem("component_condition_container_partial_villager_variant_tag");
-                public static final Item COMPONENT_CONDITION_DEFAULT_ATTRIBUTE_MODIFIERS = registerItem("component_condition_default_attribute_modifiers", new Item.Properties().sword(ToolMaterial.IRON, 3.0F, -2.4F));
-                public static final Item COMPONENT_CONDITION_BUNDLE_PARTIAL_DEFAULT_ATTRIBUTE_MODIFIERS = registerItem("component_condition_bundle_partial_default_attribute_modifiers");
-                public static final Item COMPONENT_CONDITION_CONTAINER_PARTIAL_DEFAULT_ATTRIBUTE_MODIFIERS = registerItem("component_condition_container_partial_default_attribute_modifiers");
-                public static final Item COMPONENT_CONDITION_DEFAULT_ARMOR_ATTRIBUTE_MODIFIERS = registerItem("component_condition_default_armor_attribute_modifiers", new Item.Properties().humanoidArmor(ArmorMaterials.DIAMOND, ArmorType.HELMET));
-                public static final Item COMPONENT_CONDITION_DEFAULT_MACE_ATTRIBUTE_MODIFIERS = registerItem("component_condition_default_mace_attribute_modifiers", MaceItem::new, new Item.Properties().attributes(MaceItem.createAttributes()));
-                public static final Item COMPONENT_CONDITION_CUSTOM_DATA_SNBT = registerItem("component_condition_custom_data_snbt");
-                public static final Item COMPONENT_CONDITION_BUNDLE_PARTIAL_CUSTOM_DATA_SNBT = registerItem("component_condition_bundle_partial_custom_data_snbt");
-                public static final Item COMPONENT_CONDITION_WRITTEN_BOOK_COMPONENT_PAGE = registerItem("component_condition_written_book_component_page");
-                public static final Item COMPONENT_CONDITION_BUNDLE_EXACT_COMPONENT_TEXT = registerItem("component_condition_bundle_exact_component_text");
-                public static final Item COMPONENT_CONDITION_BUNDLE_EXACT_LORE = registerItem("component_condition_bundle_exact_lore");
-                public static final Item COMPONENT_CONDITION_BUNDLE_EXACT_UNBREAKABLE = registerItem("component_condition_bundle_exact_unbreakable");
-                public static final Item COMPONENT_CONDITION_BUNDLE_EXACT_CUSTOM_DATA = registerItem("component_condition_bundle_exact_custom_data");
-                public static final Item COMPONENT_CONDITION_BUNDLE_EXACT_POTION_CONTENTS = registerItem("component_condition_bundle_exact_potion_contents");
-                public static final Item COMPONENT_CONDITION_BUNDLE_EXACT_WRITABLE_BOOK = registerItem("component_condition_bundle_exact_writable_book");
-                public static final Item COMPONENT_CONDITION_BUNDLE_EXACT_FIREWORK_EXPLOSION = registerItem("component_condition_bundle_exact_firework_explosion");
-                public static final Item COMPONENT_CONDITION_BUNDLE_EXACT_FIREWORKS = registerItem("component_condition_bundle_exact_fireworks");
-                public static final Item COMPONENT_CONDITION_BUNDLE_EXACT_JUKEBOX_PLAYABLE = registerItem("component_condition_bundle_exact_jukebox_playable");
-                public static final Item COMPONENT_CONDITION_BUNDLE_EXACT_TRIM = registerItem("component_condition_bundle_exact_trim");
-                public static final Item COMPONENT_CONDITION_BUNDLE_EXACT_ENCHANTMENTS = registerItem("component_condition_bundle_exact_enchantments");
-                public static final Item COMPONENT_CONDITION_BUNDLE_EXACT_STORED_ENCHANTMENTS = registerItem("component_condition_bundle_exact_stored_enchantments");
-                public static final Item COMPONENT_CONDITION_BUNDLE_EXACT_VILLAGER_VARIANT = registerItem("component_condition_bundle_exact_villager_variant");
-                public static final Item COMPONENT_CONDITION_BUNDLE_EXACT_LODESTONE_TRACKER = registerItem("component_condition_bundle_exact_lodestone_tracker");
-                public static final Item COMPONENT_CONDITION_BUNDLE_EXACT_ATTRIBUTE_MODIFIERS = registerItem("component_condition_bundle_exact_attribute_modifiers");
-                public static final Item COMPONENT_CONDITION_BUNDLE_EXACT_WRITTEN_BOOK = registerItem("component_condition_bundle_exact_written_book");
-            }"#,
+    let item_ids = [
+        "component_condition_rarity",
+        "component_condition_glint",
+        "component_condition_damage",
+        "component_condition_bundle_contents",
+        "component_condition_trim",
+        "component_condition_firework_explosion",
+        "component_condition_fireworks",
+        "component_condition_jukebox_playable",
+        "component_condition_container",
+        "component_condition_bundle_contents_constrained",
+        "component_condition_firework_explosion_star",
+        "component_condition_fireworks_flight",
+        "component_condition_fireworks_explosions",
+        "component_condition_trim_material",
+        "component_condition_trim_pattern",
+        "component_condition_enchantments_level",
+        "component_condition_enchantments_empty",
+        "component_condition_stored_enchantments_level",
+        "component_condition_stored_enchantments_empty",
+        "component_condition_fireworks_contains",
+        "component_condition_fireworks_count",
+        "component_condition_bundle_contains",
+        "component_condition_bundle_count",
+        "component_condition_container_contains",
+        "component_condition_container_count",
+        "component_condition_enchantments_holder",
+        "component_condition_stored_enchantments_holder",
+        "enchanted_book",
+        "component_condition_bundle_tag_contains",
+        "component_condition_container_tag_count",
+        "component_condition_enchantments_tag",
+        "component_condition_stored_enchantments_tag",
+        "component_condition_bundle_components",
+        "component_condition_container_components",
+        "component_condition_trim_material_tag",
+        "component_condition_trim_pattern_tag",
+        "component_condition_bundle_partial_damage",
+        "component_condition_container_partial_damage",
+        "component_condition_bundle_partial_any_value",
+        "component_condition_container_partial_any_value",
+        "component_condition_bundle_partial_enchantments",
+        "component_condition_container_partial_stored_enchantments",
+        "component_condition_bundle_partial_firework_explosion",
+        "component_condition_container_partial_fireworks",
+        "component_condition_bundle_partial_trim",
+        "component_condition_container_partial_trim",
+        "component_condition_jukebox_playable_song",
+        "component_condition_bundle_partial_jukebox_playable",
+        "component_condition_container_partial_jukebox_playable",
+        "component_condition_potion_contents",
+        "component_condition_bundle_partial_potion_contents",
+        "component_condition_container_partial_potion_contents",
+        "component_condition_writable_book_pages",
+        "component_condition_written_book_content",
+        "component_condition_bundle_partial_writable_book",
+        "component_condition_container_partial_written_book",
+        "component_condition_villager_variant",
+        "component_condition_bundle_partial_villager_variant",
+        "component_condition_container_partial_villager_variant",
+        "component_condition_attribute_modifiers",
+        "component_condition_container_partial_attribute_modifiers",
+        "component_condition_attribute_modifiers_attribute",
+        "component_condition_container_partial_attribute_modifiers_attribute",
+        "component_condition_custom_data",
+        "component_condition_bundle_partial_custom_data",
+        "component_condition_container_partial_custom_data",
+        "component_condition_bundle_partial_attribute_modifiers",
+        "component_condition_bundle_partial_attribute_modifiers_attribute",
+        "component_condition_attribute_modifiers_attribute_tag",
+        "component_condition_bundle_partial_attribute_modifiers_attribute_tag",
+        "component_condition_villager_variant_tag",
+        "component_condition_bundle_partial_villager_variant_tag",
+        "component_condition_container_partial_villager_variant_tag",
+        "component_condition_default_attribute_modifiers",
+        "component_condition_bundle_partial_default_attribute_modifiers",
+        "component_condition_container_partial_default_attribute_modifiers",
+        "component_condition_default_armor_attribute_modifiers",
+        "component_condition_default_mace_attribute_modifiers",
+        "component_condition_custom_data_snbt",
+        "component_condition_bundle_partial_custom_data_snbt",
+        "component_condition_written_book_component_page",
+        "component_condition_bundle_exact_component_text",
+        "component_condition_bundle_exact_lore",
+        "component_condition_bundle_exact_unbreakable",
+        "component_condition_bundle_exact_custom_data",
+        "component_condition_bundle_exact_potion_contents",
+        "component_condition_bundle_exact_writable_book",
+        "component_condition_bundle_exact_firework_explosion",
+        "component_condition_bundle_exact_fireworks",
+        "component_condition_bundle_exact_jukebox_playable",
+        "component_condition_bundle_exact_trim",
+        "component_condition_bundle_exact_enchantments",
+        "component_condition_bundle_exact_stored_enchantments",
+        "component_condition_bundle_exact_villager_variant",
+        "component_condition_bundle_exact_lodestone_tracker",
+        "component_condition_bundle_exact_attribute_modifiers",
+        "component_condition_bundle_exact_written_book",
+    ];
+    write_item_registry_fixture(root, &item_ids);
+    let mut catalog = item_registry_override_value(&item_ids);
+    copy_item_registry_profile(&mut catalog, "component_condition_damage", "elytra");
+    catalog["max_damage"]["minecraft:component_condition_damage"] = serde_json::json!(10);
+    copy_item_registry_profile(
+        &mut catalog,
+        "component_condition_default_attribute_modifiers",
+        "iron_sword",
     );
+    copy_item_registry_profile(
+        &mut catalog,
+        "component_condition_default_armor_attribute_modifiers",
+        "diamond_helmet",
+    );
+    copy_item_registry_profile(
+        &mut catalog,
+        "component_condition_default_mace_attribute_modifiers",
+        "mace",
+    );
+    write_item_registry_override_value(root, &catalog);
     write_json(
         &root
             .join("sources")
@@ -14902,7 +14900,7 @@ fn write_component_condition_fixture(root: &Path) {
 fn write_item_model_component_fixture(root: &Path) {
     let assets = assets_dir(root);
     write_item_atlases(&assets);
-    write_single_item_registry_source(root, "model_component");
+    write_single_item_registry_fixture(root, "model_component");
     write_json(
         &assets.join("items").join("model_component.json"),
         r#"{
@@ -14928,7 +14926,7 @@ fn write_item_model_component_fixture(root: &Path) {
 fn write_display_context_select_fixture(root: &Path) {
     let assets = assets_dir(root);
     write_item_atlases(&assets);
-    write_single_item_registry_source(root, "display_selector");
+    write_single_item_registry_fixture(root, "display_selector");
     write_json(
         &assets.join("items").join("display_selector.json"),
         r#"{
@@ -14967,7 +14965,7 @@ fn write_display_context_select_fixture(root: &Path) {
 fn write_trim_material_select_fixture(root: &Path) {
     let assets = assets_dir(root);
     write_item_atlases(&assets);
-    write_single_item_registry_source(root, "iron_chestplate");
+    write_single_item_registry_fixture(root, "iron_chestplate");
     write_json(
         &assets.join("items").join("iron_chestplate.json"),
         r#"{
@@ -15005,7 +15003,7 @@ fn write_charge_type_select_fixture(root: &Path) {
     let assets = assets_dir(root);
     write_item_atlases(&assets);
     // Item 0 = crossbow, item 1 = firework_rocket, item 2 = arrow.
-    write_item_registry_source(root, &["crossbow", "firework_rocket", "arrow"]);
+    write_item_registry_fixture(root, &["crossbow", "firework_rocket", "arrow"]);
     write_json(
         &assets.join("items").join("crossbow.json"),
         r#"{
@@ -15036,7 +15034,7 @@ fn write_use_tick_range_dispatch_fixture(root: &Path) {
     write_item_atlases(&assets);
     // Item ids: 0 = bow, 1 = crossbow, 2 = firework_rocket, 3 = arrow,
     // 4 = brush, 5 = apple, 6 = ender_eye.
-    write_item_registry_source(
+    write_item_registry_fixture(
         root,
         &[
             "bow",
@@ -15215,7 +15213,7 @@ fn write_use_tick_range_dispatch_fixture(root: &Path) {
 fn write_main_hand_select_fixture(root: &Path) {
     let assets = assets_dir(root);
     write_item_atlases(&assets);
-    write_single_item_registry_source(root, "hand_selector");
+    write_single_item_registry_fixture(root, "hand_selector");
     write_json(
         &assets.join("items").join("hand_selector.json"),
         r#"{
@@ -15245,7 +15243,7 @@ fn write_stack_string_select_fixture(root: &Path) {
     let assets = assets_dir(root);
     write_item_atlases(&assets);
     // Item 0 = beehive, item 1 = cmd_selector.
-    write_item_registry_source(root, &["beehive", "cmd_selector"]);
+    write_item_registry_fixture(root, &["beehive", "cmd_selector"]);
     write_json(
         &assets.join("items").join("beehive.json"),
         r#"{
@@ -15294,7 +15292,7 @@ fn write_stack_string_select_fixture(root: &Path) {
 fn write_custom_model_data_condition_fixture(root: &Path) {
     let assets = assets_dir(root);
     write_item_atlases(&assets);
-    write_single_item_registry_source(root, "cmd_flag_condition");
+    write_single_item_registry_fixture(root, "cmd_flag_condition");
     write_json(
         &assets.join("items").join("cmd_flag_condition.json"),
         r#"{
@@ -15314,7 +15312,7 @@ fn write_custom_model_data_condition_fixture(root: &Path) {
 fn write_local_time_select_fixture(root: &Path) {
     let assets = assets_dir(root);
     write_item_atlases(&assets);
-    write_item_registry_source(
+    write_item_registry_fixture(
         root,
         &[
             "seasonal_chest",
@@ -15783,38 +15781,30 @@ fn write_local_time_select_fixture(root: &Path) {
 fn write_component_select_fixture(root: &Path) {
     let assets = assets_dir(root);
     write_item_atlases(&assets);
-    write_json(
-        &root
-            .join("sources")
-            .join(bbb_pack::MC_VERSION)
-            .join("net")
-            .join("minecraft")
-            .join("world")
-            .join("item")
-            .join("Items.java"),
-        r#"public class Items {
-                public static final Item RARITY_SELECTOR = registerItem("rarity_selector");
-                public static final Item STACK_SIZE_SELECTOR = registerItem("stack_size_selector");
-                public static final Item GLINT_SELECTOR = registerItem("glint_selector");
-                public static final Item DAMAGE_COMPONENT_SELECTOR = registerItem(
-                    "damage_component_selector",
-                    Item::new,
-                    new Item.Properties().durability(432)
-                );
-                public static final Item MAX_DAMAGE_COMPONENT_SELECTOR = registerItem(
-                    "max_damage_component_selector",
-                    Item::new,
-                    new Item.Properties().durability(432)
-                );
-                public static final Item ITEM_MODEL_COMPONENT_SELECTOR = registerItem("item_model_component_selector");
-                public static final Item MAP_ID_COMPONENT_SELECTOR = registerItem("map_id_component_selector");
-                public static final Item DYED_COLOR_COMPONENT_SELECTOR = registerItem("dyed_color_component_selector");
-                public static final Item MAP_COLOR_COMPONENT_SELECTOR = registerItem("map_color_component_selector");
-                public static final Item CUSTOM_NAME_COMPONENT_SELECTOR = registerItem("custom_name_component_selector");
-                public static final Item ITEM_NAME_COMPONENT_SELECTOR = registerItem("item_name_component_selector");
-                public static final Item BLOCK_ITEM_NAME_COMPONENT_SELECTOR = registerBlock(Blocks.BLOCK_ITEM_NAME_COMPONENT_SELECTOR);
-            }"#,
-    );
+    let item_ids = [
+        "rarity_selector",
+        "stack_size_selector",
+        "glint_selector",
+        "damage_component_selector",
+        "max_damage_component_selector",
+        "item_model_component_selector",
+        "map_id_component_selector",
+        "dyed_color_component_selector",
+        "map_color_component_selector",
+        "custom_name_component_selector",
+        "item_name_component_selector",
+        "block_item_name_component_selector",
+    ];
+    write_item_registry_fixture(root, &item_ids);
+    let mut catalog = item_registry_override_value(&item_ids);
+    copy_item_registry_profile(&mut catalog, "damage_component_selector", "elytra");
+    catalog["max_damage"]["minecraft:damage_component_selector"] = serde_json::json!(432);
+    copy_item_registry_profile(&mut catalog, "max_damage_component_selector", "elytra");
+    catalog["max_damage"]["minecraft:max_damage_component_selector"] = serde_json::json!(432);
+    catalog["default_item_name_translation_keys"]["minecraft:block_item_name_component_selector"] =
+        serde_json::json!("block.minecraft.block_item_name_component_selector");
+    catalog["block_items"] = serde_json::json!(["minecraft:block_item_name_component_selector"]);
+    write_item_registry_override_value(root, &catalog);
     write_json(
         &assets.join("items").join("rarity_selector.json"),
         r#"{
@@ -16130,7 +16120,7 @@ fn write_component_select_fixture(root: &Path) {
 fn write_value_aware_range_dispatch_fixture(root: &Path) {
     let assets = assets_dir(root);
     write_item_atlases(&assets);
-    write_item_registry_source(
+    write_item_registry_fixture(
         root,
         &[
             "damage_dispatch",
@@ -16255,7 +16245,7 @@ fn write_value_aware_range_dispatch_fixture(root: &Path) {
 fn write_bundle_selected_item_fixture(root: &Path) {
     let assets = assets_dir(root);
     write_item_atlases(&assets);
-    write_item_registry_source(root, &["bundle", "apple"]);
+    write_item_registry_fixture(root, &["bundle", "apple"]);
     write_json(
         &assets.join("items").join("bundle.json"),
         r#"{
@@ -16304,34 +16294,12 @@ fn write_bundle_selected_item_fixture(root: &Path) {
     write_flat_item_model_and_texture(&assets, "apple", &[200, 40, 40, 255]);
 }
 
-fn write_single_item_registry_source(root: &Path, item_id: &str) {
-    write_item_registry_source(root, &[item_id]);
+fn write_single_item_registry_fixture(root: &Path, item_id: &str) {
+    write_item_registry_fixture(root, &[item_id]);
 }
 
-fn write_item_registry_source(root: &Path, item_ids: &[&str]) {
-    let declarations = item_ids
-        .iter()
-        .map(|item_id| {
-            let constant = item_id.to_ascii_uppercase();
-            format!("public static final Item {constant} = registerItem(\"{item_id}\");")
-        })
-        .collect::<Vec<_>>()
-        .join("\n");
-    write_json(
-        &root
-            .join("sources")
-            .join(bbb_pack::MC_VERSION)
-            .join("net")
-            .join("minecraft")
-            .join("world")
-            .join("item")
-            .join("Items.java"),
-        &format!(
-            r#"public class Items {{
-                {declarations}
-            }}"#,
-        ),
-    );
+fn write_item_registry_fixture(root: &Path, item_ids: &[&str]) {
+    write_item_registry_override(root, item_ids);
 }
 
 fn write_flat_item_model_and_texture(assets: &Path, model_id: &str, color: &[u8]) {
@@ -16359,23 +16327,173 @@ fn write_flat_item_model_and_texture(assets: &Path, model_id: &str, color: &[u8]
     );
 }
 
-fn write_item_registry_sources(root: &Path) {
+fn write_item_registry_fixture_defaults(root: &Path) {
+    let mut catalog = item_registry_override_value(&[
+        "test_combo",
+        "disc_fragment_5",
+        "painting",
+        "test_sword_item",
+    ]);
+    copy_item_registry_profile(&mut catalog, "test_sword_item", "iron_sword");
+    catalog["default_equipment_slots"]["minecraft:test_combo"] = serde_json::json!("chest");
+    catalog["default_component_type_ids"]["minecraft:test_combo"]
+        .as_array_mut()
+        .unwrap()
+        .push(serde_json::json!(
+            bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID
+        ));
+    catalog["mining_profiles"]["minecraft:test_sword_item"] = serde_json::json!({
+        "default_mining_speed_thousandths": 1000,
+        "rules": [{
+            "block_names": ["minecraft:cobweb"],
+            "mining_speed_thousandths": 15000,
+            "correct_for_drops": true
+        }]
+    });
+    write_item_registry_override_value(root, &catalog);
+}
+
+fn item_registry_override_path(root: &Path) -> PathBuf {
+    root.join("sources")
+        .join(bbb_pack::MC_VERSION)
+        .join(".bbb")
+        .join("item_registry_catalog.json")
+}
+
+fn write_item_registry_override(root: &Path, item_ids: &[&str]) {
+    write_item_registry_override_value(root, &item_registry_override_value(item_ids));
+}
+
+fn write_item_registry_override_with_profiles(
+    root: &Path,
+    item_ids: &[&str],
+    profiles: &[(&str, &str)],
+) {
+    let mut catalog = item_registry_override_value(item_ids);
+    for (target, source) in profiles {
+        copy_item_registry_profile(&mut catalog, target, source);
+    }
+    write_item_registry_override_value(root, &catalog);
+}
+
+fn write_item_registry_override_value(root: &Path, catalog: &serde_json::Value) {
     write_json(
-        &root
-            .join("sources")
-            .join(bbb_pack::MC_VERSION)
-            .join("net")
-            .join("minecraft")
-            .join("world")
-            .join("item")
-            .join("Items.java"),
-        r#"public class Items {
-                public static final Item TEST_COMBO = registerItem("test_combo", new Item.Properties().equippable(EquipmentSlot.CHEST));
-                public static final Item DISC_FRAGMENT_5 = registerItem("disc_fragment_5");
-                public static final Item PAINTING = registerItem("painting");
-                public static final Item TEST_SWORD_ITEM = registerItem("test_sword_item", new Item.Properties().sword(ToolMaterial.IRON, 3.0F, -2.4F));
-            }"#,
+        &item_registry_override_path(root),
+        &serde_json::to_string_pretty(catalog).unwrap(),
     );
+}
+
+fn item_registry_override_value(item_ids: &[&str]) -> serde_json::Value {
+    let vanilla = serde_json::to_value(ItemRegistryCatalog::vanilla_26_1().unwrap()).unwrap();
+    let resource_ids = item_ids
+        .iter()
+        .map(|item_id| format!("minecraft:{item_id}"))
+        .collect::<Vec<_>>();
+    let mut catalog = serde_json::json!({
+        "resource_ids": resource_ids,
+        "protocol_ids": item_ids
+            .iter()
+            .enumerate()
+            .map(|(id, item_id)| (format!("minecraft:{item_id}"), serde_json::json!(id as i32)))
+            .collect::<serde_json::Map<_, _>>()
+    });
+    for field in [
+        "max_damage",
+        "max_stack_size",
+        "default_item_name_translation_keys",
+        "default_component_type_ids",
+        "default_equipment_slots",
+        "humanoid_armor_assets",
+        "equippable_assets",
+        "default_mount_body_armor_kinds",
+        "mount_body_armor_assets",
+        "default_attack_ranges",
+        "default_swing_animation_durations",
+        "default_attribute_modifiers",
+        "default_use_effects",
+        "default_consumables",
+        "crafting_remainders",
+        "mining_profiles",
+    ] {
+        let mut values = serde_json::Map::new();
+        for resource_id in catalog["resource_ids"].as_array().unwrap() {
+            let resource_id = resource_id.as_str().unwrap();
+            if field == "max_stack_size" {
+                values.insert(resource_id.to_string(), serde_json::json!(64));
+            } else if field == "default_item_name_translation_keys" {
+                values.insert(
+                    resource_id.to_string(),
+                    serde_json::json!(format!("item.minecraft.{}", &resource_id[10..])),
+                );
+            } else if field == "default_component_type_ids" {
+                values.insert(
+                    resource_id.to_string(),
+                    vanilla[field]["minecraft:stick"].clone(),
+                );
+            }
+        }
+        catalog[field] = serde_json::Value::Object(values);
+    }
+    for field in [
+        "block_items",
+        "spawn_egg_items",
+        "default_piercing_weapon_ids",
+    ] {
+        catalog[field] = serde_json::json!([]);
+    }
+    catalog
+}
+
+fn copy_item_registry_profile(
+    catalog: &mut serde_json::Value,
+    target_item_id: &str,
+    vanilla_item_id: &str,
+) {
+    let vanilla = serde_json::to_value(ItemRegistryCatalog::vanilla_26_1().unwrap()).unwrap();
+    let target = format!("minecraft:{target_item_id}");
+    let source = format!("minecraft:{vanilla_item_id}");
+    for field in [
+        "max_damage",
+        "max_stack_size",
+        "default_component_type_ids",
+        "default_equipment_slots",
+        "humanoid_armor_assets",
+        "equippable_assets",
+        "default_mount_body_armor_kinds",
+        "mount_body_armor_assets",
+        "default_attack_ranges",
+        "default_swing_animation_durations",
+        "default_attribute_modifiers",
+        "default_use_effects",
+        "default_consumables",
+        "crafting_remainders",
+    ] {
+        if let Some(value) = vanilla[field].get(&source) {
+            catalog[field][&target] = value.clone();
+        }
+    }
+    for field in [
+        "block_items",
+        "spawn_egg_items",
+        "default_piercing_weapon_ids",
+    ] {
+        if vanilla[field]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|value| value.as_str() == Some(&source))
+            && !catalog[field]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|value| value.as_str() == Some(&target))
+        {
+            catalog[field]
+                .as_array_mut()
+                .unwrap()
+                .push(serde_json::Value::String(target.clone()));
+        }
+    }
 }
 
 fn write_json(path: &Path, contents: &str) {

@@ -10739,3 +10739,17 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   生成物引用既有 attribute/operation generated constants。item-model 删除 12 组手写 modifier
   slices，potion tooltip 通过 generated attribute description 与 amount bits 投影；amplifier
   计算、文本格式、颜色和 tooltip 排版仍由 item-model 手写。
+
+## 2026-07-11：Tree-sitter item-registry/profile extraction
+
+- [x] `bbb-pack` item registry/profile 的 Java source extractor 迁到共享
+  `vanilla_java_source.py` Tree-sitter frontend。领域 extractor 从 `Items.java` 的 1,485 个
+  item/weathering 字段及 `ItemIds.java` 常量生成 checked-in declaration facts；3 个
+  weathering 声明确定性展开后继续生成 1,506 项 protocol id/resource/order catalog。
+  `ItemRegistryCatalog` 仅从仓内 facts 做 typed defaults、equipment、component、consumable、
+  modifier、remainder 与动态 block-tag mining profile 归一化，删除 Rust Java regex/parser、
+  maintenance Cargo example 和运行时 Java 源码读取；item-model 小目录测试改用显式结构化
+  catalog override，不保留第二套 fixture Java parser。旧/新实现对同一 vanilla 26.1 source/tag
+  输入的完整序列化 catalog SHA-256 逐字节一致；frontend fixtures、update/check、第二次 update
+  幂等与 pack/item-model focused tests 锁定生成物。普通 Cargo build/test 不再为 item catalog
+  依赖工作区外 vanilla source；wire/component/gameplay 行为没有生成或改变。

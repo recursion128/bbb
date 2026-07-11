@@ -43,48 +43,10 @@ Owner: `bbb-protocol`
 
 Owner: `scripts/` + each generated catalog's semantic crate
 
-- Migrate the existing `bbb-pack` item-registry/profile Java source extractor to
-  the shared Tree-sitter Java frontend. Entity metadata, packet, core registry,
-  gameplay-id, bootstrap/biome/command-argument resource-order, sound-event, jukebox-song, menu/recipe
-  item-membership, block builder-property, and the exact terrain-family block-tag
-  memberships currently consumed by `bbb-world` are migrated. Equipment asset layers
-  are resource-pack JSON rather than a numeric
-  Java bootstrap and remain owned by `EquipmentAssetCatalog`; their incomplete
-  renderer coverage is tracked separately below. Vanilla block and enchantment tag
-  fallbacks now share one deterministic JSON tag frontend; other hand-maintained
-  resource/tag memberships remain under the P1 audit. Data-component numeric aliases
-  across protocol/pack/world/item-model/native now derive from the generated protocol
-  catalog; block-entity numeric aliases and current vault consumers likewise derive
-  from the generated catalog. Heightmap explicit ids/keys/usage, GameType explicit
-  ids/serialized names/nullable sentinel, player-info action wire-bit ordinals, and
-  resource-pack response, custom-chat completion, serverbound client-command, and
-  serverbound player-action kind and player-command action wire ordinals are generated
-  as well. Entity-anchor, objective-render, and advancement-frame ordinals/names,
-  boss-bar style ordinals/names, remote-debug sample type ordinals, and Difficulty
-  ids/names/WRAP fallback, scoreboard display-slot ids/names/ZERO fallback, and scoreboard
-  team visibility/collision ids/names/ZERO fallback, plus ChatFormatting ordinals/codes/
-  ids/colors/names and scoreboard objective/player-team packet method ids now share generated
-  owners too. Boss-event operation and filter-mask type wire ordinals likewise derive from their
-  vanilla nested enums. Waypoint operation/data-type ordinals and the operation WRAP fallback, plus
-  InteractionHand explicit ids and its ZERO wire fallback, plus ClientInformation chat-visibility/
-  main-hand/particle-status ordinals and ContainerInput ids/ZERO fallback, now use generated owners
-  as well. RecipeBookType ordinals and the RecipeDisplay built-in registry id/resource order also
-  share one generated recipe-wire owner. Item-use/swing animation, rarity, map post-processing,
-  and firework-shape component value ids/names/ZERO fallbacks now share a generated owner across
-  protocol/native/item-model consumers. The five fixed ConsumeEffect subtype ids/resources now
-  derive from their nested `register` field order; payload codecs remain handwritten. Fixed
-  built-in item/animal/color component enum ids, serialized names, DataComponents codec ownership,
-  and ZERO/CLAMP/WRAP/sparse-default lookup semantics now share a generated protocol owner;
-  component wire and persistent SNBT codecs remain handwritten. AttributeModifier operation and
-  ItemAttributeModifiers display ids/names/ZERO fallbacks now likewise share a generated owner
-  across protocol/world/pack/native/item-model; calculation, tooltip, and payload codecs remain
-  handwritten. TropicalFish.Pattern names/base/index/sparse packed ids and the 22 common-variant
-  triples now share a generated owner
-  across protocol/native/item-model，并由 renderer dev 反向断言锁定；texture、tooltip 和
-  entity presentation semantics remain handwritten.
-  MobEffects attribute-modifier attribute/id/amount/operation builder facts now extend the generated
-  mob-effect catalog; potion tooltip arithmetic and presentation remain handwritten.
-  The remaining cross-crate registry/ordinal audit stays open.
+- Complete the remaining cross-crate registry/ordinal audit. Any newly found
+  Java-source catalog extractor must consume the shared Tree-sitter frontend and
+  checked-in deterministic output; ordinary build/test must not read local vanilla
+  sources. Migrate each remaining legacy parser as its own semantic-owner slice.
 
 ## Unknown clientbound packets in login, configuration, and play
 

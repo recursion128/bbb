@@ -9402,22 +9402,7 @@ fn write_item_atlas(assets_dir: &Path) {
 }
 
 fn write_item_registry_source(root: &Path, item_id: &str) {
-    let constant = item_id.to_ascii_uppercase();
-    write_json(
-        &root
-            .join("sources")
-            .join(bbb_pack::MC_VERSION)
-            .join("net")
-            .join("minecraft")
-            .join("world")
-            .join("item")
-            .join("Items.java"),
-        &format!(
-            r#"public class Items {{
-                public static final Item {constant} = registerItem("{item_id}");
-            }}"#,
-        ),
-    );
+    crate::item_registry_test_fixture::write_item_registry_fixture(root, &[item_id]);
 }
 
 fn write_flat_item_model_and_texture(assets_dir: &Path, model_id: &str) {

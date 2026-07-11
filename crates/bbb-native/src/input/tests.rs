@@ -21718,19 +21718,7 @@ fn write_input_tooltip_item_assets(root: &Path) {
         &assets.join("textures").join("item").join("test_combo.png"),
         &[80, 120, 160, 255],
     );
-    write_input_json(
-        &root
-            .join("sources")
-            .join(bbb_pack::MC_VERSION)
-            .join("net")
-            .join("minecraft")
-            .join("world")
-            .join("item")
-            .join("Items.java"),
-        r#"public class Items {
-            public static final Item TEST_COMBO = registerItem("test_combo");
-        }"#,
-    );
+    crate::item_registry_test_fixture::write_item_registry_fixture(root, &["test_combo"]);
 }
 
 fn input_assets_dir(root: &Path) -> PathBuf {

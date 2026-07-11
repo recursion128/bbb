@@ -56,15 +56,7 @@ mod tests {
 
     #[test]
     fn freeze_immune_wearables_resolve_item_tag_to_protocol_ids() {
-        let registry = ItemRegistryCatalog::from_items_java_source(
-            r#"public class Items {
-                public static final Item LEATHER_BOOTS = registerItem("leather_boots");
-                public static final Item LEATHER_LEGGINGS = registerItem("leather_leggings");
-                public static final Item STONE = registerItem("stone");
-            }"#,
-            &BTreeMap::new(),
-        )
-        .unwrap();
+        let registry = ItemRegistryCatalog::from_generated_source_catalog(None).unwrap();
         let item_tags = item_tag_catalog(vec![
             "minecraft:leather_boots".to_string(),
             "minecraft:leather_leggings".to_string(),

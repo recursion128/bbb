@@ -1,7 +1,4 @@
-use std::{
-    collections::{BTreeMap, BTreeSet},
-    path::Path,
-};
+use std::collections::{BTreeMap, BTreeSet};
 
 use anyhow::{bail, Context, Result};
 use bbb_protocol::attribute_modifier_types::VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_VALUE_ID;
@@ -10,7 +7,6 @@ use bbb_protocol::equipment_slots::{
     VANILLA_EQUIPMENT_SLOT_GROUP_FEET_ID, VANILLA_EQUIPMENT_SLOT_GROUP_HEAD_ID,
     VANILLA_EQUIPMENT_SLOT_GROUP_LEGS_ID,
 };
-use regex::Regex;
 use serde::{Deserialize, Serialize};
 
 use crate::{resources::ResourceLocation, tags::TagCatalog, PackRoots};
@@ -246,67 +242,143 @@ const COMMON_ITEM_COMPONENT_TYPE_IDS: &[i32] = &[
     SWING_ANIMATION_COMPONENT_ID,
 ];
 
+const GENERATED_ITEM_DECLARATIONS: &str =
+    include_str!("../data/item_registry_declarations_26_1.json");
+const ITEM_REGISTRY_CATALOG_OVERRIDE_PATH: &str = ".bbb/item_registry_catalog.json";
+
+#[derive(Debug, Deserialize)]
+struct ItemSourceCatalog {
+    vanilla_version: String,
+    sources: Vec<String>,
+    item_id_constants: BTreeMap<String, String>,
+    declarations: Vec<ItemSourceDeclaration>,
+}
+
+#[derive(Debug, Deserialize)]
+struct ItemSourceDeclaration {
+    field: String,
+    field_type: String,
+    declaration_order: usize,
+    source_path: String,
+    start_byte: usize,
+    end_byte: usize,
+    initializer: ItemSourceExpression,
+}
+
+#[derive(Debug, Deserialize)]
+struct ItemSourceExpression {
+    kind: String,
+    canonical: String,
+    #[serde(default)]
+    name: Option<String>,
+    #[serde(default)]
+    object: Option<Box<ItemSourceExpression>>,
+    #[serde(default)]
+    arguments: Vec<ItemSourceExpression>,
+    #[serde(default)]
+    children: Vec<ItemSourceExpression>,
+}
+
+impl ItemSourceExpression {
+    fn call(&self, name: &str) -> Option<&Self> {
+        self.calls().find(|call| call.name.as_deref() == Some(name))
+    }
+
+    fn calls(&self) -> impl Iterator<Item = &Self> {
+        let mut expressions = Vec::new();
+        self.collect_expressions(&mut expressions);
+        expressions
+            .into_iter()
+            .filter(|expression| expression.kind == "method_invocation")
+    }
+
+    fn creations(&self) -> impl Iterator<Item = &Self> {
+        let mut expressions = Vec::new();
+        self.collect_expressions(&mut expressions);
+        expressions
+            .into_iter()
+            .filter(|expression| expression.kind == "object_creation_expression")
+    }
+
+    fn field_accesses(&self) -> impl Iterator<Item = &Self> {
+        let mut expressions = Vec::new();
+        self.collect_expressions(&mut expressions);
+        expressions
+            .into_iter()
+            .filter(|expression| expression.kind == "field_access")
+    }
+
+    fn collect_expressions<'a>(&'a self, expressions: &mut Vec<&'a Self>) {
+        expressions.push(self);
+        if let Some(object) = &self.object {
+            object.collect_expressions(expressions);
+        }
+        for argument in &self.arguments {
+            argument.collect_expressions(expressions);
+        }
+        for child in &self.children {
+            child.collect_expressions(expressions);
+        }
+    }
+
+    fn field_constant(&self, owner: &str) -> Option<&str> {
+        (self.kind == "field_access"
+            && self
+                .object
+                .as_deref()
+                .map(|object| object.canonical.as_str())
+                == Some(owner))
+        .then(|| self.name.as_deref())
+        .flatten()
+    }
+
+    fn string_literal(&self) -> Result<Option<String>> {
+        if self.kind != "string_literal" {
+            return Ok(None);
+        }
+        serde_json::from_str(&self.canonical)
+            .map(Some)
+            .map_err(Into::into)
+    }
+}
+
 impl ItemRegistryCatalog {
+    /// Load the checked-in vanilla 26.1 item catalog without reading a local Java source tree.
+    pub fn vanilla_26_1() -> Result<Self> {
+        Self::from_generated_source_catalog(None)
+    }
+
     pub fn load(roots: &PackRoots) -> Result<Self> {
-        let items_java = roots
-            .sources_dir
-            .join("net")
-            .join("minecraft")
-            .join("world")
-            .join("item")
-            .join("Items.java");
-        let item_ids_java = roots
-            .sources_dir
-            .join("net")
-            .join("minecraft")
-            .join("references")
-            .join("ItemIds.java");
+        let override_path = roots.sources_dir.join(ITEM_REGISTRY_CATALOG_OVERRIDE_PATH);
+        if override_path.is_file() {
+            let bytes = std::fs::read(&override_path).with_context(|| {
+                format!(
+                    "read item registry catalog override {}",
+                    override_path.display()
+                )
+            })?;
+            return serde_json::from_slice(&bytes).with_context(|| {
+                format!(
+                    "parse item registry catalog override {}",
+                    override_path.display()
+                )
+            });
+        }
         let block_tags = roots.load_tag_catalog("block").ok();
-        Self::load_from_java_sources_with_block_tags(items_java, item_ids_java, block_tags.as_ref())
+        Self::from_generated_source_catalog(block_tags.as_ref())
     }
 
-    pub fn load_from_java_sources(
-        items_java: impl AsRef<Path>,
-        item_ids_java: impl AsRef<Path>,
-    ) -> Result<Self> {
-        Self::load_from_java_sources_with_block_tags(items_java, item_ids_java, None)
-    }
-
-    pub fn load_from_java_sources_with_block_tags(
-        items_java: impl AsRef<Path>,
-        item_ids_java: impl AsRef<Path>,
-        block_tags: Option<&TagCatalog>,
-    ) -> Result<Self> {
-        let items_java = items_java.as_ref();
-        let item_ids_java = item_ids_java.as_ref();
-        let items_source = std::fs::read_to_string(items_java)
-            .with_context(|| format!("read item registry source {}", items_java.display()))?;
-        let item_id_constants = if item_ids_java.is_file() {
-            let source = std::fs::read_to_string(item_ids_java)
-                .with_context(|| format!("read item id source {}", item_ids_java.display()))?;
-            parse_item_id_constants(&source)?
-        } else {
-            BTreeMap::new()
-        };
-        Self::from_items_java_source_with_block_tags(&items_source, &item_id_constants, block_tags)
-    }
-
-    #[cfg(test)]
-    pub(crate) fn from_items_java_source(
-        source: &str,
-        item_id_constants: &BTreeMap<String, String>,
-    ) -> Result<Self> {
-        Self::from_items_java_source_with_block_tags(source, item_id_constants, None)
-    }
-
-    fn from_items_java_source_with_block_tags(
-        source: &str,
-        item_id_constants: &BTreeMap<String, String>,
-        block_tags: Option<&TagCatalog>,
-    ) -> Result<Self> {
-        let declaration = Regex::new(
-            r#"(?s)public\s+static\s+final\s+(Item|WeatheringCopperItems)\s+([A-Z0-9_]+)\s*=\s*(.*?);"#,
-        )?;
+    pub(crate) fn from_generated_source_catalog(block_tags: Option<&TagCatalog>) -> Result<Self> {
+        let source: ItemSourceCatalog = serde_json::from_str(GENERATED_ITEM_DECLARATIONS)?;
+        if source.vanilla_version != crate::MC_VERSION
+            || source.sources
+                != [
+                    "net/minecraft/references/ItemIds.java",
+                    "net/minecraft/world/item/Items.java",
+                ]
+        {
+            bail!("unsupported generated item source catalog manifest");
+        }
         let mut resource_ids = Vec::new();
         let mut max_damage = BTreeMap::new();
         let mut max_stack_size = BTreeMap::new();
@@ -327,37 +399,73 @@ impl ItemRegistryCatalog {
         let mut default_consumables = BTreeMap::new();
         let mut crafting_remainders = BTreeMap::new();
         let mut mining_profiles = BTreeMap::new();
-        for capture in declaration.captures_iter(source) {
-            let kind = capture.get(1).unwrap().as_str();
-            let field = capture.get(2).unwrap().as_str();
-            let expression = capture.get(3).unwrap().as_str();
-            let ids = resource_ids_for_declaration(kind, field, expression, item_id_constants)?;
-            let trimmed_expression = expression.trim_start();
+        for (order, declaration) in source.declarations.iter().enumerate() {
+            if declaration.declaration_order != order
+                || declaration.source_path != "net/minecraft/world/item/Items.java"
+                || declaration.start_byte >= declaration.end_byte
+            {
+                bail!(
+                    "invalid generated item declaration order/span for Items.{}",
+                    declaration.field
+                );
+            }
+            let kind = declaration.field_type.as_str();
+            let field = declaration.field.as_str();
+            let expression = &declaration.initializer;
+            let source_context = || {
+                format!(
+                    "{}:{}..{}: resolve Items.{field}",
+                    declaration.source_path, declaration.start_byte, declaration.end_byte
+                )
+            };
+            let ids =
+                resource_ids_for_declaration(kind, field, expression, &source.item_id_constants)
+                    .with_context(source_context)?;
+            let root_name = expression.name.as_deref();
             let is_block_item = kind == "WeatheringCopperItems"
-                || trimmed_expression.starts_with("registerBlock")
-                || expression.contains("createBlockItemWithCustomItemName(");
-            let is_spawn_egg_item = trimmed_expression.starts_with("registerSpawnEgg");
-            let default_item_name = default_item_name_for_declaration(kind, expression)?;
-            let default_components = default_component_type_ids_for_declaration(expression)?;
-            let stack_size = max_stack_size_for_declaration(expression)?;
-            let equipment_slot = equipment_slot_for_declaration(expression)?;
-            let humanoid_armor_asset = humanoid_armor_asset_for_declaration(expression)?;
-            let wolf_armor_asset = wolf_armor_asset_for_declaration(expression)?;
-            let explicit_equippable_asset = explicit_equippable_asset_for_declaration(expression)?;
+                || root_name == Some("registerBlock")
+                || expression
+                    .call("createBlockItemWithCustomItemName")
+                    .is_some();
+            let is_spawn_egg_item = root_name == Some("registerSpawnEgg");
+            let default_item_name =
+                default_item_name_for_declaration(kind, expression).with_context(source_context)?;
+            let default_components = default_component_type_ids_for_declaration(expression)
+                .with_context(source_context)?;
+            let stack_size =
+                max_stack_size_for_declaration(expression).with_context(source_context)?;
+            let equipment_slot =
+                equipment_slot_for_declaration(expression).with_context(source_context)?;
+            let humanoid_armor_asset =
+                humanoid_armor_asset_for_declaration(expression).with_context(source_context)?;
+            let wolf_armor_asset =
+                wolf_armor_asset_for_declaration(expression).with_context(source_context)?;
+            let explicit_equippable_asset = explicit_equippable_asset_for_declaration(expression)
+                .with_context(source_context)?;
             let mount_body_armor_kind = mount_body_armor_kind_for_declaration(expression);
-            let mount_body_armor_asset = mount_body_armor_asset_for_declaration(expression)?;
+            let mount_body_armor_asset =
+                mount_body_armor_asset_for_declaration(expression).with_context(source_context)?;
             let default_piercing_weapon = default_piercing_weapon_for_declaration(expression);
-            let default_attack_range = default_attack_range_for_declaration(expression)?;
+            let default_attack_range =
+                default_attack_range_for_declaration(expression).with_context(source_context)?;
             let default_swing_animation_duration =
-                default_swing_animation_duration_for_declaration(expression)?;
+                default_swing_animation_duration_for_declaration(expression)
+                    .with_context(source_context)?;
             let default_attribute_modifier_entries =
-                default_attribute_modifiers_for_declaration(expression)?;
-            let default_use_effect = default_use_effects_for_declaration(expression)?;
-            let default_consumable = default_consumable_for_declaration(expression)?;
+                default_attribute_modifiers_for_declaration(expression)
+                    .with_context(source_context)?;
+            let default_use_effect =
+                default_use_effects_for_declaration(expression).with_context(source_context)?;
+            let default_consumable =
+                default_consumable_for_declaration(expression).with_context(source_context)?;
             let crafting_remainder =
-                crafting_remainder_for_declaration(expression, item_id_constants)?;
-            let mining_profile = mining_profile_for_declaration(expression, block_tags)?;
-            if let Some(durability) = durability_for_declaration(expression)? {
+                crafting_remainder_for_declaration(expression, &source.item_id_constants)
+                    .with_context(source_context)?;
+            let mining_profile = mining_profile_for_declaration(expression, block_tags)
+                .with_context(source_context)?;
+            if let Some(durability) =
+                durability_for_declaration(expression).with_context(source_context)?
+            {
                 for resource_id in &ids {
                     max_damage.insert(resource_id.clone(), durability);
                 }
@@ -650,59 +758,60 @@ impl ItemRegistryCatalog {
 fn resource_ids_for_declaration(
     kind: &str,
     field: &str,
-    expression: &str,
+    expression: &ItemSourceExpression,
     item_id_constants: &BTreeMap<String, String>,
 ) -> Result<Vec<String>> {
+    let root_name = expression.name.as_deref();
+    let first_argument = expression.arguments.first();
     if kind == "WeatheringCopperItems" {
-        let base = required_capture(
-            r#"WeatheringCopperItems\.create\(\s*Blocks\.([A-Z0-9_]+)"#,
-            expression,
-            field,
-        )?;
+        let base = first_argument
+            .and_then(|argument| argument.field_constant("Blocks"))
+            .ok_or_else(|| anyhow::anyhow!("unsupported item registry declaration {field}"))?;
         return weathering_copper_ids(&base.to_ascii_lowercase());
     }
 
-    if expression.trim_start().starts_with("registerBlock") {
+    if root_name == Some("registerBlock") {
         return Ok(vec![minecraft_id(
-            &required_capture(
-                r#"registerBlock\(\s*Blocks\.([A-Z0-9_]+)"#,
-                expression,
-                field,
-            )?
-            .to_ascii_lowercase(),
+            &first_argument
+                .and_then(|argument| argument.field_constant("Blocks"))
+                .ok_or_else(|| anyhow::anyhow!("unsupported item registry declaration {field}"))?
+                .to_ascii_lowercase(),
         )?]);
     }
 
-    if expression.trim_start().starts_with("registerSpawnEgg") {
-        let entity_type = required_capture(
-            r#"registerSpawnEgg\(\s*EntityType\.([A-Z0-9_]+)"#,
-            expression,
-            field,
-        )?;
+    if root_name == Some("registerSpawnEgg") {
+        let entity_type = first_argument
+            .and_then(|argument| argument.field_constant("EntityType"))
+            .ok_or_else(|| anyhow::anyhow!("unsupported item registry declaration {field}"))?;
         return Ok(vec![minecraft_id(&format!(
             "{}_spawn_egg",
             entity_type.to_ascii_lowercase()
         ))?]);
     }
 
-    if expression.trim_start().starts_with("registerItem") {
-        if let Some(name) = optional_capture(r#"registerItem\(\s*"([^"]+)""#, expression)? {
+    if root_name == Some("registerItem") {
+        if let Some(name) = first_argument
+            .map(ItemSourceExpression::string_literal)
+            .transpose()?
+            .flatten()
+        {
             return Ok(vec![minecraft_id(&name)?]);
         }
 
-        let constant = required_capture(
-            r#"registerItem\(\s*ItemIds\.([A-Z0-9_]+)"#,
-            expression,
-            field,
-        )?;
+        let constant = first_argument
+            .and_then(|argument| argument.field_constant("ItemIds"))
+            .ok_or_else(|| anyhow::anyhow!("unsupported item registry declaration {field}"))?;
         let name = item_id_constants
-            .get(&constant)
+            .get(constant)
             .cloned()
             .unwrap_or_else(|| constant.to_ascii_lowercase());
         return Ok(vec![minecraft_id(&name)?]);
     }
 
-    bail!("unsupported item registry declaration {field}: {expression:?}")
+    bail!(
+        "unsupported item registry declaration {field}: {}",
+        expression.canonical
+    )
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -720,9 +829,16 @@ impl DefaultItemName {
     }
 }
 
-fn default_item_name_for_declaration(kind: &str, expression: &str) -> Result<DefaultItemName> {
-    if let Some(description_id) =
-        optional_capture(r#"\.overrideDescription\(\s*"([^"]+)""#, expression)?
+fn default_item_name_for_declaration(
+    kind: &str,
+    expression: &ItemSourceExpression,
+) -> Result<DefaultItemName> {
+    if let Some(description_id) = expression
+        .call("overrideDescription")
+        .and_then(|call| call.arguments.first())
+        .map(ItemSourceExpression::string_literal)
+        .transpose()?
+        .flatten()
     {
         return Ok(DefaultItemName::Fixed(description_id));
     }
@@ -731,8 +847,9 @@ fn default_item_name_for_declaration(kind: &str, expression: &str) -> Result<Def
         return Ok(DefaultItemName::Prefix("block"));
     }
 
-    let expression = expression.trim_start();
-    if expression.starts_with("registerBlock") && !expression.contains("useItemDescriptionPrefix") {
+    if expression.name.as_deref() == Some("registerBlock")
+        && expression.call("useItemDescriptionPrefix").is_none()
+    {
         return Ok(DefaultItemName::Prefix("block"));
     }
 
@@ -762,25 +879,8 @@ fn weathering_copper_ids(base: &str) -> Result<Vec<String>> {
     .collect()
 }
 
-fn parse_item_id_constants(source: &str) -> Result<BTreeMap<String, String>> {
-    let declaration = Regex::new(
-        r#"public\s+static\s+final\s+ResourceKey<Item>\s+([A-Z0-9_]+)\s*=\s*createKey\("([^"]+)"\)"#,
-    )?;
-    let mut constants = BTreeMap::new();
-    for capture in declaration.captures_iter(source) {
-        constants.insert(
-            capture.get(1).unwrap().as_str().to_string(),
-            capture.get(2).unwrap().as_str().to_string(),
-        );
-    }
-    Ok(constants)
-}
-
-fn durability_for_declaration(expression: &str) -> Result<Option<i32>> {
-    if let Some(durability) = optional_capture(r#"\.durability\(\s*([0-9]+)\s*\)"#, expression)?
-        .map(|value| value.parse::<i32>())
-        .transpose()?
-    {
+fn durability_for_declaration(expression: &ItemSourceExpression) -> Result<Option<i32>> {
+    if let Some(durability) = call_integer_argument(expression, "durability", 0)? {
         return Ok(Some(durability));
     }
 
@@ -795,9 +895,7 @@ fn durability_for_declaration(expression: &str) -> Result<Option<i32>> {
         ));
     }
 
-    if let Some(material) =
-        optional_capture(r#"\.wolfArmor\(\s*ArmorMaterials\.([A-Z_]+)"#, expression)?
-    {
+    if let Some(material) = call_field_argument(expression, "wolfArmor", 0, "ArmorMaterials") {
         return Ok(Some(
             armor_material_durability_multiplier(&material)? * armor_type_unit_durability("BODY")?,
         ));
@@ -806,7 +904,9 @@ fn durability_for_declaration(expression: &str) -> Result<Option<i32>> {
     Ok(None)
 }
 
-fn default_component_type_ids_for_declaration(expression: &str) -> Result<BTreeSet<i32>> {
+fn default_component_type_ids_for_declaration(
+    expression: &ItemSourceExpression,
+) -> Result<BTreeSet<i32>> {
     let mut type_ids = COMMON_ITEM_COMPONENT_TYPE_IDS
         .iter()
         .copied()
@@ -818,23 +918,24 @@ fn default_component_type_ids_for_declaration(expression: &str) -> Result<BTreeS
         type_ids.insert(MAX_DAMAGE_COMPONENT_ID);
         type_ids.insert(DAMAGE_COMPONENT_ID);
     }
-    if expression.contains(".food(") {
+    if expression.call("food").is_some() {
         type_ids.insert(FOOD_COMPONENT_ID);
         type_ids.insert(CONSUMABLE_COMPONENT_ID);
     }
-    if expression.contains(".usingConvertsTo(") {
+    if expression.call("usingConvertsTo").is_some() {
         type_ids.insert(USE_REMAINDER_COMPONENT_ID);
     }
-    if expression.contains(".useCooldown(") {
+    if expression.call("useCooldown").is_some() {
         type_ids.insert(USE_COOLDOWN_COMPONENT_ID);
     }
-    if expression.contains(".fireResistant()") || expression.contains(".fireResistant(") {
+    if expression.call("fireResistant").is_some() {
         type_ids.insert(DAMAGE_RESISTANT_COMPONENT_ID);
     }
-    if expression.contains(".jukeboxPlayable(") {
+    if expression.call("jukeboxPlayable").is_some() {
         type_ids.insert(JUKEBOX_PLAYABLE_COMPONENT_ID);
     }
-    if expression.trim_start().starts_with("registerSpawnEgg") || expression.contains(".spawnEgg(")
+    if expression.name.as_deref() == Some("registerSpawnEgg")
+        || expression.call("spawnEgg").is_some()
     {
         type_ids.insert(ENTITY_DATA_COMPONENT_ID);
     }
@@ -844,7 +945,7 @@ fn default_component_type_ids_for_declaration(expression: &str) -> Result<BTreeS
         type_ids.insert(TOOL_COMPONENT_ID);
         type_ids.insert(WEAPON_COMPONENT_ID);
     }
-    if expression.contains(".spear(") {
+    if expression.call("spear").is_some() {
         type_ids.insert(REPAIRABLE_COMPONENT_ID);
         type_ids.insert(ENCHANTABLE_COMPONENT_ID);
         type_ids.insert(DAMAGE_TYPE_COMPONENT_ID);
@@ -855,40 +956,45 @@ fn default_component_type_ids_for_declaration(expression: &str) -> Result<BTreeS
         type_ids.insert(SWING_ANIMATION_COMPONENT_ID);
         type_ids.insert(WEAPON_COMPONENT_ID);
     }
-    if expression.contains(".humanoidArmor(") {
+    if expression.call("humanoidArmor").is_some() {
         type_ids.insert(ENCHANTABLE_COMPONENT_ID);
         type_ids.insert(EQUIPPABLE_COMPONENT_ID);
         type_ids.insert(REPAIRABLE_COMPONENT_ID);
     }
-    if expression.contains(".wolfArmor(") {
+    if expression.call("wolfArmor").is_some() {
         type_ids.insert(EQUIPPABLE_COMPONENT_ID);
         type_ids.insert(REPAIRABLE_COMPONENT_ID);
     }
-    if expression.contains(".horseArmor(") || expression.contains(".nautilusArmor(") {
+    if expression.call("horseArmor").is_some() || expression.call("nautilusArmor").is_some() {
         type_ids.insert(EQUIPPABLE_COMPONENT_ID);
     }
-    if expression.contains(".equippable(")
-        || expression.contains(".equippableUnswappable(")
-        || expression.contains("Equippable.builder(")
-        || expression.contains("Equippable.saddle()")
-        || expression.contains("Equippable.llamaSwag(")
-        || expression.contains("Equippable.harness(")
+    if [
+        "equippable",
+        "equippableUnswappable",
+        "builder",
+        "saddle",
+        "llamaSwag",
+        "harness",
+    ]
+    .iter()
+    .any(|name| expression.call(name).is_some())
     {
         type_ids.insert(EQUIPPABLE_COMPONENT_ID);
     }
-    if expression.contains(".repairable(") {
+    if expression.call("repairable").is_some() {
         type_ids.insert(REPAIRABLE_COMPONENT_ID);
     }
-    if expression.contains(".enchantable(") {
+    if expression.call("enchantable").is_some() {
         type_ids.insert(ENCHANTABLE_COMPONENT_ID);
     }
-    if expression.contains(".trimMaterial(") {
+    if expression.call("trimMaterial").is_some() {
         type_ids.insert(PROVIDES_TRIM_MATERIAL_COMPONENT_ID);
     }
 
-    let regex = Regex::new(r#"DataComponents\.([A-Z0-9_]+)"#)?;
-    for capture in regex.captures_iter(expression) {
-        let name = capture.get(1).unwrap().as_str();
+    for name in expression
+        .field_accesses()
+        .filter_map(|field| field.field_constant("DataComponents"))
+    {
         let Some(type_id) = data_component_type_id_from_name(name) else {
             bail!("unknown item data component DataComponents.{name}");
         };
@@ -898,17 +1004,17 @@ fn default_component_type_ids_for_declaration(expression: &str) -> Result<BTreeS
     Ok(type_ids)
 }
 
-fn applies_tool_material_defaults(expression: &str) -> bool {
-    expression.contains(".tool(")
-        || expression.contains(".sword(")
-        || expression.contains(".pickaxe(")
-        || expression.contains(".axe(")
-        || expression.contains(".hoe(")
-        || expression.contains(".shovel(")
-        || expression.contains("PickaxeItem(")
-        || expression.contains("AxeItem(")
-        || expression.contains("HoeItem(")
-        || expression.contains("ShovelItem(")
+fn applies_tool_material_defaults(expression: &ItemSourceExpression) -> bool {
+    ["tool", "sword", "pickaxe", "axe", "hoe", "shovel"]
+        .iter()
+        .any(|name| expression.call(name).is_some())
+        || ["PickaxeItem", "AxeItem", "HoeItem", "ShovelItem"]
+            .iter()
+            .any(|name| {
+                expression
+                    .creations()
+                    .any(|creation| creation.name.as_deref() == Some(name))
+            })
 }
 
 fn data_component_type_id_from_name(name: &str) -> Option<i32> {
@@ -1027,13 +1133,15 @@ fn data_component_type_id_from_name(name: &str) -> Option<i32> {
     })
 }
 
-fn tool_material_for_durability(expression: &str) -> Result<Option<String>> {
-    for pattern in [
-        r#"\.(?:sword|pickaxe|axe|hoe|shovel|spear)\(\s*ToolMaterial\.([A-Z_]+)"#,
-        r#"new\s+(?:PickaxeItem|AxeItem|HoeItem|ShovelItem)\(\s*ToolMaterial\.([A-Z_]+)"#,
-    ] {
-        if let Some(material) = optional_capture(pattern, expression)? {
-            return Ok(Some(material));
+fn tool_material_for_durability(expression: &ItemSourceExpression) -> Result<Option<String>> {
+    for name in ["sword", "pickaxe", "axe", "hoe", "shovel", "spear"] {
+        if let Some(material) = call_field_argument(expression, name, 0, "ToolMaterial") {
+            return Ok(Some(material.to_string()));
+        }
+    }
+    for name in ["PickaxeItem", "AxeItem", "HoeItem", "ShovelItem"] {
+        if let Some(material) = creation_field_argument(expression, name, 0, "ToolMaterial") {
+            return Ok(Some(material.to_string()));
         }
     }
     Ok(None)
@@ -1056,43 +1164,51 @@ fn tool_material_durability(material: &str) -> Result<i32> {
 /// declaration. Vanilla `ArmorMaterials.<MAT>` carries `EquipmentAssets.<MAT>`, whose id is the
 /// lowercased material name (`CHAINMAIL` → `chainmail`, `TURTLE_SCUTE` → `turtle_scute`), so the asset
 /// is the material captured by [`humanoid_armor_material_and_type`] lowercased.
-fn humanoid_armor_asset_for_declaration(expression: &str) -> Result<Option<String>> {
+fn humanoid_armor_asset_for_declaration(
+    expression: &ItemSourceExpression,
+) -> Result<Option<String>> {
     Ok(humanoid_armor_material_and_type(expression)?
         .map(|(material, _armor_type)| material.to_lowercase()))
 }
 
-fn explicit_equippable_asset_for_declaration(expression: &str) -> Result<Option<String>> {
-    Ok(optional_capture(
-        r#"\.setAsset\(\s*EquipmentAssets\.([A-Z_]+)\s*\)"#,
-        expression,
-    )?
-    .map(|asset| asset.to_lowercase()))
+fn explicit_equippable_asset_for_declaration(
+    expression: &ItemSourceExpression,
+) -> Result<Option<String>> {
+    Ok(call_field_argument(expression, "setAsset", 0, "EquipmentAssets").map(str::to_lowercase))
 }
 
-fn wolf_armor_asset_for_declaration(expression: &str) -> Result<Option<String>> {
-    Ok(
-        optional_capture(r#"\.wolfArmor\(\s*ArmorMaterials\.([A-Z_]+)"#, expression)?
-            .map(|asset| asset.to_lowercase()),
-    )
+fn wolf_armor_asset_for_declaration(expression: &ItemSourceExpression) -> Result<Option<String>> {
+    Ok(call_field_argument(expression, "wolfArmor", 0, "ArmorMaterials").map(str::to_lowercase))
 }
 
-fn humanoid_armor_material_and_type(expression: &str) -> Result<Option<(String, String)>> {
-    let regex =
-        Regex::new(r#"\.humanoidArmor\(\s*ArmorMaterials\.([A-Z_]+)\s*,\s*ArmorType\.([A-Z_]+)"#)?;
-    Ok(regex.captures(expression).map(|capture| {
-        (
-            capture.get(1).unwrap().as_str().to_string(),
-            capture.get(2).unwrap().as_str().to_string(),
-        )
-    }))
+fn humanoid_armor_material_and_type(
+    expression: &ItemSourceExpression,
+) -> Result<Option<(String, String)>> {
+    let Some(call) = expression.call("humanoidArmor") else {
+        return Ok(None);
+    };
+    let Some(material) = call
+        .arguments
+        .first()
+        .and_then(|argument| argument.field_constant("ArmorMaterials"))
+    else {
+        bail!("humanoidArmor declaration lacks ArmorMaterials argument");
+    };
+    let Some(armor_type) = call
+        .arguments
+        .get(1)
+        .and_then(|argument| argument.field_constant("ArmorType"))
+    else {
+        bail!("humanoidArmor declaration lacks ArmorType argument");
+    };
+    Ok(Some((material.to_string(), armor_type.to_string())))
 }
 
-fn mount_body_armor_asset_for_declaration(expression: &str) -> Result<Option<String>> {
-    for pattern in [
-        r#"\.horseArmor\(\s*ArmorMaterials\.([A-Z_]+)"#,
-        r#"\.nautilusArmor\(\s*ArmorMaterials\.([A-Z_]+)"#,
-    ] {
-        if let Some(material) = optional_capture(pattern, expression)? {
+fn mount_body_armor_asset_for_declaration(
+    expression: &ItemSourceExpression,
+) -> Result<Option<String>> {
+    for name in ["horseArmor", "nautilusArmor"] {
+        if let Some(material) = call_field_argument(expression, name, 0, "ArmorMaterials") {
             return Ok(Some(material.to_lowercase()));
         }
     }
@@ -1123,28 +1239,32 @@ fn armor_type_unit_durability(armor_type: &str) -> Result<i32> {
     }
 }
 
-fn max_stack_size_for_declaration(expression: &str) -> Result<i32> {
-    let stack_size = optional_capture(r#"\.stacksTo\(\s*([0-9]+)\s*\)"#, expression)?
-        .map(|value| value.parse())
-        .transpose()?;
+fn max_stack_size_for_declaration(expression: &ItemSourceExpression) -> Result<i32> {
+    let stack_size = call_integer_argument(expression, "stacksTo", 0)?;
     if let Some(stack_size) = stack_size {
         return Ok(stack_size);
     }
 
-    if expression.contains(".durability(")
-        || expression.contains(".sword(")
-        || expression.contains(".pickaxe(")
-        || expression.contains(".axe(")
-        || expression.contains(".hoe(")
-        || expression.contains(".shovel(")
-        || expression.contains("AxeItem(")
-        || expression.contains("HoeItem(")
-        || expression.contains("ShovelItem(")
-        || expression.contains(".spear(")
-        || expression.contains(".humanoidArmor(")
-        || expression.contains(".wolfArmor(")
-        || expression.contains(".horseArmor(")
-        || expression.contains(".nautilusArmor(")
+    if [
+        "durability",
+        "sword",
+        "pickaxe",
+        "axe",
+        "hoe",
+        "shovel",
+        "spear",
+        "humanoidArmor",
+        "wolfArmor",
+        "horseArmor",
+        "nautilusArmor",
+    ]
+    .iter()
+    .any(|name| expression.call(name).is_some())
+        || ["AxeItem", "HoeItem", "ShovelItem"].iter().any(|name| {
+            expression
+                .creations()
+                .any(|creation| creation.name.as_deref() == Some(name))
+        })
     {
         return Ok(1);
     }
@@ -1152,56 +1272,55 @@ fn max_stack_size_for_declaration(expression: &str) -> Result<i32> {
     Ok(64)
 }
 
-fn equipment_slot_for_declaration(expression: &str) -> Result<Option<ItemEquipmentSlot>> {
-    if expression.contains("Equippable.saddle()") {
+fn equipment_slot_for_declaration(
+    expression: &ItemSourceExpression,
+) -> Result<Option<ItemEquipmentSlot>> {
+    if qualified_call(expression, "saddle", "Equippable").is_some() {
         return Ok(Some(ItemEquipmentSlot::Saddle));
     }
-    if expression.contains(".horseArmor(")
-        || expression.contains(".nautilusArmor(")
-        || expression.contains(".wolfArmor(")
-        || expression.contains("Equippable.llamaSwag(")
+    if expression.call("horseArmor").is_some()
+        || expression.call("nautilusArmor").is_some()
+        || expression.call("wolfArmor").is_some()
+        || qualified_call(expression, "llamaSwag", "Equippable").is_some()
     {
         return Ok(Some(ItemEquipmentSlot::Body));
     }
 
-    for pattern in [
-        r#"Equippable\.builder\(\s*EquipmentSlot\.([A-Z_]+)\s*\)"#,
-        r#"\.equippableUnswappable\(\s*EquipmentSlot\.([A-Z_]+)\s*\)"#,
-        r#"\.equippable\(\s*EquipmentSlot\.([A-Z_]+)\s*\)"#,
-    ] {
-        if let Some(slot) = optional_capture(pattern, expression)? {
-            return equipment_slot_from_name(&slot).map(Some);
+    for name in ["builder", "equippableUnswappable", "equippable"] {
+        if let Some(slot) = call_field_argument(expression, name, 0, "EquipmentSlot") {
+            return equipment_slot_from_name(slot).map(Some);
         }
     }
 
-    if let Some(armor_type) = optional_capture(
-        r#"(?s)\.humanoidArmor\(\s*.*?,\s*ArmorType\.([A-Z_]+)\s*\)"#,
-        expression,
-    )? {
+    if let Some((_, armor_type)) = humanoid_armor_material_and_type(expression)? {
         return armor_type_equipment_slot(&armor_type).map(Some);
     }
 
     Ok(None)
 }
 
-fn mount_body_armor_kind_for_declaration(expression: &str) -> Option<ItemMountBodyArmorKind> {
-    if expression.contains(".horseArmor(") {
+fn mount_body_armor_kind_for_declaration(
+    expression: &ItemSourceExpression,
+) -> Option<ItemMountBodyArmorKind> {
+    if expression.call("horseArmor").is_some() {
         Some(ItemMountBodyArmorKind::Horse)
-    } else if expression.contains("Equippable.llamaSwag(") {
+    } else if qualified_call(expression, "llamaSwag", "Equippable").is_some() {
         Some(ItemMountBodyArmorKind::Llama)
-    } else if expression.contains(".nautilusArmor(") {
+    } else if expression.call("nautilusArmor").is_some() {
         Some(ItemMountBodyArmorKind::Nautilus)
     } else {
         None
     }
 }
 
-fn default_piercing_weapon_for_declaration(expression: &str) -> bool {
-    expression.contains(".spear(")
+fn default_piercing_weapon_for_declaration(expression: &ItemSourceExpression) -> bool {
+    expression.call("spear").is_some()
 }
 
-fn default_attack_range_for_declaration(expression: &str) -> Result<Option<ItemAttackRange>> {
-    if expression.contains(".spear(") {
+fn default_attack_range_for_declaration(
+    expression: &ItemSourceExpression,
+) -> Result<Option<ItemAttackRange>> {
+    if expression.call("spear").is_some() {
         return Ok(Some(ItemAttackRange {
             min_reach: 2.0,
             max_reach: 4.5,
@@ -1212,101 +1331,132 @@ fn default_attack_range_for_declaration(expression: &str) -> Result<Option<ItemA
         }));
     }
 
-    let float = r#"-?[0-9]+(?:\.[0-9]+)?F?"#;
-    let pattern = format!(
-        r#"(?s)\.component\(\s*DataComponents\.ATTACK_RANGE\s*,\s*new\s+AttackRange\(\s*({float})\s*,\s*({float})\s*,\s*({float})\s*,\s*({float})\s*,\s*({float})\s*,\s*({float})\s*\)\s*\)"#
-    );
-    let regex = Regex::new(&pattern)?;
-    let Some(capture) = regex.captures(expression) else {
+    let Some(value) = component_value(expression, "ATTACK_RANGE") else {
         return Ok(None);
     };
+    let Some(creation) = value
+        .creations()
+        .find(|creation| creation.name.as_deref() == Some("AttackRange"))
+    else {
+        bail!("ATTACK_RANGE component lacks AttackRange constructor");
+    };
+    if creation.arguments.len() != 6 {
+        bail!("AttackRange constructor must have six arguments");
+    }
     Ok(Some(ItemAttackRange {
-        min_reach: parse_java_float_literal(capture.get(1).unwrap().as_str())?,
-        max_reach: parse_java_float_literal(capture.get(2).unwrap().as_str())?,
-        min_creative_reach: parse_java_float_literal(capture.get(3).unwrap().as_str())?,
-        max_creative_reach: parse_java_float_literal(capture.get(4).unwrap().as_str())?,
-        hitbox_margin: parse_java_float_literal(capture.get(5).unwrap().as_str())?,
-        mob_factor: parse_java_float_literal(capture.get(6).unwrap().as_str())?,
+        min_reach: parse_java_float_literal(&creation.arguments[0].canonical)?,
+        max_reach: parse_java_float_literal(&creation.arguments[1].canonical)?,
+        min_creative_reach: parse_java_float_literal(&creation.arguments[2].canonical)?,
+        max_creative_reach: parse_java_float_literal(&creation.arguments[3].canonical)?,
+        hitbox_margin: parse_java_float_literal(&creation.arguments[4].canonical)?,
+        mob_factor: parse_java_float_literal(&creation.arguments[5].canonical)?,
     }))
 }
 
-fn default_swing_animation_duration_for_declaration(expression: &str) -> Result<Option<i32>> {
+fn default_swing_animation_duration_for_declaration(
+    expression: &ItemSourceExpression,
+) -> Result<Option<i32>> {
     if let Some(attack_duration) = spear_attack_duration_for_declaration(expression)? {
         return Ok(Some((attack_duration * 20.0) as i32));
     }
 
-    let float = r#"-?[0-9]+(?:\.[0-9]+)?F?"#;
-    let direct_duration = r#"(-?[0-9]+)"#;
-    let seconds_duration = format!(r#"\(int\)\s*\(\s*({float})\s*\*\s*20\.0F\s*\)"#);
-    let pattern = format!(
-        r#"(?s)\.component\(\s*DataComponents\.SWING_ANIMATION\s*,\s*new\s+SwingAnimation\(\s*SwingAnimationType\.[A-Z_]+\s*,\s*(?:{direct_duration}|{seconds_duration})\s*\)\s*\)"#
-    );
-    let regex = Regex::new(&pattern)?;
-    let Some(capture) = regex.captures(expression) else {
+    let Some(value) = component_value(expression, "SWING_ANIMATION") else {
         return Ok(None);
     };
-    if let Some(duration) = capture.get(1) {
-        return Ok(Some(duration.as_str().parse()?));
+    let Some(creation) = value
+        .creations()
+        .find(|creation| creation.name.as_deref() == Some("SwingAnimation"))
+    else {
+        bail!("SWING_ANIMATION component lacks SwingAnimation constructor");
+    };
+    let duration = creation
+        .arguments
+        .get(1)
+        .ok_or_else(|| anyhow::anyhow!("SwingAnimation constructor lacks duration"))?;
+    if duration.kind == "decimal_integer_literal" {
+        return Ok(Some(duration.canonical.parse()?));
     }
-    let Some(seconds) = capture.get(2) else {
-        return Ok(None);
-    };
+    let numbers = duration
+        .children
+        .iter()
+        .flat_map(|child| child.children.iter().chain(std::iter::once(child)))
+        .filter(|child| child.kind == "decimal_floating_point_literal")
+        .collect::<Vec<_>>();
+    let seconds = numbers
+        .iter()
+        .find(|number| number.canonical.trim_end_matches('F') != "20.0")
+        .ok_or_else(|| {
+            anyhow::anyhow!("unsupported SwingAnimation duration {}", duration.canonical)
+        })?;
     Ok(Some(
-        (parse_java_float_literal(seconds.as_str())? * 20.0) as i32,
+        (parse_java_float_literal(&seconds.canonical)? * 20.0) as i32,
     ))
 }
 
 fn default_attribute_modifiers_for_declaration(
-    expression: &str,
+    expression: &ItemSourceExpression,
 ) -> Result<Vec<ItemDefaultAttributeModifier>> {
     if let Some((material, armor_type)) = humanoid_armor_material_and_type(expression)? {
         return armor_default_attribute_modifiers(&material, &armor_type);
     }
-    for pattern in [
-        r#"\.wolfArmor\(\s*ArmorMaterials\.([A-Z_]+)"#,
-        r#"\.horseArmor\(\s*ArmorMaterials\.([A-Z_]+)"#,
-        r#"\.nautilusArmor\(\s*ArmorMaterials\.([A-Z_]+)"#,
-    ] {
-        if let Some(material) = optional_capture(pattern, expression)? {
-            return armor_default_attribute_modifiers(&material, "BODY");
+    for name in ["wolfArmor", "horseArmor", "nautilusArmor"] {
+        if let Some(material) = call_field_argument(expression, name, 0, "ArmorMaterials") {
+            return armor_default_attribute_modifiers(material, "BODY");
         }
     }
-    if expression.contains(".attributes(MaceItem.createAttributes())") {
+    if call_has_qualified_call_argument(expression, "attributes", 0, "MaceItem", "createAttributes")
+    {
         return Ok(attribute_modifier_entries(5.0, f64::from(-3.4_f32)));
     }
-    if expression.contains(".attributes(TridentItem.createAttributes())") {
+    if call_has_qualified_call_argument(
+        expression,
+        "attributes",
+        0,
+        "TridentItem",
+        "createAttributes",
+    ) {
         return Ok(attribute_modifier_entries(8.0, f64::from(-2.9_f32)));
     }
 
-    let float = r#"-?[0-9]+(?:\.[0-9]+)?F?"#;
-    let properties_pattern = format!(
-        r#"(?s)\.(?:sword|pickaxe|axe|hoe|shovel)\(\s*ToolMaterial\.([A-Z_]+)\s*,\s*({float})\s*,\s*({float})\s*\)"#
-    );
-    let properties_regex = Regex::new(&properties_pattern)?;
-    if let Some(capture) = properties_regex.captures(expression) {
-        let material = capture.get(1).unwrap().as_str();
-        let attack_damage_baseline = parse_java_float_literal(capture.get(2).unwrap().as_str())?;
-        let attack_speed_baseline = parse_java_float_literal(capture.get(3).unwrap().as_str())?;
-        return tool_default_attribute_modifiers(
-            material,
-            attack_damage_baseline,
-            attack_speed_baseline,
-        );
+    for name in ["sword", "pickaxe", "axe", "hoe", "shovel"] {
+        if let Some(call) = expression.call(name) {
+            if let Some(material) = call
+                .arguments
+                .first()
+                .and_then(|argument| argument.field_constant("ToolMaterial"))
+            {
+                if call.arguments.len() < 3 {
+                    bail!("{name} declaration lacks attribute arguments");
+                }
+                return tool_default_attribute_modifiers(
+                    material,
+                    parse_java_float_literal(&call.arguments[1].canonical)?,
+                    parse_java_float_literal(&call.arguments[2].canonical)?,
+                );
+            }
+        }
     }
 
-    let constructor_pattern = format!(
-        r#"(?s)new\s+(?:PickaxeItem|AxeItem|HoeItem|ShovelItem)\(\s*ToolMaterial\.([A-Z_]+)\s*,\s*({float})\s*,\s*({float})\s*,\s*p\s*\)"#
-    );
-    let constructor_regex = Regex::new(&constructor_pattern)?;
-    if let Some(capture) = constructor_regex.captures(expression) {
-        let material = capture.get(1).unwrap().as_str();
-        let attack_damage_baseline = parse_java_float_literal(capture.get(2).unwrap().as_str())?;
-        let attack_speed_baseline = parse_java_float_literal(capture.get(3).unwrap().as_str())?;
-        return tool_default_attribute_modifiers(
-            material,
-            attack_damage_baseline,
-            attack_speed_baseline,
-        );
+    for name in ["PickaxeItem", "AxeItem", "HoeItem", "ShovelItem"] {
+        if let Some(creation) = expression
+            .creations()
+            .find(|creation| creation.name.as_deref() == Some(name))
+        {
+            if let Some(material) = creation
+                .arguments
+                .first()
+                .and_then(|argument| argument.field_constant("ToolMaterial"))
+            {
+                if creation.arguments.len() < 3 {
+                    bail!("{name} declaration lacks attribute arguments");
+                }
+                return tool_default_attribute_modifiers(
+                    material,
+                    parse_java_float_literal(&creation.arguments[1].canonical)?,
+                    parse_java_float_literal(&creation.arguments[2].canonical)?,
+                );
+            }
+        }
     }
 
     if let Some((material, attack_duration)) = spear_material_and_attack_duration(expression)? {
@@ -1452,28 +1602,35 @@ fn attribute_modifier_entries(
     ]
 }
 
-fn spear_attack_duration_for_declaration(expression: &str) -> Result<Option<f32>> {
-    let float = r#"-?[0-9]+(?:\.[0-9]+)?F?"#;
-    let pattern = format!(r#"(?s)\.spear\(\s*ToolMaterial\.[A-Z_]+\s*,\s*({float})"#);
-    let regex = Regex::new(&pattern)?;
-    let Some(capture) = regex.captures(expression) else {
+fn spear_attack_duration_for_declaration(expression: &ItemSourceExpression) -> Result<Option<f32>> {
+    let Some(call) = expression.call("spear") else {
         return Ok(None);
     };
-    Ok(Some(parse_java_float_literal(
-        capture.get(1).unwrap().as_str(),
-    )?))
+    let argument = call
+        .arguments
+        .get(1)
+        .ok_or_else(|| anyhow::anyhow!("spear declaration lacks attack duration"))?;
+    Ok(Some(parse_java_float_literal(&argument.canonical)?))
 }
 
-fn spear_material_and_attack_duration(expression: &str) -> Result<Option<(String, f32)>> {
-    let float = r#"-?[0-9]+(?:\.[0-9]+)?F?"#;
-    let pattern = format!(r#"(?s)\.spear\(\s*ToolMaterial\.([A-Z_]+)\s*,\s*({float})"#);
-    let regex = Regex::new(&pattern)?;
-    let Some(capture) = regex.captures(expression) else {
+fn spear_material_and_attack_duration(
+    expression: &ItemSourceExpression,
+) -> Result<Option<(String, f32)>> {
+    let Some(call) = expression.call("spear") else {
         return Ok(None);
     };
+    let material = call
+        .arguments
+        .first()
+        .and_then(|argument| argument.field_constant("ToolMaterial"))
+        .ok_or_else(|| anyhow::anyhow!("spear declaration lacks ToolMaterial"))?;
+    let duration = call
+        .arguments
+        .get(1)
+        .ok_or_else(|| anyhow::anyhow!("spear declaration lacks attack duration"))?;
     Ok(Some((
-        capture.get(1).unwrap().as_str().to_string(),
-        parse_java_float_literal(capture.get(2).unwrap().as_str())?,
+        material.to_string(),
+        parse_java_float_literal(&duration.canonical)?,
     )))
 }
 
@@ -1488,8 +1645,10 @@ fn material_attack_damage_bonus(material: &str) -> Result<f32> {
     }
 }
 
-fn default_use_effects_for_declaration(expression: &str) -> Result<Option<ItemUseEffects>> {
-    if expression.contains(".spear(") {
+fn default_use_effects_for_declaration(
+    expression: &ItemSourceExpression,
+) -> Result<Option<ItemUseEffects>> {
+    if expression.call("spear").is_some() {
         return Ok(Some(ItemUseEffects {
             can_sprint: true,
             interact_vibrations: false,
@@ -1497,36 +1656,41 @@ fn default_use_effects_for_declaration(expression: &str) -> Result<Option<ItemUs
         }));
     }
 
-    let bool = r#"(true|false)"#;
-    let float = r#"-?[0-9]+(?:\.[0-9]+)?F?"#;
-    let pattern = format!(
-        r#"(?s)\.component\(\s*DataComponents\.USE_EFFECTS\s*,\s*new\s+UseEffects\(\s*{bool}\s*,\s*{bool}\s*,\s*({float})\s*\)\s*\)"#
-    );
-    let regex = Regex::new(&pattern)?;
-    let Some(capture) = regex.captures(expression) else {
+    let Some(value) = component_value(expression, "USE_EFFECTS") else {
         return Ok(None);
     };
+    let Some(creation) = value
+        .creations()
+        .find(|creation| creation.name.as_deref() == Some("UseEffects"))
+    else {
+        bail!("USE_EFFECTS component lacks UseEffects constructor");
+    };
+    if creation.arguments.len() != 3 {
+        bail!("UseEffects constructor must have three arguments");
+    }
     Ok(Some(ItemUseEffects {
-        can_sprint: parse_java_bool_literal(capture.get(1).unwrap().as_str())?,
-        interact_vibrations: parse_java_bool_literal(capture.get(2).unwrap().as_str())?,
-        speed_multiplier: parse_java_float_literal(capture.get(3).unwrap().as_str())?,
+        can_sprint: parse_java_bool_literal(&creation.arguments[0].canonical)?,
+        interact_vibrations: parse_java_bool_literal(&creation.arguments[1].canonical)?,
+        speed_multiplier: parse_java_float_literal(&creation.arguments[2].canonical)?,
     }))
 }
 
-fn default_consumable_for_declaration(expression: &str) -> Result<Option<ItemConsumable>> {
-    if let Some(name) = optional_capture(
-        r#"\.component\(\s*DataComponents\.CONSUMABLE\s*,\s*Consumables\.([A-Z0-9_]+)"#,
-        expression,
-    )? {
-        return consumable_for_name(&name).map(Some);
+fn default_consumable_for_declaration(
+    expression: &ItemSourceExpression,
+) -> Result<Option<ItemConsumable>> {
+    if let Some(value) = component_value(expression, "CONSUMABLE") {
+        if let Some(name) = value.field_constant("Consumables") {
+            return consumable_for_name(name).map(Some);
+        }
     }
-    if let Some(name) = optional_capture(
-        r#"\.food\(\s*Foods\.[A-Z0-9_]+\s*,\s*Consumables\.([A-Z0-9_]+)"#,
-        expression,
-    )? {
-        return consumable_for_name(&name).map(Some);
+    if let Some(name) = expression
+        .call("food")
+        .and_then(|call| call.arguments.get(1))
+        .and_then(|argument| argument.field_constant("Consumables"))
+    {
+        return consumable_for_name(name).map(Some);
     }
-    if expression.contains(".food(") {
+    if expression.call("food").is_some() {
         return Ok(Some(ItemConsumable {
             consume_seconds: 1.6,
             animation: ItemUseAnimation::Eat,
@@ -1567,23 +1731,25 @@ fn consumable_for_name(name: &str) -> Result<ItemConsumable> {
 }
 
 fn crafting_remainder_for_declaration(
-    expression: &str,
+    expression: &ItemSourceExpression,
     item_id_constants: &BTreeMap<String, String>,
 ) -> Result<Option<String>> {
-    let Some(item_field) =
-        optional_capture(r#"\.craftRemainder\(\s*([A-Z0-9_]+)\s*\)"#, expression)?
+    let Some(item_field) = expression
+        .call("craftRemainder")
+        .and_then(|call| call.arguments.first())
+        .map(|argument| argument.canonical.as_str())
     else {
         return Ok(None);
     };
     let name = item_id_constants
-        .get(&item_field)
+        .get(item_field)
         .cloned()
         .unwrap_or_else(|| item_field.to_ascii_lowercase());
     minecraft_id(&name).map(Some)
 }
 
 fn mining_profile_for_declaration(
-    expression: &str,
+    expression: &ItemSourceExpression,
     block_tags: Option<&TagCatalog>,
 ) -> Result<Option<ItemMiningProfile>> {
     let Some(block_tags) = block_tags else {
@@ -1609,7 +1775,7 @@ fn mining_profile_for_declaration(
         return Ok(non_empty_mining_profile(rules));
     }
 
-    if expression.contains(".sword(") {
+    if expression.call("sword").is_some() {
         let mut rules = Vec::new();
         push_direct_rule(&mut rules, ["minecraft:cobweb"], Some(15_000), Some(true));
         push_tag_rule(
@@ -1629,7 +1795,7 @@ fn mining_profile_for_declaration(
         return Ok(non_empty_mining_profile(rules));
     }
 
-    if expression.contains("ShearsItem.createToolProperties()") {
+    if qualified_call(expression, "createToolProperties", "ShearsItem").is_some() {
         let mut rules = Vec::new();
         push_direct_rule(&mut rules, ["minecraft:cobweb"], Some(15_000), Some(true));
         push_tag_rule(
@@ -1652,41 +1818,22 @@ fn mining_profile_for_declaration(
     Ok(None)
 }
 
-fn tool_mining_tag_and_material(expression: &str) -> Result<Option<(&'static str, String)>> {
-    for (tag_id, patterns) in [
-        (
-            "minecraft:mineable/pickaxe",
-            [
-                r#"\.pickaxe\(\s*ToolMaterial\.([A-Z_]+)"#,
-                r#"new\s+PickaxeItem\(\s*ToolMaterial\.([A-Z_]+)"#,
-            ],
-        ),
-        (
-            "minecraft:mineable/axe",
-            [
-                r#"\.axe\(\s*ToolMaterial\.([A-Z_]+)"#,
-                r#"new\s+AxeItem\(\s*ToolMaterial\.([A-Z_]+)"#,
-            ],
-        ),
-        (
-            "minecraft:mineable/hoe",
-            [
-                r#"\.hoe\(\s*ToolMaterial\.([A-Z_]+)"#,
-                r#"new\s+HoeItem\(\s*ToolMaterial\.([A-Z_]+)"#,
-            ],
-        ),
-        (
-            "minecraft:mineable/shovel",
-            [
-                r#"\.shovel\(\s*ToolMaterial\.([A-Z_]+)"#,
-                r#"new\s+ShovelItem\(\s*ToolMaterial\.([A-Z_]+)"#,
-            ],
-        ),
+fn tool_mining_tag_and_material(
+    expression: &ItemSourceExpression,
+) -> Result<Option<(&'static str, String)>> {
+    for (tag_id, call_name, creation_name) in [
+        ("minecraft:mineable/pickaxe", "pickaxe", "PickaxeItem"),
+        ("minecraft:mineable/axe", "axe", "AxeItem"),
+        ("minecraft:mineable/hoe", "hoe", "HoeItem"),
+        ("minecraft:mineable/shovel", "shovel", "ShovelItem"),
     ] {
-        for pattern in patterns {
-            if let Some(material) = optional_capture(pattern, expression)? {
-                return Ok(Some((tag_id, material)));
-            }
+        if let Some(material) = call_field_argument(expression, call_name, 0, "ToolMaterial") {
+            return Ok(Some((tag_id, material.to_string())));
+        }
+        if let Some(material) =
+            creation_field_argument(expression, creation_name, 0, "ToolMaterial")
+        {
+            return Ok(Some((tag_id, material.to_string())));
         }
     }
     Ok(None)
@@ -1783,21 +1930,117 @@ fn armor_type_equipment_slot(name: &str) -> Result<ItemEquipmentSlot> {
     }
 }
 
-fn required_capture(pattern: &str, expression: &str, field: &str) -> Result<String> {
-    optional_capture(pattern, expression)?
-        .ok_or_else(|| anyhow::anyhow!("unsupported item registry declaration {field}"))
+fn qualified_call<'a>(
+    expression: &'a ItemSourceExpression,
+    name: &str,
+    qualifier: &str,
+) -> Option<&'a ItemSourceExpression> {
+    expression.calls().find(|call| {
+        call.name.as_deref() == Some(name)
+            && call
+                .object
+                .as_deref()
+                .map(|object| object.canonical.as_str())
+                == Some(qualifier)
+    })
 }
 
-fn optional_capture(pattern: &str, expression: &str) -> Result<Option<String>> {
-    let regex = Regex::new(pattern)?;
-    Ok(regex
-        .captures(expression)
-        .and_then(|capture| capture.get(1))
-        .map(|capture| capture.as_str().to_string()))
+fn call_field_argument<'a>(
+    expression: &'a ItemSourceExpression,
+    call_name: &str,
+    argument_index: usize,
+    owner: &str,
+) -> Option<&'a str> {
+    expression
+        .calls()
+        .find(|call| {
+            call.name.as_deref() == Some(call_name)
+                && call
+                    .arguments
+                    .get(argument_index)
+                    .and_then(|argument| argument.field_constant(owner))
+                    .is_some()
+        })
+        .and_then(|call| call.arguments[argument_index].field_constant(owner))
+}
+
+fn creation_field_argument<'a>(
+    expression: &'a ItemSourceExpression,
+    creation_name: &str,
+    argument_index: usize,
+    owner: &str,
+) -> Option<&'a str> {
+    expression
+        .creations()
+        .find(|creation| {
+            creation.name.as_deref() == Some(creation_name)
+                && creation
+                    .arguments
+                    .get(argument_index)
+                    .and_then(|argument| argument.field_constant(owner))
+                    .is_some()
+        })
+        .and_then(|creation| creation.arguments[argument_index].field_constant(owner))
+}
+
+fn call_integer_argument(
+    expression: &ItemSourceExpression,
+    call_name: &str,
+    argument_index: usize,
+) -> Result<Option<i32>> {
+    expression
+        .call(call_name)
+        .and_then(|call| call.arguments.get(argument_index))
+        .map(|argument| argument.canonical.parse())
+        .transpose()
+        .map_err(Into::into)
+}
+
+fn component_value<'a>(
+    expression: &'a ItemSourceExpression,
+    component_name: &str,
+) -> Option<&'a ItemSourceExpression> {
+    expression
+        .calls()
+        .find(|call| {
+            call.name.as_deref() == Some("component")
+                && call
+                    .arguments
+                    .first()
+                    .and_then(|argument| argument.field_constant("DataComponents"))
+                    == Some(component_name)
+        })
+        .and_then(|call| call.arguments.get(1))
+}
+
+fn call_has_qualified_call_argument(
+    expression: &ItemSourceExpression,
+    call_name: &str,
+    argument_index: usize,
+    qualifier: &str,
+    argument_call_name: &str,
+) -> bool {
+    expression.calls().any(|call| {
+        call.name.as_deref() == Some(call_name)
+            && call.arguments.get(argument_index).is_some_and(|argument| {
+                argument.name.as_deref() == Some(argument_call_name)
+                    && argument
+                        .object
+                        .as_deref()
+                        .map(|object| object.canonical.as_str())
+                        == Some(qualifier)
+            })
+    })
 }
 
 fn parse_java_float_literal(value: &str) -> Result<f32> {
-    value.trim_end_matches('F').parse().map_err(Into::into)
+    value
+        .chars()
+        .filter(|character| !character.is_ascii_whitespace() && *character != '_')
+        .collect::<String>()
+        .trim_end_matches('F')
+        .parse()
+        .map_err(Into::into)
 }
 
 fn parse_java_bool_literal(value: &str) -> Result<bool> {
@@ -1815,1019 +2058,12 @@ fn minecraft_id(path: &str) -> Result<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::{
-        fs,
-        path::PathBuf,
-        sync::atomic::{AtomicU64, Ordering},
-        time::{SystemTime, UNIX_EPOCH},
-    };
-
-    static NEXT_TEMP_DIR_ID: AtomicU64 = AtomicU64::new(0);
 
     #[test]
-    fn item_registry_catalog_parses_items_java_registration_order() {
-        let mut constants = BTreeMap::new();
-        constants.insert("PUMPKIN_SEEDS".to_string(), "pumpkin_seeds".to_string());
-        let source = r#"
-            public class Items {
-               public static final Item AIR = registerBlock(Blocks.AIR, AirItem::new);
-               public static final Item DRY_SHORT_GRASS = registerBlock(Blocks.SHORT_DRY_GRASS);
-               public static final Item TRIAL_KEY = registerItem("trial_key");
-               public static final Item OMINOUS_BOTTLE = registerItem(
-                  "ominous_bottle",
-                  new Item.Properties().rarity(Rarity.UNCOMMON)
-               );
-               public static final Item PUMPKIN_SEEDS = registerItem(ItemIds.PUMPKIN_SEEDS, createBlockItemWithCustomItemName(Blocks.PUMPKIN_STEM));
-               public static final Item CREEPER_SPAWN_EGG = registerSpawnEgg(EntityType.CREEPER);
-               public static final WeatheringCopperItems COPPER_BARS = WeatheringCopperItems.create(Blocks.COPPER_BARS, Items::registerBlock);
-               public static final Item ELYTRA = registerItem("elytra", Item::new, new Item.Properties().durability(432));
-               public static final Item ENDER_PEARL = registerItem("ender_pearl", EnderpearlItem::new, new Item.Properties().stacksTo(16));
-               public static final Item IRON_SWORD = registerItem("iron_sword", new Item.Properties().sword(ToolMaterial.IRON, 3.0F, -2.4F));
-            }
-        "#;
-
-        let catalog = ItemRegistryCatalog::from_items_java_source(source, &constants).unwrap();
-
-        assert_eq!(catalog.len(), 17);
-        assert_eq!(catalog.resource_id(0), Some("minecraft:air"));
-        assert_eq!(catalog.resource_id(1), Some("minecraft:short_dry_grass"));
-        assert_eq!(catalog.resource_id(2), Some("minecraft:trial_key"));
-        assert_eq!(catalog.resource_id(3), Some("minecraft:ominous_bottle"));
-        assert_eq!(catalog.resource_id(4), Some("minecraft:pumpkin_seeds"));
-        assert_eq!(catalog.resource_id(5), Some("minecraft:creeper_spawn_egg"));
-        assert_eq!(catalog.resource_id(6), Some("minecraft:copper_bars"));
-        assert_eq!(
-            catalog.resource_id(13),
-            Some("minecraft:waxed_oxidized_copper_bars")
-        );
-        assert_eq!(catalog.resource_id(14), Some("minecraft:elytra"));
-        assert_eq!(catalog.resource_id(15), Some("minecraft:ender_pearl"));
-        assert_eq!(catalog.resource_id(16), Some("minecraft:iron_sword"));
-        assert!(catalog.is_block_item("minecraft:air"));
-        assert!(catalog.is_block_item("minecraft:waxed_oxidized_copper_bars"));
-        assert!(catalog.is_block_item("minecraft:pumpkin_seeds"));
-        assert!(catalog.is_spawn_egg_item("minecraft:creeper_spawn_egg"));
-        assert!(!catalog.is_spawn_egg_item("minecraft:trial_key"));
-        assert_eq!(catalog.protocol_id("trial_key"), Some(2));
-        assert_eq!(catalog.protocol_id("minecraft:ominous_bottle"), Some(3));
-        assert_eq!(catalog.protocol_id("minecraft:pumpkin_seeds"), Some(4));
-        assert_eq!(catalog.protocol_id("minecraft:missing_item"), None);
-        assert_eq!(catalog.max_damage("minecraft:elytra"), Some(432));
-        assert_eq!(catalog.max_damage("minecraft:iron_sword"), Some(250));
-        assert_eq!(catalog.max_damage("minecraft:trial_key"), None);
-        assert_eq!(catalog.max_damage_protocol_ids(), BTreeSet::from([14, 16]));
-        assert_eq!(catalog.max_stack_size("minecraft:trial_key"), Some(64));
-        assert_eq!(catalog.max_stack_size("minecraft:elytra"), Some(1));
-        assert_eq!(catalog.max_stack_size("minecraft:ender_pearl"), Some(16));
-        assert_eq!(catalog.max_stack_size("minecraft:iron_sword"), Some(1));
-        assert_eq!(
-            catalog.default_item_name_translation_key("minecraft:air"),
-            Some("block.minecraft.air")
-        );
-        assert_eq!(
-            catalog.default_item_name_translation_key("minecraft:short_dry_grass"),
-            Some("block.minecraft.short_dry_grass")
-        );
-        assert_eq!(
-            catalog.default_item_name_translation_key("minecraft:trial_key"),
-            Some("item.minecraft.trial_key")
-        );
-        assert_eq!(
-            catalog.default_item_name_translation_key("minecraft:pumpkin_seeds"),
-            Some("item.minecraft.pumpkin_seeds")
-        );
-        assert_eq!(
-            catalog.default_item_name_translation_key("minecraft:waxed_oxidized_copper_bars"),
-            Some("block.minecraft.waxed_oxidized_copper_bars")
-        );
-        assert_eq!(catalog.resource_id(-1), None);
-    }
-
-    #[test]
-    fn item_registry_catalog_parses_default_component_type_ids() {
-        let source = r#"
-            public class Items {
-               public static final Item STICK = registerItem("stick");
-               public static final Item ELYTRA = registerItem("elytra", Item::new, new Item.Properties().durability(432));
-               public static final Item APPLE = registerItem("apple", new Item.Properties().food(Foods.APPLE));
-               public static final Item CHESTPLATE = registerItem("chestplate", new Item.Properties().equippable(EquipmentSlot.CHEST));
-               public static final Item IRON_SWORD = registerItem("iron_sword", new Item.Properties().sword(ToolMaterial.IRON, 3.0F, -2.4F));
-               public static final Item WOODEN_SPEAR = registerItem("wooden_spear", new Item.Properties().spear(ToolMaterial.WOOD, 0.65F, 0.7F, 0.75F, 5.0F, 14.0F, 10.0F, 5.1F, 15.0F, 4.6F));
-               public static final Item SHELF = registerBlock(Blocks.OAK_SHELF, p -> p.component(DataComponents.CONTAINER, ItemContainerContents.EMPTY));
-               public static final Item TRIM = registerItem("trim", new Item.Properties().trimMaterial(TrimMaterials.IRON));
-               public static final Item CREEPER_SPAWN_EGG = registerSpawnEgg(EntityType.CREEPER);
-               public static final Item EGG = registerItem("egg", EggItem::new, new Item.Properties().stacksTo(16).delayedHolderComponent(DataComponents.CHICKEN_VARIANT, ChickenVariants.TEMPERATE));
-            }
-        "#;
-
-        let catalog =
-            ItemRegistryCatalog::from_items_java_source(source, &BTreeMap::new()).unwrap();
-        let component_ids = |resource_id: &str| {
-            catalog
-                .default_component_type_ids(resource_id)
-                .unwrap()
-                .clone()
-        };
-
-        assert_eq!(component_ids("minecraft:stick").len(), 12);
-        assert_eq!(component_ids("minecraft:elytra").len(), 14);
-        assert!(component_ids("minecraft:elytra").contains(&MAX_DAMAGE_COMPONENT_ID));
-        assert!(component_ids("minecraft:elytra").contains(&DAMAGE_COMPONENT_ID));
-        assert_eq!(component_ids("minecraft:apple").len(), 14);
-        assert!(component_ids("minecraft:apple").contains(&FOOD_COMPONENT_ID));
-        assert!(component_ids("minecraft:apple").contains(&CONSUMABLE_COMPONENT_ID));
-        assert_eq!(component_ids("minecraft:chestplate").len(), 13);
-        assert!(component_ids("minecraft:chestplate").contains(&EQUIPPABLE_COMPONENT_ID));
-        assert_eq!(component_ids("minecraft:iron_sword").len(), 18);
-        assert!(component_ids("minecraft:iron_sword").contains(&TOOL_COMPONENT_ID));
-        assert!(component_ids("minecraft:iron_sword").contains(&WEAPON_COMPONENT_ID));
-        assert!(component_ids("minecraft:iron_sword").contains(&REPAIRABLE_COMPONENT_ID));
-        assert!(component_ids("minecraft:iron_sword").contains(&ENCHANTABLE_COMPONENT_ID));
-        assert_eq!(component_ids("minecraft:wooden_spear").len(), 22);
-        assert!(component_ids("minecraft:wooden_spear").contains(&KINETIC_WEAPON_COMPONENT_ID));
-        assert!(component_ids("minecraft:wooden_spear").contains(&PIERCING_WEAPON_COMPONENT_ID));
-        assert_eq!(component_ids("minecraft:oak_shelf").len(), 13);
-        assert!(component_ids("minecraft:oak_shelf").contains(&75));
-        assert_eq!(component_ids("minecraft:trim").len(), 13);
-        assert!(component_ids("minecraft:trim").contains(&PROVIDES_TRIM_MATERIAL_COMPONENT_ID));
-        assert_eq!(component_ids("minecraft:creeper_spawn_egg").len(), 13);
-        assert!(component_ids("minecraft:creeper_spawn_egg").contains(&ENTITY_DATA_COMPONENT_ID));
-        assert_eq!(component_ids("minecraft:egg").len(), 13);
-        assert!(component_ids("minecraft:egg").contains(&97));
-
-        let encoded = serde_json::to_value(&catalog).unwrap();
-        assert_eq!(
-            encoded["default_component_type_ids"]["minecraft:stick"]
-                .as_array()
-                .unwrap()
-                .len(),
-            12
-        );
-        let decoded: ItemRegistryCatalog = serde_json::from_value(encoded).unwrap();
-        assert_eq!(
-            decoded.default_component_type_ids("minecraft:iron_sword"),
-            catalog.default_component_type_ids("minecraft:iron_sword")
-        );
-    }
-
-    #[test]
-    fn item_registry_catalog_parses_default_piercing_weapon_ids() {
-        let source = r#"
-            public class Items {
-               public static final Item AIR = registerBlock(Blocks.AIR, AirItem::new);
-               public static final Item WOODEN_SPEAR = registerItem(
-                  "wooden_spear",
-                  new Item.Properties().spear(ToolMaterial.WOOD, 0.65F, 0.7F, 0.75F, 5.0F, 14.0F, 10.0F, 5.1F, 15.0F, 4.6F)
-               );
-               public static final Item STONE_SPEAR = registerItem("stone_spear", new Item.Properties().spear(ToolMaterial.STONE, 0.75F, 0.82F, 0.7F, 4.5F, 13.0F, 9.0F, 5.1F, 13.75F, 4.6F));
-               public static final Item IRON_SWORD = registerItem("iron_sword", new Item.Properties().sword(ToolMaterial.IRON, 3.0F, -2.4F));
-            }
-        "#;
-
-        let catalog =
-            ItemRegistryCatalog::from_items_java_source(source, &BTreeMap::new()).unwrap();
-
-        assert!(catalog.default_piercing_weapon("wooden_spear"));
-        assert!(catalog.default_piercing_weapon("minecraft:stone_spear"));
-        assert!(!catalog.default_piercing_weapon("minecraft:iron_sword"));
-        assert!(!catalog.default_piercing_weapon("minecraft:air"));
-        assert_eq!(
-            catalog.default_piercing_weapon_protocol_ids(),
-            BTreeSet::from([1, 2])
-        );
-
-        let decoded: ItemRegistryCatalog = serde_json::from_value(serde_json::json!({
-            "resource_ids": ["minecraft:wooden_spear"],
-            "protocol_ids": {"minecraft:wooden_spear": 0}
-        }))
-        .unwrap();
-        assert!(decoded.default_piercing_weapon_protocol_ids().is_empty());
-    }
-
-    #[test]
-    fn item_registry_catalog_parses_default_attack_range() {
-        let source = r#"
-            public class Items {
-               public static final Item WOODEN_SPEAR = registerItem(
-                  "wooden_spear",
-                  new Item.Properties()
-                     .spear(ToolMaterial.WOOD, 0.65F, 0.7F, 0.75F, 5.0F, 14.0F, 10.0F, 5.1F, 15.0F, 4.6F)
-                     .component(DataComponents.ATTACK_RANGE, new AttackRange(2.0F, 4.5F, 2.0F, 6.5F, 0.125F, 0.5F))
-               );
-               public static final Item IRON_SWORD = registerItem("iron_sword", new Item.Properties().sword(ToolMaterial.IRON, 3.0F, -2.4F));
-            }
-        "#;
-
-        let catalog =
-            ItemRegistryCatalog::from_items_java_source(source, &BTreeMap::new()).unwrap();
-
-        assert_eq!(
-            catalog.default_attack_range("minecraft:wooden_spear"),
-            Some(ItemAttackRange {
-                min_reach: 2.0,
-                max_reach: 4.5,
-                min_creative_reach: 2.0,
-                max_creative_reach: 6.5,
-                hitbox_margin: 0.125,
-                mob_factor: 0.5,
-            })
-        );
-        assert_eq!(catalog.default_attack_range("minecraft:iron_sword"), None);
-    }
-
-    #[test]
-    fn item_registry_catalog_parses_default_swing_animation_duration() {
-        let source = r#"
-            public class Items {
-               public static final Item WOODEN_SPEAR = registerItem(
-                  "wooden_spear",
-                  new Item.Properties().spear(ToolMaterial.WOOD, 0.65F, 0.7F, 0.75F, 5.0F, 14.0F, 10.0F, 5.1F, 15.0F, 4.6F)
-               );
-               public static final Item DIAMOND_SPEAR = registerItem(
-                  "diamond_spear",
-                  new Item.Properties().spear(ToolMaterial.DIAMOND, 1.05F, 1.075F, 0.5F, 3.0F, 10.0F, 6.5F, 5.1F, 10.0F, 4.6F)
-               );
-               public static final Item TEST_STAB = registerItem(
-                  "test_stab",
-                  new Item.Properties().component(DataComponents.SWING_ANIMATION, new SwingAnimation(SwingAnimationType.STAB, 17))
-               );
-               public static final Item TEST_SECONDS = registerItem(
-                  "test_seconds",
-                  new Item.Properties().component(DataComponents.SWING_ANIMATION, new SwingAnimation(SwingAnimationType.STAB, (int)(0.8F * 20.0F)))
-               );
-               public static final Item IRON_SWORD = registerItem("iron_sword", new Item.Properties().sword(ToolMaterial.IRON, 3.0F, -2.4F));
-            }
-        "#;
-
-        let catalog =
-            ItemRegistryCatalog::from_items_java_source(source, &BTreeMap::new()).unwrap();
-
-        assert_eq!(
-            catalog.default_swing_animation_duration("minecraft:wooden_spear"),
-            Some(13)
-        );
-        assert_eq!(
-            catalog.default_swing_animation_duration("minecraft:diamond_spear"),
-            Some(21)
-        );
-        assert_eq!(
-            catalog.default_swing_animation_duration("minecraft:test_stab"),
-            Some(17)
-        );
-        assert_eq!(
-            catalog.default_swing_animation_duration("minecraft:test_seconds"),
-            Some(16)
-        );
-        assert_eq!(
-            catalog.default_swing_animation_duration("minecraft:iron_sword"),
-            None
-        );
-
-        let decoded: ItemRegistryCatalog = serde_json::from_value(serde_json::json!({
-            "resource_ids": ["minecraft:wooden_spear"],
-            "protocol_ids": {"minecraft:wooden_spear": 0}
-        }))
-        .unwrap();
-        assert_eq!(
-            decoded.default_swing_animation_duration("minecraft:wooden_spear"),
-            None
-        );
-    }
-
-    #[test]
-    fn item_registry_catalog_parses_default_attribute_modifiers() {
-        let source = r#"
-            public class Items {
-               public static final Item IRON_SWORD = registerItem("iron_sword", new Item.Properties().sword(ToolMaterial.IRON, 3.0F, -2.4F));
-               public static final Item IRON_SHOVEL = registerItem("iron_shovel", p -> new ShovelItem(ToolMaterial.IRON, 1.5F, -3.0F, p));
-               public static final Item WOODEN_SPEAR = registerItem(
-                  "wooden_spear",
-                  new Item.Properties().spear(ToolMaterial.WOOD, 0.65F, 0.7F, 0.75F, 5.0F, 14.0F, 10.0F, 5.1F, 15.0F, 4.6F)
-               );
-               public static final Item STICK = registerItem("stick");
-            }
-        "#;
-
-        let catalog =
-            ItemRegistryCatalog::from_items_java_source(source, &BTreeMap::new()).unwrap();
-        let amounts = |resource_id| {
-            catalog
-                .default_attribute_modifiers(resource_id)
-                .unwrap()
-                .iter()
-                .map(|modifier| {
-                    (
-                        modifier.attribute_key.as_str(),
-                        modifier.modifier_id.as_str(),
-                        f64::from_bits(modifier.amount_bits),
-                        modifier.operation_id,
-                        modifier.slot_id,
-                    )
-                })
-                .collect::<Vec<_>>()
-        };
-
-        assert_eq!(
-            amounts("minecraft:iron_sword"),
-            vec![
-                (
-                    "minecraft:attack_damage",
-                    "minecraft:base_attack_damage",
-                    5.0,
-                    0,
-                    1,
-                ),
-                (
-                    "minecraft:attack_speed",
-                    "minecraft:base_attack_speed",
-                    f64::from(-2.4_f32),
-                    0,
-                    1,
-                ),
-            ]
-        );
-        assert_eq!(
-            amounts("minecraft:iron_shovel"),
-            vec![
-                (
-                    "minecraft:attack_damage",
-                    "minecraft:base_attack_damage",
-                    3.5,
-                    0,
-                    1,
-                ),
-                (
-                    "minecraft:attack_speed",
-                    "minecraft:base_attack_speed",
-                    -3.0,
-                    0,
-                    1,
-                ),
-            ]
-        );
-        assert_eq!(
-            amounts("minecraft:wooden_spear"),
-            vec![
-                (
-                    "minecraft:attack_damage",
-                    "minecraft:base_attack_damage",
-                    0.0,
-                    0,
-                    1,
-                ),
-                (
-                    "minecraft:attack_speed",
-                    "minecraft:base_attack_speed",
-                    f64::from(1.0_f32 / 0.65_f32) - 4.0,
-                    0,
-                    1,
-                ),
-            ]
-        );
-        assert!(catalog
-            .default_attribute_modifiers("minecraft:stick")
-            .is_none());
-
-        let encoded = serde_json::to_value(&catalog).unwrap();
-        assert_eq!(
-            encoded["default_attribute_modifiers"]["minecraft:iron_sword"][0]["modifier_id"],
-            serde_json::json!("minecraft:base_attack_damage")
-        );
-        let decoded: ItemRegistryCatalog = serde_json::from_value(encoded).unwrap();
-        assert_eq!(
-            decoded.default_attribute_modifiers("minecraft:iron_sword"),
-            catalog.default_attribute_modifiers("minecraft:iron_sword")
-        );
-    }
-
-    #[test]
-    fn item_registry_catalog_parses_default_armor_attribute_modifiers() {
-        let source = r#"
-            public class Items {
-               public static final Item DIAMOND_HELMET = registerItem("diamond_helmet", new Item.Properties().humanoidArmor(ArmorMaterials.DIAMOND, ArmorType.HELMET));
-               public static final Item NETHERITE_CHESTPLATE = registerItem(
-                  "netherite_chestplate",
-                  new Item.Properties().humanoidArmor(ArmorMaterials.NETHERITE, ArmorType.CHESTPLATE).fireResistant()
-               );
-               public static final Item HORSE_ARMOR = registerItem("horse_armor", new Item.Properties().horseArmor(ArmorMaterials.DIAMOND));
-               public static final Item STICK = registerItem("stick");
-            }
-        "#;
-
-        let catalog =
-            ItemRegistryCatalog::from_items_java_source(source, &BTreeMap::new()).unwrap();
-        let entries = |resource_id| {
-            catalog
-                .default_attribute_modifiers(resource_id)
-                .unwrap()
-                .iter()
-                .map(|modifier| {
-                    (
-                        modifier.attribute_key.as_str(),
-                        modifier.modifier_id.as_str(),
-                        f64::from_bits(modifier.amount_bits),
-                        modifier.operation_id,
-                        modifier.slot_id,
-                    )
-                })
-                .collect::<Vec<_>>()
-        };
-
-        assert_eq!(
-            entries("minecraft:diamond_helmet"),
-            vec![
-                ("minecraft:armor", "minecraft:armor.helmet", 3.0, 0, 7,),
-                (
-                    "minecraft:armor_toughness",
-                    "minecraft:armor.helmet",
-                    2.0,
-                    0,
-                    7,
-                ),
-            ]
-        );
-        assert_eq!(
-            entries("minecraft:netherite_chestplate"),
-            vec![
-                ("minecraft:armor", "minecraft:armor.chestplate", 8.0, 0, 6,),
-                (
-                    "minecraft:armor_toughness",
-                    "minecraft:armor.chestplate",
-                    3.0,
-                    0,
-                    6,
-                ),
-                (
-                    "minecraft:knockback_resistance",
-                    "minecraft:armor.chestplate",
-                    f64::from(0.1_f32),
-                    0,
-                    6,
-                ),
-            ]
-        );
-        assert_eq!(
-            entries("minecraft:horse_armor"),
-            vec![
-                ("minecraft:armor", "minecraft:armor.body", 11.0, 0, 9,),
-                (
-                    "minecraft:armor_toughness",
-                    "minecraft:armor.body",
-                    2.0,
-                    0,
-                    9,
-                ),
-            ]
-        );
-        assert!(catalog
-            .default_attribute_modifiers("minecraft:stick")
-            .is_none());
-    }
-
-    #[test]
-    fn item_registry_catalog_parses_bespoke_default_attribute_modifiers() {
-        let source = r#"
-            public class Items {
-               public static final Item MACE = registerItem(
-                  "mace",
-                  MaceItem::new,
-                  new Item.Properties()
-                     .attributes(MaceItem.createAttributes())
-               );
-               public static final Item TRIDENT = registerItem(
-                  "trident",
-                  TridentItem::new,
-                  new Item.Properties()
-                     .attributes(TridentItem.createAttributes())
-               );
-            }
-        "#;
-
-        let catalog =
-            ItemRegistryCatalog::from_items_java_source(source, &BTreeMap::new()).unwrap();
-        let amounts = |resource_id| {
-            catalog
-                .default_attribute_modifiers(resource_id)
-                .unwrap()
-                .iter()
-                .map(|modifier| {
-                    (
-                        modifier.attribute_key.as_str(),
-                        modifier.modifier_id.as_str(),
-                        f64::from_bits(modifier.amount_bits),
-                        modifier.operation_id,
-                        modifier.slot_id,
-                    )
-                })
-                .collect::<Vec<_>>()
-        };
-
-        assert_eq!(
-            amounts("minecraft:mace"),
-            vec![
-                (
-                    "minecraft:attack_damage",
-                    "minecraft:base_attack_damage",
-                    5.0,
-                    0,
-                    1,
-                ),
-                (
-                    "minecraft:attack_speed",
-                    "minecraft:base_attack_speed",
-                    f64::from(-3.4_f32),
-                    0,
-                    1,
-                ),
-            ]
-        );
-        assert_eq!(
-            amounts("minecraft:trident"),
-            vec![
-                (
-                    "minecraft:attack_damage",
-                    "minecraft:base_attack_damage",
-                    8.0,
-                    0,
-                    1,
-                ),
-                (
-                    "minecraft:attack_speed",
-                    "minecraft:base_attack_speed",
-                    f64::from(-2.9_f32),
-                    0,
-                    1,
-                ),
-            ]
-        );
-    }
-
-    #[test]
-    fn item_registry_catalog_parses_default_use_effects() {
-        let source = r#"
-            public class Items {
-               public static final Item WOODEN_SPEAR = registerItem(
-                  "wooden_spear",
-                  new Item.Properties().spear(ToolMaterial.WOOD, 0.65F, 0.7F, 0.75F, 5.0F, 14.0F, 10.0F, 5.1F, 15.0F, 4.6F)
-               );
-               public static final Item TEST_DRINK = registerItem(
-                  "test_drink",
-                  new Item.Properties()
-                     .component(DataComponents.USE_EFFECTS, new UseEffects(false, true, 0.5F))
-               );
-               public static final Item IRON_SWORD = registerItem("iron_sword", new Item.Properties().sword(ToolMaterial.IRON, 3.0F, -2.4F));
-            }
-        "#;
-
-        let catalog =
-            ItemRegistryCatalog::from_items_java_source(source, &BTreeMap::new()).unwrap();
-
-        assert_eq!(
-            catalog.default_use_effects("minecraft:wooden_spear"),
-            Some(ItemUseEffects {
-                can_sprint: true,
-                interact_vibrations: false,
-                speed_multiplier: 1.0,
-            })
-        );
-        assert_eq!(
-            catalog.default_use_effects("test_drink"),
-            Some(ItemUseEffects {
-                can_sprint: false,
-                interact_vibrations: true,
-                speed_multiplier: 0.5,
-            })
-        );
-        assert_eq!(catalog.default_use_effects("minecraft:iron_sword"), None);
-
-        let decoded: ItemRegistryCatalog = serde_json::from_value(serde_json::json!({
-            "resource_ids": ["minecraft:wooden_spear"],
-            "protocol_ids": {"minecraft:wooden_spear": 0}
-        }))
-        .unwrap();
-        assert_eq!(decoded.default_use_effects("minecraft:wooden_spear"), None);
-    }
-
-    #[test]
-    fn item_registry_catalog_parses_default_consumables() {
-        let source = r#"
-            public class Items {
-               public static final Item APPLE = registerItem("apple", new Item.Properties().food(Foods.APPLE));
-               public static final Item DRIED_KELP = registerItem("dried_kelp", new Item.Properties().food(Foods.DRIED_KELP, Consumables.DRIED_KELP));
-               public static final Item MILK_BUCKET = registerItem(
-                  "milk_bucket",
-                  new Item.Properties().craftRemainder(BUCKET).component(DataComponents.CONSUMABLE, Consumables.MILK_BUCKET).usingConvertsTo(BUCKET).stacksTo(1)
-               );
-               public static final Item IRON_SWORD = registerItem("iron_sword", new Item.Properties().sword(ToolMaterial.IRON, 3.0F, -2.4F));
-            }
-        "#;
-
-        let catalog =
-            ItemRegistryCatalog::from_items_java_source(source, &BTreeMap::new()).unwrap();
-
-        assert_eq!(
-            catalog.default_consumable("minecraft:apple"),
-            Some(ItemConsumable {
-                consume_seconds: 1.6,
-                animation: ItemUseAnimation::Eat,
-            })
-        );
-        assert_eq!(
-            catalog.default_consumable("minecraft:dried_kelp"),
-            Some(ItemConsumable {
-                consume_seconds: 0.8,
-                animation: ItemUseAnimation::Eat,
-            })
-        );
-        assert_eq!(
-            catalog.default_consumable("minecraft:milk_bucket"),
-            Some(ItemConsumable {
-                consume_seconds: 1.6,
-                animation: ItemUseAnimation::Drink,
-            })
-        );
-        assert_eq!(catalog.default_consumable("minecraft:iron_sword"), None);
-
-        let decoded: ItemRegistryCatalog = serde_json::from_value(serde_json::json!({
-            "resource_ids": ["minecraft:apple"],
-            "protocol_ids": {"minecraft:apple": 0}
-        }))
-        .unwrap();
-        assert_eq!(decoded.default_consumable("minecraft:apple"), None);
-    }
-
-    #[test]
-    fn item_registry_catalog_parses_crafting_remainders() {
-        let mut constants = BTreeMap::new();
-        constants.insert("BUCKET".to_string(), "bucket".to_string());
-        let source = r#"
-            public class Items {
-               public static final Item BUCKET = registerItem(ItemIds.BUCKET, new Item.Properties().stacksTo(16));
-               public static final Item WATER_BUCKET = registerItem(
-                  "water_bucket",
-                  new Item.Properties().craftRemainder(BUCKET).stacksTo(1)
-               );
-               public static final Item GLASS_BOTTLE = registerItem("glass_bottle", new Item.Properties());
-               public static final Item HONEY_BOTTLE = registerItem(
-                  "honey_bottle",
-                  new Item.Properties().craftRemainder(GLASS_BOTTLE).stacksTo(16)
-               );
-               public static final Item STONE = registerBlock(Blocks.STONE);
-            }
-        "#;
-
-        let catalog = ItemRegistryCatalog::from_items_java_source(source, &constants).unwrap();
-
-        assert_eq!(
-            catalog.crafting_remainder("minecraft:water_bucket"),
-            Some("minecraft:bucket")
-        );
-        assert_eq!(
-            catalog.crafting_remainder("honey_bottle"),
-            Some("minecraft:glass_bottle")
-        );
-        assert_eq!(catalog.crafting_remainder("minecraft:stone"), None);
-        assert_eq!(
-            catalog.crafting_remainders_by_protocol_id(),
-            BTreeMap::from([(1, 0), (3, 2)])
-        );
-
-        let decoded: ItemRegistryCatalog = serde_json::from_value(serde_json::json!({
-            "resource_ids": ["minecraft:water_bucket", "minecraft:bucket"],
-            "protocol_ids": {"minecraft:water_bucket": 0, "minecraft:bucket": 1}
-        }))
-        .unwrap();
-        assert!(decoded.crafting_remainders_by_protocol_id().is_empty());
-    }
-
-    #[test]
-    fn item_registry_catalog_parses_default_equipment_slots() {
-        let source = r#"
-            public class Items {
-               public static final Item DIAMOND_HELMET = registerItem("diamond_helmet", new Item.Properties().humanoidArmor(ArmorMaterials.DIAMOND, ArmorType.HELMET));
-               public static final Item DIAMOND_CHESTPLATE = registerItem(
-                  "diamond_chestplate", new Item.Properties().humanoidArmor(ArmorMaterials.DIAMOND, ArmorType.CHESTPLATE)
-               );
-               public static final Item DIAMOND_LEGGINGS = registerItem("diamond_leggings", new Item.Properties().humanoidArmor(ArmorMaterials.DIAMOND, ArmorType.LEGGINGS));
-               public static final Item DIAMOND_BOOTS = registerItem("diamond_boots", new Item.Properties().humanoidArmor(ArmorMaterials.DIAMOND, ArmorType.BOOTS));
-               public static final Item BODY_ARMOR = registerItem("body_armor", new Item.Properties().humanoidArmor(ArmorMaterials.LEATHER, ArmorType.BODY));
-               public static final Item SADDLE = registerItem("saddle", new Item.Properties().stacksTo(1).component(DataComponents.EQUIPPABLE, Equippable.saddle()));
-               public static final Item HORSE_ARMOR = registerItem("horse_armor", new Item.Properties().horseArmor(ArmorMaterials.DIAMOND));
-               public static final Item WHITE_CARPET = registerBlock(Blocks.WHITE_CARPET, p -> p.component(DataComponents.EQUIPPABLE, Equippable.llamaSwag(DyeColor.WHITE)));
-               public static final Item NAUTILUS_ARMOR = registerItem("nautilus_armor", new Item.Properties().nautilusArmor(ArmorMaterials.IRON));
-               public static final Item WOLF_ARMOR = registerItem("wolf_armor", new Item.Properties().wolfArmor(ArmorMaterials.ARMADILLO_SCUTE));
-               public static final Item CARVED_PUMPKIN = registerBlock(
-                  Blocks.CARVED_PUMPKIN,
-                  p -> p.component(
-                     DataComponents.EQUIPPABLE,
-                     Equippable.builder(EquipmentSlot.HEAD).setSwappable(false).build()
-                  )
-               );
-               public static final Item ELYTRA = registerItem(
-                  "elytra",
-                  new Item.Properties()
-                     .component(
-                        DataComponents.EQUIPPABLE,
-                        Equippable.builder(EquipmentSlot.CHEST)
-                           .setAsset(EquipmentAssets.ELYTRA)
-                           .build()
-                     )
-               );
-               public static final Item SHIELD = registerItem(
-                  "shield",
-                  ShieldItem::new,
-                  new Item.Properties().equippableUnswappable(EquipmentSlot.OFFHAND)
-               );
-               public static final Item OFFHAND_ITEM = registerItem("offhand_item", new Item.Properties().equippable(EquipmentSlot.OFFHAND));
-               public static final Item MAINHAND_ITEM = registerItem("mainhand_item", new Item.Properties().equippable(EquipmentSlot.MAINHAND));
-               public static final Item SADDLE_ITEM = registerItem("saddle_item", new Item.Properties().equippable(EquipmentSlot.SADDLE));
-               public static final Item STONE = registerBlock(Blocks.STONE);
-            }
-        "#;
-
-        let catalog =
-            ItemRegistryCatalog::from_items_java_source(source, &BTreeMap::new()).unwrap();
-
-        assert_eq!(
-            catalog.equipment_slot("minecraft:diamond_helmet"),
-            Some(ItemEquipmentSlot::Head)
-        );
-        assert_eq!(
-            catalog.equipment_slot("minecraft:diamond_chestplate"),
-            Some(ItemEquipmentSlot::Chest)
-        );
-        assert_eq!(
-            catalog.equipment_slot("minecraft:diamond_leggings"),
-            Some(ItemEquipmentSlot::Legs)
-        );
-        assert_eq!(
-            catalog.equipment_slot("minecraft:diamond_boots"),
-            Some(ItemEquipmentSlot::Feet)
-        );
-        assert_eq!(
-            catalog.equipment_slot("minecraft:body_armor"),
-            Some(ItemEquipmentSlot::Body)
-        );
-        assert_eq!(catalog.max_damage("minecraft:diamond_helmet"), Some(363));
-        assert_eq!(
-            catalog.max_damage("minecraft:diamond_chestplate"),
-            Some(528)
-        );
-        assert_eq!(catalog.max_damage("minecraft:body_armor"), Some(80));
-        assert_eq!(
-            catalog.equipment_slot("minecraft:saddle"),
-            Some(ItemEquipmentSlot::Saddle)
-        );
-        assert_eq!(
-            catalog.equipment_slot("minecraft:horse_armor"),
-            Some(ItemEquipmentSlot::Body)
-        );
-        assert_eq!(
-            catalog.equipment_slot("minecraft:white_carpet"),
-            Some(ItemEquipmentSlot::Body)
-        );
-        assert_eq!(
-            catalog.equipment_slot("minecraft:nautilus_armor"),
-            Some(ItemEquipmentSlot::Body)
-        );
-        assert_eq!(
-            catalog.equipment_slot("minecraft:wolf_armor"),
-            Some(ItemEquipmentSlot::Body)
-        );
-        assert_eq!(
-            catalog.equipment_slot("minecraft:carved_pumpkin"),
-            Some(ItemEquipmentSlot::Head)
-        );
-        assert_eq!(
-            catalog.equipment_slot("minecraft:elytra"),
-            Some(ItemEquipmentSlot::Chest)
-        );
-        assert_eq!(
-            catalog.equipment_slot("minecraft:shield"),
-            Some(ItemEquipmentSlot::OffHand)
-        );
-        assert_eq!(
-            catalog.equipment_slot("minecraft:offhand_item"),
-            Some(ItemEquipmentSlot::OffHand)
-        );
-        assert_eq!(
-            catalog.equipment_slot("minecraft:mainhand_item"),
-            Some(ItemEquipmentSlot::MainHand)
-        );
-        assert_eq!(
-            catalog.equipment_slot("minecraft:saddle_item"),
-            Some(ItemEquipmentSlot::Saddle)
-        );
-        assert_eq!(catalog.equipment_slot("minecraft:stone"), None);
-        assert_eq!(catalog.equipment_slot("minecraft:missing_item"), None);
-
-        // `humanoidArmor(ArmorMaterials.<MAT>, ...)` items resolve to the lowercased material asset; the
-        // non-humanoid armors (horse/wolf/nautilus body armor) and plain items have no humanoid asset.
-        assert_eq!(
-            catalog.humanoid_armor_asset("minecraft:diamond_helmet"),
-            Some("diamond")
-        );
-        assert_eq!(
-            catalog.humanoid_armor_asset("minecraft:diamond_leggings"),
-            Some("diamond")
-        );
-        assert_eq!(
-            catalog.humanoid_armor_asset("minecraft:body_armor"),
-            Some("leather")
-        );
-        assert_eq!(catalog.humanoid_armor_asset("minecraft:horse_armor"), None);
-        assert_eq!(catalog.humanoid_armor_asset("minecraft:wolf_armor"), None);
-        assert_eq!(catalog.humanoid_armor_asset("minecraft:stone"), None);
-        assert_eq!(
-            catalog.equippable_asset("minecraft:diamond_chestplate"),
-            Some("diamond")
-        );
-        assert_eq!(catalog.equippable_asset("minecraft:elytra"), Some("elytra"));
-        assert_eq!(
-            catalog.equippable_asset("minecraft:wolf_armor"),
-            Some("armadillo_scute")
-        );
-        assert_eq!(catalog.equippable_asset("minecraft:carved_pumpkin"), None);
-        assert_eq!(catalog.equippable_asset("minecraft:stone"), None);
-        assert_eq!(
-            catalog.mount_body_armor_kind("minecraft:horse_armor"),
-            Some(ItemMountBodyArmorKind::Horse)
-        );
-        assert_eq!(
-            catalog.mount_body_armor_asset("minecraft:horse_armor"),
-            Some("diamond")
-        );
-        assert_eq!(
-            catalog.mount_body_armor_kind("minecraft:white_carpet"),
-            Some(ItemMountBodyArmorKind::Llama)
-        );
-        assert_eq!(
-            catalog.mount_body_armor_asset("minecraft:white_carpet"),
-            None
-        );
-        assert_eq!(
-            catalog.mount_body_armor_kind("minecraft:nautilus_armor"),
-            Some(ItemMountBodyArmorKind::Nautilus)
-        );
-        assert_eq!(
-            catalog.mount_body_armor_asset("minecraft:nautilus_armor"),
-            Some("iron")
-        );
-        assert_eq!(catalog.mount_body_armor_kind("minecraft:wolf_armor"), None);
-        assert_eq!(catalog.mount_body_armor_asset("minecraft:wolf_armor"), None);
-
-        let mount_body_armor_kinds = catalog.mount_body_armor_kinds_by_protocol_id();
-        assert_eq!(
-            mount_body_armor_kinds.get(&catalog.protocol_id("minecraft:horse_armor").unwrap()),
-            Some(&ItemMountBodyArmorKind::Horse)
-        );
-        assert_eq!(
-            mount_body_armor_kinds.get(&catalog.protocol_id("minecraft:white_carpet").unwrap()),
-            Some(&ItemMountBodyArmorKind::Llama)
-        );
-        assert_eq!(
-            mount_body_armor_kinds.get(&catalog.protocol_id("minecraft:nautilus_armor").unwrap()),
-            Some(&ItemMountBodyArmorKind::Nautilus)
-        );
-        assert!(!mount_body_armor_kinds
-            .contains_key(&catalog.protocol_id("minecraft:wolf_armor").unwrap()));
-
-        let encoded = serde_json::to_value(&catalog).unwrap();
-        assert_eq!(
-            encoded["default_equipment_slots"]["minecraft:shield"],
-            serde_json::json!("offhand")
-        );
-        let decoded: ItemRegistryCatalog = serde_json::from_value(encoded).unwrap();
-        assert_eq!(
-            decoded.equipment_slot("minecraft:mainhand_item"),
-            Some(ItemEquipmentSlot::MainHand)
-        );
-    }
-
-    #[test]
-    fn item_registry_catalog_parses_default_mining_profiles() {
-        let source = r#"
-            public class Items {
-               public static final Item STONE_PICKAXE = registerItem("stone_pickaxe", new Item.Properties().pickaxe(ToolMaterial.STONE, 1.0F, -2.8F));
-               public static final Item IRON_SHOVEL = registerItem("iron_shovel", p -> new ShovelItem(ToolMaterial.IRON, 1.5F, -3.0F, p));
-               public static final Item WOODEN_SWORD = registerItem("wooden_sword", new Item.Properties().sword(ToolMaterial.WOOD, 3.0F, -2.4F));
-               public static final Item SHEARS = registerItem(
-                  "shears", ShearsItem::new, new Item.Properties().durability(238).component(DataComponents.TOOL, ShearsItem.createToolProperties())
-               );
-               public static final Item STONE = registerBlock(Blocks.STONE);
-            }
-        "#;
+    fn loads_checked_in_vanilla_item_registry() {
         let block_tags = test_block_tags();
-
-        let catalog = ItemRegistryCatalog::from_items_java_source_with_block_tags(
-            source,
-            &BTreeMap::new(),
-            Some(&block_tags),
-        )
-        .unwrap();
-
-        let pickaxe = catalog.mining_profile("minecraft:stone_pickaxe").unwrap();
-        assert_eq!(pickaxe.default_mining_speed_thousandths, 1_000);
-        assert_eq!(pickaxe.rules.len(), 2);
-        assert_eq!(pickaxe.rules[0].correct_for_drops, Some(false));
-        assert_eq!(pickaxe.rules[0].mining_speed_thousandths, None);
-        assert!(pickaxe.rules[0]
-            .block_names
-            .contains(&"minecraft:obsidian".to_string()));
-        assert_eq!(pickaxe.rules[1].correct_for_drops, Some(true));
-        assert_eq!(pickaxe.rules[1].mining_speed_thousandths, Some(4_000));
-        assert!(pickaxe.rules[1]
-            .block_names
-            .contains(&"minecraft:stone".to_string()));
-
-        let shovel = catalog.mining_profile("minecraft:iron_shovel").unwrap();
-        assert_eq!(shovel.rules[1].mining_speed_thousandths, Some(6_000));
-        assert!(shovel.rules[1]
-            .block_names
-            .contains(&"minecraft:dirt".to_string()));
-
-        let sword = catalog.mining_profile("minecraft:wooden_sword").unwrap();
-        assert_eq!(
-            sword.rules[0].block_names,
-            vec!["minecraft:cobweb".to_string()]
-        );
-        assert_eq!(sword.rules[0].mining_speed_thousandths, Some(15_000));
-        assert_eq!(sword.rules[0].correct_for_drops, Some(true));
-        assert_eq!(sword.rules[1].mining_speed_thousandths, Some(u32::MAX));
-        assert!(sword.rules[2]
-            .block_names
-            .contains(&"minecraft:oak_leaves".to_string()));
-
-        let shears = catalog.mining_profile("minecraft:shears").unwrap();
-        assert_eq!(
-            shears.rules[0].block_names,
-            vec!["minecraft:cobweb".to_string()]
-        );
-        assert!(shears.rules[1]
-            .block_names
-            .contains(&"minecraft:oak_leaves".to_string()));
-        assert!(shears.rules[2]
-            .block_names
-            .contains(&"minecraft:white_wool".to_string()));
-        assert_eq!(
-            shears.rules[3].block_names,
-            vec![
-                "minecraft:vine".to_string(),
-                "minecraft:glow_lichen".to_string()
-            ]
-        );
-
-        assert!(catalog.mining_profile("minecraft:stone").is_none());
-    }
-
-    #[test]
-    fn item_registry_catalog_loads_java_sources() {
-        let root = unique_temp_dir("item-registry");
-        let sources = root.join("sources").join(crate::MC_VERSION);
-        let item_dir = sources
-            .join("net")
-            .join("minecraft")
-            .join("world")
-            .join("item");
-        let references_dir = sources.join("net").join("minecraft").join("references");
-        write_file(
-            &references_dir.join("ItemIds.java"),
-            r#"
-                public class ItemIds {
-                   public static final ResourceKey<Item> PUMPKIN_SEEDS = createKey("pumpkin_seeds");
-                }
-            "#,
-        );
-        write_file(
-            &item_dir.join("Items.java"),
-            r#"
-                public class Items {
-                   public static final Item AIR = registerBlock(Blocks.AIR, AirItem::new);
-                   public static final Item PUMPKIN_SEEDS = registerItem(ItemIds.PUMPKIN_SEEDS, createBlockItemWithCustomItemName(Blocks.PUMPKIN_STEM));
-                }
-            "#,
-        );
-
-        let catalog = ItemRegistryCatalog::load(
-            &PackRoots::from_root(&root).expect("test source root should load"),
-        )
-        .unwrap();
-
-        assert_eq!(
-            catalog.resource_ids(),
-            &["minecraft:air", "minecraft:pumpkin_seeds"]
-        );
-
-        fs::remove_dir_all(root).unwrap();
-    }
-
-    #[test]
-    #[ignore = "requires local vanilla 26.1 sources"]
-    fn loads_local_vanilla_item_registry() {
-        let catalog = PackRoots::discover()
-            .unwrap()
-            .load_item_registry_catalog()
-            .unwrap();
+        let catalog =
+            ItemRegistryCatalog::from_generated_source_catalog(Some(&block_tags)).unwrap();
 
         assert_eq!(catalog.len(), 1506);
         assert_eq!(catalog.resource_id(0), Some("minecraft:air"));
@@ -2900,21 +2136,98 @@ mod tests {
             Some(ItemEquipmentSlot::OffHand)
         );
         assert_eq!(catalog.equipment_slot("minecraft:stone"), None);
+
+        let component_ids = |resource_id| catalog.default_component_type_ids(resource_id).unwrap();
+        assert_eq!(component_ids("minecraft:stick").len(), 12);
+        assert!(component_ids("minecraft:elytra").contains(&MAX_DAMAGE_COMPONENT_ID));
+        assert!(component_ids("minecraft:apple").contains(&FOOD_COMPONENT_ID));
+        assert!(component_ids("minecraft:iron_sword").contains(&TOOL_COMPONENT_ID));
+        assert!(component_ids("minecraft:wooden_spear").contains(&KINETIC_WEAPON_COMPONENT_ID));
+        assert!(component_ids("minecraft:creeper_spawn_egg").contains(&ENTITY_DATA_COMPONENT_ID));
+
+        assert_eq!(
+            catalog.default_consumable("minecraft:apple"),
+            Some(ItemConsumable {
+                consume_seconds: 1.6,
+                animation: ItemUseAnimation::Eat,
+            })
+        );
+        assert_eq!(
+            catalog.default_consumable("minecraft:dried_kelp"),
+            Some(ItemConsumable {
+                consume_seconds: 0.8,
+                animation: ItemUseAnimation::Eat,
+            })
+        );
+        assert_eq!(
+            catalog.default_consumable("minecraft:milk_bucket"),
+            Some(ItemConsumable {
+                consume_seconds: 1.6,
+                animation: ItemUseAnimation::Drink,
+            })
+        );
+        assert_eq!(
+            catalog.crafting_remainder("minecraft:water_bucket"),
+            Some("minecraft:bucket")
+        );
+        assert_eq!(
+            catalog.crafting_remainder("minecraft:honey_bottle"),
+            Some("minecraft:glass_bottle")
+        );
+        assert_eq!(
+            catalog.humanoid_armor_asset("minecraft:diamond_helmet"),
+            Some("diamond")
+        );
+        assert_eq!(catalog.equippable_asset("minecraft:elytra"), Some("elytra"));
+        assert_eq!(
+            catalog.mount_body_armor_kind("minecraft:diamond_horse_armor"),
+            Some(ItemMountBodyArmorKind::Horse)
+        );
+        assert_eq!(
+            catalog.mount_body_armor_asset("minecraft:diamond_horse_armor"),
+            Some("diamond")
+        );
+        assert_eq!(
+            catalog.mount_body_armor_kind("minecraft:iron_nautilus_armor"),
+            Some(ItemMountBodyArmorKind::Nautilus)
+        );
+
+        let modifier_amounts = |resource_id| {
+            catalog
+                .default_attribute_modifiers(resource_id)
+                .unwrap()
+                .iter()
+                .map(|modifier| f64::from_bits(modifier.amount_bits))
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(
+            modifier_amounts("minecraft:iron_sword"),
+            vec![5.0, f64::from(-2.4_f32)]
+        );
+        assert_eq!(modifier_amounts("minecraft:iron_shovel"), vec![3.5, -3.0]);
+        assert_eq!(
+            modifier_amounts("minecraft:mace"),
+            vec![5.0, f64::from(-3.4_f32)]
+        );
+        assert_eq!(
+            modifier_amounts("minecraft:trident"),
+            vec![8.0, f64::from(-2.9_f32)]
+        );
     }
 
     #[test]
-    fn checked_in_item_catalog_matches_local_vanilla_sources_when_available() {
-        let Some(home) = std::env::var_os("HOME") else {
-            return;
-        };
-        let source_root = PathBuf::from(home).join("Work/mc-code/sources/26.1");
-        let items = source_root.join("net/minecraft/world/item/Items.java");
-        let item_ids = source_root.join("net/minecraft/references/ItemIds.java");
-        if !items.is_file() || !item_ids.is_file() {
-            return;
-        }
-
-        let catalog = ItemRegistryCatalog::load_from_java_sources(items, item_ids).unwrap();
+    fn checked_in_item_catalog_matches_generated_protocol_catalog() {
+        let source: ItemSourceCatalog = serde_json::from_str(GENERATED_ITEM_DECLARATIONS).unwrap();
+        assert_eq!(source.declarations.len(), 1485);
+        assert_eq!(
+            source
+                .declarations
+                .iter()
+                .filter(|declaration| declaration.field_type == "WeatheringCopperItems")
+                .count(),
+            3
+        );
+        let catalog = ItemRegistryCatalog::from_generated_source_catalog(None).unwrap();
         assert_eq!(
             catalog.len(),
             bbb_protocol::item_types::VANILLA_ITEM_TYPES.len()
@@ -2930,9 +2243,21 @@ mod tests {
         }
     }
 
-    fn write_file(path: &Path, contents: &str) {
-        fs::create_dir_all(path.parent().unwrap()).unwrap();
-        fs::write(path, contents).unwrap();
+    #[test]
+    fn ordinary_catalog_load_does_not_require_local_vanilla_sources() {
+        let missing = std::path::PathBuf::from("/bbb-test/missing-vanilla-source-root");
+        let roots = PackRoots {
+            mc_code_root: missing.clone(),
+            sources_dir: missing.join("sources/26.1"),
+            assets_dir: missing.join("sources/26.1/assets/minecraft"),
+            generated_assets_dir: None,
+            resource_pack_dirs: Vec::new(),
+        };
+
+        let catalog = ItemRegistryCatalog::load(&roots).unwrap();
+
+        assert_eq!(catalog.len(), 1506);
+        assert_eq!(catalog.resource_id(0), Some("minecraft:air"));
     }
 
     fn test_block_tags() -> TagCatalog {
@@ -3002,14 +2327,5 @@ mod tests {
                 ),
             ]),
         }
-    }
-
-    fn unique_temp_dir(label: &str) -> PathBuf {
-        let nanos = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_nanos();
-        let id = NEXT_TEMP_DIR_ID.fetch_add(1, Ordering::Relaxed);
-        std::env::temp_dir().join(format!("bbb-pack-{label}-{nanos}-{id}"))
     }
 }

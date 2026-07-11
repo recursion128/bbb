@@ -38,6 +38,8 @@ mod input;
 mod item_entities;
 mod item_frames;
 mod item_models;
+#[cfg(test)]
+mod item_registry_test_fixture;
 mod lectern_book_scene;
 mod map_textures;
 mod particle_registry;

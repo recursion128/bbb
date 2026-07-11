@@ -4075,21 +4075,10 @@ fn write_flat_item_runtime_fixture(root: &Path, item_ids: &[&str]) {
 
 fn write_default_consumable_item_runtime_fixture(root: &Path, item_id: &str) {
     write_flat_item_runtime_fixture(root, &[item_id]);
-    let constant = item_id.to_ascii_uppercase();
-    write_json(
-        &root
-            .join("sources")
-            .join(bbb_pack::MC_VERSION)
-            .join("net")
-            .join("minecraft")
-            .join("world")
-            .join("item")
-            .join("Items.java"),
-        &format!(
-            r#"public class Items {{
-            public static final Item {constant} = registerItem("{item_id}", new Item.Properties().food(Foods.{constant}));
-        }}"#,
-        ),
+    crate::item_registry_test_fixture::write_item_registry_fixture_with_profiles(
+        root,
+        &[item_id],
+        &[(item_id, "apple")],
     );
 }
 
@@ -4383,29 +4372,7 @@ fn write_item_atlases(assets: &Path) {
 }
 
 fn write_item_registry_source(root: &Path, item_ids: &[&str]) {
-    let declarations = item_ids
-        .iter()
-        .map(|item_id| {
-            let constant = item_id.to_ascii_uppercase();
-            format!("public static final Item {constant} = registerItem(\"{item_id}\");")
-        })
-        .collect::<Vec<_>>()
-        .join("\n");
-    write_json(
-        &root
-            .join("sources")
-            .join(bbb_pack::MC_VERSION)
-            .join("net")
-            .join("minecraft")
-            .join("world")
-            .join("item")
-            .join("Items.java"),
-        &format!(
-            r#"public class Items {{
-            {declarations}
-        }}"#,
-        ),
-    );
+    crate::item_registry_test_fixture::write_item_registry_fixture(root, item_ids);
 }
 
 fn write_flat_item_model_and_texture(assets: &Path, model_id: &str, rgba: &[u8]) {

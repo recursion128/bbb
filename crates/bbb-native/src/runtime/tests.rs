@@ -15919,22 +15919,15 @@ fn recipe_book_ghost_item_runtime() -> NativeItemRuntime {
             "item.minecraft.golden_sword": "Golden Sword"
         }"#,
     );
-    write_runtime_json(
-        &root
-            .join("sources")
-            .join(bbb_pack::MC_VERSION)
-            .join("net")
-            .join("minecraft")
-            .join("world")
-            .join("item")
-            .join("Items.java"),
-        r#"public class Items {
-            public static final Item CRAFTING_TABLE = registerItem("crafting_table");
-            public static final Item STICK = registerItem("stick");
-            public static final Item OAK_PLANKS = registerItem("oak_planks");
-            public static final Item IRON_AXE = registerItem("iron_axe");
-            public static final Item GOLDEN_SWORD = registerItem("golden_sword");
-        }"#,
+    crate::item_registry_test_fixture::write_item_registry_fixture(
+        root.as_ref(),
+        &[
+            "crafting_table",
+            "stick",
+            "oak_planks",
+            "iron_axe",
+            "golden_sword",
+        ],
     );
     let runtime = NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
     std::fs::remove_dir_all(root).unwrap();
@@ -16302,20 +16295,13 @@ fn write_runtime_tooltip_item_assets(root: &Path) {
         &assets.join("textures").join("item").join("test_combo.png"),
         &[80, 120, 160, 255],
     );
-    write_runtime_json(
-        &root
-            .join("sources")
-            .join(bbb_pack::MC_VERSION)
-            .join("net")
-            .join("minecraft")
-            .join("world")
-            .join("item")
-            .join("Items.java"),
-        r#"public class Items {
-            public static final Item TEST_COMBO = registerItem("test_combo");
-            public static final Item TEST_SWORD = registerItem("test_sword", new Item.Properties().sword(ToolMaterial.IRON, 3.0F, -2.4F));
-            public static final Item COMMAND_BLOCK = registerBlock(Blocks.COMMAND_BLOCK, GameMasterBlockItem::new, new Item.Properties());
-        }"#,
+    crate::item_registry_test_fixture::write_item_registry_fixture_with_profiles(
+        root.as_ref(),
+        &["test_combo", "test_sword", "command_block"],
+        &[
+            ("command_block", "command_block"),
+            ("test_sword", "iron_sword"),
+        ],
     );
 }
 
@@ -16382,19 +16368,7 @@ fn write_runtime_bow_item_assets(root: &Path) {
     write_flat_runtime_item_model_and_texture(&assets, "bow_pulling_1", &[120, 160, 80, 255]);
     write_flat_runtime_item_model_and_texture(&assets, "bow_pulling_2", &[160, 120, 80, 255]);
     write_runtime_json(&assets.join("lang").join("en_us.json"), "{}");
-    write_runtime_json(
-        &root
-            .join("sources")
-            .join(bbb_pack::MC_VERSION)
-            .join("net")
-            .join("minecraft")
-            .join("world")
-            .join("item")
-            .join("Items.java"),
-        r#"public class Items {
-            public static final Item BOW = registerItem("bow");
-        }"#,
-    );
+    crate::item_registry_test_fixture::write_item_registry_fixture(root.as_ref(), &["bow"]);
 }
 
 fn write_runtime_crossbow_item_assets(root: &Path) {
@@ -16464,19 +16438,7 @@ fn write_runtime_crossbow_item_assets(root: &Path) {
     write_flat_runtime_item_model_and_texture(&assets, "crossbow_pulling_1", &[100, 130, 70, 255]);
     write_flat_runtime_item_model_and_texture(&assets, "crossbow_pulling_2", &[130, 70, 100, 255]);
     write_runtime_json(&assets.join("lang").join("en_us.json"), "{}");
-    write_runtime_json(
-        &root
-            .join("sources")
-            .join(bbb_pack::MC_VERSION)
-            .join("net")
-            .join("minecraft")
-            .join("world")
-            .join("item")
-            .join("Items.java"),
-        r#"public class Items {
-            public static final Item CROSSBOW = registerItem("crossbow");
-        }"#,
-    );
+    crate::item_registry_test_fixture::write_item_registry_fixture(root.as_ref(), &["crossbow"]);
 }
 
 fn write_runtime_main_hand_select_item_assets(root: &Path) {
@@ -16523,18 +16485,9 @@ fn write_runtime_main_hand_select_item_assets(root: &Path) {
     write_flat_runtime_item_model_and_texture(&assets, "hand_selector_left", &[120, 40, 80, 255]);
     write_flat_runtime_item_model_and_texture(&assets, "hand_selector_right", &[80, 120, 40, 255]);
     write_runtime_json(&assets.join("lang").join("en_us.json"), "{}");
-    write_runtime_json(
-        &root
-            .join("sources")
-            .join(bbb_pack::MC_VERSION)
-            .join("net")
-            .join("minecraft")
-            .join("world")
-            .join("item")
-            .join("Items.java"),
-        r#"public class Items {
-            public static final Item HAND_SELECTOR = registerItem("hand_selector");
-        }"#,
+    crate::item_registry_test_fixture::write_item_registry_fixture(
+        root.as_ref(),
+        &["hand_selector"],
     );
 }
 
@@ -16590,18 +16543,9 @@ fn write_runtime_context_dimension_select_item_assets(root: &Path) {
         &[120, 40, 80, 255],
     );
     write_runtime_json(&assets.join("lang").join("en_us.json"), "{}");
-    write_runtime_json(
-        &root
-            .join("sources")
-            .join(bbb_pack::MC_VERSION)
-            .join("net")
-            .join("minecraft")
-            .join("world")
-            .join("item")
-            .join("Items.java"),
-        r#"public class Items {
-            public static final Item DIMENSION_SELECTOR = registerItem("dimension_selector");
-        }"#,
+    crate::item_registry_test_fixture::write_item_registry_fixture(
+        root.as_ref(),
+        &["dimension_selector"],
     );
 }
 
@@ -16653,18 +16597,9 @@ fn write_runtime_context_entity_type_select_item_assets(root: &Path) {
     );
     write_flat_runtime_item_model_and_texture(&assets, "entity_selector_cow", &[120, 40, 80, 255]);
     write_runtime_json(&assets.join("lang").join("en_us.json"), "{}");
-    write_runtime_json(
-        &root
-            .join("sources")
-            .join(bbb_pack::MC_VERSION)
-            .join("net")
-            .join("minecraft")
-            .join("world")
-            .join("item")
-            .join("Items.java"),
-        r#"public class Items {
-            public static final Item ENTITY_SELECTOR = registerItem("entity_selector");
-        }"#,
+    crate::item_registry_test_fixture::write_item_registry_fixture(
+        root.as_ref(),
+        &["entity_selector"],
     );
 }
 
@@ -16710,18 +16645,9 @@ fn write_runtime_view_entity_condition_item_assets(root: &Path) {
         &[120, 80, 40, 255],
     );
     write_runtime_json(&assets.join("lang").join("en_us.json"), "{}");
-    write_runtime_json(
-        &root
-            .join("sources")
-            .join(bbb_pack::MC_VERSION)
-            .join("net")
-            .join("minecraft")
-            .join("world")
-            .join("item")
-            .join("Items.java"),
-        r#"public class Items {
-            public static final Item VIEW_ENTITY_CONDITION = registerItem("view_entity_condition");
-        }"#,
+    crate::item_registry_test_fixture::write_item_registry_fixture(
+        root.as_ref(),
+        &["view_entity_condition"],
     );
 }
 
@@ -16767,18 +16693,9 @@ fn write_runtime_extended_view_condition_item_assets(root: &Path) {
         &[120, 80, 40, 255],
     );
     write_runtime_json(&assets.join("lang").join("en_us.json"), "{}");
-    write_runtime_json(
-        &root
-            .join("sources")
-            .join(bbb_pack::MC_VERSION)
-            .join("net")
-            .join("minecraft")
-            .join("world")
-            .join("item")
-            .join("Items.java"),
-        r#"public class Items {
-            public static final Item EXTENDED_VIEW_CONDITION = registerItem("extended_view_condition");
-        }"#,
+    crate::item_registry_test_fixture::write_item_registry_fixture(
+        root.as_ref(),
+        &["extended_view_condition"],
     );
 }
 
@@ -16825,18 +16742,9 @@ fn write_runtime_keybind_down_condition_item_assets(root: &Path) {
         &[120, 80, 40, 255],
     );
     write_runtime_json(&assets.join("lang").join("en_us.json"), "{}");
-    write_runtime_json(
-        &root
-            .join("sources")
-            .join(bbb_pack::MC_VERSION)
-            .join("net")
-            .join("minecraft")
-            .join("world")
-            .join("item")
-            .join("Items.java"),
-        r#"public class Items {
-            public static final Item KEYBIND_DOWN_CONDITION = registerItem("keybind_down_condition");
-        }"#,
+    crate::item_registry_test_fixture::write_item_registry_fixture(
+        root.as_ref(),
+        &["keybind_down_condition"],
     );
 }
 
@@ -16874,19 +16782,7 @@ fn write_runtime_fishing_rod_cast_condition_item_assets(root: &Path) {
     write_flat_runtime_item_model_and_texture(&assets, "fishing_rod", &[40, 80, 120, 255]);
     write_flat_runtime_item_model_and_texture(&assets, "fishing_rod_cast", &[120, 80, 40, 255]);
     write_runtime_json(&assets.join("lang").join("en_us.json"), "{}");
-    write_runtime_json(
-        &root
-            .join("sources")
-            .join(bbb_pack::MC_VERSION)
-            .join("net")
-            .join("minecraft")
-            .join("world")
-            .join("item")
-            .join("Items.java"),
-        r#"public class Items {
-            public static final Item FISHING_ROD = registerItem("fishing_rod");
-        }"#,
-    );
+    crate::item_registry_test_fixture::write_item_registry_fixture(root.as_ref(), &["fishing_rod"]);
 }
 
 fn write_runtime_cooldown_range_dispatch_item_assets(root: &Path) {
@@ -16932,18 +16828,9 @@ fn write_runtime_cooldown_range_dispatch_item_assets(root: &Path) {
         &[120, 80, 40, 255],
     );
     write_runtime_json(&assets.join("lang").join("en_us.json"), "{}");
-    write_runtime_json(
-        &root
-            .join("sources")
-            .join(bbb_pack::MC_VERSION)
-            .join("net")
-            .join("minecraft")
-            .join("world")
-            .join("item")
-            .join("Items.java"),
-        r#"public class Items {
-            public static final Item COOLDOWN_SELECTOR = registerItem("cooldown_selector");
-        }"#,
+    crate::item_registry_test_fixture::write_item_registry_fixture(
+        root.as_ref(),
+        &["cooldown_selector"],
     );
 }
 
@@ -17068,21 +16955,14 @@ fn write_runtime_time_range_dispatch_item_assets(root: &Path) {
     write_flat_runtime_item_model_and_texture(&assets, "time_moon_phase_full", &[40, 70, 130, 255]);
     write_flat_runtime_item_model_and_texture(&assets, "time_moon_phase_new", &[130, 70, 40, 255]);
     write_runtime_json(&assets.join("lang").join("en_us.json"), "{}");
-    write_runtime_json(
-        &root
-            .join("sources")
-            .join(bbb_pack::MC_VERSION)
-            .join("net")
-            .join("minecraft")
-            .join("world")
-            .join("item")
-            .join("Items.java"),
-        r#"public class Items {
-            public static final Item TIME_SELECTOR = registerItem("time_selector");
-            public static final Item TIME_WOBBLED_SELECTOR = registerItem("time_wobbled_selector");
-            public static final Item TIME_RANDOM_SELECTOR = registerItem("time_random_selector");
-            public static final Item TIME_MOON_PHASE_SELECTOR = registerItem("time_moon_phase_selector");
-        }"#,
+    crate::item_registry_test_fixture::write_item_registry_fixture(
+        root.as_ref(),
+        &[
+            "time_selector",
+            "time_wobbled_selector",
+            "time_random_selector",
+            "time_moon_phase_selector",
+        ],
     );
 }
 
@@ -17216,21 +17096,14 @@ fn write_runtime_spawn_compass_range_dispatch_item_assets(root: &Path) {
         &[185, 85, 105, 255],
     );
     write_runtime_json(&assets.join("lang").join("en_us.json"), "{}");
-    write_runtime_json(
-        &root
-            .join("sources")
-            .join(bbb_pack::MC_VERSION)
-            .join("net")
-            .join("minecraft")
-            .join("world")
-            .join("item")
-            .join("Items.java"),
-        r#"public class Items {
-            public static final Item SPAWN_COMPASS = registerItem("spawn_compass");
-            public static final Item SPAWN_COMPASS_WOBBLED = registerItem("spawn_compass_wobbled");
-            public static final Item SPAWN_COMPASS_INVALID_SPIN = registerItem("spawn_compass_invalid_spin");
-            public static final Item SPAWN_COMPASS_NONE_SPIN = registerItem("spawn_compass_none_spin");
-        }"#,
+    crate::item_registry_test_fixture::write_item_registry_fixture(
+        root.as_ref(),
+        &[
+            "spawn_compass",
+            "spawn_compass_wobbled",
+            "spawn_compass_invalid_spin",
+            "spawn_compass_none_spin",
+        ],
     );
 }
 
@@ -17284,18 +17157,9 @@ fn write_runtime_lodestone_compass_range_dispatch_item_assets(root: &Path) {
         &[120, 40, 80, 255],
     );
     write_runtime_json(&assets.join("lang").join("en_us.json"), "{}");
-    write_runtime_json(
-        &root
-            .join("sources")
-            .join(bbb_pack::MC_VERSION)
-            .join("net")
-            .join("minecraft")
-            .join("world")
-            .join("item")
-            .join("Items.java"),
-        r#"public class Items {
-            public static final Item LODESTONE_COMPASS = registerItem("lodestone_compass");
-        }"#,
+    crate::item_registry_test_fixture::write_item_registry_fixture(
+        root.as_ref(),
+        &["lodestone_compass"],
     );
 }
 
@@ -17349,18 +17213,9 @@ fn write_runtime_recovery_compass_range_dispatch_item_assets(root: &Path) {
         &[120, 80, 40, 255],
     );
     write_runtime_json(&assets.join("lang").join("en_us.json"), "{}");
-    write_runtime_json(
-        &root
-            .join("sources")
-            .join(bbb_pack::MC_VERSION)
-            .join("net")
-            .join("minecraft")
-            .join("world")
-            .join("item")
-            .join("Items.java"),
-        r#"public class Items {
-            public static final Item RECOVERY_COMPASS = registerItem("recovery_compass");
-        }"#,
+    crate::item_registry_test_fixture::write_item_registry_fixture(
+        root.as_ref(),
+        &["recovery_compass"],
     );
 }
 
@@ -17402,18 +17257,9 @@ fn write_runtime_selected_condition_item_assets(root: &Path) {
         &[120, 80, 40, 255],
     );
     write_runtime_json(&assets.join("lang").join("en_us.json"), "{}");
-    write_runtime_json(
-        &root
-            .join("sources")
-            .join(bbb_pack::MC_VERSION)
-            .join("net")
-            .join("minecraft")
-            .join("world")
-            .join("item")
-            .join("Items.java"),
-        r#"public class Items {
-            public static final Item SELECTED_CONDITION = registerItem("selected_condition");
-        }"#,
+    crate::item_registry_test_fixture::write_item_registry_fixture(
+        root.as_ref(),
+        &["selected_condition"],
     );
 }
 
@@ -17455,18 +17301,9 @@ fn write_runtime_carried_condition_item_assets(root: &Path) {
         &[120, 40, 80, 255],
     );
     write_runtime_json(&assets.join("lang").join("en_us.json"), "{}");
-    write_runtime_json(
-        &root
-            .join("sources")
-            .join(bbb_pack::MC_VERSION)
-            .join("net")
-            .join("minecraft")
-            .join("world")
-            .join("item")
-            .join("Items.java"),
-        r#"public class Items {
-            public static final Item CARRIED_CONDITION = registerItem("carried_condition");
-        }"#,
+    crate::item_registry_test_fixture::write_item_registry_fixture(
+        root.as_ref(),
+        &["carried_condition"],
     );
 }
 
@@ -17516,20 +17353,9 @@ fn write_runtime_special_foil_item_assets(root: &Path) {
             "values": ["minecraft:compass"]
         }"#,
     );
-    write_runtime_json(
-        &root
-            .join("sources")
-            .join(bbb_pack::MC_VERSION)
-            .join("net")
-            .join("minecraft")
-            .join("world")
-            .join("item")
-            .join("Items.java"),
-        r#"public class Items {
-            public static final Item CLOCK = registerItem("clock");
-            public static final Item COMPASS = registerItem("compass");
-            public static final Item SPYGLASS = registerItem("spyglass");
-        }"#,
+    crate::item_registry_test_fixture::write_item_registry_fixture(
+        root.as_ref(),
+        &["clock", "compass", "spyglass"],
     );
 }
 
@@ -17572,18 +17398,9 @@ fn write_runtime_trim_material_select_item_assets(root: &Path) {
     write_flat_runtime_item_model_and_texture(&assets, "trim_selector", &[40, 80, 120, 255]);
     write_flat_runtime_item_model_and_texture(&assets, "trim_selector_quartz", &[120, 80, 40, 255]);
     write_runtime_json(&assets.join("lang").join("en_us.json"), "{}");
-    write_runtime_json(
-        &root
-            .join("sources")
-            .join(bbb_pack::MC_VERSION)
-            .join("net")
-            .join("minecraft")
-            .join("world")
-            .join("item")
-            .join("Items.java"),
-        r#"public class Items {
-            public static final Item TRIM_SELECTOR = registerItem("trim_selector");
-        }"#,
+    crate::item_registry_test_fixture::write_item_registry_fixture(
+        root.as_ref(),
+        &["trim_selector"],
     );
 }
 
@@ -17650,21 +17467,9 @@ fn write_runtime_game_mode_switcher_item_assets(root: &Path) {
         write_flat_runtime_item_model_and_texture(&assets, item_id, &rgba);
     }
     write_runtime_json(&assets.join("lang").join("en_us.json"), "{}");
-    write_runtime_json(
-        &root
-            .join("sources")
-            .join(bbb_pack::MC_VERSION)
-            .join("net")
-            .join("minecraft")
-            .join("world")
-            .join("item")
-            .join("Items.java"),
-        r#"public class Items {
-            public static final Item GRASS_BLOCK = registerItem("grass_block");
-            public static final Item IRON_SWORD = registerItem("iron_sword");
-            public static final Item MAP = registerItem("map");
-            public static final Item ENDER_EYE = registerItem("ender_eye");
-        }"#,
+    crate::item_registry_test_fixture::write_item_registry_fixture(
+        root.as_ref(),
+        &["grass_block", "iron_sword", "map", "ender_eye"],
     );
 }
 
