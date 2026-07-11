@@ -9555,3 +9555,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   world/native projection tests 锁定继承 offset、serializer/default、动画 tick 衰减、partial-tick
   roll 参数以及 boat/minecart render state。具体 AbstractBoat/AbstractMinecart 字段留在后续
   family slice，未改变 damage-roll 公式或渲染行为。
+
+## 2026-07-10：Entity metadata schema phase 13（AbstractBoat）
+
+- [x] entity metadata schema 的 boat 父链：新增 `VehicleEntity -> AbstractBoat` family，
+  集中声明 BOOLEAN left/right paddle ids 11/12、defaults false 与 INT bubble-time id 13/default
+  0。world rowing/bubble animation 删除本地 ids/defaults，统一引用 schema；focused
+  world/native tests 锁定继承 offset、serializer/default、controlling-passenger paddle gate、
+  rowing tick/partial-tick 与 renderer projection。该父层覆盖 Boat/Raft 及 chest variants；
+  inventory 与具体 variant 不属于 synced metadata，本阶段未扩张其语义。

@@ -24,6 +24,7 @@ pub enum VanillaEntityMetadataFamily {
     ArmorStand,
     AbstractArrow,
     VehicleEntity,
+    AbstractBoat,
     HangingEntity,
     ItemFrame,
     Avatar,
@@ -112,6 +113,9 @@ pub const VANILLA_ABSTRACT_ARROW_IN_GROUND_DATA_ID: u8 = 10;
 pub const VANILLA_VEHICLE_HURT_TIME_DATA_ID: u8 = 8;
 pub const VANILLA_VEHICLE_HURT_DIR_DATA_ID: u8 = 9;
 pub const VANILLA_VEHICLE_DAMAGE_DATA_ID: u8 = 10;
+pub const VANILLA_ABSTRACT_BOAT_PADDLE_LEFT_DATA_ID: u8 = 11;
+pub const VANILLA_ABSTRACT_BOAT_PADDLE_RIGHT_DATA_ID: u8 = 12;
+pub const VANILLA_ABSTRACT_BOAT_BUBBLE_TIME_DATA_ID: u8 = 13;
 pub const VANILLA_HANGING_ENTITY_DIRECTION_DATA_ID: u8 = 8;
 pub const VANILLA_ITEM_FRAME_ITEM_DATA_ID: u8 = 9;
 pub const VANILLA_ITEM_FRAME_ROTATION_DATA_ID: u8 = 10;
@@ -174,6 +178,9 @@ pub const VANILLA_ABSTRACT_ARROW_DEFAULT_IN_GROUND: bool = false;
 pub const VANILLA_VEHICLE_DEFAULT_HURT_TIME: i32 = 0;
 pub const VANILLA_VEHICLE_DEFAULT_HURT_DIR: i32 = 1;
 pub const VANILLA_VEHICLE_DEFAULT_DAMAGE: f32 = 0.0;
+pub const VANILLA_ABSTRACT_BOAT_DEFAULT_PADDLE_LEFT: bool = false;
+pub const VANILLA_ABSTRACT_BOAT_DEFAULT_PADDLE_RIGHT: bool = false;
+pub const VANILLA_ABSTRACT_BOAT_DEFAULT_BUBBLE_TIME: i32 = 0;
 pub const VANILLA_ARMOR_STAND_DEFAULT_CLIENT_FLAGS: i8 = 0;
 pub const VANILLA_ARMOR_STAND_DEFAULT_HEAD_POSE: [f32; 3] = [0.0, 0.0, 0.0];
 pub const VANILLA_ARMOR_STAND_DEFAULT_BODY_POSE: [f32; 3] = [0.0, 0.0, 0.0];
@@ -595,6 +602,27 @@ const VEHICLE_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[
     },
 ];
 
+const ABSTRACT_BOAT_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_ID_PADDLE_LEFT",
+        data_id: VANILLA_ABSTRACT_BOAT_PADDLE_LEFT_DATA_ID,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+        default: VanillaEntityMetadataDefault::Boolean(VANILLA_ABSTRACT_BOAT_DEFAULT_PADDLE_LEFT),
+    },
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_ID_PADDLE_RIGHT",
+        data_id: VANILLA_ABSTRACT_BOAT_PADDLE_RIGHT_DATA_ID,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+        default: VanillaEntityMetadataDefault::Boolean(VANILLA_ABSTRACT_BOAT_DEFAULT_PADDLE_RIGHT),
+    },
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_ID_BUBBLE_TIME",
+        data_id: VANILLA_ABSTRACT_BOAT_BUBBLE_TIME_DATA_ID,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+        default: VanillaEntityMetadataDefault::Int(VANILLA_ABSTRACT_BOAT_DEFAULT_BUBBLE_TIME),
+    },
+];
+
 const HANGING_ENTITY_FIELDS: &[VanillaEntityMetadataFieldSchema] =
     &[VanillaEntityMetadataFieldSchema {
         name: "DATA_DIRECTION",
@@ -793,6 +821,14 @@ const VEHICLE_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataF
     own_flags: &[],
 };
 
+const ABSTRACT_BOAT_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamilySchema {
+    family: VanillaEntityMetadataFamily::AbstractBoat,
+    parent: Some(VanillaEntityMetadataFamily::VehicleEntity),
+    inherited_field_count: VEHICLE_SCHEMA.inherited_field_count + VEHICLE_FIELDS.len() as u8,
+    own_fields: ABSTRACT_BOAT_FIELDS,
+    own_flags: &[],
+};
+
 const HANGING_ENTITY_SCHEMA: VanillaEntityMetadataFamilySchema =
     VanillaEntityMetadataFamilySchema {
         family: VanillaEntityMetadataFamily::HangingEntity,
@@ -843,6 +879,7 @@ pub const fn vanilla_entity_metadata_schema(
         VanillaEntityMetadataFamily::ArmorStand => &ARMOR_STAND_SCHEMA,
         VanillaEntityMetadataFamily::AbstractArrow => &ABSTRACT_ARROW_SCHEMA,
         VanillaEntityMetadataFamily::VehicleEntity => &VEHICLE_SCHEMA,
+        VanillaEntityMetadataFamily::AbstractBoat => &ABSTRACT_BOAT_SCHEMA,
         VanillaEntityMetadataFamily::HangingEntity => &HANGING_ENTITY_SCHEMA,
         VanillaEntityMetadataFamily::ItemFrame => &ITEM_FRAME_SCHEMA,
         VanillaEntityMetadataFamily::Avatar => &AVATAR_SCHEMA,
@@ -998,6 +1035,22 @@ mod tests {
                 .map(|field| field.data_id)
                 .collect::<Vec<_>>(),
             (8..=10).collect::<Vec<_>>()
+        );
+
+        let abstract_boat =
+            vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::AbstractBoat);
+        assert_eq!(
+            abstract_boat.parent,
+            Some(VanillaEntityMetadataFamily::VehicleEntity)
+        );
+        assert_eq!(abstract_boat.inherited_field_count, 11);
+        assert_eq!(
+            abstract_boat
+                .own_fields
+                .iter()
+                .map(|field| field.data_id)
+                .collect::<Vec<_>>(),
+            (11..=13).collect::<Vec<_>>()
         );
 
         let hanging = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::HangingEntity);
@@ -1335,6 +1388,29 @@ mod tests {
             ]
         );
         assert_eq!(
+            vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::AbstractBoat).own_fields,
+            &[
+                VanillaEntityMetadataFieldSchema {
+                    name: "DATA_ID_PADDLE_LEFT",
+                    data_id: 11,
+                    serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+                    default: VanillaEntityMetadataDefault::Boolean(false),
+                },
+                VanillaEntityMetadataFieldSchema {
+                    name: "DATA_ID_PADDLE_RIGHT",
+                    data_id: 12,
+                    serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+                    default: VanillaEntityMetadataDefault::Boolean(false),
+                },
+                VanillaEntityMetadataFieldSchema {
+                    name: "DATA_ID_BUBBLE_TIME",
+                    data_id: 13,
+                    serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+                    default: VanillaEntityMetadataDefault::Int(0),
+                },
+            ]
+        );
+        assert_eq!(
             vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::HangingEntity).own_fields,
             &[VanillaEntityMetadataFieldSchema {
                 name: "DATA_DIRECTION",
@@ -1648,6 +1724,7 @@ mod tests {
             VanillaEntityMetadataFamily::ArmorStand,
             VanillaEntityMetadataFamily::AbstractArrow,
             VanillaEntityMetadataFamily::VehicleEntity,
+            VanillaEntityMetadataFamily::AbstractBoat,
             VanillaEntityMetadataFamily::HangingEntity,
             VanillaEntityMetadataFamily::ItemFrame,
             VanillaEntityMetadataFamily::Avatar,

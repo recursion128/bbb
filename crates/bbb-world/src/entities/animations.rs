@@ -23,6 +23,12 @@ use super::dragon::{
 use super::schema::{
     VANILLA_ABSTRACT_ARROW_DEFAULT_IN_GROUND as ABSTRACT_ARROW_DEFAULT_IN_GROUND,
     VANILLA_ABSTRACT_ARROW_IN_GROUND_DATA_ID as ABSTRACT_ARROW_IN_GROUND_DATA_ID,
+    VANILLA_ABSTRACT_BOAT_BUBBLE_TIME_DATA_ID as ABSTRACT_BOAT_BUBBLE_TIME_DATA_ID,
+    VANILLA_ABSTRACT_BOAT_DEFAULT_BUBBLE_TIME as ABSTRACT_BOAT_DEFAULT_BUBBLE_TIME,
+    VANILLA_ABSTRACT_BOAT_DEFAULT_PADDLE_LEFT as ABSTRACT_BOAT_DEFAULT_PADDLE_LEFT,
+    VANILLA_ABSTRACT_BOAT_DEFAULT_PADDLE_RIGHT as ABSTRACT_BOAT_DEFAULT_PADDLE_RIGHT,
+    VANILLA_ABSTRACT_BOAT_PADDLE_LEFT_DATA_ID as ABSTRACT_BOAT_PADDLE_LEFT_DATA_ID,
+    VANILLA_ABSTRACT_BOAT_PADDLE_RIGHT_DATA_ID as ABSTRACT_BOAT_PADDLE_RIGHT_DATA_ID,
     VANILLA_SHULKER_DEFAULT_PEEK as SHULKER_DEFAULT_PEEK,
     VANILLA_SHULKER_PEEK_DATA_ID as SHULKER_PEEK_DATA_ID,
     VANILLA_VEHICLE_DAMAGE_DATA_ID as VEHICLE_DAMAGE_DATA_ID,
@@ -45,11 +51,6 @@ use super::{
 };
 use bbb_protocol::entity_types::*;
 
-/// Vanilla `AbstractBoat.DATA_ID_PADDLE_LEFT` / `DATA_ID_PADDLE_RIGHT`: boat accessors after
-/// base `Entity` ids `0..=7` plus `VehicleEntity` ids `8..=10`.
-const ABSTRACT_BOAT_PADDLE_LEFT_DATA_ID: u8 = 11;
-const ABSTRACT_BOAT_PADDLE_RIGHT_DATA_ID: u8 = 12;
-const ABSTRACT_BOAT_BUBBLE_TIME_DATA_ID: u8 = 13;
 /// Vanilla `AbstractBoat.tick` advances each active `paddlePositions[side]` by
 /// `PI / 8` per client tick, otherwise resetting it to zero.
 const BOAT_PADDLE_ADVANCE_PER_TICK: f32 = std::f32::consts::PI / 8.0;
@@ -6088,14 +6089,26 @@ pub(crate) fn boat_paddle_states(
 ) -> [bool; 2] {
     [
         has_controlling_passenger
-            && entity_data_bool(data_values, ABSTRACT_BOAT_PADDLE_LEFT_DATA_ID, false),
+            && entity_data_bool(
+                data_values,
+                ABSTRACT_BOAT_PADDLE_LEFT_DATA_ID,
+                ABSTRACT_BOAT_DEFAULT_PADDLE_LEFT,
+            ),
         has_controlling_passenger
-            && entity_data_bool(data_values, ABSTRACT_BOAT_PADDLE_RIGHT_DATA_ID, false),
+            && entity_data_bool(
+                data_values,
+                ABSTRACT_BOAT_PADDLE_RIGHT_DATA_ID,
+                ABSTRACT_BOAT_DEFAULT_PADDLE_RIGHT,
+            ),
     ]
 }
 
 pub(crate) fn boat_bubble_time(data_values: &[EntityDataValue]) -> i32 {
-    entity_data_int(data_values, ABSTRACT_BOAT_BUBBLE_TIME_DATA_ID, 0)
+    entity_data_int(
+        data_values,
+        ABSTRACT_BOAT_BUBBLE_TIME_DATA_ID,
+        ABSTRACT_BOAT_DEFAULT_BUBBLE_TIME,
+    )
 }
 
 fn entity_data_bool(data_values: &[EntityDataValue], data_id: u8, default: bool) -> bool {

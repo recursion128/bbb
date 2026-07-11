@@ -484,7 +484,7 @@ back into a todo. Do not delete these.
 - **Remaining entity metadata schema families.** The checked-in schema now owns
   `Entity`, `LivingEntity`, `Mob`, `Avatar`, and `Player` accessors/defaults/flags,
   plus the `AgeableMob -> AbstractHorse`, `ArmorStand`, `Slime` (also consumed by `MagmaCube`),
-  `Shulker`, `Zombie`, `Entity -> AbstractArrow`, `Entity -> VehicleEntity`, and
+  `Shulker`, `Zombie`, `Entity -> AbstractArrow`, `Entity -> VehicleEntity -> AbstractBoat`, and
   `HangingEntity -> ItemFrame` branches, including inherited lookup. Remaining concrete entity
   subclasses (including other non-`AgeableMob` baby flags, zombie/projectile/vehicle subclasses,
   and concrete equine variants) still keep local metadata ids and masks until their family
