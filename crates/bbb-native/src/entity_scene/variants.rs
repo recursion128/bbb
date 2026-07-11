@@ -198,8 +198,10 @@ pub(super) fn parrot_model_kind(
 pub(super) fn panda_model_kind(
     values: &[bbb_protocol::packets::EntityDataValue],
 ) -> EntityModelKind {
-    let main_gene = entity_data_byte(values, PANDA_MAIN_GENE_DATA_ID, 0) as i32;
-    let hidden_gene = entity_data_byte(values, PANDA_HIDDEN_GENE_DATA_ID, 0) as i32;
+    let main_gene =
+        entity_data_byte(values, PANDA_MAIN_GENE_DATA_ID, PANDA_DEFAULT_MAIN_GENE) as i32;
+    let hidden_gene =
+        entity_data_byte(values, PANDA_HIDDEN_GENE_DATA_ID, PANDA_DEFAULT_HIDDEN_GENE) as i32;
     EntityModelKind::Panda {
         baby: ageable_baby(values),
         variant: PandaModelVariant::from_genes(main_gene, hidden_gene),
@@ -902,7 +904,11 @@ pub(super) fn panda_is_unhappy(
     values: &[bbb_protocol::packets::EntityDataValue],
 ) -> bool {
     entity_type_id == VANILLA_ENTITY_TYPE_PANDA_ID
-        && entity_data_int(values, PANDA_UNHAPPY_COUNTER_DATA_ID, 0) > 0
+        && entity_data_int(
+            values,
+            PANDA_UNHAPPY_COUNTER_DATA_ID,
+            PANDA_DEFAULT_UNHAPPY_COUNTER,
+        ) > 0
 }
 
 /// Vanilla `PandaRenderState.isSneezing = Panda.isSneezing()` (the synced `DATA_ID_FLAGS` byte, id 23,
@@ -912,7 +918,9 @@ pub(super) fn panda_is_sneezing(
     values: &[bbb_protocol::packets::EntityDataValue],
 ) -> bool {
     entity_type_id == VANILLA_ENTITY_TYPE_PANDA_ID
-        && (entity_data_byte(values, PANDA_FLAGS_DATA_ID, 0) & PANDA_SNEEZING_FLAG) != 0
+        && (entity_data_byte(values, PANDA_FLAGS_DATA_ID, PANDA_DEFAULT_FLAGS)
+            & PANDA_SNEEZING_FLAG)
+            != 0
 }
 
 /// Vanilla `PandaRenderState.sneezeTime = Panda.getSneezeCounter()` (the synced `SNEEZE_COUNTER` int, id
@@ -922,7 +930,11 @@ pub(super) fn panda_sneeze_time(
     values: &[bbb_protocol::packets::EntityDataValue],
 ) -> i32 {
     if entity_type_id == VANILLA_ENTITY_TYPE_PANDA_ID {
-        entity_data_int(values, PANDA_SNEEZE_COUNTER_DATA_ID, 0)
+        entity_data_int(
+            values,
+            PANDA_SNEEZE_COUNTER_DATA_ID,
+            PANDA_DEFAULT_SNEEZE_COUNTER,
+        )
     } else {
         0
     }
@@ -935,7 +947,7 @@ pub(super) fn panda_is_eating(
     values: &[bbb_protocol::packets::EntityDataValue],
 ) -> bool {
     entity_type_id == VANILLA_ENTITY_TYPE_PANDA_ID
-        && entity_data_int(values, PANDA_EAT_COUNTER_DATA_ID, 0) > 0
+        && entity_data_int(values, PANDA_EAT_COUNTER_DATA_ID, PANDA_DEFAULT_EAT_COUNTER) > 0
 }
 
 /// Vanilla `PandaRenderState.isSitting = Panda.isSitting()` (the synced `DATA_ID_FLAGS` byte, id 23, bit
@@ -945,7 +957,8 @@ pub(super) fn panda_is_sitting(
     values: &[bbb_protocol::packets::EntityDataValue],
 ) -> bool {
     entity_type_id == VANILLA_ENTITY_TYPE_PANDA_ID
-        && (entity_data_byte(values, PANDA_FLAGS_DATA_ID, 0) & PANDA_SITTING_FLAG) != 0
+        && (entity_data_byte(values, PANDA_FLAGS_DATA_ID, PANDA_DEFAULT_FLAGS) & PANDA_SITTING_FLAG)
+            != 0
 }
 
 /// Vanilla `PandaRenderState.isScared = Panda.isScared()` = `isWorried() && level.isThundering()`.
@@ -959,8 +972,10 @@ pub(super) fn panda_is_scared(
     if entity_type_id != VANILLA_ENTITY_TYPE_PANDA_ID || !world_is_thundering(world) {
         return false;
     }
-    let main_gene = entity_data_byte(values, PANDA_MAIN_GENE_DATA_ID, 0) as i32;
-    let hidden_gene = entity_data_byte(values, PANDA_HIDDEN_GENE_DATA_ID, 0) as i32;
+    let main_gene =
+        entity_data_byte(values, PANDA_MAIN_GENE_DATA_ID, PANDA_DEFAULT_MAIN_GENE) as i32;
+    let hidden_gene =
+        entity_data_byte(values, PANDA_HIDDEN_GENE_DATA_ID, PANDA_DEFAULT_HIDDEN_GENE) as i32;
     PandaModelVariant::from_genes(main_gene, hidden_gene) == PandaModelVariant::Worried
 }
 

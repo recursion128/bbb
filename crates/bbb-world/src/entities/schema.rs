@@ -27,6 +27,7 @@ pub enum VanillaEntityMetadataFamily {
     Bee,
     Dolphin,
     Goat,
+    Panda,
     PolarBear,
     Turtle,
     AbstractHorse,
@@ -359,6 +360,7 @@ mod tests {
             VanillaEntityMetadataFamily::Bee,
             VanillaEntityMetadataFamily::Dolphin,
             VanillaEntityMetadataFamily::Goat,
+            VanillaEntityMetadataFamily::Panda,
             VanillaEntityMetadataFamily::PolarBear,
             VanillaEntityMetadataFamily::Turtle,
             VanillaEntityMetadataFamily::AbstractHorse,
@@ -519,6 +521,26 @@ mod tests {
         assert!(!VANILLA_GOAT_DEFAULT_SCREAMING);
         assert!(VANILLA_GOAT_DEFAULT_HAS_LEFT_HORN);
         assert!(VANILLA_GOAT_DEFAULT_HAS_RIGHT_HORN);
+        let panda = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Panda);
+        assert_eq!(panda.parent, Some(VanillaEntityMetadataFamily::AgeableMob));
+        assert_eq!(panda.inherited_field_count, 18);
+        assert_eq!(panda.own_fields.len(), 6);
+        assert_eq!(VANILLA_PANDA_UNHAPPY_COUNTER_DATA_ID, 18);
+        assert_eq!(VANILLA_PANDA_SNEEZE_COUNTER_DATA_ID, 19);
+        assert_eq!(VANILLA_PANDA_EAT_COUNTER_DATA_ID, 20);
+        assert_eq!(VANILLA_PANDA_MAIN_GENE_DATA_ID, 21);
+        assert_eq!(VANILLA_PANDA_HIDDEN_GENE_DATA_ID, 22);
+        assert_eq!(VANILLA_PANDA_FLAGS_DATA_ID, 23);
+        assert_eq!(VANILLA_PANDA_DEFAULT_UNHAPPY_COUNTER, 0);
+        assert_eq!(VANILLA_PANDA_DEFAULT_SNEEZE_COUNTER, 0);
+        assert_eq!(VANILLA_PANDA_DEFAULT_EAT_COUNTER, 0);
+        assert_eq!(VANILLA_PANDA_DEFAULT_MAIN_GENE, 0);
+        assert_eq!(VANILLA_PANDA_DEFAULT_HIDDEN_GENE, 0);
+        assert_eq!(VANILLA_PANDA_DEFAULT_FLAGS, 0);
+        assert_eq!(VANILLA_PANDA_FLAG_SNEEZING, 2);
+        assert_eq!(VANILLA_PANDA_FLAG_ROLLING, 4);
+        assert_eq!(VANILLA_PANDA_FLAG_SITTING, 8);
+        assert_eq!(VANILLA_PANDA_FLAG_ON_BACK, 16);
         let turtle = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Turtle);
         assert_eq!(turtle.parent, Some(VanillaEntityMetadataFamily::AgeableMob));
         assert_eq!(turtle.inherited_field_count, 18);

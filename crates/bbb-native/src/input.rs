@@ -123,6 +123,10 @@ use bbb_world::{
     VANILLA_LLAMA_DEFAULT_VARIANT as LLAMA_DEFAULT_VARIANT,
     VANILLA_LLAMA_STRENGTH_DATA_ID as LLAMA_STRENGTH_DATA_ID,
     VANILLA_LLAMA_VARIANT_DATA_ID as LLAMA_VARIANT_DATA_ID,
+    VANILLA_PANDA_DEFAULT_HIDDEN_GENE as PANDA_DEFAULT_HIDDEN_GENE,
+    VANILLA_PANDA_DEFAULT_MAIN_GENE as PANDA_DEFAULT_MAIN_GENE,
+    VANILLA_PANDA_HIDDEN_GENE_DATA_ID as PANDA_HIDDEN_GENE_DATA_ID,
+    VANILLA_PANDA_MAIN_GENE_DATA_ID as PANDA_MAIN_GENE_DATA_ID,
     VANILLA_TURTLE_DEFAULT_HAS_EGG as TURTLE_DEFAULT_HAS_EGG,
     VANILLA_TURTLE_HAS_EGG_DATA_ID as TURTLE_HAS_EGG_DATA_ID,
     VANILLA_WITHER_DEFAULT_INVULNERABLE_TICKS as WITHER_DEFAULT_INVULNERABLE_TICKS,
@@ -516,9 +520,6 @@ const MOOSHROOM_TYPE_DATA_ID: u8 = 18;
 const MOOSHROOM_DEFAULT_TYPE_ID: i32 = 0;
 const FROG_VARIANT_DATA_ID: u8 = 18;
 const FROG_DEFAULT_VARIANT_ID: i32 = 0;
-const PANDA_MAIN_GENE_DATA_ID: u8 = 21;
-const PANDA_HIDDEN_GENE_DATA_ID: u8 = 22;
-const PANDA_DEFAULT_GENE_ID: i32 = 0;
 const PARROT_VARIANT_DATA_ID: u8 = 20;
 const PARROT_DEFAULT_VARIANT: i32 = 0;
 const PARROT_MAX_VARIANT: i32 = 4;
@@ -6700,10 +6701,10 @@ fn frog_variant_resource_id(variant: i32) -> Option<&'static str> {
 fn debug_push_panda_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
     let main_gene = debug_entity_data_byte_present(entity, PANDA_MAIN_GENE_DATA_ID)
         .map(i32::from)
-        .unwrap_or(PANDA_DEFAULT_GENE_ID);
+        .unwrap_or(i32::from(PANDA_DEFAULT_MAIN_GENE));
     let hidden_gene = debug_entity_data_byte_present(entity, PANDA_HIDDEN_GENE_DATA_ID)
         .map(i32::from)
-        .unwrap_or(PANDA_DEFAULT_GENE_ID);
+        .unwrap_or(i32::from(PANDA_DEFAULT_HIDDEN_GENE));
     fields.push(format!(
         "MainGene: {}",
         debug_snbt_string(debug_panda_gene_name(main_gene))

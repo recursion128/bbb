@@ -115,6 +115,19 @@ const GENERATED_VANILLA_GOAT_LEFT_HORN_DATA_ID: u8 = 19;
 pub const VANILLA_GOAT_LEFT_HORN_DATA_ID: u8 = GENERATED_VANILLA_GOAT_LEFT_HORN_DATA_ID;
 const GENERATED_VANILLA_GOAT_RIGHT_HORN_DATA_ID: u8 = 20;
 pub const VANILLA_GOAT_RIGHT_HORN_DATA_ID: u8 = GENERATED_VANILLA_GOAT_RIGHT_HORN_DATA_ID;
+const GENERATED_VANILLA_PANDA_UNHAPPY_COUNTER_DATA_ID: u8 = 18;
+pub const VANILLA_PANDA_UNHAPPY_COUNTER_DATA_ID: u8 =
+    GENERATED_VANILLA_PANDA_UNHAPPY_COUNTER_DATA_ID;
+const GENERATED_VANILLA_PANDA_SNEEZE_COUNTER_DATA_ID: u8 = 19;
+pub const VANILLA_PANDA_SNEEZE_COUNTER_DATA_ID: u8 = GENERATED_VANILLA_PANDA_SNEEZE_COUNTER_DATA_ID;
+const GENERATED_VANILLA_PANDA_EAT_COUNTER_DATA_ID: u8 = 20;
+pub const VANILLA_PANDA_EAT_COUNTER_DATA_ID: u8 = GENERATED_VANILLA_PANDA_EAT_COUNTER_DATA_ID;
+const GENERATED_VANILLA_PANDA_MAIN_GENE_DATA_ID: u8 = 21;
+pub const VANILLA_PANDA_MAIN_GENE_DATA_ID: u8 = GENERATED_VANILLA_PANDA_MAIN_GENE_DATA_ID;
+const GENERATED_VANILLA_PANDA_HIDDEN_GENE_DATA_ID: u8 = 22;
+pub const VANILLA_PANDA_HIDDEN_GENE_DATA_ID: u8 = GENERATED_VANILLA_PANDA_HIDDEN_GENE_DATA_ID;
+const GENERATED_VANILLA_PANDA_FLAGS_DATA_ID: u8 = 23;
+pub const VANILLA_PANDA_FLAGS_DATA_ID: u8 = GENERATED_VANILLA_PANDA_FLAGS_DATA_ID;
 const GENERATED_VANILLA_TURTLE_HAS_EGG_DATA_ID: u8 = 18;
 pub const VANILLA_TURTLE_HAS_EGG_DATA_ID: u8 = GENERATED_VANILLA_TURTLE_HAS_EGG_DATA_ID;
 const GENERATED_VANILLA_TURTLE_LAYING_EGG_DATA_ID: u8 = 19;
@@ -304,6 +317,14 @@ const GENERATED_VANILLA_BEE_FLAG_HAS_STUNG: i8 = 4;
 pub const VANILLA_BEE_FLAG_HAS_STUNG: i8 = GENERATED_VANILLA_BEE_FLAG_HAS_STUNG;
 const GENERATED_VANILLA_BEE_FLAG_HAS_NECTAR: i8 = 8;
 pub const VANILLA_BEE_FLAG_HAS_NECTAR: i8 = GENERATED_VANILLA_BEE_FLAG_HAS_NECTAR;
+const GENERATED_VANILLA_PANDA_FLAG_SNEEZING: i8 = 2;
+pub const VANILLA_PANDA_FLAG_SNEEZING: i8 = GENERATED_VANILLA_PANDA_FLAG_SNEEZING;
+const GENERATED_VANILLA_PANDA_FLAG_ROLLING: i8 = 4;
+pub const VANILLA_PANDA_FLAG_ROLLING: i8 = GENERATED_VANILLA_PANDA_FLAG_ROLLING;
+const GENERATED_VANILLA_PANDA_FLAG_SITTING: i8 = 8;
+pub const VANILLA_PANDA_FLAG_SITTING: i8 = GENERATED_VANILLA_PANDA_FLAG_SITTING;
+const GENERATED_VANILLA_PANDA_FLAG_ON_BACK: i8 = 16;
+pub const VANILLA_PANDA_FLAG_ON_BACK: i8 = GENERATED_VANILLA_PANDA_FLAG_ON_BACK;
 const GENERATED_VANILLA_VEX_FLAG_CHARGING: i8 = 1;
 pub const VANILLA_VEX_FLAG_CHARGING: i8 = GENERATED_VANILLA_VEX_FLAG_CHARGING;
 const GENERATED_VANILLA_BAT_FLAG_RESTING: i8 = 1;
@@ -473,6 +494,20 @@ const GENERATED_VANILLA_GOAT_DEFAULT_HAS_LEFT_HORN: bool = true;
 pub const VANILLA_GOAT_DEFAULT_HAS_LEFT_HORN: bool = GENERATED_VANILLA_GOAT_DEFAULT_HAS_LEFT_HORN;
 const GENERATED_VANILLA_GOAT_DEFAULT_HAS_RIGHT_HORN: bool = true;
 pub const VANILLA_GOAT_DEFAULT_HAS_RIGHT_HORN: bool = GENERATED_VANILLA_GOAT_DEFAULT_HAS_RIGHT_HORN;
+const GENERATED_VANILLA_PANDA_DEFAULT_UNHAPPY_COUNTER: i32 = 0;
+pub const VANILLA_PANDA_DEFAULT_UNHAPPY_COUNTER: i32 =
+    GENERATED_VANILLA_PANDA_DEFAULT_UNHAPPY_COUNTER;
+const GENERATED_VANILLA_PANDA_DEFAULT_SNEEZE_COUNTER: i32 = 0;
+pub const VANILLA_PANDA_DEFAULT_SNEEZE_COUNTER: i32 =
+    GENERATED_VANILLA_PANDA_DEFAULT_SNEEZE_COUNTER;
+const GENERATED_VANILLA_PANDA_DEFAULT_EAT_COUNTER: i32 = 0;
+pub const VANILLA_PANDA_DEFAULT_EAT_COUNTER: i32 = GENERATED_VANILLA_PANDA_DEFAULT_EAT_COUNTER;
+const GENERATED_VANILLA_PANDA_DEFAULT_MAIN_GENE: i8 = 0;
+pub const VANILLA_PANDA_DEFAULT_MAIN_GENE: i8 = GENERATED_VANILLA_PANDA_DEFAULT_MAIN_GENE;
+const GENERATED_VANILLA_PANDA_DEFAULT_HIDDEN_GENE: i8 = 0;
+pub const VANILLA_PANDA_DEFAULT_HIDDEN_GENE: i8 = GENERATED_VANILLA_PANDA_DEFAULT_HIDDEN_GENE;
+const GENERATED_VANILLA_PANDA_DEFAULT_FLAGS: i8 = 0;
+pub const VANILLA_PANDA_DEFAULT_FLAGS: i8 = GENERATED_VANILLA_PANDA_DEFAULT_FLAGS;
 const GENERATED_VANILLA_TURTLE_DEFAULT_HAS_EGG: bool = false;
 pub const VANILLA_TURTLE_DEFAULT_HAS_EGG: bool = GENERATED_VANILLA_TURTLE_DEFAULT_HAS_EGG;
 const GENERATED_VANILLA_TURTLE_DEFAULT_LAYING_EGG: bool = false;
@@ -11457,6 +11492,34 @@ pub const VANILLA_ENTITY_METADATA_FLAG_RESOLVER_EVIDENCE_26_1:
         reason: "named vanilla flag constant",
     },
     VanillaEntityMetadataResolverEvidence {
+        java_class: "net.minecraft.world.entity.animal.panda.Panda",
+        accessor_name: "DATA_ID_FLAGS",
+        evidence_member: "FLAG_SNEEZE",
+        source_expression: "2",
+        reason: "named vanilla flag constant",
+    },
+    VanillaEntityMetadataResolverEvidence {
+        java_class: "net.minecraft.world.entity.animal.panda.Panda",
+        accessor_name: "DATA_ID_FLAGS",
+        evidence_member: "FLAG_ROLL",
+        source_expression: "4",
+        reason: "named vanilla flag constant",
+    },
+    VanillaEntityMetadataResolverEvidence {
+        java_class: "net.minecraft.world.entity.animal.panda.Panda",
+        accessor_name: "DATA_ID_FLAGS",
+        evidence_member: "FLAG_SIT",
+        source_expression: "8",
+        reason: "named vanilla flag constant",
+    },
+    VanillaEntityMetadataResolverEvidence {
+        java_class: "net.minecraft.world.entity.animal.panda.Panda",
+        accessor_name: "DATA_ID_FLAGS",
+        evidence_member: "FLAG_ON_BACK",
+        source_expression: "16",
+        reason: "named vanilla flag constant",
+    },
+    VanillaEntityMetadataResolverEvidence {
         java_class: "net.minecraft.world.entity.monster.Vex",
         accessor_name: "DATA_FLAGS_ID",
         evidence_member: "FLAG_IS_CHARGING",
@@ -13552,6 +13615,74 @@ const GOAT_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFami
     own_flags: GOAT_FLAGS,
 };
 
+const PANDA_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[
+    VanillaEntityMetadataFieldSchema {
+        name: "UNHAPPY_COUNTER",
+        data_id: 18,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+        default: VanillaEntityMetadataDefault::Int(0),
+    },
+    VanillaEntityMetadataFieldSchema {
+        name: "SNEEZE_COUNTER",
+        data_id: 19,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+        default: VanillaEntityMetadataDefault::Int(0),
+    },
+    VanillaEntityMetadataFieldSchema {
+        name: "EAT_COUNTER",
+        data_id: 20,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+        default: VanillaEntityMetadataDefault::Int(0),
+    },
+    VanillaEntityMetadataFieldSchema {
+        name: "MAIN_GENE_ID",
+        data_id: 21,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+        default: VanillaEntityMetadataDefault::Byte(0),
+    },
+    VanillaEntityMetadataFieldSchema {
+        name: "HIDDEN_GENE_ID",
+        data_id: 22,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+        default: VanillaEntityMetadataDefault::Byte(0),
+    },
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_ID_FLAGS",
+        data_id: 23,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+        default: VanillaEntityMetadataDefault::Byte(0),
+    },
+];
+const PANDA_FLAGS: &[VanillaEntityMetadataFlagSchema] = &[
+    VanillaEntityMetadataFlagSchema {
+        name: "FLAG_SNEEZE",
+        data_id: 23,
+        mask: VANILLA_PANDA_FLAG_SNEEZING,
+    },
+    VanillaEntityMetadataFlagSchema {
+        name: "FLAG_ROLL",
+        data_id: 23,
+        mask: VANILLA_PANDA_FLAG_ROLLING,
+    },
+    VanillaEntityMetadataFlagSchema {
+        name: "FLAG_SIT",
+        data_id: 23,
+        mask: VANILLA_PANDA_FLAG_SITTING,
+    },
+    VanillaEntityMetadataFlagSchema {
+        name: "FLAG_ON_BACK",
+        data_id: 23,
+        mask: VANILLA_PANDA_FLAG_ON_BACK,
+    },
+];
+const PANDA_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamilySchema {
+    family: VanillaEntityMetadataFamily::Panda,
+    parent: Some(VanillaEntityMetadataFamily::AgeableMob),
+    inherited_field_count: 18,
+    own_fields: PANDA_FIELDS,
+    own_flags: PANDA_FLAGS,
+};
+
 const POLARBEAR_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[VanillaEntityMetadataFieldSchema {
     name: "DATA_STANDING_ID",
     data_id: 18,
@@ -14588,6 +14719,7 @@ pub(super) const fn generated_entity_metadata_schema(
         VanillaEntityMetadataFamily::Bee => &BEE_SCHEMA,
         VanillaEntityMetadataFamily::Dolphin => &DOLPHIN_SCHEMA,
         VanillaEntityMetadataFamily::Goat => &GOAT_SCHEMA,
+        VanillaEntityMetadataFamily::Panda => &PANDA_SCHEMA,
         VanillaEntityMetadataFamily::PolarBear => &POLARBEAR_SCHEMA,
         VanillaEntityMetadataFamily::Turtle => &TURTLE_SCHEMA,
         VanillaEntityMetadataFamily::AbstractHorse => &ABSTRACTHORSE_SCHEMA,

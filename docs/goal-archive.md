@@ -9856,3 +9856,10 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   chest id19/default false、llama strength id20/default0 与 variant id21/default0；native
   model/debug-save 删除手抄 synced id/default。coat/marking 解码、variant clamp 与容器保存
   语义仍由对应 owner 管理。
+
+## 2026-07-11：Generated entity metadata consumer（Panda）
+
+- [x] 从 generated catalog 建立 `AgeableMob -> Panda` family：三项 INT counter id18–20、
+  两项 BYTE gene id21–22、BYTE flags id23（默认全 0），以及 sneeze/roll/sit/on-back
+  masks 2/4/8/16；world animation、native model/state/debug-save 删除手抄 synced
+  id/default/mask。动画速率、gene 显隐和天气行为仍由对应 owner 管理。

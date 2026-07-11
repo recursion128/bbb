@@ -48,6 +48,11 @@ use super::schema::{
     VANILLA_GUARDIAN_DEFAULT_ATTACK_TARGET as GUARDIAN_DEFAULT_ATTACK_TARGET,
     VANILLA_GUARDIAN_DEFAULT_MOVING as GUARDIAN_DEFAULT_MOVING,
     VANILLA_GUARDIAN_MOVING_DATA_ID as GUARDIAN_MOVING_DATA_ID,
+    VANILLA_PANDA_DEFAULT_FLAGS as PANDA_DEFAULT_FLAGS,
+    VANILLA_PANDA_FLAGS_DATA_ID as PANDA_FLAGS_DATA_ID,
+    VANILLA_PANDA_FLAG_ON_BACK as PANDA_FLAG_ON_BACK,
+    VANILLA_PANDA_FLAG_ROLLING as PANDA_FLAG_ROLLING,
+    VANILLA_PANDA_FLAG_SITTING as PANDA_FLAG_SITTING,
     VANILLA_PIGLIN_CHARGING_CROSSBOW_DATA_ID as PIGLIN_IS_CHARGING_CROSSBOW_DATA_ID,
     VANILLA_PIGLIN_DEFAULT_CHARGING_CROSSBOW as PIGLIN_DEFAULT_CHARGING_CROSSBOW,
     VANILLA_PILLAGER_CHARGING_CROSSBOW_DATA_ID as PILLAGER_IS_CHARGING_CROSSBOW_DATA_ID,
@@ -110,12 +115,6 @@ const ARMOR_STAND_WOBBLE_TIME: i32 = 5;
 /// Vanilla `AbstractHorse.DATA_ID_FLAGS` (id 18): the shared equine flags byte after
 /// `AgeableMob`'s two accessors. `AbstractHorse.tick` eases render-state eat / stand / mouth
 /// amounts toward these bits every client tick.
-/// Vanilla `Panda.DATA_ID_FLAGS`, the panda's synced flags byte after unhappy/sneeze/eat/gene data.
-const PANDA_FLAGS_DATA_ID: u8 = 23;
-/// Vanilla `Panda.isRolling()` / `isSitting()` / `isOnBack()` masks within `DATA_ID_FLAGS`.
-const PANDA_FLAG_ROLLING: i8 = 0x04;
-const PANDA_FLAG_SITTING: i8 = 0x08;
-const PANDA_FLAG_ON_BACK: i8 = 0x10;
 /// Vanilla `Panda.updateSitAmount` / `updateOnBackAnimation` / `updateRollAmount` easing.
 const PANDA_AMOUNT_RISE_PER_TICK: f32 = 0.15;
 const PANDA_AMOUNT_FALL_PER_TICK: f32 = 0.19;
@@ -6166,7 +6165,7 @@ fn bee_is_rolling(data_values: &[EntityDataValue]) -> bool {
 }
 
 fn panda_pose_flags(data_values: &[EntityDataValue]) -> (bool, bool, bool) {
-    let flags = entity_data_byte(data_values, PANDA_FLAGS_DATA_ID, 0);
+    let flags = entity_data_byte(data_values, PANDA_FLAGS_DATA_ID, PANDA_DEFAULT_FLAGS);
     (
         flags & PANDA_FLAG_SITTING != 0,
         flags & PANDA_FLAG_ON_BACK != 0,
