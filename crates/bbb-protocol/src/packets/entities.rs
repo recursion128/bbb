@@ -514,7 +514,13 @@ pub(super) fn decode_remove_entities(decoder: &mut Decoder<'_>) -> Result<Remove
     for _ in 0..count {
         entity_ids.push(decoder.read_var_i32()?);
     }
-    Ok(RemoveEntities { entity_ids })
+    let update = RemoveEntities { entity_ids };
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after remove entities packet".to_string(),
+        ));
+    }
+    Ok(update)
 }
 
 pub(super) fn decode_take_item_entity(decoder: &mut Decoder<'_>) -> Result<TakeItemEntity> {

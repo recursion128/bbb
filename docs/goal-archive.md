@@ -11051,3 +11051,11 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] 审计确认当前 world apply 会立即把 canonical transform 写到最后一步并替换 active steps，
   不等同于 vanilla `NewMinecartBehavior` 的 pending/current queue 与 client-tick 推进；对应
   canonical/runtime 两格继续保持 partial，未用已有 render interpolation 过度宣称完成。
+
+## 2026-07-11：remove-entities packet coverage audit
+
+- [x] 对照 `ClientboundRemoveEntitiesPacket.readIntIdList`，锁定 count + VarInt ids 并拒绝
+  trailing bytes；world apply 删除 canonical entity，并清理 mount/passenger/leash 关系，已有
+  protocol/world/net/native 测试覆盖，因此 decode/ownership/canonical/tests 四格闭合。
+- [x] vanilla handler 在被删实体承载本地玩家时保留 `removedPlayerVehicleId` 供 correction
+  恢复，并通知 debug subscriber；bbb 尚未保留该恢复状态，因此 runtime 格继续保持 partial。

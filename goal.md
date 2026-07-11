@@ -354,6 +354,9 @@ canonical/runtime 保持 partial，不能用最终 yaw 直写冒充插值。
 MoveMinecartAlongTrack 的 step-list wire、ownership 与现有 protocol/world/native tests 已闭合；
 但当前 apply 会立即写入最后一步并替换 active steps，尚未复刻 vanilla pending/current queue 与
 client tick 推进语义，因此 canonical/runtime 保持 partial。
+RemoveEntities 的 int-id list wire、world cleanup 与 tests 已闭合；vanilla listener 的
+`removedPlayerVehicleId` correction recovery/debug-subscriber side effect 尚未建模，因此只保留
+runtime 格 partial。
 
 完成标准：全部 vanilla 26.1 catalog entry 都有矩阵行；所有目标客户端适用项为
 `complete`，其余只有带 vanilla 依据的 `not-applicable` 或带重启判据的窄 `deferred`；
