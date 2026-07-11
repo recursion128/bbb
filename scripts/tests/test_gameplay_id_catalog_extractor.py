@@ -15,6 +15,7 @@ from gameplay_id_catalog_extractor import (  # noqa: E402
     client_game_event_type_entries,
     client_command_action_entries,
     boss_bar_style_entries,
+    chat_formatting_entries,
     custom_chat_completions_action_entries,
     difficulty_entries,
     difficulty_out_of_bounds_strategy,
@@ -553,6 +554,45 @@ public abstract class Team {
                 ("PUSH_OTHER_TEAMS", 2, "pushOtherTeams"),
                 ("PUSH_OWN_TEAM", 3, "pushOwnTeam"),
             ],
+        )
+
+    def test_chat_formatting_preserves_ordinals_codes_ids_formats_and_colors(self) -> None:
+        source = parse_source(
+            "fixture/ChatFormatting.java",
+            b"""
+package fixture;
+public enum ChatFormatting {
+  BLACK("BLACK", '0', 0, 0), DARK_BLUE("DARK_BLUE", '1', 1, 170),
+  DARK_GREEN("DARK_GREEN", '2', 2, 43520), DARK_AQUA("DARK_AQUA", '3', 3, 43690),
+  DARK_RED("DARK_RED", '4', 4, 11141120), DARK_PURPLE("DARK_PURPLE", '5', 5, 11141290),
+  GOLD("GOLD", '6', 6, 16755200), GRAY("GRAY", '7', 7, 11184810),
+  DARK_GRAY("DARK_GRAY", '8', 8, 5592405), BLUE("BLUE", '9', 9, 5592575),
+  GREEN("GREEN", 'a', 10, 5635925), AQUA("AQUA", 'b', 11, 5636095),
+  RED("RED", 'c', 12, 16733525), LIGHT_PURPLE("LIGHT_PURPLE", 'd', 13, 16733695),
+  YELLOW("YELLOW", 'e', 14, 16777045), WHITE("WHITE", 'f', 15, 16777215),
+  OBFUSCATED("OBFUSCATED", 'k', true), BOLD("BOLD", 'l', true),
+  STRIKETHROUGH("STRIKETHROUGH", 'm', true), UNDERLINE("UNDERLINE", 'n', true),
+  ITALIC("ITALIC", 'o', true), RESET("RESET", 'r', -1, null);
+}
+""",
+        )
+        entries = chat_formatting_entries(source)
+        self.assertEqual(len(entries), 22)
+        self.assertEqual(
+            entries[0],
+            type(entries[0])("BLACK", 0, "black", "0", 0, False, 0),
+        )
+        self.assertEqual(
+            entries[12],
+            type(entries[12])("RED", 12, "red", "c", 12, False, 16733525),
+        )
+        self.assertEqual(
+            entries[16],
+            type(entries[16])("OBFUSCATED", 16, "obfuscated", "k", -1, True, None),
+        )
+        self.assertEqual(
+            entries[-1],
+            type(entries[-1])("RESET", 21, "reset", "r", -1, False, None),
         )
 
     def test_unsupported_register_shape_reports_source_span(self) -> None:

@@ -210,7 +210,12 @@ pub(super) fn decode_player_team_parameters(
         options: decoder.read_u8()?,
         nametag_visibility: TeamVisibility::from_id(decoder.read_var_i32()?),
         collision_rule: TeamCollisionRule::from_id(decoder.read_var_i32()?),
-        color: ChatFormatting::from_ordinal(decoder.read_var_i32()?)?,
+        color: {
+            let ordinal = decoder.read_var_i32()?;
+            ChatFormatting::from_ordinal(ordinal).ok_or_else(|| {
+                ProtocolError::InvalidData(format!("invalid chat formatting ordinal {ordinal}"))
+            })?
+        },
         player_prefix: decode_component_summary_from_decoder(decoder)?,
         player_suffix: decode_component_summary_from_decoder(decoder)?,
     })

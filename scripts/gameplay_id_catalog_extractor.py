@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ast
 import json
 from dataclasses import dataclass
 
@@ -188,6 +189,17 @@ class ScoreboardTeamOptionEntry:
     serialized_name: str
 
 
+@dataclass(frozen=True)
+class ChatFormattingEntry:
+    constant_name: str
+    ordinal: int
+    serialized_name: str
+    legacy_code: str
+    formatting_id: int
+    is_format: bool
+    color: int | None
+
+
 def _fail(source: JavaSource, expression: JavaExpression, message: str) -> None:
     span = expression.span
     raise GameplayIdExtractionError(
@@ -215,6 +227,26 @@ def _integer(source: JavaSource, expression: JavaExpression) -> int:
         return int(expression.canonical.replace("_", ""), 0)
     except ValueError:
         _fail(source, expression, "invalid integer literal")
+
+
+def _signed_integer(source: JavaSource, expression: JavaExpression) -> int:
+    canonical = expression.canonical.replace("_", "").replace(" ", "")
+    try:
+        return int(canonical, 0)
+    except ValueError:
+        _fail(source, expression, "expected signed integer literal")
+
+
+def _character(source: JavaSource, expression: JavaExpression) -> str:
+    if expression.node.type != "character_literal":
+        _fail(source, expression, "expected character literal")
+    try:
+        value = ast.literal_eval(source.text(expression.node))
+    except (SyntaxError, ValueError) as error:
+        _fail(source, expression, f"invalid Java character literal: {error}")
+    if not isinstance(value, str) or len(value) != 1:
+        _fail(source, expression, "expected one-character literal")
+    return value
 
 
 def _fields(source: JavaSource, prefix: str) -> list[JavaField]:
@@ -815,6 +847,63 @@ def scoreboard_team_option_entries(
     visibility, visibility_strategy = extract("Visibility", "team visibility")
     collision, collision_strategy = extract("CollisionRule", "team collision rule")
     return visibility, visibility_strategy, collision, collision_strategy
+
+
+def chat_formatting_entries(
+    source: JavaSource, expected_count: int = 22
+) -> list[ChatFormattingEntry]:
+    entries = []
+    for ordinal, (name, arguments) in enumerate(_enum_constants(source)):
+        if len(arguments) not in {3, 4}:
+            expression = arguments[0] if arguments else source.expression(source.types[0].node)
+            _fail(source, expression, f"chat formatting {name} has unsupported arguments")
+        declared_name = _string(source, arguments[0])
+        if declared_name != name:
+            _fail(
+                source,
+                arguments[0],
+                f"chat formatting {name} declares mismatched name {declared_name}",
+            )
+        legacy_code = _character(source, arguments[1])
+        if len(arguments) == 3:
+            if arguments[2].canonical != "true":
+                _fail(source, arguments[2], f"chat formatting {name} must be a format")
+            formatting_id = -1
+            is_format = True
+            color = None
+        else:
+            formatting_id = _signed_integer(source, arguments[2])
+            is_format = False
+            color = (
+                None
+                if arguments[3].canonical == "null"
+                else _integer(source, arguments[3])
+            )
+        entries.append(
+            ChatFormattingEntry(
+                name,
+                ordinal,
+                name.lower(),
+                legacy_code,
+                formatting_id,
+                is_format,
+                color,
+            )
+        )
+    if len(entries) != expected_count:
+        raise GameplayIdExtractionError(
+            f"expected {expected_count} chat formatting values, extracted {len(entries)}"
+        )
+    _validate(entries, "chat formatting", "ordinal")
+    _validate(entries, "chat formatting", "serialized_name")
+    if [entry.ordinal for entry in entries] != list(range(expected_count)):
+        raise GameplayIdExtractionError(
+            "chat formatting ordinals are not contiguous declaration order"
+        )
+    color_ids = [entry.formatting_id for entry in entries if entry.color is not None]
+    if color_ids != list(range(16)):
+        raise GameplayIdExtractionError("chat formatting color ids are not 0..15")
+    return entries
 
 
 def equipment_slot_entries(

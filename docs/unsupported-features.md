@@ -62,7 +62,8 @@ Owner: `scripts/` + each generated catalog's semantic crate
   as well. Entity-anchor, objective-render, and advancement-frame ordinals/names,
   boss-bar style ordinals/names, remote-debug sample type ordinals, and Difficulty
   ids/names/WRAP fallback, scoreboard display-slot ids/names/ZERO fallback, and scoreboard
-  team visibility/collision ids/names/ZERO fallback now share generated owners too.
+  team visibility/collision ids/names/ZERO fallback, plus ChatFormatting ordinals/codes/
+  ids/colors/names now share generated owners too.
   The remaining cross-crate registry/ordinal audit stays open.
 
 ## Unknown clientbound packets in login, configuration, and play

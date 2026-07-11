@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    chat_formattings::vanilla_chat_formatting_color_by_name,
     codec::{Decoder, ProtocolError, Result},
     nbt_summary::{NbtSummaryEntry, NbtSummaryValue},
 };
@@ -551,26 +552,7 @@ fn parse_text_color(color: &str) -> Option<u32> {
         let value = u32::from_str_radix(hex, 16).ok()?;
         return (value <= 0xFF_FF_FF).then_some(value);
     }
-    // ChatFormatting colour table (enum name -> colour int).
-    Some(match color {
-        "black" => 0x00_00_00,
-        "dark_blue" => 0x00_00_AA,
-        "dark_green" => 0x00_AA_00,
-        "dark_aqua" => 0x00_AA_AA,
-        "dark_red" => 0xAA_00_00,
-        "dark_purple" => 0xAA_00_AA,
-        "gold" => 0xFF_AA_00,
-        "gray" => 0xAA_AA_AA,
-        "dark_gray" => 0x55_55_55,
-        "blue" => 0x55_55_FF,
-        "green" => 0x55_FF_55,
-        "aqua" => 0x55_FF_FF,
-        "red" => 0xFF_55_55,
-        "light_purple" => 0xFF_55_FF,
-        "yellow" => 0xFF_FF_55,
-        "white" => 0xFF_FF_FF,
-        _ => return None,
-    })
+    vanilla_chat_formatting_color_by_name(color)
 }
 
 fn find_entry<'a>(entries: &'a [NbtSummaryEntry], key: &str) -> Option<&'a NbtSummaryValue> {

@@ -1,14 +1,18 @@
 use std::collections::{BTreeMap, BTreeSet};
 
-use bbb_protocol::packets::{
-    ChatFormatting as ProtocolChatFormatting, ObjectiveRenderType as ProtocolObjectiveRenderType,
-    PlayerTeamMethod as ProtocolPlayerTeamMethod,
-    PlayerTeamParameters as ProtocolPlayerTeamParameters, ResetScore as ProtocolResetScore,
-    ScoreboardDisplaySlot as ProtocolScoreboardDisplaySlot,
-    SetDisplayObjective as ProtocolSetDisplayObjective, SetObjective as ProtocolSetObjective,
-    SetObjectiveMethod as ProtocolSetObjectiveMethod, SetPlayerTeam as ProtocolSetPlayerTeam,
-    SetScore as ProtocolSetScore, TeamCollisionRule as ProtocolTeamCollisionRule,
-    TeamVisibility as ProtocolTeamVisibility,
+use bbb_protocol::{
+    chat_formattings::vanilla_chat_formatting_color_by_name,
+    packets::{
+        ChatFormatting as ProtocolChatFormatting,
+        ObjectiveRenderType as ProtocolObjectiveRenderType,
+        PlayerTeamMethod as ProtocolPlayerTeamMethod,
+        PlayerTeamParameters as ProtocolPlayerTeamParameters, ResetScore as ProtocolResetScore,
+        ScoreboardDisplaySlot as ProtocolScoreboardDisplaySlot,
+        SetDisplayObjective as ProtocolSetDisplayObjective, SetObjective as ProtocolSetObjective,
+        SetObjectiveMethod as ProtocolSetObjectiveMethod, SetPlayerTeam as ProtocolSetPlayerTeam,
+        SetScore as ProtocolSetScore, TeamCollisionRule as ProtocolTeamCollisionRule,
+        TeamVisibility as ProtocolTeamVisibility,
+    },
 };
 use serde::{Deserialize, Serialize};
 
@@ -348,53 +352,11 @@ fn team_collision_rule_name(rule: ProtocolTeamCollisionRule) -> String {
 }
 
 fn chat_formatting_name(color: ProtocolChatFormatting) -> String {
-    match color {
-        ProtocolChatFormatting::Black => "black",
-        ProtocolChatFormatting::DarkBlue => "dark_blue",
-        ProtocolChatFormatting::DarkGreen => "dark_green",
-        ProtocolChatFormatting::DarkAqua => "dark_aqua",
-        ProtocolChatFormatting::DarkRed => "dark_red",
-        ProtocolChatFormatting::DarkPurple => "dark_purple",
-        ProtocolChatFormatting::Gold => "gold",
-        ProtocolChatFormatting::Gray => "gray",
-        ProtocolChatFormatting::DarkGray => "dark_gray",
-        ProtocolChatFormatting::Blue => "blue",
-        ProtocolChatFormatting::Green => "green",
-        ProtocolChatFormatting::Aqua => "aqua",
-        ProtocolChatFormatting::Red => "red",
-        ProtocolChatFormatting::LightPurple => "light_purple",
-        ProtocolChatFormatting::Yellow => "yellow",
-        ProtocolChatFormatting::White => "white",
-        ProtocolChatFormatting::Obfuscated => "obfuscated",
-        ProtocolChatFormatting::Bold => "bold",
-        ProtocolChatFormatting::Strikethrough => "strikethrough",
-        ProtocolChatFormatting::Underline => "underline",
-        ProtocolChatFormatting::Italic => "italic",
-        ProtocolChatFormatting::Reset => "reset",
-    }
-    .to_string()
+    color.as_str().to_string()
 }
 
 fn chat_formatting_rgb(color: &str) -> Option<u32> {
-    match color {
-        "black" => Some(0x000000),
-        "dark_blue" => Some(0x0000aa),
-        "dark_green" => Some(0x00aa00),
-        "dark_aqua" => Some(0x00aaaa),
-        "dark_red" => Some(0xaa0000),
-        "dark_purple" => Some(0xaa00aa),
-        "gold" => Some(0xffaa00),
-        "gray" => Some(0xaaaaaa),
-        "dark_gray" => Some(0x555555),
-        "blue" => Some(0x5555ff),
-        "green" => Some(0x55ff55),
-        "aqua" => Some(0x55ffff),
-        "red" => Some(0xff5555),
-        "light_purple" => Some(0xff55ff),
-        "yellow" => Some(0xffff55),
-        "white" => Some(0xffffff),
-        _ => None,
-    }
+    vanilla_chat_formatting_color_by_name(color)
 }
 
 fn scoreboard_team_parameters(

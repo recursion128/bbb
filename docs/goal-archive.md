@@ -10590,3 +10590,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   match。fixtures、生成完整性/唯一性/反向门禁以及 protocol/world/net/native scoreboard
   focused tests 均通过；team packet method、ChatFormatting、options bit 与 scoreboard apply
   行为仍由原语义 owner 手写。
+
+## 2026-07-11：Generated ChatFormatting catalog
+
+- [x] gameplay-id extractor 通过共享 Tree-sitter frontend 读取 vanilla
+  `ChatFormatting` 的 22 项声明顺序与 overloaded-constructor 参数，生成 ordinal、legacy
+  code、0..15 color id/RGB、`isFormat` 和 serialized name 的单一 typed catalog。protocol
+  client-state facade 保持原 `ChatFormatting` re-export 与变体/serde，scoreboard decoder
+  保留原 invalid-ordinal 诊断；world scoreboard 的名称/RGB 投影和 protocol component
+  `TextColor.parseColor` named-color 分支均委托 catalog，删除三份平行 match/table。fixtures、
+  生成完整性/唯一性/反向门禁、component style 与 protocol/world/net/native scoreboard
+  focused tests 均通过；hex text color、tooltip/HUD 样式选择与渲染算法仍由原 owner 手写。

@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 pub use crate::boss_bar_styles::{BossBarColor, BossBarOverlay};
+pub use crate::chat_formattings::ChatFormatting;
 pub use crate::difficulties::Difficulty;
 use crate::{
     codec::{Decoder, ProtocolError, Result},
@@ -160,66 +161,6 @@ pub struct SetDefaultSpawnPosition {
     pub pos: BlockPos,
     pub yaw: f32,
     pub pitch: f32,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum ChatFormatting {
-    Black,
-    DarkBlue,
-    DarkGreen,
-    DarkAqua,
-    DarkRed,
-    DarkPurple,
-    Gold,
-    Gray,
-    DarkGray,
-    Blue,
-    Green,
-    Aqua,
-    Red,
-    LightPurple,
-    Yellow,
-    White,
-    Obfuscated,
-    Bold,
-    Strikethrough,
-    Underline,
-    Italic,
-    Reset,
-}
-
-impl ChatFormatting {
-    pub(super) fn from_ordinal(ordinal: i32) -> Result<Self> {
-        Ok(match ordinal {
-            0 => Self::Black,
-            1 => Self::DarkBlue,
-            2 => Self::DarkGreen,
-            3 => Self::DarkAqua,
-            4 => Self::DarkRed,
-            5 => Self::DarkPurple,
-            6 => Self::Gold,
-            7 => Self::Gray,
-            8 => Self::DarkGray,
-            9 => Self::Blue,
-            10 => Self::Green,
-            11 => Self::Aqua,
-            12 => Self::Red,
-            13 => Self::LightPurple,
-            14 => Self::Yellow,
-            15 => Self::White,
-            16 => Self::Obfuscated,
-            17 => Self::Bold,
-            18 => Self::Strikethrough,
-            19 => Self::Underline,
-            20 => Self::Italic,
-            21 => Self::Reset,
-            other => {
-                return Err(ProtocolError::InvalidData(format!(
-                    "invalid chat formatting ordinal {other}"
-                )))
-            }
-        })
-    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
