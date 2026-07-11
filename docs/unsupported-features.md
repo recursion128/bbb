@@ -50,8 +50,10 @@ Owner: `bbb-protocol`
   response lifecycle, and unload one/all packs on pop.
 - Select matching locally available known packs and encode up to 64 selected
   entries instead of always returning an empty configuration response.
-- Complete the remaining configuration registry/tag, custom payload/report,
-  transfer and dialog
+- Complete configuration transfer runtime behavior: disconnect the current
+  connection, carry cookies/seen-player/insecure-chat transfer state, and reconnect
+  with the Transfer intent instead of only recording the requested host and port.
+- Complete the remaining configuration registry/tag, custom payload and dialog
   coverage cells; then cover play, movement, inventory, chat, interaction and
   command suggestion end to end.
 

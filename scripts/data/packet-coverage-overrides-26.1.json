@@ -1,5 +1,88 @@
 {
   "entries": {
+    "configuration/clientbound/CLIENTBOUND_CUSTOM_REPORT_DETAILS": {
+      "canonical_apply": {
+        "evidence": ["crates/bbb-world/src/client/server_presentation.rs#apply_custom_report_details"],
+        "status": "complete"
+      },
+      "decode": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/tests.rs#decodes_custom_report_details_in_configuration_and_play",
+          "vanilla:net/minecraft/network/protocol/common/ClientboundCustomReportDetailsPacket.java#MAX_DETAIL_COUNT"
+        ],
+        "status": "complete"
+      },
+      "ownership": {
+        "evidence": ["crates/bbb-net/src/event_stream/configuration.rs#ConfigurationClientbound::CustomReportDetails"],
+        "status": "complete"
+      },
+      "runtime_side_effect": {
+        "evidence": ["vanilla:net/minecraft/client/multiplayer/ClientCommonPacketListenerImpl.java#handleCustomReportDetails"],
+        "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+        "status": "not-applicable"
+      },
+      "tests": {
+        "evidence": ["crates/bbb-world/src/client/server_presentation.rs#custom_report_details_replace_current_details"],
+        "status": "complete"
+      }
+    },
+    "configuration/clientbound/CLIENTBOUND_SERVER_LINKS": {
+      "canonical_apply": {
+        "evidence": ["crates/bbb-world/src/client/server_presentation.rs#apply_server_links"],
+        "status": "complete"
+      },
+      "decode": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/tests.rs#decodes_server_links_in_configuration_and_play",
+          "vanilla:net/minecraft/server/ServerLinks.java#UNTRUSTED_LINKS_STREAM_CODEC"
+        ],
+        "status": "complete"
+      },
+      "ownership": {
+        "evidence": ["crates/bbb-net/src/event_stream/configuration.rs#ConfigurationClientbound::ServerLinks"],
+        "status": "complete"
+      },
+      "runtime_side_effect": {
+        "evidence": [
+          "crates/bbb-world/src/client/server_presentation.rs#is_allowed_untrusted_uri",
+          "vanilla:net/minecraft/client/multiplayer/ClientCommonPacketListenerImpl.java#handleServerLinks"
+        ],
+        "status": "complete"
+      },
+      "tests": {
+        "evidence": ["crates/bbb-world/src/client/server_presentation.rs#server_links_replace_trusted_links_and_count_invalid_entries"],
+        "status": "complete"
+      }
+    },
+    "configuration/clientbound/CLIENTBOUND_TRANSFER": {
+      "canonical_apply": {
+        "evidence": ["crates/bbb-world/src/client/server_presentation.rs#apply_transfer"],
+        "status": "complete"
+      },
+      "decode": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/tests.rs#decodes_transfer_packets_in_configuration_and_play",
+          "vanilla:net/minecraft/network/protocol/common/ClientboundTransferPacket.java#STREAM_CODEC"
+        ],
+        "status": "complete"
+      },
+      "ownership": {
+        "evidence": ["crates/bbb-net/src/event_stream/configuration.rs#ConfigurationClientbound::Transfer"],
+        "status": "complete"
+      },
+      "runtime_side_effect": {
+        "evidence": [
+          "crates/bbb-world/src/client/server_presentation.rs#transfer_stores_latest_server_target",
+          "vanilla:net/minecraft/client/multiplayer/ClientCommonPacketListenerImpl.java#handleTransfer"
+        ],
+        "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+        "status": "partial"
+      },
+      "tests": {
+        "evidence": ["crates/bbb-net/src/probe/configuration.rs#probe_applies_configuration_packets_to_world"],
+        "status": "complete"
+      }
+    },
     "configuration/clientbound/CLIENTBOUND_RESET_CHAT": {
       "canonical_apply": {
         "evidence": ["crates/bbb-world/src/client/chat.rs#apply_reset_chat"],

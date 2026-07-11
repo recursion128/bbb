@@ -10901,3 +10901,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   再交给 world 过滤 vanilla 26.1 已知 feature。
 - [x] reset-chat unit decode、configuration ownership 与 chat/signature canonical clear，以及
   enabled-features decode/world state 均由 focused tests 反向锁定；两行 coverage 全部 complete。
+
+## 2026-07-11：configuration report/server-links/transfer authority audit
+
+- [x] 对照 `ClientboundCustomReportDetailsPacket`、`ServerLinks` 与
+  `ClientCommonPacketListenerImpl`，锁定 report details 的 32 项、128 字符 key、4096 字符
+  value 上限，以及 server-links 的 codec/wire 顺序、known/untrusted link 与 URI 信任过滤；恶意
+  `i32::MAX` links count 不再能按声明值预分配，并在首个缺失 entry 安全失败。
+- [x] custom-report details 与 server-links 的 decode、configuration ownership、canonical apply、
+  runtime 适用格和 tests 已 evidence-backed 闭合。transfer 的 host/port decode、ownership、
+  canonical target 与 tests 已闭合，但 vanilla `handleTransfer` 的断开、携带 transfer state 并
+  以 Transfer intent 重连仍保持唯一 runtime partial；本地 projection 未被冒充为完整重连。

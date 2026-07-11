@@ -451,6 +451,44 @@ mod tests {
         }
     }
 
+    #[test]
+    fn configuration_presentation_packets_only_leave_transfer_reconnect_open() {
+        let ledger = vanilla_packet_coverage_26_1().unwrap();
+        let packets = BTreeSet::from([
+            "CLIENTBOUND_CUSTOM_REPORT_DETAILS",
+            "CLIENTBOUND_SERVER_LINKS",
+            "CLIENTBOUND_TRANSFER",
+        ]);
+        let entries: Vec<_> = ledger
+            .entries
+            .iter()
+            .filter(|entry| {
+                entry.state == "configuration" && packets.contains(entry.constant_name.as_str())
+            })
+            .collect();
+        assert_eq!(entries.len(), packets.len());
+
+        let partial: BTreeSet<_> = entries
+            .iter()
+            .flat_map(|entry| {
+                entry.coverage.iter().filter_map(move |(dimension, cell)| {
+                    (cell.status == PacketCoverageStatus::Partial)
+                        .then_some((entry.constant_name.as_str(), dimension.as_str()))
+                })
+            })
+            .collect();
+        assert_eq!(
+            partial,
+            BTreeSet::from([("CLIENTBOUND_TRANSFER", "runtime_side_effect")])
+        );
+        assert!(entries.iter().all(|entry| {
+            entry
+                .coverage
+                .values()
+                .all(|cell| cell.status != PacketCoverageStatus::Deferred)
+        }));
+    }
+
     fn state_name(state: PacketState) -> &'static str {
         match state {
             PacketState::Handshake => "handshake",

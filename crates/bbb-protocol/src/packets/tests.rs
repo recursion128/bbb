@@ -2880,6 +2880,15 @@ fn decodes_custom_report_details_in_configuration_and_play() {
         decode_play_clientbound(ids::play::CLIENTBOUND_CUSTOM_REPORT_DETAILS, &payload).unwrap(),
         PlayClientbound::CustomReportDetails(expected)
     );
+
+    let mut oversized = Encoder::new();
+    oversized.write_var_i32(33);
+    let error = decode_configuration_clientbound(
+        ids::configuration::CLIENTBOUND_CUSTOM_REPORT_DETAILS,
+        &oversized.into_inner(),
+    )
+    .unwrap_err();
+    assert!(matches!(error, ProtocolError::PacketTooLarge(33, 32)));
 }
 
 #[test]
@@ -2918,6 +2927,15 @@ fn decodes_server_links_in_configuration_and_play() {
         decode_play_clientbound(ids::play::CLIENTBOUND_SERVER_LINKS, &payload).unwrap(),
         PlayClientbound::ServerLinks(expected)
     );
+
+    let mut hostile = Encoder::new();
+    hostile.write_var_i32(i32::MAX);
+    let error = decode_configuration_clientbound(
+        ids::configuration::CLIENTBOUND_SERVER_LINKS,
+        &hostile.into_inner(),
+    )
+    .unwrap_err();
+    assert!(matches!(error, ProtocolError::UnexpectedEof { .. }));
 }
 
 fn assert_cookie_response_payload(payload: &[u8], key: &str, expected: Option<&[u8]>) {

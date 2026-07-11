@@ -1671,29 +1671,41 @@
       "constant_name": "CLIENTBOUND_TRANSFER",
       "coverage": {
         "canonical_apply": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/client/server_presentation.rs#apply_transfer"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/tests.rs#decodes_transfer_packets_in_configuration_and_play",
+            "vanilla:net/minecraft/network/protocol/common/ClientboundTransferPacket.java#STREAM_CODEC"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "ownership": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-net/src/event_stream/configuration.rs#ConfigurationClientbound::Transfer"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "runtime_side_effect": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
+          "evidence": [
+            "crates/bbb-world/src/client/server_presentation.rs#transfer_stores_latest_server_target",
+            "vanilla:net/minecraft/client/multiplayer/ClientCommonPacketListenerImpl.java#handleTransfer"
+          ],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
           "status": "partial"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-net/src/probe/configuration.rs#probe_applies_configuration_packets_to_world"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "clientbound",
@@ -1835,29 +1847,40 @@
       "constant_name": "CLIENTBOUND_CUSTOM_REPORT_DETAILS",
       "coverage": {
         "canonical_apply": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/client/server_presentation.rs#apply_custom_report_details"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/tests.rs#decodes_custom_report_details_in_configuration_and_play",
+            "vanilla:net/minecraft/network/protocol/common/ClientboundCustomReportDetailsPacket.java#MAX_DETAIL_COUNT"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "ownership": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-net/src/event_stream/configuration.rs#ConfigurationClientbound::CustomReportDetails"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "runtime_side_effect": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/client/multiplayer/ClientCommonPacketListenerImpl.java#handleCustomReportDetails"
+          ],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "not-applicable"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/client/server_presentation.rs#custom_report_details_replace_current_details"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "clientbound",
@@ -1870,29 +1893,41 @@
       "constant_name": "CLIENTBOUND_SERVER_LINKS",
       "coverage": {
         "canonical_apply": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/client/server_presentation.rs#apply_server_links"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/tests.rs#decodes_server_links_in_configuration_and_play",
+            "vanilla:net/minecraft/server/ServerLinks.java#UNTRUSTED_LINKS_STREAM_CODEC"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "ownership": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-net/src/event_stream/configuration.rs#ConfigurationClientbound::ServerLinks"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "runtime_side_effect": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/client/server_presentation.rs#is_allowed_untrusted_uri",
+            "vanilla:net/minecraft/client/multiplayer/ClientCommonPacketListenerImpl.java#handleServerLinks"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/client/server_presentation.rs#server_links_replace_trusted_links_and_count_invalid_entries"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "clientbound",
