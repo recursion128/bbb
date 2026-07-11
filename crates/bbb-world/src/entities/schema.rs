@@ -28,6 +28,7 @@ pub enum VanillaEntityMetadataFamily {
     EndCrystal,
     Interaction,
     ExperienceOrb,
+    ItemEntity,
     VehicleEntity,
     AbstractBoat,
     AbstractMinecart,
@@ -297,6 +298,7 @@ mod tests {
             VanillaEntityMetadataFamily::EndCrystal,
             VanillaEntityMetadataFamily::Interaction,
             VanillaEntityMetadataFamily::ExperienceOrb,
+            VanillaEntityMetadataFamily::ItemEntity,
             VanillaEntityMetadataFamily::VehicleEntity,
             VanillaEntityMetadataFamily::AbstractBoat,
             VanillaEntityMetadataFamily::AbstractMinecart,
@@ -462,6 +464,23 @@ mod tests {
         );
         assert_eq!(VANILLA_EXPERIENCE_ORB_VALUE_DATA_ID, 8);
         assert_eq!(VANILLA_EXPERIENCE_ORB_DEFAULT_VALUE, 0);
+        let item_entity = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::ItemEntity);
+        assert_eq!(
+            item_entity.parent,
+            Some(VanillaEntityMetadataFamily::Entity)
+        );
+        assert_eq!(item_entity.inherited_field_count, 8);
+        assert_eq!(
+            item_entity.own_fields,
+            &[VanillaEntityMetadataFieldSchema {
+                name: "DATA_ITEM",
+                data_id: 8,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_ITEM_STACK_ID,
+                default: VanillaEntityMetadataDefault::ItemStackEmpty,
+            }]
+        );
+        assert_eq!(VANILLA_ITEM_ENTITY_STACK_DATA_ID, 8);
         assert_eq!(
             vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Entity)
                 .own_flags

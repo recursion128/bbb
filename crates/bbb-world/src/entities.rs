@@ -48,6 +48,7 @@ use dimensions::{
 };
 pub use dragon::{DragonFlightHistorySample, DragonFlightHistoryState, EnderDragonAnimationState};
 use movement::entity_vec3;
+pub(crate) use schema::VANILLA_ITEM_ENTITY_STACK_DATA_ID;
 pub use schema::{
     vanilla_entity_metadata_field, vanilla_entity_metadata_schema,
     VanillaEntityMetadataAccessorCatalogEntry, VanillaEntityMetadataClassCatalogEntry,
@@ -168,8 +169,6 @@ const VANILLA_OPAQUE_ALPHA: u32 = 0xff00_0000;
 /// flip a living entity upside down (the Dinnerbone/Grumm easter egg).
 pub(crate) const VANILLA_UPSIDE_DOWN_NAMES: [&str; 2] = ["Dinnerbone", "Grumm"];
 pub(crate) use VANILLA_ENTITY_DEFAULT_MAX_AIR_SUPPLY_TICKS as VANILLA_MAX_AIR_SUPPLY_TICKS;
-pub(crate) const VANILLA_ITEM_ENTITY_STACK_DATA_ID: u8 = 8;
-
 pub fn vanilla_entity_type_is_living(entity_type_id: i32) -> bool {
     vanilla_living_entity_type(entity_type_id)
 }

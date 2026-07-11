@@ -78,6 +78,7 @@ FAMILIES = (
     ),
     FamilySpec("Interaction", "net.minecraft.world.entity.Interaction", "Entity"),
     FamilySpec("ExperienceOrb", "net.minecraft.world.entity.ExperienceOrb", "Entity"),
+    FamilySpec("ItemEntity", "net.minecraft.world.entity.item.ItemEntity", "Entity"),
     FamilySpec("VehicleEntity", "net.minecraft.world.entity.vehicle.VehicleEntity", "Entity"),
     FamilySpec(
         "AbstractBoat",
@@ -145,6 +146,7 @@ DATA_ALIASES = {
     "VANILLA_INTERACTION_HEIGHT_DATA_ID": ("net.minecraft.world.entity.Interaction", "DATA_HEIGHT_ID"),
     "VANILLA_INTERACTION_RESPONSE_DATA_ID": ("net.minecraft.world.entity.Interaction", "DATA_RESPONSE_ID"),
     "VANILLA_EXPERIENCE_ORB_VALUE_DATA_ID": ("net.minecraft.world.entity.ExperienceOrb", "DATA_VALUE"),
+    "VANILLA_ITEM_ENTITY_STACK_DATA_ID": ("net.minecraft.world.entity.item.ItemEntity", "DATA_ITEM"),
     "VANILLA_VEHICLE_HURT_TIME_DATA_ID": ("net.minecraft.world.entity.vehicle.VehicleEntity", "DATA_ID_HURT"),
     "VANILLA_VEHICLE_HURT_DIR_DATA_ID": ("net.minecraft.world.entity.vehicle.VehicleEntity", "DATA_ID_HURTDIR"),
     "VANILLA_VEHICLE_DAMAGE_DATA_ID": ("net.minecraft.world.entity.vehicle.VehicleEntity", "DATA_ID_DAMAGE"),

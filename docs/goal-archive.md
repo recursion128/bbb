@@ -9642,3 +9642,11 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   `DATA_VALUE` id 8/default 0 替代 world 的公开手抄常量，并由 native F3+I save
   projection 消费同一 default alias。focused tests 锁定继承 offset、serializer/default、
   orb value projection 与保存语义。未修改吸附/合并/拾取、客户端移动、icon 或 renderer。
+
+## 2026-07-11：Generated entity metadata consumer（ItemEntity）
+
+- [x] 从 generated catalog 建立 `Entity -> ItemEntity` compatibility family：ITEM_STACK
+  `DATA_ITEM` id 8/default `ItemStack.EMPTY` 替代 world 私有手抄常量；spawn metadata、
+  item merge mutation、render/pickup stack projection 统一消费 generated alias。focused tests
+  锁定继承 offset、serializer/default、spawn/apply、render stack 与 pickup snapshot 语义。
+  未修改掉落物客户端移动、合并规则、bob/spin、拾取动画或 renderer。

@@ -3772,6 +3772,7 @@ fn item_pickup_particle_component_rich_bake_matches_dropped_item_bake() {
     // so the resolved item texture differs from the plain item. With identical
     // geometry inputs (position / age / entity id / light / count / seed) the
     // pickup carried bake must be byte-identical to the dropped-item bake.
+    // Protocol wire fixture: vanilla ItemEntity.DATA_ITEM is serializer slot 8.
     const ITEM_ENTITY_DATA_ITEM_STACK_ID: u8 = 8;
     const ENTITY_ID: i32 = 555;
     const POSITION: [f32; 3] = [0.0, 64.0, 0.0];

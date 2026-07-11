@@ -124,6 +124,8 @@ const GENERATED_VANILLA_INTERACTION_RESPONSE_DATA_ID: u8 = 10;
 pub const VANILLA_INTERACTION_RESPONSE_DATA_ID: u8 = GENERATED_VANILLA_INTERACTION_RESPONSE_DATA_ID;
 const GENERATED_VANILLA_EXPERIENCE_ORB_VALUE_DATA_ID: u8 = 8;
 pub const VANILLA_EXPERIENCE_ORB_VALUE_DATA_ID: u8 = GENERATED_VANILLA_EXPERIENCE_ORB_VALUE_DATA_ID;
+const GENERATED_VANILLA_ITEM_ENTITY_STACK_DATA_ID: u8 = 8;
+pub const VANILLA_ITEM_ENTITY_STACK_DATA_ID: u8 = GENERATED_VANILLA_ITEM_ENTITY_STACK_DATA_ID;
 const GENERATED_VANILLA_VEHICLE_HURT_TIME_DATA_ID: u8 = 8;
 pub const VANILLA_VEHICLE_HURT_TIME_DATA_ID: u8 = GENERATED_VANILLA_VEHICLE_HURT_TIME_DATA_ID;
 const GENERATED_VANILLA_VEHICLE_HURT_DIR_DATA_ID: u8 = 9;
@@ -13290,6 +13292,22 @@ const EXPERIENCEORB_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMet
     own_flags: EXPERIENCEORB_FLAGS,
 };
 
+const ITEMENTITY_FIELDS: &[VanillaEntityMetadataFieldSchema] =
+    &[VanillaEntityMetadataFieldSchema {
+        name: "DATA_ITEM",
+        data_id: 8,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_ITEM_STACK_ID,
+        default: VanillaEntityMetadataDefault::ItemStackEmpty,
+    }];
+const ITEMENTITY_FLAGS: &[VanillaEntityMetadataFlagSchema] = &[];
+const ITEMENTITY_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamilySchema {
+    family: VanillaEntityMetadataFamily::ItemEntity,
+    parent: Some(VanillaEntityMetadataFamily::Entity),
+    inherited_field_count: 8,
+    own_fields: ITEMENTITY_FIELDS,
+    own_flags: ITEMENTITY_FLAGS,
+};
+
 const VEHICLEENTITY_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[
     VanillaEntityMetadataFieldSchema {
         name: "DATA_ID_HURT",
@@ -13526,6 +13544,7 @@ pub(super) const fn generated_entity_metadata_schema(
         VanillaEntityMetadataFamily::EndCrystal => &ENDCRYSTAL_SCHEMA,
         VanillaEntityMetadataFamily::Interaction => &INTERACTION_SCHEMA,
         VanillaEntityMetadataFamily::ExperienceOrb => &EXPERIENCEORB_SCHEMA,
+        VanillaEntityMetadataFamily::ItemEntity => &ITEMENTITY_SCHEMA,
         VanillaEntityMetadataFamily::VehicleEntity => &VEHICLEENTITY_SCHEMA,
         VanillaEntityMetadataFamily::AbstractBoat => &ABSTRACTBOAT_SCHEMA,
         VanillaEntityMetadataFamily::AbstractMinecart => &ABSTRACTMINECART_SCHEMA,
