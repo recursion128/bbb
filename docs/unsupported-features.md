@@ -56,9 +56,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   across protocol/pack/world/item-model/native now derive from the generated protocol
   catalog; block-entity numeric aliases and current vault consumers likewise derive
   from the generated catalog. Heightmap explicit ids/keys/usage, GameType explicit
-  ids/serialized names/nullable sentinel, and player-info action wire-bit ordinals are
-  generated as well. Difficulty ids/serialized names/WRAP fallback now share a
-  generated owner too.
+  ids/serialized names/nullable sentinel, player-info action wire-bit ordinals, and
+  resource-pack response action wire ordinals are generated as well. Difficulty
+  ids/serialized names/WRAP fallback now share a generated owner too.
   The remaining cross-crate registry/ordinal audit stays open.
 
 ## Unknown clientbound packets in login, configuration, and play

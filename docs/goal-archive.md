@@ -10471,3 +10471,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   re-export 保持 API，删除 id/from-id match，world HUD 删除第二份 name match。fixtures、
   生成顺序/唯一性/wrap 测试和 production-source 反向扫描锁定权威；difficulty packet 编解码、
   control 权限与 HUD 行为未由生成层接管。
+
+## 2026-07-11：Generated resource-pack response action order
+
+- [x] gameplay-id extractor 通过共享 Tree-sitter frontend 读取 vanilla
+  `ServerboundResourcePackPacket.Action` nested enum 的 8 项声明顺序，生成 typed
+  response action/catalog/ordinal。protocol packet 模块保持原
+  `bbb_protocol::packets::ResourcePackResponseAction` re-export，删除 enum 与 ordinal
+  match 的第二事实源；configuration/play response 编码以及 net resource-pack 状态机
+  focused tests 不改语义通过。生成测试锁定 0..7 连续唯一和首尾/invalid-url ordinal，
+  production-source 反向扫描阻止重新声明 enum/impl；下载、reload 与 pack 应用行为仍由原
+  runtime owner 负责。

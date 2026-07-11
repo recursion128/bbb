@@ -28,6 +28,7 @@ pub mod packet_catalog;
 pub mod packets;
 pub mod particle_types;
 pub mod player_info_actions;
+pub mod resource_pack_response_actions;
 pub mod sound_sources;
 
 pub const MC_VERSION: &str = "26.1";

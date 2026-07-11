@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+pub use crate::resource_pack_response_actions::ResourcePackResponseAction;
 use crate::{
     codec::{Decoder, Encoder, Result},
     component::decode_component_summary_from_decoder,
@@ -36,33 +37,6 @@ pub struct ResourcePackPop {
 pub struct ServerData {
     pub motd: String,
     pub icon_bytes: Option<Vec<u8>>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum ResourcePackResponseAction {
-    SuccessfullyLoaded,
-    Declined,
-    FailedDownload,
-    Accepted,
-    Downloaded,
-    InvalidUrl,
-    FailedReload,
-    Discarded,
-}
-
-impl ResourcePackResponseAction {
-    pub fn ordinal(self) -> i32 {
-        match self {
-            Self::SuccessfullyLoaded => 0,
-            Self::Declined => 1,
-            Self::FailedDownload => 2,
-            Self::Accepted => 3,
-            Self::Downloaded => 4,
-            Self::InvalidUrl => 5,
-            Self::FailedReload => 6,
-            Self::Discarded => 7,
-        }
-    }
 }
 
 pub fn encode_configuration_resource_pack_response(

@@ -103,6 +103,12 @@ class DifficultyEntry:
     serialized_name: str
 
 
+@dataclass(frozen=True)
+class ResourcePackResponseActionEntry:
+    constant_name: str
+    ordinal: int
+
+
 def _fail(source: JavaSource, expression: JavaExpression, message: str) -> None:
     span = expression.span
     raise GameplayIdExtractionError(
@@ -375,31 +381,56 @@ def game_type_not_set_id(source: JavaSource) -> int:
     return int(initializer.canonical.replace(" ", ""), 0)
 
 
-def player_info_action_entries(
-    source: JavaSource, expected_count: int = 8
-) -> list[PlayerInfoActionEntry]:
+def _nested_enum_ordinals(
+    source: JavaSource, enum_name: str, description: str, expected_count: int
+) -> list[tuple[str, int]]:
     enums = [
         java_type
         for java_type in source.types
-        if java_type.kind == "enum" and java_type.simple_name == "Action"
+        if java_type.kind == "enum" and java_type.simple_name == enum_name
     ]
     if len(enums) != 1:
         raise GameplayIdExtractionError(
-            f"{source.relative_path}: expected one nested Action enum, found {len(enums)}"
+            f"{source.relative_path}: expected one nested {enum_name} enum, found {len(enums)}"
         )
-    entries = []
+    entries: list[tuple[str, int]] = []
     for node in type_body_members(enums[0].body_node):
         if node.type != "enum_constant":
             continue
         name = node.child_by_field_name("name")
         if name is None:
-            _fail(source, source.expression(node), "player-info action lacks a name")
-        entries.append(PlayerInfoActionEntry(source.text(name), len(entries)))
+            _fail(source, source.expression(node), f"{description} lacks a name")
+        entries.append((source.text(name), len(entries)))
     if len(entries) != expected_count:
         raise GameplayIdExtractionError(
-            f"expected {expected_count} player-info actions, extracted {len(entries)}"
+            f"expected {expected_count} {description}s, extracted {len(entries)}"
         )
+    return entries
+
+
+def player_info_action_entries(
+    source: JavaSource, expected_count: int = 8
+) -> list[PlayerInfoActionEntry]:
+    entries = [
+        PlayerInfoActionEntry(name, ordinal)
+        for name, ordinal in _nested_enum_ordinals(
+            source, "Action", "player-info action", expected_count
+        )
+    ]
     _validate(entries, "player-info action", "ordinal")
+    return entries
+
+
+def resource_pack_response_action_entries(
+    source: JavaSource, expected_count: int = 8
+) -> list[ResourcePackResponseActionEntry]:
+    entries = [
+        ResourcePackResponseActionEntry(name, ordinal)
+        for name, ordinal in _nested_enum_ordinals(
+            source, "Action", "resource-pack response action", expected_count
+        )
+    ]
+    _validate(entries, "resource-pack response action", "ordinal")
     return entries
 
 

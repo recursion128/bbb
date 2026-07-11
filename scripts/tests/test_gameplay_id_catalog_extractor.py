@@ -22,6 +22,7 @@ from gameplay_id_catalog_extractor import (  # noqa: E402
     heightmap_type_entries,
     mob_effect_entries,
     player_info_action_entries,
+    resource_pack_response_action_entries,
     sound_source_entries,
 )
 from vanilla_java_source import parse_source  # noqa: E402
@@ -208,6 +209,36 @@ public enum Difficulty {
             [(0, "peaceful"), (1, "easy"), (2, "normal"), (3, "hard")],
         )
         self.assertEqual(difficulty_out_of_bounds_strategy(source), "WRAP")
+
+    def test_resource_pack_response_actions_preserve_nested_enum_order(self) -> None:
+        source = parse_source(
+            "fixture/ServerboundResourcePackPacket.java",
+            b"""
+package fixture;
+public record ServerboundResourcePackPacket() {
+  public enum Action {
+    SUCCESSFULLY_LOADED, DECLINED, FAILED_DOWNLOAD, ACCEPTED,
+    DOWNLOADED, INVALID_URL, FAILED_RELOAD, DISCARDED;
+  }
+}
+""",
+        )
+        self.assertEqual(
+            [
+                (entry.constant_name, entry.ordinal)
+                for entry in resource_pack_response_action_entries(source)
+            ],
+            [
+                ("SUCCESSFULLY_LOADED", 0),
+                ("DECLINED", 1),
+                ("FAILED_DOWNLOAD", 2),
+                ("ACCEPTED", 3),
+                ("DOWNLOADED", 4),
+                ("INVALID_URL", 5),
+                ("FAILED_RELOAD", 6),
+                ("DISCARDED", 7),
+            ],
+        )
 
     def test_unsupported_register_shape_reports_source_span(self) -> None:
         source = parse_source(
