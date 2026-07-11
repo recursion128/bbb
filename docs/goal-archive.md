@@ -11075,3 +11075,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   player-outside-ECS 处理，因此 decode/ownership/canonical/tests 四格闭合。
 - [x] vanilla 首次本地 mount 还会清除 removed-vehicle recovery、对 boat 对齐 player yaw，并触发
   dismount-key overlay/narration；bbb 尚未拥有这些 presentation side effects，runtime 格保持 partial。
+
+## 2026-07-11：take-item-entity packet coverage audit
+
+- [x] 对照 `ClientboundTakeItemEntityPacket` 锁定 item/player/amount 三个 VarInt 并拒绝 trailing
+  bytes；world ownership 在 mutation 前提取 source/target render state，按 orb/item 分支输出
+  vanilla volume/pitch sound 与 pickup particle。
+- [x] ItemEntity 按 amount shrink 并在空栈时移除，普通非 orb entity 立即移除，ExperienceOrb
+  保留等待独立 removal；protocol/world/net/native 的声音、粒子、模型、光照、顺序和移除测试使
+  decode/ownership/canonical/runtime/tests 五格全部闭合。

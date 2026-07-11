@@ -9308,29 +9308,45 @@
       "constant_name": "CLIENTBOUND_TAKE_ITEM_ENTITY",
       "coverage": {
         "canonical_apply": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/entities.rs#apply_take_item_entity",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleTakeItemEntity"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/entities/tests.rs#decodes_entity_lifecycle_packets",
+            "vanilla:net/minecraft/network/protocol/game/ClientboundTakeItemEntityPacket.java#STREAM_CODEC"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "ownership": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/play_apply.rs#PlayClientbound::TakeItemEntity"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "runtime_side_effect": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/play_apply.rs#PlayClientbound::TakeItemEntity",
+            "crates/bbb-native/src/runtime/events/tests/session_protocol_events.rs#take_item_entity_event_emits_pickup_particle_state_before_removal",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleTakeItemEntity"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/entities/tests.rs#decodes_entity_lifecycle_packets",
+            "crates/bbb-world/src/entities/tests/item_entity_and_pickup_projection.rs#take_item_entity_shrinks_item_stacks_and_removes_entities",
+            "crates/bbb-native/src/runtime/events/tests/session_protocol_events.rs#take_item_entity_event_emits_pickup_particle_state_before_removal"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "clientbound",

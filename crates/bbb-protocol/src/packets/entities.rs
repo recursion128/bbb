@@ -524,11 +524,17 @@ pub(super) fn decode_remove_entities(decoder: &mut Decoder<'_>) -> Result<Remove
 }
 
 pub(super) fn decode_take_item_entity(decoder: &mut Decoder<'_>) -> Result<TakeItemEntity> {
-    Ok(TakeItemEntity {
+    let update = TakeItemEntity {
         item_id: decoder.read_var_i32()?,
         player_id: decoder.read_var_i32()?,
         amount: decoder.read_var_i32()?,
-    })
+    };
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after take item entity packet".to_string(),
+        ));
+    }
+    Ok(update)
 }
 
 pub(super) fn decode_rotate_head(decoder: &mut Decoder<'_>) -> Result<RotateHead> {

@@ -274,11 +274,9 @@ fn decodes_entity_lifecycle_packets() {
     payload.write_var_i32(321);
     payload.write_var_i32(654);
     payload.write_var_i32(3);
-    let packet = decode_play_clientbound(
-        ids::play::CLIENTBOUND_TAKE_ITEM_ENTITY,
-        &payload.into_inner(),
-    )
-    .unwrap();
+    let payload = payload.into_inner();
+    let packet =
+        decode_play_clientbound(ids::play::CLIENTBOUND_TAKE_ITEM_ENTITY, &payload).unwrap();
     assert_eq!(
         packet,
         PlayClientbound::TakeItemEntity(TakeItemEntity {
@@ -286,6 +284,14 @@ fn decodes_entity_lifecycle_packets() {
             player_id: 654,
             amount: 3,
         })
+    );
+    let mut trailing = payload;
+    trailing.push(0);
+    assert!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_TAKE_ITEM_ENTITY, &trailing)
+            .unwrap_err()
+            .to_string()
+            .contains("trailing bytes after take item entity packet")
     );
 
     let mut payload = Encoder::new();
