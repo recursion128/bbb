@@ -2233,6 +2233,24 @@ fn decodes_chunk_batch_and_encodes_client_play_status_packets() {
         PlayClientbound::ChunkBatchFinished { batch_size: 9 }
     );
 
+    let error =
+        decode_play_clientbound(ids::play::CLIENTBOUND_CHUNK_BATCH_START, &[0]).unwrap_err();
+    assert!(error
+        .to_string()
+        .contains("trailing bytes after chunk batch start packet"));
+
+    let mut trailing_finished = Encoder::new();
+    trailing_finished.write_var_i32(9);
+    trailing_finished.write_u8(0);
+    let error = decode_play_clientbound(
+        ids::play::CLIENTBOUND_CHUNK_BATCH_FINISHED,
+        &trailing_finished.into_inner(),
+    )
+    .unwrap_err();
+    assert!(error
+        .to_string()
+        .contains("trailing bytes after chunk batch finished packet"));
+
     let (id, payload) = encode_play_chunk_batch_received(9.0);
     assert_eq!(id, ids::play::SERVERBOUND_CHUNK_BATCH_RECEIVED);
     assert_eq!(payload.len(), 4);

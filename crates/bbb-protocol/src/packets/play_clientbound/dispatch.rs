@@ -82,10 +82,24 @@ pub fn decode_play_clientbound(packet_id: i32, payload: &[u8]) -> Result<PlayCli
                 client_state::decode_change_difficulty(&mut decoder)?,
             ))
         }
-        ids::play::CLIENTBOUND_CHUNK_BATCH_START => Ok(PlayClientbound::ChunkBatchStart),
-        ids::play::CLIENTBOUND_CHUNK_BATCH_FINISHED => Ok(PlayClientbound::ChunkBatchFinished {
-            batch_size: Decoder::new(payload).read_var_i32()?,
-        }),
+        ids::play::CLIENTBOUND_CHUNK_BATCH_START => {
+            if !payload.is_empty() {
+                return Err(ProtocolError::InvalidData(
+                    "trailing bytes after chunk batch start packet".to_string(),
+                ));
+            }
+            Ok(PlayClientbound::ChunkBatchStart)
+        }
+        ids::play::CLIENTBOUND_CHUNK_BATCH_FINISHED => {
+            let mut decoder = Decoder::new(payload);
+            let batch_size = decoder.read_var_i32()?;
+            if !decoder.is_empty() {
+                return Err(ProtocolError::InvalidData(
+                    "trailing bytes after chunk batch finished packet".to_string(),
+                ));
+            }
+            Ok(PlayClientbound::ChunkBatchFinished { batch_size })
+        }
         ids::play::CLIENTBOUND_CHUNKS_BIOMES => {
             let mut decoder = Decoder::new(payload);
             Ok(PlayClientbound::ChunksBiomes(chunks::decode_chunks_biomes(

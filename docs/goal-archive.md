@@ -10956,3 +10956,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   未构建 typed `RegistryAccess`；tag ids 也未统一解析为 holders 或应用 pending static tags/
   component initializers。反向 coverage 门禁锁定 registry canonical/runtime 与 tags runtime 三格
   partial，未用 raw projection 冒充 playable registry foundation。
+
+## 2026-07-11：play chunk-batch feedback coverage audit
+
+- [x] 对照 `ClientboundChunkBatchStartPacket`、`ClientboundChunkBatchFinishedPacket`、
+  `ServerboundChunkBatchReceivedPacket`、client/server handlers 与 `ChunkBatchSizeCalculator`，锁定
+  2,000,000 ns 初值、7,000,000 ns target、3x clamp、49 old-sample weight、非正 batch ignore
+  以及 Finished 后单次 f32 response 时序。
+- [x] 修复 Start unit 与 Finished 单 VarInt decoder 接受 trailing bytes；protocol、calculator、
+  RawConnection 与 probe tests 覆盖 wire 和反馈。三行 coverage 全部闭合为 complete 或有 vanilla
+  依据的 not-applicable；chunk data decode/apply 未由 batch feedback 外推完成。

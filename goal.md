@@ -321,6 +321,8 @@ milestone；完成后即可进入 RegistryAccess/playable foundation，不等待
 family 清空。之后按 configuration、world-state、movement/interaction、inventory/UI、chat/
 command、resource/custom payload 等 family 分别关闭，并由 playable 或 non-entity 垂直
 场景决定下一个可执行 family。
+play chunk-batch Start/Finished → adaptive Received feedback 已按 vanilla timing calculator 闭合，
+包括 strict unit/VarInt payload consumption；它不代表 chunk data decode/apply 已完成。
 
 完成标准：全部 vanilla 26.1 catalog entry 都有矩阵行；所有目标客户端适用项为
 `complete`，其余只有带 vanilla 依据的 `not-applicable` 或带重启判据的窄 `deferred`；
