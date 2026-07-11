@@ -5539,29 +5539,45 @@
       "constant_name": "CLIENTBOUND_COOLDOWN",
       "coverage": {
         "canonical_apply": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/entities/status.rs#apply_cooldown",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleItemCooldown"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/client_state/tests.rs#decodes_cooldown_packet_wire_order",
+            "vanilla:net/minecraft/network/protocol/game/ClientboundCooldownPacket.java#STREAM_CODEC"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "ownership": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/play_apply.rs#PlayClientbound::Cooldown"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "runtime_side_effect": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/entities/status.rs#advance_item_cooldowns",
+            "crates/bbb-native/src/runtime.rs#item_cooldown_percent_for_stack",
+            "vanilla:net/minecraft/world/item/ItemCooldowns.java#tick"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/client_state/tests.rs#decodes_cooldown_packet_wire_order",
+            "crates/bbb-world/src/entities/status.rs#negative_cooldown_is_added_then_expires_on_the_next_tick",
+            "crates/bbb-net/src/probe/play.rs#probe_applies_item_cooldown_packets_to_world"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "clientbound",

@@ -298,10 +298,16 @@ pub(super) fn decode_change_difficulty(decoder: &mut Decoder<'_>) -> Result<Chan
 }
 
 pub(super) fn decode_cooldown(decoder: &mut Decoder<'_>) -> Result<Cooldown> {
-    Ok(Cooldown {
+    let update = Cooldown {
         cooldown_group: read_resource_location(decoder)?,
         duration: decoder.read_var_i32()?,
-    })
+    };
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after cooldown packet".to_string(),
+        ));
+    }
+    Ok(update)
 }
 
 pub(super) fn decode_damage_event(decoder: &mut Decoder<'_>) -> Result<DamageEvent> {

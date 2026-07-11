@@ -11137,3 +11137,10 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] session DamageType resolution、LivingEntity gate、walk speed、invulnerable/hurt timers、hurt sound
   及 last-source stamp 尚未齐全，canonical/runtime 保持 partial。此 packet 仅驱动服务器已判定伤害的
   客户端呈现，不扣血、不判死、不产生权威击退或战斗结果。
+
+## 2026-07-11：item-cooldown packet coverage audit
+
+- [x] 对照 `ClientboundCooldownPacket` 与 `ItemCooldowns` 锁定 resource id + duration VarInt 并拒绝
+  trailing bytes；duration 0 remove、非零 add、client tick expiry 和 partial-tick percent 均有测试。
+- [x] 修正负 duration 的窄差异：vanilla 仍先 add（初始 percent=1），下一 client tick 才因 endTime
+  已过而移除；bbb 不再把负值当成即时 remove。protocol/world/net/native consumers 使五格全部闭合。

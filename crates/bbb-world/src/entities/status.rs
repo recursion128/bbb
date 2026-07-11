@@ -21,7 +21,7 @@ pub struct ItemCooldownState {
 
 impl ItemCooldownState {
     pub fn percent(&self, partial_tick: f32) -> f32 {
-        if self.duration <= 0 {
+        if self.duration == 0 {
             return 0.0;
         }
         let remaining = self.remaining_ticks as f32 - partial_tick.clamp(0.0, 1.0);
@@ -76,7 +76,7 @@ impl From<ProtocolDamageEvent> for EntityDamageEventState {
 impl WorldStore {
     pub fn apply_cooldown(&mut self, packet: ProtocolCooldown) {
         self.counters.cooldown_packets += 1;
-        if packet.duration <= 0 {
+        if packet.duration == 0 {
             self.cooldowns.remove(&packet.cooldown_group);
         } else {
             self.cooldowns.insert(
@@ -286,6 +286,22 @@ mod tests {
             0.0
         );
         assert_eq!(store.counters().cooldowns_tracked, 0);
+    }
+
+    #[test]
+    fn negative_cooldown_is_added_then_expires_on_the_next_tick() {
+        let mut store = WorldStore::new();
+        store.apply_cooldown(ProtocolCooldown {
+            cooldown_group: "minecraft:test".to_string(),
+            duration: -2,
+        });
+
+        let cooldown = store.cooldown("minecraft:test").unwrap();
+        assert_eq!(cooldown.duration, -2);
+        assert_eq!(cooldown.remaining_ticks, -2);
+        assert_eq!(cooldown.percent(0.0), 1.0);
+        assert_eq!(store.advance_item_cooldowns(1), 1);
+        assert!(store.cooldown("minecraft:test").is_none());
     }
 
     #[test]

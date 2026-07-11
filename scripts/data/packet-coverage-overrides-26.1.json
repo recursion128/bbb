@@ -1049,6 +1049,44 @@
         "status": "complete"
       }
     },
+    "play/clientbound/CLIENTBOUND_COOLDOWN": {
+      "canonical_apply": {
+        "evidence": [
+          "crates/bbb-world/src/entities/status.rs#apply_cooldown",
+          "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleItemCooldown"
+        ],
+        "status": "complete"
+      },
+      "decode": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/client_state/tests.rs#decodes_cooldown_packet_wire_order",
+          "vanilla:net/minecraft/network/protocol/game/ClientboundCooldownPacket.java#STREAM_CODEC"
+        ],
+        "status": "complete"
+      },
+      "ownership": {
+        "evidence": [
+          "crates/bbb-world/src/play_apply.rs#PlayClientbound::Cooldown"
+        ],
+        "status": "complete"
+      },
+      "runtime_side_effect": {
+        "evidence": [
+          "crates/bbb-world/src/entities/status.rs#advance_item_cooldowns",
+          "crates/bbb-native/src/runtime.rs#item_cooldown_percent_for_stack",
+          "vanilla:net/minecraft/world/item/ItemCooldowns.java#tick"
+        ],
+        "status": "complete"
+      },
+      "tests": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/client_state/tests.rs#decodes_cooldown_packet_wire_order",
+          "crates/bbb-world/src/entities/status.rs#negative_cooldown_is_added_then_expires_on_the_next_tick",
+          "crates/bbb-net/src/probe/play.rs#probe_applies_item_cooldown_packets_to_world"
+        ],
+        "status": "complete"
+      }
+    },
     "play/clientbound/CLIENTBOUND_PLAYER_ROTATION": {
       "canonical_apply": {
         "evidence": [

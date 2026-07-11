@@ -382,6 +382,8 @@ motion、命中、伤害或权威移除完成。
 DamageEvent 的 holder/id/optional-position wire、ownership 与 tests 已闭合；DamageType session
 resolution、LivingEntity gate、walk/invulnerability/hurt-sound/last-source presentation 尚未完整，
 canonical/runtime 保持 partial，且 packet 不被用于客户端扣血或判死。
+Cooldown 的 resource id + duration wire、0 remove/非零 add、client tick expiry、partial-tick percent 与
+HUD/item-model consumers 已全行闭合；负 duration 也按 vanilla 先 add、下一 tick expire。
 
 完成标准：全部 vanilla 26.1 catalog entry 都有矩阵行；所有目标客户端适用项为
 `complete`，其余只有带 vanilla 依据的 `not-applicable` 或带重启判据的窄 `deferred`；

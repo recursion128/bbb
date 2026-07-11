@@ -195,6 +195,15 @@ fn decodes_cooldown_packet_wire_order() {
     assert_eq!(decoder.read_string(32767).unwrap(), "minecraft:ender_pearl");
     assert_eq!(decoder.read_var_i32().unwrap(), 40);
     assert!(decoder.is_empty());
+
+    let mut trailing = payload;
+    trailing.push(0);
+    assert!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_COOLDOWN, &trailing)
+            .unwrap_err()
+            .to_string()
+            .contains("trailing bytes after cooldown packet")
+    );
 }
 
 #[test]
