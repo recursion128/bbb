@@ -32,6 +32,8 @@ impl WorldStore {
 
     pub fn apply_entity_move(&mut self, packet: ProtocolEntityMove) -> bool {
         self.counters.entity_moves_received += 1;
+        let locally_predicted_boat =
+            self.local_player_first_passenger_root_boat_vehicle_id() == Some(packet.id);
         let Some(()) = self.entities.with_transform_mut(packet.id, |transform| {
             if packet.delta_x != 0 || packet.delta_y != 0 || packet.delta_z != 0 {
                 let position = decode_entity_delta_position(
@@ -40,8 +42,13 @@ impl WorldStore {
                     packet.delta_y,
                     packet.delta_z,
                 );
-                transform.position = position;
                 transform.position_base = position;
+                if !locally_predicted_boat {
+                    transform.position = position;
+                }
+            }
+            if locally_predicted_boat {
+                return;
             }
             if let Some(y_rot) = packet.y_rot {
                 transform.y_rot = y_rot;
@@ -54,7 +61,9 @@ impl WorldStore {
             self.counters.entity_moves_ignored += 1;
             return false;
         };
-        self.update_entity_supporting_block_from_packet(packet.id, packet.on_ground);
+        if !locally_predicted_boat {
+            self.update_entity_supporting_block_from_packet(packet.id, packet.on_ground);
+        }
         self.counters.entity_moves_applied += 1;
         true
     }

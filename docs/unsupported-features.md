@@ -135,6 +135,10 @@ Movement:
 - Implement the `minecraft:powder_snow` inside-block particle, extinguish, and
   fall-sound side effects.
 - Handle the remaining `MovePlayer.Rot` vehicle movement send edge cases.
+- Route relative entity Pos/PosRot/Rot targets through vanilla-equivalent
+  `moveOrInterpolateTo` state instead of snapping the canonical transform, and
+  resolve every entity-specific local-authority controller before deciding
+  whether a packet only advances the `VecDeltaCodec` base.
 - Implement full vanilla boat physics, water/buoyancy/collision parity, and
   non-boat vehicle movement only for the locally controlled instance; resolve
   entity-specific `getControllingPassenger` gates (saddle/held item/armor and

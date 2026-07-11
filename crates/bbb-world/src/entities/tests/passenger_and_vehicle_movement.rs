@@ -705,6 +705,40 @@ fn noncontrolling_passenger_cannot_apply_vehicle_correction_or_drive_boat() {
 }
 
 #[test]
+fn local_boat_relative_move_only_advances_server_position_base() {
+    let mut store = WorldStore::new();
+    store.apply_login(&protocol_play_login(99));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        10,
+        VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+    ));
+    assert!(store.apply_set_passengers(ProtocolSetPassengers {
+        vehicle_id: 10,
+        passenger_ids: vec![99],
+    }));
+    let initial = store.probe_entity(10).unwrap();
+
+    assert!(store.apply_entity_move(ProtocolEntityMove {
+        id: 10,
+        delta_x: 4096,
+        delta_y: 0,
+        delta_z: -2048,
+        y_rot: Some(90.0),
+        x_rot: Some(30.0),
+        on_ground: true,
+    }));
+
+    let moved = store.probe_entity(10).unwrap();
+    assert_eq!(moved.position, initial.position);
+    assert_eq!(moved.y_rot, initial.y_rot);
+    assert_eq!(moved.x_rot, initial.x_rot);
+    assert_eq!(moved.on_ground, initial.on_ground);
+    assert_eq!(moved.position_base.x, initial.position_base.x + 1.0);
+    assert_eq!(moved.position_base.y, initial.position_base.y);
+    assert_eq!(moved.position_base.z, initial.position_base.z - 0.5);
+}
+
+#[test]
 fn move_vehicle_small_delta_acks_without_snap() {
     let mut store = WorldStore::new();
     store.apply_login(&protocol_play_login(99));

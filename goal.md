@@ -340,6 +340,10 @@ vehicle movement correction 与 boat paddle/report 先加入 first-passenger-cha
 Horse/HappyGhast 等 entity-specific `getControllingPassenger` 条件、interpolation cancel 和完整 boat/
 非 boat locally-controlled physics 仍未统一，因此 `ClientboundMoveVehicle`、`MoveVehicle` 与
 `PaddleBoat` 的相应 canonical/runtime/command/state/response 格保持 partial。
+remote entity Pos/PosRot/Rot 的 short-delta、packed rotation 与 on-ground wire 已严格审计；当前
+locally-predicted boat 只推进 server position-codec base，不再覆盖本地预测 transform。完整
+entity-specific local authority 与 vanilla `moveOrInterpolateTo` smoothing 尚未统一，因此三行的
+canonical/runtime 格继续保持 partial。
 
 完成标准：全部 vanilla 26.1 catalog entry 都有矩阵行；所有目标客户端适用项为
 `complete`，其余只有带 vanilla 依据的 `not-applicable` 或带重启判据的窄 `deferred`；

@@ -433,7 +433,7 @@ pub(super) fn decode_move_entity(
         (None, None)
     };
 
-    Ok(EntityMove {
+    let update = EntityMove {
         id,
         delta_x,
         delta_y,
@@ -441,7 +441,13 @@ pub(super) fn decode_move_entity(
         y_rot,
         x_rot,
         on_ground: decoder.read_bool()?,
-    })
+    };
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after move entity packet".to_string(),
+        ));
+    }
+    Ok(update)
 }
 
 pub(super) fn decode_move_vehicle(decoder: &mut Decoder<'_>) -> Result<MoveVehicle> {

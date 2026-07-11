@@ -11013,3 +11013,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   clientbound decode/ownership 已闭合。Pig/Strider/Horse/HappyGhast 等 entity-specific controller
   条件、interpolation cancel、完整 boat 及非 boat locally-controlled physics 仍开放，因此对应
   canonical/runtime/command/state/response 格保持 partial，未把 first-passenger 或 boat 近似外推。
+
+## 2026-07-11：relative entity movement packet coverage audit
+
+- [x] 对照三个 `ClientboundMoveEntityPacket` subtype 与
+  `ClientPacketListener.handleMoveEntity`，锁定 VarInt entity id、三轴 i16 delta、packed i8 yaw/pitch
+  与 on-ground 顺序；三个 decoder 均拒绝 trailing bytes，wire/ownership/tests 格已闭合。
+- [x] 对当前确实执行本地预测的 boat 增加 local-authority 分支：relative position 仅推进
+  `VecDeltaCodec` 等价的 `position_base`，不覆盖预测 position/rotation/on-ground。其余
+  entity-specific controller 与 remote `moveOrInterpolateTo` smoothing 仍未统一，三行的
+  canonical/runtime 格保持 partial，未把 target transform 直写当作插值完成。

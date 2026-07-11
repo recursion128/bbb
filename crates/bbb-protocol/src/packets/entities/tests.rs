@@ -356,6 +356,51 @@ fn decodes_entity_lifecycle_packets() {
 }
 
 #[test]
+fn decodes_move_entity_variants_strictly() {
+    let mut pos = Encoder::new();
+    pos.write_var_i32(7);
+    pos.write_i16(4096);
+    pos.write_i16(0);
+    pos.write_i16(-2048);
+    pos.write_bool(true);
+
+    let mut pos_rot = Encoder::new();
+    pos_rot.write_var_i32(8);
+    pos_rot.write_i16(0);
+    pos_rot.write_i16(2048);
+    pos_rot.write_i16(0);
+    pos_rot.write_i8(64);
+    pos_rot.write_i8(-32);
+    pos_rot.write_bool(false);
+
+    let mut rot = Encoder::new();
+    rot.write_var_i32(9);
+    rot.write_i8(-64);
+    rot.write_i8(32);
+    rot.write_bool(true);
+
+    for (packet_id, payload) in [
+        (ids::play::CLIENTBOUND_MOVE_ENTITY_POS, pos.into_inner()),
+        (
+            ids::play::CLIENTBOUND_MOVE_ENTITY_POS_ROT,
+            pos_rot.into_inner(),
+        ),
+        (ids::play::CLIENTBOUND_MOVE_ENTITY_ROT, rot.into_inner()),
+    ] {
+        assert!(matches!(
+            decode_play_clientbound(packet_id, &payload).unwrap(),
+            PlayClientbound::MoveEntity(_)
+        ));
+        let mut trailing = payload;
+        trailing.push(0);
+        let error = decode_play_clientbound(packet_id, &trailing).unwrap_err();
+        assert!(error
+            .to_string()
+            .contains("trailing bytes after move entity packet"));
+    }
+}
+
+#[test]
 fn decodes_additional_entity_data_serializers() {
     let owner = Uuid::from_u128(0xaaaaaaaa11111111bbbbbbbb22222222);
     let profile_id = Uuid::from_u128(0xbbbbbbbb22222222cccccccc33333333);
