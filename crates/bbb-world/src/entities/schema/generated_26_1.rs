@@ -2,7 +2,7 @@
 // Vanilla version: 26.1.
 // Update: scripts/vanilla-source-tools.sh scripts/generate-entity-metadata-schema.py update
 // Check: scripts/vanilla-source-tools.sh scripts/generate-entity-metadata-schema.py check
-// Stable source manifest SHA-256: 7bd8f6d5f6a6ce25146d2bf1149c6fe69e278d2b57ca6141a57c97854678e911
+// Stable source manifest SHA-256: 208797361a1459e77de221ed508399acbcc7d6b70753b4188c42d792ff4b4906
 
 use bbb_protocol::entity_data_serializers::*;
 
@@ -319,6 +319,9 @@ pub const VANILLA_ABSTRACT_FISH_FROM_BUCKET_DATA_ID: u8 =
     GENERATED_VANILLA_ABSTRACT_FISH_FROM_BUCKET_DATA_ID;
 const GENERATED_VANILLA_SALMON_VARIANT_DATA_ID: u8 = 17;
 pub const VANILLA_SALMON_VARIANT_DATA_ID: u8 = GENERATED_VANILLA_SALMON_VARIANT_DATA_ID;
+const GENERATED_VANILLA_TROPICAL_FISH_VARIANT_DATA_ID: u8 = 17;
+pub const VANILLA_TROPICAL_FISH_VARIANT_DATA_ID: u8 =
+    GENERATED_VANILLA_TROPICAL_FISH_VARIANT_DATA_ID;
 const GENERATED_VANILLA_PUFFERFISH_PUFF_STATE_DATA_ID: u8 = 17;
 pub const VANILLA_PUFFERFISH_PUFF_STATE_DATA_ID: u8 =
     GENERATED_VANILLA_PUFFERFISH_PUFF_STATE_DATA_ID;
@@ -792,6 +795,9 @@ pub const VANILLA_ABSTRACT_FISH_DEFAULT_FROM_BUCKET: bool =
     GENERATED_VANILLA_ABSTRACT_FISH_DEFAULT_FROM_BUCKET;
 const GENERATED_VANILLA_SALMON_DEFAULT_VARIANT: i32 = 1;
 pub const VANILLA_SALMON_DEFAULT_VARIANT: i32 = GENERATED_VANILLA_SALMON_DEFAULT_VARIANT;
+const GENERATED_VANILLA_TROPICAL_FISH_DEFAULT_VARIANT: i32 = 0;
+pub const VANILLA_TROPICAL_FISH_DEFAULT_VARIANT: i32 =
+    GENERATED_VANILLA_TROPICAL_FISH_DEFAULT_VARIANT;
 const GENERATED_VANILLA_PUFFERFISH_DEFAULT_PUFF_STATE: i32 = 0;
 pub const VANILLA_PUFFERFISH_DEFAULT_PUFF_STATE: i32 =
     GENERATED_VANILLA_PUFFERFISH_DEFAULT_PUFF_STATE;
@@ -9637,7 +9643,7 @@ pub const VANILLA_ENTITY_METADATA_ACCESSORS_26_1: &[VanillaEntityMetadataAccesso
         data_id: 17,
         source_path: "net/minecraft/world/entity/animal/fish/TropicalFish.java",
         default_expression: "DEFAULT_VARIANT.getPackedId ()",
-        typed_default: None,
+        typed_default: Some(VanillaEntityMetadataDefault::Int(0)),
     },
     VanillaEntityMetadataAccessorCatalogEntry {
         owner: "net.minecraft.world.entity.animal.fox.Fox",
@@ -11725,6 +11731,13 @@ pub const VANILLA_ENTITY_METADATA_DEFAULT_RESOLVER_EVIDENCE_26_1: &[VanillaEntit
         evidence_member: "net.minecraft.world.level.block.TntBlock.registerDefaultState",
         source_expression: "DEFAULT_BLOCK_STATE -> Blocks.TNT.defaultBlockState (); this.registerDefaultState (this.defaultBlockState ().setValue (UNSTABLE, false))",
         reason: "the synced block-state default is split between the entity field and the block constructor default-state declaration",
+    },
+    VanillaEntityMetadataResolverEvidence {
+        java_class: "net.minecraft.world.entity.animal.fish.TropicalFish",
+        accessor_name: "DATA_ID_TYPE_VARIANT",
+        evidence_member: "net.minecraft.world.entity.animal.fish.TropicalFish.DEFAULT_VARIANT",
+        source_expression: "DEFAULT_VARIANT.getPackedId () -> new TropicalFish.Variant (TropicalFish.Pattern.KOB, DyeColor.WHITE, DyeColor.WHITE); this.packedId = base.id | index << 8; pattern.getPackedId () & 65535 | (baseColor.getId () & 0xFF) << 16 | (patternColor.getId () & 0xFF) << 24",
+        reason: "the synced INT default is a packed record value derived from explicit pattern/base/color constructor ids",
     },
 ];
 
@@ -15106,6 +15119,22 @@ const SALMON_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFa
     own_flags: SALMON_FLAGS,
 };
 
+const TROPICALFISH_FIELDS: &[VanillaEntityMetadataFieldSchema] =
+    &[VanillaEntityMetadataFieldSchema {
+        name: "DATA_ID_TYPE_VARIANT",
+        data_id: 17,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+        default: VanillaEntityMetadataDefault::Int(0),
+    }];
+const TROPICALFISH_FLAGS: &[VanillaEntityMetadataFlagSchema] = &[];
+const TROPICALFISH_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamilySchema {
+    family: VanillaEntityMetadataFamily::TropicalFish,
+    parent: Some(VanillaEntityMetadataFamily::AbstractFish),
+    inherited_field_count: 17,
+    own_fields: TROPICALFISH_FIELDS,
+    own_flags: TROPICALFISH_FLAGS,
+};
+
 const PUFFERFISH_FIELDS: &[VanillaEntityMetadataFieldSchema] =
     &[VanillaEntityMetadataFieldSchema {
         name: "PUFF_STATE",
@@ -15439,6 +15468,7 @@ pub(super) const fn generated_entity_metadata_schema(
         VanillaEntityMetadataFamily::SpellcasterIllager => &SPELLCASTERILLAGER_SCHEMA,
         VanillaEntityMetadataFamily::AbstractFish => &ABSTRACTFISH_SCHEMA,
         VanillaEntityMetadataFamily::Salmon => &SALMON_SCHEMA,
+        VanillaEntityMetadataFamily::TropicalFish => &TROPICALFISH_SCHEMA,
         VanillaEntityMetadataFamily::Pufferfish => &PUFFERFISH_SCHEMA,
         VanillaEntityMetadataFamily::Tadpole => &TADPOLE_SCHEMA,
         VanillaEntityMetadataFamily::VehicleEntity => &VEHICLEENTITY_SCHEMA,

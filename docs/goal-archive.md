@@ -9978,3 +9978,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   `Entity -> PrimedTnt` family：INT fuse id8/default80、BLOCK_STATE id9/default
   `minecraft:tnt[unstable=false]`；world model/fuse/smoke 与 native debug-save 删除手抄
   synced id/default/properties。爆炸、portal 和 owner 行为仍由对应语义 owner 管理。
+
+## 2026-07-11：Generated packed-variant resolver 与 TropicalFish metadata
+
+- [x] extractor 将 `DyeColor.java` 纳入稳定 supporting-source manifest；generator 通过
+  Tree-sitter CST 追踪 `DEFAULT_VARIANT`、`Pattern.KOB` / `Base.SMALL` / `DyeColor.WHITE`
+  构造参数，并锁定 pattern 与完整 variant packing 表达式，生成默认 packed value 0。
+  建立 `Mob -> AbstractFish -> TropicalFish` family：INT variant id17/default0；native
+  model variant projection 与 debug-save 删除手抄 synced id/default。pattern/color 解码、
+  renderer tint 与保存 Codec 语义仍由对应 owner 管理。

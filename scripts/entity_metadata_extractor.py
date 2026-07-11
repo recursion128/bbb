@@ -36,11 +36,13 @@ SERIALIZER_SOURCE = Path("net/minecraft/network/syncher/EntityDataSerializers.ja
 DIRECTION_SOURCE = Path("net/minecraft/core/Direction.java")
 WEATHERING_COPPER_SOURCE = Path("net/minecraft/world/level/block/WeatheringCopper.java")
 TNT_BLOCK_SOURCE = Path("net/minecraft/world/level/block/TntBlock.java")
+DYE_COLOR_SOURCE = Path("net/minecraft/world/item/DyeColor.java")
 SUPPORTING_SOURCES = (
     SERIALIZER_SOURCE,
     DIRECTION_SOURCE,
     WEATHERING_COPPER_SOURCE,
     TNT_BLOCK_SOURCE,
+    DYE_COLOR_SOURCE,
 )
 
 

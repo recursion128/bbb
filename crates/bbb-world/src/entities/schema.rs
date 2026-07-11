@@ -77,6 +77,7 @@ pub enum VanillaEntityMetadataFamily {
     SpellcasterIllager,
     AbstractFish,
     Salmon,
+    TropicalFish,
     Pufferfish,
     Tadpole,
     VehicleEntity,
@@ -431,6 +432,7 @@ mod tests {
             VanillaEntityMetadataFamily::SpellcasterIllager,
             VanillaEntityMetadataFamily::AbstractFish,
             VanillaEntityMetadataFamily::Salmon,
+            VanillaEntityMetadataFamily::TropicalFish,
             VanillaEntityMetadataFamily::Pufferfish,
             VanillaEntityMetadataFamily::Tadpole,
             VanillaEntityMetadataFamily::VehicleEntity,
@@ -770,9 +772,19 @@ mod tests {
         assert_eq!(salmon.own_fields.len(), 1);
         assert_eq!(VANILLA_SALMON_VARIANT_DATA_ID, 17);
         assert_eq!(VANILLA_SALMON_DEFAULT_VARIANT, 1);
+        let tropical_fish =
+            vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::TropicalFish);
+        assert_eq!(
+            tropical_fish.parent,
+            Some(VanillaEntityMetadataFamily::AbstractFish)
+        );
+        assert_eq!(tropical_fish.inherited_field_count, 17);
+        assert_eq!(tropical_fish.own_fields.len(), 1);
+        assert_eq!(VANILLA_TROPICAL_FISH_VARIANT_DATA_ID, 17);
+        assert_eq!(VANILLA_TROPICAL_FISH_DEFAULT_VARIANT, 0);
         assert_eq!(
             VANILLA_ENTITY_METADATA_DEFAULT_RESOLVER_EVIDENCE_26_1.len(),
-            10
+            11
         );
         let default_evidence = |java_class| {
             VANILLA_ENTITY_METADATA_DEFAULT_RESOLVER_EVIDENCE_26_1
@@ -807,6 +819,20 @@ mod tests {
         assert_eq!(
             salmon_default_evidence.source_expression,
             "Salmon.Variant.DEFAULT.id ()"
+        );
+        let tropical_fish_default_evidence =
+            default_evidence("net.minecraft.world.entity.animal.fish.TropicalFish");
+        assert_eq!(
+            tropical_fish_default_evidence.accessor_name,
+            "DATA_ID_TYPE_VARIANT"
+        );
+        assert_eq!(
+            tropical_fish_default_evidence.evidence_member,
+            "net.minecraft.world.entity.animal.fish.TropicalFish.DEFAULT_VARIANT"
+        );
+        assert_eq!(
+            tropical_fish_default_evidence.source_expression,
+            "DEFAULT_VARIANT.getPackedId () -> new TropicalFish.Variant (TropicalFish.Pattern.KOB, DyeColor.WHITE, DyeColor.WHITE); this.packedId = base.id | index << 8; pattern.getPackedId () & 65535 | (baseColor.getId () & 0xFF) << 16 | (patternColor.getId () & 0xFF) << 24"
         );
         let fox_default_evidence = default_evidence("net.minecraft.world.entity.animal.fox.Fox");
         assert_eq!(fox_default_evidence.accessor_name, "DATA_TYPE_ID");

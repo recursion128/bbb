@@ -152,6 +152,11 @@ FAMILIES = (
     ),
     FamilySpec("Salmon", "net.minecraft.world.entity.animal.fish.Salmon", "AbstractFish"),
     FamilySpec(
+        "TropicalFish",
+        "net.minecraft.world.entity.animal.fish.TropicalFish",
+        "AbstractFish",
+    ),
+    FamilySpec(
         "Pufferfish",
         "net.minecraft.world.entity.animal.fish.Pufferfish",
         "AbstractFish",
@@ -316,6 +321,7 @@ DATA_ALIASES = {
     "VANILLA_SPELLCASTER_ILLAGER_CASTING_DATA_ID": ("net.minecraft.world.entity.monster.illager.SpellcasterIllager", "DATA_SPELL_CASTING_ID"),
     "VANILLA_ABSTRACT_FISH_FROM_BUCKET_DATA_ID": ("net.minecraft.world.entity.animal.fish.AbstractFish", "FROM_BUCKET"),
     "VANILLA_SALMON_VARIANT_DATA_ID": ("net.minecraft.world.entity.animal.fish.Salmon", "DATA_TYPE"),
+    "VANILLA_TROPICAL_FISH_VARIANT_DATA_ID": ("net.minecraft.world.entity.animal.fish.TropicalFish", "DATA_ID_TYPE_VARIANT"),
     "VANILLA_PUFFERFISH_PUFF_STATE_DATA_ID": ("net.minecraft.world.entity.animal.fish.Pufferfish", "PUFF_STATE"),
     "VANILLA_TADPOLE_AGE_LOCKED_DATA_ID": ("net.minecraft.world.entity.animal.frog.Tadpole", "AGE_LOCKED"),
     "VANILLA_VEHICLE_HURT_TIME_DATA_ID": ("net.minecraft.world.entity.vehicle.VehicleEntity", "DATA_ID_HURT"),
@@ -445,6 +451,7 @@ DEFAULT_ALIASES = {
     "VANILLA_SPELLCASTER_ILLAGER_DEFAULT_CASTING": ("net.minecraft.world.entity.monster.illager.SpellcasterIllager", "DATA_SPELL_CASTING_ID"),
     "VANILLA_ABSTRACT_FISH_DEFAULT_FROM_BUCKET": ("net.minecraft.world.entity.animal.fish.AbstractFish", "FROM_BUCKET"),
     "VANILLA_SALMON_DEFAULT_VARIANT": ("net.minecraft.world.entity.animal.fish.Salmon", "DATA_TYPE"),
+    "VANILLA_TROPICAL_FISH_DEFAULT_VARIANT": ("net.minecraft.world.entity.animal.fish.TropicalFish", "DATA_ID_TYPE_VARIANT"),
     "VANILLA_PUFFERFISH_DEFAULT_PUFF_STATE": ("net.minecraft.world.entity.animal.fish.Pufferfish", "PUFF_STATE"),
     "VANILLA_TADPOLE_DEFAULT_AGE_LOCKED": ("net.minecraft.world.entity.animal.frog.Tadpole", "AGE_LOCKED"),
     "VANILLA_VEHICLE_DEFAULT_HURT_TIME": ("net.minecraft.world.entity.vehicle.VehicleEntity", "DATA_ID_HURT"),
@@ -682,6 +689,23 @@ STATIC_BLOCK_STATE_DEFAULT_RESOLVERS = (
 )
 
 
+TROPICAL_FISH_PACKED_DEFAULT_RESOLVERS = (
+    (
+        "net.minecraft.world.entity.animal.fish.TropicalFish",
+        "DATA_ID_TYPE_VARIANT",
+        "DEFAULT_VARIANT",
+        "DEFAULT_VARIANT.getPackedId ()",
+        "new TropicalFish.Variant (TropicalFish.Pattern.KOB, DyeColor.WHITE, DyeColor.WHITE)",
+        "net.minecraft.world.entity.animal.fish.TropicalFish.Pattern",
+        "net.minecraft.world.entity.animal.fish.TropicalFish.Base",
+        "net.minecraft.world.item.DyeColor",
+        "this.packedId = base.id | index << 8",
+        "pattern.getPackedId () & 65535 | (baseColor.getId () & 0xFF) << 16 | (patternColor.getId () & 0xFF) << 24",
+        "the synced INT default is a packed record value derived from explicit pattern/base/color constructor ids",
+    ),
+)
+
+
 ENUM_CONSTRUCTOR_ID_ALIASES = {
     "VANILLA_ARMADILLO_STATE_IDLE_ID": ("net.minecraft.world.entity.animal.armadillo.Armadillo.ArmadilloState", "IDLE", 3),
     "VANILLA_ARMADILLO_STATE_ROLLING_ID": ("net.minecraft.world.entity.animal.armadillo.Armadillo.ArmadilloState", "ROLLING", 3),
@@ -713,7 +737,9 @@ ENUM_ORDINAL_ID_ALIASES = {
 ENUM_CONSTRUCTOR_ID_CODEC_EXPRESSIONS = {
     "net.minecraft.world.entity.animal.armadillo.Armadillo.ArmadilloState": "ByteBufCodecs.idMapper (BY_ID, Armadillo.ArmadilloState::id)",
     "net.minecraft.world.entity.animal.golem.CopperGolemState": "ByteBufCodecs.idMapper (BY_ID, CopperGolemState::id)",
+    "net.minecraft.world.entity.animal.fish.TropicalFish.Pattern": "ByteBufCodecs.idMapper (BY_ID, TropicalFish.Pattern::getPackedId)",
     "net.minecraft.world.entity.animal.sniffer.Sniffer.State": "ByteBufCodecs.idMapper (BY_ID, Sniffer.State::id)",
+    "net.minecraft.world.item.DyeColor": "ByteBufCodecs.idMapper (BY_ID, DyeColor::getId)",
 }
 
 
@@ -878,15 +904,11 @@ def enum_constant_ordinal(
     return ordinals[constant_name]
 
 
-def enum_constant_constructor_integer(
+def enum_constant_arguments(
     result: ExtractionResult,
     enum_fqcn: str,
     constant_name: str,
-    argument_index: int,
-) -> int:
-    expected_codec = ENUM_CONSTRUCTOR_ID_CODEC_EXPRESSIONS.get(enum_fqcn)
-    if expected_codec is not None:
-        validate_enum_stream_codec(result, enum_fqcn, expected_codec)
+) -> tuple[JavaSource, tuple[Node, ...]]:
     matches = [
         (source, java_type)
         for source in result.sources.values()
@@ -905,14 +927,29 @@ def enum_constant_constructor_integer(
     if len(constants) != 1:
         raise ExtractionError(f"{enum_fqcn}: expected one {constant_name} enum constant")
     arguments = constants[0].child_by_field_name("arguments")
-    if argument_index < 0 or arguments is None or argument_index >= len(arguments.named_children):
+    if arguments is None:
+        raise ExtractionError(f"{enum_fqcn}.{constant_name}: expected constructor arguments")
+    return enum_source, tuple(arguments.named_children)
+
+
+def enum_constant_constructor_integer(
+    result: ExtractionResult,
+    enum_fqcn: str,
+    constant_name: str,
+    argument_index: int,
+) -> int:
+    expected_codec = ENUM_CONSTRUCTOR_ID_CODEC_EXPRESSIONS.get(enum_fqcn)
+    if expected_codec is not None:
+        validate_enum_stream_codec(result, enum_fqcn, expected_codec)
+    enum_source, arguments = enum_constant_arguments(result, enum_fqcn, constant_name)
+    if argument_index < 0 or argument_index >= len(arguments):
         raise ExtractionError(
             f"{enum_fqcn}.{constant_name}: expected integer id constructor argument "
             f"at index {argument_index}"
         )
     return evaluate_integer_expression(
         enum_source,
-        arguments.named_children[argument_index],
+        arguments[argument_index],
         {},
     )
 
@@ -1156,6 +1193,133 @@ def resolve_semantic_defaults(
                 evidence_class,
                 evidence_call_name,
                 f"{expected_expression} -> {expected_field_expression}; {expected_evidence_expression}",
+                reason,
+            )
+        )
+    for (
+        owner,
+        accessor_name,
+        default_field_name,
+        expected_expression,
+        expected_default_initializer,
+        pattern_enum,
+        base_enum,
+        dye_enum,
+        expected_pattern_assignment,
+        expected_pack_return,
+        reason,
+    ) in TROPICAL_FISH_PACKED_DEFAULT_RESOLVERS:
+        key = (owner, accessor_name)
+        if key in resolved:
+            raise ExtractionError(f"duplicate packed variant default resolver: {owner}.{accessor_name}")
+        accessor = accessor_for(result, owner, accessor_name)
+        if accessor.serializer != "INT":
+            raise ExtractionError(
+                f"{owner}.{accessor_name}: packed variant resolver requires INT serializer"
+            )
+        if accessor.default_expression != expected_expression:
+            raise ExtractionError(
+                f"{owner}.{accessor_name}: stale packed variant default expression; "
+                f"expected {expected_expression!r}, found {accessor.default_expression!r}"
+            )
+        default_field = field_for(result, owner, default_field_name)
+        if default_field.initializer is None:
+            raise ExtractionError(f"{owner}.{default_field_name}: missing initializer")
+        if default_field.initializer.canonical != expected_default_initializer:
+            raise ExtractionError(
+                f"{owner}.{default_field_name}: stale packed variant initializer; "
+                f"expected {expected_default_initializer!r}, "
+                f"found {default_field.initializer.canonical!r}"
+            )
+        initializer = default_field.initializer.node
+        arguments = initializer.child_by_field_name("arguments")
+        if initializer.type != "object_creation_expression" or arguments is None or len(arguments.named_children) != 3:
+            raise ExtractionError(
+                f"{owner}.{default_field_name}: expected a three-argument variant constructor"
+            )
+        initializer_arguments = [
+            source_for_owner(result, owner).expression(node).canonical
+            for node in arguments.named_children
+        ]
+        pattern_constant = initializer_arguments[0].rsplit(".", 1)[-1]
+        base_color_constant = initializer_arguments[1].rsplit(".", 1)[-1]
+        pattern_color_constant = initializer_arguments[2].rsplit(".", 1)[-1]
+
+        pattern_source, pattern_arguments = enum_constant_arguments(
+            result,
+            pattern_enum,
+            pattern_constant,
+        )
+        if len(pattern_arguments) != 3:
+            raise ExtractionError(
+                f"{pattern_enum}.{pattern_constant}: expected three constructor arguments"
+            )
+        base_reference = pattern_source.expression(pattern_arguments[1]).canonical
+        base_constant = base_reference.rsplit(".", 1)[-1]
+        pattern_index = enum_constant_constructor_integer(
+            result,
+            pattern_enum,
+            pattern_constant,
+            2,
+        )
+        base_id = enum_constant_constructor_integer(result, base_enum, base_constant, 0)
+        base_color_id = enum_constant_constructor_integer(
+            result,
+            dye_enum,
+            base_color_constant,
+            0,
+        )
+        pattern_color_id = enum_constant_constructor_integer(
+            result,
+            dye_enum,
+            pattern_color_constant,
+            0,
+        )
+
+        pattern_source, pattern_constructor = method_for(
+            result,
+            pattern_enum,
+            pattern_enum.rsplit(".", 1)[-1],
+        )
+        if not pattern_constructor.is_constructor:
+            raise ExtractionError(f"{pattern_enum}: expected constructor evidence")
+        assignments = [
+            pattern_source.expression(node).canonical
+            for node in descendants(pattern_constructor.node)
+            if node.type == "assignment_expression"
+            and pattern_source.expression(node).canonical == expected_pattern_assignment
+        ]
+        if len(assignments) != 1:
+            raise ExtractionError(
+                f"{pattern_enum}: expected one {expected_pattern_assignment!r} assignment, "
+                f"found {len(assignments)}"
+            )
+        pack_return = method_single_return_expression(result, owner, "packVariant")
+        if pack_return != expected_pack_return:
+            raise ExtractionError(
+                f"{owner}.packVariant: stale packed variant expression; "
+                f"expected {expected_pack_return!r}, found {pack_return!r}"
+            )
+
+        pattern_id = base_id | (pattern_index << 8)
+        value = (
+            (pattern_id & 0xFFFF)
+            | ((base_color_id & 0xFF) << 16)
+            | ((pattern_color_id & 0xFF) << 24)
+        )
+        resolved[key] = NormalizedDefault(
+            f"VanillaEntityMetadataDefault::Int({value})",
+            "i32",
+            str(value),
+        )
+        evidence.append(
+            ResolvedDefaultEvidence(
+                owner,
+                accessor_name,
+                owner,
+                default_field_name,
+                f"{expected_expression} -> {expected_default_initializer}; "
+                f"{expected_pattern_assignment}; {expected_pack_return}",
                 reason,
             )
         )

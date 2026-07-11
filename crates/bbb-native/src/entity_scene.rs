@@ -185,6 +185,8 @@ use bbb_world::{
     VANILLA_RABBIT_TYPE_DATA_ID as RABBIT_TYPE_DATA_ID,
     VANILLA_SALMON_DEFAULT_VARIANT as SALMON_DEFAULT_VARIANT,
     VANILLA_SALMON_VARIANT_DATA_ID as SALMON_VARIANT_DATA_ID,
+    VANILLA_TROPICAL_FISH_DEFAULT_VARIANT as TROPICAL_FISH_DEFAULT_VARIANT,
+    VANILLA_TROPICAL_FISH_VARIANT_DATA_ID as TROPICAL_FISH_VARIANT_DATA_ID,
 };
 use bbb_world::{
     VANILLA_SHEEP_DEFAULT_WOOL as SHEEP_DEFAULT_WOOL,
@@ -281,11 +283,6 @@ const ZOMBIE_VILLAGER_DATA_DATA_ID: u8 = 20;
 /// Vanilla `Raider.IS_CELEBRATING` data id (16): the boolean set while a raider celebrates a raid
 /// victory, the first `Raider` accessor after `Mob.DATA_MOB_FLAGS_ID` (15). The evoker and vindicator
 /// `getArmPose` return `CELEBRATING` while it is true (when not casting / not aggressive).
-// Tropical fish (`TropicalFish.DATA_ID_TYPE_VARIANT`): AbstractFish defines FROM_BUCKET at
-// index 16 (AbstractSchoolingFish adds no synced data), so the packed variant is index 17.
-// Defaults to 0 (`DEFAULT_VARIANT` = KOB/white/white, whose pattern bits are 0 → small body).
-const TROPICAL_FISH_VARIANT_DATA_ID: u8 = 17;
-const TROPICAL_FISH_DEFAULT_VARIANT: i32 = 0;
 const CHICKEN_VARIANT_DATA_ID: u8 = 18;
 const COW_VARIANT_DATA_ID: u8 = 18;
 /// `MushroomCow.DATA_TYPE` data id (20, INT): the red/brown variant. `MushroomCow` extends `Cow`,
