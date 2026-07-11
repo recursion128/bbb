@@ -26,6 +26,7 @@ from gameplay_id_catalog_extractor import (  # noqa: E402
     equipment_slot_entries,
     game_type_entries,
     game_type_not_set_id,
+    filter_mask_type_entries,
     heightmap_type_entries,
     mob_effect_entries,
     objective_render_type_entries,
@@ -659,6 +660,33 @@ public class ClientboundBossEventPacket {
                 ("UPDATE_NAME", 3),
                 ("UPDATE_STYLE", 4),
                 ("UPDATE_PROPERTIES", 5),
+            ],
+        )
+
+    def test_filter_mask_types_preserve_nested_enum_order_and_names(self) -> None:
+        source = parse_source(
+            "fixture/FilterMask.java",
+            b"""
+package fixture;
+public class FilterMask {
+  private enum Type {
+    PASS_THROUGH("pass_through", () -> PASS_THROUGH_CODEC),
+    FULLY_FILTERED("fully_filtered", () -> FULLY_FILTERED_CODEC),
+    PARTIALLY_FILTERED("partially_filtered", () -> PARTIALLY_FILTERED_CODEC);
+  }
+}
+""",
+        )
+        entries = filter_mask_type_entries(source)
+        self.assertEqual(
+            [
+                (entry.constant_name, entry.ordinal, entry.serialized_name)
+                for entry in entries
+            ],
+            [
+                ("PASS_THROUGH", 0, "pass_through"),
+                ("FULLY_FILTERED", 1, "fully_filtered"),
+                ("PARTIALLY_FILTERED", 2, "partially_filtered"),
             ],
         )
 

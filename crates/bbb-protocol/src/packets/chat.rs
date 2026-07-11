@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+pub use crate::filter_mask_types::FilterMaskKind;
 use crate::{
     codec::{Decoder, ProtocolError, Result},
     component::decode_component_summary_from_decoder,
@@ -63,23 +64,6 @@ pub struct SignedMessageBody {
 pub struct FilterMask {
     pub kind: FilterMaskKind,
     pub mask_words: Vec<i64>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum FilterMaskKind {
-    PassThrough,
-    FullyFiltered,
-    PartiallyFiltered,
-}
-
-impl FilterMaskKind {
-    pub fn as_str(self) -> &'static str {
-        match self {
-            Self::PassThrough => "pass_through",
-            Self::FullyFiltered => "fully_filtered",
-            Self::PartiallyFiltered => "partially_filtered",
-        }
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -209,16 +193,10 @@ fn decode_signed_message_body(decoder: &mut Decoder<'_>) -> Result<SignedMessage
 }
 
 fn decode_filter_mask(decoder: &mut Decoder<'_>) -> Result<FilterMask> {
-    let kind = match decoder.read_var_i32()? {
-        0 => FilterMaskKind::PassThrough,
-        1 => FilterMaskKind::FullyFiltered,
-        2 => FilterMaskKind::PartiallyFiltered,
-        other => {
-            return Err(ProtocolError::InvalidData(format!(
-                "invalid filter mask type ordinal {other}"
-            )))
-        }
-    };
+    let ordinal = decoder.read_var_i32()?;
+    let kind = FilterMaskKind::from_ordinal(ordinal).ok_or_else(|| {
+        ProtocolError::InvalidData(format!("invalid filter mask type ordinal {ordinal}"))
+    })?;
 
     let mask_words = if kind == FilterMaskKind::PartiallyFiltered {
         let len = decoder.read_len()?;

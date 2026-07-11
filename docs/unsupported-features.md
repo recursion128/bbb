@@ -64,7 +64,8 @@ Owner: `scripts/` + each generated catalog's semantic crate
   ids/names/WRAP fallback, scoreboard display-slot ids/names/ZERO fallback, and scoreboard
   team visibility/collision ids/names/ZERO fallback, plus ChatFormatting ordinals/codes/
   ids/colors/names and scoreboard objective/player-team packet method ids now share generated
-  owners too. Boss-event operation wire ordinals likewise derive from the vanilla nested enum.
+  owners too. Boss-event operation and filter-mask type wire ordinals likewise derive from their
+  vanilla nested enums.
   The remaining cross-crate registry/ordinal audit stays open.
 
 ## Unknown clientbound packets in login, configuration, and play

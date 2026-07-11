@@ -212,6 +212,13 @@ class BossEventOperationTypeEntry:
     ordinal: int
 
 
+@dataclass(frozen=True)
+class FilterMaskTypeEntry:
+    constant_name: str
+    ordinal: int
+    serialized_name: str
+
+
 def _fail(source: JavaSource, expression: JavaExpression, message: str) -> None:
     span = expression.span
     raise GameplayIdExtractionError(
@@ -993,6 +1000,36 @@ def boss_event_operation_type_entries(
             "boss event operation types differ from expected declaration order"
         )
     _validate(entries, "boss event operation type", "ordinal")
+    return entries
+
+
+def filter_mask_type_entries(
+    source: JavaSource, expected_count: int = 3
+) -> list[FilterMaskTypeEntry]:
+    expected_names = ["PASS_THROUGH", "FULLY_FILTERED", "PARTIALLY_FILTERED"]
+    entries = []
+    for ordinal, (name, arguments) in enumerate(
+        _nested_enum_constants(source, "Type", "filter mask type")
+    ):
+        if len(arguments) != 2:
+            expression = arguments[0] if arguments else source.expression(source.types[0].node)
+            _fail(source, expression, f"filter mask type {name} must have two arguments")
+        entries.append(FilterMaskTypeEntry(name, ordinal, _string(source, arguments[0])))
+    if len(entries) != expected_count:
+        raise GameplayIdExtractionError(
+            f"expected {expected_count} filter mask types, extracted {len(entries)}"
+        )
+    if [entry.constant_name for entry in entries] != expected_names:
+        raise GameplayIdExtractionError(
+            "filter mask types differ from expected declaration order"
+        )
+    for entry in entries:
+        if entry.serialized_name != entry.constant_name.lower():
+            raise GameplayIdExtractionError(
+                f"filter mask type {entry.constant_name} has unexpected serialized name"
+            )
+    _validate(entries, "filter mask type", "ordinal")
+    _validate(entries, "filter mask type", "serialized_name")
     return entries
 
 

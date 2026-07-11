@@ -23,6 +23,7 @@ pub mod entity_data_serializers;
 pub mod entity_poses;
 pub mod entity_types;
 pub mod equipment_slots;
+pub mod filter_mask_types;
 pub mod frame;
 pub mod game_event_types;
 pub mod game_types;

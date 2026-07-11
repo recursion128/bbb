@@ -10620,3 +10620,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   校验 ordinal，再由 typed match 解码各 operation payload，并保留原非法 ordinal 诊断。
   fixtures、生成完整性/唯一性/反向门禁以及 protocol/world/net/native boss-event focused
   tests 均通过；公开 `BossEventOperation` payload、flags、HUD apply 和渲染语义未改。
+
+## 2026-07-11：Generated filter-mask type catalog
+
+- [x] gameplay-id extractor 通过共享 Tree-sitter frontend 读取 vanilla `FilterMask.Type`
+  nested enum 的 3 项声明顺序与显式 serialized name，生成 typed ordinal catalog。
+  protocol chat facade 保持原 `FilterMaskKind` re-export、变体、serde 与 `as_str`，删除 enum、
+  name match 和 0..2 decoder match，并保留非法 ordinal 诊断。fixtures、生成完整性/唯一性/
+  反向门禁以及 protocol/world/net/native player-chat focused tests 均通过；partial mask bitset
+  payload、长度限制、filtered text apply 和 HUD 样式语义仍由原 owner 手写。
