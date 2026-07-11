@@ -330,6 +330,29 @@ fn decodes_chunk_cache_center_and_radius() {
         packet,
         PlayClientbound::SetChunkCacheRadius(SetChunkCacheRadius { radius: 10 })
     );
+
+    let mut trailing = Encoder::new();
+    trailing.write_var_i32(12);
+    trailing.write_var_i32(-4);
+    trailing.write_u8(0);
+    assert!(decode_play_clientbound(
+        ids::play::CLIENTBOUND_SET_CHUNK_CACHE_CENTER,
+        &trailing.into_inner()
+    )
+    .unwrap_err()
+    .to_string()
+    .contains("trailing bytes after set chunk cache center packet"));
+
+    let mut trailing = Encoder::new();
+    trailing.write_var_i32(10);
+    trailing.write_u8(0);
+    assert!(decode_play_clientbound(
+        ids::play::CLIENTBOUND_SET_CHUNK_CACHE_RADIUS,
+        &trailing.into_inner()
+    )
+    .unwrap_err()
+    .to_string()
+    .contains("trailing bytes after set chunk cache radius packet"));
 }
 
 #[test]

@@ -11232,3 +11232,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] ClearTitles 与 SetTitlesAnimation 五格全闭合。ActionBar/Title/Subtitle 的 decode/ownership/tests
   闭合，但当前 String summary 不保留完整 Component style/translation/siblings，canonical/runtime 两格
   保持 partial，未用纯文本渲染冒充 rich Component parity。
+
+## 2026-07-11：chunk-cache view packet coverage audit
+
+- [x] 对照 `ClientboundSetChunkCacheCenterPacket`、`ClientboundSetChunkCacheRadiusPacket` 与 listener
+  handlers 锁定 center x/z VarInt、radius VarInt wire 并逐包拒绝 trailing bytes；canonical view state、
+  ownership 和 protocol/world/net/native tests 已闭合。
+- [x] center 已参与 terrain upload ordering、radius 已进入 client storage debug projection，但 bbb 尚未像
+  `ClientChunkCache.updateViewCenter/updateViewRadius` 淘汰窗口外 chunk；两行 runtime 保持 partial。
+  该缓存仅是外部服务器下发 chunk 的客户端 residency，不是 IntegratedServer/server chunk cache。

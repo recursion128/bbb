@@ -406,6 +406,8 @@ TickingStep 的 frozen step wire、consumption 与 tests 已全行闭合；Ticki
 但 variable tick-rate 尚未驱动 client tick cadence，runtime 保持 partial。
 ClearTitles/SetTitlesAnimation 已全行闭合；action-bar/title/subtitle 的 Component wire、timers 与 tests
 已闭合，但完整 rich Component style/translation 尚未保留，三条 text 的 canonical/runtime 保持 partial。
+SetChunkCacheCenter/Radius 的 VarInt wire、canonical view state 与 tests 已闭合；窗口外 chunk residency
+淘汰尚未按 vanilla ClientChunkCache 实现，两行 runtime 保持 partial。
 
 完成标准：全部 vanilla 26.1 catalog entry 都有矩阵行；所有目标客户端适用项为
 `complete`，其余只有带 vanilla 依据的 `not-applicable` 或带重启判据的窄 `deferred`；

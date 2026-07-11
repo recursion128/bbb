@@ -459,18 +459,30 @@ pub(crate) fn decode_section_blocks_update(
 pub(crate) fn decode_set_chunk_cache_center(
     decoder: &mut Decoder<'_>,
 ) -> Result<SetChunkCacheCenter> {
-    Ok(SetChunkCacheCenter {
+    let update = SetChunkCacheCenter {
         chunk_x: decoder.read_var_i32()?,
         chunk_z: decoder.read_var_i32()?,
-    })
+    };
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after set chunk cache center packet".to_string(),
+        ));
+    }
+    Ok(update)
 }
 
 pub(crate) fn decode_set_chunk_cache_radius(
     decoder: &mut Decoder<'_>,
 ) -> Result<SetChunkCacheRadius> {
-    Ok(SetChunkCacheRadius {
+    let update = SetChunkCacheRadius {
         radius: decoder.read_var_i32()?,
-    })
+    };
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after set chunk cache radius packet".to_string(),
+        ));
+    }
+    Ok(update)
 }
 
 pub(crate) fn decode_block_pos(packed: i64) -> BlockPos {

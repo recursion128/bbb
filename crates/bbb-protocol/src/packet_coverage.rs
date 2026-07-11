@@ -1344,6 +1344,29 @@ mod tests {
         }
     }
 
+    #[test]
+    fn play_chunk_cache_view_keeps_residency_pruning_open() {
+        let ledger = vanilla_packet_coverage_26_1().unwrap();
+        for constant_name in [
+            "CLIENTBOUND_SET_CHUNK_CACHE_CENTER",
+            "CLIENTBOUND_SET_CHUNK_CACHE_RADIUS",
+        ] {
+            let entry = ledger
+                .entries
+                .iter()
+                .find(|entry| entry.state == "play" && entry.constant_name == constant_name)
+                .expect("chunk cache view coverage row");
+            let partial: BTreeSet<_> = entry
+                .coverage
+                .iter()
+                .filter_map(|(dimension, cell)| {
+                    (cell.status == PacketCoverageStatus::Partial).then_some(dimension.as_str())
+                })
+                .collect();
+            assert_eq!(partial, BTreeSet::from(["runtime_side_effect"]));
+        }
+    }
+
     fn state_name(state: PacketState) -> &'static str {
         match state {
             PacketState::Handshake => "handshake",

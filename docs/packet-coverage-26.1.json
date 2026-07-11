@@ -8354,29 +8354,45 @@
       "constant_name": "CLIENTBOUND_SET_CHUNK_CACHE_CENTER",
       "coverage": {
         "canonical_apply": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/chunks/store.rs#apply_set_chunk_cache_center",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleSetChunkCacheCenter"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/chunks/tests.rs#decodes_chunk_cache_center_and_radius",
+            "vanilla:net/minecraft/network/protocol/game/ClientboundSetChunkCacheCenterPacket.java#STREAM_CODEC"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "ownership": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/play_apply.rs#PlayClientbound::SetChunkCacheCenter"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "runtime_side_effect": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
+          "evidence": [
+            "crates/bbb-native/src/terrain_runtime.rs#terrain_upload_center",
+            "vanilla:net/minecraft/client/multiplayer/ClientChunkCache.java#updateViewCenter"
+          ],
+          "gap": "docs/unsupported-features.md#block-entities-and-terrain",
           "status": "partial"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/chunks/tests.rs#decodes_chunk_cache_center_and_radius",
+            "crates/bbb-world/src/chunks/tests.rs#chunk_cache_updates_track_view_state",
+            "crates/bbb-net/src/probe/play.rs#probe_applies_chunk_view_and_block_updates_to_world",
+            "crates/bbb-native/src/runtime/events/tests/world_state_lifecycle.rs#chunk_cache_events_update_world_counters"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "clientbound",
@@ -8389,29 +8405,45 @@
       "constant_name": "CLIENTBOUND_SET_CHUNK_CACHE_RADIUS",
       "coverage": {
         "canonical_apply": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/chunks/store.rs#apply_set_chunk_cache_radius",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleSetChunkCacheRadius"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/chunks/tests.rs#decodes_chunk_cache_center_and_radius",
+            "vanilla:net/minecraft/network/protocol/game/ClientboundSetChunkCacheRadiusPacket.java#STREAM_CODEC"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "ownership": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/play_apply.rs#PlayClientbound::SetChunkCacheRadius"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "runtime_side_effect": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
+          "evidence": [
+            "crates/bbb-native/src/runtime.rs#hud_debug_client_chunk_storage_slots",
+            "vanilla:net/minecraft/client/multiplayer/ClientChunkCache.java#updateViewRadius"
+          ],
+          "gap": "docs/unsupported-features.md#block-entities-and-terrain",
           "status": "partial"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/chunks/tests.rs#decodes_chunk_cache_center_and_radius",
+            "crates/bbb-world/src/chunks/tests.rs#chunk_cache_updates_track_view_state",
+            "crates/bbb-net/src/probe/play.rs#probe_applies_chunk_view_and_block_updates_to_world",
+            "crates/bbb-native/src/runtime/events/tests/world_state_lifecycle.rs#chunk_cache_events_update_world_counters"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "clientbound",
