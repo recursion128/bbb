@@ -9875,3 +9875,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] 从 generated catalog 建立 `AgeableMob -> GlowSquid` family：INT dark-ticks
   id18/default0；native emissive projection/debug-save 删除手抄 synced id/default。hurt-event
   计时与发光算法仍由对应行为 owner 管理。
+
+## 2026-07-11：Generated entity metadata consumer（Ocelot）
+
+- [x] 从 generated catalog 建立 `AgeableMob -> Ocelot` family：BOOLEAN trusting
+  id18/default false；native debug-save 删除手抄 synced id/default，不扩张模型或 AI 行为。

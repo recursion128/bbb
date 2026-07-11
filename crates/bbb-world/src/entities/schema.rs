@@ -28,6 +28,7 @@ pub enum VanillaEntityMetadataFamily {
     Dolphin,
     GlowSquid,
     Goat,
+    Ocelot,
     Panda,
     PolarBear,
     Sheep,
@@ -363,6 +364,7 @@ mod tests {
             VanillaEntityMetadataFamily::Dolphin,
             VanillaEntityMetadataFamily::GlowSquid,
             VanillaEntityMetadataFamily::Goat,
+            VanillaEntityMetadataFamily::Ocelot,
             VanillaEntityMetadataFamily::Panda,
             VanillaEntityMetadataFamily::PolarBear,
             VanillaEntityMetadataFamily::Sheep,
@@ -534,6 +536,12 @@ mod tests {
         assert!(!VANILLA_GOAT_DEFAULT_SCREAMING);
         assert!(VANILLA_GOAT_DEFAULT_HAS_LEFT_HORN);
         assert!(VANILLA_GOAT_DEFAULT_HAS_RIGHT_HORN);
+        let ocelot = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Ocelot);
+        assert_eq!(ocelot.parent, Some(VanillaEntityMetadataFamily::AgeableMob));
+        assert_eq!(ocelot.inherited_field_count, 18);
+        assert_eq!(ocelot.own_fields.len(), 1);
+        assert_eq!(VANILLA_OCELOT_TRUSTING_DATA_ID, 18);
+        assert!(!VANILLA_OCELOT_DEFAULT_TRUSTING);
         let panda = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Panda);
         assert_eq!(panda.parent, Some(VanillaEntityMetadataFamily::AgeableMob));
         assert_eq!(panda.inherited_field_count, 18);

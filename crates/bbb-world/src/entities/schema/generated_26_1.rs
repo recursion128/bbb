@@ -118,6 +118,8 @@ const GENERATED_VANILLA_GOAT_LEFT_HORN_DATA_ID: u8 = 19;
 pub const VANILLA_GOAT_LEFT_HORN_DATA_ID: u8 = GENERATED_VANILLA_GOAT_LEFT_HORN_DATA_ID;
 const GENERATED_VANILLA_GOAT_RIGHT_HORN_DATA_ID: u8 = 20;
 pub const VANILLA_GOAT_RIGHT_HORN_DATA_ID: u8 = GENERATED_VANILLA_GOAT_RIGHT_HORN_DATA_ID;
+const GENERATED_VANILLA_OCELOT_TRUSTING_DATA_ID: u8 = 18;
+pub const VANILLA_OCELOT_TRUSTING_DATA_ID: u8 = GENERATED_VANILLA_OCELOT_TRUSTING_DATA_ID;
 const GENERATED_VANILLA_PANDA_UNHAPPY_COUNTER_DATA_ID: u8 = 18;
 pub const VANILLA_PANDA_UNHAPPY_COUNTER_DATA_ID: u8 =
     GENERATED_VANILLA_PANDA_UNHAPPY_COUNTER_DATA_ID;
@@ -504,6 +506,8 @@ const GENERATED_VANILLA_GOAT_DEFAULT_HAS_LEFT_HORN: bool = true;
 pub const VANILLA_GOAT_DEFAULT_HAS_LEFT_HORN: bool = GENERATED_VANILLA_GOAT_DEFAULT_HAS_LEFT_HORN;
 const GENERATED_VANILLA_GOAT_DEFAULT_HAS_RIGHT_HORN: bool = true;
 pub const VANILLA_GOAT_DEFAULT_HAS_RIGHT_HORN: bool = GENERATED_VANILLA_GOAT_DEFAULT_HAS_RIGHT_HORN;
+const GENERATED_VANILLA_OCELOT_DEFAULT_TRUSTING: bool = false;
+pub const VANILLA_OCELOT_DEFAULT_TRUSTING: bool = GENERATED_VANILLA_OCELOT_DEFAULT_TRUSTING;
 const GENERATED_VANILLA_PANDA_DEFAULT_UNHAPPY_COUNTER: i32 = 0;
 pub const VANILLA_PANDA_DEFAULT_UNHAPPY_COUNTER: i32 =
     GENERATED_VANILLA_PANDA_DEFAULT_UNHAPPY_COUNTER;
@@ -13649,6 +13653,21 @@ const GOAT_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFami
     own_flags: GOAT_FLAGS,
 };
 
+const OCELOT_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[VanillaEntityMetadataFieldSchema {
+    name: "DATA_TRUSTING",
+    data_id: 18,
+    serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+    default: VanillaEntityMetadataDefault::Boolean(false),
+}];
+const OCELOT_FLAGS: &[VanillaEntityMetadataFlagSchema] = &[];
+const OCELOT_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamilySchema {
+    family: VanillaEntityMetadataFamily::Ocelot,
+    parent: Some(VanillaEntityMetadataFamily::AgeableMob),
+    inherited_field_count: 18,
+    own_fields: OCELOT_FIELDS,
+    own_flags: OCELOT_FLAGS,
+};
+
 const PANDA_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[
     VanillaEntityMetadataFieldSchema {
         name: "UNHAPPY_COUNTER",
@@ -14773,6 +14792,7 @@ pub(super) const fn generated_entity_metadata_schema(
         VanillaEntityMetadataFamily::Dolphin => &DOLPHIN_SCHEMA,
         VanillaEntityMetadataFamily::GlowSquid => &GLOWSQUID_SCHEMA,
         VanillaEntityMetadataFamily::Goat => &GOAT_SCHEMA,
+        VanillaEntityMetadataFamily::Ocelot => &OCELOT_SCHEMA,
         VanillaEntityMetadataFamily::Panda => &PANDA_SCHEMA,
         VanillaEntityMetadataFamily::PolarBear => &POLARBEAR_SCHEMA,
         VanillaEntityMetadataFamily::Sheep => &SHEEP_SCHEMA,
