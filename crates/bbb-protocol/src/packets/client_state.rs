@@ -408,11 +408,17 @@ pub(super) fn decode_default_spawn_position(
 }
 
 pub(super) fn decode_player_experience(decoder: &mut Decoder<'_>) -> Result<PlayerExperience> {
-    Ok(PlayerExperience {
+    let update = PlayerExperience {
         progress: decoder.read_f32()?,
         level: decoder.read_var_i32()?,
         total: decoder.read_var_i32()?,
-    })
+    };
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after set experience packet".to_string(),
+        ));
+    }
+    Ok(update)
 }
 
 pub(super) fn decode_set_simulation_distance(

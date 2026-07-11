@@ -11160,3 +11160,10 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   projection 与 protocol/world/net/native tests 使五格全部闭合。
 - [x] health 0 只记录服务器同步结果；现有测试锁定该 packet 不自行发送 respawn。客户端不从此
   packet 推导权威伤害、死亡判定、掉落或任何服务端 world transition。
+
+## 2026-07-11：set-experience packet coverage audit
+
+- [x] 对照 `ClientboundSetExperiencePacket` 与 `ClientPacketListener.handleSetExperience` 锁定
+  progress f32、level VarInt、total VarInt wire（刻意不同于 Java 构造参数顺序），并拒绝 trailing
+  bytes；local-player canonical state、HUD progress/level、container consumers 与 tests 使五格闭合。
+- [x] 该 packet 只接受服务器同步的玩家经验结果；未从客户端行为推导、奖励或写回权威经验值。

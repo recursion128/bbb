@@ -435,6 +435,19 @@ fn decodes_player_experience() {
             total: 345,
         })
     );
+
+    let mut trailing = Encoder::new();
+    trailing.write_f32(0.625);
+    trailing.write_var_i32(12);
+    trailing.write_var_i32(345);
+    trailing.write_u8(0);
+    assert!(decode_play_clientbound(
+        ids::play::CLIENTBOUND_SET_EXPERIENCE,
+        &trailing.into_inner()
+    )
+    .unwrap_err()
+    .to_string()
+    .contains("trailing bytes after set experience packet"));
 }
 
 #[test]
