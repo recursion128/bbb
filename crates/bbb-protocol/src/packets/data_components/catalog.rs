@@ -997,7 +997,8 @@ fn decode_tropical_fish_pattern(
     decoder: &mut Decoder<'_>,
     summary: &mut DataComponentPatchSummary,
 ) -> Result<()> {
-    summary.tropical_fish_pattern_id = Some(decoder.read_var_i32()?);
+    summary.tropical_fish_pattern_id =
+        Some(vanilla_tropical_fish_pattern(decoder.read_var_i32()?).packed_id);
     Ok(())
 }
 

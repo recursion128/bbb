@@ -6,12 +6,14 @@ use bbb_protocol::{
         VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_MULTIPLIED_BASE_ID,
         VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_MULTIPLIED_TOTAL_ID,
     },
+    builtin_enum_component_values::{normalize_vanilla_dye_color_id, vanilla_dye_color_name},
     entity_types::vanilla_entity_type_allowed_in_peaceful,
     equipment_slots::VANILLA_EQUIPMENT_SLOT_GROUPS,
     packets::{
         AdventureModePredicateSummary, AttributeModifierSummary, PaintingVariantSummary,
         SuspiciousStewEffectSummary,
     },
+    tropical_fish_patterns::vanilla_tropical_fish_pattern,
     ComponentStyle, StyledTextRun,
 };
 use bbb_world::{EnchantmentAttributeModifier, RegistrySet};
@@ -164,20 +166,6 @@ const INSTRUMENT_DESCRIPTION_STYLE: ComponentStyle = ComponentStyle {
     color: Some(TOOLTIP_GRAY_TEXT_COLOR),
     click_event: None,
 };
-const TROPICAL_FISH_PATTERNS: &[(i32, &str)] = &[
-    (0, "kob"),
-    (256, "sunstreak"),
-    (512, "snooper"),
-    (768, "dasher"),
-    (1024, "brinely"),
-    (1280, "spotty"),
-    (1, "flopper"),
-    (257, "stripey"),
-    (513, "glitter"),
-    (769, "blockfish"),
-    (1025, "betty"),
-    (1281, "clayfish"),
-];
 const TROPICAL_FISH_COMMON_VARIANTS: &[(i32, i32, i32)] = &[
     (257, 1, 7),
     (1, 7, 7),
@@ -786,11 +774,8 @@ fn italic_gray_tooltip_line(text: String) -> NativeItemTooltipLine {
 }
 
 fn tropical_fish_pattern(packed_id: i32) -> (i32, &'static str) {
-    TROPICAL_FISH_PATTERNS
-        .iter()
-        .copied()
-        .find(|(id, _)| *id == packed_id)
-        .unwrap_or((0, "kob"))
+    let pattern = vanilla_tropical_fish_pattern(packed_id);
+    (pattern.packed_id, pattern.serialized_name)
 }
 
 fn tropical_fish_common_variant_index(
@@ -804,28 +789,11 @@ fn tropical_fish_common_variant_index(
 }
 
 fn dye_color_id_or_white(color_id: Option<i32>) -> i32 {
-    color_id.filter(|id| (0..=15).contains(id)).unwrap_or(0)
+    normalize_vanilla_dye_color_id(color_id.unwrap_or_default())
 }
 
 fn dye_color_name(color_id: i32) -> &'static str {
-    match color_id {
-        1 => "orange",
-        2 => "magenta",
-        3 => "light_blue",
-        4 => "yellow",
-        5 => "lime",
-        6 => "pink",
-        7 => "gray",
-        8 => "light_gray",
-        9 => "cyan",
-        10 => "purple",
-        11 => "blue",
-        12 => "brown",
-        13 => "green",
-        14 => "red",
-        15 => "black",
-        _ => "white",
-    }
+    vanilla_dye_color_name(color_id)
 }
 
 fn tooltip_display_shows(component_patch: &DataComponentPatchSummary, type_id: i32) -> bool {
@@ -1192,21 +1160,8 @@ mod tests {
     #[test]
     fn tropical_fish_tables_follow_26_1_pattern_and_common_variant_order() {
         assert_eq!(
-            TROPICAL_FISH_PATTERNS,
-            &[
-                (0, "kob"),
-                (256, "sunstreak"),
-                (512, "snooper"),
-                (768, "dasher"),
-                (1024, "brinely"),
-                (1280, "spotty"),
-                (1, "flopper"),
-                (257, "stripey"),
-                (513, "glitter"),
-                (769, "blockfish"),
-                (1025, "betty"),
-                (1281, "clayfish"),
-            ]
+            bbb_protocol::tropical_fish_patterns::VANILLA_TROPICAL_FISH_PATTERNS.len(),
+            12
         );
         assert_eq!(tropical_fish_pattern(257), (257, "stripey"));
         assert_eq!(tropical_fish_pattern(9999), (0, "kob"));

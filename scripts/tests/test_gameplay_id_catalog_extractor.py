@@ -44,6 +44,7 @@ from gameplay_id_catalog_extractor import (  # noqa: E402
     recipe_wire_type_entries,
     remote_debug_sample_type_entries,
     sound_source_entries,
+    tropical_fish_pattern_entries,
     scoreboard_display_slot_entries,
     scoreboard_method_entries,
     scoreboard_team_option_entries,
@@ -1098,6 +1099,32 @@ record ItemAttributeModifiers() {
             [(entry.value_id, entry.serialized_name) for entry in display_types],
             [(0, "default"), (1, "hidden"), (2, "override")],
         )
+
+    def test_tropical_fish_patterns_preserve_sparse_packed_ids(self) -> None:
+        source = parse_source(
+            "fixture/TropicalFish.java",
+            b"""package fixture;
+class TropicalFish {
+ enum Base { SMALL(0), LARGE(1); Base(int id) {} }
+ enum Pattern {
+  KOB("kob", Base.SMALL, 0), SUNSTREAK("sunstreak", Base.SMALL, 1),
+  SNOOPER("snooper", Base.SMALL, 2), DASHER("dasher", Base.SMALL, 3),
+  BRINELY("brinely", Base.SMALL, 4), SPOTTY("spotty", Base.SMALL, 5),
+  FLOPPER("flopper", Base.LARGE, 0), STRIPEY("stripey", Base.LARGE, 1),
+  GLITTER("glitter", Base.LARGE, 2), BLOCKFISH("blockfish", Base.LARGE, 3),
+  BETTY("betty", Base.LARGE, 4), CLAYFISH("clayfish", Base.LARGE, 5);
+  static final Object BY_ID = ByIdMap.sparse(Pattern::getPackedId, values(), KOB);
+  Pattern(String name, Base base, int index) {}
+ }
+}
+""",
+        )
+        entries = tropical_fish_pattern_entries(source)
+        self.assertEqual(entries[0].packed_id, 0)
+        self.assertEqual(entries[5].packed_id, 1280)
+        self.assertEqual(entries[6].packed_id, 1)
+        self.assertEqual(entries[-1].packed_id, 1281)
+        self.assertEqual(entries[-1].serialized_name, "clayfish")
 
     def test_unsupported_register_shape_reports_source_span(self) -> None:
         source = parse_source(

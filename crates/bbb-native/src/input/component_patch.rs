@@ -11,6 +11,7 @@ use bbb_protocol::data_component_types as component_id;
 use bbb_protocol::equipment_slots::{
     vanilla_equipment_slot_by_id, vanilla_equipment_slot_group, VANILLA_EQUIPMENT_SLOT_GROUP_ANY_ID,
 };
+use bbb_protocol::tropical_fish_patterns::vanilla_tropical_fish_pattern;
 use bbb_world::BlockStateRegistry;
 
 type PersistentSnbtEncoder = fn(
@@ -1674,9 +1675,9 @@ fn encode_tropical_fish_pattern(
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
     _item_runtime: Option<&NativeItemRuntime>,
 ) -> Option<String> {
-    Some(debug_snbt_string(debug_tropical_fish_pattern_name(
-        patch.tropical_fish_pattern_id?,
-    )))
+    Some(debug_snbt_string(
+        vanilla_tropical_fish_pattern(patch.tropical_fish_pattern_id?).serialized_name,
+    ))
 }
 
 fn encode_tropical_fish_base_color(

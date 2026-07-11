@@ -25,6 +25,7 @@ use crate::{
         FireworkExplosionShapeSummary, ItemRaritySummary, ItemUseAnimationSummary,
         MapPostProcessingSummary, SwingAnimationTypeSummary,
     },
+    tropical_fish_patterns::vanilla_tropical_fish_pattern,
 };
 use uuid::Uuid;
 
@@ -4607,6 +4608,7 @@ mod tests {
             (85, -1),
             (86, 99),
             (87, 99),
+            // Invalid sparse Pattern packed id; vanilla ByIdMap falls back to KOB=0.
             (88, 3),
             (91, -1),
             (92, 99),
@@ -4634,7 +4636,7 @@ mod tests {
                 added: components.len(),
                 added_type_ids: components.iter().map(|(type_id, _)| *type_id).collect(),
                 removed_type_ids: Vec::new(),
-                tropical_fish_pattern_id: Some(3),
+                tropical_fish_pattern_id: Some(0),
                 builtin_enum_component_ids: BTreeMap::from([
                     (84, 14),
                     (85, 0),

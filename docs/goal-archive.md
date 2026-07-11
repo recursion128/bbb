@@ -10720,3 +10720,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   attribute wire decode、world enchantment registry、pack defaults、native SNBT 和 item-model
   predicate/tooltip 消费统一引用 generated 查询/常量，删除 operation name/id 与 display
   name/id 的平行 match；属性计算、tooltip 排版、display payload codec 和 SNBT 结构语义未生成。
+
+## 2026-07-11：Generated tropical-fish pattern catalog
+
+- [x] gameplay-id extractor 通过共享 Tree-sitter frontend 读取 `TropicalFish.Base` 与 nested
+  `Pattern` 的 12 项 name/base/index，机械计算 `base.id | index << 8` sparse packed id，并验证
+  `ByIdMap.sparse(..., KOB)` fallback。protocol component decode、native persistent SNBT、
+  item-model tooltip 统一引用 generated catalog，renderer pattern/shape owner 通过既有
+  dev-dependency 做逐项反向断言；同时删除
+  item-model 的平行 dye-color name/id 表。pattern texture、tooltip 文案、entity packed-variant
+  位布局与渲染语义仍由各 owner 手写。

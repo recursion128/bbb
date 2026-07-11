@@ -5420,24 +5420,6 @@ fn debug_item_container_contents_component_snbt(
     Some(format!("[{slots}]"))
 }
 
-fn debug_tropical_fish_pattern_name(packed_id: i32) -> &'static str {
-    match packed_id {
-        0 => "kob",
-        256 => "sunstreak",
-        512 => "snooper",
-        768 => "dasher",
-        1024 => "brinely",
-        1280 => "spotty",
-        1 => "flopper",
-        257 => "stripey",
-        513 => "glitter",
-        769 => "blockfish",
-        1025 => "betty",
-        1281 => "clayfish",
-        _ => "kob",
-    }
-}
-
 fn debug_sound_event_component_snbt(
     sound_event: &bbb_protocol::packets::SoundEventSummary,
 ) -> Option<String> {

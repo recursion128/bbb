@@ -651,24 +651,33 @@ fn tropical_fish_texture_images() -> Vec<EntityModelTextureImage> {
 fn tropical_fish_pattern_from_vanilla_pattern_id() {
     // `TropicalFish.Pattern.byId(patternId)`, keyed on `packedId = base.id | index << 8`
     // (`SMALL=0`/`LARGE=1`, index `0..=5`); unknown ids fall back to KOB.
-    let cases = [
-        (0x0000, TropicalFishPattern::Kob),
-        (0x0100, TropicalFishPattern::Sunstreak),
-        (0x0200, TropicalFishPattern::Snooper),
-        (0x0300, TropicalFishPattern::Dasher),
-        (0x0400, TropicalFishPattern::Brinely),
-        (0x0500, TropicalFishPattern::Spotty),
-        (0x0001, TropicalFishPattern::Flopper),
-        (0x0101, TropicalFishPattern::Stripey),
-        (0x0201, TropicalFishPattern::Glitter),
-        (0x0301, TropicalFishPattern::Blockfish),
-        (0x0401, TropicalFishPattern::Betty),
-        (0x0501, TropicalFishPattern::Clayfish),
+    let expected = [
+        TropicalFishPattern::Kob,
+        TropicalFishPattern::Sunstreak,
+        TropicalFishPattern::Snooper,
+        TropicalFishPattern::Dasher,
+        TropicalFishPattern::Brinely,
+        TropicalFishPattern::Spotty,
+        TropicalFishPattern::Flopper,
+        TropicalFishPattern::Stripey,
+        TropicalFishPattern::Glitter,
+        TropicalFishPattern::Blockfish,
+        TropicalFishPattern::Betty,
+        TropicalFishPattern::Clayfish,
     ];
-    for (pattern_id, expected) in cases {
+    for (descriptor, expected) in
+        bbb_protocol::tropical_fish_patterns::VANILLA_TROPICAL_FISH_PATTERNS
+            .iter()
+            .zip(expected)
+    {
         assert_eq!(
-            TropicalFishPattern::from_vanilla_pattern_id(pattern_id),
+            TropicalFishPattern::from_vanilla_pattern_id(descriptor.packed_id),
             expected
+        );
+        assert_eq!(expected.pattern_index(), descriptor.pattern_index);
+        assert_eq!(
+            expected.shape(),
+            TropicalFishModelShape::from_vanilla_base_id(descriptor.base_id)
         );
     }
     // Unknown low-byte base (0xAB) and out-of-range index (6 → 0x0601) both fall back to KOB.

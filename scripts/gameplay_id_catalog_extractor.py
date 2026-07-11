@@ -297,6 +297,15 @@ class BuiltinEnumComponentEntry:
     value_type_constant_name: str
 
 
+@dataclass(frozen=True)
+class TropicalFishPatternEntry:
+    constant_name: str
+    serialized_name: str
+    base_id: int
+    pattern_index: int
+    packed_id: int
+
+
 def _fail(source: JavaSource, expression: JavaExpression, message: str) -> None:
     span = expression.span
     raise GameplayIdExtractionError(
@@ -1917,6 +1926,68 @@ def attribute_modifier_type_entries(
     _validate(displays, "attribute modifier display type", "value_id")
     _validate(displays, "attribute modifier display type", "serialized_name")
     return operations, displays
+
+
+def tropical_fish_pattern_entries(
+    source: JavaSource,
+) -> list[TropicalFishPatternEntry]:
+    base_constants = _nested_enum_constants(source, "Base", "tropical fish base")
+    bases = {}
+    for name, arguments in base_constants:
+        if len(arguments) != 1:
+            _fail(source, arguments[0], f"tropical fish base {name} must have one id")
+        bases[name] = _integer(source, arguments[0])
+    if bases != {"SMALL": 0, "LARGE": 1}:
+        raise GameplayIdExtractionError("tropical fish bases differ from SMALL=0/LARGE=1")
+
+    pattern_type = _nested_enum_type(source, "Pattern")
+    entries = []
+    for name, arguments in _nested_enum_constants(source, "Pattern", "tropical fish pattern"):
+        if len(arguments) != 3:
+            expression = arguments[0] if arguments else source.expression(pattern_type.node)
+            _fail(source, expression, f"tropical fish pattern {name} must have three arguments")
+        base_name = arguments[1].canonical.rsplit(".", 1)[-1]
+        if base_name not in bases:
+            _fail(source, arguments[1], f"tropical fish pattern {name} has unknown base")
+        index = _integer(source, arguments[2])
+        entries.append(
+            TropicalFishPatternEntry(
+                name,
+                _string(source, arguments[0]),
+                bases[base_name],
+                index,
+                bases[base_name] | index << 8,
+            )
+        )
+    expected = [
+        "KOB", "SUNSTREAK", "SNOOPER", "DASHER", "BRINELY", "SPOTTY",
+        "FLOPPER", "STRIPEY", "GLITTER", "BLOCKFISH", "BETTY", "CLAYFISH",
+    ]
+    if [entry.constant_name for entry in entries] != expected:
+        raise GameplayIdExtractionError("tropical fish patterns differ from expected order")
+    if [entry.pattern_index for entry in entries] != list(range(6)) * 2:
+        raise GameplayIdExtractionError("tropical fish pattern indices differ from 0..5 per base")
+    by_id = [
+        field for field in source.fields_for(pattern_type)
+        if field.name == "BY_ID" and field.initializer is not None
+    ]
+    if len(by_id) != 1:
+        raise GameplayIdExtractionError(f"{source.relative_path}: expected one Pattern.BY_ID")
+    initializer = by_id[0].initializer
+    name = initializer.node.child_by_field_name("name")
+    arguments = initializer.node.child_by_field_name("arguments")
+    if (
+        initializer.node.type != "method_invocation"
+        or name is None
+        or source.text(name) != "sparse"
+        or arguments is None
+        or len(arguments.named_children) != 3
+        or source.expression(arguments.named_children[-1]).canonical != "KOB"
+    ):
+        _fail(source, initializer, "tropical fish Pattern.BY_ID must use sparse KOB fallback")
+    _validate(entries, "tropical fish pattern", "serialized_name")
+    _validate(entries, "tropical fish pattern", "packed_id")
+    return entries
 
 
 def equipment_slot_entries(
