@@ -5,6 +5,7 @@ use uuid::Uuid;
 
 pub use crate::client_command_actions::ClientCommandAction;
 pub use crate::player_action_kinds::PlayerActionKind;
+pub use crate::player_command_actions::PlayerCommandAction;
 use crate::{
     codec::{Encoder, ProtocolError, Result},
     ids,
@@ -400,31 +401,6 @@ impl Direction {
             Self::South => 3,
             Self::West => 4,
             Self::East => 5,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum PlayerCommandAction {
-    StopSleeping,
-    StartSprinting,
-    StopSprinting,
-    StartRidingJump,
-    StopRidingJump,
-    OpenInventory,
-    StartFallFlying,
-}
-
-impl PlayerCommandAction {
-    fn ordinal(self) -> i32 {
-        match self {
-            Self::StopSleeping => 0,
-            Self::StartSprinting => 1,
-            Self::StopSprinting => 2,
-            Self::StartRidingJump => 3,
-            Self::StopRidingJump => 4,
-            Self::OpenInventory => 5,
-            Self::StartFallFlying => 6,
         }
     }
 }

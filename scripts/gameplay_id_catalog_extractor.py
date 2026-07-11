@@ -127,6 +127,12 @@ class PlayerActionKindEntry:
     ordinal: int
 
 
+@dataclass(frozen=True)
+class PlayerCommandActionEntry:
+    constant_name: str
+    ordinal: int
+
+
 def _fail(source: JavaSource, expression: JavaExpression, message: str) -> None:
     span = expression.span
     raise GameplayIdExtractionError(
@@ -488,6 +494,19 @@ def player_action_kind_entries(
         )
     ]
     _validate(entries, "player action kind", "ordinal")
+    return entries
+
+
+def player_command_action_entries(
+    source: JavaSource, expected_count: int = 7
+) -> list[PlayerCommandActionEntry]:
+    entries = [
+        PlayerCommandActionEntry(name, ordinal)
+        for name, ordinal in _nested_enum_ordinals(
+            source, "Action", "player command action", expected_count
+        )
+    ]
+    _validate(entries, "player command action", "ordinal")
     return entries
 
 

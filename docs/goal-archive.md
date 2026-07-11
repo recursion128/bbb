@@ -10511,3 +10511,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   0..7 ordinal match；生成顺序/唯一性和 production-source 反向门禁锁定单一权威。
   protocol/net 编码、native start-destroy 与 piercing-weapon stab focused tests 不改语义
   通过；方块破坏预测、交互策略和本地输入行为仍由原 native/world owner 手写。
+
+## 2026-07-11：Generated player-command action order
+
+- [x] gameplay-id extractor 通过共享 Tree-sitter frontend 读取 vanilla
+  `ServerboundPlayerCommandPacket.Action` 的 7 项声明顺序，生成 typed
+  `PlayerCommandAction`/catalog/ordinal。protocol packet facade 保持原 re-export，删除
+  0..6 ordinal match；生成顺序/唯一性和 production-source 反向门禁锁定单一权威。
+  protocol/net 编码以及 native sprint、locally-controlled vehicle riding jump、elytra
+  fall-flying focused tests 不改语义通过；预测、输入条件和 server correction 行为仍由原
+  client owner 手写。

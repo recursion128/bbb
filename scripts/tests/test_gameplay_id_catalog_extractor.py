@@ -25,6 +25,7 @@ from gameplay_id_catalog_extractor import (  # noqa: E402
     mob_effect_entries,
     player_info_action_entries,
     player_action_kind_entries,
+    player_command_action_entries,
     resource_pack_response_action_entries,
     sound_source_entries,
 )
@@ -311,6 +312,36 @@ public class ServerboundPlayerActionPacket {
                 ("RELEASE_USE_ITEM", 5),
                 ("SWAP_ITEM_WITH_OFFHAND", 6),
                 ("STAB", 7),
+            ],
+        )
+
+    def test_player_command_actions_preserve_nested_enum_order(self) -> None:
+        source = parse_source(
+            "fixture/ServerboundPlayerCommandPacket.java",
+            b"""
+package fixture;
+public class ServerboundPlayerCommandPacket {
+  public enum Action {
+    STOP_SLEEPING, START_SPRINTING, STOP_SPRINTING,
+    START_RIDING_JUMP, STOP_RIDING_JUMP, OPEN_INVENTORY,
+    START_FALL_FLYING;
+  }
+}
+""",
+        )
+        self.assertEqual(
+            [
+                (entry.constant_name, entry.ordinal)
+                for entry in player_command_action_entries(source)
+            ],
+            [
+                ("STOP_SLEEPING", 0),
+                ("START_SPRINTING", 1),
+                ("STOP_SPRINTING", 2),
+                ("START_RIDING_JUMP", 3),
+                ("STOP_RIDING_JUMP", 4),
+                ("OPEN_INVENTORY", 5),
+                ("START_FALL_FLYING", 6),
             ],
         )
 
