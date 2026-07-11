@@ -10422,3 +10422,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   跨 crate production-source 结构门禁同时拒绝新的 block-entity type 数字常量，测试 fixture
   仍可保留明确 wire 样本。block-entity packet decode、world state 与 vault presentation 行为
   均未改变。
+
+## 2026-07-11：Generated heightmap type catalog
+
+- [x] gameplay-id extractor 通过共享 Tree-sitter frontend 读取 nested `Heightmap.Types`
+  enum，生成六项 explicit id、serialization key 与 WORLDGEN/LIVE_WORLD/CLIENT usage；
+  protocol checked-in catalog 提供 named aliases，world sampler 与 native debug heightmap
+  projection 删除 1/3/4/5 手写 id。fixtures 锁定 nested enum、lambda argument、显式 id 和
+  usage，production-source 结构测试阻止 heightmap 数字常量回流。block-state opacity
+  predicate、packed heightmap 数据与 client/world behavior 仍由各语义 owner 手写。

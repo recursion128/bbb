@@ -75,6 +75,14 @@ class SoundSourceEntry:
     serialized_name: str
 
 
+@dataclass(frozen=True)
+class HeightmapTypeEntry:
+    constant_name: str
+    type_id: int
+    serialization_key: str
+    usage: str
+
+
 def _fail(source: JavaSource, expression: JavaExpression, message: str) -> None:
     span = expression.span
     raise GameplayIdExtractionError(
@@ -265,6 +273,49 @@ def _enum_constants(source: JavaSource) -> list[tuple[str, tuple[JavaExpression,
             )
         )
     return result
+
+
+def heightmap_type_entries(
+    source: JavaSource, expected_count: int = 6
+) -> list[HeightmapTypeEntry]:
+    enums = [
+        java_type
+        for java_type in source.types
+        if java_type.kind == "enum" and java_type.simple_name == "Types"
+    ]
+    if len(enums) != 1:
+        raise GameplayIdExtractionError(
+            f"{source.relative_path}: expected one Heightmap.Types enum, found {len(enums)}"
+        )
+    entries = []
+    for node in type_body_members(enums[0].body_node):
+        if node.type != "enum_constant":
+            continue
+        name = node.child_by_field_name("name")
+        arguments = node.child_by_field_name("arguments")
+        if name is None or arguments is None or len(arguments.named_children) != 4:
+            _fail(source, source.expression(node), "heightmap type must have four arguments")
+        values = tuple(source.expression(child) for child in arguments.named_children)
+        usage = values[2].canonical.rsplit(".", 1)[-1]
+        if usage not in {"WORLDGEN", "LIVE_WORLD", "CLIENT"}:
+            _fail(source, values[2], f"unknown heightmap usage {usage}")
+        entries.append(
+            HeightmapTypeEntry(
+                source.text(name),
+                _integer(source, values[0]),
+                _string(source, values[1]),
+                usage,
+            )
+        )
+    if len(entries) != expected_count:
+        raise GameplayIdExtractionError(
+            f"expected {expected_count} heightmap types, extracted {len(entries)}"
+        )
+    _validate(entries, "heightmap type", "type_id")
+    _validate(entries, "heightmap type", "serialization_key")
+    if [entry.type_id for entry in entries] != list(range(expected_count)):
+        raise GameplayIdExtractionError("heightmap type ids are not contiguous declaration order")
+    return entries
 
 
 def equipment_slot_entries(

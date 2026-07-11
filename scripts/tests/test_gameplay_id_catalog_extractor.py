@@ -15,6 +15,7 @@ from gameplay_id_catalog_extractor import (  # noqa: E402
     entity_data_serializer_entries,
     entity_pose_entries,
     equipment_slot_entries,
+    heightmap_type_entries,
     mob_effect_entries,
     sound_source_entries,
 )
@@ -121,6 +122,26 @@ public class ClientboundGameEventPacket {
         )
         self.assertEqual(
             [entry.event_id for entry in client_game_event_type_entries(events, 2)], [0, 1]
+        )
+
+    def test_nested_heightmap_types_preserve_explicit_ids_keys_and_usage(self) -> None:
+        source = parse_source(
+            "fixture/Heightmap.java",
+            b"""
+package fixture;
+public class Heightmap {
+  enum Types {
+    WORLD_SURFACE_WG(0, "WORLD_SURFACE_WG", Usage.WORLDGEN, predicate),
+    MOTION_BLOCKING(1, "MOTION_BLOCKING", Usage.CLIENT, state -> state.blocks());
+  }
+  enum Usage { WORLDGEN, LIVE_WORLD, CLIENT; }
+}
+""",
+        )
+        entries = heightmap_type_entries(source, 2)
+        self.assertEqual(
+            [(entry.type_id, entry.serialization_key, entry.usage) for entry in entries],
+            [(0, "WORLD_SURFACE_WG", "WORLDGEN"), (1, "MOTION_BLOCKING", "CLIENT")],
         )
 
     def test_unsupported_register_shape_reports_source_span(self) -> None:
