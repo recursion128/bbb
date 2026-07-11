@@ -24,6 +24,7 @@ from gameplay_id_catalog_extractor import (  # noqa: E402
     heightmap_type_entries,
     mob_effect_entries,
     player_info_action_entries,
+    player_action_kind_entries,
     resource_pack_response_action_entries,
     sound_source_entries,
 )
@@ -279,6 +280,37 @@ public class ServerboundClientCommandPacket {
                 ("PERFORM_RESPAWN", 0),
                 ("REQUEST_STATS", 1),
                 ("REQUEST_GAMERULE_VALUES", 2),
+            ],
+        )
+
+    def test_player_action_kinds_preserve_nested_enum_order(self) -> None:
+        source = parse_source(
+            "fixture/ServerboundPlayerActionPacket.java",
+            b"""
+package fixture;
+public class ServerboundPlayerActionPacket {
+  public enum Action {
+    START_DESTROY_BLOCK, ABORT_DESTROY_BLOCK, STOP_DESTROY_BLOCK,
+    DROP_ALL_ITEMS, DROP_ITEM, RELEASE_USE_ITEM,
+    SWAP_ITEM_WITH_OFFHAND, STAB;
+  }
+}
+""",
+        )
+        self.assertEqual(
+            [
+                (entry.constant_name, entry.ordinal)
+                for entry in player_action_kind_entries(source)
+            ],
+            [
+                ("START_DESTROY_BLOCK", 0),
+                ("ABORT_DESTROY_BLOCK", 1),
+                ("STOP_DESTROY_BLOCK", 2),
+                ("DROP_ALL_ITEMS", 3),
+                ("DROP_ITEM", 4),
+                ("RELEASE_USE_ITEM", 5),
+                ("SWAP_ITEM_WITH_OFFHAND", 6),
+                ("STAB", 7),
             ],
         )
 

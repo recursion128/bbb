@@ -29,6 +29,7 @@ pub mod mob_effect_types;
 pub mod packet_catalog;
 pub mod packets;
 pub mod particle_types;
+pub mod player_action_kinds;
 pub mod player_info_actions;
 pub mod resource_pack_response_actions;
 pub mod sound_sources;

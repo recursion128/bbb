@@ -10502,3 +10502,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   `RequestGameRuleValues` API；删除 0/1/2 ordinal match。生成顺序/唯一性和反向门禁、
   protocol 编码及 net driver 三 action focused tests 均通过；respawn、stats 与 gamerule
   请求的状态机行为仍由原 owner 手写。
+
+## 2026-07-11：Generated player-action kind order
+
+- [x] gameplay-id extractor 通过共享 Tree-sitter frontend 读取 vanilla
+  `ServerboundPlayerActionPacket.Action` 的 8 项声明顺序（含 26.1 `STAB`），生成 typed
+  `PlayerActionKind`/catalog/ordinal。protocol packet facade 保持原 re-export，删除
+  0..7 ordinal match；生成顺序/唯一性和 production-source 反向门禁锁定单一权威。
+  protocol/net 编码、native start-destroy 与 piercing-weapon stab focused tests 不改语义
+  通过；方块破坏预测、交互策略和本地输入行为仍由原 native/world owner 手写。

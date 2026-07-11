@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 pub use crate::client_command_actions::ClientCommandAction;
+pub use crate::player_action_kinds::PlayerActionKind;
 use crate::{
     codec::{Encoder, ProtocolError, Result},
     ids,
@@ -378,33 +379,6 @@ pub struct HashedItemStack {
 pub struct HashedComponentPatch {
     pub added_components: BTreeMap<i32, i32>,
     pub removed_components: BTreeSet<i32>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum PlayerActionKind {
-    StartDestroyBlock,
-    AbortDestroyBlock,
-    StopDestroyBlock,
-    DropAllItems,
-    DropItem,
-    ReleaseUseItem,
-    SwapItemWithOffhand,
-    Stab,
-}
-
-impl PlayerActionKind {
-    fn ordinal(self) -> i32 {
-        match self {
-            Self::StartDestroyBlock => 0,
-            Self::AbortDestroyBlock => 1,
-            Self::StopDestroyBlock => 2,
-            Self::DropAllItems => 3,
-            Self::DropItem => 4,
-            Self::ReleaseUseItem => 5,
-            Self::SwapItemWithOffhand => 6,
-            Self::Stab => 7,
-        }
-    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
