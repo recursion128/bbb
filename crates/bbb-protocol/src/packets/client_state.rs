@@ -341,14 +341,20 @@ pub(super) fn decode_game_event(decoder: &mut Decoder<'_>) -> Result<GameEvent> 
 
 pub(super) fn decode_player_abilities(decoder: &mut Decoder<'_>) -> Result<PlayerAbilities> {
     let flags = decoder.read_u8()?;
-    Ok(PlayerAbilities {
+    let update = PlayerAbilities {
         invulnerable: flags & 0x01 != 0,
         flying: flags & 0x02 != 0,
         can_fly: flags & 0x04 != 0,
         instabuild: flags & 0x08 != 0,
         flying_speed: decoder.read_f32()?,
         walking_speed: decoder.read_f32()?,
-    })
+    };
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after player abilities packet".to_string(),
+        ));
+    }
+    Ok(update)
 }
 
 pub(super) fn decode_remove_mob_effect(decoder: &mut Decoder<'_>) -> Result<RemoveMobEffect> {

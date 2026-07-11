@@ -11197,3 +11197,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   并拒绝 trailing bytes；非法 resource location 仍明确失败。
 - [x] client respawn data 已进入 spawn-compass item-model angle/range dispatch，protocol/world/net/native
   tests 覆盖 canonical state、dimension mismatch spin 与 owner pose，五格全部闭合。
+
+## 2026-07-11：player-abilities packet coverage audit
+
+- [x] 对照 `ClientboundPlayerAbilitiesPacket` 与 `ClientPacketListener.handlePlayerAbilities` 锁定四个
+  flag bit、flying speed f32、walking speed f32 wire 并拒绝 trailing bytes；canonical apply、ownership
+  与 protocol/world/net/native tests 已闭合。
+- [x] can-fly/flying/flying-speed 已进入本地飞行 prediction 与 serverbound ability toggle，instabuild
+  已进入 reach/pick/container；walking-speed 尚未像 vanilla 那样设置 movement attribute base 并参与
+  FOV speed ratio，runtime 保持 partial，未用固定 0.1 猜测冒充完成。

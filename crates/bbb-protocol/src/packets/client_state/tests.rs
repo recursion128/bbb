@@ -669,6 +669,19 @@ fn decodes_player_abilities_spawn_distance_and_system_chat() {
         })
     );
 
+    let mut trailing = Encoder::new();
+    trailing.write_u8(0b0000_1101);
+    trailing.write_f32(0.05);
+    trailing.write_f32(0.1);
+    trailing.write_u8(0);
+    assert!(decode_play_clientbound(
+        ids::play::CLIENTBOUND_PLAYER_ABILITIES,
+        &trailing.into_inner()
+    )
+    .unwrap_err()
+    .to_string()
+    .contains("trailing bytes after player abilities packet"));
+
     let mut payload = Encoder::new();
     payload.write_string("overworld");
     payload.write_i64(encode_block_pos(-5, 70, 12));

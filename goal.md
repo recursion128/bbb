@@ -398,6 +398,8 @@ SetCamera 的 entity VarInt wire、known/unknown gate、camera pose/raycast/post
 world/net/native tests 已全行闭合；相机实体移除后视点安全回退本地玩家。
 SetDefaultSpawnPosition 的 dimension/BlockPos/yaw/pitch wire、client respawn state、spawn-compass
 item-model consumer 与 world/net/native tests 已全行闭合。
+PlayerAbilities 的 flags/flying-speed/walking-speed wire、canonical state 与 apply tests 已闭合；
+walking-speed 尚未进入 movement attribute base/FOV，runtime 保持 partial。
 
 完成标准：全部 vanilla 26.1 catalog entry 都有矩阵行；所有目标客户端适用项为
 `complete`，其余只有带 vanilla 依据的 `not-applicable` 或带重启判据的窄 `deferred`；

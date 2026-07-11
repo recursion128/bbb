@@ -1356,6 +1356,45 @@
         "status": "complete"
       }
     },
+    "play/clientbound/CLIENTBOUND_PLAYER_ABILITIES": {
+      "canonical_apply": {
+        "evidence": [
+          "crates/bbb-world/src/client/local_player.rs#apply_player_abilities",
+          "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handlePlayerAbilities"
+        ],
+        "status": "complete"
+      },
+      "decode": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/client_state/tests.rs#decodes_player_abilities_spawn_distance_and_system_chat",
+          "vanilla:net/minecraft/network/protocol/game/ClientboundPlayerAbilitiesPacket.java#STREAM_CODEC"
+        ],
+        "status": "complete"
+      },
+      "ownership": {
+        "evidence": [
+          "crates/bbb-world/src/play_apply.rs#PlayClientbound::PlayerAbilities"
+        ],
+        "status": "complete"
+      },
+      "runtime_side_effect": {
+        "evidence": [
+          "crates/bbb-world/src/client/local_player_movement.rs#local_player_flying_abilities",
+          "crates/bbb-native/src/input/mouse.rs#local_player_instabuild"
+        ],
+        "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+        "status": "partial"
+      },
+      "tests": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/client_state/tests.rs#decodes_player_abilities_spawn_distance_and_system_chat",
+          "crates/bbb-world/src/client/local_player.rs#local_player_packets_update_canonical_state",
+          "crates/bbb-net/src/probe/play.rs#probe_applies_local_player_status_packets_to_world",
+          "crates/bbb-native/src/input/movement.rs#advance_player_input_enables_spectator_flying_when_server_allows"
+        ],
+        "status": "complete"
+      }
+    },
     "play/clientbound/CLIENTBOUND_PLAYER_ROTATION": {
       "canonical_apply": {
         "evidence": [

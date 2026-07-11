@@ -130,6 +130,11 @@ Owner: `bbb-native` + `bbb-net` + `bbb-protocol` + `bbb-world`
 
 Movement:
 
+- Apply synchronized player-abilities `walkingSpeed` as the local player's
+  movement-speed attribute base and use the same value in the vanilla FOV speed
+  ratio. bbb currently stores it while prediction keeps the fixed default 0.1
+  base. Restart by updating the owned attribute/FOV inputs together; do not add
+  a second ad-hoc speed multiplier beside the attribute path.
 - Cover the remaining vanilla survival physics beyond the native fixed-20Hz
   local movement cadence.
 - Cover the remaining vanilla voxel collision shapes.
