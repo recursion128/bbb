@@ -10,6 +10,7 @@ sys.path.insert(0, str(SCRIPTS))
 
 from sound_event_catalog_extractor import (  # noqa: E402
     SoundEventCatalogExtractionError,
+    direct_sound_event_entries,
     sound_event_resource_ids,
 )
 from vanilla_java_source import parse_source  # noqa: E402
@@ -31,6 +32,24 @@ class {family} {{
 
 
 class SoundEventCatalogExtractorTests(unittest.TestCase):
+    def test_direct_entries_preserve_constant_and_resource_mapping(self) -> None:
+        source = parse_source(
+            "net/minecraft/sounds/SoundEvents.java",
+            b'''package net.minecraft.sounds;
+class SoundEvents {
+  static final SoundEvent ONE = register("one");
+  static final Holder TWO = registerForHolder("two");
+  static final Object HELPER = make("ignored");
+}''',
+        )
+        self.assertEqual(
+            [
+                (entry.constant_name, entry.resource_id)
+                for entry in direct_sound_event_entries(source, 2)
+            ],
+            [("ONE", "minecraft:one"), ("TWO", "minecraft:two")],
+        )
+
     def test_direct_and_helper_registrations_follow_field_and_enum_order(self) -> None:
         source = parse_source(
             "net/minecraft/sounds/SoundEvents.java",

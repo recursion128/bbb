@@ -38,30 +38,6 @@ pub(super) const VANILLA_TRIM_PATTERN_KEYS: &[&str] = &[
     "minecraft:bolt",
 ];
 
-pub(super) const VANILLA_JUKEBOX_SONG_KEYS: &[&str] = &[
-    "minecraft:13",
-    "minecraft:cat",
-    "minecraft:blocks",
-    "minecraft:chirp",
-    "minecraft:far",
-    "minecraft:mall",
-    "minecraft:mellohi",
-    "minecraft:stal",
-    "minecraft:strad",
-    "minecraft:ward",
-    "minecraft:11",
-    "minecraft:wait",
-    "minecraft:pigstep",
-    "minecraft:otherside",
-    "minecraft:5",
-    "minecraft:relic",
-    "minecraft:precipice",
-    "minecraft:creator",
-    "minecraft:creator_music_box",
-    "minecraft:tears",
-    "minecraft:lava_chicken",
-];
-
 pub(super) const VANILLA_POTION_KEYS: &[&str] = &[
     "minecraft:water",
     "minecraft:mundane",
@@ -935,7 +911,6 @@ mod tests {
         let catalogs: &[(&[&str], usize)] = &[
             (VANILLA_TRIM_MATERIAL_KEYS, 11),
             (VANILLA_TRIM_PATTERN_KEYS, 18),
-            (VANILLA_JUKEBOX_SONG_KEYS, 21),
             (VANILLA_POTION_KEYS, 46),
             (VANILLA_VILLAGER_TYPE_KEYS, 7),
             (VANILLA_WOLF_SOUND_VARIANT_KEYS, 7),
@@ -985,10 +960,6 @@ mod tests {
             Some(&"minecraft:quartz")
         );
         assert_eq!(VANILLA_TRIM_PATTERN_KEYS.last(), Some(&"minecraft:bolt"));
-        assert_eq!(
-            VANILLA_JUKEBOX_SONG_KEYS.last(),
-            Some(&"minecraft:lava_chicken")
-        );
         assert_eq!(VANILLA_POTION_KEYS.get(3), Some(&"minecraft:awkward"));
         assert_eq!(VANILLA_VILLAGER_TYPE_KEYS.last(), Some(&"minecraft:taiga"));
         assert_eq!(

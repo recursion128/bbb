@@ -10267,3 +10267,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   形态变化均显式失败。删除输出到不存在 bbb-audio data 目录的旧 regex/逐行工具，现有
   `bbb-pack/data/sound_events_26_1.txt` 内容逐字不变并由 maintenance update/check 管理；
   普通 Cargo build/test 不读取本地 vanilla source，session 下发 sound registry 仍优先。
+
+## 2026-07-11：Generated jukebox-song descriptor catalog
+
+- [x] 新增 Tree-sitter jukebox extractor 与 repo-level update/check，从 `JukeboxSongs`
+  ResourceKey declarations/bootstrap 顺序提取 21 个 song resource，并把 bootstrap 的
+  `SoundEvents` 常量与同一 source frontend 提取的 direct sound-event registration 唯一
+  关联。生成的 bbb-pack descriptor 同时拥有 song/sound-event resource id；删除旧单列
+  快照和两套互逆 hand-written match，registry、audio 与 item-model predicate 统一消费该表，
+  item-model bootstrap 生成物不再重复拥有 jukebox key 数组。fixtures 锁定声明/注册顺序、
+  constant join 和显式失败，普通 build/test 只读取 checked-in Rust 生成物；dynamic server
+  registry 仍优先，未把 JukeboxSong Codec、音频行为或 component wire 语义冒充为已生成。

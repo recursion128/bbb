@@ -1,6 +1,14 @@
 use serde::{Deserialize, Serialize};
 
-const VANILLA_26_1_JUKEBOX_SONGS: &str = include_str!("../data/jukebox_songs_26_1.txt");
+mod generated_26_1;
+
+use generated_26_1::VANILLA_26_1_JUKEBOX_SONGS;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct VanillaJukeboxSong {
+    song_id: &'static str,
+    sound_event_id: &'static str,
+}
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct JukeboxSongRegistry {
@@ -12,9 +20,8 @@ impl JukeboxSongRegistry {
     pub fn vanilla_26_1() -> Self {
         Self::from_sound_event_ids(
             VANILLA_26_1_JUKEBOX_SONGS
-                .lines()
-                .filter(|line| !line.is_empty())
-                .map(Some),
+                .iter()
+                .map(|entry| Some(entry.sound_event_id)),
         )
     }
 
@@ -71,67 +78,69 @@ impl JukeboxSongRegistry {
     pub fn is_empty(&self) -> bool {
         self.by_protocol_id.is_empty()
     }
+
+    pub fn vanilla_26_1_song_id(registry_id: i32) -> Option<&'static str> {
+        let index = usize::try_from(registry_id).ok()?;
+        VANILLA_26_1_JUKEBOX_SONGS
+            .get(index)
+            .map(|entry| entry.song_id)
+    }
 }
 
 fn vanilla_26_1_song_id_for_sound_event(sound_event_id: &str) -> Option<&'static str> {
-    let song = match sound_event_id {
-        "minecraft:music_disc.13" => "minecraft:13",
-        "minecraft:music_disc.cat" => "minecraft:cat",
-        "minecraft:music_disc.blocks" => "minecraft:blocks",
-        "minecraft:music_disc.chirp" => "minecraft:chirp",
-        "minecraft:music_disc.far" => "minecraft:far",
-        "minecraft:music_disc.mall" => "minecraft:mall",
-        "minecraft:music_disc.mellohi" => "minecraft:mellohi",
-        "minecraft:music_disc.stal" => "minecraft:stal",
-        "minecraft:music_disc.strad" => "minecraft:strad",
-        "minecraft:music_disc.ward" => "minecraft:ward",
-        "minecraft:music_disc.11" => "minecraft:11",
-        "minecraft:music_disc.wait" => "minecraft:wait",
-        "minecraft:music_disc.pigstep" => "minecraft:pigstep",
-        "minecraft:music_disc.otherside" => "minecraft:otherside",
-        "minecraft:music_disc.5" => "minecraft:5",
-        "minecraft:music_disc.relic" => "minecraft:relic",
-        "minecraft:music_disc.precipice" => "minecraft:precipice",
-        "minecraft:music_disc.creator" => "minecraft:creator",
-        "minecraft:music_disc.creator_music_box" => "minecraft:creator_music_box",
-        "minecraft:music_disc.tears" => "minecraft:tears",
-        "minecraft:music_disc.lava_chicken" => "minecraft:lava_chicken",
-        _ => return None,
-    };
-    Some(song)
+    VANILLA_26_1_JUKEBOX_SONGS
+        .iter()
+        .find(|entry| entry.sound_event_id == sound_event_id)
+        .map(|entry| entry.song_id)
 }
 
 fn vanilla_26_1_song_sound_event(song_id: &str) -> Option<&'static str> {
-    let sound = match song_id {
-        "minecraft:13" => "minecraft:music_disc.13",
-        "minecraft:cat" => "minecraft:music_disc.cat",
-        "minecraft:blocks" => "minecraft:music_disc.blocks",
-        "minecraft:chirp" => "minecraft:music_disc.chirp",
-        "minecraft:far" => "minecraft:music_disc.far",
-        "minecraft:mall" => "minecraft:music_disc.mall",
-        "minecraft:mellohi" => "minecraft:music_disc.mellohi",
-        "minecraft:stal" => "minecraft:music_disc.stal",
-        "minecraft:strad" => "minecraft:music_disc.strad",
-        "minecraft:ward" => "minecraft:music_disc.ward",
-        "minecraft:11" => "minecraft:music_disc.11",
-        "minecraft:wait" => "minecraft:music_disc.wait",
-        "minecraft:pigstep" => "minecraft:music_disc.pigstep",
-        "minecraft:otherside" => "minecraft:music_disc.otherside",
-        "minecraft:5" => "minecraft:music_disc.5",
-        "minecraft:relic" => "minecraft:music_disc.relic",
-        "minecraft:precipice" => "minecraft:music_disc.precipice",
-        "minecraft:creator" => "minecraft:music_disc.creator",
-        "minecraft:creator_music_box" => "minecraft:music_disc.creator_music_box",
-        "minecraft:tears" => "minecraft:music_disc.tears",
-        "minecraft:lava_chicken" => "minecraft:music_disc.lava_chicken",
-        _ => return None,
-    };
-    Some(sound)
+    VANILLA_26_1_JUKEBOX_SONGS
+        .iter()
+        .find(|entry| entry.song_id == song_id)
+        .map(|entry| entry.sound_event_id)
 }
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashSet;
+
     use super::*;
+
+    #[test]
+    fn generated_vanilla_catalog_is_complete_and_bidirectionally_unique() {
+        assert_eq!(VANILLA_26_1_JUKEBOX_SONGS.len(), 21);
+        assert_eq!(
+            VANILLA_26_1_JUKEBOX_SONGS
+                .iter()
+                .map(|entry| entry.song_id)
+                .collect::<HashSet<_>>()
+                .len(),
+            21
+        );
+        assert_eq!(
+            VANILLA_26_1_JUKEBOX_SONGS
+                .iter()
+                .map(|entry| entry.sound_event_id)
+                .collect::<HashSet<_>>()
+                .len(),
+            21
+        );
+        for (index, entry) in VANILLA_26_1_JUKEBOX_SONGS.iter().enumerate() {
+            assert_eq!(
+                JukeboxSongRegistry::vanilla_26_1_song_id(index as i32),
+                Some(entry.song_id)
+            );
+            assert_eq!(
+                vanilla_26_1_song_id_for_sound_event(entry.sound_event_id),
+                Some(entry.song_id)
+            );
+            assert_eq!(
+                vanilla_26_1_song_sound_event(entry.song_id),
+                Some(entry.sound_event_id)
+            );
+        }
+    }
 
     #[test]
     fn vanilla_26_1_registry_uses_jukebox_songs_bootstrap_order() {
@@ -148,6 +157,10 @@ mod tests {
         assert_eq!(registry.song_id(0), Some("minecraft:13"));
         assert_eq!(registry.song_id(1), Some("minecraft:cat"));
         assert_eq!(registry.song_id(20), Some("minecraft:lava_chicken"));
+        assert_eq!(
+            JukeboxSongRegistry::vanilla_26_1_song_id(20),
+            Some("minecraft:lava_chicken")
+        );
         assert_eq!(registry.sound_event_id(21), None);
         assert_eq!(registry.song_id(21), None);
     }

@@ -3,12 +3,19 @@
 from __future__ import annotations
 
 import json
+from dataclasses import dataclass
 
 from vanilla_java_source import JavaExpression, JavaMethod, JavaSource, descendants, type_body_members
 
 
 class SoundEventCatalogExtractionError(ValueError):
     pass
+
+
+@dataclass(frozen=True)
+class DirectSoundEventEntry:
+    constant_name: str
+    resource_id: str
 
 
 SPECIAL_VARIANT_FIELDS = {
@@ -57,6 +64,51 @@ def _calls_in_method(source: JavaSource, method: JavaMethod, name: str) -> list:
         and method.body.start_byte <= call.span.start_byte
         and call.span.end_byte <= method.body.end_byte
     ]
+
+
+def _direct_registration_resource_id(
+    source: JavaSource, expression: JavaExpression
+) -> str | None:
+    calls = [
+        call
+        for call in source.calls
+        if expression.span.start_byte <= call.span.start_byte
+        and call.span.end_byte <= expression.span.end_byte
+    ]
+    registrations = [
+        call for call in calls if call.name in {"register", "registerForHolder"}
+    ]
+    if not registrations:
+        return None
+    if len(registrations) != 1 or len(registrations[0].arguments) < 1:
+        _fail(source, expression, "unsupported direct sound registration")
+    return "minecraft:" + _string(source, registrations[0].arguments[0])
+
+
+def direct_sound_event_entries(
+    source: JavaSource, expected_count: int = 1808
+) -> list[DirectSoundEventEntry]:
+    entries = [
+        DirectSoundEventEntry(field.name, resource_id)
+        for field in source.fields_for("net.minecraft.sounds.SoundEvents")
+        if field.initializer is not None
+        and (resource_id := _direct_registration_resource_id(source, field.initializer))
+        is not None
+    ]
+    if len(entries) != expected_count:
+        raise SoundEventCatalogExtractionError(
+            f"{source.relative_path}: expected {expected_count} direct sound events, "
+            f"extracted {len(entries)}"
+        )
+    if len({entry.constant_name for entry in entries}) != len(entries):
+        raise SoundEventCatalogExtractionError(
+            f"{source.relative_path}: duplicate direct sound constant"
+        )
+    if len({entry.resource_id for entry in entries}) != len(entries):
+        raise SoundEventCatalogExtractionError(
+            f"{source.relative_path}: duplicate direct sound resource id"
+        )
+    return entries
 
 
 def sound_set_event_identifiers(source: JavaSource) -> list[str]:
@@ -169,13 +221,9 @@ def sound_event_resource_ids(
             if initializer.span.start_byte <= call.span.start_byte
             and call.span.end_byte <= initializer.span.end_byte
         ]
-        registrations = [
-            call for call in calls if call.name in {"register", "registerForHolder"}
-        ]
-        if registrations:
-            if len(registrations) != 1 or len(registrations[0].arguments) < 1:
-                _fail(source, initializer, f"unsupported direct sound field {field.name}")
-            ids.append("minecraft:" + _string(source, registrations[0].arguments[0]))
+        direct_resource_id = _direct_registration_resource_id(source, initializer)
+        if direct_resource_id is not None:
+            ids.append(direct_resource_id)
             explained_fields += 1
             continue
         if field.name == "GOAT_HORN_SOUND_VARIANTS":

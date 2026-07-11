@@ -36,7 +36,6 @@ TRIM_MATERIALS_SOURCE = Path(
 TRIM_PATTERNS_SOURCE = Path(
     "net/minecraft/world/item/equipment/trim/TrimPatterns.java"
 )
-JUKEBOX_SONGS_SOURCE = Path("net/minecraft/world/item/JukeboxSongs.java")
 POTIONS_SOURCE = Path("net/minecraft/world/item/alchemy/Potions.java")
 VILLAGER_TYPES_SOURCE = Path(
     "net/minecraft/world/entity/npc/villager/VillagerType.java"
@@ -272,7 +271,6 @@ def render_catalog(
             "    fn bootstrap_catalog_preserves_vanilla_registration_order() {",
             '        assert_eq!(VANILLA_TRIM_MATERIAL_KEYS.first(), Some(&"minecraft:quartz"));',
             '        assert_eq!(VANILLA_TRIM_PATTERN_KEYS.last(), Some(&"minecraft:bolt"));',
-            '        assert_eq!(VANILLA_JUKEBOX_SONG_KEYS.last(), Some(&"minecraft:lava_chicken"));',
             '        assert_eq!(VANILLA_POTION_KEYS.get(3), Some(&"minecraft:awkward"));',
             '        assert_eq!(VANILLA_VILLAGER_TYPE_KEYS.last(), Some(&"minecraft:taiga"));',
             '        assert_eq!(VANILLA_WOLF_SOUND_VARIANT_KEYS.get(1), Some(&"minecraft:puglin"));',
@@ -320,15 +318,6 @@ def extract_catalogs(source_root: Path) -> list[tuple[str, list[BootstrapEntry]]
                 "TrimPattern",
                 {"registryKey"},
                 18,
-            ),
-        ),
-        (
-            "VANILLA_JUKEBOX_SONG_KEYS",
-            bootstrap_resource_key_entries(
-                parse_java(source_root, JUKEBOX_SONGS_SOURCE),
-                "JukeboxSong",
-                {"create"},
-                21,
             ),
         ),
         (

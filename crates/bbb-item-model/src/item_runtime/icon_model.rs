@@ -5,7 +5,8 @@ use std::{
 
 use bbb_pack::{
     ItemCuboidModelCatalog, ItemModelDefinition, ItemModelProperty, ItemModelPropertyKind,
-    ItemTintSource, SelectCase, SoundEventRegistry, TagCatalog, TerrainColorMaps,
+    ItemTintSource, JukeboxSongRegistry, SelectCase, SoundEventRegistry, TagCatalog,
+    TerrainColorMaps,
 };
 use bbb_protocol::equipment_slots::vanilla_equipment_slot_group_for_serialized_name;
 use bbb_protocol::packets::{
@@ -22,8 +23,8 @@ use chrono_tz::{OffsetName, Tz};
 use serde_json::Value;
 
 use super::bootstrap_catalog::{
-    VANILLA_JUKEBOX_SONG_KEYS, VANILLA_POTION_KEYS, VANILLA_TRIM_PATTERN_KEYS,
-    VANILLA_VILLAGER_TYPE_KEYS, VANILLA_WOLF_SOUND_VARIANT_KEYS, VANILLA_WOLF_VARIANT_KEYS,
+    VANILLA_POTION_KEYS, VANILLA_TRIM_PATTERN_KEYS, VANILLA_VILLAGER_TYPE_KEYS,
+    VANILLA_WOLF_SOUND_VARIANT_KEYS, VANILLA_WOLF_VARIANT_KEYS,
 };
 use super::mob_effects::vanilla_mob_effect_key;
 use super::{
@@ -5589,10 +5590,7 @@ fn item_stack_matches_jukebox_playable_value(
     let Some(song_id) = component_patch.jukebox_song_id else {
         return false;
     };
-    let Ok(song_index) = usize::try_from(song_id) else {
-        return false;
-    };
-    let Some(song_key) = VANILLA_JUKEBOX_SONG_KEYS.get(song_index) else {
+    let Some(song_key) = JukeboxSongRegistry::vanilla_26_1_song_id(song_id) else {
         return false;
     };
     registry_key_holder_set_matches(Some(song), song_key, jukebox_song_tags)
@@ -5708,10 +5706,7 @@ fn jukebox_playable_exact_match(
             let Some(song_id) = component_patch.jukebox_song_id else {
                 return false;
             };
-            let Ok(song_index) = usize::try_from(song_id) else {
-                return false;
-            };
-            VANILLA_JUKEBOX_SONG_KEYS.get(song_index) == Some(expected)
+            JukeboxSongRegistry::vanilla_26_1_song_id(song_id) == Some(*expected)
         }
         ExactJukeboxPlayable::DirectSong(expected) => component_patch
             .jukebox_direct_song
