@@ -132,6 +132,11 @@ FAMILIES = (
         "net.minecraft.world.entity.boss.enderdragon.EndCrystal",
         "Entity",
     ),
+    FamilySpec(
+        "EnderDragon",
+        "net.minecraft.world.entity.boss.enderdragon.EnderDragon",
+        "Mob",
+    ),
     FamilySpec("Interaction", "net.minecraft.world.entity.Interaction", "Entity"),
     FamilySpec("ExperienceOrb", "net.minecraft.world.entity.ExperienceOrb", "Entity"),
     FamilySpec("ItemEntity", "net.minecraft.world.entity.item.ItemEntity", "Entity"),
@@ -329,6 +334,7 @@ DATA_ALIASES = {
     "VANILLA_WITHER_SKULL_DANGEROUS_DATA_ID": ("net.minecraft.world.entity.projectile.hurtingprojectile.WitherSkull", "DATA_DANGEROUS"),
     "VANILLA_END_CRYSTAL_BEAM_TARGET_DATA_ID": ("net.minecraft.world.entity.boss.enderdragon.EndCrystal", "DATA_BEAM_TARGET"),
     "VANILLA_END_CRYSTAL_SHOW_BOTTOM_DATA_ID": ("net.minecraft.world.entity.boss.enderdragon.EndCrystal", "DATA_SHOW_BOTTOM"),
+    "VANILLA_ENDER_DRAGON_PHASE_DATA_ID": ("net.minecraft.world.entity.boss.enderdragon.EnderDragon", "DATA_PHASE"),
     "VANILLA_INTERACTION_WIDTH_DATA_ID": ("net.minecraft.world.entity.Interaction", "DATA_WIDTH_ID"),
     "VANILLA_INTERACTION_HEIGHT_DATA_ID": ("net.minecraft.world.entity.Interaction", "DATA_HEIGHT_ID"),
     "VANILLA_INTERACTION_RESPONSE_DATA_ID": ("net.minecraft.world.entity.Interaction", "DATA_RESPONSE_ID"),
@@ -489,6 +495,7 @@ DEFAULT_ALIASES = {
     "VANILLA_TRIDENT_DEFAULT_FOIL": ("net.minecraft.world.entity.projectile.arrow.ThrownTrident", "ID_FOIL"),
     "VANILLA_WITHER_SKULL_DEFAULT_DANGEROUS": ("net.minecraft.world.entity.projectile.hurtingprojectile.WitherSkull", "DATA_DANGEROUS"),
     "VANILLA_END_CRYSTAL_DEFAULT_SHOW_BOTTOM": ("net.minecraft.world.entity.boss.enderdragon.EndCrystal", "DATA_SHOW_BOTTOM"),
+    "VANILLA_ENDER_DRAGON_DEFAULT_PHASE": ("net.minecraft.world.entity.boss.enderdragon.EnderDragon", "DATA_PHASE"),
     "VANILLA_INTERACTION_DEFAULT_WIDTH": ("net.minecraft.world.entity.Interaction", "DATA_WIDTH_ID"),
     "VANILLA_INTERACTION_DEFAULT_HEIGHT": ("net.minecraft.world.entity.Interaction", "DATA_HEIGHT_ID"),
     "VANILLA_INTERACTION_DEFAULT_RESPONSE": ("net.minecraft.world.entity.Interaction", "DATA_RESPONSE_ID"),
@@ -743,6 +750,19 @@ ENUM_ORDINAL_DEFAULT_RESOLVERS = (
         "UNAFFECTED",
         "WeatheringCopper.WeatherState.UNAFFECTED",
         "the synced enum default is encoded by the enum ordinal",
+    ),
+)
+
+
+STATIC_FACTORY_ORDINAL_DEFAULT_RESOLVERS = (
+    (
+        "net.minecraft.world.entity.boss.enderdragon.EnderDragon",
+        "DATA_PHASE",
+        "INT",
+        "EnderDragonPhase.HOVERING.getId ()",
+        "net.minecraft.world.entity.boss.enderdragon.phases.EnderDragonPhase",
+        "HOVERING",
+        "the phase id is assigned from static create-field registration order",
     ),
 )
 
@@ -1221,6 +1241,41 @@ ENUM_ORDINAL_ID_ALIASES = {
 }
 
 
+STATIC_FACTORY_ORDINAL_SOURCES = {
+    "net.minecraft.world.entity.boss.enderdragon.phases.EnderDragonPhase": (
+        "create",
+        "new EnderDragonPhase <> (phases.length, instanceClass, name)",
+        "phases = Arrays.copyOf (phases, phases.length + 1)",
+        "phases [phase.getId ()] = phase",
+        "return phase;",
+    ),
+}
+
+
+STATIC_FACTORY_ORDINAL_ID_ALIASES = {
+    "VANILLA_ENDER_DRAGON_PHASE_HOLDING_PATTERN_ID": (
+        "net.minecraft.world.entity.boss.enderdragon.phases.EnderDragonPhase",
+        "HOLDING_PATTERN",
+    ),
+    "VANILLA_ENDER_DRAGON_PHASE_SITTING_FLAMING_ID": (
+        "net.minecraft.world.entity.boss.enderdragon.phases.EnderDragonPhase",
+        "SITTING_FLAMING",
+    ),
+    "VANILLA_ENDER_DRAGON_PHASE_SITTING_SCANNING_ID": (
+        "net.minecraft.world.entity.boss.enderdragon.phases.EnderDragonPhase",
+        "SITTING_SCANNING",
+    ),
+    "VANILLA_ENDER_DRAGON_PHASE_SITTING_ATTACKING_ID": (
+        "net.minecraft.world.entity.boss.enderdragon.phases.EnderDragonPhase",
+        "SITTING_ATTACKING",
+    ),
+    "VANILLA_ENDER_DRAGON_PHASE_HOVERING_ID": (
+        "net.minecraft.world.entity.boss.enderdragon.phases.EnderDragonPhase",
+        "HOVERING",
+    ),
+}
+
+
 ENUM_CONSTRUCTOR_ID_CODEC_EXPRESSIONS = {
     "net.minecraft.world.entity.animal.armadillo.Armadillo.ArmadilloState": "ByteBufCodecs.idMapper (BY_ID, Armadillo.ArmadilloState::id)",
     "net.minecraft.world.entity.animal.golem.CopperGolemState": "ByteBufCodecs.idMapper (BY_ID, CopperGolemState::id)",
@@ -1441,6 +1496,70 @@ def enum_constant_constructor_integer(
     )
 
 
+def static_factory_registration_ordinals(
+    result: ExtractionResult,
+    owner: str,
+) -> dict[str, int]:
+    source_spec = STATIC_FACTORY_ORDINAL_SOURCES.get(owner)
+    if source_spec is None:
+        raise ExtractionError(f"{owner}: missing static-factory ordinal source evidence")
+    (
+        factory_name,
+        expected_allocator_expression,
+        expected_growth_expression,
+        expected_store_expression,
+        expected_return_expression,
+    ) = source_spec
+    source = source_for_owner(result, owner)
+    _factory_source, factory = method_for(result, owner, factory_name)
+    body = factory.node.child_by_field_name("body")
+    if body is None:
+        raise ExtractionError(f"{owner}.{factory_name}: factory lacks a body")
+    allocator_expressions = [
+        source.expression(node).canonical
+        for node in descendants(body)
+        if node.type == "object_creation_expression"
+    ]
+    if allocator_expressions.count(expected_allocator_expression) != 1:
+        raise ExtractionError(
+            f"{owner}.{factory_name}: expected one allocator {expected_allocator_expression!r}, "
+            f"found {allocator_expressions}"
+        )
+    assignment_expressions = [
+        source.expression(node).canonical
+        for node in descendants(body)
+        if node.type == "assignment_expression"
+    ]
+    for expected in (expected_growth_expression, expected_store_expression):
+        if assignment_expressions.count(expected) != 1:
+            raise ExtractionError(
+                f"{owner}.{factory_name}: expected one assignment {expected!r}, "
+                f"found {assignment_expressions}"
+            )
+    return_expressions = [
+        source.expression(node).canonical
+        for node in descendants(body)
+        if node.type == "return_statement"
+    ]
+    if return_expressions != [expected_return_expression]:
+        raise ExtractionError(
+            f"{owner}.{factory_name}: expected return {expected_return_expression!r}, "
+            f"found {return_expressions}"
+        )
+
+    registrations: dict[str, int] = {}
+    for field in source.fields_for(owner):
+        if field.initializer is None or field.initializer.node.type != "method_invocation":
+            continue
+        name_node = field.initializer.node.child_by_field_name("name")
+        if name_node is None or source.text(name_node) != factory_name:
+            continue
+        registrations[field.name] = len(registrations)
+    if not registrations:
+        raise ExtractionError(f"{owner}.{factory_name}: no static factory registrations found")
+    return registrations
+
+
 def resolve_semantic_defaults(
     result: ExtractionResult,
 ) -> tuple[dict[tuple[str, str], NormalizedDefault], list[ResolvedDefaultEvidence]]:
@@ -1488,6 +1607,53 @@ def resolve_semantic_defaults(
                 enum_fqcn,
                 f"{default_field} -> {constant_name}",
                 expected_expression,
+                reason,
+            )
+        )
+    for (
+        owner,
+        accessor_name,
+        serializer,
+        expected_expression,
+        registry_class,
+        constant_name,
+        reason,
+    ) in STATIC_FACTORY_ORDINAL_DEFAULT_RESOLVERS:
+        key = (owner, accessor_name)
+        if key in resolved:
+            raise ExtractionError(
+                f"duplicate static-factory ordinal default resolver: {owner}.{accessor_name}"
+            )
+        accessor = accessor_for(result, owner, accessor_name)
+        if accessor.serializer != serializer:
+            raise ExtractionError(
+                f"{owner}.{accessor_name}: static-factory ordinal resolver requires "
+                f"{serializer} serializer"
+            )
+        if accessor.default_expression != expected_expression:
+            raise ExtractionError(
+                f"{owner}.{accessor_name}: stale static-factory ordinal expression; "
+                f"expected {expected_expression!r}, found {accessor.default_expression!r}"
+            )
+        ordinals = static_factory_registration_ordinals(
+            result,
+            registry_class,
+        )
+        if constant_name not in ordinals:
+            raise ExtractionError(f"{registry_class}: missing {constant_name} registration")
+        value = ordinals[constant_name]
+        resolved[key] = NormalizedDefault(
+            f"VanillaEntityMetadataDefault::Int({value})",
+            "i32",
+            str(value),
+        )
+        evidence.append(
+            ResolvedDefaultEvidence(
+                owner,
+                accessor_name,
+                registry_class,
+                f"{constant_name} -> {STATIC_FACTORY_ORDINAL_SOURCES[registry_class][0]} registration {value}",
+                f"{expected_expression} -> {STATIC_FACTORY_ORDINAL_SOURCES[registry_class][1]}",
                 reason,
             )
         )
@@ -2262,6 +2428,21 @@ def render(result: ExtractionResult) -> str:
 
     for public_name, (enum_fqcn, constant_name) in ENUM_ORDINAL_ID_ALIASES.items():
         value = enum_constant_ordinal(result, enum_fqcn, constant_name)
+        lines.append(f"const GENERATED_{public_name}: i32 = {value};")
+        lines.append(f"pub const {public_name}: i32 = GENERATED_{public_name};")
+    lines.append("")
+
+    for public_name, (
+        owner,
+        constant_name,
+    ) in STATIC_FACTORY_ORDINAL_ID_ALIASES.items():
+        ordinals = static_factory_registration_ordinals(
+            result,
+            owner,
+        )
+        if constant_name not in ordinals:
+            raise ExtractionError(f"{owner}: missing {constant_name} registration")
+        value = ordinals[constant_name]
         lines.append(f"const GENERATED_{public_name}: i32 = {value};")
         lines.append(f"pub const {public_name}: i32 = GENERATED_{public_name};")
     lines.append("")

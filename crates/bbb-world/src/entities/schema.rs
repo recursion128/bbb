@@ -62,6 +62,7 @@ pub enum VanillaEntityMetadataFamily {
     ThrownTrident,
     WitherSkull,
     EndCrystal,
+    EnderDragon,
     Interaction,
     ExperienceOrb,
     ItemEntity,
@@ -427,6 +428,7 @@ mod tests {
             VanillaEntityMetadataFamily::ThrownTrident,
             VanillaEntityMetadataFamily::WitherSkull,
             VanillaEntityMetadataFamily::EndCrystal,
+            VanillaEntityMetadataFamily::EnderDragon,
             VanillaEntityMetadataFamily::Interaction,
             VanillaEntityMetadataFamily::ExperienceOrb,
             VanillaEntityMetadataFamily::ItemEntity,
@@ -1053,7 +1055,7 @@ mod tests {
         assert_eq!(VANILLA_TROPICAL_FISH_DEFAULT_VARIANT, 0);
         assert_eq!(
             VANILLA_ENTITY_METADATA_DEFAULT_RESOLVER_EVIDENCE_26_1.len(),
-            26
+            27
         );
         let default_evidence = |java_class| {
             VANILLA_ENTITY_METADATA_DEFAULT_RESOLVER_EVIDENCE_26_1
@@ -1224,6 +1226,17 @@ mod tests {
             zombie_nautilus_default_evidence.source_expression,
             "VariantUtils.getDefaultOrAny (this.registryAccess (), ZombieNautilusVariants.TEMPERATE) -> createKey (TemperatureVariants.TEMPERATE) -> Identifier.withDefaultNamespace (\"temperate\") -> ResourceKey.create (Registries.ZOMBIE_NAUTILUS_VARIANT, id)"
         );
+        let ender_dragon_default_evidence =
+            default_evidence("net.minecraft.world.entity.boss.enderdragon.EnderDragon");
+        assert_eq!(ender_dragon_default_evidence.accessor_name, "DATA_PHASE");
+        assert_eq!(
+            ender_dragon_default_evidence.evidence_member,
+            "net.minecraft.world.entity.boss.enderdragon.phases.EnderDragonPhase.HOVERING -> create registration 10"
+        );
+        assert_eq!(
+            ender_dragon_default_evidence.source_expression,
+            "EnderDragonPhase.HOVERING.getId () -> new EnderDragonPhase <> (phases.length, instanceClass, name)"
+        );
         let fox_default_evidence = default_evidence("net.minecraft.world.entity.animal.fox.Fox");
         assert_eq!(fox_default_evidence.accessor_name, "DATA_TYPE_ID");
         assert_eq!(
@@ -1376,6 +1389,21 @@ mod tests {
         assert_eq!(VANILLA_END_CRYSTAL_BEAM_TARGET_DATA_ID, 8);
         assert_eq!(VANILLA_END_CRYSTAL_SHOW_BOTTOM_DATA_ID, 9);
         assert!(VANILLA_END_CRYSTAL_DEFAULT_SHOW_BOTTOM);
+        let ender_dragon = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::EnderDragon);
+        assert_eq!(ender_dragon.parent, Some(VanillaEntityMetadataFamily::Mob));
+        assert_eq!(ender_dragon.inherited_field_count, 16);
+        assert_eq!(ender_dragon.own_fields.len(), 1);
+        assert_eq!(VANILLA_ENDER_DRAGON_PHASE_DATA_ID, 16);
+        assert_eq!(VANILLA_ENDER_DRAGON_DEFAULT_PHASE, 10);
+        assert_eq!(VANILLA_ENDER_DRAGON_PHASE_HOLDING_PATTERN_ID, 0);
+        assert_eq!(VANILLA_ENDER_DRAGON_PHASE_SITTING_FLAMING_ID, 5);
+        assert_eq!(VANILLA_ENDER_DRAGON_PHASE_SITTING_SCANNING_ID, 6);
+        assert_eq!(VANILLA_ENDER_DRAGON_PHASE_SITTING_ATTACKING_ID, 7);
+        assert_eq!(VANILLA_ENDER_DRAGON_PHASE_HOVERING_ID, 10);
+        assert_eq!(
+            ender_dragon.own_fields[0].default,
+            VanillaEntityMetadataDefault::Int(10)
+        );
         let interaction = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Interaction);
         assert_eq!(
             interaction.parent,

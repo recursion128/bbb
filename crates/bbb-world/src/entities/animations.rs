@@ -17,9 +17,7 @@ use serde::{Deserialize, Serialize};
 use crate::WorldStore;
 
 use super::dimensions::{entity_data_pose, vanilla_living_entity_type};
-use super::dragon::{
-    EnderDragonAnimationState, ENDER_DRAGON_PHASE_DATA_ID, ENDER_DRAGON_PHASE_HOVERING_ID,
-};
+use super::dragon::EnderDragonAnimationState;
 use super::schema::{
     VANILLA_ABSTRACT_ARROW_DEFAULT_IN_GROUND as ABSTRACT_ARROW_DEFAULT_IN_GROUND,
     VANILLA_ABSTRACT_ARROW_IN_GROUND_DATA_ID as ABSTRACT_ARROW_IN_GROUND_DATA_ID,
@@ -59,6 +57,8 @@ use super::schema::{
     VANILLA_CREEPER_DEFAULT_SWELL_DIR as CREEPER_DEFAULT_SWELL_DIR,
     VANILLA_CREEPER_IGNITED_DATA_ID as CREEPER_IGNITED_DATA_ID,
     VANILLA_CREEPER_SWELL_DIR_DATA_ID as CREEPER_SWELL_DIR_DATA_ID,
+    VANILLA_ENDER_DRAGON_DEFAULT_PHASE as ENDER_DRAGON_DEFAULT_PHASE,
+    VANILLA_ENDER_DRAGON_PHASE_DATA_ID as ENDER_DRAGON_PHASE_DATA_ID,
     VANILLA_FOX_DEFAULT_FLAGS as FOX_DEFAULT_FLAGS, VANILLA_FOX_FLAGS_DATA_ID as FOX_FLAGS_DATA_ID,
     VANILLA_FOX_FLAG_CROUCHING as FOX_FLAG_CROUCHING,
     VANILLA_FOX_FLAG_INTERESTED as FOX_FLAG_INTERESTED,
@@ -4108,7 +4108,7 @@ impl EntityClientAnimationState {
                 let phase_id = entity_data_int(
                     data_values,
                     ENDER_DRAGON_PHASE_DATA_ID,
-                    ENDER_DRAGON_PHASE_HOVERING_ID,
+                    ENDER_DRAGON_DEFAULT_PHASE,
                 );
                 if let Some(dragon) = self.ender_dragon.as_mut() {
                     dragon.set_phase(phase_id);

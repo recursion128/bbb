@@ -123,8 +123,6 @@ fn ender_dragon_pick_targets_use_vanilla_part_ids_and_bounds() {
 #[test]
 fn ender_dragon_pick_targets_follow_flight_history_and_phase() {
     const ENDER_DRAGON_TYPE_ID: i32 = 43;
-    const ENDER_DRAGON_PHASE_DATA_ID: u8 = 16;
-    const HOLDING_PATTERN_PHASE_ID: i32 = 0;
 
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type_y_rot(
@@ -137,8 +135,8 @@ fn ender_dragon_pick_targets_follow_flight_history_and_phase() {
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 120,
         values: vec![protocol_int_data(
-            ENDER_DRAGON_PHASE_DATA_ID,
-            HOLDING_PATTERN_PHASE_ID,
+            VANILLA_ENDER_DRAGON_PHASE_DATA_ID,
+            VANILLA_ENDER_DRAGON_PHASE_HOLDING_PATTERN_ID,
         )],
     }));
     assert!(
@@ -214,8 +212,6 @@ fn ender_dragon_pick_targets_follow_flight_history_and_phase() {
 #[test]
 fn ender_dragon_pick_targets_interpolate_flight_history_by_partial_tick() {
     const ENDER_DRAGON_TYPE_ID: i32 = 43;
-    const ENDER_DRAGON_PHASE_DATA_ID: u8 = 16;
-    const HOLDING_PATTERN_PHASE_ID: i32 = 0;
 
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type_y_rot(
@@ -227,8 +223,8 @@ fn ender_dragon_pick_targets_interpolate_flight_history_by_partial_tick() {
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 130,
         values: vec![protocol_int_data(
-            ENDER_DRAGON_PHASE_DATA_ID,
-            HOLDING_PATTERN_PHASE_ID,
+            VANILLA_ENDER_DRAGON_PHASE_DATA_ID,
+            VANILLA_ENDER_DRAGON_PHASE_HOLDING_PATTERN_ID,
         )],
     }));
     assert!(

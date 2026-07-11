@@ -1,14 +1,21 @@
 use serde::ser::SerializeStruct;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-use super::{EntityPickBoundsState, EntityPickTargetState, EntityTransform, EntityVec3};
-
-pub(crate) const ENDER_DRAGON_PHASE_DATA_ID: u8 = 16;
-pub(crate) const ENDER_DRAGON_PHASE_HOVERING_ID: i32 = 10;
+use super::{
+    EntityPickBoundsState, EntityPickTargetState, EntityTransform, EntityVec3,
+    VANILLA_ENDER_DRAGON_DEFAULT_PHASE, VANILLA_ENDER_DRAGON_PHASE_HOVERING_ID,
+    VANILLA_ENDER_DRAGON_PHASE_SITTING_ATTACKING_ID, VANILLA_ENDER_DRAGON_PHASE_SITTING_FLAMING_ID,
+    VANILLA_ENDER_DRAGON_PHASE_SITTING_SCANNING_ID,
+};
 
 const DRAGON_FLIGHT_HISTORY_LEN: usize = 64;
 const DRAGON_FLIGHT_HISTORY_MASK: i32 = 63;
-const ENDER_DRAGON_SITTING_PHASE_IDS: &[i32] = &[5, 6, 7, ENDER_DRAGON_PHASE_HOVERING_ID];
+const ENDER_DRAGON_SITTING_PHASE_IDS: &[i32] = &[
+    VANILLA_ENDER_DRAGON_PHASE_SITTING_FLAMING_ID,
+    VANILLA_ENDER_DRAGON_PHASE_SITTING_SCANNING_ID,
+    VANILLA_ENDER_DRAGON_PHASE_SITTING_ATTACKING_ID,
+    VANILLA_ENDER_DRAGON_PHASE_HOVERING_ID,
+];
 
 const ENDER_DRAGON_PARTS: &[EnderDragonPartSpec] = &[
     EnderDragonPartSpec {
@@ -169,7 +176,7 @@ fn default_flight_history_head() -> i8 {
 }
 
 fn default_ender_dragon_phase_id() -> i32 {
-    ENDER_DRAGON_PHASE_HOVERING_ID
+    VANILLA_ENDER_DRAGON_DEFAULT_PHASE
 }
 
 impl EnderDragonAnimationState {

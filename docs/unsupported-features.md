@@ -508,6 +508,7 @@ back into a todo. Do not delete these.
   `Pufferfish` / `Tadpole`,
   `Mob -> AbstractPiglin -> Piglin`,
   `Mob -> Raider -> Pillager` / `SpellcasterIllager`,
+  `Mob -> EnderDragon`,
   `Entity -> AbstractArrow -> Arrow` /
   `ThrownTrident` leaves, the `Entity -> WitherSkull` projectile leaf,
   `Entity -> EndCrystal` / `Interaction` / `ExperienceOrb` / `ItemEntity` /

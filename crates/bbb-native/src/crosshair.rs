@@ -5,9 +5,12 @@ use bbb_protocol::packets::{
     Direction as ProtocolDirection, Vec3d as ProtocolVec3d,
 };
 use bbb_renderer::{CameraPose, SelectionOutline};
-#[cfg(test)]
-use bbb_world::LocalPlayerPoseState;
 use bbb_world::{BlockPos, EntityPickTargetState, ItemAttackRange, WorldStore};
+#[cfg(test)]
+use bbb_world::{
+    LocalPlayerPoseState, VANILLA_ENDER_DRAGON_PHASE_DATA_ID as ENDER_DRAGON_PHASE_DATA_ID,
+    VANILLA_ENDER_DRAGON_PHASE_HOLDING_PATTERN_ID as ENDER_DRAGON_HOLDING_PATTERN_PHASE_ID,
+};
 
 use crate::block_outline::{
     selection_outline_for_block, selection_outline_for_probe, BlockOutlineTarget,
@@ -1352,9 +1355,6 @@ mod tests {
 
     #[test]
     fn crosshair_target_uses_entity_partial_tick_for_dragon_parts() {
-        const ENDER_DRAGON_PHASE_DATA_ID: u8 = 16;
-        const HOLDING_PATTERN_PHASE_ID: i32 = 0;
-
         let mut world = WorldStore::new();
         world.apply_add_entity(protocol_add_entity(
             130,
@@ -1367,7 +1367,7 @@ mod tests {
             values: vec![EntityDataValue {
                 data_id: ENDER_DRAGON_PHASE_DATA_ID,
                 serializer_id: 1,
-                value: EntityDataValueKind::Int(HOLDING_PATTERN_PHASE_ID),
+                value: EntityDataValueKind::Int(ENDER_DRAGON_HOLDING_PATTERN_PHASE_ID),
             }],
         }));
         assert!(world.apply_entity_position_sync(EntityPositionSync {

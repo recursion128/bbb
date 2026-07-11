@@ -10089,3 +10089,11 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   表达式，生成独立 `VANILLA_SHEEP_WOOL_COLOR_MASK` value-mask alias；native model 与
   debug-save 删除两份 `0x0f`。该 mask 未被误收入 boolean `own_flags`，表达式缺失或歧义会
   令 maintenance update/check 显式失败。
+
+## 2026-07-11：Generated Ender Dragon metadata
+
+- [x] 由 Tree-sitter CST 提取 `EnderDragon.DATA_PHASE` id16，并验证
+  `EnderDragonPhase.create` 以 `phases.length` 按静态字段声明顺序分配 id；生成
+  HOLDING_PATTERN 0、三个 sitting phase 5/6/7、HOVERING 10 及默认 phase 10。world
+  animation/flight-history 与 native crosshair tests 删除手抄 phase ids；服务端 phase AI 与
+  战斗仍不属于 multiplayer client owner。

@@ -296,6 +296,8 @@ pub const VANILLA_END_CRYSTAL_BEAM_TARGET_DATA_ID: u8 =
 const GENERATED_VANILLA_END_CRYSTAL_SHOW_BOTTOM_DATA_ID: u8 = 9;
 pub const VANILLA_END_CRYSTAL_SHOW_BOTTOM_DATA_ID: u8 =
     GENERATED_VANILLA_END_CRYSTAL_SHOW_BOTTOM_DATA_ID;
+const GENERATED_VANILLA_ENDER_DRAGON_PHASE_DATA_ID: u8 = 16;
+pub const VANILLA_ENDER_DRAGON_PHASE_DATA_ID: u8 = GENERATED_VANILLA_ENDER_DRAGON_PHASE_DATA_ID;
 const GENERATED_VANILLA_INTERACTION_WIDTH_DATA_ID: u8 = 8;
 pub const VANILLA_INTERACTION_WIDTH_DATA_ID: u8 = GENERATED_VANILLA_INTERACTION_WIDTH_DATA_ID;
 const GENERATED_VANILLA_INTERACTION_HEIGHT_DATA_ID: u8 = 9;
@@ -619,6 +621,22 @@ const GENERATED_VANILLA_COPPER_GOLEM_WEATHER_STATE_OXIDIZED_ID: i32 = 3;
 pub const VANILLA_COPPER_GOLEM_WEATHER_STATE_OXIDIZED_ID: i32 =
     GENERATED_VANILLA_COPPER_GOLEM_WEATHER_STATE_OXIDIZED_ID;
 
+const GENERATED_VANILLA_ENDER_DRAGON_PHASE_HOLDING_PATTERN_ID: i32 = 0;
+pub const VANILLA_ENDER_DRAGON_PHASE_HOLDING_PATTERN_ID: i32 =
+    GENERATED_VANILLA_ENDER_DRAGON_PHASE_HOLDING_PATTERN_ID;
+const GENERATED_VANILLA_ENDER_DRAGON_PHASE_SITTING_FLAMING_ID: i32 = 5;
+pub const VANILLA_ENDER_DRAGON_PHASE_SITTING_FLAMING_ID: i32 =
+    GENERATED_VANILLA_ENDER_DRAGON_PHASE_SITTING_FLAMING_ID;
+const GENERATED_VANILLA_ENDER_DRAGON_PHASE_SITTING_SCANNING_ID: i32 = 6;
+pub const VANILLA_ENDER_DRAGON_PHASE_SITTING_SCANNING_ID: i32 =
+    GENERATED_VANILLA_ENDER_DRAGON_PHASE_SITTING_SCANNING_ID;
+const GENERATED_VANILLA_ENDER_DRAGON_PHASE_SITTING_ATTACKING_ID: i32 = 7;
+pub const VANILLA_ENDER_DRAGON_PHASE_SITTING_ATTACKING_ID: i32 =
+    GENERATED_VANILLA_ENDER_DRAGON_PHASE_SITTING_ATTACKING_ID;
+const GENERATED_VANILLA_ENDER_DRAGON_PHASE_HOVERING_ID: i32 = 10;
+pub const VANILLA_ENDER_DRAGON_PHASE_HOVERING_ID: i32 =
+    GENERATED_VANILLA_ENDER_DRAGON_PHASE_HOVERING_ID;
+
 const GENERATED_VANILLA_ALLAY_DEFAULT_DANCING: bool = false;
 pub const VANILLA_ALLAY_DEFAULT_DANCING: bool = GENERATED_VANILLA_ALLAY_DEFAULT_DANCING;
 const GENERATED_VANILLA_ALLAY_DEFAULT_CAN_DUPLICATE: bool = true;
@@ -850,6 +868,8 @@ pub const VANILLA_WITHER_SKULL_DEFAULT_DANGEROUS: bool =
 const GENERATED_VANILLA_END_CRYSTAL_DEFAULT_SHOW_BOTTOM: bool = true;
 pub const VANILLA_END_CRYSTAL_DEFAULT_SHOW_BOTTOM: bool =
     GENERATED_VANILLA_END_CRYSTAL_DEFAULT_SHOW_BOTTOM;
+const GENERATED_VANILLA_ENDER_DRAGON_DEFAULT_PHASE: i32 = 10;
+pub const VANILLA_ENDER_DRAGON_DEFAULT_PHASE: i32 = GENERATED_VANILLA_ENDER_DRAGON_DEFAULT_PHASE;
 const GENERATED_VANILLA_INTERACTION_DEFAULT_WIDTH: f32 = 1.0;
 pub const VANILLA_INTERACTION_DEFAULT_WIDTH: f32 = GENERATED_VANILLA_INTERACTION_DEFAULT_WIDTH;
 const GENERATED_VANILLA_INTERACTION_DEFAULT_HEIGHT: f32 = 1.0;
@@ -10260,7 +10280,7 @@ pub const VANILLA_ENTITY_METADATA_ACCESSORS_26_1: &[VanillaEntityMetadataAccesso
         data_id: 16,
         source_path: "net/minecraft/world/entity/boss/enderdragon/EnderDragon.java",
         default_expression: "EnderDragonPhase.HOVERING.getId ()",
-        typed_default: None,
+        typed_default: Some(VanillaEntityMetadataDefault::Int(10)),
     },
     VanillaEntityMetadataAccessorCatalogEntry {
         owner: "net.minecraft.world.entity.boss.wither.WitherBoss",
@@ -11829,6 +11849,13 @@ pub const VANILLA_ENTITY_METADATA_DEFAULT_RESOLVER_EVIDENCE_26_1: &[VanillaEntit
         evidence_member: "net.minecraft.world.entity.animal.fox.Fox.Variant.DEFAULT -> RED",
         source_expression: "Fox.Variant.DEFAULT.getId ()",
         reason: "the synced INT default is stored in a nested enum constant rather than an integer expression",
+    },
+    VanillaEntityMetadataResolverEvidence {
+        java_class: "net.minecraft.world.entity.boss.enderdragon.EnderDragon",
+        accessor_name: "DATA_PHASE",
+        evidence_member: "net.minecraft.world.entity.boss.enderdragon.phases.EnderDragonPhase.HOVERING -> create registration 10",
+        source_expression: "EnderDragonPhase.HOVERING.getId () -> new EnderDragonPhase <> (phases.length, instanceClass, name)",
+        reason: "the phase id is assigned from static create-field registration order",
     },
     VanillaEntityMetadataResolverEvidence {
         java_class: "net.minecraft.world.entity.animal.armadillo.Armadillo",
@@ -15114,6 +15141,22 @@ const ENDCRYSTAL_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetada
     own_flags: ENDCRYSTAL_FLAGS,
 };
 
+const ENDERDRAGON_FIELDS: &[VanillaEntityMetadataFieldSchema] =
+    &[VanillaEntityMetadataFieldSchema {
+        name: "DATA_PHASE",
+        data_id: 16,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+        default: VanillaEntityMetadataDefault::Int(10),
+    }];
+const ENDERDRAGON_FLAGS: &[VanillaEntityMetadataFlagSchema] = &[];
+const ENDERDRAGON_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamilySchema {
+    family: VanillaEntityMetadataFamily::EnderDragon,
+    parent: Some(VanillaEntityMetadataFamily::Mob),
+    inherited_field_count: 16,
+    own_fields: ENDERDRAGON_FIELDS,
+    own_flags: ENDERDRAGON_FLAGS,
+};
+
 const INTERACTION_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[
     VanillaEntityMetadataFieldSchema {
         name: "DATA_WIDTH_ID",
@@ -15921,6 +15964,7 @@ pub(super) const fn generated_entity_metadata_schema(
         VanillaEntityMetadataFamily::ThrownTrident => &THROWNTRIDENT_SCHEMA,
         VanillaEntityMetadataFamily::WitherSkull => &WITHERSKULL_SCHEMA,
         VanillaEntityMetadataFamily::EndCrystal => &ENDCRYSTAL_SCHEMA,
+        VanillaEntityMetadataFamily::EnderDragon => &ENDERDRAGON_SCHEMA,
         VanillaEntityMetadataFamily::Interaction => &INTERACTION_SCHEMA,
         VanillaEntityMetadataFamily::ExperienceOrb => &EXPERIENCEORB_SCHEMA,
         VanillaEntityMetadataFamily::ItemEntity => &ITEMENTITY_SCHEMA,
