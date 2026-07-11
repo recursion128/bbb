@@ -412,6 +412,9 @@ AwardStats 的 bounded map wire、ownership 与 tests 已闭合；StatType/value
 解析且 StatsScreen 仍是 loading shell，canonical/runtime 保持 partial。
 TabList 的双 Component wire、empty→null、ownership 与 apply tests 已闭合；rich Component 与 tab overlay
 header/footer render 尚未完成，canonical/runtime 保持 partial。
+ServerData 的 trusted MOTD Component + optional icon wire、缺省 icon 保留旧值、ownership 与 apply tests
+已闭合；rich MOTD、icon validation 与 multiplayer server-list persistence 尚未完成，canonical/runtime
+保持 partial。
 
 完成标准：全部 vanilla 26.1 catalog entry 都有矩阵行；所有目标客户端适用项为
 `complete`，其余只有带 vanilla 依据的 `not-applicable` 或带重启判据的窄 `deferred`；

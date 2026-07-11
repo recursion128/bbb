@@ -491,7 +491,18 @@ mod tests {
             server_data.icon_bytes.as_deref(),
             Some(&[137, 80, 78, 71][..])
         );
-        assert_eq!(store.counters().server_data_packets, 1);
+
+        store.apply_server_data(ProtocolServerData {
+            motd: "Updated MOTD".to_string(),
+            icon_bytes: None,
+        });
+        let server_data = store.server_data().expect("server data is updated");
+        assert_eq!(server_data.motd, "Updated MOTD");
+        assert_eq!(
+            server_data.icon_bytes.as_deref(),
+            Some(&[137, 80, 78, 71][..])
+        );
+        assert_eq!(store.counters().server_data_packets, 2);
     }
 
     #[test]

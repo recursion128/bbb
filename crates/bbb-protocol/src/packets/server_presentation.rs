@@ -83,10 +83,16 @@ pub(super) fn decode_resource_pack_push(decoder: &mut Decoder<'_>) -> Result<Res
 }
 
 pub(super) fn decode_server_data(decoder: &mut Decoder<'_>) -> Result<ServerData> {
-    Ok(ServerData {
+    let update = ServerData {
         motd: decode_component_summary_from_decoder(decoder)?,
         icon_bytes: decode_optional_byte_array(decoder, MAX_SERVER_ICON_BYTES, "server icon")?,
-    })
+    };
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after server data packet".to_string(),
+        ));
+    }
+    Ok(update)
 }
 
 pub(super) fn decode_tab_list(decoder: &mut Decoder<'_>) -> Result<TabList> {
@@ -235,6 +241,30 @@ mod tests {
                 icon_bytes: Some(icon_bytes),
             })
         );
+
+        let mut payload = Encoder::new();
+        payload.write_bytes(&nbt_string_root("No icon"));
+        payload.write_bool(false);
+        assert_eq!(
+            decode_play_clientbound(ids::play::CLIENTBOUND_SERVER_DATA, &payload.into_inner())
+                .unwrap(),
+            PlayClientbound::ServerData(ServerData {
+                motd: "No icon".to_string(),
+                icon_bytes: None,
+            })
+        );
+
+        let mut trailing = Encoder::new();
+        trailing.write_bytes(&nbt_string_root("No icon"));
+        trailing.write_bool(false);
+        trailing.write_u8(0);
+        assert!(decode_play_clientbound(
+            ids::play::CLIENTBOUND_SERVER_DATA,
+            &trailing.into_inner()
+        )
+        .unwrap_err()
+        .to_string()
+        .contains("trailing bytes after server data packet"));
     }
 
     #[test]

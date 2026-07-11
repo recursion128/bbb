@@ -11257,3 +11257,10 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   Component wire、empty string Component → null 语义并拒绝 trailing bytes；decode/ownership/tests 已闭合。
 - [x] world/native event state 能分别替换或清空 header/footer，但仍只保留可读 String，且 native tab
   overlay 未渲染 header/footer；canonical/runtime 保持 partial，未把状态存储冒充 UI parity。
+
+## 2026-07-11：server-data packet coverage audit
+
+- [x] 对照 `ClientboundServerDataPacket` 与 `handleServerData` 锁定 trusted MOTD Component、optional
+  byte-array icon wire 并拒绝 trailing bytes；缺省 icon 保留旧 icon，decode/ownership/tests 已闭合。
+- [x] bbb 保留 readable MOTD 与 bounded raw icon，但尚未保留 rich Component、执行
+  `ServerData.validateIcon` 或持久化 multiplayer server-list entry；canonical/runtime 保持 partial。
