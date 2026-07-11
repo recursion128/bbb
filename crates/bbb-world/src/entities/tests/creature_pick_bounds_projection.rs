@@ -457,7 +457,6 @@ fn slime_pick_bounds_scale_with_vanilla_size_metadata() {
 #[test]
 fn pufferfish_pick_bounds_scale_with_vanilla_puff_state_metadata() {
     const VANILLA_ATTRIBUTE_SCALE_ID: i32 = 25;
-    const PUFF_STATE_DATA_ID: u8 = 17;
 
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type(26, 107));
@@ -474,7 +473,7 @@ fn pufferfish_pick_bounds_scale_with_vanilla_puff_state_metadata() {
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 26,
         values: vec![ProtocolEntityDataValue {
-            data_id: PUFF_STATE_DATA_ID,
+            data_id: VANILLA_PUFFERFISH_PUFF_STATE_DATA_ID,
             serializer_id: 1,
             value: EntityDataValueKind::Int(1),
         }],
@@ -508,7 +507,7 @@ fn pufferfish_pick_bounds_scale_with_vanilla_puff_state_metadata() {
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 26,
         values: vec![ProtocolEntityDataValue {
-            data_id: PUFF_STATE_DATA_ID,
+            data_id: VANILLA_PUFFERFISH_PUFF_STATE_DATA_ID,
             serializer_id: 1,
             value: EntityDataValueKind::Int(2),
         }],

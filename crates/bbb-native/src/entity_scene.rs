@@ -72,6 +72,10 @@ pub(crate) use bbb_world::{
     VANILLA_PHANTOM_DEFAULT_SIZE as PHANTOM_DEFAULT_SIZE,
     VANILLA_PHANTOM_SIZE_DATA_ID as PHANTOM_SIZE_DATA_ID,
 };
+pub(crate) use bbb_world::{
+    VANILLA_PUFFERFISH_DEFAULT_PUFF_STATE as PUFFERFISH_DEFAULT_PUFF_STATE,
+    VANILLA_PUFFERFISH_PUFF_STATE_DATA_ID as PUFFERFISH_PUFF_STATE_DATA_ID,
+};
 use bbb_world::{
     VANILLA_SHULKER_COLOR_DATA_ID as SHULKER_COLOR_DATA_ID,
     VANILLA_SHULKER_DEFAULT_COLOR as SHULKER_DEFAULT_COLOR,
@@ -180,10 +184,6 @@ const PIGLIN_IS_DANCING_DATA_ID: u8 = 19;
 /// piglin accessor chain. `Piglin.getArmPose` returns `CROSSBOW_CHARGE` (whose pull-back pose needs the
 /// deferred use-tick state) while true, suppressing the `CROSSBOW_HOLD` level-the-crossbow pose.
 const PIGLIN_IS_CHARGING_CROSSBOW_DATA_ID: u8 = 18;
-// Pufferfish (`Pufferfish.PUFF_STATE`): AbstractFish defines FROM_BUCKET at index 16, so the
-// puff state is index 17. Defaults to 0 (deflated).
-const PUFFERFISH_PUFF_STATE_DATA_ID: u8 = 17;
-const PUFFERFISH_DEFAULT_PUFF_STATE: i32 = 0;
 // Salmon (`Salmon.DATA_TYPE`): AbstractFish defines FROM_BUCKET at index 16, so the size
 // variant is index 17. Defaults to 1 (`Salmon.Variant.MEDIUM`).
 const SALMON_VARIANT_DATA_ID: u8 = 17;

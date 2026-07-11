@@ -9682,3 +9682,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   model scale 与 F3+I save projection 统一消费 generated aliases；focused tests 锁定继承
   offset、serializer/default、动态命中尺寸、model scale 与保存语义。未修改 phantom AI、
   移动、翅膀动画或 renderer 算法。
+
+## 2026-07-11：Generated entity metadata consumers（AbstractFish / Pufferfish）
+
+- [x] 从 generated catalog 建立 `Mob -> AbstractFish -> Pufferfish` compatibility chain：
+  AbstractFish BOOLEAN `FROM_BUCKET` id 16/default false 与 Pufferfish INT `PUFF_STATE`
+  id 17/default 0 替代 world/native 手抄值。鱼类 F3+I `FromBucket`、河豚 bounds/model
+  scale 与 `PuffState` 保存投影统一消费 generated aliases；focused tests 锁定继承 offset、
+  serializer/default、三档命中尺寸/model state 与保存语义。未修改 bucket 交互、河豚充放气
+  tick、伤害或 renderer 算法。

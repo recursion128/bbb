@@ -33,6 +33,8 @@ pub enum VanillaEntityMetadataFamily {
     SnowGolem,
     Bat,
     Phantom,
+    AbstractFish,
+    Pufferfish,
     VehicleEntity,
     AbstractBoat,
     AbstractMinecart,
@@ -307,6 +309,8 @@ mod tests {
             VanillaEntityMetadataFamily::SnowGolem,
             VanillaEntityMetadataFamily::Bat,
             VanillaEntityMetadataFamily::Phantom,
+            VanillaEntityMetadataFamily::AbstractFish,
+            VanillaEntityMetadataFamily::Pufferfish,
             VanillaEntityMetadataFamily::VehicleEntity,
             VanillaEntityMetadataFamily::AbstractBoat,
             VanillaEntityMetadataFamily::AbstractMinecart,
@@ -579,6 +583,40 @@ mod tests {
         );
         assert_eq!(VANILLA_PHANTOM_SIZE_DATA_ID, 16);
         assert_eq!(VANILLA_PHANTOM_DEFAULT_SIZE, 0);
+        let abstract_fish =
+            vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::AbstractFish);
+        assert_eq!(abstract_fish.parent, Some(VanillaEntityMetadataFamily::Mob));
+        assert_eq!(abstract_fish.inherited_field_count, 16);
+        assert_eq!(
+            abstract_fish.own_fields,
+            &[VanillaEntityMetadataFieldSchema {
+                name: "FROM_BUCKET",
+                data_id: 16,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+                default: VanillaEntityMetadataDefault::Boolean(false),
+            }]
+        );
+        let pufferfish = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Pufferfish);
+        assert_eq!(
+            pufferfish.parent,
+            Some(VanillaEntityMetadataFamily::AbstractFish)
+        );
+        assert_eq!(pufferfish.inherited_field_count, 17);
+        assert_eq!(
+            pufferfish.own_fields,
+            &[VanillaEntityMetadataFieldSchema {
+                name: "PUFF_STATE",
+                data_id: 17,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+                default: VanillaEntityMetadataDefault::Int(0),
+            }]
+        );
+        assert_eq!(VANILLA_ABSTRACT_FISH_FROM_BUCKET_DATA_ID, 16);
+        assert!(!VANILLA_ABSTRACT_FISH_DEFAULT_FROM_BUCKET);
+        assert_eq!(VANILLA_PUFFERFISH_PUFF_STATE_DATA_ID, 17);
+        assert_eq!(VANILLA_PUFFERFISH_DEFAULT_PUFF_STATE, 0);
         assert_eq!(
             vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Entity)
                 .own_flags
