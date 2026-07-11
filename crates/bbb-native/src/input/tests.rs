@@ -5362,6 +5362,41 @@ fn shift_f3_i_with_permission_copies_local_cow_save_nbt_to_clipboard() {
 }
 
 #[test]
+fn local_cow_branch_save_uses_generated_defaults() {
+    let mut world = world_with_debug_player(false);
+    world.apply_add_entity(AddEntity {
+        id: 64,
+        uuid: Uuid::from_u128(64),
+        entity_type_id: VANILLA_ENTITY_TYPE_COW_ID,
+        position: ProtocolVec3d::default(),
+        delta_movement: ProtocolVec3d::default(),
+        x_rot: 0.0,
+        y_rot: 0.0,
+        y_head_rot: 0.0,
+        data: 0,
+    });
+    world.apply_add_entity(AddEntity {
+        id: 65,
+        uuid: Uuid::from_u128(65),
+        entity_type_id: VANILLA_ENTITY_TYPE_MOOSHROOM_ID,
+        position: ProtocolVec3d::default(),
+        delta_movement: ProtocolVec3d::default(),
+        x_rot: 0.0,
+        y_rot: 0.0,
+        y_head_rot: 0.0,
+        data: 0,
+    });
+
+    let cow = debug_copy_recreate_entity_command(&world, None, 64, true)
+        .expect("local cow recreate command");
+    assert!(cow.command.contains("variant: \"minecraft:temperate\""));
+    assert!(cow.command.contains("sound_variant: \"minecraft:classic\""));
+    let mushroom_cow = debug_copy_recreate_entity_command(&world, None, 65, true)
+        .expect("local mushroom cow recreate command");
+    assert!(mushroom_cow.command.contains("Type: \"red\""));
+}
+
+#[test]
 fn shift_f3_i_with_permission_copies_local_mooshroom_save_nbt_to_clipboard() {
     let mut input = ClientInputState::new(true);
     let mut world = world_with_debug_player(false);

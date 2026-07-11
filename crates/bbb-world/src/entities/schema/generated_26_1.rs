@@ -210,6 +210,12 @@ pub const VANILLA_CHICKEN_VARIANT_DATA_ID: u8 = GENERATED_VANILLA_CHICKEN_VARIAN
 const GENERATED_VANILLA_CHICKEN_SOUND_VARIANT_DATA_ID: u8 = 19;
 pub const VANILLA_CHICKEN_SOUND_VARIANT_DATA_ID: u8 =
     GENERATED_VANILLA_CHICKEN_SOUND_VARIANT_DATA_ID;
+const GENERATED_VANILLA_COW_VARIANT_DATA_ID: u8 = 18;
+pub const VANILLA_COW_VARIANT_DATA_ID: u8 = GENERATED_VANILLA_COW_VARIANT_DATA_ID;
+const GENERATED_VANILLA_COW_SOUND_VARIANT_DATA_ID: u8 = 19;
+pub const VANILLA_COW_SOUND_VARIANT_DATA_ID: u8 = GENERATED_VANILLA_COW_SOUND_VARIANT_DATA_ID;
+const GENERATED_VANILLA_MUSHROOM_COW_TYPE_DATA_ID: u8 = 18;
+pub const VANILLA_MUSHROOM_COW_TYPE_DATA_ID: u8 = GENERATED_VANILLA_MUSHROOM_COW_TYPE_DATA_ID;
 const GENERATED_VANILLA_PARROT_VARIANT_DATA_ID: u8 = 20;
 pub const VANILLA_PARROT_VARIANT_DATA_ID: u8 = GENERATED_VANILLA_PARROT_VARIANT_DATA_ID;
 const GENERATED_VANILLA_RABBIT_TYPE_DATA_ID: u8 = 18;
@@ -745,6 +751,14 @@ pub const VANILLA_CHICKEN_DEFAULT_VARIANT_RESOURCE_ID: &str =
 const GENERATED_VANILLA_CHICKEN_DEFAULT_SOUND_VARIANT_RESOURCE_ID: &str = "minecraft:classic";
 pub const VANILLA_CHICKEN_DEFAULT_SOUND_VARIANT_RESOURCE_ID: &str =
     GENERATED_VANILLA_CHICKEN_DEFAULT_SOUND_VARIANT_RESOURCE_ID;
+const GENERATED_VANILLA_COW_DEFAULT_VARIANT_RESOURCE_ID: &str = "minecraft:temperate";
+pub const VANILLA_COW_DEFAULT_VARIANT_RESOURCE_ID: &str =
+    GENERATED_VANILLA_COW_DEFAULT_VARIANT_RESOURCE_ID;
+const GENERATED_VANILLA_COW_DEFAULT_SOUND_VARIANT_RESOURCE_ID: &str = "minecraft:classic";
+pub const VANILLA_COW_DEFAULT_SOUND_VARIANT_RESOURCE_ID: &str =
+    GENERATED_VANILLA_COW_DEFAULT_SOUND_VARIANT_RESOURCE_ID;
+const GENERATED_VANILLA_MUSHROOM_COW_DEFAULT_TYPE: i32 = 0;
+pub const VANILLA_MUSHROOM_COW_DEFAULT_TYPE: i32 = GENERATED_VANILLA_MUSHROOM_COW_DEFAULT_TYPE;
 const GENERATED_VANILLA_PARROT_DEFAULT_VARIANT: i32 = 0;
 pub const VANILLA_PARROT_DEFAULT_VARIANT: i32 = GENERATED_VANILLA_PARROT_DEFAULT_VARIANT;
 const GENERATED_VANILLA_RABBIT_DEFAULT_TYPE: i32 = 0;
@@ -9489,7 +9503,7 @@ pub const VANILLA_ENTITY_METADATA_ACCESSORS_26_1: &[VanillaEntityMetadataAccesso
         data_id: 18,
         source_path: "net/minecraft/world/entity/animal/cow/Cow.java",
         default_expression: "VariantUtils.getDefaultOrAny (this.registryAccess (), CowVariants.TEMPERATE)",
-        typed_default: None,
+        typed_default: Some(VanillaEntityMetadataDefault::RegistryHolderResource("minecraft:temperate")),
     },
     VanillaEntityMetadataAccessorCatalogEntry {
         owner: "net.minecraft.world.entity.animal.cow.Cow",
@@ -9500,7 +9514,7 @@ pub const VANILLA_ENTITY_METADATA_ACCESSORS_26_1: &[VanillaEntityMetadataAccesso
         data_id: 19,
         source_path: "net/minecraft/world/entity/animal/cow/Cow.java",
         default_expression: "cowSoundVariants.get (CowSoundVariants.CLASSIC).or (cowSoundVariants::getAny).orElseThrow ()",
-        typed_default: None,
+        typed_default: Some(VanillaEntityMetadataDefault::RegistryHolderResource("minecraft:classic")),
     },
     VanillaEntityMetadataAccessorCatalogEntry {
         owner: "net.minecraft.world.entity.animal.cow.MushroomCow",
@@ -9511,7 +9525,7 @@ pub const VANILLA_ENTITY_METADATA_ACCESSORS_26_1: &[VanillaEntityMetadataAccesso
         data_id: 18,
         source_path: "net/minecraft/world/entity/animal/cow/MushroomCow.java",
         default_expression: "MushroomCow.Variant.DEFAULT.id",
-        typed_default: None,
+        typed_default: Some(VanillaEntityMetadataDefault::Int(0)),
     },
     VanillaEntityMetadataAccessorCatalogEntry {
         owner: "net.minecraft.world.entity.animal.dolphin.Dolphin",
@@ -11718,6 +11732,13 @@ pub const VANILLA_ENTITY_METADATA_FLAGS_26_1: &[VanillaEntityMetadataFlagCatalog
 
 pub const VANILLA_ENTITY_METADATA_DEFAULT_RESOLVER_EVIDENCE_26_1: &[VanillaEntityMetadataResolverEvidence] = &[
     VanillaEntityMetadataResolverEvidence {
+        java_class: "net.minecraft.world.entity.animal.cow.MushroomCow",
+        accessor_name: "DATA_TYPE",
+        evidence_member: "net.minecraft.world.entity.animal.cow.MushroomCow.Variant.DEFAULT -> RED",
+        source_expression: "MushroomCow.Variant.DEFAULT.id",
+        reason: "the synced INT default is stored in a nested enum constant rather than an integer expression",
+    },
+    VanillaEntityMetadataResolverEvidence {
         java_class: "net.minecraft.world.entity.animal.parrot.Parrot",
         accessor_name: "DATA_VARIANT_ID",
         evidence_member: "net.minecraft.world.entity.animal.parrot.Parrot.Variant.DEFAULT -> RED_BLUE",
@@ -11834,6 +11855,20 @@ pub const VANILLA_ENTITY_METADATA_DEFAULT_RESOLVER_EVIDENCE_26_1: &[VanillaEntit
         accessor_name: "DATA_SOUND_VARIANT_ID",
         evidence_member: "net.minecraft.world.entity.animal.chicken.ChickenSoundVariants.CLASSIC -> ChickenSoundVariants.createKey -> SoundSet.getIdentifier -> SoundSet.CLASSIC",
         source_expression: "chickenSoundVariants.get (ChickenSoundVariants.CLASSIC).or (chickenSoundVariants::getAny).orElseThrow () -> createKey (ChickenSoundVariants.SoundSet.CLASSIC) -> ResourceKey.create (Registries.CHICKEN_SOUND_VARIANT, Identifier.withDefaultNamespace (chickenSoundVariant.getIdentifier ())) -> this.identifier -> \"classic\"",
+        reason: "the synced holder default is a resource key with registry fallback rather than a numeric registry id",
+    },
+    VanillaEntityMetadataResolverEvidence {
+        java_class: "net.minecraft.world.entity.animal.cow.Cow",
+        accessor_name: "DATA_VARIANT_ID",
+        evidence_member: "net.minecraft.world.entity.animal.cow.CowVariants.TEMPERATE -> TemperatureVariants.TEMPERATE -> CowVariants.createKey",
+        source_expression: "VariantUtils.getDefaultOrAny (this.registryAccess (), CowVariants.TEMPERATE) -> createKey (TemperatureVariants.TEMPERATE) -> Identifier.withDefaultNamespace (\"temperate\") -> ResourceKey.create (Registries.COW_VARIANT, id)",
+        reason: "the synced holder default is a resource key selected through TemperatureVariants rather than a numeric registry id",
+    },
+    VanillaEntityMetadataResolverEvidence {
+        java_class: "net.minecraft.world.entity.animal.cow.Cow",
+        accessor_name: "DATA_SOUND_VARIANT_ID",
+        evidence_member: "net.minecraft.world.entity.animal.cow.CowSoundVariants.CLASSIC -> CowSoundVariants.createKey -> SoundSet.getIdentifier -> SoundSet.CLASSIC",
+        source_expression: "cowSoundVariants.get (CowSoundVariants.CLASSIC).or (cowSoundVariants::getAny).orElseThrow () -> createKey (CowSoundVariants.SoundSet.CLASSIC) -> ResourceKey.create (Registries.COW_SOUND_VARIANT, Identifier.withDefaultNamespace (cowSoundVariant.getIdentifier ())) -> this.identifier -> \"classic\"",
         reason: "the synced holder default is a resource key with registry fallback rather than a numeric registry id",
     },
     VanillaEntityMetadataResolverEvidence {
@@ -14624,6 +14659,45 @@ const CHICKEN_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataF
     own_flags: CHICKEN_FLAGS,
 };
 
+const COW_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_VARIANT_ID",
+        data_id: 18,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_COW_VARIANT_ID,
+        default: VanillaEntityMetadataDefault::RegistryHolderResource("minecraft:temperate"),
+    },
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_SOUND_VARIANT_ID",
+        data_id: 19,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_COW_SOUND_VARIANT_ID,
+        default: VanillaEntityMetadataDefault::RegistryHolderResource("minecraft:classic"),
+    },
+];
+const COW_FLAGS: &[VanillaEntityMetadataFlagSchema] = &[];
+const COW_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamilySchema {
+    family: VanillaEntityMetadataFamily::Cow,
+    parent: Some(VanillaEntityMetadataFamily::AgeableMob),
+    inherited_field_count: 18,
+    own_fields: COW_FIELDS,
+    own_flags: COW_FLAGS,
+};
+
+const MUSHROOMCOW_FIELDS: &[VanillaEntityMetadataFieldSchema] =
+    &[VanillaEntityMetadataFieldSchema {
+        name: "DATA_TYPE",
+        data_id: 18,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+        default: VanillaEntityMetadataDefault::Int(0),
+    }];
+const MUSHROOMCOW_FLAGS: &[VanillaEntityMetadataFlagSchema] = &[];
+const MUSHROOMCOW_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamilySchema {
+    family: VanillaEntityMetadataFamily::MushroomCow,
+    parent: Some(VanillaEntityMetadataFamily::AgeableMob),
+    inherited_field_count: 18,
+    own_fields: MUSHROOMCOW_FIELDS,
+    own_flags: MUSHROOMCOW_FLAGS,
+};
+
 const PARROT_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[VanillaEntityMetadataFieldSchema {
     name: "DATA_VARIANT_ID",
     data_id: 20,
@@ -15654,6 +15728,8 @@ pub(super) const fn generated_entity_metadata_schema(
         VanillaEntityMetadataFamily::Cat => &CAT_SCHEMA,
         VanillaEntityMetadataFamily::Wolf => &WOLF_SCHEMA,
         VanillaEntityMetadataFamily::Chicken => &CHICKEN_SCHEMA,
+        VanillaEntityMetadataFamily::Cow => &COW_SCHEMA,
+        VanillaEntityMetadataFamily::MushroomCow => &MUSHROOMCOW_SCHEMA,
         VanillaEntityMetadataFamily::Parrot => &PARROT_SCHEMA,
         VanillaEntityMetadataFamily::Rabbit => &RABBIT_SCHEMA,
         VanillaEntityMetadataFamily::AbstractVillager => &ABSTRACTVILLAGER_SCHEMA,

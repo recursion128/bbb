@@ -85,6 +85,8 @@ FAMILIES = (
     FamilySpec("Cat", "net.minecraft.world.entity.animal.feline.Cat", "TamableAnimal"),
     FamilySpec("Wolf", "net.minecraft.world.entity.animal.wolf.Wolf", "TamableAnimal"),
     FamilySpec("Chicken", "net.minecraft.world.entity.animal.chicken.Chicken", "AgeableMob"),
+    FamilySpec("Cow", "net.minecraft.world.entity.animal.cow.Cow", "AgeableMob"),
+    FamilySpec("MushroomCow", "net.minecraft.world.entity.animal.cow.MushroomCow", "AgeableMob"),
     FamilySpec("Parrot", "net.minecraft.world.entity.animal.parrot.Parrot", "TamableAnimal"),
     FamilySpec("Rabbit", "net.minecraft.world.entity.animal.rabbit.Rabbit", "AgeableMob"),
     FamilySpec(
@@ -281,6 +283,9 @@ DATA_ALIASES = {
     "VANILLA_WOLF_SOUND_VARIANT_DATA_ID": ("net.minecraft.world.entity.animal.wolf.Wolf", "DATA_SOUND_VARIANT_ID"),
     "VANILLA_CHICKEN_VARIANT_DATA_ID": ("net.minecraft.world.entity.animal.chicken.Chicken", "DATA_VARIANT_ID"),
     "VANILLA_CHICKEN_SOUND_VARIANT_DATA_ID": ("net.minecraft.world.entity.animal.chicken.Chicken", "DATA_SOUND_VARIANT_ID"),
+    "VANILLA_COW_VARIANT_DATA_ID": ("net.minecraft.world.entity.animal.cow.Cow", "DATA_VARIANT_ID"),
+    "VANILLA_COW_SOUND_VARIANT_DATA_ID": ("net.minecraft.world.entity.animal.cow.Cow", "DATA_SOUND_VARIANT_ID"),
+    "VANILLA_MUSHROOM_COW_TYPE_DATA_ID": ("net.minecraft.world.entity.animal.cow.MushroomCow", "DATA_TYPE"),
     "VANILLA_PARROT_VARIANT_DATA_ID": ("net.minecraft.world.entity.animal.parrot.Parrot", "DATA_VARIANT_ID"),
     "VANILLA_RABBIT_TYPE_DATA_ID": ("net.minecraft.world.entity.animal.rabbit.Rabbit", "DATA_TYPE_ID"),
     "VANILLA_ABSTRACT_VILLAGER_UNHAPPY_COUNTER_DATA_ID": ("net.minecraft.world.entity.npc.villager.AbstractVillager", "DATA_UNHAPPY_COUNTER"),
@@ -435,6 +440,9 @@ DEFAULT_ALIASES = {
     "VANILLA_WOLF_DEFAULT_SOUND_VARIANT_RESOURCE_ID": ("net.minecraft.world.entity.animal.wolf.Wolf", "DATA_SOUND_VARIANT_ID"),
     "VANILLA_CHICKEN_DEFAULT_VARIANT_RESOURCE_ID": ("net.minecraft.world.entity.animal.chicken.Chicken", "DATA_VARIANT_ID"),
     "VANILLA_CHICKEN_DEFAULT_SOUND_VARIANT_RESOURCE_ID": ("net.minecraft.world.entity.animal.chicken.Chicken", "DATA_SOUND_VARIANT_ID"),
+    "VANILLA_COW_DEFAULT_VARIANT_RESOURCE_ID": ("net.minecraft.world.entity.animal.cow.Cow", "DATA_VARIANT_ID"),
+    "VANILLA_COW_DEFAULT_SOUND_VARIANT_RESOURCE_ID": ("net.minecraft.world.entity.animal.cow.Cow", "DATA_SOUND_VARIANT_ID"),
+    "VANILLA_MUSHROOM_COW_DEFAULT_TYPE": ("net.minecraft.world.entity.animal.cow.MushroomCow", "DATA_TYPE"),
     "VANILLA_PARROT_DEFAULT_VARIANT": ("net.minecraft.world.entity.animal.parrot.Parrot", "DATA_VARIANT_ID"),
     "VANILLA_RABBIT_DEFAULT_TYPE": ("net.minecraft.world.entity.animal.rabbit.Rabbit", "DATA_TYPE_ID"),
     "VANILLA_ABSTRACT_VILLAGER_DEFAULT_UNHAPPY_COUNTER": ("net.minecraft.world.entity.npc.villager.AbstractVillager", "DATA_UNHAPPY_COUNTER"),
@@ -600,6 +608,15 @@ FLAG_SCHEMA_NAMES = {
 
 
 ENUM_ID_DEFAULT_RESOLVERS = (
+    (
+        "net.minecraft.world.entity.animal.cow.MushroomCow",
+        "DATA_TYPE",
+        "net.minecraft.world.entity.animal.cow.MushroomCow.Variant",
+        "DEFAULT",
+        1,
+        "MushroomCow.Variant.DEFAULT.id",
+        "the synced INT default is stored in a nested enum constant rather than an integer expression",
+    ),
     (
         "net.minecraft.world.entity.animal.parrot.Parrot",
         "DATA_VARIANT_ID",
@@ -910,6 +927,67 @@ STATIC_REGISTRY_RESOURCE_DEFAULT_RESOLVERS = (
         ),
         (
             "net.minecraft.world.entity.animal.chicken.ChickenSoundVariants.SoundSet",
+            "CLASSIC",
+            0,
+            '"classic"',
+        ),
+        "minecraft:classic",
+        "the synced holder default is a resource key with registry fallback rather than a numeric registry id",
+    ),
+    (
+        "net.minecraft.world.entity.animal.cow.Cow",
+        "DATA_VARIANT_ID",
+        "COW_VARIANT",
+        "VariantUtils.getDefaultOrAny (this.registryAccess (), CowVariants.TEMPERATE)",
+        (
+            (
+                "net.minecraft.world.entity.animal.cow.CowVariants",
+                "TEMPERATE",
+                "createKey (TemperatureVariants.TEMPERATE)",
+            ),
+            (
+                "net.minecraft.world.entity.animal.TemperatureVariants",
+                "TEMPERATE",
+                'Identifier.withDefaultNamespace ("temperate")',
+            ),
+        ),
+        (
+            (
+                "net.minecraft.world.entity.animal.cow.CowVariants",
+                "createKey",
+                "ResourceKey.create (Registries.COW_VARIANT, id)",
+            ),
+        ),
+        None,
+        "minecraft:temperate",
+        "the synced holder default is a resource key selected through TemperatureVariants rather than a numeric registry id",
+    ),
+    (
+        "net.minecraft.world.entity.animal.cow.Cow",
+        "DATA_SOUND_VARIANT_ID",
+        "COW_SOUND_VARIANT",
+        "cowSoundVariants.get (CowSoundVariants.CLASSIC).or (cowSoundVariants::getAny).orElseThrow ()",
+        (
+            (
+                "net.minecraft.world.entity.animal.cow.CowSoundVariants",
+                "CLASSIC",
+                "createKey (CowSoundVariants.SoundSet.CLASSIC)",
+            ),
+        ),
+        (
+            (
+                "net.minecraft.world.entity.animal.cow.CowSoundVariants",
+                "createKey",
+                "ResourceKey.create (Registries.COW_SOUND_VARIANT, Identifier.withDefaultNamespace (cowSoundVariant.getIdentifier ()))",
+            ),
+            (
+                "net.minecraft.world.entity.animal.cow.CowSoundVariants.SoundSet",
+                "getIdentifier",
+                "this.identifier",
+            ),
+        ),
+        (
+            "net.minecraft.world.entity.animal.cow.CowSoundVariants.SoundSet",
             "CLASSIC",
             0,
             '"classic"',

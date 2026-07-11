@@ -8032,7 +8032,7 @@ fn entity_model_kind_uses_exact_models_for_base_cow_and_sheep() {
             variant: MooshroomVariant::Red,
         }
     );
-    // The synced `MushroomCow.DATA_TYPE` (index 20) selects the brown coat (id 1; `ByIdMap` CLAMP
+    // The synced `MushroomCow.DATA_TYPE` (index 18) selects the brown coat (id 1; `ByIdMap` CLAMP
     // folds any id ≥ 1 to brown).
     assert_eq!(
         entity_model_kind(

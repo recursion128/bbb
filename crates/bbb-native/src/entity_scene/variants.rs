@@ -425,7 +425,7 @@ pub(super) fn cow_model_kind(
 /// `MOOSHROOM_BABY` to `BabyCowModel.createBodyLayer()`), so it maps to the dedicated
 /// [`EntityModelKind::Mooshroom`] (`baby` selecting the layout) — the real cow body instead of the
 /// generic quadruped stand-in. The red/brown body texture and adult-only mushroom block-model layer are
-/// projected from the synced `MushroomCow.DATA_TYPE` (index 20).
+/// projected from the synced `MushroomCow.DATA_TYPE` (index 18).
 pub(super) fn mooshroom_model_kind(
     values: &[bbb_protocol::packets::EntityDataValue],
 ) -> EntityModelKind {
@@ -434,7 +434,7 @@ pub(super) fn mooshroom_model_kind(
         variant: MooshroomVariant::from_vanilla_id(entity_data_int(
             values,
             MUSHROOM_COW_TYPE_DATA_ID,
-            0,
+            MUSHROOM_COW_DEFAULT_TYPE,
         )),
     }
 }
@@ -1525,12 +1525,17 @@ pub(super) fn cow_model_variant(
         })
         .map(|id| {
             if let Some(registry) = variants {
-                cow_variant_from_registry_id(registry, id).unwrap_or(CowModelVariant::Temperate)
+                cow_variant_from_registry_id(registry, id).unwrap_or_else(cow_default_model_variant)
             } else {
                 cow_variant_from_vanilla_registry_id(id)
             }
         })
-        .unwrap_or(CowModelVariant::Temperate)
+        .unwrap_or_else(cow_default_model_variant)
+}
+
+fn cow_default_model_variant() -> CowModelVariant {
+    cow_variant_from_entry_id(COW_DEFAULT_VARIANT_RESOURCE_ID)
+        .expect("generated vanilla cow default variant must map to a model")
 }
 
 pub(super) fn cow_variant_from_registry_id(

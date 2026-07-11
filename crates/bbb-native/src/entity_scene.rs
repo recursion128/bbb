@@ -121,6 +121,12 @@ use bbb_world::{
     VANILLA_COPPER_GOLEM_WEATHER_STATE_DATA_ID as COPPER_GOLEM_WEATHER_STATE_DATA_ID,
 };
 use bbb_world::{
+    VANILLA_COW_DEFAULT_VARIANT_RESOURCE_ID as COW_DEFAULT_VARIANT_RESOURCE_ID,
+    VANILLA_COW_VARIANT_DATA_ID as COW_VARIANT_DATA_ID,
+    VANILLA_MUSHROOM_COW_DEFAULT_TYPE as MUSHROOM_COW_DEFAULT_TYPE,
+    VANILLA_MUSHROOM_COW_TYPE_DATA_ID as MUSHROOM_COW_TYPE_DATA_ID,
+};
+use bbb_world::{
     VANILLA_CREAKING_ACTIVE_DATA_ID as CREAKING_IS_ACTIVE_DATA_ID,
     VANILLA_CREAKING_DEFAULT_ACTIVE as CREAKING_DEFAULT_ACTIVE,
 };
@@ -299,11 +305,6 @@ const ZOMBIE_VILLAGER_DATA_DATA_ID: u8 = 20;
 /// Vanilla `Raider.IS_CELEBRATING` data id (16): the boolean set while a raider celebrates a raid
 /// victory, the first `Raider` accessor after `Mob.DATA_MOB_FLAGS_ID` (15). The evoker and vindicator
 /// `getArmPose` return `CELEBRATING` while it is true (when not casting / not aggressive).
-const COW_VARIANT_DATA_ID: u8 = 18;
-/// `MushroomCow.DATA_TYPE` data id (20, INT): the red/brown variant. `MushroomCow` extends `Cow`,
-/// whose own accessors are `DATA_VARIANT_ID` (18) + `DATA_SOUND_VARIANT_ID` (19), so the mooshroom's
-/// first own accessor is 20.
-const MUSHROOM_COW_TYPE_DATA_ID: u8 = 20;
 const PIG_VARIANT_DATA_ID: u8 = 19;
 // Vanilla Frog.DATA_VARIANT_ID (18, Holder<FrogVariant>): `Frog extends Animal`, so its first own
 // accessor follows Mob.DATA_MOB_FLAGS_ID (15) and the two AgeableMob accessors DATA_BABY_ID (16) /

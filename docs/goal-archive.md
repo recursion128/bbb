@@ -10019,3 +10019,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   family：variant id18、sound-variant id19；native model/debug-save 删除手抄 synced ids 与
   numeric holder defaults。session registry 顺序、Chicken 模型映射、产蛋/骑乘与 persistent
   Codec/SNBT 语义仍由对应 owner 管理。
+
+## 2026-07-11：Generated Cow branch metadata 与 sibling index 修正
+
+- [x] 复用 Tree-sitter CST 驱动的 registry-resource/enum-id resolver，建立共享零 accessor
+  `AbstractCow` 的两个 sibling family：`Cow` variant id18、sound-variant id19，默认资源为
+  `minecraft:temperate` / `minecraft:classic`；`MushroomCow` type id18/default RED(0)。修正
+  entity-scene 曾把 `MushroomCow` 误判为继承 `Cow`、进而手抄为 id20 的漂移；native
+  model/debug-save 删除对应手写 ids 与 numeric holder defaults。registry/bootstrap 顺序、
+  Cow/MushroomCow 模型映射、交互和 persistent Codec/SNBT 语义仍由对应 owner 管理。

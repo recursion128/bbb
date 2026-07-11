@@ -245,6 +245,14 @@ use bbb_world::{
     VANILLA_COPPER_GOLEM_WEATHER_STATE_WEATHERED_ID as COPPER_GOLEM_WEATHER_STATE_WEATHERED_ID,
 };
 use bbb_world::{
+    VANILLA_COW_DEFAULT_SOUND_VARIANT_RESOURCE_ID as COW_DEFAULT_SOUND_VARIANT_RESOURCE_ID,
+    VANILLA_COW_DEFAULT_VARIANT_RESOURCE_ID as COW_DEFAULT_VARIANT_RESOURCE_ID,
+    VANILLA_COW_SOUND_VARIANT_DATA_ID as COW_SOUND_VARIANT_DATA_ID,
+    VANILLA_COW_VARIANT_DATA_ID as COW_VARIANT_DATA_ID,
+    VANILLA_MUSHROOM_COW_DEFAULT_TYPE as MOOSHROOM_DEFAULT_TYPE_ID,
+    VANILLA_MUSHROOM_COW_TYPE_DATA_ID as MOOSHROOM_TYPE_DATA_ID,
+};
+use bbb_world::{
     VANILLA_FOX_DEFAULT_FLAGS as FOX_DEFAULT_FLAGS,
     VANILLA_FOX_DEFAULT_TYPE as FOX_DEFAULT_VARIANT_ID,
     VANILLA_FOX_FLAGS_DATA_ID as FOX_FLAGS_DATA_ID,
@@ -551,12 +559,6 @@ const ZOMBIE_NAUTILUS_VARIANT_DATA_ID: u8 = 21;
 const ZOMBIE_NAUTILUS_DEFAULT_VARIANT_ID: i32 = 0;
 const CHICKEN_DEFAULT_CHICKEN_JOCKEY: bool = false;
 const CHICKEN_DEFAULT_EGG_LAY_TIME: i32 = 0;
-const COW_VARIANT_DATA_ID: u8 = 18;
-const COW_DEFAULT_VARIANT_ID: i32 = 0;
-const COW_SOUND_VARIANT_DATA_ID: u8 = 19;
-const COW_DEFAULT_SOUND_VARIANT_ID: i32 = 0;
-const MOOSHROOM_TYPE_DATA_ID: u8 = 18;
-const MOOSHROOM_DEFAULT_TYPE_ID: i32 = 0;
 const FROG_VARIANT_DATA_ID: u8 = 18;
 const FROG_DEFAULT_VARIANT_ID: i32 = 0;
 const PARROT_MAX_VARIANT: i32 = 4;
@@ -6627,22 +6629,19 @@ fn debug_push_cow_additional_save_data(entity: &EntityState, fields: &mut Vec<St
         COW_VARIANT_DATA_ID,
         EntityDataRegistryHolder::CowVariant,
     )
-    .unwrap_or(COW_DEFAULT_VARIANT_ID);
+    .and_then(cow_variant_resource_id)
+    .unwrap_or(COW_DEFAULT_VARIANT_RESOURCE_ID);
     let sound_variant = debug_entity_data_registry_id_present(
         entity,
         COW_SOUND_VARIANT_DATA_ID,
         EntityDataRegistryHolder::CowSoundVariant,
     )
-    .unwrap_or(COW_DEFAULT_SOUND_VARIANT_ID);
-    fields.push(format!(
-        "variant: {}",
-        debug_snbt_string(cow_variant_resource_id(variant).unwrap_or("minecraft:temperate"))
-    ));
+    .and_then(cow_sound_variant_resource_id)
+    .unwrap_or(COW_DEFAULT_SOUND_VARIANT_RESOURCE_ID);
+    fields.push(format!("variant: {}", debug_snbt_string(variant)));
     fields.push(format!(
         "sound_variant: {}",
-        debug_snbt_string(
-            cow_sound_variant_resource_id(sound_variant).unwrap_or("minecraft:classic")
-        )
+        debug_snbt_string(sound_variant)
     ));
 }
 
