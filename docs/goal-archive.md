@@ -10863,3 +10863,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   test 读取并验证同一 state 内的两条 `ServerboundCookieResponsePacket` wire，同时锁定 canonical
   world counters。configuration 的 request/store/response 三行 coverage 已全部闭合，其他
   configuration 领域未外推完成。
+
+## 2026-07-11：configuration resource-pack wire/authority audit
+
+- [x] 对照 `ClientboundResourcePackPushPacket`、`ClientboundResourcePackPopPacket`、
+  `ServerboundResourcePackPacket.Action` 与 `ClientCommonPacketListenerImpl`，锁定 UUID、URL、
+  40 字符 hash、required/prompt、optional pop id 和八种 response ordinal；focused test 新增
+  pop-all 与 41 字符 hash 拒绝边界。
+- [x] configuration push 的 valid-URL Declined/invalid-URL InvalidUrl response wire、net event，
+  以及 world push/response/pop projection 已有反向证据。coverage 只闭合 decode/ownership/
+  canonical/encoder/tests，明确保留 push/pop runtime 与完整 response command surface partial；
+  下载、校验、reload 和运行时 pack source 未被 projection 冒充完成。

@@ -332,6 +332,37 @@ mod tests {
         }
     }
 
+    #[test]
+    fn configuration_resource_pack_wire_is_closed_without_claiming_runtime_downloads() {
+        let ledger = vanilla_packet_coverage_26_1().unwrap();
+        let packets = BTreeSet::from([
+            "SERVERBOUND_RESOURCE_PACK",
+            "CLIENTBOUND_RESOURCE_PACK_POP",
+            "CLIENTBOUND_RESOURCE_PACK_PUSH",
+        ]);
+        let partial: BTreeSet<_> = ledger
+            .entries
+            .iter()
+            .filter(|entry| {
+                entry.state == "configuration" && packets.contains(entry.constant_name.as_str())
+            })
+            .flat_map(|entry| {
+                entry.coverage.iter().filter_map(move |(dimension, cell)| {
+                    (cell.status == PacketCoverageStatus::Partial)
+                        .then_some((entry.constant_name.as_str(), dimension.as_str()))
+                })
+            })
+            .collect();
+        assert_eq!(
+            partial,
+            BTreeSet::from([
+                ("SERVERBOUND_RESOURCE_PACK", "command_surface"),
+                ("CLIENTBOUND_RESOURCE_PACK_POP", "runtime_side_effect"),
+                ("CLIENTBOUND_RESOURCE_PACK_PUSH", "runtime_side_effect"),
+            ])
+        );
+    }
+
     fn state_name(state: PacketState) -> &'static str {
         match state {
             PacketState::Handshake => "handshake",

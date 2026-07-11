@@ -2625,6 +2625,27 @@ fn decodes_configuration_common_packets() {
         .unwrap(),
         ConfigurationClientbound::ResourcePackPop(ResourcePackPop { id: Some(pack_id) })
     );
+    assert_eq!(
+        decode_configuration_clientbound(ids::configuration::CLIENTBOUND_RESOURCE_PACK_POP, &[0])
+            .unwrap(),
+        ConfigurationClientbound::ResourcePackPop(ResourcePackPop { id: None })
+    );
+
+    let mut oversized_hash = Encoder::new();
+    oversized_hash.write_uuid(pack_id);
+    oversized_hash.write_string("https://example.invalid/server-pack.zip");
+    oversized_hash.write_string(&"a".repeat(41));
+    oversized_hash.write_bool(false);
+    oversized_hash.write_bool(false);
+    let error = decode_configuration_clientbound(
+        ids::configuration::CLIENTBOUND_RESOURCE_PACK_PUSH,
+        &oversized_hash.into_inner(),
+    )
+    .unwrap_err();
+    assert!(matches!(
+        error,
+        ProtocolError::StringTooLong { max: 40, .. }
+    ));
 
     let mut features_payload = Encoder::new();
     features_payload.write_var_i32(2);

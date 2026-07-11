@@ -45,7 +45,10 @@ Owner: `bbb-protocol`
   authentication/encryption, encode `ServerboundKeyPacket`, and lock the initial
   hello response state. Decode login disconnect reasons as Components instead of
   retaining only diagnostic JSON.
-- Complete the remaining configuration registry/tag/known-pack/resource-pack,
+- Complete configuration resource-pack runtime behavior: download allowed packs,
+  verify hashes, apply/reload them, enforce required-pack outcomes, emit the full
+  response lifecycle, and unload one/all packs on pop.
+- Complete the remaining configuration registry/tag/known-pack,
   code-of-conduct, custom payload/report, transfer, feature and dialog
   coverage cells; then cover play, movement, inventory, chat, interaction and
   command suggestion end to end.
