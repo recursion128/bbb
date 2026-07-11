@@ -21,8 +21,8 @@ pub fn encode_packet_with_compression(
     write_var_i32_to(&mut body, packet_id);
     body.extend_from_slice(payload);
 
-    let framed_body = if let Some(threshold) = compression_threshold {
-        if threshold >= 0 && body.len() >= threshold as usize {
+    let framed_body = if let Some(threshold) = compression_threshold.filter(|value| *value >= 0) {
+        if body.len() >= threshold as usize {
             let mut encoder = ZlibEncoder::new(Vec::new(), Compression::fast());
             encoder.write_all(&body).map_err(ProtocolError::Zlib)?;
             let compressed = encoder.finish().map_err(ProtocolError::Zlib)?;
@@ -67,7 +67,7 @@ pub fn try_read_frame(buffer: &mut BytesMut) -> Result<Option<Vec<u8>>> {
 }
 
 pub fn decode_packet_body(frame: &[u8], compression_threshold: Option<i32>) -> Result<Vec<u8>> {
-    let Some(_) = compression_threshold else {
+    let Some(_) = compression_threshold.filter(|value| *value >= 0) else {
         return Ok(frame.to_vec());
     };
 
@@ -76,10 +76,14 @@ pub fn decode_packet_body(frame: &[u8], compression_threshold: Option<i32>) -> R
     if data_len == 0 {
         return Ok(decoder.remaining().to_vec());
     }
+    if data_len > MAX_PACKET_SIZE {
+        return Err(ProtocolError::PacketTooLarge(data_len, MAX_PACKET_SIZE));
+    }
 
-    let mut zlib = ZlibDecoder::new(decoder.remaining());
+    let zlib = ZlibDecoder::new(decoder.remaining());
     let mut decoded = Vec::with_capacity(data_len);
-    zlib.read_to_end(&mut decoded)
+    zlib.take(data_len.saturating_add(1) as u64)
+        .read_to_end(&mut decoded)
         .map_err(ProtocolError::Zlib)?;
     if decoded.len() != data_len {
         return Err(ProtocolError::BadCompressionLength {
@@ -137,5 +141,50 @@ mod tests {
         let (id, payload) = split_packet(&body).unwrap();
         assert_eq!(id, 44);
         assert_eq!(payload, &[7; 256]);
+    }
+
+    #[test]
+    fn negative_compression_threshold_disables_framing() {
+        let uncompressed = encode_packet(3, &[1, 2, 3]);
+        assert_eq!(
+            encode_packet_with_compression(3, &[1, 2, 3], Some(-1)).unwrap(),
+            uncompressed
+        );
+
+        let mut buffer = BytesMut::from(uncompressed.as_slice());
+        let frame = try_read_frame(&mut buffer).unwrap().unwrap();
+        assert_eq!(decode_packet_body(&frame, Some(-1)).unwrap(), frame);
+    }
+
+    #[test]
+    fn compressed_frame_rejects_oversized_declared_output_before_inflate() {
+        let mut frame = Vec::new();
+        write_var_i32_to(&mut frame, (MAX_PACKET_SIZE + 1) as i32);
+        frame.push(0);
+
+        let error = decode_packet_body(&frame, Some(256)).unwrap_err();
+        assert!(matches!(
+            error,
+            ProtocolError::PacketTooLarge(size, MAX_PACKET_SIZE) if size == MAX_PACKET_SIZE + 1
+        ));
+    }
+
+    #[test]
+    fn compressed_frame_bounds_output_to_declared_length() {
+        let mut compressed = ZlibEncoder::new(Vec::new(), Compression::fast());
+        compressed.write_all(&[7; 32]).unwrap();
+        let compressed = compressed.finish().unwrap();
+        let mut frame = Vec::new();
+        write_var_i32_to(&mut frame, 16);
+        frame.extend_from_slice(&compressed);
+
+        let error = decode_packet_body(&frame, Some(1)).unwrap_err();
+        assert!(matches!(
+            error,
+            ProtocolError::BadCompressionLength {
+                declared: 16,
+                actual: 17
+            }
+        ));
     }
 }

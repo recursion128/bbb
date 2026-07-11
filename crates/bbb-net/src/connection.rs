@@ -43,6 +43,10 @@ impl RawConnection {
         Ok(())
     }
 
+    pub(crate) fn set_compression_threshold(&mut self, threshold: i32) {
+        self.compression_threshold = (threshold >= 0).then_some(threshold);
+    }
+
     pub(crate) async fn read_packet(&mut self) -> Result<(i32, Vec<u8>)> {
         loop {
             if let Some(frame) = try_read_frame(&mut self.read_buf)? {

@@ -228,6 +228,43 @@ mod tests {
         }
     }
 
+    #[test]
+    fn offline_login_coverage_keeps_online_encryption_and_raw_disconnect_gaps_explicit() {
+        let ledger = vanilla_packet_coverage_26_1().unwrap();
+        let login_entries: Vec<_> = ledger
+            .entries
+            .iter()
+            .filter(|entry| entry.state == "login")
+            .collect();
+        assert_eq!(login_entries.len(), 11);
+
+        let partial: BTreeSet<_> = login_entries
+            .iter()
+            .flat_map(|entry| {
+                entry.coverage.iter().filter_map(move |(dimension, cell)| {
+                    (cell.status == PacketCoverageStatus::Partial)
+                        .then_some((entry.constant_name.as_str(), dimension.as_str()))
+                })
+            })
+            .collect();
+        assert_eq!(
+            partial,
+            BTreeSet::from([
+                ("SERVERBOUND_HELLO", "ack_response"),
+                ("SERVERBOUND_HELLO", "state_guard"),
+                ("SERVERBOUND_KEY", "ack_response"),
+                ("SERVERBOUND_KEY", "command_surface"),
+                ("SERVERBOUND_KEY", "encoder"),
+                ("SERVERBOUND_KEY", "state_guard"),
+                ("SERVERBOUND_KEY", "tests"),
+                ("CLIENTBOUND_LOGIN_DISCONNECT", "decode"),
+                ("CLIENTBOUND_HELLO", "decode"),
+                ("CLIENTBOUND_HELLO", "runtime_side_effect"),
+                ("CLIENTBOUND_HELLO", "tests"),
+            ])
+        );
+    }
+
     fn state_name(state: PacketState) -> &'static str {
         match state {
             PacketState::Handshake => "handshake",

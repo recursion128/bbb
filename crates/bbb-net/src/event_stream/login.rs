@@ -1,8 +1,5 @@
 use anyhow::{bail, Result};
-use bbb_protocol::{
-    ids,
-    packets::{self, LoginClientbound},
-};
+use bbb_protocol::packets::{self, LoginClientbound};
 
 use crate::{
     event_stream::{emit, EventStreamContext},
@@ -19,19 +16,12 @@ impl EventStreamContext {
                 bail!("server requested encryption; offline-mode event stream cannot continue")
             }
             LoginClientbound::SetCompression { threshold } => {
-                self.conn.compression_threshold = Some(threshold);
+                self.conn.set_compression_threshold(threshold);
                 emit(&self.events, NetEvent::CompressionSet { threshold }).await?;
             }
             LoginClientbound::CustomQuery { transaction_id } => {
-                let mut response = bbb_protocol::codec::Encoder::new();
-                response.write_var_i32(transaction_id);
-                response.write_bool(false);
-                self.conn
-                    .send_packet(
-                        ids::login::SERVERBOUND_CUSTOM_QUERY_ANSWER,
-                        &response.into_inner(),
-                    )
-                    .await?;
+                let (id, response) = packets::encode_login_custom_query_answer(transaction_id);
+                self.conn.send_packet(id, &response).await?;
             }
             LoginClientbound::CookieRequest(request) => {
                 let payload = self.server_cookies.get(&request.key).map(Vec::as_slice);

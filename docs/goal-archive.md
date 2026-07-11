@@ -10824,3 +10824,19 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] coverage 反向门禁现在验证每个 repo evidence 的文件与符号、每个 vanilla evidence 的
   `.java#symbol` 结构，并锁定 status family 不得退回 partial；普通测试仍不读取工作区外
   vanilla source。
+
+## 2026-07-11：offline login state/compression coverage audit
+
+- [x] 对照 `LoginProtocols`、`ClientHandshakePacketListenerImpl`、
+  `ServerLoginPacketListenerImpl` 与 `CompressionDecoder` 反审计 offline login。custom query
+  现在读取 transaction id/resource id、按 vanilla 1 MiB 上限安全丢弃 payload，并通过唯一
+  encoder 返回 null answer；GameProfile properties 使用 vanilla 的 16 项、64 字符 property
+  name 与 1024 字符 signature 上限。
+- [x] compression threshold 小于零时统一禁用 framing；压缩输入在分配前拒绝超过 8 MiB 的
+  declared output，并把 inflate 限制为 declared length + 1，避免声明长度与实际膨胀不符时
+  无界读取。RawConnection sequence test 锁定 custom query answer、compression 切换以及
+  LoginFinished → LoginAcknowledged → configuration brand/client-information 的 wire order。
+- [x] coverage ledger 将 offline login 的 cookie/custom query/compression/finish/ack 适用格
+  收敛为 evidence-backed complete/not-applicable；在线 encryption hello/key、初始 HELLO 的
+  完整响应状态和 login disconnect Component 解析继续保持具体 partial，未由 offline 成功
+  路径外推。普通 Cargo build/test 不读取本地 vanilla source。

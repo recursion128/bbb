@@ -831,6 +831,146 @@ fn encodes_login_hello() {
 }
 
 #[test]
+fn login_custom_query_codec_validates_key_discards_payload_and_answers_null() {
+    let mut payload = Encoder::new();
+    payload.write_var_i32(42);
+    payload.write_string("bbb:login_test");
+    payload.write_bytes(&[1, 2, 3]);
+    assert_eq!(
+        decode_login_clientbound(ids::login::CLIENTBOUND_CUSTOM_QUERY, &payload.into_inner())
+            .unwrap(),
+        LoginClientbound::CustomQuery { transaction_id: 42 }
+    );
+
+    let (packet_id, payload) = encode_login_custom_query_answer(42);
+    assert_eq!(packet_id, ids::login::SERVERBOUND_CUSTOM_QUERY_ANSWER);
+    let mut decoder = Decoder::new(&payload);
+    assert_eq!(decoder.read_var_i32().unwrap(), 42);
+    assert!(!decoder.read_bool().unwrap());
+    assert!(decoder.is_empty());
+}
+
+#[test]
+fn login_custom_query_and_profile_limits_match_vanilla() {
+    let mut query = Encoder::new();
+    query.write_var_i32(7);
+    query.write_string("bbb:oversized");
+    query.write_bytes(&vec![0; 1_048_577]);
+    let error = decode_login_clientbound(ids::login::CLIENTBOUND_CUSTOM_QUERY, &query.into_inner())
+        .unwrap_err();
+    assert!(matches!(
+        error,
+        ProtocolError::PacketTooLarge(1_048_577, 1_048_576)
+    ));
+
+    let mut profile = Encoder::new();
+    profile.write_uuid(Uuid::nil());
+    profile.write_string("bbb-client");
+    profile.write_var_i32(17);
+    let error = decode_login_clientbound(
+        ids::login::CLIENTBOUND_LOGIN_FINISHED,
+        &profile.into_inner(),
+    )
+    .unwrap_err();
+    assert!(matches!(error, ProtocolError::PacketTooLarge(17, 16)));
+
+    let mut profile = Encoder::new();
+    profile.write_uuid(Uuid::nil());
+    profile.write_string("bbb-client");
+    profile.write_var_i32(1);
+    profile.write_string(&"n".repeat(65));
+    profile.write_string("value");
+    profile.write_bool(false);
+    let error = decode_login_clientbound(
+        ids::login::CLIENTBOUND_LOGIN_FINISHED,
+        &profile.into_inner(),
+    )
+    .unwrap_err();
+    assert!(matches!(
+        error,
+        ProtocolError::StringTooLong { max: 64, .. }
+    ));
+
+    let mut profile = Encoder::new();
+    profile.write_uuid(Uuid::nil());
+    profile.write_string("bbb-client");
+    profile.write_var_i32(1);
+    profile.write_string("textures");
+    profile.write_string("value");
+    profile.write_bool(true);
+    profile.write_string(&"s".repeat(1025));
+    let error = decode_login_clientbound(
+        ids::login::CLIENTBOUND_LOGIN_FINISHED,
+        &profile.into_inner(),
+    )
+    .unwrap_err();
+    assert!(matches!(
+        error,
+        ProtocolError::StringTooLong { max: 1024, .. }
+    ));
+}
+
+#[test]
+fn offline_login_clientbound_codecs_and_ack_match_vanilla_fields() {
+    let mut disconnect = Encoder::new();
+    disconnect.write_string(r#"{"text":"bye"}"#);
+    assert_eq!(
+        decode_login_clientbound(
+            ids::login::CLIENTBOUND_LOGIN_DISCONNECT,
+            &disconnect.into_inner()
+        )
+        .unwrap(),
+        LoginClientbound::Disconnect {
+            raw_json: r#"{"text":"bye"}"#.to_string(),
+        }
+    );
+
+    let uuid = Uuid::from_u128(0x12345678_1234_5678_90ab_cdef12345678);
+    let mut finished = Encoder::new();
+    finished.write_uuid(uuid);
+    finished.write_string("bbb-client");
+    finished.write_var_i32(1);
+    finished.write_string("textures");
+    finished.write_string("value");
+    finished.write_bool(true);
+    finished.write_string("signature");
+    assert_eq!(
+        decode_login_clientbound(
+            ids::login::CLIENTBOUND_LOGIN_FINISHED,
+            &finished.into_inner()
+        )
+        .unwrap(),
+        LoginClientbound::LoginFinished {
+            profile: GameProfile {
+                uuid,
+                name: "bbb-client".to_string(),
+                properties: vec![GameProfileProperty {
+                    name: "textures".to_string(),
+                    value: "value".to_string(),
+                    signature: Some("signature".to_string()),
+                }],
+            },
+        }
+    );
+
+    let mut compression = Encoder::new();
+    compression.write_var_i32(256);
+    assert_eq!(
+        decode_login_clientbound(
+            ids::login::CLIENTBOUND_LOGIN_COMPRESSION,
+            &compression.into_inner()
+        )
+        .unwrap(),
+        LoginClientbound::SetCompression { threshold: 256 }
+    );
+
+    assert_eq!(
+        encode_login_acknowledged(),
+        (ids::login::SERVERBOUND_LOGIN_ACKNOWLEDGED, Vec::new())
+    );
+}
+
+#[test]
 fn decodes_play_disconnect_component() {
     let mut payload = Vec::new();
     payload.push(8);

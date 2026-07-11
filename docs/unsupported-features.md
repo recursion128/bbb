@@ -40,8 +40,12 @@ Owner: `bbb-protocol`
   cell remains `partial` until it carries implementation and semantic-test
   evidence through the checked-in sparse overrides; catalog presence or a
   generic dispatch arm alone is not completion.
-- Add the production Transfer-intent handshake entry and state transition; then
-  cover the required paths end to end: login, configuration, play, movement,
+- Add the production Transfer-intent handshake entry and state transition.
+- Complete authenticated login: decode `ClientboundHelloPacket`, perform session
+  authentication/encryption, encode `ServerboundKeyPacket`, and lock the initial
+  hello response state. Decode login disconnect reasons as Components instead of
+  retaining only diagnostic JSON.
+- Cover the remaining required paths end to end: configuration, play, movement,
   inventory, chat, resource-pack, interaction, command suggestion.
 
 ## Vanilla Java generator frontend migration

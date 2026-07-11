@@ -160,7 +160,7 @@ mod tests {
     use tokio::{net::TcpListener, time::timeout};
 
     #[tokio::test]
-    async fn login_finished_sends_brand_before_client_information() {
+    async fn login_compression_query_and_finish_follow_vanilla_state_sequence() {
         let (client, mut server) = raw_connection_pair().await;
         let (events_tx, mut events_rx) = mpsc::channel(1);
         let (_commands_tx, commands_rx) = mpsc::channel(1);
@@ -188,6 +188,41 @@ mod tests {
                 particle_status: packets::ClientParticleStatus::Minimal,
             },
         };
+
+        stream
+            .handle_login_packet(LoginClientbound::CustomQuery { transaction_id: 42 })
+            .await
+            .unwrap();
+        let (packet_id, payload) = timeout(Duration::from_secs(1), server.read_packet())
+            .await
+            .expect("custom query answer should be sent")
+            .unwrap();
+        assert_eq!(packet_id, ids::login::SERVERBOUND_CUSTOM_QUERY_ANSWER);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_var_i32().unwrap(), 42);
+        assert!(!decoder.read_bool().unwrap());
+        assert!(decoder.is_empty());
+
+        stream
+            .handle_login_packet(LoginClientbound::SetCompression { threshold: -1 })
+            .await
+            .unwrap();
+        assert_eq!(stream.conn.compression_threshold, None);
+        assert!(matches!(
+            events_rx.recv().await,
+            Some(NetEvent::CompressionSet { threshold: -1 })
+        ));
+
+        stream
+            .handle_login_packet(LoginClientbound::SetCompression { threshold: 16 })
+            .await
+            .unwrap();
+        assert_eq!(stream.conn.compression_threshold, Some(16));
+        assert!(matches!(
+            events_rx.recv().await,
+            Some(NetEvent::CompressionSet { threshold: 16 })
+        ));
+        server.set_compression_threshold(16);
 
         stream
             .handle_login_packet(LoginClientbound::LoginFinished {

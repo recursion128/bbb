@@ -21,6 +21,8 @@ use crate::{
 };
 
 const MAX_COOKIE_PAYLOAD_SIZE: usize = 5120;
+const MAX_GAME_PROFILE_PROPERTIES: usize = 16;
+const MAX_LOGIN_CUSTOM_QUERY_PAYLOAD: usize = 1_048_576;
 const MAX_CUSTOM_REPORT_DETAILS: usize = 32;
 const MAX_REGISTRY_DATA_ENTRIES: usize = 131_072;
 const MAX_REGISTRY_DATA_NBT_BYTES: usize = 2 * 1024 * 1024;
@@ -291,9 +293,20 @@ pub fn decode_login_clientbound(packet_id: i32, payload: &[u8]) -> Result<LoginC
         ids::login::CLIENTBOUND_LOGIN_COMPRESSION => Ok(LoginClientbound::SetCompression {
             threshold: Decoder::new(payload).read_var_i32()?,
         }),
-        ids::login::CLIENTBOUND_CUSTOM_QUERY => Ok(LoginClientbound::CustomQuery {
-            transaction_id: Decoder::new(payload).read_var_i32()?,
-        }),
+        ids::login::CLIENTBOUND_CUSTOM_QUERY => {
+            let mut decoder = Decoder::new(payload);
+            let transaction_id = decoder.read_var_i32()?;
+            read_resource_location(&mut decoder)?;
+            let payload_len = decoder.remaining_len();
+            if payload_len > MAX_LOGIN_CUSTOM_QUERY_PAYLOAD {
+                return Err(ProtocolError::PacketTooLarge(
+                    payload_len,
+                    MAX_LOGIN_CUSTOM_QUERY_PAYLOAD,
+                ));
+            }
+            decoder.read_exact(payload_len, "login custom query payload")?;
+            Ok(LoginClientbound::CustomQuery { transaction_id })
+        }
         ids::login::CLIENTBOUND_COOKIE_REQUEST => {
             let mut decoder = Decoder::new(payload);
             Ok(LoginClientbound::CookieRequest(decode_cookie_request(
@@ -311,6 +324,16 @@ pub fn encode_login_cookie_response(key: &str, payload: Option<&[u8]>) -> (i32, 
     (
         ids::login::SERVERBOUND_COOKIE_RESPONSE,
         encode_cookie_response_payload(key, payload),
+    )
+}
+
+pub fn encode_login_custom_query_answer(transaction_id: i32) -> (i32, Vec<u8>) {
+    let mut out = Encoder::new();
+    out.write_var_i32(transaction_id);
+    out.write_bool(false);
+    (
+        ids::login::SERVERBOUND_CUSTOM_QUERY_ANSWER,
+        out.into_inner(),
     )
 }
 
@@ -789,12 +812,18 @@ fn decode_game_profile(decoder: &mut Decoder<'_>) -> Result<GameProfile> {
     let uuid = decoder.read_uuid()?;
     let name = decoder.read_string(16)?;
     let property_count = decoder.read_len()?;
+    if property_count > MAX_GAME_PROFILE_PROPERTIES {
+        return Err(ProtocolError::PacketTooLarge(
+            property_count,
+            MAX_GAME_PROFILE_PROPERTIES,
+        ));
+    }
     let mut properties = Vec::with_capacity(property_count);
     for _ in 0..property_count {
-        let name = decoder.read_string(32767)?;
+        let name = decoder.read_string(64)?;
         let value = decoder.read_string(32767)?;
         let signature = if decoder.read_bool()? {
-            Some(decoder.read_string(32767)?)
+            Some(decoder.read_string(1024)?)
         } else {
             None
         };

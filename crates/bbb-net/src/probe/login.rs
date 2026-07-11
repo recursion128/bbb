@@ -1,8 +1,5 @@
 use anyhow::{bail, Result};
-use bbb_protocol::{
-    ids,
-    packets::{self, LoginClientbound},
-};
+use bbb_protocol::packets::{self, LoginClientbound};
 
 use crate::{probe::ProbeContext, types::ConnectionState};
 
@@ -16,18 +13,11 @@ impl ProbeContext {
                 bail!("server requested encryption; offline-mode probe cannot continue")
             }
             LoginClientbound::SetCompression { threshold } => {
-                self.conn.compression_threshold = Some(threshold);
+                self.conn.set_compression_threshold(threshold);
             }
             LoginClientbound::CustomQuery { transaction_id } => {
-                let mut response = bbb_protocol::codec::Encoder::new();
-                response.write_var_i32(transaction_id);
-                response.write_bool(false);
-                self.conn
-                    .send_packet(
-                        ids::login::SERVERBOUND_CUSTOM_QUERY_ANSWER,
-                        &response.into_inner(),
-                    )
-                    .await?;
+                let (id, response) = packets::encode_login_custom_query_answer(transaction_id);
+                self.conn.send_packet(id, &response).await?;
             }
             LoginClientbound::CookieRequest(request) => {
                 let payload = self.server_cookies.get(&request.key).map(Vec::as_slice);
@@ -65,6 +55,7 @@ mod tests {
     use crate::connection::RawConnection;
     use bbb_protocol::{
         codec::Decoder,
+        ids,
         packets::{
             AddEntity, ClientChatVisibility, ClientInformation, ClientMainHand,
             ClientParticleStatus, CookieRequest, GameProfile, Vec3d as ProtocolVec3d,
@@ -102,6 +93,28 @@ mod tests {
         assert_eq!(probe.world.counters().cookie_request_packets, 1);
         assert_eq!(probe.world.counters().cookie_response_hits, 0);
         assert_eq!(probe.world.counters().cookie_response_misses, 1);
+    }
+
+    #[tokio::test]
+    async fn probe_login_terminal_packets_fail_without_advancing_state() {
+        let (client, _server) = raw_connection_pair().await;
+        let mut probe = ProbeContext::new(client);
+
+        let error = probe
+            .handle_login_packet(LoginClientbound::Disconnect {
+                raw_json: r#"{"text":"bye"}"#.to_string(),
+            })
+            .await
+            .unwrap_err();
+        assert!(error.to_string().contains("login disconnected"));
+        assert_eq!(probe.state, ConnectionState::Login);
+
+        let error = probe
+            .handle_login_packet(LoginClientbound::EncryptionRequest)
+            .await
+            .unwrap_err();
+        assert!(error.to_string().contains("server requested encryption"));
+        assert_eq!(probe.state, ConnectionState::Login);
     }
 
     #[tokio::test]
