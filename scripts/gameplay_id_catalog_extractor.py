@@ -115,6 +115,12 @@ class CustomChatCompletionsActionEntry:
     ordinal: int
 
 
+@dataclass(frozen=True)
+class ClientCommandActionEntry:
+    constant_name: str
+    ordinal: int
+
+
 def _fail(source: JavaSource, expression: JavaExpression, message: str) -> None:
     span = expression.span
     raise GameplayIdExtractionError(
@@ -450,6 +456,19 @@ def custom_chat_completions_action_entries(
         )
     ]
     _validate(entries, "custom-chat completions action", "ordinal")
+    return entries
+
+
+def client_command_action_entries(
+    source: JavaSource, expected_count: int = 3
+) -> list[ClientCommandActionEntry]:
+    entries = [
+        ClientCommandActionEntry(name, ordinal)
+        for name, ordinal in _nested_enum_ordinals(
+            source, "Action", "client command action", expected_count
+        )
+    ]
+    _validate(entries, "client command action", "ordinal")
     return entries
 
 

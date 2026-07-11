@@ -10492,3 +10492,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   展示语义和原 invalid-ordinal `InvalidData` 诊断；删除 0/1/2 decode match。生成顺序、
   唯一性和 production-source 反向测试锁定 ordinal 权威，world/net/native completion
   apply focused tests 不改语义通过。
+
+## 2026-07-11：Generated client-command action order
+
+- [x] gameplay-id extractor 通过共享 Tree-sitter frontend 读取 vanilla
+  `ServerboundClientCommandPacket.Action` 的三项声明顺序，包括 26.1 的
+  `REQUEST_GAMERULE_VALUES`，生成 typed action/catalog/ordinal。protocol
+  `ClientCommandAction` 继续从 packet facade re-export，并以窄 Rust 命名投影保留既有
+  `RequestGameRuleValues` API；删除 0/1/2 ordinal match。生成顺序/唯一性和反向门禁、
+  protocol 编码及 net driver 三 action focused tests 均通过；respawn、stats 与 gamerule
+  请求的状态机行为仍由原 owner 手写。

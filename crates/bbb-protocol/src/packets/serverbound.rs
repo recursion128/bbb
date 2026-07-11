@@ -3,6 +3,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+pub use crate::client_command_actions::ClientCommandAction;
 use crate::{
     codec::{Encoder, ProtocolError, Result},
     ids,
@@ -156,23 +157,6 @@ pub struct ChangeGameModeCommand {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ChatAcknowledgement {
     pub offset: i32,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum ClientCommandAction {
-    PerformRespawn,
-    RequestStats,
-    RequestGameRuleValues,
-}
-
-impl ClientCommandAction {
-    fn ordinal(self) -> i32 {
-        match self {
-            Self::PerformRespawn => 0,
-            Self::RequestStats => 1,
-            Self::RequestGameRuleValues => 2,
-        }
-    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
