@@ -332,6 +332,9 @@ pub const VANILLA_ABSTRACT_MINECART_CUSTOM_DISPLAY_BLOCK_DATA_ID: u8 =
 const GENERATED_VANILLA_ABSTRACT_MINECART_DISPLAY_OFFSET_DATA_ID: u8 = 12;
 pub const VANILLA_ABSTRACT_MINECART_DISPLAY_OFFSET_DATA_ID: u8 =
     GENERATED_VANILLA_ABSTRACT_MINECART_DISPLAY_OFFSET_DATA_ID;
+const GENERATED_VANILLA_FURNACE_MINECART_FUEL_DATA_ID: u8 = 13;
+pub const VANILLA_FURNACE_MINECART_FUEL_DATA_ID: u8 =
+    GENERATED_VANILLA_FURNACE_MINECART_FUEL_DATA_ID;
 const GENERATED_VANILLA_HANGING_ENTITY_DIRECTION_DATA_ID: u8 = 8;
 pub const VANILLA_HANGING_ENTITY_DIRECTION_DATA_ID: u8 =
     GENERATED_VANILLA_HANGING_ENTITY_DIRECTION_DATA_ID;
@@ -787,6 +790,9 @@ pub const VANILLA_ABSTRACT_BOAT_DEFAULT_PADDLE_RIGHT: bool =
 const GENERATED_VANILLA_ABSTRACT_BOAT_DEFAULT_BUBBLE_TIME: i32 = 0;
 pub const VANILLA_ABSTRACT_BOAT_DEFAULT_BUBBLE_TIME: i32 =
     GENERATED_VANILLA_ABSTRACT_BOAT_DEFAULT_BUBBLE_TIME;
+const GENERATED_VANILLA_FURNACE_MINECART_DEFAULT_FUEL: bool = false;
+pub const VANILLA_FURNACE_MINECART_DEFAULT_FUEL: bool =
+    GENERATED_VANILLA_FURNACE_MINECART_DEFAULT_FUEL;
 const GENERATED_VANILLA_ARMOR_STAND_DEFAULT_CLIENT_FLAGS: i8 = 0;
 pub const VANILLA_ARMOR_STAND_DEFAULT_CLIENT_FLAGS: i8 =
     GENERATED_VANILLA_ARMOR_STAND_DEFAULT_CLIENT_FLAGS;
@@ -15114,6 +15120,23 @@ const ABSTRACTMINECART_SCHEMA: VanillaEntityMetadataFamilySchema =
         own_flags: ABSTRACTMINECART_FLAGS,
     };
 
+const MINECARTFURNACE_FIELDS: &[VanillaEntityMetadataFieldSchema] =
+    &[VanillaEntityMetadataFieldSchema {
+        name: "DATA_ID_FUEL",
+        data_id: 13,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+        default: VanillaEntityMetadataDefault::Boolean(false),
+    }];
+const MINECARTFURNACE_FLAGS: &[VanillaEntityMetadataFlagSchema] = &[];
+const MINECARTFURNACE_SCHEMA: VanillaEntityMetadataFamilySchema =
+    VanillaEntityMetadataFamilySchema {
+        family: VanillaEntityMetadataFamily::MinecartFurnace,
+        parent: Some(VanillaEntityMetadataFamily::AbstractMinecart),
+        inherited_field_count: 13,
+        own_fields: MINECARTFURNACE_FIELDS,
+        own_flags: MINECARTFURNACE_FLAGS,
+    };
+
 const HANGINGENTITY_FIELDS: &[VanillaEntityMetadataFieldSchema] =
     &[VanillaEntityMetadataFieldSchema {
         name: "DATA_DIRECTION",
@@ -15320,6 +15343,7 @@ pub(super) const fn generated_entity_metadata_schema(
         VanillaEntityMetadataFamily::VehicleEntity => &VEHICLEENTITY_SCHEMA,
         VanillaEntityMetadataFamily::AbstractBoat => &ABSTRACTBOAT_SCHEMA,
         VanillaEntityMetadataFamily::AbstractMinecart => &ABSTRACTMINECART_SCHEMA,
+        VanillaEntityMetadataFamily::MinecartFurnace => &MINECARTFURNACE_SCHEMA,
         VanillaEntityMetadataFamily::HangingEntity => &HANGINGENTITY_SCHEMA,
         VanillaEntityMetadataFamily::ItemFrame => &ITEMFRAME_SCHEMA,
         VanillaEntityMetadataFamily::Avatar => &AVATAR_SCHEMA,

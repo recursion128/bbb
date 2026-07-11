@@ -311,8 +311,6 @@ fn entity_model_sources_project_tnt_minecart_fuse_from_prime_event() {
 fn minecart_display_block_state_projects_defaults_and_custom_metadata() {
     const MINECART_CUSTOM_DISPLAY_BLOCK_DATA_ID: u8 = 11;
     const MINECART_DISPLAY_OFFSET_DATA_ID: u8 = 12;
-    const FURNACE_MINECART_FUEL_DATA_ID: u8 = 13;
-
     let mut store = WorldStore::new();
     for (id, entity_type_id) in [
         (23, VANILLA_ENTITY_TYPE_MINECART_ID),
@@ -405,7 +403,10 @@ fn minecart_display_block_state_projects_defaults_and_custom_metadata() {
 
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 25,
-        values: vec![protocol_bool_data(FURNACE_MINECART_FUEL_DATA_ID, true)],
+        values: vec![protocol_bool_data(
+            VANILLA_FURNACE_MINECART_FUEL_DATA_ID,
+            true,
+        )],
     }));
     assert_eq!(
         store

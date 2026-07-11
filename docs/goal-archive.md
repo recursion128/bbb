@@ -9951,3 +9951,9 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   leash-holder id18 与 stays-still id19，默认均为 false；world 本地玩家碰撞删除把
   stays-still 手抄为 id18 的错误副本，改为读取 generated id19/default。牵绳、骑乘和
   server-still timeout 行为仍由对应语义 owner 管理。
+
+## 2026-07-11：Generated entity metadata consumer（MinecartFurnace）
+
+- [x] 从 generated catalog 建立 `VehicleEntity -> AbstractMinecart -> MinecartFurnace`
+  family：BOOLEAN fuel id13/default false；world 默认 display-block projection 删除手抄
+  synced id/default。燃料消耗、推力和烟雾行为仍由对应语义 owner 管理。

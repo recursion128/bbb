@@ -121,6 +121,7 @@ use crate::entities::schema::{
     VANILLA_ENTITY_SHARED_FLAG_INVISIBLE as ENTITY_SHARED_FLAG_INVISIBLE,
     VANILLA_ENTITY_SHARED_FLAG_SHIFT_KEY_DOWN as ENTITY_SHARED_FLAG_DESCENDING,
     VANILLA_ENTITY_SHARED_FLAG_SPRINTING as ENTITY_SHARED_FLAG_SPRINTING,
+    VANILLA_FURNACE_MINECART_DEFAULT_FUEL, VANILLA_FURNACE_MINECART_FUEL_DATA_ID,
     VANILLA_HUMANOID_ARM_LEFT_ID, VANILLA_HUMANOID_ARM_RIGHT_ID,
     VANILLA_LIVING_ENTITY_FLAGS_DATA_ID,
     VANILLA_LIVING_ENTITY_FLAG_IS_USING as LIVING_ENTITY_FLAG_IS_USING,
@@ -146,8 +147,6 @@ const VANILLA_TICKS_REQUIRED_TO_FREEZE: i32 = 140;
 /// and therefore feed `ItemInHandLayer` through `getItemHeldByArm`.
 /// Vanilla 26.1 `EvokerRenderer` installs an `ItemInHandLayer` over the illager model.
 /// Vanilla 26.1 `ZombifiedPiglinRenderer` extends `HumanoidMobRenderer`.
-/// Vanilla `MinecartFurnace.DATA_ID_FUEL` boolean metadata, declared after abstract minecart fields.
-const FURNACE_MINECART_FUEL_DATA_ID: u8 = 13;
 /// Vanilla `PrimedTnt.DATA_FUSE_ID` int metadata: `PrimedTnt` directly extends
 /// `Entity`, whose base accessors occupy ids `0..=7`.
 const PRIMED_TNT_FUSE_DATA_ID: u8 = 8;
@@ -930,8 +929,12 @@ impl EntityStore {
             let furnace_has_fuel = identity.entity_type_id
                 == VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID
                 && self
-                    .metadata_bool(id, FURNACE_MINECART_FUEL_DATA_ID, false)
-                    .unwrap_or(false);
+                    .metadata_bool(
+                        id,
+                        VANILLA_FURNACE_MINECART_FUEL_DATA_ID,
+                        VANILLA_FURNACE_MINECART_DEFAULT_FUEL,
+                    )
+                    .unwrap_or(VANILLA_FURNACE_MINECART_DEFAULT_FUEL);
             default_minecart_display_block_state(
                 identity.entity_type_id,
                 furnace_has_fuel,

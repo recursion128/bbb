@@ -80,6 +80,7 @@ pub enum VanillaEntityMetadataFamily {
     VehicleEntity,
     AbstractBoat,
     AbstractMinecart,
+    MinecartFurnace,
     HangingEntity,
     ItemFrame,
     Avatar,
@@ -426,6 +427,7 @@ mod tests {
             VanillaEntityMetadataFamily::VehicleEntity,
             VanillaEntityMetadataFamily::AbstractBoat,
             VanillaEntityMetadataFamily::AbstractMinecart,
+            VanillaEntityMetadataFamily::MinecartFurnace,
             VanillaEntityMetadataFamily::HangingEntity,
             VanillaEntityMetadataFamily::ItemFrame,
             VanillaEntityMetadataFamily::Avatar,
@@ -740,6 +742,16 @@ mod tests {
         assert_eq!(abstract_villager.own_fields.len(), 1);
         assert_eq!(VANILLA_ABSTRACT_VILLAGER_UNHAPPY_COUNTER_DATA_ID, 18);
         assert_eq!(VANILLA_ABSTRACT_VILLAGER_DEFAULT_UNHAPPY_COUNTER, 0);
+        let furnace_minecart =
+            vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::MinecartFurnace);
+        assert_eq!(
+            furnace_minecart.parent,
+            Some(VanillaEntityMetadataFamily::AbstractMinecart)
+        );
+        assert_eq!(furnace_minecart.inherited_field_count, 13);
+        assert_eq!(furnace_minecart.own_fields.len(), 1);
+        assert_eq!(VANILLA_FURNACE_MINECART_FUEL_DATA_ID, 13);
+        assert!(!VANILLA_FURNACE_MINECART_DEFAULT_FUEL);
         let salmon = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Salmon);
         assert_eq!(
             salmon.parent,
