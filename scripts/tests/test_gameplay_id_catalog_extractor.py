@@ -17,6 +17,7 @@ from gameplay_id_catalog_extractor import (  # noqa: E402
     difficulty_entries,
     difficulty_out_of_bounds_strategy,
     entity_data_serializer_entries,
+    entity_anchor_entries,
     entity_pose_entries,
     equipment_slot_entries,
     game_type_entries,
@@ -343,6 +344,27 @@ public class ServerboundPlayerCommandPacket {
                 ("OPEN_INVENTORY", 5),
                 ("START_FALL_FLYING", 6),
             ],
+        )
+
+    def test_entity_anchors_preserve_nested_enum_order_and_names(self) -> None:
+        source = parse_source(
+            "fixture/EntityAnchorArgument.java",
+            b"""
+package fixture;
+public class EntityAnchorArgument {
+  public enum Anchor {
+    FEET("feet", (p, e) -> p),
+    EYES("eyes", (p, e) -> new Vec3(p.x, p.y + e.eyeHeight(), p.z));
+  }
+}
+""",
+        )
+        self.assertEqual(
+            [
+                (entry.constant_name, entry.ordinal, entry.serialized_name)
+                for entry in entity_anchor_entries(source)
+            ],
+            [("FEET", 0, "feet"), ("EYES", 1, "eyes")],
         )
 
     def test_unsupported_register_shape_reports_source_span(self) -> None:

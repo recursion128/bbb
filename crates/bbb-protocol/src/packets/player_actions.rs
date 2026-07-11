@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 
+pub use crate::entity_anchors::EntityAnchor;
 use crate::{
     codec::{Decoder, ProtocolError, Result},
     component::decode_component_summary_from_decoder,
@@ -29,33 +30,6 @@ pub struct PlayerLookAt {
 pub struct PlayerLookAtTarget {
     pub entity_id: i32,
     pub to_anchor: EntityAnchor,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum EntityAnchor {
-    Feet,
-    Eyes,
-}
-
-impl EntityAnchor {
-    pub fn as_str(self) -> &'static str {
-        match self {
-            Self::Feet => "feet",
-            Self::Eyes => "eyes",
-        }
-    }
-
-    fn from_ordinal(ordinal: i32) -> Result<Self> {
-        Ok(match ordinal {
-            0 => Self::Feet,
-            1 => Self::Eyes,
-            other => {
-                return Err(ProtocolError::InvalidData(format!(
-                    "invalid entity anchor ordinal {other}"
-                )));
-            }
-        })
-    }
 }
 
 pub(crate) fn decode_player_combat_enter(decoder: &Decoder<'_>) -> Result<()> {
@@ -121,7 +95,10 @@ pub(crate) fn decode_player_look_at(decoder: &mut Decoder<'_>) -> Result<PlayerL
 }
 
 fn decode_entity_anchor(decoder: &mut Decoder<'_>) -> Result<EntityAnchor> {
-    EntityAnchor::from_ordinal(decoder.read_var_i32()?)
+    let ordinal = decoder.read_var_i32()?;
+    EntityAnchor::from_ordinal(ordinal).ok_or_else(|| {
+        ProtocolError::InvalidData(format!("invalid entity anchor ordinal {ordinal}"))
+    })
 }
 
 #[cfg(test)]

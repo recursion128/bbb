@@ -10521,3 +10521,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   protocol/net 编码以及 native sprint、locally-controlled vehicle riding jump、elytra
   fall-flying focused tests 不改语义通过；预测、输入条件和 server correction 行为仍由原
   client owner 手写。
+
+## 2026-07-11：Generated entity-anchor catalog
+
+- [x] gameplay-id extractor 通过共享 Tree-sitter frontend 读取 vanilla
+  `EntityAnchorArgument.Anchor` nested enum 的 `FEET/EYES` 声明顺序及显式
+  `"feet"/"eyes"` 名称，生成 typed `EntityAnchor`/catalog/ordinal/name lookup。
+  protocol player-actions facade 保持原 re-export，删除 ordinal 与 `as_str` 两份 match，
+  并保留原 invalid-ordinal `InvalidData` 诊断。生成完整性/唯一性/反向门禁以及
+  protocol/world/net/native player-look-at focused tests 不改语义通过；anchor 的位置计算和
+  client orientation apply 仍由 world/native 语义 owner 手写。

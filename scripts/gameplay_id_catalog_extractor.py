@@ -133,6 +133,13 @@ class PlayerCommandActionEntry:
     ordinal: int
 
 
+@dataclass(frozen=True)
+class EntityAnchorEntry:
+    constant_name: str
+    ordinal: int
+    serialized_name: str
+
+
 def _fail(source: JavaSource, expression: JavaExpression, message: str) -> None:
     span = expression.span
     raise GameplayIdExtractionError(
@@ -405,9 +412,9 @@ def game_type_not_set_id(source: JavaSource) -> int:
     return int(initializer.canonical.replace(" ", ""), 0)
 
 
-def _nested_enum_ordinals(
-    source: JavaSource, enum_name: str, description: str, expected_count: int
-) -> list[tuple[str, int]]:
+def _nested_enum_constants(
+    source: JavaSource, enum_name: str, description: str
+) -> list[tuple[str, tuple[JavaExpression, ...]]]:
     enums = [
         java_type
         for java_type in source.types
@@ -417,14 +424,31 @@ def _nested_enum_ordinals(
         raise GameplayIdExtractionError(
             f"{source.relative_path}: expected one nested {enum_name} enum, found {len(enums)}"
         )
-    entries: list[tuple[str, int]] = []
+    entries: list[tuple[str, tuple[JavaExpression, ...]]] = []
     for node in type_body_members(enums[0].body_node):
         if node.type != "enum_constant":
             continue
         name = node.child_by_field_name("name")
         if name is None:
             _fail(source, source.expression(node), f"{description} lacks a name")
-        entries.append((source.text(name), len(entries)))
+        arguments = node.child_by_field_name("arguments")
+        entries.append(
+            (
+                source.text(name),
+                tuple(
+                    source.expression(child)
+                    for child in (() if arguments is None else arguments.named_children)
+                ),
+            )
+        )
+    return entries
+
+
+def _nested_enum_ordinals(
+    source: JavaSource, enum_name: str, description: str, expected_count: int
+) -> list[tuple[str, int]]:
+    constants = _nested_enum_constants(source, enum_name, description)
+    entries = [(name, ordinal) for ordinal, (name, _) in enumerate(constants)]
     if len(entries) != expected_count:
         raise GameplayIdExtractionError(
             f"expected {expected_count} {description}s, extracted {len(entries)}"
@@ -507,6 +531,26 @@ def player_command_action_entries(
         )
     ]
     _validate(entries, "player command action", "ordinal")
+    return entries
+
+
+def entity_anchor_entries(
+    source: JavaSource, expected_count: int = 2
+) -> list[EntityAnchorEntry]:
+    entries = []
+    for ordinal, (name, arguments) in enumerate(
+        _nested_enum_constants(source, "Anchor", "entity anchor")
+    ):
+        if len(arguments) != 2:
+            expression = arguments[0] if arguments else source.expression(source.types[0].node)
+            _fail(source, expression, f"entity anchor {name} must have two arguments")
+        entries.append(EntityAnchorEntry(name, ordinal, _string(source, arguments[0])))
+    if len(entries) != expected_count:
+        raise GameplayIdExtractionError(
+            f"expected {expected_count} entity anchors, extracted {len(entries)}"
+        )
+    _validate(entries, "entity anchor", "ordinal")
+    _validate(entries, "entity anchor", "serialized_name")
     return entries
 
 

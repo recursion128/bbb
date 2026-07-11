@@ -14,6 +14,7 @@ pub mod custom_chat_completions_actions;
 pub mod damage_types;
 pub mod data_component_types;
 pub mod difficulties;
+pub mod entity_anchors;
 pub mod entity_data_serializers;
 pub mod entity_poses;
 pub mod entity_types;
