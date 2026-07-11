@@ -306,6 +306,13 @@ class TropicalFishPatternEntry:
     packed_id: int
 
 
+@dataclass(frozen=True)
+class TropicalFishCommonVariantEntry:
+    pattern_packed_id: int
+    base_color_id: int
+    pattern_color_id: int
+
+
 def _fail(source: JavaSource, expression: JavaExpression, message: str) -> None:
     span = expression.span
     raise GameplayIdExtractionError(
@@ -480,7 +487,7 @@ def menu_type_entries(source: JavaSource, expected_count: int = 25) -> list[Menu
     entries = []
     for field in _fields(source, "MenuType<"):
         arguments = _register_arguments(source, field)
-        if len(arguments) < 2:
+        if not arguments:
             _fail(source, field.initializer, "menu register lacks arguments")
         entries.append(MenuTypeEntry(field.name, "minecraft:" + _string(source, arguments[0])))
     if len(entries) != expected_count:
@@ -1930,7 +1937,8 @@ def attribute_modifier_type_entries(
 
 def tropical_fish_pattern_entries(
     source: JavaSource,
-) -> list[TropicalFishPatternEntry]:
+    dye_color_source: JavaSource,
+) -> tuple[list[TropicalFishPatternEntry], list[TropicalFishCommonVariantEntry]]:
     base_constants = _nested_enum_constants(source, "Base", "tropical fish base")
     bases = {}
     for name, arguments in base_constants:
@@ -1987,7 +1995,52 @@ def tropical_fish_pattern_entries(
         _fail(source, initializer, "tropical fish Pattern.BY_ID must use sparse KOB fallback")
     _validate(entries, "tropical fish pattern", "serialized_name")
     _validate(entries, "tropical fish pattern", "packed_id")
-    return entries
+    dye_colors = {}
+    for name, arguments in _enum_constants(dye_color_source):
+        if not arguments:
+            _fail(
+                dye_color_source,
+                dye_color_source.expression(dye_color_source.types[0].node),
+                f"dye color {name} lacks id",
+            )
+        dye_colors[name] = _integer(dye_color_source, arguments[0])
+    if len(dye_colors) != 16:
+        raise GameplayIdExtractionError("expected 16 dye colors for tropical fish variants")
+    patterns = {entry.constant_name: entry.packed_id for entry in entries}
+    common_fields = [
+        field for field in source.fields
+        if field.name == "COMMON_VARIANTS" and field.initializer is not None
+    ]
+    if len(common_fields) != 1:
+        raise GameplayIdExtractionError(f"{source.relative_path}: expected one COMMON_VARIANTS field")
+    common_variants = []
+    for node in descendants(common_fields[0].initializer.node):
+        if node.type != "object_creation_expression":
+            continue
+        type_node = node.child_by_field_name("type")
+        arguments = node.child_by_field_name("arguments")
+        if type_node is None or arguments is None:
+            _fail(source, source.expression(node), "common tropical fish variant is incomplete")
+        if source.expression(type_node).canonical != "TropicalFish.Variant":
+            continue
+        values = [source.expression(child).canonical for child in arguments.named_children]
+        if len(values) != 3:
+            _fail(source, source.expression(node), "common tropical fish variant must have three arguments")
+        pattern_name = values[0].rsplit(".", 1)[-1]
+        base_color = values[1].rsplit(".", 1)[-1]
+        pattern_color = values[2].rsplit(".", 1)[-1]
+        if pattern_name not in patterns or base_color not in dye_colors or pattern_color not in dye_colors:
+            _fail(source, source.expression(node), "common tropical fish variant references unknown constants")
+        common_variants.append(
+            TropicalFishCommonVariantEntry(
+                patterns[pattern_name], dye_colors[base_color], dye_colors[pattern_color]
+            )
+        )
+    if len(common_variants) != 22:
+        raise GameplayIdExtractionError(
+            f"expected 22 common tropical fish variants, extracted {len(common_variants)}"
+        )
+    return entries, common_variants
 
 
 def equipment_slot_entries(

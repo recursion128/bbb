@@ -13,7 +13,9 @@ use bbb_protocol::{
         AdventureModePredicateSummary, AttributeModifierSummary, PaintingVariantSummary,
         SuspiciousStewEffectSummary,
     },
-    tropical_fish_patterns::vanilla_tropical_fish_pattern,
+    tropical_fish_patterns::{
+        vanilla_tropical_fish_pattern, VANILLA_TROPICAL_FISH_COMMON_VARIANTS,
+    },
     ComponentStyle, StyledTextRun,
 };
 use bbb_world::{EnchantmentAttributeModifier, RegistrySet};
@@ -166,30 +168,6 @@ const INSTRUMENT_DESCRIPTION_STYLE: ComponentStyle = ComponentStyle {
     color: Some(TOOLTIP_GRAY_TEXT_COLOR),
     click_event: None,
 };
-const TROPICAL_FISH_COMMON_VARIANTS: &[(i32, i32, i32)] = &[
-    (257, 1, 7),
-    (1, 7, 7),
-    (1, 7, 11),
-    (1281, 0, 7),
-    (256, 11, 7),
-    (0, 1, 0),
-    (1280, 6, 3),
-    (769, 10, 4),
-    (1281, 0, 14),
-    (1280, 0, 4),
-    (513, 0, 7),
-    (1281, 0, 1),
-    (768, 9, 6),
-    (1024, 5, 3),
-    (1025, 14, 0),
-    (512, 7, 14),
-    (769, 14, 0),
-    (1, 0, 4),
-    (0, 14, 0),
-    (256, 7, 0),
-    (768, 9, 4),
-    (1, 4, 4),
-];
 const VANILLA_POTION_EFFECTS_BY_ID: &[&[VanillaPotionEffect]] = &[
     &[],
     &[],
@@ -783,9 +761,15 @@ fn tropical_fish_common_variant_index(
     base_color_id: i32,
     pattern_color_id: i32,
 ) -> Option<usize> {
-    TROPICAL_FISH_COMMON_VARIANTS
+    VANILLA_TROPICAL_FISH_COMMON_VARIANTS
         .iter()
-        .position(|variant| *variant == (pattern_id, base_color_id, pattern_color_id))
+        .position(|variant| {
+            (
+                variant.pattern_packed_id,
+                variant.base_color_id,
+                variant.pattern_color_id,
+            ) == (pattern_id, base_color_id, pattern_color_id)
+        })
 }
 
 fn dye_color_id_or_white(color_id: Option<i32>) -> i32 {

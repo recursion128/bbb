@@ -1101,10 +1101,17 @@ record ItemAttributeModifiers() {
         )
 
     def test_tropical_fish_patterns_preserve_sparse_packed_ids(self) -> None:
+        common_variants = ", ".join(
+            [
+                "new TropicalFish.Variant(TropicalFish.Pattern.STRIPEY, DyeColor.ORANGE, DyeColor.GRAY)"
+            ]
+            * 22
+        )
         source = parse_source(
             "fixture/TropicalFish.java",
-            b"""package fixture;
+            """package fixture;
 class TropicalFish {
+ static final Object COMMON_VARIANTS = List.of(__COMMON_VARIANTS__);
  enum Base { SMALL(0), LARGE(1); Base(int id) {} }
  enum Pattern {
   KOB("kob", Base.SMALL, 0), SUNSTREAK("sunstreak", Base.SMALL, 1),
@@ -1117,14 +1124,24 @@ class TropicalFish {
   Pattern(String name, Base base, int index) {}
  }
 }
+""".replace("__COMMON_VARIANTS__", common_variants).encode(),
+        )
+        dye_colors = parse_source(
+            "fixture/DyeColor.java",
+            b"""package fixture;
+enum DyeColor { WHITE(0), ORANGE(1), MAGENTA(2), LIGHT_BLUE(3), YELLOW(4), LIME(5), PINK(6), GRAY(7), LIGHT_GRAY(8), CYAN(9), PURPLE(10), BLUE(11), BROWN(12), GREEN(13), RED(14), BLACK(15); DyeColor(int id) {} }
 """,
         )
-        entries = tropical_fish_pattern_entries(source)
+        entries, common = tropical_fish_pattern_entries(source, dye_colors)
         self.assertEqual(entries[0].packed_id, 0)
         self.assertEqual(entries[5].packed_id, 1280)
         self.assertEqual(entries[6].packed_id, 1)
         self.assertEqual(entries[-1].packed_id, 1281)
         self.assertEqual(entries[-1].serialized_name, "clayfish")
+        self.assertEqual(len(common), 22)
+        self.assertEqual(common[0].pattern_packed_id, 257)
+        self.assertEqual(common[0].base_color_id, 1)
+        self.assertEqual(common[0].pattern_color_id, 7)
 
     def test_unsupported_register_shape_reports_source_span(self) -> None:
         source = parse_source(

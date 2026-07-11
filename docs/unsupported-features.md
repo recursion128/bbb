@@ -78,7 +78,8 @@ Owner: `scripts/` + each generated catalog's semantic crate
   component wire and persistent SNBT codecs remain handwritten. AttributeModifier operation and
   ItemAttributeModifiers display ids/names/ZERO fallbacks now likewise share a generated owner
   across protocol/world/pack/native/item-model; calculation, tooltip, and payload codecs remain
-  handwritten. TropicalFish.Pattern names/base/index/sparse packed ids now share a generated owner
+  handwritten. TropicalFish.Pattern names/base/index/sparse packed ids and the 22 common-variant
+  triples now share a generated owner
   across protocol/native/item-model，并由 renderer dev 反向断言锁定；texture、tooltip 和
   entity presentation semantics remain handwritten.
   The remaining cross-crate registry/ordinal audit stays open.

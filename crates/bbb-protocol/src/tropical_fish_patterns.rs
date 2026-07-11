@@ -112,6 +112,126 @@ pub const VANILLA_TROPICAL_FISH_PATTERNS: &[TropicalFishPatternDescriptor] = &[
     },
 ];
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct TropicalFishCommonVariantDescriptor {
+    pub pattern_packed_id: i32,
+    pub base_color_id: i32,
+    pub pattern_color_id: i32,
+}
+
+pub const VANILLA_TROPICAL_FISH_COMMON_VARIANTS: &[TropicalFishCommonVariantDescriptor] = &[
+    TropicalFishCommonVariantDescriptor {
+        pattern_packed_id: 257,
+        base_color_id: 1,
+        pattern_color_id: 7,
+    },
+    TropicalFishCommonVariantDescriptor {
+        pattern_packed_id: 1,
+        base_color_id: 7,
+        pattern_color_id: 7,
+    },
+    TropicalFishCommonVariantDescriptor {
+        pattern_packed_id: 1,
+        base_color_id: 7,
+        pattern_color_id: 11,
+    },
+    TropicalFishCommonVariantDescriptor {
+        pattern_packed_id: 1281,
+        base_color_id: 0,
+        pattern_color_id: 7,
+    },
+    TropicalFishCommonVariantDescriptor {
+        pattern_packed_id: 256,
+        base_color_id: 11,
+        pattern_color_id: 7,
+    },
+    TropicalFishCommonVariantDescriptor {
+        pattern_packed_id: 0,
+        base_color_id: 1,
+        pattern_color_id: 0,
+    },
+    TropicalFishCommonVariantDescriptor {
+        pattern_packed_id: 1280,
+        base_color_id: 6,
+        pattern_color_id: 3,
+    },
+    TropicalFishCommonVariantDescriptor {
+        pattern_packed_id: 769,
+        base_color_id: 10,
+        pattern_color_id: 4,
+    },
+    TropicalFishCommonVariantDescriptor {
+        pattern_packed_id: 1281,
+        base_color_id: 0,
+        pattern_color_id: 14,
+    },
+    TropicalFishCommonVariantDescriptor {
+        pattern_packed_id: 1280,
+        base_color_id: 0,
+        pattern_color_id: 4,
+    },
+    TropicalFishCommonVariantDescriptor {
+        pattern_packed_id: 513,
+        base_color_id: 0,
+        pattern_color_id: 7,
+    },
+    TropicalFishCommonVariantDescriptor {
+        pattern_packed_id: 1281,
+        base_color_id: 0,
+        pattern_color_id: 1,
+    },
+    TropicalFishCommonVariantDescriptor {
+        pattern_packed_id: 768,
+        base_color_id: 9,
+        pattern_color_id: 6,
+    },
+    TropicalFishCommonVariantDescriptor {
+        pattern_packed_id: 1024,
+        base_color_id: 5,
+        pattern_color_id: 3,
+    },
+    TropicalFishCommonVariantDescriptor {
+        pattern_packed_id: 1025,
+        base_color_id: 14,
+        pattern_color_id: 0,
+    },
+    TropicalFishCommonVariantDescriptor {
+        pattern_packed_id: 512,
+        base_color_id: 7,
+        pattern_color_id: 14,
+    },
+    TropicalFishCommonVariantDescriptor {
+        pattern_packed_id: 769,
+        base_color_id: 14,
+        pattern_color_id: 0,
+    },
+    TropicalFishCommonVariantDescriptor {
+        pattern_packed_id: 1,
+        base_color_id: 0,
+        pattern_color_id: 4,
+    },
+    TropicalFishCommonVariantDescriptor {
+        pattern_packed_id: 0,
+        base_color_id: 14,
+        pattern_color_id: 0,
+    },
+    TropicalFishCommonVariantDescriptor {
+        pattern_packed_id: 256,
+        base_color_id: 7,
+        pattern_color_id: 0,
+    },
+    TropicalFishCommonVariantDescriptor {
+        pattern_packed_id: 768,
+        base_color_id: 9,
+        pattern_color_id: 4,
+    },
+    TropicalFishCommonVariantDescriptor {
+        pattern_packed_id: 1,
+        base_color_id: 4,
+        pattern_color_id: 4,
+    },
+];
+
 pub fn vanilla_tropical_fish_pattern(packed_id: i32) -> &'static TropicalFishPatternDescriptor {
     VANILLA_TROPICAL_FISH_PATTERNS
         .iter()
@@ -141,6 +261,23 @@ mod tests {
         assert_eq!(vanilla_tropical_fish_pattern(9999).constant_name, "KOB");
         assert_eq!(vanilla_tropical_fish_pattern(1281).base_id, 1);
         assert_eq!(vanilla_tropical_fish_pattern(1281).pattern_index, 5);
+        assert_eq!(VANILLA_TROPICAL_FISH_COMMON_VARIANTS.len(), 22);
+        assert_eq!(
+            VANILLA_TROPICAL_FISH_COMMON_VARIANTS[0],
+            TropicalFishCommonVariantDescriptor {
+                pattern_packed_id: 257,
+                base_color_id: 1,
+                pattern_color_id: 7
+            }
+        );
+        assert_eq!(
+            VANILLA_TROPICAL_FISH_COMMON_VARIANTS[21],
+            TropicalFishCommonVariantDescriptor {
+                pattern_packed_id: 1,
+                base_color_id: 4,
+                pattern_color_id: 4
+            }
+        );
     }
 
     #[test]

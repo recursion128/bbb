@@ -10725,7 +10725,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] gameplay-id extractor 通过共享 Tree-sitter frontend 读取 `TropicalFish.Base` 与 nested
   `Pattern` 的 12 项 name/base/index，机械计算 `base.id | index << 8` sparse packed id，并验证
-  `ByIdMap.sparse(..., KOB)` fallback。protocol component decode、native persistent SNBT、
+  `ByIdMap.sparse(..., KOB)` fallback，并提取 `COMMON_VARIANTS` 22 项声明顺序及 pattern/dye
+  三元组。protocol component decode、native persistent SNBT、
   item-model tooltip 统一引用 generated catalog，renderer pattern/shape owner 通过既有
   dev-dependency 做逐项反向断言；同时删除
   item-model 的平行 dye-color name/id 表。pattern texture、tooltip 文案、entity packed-variant
