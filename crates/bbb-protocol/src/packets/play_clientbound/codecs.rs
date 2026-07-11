@@ -1,6 +1,8 @@
 use crate::{
     codec::{Decoder, ProtocolError, Result},
-    packets::{chunks, decode_vec3d, read_resource_location, PlayerPositionUpdate},
+    packets::{
+        chunks, decode_vec3d, read_resource_location, PlayerPositionUpdate, PlayerRotationUpdate,
+    },
 };
 
 use super::types::*;
@@ -72,6 +74,21 @@ pub(super) fn decode_player_position(decoder: &mut Decoder<'_>) -> Result<Player
     if !decoder.is_empty() {
         return Err(ProtocolError::InvalidData(
             "trailing bytes after player position packet".to_string(),
+        ));
+    }
+    Ok(update)
+}
+
+pub(super) fn decode_player_rotation(decoder: &mut Decoder<'_>) -> Result<PlayerRotationUpdate> {
+    let update = PlayerRotationUpdate {
+        y_rot: decoder.read_f32()?,
+        relative_y: decoder.read_bool()?,
+        x_rot: decoder.read_f32()?,
+        relative_x: decoder.read_bool()?,
+    };
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after player rotation packet".to_string(),
         ));
     }
     Ok(update)

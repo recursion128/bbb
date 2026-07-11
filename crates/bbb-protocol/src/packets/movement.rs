@@ -338,18 +338,16 @@ mod tests {
     }
 
     #[test]
-    fn decodes_player_rotation_packet() {
+    fn decodes_player_rotation_packet_strictly() {
         let mut payload = Encoder::new();
         payload.write_f32(15.0);
         payload.write_bool(true);
         payload.write_f32(-120.0);
         payload.write_bool(false);
 
-        let packet = decode_play_clientbound(
-            ids::play::CLIENTBOUND_PLAYER_ROTATION,
-            &payload.into_inner(),
-        )
-        .unwrap();
+        let payload = payload.into_inner();
+        let packet =
+            decode_play_clientbound(ids::play::CLIENTBOUND_PLAYER_ROTATION, &payload).unwrap();
         assert_eq!(
             packet,
             PlayClientbound::PlayerRotation(PlayerRotationUpdate {
@@ -359,6 +357,14 @@ mod tests {
                 relative_x: false,
             })
         );
+
+        let mut trailing = payload;
+        trailing.push(0);
+        let error =
+            decode_play_clientbound(ids::play::CLIENTBOUND_PLAYER_ROTATION, &trailing).unwrap_err();
+        assert!(error
+            .to_string()
+            .contains("trailing bytes after player rotation packet"));
     }
 
     #[test]

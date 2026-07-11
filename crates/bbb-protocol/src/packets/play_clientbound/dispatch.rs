@@ -10,12 +10,15 @@ use crate::{
             InitializeBorder, SetBorderCenter, SetBorderLerpSize, SetBorderSize,
             SetBorderWarningDelay, SetBorderWarningDistance,
         },
-        world_effects, PlayerRotationUpdate,
+        world_effects,
     },
 };
 
 use super::{
-    codecs::{decode_award_stats, decode_play_login, decode_player_position, decode_respawn},
+    codecs::{
+        decode_award_stats, decode_play_login, decode_player_position, decode_player_rotation,
+        decode_respawn,
+    },
     types::*,
 };
 
@@ -480,12 +483,9 @@ pub fn decode_play_clientbound(packet_id: i32, payload: &[u8]) -> Result<PlayCli
         }
         ids::play::CLIENTBOUND_PLAYER_ROTATION => {
             let mut decoder = Decoder::new(payload);
-            Ok(PlayClientbound::PlayerRotation(PlayerRotationUpdate {
-                y_rot: decoder.read_f32()?,
-                relative_y: decoder.read_bool()?,
-                x_rot: decoder.read_f32()?,
-                relative_x: decoder.read_bool()?,
-            }))
+            Ok(PlayClientbound::PlayerRotation(decode_player_rotation(
+                &mut decoder,
+            )?))
         }
         ids::play::CLIENTBOUND_PROJECTILE_POWER => {
             let mut decoder = Decoder::new(payload);

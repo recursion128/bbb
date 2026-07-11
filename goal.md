@@ -331,6 +331,10 @@ play 初始 position handoff 已闭合严格 position decode、canonical correct
 也已审计。仍须将当前“首个 position 后发送”的近似替换为独立 `LevelLoadTracker` readiness，
 并补齐 mounted-player 回声与 block prediction `onTeleport` side effect；这些格继续保持 partial，
 不能由现有 once guard 外推为完整 join readiness。
+四种 serverbound `MovePlayer` 变体与 clientbound rotation correction 已逐格闭合；非乘客
+movement 现在只在 local player 是 controlled camera 时上报，观察远端实体不会再向服务器发送
+玩家位移。rotation packet 严格消费 payload，并按 relative flags 更新 canonical pose 后立即回发
+`Rot(false,false)`。
 
 完成标准：全部 vanilla 26.1 catalog entry 都有矩阵行；所有目标客户端适用项为
 `complete`，其余只有带 vanilla 依据的 `not-applicable` 或带重启判据的窄 `deferred`；

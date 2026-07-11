@@ -10990,3 +10990,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   section compiled/visible readiness，并带 30 秒 timeout。bbb 当前 unit encoder/once guard 已有，
   但 command/state/tests 保持 partial；position runtime 也因 mounted-player echo 与 block-state
   prediction teleport sequence 未对齐而保持 partial，未把现有近似测试命名为 vanilla 行为。
+
+## 2026-07-11：play movement variants and rotation coverage audit
+
+- [x] 对照 `LocalPlayer.sendPosition/tick` 与 `ServerboundMovePlayerPacket` 四个 subtype，补齐
+  非乘客 movement 的 controlled-camera guard：观察远端实体时仍推进本地姿态但不再排队玩家
+  movement；乘客 rotation/locally-controlled vehicle 路径保持独立。`Pos`、`PosRot`、`Rot`、
+  `StatusOnly` 的 command/encoder/variant/reminder/collision flags/tests 与 server no-direct-ack
+  coverage 均已闭合。
+- [x] 对照 `ClientboundPlayerRotationPacket` 与 `ClientPacketListener.handleRotatePlayer`，将
+  rotation decode 收进严格 packet codec，拒绝 trailing bytes；relative yaw、clamped pitch、
+  canonical pose snap 和立即 `Rot(false,false)` 回声由 protocol/net/world tests 锁定，五格闭合。

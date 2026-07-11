@@ -3241,29 +3241,44 @@
       "constant_name": "SERVERBOUND_MOVE_PLAYER_POS",
       "coverage": {
         "ack_response": {
-          "evidence": [],
+          "evidence": [
+            "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#handleMovePlayer"
+          ],
           "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "status": "not-applicable"
         },
         "command_surface": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-native/src/input/movement.rs#maybe_queue_player_move_command",
+            "crates/bbb-net/src/types/commands.rs#PlayerMoveCommand"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "encoder": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/movement.rs#encode_play_move_player_pos",
+            "vanilla:net/minecraft/network/protocol/game/ServerboundMovePlayerPacket.java#class Pos"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "state_guard": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-native/src/input/movement.rs#advance_player_input_does_not_report_unmounted_movement_for_remote_camera",
+            "crates/bbb-native/src/input/movement.rs#move_command_forces_position_after_vanilla_reminder_interval",
+            "vanilla:net/minecraft/client/player/LocalPlayer.java#sendPosition"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/movement.rs#encodes_move_player_packet_variants",
+            "crates/bbb-net/src/driver/commands/tests.rs#player_move_command_selects_vanilla_move_player_variant_from_previous_state"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "serverbound",
@@ -3300,8 +3315,10 @@
         },
         "state_guard": {
           "evidence": [
+            "crates/bbb-native/src/input/movement.rs#advance_player_input_does_not_report_unmounted_movement_for_remote_camera",
             "crates/bbb-native/src/input/movement.rs#move_command_forces_position_after_vanilla_reminder_interval",
-            "crates/bbb-net/src/driver/commands/tests.rs#player_move_command_selects_vanilla_move_player_variant_from_previous_state"
+            "crates/bbb-net/src/driver/commands/tests.rs#player_move_command_selects_vanilla_move_player_variant_from_previous_state",
+            "vanilla:net/minecraft/client/player/LocalPlayer.java#sendPosition"
           ],
           "gap": null,
           "status": "complete"
@@ -3325,29 +3342,46 @@
       "constant_name": "SERVERBOUND_MOVE_PLAYER_ROT",
       "coverage": {
         "ack_response": {
-          "evidence": [],
+          "evidence": [
+            "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#handleMovePlayer"
+          ],
           "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "status": "not-applicable"
         },
         "command_surface": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-native/src/input/movement.rs#maybe_queue_player_move_command",
+            "crates/bbb-net/src/event_stream/play.rs#PlayClientbound::PlayerRotation"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "encoder": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/movement.rs#encode_play_move_player_rot",
+            "vanilla:net/minecraft/network/protocol/game/ServerboundMovePlayerPacket.java#class Rot"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "state_guard": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-native/src/input/movement.rs#advance_player_input_does_not_report_unmounted_movement_for_remote_camera",
+            "crates/bbb-native/src/input/movement.rs#move_command_queues_rotation_only_at_command_interval",
+            "crates/bbb-net/src/event_stream.rs#play_player_rotation_sends_vanilla_rot_ack",
+            "vanilla:net/minecraft/client/player/LocalPlayer.java#sendPosition"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/movement.rs#encodes_move_player_packet_variants",
+            "crates/bbb-net/src/driver/commands/tests.rs#player_move_command_selects_vanilla_move_player_variant_from_previous_state",
+            "crates/bbb-net/src/event_stream.rs#play_player_rotation_sends_vanilla_rot_ack"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "serverbound",
@@ -3360,29 +3394,44 @@
       "constant_name": "SERVERBOUND_MOVE_PLAYER_STATUS_ONLY",
       "coverage": {
         "ack_response": {
-          "evidence": [],
+          "evidence": [
+            "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#handleMovePlayer"
+          ],
           "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "status": "not-applicable"
         },
         "command_surface": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-native/src/input/movement.rs#maybe_queue_player_move_command",
+            "crates/bbb-net/src/types/commands.rs#PlayerMoveCommand"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "encoder": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/movement.rs#encode_play_move_player_status_only",
+            "vanilla:net/minecraft/network/protocol/game/ServerboundMovePlayerPacket.java#class StatusOnly"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "state_guard": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-native/src/input/movement.rs#advance_player_input_does_not_report_unmounted_movement_for_remote_camera",
+            "crates/bbb-native/src/input/movement.rs#move_command_queues_status_only_at_command_interval",
+            "vanilla:net/minecraft/client/player/LocalPlayer.java#sendPosition"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/movement.rs#encodes_move_player_packet_variants",
+            "crates/bbb-net/src/driver/commands/tests.rs#player_move_command_selects_vanilla_move_player_variant_from_previous_state"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "serverbound",
@@ -7266,29 +7315,44 @@
       "constant_name": "CLIENTBOUND_PLAYER_ROTATION",
       "coverage": {
         "canonical_apply": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/client/local_player.rs#apply_player_rotation",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleRotatePlayer"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/movement.rs#decodes_player_rotation_packet_strictly",
+            "vanilla:net/minecraft/network/protocol/game/ClientboundPlayerRotationPacket.java#STREAM_CODEC"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "ownership": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-net/src/event_stream/play.rs#PlayClientbound::PlayerRotation"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "runtime_side_effect": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-net/src/event_stream.rs#play_player_rotation_sends_vanilla_rot_ack",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleRotatePlayer"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/movement.rs#decodes_player_rotation_packet_strictly",
+            "crates/bbb-net/src/event_stream.rs#play_player_rotation_sends_vanilla_rot_ack",
+            "crates/bbb-world/src/client/local_player.rs#local_player_position_and_rotation_update_canonical_pose"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "clientbound",

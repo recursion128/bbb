@@ -86,7 +86,9 @@ pub(crate) fn advance_player_input(
 
     input.mouse_delta_x = 0.0;
     input.mouse_delta_y = 0.0;
-    maybe_queue_player_move_command(input, counters, net_commands, pose, now);
+    if world.local_player().camera.follows_player {
+        maybe_queue_player_move_command(input, counters, net_commands, pose, now);
+    }
 }
 
 fn advance_unmounted_local_player_input(
@@ -365,7 +367,7 @@ mod tests {
     use bbb_protocol::packets::{
         AddEntity, CommonPlayerSpawnInfo, EquipmentSlot, EquipmentSlotUpdate,
         GameEvent as ProtocolGameEvent, ItemStackSummary, PaddleBoat, PlayLogin, PlayerAbilities,
-        PlayerAbilitiesCommand, SetEquipment, SetPassengers, Vec3d as ProtocolVec3d,
+        PlayerAbilitiesCommand, SetCamera, SetEquipment, SetPassengers, Vec3d as ProtocolVec3d,
     };
     use bbb_world::ItemEquipmentSlot;
     use uuid::Uuid;
@@ -449,6 +451,34 @@ mod tests {
         let world_pose = world.local_player_pose().unwrap();
         assert_f64_near(world_pose.position.z, second.state.position.z, 0.000001);
         assert_eq!(counters.player_move_commands_queued, 2);
+    }
+
+    #[test]
+    fn advance_player_input_does_not_report_unmounted_movement_for_remote_camera() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        input.forward = true;
+        let mut world = WorldStore::new();
+        world.apply_login(&protocol_play_login(99));
+        world.apply_add_entity(protocol_add_entity_with_type(123, 0));
+        assert!(world.apply_set_camera(SetCamera { camera_id: 123 }));
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.0, 64.0, 0.0),
+            ..LocalPlayerPoseState::default()
+        });
+        let mut counters = NetCounters::default();
+
+        advance_player_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            Instant::now(),
+        );
+
+        assert!(rx.try_recv().is_err());
+        assert_eq!(counters.player_move_commands_queued, 0);
     }
 
     #[test]

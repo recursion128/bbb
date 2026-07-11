@@ -694,13 +694,17 @@ mod tests {
     }
 
     #[test]
-    fn play_initial_position_handoff_keeps_load_readiness_and_teleport_effects_open() {
+    fn play_movement_family_keeps_load_readiness_and_teleport_effects_open() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let packets = BTreeSet::from([
             "SERVERBOUND_ACCEPT_TELEPORTATION",
+            "SERVERBOUND_MOVE_PLAYER_POS",
             "SERVERBOUND_MOVE_PLAYER_POS_ROT",
+            "SERVERBOUND_MOVE_PLAYER_ROT",
+            "SERVERBOUND_MOVE_PLAYER_STATUS_ONLY",
             "SERVERBOUND_PLAYER_LOADED",
             "CLIENTBOUND_PLAYER_POSITION",
+            "CLIENTBOUND_PLAYER_ROTATION",
         ]);
         let entries: Vec<_> = ledger
             .entries
