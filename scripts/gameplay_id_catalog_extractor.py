@@ -276,6 +276,13 @@ class ComponentValueEntry:
     value_id: int
 
 
+@dataclass(frozen=True)
+class ConsumeEffectTypeEntry:
+    constant_name: str
+    type_id: int
+    resource_id: str
+
+
 def _fail(source: JavaSource, expression: JavaExpression, message: str) -> None:
     span = expression.span
     raise GameplayIdExtractionError(
@@ -1504,6 +1511,80 @@ def item_component_value_type_entries(
             f"unsupported item component value id strategies {strategies}"
         )
     return item_uses, swings, rarities, map_values, firework_shapes
+
+
+def consume_effect_type_entries(
+    source: JavaSource, expected_count: int = 5
+) -> list[ConsumeEffectTypeEntry]:
+    types = [
+        java_type
+        for java_type in source.types
+        if java_type.kind == "record"
+        and java_type.simple_name == "Type"
+        and java_type.fqcn.endswith(".ConsumeEffect.Type")
+    ]
+    if len(types) != 1:
+        raise GameplayIdExtractionError(
+            f"{source.relative_path}: expected one nested ConsumeEffect.Type record"
+        )
+    fields = [
+        field
+        for field in source.fields_for(types[0])
+        if field.type_spelling.replace(" ", "").startswith("ConsumeEffect.Type<")
+    ]
+    entries = []
+    for type_id, field in enumerate(fields):
+        arguments = _register_arguments(source, field)
+        if len(arguments) != 3:
+            _fail(
+                source,
+                field.initializer,
+                f"consume effect type {field.name} register must have three arguments",
+            )
+        codec_owner = arguments[1].canonical.removesuffix(".CODEC")
+        stream_owner = arguments[2].canonical.removesuffix(".STREAM_CODEC")
+        if (
+            codec_owner == arguments[1].canonical
+            or stream_owner == arguments[2].canonical
+            or codec_owner != stream_owner
+        ):
+            _fail(
+                source,
+                arguments[1],
+                f"consume effect type {field.name} codec references disagree",
+            )
+        resource_path = _string(source, arguments[0])
+        entries.append(
+            ConsumeEffectTypeEntry(
+                field.name, type_id, "minecraft:" + resource_path
+            )
+        )
+    expected_names = [
+        "APPLY_EFFECTS",
+        "REMOVE_EFFECTS",
+        "CLEAR_ALL_EFFECTS",
+        "TELEPORT_RANDOMLY",
+        "PLAY_SOUND",
+    ]
+    if (
+        len(entries) != expected_count
+        or [entry.constant_name for entry in entries] != expected_names
+    ):
+        raise GameplayIdExtractionError(
+            "consume effect types differ from expected declaration order"
+        )
+    if [entry.type_id for entry in entries] != list(range(expected_count)):
+        raise GameplayIdExtractionError(
+            "consume effect type ids are not contiguous declaration order"
+        )
+    for entry in entries:
+        if entry.resource_id.removeprefix("minecraft:") != entry.constant_name.lower():
+            raise GameplayIdExtractionError(
+                f"consume effect type {entry.constant_name} has unexpected resource id"
+            )
+    _validate(entries, "consume effect type", "type_id")
+    _validate(entries, "consume effect type", "resource_id")
+    return entries
 
 
 def equipment_slot_entries(

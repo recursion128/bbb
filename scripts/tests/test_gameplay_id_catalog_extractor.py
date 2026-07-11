@@ -19,6 +19,7 @@ from gameplay_id_catalog_extractor import (  # noqa: E402
     chat_formatting_entries,
     client_information_option_entries,
     container_input_entries,
+    consume_effect_type_entries,
     custom_chat_completions_action_entries,
     difficulty_entries,
     difficulty_out_of_bounds_strategy,
@@ -953,6 +954,42 @@ public record FireworkExplosion() {
             [("LOCK", 0), ("SCALE", 1)],
         )
         self.assertEqual(shape_entries[1].serialized_name, "large_ball")
+
+    def test_consume_effect_types_preserve_nested_register_order(self) -> None:
+        source = parse_source(
+            "fixture/ConsumeEffect.java",
+            b"""
+package fixture;
+public interface ConsumeEffect {
+  record Type<T>() {
+    public static final ConsumeEffect.Type<Apply> APPLY_EFFECTS = register(
+        "apply_effects", Apply.CODEC, Apply.STREAM_CODEC);
+    public static final ConsumeEffect.Type<Remove> REMOVE_EFFECTS = register(
+        "remove_effects", Remove.CODEC, Remove.STREAM_CODEC);
+    public static final ConsumeEffect.Type<Clear> CLEAR_ALL_EFFECTS = register(
+        "clear_all_effects", Clear.CODEC, Clear.STREAM_CODEC);
+    public static final ConsumeEffect.Type<Teleport> TELEPORT_RANDOMLY = register(
+        "teleport_randomly", Teleport.CODEC, Teleport.STREAM_CODEC);
+    public static final ConsumeEffect.Type<Sound> PLAY_SOUND = register(
+        "play_sound", Sound.CODEC, Sound.STREAM_CODEC);
+  }
+}
+""",
+        )
+        entries = consume_effect_type_entries(source)
+        self.assertEqual(
+            [
+                (entry.constant_name, entry.type_id, entry.resource_id)
+                for entry in entries
+            ],
+            [
+                ("APPLY_EFFECTS", 0, "minecraft:apply_effects"),
+                ("REMOVE_EFFECTS", 1, "minecraft:remove_effects"),
+                ("CLEAR_ALL_EFFECTS", 2, "minecraft:clear_all_effects"),
+                ("TELEPORT_RANDOMLY", 3, "minecraft:teleport_randomly"),
+                ("PLAY_SOUND", 4, "minecraft:play_sound"),
+            ],
+        )
 
     def test_unsupported_register_shape_reports_source_span(self) -> None:
         source = parse_source(

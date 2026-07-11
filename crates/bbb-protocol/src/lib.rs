@@ -15,6 +15,7 @@ pub mod chat_formattings;
 pub mod client_command_actions;
 pub mod client_information_options;
 pub mod codec;
+pub mod consume_effect_types;
 pub mod container_inputs;
 pub mod custom_chat_completions_actions;
 pub mod damage_types;

@@ -10691,3 +10691,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   item-model rarity/firework select/tooltip 名称投影统一委托 generated lookup。fixtures、生成
   完整性/唯一性/fallback/反向门禁及 protocol/native/item-model focused tests 均通过；
   component payload、rarity presentation color、渲染和 persistent SNBT 结构语义未生成或改变。
+
+## 2026-07-11：Generated ConsumeEffect type catalog
+
+- [x] gameplay-id extractor 通过共享 Tree-sitter frontend 读取 vanilla nested
+  `ConsumeEffect.Type` record 的 5 个静态 `register(name, codec, streamCodec)` 字段，验证字段
+  声明顺序、resource id 与成对 codec owner，生成固定 type id/resource catalog。protocol
+  consumable/death-protection decoder 先查 generated `ConsumeEffectType` 再调用既有 typed
+  payload codec，删除中央 0..4 numeric match；非法 id 仍明确失败且不消费后续 payload。
+  fixtures、生成完整性/唯一性/反向门禁和 protocol component focused tests 均通过；各 effect
+  的 wire/persistent codec、world apply 和运行时行为未生成或改变。

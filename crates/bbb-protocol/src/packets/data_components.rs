@@ -10,6 +10,7 @@ use crate::{
         decode_styled_component_summary_with_nbt_from_decoder, skip_nbt_tag_from_decoder,
         styled_runs_summary_text, StyledTextRun,
     },
+    consume_effect_types::ConsumeEffectType,
     equipment_slots::{
         vanilla_equipment_slot_by_id, vanilla_equipment_slot_group,
         VANILLA_EQUIPMENT_SLOT_GROUP_ANY_ID, VANILLA_EQUIPMENT_SLOT_MAINHAND_ID,
@@ -1515,8 +1516,12 @@ fn decode_item_use_animation_summary(decoder: &mut Decoder<'_>) -> Result<ItemUs
 }
 
 fn decode_consume_effect_summary(decoder: &mut Decoder<'_>) -> Result<ConsumeEffectSummary> {
-    match decoder.read_var_i32()? {
-        0 => {
+    let type_id = decoder.read_var_i32()?;
+    let effect_type = ConsumeEffectType::from_id(type_id).ok_or_else(|| {
+        ProtocolError::InvalidData(format!("invalid consume effect type id {type_id}"))
+    })?;
+    match effect_type {
+        ConsumeEffectType::ApplyEffects => {
             let effect_count = read_bounded_len(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
             let mut effects = Vec::with_capacity(effect_count);
             for _ in 0..effect_count {
@@ -1527,23 +1532,20 @@ fn decode_consume_effect_summary(decoder: &mut Decoder<'_>) -> Result<ConsumeEff
                 probability_bits: decoder.read_f32()?.to_bits(),
             })
         }
-        1 => {
+        ConsumeEffectType::RemoveEffects => {
             let effects = decode_holder_set_summary(decoder)?;
             Ok(ConsumeEffectSummary::RemoveEffects {
                 effect_registry_ids: effects.registry_ids,
                 effect_tag: effects.tag,
             })
         }
-        2 => Ok(ConsumeEffectSummary::ClearAllEffects),
-        3 => Ok(ConsumeEffectSummary::TeleportRandomly {
+        ConsumeEffectType::ClearAllEffects => Ok(ConsumeEffectSummary::ClearAllEffects),
+        ConsumeEffectType::TeleportRandomly => Ok(ConsumeEffectSummary::TeleportRandomly {
             diameter_bits: decoder.read_f32()?.to_bits(),
         }),
-        4 => Ok(ConsumeEffectSummary::PlaySound {
+        ConsumeEffectType::PlaySound => Ok(ConsumeEffectSummary::PlaySound {
             sound: decode_sound_event_holder_summary(decoder)?,
         }),
-        other => Err(ProtocolError::InvalidData(format!(
-            "invalid consume effect type id {other}"
-        ))),
     }
 }
 
@@ -3977,6 +3979,21 @@ mod tests {
             }
         );
         assert!(decoder.is_empty());
+    }
+
+    #[test]
+    fn rejects_unknown_consume_effect_type_without_consuming_payload() {
+        let mut payload = Encoder::new();
+        payload.write_var_i32(5);
+        payload.write_var_i32(123);
+        let payload = payload.into_inner();
+        let mut decoder = Decoder::new(&payload);
+
+        let error = decode_consume_effect_summary(&mut decoder).unwrap_err();
+        assert!(error
+            .to_string()
+            .contains("invalid consume effect type id 5"));
+        assert_eq!(decoder.read_var_i32().unwrap(), 123);
     }
 
     #[test]
