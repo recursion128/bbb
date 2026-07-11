@@ -3,6 +3,10 @@ use serde::{Deserialize, Serialize};
 use super::read_resource_location;
 use crate::codec::{Decoder, ProtocolError, Result};
 
+mod generated_26_1;
+
+use generated_26_1::COMMAND_ARGUMENT_PARSERS;
+
 const MAX_COMMAND_NODES: usize = 65_536;
 const MAX_COMMAND_CHILDREN: usize = 65_536;
 
@@ -13,66 +17,6 @@ const FLAG_CUSTOM_SUGGESTIONS: u8 = 0x10;
 const FLAG_RESTRICTED: u8 = 0x20;
 const KNOWN_FLAGS: u8 =
     MASK_TYPE | FLAG_EXECUTABLE | FLAG_REDIRECT | FLAG_CUSTOM_SUGGESTIONS | FLAG_RESTRICTED;
-
-const COMMAND_ARGUMENT_PARSERS: [&str; 57] = [
-    "brigadier:bool",
-    "brigadier:float",
-    "brigadier:double",
-    "brigadier:integer",
-    "brigadier:long",
-    "brigadier:string",
-    "minecraft:entity",
-    "minecraft:game_profile",
-    "minecraft:block_pos",
-    "minecraft:column_pos",
-    "minecraft:vec3",
-    "minecraft:vec2",
-    "minecraft:block_state",
-    "minecraft:block_predicate",
-    "minecraft:item_stack",
-    "minecraft:item_predicate",
-    "minecraft:color",
-    "minecraft:hex_color",
-    "minecraft:component",
-    "minecraft:style",
-    "minecraft:message",
-    "minecraft:nbt_compound_tag",
-    "minecraft:nbt_tag",
-    "minecraft:nbt_path",
-    "minecraft:objective",
-    "minecraft:objective_criteria",
-    "minecraft:operation",
-    "minecraft:particle",
-    "minecraft:angle",
-    "minecraft:rotation",
-    "minecraft:scoreboard_slot",
-    "minecraft:score_holder",
-    "minecraft:swizzle",
-    "minecraft:team",
-    "minecraft:item_slot",
-    "minecraft:item_slots",
-    "minecraft:resource_location",
-    "minecraft:function",
-    "minecraft:entity_anchor",
-    "minecraft:int_range",
-    "minecraft:float_range",
-    "minecraft:dimension",
-    "minecraft:gamemode",
-    "minecraft:time",
-    "minecraft:resource_or_tag",
-    "minecraft:resource_or_tag_key",
-    "minecraft:resource",
-    "minecraft:resource_key",
-    "minecraft:resource_selector",
-    "minecraft:template_mirror",
-    "minecraft:template_rotation",
-    "minecraft:heightmap",
-    "minecraft:loot_table",
-    "minecraft:loot_predicate",
-    "minecraft:loot_modifier",
-    "minecraft:dialog",
-    "minecraft:uuid",
-];
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Commands {

@@ -10391,3 +10391,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   行为以及跨模块 compatibility constant 保持不变；固定数量、首尾顺序、幂等生成和
   full gate 锁定。本切片只生成 vanilla fallback registration order，不把 server dynamic
   registry、biome Codec 或 tint/blend 算法冒充完成。
+
+## 2026-07-11：Generated command argument type order
+
+- [x] 新增 Tree-sitter command-argument extractor 与 repo-level update/check，从
+  `ArgumentTypeInfos.bootstrap` 的 57 次 register call 生成 protocol type-id/resource-id
+  顺序，保留六项 `brigadier:` namespace 并对其余路径应用 `minecraft:` 默认 namespace；
+  `commands.rs` 删除手写 57 项表并消费 checked-in catalog。CST call shape、固定数量、
+  唯一性、首尾顺序与幂等生成显式受测；argument property wire decode 仍由 protocol
+  语义 owner 手写，本切片未用 registration source 冒充 codec 行为。
