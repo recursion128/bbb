@@ -89,6 +89,7 @@ FAMILIES = (
         "Mob",
     ),
     FamilySpec("Ghast", "net.minecraft.world.entity.monster.Ghast", "Mob"),
+    FamilySpec("Vex", "net.minecraft.world.entity.monster.Vex", "Mob"),
     FamilySpec(
         "AbstractFish",
         "net.minecraft.world.entity.animal.fish.AbstractFish",
@@ -174,6 +175,7 @@ DATA_ALIASES = {
     "VANILLA_PHANTOM_SIZE_DATA_ID": ("net.minecraft.world.entity.monster.Phantom", "ID_SIZE"),
     "VANILLA_BOGGED_SHEARED_DATA_ID": ("net.minecraft.world.entity.monster.skeleton.Bogged", "DATA_SHEARED"),
     "VANILLA_GHAST_CHARGING_DATA_ID": ("net.minecraft.world.entity.monster.Ghast", "DATA_IS_CHARGING"),
+    "VANILLA_VEX_FLAGS_DATA_ID": ("net.minecraft.world.entity.monster.Vex", "DATA_FLAGS_ID"),
     "VANILLA_ABSTRACT_FISH_FROM_BUCKET_DATA_ID": ("net.minecraft.world.entity.animal.fish.AbstractFish", "FROM_BUCKET"),
     "VANILLA_PUFFERFISH_PUFF_STATE_DATA_ID": ("net.minecraft.world.entity.animal.fish.Pufferfish", "PUFF_STATE"),
     "VANILLA_VEHICLE_HURT_TIME_DATA_ID": ("net.minecraft.world.entity.vehicle.VehicleEntity", "DATA_ID_HURT"),
@@ -228,6 +230,7 @@ DEFAULT_ALIASES = {
     "VANILLA_PHANTOM_DEFAULT_SIZE": ("net.minecraft.world.entity.monster.Phantom", "ID_SIZE"),
     "VANILLA_BOGGED_DEFAULT_SHEARED": ("net.minecraft.world.entity.monster.skeleton.Bogged", "DATA_SHEARED"),
     "VANILLA_GHAST_DEFAULT_CHARGING": ("net.minecraft.world.entity.monster.Ghast", "DATA_IS_CHARGING"),
+    "VANILLA_VEX_DEFAULT_FLAGS": ("net.minecraft.world.entity.monster.Vex", "DATA_FLAGS_ID"),
     "VANILLA_ABSTRACT_FISH_DEFAULT_FROM_BUCKET": ("net.minecraft.world.entity.animal.fish.AbstractFish", "FROM_BUCKET"),
     "VANILLA_PUFFERFISH_DEFAULT_PUFF_STATE": ("net.minecraft.world.entity.animal.fish.Pufferfish", "PUFF_STATE"),
     "VANILLA_VEHICLE_DEFAULT_HURT_TIME": ("net.minecraft.world.entity.vehicle.VehicleEntity", "DATA_ID_HURT"),
@@ -251,6 +254,7 @@ DEFAULT_ALIASES = {
 
 
 NAMED_FLAG_ALIASES = {
+    "VANILLA_VEX_FLAG_CHARGING": ("net.minecraft.world.entity.monster.Vex", "DATA_FLAGS_ID", "FLAG_IS_CHARGING"),
     "VANILLA_BAT_FLAG_RESTING": ("net.minecraft.world.entity.ambient.Bat", "DATA_ID_FLAGS", "FLAG_RESTING"),
     "VANILLA_SNOW_GOLEM_PUMPKIN_FLAG": ("net.minecraft.world.entity.animal.golem.SnowGolem", "DATA_PUMPKIN_ID", "PUMPKIN_FLAG"),
     "VANILLA_ABSTRACT_HORSE_FLAG_TAME": ("net.minecraft.world.entity.animal.equine.AbstractHorse", "DATA_ID_FLAGS", "FLAG_TAME"),

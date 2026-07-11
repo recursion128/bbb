@@ -94,6 +94,10 @@ use bbb_world::{
     VANILLA_TAMABLE_ANIMAL_FLAG_SITTING as TAMABLE_ANIMAL_SITTING_FLAG,
     VANILLA_TAMABLE_ANIMAL_FLAG_TAME as TAMABLE_ANIMAL_TAME_FLAG,
 };
+use bbb_world::{
+    VANILLA_VEX_DEFAULT_FLAGS as VEX_DEFAULT_FLAGS, VANILLA_VEX_FLAGS_DATA_ID as VEX_FLAGS_DATA_ID,
+    VANILLA_VEX_FLAG_CHARGING as VEX_FLAG_IS_CHARGING,
+};
 pub(crate) use bbb_world::{
     VANILLA_WITHER_SKULL_DANGEROUS_DATA_ID as WITHER_SKULL_DANGEROUS_DATA_ID,
     VANILLA_WITHER_SKULL_DEFAULT_DANGEROUS as WITHER_SKULL_DEFAULT_DANGEROUS,
@@ -269,10 +273,6 @@ const PANDA_ON_BACK_FLAG: i8 = 0x10;
 // Vanilla Strider.DATA_SUFFOCATING (19, BOOLEAN): `Strider extends Animal`, so after Mob (15), the
 // two AgeableMob accessors (16/17), and DATA_BOOST_TIME (18) comes the cold/suffocating flag.
 const STRIDER_SUFFOCATING_DATA_ID: u8 = 19;
-// Vanilla Vex.DATA_FLAGS_ID (16, BYTE): `Vex extends Monster extends PathfinderMob extends Mob`, so its
-// first own accessor lands right after Mob's DATA_MOB_FLAGS_ID (15) — index 16. `isCharging` is bit 1.
-const VEX_FLAGS_DATA_ID: u8 = 16;
-const VEX_FLAG_IS_CHARGING: i8 = 1;
 // Vanilla `AbstractArrow.IN_GROUND` (10, BOOLEAN): updating it to true after the first client tick
 // starts the seven-tick `shakeTime` impact wobble that `ArrowRenderer.extractRenderState` projects.
 #[cfg(test)]

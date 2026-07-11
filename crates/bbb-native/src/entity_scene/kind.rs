@@ -370,7 +370,8 @@ pub(super) fn entity_model_kind_with_time_and_registries(
             baby: ageable_baby(data_values),
         },
         VANILLA_ENTITY_TYPE_VEX_ID => EntityModelKind::Vex {
-            charging: (entity_data_byte(data_values, VEX_FLAGS_DATA_ID, 0) & VEX_FLAG_IS_CHARGING)
+            charging: (entity_data_byte(data_values, VEX_FLAGS_DATA_ID, VEX_DEFAULT_FLAGS)
+                & VEX_FLAG_IS_CHARGING)
                 != 0,
         },
         VANILLA_ENTITY_TYPE_WARDEN_ID => EntityModelKind::Warden,

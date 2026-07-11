@@ -9705,3 +9705,10 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   `DATA_IS_CHARGING` id 16/default false 替代 native model/texture projection 的手抄值；
   focused tests 锁定继承 offset、serializer/default 与 normal/shooting texture state。
   未修改射击 AI、爆炸强度、移动或 renderer 算法。
+
+## 2026-07-11：Generated entity metadata consumer（Vex）
+
+- [x] 从 generated catalog 建立 `Mob -> Vex` compatibility family：BYTE
+  `DATA_FLAGS_ID` id 16/default 0 及 extractor 唯一绑定的 `FLAG_IS_CHARGING=1`
+  替代 world/native 手抄值；focused tests 锁定继承 offset、serializer/default/mask 与
+  charging model pose。未修改 charge AI、arm pose 算法或 renderer。

@@ -30,6 +30,8 @@ use super::schema::{
     VANILLA_TAMABLE_ANIMAL_DEFAULT_FLAGS as TAMABLE_ANIMAL_DEFAULT_FLAGS,
     VANILLA_TAMABLE_ANIMAL_FLAGS_DATA_ID as TAMABLE_ANIMAL_FLAGS_DATA_ID,
     VANILLA_TAMABLE_ANIMAL_FLAG_SITTING as TAMABLE_ANIMAL_SITTING_FLAG,
+    VANILLA_VEX_DEFAULT_FLAGS as VEX_DEFAULT_FLAGS, VANILLA_VEX_FLAGS_DATA_ID as VEX_FLAGS_DATA_ID,
+    VANILLA_VEX_FLAG_CHARGING as VEX_FLAG_IS_CHARGING,
 };
 
 use super::{
@@ -304,10 +306,6 @@ const VANILLA_BEE_FLAGS_DATA_ID: u8 = 18;
 /// lost its stinger (`Bee.hasStung`).
 const BEE_FLAG_HAS_STUNG: i8 = 4;
 
-/// Vanilla `Vex.DATA_FLAGS_ID` data id (16): the byte holding the vex flags, the first own
-/// `Vex` accessor after `Mob.DATA_MOB_FLAGS_ID` (15).
-const VANILLA_VEX_FLAGS_DATA_ID: u8 = 16;
-
 /// Vanilla `Fox.DATA_FLAGS_ID` data id (19): the byte holding the fox flags, defined after the
 /// `AgeableMob` accessors (`16..=17`) and the fox's own `DATA_TYPE_ID` variant int (18).
 const VANILLA_FOX_FLAGS_DATA_ID: u8 = 19;
@@ -321,10 +319,6 @@ const FOX_FLAG_CROUCHING: i8 = 4;
 const FOX_FLAG_POUNCING: i8 = 16;
 const FOX_FLAG_SLEEPING: i8 = 32;
 const FOX_FLAG_FACEPLANTED: i8 = 64;
-
-/// Vanilla `Vex.FLAG_IS_CHARGING` (1): the `DATA_FLAGS_ID` bit set while the vex charges an
-/// attack (`Vex.isCharging`).
-const VEX_FLAG_IS_CHARGING: i8 = 1;
 
 /// Vanilla `WitherBoss.DATA_ID_INV` data id (19): the int spawn-invulnerability countdown
 /// (`getInvulnerableTicks`), the fourth `WitherBoss` accessor after `Mob.DATA_MOB_FLAGS_ID` (15) and
@@ -1724,8 +1718,8 @@ impl EntityStore {
         // defines that flags byte, so the projection is gated to it and defaults to idle.
         let vex_charging = vanilla_is_vex(identity.entity_type_id)
             && self
-                .metadata_byte(id, VANILLA_VEX_FLAGS_DATA_ID, 0)
-                .unwrap_or(0)
+                .metadata_byte(id, VEX_FLAGS_DATA_ID, VEX_DEFAULT_FLAGS)
+                .unwrap_or(VEX_DEFAULT_FLAGS)
                 & VEX_FLAG_IS_CHARGING
                 != 0;
         // Vanilla `SnowGolemRenderer.extractRenderState`: when `SnowGolem.hasPumpkin()` is true, the

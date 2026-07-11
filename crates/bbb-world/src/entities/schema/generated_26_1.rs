@@ -141,6 +141,8 @@ const GENERATED_VANILLA_BOGGED_SHEARED_DATA_ID: u8 = 16;
 pub const VANILLA_BOGGED_SHEARED_DATA_ID: u8 = GENERATED_VANILLA_BOGGED_SHEARED_DATA_ID;
 const GENERATED_VANILLA_GHAST_CHARGING_DATA_ID: u8 = 16;
 pub const VANILLA_GHAST_CHARGING_DATA_ID: u8 = GENERATED_VANILLA_GHAST_CHARGING_DATA_ID;
+const GENERATED_VANILLA_VEX_FLAGS_DATA_ID: u8 = 16;
+pub const VANILLA_VEX_FLAGS_DATA_ID: u8 = GENERATED_VANILLA_VEX_FLAGS_DATA_ID;
 const GENERATED_VANILLA_ABSTRACT_FISH_FROM_BUCKET_DATA_ID: u8 = 16;
 pub const VANILLA_ABSTRACT_FISH_FROM_BUCKET_DATA_ID: u8 =
     GENERATED_VANILLA_ABSTRACT_FISH_FROM_BUCKET_DATA_ID;
@@ -191,6 +193,8 @@ const GENERATED_VANILLA_PLAYER_SHOULDER_PARROT_RIGHT_DATA_ID: u8 = 20;
 pub const VANILLA_PLAYER_SHOULDER_PARROT_RIGHT_DATA_ID: u8 =
     GENERATED_VANILLA_PLAYER_SHOULDER_PARROT_RIGHT_DATA_ID;
 
+const GENERATED_VANILLA_VEX_FLAG_CHARGING: i8 = 1;
+pub const VANILLA_VEX_FLAG_CHARGING: i8 = GENERATED_VANILLA_VEX_FLAG_CHARGING;
 const GENERATED_VANILLA_BAT_FLAG_RESTING: i8 = 1;
 pub const VANILLA_BAT_FLAG_RESTING: i8 = GENERATED_VANILLA_BAT_FLAG_RESTING;
 const GENERATED_VANILLA_SNOW_GOLEM_PUMPKIN_FLAG: i8 = 16;
@@ -354,6 +358,8 @@ const GENERATED_VANILLA_BOGGED_DEFAULT_SHEARED: bool = false;
 pub const VANILLA_BOGGED_DEFAULT_SHEARED: bool = GENERATED_VANILLA_BOGGED_DEFAULT_SHEARED;
 const GENERATED_VANILLA_GHAST_DEFAULT_CHARGING: bool = false;
 pub const VANILLA_GHAST_DEFAULT_CHARGING: bool = GENERATED_VANILLA_GHAST_DEFAULT_CHARGING;
+const GENERATED_VANILLA_VEX_DEFAULT_FLAGS: i8 = 0;
+pub const VANILLA_VEX_DEFAULT_FLAGS: i8 = GENERATED_VANILLA_VEX_DEFAULT_FLAGS;
 const GENERATED_VANILLA_ABSTRACT_FISH_DEFAULT_FROM_BUCKET: bool = false;
 pub const VANILLA_ABSTRACT_FISH_DEFAULT_FROM_BUCKET: bool =
     GENERATED_VANILLA_ABSTRACT_FISH_DEFAULT_FROM_BUCKET;
@@ -11211,6 +11217,13 @@ pub const VANILLA_ENTITY_METADATA_FLAGS_26_1: &[VanillaEntityMetadataFlagCatalog
 pub const VANILLA_ENTITY_METADATA_FLAG_RESOLVER_EVIDENCE_26_1:
     &[VanillaEntityMetadataResolverEvidence] = &[
     VanillaEntityMetadataResolverEvidence {
+        java_class: "net.minecraft.world.entity.monster.Vex",
+        accessor_name: "DATA_FLAGS_ID",
+        evidence_member: "FLAG_IS_CHARGING",
+        source_expression: "1",
+        reason: "named vanilla flag constant",
+    },
+    VanillaEntityMetadataResolverEvidence {
         java_class: "net.minecraft.world.entity.ambient.Bat",
         accessor_name: "DATA_ID_FLAGS",
         evidence_member: "FLAG_RESTING",
@@ -13475,6 +13488,25 @@ const GHAST_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFam
     own_flags: GHAST_FLAGS,
 };
 
+const VEX_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[VanillaEntityMetadataFieldSchema {
+    name: "DATA_FLAGS_ID",
+    data_id: 16,
+    serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+    default: VanillaEntityMetadataDefault::Byte(0),
+}];
+const VEX_FLAGS: &[VanillaEntityMetadataFlagSchema] = &[VanillaEntityMetadataFlagSchema {
+    name: "FLAG_IS_CHARGING",
+    data_id: 16,
+    mask: VANILLA_VEX_FLAG_CHARGING,
+}];
+const VEX_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamilySchema {
+    family: VanillaEntityMetadataFamily::Vex,
+    parent: Some(VanillaEntityMetadataFamily::Mob),
+    inherited_field_count: 16,
+    own_fields: VEX_FIELDS,
+    own_flags: VEX_FLAGS,
+};
+
 const ABSTRACTFISH_FIELDS: &[VanillaEntityMetadataFieldSchema] =
     &[VanillaEntityMetadataFieldSchema {
         name: "FROM_BUCKET",
@@ -13750,6 +13782,7 @@ pub(super) const fn generated_entity_metadata_schema(
         VanillaEntityMetadataFamily::Phantom => &PHANTOM_SCHEMA,
         VanillaEntityMetadataFamily::Bogged => &BOGGED_SCHEMA,
         VanillaEntityMetadataFamily::Ghast => &GHAST_SCHEMA,
+        VanillaEntityMetadataFamily::Vex => &VEX_SCHEMA,
         VanillaEntityMetadataFamily::AbstractFish => &ABSTRACTFISH_SCHEMA,
         VanillaEntityMetadataFamily::Pufferfish => &PUFFERFISH_SCHEMA,
         VanillaEntityMetadataFamily::VehicleEntity => &VEHICLEENTITY_SCHEMA,

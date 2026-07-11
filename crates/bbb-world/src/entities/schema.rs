@@ -35,6 +35,7 @@ pub enum VanillaEntityMetadataFamily {
     Phantom,
     Bogged,
     Ghast,
+    Vex,
     AbstractFish,
     Pufferfish,
     VehicleEntity,
@@ -313,6 +314,7 @@ mod tests {
             VanillaEntityMetadataFamily::Phantom,
             VanillaEntityMetadataFamily::Bogged,
             VanillaEntityMetadataFamily::Ghast,
+            VanillaEntityMetadataFamily::Vex,
             VanillaEntityMetadataFamily::AbstractFish,
             VanillaEntityMetadataFamily::Pufferfish,
             VanillaEntityMetadataFamily::VehicleEntity,
@@ -617,6 +619,18 @@ mod tests {
         );
         assert_eq!(VANILLA_GHAST_CHARGING_DATA_ID, 16);
         assert!(!VANILLA_GHAST_DEFAULT_CHARGING);
+        let vex = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Vex);
+        assert_eq!(vex.parent, Some(VanillaEntityMetadataFamily::Mob));
+        assert_eq!(vex.inherited_field_count, 16);
+        assert_eq!(vex.own_fields.len(), 1);
+        assert_eq!(vex.own_fields[0].name, "DATA_FLAGS_ID");
+        assert_eq!(
+            vex.own_fields[0].default,
+            VanillaEntityMetadataDefault::Byte(0)
+        );
+        assert_eq!(VANILLA_VEX_FLAGS_DATA_ID, 16);
+        assert_eq!(VANILLA_VEX_DEFAULT_FLAGS, 0);
+        assert_eq!(VANILLA_VEX_FLAG_CHARGING, 1);
         let abstract_fish =
             vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::AbstractFish);
         assert_eq!(abstract_fish.parent, Some(VanillaEntityMetadataFamily::Mob));
