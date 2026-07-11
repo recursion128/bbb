@@ -1,10 +1,40 @@
-use std::{collections::BTreeMap, path::Path};
+use std::collections::BTreeMap;
 
 use anyhow::{bail, Context, Result};
-use regex::Regex;
 use serde::{Deserialize, Serialize};
 
-use crate::{resources::ResourceLocation, PackRoots};
+use crate::{
+    block_registry_declarations::{
+        copy_base_from_properties, copy_base_from_register_helper, has_properties_of,
+        load_generated_block_declarations,
+    },
+    generated_java_expression::GeneratedJavaExpression,
+    resources::ResourceLocation,
+    PackRoots,
+};
+
+const GENERATED_SOUND_TYPE_DECLARATIONS: &str =
+    include_str!("../data/sound_type_declarations_26_1.json");
+
+#[derive(Debug, Deserialize)]
+struct SoundTypeSourceCatalog {
+    vanilla_version: String,
+    sources: Vec<String>,
+    declarations: Vec<SoundTypeSourceDeclaration>,
+}
+
+#[derive(Debug, Deserialize)]
+struct SoundTypeSourceDeclaration {
+    constant: String,
+    declaration_order: usize,
+    volume_expression: String,
+    pitch_expression: String,
+    break_sound: String,
+    hit_sound: String,
+    source_path: String,
+    start_byte: usize,
+    end_byte: usize,
+}
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct BlockSoundProfile {
@@ -28,100 +58,42 @@ struct SoundTypeProfile {
 }
 
 impl BlockSoundProfileCatalog {
-    pub fn load(roots: &PackRoots) -> Result<Self> {
-        let blocks_java = roots
-            .sources_dir
-            .join("net")
-            .join("minecraft")
-            .join("world")
-            .join("level")
-            .join("block")
-            .join("Blocks.java");
-        let block_ids_java = roots
-            .sources_dir
-            .join("net")
-            .join("minecraft")
-            .join("references")
-            .join("BlockIds.java");
-        let sound_type_java = roots
-            .sources_dir
-            .join("net")
-            .join("minecraft")
-            .join("world")
-            .join("level")
-            .join("block")
-            .join("SoundType.java");
-        let sound_events_java = roots
-            .sources_dir
-            .join("net")
-            .join("minecraft")
-            .join("sounds")
-            .join("SoundEvents.java");
-        Self::load_from_java_sources(
-            blocks_java,
-            block_ids_java,
-            sound_type_java,
-            sound_events_java,
-        )
+    pub fn load(_roots: &PackRoots) -> Result<Self> {
+        Self::from_generated_source_catalog()
     }
 
-    pub fn load_from_java_sources(
-        blocks_java: impl AsRef<Path>,
-        block_ids_java: impl AsRef<Path>,
-        sound_type_java: impl AsRef<Path>,
-        sound_events_java: impl AsRef<Path>,
-    ) -> Result<Self> {
-        let blocks_java = blocks_java.as_ref();
-        let block_ids_java = block_ids_java.as_ref();
-        let sound_type_java = sound_type_java.as_ref();
-        let sound_events_java = sound_events_java.as_ref();
-        let blocks_source = std::fs::read_to_string(blocks_java)
-            .with_context(|| format!("read block registry source {}", blocks_java.display()))?;
-        let sound_type_source = std::fs::read_to_string(sound_type_java)
-            .with_context(|| format!("read sound type source {}", sound_type_java.display()))?;
-        let sound_events_source = std::fs::read_to_string(sound_events_java)
-            .with_context(|| format!("read sound events source {}", sound_events_java.display()))?;
-        let block_id_constants = if block_ids_java.is_file() {
-            let source = std::fs::read_to_string(block_ids_java)
-                .with_context(|| format!("read block id source {}", block_ids_java.display()))?;
-            parse_block_id_constants(&source)?
-        } else {
-            BTreeMap::new()
-        };
-        Self::from_java_sources(
-            &blocks_source,
-            &block_id_constants,
-            &sound_type_source,
-            &sound_events_source,
-        )
-    }
-
-    fn from_java_sources(
-        blocks_source: &str,
-        block_id_constants: &BTreeMap<String, String>,
-        sound_type_source: &str,
-        sound_events_source: &str,
-    ) -> Result<Self> {
-        let sound_events = parse_sound_event_constants(sound_events_source)?;
-        let sound_types = parse_sound_types(sound_type_source, &sound_events)?;
-        let declaration =
-            Regex::new(r#"(?s)public\s+static\s+final\s+Block\s+([A-Z0-9_]+)\s*=\s*(.*?);"#)?;
+    fn from_generated_source_catalog() -> Result<Self> {
+        let sound_types = load_sound_types()?;
+        let source = load_generated_block_declarations()?;
         let mut fields = BTreeMap::new();
         let mut profiles = BTreeMap::new();
-        for capture in declaration.captures_iter(blocks_source) {
-            let field = capture.get(1).unwrap().as_str();
-            let expression = capture.get(2).unwrap().as_str();
-            let resource_id = resource_id_for_declaration(field, expression, block_id_constants)?;
-            if let Some(profile) = profile_for_declaration(expression, &fields, &sound_types)? {
-                profiles.insert(resource_id.clone(), profile.clone());
-                fields.insert(field.to_string(), profile);
+        for declaration in &source.declarations {
+            let source_context = || {
+                format!(
+                    "{}:{}..{}: resolve Blocks.{} sound profile",
+                    declaration.source_path,
+                    declaration.start_byte,
+                    declaration.end_byte,
+                    declaration.field
+                )
+            };
+            if let Some(profile) =
+                profile_for_declaration(&declaration.initializer, &fields, &sound_types)
+                    .with_context(source_context)?
+            {
+                if profiles
+                    .insert(declaration.resource_id.clone(), profile.clone())
+                    .is_some()
+                {
+                    bail!("duplicate block sound profile {}", declaration.resource_id);
+                }
+                fields.insert(declaration.field.clone(), profile);
             }
         }
 
         if profiles.is_empty() {
-            bail!("Blocks.java did not contain block sound profiles");
+            bail!("generated Blocks catalog did not contain block sound profiles");
         }
-
         Ok(Self { profiles })
     }
 
@@ -143,89 +115,82 @@ impl BlockSoundProfileCatalog {
     }
 }
 
-fn parse_sound_event_constants(source: &str) -> Result<BTreeMap<String, String>> {
-    let declaration = Regex::new(
-        r#"public\s+static\s+final\s+(?:SoundEvent|Holder\.Reference<SoundEvent>)\s+([A-Z0-9_]+)\s*=\s*register(?:ForHolder)?\("([^"]+)""#,
-    )?;
-    let mut events = BTreeMap::new();
-    for capture in declaration.captures_iter(source) {
-        events.insert(
-            capture.get(1).unwrap().as_str().to_string(),
-            minecraft_id(capture.get(2).unwrap().as_str())?,
-        );
+fn load_sound_types() -> Result<BTreeMap<String, SoundTypeProfile>> {
+    let source: SoundTypeSourceCatalog = serde_json::from_str(GENERATED_SOUND_TYPE_DECLARATIONS)
+        .context("parse generated SoundType declaration catalog")?;
+    if source.vanilla_version != crate::MC_VERSION
+        || source.sources
+            != [
+                "net/minecraft/sounds/SoundEvents.java",
+                "net/minecraft/world/level/block/SoundType.java",
+            ]
+    {
+        bail!("unsupported generated SoundType source catalog manifest");
     }
-    Ok(events)
-}
-
-fn parse_sound_types(
-    source: &str,
-    sound_events: &BTreeMap<String, String>,
-) -> Result<BTreeMap<String, SoundTypeProfile>> {
-    let declaration = Regex::new(
-        r#"(?s)public\s+static\s+final\s+SoundType\s+([A-Z0-9_]+)\s*=\s*new\s+SoundType\((.*?)\);"#,
-    )?;
     let mut sound_types = BTreeMap::new();
-    for capture in declaration.captures_iter(source) {
-        let name = capture.get(1).unwrap().as_str();
-        let args = split_top_level_args(capture.get(2).unwrap().as_str());
-        if args.len() != 7 {
+    for (order, declaration) in source.declarations.iter().enumerate() {
+        if declaration.declaration_order != order
+            || declaration.source_path != "net/minecraft/world/level/block/SoundType.java"
+            || declaration.start_byte >= declaration.end_byte
+        {
             bail!(
-                "unsupported SoundType {name}: expected 7 args, got {}",
-                args.len()
+                "invalid generated SoundType declaration order/span for {}",
+                declaration.constant
             );
         }
-        let break_constant = sound_event_constant(&args[2])?;
-        let hit_constant = sound_event_constant(&args[5])?;
-        let Some(break_sound) = sound_events.get(&break_constant).cloned() else {
-            bail!("unknown break SoundEvents constant {break_constant} for SoundType {name}");
+        ResourceLocation::parse(&declaration.break_sound)
+            .context("invalid generated SoundType break sound")?;
+        ResourceLocation::parse(&declaration.hit_sound)
+            .context("invalid generated SoundType hit sound")?;
+        let profile = SoundTypeProfile {
+            break_sound: declaration.break_sound.clone(),
+            hit_sound: declaration.hit_sound.clone(),
+            volume: parse_java_float(&declaration.volume_expression)?,
+            pitch: parse_java_float(&declaration.pitch_expression)?,
         };
-        let Some(hit_sound) = sound_events.get(&hit_constant).cloned() else {
-            bail!("unknown hit SoundEvents constant {hit_constant} for SoundType {name}");
-        };
-        sound_types.insert(
-            name.to_string(),
-            SoundTypeProfile {
-                break_sound,
-                hit_sound,
-                volume: parse_java_float(&args[0])?,
-                pitch: parse_java_float(&args[1])?,
-            },
-        );
+        if sound_types
+            .insert(declaration.constant.clone(), profile)
+            .is_some()
+        {
+            bail!("duplicate generated SoundType {}", declaration.constant);
+        }
+    }
+    if sound_types.is_empty() {
+        bail!("generated SoundType catalog is empty");
     }
     Ok(sound_types)
 }
 
 fn profile_for_declaration(
-    expression: &str,
+    expression: &GeneratedJavaExpression,
     fields: &BTreeMap<String, BlockSoundProfile>,
     sound_types: &BTreeMap<String, SoundTypeProfile>,
 ) -> Result<Option<BlockSoundProfile>> {
+    let root_name = expression.name.as_deref();
     let mut profile = if let Some(base) = copy_base_from_register_helper(expression)? {
-        let Some(profile) = fields.get(&base).cloned() else {
+        let Some(profile) = fields.get(base).cloned() else {
             return Ok(None);
         };
         profile
     } else if let Some(base) = copy_base_from_properties(expression)? {
-        let Some(profile) = fields.get(&base).cloned() else {
+        let Some(profile) = fields.get(base).cloned() else {
             return Ok(None);
         };
         profile
-    } else if expression.trim_start().starts_with("registerBed(") {
+    } else if root_name == Some("registerBed") {
         block_profile_for_sound_type("WOOD", sound_types)?
-    } else if expression.trim_start().starts_with("registerStainedGlass(") {
+    } else if root_name == Some("registerStainedGlass") {
         block_profile_for_sound_type("GLASS", sound_types)?
     } else if let Some(sound_type) = sound_type_from_known_helper(expression)? {
-        block_profile_for_sound_type(&sound_type, sound_types)?
-    } else if expression.contains("BlockBehaviour.Properties.of()")
-        || expression.contains("wallVariant(")
-    {
+        block_profile_for_sound_type(sound_type, sound_types)?
+    } else if has_properties_of(expression) || expression.call("wallVariant").is_some() {
         block_profile_for_sound_type("STONE", sound_types)?
     } else {
         return Ok(None);
     };
 
     if let Some(sound_type) = explicit_sound_type(expression)? {
-        profile = block_profile_for_sound_type(&sound_type, sound_types)?;
+        profile = block_profile_for_sound_type(sound_type, sound_types)?;
     }
     Ok(Some(profile))
 }
@@ -245,139 +210,57 @@ fn block_profile_for_sound_type(
     })
 }
 
-fn sound_type_from_known_helper(expression: &str) -> Result<Option<String>> {
+fn sound_type_from_known_helper(expression: &GeneratedJavaExpression) -> Result<Option<&str>> {
     for helper in ["logProperties", "leavesProperties"] {
-        if let Some(sound_type) = optional_capture(
-            &format!(r#"{helper}\([^)]*SoundType\.([A-Z0-9_]+)"#),
-            expression,
-        )? {
-            return Ok(Some(sound_type));
+        if let Some(call) = expression.call(helper) {
+            let sound_type = call
+                .arguments
+                .iter()
+                .flat_map(GeneratedJavaExpression::field_accesses)
+                .find_map(|argument| argument.field_constant("SoundType"));
+            if sound_type.is_none() {
+                bail!("{helper} lacks SoundType argument");
+            }
+            return Ok(sound_type);
         }
     }
-    if expression.contains("netherStemProperties(") {
-        return Ok(Some("STEM".to_string()));
+    if expression.call("netherStemProperties").is_some() {
+        return Ok(Some("STEM"));
     }
-    if expression.contains("candleProperties(") {
-        return Ok(Some("CANDLE".to_string()));
+    if expression.call("candleProperties").is_some() {
+        return Ok(Some("CANDLE"));
     }
-    if expression.contains("shulkerBoxProperties(")
-        || expression.contains("pistonProperties(")
-        || expression.contains("buttonProperties(")
-        || expression.contains("flowerPotProperties(")
+    if [
+        "shulkerBoxProperties",
+        "pistonProperties",
+        "buttonProperties",
+        "flowerPotProperties",
+    ]
+    .iter()
+    .any(|name| expression.call(name).is_some())
     {
-        return Ok(Some("STONE".to_string()));
+        return Ok(Some("STONE"));
     }
     Ok(None)
 }
 
-fn explicit_sound_type(expression: &str) -> Result<Option<String>> {
-    optional_capture(r#"\.sound\(\s*SoundType\.([A-Z0-9_]+)\s*\)"#, expression)
-}
-
-fn sound_event_constant(expression: &str) -> Result<String> {
-    optional_capture(r#"SoundEvents\.([A-Z0-9_]+)"#, expression)?
-        .ok_or_else(|| anyhow::anyhow!("unsupported sound event expression {expression:?}"))
-}
-
-fn split_top_level_args(args: &str) -> Vec<String> {
-    let mut split = Vec::new();
-    let mut start = 0;
-    let mut depth = 0_i32;
-    for (index, ch) in args.char_indices() {
-        match ch {
-            '(' | '[' | '{' => depth += 1,
-            ')' | ']' | '}' => depth -= 1,
-            ',' if depth == 0 => {
-                split.push(args[start..index].trim().to_string());
-                start = index + ch.len_utf8();
-            }
-            _ => {}
-        }
-    }
-    split.push(args[start..].trim().to_string());
-    split
+fn explicit_sound_type(expression: &GeneratedJavaExpression) -> Result<Option<&str>> {
+    let Some(call) = expression.call("sound") else {
+        return Ok(None);
+    };
+    let sound_type = call
+        .arguments
+        .first()
+        .and_then(|argument| argument.field_constant("SoundType"))
+        .context("block sound property is not a SoundType constant")?;
+    Ok(Some(sound_type))
 }
 
 fn parse_java_float(value: &str) -> Result<f32> {
-    Ok(value.trim().trim_end_matches(['F', 'f']).parse()?)
-}
-
-fn resource_id_for_declaration(
-    field: &str,
-    expression: &str,
-    block_id_constants: &BTreeMap<String, String>,
-) -> Result<String> {
-    for helper in [
-        "register",
-        "registerBed",
-        "registerLegacyStair",
-        "registerStair",
-        "registerStainedGlass",
-    ] {
-        if let Some(name) = optional_capture(&format!(r#"{helper}\(\s*"([^"]+)""#), expression)? {
-            return minecraft_id(&name);
-        }
-    }
-
-    if let Some(name) = optional_capture(r#"vanillaBlockId\(\s*"([^"]+)""#, expression)? {
-        return minecraft_id(&name);
-    }
-
-    if let Some(constant) = optional_capture(r#"register\(\s*BlockIds\.([A-Z0-9_]+)"#, expression)?
-    {
-        let name = block_id_constants
-            .get(&constant)
-            .cloned()
-            .unwrap_or_else(|| constant.to_ascii_lowercase());
-        return minecraft_id(&name);
-    }
-
-    bail!("unsupported block registry declaration {field}: {expression:?}")
-}
-
-fn copy_base_from_register_helper(expression: &str) -> Result<Option<String>> {
-    for helper in ["registerLegacyStair", "registerStair"] {
-        if let Some(base) = optional_capture(
-            &format!(r#"{helper}\(\s*"[^"]+"\s*,\s*([A-Z0-9_]+)"#),
-            expression,
-        )? {
-            return Ok(Some(base));
-        }
-    }
-    Ok(None)
-}
-
-fn copy_base_from_properties(expression: &str) -> Result<Option<String>> {
-    optional_capture(
-        r#"BlockBehaviour\.Properties\.of(?:Legacy|Full)Copy\(\s*([A-Z0-9_]+)"#,
-        expression,
-    )
-}
-
-fn parse_block_id_constants(source: &str) -> Result<BTreeMap<String, String>> {
-    let declaration = Regex::new(
-        r#"public\s+static\s+final\s+ResourceKey<Block>\s+([A-Z0-9_]+)\s*=\s*createKey\("([^"]+)"\)"#,
-    )?;
-    let mut constants = BTreeMap::new();
-    for capture in declaration.captures_iter(source) {
-        constants.insert(
-            capture.get(1).unwrap().as_str().to_string(),
-            capture.get(2).unwrap().as_str().to_string(),
-        );
-    }
-    Ok(constants)
-}
-
-fn optional_capture(pattern: &str, expression: &str) -> Result<Option<String>> {
-    let regex = Regex::new(pattern)?;
-    Ok(regex
-        .captures(expression)
-        .and_then(|capture| capture.get(1))
-        .map(|capture| capture.as_str().to_string()))
-}
-
-fn minecraft_id(path: &str) -> Result<String> {
-    ResourceLocation::new("minecraft", path).map(|location| location.id())
+    Ok(value
+        .replace(' ', "")
+        .trim_end_matches(['F', 'f'])
+        .parse()?)
 }
 
 #[cfg(test)]
@@ -385,66 +268,10 @@ mod tests {
     use super::*;
 
     #[test]
-    fn block_sound_profiles_parse_sound_types_copy_and_helpers() {
-        let sound_events = r#"
-            public class SoundEvents {
-                public static final SoundEvent STONE_HIT = register("block.stone.hit");
-                public static final SoundEvent GRASS_HIT = register("block.grass.hit");
-                public static final SoundEvent WOOD_HIT = register("block.wood.hit");
-                public static final SoundEvent GLASS_HIT = register("block.glass.hit");
-                public static final SoundEvent CANDLE_HIT = register("block.candle.hit");
-                public static final SoundEvent STONE_BREAK = register("block.stone.break");
-                public static final SoundEvent GRASS_BREAK = register("block.grass.break");
-                public static final SoundEvent STONE_STEP = register("block.stone.step");
-                public static final SoundEvent STONE_PLACE = register("block.stone.place");
-                public static final SoundEvent STONE_FALL = register("block.stone.fall");
-            }
-        "#;
-        let sound_types = r#"
-            public class SoundType {
-                public static final SoundType STONE = new SoundType(
-                    1.0F, 1.0F, SoundEvents.STONE_BREAK, SoundEvents.STONE_STEP,
-                    SoundEvents.STONE_PLACE, SoundEvents.STONE_HIT, SoundEvents.STONE_FALL
-                );
-                public static final SoundType GRASS = new SoundType(
-                    0.8F, 1.2F, SoundEvents.GRASS_BREAK, SoundEvents.STONE_STEP,
-                    SoundEvents.STONE_PLACE, SoundEvents.GRASS_HIT, SoundEvents.STONE_FALL
-                );
-                public static final SoundType WOOD = new SoundType(
-                    1.0F, 1.0F, SoundEvents.STONE_BREAK, SoundEvents.STONE_STEP,
-                    SoundEvents.STONE_PLACE, SoundEvents.WOOD_HIT, SoundEvents.STONE_FALL
-                );
-                public static final SoundType GLASS = new SoundType(
-                    1.0F, 1.0F, SoundEvents.STONE_BREAK, SoundEvents.STONE_STEP,
-                    SoundEvents.STONE_PLACE, SoundEvents.GLASS_HIT, SoundEvents.STONE_FALL
-                );
-                public static final SoundType CANDLE = new SoundType(
-                    0.5F, 0.7F, SoundEvents.STONE_BREAK, SoundEvents.STONE_STEP,
-                    SoundEvents.STONE_PLACE, SoundEvents.CANDLE_HIT, SoundEvents.STONE_FALL
-                );
-            }
-        "#;
-        let blocks = r#"
-            public class Blocks {
-               public static final Block STONE = register("stone", BlockBehaviour.Properties.of().strength(1.5F));
-               public static final Block GRASS_BLOCK = register("grass_block", BlockBehaviour.Properties.of().strength(0.6F).sound(SoundType.GRASS));
-               public static final Block DEEPSLATE_GRASS = register("deepslate_grass", BlockBehaviour.Properties.ofLegacyCopy(GRASS_BLOCK).strength(4.5F));
-               public static final Block OAK_LOG = register("oak_log", RotatedPillarBlock::new, logProperties(MapColor.WOOD, MapColor.PODZOL, SoundType.WOOD));
-               public static final Block OAK_STAIRS = registerLegacyStair("oak_stairs", OAK_LOG);
-               public static final Block WHITE_BED = registerBed("white_bed", DyeColor.WHITE);
-               public static final Block WHITE_STAINED_GLASS = registerStainedGlass("white_stained_glass", DyeColor.WHITE);
-               public static final Block CANDLE = register("candle", CandleBlock::new, candleProperties(MapColor.SAND));
-            }
-        "#;
+    fn generated_block_sound_profiles_cover_sound_types_copy_and_helpers() {
+        let catalog = BlockSoundProfileCatalog::from_generated_source_catalog().unwrap();
 
-        let catalog = BlockSoundProfileCatalog::from_java_sources(
-            blocks,
-            &BTreeMap::new(),
-            sound_types,
-            sound_events,
-        )
-        .unwrap();
-
+        assert_eq!(catalog.len(), 1144);
         assert_eq!(
             catalog.profile("minecraft:stone").unwrap().hit_sound,
             "minecraft:block.stone.hit"
@@ -454,17 +281,17 @@ mod tests {
             &BlockSoundProfile {
                 break_sound: "minecraft:block.grass.break".to_string(),
                 hit_sound: "minecraft:block.grass.hit".to_string(),
-                volume: 0.8,
-                pitch: 1.2,
+                volume: 1.0,
+                pitch: 1.0,
             }
         );
         assert_eq!(
-            catalog.profile("minecraft:deepslate_grass").unwrap(),
-            catalog.profile("minecraft:grass_block").unwrap()
+            catalog.profile("minecraft:dirt").unwrap().hit_sound,
+            "minecraft:block.gravel.hit"
         );
         assert_eq!(
             catalog.profile("minecraft:oak_stairs").unwrap(),
-            catalog.profile("minecraft:oak_log").unwrap()
+            catalog.profile("minecraft:oak_planks").unwrap()
         );
         assert_eq!(
             catalog.profile("minecraft:white_bed").unwrap().hit_sound,
@@ -484,36 +311,26 @@ mod tests {
     }
 
     #[test]
-    fn block_sound_profiles_load_local_vanilla_sources_when_available() {
-        let Ok(roots) = PackRoots::discover() else {
-            return;
-        };
+    fn generated_sound_types_are_complete_contiguous_and_unique() {
+        let sound_types = load_sound_types().unwrap();
+        assert_eq!(sound_types.len(), 123);
+        assert!(sound_types.contains_key("STONE"));
+        assert!(sound_types.contains_key("WOOD"));
+        assert!(sound_types.contains_key("GLASS"));
+    }
 
-        let catalog = roots.load_block_sound_profile_catalog().unwrap();
+    #[test]
+    fn block_sound_profile_load_does_not_require_local_java_sources() {
+        let root = std::env::temp_dir().join(format!(
+            "bbb-pack-block-sound-no-java-{}",
+            std::process::id()
+        ));
+        std::fs::create_dir_all(root.join("sources").join(crate::MC_VERSION)).unwrap();
+        let roots = PackRoots::from_root(&root).unwrap();
 
-        assert!(
-            catalog.len() >= 600,
-            "expected broad vanilla coverage, got {} profiles",
-            catalog.len()
-        );
-        assert_eq!(
-            catalog.profile("minecraft:grass_block").unwrap().hit_sound,
-            "minecraft:block.grass.hit"
-        );
-        assert_eq!(
-            catalog
-                .profile("minecraft:grass_block")
-                .unwrap()
-                .break_sound,
-            "minecraft:block.grass.break"
-        );
-        assert_eq!(
-            catalog.profile("minecraft:dirt").unwrap().hit_sound,
-            "minecraft:block.gravel.hit"
-        );
-        assert_eq!(
-            catalog.profile("minecraft:oak_stairs").unwrap(),
-            catalog.profile("minecraft:oak_log").unwrap()
-        );
+        let catalog = BlockSoundProfileCatalog::load(&roots).unwrap();
+
+        assert_eq!(catalog.len(), 1144);
+        std::fs::remove_dir_all(root).unwrap();
     }
 }

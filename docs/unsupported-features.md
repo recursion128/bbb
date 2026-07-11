@@ -46,8 +46,8 @@ Owner: `scripts/` + each generated catalog's semantic crate
 - Complete the remaining cross-crate registry/ordinal audit. Any newly found
   Java-source catalog extractor must consume the shared Tree-sitter frontend and
   checked-in deterministic output; ordinary build/test must not read local vanilla
-  sources. Migrate each remaining legacy parser as its own semantic-owner slice;
-  the remaining `bbb-pack` production Java parser is block sound profiles.
+  sources. Migrate each newly identified legacy parser as its own semantic-owner
+  slice.
 
 ## Unknown clientbound packets in login, configuration, and play
 

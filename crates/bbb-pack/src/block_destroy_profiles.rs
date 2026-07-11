@@ -4,29 +4,14 @@ use anyhow::{bail, Context, Result};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    generated_java_expression::GeneratedJavaExpression, resources::ResourceLocation, PackRoots,
+    block_registry_declarations::{
+        copy_base_from_properties, copy_base_from_register_helper, has_properties_of,
+        load_generated_block_declarations,
+    },
+    generated_java_expression::GeneratedJavaExpression,
+    resources::ResourceLocation,
+    PackRoots,
 };
-
-const GENERATED_BLOCK_DECLARATIONS: &str =
-    include_str!("../data/block_registry_declarations_26_1.json");
-
-#[derive(Debug, Deserialize)]
-struct BlockSourceCatalog {
-    vanilla_version: String,
-    sources: Vec<String>,
-    declarations: Vec<BlockSourceDeclaration>,
-}
-
-#[derive(Debug, Deserialize)]
-struct BlockSourceDeclaration {
-    field: String,
-    declaration_order: usize,
-    resource_id: String,
-    source_path: String,
-    start_byte: usize,
-    end_byte: usize,
-    initializer: GeneratedJavaExpression,
-}
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct BlockDestroyProfile {
@@ -45,22 +30,11 @@ impl BlockDestroyProfileCatalog {
     }
 
     fn from_generated_source_catalog() -> Result<Self> {
-        let source: BlockSourceCatalog = serde_json::from_str(GENERATED_BLOCK_DECLARATIONS)
-            .context("parse generated block registry declaration catalog")?;
-        if source.vanilla_version != crate::MC_VERSION
-            || source.sources
-                != [
-                    "net/minecraft/references/BlockIds.java",
-                    "net/minecraft/world/level/block/Blocks.java",
-                ]
-        {
-            bail!("unsupported generated block source catalog manifest");
-        }
+        let source = load_generated_block_declarations()?;
 
         let mut fields = BTreeMap::new();
         let mut profiles = BTreeMap::new();
-        for (order, declaration) in source.declarations.iter().enumerate() {
-            validate_declaration(declaration, order)?;
+        for declaration in &source.declarations {
             let source_context = || {
                 format!(
                     "{}:{}..{}: resolve Blocks.{}",
@@ -110,22 +84,6 @@ impl BlockDestroyProfileCatalog {
     }
 }
 
-fn validate_declaration(declaration: &BlockSourceDeclaration, order: usize) -> Result<()> {
-    if declaration.declaration_order != order
-        || declaration.source_path != "net/minecraft/world/level/block/Blocks.java"
-        || declaration.start_byte >= declaration.end_byte
-        || declaration.initializer.kind != "method_invocation"
-    {
-        bail!(
-            "invalid generated block declaration order/span for Blocks.{}",
-            declaration.field
-        );
-    }
-    ResourceLocation::parse(&declaration.resource_id)
-        .context("invalid generated block resource id")?;
-    Ok(())
-}
-
 fn profile_for_declaration(
     expression: &GeneratedJavaExpression,
     fields: &BTreeMap<String, BlockDestroyProfile>,
@@ -164,40 +122,6 @@ fn profile_for_declaration(
     Ok(Some(profile))
 }
 
-fn copy_base_from_register_helper(expression: &GeneratedJavaExpression) -> Result<Option<&str>> {
-    if !matches!(
-        expression.name.as_deref(),
-        Some("registerLegacyStair" | "registerStair")
-    ) {
-        return Ok(None);
-    }
-    let base = expression
-        .arguments
-        .get(1)
-        .context("stair registration lacks copied base block")?;
-    if base.kind != "identifier" {
-        bail!("stair registration base is not a block field");
-    }
-    Ok(Some(base.canonical.as_str()))
-}
-
-fn copy_base_from_properties(expression: &GeneratedJavaExpression) -> Result<Option<&str>> {
-    let Some(copy) = expression
-        .calls()
-        .find(|call| matches!(call.name.as_deref(), Some("ofLegacyCopy" | "ofFullCopy")))
-    else {
-        return Ok(None);
-    };
-    let base = copy
-        .arguments
-        .first()
-        .context("block properties copy lacks base block")?;
-    if base.kind != "identifier" {
-        bail!("block properties copy base is not a block field");
-    }
-    Ok(Some(base.canonical.as_str()))
-}
-
 fn profile_from_known_helper(expression: &GeneratedJavaExpression) -> Option<BlockDestroyProfile> {
     let has = |name| expression.call(name).is_some();
     if has("logProperties") || has("netherStemProperties") {
@@ -222,17 +146,6 @@ fn profile_from_known_helper(expression: &GeneratedJavaExpression) -> Option<Blo
         return Some(profile(15, false));
     }
     None
-}
-
-fn has_properties_of(expression: &GeneratedJavaExpression) -> bool {
-    expression.calls().any(|call| {
-        call.name.as_deref() == Some("of")
-            && call
-                .object
-                .as_deref()
-                .map(|object| object.canonical.as_str())
-                == Some("BlockBehaviour.Properties")
-    })
 }
 
 fn infested_host_from_constructor(expression: &GeneratedJavaExpression) -> Result<Option<&str>> {
@@ -384,14 +297,8 @@ mod tests {
 
     #[test]
     fn generated_block_declarations_are_complete_contiguous_and_unique() {
-        let source: BlockSourceCatalog =
-            serde_json::from_str(GENERATED_BLOCK_DECLARATIONS).unwrap();
+        let source = load_generated_block_declarations().unwrap();
         assert_eq!(source.declarations.len(), 1144);
-        let mut resources = std::collections::BTreeSet::new();
-        for (order, declaration) in source.declarations.iter().enumerate() {
-            validate_declaration(declaration, order).unwrap();
-            assert!(resources.insert(declaration.resource_id.as_str()));
-        }
     }
 
     #[test]

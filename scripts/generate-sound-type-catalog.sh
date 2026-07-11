@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+export CARGO_TARGET_DIR=${CARGO_TARGET_DIR:-/tmp/bbb-target-main}
+
+"$repo_root/scripts/vanilla-source-tools.sh" \
+  "$repo_root/scripts/generate-sound-type-catalog.py" "$@"
+
+cargo test --quiet --manifest-path "$repo_root/Cargo.toml" \
+  -p bbb-pack block_sound_profiles::tests

@@ -10780,3 +10780,17 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   `218a58114a5e5e7acf899fac6008aa5aefffef4635503eacc45a441504ee2c3c`）；normal no-Java test、
   frontend fixtures、update/check 和幂等门禁锁定结果。block sound profile 仍是后续独立消费
   迁移，不在本切片误标完成。
+
+## 2026-07-11：Tree-sitter block-sound profile extraction
+
+- [x] 统一 Java frontend 从 `SoundType.java` 的 123 个七参数构造提取 volume/pitch 原始
+  expression、break/hit `SoundEvents` resource id、声明顺序和相对 span；event 常量映射复用
+  既有 1,808 项 direct sound-event Tree-sitter extractor，生成 checked-in
+  `sound_type_declarations_26_1.json`。未知 event、构造 arity 或非结构化常量显式失败。
+- [x] `BlockSoundProfileCatalog` 复用同一 1,144 项 block declaration loader 和 copy-base
+  helper，从生成 facts 解析 helper/default/explicit `SoundType`；删除 4 个 Java 文件的运行时
+  读取、declaration regex、参数括号 scanner 和 Java fixture，保留既有查询 API。旧/新实现的
+  完整 1,144 项 profile map 逐字节相同（SHA-256
+  `cdcfb00c3ebbb1cd08026c08f84e849ea886ba116efcf267d7e5fe3a4e058a1f`）；normal no-Java、
+  frontend fixtures、update/check、幂等、world/native audio focused tests 锁定结果。音频播放/
+  衰减/world event 语义未由源码文本生成。
