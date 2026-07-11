@@ -430,9 +430,15 @@ pub(super) fn decode_player_experience(decoder: &mut Decoder<'_>) -> Result<Play
 pub(super) fn decode_set_simulation_distance(
     decoder: &mut Decoder<'_>,
 ) -> Result<SetSimulationDistance> {
-    Ok(SetSimulationDistance {
+    let update = SetSimulationDistance {
         distance: decoder.read_var_i32()?,
-    })
+    };
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after set simulation distance packet".to_string(),
+        ));
+    }
+    Ok(update)
 }
 
 pub(super) fn decode_set_subtitle_text(decoder: &mut Decoder<'_>) -> Result<SetSubtitleText> {

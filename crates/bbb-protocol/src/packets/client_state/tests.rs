@@ -704,6 +704,17 @@ fn decodes_player_abilities_spawn_distance_and_system_chat() {
         PlayClientbound::SetSimulationDistance(SetSimulationDistance { distance: 12 })
     );
 
+    let mut trailing = Encoder::new();
+    trailing.write_var_i32(12);
+    trailing.write_u8(0);
+    assert!(decode_play_clientbound(
+        ids::play::CLIENTBOUND_SET_SIMULATION_DISTANCE,
+        &trailing.into_inner()
+    )
+    .unwrap_err()
+    .to_string()
+    .contains("trailing bytes after set simulation distance packet"));
+
     let mut payload = nbt_string_root("Server restarting");
     payload.push(1);
     let packet = decode_play_clientbound(ids::play::CLIENTBOUND_SYSTEM_CHAT, &payload).unwrap();

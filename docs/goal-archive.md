@@ -11174,3 +11174,11 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   VarInt wire 并拒绝 trailing bytes；bbb 与 vanilla 均只接受 hotbar 0..8，非法值安全忽略。
 - [x] server-synchronized selection 已进入 local inventory、HUD hotbar、input/item-use 和 container
   consumers；protocol/world/net/native tests 使五格全部闭合，本地输入的 serverbound 路径保持独立。
+
+## 2026-07-11：set-simulation-distance packet coverage audit
+
+- [x] 对照 `ClientboundSetSimulationDistancePacket` 与
+  `ClientPacketListener.handleSetSimulationDistance` 锁定 distance VarInt wire 并拒绝 trailing bytes；
+  client canonical state、F3 entity-render stats 与 protocol/world/net/native tests 已闭合。
+- [x] 反向审计确认 `ClientLevel.shouldTickDeath` 还用 simulation distance 按玩家 chunk 的 chessboard
+  distance gate dying LivingEntity death tick；bbb 尚未实现该 gate，runtime 保持 partial 并记录窄重启条件。
