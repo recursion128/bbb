@@ -71,16 +71,9 @@ pub(super) fn villager_type_from_entry_id(id: &str) -> Option<VillagerModelType>
 }
 
 pub(super) fn villager_type_from_vanilla_registry_id(registry_id: i32) -> VillagerModelType {
-    match registry_id {
-        0 => VillagerModelType::Desert,
-        1 => VillagerModelType::Jungle,
-        2 => VillagerModelType::Plains,
-        3 => VillagerModelType::Savanna,
-        4 => VillagerModelType::Snow,
-        5 => VillagerModelType::Swamp,
-        6 => VillagerModelType::Taiga,
-        _ => VillagerModelType::Plains,
-    }
+    vanilla_villager_type_resource_id(registry_id)
+        .and_then(villager_type_from_entry_id)
+        .unwrap_or(VillagerModelType::Plains)
 }
 
 pub(super) fn resolve_villager_profession(
@@ -311,19 +304,9 @@ pub(super) fn cat_variant_from_entry_id(id: &str) -> Option<CatModelVariant> {
 // ragdoll/white/jellie/all_black in that order, so the static fallback ids (used before the dynamic
 // `cat_variant` registry arrives) are 0..=10. The vanilla default is BLACK.
 pub(super) fn cat_variant_from_vanilla_registry_id(registry_id: i32) -> CatModelVariant {
-    match registry_id {
-        0 => CatModelVariant::Tabby,
-        2 => CatModelVariant::Red,
-        3 => CatModelVariant::Siamese,
-        4 => CatModelVariant::BritishShorthair,
-        5 => CatModelVariant::Calico,
-        6 => CatModelVariant::Persian,
-        7 => CatModelVariant::Ragdoll,
-        8 => CatModelVariant::White,
-        9 => CatModelVariant::Jellie,
-        10 => CatModelVariant::AllBlack,
-        _ => CatModelVariant::Black,
-    }
+    vanilla_cat_variant_resource_id(registry_id)
+        .and_then(cat_variant_from_entry_id)
+        .unwrap_or(CatModelVariant::Black)
 }
 
 /// Vanilla `FoxRenderer` (an `AgeableMobRenderer`) picks `AdultFoxModel` for an adult and `BabyFoxModel`
@@ -382,15 +365,24 @@ pub(super) fn zombie_nautilus_coral(values: &[bbb_protocol::packets::EntityDataV
             } => Some(*id),
             _ => None,
         })
-        .map(|id| id >= 1)
+        .map(|id| {
+            vanilla_zombie_nautilus_variant_resource_id(id)
+                .and_then(zombie_nautilus_variant_is_coral)
+                .unwrap_or_else(zombie_nautilus_default_is_coral)
+        })
         .unwrap_or_else(zombie_nautilus_default_is_coral)
 }
 
 fn zombie_nautilus_default_is_coral() -> bool {
-    match ZOMBIE_NAUTILUS_DEFAULT_VARIANT_RESOURCE_ID {
-        "minecraft:temperate" => false,
-        "minecraft:warm" => true,
-        _ => panic!("generated vanilla zombie nautilus default variant must map to a model"),
+    zombie_nautilus_variant_is_coral(ZOMBIE_NAUTILUS_DEFAULT_VARIANT_RESOURCE_ID)
+        .expect("generated vanilla zombie nautilus default variant must map to a model")
+}
+
+fn zombie_nautilus_variant_is_coral(resource_id: &str) -> Option<bool> {
+    match resource_id {
+        "minecraft:temperate" => Some(false),
+        "minecraft:warm" => Some(true),
+        _ => None,
     }
 }
 
@@ -653,17 +645,9 @@ pub(super) fn wolf_variant_from_entry_id(id: &str) -> Option<WolfModelVariant> {
 // striped in that order, so the static fallback ids (used before the dynamic `wolf_variant` registry
 // arrives) are 0..=8. The vanilla default is PALE.
 pub(super) fn wolf_variant_from_vanilla_registry_id(registry_id: i32) -> WolfModelVariant {
-    match registry_id {
-        1 => WolfModelVariant::Spotted,
-        2 => WolfModelVariant::Snowy,
-        3 => WolfModelVariant::Black,
-        4 => WolfModelVariant::Ashen,
-        5 => WolfModelVariant::Rusty,
-        6 => WolfModelVariant::Woods,
-        7 => WolfModelVariant::Chestnut,
-        8 => WolfModelVariant::Striped,
-        _ => WolfModelVariant::Pale,
-    }
+    vanilla_wolf_variant_resource_id(registry_id)
+        .and_then(wolf_variant_from_entry_id)
+        .unwrap_or(WolfModelVariant::Pale)
 }
 
 pub(super) fn entity_invisible(values: &[bbb_protocol::packets::EntityDataValue]) -> bool {
@@ -1396,11 +1380,9 @@ pub(super) fn chicken_variant_from_entry_id(id: &str) -> Option<ChickenModelVari
 }
 
 pub(super) fn chicken_variant_from_vanilla_registry_id(registry_id: i32) -> ChickenModelVariant {
-    match registry_id {
-        1 => ChickenModelVariant::Warm,
-        2 => ChickenModelVariant::Cold,
-        _ => ChickenModelVariant::Temperate,
-    }
+    vanilla_chicken_variant_resource_id(registry_id)
+        .and_then(chicken_variant_from_entry_id)
+        .unwrap_or_else(chicken_default_model_variant)
 }
 
 pub(super) fn frog_model_kind(
@@ -1468,11 +1450,9 @@ pub(super) fn frog_variant_from_entry_id(id: &str) -> Option<FrogModelVariant> {
 // Vanilla `FrogVariants.bootstrap` registers TEMPERATE, WARM, COLD in that order, so the static
 // fallback ids (used before the dynamic `frog_variant` registry arrives) are 0/1/2.
 pub(super) fn frog_variant_from_vanilla_registry_id(registry_id: i32) -> FrogModelVariant {
-    match registry_id {
-        1 => FrogModelVariant::Warm,
-        2 => FrogModelVariant::Cold,
-        _ => FrogModelVariant::Temperate,
-    }
+    vanilla_frog_variant_resource_id(registry_id)
+        .and_then(frog_variant_from_entry_id)
+        .unwrap_or_else(frog_default_model_variant)
 }
 
 pub(super) fn pig_model_variant(
@@ -1528,11 +1508,9 @@ pub(super) fn pig_variant_from_entry_id(id: &str) -> Option<PigModelVariant> {
 }
 
 pub(super) fn pig_variant_from_vanilla_registry_id(registry_id: i32) -> PigModelVariant {
-    match registry_id {
-        1 => PigModelVariant::Warm,
-        2 => PigModelVariant::Cold,
-        _ => PigModelVariant::Temperate,
-    }
+    vanilla_pig_variant_resource_id(registry_id)
+        .and_then(pig_variant_from_entry_id)
+        .unwrap_or_else(pig_default_model_variant)
 }
 
 pub(super) fn cow_model_variant(
@@ -1588,11 +1566,9 @@ pub(super) fn cow_variant_from_entry_id(id: &str) -> Option<CowModelVariant> {
 }
 
 pub(super) fn cow_variant_from_vanilla_registry_id(registry_id: i32) -> CowModelVariant {
-    match registry_id {
-        1 => CowModelVariant::Warm,
-        2 => CowModelVariant::Cold,
-        _ => CowModelVariant::Temperate,
-    }
+    vanilla_cow_variant_resource_id(registry_id)
+        .and_then(cow_variant_from_entry_id)
+        .unwrap_or_else(cow_default_model_variant)
 }
 
 pub(super) fn chested_horse_has_chest(values: &[bbb_protocol::packets::EntityDataValue]) -> bool {

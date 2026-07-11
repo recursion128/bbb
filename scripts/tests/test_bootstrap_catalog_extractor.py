@@ -13,6 +13,7 @@ from bootstrap_catalog_extractor import (  # noqa: E402
     banner_pattern_entries,
     bootstrap_resource_key_entries,
     enchantment_entries,
+    identifier_constant_paths,
     painting_variant_entries,
     static_register_entries,
 )
@@ -161,6 +162,47 @@ class Enchantments {
         self.assertEqual(
             [(entry.resource_id, entry.max_level) for entry in entries],
             [("minecraft:two", 5), ("minecraft:one", 3)],
+        )
+
+    def test_external_identifier_constants_and_alternate_registration_calls(self) -> None:
+        identifiers = parse_source(
+            "fixture/Temperature.java",
+            b"""
+package fixture;
+interface Temperature {
+  Identifier TEMPERATE = Identifier.withDefaultNamespace("temperate");
+  Identifier COLD = Identifier.withDefaultNamespace("cold");
+}
+""",
+        )
+        variants = parse_source(
+            "fixture/Variants.java",
+            b"""
+package fixture;
+interface Variants {
+  ResourceKey<Variant> TEMPERATE = key(Temperature.TEMPERATE);
+  ResourceKey<Variant> COLD = key(Temperature.COLD);
+  static void bootstrap(BootstrapContext<Variant> context) {
+    registerSimple(context, TEMPERATE); register(context, COLD);
+  }
+}
+""",
+        )
+        paths = {
+            f"Temperature.{name}": path
+            for name, path in identifier_constant_paths(identifiers).items()
+        }
+        entries = bootstrap_resource_key_entries(
+            variants,
+            "Variant",
+            {"key"},
+            2,
+            referenced_paths=paths,
+            registration_names={"register", "registerSimple"},
+        )
+        self.assertEqual(
+            [entry.resource_id for entry in entries],
+            ["minecraft:temperate", "minecraft:cold"],
         )
 
 

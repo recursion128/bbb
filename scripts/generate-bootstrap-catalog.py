@@ -17,6 +17,7 @@ from bootstrap_catalog_extractor import (
     banner_pattern_entries,
     bootstrap_resource_key_entries,
     enchantment_entries,
+    identifier_constant_paths,
     painting_variant_entries,
     static_register_entries,
 )
@@ -55,6 +56,55 @@ PAINTING_VARIANTS_SOURCE = Path(
 )
 ENCHANTMENTS_SOURCE = Path(
     "net/minecraft/world/item/enchantment/Enchantments.java"
+)
+TEMPERATURE_VARIANTS_SOURCE = Path(
+    "net/minecraft/world/entity/animal/TemperatureVariants.java"
+)
+CAT_VARIANTS_SOURCE = Path(
+    "net/minecraft/world/entity/animal/feline/CatVariants.java"
+)
+CAT_SOUND_VARIANTS_SOURCE = Path(
+    "net/minecraft/world/entity/animal/feline/CatSoundVariants.java"
+)
+CHICKEN_VARIANTS_SOURCE = Path(
+    "net/minecraft/world/entity/animal/chicken/ChickenVariants.java"
+)
+CHICKEN_SOUND_VARIANTS_SOURCE = Path(
+    "net/minecraft/world/entity/animal/chicken/ChickenSoundVariants.java"
+)
+COW_VARIANTS_SOURCE = Path(
+    "net/minecraft/world/entity/animal/cow/CowVariants.java"
+)
+COW_SOUND_VARIANTS_SOURCE = Path(
+    "net/minecraft/world/entity/animal/cow/CowSoundVariants.java"
+)
+PIG_VARIANTS_SOURCE = Path(
+    "net/minecraft/world/entity/animal/pig/PigVariants.java"
+)
+PIG_SOUND_VARIANTS_SOURCE = Path(
+    "net/minecraft/world/entity/animal/pig/PigSoundVariants.java"
+)
+FROG_VARIANTS_SOURCE = Path(
+    "net/minecraft/world/entity/animal/frog/FrogVariants.java"
+)
+ZOMBIE_NAUTILUS_VARIANTS_SOURCE = Path(
+    "net/minecraft/world/entity/animal/nautilus/ZombieNautilusVariants.java"
+)
+
+RESOURCE_LOOKUPS = (
+    ("vanilla_cat_variant_resource_id", "VANILLA_CAT_VARIANT_KEYS"),
+    ("vanilla_cat_sound_variant_resource_id", "VANILLA_CAT_SOUND_VARIANT_KEYS"),
+    ("vanilla_chicken_variant_resource_id", "VANILLA_CHICKEN_VARIANT_KEYS"),
+    ("vanilla_chicken_sound_variant_resource_id", "VANILLA_CHICKEN_SOUND_VARIANT_KEYS"),
+    ("vanilla_cow_variant_resource_id", "VANILLA_COW_VARIANT_KEYS"),
+    ("vanilla_cow_sound_variant_resource_id", "VANILLA_COW_SOUND_VARIANT_KEYS"),
+    ("vanilla_pig_variant_resource_id", "VANILLA_PIG_VARIANT_KEYS"),
+    ("vanilla_pig_sound_variant_resource_id", "VANILLA_PIG_SOUND_VARIANT_KEYS"),
+    ("vanilla_frog_variant_resource_id", "VANILLA_FROG_VARIANT_KEYS"),
+    (
+        "vanilla_zombie_nautilus_variant_resource_id",
+        "VANILLA_ZOMBIE_NAUTILUS_VARIANT_KEYS",
+    ),
 )
 
 
@@ -96,6 +146,16 @@ def render_catalog(
     ]
     for name, entries in catalogs:
         lines.extend(render_array(name, entries))
+    for function_name, array_name in RESOURCE_LOOKUPS:
+        lines.extend(
+            (
+                f"pub fn {function_name}(id: i32) -> Option<&'static str> {{",
+                "    let index = usize::try_from(id).ok()?;",
+                f"    {array_name}.get(index).copied()",
+                "}",
+                "",
+            )
+        )
     lines.extend(
         (
             "#[derive(Debug, Clone, Copy, PartialEq, Eq)]",
@@ -224,6 +284,10 @@ def render_catalog(
             '        assert_eq!((VANILLA_PAINTING_VARIANTS.get(50).unwrap().width, VANILLA_PAINTING_VARIANTS.get(50).unwrap().height), (3, 3));',
             '        assert_eq!(VANILLA_ENCHANTMENTS.get(13).unwrap().resource_id, "minecraft:sharpness");',
             '        assert_eq!(VANILLA_ENCHANTMENTS.get(13).unwrap().max_level, 5);',
+            '        assert_eq!(vanilla_cat_variant_resource_id(10), Some("minecraft:all_black"));',
+            '        assert_eq!(vanilla_pig_sound_variant_resource_id(1), Some("minecraft:big"));',
+            '        assert_eq!(vanilla_zombie_nautilus_variant_resource_id(1), Some("minecraft:warm"));',
+            "        assert_eq!(vanilla_chicken_variant_resource_id(3), None);",
             "    }",
             "}",
             "",
@@ -233,6 +297,12 @@ def render_catalog(
 
 
 def extract_catalogs(source_root: Path) -> list[tuple[str, list[BootstrapEntry]]]:
+    temperature_paths = {
+        f"TemperatureVariants.{name}": path
+        for name, path in identifier_constant_paths(
+            parse_java(source_root, TEMPERATURE_VARIANTS_SOURCE)
+        ).items()
+    }
     return [
         (
             "VANILLA_TRIM_MATERIAL_KEYS",
@@ -303,6 +373,102 @@ def extract_catalogs(source_root: Path) -> list[tuple[str, list[BootstrapEntry]]
                 "Instrument",
                 {"create"},
                 8,
+            ),
+        ),
+        (
+            "VANILLA_CAT_VARIANT_KEYS",
+            bootstrap_resource_key_entries(
+                parse_java(source_root, CAT_VARIANTS_SOURCE),
+                "CatVariant",
+                {"createKey"},
+                11,
+                registration_names={"register", "registerForAnyConditions"},
+            ),
+        ),
+        (
+            "VANILLA_CAT_SOUND_VARIANT_KEYS",
+            bootstrap_resource_key_entries(
+                parse_java(source_root, CAT_SOUND_VARIANTS_SOURCE),
+                "CatSoundVariant",
+                {"createKey"},
+                2,
+            ),
+        ),
+        (
+            "VANILLA_CHICKEN_VARIANT_KEYS",
+            bootstrap_resource_key_entries(
+                parse_java(source_root, CHICKEN_VARIANTS_SOURCE),
+                "ChickenVariant",
+                {"createKey"},
+                3,
+                referenced_paths=temperature_paths,
+            ),
+        ),
+        (
+            "VANILLA_CHICKEN_SOUND_VARIANT_KEYS",
+            bootstrap_resource_key_entries(
+                parse_java(source_root, CHICKEN_SOUND_VARIANTS_SOURCE),
+                "ChickenSoundVariant",
+                {"createKey"},
+                2,
+            ),
+        ),
+        (
+            "VANILLA_COW_VARIANT_KEYS",
+            bootstrap_resource_key_entries(
+                parse_java(source_root, COW_VARIANTS_SOURCE),
+                "CowVariant",
+                {"createKey"},
+                3,
+                referenced_paths=temperature_paths,
+            ),
+        ),
+        (
+            "VANILLA_COW_SOUND_VARIANT_KEYS",
+            bootstrap_resource_key_entries(
+                parse_java(source_root, COW_SOUND_VARIANTS_SOURCE),
+                "CowSoundVariant",
+                {"createKey"},
+                2,
+            ),
+        ),
+        (
+            "VANILLA_PIG_VARIANT_KEYS",
+            bootstrap_resource_key_entries(
+                parse_java(source_root, PIG_VARIANTS_SOURCE),
+                "PigVariant",
+                {"createKey"},
+                3,
+                referenced_paths=temperature_paths,
+            ),
+        ),
+        (
+            "VANILLA_PIG_SOUND_VARIANT_KEYS",
+            bootstrap_resource_key_entries(
+                parse_java(source_root, PIG_SOUND_VARIANTS_SOURCE),
+                "PigSoundVariant",
+                {"createKey"},
+                3,
+            ),
+        ),
+        (
+            "VANILLA_FROG_VARIANT_KEYS",
+            bootstrap_resource_key_entries(
+                parse_java(source_root, FROG_VARIANTS_SOURCE),
+                "FrogVariant",
+                {"createKey"},
+                3,
+                referenced_paths=temperature_paths,
+            ),
+        ),
+        (
+            "VANILLA_ZOMBIE_NAUTILUS_VARIANT_KEYS",
+            bootstrap_resource_key_entries(
+                parse_java(source_root, ZOMBIE_NAUTILUS_VARIANTS_SOURCE),
+                "ZombieNautilusVariant",
+                {"createKey"},
+                2,
+                referenced_paths=temperature_paths,
             ),
         ),
     ]

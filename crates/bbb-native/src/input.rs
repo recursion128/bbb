@@ -337,11 +337,20 @@ use crate::entity_scene::{WITHER_SKULL_DANGEROUS_DATA_ID, WITHER_SKULL_DEFAULT_D
 use crate::terrain_runtime::TerrainUploadState;
 use bbb_item_model::{
     vanilla_attribute_resource_id, vanilla_banner_pattern_resource_id,
-    vanilla_enchantment_resource_id, vanilla_instrument_resource_id,
+    vanilla_cat_sound_variant_resource_id as cat_sound_variant_resource_id,
+    vanilla_cat_variant_resource_id as cat_variant_resource_id,
+    vanilla_chicken_sound_variant_resource_id as chicken_sound_variant_resource_id,
+    vanilla_chicken_variant_resource_id as chicken_variant_resource_id,
+    vanilla_cow_sound_variant_resource_id as cow_sound_variant_resource_id,
+    vanilla_cow_variant_resource_id as cow_variant_resource_id, vanilla_enchantment_resource_id,
+    vanilla_frog_variant_resource_id as frog_variant_resource_id, vanilla_instrument_resource_id,
     vanilla_mob_effect_resource_id, vanilla_painting_variant_resource_id,
-    vanilla_potion_resource_id, vanilla_trim_material_resource_id,
-    vanilla_trim_pattern_resource_id, vanilla_villager_type_resource_id,
-    vanilla_wolf_sound_variant_resource_id, vanilla_wolf_variant_resource_id,
+    vanilla_pig_sound_variant_resource_id as pig_sound_variant_resource_id,
+    vanilla_pig_variant_resource_id as pig_variant_resource_id, vanilla_potion_resource_id,
+    vanilla_trim_material_resource_id, vanilla_trim_pattern_resource_id,
+    vanilla_villager_type_resource_id, vanilla_wolf_sound_variant_resource_id,
+    vanilla_wolf_variant_resource_id,
+    vanilla_zombie_nautilus_variant_resource_id as zombie_nautilus_variant_resource_id,
     ItemModelKeybindContext, NativeItemRuntime,
 };
 use bbb_world::{
@@ -6114,30 +6123,6 @@ fn debug_push_cat_additional_save_data(entity: &EntityState, fields: &mut Vec<St
     fields.push(format!("CollarColor: {collar_color}b"));
 }
 
-fn cat_variant_resource_id(variant: i32) -> Option<&'static str> {
-    [
-        "minecraft:tabby",
-        "minecraft:black",
-        "minecraft:red",
-        "minecraft:siamese",
-        "minecraft:british_shorthair",
-        "minecraft:calico",
-        "minecraft:persian",
-        "minecraft:ragdoll",
-        "minecraft:white",
-        "minecraft:jellie",
-        "minecraft:all_black",
-    ]
-    .get(usize::try_from(variant).ok()?)
-    .copied()
-}
-
-fn cat_sound_variant_resource_id(variant: i32) -> Option<&'static str> {
-    ["minecraft:classic", "minecraft:royal"]
-        .get(usize::try_from(variant).ok()?)
-        .copied()
-}
-
 fn debug_push_fox_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
     let flags =
         debug_entity_data_byte_present(entity, FOX_FLAGS_DATA_ID).unwrap_or(FOX_DEFAULT_FLAGS);
@@ -6213,12 +6198,6 @@ fn debug_push_zombie_nautilus_additional_save_data(entity: &EntityState, fields:
     .and_then(zombie_nautilus_variant_resource_id)
     .unwrap_or(ZOMBIE_NAUTILUS_DEFAULT_VARIANT_RESOURCE_ID);
     fields.push(format!("variant: {}", debug_snbt_string(variant)));
-}
-
-fn zombie_nautilus_variant_resource_id(variant: i32) -> Option<&'static str> {
-    ["minecraft:temperate", "minecraft:warm"]
-        .get(usize::try_from(variant).ok()?)
-        .copied()
 }
 
 fn debug_dye_color_legacy_save_id(color: i32) -> i32 {
@@ -6323,18 +6302,6 @@ fn debug_push_chicken_additional_save_data(entity: &EntityState, fields: &mut Ve
     ));
 }
 
-fn chicken_variant_resource_id(variant: i32) -> Option<&'static str> {
-    ["minecraft:temperate", "minecraft:warm", "minecraft:cold"]
-        .get(usize::try_from(variant).ok()?)
-        .copied()
-}
-
-fn chicken_sound_variant_resource_id(variant: i32) -> Option<&'static str> {
-    ["minecraft:classic", "minecraft:picky"]
-        .get(usize::try_from(variant).ok()?)
-        .copied()
-}
-
 fn debug_push_cow_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
     let variant = debug_entity_data_registry_id_present(
         entity,
@@ -6355,18 +6322,6 @@ fn debug_push_cow_additional_save_data(entity: &EntityState, fields: &mut Vec<St
         "sound_variant: {}",
         debug_snbt_string(sound_variant)
     ));
-}
-
-fn cow_variant_resource_id(variant: i32) -> Option<&'static str> {
-    ["minecraft:temperate", "minecraft:warm", "minecraft:cold"]
-        .get(usize::try_from(variant).ok()?)
-        .copied()
-}
-
-fn cow_sound_variant_resource_id(variant: i32) -> Option<&'static str> {
-    ["minecraft:classic", "minecraft:moody"]
-        .get(usize::try_from(variant).ok()?)
-        .copied()
 }
 
 fn debug_push_mooshroom_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
@@ -6418,12 +6373,6 @@ fn debug_push_frog_additional_save_data(entity: &EntityState, fields: &mut Vec<S
     .and_then(frog_variant_resource_id)
     .unwrap_or(FROG_DEFAULT_VARIANT_RESOURCE_ID);
     fields.push(format!("variant: {}", debug_snbt_string(variant)));
-}
-
-fn frog_variant_resource_id(variant: i32) -> Option<&'static str> {
-    ["minecraft:temperate", "minecraft:warm", "minecraft:cold"]
-        .get(usize::try_from(variant).ok()?)
-        .copied()
 }
 
 fn debug_push_panda_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
@@ -6672,18 +6621,6 @@ fn debug_push_pig_additional_save_data(entity: &EntityState, fields: &mut Vec<St
         "sound_variant: {}",
         debug_snbt_string(sound_variant)
     ));
-}
-
-fn pig_variant_resource_id(variant: i32) -> Option<&'static str> {
-    ["minecraft:temperate", "minecraft:warm", "minecraft:cold"]
-        .get(usize::try_from(variant).ok()?)
-        .copied()
-}
-
-fn pig_sound_variant_resource_id(variant: i32) -> Option<&'static str> {
-    ["minecraft:classic", "minecraft:big", "minecraft:mini"]
-        .get(usize::try_from(variant).ok()?)
-        .copied()
 }
 
 fn debug_push_pufferfish_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {

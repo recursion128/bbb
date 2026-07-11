@@ -10239,3 +10239,20 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   Wind Burst 后的错误：26.1 实际 bootstrap 顺序为 Riptide、Lunge、Channeling；server
   session registry 存在时仍优先使用其顺序。fixtures、update/check、二次 update、focused
   compatibility test 与 workspace gate 通过；enchantment effects/Codec 未被源码结构冒充。
+
+## 2026-07-11：Generated animal variant holder catalogs
+
+- [x] bootstrap generator 从 Cat/Chicken/Cow/Pig/Frog/ZombieNautilus 的 variant 与 sound-
+  variant Java sources 生成 10 组、共 34 个 fixed-holder resource ids；温度 variant 通过
+  `TemperatureVariants` 的 Identifier declarations 解析，Cat 的
+  `registerForAnyConditions` 与普通 `register` 共同按 CST source order 闭合。item-model
+  暴露统一 id→resource lookup，native F3+I/component encoder 删除 10 张内联数组，entity
+  scene 的 villager/cat/wolf/chicken/cow/pig/frog/zombie-nautilus static fallback 先查 generated
+  resource 再进入保留的 resource→render-model 语义 match；server session registry 仍优先。
+  extractor fixture 覆盖跨 compilation-unit Identifier 与 alternate registration call，
+  update/check、二次 update、focused tests 和 workspace gate 通过。
+- [x] 反向审查 `EquipmentAssets.java`：它声明 ResourceKey（含按 DyeColor 动态构造的 carpet/
+  harness keys），但没有 numeric registry/bootstrap order；实际 layer/texture 内容来自资源包
+  `assets/*/equipment/*.json`，已由 `bbb-pack::EquipmentAssetCatalog` 按 pack precedence 加载。
+  因此不生成无消费者的固定 numeric 表，也不把当前缺失的 renderer layer parity 误标完成；
+  后者继续保留在 unsupported renderer ledger。

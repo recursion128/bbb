@@ -128,6 +128,7 @@ def _declared_resource_keys(
     source: JavaSource,
     value_type: str,
     initializer_names: set[str],
+    referenced_paths: dict[str, str] | None = None,
 ) -> dict[str, str]:
     resources: dict[str, str] = {}
     for field in _resource_key_fields(source, value_type):
@@ -139,11 +140,12 @@ def _declared_resource_keys(
         _, arguments = _invocation(source, field.initializer, initializer_names)
         if len(arguments) != 1:
             _fail(source, field.initializer, f"resource key {field.name} must have one argument")
-        path = (
-            _string(source, arguments[0])
-            if arguments[0].node.type == "string_literal"
-            else _enum_string_argument(source, arguments[0])
-        )
+        if arguments[0].node.type == "string_literal":
+            path = _string(source, arguments[0])
+        elif referenced_paths is not None and arguments[0].canonical in referenced_paths:
+            path = referenced_paths[arguments[0].canonical]
+        else:
+            path = _enum_string_argument(source, arguments[0])
         if field.name in resources:
             _fail(source, field.initializer, f"duplicate resource key {field.name}")
         resources[field.name] = f"minecraft:{path}"
@@ -182,14 +184,20 @@ def bootstrap_resource_key_entries(
     value_type: str,
     initializer_names: set[str],
     expected_count: int,
+    *,
+    referenced_paths: dict[str, str] | None = None,
+    registration_names: set[str] | None = None,
 ) -> list[BootstrapEntry]:
-    resources = _declared_resource_keys(source, value_type, initializer_names)
+    resources = _declared_resource_keys(
+        source, value_type, initializer_names, referenced_paths
+    )
     method = _bootstrap_method(source)
     context_name = _bootstrap_context_name(source, method)
+    registration_names = registration_names or {"register"}
     calls = [
         call
         for call in source.calls
-        if call.name == "register"
+        if call.name in registration_names
         and call.qualifier is None
         and method.body.start_byte <= call.span.start_byte
         and call.span.end_byte <= method.body.end_byte
@@ -225,6 +233,24 @@ def bootstrap_resource_key_entries(
             f"{source.relative_path}: duplicate {value_type} resource id"
         )
     return entries
+
+
+def identifier_constant_paths(source: JavaSource) -> dict[str, str]:
+    paths: dict[str, str] = {}
+    for field in source.fields:
+        if field.type_spelling.replace(" ", "") != "Identifier":
+            continue
+        if field.initializer is None:
+            _fail(source, JavaExpression("", field.span, field.node), "Identifier lacks initializer")
+        _, arguments = _invocation(source, field.initializer, {"withDefaultNamespace"})
+        if len(arguments) != 1:
+            _fail(source, field.initializer, "Identifier initializer must have one argument")
+        paths[field.name] = _string(source, arguments[0])
+    if not paths:
+        raise BootstrapCatalogExtractionError(
+            f"{source.relative_path}: no Identifier constants found"
+        )
+    return paths
 
 
 def static_register_entries(

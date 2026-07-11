@@ -154,6 +154,97 @@ pub(super) const VANILLA_INSTRUMENT_KEYS: &[&str] = &[
     "minecraft:dream_goat_horn",
 ];
 
+pub(super) const VANILLA_CAT_VARIANT_KEYS: &[&str] = &[
+    "minecraft:tabby",
+    "minecraft:black",
+    "minecraft:red",
+    "minecraft:siamese",
+    "minecraft:british_shorthair",
+    "minecraft:calico",
+    "minecraft:persian",
+    "minecraft:ragdoll",
+    "minecraft:white",
+    "minecraft:jellie",
+    "minecraft:all_black",
+];
+
+pub(super) const VANILLA_CAT_SOUND_VARIANT_KEYS: &[&str] =
+    &["minecraft:classic", "minecraft:royal"];
+
+pub(super) const VANILLA_CHICKEN_VARIANT_KEYS: &[&str] =
+    &["minecraft:temperate", "minecraft:warm", "minecraft:cold"];
+
+pub(super) const VANILLA_CHICKEN_SOUND_VARIANT_KEYS: &[&str] =
+    &["minecraft:classic", "minecraft:picky"];
+
+pub(super) const VANILLA_COW_VARIANT_KEYS: &[&str] =
+    &["minecraft:temperate", "minecraft:warm", "minecraft:cold"];
+
+pub(super) const VANILLA_COW_SOUND_VARIANT_KEYS: &[&str] =
+    &["minecraft:classic", "minecraft:moody"];
+
+pub(super) const VANILLA_PIG_VARIANT_KEYS: &[&str] =
+    &["minecraft:temperate", "minecraft:warm", "minecraft:cold"];
+
+pub(super) const VANILLA_PIG_SOUND_VARIANT_KEYS: &[&str] =
+    &["minecraft:classic", "minecraft:big", "minecraft:mini"];
+
+pub(super) const VANILLA_FROG_VARIANT_KEYS: &[&str] =
+    &["minecraft:temperate", "minecraft:warm", "minecraft:cold"];
+
+pub(super) const VANILLA_ZOMBIE_NAUTILUS_VARIANT_KEYS: &[&str] =
+    &["minecraft:temperate", "minecraft:warm"];
+
+pub fn vanilla_cat_variant_resource_id(id: i32) -> Option<&'static str> {
+    let index = usize::try_from(id).ok()?;
+    VANILLA_CAT_VARIANT_KEYS.get(index).copied()
+}
+
+pub fn vanilla_cat_sound_variant_resource_id(id: i32) -> Option<&'static str> {
+    let index = usize::try_from(id).ok()?;
+    VANILLA_CAT_SOUND_VARIANT_KEYS.get(index).copied()
+}
+
+pub fn vanilla_chicken_variant_resource_id(id: i32) -> Option<&'static str> {
+    let index = usize::try_from(id).ok()?;
+    VANILLA_CHICKEN_VARIANT_KEYS.get(index).copied()
+}
+
+pub fn vanilla_chicken_sound_variant_resource_id(id: i32) -> Option<&'static str> {
+    let index = usize::try_from(id).ok()?;
+    VANILLA_CHICKEN_SOUND_VARIANT_KEYS.get(index).copied()
+}
+
+pub fn vanilla_cow_variant_resource_id(id: i32) -> Option<&'static str> {
+    let index = usize::try_from(id).ok()?;
+    VANILLA_COW_VARIANT_KEYS.get(index).copied()
+}
+
+pub fn vanilla_cow_sound_variant_resource_id(id: i32) -> Option<&'static str> {
+    let index = usize::try_from(id).ok()?;
+    VANILLA_COW_SOUND_VARIANT_KEYS.get(index).copied()
+}
+
+pub fn vanilla_pig_variant_resource_id(id: i32) -> Option<&'static str> {
+    let index = usize::try_from(id).ok()?;
+    VANILLA_PIG_VARIANT_KEYS.get(index).copied()
+}
+
+pub fn vanilla_pig_sound_variant_resource_id(id: i32) -> Option<&'static str> {
+    let index = usize::try_from(id).ok()?;
+    VANILLA_PIG_SOUND_VARIANT_KEYS.get(index).copied()
+}
+
+pub fn vanilla_frog_variant_resource_id(id: i32) -> Option<&'static str> {
+    let index = usize::try_from(id).ok()?;
+    VANILLA_FROG_VARIANT_KEYS.get(index).copied()
+}
+
+pub fn vanilla_zombie_nautilus_variant_resource_id(id: i32) -> Option<&'static str> {
+    let index = usize::try_from(id).ok()?;
+    VANILLA_ZOMBIE_NAUTILUS_VARIANT_KEYS.get(index).copied()
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) struct VanillaBannerPattern {
     pub(super) resource_id: &'static str,
@@ -850,6 +941,16 @@ mod tests {
             (VANILLA_WOLF_SOUND_VARIANT_KEYS, 7),
             (VANILLA_WOLF_VARIANT_KEYS, 9),
             (VANILLA_INSTRUMENT_KEYS, 8),
+            (VANILLA_CAT_VARIANT_KEYS, 11),
+            (VANILLA_CAT_SOUND_VARIANT_KEYS, 2),
+            (VANILLA_CHICKEN_VARIANT_KEYS, 3),
+            (VANILLA_CHICKEN_SOUND_VARIANT_KEYS, 2),
+            (VANILLA_COW_VARIANT_KEYS, 3),
+            (VANILLA_COW_SOUND_VARIANT_KEYS, 2),
+            (VANILLA_PIG_VARIANT_KEYS, 3),
+            (VANILLA_PIG_SOUND_VARIANT_KEYS, 3),
+            (VANILLA_FROG_VARIANT_KEYS, 3),
+            (VANILLA_ZOMBIE_NAUTILUS_VARIANT_KEYS, 2),
         ];
         for (entries, expected_len) in catalogs {
             assert_eq!(entries.len(), *expected_len);
@@ -920,5 +1021,18 @@ mod tests {
             "minecraft:sharpness"
         );
         assert_eq!(VANILLA_ENCHANTMENTS.get(13).unwrap().max_level, 5);
+        assert_eq!(
+            vanilla_cat_variant_resource_id(10),
+            Some("minecraft:all_black")
+        );
+        assert_eq!(
+            vanilla_pig_sound_variant_resource_id(1),
+            Some("minecraft:big")
+        );
+        assert_eq!(
+            vanilla_zombie_nautilus_variant_resource_id(1),
+            Some("minecraft:warm")
+        );
+        assert_eq!(vanilla_chicken_variant_resource_id(3), None);
     }
 }

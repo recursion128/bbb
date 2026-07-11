@@ -66,6 +66,14 @@ mod bootstrap_catalog;
 mod icon_model;
 mod profile_skin;
 
+pub use bootstrap_catalog::{
+    vanilla_cat_sound_variant_resource_id, vanilla_cat_variant_resource_id,
+    vanilla_chicken_sound_variant_resource_id, vanilla_chicken_variant_resource_id,
+    vanilla_cow_sound_variant_resource_id, vanilla_cow_variant_resource_id,
+    vanilla_frog_variant_resource_id, vanilla_pig_sound_variant_resource_id,
+    vanilla_pig_variant_resource_id, vanilla_zombie_nautilus_variant_resource_id,
+};
+
 use icon_model::{
     contains_runtime_condition, default_item_name_translation_key,
     item_icon_model_ref_for_definition, CompassTarget, CrossbowChargeType, IconResolveContext,
