@@ -29,6 +29,7 @@ pub enum VanillaEntityMetadataFamily {
     Goat,
     Panda,
     PolarBear,
+    Sheep,
     Turtle,
     AbstractHorse,
     Camel,
@@ -362,6 +363,7 @@ mod tests {
             VanillaEntityMetadataFamily::Goat,
             VanillaEntityMetadataFamily::Panda,
             VanillaEntityMetadataFamily::PolarBear,
+            VanillaEntityMetadataFamily::Sheep,
             VanillaEntityMetadataFamily::Turtle,
             VanillaEntityMetadataFamily::AbstractHorse,
             VanillaEntityMetadataFamily::Camel,
@@ -541,6 +543,13 @@ mod tests {
         assert_eq!(VANILLA_PANDA_FLAG_ROLLING, 4);
         assert_eq!(VANILLA_PANDA_FLAG_SITTING, 8);
         assert_eq!(VANILLA_PANDA_FLAG_ON_BACK, 16);
+        let sheep = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Sheep);
+        assert_eq!(sheep.parent, Some(VanillaEntityMetadataFamily::AgeableMob));
+        assert_eq!(sheep.inherited_field_count, 18);
+        assert_eq!(sheep.own_fields.len(), 1);
+        assert_eq!(VANILLA_SHEEP_WOOL_DATA_ID, 18);
+        assert_eq!(VANILLA_SHEEP_DEFAULT_WOOL, 0);
+        assert_eq!(VANILLA_SHEEP_FLAG_SHEARED, 16);
         let turtle = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Turtle);
         assert_eq!(turtle.parent, Some(VanillaEntityMetadataFamily::AgeableMob));
         assert_eq!(turtle.inherited_field_count, 18);

@@ -55,6 +55,7 @@ FAMILIES = (
     FamilySpec("Goat", "net.minecraft.world.entity.animal.goat.Goat", "AgeableMob"),
     FamilySpec("Panda", "net.minecraft.world.entity.animal.panda.Panda", "AgeableMob"),
     FamilySpec("PolarBear", "net.minecraft.world.entity.animal.polarbear.PolarBear", "AgeableMob"),
+    FamilySpec("Sheep", "net.minecraft.world.entity.animal.sheep.Sheep", "AgeableMob"),
     FamilySpec("Turtle", "net.minecraft.world.entity.animal.turtle.Turtle", "AgeableMob"),
     FamilySpec(
         "AbstractHorse",
@@ -204,6 +205,7 @@ DATA_ALIASES = {
     "VANILLA_PANDA_MAIN_GENE_DATA_ID": ("net.minecraft.world.entity.animal.panda.Panda", "MAIN_GENE_ID"),
     "VANILLA_PANDA_HIDDEN_GENE_DATA_ID": ("net.minecraft.world.entity.animal.panda.Panda", "HIDDEN_GENE_ID"),
     "VANILLA_PANDA_FLAGS_DATA_ID": ("net.minecraft.world.entity.animal.panda.Panda", "DATA_ID_FLAGS"),
+    "VANILLA_SHEEP_WOOL_DATA_ID": ("net.minecraft.world.entity.animal.sheep.Sheep", "DATA_WOOL_ID"),
     "VANILLA_TURTLE_HAS_EGG_DATA_ID": ("net.minecraft.world.entity.animal.turtle.Turtle", "HAS_EGG"),
     "VANILLA_TURTLE_LAYING_EGG_DATA_ID": ("net.minecraft.world.entity.animal.turtle.Turtle", "LAYING_EGG"),
     "VANILLA_ABSTRACT_HORSE_FLAGS_DATA_ID": ("net.minecraft.world.entity.animal.equine.AbstractHorse", "DATA_ID_FLAGS"),
@@ -323,6 +325,7 @@ DEFAULT_ALIASES = {
     "VANILLA_PANDA_DEFAULT_MAIN_GENE": ("net.minecraft.world.entity.animal.panda.Panda", "MAIN_GENE_ID"),
     "VANILLA_PANDA_DEFAULT_HIDDEN_GENE": ("net.minecraft.world.entity.animal.panda.Panda", "HIDDEN_GENE_ID"),
     "VANILLA_PANDA_DEFAULT_FLAGS": ("net.minecraft.world.entity.animal.panda.Panda", "DATA_ID_FLAGS"),
+    "VANILLA_SHEEP_DEFAULT_WOOL": ("net.minecraft.world.entity.animal.sheep.Sheep", "DATA_WOOL_ID"),
     "VANILLA_TURTLE_DEFAULT_HAS_EGG": ("net.minecraft.world.entity.animal.turtle.Turtle", "HAS_EGG"),
     "VANILLA_TURTLE_DEFAULT_LAYING_EGG": ("net.minecraft.world.entity.animal.turtle.Turtle", "LAYING_EGG"),
     "VANILLA_ABSTRACT_HORSE_DEFAULT_FLAGS": ("net.minecraft.world.entity.animal.equine.AbstractHorse", "DATA_ID_FLAGS"),
@@ -432,6 +435,7 @@ METHOD_FLAG_ALIASES = {
     "VANILLA_MOB_FLAG_AGGRESSIVE": ("net.minecraft.world.entity.Mob", "DATA_MOB_FLAGS_ID", "net.minecraft.world.entity.Mob", "isAggressive", "binary_mask"),
     "VANILLA_TAMABLE_ANIMAL_FLAG_SITTING": ("net.minecraft.world.entity.TamableAnimal", "DATA_FLAGS_ID", "net.minecraft.world.entity.TamableAnimal", "isInSittingPose", "binary_mask"),
     "VANILLA_TAMABLE_ANIMAL_FLAG_TAME": ("net.minecraft.world.entity.TamableAnimal", "DATA_FLAGS_ID", "net.minecraft.world.entity.TamableAnimal", "isTame", "binary_mask"),
+    "VANILLA_SHEEP_FLAG_SHEARED": ("net.minecraft.world.entity.animal.sheep.Sheep", "DATA_WOOL_ID", "net.minecraft.world.entity.animal.sheep.Sheep", "isSheared", "inline_mask"),
 }
 
 

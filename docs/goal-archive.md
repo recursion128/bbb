@@ -9863,3 +9863,9 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   两项 BYTE gene id21–22、BYTE flags id23（默认全 0），以及 sneeze/roll/sit/on-back
   masks 2/4/8/16；world animation、native model/state/debug-save 删除手抄 synced
   id/default/mask。动画速率、gene 显隐和天气行为仍由对应 owner 管理。
+
+## 2026-07-11：Generated entity metadata consumer（Sheep）
+
+- [x] 从 generated catalog 建立 `AgeableMob -> Sheep` family：BYTE wool
+  id18/default0，并以 `isSheared()` CST 表达式解析 sheared mask16；native model/debug-save
+  删除手抄 synced id/default/mask。低四位 color packed 解码仍由 native 语义 owner 管理。

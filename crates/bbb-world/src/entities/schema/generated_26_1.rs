@@ -128,6 +128,8 @@ const GENERATED_VANILLA_PANDA_HIDDEN_GENE_DATA_ID: u8 = 22;
 pub const VANILLA_PANDA_HIDDEN_GENE_DATA_ID: u8 = GENERATED_VANILLA_PANDA_HIDDEN_GENE_DATA_ID;
 const GENERATED_VANILLA_PANDA_FLAGS_DATA_ID: u8 = 23;
 pub const VANILLA_PANDA_FLAGS_DATA_ID: u8 = GENERATED_VANILLA_PANDA_FLAGS_DATA_ID;
+const GENERATED_VANILLA_SHEEP_WOOL_DATA_ID: u8 = 18;
+pub const VANILLA_SHEEP_WOOL_DATA_ID: u8 = GENERATED_VANILLA_SHEEP_WOOL_DATA_ID;
 const GENERATED_VANILLA_TURTLE_HAS_EGG_DATA_ID: u8 = 18;
 pub const VANILLA_TURTLE_HAS_EGG_DATA_ID: u8 = GENERATED_VANILLA_TURTLE_HAS_EGG_DATA_ID;
 const GENERATED_VANILLA_TURTLE_LAYING_EGG_DATA_ID: u8 = 19;
@@ -395,6 +397,8 @@ const GENERATED_VANILLA_TAMABLE_ANIMAL_FLAG_SITTING: i8 = 1;
 pub const VANILLA_TAMABLE_ANIMAL_FLAG_SITTING: i8 = GENERATED_VANILLA_TAMABLE_ANIMAL_FLAG_SITTING;
 const GENERATED_VANILLA_TAMABLE_ANIMAL_FLAG_TAME: i8 = 4;
 pub const VANILLA_TAMABLE_ANIMAL_FLAG_TAME: i8 = GENERATED_VANILLA_TAMABLE_ANIMAL_FLAG_TAME;
+const GENERATED_VANILLA_SHEEP_FLAG_SHEARED: i8 = 16;
+pub const VANILLA_SHEEP_FLAG_SHEARED: i8 = GENERATED_VANILLA_SHEEP_FLAG_SHEARED;
 const GENERATED_VANILLA_AVATAR_MODEL_PART_CAPE: i8 = 1;
 pub const VANILLA_AVATAR_MODEL_PART_CAPE: i8 = GENERATED_VANILLA_AVATAR_MODEL_PART_CAPE;
 const GENERATED_VANILLA_AVATAR_MODEL_PART_JACKET: i8 = 2;
@@ -508,6 +512,8 @@ const GENERATED_VANILLA_PANDA_DEFAULT_HIDDEN_GENE: i8 = 0;
 pub const VANILLA_PANDA_DEFAULT_HIDDEN_GENE: i8 = GENERATED_VANILLA_PANDA_DEFAULT_HIDDEN_GENE;
 const GENERATED_VANILLA_PANDA_DEFAULT_FLAGS: i8 = 0;
 pub const VANILLA_PANDA_DEFAULT_FLAGS: i8 = GENERATED_VANILLA_PANDA_DEFAULT_FLAGS;
+const GENERATED_VANILLA_SHEEP_DEFAULT_WOOL: i8 = 0;
+pub const VANILLA_SHEEP_DEFAULT_WOOL: i8 = GENERATED_VANILLA_SHEEP_DEFAULT_WOOL;
 const GENERATED_VANILLA_TURTLE_DEFAULT_HAS_EGG: bool = false;
 pub const VANILLA_TURTLE_DEFAULT_HAS_EGG: bool = GENERATED_VANILLA_TURTLE_DEFAULT_HAS_EGG;
 const GENERATED_VANILLA_TURTLE_DEFAULT_LAYING_EGG: bool = false;
@@ -11730,6 +11736,13 @@ pub const VANILLA_ENTITY_METADATA_FLAG_RESOLVER_EVIDENCE_26_1:
         reason: "vanilla uses an inline accessor mask rather than a named constant",
     },
     VanillaEntityMetadataResolverEvidence {
+        java_class: "net.minecraft.world.entity.animal.sheep.Sheep",
+        accessor_name: "DATA_WOOL_ID",
+        evidence_member: "isSheared",
+        source_expression: "this.entityData.get (DATA_WOOL_ID) & 16",
+        reason: "vanilla uses an inline accessor mask rather than a named constant",
+    },
+    VanillaEntityMetadataResolverEvidence {
         java_class: "net.minecraft.world.entity.player.PlayerModelPart",
         accessor_name: "DATA_PLAYER_MODE_CUSTOMISATION",
         evidence_member: "CAPE",
@@ -13698,6 +13711,25 @@ const POLARBEAR_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadat
     own_flags: POLARBEAR_FLAGS,
 };
 
+const SHEEP_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[VanillaEntityMetadataFieldSchema {
+    name: "DATA_WOOL_ID",
+    data_id: 18,
+    serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+    default: VanillaEntityMetadataDefault::Byte(0),
+}];
+const SHEEP_FLAGS: &[VanillaEntityMetadataFlagSchema] = &[VanillaEntityMetadataFlagSchema {
+    name: "isSheared",
+    data_id: 18,
+    mask: VANILLA_SHEEP_FLAG_SHEARED,
+}];
+const SHEEP_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamilySchema {
+    family: VanillaEntityMetadataFamily::Sheep,
+    parent: Some(VanillaEntityMetadataFamily::AgeableMob),
+    inherited_field_count: 18,
+    own_fields: SHEEP_FIELDS,
+    own_flags: SHEEP_FLAGS,
+};
+
 const TURTLE_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[
     VanillaEntityMetadataFieldSchema {
         name: "HAS_EGG",
@@ -14721,6 +14753,7 @@ pub(super) const fn generated_entity_metadata_schema(
         VanillaEntityMetadataFamily::Goat => &GOAT_SCHEMA,
         VanillaEntityMetadataFamily::Panda => &PANDA_SCHEMA,
         VanillaEntityMetadataFamily::PolarBear => &POLARBEAR_SCHEMA,
+        VanillaEntityMetadataFamily::Sheep => &SHEEP_SCHEMA,
         VanillaEntityMetadataFamily::Turtle => &TURTLE_SCHEMA,
         VanillaEntityMetadataFamily::AbstractHorse => &ABSTRACTHORSE_SCHEMA,
         VanillaEntityMetadataFamily::Camel => &CAMEL_SCHEMA,

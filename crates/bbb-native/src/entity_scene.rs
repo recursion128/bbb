@@ -160,6 +160,11 @@ pub(crate) use bbb_world::{
     VANILLA_PUFFERFISH_PUFF_STATE_DATA_ID as PUFFERFISH_PUFF_STATE_DATA_ID,
 };
 use bbb_world::{
+    VANILLA_SHEEP_DEFAULT_WOOL as SHEEP_DEFAULT_WOOL,
+    VANILLA_SHEEP_FLAG_SHEARED as SHEEP_WOOL_SHEARED_FLAG,
+    VANILLA_SHEEP_WOOL_DATA_ID as SHEEP_WOOL_DATA_ID,
+};
+use bbb_world::{
     VANILLA_SHULKER_COLOR_DATA_ID as SHULKER_COLOR_DATA_ID,
     VANILLA_SHULKER_DEFAULT_COLOR as SHULKER_DEFAULT_COLOR,
 };
@@ -306,11 +311,7 @@ const CAT_VARIANT_DATA_ID: u8 = 20;
 // RELAX_STATE_ONE (22) / DATA_COLLAR_COLOR (23). `getCollarColor()` = `DyeColor.byId`, default RED (14).
 const CAT_COLLAR_COLOR_DATA_ID: u8 = 23;
 const CAT_DEFAULT_COLLAR_COLOR_ID: i32 = 14;
-// Vanilla Sheep.DATA_WOOL_ID (18, BYTE): `Sheep extends Animal`, so its first own accessor follows
-// Mob.DATA_MOB_FLAGS_ID (15) and the two AgeableMob accessors DATA_BABY_ID (16) / AGE_LOCKED (17).
-const SHEEP_WOOL_DATA_ID: u8 = 18;
 const SHEEP_WOOL_COLOR_MASK: u8 = 0x0f;
-const SHEEP_WOOL_SHEARED_FLAG: u8 = 0x10;
 // Vanilla `AbstractArrow.IN_GROUND` (10, BOOLEAN): updating it to true after the first client tick
 // starts the seven-tick `shakeTime` impact wobble that `ArrowRenderer.extractRenderState` projects.
 #[cfg(test)]

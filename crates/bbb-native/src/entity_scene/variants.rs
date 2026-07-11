@@ -431,10 +431,10 @@ pub(super) fn sheep_model_kind(
     values: &[bbb_protocol::packets::EntityDataValue],
     age_ticks: f32,
 ) -> EntityModelKind {
-    let wool = entity_data_byte(values, SHEEP_WOOL_DATA_ID, 0) as u8;
+    let wool = entity_data_byte(values, SHEEP_WOOL_DATA_ID, SHEEP_DEFAULT_WOOL) as u8;
     EntityModelKind::Sheep {
         baby: ageable_baby(values),
-        sheared: wool & SHEEP_WOOL_SHEARED_FLAG != 0,
+        sheared: wool & SHEEP_WOOL_SHEARED_FLAG as u8 != 0,
         wool_color: SheepWoolColor::from_vanilla_id(wool & SHEEP_WOOL_COLOR_MASK),
         jeb: entity_data_optional_component(values, ENTITY_CUSTOM_NAME_DATA_ID)
             .is_some_and(|name| name == "jeb_"),

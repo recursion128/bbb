@@ -127,6 +127,9 @@ use bbb_world::{
     VANILLA_PANDA_DEFAULT_MAIN_GENE as PANDA_DEFAULT_MAIN_GENE,
     VANILLA_PANDA_HIDDEN_GENE_DATA_ID as PANDA_HIDDEN_GENE_DATA_ID,
     VANILLA_PANDA_MAIN_GENE_DATA_ID as PANDA_MAIN_GENE_DATA_ID,
+    VANILLA_SHEEP_DEFAULT_WOOL as SHEEP_DEFAULT_WOOL,
+    VANILLA_SHEEP_FLAG_SHEARED as SHEEP_WOOL_SHEARED_FLAG,
+    VANILLA_SHEEP_WOOL_DATA_ID as SHEEP_WOOL_DATA_ID,
     VANILLA_TURTLE_DEFAULT_HAS_EGG as TURTLE_DEFAULT_HAS_EGG,
     VANILLA_TURTLE_HAS_EGG_DATA_ID as TURTLE_HAS_EGG_DATA_ID,
     VANILLA_WITHER_DEFAULT_INVULNERABLE_TICKS as WITHER_DEFAULT_INVULNERABLE_TICKS,
@@ -525,10 +528,7 @@ const PARROT_DEFAULT_VARIANT: i32 = 0;
 const PARROT_MAX_VARIANT: i32 = 4;
 const CREEPER_DEFAULT_FUSE: i16 = 30;
 const CREEPER_DEFAULT_EXPLOSION_RADIUS: i8 = 3;
-const SHEEP_WOOL_DATA_ID: u8 = 18;
 const SHEEP_WOOL_COLOR_MASK: u8 = 0x0f;
-const SHEEP_WOOL_SHEARED_FLAG: u8 = 0x10;
-const SHEEP_DEFAULT_WOOL_DATA: u8 = 0;
 const SKELETON_DEFAULT_STRAY_CONVERSION_TIME: i32 = -1;
 const SLIME_MIN_SIZE: i32 = 1;
 const SLIME_MAX_SIZE: i32 = 127;
@@ -6773,10 +6773,10 @@ fn debug_push_shulker_additional_save_data(entity: &EntityState, fields: &mut Ve
 fn debug_push_sheep_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
     let wool = debug_entity_data_byte_present(entity, SHEEP_WOOL_DATA_ID)
         .map(|value| value as u8)
-        .unwrap_or(SHEEP_DEFAULT_WOOL_DATA);
+        .unwrap_or(SHEEP_DEFAULT_WOOL as u8);
     fields.push(format!(
         "Sheared: {}",
-        debug_snbt_bool(wool & SHEEP_WOOL_SHEARED_FLAG != 0)
+        debug_snbt_bool(wool & SHEEP_WOOL_SHEARED_FLAG as u8 != 0)
     ));
     fields.push(format!("Color: {}b", wool & SHEEP_WOOL_COLOR_MASK));
 }
