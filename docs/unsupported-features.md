@@ -96,7 +96,8 @@ Movement:
   fall-sound side effects.
 - Handle the remaining `MovePlayer.Rot` vehicle movement send edge cases.
 - Implement full vanilla boat physics, water/buoyancy/collision parity, and
-  non-boat vehicle movement for mounted input.
+  non-boat vehicle movement only for the locally controlled instance; remote
+  vehicles remain server-transform/interpolation driven.
 
 Block destroy:
 
@@ -235,16 +236,12 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   `null` and emits the red `Missing Server Entity` 3D billboard instead. bbb
   owns no integrated server and implements that missing-label branch. Reopen
   with an in-process integrated server boundary.
-- Extend F3+I local entity capture across the remaining vanilla
-  `addAdditionalSaveData` entity families whose saved state still needs
-  non-equine specialized parent-chain classification, remaining owner/target/reference
-  projection, remaining delayed/fence-knot leash projection, non-default private
-  projectile state such as the entity-hit mutation of
-  `ThrownTrident.dealtDamage` (the synced in-ground `inGroundTime > 4` client
-  tick path is covered; the hit path waits on full projectile collision),
-  non-default private or otherwise unobserved scalar/flag/timer/counter
-  projection,
-  remaining registry-backed
+- Extend Shift-local F3+I entity capture only for fields actually observed from
+  synced metadata, spawn/equipment/components, client-owned runtime, and
+  protocol-backed references. Ordinary F3+I already waits for the matching
+  server tag-query response, which is the complete NBT authority; private
+  owner/target/inventory/timer/RNG fields are not client work and must not be
+  synthesized from defaults. Remaining observable work includes registry-backed
   entity-data projection (the fixed vanilla entity/block-entity type catalogs
   are generated; server dynamic-registry ordering remains), packed variant
   projection, remaining codec-backed SNBT projection (component removals are complete;
@@ -558,10 +555,13 @@ back into a todo. Do not delete these.
 - **Local TNT movement / fuse countdown simulation.** The current slice consumes
   world entity position and synced/default fuse metadata. Restart with broader
   entity-physics parity.
-- **Client projectile movement / gravity / drag tick parity.** Canonical
+- **Client projectile presentation movement / gravity / drag tick parity.** Canonical
   `Projectile` parent lifecycle now consumes the current transform, delta, real
   type bounds, and owner mount graph, but bbb does not yet advance every remote
-  projectile subclass between server movement packets. `LeftOwner` is sticky
+  projectile subclass between server movement packets. This covers only the
+  motion/interpolation/trail/lifecycle work performed by the multiplayer client;
+  hit resolution, damage, explosions, block changes, and authoritative removal
+  remain server-owned. `LeftOwner` is sticky
   and exact once the canonical projectile box separates; completing per-subclass
   client motion will make that separation occur at vanilla's intermediate tick
   instead of the next authoritative transform update.

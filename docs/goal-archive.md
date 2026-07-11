@@ -10028,3 +10028,15 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   entity-scene 曾把 `MushroomCow` 误判为继承 `Cow`、进而手抄为 id20 的漂移；native
   model/debug-save 删除对应手写 ids 与 numeric holder defaults。registry/bootstrap 顺序、
   Cow/MushroomCow 模型映射、交互和 persistent Codec/SNBT 语义仍由对应 owner 管理。
+
+## 2026-07-11：Multiplayer-only client authority 与 F3+I NBT 收缩审计
+
+- [x] 依据 vanilla `ClientLevel.tickEntities`、`LocalPlayer.tick`、
+  `Entity.isLocalInstanceAuthoritative`、`KeyboardHandler.copyRecreateCommand` 与
+  `DebugQueryHandler` 冻结 multiplayer-only 边界：保留 local prediction、locally-controlled
+  vehicle、remote interpolation 和 client presentation tick；server AI/寻路/刷怪/战利品/
+  权威战斗不是客户端功能。普通 F3+I 仅消费匹配 transaction 的完整 server NBT；null
+  response（包括目标已消失后的空结果）不再复制命令。Shift-local entity projection 删除
+  无观察来源的通用 entity/mob/breeding、AI/战斗参数、库存、随机 timer/cooldown 以及 Chicken
+  `EggLayTime`/`IsChickenJockey`；canonical synced/spawn/client-runtime 值与实体构造器定义的
+  synced defaults 仍保留。未完成的 client projectile/vehicle/render parity 仍开放。

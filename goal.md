@@ -434,10 +434,12 @@ metadata match。
    teleport/interpolation、passenger/vehicle、equipment/effect/attribute、entity event 与
    level clear/respawn；unknown 或未呈现实体仍必须保留可 probe 的 canonical state，不能
    因缺 renderer 丢掉网络状态。
-4. **客户端 tick、移动与物理**：实现 vanilla 客户端实际推进的 interpolation、animation
-   counters、projectile/vehicle/local-control、fluid/fire/freeze/portal/collision 等行为；
-   远端完全由服务器权威且 vanilla 客户端不模拟的逻辑标为 `not-applicable` 并附来源，
-   不伪造服务端 AI 或不可重建 RNG。
+4. **客户端 tick、移动与物理**：只实现 vanilla multiplayer 客户端实际推进的 local-player
+   prediction、仅 locally-controlled vehicle 的 movement/serverbound 回报、remote transform
+   interpolation，以及 `ClientLevel` 确实执行的 subclass tick、animation counters、粒子、音频、
+   projectile motion/trail/presentation；server correction 覆盖预测。命中、伤害、爆炸、方块
+   修改、权威移除、mob AI/goal、寻路、刷怪、繁殖、战利品和不可重建 server RNG 均标为
+   `not-applicable`，不得进入客户端完成矩阵或以 synthetic state 冒充。
 5. **渲染与动画**：逐 family 补齐 model family、baby/scale、texture/variant、equipment/
    emissive/overlay/held-item/armor 等 layer、keyframe/procedural animation、name/tag、
    shadow/culling/bounds 与 render-state interpolation；missing asset 保留明确 vanilla
@@ -445,9 +447,11 @@ metadata match。
 6. **事件与交互呈现**：覆盖客户端可观察的 hurt/death/attack/tame/status event、粒子、
    声音、拾取、乘骑/缰绳、选取/准星、HUD/debug 和本地交互反馈；协议 decode、world
    canonical apply 与 runtime side effect 必须走现有唯一分发路径。
-7. **保存与调试投影**：完成 F3+I `saveWithoutId` 可观察字段、registry-backed variant、
-   equipment/container/owner/target/private client state 与 codec-backed SNBT；只保存服务端
-   才拥有且客户端无法观察的字段不得猜测，需在矩阵标明不可获得来源。
+7. **保存与调试投影**：普通 F3+I 必须以匹配 transaction 的 server entity-tag query
+   response 为完整 NBT 权威；null/stale response、query 失败或目标消失不得生成伪造命令。
+   Shift-local `saveWithoutId` 只投影 synced metadata、spawn/equipment/component、client-owned
+   runtime 等实际可观察字段；server inventory、owner/target/private timer/RNG 等不可观察状态
+   不得由 default/source expression/heuristic 猜测，需在矩阵标为 `not-applicable`。
 8. **family 关闭门禁**：每个 family slice 同时更新矩阵和 unsupported ledger，运行其
    protocol/world/native/renderer focused tests；增加 coverage test，保证 157 项都有行、
    每个 `complete` cell 有实现/测试引用、catalog 新增项默认令门禁失败，且生产中的

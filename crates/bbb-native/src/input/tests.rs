@@ -2445,7 +2445,7 @@ fn f3_i_server_entity_tag_response_copies_recreate_command_without_uuid_or_pos()
 }
 
 #[test]
-fn f3_i_null_server_tag_response_copies_command_without_nbt() {
+fn f3_i_null_server_tag_response_reports_failure_without_copying() {
     let mut input = ClientInputState::new(true);
     let mut world = world_with_debug_player(false);
     grant_debug_recreate_nbt_permission(&mut world);
@@ -2493,15 +2493,61 @@ fn f3_i_null_server_tag_response_copies_command_without_nbt() {
     });
 
     assert!(input.consume_debug_recreate_server_query_response(&mut world, &mut clipboard));
-    assert_eq!(
-        clipboard.text.as_deref(),
-        Some("/setblock 0 1 3 minecraft:stone")
-    );
+    assert_eq!(clipboard.text, None);
+    assert_eq!(input.pending_debug_recreate_server_query, None);
     let messages = &world.client_chat().messages;
     assert_eq!(messages.len(), 1);
     assert_eq!(
         messages[0].content,
-        "[Debug]: Copied server-side block data to clipboard"
+        "[Debug]: Server returned no recreate data"
+    );
+}
+
+#[test]
+fn f3_i_entity_disappearing_before_matching_response_does_not_copy() {
+    let mut input = ClientInputState::new(true);
+    let mut world = world_with_debug_player(false);
+    world.apply_add_entity(AddEntity {
+        id: 51,
+        uuid: Uuid::from_u128(51),
+        entity_type_id: VANILLA_ENTITY_TYPE_CREEPER_ID,
+        position: ProtocolVec3d {
+            x: 1.0,
+            y: 2.0,
+            z: 3.0,
+        },
+        delta_movement: ProtocolVec3d::default(),
+        x_rot: 0.0,
+        y_rot: 0.0,
+        y_head_rot: 0.0,
+        data: 0,
+    });
+    input.pending_debug_recreate_server_query = Some(PendingDebugRecreateServerQuery {
+        transaction_id: 7,
+        target: PendingDebugRecreateServerQueryTarget::Entity {
+            entity_type: "minecraft:creeper".to_string(),
+            position: [1.0, 2.0, 3.0],
+        },
+    });
+    assert_eq!(
+        world.apply_remove_entities(ProtocolRemoveEntities {
+            entity_ids: vec![51],
+        }),
+        1
+    );
+    world.apply_tag_query(TagQuery {
+        transaction_id: 7,
+        tag_present: false,
+        raw_nbt: Vec::new(),
+    });
+    let mut clipboard = MockDebugClipboard::accepting();
+
+    assert!(input.consume_debug_recreate_server_query_response(&mut world, &mut clipboard));
+    assert_eq!(clipboard.text, None);
+    assert_eq!(input.pending_debug_recreate_server_query, None);
+    assert_eq!(
+        world.client_chat().messages[0].content,
+        "[Debug]: Server returned no recreate data"
     );
 }
 
@@ -2791,11 +2837,11 @@ fn shift_f3_i_with_permission_copies_local_creeper_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:creeper 0.00 0.00 3.00 \
              {Motion: [0.25d, -0.5d, 0.75d], Rotation: [45.0f, 10.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 123s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, CustomName: 'Bob \"Prime\"', \
+             Air: 123s, \
+             CustomName: 'Bob \"Prime\"', \
              CustomNameVisible: 1b, Silent: 1b, NoGravity: 1b, Glowing: 1b, TicksFrozen: 42, \
-             CanPickUpLoot: 0b, PersistenceRequired: 0b, LeftHanded: 1b, NoAI: 1b, \
-             powered: 1b, Fuse: 30s, ExplosionRadius: 3b, ignited: 1b}"
+             LeftHanded: 1b, NoAI: 1b, \
+             powered: 1b, ignited: 1b}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
@@ -2879,10 +2925,7 @@ fn shift_f3_i_with_permission_copies_local_mob_leash_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:creeper 0.00 0.00 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, Invulnerable: 0b, \
-             PortalCooldown: 0, CanPickUpLoot: 0b, PersistenceRequired: 0b, \
-             leash: {UUID: [I; 0, 0, 0, 60]}, LeftHanded: 0b, powered: 0b, Fuse: 30s, \
-             ExplosionRadius: 3b, ignited: 0b}"
+             leash: {UUID: [I; 0, 0, 0, 60]}, powered: 0b, ignited: 0b}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
@@ -2960,9 +3003,7 @@ fn shift_f3_i_with_permission_copies_local_creaking_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:creaking 0.00 0.00 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, CanPickUpLoot: 0b, \
-             PersistenceRequired: 0b, LeftHanded: 1b, home_pos: [I; 4, 5, 6]}"
+             LeftHanded: 1b, home_pos: [I; 4, 5, 6]}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
@@ -3052,9 +3093,7 @@ fn shift_f3_i_with_permission_copies_local_shulker_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:shulker 0.00 1.00 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, CanPickUpLoot: 0b, \
-             PersistenceRequired: 0b, LeftHanded: 1b, AttachFace: 5b, Peek: 30b, \
+             LeftHanded: 1b, AttachFace: 5b, Peek: 30b, \
              Color: 11b}"
         )
     );
@@ -3137,9 +3176,7 @@ fn shift_f3_i_with_permission_copies_local_slime_family_save_nbt_to_clipboard() 
         let expected = format!(
             "/summon {entity_type} 0.00 0.00 3.00 \
              {{Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, CanPickUpLoot: 0b, \
-             PersistenceRequired: 0b, LeftHanded: 1b, Size: 3, wasOnGround: 0b}}"
+             LeftHanded: 1b, Size: 3}}"
         );
         assert_eq!(clipboard.text.as_deref(), Some(expected.as_str()));
         assert!(input.take_debug_recreate_server_query_requests().is_empty());
@@ -3220,9 +3257,7 @@ fn shift_f3_i_with_permission_copies_local_snow_golem_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:snow_golem 0.00 0.00 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, CanPickUpLoot: 0b, \
-             PersistenceRequired: 0b, LeftHanded: 1b, Pumpkin: 0b}"
+             LeftHanded: 1b, Pumpkin: 0b}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
@@ -3302,9 +3337,7 @@ fn shift_f3_i_with_permission_copies_local_bat_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:bat 0.00 1.00 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, CanPickUpLoot: 0b, \
-             PersistenceRequired: 0b, LeftHanded: 1b, BatFlags: 1b}"
+             LeftHanded: 1b, BatFlags: 1b}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
@@ -3392,11 +3425,8 @@ fn shift_f3_i_with_permission_copies_local_armadillo_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:armadillo 0.00 1.35 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, CanPickUpLoot: 0b, \
-             PersistenceRequired: 0b, LeftHanded: 1b, NoAI: 1b, Age: 1, \
-             ForcedAge: 0, AgeLocked: 1b, InLove: 0, state: \"scared\", \
-             scute_time: 0}"
+             LeftHanded: 1b, NoAI: 1b, \
+             AgeLocked: 1b, state: \"scared\"}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
@@ -3479,10 +3509,8 @@ fn shift_f3_i_with_permission_copies_local_copper_golem_save_nbt_to_clipboard() 
         Some(
             "/summon minecraft:copper_golem 0.00 1.00 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, CanPickUpLoot: 0b, \
-             PersistenceRequired: 1b, LeftHanded: 1b, NoAI: 1b, \
-             next_weather_age: -1L, weather_state: \"weathered\"}"
+             LeftHanded: 1b, NoAI: 1b, \
+             weather_state: \"weathered\"}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
@@ -3572,12 +3600,9 @@ fn shift_f3_i_with_permission_copies_local_bee_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:bee 0.00 1.35 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, CanPickUpLoot: 0b, \
-             PersistenceRequired: 0b, LeftHanded: 1b, NoAI: 1b, Age: 1, \
-             ForcedAge: 0, AgeLocked: 1b, InLove: 0, HasNectar: 1b, HasStung: 1b, \
-             TicksSincePollination: 0, CannotEnterHiveTicks: 0, \
-             CropsGrownSincePollination: 0, anger_end_time: 240L}"
+             LeftHanded: 1b, NoAI: 1b, \
+             AgeLocked: 1b, HasNectar: 1b, HasStung: 1b, \
+             anger_end_time: 240L}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
@@ -3650,9 +3675,7 @@ fn shift_f3_i_with_permission_copies_local_blaze_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:blaze 0.00 0.00 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, CanPickUpLoot: 0b, \
-             PersistenceRequired: 0b, LeftHanded: 1b, NoAI: 1b}"
+             LeftHanded: 1b, NoAI: 1b}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
@@ -3725,9 +3748,7 @@ fn shift_f3_i_with_permission_copies_local_breeze_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:breeze 0.00 0.00 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, CanPickUpLoot: 0b, \
-             PersistenceRequired: 0b, LeftHanded: 1b, NoAI: 1b}"
+             LeftHanded: 1b, NoAI: 1b}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
@@ -3807,9 +3828,7 @@ fn shift_f3_i_with_permission_copies_local_cod_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:cod 0.00 1.45 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, CanPickUpLoot: 0b, \
-             PersistenceRequired: 0b, LeftHanded: 1b, NoAI: 1b, FromBucket: 1b}"
+             LeftHanded: 1b, NoAI: 1b, FromBucket: 1b}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
@@ -3894,9 +3913,7 @@ fn shift_f3_i_with_permission_copies_local_pufferfish_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:pufferfish 0.00 1.00 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, CanPickUpLoot: 0b, \
-             PersistenceRequired: 0b, LeftHanded: 1b, NoAI: 1b, \
+             LeftHanded: 1b, NoAI: 1b, \
              FromBucket: 1b, PuffState: 2}"
         )
     );
@@ -3982,9 +3999,7 @@ fn shift_f3_i_with_permission_copies_local_salmon_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:salmon 0.00 1.20 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, CanPickUpLoot: 0b, \
-             PersistenceRequired: 0b, LeftHanded: 1b, NoAI: 1b, \
+             LeftHanded: 1b, NoAI: 1b, \
              FromBucket: 1b, type: \"large\"}"
         )
     );
@@ -4070,9 +4085,7 @@ fn shift_f3_i_with_permission_copies_local_tropical_fish_save_nbt_to_clipboard()
         Some(
             "/summon minecraft:tropical_fish 0.00 1.30 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, CanPickUpLoot: 0b, \
-             PersistenceRequired: 0b, LeftHanded: 1b, NoAI: 1b, \
+             LeftHanded: 1b, NoAI: 1b, \
              FromBucket: 1b, Variant: 67436545}"
         )
     );
@@ -4158,10 +4171,8 @@ fn shift_f3_i_with_permission_copies_local_turtle_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:turtle 0.00 1.35 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, CanPickUpLoot: 0b, \
-             PersistenceRequired: 0b, LeftHanded: 1b, NoAI: 1b, Age: 1, \
-             ForcedAge: 0, AgeLocked: 1b, InLove: 0, home_pos: [I; 0, 0, 0], \
+             LeftHanded: 1b, NoAI: 1b, \
+             AgeLocked: 1b, \
              has_egg: 1b}"
         )
     );
@@ -4242,10 +4253,8 @@ fn shift_f3_i_with_permission_copies_local_tadpole_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:tadpole 0.00 1.40 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, CanPickUpLoot: 0b, \
-             PersistenceRequired: 0b, LeftHanded: 1b, NoAI: 1b, \
-             FromBucket: 1b, Age: 0, AgeLocked: 1b}"
+             LeftHanded: 1b, NoAI: 1b, \
+             AgeLocked: 1b}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
@@ -4340,10 +4349,8 @@ fn shift_f3_i_with_permission_copies_local_axolotl_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:axolotl 0.00 1.50 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 6000s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, CanPickUpLoot: 0b, \
-             PersistenceRequired: 0b, LeftHanded: 1b, NoAI: 1b, Age: -1, \
-             ForcedAge: 0, AgeLocked: 1b, InLove: 0, Variant: 0, FromBucket: 1b}"
+             LeftHanded: 1b, NoAI: 1b, Age: -1, \
+             AgeLocked: 1b, Variant: 0, FromBucket: 1b}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
@@ -4433,10 +4440,8 @@ fn shift_f3_i_with_permission_copies_local_nautilus_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:nautilus 0.00 1.50 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, CanPickUpLoot: 0b, \
-             PersistenceRequired: 0b, LeftHanded: 1b, NoAI: 1b, Age: -1, \
-             ForcedAge: 0, AgeLocked: 1b, InLove: 0, Sitting: 1b}"
+             LeftHanded: 1b, NoAI: 1b, Age: -1, \
+             AgeLocked: 1b, Sitting: 1b}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
@@ -4529,10 +4534,8 @@ fn shift_f3_i_with_permission_copies_local_zombie_nautilus_save_nbt_to_clipboard
         Some(
             "/summon minecraft:zombie_nautilus 0.00 1.50 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, CanPickUpLoot: 0b, \
-             PersistenceRequired: 0b, LeftHanded: 1b, NoAI: 1b, Age: 1, \
-             ForcedAge: 0, AgeLocked: 1b, InLove: 0, Sitting: 1b, \
+             LeftHanded: 1b, NoAI: 1b, \
+             AgeLocked: 1b, Sitting: 1b, \
              variant: \"minecraft:warm\"}"
         )
     );
@@ -4628,10 +4631,8 @@ fn shift_f3_i_with_permission_copies_local_dolphin_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:dolphin 0.00 1.50 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 4800s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, CanPickUpLoot: 1b, \
-             PersistenceRequired: 0b, LeftHanded: 1b, NoAI: 1b, Age: -1, \
-             ForcedAge: 0, AgeLocked: 1b, GotFish: 1b, Moistness: 1234}"
+             LeftHanded: 1b, NoAI: 1b, Age: -1, \
+             AgeLocked: 1b, GotFish: 1b, Moistness: 1234}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
@@ -4724,10 +4725,8 @@ fn shift_f3_i_with_permission_copies_local_frog_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:frog 0.00 1.50 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, CanPickUpLoot: 0b, \
-             PersistenceRequired: 0b, LeftHanded: 1b, NoAI: 1b, Age: -1, \
-             ForcedAge: 0, AgeLocked: 1b, InLove: 0, variant: \"minecraft:cold\"}"
+             LeftHanded: 1b, NoAI: 1b, Age: -1, \
+             AgeLocked: 1b, variant: \"minecraft:cold\"}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
@@ -4817,11 +4816,8 @@ fn shift_f3_i_with_permission_copies_local_rabbit_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:rabbit 0.00 1.30 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, CanPickUpLoot: 0b, \
-             PersistenceRequired: 0b, LeftHanded: 1b, NoAI: 1b, Age: -1, \
-             ForcedAge: 0, AgeLocked: 1b, InLove: 0, RabbitType: 99, \
-             MoreCarrotTicks: 0}"
+             LeftHanded: 1b, NoAI: 1b, Age: -1, \
+             AgeLocked: 1b, RabbitType: 99}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
@@ -4911,10 +4907,8 @@ fn shift_f3_i_with_permission_copies_local_ocelot_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:ocelot 0.00 1.30 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, CanPickUpLoot: 0b, \
-             PersistenceRequired: 0b, LeftHanded: 1b, NoAI: 1b, Age: -1, \
-             ForcedAge: 0, AgeLocked: 1b, InLove: 0, Trusting: 1b}"
+             LeftHanded: 1b, NoAI: 1b, Age: -1, \
+             AgeLocked: 1b, Trusting: 1b}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
@@ -5004,10 +4998,8 @@ fn shift_f3_i_with_permission_copies_local_sheep_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:sheep 0.00 1.20 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, CanPickUpLoot: 0b, \
-             PersistenceRequired: 0b, LeftHanded: 1b, NoAI: 1b, Age: -1, \
-             ForcedAge: 0, AgeLocked: 1b, InLove: 0, Sheared: 1b, Color: 14b}"
+             LeftHanded: 1b, NoAI: 1b, Age: -1, \
+             AgeLocked: 1b, Sheared: 1b, Color: 14b}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
@@ -5108,10 +5100,8 @@ fn shift_f3_i_with_permission_copies_local_pig_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:pig 0.00 1.25 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, CanPickUpLoot: 0b, \
-             PersistenceRequired: 0b, LeftHanded: 1b, NoAI: 1b, Age: -1, \
-             ForcedAge: 0, AgeLocked: 1b, InLove: 0, variant: \"minecraft:cold\", \
+             LeftHanded: 1b, NoAI: 1b, Age: -1, \
+             AgeLocked: 1b, variant: \"minecraft:cold\", \
              sound_variant: \"minecraft:big\"}"
         )
     );
@@ -5213,11 +5203,9 @@ fn shift_f3_i_with_permission_copies_local_chicken_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:chicken 0.00 1.25 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, CanPickUpLoot: 0b, \
-             PersistenceRequired: 0b, LeftHanded: 1b, NoAI: 1b, Age: -1, \
-             ForcedAge: 0, AgeLocked: 1b, InLove: 0, IsChickenJockey: 0b, \
-             EggLayTime: 0, variant: \"minecraft:warm\", sound_variant: \"minecraft:picky\"}"
+             LeftHanded: 1b, NoAI: 1b, Age: -1, \
+             AgeLocked: 1b, variant: \"minecraft:warm\", \
+             sound_variant: \"minecraft:picky\"}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
@@ -5254,6 +5242,8 @@ fn local_chicken_save_uses_generated_resource_defaults() {
     assert!(copy
         .command
         .contains("sound_variant: \"minecraft:classic\""));
+    assert!(!copy.command.contains("EggLayTime"));
+    assert!(!copy.command.contains("IsChickenJockey"));
 }
 
 #[test]
@@ -5345,10 +5335,8 @@ fn shift_f3_i_with_permission_copies_local_cow_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:cow 0.00 1.00 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, CanPickUpLoot: 0b, \
-             PersistenceRequired: 0b, LeftHanded: 1b, NoAI: 1b, Age: -1, \
-             ForcedAge: 0, AgeLocked: 1b, InLove: 0, variant: \"minecraft:cold\", \
+             LeftHanded: 1b, NoAI: 1b, Age: -1, \
+             AgeLocked: 1b, variant: \"minecraft:cold\", \
              sound_variant: \"minecraft:moody\"}"
         )
     );
@@ -5474,10 +5462,8 @@ fn shift_f3_i_with_permission_copies_local_mooshroom_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:mooshroom 0.00 1.00 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, CanPickUpLoot: 0b, \
-             PersistenceRequired: 0b, LeftHanded: 1b, NoAI: 1b, Age: -1, \
-             ForcedAge: 0, AgeLocked: 1b, InLove: 0, Type: \"brown\"}"
+             LeftHanded: 1b, NoAI: 1b, Age: -1, \
+             AgeLocked: 1b, Type: \"brown\"}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
@@ -5577,10 +5563,8 @@ fn shift_f3_i_with_permission_copies_local_goat_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:goat 0.00 1.00 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, CanPickUpLoot: 0b, \
-             PersistenceRequired: 0b, LeftHanded: 1b, NoAI: 1b, Age: -1, \
-             ForcedAge: 0, AgeLocked: 1b, InLove: 0, IsScreamingGoat: 1b, \
+             LeftHanded: 1b, NoAI: 1b, Age: -1, \
+             AgeLocked: 1b, IsScreamingGoat: 1b, \
              HasLeftHorn: 0b, HasRightHorn: 1b}"
         )
     );
@@ -5673,10 +5657,8 @@ fn shift_f3_i_with_permission_copies_local_polar_bear_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:polar_bear 0.00 1.00 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, CanPickUpLoot: 0b, \
-             PersistenceRequired: 0b, LeftHanded: 1b, NoAI: 1b, Age: -1, \
-             ForcedAge: 0, AgeLocked: 1b, InLove: 0, anger_end_time: 0L}"
+             LeftHanded: 1b, NoAI: 1b, Age: -1, \
+             AgeLocked: 1b}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
@@ -5797,10 +5779,8 @@ fn shift_f3_i_with_permission_copies_local_panda_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:panda 0.00 1.00 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, CanPickUpLoot: 0b, \
-             PersistenceRequired: 0b, LeftHanded: 1b, NoAI: 1b, Age: -1, \
-             ForcedAge: 0, AgeLocked: 1b, InLove: 0, MainGene: \"brown\", \
+             LeftHanded: 1b, NoAI: 1b, Age: -1, \
+             AgeLocked: 1b, MainGene: \"brown\", \
              HiddenGene: \"lazy\"}"
         )
     );
@@ -5900,10 +5880,8 @@ fn shift_f3_i_with_permission_copies_local_parrot_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:parrot 0.00 1.00 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, CanPickUpLoot: 0b, \
-             PersistenceRequired: 0b, LeftHanded: 1b, NoAI: 1b, Age: -1, \
-             ForcedAge: 0, AgeLocked: 1b, InLove: 0, Sitting: 1b, Variant: 3}"
+             LeftHanded: 1b, NoAI: 1b, Age: -1, \
+             AgeLocked: 1b, Sitting: 1b, Variant: 3}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
@@ -5991,11 +5969,7 @@ fn shift_f3_i_with_permission_copies_local_allay_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:allay 0.00 1.10 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, CanPickUpLoot: 0b, \
-             PersistenceRequired: 0b, LeftHanded: 1b, NoAI: 1b, Inventory: [], \
-             listener: {selector: {tick: -1L}, event_delay: 0}, \
-             DuplicationCooldown: 0L}"
+             LeftHanded: 1b, NoAI: 1b}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
@@ -6097,10 +6071,8 @@ fn shift_f3_i_with_permission_copies_local_sniffer_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:sniffer 0.00 1.00 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, CanPickUpLoot: 0b, \
-             PersistenceRequired: 0b, LeftHanded: 1b, NoAI: 1b, Age: -1, \
-             ForcedAge: 0, AgeLocked: 1b, InLove: 0}"
+             LeftHanded: 1b, NoAI: 1b, Age: -1, \
+             AgeLocked: 1b}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
@@ -6198,10 +6170,8 @@ fn shift_f3_i_with_permission_copies_local_strider_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:strider 0.00 1.00 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, CanPickUpLoot: 0b, \
-             PersistenceRequired: 0b, LeftHanded: 1b, NoAI: 1b, Age: -1, \
-             ForcedAge: 0, AgeLocked: 1b, InLove: 0}"
+             LeftHanded: 1b, NoAI: 1b, Age: -1, \
+             AgeLocked: 1b}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
@@ -6293,11 +6263,9 @@ fn shift_f3_i_with_permission_copies_local_hoglin_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:hoglin 0.00 1.00 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, CanPickUpLoot: 0b, \
-             PersistenceRequired: 0b, LeftHanded: 1b, NoAI: 1b, Age: -1, \
-             ForcedAge: 0, AgeLocked: 1b, InLove: 0, \
-             IsImmuneToZombification: 1b, CannotBeHunted: 0b}"
+             LeftHanded: 1b, NoAI: 1b, Age: -1, \
+             AgeLocked: 1b, \
+             IsImmuneToZombification: 1b}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
@@ -6391,11 +6359,9 @@ fn shift_f3_i_with_permission_copies_local_horse_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:horse 0.00 0.25 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, CanPickUpLoot: 0b, \
-             PersistenceRequired: 0b, LeftHanded: 1b, NoAI: 1b, Age: 1, \
-             ForcedAge: 0, AgeLocked: 1b, InLove: 0, EatingHaystack: 1b, \
-             Bred: 1b, Temper: 0, Tame: 1b, Variant: 516}"
+             LeftHanded: 1b, NoAI: 1b, \
+             AgeLocked: 1b, EatingHaystack: 1b, \
+             Bred: 1b, Tame: 1b, Variant: 516}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
@@ -6485,11 +6451,9 @@ fn shift_f3_i_with_permission_copies_local_camel_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:camel 0.00 0.00 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, CanPickUpLoot: 0b, \
-             PersistenceRequired: 0b, LeftHanded: 1b, NoAI: 1b, Age: 1, \
-             ForcedAge: 0, AgeLocked: 1b, InLove: 0, EatingHaystack: 0b, \
-             Bred: 0b, Temper: 0, Tame: 1b, LastPoseTick: 140L}"
+             LeftHanded: 1b, NoAI: 1b, \
+             AgeLocked: 1b, EatingHaystack: 0b, \
+             Bred: 0b, Tame: 1b, LastPoseTick: 140L}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
@@ -6569,11 +6533,8 @@ fn shift_f3_i_with_permission_copies_local_camel_husk_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:camel_husk 0.00 0.00 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, CanPickUpLoot: 0b, \
-             PersistenceRequired: 0b, LeftHanded: 1b, NoAI: 1b, Age: 1, \
-             ForcedAge: 0, AgeLocked: 1b, InLove: 0, EatingHaystack: 0b, \
-             Bred: 0b, Temper: 0, Tame: 0b, LastPoseTick: 0L}"
+             LeftHanded: 1b, NoAI: 1b, \
+             AgeLocked: 1b, LastPoseTick: 0L}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
@@ -6679,10 +6640,8 @@ fn shift_f3_i_with_permission_copies_local_cat_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:cat 0.00 1.00 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, CanPickUpLoot: 0b, \
-             PersistenceRequired: 0b, LeftHanded: 1b, NoAI: 1b, Age: 1, \
-             ForcedAge: 0, AgeLocked: 1b, InLove: 0, Sitting: 1b, \
+             LeftHanded: 1b, NoAI: 1b, \
+             AgeLocked: 1b, Sitting: 1b, \
              variant: \"minecraft:calico\", sound_variant: \"minecraft:royal\", \
              CollarColor: 5b}"
         )
@@ -6823,10 +6782,8 @@ fn shift_f3_i_with_permission_copies_local_wolf_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:wolf 0.00 1.00 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, CanPickUpLoot: 0b, \
-             PersistenceRequired: 0b, LeftHanded: 1b, NoAI: 1b, Age: 1, \
-             ForcedAge: 0, AgeLocked: 1b, InLove: 0, Sitting: 1b, \
+             LeftHanded: 1b, NoAI: 1b, \
+             AgeLocked: 1b, Sitting: 1b, \
              CollarColor: 11b, variant: \"minecraft:striped\", \
              anger_end_time: 200L, sound_variant: \"minecraft:big\"}"
         )
@@ -6963,10 +6920,8 @@ fn shift_f3_i_with_permission_copies_local_fox_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:fox 0.00 1.00 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, CanPickUpLoot: 1b, \
-             PersistenceRequired: 0b, LeftHanded: 1b, NoAI: 1b, Age: 1, \
-             ForcedAge: 0, AgeLocked: 1b, InLove: 0, \
+             LeftHanded: 1b, NoAI: 1b, \
+             AgeLocked: 1b, \
              Trusted: [[I; 1, 2, 3, 4], [I; 5, 6, 7, 8]], Sleeping: 1b, \
              Type: \"snow\", Sitting: 1b, Crouching: 1b}"
         )
@@ -7060,11 +7015,9 @@ fn shift_f3_i_with_permission_copies_local_donkey_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:donkey 0.00 0.25 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, CanPickUpLoot: 0b, \
-             PersistenceRequired: 0b, LeftHanded: 1b, NoAI: 1b, Age: 1, \
-             ForcedAge: 0, AgeLocked: 1b, InLove: 0, EatingHaystack: 1b, \
-             Bred: 0b, Temper: 0, Tame: 1b, ChestedHorse: 1b, Items: []}"
+             LeftHanded: 1b, NoAI: 1b, \
+             AgeLocked: 1b, EatingHaystack: 1b, \
+             Bred: 0b, Tame: 1b, ChestedHorse: 1b}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
@@ -7149,11 +7102,9 @@ fn shift_f3_i_with_permission_copies_local_mule_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:mule 0.00 0.25 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, CanPickUpLoot: 0b, \
-             PersistenceRequired: 0b, LeftHanded: 1b, NoAI: 1b, Age: 1, \
-             ForcedAge: 0, AgeLocked: 1b, InLove: 0, EatingHaystack: 0b, \
-             Bred: 1b, Temper: 0, Tame: 0b, ChestedHorse: 0b}"
+             LeftHanded: 1b, NoAI: 1b, \
+             AgeLocked: 1b, EatingHaystack: 0b, \
+             Bred: 1b, Tame: 0b}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
@@ -7255,11 +7206,9 @@ fn shift_f3_i_with_permission_copies_local_llama_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:llama 0.00 0.25 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, CanPickUpLoot: 0b, \
-             PersistenceRequired: 0b, LeftHanded: 1b, NoAI: 1b, Age: 1, \
-             ForcedAge: 0, AgeLocked: 1b, InLove: 0, EatingHaystack: 0b, \
-             Bred: 1b, Temper: 0, Tame: 1b, ChestedHorse: 1b, Items: [], \
+             LeftHanded: 1b, NoAI: 1b, \
+             AgeLocked: 1b, EatingHaystack: 0b, \
+             Bred: 1b, Tame: 1b, ChestedHorse: 1b, \
              Variant: 2, Strength: 5}"
         )
     );
@@ -7355,12 +7304,10 @@ fn shift_f3_i_with_permission_copies_local_trader_llama_save_nbt_to_clipboard() 
         Some(
             "/summon minecraft:trader_llama 0.00 0.25 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, CanPickUpLoot: 0b, \
-             PersistenceRequired: 0b, LeftHanded: 1b, NoAI: 1b, Age: 1, \
-             ForcedAge: 0, AgeLocked: 1b, InLove: 0, EatingHaystack: 0b, \
-             Bred: 0b, Temper: 0, Tame: 1b, ChestedHorse: 0b, Variant: 3, \
-             Strength: 4, DespawnDelay: 47999}"
+             LeftHanded: 1b, NoAI: 1b, \
+             AgeLocked: 1b, EatingHaystack: 0b, \
+             Bred: 0b, Tame: 1b, Variant: 3, \
+             Strength: 4}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
@@ -7445,12 +7392,9 @@ fn shift_f3_i_with_permission_copies_local_skeleton_horse_save_nbt_to_clipboard(
         Some(
             "/summon minecraft:skeleton_horse 0.00 0.25 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, CanPickUpLoot: 0b, \
-             PersistenceRequired: 0b, LeftHanded: 1b, NoAI: 1b, Age: 1, \
-             ForcedAge: 0, AgeLocked: 1b, InLove: 0, EatingHaystack: 0b, \
-             Bred: 0b, Temper: 0, Tame: 1b, SkeletonTrap: 0b, \
-             SkeletonTrapTime: 0}"
+             LeftHanded: 1b, NoAI: 1b, \
+             AgeLocked: 1b, EatingHaystack: 0b, \
+             Bred: 0b, Tame: 1b}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
@@ -7535,11 +7479,9 @@ fn shift_f3_i_with_permission_copies_local_zombie_horse_save_nbt_to_clipboard() 
         Some(
             "/summon minecraft:zombie_horse 0.00 0.25 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, CanPickUpLoot: 0b, \
-             PersistenceRequired: 0b, LeftHanded: 1b, NoAI: 1b, Age: 1, \
-             ForcedAge: 0, AgeLocked: 1b, InLove: 0, EatingHaystack: 0b, \
-             Bred: 1b, Temper: 0, Tame: 0b}"
+             LeftHanded: 1b, NoAI: 1b, \
+             AgeLocked: 1b, EatingHaystack: 0b, \
+             Bred: 1b, Tame: 0b}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
@@ -7621,10 +7563,8 @@ fn shift_f3_i_with_permission_copies_local_piglin_brute_save_nbt_to_clipboard() 
         Some(
             "/summon minecraft:piglin_brute 0.00 1.00 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, CanPickUpLoot: 1b, \
-             PersistenceRequired: 0b, LeftHanded: 1b, NoAI: 1b, \
-             IsImmuneToZombification: 1b, TimeInOverworld: 0}"
+             LeftHanded: 1b, NoAI: 1b, \
+             IsImmuneToZombification: 1b}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
@@ -7712,11 +7652,9 @@ fn shift_f3_i_with_permission_copies_local_piglin_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:piglin 0.00 1.00 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, CanPickUpLoot: 1b, \
-             PersistenceRequired: 0b, LeftHanded: 1b, NoAI: 1b, \
-             IsImmuneToZombification: 1b, TimeInOverworld: 0, \
-             IsBaby: 1b, CannotHunt: 0b, Inventory: []}"
+             LeftHanded: 1b, NoAI: 1b, \
+             IsImmuneToZombification: 1b, \
+             IsBaby: 1b}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
@@ -7791,9 +7729,7 @@ fn shift_f3_i_with_permission_copies_local_spider_family_save_nbt_to_clipboard()
         let expected = format!(
             "/summon {entity_type} 0.00 1.25 3.00 \
              {{Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, CanPickUpLoot: 0b, \
-             PersistenceRequired: 0b, LeftHanded: 1b, NoAI: 1b}}"
+             LeftHanded: 1b, NoAI: 1b}}"
         );
         assert_eq!(clipboard.text.as_deref(), Some(expected.as_str()));
         assert!(input.take_debug_recreate_server_query_requests().is_empty());
@@ -7867,10 +7803,7 @@ fn shift_f3_i_with_permission_copies_local_skeleton_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:skeleton 0.00 1.25 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, CanPickUpLoot: 0b, \
-             PersistenceRequired: 0b, LeftHanded: 1b, NoAI: 1b, \
-             StrayConversionTime: -1}"
+             LeftHanded: 1b, NoAI: 1b}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
@@ -7949,9 +7882,7 @@ fn shift_f3_i_with_permission_copies_local_nonconverting_skeleton_family_save_nb
         let expected = format!(
             "/summon {entity_type} 0.00 1.25 3.00 \
              {{Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, CanPickUpLoot: 0b, \
-             PersistenceRequired: 0b, LeftHanded: 1b, NoAI: 1b}}"
+             LeftHanded: 1b, NoAI: 1b}}"
         );
         assert_eq!(clipboard.text.as_deref(), Some(expected.as_str()));
         assert!(input.take_debug_recreate_server_query_requests().is_empty());
@@ -8037,11 +7968,8 @@ fn shift_f3_i_with_permission_copies_local_zombie_family_save_nbt_to_clipboard()
         let expected = format!(
             "/summon {entity_type} 0.00 1.25 3.00 \
              {{Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, CanPickUpLoot: 0b, \
-             PersistenceRequired: 0b, LeftHanded: 1b, NoAI: 1b, \
-             IsBaby: 1b, CanBreakDoors: 0b, InWaterTime: -1, \
-             DrownedConversionTime: -1}}"
+             LeftHanded: 1b, NoAI: 1b, \
+             IsBaby: 1b}}"
         );
         assert_eq!(clipboard.text.as_deref(), Some(expected.as_str()));
         assert!(input.take_debug_recreate_server_query_requests().is_empty());
@@ -8124,11 +8052,8 @@ fn shift_f3_i_with_permission_copies_local_zombified_piglin_save_nbt_to_clipboar
         Some(
             "/summon minecraft:zombified_piglin 0.00 1.25 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, CanPickUpLoot: 0b, \
-             PersistenceRequired: 0b, LeftHanded: 1b, NoAI: 1b, \
-             IsBaby: 1b, CanBreakDoors: 0b, InWaterTime: -1, \
-             DrownedConversionTime: -1, anger_end_time: 0L}"
+             LeftHanded: 1b, NoAI: 1b, \
+             IsBaby: 1b}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
@@ -8208,9 +8133,7 @@ fn shift_f3_i_with_permission_copies_local_bogged_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:bogged 0.00 0.00 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, CanPickUpLoot: 0b, \
-             PersistenceRequired: 0b, LeftHanded: 1b, sheared: 1b}"
+             LeftHanded: 1b, sheared: 1b}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
@@ -8294,8 +8217,7 @@ fn shift_f3_i_with_permission_copies_local_end_crystal_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:end_crystal 0.00 0.00 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, beam_target: [I; 1, 2, 3], \
+             beam_target: [I; 1, 2, 3], \
              ShowBottom: 0b}"
         )
     );
@@ -8360,9 +8282,7 @@ fn shift_f3_i_with_permission_copies_local_evoker_fangs_save_nbt_to_clipboard() 
         clipboard.text.as_deref(),
         Some(
             "/summon minecraft:evoker_fangs 0.00 1.50 2.00 \
-             {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, Warmup: 0}"
+             {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f]}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
@@ -8431,10 +8351,8 @@ fn shift_f3_i_with_permission_copies_local_fireball_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:fireball 0.00 1.00 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, HasBeenShot: 0b, \
-             acceleration_power: 0.75d, Item: {id: \"minecraft:fire_charge\"}, \
-             ExplosionPower: 1b}"
+             HasBeenShot: 0b, \
+             acceleration_power: 0.75d, Item: {id: \"minecraft:fire_charge\"}}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
@@ -8565,10 +8483,10 @@ fn local_firework_save_uses_parent_lifecycle_synced_item_codec_and_client_life()
     });
     let entity = world.probe_entity(91).unwrap();
     let snbt = debug_local_entity_pretty_snbt(&world, Some(&item_runtime), &entity).unwrap();
-    assert!(snbt.contains(
-        "Owner: [I; 0, 0, 0, 90], HasBeenShot: 0b, Life: 0, LifeTime: 0, \
-         FireworksItem: {id: \"minecraft:firework_rocket\"}, ShotAtAngle: 0b"
-    ));
+    assert!(snbt.contains("Owner: [I; 0, 0, 0, 90], HasBeenShot: 0b, Life: 0"));
+    assert!(!snbt.contains("LifeTime"));
+    assert!(!snbt.contains("FireworksItem"));
+    assert!(!snbt.contains("ShotAtAngle"));
 
     let mut component_patch = DataComponentPatchSummary::default();
     component_patch.added = 1;
@@ -8605,7 +8523,7 @@ fn local_firework_save_uses_parent_lifecycle_synced_item_codec_and_client_life()
     let entity = world.probe_entity(91).unwrap();
     let snbt = debug_local_entity_pretty_snbt(&world, Some(&item_runtime), &entity).unwrap();
     assert!(snbt.contains(
-        "Owner: [I; 0, 0, 0, 90], HasBeenShot: 0b, Life: 0, LifeTime: 0, \
+        "Owner: [I; 0, 0, 0, 90], HasBeenShot: 0b, Life: 0, \
          FireworksItem: {id: \"minecraft:firework_rocket\", count: 2, components: \
          {\"minecraft:fireworks\": {flight_duration: 2, explosions: \
          [{shape: \"star\", colors: [1122867, 4478310], fade_colors: [7833753], \
@@ -8638,7 +8556,8 @@ fn local_firework_save_uses_parent_lifecycle_synced_item_codec_and_client_life()
     world.advance_entity_client_animations(1);
     let entity = world.probe_entity(91).unwrap();
     let snbt = debug_local_entity_pretty_snbt(&world, Some(&item_runtime), &entity).unwrap();
-    assert!(snbt.contains("Owner: [I; 0, 0, 0, 90], HasBeenShot: 1b, Life: 1, LifeTime: 0"));
+    assert!(snbt.contains("Owner: [I; 0, 0, 0, 90], HasBeenShot: 1b, Life: 1"));
+    assert!(!snbt.contains("LifeTime"));
 }
 
 #[test]
@@ -10125,8 +10044,7 @@ fn shift_f3_i_with_permission_copies_local_dragon_fireball_save_nbt_to_clipboard
         Some(
             "/summon minecraft:dragon_fireball 0.00 1.00 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, HasBeenShot: 0b, \
+             HasBeenShot: 0b, \
              acceleration_power: 0.25d}"
         )
     );
@@ -10193,8 +10111,7 @@ fn assert_shift_f3_i_with_permission_copies_local_wind_charge_save_nbt_to_clipbo
     let expected = format!(
         "/summon {summon_id} 0.00 1.50 2.00 \
          {{Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-         fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-         Invulnerable: 0b, PortalCooldown: 0, HasBeenShot: 0b, \
+         HasBeenShot: 0b, \
          acceleration_power: 0.0d}}"
     );
     assert_eq!(clipboard.text.as_deref(), Some(expected.as_str()));
@@ -10290,8 +10207,7 @@ fn shift_f3_i_with_permission_copies_local_wither_skull_save_nbt_to_clipboard() 
         Some(
             "/summon minecraft:wither_skull 0.00 1.50 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, HasBeenShot: 0b, \
+             HasBeenShot: 0b, \
              acceleration_power: 0.5d, dangerous: 1b}"
         )
     );
@@ -10357,8 +10273,7 @@ fn shift_f3_i_with_permission_copies_local_llama_spit_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:llama_spit 0.00 1.50 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, HasBeenShot: 0b}"
+             HasBeenShot: 0b}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
@@ -10438,10 +10353,7 @@ fn shift_f3_i_with_permission_copies_local_arrow_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:arrow 0.00 1.50 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, HasBeenShot: 0b, \
-             life: 0s, shake: 0b, inGround: 0b, pickup: 0b, damage: 2.0d, \
-             crit: 1b, PierceLevel: 3b, SoundEvent: \"minecraft:entity.arrow.hit\"}"
+             HasBeenShot: 0b, crit: 1b, PierceLevel: 3b}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
@@ -10521,11 +10433,7 @@ fn shift_f3_i_with_permission_copies_local_spectral_arrow_save_nbt_to_clipboard(
         Some(
             "/summon minecraft:spectral_arrow 0.00 1.50 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, HasBeenShot: 0b, \
-             life: 0s, shake: 0b, inGround: 0b, pickup: 0b, damage: 2.0d, \
-             crit: 1b, PierceLevel: 2b, SoundEvent: \"minecraft:entity.arrow.hit\", \
-             Duration: 200}"
+             HasBeenShot: 0b, crit: 1b, PierceLevel: 2b}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
@@ -10605,11 +10513,7 @@ fn shift_f3_i_with_permission_copies_local_trident_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:trident 0.00 1.50 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, HasBeenShot: 0b, \
-             life: 0s, shake: 0b, inGround: 0b, pickup: 0b, damage: 2.0d, \
-             crit: 1b, PierceLevel: 4b, SoundEvent: \"minecraft:item.trident.hit_ground\", \
-             DealtDamage: 0b}"
+             HasBeenShot: 0b, crit: 1b, PierceLevel: 4b, DealtDamage: 0b}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
@@ -10632,13 +10536,13 @@ fn shift_f3_i_with_permission_copies_local_trident_save_nbt_to_clipboard() {
     let command = debug_copy_recreate_entity_command(&world, None, 60, true)
         .expect("trident recreate command")
         .command;
-    assert!(command.ends_with("inGround: 1b, pickup: 0b, damage: 2.0d, crit: 1b, PierceLevel: 4b, SoundEvent: \"minecraft:item.trident.hit_ground\", DealtDamage: 0b}"));
+    assert!(command.ends_with("crit: 1b, PierceLevel: 4b, DealtDamage: 0b}"));
 
     world.advance_entity_client_animations(1);
     let command = debug_copy_recreate_entity_command(&world, None, 60, true)
         .expect("trident recreate command after sixth in-ground tick")
         .command;
-    assert!(command.ends_with("inGround: 1b, pickup: 0b, damage: 2.0d, crit: 1b, PierceLevel: 4b, SoundEvent: \"minecraft:item.trident.hit_ground\", DealtDamage: 1b}"));
+    assert!(command.ends_with("crit: 1b, PierceLevel: 4b, DealtDamage: 1b}"));
 }
 
 #[test]
@@ -10698,10 +10602,8 @@ fn shift_f3_i_with_permission_copies_local_falling_block_save_nbt_to_clipboard()
         Some(
             "/summon minecraft:falling_block 0.00 1.00 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, BlockState: {Name: \"minecraft:sand\"}, \
-             Time: 0, DropItem: 1b, HurtEntities: 0b, FallHurtAmount: 0.0f, \
-             FallHurtMax: 40, CancelDrop: 0b}"
+             BlockState: {Name: \"minecraft:sand\"}, \
+             Time: 0}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
@@ -10716,9 +10618,7 @@ fn shift_f3_i_with_permission_copies_local_falling_block_save_nbt_to_clipboard()
     let command = debug_copy_recreate_entity_command(&world, None, 61, true)
         .expect("falling-block recreate command after client ticks")
         .command;
-    assert!(command.contains(
-        "BlockState: {Name: \"minecraft:sand\"}, Time: 7, DropItem: 1b, HurtEntities: 0b"
-    ));
+    assert!(command.contains("BlockState: {Name: \"minecraft:sand\"}, Time: 7"));
 }
 
 #[test]
@@ -10794,8 +10694,6 @@ fn shift_f3_i_with_permission_copies_local_minecart_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:minecart 0.00 1.00 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, \
              DisplayState: {Name: \"minecraft:grass_block\", Properties: {snowy: \"false\"}}, \
              DisplayOffset: 3, FlippedRotation: 0b, HasTicked: 1b}"
         )
@@ -10876,10 +10774,8 @@ fn shift_f3_i_with_permission_copies_local_chest_minecart_save_nbt_to_clipboard(
         Some(
             "/summon minecraft:chest_minecart 0.00 1.00 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, DisplayOffset: 6, \
-             FlippedRotation: 0b, HasTicked: 1b, \
-             Items: []}"
+             DisplayOffset: 6, \
+             FlippedRotation: 0b, HasTicked: 1b}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
@@ -10952,9 +10848,7 @@ fn shift_f3_i_with_permission_copies_local_command_block_minecart_save_nbt_to_cl
         Some(
             "/summon minecraft:command_block_minecart 0.00 1.00 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, FlippedRotation: 0b, HasTicked: 1b, \
-             Command: \"say hi\", SuccessCount: 0, TrackOutput: 1b, UpdateLastExecution: 1b}"
+             FlippedRotation: 0b, HasTicked: 1b, Command: \"say hi\"}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
@@ -11019,9 +10913,7 @@ fn shift_f3_i_with_permission_copies_local_furnace_minecart_save_nbt_to_clipboar
         Some(
             "/summon minecraft:furnace_minecart 0.00 1.00 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, FlippedRotation: 0b, HasTicked: 1b, \
-             PushX: 0.0d, PushZ: 0.0d, Fuel: 0s}"
+             FlippedRotation: 0b, HasTicked: 1b}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
@@ -11094,10 +10986,7 @@ fn shift_f3_i_with_permission_copies_local_hopper_minecart_save_nbt_to_clipboard
         Some(
             "/summon minecraft:hopper_minecart 0.00 1.00 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, DisplayOffset: 6, \
-             FlippedRotation: 0b, HasTicked: 1b, \
-             Items: [], Enabled: 1b}"
+             DisplayOffset: 6, FlippedRotation: 0b, HasTicked: 1b}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
@@ -11162,11 +11051,7 @@ fn shift_f3_i_with_permission_copies_local_spawner_minecart_save_nbt_to_clipboar
         Some(
             "/summon minecraft:spawner_minecart 0.00 1.00 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, FlippedRotation: 0b, HasTicked: 1b, \
-             Delay: 20s, MinSpawnDelay: 200s, MaxSpawnDelay: 800s, SpawnCount: 4s, \
-             MaxNearbyEntities: 6s, RequiredPlayerRange: 16s, SpawnRange: 4s, \
-             SpawnPotentials: []}"
+             FlippedRotation: 0b, HasTicked: 1b}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
@@ -11235,8 +11120,7 @@ fn shift_f3_i_with_permission_copies_local_tnt_minecart_save_nbt_to_clipboard() 
         Some(
             "/summon minecraft:tnt_minecart 0.00 1.00 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, FlippedRotation: 0b, HasTicked: 1b, \
+             FlippedRotation: 0b, HasTicked: 1b, \
              fuse: 80}"
         )
     );
@@ -11340,10 +11224,8 @@ fn shift_f3_i_with_permission_copies_local_item_frame_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:item_frame 0.50 1.50 2.03 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, block_pos: [I; 0, 1, 2], \
-             ItemRotation: 3b, ItemDropChance: 1.0f, Facing: 3b, Invisible: 1b, \
-             Fixed: 0b}"
+             block_pos: [I; 0, 1, 2], \
+             ItemRotation: 3b, Facing: 3b, Invisible: 1b}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
@@ -11361,7 +11243,7 @@ fn shift_f3_i_with_permission_copies_local_item_frame_save_nbt_to_clipboard() {
     assert!(
         snbt.contains(
             "block_pos: [I; 0, 1, 2], Item: {id: \"minecraft:diamond\"}, \
-         ItemRotation: 3b, ItemDropChance: 1.0f"
+         ItemRotation: 3b"
         ),
         "unexpected item-frame SNBT: {snbt}"
     );
@@ -11420,10 +11302,7 @@ fn shift_f3_i_with_permission_copies_local_glow_item_frame_save_nbt_to_clipboard
         Some(
             "/summon minecraft:glow_item_frame 0.50 1.50 2.97 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, block_pos: [I; 0, 1, 2], \
-             ItemRotation: 0b, ItemDropChance: 1.0f, Facing: 2b, Invisible: 0b, \
-             Fixed: 0b}"
+             block_pos: [I; 0, 1, 2], Facing: 2b}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
@@ -11507,8 +11386,7 @@ fn shift_f3_i_with_permission_copies_local_boat_leash_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:oak_boat 0.00 1.10 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, leash: {UUID: [I; 0, 0, 0, 64]}}"
+             leash: {UUID: [I; 0, 0, 0, 64]}}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
@@ -11572,9 +11450,7 @@ fn shift_f3_i_with_permission_copies_local_chest_boat_save_nbt_to_clipboard() {
         clipboard.text.as_deref(),
         Some(
             "/summon minecraft:oak_chest_boat 0.00 1.10 2.00 \
-             {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, Items: []}"
+             {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f]}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
@@ -11647,8 +11523,7 @@ fn shift_f3_i_with_permission_copies_local_primed_tnt_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:tnt 0.00 1.00 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, fuse: 37s, \
+             fuse: 37s, \
              block_state: {Name: \"minecraft:tnt\", Properties: {unstable: \"false\"}}}"
         )
     );
@@ -11714,9 +11589,7 @@ fn shift_f3_i_with_permission_copies_local_shulker_bullet_save_nbt_to_clipboard(
         Some(
             "/summon minecraft:shulker_bullet 0.00 1.50 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, HasBeenShot: 0b, \
-             Steps: 0, TXD: 0.0d, TYD: 0.0d, TZD: 0.0d}"
+             HasBeenShot: 0b}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
@@ -11818,9 +11691,8 @@ fn shift_f3_i_with_permission_copies_local_armor_stand_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:armor_stand 0.00 1.00 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, Invisible: 1b, Small: 1b, \
-             ShowArms: 1b, DisabledSlots: 0, NoBasePlate: 1b, \
+             Invisible: 1b, Small: 1b, \
+             ShowArms: 1b, NoBasePlate: 1b, \
              Pose: {Body: [0.0f, 15.0f, 0.0f], LeftArm: [-30.0f, 0.0f, -20.0f]}}"
         )
     );
@@ -11894,9 +11766,7 @@ fn shift_f3_i_with_permission_copies_local_experience_orb_save_nbt_to_clipboard(
         Some(
             "/summon minecraft:experience_orb 0.00 1.50 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, Health: 5s, Age: 0s, \
-             Value: 149s, Count: 1}"
+             Value: 149s}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
@@ -11969,9 +11839,7 @@ fn shift_f3_i_with_permission_copies_local_endermite_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:endermite 0.00 1.50 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, CanPickUpLoot: 0b, \
-             PersistenceRequired: 0b, LeftHanded: 1b, NoAI: 1b, Lifetime: 0}"
+             LeftHanded: 1b, NoAI: 1b}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
@@ -12044,10 +11912,7 @@ fn shift_f3_i_with_permission_copies_local_enderman_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:enderman 0.00 0.00 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, CanPickUpLoot: 0b, \
-             PersistenceRequired: 0b, LeftHanded: 1b, NoAI: 1b, \
-             anger_end_time: 0L}"
+             LeftHanded: 1b, NoAI: 1b}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
@@ -12120,9 +11985,7 @@ fn shift_f3_i_with_permission_copies_local_silverfish_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:silverfish 0.00 1.50 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, CanPickUpLoot: 0b, \
-             PersistenceRequired: 0b, LeftHanded: 1b, NoAI: 1b}"
+             LeftHanded: 1b, NoAI: 1b}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
@@ -12200,9 +12063,7 @@ fn shift_f3_i_with_permission_copies_local_guardian_family_save_nbt_to_clipboard
         let expected = format!(
             "/summon {entity_type} 0.00 1.00 3.00 \
              {{Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, CanPickUpLoot: 0b, \
-             PersistenceRequired: 0b, LeftHanded: 1b, NoAI: 1b}}"
+             LeftHanded: 1b, NoAI: 1b}}"
         );
         assert_eq!(clipboard.text.as_deref(), Some(expected.as_str()));
         assert!(input.take_debug_recreate_server_query_requests().is_empty());
@@ -12283,10 +12144,8 @@ fn shift_f3_i_with_permission_copies_local_happy_ghast_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:happy_ghast 0.00 0.00 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, CanPickUpLoot: 0b, \
-             PersistenceRequired: 0b, LeftHanded: 1b, NoAI: 1b, Age: 1, \
-             ForcedAge: 0, AgeLocked: 1b, InLove: 0, still_timeout: 0}"
+             LeftHanded: 1b, NoAI: 1b, \
+             AgeLocked: 1b}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
@@ -12359,9 +12218,7 @@ fn shift_f3_i_with_permission_copies_local_ghast_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:ghast 0.00 0.00 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, CanPickUpLoot: 0b, \
-             PersistenceRequired: 0b, LeftHanded: 1b, ExplosionPower: 1b}"
+             LeftHanded: 1b}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
@@ -12434,9 +12291,7 @@ fn shift_f3_i_with_permission_copies_local_giant_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:giant 0.00 0.00 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, CanPickUpLoot: 0b, \
-             PersistenceRequired: 0b, LeftHanded: 1b, NoAI: 1b}"
+             LeftHanded: 1b, NoAI: 1b}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
@@ -12521,10 +12376,8 @@ fn shift_f3_i_with_permission_copies_local_glow_squid_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:glow_squid 0.00 1.00 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, CanPickUpLoot: 0b, \
-             PersistenceRequired: 0b, LeftHanded: 1b, NoAI: 1b, Age: 1, \
-             ForcedAge: 0, AgeLocked: 1b, DarkTicksRemaining: 77}"
+             LeftHanded: 1b, NoAI: 1b, \
+             AgeLocked: 1b, DarkTicksRemaining: 77}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
@@ -12609,10 +12462,8 @@ fn shift_f3_i_with_permission_copies_local_squid_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:squid 0.00 1.00 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, CanPickUpLoot: 0b, \
-             PersistenceRequired: 0b, LeftHanded: 1b, NoAI: 1b, Age: -1, \
-             ForcedAge: 0, AgeLocked: 1b}"
+             LeftHanded: 1b, NoAI: 1b, Age: -1, \
+             AgeLocked: 1b}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
@@ -12697,8 +12548,7 @@ fn shift_f3_i_with_permission_copies_local_interaction_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:interaction 0.00 0.00 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, width: 1.5f, height: 2.0f, \
+             width: 1.5f, height: 2.0f, \
              response: 1b}"
         )
     );
@@ -12779,10 +12629,7 @@ fn shift_f3_i_with_permission_copies_local_iron_golem_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:iron_golem 0.00 0.00 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, CanPickUpLoot: 0b, \
-             PersistenceRequired: 0b, LeftHanded: 1b, PlayerCreated: 1b, \
-             anger_end_time: 0L}"
+             LeftHanded: 1b, PlayerCreated: 1b}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
@@ -12862,9 +12709,7 @@ fn shift_f3_i_with_permission_copies_local_phantom_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:phantom 0.00 1.50 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, CanPickUpLoot: 0b, \
-             PersistenceRequired: 0b, LeftHanded: 1b, size: 5}"
+             LeftHanded: 1b, size: 5}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
@@ -12945,10 +12790,7 @@ fn shift_f3_i_with_permission_copies_local_ravager_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:ravager 0.00 0.00 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, CanPickUpLoot: 0b, \
-             PersistenceRequired: 0b, LeftHanded: 1b, PatrolLeader: 0b, Patrolling: 0b, \
-             Wave: 0, CanJoinRaid: 0b, AttackTick: 10, StunTick: 40, RoarTick: 0}"
+             LeftHanded: 1b, AttackTick: 10, StunTick: 40, RoarTick: 0}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
@@ -13021,11 +12863,7 @@ fn shift_f3_i_with_permission_copies_local_pillager_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:pillager 0.00 0.00 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, CanPickUpLoot: 0b, \
-             PersistenceRequired: 0b, LeftHanded: 1b, NoAI: 1b, \
-             PatrolLeader: 0b, Patrolling: 0b, Wave: 0, CanJoinRaid: 0b, \
-             Inventory: []}"
+             LeftHanded: 1b, NoAI: 1b}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
@@ -13110,10 +12948,8 @@ fn shift_f3_i_with_permission_copies_local_wandering_trader_save_nbt_to_clipboar
         Some(
             "/summon minecraft:wandering_trader 0.00 1.00 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, CanPickUpLoot: 0b, \
-             PersistenceRequired: 0b, LeftHanded: 1b, NoAI: 1b, Age: -1, \
-             ForcedAge: 0, AgeLocked: 1b, Inventory: [], DespawnDelay: 0}"
+             LeftHanded: 1b, NoAI: 1b, Age: -1, \
+             AgeLocked: 1b}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
@@ -13195,10 +13031,7 @@ fn shift_f3_i_with_permission_copies_local_witch_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:witch 0.00 0.00 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, CanPickUpLoot: 0b, \
-             PersistenceRequired: 0b, LeftHanded: 1b, NoAI: 1b, \
-             PatrolLeader: 0b, Patrolling: 0b, Wave: 0, CanJoinRaid: 0b}"
+             LeftHanded: 1b, NoAI: 1b}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
@@ -13286,11 +13119,7 @@ fn shift_f3_i_with_permission_copies_local_spellcaster_illager_save_nbt_to_clipb
         let expected = format!(
             "/summon {entity_type} 0.00 0.00 3.00 \
              {{Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, CanPickUpLoot: 0b, \
-             PersistenceRequired: 0b, LeftHanded: 1b, NoAI: 1b, \
-             PatrolLeader: 0b, Patrolling: 0b, Wave: 0, CanJoinRaid: 0b, \
-             SpellTicks: 0}}"
+             LeftHanded: 1b, NoAI: 1b}}"
         );
         assert_eq!(clipboard.text.as_deref(), Some(expected.as_str()));
         assert!(input.take_debug_recreate_server_query_requests().is_empty());
@@ -13373,10 +13202,7 @@ fn shift_f3_i_with_permission_copies_local_vindicator_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:vindicator 0.00 0.00 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, CanPickUpLoot: 0b, \
-             PersistenceRequired: 0b, LeftHanded: 1b, NoAI: 1b, \
-             PatrolLeader: 0b, Patrolling: 0b, Wave: 0, CanJoinRaid: 0b}"
+             LeftHanded: 1b, NoAI: 1b}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
@@ -13449,9 +13275,7 @@ fn shift_f3_i_with_permission_copies_local_vex_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:vex 0.00 1.00 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, CanPickUpLoot: 0b, \
-             PersistenceRequired: 0b, LeftHanded: 1b, NoAI: 1b}"
+             LeftHanded: 1b, NoAI: 1b}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
@@ -13531,9 +13355,7 @@ fn shift_f3_i_with_permission_copies_local_wither_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:wither 0.00 0.00 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, CanPickUpLoot: 0b, \
-             PersistenceRequired: 0b, LeftHanded: 1b, Invul: 220}"
+             LeftHanded: 1b, Invul: 220}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
@@ -13613,9 +13435,7 @@ fn shift_f3_i_with_permission_copies_local_zoglin_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:zoglin 0.00 1.00 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, CanPickUpLoot: 0b, \
-             PersistenceRequired: 0b, LeftHanded: 1b, IsBaby: 1b}"
+             LeftHanded: 1b, IsBaby: 1b}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());

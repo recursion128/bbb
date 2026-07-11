@@ -36,6 +36,25 @@ reference; this repo owns the implementation architecture.
   not for chunks, chat, scoreboard, recipes, assets, or UI state.
 - Do not treat `NetCounters` as canonical gameplay or client state.
 
+## Multiplayer-Only Authority Boundary
+
+`bbb` is an external multiplayer client. It does not own an `IntegratedServer`,
+singleplayer save, server chunk cache, or authoritative entity/world simulation.
+
+| Client responsibility | Required behavior | Authority limit |
+| --- | --- | --- |
+| Local player prediction | input, movement, collision, fluids, jump/sprint and serverbound movement | server corrections and acknowledgements replace predicted state |
+| Locally controlled vehicle | run the vanilla local-authority movement branch and send vehicle movement | remote vehicles consume server transforms and interpolation only |
+| Remote entities | retain canonical packet state and interpolate transforms | no client-authoritative AI, pathfinding, collision, damage, spawning or loot |
+| Client entity tick | run subclass ticks that `ClientLevel.tickEntities` executes for animation, particles, audio, interpolation and projectile presentation | hits, damage, explosions, block changes and authoritative removal remain server-owned |
+| Debug/save inspection | ordinary F3+I uses the matching server tag-query response as complete NBT authority; Shift-local output may contain only actually observed client state | never fill server-private fields from constructor defaults, source expressions or heuristics |
+
+`GoalSelector`, `PathNavigation`, mob decisions, breeding, spawning, loot,
+authoritative combat, and server RNG state are not missing client features. A
+client-side projectile tick may advance motion/trails between packets, but it
+must not decide hits, damage, explosions, world changes, or authoritative
+removal.
+
 ## High-Level Data Flow
 
 ```text

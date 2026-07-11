@@ -85,7 +85,6 @@ use bbb_protocol::{
 use bbb_world::{
     vanilla_minecart_default_display_offset,
     VANILLA_ABSTRACT_CHESTED_HORSE_CHEST_DATA_ID as ABSTRACT_CHESTED_HORSE_CHEST_DATA_ID,
-    VANILLA_ABSTRACT_CHESTED_HORSE_DEFAULT_CHEST as ABSTRACT_CHESTED_HORSE_DEFAULT_HAS_CHEST,
     VANILLA_ABSTRACT_MINECART_CUSTOM_DISPLAY_BLOCK_DATA_ID as MINECART_CUSTOM_DISPLAY_BLOCK_DATA_ID,
     VANILLA_ABSTRACT_MINECART_DISPLAY_OFFSET_DATA_ID as MINECART_DISPLAY_OFFSET_DATA_ID,
     VANILLA_AXOLOTL_DEFAULT_FROM_BUCKET as AXOLOTL_DEFAULT_FROM_BUCKET,
@@ -93,7 +92,6 @@ use bbb_world::{
     VANILLA_AXOLOTL_FROM_BUCKET_DATA_ID as AXOLOTL_FROM_BUCKET_DATA_ID,
     VANILLA_AXOLOTL_VARIANT_DATA_ID as AXOLOTL_VARIANT_DATA_ID,
     VANILLA_BEE_ANGER_END_TIME_DATA_ID as BEE_ANGER_END_TIME_DATA_ID,
-    VANILLA_BEE_DEFAULT_ANGER_END_TIME as BEE_DEFAULT_ANGER_END_TIME,
     VANILLA_BEE_DEFAULT_FLAGS as BEE_DEFAULT_FLAGS, VANILLA_BEE_FLAGS_DATA_ID as BEE_FLAGS_DATA_ID,
     VANILLA_BEE_FLAG_HAS_NECTAR as BEE_FLAG_HAS_NECTAR,
     VANILLA_BEE_FLAG_HAS_STUNG as BEE_FLAG_HAS_STUNG,
@@ -109,7 +107,6 @@ use bbb_world::{
     VANILLA_DOLPHIN_GOT_FISH_DATA_ID as DOLPHIN_GOT_FISH_DATA_ID,
     VANILLA_DOLPHIN_MOISTNESS_DATA_ID as DOLPHIN_MOISTNESS_DATA_ID,
     VANILLA_FIREWORK_ROCKET_DEFAULT_ITEM_RESOURCE_ID as FIREWORK_ROCKET_DEFAULT_ITEM_RESOURCE_ID,
-    VANILLA_FIREWORK_ROCKET_DEFAULT_SHOT_AT_ANGLE as FIREWORK_ROCKET_DEFAULT_SHOT_AT_ANGLE,
     VANILLA_FIREWORK_ROCKET_ITEM_DATA_ID as FIREWORK_ROCKET_ITEM_DATA_ID,
     VANILLA_FIREWORK_ROCKET_SHOT_AT_ANGLE_DATA_ID as FIREWORK_ROCKET_SHOT_AT_ANGLE_DATA_ID,
     VANILLA_GLOW_SQUID_DARK_TICKS_DATA_ID as GLOW_SQUID_DARK_TICKS_DATA_ID,
@@ -143,7 +140,6 @@ use bbb_world::{
     VANILLA_SHEEP_FLAG_SHEARED as SHEEP_WOOL_SHEARED_FLAG,
     VANILLA_SHEEP_WOOL_DATA_ID as SHEEP_WOOL_DATA_ID,
     VANILLA_TADPOLE_AGE_LOCKED_DATA_ID as TADPOLE_AGE_LOCKED_DATA_ID,
-    VANILLA_TADPOLE_DEFAULT_AGE_LOCKED as TADPOLE_DEFAULT_AGE_LOCKED,
     VANILLA_TURTLE_DEFAULT_HAS_EGG as TURTLE_DEFAULT_HAS_EGG,
     VANILLA_TURTLE_HAS_EGG_DATA_ID as TURTLE_HAS_EGG_DATA_ID,
     VANILLA_WITHER_DEFAULT_INVULNERABLE_TICKS as WITHER_DEFAULT_INVULNERABLE_TICKS,
@@ -156,15 +152,12 @@ use bbb_world::{
 use bbb_world::{
     BlockPos, EntityState, EntityVec3, LocalPlayerInputState, LocalPlayerPoseState,
     TagQueryResponseState, WorldStore,
-    VANILLA_ABSTRACT_HORSE_DEFAULT_FLAGS as ABSTRACT_HORSE_DEFAULT_FLAGS,
     VANILLA_ABSTRACT_HORSE_FLAGS_DATA_ID as ABSTRACT_HORSE_FLAGS_DATA_ID,
     VANILLA_ABSTRACT_HORSE_FLAG_BRED as ABSTRACT_HORSE_FLAG_BRED,
     VANILLA_ABSTRACT_HORSE_FLAG_EATING as ABSTRACT_HORSE_FLAG_EATING,
     VANILLA_ABSTRACT_HORSE_FLAG_TAME as ABSTRACT_HORSE_FLAG_TAME,
     VANILLA_AGEABLE_MOB_AGE_LOCKED_DATA_ID as AGEABLE_MOB_AGE_LOCKED_DATA_ID,
     VANILLA_AGEABLE_MOB_BABY_DATA_ID as AGEABLE_MOB_BABY_DATA_ID,
-    VANILLA_AGEABLE_MOB_DEFAULT_AGE_LOCKED as AGEABLE_MOB_DEFAULT_AGE_LOCKED,
-    VANILLA_AGEABLE_MOB_DEFAULT_BABY as AGEABLE_MOB_DEFAULT_BABY,
     VANILLA_ARMOR_STAND_BODY_POSE_DATA_ID as ARMOR_STAND_BODY_POSE_DATA_ID,
     VANILLA_ARMOR_STAND_CLIENT_FLAGS_DATA_ID as ARMOR_STAND_CLIENT_FLAGS_DATA_ID,
     VANILLA_ARMOR_STAND_CLIENT_FLAG_MARKER as ARMOR_STAND_CLIENT_FLAG_MARKER,
@@ -172,7 +165,6 @@ use bbb_world::{
     VANILLA_ARMOR_STAND_CLIENT_FLAG_SHOW_ARMS as ARMOR_STAND_CLIENT_FLAG_SHOW_ARMS,
     VANILLA_ARMOR_STAND_CLIENT_FLAG_SMALL as ARMOR_STAND_CLIENT_FLAG_SMALL,
     VANILLA_ARMOR_STAND_DEFAULT_BODY_POSE as ARMOR_STAND_DEFAULT_BODY_POSE,
-    VANILLA_ARMOR_STAND_DEFAULT_CLIENT_FLAGS as ARMOR_STAND_DEFAULT_CLIENT_FLAGS,
     VANILLA_ARMOR_STAND_DEFAULT_HEAD_POSE as ARMOR_STAND_DEFAULT_HEAD_POSE,
     VANILLA_ARMOR_STAND_DEFAULT_LEFT_ARM_POSE as ARMOR_STAND_DEFAULT_LEFT_ARM_POSE,
     VANILLA_ARMOR_STAND_DEFAULT_LEFT_LEG_POSE as ARMOR_STAND_DEFAULT_LEFT_LEG_POSE,
@@ -187,7 +179,6 @@ use bbb_world::{
     VANILLA_ENTITY_AIR_SUPPLY_DATA_ID as ENTITY_AIR_SUPPLY_DATA_ID,
     VANILLA_ENTITY_CUSTOM_NAME_DATA_ID as ENTITY_CUSTOM_NAME_DATA_ID,
     VANILLA_ENTITY_CUSTOM_NAME_VISIBLE_DATA_ID as ENTITY_CUSTOM_NAME_VISIBLE_DATA_ID,
-    VANILLA_ENTITY_DEFAULT_MAX_AIR_SUPPLY_TICKS as ENTITY_DEFAULT_AIR_SUPPLY,
     VANILLA_ENTITY_NO_GRAVITY_DATA_ID as ENTITY_NO_GRAVITY_DATA_ID,
     VANILLA_ENTITY_SHARED_FLAGS_DATA_ID as ENTITY_SHARED_FLAGS_DATA_ID,
     VANILLA_ENTITY_SHARED_FLAG_GLOWING as ENTITY_SHARED_FLAG_GLOWING,
@@ -196,7 +187,6 @@ use bbb_world::{
     VANILLA_ENTITY_TICKS_FROZEN_DATA_ID as ENTITY_TICKS_FROZEN_DATA_ID,
     VANILLA_EXPERIENCE_ORB_DEFAULT_VALUE, VANILLA_EXPERIENCE_ORB_VALUE_DATA_ID,
     VANILLA_HANGING_ENTITY_DIRECTION_DATA_ID as HANGING_ENTITY_DIRECTION_DATA_ID,
-    VANILLA_ITEM_FRAME_DEFAULT_ROTATION,
     VANILLA_ITEM_FRAME_ITEM_DATA_ID as ITEM_FRAME_ITEM_DATA_ID,
     VANILLA_ITEM_FRAME_ROTATION_DATA_ID as ITEM_FRAME_ROTATION_DATA_ID,
     VANILLA_MOB_FLAGS_DATA_ID as MOB_FLAGS_DATA_ID,
@@ -208,9 +198,6 @@ use bbb_world::{
     VANILLA_SNOW_GOLEM_PUMPKIN_FLAG as SNOW_GOLEM_PUMPKIN_FLAG,
 };
 use bbb_world::{
-    VANILLA_ABSTRACT_ARROW_DEFAULT_FLAGS as ABSTRACT_ARROW_DEFAULT_FLAGS,
-    VANILLA_ABSTRACT_ARROW_DEFAULT_IN_GROUND as ABSTRACT_ARROW_DEFAULT_IN_GROUND,
-    VANILLA_ABSTRACT_ARROW_DEFAULT_PIERCE_LEVEL as ABSTRACT_ARROW_DEFAULT_PIERCE_LEVEL,
     VANILLA_ABSTRACT_ARROW_FLAGS_DATA_ID as ABSTRACT_ARROW_FLAGS_DATA_ID,
     VANILLA_ABSTRACT_ARROW_FLAG_CRIT as ABSTRACT_ARROW_FLAG_CRIT,
     VANILLA_ABSTRACT_ARROW_IN_GROUND_DATA_ID as ABSTRACT_ARROW_IN_GROUND_DATA_ID,
@@ -325,7 +312,7 @@ use crate::entity_scene::{
 };
 use crate::entity_scene::{PHANTOM_DEFAULT_SIZE, PHANTOM_SIZE_DATA_ID};
 use crate::entity_scene::{
-    PIGLIN_BABY_DATA_ID, PIGLIN_DEFAULT_BABY as PIGLIN_DEFAULT_IS_BABY,
+    PIGLIN_BABY_DATA_ID,
     PIGLIN_DEFAULT_IMMUNE_TO_ZOMBIFICATION as ABSTRACT_PIGLIN_DEFAULT_IMMUNE_TO_ZOMBIFICATION,
     PIGLIN_IMMUNE_TO_ZOMBIFICATION_DATA_ID as ABSTRACT_PIGLIN_IMMUNE_TO_ZOMBIFICATION_DATA_ID,
 };
@@ -478,123 +465,31 @@ const STATS_SCREEN_FOOTER_HEIGHT: i32 = 33;
 const PAUSE_SCREEN_RELEASE_FEEDBACK_URL: &str = "https://aka.ms/javafeedback?ref=game";
 const PAUSE_SCREEN_SNAPSHOT_FEEDBACK_URL: &str = "https://aka.ms/snapshotfeedback?ref=game";
 const PAUSE_SCREEN_SNAPSHOT_BUGS_URL: &str = "https://aka.ms/snapshotbugs?ref=game";
-const AXOLOTL_TOTAL_AIR_SUPPLY: i32 = 6000;
-const DOLPHIN_TOTAL_AIR_SUPPLY: i32 = 4800;
-const ENTITY_DEFAULT_FALL_DISTANCE: f64 = 0.0;
-const ENTITY_DEFAULT_FIRE_TICKS: i16 = 0;
-const ENTITY_DEFAULT_INVULNERABLE: bool = false;
-const ENTITY_DEFAULT_PORTAL_COOLDOWN: i32 = 0;
-const HURTING_PROJECTILE_DEFAULT_ACCELERATION_POWER: f64 = 0.1;
-const FIREBALL_DEFAULT_EXPLOSION_POWER: i8 = 1;
-const FIREWORK_ROCKET_DEFAULT_LIFETIME: i32 = 0;
-/// The remaining falling-block save scalars are not synchronized by add-entity
-/// or metadata. Their client constructor values cannot be changed by any
-/// reachable client behavior; only `time` advances in `tick`.
-const FALLING_BLOCK_DEFAULT_DROP_ITEM: bool = true;
-const FALLING_BLOCK_DEFAULT_HURT_ENTITIES: bool = false;
-const FALLING_BLOCK_DEFAULT_FALL_HURT_AMOUNT: f32 = 0.0;
-const FALLING_BLOCK_DEFAULT_FALL_HURT_MAX: i32 = 40;
-const FALLING_BLOCK_DEFAULT_CANCEL_DROP: bool = false;
 /// `flipped` is changed only by the server branches of old/new minecart
 /// movement and is not synchronized, so a remote client retains `false`.
 const MINECART_CLIENT_FLIPPED_ROTATION: bool = false;
 const COMMAND_BLOCK_MINECART_COMMAND_DATA_ID: u8 = 13;
-const COMMAND_BLOCK_DEFAULT_COMMAND: &str = "";
-const COMMAND_BLOCK_DEFAULT_SUCCESS_COUNT: i32 = 0;
-const COMMAND_BLOCK_DEFAULT_TRACK_OUTPUT: bool = true;
-const COMMAND_BLOCK_DEFAULT_UPDATE_LAST_EXECUTION: bool = true;
-const FURNACE_MINECART_DEFAULT_PUSH: f64 = 0.0;
-const FURNACE_MINECART_DEFAULT_FUEL: i16 = 0;
 /// `MinecartHopper.enabled` changes only from the server-side activator-rail
 /// callback or NBT load and is not synchronized to the client.
-const HOPPER_MINECART_DEFAULT_ENABLED: bool = true;
-const BASE_SPAWNER_DEFAULT_DELAY: i16 = 20;
-const BASE_SPAWNER_DEFAULT_MIN_SPAWN_DELAY: i16 = 200;
-const BASE_SPAWNER_DEFAULT_MAX_SPAWN_DELAY: i16 = 800;
-const BASE_SPAWNER_DEFAULT_SPAWN_COUNT: i16 = 4;
-const BASE_SPAWNER_DEFAULT_MAX_NEARBY_ENTITIES: i16 = 6;
-const BASE_SPAWNER_DEFAULT_REQUIRED_PLAYER_RANGE: i16 = 16;
-const BASE_SPAWNER_DEFAULT_SPAWN_RANGE: i16 = 4;
 const TNT_MINECART_DEFAULT_FUSE: i32 = -1;
-/// Server-private NBT field: never enters add-entity or metadata, so a remote
-/// client-side ItemFrame remains at the constructor value.
-const ITEM_FRAME_DEFAULT_DROP_CHANCE: f32 = 1.0;
-const ITEM_FRAME_DEFAULT_INVISIBLE: bool = false;
-/// Server-private NBT field with the same client-only default boundary as drop chance.
-const ITEM_FRAME_DEFAULT_FIXED: bool = false;
-const ABSTRACT_ARROW_DEFAULT_LIFE: i16 = 0;
-const ABSTRACT_ARROW_DEFAULT_SHAKE: i8 = 0;
-const ABSTRACT_ARROW_DEFAULT_PICKUP: i8 = 0;
-const ABSTRACT_ARROW_DEFAULT_DAMAGE: f64 = 2.0;
-const ABSTRACT_ARROW_DEFAULT_SOUND_EVENT: &str = "minecraft:entity.arrow.hit";
-/// Server-private NBT field used only when the server applies the glowing hit
-/// effect; the client constructor value is never synchronized or mutated.
-const SPECTRAL_ARROW_DEFAULT_DURATION: i32 = 200;
-const TRIDENT_DEFAULT_SOUND_EVENT: &str = "minecraft:item.trident.hit_ground";
-const TRIDENT_DEFAULT_DEALT_DAMAGE: bool = false;
-const ARMOR_STAND_DEFAULT_DISABLED_SLOTS: i32 = 0;
-const MOB_DEFAULT_CAN_PICK_UP_LOOT: bool = false;
-const MOB_DEFAULT_PERSISTENCE_REQUIRED: bool = false;
 const AGEABLE_MOB_CLIENT_ADULT_AGE: i32 = 1;
 const AGEABLE_MOB_CLIENT_BABY_AGE: i32 = -1;
-const AGEABLE_MOB_DEFAULT_FORCED_AGE: i32 = 0;
-const ANIMAL_DEFAULT_IN_LOVE: i32 = 0;
-const ALLAY_VIBRATION_SELECTOR_DEFAULT_TICK: i64 = -1;
-const ALLAY_VIBRATION_DEFAULT_EVENT_DELAY: i32 = 0;
-const ALLAY_DEFAULT_DUPLICATION_COOLDOWN: i64 = 0;
-const ABSTRACT_HORSE_DEFAULT_TEMPER: i32 = 0;
-const SKELETON_HORSE_DEFAULT_TRAP: bool = false;
-const SKELETON_HORSE_DEFAULT_TRAP_TIME: i32 = 0;
 const LLAMA_MAX_VARIANT: i32 = 3;
-const TRADER_LLAMA_DEFAULT_DESPAWN_DELAY: i32 = 47999;
-const ARMADILLO_DEFAULT_SCUTE_TIME: i32 = 0;
-const BEE_DEFAULT_TICKS_SINCE_POLLINATION: i32 = 0;
-const BEE_DEFAULT_CANNOT_ENTER_HIVE_TICKS: i32 = 0;
-const BEE_DEFAULT_CROPS_GROWN_SINCE_POLLINATION: i32 = 0;
-const COPPER_GOLEM_DEFAULT_NEXT_WEATHER_AGE: i64 = -1;
-const TURTLE_DEFAULT_HOME_POS_X: i32 = 0;
-const TURTLE_DEFAULT_HOME_POS_Y: i32 = 0;
-const TURTLE_DEFAULT_HOME_POS_Z: i32 = 0;
 const ZOMBIE_NAUTILUS_VARIANT_DATA_ID: u8 = 21;
 const ZOMBIE_NAUTILUS_DEFAULT_VARIANT_ID: i32 = 0;
-const CHICKEN_DEFAULT_CHICKEN_JOCKEY: bool = false;
-const CHICKEN_DEFAULT_EGG_LAY_TIME: i32 = 0;
 const FROG_VARIANT_DATA_ID: u8 = 18;
 const FROG_DEFAULT_VARIANT_ID: i32 = 0;
 const PARROT_MAX_VARIANT: i32 = 4;
-const CREEPER_DEFAULT_FUSE: i16 = 30;
-const CREEPER_DEFAULT_EXPLOSION_RADIUS: i8 = 3;
 const SHEEP_WOOL_COLOR_MASK: u8 = 0x0f;
-const SKELETON_DEFAULT_STRAY_CONVERSION_TIME: i32 = -1;
 const SLIME_MIN_SIZE: i32 = 1;
 const SLIME_MAX_SIZE: i32 = 127;
-const SLIME_DEFAULT_WAS_ON_GROUND: bool = false;
-const ENDERMITE_DEFAULT_LIFETIME: i32 = 0;
-const GHAST_DEFAULT_EXPLOSION_POWER: i8 = 1;
-const HOGLIN_DEFAULT_CANNOT_BE_HUNTED: bool = false;
-const NEUTRAL_MOB_DEFAULT_ANGER_END_TIME: i64 = 0;
-const PATROLLING_MONSTER_DEFAULT_PATROL_LEADER: bool = false;
-const PATROLLING_MONSTER_DEFAULT_PATROLLING: bool = false;
-const ABSTRACT_PIGLIN_DEFAULT_CAN_PICK_UP_LOOT: bool = true;
-const ABSTRACT_PIGLIN_DEFAULT_TIME_IN_OVERWORLD: i32 = 0;
-const PIGLIN_DEFAULT_CANNOT_HUNT: bool = false;
 const PIG_VARIANT_DATA_ID: u8 = 19;
 const PIG_DEFAULT_VARIANT_ID: i32 = 0;
 const PIG_SOUND_VARIANT_DATA_ID: u8 = 20;
 const PIG_DEFAULT_SOUND_VARIANT_ID: i32 = 0;
-const RABBIT_DEFAULT_MORE_CARROT_TICKS: i32 = 0;
-const TADPOLE_DEFAULT_AGE: i32 = 0;
-const RAIDER_DEFAULT_WAVE: i32 = 0;
-const RAIDER_DEFAULT_CAN_JOIN_RAID: bool = false;
-const SPELLCASTER_ILLAGER_DEFAULT_SPELL_TICKS: i32 = 0;
 const RAVAGER_DEFAULT_ATTACK_TICK: i32 = 0;
 const RAVAGER_DEFAULT_STUN_TICK: i32 = 0;
 const RAVAGER_DEFAULT_ROAR_TICK: i32 = 0;
-const WANDERING_TRADER_DEFAULT_DESPAWN_DELAY: i32 = 0;
-const ZOMBIE_DEFAULT_CAN_BREAK_DOORS: bool = false;
-const ZOMBIE_DEFAULT_IN_WATER_TIME: i32 = -1;
-const ZOMBIE_DEFAULT_DROWNED_CONVERSION_TIME: i32 = -1;
-const HAPPY_GHAST_DEFAULT_STILL_TIMEOUT: i32 = 0;
 const SIGN_LINE_MAX_LENGTH: usize = 384;
 const BOOK_SCREEN_WIDTH: i32 = 192;
 const BOOK_SCREEN_HEIGHT: i32 = 192;
@@ -2102,6 +1997,10 @@ impl ClientInputState {
         }
 
         self.pending_debug_recreate_server_query = None;
+        if !response.tag_present {
+            push_debug_feedback_chat_message(Some(world), "Server returned no recreate data");
+            return true;
+        }
         let copy = match debug_copy_recreate_server_response_command(&pending.target, &response) {
             Ok(copy) => copy,
             Err(_) => {
@@ -3866,21 +3765,12 @@ fn debug_local_entity_pretty_snbt(
     if let Some(rotation) = debug_snbt_rotation(entity.y_rot, entity.x_rot) {
         fields.push(rotation);
     }
-    fields.push(format!(
-        "fall_distance: {}",
-        debug_snbt_double(ENTITY_DEFAULT_FALL_DISTANCE)?
-    ));
-    fields.push(format!("Fire: {ENTITY_DEFAULT_FIRE_TICKS}s"));
-    let air = debug_entity_data_int_present(entity, ENTITY_AIR_SUPPLY_DATA_ID)
-        .unwrap_or_else(|| debug_entity_default_air_supply(entity.entity_type_id));
-    fields.push(format!("Air: {}s", air as i16));
-    let on_ground = entity.on_ground.unwrap_or(false);
-    fields.push(format!("OnGround: {}b", if on_ground { 1 } else { 0 }));
-    fields.push(format!(
-        "Invulnerable: {}b",
-        if ENTITY_DEFAULT_INVULNERABLE { 1 } else { 0 }
-    ));
-    fields.push(format!("PortalCooldown: {ENTITY_DEFAULT_PORTAL_COOLDOWN}"));
+    if let Some(air) = debug_entity_data_int_present(entity, ENTITY_AIR_SUPPLY_DATA_ID) {
+        fields.push(format!("Air: {}s", air as i16));
+    }
+    if let Some(on_ground) = entity.on_ground {
+        fields.push(format!("OnGround: {}b", if on_ground { 1 } else { 0 }));
+    }
     if let Some(custom_name) =
         debug_entity_data_optional_component_present(entity, ENTITY_CUSTOM_NAME_DATA_ID)
     {
@@ -3910,7 +3800,7 @@ fn debug_local_entity_pretty_snbt(
         }
     }
     debug_push_entity_additional_save_data(world, item_runtime, entity, &mut fields);
-    Some(format!("{{{}}}", fields.join(", ")))
+    (!fields.is_empty()).then(|| format!("{{{}}}", fields.join(", ")))
 }
 
 fn debug_push_entity_additional_save_data(
@@ -4177,7 +4067,6 @@ fn debug_push_entity_additional_save_data(
         }
         VANILLA_ENTITY_TYPE_CHEST_MINECART_ID => {
             debug_push_minecart_additional_save_data(world, entity, fields);
-            debug_push_empty_container_items(fields);
         }
         VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID => {
             debug_push_minecart_additional_save_data(world, entity, fields);
@@ -4189,7 +4078,6 @@ fn debug_push_entity_additional_save_data(
         }
         VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID => {
             debug_push_minecart_additional_save_data(world, entity, fields);
-            debug_push_empty_container_items(fields);
             debug_push_hopper_minecart_additional_save_data(fields);
         }
         VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID => {
@@ -4220,28 +4108,16 @@ fn debug_push_entity_additional_save_data(
         }
         VANILLA_ENTITY_TYPE_ARROW_ID => {
             debug_push_projectile_additional_save_data(entity, fields);
-            debug_push_abstract_arrow_additional_save_data(
-                entity,
-                fields,
-                ABSTRACT_ARROW_DEFAULT_SOUND_EVENT,
-            );
+            debug_push_abstract_arrow_additional_save_data(entity, fields);
         }
         VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID => {
             debug_push_projectile_additional_save_data(entity, fields);
-            debug_push_abstract_arrow_additional_save_data(
-                entity,
-                fields,
-                ABSTRACT_ARROW_DEFAULT_SOUND_EVENT,
-            );
+            debug_push_abstract_arrow_additional_save_data(entity, fields);
             debug_push_spectral_arrow_additional_save_data(fields);
         }
         VANILLA_ENTITY_TYPE_TRIDENT_ID => {
             debug_push_projectile_additional_save_data(entity, fields);
-            debug_push_abstract_arrow_additional_save_data(
-                entity,
-                fields,
-                TRIDENT_DEFAULT_SOUND_EVENT,
-            );
+            debug_push_abstract_arrow_additional_save_data(entity, fields);
             debug_push_trident_additional_save_data(entity, fields);
         }
         VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID => {
@@ -4457,9 +4333,6 @@ fn debug_push_abstract_boat_additional_save_data(
     fields: &mut Vec<String>,
 ) {
     debug_push_leash_additional_save_data(world, entity, fields);
-    if debug_entity_type_writes_abstract_chest_boat_save_data(entity.entity_type_id) {
-        debug_push_empty_container_items(fields);
-    }
 }
 
 fn debug_entity_type_writes_abstract_boat_save_data(entity_type_id: i32) -> bool {
@@ -4511,17 +4384,7 @@ fn debug_entity_type_writes_abstract_chest_boat_save_data(entity_type_id: i32) -
     )
 }
 
-fn debug_entity_default_air_supply(entity_type_id: i32) -> i32 {
-    match entity_type_id {
-        VANILLA_ENTITY_TYPE_AXOLOTL_ID => AXOLOTL_TOTAL_AIR_SUPPLY,
-        VANILLA_ENTITY_TYPE_DOLPHIN_ID => DOLPHIN_TOTAL_AIR_SUPPLY,
-        _ => ENTITY_DEFAULT_AIR_SUPPLY,
-    }
-}
-
-fn debug_push_evoker_fangs_additional_save_data(fields: &mut Vec<String>) {
-    fields.push("Warmup: 0".to_string());
-}
+fn debug_push_evoker_fangs_additional_save_data(_fields: &mut Vec<String>) {}
 
 fn debug_push_projectile_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
     let lifecycle = entity.projectile_lifecycle;
@@ -4531,52 +4394,42 @@ fn debug_push_projectile_additional_save_data(entity: &EntityState, fields: &mut
     if lifecycle.is_some_and(|projectile| projectile.left_owner) {
         fields.push(format!("LeftOwner: {}", debug_snbt_bool(true)));
     }
-    fields.push(format!(
-        "HasBeenShot: {}",
-        debug_snbt_bool(lifecycle.is_some_and(|projectile| projectile.has_been_shot))
-    ));
+    if let Some(lifecycle) = lifecycle {
+        fields.push(format!(
+            "HasBeenShot: {}",
+            debug_snbt_bool(lifecycle.has_been_shot)
+        ));
+    }
 }
 
-fn debug_push_abstract_arrow_additional_save_data(
-    entity: &EntityState,
-    fields: &mut Vec<String>,
-    default_sound_event: &str,
-) {
-    let flags = debug_entity_data_byte_present(entity, ABSTRACT_ARROW_FLAGS_DATA_ID)
-        .unwrap_or(ABSTRACT_ARROW_DEFAULT_FLAGS);
-    let in_ground = debug_entity_data_bool_present(entity, ABSTRACT_ARROW_IN_GROUND_DATA_ID)
-        .unwrap_or(ABSTRACT_ARROW_DEFAULT_IN_GROUND);
-    let pierce_level = debug_entity_data_byte_present(entity, ABSTRACT_ARROW_PIERCE_LEVEL_DATA_ID)
-        .unwrap_or(ABSTRACT_ARROW_DEFAULT_PIERCE_LEVEL);
-    let damage = debug_snbt_double(ABSTRACT_ARROW_DEFAULT_DAMAGE)
-        .expect("finite abstract arrow default damage");
-
-    fields.push(format!("life: {ABSTRACT_ARROW_DEFAULT_LIFE}s"));
-    fields.push(format!("shake: {ABSTRACT_ARROW_DEFAULT_SHAKE}b"));
-    fields.push(format!("inGround: {}", debug_snbt_bool(in_ground)));
-    fields.push(format!("pickup: {ABSTRACT_ARROW_DEFAULT_PICKUP}b"));
-    fields.push(format!("damage: {damage}"));
-    fields.push(format!(
-        "crit: {}",
-        debug_snbt_bool(flags & ABSTRACT_ARROW_FLAG_CRIT != 0)
-    ));
-    fields.push(format!("PierceLevel: {pierce_level}b"));
-    fields.push(format!(
-        "SoundEvent: {}",
-        debug_snbt_string(default_sound_event)
-    ));
+fn debug_push_abstract_arrow_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
+    if let Some(in_ground) =
+        debug_entity_data_bool_present(entity, ABSTRACT_ARROW_IN_GROUND_DATA_ID)
+    {
+        fields.push(format!("inGround: {}", debug_snbt_bool(in_ground)));
+    }
+    if let Some(flags) = debug_entity_data_byte_present(entity, ABSTRACT_ARROW_FLAGS_DATA_ID) {
+        fields.push(format!(
+            "crit: {}",
+            debug_snbt_bool(flags & ABSTRACT_ARROW_FLAG_CRIT != 0)
+        ));
+    }
+    if let Some(pierce_level) =
+        debug_entity_data_byte_present(entity, ABSTRACT_ARROW_PIERCE_LEVEL_DATA_ID)
+    {
+        fields.push(format!("PierceLevel: {pierce_level}b"));
+    }
 }
 
-fn debug_push_spectral_arrow_additional_save_data(fields: &mut Vec<String>) {
-    fields.push(format!("Duration: {SPECTRAL_ARROW_DEFAULT_DURATION}"));
-}
+fn debug_push_spectral_arrow_additional_save_data(_fields: &mut Vec<String>) {}
 
 fn debug_push_trident_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
-    let dealt_damage = entity
-        .projectile_lifecycle
-        .map(|projectile| projectile.trident_dealt_damage)
-        .unwrap_or(TRIDENT_DEFAULT_DEALT_DAMAGE);
-    fields.push(format!("DealtDamage: {}", debug_snbt_bool(dealt_damage)));
+    if let Some(projectile) = entity.projectile_lifecycle {
+        fields.push(format!(
+            "DealtDamage: {}",
+            debug_snbt_bool(projectile.trident_dealt_damage)
+        ));
+    }
 }
 
 fn debug_push_abstract_hurting_projectile_additional_save_data(
@@ -4584,20 +4437,16 @@ fn debug_push_abstract_hurting_projectile_additional_save_data(
     fields: &mut Vec<String>,
 ) {
     debug_push_projectile_additional_save_data(entity, fields);
-    let acceleration_power = entity
+    if let Some(acceleration_power) = entity
         .hurting_projectile
-        .map(|projectile| projectile.acceleration_power)
-        .unwrap_or(HURTING_PROJECTILE_DEFAULT_ACCELERATION_POWER);
-    if let Some(acceleration_power) = debug_snbt_double(acceleration_power) {
+        .and_then(|projectile| debug_snbt_double(projectile.acceleration_power))
+    {
         fields.push(format!("acceleration_power: {acceleration_power}"));
     }
 }
 
 fn debug_push_fireball_additional_save_data(fields: &mut Vec<String>) {
     debug_push_item_stack_id(fields, "Item", "minecraft:fire_charge");
-    fields.push(format!(
-        "ExplosionPower: {FIREBALL_DEFAULT_EXPLOSION_POWER}b"
-    ));
 }
 
 fn debug_push_firework_rocket_additional_save_data(
@@ -4610,15 +4459,17 @@ fn debug_push_firework_rocket_additional_save_data(
         "Life: {}",
         entity.client_animations.age_ticks.min(i32::MAX as u32)
     ));
-    fields.push(format!("LifeTime: {FIREWORK_ROCKET_DEFAULT_LIFETIME}"));
-    fields.push(format!(
-        "FireworksItem: {}",
-        debug_firework_rocket_item_stack(entity, item_runtime)
-    ));
-    let shot_at_angle =
+    if debug_entity_data_item_stack_present(entity, FIREWORK_ROCKET_ITEM_DATA_ID).is_some() {
+        fields.push(format!(
+            "FireworksItem: {}",
+            debug_firework_rocket_item_stack(entity, item_runtime)
+        ));
+    }
+    if let Some(shot_at_angle) =
         debug_entity_data_bool_present(entity, FIREWORK_ROCKET_SHOT_AT_ANGLE_DATA_ID)
-            .unwrap_or(FIREWORK_ROCKET_DEFAULT_SHOT_AT_ANGLE);
-    fields.push(format!("ShotAtAngle: {}", debug_snbt_bool(shot_at_angle)));
+    {
+        fields.push(format!("ShotAtAngle: {}", debug_snbt_bool(shot_at_angle)));
+    }
 }
 
 fn debug_firework_rocket_item_stack(
@@ -5889,26 +5740,6 @@ fn debug_push_falling_block_additional_save_data(
         "Time: {}",
         entity.client_animations.age_ticks.min(i32::MAX as u32)
     ));
-    fields.push(format!(
-        "DropItem: {}",
-        debug_snbt_bool(FALLING_BLOCK_DEFAULT_DROP_ITEM)
-    ));
-    fields.push(format!(
-        "HurtEntities: {}",
-        debug_snbt_bool(FALLING_BLOCK_DEFAULT_HURT_ENTITIES)
-    ));
-    fields.push(format!(
-        "FallHurtAmount: {}",
-        debug_snbt_float(FALLING_BLOCK_DEFAULT_FALL_HURT_AMOUNT)
-            .expect("finite falling-block default hurt amount")
-    ));
-    fields.push(format!(
-        "FallHurtMax: {FALLING_BLOCK_DEFAULT_FALL_HURT_MAX}"
-    ));
-    fields.push(format!(
-        "CancelDrop: {}",
-        debug_snbt_bool(FALLING_BLOCK_DEFAULT_CANCEL_DROP)
-    ));
 }
 
 fn debug_push_minecart_additional_save_data(
@@ -5949,55 +5780,18 @@ fn debug_push_command_block_minecart_additional_save_data(
     entity: &EntityState,
     fields: &mut Vec<String>,
 ) {
-    let command = debug_entity_data_string_present(entity, COMMAND_BLOCK_MINECART_COMMAND_DATA_ID)
-        .unwrap_or(COMMAND_BLOCK_DEFAULT_COMMAND);
-    fields.push(format!("Command: {}", debug_snbt_string(command)));
-    fields.push(format!(
-        "SuccessCount: {COMMAND_BLOCK_DEFAULT_SUCCESS_COUNT}"
-    ));
-    fields.push(format!(
-        "TrackOutput: {}",
-        debug_snbt_bool(COMMAND_BLOCK_DEFAULT_TRACK_OUTPUT)
-    ));
-    fields.push(format!(
-        "UpdateLastExecution: {}",
-        debug_snbt_bool(COMMAND_BLOCK_DEFAULT_UPDATE_LAST_EXECUTION)
-    ));
+    if let Some(command) =
+        debug_entity_data_string_present(entity, COMMAND_BLOCK_MINECART_COMMAND_DATA_ID)
+    {
+        fields.push(format!("Command: {}", debug_snbt_string(command)));
+    }
 }
 
-fn debug_push_furnace_minecart_additional_save_data(fields: &mut Vec<String>) {
-    let push = debug_snbt_double(FURNACE_MINECART_DEFAULT_PUSH)
-        .expect("finite furnace minecart default push");
-    fields.push(format!("PushX: {push}"));
-    fields.push(format!("PushZ: {push}"));
-    fields.push(format!("Fuel: {FURNACE_MINECART_DEFAULT_FUEL}s"));
-}
+fn debug_push_furnace_minecart_additional_save_data(_fields: &mut Vec<String>) {}
 
-fn debug_push_hopper_minecart_additional_save_data(fields: &mut Vec<String>) {
-    fields.push(format!(
-        "Enabled: {}",
-        debug_snbt_bool(HOPPER_MINECART_DEFAULT_ENABLED)
-    ));
-}
+fn debug_push_hopper_minecart_additional_save_data(_fields: &mut Vec<String>) {}
 
-fn debug_push_spawner_minecart_additional_save_data(fields: &mut Vec<String>) {
-    fields.push(format!("Delay: {BASE_SPAWNER_DEFAULT_DELAY}s"));
-    fields.push(format!(
-        "MinSpawnDelay: {BASE_SPAWNER_DEFAULT_MIN_SPAWN_DELAY}s"
-    ));
-    fields.push(format!(
-        "MaxSpawnDelay: {BASE_SPAWNER_DEFAULT_MAX_SPAWN_DELAY}s"
-    ));
-    fields.push(format!("SpawnCount: {BASE_SPAWNER_DEFAULT_SPAWN_COUNT}s"));
-    fields.push(format!(
-        "MaxNearbyEntities: {BASE_SPAWNER_DEFAULT_MAX_NEARBY_ENTITIES}s"
-    ));
-    fields.push(format!(
-        "RequiredPlayerRange: {BASE_SPAWNER_DEFAULT_REQUIRED_PLAYER_RANGE}s"
-    ));
-    fields.push(format!("SpawnRange: {BASE_SPAWNER_DEFAULT_SPAWN_RANGE}s"));
-    fields.push("SpawnPotentials: []".to_string());
-}
+fn debug_push_spawner_minecart_additional_save_data(_fields: &mut Vec<String>) {}
 
 fn debug_push_tnt_minecart_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
     let fuse = entity
@@ -6032,23 +5826,17 @@ fn debug_push_item_frame_additional_save_data(
             fields.push(format!("Item: {item}"));
         }
     }
-    let rotation = debug_entity_data_int_present(entity, ITEM_FRAME_ROTATION_DATA_ID)
-        .map(|rotation| rotation.rem_euclid(8) as i8)
-        .unwrap_or(VANILLA_ITEM_FRAME_DEFAULT_ROTATION as i8);
-    let drop_chance =
-        debug_snbt_float(ITEM_FRAME_DEFAULT_DROP_CHANCE).expect("finite item-frame drop chance");
     let facing = debug_item_frame_facing_legacy_id(entity);
-    let invisible = debug_entity_data_byte_present(entity, ENTITY_SHARED_FLAGS_DATA_ID)
-        .map(|flags| flags & ENTITY_SHARED_FLAG_INVISIBLE != 0)
-        .unwrap_or(ITEM_FRAME_DEFAULT_INVISIBLE);
-    fields.push(format!("ItemRotation: {rotation}b"));
-    fields.push(format!("ItemDropChance: {drop_chance}"));
+    if let Some(rotation) = debug_entity_data_int_present(entity, ITEM_FRAME_ROTATION_DATA_ID) {
+        fields.push(format!("ItemRotation: {}b", rotation.rem_euclid(8) as i8));
+    }
     fields.push(format!("Facing: {facing}b"));
-    fields.push(format!("Invisible: {}", debug_snbt_bool(invisible)));
-    fields.push(format!(
-        "Fixed: {}",
-        debug_snbt_bool(ITEM_FRAME_DEFAULT_FIXED)
-    ));
+    if let Some(flags) = debug_entity_data_byte_present(entity, ENTITY_SHARED_FLAGS_DATA_ID) {
+        fields.push(format!(
+            "Invisible: {}",
+            debug_snbt_bool(flags & ENTITY_SHARED_FLAG_INVISIBLE != 0)
+        ));
+    }
 }
 
 fn debug_item_frame_facing_legacy_id(entity: &EntityState) -> i32 {
@@ -6085,49 +5873,40 @@ fn debug_push_wither_skull_additional_save_data(entity: &EntityState, fields: &m
     fields.push(format!("dangerous: {}", debug_snbt_bool(dangerous)));
 }
 
-fn debug_push_shulker_bullet_additional_save_data(fields: &mut Vec<String>) {
-    fields.push("Steps: 0".to_string());
-    let zero = debug_snbt_double(0.0).expect("finite shulker bullet default delta");
-    fields.push(format!("TXD: {zero}"));
-    fields.push(format!("TYD: {zero}"));
-    fields.push(format!("TZD: {zero}"));
-}
+fn debug_push_shulker_bullet_additional_save_data(_fields: &mut Vec<String>) {}
 
 fn debug_push_experience_orb_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
     let value = debug_entity_data_int_present(entity, VANILLA_EXPERIENCE_ORB_VALUE_DATA_ID)
         .unwrap_or(VANILLA_EXPERIENCE_ORB_DEFAULT_VALUE);
-    fields.push("Health: 5s".to_string());
-    fields.push("Age: 0s".to_string());
     fields.push(format!("Value: {value}s"));
-    fields.push("Count: 1".to_string());
 }
 
 fn debug_push_armor_stand_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
-    let shared_flags =
-        debug_entity_data_byte_present(entity, ENTITY_SHARED_FLAGS_DATA_ID).unwrap_or_default();
-    let client_flags = debug_entity_data_byte_present(entity, ARMOR_STAND_CLIENT_FLAGS_DATA_ID)
-        .unwrap_or(ARMOR_STAND_DEFAULT_CLIENT_FLAGS);
-    fields.push(format!(
-        "Invisible: {}",
-        debug_snbt_bool(shared_flags & ENTITY_SHARED_FLAG_INVISIBLE != 0)
-    ));
-    fields.push(format!(
-        "Small: {}",
-        debug_snbt_bool(client_flags & ARMOR_STAND_CLIENT_FLAG_SMALL != 0)
-    ));
-    fields.push(format!(
-        "ShowArms: {}",
-        debug_snbt_bool(client_flags & ARMOR_STAND_CLIENT_FLAG_SHOW_ARMS != 0)
-    ));
-    fields.push(format!(
-        "DisabledSlots: {ARMOR_STAND_DEFAULT_DISABLED_SLOTS}"
-    ));
-    fields.push(format!(
-        "NoBasePlate: {}",
-        debug_snbt_bool(client_flags & ARMOR_STAND_CLIENT_FLAG_NO_BASEPLATE != 0)
-    ));
-    if client_flags & ARMOR_STAND_CLIENT_FLAG_MARKER != 0 {
-        fields.push("Marker: 1b".to_string());
+    if let Some(shared_flags) = debug_entity_data_byte_present(entity, ENTITY_SHARED_FLAGS_DATA_ID)
+    {
+        fields.push(format!(
+            "Invisible: {}",
+            debug_snbt_bool(shared_flags & ENTITY_SHARED_FLAG_INVISIBLE != 0)
+        ));
+    }
+    if let Some(client_flags) =
+        debug_entity_data_byte_present(entity, ARMOR_STAND_CLIENT_FLAGS_DATA_ID)
+    {
+        fields.push(format!(
+            "Small: {}",
+            debug_snbt_bool(client_flags & ARMOR_STAND_CLIENT_FLAG_SMALL != 0)
+        ));
+        fields.push(format!(
+            "ShowArms: {}",
+            debug_snbt_bool(client_flags & ARMOR_STAND_CLIENT_FLAG_SHOW_ARMS != 0)
+        ));
+        fields.push(format!(
+            "NoBasePlate: {}",
+            debug_snbt_bool(client_flags & ARMOR_STAND_CLIENT_FLAG_NO_BASEPLATE != 0)
+        ));
+        if client_flags & ARMOR_STAND_CLIENT_FLAG_MARKER != 0 {
+            fields.push("Marker: 1b".to_string());
+        }
     }
     if let Some(pose) = debug_armor_stand_pose_snbt(entity) {
         fields.push(format!("Pose: {pose}"));
@@ -6179,7 +5958,7 @@ fn debug_armor_stand_pose_snbt(entity: &EntityState) -> Option<String> {
             fields.push(format!("{name}: {}", debug_snbt_rotations(value)?));
         }
     }
-    Some(format!("{{{}}}", fields.join(", ")))
+    (!fields.is_empty()).then(|| format!("{{{}}}", fields.join(", ")))
 }
 
 fn debug_push_mob_additional_save_data(
@@ -6187,25 +5966,15 @@ fn debug_push_mob_additional_save_data(
     entity: &EntityState,
     fields: &mut Vec<String>,
 ) {
-    let flags = debug_entity_data_byte_present(entity, MOB_FLAGS_DATA_ID).unwrap_or(0);
-    let can_pick_up_loot = debug_mob_default_can_pick_up_loot(entity.entity_type_id);
-    fields.push(format!(
-        "CanPickUpLoot: {}",
-        debug_snbt_bool(can_pick_up_loot)
-    ));
-    fields.push(format!(
-        "PersistenceRequired: {}",
-        debug_snbt_bool(debug_mob_default_persistence_required(
-            entity.entity_type_id
-        ))
-    ));
     debug_push_leash_additional_save_data(world, entity, fields);
-    fields.push(format!(
-        "LeftHanded: {}",
-        debug_snbt_bool(flags & MOB_FLAG_LEFT_HANDED != 0)
-    ));
-    if flags & MOB_FLAG_NO_AI != 0 {
-        fields.push("NoAI: 1b".to_string());
+    if let Some(flags) = debug_entity_data_byte_present(entity, MOB_FLAGS_DATA_ID) {
+        fields.push(format!(
+            "LeftHanded: {}",
+            debug_snbt_bool(flags & MOB_FLAG_LEFT_HANDED != 0)
+        ));
+        if flags & MOB_FLAG_NO_AI != 0 {
+            fields.push("NoAI: 1b".to_string());
+        }
     }
 }
 
@@ -6226,86 +5995,51 @@ fn debug_push_leash_additional_save_data(
     ));
 }
 
-fn debug_mob_default_can_pick_up_loot(entity_type_id: i32) -> bool {
-    match entity_type_id {
-        VANILLA_ENTITY_TYPE_DOLPHIN_ID => true,
-        VANILLA_ENTITY_TYPE_FOX_ID => true,
-        VANILLA_ENTITY_TYPE_PIGLIN_ID | VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID => {
-            ABSTRACT_PIGLIN_DEFAULT_CAN_PICK_UP_LOOT
-        }
-        _ => MOB_DEFAULT_CAN_PICK_UP_LOOT,
-    }
-}
-
-fn debug_mob_default_persistence_required(entity_type_id: i32) -> bool {
-    match entity_type_id {
-        VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID => true,
-        _ => MOB_DEFAULT_PERSISTENCE_REQUIRED,
-    }
-}
-
 fn debug_push_ageable_mob_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
-    let is_baby = debug_entity_data_bool_present(entity, AGEABLE_MOB_BABY_DATA_ID)
-        .unwrap_or(AGEABLE_MOB_DEFAULT_BABY);
-    let age = if is_baby {
-        AGEABLE_MOB_CLIENT_BABY_AGE
-    } else {
-        AGEABLE_MOB_CLIENT_ADULT_AGE
-    };
-    let age_locked = debug_entity_data_bool_present(entity, AGEABLE_MOB_AGE_LOCKED_DATA_ID)
-        .unwrap_or(AGEABLE_MOB_DEFAULT_AGE_LOCKED);
-    fields.push(format!("Age: {age}"));
-    fields.push(format!("ForcedAge: {AGEABLE_MOB_DEFAULT_FORCED_AGE}"));
-    fields.push(format!("AgeLocked: {}", debug_snbt_bool(age_locked)));
+    if let Some(is_baby) = debug_entity_data_bool_present(entity, AGEABLE_MOB_BABY_DATA_ID) {
+        let age = if is_baby {
+            AGEABLE_MOB_CLIENT_BABY_AGE
+        } else {
+            AGEABLE_MOB_CLIENT_ADULT_AGE
+        };
+        fields.push(format!("Age: {age}"));
+    }
+    if let Some(age_locked) = debug_entity_data_bool_present(entity, AGEABLE_MOB_AGE_LOCKED_DATA_ID)
+    {
+        fields.push(format!("AgeLocked: {}", debug_snbt_bool(age_locked)));
+    }
 }
 
-fn debug_push_animal_additional_save_data(fields: &mut Vec<String>) {
-    fields.push(format!("InLove: {ANIMAL_DEFAULT_IN_LOVE}"));
-}
+fn debug_push_animal_additional_save_data(_fields: &mut Vec<String>) {}
 
-fn debug_push_allay_additional_save_data(fields: &mut Vec<String>) {
-    debug_push_inventory_carrier_additional_save_data(fields);
-    fields.push(format!(
-        "listener: {{selector: {{tick: {ALLAY_VIBRATION_SELECTOR_DEFAULT_TICK}L}}, \
-         event_delay: {ALLAY_VIBRATION_DEFAULT_EVENT_DELAY}}}"
-    ));
-    fields.push(format!(
-        "DuplicationCooldown: {ALLAY_DEFAULT_DUPLICATION_COOLDOWN}L"
-    ));
-}
+fn debug_push_allay_additional_save_data(_fields: &mut Vec<String>) {}
 
 fn debug_push_abstract_horse_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
-    let flags = debug_entity_data_byte_present(entity, ABSTRACT_HORSE_FLAGS_DATA_ID)
-        .unwrap_or(ABSTRACT_HORSE_DEFAULT_FLAGS);
-    fields.push(format!(
-        "EatingHaystack: {}",
-        debug_snbt_bool(flags & ABSTRACT_HORSE_FLAG_EATING != 0)
-    ));
-    fields.push(format!(
-        "Bred: {}",
-        debug_snbt_bool(flags & ABSTRACT_HORSE_FLAG_BRED != 0)
-    ));
-    fields.push(format!("Temper: {ABSTRACT_HORSE_DEFAULT_TEMPER}"));
-    fields.push(format!(
-        "Tame: {}",
-        debug_snbt_bool(flags & ABSTRACT_HORSE_FLAG_TAME != 0)
-    ));
+    if let Some(flags) = debug_entity_data_byte_present(entity, ABSTRACT_HORSE_FLAGS_DATA_ID) {
+        fields.push(format!(
+            "EatingHaystack: {}",
+            debug_snbt_bool(flags & ABSTRACT_HORSE_FLAG_EATING != 0)
+        ));
+        fields.push(format!(
+            "Bred: {}",
+            debug_snbt_bool(flags & ABSTRACT_HORSE_FLAG_BRED != 0)
+        ));
+        fields.push(format!(
+            "Tame: {}",
+            debug_snbt_bool(flags & ABSTRACT_HORSE_FLAG_TAME != 0)
+        ));
+    }
 }
 
 fn debug_push_abstract_chested_horse_additional_save_data(
     entity: &EntityState,
     fields: &mut Vec<String>,
 ) {
-    let has_chest = debug_entity_data_bool_present(entity, ABSTRACT_CHESTED_HORSE_CHEST_DATA_ID)
-        .unwrap_or(ABSTRACT_CHESTED_HORSE_DEFAULT_HAS_CHEST);
-    fields.push(format!("ChestedHorse: {}", debug_snbt_bool(has_chest)));
-    if has_chest {
-        debug_push_empty_container_items(fields);
+    if let Some(has_chest) =
+        debug_entity_data_bool_present(entity, ABSTRACT_CHESTED_HORSE_CHEST_DATA_ID)
+    {
+        fields.push(format!("ChestedHorse: {}", debug_snbt_bool(has_chest)));
     }
-}
-
-fn debug_push_empty_container_items(fields: &mut Vec<String>) {
-    fields.push("Items: []".to_string());
 }
 
 fn debug_push_horse_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
@@ -6314,15 +6048,7 @@ fn debug_push_horse_additional_save_data(entity: &EntityState, fields: &mut Vec<
     fields.push(format!("Variant: {variant}"));
 }
 
-fn debug_push_skeleton_horse_additional_save_data(fields: &mut Vec<String>) {
-    fields.push(format!(
-        "SkeletonTrap: {}",
-        debug_snbt_bool(SKELETON_HORSE_DEFAULT_TRAP)
-    ));
-    fields.push(format!(
-        "SkeletonTrapTime: {SKELETON_HORSE_DEFAULT_TRAP_TIME}"
-    ));
-}
+fn debug_push_skeleton_horse_additional_save_data(_fields: &mut Vec<String>) {}
 
 fn debug_push_camel_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
     let last_pose_tick =
@@ -6345,11 +6071,7 @@ fn debug_llama_variant_save_id(variant: i32) -> i32 {
     variant.clamp(LLAMA_DEFAULT_VARIANT, LLAMA_MAX_VARIANT)
 }
 
-fn debug_push_trader_llama_additional_save_data(fields: &mut Vec<String>) {
-    fields.push(format!(
-        "DespawnDelay: {TRADER_LLAMA_DEFAULT_DESPAWN_DELAY}"
-    ));
-}
+fn debug_push_trader_llama_additional_save_data(_fields: &mut Vec<String>) {}
 
 fn debug_push_tamable_animal_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
     let flags = debug_entity_data_byte_present(entity, TAMABLE_ANIMAL_FLAGS_DATA_ID)
@@ -6515,7 +6237,6 @@ fn debug_push_armadillo_additional_save_data(entity: &EntityState, fields: &mut 
         "state: {}",
         debug_snbt_string(debug_armadillo_state_name(state_id))
     ));
-    fields.push(format!("scute_time: {ARMADILLO_DEFAULT_SCUTE_TIME}"));
 }
 
 fn debug_armadillo_state_name(state_id: i32) -> &'static str {
@@ -6528,9 +6249,6 @@ fn debug_armadillo_state_name(state_id: i32) -> &'static str {
 }
 
 fn debug_push_copper_golem_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
-    fields.push(format!(
-        "next_weather_age: {COPPER_GOLEM_DEFAULT_NEXT_WEATHER_AGE}L"
-    ));
     let weather_state_id = debug_entity_data_enum_id_present(
         entity,
         COPPER_GOLEM_WEATHER_STATE_DATA_ID,
@@ -6553,9 +6271,6 @@ fn debug_copper_golem_weather_state_name(state_id: i32) -> &'static str {
 }
 
 fn debug_push_turtle_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
-    fields.push(format!(
-        "home_pos: [I; {TURTLE_DEFAULT_HOME_POS_X}, {TURTLE_DEFAULT_HOME_POS_Y}, {TURTLE_DEFAULT_HOME_POS_Z}]"
-    ));
     let has_egg = debug_entity_data_bool_present(entity, TURTLE_HAS_EGG_DATA_ID)
         .unwrap_or(TURTLE_DEFAULT_HAS_EGG);
     fields.push(format!("has_egg: {}", debug_snbt_bool(has_egg)));
@@ -6599,11 +6314,6 @@ fn debug_push_chicken_additional_save_data(entity: &EntityState, fields: &mut Ve
     )
     .and_then(chicken_sound_variant_resource_id)
     .unwrap_or(CHICKEN_DEFAULT_SOUND_VARIANT_RESOURCE_ID);
-    fields.push(format!(
-        "IsChickenJockey: {}",
-        debug_snbt_bool(CHICKEN_DEFAULT_CHICKEN_JOCKEY)
-    ));
-    fields.push(format!("EggLayTime: {CHICKEN_DEFAULT_EGG_LAY_TIME}"));
     fields.push(format!("variant: {}", debug_snbt_string(variant)));
     fields.push(format!(
         "sound_variant: {}",
@@ -6758,10 +6468,6 @@ fn debug_push_creeper_additional_save_data(entity: &EntityState, fields: &mut Ve
     let ignited = debug_entity_data_bool_present(entity, CREEPER_IGNITED_DATA_ID)
         .unwrap_or(CREEPER_DEFAULT_IGNITED);
     fields.push(format!("powered: {}", debug_snbt_bool(powered)));
-    fields.push(format!("Fuse: {CREEPER_DEFAULT_FUSE}s"));
-    fields.push(format!(
-        "ExplosionRadius: {CREEPER_DEFAULT_EXPLOSION_RADIUS}b"
-    ));
     fields.push(format!("ignited: {}", debug_snbt_bool(ignited)));
 }
 
@@ -6804,10 +6510,6 @@ fn debug_push_slime_additional_save_data(entity: &EntityState, fields: &mut Vec<
         .unwrap_or(SLIME_DEFAULT_SIZE)
         .clamp(SLIME_MIN_SIZE, SLIME_MAX_SIZE);
     fields.push(format!("Size: {}", size - 1));
-    fields.push(format!(
-        "wasOnGround: {}",
-        debug_snbt_bool(SLIME_DEFAULT_WAS_ON_GROUND)
-    ));
 }
 
 fn debug_push_snow_golem_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
@@ -6832,18 +6534,10 @@ fn debug_push_bee_additional_save_data(entity: &EntityState, fields: &mut Vec<St
     let has_stung = flags & BEE_FLAG_HAS_STUNG != 0;
     fields.push(format!("HasNectar: {}", debug_snbt_bool(has_nectar)));
     fields.push(format!("HasStung: {}", debug_snbt_bool(has_stung)));
-    fields.push(format!(
-        "TicksSincePollination: {BEE_DEFAULT_TICKS_SINCE_POLLINATION}"
-    ));
-    fields.push(format!(
-        "CannotEnterHiveTicks: {BEE_DEFAULT_CANNOT_ENTER_HIVE_TICKS}"
-    ));
-    fields.push(format!(
-        "CropsGrownSincePollination: {BEE_DEFAULT_CROPS_GROWN_SINCE_POLLINATION}"
-    ));
-    let anger_end_time = debug_entity_data_long_present(entity, BEE_ANGER_END_TIME_DATA_ID)
-        .unwrap_or(BEE_DEFAULT_ANGER_END_TIME);
-    debug_push_neutral_mob_additional_save_data_with_end_time(fields, anger_end_time);
+    if let Some(anger_end_time) = debug_entity_data_long_present(entity, BEE_ANGER_END_TIME_DATA_ID)
+    {
+        debug_push_neutral_mob_additional_save_data_with_end_time(fields, anger_end_time);
+    }
 }
 
 fn debug_push_bogged_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
@@ -6852,9 +6546,7 @@ fn debug_push_bogged_additional_save_data(entity: &EntityState, fields: &mut Vec
     fields.push(format!("sheared: {}", debug_snbt_bool(sheared)));
 }
 
-fn debug_push_endermite_additional_save_data(fields: &mut Vec<String>) {
-    fields.push(format!("Lifetime: {ENDERMITE_DEFAULT_LIFETIME}"));
-}
+fn debug_push_endermite_additional_save_data(_fields: &mut Vec<String>) {}
 
 fn debug_push_end_crystal_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
     if let Some(beam_target) =
@@ -6870,9 +6562,7 @@ fn debug_push_end_crystal_additional_save_data(entity: &EntityState, fields: &mu
     fields.push(format!("ShowBottom: {}", debug_snbt_bool(show_bottom)));
 }
 
-fn debug_push_ghast_additional_save_data(fields: &mut Vec<String>) {
-    fields.push(format!("ExplosionPower: {GHAST_DEFAULT_EXPLOSION_POWER}b"));
-}
+fn debug_push_ghast_additional_save_data(_fields: &mut Vec<String>) {}
 
 fn debug_push_glow_squid_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
     let dark_ticks = debug_entity_data_int_present(entity, GLOW_SQUID_DARK_TICKS_DATA_ID)
@@ -6880,11 +6570,7 @@ fn debug_push_glow_squid_additional_save_data(entity: &EntityState, fields: &mut
     fields.push(format!("DarkTicksRemaining: {dark_ticks}"));
 }
 
-fn debug_push_happy_ghast_additional_save_data(fields: &mut Vec<String>) {
-    fields.push(format!(
-        "still_timeout: {HAPPY_GHAST_DEFAULT_STILL_TIMEOUT}"
-    ));
-}
+fn debug_push_happy_ghast_additional_save_data(_fields: &mut Vec<String>) {}
 
 fn debug_push_hoglin_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
     let immune_to_zombification =
@@ -6893,10 +6579,6 @@ fn debug_push_hoglin_additional_save_data(entity: &EntityState, fields: &mut Vec
     fields.push(format!(
         "IsImmuneToZombification: {}",
         debug_snbt_bool(immune_to_zombification)
-    ));
-    fields.push(format!(
-        "CannotBeHunted: {}",
-        debug_snbt_bool(HOGLIN_DEFAULT_CANNOT_BE_HUNTED)
     ));
 }
 
@@ -6908,20 +6590,12 @@ fn debug_push_abstract_piglin_additional_save_data(entity: &EntityState, fields:
         "IsImmuneToZombification: {}",
         debug_snbt_bool(immune_to_zombification)
     ));
-    fields.push(format!(
-        "TimeInOverworld: {ABSTRACT_PIGLIN_DEFAULT_TIME_IN_OVERWORLD}"
-    ));
 }
 
 fn debug_push_piglin_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
-    let is_baby = debug_entity_data_bool_present(entity, PIGLIN_BABY_DATA_ID)
-        .unwrap_or(PIGLIN_DEFAULT_IS_BABY);
-    fields.push(format!("IsBaby: {}", debug_snbt_bool(is_baby)));
-    fields.push(format!(
-        "CannotHunt: {}",
-        debug_snbt_bool(PIGLIN_DEFAULT_CANNOT_HUNT)
-    ));
-    debug_push_inventory_carrier_additional_save_data(fields);
+    if let Some(is_baby) = debug_entity_data_bool_present(entity, PIGLIN_BABY_DATA_ID) {
+        fields.push(format!("IsBaby: {}", debug_snbt_bool(is_baby)));
+    }
 }
 
 fn debug_push_interaction_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
@@ -6947,15 +6621,9 @@ fn debug_push_iron_golem_additional_save_data(entity: &EntityState, fields: &mut
         "PlayerCreated: {}",
         debug_snbt_bool(flags & IRON_GOLEM_PLAYER_CREATED_FLAG != 0)
     ));
-    debug_push_neutral_mob_additional_save_data(fields);
 }
 
-fn debug_push_neutral_mob_additional_save_data(fields: &mut Vec<String>) {
-    debug_push_neutral_mob_additional_save_data_with_end_time(
-        fields,
-        NEUTRAL_MOB_DEFAULT_ANGER_END_TIME,
-    );
-}
+fn debug_push_neutral_mob_additional_save_data(_fields: &mut Vec<String>) {}
 
 fn debug_push_neutral_mob_additional_save_data_with_end_time(
     fields: &mut Vec<String>,
@@ -6970,20 +6638,9 @@ fn debug_push_ocelot_additional_save_data(entity: &EntityState, fields: &mut Vec
     fields.push(format!("Trusting: {}", debug_snbt_bool(trusting)));
 }
 
-fn debug_push_patrolling_monster_additional_save_data(fields: &mut Vec<String>) {
-    fields.push(format!(
-        "PatrolLeader: {}",
-        debug_snbt_bool(PATROLLING_MONSTER_DEFAULT_PATROL_LEADER)
-    ));
-    fields.push(format!(
-        "Patrolling: {}",
-        debug_snbt_bool(PATROLLING_MONSTER_DEFAULT_PATROLLING)
-    ));
-}
+fn debug_push_patrolling_monster_additional_save_data(_fields: &mut Vec<String>) {}
 
-fn debug_push_inventory_carrier_additional_save_data(fields: &mut Vec<String>) {
-    fields.push("Inventory: []".to_string());
-}
+fn debug_push_inventory_carrier_additional_save_data(_fields: &mut Vec<String>) {}
 
 fn debug_push_abstract_villager_additional_save_data(fields: &mut Vec<String>) {
     debug_push_inventory_carrier_additional_save_data(fields);
@@ -7043,9 +6700,6 @@ fn debug_push_rabbit_additional_save_data(entity: &EntityState, fields: &mut Vec
         .map(debug_rabbit_type_save_id)
         .unwrap_or(RABBIT_DEFAULT_TYPE);
     fields.push(format!("RabbitType: {rabbit_type}"));
-    fields.push(format!(
-        "MoreCarrotTicks: {RABBIT_DEFAULT_MORE_CARROT_TICKS}"
-    ));
 }
 
 fn debug_rabbit_type_save_id(rabbit_type: i32) -> i32 {
@@ -7072,18 +6726,12 @@ fn debug_salmon_variant_name(variant: i32) -> &'static str {
     }
 }
 
-fn debug_push_skeleton_additional_save_data(fields: &mut Vec<String>) {
-    fields.push(format!(
-        "StrayConversionTime: {SKELETON_DEFAULT_STRAY_CONVERSION_TIME}"
-    ));
-}
+fn debug_push_skeleton_additional_save_data(_fields: &mut Vec<String>) {}
 
 fn debug_push_tadpole_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
-    fields.push(format!("FromBucket: {}", debug_snbt_bool(true)));
-    fields.push(format!("Age: {TADPOLE_DEFAULT_AGE}"));
-    let age_locked = debug_entity_data_bool_present(entity, TADPOLE_AGE_LOCKED_DATA_ID)
-        .unwrap_or(TADPOLE_DEFAULT_AGE_LOCKED);
-    fields.push(format!("AgeLocked: {}", debug_snbt_bool(age_locked)));
+    if let Some(age_locked) = debug_entity_data_bool_present(entity, TADPOLE_AGE_LOCKED_DATA_ID) {
+        fields.push(format!("AgeLocked: {}", debug_snbt_bool(age_locked)));
+    }
 }
 
 fn debug_push_tropical_fish_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
@@ -7092,19 +6740,9 @@ fn debug_push_tropical_fish_additional_save_data(entity: &EntityState, fields: &
     fields.push(format!("Variant: {variant}"));
 }
 
-fn debug_push_raider_additional_save_data(fields: &mut Vec<String>) {
-    fields.push(format!("Wave: {RAIDER_DEFAULT_WAVE}"));
-    fields.push(format!(
-        "CanJoinRaid: {}",
-        debug_snbt_bool(RAIDER_DEFAULT_CAN_JOIN_RAID)
-    ));
-}
+fn debug_push_raider_additional_save_data(_fields: &mut Vec<String>) {}
 
-fn debug_push_spellcaster_illager_additional_save_data(fields: &mut Vec<String>) {
-    fields.push(format!(
-        "SpellTicks: {SPELLCASTER_ILLAGER_DEFAULT_SPELL_TICKS}"
-    ));
-}
+fn debug_push_spellcaster_illager_additional_save_data(_fields: &mut Vec<String>) {}
 
 fn debug_push_ravager_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
     let ravager = entity.client_animations.ravager;
@@ -7129,24 +6767,12 @@ fn debug_push_wither_additional_save_data(entity: &EntityState, fields: &mut Vec
     fields.push(format!("Invul: {invulnerable_ticks}"));
 }
 
-fn debug_push_wandering_trader_additional_save_data(fields: &mut Vec<String>) {
-    fields.push(format!(
-        "DespawnDelay: {WANDERING_TRADER_DEFAULT_DESPAWN_DELAY}"
-    ));
-}
+fn debug_push_wandering_trader_additional_save_data(_fields: &mut Vec<String>) {}
 
 fn debug_push_zombie_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
     let is_baby =
         debug_entity_data_bool_present(entity, ZOMBIE_BABY_DATA_ID).unwrap_or(ZOMBIE_DEFAULT_BABY);
     fields.push(format!("IsBaby: {}", debug_snbt_bool(is_baby)));
-    fields.push(format!(
-        "CanBreakDoors: {}",
-        debug_snbt_bool(ZOMBIE_DEFAULT_CAN_BREAK_DOORS)
-    ));
-    fields.push(format!("InWaterTime: {ZOMBIE_DEFAULT_IN_WATER_TIME}"));
-    fields.push(format!(
-        "DrownedConversionTime: {ZOMBIE_DEFAULT_DROWNED_CONVERSION_TIME}"
-    ));
 }
 
 fn debug_push_zoglin_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
