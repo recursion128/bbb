@@ -10809,3 +10809,18 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   默认进入分母的反向门禁。checked-in sparse overrides 拒绝未知 packet/dimension、非法状态、
   重复 JSON key，以及无 evidence 的 complete/deferred/not-applicable；逐 family evidence 收敛、
   state/framing 和端到端 handoff 仍保持开放。
+
+## 2026-07-11：handshake/status packet coverage audit
+
+- [x] 对照 `HandshakeProtocols`、`StatusProtocols` 与 `ServerStatusPinger` 反审计 handshake/
+  status 的注册顺序、wire payload 和请求响应时序；protocol codec test 锁定三种
+  `ClientIntent` ordinal、空 status request、status JSON 与 ping/pong i64，真实 TCP focused
+  test 锁定 handshake → request → response → ping → pong，并证明错误 response id 会失败。
+- [x] `status_ping` 的延迟窗口收缩为 vanilla 的 pong 往返窗口，不再包含 status response
+  等待时间。coverage sparse overrides 将 4 个 status packet 的适用格闭合，并以
+  `ServerStatusPinger` 证明它们不进入游戏 runtime side-effect owner；handshake encoder/tests
+  闭合、无 clientbound acknowledgement 标为 not-applicable。Transfer intent 的 production
+  command/state path 未由现有 Status/Login 路径外推，仍在 ledger 与开放队列中保持 partial。
+- [x] coverage 反向门禁现在验证每个 repo evidence 的文件与符号、每个 vanilla evidence 的
+  `.java#symbol` 结构，并锁定 status family 不得退回 partial；普通测试仍不读取工作区外
+  vanilla source。

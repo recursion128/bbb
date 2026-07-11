@@ -7,6 +7,39 @@ use std::collections::{BTreeMap, BTreeSet};
 use uuid::Uuid;
 
 #[test]
+fn handshake_and_status_codecs_match_vanilla_sequence_payloads() {
+    for (intent, expected_id) in [
+        (ClientIntent::Status, 1),
+        (ClientIntent::Login, 2),
+        (ClientIntent::Transfer, 3),
+    ] {
+        let (packet_id, payload) = encode_handshake("example.test", 25565, intent);
+        assert_eq!(packet_id, ids::handshake::SERVERBOUND_CLIENT_INTENTION);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_var_i32().unwrap(), crate::PROTOCOL_VERSION);
+        assert_eq!(decoder.read_string(255).unwrap(), "example.test");
+        assert_eq!(decoder.read_u16().unwrap(), 25565);
+        assert_eq!(decoder.read_var_i32().unwrap(), expected_id);
+        assert!(decoder.is_empty());
+    }
+
+    assert_eq!(
+        encode_status_request(),
+        (ids::status::SERVERBOUND_STATUS_REQUEST, Vec::new())
+    );
+    let (packet_id, ping) = encode_ping_request(-123_456_789);
+    assert_eq!(packet_id, ids::status::SERVERBOUND_PING_REQUEST);
+    assert_eq!(decode_pong_response(&ping).unwrap(), -123_456_789);
+
+    let mut response = Encoder::new();
+    response.write_string(r#"{"version":{"name":"26.1"}}"#);
+    assert_eq!(
+        decode_status_response(&response.into_inner()).unwrap(),
+        r#"{"version":{"name":"26.1"}}"#
+    );
+}
+
+#[test]
 fn play_clientbound_packet_ids_match_vanilla_26_1_registration_order() {
     let ids = [
         (

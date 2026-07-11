@@ -288,7 +288,10 @@ extractor 可直接消费统一 CST/IR 而不复制 tokenizer/parser，普通 bu
 `partial`。后续 slice 必须用具体 evidence 逐格收敛，不能把“存在 dispatch arm”单独当作
 `complete`，也不能删除 partial 行来缩小分母。逐格状态只通过 checked-in sparse evidence
 overrides 维护；未知 packet/dimension、非法状态、无 evidence 的 complete/deferred/
-not-applicable 必须令 generator 失败。
+not-applicable 必须令 generator 失败。status family 已逐格闭合；handshake 的 encoder/tests
+已闭合且无 clientbound acknowledgement 的事实已有 vanilla evidence，但 Transfer intent 的
+production command surface 与状态切换仍保持 `partial`。下一步继续 login/configuration 的
+state/framing 与 handoff，不能由 status 成功路径外推其完成状态。
 
 matrix inventory + state/framing + required login/config/play handoff 是本队列的 foundation
 milestone；完成后即可进入 RegistryAccess/playable foundation，不等待全部长尾 packet

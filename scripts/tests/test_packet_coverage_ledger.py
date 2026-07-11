@@ -138,6 +138,30 @@ class PacketCoverageLedgerTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "duplicate JSON key 'packet'"):
                 GENERATOR.load_coverage_overrides(path)
 
+    def test_coverage_evidence_validation_checks_source_and_symbol(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "net/minecraft/Fixture.java"
+            source.parent.mkdir(parents=True)
+            source.write_text("class Fixture { void expectedSymbol() {} }")
+            overrides = {
+                "status/clientbound/FIXTURE": {
+                    "decode": {
+                        "status": "complete",
+                        "evidence": [
+                            "vanilla:net/minecraft/Fixture.java#expectedSymbol"
+                        ],
+                    }
+                }
+            }
+            GENERATOR.validate_coverage_evidence(overrides, root)
+
+            overrides["status/clientbound/FIXTURE"]["decode"]["evidence"] = [
+                "vanilla:net/minecraft/Fixture.java#missingSymbol"
+            ]
+            with self.assertRaisesRegex(ValueError, "evidence symbol not found"):
+                GENERATOR.validate_coverage_evidence(overrides, root)
+
 
 if __name__ == "__main__":
     unittest.main()

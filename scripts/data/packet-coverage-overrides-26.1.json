@@ -1,4 +1,190 @@
 {
-  "entries": {},
+  "entries": {
+    "handshake/serverbound/SERVERBOUND_CLIENT_INTENTION": {
+      "ack_response": {
+        "evidence": [
+          "vanilla:net/minecraft/network/protocol/handshake/HandshakeProtocols.java#SERVERBOUND_TEMPLATE"
+        ],
+        "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+        "status": "not-applicable"
+      },
+      "command_surface": {
+        "evidence": [
+          "crates/bbb-net/src/status.rs#status_ping",
+          "crates/bbb-net/src/event_stream.rs#ClientIntent::Login"
+        ],
+        "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+        "status": "partial"
+      },
+      "encoder": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/connection.rs#encode_handshake",
+          "vanilla:net/minecraft/network/protocol/handshake/ClientIntentionPacket.java#STREAM_CODEC"
+        ],
+        "status": "complete"
+      },
+      "state_guard": {
+        "evidence": [
+          "crates/bbb-net/src/status.rs#status_ping_enforces_handshake_request_response_and_pong_sequence",
+          "crates/bbb-net/src/event_stream.rs#ClientIntent::Login"
+        ],
+        "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+        "status": "partial"
+      },
+      "tests": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/tests.rs#handshake_and_status_codecs_match_vanilla_sequence_payloads",
+          "crates/bbb-net/src/status.rs#status_ping_enforces_handshake_request_response_and_pong_sequence"
+        ],
+        "status": "complete"
+      }
+    },
+    "status/clientbound/CLIENTBOUND_PONG_RESPONSE": {
+      "canonical_apply": {
+        "evidence": [
+          "crates/bbb-net/src/status.rs#StatusPing",
+          "vanilla:net/minecraft/client/multiplayer/ServerStatusPinger.java#handlePongResponse"
+        ],
+        "status": "complete"
+      },
+      "decode": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/connection.rs#decode_pong_response",
+          "vanilla:net/minecraft/network/protocol/status/StatusProtocols.java#CLIENTBOUND_TEMPLATE"
+        ],
+        "status": "complete"
+      },
+      "ownership": {
+        "evidence": [
+          "crates/bbb-net/src/status.rs#status_ping",
+          "vanilla:net/minecraft/client/multiplayer/ServerStatusPinger.java#handlePongResponse"
+        ],
+        "status": "complete"
+      },
+      "runtime_side_effect": {
+        "evidence": [
+          "vanilla:net/minecraft/client/multiplayer/ServerStatusPinger.java#handlePongResponse"
+        ],
+        "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+        "status": "not-applicable"
+      },
+      "tests": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/tests.rs#handshake_and_status_codecs_match_vanilla_sequence_payloads",
+          "crates/bbb-net/src/status.rs#status_ping_rejects_packets_outside_the_status_sequence"
+        ],
+        "status": "complete"
+      }
+    },
+    "status/clientbound/CLIENTBOUND_STATUS_RESPONSE": {
+      "canonical_apply": {
+        "evidence": [
+          "crates/bbb-net/src/status.rs#StatusPing",
+          "vanilla:net/minecraft/client/multiplayer/ServerStatusPinger.java#handleStatusResponse"
+        ],
+        "status": "complete"
+      },
+      "decode": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/connection.rs#decode_status_response",
+          "vanilla:net/minecraft/network/protocol/status/StatusProtocols.java#CLIENTBOUND_TEMPLATE"
+        ],
+        "status": "complete"
+      },
+      "ownership": {
+        "evidence": [
+          "crates/bbb-net/src/status.rs#status_ping",
+          "vanilla:net/minecraft/client/multiplayer/ServerStatusPinger.java#handleStatusResponse"
+        ],
+        "status": "complete"
+      },
+      "runtime_side_effect": {
+        "evidence": [
+          "vanilla:net/minecraft/client/multiplayer/ServerStatusPinger.java#handleStatusResponse"
+        ],
+        "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+        "status": "not-applicable"
+      },
+      "tests": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/tests.rs#handshake_and_status_codecs_match_vanilla_sequence_payloads",
+          "crates/bbb-net/src/status.rs#status_ping_enforces_handshake_request_response_and_pong_sequence"
+        ],
+        "status": "complete"
+      }
+    },
+    "status/serverbound/SERVERBOUND_PING_REQUEST": {
+      "ack_response": {
+        "evidence": [
+          "crates/bbb-net/src/status.rs#status_ping_rejects_packets_outside_the_status_sequence",
+          "vanilla:net/minecraft/network/protocol/status/StatusProtocols.java#CLIENTBOUND_TEMPLATE"
+        ],
+        "status": "complete"
+      },
+      "command_surface": {
+        "evidence": [
+          "crates/bbb-net/src/status.rs#status_ping"
+        ],
+        "status": "complete"
+      },
+      "encoder": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/connection.rs#encode_ping_request",
+          "vanilla:net/minecraft/network/protocol/status/StatusProtocols.java#SERVERBOUND_TEMPLATE"
+        ],
+        "status": "complete"
+      },
+      "state_guard": {
+        "evidence": [
+          "crates/bbb-net/src/status.rs#status_ping_enforces_handshake_request_response_and_pong_sequence",
+          "crates/bbb-net/src/status.rs#status_ping_rejects_packets_outside_the_status_sequence"
+        ],
+        "status": "complete"
+      },
+      "tests": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/tests.rs#handshake_and_status_codecs_match_vanilla_sequence_payloads",
+          "crates/bbb-net/src/status.rs#status_ping_enforces_handshake_request_response_and_pong_sequence"
+        ],
+        "status": "complete"
+      }
+    },
+    "status/serverbound/SERVERBOUND_STATUS_REQUEST": {
+      "ack_response": {
+        "evidence": [
+          "crates/bbb-net/src/status.rs#status_ping_rejects_packets_outside_the_status_sequence",
+          "vanilla:net/minecraft/network/protocol/status/StatusProtocols.java#CLIENTBOUND_TEMPLATE"
+        ],
+        "status": "complete"
+      },
+      "command_surface": {
+        "evidence": [
+          "crates/bbb-net/src/status.rs#status_ping"
+        ],
+        "status": "complete"
+      },
+      "encoder": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/connection.rs#encode_status_request",
+          "vanilla:net/minecraft/network/protocol/status/StatusProtocols.java#SERVERBOUND_TEMPLATE"
+        ],
+        "status": "complete"
+      },
+      "state_guard": {
+        "evidence": [
+          "crates/bbb-net/src/status.rs#status_ping_enforces_handshake_request_response_and_pong_sequence",
+          "crates/bbb-net/src/status.rs#status_ping_rejects_packets_outside_the_status_sequence"
+        ],
+        "status": "complete"
+      },
+      "tests": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/tests.rs#handshake_and_status_codecs_match_vanilla_sequence_payloads",
+          "crates/bbb-net/src/status.rs#status_ping_enforces_handshake_request_response_and_pong_sequence"
+        ],
+        "status": "complete"
+      }
+    }
+  },
   "schema_version": 1
 }

@@ -370,9 +370,47 @@ def load_coverage_overrides(path: Path) -> dict[str, dict[str, dict[str, object]
     return value["entries"]
 
 
+def validate_coverage_evidence(
+    overrides: dict[str, dict[str, dict[str, object]]], source_root: Path
+) -> None:
+    for packet_key, dimensions in overrides.items():
+        for dimension, cell in dimensions.items():
+            for evidence in cell.get("evidence", []):
+                if "#" not in evidence:
+                    raise ValueError(
+                        f"{packet_key}/{dimension}: malformed evidence {evidence!r}"
+                    )
+                locator, symbol = evidence.split("#", 1)
+                if not symbol:
+                    raise ValueError(
+                        f"{packet_key}/{dimension}: evidence lacks symbol {evidence!r}"
+                    )
+                if locator.startswith("vanilla:"):
+                    relative_path = locator.removeprefix("vanilla:")
+                    root = source_root
+                else:
+                    relative_path = locator
+                    root = REPO_ROOT
+                path = Path(relative_path)
+                if path.is_absolute() or ".." in path.parts:
+                    raise ValueError(
+                        f"{packet_key}/{dimension}: evidence path must be relative {evidence!r}"
+                    )
+                source_path = root / path
+                if not source_path.is_file():
+                    raise ValueError(
+                        f"{packet_key}/{dimension}: evidence file does not exist: {evidence}"
+                    )
+                if symbol not in source_path.read_text():
+                    raise ValueError(
+                        f"{packet_key}/{dimension}: evidence symbol not found: {evidence}"
+                    )
+
+
 def generate(source_root: Path, overrides_path: Path) -> tuple[str, str]:
     catalogs = extract_catalogs(source_root)
     overrides = load_coverage_overrides(overrides_path)
+    validate_coverage_evidence(overrides, source_root)
     rendered = render_catalog(catalogs)
     formatted = subprocess.run(
         ["rustfmt", "--edition", "2021", "--emit", "stdout"],

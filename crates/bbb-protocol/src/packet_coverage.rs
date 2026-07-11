@@ -52,7 +52,7 @@ pub fn vanilla_packet_coverage_26_1() -> Result<PacketCoverageLedger, serde_json
 
 #[cfg(test)]
 mod tests {
-    use std::collections::BTreeSet;
+    use std::{collections::BTreeSet, fs, path::Path};
 
     use crate::packet_catalog::{PacketDirection, PacketState, VANILLA_PACKET_CATALOGS};
 
@@ -137,6 +137,94 @@ mod tests {
                     assert!(gap.starts_with("docs/unsupported-features.md#"));
                 }
             }
+        }
+    }
+
+    #[test]
+    fn coverage_evidence_points_to_checked_in_code_or_vanilla_symbols() {
+        let ledger = vanilla_packet_coverage_26_1().unwrap();
+        let repo_root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+
+        for entry in &ledger.entries {
+            for (dimension, cell) in &entry.coverage {
+                for evidence in &cell.evidence {
+                    let context = format!(
+                        "{}/{}/{}/{}",
+                        entry.state, entry.direction, entry.constant_name, dimension
+                    );
+                    if let Some(locator) = evidence.strip_prefix("vanilla:") {
+                        let (path, symbol) = locator
+                            .split_once('#')
+                            .unwrap_or_else(|| panic!("{context}: malformed vanilla evidence"));
+                        assert!(path.ends_with(".java"), "{context}: {evidence}");
+                        assert!(!symbol.is_empty(), "{context}: {evidence}");
+                        continue;
+                    }
+
+                    let (path, symbol) = evidence
+                        .split_once('#')
+                        .unwrap_or_else(|| panic!("{context}: malformed repo evidence"));
+                    assert!(!path.starts_with('/'), "{context}: {evidence}");
+                    assert!(
+                        !path.split('/').any(|part| part == ".."),
+                        "{context}: {evidence}"
+                    );
+                    let source = fs::read_to_string(repo_root.join(path))
+                        .unwrap_or_else(|error| panic!("{context}: cannot read {path}: {error}"));
+                    assert!(
+                        source.contains(symbol),
+                        "{context}: missing {symbol} in {path}"
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn status_packet_family_is_closed_with_handshake_transfer_gaps_explicit() {
+        let ledger = vanilla_packet_coverage_26_1().unwrap();
+        let status_entries: Vec<_> = ledger
+            .entries
+            .iter()
+            .filter(|entry| entry.state == "status")
+            .collect();
+        assert_eq!(status_entries.len(), 4);
+        for entry in status_entries {
+            for (dimension, cell) in &entry.coverage {
+                assert!(
+                    matches!(
+                        cell.status,
+                        PacketCoverageStatus::Complete | PacketCoverageStatus::NotApplicable
+                    ),
+                    "{}/{dimension} remains {:?}",
+                    entry.constant_name,
+                    cell.status
+                );
+            }
+        }
+
+        let handshake = ledger
+            .entries
+            .iter()
+            .find(|entry| entry.state == "handshake")
+            .unwrap();
+        assert_eq!(
+            handshake.coverage["encoder"].status,
+            PacketCoverageStatus::Complete
+        );
+        assert_eq!(
+            handshake.coverage["tests"].status,
+            PacketCoverageStatus::Complete
+        );
+        assert_eq!(
+            handshake.coverage["ack_response"].status,
+            PacketCoverageStatus::NotApplicable
+        );
+        for dimension in ["command_surface", "state_guard"] {
+            assert_eq!(
+                handshake.coverage[dimension].status,
+                PacketCoverageStatus::Partial
+            );
         }
     }
 
