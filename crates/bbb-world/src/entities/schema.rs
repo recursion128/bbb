@@ -39,6 +39,7 @@ pub enum VanillaEntityMetadataFamily {
     Creaking,
     Strider,
     Zoglin,
+    Hoglin,
     AbstractFish,
     Pufferfish,
     VehicleEntity,
@@ -321,6 +322,7 @@ mod tests {
             VanillaEntityMetadataFamily::Creaking,
             VanillaEntityMetadataFamily::Strider,
             VanillaEntityMetadataFamily::Zoglin,
+            VanillaEntityMetadataFamily::Hoglin,
             VanillaEntityMetadataFamily::AbstractFish,
             VanillaEntityMetadataFamily::Pufferfish,
             VanillaEntityMetadataFamily::VehicleEntity,
@@ -712,6 +714,21 @@ mod tests {
         );
         assert_eq!(VANILLA_ZOGLIN_BABY_DATA_ID, 16);
         assert!(!VANILLA_ZOGLIN_DEFAULT_BABY);
+        let hoglin = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Hoglin);
+        assert_eq!(hoglin.parent, Some(VanillaEntityMetadataFamily::AgeableMob));
+        assert_eq!(hoglin.inherited_field_count, 18);
+        assert_eq!(
+            hoglin.own_fields,
+            &[VanillaEntityMetadataFieldSchema {
+                name: "DATA_IMMUNE_TO_ZOMBIFICATION",
+                data_id: 18,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+                default: VanillaEntityMetadataDefault::Boolean(false),
+            }]
+        );
+        assert_eq!(VANILLA_HOGLIN_IMMUNE_TO_ZOMBIFICATION_DATA_ID, 18);
+        assert!(!VANILLA_HOGLIN_DEFAULT_IMMUNE_TO_ZOMBIFICATION);
         let abstract_fish =
             vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::AbstractFish);
         assert_eq!(abstract_fish.parent, Some(VanillaEntityMetadataFamily::Mob));

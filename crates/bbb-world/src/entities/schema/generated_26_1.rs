@@ -158,6 +158,9 @@ const GENERATED_VANILLA_STRIDER_SUFFOCATING_DATA_ID: u8 = 19;
 pub const VANILLA_STRIDER_SUFFOCATING_DATA_ID: u8 = GENERATED_VANILLA_STRIDER_SUFFOCATING_DATA_ID;
 const GENERATED_VANILLA_ZOGLIN_BABY_DATA_ID: u8 = 16;
 pub const VANILLA_ZOGLIN_BABY_DATA_ID: u8 = GENERATED_VANILLA_ZOGLIN_BABY_DATA_ID;
+const GENERATED_VANILLA_HOGLIN_IMMUNE_TO_ZOMBIFICATION_DATA_ID: u8 = 18;
+pub const VANILLA_HOGLIN_IMMUNE_TO_ZOMBIFICATION_DATA_ID: u8 =
+    GENERATED_VANILLA_HOGLIN_IMMUNE_TO_ZOMBIFICATION_DATA_ID;
 const GENERATED_VANILLA_ABSTRACT_FISH_FROM_BUCKET_DATA_ID: u8 = 16;
 pub const VANILLA_ABSTRACT_FISH_FROM_BUCKET_DATA_ID: u8 =
     GENERATED_VANILLA_ABSTRACT_FISH_FROM_BUCKET_DATA_ID;
@@ -388,6 +391,9 @@ const GENERATED_VANILLA_STRIDER_DEFAULT_SUFFOCATING: bool = false;
 pub const VANILLA_STRIDER_DEFAULT_SUFFOCATING: bool = GENERATED_VANILLA_STRIDER_DEFAULT_SUFFOCATING;
 const GENERATED_VANILLA_ZOGLIN_DEFAULT_BABY: bool = false;
 pub const VANILLA_ZOGLIN_DEFAULT_BABY: bool = GENERATED_VANILLA_ZOGLIN_DEFAULT_BABY;
+const GENERATED_VANILLA_HOGLIN_DEFAULT_IMMUNE_TO_ZOMBIFICATION: bool = false;
+pub const VANILLA_HOGLIN_DEFAULT_IMMUNE_TO_ZOMBIFICATION: bool =
+    GENERATED_VANILLA_HOGLIN_DEFAULT_IMMUNE_TO_ZOMBIFICATION;
 const GENERATED_VANILLA_ABSTRACT_FISH_DEFAULT_FROM_BUCKET: bool = false;
 pub const VANILLA_ABSTRACT_FISH_DEFAULT_FROM_BUCKET: bool =
     GENERATED_VANILLA_ABSTRACT_FISH_DEFAULT_FROM_BUCKET;
@@ -13608,6 +13614,21 @@ const ZOGLIN_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFa
     own_flags: ZOGLIN_FLAGS,
 };
 
+const HOGLIN_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[VanillaEntityMetadataFieldSchema {
+    name: "DATA_IMMUNE_TO_ZOMBIFICATION",
+    data_id: 18,
+    serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+    default: VanillaEntityMetadataDefault::Boolean(false),
+}];
+const HOGLIN_FLAGS: &[VanillaEntityMetadataFlagSchema] = &[];
+const HOGLIN_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamilySchema {
+    family: VanillaEntityMetadataFamily::Hoglin,
+    parent: Some(VanillaEntityMetadataFamily::AgeableMob),
+    inherited_field_count: 18,
+    own_fields: HOGLIN_FIELDS,
+    own_flags: HOGLIN_FLAGS,
+};
+
 const ABSTRACTFISH_FIELDS: &[VanillaEntityMetadataFieldSchema] =
     &[VanillaEntityMetadataFieldSchema {
         name: "FROM_BUCKET",
@@ -13887,6 +13908,7 @@ pub(super) const fn generated_entity_metadata_schema(
         VanillaEntityMetadataFamily::Creaking => &CREAKING_SCHEMA,
         VanillaEntityMetadataFamily::Strider => &STRIDER_SCHEMA,
         VanillaEntityMetadataFamily::Zoglin => &ZOGLIN_SCHEMA,
+        VanillaEntityMetadataFamily::Hoglin => &HOGLIN_SCHEMA,
         VanillaEntityMetadataFamily::AbstractFish => &ABSTRACTFISH_SCHEMA,
         VanillaEntityMetadataFamily::Pufferfish => &PUFFERFISH_SCHEMA,
         VanillaEntityMetadataFamily::VehicleEntity => &VEHICLEENTITY_SCHEMA,

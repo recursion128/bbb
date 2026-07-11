@@ -93,6 +93,7 @@ FAMILIES = (
     FamilySpec("Creaking", "net.minecraft.world.entity.monster.creaking.Creaking", "Mob"),
     FamilySpec("Strider", "net.minecraft.world.entity.monster.Strider", "AgeableMob"),
     FamilySpec("Zoglin", "net.minecraft.world.entity.monster.Zoglin", "Mob"),
+    FamilySpec("Hoglin", "net.minecraft.world.entity.monster.hoglin.Hoglin", "AgeableMob"),
     FamilySpec(
         "AbstractFish",
         "net.minecraft.world.entity.animal.fish.AbstractFish",
@@ -186,6 +187,7 @@ DATA_ALIASES = {
     "VANILLA_STRIDER_BOOST_TIME_DATA_ID": ("net.minecraft.world.entity.monster.Strider", "DATA_BOOST_TIME"),
     "VANILLA_STRIDER_SUFFOCATING_DATA_ID": ("net.minecraft.world.entity.monster.Strider", "DATA_SUFFOCATING"),
     "VANILLA_ZOGLIN_BABY_DATA_ID": ("net.minecraft.world.entity.monster.Zoglin", "DATA_BABY_ID"),
+    "VANILLA_HOGLIN_IMMUNE_TO_ZOMBIFICATION_DATA_ID": ("net.minecraft.world.entity.monster.hoglin.Hoglin", "DATA_IMMUNE_TO_ZOMBIFICATION"),
     "VANILLA_ABSTRACT_FISH_FROM_BUCKET_DATA_ID": ("net.minecraft.world.entity.animal.fish.AbstractFish", "FROM_BUCKET"),
     "VANILLA_PUFFERFISH_PUFF_STATE_DATA_ID": ("net.minecraft.world.entity.animal.fish.Pufferfish", "PUFF_STATE"),
     "VANILLA_VEHICLE_HURT_TIME_DATA_ID": ("net.minecraft.world.entity.vehicle.VehicleEntity", "DATA_ID_HURT"),
@@ -247,6 +249,7 @@ DEFAULT_ALIASES = {
     "VANILLA_STRIDER_DEFAULT_BOOST_TIME": ("net.minecraft.world.entity.monster.Strider", "DATA_BOOST_TIME"),
     "VANILLA_STRIDER_DEFAULT_SUFFOCATING": ("net.minecraft.world.entity.monster.Strider", "DATA_SUFFOCATING"),
     "VANILLA_ZOGLIN_DEFAULT_BABY": ("net.minecraft.world.entity.monster.Zoglin", "DATA_BABY_ID"),
+    "VANILLA_HOGLIN_DEFAULT_IMMUNE_TO_ZOMBIFICATION": ("net.minecraft.world.entity.monster.hoglin.Hoglin", "DATA_IMMUNE_TO_ZOMBIFICATION"),
     "VANILLA_ABSTRACT_FISH_DEFAULT_FROM_BUCKET": ("net.minecraft.world.entity.animal.fish.AbstractFish", "FROM_BUCKET"),
     "VANILLA_PUFFERFISH_DEFAULT_PUFF_STATE": ("net.minecraft.world.entity.animal.fish.Pufferfish", "PUFF_STATE"),
     "VANILLA_VEHICLE_DEFAULT_HURT_TIME": ("net.minecraft.world.entity.vehicle.VehicleEntity", "DATA_ID_HURT"),

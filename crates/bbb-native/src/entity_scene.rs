@@ -81,6 +81,10 @@ use bbb_world::{
     VANILLA_GHAST_DEFAULT_CHARGING as GHAST_DEFAULT_CHARGING,
 };
 pub(crate) use bbb_world::{
+    VANILLA_HOGLIN_DEFAULT_IMMUNE_TO_ZOMBIFICATION as HOGLIN_DEFAULT_IMMUNE_TO_ZOMBIFICATION,
+    VANILLA_HOGLIN_IMMUNE_TO_ZOMBIFICATION_DATA_ID as HOGLIN_IMMUNE_TO_ZOMBIFICATION_DATA_ID,
+};
+pub(crate) use bbb_world::{
     VANILLA_PHANTOM_DEFAULT_SIZE as PHANTOM_DEFAULT_SIZE,
     VANILLA_PHANTOM_SIZE_DATA_ID as PHANTOM_SIZE_DATA_ID,
 };
@@ -162,9 +166,6 @@ const ZOMBIE_VILLAGER_DATA_DATA_ID: u8 = 20;
 /// `LivingEntity` 8..=14, `Mob` 15, then the abstract piglin's first accessor.
 const PIGLIN_IMMUNE_TO_ZOMBIFICATION_DATA_ID: u8 = 16;
 const PIGLIN_BABY_DATA_ID: u8 = 17;
-/// Vanilla `Hoglin.DATA_IMMUNE_TO_ZOMBIFICATION`: hoglins extend `AgeableMob`,
-/// whose baby and age-locked accessors occupy ids 16 and 17.
-const HOGLIN_IMMUNE_TO_ZOMBIFICATION_DATA_ID: u8 = 18;
 /// Vanilla `CopperGolem.DATA_WEATHER_STATE` data id (16): `CopperGolem` extends `AbstractGolem`
 /// without adding inherited synced data after `Mob.DATA_MOB_FLAGS_ID` (15), so its first own
 /// accessor is the weathering enum.

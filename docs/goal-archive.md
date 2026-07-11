@@ -9733,3 +9733,10 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] 从 generated catalog 建立 `Mob -> Zoglin` compatibility family：BOOLEAN
   `DATA_BABY_ID` id 16/default false 替代 native F3+I 保存路径的手抄值；focused tests
   锁定继承 offset、serializer/default 与 `IsBaby` 保存语义。未修改 attack event、模型或 AI。
+
+## 2026-07-11：Generated entity metadata consumer（Hoglin）
+
+- [x] 从 generated catalog 建立 `AgeableMob -> Hoglin` compatibility family：BOOLEAN
+  `DATA_IMMUNE_TO_ZOMBIFICATION` id 18/default false 替代 native zombifying shake 与 F3+I
+  保存路径的手抄值；focused tests 锁定继承 offset、serializer/default、shake 与保存语义。
+  `CannotBeHunted` 不是 synced metadata，仍由保存语义 owner 管理。

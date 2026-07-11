@@ -879,7 +879,11 @@ pub(super) fn entity_shaking(
         }
         VANILLA_ENTITY_TYPE_HOGLIN_ID => {
             piglins_zombify
-                && !entity_data_bool(data_values, HOGLIN_IMMUNE_TO_ZOMBIFICATION_DATA_ID, false)
+                && !entity_data_bool(
+                    data_values,
+                    HOGLIN_IMMUNE_TO_ZOMBIFICATION_DATA_ID,
+                    HOGLIN_DEFAULT_IMMUNE_TO_ZOMBIFICATION,
+                )
         }
         _ => false,
     }
