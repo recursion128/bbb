@@ -10147,3 +10147,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   update/check 显式失败。world 导出 generated `i32` aliases，native 删除对应内联字面量。
   renderer 的 tropical-fish API 改为接收 native 已解出的 pattern id，不再重复拥有 synced
   packed-field mask；pattern id 到模型/纹理的表现映射仍由 renderer 语义 owner 管理。
+
+## 2026-07-11：Entity metadata schema migration closeout
+
+- [x] 反向审计 world/native/entity-scene 生产路径：metadata index、typed default 与已消费
+  flag/packed mask 均来自 checked-in generated catalog/compatibility aliases，或经 generated
+  EntityType/schema-class inheritance API 查询；剩余数字命中仅为明确的 test wire fixtures。
+  现有完整性测试锁定 227/227 accessor/default raw expression、serializer、继承索引与
+  157/157 fixed EntityType resolution。compatibility family enum 不再为没有消费者的 class
+  人工扩张；全部 class/accessor 的通用 descriptor 查询已覆盖该用途。无法机械归一化的
+  default/flag 仍以 unresolved 诊断保留，不代表对应实体行为已实现；bootstrap variant、
+  projectile/vehicle presentation 与 server-private 状态继续由各自开放队列管理。

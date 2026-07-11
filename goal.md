@@ -251,24 +251,19 @@ slice 迁移；本阶段不要求一次改完，也不得把未迁移 generator 
 4. **item/block 注册表消费**：item id、block id/state id 一律从 checked-in registry
    report 或运行时 registry API 查询；消除 elytra/saddle/potion/ender-eye、air/grass
    等生产路径内联 id。现有 `block_states_26_1.json` 保持权威，禁止另建方块副表。
-5. **entity metadata schema**：以统一 Java source frontend 提取各继承层
-   `SynchedEntityData.defineId` 的 index、serializer、默认值与 flag mask，生成按
-   entity family 查询的 checked-in schema；替换
-   world/native/entity-scene 中重复 metadata index/pose/bit-mask 常量，测试覆盖继承
-   偏移、serializer 类型和所有已支持实体投影。
-6. **bootstrap/variant catalog**：生成 enchantment、potion、instrument、trim material/
+5. **bootstrap/variant catalog**：生成 enchantment、potion、instrument、trim material/
    pattern、banner pattern、painting、jukebox song、animal variant/sound variant、
    equipment asset 等 bootstrap 顺序与 resource id；named/direct holder 统一消费该
    catalog，服务器下发 dynamic registry 时仍以服务器顺序优先。
-7. **资源与 tag 派生表**：sound event/jukebox/particle 快照改由可复现提取器生成；
+6. **资源与 tag 派生表**：sound event/jukebox/particle 快照改由可复现提取器生成；
    可由资源包 tag、blockstate/model 或 registry report 判定的 block/item/entity
    membership 不再维护手写名单。资源缺失必须保留明确 vanilla fallback。
-8. **跨 crate 去重与反向门禁**：审计 protocol/world/native/item-model/renderer 中
+7. **跨 crate 去重与反向门禁**：审计 protocol/world/native/item-model/renderer 中
    重复 registry/ordinal 表和生产代码裸 id；消费者改用 typed catalog API，并增加
    机械扫描或结构测试，阻止已收敛语义重新出现第二事实源。测试 fixture 可保留
    局部数字，但须标明 wire 样本，不得被生产逻辑引用。
 
-完成标准：上述八类各有唯一权威输入和 deterministic check；修改生成输入而未
+完成标准：上述七类各有唯一权威输入和 deterministic check；修改生成输入而未
 更新生成物会在门禁失败；clean checkout 无本地 vanilla 源码也能正常构建测试；
 版本升级时注册顺序变化表现为集中、可审查的生成 diff；repo 生产代码不再出现
 已纳入 catalog 的平行资源表、裸 registry id 或手抄 ordinal；新 vanilla Java
