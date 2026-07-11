@@ -10716,6 +10716,14 @@ fn shift_f3_i_with_permission_copies_local_chest_minecart_save_nbt_to_clipboard(
         y_head_rot: 0.0,
         data: 0,
     });
+    assert!(world.apply_set_entity_data(ProtocolSetEntityData {
+        id: 63,
+        values: vec![ProtocolEntityDataValue {
+            data_id: MINECART_DISPLAY_OFFSET_DATA_ID,
+            serializer_id: 1,
+            value: EntityDataValueKind::Int(6),
+        }],
+    }));
     world.set_local_player_pose(LocalPlayerPoseState {
         position: ProtocolVec3d {
             x: 0.0,
@@ -10750,7 +10758,8 @@ fn shift_f3_i_with_permission_copies_local_chest_minecart_save_nbt_to_clipboard(
             "/summon minecraft:chest_minecart 0.00 1.00 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, FlippedRotation: 0b, HasTicked: 1b, \
+             Invulnerable: 0b, PortalCooldown: 0, DisplayOffset: 6, \
+             FlippedRotation: 0b, HasTicked: 1b, \
              Items: []}"
         )
     );
@@ -10925,6 +10934,14 @@ fn shift_f3_i_with_permission_copies_local_hopper_minecart_save_nbt_to_clipboard
         y_head_rot: 0.0,
         data: 0,
     });
+    assert!(world.apply_set_entity_data(ProtocolSetEntityData {
+        id: 63,
+        values: vec![ProtocolEntityDataValue {
+            data_id: MINECART_DISPLAY_OFFSET_DATA_ID,
+            serializer_id: 1,
+            value: EntityDataValueKind::Int(6),
+        }],
+    }));
     world.set_local_player_pose(LocalPlayerPoseState {
         position: ProtocolVec3d {
             x: 0.0,
@@ -10959,7 +10976,8 @@ fn shift_f3_i_with_permission_copies_local_hopper_minecart_save_nbt_to_clipboard
             "/summon minecraft:hopper_minecart 0.00 1.00 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              fall_distance: 0.0d, Fire: 0s, Air: 300s, OnGround: 0b, \
-             Invulnerable: 0b, PortalCooldown: 0, FlippedRotation: 0b, HasTicked: 1b, \
+             Invulnerable: 0b, PortalCooldown: 0, DisplayOffset: 6, \
+             FlippedRotation: 0b, HasTicked: 1b, \
              Items: [], Enabled: 1b}"
         )
     );

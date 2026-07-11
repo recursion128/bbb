@@ -9564,3 +9564,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   world/native tests 锁定继承 offset、serializer/default、controlling-passenger paddle gate、
   rowing tick/partial-tick 与 renderer projection。该父层覆盖 Boat/Raft 及 chest variants；
   inventory 与具体 variant 不属于 synced metadata，本阶段未扩张其语义。
+
+## 2026-07-11：Entity metadata schema phase 14（AbstractMinecart）
+
+- [x] entity metadata schema 的 minecart 父链：新增 `VehicleEntity -> AbstractMinecart`
+  family，集中声明 OPTIONAL_BLOCK_STATE custom-display id 11/default none 与 INT display-offset
+  id 12/virtual default。新增唯一 `vanilla_minecart_default_display_offset` 查询，锁定 base=6、
+  Chest=8、Hopper=1；world display block projection 与 native F3+I save projection 删除本地
+  ids/default match，统一引用 schema。focused tests 覆盖 serializer/default、三个虚拟默认、
+  custom block/offset render state，以及 Chest/Hopper 显式 offset 6 必须持久化而不能按 base
+  default 错误省略。具体 minecart 子类自有 metadata 仍留给后续 family slice。

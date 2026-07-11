@@ -4,12 +4,16 @@ use bbb_protocol::entity_data_serializers::{
     VANILLA_ENTITY_DATA_SERIALIZER_HUMANOID_ARM_ID, VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
     VANILLA_ENTITY_DATA_SERIALIZER_ITEM_STACK_ID,
     VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_BLOCK_POS_ID,
+    VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_BLOCK_STATE_ID,
     VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_COMPONENT_ID,
     VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_UNSIGNED_INT_ID,
     VANILLA_ENTITY_DATA_SERIALIZER_PARTICLES_ID, VANILLA_ENTITY_DATA_SERIALIZER_POSE_ID,
     VANILLA_ENTITY_DATA_SERIALIZER_ROTATIONS_ID,
 };
 use bbb_protocol::entity_poses::VANILLA_ENTITY_POSE_STANDING_ID;
+use bbb_protocol::entity_types::{
+    VANILLA_ENTITY_TYPE_CHEST_MINECART_ID, VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum VanillaEntityMetadataFamily {
@@ -25,6 +29,7 @@ pub enum VanillaEntityMetadataFamily {
     AbstractArrow,
     VehicleEntity,
     AbstractBoat,
+    AbstractMinecart,
     HangingEntity,
     ItemFrame,
     Avatar,
@@ -46,6 +51,8 @@ pub enum VanillaEntityMetadataDefault {
     Rotations([f32; 3]),
     Direction(i32),
     ItemStackEmpty,
+    OptionalBlockStateNone,
+    MinecartDefaultDisplayOffset,
     MaxAirSupply,
 }
 
@@ -116,6 +123,8 @@ pub const VANILLA_VEHICLE_DAMAGE_DATA_ID: u8 = 10;
 pub const VANILLA_ABSTRACT_BOAT_PADDLE_LEFT_DATA_ID: u8 = 11;
 pub const VANILLA_ABSTRACT_BOAT_PADDLE_RIGHT_DATA_ID: u8 = 12;
 pub const VANILLA_ABSTRACT_BOAT_BUBBLE_TIME_DATA_ID: u8 = 13;
+pub const VANILLA_ABSTRACT_MINECART_CUSTOM_DISPLAY_BLOCK_DATA_ID: u8 = 11;
+pub const VANILLA_ABSTRACT_MINECART_DISPLAY_OFFSET_DATA_ID: u8 = 12;
 pub const VANILLA_HANGING_ENTITY_DIRECTION_DATA_ID: u8 = 8;
 pub const VANILLA_ITEM_FRAME_ITEM_DATA_ID: u8 = 9;
 pub const VANILLA_ITEM_FRAME_ROTATION_DATA_ID: u8 = 10;
@@ -181,6 +190,9 @@ pub const VANILLA_VEHICLE_DEFAULT_DAMAGE: f32 = 0.0;
 pub const VANILLA_ABSTRACT_BOAT_DEFAULT_PADDLE_LEFT: bool = false;
 pub const VANILLA_ABSTRACT_BOAT_DEFAULT_PADDLE_RIGHT: bool = false;
 pub const VANILLA_ABSTRACT_BOAT_DEFAULT_BUBBLE_TIME: i32 = 0;
+pub const VANILLA_ABSTRACT_MINECART_DEFAULT_DISPLAY_OFFSET: i32 = 6;
+pub const VANILLA_CHEST_MINECART_DEFAULT_DISPLAY_OFFSET: i32 = 8;
+pub const VANILLA_HOPPER_MINECART_DEFAULT_DISPLAY_OFFSET: i32 = 1;
 pub const VANILLA_ARMOR_STAND_DEFAULT_CLIENT_FLAGS: i8 = 0;
 pub const VANILLA_ARMOR_STAND_DEFAULT_HEAD_POSE: [f32; 3] = [0.0, 0.0, 0.0];
 pub const VANILLA_ARMOR_STAND_DEFAULT_BODY_POSE: [f32; 3] = [0.0, 0.0, 0.0];
@@ -623,6 +635,21 @@ const ABSTRACT_BOAT_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[
     },
 ];
 
+const ABSTRACT_MINECART_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_ID_CUSTOM_DISPLAY_BLOCK",
+        data_id: VANILLA_ABSTRACT_MINECART_CUSTOM_DISPLAY_BLOCK_DATA_ID,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_BLOCK_STATE_ID,
+        default: VanillaEntityMetadataDefault::OptionalBlockStateNone,
+    },
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_ID_DISPLAY_OFFSET",
+        data_id: VANILLA_ABSTRACT_MINECART_DISPLAY_OFFSET_DATA_ID,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+        default: VanillaEntityMetadataDefault::MinecartDefaultDisplayOffset,
+    },
+];
+
 const HANGING_ENTITY_FIELDS: &[VanillaEntityMetadataFieldSchema] =
     &[VanillaEntityMetadataFieldSchema {
         name: "DATA_DIRECTION",
@@ -829,6 +856,15 @@ const ABSTRACT_BOAT_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMet
     own_flags: &[],
 };
 
+const ABSTRACT_MINECART_SCHEMA: VanillaEntityMetadataFamilySchema =
+    VanillaEntityMetadataFamilySchema {
+        family: VanillaEntityMetadataFamily::AbstractMinecart,
+        parent: Some(VanillaEntityMetadataFamily::VehicleEntity),
+        inherited_field_count: VEHICLE_SCHEMA.inherited_field_count + VEHICLE_FIELDS.len() as u8,
+        own_fields: ABSTRACT_MINECART_FIELDS,
+        own_flags: &[],
+    };
+
 const HANGING_ENTITY_SCHEMA: VanillaEntityMetadataFamilySchema =
     VanillaEntityMetadataFamilySchema {
         family: VanillaEntityMetadataFamily::HangingEntity,
@@ -880,10 +916,19 @@ pub const fn vanilla_entity_metadata_schema(
         VanillaEntityMetadataFamily::AbstractArrow => &ABSTRACT_ARROW_SCHEMA,
         VanillaEntityMetadataFamily::VehicleEntity => &VEHICLE_SCHEMA,
         VanillaEntityMetadataFamily::AbstractBoat => &ABSTRACT_BOAT_SCHEMA,
+        VanillaEntityMetadataFamily::AbstractMinecart => &ABSTRACT_MINECART_SCHEMA,
         VanillaEntityMetadataFamily::HangingEntity => &HANGING_ENTITY_SCHEMA,
         VanillaEntityMetadataFamily::ItemFrame => &ITEM_FRAME_SCHEMA,
         VanillaEntityMetadataFamily::Avatar => &AVATAR_SCHEMA,
         VanillaEntityMetadataFamily::Player => &PLAYER_SCHEMA,
+    }
+}
+
+pub const fn vanilla_minecart_default_display_offset(entity_type_id: i32) -> i32 {
+    match entity_type_id {
+        VANILLA_ENTITY_TYPE_CHEST_MINECART_ID => VANILLA_CHEST_MINECART_DEFAULT_DISPLAY_OFFSET,
+        VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID => VANILLA_HOPPER_MINECART_DEFAULT_DISPLAY_OFFSET,
+        _ => VANILLA_ABSTRACT_MINECART_DEFAULT_DISPLAY_OFFSET,
     }
 }
 
@@ -1051,6 +1096,22 @@ mod tests {
                 .map(|field| field.data_id)
                 .collect::<Vec<_>>(),
             (11..=13).collect::<Vec<_>>()
+        );
+
+        let abstract_minecart =
+            vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::AbstractMinecart);
+        assert_eq!(
+            abstract_minecart.parent,
+            Some(VanillaEntityMetadataFamily::VehicleEntity)
+        );
+        assert_eq!(abstract_minecart.inherited_field_count, 11);
+        assert_eq!(
+            abstract_minecart
+                .own_fields
+                .iter()
+                .map(|field| field.data_id)
+                .collect::<Vec<_>>(),
+            (11..=12).collect::<Vec<_>>()
         );
 
         let hanging = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::HangingEntity);
@@ -1411,6 +1472,24 @@ mod tests {
             ]
         );
         assert_eq!(
+            vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::AbstractMinecart)
+                .own_fields,
+            &[
+                VanillaEntityMetadataFieldSchema {
+                    name: "DATA_ID_CUSTOM_DISPLAY_BLOCK",
+                    data_id: 11,
+                    serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_BLOCK_STATE_ID,
+                    default: VanillaEntityMetadataDefault::OptionalBlockStateNone,
+                },
+                VanillaEntityMetadataFieldSchema {
+                    name: "DATA_ID_DISPLAY_OFFSET",
+                    data_id: 12,
+                    serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+                    default: VanillaEntityMetadataDefault::MinecartDefaultDisplayOffset,
+                },
+            ]
+        );
+        assert_eq!(
             vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::HangingEntity).own_fields,
             &[VanillaEntityMetadataFieldSchema {
                 name: "DATA_DIRECTION",
@@ -1725,6 +1804,7 @@ mod tests {
             VanillaEntityMetadataFamily::AbstractArrow,
             VanillaEntityMetadataFamily::VehicleEntity,
             VanillaEntityMetadataFamily::AbstractBoat,
+            VanillaEntityMetadataFamily::AbstractMinecart,
             VanillaEntityMetadataFamily::HangingEntity,
             VanillaEntityMetadataFamily::ItemFrame,
             VanillaEntityMetadataFamily::Avatar,
@@ -1743,5 +1823,21 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn minecart_display_offset_preserves_virtual_defaults() {
+        assert_eq!(
+            vanilla_minecart_default_display_offset(VANILLA_ENTITY_TYPE_CHEST_MINECART_ID),
+            VANILLA_CHEST_MINECART_DEFAULT_DISPLAY_OFFSET
+        );
+        assert_eq!(
+            vanilla_minecart_default_display_offset(VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID),
+            VANILLA_HOPPER_MINECART_DEFAULT_DISPLAY_OFFSET
+        );
+        assert_eq!(
+            vanilla_minecart_default_display_offset(-1),
+            VANILLA_ABSTRACT_MINECART_DEFAULT_DISPLAY_OFFSET
+        );
     }
 }

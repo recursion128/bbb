@@ -83,6 +83,13 @@ use bbb_protocol::{
     PROTOCOL_VERSION,
 };
 use bbb_world::{
+    vanilla_minecart_default_display_offset,
+    VANILLA_ABSTRACT_MINECART_CUSTOM_DISPLAY_BLOCK_DATA_ID as MINECART_CUSTOM_DISPLAY_BLOCK_DATA_ID,
+    VANILLA_ABSTRACT_MINECART_DISPLAY_OFFSET_DATA_ID as MINECART_DISPLAY_OFFSET_DATA_ID,
+    VANILLA_ZOMBIE_BABY_DATA_ID as ZOMBIE_BABY_DATA_ID,
+    VANILLA_ZOMBIE_DEFAULT_BABY as ZOMBIE_DEFAULT_BABY,
+};
+use bbb_world::{
     BlockPos, EntityState, EntityVec3, LocalPlayerInputState, LocalPlayerPoseState,
     TagQueryResponseState, WorldStore,
     VANILLA_ABSTRACT_HORSE_DEFAULT_FLAGS as ABSTRACT_HORSE_DEFAULT_FLAGS,
@@ -148,10 +155,6 @@ use bbb_world::{
     VANILLA_SHULKER_DEFAULT_COLOR as SHULKER_DEFAULT_COLOR,
     VANILLA_SHULKER_DEFAULT_PEEK as SHULKER_DEFAULT_PEEK,
     VANILLA_SHULKER_PEEK_DATA_ID as SHULKER_PEEK_DATA_ID,
-};
-use bbb_world::{
-    VANILLA_ZOMBIE_BABY_DATA_ID as ZOMBIE_BABY_DATA_ID,
-    VANILLA_ZOMBIE_DEFAULT_BABY as ZOMBIE_DEFAULT_BABY,
 };
 use tokio::sync::mpsc;
 use winit::{
@@ -332,9 +335,6 @@ const FALLING_BLOCK_DEFAULT_HURT_ENTITIES: bool = false;
 const FALLING_BLOCK_DEFAULT_FALL_HURT_AMOUNT: f32 = 0.0;
 const FALLING_BLOCK_DEFAULT_FALL_HURT_MAX: i32 = 40;
 const FALLING_BLOCK_DEFAULT_CANCEL_DROP: bool = false;
-const MINECART_CUSTOM_DISPLAY_BLOCK_DATA_ID: u8 = 11;
-const MINECART_DISPLAY_OFFSET_DATA_ID: u8 = 12;
-const MINECART_DEFAULT_DISPLAY_OFFSET: i32 = 6;
 /// `flipped` is changed only by the server branches of old/new minecart
 /// movement and is not synchronized, so a remote client retains `false`.
 const MINECART_CLIENT_FLIPPED_ROTATION: bool = false;
@@ -5895,9 +5895,10 @@ fn debug_push_minecart_additional_save_data(
             ));
         }
     }
+    let default_display_offset = vanilla_minecart_default_display_offset(entity.entity_type_id);
     let display_offset = debug_entity_data_int_present(entity, MINECART_DISPLAY_OFFSET_DATA_ID)
-        .unwrap_or(MINECART_DEFAULT_DISPLAY_OFFSET);
-    if display_offset != MINECART_DEFAULT_DISPLAY_OFFSET {
+        .unwrap_or(default_display_offset);
+    if display_offset != default_display_offset {
         fields.push(format!("DisplayOffset: {display_offset}"));
     }
     fields.push(format!(

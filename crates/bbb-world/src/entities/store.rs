@@ -16,7 +16,12 @@ use bbb_protocol::packets::EntityDataValueKind;
 use bbb_protocol::packets::EquipmentSlot as ProtocolEquipmentSlot;
 use bbb_protocol::packets::ItemStackSummary;
 
-use super::schema::VANILLA_SHULKER_ATTACH_FACE_DATA_ID as SHULKER_ATTACH_FACE_DATA_ID;
+use super::schema::{
+    vanilla_minecart_default_display_offset,
+    VANILLA_ABSTRACT_MINECART_CUSTOM_DISPLAY_BLOCK_DATA_ID as MINECART_CUSTOM_DISPLAY_BLOCK_DATA_ID,
+    VANILLA_ABSTRACT_MINECART_DISPLAY_OFFSET_DATA_ID as MINECART_DISPLAY_OFFSET_DATA_ID,
+    VANILLA_SHULKER_ATTACH_FACE_DATA_ID as SHULKER_ATTACH_FACE_DATA_ID,
+};
 
 use super::{
     is_vanilla_abstract_nautilus_type, is_vanilla_can_wear_horse_armor_type, is_vanilla_llama_type,
@@ -124,14 +129,8 @@ const TAMABLE_ANIMAL_SITTING_FLAG: i8 = 0x01;
 /// and therefore feed `ItemInHandLayer` through `getItemHeldByArm`.
 /// Vanilla 26.1 `EvokerRenderer` installs an `ItemInHandLayer` over the illager model.
 /// Vanilla 26.1 `ZombifiedPiglinRenderer` extends `HumanoidMobRenderer`.
-/// Vanilla `Shulker.DATA_ATTACH_FACE_ID` (Direction), declared before peek and color metadata.
-/// Vanilla `AbstractMinecart.DATA_ID_CUSTOM_DISPLAY_BLOCK` optional block-state metadata.
-const MINECART_CUSTOM_DISPLAY_BLOCK_DATA_ID: u8 = 11;
-/// Vanilla `AbstractMinecart.DATA_ID_DISPLAY_OFFSET` int metadata.
-const MINECART_DISPLAY_OFFSET_DATA_ID: u8 = 12;
 /// Vanilla `MinecartFurnace.DATA_ID_FUEL` boolean metadata, declared after abstract minecart fields.
 const FURNACE_MINECART_FUEL_DATA_ID: u8 = 13;
-const DEFAULT_MINECART_DISPLAY_OFFSET: i32 = 6;
 /// Vanilla `PrimedTnt.DATA_FUSE_ID` int metadata: `PrimedTnt` directly extends
 /// `Entity`, whose base accessors occupy ids `0..=7`.
 const PRIMED_TNT_FUSE_DATA_ID: u8 = 8;
@@ -980,7 +979,7 @@ impl EntityStore {
                 registries,
             )?
         };
-        let default_offset = default_minecart_display_offset(identity.entity_type_id);
+        let default_offset = vanilla_minecart_default_display_offset(identity.entity_type_id);
         let display_offset = self
             .metadata_int(id, MINECART_DISPLAY_OFFSET_DATA_ID, default_offset)
             .unwrap_or(default_offset);
@@ -3926,14 +3925,6 @@ fn registered_block_model_state(
         name: name.to_string(),
         properties,
     })
-}
-
-fn default_minecart_display_offset(entity_type_id: i32) -> i32 {
-    match entity_type_id {
-        VANILLA_ENTITY_TYPE_CHEST_MINECART_ID => 8,
-        VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID => 1,
-        _ => DEFAULT_MINECART_DISPLAY_OFFSET,
-    }
 }
 
 fn entity_block_pos(position: super::EntityVec3) -> crate::BlockPos {
