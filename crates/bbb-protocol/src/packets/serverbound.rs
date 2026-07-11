@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 pub use crate::client_command_actions::ClientCommandAction;
+pub use crate::container_inputs::ContainerInput;
 pub use crate::interaction_hands::InteractionHand;
 pub use crate::player_action_kinds::PlayerActionKind;
 pub use crate::player_command_actions::PlayerCommandAction;
@@ -331,31 +332,6 @@ pub struct TeleportToEntity {
 pub struct SetCreativeModeSlot {
     pub slot_num: i16,
     pub item: ItemStackSummary,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum ContainerInput {
-    Pickup,
-    QuickMove,
-    Swap,
-    Clone,
-    Throw,
-    QuickCraft,
-    PickupAll,
-}
-
-impl ContainerInput {
-    fn id(self) -> i32 {
-        match self {
-            Self::Pickup => 0,
-            Self::QuickMove => 1,
-            Self::Swap => 2,
-            Self::Clone => 3,
-            Self::Throw => 4,
-            Self::QuickCraft => 5,
-            Self::PickupAll => 6,
-        }
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

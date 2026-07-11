@@ -10660,3 +10660,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   configuration/play 共用 payload encoder 删除三份手写 id match。fixtures、生成完整性/
   唯一性/反向门禁及 protocol/net/native startup focused tests 均通过；CLI 参数解析和客户端
   particle 降级算法继续由原语义 owner 手写。
+
+## 2026-07-11：Generated ContainerInput catalog
+
+- [x] gameplay-id extractor 通过共享 Tree-sitter frontend 读取 vanilla `ContainerInput` 的
+  7 项显式 id/声明顺序，并从 `BY_ID` CST 调用参数验证
+  `ByIdMap.OutOfBoundsStrategy.ZERO`。generated owner 保持公开 `ContainerInput` 名称、变体、
+  serde 与 `packets::*` 路径，serverbound container-click encoder 删除手写 id match；protocol/
+  world/native/control 点击状态机继续消费同一类型。fixtures、生成完整性/唯一性/fallback/
+  反向门禁及跨 crate container-click focused tests 均通过；slot mutation、quick-craft 与 bundle
+  行为未改。

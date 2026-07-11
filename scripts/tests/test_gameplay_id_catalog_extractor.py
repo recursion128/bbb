@@ -18,6 +18,7 @@ from gameplay_id_catalog_extractor import (  # noqa: E402
     boss_event_operation_type_entries,
     chat_formatting_entries,
     client_information_option_entries,
+    container_input_entries,
     custom_chat_completions_action_entries,
     difficulty_entries,
     difficulty_out_of_bounds_strategy,
@@ -796,6 +797,33 @@ public enum ParticleStatus {
         self.assertEqual(
             [(entry.constant_name, entry.option_id) for entry in particle_entries],
             [("ALL", 0), ("DECREASED", 1), ("MINIMAL", 2)],
+        )
+
+    def test_container_inputs_preserve_explicit_ids_and_zero_fallback(self) -> None:
+        source = parse_source(
+            "fixture/ContainerInput.java",
+            b"""
+package fixture;
+public enum ContainerInput {
+  PICKUP(0), QUICK_MOVE(1), SWAP(2), CLONE(3), THROW(4), QUICK_CRAFT(5), PICKUP_ALL(6);
+  private static final IntFunction<ContainerInput> BY_ID = ByIdMap.continuous(
+      ContainerInput::id, values(), ByIdMap.OutOfBoundsStrategy.ZERO);
+}
+""",
+        )
+        entries, strategy = container_input_entries(source)
+        self.assertEqual(strategy, "ZERO")
+        self.assertEqual(
+            [(entry.constant_name, entry.input_id) for entry in entries],
+            [
+                ("PICKUP", 0),
+                ("QUICK_MOVE", 1),
+                ("SWAP", 2),
+                ("CLONE", 3),
+                ("THROW", 4),
+                ("QUICK_CRAFT", 5),
+                ("PICKUP_ALL", 6),
+            ],
         )
 
     def test_unsupported_register_shape_reports_source_span(self) -> None:

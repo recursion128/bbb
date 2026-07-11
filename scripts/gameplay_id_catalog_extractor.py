@@ -244,6 +244,12 @@ class ClientInformationOptionEntry:
     option_id: int
 
 
+@dataclass(frozen=True)
+class ContainerInputEntry:
+    constant_name: str
+    input_id: int
+
+
 def _fail(source: JavaSource, expression: JavaExpression, message: str) -> None:
     span = expression.span
     raise GameplayIdExtractionError(
@@ -1197,6 +1203,44 @@ def client_information_option_entries(
             2,
         ),
     )
+
+
+def container_input_entries(
+    source: JavaSource, expected_count: int = 7
+) -> tuple[list[ContainerInputEntry], str]:
+    entries = []
+    for name, arguments in _enum_constants(source):
+        if len(arguments) != 1:
+            expression = arguments[0] if arguments else source.expression(source.types[0].node)
+            _fail(source, expression, f"container input {name} must have one id argument")
+        entries.append(ContainerInputEntry(name, _integer(source, arguments[0])))
+    expected_names = [
+        "PICKUP",
+        "QUICK_MOVE",
+        "SWAP",
+        "CLONE",
+        "THROW",
+        "QUICK_CRAFT",
+        "PICKUP_ALL",
+    ]
+    if (
+        len(entries) != expected_count
+        or [entry.constant_name for entry in entries] != expected_names
+    ):
+        raise GameplayIdExtractionError(
+            "container inputs differ from expected declaration order"
+        )
+    if [entry.input_id for entry in entries] != list(range(expected_count)):
+        raise GameplayIdExtractionError(
+            "container input ids are not contiguous declaration order"
+        )
+    strategy = _continuous_out_of_bounds_strategy(source, "container input")
+    if strategy != "ZERO":
+        raise GameplayIdExtractionError(
+            f"unsupported container input id strategy {strategy}"
+        )
+    _validate(entries, "container input", "input_id")
+    return entries, strategy
 
 
 def equipment_slot_entries(
