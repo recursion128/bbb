@@ -183,6 +183,10 @@ class EntityMetadataExtractorFixtureTests(unittest.TestCase):
             227,
         )
         self.assertEqual(len(result.entity_types), 157)
+        self.assertIn(
+            "net/minecraft/world/level/block/WeatheringCopper.java",
+            result.sources,
+        )
         self.assertTrue(all(item.declaration_span.start_byte >= 0 for item in result.accessors))
 
 

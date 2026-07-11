@@ -34,6 +34,12 @@ ENTITY_TREE = Path("net/minecraft/world/entity")
 ENTITY_TYPE_SOURCE = ENTITY_TREE / "EntityType.java"
 SERIALIZER_SOURCE = Path("net/minecraft/network/syncher/EntityDataSerializers.java")
 DIRECTION_SOURCE = Path("net/minecraft/core/Direction.java")
+WEATHERING_COPPER_SOURCE = Path("net/minecraft/world/level/block/WeatheringCopper.java")
+SUPPORTING_SOURCES = (
+    SERIALIZER_SOURCE,
+    DIRECTION_SOURCE,
+    WEATHERING_COPPER_SOURCE,
+)
 
 
 class ExtractionError(JavaSourceError):
@@ -583,7 +589,7 @@ def extract(source_root: Path) -> ExtractionResult:
     all_paths = sorted(
         set(
             entity_paths
-            + [SERIALIZER_SOURCE.as_posix(), DIRECTION_SOURCE.as_posix()]
+            + [path.as_posix() for path in SUPPORTING_SOURCES]
         )
     )
     source_bytes = {

@@ -218,6 +218,13 @@ use bbb_world::{
     VANILLA_ARMADILLO_STATE_UNROLLING_ID as ARMADILLO_STATE_UNROLLING_ID,
 };
 use bbb_world::{
+    VANILLA_COPPER_GOLEM_DEFAULT_WEATHER_STATE as COPPER_GOLEM_DEFAULT_WEATHER_STATE,
+    VANILLA_COPPER_GOLEM_WEATHER_STATE_DATA_ID as COPPER_GOLEM_WEATHER_STATE_DATA_ID,
+    VANILLA_COPPER_GOLEM_WEATHER_STATE_EXPOSED_ID as COPPER_GOLEM_WEATHER_STATE_EXPOSED_ID,
+    VANILLA_COPPER_GOLEM_WEATHER_STATE_OXIDIZED_ID as COPPER_GOLEM_WEATHER_STATE_OXIDIZED_ID,
+    VANILLA_COPPER_GOLEM_WEATHER_STATE_WEATHERED_ID as COPPER_GOLEM_WEATHER_STATE_WEATHERED_ID,
+};
+use bbb_world::{
     VANILLA_FOX_DEFAULT_FLAGS as FOX_DEFAULT_FLAGS,
     VANILLA_FOX_DEFAULT_TYPE as FOX_DEFAULT_VARIANT_ID,
     VANILLA_FOX_FLAGS_DATA_ID as FOX_FLAGS_DATA_ID,
@@ -508,8 +515,6 @@ const ARMADILLO_DEFAULT_SCUTE_TIME: i32 = 0;
 const BEE_DEFAULT_TICKS_SINCE_POLLINATION: i32 = 0;
 const BEE_DEFAULT_CANNOT_ENTER_HIVE_TICKS: i32 = 0;
 const BEE_DEFAULT_CROPS_GROWN_SINCE_POLLINATION: i32 = 0;
-const COPPER_GOLEM_WEATHER_STATE_DATA_ID: u8 = 16;
-const COPPER_GOLEM_WEATHER_STATE_UNAFFECTED_ID: i32 = 0;
 const COPPER_GOLEM_DEFAULT_NEXT_WEATHER_AGE: i64 = -1;
 const TURTLE_DEFAULT_HOME_POS_X: i32 = 0;
 const TURTLE_DEFAULT_HOME_POS_Y: i32 = 0;
@@ -6522,7 +6527,7 @@ fn debug_push_copper_golem_additional_save_data(entity: &EntityState, fields: &m
         COPPER_GOLEM_WEATHER_STATE_DATA_ID,
         EntityDataEnumSerializer::WeatheringCopperState,
     )
-    .unwrap_or(COPPER_GOLEM_WEATHER_STATE_UNAFFECTED_ID);
+    .unwrap_or(COPPER_GOLEM_DEFAULT_WEATHER_STATE);
     fields.push(format!(
         "weather_state: {}",
         debug_snbt_string(debug_copper_golem_weather_state_name(weather_state_id))
@@ -6531,9 +6536,9 @@ fn debug_push_copper_golem_additional_save_data(entity: &EntityState, fields: &m
 
 fn debug_copper_golem_weather_state_name(state_id: i32) -> &'static str {
     match state_id {
-        1 => "exposed",
-        2 => "weathered",
-        3.. => "oxidized",
+        COPPER_GOLEM_WEATHER_STATE_EXPOSED_ID => "exposed",
+        COPPER_GOLEM_WEATHER_STATE_WEATHERED_ID => "weathered",
+        COPPER_GOLEM_WEATHER_STATE_OXIDIZED_ID.. => "oxidized",
         _ => "unaffected",
     }
 }

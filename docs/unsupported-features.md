@@ -503,7 +503,7 @@ back into a todo. Do not delete these.
   `ArmorStand`,
   `Slime` (also consumed by `MagmaCube`), `Shulker`, `Zombie`, `Mob -> Guardian` /
   `SnowGolem` / `Bat` /
-  `Phantom` / `Bogged` / `Ghast` / `Vex` / `Creaking` / `Zoglin` / `IronGolem`,
+  `Phantom` / `Bogged` / `Ghast` / `Vex` / `Creaking` / `Zoglin` / `CopperGolem` / `IronGolem`,
   `AgeableMob -> Strider` / `Hoglin`, `Mob -> AbstractFish -> Salmon` / `Pufferfish` / `Tadpole`,
   `Mob -> AbstractPiglin -> Piglin`,
   `Mob -> Raider -> Pillager` / `SpellcasterIllager`,

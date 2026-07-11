@@ -30,6 +30,7 @@ pub enum VanillaEntityMetadataFamily {
     GlowSquid,
     Goat,
     Fox,
+    CopperGolem,
     Ocelot,
     Panda,
     PolarBear,
@@ -373,6 +374,7 @@ mod tests {
             VanillaEntityMetadataFamily::GlowSquid,
             VanillaEntityMetadataFamily::Goat,
             VanillaEntityMetadataFamily::Fox,
+            VanillaEntityMetadataFamily::CopperGolem,
             VanillaEntityMetadataFamily::Ocelot,
             VanillaEntityMetadataFamily::Panda,
             VanillaEntityMetadataFamily::PolarBear,
@@ -581,6 +583,23 @@ mod tests {
         assert_eq!(VANILLA_FOX_FLAG_SLEEPING, 32);
         assert_eq!(VANILLA_FOX_FLAG_FACEPLANTED, 64);
         assert_eq!(VANILLA_FOX_FLAG_DEFENDING, -128);
+        let copper_golem = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::CopperGolem);
+        assert_eq!(copper_golem.parent, Some(VanillaEntityMetadataFamily::Mob));
+        assert_eq!(copper_golem.inherited_field_count, 16);
+        assert_eq!(copper_golem.own_fields.len(), 2);
+        assert_eq!(VANILLA_COPPER_GOLEM_WEATHER_STATE_DATA_ID, 16);
+        assert_eq!(VANILLA_COPPER_GOLEM_STATE_DATA_ID, 17);
+        assert_eq!(VANILLA_COPPER_GOLEM_DEFAULT_WEATHER_STATE, 0);
+        assert_eq!(VANILLA_COPPER_GOLEM_DEFAULT_STATE, 0);
+        assert_eq!(VANILLA_COPPER_GOLEM_WEATHER_STATE_UNAFFECTED_ID, 0);
+        assert_eq!(VANILLA_COPPER_GOLEM_WEATHER_STATE_EXPOSED_ID, 1);
+        assert_eq!(VANILLA_COPPER_GOLEM_WEATHER_STATE_WEATHERED_ID, 2);
+        assert_eq!(VANILLA_COPPER_GOLEM_WEATHER_STATE_OXIDIZED_ID, 3);
+        assert_eq!(VANILLA_COPPER_GOLEM_STATE_IDLE_ID, 0);
+        assert_eq!(VANILLA_COPPER_GOLEM_STATE_GETTING_ITEM_ID, 1);
+        assert_eq!(VANILLA_COPPER_GOLEM_STATE_GETTING_NO_ITEM_ID, 2);
+        assert_eq!(VANILLA_COPPER_GOLEM_STATE_DROPPING_ITEM_ID, 3);
+        assert_eq!(VANILLA_COPPER_GOLEM_STATE_DROPPING_NO_ITEM_ID, 4);
         let ocelot = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Ocelot);
         assert_eq!(ocelot.parent, Some(VanillaEntityMetadataFamily::AgeableMob));
         assert_eq!(ocelot.inherited_field_count, 18);
@@ -707,7 +726,7 @@ mod tests {
         assert_eq!(VANILLA_SALMON_DEFAULT_VARIANT, 1);
         assert_eq!(
             VANILLA_ENTITY_METADATA_DEFAULT_RESOLVER_EVIDENCE_26_1.len(),
-            6
+            8
         );
         let default_evidence = |java_class| {
             VANILLA_ENTITY_METADATA_DEFAULT_RESOLVER_EVIDENCE_26_1
@@ -762,6 +781,24 @@ mod tests {
         assert_eq!(
             armadillo_default_evidence.source_expression,
             "Armadillo.ArmadilloState.IDLE"
+        );
+        let copper_default_evidence = |accessor_name| {
+            VANILLA_ENTITY_METADATA_DEFAULT_RESOLVER_EVIDENCE_26_1
+                .iter()
+                .find(|item| {
+                    item.java_class == "net.minecraft.world.entity.animal.golem.CopperGolem"
+                        && item.accessor_name == accessor_name
+                })
+                .copied()
+                .expect("generated copper golem default resolver evidence")
+        };
+        assert_eq!(
+            copper_default_evidence("DATA_WEATHER_STATE").source_expression,
+            "WeatheringCopper.WeatherState.UNAFFECTED"
+        );
+        assert_eq!(
+            copper_default_evidence("COPPER_GOLEM_STATE").source_expression,
+            "CopperGolemState.IDLE"
         );
         for evidence in VANILLA_ENTITY_METADATA_DEFAULT_RESOLVER_EVIDENCE_26_1 {
             assert!(!evidence.evidence_member.is_empty());

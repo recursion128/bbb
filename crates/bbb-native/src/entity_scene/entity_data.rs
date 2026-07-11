@@ -175,7 +175,9 @@ pub(super) fn copper_golem_weathering(
             _ => None,
         })
         .map(CopperGolemWeathering::from_vanilla_id)
-        .unwrap_or(CopperGolemWeathering::Unaffected)
+        .unwrap_or_else(|| {
+            CopperGolemWeathering::from_vanilla_id(COPPER_GOLEM_DEFAULT_WEATHER_STATE)
+        })
 }
 
 pub(super) fn entity_data_int(

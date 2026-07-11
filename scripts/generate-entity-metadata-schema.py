@@ -56,6 +56,7 @@ FAMILIES = (
     FamilySpec("GlowSquid", "net.minecraft.world.entity.animal.squid.GlowSquid", "AgeableMob"),
     FamilySpec("Goat", "net.minecraft.world.entity.animal.goat.Goat", "AgeableMob"),
     FamilySpec("Fox", "net.minecraft.world.entity.animal.fox.Fox", "AgeableMob"),
+    FamilySpec("CopperGolem", "net.minecraft.world.entity.animal.golem.CopperGolem", "Mob"),
     FamilySpec("Ocelot", "net.minecraft.world.entity.animal.feline.Ocelot", "AgeableMob"),
     FamilySpec("Panda", "net.minecraft.world.entity.animal.panda.Panda", "AgeableMob"),
     FamilySpec("PolarBear", "net.minecraft.world.entity.animal.polarbear.PolarBear", "AgeableMob"),
@@ -214,6 +215,8 @@ DATA_ALIASES = {
     "VANILLA_FOX_FLAGS_DATA_ID": ("net.minecraft.world.entity.animal.fox.Fox", "DATA_FLAGS_ID"),
     "VANILLA_FOX_TRUSTED_DATA_ID_0": ("net.minecraft.world.entity.animal.fox.Fox", "DATA_TRUSTED_ID_0"),
     "VANILLA_FOX_TRUSTED_DATA_ID_1": ("net.minecraft.world.entity.animal.fox.Fox", "DATA_TRUSTED_ID_1"),
+    "VANILLA_COPPER_GOLEM_WEATHER_STATE_DATA_ID": ("net.minecraft.world.entity.animal.golem.CopperGolem", "DATA_WEATHER_STATE"),
+    "VANILLA_COPPER_GOLEM_STATE_DATA_ID": ("net.minecraft.world.entity.animal.golem.CopperGolem", "COPPER_GOLEM_STATE"),
     "VANILLA_OCELOT_TRUSTING_DATA_ID": ("net.minecraft.world.entity.animal.feline.Ocelot", "DATA_TRUSTING"),
     "VANILLA_PANDA_UNHAPPY_COUNTER_DATA_ID": ("net.minecraft.world.entity.animal.panda.Panda", "UNHAPPY_COUNTER"),
     "VANILLA_PANDA_SNEEZE_COUNTER_DATA_ID": ("net.minecraft.world.entity.animal.panda.Panda", "SNEEZE_COUNTER"),
@@ -345,6 +348,8 @@ DEFAULT_ALIASES = {
     "VANILLA_GOAT_DEFAULT_HAS_RIGHT_HORN": ("net.minecraft.world.entity.animal.goat.Goat", "DATA_HAS_RIGHT_HORN"),
     "VANILLA_FOX_DEFAULT_TYPE": ("net.minecraft.world.entity.animal.fox.Fox", "DATA_TYPE_ID"),
     "VANILLA_FOX_DEFAULT_FLAGS": ("net.minecraft.world.entity.animal.fox.Fox", "DATA_FLAGS_ID"),
+    "VANILLA_COPPER_GOLEM_DEFAULT_WEATHER_STATE": ("net.minecraft.world.entity.animal.golem.CopperGolem", "DATA_WEATHER_STATE"),
+    "VANILLA_COPPER_GOLEM_DEFAULT_STATE": ("net.minecraft.world.entity.animal.golem.CopperGolem", "COPPER_GOLEM_STATE"),
     "VANILLA_OCELOT_DEFAULT_TRUSTING": ("net.minecraft.world.entity.animal.feline.Ocelot", "DATA_TRUSTING"),
     "VANILLA_PANDA_DEFAULT_UNHAPPY_COUNTER": ("net.minecraft.world.entity.animal.panda.Panda", "UNHAPPY_COUNTER"),
     "VANILLA_PANDA_DEFAULT_SNEEZE_COUNTER": ("net.minecraft.world.entity.animal.panda.Panda", "SNEEZE_COUNTER"),
@@ -567,6 +572,16 @@ ENUM_CONSTANT_DEFAULT_RESOLVERS = (
         "the synced enum default is encoded by an explicit enum constructor id",
     ),
     (
+        "net.minecraft.world.entity.animal.golem.CopperGolem",
+        "COPPER_GOLEM_STATE",
+        "COPPER_GOLEM_STATE",
+        "net.minecraft.world.entity.animal.golem.CopperGolemState",
+        "IDLE",
+        1,
+        "CopperGolemState.IDLE",
+        "the synced enum default is encoded by an explicit enum constructor id",
+    ),
+    (
         "net.minecraft.world.entity.animal.sniffer.Sniffer",
         "DATA_STATE",
         "SNIFFER_STATE",
@@ -579,11 +594,29 @@ ENUM_CONSTANT_DEFAULT_RESOLVERS = (
 )
 
 
+ENUM_ORDINAL_DEFAULT_RESOLVERS = (
+    (
+        "net.minecraft.world.entity.animal.golem.CopperGolem",
+        "DATA_WEATHER_STATE",
+        "WEATHERING_COPPER_STATE",
+        "net.minecraft.world.level.block.WeatheringCopper.WeatherState",
+        "UNAFFECTED",
+        "WeatheringCopper.WeatherState.UNAFFECTED",
+        "the synced enum default is encoded by the enum ordinal",
+    ),
+)
+
+
 ENUM_CONSTRUCTOR_ID_ALIASES = {
     "VANILLA_ARMADILLO_STATE_IDLE_ID": ("net.minecraft.world.entity.animal.armadillo.Armadillo.ArmadilloState", "IDLE", 3),
     "VANILLA_ARMADILLO_STATE_ROLLING_ID": ("net.minecraft.world.entity.animal.armadillo.Armadillo.ArmadilloState", "ROLLING", 3),
     "VANILLA_ARMADILLO_STATE_SCARED_ID": ("net.minecraft.world.entity.animal.armadillo.Armadillo.ArmadilloState", "SCARED", 3),
     "VANILLA_ARMADILLO_STATE_UNROLLING_ID": ("net.minecraft.world.entity.animal.armadillo.Armadillo.ArmadilloState", "UNROLLING", 3),
+    "VANILLA_COPPER_GOLEM_STATE_IDLE_ID": ("net.minecraft.world.entity.animal.golem.CopperGolemState", "IDLE", 1),
+    "VANILLA_COPPER_GOLEM_STATE_GETTING_ITEM_ID": ("net.minecraft.world.entity.animal.golem.CopperGolemState", "GETTING_ITEM", 1),
+    "VANILLA_COPPER_GOLEM_STATE_GETTING_NO_ITEM_ID": ("net.minecraft.world.entity.animal.golem.CopperGolemState", "GETTING_NO_ITEM", 1),
+    "VANILLA_COPPER_GOLEM_STATE_DROPPING_ITEM_ID": ("net.minecraft.world.entity.animal.golem.CopperGolemState", "DROPPING_ITEM", 1),
+    "VANILLA_COPPER_GOLEM_STATE_DROPPING_NO_ITEM_ID": ("net.minecraft.world.entity.animal.golem.CopperGolemState", "DROPPING_NO_ITEM", 1),
     "VANILLA_SNIFFER_STATE_IDLING_ID": ("net.minecraft.world.entity.animal.sniffer.Sniffer.State", "IDLING", 0),
     "VANILLA_SNIFFER_STATE_FEELING_HAPPY_ID": ("net.minecraft.world.entity.animal.sniffer.Sniffer.State", "FEELING_HAPPY", 0),
     "VANILLA_SNIFFER_STATE_SCENTING_ID": ("net.minecraft.world.entity.animal.sniffer.Sniffer.State", "SCENTING", 0),
@@ -591,6 +624,26 @@ ENUM_CONSTRUCTOR_ID_ALIASES = {
     "VANILLA_SNIFFER_STATE_SEARCHING_ID": ("net.minecraft.world.entity.animal.sniffer.Sniffer.State", "SEARCHING", 0),
     "VANILLA_SNIFFER_STATE_DIGGING_ID": ("net.minecraft.world.entity.animal.sniffer.Sniffer.State", "DIGGING", 0),
     "VANILLA_SNIFFER_STATE_RISING_ID": ("net.minecraft.world.entity.animal.sniffer.Sniffer.State", "RISING", 0),
+}
+
+
+ENUM_ORDINAL_ID_ALIASES = {
+    "VANILLA_COPPER_GOLEM_WEATHER_STATE_UNAFFECTED_ID": ("net.minecraft.world.level.block.WeatheringCopper.WeatherState", "UNAFFECTED"),
+    "VANILLA_COPPER_GOLEM_WEATHER_STATE_EXPOSED_ID": ("net.minecraft.world.level.block.WeatheringCopper.WeatherState", "EXPOSED"),
+    "VANILLA_COPPER_GOLEM_WEATHER_STATE_WEATHERED_ID": ("net.minecraft.world.level.block.WeatheringCopper.WeatherState", "WEATHERED"),
+    "VANILLA_COPPER_GOLEM_WEATHER_STATE_OXIDIZED_ID": ("net.minecraft.world.level.block.WeatheringCopper.WeatherState", "OXIDIZED"),
+}
+
+
+ENUM_CONSTRUCTOR_ID_CODEC_EXPRESSIONS = {
+    "net.minecraft.world.entity.animal.armadillo.Armadillo.ArmadilloState": "ByteBufCodecs.idMapper (BY_ID, Armadillo.ArmadilloState::id)",
+    "net.minecraft.world.entity.animal.golem.CopperGolemState": "ByteBufCodecs.idMapper (BY_ID, CopperGolemState::id)",
+    "net.minecraft.world.entity.animal.sniffer.Sniffer.State": "ByteBufCodecs.idMapper (BY_ID, Sniffer.State::id)",
+}
+
+
+ENUM_ORDINAL_CODEC_EXPRESSIONS = {
+    "net.minecraft.world.level.block.WeatheringCopper.WeatherState": "ByteBufCodecs.idMapper (BY_ID, Enum::ordinal)",
 }
 
 
@@ -637,8 +690,15 @@ def parse_args() -> argparse.Namespace:
 
 
 def source_for_owner(result: ExtractionResult, owner: str) -> JavaSource:
-    java_type = next(item for item in result.classes if item.fqcn == owner)
-    return result.sources[java_type.source_path]
+    matches = [
+        source
+        for source in result.sources.values()
+        for java_type in source.types
+        if java_type.fqcn == owner
+    ]
+    if len(matches) != 1:
+        raise ExtractionError(f"{owner}: expected one source owner, found {len(matches)}")
+    return matches[0]
 
 
 def field_for(result: ExtractionResult, owner: str, name: str) -> JavaField:
@@ -714,12 +774,45 @@ def enum_ordinals(result: ExtractionResult, fqcn: str) -> dict[str, int]:
     }
 
 
+def validate_enum_stream_codec(
+    result: ExtractionResult,
+    enum_fqcn: str,
+    expected_expression: str,
+) -> None:
+    stream_codec = field_for(result, enum_fqcn, "STREAM_CODEC")
+    if stream_codec.initializer is None:
+        raise ExtractionError(f"{enum_fqcn}.STREAM_CODEC: missing initializer")
+    if stream_codec.initializer.canonical != expected_expression:
+        raise ExtractionError(
+            f"{enum_fqcn}.STREAM_CODEC: stale enum id resolver expression; "
+            f"expected {expected_expression!r}, found {stream_codec.initializer.canonical!r}"
+        )
+
+
+def enum_constant_ordinal(
+    result: ExtractionResult,
+    enum_fqcn: str,
+    constant_name: str,
+) -> int:
+    expected_codec = ENUM_ORDINAL_CODEC_EXPRESSIONS.get(enum_fqcn)
+    if expected_codec is None:
+        raise ExtractionError(f"{enum_fqcn}: missing ordinal StreamCodec evidence")
+    validate_enum_stream_codec(result, enum_fqcn, expected_codec)
+    ordinals = enum_ordinals(result, enum_fqcn)
+    if constant_name not in ordinals:
+        raise ExtractionError(f"{enum_fqcn}: missing {constant_name} enum constant")
+    return ordinals[constant_name]
+
+
 def enum_constant_constructor_integer(
     result: ExtractionResult,
     enum_fqcn: str,
     constant_name: str,
     argument_index: int,
 ) -> int:
+    expected_codec = ENUM_CONSTRUCTOR_ID_CODEC_EXPRESSIONS.get(enum_fqcn)
+    if expected_codec is not None:
+        validate_enum_stream_codec(result, enum_fqcn, expected_codec)
     matches = [
         (source, java_type)
         for source in result.sources.values()
@@ -830,6 +923,45 @@ def resolve_enum_id_defaults(
             constant_name,
             id_argument_index,
         )
+        resolved[key] = NormalizedDefault(
+            f"VanillaEntityMetadataDefault::Int({value})",
+            "i32",
+            str(value),
+        )
+        evidence.append(
+            ResolvedDefaultEvidence(
+                owner,
+                accessor_name,
+                enum_fqcn,
+                constant_name,
+                expected_expression,
+                value,
+                reason,
+            )
+        )
+    for (
+        owner,
+        accessor_name,
+        serializer,
+        enum_fqcn,
+        constant_name,
+        expected_expression,
+        reason,
+    ) in ENUM_ORDINAL_DEFAULT_RESOLVERS:
+        key = (owner, accessor_name)
+        if key in resolved:
+            raise ExtractionError(f"duplicate enum default resolver: {owner}.{accessor_name}")
+        accessor = accessor_for(result, owner, accessor_name)
+        if accessor.serializer != serializer:
+            raise ExtractionError(
+                f"{owner}.{accessor_name}: enum ordinal resolver requires {serializer} serializer"
+            )
+        if accessor.default_expression != expected_expression:
+            raise ExtractionError(
+                f"{owner}.{accessor_name}: stale enum default resolver expression; "
+                f"expected {expected_expression!r}, found {accessor.default_expression!r}"
+            )
+        value = enum_constant_ordinal(result, enum_fqcn, constant_name)
         resolved[key] = NormalizedDefault(
             f"VanillaEntityMetadataDefault::Int({value})",
             "i32",
@@ -1125,6 +1257,12 @@ def render(result: ExtractionResult) -> str:
             constant_name,
             argument_index,
         )
+        lines.append(f"const GENERATED_{public_name}: i32 = {value};")
+        lines.append(f"pub const {public_name}: i32 = GENERATED_{public_name};")
+    lines.append("")
+
+    for public_name, (enum_fqcn, constant_name) in ENUM_ORDINAL_ID_ALIASES.items():
+        value = enum_constant_ordinal(result, enum_fqcn, constant_name)
         lines.append(f"const GENERATED_{public_name}: i32 = {value};")
         lines.append(f"pub const {public_name}: i32 = GENERATED_{public_name};")
     lines.append("")

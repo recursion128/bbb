@@ -26,6 +26,8 @@ use bbb_renderer::{
 #[cfg(test)]
 use bbb_renderer::{EntityDynamicPlayerSkinStatus, EntityPlayerSkinModel};
 #[cfg(test)]
+use bbb_world::VANILLA_COPPER_GOLEM_STATE_DATA_ID as COPPER_GOLEM_STATE_DATA_ID;
+#[cfg(test)]
 use bbb_world::VANILLA_ENTITY_SHARED_FLAG_GLOWING as ENTITY_SHARED_FLAG_GLOWING;
 use bbb_world::{
     vanilla_entity_type_is_living, ArmorMaterialKind as WorldArmorMaterialKind,
@@ -104,6 +106,10 @@ pub(crate) use bbb_world::{
 use bbb_world::{
     VANILLA_CAMEL_DEFAULT_LAST_POSE_CHANGE_TICK as CAMEL_DEFAULT_LAST_POSE_CHANGE_TICK,
     VANILLA_CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID as CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID,
+};
+use bbb_world::{
+    VANILLA_COPPER_GOLEM_DEFAULT_WEATHER_STATE as COPPER_GOLEM_DEFAULT_WEATHER_STATE,
+    VANILLA_COPPER_GOLEM_WEATHER_STATE_DATA_ID as COPPER_GOLEM_WEATHER_STATE_DATA_ID,
 };
 use bbb_world::{
     VANILLA_CREAKING_ACTIVE_DATA_ID as CREAKING_IS_ACTIVE_DATA_ID,
@@ -265,14 +271,6 @@ const VILLAGER_DATA_DATA_ID: u8 = 19;
 /// Vanilla `ZombieVillager.DATA_VILLAGER_DATA`: `Zombie` consumes baby 16, special-type 17, and
 /// drowned-conversion 18; `ZombieVillager` then defines converting 19 before villager data at 20.
 const ZOMBIE_VILLAGER_DATA_DATA_ID: u8 = 20;
-/// Vanilla `CopperGolem.DATA_WEATHER_STATE` data id (16): `CopperGolem` extends `AbstractGolem`
-/// without adding inherited synced data after `Mob.DATA_MOB_FLAGS_ID` (15), so its first own
-/// accessor is the weathering enum.
-const COPPER_GOLEM_WEATHER_STATE_DATA_ID: u8 = 16;
-/// Vanilla `CopperGolem.COPPER_GOLEM_STATE` data id (17): the synced `CopperGolemState` enum,
-/// declared immediately after `DATA_WEATHER_STATE`.
-#[cfg(test)]
-const COPPER_GOLEM_STATE_DATA_ID: u8 = 17;
 /// Vanilla `SpellcasterIllager.DATA_SPELL_CASTING_ID` data id (17): the byte holding the spell
 /// id, the first `SpellcasterIllager` accessor after `Raider.IS_CELEBRATING` (16). The byte is
 /// `> 0` while `isCastingSpell()`.

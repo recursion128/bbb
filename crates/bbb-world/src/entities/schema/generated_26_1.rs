@@ -2,7 +2,7 @@
 // Vanilla version: 26.1.
 // Update: scripts/vanilla-source-tools.sh scripts/generate-entity-metadata-schema.py update
 // Check: scripts/vanilla-source-tools.sh scripts/generate-entity-metadata-schema.py check
-// Stable source manifest SHA-256: 64b84f41299f63aff68d3657427d7eaafb52b936eec988c0da265c390d1382a3
+// Stable source manifest SHA-256: 6631d17022639b79b8797c2e96fd59f381d7d2e94b1afd09c6a6f43103b20040
 
 use bbb_protocol::entity_data_serializers::*;
 
@@ -128,6 +128,11 @@ const GENERATED_VANILLA_FOX_TRUSTED_DATA_ID_0: u8 = 20;
 pub const VANILLA_FOX_TRUSTED_DATA_ID_0: u8 = GENERATED_VANILLA_FOX_TRUSTED_DATA_ID_0;
 const GENERATED_VANILLA_FOX_TRUSTED_DATA_ID_1: u8 = 21;
 pub const VANILLA_FOX_TRUSTED_DATA_ID_1: u8 = GENERATED_VANILLA_FOX_TRUSTED_DATA_ID_1;
+const GENERATED_VANILLA_COPPER_GOLEM_WEATHER_STATE_DATA_ID: u8 = 16;
+pub const VANILLA_COPPER_GOLEM_WEATHER_STATE_DATA_ID: u8 =
+    GENERATED_VANILLA_COPPER_GOLEM_WEATHER_STATE_DATA_ID;
+const GENERATED_VANILLA_COPPER_GOLEM_STATE_DATA_ID: u8 = 17;
+pub const VANILLA_COPPER_GOLEM_STATE_DATA_ID: u8 = GENERATED_VANILLA_COPPER_GOLEM_STATE_DATA_ID;
 const GENERATED_VANILLA_OCELOT_TRUSTING_DATA_ID: u8 = 18;
 pub const VANILLA_OCELOT_TRUSTING_DATA_ID: u8 = GENERATED_VANILLA_OCELOT_TRUSTING_DATA_ID;
 const GENERATED_VANILLA_PANDA_UNHAPPY_COUNTER_DATA_ID: u8 = 18;
@@ -474,6 +479,20 @@ pub const VANILLA_ARMADILLO_STATE_SCARED_ID: i32 = GENERATED_VANILLA_ARMADILLO_S
 const GENERATED_VANILLA_ARMADILLO_STATE_UNROLLING_ID: i32 = 3;
 pub const VANILLA_ARMADILLO_STATE_UNROLLING_ID: i32 =
     GENERATED_VANILLA_ARMADILLO_STATE_UNROLLING_ID;
+const GENERATED_VANILLA_COPPER_GOLEM_STATE_IDLE_ID: i32 = 0;
+pub const VANILLA_COPPER_GOLEM_STATE_IDLE_ID: i32 = GENERATED_VANILLA_COPPER_GOLEM_STATE_IDLE_ID;
+const GENERATED_VANILLA_COPPER_GOLEM_STATE_GETTING_ITEM_ID: i32 = 1;
+pub const VANILLA_COPPER_GOLEM_STATE_GETTING_ITEM_ID: i32 =
+    GENERATED_VANILLA_COPPER_GOLEM_STATE_GETTING_ITEM_ID;
+const GENERATED_VANILLA_COPPER_GOLEM_STATE_GETTING_NO_ITEM_ID: i32 = 2;
+pub const VANILLA_COPPER_GOLEM_STATE_GETTING_NO_ITEM_ID: i32 =
+    GENERATED_VANILLA_COPPER_GOLEM_STATE_GETTING_NO_ITEM_ID;
+const GENERATED_VANILLA_COPPER_GOLEM_STATE_DROPPING_ITEM_ID: i32 = 3;
+pub const VANILLA_COPPER_GOLEM_STATE_DROPPING_ITEM_ID: i32 =
+    GENERATED_VANILLA_COPPER_GOLEM_STATE_DROPPING_ITEM_ID;
+const GENERATED_VANILLA_COPPER_GOLEM_STATE_DROPPING_NO_ITEM_ID: i32 = 4;
+pub const VANILLA_COPPER_GOLEM_STATE_DROPPING_NO_ITEM_ID: i32 =
+    GENERATED_VANILLA_COPPER_GOLEM_STATE_DROPPING_NO_ITEM_ID;
 const GENERATED_VANILLA_SNIFFER_STATE_IDLING_ID: i32 = 0;
 pub const VANILLA_SNIFFER_STATE_IDLING_ID: i32 = GENERATED_VANILLA_SNIFFER_STATE_IDLING_ID;
 const GENERATED_VANILLA_SNIFFER_STATE_FEELING_HAPPY_ID: i32 = 1;
@@ -489,6 +508,19 @@ const GENERATED_VANILLA_SNIFFER_STATE_DIGGING_ID: i32 = 5;
 pub const VANILLA_SNIFFER_STATE_DIGGING_ID: i32 = GENERATED_VANILLA_SNIFFER_STATE_DIGGING_ID;
 const GENERATED_VANILLA_SNIFFER_STATE_RISING_ID: i32 = 6;
 pub const VANILLA_SNIFFER_STATE_RISING_ID: i32 = GENERATED_VANILLA_SNIFFER_STATE_RISING_ID;
+
+const GENERATED_VANILLA_COPPER_GOLEM_WEATHER_STATE_UNAFFECTED_ID: i32 = 0;
+pub const VANILLA_COPPER_GOLEM_WEATHER_STATE_UNAFFECTED_ID: i32 =
+    GENERATED_VANILLA_COPPER_GOLEM_WEATHER_STATE_UNAFFECTED_ID;
+const GENERATED_VANILLA_COPPER_GOLEM_WEATHER_STATE_EXPOSED_ID: i32 = 1;
+pub const VANILLA_COPPER_GOLEM_WEATHER_STATE_EXPOSED_ID: i32 =
+    GENERATED_VANILLA_COPPER_GOLEM_WEATHER_STATE_EXPOSED_ID;
+const GENERATED_VANILLA_COPPER_GOLEM_WEATHER_STATE_WEATHERED_ID: i32 = 2;
+pub const VANILLA_COPPER_GOLEM_WEATHER_STATE_WEATHERED_ID: i32 =
+    GENERATED_VANILLA_COPPER_GOLEM_WEATHER_STATE_WEATHERED_ID;
+const GENERATED_VANILLA_COPPER_GOLEM_WEATHER_STATE_OXIDIZED_ID: i32 = 3;
+pub const VANILLA_COPPER_GOLEM_WEATHER_STATE_OXIDIZED_ID: i32 =
+    GENERATED_VANILLA_COPPER_GOLEM_WEATHER_STATE_OXIDIZED_ID;
 
 const GENERATED_VANILLA_ALLAY_DEFAULT_DANCING: bool = false;
 pub const VANILLA_ALLAY_DEFAULT_DANCING: bool = GENERATED_VANILLA_ALLAY_DEFAULT_DANCING;
@@ -574,6 +606,11 @@ const GENERATED_VANILLA_FOX_DEFAULT_TYPE: i32 = 0;
 pub const VANILLA_FOX_DEFAULT_TYPE: i32 = GENERATED_VANILLA_FOX_DEFAULT_TYPE;
 const GENERATED_VANILLA_FOX_DEFAULT_FLAGS: i8 = 0;
 pub const VANILLA_FOX_DEFAULT_FLAGS: i8 = GENERATED_VANILLA_FOX_DEFAULT_FLAGS;
+const GENERATED_VANILLA_COPPER_GOLEM_DEFAULT_WEATHER_STATE: i32 = 0;
+pub const VANILLA_COPPER_GOLEM_DEFAULT_WEATHER_STATE: i32 =
+    GENERATED_VANILLA_COPPER_GOLEM_DEFAULT_WEATHER_STATE;
+const GENERATED_VANILLA_COPPER_GOLEM_DEFAULT_STATE: i32 = 0;
+pub const VANILLA_COPPER_GOLEM_DEFAULT_STATE: i32 = GENERATED_VANILLA_COPPER_GOLEM_DEFAULT_STATE;
 const GENERATED_VANILLA_OCELOT_DEFAULT_TRUSTING: bool = false;
 pub const VANILLA_OCELOT_DEFAULT_TRUSTING: bool = GENERATED_VANILLA_OCELOT_DEFAULT_TRUSTING;
 const GENERATED_VANILLA_PANDA_DEFAULT_UNHAPPY_COUNTER: i32 = 0;
@@ -9668,7 +9705,7 @@ pub const VANILLA_ENTITY_METADATA_ACCESSORS_26_1: &[VanillaEntityMetadataAccesso
         data_id: 16,
         source_path: "net/minecraft/world/entity/animal/golem/CopperGolem.java",
         default_expression: "WeatheringCopper.WeatherState.UNAFFECTED",
-        typed_default: None,
+        typed_default: Some(VanillaEntityMetadataDefault::Int(0)),
     },
     VanillaEntityMetadataAccessorCatalogEntry {
         owner: "net.minecraft.world.entity.animal.golem.CopperGolem",
@@ -9679,7 +9716,7 @@ pub const VANILLA_ENTITY_METADATA_ACCESSORS_26_1: &[VanillaEntityMetadataAccesso
         data_id: 17,
         source_path: "net/minecraft/world/entity/animal/golem/CopperGolem.java",
         default_expression: "CopperGolemState.IDLE",
-        typed_default: None,
+        typed_default: Some(VanillaEntityMetadataDefault::Int(0)),
     },
     VanillaEntityMetadataAccessorCatalogEntry {
         owner: "net.minecraft.world.entity.animal.golem.IronGolem",
@@ -11602,11 +11639,25 @@ pub const VANILLA_ENTITY_METADATA_DEFAULT_RESOLVER_EVIDENCE_26_1: &[VanillaEntit
         reason: "the synced enum default is encoded by an explicit enum constructor id",
     },
     VanillaEntityMetadataResolverEvidence {
+        java_class: "net.minecraft.world.entity.animal.golem.CopperGolem",
+        accessor_name: "COPPER_GOLEM_STATE",
+        evidence_member: "net.minecraft.world.entity.animal.golem.CopperGolemState.IDLE",
+        source_expression: "CopperGolemState.IDLE",
+        reason: "the synced enum default is encoded by an explicit enum constructor id",
+    },
+    VanillaEntityMetadataResolverEvidence {
         java_class: "net.minecraft.world.entity.animal.sniffer.Sniffer",
         accessor_name: "DATA_STATE",
         evidence_member: "net.minecraft.world.entity.animal.sniffer.Sniffer.State.IDLING",
         source_expression: "Sniffer.State.IDLING",
         reason: "the synced enum default is encoded by an explicit enum constructor id",
+    },
+    VanillaEntityMetadataResolverEvidence {
+        java_class: "net.minecraft.world.entity.animal.golem.CopperGolem",
+        accessor_name: "DATA_WEATHER_STATE",
+        evidence_member: "net.minecraft.world.level.block.WeatheringCopper.WeatherState.UNAFFECTED",
+        source_expression: "WeatheringCopper.WeatherState.UNAFFECTED",
+        reason: "the synced enum default is encoded by the enum ordinal",
     },
 ];
 
@@ -13914,6 +13965,29 @@ const FOX_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamil
     own_flags: FOX_FLAGS,
 };
 
+const COPPERGOLEM_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_WEATHER_STATE",
+        data_id: 16,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_WEATHERING_COPPER_STATE_ID,
+        default: VanillaEntityMetadataDefault::Int(0),
+    },
+    VanillaEntityMetadataFieldSchema {
+        name: "COPPER_GOLEM_STATE",
+        data_id: 17,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_COPPER_GOLEM_STATE_ID,
+        default: VanillaEntityMetadataDefault::Int(0),
+    },
+];
+const COPPERGOLEM_FLAGS: &[VanillaEntityMetadataFlagSchema] = &[];
+const COPPERGOLEM_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamilySchema {
+    family: VanillaEntityMetadataFamily::CopperGolem,
+    parent: Some(VanillaEntityMetadataFamily::Mob),
+    inherited_field_count: 16,
+    own_fields: COPPERGOLEM_FIELDS,
+    own_flags: COPPERGOLEM_FLAGS,
+};
+
 const OCELOT_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[VanillaEntityMetadataFieldSchema {
     name: "DATA_TRUSTING",
     data_id: 18,
@@ -15138,6 +15212,7 @@ pub(super) const fn generated_entity_metadata_schema(
         VanillaEntityMetadataFamily::GlowSquid => &GLOWSQUID_SCHEMA,
         VanillaEntityMetadataFamily::Goat => &GOAT_SCHEMA,
         VanillaEntityMetadataFamily::Fox => &FOX_SCHEMA,
+        VanillaEntityMetadataFamily::CopperGolem => &COPPERGOLEM_SCHEMA,
         VanillaEntityMetadataFamily::Ocelot => &OCELOT_SCHEMA,
         VanillaEntityMetadataFamily::Panda => &PANDA_SCHEMA,
         VanillaEntityMetadataFamily::PolarBear => &POLARBEAR_SCHEMA,

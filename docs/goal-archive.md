@@ -9590,7 +9590,7 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] metadata 机械事实从手抄 Rust 表迁移为 checked-in 生成物：固定版本
   Tree-sitter runtime/Java grammar 通过语义中立 `vanilla_java_source.py` 提供 CST、
   byte span、package/import、nested type、field/method/call IR；entity extractor 仅识别
-  `defineId`、builder default、继承 index、flag 与 `EntityType`。710 个相关 compilation
+  `defineId`、builder default、继承 index、flag 与 `EntityType`。711 个相关 compilation
   unit 均拒绝 `ERROR`/`MISSING`，catalog 闭合 227/227 accessor、227/227 default 和
   157/157 fixed EntityType，并保留 raw expression、typed/unresolved 状态及窄 resolver
   evidence。普通 Rust build/test 只消费 `generated_26_1.rs`，不读取本地 vanilla source。
@@ -9928,3 +9928,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   family：state id18/default IDLE(0)。world animation、native rolled-up model/debug-save 删除
   手抄 synced id/default/state id；shell 隐藏时序、peek animation duration 与普通 scute
   保存字段仍由对应语义 owner 管理。
+
+## 2026-07-11：Generated ordinal resolver 与 CopperGolem metadata
+
+- [x] metadata extractor 将外部依赖 `WeatheringCopper.java` 纳入稳定 source manifest 和
+  CST error/missing 检查；generator 分别锁定 `WeatherState.STREAM_CODEC` 的
+  `Enum::ordinal` 与 `CopperGolemState.STREAM_CODEC` 的显式 `::id` 表达式。生成
+  `Mob -> CopperGolem` family：weather id16/default UNAFFECTED(0)、action id17/default
+  IDLE(0)，以及四个 weather ordinals 和五个 action constructor ids。world animation、
+  native model/debug-save 删除手抄 synced id/default/state id；纹理映射、clamp、交互动画和
+  weather tick 保存语义仍由对应 owner 管理。

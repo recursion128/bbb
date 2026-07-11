@@ -41,6 +41,12 @@ use super::schema::{
     VANILLA_BEE_DEFAULT_FLAGS as BEE_DEFAULT_FLAGS, VANILLA_BEE_FLAGS_DATA_ID as BEE_FLAGS_DATA_ID,
     VANILLA_BEE_FLAG_ROLL as BEE_FLAG_ROLL, VANILLA_CAMEL_DASH_DATA_ID as CAMEL_DASH_DATA_ID,
     VANILLA_CAMEL_DEFAULT_DASH as CAMEL_DEFAULT_DASH,
+    VANILLA_COPPER_GOLEM_DEFAULT_STATE as COPPER_GOLEM_DEFAULT_STATE,
+    VANILLA_COPPER_GOLEM_STATE_DATA_ID as COPPER_GOLEM_STATE_DATA_ID,
+    VANILLA_COPPER_GOLEM_STATE_DROPPING_ITEM_ID as COPPER_GOLEM_STATE_DROPPING_ITEM_ID,
+    VANILLA_COPPER_GOLEM_STATE_DROPPING_NO_ITEM_ID as COPPER_GOLEM_STATE_DROPPING_NO_ITEM_ID,
+    VANILLA_COPPER_GOLEM_STATE_GETTING_ITEM_ID as COPPER_GOLEM_STATE_GETTING_ITEM_ID,
+    VANILLA_COPPER_GOLEM_STATE_GETTING_NO_ITEM_ID as COPPER_GOLEM_STATE_GETTING_NO_ITEM_ID,
     VANILLA_CREAKING_CAN_MOVE_DATA_ID as CREAKING_CAN_MOVE_DATA_ID,
     VANILLA_CREAKING_DEFAULT_CAN_MOVE as CREAKING_DEFAULT_CAN_MOVE,
     VANILLA_CREAKING_DEFAULT_TEARING_DOWN as CREAKING_DEFAULT_TEARING_DOWN,
@@ -331,13 +337,6 @@ const CAMEL_DASH_COOLDOWN_TICKS: i32 = 55;
 /// `idleAnimationState.start(tickCount)`. `CAMEL_IDLE` itself is the 4.0 s non-looping keyframe.
 const CAMEL_IDLE_TIMEOUT_RANDOM_BOUND: i32 = 40;
 const CAMEL_IDLE_TIMEOUT_BASE_TICKS: i32 = 80;
-/// Vanilla `CopperGolem.COPPER_GOLEM_STATE` (own data accessor after weather state).
-const COPPER_GOLEM_STATE_DATA_ID: u8 = 17;
-const COPPER_GOLEM_STATE_IDLE_ID: i32 = 0;
-const COPPER_GOLEM_STATE_GETTING_ITEM_ID: i32 = 1;
-const COPPER_GOLEM_STATE_GETTING_NO_ITEM_ID: i32 = 2;
-const COPPER_GOLEM_STATE_DROPPING_ITEM_ID: i32 = 3;
-const COPPER_GOLEM_STATE_DROPPING_NO_ITEM_ID: i32 = 4;
 /// Vanilla `CopperGolem.setupAnimationStates`: `idleAnimationStartTick = tickCount +
 /// random.nextInt(200, 240)`, then `idleAnimationState.start(tickCount)` at that tick.
 const COPPER_GOLEM_IDLE_TIMEOUT_RANDOM_BOUND: i32 = 40;
@@ -5924,7 +5923,7 @@ pub(crate) fn camel_is_dashing(data_values: &[EntityDataValue]) -> bool {
 /// serializer 37). The client starts the idle spin only in this state; every missing or mismatched
 /// value falls back to the vanilla default `IDLE`.
 pub(crate) fn copper_golem_is_idle(data_values: &[EntityDataValue]) -> bool {
-    copper_golem_state_id(data_values) == COPPER_GOLEM_STATE_IDLE_ID
+    copper_golem_state_id(data_values) == COPPER_GOLEM_DEFAULT_STATE
 }
 
 /// Vanilla `CopperGolem.getState() == GETTING_ITEM`: starts the no-item/get chest interaction
@@ -5956,7 +5955,7 @@ fn copper_golem_state_id(data_values: &[EntityDataValue]) -> i32 {
         data_values,
         COPPER_GOLEM_STATE_DATA_ID,
         EntityDataEnumSerializer::CopperGolemState,
-        COPPER_GOLEM_STATE_IDLE_ID,
+        COPPER_GOLEM_DEFAULT_STATE,
     )
 }
 
