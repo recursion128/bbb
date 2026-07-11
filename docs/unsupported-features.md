@@ -149,6 +149,9 @@ Movement:
   packets append pending steps and only the client tick advances the canonical
   transform. Do not replace active steps or snap the transform to the last step
   when the packet arrives.
+- Gate SetEntityLink application on the source entity implementing vanilla
+  `Leashable`; the generic entity component must not make non-leashable types
+  accept a delayed holder id.
 - Implement full vanilla boat physics, water/buoyancy/collision parity, and
   non-boat vehicle movement only for the locally controlled instance; resolve
   entity-specific `getControllingPassenger` gates (saddle/held item/armor and

@@ -11059,3 +11059,11 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   protocol/world/net/native 测试覆盖，因此 decode/ownership/canonical/tests 四格闭合。
 - [x] vanilla handler 在被删实体承载本地玩家时保留 `removedPlayerVehicleId` 供 correction
   恢复，并通知 debug subscriber；bbb 尚未保留该恢复状态，因此 runtime 格继续保持 partial。
+
+## 2026-07-11：entity-link packet coverage audit
+
+- [x] 对照 `ClientboundSetEntityLinkPacket` 锁定 source/dest 两个 fixed i32、dest 0 解除语义，
+  并拒绝 trailing bytes；wire/ownership 与现有 protocol/world/net tests 三格闭合。
+- [x] vanilla handler 只对 `source instanceof Leashable` 设置 delayed holder，bbb 当前通用 leash
+  component 没有 entity capability gate；canonical/runtime 两格继续保持 partial，未把“能存 id”
+  外推为所有实体都可被拴绳。

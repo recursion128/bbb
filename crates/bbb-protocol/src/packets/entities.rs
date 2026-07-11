@@ -558,10 +558,16 @@ pub(super) fn decode_set_entity_motion(decoder: &mut Decoder<'_>) -> Result<SetE
 }
 
 pub(super) fn decode_set_entity_link(decoder: &mut Decoder<'_>) -> Result<SetEntityLink> {
-    Ok(SetEntityLink {
+    let update = SetEntityLink {
         source_id: decoder.read_i32()?,
         dest_id: decoder.read_i32()?,
-    })
+    };
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after set entity link packet".to_string(),
+        ));
+    }
+    Ok(update)
 }
 
 pub(super) fn decode_set_passengers(decoder: &mut Decoder<'_>) -> Result<SetPassengers> {

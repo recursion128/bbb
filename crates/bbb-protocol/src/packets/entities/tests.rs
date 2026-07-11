@@ -968,17 +968,22 @@ fn decodes_set_entity_link_packet() {
     payload.write_i32(123);
     payload.write_i32(456);
 
-    let packet = decode_play_clientbound(
-        ids::play::CLIENTBOUND_SET_ENTITY_LINK,
-        &payload.into_inner(),
-    )
-    .unwrap();
+    let payload = payload.into_inner();
+    let packet = decode_play_clientbound(ids::play::CLIENTBOUND_SET_ENTITY_LINK, &payload).unwrap();
     assert_eq!(
         packet,
         PlayClientbound::SetEntityLink(SetEntityLink {
             source_id: 123,
             dest_id: 456,
         })
+    );
+    let mut trailing = payload;
+    trailing.push(0);
+    assert!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_SET_ENTITY_LINK, &trailing)
+            .unwrap_err()
+            .to_string()
+            .contains("trailing bytes after set entity link packet")
     );
 }
 
