@@ -4,6 +4,7 @@ use uuid::Uuid;
 use crate::entity_data_serializers::*;
 pub use crate::equipment_slots::EquipmentSlot;
 use crate::{
+    attribute_modifier_types::normalize_attribute_modifier_operation_id,
     codec::{Decoder, ProtocolError, Result},
     component::decode_component_summary_from_decoder,
 };
@@ -862,7 +863,7 @@ pub(super) fn decode_update_attributes(decoder: &mut Decoder<'_>) -> Result<Upda
             modifiers.push(AttributeModifier {
                 id: read_resource_location(decoder)?,
                 amount: decoder.read_f64()?,
-                operation_id: decoder.read_var_i32()?,
+                operation_id: normalize_attribute_modifier_operation_id(decoder.read_var_i32()?),
             });
         }
         attributes.push(AttributeSnapshot {

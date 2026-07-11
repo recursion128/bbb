@@ -10711,3 +10711,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   protocol component decode 与 native persistent SNBT 投影统一委托 generated normalize/name
   查询，删除两套 type-id/value match 与独立 dye-color name 表；现有扁平 summary、wire
   payload codec、persistent SNBT 结构和 entity/render 行为未改变。
+
+## 2026-07-11：Generated attribute modifier type catalogs
+
+- [x] gameplay-id extractor 通过共享 Tree-sitter frontend 读取
+  `AttributeModifier.Operation` 与 `ItemAttributeModifiers.Display.Type` 的显式 id、serialized
+  name、ZERO fallback 及 display codec owner，生成 protocol 单一目录。component 与 entity
+  attribute wire decode、world enchantment registry、pack defaults、native SNBT 和 item-model
+  predicate/tooltip 消费统一引用 generated 查询/常量，删除 operation name/id 与 display
+  name/id 的平行 match；属性计算、tooltip 排版、display payload codec 和 SNBT 结构语义未生成。

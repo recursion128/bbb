@@ -1832,6 +1832,93 @@ def consume_effect_type_entries(
     return entries
 
 
+def attribute_modifier_type_entries(
+    modifier_source: JavaSource,
+    item_modifiers_source: JavaSource,
+) -> tuple[list[NamedComponentValueEntry], list[NamedComponentValueEntry]]:
+    operation_type = _nested_enum_type(modifier_source, "Operation")
+    operations = []
+    for name, arguments in _nested_enum_constants(
+        modifier_source, "Operation", "attribute modifier operation"
+    ):
+        if len(arguments) != 2:
+            expression = arguments[0] if arguments else modifier_source.expression(operation_type.node)
+            _fail(modifier_source, expression, f"attribute modifier operation {name} must have two arguments")
+        operations.append(
+            NamedComponentValueEntry(
+                name,
+                _integer(modifier_source, arguments[1]),
+                _string(modifier_source, arguments[0]),
+            )
+        )
+    expected_operations = ["ADD_VALUE", "ADD_MULTIPLIED_BASE", "ADD_MULTIPLIED_TOTAL"]
+    if [entry.constant_name for entry in operations] != expected_operations:
+        raise GameplayIdExtractionError(
+            "attribute modifier operations differ from expected declaration order"
+        )
+    if [entry.value_id for entry in operations] != list(range(len(operations))):
+        raise GameplayIdExtractionError(
+            "attribute modifier operation ids are not contiguous declaration order"
+        )
+    operation_strategy = _continuous_out_of_bounds_strategy_from_fields(
+        modifier_source,
+        modifier_source.fields_for(operation_type),
+        "attribute modifier operation",
+    )
+
+    display_type = _nested_enum_type(item_modifiers_source, "Type")
+    displays = []
+    expected_codec_owners = ["Default", "Hidden", "OverrideText"]
+    display_constants = _nested_enum_constants(
+        item_modifiers_source, "Type", "attribute modifier display type"
+    )
+    for index, (name, arguments) in enumerate(display_constants):
+        if index >= len(expected_codec_owners):
+            raise GameplayIdExtractionError(
+                "attribute modifier display types contain an unexpected extra entry"
+            )
+        if len(arguments) != 4:
+            expression = arguments[0] if arguments else item_modifiers_source.expression(display_type.node)
+            _fail(item_modifiers_source, expression, f"attribute modifier display type {name} must have four arguments")
+        owner = f"ItemAttributeModifiers.Display.{expected_codec_owners[index]}"
+        if arguments[2].canonical != owner + ".CODEC" or arguments[3].canonical != owner + ".STREAM_CODEC":
+            _fail(
+                item_modifiers_source,
+                arguments[2],
+                f"attribute modifier display type {name} codec owner differs from {owner}",
+            )
+        displays.append(
+            NamedComponentValueEntry(
+                name,
+                _integer(item_modifiers_source, arguments[1]),
+                _string(item_modifiers_source, arguments[0]),
+            )
+        )
+    expected_displays = ["DEFAULT", "HIDDEN", "OVERRIDE"]
+    if [entry.constant_name for entry in displays] != expected_displays:
+        raise GameplayIdExtractionError(
+            "attribute modifier display types differ from expected declaration order"
+        )
+    if [entry.value_id for entry in displays] != list(range(len(displays))):
+        raise GameplayIdExtractionError(
+            "attribute modifier display type ids are not contiguous declaration order"
+        )
+    display_strategy = _continuous_out_of_bounds_strategy_from_fields(
+        item_modifiers_source,
+        item_modifiers_source.fields_for(display_type),
+        "attribute modifier display type",
+    )
+    if operation_strategy != "ZERO" or display_strategy != "ZERO":
+        raise GameplayIdExtractionError(
+            f"unsupported attribute modifier id strategies {operation_strategy}/{display_strategy}"
+        )
+    _validate(operations, "attribute modifier operation", "value_id")
+    _validate(operations, "attribute modifier operation", "serialized_name")
+    _validate(displays, "attribute modifier display type", "value_id")
+    _validate(displays, "attribute modifier display type", "serialized_name")
+    return operations, displays
+
+
 def equipment_slot_entries(
     source: JavaSource, expected_count: int = 8
 ) -> list[EquipmentSlotEntry]:

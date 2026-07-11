@@ -3,6 +3,10 @@ use std::{
     fmt,
 };
 
+use bbb_protocol::attribute_modifier_types::{
+    VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_MULTIPLIED_BASE_ID,
+    VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_MULTIPLIED_TOTAL_ID,
+};
 use bbb_protocol::entity_poses::{
     VANILLA_ENTITY_POSE_STANDING_ID as VANILLA_POSE_STANDING_ID,
     VANILLA_ENTITY_POSE_SWIMMING_ID as VANILLA_POSE_SWIMMING_ID,
@@ -4026,19 +4030,21 @@ fn lerp_entity_vec3(
 fn vanilla_attribute_value(attribute: &ProtocolAttributeSnapshot) -> f64 {
     let mut base = attribute.base;
     for modifier in &attribute.modifiers {
-        if modifier.operation_id != 1 && modifier.operation_id != 2 {
+        if modifier.operation_id != VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_MULTIPLIED_BASE_ID
+            && modifier.operation_id != VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_MULTIPLIED_TOTAL_ID
+        {
             base += modifier.amount;
         }
     }
 
     let mut result = base;
     for modifier in &attribute.modifiers {
-        if modifier.operation_id == 1 {
+        if modifier.operation_id == VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_MULTIPLIED_BASE_ID {
             result += base * modifier.amount;
         }
     }
     for modifier in &attribute.modifiers {
-        if modifier.operation_id == 2 {
+        if modifier.operation_id == VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_MULTIPLIED_TOTAL_ID {
             result *= 1.0 + modifier.amount;
         }
     }

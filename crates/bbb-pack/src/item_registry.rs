@@ -4,6 +4,7 @@ use std::{
 };
 
 use anyhow::{bail, Context, Result};
+use bbb_protocol::attribute_modifier_types::VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_VALUE_ID;
 use bbb_protocol::equipment_slots::{
     VANILLA_EQUIPMENT_SLOT_GROUP_BODY_ID, VANILLA_EQUIPMENT_SLOT_GROUP_CHEST_ID,
     VANILLA_EQUIPMENT_SLOT_GROUP_FEET_ID, VANILLA_EQUIPMENT_SLOT_GROUP_HEAD_ID,
@@ -1340,14 +1341,14 @@ fn armor_default_attribute_modifiers(
             attribute_key: "minecraft:armor".to_string(),
             modifier_id: modifier_id.clone(),
             amount_bits: f64::from(armor_material_defense(material, armor_type)?).to_bits(),
-            operation_id: 0,
+            operation_id: VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_VALUE_ID,
             slot_id,
         },
         ItemDefaultAttributeModifier {
             attribute_key: "minecraft:armor_toughness".to_string(),
             modifier_id: modifier_id.clone(),
             amount_bits: f64::from(armor_material_toughness(material)?).to_bits(),
-            operation_id: 0,
+            operation_id: VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_VALUE_ID,
             slot_id,
         },
     ];
@@ -1357,7 +1358,7 @@ fn armor_default_attribute_modifiers(
             attribute_key: "minecraft:knockback_resistance".to_string(),
             modifier_id,
             amount_bits: f64::from(knockback_resistance).to_bits(),
-            operation_id: 0,
+            operation_id: VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_VALUE_ID,
             slot_id,
         });
     }
@@ -1438,14 +1439,14 @@ fn attribute_modifier_entries(
             attribute_key: "minecraft:attack_damage".to_string(),
             modifier_id: "minecraft:base_attack_damage".to_string(),
             amount_bits: attack_damage.to_bits(),
-            operation_id: 0,
+            operation_id: VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_VALUE_ID,
             slot_id: 1,
         },
         ItemDefaultAttributeModifier {
             attribute_key: "minecraft:attack_speed".to_string(),
             modifier_id: "minecraft:base_attack_speed".to_string(),
             amount_bits: attack_speed.to_bits(),
-            operation_id: 0,
+            operation_id: VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_VALUE_ID,
             slot_id: 1,
         },
     ]

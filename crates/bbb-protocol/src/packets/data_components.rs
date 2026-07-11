@@ -4,6 +4,9 @@ use serde::{Deserialize, Serialize};
 
 use super::{chunks, normalize_resource_location, read_resource_location};
 use crate::{
+    attribute_modifier_types::{
+        normalize_attribute_modifier_operation_id, AttributeModifierDisplayType,
+    },
     builtin_enum_component_values::{
         normalize_builtin_enum_component_value_id, normalize_vanilla_dye_color_id,
     },
@@ -1365,7 +1368,7 @@ fn decode_attribute_modifiers(decoder: &mut Decoder<'_>) -> Result<Vec<Attribute
         let attribute_id = decode_holder_registry_id(decoder)?;
         let modifier_id = read_resource_location(decoder)?;
         let amount_bits = decoder.read_f64()?.to_bits();
-        let operation_id = decode_attribute_modifier_operation_id(decoder)?;
+        let operation_id = normalize_attribute_modifier_operation_id(decoder.read_var_i32()?);
         let slot_id = decode_equipment_slot_group_id(decoder)?;
         let (display_id, display_text, display_text_styled) =
             decode_attribute_modifier_display(decoder)?;
@@ -1383,11 +1386,6 @@ fn decode_attribute_modifiers(decoder: &mut Decoder<'_>) -> Result<Vec<Attribute
     Ok(modifiers)
 }
 
-fn decode_attribute_modifier_operation_id(decoder: &mut Decoder<'_>) -> Result<i32> {
-    let id = decoder.read_var_i32()?;
-    Ok(if (0..=2).contains(&id) { id } else { 0 })
-}
-
 fn decode_equipment_slot_group_id(decoder: &mut Decoder<'_>) -> Result<i32> {
     let id = decoder.read_var_i32()?;
     Ok(if vanilla_equipment_slot_group(id).is_some() {
@@ -1400,15 +1398,20 @@ fn decode_equipment_slot_group_id(decoder: &mut Decoder<'_>) -> Result<i32> {
 fn decode_attribute_modifier_display(
     decoder: &mut Decoder<'_>,
 ) -> Result<(i32, Option<String>, Option<Vec<StyledTextRun>>)> {
-    let display_id = decoder.read_var_i32()?;
-    match display_id {
-        2 => {
+    let display = AttributeModifierDisplayType::from_id(decoder.read_var_i32()?);
+    match display {
+        AttributeModifierDisplayType::Override => {
             let display_text_styled = decode_styled_component_summary_from_decoder(decoder)?;
             let display_text = styled_runs_summary_text(&display_text_styled);
-            Ok((2, Some(display_text), Some(display_text_styled)))
+            Ok((
+                display as i32,
+                Some(display_text),
+                Some(display_text_styled),
+            ))
         }
-        0 | 1 => Ok((display_id, None, None)),
-        _ => Ok((0, None, None)),
+        AttributeModifierDisplayType::Default | AttributeModifierDisplayType::Hidden => {
+            Ok((display as i32, None, None))
+        }
     }
 }
 
@@ -4292,11 +4295,12 @@ mod tests {
 
         payload.write_var_i32(16);
         payload.write_var_i32(3);
-        write_attribute_modifier_entry(&mut payload, "minecraft:test/default", 0, None);
-        write_attribute_modifier_entry(&mut payload, "minecraft:test/hidden", 1, None);
+        write_attribute_modifier_entry(&mut payload, "minecraft:test/default", 99, 99, None);
+        write_attribute_modifier_entry(&mut payload, "minecraft:test/hidden", 0, 1, None);
         write_attribute_modifier_entry(
             &mut payload,
             "minecraft:test/override",
+            0,
             2,
             Some("Override"),
         );
@@ -5759,13 +5763,14 @@ mod tests {
     fn write_attribute_modifier_entry(
         payload: &mut Encoder,
         id: &str,
+        operation_type: i32,
         display_type: i32,
         display_text: Option<&str>,
     ) {
         payload.write_var_i32(7);
         payload.write_string(id);
         payload.write_f64(1.5);
-        payload.write_var_i32(0);
+        payload.write_var_i32(operation_type);
         payload.write_var_i32(1);
         payload.write_var_i32(display_type);
         if let Some(text) = display_text {

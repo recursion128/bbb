@@ -1,4 +1,5 @@
 use bbb_protocol::{
+    attribute_modifier_types::attribute_modifier_operation_id,
     equipment_slots::vanilla_equipment_slot_group_for_serialized_name,
     packets::ItemEnchantmentSummary,
 };
@@ -186,12 +187,10 @@ fn parse_attribute_effect(value: &NbtValue) -> Option<EnchantmentAttributeEffect
         id: nbt_string(find_nbt_entry(fields, "id"))?.to_string(),
         attribute: nbt_string(find_nbt_entry(fields, "attribute"))?.to_string(),
         amount: parse_level_based_value(find_nbt_entry(fields, "amount")?)?,
-        operation_id: match nbt_string(find_nbt_entry(fields, "operation"))? {
-            "add_value" => 0,
-            "add_multiplied_base" => 1,
-            "add_multiplied_total" => 2,
-            _ => return None,
-        },
+        operation_id: attribute_modifier_operation_id(nbt_string(find_nbt_entry(
+            fields,
+            "operation",
+        ))?)?,
     })
 }
 

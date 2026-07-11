@@ -759,7 +759,8 @@ fn decodes_update_attributes_packet() {
     payload.write_var_i32(1);
     payload.write_string("health_bonus");
     payload.write_f64(4.0);
-    payload.write_var_i32(0);
+    // AttributeModifier.Operation.STREAM_CODEC uses ByIdMap ZERO fallback.
+    payload.write_var_i32(99);
     payload.write_var_i32(26);
     payload.write_f64(0.7);
     payload.write_var_i32(0);

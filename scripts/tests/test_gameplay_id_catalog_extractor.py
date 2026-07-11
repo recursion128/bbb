@@ -11,6 +11,7 @@ sys.path.insert(0, str(SCRIPTS))
 from gameplay_id_catalog_extractor import (  # noqa: E402
     GameplayIdExtractionError,
     attribute_entries,
+    attribute_modifier_type_entries,
     advancement_frame_type_entries,
     client_game_event_type_entries,
     client_command_action_entries,
@@ -1055,6 +1056,48 @@ public interface ConsumeEffect {
                 llama,
                 axolotl,
             )
+
+    def test_attribute_modifier_types_preserve_ids_names_codecs_and_zero_fallback(self) -> None:
+        modifier = parse_source(
+            "fixture/AttributeModifier.java",
+            b"""package fixture;
+record AttributeModifier() {
+  enum Operation {
+    ADD_VALUE("add_value", 0),
+    ADD_MULTIPLIED_BASE("add_multiplied_base", 1),
+    ADD_MULTIPLIED_TOTAL("add_multiplied_total", 2);
+    static final Object BY_ID = ByIdMap.continuous(Operation::id, values(), ByIdMap.OutOfBoundsStrategy.ZERO);
+    Operation(String name, int id) {}
+  }
+}
+""",
+        )
+        displays = parse_source(
+            "fixture/ItemAttributeModifiers.java",
+            b"""package fixture;
+record ItemAttributeModifiers() {
+  interface Display {
+    record Default() {} record Hidden() {} record OverrideText() {}
+    enum Type {
+      DEFAULT("default", 0, ItemAttributeModifiers.Display.Default.CODEC, ItemAttributeModifiers.Display.Default.STREAM_CODEC),
+      HIDDEN("hidden", 1, ItemAttributeModifiers.Display.Hidden.CODEC, ItemAttributeModifiers.Display.Hidden.STREAM_CODEC),
+      OVERRIDE("override", 2, ItemAttributeModifiers.Display.OverrideText.CODEC, ItemAttributeModifiers.Display.OverrideText.STREAM_CODEC);
+      static final Object BY_ID = ByIdMap.continuous(Type::id, values(), ByIdMap.OutOfBoundsStrategy.ZERO);
+      Type(Object... values) {}
+    }
+  }
+}
+""",
+        )
+        operations, display_types = attribute_modifier_type_entries(modifier, displays)
+        self.assertEqual(
+            [(entry.value_id, entry.serialized_name) for entry in operations],
+            [(0, "add_value"), (1, "add_multiplied_base"), (2, "add_multiplied_total")],
+        )
+        self.assertEqual(
+            [(entry.value_id, entry.serialized_name) for entry in display_types],
+            [(0, "default"), (1, "hidden"), (2, "override")],
+        )
 
     def test_unsupported_register_shape_reports_source_span(self) -> None:
         source = parse_source(

@@ -8,6 +8,11 @@ use bbb_pack::{
     ItemTintSource, JukeboxSongRegistry, SelectCase, SoundEventRegistry, TagCatalog,
     TerrainColorMaps,
 };
+use bbb_protocol::attribute_modifier_types::{
+    attribute_modifier_display_id, attribute_modifier_operation_id,
+    VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_DEFAULT_ID, VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_HIDDEN_ID,
+    VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_OVERRIDE_ID,
+};
 use bbb_protocol::data_component_types as component_id;
 use bbb_protocol::equipment_slots::vanilla_equipment_slot_group_for_serialized_name;
 use bbb_protocol::packets::{
@@ -4078,16 +4083,24 @@ fn attribute_modifier_exact_value(value: &Value) -> Option<ExactAttributeModifie
 
 fn attribute_modifier_display_exact_value(value: Option<&Value>) -> Option<(i32, Option<String>)> {
     let Some(value) = value else {
-        return Some((0, None));
+        return Some((VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_DEFAULT_ID, None));
     };
     let value = value.as_object()?;
     if !value.keys().all(|key| key == "type" || key == "value") {
         return None;
     }
-    match value.get("type")?.as_str()? {
-        "default" if !value.contains_key("value") => Some((0, None)),
-        "hidden" if !value.contains_key("value") => Some((1, None)),
-        "override" => Some((2, Some(component_summary_text(value.get("value")?)?))),
+    let display_id = attribute_modifier_display_id(value.get("type")?.as_str()?)?;
+    match display_id {
+        VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_DEFAULT_ID if !value.contains_key("value") => {
+            Some((display_id, None))
+        }
+        VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_HIDDEN_ID if !value.contains_key("value") => {
+            Some((display_id, None))
+        }
+        VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_OVERRIDE_ID => Some((
+            display_id,
+            Some(component_summary_text(value.get("value")?)?),
+        )),
         _ => None,
     }
 }
@@ -4475,15 +4488,6 @@ fn attribute_modifier_entry_predicate_matches(
         }
     }
     true
-}
-
-fn attribute_modifier_operation_id(value: &str) -> Option<i32> {
-    match value {
-        "add_value" => Some(0),
-        "add_multiplied_base" => Some(1),
-        "add_multiplied_total" => Some(2),
-        _ => None,
-    }
 }
 
 fn equipment_slot_group_id(value: &str) -> Option<i32> {

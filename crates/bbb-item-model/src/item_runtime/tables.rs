@@ -1,4 +1,5 @@
 use super::*;
+use bbb_protocol::attribute_modifier_types::VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_DEFAULT_ID;
 
 pub(super) fn default_attribute_modifier_summary(
     modifier: &PackItemDefaultAttributeModifier,
@@ -18,7 +19,7 @@ pub(super) fn default_attribute_modifier_summary(
         amount_bits: modifier.amount_bits,
         operation_id: modifier.operation_id,
         slot_id: modifier.slot_id,
-        display_id: 0,
+        display_id: VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_DEFAULT_ID,
         display_text: None,
         display_text_styled: None,
     }

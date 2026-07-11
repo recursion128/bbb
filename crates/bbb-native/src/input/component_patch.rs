@@ -1,4 +1,8 @@
 use super::*;
+use bbb_protocol::attribute_modifier_types::{
+    attribute_modifier_display_name, attribute_modifier_operation_name,
+    VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_DEFAULT_ID, VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_HIDDEN_ID,
+};
 use bbb_protocol::builtin_enum_component_values::{
     builtin_enum_component_value_name, vanilla_dye_color_name,
 };
@@ -757,8 +761,7 @@ fn encode_attribute_modifiers(
         .iter()
         .map(|modifier| {
             let attribute = vanilla_attribute_resource_id(modifier.attribute_id)?;
-            let operation = ["add_value", "add_multiplied_base", "add_multiplied_total"]
-                .get(usize::try_from(modifier.operation_id).ok()?)?;
+            let operation = attribute_modifier_operation_name(modifier.operation_id)?;
             let slot = vanilla_equipment_slot_group(modifier.slot_id)?.serialized_name;
             let mut fields = vec![
                 format!("type: {}", debug_snbt_string(attribute)),
@@ -773,8 +776,11 @@ fn encode_attribute_modifiers(
                 fields.push(format!("slot: {}", debug_snbt_string(slot)));
             }
             match modifier.display_id {
-                0 => {}
-                1 => fields.push("display: {type: \"hidden\"}".to_string()),
+                VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_DEFAULT_ID => {}
+                VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_HIDDEN_ID => fields.push(format!(
+                    "display: {{type: {}}}",
+                    debug_snbt_string(attribute_modifier_display_name(modifier.display_id)?)
+                )),
                 _ => return None,
             }
             Some(format!("{{{}}}", fields.join(", ")))

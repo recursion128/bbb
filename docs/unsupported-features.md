@@ -75,7 +75,10 @@ Owner: `scripts/` + each generated catalog's semantic crate
   derive from their nested `register` field order; payload codecs remain handwritten. Fixed
   built-in item/animal/color component enum ids, serialized names, DataComponents codec ownership,
   and ZERO/CLAMP/WRAP/sparse-default lookup semantics now share a generated protocol owner;
-  component wire and persistent SNBT codecs remain handwritten.
+  component wire and persistent SNBT codecs remain handwritten. AttributeModifier operation and
+  ItemAttributeModifiers display ids/names/ZERO fallbacks now likewise share a generated owner
+  across protocol/world/pack/native/item-model; calculation, tooltip, and payload codecs remain
+  handwritten.
   The remaining cross-crate registry/ordinal audit stays open.
 
 ## Unknown clientbound packets in login, configuration, and play

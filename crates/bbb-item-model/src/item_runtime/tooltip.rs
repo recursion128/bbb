@@ -1,5 +1,11 @@
 use bbb_protocol::data_component_types as component_id;
 use bbb_protocol::{
+    attribute_modifier_types::{
+        VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_HIDDEN_ID,
+        VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_OVERRIDE_ID,
+        VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_MULTIPLIED_BASE_ID,
+        VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_MULTIPLIED_TOTAL_ID,
+    },
     entity_types::vanilla_entity_type_allowed_in_peaceful,
     equipment_slots::VANILLA_EQUIPMENT_SLOT_GROUPS,
     packets::{
@@ -1725,7 +1731,10 @@ fn push_potion_attribute_modifier_tooltip_line(
     if modifier.amount == 0.0 {
         return;
     }
-    let mut display_amount = if modifier.operation_id == 1 || modifier.operation_id == 2 {
+    let mut display_amount = if modifier.operation_id
+        == VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_MULTIPLIED_BASE_ID
+        || modifier.operation_id == VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_MULTIPLIED_TOTAL_ID
+    {
         modifier.amount * 100.0
     } else {
         modifier.amount
@@ -1780,7 +1789,7 @@ fn push_stack_attribute_modifiers_tooltip_lines(
             .iter()
             .filter(|modifier| modifier.slot_id == slot_id)
         {
-            if modifier.display_id == 1 {
+            if modifier.display_id == VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_HIDDEN_ID {
                 continue;
             }
             let Some(line) = stack_attribute_modifier_tooltip_line(language, modifier, options)
@@ -1818,7 +1827,7 @@ fn stack_attribute_modifier_tooltip_line(
     modifier: &AttributeModifierSummary,
     options: NativeItemTooltipOptions<'_>,
 ) -> Option<NativeItemTooltipLine> {
-    if modifier.display_id == 2 {
+    if modifier.display_id == VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_OVERRIDE_ID {
         return modifier
             .display_text
             .as_ref()
@@ -1881,7 +1890,10 @@ fn numeric_attribute_modifier_tooltip_line(
     if amount == 0.0 && !display_with_base {
         return None;
     }
-    let mut display_amount = if operation_id == 1 || operation_id == 2 {
+    let mut display_amount = if operation_id
+        == VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_MULTIPLIED_BASE_ID
+        || operation_id == VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_MULTIPLIED_TOTAL_ID
+    {
         amount * 100.0
     } else if attribute.key == "minecraft:knockback_resistance" {
         amount * 10.0

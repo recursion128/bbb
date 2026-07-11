@@ -1,3 +1,7 @@
+use bbb_protocol::attribute_modifier_types::{
+    VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_MULTIPLIED_BASE_ID,
+    VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_MULTIPLIED_TOTAL_ID,
+};
 use bbb_protocol::attribute_types::VANILLA_ATTRIBUTE_SCALE_ID;
 pub(crate) use bbb_protocol::entity_poses::{
     VANILLA_ENTITY_POSE_CROUCHING_ID as VANILLA_POSE_CROUCHING_ID,
@@ -1106,19 +1110,21 @@ pub(crate) fn vanilla_render_scale(entity_type_id: i32, attributes: &[AttributeS
 fn vanilla_attribute_value(attribute: &AttributeSnapshot) -> f32 {
     let mut base = attribute.base;
     for modifier in &attribute.modifiers {
-        if modifier.operation_id != 1 && modifier.operation_id != 2 {
+        if modifier.operation_id != VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_MULTIPLIED_BASE_ID
+            && modifier.operation_id != VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_MULTIPLIED_TOTAL_ID
+        {
             base += modifier.amount;
         }
     }
 
     let mut result = base;
     for modifier in &attribute.modifiers {
-        if modifier.operation_id == 1 {
+        if modifier.operation_id == VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_MULTIPLIED_BASE_ID {
             result += base * modifier.amount;
         }
     }
     for modifier in &attribute.modifiers {
-        if modifier.operation_id == 2 {
+        if modifier.operation_id == VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_MULTIPLIED_TOTAL_ID {
             result *= 1.0 + modifier.amount;
         }
     }
