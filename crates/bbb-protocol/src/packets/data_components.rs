@@ -14,6 +14,10 @@ use crate::{
         vanilla_equipment_slot_by_id, vanilla_equipment_slot_group,
         VANILLA_EQUIPMENT_SLOT_GROUP_ANY_ID, VANILLA_EQUIPMENT_SLOT_MAINHAND_ID,
     },
+    item_component_value_types::{
+        FireworkExplosionShapeSummary, ItemRaritySummary, ItemUseAnimationSummary,
+        MapPostProcessingSummary, SwingAnimationTypeSummary,
+    },
 };
 use uuid::Uuid;
 
@@ -748,23 +752,6 @@ pub enum ConsumeEffectSummary {
     },
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum ItemUseAnimationSummary {
-    None,
-    Eat,
-    Drink,
-    Block,
-    Bow,
-    Trident,
-    Crossbow,
-    Spyglass,
-    TootHorn,
-    Brush,
-    Bundle,
-    Spear,
-}
-
 impl Default for ItemUseAnimationSummary {
     fn default() -> Self {
         Self::Eat
@@ -775,36 +762,6 @@ impl Default for ItemUseAnimationSummary {
 pub struct SwingAnimationSummary {
     pub animation_type: SwingAnimationTypeSummary,
     pub duration: i32,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum SwingAnimationTypeSummary {
-    None,
-    Whack,
-    Stab,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum FireworkExplosionShapeSummary {
-    SmallBall,
-    LargeBall,
-    Star,
-    Creeper,
-    Burst,
-}
-
-impl FireworkExplosionShapeSummary {
-    fn from_vanilla_id(id: i32) -> Self {
-        match id {
-            1 => Self::LargeBall,
-            2 => Self::Star,
-            3 => Self::Creeper,
-            4 => Self::Burst,
-            _ => Self::SmallBall,
-        }
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -849,22 +806,6 @@ pub struct WrittenBookContentSummary {
     #[serde(default)]
     pub page_filters: Vec<Option<String>>,
     pub resolved: bool,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum ItemRaritySummary {
-    Common,
-    Uncommon,
-    Rare,
-    Epic,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum MapPostProcessingSummary {
-    Lock,
-    Scale,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -1270,12 +1211,7 @@ fn decode_lore(
 }
 
 fn decode_item_rarity(decoder: &mut Decoder<'_>) -> Result<ItemRaritySummary> {
-    Ok(match decoder.read_var_i32()? {
-        1 => ItemRaritySummary::Uncommon,
-        2 => ItemRaritySummary::Rare,
-        3 => ItemRaritySummary::Epic,
-        _ => ItemRaritySummary::Common,
-    })
+    Ok(ItemRaritySummary::from_id(decoder.read_var_i32()?))
 }
 
 fn normalize_dye_color_id(id: i32) -> i32 {
@@ -1321,10 +1257,7 @@ fn decode_varint_map(decoder: &mut Decoder<'_>) -> Result<Vec<ItemEnchantmentSum
 }
 
 fn decode_map_post_processing(decoder: &mut Decoder<'_>) -> Result<MapPostProcessingSummary> {
-    Ok(match decoder.read_var_i32()? {
-        1 => MapPostProcessingSummary::Scale,
-        _ => MapPostProcessingSummary::Lock,
-    })
+    Ok(MapPostProcessingSummary::from_id(decoder.read_var_i32()?))
 }
 
 fn decode_adventure_mode_predicate_summary(
@@ -1578,20 +1511,7 @@ fn decode_consumable_component_summary(
 }
 
 fn decode_item_use_animation_summary(decoder: &mut Decoder<'_>) -> Result<ItemUseAnimationSummary> {
-    Ok(match decoder.read_var_i32()? {
-        1 => ItemUseAnimationSummary::Eat,
-        2 => ItemUseAnimationSummary::Drink,
-        3 => ItemUseAnimationSummary::Block,
-        4 => ItemUseAnimationSummary::Bow,
-        5 => ItemUseAnimationSummary::Trident,
-        6 => ItemUseAnimationSummary::Crossbow,
-        7 => ItemUseAnimationSummary::Spyglass,
-        8 => ItemUseAnimationSummary::TootHorn,
-        9 => ItemUseAnimationSummary::Brush,
-        10 => ItemUseAnimationSummary::Bundle,
-        11 => ItemUseAnimationSummary::Spear,
-        _ => ItemUseAnimationSummary::None,
-    })
+    Ok(ItemUseAnimationSummary::from_id(decoder.read_var_i32()?))
 }
 
 fn decode_consume_effect_summary(decoder: &mut Decoder<'_>) -> Result<ConsumeEffectSummary> {
@@ -2373,11 +2293,7 @@ fn decode_direct_painting_variant_summary(
 }
 
 fn decode_swing_animation(decoder: &mut Decoder<'_>) -> Result<SwingAnimationSummary> {
-    let animation_type = match decoder.read_var_i32()? {
-        1 => SwingAnimationTypeSummary::Whack,
-        2 => SwingAnimationTypeSummary::Stab,
-        _ => SwingAnimationTypeSummary::None,
-    };
+    let animation_type = SwingAnimationTypeSummary::from_id(decoder.read_var_i32()?);
     Ok(SwingAnimationSummary {
         animation_type,
         duration: decoder.read_var_i32()?,
@@ -2595,7 +2511,7 @@ fn decode_fireworks(decoder: &mut Decoder<'_>) -> Result<FireworksComponentSumma
 }
 
 fn decode_firework_explosion(decoder: &mut Decoder<'_>) -> Result<FireworkExplosionSummary> {
-    let shape = FireworkExplosionShapeSummary::from_vanilla_id(decoder.read_var_i32()?);
+    let shape = FireworkExplosionShapeSummary::from_id(decoder.read_var_i32()?);
     let colors = decode_int_list(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
     let fade_colors = decode_int_list(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
     let has_trail = decoder.read_bool()?;

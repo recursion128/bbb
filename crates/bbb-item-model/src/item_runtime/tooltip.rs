@@ -2577,19 +2577,9 @@ fn firework_explosion_shape_text(
     language
         .get_or_key(&format!(
             "item.minecraft.firework_star.shape.{}",
-            firework_explosion_shape_name(shape)
+            shape.as_str()
         ))
         .to_string()
-}
-
-fn firework_explosion_shape_name(shape: FireworkExplosionShapeSummary) -> &'static str {
-    match shape {
-        FireworkExplosionShapeSummary::SmallBall => "small_ball",
-        FireworkExplosionShapeSummary::LargeBall => "large_ball",
-        FireworkExplosionShapeSummary::Star => "star",
-        FireworkExplosionShapeSummary::Creeper => "creeper",
-        FireworkExplosionShapeSummary::Burst => "burst",
-    }
 }
 
 fn firework_color_names(language: &LanguageCatalog, colors: &[i32]) -> String {

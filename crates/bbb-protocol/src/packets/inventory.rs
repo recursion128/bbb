@@ -8,6 +8,11 @@ use crate::{
     packets::data_components,
 };
 
+pub use crate::item_component_value_types::{
+    FireworkExplosionShapeSummary, ItemRaritySummary, ItemUseAnimationSummary,
+    MapPostProcessingSummary, SwingAnimationTypeSummary,
+};
+
 const MAX_CONTAINER_ITEMS: usize = 1024;
 
 pub use data_components::{
@@ -17,19 +22,17 @@ pub use data_components::{
     BlocksAttacksSummary, ConsumableSummary, ConsumeEffectSummary, CustomModelDataFloats,
     DamageReductionSummary, DamageTypeHolderSetSummary, DataComponentPatchSummary,
     DataComponentPredicateTypeSummary, EntityTypeHolderSetSummary, EquippableSummary,
-    FireworkExplosionShapeSummary, FireworkExplosionSummary, GameProfilePropertySummary,
-    ItemContainerSlotSummary, ItemDamageFunctionSummary, ItemEnchantmentSummary, ItemRaritySummary,
-    ItemStackTemplateSummary, ItemUseAnimationSummary, JukeboxSongSummary,
-    KineticWeaponConditionSummary, KineticWeaponSummary, LodestoneTargetSummary,
-    MapPostProcessingSummary, MobEffectDetailsSummary, MobEffectInstanceSummary, NbtSummaryEntry,
+    FireworkExplosionSummary, GameProfilePropertySummary, ItemContainerSlotSummary,
+    ItemDamageFunctionSummary, ItemEnchantmentSummary, ItemStackTemplateSummary,
+    JukeboxSongSummary, KineticWeaponConditionSummary, KineticWeaponSummary,
+    LodestoneTargetSummary, MobEffectDetailsSummary, MobEffectInstanceSummary, NbtSummaryEntry,
     NbtSummaryValue, PaintingVariantSummary, PartialDataComponentPredicateSummary,
     PiercingWeaponSummary, PlayerModelTypeSummary, PlayerSkinPatchSummary,
     ProfileSkinTextureSummary, ProfileTextureSummary, ProfileTexturesSummary,
     ResolvableProfileKindSummary, ResolvableProfileSummary, ResourceTextureSummary,
     SoundEventSummary, StatePropertyMatcherSummary, StatePropertyValueMatcherSummary,
-    SuspiciousStewEffectSummary, SwingAnimationSummary, SwingAnimationTypeSummary, ToolRuleSummary,
-    ToolSummary, TrimMaterialSummary, TrimPatternSummary, UseEffectsSummary,
-    WrittenBookContentSummary,
+    SuspiciousStewEffectSummary, SwingAnimationSummary, ToolRuleSummary, ToolSummary,
+    TrimMaterialSummary, TrimPatternSummary, UseEffectsSummary, WrittenBookContentSummary,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

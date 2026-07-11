@@ -263,6 +263,19 @@ class RecipeDisplayTypeEntry:
     resource_id: str
 
 
+@dataclass(frozen=True)
+class NamedComponentValueEntry:
+    constant_name: str
+    value_id: int
+    serialized_name: str
+
+
+@dataclass(frozen=True)
+class ComponentValueEntry:
+    constant_name: str
+    value_id: int
+
+
 def _fail(source: JavaSource, expression: JavaExpression, message: str) -> None:
     span = expression.span
     raise GameplayIdExtractionError(
@@ -806,12 +819,15 @@ def difficulty_entries(
 
 
 def _continuous_out_of_bounds_strategy_from_fields(
-    source: JavaSource, fields: list[JavaField], description: str
+    source: JavaSource,
+    fields: list[JavaField],
+    description: str,
+    field_name: str = "BY_ID",
 ) -> str:
-    fields = [field for field in fields if field.name == "BY_ID"]
+    fields = [field for field in fields if field.name == field_name]
     if len(fields) != 1 or fields[0].initializer is None:
         raise GameplayIdExtractionError(
-            f"{source.relative_path}: expected one initialized {description} BY_ID field"
+            f"{source.relative_path}: expected one initialized {description} {field_name} field"
         )
     initializer = fields[0].initializer
     if initializer.node.type != "method_invocation":
@@ -1339,6 +1355,155 @@ def recipe_wire_type_entries(
     _validate(displays, "recipe display type", "type_id")
     _validate(displays, "recipe display type", "resource_id")
     return books, displays
+
+
+def item_component_value_type_entries(
+    item_use_source: JavaSource,
+    swing_source: JavaSource,
+    rarity_source: JavaSource,
+    map_post_processing_source: JavaSource,
+    firework_source: JavaSource,
+) -> tuple[
+    list[NamedComponentValueEntry],
+    list[NamedComponentValueEntry],
+    list[NamedComponentValueEntry],
+    list[ComponentValueEntry],
+    list[NamedComponentValueEntry],
+]:
+    def named(
+        source: JavaSource,
+        description: str,
+        expected_names: list[str],
+        allowed_argument_counts: set[int],
+        constants: list[tuple[str, tuple[JavaExpression, ...]]] | None = None,
+    ) -> list[NamedComponentValueEntry]:
+        entries = []
+        for name, arguments in (
+            constants if constants is not None else _enum_constants(source)
+        ):
+            if len(arguments) not in allowed_argument_counts:
+                expression = (
+                    arguments[0] if arguments else source.expression(source.types[0].node)
+                )
+                _fail(source, expression, f"{description} {name} has unexpected arguments")
+            entries.append(
+                NamedComponentValueEntry(
+                    name,
+                    _integer(source, arguments[0]),
+                    _string(source, arguments[1]),
+                )
+            )
+        if [entry.constant_name for entry in entries] != expected_names:
+            raise GameplayIdExtractionError(
+                f"{description} values differ from expected declaration order"
+            )
+        if [entry.value_id for entry in entries] != list(range(len(expected_names))):
+            raise GameplayIdExtractionError(
+                f"{description} ids are not contiguous declaration order"
+            )
+        for entry in entries:
+            if entry.serialized_name != entry.constant_name.lower():
+                raise GameplayIdExtractionError(
+                    f"{description} {entry.constant_name} has unexpected serialized name"
+                )
+        _validate(entries, description, "value_id")
+        _validate(entries, description, "serialized_name")
+        return entries
+
+    item_uses = named(
+        item_use_source,
+        "item use animation",
+        [
+            "NONE",
+            "EAT",
+            "DRINK",
+            "BLOCK",
+            "BOW",
+            "TRIDENT",
+            "CROSSBOW",
+            "SPYGLASS",
+            "TOOT_HORN",
+            "BRUSH",
+            "BUNDLE",
+            "SPEAR",
+        ],
+        {2, 3},
+    )
+    swings = named(
+        swing_source,
+        "swing animation type",
+        ["NONE", "WHACK", "STAB"],
+        {2},
+    )
+    rarities = named(
+        rarity_source,
+        "item rarity",
+        ["COMMON", "UNCOMMON", "RARE", "EPIC"],
+        {3},
+    )
+
+    map_values = []
+    for name, arguments in _enum_constants(map_post_processing_source):
+        if len(arguments) != 1:
+            expression = (
+                arguments[0]
+                if arguments
+                else map_post_processing_source.expression(
+                    map_post_processing_source.types[0].node
+                )
+            )
+            _fail(
+                map_post_processing_source,
+                expression,
+                f"map post-processing {name} must have one id argument",
+            )
+        map_values.append(
+            ComponentValueEntry(
+                name, _integer(map_post_processing_source, arguments[0])
+            )
+        )
+    if [entry.constant_name for entry in map_values] != ["LOCK", "SCALE"]:
+        raise GameplayIdExtractionError(
+            "map post-processing values differ from expected declaration order"
+        )
+    if [entry.value_id for entry in map_values] != [0, 1]:
+        raise GameplayIdExtractionError(
+            "map post-processing ids are not contiguous declaration order"
+        )
+    _validate(map_values, "map post-processing", "value_id")
+
+    firework_type = _nested_enum_type(firework_source, "Shape")
+    firework_shapes = named(
+        firework_source,
+        "firework explosion shape",
+        ["SMALL_BALL", "LARGE_BALL", "STAR", "CREEPER", "BURST"],
+        {2},
+        _nested_enum_constants(
+            firework_source, "Shape", "firework explosion shape"
+        ),
+    )
+
+    strategies = [
+        _continuous_out_of_bounds_strategy(item_use_source, "item use animation"),
+        _continuous_out_of_bounds_strategy(swing_source, "swing animation type"),
+        _continuous_out_of_bounds_strategy(rarity_source, "item rarity"),
+        _continuous_out_of_bounds_strategy_from_fields(
+            map_post_processing_source,
+            map_post_processing_source.fields,
+            "map post-processing",
+            "ID_MAP",
+        ),
+        _continuous_out_of_bounds_strategy_from_fields(
+            firework_source,
+            firework_source.fields_for(firework_type),
+            "firework explosion shape",
+        ),
+    ]
+    if any(strategy != "ZERO" for strategy in strategies):
+        raise GameplayIdExtractionError(
+            f"unsupported item component value id strategies {strategies}"
+        )
+    return item_uses, swings, rarities, map_values, firework_shapes
 
 
 def equipment_slot_entries(

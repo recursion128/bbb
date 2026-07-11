@@ -31,6 +31,7 @@ from gameplay_id_catalog_extractor import (  # noqa: E402
     filter_mask_type_entries,
     heightmap_type_entries,
     interaction_hand_entries,
+    item_component_value_type_entries,
     mob_effect_entries,
     objective_render_type_entries,
     player_info_action_entries,
@@ -868,6 +869,90 @@ public class RecipeDisplays {
                 ("SMITHING", 4, "minecraft:smithing"),
             ],
         )
+
+    def test_item_component_value_types_preserve_ids_names_and_zero_fallback(self) -> None:
+        item_uses = parse_source(
+            "fixture/ItemUseAnimation.java",
+            b"""
+package fixture;
+public enum ItemUseAnimation {
+  NONE(0, "none"), EAT(1, "eat", true), DRINK(2, "drink", true),
+  BLOCK(3, "block"), BOW(4, "bow"), TRIDENT(5, "trident"),
+  CROSSBOW(6, "crossbow"), SPYGLASS(7, "spyglass"), TOOT_HORN(8, "toot_horn"),
+  BRUSH(9, "brush"), BUNDLE(10, "bundle"), SPEAR(11, "spear", true);
+  private static final IntFunction<ItemUseAnimation> BY_ID = ByIdMap.continuous(
+      ItemUseAnimation::getId, values(), ByIdMap.OutOfBoundsStrategy.ZERO);
+}
+""",
+        )
+        swings = parse_source(
+            "fixture/SwingAnimationType.java",
+            b"""
+package fixture;
+public enum SwingAnimationType {
+  NONE(0, "none"), WHACK(1, "whack"), STAB(2, "stab");
+  private static final IntFunction<SwingAnimationType> BY_ID = ByIdMap.continuous(
+      SwingAnimationType::getId, values(), ByIdMap.OutOfBoundsStrategy.ZERO);
+}
+""",
+        )
+        rarities = parse_source(
+            "fixture/Rarity.java",
+            b"""
+package fixture;
+public enum Rarity {
+  COMMON(0, "common", ChatFormatting.WHITE),
+  UNCOMMON(1, "uncommon", ChatFormatting.YELLOW),
+  RARE(2, "rare", ChatFormatting.AQUA),
+  EPIC(3, "epic", ChatFormatting.LIGHT_PURPLE);
+  public static final IntFunction<Rarity> BY_ID = ByIdMap.continuous(
+      rarity -> rarity.id, values(), ByIdMap.OutOfBoundsStrategy.ZERO);
+}
+""",
+        )
+        map_post = parse_source(
+            "fixture/MapPostProcessing.java",
+            b"""
+package fixture;
+public enum MapPostProcessing {
+  LOCK(0), SCALE(1);
+  public static final IntFunction<MapPostProcessing> ID_MAP = ByIdMap.continuous(
+      MapPostProcessing::id, values(), ByIdMap.OutOfBoundsStrategy.ZERO);
+}
+""",
+        )
+        firework = parse_source(
+            "fixture/FireworkExplosion.java",
+            b"""
+package fixture;
+public record FireworkExplosion() {
+  public enum Shape {
+    SMALL_BALL(0, "small_ball"), LARGE_BALL(1, "large_ball"), STAR(2, "star"),
+    CREEPER(3, "creeper"), BURST(4, "burst");
+    private static final IntFunction<Shape> BY_ID = ByIdMap.continuous(
+        Shape::getId, values(), ByIdMap.OutOfBoundsStrategy.ZERO);
+  }
+}
+""",
+        )
+        item_entries, swing_entries, rarity_entries, map_entries, shape_entries = (
+            item_component_value_type_entries(
+                item_uses, swings, rarities, map_post, firework
+            )
+        )
+        self.assertEqual((len(item_entries), len(swing_entries)), (12, 3))
+        self.assertEqual(
+            (len(rarity_entries), len(map_entries), len(shape_entries)),
+            (4, 2, 5),
+        )
+        self.assertEqual(item_entries[8].serialized_name, "toot_horn")
+        self.assertEqual(swing_entries[2].serialized_name, "stab")
+        self.assertEqual(rarity_entries[3].serialized_name, "epic")
+        self.assertEqual(
+            [(entry.constant_name, entry.value_id) for entry in map_entries],
+            [("LOCK", 0), ("SCALE", 1)],
+        )
+        self.assertEqual(shape_entries[1].serialized_name, "large_ball")
 
     def test_unsupported_register_shape_reports_source_span(self) -> None:
         source = parse_source(

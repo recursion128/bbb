@@ -69,7 +69,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   InteractionHand explicit ids and its ZERO wire fallback, plus ClientInformation chat-visibility/
   main-hand/particle-status ordinals and ContainerInput ids/ZERO fallback, now use generated owners
   as well. RecipeBookType ordinals and the RecipeDisplay built-in registry id/resource order also
-  share one generated recipe-wire owner.
+  share one generated recipe-wire owner. Item-use/swing animation, rarity, map post-processing,
+  and firework-shape component value ids/names/ZERO fallbacks now share a generated owner across
+  protocol/native/item-model consumers.
   The remaining cross-crate registry/ordinal audit stays open.
 
 ## Unknown clientbound packets in login, configuration, and play

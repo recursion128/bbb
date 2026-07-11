@@ -894,7 +894,7 @@ impl ComponentSelectProperty {
                 component_patch
                     .and_then(|patch| patch.rarity)
                     .unwrap_or(ItemRaritySummary::Common)
-                    .when_name()
+                    .as_str()
                     .to_string(),
             )),
             Self::CustomName => component_patch
@@ -912,21 +912,6 @@ impl ComponentSelectProperty {
             Self::MapColor => component_patch
                 .and_then(|patch| patch.map_color)
                 .map(SelectCaseValue::I32),
-        }
-    }
-}
-
-trait ItemRaritySummaryExt {
-    fn when_name(self) -> &'static str;
-}
-
-impl ItemRaritySummaryExt for ItemRaritySummary {
-    fn when_name(self) -> &'static str {
-        match self {
-            Self::Common => "common",
-            Self::Uncommon => "uncommon",
-            Self::Rare => "rare",
-            Self::Epic => "epic",
         }
     }
 }
@@ -6967,14 +6952,7 @@ fn firework_explosion_exact_matches_summary(
 }
 
 fn firework_explosion_shape(value: &str) -> Option<FireworkExplosionShapeSummary> {
-    match value {
-        "small_ball" => Some(FireworkExplosionShapeSummary::SmallBall),
-        "large_ball" => Some(FireworkExplosionShapeSummary::LargeBall),
-        "star" => Some(FireworkExplosionShapeSummary::Star),
-        "creeper" => Some(FireworkExplosionShapeSummary::Creeper),
-        "burst" => Some(FireworkExplosionShapeSummary::Burst),
-        _ => None,
-    }
+    FireworkExplosionShapeSummary::from_serialized_name(value)
 }
 
 fn item_stack_matches_damage_component_predicate(

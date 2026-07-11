@@ -582,12 +582,7 @@ fn encode_rarity(
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
     _item_runtime: Option<&NativeItemRuntime>,
 ) -> Option<String> {
-    Some(debug_snbt_string(match patch.rarity? {
-        ItemRaritySummary::Common => "common",
-        ItemRaritySummary::Uncommon => "uncommon",
-        ItemRaritySummary::Rare => "rare",
-        ItemRaritySummary::Epic => "epic",
-    }))
+    Some(debug_snbt_string(patch.rarity?.as_str()))
 }
 
 fn encode_enchantments(

@@ -10680,3 +10680,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   encoder 和 clientbound recipe display decoder 删除 ordinal/id/name matches，非法 display id
   诊断不变。fixtures、生成完整性/唯一性/反向门禁及 protocol/world/net/native recipe focused
   tests 均通过；各 display payload codec、recipe-book state 与 UI 行为未改。
+
+## 2026-07-11：Generated item component value-type catalogs
+
+- [x] gameplay-id extractor 通过共享 Tree-sitter frontend 读取 vanilla
+  `ItemUseAnimation`、`SwingAnimationType`、`Rarity`、`MapPostProcessing` 与 nested
+  `FireworkExplosion.Shape` 共 26 项显式 id/serialized name，并分别验证 `BY_ID`/`ID_MAP`
+  的 `ZERO` 策略。generated owner 保持五个公开 `*Summary` 类型、变体与 serde；protocol
+  component codecs 删除五份 numeric decode match，native persistent SNBT 名称投影和
+  item-model rarity/firework select/tooltip 名称投影统一委托 generated lookup。fixtures、生成
+  完整性/唯一性/fallback/反向门禁及 protocol/native/item-model focused tests 均通过；
+  component payload、rarity presentation color、渲染和 persistent SNBT 结构语义未生成或改变。

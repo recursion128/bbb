@@ -73,10 +73,9 @@ use bbb_protocol::{
         ConsumeEffectSummary, Direction as ProtocolDirection, EntityDataEnumSerializer,
         EntityDataRegistryHolder, EntityDataValueKind, EntityTagQuery,
         FireworkExplosionShapeSummary, FireworkExplosionSummary, GameType, InteractionHand,
-        ItemRaritySummary, ItemStackSummary, MobEffectDetailsSummary, MobEffectInstanceSummary,
-        NbtSummaryValue, PlayerActionKind, PlayerCommandAction, PlayerInput,
-        PlayerModelTypeSummary, RecipeBookType, ResolvableProfileKindSummary,
-        ResolvableProfileSummary, SeenAdvancements, SignUpdate,
+        ItemStackSummary, MobEffectDetailsSummary, MobEffectInstanceSummary, NbtSummaryValue,
+        PlayerActionKind, PlayerCommandAction, PlayerInput, PlayerModelTypeSummary, RecipeBookType,
+        ResolvableProfileKindSummary, ResolvableProfileSummary, SeenAdvancements, SignUpdate,
     },
     ComponentClickEvent, ComponentStyle, StyledTextRun, MC_BUILD_TIME, MC_DATA_PACK_FORMAT,
     MC_DATA_VERSION, MC_DATA_VERSION_SERIES, MC_RESOURCE_PACK_FORMAT, MC_STABLE, MC_VERSION,
@@ -4776,20 +4775,7 @@ fn debug_consumable_component_snbt(
     if consumable.animation != bbb_protocol::packets::ItemUseAnimationSummary::Eat {
         fields.push(format!(
             "animation: {}",
-            debug_snbt_string(match consumable.animation {
-                bbb_protocol::packets::ItemUseAnimationSummary::None => "none",
-                bbb_protocol::packets::ItemUseAnimationSummary::Eat => "eat",
-                bbb_protocol::packets::ItemUseAnimationSummary::Drink => "drink",
-                bbb_protocol::packets::ItemUseAnimationSummary::Block => "block",
-                bbb_protocol::packets::ItemUseAnimationSummary::Bow => "bow",
-                bbb_protocol::packets::ItemUseAnimationSummary::Trident => "trident",
-                bbb_protocol::packets::ItemUseAnimationSummary::Crossbow => "crossbow",
-                bbb_protocol::packets::ItemUseAnimationSummary::Spyglass => "spyglass",
-                bbb_protocol::packets::ItemUseAnimationSummary::TootHorn => "toot_horn",
-                bbb_protocol::packets::ItemUseAnimationSummary::Brush => "brush",
-                bbb_protocol::packets::ItemUseAnimationSummary::Bundle => "bundle",
-                bbb_protocol::packets::ItemUseAnimationSummary::Spear => "spear",
-            })
+            debug_snbt_string(consumable.animation.as_str())
         ));
     }
     let is_default_sound = sound.registry_id.is_some_and(|registry_id| {
@@ -5119,11 +5105,7 @@ fn debug_swing_animation_component_snbt(
     if animation.animation_type != bbb_protocol::packets::SwingAnimationTypeSummary::Whack {
         fields.push(format!(
             "type: {}",
-            debug_snbt_string(match animation.animation_type {
-                bbb_protocol::packets::SwingAnimationTypeSummary::None => "none",
-                bbb_protocol::packets::SwingAnimationTypeSummary::Whack => "whack",
-                bbb_protocol::packets::SwingAnimationTypeSummary::Stab => "stab",
-            })
+            debug_snbt_string(animation.animation_type.as_str())
         ));
     }
     if animation.duration != 6 {
