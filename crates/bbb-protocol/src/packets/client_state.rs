@@ -305,13 +305,19 @@ pub(super) fn decode_cooldown(decoder: &mut Decoder<'_>) -> Result<Cooldown> {
 }
 
 pub(super) fn decode_damage_event(decoder: &mut Decoder<'_>) -> Result<DamageEvent> {
-    Ok(DamageEvent {
+    let update = DamageEvent {
         entity_id: decoder.read_var_i32()?,
         source_type_id: decoder.read_var_i32()?,
         source_cause_id: decoder.read_var_i32()? - 1,
         source_direct_id: decoder.read_var_i32()? - 1,
         source_position: decode_optional_vec3d(decoder)?,
-    })
+    };
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after damage event packet".to_string(),
+        ));
+    }
+    Ok(update)
 }
 
 pub(super) fn decode_game_event(decoder: &mut Decoder<'_>) -> Result<GameEvent> {

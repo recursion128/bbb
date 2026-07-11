@@ -164,6 +164,10 @@ Movement:
 - Complete ClientboundAnimate action 2 (`Player.stopSleepInBed(false, false)`)
   and gate actions 0/3 on `LivingEntity` plus action 2 on `Player`; keep 4/5 as
   presentation-only crit tracking emitters, not authoritative attacks.
+- Resolve DamageEvent's DamageType holder through session RegistryAccess and
+  complete only vanilla client presentation state: LivingEntity gate, walk
+  animation speed, invulnerability/hurt timers, hurt sound, and last-source
+  timestamp. Never infer health loss, death, or authoritative combat results.
 - Implement full vanilla boat physics, water/buoyancy/collision parity, and
   non-boat vehicle movement only for the locally controlled instance; resolve
   entity-specific `getControllingPassenger` gates (saddle/held item/armor and

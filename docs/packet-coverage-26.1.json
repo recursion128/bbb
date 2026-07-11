@@ -5644,29 +5644,45 @@
       "constant_name": "CLIENTBOUND_DAMAGE_EVENT",
       "coverage": {
         "canonical_apply": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
+          "evidence": [
+            "crates/bbb-world/src/entities/status.rs#apply_damage_event",
+            "vanilla:net/minecraft/world/entity/LivingEntity.java#handleDamageEvent"
+          ],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
           "status": "partial"
         },
         "decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/client_state/tests.rs#decodes_damage_event_without_source_position_wire_order",
+            "crates/bbb-protocol/src/packets/client_state/tests.rs#decodes_damage_event_with_source_position_wire_order",
+            "vanilla:net/minecraft/network/protocol/game/ClientboundDamageEventPacket.java#STREAM_CODEC"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "ownership": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/play_apply.rs#PlayClientbound::DamageEvent"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "runtime_side_effect": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
+          "evidence": [
+            "crates/bbb-world/src/entities/status.rs#apply_damage_event",
+            "vanilla:net/minecraft/world/entity/LivingEntity.java#handleDamageEvent"
+          ],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
           "status": "partial"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/client_state/tests.rs#decodes_damage_event_with_source_position_wire_order",
+            "crates/bbb-world/src/entities/status.rs#damage_events_store_on_known_entities_only",
+            "crates/bbb-native/src/runtime/events/tests/session_hud_and_vehicle_events.rs#entity_status_events_update_world_and_world_counters"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "clientbound",

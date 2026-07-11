@@ -254,6 +254,15 @@ fn decodes_damage_event_without_source_position_wire_order() {
     assert_eq!(decoder.read_var_i32().unwrap(), 35);
     assert!(!decoder.read_bool().unwrap());
     assert!(decoder.is_empty());
+
+    let mut trailing = payload;
+    trailing.push(0);
+    assert!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_DAMAGE_EVENT, &trailing)
+            .unwrap_err()
+            .to_string()
+            .contains("trailing bytes after damage event packet")
+    );
 }
 
 #[test]

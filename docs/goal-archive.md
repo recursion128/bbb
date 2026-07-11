@@ -11128,3 +11128,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   非匹配实体安全忽略，protocol/world/net/native tests 覆盖状态与计数，五格全部闭合。
 - [x] 此闭合只代表服务器同步字段的客户端赋值；未将它外推为 projectile subclass motion、drag、
   gravity、trail、命中、伤害或权威移除，后者仍按 multiplayer client authority ledger 单独开放。
+
+## 2026-07-11：damage-event packet coverage audit
+
+- [x] 对照 `ClientboundDamageEventPacket` 锁定 entity/DamageType holder VarInt、cause/direct id+1、
+  optional source-position Vec3 并拒绝 trailing bytes；protocol/world/net/native tests 覆盖 wire summary、
+  known/unknown entity 与 red overlay，因此 decode/ownership/tests 三格闭合。
+- [x] session DamageType resolution、LivingEntity gate、walk speed、invulnerable/hurt timers、hurt sound
+  及 last-source stamp 尚未齐全，canonical/runtime 保持 partial。此 packet 仅驱动服务器已判定伤害的
+  客户端呈现，不扣血、不判死、不产生权威击退或战斗结果。
