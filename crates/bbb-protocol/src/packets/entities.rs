@@ -580,10 +580,16 @@ pub(super) fn decode_set_passengers(decoder: &mut Decoder<'_>) -> Result<SetPass
     for _ in 0..count {
         passenger_ids.push(decoder.read_var_i32()?);
     }
-    Ok(SetPassengers {
+    let update = SetPassengers {
         vehicle_id,
         passenger_ids,
-    })
+    };
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after set passengers packet".to_string(),
+        ));
+    }
+    Ok(update)
 }
 
 pub(super) fn decode_teleport_entity(decoder: &mut Decoder<'_>) -> Result<TeleportEntity> {

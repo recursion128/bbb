@@ -8698,29 +8698,44 @@
       "constant_name": "CLIENTBOUND_SET_PASSENGERS",
       "coverage": {
         "canonical_apply": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/entities/passengers.rs#apply_set_passengers",
+            "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#tracks_local_player_passenger_without_entity"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/entities/tests.rs#decodes_set_passengers_packet",
+            "vanilla:net/minecraft/network/protocol/game/ClientboundSetPassengersPacket.java#STREAM_CODEC"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "ownership": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/play_apply.rs#PlayClientbound::SetPassengers"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "runtime_side_effect": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
+          "evidence": [
+            "crates/bbb-world/src/entities/passengers.rs#apply_set_passengers",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleSetEntityPassengersPacket"
+          ],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
           "status": "partial"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/entities/tests.rs#decodes_set_passengers_packet",
+            "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#tracks_entity_passenger_updates",
+            "crates/bbb-net/src/event_stream.rs#play_entity_state_packets_emit_matching_events_without_responses"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "clientbound",

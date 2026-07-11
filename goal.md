@@ -359,6 +359,9 @@ RemoveEntities 的 int-id list wire、world cleanup 与 tests 已闭合；vanill
 runtime 格 partial。
 SetEntityLink 的 fixed i32 wire、ownership 与 tests 已闭合；当前 world apply 尚未用 vanilla
 `Leashable` capability 限制 source entity，因此 canonical/runtime 保持 partial。
+SetPassengers 的 VarInt array wire、canonical mount graph 与 tests 已闭合；首次本地 mount 的
+removed-vehicle recovery reset、boat yaw 对齐及 onboarding overlay/narration 尚未建模，因此只保留
+runtime 格 partial。
 
 完成标准：全部 vanilla 26.1 catalog entry 都有矩阵行；所有目标客户端适用项为
 `complete`，其余只有带 vanilla 依据的 `not-applicable` 或带重启判据的窄 `deferred`；

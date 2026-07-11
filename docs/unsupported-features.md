@@ -152,6 +152,9 @@ Movement:
 - Gate SetEntityLink application on the source entity implementing vanilla
   `Leashable`; the generic entity component must not make non-leashable types
   accept a delayed holder id.
+- Complete first-local-mount SetPassengers side effects: clear removed-vehicle
+  recovery state, align player body/head yaw when mounting a boat, and surface
+  vanilla's dismount-key overlay/narration once per new mount.
 - Implement full vanilla boat physics, water/buoyancy/collision parity, and
   non-boat vehicle movement only for the locally controlled instance; resolve
   entity-specific `getControllingPassenger` gates (saddle/held item/armor and

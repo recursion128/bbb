@@ -933,6 +933,26 @@ mod tests {
         );
     }
 
+    #[test]
+    fn play_passengers_keeps_local_mount_presentation_open() {
+        let ledger = vanilla_packet_coverage_26_1().unwrap();
+        let entry = ledger
+            .entries
+            .iter()
+            .find(|entry| {
+                entry.state == "play" && entry.constant_name == "CLIENTBOUND_SET_PASSENGERS"
+            })
+            .expect("set passengers coverage row");
+        let partial: BTreeSet<_> = entry
+            .coverage
+            .iter()
+            .filter_map(|(dimension, cell)| {
+                (cell.status == PacketCoverageStatus::Partial).then_some(dimension.as_str())
+            })
+            .collect();
+        assert_eq!(partial, BTreeSet::from(["runtime_side_effect"]));
+    }
+
     fn state_name(state: PacketState) -> &'static str {
         match state {
             PacketState::Handshake => "handshake",

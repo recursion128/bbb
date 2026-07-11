@@ -11067,3 +11067,11 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] vanilla handler 只对 `source instanceof Leashable` 设置 delayed holder，bbb 当前通用 leash
   component 没有 entity capability gate；canonical/runtime 两格继续保持 partial，未把“能存 id”
   外推为所有实体都可被拴绳。
+
+## 2026-07-11：set-passengers packet coverage audit
+
+- [x] 对照 `ClientboundSetPassengersPacket` 与 client handler，锁定 vehicle VarInt + passenger
+  VarInt array 并拒绝 trailing bytes；现有 world apply 完成 eject/attach、missing entity 与本地
+  player-outside-ECS 处理，因此 decode/ownership/canonical/tests 四格闭合。
+- [x] vanilla 首次本地 mount 还会清除 removed-vehicle recovery、对 boat 对齐 player yaw，并触发
+  dismount-key overlay/narration；bbb 尚未拥有这些 presentation side effects，runtime 格保持 partial。

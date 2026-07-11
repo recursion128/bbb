@@ -950,15 +950,22 @@ fn decodes_set_passengers_packet() {
     payload.write_var_i32(123);
     payload.write_var_i32(456);
 
-    let packet =
-        decode_play_clientbound(ids::play::CLIENTBOUND_SET_PASSENGERS, &payload.into_inner())
-            .unwrap();
+    let payload = payload.into_inner();
+    let packet = decode_play_clientbound(ids::play::CLIENTBOUND_SET_PASSENGERS, &payload).unwrap();
     assert_eq!(
         packet,
         PlayClientbound::SetPassengers(SetPassengers {
             vehicle_id: 7,
             passenger_ids: vec![123, 456],
         })
+    );
+    let mut trailing = payload;
+    trailing.push(0);
+    assert!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_SET_PASSENGERS, &trailing)
+            .unwrap_err()
+            .to_string()
+            .contains("trailing bytes after set passengers packet")
     );
 }
 
