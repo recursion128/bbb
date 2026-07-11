@@ -11042,3 +11042,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] `ClientboundRotateHeadPacket` 的 VarInt + packed i8 yaw 也改为严格消费并闭合 wire/ownership/
   tests。普通 Entity 立即设置，但 `LivingEntity.lerpHeadTo(..., 3)` 仍需 target/step 状态；bbb 当前
   统一直写最终 yaw，因此 canonical/runtime 保持 partial。
+
+## 2026-07-11：minecart along-track packet coverage audit
+
+- [x] 对照 `ClientboundMoveMinecartPacket` 与 `MinecartStep.STREAM_CODEC`，锁定 entity VarInt、
+  bounded step list、position/movement Vec3、packed yaw/pitch 与 weight，并拒绝 trailing bytes；
+  wire、world ownership 和现有 protocol/world/native tests 三格闭合。
+- [x] 审计确认当前 world apply 会立即把 canonical transform 写到最后一步并替换 active steps，
+  不等同于 vanilla `NewMinecartBehavior` 的 pending/current queue 与 client-tick 推进；对应
+  canonical/runtime 两格继续保持 partial，未用已有 render interpolation 过度宣称完成。

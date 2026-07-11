@@ -145,6 +145,10 @@ Movement:
 - Preserve `LivingEntity.lerpHeadTo(..., 3)` target/step state for RotateHead
   instead of snapping every entity's head yaw immediately; non-living Entity
   keeps the immediate-set behavior.
+- Preserve `NewMinecartBehavior`'s pending/current lerp-step queues: along-track
+  packets append pending steps and only the client tick advances the canonical
+  transform. Do not replace active steps or snap the transform to the last step
+  when the packet arrives.
 - Implement full vanilla boat physics, water/buoyancy/collision parity, and
   non-boat vehicle movement only for the locally controlled instance; resolve
   entity-specific `getControllingPassenger` gates (saddle/held item/armor and

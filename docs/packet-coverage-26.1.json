@@ -6733,29 +6733,44 @@
       "constant_name": "CLIENTBOUND_MOVE_MINECART_ALONG_TRACK",
       "coverage": {
         "canonical_apply": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
+          "evidence": [
+            "crates/bbb-world/src/entities/movement.rs#apply_move_minecart_along_track",
+            "vanilla:net/minecraft/world/entity/vehicle/minecart/NewMinecartBehavior.java#lerpClientPositionAndRotation"
+          ],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
           "status": "partial"
         },
         "decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/entities/tests.rs#decodes_entity_lifecycle_packets",
+            "vanilla:net/minecraft/network/protocol/game/ClientboundMoveMinecartPacket.java#STREAM_CODEC"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "ownership": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/play_apply.rs#PlayClientbound::MoveMinecartAlongTrack"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "runtime_side_effect": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
+          "evidence": [
+            "crates/bbb-world/src/entities/components.rs#EntityMinecartLerp",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleMinecartAlongTrack"
+          ],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
           "status": "partial"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/entities/tests.rs#decodes_entity_lifecycle_packets",
+            "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#minecart_along_track_updates_entity_from_latest_step",
+            "crates/bbb-native/src/entity_scene/tests.rs#entity_model_instances_project_minecart_new_render_from_track_steps"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "clientbound",

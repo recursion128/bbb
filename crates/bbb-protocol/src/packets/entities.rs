@@ -493,10 +493,16 @@ pub(super) fn decode_move_minecart_along_track(
         });
     }
 
-    Ok(MoveMinecartAlongTrack {
+    let update = MoveMinecartAlongTrack {
         entity_id,
         lerp_steps,
-    })
+    };
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after move minecart along track packet".to_string(),
+        ));
+    }
+    Ok(update)
 }
 
 pub(super) fn decode_remove_entities(decoder: &mut Decoder<'_>) -> Result<RemoveEntities> {

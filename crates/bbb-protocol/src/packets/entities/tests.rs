@@ -131,11 +131,10 @@ fn decodes_entity_lifecycle_packets() {
     payload.write_i8(64);
     payload.write_i8(16);
     payload.write_f32(1.25);
-    let packet = decode_play_clientbound(
-        ids::play::CLIENTBOUND_MOVE_MINECART_ALONG_TRACK,
-        &payload.into_inner(),
-    )
-    .unwrap();
+    let payload = payload.into_inner();
+    let packet =
+        decode_play_clientbound(ids::play::CLIENTBOUND_MOVE_MINECART_ALONG_TRACK, &payload)
+            .unwrap();
     assert_eq!(
         packet,
         PlayClientbound::MoveMinecartAlongTrack(MoveMinecartAlongTrack {
@@ -173,6 +172,14 @@ fn decodes_entity_lifecycle_packets() {
                 },
             ],
         })
+    );
+    let mut trailing = payload;
+    trailing.push(0);
+    assert!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_MOVE_MINECART_ALONG_TRACK, &trailing)
+            .unwrap_err()
+            .to_string()
+            .contains("trailing bytes after move minecart along track packet")
     );
 
     let mut payload = Encoder::new();
