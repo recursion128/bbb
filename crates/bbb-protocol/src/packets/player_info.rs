@@ -3,6 +3,7 @@ use uuid::Uuid;
 
 use crate::codec::{Decoder, ProtocolError, Result};
 pub use crate::game_types::GameType;
+pub use crate::player_info_actions::PlayerInfoAction;
 
 use super::{
     decode_byte_array, decode_optional_component_summary_from_decoder, GameProfile,
@@ -23,51 +24,6 @@ pub struct PlayerInfoRemove {
 pub struct PlayerInfoUpdate {
     pub actions: Vec<PlayerInfoAction>,
     pub entries: Vec<PlayerInfoEntry>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum PlayerInfoAction {
-    AddPlayer,
-    InitializeChat,
-    UpdateGameMode,
-    UpdateListed,
-    UpdateLatency,
-    UpdateDisplayName,
-    UpdateListOrder,
-    UpdateHat,
-}
-
-impl PlayerInfoAction {
-    pub fn ordinal(self) -> u8 {
-        match self {
-            Self::AddPlayer => 0,
-            Self::InitializeChat => 1,
-            Self::UpdateGameMode => 2,
-            Self::UpdateListed => 3,
-            Self::UpdateLatency => 4,
-            Self::UpdateDisplayName => 5,
-            Self::UpdateListOrder => 6,
-            Self::UpdateHat => 7,
-        }
-    }
-
-    fn from_ordinal(ordinal: u8) -> Result<Self> {
-        Ok(match ordinal {
-            0 => Self::AddPlayer,
-            1 => Self::InitializeChat,
-            2 => Self::UpdateGameMode,
-            3 => Self::UpdateListed,
-            4 => Self::UpdateLatency,
-            5 => Self::UpdateDisplayName,
-            6 => Self::UpdateListOrder,
-            7 => Self::UpdateHat,
-            other => {
-                return Err(ProtocolError::InvalidData(format!(
-                    "invalid player info action ordinal {other}"
-                )));
-            }
-        })
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -184,7 +140,9 @@ fn decode_player_info_actions(decoder: &mut Decoder<'_>) -> Result<Vec<PlayerInf
     let mut actions = Vec::new();
     for ordinal in 0..8 {
         if bits & (1 << ordinal) != 0 {
-            actions.push(PlayerInfoAction::from_ordinal(ordinal)?);
+            actions.push(PlayerInfoAction::from_ordinal(ordinal).ok_or_else(|| {
+                ProtocolError::InvalidData(format!("invalid player info action ordinal {ordinal}"))
+            })?);
         }
     }
     Ok(actions)

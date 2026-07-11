@@ -55,8 +55,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   resource/tag memberships remain under the P1 audit. Data-component numeric aliases
   across protocol/pack/world/item-model/native now derive from the generated protocol
   catalog; block-entity numeric aliases and current vault consumers likewise derive
-  from the generated catalog. Heightmap explicit ids/keys/usage and GameType explicit
-  ids/serialized names/nullable sentinel are generated as well.
+  from the generated catalog. Heightmap explicit ids/keys/usage, GameType explicit
+  ids/serialized names/nullable sentinel, and player-info action wire-bit ordinals are
+  generated as well.
   The remaining cross-crate registry/ordinal audit stays open.
 
 ## Unknown clientbound packets in login, configuration, and play

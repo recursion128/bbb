@@ -90,6 +90,12 @@ class GameTypeEntry:
     serialized_name: str
 
 
+@dataclass(frozen=True)
+class PlayerInfoActionEntry:
+    constant_name: str
+    ordinal: int
+
+
 def _fail(source: JavaSource, expression: JavaExpression, message: str) -> None:
     span = expression.span
     raise GameplayIdExtractionError(
@@ -360,6 +366,34 @@ def game_type_not_set_id(source: JavaSource) -> int:
     if initializer.canonical.replace(" ", "") != "-1":
         _fail(source, initializer, "game type NOT_SET must be -1")
     return int(initializer.canonical.replace(" ", ""), 0)
+
+
+def player_info_action_entries(
+    source: JavaSource, expected_count: int = 8
+) -> list[PlayerInfoActionEntry]:
+    enums = [
+        java_type
+        for java_type in source.types
+        if java_type.kind == "enum" and java_type.simple_name == "Action"
+    ]
+    if len(enums) != 1:
+        raise GameplayIdExtractionError(
+            f"{source.relative_path}: expected one nested Action enum, found {len(enums)}"
+        )
+    entries = []
+    for node in type_body_members(enums[0].body_node):
+        if node.type != "enum_constant":
+            continue
+        name = node.child_by_field_name("name")
+        if name is None:
+            _fail(source, source.expression(node), "player-info action lacks a name")
+        entries.append(PlayerInfoActionEntry(source.text(name), len(entries)))
+    if len(entries) != expected_count:
+        raise GameplayIdExtractionError(
+            f"expected {expected_count} player-info actions, extracted {len(entries)}"
+        )
+    _validate(entries, "player-info action", "ordinal")
+    return entries
 
 
 def equipment_slot_entries(

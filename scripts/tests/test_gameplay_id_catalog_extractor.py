@@ -19,6 +19,7 @@ from gameplay_id_catalog_extractor import (  # noqa: E402
     game_type_not_set_id,
     heightmap_type_entries,
     mob_effect_entries,
+    player_info_action_entries,
     sound_source_entries,
 )
 from vanilla_java_source import parse_source  # noqa: E402
@@ -165,6 +166,26 @@ public enum GameType {
             [(0, "survival"), (1, "creative"), (2, "adventure"), (3, "spectator")],
         )
         self.assertEqual(game_type_not_set_id(source), -1)
+
+    def test_nested_player_info_actions_preserve_wire_bit_order(self) -> None:
+        source = parse_source(
+            "fixture/ClientboundPlayerInfoUpdatePacket.java",
+            b"""
+package fixture;
+public class ClientboundPlayerInfoUpdatePacket {
+  public enum Action {
+    ADD_PLAYER((entry, input) -> entry.read(input), (output, entry) -> output.write(entry)),
+    UPDATE_LIST_ORDER((entry, input) -> entry.order = input.readVarInt(), writer),
+    UPDATE_HAT(reader, (output, entry) -> output.writeBoolean(entry.showHat()));
+    Action(Reader reader, Writer writer) {}
+  }
+}
+""",
+        )
+        self.assertEqual(
+            [entry.constant_name for entry in player_info_action_entries(source, 3)],
+            ["ADD_PLAYER", "UPDATE_LIST_ORDER", "UPDATE_HAT"],
+        )
 
     def test_unsupported_register_shape_reports_source_span(self) -> None:
         source = parse_source(

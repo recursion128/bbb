@@ -10441,3 +10441,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   creative=1 比较；既有 `bbb_protocol::packets::GameType` re-export 保持兼容。fixture、生成
   顺序/唯一性/fallback 测试及跨 crate production-source 反向扫描锁定单一事实源；abilities、
   权限、游戏模式切换行为与 packet wire 仍由对应语义 owner 手写。
+
+## 2026-07-11：Generated player-info action order
+
+- [x] gameplay-id extractor 通过共享 Tree-sitter frontend 读取 nested
+  `ClientboundPlayerInfoUpdatePacket.Action` enum 的八项声明顺序，生成 wire bit ordinal、
+  typed enum 与 checked-in catalog；`UPDATE_LIST_ORDER=6`、`UPDATE_HAT=7` 的易错顺序由
+  fixture 和生成测试锁定。protocol `player_info` 删除 ordinal/from-ordinal 两套手写 match，
+  继续通过 `bbb_protocol::packets::PlayerInfoAction` re-export 保持跨 crate API 兼容；原字段
+  reader/apply 语义不变。production-source 结构测试阻止另建 enum/impl/数字 alias，本切片未
+  把 enum 声明顺序生成扩张为 packet codec 自动生成。
