@@ -10482,3 +10482,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   focused tests 不改语义通过。生成测试锁定 0..7 连续唯一和首尾/invalid-url ordinal，
   production-source 反向扫描阻止重新声明 enum/impl；下载、reload 与 pack 应用行为仍由原
   runtime owner 负责。
+
+## 2026-07-11：Generated custom-chat completion action order
+
+- [x] gameplay-id extractor 通过共享 Tree-sitter frontend 读取 vanilla
+  `ClientboundCustomChatCompletionsPacket.Action` nested enum 的 `ADD/REMOVE/SET`
+  声明顺序，生成 typed action/catalog/ordinal lookup。protocol packet 模块保持原
+  `bbb_protocol::packets::CustomChatCompletionsAction` re-export，并保留手写 `as_str`
+  展示语义和原 invalid-ordinal `InvalidData` 诊断；删除 0/1/2 decode match。生成顺序、
+  唯一性和 production-source 反向测试锁定 ordinal 权威，world/net/native completion
+  apply focused tests 不改语义通过。

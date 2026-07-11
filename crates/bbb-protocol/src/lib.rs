@@ -9,6 +9,7 @@ pub use component::{
 pub mod attribute_types;
 pub mod block_entity_types;
 pub mod codec;
+pub mod custom_chat_completions_actions;
 pub mod damage_types;
 pub mod data_component_types;
 pub mod difficulties;

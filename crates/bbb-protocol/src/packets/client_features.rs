@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::codec::{Decoder, ProtocolError, Result};
+pub use crate::custom_chat_completions_actions::CustomChatCompletionsAction;
 
 use super::read_resource_location;
 
@@ -25,13 +26,6 @@ pub struct CustomChatCompletions {
     pub entries: Vec<String>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum CustomChatCompletionsAction {
-    Add,
-    Remove,
-    Set,
-}
-
 impl CustomChatCompletionsAction {
     pub fn as_str(self) -> &'static str {
         match self {
@@ -39,19 +33,6 @@ impl CustomChatCompletionsAction {
             Self::Remove => "remove",
             Self::Set => "set",
         }
-    }
-
-    fn from_ordinal(ordinal: i32) -> Result<Self> {
-        Ok(match ordinal {
-            0 => Self::Add,
-            1 => Self::Remove,
-            2 => Self::Set,
-            other => {
-                return Err(ProtocolError::InvalidData(format!(
-                    "invalid custom chat completions action ordinal {other}"
-                )))
-            }
-        })
     }
 }
 
@@ -70,7 +51,12 @@ pub struct TagQuery {
 pub(crate) fn decode_custom_chat_completions(
     decoder: &mut Decoder<'_>,
 ) -> Result<CustomChatCompletions> {
-    let action = CustomChatCompletionsAction::from_ordinal(decoder.read_var_i32()?)?;
+    let ordinal = decoder.read_var_i32()?;
+    let action = CustomChatCompletionsAction::from_ordinal(ordinal).ok_or_else(|| {
+        ProtocolError::InvalidData(format!(
+            "invalid custom chat completions action ordinal {ordinal}"
+        ))
+    })?;
     let count = decoder.read_len()?;
     if count > MAX_CUSTOM_CHAT_COMPLETIONS {
         return Err(ProtocolError::PacketTooLarge(

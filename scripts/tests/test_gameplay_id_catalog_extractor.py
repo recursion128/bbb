@@ -12,6 +12,7 @@ from gameplay_id_catalog_extractor import (  # noqa: E402
     GameplayIdExtractionError,
     attribute_entries,
     client_game_event_type_entries,
+    custom_chat_completions_action_entries,
     difficulty_entries,
     difficulty_out_of_bounds_strategy,
     entity_data_serializer_entries,
@@ -238,6 +239,24 @@ public record ServerboundResourcePackPacket() {
                 ("FAILED_RELOAD", 6),
                 ("DISCARDED", 7),
             ],
+        )
+
+    def test_custom_chat_completions_actions_preserve_nested_enum_order(self) -> None:
+        source = parse_source(
+            "fixture/ClientboundCustomChatCompletionsPacket.java",
+            b"""
+package fixture;
+public record ClientboundCustomChatCompletionsPacket() {
+  public enum Action { ADD, REMOVE, SET; }
+}
+""",
+        )
+        self.assertEqual(
+            [
+                (entry.constant_name, entry.ordinal)
+                for entry in custom_chat_completions_action_entries(source)
+            ],
+            [("ADD", 0), ("REMOVE", 1), ("SET", 2)],
         )
 
     def test_unsupported_register_shape_reports_source_span(self) -> None:

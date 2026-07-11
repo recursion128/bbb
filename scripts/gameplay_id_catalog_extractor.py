@@ -109,6 +109,12 @@ class ResourcePackResponseActionEntry:
     ordinal: int
 
 
+@dataclass(frozen=True)
+class CustomChatCompletionsActionEntry:
+    constant_name: str
+    ordinal: int
+
+
 def _fail(source: JavaSource, expression: JavaExpression, message: str) -> None:
     span = expression.span
     raise GameplayIdExtractionError(
@@ -431,6 +437,19 @@ def resource_pack_response_action_entries(
         )
     ]
     _validate(entries, "resource-pack response action", "ordinal")
+    return entries
+
+
+def custom_chat_completions_action_entries(
+    source: JavaSource, expected_count: int = 3
+) -> list[CustomChatCompletionsActionEntry]:
+    entries = [
+        CustomChatCompletionsActionEntry(name, ordinal)
+        for name, ordinal in _nested_enum_ordinals(
+            source, "Action", "custom-chat completions action", expected_count
+        )
+    ]
+    _validate(entries, "custom-chat completions action", "ordinal")
     return entries
 
 
