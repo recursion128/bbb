@@ -4727,29 +4727,45 @@
       "constant_name": "CLIENTBOUND_BUNDLE_DELIMITER",
       "coverage": {
         "canonical_apply": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-net/src/event_stream/play.rs#PlayClientbound::BundleDelimiter",
+            "vanilla:net/minecraft/network/protocol/BundlerInfo.java#startPacketBundling"
+          ],
+          "gap": "docs/unsupported-features.md#packet-canonical-state",
+          "status": "not-applicable"
         },
         "decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/tests.rs#decodes_bundle_delimiter_packet",
+            "vanilla:net/minecraft/network/protocol/game/ClientboundBundleDelimiterPacket.java#type"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "ownership": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-net/src/event_stream/play.rs#PlayClientbound::BundleDelimiter",
+            "vanilla:net/minecraft/network/PacketBundlePacker.java#decode"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "runtime_side_effect": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
+          "evidence": [
+            "crates/bbb-net/src/event_stream.rs#play_bundle_delimiter_is_transport_noop",
+            "vanilla:net/minecraft/network/protocol/BundlerInfo.java#BUNDLE_SIZE_LIMIT"
+          ],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
           "status": "partial"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/tests.rs#decodes_bundle_delimiter_packet",
+            "crates/bbb-net/src/event_stream.rs#play_bundle_delimiter_is_transport_noop",
+            "crates/bbb-net/src/probe/play.rs#probe_bundle_delimiter_is_transport_noop"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "clientbound",

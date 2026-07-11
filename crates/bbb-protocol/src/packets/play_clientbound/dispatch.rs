@@ -24,7 +24,14 @@ use super::{
 
 pub fn decode_play_clientbound(packet_id: i32, payload: &[u8]) -> Result<PlayClientbound> {
     match packet_id {
-        ids::play::CLIENTBOUND_BUNDLE_DELIMITER => Ok(PlayClientbound::BundleDelimiter),
+        ids::play::CLIENTBOUND_BUNDLE_DELIMITER => {
+            if !payload.is_empty() {
+                return Err(ProtocolError::InvalidData(
+                    "trailing bytes after bundle delimiter packet".to_string(),
+                ));
+            }
+            Ok(PlayClientbound::BundleDelimiter)
+        }
         ids::play::CLIENTBOUND_ADD_ENTITY => {
             let mut decoder = Decoder::new(payload);
             Ok(PlayClientbound::AddEntity(entities::decode_add_entity(

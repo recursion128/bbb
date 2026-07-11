@@ -81,6 +81,11 @@ Owner: `bbb-protocol`
 - Defer configuration/play keepalive responses while client event polling is
   render-frozen, with vanilla's one-minute expiry, instead of always replying
   immediately. Ping/pong remains immediate and is already separate.
+- Assemble play packets between bundle delimiters in the connection owner like
+  `PacketBundlePacker` / `BundlerInfo`: dispatch the bundle as one scheduled
+  unit, reject terminal packets inside it, and enforce the 4096-packet limit.
+  The current stream preserves packet order but treats both delimiters as
+  transport no-ops.
 - Replace the current first-`ClientboundPlayerPositionPacket` trigger for
   `ServerboundPlayerLoadedPacket` with vanilla `LevelLoadTracker` readiness:
   wait for server loading packets, then for the local-player section to be
@@ -718,6 +723,13 @@ back into a todo. Do not delete these.
 
 Vanilla 26.1 has no such behavior, or bbb has no surface for it. Each carries the
 vanilla evidence. Deleting one of these re-opens work already decided against.
+
+## Packet canonical state
+
+- **Bundle delimiter world state.** `ClientboundBundleDelimiterPacket` is
+  consumed by `PacketBundlePacker` / `BundlerInfo` as connection framing before
+  listener dispatch; it has no payload, listener handler, or canonical world
+  mutation. Bundle assembly itself remains a connection-runtime todo above.
 
 ## Entity models and layers
 

@@ -415,6 +415,8 @@ header/footer render 尚未完成，canonical/runtime 保持 partial。
 ServerData 的 trusted MOTD Component + optional icon wire、缺省 icon 保留旧值、ownership 与 apply tests
 已闭合；rich MOTD、icon validation 与 multiplayer server-list persistence 尚未完成，canonical/runtime
 保持 partial。
+BundleDelimiter 的 empty wire、connection ownership 与 no-response tests 已闭合，且无 canonical world
+state；bundle atomic dispatch、terminal gate 与 4096 packet limit 尚未实现，runtime 保持 partial。
 
 完成标准：全部 vanilla 26.1 catalog entry 都有矩阵行；所有目标客户端适用项为
 `complete`，其余只有带 vanilla 依据的 `not-applicable` 或带重启判据的窄 `deferred`；

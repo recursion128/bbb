@@ -298,6 +298,46 @@
         "status": "partial"
       }
     },
+    "play/clientbound/CLIENTBOUND_BUNDLE_DELIMITER": {
+      "canonical_apply": {
+        "evidence": [
+          "crates/bbb-net/src/event_stream/play.rs#PlayClientbound::BundleDelimiter",
+          "vanilla:net/minecraft/network/protocol/BundlerInfo.java#startPacketBundling"
+        ],
+        "gap": "docs/unsupported-features.md#packet-canonical-state",
+        "status": "not-applicable"
+      },
+      "decode": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/tests.rs#decodes_bundle_delimiter_packet",
+          "vanilla:net/minecraft/network/protocol/game/ClientboundBundleDelimiterPacket.java#type"
+        ],
+        "status": "complete"
+      },
+      "ownership": {
+        "evidence": [
+          "crates/bbb-net/src/event_stream/play.rs#PlayClientbound::BundleDelimiter",
+          "vanilla:net/minecraft/network/PacketBundlePacker.java#decode"
+        ],
+        "status": "complete"
+      },
+      "runtime_side_effect": {
+        "evidence": [
+          "crates/bbb-net/src/event_stream.rs#play_bundle_delimiter_is_transport_noop",
+          "vanilla:net/minecraft/network/protocol/BundlerInfo.java#BUNDLE_SIZE_LIMIT"
+        ],
+        "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+        "status": "partial"
+      },
+      "tests": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/tests.rs#decodes_bundle_delimiter_packet",
+          "crates/bbb-net/src/event_stream.rs#play_bundle_delimiter_is_transport_noop",
+          "crates/bbb-net/src/probe/play.rs#probe_bundle_delimiter_is_transport_noop"
+        ],
+        "status": "complete"
+      }
+    },
     "play/clientbound/CLIENTBOUND_PLAYER_POSITION": {
       "canonical_apply": {
         "evidence": [

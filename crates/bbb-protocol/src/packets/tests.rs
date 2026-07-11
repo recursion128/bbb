@@ -816,6 +816,13 @@ fn configuration_clientbound_packet_ids_match_vanilla_26_1_registration_order() 
 fn decodes_bundle_delimiter_packet() {
     let packet = decode_play_clientbound(ids::play::CLIENTBOUND_BUNDLE_DELIMITER, &[]).unwrap();
     assert_eq!(packet, PlayClientbound::BundleDelimiter);
+
+    assert!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_BUNDLE_DELIMITER, &[0])
+            .unwrap_err()
+            .to_string()
+            .contains("trailing bytes after bundle delimiter packet")
+    );
 }
 
 #[test]

@@ -11264,3 +11264,10 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   byte-array icon wire 并拒绝 trailing bytes；缺省 icon 保留旧 icon，decode/ownership/tests 已闭合。
 - [x] bbb 保留 readable MOTD 与 bounded raw icon，但尚未保留 rich Component、执行
   `ServerData.validateIcon` 或持久化 multiplayer server-list entry；canonical/runtime 保持 partial。
+
+## 2026-07-11：bundle-delimiter packet coverage audit
+
+- [x] 对照 `ClientboundBundleDelimiterPacket`、`PacketBundlePacker` 与 `BundlerInfo` 锁定 delimiter
+  empty wire 并拒绝 trailing bytes；它是 connection framing marker，不拥有 canonical world state。
+- [x] bbb connection owner 保持 delimiter 间 packet 的 wire order 且 delimiter 不产生 response/event；
+  尚未聚合 atomic bundle、拒绝 bundle 内 terminal packet 或执行 4096 packet limit，runtime 保持 partial。
