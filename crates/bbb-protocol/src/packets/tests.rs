@@ -2494,6 +2494,32 @@ fn rejects_invalid_cookie_keys() {
 }
 
 #[test]
+fn configuration_store_cookie_enforces_vanilla_payload_limit() {
+    let mut payload = Encoder::new();
+    payload.write_string("bbb:session");
+    payload.write_var_i32(5120);
+    payload.write_bytes(&vec![7; 5120]);
+    assert!(matches!(
+        decode_configuration_clientbound(
+            ids::configuration::CLIENTBOUND_STORE_COOKIE,
+            &payload.into_inner()
+        )
+        .unwrap(),
+        ConfigurationClientbound::StoreCookie(StoreCookie { payload, .. }) if payload.len() == 5120
+    ));
+
+    let mut payload = Encoder::new();
+    payload.write_string("bbb:session");
+    payload.write_var_i32(5121);
+    let error = decode_configuration_clientbound(
+        ids::configuration::CLIENTBOUND_STORE_COOKIE,
+        &payload.into_inner(),
+    )
+    .unwrap_err();
+    assert!(matches!(error, ProtocolError::PacketTooLarge(5121, 5120)));
+}
+
+#[test]
 fn decodes_configuration_common_packets() {
     let mut custom_payload = Encoder::new();
     custom_payload.write_string("minecraft:brand");

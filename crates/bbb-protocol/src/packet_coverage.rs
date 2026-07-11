@@ -300,6 +300,38 @@ mod tests {
         }
     }
 
+    #[test]
+    fn configuration_cookie_family_is_closed() {
+        let ledger = vanilla_packet_coverage_26_1().unwrap();
+        let cookie_packets = BTreeSet::from([
+            "SERVERBOUND_COOKIE_RESPONSE",
+            "CLIENTBOUND_COOKIE_REQUEST",
+            "CLIENTBOUND_STORE_COOKIE",
+        ]);
+        let entries: Vec<_> = ledger
+            .entries
+            .iter()
+            .filter(|entry| {
+                entry.state == "configuration"
+                    && cookie_packets.contains(entry.constant_name.as_str())
+            })
+            .collect();
+        assert_eq!(entries.len(), cookie_packets.len());
+        for entry in entries {
+            for (dimension, cell) in &entry.coverage {
+                assert!(
+                    matches!(
+                        cell.status,
+                        PacketCoverageStatus::Complete | PacketCoverageStatus::NotApplicable
+                    ),
+                    "{}/{dimension} remains {:?}",
+                    entry.constant_name,
+                    cell.status
+                );
+            }
+        }
+    }
+
     fn state_name(state: PacketState) -> &'static str {
         match state {
             PacketState::Handshake => "handshake",

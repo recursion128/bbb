@@ -10853,3 +10853,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] coverage ledger 的 7 个核心 control/handoff packet 已全部收敛为 evidence-backed
   complete/not-applicable；其余 23 个 configuration packet 保持原状态，未由核心状态机测试
   外推 registry/resource-pack/cookie/dialog 等领域语义完成。
+
+## 2026-07-11：configuration cookie coverage audit
+
+- [x] 对照 `ClientCommonPacketListenerImpl.handleRequestCookie/handleStoreCookie` 与
+  `ClientboundStoreCookiePacket.PAYLOAD_STREAM_CODEC`，锁定 configuration session 的 cookie
+  store、命中/缺失 response 和 5120 字节 payload 上限。
+- [x] protocol boundary test 证明 5120 字节可解码、5121 字节在分配前失败；probe integration
+  test 读取并验证同一 state 内的两条 `ServerboundCookieResponsePacket` wire，同时锁定 canonical
+  world counters。configuration 的 request/store/response 三行 coverage 已全部闭合，其他
+  configuration 领域未外推完成。

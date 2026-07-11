@@ -46,7 +46,7 @@ Owner: `bbb-protocol`
   hello response state. Decode login disconnect reasons as Components instead of
   retaining only diagnostic JSON.
 - Complete the remaining configuration registry/tag/known-pack/resource-pack,
-  cookie, code-of-conduct, custom payload/report, transfer, feature and dialog
+  code-of-conduct, custom payload/report, transfer, feature and dialog
   coverage cells; then cover play, movement, inventory, chat, interaction and
   command suggestion end to end.
 

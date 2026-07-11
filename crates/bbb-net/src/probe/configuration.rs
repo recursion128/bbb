@@ -161,7 +161,7 @@ mod tests {
 
     #[tokio::test]
     async fn probe_applies_configuration_packets_to_world() {
-        let (client, _server) = raw_connection_pair().await;
+        let (client, mut server) = raw_connection_pair().await;
         let mut probe = ProbeContext::new(client);
         let pack_id = Uuid::from_u128(0x12345678123456781234567812345678);
         let report_details = BTreeMap::from([
@@ -316,6 +316,33 @@ mod tests {
             }))
             .await
             .unwrap();
+
+        let (packet_id, payload) = server.read_packet().await.unwrap();
+        assert_eq!(packet_id, ids::configuration::SERVERBOUND_RESOURCE_PACK);
+        assert_eq!(payload.len(), 17);
+        let (packet_id, payload) = server.read_packet().await.unwrap();
+        assert_eq!(
+            packet_id,
+            ids::configuration::SERVERBOUND_SELECT_KNOWN_PACKS
+        );
+        assert_eq!(payload, [0]);
+        for (expected_key, expected_payload) in
+            [("bbb:session", Some(&[1, 2, 3][..])), ("bbb:missing", None)]
+        {
+            let (packet_id, payload) = server.read_packet().await.unwrap();
+            assert_eq!(packet_id, ids::configuration::SERVERBOUND_COOKIE_RESPONSE);
+            let mut decoder = Decoder::new(&payload);
+            assert_eq!(decoder.read_string(32767).unwrap(), expected_key);
+            assert_eq!(decoder.read_bool().unwrap(), expected_payload.is_some());
+            if let Some(expected_payload) = expected_payload {
+                let len = decoder.read_len().unwrap();
+                assert_eq!(
+                    decoder.read_exact(len, "cookie payload").unwrap(),
+                    expected_payload
+                );
+            }
+            assert!(decoder.is_empty());
+        }
 
         assert_eq!(
             probe.world.server_brand(),
