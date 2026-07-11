@@ -10067,3 +10067,11 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   `minecraft:temperate` holder default。native model/debug-save 删除手抄 id 与 numeric
   default；动态 registry 顺序、locally controlled ride prediction、AI 和 persistent
   Codec/SNBT 仍由对应 owner 管理。
+
+## 2026-07-11：Generated Villager accessor aliases
+
+- [x] 从完整 generated accessor catalog 导出 `Villager` id19/20 与
+  `ZombieVillager` id19/20/21，并让 native model/converting presentation 删除三份手抄 id。
+  三个 finalized/converting boolean default 由源码 `false` 机械生成；
+  `ZombieVillager.initializeVillagerData()` 依赖 biome 与 RNG，继续显式保持 unresolved，
+  未用固定 `plains/none` 冒充服务端状态，family facade 条目仍开放。

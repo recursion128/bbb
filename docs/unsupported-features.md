@@ -517,6 +517,10 @@ back into a todo. Do not delete these.
   concrete entity consumers still keep local ids/masks until their projections
   migrate to generated descriptors;
   an unresolved typed default/flag diagnostic is not implementation support.
+  `Villager`/`ZombieVillager` accessor ids and mechanically fixed boolean defaults
+  are generated compatibility aliases, but their family facade remains open:
+  `ZombieVillager.initializeVillagerData()` is biome/RNG-dependent and must not be
+  replaced with a guessed fixed default.
 - **Baby `ageScale`** — the `0.5` proportions applied in model `setupAnim`,
   distinct from the projected `SCALE`-attribute `scale`.
 - **Armor trims and the remaining mob-specific armor models.**

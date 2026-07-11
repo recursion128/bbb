@@ -244,6 +244,11 @@ use bbb_world::{
     VANILLA_VEX_DEFAULT_FLAGS as VEX_DEFAULT_FLAGS, VANILLA_VEX_FLAGS_DATA_ID as VEX_FLAGS_DATA_ID,
     VANILLA_VEX_FLAG_CHARGING as VEX_FLAG_IS_CHARGING,
 };
+use bbb_world::{
+    VANILLA_VILLAGER_DATA_DATA_ID as VILLAGER_DATA_DATA_ID,
+    VANILLA_ZOMBIE_VILLAGER_CONVERTING_DATA_ID as ZOMBIE_VILLAGER_CONVERTING_DATA_ID,
+    VANILLA_ZOMBIE_VILLAGER_DATA_DATA_ID as ZOMBIE_VILLAGER_DATA_DATA_ID,
+};
 pub(crate) use bbb_world::{
     VANILLA_WITHER_SKULL_DANGEROUS_DATA_ID as WITHER_SKULL_DANGEROUS_DATA_ID,
     VANILLA_WITHER_SKULL_DEFAULT_DANGEROUS as WITHER_SKULL_DEFAULT_DANGEROUS,
@@ -298,15 +303,6 @@ const ENTITY_EYE_HEIGHT_PADDING: f32 = 0.01;
 const ENTITY_VIEW_VECTOR_LENGTH: f32 = 2.0;
 const ENTITY_POSITION_POINT_SIZE: f32 = 2.0;
 const MANNEQUIN_DEFAULT_MODEL_CUSTOMIZATION: i8 = PlayerModelPartVisibility::ALL_MASK as i8;
-/// Vanilla `ZombieVillager.DATA_CONVERTING_ID` (synced boolean, id 19, right
-/// after the inherited `Zombie` ids). Drives `ZombieVillager.isConverting()`.
-const ZOMBIE_VILLAGER_CONVERTING_DATA_ID: u8 = 19;
-/// Vanilla `Villager.DATA_VILLAGER_DATA` (synced `VillagerData`, serializer 18):
-/// `AbstractVillager.DATA_UNHAPPY_COUNTER` occupies id 18, so the first `Villager` own accessor is id 19.
-const VILLAGER_DATA_DATA_ID: u8 = 19;
-/// Vanilla `ZombieVillager.DATA_VILLAGER_DATA`: `Zombie` consumes baby 16, special-type 17, and
-/// drowned-conversion 18; `ZombieVillager` then defines converting 19 before villager data at 20.
-const ZOMBIE_VILLAGER_DATA_DATA_ID: u8 = 20;
 /// Vanilla `SpellcasterIllager.DATA_SPELL_CASTING_ID` data id (17): the byte holding the spell
 /// id, the first `SpellcasterIllager` accessor after `Raider.IS_CELEBRATING` (16). The byte is
 /// `> 0` while `isCastingSpell()`.

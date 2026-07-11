@@ -978,6 +978,27 @@ mod tests {
         assert_eq!(abstract_villager.own_fields.len(), 1);
         assert_eq!(VANILLA_ABSTRACT_VILLAGER_UNHAPPY_COUNTER_DATA_ID, 18);
         assert_eq!(VANILLA_ABSTRACT_VILLAGER_DEFAULT_UNHAPPY_COUNTER, 0);
+        assert_eq!(VANILLA_VILLAGER_DATA_DATA_ID, 19);
+        assert_eq!(VANILLA_VILLAGER_DATA_FINALIZED_DATA_ID, 20);
+        assert!(!VANILLA_VILLAGER_DEFAULT_DATA_FINALIZED);
+        assert_eq!(VANILLA_ZOMBIE_VILLAGER_CONVERTING_DATA_ID, 19);
+        assert_eq!(VANILLA_ZOMBIE_VILLAGER_DATA_DATA_ID, 20);
+        assert_eq!(VANILLA_ZOMBIE_VILLAGER_DATA_FINALIZED_DATA_ID, 21);
+        assert!(!VANILLA_ZOMBIE_VILLAGER_DEFAULT_CONVERTING);
+        assert!(!VANILLA_ZOMBIE_VILLAGER_DEFAULT_DATA_FINALIZED);
+        let zombie_villager_data = VANILLA_ENTITY_METADATA_ACCESSORS_26_1
+            .iter()
+            .find(|entry| {
+                entry.owner == "net.minecraft.world.entity.monster.zombie.ZombieVillager"
+                    && entry.java_name == "DATA_VILLAGER_DATA"
+            })
+            .expect("generated zombie villager data accessor");
+        assert_eq!(zombie_villager_data.data_id, 20);
+        assert_eq!(zombie_villager_data.typed_default, None);
+        assert_eq!(
+            zombie_villager_data.default_expression,
+            "this.initializeVillagerData ()"
+        );
         let furnace_minecart =
             vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::MinecartFurnace);
         assert_eq!(
