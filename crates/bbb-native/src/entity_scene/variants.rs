@@ -331,7 +331,11 @@ pub(super) fn cat_variant_from_vanilla_registry_id(registry_id: i32) -> CatModel
 pub(super) fn fox_model_kind(values: &[bbb_protocol::packets::EntityDataValue]) -> EntityModelKind {
     EntityModelKind::Fox {
         baby: ageable_baby(values),
-        variant: FoxModelVariant::from_id(entity_data_int(values, FOX_TYPE_DATA_ID, 0)),
+        variant: FoxModelVariant::from_id(entity_data_int(
+            values,
+            FOX_TYPE_DATA_ID,
+            FOX_DEFAULT_VARIANT,
+        )),
     }
 }
 

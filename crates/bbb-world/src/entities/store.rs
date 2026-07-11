@@ -29,6 +29,11 @@ use super::schema::{
     VANILLA_ENDERMAN_DEFAULT_CARRY_STATE as ENDERMAN_DEFAULT_CARRY_STATE,
     VANILLA_ENDERMAN_DEFAULT_CREEPY as ENDERMAN_DEFAULT_CREEPY,
     VANILLA_END_CRYSTAL_BEAM_TARGET_DATA_ID as END_CRYSTAL_BEAM_TARGET_DATA_ID,
+    VANILLA_FOX_DEFAULT_FLAGS as FOX_DEFAULT_FLAGS, VANILLA_FOX_FLAGS_DATA_ID as FOX_FLAGS_DATA_ID,
+    VANILLA_FOX_FLAG_CROUCHING as FOX_FLAG_CROUCHING,
+    VANILLA_FOX_FLAG_FACEPLANTED as FOX_FLAG_FACEPLANTED,
+    VANILLA_FOX_FLAG_POUNCING as FOX_FLAG_POUNCING, VANILLA_FOX_FLAG_SITTING as FOX_FLAG_SITTING,
+    VANILLA_FOX_FLAG_SLEEPING as FOX_FLAG_SLEEPING,
     VANILLA_SHULKER_ATTACH_FACE_DATA_ID as SHULKER_ATTACH_FACE_DATA_ID,
     VANILLA_SNOW_GOLEM_DEFAULT_PUMPKIN_FLAGS as SNOW_GOLEM_DEFAULT_PUMPKIN_FLAGS,
     VANILLA_SNOW_GOLEM_PUMPKIN_DATA_ID as SNOW_GOLEM_PUMPKIN_DATA_ID,
@@ -297,20 +302,6 @@ fn vanilla_mob_item_in_hand_layer_type(entity_type_id: i32) -> bool {
                 | VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID
         )
 }
-
-/// Vanilla `Fox.DATA_FLAGS_ID` data id (19): the byte holding the fox flags, defined after the
-/// `AgeableMob` accessors (`16..=17`) and the fox's own `DATA_TYPE_ID` variant int (18).
-const VANILLA_FOX_FLAGS_DATA_ID: u8 = 19;
-
-/// Vanilla `Fox` flag masks within `DATA_FLAGS_ID`: `FLAG_SITTING=1`, `FLAG_CROUCHING=4`,
-/// `FLAG_POUNCING=16`, `FLAG_SLEEPING=32`, `FLAG_FACEPLANTED=64` (`getFlag(mask) = (byte & mask) != 0`).
-/// `FLAG_INTERESTED=8` drives only the head-tilt accumulator and so is read by the animation layer, not
-/// projected as a render-state bool.
-const FOX_FLAG_SITTING: i8 = 1;
-const FOX_FLAG_CROUCHING: i8 = 4;
-const FOX_FLAG_POUNCING: i8 = 16;
-const FOX_FLAG_SLEEPING: i8 = 32;
-const FOX_FLAG_FACEPLANTED: i8 = 64;
 
 /// Vanilla `WitherBoss.DATA_ID_INV` data id (19): the int spawn-invulnerability countdown
 /// (`getInvulnerableTicks`), the fourth `WitherBoss` accessor after `Mob.DATA_MOB_FLAGS_ID` (15) and
@@ -1669,8 +1660,8 @@ impl EntityStore {
         // accumulator below.
         let is_fox = vanilla_is_fox(identity.entity_type_id);
         let fox_flags = if is_fox {
-            self.metadata_byte(id, VANILLA_FOX_FLAGS_DATA_ID, 0)
-                .unwrap_or(0)
+            self.metadata_byte(id, FOX_FLAGS_DATA_ID, FOX_DEFAULT_FLAGS)
+                .unwrap_or(FOX_DEFAULT_FLAGS)
         } else {
             0
         };

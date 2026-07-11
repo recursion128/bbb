@@ -9902,3 +9902,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   `Variant.DEFAULT -> MEDIUM` 的参数1机械得到 variant id17/default1；越界、非整数或
   accessor 表达式漂移均令 generator 失败。world salmon bounds 与 native model/debug-save
   删除手抄 synced id/default。variant clamp、模型映射和保存字段语义仍由对应 owner 管理。
+
+## 2026-07-11：Generated entity metadata consumer（Fox）
+
+- [x] 从 generated catalog 建立 `AgeableMob -> Fox` family：INT type id18/default0、BYTE
+  flags id19/default0、两项 optional trusted reference id20–21/default none，以及
+  sitting/crouching/interested/pouncing/sleeping/faceplanted/defending masks
+  1/4/8/16/32/64/128；type default 由 `Variant.DEFAULT -> RED(0, …)` 的参数0机械求值。
+  world animation/render-state 与 native model/debug-save 删除手抄 synced id/default/mask；
+  variant clamp、trusted-list SNBT 与动画 easing 仍由对应语义 owner 管理。

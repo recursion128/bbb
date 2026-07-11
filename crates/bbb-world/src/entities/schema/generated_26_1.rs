@@ -118,6 +118,14 @@ const GENERATED_VANILLA_GOAT_LEFT_HORN_DATA_ID: u8 = 19;
 pub const VANILLA_GOAT_LEFT_HORN_DATA_ID: u8 = GENERATED_VANILLA_GOAT_LEFT_HORN_DATA_ID;
 const GENERATED_VANILLA_GOAT_RIGHT_HORN_DATA_ID: u8 = 20;
 pub const VANILLA_GOAT_RIGHT_HORN_DATA_ID: u8 = GENERATED_VANILLA_GOAT_RIGHT_HORN_DATA_ID;
+const GENERATED_VANILLA_FOX_TYPE_DATA_ID: u8 = 18;
+pub const VANILLA_FOX_TYPE_DATA_ID: u8 = GENERATED_VANILLA_FOX_TYPE_DATA_ID;
+const GENERATED_VANILLA_FOX_FLAGS_DATA_ID: u8 = 19;
+pub const VANILLA_FOX_FLAGS_DATA_ID: u8 = GENERATED_VANILLA_FOX_FLAGS_DATA_ID;
+const GENERATED_VANILLA_FOX_TRUSTED_DATA_ID_0: u8 = 20;
+pub const VANILLA_FOX_TRUSTED_DATA_ID_0: u8 = GENERATED_VANILLA_FOX_TRUSTED_DATA_ID_0;
+const GENERATED_VANILLA_FOX_TRUSTED_DATA_ID_1: u8 = 21;
+pub const VANILLA_FOX_TRUSTED_DATA_ID_1: u8 = GENERATED_VANILLA_FOX_TRUSTED_DATA_ID_1;
 const GENERATED_VANILLA_OCELOT_TRUSTING_DATA_ID: u8 = 18;
 pub const VANILLA_OCELOT_TRUSTING_DATA_ID: u8 = GENERATED_VANILLA_OCELOT_TRUSTING_DATA_ID;
 const GENERATED_VANILLA_PANDA_UNHAPPY_COUNTER_DATA_ID: u8 = 18;
@@ -332,6 +340,20 @@ const GENERATED_VANILLA_BEE_FLAG_HAS_STUNG: i8 = 4;
 pub const VANILLA_BEE_FLAG_HAS_STUNG: i8 = GENERATED_VANILLA_BEE_FLAG_HAS_STUNG;
 const GENERATED_VANILLA_BEE_FLAG_HAS_NECTAR: i8 = 8;
 pub const VANILLA_BEE_FLAG_HAS_NECTAR: i8 = GENERATED_VANILLA_BEE_FLAG_HAS_NECTAR;
+const GENERATED_VANILLA_FOX_FLAG_SITTING: i8 = 1;
+pub const VANILLA_FOX_FLAG_SITTING: i8 = GENERATED_VANILLA_FOX_FLAG_SITTING;
+const GENERATED_VANILLA_FOX_FLAG_CROUCHING: i8 = 4;
+pub const VANILLA_FOX_FLAG_CROUCHING: i8 = GENERATED_VANILLA_FOX_FLAG_CROUCHING;
+const GENERATED_VANILLA_FOX_FLAG_INTERESTED: i8 = 8;
+pub const VANILLA_FOX_FLAG_INTERESTED: i8 = GENERATED_VANILLA_FOX_FLAG_INTERESTED;
+const GENERATED_VANILLA_FOX_FLAG_POUNCING: i8 = 16;
+pub const VANILLA_FOX_FLAG_POUNCING: i8 = GENERATED_VANILLA_FOX_FLAG_POUNCING;
+const GENERATED_VANILLA_FOX_FLAG_SLEEPING: i8 = 32;
+pub const VANILLA_FOX_FLAG_SLEEPING: i8 = GENERATED_VANILLA_FOX_FLAG_SLEEPING;
+const GENERATED_VANILLA_FOX_FLAG_FACEPLANTED: i8 = 64;
+pub const VANILLA_FOX_FLAG_FACEPLANTED: i8 = GENERATED_VANILLA_FOX_FLAG_FACEPLANTED;
+const GENERATED_VANILLA_FOX_FLAG_DEFENDING: i8 = -128;
+pub const VANILLA_FOX_FLAG_DEFENDING: i8 = GENERATED_VANILLA_FOX_FLAG_DEFENDING;
 const GENERATED_VANILLA_PANDA_FLAG_SNEEZING: i8 = 2;
 pub const VANILLA_PANDA_FLAG_SNEEZING: i8 = GENERATED_VANILLA_PANDA_FLAG_SNEEZING;
 const GENERATED_VANILLA_PANDA_FLAG_ROLLING: i8 = 4;
@@ -514,6 +536,10 @@ const GENERATED_VANILLA_GOAT_DEFAULT_HAS_LEFT_HORN: bool = true;
 pub const VANILLA_GOAT_DEFAULT_HAS_LEFT_HORN: bool = GENERATED_VANILLA_GOAT_DEFAULT_HAS_LEFT_HORN;
 const GENERATED_VANILLA_GOAT_DEFAULT_HAS_RIGHT_HORN: bool = true;
 pub const VANILLA_GOAT_DEFAULT_HAS_RIGHT_HORN: bool = GENERATED_VANILLA_GOAT_DEFAULT_HAS_RIGHT_HORN;
+const GENERATED_VANILLA_FOX_DEFAULT_TYPE: i32 = 0;
+pub const VANILLA_FOX_DEFAULT_TYPE: i32 = GENERATED_VANILLA_FOX_DEFAULT_TYPE;
+const GENERATED_VANILLA_FOX_DEFAULT_FLAGS: i8 = 0;
+pub const VANILLA_FOX_DEFAULT_FLAGS: i8 = GENERATED_VANILLA_FOX_DEFAULT_FLAGS;
 const GENERATED_VANILLA_OCELOT_DEFAULT_TRUSTING: bool = false;
 pub const VANILLA_OCELOT_DEFAULT_TRUSTING: bool = GENERATED_VANILLA_OCELOT_DEFAULT_TRUSTING;
 const GENERATED_VANILLA_PANDA_DEFAULT_UNHAPPY_COUNTER: i32 = 0;
@@ -9493,7 +9519,7 @@ pub const VANILLA_ENTITY_METADATA_ACCESSORS_26_1: &[VanillaEntityMetadataAccesso
         data_id: 18,
         source_path: "net/minecraft/world/entity/animal/fox/Fox.java",
         default_expression: "Fox.Variant.DEFAULT.getId ()",
-        typed_default: None,
+        typed_default: Some(VanillaEntityMetadataDefault::Int(0)),
     },
     VanillaEntityMetadataAccessorCatalogEntry {
         owner: "net.minecraft.world.entity.animal.fox.Fox",
@@ -11522,6 +11548,13 @@ pub const VANILLA_ENTITY_METADATA_DEFAULT_RESOLVER_EVIDENCE_26_1: &[VanillaEntit
         source_expression: "Salmon.Variant.DEFAULT.id ()",
         reason: "the synced INT default is stored in a nested enum constant rather than an integer expression",
     },
+    VanillaEntityMetadataResolverEvidence {
+        java_class: "net.minecraft.world.entity.animal.fox.Fox",
+        accessor_name: "DATA_TYPE_ID",
+        evidence_member: "net.minecraft.world.entity.animal.fox.Fox.Variant.DEFAULT -> RED",
+        source_expression: "Fox.Variant.DEFAULT.getId ()",
+        reason: "the synced INT default is stored in a nested enum constant rather than an integer expression",
+    },
 ];
 
 pub const VANILLA_ENTITY_METADATA_FLAG_RESOLVER_EVIDENCE_26_1:
@@ -11545,6 +11578,55 @@ pub const VANILLA_ENTITY_METADATA_FLAG_RESOLVER_EVIDENCE_26_1:
         accessor_name: "DATA_FLAGS_ID",
         evidence_member: "FLAG_HAS_NECTAR",
         source_expression: "8",
+        reason: "named vanilla flag constant",
+    },
+    VanillaEntityMetadataResolverEvidence {
+        java_class: "net.minecraft.world.entity.animal.fox.Fox",
+        accessor_name: "DATA_FLAGS_ID",
+        evidence_member: "FLAG_SITTING",
+        source_expression: "1",
+        reason: "named vanilla flag constant",
+    },
+    VanillaEntityMetadataResolverEvidence {
+        java_class: "net.minecraft.world.entity.animal.fox.Fox",
+        accessor_name: "DATA_FLAGS_ID",
+        evidence_member: "FLAG_CROUCHING",
+        source_expression: "4",
+        reason: "named vanilla flag constant",
+    },
+    VanillaEntityMetadataResolverEvidence {
+        java_class: "net.minecraft.world.entity.animal.fox.Fox",
+        accessor_name: "DATA_FLAGS_ID",
+        evidence_member: "FLAG_INTERESTED",
+        source_expression: "8",
+        reason: "named vanilla flag constant",
+    },
+    VanillaEntityMetadataResolverEvidence {
+        java_class: "net.minecraft.world.entity.animal.fox.Fox",
+        accessor_name: "DATA_FLAGS_ID",
+        evidence_member: "FLAG_POUNCING",
+        source_expression: "16",
+        reason: "named vanilla flag constant",
+    },
+    VanillaEntityMetadataResolverEvidence {
+        java_class: "net.minecraft.world.entity.animal.fox.Fox",
+        accessor_name: "DATA_FLAGS_ID",
+        evidence_member: "FLAG_SLEEPING",
+        source_expression: "32",
+        reason: "named vanilla flag constant",
+    },
+    VanillaEntityMetadataResolverEvidence {
+        java_class: "net.minecraft.world.entity.animal.fox.Fox",
+        accessor_name: "DATA_FLAGS_ID",
+        evidence_member: "FLAG_FACEPLANTED",
+        source_expression: "64",
+        reason: "named vanilla flag constant",
+    },
+    VanillaEntityMetadataResolverEvidence {
+        java_class: "net.minecraft.world.entity.animal.fox.Fox",
+        accessor_name: "DATA_FLAGS_ID",
+        evidence_member: "FLAG_DEFENDING",
+        source_expression: "128",
         reason: "named vanilla flag constant",
     },
     VanillaEntityMetadataResolverEvidence {
@@ -13693,6 +13775,77 @@ const GOAT_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFami
     own_flags: GOAT_FLAGS,
 };
 
+const FOX_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_TYPE_ID",
+        data_id: 18,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+        default: VanillaEntityMetadataDefault::Int(0),
+    },
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_FLAGS_ID",
+        data_id: 19,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+        default: VanillaEntityMetadataDefault::Byte(0),
+    },
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_TRUSTED_ID_0",
+        data_id: 20,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_LIVING_ENTITY_REFERENCE_ID,
+        default: VanillaEntityMetadataDefault::OptionalLivingEntityReferenceNone,
+    },
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_TRUSTED_ID_1",
+        data_id: 21,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_LIVING_ENTITY_REFERENCE_ID,
+        default: VanillaEntityMetadataDefault::OptionalLivingEntityReferenceNone,
+    },
+];
+const FOX_FLAGS: &[VanillaEntityMetadataFlagSchema] = &[
+    VanillaEntityMetadataFlagSchema {
+        name: "FLAG_SITTING",
+        data_id: 19,
+        mask: VANILLA_FOX_FLAG_SITTING,
+    },
+    VanillaEntityMetadataFlagSchema {
+        name: "FLAG_CROUCHING",
+        data_id: 19,
+        mask: VANILLA_FOX_FLAG_CROUCHING,
+    },
+    VanillaEntityMetadataFlagSchema {
+        name: "FLAG_INTERESTED",
+        data_id: 19,
+        mask: VANILLA_FOX_FLAG_INTERESTED,
+    },
+    VanillaEntityMetadataFlagSchema {
+        name: "FLAG_POUNCING",
+        data_id: 19,
+        mask: VANILLA_FOX_FLAG_POUNCING,
+    },
+    VanillaEntityMetadataFlagSchema {
+        name: "FLAG_SLEEPING",
+        data_id: 19,
+        mask: VANILLA_FOX_FLAG_SLEEPING,
+    },
+    VanillaEntityMetadataFlagSchema {
+        name: "FLAG_FACEPLANTED",
+        data_id: 19,
+        mask: VANILLA_FOX_FLAG_FACEPLANTED,
+    },
+    VanillaEntityMetadataFlagSchema {
+        name: "FLAG_DEFENDING",
+        data_id: 19,
+        mask: VANILLA_FOX_FLAG_DEFENDING,
+    },
+];
+const FOX_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamilySchema {
+    family: VanillaEntityMetadataFamily::Fox,
+    parent: Some(VanillaEntityMetadataFamily::AgeableMob),
+    inherited_field_count: 18,
+    own_fields: FOX_FIELDS,
+    own_flags: FOX_FLAGS,
+};
+
 const OCELOT_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[VanillaEntityMetadataFieldSchema {
     name: "DATA_TRUSTING",
     data_id: 18,
@@ -14892,6 +15045,7 @@ pub(super) const fn generated_entity_metadata_schema(
         VanillaEntityMetadataFamily::Dolphin => &DOLPHIN_SCHEMA,
         VanillaEntityMetadataFamily::GlowSquid => &GLOWSQUID_SCHEMA,
         VanillaEntityMetadataFamily::Goat => &GOAT_SCHEMA,
+        VanillaEntityMetadataFamily::Fox => &FOX_SCHEMA,
         VanillaEntityMetadataFamily::Ocelot => &OCELOT_SCHEMA,
         VanillaEntityMetadataFamily::Panda => &PANDA_SCHEMA,
         VanillaEntityMetadataFamily::PolarBear => &POLARBEAR_SCHEMA,

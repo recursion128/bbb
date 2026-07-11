@@ -111,6 +111,9 @@ pub(crate) use bbb_world::{
     VANILLA_END_CRYSTAL_SHOW_BOTTOM_DATA_ID as END_CRYSTAL_SHOW_BOTTOM_DATA_ID,
 };
 use bbb_world::{
+    VANILLA_FOX_DEFAULT_TYPE as FOX_DEFAULT_VARIANT, VANILLA_FOX_TYPE_DATA_ID as FOX_TYPE_DATA_ID,
+};
+use bbb_world::{
     VANILLA_GHAST_CHARGING_DATA_ID as GHAST_IS_CHARGING_DATA_ID,
     VANILLA_GHAST_DEFAULT_CHARGING as GHAST_DEFAULT_CHARGING,
 };
@@ -300,9 +303,6 @@ const PIG_VARIANT_DATA_ID: u8 = 19;
 // accessor follows Mob.DATA_MOB_FLAGS_ID (15) and the two AgeableMob accessors DATA_BABY_ID (16) /
 // AGE_LOCKED (17).
 const FROG_VARIANT_DATA_ID: u8 = 18;
-// Vanilla Fox.DATA_TYPE_ID (18, INT): the first `Fox` accessor (`Fox extends Animal`), holding the
-// `Fox.Variant` id; `Fox.DATA_FLAGS_ID` follows at 19.
-const FOX_TYPE_DATA_ID: u8 = 18;
 // Vanilla Shulker.DATA_COLOR_ID (18, BYTE): after Mob.DATA_MOB_FLAGS_ID (15) and the two `Shulker`
 // accessors DATA_ATTACH_FACE_ID (16) / DATA_PEEK_ID (17). `getColor()` returns the dye for 0..=15
 // and `null` (the default, byte 16) otherwise.

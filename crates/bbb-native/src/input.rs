@@ -211,6 +211,16 @@ use bbb_world::{
     VANILLA_ABSTRACT_ARROW_PIERCE_LEVEL_DATA_ID as ABSTRACT_ARROW_PIERCE_LEVEL_DATA_ID,
 };
 use bbb_world::{
+    VANILLA_FOX_DEFAULT_FLAGS as FOX_DEFAULT_FLAGS,
+    VANILLA_FOX_DEFAULT_TYPE as FOX_DEFAULT_VARIANT_ID,
+    VANILLA_FOX_FLAGS_DATA_ID as FOX_FLAGS_DATA_ID,
+    VANILLA_FOX_FLAG_CROUCHING as FOX_FLAG_CROUCHING, VANILLA_FOX_FLAG_SITTING as FOX_FLAG_SITTING,
+    VANILLA_FOX_FLAG_SLEEPING as FOX_FLAG_SLEEPING,
+    VANILLA_FOX_TRUSTED_DATA_ID_0 as FOX_TRUSTED_DATA_ID_0,
+    VANILLA_FOX_TRUSTED_DATA_ID_1 as FOX_TRUSTED_DATA_ID_1,
+    VANILLA_FOX_TYPE_DATA_ID as FOX_TYPE_DATA_ID,
+};
+use bbb_world::{
     VANILLA_RABBIT_DEFAULT_TYPE as RABBIT_DEFAULT_TYPE,
     VANILLA_RABBIT_TYPE_DATA_ID as RABBIT_TYPE_DATA_ID,
     VANILLA_SALMON_DEFAULT_VARIANT as SALMON_DEFAULT_VARIANT,
@@ -505,14 +515,6 @@ const CAT_SOUND_VARIANT_DATA_ID: u8 = 24;
 const CAT_DEFAULT_VARIANT_ID: i32 = 1;
 const CAT_DEFAULT_SOUND_VARIANT_ID: i32 = 0;
 const CAT_DEFAULT_COLLAR_COLOR_ID: i32 = 14;
-const FOX_TYPE_DATA_ID: u8 = 18;
-const FOX_FLAGS_DATA_ID: u8 = 19;
-const FOX_TRUSTED_DATA_ID_0: u8 = 20;
-const FOX_TRUSTED_DATA_ID_1: u8 = 21;
-const FOX_FLAG_SITTING: i8 = 1;
-const FOX_FLAG_CROUCHING: i8 = 4;
-const FOX_FLAG_SLEEPING: i8 = 32;
-const FOX_DEFAULT_VARIANT_ID: i32 = 0;
 const WOLF_COLLAR_COLOR_DATA_ID: u8 = 21;
 const WOLF_ANGER_END_TIME_DATA_ID: u8 = 22;
 const WOLF_VARIANT_DATA_ID: u8 = 23;
@@ -6387,7 +6389,8 @@ fn cat_sound_variant_resource_id(variant: i32) -> Option<&'static str> {
 }
 
 fn debug_push_fox_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
-    let flags = debug_entity_data_byte_present(entity, FOX_FLAGS_DATA_ID).unwrap_or(0);
+    let flags =
+        debug_entity_data_byte_present(entity, FOX_FLAGS_DATA_ID).unwrap_or(FOX_DEFAULT_FLAGS);
     let trusted = [FOX_TRUSTED_DATA_ID_0, FOX_TRUSTED_DATA_ID_1]
         .into_iter()
         .filter_map(|data_id| debug_entity_data_optional_living_reference_present(entity, data_id))

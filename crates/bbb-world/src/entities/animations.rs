@@ -44,6 +44,9 @@ use super::schema::{
     VANILLA_CREEPER_DEFAULT_SWELL_DIR as CREEPER_DEFAULT_SWELL_DIR,
     VANILLA_CREEPER_IGNITED_DATA_ID as CREEPER_IGNITED_DATA_ID,
     VANILLA_CREEPER_SWELL_DIR_DATA_ID as CREEPER_SWELL_DIR_DATA_ID,
+    VANILLA_FOX_DEFAULT_FLAGS as FOX_DEFAULT_FLAGS, VANILLA_FOX_FLAGS_DATA_ID as FOX_FLAGS_DATA_ID,
+    VANILLA_FOX_FLAG_CROUCHING as FOX_FLAG_CROUCHING,
+    VANILLA_FOX_FLAG_INTERESTED as FOX_FLAG_INTERESTED,
     VANILLA_GUARDIAN_ATTACK_TARGET_DATA_ID as GUARDIAN_ATTACK_TARGET_DATA_ID,
     VANILLA_GUARDIAN_DEFAULT_ATTACK_TARGET as GUARDIAN_DEFAULT_ATTACK_TARGET,
     VANILLA_GUARDIAN_DEFAULT_MOVING as GUARDIAN_DEFAULT_MOVING,
@@ -223,18 +226,6 @@ const AXOLOTL_ANIMATOR_LENGTH: i32 = 10;
 /// Vanilla `Piglin.DATA_IS_CHARGING_CROSSBOW` synched-data id (18, the regular piglin's own slot — past
 /// `DATA_BABY_ID`, `DATA_IS_IMMUNE_TO_ZOMBIFICATION`). Drives the same crossbow-draw counter as the
 /// pillager (the flag is a different id on a different class, so read it under a piglin type gate).
-/// Vanilla `Fox.DATA_FLAGS_ID` synced metadata id: `Entity` (`0..=7`),
-/// `LivingEntity` (`8..=14`), `Mob` (`15`) and `AgeableMob` (`16..=17`) precede
-/// the fox's own `DATA_TYPE_ID` (`18`, the variant int) and then the flags byte
-/// (`19`). `getFlag(mask) = (byte19 & mask) != 0`.
-const FOX_FLAGS_DATA_ID: u8 = 19;
-/// Vanilla `Fox.FLAG_CROUCHING`: the synced crouch flag that drives both the
-/// client `crouchAmount` accumulator and the `FoxModel.setCrouchingPose`.
-const FOX_FLAG_CROUCHING: i8 = 4;
-/// Vanilla `Fox.FLAG_INTERESTED`: the synced interest flag that drives the
-/// client `interestedAngle` accumulator (the head tilt). Not a render-state
-/// field itself — only its eased angle is projected.
-const FOX_FLAG_INTERESTED: i8 = 8;
 /// Vanilla `Fox.interestedAngle` per-tick ease toward the `FLAG_INTERESTED`
 /// target: `interestedAngle += (target - interestedAngle) * 0.4`.
 const FOX_INTERESTED_EASE: f32 = 0.4;
@@ -6199,7 +6190,7 @@ fn equine_pose_flags(data_values: &[EntityDataValue]) -> (bool, bool, bool) {
 
 /// Vanilla `Fox.isInterested()` = `getFlag(FLAG_INTERESTED)` = `(flags & 8) != 0`.
 fn fox_is_interested(data_values: &[EntityDataValue]) -> bool {
-    entity_data_byte(data_values, FOX_FLAGS_DATA_ID, 0) & FOX_FLAG_INTERESTED != 0
+    entity_data_byte(data_values, FOX_FLAGS_DATA_ID, FOX_DEFAULT_FLAGS) & FOX_FLAG_INTERESTED != 0
 }
 
 /// Vanilla `Wolf.isInterested()` = `entityData.get(DATA_INTERESTED_ID)`.
@@ -6219,7 +6210,7 @@ pub(crate) fn cat_relax_state_one(data_values: &[EntityDataValue]) -> bool {
 
 /// Vanilla `Fox.isCrouching()` = `getFlag(FLAG_CROUCHING)` = `(flags & 4) != 0`.
 fn fox_is_crouching(data_values: &[EntityDataValue]) -> bool {
-    entity_data_byte(data_values, FOX_FLAGS_DATA_ID, 0) & FOX_FLAG_CROUCHING != 0
+    entity_data_byte(data_values, FOX_FLAGS_DATA_ID, FOX_DEFAULT_FLAGS) & FOX_FLAG_CROUCHING != 0
 }
 
 /// Vanilla `Creeper.tick`: the fuse advances by `getSwellDir()`, but an ignited

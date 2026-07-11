@@ -28,6 +28,7 @@ pub enum VanillaEntityMetadataFamily {
     Dolphin,
     GlowSquid,
     Goat,
+    Fox,
     Ocelot,
     Panda,
     PolarBear,
@@ -368,6 +369,7 @@ mod tests {
             VanillaEntityMetadataFamily::Dolphin,
             VanillaEntityMetadataFamily::GlowSquid,
             VanillaEntityMetadataFamily::Goat,
+            VanillaEntityMetadataFamily::Fox,
             VanillaEntityMetadataFamily::Ocelot,
             VanillaEntityMetadataFamily::Panda,
             VanillaEntityMetadataFamily::PolarBear,
@@ -544,6 +546,24 @@ mod tests {
         assert!(!VANILLA_GOAT_DEFAULT_SCREAMING);
         assert!(VANILLA_GOAT_DEFAULT_HAS_LEFT_HORN);
         assert!(VANILLA_GOAT_DEFAULT_HAS_RIGHT_HORN);
+        let fox = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Fox);
+        assert_eq!(fox.parent, Some(VanillaEntityMetadataFamily::AgeableMob));
+        assert_eq!(fox.inherited_field_count, 18);
+        assert_eq!(fox.own_fields.len(), 4);
+        assert_eq!(fox.own_flags.len(), 7);
+        assert_eq!(VANILLA_FOX_TYPE_DATA_ID, 18);
+        assert_eq!(VANILLA_FOX_FLAGS_DATA_ID, 19);
+        assert_eq!(VANILLA_FOX_TRUSTED_DATA_ID_0, 20);
+        assert_eq!(VANILLA_FOX_TRUSTED_DATA_ID_1, 21);
+        assert_eq!(VANILLA_FOX_DEFAULT_TYPE, 0);
+        assert_eq!(VANILLA_FOX_DEFAULT_FLAGS, 0);
+        assert_eq!(VANILLA_FOX_FLAG_SITTING, 1);
+        assert_eq!(VANILLA_FOX_FLAG_CROUCHING, 4);
+        assert_eq!(VANILLA_FOX_FLAG_INTERESTED, 8);
+        assert_eq!(VANILLA_FOX_FLAG_POUNCING, 16);
+        assert_eq!(VANILLA_FOX_FLAG_SLEEPING, 32);
+        assert_eq!(VANILLA_FOX_FLAG_FACEPLANTED, 64);
+        assert_eq!(VANILLA_FOX_FLAG_DEFENDING, -128);
         let ocelot = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Ocelot);
         assert_eq!(ocelot.parent, Some(VanillaEntityMetadataFamily::AgeableMob));
         assert_eq!(ocelot.inherited_field_count, 18);
@@ -652,7 +672,7 @@ mod tests {
         assert_eq!(VANILLA_SALMON_DEFAULT_VARIANT, 1);
         assert_eq!(
             VANILLA_ENTITY_METADATA_DEFAULT_RESOLVER_EVIDENCE_26_1.len(),
-            3
+            4
         );
         let default_evidence = |java_class| {
             VANILLA_ENTITY_METADATA_DEFAULT_RESOLVER_EVIDENCE_26_1
@@ -687,6 +707,12 @@ mod tests {
         assert_eq!(
             salmon_default_evidence.source_expression,
             "Salmon.Variant.DEFAULT.id ()"
+        );
+        let fox_default_evidence = default_evidence("net.minecraft.world.entity.animal.fox.Fox");
+        assert_eq!(fox_default_evidence.accessor_name, "DATA_TYPE_ID");
+        assert_eq!(
+            fox_default_evidence.source_expression,
+            "Fox.Variant.DEFAULT.getId ()"
         );
         for evidence in VANILLA_ENTITY_METADATA_DEFAULT_RESOLVER_EVIDENCE_26_1 {
             assert!(!evidence.evidence_member.is_empty());
