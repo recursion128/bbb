@@ -146,6 +146,13 @@ class RemoteDebugSampleTypeEntry:
     ordinal: int
 
 
+@dataclass(frozen=True)
+class ObjectiveRenderTypeEntry:
+    constant_name: str
+    ordinal: int
+    serialized_name: str
+
+
 def _fail(source: JavaSource, expression: JavaExpression, message: str) -> None:
     span = expression.span
     raise GameplayIdExtractionError(
@@ -572,6 +579,26 @@ def remote_debug_sample_type_entries(
             f"expected {expected_count} remote debug sample types, extracted {len(entries)}"
         )
     _validate(entries, "remote debug sample type", "ordinal")
+    return entries
+
+
+def objective_render_type_entries(
+    source: JavaSource, expected_count: int = 2
+) -> list[ObjectiveRenderTypeEntry]:
+    entries = []
+    for ordinal, (name, arguments) in enumerate(
+        _nested_enum_constants(source, "RenderType", "objective render type")
+    ):
+        if len(arguments) != 1:
+            expression = arguments[0] if arguments else source.expression(source.types[0].node)
+            _fail(source, expression, f"objective render type {name} must have one argument")
+        entries.append(ObjectiveRenderTypeEntry(name, ordinal, _string(source, arguments[0])))
+    if len(entries) != expected_count:
+        raise GameplayIdExtractionError(
+            f"expected {expected_count} objective render types, extracted {len(entries)}"
+        )
+    _validate(entries, "objective render type", "ordinal")
+    _validate(entries, "objective render type", "serialized_name")
     return entries
 
 

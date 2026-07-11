@@ -332,11 +332,7 @@ impl WorldStore {
 }
 
 fn objective_render_type_name(render_type: ProtocolObjectiveRenderType) -> String {
-    match render_type {
-        ProtocolObjectiveRenderType::Integer => "integer",
-        ProtocolObjectiveRenderType::Hearts => "hearts",
-    }
-    .to_string()
+    render_type.as_str().to_string()
 }
 
 fn scoreboard_display_slot_name(slot: ProtocolScoreboardDisplaySlot) -> String {

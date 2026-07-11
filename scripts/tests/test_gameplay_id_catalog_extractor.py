@@ -24,6 +24,7 @@ from gameplay_id_catalog_extractor import (  # noqa: E402
     game_type_not_set_id,
     heightmap_type_entries,
     mob_effect_entries,
+    objective_render_type_entries,
     player_info_action_entries,
     player_action_kind_entries,
     player_command_action_entries,
@@ -384,6 +385,26 @@ public enum RemoteDebugSampleType {
                 for entry in remote_debug_sample_type_entries(source)
             ],
             [("TICK_TIME", 0)],
+        )
+
+    def test_objective_render_types_preserve_nested_order_and_names(self) -> None:
+        source = parse_source(
+            "fixture/ObjectiveCriteria.java",
+            b"""
+package fixture;
+public class ObjectiveCriteria {
+  public enum RenderType {
+    INTEGER("integer"), HEARTS("hearts");
+  }
+}
+""",
+        )
+        self.assertEqual(
+            [
+                (entry.constant_name, entry.ordinal, entry.serialized_name)
+                for entry in objective_render_type_entries(source)
+            ],
+            [("INTEGER", 0, "integer"), ("HEARTS", 1, "hearts")],
         )
 
     def test_unsupported_register_shape_reports_source_span(self) -> None:

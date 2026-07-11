@@ -10540,3 +10540,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   `"tick_time"` 展示语义和原 invalid-ordinal `InvalidData` 诊断。生成顺序/反向门禁、
   protocol decode、world/net 转发和 native F3+2 TPS sampler focused tests 不改语义通过；
   debug subscription 与 chart 算法仍由原 client owner 手写。
+
+## 2026-07-11：Generated objective render type catalog
+
+- [x] gameplay-id extractor 通过共享 Tree-sitter frontend 读取 vanilla
+  `ObjectiveCriteria.RenderType` nested enum 的 `INTEGER/HEARTS` 声明顺序及显式
+  `"integer"/"hearts"` 名称，生成 typed catalog/ordinal/name lookup。protocol
+  scoreboard facade 保持原 `ObjectiveRenderType` re-export，删除 decode ordinal match；
+  world scoreboard 删除平行名称 match。新增 invalid ordinal 诊断测试，生成完整性/唯一性/
+  反向门禁以及 protocol/world/net/native scoreboard focused tests 均通过；scoreboard method、
+  number format 与 HUD 渲染语义仍由原 owner 手写。

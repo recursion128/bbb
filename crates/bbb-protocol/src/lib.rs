@@ -27,6 +27,7 @@ pub mod ids;
 pub mod item_types;
 pub mod menu_types;
 pub mod mob_effect_types;
+pub mod objective_render_types;
 pub mod packet_catalog;
 pub mod packets;
 pub mod particle_types;

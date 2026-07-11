@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::codec::{Decoder, ProtocolError, Result};
+pub use crate::objective_render_types::ObjectiveRenderType;
 
 use super::{
     decode_component_summary_from_decoder, decode_nullable_string,
@@ -109,26 +110,6 @@ impl SetObjectiveMethod {
 
     fn has_parameters(self) -> bool {
         matches!(self, Self::Add | Self::Change)
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum ObjectiveRenderType {
-    Integer,
-    Hearts,
-}
-
-impl ObjectiveRenderType {
-    fn from_ordinal(ordinal: i32) -> Result<Self> {
-        Ok(match ordinal {
-            0 => Self::Integer,
-            1 => Self::Hearts,
-            other => {
-                return Err(ProtocolError::InvalidData(format!(
-                    "invalid objective render type {other}"
-                )))
-            }
-        })
     }
 }
 
@@ -258,7 +239,12 @@ pub(super) fn decode_set_objective(decoder: &mut Decoder<'_>) -> Result<SetObjec
     let parameters = if method.has_parameters() {
         Some(SetObjectiveParameters {
             display_name: decode_component_summary_from_decoder(decoder)?,
-            render_type: ObjectiveRenderType::from_ordinal(decoder.read_var_i32()?)?,
+            render_type: {
+                let ordinal = decoder.read_var_i32()?;
+                ObjectiveRenderType::from_ordinal(ordinal).ok_or_else(|| {
+                    ProtocolError::InvalidData(format!("invalid objective render type {ordinal}"))
+                })?
+            },
             number_format: decode_optional_trailing_number_format(decoder)?,
         })
     } else {
@@ -404,6 +390,22 @@ mod tests {
                 parameters: None,
             })
         );
+    }
+
+    #[test]
+    fn rejects_invalid_scoreboard_objective_render_type() {
+        let mut payload = Encoder::new();
+        payload.write_string("kills");
+        payload.write_i8(0);
+        payload.write_bytes(&nbt_string_root("Kills"));
+        payload.write_var_i32(2);
+
+        let error =
+            decode_play_clientbound(ids::play::CLIENTBOUND_SET_OBJECTIVE, &payload.into_inner())
+                .unwrap_err();
+        assert!(error
+            .to_string()
+            .contains("invalid objective render type 2"));
     }
 
     #[test]
