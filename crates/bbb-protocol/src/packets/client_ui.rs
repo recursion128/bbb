@@ -52,9 +52,15 @@ pub(crate) fn decode_open_sign_editor(decoder: &mut Decoder<'_>) -> Result<OpenS
 }
 
 pub(crate) fn decode_play_pong_response(decoder: &mut Decoder<'_>) -> Result<PongResponse> {
-    Ok(PongResponse {
+    let response = PongResponse {
         time: decoder.read_i64()?,
-    })
+    };
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after pong response packet".to_string(),
+        ));
+    }
+    Ok(response)
 }
 
 #[cfg(test)]

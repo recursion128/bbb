@@ -11271,3 +11271,10 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   empty wire 并拒绝 trailing bytes；它是 connection framing marker，不拥有 canonical world state。
 - [x] bbb connection owner 保持 delimiter 间 packet 的 wire order 且 delimiter 不产生 response/event；
   尚未聚合 atomic bundle、拒绝 bundle 内 terminal packet 或执行 4096 packet limit，runtime 保持 partial。
+
+## 2026-07-11：play pong-response packet coverage audit
+
+- [x] 对照 `ClientboundPongResponsePacket`、`PingDebugMonitor.tick/onPongReceived` 与
+  `ClientPacketListener.tick` 锁定 echoed i64 wire 并拒绝 trailing bytes。
+- [x] F3+3 可见时 client tick 发送当前毫秒 PingRequest，response 驱动 240-sample latency logger 与
+  network chart；protocol/world/net/native/driver tests 闭合五格，未混同 common Ping/Pong keepalive。

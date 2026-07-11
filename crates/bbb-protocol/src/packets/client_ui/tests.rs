@@ -82,6 +82,16 @@ fn decodes_pong_response_packet() {
         packet,
         PlayClientbound::PongResponse(PongResponse { time: 123456789 })
     );
+
+    let mut trailing = Encoder::new();
+    trailing.write_i64(123456789);
+    trailing.write_u8(0);
+    assert!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_PONG_RESPONSE, &trailing.into_inner())
+            .unwrap_err()
+            .to_string()
+            .contains("trailing bytes after pong response packet")
+    );
 }
 
 #[test]

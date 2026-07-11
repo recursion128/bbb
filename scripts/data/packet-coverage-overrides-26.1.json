@@ -338,6 +338,48 @@
         "status": "complete"
       }
     },
+    "play/clientbound/CLIENTBOUND_PONG_RESPONSE": {
+      "canonical_apply": {
+        "evidence": [
+          "crates/bbb-world/src/client/ui.rs#apply_pong_response",
+          "vanilla:net/minecraft/client/multiplayer/PingDebugMonitor.java#onPongReceived"
+        ],
+        "status": "complete"
+      },
+      "decode": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/client_ui/tests.rs#decodes_pong_response_packet",
+          "vanilla:net/minecraft/network/protocol/ping/ClientboundPongResponsePacket.java#STREAM_CODEC"
+        ],
+        "status": "complete"
+      },
+      "ownership": {
+        "evidence": [
+          "crates/bbb-world/src/play_apply.rs#PlayClientbound::PongResponse",
+          "crates/bbb-native/src/runtime.rs#record_pong_response"
+        ],
+        "status": "complete"
+      },
+      "runtime_side_effect": {
+        "evidence": [
+          "crates/bbb-native/src/runtime.rs#HudDebugNetworkSampler",
+          "crates/bbb-net/src/driver/commands.rs#send_ping_request",
+          "vanilla:net/minecraft/client/multiplayer/PingDebugMonitor.java#tick"
+        ],
+        "status": "complete"
+      },
+      "tests": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/client_ui/tests.rs#decodes_pong_response_packet",
+          "crates/bbb-world/src/client/ui.rs#tracks_client_ui_pong_response",
+          "crates/bbb-net/src/probe/play.rs#probe_applies_client_ui_packets_to_world",
+          "crates/bbb-native/src/runtime/tests.rs#hud_debug_network_sampler_logs_bandwidth_and_debug_ping_ticks",
+          "crates/bbb-native/src/runtime/tests.rs#hud_debug_overlay_projects_network_charts_for_connected_f3_3",
+          "crates/bbb-net/src/driver/commands/tests.rs#send_ping_request_encodes_play_ping_request_packet"
+        ],
+        "status": "complete"
+      }
+    },
     "play/clientbound/CLIENTBOUND_PLAYER_POSITION": {
       "canonical_apply": {
         "evidence": [
