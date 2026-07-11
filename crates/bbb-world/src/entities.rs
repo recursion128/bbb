@@ -131,6 +131,7 @@ pub use schema::{
     VANILLA_ENTITY_METADATA_FLAGS_26_1, VANILLA_ENTITY_METADATA_FLAG_RESOLVER_EVIDENCE_26_1,
     VANILLA_ENTITY_TYPE_METADATA_26_1,
 };
+pub use schema::{VANILLA_EXPERIENCE_ORB_DEFAULT_VALUE, VANILLA_EXPERIENCE_ORB_VALUE_DATA_ID};
 pub use schema::{
     VANILLA_INTERACTION_DEFAULT_HEIGHT, VANILLA_INTERACTION_DEFAULT_RESPONSE,
     VANILLA_INTERACTION_DEFAULT_WIDTH, VANILLA_INTERACTION_HEIGHT_DATA_ID,
@@ -1983,10 +1984,6 @@ pub enum WolfArmorCrackiness {
 /// chunk light is unavailable so it renders bright rather than dark, matching
 /// the `EntityRenderState.lightCoords` default.
 pub(crate) const ENTITY_LIGHT_PROBE_FULL_BRIGHT: TerrainLight = TerrainLight { sky: 15, block: 15 };
-/// Vanilla `ExperienceOrb.DATA_VALUE`: `ExperienceOrb` extends base `Entity`,
-/// whose synced data ids occupy `0..=7`.
-pub const VANILLA_EXPERIENCE_ORB_VALUE_DATA_ID: u8 = 8;
-
 fn entity_model_source_full_bright_light() -> TerrainLight {
     ENTITY_LIGHT_PROBE_FULL_BRIGHT
 }

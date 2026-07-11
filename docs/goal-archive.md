@@ -9635,3 +9635,10 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   world/native 手抄。world pick bounds 与 F3+I save projection 统一引用 generated aliases；
   focused tests 锁定继承 offset、serializer/default、dynamic width/height bounds 与保存语义。
   未修改交互命中、响应结果、attack/interaction 私有记录或 renderer 行为。
+
+## 2026-07-11：Generated entity metadata consumer（ExperienceOrb）
+
+- [x] 从 generated catalog 建立 `Entity -> ExperienceOrb` compatibility family：INT
+  `DATA_VALUE` id 8/default 0 替代 world 的公开手抄常量，并由 native F3+I save
+  projection 消费同一 default alias。focused tests 锁定继承 offset、serializer/default、
+  orb value projection 与保存语义。未修改吸附/合并/拾取、客户端移动、icon 或 renderer。

@@ -1,6 +1,7 @@
 pub use crate::advancements::*;
 pub use crate::client::state::*;
 pub use crate::entities::state::*;
+pub use crate::entities::VANILLA_EXPERIENCE_ORB_DEFAULT_VALUE;
 pub use crate::entities::{
     vanilla_entity_metadata_field, vanilla_entity_metadata_schema, vanilla_entity_type_is_living,
     LocalPlayerVehicleHealth, VanillaEntityMetadataAccessorCatalogEntry,

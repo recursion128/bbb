@@ -122,6 +122,8 @@ const GENERATED_VANILLA_INTERACTION_HEIGHT_DATA_ID: u8 = 9;
 pub const VANILLA_INTERACTION_HEIGHT_DATA_ID: u8 = GENERATED_VANILLA_INTERACTION_HEIGHT_DATA_ID;
 const GENERATED_VANILLA_INTERACTION_RESPONSE_DATA_ID: u8 = 10;
 pub const VANILLA_INTERACTION_RESPONSE_DATA_ID: u8 = GENERATED_VANILLA_INTERACTION_RESPONSE_DATA_ID;
+const GENERATED_VANILLA_EXPERIENCE_ORB_VALUE_DATA_ID: u8 = 8;
+pub const VANILLA_EXPERIENCE_ORB_VALUE_DATA_ID: u8 = GENERATED_VANILLA_EXPERIENCE_ORB_VALUE_DATA_ID;
 const GENERATED_VANILLA_VEHICLE_HURT_TIME_DATA_ID: u8 = 8;
 pub const VANILLA_VEHICLE_HURT_TIME_DATA_ID: u8 = GENERATED_VANILLA_VEHICLE_HURT_TIME_DATA_ID;
 const GENERATED_VANILLA_VEHICLE_HURT_DIR_DATA_ID: u8 = 9;
@@ -306,6 +308,9 @@ pub const VANILLA_INTERACTION_DEFAULT_HEIGHT: f32 = GENERATED_VANILLA_INTERACTIO
 const GENERATED_VANILLA_INTERACTION_DEFAULT_RESPONSE: bool = false;
 pub const VANILLA_INTERACTION_DEFAULT_RESPONSE: bool =
     GENERATED_VANILLA_INTERACTION_DEFAULT_RESPONSE;
+const GENERATED_VANILLA_EXPERIENCE_ORB_DEFAULT_VALUE: i32 = 0;
+pub const VANILLA_EXPERIENCE_ORB_DEFAULT_VALUE: i32 =
+    GENERATED_VANILLA_EXPERIENCE_ORB_DEFAULT_VALUE;
 const GENERATED_VANILLA_VEHICLE_DEFAULT_HURT_TIME: i32 = 0;
 pub const VANILLA_VEHICLE_DEFAULT_HURT_TIME: i32 = GENERATED_VANILLA_VEHICLE_DEFAULT_HURT_TIME;
 const GENERATED_VANILLA_VEHICLE_DEFAULT_HURT_DIR: i32 = 1;
@@ -13269,6 +13274,22 @@ const INTERACTION_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetad
     own_flags: INTERACTION_FLAGS,
 };
 
+const EXPERIENCEORB_FIELDS: &[VanillaEntityMetadataFieldSchema] =
+    &[VanillaEntityMetadataFieldSchema {
+        name: "DATA_VALUE",
+        data_id: 8,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+        default: VanillaEntityMetadataDefault::Int(0),
+    }];
+const EXPERIENCEORB_FLAGS: &[VanillaEntityMetadataFlagSchema] = &[];
+const EXPERIENCEORB_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamilySchema {
+    family: VanillaEntityMetadataFamily::ExperienceOrb,
+    parent: Some(VanillaEntityMetadataFamily::Entity),
+    inherited_field_count: 8,
+    own_fields: EXPERIENCEORB_FIELDS,
+    own_flags: EXPERIENCEORB_FLAGS,
+};
+
 const VEHICLEENTITY_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[
     VanillaEntityMetadataFieldSchema {
         name: "DATA_ID_HURT",
@@ -13504,6 +13525,7 @@ pub(super) const fn generated_entity_metadata_schema(
         VanillaEntityMetadataFamily::WitherSkull => &WITHERSKULL_SCHEMA,
         VanillaEntityMetadataFamily::EndCrystal => &ENDCRYSTAL_SCHEMA,
         VanillaEntityMetadataFamily::Interaction => &INTERACTION_SCHEMA,
+        VanillaEntityMetadataFamily::ExperienceOrb => &EXPERIENCEORB_SCHEMA,
         VanillaEntityMetadataFamily::VehicleEntity => &VEHICLEENTITY_SCHEMA,
         VanillaEntityMetadataFamily::AbstractBoat => &ABSTRACTBOAT_SCHEMA,
         VanillaEntityMetadataFamily::AbstractMinecart => &ABSTRACTMINECART_SCHEMA,

@@ -77,6 +77,7 @@ FAMILIES = (
         "Entity",
     ),
     FamilySpec("Interaction", "net.minecraft.world.entity.Interaction", "Entity"),
+    FamilySpec("ExperienceOrb", "net.minecraft.world.entity.ExperienceOrb", "Entity"),
     FamilySpec("VehicleEntity", "net.minecraft.world.entity.vehicle.VehicleEntity", "Entity"),
     FamilySpec(
         "AbstractBoat",
@@ -143,6 +144,7 @@ DATA_ALIASES = {
     "VANILLA_INTERACTION_WIDTH_DATA_ID": ("net.minecraft.world.entity.Interaction", "DATA_WIDTH_ID"),
     "VANILLA_INTERACTION_HEIGHT_DATA_ID": ("net.minecraft.world.entity.Interaction", "DATA_HEIGHT_ID"),
     "VANILLA_INTERACTION_RESPONSE_DATA_ID": ("net.minecraft.world.entity.Interaction", "DATA_RESPONSE_ID"),
+    "VANILLA_EXPERIENCE_ORB_VALUE_DATA_ID": ("net.minecraft.world.entity.ExperienceOrb", "DATA_VALUE"),
     "VANILLA_VEHICLE_HURT_TIME_DATA_ID": ("net.minecraft.world.entity.vehicle.VehicleEntity", "DATA_ID_HURT"),
     "VANILLA_VEHICLE_HURT_DIR_DATA_ID": ("net.minecraft.world.entity.vehicle.VehicleEntity", "DATA_ID_HURTDIR"),
     "VANILLA_VEHICLE_DAMAGE_DATA_ID": ("net.minecraft.world.entity.vehicle.VehicleEntity", "DATA_ID_DAMAGE"),
@@ -187,6 +189,7 @@ DEFAULT_ALIASES = {
     "VANILLA_INTERACTION_DEFAULT_WIDTH": ("net.minecraft.world.entity.Interaction", "DATA_WIDTH_ID"),
     "VANILLA_INTERACTION_DEFAULT_HEIGHT": ("net.minecraft.world.entity.Interaction", "DATA_HEIGHT_ID"),
     "VANILLA_INTERACTION_DEFAULT_RESPONSE": ("net.minecraft.world.entity.Interaction", "DATA_RESPONSE_ID"),
+    "VANILLA_EXPERIENCE_ORB_DEFAULT_VALUE": ("net.minecraft.world.entity.ExperienceOrb", "DATA_VALUE"),
     "VANILLA_VEHICLE_DEFAULT_HURT_TIME": ("net.minecraft.world.entity.vehicle.VehicleEntity", "DATA_ID_HURT"),
     "VANILLA_VEHICLE_DEFAULT_HURT_DIR": ("net.minecraft.world.entity.vehicle.VehicleEntity", "DATA_ID_HURTDIR"),
     "VANILLA_VEHICLE_DEFAULT_DAMAGE": ("net.minecraft.world.entity.vehicle.VehicleEntity", "DATA_ID_DAMAGE"),

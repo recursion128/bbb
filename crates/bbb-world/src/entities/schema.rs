@@ -27,6 +27,7 @@ pub enum VanillaEntityMetadataFamily {
     WitherSkull,
     EndCrystal,
     Interaction,
+    ExperienceOrb,
     VehicleEntity,
     AbstractBoat,
     AbstractMinecart,
@@ -295,6 +296,7 @@ mod tests {
             VanillaEntityMetadataFamily::WitherSkull,
             VanillaEntityMetadataFamily::EndCrystal,
             VanillaEntityMetadataFamily::Interaction,
+            VanillaEntityMetadataFamily::ExperienceOrb,
             VanillaEntityMetadataFamily::VehicleEntity,
             VanillaEntityMetadataFamily::AbstractBoat,
             VanillaEntityMetadataFamily::AbstractMinecart,
@@ -441,6 +443,25 @@ mod tests {
                 ),
             ]
         );
+        let experience_orb =
+            vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::ExperienceOrb);
+        assert_eq!(
+            experience_orb.parent,
+            Some(VanillaEntityMetadataFamily::Entity)
+        );
+        assert_eq!(experience_orb.inherited_field_count, 8);
+        assert_eq!(
+            experience_orb.own_fields,
+            &[VanillaEntityMetadataFieldSchema {
+                name: "DATA_VALUE",
+                data_id: 8,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+                default: VanillaEntityMetadataDefault::Int(0),
+            }]
+        );
+        assert_eq!(VANILLA_EXPERIENCE_ORB_VALUE_DATA_ID, 8);
+        assert_eq!(VANILLA_EXPERIENCE_ORB_DEFAULT_VALUE, 0);
         assert_eq!(
             vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Entity)
                 .own_flags

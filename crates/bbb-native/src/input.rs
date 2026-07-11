@@ -129,7 +129,7 @@ use bbb_world::{
     VANILLA_ENTITY_SHARED_FLAG_INVISIBLE as ENTITY_SHARED_FLAG_INVISIBLE,
     VANILLA_ENTITY_SILENT_DATA_ID as ENTITY_SILENT_DATA_ID,
     VANILLA_ENTITY_TICKS_FROZEN_DATA_ID as ENTITY_TICKS_FROZEN_DATA_ID,
-    VANILLA_EXPERIENCE_ORB_VALUE_DATA_ID,
+    VANILLA_EXPERIENCE_ORB_DEFAULT_VALUE, VANILLA_EXPERIENCE_ORB_VALUE_DATA_ID,
     VANILLA_HANGING_ENTITY_DIRECTION_DATA_ID as HANGING_ENTITY_DIRECTION_DATA_ID,
     VANILLA_ITEM_FRAME_DEFAULT_ROTATION,
     VANILLA_ITEM_FRAME_ITEM_DATA_ID as ITEM_FRAME_ITEM_DATA_ID,
@@ -6068,8 +6068,8 @@ fn debug_push_shulker_bullet_additional_save_data(fields: &mut Vec<String>) {
 }
 
 fn debug_push_experience_orb_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
-    let value =
-        debug_entity_data_int_present(entity, VANILLA_EXPERIENCE_ORB_VALUE_DATA_ID).unwrap_or(0);
+    let value = debug_entity_data_int_present(entity, VANILLA_EXPERIENCE_ORB_VALUE_DATA_ID)
+        .unwrap_or(VANILLA_EXPERIENCE_ORB_DEFAULT_VALUE);
     fields.push("Health: 5s".to_string());
     fields.push("Age: 0s".to_string());
     fields.push(format!("Value: {value}s"));
