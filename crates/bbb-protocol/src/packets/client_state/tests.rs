@@ -108,6 +108,29 @@ fn decodes_boss_event_operations() {
 }
 
 #[test]
+fn rejects_invalid_boss_bar_style_ordinals() {
+    let id = Uuid::nil();
+    let invalid_color = boss_event_payload(id, 4, |payload| {
+        payload.write_var_i32(7);
+    });
+    let error =
+        decode_play_clientbound(ids::play::CLIENTBOUND_BOSS_EVENT, &invalid_color).unwrap_err();
+    assert!(error
+        .to_string()
+        .contains("invalid boss bar color ordinal 7"));
+
+    let invalid_overlay = boss_event_payload(id, 4, |payload| {
+        payload.write_var_i32(0);
+        payload.write_var_i32(5);
+    });
+    let error =
+        decode_play_clientbound(ids::play::CLIENTBOUND_BOSS_EVENT, &invalid_overlay).unwrap_err();
+    assert!(error
+        .to_string()
+        .contains("invalid boss bar overlay ordinal 5"));
+}
+
+#[test]
 fn decodes_change_difficulty_with_wrapped_ids() {
     let payload = change_difficulty_payload(2, true);
     let packet =

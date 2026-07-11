@@ -14,6 +14,7 @@ from gameplay_id_catalog_extractor import (  # noqa: E402
     advancement_frame_type_entries,
     client_game_event_type_entries,
     client_command_action_entries,
+    boss_bar_style_entries,
     custom_chat_completions_action_entries,
     difficulty_entries,
     difficulty_out_of_bounds_strategy,
@@ -429,6 +430,43 @@ public enum AdvancementType {
                 ("TASK", 0, "task"),
                 ("CHALLENGE", 1, "challenge"),
                 ("GOAL", 2, "goal"),
+            ],
+        )
+
+    def test_boss_bar_styles_preserve_nested_order_and_names(self) -> None:
+        source = parse_source(
+            "fixture/BossEvent.java",
+            b"""
+package fixture;
+public class BossEvent {
+  public enum BossBarColor {
+    PINK("pink", ChatFormatting.RED), BLUE("blue", ChatFormatting.BLUE),
+    RED("red", ChatFormatting.DARK_RED), GREEN("green", ChatFormatting.GREEN),
+    YELLOW("yellow", ChatFormatting.YELLOW), PURPLE("purple", ChatFormatting.DARK_BLUE),
+    WHITE("white", ChatFormatting.WHITE);
+  }
+  public enum BossBarOverlay {
+    PROGRESS("progress"), NOTCHED_6("notched_6"), NOTCHED_10("notched_10"),
+    NOTCHED_12("notched_12"), NOTCHED_20("notched_20");
+  }
+}
+""",
+        )
+        colors, overlays = boss_bar_style_entries(source)
+        self.assertEqual(
+            [(entry.constant_name, entry.ordinal, entry.serialized_name) for entry in colors],
+            [
+                ("PINK", 0, "pink"), ("BLUE", 1, "blue"), ("RED", 2, "red"),
+                ("GREEN", 3, "green"), ("YELLOW", 4, "yellow"),
+                ("PURPLE", 5, "purple"), ("WHITE", 6, "white"),
+            ],
+        )
+        self.assertEqual(
+            [(entry.constant_name, entry.ordinal, entry.serialized_name) for entry in overlays],
+            [
+                ("PROGRESS", 0, "progress"), ("NOTCHED_6", 1, "notched_6"),
+                ("NOTCHED_10", 2, "notched_10"), ("NOTCHED_12", 3, "notched_12"),
+                ("NOTCHED_20", 4, "notched_20"),
             ],
         )
 

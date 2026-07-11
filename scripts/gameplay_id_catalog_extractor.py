@@ -160,6 +160,13 @@ class AdvancementFrameTypeEntry:
     serialized_name: str
 
 
+@dataclass(frozen=True)
+class BossBarStyleEntry:
+    constant_name: str
+    ordinal: int
+    serialized_name: str
+
+
 def _fail(source: JavaSource, expression: JavaExpression, message: str) -> None:
     span = expression.span
     raise GameplayIdExtractionError(
@@ -625,6 +632,28 @@ def advancement_frame_type_entries(
     _validate(entries, "advancement frame type", "ordinal")
     _validate(entries, "advancement frame type", "serialized_name")
     return entries
+
+
+def boss_bar_style_entries(
+    source: JavaSource,
+) -> tuple[list[BossBarStyleEntry], list[BossBarStyleEntry]]:
+    def extract(enum_name: str, expected_count: int) -> list[BossBarStyleEntry]:
+        entries = []
+        for ordinal, (name, arguments) in enumerate(
+            _nested_enum_constants(source, enum_name, enum_name)
+        ):
+            if not arguments:
+                _fail(source, source.expression(source.types[0].node), f"{enum_name} {name} lacks name")
+            entries.append(BossBarStyleEntry(name, ordinal, _string(source, arguments[0])))
+        if len(entries) != expected_count:
+            raise GameplayIdExtractionError(
+                f"expected {expected_count} {enum_name} values, extracted {len(entries)}"
+            )
+        _validate(entries, enum_name, "ordinal")
+        _validate(entries, enum_name, "serialized_name")
+        return entries
+
+    return extract("BossBarColor", 7), extract("BossBarOverlay", 5)
 
 
 def difficulty_entries(

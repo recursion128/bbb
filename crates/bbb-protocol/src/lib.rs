@@ -9,6 +9,7 @@ pub use component::{
 pub mod advancement_frame_types;
 pub mod attribute_types;
 pub mod block_entity_types;
+pub mod boss_bar_styles;
 pub mod client_command_actions;
 pub mod codec;
 pub mod custom_chat_completions_actions;

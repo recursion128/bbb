@@ -10559,3 +10559,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   保持原 re-export，删除 decode ordinal match并新增 invalid ordinal 诊断测试。生成完整性/
   唯一性/反向门禁以及 protocol/world/net/native advancement focused tests 不改语义通过；
   chat color、toast、widget frame 和 hover 渲染仍由 native 语义 owner 手写。
+
+## 2026-07-11：Generated boss-bar style catalogs
+
+- [x] gameplay-id extractor 通过共享 Tree-sitter frontend 一次读取 vanilla
+  `BossEvent.BossBarColor` 与 `BossBarOverlay` 的声明顺序和显式名称，生成同一
+  `boss_bar_styles` owner 下的 typed color/overlay catalogs、ordinal 与 name lookup。
+  protocol client-state facade 保持原 re-export，删除两份 decode ordinal match；world HUD
+  删除两份名称 match。新增 color/overlay invalid ordinal 诊断测试，生成完整性/唯一性/
+  反向门禁以及 protocol/world/net/native 全 7 色/5 overlay focused tests 均通过；
+  ChatFormatting、renderer Hud enum、sprite 与绘制算法继续由各自语义 owner 手写。

@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+pub use crate::boss_bar_styles::{BossBarColor, BossBarOverlay};
 pub use crate::difficulties::Difficulty;
 use crate::{
     codec::{Decoder, ProtocolError, Result},
@@ -98,62 +99,6 @@ pub enum BossEventOperation {
     UpdateProperties {
         flags: BossEventFlags,
     },
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum BossBarColor {
-    Pink,
-    Blue,
-    Red,
-    Green,
-    Yellow,
-    Purple,
-    White,
-}
-
-impl BossBarColor {
-    fn from_ordinal(ordinal: i32) -> Result<Self> {
-        Ok(match ordinal {
-            0 => Self::Pink,
-            1 => Self::Blue,
-            2 => Self::Red,
-            3 => Self::Green,
-            4 => Self::Yellow,
-            5 => Self::Purple,
-            6 => Self::White,
-            other => {
-                return Err(ProtocolError::InvalidData(format!(
-                    "invalid boss bar color ordinal {other}"
-                )))
-            }
-        })
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum BossBarOverlay {
-    Progress,
-    Notched6,
-    Notched10,
-    Notched12,
-    Notched20,
-}
-
-impl BossBarOverlay {
-    fn from_ordinal(ordinal: i32) -> Result<Self> {
-        Ok(match ordinal {
-            0 => Self::Progress,
-            1 => Self::Notched6,
-            2 => Self::Notched10,
-            3 => Self::Notched12,
-            4 => Self::Notched20,
-            other => {
-                return Err(ProtocolError::InvalidData(format!(
-                    "invalid boss bar overlay ordinal {other}"
-                )))
-            }
-        })
-    }
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -362,8 +307,8 @@ pub(super) fn decode_boss_event(decoder: &mut Decoder<'_>) -> Result<BossEvent> 
         0 => BossEventOperation::Add {
             name: decode_component_summary_from_decoder(decoder)?,
             progress: decoder.read_f32()?,
-            color: BossBarColor::from_ordinal(decoder.read_var_i32()?)?,
-            overlay: BossBarOverlay::from_ordinal(decoder.read_var_i32()?)?,
+            color: decode_boss_bar_color(decoder)?,
+            overlay: decode_boss_bar_overlay(decoder)?,
             flags: BossEventFlags::from_bits(decoder.read_u8()?),
         },
         1 => BossEventOperation::Remove,
@@ -374,8 +319,8 @@ pub(super) fn decode_boss_event(decoder: &mut Decoder<'_>) -> Result<BossEvent> 
             name: decode_component_summary_from_decoder(decoder)?,
         },
         4 => BossEventOperation::UpdateStyle {
-            color: BossBarColor::from_ordinal(decoder.read_var_i32()?)?,
-            overlay: BossBarOverlay::from_ordinal(decoder.read_var_i32()?)?,
+            color: decode_boss_bar_color(decoder)?,
+            overlay: decode_boss_bar_overlay(decoder)?,
         },
         5 => BossEventOperation::UpdateProperties {
             flags: BossEventFlags::from_bits(decoder.read_u8()?),
@@ -388,6 +333,20 @@ pub(super) fn decode_boss_event(decoder: &mut Decoder<'_>) -> Result<BossEvent> 
     };
 
     Ok(BossEvent { id, operation })
+}
+
+fn decode_boss_bar_color(decoder: &mut Decoder<'_>) -> Result<BossBarColor> {
+    let ordinal = decoder.read_var_i32()?;
+    BossBarColor::from_ordinal(ordinal).ok_or_else(|| {
+        ProtocolError::InvalidData(format!("invalid boss bar color ordinal {ordinal}"))
+    })
+}
+
+fn decode_boss_bar_overlay(decoder: &mut Decoder<'_>) -> Result<BossBarOverlay> {
+    let ordinal = decoder.read_var_i32()?;
+    BossBarOverlay::from_ordinal(ordinal).ok_or_else(|| {
+        ProtocolError::InvalidData(format!("invalid boss bar overlay ordinal {ordinal}"))
+    })
 }
 
 pub(super) fn decode_change_difficulty(decoder: &mut Decoder<'_>) -> Result<ChangeDifficulty> {

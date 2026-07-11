@@ -355,25 +355,11 @@ fn non_empty_component_string(component: Option<String>) -> Option<String> {
 }
 
 fn boss_bar_color_name(color: ProtocolBossBarColor) -> &'static str {
-    match color {
-        ProtocolBossBarColor::Pink => "pink",
-        ProtocolBossBarColor::Blue => "blue",
-        ProtocolBossBarColor::Red => "red",
-        ProtocolBossBarColor::Green => "green",
-        ProtocolBossBarColor::Yellow => "yellow",
-        ProtocolBossBarColor::Purple => "purple",
-        ProtocolBossBarColor::White => "white",
-    }
+    color.as_str()
 }
 
 fn boss_bar_overlay_name(overlay: ProtocolBossBarOverlay) -> &'static str {
-    match overlay {
-        ProtocolBossBarOverlay::Progress => "progress",
-        ProtocolBossBarOverlay::Notched6 => "notched_6",
-        ProtocolBossBarOverlay::Notched10 => "notched_10",
-        ProtocolBossBarOverlay::Notched12 => "notched_12",
-        ProtocolBossBarOverlay::Notched20 => "notched_20",
-    }
+    overlay.as_str()
 }
 
 fn difficulty_name(difficulty: ProtocolDifficulty) -> &'static str {
