@@ -10138,3 +10138,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   `Skeleton.isShaking` / `AbstractSkeletonRenderer.extractRenderState` 消费同步 boolean；默认
   不摇、true 时复用现有 body shake。300-tick conversionTime、powder-snow 判定和实体转换仍为
   server authority，客户端没有模拟。
+
+## 2026-07-11：Generated packed metadata value masks（Horse / TropicalFish）
+
+- [x] entity metadata generator 通过统一 Tree-sitter CST，以 owner、method arity 与唯一
+  binary operator operand 锁定 Horse coat/markings 的 mask/shift，以及 TropicalFish
+  pattern/base-color/pattern-color 的 mask/shift；重载、缺失或歧义均令 maintenance
+  update/check 显式失败。world 导出 generated `i32` aliases，native 删除对应内联字面量。
+  renderer 的 tropical-fish API 改为接收 native 已解出的 pattern id，不再重复拥有 synced
+  packed-field mask；pattern id 到模型/纹理的表现映射仍由 renderer 语义 owner 管理。

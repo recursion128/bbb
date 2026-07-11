@@ -515,8 +515,9 @@ back into a todo. Do not delete these.
   `PrimedTnt` / `FireworkRocket`, the
   `Entity -> VehicleEntity -> AbstractBoat` / `AbstractMinecart -> MinecartFurnace` branches, and
   `HangingEntity -> ItemFrame` / `Painting`. Remaining
-  concrete entity consumers still keep local ids/masks until their projections
-  migrate to generated descriptors;
+  concrete entity consumers still resolve through compatibility aliases or keep
+  local enum/variant presentation mappings until those projections migrate to
+  generated descriptors/catalogs;
   an unresolved typed default/flag diagnostic is not implementation support.
   `Villager`/`ZombieVillager` accessor ids and mechanically fixed boolean defaults
   are generated compatibility aliases, but their family facade remains open:

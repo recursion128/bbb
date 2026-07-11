@@ -646,6 +646,58 @@ METHOD_VALUE_MASK_ALIASES = {
 }
 
 
+METHOD_PACKED_VALUE_ALIASES = {
+    "VANILLA_HORSE_COLOR_MASK": (
+        "net.minecraft.world.entity.animal.equine.Horse",
+        "getVariant",
+        0,
+        "&",
+    ),
+    "VANILLA_HORSE_MARKINGS_MASK": (
+        "net.minecraft.world.entity.animal.equine.Horse",
+        "getMarkings",
+        0,
+        "&",
+    ),
+    "VANILLA_HORSE_MARKINGS_SHIFT": (
+        "net.minecraft.world.entity.animal.equine.Horse",
+        "getMarkings",
+        0,
+        ">>",
+    ),
+    "VANILLA_TROPICAL_FISH_BASE_COLOR_MASK": (
+        "net.minecraft.world.entity.animal.fish.TropicalFish",
+        "getBaseColor",
+        1,
+        "&",
+    ),
+    "VANILLA_TROPICAL_FISH_BASE_COLOR_SHIFT": (
+        "net.minecraft.world.entity.animal.fish.TropicalFish",
+        "getBaseColor",
+        1,
+        ">>",
+    ),
+    "VANILLA_TROPICAL_FISH_PATTERN_COLOR_MASK": (
+        "net.minecraft.world.entity.animal.fish.TropicalFish",
+        "getPatternColor",
+        1,
+        "&",
+    ),
+    "VANILLA_TROPICAL_FISH_PATTERN_COLOR_SHIFT": (
+        "net.minecraft.world.entity.animal.fish.TropicalFish",
+        "getPatternColor",
+        1,
+        ">>",
+    ),
+    "VANILLA_TROPICAL_FISH_PATTERN_MASK": (
+        "net.minecraft.world.entity.animal.fish.TropicalFish",
+        "getPattern",
+        1,
+        "&",
+    ),
+}
+
+
 MODEL_PART_ALIASES = {
     "VANILLA_AVATAR_MODEL_PART_CAPE": "CAPE",
     "VANILLA_AVATAR_MODEL_PART_JACKET": "JACKET",
@@ -2299,11 +2351,19 @@ def normalize_default(
     return None
 
 
-def method_for(result: ExtractionResult, owner: str, name: str) -> tuple[JavaSource, JavaMethod]:
+def method_for(
+    result: ExtractionResult, owner: str, name: str, parameter_count: int | None = None
+) -> tuple[JavaSource, JavaMethod]:
     source = source_for_owner(result, owner)
-    matches = [item for item in source.methods_for(owner) if item.name == name]
+    matches = [
+        item
+        for item in source.methods_for(owner)
+        if item.name == name
+        and (parameter_count is None or len(item.parameters) == parameter_count)
+    ]
     if len(matches) != 1:
-        raise ExtractionError(f"{owner}.{name}: expected one method, found {len(matches)}")
+        signature = name if parameter_count is None else f"{name}/{parameter_count}"
+        raise ExtractionError(f"{owner}.{signature}: expected one method, found {len(matches)}")
     return source, matches[0]
 
 
@@ -2413,6 +2473,59 @@ def resolve_value_masks(result: ExtractionResult) -> list[tuple[str, int]]:
     return resolved
 
 
+def method_binary_integer_operand(
+    result: ExtractionResult, owner: str, name: str, parameter_count: int, operator: str
+) -> tuple[int, str]:
+    source, method = method_for(result, owner, name, parameter_count)
+    body = method.node.child_by_field_name("body")
+    if body is None:
+        raise ExtractionError(f"{owner}.{name}: method lacks a body")
+    values: list[tuple[int, str]] = []
+    for node in descendants(body):
+        if node.type != "binary_expression":
+            continue
+        operators = [source.text(child) for child in node.children if not child.is_named]
+        if operators != [operator]:
+            continue
+        constants: list[int] = []
+        for side in (node.child_by_field_name("left"), node.child_by_field_name("right")):
+            if side is None:
+                continue
+            try:
+                constants.append(
+                    evaluate_integer_expression(source, side, integer_constants(result, owner))
+                )
+            except (ExtractionError, ValueError):
+                continue
+        if len(constants) != 1:
+            raise ExtractionError(
+                f"{owner}.{name}: expected one constant operand for {operator!r}, "
+                f"found {constants} in {source.expression(node).canonical}"
+            )
+        values.append((constants[0], source.expression(node).canonical))
+    if len(values) != 1:
+        raise ExtractionError(
+            f"{owner}.{name}: expected one {operator!r} expression with a constant operand, "
+            f"found {values}"
+        )
+    return values[0]
+
+
+def resolve_packed_values(result: ExtractionResult) -> list[tuple[str, int]]:
+    resolved: list[tuple[str, int]] = []
+    for rust_name, (owner, method, parameter_count, operator) in METHOD_PACKED_VALUE_ALIASES.items():
+        value, _expression = method_binary_integer_operand(
+            result, owner, method, parameter_count, operator
+        )
+        if value <= 0 or value > 0x7FFF_FFFF:
+            raise ExtractionError(f"{owner}.{method}: packed value is outside positive i32: {value}")
+        resolved.append((rust_name, value))
+    names = [name for name, _value in resolved]
+    if len(names) != len(set(names)):
+        raise ExtractionError("duplicate compatibility packed-value resolver")
+    return resolved
+
+
 def method_return_integer(result: ExtractionResult, owner: str, name: str) -> int:
     source, method = method_for(result, owner, name)
     body = method.node.child_by_field_name("body")
@@ -2449,6 +2562,7 @@ def render(result: ExtractionResult) -> str:
                 raise ExtractionError(f"compatibility accessor default unresolved: {accessor.owner}.{accessor.java_name}")
     flags = resolve_flags(result)
     value_masks = resolve_value_masks(result)
+    packed_values = resolve_packed_values(result)
     flag_by_owner: dict[str, list[ResolvedFlag]] = {}
     for flag in flags:
         flag_by_owner.setdefault(flag.owner, []).append(flag)
@@ -2506,6 +2620,11 @@ def render(result: ExtractionResult) -> str:
     for public_name, value in value_masks:
         lines.append(f"const GENERATED_{public_name}: u8 = {value};")
         lines.append(f"pub const {public_name}: u8 = GENERATED_{public_name};")
+    lines.append("")
+
+    for public_name, value in packed_values:
+        lines.append(f"const GENERATED_{public_name}: i32 = {value};")
+        lines.append(f"pub const {public_name}: i32 = GENERATED_{public_name};")
     lines.append("")
 
     pose_ordinals = enum_ordinals(result, "net.minecraft.world.entity.HumanoidArm")

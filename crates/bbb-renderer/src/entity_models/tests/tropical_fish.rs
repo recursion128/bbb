@@ -229,32 +229,30 @@ fn tropical_fish_shape_from_vanilla_base_id() {
 }
 
 #[test]
-fn tropical_fish_shape_from_vanilla_packed_variant() {
-    // `TropicalFish.getPattern(packed).base()`: pattern id is the low 16 bits, packed as
-    // `base.id | index << 8`. The default variant `0` (KOB/white/white) is the small body.
+fn tropical_fish_shape_from_vanilla_pattern_id() {
+    // Pattern ids are packed as `base.id | index << 8`. The default KOB id `0` is small.
     assert_eq!(
-        TropicalFishModelShape::from_vanilla_packed_variant(0),
+        TropicalFishModelShape::from_vanilla_pattern_id(0),
         TropicalFishModelShape::Small
     );
-    // FLOPPER = LARGE base (id 1), index 0 → packed pattern `0x0001`. With color bytes set
-    // (base/pattern color in the high bytes) the shape decode ignores them.
+    // FLOPPER = LARGE base (id 1), index 0 → packed pattern `0x0001`.
     assert_eq!(
-        TropicalFishModelShape::from_vanilla_packed_variant(0x0405_0001),
+        TropicalFishModelShape::from_vanilla_pattern_id(0x0001),
         TropicalFishModelShape::Large
     );
     // CLAYFISH = LARGE base, index 5 → `0x0501`; BETTY index 4 → `0x0401`.
     assert_eq!(
-        TropicalFishModelShape::from_vanilla_packed_variant(0x0501),
+        TropicalFishModelShape::from_vanilla_pattern_id(0x0501),
         TropicalFishModelShape::Large
     );
     // SPOTTY = SMALL base, index 5 → `0x0500` stays small.
     assert_eq!(
-        TropicalFishModelShape::from_vanilla_packed_variant(0x0500),
+        TropicalFishModelShape::from_vanilla_pattern_id(0x0500),
         TropicalFishModelShape::Small
     );
     // An out-of-range index (6) is not a valid pattern, so `byId` falls back to KOB (small).
     assert_eq!(
-        TropicalFishModelShape::from_vanilla_packed_variant(0x0601),
+        TropicalFishModelShape::from_vanilla_pattern_id(0x0601),
         TropicalFishModelShape::Small
     );
 }
@@ -650,8 +648,8 @@ fn tropical_fish_texture_images() -> Vec<EntityModelTextureImage> {
 }
 
 #[test]
-fn tropical_fish_pattern_from_vanilla_packed_variant() {
-    // `TropicalFish.Pattern.byId(packed & 0xFFFF)`, keyed on `packedId = base.id | index << 8`
+fn tropical_fish_pattern_from_vanilla_pattern_id() {
+    // `TropicalFish.Pattern.byId(patternId)`, keyed on `packedId = base.id | index << 8`
     // (`SMALL=0`/`LARGE=1`, index `0..=5`); unknown ids fall back to KOB.
     let cases = [
         (0x0000, TropicalFishPattern::Kob),
@@ -667,25 +665,19 @@ fn tropical_fish_pattern_from_vanilla_packed_variant() {
         (0x0401, TropicalFishPattern::Betty),
         (0x0501, TropicalFishPattern::Clayfish),
     ];
-    for (packed, expected) in cases {
+    for (pattern_id, expected) in cases {
         assert_eq!(
-            TropicalFishPattern::from_vanilla_packed_variant(packed),
-            expected
-        );
-        // The base color (bits 16..24) and pattern color (bits 24..32) bytes never disturb it.
-        let noisy = packed | (0x09 << 16) | (0x0Du32 << 24) as i32;
-        assert_eq!(
-            TropicalFishPattern::from_vanilla_packed_variant(noisy),
+            TropicalFishPattern::from_vanilla_pattern_id(pattern_id),
             expected
         );
     }
     // Unknown low-byte base (0xAB) and out-of-range index (6 → 0x0601) both fall back to KOB.
     assert_eq!(
-        TropicalFishPattern::from_vanilla_packed_variant(0x00AB),
+        TropicalFishPattern::from_vanilla_pattern_id(0x00AB),
         TropicalFishPattern::Kob
     );
     assert_eq!(
-        TropicalFishPattern::from_vanilla_packed_variant(0x0601),
+        TropicalFishPattern::from_vanilla_pattern_id(0x0601),
         TropicalFishPattern::Kob
     );
 }

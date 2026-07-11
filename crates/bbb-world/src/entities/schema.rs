@@ -842,6 +842,14 @@ mod tests {
         assert_eq!(VANILLA_SHEEP_DEFAULT_WOOL, 0);
         assert_eq!(VANILLA_SHEEP_FLAG_SHEARED, 16);
         assert_eq!(VANILLA_SHEEP_WOOL_COLOR_MASK, 15);
+        assert_eq!(VANILLA_HORSE_COLOR_MASK, 0xFF);
+        assert_eq!(VANILLA_HORSE_MARKINGS_MASK, 0xFF00);
+        assert_eq!(VANILLA_HORSE_MARKINGS_SHIFT, 8);
+        assert_eq!(VANILLA_TROPICAL_FISH_BASE_COLOR_MASK, 0xFF);
+        assert_eq!(VANILLA_TROPICAL_FISH_BASE_COLOR_SHIFT, 16);
+        assert_eq!(VANILLA_TROPICAL_FISH_PATTERN_COLOR_MASK, 0xFF);
+        assert_eq!(VANILLA_TROPICAL_FISH_PATTERN_COLOR_SHIFT, 24);
+        assert_eq!(VANILLA_TROPICAL_FISH_PATTERN_MASK, 0xFFFF);
         let sniffer = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Sniffer);
         assert_eq!(
             sniffer.parent,

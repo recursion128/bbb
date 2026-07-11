@@ -1094,7 +1094,8 @@ pub(super) fn undead_horse_model_kind(
 pub(super) fn horse_color_variant(
     values: &[bbb_protocol::packets::EntityDataValue],
 ) -> HorseColorVariant {
-    let color = entity_data_int(values, HORSE_VARIANT_DATA_ID, HORSE_DEFAULT_VARIANT) & 0xFF;
+    let color =
+        entity_data_int(values, HORSE_VARIANT_DATA_ID, HORSE_DEFAULT_VARIANT) & HORSE_COLOR_MASK;
     match color.rem_euclid(7) {
         0 => HorseColorVariant::White,
         1 => HorseColorVariant::Creamy,
@@ -1110,8 +1111,9 @@ pub(super) fn horse_color_variant(
 /// `Markings.byId((typeVariant & 0xFF00) >> 8)`, where `byId` is `ByIdMap.continuous(WRAP)` so an
 /// out-of-range nibble wraps modulo the five markings. `Markings.NONE` draws no overlay.
 pub(super) fn horse_markings(values: &[bbb_protocol::packets::EntityDataValue]) -> HorseMarkings {
-    let markings =
-        (entity_data_int(values, HORSE_VARIANT_DATA_ID, HORSE_DEFAULT_VARIANT) & 0xFF00) >> 8;
+    let markings = (entity_data_int(values, HORSE_VARIANT_DATA_ID, HORSE_DEFAULT_VARIANT)
+        & HORSE_MARKINGS_MASK)
+        >> HORSE_MARKINGS_SHIFT;
     match markings.rem_euclid(5) {
         0 => HorseMarkings::None,
         1 => HorseMarkings::White,
@@ -1266,11 +1268,12 @@ pub(super) fn salmon_model_size(
 pub(super) fn tropical_fish_shape(
     values: &[bbb_protocol::packets::EntityDataValue],
 ) -> TropicalFishModelShape {
-    TropicalFishModelShape::from_vanilla_packed_variant(entity_data_int(
+    let packed = entity_data_int(
         values,
         TROPICAL_FISH_VARIANT_DATA_ID,
         TROPICAL_FISH_DEFAULT_VARIANT,
-    ))
+    );
+    TropicalFishModelShape::from_vanilla_pattern_id(packed & TROPICAL_FISH_PATTERN_MASK)
 }
 
 /// Vanilla `TropicalFish.getBaseColor(packedVariant) = DyeColor.byId(packedVariant >> 16 & 0xFF)`,
@@ -1283,7 +1286,9 @@ pub(super) fn tropical_fish_base_color(
         TROPICAL_FISH_VARIANT_DATA_ID,
         TROPICAL_FISH_DEFAULT_VARIANT,
     );
-    EntityDyeColor::from_vanilla_id((packed >> 16) & 0xFF)
+    EntityDyeColor::from_vanilla_id(
+        (packed >> TROPICAL_FISH_BASE_COLOR_SHIFT) & TROPICAL_FISH_BASE_COLOR_MASK,
+    )
 }
 
 /// Vanilla `TropicalFish.getPattern(packedVariant) = Pattern.byId(packedVariant & 0xFFFF)`, the
@@ -1291,11 +1296,12 @@ pub(super) fn tropical_fish_base_color(
 pub(super) fn tropical_fish_pattern(
     values: &[bbb_protocol::packets::EntityDataValue],
 ) -> TropicalFishPattern {
-    TropicalFishPattern::from_vanilla_packed_variant(entity_data_int(
+    let packed = entity_data_int(
         values,
         TROPICAL_FISH_VARIANT_DATA_ID,
         TROPICAL_FISH_DEFAULT_VARIANT,
-    ))
+    );
+    TropicalFishPattern::from_vanilla_pattern_id(packed & TROPICAL_FISH_PATTERN_MASK)
 }
 
 /// Vanilla `TropicalFish.getPatternColor(packedVariant) = DyeColor.byId(packedVariant >> 24 &
@@ -1308,7 +1314,9 @@ pub(super) fn tropical_fish_pattern_color(
         TROPICAL_FISH_VARIANT_DATA_ID,
         TROPICAL_FISH_DEFAULT_VARIANT,
     );
-    EntityDyeColor::from_vanilla_id((packed >> 24) & 0xFF)
+    EntityDyeColor::from_vanilla_id(
+        (packed >> TROPICAL_FISH_PATTERN_COLOR_SHIFT) & TROPICAL_FISH_PATTERN_COLOR_MASK,
+    )
 }
 
 pub(super) fn ageable_baby(values: &[bbb_protocol::packets::EntityDataValue]) -> bool {
