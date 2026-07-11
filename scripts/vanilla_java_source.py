@@ -15,7 +15,7 @@ corresponding Rust semantic owner.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Iterator, Sequence
+from typing import Any, Iterator, Sequence
 
 from tree_sitter import Language, Node, Parser, Tree
 import tree_sitter_java
@@ -225,6 +225,64 @@ def canonical_expression(source: bytes, node: Node) -> str:
     for previous, value in zip(values, values[1:]):
         result += value if value in no_space_before or previous in no_space_after else " " + value
     return result
+
+
+def expression_fact(
+    source: JavaSource, expression: JavaExpression
+) -> dict[str, Any]:
+    """Project a CST expression into a deterministic, serializable narrow IR."""
+
+    node = expression.node
+    fact: dict[str, Any] = {
+        "kind": node.type,
+        "canonical": expression.canonical,
+    }
+    if node.type == "method_invocation":
+        name = node.child_by_field_name("name")
+        arguments = node.child_by_field_name("arguments")
+        if name is None or arguments is None:
+            raise JavaSourceError(
+                f"{source.relative_path}: method invocation is incomplete"
+            )
+        object_node = node.child_by_field_name("object")
+        fact["name"] = source.text(name)
+        fact["object"] = (
+            expression_fact(source, source.expression(object_node))
+            if object_node is not None
+            else None
+        )
+        fact["arguments"] = [
+            expression_fact(source, source.expression(child))
+            for child in arguments.named_children
+            if child.type not in COMMENT_NODE_KINDS
+        ]
+    elif node.type == "object_creation_expression":
+        type_node = node.child_by_field_name("type")
+        arguments = node.child_by_field_name("arguments")
+        if type_node is None or arguments is None:
+            raise JavaSourceError(
+                f"{source.relative_path}: object creation is incomplete"
+            )
+        fact["name"] = source.expression(type_node).canonical.replace(" ", "")
+        fact["arguments"] = [
+            expression_fact(source, source.expression(child))
+            for child in arguments.named_children
+            if child.type not in COMMENT_NODE_KINDS
+        ]
+    elif node.type == "field_access":
+        object_node = node.child_by_field_name("object")
+        field_node = node.child_by_field_name("field")
+        if object_node is None or field_node is None:
+            raise JavaSourceError(f"{source.relative_path}: field access is incomplete")
+        fact["name"] = source.text(field_node)
+        fact["object"] = expression_fact(source, source.expression(object_node))
+    elif node.named_children:
+        fact["children"] = [
+            expression_fact(source, source.expression(child))
+            for child in node.named_children
+            if child.type not in COMMENT_NODE_KINDS
+        ]
+    return fact
 
 
 def _node_text(source: bytes, node: Node | None) -> str | None:

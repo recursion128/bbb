@@ -9,6 +9,7 @@ use bbb_protocol::equipment_slots::{
 };
 use serde::{Deserialize, Serialize};
 
+use crate::generated_java_expression::GeneratedJavaExpression;
 use crate::{resources::ResourceLocation, tags::TagCatalog, PackRoots};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -262,84 +263,7 @@ struct ItemSourceDeclaration {
     source_path: String,
     start_byte: usize,
     end_byte: usize,
-    initializer: ItemSourceExpression,
-}
-
-#[derive(Debug, Deserialize)]
-struct ItemSourceExpression {
-    kind: String,
-    canonical: String,
-    #[serde(default)]
-    name: Option<String>,
-    #[serde(default)]
-    object: Option<Box<ItemSourceExpression>>,
-    #[serde(default)]
-    arguments: Vec<ItemSourceExpression>,
-    #[serde(default)]
-    children: Vec<ItemSourceExpression>,
-}
-
-impl ItemSourceExpression {
-    fn call(&self, name: &str) -> Option<&Self> {
-        self.calls().find(|call| call.name.as_deref() == Some(name))
-    }
-
-    fn calls(&self) -> impl Iterator<Item = &Self> {
-        let mut expressions = Vec::new();
-        self.collect_expressions(&mut expressions);
-        expressions
-            .into_iter()
-            .filter(|expression| expression.kind == "method_invocation")
-    }
-
-    fn creations(&self) -> impl Iterator<Item = &Self> {
-        let mut expressions = Vec::new();
-        self.collect_expressions(&mut expressions);
-        expressions
-            .into_iter()
-            .filter(|expression| expression.kind == "object_creation_expression")
-    }
-
-    fn field_accesses(&self) -> impl Iterator<Item = &Self> {
-        let mut expressions = Vec::new();
-        self.collect_expressions(&mut expressions);
-        expressions
-            .into_iter()
-            .filter(|expression| expression.kind == "field_access")
-    }
-
-    fn collect_expressions<'a>(&'a self, expressions: &mut Vec<&'a Self>) {
-        expressions.push(self);
-        if let Some(object) = &self.object {
-            object.collect_expressions(expressions);
-        }
-        for argument in &self.arguments {
-            argument.collect_expressions(expressions);
-        }
-        for child in &self.children {
-            child.collect_expressions(expressions);
-        }
-    }
-
-    fn field_constant(&self, owner: &str) -> Option<&str> {
-        (self.kind == "field_access"
-            && self
-                .object
-                .as_deref()
-                .map(|object| object.canonical.as_str())
-                == Some(owner))
-        .then(|| self.name.as_deref())
-        .flatten()
-    }
-
-    fn string_literal(&self) -> Result<Option<String>> {
-        if self.kind != "string_literal" {
-            return Ok(None);
-        }
-        serde_json::from_str(&self.canonical)
-            .map(Some)
-            .map_err(Into::into)
-    }
+    initializer: GeneratedJavaExpression,
 }
 
 impl ItemRegistryCatalog {
@@ -758,7 +682,7 @@ impl ItemRegistryCatalog {
 fn resource_ids_for_declaration(
     kind: &str,
     field: &str,
-    expression: &ItemSourceExpression,
+    expression: &GeneratedJavaExpression,
     item_id_constants: &BTreeMap<String, String>,
 ) -> Result<Vec<String>> {
     let root_name = expression.name.as_deref();
@@ -791,7 +715,7 @@ fn resource_ids_for_declaration(
 
     if root_name == Some("registerItem") {
         if let Some(name) = first_argument
-            .map(ItemSourceExpression::string_literal)
+            .map(GeneratedJavaExpression::string_literal)
             .transpose()?
             .flatten()
         {
@@ -831,12 +755,12 @@ impl DefaultItemName {
 
 fn default_item_name_for_declaration(
     kind: &str,
-    expression: &ItemSourceExpression,
+    expression: &GeneratedJavaExpression,
 ) -> Result<DefaultItemName> {
     if let Some(description_id) = expression
         .call("overrideDescription")
         .and_then(|call| call.arguments.first())
-        .map(ItemSourceExpression::string_literal)
+        .map(GeneratedJavaExpression::string_literal)
         .transpose()?
         .flatten()
     {
@@ -879,7 +803,7 @@ fn weathering_copper_ids(base: &str) -> Result<Vec<String>> {
     .collect()
 }
 
-fn durability_for_declaration(expression: &ItemSourceExpression) -> Result<Option<i32>> {
+fn durability_for_declaration(expression: &GeneratedJavaExpression) -> Result<Option<i32>> {
     if let Some(durability) = call_integer_argument(expression, "durability", 0)? {
         return Ok(Some(durability));
     }
@@ -905,7 +829,7 @@ fn durability_for_declaration(expression: &ItemSourceExpression) -> Result<Optio
 }
 
 fn default_component_type_ids_for_declaration(
-    expression: &ItemSourceExpression,
+    expression: &GeneratedJavaExpression,
 ) -> Result<BTreeSet<i32>> {
     let mut type_ids = COMMON_ITEM_COMPONENT_TYPE_IDS
         .iter()
@@ -1004,7 +928,7 @@ fn default_component_type_ids_for_declaration(
     Ok(type_ids)
 }
 
-fn applies_tool_material_defaults(expression: &ItemSourceExpression) -> bool {
+fn applies_tool_material_defaults(expression: &GeneratedJavaExpression) -> bool {
     ["tool", "sword", "pickaxe", "axe", "hoe", "shovel"]
         .iter()
         .any(|name| expression.call(name).is_some())
@@ -1133,7 +1057,7 @@ fn data_component_type_id_from_name(name: &str) -> Option<i32> {
     })
 }
 
-fn tool_material_for_durability(expression: &ItemSourceExpression) -> Result<Option<String>> {
+fn tool_material_for_durability(expression: &GeneratedJavaExpression) -> Result<Option<String>> {
     for name in ["sword", "pickaxe", "axe", "hoe", "shovel", "spear"] {
         if let Some(material) = call_field_argument(expression, name, 0, "ToolMaterial") {
             return Ok(Some(material.to_string()));
@@ -1165,24 +1089,26 @@ fn tool_material_durability(material: &str) -> Result<i32> {
 /// lowercased material name (`CHAINMAIL` → `chainmail`, `TURTLE_SCUTE` → `turtle_scute`), so the asset
 /// is the material captured by [`humanoid_armor_material_and_type`] lowercased.
 fn humanoid_armor_asset_for_declaration(
-    expression: &ItemSourceExpression,
+    expression: &GeneratedJavaExpression,
 ) -> Result<Option<String>> {
     Ok(humanoid_armor_material_and_type(expression)?
         .map(|(material, _armor_type)| material.to_lowercase()))
 }
 
 fn explicit_equippable_asset_for_declaration(
-    expression: &ItemSourceExpression,
+    expression: &GeneratedJavaExpression,
 ) -> Result<Option<String>> {
     Ok(call_field_argument(expression, "setAsset", 0, "EquipmentAssets").map(str::to_lowercase))
 }
 
-fn wolf_armor_asset_for_declaration(expression: &ItemSourceExpression) -> Result<Option<String>> {
+fn wolf_armor_asset_for_declaration(
+    expression: &GeneratedJavaExpression,
+) -> Result<Option<String>> {
     Ok(call_field_argument(expression, "wolfArmor", 0, "ArmorMaterials").map(str::to_lowercase))
 }
 
 fn humanoid_armor_material_and_type(
-    expression: &ItemSourceExpression,
+    expression: &GeneratedJavaExpression,
 ) -> Result<Option<(String, String)>> {
     let Some(call) = expression.call("humanoidArmor") else {
         return Ok(None);
@@ -1205,7 +1131,7 @@ fn humanoid_armor_material_and_type(
 }
 
 fn mount_body_armor_asset_for_declaration(
-    expression: &ItemSourceExpression,
+    expression: &GeneratedJavaExpression,
 ) -> Result<Option<String>> {
     for name in ["horseArmor", "nautilusArmor"] {
         if let Some(material) = call_field_argument(expression, name, 0, "ArmorMaterials") {
@@ -1239,7 +1165,7 @@ fn armor_type_unit_durability(armor_type: &str) -> Result<i32> {
     }
 }
 
-fn max_stack_size_for_declaration(expression: &ItemSourceExpression) -> Result<i32> {
+fn max_stack_size_for_declaration(expression: &GeneratedJavaExpression) -> Result<i32> {
     let stack_size = call_integer_argument(expression, "stacksTo", 0)?;
     if let Some(stack_size) = stack_size {
         return Ok(stack_size);
@@ -1273,7 +1199,7 @@ fn max_stack_size_for_declaration(expression: &ItemSourceExpression) -> Result<i
 }
 
 fn equipment_slot_for_declaration(
-    expression: &ItemSourceExpression,
+    expression: &GeneratedJavaExpression,
 ) -> Result<Option<ItemEquipmentSlot>> {
     if qualified_call(expression, "saddle", "Equippable").is_some() {
         return Ok(Some(ItemEquipmentSlot::Saddle));
@@ -1300,7 +1226,7 @@ fn equipment_slot_for_declaration(
 }
 
 fn mount_body_armor_kind_for_declaration(
-    expression: &ItemSourceExpression,
+    expression: &GeneratedJavaExpression,
 ) -> Option<ItemMountBodyArmorKind> {
     if expression.call("horseArmor").is_some() {
         Some(ItemMountBodyArmorKind::Horse)
@@ -1313,12 +1239,12 @@ fn mount_body_armor_kind_for_declaration(
     }
 }
 
-fn default_piercing_weapon_for_declaration(expression: &ItemSourceExpression) -> bool {
+fn default_piercing_weapon_for_declaration(expression: &GeneratedJavaExpression) -> bool {
     expression.call("spear").is_some()
 }
 
 fn default_attack_range_for_declaration(
-    expression: &ItemSourceExpression,
+    expression: &GeneratedJavaExpression,
 ) -> Result<Option<ItemAttackRange>> {
     if expression.call("spear").is_some() {
         return Ok(Some(ItemAttackRange {
@@ -1354,7 +1280,7 @@ fn default_attack_range_for_declaration(
 }
 
 fn default_swing_animation_duration_for_declaration(
-    expression: &ItemSourceExpression,
+    expression: &GeneratedJavaExpression,
 ) -> Result<Option<i32>> {
     if let Some(attack_duration) = spear_attack_duration_for_declaration(expression)? {
         return Ok(Some((attack_duration * 20.0) as i32));
@@ -1394,7 +1320,7 @@ fn default_swing_animation_duration_for_declaration(
 }
 
 fn default_attribute_modifiers_for_declaration(
-    expression: &ItemSourceExpression,
+    expression: &GeneratedJavaExpression,
 ) -> Result<Vec<ItemDefaultAttributeModifier>> {
     if let Some((material, armor_type)) = humanoid_armor_material_and_type(expression)? {
         return armor_default_attribute_modifiers(&material, &armor_type);
@@ -1602,7 +1528,9 @@ fn attribute_modifier_entries(
     ]
 }
 
-fn spear_attack_duration_for_declaration(expression: &ItemSourceExpression) -> Result<Option<f32>> {
+fn spear_attack_duration_for_declaration(
+    expression: &GeneratedJavaExpression,
+) -> Result<Option<f32>> {
     let Some(call) = expression.call("spear") else {
         return Ok(None);
     };
@@ -1614,7 +1542,7 @@ fn spear_attack_duration_for_declaration(expression: &ItemSourceExpression) -> R
 }
 
 fn spear_material_and_attack_duration(
-    expression: &ItemSourceExpression,
+    expression: &GeneratedJavaExpression,
 ) -> Result<Option<(String, f32)>> {
     let Some(call) = expression.call("spear") else {
         return Ok(None);
@@ -1646,7 +1574,7 @@ fn material_attack_damage_bonus(material: &str) -> Result<f32> {
 }
 
 fn default_use_effects_for_declaration(
-    expression: &ItemSourceExpression,
+    expression: &GeneratedJavaExpression,
 ) -> Result<Option<ItemUseEffects>> {
     if expression.call("spear").is_some() {
         return Ok(Some(ItemUseEffects {
@@ -1676,7 +1604,7 @@ fn default_use_effects_for_declaration(
 }
 
 fn default_consumable_for_declaration(
-    expression: &ItemSourceExpression,
+    expression: &GeneratedJavaExpression,
 ) -> Result<Option<ItemConsumable>> {
     if let Some(value) = component_value(expression, "CONSUMABLE") {
         if let Some(name) = value.field_constant("Consumables") {
@@ -1731,7 +1659,7 @@ fn consumable_for_name(name: &str) -> Result<ItemConsumable> {
 }
 
 fn crafting_remainder_for_declaration(
-    expression: &ItemSourceExpression,
+    expression: &GeneratedJavaExpression,
     item_id_constants: &BTreeMap<String, String>,
 ) -> Result<Option<String>> {
     let Some(item_field) = expression
@@ -1749,7 +1677,7 @@ fn crafting_remainder_for_declaration(
 }
 
 fn mining_profile_for_declaration(
-    expression: &ItemSourceExpression,
+    expression: &GeneratedJavaExpression,
     block_tags: Option<&TagCatalog>,
 ) -> Result<Option<ItemMiningProfile>> {
     let Some(block_tags) = block_tags else {
@@ -1819,7 +1747,7 @@ fn mining_profile_for_declaration(
 }
 
 fn tool_mining_tag_and_material(
-    expression: &ItemSourceExpression,
+    expression: &GeneratedJavaExpression,
 ) -> Result<Option<(&'static str, String)>> {
     for (tag_id, call_name, creation_name) in [
         ("minecraft:mineable/pickaxe", "pickaxe", "PickaxeItem"),
@@ -1931,10 +1859,10 @@ fn armor_type_equipment_slot(name: &str) -> Result<ItemEquipmentSlot> {
 }
 
 fn qualified_call<'a>(
-    expression: &'a ItemSourceExpression,
+    expression: &'a GeneratedJavaExpression,
     name: &str,
     qualifier: &str,
-) -> Option<&'a ItemSourceExpression> {
+) -> Option<&'a GeneratedJavaExpression> {
     expression.calls().find(|call| {
         call.name.as_deref() == Some(name)
             && call
@@ -1946,7 +1874,7 @@ fn qualified_call<'a>(
 }
 
 fn call_field_argument<'a>(
-    expression: &'a ItemSourceExpression,
+    expression: &'a GeneratedJavaExpression,
     call_name: &str,
     argument_index: usize,
     owner: &str,
@@ -1965,7 +1893,7 @@ fn call_field_argument<'a>(
 }
 
 fn creation_field_argument<'a>(
-    expression: &'a ItemSourceExpression,
+    expression: &'a GeneratedJavaExpression,
     creation_name: &str,
     argument_index: usize,
     owner: &str,
@@ -1984,7 +1912,7 @@ fn creation_field_argument<'a>(
 }
 
 fn call_integer_argument(
-    expression: &ItemSourceExpression,
+    expression: &GeneratedJavaExpression,
     call_name: &str,
     argument_index: usize,
 ) -> Result<Option<i32>> {
@@ -1997,9 +1925,9 @@ fn call_integer_argument(
 }
 
 fn component_value<'a>(
-    expression: &'a ItemSourceExpression,
+    expression: &'a GeneratedJavaExpression,
     component_name: &str,
-) -> Option<&'a ItemSourceExpression> {
+) -> Option<&'a GeneratedJavaExpression> {
     expression
         .calls()
         .find(|call| {
@@ -2014,7 +1942,7 @@ fn component_value<'a>(
 }
 
 fn call_has_qualified_call_argument(
-    expression: &ItemSourceExpression,
+    expression: &GeneratedJavaExpression,
     call_name: &str,
     argument_index: usize,
     qualifier: &str,

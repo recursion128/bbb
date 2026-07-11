@@ -10764,3 +10764,19 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   regex 解析本地 Java；update/check、二次 update 幂等、CST fixture 与 pack focused tests
   锁定覆盖和失败诊断。burn duration、feature flag、server furnace tick 和其它 block profile
   parser 不属于本切片。
+
+## 2026-07-11：Tree-sitter block-registry / destroy-profile extraction
+
+- [x] 新增共享的 `Blocks.java` declaration facts：统一 Java frontend 从 1,144 个 `Block`
+  注册字段提取连续声明顺序、resource id、相对 byte span 与结构化 expression facts，生成
+  checked-in `block_registry_declarations_26_1.json`；`BlockIds.java` 的 7 个特殊 key 通过
+  CST `createKey` 声明解析，未知 helper/key 明确失败。通用 expression-fact 投影提升到
+  `vanilla_java_source.py`，item/block extractor 共用；Rust 仅反序列化该 IR，不包含第二套
+  Java parser。
+- [x] `BlockDestroyProfileCatalog` 保持 `load/profile/profiles/len` 查询面，从生成 declarations
+  结构化解析 copy/helper/property chain、infested host、destroy time 与 correct-tool 标记，
+  删除运行时 `Blocks.java/BlockIds.java` 读取和全部 regex。旧/新实现对同一 vanilla 26.1
+  输入的 1,144 项完整 profile map 逐字节相同（SHA-256
+  `218a58114a5e5e7acf899fac6008aa5aefffef4635503eacc45a441504ee2c3c`）；normal no-Java test、
+  frontend fixtures、update/check 和幂等门禁锁定结果。block sound profile 仍是后续独立消费
+  迁移，不在本切片误标完成。

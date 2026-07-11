@@ -1,0 +1,172 @@
+"""Tree-sitter-backed vanilla block registry declaration extraction.
+
+Java structure and expression facts come exclusively from
+:mod:`vanilla_java_source`. This module only recognizes the Minecraft block
+registration and ``BlockIds`` vocabulary.
+"""
+
+from __future__ import annotations
+
+import json
+from dataclasses import dataclass
+from typing import Any
+
+from vanilla_java_source import JavaExpression, JavaSource, expression_fact
+
+
+class BlockRegistryCatalogExtractionError(ValueError):
+    """An explicit unsupported or inconsistent block registry source."""
+
+
+BLOCKS_OWNER = "net.minecraft.world.level.block.Blocks"
+BLOCK_IDS_OWNER = "net.minecraft.references.BlockIds"
+REGISTER_HELPERS = {
+    "register",
+    "registerBed",
+    "registerLegacyStair",
+    "registerStair",
+    "registerStainedGlass",
+}
+
+
+def _fail(source: JavaSource, expression: JavaExpression, message: str) -> None:
+    span = expression.span
+    raise BlockRegistryCatalogExtractionError(
+        f"{source.relative_path}:{span.start_point[0] + 1}:"
+        f"{span.start_point[1] + 1}: {message}"
+    )
+
+
+def _arguments(source: JavaSource, expression: JavaExpression) -> list[JavaExpression]:
+    arguments = expression.node.child_by_field_name("arguments")
+    if arguments is None:
+        _fail(source, expression, "registration expression lacks arguments")
+    return [source.expression(child) for child in arguments.named_children]
+
+
+def _string(source: JavaSource, expression: JavaExpression) -> str:
+    if expression.node.type != "string_literal":
+        _fail(source, expression, "expected a Java string literal")
+    try:
+        value = json.loads(source.text(expression.node))
+    except json.JSONDecodeError as error:
+        _fail(source, expression, f"invalid Java string literal: {error}")
+    if not isinstance(value, str) or not value:
+        _fail(source, expression, "expected a non-empty Java string literal")
+    return value
+
+
+def _field_constant(
+    source: JavaSource, expression: JavaExpression, owner: str
+) -> str | None:
+    node = expression.node
+    if node.type not in {"field_access", "scoped_identifier"}:
+        return None
+    object_node = node.child_by_field_name("object") or node.child_by_field_name("scope")
+    field_node = node.child_by_field_name("field") or node.child_by_field_name("name")
+    if object_node is None or field_node is None:
+        _fail(source, expression, "field constant is incomplete")
+    if source.expression(object_node).canonical.replace(" ", "") != owner:
+        return None
+    return source.text(field_node)
+
+
+def extract_block_id_constants(source: JavaSource) -> dict[str, str]:
+    constants: dict[str, str] = {}
+    for field in source.fields_for(BLOCK_IDS_OWNER):
+        if field.type_spelling.replace(" ", "") != "ResourceKey<Block>":
+            continue
+        initializer = field.initializer
+        if initializer is None or initializer.node.type != "method_invocation":
+            expression = initializer or source.expression(field.node)
+            _fail(source, expression, f"BlockIds.{field.name} lacks createKey initializer")
+        name = initializer.node.child_by_field_name("name")
+        arguments = _arguments(source, initializer)
+        if name is None or source.text(name) != "createKey" or len(arguments) != 1:
+            _fail(source, initializer, f"BlockIds.{field.name} is not createKey(string)")
+        if field.name in constants:
+            _fail(source, initializer, f"duplicate BlockIds.{field.name}")
+        constants[field.name] = _string(source, arguments[0])
+    if not constants:
+        raise BlockRegistryCatalogExtractionError(
+            f"{source.relative_path}: no BlockIds createKey declarations found"
+        )
+    return constants
+
+
+@dataclass(frozen=True)
+class ExtractedBlockRegistryCatalog:
+    declarations: tuple[dict[str, Any], ...]
+
+    def as_json_value(self) -> dict[str, Any]:
+        return {
+            "vanilla_version": "26.1",
+            "generated_by": "scripts/generate-block-registry-catalog.py",
+            "update_command": (
+                "scripts/vanilla-source-tools.sh "
+                "scripts/generate-block-registry-catalog.py"
+            ),
+            "check_command": (
+                "scripts/vanilla-source-tools.sh "
+                "scripts/generate-block-registry-catalog.py --check"
+            ),
+            "sources": [
+                "net/minecraft/references/BlockIds.java",
+                "net/minecraft/world/level/block/Blocks.java",
+            ],
+            "declarations": list(self.declarations),
+        }
+
+
+def extract_block_registry_catalog(
+    blocks_source: JavaSource, block_ids_source: JavaSource
+) -> ExtractedBlockRegistryCatalog:
+    constants = extract_block_id_constants(block_ids_source)
+    fields = [
+        field
+        for field in blocks_source.fields_for(BLOCKS_OWNER)
+        if field.type_spelling == "Block"
+    ]
+    declarations: list[dict[str, Any]] = []
+    for declaration_order, field in enumerate(fields):
+        initializer = field.initializer
+        if initializer is None or initializer.node.type != "method_invocation":
+            expression = initializer or blocks_source.expression(field.node)
+            _fail(blocks_source, expression, f"Blocks.{field.name} lacks registration call")
+        name_node = initializer.node.child_by_field_name("name")
+        if name_node is None:
+            _fail(blocks_source, initializer, "block registration lacks helper name")
+        helper = blocks_source.text(name_node)
+        if helper not in REGISTER_HELPERS:
+            _fail(blocks_source, initializer, f"unsupported block register helper {helper}")
+        arguments = _arguments(blocks_source, initializer)
+        if not arguments:
+            _fail(blocks_source, initializer, "block registration lacks resource id")
+        resource_path = (
+            _string(blocks_source, arguments[0])
+            if arguments[0].node.type == "string_literal"
+            else None
+        )
+        if resource_path is None:
+            constant = _field_constant(blocks_source, arguments[0], "BlockIds")
+            if constant is None:
+                _fail(blocks_source, arguments[0], "unsupported block resource id expression")
+            resource_path = constants.get(constant)
+            if resource_path is None:
+                _fail(blocks_source, arguments[0], f"unresolved BlockIds.{constant}")
+        declarations.append(
+            {
+                "field": field.name,
+                "declaration_order": declaration_order,
+                "resource_id": f"minecraft:{resource_path}",
+                "source_path": blocks_source.relative_path,
+                "start_byte": initializer.span.start_byte,
+                "end_byte": initializer.span.end_byte,
+                "initializer": expression_fact(blocks_source, initializer),
+            }
+        )
+    if not declarations or len(declarations) != len(fields):
+        raise BlockRegistryCatalogExtractionError(
+            f"{blocks_source.relative_path}: failed to close all block declarations"
+        )
+    return ExtractedBlockRegistryCatalog(tuple(declarations))

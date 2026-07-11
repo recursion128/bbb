@@ -10,6 +10,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from vanilla_java_source import (  # noqa: E402
     JavaSourceError,
     canonical_expression,
+    expression_fact,
     parse_source,
     resolve_class_hierarchy,
 )
@@ -124,6 +125,20 @@ class VanillaJavaSourceFrontendTests(unittest.TestCase):
         self.assertEqual(first.span.bytes(compact), b"Factory.make(1, 2)")
         self.assertEqual(second.span.bytes(spaced), b"Factory /*x*/ . make ( 1 , 2 )")
         self.assertEqual(canonical_expression(compact, first.node), first.canonical)
+
+    def test_expression_fact_projects_calls_objects_and_arguments_from_cst(self) -> None:
+        source = parse_source(
+            "fixture/X.java",
+            b"package fixture; class X { Object v = Factory.make(Owner.VALUE, new Box(1)); }",
+        )
+        fact = expression_fact(source, source.fields[0].initializer)
+
+        self.assertEqual(fact["kind"], "method_invocation")
+        self.assertEqual(fact["name"], "make")
+        self.assertEqual(fact["object"]["canonical"], "Factory")
+        self.assertEqual(fact["arguments"][0]["name"], "VALUE")
+        self.assertEqual(fact["arguments"][1]["name"], "Box")
+        self.assertEqual(fact["arguments"][1]["arguments"][0]["canonical"], "1")
 
     def test_malformed_java_reports_error_or_missing_span(self) -> None:
         with self.assertRaisesRegex(

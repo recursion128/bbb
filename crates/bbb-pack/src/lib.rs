@@ -8,6 +8,7 @@ mod equipment_assets;
 mod exports;
 mod freeze_immune_wearables;
 mod furnace_fuels;
+mod generated_java_expression;
 mod image;
 mod item_cuboid_models;
 mod item_models;

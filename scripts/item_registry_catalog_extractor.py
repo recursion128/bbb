@@ -11,7 +11,7 @@ import json
 from dataclasses import dataclass
 from typing import Any
 
-from vanilla_java_source import JavaExpression, JavaSource
+from vanilla_java_source import JavaExpression, JavaSource, expression_fact
 
 
 class ItemRegistryCatalogExtractionError(ValueError):
@@ -54,52 +54,6 @@ def _arguments(source: JavaSource, node) -> list[JavaExpression]:
         for child in arguments.named_children
         if child.type not in {"line_comment", "block_comment"}
     ]
-
-
-def _expression_fact(source: JavaSource, expression: JavaExpression) -> dict[str, Any]:
-    node = expression.node
-    fact: dict[str, Any] = {
-        "kind": node.type,
-        "canonical": expression.canonical,
-    }
-    if node.type == "method_invocation":
-        name = node.child_by_field_name("name")
-        if name is None:
-            _fail(source, expression, "method invocation lacks a name")
-        object_node = node.child_by_field_name("object")
-        fact["name"] = source.text(name)
-        fact["object"] = (
-            _expression_fact(source, source.expression(object_node))
-            if object_node is not None
-            else None
-        )
-        fact["arguments"] = [
-            _expression_fact(source, argument)
-            for argument in _arguments(source, node)
-        ]
-    elif node.type == "object_creation_expression":
-        type_node = node.child_by_field_name("type")
-        if type_node is None:
-            _fail(source, expression, "object creation lacks a type")
-        fact["name"] = source.expression(type_node).canonical.replace(" ", "")
-        fact["arguments"] = [
-            _expression_fact(source, argument)
-            for argument in _arguments(source, node)
-        ]
-    elif node.type == "field_access":
-        object_node = node.child_by_field_name("object")
-        field_node = node.child_by_field_name("field")
-        if object_node is None or field_node is None:
-            _fail(source, expression, "field access lacks object or field")
-        fact["name"] = source.text(field_node)
-        fact["object"] = _expression_fact(source, source.expression(object_node))
-    elif node.named_children:
-        fact["children"] = [
-            _expression_fact(source, source.expression(child))
-            for child in node.named_children
-            if child.type not in {"line_comment", "block_comment"}
-        ]
-    return fact
 
 
 @dataclass(frozen=True)
@@ -159,7 +113,7 @@ def extract_item_registry_catalog(
                 "source_path": items_source.relative_path,
                 "start_byte": field.initializer.span.start_byte,
                 "end_byte": field.initializer.span.end_byte,
-                "initializer": _expression_fact(items_source, field.initializer),
+                "initializer": expression_fact(items_source, field.initializer),
             }
         )
 
