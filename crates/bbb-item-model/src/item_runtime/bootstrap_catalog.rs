@@ -652,6 +652,187 @@ pub(super) const VANILLA_PAINTING_VARIANTS: &[VanillaPaintingVariant] = &[
     },
 ];
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) struct VanillaEnchantment {
+    pub(super) resource_id: &'static str,
+    pub(super) max_level: i32,
+}
+
+pub(super) const VANILLA_ENCHANTMENTS: &[VanillaEnchantment] = &[
+    VanillaEnchantment {
+        resource_id: "minecraft:protection",
+        max_level: 4,
+    },
+    VanillaEnchantment {
+        resource_id: "minecraft:fire_protection",
+        max_level: 4,
+    },
+    VanillaEnchantment {
+        resource_id: "minecraft:feather_falling",
+        max_level: 4,
+    },
+    VanillaEnchantment {
+        resource_id: "minecraft:blast_protection",
+        max_level: 4,
+    },
+    VanillaEnchantment {
+        resource_id: "minecraft:projectile_protection",
+        max_level: 4,
+    },
+    VanillaEnchantment {
+        resource_id: "minecraft:respiration",
+        max_level: 3,
+    },
+    VanillaEnchantment {
+        resource_id: "minecraft:aqua_affinity",
+        max_level: 1,
+    },
+    VanillaEnchantment {
+        resource_id: "minecraft:thorns",
+        max_level: 3,
+    },
+    VanillaEnchantment {
+        resource_id: "minecraft:depth_strider",
+        max_level: 3,
+    },
+    VanillaEnchantment {
+        resource_id: "minecraft:frost_walker",
+        max_level: 2,
+    },
+    VanillaEnchantment {
+        resource_id: "minecraft:binding_curse",
+        max_level: 1,
+    },
+    VanillaEnchantment {
+        resource_id: "minecraft:soul_speed",
+        max_level: 3,
+    },
+    VanillaEnchantment {
+        resource_id: "minecraft:swift_sneak",
+        max_level: 3,
+    },
+    VanillaEnchantment {
+        resource_id: "minecraft:sharpness",
+        max_level: 5,
+    },
+    VanillaEnchantment {
+        resource_id: "minecraft:smite",
+        max_level: 5,
+    },
+    VanillaEnchantment {
+        resource_id: "minecraft:bane_of_arthropods",
+        max_level: 5,
+    },
+    VanillaEnchantment {
+        resource_id: "minecraft:knockback",
+        max_level: 2,
+    },
+    VanillaEnchantment {
+        resource_id: "minecraft:fire_aspect",
+        max_level: 2,
+    },
+    VanillaEnchantment {
+        resource_id: "minecraft:looting",
+        max_level: 3,
+    },
+    VanillaEnchantment {
+        resource_id: "minecraft:sweeping_edge",
+        max_level: 3,
+    },
+    VanillaEnchantment {
+        resource_id: "minecraft:efficiency",
+        max_level: 5,
+    },
+    VanillaEnchantment {
+        resource_id: "minecraft:silk_touch",
+        max_level: 1,
+    },
+    VanillaEnchantment {
+        resource_id: "minecraft:unbreaking",
+        max_level: 3,
+    },
+    VanillaEnchantment {
+        resource_id: "minecraft:fortune",
+        max_level: 3,
+    },
+    VanillaEnchantment {
+        resource_id: "minecraft:power",
+        max_level: 5,
+    },
+    VanillaEnchantment {
+        resource_id: "minecraft:punch",
+        max_level: 2,
+    },
+    VanillaEnchantment {
+        resource_id: "minecraft:flame",
+        max_level: 1,
+    },
+    VanillaEnchantment {
+        resource_id: "minecraft:infinity",
+        max_level: 1,
+    },
+    VanillaEnchantment {
+        resource_id: "minecraft:luck_of_the_sea",
+        max_level: 3,
+    },
+    VanillaEnchantment {
+        resource_id: "minecraft:lure",
+        max_level: 3,
+    },
+    VanillaEnchantment {
+        resource_id: "minecraft:loyalty",
+        max_level: 3,
+    },
+    VanillaEnchantment {
+        resource_id: "minecraft:impaling",
+        max_level: 5,
+    },
+    VanillaEnchantment {
+        resource_id: "minecraft:riptide",
+        max_level: 3,
+    },
+    VanillaEnchantment {
+        resource_id: "minecraft:lunge",
+        max_level: 3,
+    },
+    VanillaEnchantment {
+        resource_id: "minecraft:channeling",
+        max_level: 1,
+    },
+    VanillaEnchantment {
+        resource_id: "minecraft:multishot",
+        max_level: 1,
+    },
+    VanillaEnchantment {
+        resource_id: "minecraft:quick_charge",
+        max_level: 3,
+    },
+    VanillaEnchantment {
+        resource_id: "minecraft:piercing",
+        max_level: 4,
+    },
+    VanillaEnchantment {
+        resource_id: "minecraft:density",
+        max_level: 5,
+    },
+    VanillaEnchantment {
+        resource_id: "minecraft:breach",
+        max_level: 4,
+    },
+    VanillaEnchantment {
+        resource_id: "minecraft:wind_burst",
+        max_level: 3,
+    },
+    VanillaEnchantment {
+        resource_id: "minecraft:mending",
+        max_level: 1,
+    },
+    VanillaEnchantment {
+        resource_id: "minecraft:vanishing_curse",
+        max_level: 1,
+    },
+];
+
 #[cfg(test)]
 mod tests {
     use std::collections::HashSet;
@@ -678,6 +859,7 @@ mod tests {
         }
         assert_eq!(VANILLA_BANNER_PATTERNS.len(), 43);
         assert_eq!(VANILLA_PAINTING_VARIANTS.len(), 51);
+        assert_eq!(VANILLA_ENCHANTMENTS.len(), 43);
         let banner_resources: HashSet<_> = VANILLA_BANNER_PATTERNS
             .iter()
             .map(|entry| entry.resource_id)
@@ -688,6 +870,11 @@ mod tests {
             .map(|entry| entry.key)
             .collect();
         assert_eq!(painting_resources.len(), VANILLA_PAINTING_VARIANTS.len());
+        let enchantment_resources: HashSet<_> = VANILLA_ENCHANTMENTS
+            .iter()
+            .map(|entry| entry.resource_id)
+            .collect();
+        assert_eq!(enchantment_resources.len(), VANILLA_ENCHANTMENTS.len());
     }
 
     #[test]
@@ -728,5 +915,10 @@ mod tests {
             ),
             (3, 3)
         );
+        assert_eq!(
+            VANILLA_ENCHANTMENTS.get(13).unwrap().resource_id,
+            "minecraft:sharpness"
+        );
+        assert_eq!(VANILLA_ENCHANTMENTS.get(13).unwrap().max_level, 5);
     }
 }

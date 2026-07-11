@@ -12,6 +12,7 @@ from bootstrap_catalog_extractor import (  # noqa: E402
     BootstrapCatalogExtractionError,
     banner_pattern_entries,
     bootstrap_resource_key_entries,
+    enchantment_entries,
     painting_variant_entries,
     static_register_entries,
 )
@@ -137,6 +138,30 @@ class Banners {
         )
         entry = banner_pattern_entries(source, 1)[0]
         self.assertEqual(entry.translation_key, "block.minecraft.banner.base")
+
+    def test_enchantment_order_and_max_level_come_from_definition_calls(self) -> None:
+        source = parse_source(
+            "fixture/Enchantments.java",
+            b"""
+package fixture;
+class Enchantments {
+  static final ResourceKey<Enchantment> ONE = key("one");
+  static final ResourceKey<Enchantment> TWO = key("two");
+  static void bootstrap(BootstrapContext<Enchantment> context) {
+    register(context, TWO, Enchantment.enchantment(
+        Enchantment.definition(items, primary, 4, 5, min(), max(), 1, SLOT)));
+    register(context, ONE, Enchantment.enchantment(
+        Enchantment.definition(items, 2, 3, min(), max(), 1, SLOT))
+        .withEffect(EFFECT, "fake definition(items, 0, 99)"));
+  }
+}
+""",
+        )
+        entries = enchantment_entries(source, 2)
+        self.assertEqual(
+            [(entry.resource_id, entry.max_level) for entry in entries],
+            [("minecraft:two", 5), ("minecraft:one", 3)],
+        )
 
 
 if __name__ == "__main__":

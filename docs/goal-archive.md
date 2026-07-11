@@ -10228,3 +10228,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   查询和 tooltip 行为。fixtures 锁定 painting 参数/默认 author 与 banner 派生公式，
   update/check、二次 update、focused tests 和 workspace gate 通过；painting title/author
   呈现逻辑仍由 tooltip owner 管理，dynamic registry 仍以服务器 session 顺序为权威。
+
+## 2026-07-11：Generated enchantment bootstrap catalog
+
+- [x] bootstrap extractor 从 `Enchantments.java` 的 43 个 ResourceKey 与顶层 register
+  call 生成 holder registry 顺序，并从每个注册值中唯一的 `Enchantment.definition`
+  重载提取 max level；同时支持带/不带 primary-items 的两个签名，不以固定参数下标猜值。
+  item-model tooltip 删除 resource/max-level 手抄表并消费 generated typed entries，独立
+  tooltip display-order 语义表保持原 owner。迁移反向发现并修正旧表把 Lunge 放在
+  Wind Burst 后的错误：26.1 实际 bootstrap 顺序为 Riptide、Lunge、Channeling；server
+  session registry 存在时仍优先使用其顺序。fixtures、update/check、二次 update、focused
+  compatibility test 与 workspace gate 通过；enchantment effects/Codec 未被源码结构冒充。

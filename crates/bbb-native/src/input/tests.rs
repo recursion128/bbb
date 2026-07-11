@@ -8940,7 +8940,8 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
         rarity: Some(ItemRaritySummary::Rare),
         enchantments: vec![
             bbb_protocol::packets::ItemEnchantmentSummary {
-                holder_id: 37,
+                // `Enchantments.bootstrap`: DENSITY is holder id 38 in 26.1.
+                holder_id: 38,
                 level: 4,
             },
             bbb_protocol::packets::ItemEnchantmentSummary {

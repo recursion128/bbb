@@ -1976,7 +1976,8 @@ mod tests {
     fn enchantment_components_share_map_codec_and_validate_persistent_values() {
         let mut patch = bbb_protocol::packets::DataComponentPatchSummary {
             enchantments: vec![bbb_protocol::packets::ItemEnchantmentSummary {
-                holder_id: 37,
+                // `Enchantments.bootstrap`: DENSITY is holder id 38 in 26.1.
+                holder_id: 38,
                 level: 4,
             }],
             stored_enchantments: vec![bbb_protocol::packets::ItemEnchantmentSummary {

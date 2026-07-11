@@ -33,6 +33,13 @@ class BannerPatternEntry:
 
 
 @dataclass(frozen=True)
+class EnchantmentEntry:
+    constant_name: str
+    resource_id: str
+    max_level: int
+
+
+@dataclass(frozen=True)
 class PaintingVariantEntry:
     constant_name: str
     resource_id: str
@@ -355,3 +362,70 @@ def banner_pattern_entries(
         )
         for entry in entries
     ]
+
+
+def enchantment_entries(
+    source: JavaSource, expected_count: int = 43
+) -> list[EnchantmentEntry]:
+    resources = _declared_resource_keys(source, "Enchantment", {"key"})
+    method = _bootstrap_method(source)
+    context_name = _bootstrap_context_name(source, method)
+    calls = [
+        call
+        for call in source.calls
+        if call.name == "register"
+        and call.qualifier is None
+        and method.body.start_byte <= call.span.start_byte
+        and call.span.end_byte <= method.body.end_byte
+    ]
+    calls.sort(key=lambda call: (call.span.start_byte, call.span.end_byte))
+    entries: list[EnchantmentEntry] = []
+    for call in calls:
+        if len(call.arguments) != 3 or call.arguments[0].canonical != context_name:
+            _fail(source, source.expression(call.node), "unsupported enchantment register call")
+        key = call.arguments[1]
+        if key.node.type != "identifier" or key.canonical not in resources:
+            _fail(source, key, "enchantment resource key is not a declared identifier")
+        value = call.arguments[2]
+        definitions = [
+            candidate
+            for candidate in source.calls
+            if candidate.name == "definition"
+            and value.span.start_byte <= candidate.span.start_byte
+            and candidate.span.end_byte <= value.span.end_byte
+        ]
+        if len(definitions) != 1 or len(definitions[0].arguments) < 3:
+            _fail(source, value, "expected exactly one Enchantment.definition call")
+        definition_arguments = definitions[0].arguments
+        has_primary_items = definition_arguments[1].node.type != "decimal_integer_literal"
+        max_level_index = 3 if has_primary_items else 2
+        if len(definition_arguments) <= max_level_index:
+            _fail(source, value, "Enchantment.definition lacks a max-level argument")
+        max_level = definition_arguments[max_level_index]
+        if max_level.node.type != "decimal_integer_literal":
+            _fail(source, max_level, "enchantment max level is not an integer literal")
+        entries.append(
+            EnchantmentEntry(
+                key.canonical,
+                resources[key.canonical],
+                int(max_level.canonical.replace("_", ""), 10),
+            )
+        )
+    constants = [entry.constant_name for entry in entries]
+    if len(entries) != expected_count:
+        raise BootstrapCatalogExtractionError(
+            f"{source.relative_path}: expected {expected_count} enchantments, "
+            f"extracted {len(entries)}"
+        )
+    if len(constants) != len(set(constants)):
+        raise BootstrapCatalogExtractionError(
+            f"{source.relative_path}: duplicate enchantment bootstrap registration"
+        )
+    unknown = set(constants) - resources.keys()
+    missing = resources.keys() - set(constants)
+    if unknown or missing:
+        raise BootstrapCatalogExtractionError(
+            f"{source.relative_path}: enchantment declaration/bootstrap mismatch: "
+            f"unknown={sorted(unknown)}, missing={sorted(missing)}"
+        )
+    return entries

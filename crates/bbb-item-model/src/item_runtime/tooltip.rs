@@ -13,7 +13,7 @@ use super::attributes::{
     vanilla_attribute, vanilla_attribute_for_key, VanillaAttribute, VanillaAttributeSentiment,
 };
 use super::bootstrap_catalog::{
-    VanillaPaintingVariant, VANILLA_BANNER_PATTERNS, VANILLA_INSTRUMENT_KEYS,
+    VanillaPaintingVariant, VANILLA_BANNER_PATTERNS, VANILLA_ENCHANTMENTS, VANILLA_INSTRUMENT_KEYS,
     VANILLA_PAINTING_VARIANTS, VANILLA_TRIM_MATERIAL_KEYS, VANILLA_TRIM_PATTERN_KEYS,
 };
 use super::icon_model::effective_attribute_modifiers;
@@ -175,51 +175,6 @@ const TROPICAL_FISH_COMMON_VARIANTS: &[(i32, i32, i32)] = &[
     (256, 7, 0),
     (768, 9, 4),
     (1, 4, 4),
-];
-const VANILLA_ENCHANTMENT_KEYS_AND_MAX_LEVELS: &[(&str, i32)] = &[
-    ("minecraft:protection", 4),
-    ("minecraft:fire_protection", 4),
-    ("minecraft:feather_falling", 4),
-    ("minecraft:blast_protection", 4),
-    ("minecraft:projectile_protection", 4),
-    ("minecraft:respiration", 3),
-    ("minecraft:aqua_affinity", 1),
-    ("minecraft:thorns", 3),
-    ("minecraft:depth_strider", 3),
-    ("minecraft:frost_walker", 2),
-    ("minecraft:binding_curse", 1),
-    ("minecraft:soul_speed", 3),
-    ("minecraft:swift_sneak", 3),
-    ("minecraft:sharpness", 5),
-    ("minecraft:smite", 5),
-    ("minecraft:bane_of_arthropods", 5),
-    ("minecraft:knockback", 2),
-    ("minecraft:fire_aspect", 2),
-    ("minecraft:looting", 3),
-    ("minecraft:sweeping_edge", 3),
-    ("minecraft:efficiency", 5),
-    ("minecraft:silk_touch", 1),
-    ("minecraft:unbreaking", 3),
-    ("minecraft:fortune", 3),
-    ("minecraft:power", 5),
-    ("minecraft:punch", 2),
-    ("minecraft:flame", 1),
-    ("minecraft:infinity", 1),
-    ("minecraft:luck_of_the_sea", 3),
-    ("minecraft:lure", 3),
-    ("minecraft:loyalty", 3),
-    ("minecraft:impaling", 5),
-    ("minecraft:riptide", 3),
-    ("minecraft:channeling", 1),
-    ("minecraft:multishot", 1),
-    ("minecraft:quick_charge", 3),
-    ("minecraft:piercing", 4),
-    ("minecraft:density", 5),
-    ("minecraft:breach", 4),
-    ("minecraft:wind_burst", 3),
-    ("minecraft:lunge", 3),
-    ("minecraft:mending", 1),
-    ("minecraft:vanishing_curse", 1),
 ];
 const VANILLA_ENCHANTMENT_TOOLTIP_ORDER: &[&str] = &[
     "minecraft:binding_curse",
@@ -1504,7 +1459,11 @@ mod tests {
     #[test]
     fn vanilla_enchantment_tables_follow_26_1_registry_and_tooltip_order() {
         assert_eq!(
-            VANILLA_ENCHANTMENT_KEYS_AND_MAX_LEVELS,
+            VANILLA_ENCHANTMENTS
+                .iter()
+                .map(|entry| (entry.resource_id, entry.max_level))
+                .collect::<Vec<_>>()
+                .as_slice(),
             &[
                 ("minecraft:protection", 4),
                 ("minecraft:fire_protection", 4),
@@ -1539,6 +1498,7 @@ mod tests {
                 ("minecraft:loyalty", 3),
                 ("minecraft:impaling", 5),
                 ("minecraft:riptide", 3),
+                ("minecraft:lunge", 3),
                 ("minecraft:channeling", 1),
                 ("minecraft:multishot", 1),
                 ("minecraft:quick_charge", 3),
@@ -1546,7 +1506,6 @@ mod tests {
                 ("minecraft:density", 5),
                 ("minecraft:breach", 4),
                 ("minecraft:wind_burst", 3),
-                ("minecraft:lunge", 3),
                 ("minecraft:mending", 1),
                 ("minecraft:vanishing_curse", 1),
             ]
@@ -2645,16 +2604,14 @@ fn enchantment_key_for_holder<'a>(
 
 pub fn vanilla_enchantment_resource_id(holder_id: i32) -> Option<&'static str> {
     let index = usize::try_from(holder_id).ok()?;
-    VANILLA_ENCHANTMENT_KEYS_AND_MAX_LEVELS
-        .get(index)
-        .map(|(key, _)| *key)
+    Some(VANILLA_ENCHANTMENTS.get(index)?.resource_id)
 }
 
 fn vanilla_enchantment_max_level(enchantment_key: &str) -> Option<i32> {
-    VANILLA_ENCHANTMENT_KEYS_AND_MAX_LEVELS
+    VANILLA_ENCHANTMENTS
         .iter()
-        .find(|(key, _)| *key == enchantment_key)
-        .map(|(_, max_level)| *max_level)
+        .find(|entry| entry.resource_id == enchantment_key)
+        .map(|entry| entry.max_level)
 }
 
 fn enchantment_is_curse(enchantment_key: &str, enchantment_tags: Option<&TagCatalog>) -> bool {

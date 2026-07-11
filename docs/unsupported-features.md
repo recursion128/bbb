@@ -48,8 +48,8 @@ Owner: `scripts/` + each generated catalog's semantic crate
   gameplay-id, and the first bootstrap resource-order catalog are migrated. The
   bootstrap catalog currently covers trim materials/patterns, jukebox songs,
   potions, villager types, wolf sound/skin variants, instruments, banner
-  patterns, and painting variants; enchantments, remaining animal variants,
-  and equipment assets still need deterministic extraction and shared consumers.
+  patterns, painting variants, and enchantments; remaining animal variants and
+  equipment assets still need deterministic extraction and shared consumers.
 
 ## Unknown clientbound packets in login, configuration, and play
 
