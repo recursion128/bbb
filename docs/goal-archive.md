@@ -10311,3 +10311,15 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   `Items`/`Blocks` resource resolution 均受 fixtures/update/check 锁定；item-model 删除余下
   两张 menu 手写数组，现有 world/native quick-move 与 slot API 不变。map component predicate、
   cartography result transition 和 enchanting 算法仍由各自语义 owner 手写。
+
+## 2026-07-11：Generated recipe-specific remainder membership
+
+- [x] item-membership generator 扫描 vanilla `data/minecraft/recipe/*.json`，从 16 个
+  `crafting_special_bannerduplicate` 的 `banner` 与 `crafting_special_bookcloning` 的
+  `source`/matching result 生成 17 项 conservative crafting-remainder membership，替代
+  item-model 的最后一张手写 membership 数组。反向门禁同时用 Tree-sitter 解析全部
+  `world/item/crafting/*.java`，锁定 `getRemainingItems` 只有 BannerDuplicateRecipe、
+  BookCloningRecipe 与 CraftingRecipe 默认实现；新增 override、JSON type/shape、source/result
+  不一致、重复或数量变化均令 maintenance check 显式失败。world 仍将这些输入留给 server
+  authority，而普通 item default remainder 继续来自 ItemRegistryCatalog；未把完整 recipe
+  matching/assemble/remainder transition 误标完成。
