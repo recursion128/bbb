@@ -399,14 +399,20 @@ pub(super) fn decode_hurt_animation(decoder: &mut Decoder<'_>) -> Result<HurtAni
 }
 
 pub(super) fn decode_entity_position_sync(decoder: &mut Decoder<'_>) -> Result<EntityPositionSync> {
-    Ok(EntityPositionSync {
+    let update = EntityPositionSync {
         id: decoder.read_var_i32()?,
         position: decode_vec3d(decoder)?,
         delta_movement: decode_vec3d(decoder)?,
         y_rot: decoder.read_f32()?,
         x_rot: decoder.read_f32()?,
         on_ground: decoder.read_bool()?,
-    })
+    };
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after entity position sync packet".to_string(),
+        ));
+    }
+    Ok(update)
 }
 
 pub(super) fn decode_move_entity(
@@ -551,7 +557,7 @@ pub(super) fn decode_set_passengers(decoder: &mut Decoder<'_>) -> Result<SetPass
 }
 
 pub(super) fn decode_teleport_entity(decoder: &mut Decoder<'_>) -> Result<TeleportEntity> {
-    Ok(TeleportEntity {
+    let update = TeleportEntity {
         id: decoder.read_var_i32()?,
         position: decode_vec3d(decoder)?,
         delta_movement: decode_vec3d(decoder)?,
@@ -559,7 +565,13 @@ pub(super) fn decode_teleport_entity(decoder: &mut Decoder<'_>) -> Result<Telepo
         x_rot: decoder.read_f32()?,
         relatives_mask: decoder.read_i32()?,
         on_ground: decoder.read_bool()?,
-    })
+    };
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after teleport entity packet".to_string(),
+        ));
+    }
+    Ok(update)
 }
 
 pub(super) fn decode_set_equipment(decoder: &mut Decoder<'_>) -> Result<SetEquipment> {

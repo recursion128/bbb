@@ -5979,29 +5979,43 @@
       "constant_name": "CLIENTBOUND_ENTITY_POSITION_SYNC",
       "coverage": {
         "canonical_apply": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
+          "evidence": [
+            "crates/bbb-world/src/entities/movement.rs#apply_entity_position_sync",
+            "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#local_boat_position_sync_only_rebases_server_position_codec"
+          ],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
           "status": "partial"
         },
         "decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/entities/tests.rs#decodes_absolute_entity_corrections_strictly",
+            "vanilla:net/minecraft/network/protocol/game/ClientboundEntityPositionSyncPacket.java#STREAM_CODEC"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "ownership": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/play_apply.rs#PlayClientbound::EntityPositionSync"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "runtime_side_effect": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
+          "evidence": [
+            "crates/bbb-world/src/entities/movement.rs#apply_entity_position_sync",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleEntityPositionSync"
+          ],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
           "status": "partial"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/entities/tests.rs#decodes_absolute_entity_corrections_strictly",
+            "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#tracks_entity_lifecycle_and_absolute_state_updates"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "clientbound",
@@ -9241,29 +9255,43 @@
       "constant_name": "CLIENTBOUND_TELEPORT_ENTITY",
       "coverage": {
         "canonical_apply": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
+          "evidence": [
+            "crates/bbb-world/src/entities/movement.rs#apply_teleport_entity",
+            "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#tracks_entity_lifecycle_and_absolute_state_updates"
+          ],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
           "status": "partial"
         },
         "decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/entities/tests.rs#decodes_absolute_entity_corrections_strictly",
+            "vanilla:net/minecraft/network/protocol/game/ClientboundTeleportEntityPacket.java#STREAM_CODEC"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "ownership": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/play_apply.rs#PlayClientbound::TeleportEntity"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "runtime_side_effect": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
+          "evidence": [
+            "crates/bbb-world/src/entities/movement.rs#apply_teleport_entity",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleTeleportEntity"
+          ],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
           "status": "partial"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/entities/tests.rs#decodes_absolute_entity_corrections_strictly",
+            "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#tracks_entity_lifecycle_and_absolute_state_updates"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "clientbound",

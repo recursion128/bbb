@@ -14,9 +14,14 @@ use super::{is_vanilla_minecart_type, EntityVec3};
 impl WorldStore {
     pub fn apply_entity_position_sync(&mut self, packet: ProtocolEntityPositionSync) -> bool {
         self.counters.entity_position_syncs_received += 1;
+        let locally_predicted_boat =
+            self.local_player_first_passenger_root_boat_vehicle_id() == Some(packet.id);
         let Some(()) = self.entities.with_transform_mut(packet.id, |transform| {
-            transform.position = entity_vec3(packet.position);
             transform.position_base = entity_vec3(packet.position);
+            if locally_predicted_boat {
+                return;
+            }
+            transform.position = entity_vec3(packet.position);
             transform.delta_movement = entity_vec3(packet.delta_movement);
             transform.y_rot = packet.y_rot;
             transform.x_rot = packet.x_rot;
@@ -25,7 +30,9 @@ impl WorldStore {
             self.counters.entity_position_syncs_ignored += 1;
             return false;
         };
-        self.update_entity_supporting_block_from_packet(packet.id, packet.on_ground);
+        if !locally_predicted_boat {
+            self.update_entity_supporting_block_from_packet(packet.id, packet.on_ground);
+        }
         self.counters.entity_position_syncs_applied += 1;
         true
     }

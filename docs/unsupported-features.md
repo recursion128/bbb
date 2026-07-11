@@ -139,6 +139,9 @@ Movement:
   `moveOrInterpolateTo` state instead of snapping the canonical transform, and
   resolve every entity-specific local-authority controller before deciding
   whether a packet only advances the `VecDeltaCodec` base.
+- Complete `EntityPositionSync`/`TeleportEntity` ticking and distance-based
+  interpolation, indirect-passenger reposition/old-pose reset, removed-player-
+  vehicle teleport fallback, and locally-authoritative vehicle echo.
 - Implement full vanilla boat physics, water/buoyancy/collision parity, and
   non-boat vehicle movement only for the locally controlled instance; resolve
   entity-specific `getControllingPassenger` gates (saddle/held item/armor and

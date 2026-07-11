@@ -344,6 +344,10 @@ remote entity Pos/PosRot/Rot 的 short-delta、packed rotation 与 on-ground wir
 locally-predicted boat 只推进 server position-codec base，不再覆盖本地预测 transform。完整
 entity-specific local authority 与 vanilla `moveOrInterpolateTo` smoothing 尚未统一，因此三行的
 canonical/runtime 格继续保持 partial。
+absolute EntityPositionSync/TeleportEntity 也已完成严格 wire/ownership/tests 审计；当前预测 boat
+的 PositionSync 只 rebase server position codec。完整 ticking/distance interpolation、removed
+player vehicle fallback、indirect rider reposition 与 authoritative vehicle echo 仍开放，因此两行
+canonical/runtime 格保持 partial。
 
 完成标准：全部 vanilla 26.1 catalog entry 都有矩阵行；所有目标客户端适用项为
 `complete`，其余只有带 vanilla 依据的 `not-applicable` 或带重启判据的窄 `deferred`；

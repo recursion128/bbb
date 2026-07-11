@@ -739,6 +739,55 @@ fn local_boat_relative_move_only_advances_server_position_base() {
 }
 
 #[test]
+fn local_boat_position_sync_only_rebases_server_position_codec() {
+    let mut store = WorldStore::new();
+    store.apply_login(&protocol_play_login(99));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        10,
+        VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+    ));
+    assert!(store.apply_set_passengers(ProtocolSetPassengers {
+        vehicle_id: 10,
+        passenger_ids: vec![99],
+    }));
+    let initial = store.probe_entity(10).unwrap();
+
+    assert!(
+        store.apply_entity_position_sync(ProtocolEntityPositionSync {
+            id: 10,
+            position: ProtocolVec3d {
+                x: 8.0,
+                y: 70.0,
+                z: -9.0,
+            },
+            delta_movement: ProtocolVec3d {
+                x: 1.0,
+                y: 2.0,
+                z: 3.0,
+            },
+            y_rot: 90.0,
+            x_rot: 30.0,
+            on_ground: true,
+        })
+    );
+
+    let synced = store.probe_entity(10).unwrap();
+    assert_eq!(synced.position, initial.position);
+    assert_eq!(synced.delta_movement, initial.delta_movement);
+    assert_eq!(synced.y_rot, initial.y_rot);
+    assert_eq!(synced.x_rot, initial.x_rot);
+    assert_eq!(synced.on_ground, initial.on_ground);
+    assert_eq!(
+        synced.position_base,
+        EntityVec3 {
+            x: 8.0,
+            y: 70.0,
+            z: -9.0
+        }
+    );
+}
+
+#[test]
 fn move_vehicle_small_delta_acks_without_snap() {
     let mut store = WorldStore::new();
     store.apply_login(&protocol_play_login(99));

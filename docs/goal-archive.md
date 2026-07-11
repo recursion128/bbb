@@ -11023,3 +11023,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   `VecDeltaCodec` 等价的 `position_base`，不覆盖预测 position/rotation/on-ground。其余
   entity-specific controller 与 remote `moveOrInterpolateTo` smoothing 仍未统一，三行的
   canonical/runtime 格保持 partial，未把 target transform 直写当作插值完成。
+
+## 2026-07-11：absolute entity correction packet coverage audit
+
+- [x] 对照 `ClientboundEntityPositionSyncPacket`、`ClientboundTeleportEntityPacket` 与两个 client
+  handler，锁定 PositionMoveRotation 字段、relative mask 和 on-ground 顺序；两个 decoder 均拒绝
+  trailing bytes，decode/ownership/tests 格已闭合。
+- [x] 当前 locally-predicted boat 的 EntityPositionSync 仅更新 `position_base`，不再覆盖预测
+  transform/delta/rotation/on-ground。ticking/distance interpolation、removed-player-vehicle fallback、
+  indirect rider reposition/old-pose reset 与 authoritative vehicle echo 尚未统一，因此两行的
+  canonical/runtime 格保持 partial。

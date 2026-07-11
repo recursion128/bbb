@@ -401,6 +401,47 @@ fn decodes_move_entity_variants_strictly() {
 }
 
 #[test]
+fn decodes_absolute_entity_corrections_strictly() {
+    let mut position_sync = Encoder::new();
+    position_sync.write_var_i32(7);
+    for value in [1.0, 64.0, -2.0, 0.1, 0.2, 0.3] {
+        position_sync.write_f64(value);
+    }
+    position_sync.write_f32(90.0);
+    position_sync.write_f32(-15.0);
+    position_sync.write_bool(true);
+
+    let mut teleport = Encoder::new();
+    teleport.write_var_i32(8);
+    for value in [0.5, 1.0, -0.5, 0.0, 0.1, 0.0] {
+        teleport.write_f64(value);
+    }
+    teleport.write_f32(15.0);
+    teleport.write_f32(-5.0);
+    teleport.write_i32(PLAYER_RELATIVE_X | PLAYER_RELATIVE_DELTA_Y);
+    teleport.write_bool(false);
+
+    for (packet_id, payload, error_message) in [
+        (
+            ids::play::CLIENTBOUND_ENTITY_POSITION_SYNC,
+            position_sync.into_inner(),
+            "trailing bytes after entity position sync packet",
+        ),
+        (
+            ids::play::CLIENTBOUND_TELEPORT_ENTITY,
+            teleport.into_inner(),
+            "trailing bytes after teleport entity packet",
+        ),
+    ] {
+        assert!(decode_play_clientbound(packet_id, &payload).is_ok());
+        let mut trailing = payload;
+        trailing.push(0);
+        let error = decode_play_clientbound(packet_id, &trailing).unwrap_err();
+        assert!(error.to_string().contains(error_message));
+    }
+}
+
+#[test]
 fn decodes_additional_entity_data_serializers() {
     let owner = Uuid::from_u128(0xaaaaaaaa11111111bbbbbbbb22222222);
     let profile_id = Uuid::from_u128(0xbbbbbbbb22222222cccccccc33333333);
