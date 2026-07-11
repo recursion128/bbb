@@ -49,9 +49,12 @@ use dimensions::{
 pub use dragon::{DragonFlightHistorySample, DragonFlightHistoryState, EnderDragonAnimationState};
 use movement::entity_vec3;
 pub use schema::{
-    vanilla_entity_metadata_field, vanilla_entity_metadata_schema, VanillaEntityMetadataDefault,
-    VanillaEntityMetadataFamily, VanillaEntityMetadataFamilySchema,
-    VanillaEntityMetadataFieldSchema, VanillaEntityMetadataFlagSchema,
+    vanilla_entity_metadata_field, vanilla_entity_metadata_schema,
+    VanillaEntityMetadataAccessorCatalogEntry, VanillaEntityMetadataClassCatalogEntry,
+    VanillaEntityMetadataDefault, VanillaEntityMetadataFamily, VanillaEntityMetadataFamilySchema,
+    VanillaEntityMetadataFieldSchema, VanillaEntityMetadataFlagCatalogEntry,
+    VanillaEntityMetadataFlagSchema, VanillaEntityMetadataFlagStatus,
+    VanillaEntityMetadataResolverEvidence, VanillaEntityTypeMetadataCatalogEntry,
     VANILLA_AGEABLE_MOB_AGE_LOCKED_DATA_ID, VANILLA_AGEABLE_MOB_BABY_DATA_ID,
     VANILLA_AGEABLE_MOB_DEFAULT_AGE_LOCKED, VANILLA_AGEABLE_MOB_DEFAULT_BABY,
     VANILLA_ARMOR_STAND_BODY_POSE_DATA_ID, VANILLA_ARMOR_STAND_CLIENT_FLAGS_DATA_ID,
@@ -114,6 +117,11 @@ pub use schema::{
     VANILLA_ABSTRACT_HORSE_FLAG_BRED, VANILLA_ABSTRACT_HORSE_FLAG_EATING,
     VANILLA_ABSTRACT_HORSE_FLAG_OPEN_MOUTH, VANILLA_ABSTRACT_HORSE_FLAG_STANDING,
     VANILLA_ABSTRACT_HORSE_FLAG_TAME,
+};
+pub use schema::{
+    VANILLA_ENTITY_METADATA_ACCESSORS_26_1, VANILLA_ENTITY_METADATA_CLASSES_26_1,
+    VANILLA_ENTITY_METADATA_FLAGS_26_1, VANILLA_ENTITY_METADATA_FLAG_RESOLVER_EVIDENCE_26_1,
+    VANILLA_ENTITY_TYPE_METADATA_26_1,
 };
 pub use schema::{
     VANILLA_SHULKER_ATTACH_FACE_DATA_ID, VANILLA_SHULKER_COLOR_DATA_ID,

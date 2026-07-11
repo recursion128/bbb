@@ -29,3 +29,6 @@ tarpaulin-report.html
 *.dmp
 .claude/
 .codex/
+.venv/
+__pycache__/
+*.pyc

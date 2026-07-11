@@ -52,6 +52,11 @@
   不得各写一份平行 arm/分支/表任其分叉（历史病灶：包分发三路重复、实体
   常量三处副本、实体模型双路径）。需要新消费点时接到权威实现上；发现
   既有多路实现时按 refactor slice 立项收敛，不得再添第 N 份副本。
+- 后续从 vanilla Java 源码生成 catalog 时统一复用 Tree-sitter Java source
+  frontend；禁止各 generator 另写易漂移的正则、tokenizer 或括号扫描器。通用
+  frontend 只拥有 CST、source span 与声明/调用 IR，领域 extractor 只拥有领域
+  识别/结构校验，typed/virtual 归一化留给对应 generator/semantic resolver。既有
+  generator 按独立小切片逐项迁移，不在新消费者中复制旧解析路径。
 
 ## 结构不变量（新 slice 不得回退；出处与日期见 goal-archive 与 memory）
 
@@ -227,6 +232,10 @@ reports/resources；生成物必须提交，普通 build/test 不得依赖工作
 数据需要可重复的 update/check 入口、来源说明、顺序/唯一性/覆盖测试，并让所有
 消费者引用同一权威模块，禁止再保留平行字面量表。
 
+entity metadata extractor 是统一 Tree-sitter Java extraction foundation 的首个
+消费者。packet/component/registry/gameplay-id/bootstrap 等既有 generator 后续按独立
+slice 迁移；本阶段不要求一次改完，也不得把未迁移 generator 记为已完成。
+
 按以下顺序消化，每项独立成可门禁、可提交的 slice：
 
 1. **协议 packet catalog**：从 `GameProtocols.java` 及 packet class 生成各阶段、
@@ -242,8 +251,9 @@ reports/resources；生成物必须提交，普通 build/test 不得依赖工作
 4. **item/block 注册表消费**：item id、block id/state id 一律从 checked-in registry
    report 或运行时 registry API 查询；消除 elytra/saddle/potion/ender-eye、air/grass
    等生产路径内联 id。现有 `block_states_26_1.json` 保持权威，禁止另建方块副表。
-5. **entity metadata schema**：把各继承层 `SynchedEntityData.defineId` 的 index、
-   serializer、默认值与 flag mask 收敛为按 entity family 查询的 schema；替换
+5. **entity metadata schema**：以统一 Java source frontend 提取各继承层
+   `SynchedEntityData.defineId` 的 index、serializer、默认值与 flag mask，生成按
+   entity family 查询的 checked-in schema；替换
    world/native/entity-scene 中重复 metadata index/pose/bit-mask 常量，测试覆盖继承
    偏移、serializer 类型和所有已支持实体投影。
 6. **bootstrap/variant catalog**：生成 enchantment、potion、instrument、trim material/
@@ -261,7 +271,9 @@ reports/resources；生成物必须提交，普通 build/test 不得依赖工作
 完成标准：上述八类各有唯一权威输入和 deterministic check；修改生成输入而未
 更新生成物会在门禁失败；clean checkout 无本地 vanilla 源码也能正常构建测试；
 版本升级时注册顺序变化表现为集中、可审查的生成 diff；repo 生产代码不再出现
-已纳入 catalog 的平行资源表、裸 registry id 或手抄 ordinal。
+已纳入 catalog 的平行资源表、裸 registry id 或手抄 ordinal；新 vanilla Java
+extractor 可直接消费统一 CST/IR 而不复制 tokenizer/parser，普通 build/test 仍不
+读取本地 vanilla source。
 
 ### P1：Protocol / session 行为覆盖矩阵
 

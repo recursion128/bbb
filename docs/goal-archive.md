@@ -9584,3 +9584,19 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   F3+I save projection 删除本地 ids/defaults/masks，统一引用 schema；focused tests 锁定继承
   offset、serializer/default/masks、cat/parrot/wolf tame+sitting render、mount slot rules 与
   tamable save-NBT。`orderedToSit` 仍是客户端不可直接获得的 private save state 边界。
+
+## 2026-07-11：Vanilla 26.1 entity metadata extractor foundation
+
+- [x] metadata 机械事实从手抄 Rust 表迁移为 checked-in 生成物：固定版本
+  Tree-sitter runtime/Java grammar 通过语义中立 `vanilla_java_source.py` 提供 CST、
+  byte span、package/import、nested type、field/method/call IR；entity extractor 仅识别
+  `defineId`、builder default、继承 index、flag 与 `EntityType`。710 个相关 compilation
+  unit 均拒绝 `ERROR`/`MISSING`，catalog 闭合 227/227 accessor、227/227 default 和
+  157/157 fixed EntityType，并保留 raw expression、typed/unresolved 状态及窄 resolver
+  evidence。普通 Rust build/test 只消费 `generated_26_1.rs`，不读取本地 vanilla source。
+- [x] `schema.rs` 缩为 typed value/query/virtual-default compatibility facade；既有 family、
+  field/flag schema、公开 `VANILLA_*` aliases 和 minecart virtual resolver 保持兼容，数字
+  与默认值均由生成 descriptor 派生。维护入口为
+  `scripts/vanilla-source-tools.sh scripts/generate-entity-metadata-schema.py update|check`，
+  使用 frozen/offline uv 环境；连续 update 无 diff。该机制迁移不代表剩余实体消费者或
+  unresolved default/flag 已完成，entity metadata schema 开放队列继续保留。

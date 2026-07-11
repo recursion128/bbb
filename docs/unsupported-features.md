@@ -39,6 +39,15 @@ Owner: `bbb-protocol`
 - Cover the required paths end to end: login, configuration, play, movement,
   inventory, chat, resource-pack, interaction, command suggestion.
 
+## Vanilla Java generator frontend migration
+
+Owner: `scripts/` + each generated catalog's semantic crate
+
+- Migrate the existing packet/component/registry/gameplay-id/bootstrap Java
+  source generators to the shared Tree-sitter Java frontend in independent
+  slices. Entity metadata is the first consumer; the other generators still
+  retain their older parsing paths and must not be marked migrated by this slice.
+
 ## Unknown clientbound packets in login, configuration, and play
 
 Owner: `bbb-protocol` + `bbb-net` + `bbb-native`
@@ -482,14 +491,16 @@ back into a todo. Do not delete these.
 ## Entity models and animation
 
 - **Remaining entity metadata schema families.** The checked-in schema now owns
-  `Entity`, `LivingEntity`, `Mob`, `Avatar`, and `Player` accessors/defaults/flags,
-  plus the `AgeableMob -> AbstractHorse` / `TamableAnimal`, `ArmorStand`, `Slime` (also consumed by
-  `MagmaCube`), `Shulker`, `Zombie`, `Entity -> AbstractArrow`, the
-  `Entity -> VehicleEntity -> AbstractBoat` / `AbstractMinecart` branches, and
-  `HangingEntity -> ItemFrame`, including inherited lookup. Remaining concrete entity subclasses
-  (including other non-`AgeableMob` baby flags, zombie/projectile/vehicle/tamable subclasses, and
-  concrete equine variants) still keep local metadata ids and masks until their family descriptors
-  and projection migrations land.
+  a vanilla-source-generated 26.1 catalog for all 227 accessors/defaults,
+  inherited indices, serializer references, fixed EntityType mappings, and
+  explicit flag diagnostics. The compatibility facade currently exposes
+  `Entity`, `LivingEntity`, `Mob`, `Avatar`, `Player`, `AgeableMob ->
+  AbstractHorse` / `TamableAnimal`, `ArmorStand`, `Slime` (also consumed by
+  `MagmaCube`), `Shulker`, `Zombie`, `Entity -> AbstractArrow`, the `Entity ->
+  VehicleEntity -> AbstractBoat` / `AbstractMinecart` branches, and
+  `HangingEntity -> ItemFrame`. Remaining concrete entity consumers still keep
+  local ids/masks until their projections migrate to generated descriptors;
+  an unresolved typed default/flag diagnostic is not implementation support.
 - **Baby `ageScale`** — the `0.5` proportions applied in model `setupAnim`,
   distinct from the projected `SCALE`-attribute `scale`.
 - **Armor trims and the remaining mob-specific armor models.**
