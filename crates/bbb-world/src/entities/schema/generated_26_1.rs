@@ -105,6 +105,10 @@ const GENERATED_VANILLA_AXOLOTL_PLAYING_DEAD_DATA_ID: u8 = 19;
 pub const VANILLA_AXOLOTL_PLAYING_DEAD_DATA_ID: u8 = GENERATED_VANILLA_AXOLOTL_PLAYING_DEAD_DATA_ID;
 const GENERATED_VANILLA_AXOLOTL_FROM_BUCKET_DATA_ID: u8 = 20;
 pub const VANILLA_AXOLOTL_FROM_BUCKET_DATA_ID: u8 = GENERATED_VANILLA_AXOLOTL_FROM_BUCKET_DATA_ID;
+const GENERATED_VANILLA_DOLPHIN_GOT_FISH_DATA_ID: u8 = 18;
+pub const VANILLA_DOLPHIN_GOT_FISH_DATA_ID: u8 = GENERATED_VANILLA_DOLPHIN_GOT_FISH_DATA_ID;
+const GENERATED_VANILLA_DOLPHIN_MOISTNESS_DATA_ID: u8 = 19;
+pub const VANILLA_DOLPHIN_MOISTNESS_DATA_ID: u8 = GENERATED_VANILLA_DOLPHIN_MOISTNESS_DATA_ID;
 const GENERATED_VANILLA_GOAT_SCREAMING_DATA_ID: u8 = 18;
 pub const VANILLA_GOAT_SCREAMING_DATA_ID: u8 = GENERATED_VANILLA_GOAT_SCREAMING_DATA_ID;
 const GENERATED_VANILLA_GOAT_LEFT_HORN_DATA_ID: u8 = 19;
@@ -450,6 +454,10 @@ pub const VANILLA_AXOLOTL_DEFAULT_PLAYING_DEAD: bool =
     GENERATED_VANILLA_AXOLOTL_DEFAULT_PLAYING_DEAD;
 const GENERATED_VANILLA_AXOLOTL_DEFAULT_FROM_BUCKET: bool = false;
 pub const VANILLA_AXOLOTL_DEFAULT_FROM_BUCKET: bool = GENERATED_VANILLA_AXOLOTL_DEFAULT_FROM_BUCKET;
+const GENERATED_VANILLA_DOLPHIN_DEFAULT_GOT_FISH: bool = false;
+pub const VANILLA_DOLPHIN_DEFAULT_GOT_FISH: bool = GENERATED_VANILLA_DOLPHIN_DEFAULT_GOT_FISH;
+const GENERATED_VANILLA_DOLPHIN_DEFAULT_MOISTNESS: i32 = 2400;
+pub const VANILLA_DOLPHIN_DEFAULT_MOISTNESS: i32 = GENERATED_VANILLA_DOLPHIN_DEFAULT_MOISTNESS;
 const GENERATED_VANILLA_GOAT_DEFAULT_SCREAMING: bool = false;
 pub const VANILLA_GOAT_DEFAULT_SCREAMING: bool = GENERATED_VANILLA_GOAT_DEFAULT_SCREAMING;
 const GENERATED_VANILLA_GOAT_DEFAULT_HAS_LEFT_HORN: bool = true;
@@ -13474,6 +13482,29 @@ const BEE_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamil
     own_flags: BEE_FLAGS,
 };
 
+const DOLPHIN_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[
+    VanillaEntityMetadataFieldSchema {
+        name: "GOT_FISH",
+        data_id: 18,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+        default: VanillaEntityMetadataDefault::Boolean(false),
+    },
+    VanillaEntityMetadataFieldSchema {
+        name: "MOISTNESS_LEVEL",
+        data_id: 19,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+        default: VanillaEntityMetadataDefault::Int(2400),
+    },
+];
+const DOLPHIN_FLAGS: &[VanillaEntityMetadataFlagSchema] = &[];
+const DOLPHIN_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamilySchema {
+    family: VanillaEntityMetadataFamily::Dolphin,
+    parent: Some(VanillaEntityMetadataFamily::AgeableMob),
+    inherited_field_count: 18,
+    own_fields: DOLPHIN_FIELDS,
+    own_flags: DOLPHIN_FLAGS,
+};
+
 const GOAT_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[
     VanillaEntityMetadataFieldSchema {
         name: "DATA_IS_SCREAMING_GOAT",
@@ -14482,6 +14513,7 @@ pub(super) const fn generated_entity_metadata_schema(
         VanillaEntityMetadataFamily::AgeableMob => &AGEABLEMOB_SCHEMA,
         VanillaEntityMetadataFamily::Axolotl => &AXOLOTL_SCHEMA,
         VanillaEntityMetadataFamily::Bee => &BEE_SCHEMA,
+        VanillaEntityMetadataFamily::Dolphin => &DOLPHIN_SCHEMA,
         VanillaEntityMetadataFamily::Goat => &GOAT_SCHEMA,
         VanillaEntityMetadataFamily::PolarBear => &POLARBEAR_SCHEMA,
         VanillaEntityMetadataFamily::Turtle => &TURTLE_SCHEMA,

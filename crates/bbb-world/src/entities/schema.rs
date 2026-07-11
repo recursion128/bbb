@@ -25,6 +25,7 @@ pub enum VanillaEntityMetadataFamily {
     AgeableMob,
     Axolotl,
     Bee,
+    Dolphin,
     Goat,
     PolarBear,
     Turtle,
@@ -353,6 +354,7 @@ mod tests {
             VanillaEntityMetadataFamily::AgeableMob,
             VanillaEntityMetadataFamily::Axolotl,
             VanillaEntityMetadataFamily::Bee,
+            VanillaEntityMetadataFamily::Dolphin,
             VanillaEntityMetadataFamily::Goat,
             VanillaEntityMetadataFamily::PolarBear,
             VanillaEntityMetadataFamily::Turtle,
@@ -490,6 +492,17 @@ mod tests {
         assert_eq!(VANILLA_BEE_FLAG_ROLL, 2);
         assert_eq!(VANILLA_BEE_FLAG_HAS_STUNG, 4);
         assert_eq!(VANILLA_BEE_FLAG_HAS_NECTAR, 8);
+        let dolphin = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Dolphin);
+        assert_eq!(
+            dolphin.parent,
+            Some(VanillaEntityMetadataFamily::AgeableMob)
+        );
+        assert_eq!(dolphin.inherited_field_count, 18);
+        assert_eq!(dolphin.own_fields.len(), 2);
+        assert_eq!(VANILLA_DOLPHIN_GOT_FISH_DATA_ID, 18);
+        assert_eq!(VANILLA_DOLPHIN_MOISTNESS_DATA_ID, 19);
+        assert!(!VANILLA_DOLPHIN_DEFAULT_GOT_FISH);
+        assert_eq!(VANILLA_DOLPHIN_DEFAULT_MOISTNESS, 2400);
         let goat = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Goat);
         assert_eq!(goat.parent, Some(VanillaEntityMetadataFamily::AgeableMob));
         assert_eq!(goat.inherited_field_count, 18);

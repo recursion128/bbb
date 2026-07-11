@@ -9842,3 +9842,9 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   id18/default false、laying-egg id19/default false；native render projection/debug-save 删除
   手抄 synced id/default。home position、lay counter 与 baby dimensions 仍由对应行为 owner
   管理。
+
+## 2026-07-11：Generated entity metadata consumer（Dolphin）
+
+- [x] 从 generated catalog 建立 `AgeableMob -> Dolphin` family：BOOLEAN got-fish
+  id18/default false、INT moistness id19/default 2400；native debug-save 删除手抄 synced
+  id/default。treasure position 与水生行为仍由对应行为 owner 管理。
