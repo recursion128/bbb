@@ -1,10 +1,45 @@
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 
 use anyhow::{bail, Context, Result};
-use regex::Regex;
 use serde::{Deserialize, Serialize};
 
 use crate::{ItemRegistryCatalog, PackRoots, ResourceLocation, TagCatalog};
+
+const GENERATED_FURNACE_FUEL_DECLARATIONS: &str =
+    include_str!("../data/furnace_fuel_declarations_26_1.json");
+
+#[derive(Debug, Deserialize)]
+struct FurnaceFuelSourceCatalog {
+    vanilla_version: String,
+    sources: Vec<String>,
+    operations: Vec<FurnaceFuelSourceOperation>,
+}
+
+#[derive(Debug, Clone, Copy, Deserialize)]
+#[serde(rename_all = "lowercase")]
+enum FurnaceFuelSourceAction {
+    Add,
+    Remove,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "lowercase")]
+enum FurnaceFuelSourceEntryKind {
+    Item,
+    Block,
+    Tag,
+}
+
+#[derive(Debug, Deserialize)]
+struct FurnaceFuelSourceOperation {
+    action: FurnaceFuelSourceAction,
+    entry_kind: FurnaceFuelSourceEntryKind,
+    constant: String,
+    resource_id: String,
+    source_path: String,
+    start_byte: usize,
+    end_byte: usize,
+}
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct FurnaceFuelCatalog {
@@ -13,62 +48,60 @@ pub struct FurnaceFuelCatalog {
 
 impl FurnaceFuelCatalog {
     pub fn load(roots: &PackRoots, registry: &ItemRegistryCatalog) -> Result<Self> {
-        let fuel_values_java = roots
-            .sources_dir
-            .join("net")
-            .join("minecraft")
-            .join("world")
-            .join("level")
-            .join("block")
-            .join("entity")
-            .join("FuelValues.java");
-        let item_tags_java = roots
-            .sources_dir
-            .join("net")
-            .join("minecraft")
-            .join("tags")
-            .join("ItemTags.java");
-        let fuel_values_source = std::fs::read_to_string(&fuel_values_java)
-            .with_context(|| format!("read furnace fuel source {}", fuel_values_java.display()))?;
-        let item_tags_source = std::fs::read_to_string(&item_tags_java)
-            .with_context(|| format!("read item tag source {}", item_tags_java.display()))?;
-        let item_tag_constants = parse_item_tag_constants(&item_tags_source)?;
         let item_tags = roots.load_tag_catalog("item")?;
-        Self::from_java_source(
-            &fuel_values_source,
-            registry,
-            &item_tag_constants,
-            &item_tags,
-        )
+        Self::from_generated_source_catalog(registry, &item_tags)
     }
 
-    fn from_java_source(
-        source: &str,
+    fn from_generated_source_catalog(
         registry: &ItemRegistryCatalog,
-        item_tag_constants: &BTreeMap<String, String>,
         item_tags: &TagCatalog,
     ) -> Result<Self> {
-        let operation = Regex::new(r#"\.(add|remove)\(\s*(Items|Blocks|ItemTags)\.([A-Z0-9_]+)"#)?;
+        let source: FurnaceFuelSourceCatalog =
+            serde_json::from_str(GENERATED_FURNACE_FUEL_DECLARATIONS)
+                .context("parse generated furnace-fuel declaration catalog")?;
+        if source.vanilla_version != crate::MC_VERSION
+            || source.sources
+                != [
+                    "net/minecraft/tags/ItemTags.java",
+                    "net/minecraft/world/level/block/entity/FuelValues.java",
+                ]
+        {
+            bail!("unsupported generated furnace-fuel source catalog manifest");
+        }
         let mut item_ids = BTreeSet::new();
-        for capture in operation.captures_iter(source) {
-            let action = capture.get(1).unwrap().as_str();
-            let namespace = capture.get(2).unwrap().as_str();
-            let constant = capture.get(3).unwrap().as_str();
-            let resolved = resolve_fuel_entry(namespace, constant, item_tag_constants, item_tags)?;
-            match action {
-                "add" => {
-                    for item_id in resolved {
+        for operation in source.operations {
+            let source_context = || {
+                format!(
+                    "{}:{}..{}: resolve {}",
+                    operation.source_path,
+                    operation.start_byte,
+                    operation.end_byte,
+                    operation.constant
+                )
+            };
+            validate_source_operation(&operation).with_context(source_context)?;
+            let resolved = match operation.entry_kind {
+                FurnaceFuelSourceEntryKind::Item | FurnaceFuelSourceEntryKind::Block => {
+                    vec![operation.resource_id]
+                }
+                FurnaceFuelSourceEntryKind::Tag => item_tags
+                    .values(&operation.resource_id)
+                    .unwrap_or_default()
+                    .to_vec(),
+            };
+            match operation.action {
+                FurnaceFuelSourceAction::Add => {
+                    for item_id in &resolved {
                         if registry.protocol_id(&item_id).is_some() {
-                            item_ids.insert(item_id);
+                            item_ids.insert(item_id.clone());
                         }
                     }
                 }
-                "remove" => {
-                    for item_id in resolved {
-                        item_ids.remove(&item_id);
+                FurnaceFuelSourceAction::Remove => {
+                    for item_id in &resolved {
+                        item_ids.remove(item_id);
                     }
                 }
-                _ => unreachable!("fuel operation regex only matches add/remove"),
             }
         }
 
@@ -90,40 +123,21 @@ impl FurnaceFuelCatalog {
     }
 }
 
-fn resolve_fuel_entry(
-    namespace: &str,
-    constant: &str,
-    item_tag_constants: &BTreeMap<String, String>,
-    item_tags: &TagCatalog,
-) -> Result<Vec<String>> {
-    match namespace {
-        "Items" | "Blocks" => Ok(vec![minecraft_id(&constant.to_ascii_lowercase())?]),
-        "ItemTags" => {
-            let tag_id = match item_tag_constants.get(constant) {
-                Some(tag_id) => tag_id.clone(),
-                None => minecraft_id(&constant.to_ascii_lowercase())?,
-            };
-            Ok(item_tags.values(&tag_id).unwrap_or_default().to_vec())
-        }
-        _ => bail!("unsupported furnace fuel entry namespace {namespace}"),
+fn validate_source_operation(operation: &FurnaceFuelSourceOperation) -> Result<()> {
+    if operation.source_path != "net/minecraft/world/level/block/entity/FuelValues.java"
+        || operation.start_byte >= operation.end_byte
+        || operation.constant.is_empty()
+    {
+        bail!("invalid generated furnace-fuel source evidence");
     }
-}
-
-fn parse_item_tag_constants(source: &str) -> Result<BTreeMap<String, String>> {
-    let declaration = Regex::new(
-        r#"public\s+static\s+final\s+TagKey<Item>\s+([A-Z0-9_]+)\s*=\s*bind\("([^"]+)"\)"#,
-    )?;
-    let mut constants = BTreeMap::new();
-    for capture in declaration.captures_iter(source) {
-        let constant = capture.get(1).unwrap().as_str().to_string();
-        let id = minecraft_id(capture.get(2).unwrap().as_str())?;
-        constants.insert(constant, id);
+    ResourceLocation::parse(&operation.resource_id)
+        .context("invalid generated furnace-fuel resource id")?;
+    if matches!(operation.action, FurnaceFuelSourceAction::Remove)
+        && operation.entry_kind != FurnaceFuelSourceEntryKind::Tag
+    {
+        bail!("generated furnace-fuel remove operation does not reference a tag");
     }
-    Ok(constants)
-}
-
-fn minecraft_id(path: &str) -> Result<String> {
-    ResourceLocation::new("minecraft", path).map(|location| location.id())
+    Ok(())
 }
 
 #[cfg(test)]
@@ -136,9 +150,8 @@ mod tests {
     };
 
     #[test]
-    fn furnace_fuel_catalog_resolves_java_builder_items_blocks_tags_and_removals() {
+    fn furnace_fuel_catalog_resolves_generated_items_blocks_tags_and_removals() {
         let root = unique_temp_dir("furnace-fuels");
-        write_java_sources(&root);
         write_item_tags(&root);
         let roots = PackRoots::from_root(&root).unwrap();
         let registry = ItemRegistryCatalog::load(&roots).unwrap();
@@ -160,6 +173,33 @@ mod tests {
     }
 
     #[test]
+    fn generated_furnace_fuel_operations_are_complete_and_source_backed() {
+        let source: FurnaceFuelSourceCatalog =
+            serde_json::from_str(GENERATED_FURNACE_FUEL_DECLARATIONS).unwrap();
+
+        assert_eq!(source.operations.len(), 65);
+        assert_eq!(
+            source
+                .operations
+                .iter()
+                .filter(|operation| matches!(operation.action, FurnaceFuelSourceAction::Add))
+                .count(),
+            64
+        );
+        assert_eq!(
+            source
+                .operations
+                .iter()
+                .filter(|operation| matches!(operation.action, FurnaceFuelSourceAction::Remove))
+                .count(),
+            1
+        );
+        for operation in &source.operations {
+            validate_source_operation(operation).unwrap();
+        }
+    }
+
+    #[test]
     #[ignore = "requires local vanilla 26.1 sources"]
     fn loads_local_vanilla_furnace_fuel_catalog() {
         let roots = PackRoots::discover().unwrap();
@@ -174,60 +214,6 @@ mod tests {
         assert!(!catalog.item_ids().contains("minecraft:crimson_stem"));
         assert!(protocol_ids.contains(&registry.protocol_id("minecraft:coal").unwrap()));
         assert!(protocol_ids.len() > 50);
-    }
-
-    fn write_java_sources(root: &Path) {
-        write_file(
-            &root
-                .join("sources")
-                .join(crate::MC_VERSION)
-                .join("net")
-                .join("minecraft")
-                .join("world")
-                .join("item")
-                .join("Items.java"),
-            r#"public class Items {
-                public static final Item COAL = registerItem("coal");
-                public static final Item COAL_BLOCK = registerItem("coal_block");
-                public static final Item OAK_LOG = registerItem("oak_log");
-                public static final Item CRIMSON_STEM = registerItem("crimson_stem");
-            }"#,
-        );
-        write_file(
-            &root
-                .join("sources")
-                .join(crate::MC_VERSION)
-                .join("net")
-                .join("minecraft")
-                .join("tags")
-                .join("ItemTags.java"),
-            r#"public final class ItemTags {
-                public static final TagKey<Item> LOGS = bind("logs");
-                public static final TagKey<Item> NON_FLAMMABLE_WOOD = bind("non_flammable_wood");
-            }"#,
-        );
-        write_file(
-            &root
-                .join("sources")
-                .join(crate::MC_VERSION)
-                .join("net")
-                .join("minecraft")
-                .join("world")
-                .join("level")
-                .join("block")
-                .join("entity")
-                .join("FuelValues.java"),
-            r#"public class FuelValues {
-                public static FuelValues vanillaBurnTimes() {
-                    return new FuelValues.Builder()
-                        .add(Items.COAL, 1600)
-                        .add(Blocks.COAL_BLOCK, 16000)
-                        .add(ItemTags.LOGS, 300)
-                        .remove(ItemTags.NON_FLAMMABLE_WOOD)
-                        .build();
-                }
-            }"#,
-        );
     }
 
     fn write_item_tags(root: &Path) {

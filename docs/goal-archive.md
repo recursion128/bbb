@@ -10753,3 +10753,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   输入的完整序列化 catalog SHA-256 逐字节一致；frontend fixtures、update/check、第二次 update
   幂等与 pack/item-model focused tests 锁定生成物。普通 Cargo build/test 不再为 item catalog
   依赖工作区外 vanilla source；wire/component/gameplay 行为没有生成或改变。
+
+## 2026-07-11：Tree-sitter furnace-fuel extraction
+
+- [x] `bbb-pack` 的 furnace-fuel 维护入口改为共享 `vanilla_java_source.py` Tree-sitter
+  frontend：从 `FuelValues.vanillaBurnTimes` 提取 64 个 `add` 和 1 个 `remove` 的有序
+  source-backed operation，并由 `ItemTags.java` 的 `bind` 声明解析 tag resource id，生成
+  checked-in `furnace_fuel_declarations_26_1.json`。`FurnaceFuelCatalog` 保持既有查询 API，
+  运行时只用仓内 operation 与当前 item tag catalog 展开 fuel membership，不再读取或用
+  regex 解析本地 Java；update/check、二次 update 幂等、CST fixture 与 pack focused tests
+  锁定覆盖和失败诊断。burn duration、feature flag、server furnace tick 和其它 block profile
+  parser 不属于本切片。
