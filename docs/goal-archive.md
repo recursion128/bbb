@@ -10601,3 +10601,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   `TextColor.parseColor` named-color 分支均委托 catalog，删除三份平行 match/table。fixtures、
   生成完整性/唯一性/反向门禁、component style 与 protocol/world/net/native scoreboard
   focused tests 均通过；hex text color、tooltip/HUD 样式选择与渲染算法仍由原 owner 手写。
+
+## 2026-07-11：Generated scoreboard packet-method catalogs
+
+- [x] gameplay-id extractor 通过共享 Tree-sitter frontend 分别读取 vanilla
+  `ClientboundSetObjectivePacket` 的 3 个与 `ClientboundSetPlayerTeamPacket` 的 5 个
+  `METHOD_*` 显式常量，生成两个 typed id catalogs。protocol scoreboard facade 保持原
+  `SetObjectiveMethod` / `PlayerTeamMethod` re-export、变体和 serde，删除两份 numeric
+  decode match，并新增非法 method id 诊断测试。fixtures、生成完整性/唯一性/反向门禁和
+  protocol/world/net/native scoreboard focused tests 均通过；parameter/player-list 条件、
+  team action 与 world apply 分支继续由 packet/world 语义 owner 手写。

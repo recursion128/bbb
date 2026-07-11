@@ -35,6 +35,7 @@ from gameplay_id_catalog_extractor import (  # noqa: E402
     remote_debug_sample_type_entries,
     sound_source_entries,
     scoreboard_display_slot_entries,
+    scoreboard_method_entries,
     scoreboard_team_option_entries,
 )
 from vanilla_java_source import parse_source  # noqa: E402
@@ -593,6 +594,41 @@ public enum ChatFormatting {
         self.assertEqual(
             entries[-1],
             type(entries[-1])("RESET", 21, "reset", "r", -1, False, None),
+        )
+
+    def test_scoreboard_methods_preserve_explicit_packet_ids(self) -> None:
+        objective = parse_source(
+            "fixture/ClientboundSetObjectivePacket.java",
+            b"""
+package fixture;
+public class ClientboundSetObjectivePacket {
+  public static final int METHOD_ADD = 0;
+  public static final int METHOD_REMOVE = 1;
+  public static final int METHOD_CHANGE = 2;
+}
+""",
+        )
+        team = parse_source(
+            "fixture/ClientboundSetPlayerTeamPacket.java",
+            b"""
+package fixture;
+public class ClientboundSetPlayerTeamPacket {
+  private static final int METHOD_ADD = 0;
+  private static final int METHOD_REMOVE = 1;
+  private static final int METHOD_CHANGE = 2;
+  private static final int METHOD_JOIN = 3;
+  private static final int METHOD_LEAVE = 4;
+}
+""",
+        )
+        objective_entries, team_entries = scoreboard_method_entries(objective, team)
+        self.assertEqual(
+            [(entry.constant_name, entry.method_id) for entry in objective_entries],
+            [("ADD", 0), ("REMOVE", 1), ("CHANGE", 2)],
+        )
+        self.assertEqual(
+            [(entry.constant_name, entry.method_id) for entry in team_entries],
+            [("ADD", 0), ("REMOVE", 1), ("CHANGE", 2), ("JOIN", 3), ("LEAVE", 4)],
         )
 
     def test_unsupported_register_shape_reports_source_span(self) -> None:

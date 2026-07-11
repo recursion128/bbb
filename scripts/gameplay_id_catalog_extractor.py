@@ -200,6 +200,12 @@ class ChatFormattingEntry:
     color: int | None
 
 
+@dataclass(frozen=True)
+class ScoreboardMethodEntry:
+    constant_name: str
+    method_id: int
+
+
 def _fail(source: JavaSource, expression: JavaExpression, message: str) -> None:
     span = expression.span
     raise GameplayIdExtractionError(
@@ -904,6 +910,49 @@ def chat_formatting_entries(
     if color_ids != list(range(16)):
         raise GameplayIdExtractionError("chat formatting color ids are not 0..15")
     return entries
+
+
+def scoreboard_method_entries(
+    objective_source: JavaSource, team_source: JavaSource
+) -> tuple[list[ScoreboardMethodEntry], list[ScoreboardMethodEntry]]:
+    def extract(
+        source: JavaSource, description: str, expected_names: list[str]
+    ) -> list[ScoreboardMethodEntry]:
+        entries = []
+        for field in source.fields:
+            if not field.name.startswith("METHOD_"):
+                continue
+            if field.initializer is None:
+                raise GameplayIdExtractionError(
+                    f"{source.relative_path}: {field.name} lacks an initializer"
+                )
+            entries.append(
+                ScoreboardMethodEntry(
+                    field.name.removeprefix("METHOD_"),
+                    _integer(source, field.initializer),
+                )
+            )
+        if [entry.constant_name for entry in entries] != expected_names:
+            raise GameplayIdExtractionError(
+                f"{description} methods differ from expected declaration order: "
+                f"{[entry.constant_name for entry in entries]}"
+            )
+        if [entry.method_id for entry in entries] != list(range(len(expected_names))):
+            raise GameplayIdExtractionError(
+                f"{description} method ids are not contiguous declaration order"
+            )
+        _validate(entries, description, "method_id")
+        return entries
+
+    objective = extract(
+        objective_source, "objective", ["ADD", "REMOVE", "CHANGE"]
+    )
+    team = extract(
+        team_source,
+        "player team",
+        ["ADD", "REMOVE", "CHANGE", "JOIN", "LEAVE"],
+    )
+    return objective, team
 
 
 def equipment_slot_entries(

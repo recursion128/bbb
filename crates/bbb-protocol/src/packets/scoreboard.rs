@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use crate::codec::{Decoder, ProtocolError, Result};
 pub use crate::objective_render_types::ObjectiveRenderType;
 pub use crate::scoreboard_display_slots::ScoreboardDisplaySlot;
+pub use crate::scoreboard_methods::{PlayerTeamMethod, SetObjectiveMethod};
 pub use crate::scoreboard_team_options::{TeamCollisionRule, TeamVisibility};
 
 use super::{
@@ -39,27 +40,7 @@ pub struct SetObjectiveParameters {
     pub number_format: Option<Vec<u8>>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum SetObjectiveMethod {
-    Add,
-    Remove,
-    Change,
-}
-
 impl SetObjectiveMethod {
-    fn from_id(id: i8) -> Result<Self> {
-        Ok(match id {
-            0 => Self::Add,
-            1 => Self::Remove,
-            2 => Self::Change,
-            other => {
-                return Err(ProtocolError::InvalidData(format!(
-                    "invalid objective method {other}"
-                )))
-            }
-        })
-    }
-
     fn has_parameters(self) -> bool {
         matches!(self, Self::Add | Self::Change)
     }
@@ -93,31 +74,7 @@ pub struct PlayerTeamParameters {
     pub player_suffix: String,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum PlayerTeamMethod {
-    Add,
-    Remove,
-    Change,
-    Join,
-    Leave,
-}
-
 impl PlayerTeamMethod {
-    fn from_id(id: i8) -> Result<Self> {
-        Ok(match id {
-            0 => Self::Add,
-            1 => Self::Remove,
-            2 => Self::Change,
-            3 => Self::Join,
-            4 => Self::Leave,
-            other => {
-                return Err(ProtocolError::InvalidData(format!(
-                    "invalid player team method {other}"
-                )))
-            }
-        })
-    }
-
     fn has_parameters(self) -> bool {
         matches!(self, Self::Add | Self::Change)
     }
@@ -147,7 +104,10 @@ pub(super) fn decode_set_display_objective(
 
 pub(super) fn decode_set_objective(decoder: &mut Decoder<'_>) -> Result<SetObjective> {
     let objective_name = decoder.read_string(32767)?;
-    let method = SetObjectiveMethod::from_id(decoder.read_i8()?)?;
+    let method_id = decoder.read_i8()?;
+    let method = SetObjectiveMethod::from_id(method_id).ok_or_else(|| {
+        ProtocolError::InvalidData(format!("invalid objective method {method_id}"))
+    })?;
     let parameters = if method.has_parameters() {
         Some(SetObjectiveParameters {
             display_name: decode_component_summary_from_decoder(decoder)?,
@@ -182,7 +142,10 @@ pub(super) fn decode_set_score(decoder: &mut Decoder<'_>) -> Result<SetScore> {
 
 pub(super) fn decode_set_player_team(decoder: &mut Decoder<'_>) -> Result<SetPlayerTeam> {
     let name = decoder.read_string(32767)?;
-    let method = PlayerTeamMethod::from_id(decoder.read_i8()?)?;
+    let method_id = decoder.read_i8()?;
+    let method = PlayerTeamMethod::from_id(method_id).ok_or_else(|| {
+        ProtocolError::InvalidData(format!("invalid player team method {method_id}"))
+    })?;
     let parameters = if method.has_parameters() {
         Some(decode_player_team_parameters(decoder)?)
     } else {
@@ -323,6 +286,27 @@ mod tests {
         assert!(error
             .to_string()
             .contains("invalid objective render type 2"));
+    }
+
+    #[test]
+    fn rejects_invalid_scoreboard_method_ids() {
+        let mut objective = Encoder::new();
+        objective.write_string("kills");
+        objective.write_i8(3);
+        let error = decode_play_clientbound(
+            ids::play::CLIENTBOUND_SET_OBJECTIVE,
+            &objective.into_inner(),
+        )
+        .unwrap_err();
+        assert!(error.to_string().contains("invalid objective method 3"));
+
+        let mut team = Encoder::new();
+        team.write_string("red");
+        team.write_i8(5);
+        let error =
+            decode_play_clientbound(ids::play::CLIENTBOUND_SET_PLAYER_TEAM, &team.into_inner())
+                .unwrap_err();
+        assert!(error.to_string().contains("invalid player team method 5"));
     }
 
     #[test]
