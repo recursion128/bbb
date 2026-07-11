@@ -283,6 +283,20 @@ class ConsumeEffectTypeEntry:
     resource_id: str
 
 
+@dataclass(frozen=True)
+class BuiltinEnumValueTypeEntry:
+    constant_name: str
+    strategy: str
+    default_id: int
+    values: tuple[NamedComponentValueEntry, ...]
+
+
+@dataclass(frozen=True)
+class BuiltinEnumComponentEntry:
+    constant_name: str
+    value_type_constant_name: str
+
+
 def _fail(source: JavaSource, expression: JavaExpression, message: str) -> None:
     span = expression.span
     raise GameplayIdExtractionError(
@@ -1511,6 +1525,237 @@ def item_component_value_type_entries(
             f"unsupported item component value id strategies {strategies}"
         )
     return item_uses, swings, rarities, map_values, firework_shapes
+
+
+def builtin_enum_component_value_entries(
+    data_components_source: JavaSource,
+    dye_color_source: JavaSource,
+    fox_source: JavaSource,
+    salmon_source: JavaSource,
+    parrot_source: JavaSource,
+    mushroom_cow_source: JavaSource,
+    rabbit_source: JavaSource,
+    horse_variant_source: JavaSource,
+    llama_source: JavaSource,
+    axolotl_source: JavaSource,
+) -> tuple[list[BuiltinEnumValueTypeEntry], list[BuiltinEnumComponentEntry]]:
+    def extract(
+        source: JavaSource,
+        constant_name: str,
+        expected_names: list[str],
+        id_argument: int,
+        name_argument: int,
+        nested_enum: str | None = None,
+        sparse_default: str | None = None,
+    ) -> BuiltinEnumValueTypeEntry:
+        enum_type = (
+            _nested_enum_type(source, nested_enum)
+            if nested_enum is not None
+            else source.types[0]
+        )
+        constants = (
+            _nested_enum_constants(source, nested_enum, constant_name)
+            if nested_enum is not None
+            else _enum_constants(source)
+        )
+        values = []
+        for name, arguments in constants:
+            required_arguments = max(id_argument, name_argument) + 1
+            if len(arguments) < required_arguments:
+                expression = arguments[0] if arguments else source.expression(enum_type.node)
+                _fail(source, expression, f"{constant_name} {name} lacks id/name arguments")
+            values.append(
+                NamedComponentValueEntry(
+                    name,
+                    _integer(source, arguments[id_argument]),
+                    _string(source, arguments[name_argument]),
+                )
+            )
+        if [value.constant_name for value in values] != expected_names:
+            raise GameplayIdExtractionError(
+                f"{constant_name} values differ from expected declaration order"
+            )
+        _validate(values, constant_name, "value_id")
+        _validate(values, constant_name, "serialized_name")
+
+        if sparse_default is None:
+            strategy = _continuous_out_of_bounds_strategy_from_fields(
+                source, source.fields_for(enum_type), constant_name
+            )
+            if strategy not in {"ZERO", "CLAMP", "WRAP"}:
+                raise GameplayIdExtractionError(
+                    f"unsupported {constant_name} id strategy {strategy}"
+                )
+            if [value.value_id for value in values] != list(range(len(values))):
+                raise GameplayIdExtractionError(
+                    f"{constant_name} ids are not contiguous declaration order"
+                )
+            default_id = values[0].value_id
+        else:
+            by_id = [
+                field
+                for field in source.fields_for(enum_type)
+                if field.name == "BY_ID" and field.initializer is not None
+            ]
+            defaults = [
+                field
+                for field in source.fields_for(enum_type)
+                if field.name == "DEFAULT" and field.initializer is not None
+            ]
+            if len(by_id) != 1 or len(defaults) != 1:
+                raise GameplayIdExtractionError(
+                    f"{source.relative_path}: expected initialized {constant_name} BY_ID and DEFAULT"
+                )
+            initializer = by_id[0].initializer
+            name = initializer.node.child_by_field_name("name")
+            arguments = initializer.node.child_by_field_name("arguments")
+            if (
+                initializer.node.type != "method_invocation"
+                or name is None
+                or source.text(name) != "sparse"
+                or arguments is None
+                or len(arguments.named_children) != 3
+                or source.expression(arguments.named_children[-1]).canonical != "DEFAULT"
+                or defaults[0].initializer.canonical != sparse_default
+            ):
+                _fail(source, initializer, f"{constant_name} must use sparse DEFAULT lookup")
+            strategy = "SPARSE"
+            default_id = next(
+                value.value_id
+                for value in values
+                if value.constant_name == sparse_default
+            )
+        return BuiltinEnumValueTypeEntry(
+            constant_name, strategy, default_id, tuple(values)
+        )
+
+    value_types = [
+        extract(
+            dye_color_source,
+            "DYE_COLOR",
+            [
+                "WHITE", "ORANGE", "MAGENTA", "LIGHT_BLUE", "YELLOW", "LIME",
+                "PINK", "GRAY", "LIGHT_GRAY", "CYAN", "PURPLE", "BLUE", "BROWN",
+                "GREEN", "RED", "BLACK",
+            ],
+            0,
+            1,
+        ),
+        extract(fox_source, "FOX_VARIANT", ["RED", "SNOW"], 0, 1, "Variant"),
+        extract(salmon_source, "SALMON_VARIANT", ["SMALL", "MEDIUM", "LARGE"], 1, 0, "Variant"),
+        extract(
+            parrot_source,
+            "PARROT_VARIANT",
+            ["RED_BLUE", "BLUE", "GREEN", "YELLOW_BLUE", "GRAY"],
+            0,
+            1,
+            "Variant",
+        ),
+        extract(mushroom_cow_source, "MOOSHROOM_VARIANT", ["RED", "BROWN"], 1, 0, "Variant"),
+        extract(
+            rabbit_source,
+            "RABBIT_VARIANT",
+            ["BROWN", "WHITE", "BLACK", "WHITE_SPLOTCHED", "GOLD", "SALT", "EVIL"],
+            0,
+            1,
+            "Variant",
+            "BROWN",
+        ),
+        extract(
+            horse_variant_source,
+            "HORSE_VARIANT",
+            ["WHITE", "CREAMY", "CHESTNUT", "BROWN", "BLACK", "GRAY", "DARK_BROWN"],
+            0,
+            1,
+        ),
+        extract(llama_source, "LLAMA_VARIANT", ["CREAMY", "WHITE", "BROWN", "GRAY"], 0, 1, "Variant"),
+        extract(
+            axolotl_source,
+            "AXOLOTL_VARIANT",
+            ["LUCY", "WILD", "GOLD", "CYAN", "BLUE"],
+            0,
+            1,
+            "Variant",
+        ),
+    ]
+
+    java_type_to_value_type = {
+        "DyeColor": "DYE_COLOR",
+        "Fox.Variant": "FOX_VARIANT",
+        "Salmon.Variant": "SALMON_VARIANT",
+        "Parrot.Variant": "PARROT_VARIANT",
+        "MushroomCow.Variant": "MOOSHROOM_VARIANT",
+        "Rabbit.Variant": "RABBIT_VARIANT",
+        "Variant": "HORSE_VARIANT",
+        "Llama.Variant": "LLAMA_VARIANT",
+        "Axolotl.Variant": "AXOLOTL_VARIANT",
+    }
+    expected_components = [
+        "DYE",
+        "BASE_COLOR",
+        "WOLF_COLLAR",
+        "FOX_VARIANT",
+        "SALMON_SIZE",
+        "PARROT_VARIANT",
+        "TROPICAL_FISH_BASE_COLOR",
+        "TROPICAL_FISH_PATTERN_COLOR",
+        "MOOSHROOM_VARIANT",
+        "RABBIT_VARIANT",
+        "HORSE_VARIANT",
+        "LLAMA_VARIANT",
+        "AXOLOTL_VARIANT",
+        "CAT_COLLAR",
+        "SHEEP_COLOR",
+        "SHULKER_COLOR",
+    ]
+    fields = []
+    for field in data_components_source.fields:
+        type_spelling = field.type_spelling.replace(" ", "")
+        if not type_spelling.startswith("DataComponentType<") or not type_spelling.endswith(">"):
+            continue
+        java_type = type_spelling.removeprefix("DataComponentType<").removesuffix(">")
+        if java_type in java_type_to_value_type:
+            fields.append(field)
+    if [field.name for field in fields] != expected_components:
+        raise GameplayIdExtractionError(
+            "built-in enum data components differ from expected declaration order"
+        )
+    components = []
+    for field in fields:
+        type_spelling = field.type_spelling.replace(" ", "")
+        if not type_spelling.startswith("DataComponentType<") or not type_spelling.endswith(">"):
+            raise GameplayIdExtractionError(
+                f"{data_components_source.relative_path}: {field.name} has unexpected component type"
+            )
+        java_type = type_spelling.removeprefix("DataComponentType<").removesuffix(">")
+        value_type = java_type_to_value_type.get(java_type)
+        if value_type is None or field.initializer is None:
+            raise GameplayIdExtractionError(
+                f"{data_components_source.relative_path}: {field.name} has unsupported value type {java_type}"
+            )
+        calls = [
+            call
+            for call in data_components_source.calls
+            if field.initializer.span.start_byte <= call.span.start_byte
+            and call.span.end_byte <= field.initializer.span.end_byte
+        ]
+        codec_owner = java_type
+        persistent = [call for call in calls if call.name == "persistent"]
+        network = [call for call in calls if call.name == "networkSynchronized"]
+        if (
+            len(persistent) != 1
+            or len(network) != 1
+            or [arg.canonical for arg in persistent[0].arguments] != [codec_owner + ".CODEC"]
+            or [arg.canonical for arg in network[0].arguments] != [codec_owner + ".STREAM_CODEC"]
+        ):
+            _fail(
+                data_components_source,
+                field.initializer,
+                f"{field.name} codec owner does not match {java_type}",
+            )
+        components.append(BuiltinEnumComponentEntry(field.name, value_type))
+    _validate(components, "built-in enum component", "constant_name")
+    return value_types, components
 
 
 def consume_effect_type_entries(

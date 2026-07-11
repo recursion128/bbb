@@ -4,6 +4,9 @@ use serde::{Deserialize, Serialize};
 
 use super::{chunks, normalize_resource_location, read_resource_location};
 use crate::{
+    builtin_enum_component_values::{
+        normalize_builtin_enum_component_value_id, normalize_vanilla_dye_color_id,
+    },
     codec::{Decoder, ProtocolError, Result},
     component::{
         decode_styled_component_summary_from_decoder,
@@ -1215,36 +1218,6 @@ fn decode_item_rarity(decoder: &mut Decoder<'_>) -> Result<ItemRaritySummary> {
     Ok(ItemRaritySummary::from_id(decoder.read_var_i32()?))
 }
 
-fn normalize_dye_color_id(id: i32) -> i32 {
-    if (0..=15).contains(&id) {
-        id
-    } else {
-        0
-    }
-}
-
-fn normalize_builtin_enum_component_id(type_id: i32, id: i32) -> i32 {
-    match type_id {
-        // DyeColor, Fox.Variant, and Axolotl.Variant use ZERO.
-        84 | 107 | 108 | 109 => normalize_dye_color_id(id),
-        85 => (0..=1).contains(&id).then_some(id).unwrap_or(0),
-        104 => (0..=4).contains(&id).then_some(id).unwrap_or(0),
-        // Salmon, Parrot, MushroomCow, and Llama use CLAMP.
-        86 => id.clamp(0, 2),
-        87 => id.clamp(0, 4),
-        91 => id.clamp(0, 1),
-        103 => id.clamp(0, 3),
-        // Rabbit is sparse and falls back to its BROWN default.
-        92 => match id {
-            0..=5 | 99 => id,
-            _ => 0,
-        },
-        // Horse.Variant uses WRAP over its seven continuous ids.
-        101 => id.rem_euclid(7),
-        _ => id,
-    }
-}
-
 fn decode_varint_map(decoder: &mut Decoder<'_>) -> Result<Vec<ItemEnchantmentSummary>> {
     let count = read_bounded_len(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
     let mut entries = Vec::with_capacity(count);
@@ -2191,7 +2164,7 @@ fn decode_banner_pattern_layers_summary(
             registry_id: pattern.registry_id,
             asset_id: pattern.asset_id,
             translation_key: pattern.translation_key,
-            color_id: normalize_dye_color_id(color_id),
+            color_id: normalize_vanilla_dye_color_id(color_id),
         });
     }
     Ok(layers)
@@ -2684,8 +2657,8 @@ mod tests {
                 ..DataComponentPatchSummary::default()
             }
         );
-        assert_eq!(normalize_dye_color_id(-1), 0);
-        assert_eq!(normalize_dye_color_id(16), 0);
+        assert_eq!(normalize_vanilla_dye_color_id(-1), 0);
+        assert_eq!(normalize_vanilla_dye_color_id(16), 0);
         assert!(decoder.is_empty());
     }
 

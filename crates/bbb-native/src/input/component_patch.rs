@@ -1,4 +1,7 @@
 use super::*;
+use bbb_protocol::builtin_enum_component_values::{
+    builtin_enum_component_value_name, vanilla_dye_color_name,
+};
 use bbb_protocol::damage_types::vanilla_damage_type_resource_id as damage_type_resource_id;
 use bbb_protocol::data_component_types as component_id;
 use bbb_protocol::equipment_slots::{
@@ -1245,7 +1248,9 @@ fn encode_dye(
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
     _item_runtime: Option<&NativeItemRuntime>,
 ) -> Option<String> {
-    Some(debug_snbt_string(debug_dye_color_name(patch.dye_color_id?)))
+    Some(debug_snbt_string(vanilla_dye_color_name(
+        patch.dye_color_id?,
+    )))
 }
 
 fn encode_dyed_color(
@@ -1565,7 +1570,7 @@ fn encode_banner_patterns(
             };
             Some(format!(
                 "{{pattern: {pattern}, color: {}}}",
-                debug_snbt_string(debug_dye_color_name(layer.color_id))
+                debug_snbt_string(vanilla_dye_color_name(layer.color_id))
             ))
         })
         .collect::<Option<Vec<_>>>()?;
@@ -1577,7 +1582,7 @@ fn encode_base_color(
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
     _item_runtime: Option<&NativeItemRuntime>,
 ) -> Option<String> {
-    Some(debug_snbt_string(debug_dye_color_name(
+    Some(debug_snbt_string(vanilla_dye_color_name(
         patch.base_color_id?,
     )))
 }
@@ -1673,7 +1678,7 @@ fn encode_tropical_fish_base_color(
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
     _item_runtime: Option<&NativeItemRuntime>,
 ) -> Option<String> {
-    Some(debug_snbt_string(debug_dye_color_name(
+    Some(debug_snbt_string(vanilla_dye_color_name(
         patch.tropical_fish_base_color_id?,
     )))
 }
@@ -1683,7 +1688,7 @@ fn encode_tropical_fish_pattern_color(
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
     _item_runtime: Option<&NativeItemRuntime>,
 ) -> Option<String> {
-    Some(debug_snbt_string(debug_dye_color_name(
+    Some(debug_snbt_string(vanilla_dye_color_name(
         patch.tropical_fish_pattern_color_id?,
     )))
 }
@@ -1707,7 +1712,7 @@ fn encode_builtin_enum(
     _item_runtime: Option<&NativeItemRuntime>,
 ) -> Option<String> {
     let id = *patch.builtin_enum_component_ids.get(&type_id)?;
-    Some(debug_snbt_string(debug_builtin_enum_component_name(
+    Some(debug_snbt_string(builtin_enum_component_value_name(
         type_id, id,
     )?))
 }

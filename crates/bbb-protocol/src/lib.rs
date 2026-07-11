@@ -11,6 +11,7 @@ pub mod attribute_types;
 pub mod block_entity_types;
 pub mod boss_bar_styles;
 pub mod boss_event_operation_types;
+pub mod builtin_enum_component_values;
 pub mod chat_formattings;
 pub mod client_command_actions;
 pub mod client_information_options;

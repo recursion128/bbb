@@ -10701,3 +10701,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   payload codec，删除中央 0..4 numeric match；非法 id 仍明确失败且不消费后续 payload。
   fixtures、生成完整性/唯一性/反向门禁和 protocol component focused tests 均通过；各 effect
   的 wire/persistent codec、world apply 和运行时行为未生成或改变。
+
+## 2026-07-11：Generated built-in enum component value catalog
+
+- [x] gameplay-id extractor 通过共享 Tree-sitter frontend 读取 `DataComponents.java` 的
+  16 个固定 item/animal/color enum component codec owner，以及 `DyeColor`、fox/salmon/parrot/
+  mooshroom/rabbit/horse/llama/axolotl enum 的显式 id、serialized name 与
+  ZERO/CLAMP/WRAP/sparse-default `ByIdMap` 规则，生成单一 protocol descriptor catalog。
+  protocol component decode 与 native persistent SNBT 投影统一委托 generated normalize/name
+  查询，删除两套 type-id/value match 与独立 dye-color name 表；现有扁平 summary、wire
+  payload codec、persistent SNBT 结构和 entity/render 行为未改变。

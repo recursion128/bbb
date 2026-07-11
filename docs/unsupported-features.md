@@ -72,7 +72,10 @@ Owner: `scripts/` + each generated catalog's semantic crate
   share one generated recipe-wire owner. Item-use/swing animation, rarity, map post-processing,
   and firework-shape component value ids/names/ZERO fallbacks now share a generated owner across
   protocol/native/item-model consumers. The five fixed ConsumeEffect subtype ids/resources now
-  derive from their nested `register` field order; payload codecs remain handwritten.
+  derive from their nested `register` field order; payload codecs remain handwritten. Fixed
+  built-in item/animal/color component enum ids, serialized names, DataComponents codec ownership,
+  and ZERO/CLAMP/WRAP/sparse-default lookup semantics now share a generated protocol owner;
+  component wire and persistent SNBT codecs remain handwritten.
   The remaining cross-crate registry/ordinal audit stays open.
 
 ## Unknown clientbound packets in login, configuration, and play

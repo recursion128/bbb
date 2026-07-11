@@ -16,6 +16,7 @@ from gameplay_id_catalog_extractor import (  # noqa: E402
     client_command_action_entries,
     boss_bar_style_entries,
     boss_event_operation_type_entries,
+    builtin_enum_component_value_entries,
     chat_formatting_entries,
     client_information_option_entries,
     container_input_entries,
@@ -990,6 +991,70 @@ public interface ConsumeEffect {
                 ("PLAY_SOUND", 4, "minecraft:play_sound"),
             ],
         )
+
+    def test_builtin_enum_components_extract_values_strategies_and_codec_owners(self) -> None:
+        def source(path: str, declaration: str):
+            return parse_source(path, ("package fixture; " + declaration).encode())
+
+        dye = source(
+            "fixture/DyeColor.java",
+            """enum DyeColor { WHITE(0, \"white\"), ORANGE(1, \"orange\"), MAGENTA(2, \"magenta\"), LIGHT_BLUE(3, \"light_blue\"), YELLOW(4, \"yellow\"), LIME(5, \"lime\"), PINK(6, \"pink\"), GRAY(7, \"gray\"), LIGHT_GRAY(8, \"light_gray\"), CYAN(9, \"cyan\"), PURPLE(10, \"purple\"), BLUE(11, \"blue\"), BROWN(12, \"brown\"), GREEN(13, \"green\"), RED(14, \"red\"), BLACK(15, \"black\"); static final Object BY_ID = ByIdMap.continuous(DyeColor::id, values(), ByIdMap.OutOfBoundsStrategy.ZERO); DyeColor(int id, String name) {} }""",
+        )
+
+        def nested(path: str, owner: str, constants: str, strategy: str) -> object:
+            return source(
+                path,
+                f"class {owner} {{ enum Variant {{ {constants}; static final Object BY_ID = ByIdMap.continuous(Variant::id, values(), ByIdMap.OutOfBoundsStrategy.{strategy}); Variant(Object... values) {{}} }} }}",
+            )
+
+        fox = nested("fixture/Fox.java", "Fox", 'RED(0, "red"), SNOW(1, "snow")', "ZERO")
+        salmon = nested("fixture/Salmon.java", "Salmon", 'SMALL("small", 0), MEDIUM("medium", 1), LARGE("large", 2)', "CLAMP")
+        parrot = nested("fixture/Parrot.java", "Parrot", 'RED_BLUE(0, "red_blue"), BLUE(1, "blue"), GREEN(2, "green"), YELLOW_BLUE(3, "yellow_blue"), GRAY(4, "gray")', "CLAMP")
+        mushroom = nested("fixture/MushroomCow.java", "MushroomCow", 'RED("red", 0), BROWN("brown", 1)', "CLAMP")
+        rabbit = source(
+            "fixture/Rabbit.java",
+            """class Rabbit { enum Variant { BROWN(0, \"brown\"), WHITE(1, \"white\"), BLACK(2, \"black\"), WHITE_SPLOTCHED(3, \"white_splotched\"), GOLD(4, \"gold\"), SALT(5, \"salt\"), EVIL(99, \"evil\"); static final Variant DEFAULT = BROWN; static final Object BY_ID = ByIdMap.sparse(Variant::id, values(), DEFAULT); Variant(int id, String name) {} } }""",
+        )
+        horse = source(
+            "fixture/Variant.java",
+            """enum Variant { WHITE(0, \"white\"), CREAMY(1, \"creamy\"), CHESTNUT(2, \"chestnut\"), BROWN(3, \"brown\"), BLACK(4, \"black\"), GRAY(5, \"gray\"), DARK_BROWN(6, \"dark_brown\"); static final Object BY_ID = ByIdMap.continuous(Variant::id, values(), ByIdMap.OutOfBoundsStrategy.WRAP); Variant(int id, String name) {} }""",
+        )
+        llama = nested("fixture/Llama.java", "Llama", 'CREAMY(0, "creamy"), WHITE(1, "white"), BROWN(2, "brown"), GRAY(3, "gray")', "CLAMP")
+        axolotl = nested("fixture/Axolotl.java", "Axolotl", 'LUCY(0, "lucy"), WILD(1, "wild"), GOLD(2, "gold"), CYAN(3, "cyan"), BLUE(4, "blue")', "ZERO")
+        component_types = {
+            "DYE": "DyeColor", "BASE_COLOR": "DyeColor", "WOLF_COLLAR": "DyeColor", "FOX_VARIANT": "Fox.Variant", "SALMON_SIZE": "Salmon.Variant", "PARROT_VARIANT": "Parrot.Variant", "TROPICAL_FISH_BASE_COLOR": "DyeColor", "TROPICAL_FISH_PATTERN_COLOR": "DyeColor", "MOOSHROOM_VARIANT": "MushroomCow.Variant", "RABBIT_VARIANT": "Rabbit.Variant", "HORSE_VARIANT": "Variant", "LLAMA_VARIANT": "Llama.Variant", "AXOLOTL_VARIANT": "Axolotl.Variant", "CAT_COLLAR": "DyeColor", "SHEEP_COLOR": "DyeColor", "SHULKER_COLOR": "DyeColor",
+        }
+        fields = " ".join(
+            f'static final DataComponentType<{java_type}> {name} = register("{name.lower()}", b -> b.persistent({java_type}.CODEC).networkSynchronized({java_type}.STREAM_CODEC));'
+            for name, java_type in component_types.items()
+        )
+        components_source = source("fixture/DataComponents.java", f"class DataComponents {{ {fields} }}")
+        value_types, components = builtin_enum_component_value_entries(
+            components_source, dye, fox, salmon, parrot, mushroom, rabbit, horse, llama, axolotl
+        )
+        self.assertEqual([entry.strategy for entry in value_types], ["ZERO", "ZERO", "CLAMP", "CLAMP", "CLAMP", "SPARSE", "WRAP", "CLAMP", "ZERO"])
+        self.assertEqual(value_types[5].values[-1].value_id, 99)
+        self.assertEqual(len(components), 16)
+        self.assertEqual(components[0].value_type_constant_name, "DYE_COLOR")
+        mismatched = source(
+            "fixture/DataComponents.java",
+            f"class DataComponents {{ {fields.replace('Fox.Variant.STREAM_CODEC', 'Salmon.Variant.STREAM_CODEC')} }}",
+        )
+        with self.assertRaisesRegex(
+            GameplayIdExtractionError, "FOX_VARIANT codec owner does not match"
+        ):
+            builtin_enum_component_value_entries(
+                mismatched,
+                dye,
+                fox,
+                salmon,
+                parrot,
+                mushroom,
+                rabbit,
+                horse,
+                llama,
+                axolotl,
+            )
 
     def test_unsupported_register_shape_reports_source_span(self) -> None:
         source = parse_source(

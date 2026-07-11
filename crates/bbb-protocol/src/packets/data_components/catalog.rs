@@ -539,7 +539,7 @@ fn decode_dye(
     decoder: &mut Decoder<'_>,
     summary: &mut DataComponentPatchSummary,
 ) -> Result<()> {
-    summary.dye_color_id = Some(normalize_dye_color_id(decoder.read_var_i32()?));
+    summary.dye_color_id = Some(normalize_vanilla_dye_color_id(decoder.read_var_i32()?));
     Ok(())
 }
 
@@ -797,7 +797,7 @@ fn decode_base_color(
     decoder: &mut Decoder<'_>,
     summary: &mut DataComponentPatchSummary,
 ) -> Result<()> {
-    summary.base_color_id = Some(normalize_dye_color_id(decoder.read_var_i32()?));
+    summary.base_color_id = Some(normalize_vanilla_dye_color_id(decoder.read_var_i32()?));
     Ok(())
 }
 
@@ -983,9 +983,12 @@ fn decode_builtin_enum(
     summary: &mut DataComponentPatchSummary,
 ) -> Result<()> {
     let id = decoder.read_var_i32()?;
-    summary
-        .builtin_enum_component_ids
-        .insert(type_id, normalize_builtin_enum_component_id(type_id, id));
+    let id = normalize_builtin_enum_component_value_id(type_id, id).ok_or_else(|| {
+        ProtocolError::InvalidData(format!(
+            "unsupported built-in enum component type id {type_id}"
+        ))
+    })?;
+    summary.builtin_enum_component_ids.insert(type_id, id);
     Ok(())
 }
 
