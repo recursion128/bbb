@@ -17,7 +17,8 @@ use bbb_protocol::packets::EquipmentSlot as ProtocolEquipmentSlot;
 use super::local_player::LocalPlayerPoseState;
 use crate::entities::{
     is_vanilla_abstract_horse_type, is_vanilla_boat_type, is_vanilla_minecart_type,
-    vanilla_living_entity_type, EntitySupportingBlock,
+    vanilla_living_entity_type, EntitySupportingBlock, VANILLA_CREAKING_CAN_MOVE_DATA_ID,
+    VANILLA_CREAKING_DEFAULT_CAN_MOVE,
 };
 use crate::terrain::block_name_is_air;
 use crate::{BlockPos, BlockProbe, TerrainFluidKind, TerrainMaterialClass, WorldStore};
@@ -27,7 +28,6 @@ const VANILLA_COLLISION_CONTEXT_ABOVE_EPSILON: f64 = 1.0e-5;
 const LOCAL_PLAYER_POWDER_SNOW_FALLING_COLLISION_FALL_DISTANCE: f64 = 2.5;
 const LOCAL_PLAYER_POWDER_SNOW_FALLING_COLLISION_HEIGHT: f64 = 0.9;
 const HAPPY_GHAST_STAYS_STILL_DATA_ID: u8 = 18;
-const CREAKING_CAN_MOVE_DATA_ID: u8 = 16;
 const LOCAL_PLAYER_HALF_WIDTH: f64 = 0.3;
 const SUPPORTING_BLOCK_PROBE_DEPTH: f64 = 1.0e-6;
 const MAX_COLLISION_BOXES: usize = 16;
@@ -753,8 +753,12 @@ impl WorldStore {
         if target_type == VANILLA_ENTITY_TYPE_CREAKING_ID
             && !self
                 .entities
-                .metadata_bool_for_entity(target_id, CREAKING_CAN_MOVE_DATA_ID, true)
-                .unwrap_or(true)
+                .metadata_bool_for_entity(
+                    target_id,
+                    VANILLA_CREAKING_CAN_MOVE_DATA_ID,
+                    VANILLA_CREAKING_DEFAULT_CAN_MOVE,
+                )
+                .unwrap_or(VANILLA_CREAKING_DEFAULT_CAN_MOVE)
         {
             return false;
         }

@@ -143,6 +143,15 @@ const GENERATED_VANILLA_GHAST_CHARGING_DATA_ID: u8 = 16;
 pub const VANILLA_GHAST_CHARGING_DATA_ID: u8 = GENERATED_VANILLA_GHAST_CHARGING_DATA_ID;
 const GENERATED_VANILLA_VEX_FLAGS_DATA_ID: u8 = 16;
 pub const VANILLA_VEX_FLAGS_DATA_ID: u8 = GENERATED_VANILLA_VEX_FLAGS_DATA_ID;
+const GENERATED_VANILLA_CREAKING_CAN_MOVE_DATA_ID: u8 = 16;
+pub const VANILLA_CREAKING_CAN_MOVE_DATA_ID: u8 = GENERATED_VANILLA_CREAKING_CAN_MOVE_DATA_ID;
+const GENERATED_VANILLA_CREAKING_ACTIVE_DATA_ID: u8 = 17;
+pub const VANILLA_CREAKING_ACTIVE_DATA_ID: u8 = GENERATED_VANILLA_CREAKING_ACTIVE_DATA_ID;
+const GENERATED_VANILLA_CREAKING_TEARING_DOWN_DATA_ID: u8 = 18;
+pub const VANILLA_CREAKING_TEARING_DOWN_DATA_ID: u8 =
+    GENERATED_VANILLA_CREAKING_TEARING_DOWN_DATA_ID;
+const GENERATED_VANILLA_CREAKING_HOME_POS_DATA_ID: u8 = 19;
+pub const VANILLA_CREAKING_HOME_POS_DATA_ID: u8 = GENERATED_VANILLA_CREAKING_HOME_POS_DATA_ID;
 const GENERATED_VANILLA_ABSTRACT_FISH_FROM_BUCKET_DATA_ID: u8 = 16;
 pub const VANILLA_ABSTRACT_FISH_FROM_BUCKET_DATA_ID: u8 =
     GENERATED_VANILLA_ABSTRACT_FISH_FROM_BUCKET_DATA_ID;
@@ -360,6 +369,13 @@ const GENERATED_VANILLA_GHAST_DEFAULT_CHARGING: bool = false;
 pub const VANILLA_GHAST_DEFAULT_CHARGING: bool = GENERATED_VANILLA_GHAST_DEFAULT_CHARGING;
 const GENERATED_VANILLA_VEX_DEFAULT_FLAGS: i8 = 0;
 pub const VANILLA_VEX_DEFAULT_FLAGS: i8 = GENERATED_VANILLA_VEX_DEFAULT_FLAGS;
+const GENERATED_VANILLA_CREAKING_DEFAULT_CAN_MOVE: bool = true;
+pub const VANILLA_CREAKING_DEFAULT_CAN_MOVE: bool = GENERATED_VANILLA_CREAKING_DEFAULT_CAN_MOVE;
+const GENERATED_VANILLA_CREAKING_DEFAULT_ACTIVE: bool = false;
+pub const VANILLA_CREAKING_DEFAULT_ACTIVE: bool = GENERATED_VANILLA_CREAKING_DEFAULT_ACTIVE;
+const GENERATED_VANILLA_CREAKING_DEFAULT_TEARING_DOWN: bool = false;
+pub const VANILLA_CREAKING_DEFAULT_TEARING_DOWN: bool =
+    GENERATED_VANILLA_CREAKING_DEFAULT_TEARING_DOWN;
 const GENERATED_VANILLA_ABSTRACT_FISH_DEFAULT_FROM_BUCKET: bool = false;
 pub const VANILLA_ABSTRACT_FISH_DEFAULT_FROM_BUCKET: bool =
     GENERATED_VANILLA_ABSTRACT_FISH_DEFAULT_FROM_BUCKET;
@@ -13507,6 +13523,41 @@ const VEX_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamil
     own_flags: VEX_FLAGS,
 };
 
+const CREAKING_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[
+    VanillaEntityMetadataFieldSchema {
+        name: "CAN_MOVE",
+        data_id: 16,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+        default: VanillaEntityMetadataDefault::Boolean(true),
+    },
+    VanillaEntityMetadataFieldSchema {
+        name: "IS_ACTIVE",
+        data_id: 17,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+        default: VanillaEntityMetadataDefault::Boolean(false),
+    },
+    VanillaEntityMetadataFieldSchema {
+        name: "IS_TEARING_DOWN",
+        data_id: 18,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+        default: VanillaEntityMetadataDefault::Boolean(false),
+    },
+    VanillaEntityMetadataFieldSchema {
+        name: "HOME_POS",
+        data_id: 19,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_BLOCK_POS_ID,
+        default: VanillaEntityMetadataDefault::OptionalBlockPosNone,
+    },
+];
+const CREAKING_FLAGS: &[VanillaEntityMetadataFlagSchema] = &[];
+const CREAKING_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamilySchema {
+    family: VanillaEntityMetadataFamily::Creaking,
+    parent: Some(VanillaEntityMetadataFamily::Mob),
+    inherited_field_count: 16,
+    own_fields: CREAKING_FIELDS,
+    own_flags: CREAKING_FLAGS,
+};
+
 const ABSTRACTFISH_FIELDS: &[VanillaEntityMetadataFieldSchema] =
     &[VanillaEntityMetadataFieldSchema {
         name: "FROM_BUCKET",
@@ -13783,6 +13834,7 @@ pub(super) const fn generated_entity_metadata_schema(
         VanillaEntityMetadataFamily::Bogged => &BOGGED_SCHEMA,
         VanillaEntityMetadataFamily::Ghast => &GHAST_SCHEMA,
         VanillaEntityMetadataFamily::Vex => &VEX_SCHEMA,
+        VanillaEntityMetadataFamily::Creaking => &CREAKING_SCHEMA,
         VanillaEntityMetadataFamily::AbstractFish => &ABSTRACTFISH_SCHEMA,
         VanillaEntityMetadataFamily::Pufferfish => &PUFFERFISH_SCHEMA,
         VanillaEntityMetadataFamily::VehicleEntity => &VEHICLEENTITY_SCHEMA,

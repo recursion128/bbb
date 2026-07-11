@@ -67,6 +67,10 @@ pub(crate) use bbb_world::{
     VANILLA_BOGGED_DEFAULT_SHEARED as BOGGED_DEFAULT_SHEARED,
     VANILLA_BOGGED_SHEARED_DATA_ID as BOGGED_SHEARED_DATA_ID,
 };
+use bbb_world::{
+    VANILLA_CREAKING_ACTIVE_DATA_ID as CREAKING_IS_ACTIVE_DATA_ID,
+    VANILLA_CREAKING_DEFAULT_ACTIVE as CREAKING_DEFAULT_ACTIVE,
+};
 pub(crate) use bbb_world::{
     VANILLA_END_CRYSTAL_BEAM_TARGET_DATA_ID as END_CRYSTAL_BEAM_TARGET_DATA_ID,
     VANILLA_END_CRYSTAL_DEFAULT_SHOW_BOTTOM as END_CRYSTAL_DEFAULT_SHOW_BOTTOM,
@@ -277,10 +281,6 @@ const STRIDER_SUFFOCATING_DATA_ID: u8 = 19;
 // starts the seven-tick `shakeTime` impact wobble that `ArrowRenderer.extractRenderState` projects.
 #[cfg(test)]
 const ARROW_IN_GROUND_DATA_ID: u8 = 10;
-/// Vanilla `Creaking.IS_ACTIVE` data id (17, BOOLEAN): `Creaking extends Monster` (not ageable), so
-/// after `Mob.DATA_MOB_FLAGS_ID` (15) come `CAN_MOVE` (16) / `IS_ACTIVE` (17) / `IS_TEARING_DOWN`
-/// (18). The renderer's `eyesGlowing` is `isActive()` for a live creaking (the death-flicker is deferred).
-const CREAKING_IS_ACTIVE_DATA_ID: u8 = 17;
 /// Vanilla `Turtle.HAS_EGG` data id (18): the synced boolean, the turtle's first own accessor
 /// after `AgeableMob.DATA_BABY_ID` (16) and `AGE_LOCKED` (17).
 const TURTLE_HAS_EGG_DATA_ID: u8 = 18;

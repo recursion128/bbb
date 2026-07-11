@@ -262,7 +262,11 @@ pub(super) fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_CAVE_SPIDER_ID => EntityModelKind::CaveSpider,
         VANILLA_ENTITY_TYPE_COD_ID => EntityModelKind::Cod,
         VANILLA_ENTITY_TYPE_CREAKING_ID => EntityModelKind::Creaking {
-            eyes_glowing: entity_data_bool(data_values, CREAKING_IS_ACTIVE_DATA_ID, false),
+            eyes_glowing: entity_data_bool(
+                data_values,
+                CREAKING_IS_ACTIVE_DATA_ID,
+                CREAKING_DEFAULT_ACTIVE,
+            ),
         },
         VANILLA_ENTITY_TYPE_DOLPHIN_ID => EntityModelKind::Dolphin {
             baby: ageable_baby(data_values),

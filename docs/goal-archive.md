@@ -9712,3 +9712,11 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   `DATA_FLAGS_ID` id 16/default 0 及 extractor 唯一绑定的 `FLAG_IS_CHARGING=1`
   替代 world/native 手抄值；focused tests 锁定继承 offset、serializer/default/mask 与
   charging model pose。未修改 charge AI、arm pose 算法或 renderer。
+
+## 2026-07-11：Generated entity metadata consumer（Creaking）
+
+- [x] 从 generated catalog 建立 `Mob -> Creaking` compatibility family：BOOLEAN
+  can-move/active/tearing-down ids 16/17/18 与 defaults true/false/false，以及
+  OPTIONAL_BLOCK_POS home-pos id 19 替代 world/native 手抄值。collision、client animation、
+  glowing-eyes model 与 F3+I home-pos 统一消费 generated aliases；未修改 combat event、移动、
+  动画公式或 renderer。

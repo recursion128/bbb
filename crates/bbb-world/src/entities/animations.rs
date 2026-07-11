@@ -29,6 +29,10 @@ use super::schema::{
     VANILLA_ABSTRACT_BOAT_DEFAULT_PADDLE_RIGHT as ABSTRACT_BOAT_DEFAULT_PADDLE_RIGHT,
     VANILLA_ABSTRACT_BOAT_PADDLE_LEFT_DATA_ID as ABSTRACT_BOAT_PADDLE_LEFT_DATA_ID,
     VANILLA_ABSTRACT_BOAT_PADDLE_RIGHT_DATA_ID as ABSTRACT_BOAT_PADDLE_RIGHT_DATA_ID,
+    VANILLA_CREAKING_CAN_MOVE_DATA_ID as CREAKING_CAN_MOVE_DATA_ID,
+    VANILLA_CREAKING_DEFAULT_CAN_MOVE as CREAKING_DEFAULT_CAN_MOVE,
+    VANILLA_CREAKING_DEFAULT_TEARING_DOWN as CREAKING_DEFAULT_TEARING_DOWN,
+    VANILLA_CREAKING_TEARING_DOWN_DATA_ID as CREAKING_IS_TEARING_DOWN_DATA_ID,
     VANILLA_GUARDIAN_ATTACK_TARGET_DATA_ID as GUARDIAN_ATTACK_TARGET_DATA_ID,
     VANILLA_GUARDIAN_DEFAULT_ATTACK_TARGET as GUARDIAN_DEFAULT_ATTACK_TARGET,
     VANILLA_GUARDIAN_DEFAULT_MOVING as GUARDIAN_DEFAULT_MOVING,
@@ -376,14 +380,6 @@ const CREAKING_ATTACK_EVENT_ID: i8 = 4;
 const CREAKING_INVULNERABLE_EVENT_ID: i8 = 66;
 const CREAKING_ATTACK_DURATION: i32 = 15;
 const CREAKING_INVULNERABLE_DURATION: i32 = 8;
-/// Vanilla `Creaking.CAN_MOVE`, the first own synced accessor after `Entity` (`0..=7`),
-/// `LivingEntity` (`8..=14`) and `Mob` (`15`) — a `Boolean`, default `true`. `setupAnim` gates the
-/// looping walk on it (a frozen-while-observed creaking turns to a statue).
-const CREAKING_CAN_MOVE_DATA_ID: u8 = 16;
-/// Vanilla `Creaking.IS_TEARING_DOWN`, the synced `Boolean` two slots after `CAN_MOVE`
-/// (`CAN_MOVE` 16, `IS_ACTIVE` 17, `IS_TEARING_DOWN` 18; default `false`). `isTearingDown()` reads
-/// it, and `setupAnimationStates` `animateWhen`s the death keyframe on it.
-const CREAKING_IS_TEARING_DOWN_DATA_ID: u8 = 18;
 /// Vanilla `MinecartTNT.handleEntityEvent(10)` calls `primeFuse`, which sets the client-side
 /// `fuse` counter to 80. `TntMinecartRenderer.extractRenderState` projects it as
 /// `fuse - partialTicks + 1.0`.
@@ -6029,14 +6025,22 @@ pub(crate) fn axolotl_is_playing_dead(data_values: &[EntityDataValue]) -> bool {
 /// player observes it turns to a statue. Non-creakings fall back to `true` (the field only feeds the
 /// creaking model).
 pub(crate) fn creaking_can_move(data_values: &[EntityDataValue]) -> bool {
-    entity_data_bool(data_values, CREAKING_CAN_MOVE_DATA_ID, true)
+    entity_data_bool(
+        data_values,
+        CREAKING_CAN_MOVE_DATA_ID,
+        CREAKING_DEFAULT_CAN_MOVE,
+    )
 }
 
 /// Vanilla `Creaking.isTearingDown()` (`entityData.get(IS_TEARING_DOWN)`): the synced boolean
 /// (default `false`) that drives the death collapse. Read straight from the entity metadata in the
 /// tick loop; non-creakings fall back to `false`.
 pub(crate) fn creaking_is_tearing_down(data_values: &[EntityDataValue]) -> bool {
-    entity_data_bool(data_values, CREAKING_IS_TEARING_DOWN_DATA_ID, false)
+    entity_data_bool(
+        data_values,
+        CREAKING_IS_TEARING_DOWN_DATA_ID,
+        CREAKING_DEFAULT_TEARING_DOWN,
+    )
 }
 
 /// Vanilla `LivingEntity.isFallFlying()` = `Entity.getSharedFlag(7)`, where

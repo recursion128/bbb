@@ -36,6 +36,7 @@ pub enum VanillaEntityMetadataFamily {
     Bogged,
     Ghast,
     Vex,
+    Creaking,
     AbstractFish,
     Pufferfish,
     VehicleEntity,
@@ -315,6 +316,7 @@ mod tests {
             VanillaEntityMetadataFamily::Bogged,
             VanillaEntityMetadataFamily::Ghast,
             VanillaEntityMetadataFamily::Vex,
+            VanillaEntityMetadataFamily::Creaking,
             VanillaEntityMetadataFamily::AbstractFish,
             VanillaEntityMetadataFamily::Pufferfish,
             VanillaEntityMetadataFamily::VehicleEntity,
@@ -631,6 +633,45 @@ mod tests {
         assert_eq!(VANILLA_VEX_FLAGS_DATA_ID, 16);
         assert_eq!(VANILLA_VEX_DEFAULT_FLAGS, 0);
         assert_eq!(VANILLA_VEX_FLAG_CHARGING, 1);
+        let creaking = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Creaking);
+        assert_eq!(creaking.parent, Some(VanillaEntityMetadataFamily::Mob));
+        assert_eq!(creaking.inherited_field_count, 16);
+        assert_eq!(
+            creaking
+                .own_fields
+                .iter()
+                .map(|field| (field.name, field.serializer_id, field.default))
+                .collect::<Vec<_>>(),
+            vec![
+                (
+                    "CAN_MOVE",
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+                    VanillaEntityMetadataDefault::Boolean(true),
+                ),
+                (
+                    "IS_ACTIVE",
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+                    VanillaEntityMetadataDefault::Boolean(false),
+                ),
+                (
+                    "IS_TEARING_DOWN",
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+                    VanillaEntityMetadataDefault::Boolean(false),
+                ),
+                (
+                    "HOME_POS",
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_BLOCK_POS_ID,
+                    VanillaEntityMetadataDefault::OptionalBlockPosNone,
+                ),
+            ]
+        );
+        assert_eq!(VANILLA_CREAKING_CAN_MOVE_DATA_ID, 16);
+        assert_eq!(VANILLA_CREAKING_ACTIVE_DATA_ID, 17);
+        assert_eq!(VANILLA_CREAKING_TEARING_DOWN_DATA_ID, 18);
+        assert_eq!(VANILLA_CREAKING_HOME_POS_DATA_ID, 19);
+        assert!(VANILLA_CREAKING_DEFAULT_CAN_MOVE);
+        assert!(!VANILLA_CREAKING_DEFAULT_ACTIVE);
+        assert!(!VANILLA_CREAKING_DEFAULT_TEARING_DOWN);
         let abstract_fish =
             vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::AbstractFish);
         assert_eq!(abstract_fish.parent, Some(VanillaEntityMetadataFamily::Mob));
