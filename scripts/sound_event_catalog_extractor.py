@@ -1,0 +1,210 @@
+"""Tree-sitter-backed extraction for the vanilla sound-event registry order."""
+
+from __future__ import annotations
+
+import json
+
+from vanilla_java_source import JavaExpression, JavaMethod, JavaSource, descendants, type_body_members
+
+
+class SoundEventCatalogExtractionError(ValueError):
+    pass
+
+
+SPECIAL_VARIANT_FIELDS = {
+    "CAT_SOUNDS": ("cat", "registerCatSoundVariants"),
+    "CHICKEN_SOUNDS": ("chicken", "registerChickenSoundVariants"),
+    "COW_SOUNDS": ("cow", "registerCowSoundVariants"),
+    "PIG_SOUNDS": ("pig", "registerPigSoundVariants"),
+    "WOLF_SOUNDS": ("wolf", "registerWolfSoundVariants"),
+}
+
+
+def _fail(source: JavaSource, expression: JavaExpression, message: str) -> None:
+    span = expression.span
+    raise SoundEventCatalogExtractionError(
+        f"{source.relative_path}:{span.start_point[0] + 1}:"
+        f"{span.start_point[1] + 1}: {message}"
+    )
+
+
+def _string(source: JavaSource, expression: JavaExpression) -> str:
+    if expression.node.type != "string_literal":
+        _fail(source, expression, "expected string literal")
+    try:
+        value = json.loads(source.text(expression.node))
+    except (json.JSONDecodeError, TypeError) as error:
+        _fail(source, expression, f"invalid Java string literal: {error}")
+    if not isinstance(value, str) or not value:
+        _fail(source, expression, "expected non-empty string literal")
+    return value
+
+
+def _method(source: JavaSource, name: str) -> JavaMethod:
+    methods = [method for method in source.methods if method.name == name]
+    if len(methods) != 1 or methods[0].body is None:
+        raise SoundEventCatalogExtractionError(
+            f"{source.relative_path}: expected exactly one {name} method with a body"
+        )
+    return methods[0]
+
+
+def _calls_in_method(source: JavaSource, method: JavaMethod, name: str) -> list:
+    return [
+        call
+        for call in source.calls
+        if call.name == name
+        and method.body.start_byte <= call.span.start_byte
+        and call.span.end_byte <= method.body.end_byte
+    ]
+
+
+def sound_set_event_identifiers(source: JavaSource) -> list[str]:
+    sound_sets = [
+        java_type
+        for java_type in source.types
+        if java_type.kind == "enum" and java_type.simple_name == "SoundSet"
+    ]
+    if len(sound_sets) != 1:
+        raise SoundEventCatalogExtractionError(
+            f"{source.relative_path}: expected exactly one SoundSet enum"
+        )
+    identifiers: list[str] = []
+    for node in type_body_members(sound_sets[0].body_node):
+        if node.type != "enum_constant":
+            continue
+        arguments = node.child_by_field_name("arguments")
+        if arguments is None or len(arguments.named_children) < 2:
+            _fail(source, source.expression(node), "SoundSet constant lacks two arguments")
+        identifiers.append(_string(source, source.expression(arguments.named_children[1])))
+    if not identifiers or len(identifiers) != len(set(identifiers)):
+        raise SoundEventCatalogExtractionError(
+            f"{source.relative_path}: empty or duplicate SoundSet event identifier"
+        )
+    return identifiers
+
+
+def _variant_helper_suffixes(source: JavaSource, method_name: str) -> list[str]:
+    method = _method(source, method_name)
+    calls = _calls_in_method(source, method, "registerForHolder")
+    suffixes: list[str] = []
+    for call in calls:
+        if len(call.arguments) != 1:
+            _fail(source, source.expression(call.node), "variant sound registration arity changed")
+        argument = call.arguments[0]
+        literals = [
+            source.expression(node)
+            for node in [argument.node, *descendants(argument.node)]
+            if node.type == "string_literal"
+        ]
+        if len(literals) != 2 or _string(source, literals[0]) != "entity.":
+            _fail(source, argument, "unsupported variant sound id expression")
+        suffix = _string(source, literals[1])
+        if not suffix.startswith(".") or len(suffix) == 1:
+            _fail(source, literals[1], "variant sound suffix must start with a dot")
+        suffixes.append(suffix[1:])
+    if not suffixes or len(suffixes) != len(set(suffixes)):
+        raise SoundEventCatalogExtractionError(
+            f"{source.relative_path}: empty or duplicate suffixes in {method_name}"
+        )
+    return suffixes
+
+
+def _goat_horn_ids(source: JavaSource) -> list[str]:
+    method = _method(source, "registerGoatHornSoundVariants")
+    ranges = _calls_in_method(source, method, "range")
+    registrations = _calls_in_method(source, method, "registerForHolder")
+    if len(ranges) != 1 or len(ranges[0].arguments) != 2:
+        raise SoundEventCatalogExtractionError(
+            f"{source.relative_path}: unsupported goat-horn IntStream range"
+        )
+    bounds = [argument.canonical for argument in ranges[0].arguments]
+    if bounds[0] != "0" or not bounds[1].isdigit():
+        _fail(source, source.expression(ranges[0].node), "goat-horn range is not 0..integer")
+    if len(registrations) != 1 or len(registrations[0].arguments) != 1:
+        raise SoundEventCatalogExtractionError(
+            f"{source.relative_path}: unsupported goat-horn registration template"
+        )
+    template = registrations[0].arguments[0]
+    literals = [
+        source.expression(node)
+        for node in [template.node, *descendants(template.node)]
+        if node.type == "string_literal"
+    ]
+    if len(literals) != 1 or _string(source, literals[0]) != "item.goat_horn.sound.":
+        _fail(source, template, "unsupported goat-horn sound id expression")
+    return [f"minecraft:item.goat_horn.sound.{index}" for index in range(int(bounds[1]))]
+
+
+def sound_event_resource_ids(
+    source: JavaSource,
+    variant_sources: dict[str, JavaSource],
+    expected_count: int = 1902,
+) -> list[str]:
+    owner = "net.minecraft.sounds.SoundEvents"
+    fields = source.fields_for(owner)
+    if not fields:
+        raise SoundEventCatalogExtractionError(f"{source.relative_path}: SoundEvents has no fields")
+
+    variants: dict[str, list[str]] = {}
+    suffixes: dict[str, list[str]] = {}
+    present_fields = {field.name for field in fields}
+    for field_name, (family, helper_name) in SPECIAL_VARIANT_FIELDS.items():
+        if field_name not in present_fields:
+            continue
+        if family not in variant_sources:
+            raise SoundEventCatalogExtractionError(f"missing {family} SoundSet source")
+        variants[family] = sound_set_event_identifiers(variant_sources[family])
+        suffixes[family] = _variant_helper_suffixes(source, helper_name)
+
+    ids: list[str] = []
+    explained_fields = 0
+    for field in fields:
+        initializer = field.initializer
+        if initializer is None:
+            continue
+        calls = [
+            call
+            for call in source.calls
+            if initializer.span.start_byte <= call.span.start_byte
+            and call.span.end_byte <= initializer.span.end_byte
+        ]
+        registrations = [
+            call for call in calls if call.name in {"register", "registerForHolder"}
+        ]
+        if registrations:
+            if len(registrations) != 1 or len(registrations[0].arguments) < 1:
+                _fail(source, initializer, f"unsupported direct sound field {field.name}")
+            ids.append("minecraft:" + _string(source, registrations[0].arguments[0]))
+            explained_fields += 1
+            continue
+        if field.name == "GOAT_HORN_SOUND_VARIANTS":
+            ids.extend(_goat_horn_ids(source))
+            explained_fields += 1
+            continue
+        special = SPECIAL_VARIANT_FIELDS.get(field.name)
+        if special is not None:
+            family, expected_helper = special
+            if len(calls) != 1 or calls[0].name != expected_helper:
+                _fail(source, initializer, f"unsupported {field.name} initializer")
+            ids.extend(
+                f"minecraft:entity.{sound_id}.{suffix}"
+                for sound_id in variants[family]
+                for suffix in suffixes[family]
+            )
+            explained_fields += 1
+            continue
+        if field.name != "GOAT_HORN_VARIANT_COUNT":
+            _fail(source, initializer, f"unexplained SoundEvents field {field.name}")
+
+    if explained_fields != len(fields) - 1:
+        raise SoundEventCatalogExtractionError(
+            f"{source.relative_path}: explained {explained_fields}/{len(fields) - 1} registry fields"
+        )
+    if len(ids) != expected_count:
+        raise SoundEventCatalogExtractionError(
+            f"{source.relative_path}: expected {expected_count} sound events, extracted {len(ids)}"
+        )
+    if len(ids) != len(set(ids)):
+        raise SoundEventCatalogExtractionError(f"{source.relative_path}: duplicate sound event id")
+    return ids

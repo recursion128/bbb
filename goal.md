@@ -238,9 +238,10 @@ entity metadata extractor 是统一 Tree-sitter Java extraction foundation 的�
 
 按以下顺序消化，每项独立成可门禁、可提交的 slice：
 
-1. **资源与 tag 派生表**：sound event/jukebox/particle 快照改由可复现提取器生成；
-   可由资源包 tag、blockstate/model 或 registry report 判定的 block/item/entity
-   membership 不再维护手写名单。资源缺失必须保留明确 vanilla fallback。
+1. **资源与 tag 派生表**：jukebox/particle 资源快照改由可复现提取器或现有 generated
+   registry + resource-pack catalog 证明；可由资源包 tag、blockstate/model 或 registry
+   report 判定的 block/item/entity membership 不再维护手写名单。资源缺失必须保留明确
+   vanilla fallback。
 2. **跨 crate 去重与反向门禁**：审计 protocol/world/native/item-model/renderer 中
    重复 registry/ordinal 表和生产代码裸 id；消费者改用 typed catalog API，并增加
    机械扫描或结构测试，阻止已收敛语义重新出现第二事实源。测试 fixture 可保留

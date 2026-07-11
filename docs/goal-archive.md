@@ -10256,3 +10256,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   `assets/*/equipment/*.json`，已由 `bbb-pack::EquipmentAssetCatalog` 按 pack precedence 加载。
   因此不生成无消费者的固定 numeric 表，也不把当前缺失的 renderer layer parity 误标完成；
   后者继续保留在 unsupported renderer ledger。
+
+## 2026-07-11：Sound-event registry Tree-sitter generation
+
+- [x] 新增 `sound_event_catalog_extractor.py` 与 repo-level update/check 命令，使用共享
+  Tree-sitter frontend 按 `SoundEvents` field 初始化顺序提取 1808 个直接 register/
+  registerForHolder，并从 helper CST 验证/展开 8 个 goat-horn 与 Cat/Chicken/Cow/Pig/Wolf
+  SoundSet 的 86 个事件，共闭合 1902/1902 项。variant 顺序来自 nested enum constructor，
+  suffix/template/range 由 helper call expression 验证；unexplained field、重复、计数或 CST
+  形态变化均显式失败。删除输出到不存在 bbb-audio data 目录的旧 regex/逐行工具，现有
+  `bbb-pack/data/sound_events_26_1.txt` 内容逐字不变并由 maintenance update/check 管理；
+  普通 Cargo build/test 不读取本地 vanilla source，session 下发 sound registry 仍优先。

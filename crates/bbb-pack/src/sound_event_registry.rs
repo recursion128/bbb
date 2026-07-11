@@ -1,5 +1,8 @@
 use serde::{Deserialize, Serialize};
 
+// Generated from vanilla 26.1 `SoundEvents.java` static initialization order.
+// Update/check with `scripts/generate-sound-event-catalog.py` through
+// `scripts/vanilla-source-tools.sh`; ordinary builds consume only this snapshot.
 const VANILLA_26_1_SOUND_EVENTS: &str = include_str!("../data/sound_events_26_1.txt");
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
