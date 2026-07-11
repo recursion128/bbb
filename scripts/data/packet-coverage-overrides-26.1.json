@@ -1,5 +1,62 @@
 {
   "entries": {
+    "configuration/clientbound/CLIENTBOUND_CODE_OF_CONDUCT": {
+      "canonical_apply": {
+        "evidence": ["crates/bbb-world/src/client/ui.rs#apply_code_of_conduct"],
+        "status": "complete"
+      },
+      "decode": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/tests.rs#decodes_configuration_common_packets",
+          "vanilla:net/minecraft/network/protocol/configuration/ClientboundCodeOfConductPacket.java#STRING_UTF8"
+        ],
+        "status": "complete"
+      },
+      "ownership": {
+        "evidence": ["crates/bbb-net/src/event_stream/configuration.rs#ConfigurationClientbound::CodeOfConduct"],
+        "status": "complete"
+      },
+      "runtime_side_effect": {
+        "evidence": [
+          "crates/bbb-native/src/runtime/control_requests.rs#CodeOfConductControlRequest::Decline",
+          "vanilla:net/minecraft/client/multiplayer/ClientConfigurationPacketListenerImpl.java#handleCodeOfConduct"
+        ],
+        "status": "complete"
+      },
+      "tests": {
+        "evidence": [
+          "crates/bbb-net/src/event_stream.rs#configuration_code_of_conduct_rejects_duplicate_packet",
+          "crates/bbb-native/src/runtime/control_requests.rs#pump_control_net_requests_decline_clears_hash_and_disconnects"
+        ],
+        "status": "complete"
+      }
+    },
+    "configuration/serverbound/SERVERBOUND_ACCEPT_CODE_OF_CONDUCT": {
+      "ack_response": {
+        "evidence": ["vanilla:net/minecraft/server/network/ServerConfigurationPacketListenerImpl.java#handleAcceptCodeOfConduct"],
+        "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+        "status": "not-applicable"
+      },
+      "command_surface": {
+        "evidence": ["crates/bbb-control/src/server.rs#net.accept_code_of_conduct"],
+        "status": "complete"
+      },
+      "encoder": {
+        "evidence": ["crates/bbb-protocol/src/packets/tests.rs#encodes_configuration_accept_code_of_conduct_as_unit_packet"],
+        "status": "complete"
+      },
+      "state_guard": {
+        "evidence": ["crates/bbb-net/src/driver.rs#ConnectionState::Configuration"],
+        "status": "complete"
+      },
+      "tests": {
+        "evidence": [
+          "crates/bbb-net/src/driver/commands/tests.rs#send_accept_code_of_conduct_encodes_configuration_accept_packet",
+          "crates/bbb-net/src/event_stream.rs#configuration_code_of_conduct_auto_accepts_matching_hash"
+        ],
+        "status": "complete"
+      }
+    },
     "configuration/clientbound/CLIENTBOUND_SELECT_KNOWN_PACKS": {
       "canonical_apply": {
         "evidence": ["crates/bbb-world/src/client/features.rs#apply_select_known_packs"],

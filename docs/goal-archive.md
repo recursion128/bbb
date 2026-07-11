@@ -10883,3 +10883,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] offer decode、configuration ownership、world offered/selected projection 与空 response wire
   已有 evidence；coverage 明确保留本地 pack 匹配、非空 encoder/command surface 三格 partial，
   不把“始终选择空列表”误标为完整 negotiation。
+
+## 2026-07-11：configuration code-of-conduct coverage audit
+
+- [x] 对照 `ClientConfigurationPacketListenerImpl.handleCodeOfConduct` 与 server configuration
+  task，锁定 32,767 字符 text、单次包约束、已接受 hash 自动响应、手工 accept、拒绝断开及
+  unit accept packet；新增 32,768 字符拒绝边界。
+- [x] protocol/net/world/native/control tests 覆盖 decode、canonical text/hash、重复包、持久接受、
+  configuration-only send 与 decline disconnect；两行 coverage 全部闭合为 complete 或有
+  vanilla 依据的 not-applicable。

@@ -393,6 +393,36 @@ mod tests {
         );
     }
 
+    #[test]
+    fn configuration_code_of_conduct_family_is_closed() {
+        let ledger = vanilla_packet_coverage_26_1().unwrap();
+        let packets = BTreeSet::from([
+            "SERVERBOUND_ACCEPT_CODE_OF_CONDUCT",
+            "CLIENTBOUND_CODE_OF_CONDUCT",
+        ]);
+        let entries: Vec<_> = ledger
+            .entries
+            .iter()
+            .filter(|entry| {
+                entry.state == "configuration" && packets.contains(entry.constant_name.as_str())
+            })
+            .collect();
+        assert_eq!(entries.len(), packets.len());
+        for entry in entries {
+            for (dimension, cell) in &entry.coverage {
+                assert!(
+                    matches!(
+                        cell.status,
+                        PacketCoverageStatus::Complete | PacketCoverageStatus::NotApplicable
+                    ),
+                    "{}/{dimension} remains {:?}",
+                    entry.constant_name,
+                    cell.status
+                );
+            }
+        }
+    }
+
     fn state_name(state: PacketState) -> &'static str {
         match state {
             PacketState::Handshake => "handshake",

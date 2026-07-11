@@ -2737,6 +2737,18 @@ fn decodes_configuration_common_packets() {
             text: "Keep the server friendly.".to_string(),
         }
     );
+
+    let mut oversized_code = Encoder::new();
+    oversized_code.write_string(&"x".repeat(32_768));
+    let error = decode_configuration_clientbound(
+        ids::configuration::CLIENTBOUND_CODE_OF_CONDUCT,
+        &oversized_code.into_inner(),
+    )
+    .unwrap_err();
+    assert!(matches!(
+        error,
+        ProtocolError::StringTooLong { max: 32_767, .. }
+    ));
 }
 
 #[test]

@@ -301,6 +301,8 @@ known-pack/code-of-conduct/dialog 等其余 configuration packet 仍须按各自
 required-pack 生命周期和运行时 pop 仍为具体 `partial`，不能把 Declined fallback 当作完成。
 known-packs offer 的 decode/ownership/canonical 路径也已审计，但 bbb 尚无本地
 `KnownPacksManager` 等价物，空 response 的 runtime/encoder/command 单元保持 `partial`。
+code-of-conduct 的单次展示、自动/手工接受、持久 hash、拒绝断开与 configuration-only accept
+已闭合；不再把它列作剩余 configuration gap。
 
 matrix inventory + state/framing + required login/config/play handoff 是本队列的 foundation
 milestone；完成后即可进入 RegistryAccess/playable foundation，不等待全部长尾 packet
