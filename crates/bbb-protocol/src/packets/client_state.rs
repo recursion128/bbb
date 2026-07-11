@@ -291,10 +291,16 @@ fn decode_boss_bar_overlay(decoder: &mut Decoder<'_>) -> Result<BossBarOverlay> 
 }
 
 pub(super) fn decode_change_difficulty(decoder: &mut Decoder<'_>) -> Result<ChangeDifficulty> {
-    Ok(ChangeDifficulty {
+    let update = ChangeDifficulty {
         difficulty: Difficulty::from_id(decoder.read_var_i32()?),
         locked: decoder.read_bool()?,
-    })
+    };
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after change difficulty packet".to_string(),
+        ));
+    }
+    Ok(update)
 }
 
 pub(super) fn decode_cooldown(decoder: &mut Decoder<'_>) -> Result<Cooldown> {

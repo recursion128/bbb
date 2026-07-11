@@ -173,6 +173,15 @@ fn decodes_change_difficulty_with_wrapped_ids() {
             locked: false,
         })
     );
+
+    let mut trailing = change_difficulty_payload(2, true);
+    trailing.push(0);
+    assert!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_CHANGE_DIFFICULTY, &trailing)
+            .unwrap_err()
+            .to_string()
+            .contains("trailing bytes after change difficulty packet")
+    );
 }
 
 #[test]

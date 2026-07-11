@@ -11144,3 +11144,11 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   trailing bytes；duration 0 remove、非零 add、client tick expiry 和 partial-tick percent 均有测试。
 - [x] 修正负 duration 的窄差异：vanilla 仍先 add（初始 percent=1），下一 client tick 才因 endTime
   已过而移除；bbb 不再把负值当成即时 remove。protocol/world/net/native consumers 使五格全部闭合。
+
+## 2026-07-11：change-difficulty packet coverage audit
+
+- [x] 对照 `ClientboundChangeDifficultyPacket`、`Difficulty.STREAM_CODEC` 与
+  `ClientPacketListener.handleChangeDifficulty` 锁定 wrapped enum VarInt + locked bool wire，并拒绝
+  trailing bytes；world level-data state、net apply 和 native event tests 使五格全部闭合。
+- [x] 此状态只表示外部服务器同步给 multiplayer client 的难度与锁定标记，不拥有或驱动
+  IntegratedServer、server mob simulation 或 local difficulty 计算。

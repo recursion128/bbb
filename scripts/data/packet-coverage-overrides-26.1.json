@@ -1049,6 +1049,43 @@
         "status": "complete"
       }
     },
+    "play/clientbound/CLIENTBOUND_CHANGE_DIFFICULTY": {
+      "canonical_apply": {
+        "evidence": [
+          "crates/bbb-world/src/client/hud.rs#apply_change_difficulty",
+          "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleChangeDifficulty"
+        ],
+        "status": "complete"
+      },
+      "decode": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/client_state/tests.rs#decodes_change_difficulty_with_wrapped_ids",
+          "vanilla:net/minecraft/network/protocol/game/ClientboundChangeDifficultyPacket.java#STREAM_CODEC"
+        ],
+        "status": "complete"
+      },
+      "ownership": {
+        "evidence": [
+          "crates/bbb-world/src/play_apply.rs#PlayClientbound::ChangeDifficulty"
+        ],
+        "status": "complete"
+      },
+      "runtime_side_effect": {
+        "evidence": [
+          "crates/bbb-world/src/client/hud.rs#difficulty",
+          "crates/bbb-native/src/runtime/events/tests/session_hud_and_vehicle_events.rs#hud_session_events_update_world_and_world_counters"
+        ],
+        "status": "complete"
+      },
+      "tests": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/client_state/tests.rs#decodes_change_difficulty_with_wrapped_ids",
+          "crates/bbb-world/src/client/hud.rs#change_difficulty_updates_client_level_data_state",
+          "crates/bbb-net/src/probe/play.rs#probe_applies_hud_session_packets_to_world"
+        ],
+        "status": "complete"
+      }
+    },
     "play/clientbound/CLIENTBOUND_COOLDOWN": {
       "canonical_apply": {
         "evidence": [
