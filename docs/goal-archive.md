@@ -11250,3 +11250,10 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] numeric StatType/value ids 尚未通过 session RegistryAccess 解析为 resource identity，StatsScreen
   也仍只有 loading shell，故 canonical/runtime 保持 partial；未把 numeric pair 或 loading 文本冒充
   完整 statistics UI。
+
+## 2026-07-11：tab-list packet coverage audit
+
+- [x] 对照 `ClientboundTabListPacket` 与 `handleTabListCustomisation` 锁定 header/footer trusted
+  Component wire、empty string Component → null 语义并拒绝 trailing bytes；decode/ownership/tests 已闭合。
+- [x] world/native event state 能分别替换或清空 header/footer，但仍只保留可读 String，且 native tab
+  overlay 未渲染 header/footer；canonical/runtime 保持 partial，未把状态存储冒充 UI parity。

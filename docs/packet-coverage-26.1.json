@@ -9582,29 +9582,45 @@
       "constant_name": "CLIENTBOUND_TAB_LIST",
       "coverage": {
         "canonical_apply": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
+          "evidence": [
+            "crates/bbb-world/src/client/hud.rs#apply_tab_list",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleTabListCustomisation"
+          ],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
           "status": "partial"
         },
         "decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/server_presentation.rs#decodes_tab_list_header_footer",
+            "vanilla:net/minecraft/network/protocol/game/ClientboundTabListPacket.java#STREAM_CODEC"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "ownership": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/play_apply.rs#PlayClientbound::TabList"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "runtime_side_effect": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
+          "evidence": [
+            "crates/bbb-world/src/client/hud.rs#tab_list",
+            "crates/bbb-native/src/runtime/events/tests/session_hud_and_vehicle_events.rs#hud_session_events_update_world_and_world_counters"
+          ],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
           "status": "partial"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/server_presentation.rs#decodes_tab_list_header_footer",
+            "crates/bbb-world/src/client/hud.rs#tab_list_empty_components_clear_header_and_footer",
+            "crates/bbb-net/src/probe/play.rs#probe_applies_hud_session_packets_to_world",
+            "crates/bbb-native/src/runtime/events/tests/session_hud_and_vehicle_events.rs#hud_session_events_update_world_and_world_counters"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "clientbound",

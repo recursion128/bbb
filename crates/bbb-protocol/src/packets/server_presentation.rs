@@ -3,7 +3,7 @@ use uuid::Uuid;
 
 pub use crate::resource_pack_response_actions::ResourcePackResponseAction;
 use crate::{
-    codec::{Decoder, Encoder, Result},
+    codec::{Decoder, Encoder, ProtocolError, Result},
     component::decode_component_summary_from_decoder,
     ids,
 };
@@ -90,10 +90,16 @@ pub(super) fn decode_server_data(decoder: &mut Decoder<'_>) -> Result<ServerData
 }
 
 pub(super) fn decode_tab_list(decoder: &mut Decoder<'_>) -> Result<TabList> {
-    Ok(TabList {
+    let update = TabList {
         header: decode_tab_list_component(decoder)?,
         footer: decode_tab_list_component(decoder)?,
-    })
+    };
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after tab list packet".to_string(),
+        ));
+    }
+    Ok(update)
 }
 
 fn decode_tab_list_component(decoder: &mut Decoder<'_>) -> Result<Option<String>> {
@@ -150,6 +156,17 @@ mod tests {
                 header: None,
                 footer: Some("Welcome".to_string()),
             })
+        );
+
+        let mut trailing = Encoder::new();
+        trailing.write_bytes(&nbt_string_root("Online players"));
+        trailing.write_bytes(&nbt_string_root(""));
+        trailing.write_u8(0);
+        assert!(
+            decode_play_clientbound(ids::play::CLIENTBOUND_TAB_LIST, &trailing.into_inner())
+                .unwrap_err()
+                .to_string()
+                .contains("trailing bytes after tab list packet")
         );
     }
 
