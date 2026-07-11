@@ -524,6 +524,9 @@ back into a todo. Do not delete these.
   `MinecartCommandBlock` command/last-output ids are generated compatibility
   aliases, while STRING/COMPONENT default normalization and its family facade
   remain open.
+  Sheep's lower-nibble wool-color value mask is generated separately from its
+  sheared boolean flag; remaining non-boolean packed-value masks migrate only
+  when their consumers are audited.
 - **Baby `ageScale`** — the `0.5` proportions applied in model `setupAnim`,
   distinct from the projected `SCALE`-attribute `scale`.
 - **Armor trims and the remaining mob-specific armor models.**

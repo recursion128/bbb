@@ -606,6 +606,15 @@ METHOD_FLAG_ALIASES = {
 }
 
 
+METHOD_VALUE_MASK_ALIASES = {
+    "VANILLA_SHEEP_WOOL_COLOR_MASK": (
+        "net.minecraft.world.entity.animal.sheep.Sheep",
+        "getColor",
+        "inline_mask",
+    ),
+}
+
+
 MODEL_PART_ALIASES = {
     "VANILLA_AVATAR_MODEL_PART_CAPE": "CAPE",
     "VANILLA_AVATAR_MODEL_PART_JACKET": "JACKET",
@@ -2125,6 +2134,19 @@ def resolve_flags(result: ExtractionResult) -> list[ResolvedFlag]:
     return resolved
 
 
+def resolve_value_masks(result: ExtractionResult) -> list[tuple[str, int]]:
+    resolved: list[tuple[str, int]] = []
+    for rust_name, (owner, method, mode) in METHOD_VALUE_MASK_ALIASES.items():
+        value, _expression = method_mask(result, owner, method, mode)
+        if value <= 0 or value > 0xFF:
+            raise ExtractionError(f"{owner}.{method}: value mask is outside one byte: {value}")
+        resolved.append((rust_name, value))
+    names = [name for name, _value in resolved]
+    if len(names) != len(set(names)):
+        raise ExtractionError("duplicate compatibility value-mask resolver")
+    return resolved
+
+
 def method_return_integer(result: ExtractionResult, owner: str, name: str) -> int:
     source, method = method_for(result, owner, name)
     body = method.node.child_by_field_name("body")
@@ -2160,6 +2182,7 @@ def render(result: ExtractionResult) -> str:
             if accessor.owner == family.java_class and normalized[(accessor.owner, accessor.java_name)] is None:
                 raise ExtractionError(f"compatibility accessor default unresolved: {accessor.owner}.{accessor.java_name}")
     flags = resolve_flags(result)
+    value_masks = resolve_value_masks(result)
     flag_by_owner: dict[str, list[ResolvedFlag]] = {}
     for flag in flags:
         flag_by_owner.setdefault(flag.owner, []).append(flag)
@@ -2212,6 +2235,11 @@ def render(result: ExtractionResult) -> str:
         signed = flag.value if flag.value < 128 else flag.value - 256
         lines.append(f"const {internal}: i8 = {signed};")
         lines.append(f"pub const {flag.rust_name}: i8 = {internal};")
+    lines.append("")
+
+    for public_name, value in value_masks:
+        lines.append(f"const GENERATED_{public_name}: u8 = {value};")
+        lines.append(f"pub const {public_name}: u8 = GENERATED_{public_name};")
     lines.append("")
 
     pose_ordinals = enum_ordinals(result, "net.minecraft.world.entity.HumanoidArm")

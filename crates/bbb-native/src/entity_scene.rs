@@ -214,6 +214,7 @@ use bbb_world::{
 use bbb_world::{
     VANILLA_SHEEP_DEFAULT_WOOL as SHEEP_DEFAULT_WOOL,
     VANILLA_SHEEP_FLAG_SHEARED as SHEEP_WOOL_SHEARED_FLAG,
+    VANILLA_SHEEP_WOOL_COLOR_MASK as SHEEP_WOOL_COLOR_MASK,
     VANILLA_SHEEP_WOOL_DATA_ID as SHEEP_WOOL_DATA_ID,
 };
 use bbb_world::{
@@ -316,7 +317,6 @@ const MANNEQUIN_DEFAULT_MODEL_CUSTOMIZATION: i8 = PlayerModelPartVisibility::ALL
 // Vanilla Shulker.DATA_COLOR_ID (18, BYTE): after Mob.DATA_MOB_FLAGS_ID (15) and the two `Shulker`
 // accessors DATA_ATTACH_FACE_ID (16) / DATA_PEEK_ID (17). `getColor()` returns the dye for 0..=15
 // and `null` (the default, byte 16) otherwise.
-const SHEEP_WOOL_COLOR_MASK: u8 = 0x0f;
 // Vanilla `AbstractArrow.IN_GROUND` (10, BOOLEAN): updating it to true after the first client tick
 // starts the seven-tick `shakeTime` impact wobble that `ArrowRenderer.extractRenderState` projects.
 #[cfg(test)]

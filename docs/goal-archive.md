@@ -10082,3 +10082,10 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   id13 与 `DATA_ID_LAST_OUTPUT` id14，native debug projection 删除最后一份生产路径手抄
   metadata id。STRING `""` 与 COMPONENT `CommonComponents.EMPTY` 的 typed-default
   normalization 和 family facade 仍保持开放，本切片未扩张组件/SNBT 语义。
+
+## 2026-07-11：Generated Sheep wool value mask
+
+- [x] generator 通过统一 Tree-sitter CST 定位 `Sheep.getColor()` 的唯一 inline `& 15`
+  表达式，生成独立 `VANILLA_SHEEP_WOOL_COLOR_MASK` value-mask alias；native model 与
+  debug-save 删除两份 `0x0f`。该 mask 未被误收入 boolean `own_flags`，表达式缺失或歧义会
+  令 maintenance update/check 显式失败。

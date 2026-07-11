@@ -680,6 +680,7 @@ mod tests {
         assert_eq!(VANILLA_SHEEP_WOOL_DATA_ID, 18);
         assert_eq!(VANILLA_SHEEP_DEFAULT_WOOL, 0);
         assert_eq!(VANILLA_SHEEP_FLAG_SHEARED, 16);
+        assert_eq!(VANILLA_SHEEP_WOOL_COLOR_MASK, 15);
         let sniffer = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Sniffer);
         assert_eq!(
             sniffer.parent,
