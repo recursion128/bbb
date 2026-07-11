@@ -371,9 +371,15 @@ pub(super) fn decode_clear_titles(decoder: &mut Decoder<'_>) -> Result<ClearTitl
 }
 
 pub(super) fn decode_set_camera(decoder: &mut Decoder<'_>) -> Result<SetCamera> {
-    Ok(SetCamera {
+    let update = SetCamera {
         camera_id: decoder.read_var_i32()?,
-    })
+    };
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after set camera packet".to_string(),
+        ));
+    }
+    Ok(update)
 }
 
 pub(super) fn decode_player_health(decoder: &mut Decoder<'_>) -> Result<PlayerHealth> {

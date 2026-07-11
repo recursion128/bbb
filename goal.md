@@ -394,6 +394,8 @@ SetHeldSlot 的 slot VarInt wire、0..8 validation、local inventory selection �
 consumers 已全行闭合；非法 slot 与 vanilla 一致安全忽略。
 SetSimulationDistance 的 VarInt wire、client state/debug display 与 apply tests 已闭合；vanilla
 `shouldTickDeath` 的玩家 chunk chessboard-distance gate 尚未实现，runtime 保持 partial。
+SetCamera 的 entity VarInt wire、known/unknown gate、camera pose/raycast/post-effect consumers 与
+world/net/native tests 已全行闭合；相机实体移除后视点安全回退本地玩家。
 
 完成标准：全部 vanilla 26.1 catalog entry 都有矩阵行；所有目标客户端适用项为
 `complete`，其余只有带 vanilla 依据的 `not-applicable` 或带重启判据的窄 `deferred`；

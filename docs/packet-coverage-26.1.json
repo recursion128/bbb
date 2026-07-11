@@ -8256,29 +8256,46 @@
       "constant_name": "CLIENTBOUND_SET_CAMERA",
       "coverage": {
         "canonical_apply": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/client/local_player.rs#apply_set_camera",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleSetCamera"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/client_state/tests.rs#decodes_title_camera_and_ticking_packets",
+            "vanilla:net/minecraft/network/protocol/game/ClientboundSetCameraPacket.java#STREAM_CODEC"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "ownership": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/play_apply.rs#PlayClientbound::SetCamera"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "runtime_side_effect": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-native/src/camera_pose.rs#camera_pose_from_world",
+            "crates/bbb-native/src/input/mouse.rs#left_mouse_press_uses_active_camera_entity_raycast",
+            "crates/bbb-native/src/runtime.rs#current_post_effect_id_from_world"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/client_state/tests.rs#decodes_title_camera_and_ticking_packets",
+            "crates/bbb-world/src/client/local_player.rs#camera_updates_only_for_local_or_known_entities",
+            "crates/bbb-net/src/probe/play.rs#probe_applies_set_camera_to_world",
+            "crates/bbb-native/src/runtime/tests.rs#renderer_camera_pose_follows_active_camera_entity"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "clientbound",

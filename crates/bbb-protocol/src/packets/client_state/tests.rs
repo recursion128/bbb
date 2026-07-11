@@ -634,6 +634,16 @@ fn decodes_title_camera_and_ticking_packets() {
         packet,
         PlayClientbound::SetCamera(SetCamera { camera_id: 12345 })
     );
+
+    let mut trailing = Encoder::new();
+    trailing.write_var_i32(12345);
+    trailing.write_u8(0);
+    assert!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_SET_CAMERA, &trailing.into_inner())
+            .unwrap_err()
+            .to_string()
+            .contains("trailing bytes after set camera packet")
+    );
 }
 
 #[test]
