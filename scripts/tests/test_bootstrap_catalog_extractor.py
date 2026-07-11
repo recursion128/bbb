@@ -1,0 +1,93 @@
+from __future__ import annotations
+
+import sys
+import unittest
+from pathlib import Path
+
+
+SCRIPTS = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(SCRIPTS))
+
+from bootstrap_catalog_extractor import (  # noqa: E402
+    BootstrapCatalogExtractionError,
+    bootstrap_resource_key_entries,
+    static_register_entries,
+)
+from vanilla_java_source import parse_source  # noqa: E402
+
+
+class BootstrapCatalogExtractorTests(unittest.TestCase):
+    def test_bootstrap_order_is_cross_checked_against_resource_key_fields(self) -> None:
+        source = parse_source(
+            "fixture/Variants.java",
+            b"""
+package fixture;
+public class Variants {
+  public static final ResourceKey<Variant> FIRST = key("first");
+  public static final ResourceKey<Variant> SECOND = key("second");
+  public static final ResourceKey<Variant> DEFAULT = FIRST;
+  static void bootstrap(BootstrapContext<Variant> context) {
+    register(context, SECOND); register(context, FIRST);
+  }
+}
+""",
+        )
+        entries = bootstrap_resource_key_entries(source, "Variant", {"key"}, 2)
+        self.assertEqual(
+            [(entry.constant_name, entry.resource_id) for entry in entries],
+            [("SECOND", "minecraft:second"), ("FIRST", "minecraft:first")],
+        )
+
+    def test_nested_enum_constructor_string_resolves_without_text_parser(self) -> None:
+        source = parse_source(
+            "fixture/Sounds.java",
+            b"""
+package fixture;
+public class Sounds {
+  public static final ResourceKey<Sound> CLASSIC = key(Sounds.Set.CLASSIC);
+  static void bootstrap(BootstrapContext<Sound> context) { register(context, CLASSIC); }
+  enum Set { CLASSIC("classic", "sound"); Set(String id, String sound) {} }
+}
+""",
+        )
+        entries = bootstrap_resource_key_entries(source, "Sound", {"key"}, 1)
+        self.assertEqual(entries[0].resource_id, "minecraft:classic")
+
+    def test_static_register_fields_preserve_cst_declaration_order(self) -> None:
+        source = parse_source(
+            "fixture/Potions.java",
+            b"""
+package fixture;
+public class Potions {
+  static final Holder.Reference<Potion> WATER = register("water", new Potion());
+  static final Holder.Reference<Potion> LONG = register(
+      "long", new Potion("fake register(\\\"ignored\\\")"));
+}
+""",
+        )
+        entries = static_register_entries(source, "Holder.Reference<Potion>", 2)
+        self.assertEqual(
+            [entry.resource_id for entry in entries],
+            ["minecraft:water", "minecraft:long"],
+        )
+
+    def test_missing_bootstrap_registration_fails_explicitly(self) -> None:
+        source = parse_source(
+            "fixture/Broken.java",
+            b"""
+package fixture;
+class Broken {
+  static final ResourceKey<Variant> ONE = key("one");
+  static void bootstrap(BootstrapContext<Variant> context) {}
+}
+""",
+        )
+        with self.assertRaisesRegex(
+            BootstrapCatalogExtractionError,
+            r"fixture/Broken\.java: declaration/bootstrap mismatch: .*missing=\['ONE'\]",
+        ):
+            bootstrap_resource_key_entries(source, "Variant", {"key"}, 1)
+
+
+if __name__ == "__main__":
+    unittest.main()

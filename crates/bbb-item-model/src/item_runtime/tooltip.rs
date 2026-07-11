@@ -12,10 +12,9 @@ use bbb_world::{EnchantmentAttributeModifier, RegistrySet};
 use super::attributes::{
     vanilla_attribute, vanilla_attribute_for_key, VanillaAttribute, VanillaAttributeSentiment,
 };
+use super::bootstrap_catalog::{VANILLA_TRIM_MATERIAL_KEYS, VANILLA_TRIM_PATTERN_KEYS};
 use super::icon_model::effective_attribute_modifiers;
-use super::icon_model::{
-    VANILLA_TRIM_MATERIAL_COLORS, VANILLA_TRIM_MATERIAL_KEYS, VANILLA_TRIM_PATTERN_KEYS,
-};
+use super::icon_model::VANILLA_TRIM_MATERIAL_COLORS;
 use super::mob_effects::{
     vanilla_mob_effect_attribute_modifiers, vanilla_mob_effect_category, vanilla_mob_effect_key,
     VanillaMobEffectCategory,

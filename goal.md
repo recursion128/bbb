@@ -233,15 +233,15 @@ reports/resources；生成物必须提交，普通 build/test 不得依赖工作
 消费者引用同一权威模块，禁止再保留平行字面量表。
 
 entity metadata extractor 是统一 Tree-sitter Java extraction foundation 的首个
-消费者。packet/component/registry/gameplay-id/bootstrap 等既有 generator 后续按独立
-slice 迁移；本阶段不要求一次改完，也不得把未迁移 generator 记为已完成。
+消费者。尚未迁移的 Java generator 后续按独立 slice 处理；本阶段不要求一次改完，
+也不得把未迁移 generator 记为已完成。
 
 按以下顺序消化，每项独立成可门禁、可提交的 slice：
 
-1. **bootstrap/variant catalog**：生成 enchantment、potion、instrument、trim material/
-   pattern、banner pattern、painting、jukebox song、animal variant/sound variant、
-   equipment asset 等 bootstrap 顺序与 resource id；named/direct holder 统一消费该
-   catalog，服务器下发 dynamic registry 时仍以服务器顺序优先。
+1. **扩展 bootstrap/variant catalog**：把 enchantment、instrument、banner pattern、
+   painting、剩余 animal variant/sound variant、equipment asset 等 bootstrap 顺序与
+   resource id 收敛进 generated catalog；named/direct holder 统一消费该 catalog，服务器
+   下发 dynamic registry 时仍以服务器顺序优先。
 2. **资源与 tag 派生表**：sound event/jukebox/particle 快照改由可复现提取器生成；
    可由资源包 tag、blockstate/model 或 registry report 判定的 block/item/entity
    membership 不再维护手写名单。资源缺失必须保留明确 vanilla fallback。

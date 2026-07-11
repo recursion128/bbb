@@ -21,6 +21,10 @@ use chrono::{
 use chrono_tz::{OffsetName, Tz};
 use serde_json::Value;
 
+use super::bootstrap_catalog::{
+    VANILLA_JUKEBOX_SONG_KEYS, VANILLA_POTION_KEYS, VANILLA_TRIM_PATTERN_KEYS,
+    VANILLA_VILLAGER_TYPE_KEYS, VANILLA_WOLF_SOUND_VARIANT_KEYS, VANILLA_WOLF_VARIANT_KEYS,
+};
 use super::mob_effects::vanilla_mob_effect_key;
 use super::{
     first_texture_ref, generated_layer_texture_refs, ItemIconTextureLayer, ItemIconTextureRef,
@@ -59,149 +63,14 @@ const FIREWORKS_COMPONENT_ID: i32 = 69;
 const CONTAINER_COMPONENT_ID: i32 = 75;
 const VILLAGER_VARIANT_COMPONENT_ID: i32 = 81;
 
-pub(super) const VANILLA_TRIM_MATERIAL_KEYS: &[&str] = &[
-    "minecraft:quartz",
-    "minecraft:iron",
-    "minecraft:netherite",
-    "minecraft:redstone",
-    "minecraft:copper",
-    "minecraft:gold",
-    "minecraft:emerald",
-    "minecraft:diamond",
-    "minecraft:lapis",
-    "minecraft:amethyst",
-    "minecraft:resin",
-];
 pub(super) const VANILLA_TRIM_MATERIAL_COLORS: &[u32] = &[
     0xE3_D4_C4, 0xEC_EC_EC, 0x62_58_59, 0x97_16_07, 0xB4_68_4D, 0xDE_B1_2D, 0x11_A0_36, 0x6E_EC_D2,
     0x41_6E_97, 0x9A_5C_C6, 0xFC_78_12,
 ];
-pub(super) const VANILLA_TRIM_PATTERN_KEYS: &[&str] = &[
-    "minecraft:sentry",
-    "minecraft:dune",
-    "minecraft:coast",
-    "minecraft:wild",
-    "minecraft:ward",
-    "minecraft:eye",
-    "minecraft:vex",
-    "minecraft:tide",
-    "minecraft:snout",
-    "minecraft:rib",
-    "minecraft:spire",
-    "minecraft:wayfinder",
-    "minecraft:shaper",
-    "minecraft:silence",
-    "minecraft:raiser",
-    "minecraft:host",
-    "minecraft:flow",
-    "minecraft:bolt",
-];
-const VANILLA_JUKEBOX_SONG_KEYS: &[&str] = &[
-    "minecraft:13",
-    "minecraft:cat",
-    "minecraft:blocks",
-    "minecraft:chirp",
-    "minecraft:far",
-    "minecraft:mall",
-    "minecraft:mellohi",
-    "minecraft:stal",
-    "minecraft:strad",
-    "minecraft:ward",
-    "minecraft:11",
-    "minecraft:wait",
-    "minecraft:pigstep",
-    "minecraft:otherside",
-    "minecraft:5",
-    "minecraft:relic",
-    "minecraft:precipice",
-    "minecraft:creator",
-    "minecraft:creator_music_box",
-    "minecraft:tears",
-    "minecraft:lava_chicken",
-];
-const VANILLA_POTION_KEYS: &[&str] = &[
-    "minecraft:water",
-    "minecraft:mundane",
-    "minecraft:thick",
-    "minecraft:awkward",
-    "minecraft:night_vision",
-    "minecraft:long_night_vision",
-    "minecraft:invisibility",
-    "minecraft:long_invisibility",
-    "minecraft:leaping",
-    "minecraft:long_leaping",
-    "minecraft:strong_leaping",
-    "minecraft:fire_resistance",
-    "minecraft:long_fire_resistance",
-    "minecraft:swiftness",
-    "minecraft:long_swiftness",
-    "minecraft:strong_swiftness",
-    "minecraft:slowness",
-    "minecraft:long_slowness",
-    "minecraft:strong_slowness",
-    "minecraft:turtle_master",
-    "minecraft:long_turtle_master",
-    "minecraft:strong_turtle_master",
-    "minecraft:water_breathing",
-    "minecraft:long_water_breathing",
-    "minecraft:healing",
-    "minecraft:strong_healing",
-    "minecraft:harming",
-    "minecraft:strong_harming",
-    "minecraft:poison",
-    "minecraft:long_poison",
-    "minecraft:strong_poison",
-    "minecraft:regeneration",
-    "minecraft:long_regeneration",
-    "minecraft:strong_regeneration",
-    "minecraft:strength",
-    "minecraft:long_strength",
-    "minecraft:strong_strength",
-    "minecraft:weakness",
-    "minecraft:long_weakness",
-    "minecraft:luck",
-    "minecraft:slow_falling",
-    "minecraft:long_slow_falling",
-    "minecraft:wind_charged",
-    "minecraft:weaving",
-    "minecraft:oozing",
-    "minecraft:infested",
-];
-
 pub fn vanilla_potion_resource_id(potion_id: i32) -> Option<&'static str> {
     let potion_id = usize::try_from(potion_id).ok()?;
     VANILLA_POTION_KEYS.get(potion_id).copied()
 }
-
-const VANILLA_VILLAGER_TYPE_KEYS: &[&str] = &[
-    "minecraft:desert",
-    "minecraft:jungle",
-    "minecraft:plains",
-    "minecraft:savanna",
-    "minecraft:snow",
-    "minecraft:swamp",
-    "minecraft:taiga",
-];
-const VANILLA_WOLF_SOUND_VARIANT_KEYS: &[&str] = &[
-    "minecraft:classic",
-    "minecraft:puglin",
-    "minecraft:sad",
-    "minecraft:angry",
-    "minecraft:grumpy",
-    "minecraft:big",
-    "minecraft:cute",
-];
-const VANILLA_WOLF_VARIANT_KEYS: &[&str] = &[
-    "minecraft:pale",
-    "minecraft:spotted",
-    "minecraft:snowy",
-    "minecraft:black",
-    "minecraft:ashen",
-    "minecraft:rusty",
-    "minecraft:woods",
-    "minecraft:chestnut",
-    "minecraft:striped",
-];
 
 pub fn vanilla_villager_type_resource_id(id: i32) -> Option<&'static str> {
     let index = usize::try_from(id).ok()?;

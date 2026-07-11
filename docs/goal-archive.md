@@ -10204,3 +10204,16 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   table，因此关闭消费迁移项。`bbb-pack::ItemRegistryCatalog` 仍承担 max-stack/damage、
   default components、equipment/mining 等更广 item semantic profile 的旧 Java 解析；该
   frontend 迁移已单列 TODO，未被本 closeout 误标完成。
+
+## 2026-07-11：Bootstrap resource-order catalog foundation
+
+- [x] 新增 `bootstrap_catalog_extractor.py` 与 checked-in item-model
+  `bootstrap_catalog.rs`，由共享 Tree-sitter Java frontend 从 `ResourceKey` field、nested
+  enum constructor、static `register` initializer 和 `bootstrap` call 顺序机械提取 trim
+  materials/patterns、jukebox songs、potions、villager types、wolf sound variants 与 wolf
+  variants 共七组资源表。extractor 对声明/注册集合、重复项、固定数量和不支持的 CST 形态
+  显式失败，fixture 覆盖同一行注册、bootstrap 与声明顺序不同、alias field、nested enum、
+  comment/string 干扰和缺注册诊断；maintenance update/check 与二次 update 零 diff。现有
+  item-model lookup API 与行为保持不变，普通 Cargo build/test 只消费生成物；trim 颜色、
+  potion effects、渲染和 Codec 语义仍由对应手写 owner 管理。其余 bootstrap/variant family
+  继续留在开放队列，未被本切片误标完成。

@@ -62,6 +62,7 @@ use crate::{
     },
 };
 
+mod bootstrap_catalog;
 mod icon_model;
 mod profile_skin;
 

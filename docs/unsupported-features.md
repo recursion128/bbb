@@ -43,10 +43,13 @@ Owner: `bbb-protocol`
 
 Owner: `scripts/` + each generated catalog's semantic crate
 
-- Migrate the existing item-registry/profile and bootstrap Java source extractors
-  to the shared Tree-sitter Java frontend in separate slices. Entity metadata,
-  packet, core registry, and gameplay-id catalogs are migrated; `bbb-pack` item
-  semantic profiles and bootstrap still retain older parsing paths.
+- Migrate the existing `bbb-pack` item-registry/profile Java source extractor to
+  the shared Tree-sitter Java frontend. Entity metadata, packet, core registry,
+  gameplay-id, and the first bootstrap resource-order catalog are migrated. The
+  bootstrap catalog currently covers trim materials/patterns, jukebox songs,
+  potions, villager types, and wolf sound/skin variants; enchantments,
+  instruments, banner/painting variants, remaining animal variants, and
+  equipment assets still need deterministic extraction and shared consumers.
 
 ## Unknown clientbound packets in login, configuration, and play
 
