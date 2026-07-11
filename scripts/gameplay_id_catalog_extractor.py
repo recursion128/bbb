@@ -206,6 +206,12 @@ class ScoreboardMethodEntry:
     method_id: int
 
 
+@dataclass(frozen=True)
+class BossEventOperationTypeEntry:
+    constant_name: str
+    ordinal: int
+
+
 def _fail(source: JavaSource, expression: JavaExpression, message: str) -> None:
     span = expression.span
     raise GameplayIdExtractionError(
@@ -953,6 +959,41 @@ def scoreboard_method_entries(
         ["ADD", "REMOVE", "CHANGE", "JOIN", "LEAVE"],
     )
     return objective, team
+
+
+def boss_event_operation_type_entries(
+    source: JavaSource, expected_count: int = 6
+) -> list[BossEventOperationTypeEntry]:
+    expected_names = [
+        "ADD",
+        "REMOVE",
+        "UPDATE_PROGRESS",
+        "UPDATE_NAME",
+        "UPDATE_STYLE",
+        "UPDATE_PROPERTIES",
+    ]
+    entries = []
+    for ordinal, (name, arguments) in enumerate(
+        _nested_enum_constants(source, "OperationType", "boss event operation type")
+    ):
+        if len(arguments) != 1:
+            expression = arguments[0] if arguments else source.expression(source.types[0].node)
+            _fail(
+                source,
+                expression,
+                f"boss event operation type {name} must have one reader argument",
+            )
+        entries.append(BossEventOperationTypeEntry(name, ordinal))
+    if len(entries) != expected_count:
+        raise GameplayIdExtractionError(
+            f"expected {expected_count} boss event operation types, extracted {len(entries)}"
+        )
+    if [entry.constant_name for entry in entries] != expected_names:
+        raise GameplayIdExtractionError(
+            "boss event operation types differ from expected declaration order"
+        )
+    _validate(entries, "boss event operation type", "ordinal")
+    return entries
 
 
 def equipment_slot_entries(

@@ -108,6 +108,15 @@ fn decodes_boss_event_operations() {
 }
 
 #[test]
+fn rejects_invalid_boss_event_operation_ordinal() {
+    let payload = boss_event_payload(Uuid::nil(), 6, |_| {});
+    let error = decode_play_clientbound(ids::play::CLIENTBOUND_BOSS_EVENT, &payload).unwrap_err();
+    assert!(error
+        .to_string()
+        .contains("invalid boss event operation ordinal 6"));
+}
+
+#[test]
 fn rejects_invalid_boss_bar_style_ordinals() {
     let id = Uuid::nil();
     let invalid_color = boss_event_payload(id, 4, |payload| {

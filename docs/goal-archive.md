@@ -10611,3 +10611,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   decode match，并新增非法 method id 诊断测试。fixtures、生成完整性/唯一性/反向门禁和
   protocol/world/net/native scoreboard focused tests 均通过；parameter/player-list 条件、
   team action 与 world apply 分支继续由 packet/world 语义 owner 手写。
+
+## 2026-07-11：Generated boss-event operation type order
+
+- [x] gameplay-id extractor 通过共享 Tree-sitter frontend 读取 vanilla
+  `ClientboundBossEventPacket.OperationType` nested enum 的 6 项声明顺序，生成 ordinal
+  catalog。protocol boss-event decoder 删除 0..5 numeric match，先按 generated type
+  校验 ordinal，再由 typed match 解码各 operation payload，并保留原非法 ordinal 诊断。
+  fixtures、生成完整性/唯一性/反向门禁以及 protocol/world/net/native boss-event focused
+  tests 均通过；公开 `BossEventOperation` payload、flags、HUD apply 和渲染语义未改。

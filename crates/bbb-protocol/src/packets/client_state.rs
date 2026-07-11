@@ -5,6 +5,7 @@ pub use crate::boss_bar_styles::{BossBarColor, BossBarOverlay};
 pub use crate::chat_formattings::ChatFormatting;
 pub use crate::difficulties::Difficulty;
 use crate::{
+    boss_event_operation_types::BossEventOperationType,
     codec::{Decoder, ProtocolError, Result},
     component::decode_component_summary_from_decoder,
 };
@@ -244,33 +245,32 @@ pub struct SetHeldSlot {
 
 pub(super) fn decode_boss_event(decoder: &mut Decoder<'_>) -> Result<BossEvent> {
     let id = decoder.read_uuid()?;
-    let operation = match decoder.read_var_i32()? {
-        0 => BossEventOperation::Add {
+    let ordinal = decoder.read_var_i32()?;
+    let operation_type = BossEventOperationType::from_ordinal(ordinal).ok_or_else(|| {
+        ProtocolError::InvalidData(format!("invalid boss event operation ordinal {ordinal}"))
+    })?;
+    let operation = match operation_type {
+        BossEventOperationType::Add => BossEventOperation::Add {
             name: decode_component_summary_from_decoder(decoder)?,
             progress: decoder.read_f32()?,
             color: decode_boss_bar_color(decoder)?,
             overlay: decode_boss_bar_overlay(decoder)?,
             flags: BossEventFlags::from_bits(decoder.read_u8()?),
         },
-        1 => BossEventOperation::Remove,
-        2 => BossEventOperation::UpdateProgress {
+        BossEventOperationType::Remove => BossEventOperation::Remove,
+        BossEventOperationType::UpdateProgress => BossEventOperation::UpdateProgress {
             progress: decoder.read_f32()?,
         },
-        3 => BossEventOperation::UpdateName {
+        BossEventOperationType::UpdateName => BossEventOperation::UpdateName {
             name: decode_component_summary_from_decoder(decoder)?,
         },
-        4 => BossEventOperation::UpdateStyle {
+        BossEventOperationType::UpdateStyle => BossEventOperation::UpdateStyle {
             color: decode_boss_bar_color(decoder)?,
             overlay: decode_boss_bar_overlay(decoder)?,
         },
-        5 => BossEventOperation::UpdateProperties {
+        BossEventOperationType::UpdateProperties => BossEventOperation::UpdateProperties {
             flags: BossEventFlags::from_bits(decoder.read_u8()?),
         },
-        other => {
-            return Err(ProtocolError::InvalidData(format!(
-                "invalid boss event operation ordinal {other}"
-            )))
-        }
     };
 
     Ok(BossEvent { id, operation })

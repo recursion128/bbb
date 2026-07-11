@@ -10,6 +10,7 @@ pub mod advancement_frame_types;
 pub mod attribute_types;
 pub mod block_entity_types;
 pub mod boss_bar_styles;
+pub mod boss_event_operation_types;
 pub mod chat_formattings;
 pub mod client_command_actions;
 pub mod codec;

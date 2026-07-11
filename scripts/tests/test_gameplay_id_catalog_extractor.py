@@ -15,6 +15,7 @@ from gameplay_id_catalog_extractor import (  # noqa: E402
     client_game_event_type_entries,
     client_command_action_entries,
     boss_bar_style_entries,
+    boss_event_operation_type_entries,
     chat_formatting_entries,
     custom_chat_completions_action_entries,
     difficulty_entries,
@@ -629,6 +630,36 @@ public class ClientboundSetPlayerTeamPacket {
         self.assertEqual(
             [(entry.constant_name, entry.method_id) for entry in team_entries],
             [("ADD", 0), ("REMOVE", 1), ("CHANGE", 2), ("JOIN", 3), ("LEAVE", 4)],
+        )
+
+    def test_boss_event_operation_types_preserve_nested_enum_order(self) -> None:
+        source = parse_source(
+            "fixture/ClientboundBossEventPacket.java",
+            b"""
+package fixture;
+public class ClientboundBossEventPacket {
+  private enum OperationType {
+    ADD(AddOperation::new),
+    REMOVE(input -> REMOVE_OPERATION),
+    UPDATE_PROGRESS(UpdateProgressOperation::new),
+    UPDATE_NAME(UpdateNameOperation::new),
+    UPDATE_STYLE(UpdateStyleOperation::new),
+    UPDATE_PROPERTIES(UpdatePropertiesOperation::new);
+  }
+}
+""",
+        )
+        entries = boss_event_operation_type_entries(source)
+        self.assertEqual(
+            [(entry.constant_name, entry.ordinal) for entry in entries],
+            [
+                ("ADD", 0),
+                ("REMOVE", 1),
+                ("UPDATE_PROGRESS", 2),
+                ("UPDATE_NAME", 3),
+                ("UPDATE_STYLE", 4),
+                ("UPDATE_PROPERTIES", 5),
+            ],
         )
 
     def test_unsupported_register_shape_reports_source_span(self) -> None:
