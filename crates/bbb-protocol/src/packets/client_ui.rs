@@ -36,8 +36,11 @@ pub(crate) fn decode_mount_screen_open(decoder: &mut Decoder<'_>) -> Result<Moun
 }
 
 pub(crate) fn decode_open_book(decoder: &mut Decoder<'_>) -> Result<OpenBook> {
+    let ordinal = decoder.read_var_i32()?;
     Ok(OpenBook {
-        hand: decode_interaction_hand(decoder.read_var_i32()?)?,
+        hand: InteractionHand::from_ordinal(ordinal).ok_or_else(|| {
+            ProtocolError::InvalidData(format!("invalid interaction hand ordinal {ordinal}"))
+        })?,
     })
 }
 
@@ -52,16 +55,6 @@ pub(crate) fn decode_play_pong_response(decoder: &mut Decoder<'_>) -> Result<Pon
     Ok(PongResponse {
         time: decoder.read_i64()?,
     })
-}
-
-fn decode_interaction_hand(id: i32) -> Result<InteractionHand> {
-    match id {
-        0 => Ok(InteractionHand::MainHand),
-        1 => Ok(InteractionHand::OffHand),
-        other => Err(ProtocolError::InvalidData(format!(
-            "invalid interaction hand ordinal {other}"
-        ))),
-    }
 }
 
 #[cfg(test)]

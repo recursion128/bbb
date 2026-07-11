@@ -28,6 +28,7 @@ from gameplay_id_catalog_extractor import (  # noqa: E402
     game_type_not_set_id,
     filter_mask_type_entries,
     heightmap_type_entries,
+    interaction_hand_entries,
     mob_effect_entries,
     objective_render_type_entries,
     player_info_action_entries,
@@ -729,6 +730,27 @@ public abstract class TrackedWaypoint {
         self.assertEqual(
             [(entry.constant_name, entry.ordinal) for entry in data_types],
             [("EMPTY", 0), ("VEC3I", 1), ("CHUNK", 2), ("AZIMUTH", 3)],
+        )
+
+    def test_interaction_hands_preserve_explicit_ids_and_zero_fallback(self) -> None:
+        source = parse_source(
+            "fixture/InteractionHand.java",
+            b"""
+package fixture;
+public enum InteractionHand {
+  MAIN_HAND(0), OFF_HAND(1);
+  private static final IntFunction<InteractionHand> BY_ID = ByIdMap.continuous(
+      hand -> hand.id, values(), ByIdMap.OutOfBoundsStrategy.ZERO);
+  private final int id;
+  InteractionHand(final int id) { this.id = id; }
+}
+""",
+        )
+        entries, strategy = interaction_hand_entries(source)
+        self.assertEqual(strategy, "ZERO")
+        self.assertEqual(
+            [(entry.constant_name, entry.hand_id) for entry in entries],
+            [("MAIN_HAND", 0), ("OFF_HAND", 1)],
         )
 
     def test_unsupported_register_shape_reports_source_span(self) -> None:

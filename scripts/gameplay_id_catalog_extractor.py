@@ -232,6 +232,12 @@ class WaypointDataTypeEntry:
     ordinal: int
 
 
+@dataclass(frozen=True)
+class InteractionHandEntry:
+    constant_name: str
+    hand_id: int
+
+
 def _fail(source: JavaSource, expression: JavaExpression, message: str) -> None:
     span = expression.span
     raise GameplayIdExtractionError(
@@ -1093,6 +1099,36 @@ def waypoint_wire_type_entries(
         )
     _validate(data_types, "waypoint data type", "ordinal")
     return operations, operation_strategy, data_types
+
+
+def interaction_hand_entries(
+    source: JavaSource, expected_count: int = 2
+) -> tuple[list[InteractionHandEntry], str]:
+    entries = []
+    for name, arguments in _enum_constants(source):
+        if len(arguments) != 1:
+            expression = arguments[0] if arguments else source.expression(source.types[0].node)
+            _fail(source, expression, f"interaction hand {name} must have one id argument")
+        entries.append(InteractionHandEntry(name, _integer(source, arguments[0])))
+    if len(entries) != expected_count:
+        raise GameplayIdExtractionError(
+            f"expected {expected_count} interaction hands, extracted {len(entries)}"
+        )
+    if [entry.constant_name for entry in entries] != ["MAIN_HAND", "OFF_HAND"]:
+        raise GameplayIdExtractionError(
+            "interaction hands differ from expected declaration order"
+        )
+    if [entry.hand_id for entry in entries] != list(range(expected_count)):
+        raise GameplayIdExtractionError(
+            "interaction hand ids are not contiguous declaration order"
+        )
+    strategy = _continuous_out_of_bounds_strategy(source, "interaction hand")
+    if strategy != "ZERO":
+        raise GameplayIdExtractionError(
+            f"unsupported interaction hand id strategy {strategy}"
+        )
+    _validate(entries, "interaction hand", "hand_id")
+    return entries, strategy
 
 
 def equipment_slot_entries(

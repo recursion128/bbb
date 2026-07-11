@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 pub use crate::client_command_actions::ClientCommandAction;
+pub use crate::interaction_hands::InteractionHand;
 pub use crate::player_action_kinds::PlayerActionKind;
 pub use crate::player_command_actions::PlayerCommandAction;
 use crate::{
@@ -401,21 +402,6 @@ impl Direction {
             Self::South => 3,
             Self::West => 4,
             Self::East => 5,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum InteractionHand {
-    MainHand,
-    OffHand,
-}
-
-impl InteractionHand {
-    fn id(self) -> i32 {
-        match self {
-            Self::MainHand => 0,
-            Self::OffHand => 1,
         }
     }
 }

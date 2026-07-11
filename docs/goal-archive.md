@@ -10639,3 +10639,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   decode；protocol 删除 operation enum/name/id match 和 0..3 data-type match，非法 data type
   诊断不变。fixtures、生成完整性/唯一性/反向门禁及 protocol/world/net/native waypoint
   focused tests 均通过；identifier/icon/payload codec、manager apply 与 HUD 呈现语义未改。
+
+## 2026-07-11：Generated InteractionHand catalog
+
+- [x] gameplay-id extractor 通过共享 Tree-sitter frontend 读取 vanilla
+  `InteractionHand` 的 `MAIN_HAND(0)` / `OFF_HAND(1)` 显式 id，并从 `BY_ID` CST 调用参数
+  验证 `ByIdMap.OutOfBoundsStrategy.ZERO`。generated owner 保持公开 Rust 变体与 serde，
+  serverbound interact/swing/use-item encoder 和 clientbound OpenBook decoder 共用唯一 id/
+  lookup API，删除两份手写 numeric 分发；generated `from_id` 保留 `STREAM_CODEC` 的 ZERO
+  事实，而使用 `FriendlyByteBuf.readEnum` 的 OpenBook 通过严格 ordinal lookup 保留非法值诊断。
+  fixtures、生成完整性/唯一性/反向门禁与双向 packet focused tests 均通过；inventory、输入、
+  first-person hand 选择和交互行为未改。

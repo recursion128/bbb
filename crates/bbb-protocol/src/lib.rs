@@ -29,6 +29,7 @@ pub mod game_event_types;
 pub mod game_types;
 pub mod heightmap_types;
 pub mod ids;
+pub mod interaction_hands;
 pub mod item_types;
 pub mod menu_types;
 pub mod mob_effect_types;
