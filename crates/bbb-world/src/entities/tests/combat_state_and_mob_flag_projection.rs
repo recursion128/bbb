@@ -648,9 +648,6 @@ fn entity_model_sources_project_enderman_carrying_and_creepy() {
 #[test]
 fn entity_model_sources_project_bat_resting_from_flags() {
     // Vanilla Bat.DATA_ID_FLAGS (16, BYTE); FLAG_RESTING (1).
-    const VANILLA_BAT_FLAGS_DATA_ID: u8 = 16;
-    const BAT_FLAG_RESTING: i8 = 1;
-
     let resting = |store: &WorldStore, id: i32| {
         store
             .entity_model_sources_at_partial_tick(0.0)
@@ -679,7 +676,7 @@ fn entity_model_sources_project_bat_resting_from_flags() {
     assert!(!resting(&store, 70));
     // Setting Bat.FLAG_RESTING (DATA_ID_FLAGS & 1) projects the hanging pose; clearing it
     // returns to flying.
-    assert!(set_flags(&mut store, 70, BAT_FLAG_RESTING));
+    assert!(set_flags(&mut store, 70, VANILLA_BAT_FLAG_RESTING));
     assert!(resting(&store, 70));
     assert!(set_flags(&mut store, 70, 0));
     assert!(!resting(&store, 70));
@@ -690,7 +687,7 @@ fn entity_model_sources_project_bat_resting_from_flags() {
         71,
         VANILLA_ENTITY_TYPE_CHICKEN_ID,
     ));
-    assert!(set_flags(&mut store, 71, BAT_FLAG_RESTING));
+    assert!(set_flags(&mut store, 71, VANILLA_BAT_FLAG_RESTING));
     assert!(!resting(&store, 71));
 }
 

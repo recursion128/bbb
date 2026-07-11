@@ -12,7 +12,7 @@ use bbb_protocol::packets::{
 use bbb_world::{
     ArmorMaterialKind as WorldArmorMaterialKind, EntityPickBoundsState, EntityVec3,
     ItemEquipmentSlot, LlamaBodyDecorColor as WorldLlamaBodyDecorColor, RegistryPacketEntry,
-    VANILLA_SNOW_GOLEM_PUMPKIN_DATA_ID,
+    VANILLA_BAT_FLAGS_DATA_ID, VANILLA_BAT_FLAG_RESTING, VANILLA_SNOW_GOLEM_PUMPKIN_DATA_ID,
 };
 use uuid::Uuid;
 
@@ -1718,9 +1718,6 @@ fn entity_model_instances_project_enderman_carrying_and_creepy() {
 #[test]
 fn entity_model_instances_project_bat_resting() {
     // Vanilla Bat.DATA_ID_FLAGS (16, BYTE) and the resting bit (1).
-    const VANILLA_BAT_FLAGS_DATA_ID: u8 = 16;
-    const BAT_FLAG_RESTING: i8 = 1;
-
     let mut world = WorldStore::new();
     world.apply_add_entity(protocol_add_entity(
         95,
@@ -1745,7 +1742,7 @@ fn entity_model_instances_project_bat_resting() {
         id: 95,
         values: vec![protocol_byte_data(
             VANILLA_BAT_FLAGS_DATA_ID,
-            BAT_FLAG_RESTING
+            VANILLA_BAT_FLAG_RESTING
         )],
     }));
     assert!(resting(&world, 95));

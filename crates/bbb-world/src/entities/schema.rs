@@ -31,6 +31,7 @@ pub enum VanillaEntityMetadataFamily {
     ItemEntity,
     Guardian,
     SnowGolem,
+    Bat,
     VehicleEntity,
     AbstractBoat,
     AbstractMinecart,
@@ -303,6 +304,7 @@ mod tests {
             VanillaEntityMetadataFamily::ItemEntity,
             VanillaEntityMetadataFamily::Guardian,
             VanillaEntityMetadataFamily::SnowGolem,
+            VanillaEntityMetadataFamily::Bat,
             VanillaEntityMetadataFamily::VehicleEntity,
             VanillaEntityMetadataFamily::AbstractBoat,
             VanillaEntityMetadataFamily::AbstractMinecart,
@@ -534,6 +536,30 @@ mod tests {
                 name: "PUMPKIN_FLAG",
                 data_id: 16,
                 mask: 16,
+            }]
+        );
+        let bat = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Bat);
+        assert_eq!(bat.parent, Some(VanillaEntityMetadataFamily::Mob));
+        assert_eq!(bat.inherited_field_count, 16);
+        assert_eq!(
+            bat.own_fields,
+            &[VanillaEntityMetadataFieldSchema {
+                name: "DATA_ID_FLAGS",
+                data_id: 16,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+                default: VanillaEntityMetadataDefault::Byte(0),
+            }]
+        );
+        assert_eq!(VANILLA_BAT_FLAGS_DATA_ID, 16);
+        assert_eq!(VANILLA_BAT_DEFAULT_FLAGS, 0);
+        assert_eq!(VANILLA_BAT_FLAG_RESTING, 1);
+        assert_eq!(
+            bat.own_flags,
+            &[VanillaEntityMetadataFlagSchema {
+                name: "FLAG_RESTING",
+                data_id: 16,
+                mask: 1,
             }]
         );
         assert_eq!(

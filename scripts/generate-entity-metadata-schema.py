@@ -81,6 +81,7 @@ FAMILIES = (
     FamilySpec("ItemEntity", "net.minecraft.world.entity.item.ItemEntity", "Entity"),
     FamilySpec("Guardian", "net.minecraft.world.entity.monster.Guardian", "Mob"),
     FamilySpec("SnowGolem", "net.minecraft.world.entity.animal.golem.SnowGolem", "Mob"),
+    FamilySpec("Bat", "net.minecraft.world.entity.ambient.Bat", "Mob"),
     FamilySpec("VehicleEntity", "net.minecraft.world.entity.vehicle.VehicleEntity", "Entity"),
     FamilySpec(
         "AbstractBoat",
@@ -152,6 +153,7 @@ DATA_ALIASES = {
     "VANILLA_GUARDIAN_MOVING_DATA_ID": ("net.minecraft.world.entity.monster.Guardian", "DATA_ID_MOVING"),
     "VANILLA_GUARDIAN_ATTACK_TARGET_DATA_ID": ("net.minecraft.world.entity.monster.Guardian", "DATA_ID_ATTACK_TARGET"),
     "VANILLA_SNOW_GOLEM_PUMPKIN_DATA_ID": ("net.minecraft.world.entity.animal.golem.SnowGolem", "DATA_PUMPKIN_ID"),
+    "VANILLA_BAT_FLAGS_DATA_ID": ("net.minecraft.world.entity.ambient.Bat", "DATA_ID_FLAGS"),
     "VANILLA_VEHICLE_HURT_TIME_DATA_ID": ("net.minecraft.world.entity.vehicle.VehicleEntity", "DATA_ID_HURT"),
     "VANILLA_VEHICLE_HURT_DIR_DATA_ID": ("net.minecraft.world.entity.vehicle.VehicleEntity", "DATA_ID_HURTDIR"),
     "VANILLA_VEHICLE_DAMAGE_DATA_ID": ("net.minecraft.world.entity.vehicle.VehicleEntity", "DATA_ID_DAMAGE"),
@@ -200,6 +202,7 @@ DEFAULT_ALIASES = {
     "VANILLA_GUARDIAN_DEFAULT_MOVING": ("net.minecraft.world.entity.monster.Guardian", "DATA_ID_MOVING"),
     "VANILLA_GUARDIAN_DEFAULT_ATTACK_TARGET": ("net.minecraft.world.entity.monster.Guardian", "DATA_ID_ATTACK_TARGET"),
     "VANILLA_SNOW_GOLEM_DEFAULT_PUMPKIN_FLAGS": ("net.minecraft.world.entity.animal.golem.SnowGolem", "DATA_PUMPKIN_ID"),
+    "VANILLA_BAT_DEFAULT_FLAGS": ("net.minecraft.world.entity.ambient.Bat", "DATA_ID_FLAGS"),
     "VANILLA_VEHICLE_DEFAULT_HURT_TIME": ("net.minecraft.world.entity.vehicle.VehicleEntity", "DATA_ID_HURT"),
     "VANILLA_VEHICLE_DEFAULT_HURT_DIR": ("net.minecraft.world.entity.vehicle.VehicleEntity", "DATA_ID_HURTDIR"),
     "VANILLA_VEHICLE_DEFAULT_DAMAGE": ("net.minecraft.world.entity.vehicle.VehicleEntity", "DATA_ID_DAMAGE"),
@@ -221,6 +224,7 @@ DEFAULT_ALIASES = {
 
 
 NAMED_FLAG_ALIASES = {
+    "VANILLA_BAT_FLAG_RESTING": ("net.minecraft.world.entity.ambient.Bat", "DATA_ID_FLAGS", "FLAG_RESTING"),
     "VANILLA_SNOW_GOLEM_PUMPKIN_FLAG": ("net.minecraft.world.entity.animal.golem.SnowGolem", "DATA_PUMPKIN_ID", "PUMPKIN_FLAG"),
     "VANILLA_ABSTRACT_HORSE_FLAG_TAME": ("net.minecraft.world.entity.animal.equine.AbstractHorse", "DATA_ID_FLAGS", "FLAG_TAME"),
     "VANILLA_ABSTRACT_HORSE_FLAG_BRED": ("net.minecraft.world.entity.animal.equine.AbstractHorse", "DATA_ID_FLAGS", "FLAG_BRED"),

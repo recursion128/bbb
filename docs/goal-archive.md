@@ -9666,3 +9666,11 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   替代 world/native 手抄 id/default/mask。world head-block projection、native F3+I 与相关
   fixtures 统一消费 generated aliases；focused tests 锁定继承 offset、serializer/default、
   flag 绑定、pumpkin render state 与保存语义。未修改剪刀交互或 renderer layer。
+
+## 2026-07-11：Generated entity metadata consumer（Bat）
+
+- [x] 从 generated catalog 建立 `Mob -> Bat` compatibility family：BYTE
+  `DATA_ID_FLAGS` id 16/default 0 及 extractor 唯一绑定的 `FLAG_RESTING=1` 替代
+  world/native 手抄 id/default/mask。world resting projection、native F3+I 与 fixtures
+  统一消费 generated aliases；focused tests 锁定继承 offset、serializer/default、flag
+  绑定、hanging model state 与保存语义。未修改 bat client tick、移动或 renderer 动画。
