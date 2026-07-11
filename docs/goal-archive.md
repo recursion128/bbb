@@ -9650,3 +9650,11 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   item merge mutation、render/pickup stack projection 统一消费 generated alias。focused tests
   锁定继承 offset、serializer/default、spawn/apply、render stack 与 pickup snapshot 语义。
   未修改掉落物客户端移动、合并规则、bob/spin、拾取动画或 renderer。
+
+## 2026-07-11：Generated entity metadata consumer（Guardian）
+
+- [x] 从 generated catalog 建立 `Mob -> Guardian` compatibility family：BOOLEAN
+  moving id 16/default false 与 INT attack-target id 17/default 0 替代 world animation
+  的手抄常量/default。tail/spikes client tick 与 guardian beam projection 统一消费 generated
+  aliases；focused tests 锁定继承 offset、serializer/default、moving 分支与 beam target。
+  未修改水中移动、动画公式、beam timing、目标解析或 native renderer。

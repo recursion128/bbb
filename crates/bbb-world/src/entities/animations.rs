@@ -29,6 +29,10 @@ use super::schema::{
     VANILLA_ABSTRACT_BOAT_DEFAULT_PADDLE_RIGHT as ABSTRACT_BOAT_DEFAULT_PADDLE_RIGHT,
     VANILLA_ABSTRACT_BOAT_PADDLE_LEFT_DATA_ID as ABSTRACT_BOAT_PADDLE_LEFT_DATA_ID,
     VANILLA_ABSTRACT_BOAT_PADDLE_RIGHT_DATA_ID as ABSTRACT_BOAT_PADDLE_RIGHT_DATA_ID,
+    VANILLA_GUARDIAN_ATTACK_TARGET_DATA_ID as GUARDIAN_ATTACK_TARGET_DATA_ID,
+    VANILLA_GUARDIAN_DEFAULT_ATTACK_TARGET as GUARDIAN_DEFAULT_ATTACK_TARGET,
+    VANILLA_GUARDIAN_DEFAULT_MOVING as GUARDIAN_DEFAULT_MOVING,
+    VANILLA_GUARDIAN_MOVING_DATA_ID as GUARDIAN_MOVING_DATA_ID,
     VANILLA_SHULKER_DEFAULT_PEEK as SHULKER_DEFAULT_PEEK,
     VANILLA_SHULKER_PEEK_DATA_ID as SHULKER_PEEK_DATA_ID,
     VANILLA_VEHICLE_DAMAGE_DATA_ID as VEHICLE_DAMAGE_DATA_ID,
@@ -64,15 +68,10 @@ const ARROW_SHAKE_TICKS: i32 = 7;
 const ARMOR_STAND_HIT_EVENT_ID: i8 = 32;
 /// Vanilla `ArmorStand.WOBBLE_TIME`.
 const ARMOR_STAND_WOBBLE_TIME: i32 = 5;
-/// Vanilla `EntityType.ELDER_GUARDIAN` / `EntityType.GUARDIAN`. Both share
-/// `GuardianModel` and the same client `Guardian.aiStep` tail accumulator (the
-/// elder is the guardian mesh scaled 2.35×, with no animation override).
-/// Vanilla `Guardian.DATA_ID_MOVING` (`isMoving()`): the guardian's first own
-/// synced accessor after `Entity` (`0..=7`), `LivingEntity` (`8..=14`) and `Mob`
-/// (`15`). A `Boolean`, default `false`.
-const GUARDIAN_MOVING_DATA_ID: u8 = 16;
-/// Vanilla `Guardian.DATA_ID_ATTACK_TARGET`, the int synced right after `DATA_ID_MOVING` (`17`).
-const GUARDIAN_ATTACK_TARGET_DATA_ID: u8 = 17;
+// Vanilla `EntityType.ELDER_GUARDIAN` / `EntityType.GUARDIAN` both share
+// `GuardianModel` and the same client `Guardian.aiStep` tail accumulator (the
+// elder is the guardian mesh scaled 2.35×, with no animation override). Their
+// generated metadata aliases follow `Entity`/`LivingEntity`/`Mob` at ids 16/17.
 /// Vanilla `EntityType.WITHER`; its two alternative render heads keep client-side
 /// `xRotHeads` / `yRotHeads` arrays that lerp toward synced target entities.
 /// Vanilla `WitherBoss.DATA_TARGET_B/C`, the two side-head target ids. `DATA_TARGET_A`
@@ -2805,7 +2804,11 @@ pub(crate) fn guardian_attack_duration(entity_type_id: i32) -> i32 {
 /// `0` for none). Read straight from the entity metadata; non-guardians (whose slot `17` is not this
 /// field) are gated out by the caller.
 pub(crate) fn guardian_attack_target_id(data_values: &[EntityDataValue]) -> i32 {
-    entity_data_int(data_values, GUARDIAN_ATTACK_TARGET_DATA_ID, 0)
+    entity_data_int(
+        data_values,
+        GUARDIAN_ATTACK_TARGET_DATA_ID,
+        GUARDIAN_DEFAULT_ATTACK_TARGET,
+    )
 }
 
 /// Canonical client-side limb-swing accumulator, mirroring vanilla
@@ -5925,7 +5928,11 @@ fn is_vanilla_arrow_type(entity_type_id: i32) -> bool {
 /// Vanilla `Guardian.isMoving()` = the synced `DATA_ID_MOVING` boolean (default
 /// `false`). Read straight from the entity metadata in the tick loop.
 pub(crate) fn guardian_is_moving(data_values: &[EntityDataValue]) -> bool {
-    entity_data_bool(data_values, GUARDIAN_MOVING_DATA_ID, false)
+    entity_data_bool(
+        data_values,
+        GUARDIAN_MOVING_DATA_ID,
+        GUARDIAN_DEFAULT_MOVING,
+    )
 }
 
 /// Vanilla `Camel.isDashing()` (`entityData.get(DASH)`): the synced boolean that gates the looping

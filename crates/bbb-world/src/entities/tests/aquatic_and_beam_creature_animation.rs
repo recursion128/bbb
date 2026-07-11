@@ -1,4 +1,7 @@
 use super::*;
+use crate::entities::schema::{
+    VANILLA_GUARDIAN_ATTACK_TARGET_DATA_ID, VANILLA_GUARDIAN_MOVING_DATA_ID,
+};
 
 #[test]
 fn entity_model_sources_project_creeper_swelling_fuse() {
@@ -324,7 +327,7 @@ fn guardian_tail_animation_speed_branches_match_vanilla_ai_step() {
         if moving {
             assert!(store.apply_set_entity_data(ProtocolSetEntityData {
                 id: 80,
-                values: vec![protocol_bool_data(16, true)],
+                values: vec![protocol_bool_data(VANILLA_GUARDIAN_MOVING_DATA_ID, true)],
             }));
         }
         store
@@ -437,7 +440,7 @@ fn guardian_spikes_withdrawal_branches_match_vanilla_ai_step() {
     // easing toward `0` by `0.25` — one tick gives `0.75 · extended`.
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 80,
-        values: vec![protocol_bool_data(16, true)],
+        values: vec![protocol_bool_data(VANILLA_GUARDIAN_MOVING_DATA_ID, true)],
     }));
     store.advance_entity_client_animations(1);
     let retracting = spikes(&store);
@@ -462,8 +465,6 @@ fn entity_model_sources_project_guardian_attack_beam() {
     // Vanilla `GuardianRenderer.extractRenderState`: a guardian whose synced `DATA_ID_ATTACK_TARGET`
     // (idx 17) names a live target projects the world eye→target vector and the ramping attack timing;
     // with no target it projects no beam.
-    const GUARDIAN_ATTACK_TARGET_DATA_ID: u8 = 17;
-
     let add_at = |id: i32, type_id: i32, x: f64| ProtocolAddEntity {
         id,
         uuid: default_entity_uuid(),
@@ -500,7 +501,10 @@ fn entity_model_sources_project_guardian_attack_beam() {
     // Lock onto the zombie (id 71) and ramp the client-side attack time over five ticks.
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 70,
-        values: vec![protocol_int_data(GUARDIAN_ATTACK_TARGET_DATA_ID, 71)],
+        values: vec![protocol_int_data(
+            VANILLA_GUARDIAN_ATTACK_TARGET_DATA_ID,
+            71,
+        )],
     }));
     store.advance_entity_client_animations(5);
     let projected = beam(&store).expect("a guardian locked onto a live target beams");
@@ -521,7 +525,7 @@ fn entity_model_sources_project_guardian_attack_beam() {
     // Clearing the target stops the beam (and resets the counter, vanilla `onSyncedDataUpdated`).
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 70,
-        values: vec![protocol_int_data(GUARDIAN_ATTACK_TARGET_DATA_ID, 0)],
+        values: vec![protocol_int_data(VANILLA_GUARDIAN_ATTACK_TARGET_DATA_ID, 0,)],
     }));
     assert!(beam(&store).is_none());
 }

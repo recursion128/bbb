@@ -29,6 +29,7 @@ pub enum VanillaEntityMetadataFamily {
     Interaction,
     ExperienceOrb,
     ItemEntity,
+    Guardian,
     VehicleEntity,
     AbstractBoat,
     AbstractMinecart,
@@ -299,6 +300,7 @@ mod tests {
             VanillaEntityMetadataFamily::Interaction,
             VanillaEntityMetadataFamily::ExperienceOrb,
             VanillaEntityMetadataFamily::ItemEntity,
+            VanillaEntityMetadataFamily::Guardian,
             VanillaEntityMetadataFamily::VehicleEntity,
             VanillaEntityMetadataFamily::AbstractBoat,
             VanillaEntityMetadataFamily::AbstractMinecart,
@@ -481,6 +483,33 @@ mod tests {
             }]
         );
         assert_eq!(VANILLA_ITEM_ENTITY_STACK_DATA_ID, 8);
+        let guardian = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Guardian);
+        assert_eq!(guardian.parent, Some(VanillaEntityMetadataFamily::Mob));
+        assert_eq!(guardian.inherited_field_count, 16);
+        assert_eq!(guardian.own_fields.len(), 2);
+        assert_eq!(VANILLA_GUARDIAN_MOVING_DATA_ID, 16);
+        assert_eq!(VANILLA_GUARDIAN_ATTACK_TARGET_DATA_ID, 17);
+        assert!(!VANILLA_GUARDIAN_DEFAULT_MOVING);
+        assert_eq!(VANILLA_GUARDIAN_DEFAULT_ATTACK_TARGET, 0);
+        assert_eq!(
+            guardian
+                .own_fields
+                .iter()
+                .map(|field| (field.name, field.serializer_id, field.default))
+                .collect::<Vec<_>>(),
+            vec![
+                (
+                    "DATA_ID_MOVING",
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+                    VanillaEntityMetadataDefault::Boolean(false),
+                ),
+                (
+                    "DATA_ID_ATTACK_TARGET",
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+                    VanillaEntityMetadataDefault::Int(0),
+                ),
+            ]
+        );
         assert_eq!(
             vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Entity)
                 .own_flags

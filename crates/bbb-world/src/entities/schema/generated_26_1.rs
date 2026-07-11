@@ -126,6 +126,11 @@ const GENERATED_VANILLA_EXPERIENCE_ORB_VALUE_DATA_ID: u8 = 8;
 pub const VANILLA_EXPERIENCE_ORB_VALUE_DATA_ID: u8 = GENERATED_VANILLA_EXPERIENCE_ORB_VALUE_DATA_ID;
 const GENERATED_VANILLA_ITEM_ENTITY_STACK_DATA_ID: u8 = 8;
 pub const VANILLA_ITEM_ENTITY_STACK_DATA_ID: u8 = GENERATED_VANILLA_ITEM_ENTITY_STACK_DATA_ID;
+const GENERATED_VANILLA_GUARDIAN_MOVING_DATA_ID: u8 = 16;
+pub const VANILLA_GUARDIAN_MOVING_DATA_ID: u8 = GENERATED_VANILLA_GUARDIAN_MOVING_DATA_ID;
+const GENERATED_VANILLA_GUARDIAN_ATTACK_TARGET_DATA_ID: u8 = 17;
+pub const VANILLA_GUARDIAN_ATTACK_TARGET_DATA_ID: u8 =
+    GENERATED_VANILLA_GUARDIAN_ATTACK_TARGET_DATA_ID;
 const GENERATED_VANILLA_VEHICLE_HURT_TIME_DATA_ID: u8 = 8;
 pub const VANILLA_VEHICLE_HURT_TIME_DATA_ID: u8 = GENERATED_VANILLA_VEHICLE_HURT_TIME_DATA_ID;
 const GENERATED_VANILLA_VEHICLE_HURT_DIR_DATA_ID: u8 = 9;
@@ -313,6 +318,11 @@ pub const VANILLA_INTERACTION_DEFAULT_RESPONSE: bool =
 const GENERATED_VANILLA_EXPERIENCE_ORB_DEFAULT_VALUE: i32 = 0;
 pub const VANILLA_EXPERIENCE_ORB_DEFAULT_VALUE: i32 =
     GENERATED_VANILLA_EXPERIENCE_ORB_DEFAULT_VALUE;
+const GENERATED_VANILLA_GUARDIAN_DEFAULT_MOVING: bool = false;
+pub const VANILLA_GUARDIAN_DEFAULT_MOVING: bool = GENERATED_VANILLA_GUARDIAN_DEFAULT_MOVING;
+const GENERATED_VANILLA_GUARDIAN_DEFAULT_ATTACK_TARGET: i32 = 0;
+pub const VANILLA_GUARDIAN_DEFAULT_ATTACK_TARGET: i32 =
+    GENERATED_VANILLA_GUARDIAN_DEFAULT_ATTACK_TARGET;
 const GENERATED_VANILLA_VEHICLE_DEFAULT_HURT_TIME: i32 = 0;
 pub const VANILLA_VEHICLE_DEFAULT_HURT_TIME: i32 = GENERATED_VANILLA_VEHICLE_DEFAULT_HURT_TIME;
 const GENERATED_VANILLA_VEHICLE_DEFAULT_HURT_DIR: i32 = 1;
@@ -13308,6 +13318,29 @@ const ITEMENTITY_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetada
     own_flags: ITEMENTITY_FLAGS,
 };
 
+const GUARDIAN_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_ID_MOVING",
+        data_id: 16,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+        default: VanillaEntityMetadataDefault::Boolean(false),
+    },
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_ID_ATTACK_TARGET",
+        data_id: 17,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+        default: VanillaEntityMetadataDefault::Int(0),
+    },
+];
+const GUARDIAN_FLAGS: &[VanillaEntityMetadataFlagSchema] = &[];
+const GUARDIAN_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamilySchema {
+    family: VanillaEntityMetadataFamily::Guardian,
+    parent: Some(VanillaEntityMetadataFamily::Mob),
+    inherited_field_count: 16,
+    own_fields: GUARDIAN_FIELDS,
+    own_flags: GUARDIAN_FLAGS,
+};
+
 const VEHICLEENTITY_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[
     VanillaEntityMetadataFieldSchema {
         name: "DATA_ID_HURT",
@@ -13545,6 +13578,7 @@ pub(super) const fn generated_entity_metadata_schema(
         VanillaEntityMetadataFamily::Interaction => &INTERACTION_SCHEMA,
         VanillaEntityMetadataFamily::ExperienceOrb => &EXPERIENCEORB_SCHEMA,
         VanillaEntityMetadataFamily::ItemEntity => &ITEMENTITY_SCHEMA,
+        VanillaEntityMetadataFamily::Guardian => &GUARDIAN_SCHEMA,
         VanillaEntityMetadataFamily::VehicleEntity => &VEHICLEENTITY_SCHEMA,
         VanillaEntityMetadataFamily::AbstractBoat => &ABSTRACTBOAT_SCHEMA,
         VanillaEntityMetadataFamily::AbstractMinecart => &ABSTRACTMINECART_SCHEMA,
