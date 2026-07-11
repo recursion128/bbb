@@ -944,11 +944,6 @@ pub(super) fn creeper_white_overlay_progress(swelling: f32) -> f32 {
 /// `EntityRenderState.lightCoords` (`LightCoordsUtil.pack(block, sky)`). Mirrors
 /// `EntityRenderer.getBlockLightLevel`, which forces block light to `15` while
 /// the entity is on fire (shared-flags bit `0x01`); sky light is unchanged.
-/// Vanilla `GlowSquid.DATA_DARK_TICKS_REMAINING` synced INT (the first own accessor on the
-/// `Squid`/`AgeableWaterCreature` chain, so index `18`: Entity 0-7, LivingEntity 8-14, Mob 15,
-/// AgeableMob baby 16 + age-locked 17). Counts down from `100` after a hurt; `0` while undamaged.
-pub(super) const GLOW_SQUID_DARK_TICKS_DATA_ID: u8 = 18;
-
 /// Vanilla `Mth.clampedLerp(factor, min, max)`: `min` for `factor < 0`, `max` for `factor > 1`, else the
 /// linear interpolation `min + factor·(max − min)`.
 pub(super) fn clamped_lerp(factor: f32, min: f32, max: f32) -> f32 {
@@ -1001,7 +996,11 @@ pub(super) fn entity_light_coords(
     // bright (`15`); a hurt drops `darkTicks` to `100` (dark), and it ramps back to full over the final 10
     // ticks. The vanilla `glow == 15 ? 15 : max(glow, super)` ternary is just `max(super, glow)` (super ≤ 15).
     if entity_type_id == VANILLA_ENTITY_TYPE_GLOW_SQUID_ID {
-        let dark_ticks = entity_data_int(data_values, GLOW_SQUID_DARK_TICKS_DATA_ID, 0);
+        let dark_ticks = entity_data_int(
+            data_values,
+            GLOW_SQUID_DARK_TICKS_DATA_ID,
+            GLOW_SQUID_DEFAULT_DARK_TICKS,
+        );
         let glow = clamped_lerp(1.0 - dark_ticks as f32 / 10.0, 0.0, 15.0) as u32;
         block = block.max(glow);
     }

@@ -26,6 +26,7 @@ pub enum VanillaEntityMetadataFamily {
     Axolotl,
     Bee,
     Dolphin,
+    GlowSquid,
     Goat,
     Panda,
     PolarBear,
@@ -360,6 +361,7 @@ mod tests {
             VanillaEntityMetadataFamily::Axolotl,
             VanillaEntityMetadataFamily::Bee,
             VanillaEntityMetadataFamily::Dolphin,
+            VanillaEntityMetadataFamily::GlowSquid,
             VanillaEntityMetadataFamily::Goat,
             VanillaEntityMetadataFamily::Panda,
             VanillaEntityMetadataFamily::PolarBear,
@@ -513,6 +515,15 @@ mod tests {
         assert_eq!(VANILLA_DOLPHIN_MOISTNESS_DATA_ID, 19);
         assert!(!VANILLA_DOLPHIN_DEFAULT_GOT_FISH);
         assert_eq!(VANILLA_DOLPHIN_DEFAULT_MOISTNESS, 2400);
+        let glow_squid = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::GlowSquid);
+        assert_eq!(
+            glow_squid.parent,
+            Some(VanillaEntityMetadataFamily::AgeableMob)
+        );
+        assert_eq!(glow_squid.inherited_field_count, 18);
+        assert_eq!(glow_squid.own_fields.len(), 1);
+        assert_eq!(VANILLA_GLOW_SQUID_DARK_TICKS_DATA_ID, 18);
+        assert_eq!(VANILLA_GLOW_SQUID_DEFAULT_DARK_TICKS, 0);
         let goat = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Goat);
         assert_eq!(goat.parent, Some(VanillaEntityMetadataFamily::AgeableMob));
         assert_eq!(goat.inherited_field_count, 18);

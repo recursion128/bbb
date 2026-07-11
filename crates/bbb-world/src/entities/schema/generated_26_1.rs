@@ -109,6 +109,9 @@ const GENERATED_VANILLA_DOLPHIN_GOT_FISH_DATA_ID: u8 = 18;
 pub const VANILLA_DOLPHIN_GOT_FISH_DATA_ID: u8 = GENERATED_VANILLA_DOLPHIN_GOT_FISH_DATA_ID;
 const GENERATED_VANILLA_DOLPHIN_MOISTNESS_DATA_ID: u8 = 19;
 pub const VANILLA_DOLPHIN_MOISTNESS_DATA_ID: u8 = GENERATED_VANILLA_DOLPHIN_MOISTNESS_DATA_ID;
+const GENERATED_VANILLA_GLOW_SQUID_DARK_TICKS_DATA_ID: u8 = 18;
+pub const VANILLA_GLOW_SQUID_DARK_TICKS_DATA_ID: u8 =
+    GENERATED_VANILLA_GLOW_SQUID_DARK_TICKS_DATA_ID;
 const GENERATED_VANILLA_GOAT_SCREAMING_DATA_ID: u8 = 18;
 pub const VANILLA_GOAT_SCREAMING_DATA_ID: u8 = GENERATED_VANILLA_GOAT_SCREAMING_DATA_ID;
 const GENERATED_VANILLA_GOAT_LEFT_HORN_DATA_ID: u8 = 19;
@@ -492,6 +495,9 @@ const GENERATED_VANILLA_DOLPHIN_DEFAULT_GOT_FISH: bool = false;
 pub const VANILLA_DOLPHIN_DEFAULT_GOT_FISH: bool = GENERATED_VANILLA_DOLPHIN_DEFAULT_GOT_FISH;
 const GENERATED_VANILLA_DOLPHIN_DEFAULT_MOISTNESS: i32 = 2400;
 pub const VANILLA_DOLPHIN_DEFAULT_MOISTNESS: i32 = GENERATED_VANILLA_DOLPHIN_DEFAULT_MOISTNESS;
+const GENERATED_VANILLA_GLOW_SQUID_DEFAULT_DARK_TICKS: i32 = 0;
+pub const VANILLA_GLOW_SQUID_DEFAULT_DARK_TICKS: i32 =
+    GENERATED_VANILLA_GLOW_SQUID_DEFAULT_DARK_TICKS;
 const GENERATED_VANILLA_GOAT_DEFAULT_SCREAMING: bool = false;
 pub const VANILLA_GOAT_DEFAULT_SCREAMING: bool = GENERATED_VANILLA_GOAT_DEFAULT_SCREAMING;
 const GENERATED_VANILLA_GOAT_DEFAULT_HAS_LEFT_HORN: bool = true;
@@ -13599,6 +13605,21 @@ const DOLPHIN_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataF
     own_flags: DOLPHIN_FLAGS,
 };
 
+const GLOWSQUID_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[VanillaEntityMetadataFieldSchema {
+    name: "DATA_DARK_TICKS_REMAINING",
+    data_id: 18,
+    serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+    default: VanillaEntityMetadataDefault::Int(0),
+}];
+const GLOWSQUID_FLAGS: &[VanillaEntityMetadataFlagSchema] = &[];
+const GLOWSQUID_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamilySchema {
+    family: VanillaEntityMetadataFamily::GlowSquid,
+    parent: Some(VanillaEntityMetadataFamily::AgeableMob),
+    inherited_field_count: 18,
+    own_fields: GLOWSQUID_FIELDS,
+    own_flags: GLOWSQUID_FLAGS,
+};
+
 const GOAT_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[
     VanillaEntityMetadataFieldSchema {
         name: "DATA_IS_SCREAMING_GOAT",
@@ -14750,6 +14771,7 @@ pub(super) const fn generated_entity_metadata_schema(
         VanillaEntityMetadataFamily::Axolotl => &AXOLOTL_SCHEMA,
         VanillaEntityMetadataFamily::Bee => &BEE_SCHEMA,
         VanillaEntityMetadataFamily::Dolphin => &DOLPHIN_SCHEMA,
+        VanillaEntityMetadataFamily::GlowSquid => &GLOWSQUID_SCHEMA,
         VanillaEntityMetadataFamily::Goat => &GOAT_SCHEMA,
         VanillaEntityMetadataFamily::Panda => &PANDA_SCHEMA,
         VanillaEntityMetadataFamily::PolarBear => &POLARBEAR_SCHEMA,

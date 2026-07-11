@@ -9869,3 +9869,9 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] 从 generated catalog 建立 `AgeableMob -> Sheep` family：BYTE wool
   id18/default0，并以 `isSheared()` CST 表达式解析 sheared mask16；native model/debug-save
   删除手抄 synced id/default/mask。低四位 color packed 解码仍由 native 语义 owner 管理。
+
+## 2026-07-11：Generated entity metadata consumer（GlowSquid）
+
+- [x] 从 generated catalog 建立 `AgeableMob -> GlowSquid` family：INT dark-ticks
+  id18/default0；native emissive projection/debug-save 删除手抄 synced id/default。hurt-event
+  计时与发光算法仍由对应行为 owner 管理。
