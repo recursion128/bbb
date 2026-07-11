@@ -37,6 +37,8 @@ use super::schema::{
     VANILLA_GUARDIAN_DEFAULT_ATTACK_TARGET as GUARDIAN_DEFAULT_ATTACK_TARGET,
     VANILLA_GUARDIAN_DEFAULT_MOVING as GUARDIAN_DEFAULT_MOVING,
     VANILLA_GUARDIAN_MOVING_DATA_ID as GUARDIAN_MOVING_DATA_ID,
+    VANILLA_PIGLIN_CHARGING_CROSSBOW_DATA_ID as PIGLIN_IS_CHARGING_CROSSBOW_DATA_ID,
+    VANILLA_PIGLIN_DEFAULT_CHARGING_CROSSBOW as PIGLIN_DEFAULT_CHARGING_CROSSBOW,
     VANILLA_SHULKER_DEFAULT_PEEK as SHULKER_DEFAULT_PEEK,
     VANILLA_SHULKER_PEEK_DATA_ID as SHULKER_PEEK_DATA_ID,
     VANILLA_VEHICLE_DAMAGE_DATA_ID as VEHICLE_DAMAGE_DATA_ID,
@@ -228,7 +230,6 @@ const PILLAGER_IS_CHARGING_CROSSBOW_DATA_ID: u8 = 17;
 /// Vanilla `Piglin.DATA_IS_CHARGING_CROSSBOW` synched-data id (18, the regular piglin's own slot — past
 /// `DATA_BABY_ID`, `DATA_IS_IMMUNE_TO_ZOMBIFICATION`). Drives the same crossbow-draw counter as the
 /// pillager (the flag is a different id on a different class, so read it under a piglin type gate).
-const PIGLIN_IS_CHARGING_CROSSBOW_DATA_ID: u8 = 18;
 /// Vanilla `Fox.DATA_FLAGS_ID` synced metadata id: `Entity` (`0..=7`),
 /// `LivingEntity` (`8..=14`), `Mob` (`15`) and `AgeableMob` (`16..=17`) precede
 /// the fox's own `DATA_TYPE_ID` (`18`, the variant int) and then the flags byte
@@ -5991,7 +5992,11 @@ pub(crate) fn pillager_is_charging_crossbow(data_values: &[EntityDataValue]) -> 
 /// for `getTicksUsingItem`. Read straight from the entity metadata in the tick loop; the type gate in
 /// `advance_client_tick` keeps non-piglins (whose slot 18 holds something else) off this counter.
 pub(crate) fn piglin_is_charging_crossbow(data_values: &[EntityDataValue]) -> bool {
-    entity_data_bool(data_values, PIGLIN_IS_CHARGING_CROSSBOW_DATA_ID, false)
+    entity_data_bool(
+        data_values,
+        PIGLIN_IS_CHARGING_CROSSBOW_DATA_ID,
+        PIGLIN_DEFAULT_CHARGING_CROSSBOW,
+    )
 }
 
 /// Vanilla `LivingEntity.isUsingItem()` (`DATA_LIVING_ENTITY_FLAGS & 1`, synced byte id `8`): true while the

@@ -9740,3 +9740,10 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   `DATA_IMMUNE_TO_ZOMBIFICATION` id 18/default false 替代 native zombifying shake 与 F3+I
   保存路径的手抄值；focused tests 锁定继承 offset、serializer/default、shake 与保存语义。
   `CannotBeHunted` 不是 synced metadata，仍由保存语义 owner 管理。
+
+## 2026-07-11：Generated entity metadata consumers（AbstractPiglin / Piglin）
+
+- [x] 从 generated catalog 建立 `Mob -> AbstractPiglin -> Piglin` chain：immune/baby/
+  charging/dancing ids 16/17/18/19、defaults false 替代 world/native 手抄值。baby bounds、
+  charging tick/hand pose、dancing model、zombifying shake 与 F3+I 统一消费 generated aliases；
+  非 synced 的 loot/time/cannot-hunt 保存字段保持原语义 owner。

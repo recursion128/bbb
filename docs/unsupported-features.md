@@ -499,6 +499,7 @@ back into a todo. Do not delete these.
   `MagmaCube`), `Shulker`, `Zombie`, `Mob -> Guardian` / `SnowGolem` / `Bat` /
   `Phantom` / `Bogged` / `Ghast` / `Vex` / `Creaking` / `Zoglin`,
   `AgeableMob -> Strider` / `Hoglin`, `Mob -> AbstractFish -> Pufferfish`,
+  `Mob -> AbstractPiglin -> Piglin`,
   `Entity -> AbstractArrow -> Arrow` /
   `ThrownTrident` leaves, the `Entity -> WitherSkull` projectile leaf,
   `Entity -> EndCrystal` / `Interaction` / `ExperienceOrb` / `ItemEntity`, the

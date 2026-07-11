@@ -161,6 +161,16 @@ pub const VANILLA_ZOGLIN_BABY_DATA_ID: u8 = GENERATED_VANILLA_ZOGLIN_BABY_DATA_I
 const GENERATED_VANILLA_HOGLIN_IMMUNE_TO_ZOMBIFICATION_DATA_ID: u8 = 18;
 pub const VANILLA_HOGLIN_IMMUNE_TO_ZOMBIFICATION_DATA_ID: u8 =
     GENERATED_VANILLA_HOGLIN_IMMUNE_TO_ZOMBIFICATION_DATA_ID;
+const GENERATED_VANILLA_ABSTRACT_PIGLIN_IMMUNE_TO_ZOMBIFICATION_DATA_ID: u8 = 16;
+pub const VANILLA_ABSTRACT_PIGLIN_IMMUNE_TO_ZOMBIFICATION_DATA_ID: u8 =
+    GENERATED_VANILLA_ABSTRACT_PIGLIN_IMMUNE_TO_ZOMBIFICATION_DATA_ID;
+const GENERATED_VANILLA_PIGLIN_BABY_DATA_ID: u8 = 17;
+pub const VANILLA_PIGLIN_BABY_DATA_ID: u8 = GENERATED_VANILLA_PIGLIN_BABY_DATA_ID;
+const GENERATED_VANILLA_PIGLIN_CHARGING_CROSSBOW_DATA_ID: u8 = 18;
+pub const VANILLA_PIGLIN_CHARGING_CROSSBOW_DATA_ID: u8 =
+    GENERATED_VANILLA_PIGLIN_CHARGING_CROSSBOW_DATA_ID;
+const GENERATED_VANILLA_PIGLIN_DANCING_DATA_ID: u8 = 19;
+pub const VANILLA_PIGLIN_DANCING_DATA_ID: u8 = GENERATED_VANILLA_PIGLIN_DANCING_DATA_ID;
 const GENERATED_VANILLA_ABSTRACT_FISH_FROM_BUCKET_DATA_ID: u8 = 16;
 pub const VANILLA_ABSTRACT_FISH_FROM_BUCKET_DATA_ID: u8 =
     GENERATED_VANILLA_ABSTRACT_FISH_FROM_BUCKET_DATA_ID;
@@ -394,6 +404,16 @@ pub const VANILLA_ZOGLIN_DEFAULT_BABY: bool = GENERATED_VANILLA_ZOGLIN_DEFAULT_B
 const GENERATED_VANILLA_HOGLIN_DEFAULT_IMMUNE_TO_ZOMBIFICATION: bool = false;
 pub const VANILLA_HOGLIN_DEFAULT_IMMUNE_TO_ZOMBIFICATION: bool =
     GENERATED_VANILLA_HOGLIN_DEFAULT_IMMUNE_TO_ZOMBIFICATION;
+const GENERATED_VANILLA_ABSTRACT_PIGLIN_DEFAULT_IMMUNE_TO_ZOMBIFICATION: bool = false;
+pub const VANILLA_ABSTRACT_PIGLIN_DEFAULT_IMMUNE_TO_ZOMBIFICATION: bool =
+    GENERATED_VANILLA_ABSTRACT_PIGLIN_DEFAULT_IMMUNE_TO_ZOMBIFICATION;
+const GENERATED_VANILLA_PIGLIN_DEFAULT_BABY: bool = false;
+pub const VANILLA_PIGLIN_DEFAULT_BABY: bool = GENERATED_VANILLA_PIGLIN_DEFAULT_BABY;
+const GENERATED_VANILLA_PIGLIN_DEFAULT_CHARGING_CROSSBOW: bool = false;
+pub const VANILLA_PIGLIN_DEFAULT_CHARGING_CROSSBOW: bool =
+    GENERATED_VANILLA_PIGLIN_DEFAULT_CHARGING_CROSSBOW;
+const GENERATED_VANILLA_PIGLIN_DEFAULT_DANCING: bool = false;
+pub const VANILLA_PIGLIN_DEFAULT_DANCING: bool = GENERATED_VANILLA_PIGLIN_DEFAULT_DANCING;
 const GENERATED_VANILLA_ABSTRACT_FISH_DEFAULT_FROM_BUCKET: bool = false;
 pub const VANILLA_ABSTRACT_FISH_DEFAULT_FROM_BUCKET: bool =
     GENERATED_VANILLA_ABSTRACT_FISH_DEFAULT_FROM_BUCKET;
@@ -13629,6 +13649,52 @@ const HOGLIN_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFa
     own_flags: HOGLIN_FLAGS,
 };
 
+const ABSTRACTPIGLIN_FIELDS: &[VanillaEntityMetadataFieldSchema] =
+    &[VanillaEntityMetadataFieldSchema {
+        name: "DATA_IMMUNE_TO_ZOMBIFICATION",
+        data_id: 16,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+        default: VanillaEntityMetadataDefault::Boolean(false),
+    }];
+const ABSTRACTPIGLIN_FLAGS: &[VanillaEntityMetadataFlagSchema] = &[];
+const ABSTRACTPIGLIN_SCHEMA: VanillaEntityMetadataFamilySchema =
+    VanillaEntityMetadataFamilySchema {
+        family: VanillaEntityMetadataFamily::AbstractPiglin,
+        parent: Some(VanillaEntityMetadataFamily::Mob),
+        inherited_field_count: 16,
+        own_fields: ABSTRACTPIGLIN_FIELDS,
+        own_flags: ABSTRACTPIGLIN_FLAGS,
+    };
+
+const PIGLIN_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_BABY_ID",
+        data_id: 17,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+        default: VanillaEntityMetadataDefault::Boolean(false),
+    },
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_IS_CHARGING_CROSSBOW",
+        data_id: 18,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+        default: VanillaEntityMetadataDefault::Boolean(false),
+    },
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_IS_DANCING",
+        data_id: 19,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+        default: VanillaEntityMetadataDefault::Boolean(false),
+    },
+];
+const PIGLIN_FLAGS: &[VanillaEntityMetadataFlagSchema] = &[];
+const PIGLIN_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamilySchema {
+    family: VanillaEntityMetadataFamily::Piglin,
+    parent: Some(VanillaEntityMetadataFamily::AbstractPiglin),
+    inherited_field_count: 17,
+    own_fields: PIGLIN_FIELDS,
+    own_flags: PIGLIN_FLAGS,
+};
+
 const ABSTRACTFISH_FIELDS: &[VanillaEntityMetadataFieldSchema] =
     &[VanillaEntityMetadataFieldSchema {
         name: "FROM_BUCKET",
@@ -13909,6 +13975,8 @@ pub(super) const fn generated_entity_metadata_schema(
         VanillaEntityMetadataFamily::Strider => &STRIDER_SCHEMA,
         VanillaEntityMetadataFamily::Zoglin => &ZOGLIN_SCHEMA,
         VanillaEntityMetadataFamily::Hoglin => &HOGLIN_SCHEMA,
+        VanillaEntityMetadataFamily::AbstractPiglin => &ABSTRACTPIGLIN_SCHEMA,
+        VanillaEntityMetadataFamily::Piglin => &PIGLIN_SCHEMA,
         VanillaEntityMetadataFamily::AbstractFish => &ABSTRACTFISH_SCHEMA,
         VanillaEntityMetadataFamily::Pufferfish => &PUFFERFISH_SCHEMA,
         VanillaEntityMetadataFamily::VehicleEntity => &VEHICLEENTITY_SCHEMA,

@@ -875,7 +875,11 @@ pub(super) fn entity_shaking(
         ),
         VANILLA_ENTITY_TYPE_PIGLIN_ID | VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID => {
             piglins_zombify
-                && !entity_data_bool(data_values, PIGLIN_IMMUNE_TO_ZOMBIFICATION_DATA_ID, false)
+                && !entity_data_bool(
+                    data_values,
+                    PIGLIN_IMMUNE_TO_ZOMBIFICATION_DATA_ID,
+                    PIGLIN_DEFAULT_IMMUNE_TO_ZOMBIFICATION,
+                )
         }
         VANILLA_ENTITY_TYPE_HOGLIN_ID => {
             piglins_zombify

@@ -473,7 +473,11 @@ pub(super) fn piglin_is_charging_crossbow(
     values: &[bbb_protocol::packets::EntityDataValue],
 ) -> bool {
     entity_type_id == VANILLA_ENTITY_TYPE_PIGLIN_ID
-        && entity_data_bool(values, PIGLIN_IS_CHARGING_CROSSBOW_DATA_ID, false)
+        && entity_data_bool(
+            values,
+            PIGLIN_IS_CHARGING_CROSSBOW_DATA_ID,
+            PIGLIN_DEFAULT_CHARGING_CROSSBOW,
+        )
 }
 
 /// Vanilla `Pillager.isChargingCrossbow()` (the synced `IS_CHARGING_CROSSBOW` boolean, id 17): the

@@ -40,6 +40,8 @@ pub enum VanillaEntityMetadataFamily {
     Strider,
     Zoglin,
     Hoglin,
+    AbstractPiglin,
+    Piglin,
     AbstractFish,
     Pufferfish,
     VehicleEntity,
@@ -323,6 +325,8 @@ mod tests {
             VanillaEntityMetadataFamily::Strider,
             VanillaEntityMetadataFamily::Zoglin,
             VanillaEntityMetadataFamily::Hoglin,
+            VanillaEntityMetadataFamily::AbstractPiglin,
+            VanillaEntityMetadataFamily::Piglin,
             VanillaEntityMetadataFamily::AbstractFish,
             VanillaEntityMetadataFamily::Pufferfish,
             VanillaEntityMetadataFamily::VehicleEntity,
@@ -729,6 +733,29 @@ mod tests {
         );
         assert_eq!(VANILLA_HOGLIN_IMMUNE_TO_ZOMBIFICATION_DATA_ID, 18);
         assert!(!VANILLA_HOGLIN_DEFAULT_IMMUNE_TO_ZOMBIFICATION);
+        let abstract_piglin =
+            vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::AbstractPiglin);
+        assert_eq!(
+            abstract_piglin.parent,
+            Some(VanillaEntityMetadataFamily::Mob)
+        );
+        assert_eq!(abstract_piglin.inherited_field_count, 16);
+        assert_eq!(abstract_piglin.own_fields.len(), 1);
+        let piglin = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Piglin);
+        assert_eq!(
+            piglin.parent,
+            Some(VanillaEntityMetadataFamily::AbstractPiglin)
+        );
+        assert_eq!(piglin.inherited_field_count, 17);
+        assert_eq!(piglin.own_fields.len(), 3);
+        assert_eq!(VANILLA_ABSTRACT_PIGLIN_IMMUNE_TO_ZOMBIFICATION_DATA_ID, 16);
+        assert_eq!(VANILLA_PIGLIN_BABY_DATA_ID, 17);
+        assert_eq!(VANILLA_PIGLIN_CHARGING_CROSSBOW_DATA_ID, 18);
+        assert_eq!(VANILLA_PIGLIN_DANCING_DATA_ID, 19);
+        assert!(!VANILLA_ABSTRACT_PIGLIN_DEFAULT_IMMUNE_TO_ZOMBIFICATION);
+        assert!(!VANILLA_PIGLIN_DEFAULT_BABY);
+        assert!(!VANILLA_PIGLIN_DEFAULT_CHARGING_CROSSBOW);
+        assert!(!VANILLA_PIGLIN_DEFAULT_DANCING);
         let abstract_fish =
             vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::AbstractFish);
         assert_eq!(abstract_fish.parent, Some(VanillaEntityMetadataFamily::Mob));

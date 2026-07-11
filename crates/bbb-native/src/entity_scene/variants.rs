@@ -876,7 +876,7 @@ pub(super) fn piglin_is_dancing(
     values: &[bbb_protocol::packets::EntityDataValue],
 ) -> bool {
     entity_type_id == VANILLA_ENTITY_TYPE_PIGLIN_ID
-        && entity_data_bool(values, PIGLIN_IS_DANCING_DATA_ID, false)
+        && entity_data_bool(values, PIGLIN_IS_DANCING_DATA_ID, PIGLIN_DEFAULT_DANCING)
 }
 
 /// Vanilla `PandaRenderState.isUnhappy = Panda.getUnhappyCounter() > 0` (the synced `UNHAPPY_COUNTER`
@@ -1515,7 +1515,7 @@ pub(super) fn zombie_baby(values: &[bbb_protocol::packets::EntityDataValue]) -> 
 }
 
 pub(super) fn piglin_baby(values: &[bbb_protocol::packets::EntityDataValue]) -> bool {
-    entity_data_bool(values, PIGLIN_BABY_DATA_ID, false)
+    entity_data_bool(values, PIGLIN_BABY_DATA_ID, PIGLIN_DEFAULT_BABY)
 }
 
 pub(super) fn bogged_sheared(values: &[bbb_protocol::packets::EntityDataValue]) -> bool {

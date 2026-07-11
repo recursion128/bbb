@@ -64,6 +64,16 @@ use bbb_world::{
     VANILLA_TRIDENT_FOIL_DATA_ID as TRIDENT_FOIL_DATA_ID,
 };
 pub(crate) use bbb_world::{
+    VANILLA_ABSTRACT_PIGLIN_DEFAULT_IMMUNE_TO_ZOMBIFICATION as PIGLIN_DEFAULT_IMMUNE_TO_ZOMBIFICATION,
+    VANILLA_ABSTRACT_PIGLIN_IMMUNE_TO_ZOMBIFICATION_DATA_ID as PIGLIN_IMMUNE_TO_ZOMBIFICATION_DATA_ID,
+    VANILLA_PIGLIN_BABY_DATA_ID as PIGLIN_BABY_DATA_ID,
+    VANILLA_PIGLIN_CHARGING_CROSSBOW_DATA_ID as PIGLIN_IS_CHARGING_CROSSBOW_DATA_ID,
+    VANILLA_PIGLIN_DANCING_DATA_ID as PIGLIN_IS_DANCING_DATA_ID,
+    VANILLA_PIGLIN_DEFAULT_BABY as PIGLIN_DEFAULT_BABY,
+    VANILLA_PIGLIN_DEFAULT_CHARGING_CROSSBOW as PIGLIN_DEFAULT_CHARGING_CROSSBOW,
+    VANILLA_PIGLIN_DEFAULT_DANCING as PIGLIN_DEFAULT_DANCING,
+};
+pub(crate) use bbb_world::{
     VANILLA_BOGGED_DEFAULT_SHEARED as BOGGED_DEFAULT_SHEARED,
     VANILLA_BOGGED_SHEARED_DATA_ID as BOGGED_SHEARED_DATA_ID,
 };
@@ -162,10 +172,6 @@ const VILLAGER_DATA_DATA_ID: u8 = 19;
 /// Vanilla `ZombieVillager.DATA_VILLAGER_DATA`: `Zombie` consumes baby 16, special-type 17, and
 /// drowned-conversion 18; `ZombieVillager` then defines converting 19 before villager data at 20.
 const ZOMBIE_VILLAGER_DATA_DATA_ID: u8 = 20;
-/// Vanilla `AbstractPiglin.DATA_IMMUNE_TO_ZOMBIFICATION`: `Entity` 0..=7,
-/// `LivingEntity` 8..=14, `Mob` 15, then the abstract piglin's first accessor.
-const PIGLIN_IMMUNE_TO_ZOMBIFICATION_DATA_ID: u8 = 16;
-const PIGLIN_BABY_DATA_ID: u8 = 17;
 /// Vanilla `CopperGolem.DATA_WEATHER_STATE` data id (16): `CopperGolem` extends `AbstractGolem`
 /// without adding inherited synced data after `Mob.DATA_MOB_FLAGS_ID` (15), so its first own
 /// accessor is the weathering enum.
@@ -195,15 +201,6 @@ const PILLAGER_IS_CHARGING_CROSSBOW_DATA_ID: u8 = 17;
 /// victory, the first `Raider` accessor after `Mob.DATA_MOB_FLAGS_ID` (15). The evoker and vindicator
 /// `getArmPose` return `CELEBRATING` while it is true (when not casting / not aggressive).
 const RAIDER_IS_CELEBRATING_DATA_ID: u8 = 16;
-/// Vanilla `Piglin.DATA_IS_DANCING` data id (19): the boolean set while a piglin dances by a soul
-/// campfire. The piglin's accessors follow `AbstractPiglin.DATA_IMMUNE_TO_ZOMBIFICATION` (16) — the
-/// first accessor after `Mob.DATA_MOB_FLAGS_ID` (15) — then `DATA_BABY_ID` (17) and
-/// `DATA_IS_CHARGING_CROSSBOW` (18). `Piglin.getArmPose` returns `DANCING` (top priority) while true.
-const PIGLIN_IS_DANCING_DATA_ID: u8 = 19;
-/// Vanilla `Piglin.DATA_IS_CHARGING_CROSSBOW` data id (18) — see [`PIGLIN_IS_DANCING_DATA_ID`] for the
-/// piglin accessor chain. `Piglin.getArmPose` returns `CROSSBOW_CHARGE` (whose pull-back pose needs the
-/// deferred use-tick state) while true, suppressing the `CROSSBOW_HOLD` level-the-crossbow pose.
-const PIGLIN_IS_CHARGING_CROSSBOW_DATA_ID: u8 = 18;
 // Salmon (`Salmon.DATA_TYPE`): AbstractFish defines FROM_BUCKET at index 16, so the size
 // variant is index 17. Defaults to 1 (`Salmon.Variant.MEDIUM`).
 const SALMON_VARIANT_DATA_ID: u8 = 17;
