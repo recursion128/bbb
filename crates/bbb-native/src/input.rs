@@ -183,7 +183,7 @@ mod text_edit;
 use crate::camera_pose::camera_pose_from_world;
 use crate::crosshair::protocol_block_pos_from_world;
 use crate::crosshair::{crosshair_target_from_camera_at_partial_tick, CrosshairTarget};
-use crate::entity_scene::WITHER_SKULL_DANGEROUS_DATA_ID;
+use crate::entity_scene::{WITHER_SKULL_DANGEROUS_DATA_ID, WITHER_SKULL_DEFAULT_DANGEROUS};
 use crate::terrain_runtime::TerrainUploadState;
 use bbb_item_model::{
     vanilla_attribute_resource_id, vanilla_banner_pattern_resource_id,
@@ -6051,8 +6051,8 @@ fn debug_push_primed_tnt_additional_save_data(
 }
 
 fn debug_push_wither_skull_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
-    let dangerous =
-        debug_entity_data_bool_present(entity, WITHER_SKULL_DANGEROUS_DATA_ID).unwrap_or(false);
+    let dangerous = debug_entity_data_bool_present(entity, WITHER_SKULL_DANGEROUS_DATA_ID)
+        .unwrap_or(WITHER_SKULL_DEFAULT_DANGEROUS);
     fields.push(format!("dangerous: {}", debug_snbt_bool(dangerous)));
 }
 

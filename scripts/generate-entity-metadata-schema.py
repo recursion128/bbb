@@ -66,6 +66,11 @@ FAMILIES = (
         "net.minecraft.world.entity.projectile.arrow.ThrownTrident",
         "AbstractArrow",
     ),
+    FamilySpec(
+        "WitherSkull",
+        "net.minecraft.world.entity.projectile.hurtingprojectile.WitherSkull",
+        "Entity",
+    ),
     FamilySpec("VehicleEntity", "net.minecraft.world.entity.vehicle.VehicleEntity", "Entity"),
     FamilySpec(
         "AbstractBoat",
@@ -126,6 +131,7 @@ DATA_ALIASES = {
     "VANILLA_ARROW_EFFECT_COLOR_DATA_ID": ("net.minecraft.world.entity.projectile.arrow.Arrow", "ID_EFFECT_COLOR"),
     "VANILLA_TRIDENT_LOYALTY_DATA_ID": ("net.minecraft.world.entity.projectile.arrow.ThrownTrident", "ID_LOYALTY"),
     "VANILLA_TRIDENT_FOIL_DATA_ID": ("net.minecraft.world.entity.projectile.arrow.ThrownTrident", "ID_FOIL"),
+    "VANILLA_WITHER_SKULL_DANGEROUS_DATA_ID": ("net.minecraft.world.entity.projectile.hurtingprojectile.WitherSkull", "DATA_DANGEROUS"),
     "VANILLA_VEHICLE_HURT_TIME_DATA_ID": ("net.minecraft.world.entity.vehicle.VehicleEntity", "DATA_ID_HURT"),
     "VANILLA_VEHICLE_HURT_DIR_DATA_ID": ("net.minecraft.world.entity.vehicle.VehicleEntity", "DATA_ID_HURTDIR"),
     "VANILLA_VEHICLE_DAMAGE_DATA_ID": ("net.minecraft.world.entity.vehicle.VehicleEntity", "DATA_ID_DAMAGE"),
@@ -165,6 +171,7 @@ DEFAULT_ALIASES = {
     "VANILLA_ARROW_DEFAULT_EFFECT_COLOR": ("net.minecraft.world.entity.projectile.arrow.Arrow", "ID_EFFECT_COLOR"),
     "VANILLA_TRIDENT_DEFAULT_LOYALTY": ("net.minecraft.world.entity.projectile.arrow.ThrownTrident", "ID_LOYALTY"),
     "VANILLA_TRIDENT_DEFAULT_FOIL": ("net.minecraft.world.entity.projectile.arrow.ThrownTrident", "ID_FOIL"),
+    "VANILLA_WITHER_SKULL_DEFAULT_DANGEROUS": ("net.minecraft.world.entity.projectile.hurtingprojectile.WitherSkull", "DATA_DANGEROUS"),
     "VANILLA_VEHICLE_DEFAULT_HURT_TIME": ("net.minecraft.world.entity.vehicle.VehicleEntity", "DATA_ID_HURT"),
     "VANILLA_VEHICLE_DEFAULT_HURT_DIR": ("net.minecraft.world.entity.vehicle.VehicleEntity", "DATA_ID_HURTDIR"),
     "VANILLA_VEHICLE_DEFAULT_DAMAGE": ("net.minecraft.world.entity.vehicle.VehicleEntity", "DATA_ID_DAMAGE"),

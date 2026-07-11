@@ -107,6 +107,9 @@ const GENERATED_VANILLA_TRIDENT_LOYALTY_DATA_ID: u8 = 11;
 pub const VANILLA_TRIDENT_LOYALTY_DATA_ID: u8 = GENERATED_VANILLA_TRIDENT_LOYALTY_DATA_ID;
 const GENERATED_VANILLA_TRIDENT_FOIL_DATA_ID: u8 = 12;
 pub const VANILLA_TRIDENT_FOIL_DATA_ID: u8 = GENERATED_VANILLA_TRIDENT_FOIL_DATA_ID;
+const GENERATED_VANILLA_WITHER_SKULL_DANGEROUS_DATA_ID: u8 = 8;
+pub const VANILLA_WITHER_SKULL_DANGEROUS_DATA_ID: u8 =
+    GENERATED_VANILLA_WITHER_SKULL_DANGEROUS_DATA_ID;
 const GENERATED_VANILLA_VEHICLE_HURT_TIME_DATA_ID: u8 = 8;
 pub const VANILLA_VEHICLE_HURT_TIME_DATA_ID: u8 = GENERATED_VANILLA_VEHICLE_HURT_TIME_DATA_ID;
 const GENERATED_VANILLA_VEHICLE_HURT_DIR_DATA_ID: u8 = 9;
@@ -278,6 +281,9 @@ const GENERATED_VANILLA_TRIDENT_DEFAULT_LOYALTY: i8 = 0;
 pub const VANILLA_TRIDENT_DEFAULT_LOYALTY: i8 = GENERATED_VANILLA_TRIDENT_DEFAULT_LOYALTY;
 const GENERATED_VANILLA_TRIDENT_DEFAULT_FOIL: bool = false;
 pub const VANILLA_TRIDENT_DEFAULT_FOIL: bool = GENERATED_VANILLA_TRIDENT_DEFAULT_FOIL;
+const GENERATED_VANILLA_WITHER_SKULL_DEFAULT_DANGEROUS: bool = false;
+pub const VANILLA_WITHER_SKULL_DEFAULT_DANGEROUS: bool =
+    GENERATED_VANILLA_WITHER_SKULL_DEFAULT_DANGEROUS;
 const GENERATED_VANILLA_VEHICLE_DEFAULT_HURT_TIME: i32 = 0;
 pub const VANILLA_VEHICLE_DEFAULT_HURT_TIME: i32 = GENERATED_VANILLA_VEHICLE_DEFAULT_HURT_TIME;
 const GENERATED_VANILLA_VEHICLE_DEFAULT_HURT_DIR: i32 = 1;
@@ -13173,6 +13179,22 @@ const THROWNTRIDENT_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMet
     own_flags: THROWNTRIDENT_FLAGS,
 };
 
+const WITHERSKULL_FIELDS: &[VanillaEntityMetadataFieldSchema] =
+    &[VanillaEntityMetadataFieldSchema {
+        name: "DATA_DANGEROUS",
+        data_id: 8,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+        default: VanillaEntityMetadataDefault::Boolean(false),
+    }];
+const WITHERSKULL_FLAGS: &[VanillaEntityMetadataFlagSchema] = &[];
+const WITHERSKULL_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamilySchema {
+    family: VanillaEntityMetadataFamily::WitherSkull,
+    parent: Some(VanillaEntityMetadataFamily::Entity),
+    inherited_field_count: 8,
+    own_fields: WITHERSKULL_FIELDS,
+    own_flags: WITHERSKULL_FLAGS,
+};
+
 const VEHICLEENTITY_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[
     VanillaEntityMetadataFieldSchema {
         name: "DATA_ID_HURT",
@@ -13405,6 +13427,7 @@ pub(super) const fn generated_entity_metadata_schema(
         VanillaEntityMetadataFamily::AbstractArrow => &ABSTRACTARROW_SCHEMA,
         VanillaEntityMetadataFamily::Arrow => &ARROW_SCHEMA,
         VanillaEntityMetadataFamily::ThrownTrident => &THROWNTRIDENT_SCHEMA,
+        VanillaEntityMetadataFamily::WitherSkull => &WITHERSKULL_SCHEMA,
         VanillaEntityMetadataFamily::VehicleEntity => &VEHICLEENTITY_SCHEMA,
         VanillaEntityMetadataFamily::AbstractBoat => &ABSTRACTBOAT_SCHEMA,
         VanillaEntityMetadataFamily::AbstractMinecart => &ABSTRACTMINECART_SCHEMA,

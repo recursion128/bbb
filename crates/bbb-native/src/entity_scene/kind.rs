@@ -373,7 +373,11 @@ pub(super) fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_WIND_CHARGE_ID => EntityModelKind::WindCharge,
         VANILLA_ENTITY_TYPE_WITHER_ID => EntityModelKind::Wither,
         VANILLA_ENTITY_TYPE_WITHER_SKULL_ID => EntityModelKind::WitherSkull {
-            dangerous: entity_data_bool(data_values, WITHER_SKULL_DANGEROUS_DATA_ID, false),
+            dangerous: entity_data_bool(
+                data_values,
+                WITHER_SKULL_DANGEROUS_DATA_ID,
+                WITHER_SKULL_DEFAULT_DANGEROUS,
+            ),
         },
         _ => placeholder("todo_unknown_entity_type_bounds", 0.75, 0.75, 0.75),
     }

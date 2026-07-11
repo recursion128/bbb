@@ -73,6 +73,10 @@ use bbb_world::{
     VANILLA_TAMABLE_ANIMAL_FLAG_SITTING as TAMABLE_ANIMAL_SITTING_FLAG,
     VANILLA_TAMABLE_ANIMAL_FLAG_TAME as TAMABLE_ANIMAL_TAME_FLAG,
 };
+pub(crate) use bbb_world::{
+    VANILLA_WITHER_SKULL_DANGEROUS_DATA_ID as WITHER_SKULL_DANGEROUS_DATA_ID,
+    VANILLA_WITHER_SKULL_DEFAULT_DANGEROUS as WITHER_SKULL_DEFAULT_DANGEROUS,
+};
 // Vanilla `Zombie.DATA_DROWNED_CONVERSION_ID`: `Entity` 0..=7, `LivingEntity` 8..=14,
 // `Mob` 15, then Zombie baby/special-type/drowned-conversion at 16..=18.
 use bbb_world::{
@@ -259,9 +263,6 @@ const GHAST_IS_CHARGING_DATA_ID: u8 = 16;
 // first own accessor lands right after Mob's DATA_MOB_FLAGS_ID (15) — index 16. `isCharging` is bit 1.
 const VEX_FLAGS_DATA_ID: u8 = 16;
 const VEX_FLAG_IS_CHARGING: i8 = 1;
-// Vanilla WitherSkull.DATA_DANGEROUS (8, BOOLEAN): `Entity` defines ids 0..=7, while `Projectile` and
-// `AbstractHurtingProjectile` add no synced accessors, so the wither skull's first own accessor lands at 8.
-pub(crate) const WITHER_SKULL_DANGEROUS_DATA_ID: u8 = 8;
 // Vanilla `AbstractArrow.IN_GROUND` (10, BOOLEAN): updating it to true after the first client tick
 // starts the seven-tick `shakeTime` impact wobble that `ArrowRenderer.extractRenderState` projects.
 #[cfg(test)]

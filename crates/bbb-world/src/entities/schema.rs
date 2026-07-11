@@ -24,6 +24,7 @@ pub enum VanillaEntityMetadataFamily {
     AbstractArrow,
     Arrow,
     ThrownTrident,
+    WitherSkull,
     VehicleEntity,
     AbstractBoat,
     AbstractMinecart,
@@ -289,6 +290,7 @@ mod tests {
             VanillaEntityMetadataFamily::AbstractArrow,
             VanillaEntityMetadataFamily::Arrow,
             VanillaEntityMetadataFamily::ThrownTrident,
+            VanillaEntityMetadataFamily::WitherSkull,
             VanillaEntityMetadataFamily::VehicleEntity,
             VanillaEntityMetadataFamily::AbstractBoat,
             VanillaEntityMetadataFamily::AbstractMinecart,
@@ -348,6 +350,24 @@ mod tests {
         assert_eq!(VANILLA_TRIDENT_FOIL_DATA_ID, 12);
         assert_eq!(VANILLA_TRIDENT_DEFAULT_LOYALTY, 0);
         assert!(!VANILLA_TRIDENT_DEFAULT_FOIL);
+        let wither_skull = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::WitherSkull);
+        assert_eq!(
+            wither_skull.parent,
+            Some(VanillaEntityMetadataFamily::Entity)
+        );
+        assert_eq!(wither_skull.inherited_field_count, 8);
+        assert_eq!(
+            wither_skull.own_fields,
+            &[VanillaEntityMetadataFieldSchema {
+                name: "DATA_DANGEROUS",
+                data_id: 8,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+                default: VanillaEntityMetadataDefault::Boolean(false),
+            }]
+        );
+        assert_eq!(VANILLA_WITHER_SKULL_DANGEROUS_DATA_ID, 8);
+        assert!(!VANILLA_WITHER_SKULL_DEFAULT_DANGEROUS);
         assert_eq!(
             vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Entity)
                 .own_flags

@@ -9610,3 +9610,11 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   world item/projectile projection 与 native arrow texture/trident foil projection 删除本地
   11/12/default literals，focused tests 锁定继承 offset、serializer/default 与既有 render
   语义；未修改箭矢粒子、trident loyalty physics、碰撞或 renderer 算法。
+
+## 2026-07-11：Generated entity metadata consumer（WitherSkull）
+
+- [x] 从 generated catalog 建立 `Entity -> WitherSkull` compatibility family：BOOLEAN
+  `DATA_DANGEROUS` id 8/default false 不再由 native 手抄。wither-skull texture projection
+  与 F3+I save projection 统一引用 generated id/default aliases；focused tests 锁定继承
+  offset、serializer/default、normal/dangerous model variant 与既有保存语义。未修改弹道、
+  碰撞、爆炸抗性或 renderer 算法。
