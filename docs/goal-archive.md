@@ -10040,3 +10040,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   无观察来源的通用 entity/mob/breeding、AI/战斗参数、库存、随机 timer/cooldown 以及 Chicken
   `EggLayTime`/`IsChickenJockey`；canonical synced/spawn/client-runtime 值与实体构造器定义的
   synced defaults 仍保留。未完成的 client projectile/vehicle/render parity 仍开放。
+
+## 2026-07-11：Generated Pig metadata
+
+- [x] 由统一 Tree-sitter Java frontend 提取 `Pig` 的三个 own accessors：boost-time id18、
+  variant id19、sound-variant id20；沿 `PigVariants.DEFAULT -> TEMPERATE ->
+  TemperatureVariants.TEMPERATE` 与 `PigSoundVariants.CLASSIC` evidence chain 生成默认
+  `0`、`minecraft:temperate`、`minecraft:classic`。native model/debug-save 删除手抄 ids 与
+  numeric holder defaults；session registry 顺序、Pig 骑乘物理和 persistent Codec/SNBT
+  语义仍由对应 owner 管理。

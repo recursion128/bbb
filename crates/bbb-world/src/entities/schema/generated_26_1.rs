@@ -216,6 +216,12 @@ const GENERATED_VANILLA_COW_SOUND_VARIANT_DATA_ID: u8 = 19;
 pub const VANILLA_COW_SOUND_VARIANT_DATA_ID: u8 = GENERATED_VANILLA_COW_SOUND_VARIANT_DATA_ID;
 const GENERATED_VANILLA_MUSHROOM_COW_TYPE_DATA_ID: u8 = 18;
 pub const VANILLA_MUSHROOM_COW_TYPE_DATA_ID: u8 = GENERATED_VANILLA_MUSHROOM_COW_TYPE_DATA_ID;
+const GENERATED_VANILLA_PIG_BOOST_TIME_DATA_ID: u8 = 18;
+pub const VANILLA_PIG_BOOST_TIME_DATA_ID: u8 = GENERATED_VANILLA_PIG_BOOST_TIME_DATA_ID;
+const GENERATED_VANILLA_PIG_VARIANT_DATA_ID: u8 = 19;
+pub const VANILLA_PIG_VARIANT_DATA_ID: u8 = GENERATED_VANILLA_PIG_VARIANT_DATA_ID;
+const GENERATED_VANILLA_PIG_SOUND_VARIANT_DATA_ID: u8 = 20;
+pub const VANILLA_PIG_SOUND_VARIANT_DATA_ID: u8 = GENERATED_VANILLA_PIG_SOUND_VARIANT_DATA_ID;
 const GENERATED_VANILLA_PARROT_VARIANT_DATA_ID: u8 = 20;
 pub const VANILLA_PARROT_VARIANT_DATA_ID: u8 = GENERATED_VANILLA_PARROT_VARIANT_DATA_ID;
 const GENERATED_VANILLA_RABBIT_TYPE_DATA_ID: u8 = 18;
@@ -759,6 +765,14 @@ pub const VANILLA_COW_DEFAULT_SOUND_VARIANT_RESOURCE_ID: &str =
     GENERATED_VANILLA_COW_DEFAULT_SOUND_VARIANT_RESOURCE_ID;
 const GENERATED_VANILLA_MUSHROOM_COW_DEFAULT_TYPE: i32 = 0;
 pub const VANILLA_MUSHROOM_COW_DEFAULT_TYPE: i32 = GENERATED_VANILLA_MUSHROOM_COW_DEFAULT_TYPE;
+const GENERATED_VANILLA_PIG_DEFAULT_BOOST_TIME: i32 = 0;
+pub const VANILLA_PIG_DEFAULT_BOOST_TIME: i32 = GENERATED_VANILLA_PIG_DEFAULT_BOOST_TIME;
+const GENERATED_VANILLA_PIG_DEFAULT_VARIANT_RESOURCE_ID: &str = "minecraft:temperate";
+pub const VANILLA_PIG_DEFAULT_VARIANT_RESOURCE_ID: &str =
+    GENERATED_VANILLA_PIG_DEFAULT_VARIANT_RESOURCE_ID;
+const GENERATED_VANILLA_PIG_DEFAULT_SOUND_VARIANT_RESOURCE_ID: &str = "minecraft:classic";
+pub const VANILLA_PIG_DEFAULT_SOUND_VARIANT_RESOURCE_ID: &str =
+    GENERATED_VANILLA_PIG_DEFAULT_SOUND_VARIANT_RESOURCE_ID;
 const GENERATED_VANILLA_PARROT_DEFAULT_VARIANT: i32 = 0;
 pub const VANILLA_PARROT_DEFAULT_VARIANT: i32 = GENERATED_VANILLA_PARROT_DEFAULT_VARIANT;
 const GENERATED_VANILLA_RABBIT_DEFAULT_TYPE: i32 = 0;
@@ -10009,7 +10023,7 @@ pub const VANILLA_ENTITY_METADATA_ACCESSORS_26_1: &[VanillaEntityMetadataAccesso
         data_id: 19,
         source_path: "net/minecraft/world/entity/animal/pig/Pig.java",
         default_expression: "VariantUtils.getDefaultOrAny (this.registryAccess (), PigVariants.DEFAULT)",
-        typed_default: None,
+        typed_default: Some(VanillaEntityMetadataDefault::RegistryHolderResource("minecraft:temperate")),
     },
     VanillaEntityMetadataAccessorCatalogEntry {
         owner: "net.minecraft.world.entity.animal.pig.Pig",
@@ -10020,7 +10034,7 @@ pub const VANILLA_ENTITY_METADATA_ACCESSORS_26_1: &[VanillaEntityMetadataAccesso
         data_id: 20,
         source_path: "net/minecraft/world/entity/animal/pig/Pig.java",
         default_expression: "pigSoundVariants.get (PigSoundVariants.CLASSIC).or (pigSoundVariants::getAny).orElseThrow ()",
-        typed_default: None,
+        typed_default: Some(VanillaEntityMetadataDefault::RegistryHolderResource("minecraft:classic")),
     },
     VanillaEntityMetadataAccessorCatalogEntry {
         owner: "net.minecraft.world.entity.animal.polarbear.PolarBear",
@@ -11869,6 +11883,20 @@ pub const VANILLA_ENTITY_METADATA_DEFAULT_RESOLVER_EVIDENCE_26_1: &[VanillaEntit
         accessor_name: "DATA_SOUND_VARIANT_ID",
         evidence_member: "net.minecraft.world.entity.animal.cow.CowSoundVariants.CLASSIC -> CowSoundVariants.createKey -> SoundSet.getIdentifier -> SoundSet.CLASSIC",
         source_expression: "cowSoundVariants.get (CowSoundVariants.CLASSIC).or (cowSoundVariants::getAny).orElseThrow () -> createKey (CowSoundVariants.SoundSet.CLASSIC) -> ResourceKey.create (Registries.COW_SOUND_VARIANT, Identifier.withDefaultNamespace (cowSoundVariant.getIdentifier ())) -> this.identifier -> \"classic\"",
+        reason: "the synced holder default is a resource key with registry fallback rather than a numeric registry id",
+    },
+    VanillaEntityMetadataResolverEvidence {
+        java_class: "net.minecraft.world.entity.animal.pig.Pig",
+        accessor_name: "DATA_VARIANT_ID",
+        evidence_member: "net.minecraft.world.entity.animal.pig.PigVariants.DEFAULT -> PigVariants.TEMPERATE -> TemperatureVariants.TEMPERATE -> PigVariants.createKey",
+        source_expression: "VariantUtils.getDefaultOrAny (this.registryAccess (), PigVariants.DEFAULT) -> TEMPERATE -> createKey (TemperatureVariants.TEMPERATE) -> Identifier.withDefaultNamespace (\"temperate\") -> ResourceKey.create (Registries.PIG_VARIANT, id)",
+        reason: "the synced holder default is a resource key selected through PigVariants.DEFAULT and TemperatureVariants",
+    },
+    VanillaEntityMetadataResolverEvidence {
+        java_class: "net.minecraft.world.entity.animal.pig.Pig",
+        accessor_name: "DATA_SOUND_VARIANT_ID",
+        evidence_member: "net.minecraft.world.entity.animal.pig.PigSoundVariants.CLASSIC -> PigSoundVariants.createKey -> SoundSet.getIdentifier -> SoundSet.CLASSIC",
+        source_expression: "pigSoundVariants.get (PigSoundVariants.CLASSIC).or (pigSoundVariants::getAny).orElseThrow () -> createKey (PigSoundVariants.SoundSet.CLASSIC) -> ResourceKey.create (Registries.PIG_SOUND_VARIANT, Identifier.withDefaultNamespace (pigSoundVariant.getIdentifier ())) -> this.identifier -> \"classic\"",
         reason: "the synced holder default is a resource key with registry fallback rather than a numeric registry id",
     },
     VanillaEntityMetadataResolverEvidence {
@@ -14698,6 +14726,35 @@ const MUSHROOMCOW_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetad
     own_flags: MUSHROOMCOW_FLAGS,
 };
 
+const PIG_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_BOOST_TIME",
+        data_id: 18,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+        default: VanillaEntityMetadataDefault::Int(0),
+    },
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_VARIANT_ID",
+        data_id: 19,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_PIG_VARIANT_ID,
+        default: VanillaEntityMetadataDefault::RegistryHolderResource("minecraft:temperate"),
+    },
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_SOUND_VARIANT_ID",
+        data_id: 20,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_PIG_SOUND_VARIANT_ID,
+        default: VanillaEntityMetadataDefault::RegistryHolderResource("minecraft:classic"),
+    },
+];
+const PIG_FLAGS: &[VanillaEntityMetadataFlagSchema] = &[];
+const PIG_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamilySchema {
+    family: VanillaEntityMetadataFamily::Pig,
+    parent: Some(VanillaEntityMetadataFamily::AgeableMob),
+    inherited_field_count: 18,
+    own_fields: PIG_FIELDS,
+    own_flags: PIG_FLAGS,
+};
+
 const PARROT_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[VanillaEntityMetadataFieldSchema {
     name: "DATA_VARIANT_ID",
     data_id: 20,
@@ -15730,6 +15787,7 @@ pub(super) const fn generated_entity_metadata_schema(
         VanillaEntityMetadataFamily::Chicken => &CHICKEN_SCHEMA,
         VanillaEntityMetadataFamily::Cow => &COW_SCHEMA,
         VanillaEntityMetadataFamily::MushroomCow => &MUSHROOMCOW_SCHEMA,
+        VanillaEntityMetadataFamily::Pig => &PIG_SCHEMA,
         VanillaEntityMetadataFamily::Parrot => &PARROT_SCHEMA,
         VanillaEntityMetadataFamily::Rabbit => &RABBIT_SCHEMA,
         VanillaEntityMetadataFamily::AbstractVillager => &ABSTRACTVILLAGER_SCHEMA,

@@ -5115,6 +5115,27 @@ fn shift_f3_i_with_permission_copies_local_pig_save_nbt_to_clipboard() {
 }
 
 #[test]
+fn local_pig_save_uses_generated_defaults() {
+    let mut world = world_with_debug_player(false);
+    world.apply_add_entity(AddEntity {
+        id: 64,
+        uuid: Uuid::from_u128(64),
+        entity_type_id: VANILLA_ENTITY_TYPE_PIG_ID,
+        position: ProtocolVec3d::default(),
+        delta_movement: ProtocolVec3d::default(),
+        x_rot: 0.0,
+        y_rot: 0.0,
+        y_head_rot: 0.0,
+        data: 0,
+    });
+
+    let pig = debug_copy_recreate_entity_command(&world, None, 64, true)
+        .expect("local pig recreate command");
+    assert!(pig.command.contains("variant: \"minecraft:temperate\""));
+    assert!(pig.command.contains("sound_variant: \"minecraft:classic\""));
+}
+
+#[test]
 fn shift_f3_i_with_permission_copies_local_chicken_save_nbt_to_clipboard() {
     let mut input = ClientInputState::new(true);
     let mut world = world_with_debug_player(false);

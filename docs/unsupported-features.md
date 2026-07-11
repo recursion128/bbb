@@ -496,7 +496,7 @@ back into a todo. Do not delete these.
   `Avatar`, `Player`, `AgeableMob -> AbstractHorse -> Camel` / `Horse` /
   `AbstractChestedHorse -> Llama` / `TamableAnimal -> Cat / Wolf` / `Parrot` / `Rabbit` /
   `AbstractVillager` / `Chicken` / `Cow` / `MushroomCow` / `PolarBear` /
-  `Armadillo` / `Bee` / `Axolotl` / `Dolphin` / `GlowSquid` / `HappyGhast` / `Goat` / `Fox` / `Ocelot` / `Panda` / `Sheep` /
+  `Pig` / `Armadillo` / `Bee` / `Axolotl` / `Dolphin` / `GlowSquid` / `HappyGhast` / `Goat` / `Fox` / `Ocelot` / `Panda` / `Sheep` /
   `Sniffer` / `Turtle`,
   `ArmorStand`,
   `Slime` (also consumed by `MagmaCube`), `Shulker`, `Zombie`, `Mob -> Guardian` /

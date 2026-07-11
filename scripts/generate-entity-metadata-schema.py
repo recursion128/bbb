@@ -87,6 +87,7 @@ FAMILIES = (
     FamilySpec("Chicken", "net.minecraft.world.entity.animal.chicken.Chicken", "AgeableMob"),
     FamilySpec("Cow", "net.minecraft.world.entity.animal.cow.Cow", "AgeableMob"),
     FamilySpec("MushroomCow", "net.minecraft.world.entity.animal.cow.MushroomCow", "AgeableMob"),
+    FamilySpec("Pig", "net.minecraft.world.entity.animal.pig.Pig", "AgeableMob"),
     FamilySpec("Parrot", "net.minecraft.world.entity.animal.parrot.Parrot", "TamableAnimal"),
     FamilySpec("Rabbit", "net.minecraft.world.entity.animal.rabbit.Rabbit", "AgeableMob"),
     FamilySpec(
@@ -286,6 +287,9 @@ DATA_ALIASES = {
     "VANILLA_COW_VARIANT_DATA_ID": ("net.minecraft.world.entity.animal.cow.Cow", "DATA_VARIANT_ID"),
     "VANILLA_COW_SOUND_VARIANT_DATA_ID": ("net.minecraft.world.entity.animal.cow.Cow", "DATA_SOUND_VARIANT_ID"),
     "VANILLA_MUSHROOM_COW_TYPE_DATA_ID": ("net.minecraft.world.entity.animal.cow.MushroomCow", "DATA_TYPE"),
+    "VANILLA_PIG_BOOST_TIME_DATA_ID": ("net.minecraft.world.entity.animal.pig.Pig", "DATA_BOOST_TIME"),
+    "VANILLA_PIG_VARIANT_DATA_ID": ("net.minecraft.world.entity.animal.pig.Pig", "DATA_VARIANT_ID"),
+    "VANILLA_PIG_SOUND_VARIANT_DATA_ID": ("net.minecraft.world.entity.animal.pig.Pig", "DATA_SOUND_VARIANT_ID"),
     "VANILLA_PARROT_VARIANT_DATA_ID": ("net.minecraft.world.entity.animal.parrot.Parrot", "DATA_VARIANT_ID"),
     "VANILLA_RABBIT_TYPE_DATA_ID": ("net.minecraft.world.entity.animal.rabbit.Rabbit", "DATA_TYPE_ID"),
     "VANILLA_ABSTRACT_VILLAGER_UNHAPPY_COUNTER_DATA_ID": ("net.minecraft.world.entity.npc.villager.AbstractVillager", "DATA_UNHAPPY_COUNTER"),
@@ -443,6 +447,9 @@ DEFAULT_ALIASES = {
     "VANILLA_COW_DEFAULT_VARIANT_RESOURCE_ID": ("net.minecraft.world.entity.animal.cow.Cow", "DATA_VARIANT_ID"),
     "VANILLA_COW_DEFAULT_SOUND_VARIANT_RESOURCE_ID": ("net.minecraft.world.entity.animal.cow.Cow", "DATA_SOUND_VARIANT_ID"),
     "VANILLA_MUSHROOM_COW_DEFAULT_TYPE": ("net.minecraft.world.entity.animal.cow.MushroomCow", "DATA_TYPE"),
+    "VANILLA_PIG_DEFAULT_BOOST_TIME": ("net.minecraft.world.entity.animal.pig.Pig", "DATA_BOOST_TIME"),
+    "VANILLA_PIG_DEFAULT_VARIANT_RESOURCE_ID": ("net.minecraft.world.entity.animal.pig.Pig", "DATA_VARIANT_ID"),
+    "VANILLA_PIG_DEFAULT_SOUND_VARIANT_RESOURCE_ID": ("net.minecraft.world.entity.animal.pig.Pig", "DATA_SOUND_VARIANT_ID"),
     "VANILLA_PARROT_DEFAULT_VARIANT": ("net.minecraft.world.entity.animal.parrot.Parrot", "DATA_VARIANT_ID"),
     "VANILLA_RABBIT_DEFAULT_TYPE": ("net.minecraft.world.entity.animal.rabbit.Rabbit", "DATA_TYPE_ID"),
     "VANILLA_ABSTRACT_VILLAGER_DEFAULT_UNHAPPY_COUNTER": ("net.minecraft.world.entity.npc.villager.AbstractVillager", "DATA_UNHAPPY_COUNTER"),
@@ -988,6 +995,72 @@ STATIC_REGISTRY_RESOURCE_DEFAULT_RESOLVERS = (
         ),
         (
             "net.minecraft.world.entity.animal.cow.CowSoundVariants.SoundSet",
+            "CLASSIC",
+            0,
+            '"classic"',
+        ),
+        "minecraft:classic",
+        "the synced holder default is a resource key with registry fallback rather than a numeric registry id",
+    ),
+    (
+        "net.minecraft.world.entity.animal.pig.Pig",
+        "DATA_VARIANT_ID",
+        "PIG_VARIANT",
+        "VariantUtils.getDefaultOrAny (this.registryAccess (), PigVariants.DEFAULT)",
+        (
+            (
+                "net.minecraft.world.entity.animal.pig.PigVariants",
+                "DEFAULT",
+                "TEMPERATE",
+            ),
+            (
+                "net.minecraft.world.entity.animal.pig.PigVariants",
+                "TEMPERATE",
+                "createKey (TemperatureVariants.TEMPERATE)",
+            ),
+            (
+                "net.minecraft.world.entity.animal.TemperatureVariants",
+                "TEMPERATE",
+                'Identifier.withDefaultNamespace ("temperate")',
+            ),
+        ),
+        (
+            (
+                "net.minecraft.world.entity.animal.pig.PigVariants",
+                "createKey",
+                "ResourceKey.create (Registries.PIG_VARIANT, id)",
+            ),
+        ),
+        None,
+        "minecraft:temperate",
+        "the synced holder default is a resource key selected through PigVariants.DEFAULT and TemperatureVariants",
+    ),
+    (
+        "net.minecraft.world.entity.animal.pig.Pig",
+        "DATA_SOUND_VARIANT_ID",
+        "PIG_SOUND_VARIANT",
+        "pigSoundVariants.get (PigSoundVariants.CLASSIC).or (pigSoundVariants::getAny).orElseThrow ()",
+        (
+            (
+                "net.minecraft.world.entity.animal.pig.PigSoundVariants",
+                "CLASSIC",
+                "createKey (PigSoundVariants.SoundSet.CLASSIC)",
+            ),
+        ),
+        (
+            (
+                "net.minecraft.world.entity.animal.pig.PigSoundVariants",
+                "createKey",
+                "ResourceKey.create (Registries.PIG_SOUND_VARIANT, Identifier.withDefaultNamespace (pigSoundVariant.getIdentifier ()))",
+            ),
+            (
+                "net.minecraft.world.entity.animal.pig.PigSoundVariants.SoundSet",
+                "getIdentifier",
+                "this.identifier",
+            ),
+        ),
+        (
+            "net.minecraft.world.entity.animal.pig.PigSoundVariants.SoundSet",
             "CLASSIC",
             0,
             '"classic"',

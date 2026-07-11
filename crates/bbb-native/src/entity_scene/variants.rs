@@ -1470,12 +1470,17 @@ pub(super) fn pig_model_variant(
         })
         .map(|id| {
             if let Some(registry) = variants {
-                pig_variant_from_registry_id(registry, id).unwrap_or(PigModelVariant::Temperate)
+                pig_variant_from_registry_id(registry, id).unwrap_or_else(pig_default_model_variant)
             } else {
                 pig_variant_from_vanilla_registry_id(id)
             }
         })
-        .unwrap_or(PigModelVariant::Temperate)
+        .unwrap_or_else(pig_default_model_variant)
+}
+
+fn pig_default_model_variant() -> PigModelVariant {
+    pig_variant_from_entry_id(PIG_DEFAULT_VARIANT_RESOURCE_ID)
+        .expect("generated vanilla pig default variant must map to a model")
 }
 
 pub(super) fn pig_variant_from_registry_id(

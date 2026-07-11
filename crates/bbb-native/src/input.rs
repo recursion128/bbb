@@ -250,6 +250,12 @@ use bbb_world::{
     VANILLA_FOX_TYPE_DATA_ID as FOX_TYPE_DATA_ID,
 };
 use bbb_world::{
+    VANILLA_PIG_DEFAULT_SOUND_VARIANT_RESOURCE_ID as PIG_DEFAULT_SOUND_VARIANT_RESOURCE_ID,
+    VANILLA_PIG_DEFAULT_VARIANT_RESOURCE_ID as PIG_DEFAULT_VARIANT_RESOURCE_ID,
+    VANILLA_PIG_SOUND_VARIANT_DATA_ID as PIG_SOUND_VARIANT_DATA_ID,
+    VANILLA_PIG_VARIANT_DATA_ID as PIG_VARIANT_DATA_ID,
+};
+use bbb_world::{
     VANILLA_RABBIT_DEFAULT_TYPE as RABBIT_DEFAULT_TYPE,
     VANILLA_RABBIT_TYPE_DATA_ID as RABBIT_TYPE_DATA_ID,
     VANILLA_SALMON_DEFAULT_VARIANT as SALMON_DEFAULT_VARIANT,
@@ -483,10 +489,6 @@ const PARROT_MAX_VARIANT: i32 = 4;
 const SHEEP_WOOL_COLOR_MASK: u8 = 0x0f;
 const SLIME_MIN_SIZE: i32 = 1;
 const SLIME_MAX_SIZE: i32 = 127;
-const PIG_VARIANT_DATA_ID: u8 = 19;
-const PIG_DEFAULT_VARIANT_ID: i32 = 0;
-const PIG_SOUND_VARIANT_DATA_ID: u8 = 20;
-const PIG_DEFAULT_SOUND_VARIANT_ID: i32 = 0;
 const RAVAGER_DEFAULT_ATTACK_TICK: i32 = 0;
 const RAVAGER_DEFAULT_STUN_TICK: i32 = 0;
 const RAVAGER_DEFAULT_ROAR_TICK: i32 = 0;
@@ -6658,22 +6660,19 @@ fn debug_push_pig_additional_save_data(entity: &EntityState, fields: &mut Vec<St
         PIG_VARIANT_DATA_ID,
         EntityDataRegistryHolder::PigVariant,
     )
-    .unwrap_or(PIG_DEFAULT_VARIANT_ID);
+    .and_then(pig_variant_resource_id)
+    .unwrap_or(PIG_DEFAULT_VARIANT_RESOURCE_ID);
     let sound_variant = debug_entity_data_registry_id_present(
         entity,
         PIG_SOUND_VARIANT_DATA_ID,
         EntityDataRegistryHolder::PigSoundVariant,
     )
-    .unwrap_or(PIG_DEFAULT_SOUND_VARIANT_ID);
-    fields.push(format!(
-        "variant: {}",
-        debug_snbt_string(pig_variant_resource_id(variant).unwrap_or("minecraft:temperate"))
-    ));
+    .and_then(pig_sound_variant_resource_id)
+    .unwrap_or(PIG_DEFAULT_SOUND_VARIANT_RESOURCE_ID);
+    fields.push(format!("variant: {}", debug_snbt_string(variant)));
     fields.push(format!(
         "sound_variant: {}",
-        debug_snbt_string(
-            pig_sound_variant_resource_id(sound_variant).unwrap_or("minecraft:classic")
-        )
+        debug_snbt_string(sound_variant)
     ));
 }
 

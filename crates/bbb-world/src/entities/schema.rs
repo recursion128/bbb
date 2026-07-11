@@ -49,6 +49,7 @@ pub enum VanillaEntityMetadataFamily {
     Chicken,
     Cow,
     MushroomCow,
+    Pig,
     Parrot,
     Rabbit,
     AbstractVillager,
@@ -410,6 +411,7 @@ mod tests {
             VanillaEntityMetadataFamily::Chicken,
             VanillaEntityMetadataFamily::Cow,
             VanillaEntityMetadataFamily::MushroomCow,
+            VanillaEntityMetadataFamily::Pig,
             VanillaEntityMetadataFamily::Parrot,
             VanillaEntityMetadataFamily::Rabbit,
             VanillaEntityMetadataFamily::AbstractVillager,
@@ -867,6 +869,33 @@ mod tests {
             mushroom_cow.own_fields[0].default,
             VanillaEntityMetadataDefault::Int(0)
         );
+        let pig = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Pig);
+        assert_eq!(pig.parent, Some(VanillaEntityMetadataFamily::AgeableMob));
+        assert_eq!(pig.inherited_field_count, 18);
+        assert_eq!(pig.own_fields.len(), 3);
+        assert_eq!(VANILLA_PIG_BOOST_TIME_DATA_ID, 18);
+        assert_eq!(VANILLA_PIG_VARIANT_DATA_ID, 19);
+        assert_eq!(VANILLA_PIG_SOUND_VARIANT_DATA_ID, 20);
+        assert_eq!(VANILLA_PIG_DEFAULT_BOOST_TIME, 0);
+        assert_eq!(
+            VANILLA_PIG_DEFAULT_VARIANT_RESOURCE_ID,
+            "minecraft:temperate"
+        );
+        assert_eq!(
+            VANILLA_PIG_DEFAULT_SOUND_VARIANT_RESOURCE_ID,
+            "minecraft:classic"
+        );
+        assert_eq!(
+            pig.own_fields
+                .iter()
+                .map(|field| field.default)
+                .collect::<Vec<_>>(),
+            vec![
+                VanillaEntityMetadataDefault::Int(0),
+                VanillaEntityMetadataDefault::RegistryHolderResource("minecraft:temperate"),
+                VanillaEntityMetadataDefault::RegistryHolderResource("minecraft:classic"),
+            ]
+        );
         let parrot = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Parrot);
         assert_eq!(
             parrot.parent,
@@ -923,7 +952,7 @@ mod tests {
         assert_eq!(VANILLA_TROPICAL_FISH_DEFAULT_VARIANT, 0);
         assert_eq!(
             VANILLA_ENTITY_METADATA_DEFAULT_RESOLVER_EVIDENCE_26_1.len(),
-            22
+            24
         );
         let default_evidence = |java_class| {
             VANILLA_ENTITY_METADATA_DEFAULT_RESOLVER_EVIDENCE_26_1
@@ -1059,6 +1088,24 @@ mod tests {
         assert_eq!(
             mushroom_cow_default_evidence.evidence_member,
             "net.minecraft.world.entity.animal.cow.MushroomCow.Variant.DEFAULT -> RED"
+        );
+        let pig_default_evidence = |accessor_name| {
+            VANILLA_ENTITY_METADATA_DEFAULT_RESOLVER_EVIDENCE_26_1
+                .iter()
+                .find(|item| {
+                    item.java_class == "net.minecraft.world.entity.animal.pig.Pig"
+                        && item.accessor_name == accessor_name
+                })
+                .copied()
+                .expect("generated pig default resolver evidence")
+        };
+        assert_eq!(
+            pig_default_evidence("DATA_VARIANT_ID").source_expression,
+            "VariantUtils.getDefaultOrAny (this.registryAccess (), PigVariants.DEFAULT) -> TEMPERATE -> createKey (TemperatureVariants.TEMPERATE) -> Identifier.withDefaultNamespace (\"temperate\") -> ResourceKey.create (Registries.PIG_VARIANT, id)"
+        );
+        assert_eq!(
+            pig_default_evidence("DATA_SOUND_VARIANT_ID").evidence_member,
+            "net.minecraft.world.entity.animal.pig.PigSoundVariants.CLASSIC -> PigSoundVariants.createKey -> SoundSet.getIdentifier -> SoundSet.CLASSIC"
         );
         let fox_default_evidence = default_evidence("net.minecraft.world.entity.animal.fox.Fox");
         assert_eq!(fox_default_evidence.accessor_name, "DATA_TYPE_ID");
