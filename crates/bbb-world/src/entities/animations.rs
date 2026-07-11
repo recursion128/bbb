@@ -64,6 +64,14 @@ use super::schema::{
     VANILLA_POLAR_BEAR_STANDING_DATA_ID as POLAR_BEAR_STANDING_DATA_ID,
     VANILLA_SHULKER_DEFAULT_PEEK as SHULKER_DEFAULT_PEEK,
     VANILLA_SHULKER_PEEK_DATA_ID as SHULKER_PEEK_DATA_ID,
+    VANILLA_SNIFFER_DEFAULT_STATE as SNIFFER_DEFAULT_STATE,
+    VANILLA_SNIFFER_STATE_DATA_ID as SNIFFER_STATE_DATA_ID,
+    VANILLA_SNIFFER_STATE_DIGGING_ID as SNIFFER_STATE_DIGGING_ID,
+    VANILLA_SNIFFER_STATE_FEELING_HAPPY_ID as SNIFFER_STATE_FEELING_HAPPY_ID,
+    VANILLA_SNIFFER_STATE_RISING_ID as SNIFFER_STATE_RISING_ID,
+    VANILLA_SNIFFER_STATE_SCENTING_ID as SNIFFER_STATE_SCENTING_ID,
+    VANILLA_SNIFFER_STATE_SEARCHING_ID as SNIFFER_STATE_SEARCHING_ID,
+    VANILLA_SNIFFER_STATE_SNIFFING_ID as SNIFFER_STATE_SNIFFING_ID,
     VANILLA_VEHICLE_DAMAGE_DATA_ID as VEHICLE_DAMAGE_DATA_ID,
     VANILLA_VEHICLE_DEFAULT_DAMAGE as VEHICLE_DEFAULT_DAMAGE,
     VANILLA_VEHICLE_DEFAULT_HURT_DIR as VEHICLE_DEFAULT_HURT_DIR,
@@ -122,21 +130,6 @@ const ARMOR_STAND_WOBBLE_TIME: i32 = 5;
 const PANDA_AMOUNT_RISE_PER_TICK: f32 = 0.15;
 const PANDA_AMOUNT_FALL_PER_TICK: f32 = 0.19;
 const PANDA_ROLL_COUNTER_MAX: i32 = 32;
-/// Vanilla `Sniffer.DATA_STATE`, the synced `EntityDataSerializers.SNIFFER_STATE` accessor serialized
-/// as the `Sniffer.State` ordinal VarInt. The accessor sits at id 18 (Entity 0–7, LivingEntity 8–14,
-/// Mob 15, AgeableMob 16–17, then Sniffer's first own accessor); `Sniffer.onSyncedDataUpdated` reads
-/// it to `resetAnimations()` and `startIfStopped` the matching one-shot `AnimationState`.
-const SNIFFER_STATE_DATA_ID: u8 = 18;
-/// `Sniffer.State` ordinals (the `State(id)` declaration order, which is the serialized VarInt).
-/// `IDLING` and `SEARCHING` have no triggered one-shot keyframe (idle rests, search drives the
-/// looping search-walk), so only the remaining five start an `AnimationState`.
-const SNIFFER_STATE_IDLING_ID: i32 = 0;
-const SNIFFER_STATE_FEELING_HAPPY_ID: i32 = 1;
-const SNIFFER_STATE_SCENTING_ID: i32 = 2;
-const SNIFFER_STATE_SNIFFING_ID: i32 = 3;
-const SNIFFER_STATE_SEARCHING_ID: i32 = 4;
-const SNIFFER_STATE_DIGGING_ID: i32 = 5;
-const SNIFFER_STATE_RISING_ID: i32 = 6;
 /// Vanilla `Armadillo.ARMADILLO_STATE`, the synced `EntityDataSerializers.ARMADILLO_STATE` accessor
 /// serialized as the `ArmadilloState` ordinal-id VarInt. Like `Sniffer.DATA_STATE` it is the first
 /// own accessor after `AgeableMob` (Entity 0–7, LivingEntity 8–14, Mob 15, AgeableMob 16–17), id 18.
@@ -4090,7 +4083,7 @@ impl EntityClientAnimationState {
                     data_values,
                     SNIFFER_STATE_DATA_ID,
                     EntityDataEnumSerializer::SnifferState,
-                    SNIFFER_STATE_IDLING_ID,
+                    SNIFFER_DEFAULT_STATE,
                 );
                 if let Some(sniffer) = self.sniffer.as_mut() {
                     sniffer.set_state(state_id, self.age_ticks);

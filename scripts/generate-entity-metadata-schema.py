@@ -59,6 +59,7 @@ FAMILIES = (
     FamilySpec("Panda", "net.minecraft.world.entity.animal.panda.Panda", "AgeableMob"),
     FamilySpec("PolarBear", "net.minecraft.world.entity.animal.polarbear.PolarBear", "AgeableMob"),
     FamilySpec("Sheep", "net.minecraft.world.entity.animal.sheep.Sheep", "AgeableMob"),
+    FamilySpec("Sniffer", "net.minecraft.world.entity.animal.sniffer.Sniffer", "AgeableMob"),
     FamilySpec("Turtle", "net.minecraft.world.entity.animal.turtle.Turtle", "AgeableMob"),
     FamilySpec(
         "AbstractHorse",
@@ -219,6 +220,8 @@ DATA_ALIASES = {
     "VANILLA_PANDA_HIDDEN_GENE_DATA_ID": ("net.minecraft.world.entity.animal.panda.Panda", "HIDDEN_GENE_ID"),
     "VANILLA_PANDA_FLAGS_DATA_ID": ("net.minecraft.world.entity.animal.panda.Panda", "DATA_ID_FLAGS"),
     "VANILLA_SHEEP_WOOL_DATA_ID": ("net.minecraft.world.entity.animal.sheep.Sheep", "DATA_WOOL_ID"),
+    "VANILLA_SNIFFER_STATE_DATA_ID": ("net.minecraft.world.entity.animal.sniffer.Sniffer", "DATA_STATE"),
+    "VANILLA_SNIFFER_DROP_SEED_AT_TICK_DATA_ID": ("net.minecraft.world.entity.animal.sniffer.Sniffer", "DATA_DROP_SEED_AT_TICK"),
     "VANILLA_TURTLE_HAS_EGG_DATA_ID": ("net.minecraft.world.entity.animal.turtle.Turtle", "HAS_EGG"),
     "VANILLA_TURTLE_LAYING_EGG_DATA_ID": ("net.minecraft.world.entity.animal.turtle.Turtle", "LAYING_EGG"),
     "VANILLA_ABSTRACT_HORSE_FLAGS_DATA_ID": ("net.minecraft.world.entity.animal.equine.AbstractHorse", "DATA_ID_FLAGS"),
@@ -347,6 +350,8 @@ DEFAULT_ALIASES = {
     "VANILLA_PANDA_DEFAULT_HIDDEN_GENE": ("net.minecraft.world.entity.animal.panda.Panda", "HIDDEN_GENE_ID"),
     "VANILLA_PANDA_DEFAULT_FLAGS": ("net.minecraft.world.entity.animal.panda.Panda", "DATA_ID_FLAGS"),
     "VANILLA_SHEEP_DEFAULT_WOOL": ("net.minecraft.world.entity.animal.sheep.Sheep", "DATA_WOOL_ID"),
+    "VANILLA_SNIFFER_DEFAULT_STATE": ("net.minecraft.world.entity.animal.sniffer.Sniffer", "DATA_STATE"),
+    "VANILLA_SNIFFER_DEFAULT_DROP_SEED_AT_TICK": ("net.minecraft.world.entity.animal.sniffer.Sniffer", "DATA_DROP_SEED_AT_TICK"),
     "VANILLA_TURTLE_DEFAULT_HAS_EGG": ("net.minecraft.world.entity.animal.turtle.Turtle", "HAS_EGG"),
     "VANILLA_TURTLE_DEFAULT_LAYING_EGG": ("net.minecraft.world.entity.animal.turtle.Turtle", "LAYING_EGG"),
     "VANILLA_ABSTRACT_HORSE_DEFAULT_FLAGS": ("net.minecraft.world.entity.animal.equine.AbstractHorse", "DATA_ID_FLAGS"),
@@ -547,6 +552,31 @@ ENUM_ID_DEFAULT_RESOLVERS = (
 )
 
 
+ENUM_CONSTANT_DEFAULT_RESOLVERS = (
+    (
+        "net.minecraft.world.entity.animal.sniffer.Sniffer",
+        "DATA_STATE",
+        "SNIFFER_STATE",
+        "net.minecraft.world.entity.animal.sniffer.Sniffer.State",
+        "IDLING",
+        0,
+        "Sniffer.State.IDLING",
+        "the synced enum default is encoded by an explicit enum constructor id",
+    ),
+)
+
+
+ENUM_CONSTRUCTOR_ID_ALIASES = {
+    "VANILLA_SNIFFER_STATE_IDLING_ID": ("net.minecraft.world.entity.animal.sniffer.Sniffer.State", "IDLING", 0),
+    "VANILLA_SNIFFER_STATE_FEELING_HAPPY_ID": ("net.minecraft.world.entity.animal.sniffer.Sniffer.State", "FEELING_HAPPY", 0),
+    "VANILLA_SNIFFER_STATE_SCENTING_ID": ("net.minecraft.world.entity.animal.sniffer.Sniffer.State", "SCENTING", 0),
+    "VANILLA_SNIFFER_STATE_SNIFFING_ID": ("net.minecraft.world.entity.animal.sniffer.Sniffer.State", "SNIFFING", 0),
+    "VANILLA_SNIFFER_STATE_SEARCHING_ID": ("net.minecraft.world.entity.animal.sniffer.Sniffer.State", "SEARCHING", 0),
+    "VANILLA_SNIFFER_STATE_DIGGING_ID": ("net.minecraft.world.entity.animal.sniffer.Sniffer.State", "DIGGING", 0),
+    "VANILLA_SNIFFER_STATE_RISING_ID": ("net.minecraft.world.entity.animal.sniffer.Sniffer.State", "RISING", 0),
+}
+
+
 @dataclass(frozen=True)
 class NormalizedDefault:
     rust: str
@@ -667,6 +697,42 @@ def enum_ordinals(result: ExtractionResult, fqcn: str) -> dict[str, int]:
     }
 
 
+def enum_constant_constructor_integer(
+    result: ExtractionResult,
+    enum_fqcn: str,
+    constant_name: str,
+    argument_index: int,
+) -> int:
+    matches = [
+        (source, java_type)
+        for source in result.sources.values()
+        for java_type in source.types
+        if java_type.fqcn == enum_fqcn and java_type.kind == "enum"
+    ]
+    if len(matches) != 1:
+        raise ExtractionError(f"{enum_fqcn}: expected one enum type, found {len(matches)}")
+    enum_source, java_type = matches[0]
+    constants = [
+        item
+        for item in java_type.body_node.named_children
+        if item.type == "enum_constant"
+        and enum_source.text(item.child_by_field_name("name")) == constant_name
+    ]
+    if len(constants) != 1:
+        raise ExtractionError(f"{enum_fqcn}: expected one {constant_name} enum constant")
+    arguments = constants[0].child_by_field_name("arguments")
+    if argument_index < 0 or arguments is None or argument_index >= len(arguments.named_children):
+        raise ExtractionError(
+            f"{enum_fqcn}.{constant_name}: expected integer id constructor argument "
+            f"at index {argument_index}"
+        )
+    return evaluate_integer_expression(
+        enum_source,
+        arguments.named_children[argument_index],
+        {},
+    )
+
+
 def resolve_enum_id_defaults(
     result: ExtractionResult,
 ) -> tuple[dict[tuple[str, str], NormalizedDefault], list[ResolvedDefaultEvidence]]:
@@ -692,41 +758,15 @@ def resolve_enum_id_defaults(
                 f"{owner}.{accessor_name}: stale enum default resolver expression; "
                 f"expected {expected_expression!r}, found {accessor.default_expression!r}"
             )
-        matches = [
-            (source, java_type)
-            for source in result.sources.values()
-            for java_type in source.types
-            if java_type.fqcn == enum_fqcn and java_type.kind == "enum"
-        ]
-        if len(matches) != 1:
-            raise ExtractionError(f"{enum_fqcn}: expected one enum type, found {len(matches)}")
-        enum_source, java_type = matches[0]
         default = field_for(result, enum_fqcn, default_field)
         if default.initializer is None or default.initializer.node.type != "identifier":
             raise ExtractionError(f"{enum_fqcn}.{default_field}: expected enum-constant identifier initializer")
-        constant_name = enum_source.text(default.initializer.node)
-        constants = [
-            item
-            for item in java_type.body_node.named_children
-            if item.type == "enum_constant"
-            and enum_source.text(item.child_by_field_name("name")) == constant_name
-        ]
-        if len(constants) != 1:
-            raise ExtractionError(f"{enum_fqcn}.{default_field}: expected one {constant_name} enum constant")
-        arguments = constants[0].child_by_field_name("arguments")
-        if (
-            id_argument_index < 0
-            or arguments is None
-            or id_argument_index >= len(arguments.named_children)
-        ):
-            raise ExtractionError(
-                f"{enum_fqcn}.{constant_name}: expected integer id constructor argument "
-                f"at index {id_argument_index}"
-            )
-        value = evaluate_integer_expression(
-            enum_source,
-            arguments.named_children[id_argument_index],
-            {},
+        constant_name = source_for_owner(result, enum_fqcn).text(default.initializer.node)
+        value = enum_constant_constructor_integer(
+            result,
+            enum_fqcn,
+            constant_name,
+            id_argument_index,
         )
         resolved[key] = NormalizedDefault(
             f"VanillaEntityMetadataDefault::Int({value})",
@@ -739,6 +779,51 @@ def resolve_enum_id_defaults(
                 accessor_name,
                 enum_fqcn,
                 f"{default_field} -> {constant_name}",
+                expected_expression,
+                value,
+                reason,
+            )
+        )
+    for (
+        owner,
+        accessor_name,
+        serializer,
+        enum_fqcn,
+        constant_name,
+        id_argument_index,
+        expected_expression,
+        reason,
+    ) in ENUM_CONSTANT_DEFAULT_RESOLVERS:
+        key = (owner, accessor_name)
+        if key in resolved:
+            raise ExtractionError(f"duplicate enum default resolver: {owner}.{accessor_name}")
+        accessor = accessor_for(result, owner, accessor_name)
+        if accessor.serializer != serializer:
+            raise ExtractionError(
+                f"{owner}.{accessor_name}: enum constant resolver requires {serializer} serializer"
+            )
+        if accessor.default_expression != expected_expression:
+            raise ExtractionError(
+                f"{owner}.{accessor_name}: stale enum default resolver expression; "
+                f"expected {expected_expression!r}, found {accessor.default_expression!r}"
+            )
+        value = enum_constant_constructor_integer(
+            result,
+            enum_fqcn,
+            constant_name,
+            id_argument_index,
+        )
+        resolved[key] = NormalizedDefault(
+            f"VanillaEntityMetadataDefault::Int({value})",
+            "i32",
+            str(value),
+        )
+        evidence.append(
+            ResolvedDefaultEvidence(
+                owner,
+                accessor_name,
+                enum_fqcn,
+                constant_name,
                 expected_expression,
                 value,
                 reason,
@@ -1013,6 +1098,17 @@ def render(result: ExtractionResult) -> str:
     for name in ("LEFT", "RIGHT"):
         public_name = f"VANILLA_HUMANOID_ARM_{name}_ID"
         lines.append(f"const GENERATED_{public_name}: i32 = {pose_ordinals[name]};")
+        lines.append(f"pub const {public_name}: i32 = GENERATED_{public_name};")
+    lines.append("")
+
+    for public_name, (enum_fqcn, constant_name, argument_index) in ENUM_CONSTRUCTOR_ID_ALIASES.items():
+        value = enum_constant_constructor_integer(
+            result,
+            enum_fqcn,
+            constant_name,
+            argument_index,
+        )
+        lines.append(f"const GENERATED_{public_name}: i32 = {value};")
         lines.append(f"pub const {public_name}: i32 = GENERATED_{public_name};")
     lines.append("")
 

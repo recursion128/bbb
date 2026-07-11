@@ -143,6 +143,11 @@ const GENERATED_VANILLA_PANDA_FLAGS_DATA_ID: u8 = 23;
 pub const VANILLA_PANDA_FLAGS_DATA_ID: u8 = GENERATED_VANILLA_PANDA_FLAGS_DATA_ID;
 const GENERATED_VANILLA_SHEEP_WOOL_DATA_ID: u8 = 18;
 pub const VANILLA_SHEEP_WOOL_DATA_ID: u8 = GENERATED_VANILLA_SHEEP_WOOL_DATA_ID;
+const GENERATED_VANILLA_SNIFFER_STATE_DATA_ID: u8 = 18;
+pub const VANILLA_SNIFFER_STATE_DATA_ID: u8 = GENERATED_VANILLA_SNIFFER_STATE_DATA_ID;
+const GENERATED_VANILLA_SNIFFER_DROP_SEED_AT_TICK_DATA_ID: u8 = 19;
+pub const VANILLA_SNIFFER_DROP_SEED_AT_TICK_DATA_ID: u8 =
+    GENERATED_VANILLA_SNIFFER_DROP_SEED_AT_TICK_DATA_ID;
 const GENERATED_VANILLA_TURTLE_HAS_EGG_DATA_ID: u8 = 18;
 pub const VANILLA_TURTLE_HAS_EGG_DATA_ID: u8 = GENERATED_VANILLA_TURTLE_HAS_EGG_DATA_ID;
 const GENERATED_VANILLA_TURTLE_LAYING_EGG_DATA_ID: u8 = 19;
@@ -458,6 +463,22 @@ pub const VANILLA_HUMANOID_ARM_LEFT_ID: i32 = GENERATED_VANILLA_HUMANOID_ARM_LEF
 const GENERATED_VANILLA_HUMANOID_ARM_RIGHT_ID: i32 = 1;
 pub const VANILLA_HUMANOID_ARM_RIGHT_ID: i32 = GENERATED_VANILLA_HUMANOID_ARM_RIGHT_ID;
 
+const GENERATED_VANILLA_SNIFFER_STATE_IDLING_ID: i32 = 0;
+pub const VANILLA_SNIFFER_STATE_IDLING_ID: i32 = GENERATED_VANILLA_SNIFFER_STATE_IDLING_ID;
+const GENERATED_VANILLA_SNIFFER_STATE_FEELING_HAPPY_ID: i32 = 1;
+pub const VANILLA_SNIFFER_STATE_FEELING_HAPPY_ID: i32 =
+    GENERATED_VANILLA_SNIFFER_STATE_FEELING_HAPPY_ID;
+const GENERATED_VANILLA_SNIFFER_STATE_SCENTING_ID: i32 = 2;
+pub const VANILLA_SNIFFER_STATE_SCENTING_ID: i32 = GENERATED_VANILLA_SNIFFER_STATE_SCENTING_ID;
+const GENERATED_VANILLA_SNIFFER_STATE_SNIFFING_ID: i32 = 3;
+pub const VANILLA_SNIFFER_STATE_SNIFFING_ID: i32 = GENERATED_VANILLA_SNIFFER_STATE_SNIFFING_ID;
+const GENERATED_VANILLA_SNIFFER_STATE_SEARCHING_ID: i32 = 4;
+pub const VANILLA_SNIFFER_STATE_SEARCHING_ID: i32 = GENERATED_VANILLA_SNIFFER_STATE_SEARCHING_ID;
+const GENERATED_VANILLA_SNIFFER_STATE_DIGGING_ID: i32 = 5;
+pub const VANILLA_SNIFFER_STATE_DIGGING_ID: i32 = GENERATED_VANILLA_SNIFFER_STATE_DIGGING_ID;
+const GENERATED_VANILLA_SNIFFER_STATE_RISING_ID: i32 = 6;
+pub const VANILLA_SNIFFER_STATE_RISING_ID: i32 = GENERATED_VANILLA_SNIFFER_STATE_RISING_ID;
+
 const GENERATED_VANILLA_ALLAY_DEFAULT_DANCING: bool = false;
 pub const VANILLA_ALLAY_DEFAULT_DANCING: bool = GENERATED_VANILLA_ALLAY_DEFAULT_DANCING;
 const GENERATED_VANILLA_ALLAY_DEFAULT_CAN_DUPLICATE: bool = true;
@@ -558,6 +579,11 @@ const GENERATED_VANILLA_PANDA_DEFAULT_FLAGS: i8 = 0;
 pub const VANILLA_PANDA_DEFAULT_FLAGS: i8 = GENERATED_VANILLA_PANDA_DEFAULT_FLAGS;
 const GENERATED_VANILLA_SHEEP_DEFAULT_WOOL: i8 = 0;
 pub const VANILLA_SHEEP_DEFAULT_WOOL: i8 = GENERATED_VANILLA_SHEEP_DEFAULT_WOOL;
+const GENERATED_VANILLA_SNIFFER_DEFAULT_STATE: i32 = 0;
+pub const VANILLA_SNIFFER_DEFAULT_STATE: i32 = GENERATED_VANILLA_SNIFFER_DEFAULT_STATE;
+const GENERATED_VANILLA_SNIFFER_DEFAULT_DROP_SEED_AT_TICK: i32 = 0;
+pub const VANILLA_SNIFFER_DEFAULT_DROP_SEED_AT_TICK: i32 =
+    GENERATED_VANILLA_SNIFFER_DEFAULT_DROP_SEED_AT_TICK;
 const GENERATED_VANILLA_TURTLE_DEFAULT_HAS_EGG: bool = false;
 pub const VANILLA_TURTLE_DEFAULT_HAS_EGG: bool = GENERATED_VANILLA_TURTLE_DEFAULT_HAS_EGG;
 const GENERATED_VANILLA_TURTLE_DEFAULT_LAYING_EGG: bool = false;
@@ -9860,7 +9886,7 @@ pub const VANILLA_ENTITY_METADATA_ACCESSORS_26_1: &[VanillaEntityMetadataAccesso
         data_id: 18,
         source_path: "net/minecraft/world/entity/animal/sniffer/Sniffer.java",
         default_expression: "Sniffer.State.IDLING",
-        typed_default: None,
+        typed_default: Some(VanillaEntityMetadataDefault::Int(0)),
     },
     VanillaEntityMetadataAccessorCatalogEntry {
         owner: "net.minecraft.world.entity.animal.sniffer.Sniffer",
@@ -11554,6 +11580,13 @@ pub const VANILLA_ENTITY_METADATA_DEFAULT_RESOLVER_EVIDENCE_26_1: &[VanillaEntit
         evidence_member: "net.minecraft.world.entity.animal.fox.Fox.Variant.DEFAULT -> RED",
         source_expression: "Fox.Variant.DEFAULT.getId ()",
         reason: "the synced INT default is stored in a nested enum constant rather than an integer expression",
+    },
+    VanillaEntityMetadataResolverEvidence {
+        java_class: "net.minecraft.world.entity.animal.sniffer.Sniffer",
+        accessor_name: "DATA_STATE",
+        evidence_member: "net.minecraft.world.entity.animal.sniffer.Sniffer.State.IDLING",
+        source_expression: "Sniffer.State.IDLING",
+        reason: "the synced enum default is encoded by an explicit enum constructor id",
     },
 ];
 
@@ -13963,6 +13996,29 @@ const SHEEP_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFam
     own_flags: SHEEP_FLAGS,
 };
 
+const SNIFFER_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_STATE",
+        data_id: 18,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_SNIFFER_STATE_ID,
+        default: VanillaEntityMetadataDefault::Int(0),
+    },
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_DROP_SEED_AT_TICK",
+        data_id: 19,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+        default: VanillaEntityMetadataDefault::Int(0),
+    },
+];
+const SNIFFER_FLAGS: &[VanillaEntityMetadataFlagSchema] = &[];
+const SNIFFER_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamilySchema {
+    family: VanillaEntityMetadataFamily::Sniffer,
+    parent: Some(VanillaEntityMetadataFamily::AgeableMob),
+    inherited_field_count: 18,
+    own_fields: SNIFFER_FIELDS,
+    own_flags: SNIFFER_FLAGS,
+};
+
 const TURTLE_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[
     VanillaEntityMetadataFieldSchema {
         name: "HAS_EGG",
@@ -15050,6 +15106,7 @@ pub(super) const fn generated_entity_metadata_schema(
         VanillaEntityMetadataFamily::Panda => &PANDA_SCHEMA,
         VanillaEntityMetadataFamily::PolarBear => &POLARBEAR_SCHEMA,
         VanillaEntityMetadataFamily::Sheep => &SHEEP_SCHEMA,
+        VanillaEntityMetadataFamily::Sniffer => &SNIFFER_SCHEMA,
         VanillaEntityMetadataFamily::Turtle => &TURTLE_SCHEMA,
         VanillaEntityMetadataFamily::AbstractHorse => &ABSTRACTHORSE_SCHEMA,
         VanillaEntityMetadataFamily::Camel => &CAMEL_SCHEMA,

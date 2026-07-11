@@ -499,7 +499,7 @@ back into a todo. Do not delete these.
   `Avatar`, `Player`, `AgeableMob -> AbstractHorse -> Camel` / `Horse` /
   `AbstractChestedHorse -> Llama` / `TamableAnimal -> Parrot` / `Rabbit` / `PolarBear` /
   `Bee` / `Axolotl` / `Dolphin` / `GlowSquid` / `Goat` / `Fox` / `Ocelot` / `Panda` / `Sheep` /
-  `Turtle`,
+  `Sniffer` / `Turtle`,
   `ArmorStand`,
   `Slime` (also consumed by `MagmaCube`), `Shulker`, `Zombie`, `Mob -> Guardian` /
   `SnowGolem` / `Bat` /

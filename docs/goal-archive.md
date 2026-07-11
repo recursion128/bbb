@@ -9911,3 +9911,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   1/4/8/16/32/64/128；type default 由 `Variant.DEFAULT -> RED(0, …)` 的参数0机械求值。
   world animation/render-state 与 native model/debug-save 删除手抄 synced id/default/mask；
   variant clamp、trusted-list SNBT 与动画 easing 仍由对应语义 owner 管理。
+
+## 2026-07-11：Generated enum constructor-id resolver 与 Sniffer metadata
+
+- [x] generator 新增共用的 enum-constant constructor-id 派生 helper，default resolver 与
+  公开 enum id alias 均从 Tree-sitter CST 的 enum constant 参数求值，不把声明顺序猜成
+  wire id。首个消费者 `AgeableMob -> Sniffer` 生成 state id18/default IDLING(0)、
+  drop-seed tick id19/default0，以及七个 state ids 0–6；world animation/dimensions 删除手抄
+  synced id/default/state id。动画状态机、digging bounds 和 seed-drop 行为仍由对应语义
+  owner 管理。

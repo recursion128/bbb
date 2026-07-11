@@ -33,6 +33,7 @@ pub enum VanillaEntityMetadataFamily {
     Panda,
     PolarBear,
     Sheep,
+    Sniffer,
     Turtle,
     AbstractHorse,
     Camel,
@@ -374,6 +375,7 @@ mod tests {
             VanillaEntityMetadataFamily::Panda,
             VanillaEntityMetadataFamily::PolarBear,
             VanillaEntityMetadataFamily::Sheep,
+            VanillaEntityMetadataFamily::Sniffer,
             VanillaEntityMetadataFamily::Turtle,
             VanillaEntityMetadataFamily::AbstractHorse,
             VanillaEntityMetadataFamily::Camel,
@@ -597,6 +599,24 @@ mod tests {
         assert_eq!(VANILLA_SHEEP_WOOL_DATA_ID, 18);
         assert_eq!(VANILLA_SHEEP_DEFAULT_WOOL, 0);
         assert_eq!(VANILLA_SHEEP_FLAG_SHEARED, 16);
+        let sniffer = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Sniffer);
+        assert_eq!(
+            sniffer.parent,
+            Some(VanillaEntityMetadataFamily::AgeableMob)
+        );
+        assert_eq!(sniffer.inherited_field_count, 18);
+        assert_eq!(sniffer.own_fields.len(), 2);
+        assert_eq!(VANILLA_SNIFFER_STATE_DATA_ID, 18);
+        assert_eq!(VANILLA_SNIFFER_DROP_SEED_AT_TICK_DATA_ID, 19);
+        assert_eq!(VANILLA_SNIFFER_DEFAULT_STATE, 0);
+        assert_eq!(VANILLA_SNIFFER_DEFAULT_DROP_SEED_AT_TICK, 0);
+        assert_eq!(VANILLA_SNIFFER_STATE_IDLING_ID, 0);
+        assert_eq!(VANILLA_SNIFFER_STATE_FEELING_HAPPY_ID, 1);
+        assert_eq!(VANILLA_SNIFFER_STATE_SCENTING_ID, 2);
+        assert_eq!(VANILLA_SNIFFER_STATE_SNIFFING_ID, 3);
+        assert_eq!(VANILLA_SNIFFER_STATE_SEARCHING_ID, 4);
+        assert_eq!(VANILLA_SNIFFER_STATE_DIGGING_ID, 5);
+        assert_eq!(VANILLA_SNIFFER_STATE_RISING_ID, 6);
         let turtle = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Turtle);
         assert_eq!(turtle.parent, Some(VanillaEntityMetadataFamily::AgeableMob));
         assert_eq!(turtle.inherited_field_count, 18);
@@ -672,7 +692,7 @@ mod tests {
         assert_eq!(VANILLA_SALMON_DEFAULT_VARIANT, 1);
         assert_eq!(
             VANILLA_ENTITY_METADATA_DEFAULT_RESOLVER_EVIDENCE_26_1.len(),
-            4
+            5
         );
         let default_evidence = |java_class| {
             VANILLA_ENTITY_METADATA_DEFAULT_RESOLVER_EVIDENCE_26_1
@@ -713,6 +733,13 @@ mod tests {
         assert_eq!(
             fox_default_evidence.source_expression,
             "Fox.Variant.DEFAULT.getId ()"
+        );
+        let sniffer_default_evidence =
+            default_evidence("net.minecraft.world.entity.animal.sniffer.Sniffer");
+        assert_eq!(sniffer_default_evidence.accessor_name, "DATA_STATE");
+        assert_eq!(
+            sniffer_default_evidence.source_expression,
+            "Sniffer.State.IDLING"
         );
         for evidence in VANILLA_ENTITY_METADATA_DEFAULT_RESOLVER_EVIDENCE_26_1 {
             assert!(!evidence.evidence_member.is_empty());
