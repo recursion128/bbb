@@ -488,5 +488,9 @@ pub(super) fn pillager_is_charging_crossbow(
     values: &[bbb_protocol::packets::EntityDataValue],
 ) -> bool {
     entity_type_id == VANILLA_ENTITY_TYPE_PILLAGER_ID
-        && entity_data_bool(values, PILLAGER_IS_CHARGING_CROSSBOW_DATA_ID, false)
+        && entity_data_bool(
+            values,
+            PILLAGER_IS_CHARGING_CROSSBOW_DATA_ID,
+            PILLAGER_DEFAULT_CHARGING_CROSSBOW,
+        )
 }

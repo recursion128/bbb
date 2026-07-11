@@ -43,6 +43,8 @@ pub enum VanillaEntityMetadataFamily {
     Hoglin,
     AbstractPiglin,
     Piglin,
+    Raider,
+    Pillager,
     AbstractFish,
     Pufferfish,
     VehicleEntity,
@@ -329,6 +331,8 @@ mod tests {
             VanillaEntityMetadataFamily::Hoglin,
             VanillaEntityMetadataFamily::AbstractPiglin,
             VanillaEntityMetadataFamily::Piglin,
+            VanillaEntityMetadataFamily::Raider,
+            VanillaEntityMetadataFamily::Pillager,
             VanillaEntityMetadataFamily::AbstractFish,
             VanillaEntityMetadataFamily::Pufferfish,
             VanillaEntityMetadataFamily::VehicleEntity,
@@ -765,6 +769,18 @@ mod tests {
         assert!(!VANILLA_PIGLIN_DEFAULT_BABY);
         assert!(!VANILLA_PIGLIN_DEFAULT_CHARGING_CROSSBOW);
         assert!(!VANILLA_PIGLIN_DEFAULT_DANCING);
+        let raider = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Raider);
+        assert_eq!(raider.parent, Some(VanillaEntityMetadataFamily::Mob));
+        assert_eq!(raider.inherited_field_count, 16);
+        assert_eq!(raider.own_fields.len(), 1);
+        let pillager = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Pillager);
+        assert_eq!(pillager.parent, Some(VanillaEntityMetadataFamily::Raider));
+        assert_eq!(pillager.inherited_field_count, 17);
+        assert_eq!(pillager.own_fields.len(), 1);
+        assert_eq!(VANILLA_RAIDER_CELEBRATING_DATA_ID, 16);
+        assert_eq!(VANILLA_PILLAGER_CHARGING_CROSSBOW_DATA_ID, 17);
+        assert!(!VANILLA_RAIDER_DEFAULT_CELEBRATING);
+        assert!(!VANILLA_PILLAGER_DEFAULT_CHARGING_CROSSBOW);
         let abstract_fish =
             vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::AbstractFish);
         assert_eq!(abstract_fish.parent, Some(VanillaEntityMetadataFamily::Mob));

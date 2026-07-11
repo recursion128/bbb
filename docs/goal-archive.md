@@ -9754,3 +9754,10 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   id 16/default 0，并由 evidence-backed method resolver 从 `isPlayerCreated()` 的 `& 1`
   提取 player-created mask；F3+I 删除 id/default/mask 手抄值。未修改 attack/flower timer、
   persistent anger 或 renderer。
+
+## 2026-07-11：Generated entity metadata consumers（Raider / Pillager）
+
+- [x] 从 generated catalog 建立 `Mob -> Raider -> Pillager` chain：BOOLEAN celebrating
+  id 16/default false 与 charging-crossbow id 17/default false 替代 world/native 手抄值；
+  use-tick、celebrating 与 crossbow arm poses 统一消费 generated aliases。Wave/CanJoinRaid
+  不是 synced metadata，仍由保存语义 owner 管理。

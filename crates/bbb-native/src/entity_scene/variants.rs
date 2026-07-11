@@ -864,7 +864,11 @@ pub(super) fn illager_celebrating(
 ) -> bool {
     (entity_type_id == VANILLA_ENTITY_TYPE_EVOKER_ID
         || entity_type_id == VANILLA_ENTITY_TYPE_VINDICATOR_ID)
-        && entity_data_bool(values, RAIDER_IS_CELEBRATING_DATA_ID, false)
+        && entity_data_bool(
+            values,
+            RAIDER_IS_CELEBRATING_DATA_ID,
+            RAIDER_DEFAULT_CELEBRATING,
+        )
 }
 
 /// Vanilla `Piglin.isDancing()` (the synced `DATA_IS_DANCING` boolean, id 19): drives the piglin's

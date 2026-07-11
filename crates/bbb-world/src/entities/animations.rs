@@ -39,6 +39,8 @@ use super::schema::{
     VANILLA_GUARDIAN_MOVING_DATA_ID as GUARDIAN_MOVING_DATA_ID,
     VANILLA_PIGLIN_CHARGING_CROSSBOW_DATA_ID as PIGLIN_IS_CHARGING_CROSSBOW_DATA_ID,
     VANILLA_PIGLIN_DEFAULT_CHARGING_CROSSBOW as PIGLIN_DEFAULT_CHARGING_CROSSBOW,
+    VANILLA_PILLAGER_CHARGING_CROSSBOW_DATA_ID as PILLAGER_IS_CHARGING_CROSSBOW_DATA_ID,
+    VANILLA_PILLAGER_DEFAULT_CHARGING_CROSSBOW as PILLAGER_DEFAULT_CHARGING_CROSSBOW,
     VANILLA_SHULKER_DEFAULT_PEEK as SHULKER_DEFAULT_PEEK,
     VANILLA_SHULKER_PEEK_DATA_ID as SHULKER_PEEK_DATA_ID,
     VANILLA_VEHICLE_DAMAGE_DATA_ID as VEHICLE_DAMAGE_DATA_ID,
@@ -226,7 +228,6 @@ const CAMEL_DASH_DATA_ID: u8 = 19;
 /// (Entity 0–7, LivingEntity 8–14, Mob 15, `Raider.IS_CELEBRATING` 16, then `Pillager`'s first own
 /// accessor). While set, the pillager is drawing its crossbow, and the client reconstructs
 /// `getTicksUsingItem` by counting ticks since the flag rose (the using-item flag rises with it).
-const PILLAGER_IS_CHARGING_CROSSBOW_DATA_ID: u8 = 17;
 /// Vanilla `Piglin.DATA_IS_CHARGING_CROSSBOW` synched-data id (18, the regular piglin's own slot — past
 /// `DATA_BABY_ID`, `DATA_IS_IMMUNE_TO_ZOMBIFICATION`). Drives the same crossbow-draw counter as the
 /// pillager (the flag is a different id on a different class, so read it under a piglin type gate).
@@ -5984,7 +5985,11 @@ fn copper_golem_state_id(data_values: &[EntityDataValue]) -> i32 {
 /// Read straight from the entity metadata in the tick loop; non-pillagers (whose synced slot `17` is not
 /// this boolean — e.g. the spellcaster illagers' `DATA_SPELL_CASTING_ID` byte) fall back to `false`.
 pub(crate) fn pillager_is_charging_crossbow(data_values: &[EntityDataValue]) -> bool {
-    entity_data_bool(data_values, PILLAGER_IS_CHARGING_CROSSBOW_DATA_ID, false)
+    entity_data_bool(
+        data_values,
+        PILLAGER_IS_CHARGING_CROSSBOW_DATA_ID,
+        PILLAGER_DEFAULT_CHARGING_CROSSBOW,
+    )
 }
 
 /// Vanilla `Piglin.isChargingCrossbow()` (`entityData.get(DATA_IS_CHARGING_CROSSBOW)`): the synced boolean

@@ -173,6 +173,11 @@ pub const VANILLA_PIGLIN_CHARGING_CROSSBOW_DATA_ID: u8 =
     GENERATED_VANILLA_PIGLIN_CHARGING_CROSSBOW_DATA_ID;
 const GENERATED_VANILLA_PIGLIN_DANCING_DATA_ID: u8 = 19;
 pub const VANILLA_PIGLIN_DANCING_DATA_ID: u8 = GENERATED_VANILLA_PIGLIN_DANCING_DATA_ID;
+const GENERATED_VANILLA_RAIDER_CELEBRATING_DATA_ID: u8 = 16;
+pub const VANILLA_RAIDER_CELEBRATING_DATA_ID: u8 = GENERATED_VANILLA_RAIDER_CELEBRATING_DATA_ID;
+const GENERATED_VANILLA_PILLAGER_CHARGING_CROSSBOW_DATA_ID: u8 = 17;
+pub const VANILLA_PILLAGER_CHARGING_CROSSBOW_DATA_ID: u8 =
+    GENERATED_VANILLA_PILLAGER_CHARGING_CROSSBOW_DATA_ID;
 const GENERATED_VANILLA_ABSTRACT_FISH_FROM_BUCKET_DATA_ID: u8 = 16;
 pub const VANILLA_ABSTRACT_FISH_FROM_BUCKET_DATA_ID: u8 =
     GENERATED_VANILLA_ABSTRACT_FISH_FROM_BUCKET_DATA_ID;
@@ -421,6 +426,11 @@ pub const VANILLA_PIGLIN_DEFAULT_CHARGING_CROSSBOW: bool =
     GENERATED_VANILLA_PIGLIN_DEFAULT_CHARGING_CROSSBOW;
 const GENERATED_VANILLA_PIGLIN_DEFAULT_DANCING: bool = false;
 pub const VANILLA_PIGLIN_DEFAULT_DANCING: bool = GENERATED_VANILLA_PIGLIN_DEFAULT_DANCING;
+const GENERATED_VANILLA_RAIDER_DEFAULT_CELEBRATING: bool = false;
+pub const VANILLA_RAIDER_DEFAULT_CELEBRATING: bool = GENERATED_VANILLA_RAIDER_DEFAULT_CELEBRATING;
+const GENERATED_VANILLA_PILLAGER_DEFAULT_CHARGING_CROSSBOW: bool = false;
+pub const VANILLA_PILLAGER_DEFAULT_CHARGING_CROSSBOW: bool =
+    GENERATED_VANILLA_PILLAGER_DEFAULT_CHARGING_CROSSBOW;
 const GENERATED_VANILLA_ABSTRACT_FISH_DEFAULT_FROM_BUCKET: bool = false;
 pub const VANILLA_ABSTRACT_FISH_DEFAULT_FROM_BUCKET: bool =
     GENERATED_VANILLA_ABSTRACT_FISH_DEFAULT_FROM_BUCKET;
@@ -13728,6 +13738,36 @@ const PIGLIN_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFa
     own_flags: PIGLIN_FLAGS,
 };
 
+const RAIDER_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[VanillaEntityMetadataFieldSchema {
+    name: "IS_CELEBRATING",
+    data_id: 16,
+    serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+    default: VanillaEntityMetadataDefault::Boolean(false),
+}];
+const RAIDER_FLAGS: &[VanillaEntityMetadataFlagSchema] = &[];
+const RAIDER_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamilySchema {
+    family: VanillaEntityMetadataFamily::Raider,
+    parent: Some(VanillaEntityMetadataFamily::Mob),
+    inherited_field_count: 16,
+    own_fields: RAIDER_FIELDS,
+    own_flags: RAIDER_FLAGS,
+};
+
+const PILLAGER_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[VanillaEntityMetadataFieldSchema {
+    name: "IS_CHARGING_CROSSBOW",
+    data_id: 17,
+    serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+    default: VanillaEntityMetadataDefault::Boolean(false),
+}];
+const PILLAGER_FLAGS: &[VanillaEntityMetadataFlagSchema] = &[];
+const PILLAGER_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamilySchema {
+    family: VanillaEntityMetadataFamily::Pillager,
+    parent: Some(VanillaEntityMetadataFamily::Raider),
+    inherited_field_count: 17,
+    own_fields: PILLAGER_FIELDS,
+    own_flags: PILLAGER_FLAGS,
+};
+
 const ABSTRACTFISH_FIELDS: &[VanillaEntityMetadataFieldSchema] =
     &[VanillaEntityMetadataFieldSchema {
         name: "FROM_BUCKET",
@@ -14011,6 +14051,8 @@ pub(super) const fn generated_entity_metadata_schema(
         VanillaEntityMetadataFamily::Hoglin => &HOGLIN_SCHEMA,
         VanillaEntityMetadataFamily::AbstractPiglin => &ABSTRACTPIGLIN_SCHEMA,
         VanillaEntityMetadataFamily::Piglin => &PIGLIN_SCHEMA,
+        VanillaEntityMetadataFamily::Raider => &RAIDER_SCHEMA,
+        VanillaEntityMetadataFamily::Pillager => &PILLAGER_SCHEMA,
         VanillaEntityMetadataFamily::AbstractFish => &ABSTRACTFISH_SCHEMA,
         VanillaEntityMetadataFamily::Pufferfish => &PUFFERFISH_SCHEMA,
         VanillaEntityMetadataFamily::VehicleEntity => &VEHICLEENTITY_SCHEMA,

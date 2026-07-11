@@ -98,6 +98,12 @@ pub(crate) use bbb_world::{
     VANILLA_PHANTOM_DEFAULT_SIZE as PHANTOM_DEFAULT_SIZE,
     VANILLA_PHANTOM_SIZE_DATA_ID as PHANTOM_SIZE_DATA_ID,
 };
+use bbb_world::{
+    VANILLA_PILLAGER_CHARGING_CROSSBOW_DATA_ID as PILLAGER_IS_CHARGING_CROSSBOW_DATA_ID,
+    VANILLA_PILLAGER_DEFAULT_CHARGING_CROSSBOW as PILLAGER_DEFAULT_CHARGING_CROSSBOW,
+    VANILLA_RAIDER_CELEBRATING_DATA_ID as RAIDER_IS_CELEBRATING_DATA_ID,
+    VANILLA_RAIDER_DEFAULT_CELEBRATING as RAIDER_DEFAULT_CELEBRATING,
+};
 pub(crate) use bbb_world::{
     VANILLA_PUFFERFISH_DEFAULT_PUFF_STATE as PUFFERFISH_DEFAULT_PUFF_STATE,
     VANILLA_PUFFERFISH_PUFF_STATE_DATA_ID as PUFFERFISH_PUFF_STATE_DATA_ID,
@@ -196,11 +202,9 @@ const SPELLCASTER_ILLAGER_CASTING_DATA_ID: u8 = 17;
 /// crossbow, the first `Pillager` accessor after `Raider.IS_CELEBRATING` (16) — the same slot the
 /// spellcaster illagers use for `DATA_SPELL_CASTING_ID`, since each illager subclass adds its own
 /// accessor in that position. `getArmPose` returns `CROSSBOW_CHARGE` while true, else `CROSSBOW_HOLD`.
-const PILLAGER_IS_CHARGING_CROSSBOW_DATA_ID: u8 = 17;
 /// Vanilla `Raider.IS_CELEBRATING` data id (16): the boolean set while a raider celebrates a raid
 /// victory, the first `Raider` accessor after `Mob.DATA_MOB_FLAGS_ID` (15). The evoker and vindicator
 /// `getArmPose` return `CELEBRATING` while it is true (when not casting / not aggressive).
-const RAIDER_IS_CELEBRATING_DATA_ID: u8 = 16;
 // Salmon (`Salmon.DATA_TYPE`): AbstractFish defines FROM_BUCKET at index 16, so the size
 // variant is index 17. Defaults to 1 (`Salmon.Variant.MEDIUM`).
 const SALMON_VARIANT_DATA_ID: u8 = 17;
