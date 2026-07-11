@@ -498,7 +498,7 @@ back into a todo. Do not delete these.
   `EnderMan`,
   `Avatar`, `Player`, `AgeableMob -> AbstractHorse -> Camel` / `Horse` /
   `AbstractChestedHorse -> Llama` / `TamableAnimal -> Cat / Wolf` / `Parrot` / `Rabbit` /
-  `AbstractVillager` / `PolarBear` /
+  `AbstractVillager` / `Chicken` / `PolarBear` /
   `Armadillo` / `Bee` / `Axolotl` / `Dolphin` / `GlowSquid` / `HappyGhast` / `Goat` / `Fox` / `Ocelot` / `Panda` / `Sheep` /
   `Sniffer` / `Turtle`,
   `ArmorStand`,

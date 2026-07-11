@@ -205,6 +205,11 @@ const GENERATED_VANILLA_WOLF_VARIANT_DATA_ID: u8 = 23;
 pub const VANILLA_WOLF_VARIANT_DATA_ID: u8 = GENERATED_VANILLA_WOLF_VARIANT_DATA_ID;
 const GENERATED_VANILLA_WOLF_SOUND_VARIANT_DATA_ID: u8 = 24;
 pub const VANILLA_WOLF_SOUND_VARIANT_DATA_ID: u8 = GENERATED_VANILLA_WOLF_SOUND_VARIANT_DATA_ID;
+const GENERATED_VANILLA_CHICKEN_VARIANT_DATA_ID: u8 = 18;
+pub const VANILLA_CHICKEN_VARIANT_DATA_ID: u8 = GENERATED_VANILLA_CHICKEN_VARIANT_DATA_ID;
+const GENERATED_VANILLA_CHICKEN_SOUND_VARIANT_DATA_ID: u8 = 19;
+pub const VANILLA_CHICKEN_SOUND_VARIANT_DATA_ID: u8 =
+    GENERATED_VANILLA_CHICKEN_SOUND_VARIANT_DATA_ID;
 const GENERATED_VANILLA_PARROT_VARIANT_DATA_ID: u8 = 20;
 pub const VANILLA_PARROT_VARIANT_DATA_ID: u8 = GENERATED_VANILLA_PARROT_VARIANT_DATA_ID;
 const GENERATED_VANILLA_RABBIT_TYPE_DATA_ID: u8 = 18;
@@ -734,6 +739,12 @@ pub const VANILLA_WOLF_DEFAULT_VARIANT_RESOURCE_ID: &str =
 const GENERATED_VANILLA_WOLF_DEFAULT_SOUND_VARIANT_RESOURCE_ID: &str = "minecraft:classic";
 pub const VANILLA_WOLF_DEFAULT_SOUND_VARIANT_RESOURCE_ID: &str =
     GENERATED_VANILLA_WOLF_DEFAULT_SOUND_VARIANT_RESOURCE_ID;
+const GENERATED_VANILLA_CHICKEN_DEFAULT_VARIANT_RESOURCE_ID: &str = "minecraft:temperate";
+pub const VANILLA_CHICKEN_DEFAULT_VARIANT_RESOURCE_ID: &str =
+    GENERATED_VANILLA_CHICKEN_DEFAULT_VARIANT_RESOURCE_ID;
+const GENERATED_VANILLA_CHICKEN_DEFAULT_SOUND_VARIANT_RESOURCE_ID: &str = "minecraft:classic";
+pub const VANILLA_CHICKEN_DEFAULT_SOUND_VARIANT_RESOURCE_ID: &str =
+    GENERATED_VANILLA_CHICKEN_DEFAULT_SOUND_VARIANT_RESOURCE_ID;
 const GENERATED_VANILLA_PARROT_DEFAULT_VARIANT: i32 = 0;
 pub const VANILLA_PARROT_DEFAULT_VARIANT: i32 = GENERATED_VANILLA_PARROT_DEFAULT_VARIANT;
 const GENERATED_VANILLA_RABBIT_DEFAULT_TYPE: i32 = 0;
@@ -9456,7 +9467,7 @@ pub const VANILLA_ENTITY_METADATA_ACCESSORS_26_1: &[VanillaEntityMetadataAccesso
         data_id: 18,
         source_path: "net/minecraft/world/entity/animal/chicken/Chicken.java",
         default_expression: "VariantUtils.getDefaultOrAny (this.registryAccess (), ChickenVariants.TEMPERATE)",
-        typed_default: None,
+        typed_default: Some(VanillaEntityMetadataDefault::RegistryHolderResource("minecraft:temperate")),
     },
     VanillaEntityMetadataAccessorCatalogEntry {
         owner: "net.minecraft.world.entity.animal.chicken.Chicken",
@@ -9467,7 +9478,7 @@ pub const VANILLA_ENTITY_METADATA_ACCESSORS_26_1: &[VanillaEntityMetadataAccesso
         data_id: 19,
         source_path: "net/minecraft/world/entity/animal/chicken/Chicken.java",
         default_expression: "chickenSoundVariants.get (ChickenSoundVariants.CLASSIC).or (chickenSoundVariants::getAny).orElseThrow ()",
-        typed_default: None,
+        typed_default: Some(VanillaEntityMetadataDefault::RegistryHolderResource("minecraft:classic")),
     },
     VanillaEntityMetadataAccessorCatalogEntry {
         owner: "net.minecraft.world.entity.animal.cow.Cow",
@@ -11809,6 +11820,20 @@ pub const VANILLA_ENTITY_METADATA_DEFAULT_RESOLVER_EVIDENCE_26_1: &[VanillaEntit
         accessor_name: "DATA_SOUND_VARIANT_ID",
         evidence_member: "net.minecraft.world.entity.animal.wolf.WolfSoundVariants.CLASSIC -> WolfSoundVariants.createKey -> SoundSet.getIdentifier -> SoundSet.CLASSIC",
         source_expression: "wolfSoundVariants.get (WolfSoundVariants.CLASSIC).or (wolfSoundVariants::getAny).orElseThrow () -> createKey (WolfSoundVariants.SoundSet.CLASSIC) -> ResourceKey.create (Registries.WOLF_SOUND_VARIANT, Identifier.withDefaultNamespace (wolfSoundVariant.getIdentifier ())) -> this.identifier -> \"classic\"",
+        reason: "the synced holder default is a resource key with registry fallback rather than a numeric registry id",
+    },
+    VanillaEntityMetadataResolverEvidence {
+        java_class: "net.minecraft.world.entity.animal.chicken.Chicken",
+        accessor_name: "DATA_VARIANT_ID",
+        evidence_member: "net.minecraft.world.entity.animal.chicken.ChickenVariants.TEMPERATE -> TemperatureVariants.TEMPERATE -> ChickenVariants.createKey",
+        source_expression: "VariantUtils.getDefaultOrAny (this.registryAccess (), ChickenVariants.TEMPERATE) -> createKey (TemperatureVariants.TEMPERATE) -> Identifier.withDefaultNamespace (\"temperate\") -> ResourceKey.create (Registries.CHICKEN_VARIANT, id)",
+        reason: "the synced holder default is a resource key selected through TemperatureVariants rather than a numeric registry id",
+    },
+    VanillaEntityMetadataResolverEvidence {
+        java_class: "net.minecraft.world.entity.animal.chicken.Chicken",
+        accessor_name: "DATA_SOUND_VARIANT_ID",
+        evidence_member: "net.minecraft.world.entity.animal.chicken.ChickenSoundVariants.CLASSIC -> ChickenSoundVariants.createKey -> SoundSet.getIdentifier -> SoundSet.CLASSIC",
+        source_expression: "chickenSoundVariants.get (ChickenSoundVariants.CLASSIC).or (chickenSoundVariants::getAny).orElseThrow () -> createKey (ChickenSoundVariants.SoundSet.CLASSIC) -> ResourceKey.create (Registries.CHICKEN_SOUND_VARIANT, Identifier.withDefaultNamespace (chickenSoundVariant.getIdentifier ())) -> this.identifier -> \"classic\"",
         reason: "the synced holder default is a resource key with registry fallback rather than a numeric registry id",
     },
     VanillaEntityMetadataResolverEvidence {
@@ -14576,6 +14601,29 @@ const WOLF_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFami
     own_flags: WOLF_FLAGS,
 };
 
+const CHICKEN_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_VARIANT_ID",
+        data_id: 18,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_CHICKEN_VARIANT_ID,
+        default: VanillaEntityMetadataDefault::RegistryHolderResource("minecraft:temperate"),
+    },
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_SOUND_VARIANT_ID",
+        data_id: 19,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_CHICKEN_SOUND_VARIANT_ID,
+        default: VanillaEntityMetadataDefault::RegistryHolderResource("minecraft:classic"),
+    },
+];
+const CHICKEN_FLAGS: &[VanillaEntityMetadataFlagSchema] = &[];
+const CHICKEN_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamilySchema {
+    family: VanillaEntityMetadataFamily::Chicken,
+    parent: Some(VanillaEntityMetadataFamily::AgeableMob),
+    inherited_field_count: 18,
+    own_fields: CHICKEN_FIELDS,
+    own_flags: CHICKEN_FLAGS,
+};
+
 const PARROT_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[VanillaEntityMetadataFieldSchema {
     name: "DATA_VARIANT_ID",
     data_id: 20,
@@ -15605,6 +15653,7 @@ pub(super) const fn generated_entity_metadata_schema(
         VanillaEntityMetadataFamily::TamableAnimal => &TAMABLEANIMAL_SCHEMA,
         VanillaEntityMetadataFamily::Cat => &CAT_SCHEMA,
         VanillaEntityMetadataFamily::Wolf => &WOLF_SCHEMA,
+        VanillaEntityMetadataFamily::Chicken => &CHICKEN_SCHEMA,
         VanillaEntityMetadataFamily::Parrot => &PARROT_SCHEMA,
         VanillaEntityMetadataFamily::Rabbit => &RABBIT_SCHEMA,
         VanillaEntityMetadataFamily::AbstractVillager => &ABSTRACTVILLAGER_SCHEMA,

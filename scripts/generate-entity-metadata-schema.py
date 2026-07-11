@@ -84,6 +84,7 @@ FAMILIES = (
     FamilySpec("TamableAnimal", "net.minecraft.world.entity.TamableAnimal", "AgeableMob"),
     FamilySpec("Cat", "net.minecraft.world.entity.animal.feline.Cat", "TamableAnimal"),
     FamilySpec("Wolf", "net.minecraft.world.entity.animal.wolf.Wolf", "TamableAnimal"),
+    FamilySpec("Chicken", "net.minecraft.world.entity.animal.chicken.Chicken", "AgeableMob"),
     FamilySpec("Parrot", "net.minecraft.world.entity.animal.parrot.Parrot", "TamableAnimal"),
     FamilySpec("Rabbit", "net.minecraft.world.entity.animal.rabbit.Rabbit", "AgeableMob"),
     FamilySpec(
@@ -278,6 +279,8 @@ DATA_ALIASES = {
     "VANILLA_WOLF_ANGER_END_TIME_DATA_ID": ("net.minecraft.world.entity.animal.wolf.Wolf", "DATA_ANGER_END_TIME"),
     "VANILLA_WOLF_VARIANT_DATA_ID": ("net.minecraft.world.entity.animal.wolf.Wolf", "DATA_VARIANT_ID"),
     "VANILLA_WOLF_SOUND_VARIANT_DATA_ID": ("net.minecraft.world.entity.animal.wolf.Wolf", "DATA_SOUND_VARIANT_ID"),
+    "VANILLA_CHICKEN_VARIANT_DATA_ID": ("net.minecraft.world.entity.animal.chicken.Chicken", "DATA_VARIANT_ID"),
+    "VANILLA_CHICKEN_SOUND_VARIANT_DATA_ID": ("net.minecraft.world.entity.animal.chicken.Chicken", "DATA_SOUND_VARIANT_ID"),
     "VANILLA_PARROT_VARIANT_DATA_ID": ("net.minecraft.world.entity.animal.parrot.Parrot", "DATA_VARIANT_ID"),
     "VANILLA_RABBIT_TYPE_DATA_ID": ("net.minecraft.world.entity.animal.rabbit.Rabbit", "DATA_TYPE_ID"),
     "VANILLA_ABSTRACT_VILLAGER_UNHAPPY_COUNTER_DATA_ID": ("net.minecraft.world.entity.npc.villager.AbstractVillager", "DATA_UNHAPPY_COUNTER"),
@@ -430,6 +433,8 @@ DEFAULT_ALIASES = {
     "VANILLA_WOLF_DEFAULT_ANGER_END_TIME": ("net.minecraft.world.entity.animal.wolf.Wolf", "DATA_ANGER_END_TIME"),
     "VANILLA_WOLF_DEFAULT_VARIANT_RESOURCE_ID": ("net.minecraft.world.entity.animal.wolf.Wolf", "DATA_VARIANT_ID"),
     "VANILLA_WOLF_DEFAULT_SOUND_VARIANT_RESOURCE_ID": ("net.minecraft.world.entity.animal.wolf.Wolf", "DATA_SOUND_VARIANT_ID"),
+    "VANILLA_CHICKEN_DEFAULT_VARIANT_RESOURCE_ID": ("net.minecraft.world.entity.animal.chicken.Chicken", "DATA_VARIANT_ID"),
+    "VANILLA_CHICKEN_DEFAULT_SOUND_VARIANT_RESOURCE_ID": ("net.minecraft.world.entity.animal.chicken.Chicken", "DATA_SOUND_VARIANT_ID"),
     "VANILLA_PARROT_DEFAULT_VARIANT": ("net.minecraft.world.entity.animal.parrot.Parrot", "DATA_VARIANT_ID"),
     "VANILLA_RABBIT_DEFAULT_TYPE": ("net.minecraft.world.entity.animal.rabbit.Rabbit", "DATA_TYPE_ID"),
     "VANILLA_ABSTRACT_VILLAGER_DEFAULT_UNHAPPY_COUNTER": ("net.minecraft.world.entity.npc.villager.AbstractVillager", "DATA_UNHAPPY_COUNTER"),
@@ -844,6 +849,67 @@ STATIC_REGISTRY_RESOURCE_DEFAULT_RESOLVERS = (
         ),
         (
             "net.minecraft.world.entity.animal.wolf.WolfSoundVariants.SoundSet",
+            "CLASSIC",
+            0,
+            '"classic"',
+        ),
+        "minecraft:classic",
+        "the synced holder default is a resource key with registry fallback rather than a numeric registry id",
+    ),
+    (
+        "net.minecraft.world.entity.animal.chicken.Chicken",
+        "DATA_VARIANT_ID",
+        "CHICKEN_VARIANT",
+        "VariantUtils.getDefaultOrAny (this.registryAccess (), ChickenVariants.TEMPERATE)",
+        (
+            (
+                "net.minecraft.world.entity.animal.chicken.ChickenVariants",
+                "TEMPERATE",
+                "createKey (TemperatureVariants.TEMPERATE)",
+            ),
+            (
+                "net.minecraft.world.entity.animal.TemperatureVariants",
+                "TEMPERATE",
+                'Identifier.withDefaultNamespace ("temperate")',
+            ),
+        ),
+        (
+            (
+                "net.minecraft.world.entity.animal.chicken.ChickenVariants",
+                "createKey",
+                "ResourceKey.create (Registries.CHICKEN_VARIANT, id)",
+            ),
+        ),
+        None,
+        "minecraft:temperate",
+        "the synced holder default is a resource key selected through TemperatureVariants rather than a numeric registry id",
+    ),
+    (
+        "net.minecraft.world.entity.animal.chicken.Chicken",
+        "DATA_SOUND_VARIANT_ID",
+        "CHICKEN_SOUND_VARIANT",
+        "chickenSoundVariants.get (ChickenSoundVariants.CLASSIC).or (chickenSoundVariants::getAny).orElseThrow ()",
+        (
+            (
+                "net.minecraft.world.entity.animal.chicken.ChickenSoundVariants",
+                "CLASSIC",
+                "createKey (ChickenSoundVariants.SoundSet.CLASSIC)",
+            ),
+        ),
+        (
+            (
+                "net.minecraft.world.entity.animal.chicken.ChickenSoundVariants",
+                "createKey",
+                "ResourceKey.create (Registries.CHICKEN_SOUND_VARIANT, Identifier.withDefaultNamespace (chickenSoundVariant.getIdentifier ()))",
+            ),
+            (
+                "net.minecraft.world.entity.animal.chicken.ChickenSoundVariants.SoundSet",
+                "getIdentifier",
+                "this.identifier",
+            ),
+        ),
+        (
+            "net.minecraft.world.entity.animal.chicken.ChickenSoundVariants.SoundSet",
             "CLASSIC",
             0,
             '"classic"',

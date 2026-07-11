@@ -232,6 +232,12 @@ use bbb_world::{
     VANILLA_CAT_VARIANT_DATA_ID as CAT_VARIANT_DATA_ID,
 };
 use bbb_world::{
+    VANILLA_CHICKEN_DEFAULT_SOUND_VARIANT_RESOURCE_ID as CHICKEN_DEFAULT_SOUND_VARIANT_RESOURCE_ID,
+    VANILLA_CHICKEN_DEFAULT_VARIANT_RESOURCE_ID as CHICKEN_DEFAULT_VARIANT_RESOURCE_ID,
+    VANILLA_CHICKEN_SOUND_VARIANT_DATA_ID as CHICKEN_SOUND_VARIANT_DATA_ID,
+    VANILLA_CHICKEN_VARIANT_DATA_ID as CHICKEN_VARIANT_DATA_ID,
+};
+use bbb_world::{
     VANILLA_COPPER_GOLEM_DEFAULT_WEATHER_STATE as COPPER_GOLEM_DEFAULT_WEATHER_STATE,
     VANILLA_COPPER_GOLEM_WEATHER_STATE_DATA_ID as COPPER_GOLEM_WEATHER_STATE_DATA_ID,
     VANILLA_COPPER_GOLEM_WEATHER_STATE_EXPOSED_ID as COPPER_GOLEM_WEATHER_STATE_EXPOSED_ID,
@@ -543,10 +549,6 @@ const TURTLE_DEFAULT_HOME_POS_Y: i32 = 0;
 const TURTLE_DEFAULT_HOME_POS_Z: i32 = 0;
 const ZOMBIE_NAUTILUS_VARIANT_DATA_ID: u8 = 21;
 const ZOMBIE_NAUTILUS_DEFAULT_VARIANT_ID: i32 = 0;
-const CHICKEN_VARIANT_DATA_ID: u8 = 18;
-const CHICKEN_DEFAULT_VARIANT_ID: i32 = 0;
-const CHICKEN_SOUND_VARIANT_DATA_ID: u8 = 19;
-const CHICKEN_DEFAULT_SOUND_VARIANT_ID: i32 = 0;
 const CHICKEN_DEFAULT_CHICKEN_JOCKEY: bool = false;
 const CHICKEN_DEFAULT_EGG_LAY_TIME: i32 = 0;
 const COW_VARIANT_DATA_ID: u8 = 18;
@@ -6586,27 +6588,24 @@ fn debug_push_chicken_additional_save_data(entity: &EntityState, fields: &mut Ve
         CHICKEN_VARIANT_DATA_ID,
         EntityDataRegistryHolder::ChickenVariant,
     )
-    .unwrap_or(CHICKEN_DEFAULT_VARIANT_ID);
+    .and_then(chicken_variant_resource_id)
+    .unwrap_or(CHICKEN_DEFAULT_VARIANT_RESOURCE_ID);
     let sound_variant = debug_entity_data_registry_id_present(
         entity,
         CHICKEN_SOUND_VARIANT_DATA_ID,
         EntityDataRegistryHolder::ChickenSoundVariant,
     )
-    .unwrap_or(CHICKEN_DEFAULT_SOUND_VARIANT_ID);
+    .and_then(chicken_sound_variant_resource_id)
+    .unwrap_or(CHICKEN_DEFAULT_SOUND_VARIANT_RESOURCE_ID);
     fields.push(format!(
         "IsChickenJockey: {}",
         debug_snbt_bool(CHICKEN_DEFAULT_CHICKEN_JOCKEY)
     ));
     fields.push(format!("EggLayTime: {CHICKEN_DEFAULT_EGG_LAY_TIME}"));
-    fields.push(format!(
-        "variant: {}",
-        debug_snbt_string(chicken_variant_resource_id(variant).unwrap_or("minecraft:temperate"))
-    ));
+    fields.push(format!("variant: {}", debug_snbt_string(variant)));
     fields.push(format!(
         "sound_variant: {}",
-        debug_snbt_string(
-            chicken_sound_variant_resource_id(sound_variant).unwrap_or("minecraft:classic")
-        )
+        debug_snbt_string(sound_variant)
     ));
 }
 

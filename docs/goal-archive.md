@@ -10009,3 +10009,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   animation、native collar/anger/model 与 debug-save 删除手抄 synced ids/defaults；holder 默认
   直接生成 resource id，不把 vanilla bootstrap numeric id 写入 schema。session registry 映射、
   Wolf 模型/愤怒行为、persistent Codec/SNBT 语义仍由对应 owner 管理。
+
+## 2026-07-11：Generated registry-resource defaults 复用与 Chicken metadata
+
+- [x] 复用 Tree-sitter CST 驱动的 registry-resource default resolver，沿
+  `ChickenVariants.TEMPERATE -> TemperatureVariants.TEMPERATE` 与
+  `ChickenSoundVariants.CLASSIC -> SoundSet.CLASSIC` 的源码构造链生成
+  `minecraft:temperate` / `minecraft:classic` 默认资源。建立 `AgeableMob -> Chicken`
+  family：variant id18、sound-variant id19；native model/debug-save 删除手抄 synced ids 与
+  numeric holder defaults。session registry 顺序、Chicken 模型映射、产蛋/骑乘与 persistent
+  Codec/SNBT 语义仍由对应 owner 管理。

@@ -1344,12 +1344,17 @@ pub(super) fn chicken_model_variant(
         .map(|id| {
             if let Some(registry) = variants {
                 chicken_variant_from_registry_id(registry, id)
-                    .unwrap_or(ChickenModelVariant::Temperate)
+                    .unwrap_or_else(chicken_default_model_variant)
             } else {
                 chicken_variant_from_vanilla_registry_id(id)
             }
         })
-        .unwrap_or(ChickenModelVariant::Temperate)
+        .unwrap_or_else(chicken_default_model_variant)
+}
+
+fn chicken_default_model_variant() -> ChickenModelVariant {
+    chicken_variant_from_entry_id(CHICKEN_DEFAULT_VARIANT_RESOURCE_ID)
+        .expect("generated vanilla chicken default variant must map to a model")
 }
 
 pub(super) fn chicken_variant_from_registry_id(
