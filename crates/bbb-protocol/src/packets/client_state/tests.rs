@@ -627,6 +627,17 @@ fn decodes_title_camera_and_ticking_packets() {
         2.5
     );
 
+    let mut trailing = Encoder::new();
+    trailing.write_f32(20.0);
+    trailing.write_bool(true);
+    trailing.write_u8(0);
+    assert!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_TICKING_STATE, &trailing.into_inner())
+            .unwrap_err()
+            .to_string()
+            .contains("trailing bytes after ticking state packet")
+    );
+
     let mut payload = Encoder::new();
     payload.write_var_i32(40);
     let packet =
@@ -635,6 +646,16 @@ fn decodes_title_camera_and_ticking_packets() {
     assert_eq!(
         packet,
         PlayClientbound::TickingStep(TickingStep { tick_steps: 40 })
+    );
+
+    let mut trailing = Encoder::new();
+    trailing.write_var_i32(40);
+    trailing.write_u8(0);
+    assert!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_TICKING_STEP, &trailing.into_inner())
+            .unwrap_err()
+            .to_string()
+            .contains("trailing bytes after ticking step packet")
     );
 
     let mut payload = Encoder::new();

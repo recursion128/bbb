@@ -11215,3 +11215,11 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] bbb 保留全部 numeric holder/state 并推进 paused/rated client clocks，但尚未通过 session
   RegistryAccess 解析 WorldClock identity；`day_time = first()` 不是 HashMap 语义，canonical/runtime
   保持 partial，未把 wire 顺序冒充当前维度 clock。
+
+## 2026-07-11：ticking-state/step packet coverage audit
+
+- [x] 对照 `ClientboundTickingStatePacket`、`ClientboundTickingStepPacket` 与对应 listener handlers
+  锁定 tick-rate f32 + frozen bool、step VarInt wire，并分别拒绝 trailing bytes；canonical/ownership/tests
+  已闭合，frozen step budget 由 native client tick sequence 消费。
+- [x] TickingStep 五格全闭合；TickingState 的 freeze 已生效且 tick-rate 已进入 debug MSPT/tooltip，
+  但 entity/world client tick cadence 仍固定 20Hz，runtime 保持 partial。该状态不代表本地服务器。

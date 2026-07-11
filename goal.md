@@ -402,6 +402,8 @@ PlayerAbilities 的 flags/flying-speed/walking-speed wire、canonical state 与 
 walking-speed 尚未进入 movement attribute base/FOV，runtime 保持 partial。
 SetTime 的 game-time/WorldClock-map wire、ownership 与 tests 已闭合；WorldClock holder 尚未按 session
 registry 解析，不能以 map 第一项冒充当前维度 day-time，canonical/runtime 保持 partial。
+TickingStep 的 frozen step wire、consumption 与 tests 已全行闭合；TickingState 的 freeze 语义已消费，
+但 variable tick-rate 尚未驱动 client tick cadence，runtime 保持 partial。
 
 完成标准：全部 vanilla 26.1 catalog entry 都有矩阵行；所有目标客户端适用项为
 `complete`，其余只有带 vanilla 依据的 `not-applicable` 或带重启判据的窄 `deferred`；

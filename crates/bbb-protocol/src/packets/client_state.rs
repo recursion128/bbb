@@ -517,16 +517,28 @@ pub(super) fn decode_system_chat(decoder: &mut Decoder<'_>) -> Result<SystemChat
 }
 
 pub(super) fn decode_ticking_state(decoder: &mut Decoder<'_>) -> Result<TickingState> {
-    Ok(TickingState {
+    let update = TickingState {
         tick_rate: decoder.read_f32()?,
         frozen: decoder.read_bool()?,
-    })
+    };
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after ticking state packet".to_string(),
+        ));
+    }
+    Ok(update)
 }
 
 pub(super) fn decode_ticking_step(decoder: &mut Decoder<'_>) -> Result<TickingStep> {
-    Ok(TickingStep {
+    let update = TickingStep {
         tick_steps: decoder.read_var_i32()?,
-    })
+    };
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after ticking step packet".to_string(),
+        ));
+    }
+    Ok(update)
 }
 
 pub(super) fn decode_update_mob_effect(decoder: &mut Decoder<'_>) -> Result<UpdateMobEffect> {

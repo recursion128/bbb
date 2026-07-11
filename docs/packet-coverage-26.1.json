@@ -9667,29 +9667,45 @@
       "constant_name": "CLIENTBOUND_TICKING_STATE",
       "coverage": {
         "canonical_apply": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/level.rs#apply_ticking_state",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleTickingState"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/client_state/tests.rs#decodes_title_camera_and_ticking_packets",
+            "vanilla:net/minecraft/network/protocol/game/ClientboundTickingStatePacket.java#STREAM_CODEC"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "ownership": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/play_apply.rs#PlayClientbound::TickingState"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "runtime_side_effect": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
+          "evidence": [
+            "crates/bbb-world/src/level.rs#consume_running_render_ticks",
+            "crates/bbb-native/src/runtime.rs#world_ticking_milliseconds_per_tick"
+          ],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
           "status": "partial"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/client_state/tests.rs#decodes_title_camera_and_ticking_packets",
+            "crates/bbb-world/src/level.rs#consume_running_render_ticks_respects_frozen_tick_steps",
+            "crates/bbb-net/src/probe/play.rs#probe_applies_world_time_weather_and_ticking_to_world",
+            "crates/bbb-native/src/runtime/tests.rs#hud_debug_overlay_projects_tps_server_brand_and_freeze_status"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "clientbound",
@@ -9702,29 +9718,45 @@
       "constant_name": "CLIENTBOUND_TICKING_STEP",
       "coverage": {
         "canonical_apply": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/level.rs#apply_ticking_step",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleTickingStep"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/client_state/tests.rs#decodes_title_camera_and_ticking_packets",
+            "vanilla:net/minecraft/network/protocol/game/ClientboundTickingStepPacket.java#STREAM_CODEC"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "ownership": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/play_apply.rs#PlayClientbound::TickingStep"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "runtime_side_effect": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/level.rs#consume_running_render_ticks",
+            "crates/bbb-native/src/runtime.rs#running_ticks"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/client_state/tests.rs#decodes_title_camera_and_ticking_packets",
+            "crates/bbb-world/src/level.rs#consume_running_render_ticks_respects_frozen_tick_steps",
+            "crates/bbb-net/src/probe/play.rs#probe_applies_world_time_weather_and_ticking_to_world",
+            "crates/bbb-native/src/runtime/tests.rs#block_destroy_render_ticks_respect_frozen_world_ticking_state"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "clientbound",

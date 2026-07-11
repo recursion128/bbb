@@ -135,6 +135,11 @@ Owner: `bbb-native` + `bbb-net` + `bbb-protocol` + `bbb-world`
 
 Movement:
 
+- Drive the native client-tick cadence from synchronized `TickingState.tickRate`
+  while preserving the existing frozen/step budget ordering. The value currently
+  feeds debug MSPT/tooltip state, but entity/world client ticks remain fixed at
+  20 Hz. This is multiplayer client presentation/prediction timing, not an
+  IntegratedServer tick owner.
 - Apply synchronized player-abilities `walkingSpeed` as the local player's
   movement-speed attribute base and use the same value in the vanilla FOV speed
   ratio. bbb currently stores it while prediction keeps the fixed default 0.1
