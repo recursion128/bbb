@@ -6238,29 +6238,44 @@
       "constant_name": "CLIENTBOUND_HURT_ANIMATION",
       "coverage": {
         "canonical_apply": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
+          "evidence": [
+            "crates/bbb-world/src/entities/updates.rs#apply_hurt_animation",
+            "vanilla:net/minecraft/world/entity/Entity.java#animateHurt"
+          ],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
           "status": "partial"
         },
         "decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/entities/tests.rs#decodes_entity_transient_event_packets",
+            "vanilla:net/minecraft/network/protocol/game/ClientboundHurtAnimationPacket.java#STREAM_CODEC"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "ownership": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/play_apply.rs#PlayClientbound::HurtAnimation"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "runtime_side_effect": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
+          "evidence": [
+            "crates/bbb-world/src/entities/animations.rs#trigger_hurt",
+            "vanilla:net/minecraft/world/entity/LivingEntity.java#animateHurt"
+          ],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
           "status": "partial"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/entities/tests.rs#decodes_entity_transient_event_packets",
+            "crates/bbb-world/src/entities/tests/movement_combat_and_swing_projection.rs#entity_model_sources_project_hurt_overlay_for_ten_ticks",
+            "crates/bbb-net/src/probe/play.rs#probe_applies_entity_motion_and_transient_packets_to_world"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "clientbound",

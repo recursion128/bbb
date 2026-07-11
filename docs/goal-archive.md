@@ -11084,3 +11084,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] ItemEntity 按 amount shrink 并在空栈时移除，普通非 orb entity 立即移除，ExperienceOrb
   保留等待独立 removal；protocol/world/net/native 的声音、粒子、模型、光照、顺序和移除测试使
   decode/ownership/canonical/runtime/tests 五格全部闭合。
+
+## 2026-07-11：hurt-animation packet coverage audit
+
+- [x] 对照 `ClientboundHurtAnimationPacket` 锁定 entity VarInt + yaw float 并拒绝 trailing bytes；
+  protocol/world/net/native 已覆盖 packet forwarding、unknown entity 忽略和 10-tick red overlay，
+  因此 decode/ownership/tests 三格闭合。
+- [x] vanilla base `Entity.animateHurt` no-op，只有 `LivingEntity` 设置 hurtDuration/hurtTime=10；
+  bbb 当前通用 animation component 缺 capability gate，故 canonical/runtime 保持 partial。此 packet
+  只驱动客户端呈现，不被解释为伤害、击退或任何服务端权威战斗状态。

@@ -839,12 +839,19 @@ fn decodes_entity_transient_event_packets() {
     let mut payload = Encoder::new();
     payload.write_var_i32(123);
     payload.write_f32(45.5);
-    let packet =
-        decode_play_clientbound(ids::play::CLIENTBOUND_HURT_ANIMATION, &payload.into_inner())
-            .unwrap();
+    let payload = payload.into_inner();
+    let packet = decode_play_clientbound(ids::play::CLIENTBOUND_HURT_ANIMATION, &payload).unwrap();
     assert_eq!(
         packet,
         PlayClientbound::HurtAnimation(HurtAnimation { id: 123, yaw: 45.5 })
+    );
+    let mut trailing = payload;
+    trailing.push(0);
+    assert!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_HURT_ANIMATION, &trailing)
+            .unwrap_err()
+            .to_string()
+            .contains("trailing bytes after hurt animation packet")
     );
 }
 
