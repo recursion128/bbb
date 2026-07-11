@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::codec::{Decoder, ProtocolError, Result};
 pub use crate::objective_render_types::ObjectiveRenderType;
+pub use crate::scoreboard_display_slots::ScoreboardDisplaySlot;
 
 use super::{
     decode_component_summary_from_decoder, decode_nullable_string,
@@ -21,56 +22,6 @@ pub struct ResetScore {
 pub struct SetDisplayObjective {
     pub slot: ScoreboardDisplaySlot,
     pub objective_name: Option<String>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum ScoreboardDisplaySlot {
-    List,
-    Sidebar,
-    BelowName,
-    TeamBlack,
-    TeamDarkBlue,
-    TeamDarkGreen,
-    TeamDarkAqua,
-    TeamDarkRed,
-    TeamDarkPurple,
-    TeamGold,
-    TeamGray,
-    TeamDarkGray,
-    TeamBlue,
-    TeamGreen,
-    TeamAqua,
-    TeamRed,
-    TeamLightPurple,
-    TeamYellow,
-    TeamWhite,
-}
-
-impl ScoreboardDisplaySlot {
-    fn from_id(id: i32) -> Self {
-        match id {
-            0 => Self::List,
-            1 => Self::Sidebar,
-            2 => Self::BelowName,
-            3 => Self::TeamBlack,
-            4 => Self::TeamDarkBlue,
-            5 => Self::TeamDarkGreen,
-            6 => Self::TeamDarkAqua,
-            7 => Self::TeamDarkRed,
-            8 => Self::TeamDarkPurple,
-            9 => Self::TeamGold,
-            10 => Self::TeamGray,
-            11 => Self::TeamDarkGray,
-            12 => Self::TeamBlue,
-            13 => Self::TeamGreen,
-            14 => Self::TeamAqua,
-            15 => Self::TeamRed,
-            16 => Self::TeamLightPurple,
-            17 => Self::TeamYellow,
-            18 => Self::TeamWhite,
-            _ => Self::List,
-        }
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

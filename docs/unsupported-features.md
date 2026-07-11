@@ -61,7 +61,8 @@ Owner: `scripts/` + each generated catalog's semantic crate
   serverbound player-action kind and player-command action wire ordinals are generated
   as well. Entity-anchor, objective-render, and advancement-frame ordinals/names,
   boss-bar style ordinals/names, remote-debug sample type ordinals, and Difficulty
-  ids/names/WRAP fallback now share generated owners too.
+  ids/names/WRAP fallback and scoreboard display-slot ids/names/ZERO fallback now share
+  generated owners too.
   The remaining cross-crate registry/ordinal audit stays open.
 
 ## Unknown clientbound packets in login, configuration, and play

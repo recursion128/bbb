@@ -167,6 +167,13 @@ class BossBarStyleEntry:
     serialized_name: str
 
 
+@dataclass(frozen=True)
+class ScoreboardDisplaySlotEntry:
+    constant_name: str
+    slot_id: int
+    serialized_name: str
+
+
 def _fail(source: JavaSource, expression: JavaExpression, message: str) -> None:
     span = expression.span
     raise GameplayIdExtractionError(
@@ -681,15 +688,15 @@ def difficulty_entries(
     return entries
 
 
-def difficulty_out_of_bounds_strategy(source: JavaSource) -> str:
+def _continuous_out_of_bounds_strategy(source: JavaSource, description: str) -> str:
     fields = [field for field in source.fields if field.name == "BY_ID"]
     if len(fields) != 1 or fields[0].initializer is None:
         raise GameplayIdExtractionError(
-            f"{source.relative_path}: expected one initialized BY_ID field"
+            f"{source.relative_path}: expected one initialized {description} BY_ID field"
         )
     initializer = fields[0].initializer
     if initializer.node.type != "method_invocation":
-        _fail(source, initializer, "difficulty BY_ID must be a method invocation")
+        _fail(source, initializer, f"{description} BY_ID must be a method invocation")
     name = initializer.node.child_by_field_name("name")
     arguments = initializer.node.child_by_field_name("arguments")
     if (
@@ -698,11 +705,43 @@ def difficulty_out_of_bounds_strategy(source: JavaSource) -> str:
         or arguments is None
         or len(arguments.named_children) != 3
     ):
-        _fail(source, initializer, "difficulty BY_ID must call ByIdMap.continuous")
+        _fail(source, initializer, f"{description} BY_ID must call ByIdMap.continuous")
     strategy = source.expression(arguments.named_children[-1]).canonical.rsplit(".", 1)[-1]
-    if strategy != "WRAP":
-        _fail(source, initializer, f"unsupported difficulty id strategy {strategy}")
     return strategy
+
+
+def difficulty_out_of_bounds_strategy(source: JavaSource) -> str:
+    strategy = _continuous_out_of_bounds_strategy(source, "difficulty")
+    if strategy != "WRAP":
+        raise GameplayIdExtractionError(f"unsupported difficulty id strategy {strategy}")
+    return strategy
+
+
+def scoreboard_display_slot_entries(
+    source: JavaSource, expected_count: int = 19
+) -> tuple[list[ScoreboardDisplaySlotEntry], str]:
+    entries = []
+    for name, arguments in _enum_constants(source):
+        if len(arguments) != 2:
+            expression = arguments[0] if arguments else source.expression(source.types[0].node)
+            _fail(source, expression, f"display slot {name} must have two arguments")
+        entries.append(
+            ScoreboardDisplaySlotEntry(
+                name, _integer(source, arguments[0]), _string(source, arguments[1])
+            )
+        )
+    if len(entries) != expected_count:
+        raise GameplayIdExtractionError(
+            f"expected {expected_count} display slots, extracted {len(entries)}"
+        )
+    _validate(entries, "display slot", "slot_id")
+    _validate(entries, "display slot", "serialized_name")
+    if [entry.slot_id for entry in entries] != list(range(expected_count)):
+        raise GameplayIdExtractionError("display slot ids are not contiguous declaration order")
+    strategy = _continuous_out_of_bounds_strategy(source, "display slot")
+    if strategy != "ZERO":
+        raise GameplayIdExtractionError(f"unsupported display slot id strategy {strategy}")
+    return entries, strategy
 
 
 def equipment_slot_entries(

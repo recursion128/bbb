@@ -336,28 +336,7 @@ fn objective_render_type_name(render_type: ProtocolObjectiveRenderType) -> Strin
 }
 
 fn scoreboard_display_slot_name(slot: ProtocolScoreboardDisplaySlot) -> String {
-    match slot {
-        ProtocolScoreboardDisplaySlot::List => "list",
-        ProtocolScoreboardDisplaySlot::Sidebar => "sidebar",
-        ProtocolScoreboardDisplaySlot::BelowName => "below_name",
-        ProtocolScoreboardDisplaySlot::TeamBlack => "sidebar.team.black",
-        ProtocolScoreboardDisplaySlot::TeamDarkBlue => "sidebar.team.dark_blue",
-        ProtocolScoreboardDisplaySlot::TeamDarkGreen => "sidebar.team.dark_green",
-        ProtocolScoreboardDisplaySlot::TeamDarkAqua => "sidebar.team.dark_aqua",
-        ProtocolScoreboardDisplaySlot::TeamDarkRed => "sidebar.team.dark_red",
-        ProtocolScoreboardDisplaySlot::TeamDarkPurple => "sidebar.team.dark_purple",
-        ProtocolScoreboardDisplaySlot::TeamGold => "sidebar.team.gold",
-        ProtocolScoreboardDisplaySlot::TeamGray => "sidebar.team.gray",
-        ProtocolScoreboardDisplaySlot::TeamDarkGray => "sidebar.team.dark_gray",
-        ProtocolScoreboardDisplaySlot::TeamBlue => "sidebar.team.blue",
-        ProtocolScoreboardDisplaySlot::TeamGreen => "sidebar.team.green",
-        ProtocolScoreboardDisplaySlot::TeamAqua => "sidebar.team.aqua",
-        ProtocolScoreboardDisplaySlot::TeamRed => "sidebar.team.red",
-        ProtocolScoreboardDisplaySlot::TeamLightPurple => "sidebar.team.light_purple",
-        ProtocolScoreboardDisplaySlot::TeamYellow => "sidebar.team.yellow",
-        ProtocolScoreboardDisplaySlot::TeamWhite => "sidebar.team.white",
-    }
-    .to_string()
+    slot.as_str().to_string()
 }
 
 fn team_visibility_name(visibility: ProtocolTeamVisibility) -> String {

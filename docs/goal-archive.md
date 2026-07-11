@@ -10569,3 +10569,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   删除两份名称 match。新增 color/overlay invalid ordinal 诊断测试，生成完整性/唯一性/
   反向门禁以及 protocol/world/net/native 全 7 色/5 overlay focused tests 均通过；
   ChatFormatting、renderer Hud enum、sprite 与绘制算法继续由各自语义 owner 手写。
+
+## 2026-07-11：Generated scoreboard display-slot catalog
+
+- [x] gameplay-id extractor 通过共享 Tree-sitter frontend 读取 vanilla
+  `DisplaySlot` 的 19 项显式 id/serialized name，并从 `BY_ID` CST 调用参数验证
+  `ByIdMap.OutOfBoundsStrategy.ZERO`。生成的 typed catalog 统一拥有 id、name 与负数/
+  越界回退到 `LIST` 的行为；protocol scoreboard facade 保持原 re-export，删除 enum 和
+  0..18 decode match，world scoreboard 删除第二份名称 match。生成完整性/唯一性/反向门禁
+  以及 protocol/world/net/native scoreboard focused tests 均通过；team-color slot 选择、
+  scoreboard method、number format 与 HUD 渲染仍由原语义 owner 手写。

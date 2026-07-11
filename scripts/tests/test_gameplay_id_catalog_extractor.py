@@ -33,6 +33,7 @@ from gameplay_id_catalog_extractor import (  # noqa: E402
     resource_pack_response_action_entries,
     remote_debug_sample_type_entries,
     sound_source_entries,
+    scoreboard_display_slot_entries,
 )
 from vanilla_java_source import parse_source  # noqa: E402
 
@@ -468,6 +469,38 @@ public class BossEvent {
                 ("NOTCHED_10", 2, "notched_10"), ("NOTCHED_12", 3, "notched_12"),
                 ("NOTCHED_20", 4, "notched_20"),
             ],
+        )
+
+    def test_scoreboard_display_slots_preserve_ids_names_and_zero_fallback(self) -> None:
+        source = parse_source(
+            "fixture/DisplaySlot.java",
+            b"""
+package fixture;
+public enum DisplaySlot {
+  LIST(0, "list"), SIDEBAR(1, "sidebar"), BELOW_NAME(2, "below_name"),
+  TEAM_BLACK(3, "sidebar.team.black"), TEAM_DARK_BLUE(4, "sidebar.team.dark_blue"),
+  TEAM_DARK_GREEN(5, "sidebar.team.dark_green"), TEAM_DARK_AQUA(6, "sidebar.team.dark_aqua"),
+  TEAM_DARK_RED(7, "sidebar.team.dark_red"), TEAM_DARK_PURPLE(8, "sidebar.team.dark_purple"),
+  TEAM_GOLD(9, "sidebar.team.gold"), TEAM_GRAY(10, "sidebar.team.gray"),
+  TEAM_DARK_GRAY(11, "sidebar.team.dark_gray"), TEAM_BLUE(12, "sidebar.team.blue"),
+  TEAM_GREEN(13, "sidebar.team.green"), TEAM_AQUA(14, "sidebar.team.aqua"),
+  TEAM_RED(15, "sidebar.team.red"), TEAM_LIGHT_PURPLE(16, "sidebar.team.light_purple"),
+  TEAM_YELLOW(17, "sidebar.team.yellow"), TEAM_WHITE(18, "sidebar.team.white");
+  static final IntFunction<DisplaySlot> BY_ID = ByIdMap.continuous(
+      DisplaySlot::id, values(), ByIdMap.OutOfBoundsStrategy.ZERO);
+}
+""",
+        )
+        entries, strategy = scoreboard_display_slot_entries(source)
+        self.assertEqual(strategy, "ZERO")
+        self.assertEqual(len(entries), 19)
+        self.assertEqual(
+            (entries[0].constant_name, entries[0].slot_id, entries[0].serialized_name),
+            ("LIST", 0, "list"),
+        )
+        self.assertEqual(
+            (entries[-1].constant_name, entries[-1].slot_id, entries[-1].serialized_name),
+            ("TEAM_WHITE", 18, "sidebar.team.white"),
         )
 
     def test_unsupported_register_shape_reports_source_span(self) -> None:
