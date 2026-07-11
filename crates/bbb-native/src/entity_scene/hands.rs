@@ -202,16 +202,19 @@ pub(super) fn entity_hand_holds_brush(
 /// Vanilla `DataComponents.CONSUMABLE` network type id (24, the registry order of `minecraft:consumable` in
 /// `DataComponents`). `Item.getUseAnimation` checks `CONSUMABLE` before `BLOCKS_ATTACKS`, so a stack patch
 /// that adds both should stay on EAT/DRINK rather than the block pose.
-pub(super) const DATA_COMPONENT_CONSUMABLE_TYPE_ID: i32 = 24;
+pub(super) const DATA_COMPONENT_CONSUMABLE_TYPE_ID: i32 =
+    bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID;
 
 /// Vanilla `DataComponents.SWING_ANIMATION` network type id (40, the registry order of
 /// `minecraft:swing_animation` in `DataComponents`).
-pub(super) const DATA_COMPONENT_SWING_ANIMATION_TYPE_ID: i32 = 40;
+pub(super) const DATA_COMPONENT_SWING_ANIMATION_TYPE_ID: i32 =
+    bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID;
 
 /// Vanilla `DataComponents.BLOCKS_ATTACKS` network type id (37, the registry order of
 /// `minecraft:blocks_attacks` in `DataComponents`). `Item.getUseAnimation` returns `BLOCK` for a non-consumable
 /// item carrying this component.
-pub(super) const DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID: i32 = 37;
+pub(super) const DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID: i32 =
+    bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID;
 
 pub(super) fn component_patch_has_added_component(
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
@@ -387,7 +390,8 @@ pub(super) fn entity_hand_holds_charged_crossbow(
 /// Vanilla `DataComponents.TOOL` network type id (28, the registry order of `minecraft:tool` in
 /// `DataComponents`). `AbstractPiglin.isHoldingMeleeWeapon()` is `getMainHandItem().has(DataComponents.TOOL)`,
 /// so a main-hand stack counts as a melee weapon when its decoded component patch added this type.
-pub(super) const DATA_COMPONENT_TOOL_TYPE_ID: i32 = 28;
+pub(super) const DATA_COMPONENT_TOOL_TYPE_ID: i32 =
+    bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_TOOL_TYPE_ID;
 
 /// Whether the entity's main-hand item is a melee weapon (vanilla
 /// `AbstractPiglin.isHoldingMeleeWeapon()` = `getMainHandItem().has(DataComponents.TOOL)`), driving the

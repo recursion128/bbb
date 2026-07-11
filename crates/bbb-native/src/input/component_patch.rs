@@ -1,5 +1,6 @@
 use super::*;
 use bbb_protocol::damage_types::vanilla_damage_type_resource_id as damage_type_resource_id;
+use bbb_protocol::data_component_types as component_id;
 use bbb_protocol::equipment_slots::{
     vanilla_equipment_slot_by_id, vanilla_equipment_slot_group, VANILLA_EQUIPMENT_SLOT_GROUP_ANY_ID,
 };
@@ -22,113 +23,431 @@ const fn encoder(type_id: i32, encode: PersistentSnbtEncoder) -> PersistentSnbtE
 }
 
 static PERSISTENT_SNBT_ENCODERS: &[PersistentSnbtEncoderDescriptor] = &[
-    encoder(0, encode_custom_data),
-    encoder(1, encode_max_stack_size),
-    encoder(2, encode_max_damage),
-    encoder(3, encode_damage),
-    encoder(4, encode_unit),
-    encoder(5, encode_use_effects),
-    encoder(6, encode_component_tree),
-    encoder(7, encode_minimum_attack_charge),
-    encoder(8, encode_damage_type),
-    encoder(9, encode_component_tree),
-    encoder(10, encode_item_model),
-    encoder(11, encode_lore),
-    encoder(12, encode_rarity),
-    encoder(13, encode_enchantments),
-    encoder(14, encode_adventure_mode_predicate),
-    encoder(15, encode_adventure_mode_predicate),
-    encoder(16, encode_attribute_modifiers),
-    encoder(17, encode_custom_model_data),
-    encoder(18, encode_tooltip_display),
-    encoder(19, encode_repair_cost),
-    encoder(21, encode_enchantment_glint_override),
-    encoder(22, encode_unit),
-    encoder(23, encode_food),
-    encoder(24, encode_consumable),
-    encoder(25, encode_use_remainder),
-    encoder(26, encode_use_cooldown),
-    encoder(27, encode_damage_resistant),
-    encoder(28, encode_tool),
-    encoder(29, encode_weapon),
-    encoder(30, encode_attack_range),
-    encoder(31, encode_enchantable),
-    encoder(32, encode_equippable),
-    encoder(33, encode_repairable),
-    encoder(34, encode_unit),
-    encoder(35, encode_tooltip_style),
-    encoder(36, encode_death_protection),
-    encoder(37, encode_blocks_attacks),
-    encoder(38, encode_piercing_weapon),
-    encoder(39, encode_kinetic_weapon),
-    encoder(40, encode_swing_animation),
-    encoder(42, encode_enchantments),
-    encoder(43, encode_dye),
-    encoder(44, encode_dyed_color),
-    encoder(45, encode_map_color),
-    encoder(46, encode_map_id),
-    encoder(47, encode_codec_backed_nbt),
-    encoder(49, encode_charged_projectiles),
-    encoder(50, encode_bundle_contents),
-    encoder(51, encode_potion_contents),
-    encoder(52, encode_potion_duration_scale),
-    encoder(53, encode_suspicious_stew_effects),
-    encoder(54, encode_writable_book_content),
-    encoder(55, encode_written_book_content),
-    encoder(56, encode_armor_trim),
-    encoder(57, encode_codec_backed_nbt),
-    encoder(58, encode_entity_data),
-    encoder(59, encode_codec_backed_nbt),
-    encoder(60, encode_block_entity_data),
-    encoder(61, encode_instrument),
-    encoder(62, encode_provides_trim_material),
-    encoder(63, encode_ominous_bottle_amplifier),
-    encoder(64, encode_jukebox_playable),
-    encoder(65, encode_provides_banner_patterns),
-    encoder(66, encode_codec_backed_nbt),
-    encoder(67, encode_lodestone_tracker),
-    encoder(68, encode_firework_explosion),
-    encoder(69, encode_fireworks),
-    encoder(70, encode_profile),
-    encoder(71, encode_note_block_sound),
-    encoder(72, encode_banner_patterns),
-    encoder(73, encode_base_color),
-    encoder(74, encode_pot_decorations),
-    encoder(75, encode_container),
-    encoder(76, encode_block_state),
-    encoder(77, encode_bees),
-    encoder(78, encode_codec_backed_nbt),
-    encoder(79, encode_codec_backed_nbt),
-    encoder(80, encode_break_sound),
-    encoder(81, encode_named_variant),
-    encoder(82, encode_named_variant),
-    encoder(83, encode_named_variant),
-    encoder(84, encode_builtin_enum),
-    encoder(85, encode_builtin_enum),
-    encoder(86, encode_builtin_enum),
-    encoder(87, encode_builtin_enum),
-    encoder(88, encode_tropical_fish_pattern),
-    encoder(89, encode_tropical_fish_base_color),
-    encoder(90, encode_tropical_fish_pattern_color),
-    encoder(91, encode_builtin_enum),
-    encoder(92, encode_builtin_enum),
-    encoder(93, encode_named_variant),
-    encoder(94, encode_named_variant),
-    encoder(95, encode_named_variant),
-    encoder(96, encode_named_variant),
-    encoder(97, encode_named_variant),
-    encoder(98, encode_named_variant),
-    encoder(99, encode_named_variant),
-    encoder(100, encode_named_variant),
-    encoder(101, encode_builtin_enum),
-    encoder(102, encode_painting_variant),
-    encoder(103, encode_builtin_enum),
-    encoder(104, encode_builtin_enum),
-    encoder(105, encode_named_variant),
-    encoder(106, encode_named_variant),
-    encoder(107, encode_builtin_enum),
-    encoder(108, encode_builtin_enum),
-    encoder(109, encode_builtin_enum),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID,
+        encode_custom_data,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
+        encode_max_stack_size,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID,
+        encode_max_damage,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID,
+        encode_damage,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID,
+        encode_unit,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_USE_EFFECTS_TYPE_ID,
+        encode_use_effects,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID,
+        encode_component_tree,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_MINIMUM_ATTACK_CHARGE_TYPE_ID,
+        encode_minimum_attack_charge,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID,
+        encode_damage_type,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_ITEM_NAME_TYPE_ID,
+        encode_component_tree,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID,
+        encode_item_model,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_LORE_TYPE_ID,
+        encode_lore,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_RARITY_TYPE_ID,
+        encode_rarity,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID,
+        encode_enchantments,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_CAN_PLACE_ON_TYPE_ID,
+        encode_adventure_mode_predicate,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_CAN_BREAK_TYPE_ID,
+        encode_adventure_mode_predicate,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_ATTRIBUTE_MODIFIERS_TYPE_ID,
+        encode_attribute_modifiers,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_CUSTOM_MODEL_DATA_TYPE_ID,
+        encode_custom_model_data,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_TOOLTIP_DISPLAY_TYPE_ID,
+        encode_tooltip_display,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_REPAIR_COST_TYPE_ID,
+        encode_repair_cost,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_ENCHANTMENT_GLINT_OVERRIDE_TYPE_ID,
+        encode_enchantment_glint_override,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_INTANGIBLE_PROJECTILE_TYPE_ID,
+        encode_unit,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_FOOD_TYPE_ID,
+        encode_food,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID,
+        encode_consumable,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_USE_REMAINDER_TYPE_ID,
+        encode_use_remainder,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_USE_COOLDOWN_TYPE_ID,
+        encode_use_cooldown,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_DAMAGE_RESISTANT_TYPE_ID,
+        encode_damage_resistant,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_TOOL_TYPE_ID,
+        encode_tool,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_WEAPON_TYPE_ID,
+        encode_weapon,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID,
+        encode_attack_range,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_ENCHANTABLE_TYPE_ID,
+        encode_enchantable,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID,
+        encode_equippable,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_REPAIRABLE_TYPE_ID,
+        encode_repairable,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_GLIDER_TYPE_ID,
+        encode_unit,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_TOOLTIP_STYLE_TYPE_ID,
+        encode_tooltip_style,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID,
+        encode_death_protection,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID,
+        encode_blocks_attacks,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_PIERCING_WEAPON_TYPE_ID,
+        encode_piercing_weapon,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID,
+        encode_kinetic_weapon,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID,
+        encode_swing_animation,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_STORED_ENCHANTMENTS_TYPE_ID,
+        encode_enchantments,
+    ),
+    encoder(component_id::VANILLA_DATA_COMPONENT_DYE_TYPE_ID, encode_dye),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_DYED_COLOR_TYPE_ID,
+        encode_dyed_color,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_MAP_COLOR_TYPE_ID,
+        encode_map_color,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID,
+        encode_map_id,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_MAP_DECORATIONS_TYPE_ID,
+        encode_codec_backed_nbt,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_CHARGED_PROJECTILES_TYPE_ID,
+        encode_charged_projectiles,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_BUNDLE_CONTENTS_TYPE_ID,
+        encode_bundle_contents,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID,
+        encode_potion_contents,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_POTION_DURATION_SCALE_TYPE_ID,
+        encode_potion_duration_scale,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_SUSPICIOUS_STEW_EFFECTS_TYPE_ID,
+        encode_suspicious_stew_effects,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_WRITABLE_BOOK_CONTENT_TYPE_ID,
+        encode_writable_book_content,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_WRITTEN_BOOK_CONTENT_TYPE_ID,
+        encode_written_book_content,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_TRIM_TYPE_ID,
+        encode_armor_trim,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_DEBUG_STICK_STATE_TYPE_ID,
+        encode_codec_backed_nbt,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID,
+        encode_entity_data,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_BUCKET_ENTITY_DATA_TYPE_ID,
+        encode_codec_backed_nbt,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_BLOCK_ENTITY_DATA_TYPE_ID,
+        encode_block_entity_data,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID,
+        encode_instrument,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID,
+        encode_provides_trim_material,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_OMINOUS_BOTTLE_AMPLIFIER_TYPE_ID,
+        encode_ominous_bottle_amplifier,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID,
+        encode_jukebox_playable,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID,
+        encode_provides_banner_patterns,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_RECIPES_TYPE_ID,
+        encode_codec_backed_nbt,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_LODESTONE_TRACKER_TYPE_ID,
+        encode_lodestone_tracker,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID,
+        encode_firework_explosion,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID,
+        encode_fireworks,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID,
+        encode_profile,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_NOTE_BLOCK_SOUND_TYPE_ID,
+        encode_note_block_sound,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_BANNER_PATTERNS_TYPE_ID,
+        encode_banner_patterns,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_BASE_COLOR_TYPE_ID,
+        encode_base_color,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_POT_DECORATIONS_TYPE_ID,
+        encode_pot_decorations,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_CONTAINER_TYPE_ID,
+        encode_container,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_BLOCK_STATE_TYPE_ID,
+        encode_block_state,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_BEES_TYPE_ID,
+        encode_bees,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_LOCK_TYPE_ID,
+        encode_codec_backed_nbt,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_CONTAINER_LOOT_TYPE_ID,
+        encode_codec_backed_nbt,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_BREAK_SOUND_TYPE_ID,
+        encode_break_sound,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_VILLAGER_VARIANT_TYPE_ID,
+        encode_named_variant,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_WOLF_VARIANT_TYPE_ID,
+        encode_named_variant,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_WOLF_SOUND_VARIANT_TYPE_ID,
+        encode_named_variant,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_WOLF_COLLAR_TYPE_ID,
+        encode_builtin_enum,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_FOX_VARIANT_TYPE_ID,
+        encode_builtin_enum,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_SALMON_SIZE_TYPE_ID,
+        encode_builtin_enum,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_PARROT_VARIANT_TYPE_ID,
+        encode_builtin_enum,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_TROPICAL_FISH_PATTERN_TYPE_ID,
+        encode_tropical_fish_pattern,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_TROPICAL_FISH_BASE_COLOR_TYPE_ID,
+        encode_tropical_fish_base_color,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_TROPICAL_FISH_PATTERN_COLOR_TYPE_ID,
+        encode_tropical_fish_pattern_color,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_MOOSHROOM_VARIANT_TYPE_ID,
+        encode_builtin_enum,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_RABBIT_VARIANT_TYPE_ID,
+        encode_builtin_enum,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_PIG_VARIANT_TYPE_ID,
+        encode_named_variant,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_PIG_SOUND_VARIANT_TYPE_ID,
+        encode_named_variant,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_COW_VARIANT_TYPE_ID,
+        encode_named_variant,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_COW_SOUND_VARIANT_TYPE_ID,
+        encode_named_variant,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_CHICKEN_VARIANT_TYPE_ID,
+        encode_named_variant,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_CHICKEN_SOUND_VARIANT_TYPE_ID,
+        encode_named_variant,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_ZOMBIE_NAUTILUS_VARIANT_TYPE_ID,
+        encode_named_variant,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_FROG_VARIANT_TYPE_ID,
+        encode_named_variant,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_HORSE_VARIANT_TYPE_ID,
+        encode_builtin_enum,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_PAINTING_VARIANT_TYPE_ID,
+        encode_painting_variant,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_LLAMA_VARIANT_TYPE_ID,
+        encode_builtin_enum,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_AXOLOTL_VARIANT_TYPE_ID,
+        encode_builtin_enum,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_CAT_VARIANT_TYPE_ID,
+        encode_named_variant,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_CAT_SOUND_VARIANT_TYPE_ID,
+        encode_named_variant,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_CAT_COLLAR_TYPE_ID,
+        encode_builtin_enum,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_SHEEP_COLOR_TYPE_ID,
+        encode_builtin_enum,
+    ),
+    encoder(
+        component_id::VANILLA_DATA_COMPONENT_SHULKER_COLOR_TYPE_ID,
+        encode_builtin_enum,
+    ),
 ];
 
 fn persistent_snbt_encoder(type_id: i32) -> Option<&'static PersistentSnbtEncoderDescriptor> {

@@ -666,7 +666,8 @@ mod tests {
     const CROSSHAIR_BLOCK_POS: BlockPos = BlockPos { x: 0, y: 1, z: 3 };
     const VANILLA_AIR_BLOCK_STATE_ID: i32 = 0;
     const VANILLA_GRASS_BLOCK_STATE_ID: i32 = 9;
-    const VANILLA_ATTACK_RANGE_COMPONENT_ID: i32 = 30;
+    const VANILLA_ATTACK_RANGE_COMPONENT_ID: i32 =
+        bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID;
     const VANILLA_PLAYER_OFFHAND_SLOT: i32 = 40;
     const VANILLA_WORLD_BORDER_ABSOLUTE_MAX_SIZE: i32 = 29_999_984;
 

@@ -326,7 +326,8 @@ fn book_pages_from_item(item: &ProtocolItemStackSummary) -> Option<Vec<String>> 
     None
 }
 
-const VANILLA_WRITABLE_BOOK_CONTENT_COMPONENT_ID: i32 = 54;
+const VANILLA_WRITABLE_BOOK_CONTENT_COMPONENT_ID: i32 =
+    bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_WRITABLE_BOOK_CONTENT_TYPE_ID;
 
 pub fn code_of_conduct_text_hash(text: &str) -> i32 {
     java_string_hash_code(text)

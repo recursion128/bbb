@@ -17,7 +17,8 @@ use super::{
 const ITEM_FRAME_DEPTH: f32 = 0.0625;
 const ITEM_FRAME_DEFAULT_SIZE: f32 = 0.75;
 const ITEM_FRAME_MAP_SIZE: f32 = 1.0;
-const MAP_ID_DATA_COMPONENT_TYPE_ID: i32 = 46;
+const MAP_ID_DATA_COMPONENT_TYPE_ID: i32 =
+    bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID;
 const PAINTING_DEPTH: f32 = 0.0625;
 const HANGING_WALL_OFFSET: f64 = 0.46875;
 

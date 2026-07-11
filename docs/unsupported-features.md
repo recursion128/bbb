@@ -52,7 +52,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   Java bootstrap and remain owned by `EquipmentAssetCatalog`; their incomplete
   renderer coverage is tracked separately below. Vanilla block and enchantment tag
   fallbacks now share one deterministic JSON tag frontend; other hand-maintained
-  resource/tag memberships remain under the P1 audit.
+  resource/tag memberships remain under the P1 audit. Data-component numeric aliases
+  across protocol/pack/world/item-model/native now derive from the generated protocol
+  catalog; the remaining cross-crate registry/ordinal audit stays open.
 
 ## Unknown clientbound packets in login, configuration, and play
 

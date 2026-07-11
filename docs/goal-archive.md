@@ -10400,3 +10400,16 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   `commands.rs` 删除手写 57 项表并消费 checked-in catalog。CST call shape、固定数量、
   唯一性、首尾顺序与幂等生成显式受测；argument property wire decode 仍由 protocol
   语义 owner 手写，本切片未用 registration source 冒充 codec 行为。
+
+## 2026-07-11：Unified data-component numeric aliases
+
+- [x] core-registry generator 现在从同一 110 项 `DataComponents.java` catalog 为每项生成
+  `VANILLA_DATA_COMPONENT_*_TYPE_ID` named alias；protocol/pack/world/item-model/native 删除
+  所有生产代码 component registry id 数字字面量，既有局部常量只作为 generated alias
+  保留。覆盖 item prototype parsing、inventory、tooltip/model predicates、map/item-frame、
+  attack range 与 first-person/entity hand pose；native persistent SNBT encoder registry 的
+  107 个 descriptor 也改为 named alias，不再以 `encoder(0..109, ...)` 保存第二份数字表。
+  generated Rust 结构测试递归扫描 workspace
+  production `.rs`，排除明确的 test wire fixtures 与不同 registry 的 entity-data serializer，
+  阻止裸 component id 回流。descriptor/wire codec、persistent SNBT 与运行时 fallback 均未
+  改变，也未把 named id catalog 冒充 component 行为实现。

@@ -6,19 +6,23 @@ use super::*;
 
 /// Vanilla `DataComponents.KINETIC_WEAPON` network type id, used by item-stack
 /// patches to remove a spear's prototype kinetic weapon component.
-pub(super) const VANILLA_KINETIC_WEAPON_COMPONENT_ID: i32 = 39;
+pub(super) const VANILLA_KINETIC_WEAPON_COMPONENT_ID: i32 =
+    bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID;
 /// Vanilla `DataComponents.SWING_ANIMATION` network type id, used by item-stack
 /// patches to remove prototype STAB/NONE data and fall back to
 /// `SwingAnimation.DEFAULT` (WHACK, 6 ticks).
-pub(super) const VANILLA_SWING_ANIMATION_COMPONENT_ID: i32 = 40;
+pub(super) const VANILLA_SWING_ANIMATION_COMPONENT_ID: i32 =
+    bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID;
 /// Vanilla `DataComponents.CONSUMABLE` network type id. `Item.getUseAnimation`
 /// checks this before `BLOCKS_ATTACKS`, so consumable stacks do not use the
 /// BLOCK first-person transform even when a patch also adds `blocks_attacks`.
-pub(super) const VANILLA_CONSUMABLE_COMPONENT_ID: i32 = 24;
+pub(super) const VANILLA_CONSUMABLE_COMPONENT_ID: i32 =
+    bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID;
 /// Vanilla `DataComponents.BLOCKS_ATTACKS` network type id. Non-consumable
 /// stacks carrying it use `ItemUseAnimation.BLOCK`; the vanilla shield has it as
 /// a prototype component.
-pub(super) const VANILLA_BLOCKS_ATTACKS_COMPONENT_ID: i32 = 37;
+pub(super) const VANILLA_BLOCKS_ATTACKS_COMPONENT_ID: i32 =
+    bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID;
 /// Vanilla `BrushItem.USE_DURATION`. The first-person BRUSH swipe uses the
 /// remaining use ticks modulo `BrushItem.ANIMATION_DURATION` (10).
 pub(super) const VANILLA_BRUSH_USE_DURATION_TICKS: f32 = 200.0;

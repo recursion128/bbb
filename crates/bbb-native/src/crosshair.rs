@@ -1061,7 +1061,8 @@ mod tests {
     };
     use uuid::Uuid;
 
-    const VANILLA_ATTACK_RANGE_COMPONENT_ID: i32 = 30;
+    const VANILLA_ATTACK_RANGE_COMPONENT_ID: i32 =
+        bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID;
     const VANILLA_AIR_BLOCK_STATE_ID: i32 = 0;
     const VANILLA_GRASS_BLOCK_STATE_ID: i32 = 9;
 

@@ -16,6 +16,117 @@ pub struct DataComponentTypeCatalogEntry {
     pub persistent: bool,
 }
 
+pub const VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID: i32 = 0;
+pub const VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID: i32 = 1;
+pub const VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID: i32 = 2;
+pub const VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID: i32 = 3;
+pub const VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID: i32 = 4;
+pub const VANILLA_DATA_COMPONENT_USE_EFFECTS_TYPE_ID: i32 = 5;
+pub const VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID: i32 = 6;
+pub const VANILLA_DATA_COMPONENT_MINIMUM_ATTACK_CHARGE_TYPE_ID: i32 = 7;
+pub const VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID: i32 = 8;
+pub const VANILLA_DATA_COMPONENT_ITEM_NAME_TYPE_ID: i32 = 9;
+pub const VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID: i32 = 10;
+pub const VANILLA_DATA_COMPONENT_LORE_TYPE_ID: i32 = 11;
+pub const VANILLA_DATA_COMPONENT_RARITY_TYPE_ID: i32 = 12;
+pub const VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID: i32 = 13;
+pub const VANILLA_DATA_COMPONENT_CAN_PLACE_ON_TYPE_ID: i32 = 14;
+pub const VANILLA_DATA_COMPONENT_CAN_BREAK_TYPE_ID: i32 = 15;
+pub const VANILLA_DATA_COMPONENT_ATTRIBUTE_MODIFIERS_TYPE_ID: i32 = 16;
+pub const VANILLA_DATA_COMPONENT_CUSTOM_MODEL_DATA_TYPE_ID: i32 = 17;
+pub const VANILLA_DATA_COMPONENT_TOOLTIP_DISPLAY_TYPE_ID: i32 = 18;
+pub const VANILLA_DATA_COMPONENT_REPAIR_COST_TYPE_ID: i32 = 19;
+pub const VANILLA_DATA_COMPONENT_CREATIVE_SLOT_LOCK_TYPE_ID: i32 = 20;
+pub const VANILLA_DATA_COMPONENT_ENCHANTMENT_GLINT_OVERRIDE_TYPE_ID: i32 = 21;
+pub const VANILLA_DATA_COMPONENT_INTANGIBLE_PROJECTILE_TYPE_ID: i32 = 22;
+pub const VANILLA_DATA_COMPONENT_FOOD_TYPE_ID: i32 = 23;
+pub const VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID: i32 = 24;
+pub const VANILLA_DATA_COMPONENT_USE_REMAINDER_TYPE_ID: i32 = 25;
+pub const VANILLA_DATA_COMPONENT_USE_COOLDOWN_TYPE_ID: i32 = 26;
+pub const VANILLA_DATA_COMPONENT_DAMAGE_RESISTANT_TYPE_ID: i32 = 27;
+pub const VANILLA_DATA_COMPONENT_TOOL_TYPE_ID: i32 = 28;
+pub const VANILLA_DATA_COMPONENT_WEAPON_TYPE_ID: i32 = 29;
+pub const VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID: i32 = 30;
+pub const VANILLA_DATA_COMPONENT_ENCHANTABLE_TYPE_ID: i32 = 31;
+pub const VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID: i32 = 32;
+pub const VANILLA_DATA_COMPONENT_REPAIRABLE_TYPE_ID: i32 = 33;
+pub const VANILLA_DATA_COMPONENT_GLIDER_TYPE_ID: i32 = 34;
+pub const VANILLA_DATA_COMPONENT_TOOLTIP_STYLE_TYPE_ID: i32 = 35;
+pub const VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID: i32 = 36;
+pub const VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID: i32 = 37;
+pub const VANILLA_DATA_COMPONENT_PIERCING_WEAPON_TYPE_ID: i32 = 38;
+pub const VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID: i32 = 39;
+pub const VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID: i32 = 40;
+pub const VANILLA_DATA_COMPONENT_ADDITIONAL_TRADE_COST_TYPE_ID: i32 = 41;
+pub const VANILLA_DATA_COMPONENT_STORED_ENCHANTMENTS_TYPE_ID: i32 = 42;
+pub const VANILLA_DATA_COMPONENT_DYE_TYPE_ID: i32 = 43;
+pub const VANILLA_DATA_COMPONENT_DYED_COLOR_TYPE_ID: i32 = 44;
+pub const VANILLA_DATA_COMPONENT_MAP_COLOR_TYPE_ID: i32 = 45;
+pub const VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID: i32 = 46;
+pub const VANILLA_DATA_COMPONENT_MAP_DECORATIONS_TYPE_ID: i32 = 47;
+pub const VANILLA_DATA_COMPONENT_MAP_POST_PROCESSING_TYPE_ID: i32 = 48;
+pub const VANILLA_DATA_COMPONENT_CHARGED_PROJECTILES_TYPE_ID: i32 = 49;
+pub const VANILLA_DATA_COMPONENT_BUNDLE_CONTENTS_TYPE_ID: i32 = 50;
+pub const VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID: i32 = 51;
+pub const VANILLA_DATA_COMPONENT_POTION_DURATION_SCALE_TYPE_ID: i32 = 52;
+pub const VANILLA_DATA_COMPONENT_SUSPICIOUS_STEW_EFFECTS_TYPE_ID: i32 = 53;
+pub const VANILLA_DATA_COMPONENT_WRITABLE_BOOK_CONTENT_TYPE_ID: i32 = 54;
+pub const VANILLA_DATA_COMPONENT_WRITTEN_BOOK_CONTENT_TYPE_ID: i32 = 55;
+pub const VANILLA_DATA_COMPONENT_TRIM_TYPE_ID: i32 = 56;
+pub const VANILLA_DATA_COMPONENT_DEBUG_STICK_STATE_TYPE_ID: i32 = 57;
+pub const VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID: i32 = 58;
+pub const VANILLA_DATA_COMPONENT_BUCKET_ENTITY_DATA_TYPE_ID: i32 = 59;
+pub const VANILLA_DATA_COMPONENT_BLOCK_ENTITY_DATA_TYPE_ID: i32 = 60;
+pub const VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID: i32 = 61;
+pub const VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID: i32 = 62;
+pub const VANILLA_DATA_COMPONENT_OMINOUS_BOTTLE_AMPLIFIER_TYPE_ID: i32 = 63;
+pub const VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID: i32 = 64;
+pub const VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID: i32 = 65;
+pub const VANILLA_DATA_COMPONENT_RECIPES_TYPE_ID: i32 = 66;
+pub const VANILLA_DATA_COMPONENT_LODESTONE_TRACKER_TYPE_ID: i32 = 67;
+pub const VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID: i32 = 68;
+pub const VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID: i32 = 69;
+pub const VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID: i32 = 70;
+pub const VANILLA_DATA_COMPONENT_NOTE_BLOCK_SOUND_TYPE_ID: i32 = 71;
+pub const VANILLA_DATA_COMPONENT_BANNER_PATTERNS_TYPE_ID: i32 = 72;
+pub const VANILLA_DATA_COMPONENT_BASE_COLOR_TYPE_ID: i32 = 73;
+pub const VANILLA_DATA_COMPONENT_POT_DECORATIONS_TYPE_ID: i32 = 74;
+pub const VANILLA_DATA_COMPONENT_CONTAINER_TYPE_ID: i32 = 75;
+pub const VANILLA_DATA_COMPONENT_BLOCK_STATE_TYPE_ID: i32 = 76;
+pub const VANILLA_DATA_COMPONENT_BEES_TYPE_ID: i32 = 77;
+pub const VANILLA_DATA_COMPONENT_LOCK_TYPE_ID: i32 = 78;
+pub const VANILLA_DATA_COMPONENT_CONTAINER_LOOT_TYPE_ID: i32 = 79;
+pub const VANILLA_DATA_COMPONENT_BREAK_SOUND_TYPE_ID: i32 = 80;
+pub const VANILLA_DATA_COMPONENT_VILLAGER_VARIANT_TYPE_ID: i32 = 81;
+pub const VANILLA_DATA_COMPONENT_WOLF_VARIANT_TYPE_ID: i32 = 82;
+pub const VANILLA_DATA_COMPONENT_WOLF_SOUND_VARIANT_TYPE_ID: i32 = 83;
+pub const VANILLA_DATA_COMPONENT_WOLF_COLLAR_TYPE_ID: i32 = 84;
+pub const VANILLA_DATA_COMPONENT_FOX_VARIANT_TYPE_ID: i32 = 85;
+pub const VANILLA_DATA_COMPONENT_SALMON_SIZE_TYPE_ID: i32 = 86;
+pub const VANILLA_DATA_COMPONENT_PARROT_VARIANT_TYPE_ID: i32 = 87;
+pub const VANILLA_DATA_COMPONENT_TROPICAL_FISH_PATTERN_TYPE_ID: i32 = 88;
+pub const VANILLA_DATA_COMPONENT_TROPICAL_FISH_BASE_COLOR_TYPE_ID: i32 = 89;
+pub const VANILLA_DATA_COMPONENT_TROPICAL_FISH_PATTERN_COLOR_TYPE_ID: i32 = 90;
+pub const VANILLA_DATA_COMPONENT_MOOSHROOM_VARIANT_TYPE_ID: i32 = 91;
+pub const VANILLA_DATA_COMPONENT_RABBIT_VARIANT_TYPE_ID: i32 = 92;
+pub const VANILLA_DATA_COMPONENT_PIG_VARIANT_TYPE_ID: i32 = 93;
+pub const VANILLA_DATA_COMPONENT_PIG_SOUND_VARIANT_TYPE_ID: i32 = 94;
+pub const VANILLA_DATA_COMPONENT_COW_VARIANT_TYPE_ID: i32 = 95;
+pub const VANILLA_DATA_COMPONENT_COW_SOUND_VARIANT_TYPE_ID: i32 = 96;
+pub const VANILLA_DATA_COMPONENT_CHICKEN_VARIANT_TYPE_ID: i32 = 97;
+pub const VANILLA_DATA_COMPONENT_CHICKEN_SOUND_VARIANT_TYPE_ID: i32 = 98;
+pub const VANILLA_DATA_COMPONENT_ZOMBIE_NAUTILUS_VARIANT_TYPE_ID: i32 = 99;
+pub const VANILLA_DATA_COMPONENT_FROG_VARIANT_TYPE_ID: i32 = 100;
+pub const VANILLA_DATA_COMPONENT_HORSE_VARIANT_TYPE_ID: i32 = 101;
+pub const VANILLA_DATA_COMPONENT_PAINTING_VARIANT_TYPE_ID: i32 = 102;
+pub const VANILLA_DATA_COMPONENT_LLAMA_VARIANT_TYPE_ID: i32 = 103;
+pub const VANILLA_DATA_COMPONENT_AXOLOTL_VARIANT_TYPE_ID: i32 = 104;
+pub const VANILLA_DATA_COMPONENT_CAT_VARIANT_TYPE_ID: i32 = 105;
+pub const VANILLA_DATA_COMPONENT_CAT_SOUND_VARIANT_TYPE_ID: i32 = 106;
+pub const VANILLA_DATA_COMPONENT_CAT_COLLAR_TYPE_ID: i32 = 107;
+pub const VANILLA_DATA_COMPONENT_SHEEP_COLOR_TYPE_ID: i32 = 108;
+pub const VANILLA_DATA_COMPONENT_SHULKER_COLOR_TYPE_ID: i32 = 109;
+
 pub const VANILLA_DATA_COMPONENT_TYPES: &[DataComponentTypeCatalogEntry] = &[
     DataComponentTypeCatalogEntry {
         type_id: 0,
@@ -788,7 +899,7 @@ pub fn vanilla_data_component_predicate_resource_id(type_id: i32) -> Option<&'st
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashSet;
+    use std::{collections::HashSet, fs, path::Path};
 
     use super::*;
 
@@ -810,6 +921,72 @@ mod tests {
                 .map(|entry| entry.type_id)
                 .collect::<Vec<_>>(),
             vec![20, 41, 48]
+        );
+        assert_eq!(VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID, 37);
+        assert_eq!(VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID, 46);
+    }
+
+    #[test]
+    fn production_sources_do_not_handwrite_data_component_ids() {
+        fn visit(directory: &Path, violations: &mut Vec<String>) {
+            for entry in fs::read_dir(directory).unwrap() {
+                let path = entry.unwrap().path();
+                if path.is_dir() {
+                    visit(&path, violations);
+                    continue;
+                }
+                if path.extension().and_then(|value| value.to_str()) != Some("rs") {
+                    continue;
+                }
+                let display = path.to_string_lossy();
+                if display.ends_with("/data_component_types.rs")
+                    || display.ends_with("/entity_data_serializers.rs")
+                    || display.ends_with("/tests.rs")
+                    || display.contains("/tests/")
+                {
+                    continue;
+                }
+                let source = fs::read_to_string(&path).unwrap();
+                if display.ends_with("/input/component_patch.rs") {
+                    for (offset, _) in source.match_indices("encoder(") {
+                        let value = source[offset + "encoder(".len()..].trim_start();
+                        if value.as_bytes().first().is_some_and(u8::is_ascii_digit) {
+                            violations.push(format!(
+                                "{}: raw numeric component encoder descriptor",
+                                display
+                            ));
+                        }
+                    }
+                }
+                for (offset, _) in source.match_indices(": i32 =") {
+                    let line_start = source[..offset].rfind('\n').map_or(0, |index| index + 1);
+                    let declaration = &source[line_start..offset];
+                    let value = source[offset + ": i32 =".len()..].trim_start();
+                    if declaration.contains("COMPONENT")
+                        && value.as_bytes().first().is_some_and(u8::is_ascii_digit)
+                    {
+                        let line_number = source[..offset]
+                            .bytes()
+                            .filter(|byte| *byte == b'\n')
+                            .count()
+                            + 1;
+                        violations.push(format!(
+                            "{}:{}: {}",
+                            display,
+                            line_number,
+                            declaration.trim()
+                        ));
+                    }
+                }
+            }
+        }
+        let crates = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
+        let mut violations = Vec::new();
+        visit(crates, &mut violations);
+        assert!(
+            violations.is_empty(),
+            "handwritten data component ids:\n{}",
+            violations.join("\n")
         );
     }
 

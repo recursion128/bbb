@@ -380,7 +380,8 @@ mod tests {
     const ENTITY_SHARED_FLAG_INVISIBLE: i8 = 1 << 5;
     const ITEM_FRAME_DATA_ITEM_ID: u8 = 9;
     const ITEM_FRAME_DATA_ROTATION_ID: u8 = 10;
-    const MAP_ID_DATA_COMPONENT_TYPE_ID: i32 = 46;
+    const MAP_ID_DATA_COMPONENT_TYPE_ID: i32 =
+        bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID;
 
     #[test]
     fn horizontal_and_vertical_facings_map_to_vanilla_rotations() {
