@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 
+pub use crate::remote_debug_sample_types::RemoteDebugSampleType;
 use crate::{
     codec::{Decoder, ProtocolError, Result},
     component::decode_component_summary_from_decoder,
@@ -40,27 +41,11 @@ pub struct DebugSample {
     pub sample_type: RemoteDebugSampleType,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum RemoteDebugSampleType {
-    TickTime,
-}
-
 impl RemoteDebugSampleType {
     pub fn as_str(self) -> &'static str {
         match self {
             Self::TickTime => "tick_time",
         }
-    }
-
-    fn from_ordinal(ordinal: i32) -> Result<Self> {
-        Ok(match ordinal {
-            0 => Self::TickTime,
-            other => {
-                return Err(ProtocolError::InvalidData(format!(
-                    "invalid remote debug sample type ordinal {other}"
-                )))
-            }
-        })
     }
 }
 
@@ -137,9 +122,15 @@ pub(crate) fn decode_debug_sample(decoder: &mut Decoder<'_>) -> Result<DebugSamp
         sample.push(decoder.read_i64()?);
     }
 
+    let ordinal = decoder.read_var_i32()?;
+    let sample_type = RemoteDebugSampleType::from_ordinal(ordinal).ok_or_else(|| {
+        ProtocolError::InvalidData(format!(
+            "invalid remote debug sample type ordinal {ordinal}"
+        ))
+    })?;
     Ok(DebugSample {
         sample,
-        sample_type: RemoteDebugSampleType::from_ordinal(decoder.read_var_i32()?)?,
+        sample_type,
     })
 }
 

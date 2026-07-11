@@ -140,6 +140,12 @@ class EntityAnchorEntry:
     serialized_name: str
 
 
+@dataclass(frozen=True)
+class RemoteDebugSampleTypeEntry:
+    constant_name: str
+    ordinal: int
+
+
 def _fail(source: JavaSource, expression: JavaExpression, message: str) -> None:
     span = expression.span
     raise GameplayIdExtractionError(
@@ -551,6 +557,21 @@ def entity_anchor_entries(
         )
     _validate(entries, "entity anchor", "ordinal")
     _validate(entries, "entity anchor", "serialized_name")
+    return entries
+
+
+def remote_debug_sample_type_entries(
+    source: JavaSource, expected_count: int = 1
+) -> list[RemoteDebugSampleTypeEntry]:
+    entries = [
+        RemoteDebugSampleTypeEntry(name, ordinal)
+        for ordinal, (name, _) in enumerate(_enum_constants(source))
+    ]
+    if len(entries) != expected_count:
+        raise GameplayIdExtractionError(
+            f"expected {expected_count} remote debug sample types, extracted {len(entries)}"
+        )
+    _validate(entries, "remote debug sample type", "ordinal")
     return entries
 
 

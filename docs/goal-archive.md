@@ -10531,3 +10531,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   并保留原 invalid-ordinal `InvalidData` 诊断。生成完整性/唯一性/反向门禁以及
   protocol/world/net/native player-look-at focused tests 不改语义通过；anchor 的位置计算和
   client orientation apply 仍由 world/native 语义 owner 手写。
+
+## 2026-07-11：Generated remote-debug sample type order
+
+- [x] gameplay-id extractor 通过共享 Tree-sitter frontend 读取 vanilla 顶层
+  `RemoteDebugSampleType` enum 的声明顺序，生成单项 `TICK_TIME` typed catalog/ordinal。
+  protocol debug-game facade 保持原 re-export，删除 ordinal match，同时保留手写
+  `"tick_time"` 展示语义和原 invalid-ordinal `InvalidData` 诊断。生成顺序/反向门禁、
+  protocol decode、world/net 转发和 native F3+2 TPS sampler focused tests 不改语义通过；
+  debug subscription 与 chart 算法仍由原 client owner 手写。

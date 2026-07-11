@@ -28,6 +28,7 @@ from gameplay_id_catalog_extractor import (  # noqa: E402
     player_action_kind_entries,
     player_command_action_entries,
     resource_pack_response_action_entries,
+    remote_debug_sample_type_entries,
     sound_source_entries,
 )
 from vanilla_java_source import parse_source  # noqa: E402
@@ -365,6 +366,24 @@ public class EntityAnchorArgument {
                 for entry in entity_anchor_entries(source)
             ],
             [("FEET", 0, "feet"), ("EYES", 1, "eyes")],
+        )
+
+    def test_remote_debug_sample_types_preserve_top_level_enum_order(self) -> None:
+        source = parse_source(
+            "fixture/RemoteDebugSampleType.java",
+            b"""
+package fixture;
+public enum RemoteDebugSampleType {
+  TICK_TIME(DebugSubscriptions.DEDICATED_SERVER_TICK_TIME);
+}
+""",
+        )
+        self.assertEqual(
+            [
+                (entry.constant_name, entry.ordinal)
+                for entry in remote_debug_sample_type_entries(source)
+            ],
+            [("TICK_TIME", 0)],
         )
 
     def test_unsupported_register_shape_reports_source_span(self) -> None:
