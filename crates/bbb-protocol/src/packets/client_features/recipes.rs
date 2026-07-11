@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::codec::{Decoder, ProtocolError, Result};
+pub use crate::recipe_wire_types::{RecipeBookType, RecipeDisplayType};
 
 use super::super::read_resource_location;
 use super::super::{DataComponentPatchSummary, ItemStackSummary};
@@ -160,26 +161,6 @@ pub struct RecipeBookTypeSettings {
     pub filtering: bool,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum RecipeBookType {
-    Crafting,
-    Furnace,
-    BlastFurnace,
-    Smoker,
-}
-
-impl RecipeBookType {
-    pub fn id(self) -> i32 {
-        match self {
-            Self::Crafting => 0,
-            Self::Furnace => 1,
-            Self::BlastFurnace => 2,
-            Self::Smoker => 3,
-        }
-    }
-}
-
 impl Default for RecipeBookSettings {
     fn default() -> Self {
         Self {
@@ -188,52 +169,6 @@ impl Default for RecipeBookSettings {
             blast_furnace: RecipeBookTypeSettings::default(),
             smoker: RecipeBookTypeSettings::default(),
         }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum RecipeDisplayType {
-    CraftingShapeless,
-    CraftingShaped,
-    Furnace,
-    Stonecutter,
-    Smithing,
-}
-
-impl RecipeDisplayType {
-    pub fn id(self) -> i32 {
-        match self {
-            Self::CraftingShapeless => 0,
-            Self::CraftingShaped => 1,
-            Self::Furnace => 2,
-            Self::Stonecutter => 3,
-            Self::Smithing => 4,
-        }
-    }
-
-    pub fn as_str(self) -> &'static str {
-        match self {
-            Self::CraftingShapeless => "crafting_shapeless",
-            Self::CraftingShaped => "crafting_shaped",
-            Self::Furnace => "furnace",
-            Self::Stonecutter => "stonecutter",
-            Self::Smithing => "smithing",
-        }
-    }
-
-    fn from_id(id: i32) -> Result<Self> {
-        Ok(match id {
-            0 => Self::CraftingShapeless,
-            1 => Self::CraftingShaped,
-            2 => Self::Furnace,
-            3 => Self::Stonecutter,
-            4 => Self::Smithing,
-            other => {
-                return Err(ProtocolError::InvalidData(format!(
-                    "invalid recipe display type id {other}"
-                )))
-            }
-        })
     }
 }
 
@@ -340,7 +275,10 @@ fn decode_recipe_display_id(decoder: &mut Decoder<'_>) -> Result<RecipeDisplayId
 fn decode_recipe_display_summary(decoder: &mut Decoder<'_>) -> Result<RecipeDisplaySummary> {
     let display_start = decoder.remaining().to_vec();
     let start_len = display_start.len();
-    let display_type = RecipeDisplayType::from_id(decoder.read_var_i32()?)?;
+    let type_id = decoder.read_var_i32()?;
+    let display_type = RecipeDisplayType::from_id(type_id).ok_or_else(|| {
+        ProtocolError::InvalidData(format!("invalid recipe display type id {type_id}"))
+    })?;
 
     let (crafting, furnace) = match display_type {
         RecipeDisplayType::CraftingShapeless => {

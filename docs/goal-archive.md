@@ -10670,3 +10670,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   world/native/control 点击状态机继续消费同一类型。fixtures、生成完整性/唯一性/fallback/
   反向门禁及跨 crate container-click focused tests 均通过；slot mutation、quick-craft 与 bundle
   行为未改。
+
+## 2026-07-11：Generated recipe wire-type catalogs
+
+- [x] gameplay-id extractor 通过共享 Tree-sitter frontend 读取 vanilla `RecipeBookType` 的
+  4 项无参数 enum 声明顺序，以及 `RecipeDisplays.bootstrap` 的 5 个 `Registry.register`
+  调用顺序/resource id/type reference。generated owner 保持公开 `RecipeBookType` /
+  `RecipeDisplayType` 名称、变体、serde、`id` 与 `as_str`；serverbound recipe-book settings
+  encoder 和 clientbound recipe display decoder 删除 ordinal/id/name matches，非法 display id
+  诊断不变。fixtures、生成完整性/唯一性/反向门禁及 protocol/world/net/native recipe focused
+  tests 均通过；各 display payload codec、recipe-book state 与 UI 行为未改。

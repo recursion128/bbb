@@ -42,6 +42,7 @@ pub mod particle_types;
 pub mod player_action_kinds;
 pub mod player_command_actions;
 pub mod player_info_actions;
+pub mod recipe_wire_types;
 pub mod remote_debug_sample_types;
 pub mod resource_pack_response_actions;
 pub mod scoreboard_display_slots;

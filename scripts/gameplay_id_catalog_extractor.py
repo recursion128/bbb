@@ -250,6 +250,19 @@ class ContainerInputEntry:
     input_id: int
 
 
+@dataclass(frozen=True)
+class RecipeBookTypeEntry:
+    constant_name: str
+    ordinal: int
+
+
+@dataclass(frozen=True)
+class RecipeDisplayTypeEntry:
+    constant_name: str
+    type_id: int
+    resource_id: str
+
+
 def _fail(source: JavaSource, expression: JavaExpression, message: str) -> None:
     span = expression.span
     raise GameplayIdExtractionError(
@@ -451,12 +464,15 @@ def _enum_constants(source: JavaSource) -> list[tuple[str, tuple[JavaExpression,
             continue
         name = node.child_by_field_name("name")
         arguments = node.child_by_field_name("arguments")
-        if name is None or arguments is None:
+        if name is None:
             _fail(source, source.expression(node), "enum constant is incomplete")
         result.append(
             (
                 source.text(name),
-                tuple(source.expression(child) for child in arguments.named_children),
+                tuple(
+                    source.expression(child)
+                    for child in (() if arguments is None else arguments.named_children)
+                ),
             )
         )
     return result
@@ -1241,6 +1257,88 @@ def container_input_entries(
         )
     _validate(entries, "container input", "input_id")
     return entries, strategy
+
+
+def recipe_wire_type_entries(
+    book_type_source: JavaSource,
+    display_types_source: JavaSource,
+) -> tuple[list[RecipeBookTypeEntry], list[RecipeDisplayTypeEntry]]:
+    book_names = ["CRAFTING", "FURNACE", "BLAST_FURNACE", "SMOKER"]
+    books = []
+    for ordinal, (name, arguments) in enumerate(_enum_constants(book_type_source)):
+        if arguments:
+            _fail(
+                book_type_source,
+                arguments[0],
+                f"recipe book type {name} must not have constructor arguments",
+            )
+        books.append(RecipeBookTypeEntry(name, ordinal))
+    if [entry.constant_name for entry in books] != book_names:
+        raise GameplayIdExtractionError(
+            "recipe book types differ from expected declaration order"
+        )
+    _validate(books, "recipe book type", "ordinal")
+
+    top_types = [
+        java_type
+        for java_type in display_types_source.types
+        if java_type.node.parent.type == "program"
+        and java_type.simple_name == "RecipeDisplays"
+    ]
+    if len(top_types) != 1:
+        raise GameplayIdExtractionError(
+            f"{display_types_source.relative_path}: expected one RecipeDisplays type"
+        )
+    register_calls = [
+        call
+        for call in display_types_source.calls_for(top_types[0])
+        if call.name == "register"
+        and call.qualifier is not None
+        and call.qualifier.canonical == "Registry"
+    ]
+    displays = []
+    expected_type_refs = [
+        "ShapelessCraftingRecipeDisplay.TYPE",
+        "ShapedCraftingRecipeDisplay.TYPE",
+        "FurnaceRecipeDisplay.TYPE",
+        "StonecutterRecipeDisplay.TYPE",
+        "SmithingRecipeDisplay.TYPE",
+    ]
+    for type_id, call in enumerate(register_calls):
+        if len(call.arguments) != 3:
+            expression = display_types_source.expression(call.node)
+            _fail(
+                display_types_source,
+                expression,
+                "recipe display register call must have three arguments",
+            )
+        if call.arguments[0].canonical != "registry":
+            _fail(
+                display_types_source,
+                call.arguments[0],
+                "recipe display registration must target the bootstrap registry",
+            )
+        resource_path = _string(display_types_source, call.arguments[1])
+        type_ref = call.arguments[2].canonical
+        if type_id >= len(expected_type_refs) or type_ref != expected_type_refs[type_id]:
+            _fail(
+                display_types_source,
+                call.arguments[2],
+                f"unexpected recipe display type reference {type_ref}",
+            )
+        displays.append(
+            RecipeDisplayTypeEntry(
+                resource_path.upper(), type_id, "minecraft:" + resource_path
+            )
+        )
+    if len(displays) != len(expected_type_refs):
+        raise GameplayIdExtractionError(
+            f"expected {len(expected_type_refs)} recipe display registrations, "
+            f"extracted {len(displays)}"
+        )
+    _validate(displays, "recipe display type", "type_id")
+    _validate(displays, "recipe display type", "resource_id")
+    return books, displays
 
 
 def equipment_slot_entries(

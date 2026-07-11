@@ -37,6 +37,7 @@ from gameplay_id_catalog_extractor import (  # noqa: E402
     player_action_kind_entries,
     player_command_action_entries,
     resource_pack_response_action_entries,
+    recipe_wire_type_entries,
     remote_debug_sample_type_entries,
     sound_source_entries,
     scoreboard_display_slot_entries,
@@ -823,6 +824,48 @@ public enum ContainerInput {
                 ("THROW", 4),
                 ("QUICK_CRAFT", 5),
                 ("PICKUP_ALL", 6),
+            ],
+        )
+
+    def test_recipe_wire_types_preserve_enum_and_bootstrap_order(self) -> None:
+        books = parse_source(
+            "fixture/RecipeBookType.java",
+            b"""
+package fixture;
+public enum RecipeBookType { CRAFTING, FURNACE, BLAST_FURNACE, SMOKER; }
+""",
+        )
+        displays = parse_source(
+            "fixture/RecipeDisplays.java",
+            b"""
+package fixture;
+public class RecipeDisplays {
+  public static Type<?> bootstrap(Registry<Type<?>> registry) {
+    Registry.register(registry, "crafting_shapeless", ShapelessCraftingRecipeDisplay.TYPE);
+    Registry.register(registry, "crafting_shaped", ShapedCraftingRecipeDisplay.TYPE);
+    Registry.register(registry, "furnace", FurnaceRecipeDisplay.TYPE);
+    Registry.register(registry, "stonecutter", StonecutterRecipeDisplay.TYPE);
+    return Registry.register(registry, "smithing", SmithingRecipeDisplay.TYPE);
+  }
+}
+""",
+        )
+        book_entries, display_entries = recipe_wire_type_entries(books, displays)
+        self.assertEqual(
+            [(entry.constant_name, entry.ordinal) for entry in book_entries],
+            [("CRAFTING", 0), ("FURNACE", 1), ("BLAST_FURNACE", 2), ("SMOKER", 3)],
+        )
+        self.assertEqual(
+            [
+                (entry.constant_name, entry.type_id, entry.resource_id)
+                for entry in display_entries
+            ],
+            [
+                ("CRAFTING_SHAPELESS", 0, "minecraft:crafting_shapeless"),
+                ("CRAFTING_SHAPED", 1, "minecraft:crafting_shaped"),
+                ("FURNACE", 2, "minecraft:furnace"),
+                ("STONECUTTER", 3, "minecraft:stonecutter"),
+                ("SMITHING", 4, "minecraft:smithing"),
             ],
         )
 
