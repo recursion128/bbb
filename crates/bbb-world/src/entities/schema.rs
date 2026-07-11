@@ -17,6 +17,7 @@ pub enum VanillaEntityMetadataFamily {
     Allay,
     Creeper,
     Warden,
+    WitherBoss,
     Slime,
     Shulker,
     Zombie,
@@ -310,6 +311,7 @@ mod tests {
             VanillaEntityMetadataFamily::Allay,
             VanillaEntityMetadataFamily::Creeper,
             VanillaEntityMetadataFamily::Warden,
+            VanillaEntityMetadataFamily::WitherBoss,
             VanillaEntityMetadataFamily::Slime,
             VanillaEntityMetadataFamily::Shulker,
             VanillaEntityMetadataFamily::Zombie,
@@ -402,6 +404,18 @@ mod tests {
         assert_eq!(warden.own_fields.len(), 1);
         assert_eq!(VANILLA_WARDEN_ANGER_LEVEL_DATA_ID, 16);
         assert_eq!(VANILLA_WARDEN_DEFAULT_ANGER_LEVEL, 0);
+        let wither = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::WitherBoss);
+        assert_eq!(wither.parent, Some(VanillaEntityMetadataFamily::Mob));
+        assert_eq!(wither.inherited_field_count, 16);
+        assert_eq!(wither.own_fields.len(), 4);
+        assert_eq!(VANILLA_WITHER_TARGET_A_DATA_ID, 16);
+        assert_eq!(VANILLA_WITHER_TARGET_B_DATA_ID, 17);
+        assert_eq!(VANILLA_WITHER_TARGET_C_DATA_ID, 18);
+        assert_eq!(VANILLA_WITHER_INVULNERABLE_TICKS_DATA_ID, 19);
+        assert_eq!(VANILLA_WITHER_DEFAULT_TARGET_A, 0);
+        assert_eq!(VANILLA_WITHER_DEFAULT_TARGET_B, 0);
+        assert_eq!(VANILLA_WITHER_DEFAULT_TARGET_C, 0);
+        assert_eq!(VANILLA_WITHER_DEFAULT_INVULNERABLE_TICKS, 0);
         let polar_bear = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::PolarBear);
         assert_eq!(
             polar_bear.parent,

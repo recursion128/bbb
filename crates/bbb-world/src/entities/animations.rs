@@ -59,6 +59,10 @@ use super::schema::{
     VANILLA_VEHICLE_HURT_TIME_DATA_ID as VEHICLE_HURT_TIME_DATA_ID,
     VANILLA_WARDEN_ANGER_LEVEL_DATA_ID as WARDEN_ANGER_LEVEL_DATA_ID,
     VANILLA_WARDEN_DEFAULT_ANGER_LEVEL as WARDEN_DEFAULT_ANGER_LEVEL,
+    VANILLA_WITHER_DEFAULT_TARGET_B as WITHER_DEFAULT_TARGET_B,
+    VANILLA_WITHER_DEFAULT_TARGET_C as WITHER_DEFAULT_TARGET_C,
+    VANILLA_WITHER_TARGET_B_DATA_ID as WITHER_TARGET_B_DATA_ID,
+    VANILLA_WITHER_TARGET_C_DATA_ID as WITHER_TARGET_C_DATA_ID,
 };
 use super::{
     is_vanilla_boat_type, is_vanilla_vehicle_entity_type, EntityTransform, EntityVec3,
@@ -94,8 +98,6 @@ const ARMOR_STAND_WOBBLE_TIME: i32 = 5;
 /// `xRotHeads` / `yRotHeads` arrays that lerp toward synced target entities.
 /// Vanilla `WitherBoss.DATA_TARGET_B/C`, the two side-head target ids. `DATA_TARGET_A`
 /// (16) is the center combat target; model side heads read B/C at 17/18.
-const WITHER_TARGET_B_DATA_ID: u8 = 17;
-const WITHER_TARGET_C_DATA_ID: u8 = 18;
 /// Vanilla `FlyingAnimal` implementors (`Bee`, `Parrot`): their
 /// `LivingEntity.calculateEntityAnimation` measures the full 3-D travel distance
 /// (`calculateEntityAnimation(this instanceof FlyingAnimal)`), so the limb-swing
@@ -2970,8 +2972,16 @@ fn walk_update_target_speed(
 /// `DATA_TARGET_B/C`. Target `0` means "no target".
 pub(crate) fn wither_side_head_target_ids(data_values: &[EntityDataValue]) -> [i32; 2] {
     [
-        entity_data_int(data_values, WITHER_TARGET_B_DATA_ID, 0),
-        entity_data_int(data_values, WITHER_TARGET_C_DATA_ID, 0),
+        entity_data_int(
+            data_values,
+            WITHER_TARGET_B_DATA_ID,
+            WITHER_DEFAULT_TARGET_B,
+        ),
+        entity_data_int(
+            data_values,
+            WITHER_TARGET_C_DATA_ID,
+            WITHER_DEFAULT_TARGET_C,
+        ),
     ]
 }
 

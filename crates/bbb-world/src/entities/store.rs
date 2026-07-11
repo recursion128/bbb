@@ -32,6 +32,8 @@ use super::schema::{
     VANILLA_TAMABLE_ANIMAL_FLAG_SITTING as TAMABLE_ANIMAL_SITTING_FLAG,
     VANILLA_VEX_DEFAULT_FLAGS as VEX_DEFAULT_FLAGS, VANILLA_VEX_FLAGS_DATA_ID as VEX_FLAGS_DATA_ID,
     VANILLA_VEX_FLAG_CHARGING as VEX_FLAG_IS_CHARGING,
+    VANILLA_WITHER_DEFAULT_INVULNERABLE_TICKS as WITHER_DEFAULT_INVULNERABLE_TICKS,
+    VANILLA_WITHER_INVULNERABLE_TICKS_DATA_ID as WITHER_INVULNERABLE_TICKS_DATA_ID,
 };
 
 use super::{
@@ -323,8 +325,6 @@ const FOX_FLAG_FACEPLANTED: i8 = 64;
 /// Vanilla `WitherBoss.DATA_ID_INV` data id (19): the int spawn-invulnerability countdown
 /// (`getInvulnerableTicks`), the fourth `WitherBoss` accessor after `Mob.DATA_MOB_FLAGS_ID` (15) and
 /// the three `DATA_TARGET_A/B/C` ints (16..=18).
-const VANILLA_WITHER_INV_DATA_ID: u8 = 19;
-
 pub(crate) struct EntityStore {
     pub(super) ecs: World,
     pub(super) by_protocol_id: BTreeMap<i32, Entity>,
@@ -1743,8 +1743,12 @@ impl EntityStore {
         // defines that accessor, so every other entity holds `0.0`.
         let wither_invulnerable_ticks = if vanilla_is_wither(identity.entity_type_id) {
             let ticks = self
-                .metadata_int(id, VANILLA_WITHER_INV_DATA_ID, 0)
-                .unwrap_or(0);
+                .metadata_int(
+                    id,
+                    WITHER_INVULNERABLE_TICKS_DATA_ID,
+                    WITHER_DEFAULT_INVULNERABLE_TICKS,
+                )
+                .unwrap_or(WITHER_DEFAULT_INVULNERABLE_TICKS);
             if ticks > 0 {
                 ticks as f32 - partial_ticks
             } else {

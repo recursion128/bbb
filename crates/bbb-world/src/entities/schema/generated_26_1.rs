@@ -58,6 +58,15 @@ const GENERATED_VANILLA_CREEPER_IGNITED_DATA_ID: u8 = 18;
 pub const VANILLA_CREEPER_IGNITED_DATA_ID: u8 = GENERATED_VANILLA_CREEPER_IGNITED_DATA_ID;
 const GENERATED_VANILLA_WARDEN_ANGER_LEVEL_DATA_ID: u8 = 16;
 pub const VANILLA_WARDEN_ANGER_LEVEL_DATA_ID: u8 = GENERATED_VANILLA_WARDEN_ANGER_LEVEL_DATA_ID;
+const GENERATED_VANILLA_WITHER_TARGET_A_DATA_ID: u8 = 16;
+pub const VANILLA_WITHER_TARGET_A_DATA_ID: u8 = GENERATED_VANILLA_WITHER_TARGET_A_DATA_ID;
+const GENERATED_VANILLA_WITHER_TARGET_B_DATA_ID: u8 = 17;
+pub const VANILLA_WITHER_TARGET_B_DATA_ID: u8 = GENERATED_VANILLA_WITHER_TARGET_B_DATA_ID;
+const GENERATED_VANILLA_WITHER_TARGET_C_DATA_ID: u8 = 18;
+pub const VANILLA_WITHER_TARGET_C_DATA_ID: u8 = GENERATED_VANILLA_WITHER_TARGET_C_DATA_ID;
+const GENERATED_VANILLA_WITHER_INVULNERABLE_TICKS_DATA_ID: u8 = 19;
+pub const VANILLA_WITHER_INVULNERABLE_TICKS_DATA_ID: u8 =
+    GENERATED_VANILLA_WITHER_INVULNERABLE_TICKS_DATA_ID;
 const GENERATED_VANILLA_POLAR_BEAR_STANDING_DATA_ID: u8 = 18;
 pub const VANILLA_POLAR_BEAR_STANDING_DATA_ID: u8 = GENERATED_VANILLA_POLAR_BEAR_STANDING_DATA_ID;
 const GENERATED_VANILLA_SLIME_SIZE_DATA_ID: u8 = 16;
@@ -351,6 +360,15 @@ const GENERATED_VANILLA_CREEPER_DEFAULT_IGNITED: bool = false;
 pub const VANILLA_CREEPER_DEFAULT_IGNITED: bool = GENERATED_VANILLA_CREEPER_DEFAULT_IGNITED;
 const GENERATED_VANILLA_WARDEN_DEFAULT_ANGER_LEVEL: i32 = 0;
 pub const VANILLA_WARDEN_DEFAULT_ANGER_LEVEL: i32 = GENERATED_VANILLA_WARDEN_DEFAULT_ANGER_LEVEL;
+const GENERATED_VANILLA_WITHER_DEFAULT_TARGET_A: i32 = 0;
+pub const VANILLA_WITHER_DEFAULT_TARGET_A: i32 = GENERATED_VANILLA_WITHER_DEFAULT_TARGET_A;
+const GENERATED_VANILLA_WITHER_DEFAULT_TARGET_B: i32 = 0;
+pub const VANILLA_WITHER_DEFAULT_TARGET_B: i32 = GENERATED_VANILLA_WITHER_DEFAULT_TARGET_B;
+const GENERATED_VANILLA_WITHER_DEFAULT_TARGET_C: i32 = 0;
+pub const VANILLA_WITHER_DEFAULT_TARGET_C: i32 = GENERATED_VANILLA_WITHER_DEFAULT_TARGET_C;
+const GENERATED_VANILLA_WITHER_DEFAULT_INVULNERABLE_TICKS: i32 = 0;
+pub const VANILLA_WITHER_DEFAULT_INVULNERABLE_TICKS: i32 =
+    GENERATED_VANILLA_WITHER_DEFAULT_INVULNERABLE_TICKS;
 const GENERATED_VANILLA_POLAR_BEAR_DEFAULT_STANDING: bool = false;
 pub const VANILLA_POLAR_BEAR_DEFAULT_STANDING: bool = GENERATED_VANILLA_POLAR_BEAR_DEFAULT_STANDING;
 const GENERATED_VANILLA_AVATAR_DEFAULT_MODEL_CUSTOMIZATION: i8 = 0;
@@ -13137,6 +13155,41 @@ const WARDEN_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFa
     own_flags: WARDEN_FLAGS,
 };
 
+const WITHERBOSS_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_TARGET_A",
+        data_id: 16,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+        default: VanillaEntityMetadataDefault::Int(0),
+    },
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_TARGET_B",
+        data_id: 17,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+        default: VanillaEntityMetadataDefault::Int(0),
+    },
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_TARGET_C",
+        data_id: 18,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+        default: VanillaEntityMetadataDefault::Int(0),
+    },
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_ID_INV",
+        data_id: 19,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+        default: VanillaEntityMetadataDefault::Int(0),
+    },
+];
+const WITHERBOSS_FLAGS: &[VanillaEntityMetadataFlagSchema] = &[];
+const WITHERBOSS_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamilySchema {
+    family: VanillaEntityMetadataFamily::WitherBoss,
+    parent: Some(VanillaEntityMetadataFamily::Mob),
+    inherited_field_count: 16,
+    own_fields: WITHERBOSS_FIELDS,
+    own_flags: WITHERBOSS_FLAGS,
+};
+
 const SLIME_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[VanillaEntityMetadataFieldSchema {
     name: "ID_SIZE",
     data_id: 16,
@@ -14158,6 +14211,7 @@ pub(super) const fn generated_entity_metadata_schema(
         VanillaEntityMetadataFamily::Allay => &ALLAY_SCHEMA,
         VanillaEntityMetadataFamily::Creeper => &CREEPER_SCHEMA,
         VanillaEntityMetadataFamily::Warden => &WARDEN_SCHEMA,
+        VanillaEntityMetadataFamily::WitherBoss => &WITHERBOSS_SCHEMA,
         VanillaEntityMetadataFamily::Slime => &SLIME_SCHEMA,
         VanillaEntityMetadataFamily::Shulker => &SHULKER_SCHEMA,
         VanillaEntityMetadataFamily::Zombie => &ZOMBIE_SCHEMA,

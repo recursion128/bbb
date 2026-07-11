@@ -9792,3 +9792,10 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] 从 generated catalog 建立 `Mob -> Warden` family（无 accessor 的 `Monster`
   中间父类仍计入继承链）：INT client anger level id16/default 0；world heartbeat 动画删除
   手抄 metadata id/default，anger threshold 与动画算法保持在 world 语义 owner。
+
+## 2026-07-11：Generated entity metadata consumer（WitherBoss）
+
+- [x] 从 generated catalog 建立 `Mob -> WitherBoss` family：三个 INT target
+  id16..18/default 0 与 invulnerable ticks id19/default 0；world side-head/render-state 和
+  native debug-save 删除手抄 synced id/default。固定 220-tick spawn 算法仍由行为 owner
+  管理。
