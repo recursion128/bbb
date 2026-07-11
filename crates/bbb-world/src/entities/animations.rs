@@ -41,6 +41,10 @@ use super::schema::{
     VANILLA_BEE_DEFAULT_FLAGS as BEE_DEFAULT_FLAGS, VANILLA_BEE_FLAGS_DATA_ID as BEE_FLAGS_DATA_ID,
     VANILLA_BEE_FLAG_ROLL as BEE_FLAG_ROLL, VANILLA_CAMEL_DASH_DATA_ID as CAMEL_DASH_DATA_ID,
     VANILLA_CAMEL_DEFAULT_DASH as CAMEL_DEFAULT_DASH,
+    VANILLA_CAT_DEFAULT_IS_LYING as CAT_DEFAULT_IS_LYING,
+    VANILLA_CAT_DEFAULT_RELAX_STATE_ONE as CAT_DEFAULT_RELAX_STATE_ONE,
+    VANILLA_CAT_IS_LYING_DATA_ID as CAT_IS_LYING_DATA_ID,
+    VANILLA_CAT_RELAX_STATE_ONE_DATA_ID as CAT_RELAX_STATE_ONE_DATA_ID,
     VANILLA_COPPER_GOLEM_DEFAULT_STATE as COPPER_GOLEM_DEFAULT_STATE,
     VANILLA_COPPER_GOLEM_STATE_DATA_ID as COPPER_GOLEM_STATE_DATA_ID,
     VANILLA_COPPER_GOLEM_STATE_DROPPING_ITEM_ID as COPPER_GOLEM_STATE_DROPPING_ITEM_ID,
@@ -156,12 +160,6 @@ const POLAR_BEAR_STAND_ANIMATION_TICKS: f32 = 6.0;
 const CREEPER_MAX_SWELL: i32 = 30;
 const SHULKER_PEEK_PER_TICK: f32 = 0.05;
 const SHULKER_MAX_PEEK_AMOUNT: f32 = 1.0;
-/// Vanilla `Cat` entity type id (`EntityType.CAT`).
-/// Vanilla `Cat.IS_LYING`, the synced boolean after `Cat.DATA_VARIANT_ID`:
-/// Entity 0-7, LivingEntity 8-14, Mob 15, AgeableMob 16-17, TamableAnimal 18-19,
-/// then Cat variant 20, lying 21, relax-state-one 22.
-const CAT_IS_LYING_DATA_ID: u8 = 21;
-const CAT_RELAX_STATE_ONE_DATA_ID: u8 = 22;
 /// Vanilla `Cat.updateLieDownAmount` / `updateRelaxStateOneAmount` easing.
 const CAT_LIE_DOWN_AMOUNT_RISE_PER_TICK: f32 = 0.15;
 const CAT_LIE_DOWN_AMOUNT_FALL_PER_TICK: f32 = 0.22;
@@ -6186,12 +6184,16 @@ pub(crate) fn wolf_is_interested(data_values: &[EntityDataValue]) -> bool {
 
 /// Vanilla `Cat.isLying()` = `entityData.get(IS_LYING)`.
 pub(crate) fn cat_is_lying(data_values: &[EntityDataValue]) -> bool {
-    entity_data_bool(data_values, CAT_IS_LYING_DATA_ID, false)
+    entity_data_bool(data_values, CAT_IS_LYING_DATA_ID, CAT_DEFAULT_IS_LYING)
 }
 
 /// Vanilla `Cat.isRelaxStateOne()` = `entityData.get(RELAX_STATE_ONE)`.
 pub(crate) fn cat_relax_state_one(data_values: &[EntityDataValue]) -> bool {
-    entity_data_bool(data_values, CAT_RELAX_STATE_ONE_DATA_ID, false)
+    entity_data_bool(
+        data_values,
+        CAT_RELAX_STATE_ONE_DATA_ID,
+        CAT_DEFAULT_RELAX_STATE_ONE,
+    )
 }
 
 /// Vanilla `Fox.isCrouching()` = `getFlag(FLAG_CROUCHING)` = `(flags & 4) != 0`.

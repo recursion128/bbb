@@ -185,6 +185,16 @@ const GENERATED_VANILLA_TAMABLE_ANIMAL_FLAGS_DATA_ID: u8 = 18;
 pub const VANILLA_TAMABLE_ANIMAL_FLAGS_DATA_ID: u8 = GENERATED_VANILLA_TAMABLE_ANIMAL_FLAGS_DATA_ID;
 const GENERATED_VANILLA_TAMABLE_ANIMAL_OWNER_DATA_ID: u8 = 19;
 pub const VANILLA_TAMABLE_ANIMAL_OWNER_DATA_ID: u8 = GENERATED_VANILLA_TAMABLE_ANIMAL_OWNER_DATA_ID;
+const GENERATED_VANILLA_CAT_VARIANT_DATA_ID: u8 = 20;
+pub const VANILLA_CAT_VARIANT_DATA_ID: u8 = GENERATED_VANILLA_CAT_VARIANT_DATA_ID;
+const GENERATED_VANILLA_CAT_IS_LYING_DATA_ID: u8 = 21;
+pub const VANILLA_CAT_IS_LYING_DATA_ID: u8 = GENERATED_VANILLA_CAT_IS_LYING_DATA_ID;
+const GENERATED_VANILLA_CAT_RELAX_STATE_ONE_DATA_ID: u8 = 22;
+pub const VANILLA_CAT_RELAX_STATE_ONE_DATA_ID: u8 = GENERATED_VANILLA_CAT_RELAX_STATE_ONE_DATA_ID;
+const GENERATED_VANILLA_CAT_COLLAR_COLOR_DATA_ID: u8 = 23;
+pub const VANILLA_CAT_COLLAR_COLOR_DATA_ID: u8 = GENERATED_VANILLA_CAT_COLLAR_COLOR_DATA_ID;
+const GENERATED_VANILLA_CAT_SOUND_VARIANT_DATA_ID: u8 = 24;
+pub const VANILLA_CAT_SOUND_VARIANT_DATA_ID: u8 = GENERATED_VANILLA_CAT_SOUND_VARIANT_DATA_ID;
 const GENERATED_VANILLA_PARROT_VARIANT_DATA_ID: u8 = 20;
 pub const VANILLA_PARROT_VARIANT_DATA_ID: u8 = GENERATED_VANILLA_PARROT_VARIANT_DATA_ID;
 const GENERATED_VANILLA_RABBIT_TYPE_DATA_ID: u8 = 18;
@@ -690,6 +700,18 @@ const GENERATED_VANILLA_LLAMA_DEFAULT_VARIANT: i32 = 0;
 pub const VANILLA_LLAMA_DEFAULT_VARIANT: i32 = GENERATED_VANILLA_LLAMA_DEFAULT_VARIANT;
 const GENERATED_VANILLA_TAMABLE_ANIMAL_DEFAULT_FLAGS: i8 = 0;
 pub const VANILLA_TAMABLE_ANIMAL_DEFAULT_FLAGS: i8 = GENERATED_VANILLA_TAMABLE_ANIMAL_DEFAULT_FLAGS;
+const GENERATED_VANILLA_CAT_DEFAULT_VARIANT_RESOURCE_ID: &str = "minecraft:black";
+pub const VANILLA_CAT_DEFAULT_VARIANT_RESOURCE_ID: &str =
+    GENERATED_VANILLA_CAT_DEFAULT_VARIANT_RESOURCE_ID;
+const GENERATED_VANILLA_CAT_DEFAULT_IS_LYING: bool = false;
+pub const VANILLA_CAT_DEFAULT_IS_LYING: bool = GENERATED_VANILLA_CAT_DEFAULT_IS_LYING;
+const GENERATED_VANILLA_CAT_DEFAULT_RELAX_STATE_ONE: bool = false;
+pub const VANILLA_CAT_DEFAULT_RELAX_STATE_ONE: bool = GENERATED_VANILLA_CAT_DEFAULT_RELAX_STATE_ONE;
+const GENERATED_VANILLA_CAT_DEFAULT_COLLAR_COLOR: i32 = 14;
+pub const VANILLA_CAT_DEFAULT_COLLAR_COLOR: i32 = GENERATED_VANILLA_CAT_DEFAULT_COLLAR_COLOR;
+const GENERATED_VANILLA_CAT_DEFAULT_SOUND_VARIANT_RESOURCE_ID: &str = "minecraft:classic";
+pub const VANILLA_CAT_DEFAULT_SOUND_VARIANT_RESOURCE_ID: &str =
+    GENERATED_VANILLA_CAT_DEFAULT_SOUND_VARIANT_RESOURCE_ID;
 const GENERATED_VANILLA_PARROT_DEFAULT_VARIANT: i32 = 0;
 pub const VANILLA_PARROT_DEFAULT_VARIANT: i32 = GENERATED_VANILLA_PARROT_DEFAULT_VARIANT;
 const GENERATED_VANILLA_RABBIT_DEFAULT_TYPE: i32 = 0;
@@ -9544,7 +9566,7 @@ pub const VANILLA_ENTITY_METADATA_ACCESSORS_26_1: &[VanillaEntityMetadataAccesso
         data_id: 20,
         source_path: "net/minecraft/world/entity/animal/feline/Cat.java",
         default_expression: "VariantUtils.getDefaultOrAny (this.registryAccess (), DEFAULT_VARIANT)",
-        typed_default: None,
+        typed_default: Some(VanillaEntityMetadataDefault::RegistryHolderResource("minecraft:black")),
     },
     VanillaEntityMetadataAccessorCatalogEntry {
         owner: "net.minecraft.world.entity.animal.feline.Cat",
@@ -9577,7 +9599,7 @@ pub const VANILLA_ENTITY_METADATA_ACCESSORS_26_1: &[VanillaEntityMetadataAccesso
         data_id: 23,
         source_path: "net/minecraft/world/entity/animal/feline/Cat.java",
         default_expression: "DEFAULT_COLLAR_COLOR.getId ()",
-        typed_default: None,
+        typed_default: Some(VanillaEntityMetadataDefault::Int(14)),
     },
     VanillaEntityMetadataAccessorCatalogEntry {
         owner: "net.minecraft.world.entity.animal.feline.Cat",
@@ -9588,7 +9610,7 @@ pub const VANILLA_ENTITY_METADATA_ACCESSORS_26_1: &[VanillaEntityMetadataAccesso
         data_id: 24,
         source_path: "net/minecraft/world/entity/animal/feline/Cat.java",
         default_expression: "catSoundVariants.get (CatSoundVariants.CLASSIC).or (catSoundVariants::getAny).orElseThrow ()",
-        typed_default: None,
+        typed_default: Some(VanillaEntityMetadataDefault::RegistryHolderResource("minecraft:classic")),
     },
     VanillaEntityMetadataAccessorCatalogEntry {
         owner: "net.minecraft.world.entity.animal.feline.Ocelot",
@@ -11738,6 +11760,27 @@ pub const VANILLA_ENTITY_METADATA_DEFAULT_RESOLVER_EVIDENCE_26_1: &[VanillaEntit
         evidence_member: "net.minecraft.world.entity.animal.fish.TropicalFish.DEFAULT_VARIANT",
         source_expression: "DEFAULT_VARIANT.getPackedId () -> new TropicalFish.Variant (TropicalFish.Pattern.KOB, DyeColor.WHITE, DyeColor.WHITE); this.packedId = base.id | index << 8; pattern.getPackedId () & 65535 | (baseColor.getId () & 0xFF) << 16 | (patternColor.getId () & 0xFF) << 24",
         reason: "the synced INT default is a packed record value derived from explicit pattern/base/color constructor ids",
+    },
+    VanillaEntityMetadataResolverEvidence {
+        java_class: "net.minecraft.world.entity.animal.feline.Cat",
+        accessor_name: "DATA_VARIANT_ID",
+        evidence_member: "net.minecraft.world.entity.animal.feline.Cat.DEFAULT_VARIANT -> CatVariants.BLACK -> CatVariants.createKey",
+        source_expression: "VariantUtils.getDefaultOrAny (this.registryAccess (), DEFAULT_VARIANT) -> CatVariants.BLACK -> createKey (\"black\") -> ResourceKey.create (Registries.CAT_VARIANT, Identifier.withDefaultNamespace (name))",
+        reason: "the synced holder default is a resource key selected through VariantUtils rather than a numeric registry id",
+    },
+    VanillaEntityMetadataResolverEvidence {
+        java_class: "net.minecraft.world.entity.animal.feline.Cat",
+        accessor_name: "DATA_SOUND_VARIANT_ID",
+        evidence_member: "net.minecraft.world.entity.animal.feline.CatSoundVariants.CLASSIC -> CatSoundVariants.createKey -> SoundSet.getIdentifier -> SoundSet.CLASSIC",
+        source_expression: "catSoundVariants.get (CatSoundVariants.CLASSIC).or (catSoundVariants::getAny).orElseThrow () -> createKey (CatSoundVariants.SoundSet.CLASSIC) -> ResourceKey.create (Registries.CAT_SOUND_VARIANT, Identifier.withDefaultNamespace (catSoundVariant.getIdentifier ())) -> this.identifier -> \"classic\"",
+        reason: "the synced holder default is a resource key with registry fallback rather than a numeric registry id",
+    },
+    VanillaEntityMetadataResolverEvidence {
+        java_class: "net.minecraft.world.entity.animal.feline.Cat",
+        accessor_name: "DATA_COLLAR_COLOR",
+        evidence_member: "net.minecraft.world.entity.animal.feline.Cat.DEFAULT_COLLAR_COLOR -> DyeColor.RED",
+        source_expression: "DEFAULT_COLLAR_COLOR.getId () -> DyeColor.RED",
+        reason: "the synced INT default is stored in a static enum-valued field",
     },
 ];
 
@@ -14408,6 +14451,47 @@ const TAMABLEANIMAL_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMet
     own_flags: TAMABLEANIMAL_FLAGS,
 };
 
+const CAT_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_VARIANT_ID",
+        data_id: 20,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_CAT_VARIANT_ID,
+        default: VanillaEntityMetadataDefault::RegistryHolderResource("minecraft:black"),
+    },
+    VanillaEntityMetadataFieldSchema {
+        name: "IS_LYING",
+        data_id: 21,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+        default: VanillaEntityMetadataDefault::Boolean(false),
+    },
+    VanillaEntityMetadataFieldSchema {
+        name: "RELAX_STATE_ONE",
+        data_id: 22,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+        default: VanillaEntityMetadataDefault::Boolean(false),
+    },
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_COLLAR_COLOR",
+        data_id: 23,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+        default: VanillaEntityMetadataDefault::Int(14),
+    },
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_SOUND_VARIANT_ID",
+        data_id: 24,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_CAT_SOUND_VARIANT_ID,
+        default: VanillaEntityMetadataDefault::RegistryHolderResource("minecraft:classic"),
+    },
+];
+const CAT_FLAGS: &[VanillaEntityMetadataFlagSchema] = &[];
+const CAT_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamilySchema {
+    family: VanillaEntityMetadataFamily::Cat,
+    parent: Some(VanillaEntityMetadataFamily::TamableAnimal),
+    inherited_field_count: 20,
+    own_fields: CAT_FIELDS,
+    own_flags: CAT_FLAGS,
+};
+
 const PARROT_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[VanillaEntityMetadataFieldSchema {
     name: "DATA_VARIANT_ID",
     data_id: 20,
@@ -15435,6 +15519,7 @@ pub(super) const fn generated_entity_metadata_schema(
         VanillaEntityMetadataFamily::AbstractChestedHorse => &ABSTRACTCHESTEDHORSE_SCHEMA,
         VanillaEntityMetadataFamily::Llama => &LLAMA_SCHEMA,
         VanillaEntityMetadataFamily::TamableAnimal => &TAMABLEANIMAL_SCHEMA,
+        VanillaEntityMetadataFamily::Cat => &CAT_SCHEMA,
         VanillaEntityMetadataFamily::Parrot => &PARROT_SCHEMA,
         VanillaEntityMetadataFamily::Rabbit => &RABBIT_SCHEMA,
         VanillaEntityMetadataFamily::AbstractVillager => &ABSTRACTVILLAGER_SCHEMA,

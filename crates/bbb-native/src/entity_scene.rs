@@ -108,6 +108,11 @@ use bbb_world::{
     VANILLA_CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID as CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID,
 };
 use bbb_world::{
+    VANILLA_CAT_COLLAR_COLOR_DATA_ID as CAT_COLLAR_COLOR_DATA_ID,
+    VANILLA_CAT_DEFAULT_COLLAR_COLOR as CAT_DEFAULT_COLLAR_COLOR_ID,
+    VANILLA_CAT_VARIANT_DATA_ID as CAT_VARIANT_DATA_ID,
+};
+use bbb_world::{
     VANILLA_COPPER_GOLEM_DEFAULT_WEATHER_STATE as COPPER_GOLEM_DEFAULT_WEATHER_STATE,
     VANILLA_COPPER_GOLEM_WEATHER_STATE_DATA_ID as COPPER_GOLEM_WEATHER_STATE_DATA_ID,
 };
@@ -297,14 +302,6 @@ const FROG_VARIANT_DATA_ID: u8 = 18;
 // Vanilla Shulker.DATA_COLOR_ID (18, BYTE): after Mob.DATA_MOB_FLAGS_ID (15) and the two `Shulker`
 // accessors DATA_ATTACH_FACE_ID (16) / DATA_PEEK_ID (17). `getColor()` returns the dye for 0..=15
 // and `null` (the default, byte 16) otherwise.
-// Vanilla Cat.DATA_VARIANT_ID (20, Holder<CatVariant>): after Mob.DATA_MOB_FLAGS_ID (15), the two
-// AgeableMob accessors DATA_BABY_ID (16) / AGE_LOCKED (17), and the two TamableAnimal accessors
-// DATA_FLAGS_ID (18) / DATA_OWNERUUID_ID (19). `Cat extends TamableAnimal`; the ocelot has no breed.
-const CAT_VARIANT_DATA_ID: u8 = 20;
-// Vanilla Cat.DATA_COLLAR_COLOR (23, INT): after DATA_VARIANT_ID (20) come IS_LYING (21) /
-// RELAX_STATE_ONE (22) / DATA_COLLAR_COLOR (23). `getCollarColor()` = `DyeColor.byId`, default RED (14).
-const CAT_COLLAR_COLOR_DATA_ID: u8 = 23;
-const CAT_DEFAULT_COLLAR_COLOR_ID: i32 = 14;
 const SHEEP_WOOL_COLOR_MASK: u8 = 0x0f;
 // Vanilla `AbstractArrow.IN_GROUND` (10, BOOLEAN): updating it to true after the first client tick
 // starts the seven-tick `shakeTime` impact wobble that `ArrowRenderer.extractRenderState` projects.

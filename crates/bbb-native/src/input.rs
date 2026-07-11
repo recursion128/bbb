@@ -224,6 +224,14 @@ use bbb_world::{
     VANILLA_ARMADILLO_STATE_UNROLLING_ID as ARMADILLO_STATE_UNROLLING_ID,
 };
 use bbb_world::{
+    VANILLA_CAT_COLLAR_COLOR_DATA_ID as CAT_COLLAR_COLOR_DATA_ID,
+    VANILLA_CAT_DEFAULT_COLLAR_COLOR as CAT_DEFAULT_COLLAR_COLOR_ID,
+    VANILLA_CAT_DEFAULT_SOUND_VARIANT_RESOURCE_ID as CAT_DEFAULT_SOUND_VARIANT_RESOURCE_ID,
+    VANILLA_CAT_DEFAULT_VARIANT_RESOURCE_ID as CAT_DEFAULT_VARIANT_RESOURCE_ID,
+    VANILLA_CAT_SOUND_VARIANT_DATA_ID as CAT_SOUND_VARIANT_DATA_ID,
+    VANILLA_CAT_VARIANT_DATA_ID as CAT_VARIANT_DATA_ID,
+};
+use bbb_world::{
     VANILLA_COPPER_GOLEM_DEFAULT_WEATHER_STATE as COPPER_GOLEM_DEFAULT_WEATHER_STATE,
     VANILLA_COPPER_GOLEM_WEATHER_STATE_DATA_ID as COPPER_GOLEM_WEATHER_STATE_DATA_ID,
     VANILLA_COPPER_GOLEM_WEATHER_STATE_EXPOSED_ID as COPPER_GOLEM_WEATHER_STATE_EXPOSED_ID,
@@ -523,12 +531,6 @@ const COPPER_GOLEM_DEFAULT_NEXT_WEATHER_AGE: i64 = -1;
 const TURTLE_DEFAULT_HOME_POS_X: i32 = 0;
 const TURTLE_DEFAULT_HOME_POS_Y: i32 = 0;
 const TURTLE_DEFAULT_HOME_POS_Z: i32 = 0;
-const CAT_VARIANT_DATA_ID: u8 = 20;
-const CAT_COLLAR_COLOR_DATA_ID: u8 = 23;
-const CAT_SOUND_VARIANT_DATA_ID: u8 = 24;
-const CAT_DEFAULT_VARIANT_ID: i32 = 1;
-const CAT_DEFAULT_SOUND_VARIANT_ID: i32 = 0;
-const CAT_DEFAULT_COLLAR_COLOR_ID: i32 = 14;
 const WOLF_COLLAR_COLOR_DATA_ID: u8 = 21;
 const WOLF_ANGER_END_TIME_DATA_ID: u8 = 22;
 const WOLF_VARIANT_DATA_ID: u8 = 23;
@@ -6358,25 +6360,22 @@ fn debug_push_cat_additional_save_data(entity: &EntityState, fields: &mut Vec<St
         CAT_VARIANT_DATA_ID,
         EntityDataRegistryHolder::CatVariant,
     )
-    .unwrap_or(CAT_DEFAULT_VARIANT_ID);
+    .and_then(cat_variant_resource_id)
+    .unwrap_or(CAT_DEFAULT_VARIANT_RESOURCE_ID);
     let sound_variant = debug_entity_data_registry_id_present(
         entity,
         CAT_SOUND_VARIANT_DATA_ID,
         EntityDataRegistryHolder::CatSoundVariant,
     )
-    .unwrap_or(CAT_DEFAULT_SOUND_VARIANT_ID);
+    .and_then(cat_sound_variant_resource_id)
+    .unwrap_or(CAT_DEFAULT_SOUND_VARIANT_RESOURCE_ID);
     let collar_color = debug_entity_data_int_present(entity, CAT_COLLAR_COLOR_DATA_ID)
         .map(debug_dye_color_legacy_save_id)
         .unwrap_or(CAT_DEFAULT_COLLAR_COLOR_ID);
-    fields.push(format!(
-        "variant: {}",
-        debug_snbt_string(cat_variant_resource_id(variant).unwrap_or("minecraft:black"))
-    ));
+    fields.push(format!("variant: {}", debug_snbt_string(variant)));
     fields.push(format!(
         "sound_variant: {}",
-        debug_snbt_string(
-            cat_sound_variant_resource_id(sound_variant).unwrap_or("minecraft:classic")
-        )
+        debug_snbt_string(sound_variant)
     ));
     fields.push(format!("CollarColor: {collar_color}b"));
 }

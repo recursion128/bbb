@@ -6635,6 +6635,34 @@ fn shift_f3_i_with_permission_copies_local_cat_save_nbt_to_clipboard() {
 }
 
 #[test]
+fn local_cat_save_uses_generated_resource_and_collar_defaults() {
+    let mut world = world_with_debug_player(false);
+    world.apply_add_entity(AddEntity {
+        id: 86,
+        uuid: Uuid::from_u128(86),
+        entity_type_id: VANILLA_ENTITY_TYPE_CAT_ID,
+        position: ProtocolVec3d {
+            x: 0.0,
+            y: 1.0,
+            z: 2.0,
+        },
+        delta_movement: ProtocolVec3d::default(),
+        x_rot: 0.0,
+        y_rot: 0.0,
+        y_head_rot: 0.0,
+        data: 0,
+    });
+
+    let copy = debug_copy_recreate_entity_command(&world, None, 86, true)
+        .expect("local cat recreate command");
+    assert!(copy.command.contains("variant: \"minecraft:black\""));
+    assert!(copy
+        .command
+        .contains("sound_variant: \"minecraft:classic\""));
+    assert!(copy.command.contains("CollarColor: 14b"));
+}
+
+#[test]
 fn shift_f3_i_with_permission_copies_local_wolf_save_nbt_to_clipboard() {
     let mut input = ClientInputState::new(true);
     let mut world = world_with_debug_player(false);

@@ -12,7 +12,8 @@ use bbb_protocol::packets::{
 use bbb_world::{
     ArmorMaterialKind as WorldArmorMaterialKind, EntityPickBoundsState, EntityVec3,
     ItemEquipmentSlot, LlamaBodyDecorColor as WorldLlamaBodyDecorColor, RegistryPacketEntry,
-    VANILLA_BAT_FLAGS_DATA_ID, VANILLA_BAT_FLAG_RESTING, VANILLA_SNOW_GOLEM_PUMPKIN_DATA_ID,
+    VANILLA_BAT_FLAGS_DATA_ID, VANILLA_BAT_FLAG_RESTING, VANILLA_CAT_IS_LYING_DATA_ID,
+    VANILLA_CAT_RELAX_STATE_ONE_DATA_ID, VANILLA_SNOW_GOLEM_PUMPKIN_DATA_ID,
 };
 use uuid::Uuid;
 
@@ -9734,8 +9735,6 @@ fn entity_model_instances_project_cat_lie_down_and_relax_amounts_from_world() {
     // Vanilla `CatRenderer.extractRenderState` forwards the partial-tick eased
     // `getLieDownAmount`, `getLieDownAmountTail`, and `getRelaxStateOneAmount` into
     // `FelineRenderState`; ocelots leave all three at zero.
-    const CAT_IS_LYING_DATA_ID: u8 = 21;
-    const CAT_RELAX_STATE_ONE_DATA_ID: u8 = 22;
     let feline_amounts = |world: &WorldStore, id: i32, partial_tick: f32| {
         let instance = entity_model_instances_from_world_at_partial_tick(world, None, partial_tick)
             .into_iter()
@@ -9775,8 +9774,8 @@ fn entity_model_instances_project_cat_lie_down_and_relax_amounts_from_world() {
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 46,
         values: vec![
-            protocol_bool_data(CAT_IS_LYING_DATA_ID, true),
-            protocol_bool_data(CAT_RELAX_STATE_ONE_DATA_ID, true),
+            protocol_bool_data(VANILLA_CAT_IS_LYING_DATA_ID, true),
+            protocol_bool_data(VANILLA_CAT_RELAX_STATE_ONE_DATA_ID, true),
         ],
     }));
     world.advance_entity_client_animations(2);
@@ -9786,8 +9785,8 @@ fn entity_model_instances_project_cat_lie_down_and_relax_amounts_from_world() {
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 47,
         values: vec![
-            protocol_bool_data(CAT_IS_LYING_DATA_ID, true),
-            protocol_bool_data(CAT_RELAX_STATE_ONE_DATA_ID, true),
+            protocol_bool_data(VANILLA_CAT_IS_LYING_DATA_ID, true),
+            protocol_bool_data(VANILLA_CAT_RELAX_STATE_ONE_DATA_ID, true),
         ],
     }));
     world.advance_entity_client_animations(2);
@@ -9799,7 +9798,6 @@ fn entity_model_instances_project_cat_lying_on_sleeping_player_from_world() {
     // Vanilla `CatRenderer.extractRenderState` forwards
     // `Cat.isLyingOnTopOfSleepingPlayer()`, which the world source derives from a lying cat and
     // nearby sleeping player.
-    const CAT_IS_LYING_DATA_ID: u8 = 21;
     const ENTITY_DATA_POSE_ID: u8 = 6;
     const POSE_SLEEPING: i32 = 2;
 
@@ -9816,7 +9814,7 @@ fn entity_model_instances_project_cat_lying_on_sleeping_player_from_world() {
     ));
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 48,
-        values: vec![protocol_bool_data(CAT_IS_LYING_DATA_ID, true)],
+        values: vec![protocol_bool_data(VANILLA_CAT_IS_LYING_DATA_ID, true)],
     }));
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 49,

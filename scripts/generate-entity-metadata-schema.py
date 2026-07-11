@@ -82,6 +82,7 @@ FAMILIES = (
     ),
     FamilySpec("Llama", "net.minecraft.world.entity.animal.equine.Llama", "AbstractChestedHorse"),
     FamilySpec("TamableAnimal", "net.minecraft.world.entity.TamableAnimal", "AgeableMob"),
+    FamilySpec("Cat", "net.minecraft.world.entity.animal.feline.Cat", "TamableAnimal"),
     FamilySpec("Parrot", "net.minecraft.world.entity.animal.parrot.Parrot", "TamableAnimal"),
     FamilySpec("Rabbit", "net.minecraft.world.entity.animal.rabbit.Rabbit", "AgeableMob"),
     FamilySpec(
@@ -266,6 +267,11 @@ DATA_ALIASES = {
     "VANILLA_LLAMA_VARIANT_DATA_ID": ("net.minecraft.world.entity.animal.equine.Llama", "DATA_VARIANT_ID"),
     "VANILLA_TAMABLE_ANIMAL_FLAGS_DATA_ID": ("net.minecraft.world.entity.TamableAnimal", "DATA_FLAGS_ID"),
     "VANILLA_TAMABLE_ANIMAL_OWNER_DATA_ID": ("net.minecraft.world.entity.TamableAnimal", "DATA_OWNERUUID_ID"),
+    "VANILLA_CAT_VARIANT_DATA_ID": ("net.minecraft.world.entity.animal.feline.Cat", "DATA_VARIANT_ID"),
+    "VANILLA_CAT_IS_LYING_DATA_ID": ("net.minecraft.world.entity.animal.feline.Cat", "IS_LYING"),
+    "VANILLA_CAT_RELAX_STATE_ONE_DATA_ID": ("net.minecraft.world.entity.animal.feline.Cat", "RELAX_STATE_ONE"),
+    "VANILLA_CAT_COLLAR_COLOR_DATA_ID": ("net.minecraft.world.entity.animal.feline.Cat", "DATA_COLLAR_COLOR"),
+    "VANILLA_CAT_SOUND_VARIANT_DATA_ID": ("net.minecraft.world.entity.animal.feline.Cat", "DATA_SOUND_VARIANT_ID"),
     "VANILLA_PARROT_VARIANT_DATA_ID": ("net.minecraft.world.entity.animal.parrot.Parrot", "DATA_VARIANT_ID"),
     "VANILLA_RABBIT_TYPE_DATA_ID": ("net.minecraft.world.entity.animal.rabbit.Rabbit", "DATA_TYPE_ID"),
     "VANILLA_ABSTRACT_VILLAGER_UNHAPPY_COUNTER_DATA_ID": ("net.minecraft.world.entity.npc.villager.AbstractVillager", "DATA_UNHAPPY_COUNTER"),
@@ -408,6 +414,11 @@ DEFAULT_ALIASES = {
     "VANILLA_LLAMA_DEFAULT_STRENGTH": ("net.minecraft.world.entity.animal.equine.Llama", "DATA_STRENGTH_ID"),
     "VANILLA_LLAMA_DEFAULT_VARIANT": ("net.minecraft.world.entity.animal.equine.Llama", "DATA_VARIANT_ID"),
     "VANILLA_TAMABLE_ANIMAL_DEFAULT_FLAGS": ("net.minecraft.world.entity.TamableAnimal", "DATA_FLAGS_ID"),
+    "VANILLA_CAT_DEFAULT_VARIANT_RESOURCE_ID": ("net.minecraft.world.entity.animal.feline.Cat", "DATA_VARIANT_ID"),
+    "VANILLA_CAT_DEFAULT_IS_LYING": ("net.minecraft.world.entity.animal.feline.Cat", "IS_LYING"),
+    "VANILLA_CAT_DEFAULT_RELAX_STATE_ONE": ("net.minecraft.world.entity.animal.feline.Cat", "RELAX_STATE_ONE"),
+    "VANILLA_CAT_DEFAULT_COLLAR_COLOR": ("net.minecraft.world.entity.animal.feline.Cat", "DATA_COLLAR_COLOR"),
+    "VANILLA_CAT_DEFAULT_SOUND_VARIANT_RESOURCE_ID": ("net.minecraft.world.entity.animal.feline.Cat", "DATA_SOUND_VARIANT_ID"),
     "VANILLA_PARROT_DEFAULT_VARIANT": ("net.minecraft.world.entity.animal.parrot.Parrot", "DATA_VARIANT_ID"),
     "VANILLA_RABBIT_DEFAULT_TYPE": ("net.minecraft.world.entity.animal.rabbit.Rabbit", "DATA_TYPE_ID"),
     "VANILLA_ABSTRACT_VILLAGER_DEFAULT_UNHAPPY_COUNTER": ("net.minecraft.world.entity.npc.villager.AbstractVillager", "DATA_UNHAPPY_COUNTER"),
@@ -702,6 +713,85 @@ TROPICAL_FISH_PACKED_DEFAULT_RESOLVERS = (
         "this.packedId = base.id | index << 8",
         "pattern.getPackedId () & 65535 | (baseColor.getId () & 0xFF) << 16 | (patternColor.getId () & 0xFF) << 24",
         "the synced INT default is a packed record value derived from explicit pattern/base/color constructor ids",
+    ),
+)
+
+
+STATIC_REGISTRY_RESOURCE_DEFAULT_RESOLVERS = (
+    (
+        "net.minecraft.world.entity.animal.feline.Cat",
+        "DATA_VARIANT_ID",
+        "CAT_VARIANT",
+        "VariantUtils.getDefaultOrAny (this.registryAccess (), DEFAULT_VARIANT)",
+        (
+            (
+                "net.minecraft.world.entity.animal.feline.Cat",
+                "DEFAULT_VARIANT",
+                "CatVariants.BLACK",
+            ),
+            (
+                "net.minecraft.world.entity.animal.feline.CatVariants",
+                "BLACK",
+                'createKey ("black")',
+            ),
+        ),
+        (
+            (
+                "net.minecraft.world.entity.animal.feline.CatVariants",
+                "createKey",
+                "ResourceKey.create (Registries.CAT_VARIANT, Identifier.withDefaultNamespace (name))",
+            ),
+        ),
+        None,
+        "minecraft:black",
+        "the synced holder default is a resource key selected through VariantUtils rather than a numeric registry id",
+    ),
+    (
+        "net.minecraft.world.entity.animal.feline.Cat",
+        "DATA_SOUND_VARIANT_ID",
+        "CAT_SOUND_VARIANT",
+        "catSoundVariants.get (CatSoundVariants.CLASSIC).or (catSoundVariants::getAny).orElseThrow ()",
+        (
+            (
+                "net.minecraft.world.entity.animal.feline.CatSoundVariants",
+                "CLASSIC",
+                "createKey (CatSoundVariants.SoundSet.CLASSIC)",
+            ),
+        ),
+        (
+            (
+                "net.minecraft.world.entity.animal.feline.CatSoundVariants",
+                "createKey",
+                "ResourceKey.create (Registries.CAT_SOUND_VARIANT, Identifier.withDefaultNamespace (catSoundVariant.getIdentifier ()))",
+            ),
+            (
+                "net.minecraft.world.entity.animal.feline.CatSoundVariants.SoundSet",
+                "getIdentifier",
+                "this.identifier",
+            ),
+        ),
+        (
+            "net.minecraft.world.entity.animal.feline.CatSoundVariants.SoundSet",
+            "CLASSIC",
+            0,
+            '"classic"',
+        ),
+        "minecraft:classic",
+        "the synced holder default is a resource key with registry fallback rather than a numeric registry id",
+    ),
+)
+
+
+ENUM_FIELD_ID_DEFAULT_RESOLVERS = (
+    (
+        "net.minecraft.world.entity.animal.feline.Cat",
+        "DATA_COLLAR_COLOR",
+        "DEFAULT_COLLAR_COLOR.getId ()",
+        "DEFAULT_COLLAR_COLOR",
+        "DyeColor.RED",
+        "net.minecraft.world.item.DyeColor",
+        0,
+        "the synced INT default is stored in a static enum-valued field",
     ),
 )
 
@@ -1320,6 +1410,145 @@ def resolve_semantic_defaults(
                 default_field_name,
                 f"{expected_expression} -> {expected_default_initializer}; "
                 f"{expected_pattern_assignment}; {expected_pack_return}",
+                reason,
+            )
+        )
+    for (
+        owner,
+        accessor_name,
+        serializer,
+        expected_expression,
+        field_evidence,
+        method_evidence,
+        enum_evidence,
+        resource_id,
+        reason,
+    ) in STATIC_REGISTRY_RESOURCE_DEFAULT_RESOLVERS:
+        key = (owner, accessor_name)
+        if key in resolved:
+            raise ExtractionError(
+                f"duplicate registry resource default resolver: {owner}.{accessor_name}"
+            )
+        accessor = accessor_for(result, owner, accessor_name)
+        if accessor.serializer != serializer:
+            raise ExtractionError(
+                f"{owner}.{accessor_name}: registry resource resolver requires "
+                f"{serializer} serializer"
+            )
+        if accessor.default_expression != expected_expression:
+            raise ExtractionError(
+                f"{owner}.{accessor_name}: stale registry resource default expression; "
+                f"expected {expected_expression!r}, found {accessor.default_expression!r}"
+            )
+        evidence_members: list[str] = []
+        source_expressions = [expected_expression]
+        for field_owner, field_name, expected_initializer in field_evidence:
+            field = field_for(result, field_owner, field_name)
+            if field.initializer is None:
+                raise ExtractionError(f"{field_owner}.{field_name}: missing initializer")
+            if field.initializer.canonical != expected_initializer:
+                raise ExtractionError(
+                    f"{field_owner}.{field_name}: stale registry resource initializer; "
+                    f"expected {expected_initializer!r}, found {field.initializer.canonical!r}"
+                )
+            evidence_members.append(f"{field_owner.rsplit('.', 1)[-1]}.{field_name}")
+            source_expressions.append(expected_initializer)
+        for method_owner, method_name, expected_return in method_evidence:
+            actual_return = method_single_return_expression(result, method_owner, method_name)
+            if actual_return != expected_return:
+                raise ExtractionError(
+                    f"{method_owner}.{method_name}: stale registry resource return; "
+                    f"expected {expected_return!r}, found {actual_return!r}"
+                )
+            evidence_members.append(f"{method_owner.rsplit('.', 1)[-1]}.{method_name}")
+            source_expressions.append(expected_return)
+        if enum_evidence is not None:
+            enum_fqcn, constant_name, argument_index, expected_argument = enum_evidence
+            enum_source, enum_arguments = enum_constant_arguments(
+                result,
+                enum_fqcn,
+                constant_name,
+            )
+            if argument_index < 0 or argument_index >= len(enum_arguments):
+                raise ExtractionError(
+                    f"{enum_fqcn}.{constant_name}: missing resource constructor argument "
+                    f"{argument_index}"
+                )
+            actual_argument = enum_source.expression(enum_arguments[argument_index]).canonical
+            if actual_argument != expected_argument:
+                raise ExtractionError(
+                    f"{enum_fqcn}.{constant_name}: stale registry resource argument; "
+                    f"expected {expected_argument!r}, found {actual_argument!r}"
+                )
+            evidence_members.append(f"{enum_fqcn.rsplit('.', 1)[-1]}.{constant_name}")
+            source_expressions.append(expected_argument)
+        resource_rust = rust_string(resource_id)
+        resolved[key] = NormalizedDefault(
+            f"VanillaEntityMetadataDefault::RegistryHolderResource({resource_rust})",
+            "&str",
+            resource_rust,
+        )
+        evidence.append(
+            ResolvedDefaultEvidence(
+                owner,
+                accessor_name,
+                owner.rsplit(".", 1)[0],
+                " -> ".join(evidence_members),
+                " -> ".join(source_expressions),
+                reason,
+            )
+        )
+    for (
+        owner,
+        accessor_name,
+        expected_expression,
+        default_field_name,
+        expected_field_expression,
+        enum_fqcn,
+        id_argument_index,
+        reason,
+    ) in ENUM_FIELD_ID_DEFAULT_RESOLVERS:
+        key = (owner, accessor_name)
+        if key in resolved:
+            raise ExtractionError(f"duplicate enum field default resolver: {owner}.{accessor_name}")
+        accessor = accessor_for(result, owner, accessor_name)
+        if accessor.serializer != "INT":
+            raise ExtractionError(
+                f"{owner}.{accessor_name}: enum field resolver requires INT serializer"
+            )
+        if accessor.default_expression != expected_expression:
+            raise ExtractionError(
+                f"{owner}.{accessor_name}: stale enum field default expression; "
+                f"expected {expected_expression!r}, found {accessor.default_expression!r}"
+            )
+        default_field = field_for(result, owner, default_field_name)
+        if default_field.initializer is None:
+            raise ExtractionError(f"{owner}.{default_field_name}: missing initializer")
+        if default_field.initializer.canonical != expected_field_expression:
+            raise ExtractionError(
+                f"{owner}.{default_field_name}: stale enum field initializer; "
+                f"expected {expected_field_expression!r}, "
+                f"found {default_field.initializer.canonical!r}"
+            )
+        constant_name = expected_field_expression.rsplit(".", 1)[-1]
+        value = enum_constant_constructor_integer(
+            result,
+            enum_fqcn,
+            constant_name,
+            id_argument_index,
+        )
+        resolved[key] = NormalizedDefault(
+            f"VanillaEntityMetadataDefault::Int({value})",
+            "i32",
+            str(value),
+        )
+        evidence.append(
+            ResolvedDefaultEvidence(
+                owner,
+                accessor_name,
+                owner,
+                f"{default_field_name} -> {enum_fqcn.rsplit('.', 1)[-1]}.{constant_name}",
+                f"{expected_expression} -> {expected_field_expression}",
                 reason,
             )
         )

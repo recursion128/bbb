@@ -9987,3 +9987,15 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   建立 `Mob -> AbstractFish -> TropicalFish` family：INT variant id17/default0；native
   model variant projection 与 debug-save 删除手抄 synced id/default。pattern/color 解码、
   renderer tint 与保存 Codec 语义仍由对应 owner 管理。
+
+## 2026-07-11：Generated registry-resource defaults 与 Cat metadata
+
+- [x] generator 新增窄 registry-resource default resolver，以 Tree-sitter CST 锁定
+  `Cat.DEFAULT_VARIANT -> CatVariants.BLACK/createKey("black")` 与
+  `CatSoundVariants.CLASSIC -> SoundSet.CLASSIC("classic", ...)` 的 resource-key 构造链，
+  并从 `DyeColor.RED` 构造参数机械生成 collar id14；holder 默认保存 resource id，未把
+  vanilla bootstrap numeric id 1/0 写入 metadata schema。建立
+  `AgeableMob -> TamableAnimal -> Cat` family：五项 accessor id20–24、black/classic holder
+  defaults、两项 boolean false 与 red collar；world lie/relax animation、native model/collar
+  与 debug-save 删除手抄 synced ids/defaults。session registry holder 映射与 Cat 动画/渲染、
+  persistent Codec 语义仍由对应 owner 管理。

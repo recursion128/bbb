@@ -44,6 +44,7 @@ pub enum VanillaEntityMetadataFamily {
     AbstractChestedHorse,
     Llama,
     TamableAnimal,
+    Cat,
     Parrot,
     Rabbit,
     AbstractVillager,
@@ -107,6 +108,7 @@ pub enum VanillaEntityMetadataDefault {
     Direction(i32),
     ItemStackEmpty,
     ItemStackDefaultItem(&'static str),
+    RegistryHolderResource(&'static str),
     BlockStateDefault {
         resource_id: &'static str,
         properties: &'static [(&'static str, &'static str)],
@@ -399,6 +401,7 @@ mod tests {
             VanillaEntityMetadataFamily::AbstractChestedHorse,
             VanillaEntityMetadataFamily::Llama,
             VanillaEntityMetadataFamily::TamableAnimal,
+            VanillaEntityMetadataFamily::Cat,
             VanillaEntityMetadataFamily::Parrot,
             VanillaEntityMetadataFamily::Rabbit,
             VanillaEntityMetadataFamily::AbstractVillager,
@@ -728,6 +731,36 @@ mod tests {
         assert_eq!(VANILLA_LLAMA_VARIANT_DATA_ID, 21);
         assert_eq!(VANILLA_LLAMA_DEFAULT_STRENGTH, 0);
         assert_eq!(VANILLA_LLAMA_DEFAULT_VARIANT, 0);
+        let cat = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Cat);
+        assert_eq!(cat.parent, Some(VanillaEntityMetadataFamily::TamableAnimal));
+        assert_eq!(cat.inherited_field_count, 20);
+        assert_eq!(cat.own_fields.len(), 5);
+        assert_eq!(VANILLA_CAT_VARIANT_DATA_ID, 20);
+        assert_eq!(VANILLA_CAT_IS_LYING_DATA_ID, 21);
+        assert_eq!(VANILLA_CAT_RELAX_STATE_ONE_DATA_ID, 22);
+        assert_eq!(VANILLA_CAT_COLLAR_COLOR_DATA_ID, 23);
+        assert_eq!(VANILLA_CAT_SOUND_VARIANT_DATA_ID, 24);
+        assert_eq!(VANILLA_CAT_DEFAULT_VARIANT_RESOURCE_ID, "minecraft:black");
+        assert!(!VANILLA_CAT_DEFAULT_IS_LYING);
+        assert!(!VANILLA_CAT_DEFAULT_RELAX_STATE_ONE);
+        assert_eq!(VANILLA_CAT_DEFAULT_COLLAR_COLOR, 14);
+        assert_eq!(
+            VANILLA_CAT_DEFAULT_SOUND_VARIANT_RESOURCE_ID,
+            "minecraft:classic"
+        );
+        assert_eq!(
+            cat.own_fields
+                .iter()
+                .map(|field| field.default)
+                .collect::<Vec<_>>(),
+            vec![
+                VanillaEntityMetadataDefault::RegistryHolderResource("minecraft:black"),
+                VanillaEntityMetadataDefault::Boolean(false),
+                VanillaEntityMetadataDefault::Boolean(false),
+                VanillaEntityMetadataDefault::Int(14),
+                VanillaEntityMetadataDefault::RegistryHolderResource("minecraft:classic"),
+            ]
+        );
         let parrot = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Parrot);
         assert_eq!(
             parrot.parent,
@@ -784,7 +817,7 @@ mod tests {
         assert_eq!(VANILLA_TROPICAL_FISH_DEFAULT_VARIANT, 0);
         assert_eq!(
             VANILLA_ENTITY_METADATA_DEFAULT_RESOLVER_EVIDENCE_26_1.len(),
-            11
+            14
         );
         let default_evidence = |java_class| {
             VANILLA_ENTITY_METADATA_DEFAULT_RESOLVER_EVIDENCE_26_1
@@ -833,6 +866,28 @@ mod tests {
         assert_eq!(
             tropical_fish_default_evidence.source_expression,
             "DEFAULT_VARIANT.getPackedId () -> new TropicalFish.Variant (TropicalFish.Pattern.KOB, DyeColor.WHITE, DyeColor.WHITE); this.packedId = base.id | index << 8; pattern.getPackedId () & 65535 | (baseColor.getId () & 0xFF) << 16 | (patternColor.getId () & 0xFF) << 24"
+        );
+        let cat_default_evidence = |accessor_name| {
+            VANILLA_ENTITY_METADATA_DEFAULT_RESOLVER_EVIDENCE_26_1
+                .iter()
+                .find(|item| {
+                    item.java_class == "net.minecraft.world.entity.animal.feline.Cat"
+                        && item.accessor_name == accessor_name
+                })
+                .copied()
+                .expect("generated cat default resolver evidence")
+        };
+        assert_eq!(
+            cat_default_evidence("DATA_VARIANT_ID").evidence_member,
+            "net.minecraft.world.entity.animal.feline.Cat.DEFAULT_VARIANT -> CatVariants.BLACK -> CatVariants.createKey"
+        );
+        assert_eq!(
+            cat_default_evidence("DATA_SOUND_VARIANT_ID").source_expression,
+            "catSoundVariants.get (CatSoundVariants.CLASSIC).or (catSoundVariants::getAny).orElseThrow () -> createKey (CatSoundVariants.SoundSet.CLASSIC) -> ResourceKey.create (Registries.CAT_SOUND_VARIANT, Identifier.withDefaultNamespace (catSoundVariant.getIdentifier ())) -> this.identifier -> \"classic\""
+        );
+        assert_eq!(
+            cat_default_evidence("DATA_COLLAR_COLOR").source_expression,
+            "DEFAULT_COLLAR_COLOR.getId () -> DyeColor.RED"
         );
         let fox_default_evidence = default_evidence("net.minecraft.world.entity.animal.fox.Fox");
         assert_eq!(fox_default_evidence.accessor_name, "DATA_TYPE_ID");
