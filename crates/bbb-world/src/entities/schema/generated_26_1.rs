@@ -126,6 +126,15 @@ pub const VANILLA_CAMEL_DASH_DATA_ID: u8 = GENERATED_VANILLA_CAMEL_DASH_DATA_ID;
 const GENERATED_VANILLA_CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID: u8 = 20;
 pub const VANILLA_CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID: u8 =
     GENERATED_VANILLA_CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID;
+const GENERATED_VANILLA_HORSE_VARIANT_DATA_ID: u8 = 19;
+pub const VANILLA_HORSE_VARIANT_DATA_ID: u8 = GENERATED_VANILLA_HORSE_VARIANT_DATA_ID;
+const GENERATED_VANILLA_ABSTRACT_CHESTED_HORSE_CHEST_DATA_ID: u8 = 19;
+pub const VANILLA_ABSTRACT_CHESTED_HORSE_CHEST_DATA_ID: u8 =
+    GENERATED_VANILLA_ABSTRACT_CHESTED_HORSE_CHEST_DATA_ID;
+const GENERATED_VANILLA_LLAMA_STRENGTH_DATA_ID: u8 = 20;
+pub const VANILLA_LLAMA_STRENGTH_DATA_ID: u8 = GENERATED_VANILLA_LLAMA_STRENGTH_DATA_ID;
+const GENERATED_VANILLA_LLAMA_VARIANT_DATA_ID: u8 = 21;
+pub const VANILLA_LLAMA_VARIANT_DATA_ID: u8 = GENERATED_VANILLA_LLAMA_VARIANT_DATA_ID;
 const GENERATED_VANILLA_TAMABLE_ANIMAL_FLAGS_DATA_ID: u8 = 18;
 pub const VANILLA_TAMABLE_ANIMAL_FLAGS_DATA_ID: u8 = GENERATED_VANILLA_TAMABLE_ANIMAL_FLAGS_DATA_ID;
 const GENERATED_VANILLA_TAMABLE_ANIMAL_OWNER_DATA_ID: u8 = 19;
@@ -475,6 +484,15 @@ pub const VANILLA_CAMEL_DEFAULT_DASH: bool = GENERATED_VANILLA_CAMEL_DEFAULT_DAS
 const GENERATED_VANILLA_CAMEL_DEFAULT_LAST_POSE_CHANGE_TICK: i64 = 0;
 pub const VANILLA_CAMEL_DEFAULT_LAST_POSE_CHANGE_TICK: i64 =
     GENERATED_VANILLA_CAMEL_DEFAULT_LAST_POSE_CHANGE_TICK;
+const GENERATED_VANILLA_HORSE_DEFAULT_VARIANT: i32 = 0;
+pub const VANILLA_HORSE_DEFAULT_VARIANT: i32 = GENERATED_VANILLA_HORSE_DEFAULT_VARIANT;
+const GENERATED_VANILLA_ABSTRACT_CHESTED_HORSE_DEFAULT_CHEST: bool = false;
+pub const VANILLA_ABSTRACT_CHESTED_HORSE_DEFAULT_CHEST: bool =
+    GENERATED_VANILLA_ABSTRACT_CHESTED_HORSE_DEFAULT_CHEST;
+const GENERATED_VANILLA_LLAMA_DEFAULT_STRENGTH: i32 = 0;
+pub const VANILLA_LLAMA_DEFAULT_STRENGTH: i32 = GENERATED_VANILLA_LLAMA_DEFAULT_STRENGTH;
+const GENERATED_VANILLA_LLAMA_DEFAULT_VARIANT: i32 = 0;
+pub const VANILLA_LLAMA_DEFAULT_VARIANT: i32 = GENERATED_VANILLA_LLAMA_DEFAULT_VARIANT;
 const GENERATED_VANILLA_TAMABLE_ANIMAL_DEFAULT_FLAGS: i8 = 0;
 pub const VANILLA_TAMABLE_ANIMAL_DEFAULT_FLAGS: i8 = GENERATED_VANILLA_TAMABLE_ANIMAL_DEFAULT_FLAGS;
 const GENERATED_VANILLA_ABSTRACT_ARROW_DEFAULT_FLAGS: i8 = 0;
@@ -13637,6 +13655,61 @@ const CAMEL_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFam
     own_flags: CAMEL_FLAGS,
 };
 
+const HORSE_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[VanillaEntityMetadataFieldSchema {
+    name: "DATA_ID_TYPE_VARIANT",
+    data_id: 19,
+    serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+    default: VanillaEntityMetadataDefault::Int(0),
+}];
+const HORSE_FLAGS: &[VanillaEntityMetadataFlagSchema] = &[];
+const HORSE_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamilySchema {
+    family: VanillaEntityMetadataFamily::Horse,
+    parent: Some(VanillaEntityMetadataFamily::AbstractHorse),
+    inherited_field_count: 19,
+    own_fields: HORSE_FIELDS,
+    own_flags: HORSE_FLAGS,
+};
+
+const ABSTRACTCHESTEDHORSE_FIELDS: &[VanillaEntityMetadataFieldSchema] =
+    &[VanillaEntityMetadataFieldSchema {
+        name: "DATA_ID_CHEST",
+        data_id: 19,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+        default: VanillaEntityMetadataDefault::Boolean(false),
+    }];
+const ABSTRACTCHESTEDHORSE_FLAGS: &[VanillaEntityMetadataFlagSchema] = &[];
+const ABSTRACTCHESTEDHORSE_SCHEMA: VanillaEntityMetadataFamilySchema =
+    VanillaEntityMetadataFamilySchema {
+        family: VanillaEntityMetadataFamily::AbstractChestedHorse,
+        parent: Some(VanillaEntityMetadataFamily::AbstractHorse),
+        inherited_field_count: 19,
+        own_fields: ABSTRACTCHESTEDHORSE_FIELDS,
+        own_flags: ABSTRACTCHESTEDHORSE_FLAGS,
+    };
+
+const LLAMA_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_STRENGTH_ID",
+        data_id: 20,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+        default: VanillaEntityMetadataDefault::Int(0),
+    },
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_VARIANT_ID",
+        data_id: 21,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+        default: VanillaEntityMetadataDefault::Int(0),
+    },
+];
+const LLAMA_FLAGS: &[VanillaEntityMetadataFlagSchema] = &[];
+const LLAMA_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamilySchema {
+    family: VanillaEntityMetadataFamily::Llama,
+    parent: Some(VanillaEntityMetadataFamily::AbstractChestedHorse),
+    inherited_field_count: 20,
+    own_fields: LLAMA_FIELDS,
+    own_flags: LLAMA_FLAGS,
+};
+
 const TAMABLEANIMAL_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[
     VanillaEntityMetadataFieldSchema {
         name: "DATA_FLAGS_ID",
@@ -14519,6 +14592,9 @@ pub(super) const fn generated_entity_metadata_schema(
         VanillaEntityMetadataFamily::Turtle => &TURTLE_SCHEMA,
         VanillaEntityMetadataFamily::AbstractHorse => &ABSTRACTHORSE_SCHEMA,
         VanillaEntityMetadataFamily::Camel => &CAMEL_SCHEMA,
+        VanillaEntityMetadataFamily::Horse => &HORSE_SCHEMA,
+        VanillaEntityMetadataFamily::AbstractChestedHorse => &ABSTRACTCHESTEDHORSE_SCHEMA,
+        VanillaEntityMetadataFamily::Llama => &LLAMA_SCHEMA,
         VanillaEntityMetadataFamily::TamableAnimal => &TAMABLEANIMAL_SCHEMA,
         VanillaEntityMetadataFamily::ArmorStand => &ARMORSTAND_SCHEMA,
         VanillaEntityMetadataFamily::AbstractArrow => &ABSTRACTARROW_SCHEMA,

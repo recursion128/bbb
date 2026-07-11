@@ -9848,3 +9848,11 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] 从 generated catalog 建立 `AgeableMob -> Dolphin` family：BOOLEAN got-fish
   id18/default false、INT moistness id19/default 2400；native debug-save 删除手抄 synced
   id/default。treasure position 与水生行为仍由对应行为 owner 管理。
+
+## 2026-07-11：Generated entity metadata consumer（equine branch）
+
+- [x] 从 generated catalog 建立 `AbstractHorse -> Horse` 与
+  `AbstractHorse -> AbstractChestedHorse -> Llama` family：horse variant id19/default0、
+  chest id19/default false、llama strength id20/default0 与 variant id21/default0；native
+  model/debug-save 删除手抄 synced id/default。coat/marking 解码、variant clamp 与容器保存
+  语义仍由对应 owner 管理。

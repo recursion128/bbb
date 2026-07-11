@@ -31,6 +31,9 @@ pub enum VanillaEntityMetadataFamily {
     Turtle,
     AbstractHorse,
     Camel,
+    Horse,
+    AbstractChestedHorse,
+    Llama,
     TamableAnimal,
     ArmorStand,
     AbstractArrow,
@@ -360,6 +363,9 @@ mod tests {
             VanillaEntityMetadataFamily::Turtle,
             VanillaEntityMetadataFamily::AbstractHorse,
             VanillaEntityMetadataFamily::Camel,
+            VanillaEntityMetadataFamily::Horse,
+            VanillaEntityMetadataFamily::AbstractChestedHorse,
+            VanillaEntityMetadataFamily::Llama,
             VanillaEntityMetadataFamily::TamableAnimal,
             VanillaEntityMetadataFamily::ArmorStand,
             VanillaEntityMetadataFamily::AbstractArrow,
@@ -532,6 +538,36 @@ mod tests {
         assert_eq!(VANILLA_CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID, 20);
         assert!(!VANILLA_CAMEL_DEFAULT_DASH);
         assert_eq!(VANILLA_CAMEL_DEFAULT_LAST_POSE_CHANGE_TICK, 0);
+        let horse = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Horse);
+        assert_eq!(
+            horse.parent,
+            Some(VanillaEntityMetadataFamily::AbstractHorse)
+        );
+        assert_eq!(horse.inherited_field_count, 19);
+        assert_eq!(horse.own_fields.len(), 1);
+        assert_eq!(VANILLA_HORSE_VARIANT_DATA_ID, 19);
+        assert_eq!(VANILLA_HORSE_DEFAULT_VARIANT, 0);
+        let chested =
+            vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::AbstractChestedHorse);
+        assert_eq!(
+            chested.parent,
+            Some(VanillaEntityMetadataFamily::AbstractHorse)
+        );
+        assert_eq!(chested.inherited_field_count, 19);
+        assert_eq!(chested.own_fields.len(), 1);
+        assert_eq!(VANILLA_ABSTRACT_CHESTED_HORSE_CHEST_DATA_ID, 19);
+        assert!(!VANILLA_ABSTRACT_CHESTED_HORSE_DEFAULT_CHEST);
+        let llama = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Llama);
+        assert_eq!(
+            llama.parent,
+            Some(VanillaEntityMetadataFamily::AbstractChestedHorse)
+        );
+        assert_eq!(llama.inherited_field_count, 20);
+        assert_eq!(llama.own_fields.len(), 2);
+        assert_eq!(VANILLA_LLAMA_STRENGTH_DATA_ID, 20);
+        assert_eq!(VANILLA_LLAMA_VARIANT_DATA_ID, 21);
+        assert_eq!(VANILLA_LLAMA_DEFAULT_STRENGTH, 0);
+        assert_eq!(VANILLA_LLAMA_DEFAULT_VARIANT, 0);
         let polar_bear = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::PolarBear);
         assert_eq!(
             polar_bear.parent,

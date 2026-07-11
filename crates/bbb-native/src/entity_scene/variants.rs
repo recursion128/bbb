@@ -1055,7 +1055,7 @@ pub(super) fn undead_horse_model_kind(
 pub(super) fn horse_color_variant(
     values: &[bbb_protocol::packets::EntityDataValue],
 ) -> HorseColorVariant {
-    let color = entity_data_int(values, HORSE_VARIANT_DATA_ID, 0) & 0xFF;
+    let color = entity_data_int(values, HORSE_VARIANT_DATA_ID, HORSE_DEFAULT_VARIANT) & 0xFF;
     match color.rem_euclid(7) {
         0 => HorseColorVariant::White,
         1 => HorseColorVariant::Creamy,
@@ -1071,7 +1071,8 @@ pub(super) fn horse_color_variant(
 /// `Markings.byId((typeVariant & 0xFF00) >> 8)`, where `byId` is `ByIdMap.continuous(WRAP)` so an
 /// out-of-range nibble wraps modulo the five markings. `Markings.NONE` draws no overlay.
 pub(super) fn horse_markings(values: &[bbb_protocol::packets::EntityDataValue]) -> HorseMarkings {
-    let markings = (entity_data_int(values, HORSE_VARIANT_DATA_ID, 0) & 0xFF00) >> 8;
+    let markings =
+        (entity_data_int(values, HORSE_VARIANT_DATA_ID, HORSE_DEFAULT_VARIANT) & 0xFF00) >> 8;
     match markings.rem_euclid(5) {
         0 => HorseMarkings::None,
         1 => HorseMarkings::White,
@@ -1088,7 +1089,11 @@ pub(super) fn llama_model_kind(
     let baby = ageable_baby(values);
     EntityModelKind::Llama {
         family,
-        variant: LlamaVariant::from_vanilla_id(entity_data_int(values, LLAMA_VARIANT_DATA_ID, 0)),
+        variant: LlamaVariant::from_vanilla_id(entity_data_int(
+            values,
+            LLAMA_VARIANT_DATA_ID,
+            LLAMA_DEFAULT_VARIANT,
+        )),
         baby,
         has_chest: !baby && chested_horse_has_chest(values),
     }
@@ -1523,7 +1528,11 @@ pub(super) fn cow_variant_from_vanilla_registry_id(registry_id: i32) -> CowModel
 }
 
 pub(super) fn chested_horse_has_chest(values: &[bbb_protocol::packets::EntityDataValue]) -> bool {
-    entity_data_bool(values, ABSTRACT_CHESTED_HORSE_CHEST_DATA_ID, false)
+    entity_data_bool(
+        values,
+        ABSTRACT_CHESTED_HORSE_CHEST_DATA_ID,
+        ABSTRACT_CHESTED_HORSE_DEFAULT_CHEST,
+    )
 }
 
 pub(super) fn zombie_baby(values: &[bbb_protocol::packets::EntityDataValue]) -> bool {

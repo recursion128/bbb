@@ -496,7 +496,8 @@ back into a todo. Do not delete these.
   explicit flag diagnostics. The compatibility facade currently exposes
   `Entity`, `LivingEntity`, `Mob -> Allay` / `Creeper` / `Warden` / `WitherBoss` /
   `EnderMan`,
-  `Avatar`, `Player`, `AgeableMob -> AbstractHorse -> Camel` / `TamableAnimal` / `PolarBear` /
+  `Avatar`, `Player`, `AgeableMob -> AbstractHorse -> Camel` / `Horse` /
+  `AbstractChestedHorse -> Llama` / `TamableAnimal` / `PolarBear` /
   `Bee` / `Axolotl` / `Dolphin` / `Goat` / `Turtle`,
   `ArmorStand`,
   `Slime` (also consumed by `MagmaCube`), `Shulker`, `Zombie`, `Mob -> Guardian` /
