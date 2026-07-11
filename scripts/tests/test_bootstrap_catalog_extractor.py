@@ -10,7 +10,9 @@ sys.path.insert(0, str(SCRIPTS))
 
 from bootstrap_catalog_extractor import (  # noqa: E402
     BootstrapCatalogExtractionError,
+    banner_pattern_entries,
     bootstrap_resource_key_entries,
+    painting_variant_entries,
     static_register_entries,
 )
 from vanilla_java_source import parse_source  # noqa: E402
@@ -87,6 +89,54 @@ class Broken {
             r"fixture/Broken\.java: declaration/bootstrap mismatch: .*missing=\['ONE'\]",
         ):
             bootstrap_resource_key_entries(source, "Variant", {"key"}, 1)
+
+    def test_painting_dimensions_and_optional_author_flag_come_from_calls(self) -> None:
+        source = parse_source(
+            "fixture/Paintings.java",
+            b"""
+package fixture;
+class Paintings {
+  static final ResourceKey<PaintingVariant> ONE = create("one");
+  static final ResourceKey<PaintingVariant> TWO = create("two");
+  static void bootstrap(BootstrapContext<PaintingVariant> context) {
+    register(context, TWO, 4, 3, false); register(context, ONE, 1, 2);
+  }
+}
+""",
+        )
+        entries = painting_variant_entries(source, 2)
+        self.assertEqual(
+            [
+                (entry.resource_id, entry.width, entry.height, entry.has_author)
+                for entry in entries
+            ],
+            [
+                ("minecraft:two", 4, 3, False),
+                ("minecraft:one", 1, 2, True),
+            ],
+        )
+
+    def test_banner_translation_key_formula_is_validated_before_derivation(self) -> None:
+        source = parse_source(
+            "fixture/Banners.java",
+            b"""
+package fixture;
+class Banners {
+  static final ResourceKey<BannerPattern> BASE = create("base");
+  static void bootstrap(BootstrapContext<BannerPattern> context) {
+    register(context, BASE);
+  }
+  static void register(BootstrapContext<BannerPattern> context,
+                       ResourceKey<BannerPattern> key) {
+    context.register(key, new BannerPattern(
+        key.identifier(),
+        "block.minecraft.banner." + key.identifier().toShortLanguageKey()));
+  }
+}
+""",
+        )
+        entry = banner_pattern_entries(source, 1)[0]
+        self.assertEqual(entry.translation_key, "block.minecraft.banner.base")
 
 
 if __name__ == "__main__":

@@ -10,6 +10,7 @@ from vanilla_java_source import (
     JavaField,
     JavaMethod,
     JavaSource,
+    descendants,
     type_body_members,
 )
 
@@ -22,6 +23,22 @@ class BootstrapCatalogExtractionError(ValueError):
 class BootstrapEntry:
     constant_name: str
     resource_id: str
+
+
+@dataclass(frozen=True)
+class BannerPatternEntry:
+    constant_name: str
+    resource_id: str
+    translation_key: str
+
+
+@dataclass(frozen=True)
+class PaintingVariantEntry:
+    constant_name: str
+    resource_id: str
+    width: int
+    height: int
+    has_author: bool
 
 
 def _fail(source: JavaSource, expression: JavaExpression, message: str) -> None:
@@ -231,3 +248,110 @@ def static_register_entries(
     if len({entry.resource_id for entry in entries}) != len(entries):
         raise BootstrapCatalogExtractionError(f"{source.relative_path}: duplicate resource id")
     return entries
+
+
+def painting_variant_entries(
+    source: JavaSource, expected_count: int = 51
+) -> list[PaintingVariantEntry]:
+    resources = _declared_resource_keys(source, "PaintingVariant", {"create"})
+    method = _bootstrap_method(source)
+    context_name = _bootstrap_context_name(source, method)
+    calls = [
+        call
+        for call in source.calls
+        if call.name == "register"
+        and call.qualifier is None
+        and method.body.start_byte <= call.span.start_byte
+        and call.span.end_byte <= method.body.end_byte
+    ]
+    calls.sort(key=lambda call: (call.span.start_byte, call.span.end_byte))
+    entries: list[PaintingVariantEntry] = []
+    for call in calls:
+        if len(call.arguments) not in {4, 5} or call.arguments[0].canonical != context_name:
+            _fail(source, source.expression(call.node), "unsupported painting register call")
+        key = call.arguments[1]
+        if key.node.type != "identifier" or key.canonical not in resources:
+            _fail(source, key, "painting resource key is not a declared identifier")
+        dimensions: list[int] = []
+        for argument in call.arguments[2:4]:
+            if argument.node.type != "decimal_integer_literal":
+                _fail(source, argument, "painting dimension is not a decimal integer literal")
+            dimensions.append(int(argument.canonical.replace("_", ""), 10))
+        author = call.arguments[4].canonical if len(call.arguments) == 5 else "true"
+        if author not in {"true", "false"}:
+            _fail(source, call.arguments[4], "painting author flag is not a boolean literal")
+        entries.append(
+            PaintingVariantEntry(
+                key.canonical,
+                resources[key.canonical],
+                dimensions[0],
+                dimensions[1],
+                author == "true",
+            )
+        )
+    constants = [entry.constant_name for entry in entries]
+    if len(entries) != expected_count:
+        raise BootstrapCatalogExtractionError(
+            f"{source.relative_path}: expected {expected_count} painting variants, "
+            f"extracted {len(entries)}"
+        )
+    if len(constants) != len(set(constants)):
+        raise BootstrapCatalogExtractionError(
+            f"{source.relative_path}: duplicate painting bootstrap registration"
+        )
+    unknown = set(constants) - resources.keys()
+    missing = resources.keys() - set(constants)
+    if unknown or missing:
+        raise BootstrapCatalogExtractionError(
+            f"{source.relative_path}: painting declaration/bootstrap mismatch: "
+            f"unknown={sorted(unknown)}, missing={sorted(missing)}"
+        )
+    return entries
+
+
+def banner_pattern_entries(
+    source: JavaSource, expected_count: int = 43
+) -> list[BannerPatternEntry]:
+    entries = bootstrap_resource_key_entries(
+        source, "BannerPattern", {"create"}, expected_count
+    )
+    helpers = [method for method in source.methods if method.name == "register"]
+    if len(helpers) != 1:
+        raise BootstrapCatalogExtractionError(
+            f"{source.relative_path}: expected exactly one banner register helper"
+        )
+    constructors = [
+        node
+        for node in descendants(helpers[0].node)
+        if node.type == "object_creation_expression"
+        and (type_node := node.child_by_field_name("type")) is not None
+        and source.expression(type_node).canonical == "BannerPattern"
+    ]
+    if len(constructors) != 1:
+        raise BootstrapCatalogExtractionError(
+            f"{source.relative_path}: expected exactly one BannerPattern constructor"
+        )
+    arguments = constructors[0].child_by_field_name("arguments")
+    if arguments is None or len(arguments.named_children) != 2:
+        _fail(
+            source,
+            source.expression(constructors[0]),
+            "BannerPattern constructor must have two arguments",
+        )
+    translation = source.expression(arguments.named_children[1])
+    expected = '"block.minecraft.banner." + key.identifier ().toShortLanguageKey ()'
+    if translation.canonical != expected:
+        _fail(
+            source,
+            translation,
+            f"unsupported banner translation expression {translation.canonical}",
+        )
+    return [
+        BannerPatternEntry(
+            entry.constant_name,
+            entry.resource_id,
+            "block.minecraft.banner."
+            + entry.resource_id.removeprefix("minecraft:"),
+        )
+        for entry in entries
+    ]

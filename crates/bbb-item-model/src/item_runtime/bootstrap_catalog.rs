@@ -143,6 +143,515 @@ pub(super) const VANILLA_WOLF_VARIANT_KEYS: &[&str] = &[
     "minecraft:striped",
 ];
 
+pub(super) const VANILLA_INSTRUMENT_KEYS: &[&str] = &[
+    "minecraft:ponder_goat_horn",
+    "minecraft:sing_goat_horn",
+    "minecraft:seek_goat_horn",
+    "minecraft:feel_goat_horn",
+    "minecraft:admire_goat_horn",
+    "minecraft:call_goat_horn",
+    "minecraft:yearn_goat_horn",
+    "minecraft:dream_goat_horn",
+];
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) struct VanillaBannerPattern {
+    pub(super) resource_id: &'static str,
+    pub(super) translation_key: &'static str,
+}
+
+pub(super) const VANILLA_BANNER_PATTERNS: &[VanillaBannerPattern] = &[
+    VanillaBannerPattern {
+        resource_id: "minecraft:base",
+        translation_key: "block.minecraft.banner.base",
+    },
+    VanillaBannerPattern {
+        resource_id: "minecraft:square_bottom_left",
+        translation_key: "block.minecraft.banner.square_bottom_left",
+    },
+    VanillaBannerPattern {
+        resource_id: "minecraft:square_bottom_right",
+        translation_key: "block.minecraft.banner.square_bottom_right",
+    },
+    VanillaBannerPattern {
+        resource_id: "minecraft:square_top_left",
+        translation_key: "block.minecraft.banner.square_top_left",
+    },
+    VanillaBannerPattern {
+        resource_id: "minecraft:square_top_right",
+        translation_key: "block.minecraft.banner.square_top_right",
+    },
+    VanillaBannerPattern {
+        resource_id: "minecraft:stripe_bottom",
+        translation_key: "block.minecraft.banner.stripe_bottom",
+    },
+    VanillaBannerPattern {
+        resource_id: "minecraft:stripe_top",
+        translation_key: "block.minecraft.banner.stripe_top",
+    },
+    VanillaBannerPattern {
+        resource_id: "minecraft:stripe_left",
+        translation_key: "block.minecraft.banner.stripe_left",
+    },
+    VanillaBannerPattern {
+        resource_id: "minecraft:stripe_right",
+        translation_key: "block.minecraft.banner.stripe_right",
+    },
+    VanillaBannerPattern {
+        resource_id: "minecraft:stripe_center",
+        translation_key: "block.minecraft.banner.stripe_center",
+    },
+    VanillaBannerPattern {
+        resource_id: "minecraft:stripe_middle",
+        translation_key: "block.minecraft.banner.stripe_middle",
+    },
+    VanillaBannerPattern {
+        resource_id: "minecraft:stripe_downright",
+        translation_key: "block.minecraft.banner.stripe_downright",
+    },
+    VanillaBannerPattern {
+        resource_id: "minecraft:stripe_downleft",
+        translation_key: "block.minecraft.banner.stripe_downleft",
+    },
+    VanillaBannerPattern {
+        resource_id: "minecraft:small_stripes",
+        translation_key: "block.minecraft.banner.small_stripes",
+    },
+    VanillaBannerPattern {
+        resource_id: "minecraft:cross",
+        translation_key: "block.minecraft.banner.cross",
+    },
+    VanillaBannerPattern {
+        resource_id: "minecraft:straight_cross",
+        translation_key: "block.minecraft.banner.straight_cross",
+    },
+    VanillaBannerPattern {
+        resource_id: "minecraft:triangle_bottom",
+        translation_key: "block.minecraft.banner.triangle_bottom",
+    },
+    VanillaBannerPattern {
+        resource_id: "minecraft:triangle_top",
+        translation_key: "block.minecraft.banner.triangle_top",
+    },
+    VanillaBannerPattern {
+        resource_id: "minecraft:triangles_bottom",
+        translation_key: "block.minecraft.banner.triangles_bottom",
+    },
+    VanillaBannerPattern {
+        resource_id: "minecraft:triangles_top",
+        translation_key: "block.minecraft.banner.triangles_top",
+    },
+    VanillaBannerPattern {
+        resource_id: "minecraft:diagonal_left",
+        translation_key: "block.minecraft.banner.diagonal_left",
+    },
+    VanillaBannerPattern {
+        resource_id: "minecraft:diagonal_up_right",
+        translation_key: "block.minecraft.banner.diagonal_up_right",
+    },
+    VanillaBannerPattern {
+        resource_id: "minecraft:diagonal_up_left",
+        translation_key: "block.minecraft.banner.diagonal_up_left",
+    },
+    VanillaBannerPattern {
+        resource_id: "minecraft:diagonal_right",
+        translation_key: "block.minecraft.banner.diagonal_right",
+    },
+    VanillaBannerPattern {
+        resource_id: "minecraft:circle",
+        translation_key: "block.minecraft.banner.circle",
+    },
+    VanillaBannerPattern {
+        resource_id: "minecraft:rhombus",
+        translation_key: "block.minecraft.banner.rhombus",
+    },
+    VanillaBannerPattern {
+        resource_id: "minecraft:half_vertical",
+        translation_key: "block.minecraft.banner.half_vertical",
+    },
+    VanillaBannerPattern {
+        resource_id: "minecraft:half_horizontal",
+        translation_key: "block.minecraft.banner.half_horizontal",
+    },
+    VanillaBannerPattern {
+        resource_id: "minecraft:half_vertical_right",
+        translation_key: "block.minecraft.banner.half_vertical_right",
+    },
+    VanillaBannerPattern {
+        resource_id: "minecraft:half_horizontal_bottom",
+        translation_key: "block.minecraft.banner.half_horizontal_bottom",
+    },
+    VanillaBannerPattern {
+        resource_id: "minecraft:border",
+        translation_key: "block.minecraft.banner.border",
+    },
+    VanillaBannerPattern {
+        resource_id: "minecraft:gradient",
+        translation_key: "block.minecraft.banner.gradient",
+    },
+    VanillaBannerPattern {
+        resource_id: "minecraft:gradient_up",
+        translation_key: "block.minecraft.banner.gradient_up",
+    },
+    VanillaBannerPattern {
+        resource_id: "minecraft:bricks",
+        translation_key: "block.minecraft.banner.bricks",
+    },
+    VanillaBannerPattern {
+        resource_id: "minecraft:curly_border",
+        translation_key: "block.minecraft.banner.curly_border",
+    },
+    VanillaBannerPattern {
+        resource_id: "minecraft:globe",
+        translation_key: "block.minecraft.banner.globe",
+    },
+    VanillaBannerPattern {
+        resource_id: "minecraft:creeper",
+        translation_key: "block.minecraft.banner.creeper",
+    },
+    VanillaBannerPattern {
+        resource_id: "minecraft:skull",
+        translation_key: "block.minecraft.banner.skull",
+    },
+    VanillaBannerPattern {
+        resource_id: "minecraft:flower",
+        translation_key: "block.minecraft.banner.flower",
+    },
+    VanillaBannerPattern {
+        resource_id: "minecraft:mojang",
+        translation_key: "block.minecraft.banner.mojang",
+    },
+    VanillaBannerPattern {
+        resource_id: "minecraft:piglin",
+        translation_key: "block.minecraft.banner.piglin",
+    },
+    VanillaBannerPattern {
+        resource_id: "minecraft:flow",
+        translation_key: "block.minecraft.banner.flow",
+    },
+    VanillaBannerPattern {
+        resource_id: "minecraft:guster",
+        translation_key: "block.minecraft.banner.guster",
+    },
+];
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) struct VanillaPaintingVariant {
+    pub(super) key: &'static str,
+    pub(super) width: i32,
+    pub(super) height: i32,
+    pub(super) has_author: bool,
+}
+
+pub(super) const VANILLA_PAINTING_VARIANTS: &[VanillaPaintingVariant] = &[
+    VanillaPaintingVariant {
+        key: "minecraft:kebab",
+        width: 1,
+        height: 1,
+        has_author: true,
+    },
+    VanillaPaintingVariant {
+        key: "minecraft:aztec",
+        width: 1,
+        height: 1,
+        has_author: true,
+    },
+    VanillaPaintingVariant {
+        key: "minecraft:alban",
+        width: 1,
+        height: 1,
+        has_author: true,
+    },
+    VanillaPaintingVariant {
+        key: "minecraft:aztec2",
+        width: 1,
+        height: 1,
+        has_author: true,
+    },
+    VanillaPaintingVariant {
+        key: "minecraft:bomb",
+        width: 1,
+        height: 1,
+        has_author: true,
+    },
+    VanillaPaintingVariant {
+        key: "minecraft:plant",
+        width: 1,
+        height: 1,
+        has_author: true,
+    },
+    VanillaPaintingVariant {
+        key: "minecraft:wasteland",
+        width: 1,
+        height: 1,
+        has_author: true,
+    },
+    VanillaPaintingVariant {
+        key: "minecraft:pool",
+        width: 2,
+        height: 1,
+        has_author: true,
+    },
+    VanillaPaintingVariant {
+        key: "minecraft:courbet",
+        width: 2,
+        height: 1,
+        has_author: true,
+    },
+    VanillaPaintingVariant {
+        key: "minecraft:sea",
+        width: 2,
+        height: 1,
+        has_author: true,
+    },
+    VanillaPaintingVariant {
+        key: "minecraft:sunset",
+        width: 2,
+        height: 1,
+        has_author: true,
+    },
+    VanillaPaintingVariant {
+        key: "minecraft:creebet",
+        width: 2,
+        height: 1,
+        has_author: true,
+    },
+    VanillaPaintingVariant {
+        key: "minecraft:wanderer",
+        width: 1,
+        height: 2,
+        has_author: true,
+    },
+    VanillaPaintingVariant {
+        key: "minecraft:graham",
+        width: 1,
+        height: 2,
+        has_author: true,
+    },
+    VanillaPaintingVariant {
+        key: "minecraft:match",
+        width: 2,
+        height: 2,
+        has_author: true,
+    },
+    VanillaPaintingVariant {
+        key: "minecraft:bust",
+        width: 2,
+        height: 2,
+        has_author: true,
+    },
+    VanillaPaintingVariant {
+        key: "minecraft:stage",
+        width: 2,
+        height: 2,
+        has_author: true,
+    },
+    VanillaPaintingVariant {
+        key: "minecraft:void",
+        width: 2,
+        height: 2,
+        has_author: true,
+    },
+    VanillaPaintingVariant {
+        key: "minecraft:skull_and_roses",
+        width: 2,
+        height: 2,
+        has_author: true,
+    },
+    VanillaPaintingVariant {
+        key: "minecraft:wither",
+        width: 2,
+        height: 2,
+        has_author: false,
+    },
+    VanillaPaintingVariant {
+        key: "minecraft:fighters",
+        width: 4,
+        height: 2,
+        has_author: true,
+    },
+    VanillaPaintingVariant {
+        key: "minecraft:pointer",
+        width: 4,
+        height: 4,
+        has_author: true,
+    },
+    VanillaPaintingVariant {
+        key: "minecraft:pigscene",
+        width: 4,
+        height: 4,
+        has_author: true,
+    },
+    VanillaPaintingVariant {
+        key: "minecraft:burning_skull",
+        width: 4,
+        height: 4,
+        has_author: true,
+    },
+    VanillaPaintingVariant {
+        key: "minecraft:skeleton",
+        width: 4,
+        height: 3,
+        has_author: true,
+    },
+    VanillaPaintingVariant {
+        key: "minecraft:earth",
+        width: 2,
+        height: 2,
+        has_author: false,
+    },
+    VanillaPaintingVariant {
+        key: "minecraft:wind",
+        width: 2,
+        height: 2,
+        has_author: false,
+    },
+    VanillaPaintingVariant {
+        key: "minecraft:water",
+        width: 2,
+        height: 2,
+        has_author: false,
+    },
+    VanillaPaintingVariant {
+        key: "minecraft:fire",
+        width: 2,
+        height: 2,
+        has_author: false,
+    },
+    VanillaPaintingVariant {
+        key: "minecraft:donkey_kong",
+        width: 4,
+        height: 3,
+        has_author: true,
+    },
+    VanillaPaintingVariant {
+        key: "minecraft:baroque",
+        width: 2,
+        height: 2,
+        has_author: true,
+    },
+    VanillaPaintingVariant {
+        key: "minecraft:humble",
+        width: 2,
+        height: 2,
+        has_author: true,
+    },
+    VanillaPaintingVariant {
+        key: "minecraft:meditative",
+        width: 1,
+        height: 1,
+        has_author: true,
+    },
+    VanillaPaintingVariant {
+        key: "minecraft:prairie_ride",
+        width: 1,
+        height: 2,
+        has_author: true,
+    },
+    VanillaPaintingVariant {
+        key: "minecraft:unpacked",
+        width: 4,
+        height: 4,
+        has_author: true,
+    },
+    VanillaPaintingVariant {
+        key: "minecraft:backyard",
+        width: 3,
+        height: 4,
+        has_author: true,
+    },
+    VanillaPaintingVariant {
+        key: "minecraft:bouquet",
+        width: 3,
+        height: 3,
+        has_author: true,
+    },
+    VanillaPaintingVariant {
+        key: "minecraft:cavebird",
+        width: 3,
+        height: 3,
+        has_author: true,
+    },
+    VanillaPaintingVariant {
+        key: "minecraft:changing",
+        width: 4,
+        height: 2,
+        has_author: true,
+    },
+    VanillaPaintingVariant {
+        key: "minecraft:cotan",
+        width: 3,
+        height: 3,
+        has_author: true,
+    },
+    VanillaPaintingVariant {
+        key: "minecraft:endboss",
+        width: 3,
+        height: 3,
+        has_author: true,
+    },
+    VanillaPaintingVariant {
+        key: "minecraft:fern",
+        width: 3,
+        height: 3,
+        has_author: true,
+    },
+    VanillaPaintingVariant {
+        key: "minecraft:finding",
+        width: 4,
+        height: 2,
+        has_author: true,
+    },
+    VanillaPaintingVariant {
+        key: "minecraft:lowmist",
+        width: 4,
+        height: 2,
+        has_author: true,
+    },
+    VanillaPaintingVariant {
+        key: "minecraft:orb",
+        width: 4,
+        height: 4,
+        has_author: true,
+    },
+    VanillaPaintingVariant {
+        key: "minecraft:owlemons",
+        width: 3,
+        height: 3,
+        has_author: true,
+    },
+    VanillaPaintingVariant {
+        key: "minecraft:passage",
+        width: 4,
+        height: 2,
+        has_author: true,
+    },
+    VanillaPaintingVariant {
+        key: "minecraft:pond",
+        width: 3,
+        height: 4,
+        has_author: true,
+    },
+    VanillaPaintingVariant {
+        key: "minecraft:sunflowers",
+        width: 3,
+        height: 3,
+        has_author: true,
+    },
+    VanillaPaintingVariant {
+        key: "minecraft:tides",
+        width: 3,
+        height: 3,
+        has_author: true,
+    },
+    VanillaPaintingVariant {
+        key: "minecraft:dennis",
+        width: 3,
+        height: 3,
+        has_author: true,
+    },
+];
+
 #[cfg(test)]
 mod tests {
     use std::collections::HashSet;
@@ -159,6 +668,7 @@ mod tests {
             (VANILLA_VILLAGER_TYPE_KEYS, 7),
             (VANILLA_WOLF_SOUND_VARIANT_KEYS, 7),
             (VANILLA_WOLF_VARIANT_KEYS, 9),
+            (VANILLA_INSTRUMENT_KEYS, 8),
         ];
         for (entries, expected_len) in catalogs {
             assert_eq!(entries.len(), *expected_len);
@@ -166,6 +676,18 @@ mod tests {
             assert_eq!(resources.len(), entries.len());
             assert!(entries.iter().all(|entry| entry.starts_with("minecraft:")));
         }
+        assert_eq!(VANILLA_BANNER_PATTERNS.len(), 43);
+        assert_eq!(VANILLA_PAINTING_VARIANTS.len(), 51);
+        let banner_resources: HashSet<_> = VANILLA_BANNER_PATTERNS
+            .iter()
+            .map(|entry| entry.resource_id)
+            .collect();
+        assert_eq!(banner_resources.len(), VANILLA_BANNER_PATTERNS.len());
+        let painting_resources: HashSet<_> = VANILLA_PAINTING_VARIANTS
+            .iter()
+            .map(|entry| entry.key)
+            .collect();
+        assert_eq!(painting_resources.len(), VANILLA_PAINTING_VARIANTS.len());
     }
 
     #[test]
@@ -186,5 +708,25 @@ mod tests {
             Some(&"minecraft:puglin")
         );
         assert_eq!(VANILLA_WOLF_VARIANT_KEYS.last(), Some(&"minecraft:striped"));
+        assert_eq!(
+            VANILLA_INSTRUMENT_KEYS.last(),
+            Some(&"minecraft:dream_goat_horn")
+        );
+        assert_eq!(
+            VANILLA_BANNER_PATTERNS.get(31).unwrap().resource_id,
+            "minecraft:gradient"
+        );
+        assert_eq!(
+            VANILLA_BANNER_PATTERNS.get(34).unwrap().resource_id,
+            "minecraft:curly_border"
+        );
+        assert!(!VANILLA_PAINTING_VARIANTS.get(19).unwrap().has_author);
+        assert_eq!(
+            (
+                VANILLA_PAINTING_VARIANTS.get(50).unwrap().width,
+                VANILLA_PAINTING_VARIANTS.get(50).unwrap().height
+            ),
+            (3, 3)
+        );
     }
 }

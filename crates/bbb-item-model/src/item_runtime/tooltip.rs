@@ -12,7 +12,10 @@ use bbb_world::{EnchantmentAttributeModifier, RegistrySet};
 use super::attributes::{
     vanilla_attribute, vanilla_attribute_for_key, VanillaAttribute, VanillaAttributeSentiment,
 };
-use super::bootstrap_catalog::{VANILLA_TRIM_MATERIAL_KEYS, VANILLA_TRIM_PATTERN_KEYS};
+use super::bootstrap_catalog::{
+    VanillaPaintingVariant, VANILLA_BANNER_PATTERNS, VANILLA_INSTRUMENT_KEYS,
+    VANILLA_PAINTING_VARIANTS, VANILLA_TRIM_MATERIAL_KEYS, VANILLA_TRIM_PATTERN_KEYS,
+};
 use super::icon_model::effective_attribute_modifiers;
 use super::icon_model::VANILLA_TRIM_MATERIAL_COLORS;
 use super::mob_effects::{
@@ -111,68 +114,7 @@ const OP_ONLY_ENTITY_TYPE_IDS: &[i32] = &[
     bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID,
     bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID,
 ];
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct VanillaPaintingVariant {
-    key: &'static str,
-    width: i32,
-    height: i32,
-    has_author: bool,
-}
-
-const VANILLA_PAINTING_VARIANTS: &[VanillaPaintingVariant] = &[
-    painting_variant("minecraft:kebab", 1, 1, true),
-    painting_variant("minecraft:aztec", 1, 1, true),
-    painting_variant("minecraft:alban", 1, 1, true),
-    painting_variant("minecraft:aztec2", 1, 1, true),
-    painting_variant("minecraft:bomb", 1, 1, true),
-    painting_variant("minecraft:plant", 1, 1, true),
-    painting_variant("minecraft:wasteland", 1, 1, true),
-    painting_variant("minecraft:pool", 2, 1, true),
-    painting_variant("minecraft:courbet", 2, 1, true),
-    painting_variant("minecraft:sea", 2, 1, true),
-    painting_variant("minecraft:sunset", 2, 1, true),
-    painting_variant("minecraft:creebet", 2, 1, true),
-    painting_variant("minecraft:wanderer", 1, 2, true),
-    painting_variant("minecraft:graham", 1, 2, true),
-    painting_variant("minecraft:match", 2, 2, true),
-    painting_variant("minecraft:bust", 2, 2, true),
-    painting_variant("minecraft:stage", 2, 2, true),
-    painting_variant("minecraft:void", 2, 2, true),
-    painting_variant("minecraft:skull_and_roses", 2, 2, true),
-    painting_variant("minecraft:wither", 2, 2, false),
-    painting_variant("minecraft:fighters", 4, 2, true),
-    painting_variant("minecraft:pointer", 4, 4, true),
-    painting_variant("minecraft:pigscene", 4, 4, true),
-    painting_variant("minecraft:burning_skull", 4, 4, true),
-    painting_variant("minecraft:skeleton", 4, 3, true),
-    painting_variant("minecraft:earth", 2, 2, false),
-    painting_variant("minecraft:wind", 2, 2, false),
-    painting_variant("minecraft:water", 2, 2, false),
-    painting_variant("minecraft:fire", 2, 2, false),
-    painting_variant("minecraft:donkey_kong", 4, 3, true),
-    painting_variant("minecraft:baroque", 2, 2, true),
-    painting_variant("minecraft:humble", 2, 2, true),
-    painting_variant("minecraft:meditative", 1, 1, true),
-    painting_variant("minecraft:prairie_ride", 1, 2, true),
-    painting_variant("minecraft:unpacked", 4, 4, true),
-    painting_variant("minecraft:backyard", 3, 4, true),
-    painting_variant("minecraft:bouquet", 3, 3, true),
-    painting_variant("minecraft:cavebird", 3, 3, true),
-    painting_variant("minecraft:changing", 4, 2, true),
-    painting_variant("minecraft:cotan", 3, 3, true),
-    painting_variant("minecraft:endboss", 3, 3, true),
-    painting_variant("minecraft:fern", 3, 3, true),
-    painting_variant("minecraft:finding", 4, 2, true),
-    painting_variant("minecraft:lowmist", 4, 2, true),
-    painting_variant("minecraft:orb", 4, 4, true),
-    painting_variant("minecraft:owlemons", 3, 3, true),
-    painting_variant("minecraft:passage", 4, 2, true),
-    painting_variant("minecraft:pond", 3, 4, true),
-    painting_variant("minecraft:sunflowers", 3, 3, true),
-    painting_variant("minecraft:tides", 3, 3, true),
-    painting_variant("minecraft:dennis", 3, 3, true),
-];
-
+#[cfg(test)]
 const fn painting_variant(
     key: &'static str,
     width: i32,
@@ -233,61 +175,6 @@ const TROPICAL_FISH_COMMON_VARIANTS: &[(i32, i32, i32)] = &[
     (256, 7, 0),
     (768, 9, 4),
     (1, 4, 4),
-];
-const VANILLA_INSTRUMENT_KEYS: &[&str] = &[
-    "minecraft:ponder_goat_horn",
-    "minecraft:sing_goat_horn",
-    "minecraft:seek_goat_horn",
-    "minecraft:feel_goat_horn",
-    "minecraft:admire_goat_horn",
-    "minecraft:call_goat_horn",
-    "minecraft:yearn_goat_horn",
-    "minecraft:dream_goat_horn",
-];
-const VANILLA_BANNER_PATTERN_TRANSLATION_KEYS: &[&str] = &[
-    "block.minecraft.banner.base",
-    "block.minecraft.banner.square_bottom_left",
-    "block.minecraft.banner.square_bottom_right",
-    "block.minecraft.banner.square_top_left",
-    "block.minecraft.banner.square_top_right",
-    "block.minecraft.banner.stripe_bottom",
-    "block.minecraft.banner.stripe_top",
-    "block.minecraft.banner.stripe_left",
-    "block.minecraft.banner.stripe_right",
-    "block.minecraft.banner.stripe_center",
-    "block.minecraft.banner.stripe_middle",
-    "block.minecraft.banner.stripe_downright",
-    "block.minecraft.banner.stripe_downleft",
-    "block.minecraft.banner.small_stripes",
-    "block.minecraft.banner.cross",
-    "block.minecraft.banner.straight_cross",
-    "block.minecraft.banner.triangle_bottom",
-    "block.minecraft.banner.triangle_top",
-    "block.minecraft.banner.triangles_bottom",
-    "block.minecraft.banner.triangles_top",
-    "block.minecraft.banner.diagonal_left",
-    "block.minecraft.banner.diagonal_up_right",
-    "block.minecraft.banner.diagonal_up_left",
-    "block.minecraft.banner.diagonal_right",
-    "block.minecraft.banner.circle",
-    "block.minecraft.banner.rhombus",
-    "block.minecraft.banner.half_vertical",
-    "block.minecraft.banner.half_horizontal",
-    "block.minecraft.banner.half_vertical_right",
-    "block.minecraft.banner.half_horizontal_bottom",
-    "block.minecraft.banner.border",
-    "block.minecraft.banner.gradient",
-    "block.minecraft.banner.gradient_up",
-    "block.minecraft.banner.bricks",
-    "block.minecraft.banner.curly_border",
-    "block.minecraft.banner.globe",
-    "block.minecraft.banner.creeper",
-    "block.minecraft.banner.skull",
-    "block.minecraft.banner.flower",
-    "block.minecraft.banner.mojang",
-    "block.minecraft.banner.piglin",
-    "block.minecraft.banner.flow",
-    "block.minecraft.banner.guster",
 ];
 const VANILLA_ENCHANTMENT_KEYS_AND_MAX_LEVELS: &[(&str, i32)] = &[
     ("minecraft:protection", 4),
@@ -939,13 +826,12 @@ fn push_banner_pattern_tooltip_lines(
 
 fn vanilla_banner_pattern_translation_key(registry_id: i32) -> Option<&'static str> {
     let index = usize::try_from(registry_id).ok()?;
-    VANILLA_BANNER_PATTERN_TRANSLATION_KEYS.get(index).copied()
+    Some(VANILLA_BANNER_PATTERNS.get(index)?.translation_key)
 }
 
 pub fn vanilla_banner_pattern_resource_id(registry_id: i32) -> Option<String> {
-    let path = vanilla_banner_pattern_translation_key(registry_id)?
-        .strip_prefix("block.minecraft.banner.")?;
-    Some(format!("minecraft:{path}"))
+    let index = usize::try_from(registry_id).ok()?;
+    Some(VANILLA_BANNER_PATTERNS.get(index)?.resource_id.to_string())
 }
 
 fn italic_gray_tooltip_line(text: String) -> NativeItemTooltipLine {
@@ -1398,7 +1284,11 @@ mod tests {
     #[test]
     fn vanilla_banner_pattern_translation_keys_follow_26_1_bootstrap_order() {
         assert_eq!(
-            VANILLA_BANNER_PATTERN_TRANSLATION_KEYS,
+            VANILLA_BANNER_PATTERNS
+                .iter()
+                .map(|entry| entry.translation_key)
+                .collect::<Vec<_>>()
+                .as_slice(),
             &[
                 "block.minecraft.banner.base",
                 "block.minecraft.banner.square_bottom_left",

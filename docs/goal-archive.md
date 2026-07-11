@@ -10217,3 +10217,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   item-model lookup API 与行为保持不变，普通 Cargo build/test 只消费生成物；trim 颜色、
   potion effects、渲染和 Codec 语义仍由对应手写 owner 管理。其余 bootstrap/variant family
   继续留在开放队列，未被本切片误标完成。
+
+## 2026-07-11：Generated instrument, banner, and painting catalogs
+
+- [x] 扩展同一 bootstrap generator：从 `Instruments.bootstrap` 生成 8 项 instrument
+  resource order；从 `BannerPatterns` 的 43 个 ResourceKey/注册顺序生成 typed resource
+  与 translation-key entries，并精确验证 helper constructor 的 canonical translation
+  expression；从 `PaintingVariants.bootstrap` 的 51 个调用生成 resource id、width、height
+  与显式/默认 `hasAuthor`。item-model 删除三张手抄表，保留原 instrument/banner/painting
+  查询和 tooltip 行为。fixtures 锁定 painting 参数/默认 author 与 banner 派生公式，
+  update/check、二次 update、focused tests 和 workspace gate 通过；painting title/author
+  呈现逻辑仍由 tooltip owner 管理，dynamic registry 仍以服务器 session 顺序为权威。
