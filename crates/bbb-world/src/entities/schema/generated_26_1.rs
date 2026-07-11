@@ -2,7 +2,7 @@
 // Vanilla version: 26.1.
 // Update: scripts/vanilla-source-tools.sh scripts/generate-entity-metadata-schema.py update
 // Check: scripts/vanilla-source-tools.sh scripts/generate-entity-metadata-schema.py check
-// Stable source manifest SHA-256: 208797361a1459e77de221ed508399acbcc7d6b70753b4188c42d792ff4b4906
+// Stable source manifest SHA-256: a79cb6c92b4c3b9d1f03dd888249f8a5d0ad69611acb0e18f53c1907512e7672
 
 use bbb_protocol::entity_data_serializers::*;
 
@@ -426,6 +426,8 @@ const GENERATED_VANILLA_ITEM_FRAME_ITEM_DATA_ID: u8 = 9;
 pub const VANILLA_ITEM_FRAME_ITEM_DATA_ID: u8 = GENERATED_VANILLA_ITEM_FRAME_ITEM_DATA_ID;
 const GENERATED_VANILLA_ITEM_FRAME_ROTATION_DATA_ID: u8 = 10;
 pub const VANILLA_ITEM_FRAME_ROTATION_DATA_ID: u8 = GENERATED_VANILLA_ITEM_FRAME_ROTATION_DATA_ID;
+const GENERATED_VANILLA_PAINTING_VARIANT_DATA_ID: u8 = 9;
+pub const VANILLA_PAINTING_VARIANT_DATA_ID: u8 = GENERATED_VANILLA_PAINTING_VARIANT_DATA_ID;
 const GENERATED_VANILLA_AVATAR_MAIN_HAND_DATA_ID: u8 = 15;
 pub const VANILLA_AVATAR_MAIN_HAND_DATA_ID: u8 = GENERATED_VANILLA_AVATAR_MAIN_HAND_DATA_ID;
 const GENERATED_VANILLA_AVATAR_MODEL_CUSTOMIZATION_DATA_ID: u8 = 16;
@@ -10478,7 +10480,7 @@ pub const VANILLA_ENTITY_METADATA_ACCESSORS_26_1: &[VanillaEntityMetadataAccesso
         data_id: 9,
         source_path: "net/minecraft/world/entity/decoration/painting/Painting.java",
         default_expression: "VariantUtils.getAny (this.registryAccess (), Registries.PAINTING_VARIANT)",
-        typed_default: None,
+        typed_default: Some(VanillaEntityMetadataDefault::RegistryAny("minecraft:painting_variant")),
     },
     VanillaEntityMetadataAccessorCatalogEntry {
         owner: "net.minecraft.world.entity.item.FallingBlockEntity",
@@ -11849,6 +11851,13 @@ pub const VANILLA_ENTITY_METADATA_DEFAULT_RESOLVER_EVIDENCE_26_1: &[VanillaEntit
         evidence_member: "net.minecraft.world.entity.animal.fox.Fox.Variant.DEFAULT -> RED",
         source_expression: "Fox.Variant.DEFAULT.getId ()",
         reason: "the synced INT default is stored in a nested enum constant rather than an integer expression",
+    },
+    VanillaEntityMetadataResolverEvidence {
+        java_class: "net.minecraft.world.entity.decoration.painting.Painting",
+        accessor_name: "DATA_PAINTING_VARIANT_ID",
+        evidence_member: "net.minecraft.core.registries.Registries.PAINTING_VARIANT -> createRegistryKey",
+        source_expression: "VariantUtils.getAny (this.registryAccess (), Registries.PAINTING_VARIANT) -> createRegistryKey (\"painting_variant\") -> ResourceKey.createRegistryKey (Identifier.withDefaultNamespace (name))",
+        reason: "the synced holder default is an arbitrary entry from the named registry",
     },
     VanillaEntityMetadataResolverEvidence {
         java_class: "net.minecraft.world.entity.boss.enderdragon.EnderDragon",
@@ -15815,6 +15824,21 @@ const ITEMFRAME_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadat
     own_flags: ITEMFRAME_FLAGS,
 };
 
+const PAINTING_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[VanillaEntityMetadataFieldSchema {
+    name: "DATA_PAINTING_VARIANT_ID",
+    data_id: 9,
+    serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_PAINTING_VARIANT_ID,
+    default: VanillaEntityMetadataDefault::RegistryAny("minecraft:painting_variant"),
+}];
+const PAINTING_FLAGS: &[VanillaEntityMetadataFlagSchema] = &[];
+const PAINTING_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamilySchema {
+    family: VanillaEntityMetadataFamily::Painting,
+    parent: Some(VanillaEntityMetadataFamily::HangingEntity),
+    inherited_field_count: 9,
+    own_fields: PAINTING_FIELDS,
+    own_flags: PAINTING_FLAGS,
+};
+
 const AVATAR_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[
     VanillaEntityMetadataFieldSchema {
         name: "DATA_PLAYER_MAIN_HAND",
@@ -15998,6 +16022,7 @@ pub(super) const fn generated_entity_metadata_schema(
         VanillaEntityMetadataFamily::MinecartFurnace => &MINECARTFURNACE_SCHEMA,
         VanillaEntityMetadataFamily::HangingEntity => &HANGINGENTITY_SCHEMA,
         VanillaEntityMetadataFamily::ItemFrame => &ITEMFRAME_SCHEMA,
+        VanillaEntityMetadataFamily::Painting => &PAINTING_SCHEMA,
         VanillaEntityMetadataFamily::Avatar => &AVATAR_SCHEMA,
         VanillaEntityMetadataFamily::Player => &PLAYER_SCHEMA,
     }

@@ -514,7 +514,7 @@ back into a todo. Do not delete these.
   `Entity -> EndCrystal` / `Interaction` / `ExperienceOrb` / `ItemEntity` /
   `PrimedTnt` / `FireworkRocket`, the
   `Entity -> VehicleEntity -> AbstractBoat` / `AbstractMinecart -> MinecartFurnace` branches, and
-  `HangingEntity -> ItemFrame`. Remaining
+  `HangingEntity -> ItemFrame` / `Painting`. Remaining
   concrete entity consumers still keep local ids/masks until their projections
   migrate to generated descriptors;
   an unresolved typed default/flag diagnostic is not implementation support.
@@ -528,6 +528,9 @@ back into a todo. Do not delete these.
   Sheep's lower-nibble wool-color value mask is generated separately from its
   sheared boolean flag; remaining non-boolean packed-value masks migrate only
   when their consumers are audited.
+  Painting's `RegistryAny("minecraft:painting_variant")` virtual default records
+  the registry source without guessing which holder a server/runtime selects;
+  painting bootstrap sizes and dynamic-registry ordering remain separate work.
 - **Baby `ageScale`** — the `0.5` proportions applied in model `setupAnim`,
   distinct from the projected `SCALE`-attribute `scale`.
 - **Armor trims and the remaining mob-specific armor models.**

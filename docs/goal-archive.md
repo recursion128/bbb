@@ -10097,3 +10097,11 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   HOLDING_PATTERN 0、三个 sitting phase 5/6/7、HOVERING 10 及默认 phase 10。world
   animation/flight-history 与 native crosshair tests 删除手抄 phase ids；服务端 phase AI 与
   战斗仍不属于 multiplayer client owner。
+
+## 2026-07-11：Generated Painting metadata
+
+- [x] 由 Tree-sitter CST 提取 `Painting.DATA_PAINTING_VARIANT_ID` id9，并验证
+  `VariantUtils.getAny(..., Registries.PAINTING_VARIANT)`、registry field initializer 与
+  `createRegistryKey` factory，生成诚实的
+  `RegistryAny("minecraft:painting_variant")` virtual default。painting bounds 删除手抄 id9；
+  未把任意 holder 猜成 Kebab，bootstrap size catalog 与动态 registry 顺序仍保持开放。

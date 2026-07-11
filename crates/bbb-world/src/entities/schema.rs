@@ -96,6 +96,7 @@ pub enum VanillaEntityMetadataFamily {
     MinecartFurnace,
     HangingEntity,
     ItemFrame,
+    Painting,
     Avatar,
     Player,
 }
@@ -118,6 +119,9 @@ pub enum VanillaEntityMetadataDefault {
     ItemStackEmpty,
     ItemStackDefaultItem(&'static str),
     RegistryHolderResource(&'static str),
+    /// Virtual default: vanilla selects an arbitrary existing holder from this registry.
+    /// This does not identify a concrete resource id and must not be used as one.
+    RegistryAny(&'static str),
     BlockStateDefault {
         resource_id: &'static str,
         properties: &'static [(&'static str, &'static str)],
@@ -462,6 +466,7 @@ mod tests {
             VanillaEntityMetadataFamily::MinecartFurnace,
             VanillaEntityMetadataFamily::HangingEntity,
             VanillaEntityMetadataFamily::ItemFrame,
+            VanillaEntityMetadataFamily::Painting,
             VanillaEntityMetadataFamily::Avatar,
             VanillaEntityMetadataFamily::Player,
         ] {
@@ -1055,7 +1060,7 @@ mod tests {
         assert_eq!(VANILLA_TROPICAL_FISH_DEFAULT_VARIANT, 0);
         assert_eq!(
             VANILLA_ENTITY_METADATA_DEFAULT_RESOLVER_EVIDENCE_26_1.len(),
-            27
+            28
         );
         let default_evidence = |java_class| {
             VANILLA_ENTITY_METADATA_DEFAULT_RESOLVER_EVIDENCE_26_1
@@ -1237,6 +1242,20 @@ mod tests {
             ender_dragon_default_evidence.source_expression,
             "EnderDragonPhase.HOVERING.getId () -> new EnderDragonPhase <> (phases.length, instanceClass, name)"
         );
+        let painting_default_evidence =
+            default_evidence("net.minecraft.world.entity.decoration.painting.Painting");
+        assert_eq!(
+            painting_default_evidence.accessor_name,
+            "DATA_PAINTING_VARIANT_ID"
+        );
+        assert_eq!(
+            painting_default_evidence.evidence_member,
+            "net.minecraft.core.registries.Registries.PAINTING_VARIANT -> createRegistryKey"
+        );
+        assert_eq!(
+            painting_default_evidence.source_expression,
+            "VariantUtils.getAny (this.registryAccess (), Registries.PAINTING_VARIANT) -> createRegistryKey (\"painting_variant\") -> ResourceKey.createRegistryKey (Identifier.withDefaultNamespace (name))"
+        );
         let fox_default_evidence = default_evidence("net.minecraft.world.entity.animal.fox.Fox");
         assert_eq!(fox_default_evidence.accessor_name, "DATA_TYPE_ID");
         assert_eq!(
@@ -1403,6 +1422,18 @@ mod tests {
         assert_eq!(
             ender_dragon.own_fields[0].default,
             VanillaEntityMetadataDefault::Int(10)
+        );
+        let painting = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Painting);
+        assert_eq!(
+            painting.parent,
+            Some(VanillaEntityMetadataFamily::HangingEntity)
+        );
+        assert_eq!(painting.inherited_field_count, 9);
+        assert_eq!(painting.own_fields.len(), 1);
+        assert_eq!(VANILLA_PAINTING_VARIANT_DATA_ID, 9);
+        assert_eq!(
+            painting.own_fields[0].default,
+            VanillaEntityMetadataDefault::RegistryAny("minecraft:painting_variant")
         );
         let interaction = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Interaction);
         assert_eq!(

@@ -187,6 +187,10 @@ class EntityMetadataExtractorFixtureTests(unittest.TestCase):
             "net/minecraft/world/level/block/WeatheringCopper.java",
             result.sources,
         )
+        self.assertIn(
+            "net/minecraft/core/registries/Registries.java",
+            result.sources,
+        )
         self.assertTrue(all(item.declaration_span.start_byte >= 0 for item in result.accessors))
 
 

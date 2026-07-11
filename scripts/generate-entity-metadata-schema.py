@@ -202,6 +202,11 @@ FAMILIES = (
     ),
     FamilySpec("HangingEntity", "net.minecraft.world.entity.decoration.HangingEntity", "Entity"),
     FamilySpec("ItemFrame", "net.minecraft.world.entity.decoration.ItemFrame", "HangingEntity"),
+    FamilySpec(
+        "Painting",
+        "net.minecraft.world.entity.decoration.painting.Painting",
+        "HangingEntity",
+    ),
     FamilySpec("Avatar", "net.minecraft.world.entity.Avatar", "LivingEntity"),
     FamilySpec("Player", "net.minecraft.world.entity.player.Player", "Avatar"),
 )
@@ -388,6 +393,7 @@ DATA_ALIASES = {
     "VANILLA_HANGING_ENTITY_DIRECTION_DATA_ID": ("net.minecraft.world.entity.decoration.HangingEntity", "DATA_DIRECTION"),
     "VANILLA_ITEM_FRAME_ITEM_DATA_ID": ("net.minecraft.world.entity.decoration.ItemFrame", "DATA_ITEM"),
     "VANILLA_ITEM_FRAME_ROTATION_DATA_ID": ("net.minecraft.world.entity.decoration.ItemFrame", "DATA_ROTATION"),
+    "VANILLA_PAINTING_VARIANT_DATA_ID": ("net.minecraft.world.entity.decoration.painting.Painting", "DATA_PAINTING_VARIANT_ID"),
     "VANILLA_AVATAR_MAIN_HAND_DATA_ID": ("net.minecraft.world.entity.Avatar", "DATA_PLAYER_MAIN_HAND"),
     "VANILLA_AVATAR_MODEL_CUSTOMIZATION_DATA_ID": ("net.minecraft.world.entity.Avatar", "DATA_PLAYER_MODE_CUSTOMISATION"),
     "VANILLA_PLAYER_ABSORPTION_DATA_ID": ("net.minecraft.world.entity.player.Player", "DATA_PLAYER_ABSORPTION_ID"),
@@ -1189,6 +1195,23 @@ STATIC_REGISTRY_RESOURCE_DEFAULT_RESOLVERS = (
 )
 
 
+REGISTRY_ANY_DEFAULT_RESOLVERS = (
+    (
+        "net.minecraft.world.entity.decoration.painting.Painting",
+        "DATA_PAINTING_VARIANT_ID",
+        "PAINTING_VARIANT",
+        "VariantUtils.getAny (this.registryAccess (), Registries.PAINTING_VARIANT)",
+        "net.minecraft.core.registries.Registries",
+        "PAINTING_VARIANT",
+        'createRegistryKey ("painting_variant")',
+        "createRegistryKey",
+        "ResourceKey.createRegistryKey (Identifier.withDefaultNamespace (name))",
+        "minecraft:painting_variant",
+        "the synced holder default is an arbitrary entry from the named registry",
+    ),
+)
+
+
 ENUM_FIELD_ID_DEFAULT_RESOLVERS = (
     (
         "net.minecraft.world.entity.animal.feline.Cat",
@@ -1607,6 +1630,65 @@ def resolve_semantic_defaults(
                 enum_fqcn,
                 f"{default_field} -> {constant_name}",
                 expected_expression,
+                reason,
+            )
+        )
+    for (
+        owner,
+        accessor_name,
+        serializer,
+        expected_expression,
+        registry_owner,
+        registry_field_name,
+        expected_registry_initializer,
+        registry_factory_name,
+        expected_registry_factory_return,
+        registry_resource_id,
+        reason,
+    ) in REGISTRY_ANY_DEFAULT_RESOLVERS:
+        key = (owner, accessor_name)
+        if key in resolved:
+            raise ExtractionError(f"duplicate registry-any default resolver: {owner}.{accessor_name}")
+        accessor = accessor_for(result, owner, accessor_name)
+        if accessor.serializer != serializer:
+            raise ExtractionError(
+                f"{owner}.{accessor_name}: registry-any resolver requires {serializer} serializer"
+            )
+        if accessor.default_expression != expected_expression:
+            raise ExtractionError(
+                f"{owner}.{accessor_name}: stale registry-any expression; "
+                f"expected {expected_expression!r}, found {accessor.default_expression!r}"
+            )
+        registry_field = field_for(result, registry_owner, registry_field_name)
+        if registry_field.initializer is None:
+            raise ExtractionError(f"{registry_owner}.{registry_field_name}: missing initializer")
+        if registry_field.initializer.canonical != expected_registry_initializer:
+            raise ExtractionError(
+                f"{registry_owner}.{registry_field_name}: stale registry key initializer; "
+                f"expected {expected_registry_initializer!r}, "
+                f"found {registry_field.initializer.canonical!r}"
+            )
+        factory_return = method_single_return_expression(
+            result,
+            registry_owner,
+            registry_factory_name,
+        )
+        if factory_return != expected_registry_factory_return:
+            raise ExtractionError(
+                f"{registry_owner}.{registry_factory_name}: stale registry key factory; "
+                f"expected {expected_registry_factory_return!r}, found {factory_return!r}"
+            )
+        resource_rust = rust_string(registry_resource_id)
+        resolved[key] = NormalizedDefault(
+            f"VanillaEntityMetadataDefault::RegistryAny({resource_rust})"
+        )
+        evidence.append(
+            ResolvedDefaultEvidence(
+                owner,
+                accessor_name,
+                registry_owner,
+                f"{registry_field_name} -> {registry_factory_name}",
+                f"{expected_expression} -> {expected_registry_initializer} -> {expected_registry_factory_return}",
                 reason,
             )
         )

@@ -361,7 +361,7 @@ fn block_attached_entity_pick_bounds_follow_vanilla_client_boxes() {
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 22,
         values: vec![ProtocolEntityDataValue {
-            data_id: 9,
+            data_id: VANILLA_PAINTING_VARIANT_DATA_ID,
             serializer_id: 34,
             value: EntityDataValueKind::PaintingVariant(
                 bbb_protocol::packets::PaintingVariantData {
