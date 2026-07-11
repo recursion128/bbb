@@ -5,7 +5,14 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 
-from vanilla_java_source import JavaExpression, JavaField, JavaSource, descendants, type_body_members
+from vanilla_java_source import (
+    JavaExpression,
+    JavaField,
+    JavaSource,
+    JavaType,
+    descendants,
+    type_body_members,
+)
 
 
 class GameplayIdExtractionError(ValueError):
@@ -171,6 +178,13 @@ class BossBarStyleEntry:
 class ScoreboardDisplaySlotEntry:
     constant_name: str
     slot_id: int
+    serialized_name: str
+
+
+@dataclass(frozen=True)
+class ScoreboardTeamOptionEntry:
+    constant_name: str
+    option_id: int
     serialized_name: str
 
 
@@ -446,9 +460,7 @@ def game_type_not_set_id(source: JavaSource) -> int:
     return int(initializer.canonical.replace(" ", ""), 0)
 
 
-def _nested_enum_constants(
-    source: JavaSource, enum_name: str, description: str
-) -> list[tuple[str, tuple[JavaExpression, ...]]]:
+def _nested_enum_type(source: JavaSource, enum_name: str) -> JavaType:
     enums = [
         java_type
         for java_type in source.types
@@ -458,8 +470,15 @@ def _nested_enum_constants(
         raise GameplayIdExtractionError(
             f"{source.relative_path}: expected one nested {enum_name} enum, found {len(enums)}"
         )
+    return enums[0]
+
+
+def _nested_enum_constants(
+    source: JavaSource, enum_name: str, description: str
+) -> list[tuple[str, tuple[JavaExpression, ...]]]:
+    enum_type = _nested_enum_type(source, enum_name)
     entries: list[tuple[str, tuple[JavaExpression, ...]]] = []
-    for node in type_body_members(enums[0].body_node):
+    for node in type_body_members(enum_type.body_node):
         if node.type != "enum_constant":
             continue
         name = node.child_by_field_name("name")
@@ -688,8 +707,10 @@ def difficulty_entries(
     return entries
 
 
-def _continuous_out_of_bounds_strategy(source: JavaSource, description: str) -> str:
-    fields = [field for field in source.fields if field.name == "BY_ID"]
+def _continuous_out_of_bounds_strategy_from_fields(
+    source: JavaSource, fields: list[JavaField], description: str
+) -> str:
+    fields = [field for field in fields if field.name == "BY_ID"]
     if len(fields) != 1 or fields[0].initializer is None:
         raise GameplayIdExtractionError(
             f"{source.relative_path}: expected one initialized {description} BY_ID field"
@@ -708,6 +729,12 @@ def _continuous_out_of_bounds_strategy(source: JavaSource, description: str) -> 
         _fail(source, initializer, f"{description} BY_ID must call ByIdMap.continuous")
     strategy = source.expression(arguments.named_children[-1]).canonical.rsplit(".", 1)[-1]
     return strategy
+
+
+def _continuous_out_of_bounds_strategy(source: JavaSource, description: str) -> str:
+    return _continuous_out_of_bounds_strategy_from_fields(
+        source, source.fields, description
+    )
 
 
 def difficulty_out_of_bounds_strategy(source: JavaSource) -> str:
@@ -742,6 +769,52 @@ def scoreboard_display_slot_entries(
     if strategy != "ZERO":
         raise GameplayIdExtractionError(f"unsupported display slot id strategy {strategy}")
     return entries, strategy
+
+
+def scoreboard_team_option_entries(
+    source: JavaSource,
+) -> tuple[
+    list[ScoreboardTeamOptionEntry],
+    str,
+    list[ScoreboardTeamOptionEntry],
+    str,
+]:
+    def extract(
+        enum_name: str, description: str
+    ) -> tuple[list[ScoreboardTeamOptionEntry], str]:
+        enum_type = _nested_enum_type(source, enum_name)
+        entries = []
+        for name, arguments in _nested_enum_constants(source, enum_name, description):
+            if len(arguments) != 2:
+                expression = arguments[0] if arguments else source.expression(enum_type.node)
+                _fail(source, expression, f"{description} {name} must have two arguments")
+            entries.append(
+                ScoreboardTeamOptionEntry(
+                    name, _integer(source, arguments[1]), _string(source, arguments[0])
+                )
+            )
+        if len(entries) != 4:
+            raise GameplayIdExtractionError(
+                f"expected 4 {description} values, extracted {len(entries)}"
+            )
+        _validate(entries, description, "option_id")
+        _validate(entries, description, "serialized_name")
+        if [entry.option_id for entry in entries] != list(range(4)):
+            raise GameplayIdExtractionError(
+                f"{description} ids are not contiguous declaration order"
+            )
+        strategy = _continuous_out_of_bounds_strategy_from_fields(
+            source, source.fields_for(enum_type), description
+        )
+        if strategy != "ZERO":
+            raise GameplayIdExtractionError(
+                f"unsupported {description} id strategy {strategy}"
+            )
+        return entries, strategy
+
+    visibility, visibility_strategy = extract("Visibility", "team visibility")
+    collision, collision_strategy = extract("CollisionRule", "team collision rule")
+    return visibility, visibility_strategy, collision, collision_strategy
 
 
 def equipment_slot_entries(

@@ -34,6 +34,7 @@ from gameplay_id_catalog_extractor import (  # noqa: E402
     remote_debug_sample_type_entries,
     sound_source_entries,
     scoreboard_display_slot_entries,
+    scoreboard_team_option_entries,
 )
 from vanilla_java_source import parse_source  # noqa: E402
 
@@ -501,6 +502,57 @@ public enum DisplaySlot {
         self.assertEqual(
             (entries[-1].constant_name, entries[-1].slot_id, entries[-1].serialized_name),
             ("TEAM_WHITE", 18, "sidebar.team.white"),
+        )
+
+    def test_scoreboard_team_options_preserve_ids_names_and_zero_fallback(self) -> None:
+        source = parse_source(
+            "fixture/Team.java",
+            b"""
+package fixture;
+public abstract class Team {
+  public enum CollisionRule {
+    ALWAYS("always", 0), NEVER("never", 1),
+    PUSH_OTHER_TEAMS("pushOtherTeams", 2), PUSH_OWN_TEAM("pushOwnTeam", 3);
+    private static final IntFunction<CollisionRule> BY_ID = ByIdMap.continuous(
+        value -> value.id, values(), ByIdMap.OutOfBoundsStrategy.ZERO);
+  }
+  public enum Visibility {
+    ALWAYS("always", 0), NEVER("never", 1),
+    HIDE_FOR_OTHER_TEAMS("hideForOtherTeams", 2),
+    HIDE_FOR_OWN_TEAM("hideForOwnTeam", 3);
+    private static final IntFunction<Visibility> BY_ID = ByIdMap.continuous(
+        value -> value.id, values(), ByIdMap.OutOfBoundsStrategy.ZERO);
+  }
+}
+""",
+        )
+        visibility, visibility_strategy, collision, collision_strategy = (
+            scoreboard_team_option_entries(source)
+        )
+        self.assertEqual((visibility_strategy, collision_strategy), ("ZERO", "ZERO"))
+        self.assertEqual(
+            [
+                (entry.constant_name, entry.option_id, entry.serialized_name)
+                for entry in visibility
+            ],
+            [
+                ("ALWAYS", 0, "always"),
+                ("NEVER", 1, "never"),
+                ("HIDE_FOR_OTHER_TEAMS", 2, "hideForOtherTeams"),
+                ("HIDE_FOR_OWN_TEAM", 3, "hideForOwnTeam"),
+            ],
+        )
+        self.assertEqual(
+            [
+                (entry.constant_name, entry.option_id, entry.serialized_name)
+                for entry in collision
+            ],
+            [
+                ("ALWAYS", 0, "always"),
+                ("NEVER", 1, "never"),
+                ("PUSH_OTHER_TEAMS", 2, "pushOtherTeams"),
+                ("PUSH_OWN_TEAM", 3, "pushOwnTeam"),
+            ],
         )
 
     def test_unsupported_register_shape_reports_source_span(self) -> None:

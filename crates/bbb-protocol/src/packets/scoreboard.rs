@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use crate::codec::{Decoder, ProtocolError, Result};
 pub use crate::objective_render_types::ObjectiveRenderType;
 pub use crate::scoreboard_display_slots::ScoreboardDisplaySlot;
+pub use crate::scoreboard_team_options::{TeamCollisionRule, TeamVisibility};
 
 use super::{
     decode_component_summary_from_decoder, decode_nullable_string,
@@ -123,46 +124,6 @@ impl PlayerTeamMethod {
 
     fn has_player_list(self) -> bool {
         matches!(self, Self::Add | Self::Join | Self::Leave)
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum TeamVisibility {
-    Always,
-    Never,
-    HideForOtherTeams,
-    HideForOwnTeam,
-}
-
-impl TeamVisibility {
-    fn from_id(id: i32) -> Self {
-        match id {
-            0 => Self::Always,
-            1 => Self::Never,
-            2 => Self::HideForOtherTeams,
-            3 => Self::HideForOwnTeam,
-            _ => Self::Always,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum TeamCollisionRule {
-    Always,
-    Never,
-    PushOtherTeams,
-    PushOwnTeam,
-}
-
-impl TeamCollisionRule {
-    fn from_id(id: i32) -> Self {
-        match id {
-            0 => Self::Always,
-            1 => Self::Never,
-            2 => Self::PushOtherTeams,
-            3 => Self::PushOwnTeam,
-            _ => Self::Always,
-        }
     }
 }
 

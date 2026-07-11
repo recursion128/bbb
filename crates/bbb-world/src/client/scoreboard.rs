@@ -340,23 +340,11 @@ fn scoreboard_display_slot_name(slot: ProtocolScoreboardDisplaySlot) -> String {
 }
 
 fn team_visibility_name(visibility: ProtocolTeamVisibility) -> String {
-    match visibility {
-        ProtocolTeamVisibility::Always => "always",
-        ProtocolTeamVisibility::Never => "never",
-        ProtocolTeamVisibility::HideForOtherTeams => "hideForOtherTeams",
-        ProtocolTeamVisibility::HideForOwnTeam => "hideForOwnTeam",
-    }
-    .to_string()
+    visibility.as_str().to_string()
 }
 
 fn team_collision_rule_name(rule: ProtocolTeamCollisionRule) -> String {
-    match rule {
-        ProtocolTeamCollisionRule::Always => "always",
-        ProtocolTeamCollisionRule::Never => "never",
-        ProtocolTeamCollisionRule::PushOtherTeams => "pushOtherTeams",
-        ProtocolTeamCollisionRule::PushOwnTeam => "pushOwnTeam",
-    }
-    .to_string()
+    rule.as_str().to_string()
 }
 
 fn chat_formatting_name(color: ProtocolChatFormatting) -> String {

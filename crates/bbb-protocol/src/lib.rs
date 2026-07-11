@@ -39,6 +39,7 @@ pub mod player_info_actions;
 pub mod remote_debug_sample_types;
 pub mod resource_pack_response_actions;
 pub mod scoreboard_display_slots;
+pub mod scoreboard_team_options;
 pub mod sound_sources;
 
 pub const MC_VERSION: &str = "26.1";

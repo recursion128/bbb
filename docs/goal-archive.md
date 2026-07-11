@@ -10579,3 +10579,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   0..18 decode match，world scoreboard 删除第二份名称 match。生成完整性/唯一性/反向门禁
   以及 protocol/world/net/native scoreboard focused tests 均通过；team-color slot 选择、
   scoreboard method、number format 与 HUD 渲染仍由原语义 owner 手写。
+
+## 2026-07-11：Generated scoreboard team-option catalogs
+
+- [x] gameplay-id extractor 通过共享 Tree-sitter frontend 读取 vanilla `Team.Visibility`
+  与 `Team.CollisionRule` 的各 4 项显式 id/serialized name，并分别从 nested enum 的
+  `BY_ID` CST 调用参数验证 `ByIdMap.OutOfBoundsStrategy.ZERO`。同一 generated owner
+  统一提供两个 typed catalog、id/name lookup 与负数/越界回退 `ALWAYS`；protocol
+  scoreboard facade 保持原 re-export，删除两份 id match，world scoreboard 删除两份名称
+  match。fixtures、生成完整性/唯一性/反向门禁以及 protocol/world/net/native scoreboard
+  focused tests 均通过；team packet method、ChatFormatting、options bit 与 scoreboard apply
+  行为仍由原语义 owner 手写。
