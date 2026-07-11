@@ -495,8 +495,8 @@ back into a todo. Do not delete these.
   inherited indices, serializer references, fixed EntityType mappings, and
   explicit flag diagnostics. The compatibility facade currently exposes
   `Entity`, `LivingEntity`, `Mob -> Allay`, `Avatar`, `Player`, `AgeableMob ->
-  AbstractHorse` / `TamableAnimal`, `ArmorStand`, `Slime` (also consumed by
-  `MagmaCube`), `Shulker`, `Zombie`, `Mob -> Guardian` / `SnowGolem` / `Bat` /
+  AbstractHorse` / `TamableAnimal` / `PolarBear`, `ArmorStand`, `Slime` (also
+  consumed by `MagmaCube`), `Shulker`, `Zombie`, `Mob -> Guardian` / `SnowGolem` / `Bat` /
   `Phantom` / `Bogged` / `Ghast` / `Vex` / `Creaking` / `Zoglin` / `IronGolem`,
   `AgeableMob -> Strider` / `Hoglin`, `Mob -> AbstractFish -> Pufferfish`,
   `Mob -> AbstractPiglin -> Piglin`,

@@ -9773,3 +9773,9 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] 从 generated catalog 建立 `Mob -> Allay` family：BOOLEAN dancing id16/default
   false 与 can-duplicate id17/default true；world dancing animation 删除手抄 id/default，
   can-duplicate 保持 generated compatibility alias。DuplicationCooldown 不是 synced metadata。
+
+## 2026-07-11：Generated entity metadata consumer（PolarBear）
+
+- [x] 从 generated catalog 建立 `AgeableMob -> PolarBear` family：BOOLEAN standing
+  id18/default false；world 站立动画删除手抄 metadata id/default，现有动画与 renderer
+  行为保持不变。

@@ -50,6 +50,8 @@ const GENERATED_VANILLA_ALLAY_DANCING_DATA_ID: u8 = 16;
 pub const VANILLA_ALLAY_DANCING_DATA_ID: u8 = GENERATED_VANILLA_ALLAY_DANCING_DATA_ID;
 const GENERATED_VANILLA_ALLAY_CAN_DUPLICATE_DATA_ID: u8 = 17;
 pub const VANILLA_ALLAY_CAN_DUPLICATE_DATA_ID: u8 = GENERATED_VANILLA_ALLAY_CAN_DUPLICATE_DATA_ID;
+const GENERATED_VANILLA_POLAR_BEAR_STANDING_DATA_ID: u8 = 18;
+pub const VANILLA_POLAR_BEAR_STANDING_DATA_ID: u8 = GENERATED_VANILLA_POLAR_BEAR_STANDING_DATA_ID;
 const GENERATED_VANILLA_SLIME_SIZE_DATA_ID: u8 = 16;
 pub const VANILLA_SLIME_SIZE_DATA_ID: u8 = GENERATED_VANILLA_SLIME_SIZE_DATA_ID;
 const GENERATED_VANILLA_SHULKER_ATTACH_FACE_DATA_ID: u8 = 16;
@@ -333,6 +335,8 @@ const GENERATED_VANILLA_ALLAY_DEFAULT_DANCING: bool = false;
 pub const VANILLA_ALLAY_DEFAULT_DANCING: bool = GENERATED_VANILLA_ALLAY_DEFAULT_DANCING;
 const GENERATED_VANILLA_ALLAY_DEFAULT_CAN_DUPLICATE: bool = true;
 pub const VANILLA_ALLAY_DEFAULT_CAN_DUPLICATE: bool = GENERATED_VANILLA_ALLAY_DEFAULT_CAN_DUPLICATE;
+const GENERATED_VANILLA_POLAR_BEAR_DEFAULT_STANDING: bool = false;
+pub const VANILLA_POLAR_BEAR_DEFAULT_STANDING: bool = GENERATED_VANILLA_POLAR_BEAR_DEFAULT_STANDING;
 const GENERATED_VANILLA_AVATAR_DEFAULT_MODEL_CUSTOMIZATION: i8 = 0;
 pub const VANILLA_AVATAR_DEFAULT_MODEL_CUSTOMIZATION: i8 =
     GENERATED_VANILLA_AVATAR_DEFAULT_MODEL_CUSTOMIZATION;
@@ -13169,6 +13173,21 @@ const AGEABLEMOB_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetada
     own_flags: AGEABLEMOB_FLAGS,
 };
 
+const POLARBEAR_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[VanillaEntityMetadataFieldSchema {
+    name: "DATA_STANDING_ID",
+    data_id: 18,
+    serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+    default: VanillaEntityMetadataDefault::Boolean(false),
+}];
+const POLARBEAR_FLAGS: &[VanillaEntityMetadataFlagSchema] = &[];
+const POLARBEAR_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamilySchema {
+    family: VanillaEntityMetadataFamily::PolarBear,
+    parent: Some(VanillaEntityMetadataFamily::AgeableMob),
+    inherited_field_count: 18,
+    own_fields: POLARBEAR_FIELDS,
+    own_flags: POLARBEAR_FLAGS,
+};
+
 const ABSTRACTHORSE_FIELDS: &[VanillaEntityMetadataFieldSchema] =
     &[VanillaEntityMetadataFieldSchema {
         name: "DATA_ID_FLAGS",
@@ -14081,6 +14100,7 @@ pub(super) const fn generated_entity_metadata_schema(
         VanillaEntityMetadataFamily::Shulker => &SHULKER_SCHEMA,
         VanillaEntityMetadataFamily::Zombie => &ZOMBIE_SCHEMA,
         VanillaEntityMetadataFamily::AgeableMob => &AGEABLEMOB_SCHEMA,
+        VanillaEntityMetadataFamily::PolarBear => &POLARBEAR_SCHEMA,
         VanillaEntityMetadataFamily::AbstractHorse => &ABSTRACTHORSE_SCHEMA,
         VanillaEntityMetadataFamily::TamableAnimal => &TAMABLEANIMAL_SCHEMA,
         VanillaEntityMetadataFamily::ArmorStand => &ARMORSTAND_SCHEMA,

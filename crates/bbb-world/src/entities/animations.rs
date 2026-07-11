@@ -43,6 +43,8 @@ use super::schema::{
     VANILLA_PIGLIN_DEFAULT_CHARGING_CROSSBOW as PIGLIN_DEFAULT_CHARGING_CROSSBOW,
     VANILLA_PILLAGER_CHARGING_CROSSBOW_DATA_ID as PILLAGER_IS_CHARGING_CROSSBOW_DATA_ID,
     VANILLA_PILLAGER_DEFAULT_CHARGING_CROSSBOW as PILLAGER_DEFAULT_CHARGING_CROSSBOW,
+    VANILLA_POLAR_BEAR_DEFAULT_STANDING as POLAR_BEAR_DEFAULT_STANDING,
+    VANILLA_POLAR_BEAR_STANDING_DATA_ID as POLAR_BEAR_STANDING_DATA_ID,
     VANILLA_SHULKER_DEFAULT_PEEK as SHULKER_DEFAULT_PEEK,
     VANILLA_SHULKER_PEEK_DATA_ID as SHULKER_PEEK_DATA_ID,
     VANILLA_VEHICLE_DAMAGE_DATA_ID as VEHICLE_DAMAGE_DATA_ID,
@@ -137,7 +139,6 @@ const ARMADILLO_STATE_SCARED_ANIMATION_TICKS: i32 = 50;
 /// Vanilla `Armadillo.handleEntityEvent(64)`: the client marks `peekReceivedClient`
 /// so the next `setupAnimationStates()` restarts the peek animation.
 const ARMADILLO_PEEK_EVENT_ID: i8 = 64;
-const POLAR_BEAR_STANDING_DATA_ID: u8 = 18;
 const POLAR_BEAR_STAND_ANIMATION_TICKS: f32 = 6.0;
 /// Vanilla `Creeper.DATA_SWELL_DIR` (synced fuse direction, default `-1`) and
 /// `DATA_IS_IGNITED`; the client advances `swell` toward `maxSwell` while the
@@ -3935,8 +3936,11 @@ impl EntityClientAnimationState {
         }
         match entity_type_id {
             VANILLA_ENTITY_TYPE_POLAR_BEAR_ID => {
-                let target_standing =
-                    entity_data_bool(data_values, POLAR_BEAR_STANDING_DATA_ID, false);
+                let target_standing = entity_data_bool(
+                    data_values,
+                    POLAR_BEAR_STANDING_DATA_ID,
+                    POLAR_BEAR_DEFAULT_STANDING,
+                );
                 if let Some(standing) = self.polar_bear_standing.as_mut() {
                     standing.set_target(target_standing);
                 } else if target_standing {

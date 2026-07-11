@@ -19,6 +19,7 @@ pub enum VanillaEntityMetadataFamily {
     Shulker,
     Zombie,
     AgeableMob,
+    PolarBear,
     AbstractHorse,
     TamableAnimal,
     ArmorStand,
@@ -309,6 +310,7 @@ mod tests {
             VanillaEntityMetadataFamily::Shulker,
             VanillaEntityMetadataFamily::Zombie,
             VanillaEntityMetadataFamily::AgeableMob,
+            VanillaEntityMetadataFamily::PolarBear,
             VanillaEntityMetadataFamily::AbstractHorse,
             VanillaEntityMetadataFamily::TamableAnimal,
             VanillaEntityMetadataFamily::ArmorStand,
@@ -380,6 +382,15 @@ mod tests {
         assert_eq!(VANILLA_ALLAY_CAN_DUPLICATE_DATA_ID, 17);
         assert!(!VANILLA_ALLAY_DEFAULT_DANCING);
         assert!(VANILLA_ALLAY_DEFAULT_CAN_DUPLICATE);
+        let polar_bear = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::PolarBear);
+        assert_eq!(
+            polar_bear.parent,
+            Some(VanillaEntityMetadataFamily::AgeableMob)
+        );
+        assert_eq!(polar_bear.inherited_field_count, 18);
+        assert_eq!(polar_bear.own_fields.len(), 1);
+        assert_eq!(VANILLA_POLAR_BEAR_STANDING_DATA_ID, 18);
+        assert!(!VANILLA_POLAR_BEAR_DEFAULT_STANDING);
         assert_eq!(
             arrow.parent,
             Some(VanillaEntityMetadataFamily::AbstractArrow)

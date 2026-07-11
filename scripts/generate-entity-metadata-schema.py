@@ -45,6 +45,7 @@ FAMILIES = (
     FamilySpec("Shulker", "net.minecraft.world.entity.monster.Shulker", "Mob"),
     FamilySpec("Zombie", "net.minecraft.world.entity.monster.zombie.Zombie", "Mob"),
     FamilySpec("AgeableMob", "net.minecraft.world.entity.AgeableMob", "Mob"),
+    FamilySpec("PolarBear", "net.minecraft.world.entity.animal.polarbear.PolarBear", "AgeableMob"),
     FamilySpec(
         "AbstractHorse",
         "net.minecraft.world.entity.animal.equine.AbstractHorse",
@@ -148,6 +149,7 @@ DATA_ALIASES = {
     "VANILLA_MOB_FLAGS_DATA_ID": ("net.minecraft.world.entity.Mob", "DATA_MOB_FLAGS_ID"),
     "VANILLA_ALLAY_DANCING_DATA_ID": ("net.minecraft.world.entity.animal.allay.Allay", "DATA_DANCING"),
     "VANILLA_ALLAY_CAN_DUPLICATE_DATA_ID": ("net.minecraft.world.entity.animal.allay.Allay", "DATA_CAN_DUPLICATE"),
+    "VANILLA_POLAR_BEAR_STANDING_DATA_ID": ("net.minecraft.world.entity.animal.polarbear.PolarBear", "DATA_STANDING_ID"),
     "VANILLA_SLIME_SIZE_DATA_ID": ("net.minecraft.world.entity.monster.Slime", "ID_SIZE"),
     "VANILLA_SHULKER_ATTACH_FACE_DATA_ID": ("net.minecraft.world.entity.monster.Shulker", "DATA_ATTACH_FACE_ID"),
     "VANILLA_SHULKER_PEEK_DATA_ID": ("net.minecraft.world.entity.monster.Shulker", "DATA_PEEK_ID"),
@@ -230,6 +232,7 @@ DATA_ALIASES = {
 DEFAULT_ALIASES = {
     "VANILLA_ALLAY_DEFAULT_DANCING": ("net.minecraft.world.entity.animal.allay.Allay", "DATA_DANCING"),
     "VANILLA_ALLAY_DEFAULT_CAN_DUPLICATE": ("net.minecraft.world.entity.animal.allay.Allay", "DATA_CAN_DUPLICATE"),
+    "VANILLA_POLAR_BEAR_DEFAULT_STANDING": ("net.minecraft.world.entity.animal.polarbear.PolarBear", "DATA_STANDING_ID"),
     "VANILLA_AVATAR_DEFAULT_MODEL_CUSTOMIZATION": ("net.minecraft.world.entity.Avatar", "DATA_PLAYER_MODE_CUSTOMISATION"),
     "VANILLA_SLIME_DEFAULT_SIZE": ("net.minecraft.world.entity.monster.Slime", "ID_SIZE"),
     "VANILLA_SHULKER_DEFAULT_ATTACH_FACE_ID": ("net.minecraft.world.entity.monster.Shulker", "DATA_ATTACH_FACE_ID"),
