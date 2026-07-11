@@ -356,7 +356,11 @@ pub(super) fn entity_model_kind_with_time_and_registries(
         },
         VANILLA_ENTITY_TYPE_STRIDER_ID => EntityModelKind::Strider {
             baby: ageable_baby(data_values),
-            cold: entity_data_bool(data_values, STRIDER_SUFFOCATING_DATA_ID, false),
+            cold: entity_data_bool(
+                data_values,
+                STRIDER_SUFFOCATING_DATA_ID,
+                STRIDER_DEFAULT_SUFFOCATING,
+            ),
         },
         VANILLA_ENTITY_TYPE_TADPOLE_ID => EntityModelKind::Tadpole,
         VANILLA_ENTITY_TYPE_TEXT_DISPLAY_ID => {

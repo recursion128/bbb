@@ -37,6 +37,7 @@ pub enum VanillaEntityMetadataFamily {
     Ghast,
     Vex,
     Creaking,
+    Strider,
     AbstractFish,
     Pufferfish,
     VehicleEntity,
@@ -317,6 +318,7 @@ mod tests {
             VanillaEntityMetadataFamily::Ghast,
             VanillaEntityMetadataFamily::Vex,
             VanillaEntityMetadataFamily::Creaking,
+            VanillaEntityMetadataFamily::Strider,
             VanillaEntityMetadataFamily::AbstractFish,
             VanillaEntityMetadataFamily::Pufferfish,
             VanillaEntityMetadataFamily::VehicleEntity,
@@ -672,6 +674,27 @@ mod tests {
         assert!(VANILLA_CREAKING_DEFAULT_CAN_MOVE);
         assert!(!VANILLA_CREAKING_DEFAULT_ACTIVE);
         assert!(!VANILLA_CREAKING_DEFAULT_TEARING_DOWN);
+        let strider = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Strider);
+        assert_eq!(
+            strider.parent,
+            Some(VanillaEntityMetadataFamily::AgeableMob)
+        );
+        assert_eq!(strider.inherited_field_count, 18);
+        assert_eq!(strider.own_fields.len(), 2);
+        assert_eq!(strider.own_fields[0].name, "DATA_BOOST_TIME");
+        assert_eq!(
+            strider.own_fields[0].default,
+            VanillaEntityMetadataDefault::Int(0)
+        );
+        assert_eq!(strider.own_fields[1].name, "DATA_SUFFOCATING");
+        assert_eq!(
+            strider.own_fields[1].default,
+            VanillaEntityMetadataDefault::Boolean(false)
+        );
+        assert_eq!(VANILLA_STRIDER_BOOST_TIME_DATA_ID, 18);
+        assert_eq!(VANILLA_STRIDER_SUFFOCATING_DATA_ID, 19);
+        assert_eq!(VANILLA_STRIDER_DEFAULT_BOOST_TIME, 0);
+        assert!(!VANILLA_STRIDER_DEFAULT_SUFFOCATING);
         let abstract_fish =
             vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::AbstractFish);
         assert_eq!(abstract_fish.parent, Some(VanillaEntityMetadataFamily::Mob));

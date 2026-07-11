@@ -498,7 +498,7 @@ back into a todo. Do not delete these.
   AbstractHorse` / `TamableAnimal`, `ArmorStand`, `Slime` (also consumed by
   `MagmaCube`), `Shulker`, `Zombie`, `Mob -> Guardian` / `SnowGolem` / `Bat` /
   `Phantom` / `Bogged` / `Ghast` / `Vex` / `Creaking`,
-  `Mob -> AbstractFish -> Pufferfish`,
+  `AgeableMob -> Strider`, `Mob -> AbstractFish -> Pufferfish`,
   `Entity -> AbstractArrow -> Arrow` /
   `ThrownTrident` leaves, the `Entity -> WitherSkull` projectile leaf,
   `Entity -> EndCrystal` / `Interaction` / `ExperienceOrb` / `ItemEntity`, the

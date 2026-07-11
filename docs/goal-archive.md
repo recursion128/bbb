@@ -9720,3 +9720,10 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   OPTIONAL_BLOCK_POS home-pos id 19 替代 world/native 手抄值。collision、client animation、
   glowing-eyes model 与 F3+I home-pos 统一消费 generated aliases；未修改 combat event、移动、
   动画公式或 renderer。
+
+## 2026-07-11：Generated entity metadata consumer（Strider）
+
+- [x] 从 generated catalog 建立 `AgeableMob -> Strider` compatibility family：INT
+  `DATA_BOOST_TIME` id 18/default 0 与 BOOLEAN `DATA_SUFFOCATING` id 19/default false；
+  native cold model/instance projection 删除手抄 suffocating id/default，并预留 generated
+  boost-time compatibility aliases。未修改 saddle/ridden、环境温度判断或 renderer。

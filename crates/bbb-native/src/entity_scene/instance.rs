@@ -868,9 +868,11 @@ pub(super) fn entity_shaking(
                 ZOMBIE_DEFAULT_DROWNED_CONVERSION,
             ) || entity_data_bool(data_values, ZOMBIE_VILLAGER_CONVERTING_DATA_ID, false)
         }
-        VANILLA_ENTITY_TYPE_STRIDER_ID => {
-            entity_data_bool(data_values, STRIDER_SUFFOCATING_DATA_ID, false)
-        }
+        VANILLA_ENTITY_TYPE_STRIDER_ID => entity_data_bool(
+            data_values,
+            STRIDER_SUFFOCATING_DATA_ID,
+            STRIDER_DEFAULT_SUFFOCATING,
+        ),
         VANILLA_ENTITY_TYPE_PIGLIN_ID | VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID => {
             piglins_zombify
                 && !entity_data_bool(data_values, PIGLIN_IMMUNE_TO_ZOMBIFICATION_DATA_ID, false)

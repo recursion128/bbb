@@ -93,6 +93,10 @@ use bbb_world::{
     VANILLA_SHULKER_DEFAULT_COLOR as SHULKER_DEFAULT_COLOR,
 };
 use bbb_world::{
+    VANILLA_STRIDER_DEFAULT_SUFFOCATING as STRIDER_DEFAULT_SUFFOCATING,
+    VANILLA_STRIDER_SUFFOCATING_DATA_ID as STRIDER_SUFFOCATING_DATA_ID,
+};
+use bbb_world::{
     VANILLA_TAMABLE_ANIMAL_DEFAULT_FLAGS as TAMABLE_ANIMAL_DEFAULT_FLAGS,
     VANILLA_TAMABLE_ANIMAL_FLAGS_DATA_ID as TAMABLE_ANIMAL_FLAGS_DATA_ID,
     VANILLA_TAMABLE_ANIMAL_FLAG_SITTING as TAMABLE_ANIMAL_SITTING_FLAG,
@@ -274,9 +278,6 @@ const PANDA_ROLLING_FLAG: i8 = 0x04;
 const PANDA_SITTING_FLAG: i8 = 0x08;
 #[cfg(test)]
 const PANDA_ON_BACK_FLAG: i8 = 0x10;
-// Vanilla Strider.DATA_SUFFOCATING (19, BOOLEAN): `Strider extends Animal`, so after Mob (15), the
-// two AgeableMob accessors (16/17), and DATA_BOOST_TIME (18) comes the cold/suffocating flag.
-const STRIDER_SUFFOCATING_DATA_ID: u8 = 19;
 // Vanilla `AbstractArrow.IN_GROUND` (10, BOOLEAN): updating it to true after the first client tick
 // starts the seven-tick `shakeTime` impact wobble that `ArrowRenderer.extractRenderState` projects.
 #[cfg(test)]

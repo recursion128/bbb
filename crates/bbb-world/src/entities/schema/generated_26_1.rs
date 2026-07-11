@@ -152,6 +152,10 @@ pub const VANILLA_CREAKING_TEARING_DOWN_DATA_ID: u8 =
     GENERATED_VANILLA_CREAKING_TEARING_DOWN_DATA_ID;
 const GENERATED_VANILLA_CREAKING_HOME_POS_DATA_ID: u8 = 19;
 pub const VANILLA_CREAKING_HOME_POS_DATA_ID: u8 = GENERATED_VANILLA_CREAKING_HOME_POS_DATA_ID;
+const GENERATED_VANILLA_STRIDER_BOOST_TIME_DATA_ID: u8 = 18;
+pub const VANILLA_STRIDER_BOOST_TIME_DATA_ID: u8 = GENERATED_VANILLA_STRIDER_BOOST_TIME_DATA_ID;
+const GENERATED_VANILLA_STRIDER_SUFFOCATING_DATA_ID: u8 = 19;
+pub const VANILLA_STRIDER_SUFFOCATING_DATA_ID: u8 = GENERATED_VANILLA_STRIDER_SUFFOCATING_DATA_ID;
 const GENERATED_VANILLA_ABSTRACT_FISH_FROM_BUCKET_DATA_ID: u8 = 16;
 pub const VANILLA_ABSTRACT_FISH_FROM_BUCKET_DATA_ID: u8 =
     GENERATED_VANILLA_ABSTRACT_FISH_FROM_BUCKET_DATA_ID;
@@ -376,6 +380,10 @@ pub const VANILLA_CREAKING_DEFAULT_ACTIVE: bool = GENERATED_VANILLA_CREAKING_DEF
 const GENERATED_VANILLA_CREAKING_DEFAULT_TEARING_DOWN: bool = false;
 pub const VANILLA_CREAKING_DEFAULT_TEARING_DOWN: bool =
     GENERATED_VANILLA_CREAKING_DEFAULT_TEARING_DOWN;
+const GENERATED_VANILLA_STRIDER_DEFAULT_BOOST_TIME: i32 = 0;
+pub const VANILLA_STRIDER_DEFAULT_BOOST_TIME: i32 = GENERATED_VANILLA_STRIDER_DEFAULT_BOOST_TIME;
+const GENERATED_VANILLA_STRIDER_DEFAULT_SUFFOCATING: bool = false;
+pub const VANILLA_STRIDER_DEFAULT_SUFFOCATING: bool = GENERATED_VANILLA_STRIDER_DEFAULT_SUFFOCATING;
 const GENERATED_VANILLA_ABSTRACT_FISH_DEFAULT_FROM_BUCKET: bool = false;
 pub const VANILLA_ABSTRACT_FISH_DEFAULT_FROM_BUCKET: bool =
     GENERATED_VANILLA_ABSTRACT_FISH_DEFAULT_FROM_BUCKET;
@@ -13558,6 +13566,29 @@ const CREAKING_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadata
     own_flags: CREAKING_FLAGS,
 };
 
+const STRIDER_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_BOOST_TIME",
+        data_id: 18,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+        default: VanillaEntityMetadataDefault::Int(0),
+    },
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_SUFFOCATING",
+        data_id: 19,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+        default: VanillaEntityMetadataDefault::Boolean(false),
+    },
+];
+const STRIDER_FLAGS: &[VanillaEntityMetadataFlagSchema] = &[];
+const STRIDER_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamilySchema {
+    family: VanillaEntityMetadataFamily::Strider,
+    parent: Some(VanillaEntityMetadataFamily::AgeableMob),
+    inherited_field_count: 18,
+    own_fields: STRIDER_FIELDS,
+    own_flags: STRIDER_FLAGS,
+};
+
 const ABSTRACTFISH_FIELDS: &[VanillaEntityMetadataFieldSchema] =
     &[VanillaEntityMetadataFieldSchema {
         name: "FROM_BUCKET",
@@ -13835,6 +13866,7 @@ pub(super) const fn generated_entity_metadata_schema(
         VanillaEntityMetadataFamily::Ghast => &GHAST_SCHEMA,
         VanillaEntityMetadataFamily::Vex => &VEX_SCHEMA,
         VanillaEntityMetadataFamily::Creaking => &CREAKING_SCHEMA,
+        VanillaEntityMetadataFamily::Strider => &STRIDER_SCHEMA,
         VanillaEntityMetadataFamily::AbstractFish => &ABSTRACTFISH_SCHEMA,
         VanillaEntityMetadataFamily::Pufferfish => &PUFFERFISH_SCHEMA,
         VanillaEntityMetadataFamily::VehicleEntity => &VEHICLEENTITY_SCHEMA,
