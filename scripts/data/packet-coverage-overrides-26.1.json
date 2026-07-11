@@ -932,6 +932,46 @@
         "status": "complete"
       }
     },
+    "play/clientbound/CLIENTBOUND_UPDATE_ATTRIBUTES": {
+      "canonical_apply": {
+        "evidence": [
+          "crates/bbb-world/src/entities/metadata.rs#apply_update_attributes",
+          "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleUpdateAttributes"
+        ],
+        "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+        "status": "partial"
+      },
+      "decode": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/entities/tests.rs#decodes_update_attributes_packet",
+          "vanilla:net/minecraft/network/protocol/game/ClientboundUpdateAttributesPacket.java#STREAM_CODEC"
+        ],
+        "status": "complete"
+      },
+      "ownership": {
+        "evidence": [
+          "crates/bbb-world/src/play_apply.rs#PlayClientbound::UpdateAttributes",
+          "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#update_attributes_ignores_non_living_entities"
+        ],
+        "status": "complete"
+      },
+      "runtime_side_effect": {
+        "evidence": [
+          "crates/bbb-world/src/entities/metadata.rs#apply_update_attributes",
+          "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleUpdateAttributes"
+        ],
+        "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+        "status": "partial"
+      },
+      "tests": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/entities/tests.rs#decodes_update_attributes_packet",
+          "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#update_attributes_ignores_non_living_entities",
+          "crates/bbb-net/src/probe/play.rs#probe_applies_entity_state_packets_to_world"
+        ],
+        "status": "complete"
+      }
+    },
     "play/clientbound/CLIENTBOUND_PLAYER_ROTATION": {
       "canonical_apply": {
         "evidence": [

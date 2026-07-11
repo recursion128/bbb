@@ -65,6 +65,9 @@ Owner: `bbb-protocol`
   static tags and data-component initializers, and preserve reconnect replacement
   semantics. Raw NBT summaries and a few derived audio registries are not that
   runtime.
+- Resolve UpdateAttributes holder ids through that session RegistryAccess and
+  validate each snapshot against the target living entity's actual AttributeMap
+  instance set; do not accept arbitrary fixed-id attributes on every living type.
 - Defer configuration/play keepalive responses while client event polling is
   render-frozen, with vanilla's one-minute expiry, instead of always replying
   immediately. Ping/pong remains immediate and is already separate.

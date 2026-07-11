@@ -11111,3 +11111,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] `DataComponentPatchSummary` 能维持全部 catalog type 的 wire 对齐，但部分 added value 尚未有
   typed semantic projection；这会影响 canonical item 值及 component-driven equipment rendering，
   故 canonical/runtime 保持 partial，未用 added type presence 冒充完整组件语义。
+
+## 2026-07-11：update-attributes packet coverage audit
+
+- [x] 对照 `ClientboundUpdateAttributesPacket` 锁定 entity/list VarInt、registry holder id、base
+  double、modifier resource id/amount/operation，并拒绝 trailing bytes；operation unknown id 的
+  ByIdMap zero fallback 与 LivingEntity gate 已有测试，decode/ownership/tests 三格闭合。
+- [x] attribute holder id 仍未通过 session RegistryAccess 解析，world 也尚未像 vanilla
+  AttributeMap 那样只更新目标实体已有 instance；canonical/runtime 两格保持 partial，避免把固定
+  vanilla id 或任意 living-entity attribute storage 冒充服务器 session 的真实属性状态。

@@ -956,10 +956,16 @@ pub(super) fn decode_update_attributes(decoder: &mut Decoder<'_>) -> Result<Upda
             modifiers,
         });
     }
-    Ok(UpdateAttributes {
+    let update = UpdateAttributes {
         entity_id,
         attributes,
-    })
+    };
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after update attributes packet".to_string(),
+        ));
+    }
+    Ok(update)
 }
 
 fn decode_lp_vec3d(decoder: &mut Decoder<'_>) -> Result<Vec3d> {

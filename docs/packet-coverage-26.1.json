@@ -9629,29 +9629,45 @@
       "constant_name": "CLIENTBOUND_UPDATE_ATTRIBUTES",
       "coverage": {
         "canonical_apply": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
+          "evidence": [
+            "crates/bbb-world/src/entities/metadata.rs#apply_update_attributes",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleUpdateAttributes"
+          ],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
           "status": "partial"
         },
         "decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/entities/tests.rs#decodes_update_attributes_packet",
+            "vanilla:net/minecraft/network/protocol/game/ClientboundUpdateAttributesPacket.java#STREAM_CODEC"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "ownership": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/play_apply.rs#PlayClientbound::UpdateAttributes",
+            "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#update_attributes_ignores_non_living_entities"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "runtime_side_effect": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
+          "evidence": [
+            "crates/bbb-world/src/entities/metadata.rs#apply_update_attributes",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleUpdateAttributes"
+          ],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
           "status": "partial"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/entities/tests.rs#decodes_update_attributes_packet",
+            "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#update_attributes_ignores_non_living_entities",
+            "crates/bbb-net/src/probe/play.rs#probe_applies_entity_state_packets_to_world"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "clientbound",

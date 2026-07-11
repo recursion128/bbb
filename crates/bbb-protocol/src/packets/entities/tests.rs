@@ -923,11 +923,9 @@ fn decodes_update_attributes_packet() {
     payload.write_f64(0.7);
     payload.write_var_i32(0);
 
-    let packet = decode_play_clientbound(
-        ids::play::CLIENTBOUND_UPDATE_ATTRIBUTES,
-        &payload.into_inner(),
-    )
-    .unwrap();
+    let payload = payload.into_inner();
+    let packet =
+        decode_play_clientbound(ids::play::CLIENTBOUND_UPDATE_ATTRIBUTES, &payload).unwrap();
     assert_eq!(
         packet,
         PlayClientbound::UpdateAttributes(UpdateAttributes {
@@ -949,6 +947,14 @@ fn decodes_update_attributes_packet() {
                 },
             ],
         })
+    );
+    let mut trailing = payload;
+    trailing.push(0);
+    assert!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_UPDATE_ATTRIBUTES, &trailing)
+            .unwrap_err()
+            .to_string()
+            .contains("trailing bytes after update attributes packet")
     );
 }
 
