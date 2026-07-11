@@ -1009,6 +1009,28 @@ mod tests {
         assert_eq!(furnace_minecart.own_fields.len(), 1);
         assert_eq!(VANILLA_FURNACE_MINECART_FUEL_DATA_ID, 13);
         assert!(!VANILLA_FURNACE_MINECART_DEFAULT_FUEL);
+        assert_eq!(VANILLA_COMMAND_BLOCK_MINECART_COMMAND_DATA_ID, 13);
+        assert_eq!(VANILLA_COMMAND_BLOCK_MINECART_LAST_OUTPUT_DATA_ID, 14);
+        let command_block_minecart_defaults = VANILLA_ENTITY_METADATA_ACCESSORS_26_1
+            .iter()
+            .filter(|entry| {
+                entry.owner == "net.minecraft.world.entity.vehicle.minecart.MinecartCommandBlock"
+            })
+            .map(|entry| {
+                (
+                    entry.java_name,
+                    entry.default_expression,
+                    entry.typed_default,
+                )
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(
+            command_block_minecart_defaults,
+            vec![
+                ("DATA_ID_COMMAND_NAME", "\"\"", None),
+                ("DATA_ID_LAST_OUTPUT", "CommonComponents.EMPTY", None),
+            ]
+        );
         let salmon = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Salmon);
         assert_eq!(
             salmon.parent,

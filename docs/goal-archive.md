@@ -10075,3 +10075,10 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   三个 finalized/converting boolean default 由源码 `false` 机械生成；
   `ZombieVillager.initializeVillagerData()` 依赖 biome 与 RNG，继续显式保持 unresolved，
   未用固定 `plains/none` 冒充服务端状态，family facade 条目仍开放。
+
+## 2026-07-11：Generated command-block minecart accessor aliases
+
+- [x] 从 generated accessor catalog 导出 `MinecartCommandBlock.DATA_ID_COMMAND_NAME`
+  id13 与 `DATA_ID_LAST_OUTPUT` id14，native debug projection 删除最后一份生产路径手抄
+  metadata id。STRING `""` 与 COMPONENT `CommonComponents.EMPTY` 的 typed-default
+  normalization 和 family facade 仍保持开放，本切片未扩张组件/SNBT 语义。

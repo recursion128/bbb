@@ -521,6 +521,9 @@ back into a todo. Do not delete these.
   are generated compatibility aliases, but their family facade remains open:
   `ZombieVillager.initializeVillagerData()` is biome/RNG-dependent and must not be
   replaced with a guessed fixed default.
+  `MinecartCommandBlock` command/last-output ids are generated compatibility
+  aliases, while STRING/COMPONENT default normalization and its family facade
+  remain open.
 - **Baby `ageScale`** — the `0.5` proportions applied in model `setupAnim`,
   distinct from the projected `SCALE`-attribute `scale`.
 - **Armor trims and the remaining mob-specific armor models.**

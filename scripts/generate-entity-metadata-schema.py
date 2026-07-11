@@ -376,6 +376,8 @@ DATA_ALIASES = {
     "VANILLA_ABSTRACT_BOAT_BUBBLE_TIME_DATA_ID": ("net.minecraft.world.entity.vehicle.boat.AbstractBoat", "DATA_ID_BUBBLE_TIME"),
     "VANILLA_ABSTRACT_MINECART_CUSTOM_DISPLAY_BLOCK_DATA_ID": ("net.minecraft.world.entity.vehicle.minecart.AbstractMinecart", "DATA_ID_CUSTOM_DISPLAY_BLOCK"),
     "VANILLA_ABSTRACT_MINECART_DISPLAY_OFFSET_DATA_ID": ("net.minecraft.world.entity.vehicle.minecart.AbstractMinecart", "DATA_ID_DISPLAY_OFFSET"),
+    "VANILLA_COMMAND_BLOCK_MINECART_COMMAND_DATA_ID": ("net.minecraft.world.entity.vehicle.minecart.MinecartCommandBlock", "DATA_ID_COMMAND_NAME"),
+    "VANILLA_COMMAND_BLOCK_MINECART_LAST_OUTPUT_DATA_ID": ("net.minecraft.world.entity.vehicle.minecart.MinecartCommandBlock", "DATA_ID_LAST_OUTPUT"),
     "VANILLA_FURNACE_MINECART_FUEL_DATA_ID": ("net.minecraft.world.entity.vehicle.minecart.MinecartFurnace", "DATA_ID_FUEL"),
     "VANILLA_HANGING_ENTITY_DIRECTION_DATA_ID": ("net.minecraft.world.entity.decoration.HangingEntity", "DATA_DIRECTION"),
     "VANILLA_ITEM_FRAME_ITEM_DATA_ID": ("net.minecraft.world.entity.decoration.ItemFrame", "DATA_ITEM"),

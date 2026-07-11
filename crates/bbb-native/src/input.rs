@@ -97,6 +97,7 @@ use bbb_world::{
     VANILLA_BEE_FLAG_HAS_STUNG as BEE_FLAG_HAS_STUNG,
     VANILLA_CAMEL_DEFAULT_LAST_POSE_CHANGE_TICK as CAMEL_DEFAULT_LAST_POSE_CHANGE_TICK,
     VANILLA_CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID as CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID,
+    VANILLA_COMMAND_BLOCK_MINECART_COMMAND_DATA_ID as COMMAND_BLOCK_MINECART_COMMAND_DATA_ID,
     VANILLA_CREAKING_HOME_POS_DATA_ID as CREAKING_HOME_POS_DATA_ID,
     VANILLA_CREEPER_DEFAULT_IGNITED as CREEPER_DEFAULT_IGNITED,
     VANILLA_CREEPER_DEFAULT_POWERED as CREEPER_DEFAULT_POWERED,
@@ -482,7 +483,6 @@ const PAUSE_SCREEN_SNAPSHOT_BUGS_URL: &str = "https://aka.ms/snapshotbugs?ref=ga
 /// `flipped` is changed only by the server branches of old/new minecart
 /// movement and is not synchronized, so a remote client retains `false`.
 const MINECART_CLIENT_FLIPPED_ROTATION: bool = false;
-const COMMAND_BLOCK_MINECART_COMMAND_DATA_ID: u8 = 13;
 /// `MinecartHopper.enabled` changes only from the server-side activator-rail
 /// callback or NBT load and is not synchronized to the client.
 const TNT_MINECART_DEFAULT_FUSE: i32 = -1;
