@@ -10381,3 +10381,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   generator 同时改为消费语义中立的 `vanilla_tag_source.py`，统一 nested reference、稳定
   顺序、首次出现去重以及非法 root/value、missing ref、cycle、固定数量诊断；未生成
   enchantment tooltip 文本、等级规则或运行时 tag apply 行为。
+
+## 2026-07-11：Generated vanilla biome fallback order
+
+- [x] 新增 repo-level biome catalog update/check，复用统一 Tree-sitter Java frontend 与
+  resource registration extractor，从 `Biomes.java` 的 65 个 `ResourceKey<Biome>` 字段
+  声明顺序生成 `bbb-pack` checked-in stem catalog，删除 `colors.rs` 的手写表。
+  `BiomeColorCatalog::load_vanilla_26_1` 的 id、资源包 precedence、缺失 biome JSON 跳过
+  行为以及跨模块 compatibility constant 保持不变；固定数量、首尾顺序、幂等生成和
+  full gate 锁定。本切片只生成 vanilla fallback registration order，不把 server dynamic
+  registry、biome Codec 或 tint/blend 算法冒充完成。

@@ -45,7 +45,7 @@ Owner: `scripts/` + each generated catalog's semantic crate
 
 - Migrate the existing `bbb-pack` item-registry/profile Java source extractor to
   the shared Tree-sitter Java frontend. Entity metadata, packet, core registry,
-  gameplay-id, bootstrap resource-order, sound-event, jukebox-song, menu/recipe
+  gameplay-id, bootstrap/biome resource-order, sound-event, jukebox-song, menu/recipe
   item-membership, block builder-property, and the exact terrain-family block-tag
   memberships currently consumed by `bbb-world` are migrated. Equipment asset layers
   are resource-pack JSON rather than a numeric

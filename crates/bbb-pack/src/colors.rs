@@ -4,6 +4,10 @@ use anyhow::{bail, Context, Result};
 use image::ImageReader;
 use serde::{Deserialize, Serialize};
 
+mod generated_26_1;
+
+pub(crate) use generated_26_1::VANILLA_BIOME_ORDER;
+
 use crate::{resources::ResourceLocation, rgba_len, rgba_offset, PackRoots};
 
 fn parse_hex_rgb(color: &str) -> Result<[u8; 3]> {
@@ -334,74 +338,6 @@ struct RawBiomeColorEffects {
     water_color: Option<String>,
     grass_color_modifier: Option<GrassColorModifier>,
 }
-
-pub(crate) const VANILLA_BIOME_ORDER: &[&str] = &[
-    "the_void",
-    "plains",
-    "sunflower_plains",
-    "snowy_plains",
-    "ice_spikes",
-    "desert",
-    "swamp",
-    "mangrove_swamp",
-    "forest",
-    "flower_forest",
-    "birch_forest",
-    "dark_forest",
-    "pale_garden",
-    "old_growth_birch_forest",
-    "old_growth_pine_taiga",
-    "old_growth_spruce_taiga",
-    "taiga",
-    "snowy_taiga",
-    "savanna",
-    "savanna_plateau",
-    "windswept_hills",
-    "windswept_gravelly_hills",
-    "windswept_forest",
-    "windswept_savanna",
-    "jungle",
-    "sparse_jungle",
-    "bamboo_jungle",
-    "badlands",
-    "eroded_badlands",
-    "wooded_badlands",
-    "meadow",
-    "cherry_grove",
-    "grove",
-    "snowy_slopes",
-    "frozen_peaks",
-    "jagged_peaks",
-    "stony_peaks",
-    "river",
-    "frozen_river",
-    "beach",
-    "snowy_beach",
-    "stony_shore",
-    "warm_ocean",
-    "lukewarm_ocean",
-    "deep_lukewarm_ocean",
-    "ocean",
-    "deep_ocean",
-    "cold_ocean",
-    "deep_cold_ocean",
-    "frozen_ocean",
-    "deep_frozen_ocean",
-    "mushroom_fields",
-    "dripstone_caves",
-    "lush_caves",
-    "deep_dark",
-    "nether_wastes",
-    "warped_forest",
-    "crimson_forest",
-    "soul_sand_valley",
-    "basalt_deltas",
-    "the_end",
-    "end_highlands",
-    "end_midlands",
-    "small_end_islands",
-    "end_barrens",
-];
 
 #[cfg(test)]
 mod tests {
