@@ -11189,3 +11189,11 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   VarInt wire 并拒绝 trailing bytes；vanilla 与 bbb 均只在 entity 已知时切换，unknown id 无副作用。
 - [x] active camera 已驱动 camera pose、raycast、camera-family post effect、local/camera entity render
   filtering；相机实体移除后安全回退 local-player pose，protocol/world/net/native tests 使五格闭合。
+
+## 2026-07-11：set-default-spawn-position packet coverage audit
+
+- [x] 对照 `ClientboundSetDefaultSpawnPositionPacket`、`LevelData.RespawnData.STREAM_CODEC` 与
+  `ClientPacketListener.handleSetSpawn` 锁定 dimension resource、packed BlockPos、yaw/pitch f32 wire，
+  并拒绝 trailing bytes；非法 resource location 仍明确失败。
+- [x] client respawn data 已进入 spawn-compass item-model angle/range dispatch，protocol/world/net/native
+  tests 覆盖 canonical state、dimension mismatch spin 与 owner pose，五格全部闭合。

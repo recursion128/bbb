@@ -693,6 +693,20 @@ fn decodes_player_abilities_spawn_distance_and_system_chat() {
         })
     );
 
+    let mut trailing = Encoder::new();
+    trailing.write_string("minecraft:overworld");
+    trailing.write_i64(encode_block_pos(-5, 70, 12));
+    trailing.write_f32(90.0);
+    trailing.write_f32(-10.0);
+    trailing.write_u8(0);
+    assert!(decode_play_clientbound(
+        ids::play::CLIENTBOUND_SET_DEFAULT_SPAWN_POSITION,
+        &trailing.into_inner()
+    )
+    .unwrap_err()
+    .to_string()
+    .contains("trailing bytes after set default spawn position packet"));
+
     let mut invalid = Encoder::new();
     invalid.write_string("minecraft:Overworld");
     let err = decode_play_clientbound(

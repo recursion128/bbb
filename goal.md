@@ -396,6 +396,8 @@ SetSimulationDistance 的 VarInt wire、client state/debug display 与 apply tes
 `shouldTickDeath` 的玩家 chunk chessboard-distance gate 尚未实现，runtime 保持 partial。
 SetCamera 的 entity VarInt wire、known/unknown gate、camera pose/raycast/post-effect consumers 与
 world/net/native tests 已全行闭合；相机实体移除后视点安全回退本地玩家。
+SetDefaultSpawnPosition 的 dimension/BlockPos/yaw/pitch wire、client respawn state、spawn-compass
+item-model consumer 与 world/net/native tests 已全行闭合。
 
 完成标准：全部 vanilla 26.1 catalog entry 都有矩阵行；所有目标客户端适用项为
 `complete`，其余只有带 vanilla 依据的 `not-applicable` 或带重启判据的窄 `deferred`；

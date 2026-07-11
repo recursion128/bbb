@@ -411,12 +411,18 @@ pub(super) fn decode_set_held_slot(decoder: &mut Decoder<'_>) -> Result<SetHeldS
 pub(super) fn decode_default_spawn_position(
     decoder: &mut Decoder<'_>,
 ) -> Result<SetDefaultSpawnPosition> {
-    Ok(SetDefaultSpawnPosition {
+    let update = SetDefaultSpawnPosition {
         dimension: read_resource_location(decoder)?,
         pos: chunks::decode_block_pos(decoder.read_i64()?),
         yaw: decoder.read_f32()?,
         pitch: decoder.read_f32()?,
-    })
+    };
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after set default spawn position packet".to_string(),
+        ));
+    }
+    Ok(update)
 }
 
 pub(super) fn decode_player_experience(decoder: &mut Decoder<'_>) -> Result<PlayerExperience> {
