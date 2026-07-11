@@ -68,6 +68,13 @@ Owner: `bbb-protocol`
 - Defer configuration/play keepalive responses while client event polling is
   render-frozen, with vanilla's one-minute expiry, instead of always replying
   immediately. Ping/pong remains immediate and is already separate.
+- Replace the current first-`ClientboundPlayerPositionPacket` trigger for
+  `ServerboundPlayerLoadedPacket` with vanilla `LevelLoadTracker` readiness:
+  wait for server loading packets, then for the local-player section to be
+  compiled and visible (with the spectator/dead/out-of-height shortcuts and
+  30-second timeout), and send exactly once. Also make teleport acknowledgement
+  echo the unchanged mounted-player transform and advance the block-state
+  prediction teleport sequence as `ClientPacketListener.handleMovePlayer` does.
 - Then cover play, movement, inventory, chat, interaction and command suggestion
   end to end.
 

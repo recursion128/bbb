@@ -248,7 +248,7 @@ mod tests {
     };
 
     #[test]
-    fn decodes_player_position_and_encodes_ack_pair() {
+    fn decodes_player_position_strictly_and_encodes_ack_pair() {
         let mut payload = Encoder::new();
         payload.write_var_i32(77);
         payload.write_f64(1.0);
@@ -261,11 +261,9 @@ mod tests {
         payload.write_f32(15.0);
         payload.write_i32(0);
 
-        let packet = decode_play_clientbound(
-            ids::play::CLIENTBOUND_PLAYER_POSITION,
-            &payload.into_inner(),
-        )
-        .unwrap();
+        let payload = payload.into_inner();
+        let packet =
+            decode_play_clientbound(ids::play::CLIENTBOUND_PLAYER_POSITION, &payload).unwrap();
         let PlayClientbound::PlayerPosition(update) = packet else {
             panic!("wrong packet");
         };
@@ -287,6 +285,14 @@ mod tests {
         );
         assert_eq!(id, ids::play::SERVERBOUND_MOVE_PLAYER_POS_ROT);
         assert_eq!(pos.len(), 33);
+
+        let mut trailing = payload;
+        trailing.push(0);
+        let error =
+            decode_play_clientbound(ids::play::CLIENTBOUND_PLAYER_POSITION, &trailing).unwrap_err();
+        assert!(error
+            .to_string()
+            .contains("trailing bytes after player position packet"));
     }
 
     #[test]

@@ -693,6 +693,41 @@ mod tests {
         );
     }
 
+    #[test]
+    fn play_initial_position_handoff_keeps_load_readiness_and_teleport_effects_open() {
+        let ledger = vanilla_packet_coverage_26_1().unwrap();
+        let packets = BTreeSet::from([
+            "SERVERBOUND_ACCEPT_TELEPORTATION",
+            "SERVERBOUND_MOVE_PLAYER_POS_ROT",
+            "SERVERBOUND_PLAYER_LOADED",
+            "CLIENTBOUND_PLAYER_POSITION",
+        ]);
+        let entries: Vec<_> = ledger
+            .entries
+            .iter()
+            .filter(|entry| entry.state == "play" && packets.contains(entry.constant_name.as_str()))
+            .collect();
+        assert_eq!(entries.len(), packets.len());
+        let partial: BTreeSet<_> = entries
+            .iter()
+            .flat_map(|entry| {
+                entry.coverage.iter().filter_map(move |(dimension, cell)| {
+                    (cell.status == PacketCoverageStatus::Partial)
+                        .then_some((entry.constant_name.as_str(), dimension.as_str()))
+                })
+            })
+            .collect();
+        assert_eq!(
+            partial,
+            BTreeSet::from([
+                ("CLIENTBOUND_PLAYER_POSITION", "runtime_side_effect"),
+                ("SERVERBOUND_PLAYER_LOADED", "command_surface"),
+                ("SERVERBOUND_PLAYER_LOADED", "state_guard"),
+                ("SERVERBOUND_PLAYER_LOADED", "tests"),
+            ])
+        );
+    }
+
     fn state_name(state: PacketState) -> &'static str {
         match state {
             PacketState::Handshake => "handshake",

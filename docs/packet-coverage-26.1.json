@@ -2155,29 +2155,42 @@
       "constant_name": "SERVERBOUND_ACCEPT_TELEPORTATION",
       "coverage": {
         "ack_response": {
-          "evidence": [],
+          "evidence": [
+            "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#handleAcceptTeleportPacket"
+          ],
           "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "status": "not-applicable"
         },
         "command_surface": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-net/src/event_stream/play.rs#PlayClientbound::PlayerPosition"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "encoder": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/movement.rs#encode_play_accept_teleportation",
+            "vanilla:net/minecraft/network/protocol/game/ServerboundAcceptTeleportationPacket.java#STREAM_CODEC"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "state_guard": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-net/src/event_stream.rs#play_player_position_currently_sends_loaded_after_first_sync_only",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleMovePlayer"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/movement.rs#decodes_player_position_strictly_and_encodes_ack_pair",
+            "crates/bbb-net/src/event_stream.rs#play_player_position_currently_sends_loaded_after_first_sync_only"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "serverbound",
@@ -3263,29 +3276,43 @@
       "constant_name": "SERVERBOUND_MOVE_PLAYER_POS_ROT",
       "coverage": {
         "ack_response": {
-          "evidence": [],
+          "evidence": [
+            "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#handleMovePlayer"
+          ],
           "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "status": "not-applicable"
         },
         "command_surface": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-native/src/input/movement.rs#maybe_queue_player_move_command",
+            "crates/bbb-net/src/types/commands.rs#PlayerMoveCommand"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "encoder": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/movement.rs#encode_play_move_player_pos_rot",
+            "vanilla:net/minecraft/network/protocol/game/ServerboundMovePlayerPacket.java#class PosRot"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "state_guard": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-native/src/input/movement.rs#move_command_forces_position_after_vanilla_reminder_interval",
+            "crates/bbb-net/src/driver/commands/tests.rs#player_move_command_selects_vanilla_move_player_variant_from_previous_state"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/movement.rs#encodes_move_player_packet_variants",
+            "crates/bbb-net/src/driver/commands/tests.rs#player_move_command_encodes_pos_rot_packet"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "serverbound",
@@ -3718,27 +3745,41 @@
       "constant_name": "SERVERBOUND_PLAYER_LOADED",
       "coverage": {
         "ack_response": {
-          "evidence": [],
+          "evidence": [
+            "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#handleAcceptPlayerLoad"
+          ],
           "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "status": "not-applicable"
         },
         "command_surface": {
-          "evidence": [],
+          "evidence": [
+            "crates/bbb-net/src/event_stream/play.rs#player_loaded_sent",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#notifyPlayerLoaded"
+          ],
           "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
           "status": "partial"
         },
         "encoder": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/serverbound.rs#encode_play_player_loaded",
+            "vanilla:net/minecraft/network/protocol/game/ServerboundPlayerLoadedPacket.java#STREAM_CODEC"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "state_guard": {
-          "evidence": [],
+          "evidence": [
+            "crates/bbb-net/src/event_stream.rs#play_player_position_currently_sends_loaded_after_first_sync_only",
+            "vanilla:net/minecraft/client/multiplayer/LevelLoadTracker.java#isLevelReady"
+          ],
           "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
           "status": "partial"
         },
         "tests": {
-          "evidence": [],
+          "evidence": [
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_player_loaded",
+            "crates/bbb-net/src/probe/play.rs#probe_player_position_currently_sends_loaded_after_first_sync_only"
+          ],
           "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
           "status": "partial"
         }
@@ -7175,29 +7216,44 @@
       "constant_name": "CLIENTBOUND_PLAYER_POSITION",
       "coverage": {
         "canonical_apply": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/client/local_player.rs#apply_player_position",
+            "crates/bbb-world/src/client/local_player.rs#local_player_position_does_not_move_mounted_player"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/movement.rs#decodes_player_position_strictly_and_encodes_ack_pair",
+            "vanilla:net/minecraft/network/protocol/game/ClientboundPlayerPositionPacket.java#STREAM_CODEC"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "ownership": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-net/src/event_stream/play.rs#PlayClientbound::PlayerPosition"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "runtime_side_effect": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
+          "evidence": [
+            "crates/bbb-net/src/event_stream/play.rs#PlayClientbound::PlayerPosition",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleMovePlayer"
+          ],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
           "status": "partial"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/movement.rs#player_position_update_applies_relative_state",
+            "crates/bbb-net/src/event_stream.rs#play_player_position_currently_sends_loaded_after_first_sync_only",
+            "crates/bbb-world/src/client/local_player.rs#local_player_position_does_not_move_mounted_player"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "clientbound",

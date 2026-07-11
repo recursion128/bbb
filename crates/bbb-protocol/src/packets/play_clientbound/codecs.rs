@@ -61,14 +61,20 @@ pub(super) fn decode_player_position(decoder: &mut Decoder<'_>) -> Result<Player
     let y_rot = decoder.read_f32()?;
     let x_rot = decoder.read_f32()?;
     let relatives_mask = decoder.read_i32()?;
-    Ok(PlayerPositionUpdate {
+    let update = PlayerPositionUpdate {
         id,
         position,
         delta_movement,
         y_rot,
         x_rot,
         relatives_mask,
-    })
+    };
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after player position packet".to_string(),
+        ));
+    }
+    Ok(update)
 }
 
 fn decode_common_spawn_info(decoder: &mut Decoder<'_>) -> Result<CommonPlayerSpawnInfo> {

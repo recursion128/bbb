@@ -4048,7 +4048,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn probe_player_position_sends_vanilla_teleport_ack_and_player_loaded_once() {
+    async fn probe_player_position_currently_sends_loaded_after_first_sync_only() {
         let (client, mut server) = raw_connection_pair().await;
         let mut probe = ProbeContext::new(client);
 
@@ -4093,7 +4093,7 @@ mod tests {
 
         let (packet_id, payload) = timeout(Duration::from_secs(1), server.read_packet())
             .await
-            .expect("player loaded should be sent after first position sync")
+            .expect("current player-loaded approximation should fire after first position sync")
             .unwrap();
         assert_eq!(packet_id, ids::play::SERVERBOUND_PLAYER_LOADED);
         assert!(payload.is_empty());
@@ -4142,7 +4142,7 @@ mod tests {
             timeout(Duration::from_millis(50), server.read_packet())
                 .await
                 .is_err(),
-            "player loaded must only be sent for the first position sync"
+            "current player-loaded approximation should only fire once"
         );
 
         assert_eq!(

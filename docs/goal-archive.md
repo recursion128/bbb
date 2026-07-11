@@ -10977,3 +10977,16 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   `sendWhen(!RenderSystem.isFrozenAtPollEvents(), one minute)`，bbb 目前立即发送。因此
   configuration/play clientbound keepalive 的 runtime cell 均保留 partial；ping/pong 仍是立即
   response。coverage 反向测试锁定该唯一差异，未改写历史或伪装成完成。
+
+## 2026-07-11：play initial-position handoff coverage audit
+
+- [x] 对照 `ClientboundPlayerPositionPacket`、`ClientPacketListener.handleMovePlayer`、
+  `ServerboundAcceptTeleportationPacket` 与四种 `ServerboundMovePlayerPacket`，修复 position
+  decoder 接受 trailing bytes，并锁定 relative transform、world correction、teleport id ack、
+  immediate `PosRot` echo、movement variant selection 与 20-tick position reminder。位置包的
+  decode/ownership/canonical/tests、AcceptTeleportation 与 PosRot 行已闭合。
+- [x] 对照 `ClientPacketListener.tick/notifyPlayerLoaded` 与 `LevelLoadTracker` 更正 coverage
+  边界：vanilla 不在首个 position 包后发送 `PlayerLoaded`，而是等待 loading packets 和玩家
+  section compiled/visible readiness，并带 30 秒 timeout。bbb 当前 unit encoder/once guard 已有，
+  但 command/state/tests 保持 partial；position runtime 也因 mounted-player echo 与 block-state
+  prediction teleport sequence 未对齐而保持 partial，未把现有近似测试命名为 vanilla 行为。
