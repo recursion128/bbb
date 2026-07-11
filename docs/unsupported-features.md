@@ -36,6 +36,10 @@ Owner: `bbb-protocol`
   `<MC_CODE_ROOT>/sources/26.1/`, adding focused encode/decode tests with each
   packet slice; keep handwritten handler coverage aligned with the generated
   packet catalog as unsupported families are implemented.
+- Use `docs/packet-coverage-26.1.json` as the complete 256-entry inventory. A
+  cell remains `partial` until it carries implementation and semantic-test
+  evidence through the checked-in sparse overrides; catalog presence or a
+  generic dispatch arm alone is not completion.
 - Cover the required paths end to end: login, configuration, play, movement,
   inventory, chat, resource-pack, interaction, command suggestion.
 

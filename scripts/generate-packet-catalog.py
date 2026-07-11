@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import difflib
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -22,6 +23,10 @@ from vanilla_java_source import parse_source
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_SOURCE_ROOT = Path.home() / "Work/mc-code/sources/26.1"
 DEFAULT_OUTPUT = REPO_ROOT / "crates/bbb-protocol/src/packet_catalog.rs"
+DEFAULT_COVERAGE_OUTPUT = REPO_ROOT / "docs/packet-coverage-26.1.json"
+DEFAULT_COVERAGE_OVERRIDES = (
+    REPO_ROOT / "scripts/data/packet-coverage-overrides-26.1.json"
+)
 PROTOCOL_ROOT = Path("net/minecraft/network/protocol")
 PROTOCOL_SPECS = (
     ("handshake", "handshake/HandshakeProtocols.java", ("serverbound",)),
@@ -40,6 +45,12 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--source-root", type=Path, default=DEFAULT_SOURCE_ROOT)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
+    parser.add_argument(
+        "--coverage-output", type=Path, default=DEFAULT_COVERAGE_OUTPUT
+    )
+    parser.add_argument(
+        "--coverage-overrides", type=Path, default=DEFAULT_COVERAGE_OVERRIDES
+    )
     parser.add_argument("--check", action="store_true")
     return parser.parse_args()
 
@@ -195,7 +206,138 @@ def render_catalog(catalogs: dict[tuple[str, str], list[Packet]]) -> str:
     return "\n".join(lines)
 
 
-def generate(source_root: Path) -> str:
+def render_coverage_ledger(
+    catalogs: dict[tuple[str, str], list[Packet]],
+    overrides: dict[str, dict[str, dict[str, object]]] | None = None,
+) -> str:
+    protocol_gap = (
+        "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families"
+    )
+    clientbound_gap = (
+        "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play"
+    )
+
+    def coverage(status: str, gap: str) -> dict[str, object]:
+        return {"status": status, "evidence": [], "gap": gap}
+
+    overrides = overrides or {}
+    used_overrides: set[str] = set()
+    allowed_statuses = {
+        "complete",
+        "partial",
+        "deferred",
+        "not-applicable",
+    }
+    entries: list[dict[str, object]] = []
+    for state, _, directions in PROTOCOL_SPECS:
+        for direction in directions:
+            dimensions = (
+                {
+                    "decode": coverage("partial", protocol_gap),
+                    "ownership": coverage("partial", clientbound_gap),
+                    "canonical_apply": coverage("partial", clientbound_gap),
+                    "runtime_side_effect": coverage("partial", clientbound_gap),
+                    "tests": coverage("partial", protocol_gap),
+                }
+                if direction == "clientbound"
+                else {
+                    "command_surface": coverage("partial", protocol_gap),
+                    "encoder": coverage("partial", protocol_gap),
+                    "state_guard": coverage("partial", protocol_gap),
+                    "ack_response": coverage("partial", protocol_gap),
+                    "tests": coverage("partial", protocol_gap),
+                }
+            )
+            for packet_id, packet in enumerate(catalogs[(state, direction)]):
+                packet_key = f"{state}/{direction}/{packet.constant}"
+                packet_overrides = overrides.get(packet_key, {})
+                if not isinstance(packet_overrides, dict):
+                    raise ValueError(f"{packet_key}: override must be an object")
+                if packet_key in overrides:
+                    used_overrides.add(packet_key)
+                unknown_dimensions = set(packet_overrides) - set(dimensions)
+                if unknown_dimensions:
+                    raise ValueError(
+                        f"{packet_key}: unknown coverage dimensions "
+                        f"{sorted(unknown_dimensions)}"
+                    )
+                packet_coverage = {
+                    name: dict(cell) for name, cell in dimensions.items()
+                }
+                for dimension, cell in packet_overrides.items():
+                    if not isinstance(cell, dict):
+                        raise ValueError(f"{packet_key}/{dimension}: cell must be an object")
+                    unknown_cell_keys = set(cell) - {"status", "evidence", "gap"}
+                    if unknown_cell_keys:
+                        raise ValueError(
+                            f"{packet_key}/{dimension}: unknown keys "
+                            f"{sorted(unknown_cell_keys)}"
+                        )
+                    status = cell.get("status")
+                    evidence = cell.get("evidence", [])
+                    gap = cell.get("gap")
+                    if status not in allowed_statuses:
+                        raise ValueError(
+                            f"{packet_key}/{dimension}: invalid status {status!r}"
+                        )
+                    if not isinstance(evidence, list) or not all(
+                        isinstance(item, str) and item for item in evidence
+                    ):
+                        raise ValueError(
+                            f"{packet_key}/{dimension}: evidence must be non-empty strings"
+                        )
+                    if status in {"complete", "deferred", "not-applicable"} and not evidence:
+                        raise ValueError(
+                            f"{packet_key}/{dimension}: {status} cell lacks evidence"
+                        )
+                    if status != "complete" and not (
+                        isinstance(gap, str)
+                        and gap.startswith("docs/unsupported-features.md#")
+                    ):
+                        raise ValueError(
+                            f"{packet_key}/{dimension}: non-complete cell lacks gap"
+                        )
+                    packet_coverage[dimension] = {
+                        "status": status,
+                        "evidence": evidence,
+                        "gap": gap,
+                    }
+                entries.append(
+                    {
+                        "state": state,
+                        "direction": direction,
+                        "id": packet_id,
+                        "constant_name": packet.constant,
+                        "resource_id": packet.resource_id,
+                        "class_name": packet.class_name,
+                        "coverage": packet_coverage,
+                    }
+                )
+    unused_overrides = set(overrides) - used_overrides
+    if unused_overrides:
+        raise ValueError(f"unknown packet coverage overrides: {sorted(unused_overrides)}")
+    value = {
+        "schema_version": 1,
+        "vanilla_version": "26.1",
+        "generated_by": "scripts/generate-packet-catalog.py",
+        "update_command": (
+            "scripts/vanilla-source-tools.sh scripts/generate-packet-catalog.py"
+        ),
+        "check_command": (
+            "scripts/vanilla-source-tools.sh scripts/generate-packet-catalog.py --check"
+        ),
+        "coverage_overrides": "scripts/data/packet-coverage-overrides-26.1.json",
+        "allowed_statuses": sorted(allowed_statuses),
+        "baseline_policy": (
+            "Inventory foundation: every cell remains partial until its packet family "
+            "is audited against vanilla source and carries implementation/test evidence."
+        ),
+        "entries": entries,
+    }
+    return json.dumps(value, indent=2, sort_keys=True) + "\n"
+
+
+def extract_catalogs(source_root: Path) -> dict[tuple[str, str], list[Packet]]:
     protocol_root = source_root / PROTOCOL_ROOT
     packet_type_sources = [
         parse_source(path.relative_to(source_root).as_posix(), path.read_bytes())
@@ -210,6 +352,27 @@ def generate(source_root: Path) -> str:
             catalogs[(state, direction)] = registered_packets(
                 source, direction, resources
             )
+    return catalogs
+
+
+def load_coverage_overrides(path: Path) -> dict[str, dict[str, dict[str, object]]]:
+    def strict_object(pairs):
+        value = {}
+        for key, item in pairs:
+            if key in value:
+                raise ValueError(f"{path}: duplicate JSON key {key!r}")
+            value[key] = item
+        return value
+
+    value = json.loads(path.read_text(), object_pairs_hook=strict_object)
+    if value.get("schema_version") != 1 or not isinstance(value.get("entries"), dict):
+        raise ValueError(f"{path}: invalid packet coverage override schema")
+    return value["entries"]
+
+
+def generate(source_root: Path, overrides_path: Path) -> tuple[str, str]:
+    catalogs = extract_catalogs(source_root)
+    overrides = load_coverage_overrides(overrides_path)
     rendered = render_catalog(catalogs)
     formatted = subprocess.run(
         ["rustfmt", "--edition", "2021", "--emit", "stdout"],
@@ -218,26 +381,33 @@ def generate(source_root: Path) -> str:
         capture_output=True,
         check=True,
     )
-    return formatted.stdout
+    return formatted.stdout, render_coverage_ledger(catalogs, overrides)
+
+
+def check_output(path: Path, generated: str) -> bool:
+    current = path.read_text() if path.exists() else ""
+    if current == generated:
+        return True
+    sys.stderr.writelines(
+        difflib.unified_diff(
+            current.splitlines(keepends=True),
+            generated.splitlines(keepends=True),
+            fromfile=str(path),
+            tofile="generated",
+        )
+    )
+    return False
 
 
 def main() -> int:
     args = parse_args()
-    generated = generate(args.source_root)
+    catalog, coverage = generate(args.source_root, args.coverage_overrides)
     if args.check:
-        current = args.output.read_text() if args.output.exists() else ""
-        if current == generated:
-            return 0
-        sys.stderr.writelines(
-            difflib.unified_diff(
-                current.splitlines(keepends=True),
-                generated.splitlines(keepends=True),
-                fromfile=str(args.output),
-                tofile="generated",
-            )
-        )
-        return 1
-    args.output.write_text(generated)
+        catalog_matches = check_output(args.output, catalog)
+        coverage_matches = check_output(args.coverage_output, coverage)
+        return 0 if catalog_matches and coverage_matches else 1
+    args.output.write_text(catalog)
+    args.coverage_output.write_text(coverage)
     return 0
 
 

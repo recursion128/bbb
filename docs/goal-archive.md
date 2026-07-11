@@ -10794,3 +10794,18 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   `cdcfb00c3ebbb1cd08026c08f84e849ea886ba116efcf267d7e5fe3a4e058a1f`）；normal no-Java、
   frontend fixtures、update/check、幂等、world/native audio focused tests 锁定结果。音频播放/
   衰减/world event 语义未由源码文本生成。
+
+## 2026-07-11：vanilla 26.1 packet coverage inventory foundation
+
+- [x] `generate-packet-catalog.py` 现在从同一 Tree-sitter packet catalog extraction 同时生成
+  Rust id/resource/class catalog 与 checked-in `docs/packet-coverage-26.1.json`。ledger 恰好
+  覆盖 256 项：handshake 1、status 4、login 11、configuration 30、play 210；每行复用
+  catalog 的 state/direction/id/constant/resource/class，不维护第二份 packet 名单。
+- [x] clientbound schema 冻结 `decode/ownership/canonical_apply/runtime_side_effect/tests`，
+  serverbound schema 冻结 `command_surface/encoder/state_guard/ack_response/tests`；状态只接受
+  `complete/partial/deferred/not-applicable`。本 foundation 不根据 arm 存在性冒充完成，未逐包
+  反审计的 cell 全部保留带具体 unsupported 链接的 `partial`。protocol typed loader、双向
+  catalog/order/唯一性测试、generator fixtures、update/check 与二次 update 幂等建立新增 packet
+  默认进入分母的反向门禁。checked-in sparse overrides 拒绝未知 packet/dimension、非法状态、
+  重复 JSON key，以及无 evidence 的 complete/deferred/not-applicable；逐 family evidence 收敛、
+  state/framing 和端到端 handoff 仍保持开放。

@@ -283,6 +283,13 @@ extractor 可直接消费统一 CST/IR 而不复制 tokenizer/parser，普通 bu
    双向一致；生产 decode/apply/encode 不允许使用无 catalog descriptor 的裸 packet id，
    probe/online/native 不得重建平行 packet switch。
 
+当前 checked-in inventory 已覆盖 256/256 catalog entry，并冻结上述 direction-specific
+字段；所有尚未逐 family 对照 vanilla、实现与 semantic test 完成反审计的 cell 仍为
+`partial`。后续 slice 必须用具体 evidence 逐格收敛，不能把“存在 dispatch arm”单独当作
+`complete`，也不能删除 partial 行来缩小分母。逐格状态只通过 checked-in sparse evidence
+overrides 维护；未知 packet/dimension、非法状态、无 evidence 的 complete/deferred/
+not-applicable 必须令 generator 失败。
+
 matrix inventory + state/framing + required login/config/play handoff 是本队列的 foundation
 milestone；完成后即可进入 RegistryAccess/playable foundation，不等待全部长尾 packet
 family 清空。之后按 configuration、world-state、movement/interaction、inventory/UI、chat/
