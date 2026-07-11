@@ -1,5 +1,40 @@
 {
   "entries": {
+    "configuration/serverbound/SERVERBOUND_CLIENT_INFORMATION": {
+      "ack_response": {
+        "evidence": ["vanilla:net/minecraft/server/network/ServerConfigurationPacketListenerImpl.java#handleClientInformation"],
+        "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+        "status": "not-applicable"
+      },
+      "command_surface": {
+        "evidence": [
+          "crates/bbb-native/src/startup.rs#client_information_from_args",
+          "crates/bbb-net/src/event_stream/login.rs#packets::encode_client_information"
+        ],
+        "status": "complete"
+      },
+      "encoder": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/connection.rs#encode_client_information",
+          "vanilla:net/minecraft/network/protocol/common/ServerboundClientInformationPacket.java#STREAM_CODEC"
+        ],
+        "status": "complete"
+      },
+      "state_guard": {
+        "evidence": [
+          "crates/bbb-net/src/event_stream.rs#login_compression_query_and_finish_follow_vanilla_state_sequence",
+          "crates/bbb-net/src/event_stream.rs#configuration_control_responses_precede_finish_and_play_handoff"
+        ],
+        "status": "complete"
+      },
+      "tests": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_client_information_from_struct",
+          "crates/bbb-native/src/startup.rs#args_build_client_information_from_startup_options"
+        ],
+        "status": "complete"
+      }
+    },
     "configuration/clientbound/CLIENTBOUND_CUSTOM_REPORT_DETAILS": {
       "canonical_apply": {
         "evidence": ["crates/bbb-world/src/client/server_presentation.rs#apply_custom_report_details"],

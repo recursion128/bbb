@@ -763,29 +763,43 @@
       "constant_name": "SERVERBOUND_CLIENT_INFORMATION",
       "coverage": {
         "ack_response": {
-          "evidence": [],
+          "evidence": [
+            "vanilla:net/minecraft/server/network/ServerConfigurationPacketListenerImpl.java#handleClientInformation"
+          ],
           "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "status": "not-applicable"
         },
         "command_surface": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-native/src/startup.rs#client_information_from_args",
+            "crates/bbb-net/src/event_stream/login.rs#packets::encode_client_information"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "encoder": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/connection.rs#encode_client_information",
+            "vanilla:net/minecraft/network/protocol/common/ServerboundClientInformationPacket.java#STREAM_CODEC"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "state_guard": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-net/src/event_stream.rs#login_compression_query_and_finish_follow_vanilla_state_sequence",
+            "crates/bbb-net/src/event_stream.rs#configuration_control_responses_precede_finish_and_play_handoff"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_client_information_from_struct",
+            "crates/bbb-native/src/startup.rs#args_build_client_information_from_startup_options"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "serverbound",

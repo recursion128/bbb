@@ -10912,3 +10912,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   runtime 适用格和 tests 已 evidence-backed 闭合。transfer 的 host/port decode、ownership、
   canonical target 与 tests 已闭合，但 vanilla `handleTransfer` 的断开、携带 transfer state 并
   以 Transfer intent 重连仍保持唯一 runtime partial；本地 projection 未被冒充为完整重连。
+
+## 2026-07-11：configuration client-information coverage audit
+
+- [x] 对照 `ServerboundClientInformationPacket`、server `ClientInformation` 与 configuration
+  handler，锁定 language（16 字符）、view distance、chat visibility/colors、skin parts、main
+  hand、text filtering、server listing 与 particle status 的 wire 顺序和 generated enum ordinal。
+- [x] startup 参数是唯一 production command owner；LoginFinished 后先切入 Configuration 再发送
+  configuration id，Finish acknowledgement 后才发送 play id。protocol/native/RawConnection tests
+  锁定字段值和时序；server handler 只更新 client information、无 acknowledgement，五格均已
+  evidence-backed 闭合。
