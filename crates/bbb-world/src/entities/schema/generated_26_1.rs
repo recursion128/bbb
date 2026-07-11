@@ -326,6 +326,9 @@ pub const VANILLA_FISHING_HOOK_HOOKED_ENTITY_DATA_ID: u8 =
     GENERATED_VANILLA_FISHING_HOOK_HOOKED_ENTITY_DATA_ID;
 const GENERATED_VANILLA_FISHING_HOOK_BITING_DATA_ID: u8 = 9;
 pub const VANILLA_FISHING_HOOK_BITING_DATA_ID: u8 = GENERATED_VANILLA_FISHING_HOOK_BITING_DATA_ID;
+const GENERATED_VANILLA_OMINOUS_ITEM_SPAWNER_ITEM_DATA_ID: u8 = 8;
+pub const VANILLA_OMINOUS_ITEM_SPAWNER_ITEM_DATA_ID: u8 =
+    GENERATED_VANILLA_OMINOUS_ITEM_SPAWNER_ITEM_DATA_ID;
 const GENERATED_VANILLA_GUARDIAN_MOVING_DATA_ID: u8 = 16;
 pub const VANILLA_GUARDIAN_MOVING_DATA_ID: u8 = GENERATED_VANILLA_GUARDIAN_MOVING_DATA_ID;
 const GENERATED_VANILLA_GUARDIAN_ATTACK_TARGET_DATA_ID: u8 = 17;
@@ -15316,6 +15319,23 @@ const FISHINGHOOK_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetad
     own_flags: FISHINGHOOK_FLAGS,
 };
 
+const OMINOUSITEMSPAWNER_FIELDS: &[VanillaEntityMetadataFieldSchema] =
+    &[VanillaEntityMetadataFieldSchema {
+        name: "DATA_ITEM",
+        data_id: 8,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_ITEM_STACK_ID,
+        default: VanillaEntityMetadataDefault::ItemStackEmpty,
+    }];
+const OMINOUSITEMSPAWNER_FLAGS: &[VanillaEntityMetadataFlagSchema] = &[];
+const OMINOUSITEMSPAWNER_SCHEMA: VanillaEntityMetadataFamilySchema =
+    VanillaEntityMetadataFamilySchema {
+        family: VanillaEntityMetadataFamily::OminousItemSpawner,
+        parent: Some(VanillaEntityMetadataFamily::Entity),
+        inherited_field_count: 8,
+        own_fields: OMINOUSITEMSPAWNER_FIELDS,
+        own_flags: OMINOUSITEMSPAWNER_FLAGS,
+    };
+
 const GUARDIAN_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[
     VanillaEntityMetadataFieldSchema {
         name: "DATA_ID_MOVING",
@@ -16028,6 +16048,7 @@ pub(super) const fn generated_entity_metadata_schema(
         VanillaEntityMetadataFamily::PrimedTnt => &PRIMEDTNT_SCHEMA,
         VanillaEntityMetadataFamily::FireworkRocket => &FIREWORKROCKET_SCHEMA,
         VanillaEntityMetadataFamily::FishingHook => &FISHINGHOOK_SCHEMA,
+        VanillaEntityMetadataFamily::OminousItemSpawner => &OMINOUSITEMSPAWNER_SCHEMA,
         VanillaEntityMetadataFamily::Guardian => &GUARDIAN_SCHEMA,
         VanillaEntityMetadataFamily::SnowGolem => &SNOWGOLEM_SCHEMA,
         VanillaEntityMetadataFamily::IronGolem => &IRONGOLEM_SCHEMA,

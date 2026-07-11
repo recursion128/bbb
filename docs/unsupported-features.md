@@ -511,7 +511,7 @@ back into a todo. Do not delete these.
   `Mob -> EnderDragon`,
   `Entity -> AbstractArrow -> Arrow` /
   `ThrownTrident` leaves, the `Entity -> WitherSkull` projectile leaf,
-  `Entity -> FishingHook`,
+  `Entity -> FishingHook` / `OminousItemSpawner`,
   `Entity -> EndCrystal` / `Interaction` / `ExperienceOrb` / `ItemEntity` /
   `PrimedTnt` / `FireworkRocket`, the
   `Entity -> VehicleEntity -> AbstractBoat` / `AbstractMinecart -> MinecartFurnace` branches, and
@@ -535,6 +535,10 @@ back into a todo. Do not delete these.
   FishingHook's synced hooked-entity id and biting boolean now come from the
   generated facade; client fishing motion, bite presentation, server RNG and
   authoritative catch logic remain separate work.
+  OminousItemSpawner's client item-cluster projection now uses its generated
+  `DATA_ITEM` descriptor instead of borrowing the coincidentally equal item-entity
+  index; server spawn delay, item/projectile creation and world modification are
+  not client work.
 - **Baby `ageScale`** — the `0.5` proportions applied in model `setupAnim`,
   distinct from the projected `SCALE`-attribute `scale`.
 - **Armor trims and the remaining mob-specific armor models.**

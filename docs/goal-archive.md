@@ -10112,3 +10112,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   `DATA_HOOKED_ENTITY` id8/default 0 与 `DATA_BITING` id9/default false，并锁定 INT/BOOLEAN
   serializer。该 facade 只描述服务器同步的客户端可观察字段；咬钩 RNG、运动、捕获判定与
   权威 catch 逻辑仍由服务器或后续 client-presentation slice 管理。
+
+## 2026-07-11：Generated OminousItemSpawner metadata
+
+- [x] 由统一 Tree-sitter accessor catalog 建立 `Entity -> OminousItemSpawner` family，生成
+  `DATA_ITEM` id8 与 `ItemStackEmpty` default。world item-cluster presentation 改为通过该
+  descriptor 查询，不再借用数值碰巧相同的 `ItemEntity.DATA_ITEM`；测试锁定错误 metadata
+  id 不会投影。同一反向审查也让 firework item render 使用已有的
+  `FireworkRocketEntity.DATA_ID_FIREWORKS_ITEM` generated alias。server spawn delay、
+  item/projectile 创建与 world modification 不属于客户端 authority。

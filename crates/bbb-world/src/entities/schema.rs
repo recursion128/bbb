@@ -69,6 +69,7 @@ pub enum VanillaEntityMetadataFamily {
     PrimedTnt,
     FireworkRocket,
     FishingHook,
+    OminousItemSpawner,
     Guardian,
     SnowGolem,
     IronGolem,
@@ -440,6 +441,7 @@ mod tests {
             VanillaEntityMetadataFamily::PrimedTnt,
             VanillaEntityMetadataFamily::FireworkRocket,
             VanillaEntityMetadataFamily::FishingHook,
+            VanillaEntityMetadataFamily::OminousItemSpawner,
             VanillaEntityMetadataFamily::Guardian,
             VanillaEntityMetadataFamily::SnowGolem,
             VanillaEntityMetadataFamily::IronGolem,
@@ -1575,6 +1577,24 @@ mod tests {
                     default: VanillaEntityMetadataDefault::Boolean(false),
                 },
             ]
+        );
+        let ominous_item_spawner =
+            vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::OminousItemSpawner);
+        assert_eq!(
+            ominous_item_spawner.parent,
+            Some(VanillaEntityMetadataFamily::Entity)
+        );
+        assert_eq!(ominous_item_spawner.inherited_field_count, 8);
+        assert_eq!(VANILLA_OMINOUS_ITEM_SPAWNER_ITEM_DATA_ID, 8);
+        assert_eq!(
+            ominous_item_spawner.own_fields,
+            &[VanillaEntityMetadataFieldSchema {
+                name: "DATA_ITEM",
+                data_id: 8,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_ITEM_STACK_ID,
+                default: VanillaEntityMetadataDefault::ItemStackEmpty,
+            }]
         );
         let guardian = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Guardian);
         assert_eq!(guardian.parent, Some(VanillaEntityMetadataFamily::Mob));

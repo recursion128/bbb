@@ -130,11 +130,11 @@ use crate::entities::schema::{
     VANILLA_LIVING_ENTITY_FLAG_SPIN_ATTACK as LIVING_ENTITY_FLAG_SPIN_ATTACK,
     VANILLA_LIVING_ENTITY_HEALTH_DATA_ID, VANILLA_LIVING_ENTITY_SLEEPING_POS_DATA_ID,
     VANILLA_MOB_FLAGS_DATA_ID, VANILLA_MOB_FLAG_AGGRESSIVE as MOB_FLAG_AGGRESSIVE,
-    VANILLA_MOB_FLAG_LEFT_HANDED as MOB_FLAG_LEFTHANDED, VANILLA_PLAYER_ABSORPTION_DATA_ID,
-    VANILLA_PLAYER_DEFAULT_ABSORPTION, VANILLA_PLAYER_SHOULDER_PARROT_LEFT_DATA_ID,
-    VANILLA_PLAYER_SHOULDER_PARROT_RIGHT_DATA_ID, VANILLA_PRIMED_TNT_BLOCK_STATE_DATA_ID,
-    VANILLA_PRIMED_TNT_DEFAULT_BLOCK_STATE, VANILLA_PRIMED_TNT_DEFAULT_FUSE,
-    VANILLA_PRIMED_TNT_FUSE_DATA_ID,
+    VANILLA_MOB_FLAG_LEFT_HANDED as MOB_FLAG_LEFTHANDED, VANILLA_OMINOUS_ITEM_SPAWNER_ITEM_DATA_ID,
+    VANILLA_PLAYER_ABSORPTION_DATA_ID, VANILLA_PLAYER_DEFAULT_ABSORPTION,
+    VANILLA_PLAYER_SHOULDER_PARROT_LEFT_DATA_ID, VANILLA_PLAYER_SHOULDER_PARROT_RIGHT_DATA_ID,
+    VANILLA_PRIMED_TNT_BLOCK_STATE_DATA_ID, VANILLA_PRIMED_TNT_DEFAULT_BLOCK_STATE,
+    VANILLA_PRIMED_TNT_DEFAULT_FUSE, VANILLA_PRIMED_TNT_FUSE_DATA_ID,
 };
 use crate::registries::RegistrySet;
 use crate::ItemEquipmentSlot;
@@ -2912,7 +2912,7 @@ impl EntityStore {
             if firework_rocket_attached_to_entity(&metadata.data_values) {
                 continue;
             }
-            let Some(stack) = item_entity_render_stack(&metadata.data_values) else {
+            let Some(stack) = firework_rocket_render_stack(&metadata.data_values) else {
                 continue;
             };
             items.push(FireworkRocketItemState {
@@ -2999,7 +2999,7 @@ impl EntityStore {
             let Ok(client_animations) = self.ecs.get::<&EntityClientAnimations>(entity) else {
                 continue;
             };
-            let Some(stack) = item_entity_render_stack(&metadata.data_values) else {
+            let Some(stack) = ominous_item_spawner_render_stack(&metadata.data_values) else {
                 continue;
             };
             items.push(OminousItemSpawnerItemState {
@@ -4066,6 +4066,13 @@ fn firework_rocket_render_stack(
     data_values: &[bbb_protocol::packets::EntityDataValue],
 ) -> Option<&bbb_protocol::packets::ItemStackSummary> {
     metadata_item_stack(data_values, VANILLA_FIREWORK_ROCKET_ITEM_DATA_ID)
+        .filter(|stack| stack.item_id.is_some() && stack.count > 0)
+}
+
+fn ominous_item_spawner_render_stack(
+    data_values: &[bbb_protocol::packets::EntityDataValue],
+) -> Option<&bbb_protocol::packets::ItemStackSummary> {
+    metadata_item_stack(data_values, VANILLA_OMINOUS_ITEM_SPAWNER_ITEM_DATA_ID)
         .filter(|stack| stack.item_id.is_some() && stack.count > 0)
 }
 

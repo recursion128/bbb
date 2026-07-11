@@ -6,6 +6,12 @@ fn firework_item_stack_entity_data(item: ProtocolItemStackSummary) -> ProtocolEn
     value
 }
 
+fn ominous_item_stack_entity_data(item: ProtocolItemStackSummary) -> ProtocolEntityDataValue {
+    let mut value = item_stack_entity_data(item);
+    value.data_id = VANILLA_OMINOUS_ITEM_SPAWNER_ITEM_DATA_ID;
+    value
+}
+
 #[test]
 fn item_entity_stacks_filters_and_preserves_protocol_order() {
     let mut store = WorldStore::new();
@@ -296,18 +302,30 @@ fn ominous_item_spawner_item_states_project_item_stack_and_age_ticks() {
         82,
         VANILLA_ENTITY_TYPE_COW_ID,
     ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        83,
+        VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID,
+    ));
 
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 80,
-        values: vec![item_stack_entity_data(item_stack(910, 3))],
+        values: vec![ominous_item_stack_entity_data(item_stack(910, 3))],
     }));
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 81,
-        values: vec![item_stack_entity_data(ProtocolItemStackSummary::empty())],
+        values: vec![ominous_item_stack_entity_data(
+            ProtocolItemStackSummary::empty(),
+        )],
     }));
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 82,
         values: vec![item_stack_entity_data(item_stack(912, 1))],
+    }));
+    let mut wrong_data_id = ominous_item_stack_entity_data(item_stack(913, 1));
+    wrong_data_id.data_id = VANILLA_OMINOUS_ITEM_SPAWNER_ITEM_DATA_ID + 1;
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 83,
+        values: vec![wrong_data_id],
     }));
 
     store.advance_entity_client_animations(7);
