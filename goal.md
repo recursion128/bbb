@@ -376,6 +376,9 @@ partial，不能用 type presence 冒充完整装备值。
 UpdateAttributes 的 holder/list/modifier wire、LivingEntity ownership gate 与 tests 已闭合；
 attribute holder 尚未按 session RegistryAccess 解析，且未按 entity AttributeMap instance set 过滤，
 因此 canonical/runtime 保持 partial。
+ProjectilePower 的 VarInt + double wire、AbstractHurtingProjectile type gate、canonical assignment 与
+world/net/native tests 已全行闭合；这只确认服务器同步的 accelerationPower，不代表 projectile
+motion、命中、伤害或权威移除完成。
 
 完成标准：全部 vanilla 26.1 catalog entry 都有矩阵行；所有目标客户端适用项为
 `complete`，其余只有带 vanilla 依据的 `not-applicable` 或带重启判据的窄 `deferred`；

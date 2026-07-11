@@ -9785,29 +9785,44 @@
       "constant_name": "CLIENTBOUND_PROJECTILE_POWER",
       "coverage": {
         "canonical_apply": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/entities/projectiles.rs#apply_projectile_power",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleProjectilePowerPacket"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/world_effects/tests.rs#decodes_projectile_power_packet",
+            "vanilla:net/minecraft/network/protocol/game/ClientboundProjectilePowerPacket.java#STREAM_CODEC"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "ownership": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/play_apply.rs#PlayClientbound::ProjectilePower"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "runtime_side_effect": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/entities/projectiles.rs#apply_projectile_power",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleProjectilePowerPacket"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/world_effects/tests.rs#decodes_projectile_power_packet",
+            "crates/bbb-world/src/entities/projectiles.rs#applies_projectile_power_to_hurting_projectiles_only",
+            "crates/bbb-net/src/probe/play.rs#probe_projectile_power_updates_world_entity_state_and_counters"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "clientbound",

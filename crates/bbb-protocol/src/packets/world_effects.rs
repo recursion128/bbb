@@ -78,10 +78,16 @@ pub(crate) fn decode_level_particles(decoder: &mut Decoder<'_>) -> Result<LevelP
 }
 
 pub(crate) fn decode_projectile_power(decoder: &mut Decoder<'_>) -> Result<ProjectilePower> {
-    Ok(ProjectilePower {
+    let update = ProjectilePower {
         entity_id: decoder.read_var_i32()?,
         acceleration_power: decoder.read_f64()?,
-    })
+    };
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after projectile power packet".to_string(),
+        ));
+    }
+    Ok(update)
 }
 
 pub(super) fn decode_particle_payload(decoder: &mut Decoder<'_>) -> Result<ParticlePayload> {

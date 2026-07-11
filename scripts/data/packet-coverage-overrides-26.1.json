@@ -972,6 +972,43 @@
         "status": "complete"
       }
     },
+    "play/clientbound/CLIENTBOUND_PROJECTILE_POWER": {
+      "canonical_apply": {
+        "evidence": [
+          "crates/bbb-world/src/entities/projectiles.rs#apply_projectile_power",
+          "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleProjectilePowerPacket"
+        ],
+        "status": "complete"
+      },
+      "decode": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/world_effects/tests.rs#decodes_projectile_power_packet",
+          "vanilla:net/minecraft/network/protocol/game/ClientboundProjectilePowerPacket.java#STREAM_CODEC"
+        ],
+        "status": "complete"
+      },
+      "ownership": {
+        "evidence": [
+          "crates/bbb-world/src/play_apply.rs#PlayClientbound::ProjectilePower"
+        ],
+        "status": "complete"
+      },
+      "runtime_side_effect": {
+        "evidence": [
+          "crates/bbb-world/src/entities/projectiles.rs#apply_projectile_power",
+          "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleProjectilePowerPacket"
+        ],
+        "status": "complete"
+      },
+      "tests": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/world_effects/tests.rs#decodes_projectile_power_packet",
+          "crates/bbb-world/src/entities/projectiles.rs#applies_projectile_power_to_hurting_projectiles_only",
+          "crates/bbb-net/src/probe/play.rs#probe_projectile_power_updates_world_entity_state_and_counters"
+        ],
+        "status": "complete"
+      }
+    },
     "play/clientbound/CLIENTBOUND_PLAYER_ROTATION": {
       "canonical_apply": {
         "evidence": [

@@ -11120,3 +11120,11 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] attribute holder id 仍未通过 session RegistryAccess 解析，world 也尚未像 vanilla
   AttributeMap 那样只更新目标实体已有 instance；canonical/runtime 两格保持 partial，避免把固定
   vanilla id 或任意 living-entity attribute storage 冒充服务器 session 的真实属性状态。
+
+## 2026-07-11：projectile-power packet coverage audit
+
+- [x] 对照 `ClientboundProjectilePowerPacket` 锁定 entity VarInt + accelerationPower double 并拒绝
+  trailing bytes；world 只对 AbstractHurtingProjectile 类型集合附加的 component 赋值，unknown/
+  非匹配实体安全忽略，protocol/world/net/native tests 覆盖状态与计数，五格全部闭合。
+- [x] 此闭合只代表服务器同步字段的客户端赋值；未将它外推为 projectile subclass motion、drag、
+  gravity、trail、命中、伤害或权威移除，后者仍按 multiplayer client authority ledger 单独开放。
