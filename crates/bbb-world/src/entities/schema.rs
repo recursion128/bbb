@@ -25,6 +25,7 @@ pub enum VanillaEntityMetadataFamily {
     Arrow,
     ThrownTrident,
     WitherSkull,
+    EndCrystal,
     VehicleEntity,
     AbstractBoat,
     AbstractMinecart,
@@ -291,6 +292,7 @@ mod tests {
             VanillaEntityMetadataFamily::Arrow,
             VanillaEntityMetadataFamily::ThrownTrident,
             VanillaEntityMetadataFamily::WitherSkull,
+            VanillaEntityMetadataFamily::EndCrystal,
             VanillaEntityMetadataFamily::VehicleEntity,
             VanillaEntityMetadataFamily::AbstractBoat,
             VanillaEntityMetadataFamily::AbstractMinecart,
@@ -368,6 +370,35 @@ mod tests {
         );
         assert_eq!(VANILLA_WITHER_SKULL_DANGEROUS_DATA_ID, 8);
         assert!(!VANILLA_WITHER_SKULL_DEFAULT_DANGEROUS);
+        let end_crystal = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::EndCrystal);
+        assert_eq!(
+            end_crystal.parent,
+            Some(VanillaEntityMetadataFamily::Entity)
+        );
+        assert_eq!(end_crystal.inherited_field_count, 8);
+        assert_eq!(end_crystal.own_fields.len(), 2);
+        assert_eq!(
+            end_crystal.own_fields[0],
+            VanillaEntityMetadataFieldSchema {
+                name: "DATA_BEAM_TARGET",
+                data_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_BLOCK_POS_ID,
+                default: VanillaEntityMetadataDefault::OptionalBlockPosNone,
+            }
+        );
+        assert_eq!(
+            end_crystal.own_fields[1],
+            VanillaEntityMetadataFieldSchema {
+                name: "DATA_SHOW_BOTTOM",
+                data_id: 9,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+                default: VanillaEntityMetadataDefault::Boolean(true),
+            }
+        );
+        assert_eq!(VANILLA_END_CRYSTAL_BEAM_TARGET_DATA_ID, 8);
+        assert_eq!(VANILLA_END_CRYSTAL_SHOW_BOTTOM_DATA_ID, 9);
+        assert!(VANILLA_END_CRYSTAL_DEFAULT_SHOW_BOTTOM);
         assert_eq!(
             vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Entity)
                 .own_flags

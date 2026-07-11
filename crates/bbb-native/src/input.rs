@@ -183,6 +183,10 @@ mod text_edit;
 use crate::camera_pose::camera_pose_from_world;
 use crate::crosshair::protocol_block_pos_from_world;
 use crate::crosshair::{crosshair_target_from_camera_at_partial_tick, CrosshairTarget};
+use crate::entity_scene::{
+    END_CRYSTAL_BEAM_TARGET_DATA_ID, END_CRYSTAL_DEFAULT_SHOW_BOTTOM,
+    END_CRYSTAL_SHOW_BOTTOM_DATA_ID,
+};
 use crate::entity_scene::{WITHER_SKULL_DANGEROUS_DATA_ID, WITHER_SKULL_DEFAULT_DANGEROUS};
 use crate::terrain_runtime::TerrainUploadState;
 use bbb_item_model::{
@@ -508,9 +512,6 @@ const BAT_DEFAULT_FLAGS: i8 = 0;
 const BOGGED_SHEARED_DATA_ID: u8 = 16;
 const BOGGED_DEFAULT_SHEARED: bool = false;
 const ENDERMITE_DEFAULT_LIFETIME: i32 = 0;
-const END_CRYSTAL_BEAM_TARGET_DATA_ID: u8 = 8;
-const END_CRYSTAL_SHOW_BOTTOM_DATA_ID: u8 = 9;
-const END_CRYSTAL_DEFAULT_SHOW_BOTTOM: bool = true;
 const GHAST_DEFAULT_EXPLOSION_POWER: i8 = 1;
 const GLOW_SQUID_DARK_TICKS_DATA_ID: u8 = 18;
 const GLOW_SQUID_DEFAULT_DARK_TICKS_REMAINING: i32 = 0;

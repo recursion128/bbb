@@ -110,6 +110,12 @@ pub const VANILLA_TRIDENT_FOIL_DATA_ID: u8 = GENERATED_VANILLA_TRIDENT_FOIL_DATA
 const GENERATED_VANILLA_WITHER_SKULL_DANGEROUS_DATA_ID: u8 = 8;
 pub const VANILLA_WITHER_SKULL_DANGEROUS_DATA_ID: u8 =
     GENERATED_VANILLA_WITHER_SKULL_DANGEROUS_DATA_ID;
+const GENERATED_VANILLA_END_CRYSTAL_BEAM_TARGET_DATA_ID: u8 = 8;
+pub const VANILLA_END_CRYSTAL_BEAM_TARGET_DATA_ID: u8 =
+    GENERATED_VANILLA_END_CRYSTAL_BEAM_TARGET_DATA_ID;
+const GENERATED_VANILLA_END_CRYSTAL_SHOW_BOTTOM_DATA_ID: u8 = 9;
+pub const VANILLA_END_CRYSTAL_SHOW_BOTTOM_DATA_ID: u8 =
+    GENERATED_VANILLA_END_CRYSTAL_SHOW_BOTTOM_DATA_ID;
 const GENERATED_VANILLA_VEHICLE_HURT_TIME_DATA_ID: u8 = 8;
 pub const VANILLA_VEHICLE_HURT_TIME_DATA_ID: u8 = GENERATED_VANILLA_VEHICLE_HURT_TIME_DATA_ID;
 const GENERATED_VANILLA_VEHICLE_HURT_DIR_DATA_ID: u8 = 9;
@@ -284,6 +290,9 @@ pub const VANILLA_TRIDENT_DEFAULT_FOIL: bool = GENERATED_VANILLA_TRIDENT_DEFAULT
 const GENERATED_VANILLA_WITHER_SKULL_DEFAULT_DANGEROUS: bool = false;
 pub const VANILLA_WITHER_SKULL_DEFAULT_DANGEROUS: bool =
     GENERATED_VANILLA_WITHER_SKULL_DEFAULT_DANGEROUS;
+const GENERATED_VANILLA_END_CRYSTAL_DEFAULT_SHOW_BOTTOM: bool = true;
+pub const VANILLA_END_CRYSTAL_DEFAULT_SHOW_BOTTOM: bool =
+    GENERATED_VANILLA_END_CRYSTAL_DEFAULT_SHOW_BOTTOM;
 const GENERATED_VANILLA_VEHICLE_DEFAULT_HURT_TIME: i32 = 0;
 pub const VANILLA_VEHICLE_DEFAULT_HURT_TIME: i32 = GENERATED_VANILLA_VEHICLE_DEFAULT_HURT_TIME;
 const GENERATED_VANILLA_VEHICLE_DEFAULT_HURT_DIR: i32 = 1;
@@ -13195,6 +13204,29 @@ const WITHERSKULL_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetad
     own_flags: WITHERSKULL_FLAGS,
 };
 
+const ENDCRYSTAL_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_BEAM_TARGET",
+        data_id: 8,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_BLOCK_POS_ID,
+        default: VanillaEntityMetadataDefault::OptionalBlockPosNone,
+    },
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_SHOW_BOTTOM",
+        data_id: 9,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+        default: VanillaEntityMetadataDefault::Boolean(true),
+    },
+];
+const ENDCRYSTAL_FLAGS: &[VanillaEntityMetadataFlagSchema] = &[];
+const ENDCRYSTAL_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamilySchema {
+    family: VanillaEntityMetadataFamily::EndCrystal,
+    parent: Some(VanillaEntityMetadataFamily::Entity),
+    inherited_field_count: 8,
+    own_fields: ENDCRYSTAL_FIELDS,
+    own_flags: ENDCRYSTAL_FLAGS,
+};
+
 const VEHICLEENTITY_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[
     VanillaEntityMetadataFieldSchema {
         name: "DATA_ID_HURT",
@@ -13428,6 +13460,7 @@ pub(super) const fn generated_entity_metadata_schema(
         VanillaEntityMetadataFamily::Arrow => &ARROW_SCHEMA,
         VanillaEntityMetadataFamily::ThrownTrident => &THROWNTRIDENT_SCHEMA,
         VanillaEntityMetadataFamily::WitherSkull => &WITHERSKULL_SCHEMA,
+        VanillaEntityMetadataFamily::EndCrystal => &ENDCRYSTAL_SCHEMA,
         VanillaEntityMetadataFamily::VehicleEntity => &VEHICLEENTITY_SCHEMA,
         VanillaEntityMetadataFamily::AbstractBoat => &ABSTRACTBOAT_SCHEMA,
         VanillaEntityMetadataFamily::AbstractMinecart => &ABSTRACTMINECART_SCHEMA,

@@ -9618,3 +9618,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   与 F3+I save projection 统一引用 generated id/default aliases；focused tests 锁定继承
   offset、serializer/default、normal/dangerous model variant 与既有保存语义。未修改弹道、
   碰撞、爆炸抗性或 renderer 算法。
+
+## 2026-07-11：Generated entity metadata consumer（EndCrystal）
+
+- [x] 从 generated catalog 建立 `Entity -> EndCrystal` compatibility family：
+  OPTIONAL_BLOCK_POS `DATA_BEAM_TARGET` id 8/default none 与 BOOLEAN
+  `DATA_SHOW_BOTTOM` id 9/default true 不再由 world/native 手抄。dragon-healing beam、
+  bottom slab render projection 与 F3+I save projection 统一引用 generated aliases；focused
+  tests 锁定继承 offset、serializer/default、beam offset、bottom visibility 与保存语义。
+  未修改 crystal tick、dragon target selection、爆炸或 renderer 算法。

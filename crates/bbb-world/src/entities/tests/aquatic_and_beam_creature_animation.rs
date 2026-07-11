@@ -531,8 +531,6 @@ fn entity_model_sources_project_end_crystal_beam_target() {
     // Vanilla `EndCrystal.DATA_BEAM_TARGET` is Optional<BlockPos> id 8. `EndCrystalRenderer`
     // projects `Vec3.atCenterOf(target) - entity.getPosition(partialTicks)` into
     // `EndCrystalRenderState.beamOffset`.
-    const END_CRYSTAL_BEAM_TARGET_DATA_ID: u8 = 8;
-
     let add_at = |id: i32, type_id: i32| ProtocolAddEntity {
         id,
         uuid: default_entity_uuid(),
@@ -553,7 +551,7 @@ fn entity_model_sources_project_end_crystal_beam_target() {
         data: 0,
     };
     let beam_target = |target: Option<ProtocolBlockPos>| ProtocolEntityDataValue {
-        data_id: END_CRYSTAL_BEAM_TARGET_DATA_ID,
+        data_id: VANILLA_END_CRYSTAL_BEAM_TARGET_DATA_ID,
         serializer_id: 11,
         value: EntityDataValueKind::OptionalBlockPos(target),
     };

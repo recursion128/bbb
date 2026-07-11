@@ -997,14 +997,18 @@ pub(super) fn turtle_laying_egg(
 }
 
 /// Vanilla `EndCrystalRenderState.showsBottom = EndCrystal.showsBottom()` (the synced
-/// `DATA_SHOW_BOTTOM` boolean, id 9, default `true`). Gated to the end-crystal type; a crystal
+/// `DATA_SHOW_BOTTOM` boolean. Gated to the end-crystal type; a crystal
 /// without the synced value keeps the vanilla `true` default (the bottom slab is shown).
 pub(super) fn end_crystal_shows_bottom(
     entity_type_id: i32,
     values: &[bbb_protocol::packets::EntityDataValue],
 ) -> bool {
     entity_type_id != VANILLA_ENTITY_TYPE_END_CRYSTAL_ID
-        || entity_data_bool(values, END_CRYSTAL_SHOW_BOTTOM_DATA_ID, true)
+        || entity_data_bool(
+            values,
+            END_CRYSTAL_SHOW_BOTTOM_DATA_ID,
+            END_CRYSTAL_DEFAULT_SHOW_BOTTOM,
+        )
 }
 
 pub(super) fn donkey_model_kind(

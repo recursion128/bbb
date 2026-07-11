@@ -4399,8 +4399,6 @@ fn entity_model_instances_project_end_crystal_shows_bottom() {
 fn entity_model_instances_project_end_crystal_beam_target() {
     // Vanilla EndCrystal.DATA_BEAM_TARGET (OPTIONAL_BLOCK_POS id 8) projects as
     // EndCrystalRenderState.beamOffset = target block center - crystal position.
-    const END_CRYSTAL_BEAM_TARGET_DATA_ID: u8 = 8;
-
     let mut world = WorldStore::new();
     world.apply_add_entity(protocol_add_entity(
         162,

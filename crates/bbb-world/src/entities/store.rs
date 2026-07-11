@@ -20,6 +20,7 @@ use super::schema::{
     vanilla_minecart_default_display_offset,
     VANILLA_ABSTRACT_MINECART_CUSTOM_DISPLAY_BLOCK_DATA_ID as MINECART_CUSTOM_DISPLAY_BLOCK_DATA_ID,
     VANILLA_ABSTRACT_MINECART_DISPLAY_OFFSET_DATA_ID as MINECART_DISPLAY_OFFSET_DATA_ID,
+    VANILLA_END_CRYSTAL_BEAM_TARGET_DATA_ID as END_CRYSTAL_BEAM_TARGET_DATA_ID,
     VANILLA_SHULKER_ATTACH_FACE_DATA_ID as SHULKER_ATTACH_FACE_DATA_ID,
     VANILLA_TAMABLE_ANIMAL_DEFAULT_FLAGS as TAMABLE_ANIMAL_DEFAULT_FLAGS,
     VANILLA_TAMABLE_ANIMAL_FLAGS_DATA_ID as TAMABLE_ANIMAL_FLAGS_DATA_ID,
@@ -338,10 +339,6 @@ const VEX_FLAG_IS_CHARGING: i8 = 1;
 /// (`getInvulnerableTicks`), the fourth `WitherBoss` accessor after `Mob.DATA_MOB_FLAGS_ID` (15) and
 /// the three `DATA_TARGET_A/B/C` ints (16..=18).
 const VANILLA_WITHER_INV_DATA_ID: u8 = 19;
-
-/// Vanilla `EndCrystal.DATA_BEAM_TARGET` data id (8): optional block target for the dragon-healing
-/// beam. `DATA_SHOW_BOTTOM` follows at id 9.
-const END_CRYSTAL_BEAM_TARGET_DATA_ID: u8 = 8;
 
 pub(crate) struct EntityStore {
     pub(super) ecs: World,
