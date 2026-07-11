@@ -6,7 +6,7 @@ use crate::{BlockPos, ChunkPos, PaletteKind};
 
 mod generated_26_1;
 
-use generated_26_1::{VANILLA_AIR_BLOCKS, VANILLA_NO_TERRAIN_PARTICLE_BLOCKS};
+use generated_26_1::{VANILLA_AIR_BLOCKS, VANILLA_BARS_BLOCKS, VANILLA_NO_TERRAIN_PARTICLE_BLOCKS};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct BlockProbe {
@@ -346,18 +346,7 @@ fn is_cutout_block_name(name: &str) -> bool {
 }
 
 fn is_bars_tag_block_name(name: &str) -> bool {
-    matches!(
-        name,
-        "minecraft:iron_bars"
-            | "minecraft:copper_bars"
-            | "minecraft:exposed_copper_bars"
-            | "minecraft:weathered_copper_bars"
-            | "minecraft:oxidized_copper_bars"
-            | "minecraft:waxed_copper_bars"
-            | "minecraft:waxed_exposed_copper_bars"
-            | "minecraft:waxed_weathered_copper_bars"
-            | "minecraft:waxed_oxidized_copper_bars"
-    )
+    VANILLA_BARS_BLOCKS.contains(&name)
 }
 
 fn is_iron_bars_block_name(name: &str) -> bool {

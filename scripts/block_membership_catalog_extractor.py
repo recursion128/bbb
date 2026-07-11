@@ -90,3 +90,40 @@ def air_blocks(
     source: JavaSource, expected_count: int = 3
 ) -> list[BlockMembershipEntry]:
     return _builder_property_blocks(source, "air", expected_count)
+
+
+def direct_block_tag_membership(
+    relative_path: str, raw: bytes, expected_count: int
+) -> tuple[str, ...]:
+    try:
+        root = json.loads(raw)
+    except (json.JSONDecodeError, UnicodeDecodeError) as error:
+        raise BlockMembershipCatalogExtractionError(
+            f"{relative_path}: invalid block tag JSON: {error}"
+        ) from error
+    if not isinstance(root, dict) or set(root) - {"replace", "values"}:
+        raise BlockMembershipCatalogExtractionError(
+            f"{relative_path}: unsupported block tag root"
+        )
+    values = root.get("values")
+    if not isinstance(values, list):
+        raise BlockMembershipCatalogExtractionError(
+            f"{relative_path}: block tag values is not an array"
+        )
+    entries: list[str] = []
+    for index, value in enumerate(values):
+        if (
+            not isinstance(value, str)
+            or value.startswith("#")
+            or not value.startswith("minecraft:")
+        ):
+            raise BlockMembershipCatalogExtractionError(
+                f"{relative_path}: unsupported direct block tag value at index {index}"
+            )
+        entries.append(value)
+    if len(entries) != expected_count or len(set(entries)) != expected_count:
+        raise BlockMembershipCatalogExtractionError(
+            f"{relative_path}: expected {expected_count} unique direct block tag values, "
+            f"extracted {len(entries)}/{len(set(entries))}"
+        )
+    return tuple(entries)

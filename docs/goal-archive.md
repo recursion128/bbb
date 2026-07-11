@@ -10343,3 +10343,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   facade；未知/缺失 block state 的既有 fallback 不变。固定数量、声明顺序、resource 唯一与
   跨 crate focused tests 锁定消费，未按名称猜测 air class，也未改变 fluid/invisible render
   shape 或服务器 block-state authority。
+
+## 2026-07-11：Generated bars block-tag membership
+
+- [x] block-membership generator 从 vanilla `data/minecraft/tags/block/bars.json` 的九个
+  direct values 生成 `BlockTags.BARS` 默认 fallback，world terrain 删除 iron/copper bars
+  手写 match 并让 cutout/iron-bars connection/skip-rendering 三条路径消费同一 generated 表。
+  JSON root/value shape、namespace、禁止静默忽略 nested ref、顺序、固定数量与唯一性均受
+  fixtures/update/check 锁定；本切片不改变 session `UpdateTags` owner，也不把 glass pane/
+  stained pane 的独立 IronBarsBlock class 语义混入 bars tag。

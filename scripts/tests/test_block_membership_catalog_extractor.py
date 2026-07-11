@@ -11,12 +11,34 @@ sys.path.insert(0, str(SCRIPTS))
 from block_membership_catalog_extractor import (  # noqa: E402
     BlockMembershipCatalogExtractionError,
     air_blocks,
+    direct_block_tag_membership,
     no_terrain_particle_blocks,
 )
 from vanilla_java_source import parse_source  # noqa: E402
 
 
 class BlockMembershipCatalogExtractorTests(unittest.TestCase):
+    def test_direct_block_tag_membership_preserves_order(self) -> None:
+        self.assertEqual(
+            direct_block_tag_membership(
+                "data/minecraft/tags/block/example.json",
+                b'{"values":["minecraft:first","minecraft:second"]}',
+                2,
+            ),
+            ("minecraft:first", "minecraft:second"),
+        )
+
+    def test_direct_block_tag_membership_rejects_unresolved_references(self) -> None:
+        with self.assertRaisesRegex(
+            BlockMembershipCatalogExtractionError,
+            "unsupported direct block tag value at index 0",
+        ):
+            direct_block_tag_membership(
+                "data/minecraft/tags/block/example.json",
+                b'{"values":["#minecraft:nested"]}',
+                1,
+            )
+
     def test_builder_call_membership_uses_field_order_and_ignores_pseudo_calls(self) -> None:
         source = parse_source(
             "net/minecraft/world/level/block/Blocks.java",

@@ -9,12 +9,24 @@ pub(super) const VANILLA_NO_TERRAIN_PARTICLE_BLOCKS: &[&str] =
 pub(super) const VANILLA_AIR_BLOCKS: &[&str] =
     &["minecraft:air", "minecraft:void_air", "minecraft:cave_air"];
 
+pub(super) const VANILLA_BARS_BLOCKS: &[&str] = &[
+    "minecraft:iron_bars",
+    "minecraft:copper_bars",
+    "minecraft:waxed_copper_bars",
+    "minecraft:exposed_copper_bars",
+    "minecraft:waxed_exposed_copper_bars",
+    "minecraft:weathered_copper_bars",
+    "minecraft:waxed_weathered_copper_bars",
+    "minecraft:oxidized_copper_bars",
+    "minecraft:waxed_oxidized_copper_bars",
+];
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn block_builder_memberships_match_vanilla_order() {
+    fn block_memberships_match_vanilla_order() {
         assert_eq!(
             VANILLA_NO_TERRAIN_PARTICLE_BLOCKS,
             &["minecraft:barrier", "minecraft:structure_void"]
@@ -22,6 +34,12 @@ mod tests {
         assert_eq!(
             VANILLA_AIR_BLOCKS,
             &["minecraft:air", "minecraft:void_air", "minecraft:cave_air"]
+        );
+        assert_eq!(VANILLA_BARS_BLOCKS.len(), 9);
+        assert_eq!(VANILLA_BARS_BLOCKS.first(), Some(&"minecraft:iron_bars"));
+        assert_eq!(
+            VANILLA_BARS_BLOCKS.last(),
+            Some(&"minecraft:waxed_oxidized_copper_bars")
         );
     }
 }
