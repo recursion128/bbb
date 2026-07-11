@@ -116,6 +116,12 @@ pub const VANILLA_END_CRYSTAL_BEAM_TARGET_DATA_ID: u8 =
 const GENERATED_VANILLA_END_CRYSTAL_SHOW_BOTTOM_DATA_ID: u8 = 9;
 pub const VANILLA_END_CRYSTAL_SHOW_BOTTOM_DATA_ID: u8 =
     GENERATED_VANILLA_END_CRYSTAL_SHOW_BOTTOM_DATA_ID;
+const GENERATED_VANILLA_INTERACTION_WIDTH_DATA_ID: u8 = 8;
+pub const VANILLA_INTERACTION_WIDTH_DATA_ID: u8 = GENERATED_VANILLA_INTERACTION_WIDTH_DATA_ID;
+const GENERATED_VANILLA_INTERACTION_HEIGHT_DATA_ID: u8 = 9;
+pub const VANILLA_INTERACTION_HEIGHT_DATA_ID: u8 = GENERATED_VANILLA_INTERACTION_HEIGHT_DATA_ID;
+const GENERATED_VANILLA_INTERACTION_RESPONSE_DATA_ID: u8 = 10;
+pub const VANILLA_INTERACTION_RESPONSE_DATA_ID: u8 = GENERATED_VANILLA_INTERACTION_RESPONSE_DATA_ID;
 const GENERATED_VANILLA_VEHICLE_HURT_TIME_DATA_ID: u8 = 8;
 pub const VANILLA_VEHICLE_HURT_TIME_DATA_ID: u8 = GENERATED_VANILLA_VEHICLE_HURT_TIME_DATA_ID;
 const GENERATED_VANILLA_VEHICLE_HURT_DIR_DATA_ID: u8 = 9;
@@ -293,6 +299,13 @@ pub const VANILLA_WITHER_SKULL_DEFAULT_DANGEROUS: bool =
 const GENERATED_VANILLA_END_CRYSTAL_DEFAULT_SHOW_BOTTOM: bool = true;
 pub const VANILLA_END_CRYSTAL_DEFAULT_SHOW_BOTTOM: bool =
     GENERATED_VANILLA_END_CRYSTAL_DEFAULT_SHOW_BOTTOM;
+const GENERATED_VANILLA_INTERACTION_DEFAULT_WIDTH: f32 = 1.0;
+pub const VANILLA_INTERACTION_DEFAULT_WIDTH: f32 = GENERATED_VANILLA_INTERACTION_DEFAULT_WIDTH;
+const GENERATED_VANILLA_INTERACTION_DEFAULT_HEIGHT: f32 = 1.0;
+pub const VANILLA_INTERACTION_DEFAULT_HEIGHT: f32 = GENERATED_VANILLA_INTERACTION_DEFAULT_HEIGHT;
+const GENERATED_VANILLA_INTERACTION_DEFAULT_RESPONSE: bool = false;
+pub const VANILLA_INTERACTION_DEFAULT_RESPONSE: bool =
+    GENERATED_VANILLA_INTERACTION_DEFAULT_RESPONSE;
 const GENERATED_VANILLA_VEHICLE_DEFAULT_HURT_TIME: i32 = 0;
 pub const VANILLA_VEHICLE_DEFAULT_HURT_TIME: i32 = GENERATED_VANILLA_VEHICLE_DEFAULT_HURT_TIME;
 const GENERATED_VANILLA_VEHICLE_DEFAULT_HURT_DIR: i32 = 1;
@@ -13227,6 +13240,35 @@ const ENDCRYSTAL_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetada
     own_flags: ENDCRYSTAL_FLAGS,
 };
 
+const INTERACTION_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_WIDTH_ID",
+        data_id: 8,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_FLOAT_ID,
+        default: VanillaEntityMetadataDefault::Float(1.0),
+    },
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_HEIGHT_ID",
+        data_id: 9,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_FLOAT_ID,
+        default: VanillaEntityMetadataDefault::Float(1.0),
+    },
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_RESPONSE_ID",
+        data_id: 10,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+        default: VanillaEntityMetadataDefault::Boolean(false),
+    },
+];
+const INTERACTION_FLAGS: &[VanillaEntityMetadataFlagSchema] = &[];
+const INTERACTION_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamilySchema {
+    family: VanillaEntityMetadataFamily::Interaction,
+    parent: Some(VanillaEntityMetadataFamily::Entity),
+    inherited_field_count: 8,
+    own_fields: INTERACTION_FIELDS,
+    own_flags: INTERACTION_FLAGS,
+};
+
 const VEHICLEENTITY_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[
     VanillaEntityMetadataFieldSchema {
         name: "DATA_ID_HURT",
@@ -13461,6 +13503,7 @@ pub(super) const fn generated_entity_metadata_schema(
         VanillaEntityMetadataFamily::ThrownTrident => &THROWNTRIDENT_SCHEMA,
         VanillaEntityMetadataFamily::WitherSkull => &WITHERSKULL_SCHEMA,
         VanillaEntityMetadataFamily::EndCrystal => &ENDCRYSTAL_SCHEMA,
+        VanillaEntityMetadataFamily::Interaction => &INTERACTION_SCHEMA,
         VanillaEntityMetadataFamily::VehicleEntity => &VEHICLEENTITY_SCHEMA,
         VanillaEntityMetadataFamily::AbstractBoat => &ABSTRACTBOAT_SCHEMA,
         VanillaEntityMetadataFamily::AbstractMinecart => &ABSTRACTMINECART_SCHEMA,

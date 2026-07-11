@@ -1024,17 +1024,17 @@ fn entity_pick_bounds_follow_vanilla_pickable_subset() {
         id: 19,
         values: vec![
             ProtocolEntityDataValue {
-                data_id: 8,
+                data_id: VANILLA_INTERACTION_WIDTH_DATA_ID,
                 serializer_id: 3,
                 value: EntityDataValueKind::Float(2.5),
             },
             ProtocolEntityDataValue {
-                data_id: 9,
+                data_id: VANILLA_INTERACTION_HEIGHT_DATA_ID,
                 serializer_id: 3,
                 value: EntityDataValueKind::Float(0.75),
             },
             ProtocolEntityDataValue {
-                data_id: 10,
+                data_id: VANILLA_INTERACTION_RESPONSE_DATA_ID,
                 serializer_id: 8,
                 value: EntityDataValueKind::Boolean(true),
             },

@@ -26,6 +26,7 @@ pub enum VanillaEntityMetadataFamily {
     ThrownTrident,
     WitherSkull,
     EndCrystal,
+    Interaction,
     VehicleEntity,
     AbstractBoat,
     AbstractMinecart,
@@ -293,6 +294,7 @@ mod tests {
             VanillaEntityMetadataFamily::ThrownTrident,
             VanillaEntityMetadataFamily::WitherSkull,
             VanillaEntityMetadataFamily::EndCrystal,
+            VanillaEntityMetadataFamily::Interaction,
             VanillaEntityMetadataFamily::VehicleEntity,
             VanillaEntityMetadataFamily::AbstractBoat,
             VanillaEntityMetadataFamily::AbstractMinecart,
@@ -399,6 +401,46 @@ mod tests {
         assert_eq!(VANILLA_END_CRYSTAL_BEAM_TARGET_DATA_ID, 8);
         assert_eq!(VANILLA_END_CRYSTAL_SHOW_BOTTOM_DATA_ID, 9);
         assert!(VANILLA_END_CRYSTAL_DEFAULT_SHOW_BOTTOM);
+        let interaction = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Interaction);
+        assert_eq!(
+            interaction.parent,
+            Some(VanillaEntityMetadataFamily::Entity)
+        );
+        assert_eq!(interaction.inherited_field_count, 8);
+        assert_eq!(interaction.own_fields.len(), 3);
+        assert_eq!(VANILLA_INTERACTION_WIDTH_DATA_ID, 8);
+        assert_eq!(VANILLA_INTERACTION_HEIGHT_DATA_ID, 9);
+        assert_eq!(VANILLA_INTERACTION_RESPONSE_DATA_ID, 10);
+        assert_eq!(VANILLA_INTERACTION_DEFAULT_WIDTH, 1.0);
+        assert_eq!(VANILLA_INTERACTION_DEFAULT_HEIGHT, 1.0);
+        assert!(!VANILLA_INTERACTION_DEFAULT_RESPONSE);
+        assert_eq!(
+            interaction
+                .own_fields
+                .iter()
+                .map(|field| (field.name, field.data_id, field.serializer_id, field.default))
+                .collect::<Vec<_>>(),
+            vec![
+                (
+                    "DATA_WIDTH_ID",
+                    8,
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_FLOAT_ID,
+                    VanillaEntityMetadataDefault::Float(1.0),
+                ),
+                (
+                    "DATA_HEIGHT_ID",
+                    9,
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_FLOAT_ID,
+                    VanillaEntityMetadataDefault::Float(1.0),
+                ),
+                (
+                    "DATA_RESPONSE_ID",
+                    10,
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+                    VanillaEntityMetadataDefault::Boolean(false),
+                ),
+            ]
+        );
         assert_eq!(
             vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Entity)
                 .own_flags

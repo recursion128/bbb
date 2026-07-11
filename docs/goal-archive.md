@@ -9627,3 +9627,11 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   bottom slab render projection 与 F3+I save projection 统一引用 generated aliases；focused
   tests 锁定继承 offset、serializer/default、beam offset、bottom visibility 与保存语义。
   未修改 crystal tick、dragon target selection、爆炸或 renderer 算法。
+
+## 2026-07-11：Generated entity metadata consumer（Interaction）
+
+- [x] 从 generated catalog 建立 `Entity -> Interaction` compatibility family：FLOAT
+  width/height ids 8/9、defaults 1.0 与 BOOLEAN response id 10/default false 不再由
+  world/native 手抄。world pick bounds 与 F3+I save projection 统一引用 generated aliases；
+  focused tests 锁定继承 offset、serializer/default、dynamic width/height bounds 与保存语义。
+  未修改交互命中、响应结果、attack/interaction 私有记录或 renderer 行为。

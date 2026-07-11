@@ -498,8 +498,9 @@ back into a todo. Do not delete these.
   AbstractHorse` / `TamableAnimal`, `ArmorStand`, `Slime` (also consumed by
   `MagmaCube`), `Shulker`, `Zombie`, `Entity -> AbstractArrow -> Arrow` /
   `ThrownTrident` leaves, the `Entity -> WitherSkull` projectile leaf,
-  `Entity -> EndCrystal`, the `Entity -> VehicleEntity -> AbstractBoat` /
-  `AbstractMinecart` branches, and `HangingEntity -> ItemFrame`. Remaining
+  `Entity -> EndCrystal` / `Interaction`, the `Entity -> VehicleEntity ->
+  AbstractBoat` / `AbstractMinecart` branches, and `HangingEntity -> ItemFrame`.
+  Remaining
   concrete entity consumers still keep local ids/masks until their projections
   migrate to generated descriptors;
   an unresolved typed default/flag diagnostic is not implementation support.
