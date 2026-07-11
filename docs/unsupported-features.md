@@ -497,14 +497,14 @@ back into a todo. Do not delete these.
   `Entity`, `LivingEntity`, `Mob -> Allay` / `Creeper` / `Warden` / `WitherBoss` /
   `EnderMan`,
   `Avatar`, `Player`, `AgeableMob -> AbstractHorse -> Camel` / `Horse` /
-  `AbstractChestedHorse -> Llama` / `TamableAnimal -> Parrot` / `PolarBear` /
+  `AbstractChestedHorse -> Llama` / `TamableAnimal -> Parrot` / `Rabbit` / `PolarBear` /
   `Bee` / `Axolotl` / `Dolphin` / `GlowSquid` / `Goat` / `Ocelot` / `Panda` / `Sheep` /
   `Turtle`,
   `ArmorStand`,
   `Slime` (also consumed by `MagmaCube`), `Shulker`, `Zombie`, `Mob -> Guardian` /
   `SnowGolem` / `Bat` /
   `Phantom` / `Bogged` / `Ghast` / `Vex` / `Creaking` / `Zoglin` / `IronGolem`,
-  `AgeableMob -> Strider` / `Hoglin`, `Mob -> AbstractFish -> Pufferfish` / `Tadpole`,
+  `AgeableMob -> Strider` / `Hoglin`, `Mob -> AbstractFish -> Salmon` / `Pufferfish` / `Tadpole`,
   `Mob -> AbstractPiglin -> Piglin`,
   `Mob -> Raider -> Pillager` / `SpellcasterIllager`,
   `Entity -> AbstractArrow -> Arrow` /

@@ -74,6 +74,7 @@ FAMILIES = (
     FamilySpec("Llama", "net.minecraft.world.entity.animal.equine.Llama", "AbstractChestedHorse"),
     FamilySpec("TamableAnimal", "net.minecraft.world.entity.TamableAnimal", "AgeableMob"),
     FamilySpec("Parrot", "net.minecraft.world.entity.animal.parrot.Parrot", "TamableAnimal"),
+    FamilySpec("Rabbit", "net.minecraft.world.entity.animal.rabbit.Rabbit", "AgeableMob"),
     FamilySpec("ArmorStand", "net.minecraft.world.entity.decoration.ArmorStand", "LivingEntity"),
     FamilySpec(
         "AbstractArrow",
@@ -129,6 +130,7 @@ FAMILIES = (
         "net.minecraft.world.entity.animal.fish.AbstractFish",
         "Mob",
     ),
+    FamilySpec("Salmon", "net.minecraft.world.entity.animal.fish.Salmon", "AbstractFish"),
     FamilySpec(
         "Pufferfish",
         "net.minecraft.world.entity.animal.fish.Pufferfish",
@@ -224,6 +226,7 @@ DATA_ALIASES = {
     "VANILLA_TAMABLE_ANIMAL_FLAGS_DATA_ID": ("net.minecraft.world.entity.TamableAnimal", "DATA_FLAGS_ID"),
     "VANILLA_TAMABLE_ANIMAL_OWNER_DATA_ID": ("net.minecraft.world.entity.TamableAnimal", "DATA_OWNERUUID_ID"),
     "VANILLA_PARROT_VARIANT_DATA_ID": ("net.minecraft.world.entity.animal.parrot.Parrot", "DATA_VARIANT_ID"),
+    "VANILLA_RABBIT_TYPE_DATA_ID": ("net.minecraft.world.entity.animal.rabbit.Rabbit", "DATA_TYPE_ID"),
     "VANILLA_ARMOR_STAND_CLIENT_FLAGS_DATA_ID": ("net.minecraft.world.entity.decoration.ArmorStand", "DATA_CLIENT_FLAGS"),
     "VANILLA_ARMOR_STAND_HEAD_POSE_DATA_ID": ("net.minecraft.world.entity.decoration.ArmorStand", "DATA_HEAD_POSE"),
     "VANILLA_ARMOR_STAND_BODY_POSE_DATA_ID": ("net.minecraft.world.entity.decoration.ArmorStand", "DATA_BODY_POSE"),
@@ -270,6 +273,7 @@ DATA_ALIASES = {
     "VANILLA_PILLAGER_CHARGING_CROSSBOW_DATA_ID": ("net.minecraft.world.entity.monster.illager.Pillager", "IS_CHARGING_CROSSBOW"),
     "VANILLA_SPELLCASTER_ILLAGER_CASTING_DATA_ID": ("net.minecraft.world.entity.monster.illager.SpellcasterIllager", "DATA_SPELL_CASTING_ID"),
     "VANILLA_ABSTRACT_FISH_FROM_BUCKET_DATA_ID": ("net.minecraft.world.entity.animal.fish.AbstractFish", "FROM_BUCKET"),
+    "VANILLA_SALMON_VARIANT_DATA_ID": ("net.minecraft.world.entity.animal.fish.Salmon", "DATA_TYPE"),
     "VANILLA_PUFFERFISH_PUFF_STATE_DATA_ID": ("net.minecraft.world.entity.animal.fish.Pufferfish", "PUFF_STATE"),
     "VANILLA_TADPOLE_AGE_LOCKED_DATA_ID": ("net.minecraft.world.entity.animal.frog.Tadpole", "AGE_LOCKED"),
     "VANILLA_VEHICLE_HURT_TIME_DATA_ID": ("net.minecraft.world.entity.vehicle.VehicleEntity", "DATA_ID_HURT"),
@@ -347,6 +351,7 @@ DEFAULT_ALIASES = {
     "VANILLA_LLAMA_DEFAULT_VARIANT": ("net.minecraft.world.entity.animal.equine.Llama", "DATA_VARIANT_ID"),
     "VANILLA_TAMABLE_ANIMAL_DEFAULT_FLAGS": ("net.minecraft.world.entity.TamableAnimal", "DATA_FLAGS_ID"),
     "VANILLA_PARROT_DEFAULT_VARIANT": ("net.minecraft.world.entity.animal.parrot.Parrot", "DATA_VARIANT_ID"),
+    "VANILLA_RABBIT_DEFAULT_TYPE": ("net.minecraft.world.entity.animal.rabbit.Rabbit", "DATA_TYPE_ID"),
     "VANILLA_ABSTRACT_ARROW_DEFAULT_FLAGS": ("net.minecraft.world.entity.projectile.arrow.AbstractArrow", "ID_FLAGS"),
     "VANILLA_ABSTRACT_ARROW_DEFAULT_PIERCE_LEVEL": ("net.minecraft.world.entity.projectile.arrow.AbstractArrow", "PIERCE_LEVEL"),
     "VANILLA_ABSTRACT_ARROW_DEFAULT_IN_GROUND": ("net.minecraft.world.entity.projectile.arrow.AbstractArrow", "IN_GROUND"),
@@ -383,6 +388,7 @@ DEFAULT_ALIASES = {
     "VANILLA_PILLAGER_DEFAULT_CHARGING_CROSSBOW": ("net.minecraft.world.entity.monster.illager.Pillager", "IS_CHARGING_CROSSBOW"),
     "VANILLA_SPELLCASTER_ILLAGER_DEFAULT_CASTING": ("net.minecraft.world.entity.monster.illager.SpellcasterIllager", "DATA_SPELL_CASTING_ID"),
     "VANILLA_ABSTRACT_FISH_DEFAULT_FROM_BUCKET": ("net.minecraft.world.entity.animal.fish.AbstractFish", "FROM_BUCKET"),
+    "VANILLA_SALMON_DEFAULT_VARIANT": ("net.minecraft.world.entity.animal.fish.Salmon", "DATA_TYPE"),
     "VANILLA_PUFFERFISH_DEFAULT_PUFF_STATE": ("net.minecraft.world.entity.animal.fish.Pufferfish", "PUFF_STATE"),
     "VANILLA_TADPOLE_DEFAULT_AGE_LOCKED": ("net.minecraft.world.entity.animal.frog.Tadpole", "AGE_LOCKED"),
     "VANILLA_VEHICLE_DEFAULT_HURT_TIME": ("net.minecraft.world.entity.vehicle.VehicleEntity", "DATA_ID_HURT"),
@@ -493,7 +499,26 @@ ENUM_ID_DEFAULT_RESOLVERS = (
         "DATA_VARIANT_ID",
         "net.minecraft.world.entity.animal.parrot.Parrot.Variant",
         "DEFAULT",
+        0,
         "Parrot.Variant.DEFAULT.id",
+        "the synced INT default is stored in a nested enum constant rather than an integer expression",
+    ),
+    (
+        "net.minecraft.world.entity.animal.rabbit.Rabbit",
+        "DATA_TYPE_ID",
+        "net.minecraft.world.entity.animal.rabbit.Rabbit.Variant",
+        "DEFAULT",
+        0,
+        "Rabbit.Variant.DEFAULT.id",
+        "the synced INT default is stored in a nested enum constant rather than an integer expression",
+    ),
+    (
+        "net.minecraft.world.entity.animal.fish.Salmon",
+        "DATA_TYPE",
+        "net.minecraft.world.entity.animal.fish.Salmon.Variant",
+        "DEFAULT",
+        1,
+        "Salmon.Variant.DEFAULT.id ()",
         "the synced INT default is stored in a nested enum constant rather than an integer expression",
     ),
 )
@@ -624,7 +649,15 @@ def resolve_enum_id_defaults(
 ) -> tuple[dict[tuple[str, str], NormalizedDefault], list[ResolvedDefaultEvidence]]:
     resolved: dict[tuple[str, str], NormalizedDefault] = {}
     evidence: list[ResolvedDefaultEvidence] = []
-    for owner, accessor_name, enum_fqcn, default_field, expected_expression, reason in ENUM_ID_DEFAULT_RESOLVERS:
+    for (
+        owner,
+        accessor_name,
+        enum_fqcn,
+        default_field,
+        id_argument_index,
+        expected_expression,
+        reason,
+    ) in ENUM_ID_DEFAULT_RESOLVERS:
         key = (owner, accessor_name)
         if key in resolved:
             raise ExtractionError(f"duplicate enum default resolver: {owner}.{accessor_name}")
@@ -658,9 +691,20 @@ def resolve_enum_id_defaults(
         if len(constants) != 1:
             raise ExtractionError(f"{enum_fqcn}.{default_field}: expected one {constant_name} enum constant")
         arguments = constants[0].child_by_field_name("arguments")
-        if arguments is None or not arguments.named_children:
-            raise ExtractionError(f"{enum_fqcn}.{constant_name}: expected integer id constructor argument")
-        value = evaluate_integer_expression(enum_source, arguments.named_children[0], {})
+        if (
+            id_argument_index < 0
+            or arguments is None
+            or id_argument_index >= len(arguments.named_children)
+        ):
+            raise ExtractionError(
+                f"{enum_fqcn}.{constant_name}: expected integer id constructor argument "
+                f"at index {id_argument_index}"
+            )
+        value = evaluate_integer_expression(
+            enum_source,
+            arguments.named_children[id_argument_index],
+            {},
+        )
         resolved[key] = NormalizedDefault(
             f"VanillaEntityMetadataDefault::Int({value})",
             "i32",

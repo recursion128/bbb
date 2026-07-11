@@ -9894,3 +9894,11 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   evidence，源码漂移时 check 失败。首个消费者 `TamableAnimal -> Parrot` 生成 variant
   id20/default0，native model/debug-save 删除手抄 id/default。variant clamp 仍由 native owner
   管理。
+
+## 2026-07-11：Generated enum-id default resolver 扩展（Rabbit / Salmon）
+
+- [x] 将 nested-enum INT default resolver 的构造参数位置改为显式、带证据的声明：
+  Rabbit 从 `Variant.DEFAULT -> BROWN` 的参数0机械得到 type id18/default0，Salmon 从
+  `Variant.DEFAULT -> MEDIUM` 的参数1机械得到 variant id17/default1；越界、非整数或
+  accessor 表达式漂移均令 generator 失败。world salmon bounds 与 native model/debug-save
+  删除手抄 synced id/default。variant clamp、模型映射和保存字段语义仍由对应 owner 管理。

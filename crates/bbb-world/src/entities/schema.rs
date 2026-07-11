@@ -40,6 +40,7 @@ pub enum VanillaEntityMetadataFamily {
     Llama,
     TamableAnimal,
     Parrot,
+    Rabbit,
     ArmorStand,
     AbstractArrow,
     Arrow,
@@ -67,6 +68,7 @@ pub enum VanillaEntityMetadataFamily {
     Pillager,
     SpellcasterIllager,
     AbstractFish,
+    Salmon,
     Pufferfish,
     Tadpole,
     VehicleEntity,
@@ -378,6 +380,7 @@ mod tests {
             VanillaEntityMetadataFamily::Llama,
             VanillaEntityMetadataFamily::TamableAnimal,
             VanillaEntityMetadataFamily::Parrot,
+            VanillaEntityMetadataFamily::Rabbit,
             VanillaEntityMetadataFamily::ArmorStand,
             VanillaEntityMetadataFamily::AbstractArrow,
             VanillaEntityMetadataFamily::Arrow,
@@ -405,6 +408,7 @@ mod tests {
             VanillaEntityMetadataFamily::Pillager,
             VanillaEntityMetadataFamily::SpellcasterIllager,
             VanillaEntityMetadataFamily::AbstractFish,
+            VanillaEntityMetadataFamily::Salmon,
             VanillaEntityMetadataFamily::Pufferfish,
             VanillaEntityMetadataFamily::Tadpole,
             VanillaEntityMetadataFamily::VehicleEntity,
@@ -631,11 +635,34 @@ mod tests {
         assert_eq!(parrot.own_fields.len(), 1);
         assert_eq!(VANILLA_PARROT_VARIANT_DATA_ID, 20);
         assert_eq!(VANILLA_PARROT_DEFAULT_VARIANT, 0);
+        let rabbit = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Rabbit);
+        assert_eq!(rabbit.parent, Some(VanillaEntityMetadataFamily::AgeableMob));
+        assert_eq!(rabbit.inherited_field_count, 18);
+        assert_eq!(rabbit.own_fields.len(), 1);
+        assert_eq!(VANILLA_RABBIT_TYPE_DATA_ID, 18);
+        assert_eq!(VANILLA_RABBIT_DEFAULT_TYPE, 0);
+        let salmon = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Salmon);
+        assert_eq!(
+            salmon.parent,
+            Some(VanillaEntityMetadataFamily::AbstractFish)
+        );
+        assert_eq!(salmon.inherited_field_count, 17);
+        assert_eq!(salmon.own_fields.len(), 1);
+        assert_eq!(VANILLA_SALMON_VARIANT_DATA_ID, 17);
+        assert_eq!(VANILLA_SALMON_DEFAULT_VARIANT, 1);
         assert_eq!(
             VANILLA_ENTITY_METADATA_DEFAULT_RESOLVER_EVIDENCE_26_1.len(),
-            1
+            3
         );
-        let parrot_default_evidence = VANILLA_ENTITY_METADATA_DEFAULT_RESOLVER_EVIDENCE_26_1[0];
+        let default_evidence = |java_class| {
+            VANILLA_ENTITY_METADATA_DEFAULT_RESOLVER_EVIDENCE_26_1
+                .iter()
+                .find(|item| item.java_class == java_class)
+                .copied()
+                .expect("generated enum default resolver evidence")
+        };
+        let parrot_default_evidence =
+            default_evidence("net.minecraft.world.entity.animal.parrot.Parrot");
         assert_eq!(
             parrot_default_evidence.java_class,
             "net.minecraft.world.entity.animal.parrot.Parrot"
@@ -647,6 +674,24 @@ mod tests {
         );
         assert!(!parrot_default_evidence.evidence_member.is_empty());
         assert!(!parrot_default_evidence.reason.is_empty());
+        let rabbit_default_evidence =
+            default_evidence("net.minecraft.world.entity.animal.rabbit.Rabbit");
+        assert_eq!(rabbit_default_evidence.accessor_name, "DATA_TYPE_ID");
+        assert_eq!(
+            rabbit_default_evidence.source_expression,
+            "Rabbit.Variant.DEFAULT.id"
+        );
+        let salmon_default_evidence =
+            default_evidence("net.minecraft.world.entity.animal.fish.Salmon");
+        assert_eq!(salmon_default_evidence.accessor_name, "DATA_TYPE");
+        assert_eq!(
+            salmon_default_evidence.source_expression,
+            "Salmon.Variant.DEFAULT.id ()"
+        );
+        for evidence in VANILLA_ENTITY_METADATA_DEFAULT_RESOLVER_EVIDENCE_26_1 {
+            assert!(!evidence.evidence_member.is_empty());
+            assert!(!evidence.reason.is_empty());
+        }
         let polar_bear = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::PolarBear);
         assert_eq!(
             polar_bear.parent,

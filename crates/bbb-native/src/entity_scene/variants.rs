@@ -161,7 +161,11 @@ pub(super) fn rabbit_model_kind(
 ) -> EntityModelKind {
     EntityModelKind::Rabbit {
         baby: ageable_baby(values),
-        variant: RabbitModelVariant::from_id(entity_data_int(values, RABBIT_TYPE_DATA_ID, 0)),
+        variant: RabbitModelVariant::from_id(entity_data_int(
+            values,
+            RABBIT_TYPE_DATA_ID,
+            RABBIT_DEFAULT_TYPE,
+        )),
         toast: entity_data_optional_component(values, ENTITY_CUSTOM_NAME_DATA_ID)
             .is_some_and(|name| name == "Toast"),
     }

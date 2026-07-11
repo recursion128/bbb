@@ -168,6 +168,12 @@ pub(crate) use bbb_world::{
     VANILLA_PUFFERFISH_PUFF_STATE_DATA_ID as PUFFERFISH_PUFF_STATE_DATA_ID,
 };
 use bbb_world::{
+    VANILLA_RABBIT_DEFAULT_TYPE as RABBIT_DEFAULT_TYPE,
+    VANILLA_RABBIT_TYPE_DATA_ID as RABBIT_TYPE_DATA_ID,
+    VANILLA_SALMON_DEFAULT_VARIANT as SALMON_DEFAULT_VARIANT,
+    VANILLA_SALMON_VARIANT_DATA_ID as SALMON_VARIANT_DATA_ID,
+};
+use bbb_world::{
     VANILLA_SHEEP_DEFAULT_WOOL as SHEEP_DEFAULT_WOOL,
     VANILLA_SHEEP_FLAG_SHEARED as SHEEP_WOOL_SHEARED_FLAG,
     VANILLA_SHEEP_WOOL_DATA_ID as SHEEP_WOOL_DATA_ID,
@@ -278,10 +284,6 @@ const ARMADILLO_STATE_SCARED_ID: i32 = 2;
 /// Vanilla `Raider.IS_CELEBRATING` data id (16): the boolean set while a raider celebrates a raid
 /// victory, the first `Raider` accessor after `Mob.DATA_MOB_FLAGS_ID` (15). The evoker and vindicator
 /// `getArmPose` return `CELEBRATING` while it is true (when not casting / not aggressive).
-// Salmon (`Salmon.DATA_TYPE`): AbstractFish defines FROM_BUCKET at index 16, so the size
-// variant is index 17. Defaults to 1 (`Salmon.Variant.MEDIUM`).
-const SALMON_VARIANT_DATA_ID: u8 = 17;
-const SALMON_DEFAULT_VARIANT: i32 = 1;
 // Tropical fish (`TropicalFish.DATA_ID_TYPE_VARIANT`): AbstractFish defines FROM_BUCKET at
 // index 16 (AbstractSchoolingFish adds no synced data), so the packed variant is index 17.
 // Defaults to 0 (`DEFAULT_VARIANT` = KOB/white/white, whose pattern bits are 0 → small body).
@@ -301,9 +303,6 @@ const FROG_VARIANT_DATA_ID: u8 = 18;
 // Vanilla Fox.DATA_TYPE_ID (18, INT): the first `Fox` accessor (`Fox extends Animal`), holding the
 // `Fox.Variant` id; `Fox.DATA_FLAGS_ID` follows at 19.
 const FOX_TYPE_DATA_ID: u8 = 18;
-// Vanilla Rabbit.DATA_TYPE_ID (18, INT): the first `Rabbit` accessor (`Rabbit extends Animal`),
-// holding the `Rabbit.Variant` id (note EVIL is id 99).
-const RABBIT_TYPE_DATA_ID: u8 = 18;
 // Vanilla Shulker.DATA_COLOR_ID (18, BYTE): after Mob.DATA_MOB_FLAGS_ID (15) and the two `Shulker`
 // accessors DATA_ATTACH_FACE_ID (16) / DATA_PEEK_ID (17). `getColor()` returns the dye for 0..=15
 // and `null` (the default, byte 16) otherwise.
