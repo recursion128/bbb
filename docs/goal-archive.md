@@ -9691,3 +9691,10 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   scale 与 `PuffState` 保存投影统一消费 generated aliases；focused tests 锁定继承 offset、
   serializer/default、三档命中尺寸/model state 与保存语义。未修改 bucket 交互、河豚充放气
   tick、伤害或 renderer 算法。
+
+## 2026-07-11：Generated entity metadata consumer（Bogged）
+
+- [x] 从 generated catalog 建立 `Mob -> Bogged` compatibility family：BOOLEAN
+  `DATA_SHEARED` id 16/default false 替代 native model 与 F3+I 保存投影的手抄副本；
+  focused tests 锁定继承 offset、serializer/default、sheared model state 与保存语义。
+  未修改剪刀交互、掉落、攻击或 renderer 算法。

@@ -1519,5 +1519,5 @@ pub(super) fn piglin_baby(values: &[bbb_protocol::packets::EntityDataValue]) -> 
 }
 
 pub(super) fn bogged_sheared(values: &[bbb_protocol::packets::EntityDataValue]) -> bool {
-    entity_data_bool(values, BOGGED_SHEARED_DATA_ID, false)
+    entity_data_bool(values, BOGGED_SHEARED_DATA_ID, BOGGED_DEFAULT_SHEARED)
 }

@@ -187,6 +187,7 @@ mod text_edit;
 use crate::camera_pose::camera_pose_from_world;
 use crate::crosshair::protocol_block_pos_from_world;
 use crate::crosshair::{crosshair_target_from_camera_at_partial_tick, CrosshairTarget};
+use crate::entity_scene::{BOGGED_DEFAULT_SHEARED, BOGGED_SHEARED_DATA_ID};
 use crate::entity_scene::{
     END_CRYSTAL_BEAM_TARGET_DATA_ID, END_CRYSTAL_DEFAULT_SHOW_BOTTOM,
     END_CRYSTAL_SHOW_BOTTOM_DATA_ID,
@@ -518,8 +519,6 @@ const SKELETON_DEFAULT_STRAY_CONVERSION_TIME: i32 = -1;
 const SLIME_MIN_SIZE: i32 = 1;
 const SLIME_MAX_SIZE: i32 = 127;
 const SLIME_DEFAULT_WAS_ON_GROUND: bool = false;
-const BOGGED_SHEARED_DATA_ID: u8 = 16;
-const BOGGED_DEFAULT_SHEARED: bool = false;
 const ENDERMITE_DEFAULT_LIFETIME: i32 = 0;
 const GHAST_DEFAULT_EXPLOSION_POWER: i8 = 1;
 const GLOW_SQUID_DARK_TICKS_DATA_ID: u8 = 18;

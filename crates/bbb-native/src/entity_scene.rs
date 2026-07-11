@@ -64,6 +64,10 @@ use bbb_world::{
     VANILLA_TRIDENT_FOIL_DATA_ID as TRIDENT_FOIL_DATA_ID,
 };
 pub(crate) use bbb_world::{
+    VANILLA_BOGGED_DEFAULT_SHEARED as BOGGED_DEFAULT_SHEARED,
+    VANILLA_BOGGED_SHEARED_DATA_ID as BOGGED_SHEARED_DATA_ID,
+};
+pub(crate) use bbb_world::{
     VANILLA_END_CRYSTAL_BEAM_TARGET_DATA_ID as END_CRYSTAL_BEAM_TARGET_DATA_ID,
     VANILLA_END_CRYSTAL_DEFAULT_SHOW_BOTTOM as END_CRYSTAL_DEFAULT_SHOW_BOTTOM,
     VANILLA_END_CRYSTAL_SHOW_BOTTOM_DATA_ID as END_CRYSTAL_SHOW_BOTTOM_DATA_ID,
@@ -145,7 +149,6 @@ const PIGLIN_BABY_DATA_ID: u8 = 17;
 /// Vanilla `Hoglin.DATA_IMMUNE_TO_ZOMBIFICATION`: hoglins extend `AgeableMob`,
 /// whose baby and age-locked accessors occupy ids 16 and 17.
 const HOGLIN_IMMUNE_TO_ZOMBIFICATION_DATA_ID: u8 = 18;
-const BOGGED_SHEARED_DATA_ID: u8 = 16;
 /// Vanilla `CopperGolem.DATA_WEATHER_STATE` data id (16): `CopperGolem` extends `AbstractGolem`
 /// without adding inherited synced data after `Mob.DATA_MOB_FLAGS_ID` (15), so its first own
 /// accessor is the weathering enum.
