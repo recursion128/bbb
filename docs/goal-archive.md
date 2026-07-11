@@ -9786,3 +9786,9 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   id16/default -1、BOOLEAN powered id17/default false、ignited id18/default false；world
   swell 动画、native charged layer 与 debug-save 删除手抄 synced id/default。非 synced
   `Fuse` / `ExplosionRadius` save defaults 仍由 native input 语义 owner 管理。
+
+## 2026-07-11：Generated entity metadata consumer（Warden）
+
+- [x] 从 generated catalog 建立 `Mob -> Warden` family（无 accessor 的 `Monster`
+  中间父类仍计入继承链）：INT client anger level id16/default 0；world heartbeat 动画删除
+  手抄 metadata id/default，anger threshold 与动画算法保持在 world 语义 owner。

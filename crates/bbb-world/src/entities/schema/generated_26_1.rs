@@ -56,6 +56,8 @@ const GENERATED_VANILLA_CREEPER_POWERED_DATA_ID: u8 = 17;
 pub const VANILLA_CREEPER_POWERED_DATA_ID: u8 = GENERATED_VANILLA_CREEPER_POWERED_DATA_ID;
 const GENERATED_VANILLA_CREEPER_IGNITED_DATA_ID: u8 = 18;
 pub const VANILLA_CREEPER_IGNITED_DATA_ID: u8 = GENERATED_VANILLA_CREEPER_IGNITED_DATA_ID;
+const GENERATED_VANILLA_WARDEN_ANGER_LEVEL_DATA_ID: u8 = 16;
+pub const VANILLA_WARDEN_ANGER_LEVEL_DATA_ID: u8 = GENERATED_VANILLA_WARDEN_ANGER_LEVEL_DATA_ID;
 const GENERATED_VANILLA_POLAR_BEAR_STANDING_DATA_ID: u8 = 18;
 pub const VANILLA_POLAR_BEAR_STANDING_DATA_ID: u8 = GENERATED_VANILLA_POLAR_BEAR_STANDING_DATA_ID;
 const GENERATED_VANILLA_SLIME_SIZE_DATA_ID: u8 = 16;
@@ -347,6 +349,8 @@ const GENERATED_VANILLA_CREEPER_DEFAULT_POWERED: bool = false;
 pub const VANILLA_CREEPER_DEFAULT_POWERED: bool = GENERATED_VANILLA_CREEPER_DEFAULT_POWERED;
 const GENERATED_VANILLA_CREEPER_DEFAULT_IGNITED: bool = false;
 pub const VANILLA_CREEPER_DEFAULT_IGNITED: bool = GENERATED_VANILLA_CREEPER_DEFAULT_IGNITED;
+const GENERATED_VANILLA_WARDEN_DEFAULT_ANGER_LEVEL: i32 = 0;
+pub const VANILLA_WARDEN_DEFAULT_ANGER_LEVEL: i32 = GENERATED_VANILLA_WARDEN_DEFAULT_ANGER_LEVEL;
 const GENERATED_VANILLA_POLAR_BEAR_DEFAULT_STANDING: bool = false;
 pub const VANILLA_POLAR_BEAR_DEFAULT_STANDING: bool = GENERATED_VANILLA_POLAR_BEAR_DEFAULT_STANDING;
 const GENERATED_VANILLA_AVATAR_DEFAULT_MODEL_CUSTOMIZATION: i8 = 0;
@@ -13118,6 +13122,21 @@ const CREEPER_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataF
     own_flags: CREEPER_FLAGS,
 };
 
+const WARDEN_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[VanillaEntityMetadataFieldSchema {
+    name: "CLIENT_ANGER_LEVEL",
+    data_id: 16,
+    serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+    default: VanillaEntityMetadataDefault::Int(0),
+}];
+const WARDEN_FLAGS: &[VanillaEntityMetadataFlagSchema] = &[];
+const WARDEN_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamilySchema {
+    family: VanillaEntityMetadataFamily::Warden,
+    parent: Some(VanillaEntityMetadataFamily::Mob),
+    inherited_field_count: 16,
+    own_fields: WARDEN_FIELDS,
+    own_flags: WARDEN_FLAGS,
+};
+
 const SLIME_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[VanillaEntityMetadataFieldSchema {
     name: "ID_SIZE",
     data_id: 16,
@@ -14138,6 +14157,7 @@ pub(super) const fn generated_entity_metadata_schema(
         VanillaEntityMetadataFamily::Mob => &MOB_SCHEMA,
         VanillaEntityMetadataFamily::Allay => &ALLAY_SCHEMA,
         VanillaEntityMetadataFamily::Creeper => &CREEPER_SCHEMA,
+        VanillaEntityMetadataFamily::Warden => &WARDEN_SCHEMA,
         VanillaEntityMetadataFamily::Slime => &SLIME_SCHEMA,
         VanillaEntityMetadataFamily::Shulker => &SHULKER_SCHEMA,
         VanillaEntityMetadataFamily::Zombie => &ZOMBIE_SCHEMA,

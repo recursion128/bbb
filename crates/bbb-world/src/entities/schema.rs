@@ -16,6 +16,7 @@ pub enum VanillaEntityMetadataFamily {
     Mob,
     Allay,
     Creeper,
+    Warden,
     Slime,
     Shulker,
     Zombie,
@@ -308,6 +309,7 @@ mod tests {
             VanillaEntityMetadataFamily::Mob,
             VanillaEntityMetadataFamily::Allay,
             VanillaEntityMetadataFamily::Creeper,
+            VanillaEntityMetadataFamily::Warden,
             VanillaEntityMetadataFamily::Slime,
             VanillaEntityMetadataFamily::Shulker,
             VanillaEntityMetadataFamily::Zombie,
@@ -394,6 +396,12 @@ mod tests {
         assert_eq!(VANILLA_CREEPER_DEFAULT_SWELL_DIR, -1);
         assert!(!VANILLA_CREEPER_DEFAULT_POWERED);
         assert!(!VANILLA_CREEPER_DEFAULT_IGNITED);
+        let warden = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Warden);
+        assert_eq!(warden.parent, Some(VanillaEntityMetadataFamily::Mob));
+        assert_eq!(warden.inherited_field_count, 16);
+        assert_eq!(warden.own_fields.len(), 1);
+        assert_eq!(VANILLA_WARDEN_ANGER_LEVEL_DATA_ID, 16);
+        assert_eq!(VANILLA_WARDEN_DEFAULT_ANGER_LEVEL, 0);
         let polar_bear = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::PolarBear);
         assert_eq!(
             polar_bear.parent,

@@ -57,6 +57,8 @@ use super::schema::{
     VANILLA_VEHICLE_DEFAULT_HURT_TIME as VEHICLE_DEFAULT_HURT_TIME,
     VANILLA_VEHICLE_HURT_DIR_DATA_ID as VEHICLE_HURT_DIR_DATA_ID,
     VANILLA_VEHICLE_HURT_TIME_DATA_ID as VEHICLE_HURT_TIME_DATA_ID,
+    VANILLA_WARDEN_ANGER_LEVEL_DATA_ID as WARDEN_ANGER_LEVEL_DATA_ID,
+    VANILLA_WARDEN_DEFAULT_ANGER_LEVEL as WARDEN_DEFAULT_ANGER_LEVEL,
 };
 use super::{
     is_vanilla_boat_type, is_vanilla_vehicle_entity_type, EntityTransform, EntityVec3,
@@ -301,7 +303,6 @@ const WARDEN_HEART_ANIMATION_TICKS: i32 = 10;
 /// Vanilla `Warden.CLIENT_ANGER_LEVEL` (`getClientAngerLevel()`): the warden's
 /// first own synced accessor after `Entity` (`0..=7`), `LivingEntity` (`8..=14`)
 /// and `Mob` (`15`); `Monster` adds none. An `Integer`, default `0`.
-const WARDEN_ANGER_LEVEL_DATA_ID: u8 = 16;
 /// Vanilla `AngerLevel.ANGRY.getMinimumAnger()`: the anger at which the heartbeat
 /// reaches its fastest, used to normalise `getHeartBeatDelay`.
 const WARDEN_ANGRY_MINIMUM_ANGER: i32 = 80;
@@ -6074,7 +6075,11 @@ pub(crate) fn entity_is_fall_flying(data_values: &[EntityDataValue]) -> bool {
 /// synced anger rises. Read straight from the entity metadata in the tick loop;
 /// non-wardens (whose synced slot `16` is not an int) fall back to the calm `40`.
 pub(crate) fn warden_heartbeat_delay(data_values: &[EntityDataValue]) -> u32 {
-    let anger = entity_data_int(data_values, WARDEN_ANGER_LEVEL_DATA_ID, 0);
+    let anger = entity_data_int(
+        data_values,
+        WARDEN_ANGER_LEVEL_DATA_ID,
+        WARDEN_DEFAULT_ANGER_LEVEL,
+    );
     let ratio = (anger as f32 / WARDEN_ANGRY_MINIMUM_ANGER as f32).clamp(0.0, 1.0);
     (40 - (ratio * 30.0).floor() as i32) as u32
 }
