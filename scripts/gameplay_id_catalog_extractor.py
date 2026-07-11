@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import ast
 import json
+import struct
 from dataclasses import dataclass
 
 from vanilla_java_source import (
@@ -34,6 +35,15 @@ class MobEffectEntry:
     constant_name: str
     resource_id: str
     category: str
+    attribute_modifiers: tuple["MobEffectAttributeModifierEntry", ...]
+
+
+@dataclass(frozen=True)
+class MobEffectAttributeModifierEntry:
+    attribute_constant_name: str
+    modifier_id: str
+    amount_bits: int
+    operation_constant_name: str
 
 
 @dataclass(frozen=True)
@@ -456,7 +466,9 @@ def attribute_entries(source: JavaSource, expected_count: int = 35) -> list[Attr
     return entries
 
 
-def mob_effect_entries(source: JavaSource, expected_count: int = 40) -> list[MobEffectEntry]:
+def mob_effect_entries(
+    source: JavaSource, expected_count: int = 40, expected_modifier_count: int = 12
+) -> list[MobEffectEntry]:
     entries: list[MobEffectEntry] = []
     for field in _fields(source, "Holder<MobEffect>"):
         arguments = _register_arguments(source, field)
@@ -470,9 +482,58 @@ def mob_effect_entries(source: JavaSource, expected_count: int = 40) -> list[Mob
         ]
         if len(categories) != 1 or categories[0] not in {"BENEFICIAL", "HARMFUL", "NEUTRAL"}:
             _fail(source, arguments[1], f"expected one mob effect category, found {categories}")
+        modifiers = []
+        for call in source.calls:
+            if (
+                call.name != "addAttributeModifier"
+                or call.span.start_byte < arguments[1].span.start_byte
+                or call.span.end_byte > arguments[1].span.end_byte
+            ):
+                continue
+            if len(call.arguments) != 4:
+                _fail(source, source.expression(call.node), "mob effect attribute modifier must have four arguments")
+            attribute = call.arguments[0].canonical
+            if not attribute.startswith("Attributes."):
+                _fail(source, call.arguments[0], "mob effect modifier attribute must reference Attributes")
+            modifier_id_call = call.arguments[1].node
+            modifier_name = modifier_id_call.child_by_field_name("name")
+            modifier_arguments = modifier_id_call.child_by_field_name("arguments")
+            if (
+                modifier_id_call.type != "method_invocation"
+                or modifier_name is None
+                or source.text(modifier_name) != "withDefaultNamespace"
+                or modifier_arguments is None
+                or len(modifier_arguments.named_children) != 1
+            ):
+                _fail(source, call.arguments[1], "mob effect modifier id must use Identifier.withDefaultNamespace")
+            amount_literal = call.arguments[2].canonical.replace(" ", "")
+            amount_text = amount_literal.removesuffix("F").removesuffix("D")
+            try:
+                amount = float(amount_text)
+            except ValueError:
+                _fail(source, call.arguments[2], "mob effect modifier amount must be a numeric literal")
+            if amount_literal.endswith("F"):
+                amount = struct.unpack("!f", struct.pack("!f", amount))[0]
+            amount_bits = struct.unpack("!Q", struct.pack("!d", amount))[0]
+            operation = call.arguments[3].canonical
+            if not operation.startswith("AttributeModifier.Operation."):
+                _fail(source, call.arguments[3], "mob effect modifier operation must reference AttributeModifier.Operation")
+            modifiers.append(
+                MobEffectAttributeModifierEntry(
+                    attribute.rsplit(".", 1)[-1],
+                    "minecraft:" + _string(
+                        source, source.expression(modifier_arguments.named_children[0])
+                    ),
+                    amount_bits,
+                    operation.rsplit(".", 1)[-1],
+                )
+            )
         entries.append(
             MobEffectEntry(
-                field.name, "minecraft:" + _string(source, arguments[0]), categories[0]
+                field.name,
+                "minecraft:" + _string(source, arguments[0]),
+                categories[0],
+                tuple(modifiers),
             )
         )
     if len(entries) != expected_count:
@@ -480,6 +541,10 @@ def mob_effect_entries(source: JavaSource, expected_count: int = 40) -> list[Mob
             f"expected {expected_count} mob effects, extracted {len(entries)}"
         )
     _validate(entries, "mob effect", "resource_id")
+    if sum(len(entry.attribute_modifiers) for entry in entries) != expected_modifier_count:
+        raise GameplayIdExtractionError(
+            f"expected {expected_modifier_count} mob effect attribute modifiers"
+        )
     return entries
 
 

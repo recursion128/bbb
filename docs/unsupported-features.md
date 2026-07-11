@@ -82,6 +82,8 @@ Owner: `scripts/` + each generated catalog's semantic crate
   triples now share a generated owner
   across protocol/native/item-model，并由 renderer dev 反向断言锁定；texture、tooltip 和
   entity presentation semantics remain handwritten.
+  MobEffects attribute-modifier attribute/id/amount/operation builder facts now extend the generated
+  mob-effect catalog; potion tooltip arithmetic and presentation remain handwritten.
   The remaining cross-crate registry/ordinal audit stays open.
 
 ## Unknown clientbound packets in login, configuration, and play

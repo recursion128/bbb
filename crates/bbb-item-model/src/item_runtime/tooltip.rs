@@ -6,6 +6,7 @@ use bbb_protocol::{
         VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_MULTIPLIED_BASE_ID,
         VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_MULTIPLIED_TOTAL_ID,
     },
+    attribute_types::vanilla_attribute_type,
     builtin_enum_component_values::{normalize_vanilla_dye_color_id, vanilla_dye_color_name},
     entity_types::vanilla_entity_type_allowed_in_peaceful,
     equipment_slots::VANILLA_EQUIPMENT_SLOT_GROUPS,
@@ -1632,10 +1633,13 @@ fn collect_potion_effect_attribute_modifiers(
     lines.extend(
         vanilla_mob_effect_attribute_modifiers(effect_id)
             .iter()
-            .map(|modifier| PotionAttributeModifierLine {
-                attribute_description_key: modifier.attribute_description_key,
-                amount: modifier.amount * amplifier_scale,
-                operation_id: modifier.operation_id,
+            .filter_map(|modifier| {
+                Some(PotionAttributeModifierLine {
+                    attribute_description_key: vanilla_attribute_type(modifier.attribute_id)?
+                        .description_key,
+                    amount: f64::from_bits(modifier.amount_bits) * amplifier_scale,
+                    operation_id: modifier.operation_id,
+                })
             }),
     );
 }

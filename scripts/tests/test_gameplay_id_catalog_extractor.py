@@ -74,7 +74,9 @@ public class Attributes {
 package fixture;
 public class MobEffects {
   public static final Holder<MobEffect> ONE = register(
-      "one", new MobEffect(MobEffectCategory.HARMFUL, 0));
+      "one", new MobEffect(MobEffectCategory.HARMFUL, 0)
+          .addAttributeModifier(Attributes.ONE, Identifier.withDefaultNamespace("effect.one"),
+              0.2F, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
 }
 """,
         )
@@ -83,7 +85,18 @@ public class MobEffects {
             (attribute.resource_id, attribute.description_key, attribute.sentiment, attribute.syncable),
             ("minecraft:one", "attribute.one", "NEUTRAL", True),
         )
-        self.assertEqual(mob_effect_entries(effects, 1)[0].category, "HARMFUL")
+        effect = mob_effect_entries(effects, 1, 1)[0]
+        self.assertEqual(effect.category, "HARMFUL")
+        self.assertEqual(effect.attribute_modifiers[0].attribute_constant_name, "ONE")
+        self.assertEqual(effect.attribute_modifiers[0].modifier_id, "minecraft:effect.one")
+        self.assertEqual(
+            effect.attribute_modifiers[0].amount_bits,
+            4596373779801702400,
+        )
+        self.assertEqual(
+            effect.attribute_modifiers[0].operation_constant_name,
+            "ADD_MULTIPLIED_TOTAL",
+        )
 
     def test_enum_constants_preserve_arguments_and_ignore_nested_enum(self) -> None:
         slots = parse_source(

@@ -3,6 +3,19 @@
 // Update: scripts/vanilla-source-tools.sh scripts/generate-gameplay-id-catalog.py
 // Check: scripts/vanilla-source-tools.sh scripts/generate-gameplay-id-catalog.py --check
 
+use crate::{
+    attribute_modifier_types::{
+        VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_MULTIPLIED_TOTAL_ID,
+        VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_VALUE_ID,
+    },
+    attribute_types::{
+        VANILLA_ATTRIBUTE_ATTACK_DAMAGE_ID, VANILLA_ATTRIBUTE_ATTACK_SPEED_ID,
+        VANILLA_ATTRIBUTE_LUCK_ID, VANILLA_ATTRIBUTE_MAX_ABSORPTION_ID,
+        VANILLA_ATTRIBUTE_MAX_HEALTH_ID, VANILLA_ATTRIBUTE_MOVEMENT_SPEED_ID,
+        VANILLA_ATTRIBUTE_SAFE_FALL_DISTANCE_ID, VANILLA_ATTRIBUTE_WAYPOINT_TRANSMIT_RANGE_ID,
+    },
+};
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MobEffectCategory {
     Beneficial,
@@ -11,11 +24,20 @@ pub enum MobEffectCategory {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct MobEffectAttributeModifierDescriptor {
+    pub attribute_id: i32,
+    pub modifier_id: &'static str,
+    pub amount_bits: u64,
+    pub operation_id: i32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct MobEffectTypeCatalogEntry {
     pub id: i32,
     pub constant_name: &'static str,
     pub resource_id: &'static str,
     pub category: MobEffectCategory,
+    pub attribute_modifiers: &'static [MobEffectAttributeModifierDescriptor],
 }
 
 pub const VANILLA_MOB_EFFECT_SPEED_ID: i32 = 0;
@@ -65,240 +87,340 @@ pub const VANILLA_MOB_EFFECT_TYPES: &[MobEffectTypeCatalogEntry] = &[
         constant_name: "SPEED",
         resource_id: "minecraft:speed",
         category: MobEffectCategory::Beneficial,
+        attribute_modifiers: &[MobEffectAttributeModifierDescriptor {
+            attribute_id: VANILLA_ATTRIBUTE_MOVEMENT_SPEED_ID,
+            modifier_id: "minecraft:effect.speed",
+            amount_bits: 4596373779801702400,
+            operation_id: VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_MULTIPLIED_TOTAL_ID,
+        }],
     },
     MobEffectTypeCatalogEntry {
         id: 1,
         constant_name: "SLOWNESS",
         resource_id: "minecraft:slowness",
         category: MobEffectCategory::Harmful,
+        attribute_modifiers: &[MobEffectAttributeModifierDescriptor {
+            attribute_id: VANILLA_ATTRIBUTE_MOVEMENT_SPEED_ID,
+            modifier_id: "minecraft:effect.slowness",
+            amount_bits: 13817944376912904192,
+            operation_id: VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_MULTIPLIED_TOTAL_ID,
+        }],
     },
     MobEffectTypeCatalogEntry {
         id: 2,
         constant_name: "HASTE",
         resource_id: "minecraft:haste",
         category: MobEffectCategory::Beneficial,
+        attribute_modifiers: &[MobEffectAttributeModifierDescriptor {
+            attribute_id: VANILLA_ATTRIBUTE_ATTACK_SPEED_ID,
+            modifier_id: "minecraft:effect.haste",
+            amount_bits: 4591870180174331904,
+            operation_id: VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_MULTIPLIED_TOTAL_ID,
+        }],
     },
     MobEffectTypeCatalogEntry {
         id: 3,
         constant_name: "MINING_FATIGUE",
         resource_id: "minecraft:mining_fatigue",
         category: MobEffectCategory::Harmful,
+        attribute_modifiers: &[MobEffectAttributeModifierDescriptor {
+            attribute_id: VANILLA_ATTRIBUTE_ATTACK_SPEED_ID,
+            modifier_id: "minecraft:effect.mining_fatigue",
+            amount_bits: 13815242217029107712,
+            operation_id: VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_MULTIPLIED_TOTAL_ID,
+        }],
     },
     MobEffectTypeCatalogEntry {
         id: 4,
         constant_name: "STRENGTH",
         resource_id: "minecraft:strength",
         category: MobEffectCategory::Beneficial,
+        attribute_modifiers: &[MobEffectAttributeModifierDescriptor {
+            attribute_id: VANILLA_ATTRIBUTE_ATTACK_DAMAGE_ID,
+            modifier_id: "minecraft:effect.strength",
+            amount_bits: 4613937818241073152,
+            operation_id: VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_VALUE_ID,
+        }],
     },
     MobEffectTypeCatalogEntry {
         id: 5,
         constant_name: "INSTANT_HEALTH",
         resource_id: "minecraft:instant_health",
         category: MobEffectCategory::Beneficial,
+        attribute_modifiers: &[],
     },
     MobEffectTypeCatalogEntry {
         id: 6,
         constant_name: "INSTANT_DAMAGE",
         resource_id: "minecraft:instant_damage",
         category: MobEffectCategory::Harmful,
+        attribute_modifiers: &[],
     },
     MobEffectTypeCatalogEntry {
         id: 7,
         constant_name: "JUMP_BOOST",
         resource_id: "minecraft:jump_boost",
         category: MobEffectCategory::Beneficial,
+        attribute_modifiers: &[MobEffectAttributeModifierDescriptor {
+            attribute_id: VANILLA_ATTRIBUTE_SAFE_FALL_DISTANCE_ID,
+            modifier_id: "minecraft:effect.jump_boost",
+            amount_bits: 4607182418800017408,
+            operation_id: VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_VALUE_ID,
+        }],
     },
     MobEffectTypeCatalogEntry {
         id: 8,
         constant_name: "NAUSEA",
         resource_id: "minecraft:nausea",
         category: MobEffectCategory::Harmful,
+        attribute_modifiers: &[],
     },
     MobEffectTypeCatalogEntry {
         id: 9,
         constant_name: "REGENERATION",
         resource_id: "minecraft:regeneration",
         category: MobEffectCategory::Beneficial,
+        attribute_modifiers: &[],
     },
     MobEffectTypeCatalogEntry {
         id: 10,
         constant_name: "RESISTANCE",
         resource_id: "minecraft:resistance",
         category: MobEffectCategory::Beneficial,
+        attribute_modifiers: &[],
     },
     MobEffectTypeCatalogEntry {
         id: 11,
         constant_name: "FIRE_RESISTANCE",
         resource_id: "minecraft:fire_resistance",
         category: MobEffectCategory::Beneficial,
+        attribute_modifiers: &[],
     },
     MobEffectTypeCatalogEntry {
         id: 12,
         constant_name: "WATER_BREATHING",
         resource_id: "minecraft:water_breathing",
         category: MobEffectCategory::Beneficial,
+        attribute_modifiers: &[],
     },
     MobEffectTypeCatalogEntry {
         id: 13,
         constant_name: "INVISIBILITY",
         resource_id: "minecraft:invisibility",
         category: MobEffectCategory::Beneficial,
+        attribute_modifiers: &[MobEffectAttributeModifierDescriptor {
+            attribute_id: VANILLA_ATTRIBUTE_WAYPOINT_TRANSMIT_RANGE_ID,
+            modifier_id: "minecraft:effect.waypoint_transmit_range_hide",
+            amount_bits: 13830554455654793216,
+            operation_id: VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_MULTIPLIED_TOTAL_ID,
+        }],
     },
     MobEffectTypeCatalogEntry {
         id: 14,
         constant_name: "BLINDNESS",
         resource_id: "minecraft:blindness",
         category: MobEffectCategory::Harmful,
+        attribute_modifiers: &[],
     },
     MobEffectTypeCatalogEntry {
         id: 15,
         constant_name: "NIGHT_VISION",
         resource_id: "minecraft:night_vision",
         category: MobEffectCategory::Beneficial,
+        attribute_modifiers: &[],
     },
     MobEffectTypeCatalogEntry {
         id: 16,
         constant_name: "HUNGER",
         resource_id: "minecraft:hunger",
         category: MobEffectCategory::Harmful,
+        attribute_modifiers: &[],
     },
     MobEffectTypeCatalogEntry {
         id: 17,
         constant_name: "WEAKNESS",
         resource_id: "minecraft:weakness",
         category: MobEffectCategory::Harmful,
+        attribute_modifiers: &[MobEffectAttributeModifierDescriptor {
+            attribute_id: VANILLA_ATTRIBUTE_ATTACK_DAMAGE_ID,
+            modifier_id: "minecraft:effect.weakness",
+            amount_bits: 13839561654909534208,
+            operation_id: VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_VALUE_ID,
+        }],
     },
     MobEffectTypeCatalogEntry {
         id: 18,
         constant_name: "POISON",
         resource_id: "minecraft:poison",
         category: MobEffectCategory::Harmful,
+        attribute_modifiers: &[],
     },
     MobEffectTypeCatalogEntry {
         id: 19,
         constant_name: "WITHER",
         resource_id: "minecraft:wither",
         category: MobEffectCategory::Harmful,
+        attribute_modifiers: &[],
     },
     MobEffectTypeCatalogEntry {
         id: 20,
         constant_name: "HEALTH_BOOST",
         resource_id: "minecraft:health_boost",
         category: MobEffectCategory::Beneficial,
+        attribute_modifiers: &[MobEffectAttributeModifierDescriptor {
+            attribute_id: VANILLA_ATTRIBUTE_MAX_HEALTH_ID,
+            modifier_id: "minecraft:effect.health_boost",
+            amount_bits: 4616189618054758400,
+            operation_id: VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_VALUE_ID,
+        }],
     },
     MobEffectTypeCatalogEntry {
         id: 21,
         constant_name: "ABSORPTION",
         resource_id: "minecraft:absorption",
         category: MobEffectCategory::Beneficial,
+        attribute_modifiers: &[MobEffectAttributeModifierDescriptor {
+            attribute_id: VANILLA_ATTRIBUTE_MAX_ABSORPTION_ID,
+            modifier_id: "minecraft:effect.absorption",
+            amount_bits: 4616189618054758400,
+            operation_id: VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_VALUE_ID,
+        }],
     },
     MobEffectTypeCatalogEntry {
         id: 22,
         constant_name: "SATURATION",
         resource_id: "minecraft:saturation",
         category: MobEffectCategory::Beneficial,
+        attribute_modifiers: &[],
     },
     MobEffectTypeCatalogEntry {
         id: 23,
         constant_name: "GLOWING",
         resource_id: "minecraft:glowing",
         category: MobEffectCategory::Neutral,
+        attribute_modifiers: &[],
     },
     MobEffectTypeCatalogEntry {
         id: 24,
         constant_name: "LEVITATION",
         resource_id: "minecraft:levitation",
         category: MobEffectCategory::Harmful,
+        attribute_modifiers: &[],
     },
     MobEffectTypeCatalogEntry {
         id: 25,
         constant_name: "LUCK",
         resource_id: "minecraft:luck",
         category: MobEffectCategory::Beneficial,
+        attribute_modifiers: &[MobEffectAttributeModifierDescriptor {
+            attribute_id: VANILLA_ATTRIBUTE_LUCK_ID,
+            modifier_id: "minecraft:effect.luck",
+            amount_bits: 4607182418800017408,
+            operation_id: VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_VALUE_ID,
+        }],
     },
     MobEffectTypeCatalogEntry {
         id: 26,
         constant_name: "UNLUCK",
         resource_id: "minecraft:unluck",
         category: MobEffectCategory::Harmful,
+        attribute_modifiers: &[MobEffectAttributeModifierDescriptor {
+            attribute_id: VANILLA_ATTRIBUTE_LUCK_ID,
+            modifier_id: "minecraft:effect.unluck",
+            amount_bits: 13830554455654793216,
+            operation_id: VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_VALUE_ID,
+        }],
     },
     MobEffectTypeCatalogEntry {
         id: 27,
         constant_name: "SLOW_FALLING",
         resource_id: "minecraft:slow_falling",
         category: MobEffectCategory::Beneficial,
+        attribute_modifiers: &[],
     },
     MobEffectTypeCatalogEntry {
         id: 28,
         constant_name: "CONDUIT_POWER",
         resource_id: "minecraft:conduit_power",
         category: MobEffectCategory::Beneficial,
+        attribute_modifiers: &[],
     },
     MobEffectTypeCatalogEntry {
         id: 29,
         constant_name: "DOLPHINS_GRACE",
         resource_id: "minecraft:dolphins_grace",
         category: MobEffectCategory::Beneficial,
+        attribute_modifiers: &[],
     },
     MobEffectTypeCatalogEntry {
         id: 30,
         constant_name: "BAD_OMEN",
         resource_id: "minecraft:bad_omen",
         category: MobEffectCategory::Neutral,
+        attribute_modifiers: &[],
     },
     MobEffectTypeCatalogEntry {
         id: 31,
         constant_name: "HERO_OF_THE_VILLAGE",
         resource_id: "minecraft:hero_of_the_village",
         category: MobEffectCategory::Beneficial,
+        attribute_modifiers: &[],
     },
     MobEffectTypeCatalogEntry {
         id: 32,
         constant_name: "DARKNESS",
         resource_id: "minecraft:darkness",
         category: MobEffectCategory::Harmful,
+        attribute_modifiers: &[],
     },
     MobEffectTypeCatalogEntry {
         id: 33,
         constant_name: "TRIAL_OMEN",
         resource_id: "minecraft:trial_omen",
         category: MobEffectCategory::Neutral,
+        attribute_modifiers: &[],
     },
     MobEffectTypeCatalogEntry {
         id: 34,
         constant_name: "RAID_OMEN",
         resource_id: "minecraft:raid_omen",
         category: MobEffectCategory::Neutral,
+        attribute_modifiers: &[],
     },
     MobEffectTypeCatalogEntry {
         id: 35,
         constant_name: "WIND_CHARGED",
         resource_id: "minecraft:wind_charged",
         category: MobEffectCategory::Harmful,
+        attribute_modifiers: &[],
     },
     MobEffectTypeCatalogEntry {
         id: 36,
         constant_name: "WEAVING",
         resource_id: "minecraft:weaving",
         category: MobEffectCategory::Harmful,
+        attribute_modifiers: &[],
     },
     MobEffectTypeCatalogEntry {
         id: 37,
         constant_name: "OOZING",
         resource_id: "minecraft:oozing",
         category: MobEffectCategory::Harmful,
+        attribute_modifiers: &[],
     },
     MobEffectTypeCatalogEntry {
         id: 38,
         constant_name: "INFESTED",
         resource_id: "minecraft:infested",
         category: MobEffectCategory::Harmful,
+        attribute_modifiers: &[],
     },
     MobEffectTypeCatalogEntry {
         id: 39,
         constant_name: "BREATH_OF_THE_NAUTILUS",
         resource_id: "minecraft:breath_of_the_nautilus",
         category: MobEffectCategory::Beneficial,
+        attribute_modifiers: &[],
     },
 ];
 
@@ -316,7 +438,7 @@ pub fn vanilla_mob_effect_type_for_resource_id(
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashSet;
+    use std::{collections::HashSet, fs, path::Path};
 
     use super::*;
 
@@ -351,6 +473,20 @@ mod tests {
                 .count(),
             4
         );
+        assert_eq!(
+            VANILLA_MOB_EFFECT_TYPES
+                .iter()
+                .map(|entry| entry.attribute_modifiers.len())
+                .sum::<usize>(),
+            12
+        );
+        assert_eq!(
+            vanilla_mob_effect_type(VANILLA_MOB_EFFECT_SPEED_ID)
+                .unwrap()
+                .attribute_modifiers[0]
+                .modifier_id,
+            "minecraft:effect.speed"
+        );
     }
 
     #[test]
@@ -374,5 +510,44 @@ mod tests {
         );
         assert_eq!(vanilla_mob_effect_type(-1), None);
         assert_eq!(vanilla_mob_effect_type(40), None);
+    }
+
+    #[test]
+    fn production_sources_do_not_redeclare_mob_effect_attribute_modifiers() {
+        fn visit(directory: &Path, violations: &mut Vec<String>) {
+            for entry in fs::read_dir(directory).unwrap() {
+                let path = entry.unwrap().path();
+                if path.is_dir() {
+                    visit(&path, violations);
+                    continue;
+                }
+                if path.extension().and_then(|value| value.to_str()) != Some("rs") {
+                    continue;
+                }
+                let display = path.to_string_lossy();
+                if display.ends_with("/mob_effect_types.rs")
+                    || display.ends_with("/tests.rs")
+                    || display.contains("/tests/")
+                {
+                    continue;
+                }
+                let source = fs::read_to_string(&path).unwrap();
+                let production = source.split("#[cfg(test)]").next().unwrap_or(&source);
+                if production.contains("SPEED_ATTRIBUTE_MODIFIERS")
+                    || production.contains("fn attribute_modifier(\n")
+                {
+                    violations.push(display.to_string());
+                }
+            }
+        }
+        let mut violations = Vec::new();
+        visit(
+            Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap(),
+            &mut violations,
+        );
+        assert!(
+            violations.is_empty(),
+            "parallel mob-effect attribute modifier owners: {violations:?}"
+        );
     }
 }

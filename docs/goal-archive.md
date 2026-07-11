@@ -10731,3 +10731,11 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   dev-dependency 做逐项反向断言；同时删除
   item-model 的平行 dye-color name/id 表。pattern texture、tooltip 文案、entity packed-variant
   位布局与渲染语义仍由各 owner 手写。
+
+## 2026-07-11：Generated mob-effect attribute modifiers
+
+- [x] gameplay-id extractor 从 `MobEffects.java` 的 12 个 `addAttributeModifier` builder call
+  提取 attribute constant、modifier resource id、Java float/double amount bits 与 operation，
+  生成物引用既有 attribute/operation generated constants。item-model 删除 12 组手写 modifier
+  slices，potion tooltip 通过 generated attribute description 与 amount bits 投影；amplifier
+  计算、文本格式、颜色和 tooltip 排版仍由 item-model 手写。
