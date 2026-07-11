@@ -9761,3 +9761,9 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   id 16/default false 与 charging-crossbow id 17/default false 替代 world/native 手抄值；
   use-tick、celebrating 与 crossbow arm poses 统一消费 generated aliases。Wave/CanJoinRaid
   不是 synced metadata，仍由保存语义 owner 管理。
+
+## 2026-07-11：Generated entity metadata consumer（SpellcasterIllager）
+
+- [x] 从 generated catalog 建立 `Raider -> SpellcasterIllager` sibling family：BYTE
+  casting id 17/default 0，与 Pillager 合法复用继承 index；native spellcasting arm pose
+  删除手抄值。`SpellTicks` 不是 synced metadata，仍由保存语义 owner 管理。

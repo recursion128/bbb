@@ -113,6 +113,10 @@ use bbb_world::{
     VANILLA_SHULKER_DEFAULT_COLOR as SHULKER_DEFAULT_COLOR,
 };
 use bbb_world::{
+    VANILLA_SPELLCASTER_ILLAGER_CASTING_DATA_ID as SPELLCASTER_ILLAGER_CASTING_DATA_ID,
+    VANILLA_SPELLCASTER_ILLAGER_DEFAULT_CASTING as SPELLCASTER_ILLAGER_DEFAULT_CASTING,
+};
+use bbb_world::{
     VANILLA_STRIDER_DEFAULT_SUFFOCATING as STRIDER_DEFAULT_SUFFOCATING,
     VANILLA_STRIDER_SUFFOCATING_DATA_ID as STRIDER_SUFFOCATING_DATA_ID,
 };
@@ -197,7 +201,6 @@ const ARMADILLO_STATE_SCARED_ID: i32 = 2;
 /// Vanilla `SpellcasterIllager.DATA_SPELL_CASTING_ID` data id (17): the byte holding the spell
 /// id, the first `SpellcasterIllager` accessor after `Raider.IS_CELEBRATING` (16). The byte is
 /// `> 0` while `isCastingSpell()`.
-const SPELLCASTER_ILLAGER_CASTING_DATA_ID: u8 = 17;
 /// Vanilla `Pillager.IS_CHARGING_CROSSBOW` data id (17): the boolean set while the pillager draws its
 /// crossbow, the first `Pillager` accessor after `Raider.IS_CELEBRATING` (16) — the same slot the
 /// spellcaster illagers use for `DATA_SPELL_CASTING_ID`, since each illager subclass adds its own

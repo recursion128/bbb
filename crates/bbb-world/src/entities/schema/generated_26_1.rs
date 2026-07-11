@@ -178,6 +178,9 @@ pub const VANILLA_RAIDER_CELEBRATING_DATA_ID: u8 = GENERATED_VANILLA_RAIDER_CELE
 const GENERATED_VANILLA_PILLAGER_CHARGING_CROSSBOW_DATA_ID: u8 = 17;
 pub const VANILLA_PILLAGER_CHARGING_CROSSBOW_DATA_ID: u8 =
     GENERATED_VANILLA_PILLAGER_CHARGING_CROSSBOW_DATA_ID;
+const GENERATED_VANILLA_SPELLCASTER_ILLAGER_CASTING_DATA_ID: u8 = 17;
+pub const VANILLA_SPELLCASTER_ILLAGER_CASTING_DATA_ID: u8 =
+    GENERATED_VANILLA_SPELLCASTER_ILLAGER_CASTING_DATA_ID;
 const GENERATED_VANILLA_ABSTRACT_FISH_FROM_BUCKET_DATA_ID: u8 = 16;
 pub const VANILLA_ABSTRACT_FISH_FROM_BUCKET_DATA_ID: u8 =
     GENERATED_VANILLA_ABSTRACT_FISH_FROM_BUCKET_DATA_ID;
@@ -431,6 +434,9 @@ pub const VANILLA_RAIDER_DEFAULT_CELEBRATING: bool = GENERATED_VANILLA_RAIDER_DE
 const GENERATED_VANILLA_PILLAGER_DEFAULT_CHARGING_CROSSBOW: bool = false;
 pub const VANILLA_PILLAGER_DEFAULT_CHARGING_CROSSBOW: bool =
     GENERATED_VANILLA_PILLAGER_DEFAULT_CHARGING_CROSSBOW;
+const GENERATED_VANILLA_SPELLCASTER_ILLAGER_DEFAULT_CASTING: i8 = 0;
+pub const VANILLA_SPELLCASTER_ILLAGER_DEFAULT_CASTING: i8 =
+    GENERATED_VANILLA_SPELLCASTER_ILLAGER_DEFAULT_CASTING;
 const GENERATED_VANILLA_ABSTRACT_FISH_DEFAULT_FROM_BUCKET: bool = false;
 pub const VANILLA_ABSTRACT_FISH_DEFAULT_FROM_BUCKET: bool =
     GENERATED_VANILLA_ABSTRACT_FISH_DEFAULT_FROM_BUCKET;
@@ -13768,6 +13774,23 @@ const PILLAGER_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadata
     own_flags: PILLAGER_FLAGS,
 };
 
+const SPELLCASTERILLAGER_FIELDS: &[VanillaEntityMetadataFieldSchema] =
+    &[VanillaEntityMetadataFieldSchema {
+        name: "DATA_SPELL_CASTING_ID",
+        data_id: 17,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+        default: VanillaEntityMetadataDefault::Byte(0),
+    }];
+const SPELLCASTERILLAGER_FLAGS: &[VanillaEntityMetadataFlagSchema] = &[];
+const SPELLCASTERILLAGER_SCHEMA: VanillaEntityMetadataFamilySchema =
+    VanillaEntityMetadataFamilySchema {
+        family: VanillaEntityMetadataFamily::SpellcasterIllager,
+        parent: Some(VanillaEntityMetadataFamily::Raider),
+        inherited_field_count: 17,
+        own_fields: SPELLCASTERILLAGER_FIELDS,
+        own_flags: SPELLCASTERILLAGER_FLAGS,
+    };
+
 const ABSTRACTFISH_FIELDS: &[VanillaEntityMetadataFieldSchema] =
     &[VanillaEntityMetadataFieldSchema {
         name: "FROM_BUCKET",
@@ -14053,6 +14076,7 @@ pub(super) const fn generated_entity_metadata_schema(
         VanillaEntityMetadataFamily::Piglin => &PIGLIN_SCHEMA,
         VanillaEntityMetadataFamily::Raider => &RAIDER_SCHEMA,
         VanillaEntityMetadataFamily::Pillager => &PILLAGER_SCHEMA,
+        VanillaEntityMetadataFamily::SpellcasterIllager => &SPELLCASTERILLAGER_SCHEMA,
         VanillaEntityMetadataFamily::AbstractFish => &ABSTRACTFISH_SCHEMA,
         VanillaEntityMetadataFamily::Pufferfish => &PUFFERFISH_SCHEMA,
         VanillaEntityMetadataFamily::VehicleEntity => &VEHICLEENTITY_SCHEMA,

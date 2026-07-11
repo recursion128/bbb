@@ -850,7 +850,11 @@ pub(super) fn illager_spellcasting(
 ) -> bool {
     (entity_type_id == VANILLA_ENTITY_TYPE_EVOKER_ID
         || entity_type_id == VANILLA_ENTITY_TYPE_ILLUSIONER_ID)
-        && entity_data_byte(values, SPELLCASTER_ILLAGER_CASTING_DATA_ID, 0) > 0
+        && entity_data_byte(
+            values,
+            SPELLCASTER_ILLAGER_CASTING_DATA_ID,
+            SPELLCASTER_ILLAGER_DEFAULT_CASTING,
+        ) > 0
 }
 
 /// Vanilla `Raider.isCelebrating()` (the synced `IS_CELEBRATING` boolean, id 16): drives the evoker and

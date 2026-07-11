@@ -45,6 +45,7 @@ pub enum VanillaEntityMetadataFamily {
     Piglin,
     Raider,
     Pillager,
+    SpellcasterIllager,
     AbstractFish,
     Pufferfish,
     VehicleEntity,
@@ -333,6 +334,7 @@ mod tests {
             VanillaEntityMetadataFamily::Piglin,
             VanillaEntityMetadataFamily::Raider,
             VanillaEntityMetadataFamily::Pillager,
+            VanillaEntityMetadataFamily::SpellcasterIllager,
             VanillaEntityMetadataFamily::AbstractFish,
             VanillaEntityMetadataFamily::Pufferfish,
             VanillaEntityMetadataFamily::VehicleEntity,
@@ -781,6 +783,16 @@ mod tests {
         assert_eq!(VANILLA_PILLAGER_CHARGING_CROSSBOW_DATA_ID, 17);
         assert!(!VANILLA_RAIDER_DEFAULT_CELEBRATING);
         assert!(!VANILLA_PILLAGER_DEFAULT_CHARGING_CROSSBOW);
+        let spellcaster =
+            vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::SpellcasterIllager);
+        assert_eq!(
+            spellcaster.parent,
+            Some(VanillaEntityMetadataFamily::Raider)
+        );
+        assert_eq!(spellcaster.inherited_field_count, 17);
+        assert_eq!(spellcaster.own_fields.len(), 1);
+        assert_eq!(VANILLA_SPELLCASTER_ILLAGER_CASTING_DATA_ID, 17);
+        assert_eq!(VANILLA_SPELLCASTER_ILLAGER_DEFAULT_CASTING, 0);
         let abstract_fish =
             vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::AbstractFish);
         assert_eq!(abstract_fish.parent, Some(VanillaEntityMetadataFamily::Mob));

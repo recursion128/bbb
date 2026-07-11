@@ -500,7 +500,7 @@ back into a todo. Do not delete these.
   `Phantom` / `Bogged` / `Ghast` / `Vex` / `Creaking` / `Zoglin` / `IronGolem`,
   `AgeableMob -> Strider` / `Hoglin`, `Mob -> AbstractFish -> Pufferfish`,
   `Mob -> AbstractPiglin -> Piglin`,
-  `Mob -> Raider -> Pillager`,
+  `Mob -> Raider -> Pillager` / `SpellcasterIllager`,
   `Entity -> AbstractArrow -> Arrow` /
   `ThrownTrident` leaves, the `Entity -> WitherSkull` projectile leaf,
   `Entity -> EndCrystal` / `Interaction` / `ExperienceOrb` / `ItemEntity`, the
