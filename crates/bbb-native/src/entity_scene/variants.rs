@@ -1099,8 +1099,8 @@ pub(super) fn goat_model_kind(
 ) -> EntityModelKind {
     EntityModelKind::Goat {
         baby: ageable_baby(values),
-        left_horn: entity_data_bool(values, GOAT_LEFT_HORN_DATA_ID, true),
-        right_horn: entity_data_bool(values, GOAT_RIGHT_HORN_DATA_ID, true),
+        left_horn: entity_data_bool(values, GOAT_LEFT_HORN_DATA_ID, GOAT_DEFAULT_HAS_LEFT_HORN),
+        right_horn: entity_data_bool(values, GOAT_RIGHT_HORN_DATA_ID, GOAT_DEFAULT_HAS_RIGHT_HORN),
     }
 }
 

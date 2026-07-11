@@ -9828,3 +9828,10 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   id18/default 0、BOOLEAN playing-dead id19/default false、from-bucket id20/default false；
   world animation、native model/debug-save 删除手抄 synced id/default。variant 合法范围与
   save 映射仍由 native 语义 owner 管理。
+
+## 2026-07-11：Generated entity metadata consumer（Goat）
+
+- [x] 从 generated catalog 建立 `AgeableMob -> Goat` family：BOOLEAN screaming
+  id18/default false、left-horn id19/default true、right-horn id20/default true；native
+  model/debug-save 删除手抄 synced id/default。ram 动画、尺寸与保存字段语义仍由对应行为
+  owner 管理。

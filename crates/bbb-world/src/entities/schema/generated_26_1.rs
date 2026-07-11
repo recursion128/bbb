@@ -105,6 +105,12 @@ const GENERATED_VANILLA_AXOLOTL_PLAYING_DEAD_DATA_ID: u8 = 19;
 pub const VANILLA_AXOLOTL_PLAYING_DEAD_DATA_ID: u8 = GENERATED_VANILLA_AXOLOTL_PLAYING_DEAD_DATA_ID;
 const GENERATED_VANILLA_AXOLOTL_FROM_BUCKET_DATA_ID: u8 = 20;
 pub const VANILLA_AXOLOTL_FROM_BUCKET_DATA_ID: u8 = GENERATED_VANILLA_AXOLOTL_FROM_BUCKET_DATA_ID;
+const GENERATED_VANILLA_GOAT_SCREAMING_DATA_ID: u8 = 18;
+pub const VANILLA_GOAT_SCREAMING_DATA_ID: u8 = GENERATED_VANILLA_GOAT_SCREAMING_DATA_ID;
+const GENERATED_VANILLA_GOAT_LEFT_HORN_DATA_ID: u8 = 19;
+pub const VANILLA_GOAT_LEFT_HORN_DATA_ID: u8 = GENERATED_VANILLA_GOAT_LEFT_HORN_DATA_ID;
+const GENERATED_VANILLA_GOAT_RIGHT_HORN_DATA_ID: u8 = 20;
+pub const VANILLA_GOAT_RIGHT_HORN_DATA_ID: u8 = GENERATED_VANILLA_GOAT_RIGHT_HORN_DATA_ID;
 const GENERATED_VANILLA_ABSTRACT_HORSE_FLAGS_DATA_ID: u8 = 18;
 pub const VANILLA_ABSTRACT_HORSE_FLAGS_DATA_ID: u8 = GENERATED_VANILLA_ABSTRACT_HORSE_FLAGS_DATA_ID;
 const GENERATED_VANILLA_CAMEL_DASH_DATA_ID: u8 = 19;
@@ -440,6 +446,12 @@ pub const VANILLA_AXOLOTL_DEFAULT_PLAYING_DEAD: bool =
     GENERATED_VANILLA_AXOLOTL_DEFAULT_PLAYING_DEAD;
 const GENERATED_VANILLA_AXOLOTL_DEFAULT_FROM_BUCKET: bool = false;
 pub const VANILLA_AXOLOTL_DEFAULT_FROM_BUCKET: bool = GENERATED_VANILLA_AXOLOTL_DEFAULT_FROM_BUCKET;
+const GENERATED_VANILLA_GOAT_DEFAULT_SCREAMING: bool = false;
+pub const VANILLA_GOAT_DEFAULT_SCREAMING: bool = GENERATED_VANILLA_GOAT_DEFAULT_SCREAMING;
+const GENERATED_VANILLA_GOAT_DEFAULT_HAS_LEFT_HORN: bool = true;
+pub const VANILLA_GOAT_DEFAULT_HAS_LEFT_HORN: bool = GENERATED_VANILLA_GOAT_DEFAULT_HAS_LEFT_HORN;
+const GENERATED_VANILLA_GOAT_DEFAULT_HAS_RIGHT_HORN: bool = true;
+pub const VANILLA_GOAT_DEFAULT_HAS_RIGHT_HORN: bool = GENERATED_VANILLA_GOAT_DEFAULT_HAS_RIGHT_HORN;
 const GENERATED_VANILLA_ABSTRACT_HORSE_DEFAULT_FLAGS: i8 = 0;
 pub const VANILLA_ABSTRACT_HORSE_DEFAULT_FLAGS: i8 = GENERATED_VANILLA_ABSTRACT_HORSE_DEFAULT_FLAGS;
 const GENERATED_VANILLA_CAMEL_DEFAULT_DASH: bool = false;
@@ -13454,6 +13466,35 @@ const BEE_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamil
     own_flags: BEE_FLAGS,
 };
 
+const GOAT_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_IS_SCREAMING_GOAT",
+        data_id: 18,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+        default: VanillaEntityMetadataDefault::Boolean(false),
+    },
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_HAS_LEFT_HORN",
+        data_id: 19,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+        default: VanillaEntityMetadataDefault::Boolean(true),
+    },
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_HAS_RIGHT_HORN",
+        data_id: 20,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+        default: VanillaEntityMetadataDefault::Boolean(true),
+    },
+];
+const GOAT_FLAGS: &[VanillaEntityMetadataFlagSchema] = &[];
+const GOAT_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamilySchema {
+    family: VanillaEntityMetadataFamily::Goat,
+    parent: Some(VanillaEntityMetadataFamily::AgeableMob),
+    inherited_field_count: 18,
+    own_fields: GOAT_FIELDS,
+    own_flags: GOAT_FLAGS,
+};
+
 const POLARBEAR_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[VanillaEntityMetadataFieldSchema {
     name: "DATA_STANDING_ID",
     data_id: 18,
@@ -14410,6 +14451,7 @@ pub(super) const fn generated_entity_metadata_schema(
         VanillaEntityMetadataFamily::AgeableMob => &AGEABLEMOB_SCHEMA,
         VanillaEntityMetadataFamily::Axolotl => &AXOLOTL_SCHEMA,
         VanillaEntityMetadataFamily::Bee => &BEE_SCHEMA,
+        VanillaEntityMetadataFamily::Goat => &GOAT_SCHEMA,
         VanillaEntityMetadataFamily::PolarBear => &POLARBEAR_SCHEMA,
         VanillaEntityMetadataFamily::AbstractHorse => &ABSTRACTHORSE_SCHEMA,
         VanillaEntityMetadataFamily::Camel => &CAMEL_SCHEMA,

@@ -25,6 +25,7 @@ pub enum VanillaEntityMetadataFamily {
     AgeableMob,
     Axolotl,
     Bee,
+    Goat,
     PolarBear,
     AbstractHorse,
     Camel,
@@ -351,6 +352,7 @@ mod tests {
             VanillaEntityMetadataFamily::AgeableMob,
             VanillaEntityMetadataFamily::Axolotl,
             VanillaEntityMetadataFamily::Bee,
+            VanillaEntityMetadataFamily::Goat,
             VanillaEntityMetadataFamily::PolarBear,
             VanillaEntityMetadataFamily::AbstractHorse,
             VanillaEntityMetadataFamily::Camel,
@@ -486,6 +488,16 @@ mod tests {
         assert_eq!(VANILLA_BEE_FLAG_ROLL, 2);
         assert_eq!(VANILLA_BEE_FLAG_HAS_STUNG, 4);
         assert_eq!(VANILLA_BEE_FLAG_HAS_NECTAR, 8);
+        let goat = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Goat);
+        assert_eq!(goat.parent, Some(VanillaEntityMetadataFamily::AgeableMob));
+        assert_eq!(goat.inherited_field_count, 18);
+        assert_eq!(goat.own_fields.len(), 3);
+        assert_eq!(VANILLA_GOAT_SCREAMING_DATA_ID, 18);
+        assert_eq!(VANILLA_GOAT_LEFT_HORN_DATA_ID, 19);
+        assert_eq!(VANILLA_GOAT_RIGHT_HORN_DATA_ID, 20);
+        assert!(!VANILLA_GOAT_DEFAULT_SCREAMING);
+        assert!(VANILLA_GOAT_DEFAULT_HAS_LEFT_HORN);
+        assert!(VANILLA_GOAT_DEFAULT_HAS_RIGHT_HORN);
         let camel = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Camel);
         assert_eq!(
             camel.parent,
