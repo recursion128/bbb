@@ -10169,3 +10169,16 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   owner、三参数 codec modifier 与 unresolved 显式失败；本地 26.1 update/check 保持九个
   catalog 的 packet 内容不变并二次 update 零 diff。普通 Rust catalog test 不再探测
   `$HOME` 或启动维护生成器，clean checkout build/test 只消费 checked-in 生成物。
+
+## 2026-07-11：Core registry catalog Tree-sitter frontend migration
+
+- [x] `generate-core-registry-catalog.py` 删除 regex、手写 parenthesis/method-body scanner，
+  由 `core_registry_catalog_extractor.py` 消费共享 Java CST/IR，覆盖 157 entity type、
+  49 block entity type、110 data component type、15 component predicate type、117 particle
+  type 与按 bootstrap 排序的 50 damage type；builder `notInPeaceful`、`persistent` 与
+  particle override-limiter 均从 initializer span 内 CST node/call 推导。fixtures 锁定
+  multiline/多参数注册、同一行 bootstrap order、comment/string 干扰和 unsupported
+  register 显式 source-span 失败。五份 checked-in Rust catalog 的条目/API 未变化，
+  update/check 与二次 update 零 diff；普通 Rust tests 不再探测 `$HOME` 或运行维护脚本。
+  component wire handler 仍由 protocol semantic owner 手写并与 generated metadata zip，
+  未把源码结构冒充 codec 行为。

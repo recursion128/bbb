@@ -238,29 +238,25 @@ slice 迁移；本阶段不要求一次改完，也不得把未迁移 generator 
 
 按以下顺序消化，每项独立成可门禁、可提交的 slice：
 
-1. **核心 built-in registry catalog**：生成 entity type、block entity type、data
-   component type/predicate type、particle type、damage type 的 id/resource/order/
-   persistent 等纯元数据；替代 `entity_types.rs`、`block_entity_types.rs`、component
-   catalog、damage-type 数组及各 crate 的副本，现有宏/descriptor 从生成物派生。
-2. **玩法数字 ID catalog**：生成 attribute、mob effect、menu type、equipment slot/
+1. **玩法数字 ID catalog**：生成 attribute、mob effect、menu type、equipment slot/
    slot group、entity pose、entity-data serializer、game event、sound source 等 ordinal；
    清除 world/native/item-model 生产代码中散落的 `VANILLA_*_ID` 和裸数字 match。
-3. **item/block 注册表消费**：item id、block id/state id 一律从 checked-in registry
+2. **item/block 注册表消费**：item id、block id/state id 一律从 checked-in registry
    report 或运行时 registry API 查询；消除 elytra/saddle/potion/ender-eye、air/grass
    等生产路径内联 id。现有 `block_states_26_1.json` 保持权威，禁止另建方块副表。
-4. **bootstrap/variant catalog**：生成 enchantment、potion、instrument、trim material/
+3. **bootstrap/variant catalog**：生成 enchantment、potion、instrument、trim material/
    pattern、banner pattern、painting、jukebox song、animal variant/sound variant、
    equipment asset 等 bootstrap 顺序与 resource id；named/direct holder 统一消费该
    catalog，服务器下发 dynamic registry 时仍以服务器顺序优先。
-5. **资源与 tag 派生表**：sound event/jukebox/particle 快照改由可复现提取器生成；
+4. **资源与 tag 派生表**：sound event/jukebox/particle 快照改由可复现提取器生成；
    可由资源包 tag、blockstate/model 或 registry report 判定的 block/item/entity
    membership 不再维护手写名单。资源缺失必须保留明确 vanilla fallback。
-6. **跨 crate 去重与反向门禁**：审计 protocol/world/native/item-model/renderer 中
+5. **跨 crate 去重与反向门禁**：审计 protocol/world/native/item-model/renderer 中
    重复 registry/ordinal 表和生产代码裸 id；消费者改用 typed catalog API，并增加
    机械扫描或结构测试，阻止已收敛语义重新出现第二事实源。测试 fixture 可保留
    局部数字，但须标明 wire 样本，不得被生产逻辑引用。
 
-完成标准：上述六类各有唯一权威输入和 deterministic check；修改生成输入而未
+完成标准：上述五类各有唯一权威输入和 deterministic check；修改生成输入而未
 更新生成物会在门禁失败；clean checkout 无本地 vanilla 源码也能正常构建测试；
 版本升级时注册顺序变化表现为集中、可审查的生成 diff；repo 生产代码不再出现
 已纳入 catalog 的平行资源表、裸 registry id 或手抄 ordinal；新 vanilla Java

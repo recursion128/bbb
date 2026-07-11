@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate checked-in vanilla 26.1 core registry catalogs.
+"""Generate checked-in vanilla 26.1 core registry catalogs from Tree-sitter CST facts.
 
 The current first-stage catalog covers damage types. Resource ids come from the
 DamageTypes key declarations, while numeric ids follow the bootstrap registration
@@ -11,11 +11,23 @@ from __future__ import annotations
 
 import argparse
 import difflib
-import re
 import subprocess
 import sys
-from dataclasses import dataclass
 from pathlib import Path
+
+from core_registry_catalog_extractor import (
+    DataComponentTypeEntry,
+    EntityTypeEntry,
+    ParticleTypeEntry,
+    RegistryEntry,
+    block_entity_type_entries,
+    damage_type_entries,
+    data_component_predicate_type_entries,
+    data_component_type_entries,
+    entity_type_entries,
+    particle_type_entries,
+)
+from vanilla_java_source import parse_source
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -39,33 +51,6 @@ DATA_COMPONENT_PREDICATE_TYPES_SOURCE = Path(
 )
 DATA_COMPONENT_TYPES_SOURCE = Path("net/minecraft/core/component/DataComponents.java")
 PARTICLE_TYPES_SOURCE = Path("net/minecraft/core/particles/ParticleTypes.java")
-
-
-@dataclass(frozen=True)
-class RegistryEntry:
-    constant_name: str
-    resource_id: str
-
-
-@dataclass(frozen=True)
-class EntityTypeEntry:
-    constant_name: str
-    resource_id: str
-    allowed_in_peaceful: bool
-
-
-@dataclass(frozen=True)
-class DataComponentTypeEntry:
-    constant_name: str
-    resource_id: str
-    persistent: bool
-
-
-@dataclass(frozen=True)
-class ParticleTypeEntry:
-    constant_name: str
-    resource_id: str
-    override_limiter: bool
 
 
 def parse_args() -> argparse.Namespace:
@@ -94,228 +79,6 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def method_body(source: str, signature: str) -> str:
-    signature_start = source.find(signature)
-    if signature_start < 0:
-        raise ValueError(f"missing method signature {signature!r}")
-    body_start = source.find("{", signature_start + len(signature))
-    if body_start < 0:
-        raise ValueError(f"missing method body for {signature!r}")
-
-    depth = 0
-    for index in range(body_start, len(source)):
-        character = source[index]
-        if character == "{":
-            depth += 1
-        elif character == "}":
-            depth -= 1
-            if depth == 0:
-                return source[body_start + 1 : index]
-    raise ValueError(f"unterminated method body for {signature!r}")
-
-
-def damage_type_entries(source: str) -> list[RegistryEntry]:
-    declaration = re.compile(
-        r"ResourceKey<DamageType>\s+(\w+)\s*=\s*ResourceKey\.create\("
-        r"Registries\.DAMAGE_TYPE,\s*Identifier\.withDefaultNamespace\("
-        r'"([^"]+)"\)\s*\);'
-    )
-    resources: dict[str, str] = {}
-    for constant_name, path in declaration.findall(source):
-        resource_id = f"minecraft:{path}"
-        previous = resources.setdefault(constant_name, resource_id)
-        if previous != resource_id:
-            raise ValueError(
-                f"conflicting damage type ids for {constant_name}: "
-                f"{previous}, {resource_id}"
-            )
-    if not resources:
-        raise ValueError("no damage type key declarations parsed")
-
-    bootstrap = method_body(source, "static void bootstrap")
-    registration = re.compile(r"context\.register\(\s*(\w+)\s*,")
-    registered_names = registration.findall(bootstrap)
-    if not registered_names:
-        raise ValueError("no damage type bootstrap registrations parsed")
-    if len(set(registered_names)) != len(registered_names):
-        raise ValueError("duplicate damage type bootstrap registration")
-
-    unknown = set(registered_names) - resources.keys()
-    missing = resources.keys() - set(registered_names)
-    if unknown or missing:
-        raise ValueError(
-            "damage type declaration/bootstrap mismatch: "
-            f"unknown={sorted(unknown)}, missing={sorted(missing)}"
-        )
-    return [RegistryEntry(name, resources[name]) for name in registered_names]
-
-
-def parenthesized_body(source: str, opening_parenthesis: int) -> str:
-    depth = 0
-    in_string = False
-    escaped = False
-    for index in range(opening_parenthesis, len(source)):
-        character = source[index]
-        if in_string:
-            if escaped:
-                escaped = False
-            elif character == "\\":
-                escaped = True
-            elif character == '"':
-                in_string = False
-            continue
-        if character == '"':
-            in_string = True
-        elif character == "(":
-            depth += 1
-        elif character == ")":
-            depth -= 1
-            if depth == 0:
-                return source[opening_parenthesis + 1 : index]
-    raise ValueError("unterminated register call")
-
-
-def entity_type_entries(source: str) -> list[EntityTypeEntry]:
-    declaration = re.compile(
-        r"public static final EntityType<[^>]+>\s+(\w+)\s*=\s*register\("
-    )
-    entries: list[EntityTypeEntry] = []
-    for match in declaration.finditer(source):
-        constant_name = match.group(1)
-        arguments = parenthesized_body(source, match.end() - 1)
-        resource_match = re.match(r'\s*"([^"]+)"\s*,', arguments)
-        if resource_match is None:
-            raise ValueError(f"missing vanilla resource id for {constant_name}")
-        entries.append(
-            EntityTypeEntry(
-                constant_name=constant_name,
-                resource_id=f"minecraft:{resource_match.group(1)}",
-                allowed_in_peaceful=".notInPeaceful()" not in arguments,
-            )
-        )
-    if len(entries) != 157:
-        raise ValueError(f"expected 157 entity types, parsed {len(entries)}")
-    constant_names = [entry.constant_name for entry in entries]
-    resource_ids = [entry.resource_id for entry in entries]
-    if len(set(constant_names)) != len(constant_names):
-        raise ValueError("duplicate entity type constant")
-    if len(set(resource_ids)) != len(resource_ids):
-        raise ValueError("duplicate entity type resource id")
-    return entries
-
-
-def block_entity_type_entries(source: str) -> list[RegistryEntry]:
-    declaration = re.compile(
-        r"public static final BlockEntityType<[^>]+>\s+(\w+)\s*=\s*register\("
-    )
-    entries: list[RegistryEntry] = []
-    for match in declaration.finditer(source):
-        constant_name = match.group(1)
-        arguments = parenthesized_body(source, match.end() - 1)
-        resource_match = re.match(r'\s*"([^"]+)"\s*,', arguments)
-        if resource_match is None:
-            raise ValueError(f"missing vanilla resource id for {constant_name}")
-        entries.append(
-            RegistryEntry(
-                constant_name=constant_name,
-                resource_id=f"minecraft:{resource_match.group(1)}",
-            )
-        )
-    if len(entries) != 49:
-        raise ValueError(f"expected 49 block entity types, parsed {len(entries)}")
-    if len({entry.constant_name for entry in entries}) != len(entries):
-        raise ValueError("duplicate block entity type constant")
-    if len({entry.resource_id for entry in entries}) != len(entries):
-        raise ValueError("duplicate block entity type resource id")
-    return entries
-
-
-def data_component_predicate_type_entries(source: str) -> list[RegistryEntry]:
-    declaration = re.compile(
-        r"public static final DataComponentPredicate\.Type<[^>]+>\s+"
-        r"(\w+)\s*=\s*register\("
-    )
-    entries: list[RegistryEntry] = []
-    for match in declaration.finditer(source):
-        constant_name = match.group(1)
-        arguments = parenthesized_body(source, match.end() - 1)
-        resource_match = re.match(r'\s*"([^"]+)"\s*,', arguments)
-        if resource_match is None:
-            raise ValueError(f"missing predicate resource id for {constant_name}")
-        entries.append(
-            RegistryEntry(
-                constant_name=constant_name,
-                resource_id=f"minecraft:{resource_match.group(1)}",
-            )
-        )
-    if len(entries) != 15:
-        raise ValueError(
-            f"expected 15 data component predicate types, parsed {len(entries)}"
-        )
-    if len({entry.constant_name for entry in entries}) != len(entries):
-        raise ValueError("duplicate data component predicate type constant")
-    if len({entry.resource_id for entry in entries}) != len(entries):
-        raise ValueError("duplicate data component predicate type resource id")
-    return entries
-
-
-def data_component_type_entries(source: str) -> list[DataComponentTypeEntry]:
-    declaration = re.compile(
-        r"public static final DataComponentType<[^;\n=]+>\s+"
-        r"(\w+)\s*=\s*register\("
-    )
-    entries: list[DataComponentTypeEntry] = []
-    for match in declaration.finditer(source):
-        constant_name = match.group(1)
-        arguments = parenthesized_body(source, match.end() - 1)
-        resource_match = re.match(r'\s*"([^"]+)"\s*,', arguments)
-        if resource_match is None:
-            raise ValueError(f"missing component resource id for {constant_name}")
-        entries.append(
-            DataComponentTypeEntry(
-                constant_name=constant_name,
-                resource_id=f"minecraft:{resource_match.group(1)}",
-                persistent=".persistent(" in arguments,
-            )
-        )
-    if len(entries) != 110:
-        raise ValueError(f"expected 110 data component types, parsed {len(entries)}")
-    if len({entry.constant_name for entry in entries}) != len(entries):
-        raise ValueError("duplicate data component type constant")
-    if len({entry.resource_id for entry in entries}) != len(entries):
-        raise ValueError("duplicate data component type resource id")
-    return entries
-
-
-def particle_type_entries(source: str) -> list[ParticleTypeEntry]:
-    declaration = re.compile(
-        r"public static final (?:SimpleParticleType|ParticleType<[^>]+>)\s+"
-        r"(\w+)\s*=\s*register\("
-    )
-    entries: list[ParticleTypeEntry] = []
-    for match in declaration.finditer(source):
-        constant_name = match.group(1)
-        arguments = parenthesized_body(source, match.end() - 1)
-        metadata_match = re.match(r'\s*"([^"]+)"\s*,\s*(true|false)', arguments)
-        if metadata_match is None:
-            raise ValueError(f"missing particle metadata for {constant_name}")
-        path, override_limiter = metadata_match.groups()
-        entries.append(
-            ParticleTypeEntry(
-                constant_name=constant_name,
-                resource_id=f"minecraft:{path}",
-                override_limiter=override_limiter == "true",
-            )
-        )
-    if len(entries) != 117:
-        raise ValueError(f"expected 117 particle types, parsed {len(entries)}")
-    if len({entry.constant_name for entry in entries}) != len(entries):
-        raise ValueError("duplicate particle type constant")
-    if len({entry.resource_id for entry in entries}) != len(entries):
-        raise ValueError("duplicate particle type resource id")
-    return entries
-
-
 def rust_string(value: str) -> str:
     return '"' + value.replace("\\", "\\\\").replace('"', '\\"') + '"'
 
@@ -324,6 +87,8 @@ def render_damage_types(entries: list[RegistryEntry]) -> str:
     lines = [
         "// @generated by scripts/generate-core-registry-catalog.py; do not edit manually.",
         "// Source: vanilla 26.1 DamageTypes.java key declarations and bootstrap order.",
+        "// Update: scripts/vanilla-source-tools.sh scripts/generate-core-registry-catalog.py",
+        "// Check: scripts/vanilla-source-tools.sh scripts/generate-core-registry-catalog.py --check",
         "",
         "#[derive(Debug, Clone, Copy, PartialEq, Eq)]",
         "pub struct DamageTypeCatalogEntry {",
@@ -359,8 +124,6 @@ def render_damage_types(entries: list[RegistryEntry]) -> str:
             "#[cfg(test)]",
             "mod tests {",
             "    use std::collections::HashSet;",
-            "    use std::path::PathBuf;",
-            "    use std::process::Command;",
             "",
             "    use super::*;",
             "",
@@ -386,37 +149,6 @@ def render_damage_types(entries: list[RegistryEntry]) -> str:
             "        assert_eq!(vanilla_damage_type(-1), None);",
             "        assert_eq!(vanilla_damage_type(50), None);",
             "    }",
-            "",
-            "    #[test]",
-            "    fn generated_catalog_matches_local_vanilla_sources_when_available() {",
-            "        let Some(home) = std::env::var_os(\"HOME\") else {",
-            "            return;",
-            "        };",
-            "        let source_root = PathBuf::from(home).join(\"Work/mc-code/sources/26.1\");",
-            "        if !source_root",
-            "            .join(\"net/minecraft/world/damagesource/DamageTypes.java\")",
-            "            .is_file()",
-            "        {",
-            "            return;",
-            "        }",
-            "        let manifest_dir = PathBuf::from(env!(\"CARGO_MANIFEST_DIR\"));",
-            "        let repo_root = manifest_dir.ancestors().nth(2).unwrap();",
-            "        let status = Command::new(repo_root.join(\"scripts/generate-core-registry-catalog.py\"))",
-            "            .arg(\"--check\")",
-            "            .arg(\"--source-root\")",
-            "            .arg(source_root)",
-            "            .arg(\"--damage-types-output\")",
-            "            .arg(manifest_dir.join(\"src/damage_types.rs\"))",
-            "            .arg(\"--entity-types-output\")",
-            "            .arg(manifest_dir.join(\"src/entity_types.rs\"))",
-            "            .arg(\"--block-entity-types-output\")",
-            "            .arg(manifest_dir.join(\"src/block_entity_types.rs\"))",
-            "            .arg(\"--data-component-types-output\")",
-            "            .arg(manifest_dir.join(\"src/data_component_types.rs\"))",
-            "            .status()",
-            "            .unwrap();",
-            "        assert!(status.success());",
-            "    }",
             "}",
             "",
         )
@@ -428,6 +160,8 @@ def render_entity_types(entries: list[EntityTypeEntry]) -> str:
     lines = [
         "// @generated by scripts/generate-core-registry-catalog.py; do not edit manually.",
         "// Source: vanilla 26.1 EntityType.java static register calls.",
+        "// Update: scripts/vanilla-source-tools.sh scripts/generate-core-registry-catalog.py",
+        "// Check: scripts/vanilla-source-tools.sh scripts/generate-core-registry-catalog.py --check",
         "",
         "#[derive(Debug, Clone, Copy, PartialEq, Eq)]",
         "pub struct EntityTypeCatalogEntry {",
@@ -491,8 +225,6 @@ def render_entity_types(entries: list[EntityTypeEntry]) -> str:
             "#[cfg(test)]",
             "mod tests {",
             "    use std::collections::HashSet;",
-            "    use std::path::PathBuf;",
-            "    use std::process::Command;",
             "",
             "    use super::*;",
             "",
@@ -530,34 +262,6 @@ def render_entity_types(entries: list[EntityTypeEntry]) -> str:
             "        assert!(vanilla_entity_type_allowed_in_peaceful(VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID));",
             "        assert!(vanilla_entity_type_allowed_in_peaceful(-1));",
             "    }",
-            "",
-            "    #[test]",
-            "    fn generated_catalog_matches_local_vanilla_sources_when_available() {",
-            "        let Some(home) = std::env::var_os(\"HOME\") else {",
-            "            return;",
-            "        };",
-            "        let source_root = PathBuf::from(home).join(\"Work/mc-code/sources/26.1\");",
-            "        if !source_root.join(\"net/minecraft/world/entity/EntityType.java\").is_file() {",
-            "            return;",
-            "        }",
-            "        let manifest_dir = PathBuf::from(env!(\"CARGO_MANIFEST_DIR\"));",
-            "        let repo_root = manifest_dir.ancestors().nth(2).unwrap();",
-            "        let status = Command::new(repo_root.join(\"scripts/generate-core-registry-catalog.py\"))",
-            "            .arg(\"--check\")",
-            "            .arg(\"--source-root\")",
-            "            .arg(source_root)",
-            "            .arg(\"--damage-types-output\")",
-            "            .arg(manifest_dir.join(\"src/damage_types.rs\"))",
-            "            .arg(\"--entity-types-output\")",
-            "            .arg(manifest_dir.join(\"src/entity_types.rs\"))",
-            "            .arg(\"--block-entity-types-output\")",
-            "            .arg(manifest_dir.join(\"src/block_entity_types.rs\"))",
-            "            .arg(\"--data-component-types-output\")",
-            "            .arg(manifest_dir.join(\"src/data_component_types.rs\"))",
-            "            .status()",
-            "            .unwrap();",
-            "        assert!(status.success());",
-            "    }",
             "}",
             "",
         )
@@ -569,6 +273,8 @@ def render_block_entity_types(entries: list[RegistryEntry]) -> str:
     lines = [
         "// @generated by scripts/generate-core-registry-catalog.py; do not edit manually.",
         "// Source: vanilla 26.1 BlockEntityType.java static register calls.",
+        "// Update: scripts/vanilla-source-tools.sh scripts/generate-core-registry-catalog.py",
+        "// Check: scripts/vanilla-source-tools.sh scripts/generate-core-registry-catalog.py --check",
         "",
         "#[derive(Debug, Clone, Copy, PartialEq, Eq)]",
         "pub struct BlockEntityTypeCatalogEntry {",
@@ -606,8 +312,6 @@ def render_block_entity_types(entries: list[RegistryEntry]) -> str:
             "#[cfg(test)]",
             "mod tests {",
             "    use std::collections::HashSet;",
-            "    use std::path::PathBuf;",
-            "    use std::process::Command;",
             "",
             "    use super::*;",
             "",
@@ -633,34 +337,6 @@ def render_block_entity_types(entries: list[RegistryEntry]) -> str:
             "        assert_eq!(vanilla_block_entity_resource_id_for_type_id(-1), None);",
             "        assert_eq!(vanilla_block_entity_resource_id_for_type_id(49), None);",
             "    }",
-            "",
-            "    #[test]",
-            "    fn generated_catalog_matches_local_vanilla_sources_when_available() {",
-            "        let Some(home) = std::env::var_os(\"HOME\") else {",
-            "            return;",
-            "        };",
-            "        let source_root = PathBuf::from(home).join(\"Work/mc-code/sources/26.1\");",
-            "        if !source_root.join(\"net/minecraft/world/level/block/entity/BlockEntityType.java\").is_file() {",
-            "            return;",
-            "        }",
-            "        let manifest_dir = PathBuf::from(env!(\"CARGO_MANIFEST_DIR\"));",
-            "        let repo_root = manifest_dir.ancestors().nth(2).unwrap();",
-            "        let status = Command::new(repo_root.join(\"scripts/generate-core-registry-catalog.py\"))",
-            "            .arg(\"--check\")",
-            "            .arg(\"--source-root\")",
-            "            .arg(source_root)",
-            "            .arg(\"--damage-types-output\")",
-            "            .arg(manifest_dir.join(\"src/damage_types.rs\"))",
-            "            .arg(\"--entity-types-output\")",
-            "            .arg(manifest_dir.join(\"src/entity_types.rs\"))",
-            "            .arg(\"--block-entity-types-output\")",
-            "            .arg(manifest_dir.join(\"src/block_entity_types.rs\"))",
-            "            .arg(\"--data-component-types-output\")",
-            "            .arg(manifest_dir.join(\"src/data_component_types.rs\"))",
-            "            .status()",
-            "            .unwrap();",
-            "        assert!(status.success());",
-            "    }",
             "}",
             "",
         )
@@ -675,6 +351,8 @@ def render_data_component_types(
     lines = [
         "// @generated by scripts/generate-core-registry-catalog.py; do not edit manually.",
         "// Sources: vanilla 26.1 DataComponents.java and DataComponentPredicates.java.",
+        "// Update: scripts/vanilla-source-tools.sh scripts/generate-core-registry-catalog.py",
+        "// Check: scripts/vanilla-source-tools.sh scripts/generate-core-registry-catalog.py --check",
         "// Wire codecs remain hand-bound in packets/data_components/catalog.rs.",
         "",
         "pub use crate::packets::data_components::catalog::{",
@@ -757,8 +435,6 @@ def render_data_component_types(
             "#[cfg(test)]",
             "mod tests {",
             "    use std::collections::HashSet;",
-            "    use std::path::PathBuf;",
-            "    use std::process::Command;",
             "",
             "    use super::*;",
             "",
@@ -804,36 +480,6 @@ def render_data_component_types(
             "        assert_eq!(vanilla_data_component_predicate_resource_id(-1), None);",
             "        assert_eq!(vanilla_data_component_predicate_resource_id(15), None);",
             "    }",
-            "",
-            "    #[test]",
-            "    fn generated_catalog_matches_local_vanilla_sources_when_available() {",
-            "        let Some(home) = std::env::var_os(\"HOME\") else {",
-            "            return;",
-            "        };",
-            "        let source_root = PathBuf::from(home).join(\"Work/mc-code/sources/26.1\");",
-            "        if !source_root.join(\"net/minecraft/core/component/DataComponents.java\").is_file()",
-            "            || !source_root.join(\"net/minecraft/core/component/predicates/DataComponentPredicates.java\").is_file()",
-            "        {",
-            "            return;",
-            "        }",
-            "        let manifest_dir = PathBuf::from(env!(\"CARGO_MANIFEST_DIR\"));",
-            "        let repo_root = manifest_dir.ancestors().nth(2).unwrap();",
-            "        let status = Command::new(repo_root.join(\"scripts/generate-core-registry-catalog.py\"))",
-            "            .arg(\"--check\")",
-            "            .arg(\"--source-root\")",
-            "            .arg(source_root)",
-            "            .arg(\"--damage-types-output\")",
-            "            .arg(manifest_dir.join(\"src/damage_types.rs\"))",
-            "            .arg(\"--entity-types-output\")",
-            "            .arg(manifest_dir.join(\"src/entity_types.rs\"))",
-            "            .arg(\"--block-entity-types-output\")",
-            "            .arg(manifest_dir.join(\"src/block_entity_types.rs\"))",
-            "            .arg(\"--data-component-types-output\")",
-            "            .arg(manifest_dir.join(\"src/data_component_types.rs\"))",
-            "            .status()",
-            "            .unwrap();",
-            "        assert!(status.success());",
-            "    }",
             "}",
             "",
         )
@@ -845,6 +491,8 @@ def render_particle_types(entries: list[ParticleTypeEntry]) -> str:
     lines = [
         "// @generated by scripts/generate-core-registry-catalog.py; do not edit manually.",
         "// Source: vanilla 26.1 ParticleTypes.java static register calls.",
+        "// Update: scripts/vanilla-source-tools.sh scripts/generate-core-registry-catalog.py",
+        "// Check: scripts/vanilla-source-tools.sh scripts/generate-core-registry-catalog.py --check",
         "",
         "#[derive(Debug, Clone, Copy, PartialEq, Eq)]",
         "pub struct ParticleTypeCatalogEntry {",
@@ -906,8 +554,6 @@ def render_particle_types(entries: list[ParticleTypeEntry]) -> str:
             "#[cfg(test)]",
             "mod tests {",
             "    use std::collections::HashSet;",
-            "    use std::path::PathBuf;",
-            "    use std::process::Command;",
             "",
             "    use super::*;",
             "",
@@ -937,24 +583,6 @@ def render_particle_types(entries: list[ParticleTypeEntry]) -> str:
             "        assert_eq!(vanilla_particle_type(-1), None);",
             "        assert_eq!(vanilla_particle_type(117), None);",
             "    }",
-            "",
-            "    #[test]",
-            "    fn generated_catalog_matches_local_vanilla_sources_when_available() {",
-            "        let Some(home) = std::env::var_os(\"HOME\") else { return; };",
-            "        let source_root = PathBuf::from(home).join(\"Work/mc-code/sources/26.1\");",
-            "        if !source_root.join(\"net/minecraft/core/particles/ParticleTypes.java\").is_file() { return; }",
-            "        let manifest_dir = PathBuf::from(env!(\"CARGO_MANIFEST_DIR\"));",
-            "        let repo_root = manifest_dir.ancestors().nth(2).unwrap();",
-            "        let status = Command::new(repo_root.join(\"scripts/generate-core-registry-catalog.py\"))",
-            "            .arg(\"--check\")",
-            "            .arg(\"--source-root\")",
-            "            .arg(source_root)",
-            "            .arg(\"--particle-types-output\")",
-            "            .arg(manifest_dir.join(\"src/particle_types.rs\"))",
-            "            .status()",
-            "            .unwrap();",
-            "        assert!(status.success());",
-            "    }",
             "}",
             "",
         )
@@ -981,14 +609,16 @@ def generated_files(
     data_component_types_output: Path,
     particle_types_output: Path,
 ) -> dict[Path, str]:
-    damage_types_source = (source_root / DAMAGE_TYPES_SOURCE).read_text()
-    entity_types_source = (source_root / ENTITY_TYPES_SOURCE).read_text()
-    block_entity_types_source = (source_root / BLOCK_ENTITY_TYPES_SOURCE).read_text()
-    predicate_types_source = (
-        source_root / DATA_COMPONENT_PREDICATE_TYPES_SOURCE
-    ).read_text()
-    component_types_source = (source_root / DATA_COMPONENT_TYPES_SOURCE).read_text()
-    particle_types_source = (source_root / PARTICLE_TYPES_SOURCE).read_text()
+    def parse(relative_path: Path):
+        path = source_root / relative_path
+        return parse_source(relative_path.as_posix(), path.read_bytes())
+
+    damage_types_source = parse(DAMAGE_TYPES_SOURCE)
+    entity_types_source = parse(ENTITY_TYPES_SOURCE)
+    block_entity_types_source = parse(BLOCK_ENTITY_TYPES_SOURCE)
+    predicate_types_source = parse(DATA_COMPONENT_PREDICATE_TYPES_SOURCE)
+    component_types_source = parse(DATA_COMPONENT_TYPES_SOURCE)
+    particle_types_source = parse(PARTICLE_TYPES_SOURCE)
     return {
         damage_types_output: format_rust(
             render_damage_types(damage_type_entries(damage_types_source))
