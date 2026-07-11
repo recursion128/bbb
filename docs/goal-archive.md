@@ -10158,3 +10158,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   人工扩张；全部 class/accessor 的通用 descriptor 查询已覆盖该用途。无法机械归一化的
   default/flag 仍以 unresolved 诊断保留，不代表对应实体行为已实现；bootstrap variant、
   projectile/vehicle presentation 与 server-private 状态继续由各自开放队列管理。
+
+## 2026-07-11：Packet catalog Tree-sitter frontend migration
+
+- [x] `generate-packet-catalog.py` 删除 regex/DOTALL 与文本 direction-block scanner，改由
+  `packet_catalog_extractor.py` 消费共享 `vanilla_java_source.py` CST/IR：从全部
+  `*PacketTypes.java` field initializer 提取 resource id，从五个 `*Protocols.java`
+  template initializer span 内按 CST call 顺序提取 `addPacket`/`withBundlePacket`。
+  fixtures 锁定 multiline chain、comment/string 伪调用、bundle delimiter、nested codec
+  owner、三参数 codec modifier 与 unresolved 显式失败；本地 26.1 update/check 保持九个
+  catalog 的 packet 内容不变并二次 update 零 diff。普通 Rust catalog test 不再探测
+  `$HOME` 或启动维护生成器，clean checkout build/test 只消费 checked-in 生成物。
