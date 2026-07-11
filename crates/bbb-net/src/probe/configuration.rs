@@ -141,6 +141,25 @@ mod tests {
     use uuid::Uuid;
 
     #[tokio::test]
+    async fn probe_configuration_disconnect_is_terminal_and_keeps_state() {
+        let (client, _server) = raw_connection_pair().await;
+        let mut probe = ProbeContext::new(client);
+        probe.state = ConnectionState::Configuration;
+
+        let error = probe
+            .handle_configuration_packet(ConfigurationClientbound::Disconnect {
+                reason: "Configuration closed".to_string(),
+                raw_reason: vec![1, 2, 3],
+            })
+            .await
+            .unwrap_err();
+        assert!(error
+            .to_string()
+            .contains("configuration disconnected: Configuration closed"));
+        assert_eq!(probe.state, ConnectionState::Configuration);
+    }
+
+    #[tokio::test]
     async fn probe_applies_configuration_packets_to_world() {
         let (client, _server) = raw_connection_pair().await;
         let mut probe = ProbeContext::new(client);

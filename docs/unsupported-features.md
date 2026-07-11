@@ -45,8 +45,10 @@ Owner: `bbb-protocol`
   authentication/encryption, encode `ServerboundKeyPacket`, and lock the initial
   hello response state. Decode login disconnect reasons as Components instead of
   retaining only diagnostic JSON.
-- Cover the remaining required paths end to end: configuration, play, movement,
-  inventory, chat, resource-pack, interaction, command suggestion.
+- Complete the remaining configuration registry/tag/known-pack/resource-pack,
+  cookie, code-of-conduct, custom payload/report, transfer, feature and dialog
+  coverage cells; then cover play, movement, inventory, chat, interaction and
+  command suggestion end to end.
 
 ## Vanilla Java generator frontend migration
 

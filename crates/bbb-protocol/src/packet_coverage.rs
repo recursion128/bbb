@@ -265,6 +265,41 @@ mod tests {
         );
     }
 
+    #[test]
+    fn configuration_core_control_and_handoff_packets_are_closed() {
+        let ledger = vanilla_packet_coverage_26_1().unwrap();
+        let core = BTreeSet::from([
+            "SERVERBOUND_FINISH_CONFIGURATION",
+            "SERVERBOUND_KEEP_ALIVE",
+            "SERVERBOUND_PONG",
+            "CLIENTBOUND_DISCONNECT",
+            "CLIENTBOUND_FINISH_CONFIGURATION",
+            "CLIENTBOUND_KEEP_ALIVE",
+            "CLIENTBOUND_PING",
+        ]);
+        let entries: Vec<_> = ledger
+            .entries
+            .iter()
+            .filter(|entry| {
+                entry.state == "configuration" && core.contains(entry.constant_name.as_str())
+            })
+            .collect();
+        assert_eq!(entries.len(), core.len());
+        for entry in entries {
+            for (dimension, cell) in &entry.coverage {
+                assert!(
+                    matches!(
+                        cell.status,
+                        PacketCoverageStatus::Complete | PacketCoverageStatus::NotApplicable
+                    ),
+                    "{}/{dimension} remains {:?}",
+                    entry.constant_name,
+                    cell.status
+                );
+            }
+        }
+    }
+
     fn state_name(state: PacketState) -> &'static str {
         match state {
             PacketState::Handshake => "handshake",

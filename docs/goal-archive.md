@@ -10840,3 +10840,16 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   收敛为 evidence-backed complete/not-applicable；在线 encryption hello/key、初始 HELLO 的
   完整响应状态和 login disconnect Component 解析继续保持具体 partial，未由 offline 成功
   路径外推。普通 Cargo build/test 不读取本地 vanilla source。
+
+## 2026-07-11：configuration core control/handoff coverage audit
+
+- [x] 对照 `ConfigurationProtocols`、`ClientConfigurationPacketListenerImpl`、
+  `ClientCommonPacketListenerImpl` 与 `ServerConfigurationPacketListenerImpl`，锁定 configuration
+  disconnect、keepalive/ping response 以及 Finish → acknowledgement → Play 的连接归属与时序。
+- [x] protocol focused test 锁定 i64 keepalive、i32 ping/pong 和 unit finish payload；
+  RawConnection test 证明 keepalive/pong 在 configuration id 空间回复，并在 finish ack 后切换
+  Play、发送 play client-information、启动 play tick。disconnect test 证明 terminal error 不会
+  提前推进状态。
+- [x] coverage ledger 的 7 个核心 control/handoff packet 已全部收敛为 evidence-backed
+  complete/not-applicable；其余 23 个 configuration packet 保持原状态，未由核心状态机测试
+  外推 registry/resource-pack/cookie/dialog 等领域语义完成。

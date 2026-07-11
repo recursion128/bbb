@@ -2529,6 +2529,43 @@ fn decodes_configuration_common_packets() {
         ConfigurationClientbound::ResetChat
     );
 
+    assert_eq!(
+        decode_configuration_clientbound(ids::configuration::CLIENTBOUND_FINISH_CONFIGURATION, &[])
+            .unwrap(),
+        ConfigurationClientbound::Finish
+    );
+    let mut keep_alive = Encoder::new();
+    keep_alive.write_i64(-123_456_789);
+    assert_eq!(
+        decode_configuration_clientbound(
+            ids::configuration::CLIENTBOUND_KEEP_ALIVE,
+            &keep_alive.into_inner()
+        )
+        .unwrap(),
+        ConfigurationClientbound::KeepAlive { id: -123_456_789 }
+    );
+    let mut ping = Encoder::new();
+    ping.write_i32(0x1234_5678);
+    assert_eq!(
+        decode_configuration_clientbound(ids::configuration::CLIENTBOUND_PING, &ping.into_inner())
+            .unwrap(),
+        ConfigurationClientbound::Ping { id: 0x1234_5678 }
+    );
+
+    assert_eq!(
+        encode_configuration_finish(),
+        (
+            ids::configuration::SERVERBOUND_FINISH_CONFIGURATION,
+            Vec::new()
+        )
+    );
+    let (packet_id, payload) = encode_configuration_keep_alive(-123_456_789);
+    assert_eq!(packet_id, ids::configuration::SERVERBOUND_KEEP_ALIVE);
+    assert_eq!(Decoder::new(&payload).read_i64().unwrap(), -123_456_789);
+    let (packet_id, payload) = encode_configuration_pong(0x1234_5678);
+    assert_eq!(packet_id, ids::configuration::SERVERBOUND_PONG);
+    assert_eq!(Decoder::new(&payload).read_i32().unwrap(), 0x1234_5678);
+
     let pack_id = Uuid::from_u128(0x11111111_2222_3333_4444_555555555555);
     let mut push_payload = Encoder::new();
     push_payload.write_uuid(pack_id);

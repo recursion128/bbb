@@ -287,7 +287,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn configuration_finish_sends_configured_play_client_information() {
+    async fn configuration_control_responses_precede_finish_and_play_handoff() {
         let (client, mut server) = raw_connection_pair().await;
         let (events_tx, mut events_rx) = mpsc::channel(1);
         let (_commands_tx, commands_rx) = mpsc::channel(1);
@@ -315,6 +315,36 @@ mod tests {
                 particle_status: packets::ClientParticleStatus::Decreased,
             },
         };
+
+        stream
+            .handle_configuration_packet(packets::ConfigurationClientbound::KeepAlive {
+                id: -123_456_789,
+            })
+            .await
+            .unwrap();
+        let (packet_id, payload) = timeout(Duration::from_secs(1), server.read_packet())
+            .await
+            .expect("configuration keepalive response should be sent")
+            .unwrap();
+        assert_eq!(packet_id, ids::configuration::SERVERBOUND_KEEP_ALIVE);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_i64().unwrap(), -123_456_789);
+        assert!(decoder.is_empty());
+
+        stream
+            .handle_configuration_packet(packets::ConfigurationClientbound::Ping {
+                id: 0x1234_5678,
+            })
+            .await
+            .unwrap();
+        let (packet_id, payload) = timeout(Duration::from_secs(1), server.read_packet())
+            .await
+            .expect("configuration pong should be sent")
+            .unwrap();
+        assert_eq!(packet_id, ids::configuration::SERVERBOUND_PONG);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_i32().unwrap(), 0x1234_5678);
+        assert!(decoder.is_empty());
 
         stream
             .handle_configuration_packet(packets::ConfigurationClientbound::Finish)
