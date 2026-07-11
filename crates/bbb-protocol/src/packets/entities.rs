@@ -520,17 +520,29 @@ pub(super) fn decode_take_item_entity(decoder: &mut Decoder<'_>) -> Result<TakeI
 }
 
 pub(super) fn decode_rotate_head(decoder: &mut Decoder<'_>) -> Result<RotateHead> {
-    Ok(RotateHead {
+    let update = RotateHead {
         id: decoder.read_var_i32()?,
         y_head_rot: unpack_degrees(decoder.read_i8()?),
-    })
+    };
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after rotate head packet".to_string(),
+        ));
+    }
+    Ok(update)
 }
 
 pub(super) fn decode_set_entity_motion(decoder: &mut Decoder<'_>) -> Result<SetEntityMotion> {
-    Ok(SetEntityMotion {
+    let update = SetEntityMotion {
         id: decoder.read_var_i32()?,
         delta_movement: decode_lp_vec3d(decoder)?,
-    })
+    };
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after set entity motion packet".to_string(),
+        ));
+    }
+    Ok(update)
 }
 
 pub(super) fn decode_set_entity_link(decoder: &mut Decoder<'_>) -> Result<SetEntityLink> {

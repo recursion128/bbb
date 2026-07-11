@@ -11033,3 +11033,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   transform/delta/rotation/on-ground。ticking/distance interpolation、removed-player-vehicle fallback、
   indirect rider reposition/old-pose reset 与 authoritative vehicle echo 尚未统一，因此两行的
   canonical/runtime 格保持 partial。
+
+## 2026-07-11：entity motion and head-rotation packet coverage audit
+
+- [x] 对照 `ClientboundSetEntityMotionPacket`、`Entity.lerpMotion` 与 client handler，锁定 LP Vec3
+  wire 并拒绝 trailing bytes；vanilla 该方法即立即替换 delta movement，因此 decode/ownership/
+  canonical/runtime/tests 五格全部闭合。
+- [x] `ClientboundRotateHeadPacket` 的 VarInt + packed i8 yaw 也改为严格消费并闭合 wire/ownership/
+  tests。普通 Entity 立即设置，但 `LivingEntity.lerpHeadTo(..., 3)` 仍需 target/step 状态；bbb 当前
+  统一直写最终 yaw，因此 canonical/runtime 保持 partial。

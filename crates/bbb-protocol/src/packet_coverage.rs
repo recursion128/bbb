@@ -838,6 +838,34 @@ mod tests {
         );
     }
 
+    #[test]
+    fn play_entity_motion_closes_while_living_head_lerp_stays_open() {
+        let ledger = vanilla_packet_coverage_26_1().unwrap();
+        let packets = BTreeSet::from(["CLIENTBOUND_SET_ENTITY_MOTION", "CLIENTBOUND_ROTATE_HEAD"]);
+        let entries: Vec<_> = ledger
+            .entries
+            .iter()
+            .filter(|entry| entry.state == "play" && packets.contains(entry.constant_name.as_str()))
+            .collect();
+        assert_eq!(entries.len(), packets.len());
+        let partial: BTreeSet<_> = entries
+            .iter()
+            .flat_map(|entry| {
+                entry.coverage.iter().filter_map(move |(dimension, cell)| {
+                    (cell.status == PacketCoverageStatus::Partial)
+                        .then_some((entry.constant_name.as_str(), dimension.as_str()))
+                })
+            })
+            .collect();
+        assert_eq!(
+            partial,
+            BTreeSet::from([
+                ("CLIENTBOUND_ROTATE_HEAD", "canonical_apply"),
+                ("CLIENTBOUND_ROTATE_HEAD", "runtime_side_effect"),
+            ])
+        );
+    }
+
     fn state_name(state: PacketState) -> &'static str {
         match state {
             PacketState::Handshake => "handshake",

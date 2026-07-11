@@ -348,6 +348,9 @@ absolute EntityPositionSync/TeleportEntity 也已完成严格 wire/ownership/tes
 的 PositionSync 只 rebase server position codec。完整 ticking/distance interpolation、removed
 player vehicle fallback、indirect rider reposition 与 authoritative vehicle echo 仍开放，因此两行
 canonical/runtime 格保持 partial。
+SetEntityMotion 的 LP Vec3 wire 与 vanilla immediate `lerpMotion` apply 已全行闭合；RotateHead 的
+packed yaw wire/ownership/tests 已闭合，但 LivingEntity 3-step head lerp 尚未建模，因此其
+canonical/runtime 保持 partial，不能用最终 yaw 直写冒充插值。
 
 完成标准：全部 vanilla 26.1 catalog entry 都有矩阵行；所有目标客户端适用项为
 `complete`，其余只有带 vanilla 依据的 `not-applicable` 或带重启判据的窄 `deferred`；

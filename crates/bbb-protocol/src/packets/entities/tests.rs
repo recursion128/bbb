@@ -442,6 +442,38 @@ fn decodes_absolute_entity_corrections_strictly() {
 }
 
 #[test]
+fn decodes_entity_motion_and_head_rotation_strictly() {
+    let mut motion = Encoder::new();
+    motion.write_var_i32(7);
+    motion.write_i16(800);
+    motion.write_i16(-400);
+    motion.write_i16(0);
+
+    let mut head = Encoder::new();
+    head.write_var_i32(8);
+    head.write_i8(64);
+
+    for (packet_id, payload, error_message) in [
+        (
+            ids::play::CLIENTBOUND_SET_ENTITY_MOTION,
+            motion.into_inner(),
+            "trailing bytes after set entity motion packet",
+        ),
+        (
+            ids::play::CLIENTBOUND_ROTATE_HEAD,
+            head.into_inner(),
+            "trailing bytes after rotate head packet",
+        ),
+    ] {
+        assert!(decode_play_clientbound(packet_id, &payload).is_ok());
+        let mut trailing = payload;
+        trailing.push(0);
+        let error = decode_play_clientbound(packet_id, &trailing).unwrap_err();
+        assert!(error.to_string().contains(error_message));
+    }
+}
+
+#[test]
 fn decodes_additional_entity_data_serializers() {
     let owner = Uuid::from_u128(0xaaaaaaaa11111111bbbbbbbb22222222);
     let profile_id = Uuid::from_u128(0xbbbbbbbb22222222cccccccc33333333);

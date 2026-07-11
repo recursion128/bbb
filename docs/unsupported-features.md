@@ -142,6 +142,9 @@ Movement:
 - Complete `EntityPositionSync`/`TeleportEntity` ticking and distance-based
   interpolation, indirect-passenger reposition/old-pose reset, removed-player-
   vehicle teleport fallback, and locally-authoritative vehicle echo.
+- Preserve `LivingEntity.lerpHeadTo(..., 3)` target/step state for RotateHead
+  instead of snapping every entity's head yaw immediately; non-living Entity
+  keeps the immediate-set behavior.
 - Implement full vanilla boat physics, water/buoyancy/collision parity, and
   non-boat vehicle movement only for the locally controlled instance; resolve
   entity-specific `getControllingPassenger` gates (saddle/held item/armor and
