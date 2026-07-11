@@ -45,6 +45,7 @@ pub enum VanillaEntityMetadataFamily {
     Llama,
     TamableAnimal,
     Cat,
+    Wolf,
     Parrot,
     Rabbit,
     AbstractVillager,
@@ -402,6 +403,7 @@ mod tests {
             VanillaEntityMetadataFamily::Llama,
             VanillaEntityMetadataFamily::TamableAnimal,
             VanillaEntityMetadataFamily::Cat,
+            VanillaEntityMetadataFamily::Wolf,
             VanillaEntityMetadataFamily::Parrot,
             VanillaEntityMetadataFamily::Rabbit,
             VanillaEntityMetadataFamily::AbstractVillager,
@@ -761,6 +763,39 @@ mod tests {
                 VanillaEntityMetadataDefault::RegistryHolderResource("minecraft:classic"),
             ]
         );
+        let wolf = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Wolf);
+        assert_eq!(
+            wolf.parent,
+            Some(VanillaEntityMetadataFamily::TamableAnimal)
+        );
+        assert_eq!(wolf.inherited_field_count, 20);
+        assert_eq!(wolf.own_fields.len(), 5);
+        assert_eq!(VANILLA_WOLF_INTERESTED_DATA_ID, 20);
+        assert_eq!(VANILLA_WOLF_COLLAR_COLOR_DATA_ID, 21);
+        assert_eq!(VANILLA_WOLF_ANGER_END_TIME_DATA_ID, 22);
+        assert_eq!(VANILLA_WOLF_VARIANT_DATA_ID, 23);
+        assert_eq!(VANILLA_WOLF_SOUND_VARIANT_DATA_ID, 24);
+        assert!(!VANILLA_WOLF_DEFAULT_INTERESTED);
+        assert_eq!(VANILLA_WOLF_DEFAULT_COLLAR_COLOR, 14);
+        assert_eq!(VANILLA_WOLF_DEFAULT_ANGER_END_TIME, -1);
+        assert_eq!(VANILLA_WOLF_DEFAULT_VARIANT_RESOURCE_ID, "minecraft:pale");
+        assert_eq!(
+            VANILLA_WOLF_DEFAULT_SOUND_VARIANT_RESOURCE_ID,
+            "minecraft:classic"
+        );
+        assert_eq!(
+            wolf.own_fields
+                .iter()
+                .map(|field| field.default)
+                .collect::<Vec<_>>(),
+            vec![
+                VanillaEntityMetadataDefault::Boolean(false),
+                VanillaEntityMetadataDefault::Int(14),
+                VanillaEntityMetadataDefault::Long(-1),
+                VanillaEntityMetadataDefault::RegistryHolderResource("minecraft:pale"),
+                VanillaEntityMetadataDefault::RegistryHolderResource("minecraft:classic"),
+            ]
+        );
         let parrot = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Parrot);
         assert_eq!(
             parrot.parent,
@@ -817,7 +852,7 @@ mod tests {
         assert_eq!(VANILLA_TROPICAL_FISH_DEFAULT_VARIANT, 0);
         assert_eq!(
             VANILLA_ENTITY_METADATA_DEFAULT_RESOLVER_EVIDENCE_26_1.len(),
-            14
+            17
         );
         let default_evidence = |java_class| {
             VANILLA_ENTITY_METADATA_DEFAULT_RESOLVER_EVIDENCE_26_1
@@ -887,6 +922,28 @@ mod tests {
         );
         assert_eq!(
             cat_default_evidence("DATA_COLLAR_COLOR").source_expression,
+            "DEFAULT_COLLAR_COLOR.getId () -> DyeColor.RED"
+        );
+        let wolf_default_evidence = |accessor_name| {
+            VANILLA_ENTITY_METADATA_DEFAULT_RESOLVER_EVIDENCE_26_1
+                .iter()
+                .find(|item| {
+                    item.java_class == "net.minecraft.world.entity.animal.wolf.Wolf"
+                        && item.accessor_name == accessor_name
+                })
+                .copied()
+                .expect("generated wolf default resolver evidence")
+        };
+        assert_eq!(
+            wolf_default_evidence("DATA_VARIANT_ID").evidence_member,
+            "net.minecraft.world.entity.animal.wolf.WolfVariants.DEFAULT -> WolfVariants.PALE -> WolfVariants.createKey"
+        );
+        assert_eq!(
+            wolf_default_evidence("DATA_SOUND_VARIANT_ID").source_expression,
+            "wolfSoundVariants.get (WolfSoundVariants.CLASSIC).or (wolfSoundVariants::getAny).orElseThrow () -> createKey (WolfSoundVariants.SoundSet.CLASSIC) -> ResourceKey.create (Registries.WOLF_SOUND_VARIANT, Identifier.withDefaultNamespace (wolfSoundVariant.getIdentifier ())) -> this.identifier -> \"classic\""
+        );
+        assert_eq!(
+            wolf_default_evidence("DATA_COLLAR_COLOR").source_expression,
             "DEFAULT_COLLAR_COLOR.getId () -> DyeColor.RED"
         );
         let fox_default_evidence = default_evidence("net.minecraft.world.entity.animal.fox.Fox");

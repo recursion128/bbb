@@ -195,6 +195,16 @@ const GENERATED_VANILLA_CAT_COLLAR_COLOR_DATA_ID: u8 = 23;
 pub const VANILLA_CAT_COLLAR_COLOR_DATA_ID: u8 = GENERATED_VANILLA_CAT_COLLAR_COLOR_DATA_ID;
 const GENERATED_VANILLA_CAT_SOUND_VARIANT_DATA_ID: u8 = 24;
 pub const VANILLA_CAT_SOUND_VARIANT_DATA_ID: u8 = GENERATED_VANILLA_CAT_SOUND_VARIANT_DATA_ID;
+const GENERATED_VANILLA_WOLF_INTERESTED_DATA_ID: u8 = 20;
+pub const VANILLA_WOLF_INTERESTED_DATA_ID: u8 = GENERATED_VANILLA_WOLF_INTERESTED_DATA_ID;
+const GENERATED_VANILLA_WOLF_COLLAR_COLOR_DATA_ID: u8 = 21;
+pub const VANILLA_WOLF_COLLAR_COLOR_DATA_ID: u8 = GENERATED_VANILLA_WOLF_COLLAR_COLOR_DATA_ID;
+const GENERATED_VANILLA_WOLF_ANGER_END_TIME_DATA_ID: u8 = 22;
+pub const VANILLA_WOLF_ANGER_END_TIME_DATA_ID: u8 = GENERATED_VANILLA_WOLF_ANGER_END_TIME_DATA_ID;
+const GENERATED_VANILLA_WOLF_VARIANT_DATA_ID: u8 = 23;
+pub const VANILLA_WOLF_VARIANT_DATA_ID: u8 = GENERATED_VANILLA_WOLF_VARIANT_DATA_ID;
+const GENERATED_VANILLA_WOLF_SOUND_VARIANT_DATA_ID: u8 = 24;
+pub const VANILLA_WOLF_SOUND_VARIANT_DATA_ID: u8 = GENERATED_VANILLA_WOLF_SOUND_VARIANT_DATA_ID;
 const GENERATED_VANILLA_PARROT_VARIANT_DATA_ID: u8 = 20;
 pub const VANILLA_PARROT_VARIANT_DATA_ID: u8 = GENERATED_VANILLA_PARROT_VARIANT_DATA_ID;
 const GENERATED_VANILLA_RABBIT_TYPE_DATA_ID: u8 = 18;
@@ -712,6 +722,18 @@ pub const VANILLA_CAT_DEFAULT_COLLAR_COLOR: i32 = GENERATED_VANILLA_CAT_DEFAULT_
 const GENERATED_VANILLA_CAT_DEFAULT_SOUND_VARIANT_RESOURCE_ID: &str = "minecraft:classic";
 pub const VANILLA_CAT_DEFAULT_SOUND_VARIANT_RESOURCE_ID: &str =
     GENERATED_VANILLA_CAT_DEFAULT_SOUND_VARIANT_RESOURCE_ID;
+const GENERATED_VANILLA_WOLF_DEFAULT_INTERESTED: bool = false;
+pub const VANILLA_WOLF_DEFAULT_INTERESTED: bool = GENERATED_VANILLA_WOLF_DEFAULT_INTERESTED;
+const GENERATED_VANILLA_WOLF_DEFAULT_COLLAR_COLOR: i32 = 14;
+pub const VANILLA_WOLF_DEFAULT_COLLAR_COLOR: i32 = GENERATED_VANILLA_WOLF_DEFAULT_COLLAR_COLOR;
+const GENERATED_VANILLA_WOLF_DEFAULT_ANGER_END_TIME: i64 = -1;
+pub const VANILLA_WOLF_DEFAULT_ANGER_END_TIME: i64 = GENERATED_VANILLA_WOLF_DEFAULT_ANGER_END_TIME;
+const GENERATED_VANILLA_WOLF_DEFAULT_VARIANT_RESOURCE_ID: &str = "minecraft:pale";
+pub const VANILLA_WOLF_DEFAULT_VARIANT_RESOURCE_ID: &str =
+    GENERATED_VANILLA_WOLF_DEFAULT_VARIANT_RESOURCE_ID;
+const GENERATED_VANILLA_WOLF_DEFAULT_SOUND_VARIANT_RESOURCE_ID: &str = "minecraft:classic";
+pub const VANILLA_WOLF_DEFAULT_SOUND_VARIANT_RESOURCE_ID: &str =
+    GENERATED_VANILLA_WOLF_DEFAULT_SOUND_VARIANT_RESOURCE_ID;
 const GENERATED_VANILLA_PARROT_DEFAULT_VARIANT: i32 = 0;
 pub const VANILLA_PARROT_DEFAULT_VARIANT: i32 = GENERATED_VANILLA_PARROT_DEFAULT_VARIANT;
 const GENERATED_VANILLA_RABBIT_DEFAULT_TYPE: i32 = 0;
@@ -10083,7 +10105,7 @@ pub const VANILLA_ENTITY_METADATA_ACCESSORS_26_1: &[VanillaEntityMetadataAccesso
         data_id: 21,
         source_path: "net/minecraft/world/entity/animal/wolf/Wolf.java",
         default_expression: "DEFAULT_COLLAR_COLOR.getId ()",
-        typed_default: None,
+        typed_default: Some(VanillaEntityMetadataDefault::Int(14)),
     },
     VanillaEntityMetadataAccessorCatalogEntry {
         owner: "net.minecraft.world.entity.animal.wolf.Wolf",
@@ -10105,7 +10127,7 @@ pub const VANILLA_ENTITY_METADATA_ACCESSORS_26_1: &[VanillaEntityMetadataAccesso
         data_id: 23,
         source_path: "net/minecraft/world/entity/animal/wolf/Wolf.java",
         default_expression: "VariantUtils.getDefaultOrAny (this.registryAccess (), WolfVariants.DEFAULT)",
-        typed_default: None,
+        typed_default: Some(VanillaEntityMetadataDefault::RegistryHolderResource("minecraft:pale")),
     },
     VanillaEntityMetadataAccessorCatalogEntry {
         owner: "net.minecraft.world.entity.animal.wolf.Wolf",
@@ -10116,7 +10138,7 @@ pub const VANILLA_ENTITY_METADATA_ACCESSORS_26_1: &[VanillaEntityMetadataAccesso
         data_id: 24,
         source_path: "net/minecraft/world/entity/animal/wolf/Wolf.java",
         default_expression: "wolfSoundVariants.get (WolfSoundVariants.CLASSIC).or (wolfSoundVariants::getAny).orElseThrow ()",
-        typed_default: None,
+        typed_default: Some(VanillaEntityMetadataDefault::RegistryHolderResource("minecraft:classic")),
     },
     VanillaEntityMetadataAccessorCatalogEntry {
         owner: "net.minecraft.world.entity.boss.enderdragon.EndCrystal",
@@ -11776,9 +11798,30 @@ pub const VANILLA_ENTITY_METADATA_DEFAULT_RESOLVER_EVIDENCE_26_1: &[VanillaEntit
         reason: "the synced holder default is a resource key with registry fallback rather than a numeric registry id",
     },
     VanillaEntityMetadataResolverEvidence {
+        java_class: "net.minecraft.world.entity.animal.wolf.Wolf",
+        accessor_name: "DATA_VARIANT_ID",
+        evidence_member: "net.minecraft.world.entity.animal.wolf.WolfVariants.DEFAULT -> WolfVariants.PALE -> WolfVariants.createKey",
+        source_expression: "VariantUtils.getDefaultOrAny (this.registryAccess (), WolfVariants.DEFAULT) -> PALE -> createKey (\"pale\") -> ResourceKey.create (Registries.WOLF_VARIANT, Identifier.withDefaultNamespace (name))",
+        reason: "the synced holder default is a resource key selected through VariantUtils rather than a numeric registry id",
+    },
+    VanillaEntityMetadataResolverEvidence {
+        java_class: "net.minecraft.world.entity.animal.wolf.Wolf",
+        accessor_name: "DATA_SOUND_VARIANT_ID",
+        evidence_member: "net.minecraft.world.entity.animal.wolf.WolfSoundVariants.CLASSIC -> WolfSoundVariants.createKey -> SoundSet.getIdentifier -> SoundSet.CLASSIC",
+        source_expression: "wolfSoundVariants.get (WolfSoundVariants.CLASSIC).or (wolfSoundVariants::getAny).orElseThrow () -> createKey (WolfSoundVariants.SoundSet.CLASSIC) -> ResourceKey.create (Registries.WOLF_SOUND_VARIANT, Identifier.withDefaultNamespace (wolfSoundVariant.getIdentifier ())) -> this.identifier -> \"classic\"",
+        reason: "the synced holder default is a resource key with registry fallback rather than a numeric registry id",
+    },
+    VanillaEntityMetadataResolverEvidence {
         java_class: "net.minecraft.world.entity.animal.feline.Cat",
         accessor_name: "DATA_COLLAR_COLOR",
         evidence_member: "net.minecraft.world.entity.animal.feline.Cat.DEFAULT_COLLAR_COLOR -> DyeColor.RED",
+        source_expression: "DEFAULT_COLLAR_COLOR.getId () -> DyeColor.RED",
+        reason: "the synced INT default is stored in a static enum-valued field",
+    },
+    VanillaEntityMetadataResolverEvidence {
+        java_class: "net.minecraft.world.entity.animal.wolf.Wolf",
+        accessor_name: "DATA_COLLAR_COLOR",
+        evidence_member: "net.minecraft.world.entity.animal.wolf.Wolf.DEFAULT_COLLAR_COLOR -> DyeColor.RED",
         source_expression: "DEFAULT_COLLAR_COLOR.getId () -> DyeColor.RED",
         reason: "the synced INT default is stored in a static enum-valued field",
     },
@@ -14492,6 +14535,47 @@ const CAT_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamil
     own_flags: CAT_FLAGS,
 };
 
+const WOLF_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_INTERESTED_ID",
+        data_id: 20,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+        default: VanillaEntityMetadataDefault::Boolean(false),
+    },
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_COLLAR_COLOR",
+        data_id: 21,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+        default: VanillaEntityMetadataDefault::Int(14),
+    },
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_ANGER_END_TIME",
+        data_id: 22,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_LONG_ID,
+        default: VanillaEntityMetadataDefault::Long(-1),
+    },
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_VARIANT_ID",
+        data_id: 23,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_WOLF_VARIANT_ID,
+        default: VanillaEntityMetadataDefault::RegistryHolderResource("minecraft:pale"),
+    },
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_SOUND_VARIANT_ID",
+        data_id: 24,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_WOLF_SOUND_VARIANT_ID,
+        default: VanillaEntityMetadataDefault::RegistryHolderResource("minecraft:classic"),
+    },
+];
+const WOLF_FLAGS: &[VanillaEntityMetadataFlagSchema] = &[];
+const WOLF_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamilySchema {
+    family: VanillaEntityMetadataFamily::Wolf,
+    parent: Some(VanillaEntityMetadataFamily::TamableAnimal),
+    inherited_field_count: 20,
+    own_fields: WOLF_FIELDS,
+    own_flags: WOLF_FLAGS,
+};
+
 const PARROT_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[VanillaEntityMetadataFieldSchema {
     name: "DATA_VARIANT_ID",
     data_id: 20,
@@ -15520,6 +15604,7 @@ pub(super) const fn generated_entity_metadata_schema(
         VanillaEntityMetadataFamily::Llama => &LLAMA_SCHEMA,
         VanillaEntityMetadataFamily::TamableAnimal => &TAMABLEANIMAL_SCHEMA,
         VanillaEntityMetadataFamily::Cat => &CAT_SCHEMA,
+        VanillaEntityMetadataFamily::Wolf => &WOLF_SCHEMA,
         VanillaEntityMetadataFamily::Parrot => &PARROT_SCHEMA,
         VanillaEntityMetadataFamily::Rabbit => &RABBIT_SCHEMA,
         VanillaEntityMetadataFamily::AbstractVillager => &ABSTRACTVILLAGER_SCHEMA,

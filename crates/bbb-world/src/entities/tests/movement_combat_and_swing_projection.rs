@@ -147,7 +147,6 @@ fn wolf_head_roll_follows_vanilla_interested_angle_ease() {
     // Vanilla `Wolf.tick`: `interestedAngleO = interestedAngle`, then the synced
     // `DATA_INTERESTED_ID` target eases the current angle by 0.4/tick. `getHeadRollAngle`
     // lerps those two endpoints and scales the result by `0.15π`.
-    const WOLF_INTERESTED_DATA_ID: u8 = 20;
     const WOLF_HEAD_ROLL_SCALE: f32 = 0.15 * std::f32::consts::PI;
 
     let mut store = WorldStore::new();
@@ -175,7 +174,7 @@ fn wolf_head_roll_follows_vanilla_interested_angle_ease() {
 
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 183,
-        values: vec![protocol_bool_data(WOLF_INTERESTED_DATA_ID, true)],
+        values: vec![protocol_bool_data(VANILLA_WOLF_INTERESTED_DATA_ID, true)],
     }));
     store.advance_entity_client_animations(1);
     assert_close(
@@ -193,7 +192,7 @@ fn wolf_head_roll_follows_vanilla_interested_angle_ease() {
 
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 183,
-        values: vec![protocol_bool_data(WOLF_INTERESTED_DATA_ID, false)],
+        values: vec![protocol_bool_data(VANILLA_WOLF_INTERESTED_DATA_ID, false)],
     }));
     store.advance_entity_client_animations(1);
     assert_close(

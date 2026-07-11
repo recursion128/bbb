@@ -230,6 +230,13 @@ pub(crate) use bbb_world::{
     VANILLA_WITHER_SKULL_DANGEROUS_DATA_ID as WITHER_SKULL_DANGEROUS_DATA_ID,
     VANILLA_WITHER_SKULL_DEFAULT_DANGEROUS as WITHER_SKULL_DEFAULT_DANGEROUS,
 };
+use bbb_world::{
+    VANILLA_WOLF_ANGER_END_TIME_DATA_ID as WOLF_ANGER_END_TIME_DATA_ID,
+    VANILLA_WOLF_COLLAR_COLOR_DATA_ID as WOLF_COLLAR_COLOR_DATA_ID,
+    VANILLA_WOLF_DEFAULT_ANGER_END_TIME as WOLF_DEFAULT_ANGER_END_TIME,
+    VANILLA_WOLF_DEFAULT_COLLAR_COLOR as WOLF_DEFAULT_COLLAR_COLOR_ID,
+    VANILLA_WOLF_VARIANT_DATA_ID as WOLF_VARIANT_DATA_ID,
+};
 // Vanilla `Zombie.DATA_DROWNED_CONVERSION_ID`: `Entity` 0..=7, `LivingEntity` 8..=14,
 // `Mob` 15, then Zombie baby/special-type/drowned-conversion at 16..=18.
 use bbb_world::{
@@ -307,13 +314,6 @@ const SHEEP_WOOL_COLOR_MASK: u8 = 0x0f;
 // starts the seven-tick `shakeTime` impact wobble that `ArrowRenderer.extractRenderState` projects.
 #[cfg(test)]
 const ARROW_IN_GROUND_DATA_ID: u8 = 10;
-const WOLF_COLLAR_COLOR_DATA_ID: u8 = 21;
-const WOLF_ANGER_END_TIME_DATA_ID: u8 = 22;
-const WOLF_DEFAULT_COLLAR_COLOR_ID: i32 = 14;
-/// `Wolf.DATA_VARIANT_ID` data id (23): the synced `Holder<WolfVariant>` registry id, defined right
-/// after `DATA_ANGER_END_TIME` (22) and before `DATA_SOUND_VARIANT_ID` (24). `WolfRenderer` keys the
-/// base texture on the resolved variant.
-const WOLF_VARIANT_DATA_ID: u8 = 23;
 /// `ZombieNautilus.DATA_VARIANT_ID` data id (21): the synced `Holder<ZombieNautilusVariant>` registry
 /// id. `AbstractNautilus extends TamableAnimal` adds flags(18)+owner(19) then DASH(20), so the
 /// `ZombieNautilus`-own variant lands at 21.

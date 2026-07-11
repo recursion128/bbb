@@ -9999,3 +9999,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   defaults、两项 boolean false 与 red collar；world lie/relax animation、native model/collar
   与 debug-save 删除手抄 synced ids/defaults。session registry holder 映射与 Cat 动画/渲染、
   persistent Codec 语义仍由对应 owner 管理。
+
+## 2026-07-11：Generated registry-resource defaults 复用与 Wolf metadata
+
+- [x] 复用 Tree-sitter CST 驱动的 registry-resource 与 enum field-id default resolver，
+  建立 `AgeableMob -> TamableAnimal -> Wolf` family：interested BOOLEAN id20/default false、
+  collar INT id21/default `DyeColor.RED`(14)、anger-end LONG id22/default -1，以及
+  pale/classic holder resource defaults 的 variant id23 与 sound-variant id24。world interested
+  animation、native collar/anger/model 与 debug-save 删除手抄 synced ids/defaults；holder 默认
+  直接生成 resource id，不把 vanilla bootstrap numeric id 写入 schema。session registry 映射、
+  Wolf 模型/愤怒行为、persistent Codec/SNBT 语义仍由对应 owner 管理。

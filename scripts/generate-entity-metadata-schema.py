@@ -83,6 +83,7 @@ FAMILIES = (
     FamilySpec("Llama", "net.minecraft.world.entity.animal.equine.Llama", "AbstractChestedHorse"),
     FamilySpec("TamableAnimal", "net.minecraft.world.entity.TamableAnimal", "AgeableMob"),
     FamilySpec("Cat", "net.minecraft.world.entity.animal.feline.Cat", "TamableAnimal"),
+    FamilySpec("Wolf", "net.minecraft.world.entity.animal.wolf.Wolf", "TamableAnimal"),
     FamilySpec("Parrot", "net.minecraft.world.entity.animal.parrot.Parrot", "TamableAnimal"),
     FamilySpec("Rabbit", "net.minecraft.world.entity.animal.rabbit.Rabbit", "AgeableMob"),
     FamilySpec(
@@ -272,6 +273,11 @@ DATA_ALIASES = {
     "VANILLA_CAT_RELAX_STATE_ONE_DATA_ID": ("net.minecraft.world.entity.animal.feline.Cat", "RELAX_STATE_ONE"),
     "VANILLA_CAT_COLLAR_COLOR_DATA_ID": ("net.minecraft.world.entity.animal.feline.Cat", "DATA_COLLAR_COLOR"),
     "VANILLA_CAT_SOUND_VARIANT_DATA_ID": ("net.minecraft.world.entity.animal.feline.Cat", "DATA_SOUND_VARIANT_ID"),
+    "VANILLA_WOLF_INTERESTED_DATA_ID": ("net.minecraft.world.entity.animal.wolf.Wolf", "DATA_INTERESTED_ID"),
+    "VANILLA_WOLF_COLLAR_COLOR_DATA_ID": ("net.minecraft.world.entity.animal.wolf.Wolf", "DATA_COLLAR_COLOR"),
+    "VANILLA_WOLF_ANGER_END_TIME_DATA_ID": ("net.minecraft.world.entity.animal.wolf.Wolf", "DATA_ANGER_END_TIME"),
+    "VANILLA_WOLF_VARIANT_DATA_ID": ("net.minecraft.world.entity.animal.wolf.Wolf", "DATA_VARIANT_ID"),
+    "VANILLA_WOLF_SOUND_VARIANT_DATA_ID": ("net.minecraft.world.entity.animal.wolf.Wolf", "DATA_SOUND_VARIANT_ID"),
     "VANILLA_PARROT_VARIANT_DATA_ID": ("net.minecraft.world.entity.animal.parrot.Parrot", "DATA_VARIANT_ID"),
     "VANILLA_RABBIT_TYPE_DATA_ID": ("net.minecraft.world.entity.animal.rabbit.Rabbit", "DATA_TYPE_ID"),
     "VANILLA_ABSTRACT_VILLAGER_UNHAPPY_COUNTER_DATA_ID": ("net.minecraft.world.entity.npc.villager.AbstractVillager", "DATA_UNHAPPY_COUNTER"),
@@ -419,6 +425,11 @@ DEFAULT_ALIASES = {
     "VANILLA_CAT_DEFAULT_RELAX_STATE_ONE": ("net.minecraft.world.entity.animal.feline.Cat", "RELAX_STATE_ONE"),
     "VANILLA_CAT_DEFAULT_COLLAR_COLOR": ("net.minecraft.world.entity.animal.feline.Cat", "DATA_COLLAR_COLOR"),
     "VANILLA_CAT_DEFAULT_SOUND_VARIANT_RESOURCE_ID": ("net.minecraft.world.entity.animal.feline.Cat", "DATA_SOUND_VARIANT_ID"),
+    "VANILLA_WOLF_DEFAULT_INTERESTED": ("net.minecraft.world.entity.animal.wolf.Wolf", "DATA_INTERESTED_ID"),
+    "VANILLA_WOLF_DEFAULT_COLLAR_COLOR": ("net.minecraft.world.entity.animal.wolf.Wolf", "DATA_COLLAR_COLOR"),
+    "VANILLA_WOLF_DEFAULT_ANGER_END_TIME": ("net.minecraft.world.entity.animal.wolf.Wolf", "DATA_ANGER_END_TIME"),
+    "VANILLA_WOLF_DEFAULT_VARIANT_RESOURCE_ID": ("net.minecraft.world.entity.animal.wolf.Wolf", "DATA_VARIANT_ID"),
+    "VANILLA_WOLF_DEFAULT_SOUND_VARIANT_RESOURCE_ID": ("net.minecraft.world.entity.animal.wolf.Wolf", "DATA_SOUND_VARIANT_ID"),
     "VANILLA_PARROT_DEFAULT_VARIANT": ("net.minecraft.world.entity.animal.parrot.Parrot", "DATA_VARIANT_ID"),
     "VANILLA_RABBIT_DEFAULT_TYPE": ("net.minecraft.world.entity.animal.rabbit.Rabbit", "DATA_TYPE_ID"),
     "VANILLA_ABSTRACT_VILLAGER_DEFAULT_UNHAPPY_COUNTER": ("net.minecraft.world.entity.npc.villager.AbstractVillager", "DATA_UNHAPPY_COUNTER"),
@@ -779,12 +790,83 @@ STATIC_REGISTRY_RESOURCE_DEFAULT_RESOLVERS = (
         "minecraft:classic",
         "the synced holder default is a resource key with registry fallback rather than a numeric registry id",
     ),
+    (
+        "net.minecraft.world.entity.animal.wolf.Wolf",
+        "DATA_VARIANT_ID",
+        "WOLF_VARIANT",
+        "VariantUtils.getDefaultOrAny (this.registryAccess (), WolfVariants.DEFAULT)",
+        (
+            (
+                "net.minecraft.world.entity.animal.wolf.WolfVariants",
+                "DEFAULT",
+                "PALE",
+            ),
+            (
+                "net.minecraft.world.entity.animal.wolf.WolfVariants",
+                "PALE",
+                'createKey ("pale")',
+            ),
+        ),
+        (
+            (
+                "net.minecraft.world.entity.animal.wolf.WolfVariants",
+                "createKey",
+                "ResourceKey.create (Registries.WOLF_VARIANT, Identifier.withDefaultNamespace (name))",
+            ),
+        ),
+        None,
+        "minecraft:pale",
+        "the synced holder default is a resource key selected through VariantUtils rather than a numeric registry id",
+    ),
+    (
+        "net.minecraft.world.entity.animal.wolf.Wolf",
+        "DATA_SOUND_VARIANT_ID",
+        "WOLF_SOUND_VARIANT",
+        "wolfSoundVariants.get (WolfSoundVariants.CLASSIC).or (wolfSoundVariants::getAny).orElseThrow ()",
+        (
+            (
+                "net.minecraft.world.entity.animal.wolf.WolfSoundVariants",
+                "CLASSIC",
+                "createKey (WolfSoundVariants.SoundSet.CLASSIC)",
+            ),
+        ),
+        (
+            (
+                "net.minecraft.world.entity.animal.wolf.WolfSoundVariants",
+                "createKey",
+                "ResourceKey.create (Registries.WOLF_SOUND_VARIANT, Identifier.withDefaultNamespace (wolfSoundVariant.getIdentifier ()))",
+            ),
+            (
+                "net.minecraft.world.entity.animal.wolf.WolfSoundVariants.SoundSet",
+                "getIdentifier",
+                "this.identifier",
+            ),
+        ),
+        (
+            "net.minecraft.world.entity.animal.wolf.WolfSoundVariants.SoundSet",
+            "CLASSIC",
+            0,
+            '"classic"',
+        ),
+        "minecraft:classic",
+        "the synced holder default is a resource key with registry fallback rather than a numeric registry id",
+    ),
 )
 
 
 ENUM_FIELD_ID_DEFAULT_RESOLVERS = (
     (
         "net.minecraft.world.entity.animal.feline.Cat",
+        "DATA_COLLAR_COLOR",
+        "DEFAULT_COLLAR_COLOR.getId ()",
+        "DEFAULT_COLLAR_COLOR",
+        "DyeColor.RED",
+        "net.minecraft.world.item.DyeColor",
+        0,
+        "the synced INT default is stored in a static enum-valued field",
+    ),
+    (
+        "net.minecraft.world.entity.animal.wolf.Wolf",
         "DATA_COLLAR_COLOR",
         "DEFAULT_COLLAR_COLOR.getId ()",
         "DEFAULT_COLLAR_COLOR",

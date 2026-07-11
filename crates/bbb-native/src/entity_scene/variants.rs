@@ -666,7 +666,11 @@ pub(super) fn wolf_is_angry(
     values: &[bbb_protocol::packets::EntityDataValue],
     game_time: i64,
 ) -> bool {
-    let end_time = entity_data_long(values, WOLF_ANGER_END_TIME_DATA_ID, -1);
+    let end_time = entity_data_long(
+        values,
+        WOLF_ANGER_END_TIME_DATA_ID,
+        WOLF_DEFAULT_ANGER_END_TIME,
+    );
     end_time > 0 && end_time - game_time > 0
 }
 

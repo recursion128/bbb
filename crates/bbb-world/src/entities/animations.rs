@@ -99,6 +99,8 @@ use super::schema::{
     VANILLA_WITHER_DEFAULT_TARGET_C as WITHER_DEFAULT_TARGET_C,
     VANILLA_WITHER_TARGET_B_DATA_ID as WITHER_TARGET_B_DATA_ID,
     VANILLA_WITHER_TARGET_C_DATA_ID as WITHER_TARGET_C_DATA_ID,
+    VANILLA_WOLF_DEFAULT_INTERESTED as WOLF_DEFAULT_INTERESTED,
+    VANILLA_WOLF_INTERESTED_DATA_ID as WOLF_INTERESTED_DATA_ID,
 };
 use super::{
     is_vanilla_boat_type, is_vanilla_vehicle_entity_type, EntityTransform, EntityVec3,
@@ -167,12 +169,6 @@ const CAT_LIE_DOWN_TAIL_AMOUNT_RISE_PER_TICK: f32 = 0.08;
 const CAT_LIE_DOWN_TAIL_AMOUNT_FALL_PER_TICK: f32 = 0.13;
 const CAT_RELAX_STATE_ONE_AMOUNT_RISE_PER_TICK: f32 = 0.1;
 const CAT_RELAX_STATE_ONE_AMOUNT_FALL_PER_TICK: f32 = 0.13;
-/// Vanilla `Fox` entity type id (`EntityType.FOX`).
-/// Vanilla `Wolf` entity type id (`EntityType.WOLF`).
-/// Vanilla `Wolf.DATA_INTERESTED_ID` (`isInterested()`), the wolf's first own accessor:
-/// Entity 0–7, LivingEntity 8–14, Mob 15, AgeableMob 16–17, TamableAnimal 18–19,
-/// then Wolf interested 20.
-const WOLF_INTERESTED_DATA_ID: u8 = 20;
 /// Vanilla wolf shake/drying progress increment (`Wolf.tick`: `shakeAnim += 0.05F`).
 const WOLF_SHAKE_ANIM_PER_TICK: f32 = 0.05;
 /// Vanilla wolf wet shade floor (`Wolf.getWetShade`: `0.75 + lerp(shake) / 2 * 0.25`).
@@ -6179,7 +6175,11 @@ fn fox_is_interested(data_values: &[EntityDataValue]) -> bool {
 
 /// Vanilla `Wolf.isInterested()` = `entityData.get(DATA_INTERESTED_ID)`.
 pub(crate) fn wolf_is_interested(data_values: &[EntityDataValue]) -> bool {
-    entity_data_bool(data_values, WOLF_INTERESTED_DATA_ID, false)
+    entity_data_bool(
+        data_values,
+        WOLF_INTERESTED_DATA_ID,
+        WOLF_DEFAULT_INTERESTED,
+    )
 }
 
 /// Vanilla `Cat.isLying()` = `entityData.get(IS_LYING)`.

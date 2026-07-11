@@ -269,6 +269,16 @@ use bbb_world::{
     VANILLA_TAMABLE_ANIMAL_FLAGS_DATA_ID as TAMABLE_ANIMAL_FLAGS_DATA_ID,
     VANILLA_TAMABLE_ANIMAL_FLAG_SITTING as TAMABLE_ANIMAL_SITTING_FLAG,
 };
+use bbb_world::{
+    VANILLA_WOLF_ANGER_END_TIME_DATA_ID as WOLF_ANGER_END_TIME_DATA_ID,
+    VANILLA_WOLF_COLLAR_COLOR_DATA_ID as WOLF_COLLAR_COLOR_DATA_ID,
+    VANILLA_WOLF_DEFAULT_ANGER_END_TIME as WOLF_DEFAULT_ANGER_END_TIME,
+    VANILLA_WOLF_DEFAULT_COLLAR_COLOR as WOLF_DEFAULT_COLLAR_COLOR_ID,
+    VANILLA_WOLF_DEFAULT_SOUND_VARIANT_RESOURCE_ID as WOLF_DEFAULT_SOUND_VARIANT_RESOURCE_ID,
+    VANILLA_WOLF_DEFAULT_VARIANT_RESOURCE_ID as WOLF_DEFAULT_VARIANT_RESOURCE_ID,
+    VANILLA_WOLF_SOUND_VARIANT_DATA_ID as WOLF_SOUND_VARIANT_DATA_ID,
+    VANILLA_WOLF_VARIANT_DATA_ID as WOLF_VARIANT_DATA_ID,
+};
 use tokio::sync::mpsc;
 use winit::{
     dpi::{PhysicalPosition, PhysicalSize},
@@ -531,14 +541,6 @@ const COPPER_GOLEM_DEFAULT_NEXT_WEATHER_AGE: i64 = -1;
 const TURTLE_DEFAULT_HOME_POS_X: i32 = 0;
 const TURTLE_DEFAULT_HOME_POS_Y: i32 = 0;
 const TURTLE_DEFAULT_HOME_POS_Z: i32 = 0;
-const WOLF_COLLAR_COLOR_DATA_ID: u8 = 21;
-const WOLF_ANGER_END_TIME_DATA_ID: u8 = 22;
-const WOLF_VARIANT_DATA_ID: u8 = 23;
-const WOLF_SOUND_VARIANT_DATA_ID: u8 = 24;
-const WOLF_DEFAULT_COLLAR_COLOR_ID: i32 = 14;
-const WOLF_DEFAULT_ANGER_END_TIME: i64 = -1;
-const WOLF_DEFAULT_VARIANT_ID: i32 = 0;
-const WOLF_DEFAULT_SOUND_VARIANT_ID: i32 = 0;
 const ZOMBIE_NAUTILUS_VARIANT_DATA_ID: u8 = 21;
 const ZOMBIE_NAUTILUS_DEFAULT_VARIANT_ID: i32 = 0;
 const CHICKEN_VARIANT_DATA_ID: u8 = 18;
@@ -6450,7 +6452,8 @@ fn debug_push_wolf_additional_save_data(entity: &EntityState, fields: &mut Vec<S
         WOLF_VARIANT_DATA_ID,
         EntityDataRegistryHolder::WolfVariant,
     )
-    .unwrap_or(WOLF_DEFAULT_VARIANT_ID);
+    .and_then(vanilla_wolf_variant_resource_id)
+    .unwrap_or(WOLF_DEFAULT_VARIANT_RESOURCE_ID);
     let anger_end_time = debug_entity_data_long_present(entity, WOLF_ANGER_END_TIME_DATA_ID)
         .unwrap_or(WOLF_DEFAULT_ANGER_END_TIME);
     let sound_variant = debug_entity_data_registry_id_present(
@@ -6458,18 +6461,14 @@ fn debug_push_wolf_additional_save_data(entity: &EntityState, fields: &mut Vec<S
         WOLF_SOUND_VARIANT_DATA_ID,
         EntityDataRegistryHolder::WolfSoundVariant,
     )
-    .unwrap_or(WOLF_DEFAULT_SOUND_VARIANT_ID);
+    .and_then(vanilla_wolf_sound_variant_resource_id)
+    .unwrap_or(WOLF_DEFAULT_SOUND_VARIANT_RESOURCE_ID);
     fields.push(format!("CollarColor: {collar_color}b"));
-    fields.push(format!(
-        "variant: {}",
-        debug_snbt_string(vanilla_wolf_variant_resource_id(variant).unwrap_or("minecraft:pale"))
-    ));
+    fields.push(format!("variant: {}", debug_snbt_string(variant)));
     fields.push(format!("anger_end_time: {anger_end_time}L"));
     fields.push(format!(
         "sound_variant: {}",
-        debug_snbt_string(
-            vanilla_wolf_sound_variant_resource_id(sound_variant).unwrap_or("minecraft:classic")
-        )
+        debug_snbt_string(sound_variant)
     ));
 }
 
