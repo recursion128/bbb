@@ -377,11 +377,17 @@ pub(super) fn decode_set_camera(decoder: &mut Decoder<'_>) -> Result<SetCamera> 
 }
 
 pub(super) fn decode_player_health(decoder: &mut Decoder<'_>) -> Result<PlayerHealth> {
-    Ok(PlayerHealth {
+    let update = PlayerHealth {
         health: decoder.read_f32()?,
         food: decoder.read_var_i32()?,
         saturation: decoder.read_f32()?,
-    })
+    };
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after set health packet".to_string(),
+        ));
+    }
+    Ok(update)
 }
 
 pub(super) fn decode_set_held_slot(decoder: &mut Decoder<'_>) -> Result<SetHeldSlot> {

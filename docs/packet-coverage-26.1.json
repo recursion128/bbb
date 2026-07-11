@@ -8686,29 +8686,45 @@
       "constant_name": "CLIENTBOUND_SET_HEALTH",
       "coverage": {
         "canonical_apply": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/client/local_player.rs#apply_player_health",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleSetHealth"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/client_state/tests.rs#decodes_player_health",
+            "vanilla:net/minecraft/network/protocol/game/ClientboundSetHealthPacket.java#STREAM_CODEC"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "ownership": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/play_apply.rs#PlayClientbound::SetHealth"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "runtime_side_effect": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-native/src/runtime.rs#hud_player_health",
+            "crates/bbb-renderer/src/hud.rs#hud_player_health"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/client_state/tests.rs#decodes_player_health",
+            "crates/bbb-world/src/client/local_player.rs#local_player_packets_update_canonical_state",
+            "crates/bbb-net/src/probe/play.rs#probe_set_health_records_dead_health_without_auto_respawn",
+            "crates/bbb-native/src/runtime/events/client_state/tests.rs#player_health_updates_world_counters"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "clientbound",

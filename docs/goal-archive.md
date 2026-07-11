@@ -11152,3 +11152,11 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   trailing bytes；world level-data state、net apply 和 native event tests 使五格全部闭合。
 - [x] 此状态只表示外部服务器同步给 multiplayer client 的难度与锁定标记，不拥有或驱动
   IntegratedServer、server mob simulation 或 local difficulty 计算。
+
+## 2026-07-11：set-health packet coverage audit
+
+- [x] 对照 `ClientboundSetHealthPacket` 与 `ClientPacketListener.handleSetHealth` 锁定 health f32、
+  food VarInt、saturation f32 wire，并拒绝 trailing bytes；local-player canonical state、heart/food HUD
+  projection 与 protocol/world/net/native tests 使五格全部闭合。
+- [x] health 0 只记录服务器同步结果；现有测试锁定该 packet 不自行发送 respawn。客户端不从此
+  packet 推导权威伤害、死亡判定、掉落或任何服务端 world transition。

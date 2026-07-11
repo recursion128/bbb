@@ -1124,6 +1124,44 @@
         "status": "complete"
       }
     },
+    "play/clientbound/CLIENTBOUND_SET_HEALTH": {
+      "canonical_apply": {
+        "evidence": [
+          "crates/bbb-world/src/client/local_player.rs#apply_player_health",
+          "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleSetHealth"
+        ],
+        "status": "complete"
+      },
+      "decode": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/client_state/tests.rs#decodes_player_health",
+          "vanilla:net/minecraft/network/protocol/game/ClientboundSetHealthPacket.java#STREAM_CODEC"
+        ],
+        "status": "complete"
+      },
+      "ownership": {
+        "evidence": [
+          "crates/bbb-world/src/play_apply.rs#PlayClientbound::SetHealth"
+        ],
+        "status": "complete"
+      },
+      "runtime_side_effect": {
+        "evidence": [
+          "crates/bbb-native/src/runtime.rs#hud_player_health",
+          "crates/bbb-renderer/src/hud.rs#hud_player_health"
+        ],
+        "status": "complete"
+      },
+      "tests": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/client_state/tests.rs#decodes_player_health",
+          "crates/bbb-world/src/client/local_player.rs#local_player_packets_update_canonical_state",
+          "crates/bbb-net/src/probe/play.rs#probe_set_health_records_dead_health_without_auto_respawn",
+          "crates/bbb-native/src/runtime/events/client_state/tests.rs#player_health_updates_world_counters"
+        ],
+        "status": "complete"
+      }
+    },
     "play/clientbound/CLIENTBOUND_PLAYER_ROTATION": {
       "canonical_apply": {
         "evidence": [

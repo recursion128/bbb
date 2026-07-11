@@ -386,6 +386,8 @@ Cooldown 的 resource id + duration wire、0 remove/非零 add、client tick exp
 HUD/item-model consumers 已全行闭合；负 duration 也按 vanilla 先 add、下一 tick expire。
 ChangeDifficulty 的 wrapped enum VarInt + locked bool wire、client level-data assignment 与
 world/net/native apply tests 已全行闭合；该状态不用于驱动任何 integrated-server 模拟。
+SetHealth 的 health/food/saturation wire、local-player assignment、HUD projection 与
+world/net/native tests 已全行闭合；health 只接收服务器结果，不在客户端判定权威伤害或自动 respawn。
 
 完成标准：全部 vanilla 26.1 catalog entry 都有矩阵行；所有目标客户端适用项为
 `complete`，其余只有带 vanilla 依据的 `not-applicable` 或带重启判据的窄 `deferred`；
