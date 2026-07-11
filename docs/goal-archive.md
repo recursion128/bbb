@@ -9938,3 +9938,9 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   IDLE(0)，以及四个 weather ordinals 和五个 action constructor ids。world animation、
   native model/debug-save 删除手抄 synced id/default/state id；纹理映射、clamp、交互动画和
   weather tick 保存语义仍由对应 owner 管理。
+
+## 2026-07-11：Generated entity metadata consumer（AbstractVillager）
+
+- [x] 从 generated catalog 建立 `AgeableMob -> AbstractVillager` family：INT
+  unhappy-counter id18/default0；world villager render-state 删除手抄 synced id/default。
+  交易状态、计数器时序与 villager/trader 行为仍由对应语义 owner 管理。

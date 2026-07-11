@@ -45,6 +45,7 @@ pub enum VanillaEntityMetadataFamily {
     TamableAnimal,
     Parrot,
     Rabbit,
+    AbstractVillager,
     ArmorStand,
     AbstractArrow,
     Arrow,
@@ -389,6 +390,7 @@ mod tests {
             VanillaEntityMetadataFamily::TamableAnimal,
             VanillaEntityMetadataFamily::Parrot,
             VanillaEntityMetadataFamily::Rabbit,
+            VanillaEntityMetadataFamily::AbstractVillager,
             VanillaEntityMetadataFamily::ArmorStand,
             VanillaEntityMetadataFamily::AbstractArrow,
             VanillaEntityMetadataFamily::Arrow,
@@ -715,6 +717,16 @@ mod tests {
         assert_eq!(rabbit.own_fields.len(), 1);
         assert_eq!(VANILLA_RABBIT_TYPE_DATA_ID, 18);
         assert_eq!(VANILLA_RABBIT_DEFAULT_TYPE, 0);
+        let abstract_villager =
+            vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::AbstractVillager);
+        assert_eq!(
+            abstract_villager.parent,
+            Some(VanillaEntityMetadataFamily::AgeableMob)
+        );
+        assert_eq!(abstract_villager.inherited_field_count, 18);
+        assert_eq!(abstract_villager.own_fields.len(), 1);
+        assert_eq!(VANILLA_ABSTRACT_VILLAGER_UNHAPPY_COUNTER_DATA_ID, 18);
+        assert_eq!(VANILLA_ABSTRACT_VILLAGER_DEFAULT_UNHAPPY_COUNTER, 0);
         let salmon = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Salmon);
         assert_eq!(
             salmon.parent,

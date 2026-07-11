@@ -111,8 +111,9 @@ use crate::entities::projectiles::{
     entity_hurting_projectile_from_state, entity_projectile_lifecycle_from_state,
 };
 use crate::entities::schema::{
-    VANILLA_AVATAR_DEFAULT_MODEL_CUSTOMIZATION, VANILLA_AVATAR_MAIN_HAND_DATA_ID,
-    VANILLA_AVATAR_MODEL_CUSTOMIZATION_DATA_ID,
+    VANILLA_ABSTRACT_VILLAGER_DEFAULT_UNHAPPY_COUNTER,
+    VANILLA_ABSTRACT_VILLAGER_UNHAPPY_COUNTER_DATA_ID, VANILLA_AVATAR_DEFAULT_MODEL_CUSTOMIZATION,
+    VANILLA_AVATAR_MAIN_HAND_DATA_ID, VANILLA_AVATAR_MODEL_CUSTOMIZATION_DATA_ID,
     VANILLA_AVATAR_MODEL_PART_CAPE as VANILLA_AVATAR_CAPE_PART_MASK,
     VANILLA_ENTITY_CUSTOM_NAME_DATA_ID,
     VANILLA_ENTITY_SHARED_FLAGS_DATA_ID as ENTITY_SHARED_FLAGS_DATA_ID,
@@ -134,10 +135,6 @@ use crate::entities::schema::{
 use crate::registries::RegistrySet;
 use crate::ItemEquipmentSlot;
 use bbb_protocol::entity_types::*;
-
-/// Vanilla `AbstractVillager.DATA_UNHAPPY_COUNTER` (INT): `AgeableMob` consumes
-/// baby id 16 and age-locked id 17, so the abstract-villager counter is id 18.
-const ABSTRACT_VILLAGER_UNHAPPY_COUNTER_DATA_ID: u8 = 18;
 
 /// Vanilla `Entity.getTicksRequiredToFreeze()`: the powder-snow freeze threshold
 /// at which `isFullyFrozen()` becomes true and the body starts shaking.
@@ -1610,8 +1607,12 @@ impl EntityStore {
             identity.entity_type_id,
             VANILLA_ENTITY_TYPE_VILLAGER_ID | VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID
         ) && self
-            .metadata_int(id, ABSTRACT_VILLAGER_UNHAPPY_COUNTER_DATA_ID, 0)
-            .unwrap_or(0)
+            .metadata_int(
+                id,
+                VANILLA_ABSTRACT_VILLAGER_UNHAPPY_COUNTER_DATA_ID,
+                VANILLA_ABSTRACT_VILLAGER_DEFAULT_UNHAPPY_COUNTER,
+            )
+            .unwrap_or(VANILLA_ABSTRACT_VILLAGER_DEFAULT_UNHAPPY_COUNTER)
             > 0;
         // Vanilla `EndermanModel.setupAnim`: a carried block (`!carriedBlock.isEmpty()`,
         // the synced `DATA_CARRY_STATE`) poses both arms forward, and `isCreepy` (the

@@ -183,6 +183,9 @@ const GENERATED_VANILLA_PARROT_VARIANT_DATA_ID: u8 = 20;
 pub const VANILLA_PARROT_VARIANT_DATA_ID: u8 = GENERATED_VANILLA_PARROT_VARIANT_DATA_ID;
 const GENERATED_VANILLA_RABBIT_TYPE_DATA_ID: u8 = 18;
 pub const VANILLA_RABBIT_TYPE_DATA_ID: u8 = GENERATED_VANILLA_RABBIT_TYPE_DATA_ID;
+const GENERATED_VANILLA_ABSTRACT_VILLAGER_UNHAPPY_COUNTER_DATA_ID: u8 = 18;
+pub const VANILLA_ABSTRACT_VILLAGER_UNHAPPY_COUNTER_DATA_ID: u8 =
+    GENERATED_VANILLA_ABSTRACT_VILLAGER_UNHAPPY_COUNTER_DATA_ID;
 const GENERATED_VANILLA_ARMOR_STAND_CLIENT_FLAGS_DATA_ID: u8 = 15;
 pub const VANILLA_ARMOR_STAND_CLIENT_FLAGS_DATA_ID: u8 =
     GENERATED_VANILLA_ARMOR_STAND_CLIENT_FLAGS_DATA_ID;
@@ -660,6 +663,9 @@ const GENERATED_VANILLA_PARROT_DEFAULT_VARIANT: i32 = 0;
 pub const VANILLA_PARROT_DEFAULT_VARIANT: i32 = GENERATED_VANILLA_PARROT_DEFAULT_VARIANT;
 const GENERATED_VANILLA_RABBIT_DEFAULT_TYPE: i32 = 0;
 pub const VANILLA_RABBIT_DEFAULT_TYPE: i32 = GENERATED_VANILLA_RABBIT_DEFAULT_TYPE;
+const GENERATED_VANILLA_ABSTRACT_VILLAGER_DEFAULT_UNHAPPY_COUNTER: i32 = 0;
+pub const VANILLA_ABSTRACT_VILLAGER_DEFAULT_UNHAPPY_COUNTER: i32 =
+    GENERATED_VANILLA_ABSTRACT_VILLAGER_DEFAULT_UNHAPPY_COUNTER;
 const GENERATED_VANILLA_ABSTRACT_ARROW_DEFAULT_FLAGS: i8 = 0;
 pub const VANILLA_ABSTRACT_ARROW_DEFAULT_FLAGS: i8 = GENERATED_VANILLA_ABSTRACT_ARROW_DEFAULT_FLAGS;
 const GENERATED_VANILLA_ABSTRACT_ARROW_DEFAULT_PIERCE_LEVEL: i8 = 0;
@@ -14335,6 +14341,23 @@ const RABBIT_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFa
     own_flags: RABBIT_FLAGS,
 };
 
+const ABSTRACTVILLAGER_FIELDS: &[VanillaEntityMetadataFieldSchema] =
+    &[VanillaEntityMetadataFieldSchema {
+        name: "DATA_UNHAPPY_COUNTER",
+        data_id: 18,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+        default: VanillaEntityMetadataDefault::Int(0),
+    }];
+const ABSTRACTVILLAGER_FLAGS: &[VanillaEntityMetadataFlagSchema] = &[];
+const ABSTRACTVILLAGER_SCHEMA: VanillaEntityMetadataFamilySchema =
+    VanillaEntityMetadataFamilySchema {
+        family: VanillaEntityMetadataFamily::AbstractVillager,
+        parent: Some(VanillaEntityMetadataFamily::AgeableMob),
+        inherited_field_count: 18,
+        own_fields: ABSTRACTVILLAGER_FIELDS,
+        own_flags: ABSTRACTVILLAGER_FLAGS,
+    };
+
 const ARMORSTAND_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[
     VanillaEntityMetadataFieldSchema {
         name: "DATA_CLIENT_FLAGS",
@@ -15227,6 +15250,7 @@ pub(super) const fn generated_entity_metadata_schema(
         VanillaEntityMetadataFamily::TamableAnimal => &TAMABLEANIMAL_SCHEMA,
         VanillaEntityMetadataFamily::Parrot => &PARROT_SCHEMA,
         VanillaEntityMetadataFamily::Rabbit => &RABBIT_SCHEMA,
+        VanillaEntityMetadataFamily::AbstractVillager => &ABSTRACTVILLAGER_SCHEMA,
         VanillaEntityMetadataFamily::ArmorStand => &ARMORSTAND_SCHEMA,
         VanillaEntityMetadataFamily::AbstractArrow => &ABSTRACTARROW_SCHEMA,
         VanillaEntityMetadataFamily::Arrow => &ARROW_SCHEMA,
