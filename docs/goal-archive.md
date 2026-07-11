@@ -9658,3 +9658,11 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   的手抄常量/default。tail/spikes client tick 与 guardian beam projection 统一消费 generated
   aliases；focused tests 锁定继承 offset、serializer/default、moving 分支与 beam target。
   未修改水中移动、动画公式、beam timing、目标解析或 native renderer。
+
+## 2026-07-11：Generated entity metadata consumer（SnowGolem）
+
+- [x] 从 generated catalog 建立 `Mob -> SnowGolem` compatibility family：BYTE
+  `DATA_PUMPKIN_ID` id 16/default 16 及 extractor 唯一绑定的 `PUMPKIN_FLAG=16`
+  替代 world/native 手抄 id/default/mask。world head-block projection、native F3+I 与相关
+  fixtures 统一消费 generated aliases；focused tests 锁定继承 offset、serializer/default、
+  flag 绑定、pumpkin render state 与保存语义。未修改剪刀交互或 renderer layer。

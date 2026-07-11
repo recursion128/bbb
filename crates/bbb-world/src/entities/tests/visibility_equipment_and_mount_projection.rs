@@ -544,8 +544,6 @@ fn entity_model_sources_project_pig_saddle_from_saddle_slot() {
 
 #[test]
 fn entity_model_sources_project_snow_golem_pumpkin_flag() {
-    const SNOW_GOLEM_PUMPKIN_DATA_ID: u8 = 16;
-
     fn pumpkin(store: &WorldStore, entity_id: i32) -> bool {
         store
             .entity_model_sources_at_partial_tick(0.0)
@@ -574,7 +572,7 @@ fn entity_model_sources_project_snow_golem_pumpkin_flag() {
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 70,
         values: vec![ProtocolEntityDataValue {
-            data_id: SNOW_GOLEM_PUMPKIN_DATA_ID,
+            data_id: VANILLA_SNOW_GOLEM_PUMPKIN_DATA_ID,
             serializer_id: 0,
             value: EntityDataValueKind::Byte(0),
         }],
@@ -584,7 +582,7 @@ fn entity_model_sources_project_snow_golem_pumpkin_flag() {
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 70,
         values: vec![ProtocolEntityDataValue {
-            data_id: SNOW_GOLEM_PUMPKIN_DATA_ID,
+            data_id: VANILLA_SNOW_GOLEM_PUMPKIN_DATA_ID,
             serializer_id: 0,
             value: EntityDataValueKind::Byte(16),
         }],

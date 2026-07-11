@@ -131,6 +131,8 @@ pub const VANILLA_GUARDIAN_MOVING_DATA_ID: u8 = GENERATED_VANILLA_GUARDIAN_MOVIN
 const GENERATED_VANILLA_GUARDIAN_ATTACK_TARGET_DATA_ID: u8 = 17;
 pub const VANILLA_GUARDIAN_ATTACK_TARGET_DATA_ID: u8 =
     GENERATED_VANILLA_GUARDIAN_ATTACK_TARGET_DATA_ID;
+const GENERATED_VANILLA_SNOW_GOLEM_PUMPKIN_DATA_ID: u8 = 16;
+pub const VANILLA_SNOW_GOLEM_PUMPKIN_DATA_ID: u8 = GENERATED_VANILLA_SNOW_GOLEM_PUMPKIN_DATA_ID;
 const GENERATED_VANILLA_VEHICLE_HURT_TIME_DATA_ID: u8 = 8;
 pub const VANILLA_VEHICLE_HURT_TIME_DATA_ID: u8 = GENERATED_VANILLA_VEHICLE_HURT_TIME_DATA_ID;
 const GENERATED_VANILLA_VEHICLE_HURT_DIR_DATA_ID: u8 = 9;
@@ -175,6 +177,8 @@ const GENERATED_VANILLA_PLAYER_SHOULDER_PARROT_RIGHT_DATA_ID: u8 = 20;
 pub const VANILLA_PLAYER_SHOULDER_PARROT_RIGHT_DATA_ID: u8 =
     GENERATED_VANILLA_PLAYER_SHOULDER_PARROT_RIGHT_DATA_ID;
 
+const GENERATED_VANILLA_SNOW_GOLEM_PUMPKIN_FLAG: i8 = 16;
+pub const VANILLA_SNOW_GOLEM_PUMPKIN_FLAG: i8 = GENERATED_VANILLA_SNOW_GOLEM_PUMPKIN_FLAG;
 const GENERATED_VANILLA_ABSTRACT_HORSE_FLAG_TAME: i8 = 2;
 pub const VANILLA_ABSTRACT_HORSE_FLAG_TAME: i8 = GENERATED_VANILLA_ABSTRACT_HORSE_FLAG_TAME;
 const GENERATED_VANILLA_ABSTRACT_HORSE_FLAG_BRED: i8 = 8;
@@ -323,6 +327,9 @@ pub const VANILLA_GUARDIAN_DEFAULT_MOVING: bool = GENERATED_VANILLA_GUARDIAN_DEF
 const GENERATED_VANILLA_GUARDIAN_DEFAULT_ATTACK_TARGET: i32 = 0;
 pub const VANILLA_GUARDIAN_DEFAULT_ATTACK_TARGET: i32 =
     GENERATED_VANILLA_GUARDIAN_DEFAULT_ATTACK_TARGET;
+const GENERATED_VANILLA_SNOW_GOLEM_DEFAULT_PUMPKIN_FLAGS: i8 = 16;
+pub const VANILLA_SNOW_GOLEM_DEFAULT_PUMPKIN_FLAGS: i8 =
+    GENERATED_VANILLA_SNOW_GOLEM_DEFAULT_PUMPKIN_FLAGS;
 const GENERATED_VANILLA_VEHICLE_DEFAULT_HURT_TIME: i32 = 0;
 pub const VANILLA_VEHICLE_DEFAULT_HURT_TIME: i32 = GENERATED_VANILLA_VEHICLE_DEFAULT_HURT_TIME;
 const GENERATED_VANILLA_VEHICLE_DEFAULT_HURT_DIR: i32 = 1;
@@ -11174,6 +11181,13 @@ pub const VANILLA_ENTITY_METADATA_FLAGS_26_1: &[VanillaEntityMetadataFlagCatalog
 pub const VANILLA_ENTITY_METADATA_FLAG_RESOLVER_EVIDENCE_26_1:
     &[VanillaEntityMetadataResolverEvidence] = &[
     VanillaEntityMetadataResolverEvidence {
+        java_class: "net.minecraft.world.entity.animal.golem.SnowGolem",
+        accessor_name: "DATA_PUMPKIN_ID",
+        evidence_member: "PUMPKIN_FLAG",
+        source_expression: "16",
+        reason: "named vanilla flag constant",
+    },
+    VanillaEntityMetadataResolverEvidence {
         java_class: "net.minecraft.world.entity.animal.equine.AbstractHorse",
         accessor_name: "DATA_ID_FLAGS",
         evidence_member: "FLAG_TAME",
@@ -13341,6 +13355,25 @@ const GUARDIAN_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadata
     own_flags: GUARDIAN_FLAGS,
 };
 
+const SNOWGOLEM_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[VanillaEntityMetadataFieldSchema {
+    name: "DATA_PUMPKIN_ID",
+    data_id: 16,
+    serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+    default: VanillaEntityMetadataDefault::Byte(16),
+}];
+const SNOWGOLEM_FLAGS: &[VanillaEntityMetadataFlagSchema] = &[VanillaEntityMetadataFlagSchema {
+    name: "PUMPKIN_FLAG",
+    data_id: 16,
+    mask: VANILLA_SNOW_GOLEM_PUMPKIN_FLAG,
+}];
+const SNOWGOLEM_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamilySchema {
+    family: VanillaEntityMetadataFamily::SnowGolem,
+    parent: Some(VanillaEntityMetadataFamily::Mob),
+    inherited_field_count: 16,
+    own_fields: SNOWGOLEM_FIELDS,
+    own_flags: SNOWGOLEM_FLAGS,
+};
+
 const VEHICLEENTITY_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[
     VanillaEntityMetadataFieldSchema {
         name: "DATA_ID_HURT",
@@ -13579,6 +13612,7 @@ pub(super) const fn generated_entity_metadata_schema(
         VanillaEntityMetadataFamily::ExperienceOrb => &EXPERIENCEORB_SCHEMA,
         VanillaEntityMetadataFamily::ItemEntity => &ITEMENTITY_SCHEMA,
         VanillaEntityMetadataFamily::Guardian => &GUARDIAN_SCHEMA,
+        VanillaEntityMetadataFamily::SnowGolem => &SNOWGOLEM_SCHEMA,
         VanillaEntityMetadataFamily::VehicleEntity => &VEHICLEENTITY_SCHEMA,
         VanillaEntityMetadataFamily::AbstractBoat => &ABSTRACTBOAT_SCHEMA,
         VanillaEntityMetadataFamily::AbstractMinecart => &ABSTRACTMINECART_SCHEMA,

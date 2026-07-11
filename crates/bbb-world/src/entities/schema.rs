@@ -30,6 +30,7 @@ pub enum VanillaEntityMetadataFamily {
     ExperienceOrb,
     ItemEntity,
     Guardian,
+    SnowGolem,
     VehicleEntity,
     AbstractBoat,
     AbstractMinecart,
@@ -301,6 +302,7 @@ mod tests {
             VanillaEntityMetadataFamily::ExperienceOrb,
             VanillaEntityMetadataFamily::ItemEntity,
             VanillaEntityMetadataFamily::Guardian,
+            VanillaEntityMetadataFamily::SnowGolem,
             VanillaEntityMetadataFamily::VehicleEntity,
             VanillaEntityMetadataFamily::AbstractBoat,
             VanillaEntityMetadataFamily::AbstractMinecart,
@@ -509,6 +511,30 @@ mod tests {
                     VanillaEntityMetadataDefault::Int(0),
                 ),
             ]
+        );
+        let snow_golem = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::SnowGolem);
+        assert_eq!(snow_golem.parent, Some(VanillaEntityMetadataFamily::Mob));
+        assert_eq!(snow_golem.inherited_field_count, 16);
+        assert_eq!(
+            snow_golem.own_fields,
+            &[VanillaEntityMetadataFieldSchema {
+                name: "DATA_PUMPKIN_ID",
+                data_id: 16,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+                default: VanillaEntityMetadataDefault::Byte(16),
+            }]
+        );
+        assert_eq!(VANILLA_SNOW_GOLEM_PUMPKIN_DATA_ID, 16);
+        assert_eq!(VANILLA_SNOW_GOLEM_DEFAULT_PUMPKIN_FLAGS, 16);
+        assert_eq!(VANILLA_SNOW_GOLEM_PUMPKIN_FLAG, 16);
+        assert_eq!(
+            snow_golem.own_flags,
+            &[VanillaEntityMetadataFlagSchema {
+                name: "PUMPKIN_FLAG",
+                data_id: 16,
+                mask: 16,
+            }]
         );
         assert_eq!(
             vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Entity)

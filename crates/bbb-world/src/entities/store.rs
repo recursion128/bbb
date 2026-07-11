@@ -22,6 +22,9 @@ use super::schema::{
     VANILLA_ABSTRACT_MINECART_DISPLAY_OFFSET_DATA_ID as MINECART_DISPLAY_OFFSET_DATA_ID,
     VANILLA_END_CRYSTAL_BEAM_TARGET_DATA_ID as END_CRYSTAL_BEAM_TARGET_DATA_ID,
     VANILLA_SHULKER_ATTACH_FACE_DATA_ID as SHULKER_ATTACH_FACE_DATA_ID,
+    VANILLA_SNOW_GOLEM_DEFAULT_PUMPKIN_FLAGS as SNOW_GOLEM_DEFAULT_PUMPKIN_FLAGS,
+    VANILLA_SNOW_GOLEM_PUMPKIN_DATA_ID as SNOW_GOLEM_PUMPKIN_DATA_ID,
+    VANILLA_SNOW_GOLEM_PUMPKIN_FLAG as SNOW_GOLEM_PUMPKIN_FLAG,
     VANILLA_TAMABLE_ANIMAL_DEFAULT_FLAGS as TAMABLE_ANIMAL_DEFAULT_FLAGS,
     VANILLA_TAMABLE_ANIMAL_FLAGS_DATA_ID as TAMABLE_ANIMAL_FLAGS_DATA_ID,
     VANILLA_TAMABLE_ANIMAL_FLAG_SITTING as TAMABLE_ANIMAL_SITTING_FLAG,
@@ -282,12 +285,6 @@ fn vanilla_mob_item_in_hand_layer_type(entity_type_id: i32) -> bool {
                 | VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID
         )
 }
-
-/// Vanilla `SnowGolem.DATA_PUMPKIN_ID` data id (16): the byte holding the carved-pumpkin-head flag.
-const VANILLA_SNOW_GOLEM_PUMPKIN_DATA_ID: u8 = 16;
-
-/// Vanilla `SnowGolem.PUMPKIN_FLAG` (16). `defineSynchedData` initializes the byte to this value.
-const SNOW_GOLEM_PUMPKIN_FLAG: i8 = 16;
 
 /// Vanilla `Enderman.DATA_CARRY_STATE` data id (16): the optional carried `BlockState`.
 /// The enderman is the first `Monster` accessor after `Mob.DATA_MOB_FLAGS_ID` (15).
@@ -1745,10 +1742,10 @@ impl EntityStore {
             && self
                 .metadata_byte(
                     id,
-                    VANILLA_SNOW_GOLEM_PUMPKIN_DATA_ID,
-                    SNOW_GOLEM_PUMPKIN_FLAG,
+                    SNOW_GOLEM_PUMPKIN_DATA_ID,
+                    SNOW_GOLEM_DEFAULT_PUMPKIN_FLAGS,
                 )
-                .unwrap_or(SNOW_GOLEM_PUMPKIN_FLAG)
+                .unwrap_or(SNOW_GOLEM_DEFAULT_PUMPKIN_FLAGS)
                 & SNOW_GOLEM_PUMPKIN_FLAG
                 != 0;
         // Vanilla `WitherBossRenderer.extractRenderState`: `state.invulnerableTicks =

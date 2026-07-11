@@ -496,7 +496,7 @@ back into a todo. Do not delete these.
   explicit flag diagnostics. The compatibility facade currently exposes
   `Entity`, `LivingEntity`, `Mob`, `Avatar`, `Player`, `AgeableMob ->
   AbstractHorse` / `TamableAnimal`, `ArmorStand`, `Slime` (also consumed by
-  `MagmaCube`), `Shulker`, `Zombie`, `Mob -> Guardian`,
+  `MagmaCube`), `Shulker`, `Zombie`, `Mob -> Guardian` / `SnowGolem`,
   `Entity -> AbstractArrow -> Arrow` /
   `ThrownTrident` leaves, the `Entity -> WitherSkull` projectile leaf,
   `Entity -> EndCrystal` / `Interaction` / `ExperienceOrb` / `ItemEntity`, the

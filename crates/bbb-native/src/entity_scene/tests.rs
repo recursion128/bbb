@@ -12,6 +12,7 @@ use bbb_protocol::packets::{
 use bbb_world::{
     ArmorMaterialKind as WorldArmorMaterialKind, EntityPickBoundsState, EntityVec3,
     ItemEquipmentSlot, LlamaBodyDecorColor as WorldLlamaBodyDecorColor, RegistryPacketEntry,
+    VANILLA_SNOW_GOLEM_PUMPKIN_DATA_ID,
 };
 use uuid::Uuid;
 
@@ -5697,8 +5698,6 @@ fn entity_model_instances_project_pig_saddle_render_state() {
 
 #[test]
 fn entity_model_instances_project_snow_golem_pumpkin_render_state() {
-    const SNOW_GOLEM_PUMPKIN_DATA_ID: u8 = 16;
-
     let pumpkin = |world: &WorldStore, id: i32| {
         entity_model_instances_from_world_at_partial_tick(world, None, 0.0)
             .into_iter()
@@ -5729,7 +5728,7 @@ fn entity_model_instances_project_snow_golem_pumpkin_render_state() {
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 111,
         values: vec![EntityDataValue {
-            data_id: SNOW_GOLEM_PUMPKIN_DATA_ID,
+            data_id: VANILLA_SNOW_GOLEM_PUMPKIN_DATA_ID,
             serializer_id: 0,
             value: EntityDataValueKind::Byte(0),
         }],
