@@ -7,8 +7,10 @@ use crate::{BlockPos, ChunkPos, PaletteKind};
 mod generated_26_1;
 
 use generated_26_1::{
-    VANILLA_AIR_BLOCKS, VANILLA_BARS_BLOCKS, VANILLA_CAMPFIRE_BLOCKS, VANILLA_DOOR_BLOCKS,
-    VANILLA_NO_TERRAIN_PARTICLE_BLOCKS, VANILLA_RAIL_BLOCKS, VANILLA_SIGN_BLOCKS,
+    VANILLA_AIR_BLOCKS, VANILLA_BANNER_BLOCKS, VANILLA_BARS_BLOCKS, VANILLA_BUTTON_BLOCKS,
+    VANILLA_CAMPFIRE_BLOCKS, VANILLA_CHAIN_BLOCKS, VANILLA_DOOR_BLOCKS, VANILLA_LANTERN_BLOCKS,
+    VANILLA_LIGHTNING_ROD_BLOCKS, VANILLA_NO_TERRAIN_PARTICLE_BLOCKS,
+    VANILLA_PRESSURE_PLATE_BLOCKS, VANILLA_RAIL_BLOCKS, VANILLA_SIGN_BLOCKS,
     VANILLA_TRAPDOOR_BLOCKS,
 };
 
@@ -394,18 +396,7 @@ fn stable_block_name_key(name: &str) -> u64 {
 }
 
 fn is_chain_block_name(name: &str) -> bool {
-    matches!(
-        name,
-        "minecraft:iron_chain"
-            | "minecraft:copper_chain"
-            | "minecraft:exposed_copper_chain"
-            | "minecraft:weathered_copper_chain"
-            | "minecraft:oxidized_copper_chain"
-            | "minecraft:waxed_copper_chain"
-            | "minecraft:waxed_exposed_copper_chain"
-            | "minecraft:waxed_weathered_copper_chain"
-            | "minecraft:waxed_oxidized_copper_chain"
-    )
+    VANILLA_CHAIN_BLOCKS.contains(&name)
 }
 
 fn is_door_block_name(name: &str) -> bool {
@@ -443,45 +434,11 @@ fn is_lever_block_name(name: &str) -> bool {
 }
 
 fn is_button_block_name(name: &str) -> bool {
-    matches!(
-        name,
-        "minecraft:stone_button"
-            | "minecraft:oak_button"
-            | "minecraft:spruce_button"
-            | "minecraft:birch_button"
-            | "minecraft:jungle_button"
-            | "minecraft:acacia_button"
-            | "minecraft:cherry_button"
-            | "minecraft:dark_oak_button"
-            | "minecraft:pale_oak_button"
-            | "minecraft:mangrove_button"
-            | "minecraft:bamboo_button"
-            | "minecraft:crimson_button"
-            | "minecraft:warped_button"
-            | "minecraft:polished_blackstone_button"
-    )
+    VANILLA_BUTTON_BLOCKS.contains(&name)
 }
 
 fn is_pressure_plate_block_name(name: &str) -> bool {
-    matches!(
-        name,
-        "minecraft:stone_pressure_plate"
-            | "minecraft:oak_pressure_plate"
-            | "minecraft:spruce_pressure_plate"
-            | "minecraft:birch_pressure_plate"
-            | "minecraft:jungle_pressure_plate"
-            | "minecraft:acacia_pressure_plate"
-            | "minecraft:cherry_pressure_plate"
-            | "minecraft:dark_oak_pressure_plate"
-            | "minecraft:pale_oak_pressure_plate"
-            | "minecraft:mangrove_pressure_plate"
-            | "minecraft:bamboo_pressure_plate"
-            | "minecraft:crimson_pressure_plate"
-            | "minecraft:warped_pressure_plate"
-            | "minecraft:light_weighted_pressure_plate"
-            | "minecraft:heavy_weighted_pressure_plate"
-            | "minecraft:polished_blackstone_pressure_plate"
-    )
+    VANILLA_PRESSURE_PLATE_BLOCKS.contains(&name)
 }
 
 fn is_no_collision_vegetation_block_name(name: &str) -> bool {
@@ -563,8 +520,7 @@ fn is_no_collision_fire_or_wire_block_name(name: &str) -> bool {
 }
 
 fn is_no_collision_banner_block_name(name: &str) -> bool {
-    name.strip_prefix("minecraft:")
-        .is_some_and(|path| path.ends_with("_banner"))
+    VANILLA_BANNER_BLOCKS.contains(&name)
 }
 
 fn is_sign_block_name(name: &str) -> bool {
@@ -572,33 +528,11 @@ fn is_sign_block_name(name: &str) -> bool {
 }
 
 fn is_lantern_block_name(name: &str) -> bool {
-    matches!(
-        name,
-        "minecraft:lantern"
-            | "minecraft:soul_lantern"
-            | "minecraft:copper_lantern"
-            | "minecraft:exposed_copper_lantern"
-            | "minecraft:weathered_copper_lantern"
-            | "minecraft:oxidized_copper_lantern"
-            | "minecraft:waxed_copper_lantern"
-            | "minecraft:waxed_exposed_copper_lantern"
-            | "minecraft:waxed_weathered_copper_lantern"
-            | "minecraft:waxed_oxidized_copper_lantern"
-    )
+    VANILLA_LANTERN_BLOCKS.contains(&name)
 }
 
 fn is_lightning_rod_block_name(name: &str) -> bool {
-    matches!(
-        name,
-        "minecraft:lightning_rod"
-            | "minecraft:exposed_lightning_rod"
-            | "minecraft:weathered_lightning_rod"
-            | "minecraft:oxidized_lightning_rod"
-            | "minecraft:waxed_lightning_rod"
-            | "minecraft:waxed_exposed_lightning_rod"
-            | "minecraft:waxed_weathered_lightning_rod"
-            | "minecraft:waxed_oxidized_lightning_rod"
-    )
+    VANILLA_LIGHTNING_ROD_BLOCKS.contains(&name)
 }
 
 fn is_end_rod_block_name(name: &str) -> bool {
@@ -724,12 +658,7 @@ mod tests {
                 TerrainMaterialClass::Cutout
             );
         }
-        for name in [
-            "minecraft:white_banner",
-            "minecraft:black_banner",
-            "minecraft:white_wall_banner",
-            "minecraft:black_wall_banner",
-        ] {
+        for &name in VANILLA_BANNER_BLOCKS {
             assert_eq!(
                 classify_terrain_material(Some(name)),
                 TerrainMaterialClass::Cutout
@@ -760,17 +689,7 @@ mod tests {
                 TerrainMaterialClass::Cutout
             );
         }
-        for name in [
-            "minecraft:iron_chain",
-            "minecraft:copper_chain",
-            "minecraft:exposed_copper_chain",
-            "minecraft:weathered_copper_chain",
-            "minecraft:oxidized_copper_chain",
-            "minecraft:waxed_copper_chain",
-            "minecraft:waxed_exposed_copper_chain",
-            "minecraft:waxed_weathered_copper_chain",
-            "minecraft:waxed_oxidized_copper_chain",
-        ] {
+        for &name in VANILLA_CHAIN_BLOCKS {
             assert_eq!(
                 classify_terrain_material(Some(name)),
                 TerrainMaterialClass::Cutout
@@ -821,45 +740,13 @@ mod tests {
             classify_terrain_material(Some("minecraft:lever")),
             TerrainMaterialClass::Cutout
         );
-        for name in [
-            "minecraft:stone_button",
-            "minecraft:oak_button",
-            "minecraft:spruce_button",
-            "minecraft:birch_button",
-            "minecraft:jungle_button",
-            "minecraft:acacia_button",
-            "minecraft:cherry_button",
-            "minecraft:dark_oak_button",
-            "minecraft:pale_oak_button",
-            "minecraft:mangrove_button",
-            "minecraft:bamboo_button",
-            "minecraft:crimson_button",
-            "minecraft:warped_button",
-            "minecraft:polished_blackstone_button",
-        ] {
+        for &name in VANILLA_BUTTON_BLOCKS {
             assert_eq!(
                 classify_terrain_material(Some(name)),
                 TerrainMaterialClass::Cutout
             );
         }
-        for name in [
-            "minecraft:stone_pressure_plate",
-            "minecraft:oak_pressure_plate",
-            "minecraft:spruce_pressure_plate",
-            "minecraft:birch_pressure_plate",
-            "minecraft:jungle_pressure_plate",
-            "minecraft:acacia_pressure_plate",
-            "minecraft:cherry_pressure_plate",
-            "minecraft:dark_oak_pressure_plate",
-            "minecraft:pale_oak_pressure_plate",
-            "minecraft:mangrove_pressure_plate",
-            "minecraft:bamboo_pressure_plate",
-            "minecraft:crimson_pressure_plate",
-            "minecraft:warped_pressure_plate",
-            "minecraft:light_weighted_pressure_plate",
-            "minecraft:heavy_weighted_pressure_plate",
-            "minecraft:polished_blackstone_pressure_plate",
-        ] {
+        for &name in VANILLA_PRESSURE_PLATE_BLOCKS {
             assert_eq!(
                 classify_terrain_material(Some(name)),
                 TerrainMaterialClass::Cutout
@@ -871,33 +758,13 @@ mod tests {
                 TerrainMaterialClass::Cutout
             );
         }
-        for name in [
-            "minecraft:lantern",
-            "minecraft:soul_lantern",
-            "minecraft:copper_lantern",
-            "minecraft:exposed_copper_lantern",
-            "minecraft:weathered_copper_lantern",
-            "minecraft:oxidized_copper_lantern",
-            "minecraft:waxed_copper_lantern",
-            "minecraft:waxed_exposed_copper_lantern",
-            "minecraft:waxed_weathered_copper_lantern",
-            "minecraft:waxed_oxidized_copper_lantern",
-        ] {
+        for &name in VANILLA_LANTERN_BLOCKS {
             assert_eq!(
                 classify_terrain_material(Some(name)),
                 TerrainMaterialClass::Cutout
             );
         }
-        for name in [
-            "minecraft:lightning_rod",
-            "minecraft:exposed_lightning_rod",
-            "minecraft:weathered_lightning_rod",
-            "minecraft:oxidized_lightning_rod",
-            "minecraft:waxed_lightning_rod",
-            "minecraft:waxed_exposed_lightning_rod",
-            "minecraft:waxed_weathered_lightning_rod",
-            "minecraft:waxed_oxidized_lightning_rod",
-        ] {
+        for &name in VANILLA_LIGHTNING_ROD_BLOCKS {
             assert_eq!(
                 classify_terrain_material(Some(name)),
                 TerrainMaterialClass::Cutout

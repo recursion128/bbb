@@ -10362,3 +10362,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   world terrain 删除对应五张 hand-written family match，完整 generated sets 直接进入 cutout
   coverage test。未迁移 tag 不能精确表达的 block class/render behavior，也未改 session tag
   state 与服务器 authority。
+
+## 2026-07-11：Expanded exact terrain-family block-tag memberships
+
+- [x] 在同一 nested block-tag resolver 上继续生成 chains 9、buttons 14、
+  pressure plates 16、banners 32、lanterns 10、lightning rods 8 六组精确等价
+  membership，并删除 terrain facade 与 coverage test 中对应的手写名称表。生成顺序、
+  nested tag 展开、固定数量和 checked-in diff 继续由 update/check 锁定；
+  `chain_command_block` 负例保留。crops、fire 等当前 terrain 语义集合与 vanilla tag
+  不精确等价，仍保持开放，未用近似 tag 扩大或缩小客户端渲染分类。
