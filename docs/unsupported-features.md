@@ -66,7 +66,8 @@ Owner: `scripts/` + each generated catalog's semantic crate
   ids/colors/names and scoreboard objective/player-team packet method ids now share generated
   owners too. Boss-event operation and filter-mask type wire ordinals likewise derive from their
   vanilla nested enums. Waypoint operation/data-type ordinals and the operation WRAP fallback, plus
-  InteractionHand explicit ids and its ZERO wire fallback, now use generated owners as well.
+  InteractionHand explicit ids and its ZERO wire fallback, plus ClientInformation chat-visibility/
+  main-hand/particle-status ordinals, now use generated owners as well.
   The remaining cross-crate registry/ordinal audit stays open.
 
 ## Unknown clientbound packets in login, configuration, and play

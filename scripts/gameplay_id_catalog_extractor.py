@@ -238,6 +238,12 @@ class InteractionHandEntry:
     hand_id: int
 
 
+@dataclass(frozen=True)
+class ClientInformationOptionEntry:
+    constant_name: str
+    option_id: int
+
+
 def _fail(source: JavaSource, expression: JavaExpression, message: str) -> None:
     span = expression.span
     raise GameplayIdExtractionError(
@@ -1129,6 +1135,68 @@ def interaction_hand_entries(
         )
     _validate(entries, "interaction hand", "hand_id")
     return entries, strategy
+
+
+def client_information_option_entries(
+    chat_visibility_source: JavaSource,
+    main_hand_source: JavaSource,
+    particle_status_source: JavaSource,
+) -> tuple[
+    list[ClientInformationOptionEntry],
+    list[ClientInformationOptionEntry],
+    list[ClientInformationOptionEntry],
+]:
+    def extract(
+        source: JavaSource,
+        description: str,
+        expected_names: list[str],
+        argument_count: int,
+    ) -> list[ClientInformationOptionEntry]:
+        entries = []
+        for name, arguments in _enum_constants(source):
+            if len(arguments) != argument_count:
+                expression = (
+                    arguments[0] if arguments else source.expression(source.types[0].node)
+                )
+                _fail(
+                    source,
+                    expression,
+                    f"{description} {name} must have {argument_count} arguments",
+                )
+            entries.append(
+                ClientInformationOptionEntry(name, _integer(source, arguments[0]))
+            )
+        if [entry.constant_name for entry in entries] != expected_names:
+            raise GameplayIdExtractionError(
+                f"{description} values differ from expected declaration order"
+            )
+        if [entry.option_id for entry in entries] != list(range(len(expected_names))):
+            raise GameplayIdExtractionError(
+                f"{description} ids are not contiguous declaration order"
+            )
+        _validate(entries, description, "option_id")
+        return entries
+
+    return (
+        extract(
+            chat_visibility_source,
+            "client chat visibility",
+            ["FULL", "SYSTEM", "HIDDEN"],
+            2,
+        ),
+        extract(
+            main_hand_source,
+            "client main hand",
+            ["LEFT", "RIGHT"],
+            3,
+        ),
+        extract(
+            particle_status_source,
+            "client particle status",
+            ["ALL", "DECREASED", "MINIMAL"],
+            2,
+        ),
+    )
 
 
 def equipment_slot_entries(

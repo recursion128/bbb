@@ -13,6 +13,7 @@ pub mod boss_bar_styles;
 pub mod boss_event_operation_types;
 pub mod chat_formattings;
 pub mod client_command_actions;
+pub mod client_information_options;
 pub mod codec;
 pub mod custom_chat_completions_actions;
 pub mod damage_types;

@@ -17,6 +17,7 @@ from gameplay_id_catalog_extractor import (  # noqa: E402
     boss_bar_style_entries,
     boss_event_operation_type_entries,
     chat_formatting_entries,
+    client_information_option_entries,
     custom_chat_completions_action_entries,
     difficulty_entries,
     difficulty_out_of_bounds_strategy,
@@ -751,6 +752,50 @@ public enum InteractionHand {
         self.assertEqual(
             [(entry.constant_name, entry.hand_id) for entry in entries],
             [("MAIN_HAND", 0), ("OFF_HAND", 1)],
+        )
+
+    def test_client_information_options_preserve_explicit_ids_and_order(self) -> None:
+        chat = parse_source(
+            "fixture/ChatVisiblity.java",
+            b"""
+package fixture;
+public enum ChatVisiblity {
+  FULL(0, "full"), SYSTEM(1, "system"), HIDDEN(2, "hidden");
+}
+""",
+        )
+        hand = parse_source(
+            "fixture/HumanoidArm.java",
+            b"""
+package fixture;
+public enum HumanoidArm {
+  LEFT(0, "left", "left.key"), RIGHT(1, "right", "right.key");
+}
+""",
+        )
+        particles = parse_source(
+            "fixture/ParticleStatus.java",
+            b"""
+package fixture;
+public enum ParticleStatus {
+  ALL(0, "all"), DECREASED(1, "decreased"), MINIMAL(2, "minimal");
+}
+""",
+        )
+        chat_entries, hand_entries, particle_entries = (
+            client_information_option_entries(chat, hand, particles)
+        )
+        self.assertEqual(
+            [(entry.constant_name, entry.option_id) for entry in chat_entries],
+            [("FULL", 0), ("SYSTEM", 1), ("HIDDEN", 2)],
+        )
+        self.assertEqual(
+            [(entry.constant_name, entry.option_id) for entry in hand_entries],
+            [("LEFT", 0), ("RIGHT", 1)],
+        )
+        self.assertEqual(
+            [(entry.constant_name, entry.option_id) for entry in particle_entries],
+            [("ALL", 0), ("DECREASED", 1), ("MINIMAL", 2)],
         )
 
     def test_unsupported_register_shape_reports_source_span(self) -> None:

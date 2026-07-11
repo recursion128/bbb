@@ -10650,3 +10650,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   事实，而使用 `FriendlyByteBuf.readEnum` 的 OpenBook 通过严格 ordinal lookup 保留非法值诊断。
   fixtures、生成完整性/唯一性/反向门禁与双向 packet focused tests 均通过；inventory、输入、
   first-person hand 选择和交互行为未改。
+
+## 2026-07-11：Generated ClientInformation option catalogs
+
+- [x] gameplay-id extractor 通过共享 Tree-sitter frontend 分别读取 vanilla
+  `ChatVisiblity`、`HumanoidArm` 与 `ParticleStatus` 的显式 id/声明顺序，验证 3/2/3 项均与
+  `ClientInformation.writeEnum` ordinal 连续一致。单一 generated owner 保持公开
+  `ClientChatVisibility` / `ClientMainHand` / `ClientParticleStatus` 名称、变体与 serde；
+  configuration/play 共用 payload encoder 删除三份手写 id match。fixtures、生成完整性/
+  唯一性/反向门禁及 protocol/net/native startup focused tests 均通过；CLI 参数解析和客户端
+  particle 降级算法继续由原语义 owner 手写。

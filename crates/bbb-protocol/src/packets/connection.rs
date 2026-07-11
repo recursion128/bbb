@@ -3,6 +3,10 @@ use std::collections::BTreeMap;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+pub use crate::client_information_options::{
+    ClientChatVisibility, ClientMainHand, ClientParticleStatus,
+};
+
 use super::{
     client_common::{self, CustomPayload, ShowDialog},
     read_resource_location,
@@ -71,55 +75,6 @@ impl Default for ClientInformation {
             text_filtering_enabled: false,
             allows_listing: false,
             particle_status: ClientParticleStatus::All,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum ClientChatVisibility {
-    Full,
-    System,
-    Hidden,
-}
-
-impl ClientChatVisibility {
-    fn id(self) -> i32 {
-        match self {
-            Self::Full => 0,
-            Self::System => 1,
-            Self::Hidden => 2,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum ClientMainHand {
-    Left,
-    Right,
-}
-
-impl ClientMainHand {
-    fn id(self) -> i32 {
-        match self {
-            Self::Left => 0,
-            Self::Right => 1,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum ClientParticleStatus {
-    All,
-    Decreased,
-    Minimal,
-}
-
-impl ClientParticleStatus {
-    fn id(self) -> i32 {
-        match self {
-            Self::All => 0,
-            Self::Decreased => 1,
-            Self::Minimal => 2,
         }
     }
 }
