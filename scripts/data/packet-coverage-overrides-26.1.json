@@ -35,6 +35,79 @@
         "status": "complete"
       }
     },
+    "configuration/serverbound/SERVERBOUND_CUSTOM_CLICK_ACTION": {
+      "ack_response": {
+        "evidence": ["vanilla:net/minecraft/server/network/ServerCommonPacketListenerImpl.java#handleCustomClickAction"],
+        "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+        "status": "not-applicable"
+      }
+    },
+    "configuration/clientbound/CLIENTBOUND_CLEAR_DIALOG": {
+      "canonical_apply": {
+        "evidence": ["crates/bbb-world/src/client/ui.rs#apply_clear_dialog"],
+        "status": "complete"
+      },
+      "decode": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/tests.rs#decodes_configuration_common_packets",
+          "vanilla:net/minecraft/network/protocol/common/ClientboundClearDialogPacket.java#STREAM_CODEC"
+        ],
+        "status": "complete"
+      },
+      "ownership": {
+        "evidence": ["crates/bbb-net/src/event_stream/configuration.rs#ConfigurationClientbound::ClearDialog"],
+        "status": "complete"
+      },
+      "runtime_side_effect": {
+        "evidence": [
+          "crates/bbb-world/src/client/ui.rs#apply_clear_dialog",
+          "vanilla:net/minecraft/client/multiplayer/ClientCommonPacketListenerImpl.java#clearDialog"
+        ],
+        "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+        "status": "partial"
+      },
+      "tests": {
+        "evidence": [
+          "crates/bbb-world/src/client/ui.rs#tracks_client_ui_warnings_and_dialogs",
+          "crates/bbb-net/src/probe/configuration.rs#probe_applies_configuration_packets_to_world"
+        ],
+        "status": "complete"
+      }
+    },
+    "configuration/clientbound/CLIENTBOUND_SHOW_DIALOG": {
+      "canonical_apply": {
+        "evidence": ["crates/bbb-world/src/client/ui.rs#DialogState::from_packet"],
+        "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+        "status": "partial"
+      },
+      "decode": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/client_common.rs#decode_context_free_show_dialog",
+          "vanilla:net/minecraft/network/protocol/common/ClientboundShowDialogPacket.java#CONTEXT_FREE_STREAM_CODEC"
+        ],
+        "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+        "status": "partial"
+      },
+      "ownership": {
+        "evidence": ["crates/bbb-net/src/event_stream/configuration.rs#ConfigurationClientbound::ShowDialog"],
+        "status": "complete"
+      },
+      "runtime_side_effect": {
+        "evidence": [
+          "crates/bbb-native/src/runtime/tests.rs#server_dialog_open_releases_held_movement",
+          "vanilla:net/minecraft/client/multiplayer/ClientCommonPacketListenerImpl.java#handleShowDialog"
+        ],
+        "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+        "status": "partial"
+      },
+      "tests": {
+        "evidence": [
+          "crates/bbb-world/src/client/ui.rs#tracks_client_ui_warnings_and_dialogs",
+          "crates/bbb-net/src/probe/configuration.rs#probe_applies_configuration_packets_to_world"
+        ],
+        "status": "complete"
+      }
+    },
     "configuration/clientbound/CLIENTBOUND_CUSTOM_REPORT_DETAILS": {
       "canonical_apply": {
         "evidence": ["crates/bbb-world/src/client/server_presentation.rs#apply_custom_report_details"],

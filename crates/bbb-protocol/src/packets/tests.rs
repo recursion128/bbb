@@ -2719,6 +2719,12 @@ fn decodes_configuration_common_packets() {
             .unwrap(),
         ConfigurationClientbound::ClearDialog
     );
+    let error =
+        decode_configuration_clientbound(ids::configuration::CLIENTBOUND_CLEAR_DIALOG, &[0])
+            .unwrap_err();
+    assert!(error
+        .to_string()
+        .contains("trailing bytes after clear dialog packet"));
 
     let mut show_dialog_payload = Encoder::new();
     show_dialog_payload.write_bytes(&[1, 2, 3, 4]);

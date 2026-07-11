@@ -10922,3 +10922,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   configuration id，Finish acknowledgement 后才发送 play id。protocol/native/RawConnection tests
   锁定字段值和时序；server handler 只更新 client information、无 acknowledgement，五格均已
   evidence-backed 闭合。
+
+## 2026-07-11：configuration dialog authority audit
+
+- [x] 对照 `ClientboundClearDialogPacket`、`ClientboundShowDialogPacket`、
+  `ServerboundCustomClickActionPacket` 与 common client/server handlers，确认 clear 是严格 unit
+  packet；新增 configuration trailing-byte 拒绝测试，并闭合 clear 的 decode/ownership/canonical/
+  tests。bbb 尚未保存/恢复 vanilla dialog previous-screen，因此 runtime 明确保留 partial。
+- [x] show-dialog 当前仅保存 context-free raw payload 或 registry id 摘要，不能冒充
+  `Dialog.CONTEXT_FREE_STREAM_CODEC` 解码、`DialogScreens` 渲染或交互完成；custom-click 也没有
+  resource-id + bounded optional NBT encoder/command surface。coverage 反向门禁锁定这八个具体
+  partial，只有 server 不回 acknowledgement 的事实标为 not-applicable。

@@ -53,7 +53,10 @@ Owner: `bbb-protocol`
 - Complete configuration transfer runtime behavior: disconnect the current
   connection, carry cookies/seen-player/insecure-chat transfer state, and reconnect
   with the Transfer intent instead of only recording the requested host and port.
-- Complete the remaining configuration registry/tag, custom payload and dialog
+- Decode configuration/play dialog holders into typed `Dialog` data, render the
+  corresponding screens, restore the previous screen on clear, and encode
+  resource-id plus bounded optional-NBT custom click actions in the active state.
+- Complete the remaining configuration registry/tag and custom payload
   coverage cells; then cover play, movement, inventory, chat, interaction and
   command suggestion end to end.
 

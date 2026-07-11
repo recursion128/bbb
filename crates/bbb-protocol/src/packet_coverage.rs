@@ -515,6 +515,56 @@ mod tests {
         }
     }
 
+    #[test]
+    fn configuration_dialog_coverage_keeps_codec_and_screen_gaps_explicit() {
+        let ledger = vanilla_packet_coverage_26_1().unwrap();
+        let packets = BTreeSet::from([
+            "SERVERBOUND_CUSTOM_CLICK_ACTION",
+            "CLIENTBOUND_CLEAR_DIALOG",
+            "CLIENTBOUND_SHOW_DIALOG",
+        ]);
+        let entries: Vec<_> = ledger
+            .entries
+            .iter()
+            .filter(|entry| {
+                entry.state == "configuration" && packets.contains(entry.constant_name.as_str())
+            })
+            .collect();
+        assert_eq!(entries.len(), packets.len());
+
+        let partial: BTreeSet<_> = entries
+            .iter()
+            .flat_map(|entry| {
+                entry.coverage.iter().filter_map(move |(dimension, cell)| {
+                    (cell.status == PacketCoverageStatus::Partial)
+                        .then_some((entry.constant_name.as_str(), dimension.as_str()))
+                })
+            })
+            .collect();
+        assert_eq!(
+            partial,
+            BTreeSet::from([
+                ("SERVERBOUND_CUSTOM_CLICK_ACTION", "command_surface"),
+                ("SERVERBOUND_CUSTOM_CLICK_ACTION", "encoder"),
+                ("SERVERBOUND_CUSTOM_CLICK_ACTION", "state_guard"),
+                ("SERVERBOUND_CUSTOM_CLICK_ACTION", "tests"),
+                ("CLIENTBOUND_CLEAR_DIALOG", "runtime_side_effect"),
+                ("CLIENTBOUND_SHOW_DIALOG", "canonical_apply"),
+                ("CLIENTBOUND_SHOW_DIALOG", "decode"),
+                ("CLIENTBOUND_SHOW_DIALOG", "runtime_side_effect"),
+            ])
+        );
+        assert_eq!(
+            entries
+                .iter()
+                .find(|entry| entry.constant_name == "SERVERBOUND_CUSTOM_CLICK_ACTION")
+                .unwrap()
+                .coverage["ack_response"]
+                .status,
+            PacketCoverageStatus::NotApplicable
+        );
+    }
+
     fn state_name(state: PacketState) -> &'static str {
         match state {
             PacketState::Handshake => "handshake",
