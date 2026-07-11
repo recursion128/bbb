@@ -135,6 +135,8 @@ const GENERATED_VANILLA_SNOW_GOLEM_PUMPKIN_DATA_ID: u8 = 16;
 pub const VANILLA_SNOW_GOLEM_PUMPKIN_DATA_ID: u8 = GENERATED_VANILLA_SNOW_GOLEM_PUMPKIN_DATA_ID;
 const GENERATED_VANILLA_BAT_FLAGS_DATA_ID: u8 = 16;
 pub const VANILLA_BAT_FLAGS_DATA_ID: u8 = GENERATED_VANILLA_BAT_FLAGS_DATA_ID;
+const GENERATED_VANILLA_PHANTOM_SIZE_DATA_ID: u8 = 16;
+pub const VANILLA_PHANTOM_SIZE_DATA_ID: u8 = GENERATED_VANILLA_PHANTOM_SIZE_DATA_ID;
 const GENERATED_VANILLA_VEHICLE_HURT_TIME_DATA_ID: u8 = 8;
 pub const VANILLA_VEHICLE_HURT_TIME_DATA_ID: u8 = GENERATED_VANILLA_VEHICLE_HURT_TIME_DATA_ID;
 const GENERATED_VANILLA_VEHICLE_HURT_DIR_DATA_ID: u8 = 9;
@@ -336,6 +338,8 @@ pub const VANILLA_SNOW_GOLEM_DEFAULT_PUMPKIN_FLAGS: i8 =
     GENERATED_VANILLA_SNOW_GOLEM_DEFAULT_PUMPKIN_FLAGS;
 const GENERATED_VANILLA_BAT_DEFAULT_FLAGS: i8 = 0;
 pub const VANILLA_BAT_DEFAULT_FLAGS: i8 = GENERATED_VANILLA_BAT_DEFAULT_FLAGS;
+const GENERATED_VANILLA_PHANTOM_DEFAULT_SIZE: i32 = 0;
+pub const VANILLA_PHANTOM_DEFAULT_SIZE: i32 = GENERATED_VANILLA_PHANTOM_DEFAULT_SIZE;
 const GENERATED_VANILLA_VEHICLE_DEFAULT_HURT_TIME: i32 = 0;
 pub const VANILLA_VEHICLE_DEFAULT_HURT_TIME: i32 = GENERATED_VANILLA_VEHICLE_DEFAULT_HURT_TIME;
 const GENERATED_VANILLA_VEHICLE_DEFAULT_HURT_DIR: i32 = 1;
@@ -13406,6 +13410,21 @@ const BAT_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamil
     own_flags: BAT_FLAGS,
 };
 
+const PHANTOM_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[VanillaEntityMetadataFieldSchema {
+    name: "ID_SIZE",
+    data_id: 16,
+    serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+    default: VanillaEntityMetadataDefault::Int(0),
+}];
+const PHANTOM_FLAGS: &[VanillaEntityMetadataFlagSchema] = &[];
+const PHANTOM_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamilySchema {
+    family: VanillaEntityMetadataFamily::Phantom,
+    parent: Some(VanillaEntityMetadataFamily::Mob),
+    inherited_field_count: 16,
+    own_fields: PHANTOM_FIELDS,
+    own_flags: PHANTOM_FLAGS,
+};
+
 const VEHICLEENTITY_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[
     VanillaEntityMetadataFieldSchema {
         name: "DATA_ID_HURT",
@@ -13646,6 +13665,7 @@ pub(super) const fn generated_entity_metadata_schema(
         VanillaEntityMetadataFamily::Guardian => &GUARDIAN_SCHEMA,
         VanillaEntityMetadataFamily::SnowGolem => &SNOWGOLEM_SCHEMA,
         VanillaEntityMetadataFamily::Bat => &BAT_SCHEMA,
+        VanillaEntityMetadataFamily::Phantom => &PHANTOM_SCHEMA,
         VanillaEntityMetadataFamily::VehicleEntity => &VEHICLEENTITY_SCHEMA,
         VanillaEntityMetadataFamily::AbstractBoat => &ABSTRACTBOAT_SCHEMA,
         VanillaEntityMetadataFamily::AbstractMinecart => &ABSTRACTMINECART_SCHEMA,

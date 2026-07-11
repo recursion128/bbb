@@ -30,6 +30,8 @@ use super::schema::{
     VANILLA_INTERACTION_DEFAULT_WIDTH as INTERACTION_DEFAULT_WIDTH,
     VANILLA_INTERACTION_HEIGHT_DATA_ID as INTERACTION_DATA_HEIGHT_ID,
     VANILLA_INTERACTION_WIDTH_DATA_ID as INTERACTION_DATA_WIDTH_ID,
+    VANILLA_PHANTOM_DEFAULT_SIZE as PHANTOM_DEFAULT_SIZE,
+    VANILLA_PHANTOM_SIZE_DATA_ID as PHANTOM_SIZE_DATA_ID,
     VANILLA_SHULKER_ATTACH_FACE_DATA_ID as SHULKER_ATTACH_FACE_DATA_ID,
     VANILLA_SHULKER_DEFAULT_ATTACH_FACE_ID as SHULKER_DEFAULT_ATTACH_FACE_ID,
     VANILLA_SLIME_DEFAULT_SIZE as SLIME_DEFAULT_SIZE,
@@ -80,7 +82,6 @@ const SNIFFER_STATE_DIGGING_ID: i32 = 5;
 const SNIFFER_DIGGING_HEIGHT_OFFSET: f32 = 0.4;
 const PUFFERFISH_PUFF_STATE_DATA_ID: u8 = 17;
 const SALMON_VARIANT_DATA_ID: u8 = 17;
-const PHANTOM_SIZE_DATA_ID: u8 = 16;
 const WIND_CHARGE_BOUNDS_SIZE: f32 = 0.3125;
 const WIND_CHARGE_BOUNDS_Y_OFFSET: f32 = -0.15;
 const WIND_CHARGE_PICK_RADIUS: f32 = 1.0;
@@ -1002,7 +1003,7 @@ fn salmon_pick_bounds(data_values: &[EntityDataValue]) -> EntityPickBoundsState 
 }
 
 fn phantom_pick_bounds(data_values: &[EntityDataValue]) -> EntityPickBoundsState {
-    let size = entity_data_int(data_values, PHANTOM_SIZE_DATA_ID, 0) as f32;
+    let size = entity_data_int(data_values, PHANTOM_SIZE_DATA_ID, PHANTOM_DEFAULT_SIZE) as f32;
     EntityPickBoundsState::from_base_size(0.9, 0.5, 0.0).scale_dimensions(1.0 + 0.15 * size)
 }
 

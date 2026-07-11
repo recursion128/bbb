@@ -191,6 +191,7 @@ use crate::entity_scene::{
     END_CRYSTAL_BEAM_TARGET_DATA_ID, END_CRYSTAL_DEFAULT_SHOW_BOTTOM,
     END_CRYSTAL_SHOW_BOTTOM_DATA_ID,
 };
+use crate::entity_scene::{PHANTOM_DEFAULT_SIZE, PHANTOM_SIZE_DATA_ID};
 use crate::entity_scene::{WITHER_SKULL_DANGEROUS_DATA_ID, WITHER_SKULL_DEFAULT_DANGEROUS};
 use crate::terrain_runtime::TerrainUploadState;
 use bbb_item_model::{
@@ -540,8 +541,6 @@ const ABSTRACT_PIGLIN_DEFAULT_TIME_IN_OVERWORLD: i32 = 0;
 const PIGLIN_BABY_DATA_ID: u8 = 17;
 const PIGLIN_DEFAULT_IS_BABY: bool = false;
 const PIGLIN_DEFAULT_CANNOT_HUNT: bool = false;
-const PHANTOM_SIZE_DATA_ID: u8 = 16;
-const PHANTOM_DEFAULT_SIZE: i32 = 0;
 const PIG_VARIANT_DATA_ID: u8 = 19;
 const PIG_DEFAULT_VARIANT_ID: i32 = 0;
 const PIG_SOUND_VARIANT_DATA_ID: u8 = 20;

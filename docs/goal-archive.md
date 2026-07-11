@@ -9674,3 +9674,11 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   world/native 手抄 id/default/mask。world resting projection、native F3+I 与 fixtures
   统一消费 generated aliases；focused tests 锁定继承 offset、serializer/default、flag
   绑定、hanging model state 与保存语义。未修改 bat client tick、移动或 renderer 动画。
+
+## 2026-07-11：Generated entity metadata consumer（Phantom）
+
+- [x] 从 generated catalog 建立 `Mob -> Phantom` compatibility family：INT
+  `ID_SIZE` id 16/default 0 替代 world/native 手抄 id/default。world pick bounds、native
+  model scale 与 F3+I save projection 统一消费 generated aliases；focused tests 锁定继承
+  offset、serializer/default、动态命中尺寸、model scale 与保存语义。未修改 phantom AI、
+  移动、翅膀动画或 renderer 算法。

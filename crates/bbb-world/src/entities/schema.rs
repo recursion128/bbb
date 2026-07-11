@@ -32,6 +32,7 @@ pub enum VanillaEntityMetadataFamily {
     Guardian,
     SnowGolem,
     Bat,
+    Phantom,
     VehicleEntity,
     AbstractBoat,
     AbstractMinecart,
@@ -305,6 +306,7 @@ mod tests {
             VanillaEntityMetadataFamily::Guardian,
             VanillaEntityMetadataFamily::SnowGolem,
             VanillaEntityMetadataFamily::Bat,
+            VanillaEntityMetadataFamily::Phantom,
             VanillaEntityMetadataFamily::VehicleEntity,
             VanillaEntityMetadataFamily::AbstractBoat,
             VanillaEntityMetadataFamily::AbstractMinecart,
@@ -562,6 +564,21 @@ mod tests {
                 mask: 1,
             }]
         );
+        let phantom = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Phantom);
+        assert_eq!(phantom.parent, Some(VanillaEntityMetadataFamily::Mob));
+        assert_eq!(phantom.inherited_field_count, 16);
+        assert_eq!(
+            phantom.own_fields,
+            &[VanillaEntityMetadataFieldSchema {
+                name: "ID_SIZE",
+                data_id: 16,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+                default: VanillaEntityMetadataDefault::Int(0),
+            }]
+        );
+        assert_eq!(VANILLA_PHANTOM_SIZE_DATA_ID, 16);
+        assert_eq!(VANILLA_PHANTOM_DEFAULT_SIZE, 0);
         assert_eq!(
             vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Entity)
                 .own_flags
