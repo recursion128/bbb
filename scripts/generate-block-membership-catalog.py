@@ -15,6 +15,7 @@ from block_membership_catalog_extractor import (
     no_terrain_particle_blocks,
 )
 from vanilla_java_source import parse_source
+from vanilla_tag_source import load_tag_resources
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -53,13 +54,7 @@ def generate(source_root: Path) -> str:
     )
     entries = no_terrain_particle_blocks(source)
     air_entries = air_blocks(source)
-    tag_resources = {
-        "minecraft:"
-        + path.relative_to(source_root / BLOCK_TAG_SOURCE_DIR)
-        .with_suffix("")
-        .as_posix(): (path.relative_to(source_root).as_posix(), path.read_bytes())
-        for path in sorted((source_root / BLOCK_TAG_SOURCE_DIR).rglob("*.json"))
-    }
+    tag_resources = load_tag_resources(source_root, BLOCK_TAG_SOURCE_DIR)
     tag_catalogs = [
         (name, block_tag_membership(tag_resources, tag_id, expected_count))
         for name, tag_id, expected_count in BLOCK_TAG_CATALOGS

@@ -10,9 +10,11 @@ sys.path.insert(0, str(SCRIPTS))
 
 from bootstrap_catalog_extractor import (  # noqa: E402
     BootstrapCatalogExtractionError,
+    EnchantmentEntry,
     banner_pattern_entries,
     bootstrap_resource_key_entries,
     enchantment_entries,
+    enchantment_tooltip_order,
     identifier_constant_paths,
     painting_variant_entries,
     static_register_entries,
@@ -163,6 +165,36 @@ class Enchantments {
             [(entry.resource_id, entry.max_level) for entry in entries],
             [("minecraft:two", 5), ("minecraft:one", 3)],
         )
+
+    def test_enchantment_tooltip_tag_must_close_over_generated_registry(self) -> None:
+        enchantments = [
+            EnchantmentEntry("ONE", "minecraft:one", 1),
+            EnchantmentEntry("TWO", "minecraft:two", 1),
+        ]
+        resources = {
+            "minecraft:tooltip_order": (
+                "data/minecraft/tags/enchantment/tooltip_order.json",
+                b'{"values":["minecraft:two","minecraft:one"]}',
+            )
+        }
+        self.assertEqual(
+            enchantment_tooltip_order(resources, enchantments, 2),
+            ("minecraft:two", "minecraft:one"),
+        )
+        with self.assertRaisesRegex(
+            BootstrapCatalogExtractionError,
+            r"tooltip order/enchantment registry mismatch: unknown=\['minecraft:other'\], missing=\['minecraft:one'\]",
+        ):
+            enchantment_tooltip_order(
+                {
+                    "minecraft:tooltip_order": (
+                        "data/minecraft/tags/enchantment/tooltip_order.json",
+                        b'{"values":["minecraft:two","minecraft:other"]}',
+                    )
+                },
+                enchantments,
+                2,
+            )
 
     def test_external_identifier_constants_and_alternate_registration_calls(self) -> None:
         identifiers = parse_source(

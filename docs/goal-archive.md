@@ -10371,3 +10371,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   nested tag 展开、固定数量和 checked-in diff 继续由 update/check 锁定；
   `chain_command_block` 负例保留。crops、fire 等当前 terrain 语义集合与 vanilla tag
   不精确等价，仍保持开放，未用近似 tag 扩大或缩小客户端渲染分类。
+
+## 2026-07-11：Generated enchantment tooltip fallback order
+
+- [x] 将 item tooltip 的 43 项手写 fallback 顺序迁移到现有 bootstrap catalog generator，
+  直接读取 `data/minecraft/tags/enchantment/tooltip_order.json`，并与同一生成器从
+  `Enchantments.java` 提取的 43 项 registry resource set 双向闭合。server session 下发的
+  tooltip-order tag 仍优先，未知 enchantment 的既有尾部输出不变。block 与 enchantment
+  generator 同时改为消费语义中立的 `vanilla_tag_source.py`，统一 nested reference、稳定
+  顺序、首次出现去重以及非法 root/value、missing ref、cycle、固定数量诊断；未生成
+  enchantment tooltip 文本、等级规则或运行时 tag apply 行为。

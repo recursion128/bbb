@@ -13,6 +13,7 @@ from vanilla_java_source import (
     descendants,
     type_body_members,
 )
+from vanilla_tag_source import VanillaTagSourceError, resolve_tag_values
 
 
 class BootstrapCatalogExtractionError(ValueError):
@@ -46,6 +47,32 @@ class PaintingVariantEntry:
     width: int
     height: int
     has_author: bool
+
+
+def enchantment_tooltip_order(
+    tag_resources: dict[str, tuple[str, bytes]],
+    enchantments: list[EnchantmentEntry],
+    expected_count: int = 43,
+) -> tuple[str, ...]:
+    try:
+        entries = resolve_tag_values(
+            tag_resources,
+            "minecraft:tooltip_order",
+            expected_count,
+            registry_name="enchantment",
+        )
+    except VanillaTagSourceError as error:
+        raise BootstrapCatalogExtractionError(str(error)) from error
+    registered = {entry.resource_id for entry in enchantments}
+    ordered = set(entries)
+    if ordered != registered:
+        raise BootstrapCatalogExtractionError(
+            "data/minecraft/tags/enchantment/tooltip_order.json: "
+            "tooltip order/enchantment registry mismatch: "
+            f"unknown={sorted(ordered - registered)}, "
+            f"missing={sorted(registered - ordered)}"
+        )
+    return entries
 
 
 def _fail(source: JavaSource, expression: JavaExpression, message: str) -> None:

@@ -50,7 +50,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   memberships currently consumed by `bbb-world` are migrated. Equipment asset layers
   are resource-pack JSON rather than a numeric
   Java bootstrap and remain owned by `EquipmentAssetCatalog`; their incomplete
-  renderer coverage is tracked separately below.
+  renderer coverage is tracked separately below. Vanilla block and enchantment tag
+  fallbacks now share one deterministic JSON tag frontend; other hand-maintained
+  resource/tag memberships remain under the P1 audit.
 
 ## Unknown clientbound packets in login, configuration, and play
 
