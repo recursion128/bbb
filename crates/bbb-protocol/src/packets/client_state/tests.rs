@@ -522,6 +522,17 @@ fn decodes_game_event_and_set_time() {
             ],
         })
     );
+
+    let mut trailing = Encoder::new();
+    trailing.write_i64(12345);
+    trailing.write_var_i32(0);
+    trailing.write_u8(0);
+    assert!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_SET_TIME, &trailing.into_inner())
+            .unwrap_err()
+            .to_string()
+            .contains("trailing bytes after set time packet")
+    );
 }
 
 #[test]

@@ -483,10 +483,16 @@ pub(super) fn decode_play_time(decoder: &mut Decoder<'_>) -> Result<PlayTime> {
             rate: decoder.read_f32()?,
         });
     }
-    Ok(PlayTime {
+    let update = PlayTime {
         game_time,
         clock_updates,
-    })
+    };
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after set time packet".to_string(),
+        ));
+    }
+    Ok(update)
 }
 
 pub(super) fn decode_set_title_text(decoder: &mut Decoder<'_>) -> Result<SetTitleText> {

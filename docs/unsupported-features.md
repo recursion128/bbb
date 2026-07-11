@@ -65,6 +65,11 @@ Owner: `bbb-protocol`
   static tags and data-component initializers, and preserve reconnect replacement
   semantics. Raw NBT summaries and a few derived audio registries are not that
   runtime.
+- Resolve SetTime's `WorldClock` holder ids through that session RegistryAccess
+  and select the current dimension's clock by identity. The client currently
+  preserves every numeric clock update but derives `day_time` from the first
+  wire entry; the encoded HashMap order is not semantic. Restart by replacing
+  that first-entry shortcut and retaining all custom clocks for their consumers.
 - Resolve UpdateAttributes holder ids through that session RegistryAccess and
   validate each snapshot against the target living entity's actual AttributeMap
   instance set; do not accept arbitrary fixed-id attributes on every living type.

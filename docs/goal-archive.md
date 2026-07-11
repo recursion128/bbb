@@ -11206,3 +11206,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] can-fly/flying/flying-speed 已进入本地飞行 prediction 与 serverbound ability toggle，instabuild
   已进入 reach/pick/container；walking-speed 尚未像 vanilla 那样设置 movement attribute base 并参与
   FOV speed ratio，runtime 保持 partial，未用固定 0.1 猜测冒充完成。
+
+## 2026-07-11：set-time packet coverage audit
+
+- [x] 对照 `ClientboundSetTimePacket`、`WorldClock.STREAM_CODEC` 与
+  `ClockNetworkState.STREAM_CODEC` 锁定 game-time long、bounded clock map、holder VarInt、total VarLong、
+  partial/rate f32 wire 并拒绝 trailing bytes；decode/ownership/tests 三格闭合。
+- [x] bbb 保留全部 numeric holder/state 并推进 paused/rated client clocks，但尚未通过 session
+  RegistryAccess 解析 WorldClock identity；`day_time = first()` 不是 HashMap 语义，canonical/runtime
+  保持 partial，未把 wire 顺序冒充当前维度 clock。
