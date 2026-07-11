@@ -222,6 +222,10 @@ const GENERATED_VANILLA_PIG_VARIANT_DATA_ID: u8 = 19;
 pub const VANILLA_PIG_VARIANT_DATA_ID: u8 = GENERATED_VANILLA_PIG_VARIANT_DATA_ID;
 const GENERATED_VANILLA_PIG_SOUND_VARIANT_DATA_ID: u8 = 20;
 pub const VANILLA_PIG_SOUND_VARIANT_DATA_ID: u8 = GENERATED_VANILLA_PIG_SOUND_VARIANT_DATA_ID;
+const GENERATED_VANILLA_FROG_VARIANT_DATA_ID: u8 = 18;
+pub const VANILLA_FROG_VARIANT_DATA_ID: u8 = GENERATED_VANILLA_FROG_VARIANT_DATA_ID;
+const GENERATED_VANILLA_FROG_TONGUE_TARGET_DATA_ID: u8 = 19;
+pub const VANILLA_FROG_TONGUE_TARGET_DATA_ID: u8 = GENERATED_VANILLA_FROG_TONGUE_TARGET_DATA_ID;
 const GENERATED_VANILLA_PARROT_VARIANT_DATA_ID: u8 = 20;
 pub const VANILLA_PARROT_VARIANT_DATA_ID: u8 = GENERATED_VANILLA_PARROT_VARIANT_DATA_ID;
 const GENERATED_VANILLA_RABBIT_TYPE_DATA_ID: u8 = 18;
@@ -773,6 +777,9 @@ pub const VANILLA_PIG_DEFAULT_VARIANT_RESOURCE_ID: &str =
 const GENERATED_VANILLA_PIG_DEFAULT_SOUND_VARIANT_RESOURCE_ID: &str = "minecraft:classic";
 pub const VANILLA_PIG_DEFAULT_SOUND_VARIANT_RESOURCE_ID: &str =
     GENERATED_VANILLA_PIG_DEFAULT_SOUND_VARIANT_RESOURCE_ID;
+const GENERATED_VANILLA_FROG_DEFAULT_VARIANT_RESOURCE_ID: &str = "minecraft:temperate";
+pub const VANILLA_FROG_DEFAULT_VARIANT_RESOURCE_ID: &str =
+    GENERATED_VANILLA_FROG_DEFAULT_VARIANT_RESOURCE_ID;
 const GENERATED_VANILLA_PARROT_DEFAULT_VARIANT: i32 = 0;
 pub const VANILLA_PARROT_DEFAULT_VARIANT: i32 = GENERATED_VANILLA_PARROT_DEFAULT_VARIANT;
 const GENERATED_VANILLA_RABBIT_DEFAULT_TYPE: i32 = 0;
@@ -9781,7 +9788,7 @@ pub const VANILLA_ENTITY_METADATA_ACCESSORS_26_1: &[VanillaEntityMetadataAccesso
         data_id: 18,
         source_path: "net/minecraft/world/entity/animal/frog/Frog.java",
         default_expression: "VariantUtils.getDefaultOrAny (this.registryAccess (), DEFAULT_VARIANT)",
-        typed_default: None,
+        typed_default: Some(VanillaEntityMetadataDefault::RegistryHolderResource("minecraft:temperate")),
     },
     VanillaEntityMetadataAccessorCatalogEntry {
         owner: "net.minecraft.world.entity.animal.frog.Frog",
@@ -11898,6 +11905,13 @@ pub const VANILLA_ENTITY_METADATA_DEFAULT_RESOLVER_EVIDENCE_26_1: &[VanillaEntit
         evidence_member: "net.minecraft.world.entity.animal.pig.PigSoundVariants.CLASSIC -> PigSoundVariants.createKey -> SoundSet.getIdentifier -> SoundSet.CLASSIC",
         source_expression: "pigSoundVariants.get (PigSoundVariants.CLASSIC).or (pigSoundVariants::getAny).orElseThrow () -> createKey (PigSoundVariants.SoundSet.CLASSIC) -> ResourceKey.create (Registries.PIG_SOUND_VARIANT, Identifier.withDefaultNamespace (pigSoundVariant.getIdentifier ())) -> this.identifier -> \"classic\"",
         reason: "the synced holder default is a resource key with registry fallback rather than a numeric registry id",
+    },
+    VanillaEntityMetadataResolverEvidence {
+        java_class: "net.minecraft.world.entity.animal.frog.Frog",
+        accessor_name: "DATA_VARIANT_ID",
+        evidence_member: "net.minecraft.world.entity.animal.frog.Frog.DEFAULT_VARIANT -> FrogVariants.TEMPERATE -> TemperatureVariants.TEMPERATE -> FrogVariants.createKey",
+        source_expression: "VariantUtils.getDefaultOrAny (this.registryAccess (), DEFAULT_VARIANT) -> FrogVariants.TEMPERATE -> createKey (TemperatureVariants.TEMPERATE) -> Identifier.withDefaultNamespace (\"temperate\") -> ResourceKey.create (Registries.FROG_VARIANT, id)",
+        reason: "the synced holder default is a resource key selected through Frog.DEFAULT_VARIANT and TemperatureVariants",
     },
     VanillaEntityMetadataResolverEvidence {
         java_class: "net.minecraft.world.entity.animal.feline.Cat",
@@ -14755,6 +14769,29 @@ const PIG_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamil
     own_flags: PIG_FLAGS,
 };
 
+const FROG_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_VARIANT_ID",
+        data_id: 18,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_FROG_VARIANT_ID,
+        default: VanillaEntityMetadataDefault::RegistryHolderResource("minecraft:temperate"),
+    },
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_TONGUE_TARGET_ID",
+        data_id: 19,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_UNSIGNED_INT_ID,
+        default: VanillaEntityMetadataDefault::OptionalUnsignedIntNone,
+    },
+];
+const FROG_FLAGS: &[VanillaEntityMetadataFlagSchema] = &[];
+const FROG_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamilySchema {
+    family: VanillaEntityMetadataFamily::Frog,
+    parent: Some(VanillaEntityMetadataFamily::AgeableMob),
+    inherited_field_count: 18,
+    own_fields: FROG_FIELDS,
+    own_flags: FROG_FLAGS,
+};
+
 const PARROT_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[VanillaEntityMetadataFieldSchema {
     name: "DATA_VARIANT_ID",
     data_id: 20,
@@ -15788,6 +15825,7 @@ pub(super) const fn generated_entity_metadata_schema(
         VanillaEntityMetadataFamily::Cow => &COW_SCHEMA,
         VanillaEntityMetadataFamily::MushroomCow => &MUSHROOMCOW_SCHEMA,
         VanillaEntityMetadataFamily::Pig => &PIG_SCHEMA,
+        VanillaEntityMetadataFamily::Frog => &FROG_SCHEMA,
         VanillaEntityMetadataFamily::Parrot => &PARROT_SCHEMA,
         VanillaEntityMetadataFamily::Rabbit => &RABBIT_SCHEMA,
         VanillaEntityMetadataFamily::AbstractVillager => &ABSTRACTVILLAGER_SCHEMA,

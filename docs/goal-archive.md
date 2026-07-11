@@ -10049,3 +10049,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   `0`、`minecraft:temperate`、`minecraft:classic`。native model/debug-save 删除手抄 ids 与
   numeric holder defaults；session registry 顺序、Pig 骑乘物理和 persistent Codec/SNBT
   语义仍由对应 owner 管理。
+
+## 2026-07-11：Generated Frog metadata
+
+- [x] 由统一 Tree-sitter Java frontend 提取 `Frog` variant id18 与 tongue-target id19，
+  通过 `Frog.DEFAULT_VARIANT -> FrogVariants.TEMPERATE -> TemperatureVariants.TEMPERATE`
+  evidence chain 生成 `minecraft:temperate` holder default，并将 tongue target 保留为 typed
+  `OptionalUnsignedIntNone`。native model/debug-save 删除手抄 variant id/numeric default；
+  tongue-target presentation、session registry 顺序和 persistent Codec/SNBT 仍由对应 owner
+  管理。

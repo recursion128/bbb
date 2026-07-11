@@ -250,6 +250,10 @@ use bbb_world::{
     VANILLA_FOX_TYPE_DATA_ID as FOX_TYPE_DATA_ID,
 };
 use bbb_world::{
+    VANILLA_FROG_DEFAULT_VARIANT_RESOURCE_ID as FROG_DEFAULT_VARIANT_RESOURCE_ID,
+    VANILLA_FROG_VARIANT_DATA_ID as FROG_VARIANT_DATA_ID,
+};
+use bbb_world::{
     VANILLA_PIG_DEFAULT_SOUND_VARIANT_RESOURCE_ID as PIG_DEFAULT_SOUND_VARIANT_RESOURCE_ID,
     VANILLA_PIG_DEFAULT_VARIANT_RESOURCE_ID as PIG_DEFAULT_VARIANT_RESOURCE_ID,
     VANILLA_PIG_SOUND_VARIANT_DATA_ID as PIG_SOUND_VARIANT_DATA_ID,
@@ -483,8 +487,6 @@ const AGEABLE_MOB_CLIENT_BABY_AGE: i32 = -1;
 const LLAMA_MAX_VARIANT: i32 = 3;
 const ZOMBIE_NAUTILUS_VARIANT_DATA_ID: u8 = 21;
 const ZOMBIE_NAUTILUS_DEFAULT_VARIANT_ID: i32 = 0;
-const FROG_VARIANT_DATA_ID: u8 = 18;
-const FROG_DEFAULT_VARIANT_ID: i32 = 0;
 const PARROT_MAX_VARIANT: i32 = 4;
 const SHEEP_WOOL_COLOR_MASK: u8 = 0x0f;
 const SLIME_MIN_SIZE: i32 = 1;
@@ -6415,11 +6417,9 @@ fn debug_push_frog_additional_save_data(entity: &EntityState, fields: &mut Vec<S
         FROG_VARIANT_DATA_ID,
         EntityDataRegistryHolder::FrogVariant,
     )
-    .unwrap_or(FROG_DEFAULT_VARIANT_ID);
-    fields.push(format!(
-        "variant: {}",
-        debug_snbt_string(frog_variant_resource_id(variant).unwrap_or("minecraft:temperate"))
-    ));
+    .and_then(frog_variant_resource_id)
+    .unwrap_or(FROG_DEFAULT_VARIANT_RESOURCE_ID);
+    fields.push(format!("variant: {}", debug_snbt_string(variant)));
 }
 
 fn frog_variant_resource_id(variant: i32) -> Option<&'static str> {

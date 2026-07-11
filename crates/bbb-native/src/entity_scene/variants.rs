@@ -1413,12 +1413,18 @@ pub(super) fn frog_model_variant(
         })
         .map(|id| {
             if let Some(registry) = variants {
-                frog_variant_from_registry_id(registry, id).unwrap_or(FrogModelVariant::Temperate)
+                frog_variant_from_registry_id(registry, id)
+                    .unwrap_or_else(frog_default_model_variant)
             } else {
                 frog_variant_from_vanilla_registry_id(id)
             }
         })
-        .unwrap_or(FrogModelVariant::Temperate)
+        .unwrap_or_else(frog_default_model_variant)
+}
+
+fn frog_default_model_variant() -> FrogModelVariant {
+    frog_variant_from_entry_id(FROG_DEFAULT_VARIANT_RESOURCE_ID)
+        .expect("generated vanilla frog default variant must map to a model")
 }
 
 pub(super) fn frog_variant_from_registry_id(

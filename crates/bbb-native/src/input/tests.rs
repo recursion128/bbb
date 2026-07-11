@@ -4739,6 +4739,26 @@ fn shift_f3_i_with_permission_copies_local_frog_save_nbt_to_clipboard() {
 }
 
 #[test]
+fn local_frog_save_uses_generated_default() {
+    let mut world = world_with_debug_player(false);
+    world.apply_add_entity(AddEntity {
+        id: 67,
+        uuid: Uuid::from_u128(67),
+        entity_type_id: VANILLA_ENTITY_TYPE_FROG_ID,
+        position: ProtocolVec3d::default(),
+        delta_movement: ProtocolVec3d::default(),
+        x_rot: 0.0,
+        y_rot: 0.0,
+        y_head_rot: 0.0,
+        data: 0,
+    });
+
+    let frog = debug_copy_recreate_entity_command(&world, None, 67, true)
+        .expect("local frog recreate command");
+    assert!(frog.command.contains("variant: \"minecraft:temperate\""));
+}
+
+#[test]
 fn shift_f3_i_with_permission_copies_local_rabbit_save_nbt_to_clipboard() {
     let mut input = ClientInputState::new(true);
     let mut world = world_with_debug_player(false);

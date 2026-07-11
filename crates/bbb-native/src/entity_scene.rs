@@ -139,6 +139,10 @@ use bbb_world::{
     VANILLA_FOX_DEFAULT_TYPE as FOX_DEFAULT_VARIANT, VANILLA_FOX_TYPE_DATA_ID as FOX_TYPE_DATA_ID,
 };
 use bbb_world::{
+    VANILLA_FROG_DEFAULT_VARIANT_RESOURCE_ID as FROG_DEFAULT_VARIANT_RESOURCE_ID,
+    VANILLA_FROG_VARIANT_DATA_ID as FROG_VARIANT_DATA_ID,
+};
+use bbb_world::{
     VANILLA_GHAST_CHARGING_DATA_ID as GHAST_IS_CHARGING_DATA_ID,
     VANILLA_GHAST_DEFAULT_CHARGING as GHAST_DEFAULT_CHARGING,
 };
@@ -309,10 +313,6 @@ const ZOMBIE_VILLAGER_DATA_DATA_ID: u8 = 20;
 /// Vanilla `Raider.IS_CELEBRATING` data id (16): the boolean set while a raider celebrates a raid
 /// victory, the first `Raider` accessor after `Mob.DATA_MOB_FLAGS_ID` (15). The evoker and vindicator
 /// `getArmPose` return `CELEBRATING` while it is true (when not casting / not aggressive).
-// Vanilla Frog.DATA_VARIANT_ID (18, Holder<FrogVariant>): `Frog extends Animal`, so its first own
-// accessor follows Mob.DATA_MOB_FLAGS_ID (15) and the two AgeableMob accessors DATA_BABY_ID (16) /
-// AGE_LOCKED (17).
-const FROG_VARIANT_DATA_ID: u8 = 18;
 // Vanilla Shulker.DATA_COLOR_ID (18, BYTE): after Mob.DATA_MOB_FLAGS_ID (15) and the two `Shulker`
 // accessors DATA_ATTACH_FACE_ID (16) / DATA_PEEK_ID (17). `getColor()` returns the dye for 0..=15
 // and `null` (the default, byte 16) otherwise.

@@ -88,6 +88,7 @@ FAMILIES = (
     FamilySpec("Cow", "net.minecraft.world.entity.animal.cow.Cow", "AgeableMob"),
     FamilySpec("MushroomCow", "net.minecraft.world.entity.animal.cow.MushroomCow", "AgeableMob"),
     FamilySpec("Pig", "net.minecraft.world.entity.animal.pig.Pig", "AgeableMob"),
+    FamilySpec("Frog", "net.minecraft.world.entity.animal.frog.Frog", "AgeableMob"),
     FamilySpec("Parrot", "net.minecraft.world.entity.animal.parrot.Parrot", "TamableAnimal"),
     FamilySpec("Rabbit", "net.minecraft.world.entity.animal.rabbit.Rabbit", "AgeableMob"),
     FamilySpec(
@@ -290,6 +291,8 @@ DATA_ALIASES = {
     "VANILLA_PIG_BOOST_TIME_DATA_ID": ("net.minecraft.world.entity.animal.pig.Pig", "DATA_BOOST_TIME"),
     "VANILLA_PIG_VARIANT_DATA_ID": ("net.minecraft.world.entity.animal.pig.Pig", "DATA_VARIANT_ID"),
     "VANILLA_PIG_SOUND_VARIANT_DATA_ID": ("net.minecraft.world.entity.animal.pig.Pig", "DATA_SOUND_VARIANT_ID"),
+    "VANILLA_FROG_VARIANT_DATA_ID": ("net.minecraft.world.entity.animal.frog.Frog", "DATA_VARIANT_ID"),
+    "VANILLA_FROG_TONGUE_TARGET_DATA_ID": ("net.minecraft.world.entity.animal.frog.Frog", "DATA_TONGUE_TARGET_ID"),
     "VANILLA_PARROT_VARIANT_DATA_ID": ("net.minecraft.world.entity.animal.parrot.Parrot", "DATA_VARIANT_ID"),
     "VANILLA_RABBIT_TYPE_DATA_ID": ("net.minecraft.world.entity.animal.rabbit.Rabbit", "DATA_TYPE_ID"),
     "VANILLA_ABSTRACT_VILLAGER_UNHAPPY_COUNTER_DATA_ID": ("net.minecraft.world.entity.npc.villager.AbstractVillager", "DATA_UNHAPPY_COUNTER"),
@@ -450,6 +453,7 @@ DEFAULT_ALIASES = {
     "VANILLA_PIG_DEFAULT_BOOST_TIME": ("net.minecraft.world.entity.animal.pig.Pig", "DATA_BOOST_TIME"),
     "VANILLA_PIG_DEFAULT_VARIANT_RESOURCE_ID": ("net.minecraft.world.entity.animal.pig.Pig", "DATA_VARIANT_ID"),
     "VANILLA_PIG_DEFAULT_SOUND_VARIANT_RESOURCE_ID": ("net.minecraft.world.entity.animal.pig.Pig", "DATA_SOUND_VARIANT_ID"),
+    "VANILLA_FROG_DEFAULT_VARIANT_RESOURCE_ID": ("net.minecraft.world.entity.animal.frog.Frog", "DATA_VARIANT_ID"),
     "VANILLA_PARROT_DEFAULT_VARIANT": ("net.minecraft.world.entity.animal.parrot.Parrot", "DATA_VARIANT_ID"),
     "VANILLA_RABBIT_DEFAULT_TYPE": ("net.minecraft.world.entity.animal.rabbit.Rabbit", "DATA_TYPE_ID"),
     "VANILLA_ABSTRACT_VILLAGER_DEFAULT_UNHAPPY_COUNTER": ("net.minecraft.world.entity.npc.villager.AbstractVillager", "DATA_UNHAPPY_COUNTER"),
@@ -1067,6 +1071,39 @@ STATIC_REGISTRY_RESOURCE_DEFAULT_RESOLVERS = (
         ),
         "minecraft:classic",
         "the synced holder default is a resource key with registry fallback rather than a numeric registry id",
+    ),
+    (
+        "net.minecraft.world.entity.animal.frog.Frog",
+        "DATA_VARIANT_ID",
+        "FROG_VARIANT",
+        "VariantUtils.getDefaultOrAny (this.registryAccess (), DEFAULT_VARIANT)",
+        (
+            (
+                "net.minecraft.world.entity.animal.frog.Frog",
+                "DEFAULT_VARIANT",
+                "FrogVariants.TEMPERATE",
+            ),
+            (
+                "net.minecraft.world.entity.animal.frog.FrogVariants",
+                "TEMPERATE",
+                "createKey (TemperatureVariants.TEMPERATE)",
+            ),
+            (
+                "net.minecraft.world.entity.animal.TemperatureVariants",
+                "TEMPERATE",
+                'Identifier.withDefaultNamespace ("temperate")',
+            ),
+        ),
+        (
+            (
+                "net.minecraft.world.entity.animal.frog.FrogVariants",
+                "createKey",
+                "ResourceKey.create (Registries.FROG_VARIANT, id)",
+            ),
+        ),
+        None,
+        "minecraft:temperate",
+        "the synced holder default is a resource key selected through Frog.DEFAULT_VARIANT and TemperatureVariants",
     ),
 )
 
