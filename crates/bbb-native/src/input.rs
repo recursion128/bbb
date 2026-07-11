@@ -86,6 +86,11 @@ use bbb_world::{
     vanilla_minecart_default_display_offset,
     VANILLA_ABSTRACT_MINECART_CUSTOM_DISPLAY_BLOCK_DATA_ID as MINECART_CUSTOM_DISPLAY_BLOCK_DATA_ID,
     VANILLA_ABSTRACT_MINECART_DISPLAY_OFFSET_DATA_ID as MINECART_DISPLAY_OFFSET_DATA_ID,
+    VANILLA_BEE_ANGER_END_TIME_DATA_ID as BEE_ANGER_END_TIME_DATA_ID,
+    VANILLA_BEE_DEFAULT_ANGER_END_TIME as BEE_DEFAULT_ANGER_END_TIME,
+    VANILLA_BEE_DEFAULT_FLAGS as BEE_DEFAULT_FLAGS, VANILLA_BEE_FLAGS_DATA_ID as BEE_FLAGS_DATA_ID,
+    VANILLA_BEE_FLAG_HAS_NECTAR as BEE_FLAG_HAS_NECTAR,
+    VANILLA_BEE_FLAG_HAS_STUNG as BEE_FLAG_HAS_STUNG,
     VANILLA_CREAKING_HOME_POS_DATA_ID as CREAKING_HOME_POS_DATA_ID,
     VANILLA_CREEPER_DEFAULT_IGNITED as CREEPER_DEFAULT_IGNITED,
     VANILLA_CREEPER_DEFAULT_POWERED as CREEPER_DEFAULT_POWERED,
@@ -448,16 +453,9 @@ const TRADER_LLAMA_DEFAULT_DESPAWN_DELAY: i32 = 47999;
 const ARMADILLO_STATE_DATA_ID: u8 = 18;
 const ARMADILLO_STATE_IDLE_ID: i32 = 0;
 const ARMADILLO_DEFAULT_SCUTE_TIME: i32 = 0;
-const BEE_FLAGS_DATA_ID: u8 = 18;
-const BEE_ANGER_END_TIME_DATA_ID: u8 = 19;
-const BEE_FLAG_HAS_STUNG: i8 = 4;
-const BEE_FLAG_HAS_NECTAR: i8 = 8;
-const BEE_DEFAULT_HAS_NECTAR: bool = false;
-const BEE_DEFAULT_HAS_STUNG: bool = false;
 const BEE_DEFAULT_TICKS_SINCE_POLLINATION: i32 = 0;
 const BEE_DEFAULT_CANNOT_ENTER_HIVE_TICKS: i32 = 0;
 const BEE_DEFAULT_CROPS_GROWN_SINCE_POLLINATION: i32 = 0;
-const BEE_DEFAULT_ANGER_END_TIME: i64 = -1;
 const COPPER_GOLEM_WEATHER_STATE_DATA_ID: u8 = 16;
 const COPPER_GOLEM_WEATHER_STATE_UNAFFECTED_ID: i32 = 0;
 const COPPER_GOLEM_DEFAULT_NEXT_WEATHER_AGE: i64 = -1;
@@ -6809,17 +6807,10 @@ fn debug_push_bat_additional_save_data(entity: &EntityState, fields: &mut Vec<St
 }
 
 fn debug_push_bee_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
-    let flags = debug_entity_data_byte_present(entity, BEE_FLAGS_DATA_ID).unwrap_or(0);
-    let has_nectar = if flags & BEE_FLAG_HAS_NECTAR != 0 {
-        true
-    } else {
-        BEE_DEFAULT_HAS_NECTAR
-    };
-    let has_stung = if flags & BEE_FLAG_HAS_STUNG != 0 {
-        true
-    } else {
-        BEE_DEFAULT_HAS_STUNG
-    };
+    let flags =
+        debug_entity_data_byte_present(entity, BEE_FLAGS_DATA_ID).unwrap_or(BEE_DEFAULT_FLAGS);
+    let has_nectar = flags & BEE_FLAG_HAS_NECTAR != 0;
+    let has_stung = flags & BEE_FLAG_HAS_STUNG != 0;
     fields.push(format!("HasNectar: {}", debug_snbt_bool(has_nectar)));
     fields.push(format!("HasStung: {}", debug_snbt_bool(has_stung)));
     fields.push(format!(

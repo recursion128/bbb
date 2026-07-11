@@ -73,6 +73,10 @@ const GENERATED_VANILLA_ENDERMAN_CREEPY_DATA_ID: u8 = 17;
 pub const VANILLA_ENDERMAN_CREEPY_DATA_ID: u8 = GENERATED_VANILLA_ENDERMAN_CREEPY_DATA_ID;
 const GENERATED_VANILLA_ENDERMAN_STARED_AT_DATA_ID: u8 = 18;
 pub const VANILLA_ENDERMAN_STARED_AT_DATA_ID: u8 = GENERATED_VANILLA_ENDERMAN_STARED_AT_DATA_ID;
+const GENERATED_VANILLA_BEE_FLAGS_DATA_ID: u8 = 18;
+pub const VANILLA_BEE_FLAGS_DATA_ID: u8 = GENERATED_VANILLA_BEE_FLAGS_DATA_ID;
+const GENERATED_VANILLA_BEE_ANGER_END_TIME_DATA_ID: u8 = 19;
+pub const VANILLA_BEE_ANGER_END_TIME_DATA_ID: u8 = GENERATED_VANILLA_BEE_ANGER_END_TIME_DATA_ID;
 const GENERATED_VANILLA_POLAR_BEAR_STANDING_DATA_ID: u8 = 18;
 pub const VANILLA_POLAR_BEAR_STANDING_DATA_ID: u8 = GENERATED_VANILLA_POLAR_BEAR_STANDING_DATA_ID;
 const GENERATED_VANILLA_SLIME_SIZE_DATA_ID: u8 = 16;
@@ -260,6 +264,12 @@ const GENERATED_VANILLA_PLAYER_SHOULDER_PARROT_RIGHT_DATA_ID: u8 = 20;
 pub const VANILLA_PLAYER_SHOULDER_PARROT_RIGHT_DATA_ID: u8 =
     GENERATED_VANILLA_PLAYER_SHOULDER_PARROT_RIGHT_DATA_ID;
 
+const GENERATED_VANILLA_BEE_FLAG_ROLL: i8 = 2;
+pub const VANILLA_BEE_FLAG_ROLL: i8 = GENERATED_VANILLA_BEE_FLAG_ROLL;
+const GENERATED_VANILLA_BEE_FLAG_HAS_STUNG: i8 = 4;
+pub const VANILLA_BEE_FLAG_HAS_STUNG: i8 = GENERATED_VANILLA_BEE_FLAG_HAS_STUNG;
+const GENERATED_VANILLA_BEE_FLAG_HAS_NECTAR: i8 = 8;
+pub const VANILLA_BEE_FLAG_HAS_NECTAR: i8 = GENERATED_VANILLA_BEE_FLAG_HAS_NECTAR;
 const GENERATED_VANILLA_VEX_FLAG_CHARGING: i8 = 1;
 pub const VANILLA_VEX_FLAG_CHARGING: i8 = GENERATED_VANILLA_VEX_FLAG_CHARGING;
 const GENERATED_VANILLA_BAT_FLAG_RESTING: i8 = 1;
@@ -382,6 +392,10 @@ const GENERATED_VANILLA_ENDERMAN_DEFAULT_CREEPY: bool = false;
 pub const VANILLA_ENDERMAN_DEFAULT_CREEPY: bool = GENERATED_VANILLA_ENDERMAN_DEFAULT_CREEPY;
 const GENERATED_VANILLA_ENDERMAN_DEFAULT_STARED_AT: bool = false;
 pub const VANILLA_ENDERMAN_DEFAULT_STARED_AT: bool = GENERATED_VANILLA_ENDERMAN_DEFAULT_STARED_AT;
+const GENERATED_VANILLA_BEE_DEFAULT_FLAGS: i8 = 0;
+pub const VANILLA_BEE_DEFAULT_FLAGS: i8 = GENERATED_VANILLA_BEE_DEFAULT_FLAGS;
+const GENERATED_VANILLA_BEE_DEFAULT_ANGER_END_TIME: i64 = -1;
+pub const VANILLA_BEE_DEFAULT_ANGER_END_TIME: i64 = GENERATED_VANILLA_BEE_DEFAULT_ANGER_END_TIME;
 const GENERATED_VANILLA_POLAR_BEAR_DEFAULT_STANDING: bool = false;
 pub const VANILLA_POLAR_BEAR_DEFAULT_STANDING: bool = GENERATED_VANILLA_POLAR_BEAR_DEFAULT_STANDING;
 const GENERATED_VANILLA_AVATAR_DEFAULT_MODEL_CUSTOMIZATION: i8 = 0;
@@ -9068,7 +9082,7 @@ pub const VANILLA_ENTITY_METADATA_ACCESSORS_26_1: &[VanillaEntityMetadataAccesso
         data_id: 19,
         source_path: "net/minecraft/world/entity/animal/bee/Bee.java",
         default_expression: "- 1L",
-        typed_default: None,
+        typed_default: Some(VanillaEntityMetadataDefault::Long(-1)),
     },
     VanillaEntityMetadataAccessorCatalogEntry {
         owner: "net.minecraft.world.entity.animal.camel.Camel",
@@ -9090,7 +9104,7 @@ pub const VANILLA_ENTITY_METADATA_ACCESSORS_26_1: &[VanillaEntityMetadataAccesso
         data_id: 20,
         source_path: "net/minecraft/world/entity/animal/camel/Camel.java",
         default_expression: "0L",
-        typed_default: None,
+        typed_default: Some(VanillaEntityMetadataDefault::Long(0)),
     },
     VanillaEntityMetadataAccessorCatalogEntry {
         owner: "net.minecraft.world.entity.animal.chicken.Chicken",
@@ -9761,7 +9775,7 @@ pub const VANILLA_ENTITY_METADATA_ACCESSORS_26_1: &[VanillaEntityMetadataAccesso
         data_id: 22,
         source_path: "net/minecraft/world/entity/animal/wolf/Wolf.java",
         default_expression: "- 1L",
-        typed_default: None,
+        typed_default: Some(VanillaEntityMetadataDefault::Long(-1)),
     },
     VanillaEntityMetadataAccessorCatalogEntry {
         owner: "net.minecraft.world.entity.animal.wolf.Wolf",
@@ -11352,6 +11366,27 @@ pub const VANILLA_ENTITY_METADATA_FLAGS_26_1: &[VanillaEntityMetadataFlagCatalog
 
 pub const VANILLA_ENTITY_METADATA_FLAG_RESOLVER_EVIDENCE_26_1:
     &[VanillaEntityMetadataResolverEvidence] = &[
+    VanillaEntityMetadataResolverEvidence {
+        java_class: "net.minecraft.world.entity.animal.bee.Bee",
+        accessor_name: "DATA_FLAGS_ID",
+        evidence_member: "FLAG_ROLL",
+        source_expression: "2",
+        reason: "named vanilla flag constant",
+    },
+    VanillaEntityMetadataResolverEvidence {
+        java_class: "net.minecraft.world.entity.animal.bee.Bee",
+        accessor_name: "DATA_FLAGS_ID",
+        evidence_member: "FLAG_HAS_STUNG",
+        source_expression: "4",
+        reason: "named vanilla flag constant",
+    },
+    VanillaEntityMetadataResolverEvidence {
+        java_class: "net.minecraft.world.entity.animal.bee.Bee",
+        accessor_name: "DATA_FLAGS_ID",
+        evidence_member: "FLAG_HAS_NECTAR",
+        source_expression: "8",
+        reason: "named vanilla flag constant",
+    },
     VanillaEntityMetadataResolverEvidence {
         java_class: "net.minecraft.world.entity.monster.Vex",
         accessor_name: "DATA_FLAGS_ID",
@@ -13328,6 +13363,45 @@ const AGEABLEMOB_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetada
     own_flags: AGEABLEMOB_FLAGS,
 };
 
+const BEE_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_FLAGS_ID",
+        data_id: 18,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+        default: VanillaEntityMetadataDefault::Byte(0),
+    },
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_ANGER_END_TIME",
+        data_id: 19,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_LONG_ID,
+        default: VanillaEntityMetadataDefault::Long(-1),
+    },
+];
+const BEE_FLAGS: &[VanillaEntityMetadataFlagSchema] = &[
+    VanillaEntityMetadataFlagSchema {
+        name: "FLAG_ROLL",
+        data_id: 18,
+        mask: VANILLA_BEE_FLAG_ROLL,
+    },
+    VanillaEntityMetadataFlagSchema {
+        name: "FLAG_HAS_STUNG",
+        data_id: 18,
+        mask: VANILLA_BEE_FLAG_HAS_STUNG,
+    },
+    VanillaEntityMetadataFlagSchema {
+        name: "FLAG_HAS_NECTAR",
+        data_id: 18,
+        mask: VANILLA_BEE_FLAG_HAS_NECTAR,
+    },
+];
+const BEE_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamilySchema {
+    family: VanillaEntityMetadataFamily::Bee,
+    parent: Some(VanillaEntityMetadataFamily::AgeableMob),
+    inherited_field_count: 18,
+    own_fields: BEE_FIELDS,
+    own_flags: BEE_FLAGS,
+};
+
 const POLARBEAR_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[VanillaEntityMetadataFieldSchema {
     name: "DATA_STANDING_ID",
     data_id: 18,
@@ -14259,6 +14333,7 @@ pub(super) const fn generated_entity_metadata_schema(
         VanillaEntityMetadataFamily::Shulker => &SHULKER_SCHEMA,
         VanillaEntityMetadataFamily::Zombie => &ZOMBIE_SCHEMA,
         VanillaEntityMetadataFamily::AgeableMob => &AGEABLEMOB_SCHEMA,
+        VanillaEntityMetadataFamily::Bee => &BEE_SCHEMA,
         VanillaEntityMetadataFamily::PolarBear => &POLARBEAR_SCHEMA,
         VanillaEntityMetadataFamily::AbstractHorse => &ABSTRACTHORSE_SCHEMA,
         VanillaEntityMetadataFamily::TamableAnimal => &TAMABLEANIMAL_SCHEMA,

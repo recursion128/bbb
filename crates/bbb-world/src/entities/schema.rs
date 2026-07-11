@@ -23,6 +23,7 @@ pub enum VanillaEntityMetadataFamily {
     Shulker,
     Zombie,
     AgeableMob,
+    Bee,
     PolarBear,
     AbstractHorse,
     TamableAnimal,
@@ -67,6 +68,7 @@ pub enum VanillaEntityMetadataFamily {
 pub enum VanillaEntityMetadataDefault {
     Byte(i8),
     Int(i32),
+    Long(i64),
     Float(f32),
     Boolean(bool),
     OptionalComponentNone,
@@ -260,6 +262,33 @@ mod tests {
     }
 
     #[test]
+    fn generated_long_defaults_are_mechanically_typed() {
+        for (owner, accessor, expected) in [
+            (
+                "net.minecraft.world.entity.animal.bee.Bee",
+                "DATA_ANGER_END_TIME",
+                VanillaEntityMetadataDefault::Long(-1),
+            ),
+            (
+                "net.minecraft.world.entity.animal.camel.Camel",
+                "LAST_POSE_CHANGE_TICK",
+                VanillaEntityMetadataDefault::Long(0),
+            ),
+            (
+                "net.minecraft.world.entity.animal.wolf.Wolf",
+                "DATA_ANGER_END_TIME",
+                VanillaEntityMetadataDefault::Long(-1),
+            ),
+        ] {
+            let entry = VANILLA_ENTITY_METADATA_ACCESSORS_26_1
+                .iter()
+                .find(|entry| entry.owner == owner && entry.java_name == accessor)
+                .expect("generated long accessor");
+            assert_eq!(entry.typed_default, Some(expected));
+        }
+    }
+
+    #[test]
     fn generated_entity_type_catalog_resolves_all_fixed_types() {
         assert_eq!(VANILLA_ENTITY_TYPE_METADATA_26_1.len(), 157);
         assert_eq!(VANILLA_ENTITY_TYPES.len(), 157);
@@ -318,6 +347,7 @@ mod tests {
             VanillaEntityMetadataFamily::Shulker,
             VanillaEntityMetadataFamily::Zombie,
             VanillaEntityMetadataFamily::AgeableMob,
+            VanillaEntityMetadataFamily::Bee,
             VanillaEntityMetadataFamily::PolarBear,
             VanillaEntityMetadataFamily::AbstractHorse,
             VanillaEntityMetadataFamily::TamableAnimal,
@@ -428,6 +458,17 @@ mod tests {
         assert_eq!(VANILLA_ENDERMAN_DEFAULT_CARRY_STATE, None);
         assert!(!VANILLA_ENDERMAN_DEFAULT_CREEPY);
         assert!(!VANILLA_ENDERMAN_DEFAULT_STARED_AT);
+        let bee = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Bee);
+        assert_eq!(bee.parent, Some(VanillaEntityMetadataFamily::AgeableMob));
+        assert_eq!(bee.inherited_field_count, 18);
+        assert_eq!(bee.own_fields.len(), 2);
+        assert_eq!(VANILLA_BEE_FLAGS_DATA_ID, 18);
+        assert_eq!(VANILLA_BEE_ANGER_END_TIME_DATA_ID, 19);
+        assert_eq!(VANILLA_BEE_DEFAULT_FLAGS, 0);
+        assert_eq!(VANILLA_BEE_DEFAULT_ANGER_END_TIME, -1);
+        assert_eq!(VANILLA_BEE_FLAG_ROLL, 2);
+        assert_eq!(VANILLA_BEE_FLAG_HAS_STUNG, 4);
+        assert_eq!(VANILLA_BEE_FLAG_HAS_NECTAR, 8);
         let polar_bear = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::PolarBear);
         assert_eq!(
             polar_bear.parent,

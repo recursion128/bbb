@@ -9806,3 +9806,11 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   id16/default none、BOOLEAN creepy id17/default false、stared-at id18/default false；world
   carried-block/model projection 删除手抄 synced id/default。optional-none 标量 alias 仍由
   Tree-sitter 提取的 `Optional.empty()` 确定性生成。
+
+## 2026-07-11：Generated entity metadata consumer（Bee）
+
+- [x] 从 generated catalog 建立 `AgeableMob -> Bee` family：BYTE flags id18/default 0、
+  LONG anger-end-time id19/default -1，以及 roll/has-stung/has-nectar 三个 resolved mask；
+  world animation/store、native render/debug-save 删除手抄 synced id/default/mask。generator
+  新增机械 `LONG` typed default；pollination/hive/crop save counters 仍由 native input owner
+  管理。

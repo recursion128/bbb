@@ -75,6 +75,12 @@ pub(crate) use bbb_world::{
     VANILLA_PIGLIN_DEFAULT_CHARGING_CROSSBOW as PIGLIN_DEFAULT_CHARGING_CROSSBOW,
     VANILLA_PIGLIN_DEFAULT_DANCING as PIGLIN_DEFAULT_DANCING,
 };
+use bbb_world::{
+    VANILLA_BEE_ANGER_END_TIME_DATA_ID as BEE_ANGER_END_TIME_DATA_ID,
+    VANILLA_BEE_DEFAULT_ANGER_END_TIME as BEE_DEFAULT_ANGER_END_TIME,
+    VANILLA_BEE_DEFAULT_FLAGS as BEE_DEFAULT_FLAGS, VANILLA_BEE_FLAGS_DATA_ID as BEE_FLAGS_DATA_ID,
+    VANILLA_BEE_FLAG_HAS_NECTAR as BEE_FLAG_HAS_NECTAR,
+};
 pub(crate) use bbb_world::{
     VANILLA_BOGGED_DEFAULT_SHEARED as BOGGED_DEFAULT_SHEARED,
     VANILLA_BOGGED_SHEARED_DATA_ID as BOGGED_SHEARED_DATA_ID,
@@ -305,16 +311,6 @@ const WOLF_VARIANT_DATA_ID: u8 = 23;
 /// id. `AbstractNautilus extends TamableAnimal` adds flags(18)+owner(19) then DASH(20), so the
 /// `ZombieNautilus`-own variant lands at 21.
 const ZOMBIE_NAUTILUS_VARIANT_DATA_ID: u8 = 21;
-/// `Bee.DATA_FLAGS_ID` data id (18, BYTE): the bee flags byte, the first `Bee`-own accessor
-/// (`AgeableMob` consumes 16 baby + 17 age-locked, so `Bee` starts at 18).
-const BEE_FLAGS_DATA_ID: u8 = 18;
-/// `Bee.FLAG_HAS_NECTAR` (8): the `DATA_FLAGS_ID` bit set while the bee carries pollen, which
-/// `BeeRenderer.getTextureLocation` swaps to the `*_nectar*` texture.
-const BEE_FLAG_HAS_NECTAR: i8 = 8;
-/// `Bee.DATA_ANGER_END_TIME` data id (19): the synced `NeutralMob` anger-end game time,
-/// defined right after `Bee.DATA_FLAGS_ID` (18). `Bee.isAngry()` is `endTime > 0 &&
-/// endTime - gameTime > 0`.
-const BEE_ANGER_END_TIME_DATA_ID: u8 = 19;
 /// `Camel.LAST_POSE_CHANGE_TICK` data id (20): the synced Long that drives the camel's
 /// sit/sit-pose/stand-up timing. Its magnitude is the game tick of the last pose change and
 /// its SIGN encodes whether the camel is sitting (`< 0` → sitting). Defined right after

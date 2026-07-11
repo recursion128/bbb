@@ -31,6 +31,8 @@ use super::schema::{
     VANILLA_ABSTRACT_BOAT_PADDLE_RIGHT_DATA_ID as ABSTRACT_BOAT_PADDLE_RIGHT_DATA_ID,
     VANILLA_ALLAY_DANCING_DATA_ID as ALLAY_DANCING_DATA_ID,
     VANILLA_ALLAY_DEFAULT_DANCING as ALLAY_DEFAULT_DANCING,
+    VANILLA_BEE_DEFAULT_FLAGS as BEE_DEFAULT_FLAGS, VANILLA_BEE_FLAGS_DATA_ID as BEE_FLAGS_DATA_ID,
+    VANILLA_BEE_FLAG_ROLL as BEE_FLAG_ROLL,
     VANILLA_CREAKING_CAN_MOVE_DATA_ID as CREAKING_CAN_MOVE_DATA_ID,
     VANILLA_CREAKING_DEFAULT_CAN_MOVE as CREAKING_DEFAULT_CAN_MOVE,
     VANILLA_CREAKING_DEFAULT_TEARING_DOWN as CREAKING_DEFAULT_TEARING_DOWN,
@@ -156,12 +158,6 @@ const POLAR_BEAR_STAND_ANIMATION_TICKS: f32 = 6.0;
 const CREEPER_MAX_SWELL: i32 = 30;
 const SHULKER_PEEK_PER_TICK: f32 = 0.05;
 const SHULKER_MAX_PEEK_AMOUNT: f32 = 1.0;
-/// Vanilla `Bee.DATA_FLAGS_ID` synced metadata id: `Entity` (`0..=7`),
-/// `LivingEntity` (`8..=14`), `Mob` (`15`) and `AgeableMob` (`16..=17`) precede
-/// the bee's own flags byte at `18` (the same slot `PolarBear` uses for its
-/// standing flag). `FLAG_ROLL` is mask `2` within that byte.
-const BEE_FLAGS_DATA_ID: u8 = 18;
-const BEE_FLAG_ROLL: i8 = 2;
 /// Vanilla `Cat` entity type id (`EntityType.CAT`).
 /// Vanilla `Cat.IS_LYING`, the synced boolean after `Cat.DATA_VARIANT_ID`:
 /// Entity 0-7, LivingEntity 8-14, Mob 15, AgeableMob 16-17, TamableAnimal 18-19,
@@ -6173,7 +6169,7 @@ fn shulker_target_peek_amount(data_values: &[EntityDataValue]) -> f32 {
 
 /// Vanilla `Bee.isRolling()` = `getFlag(FLAG_ROLL)` = `(flags & 2) != 0`.
 fn bee_is_rolling(data_values: &[EntityDataValue]) -> bool {
-    entity_data_byte(data_values, BEE_FLAGS_DATA_ID, 0) & BEE_FLAG_ROLL != 0
+    entity_data_byte(data_values, BEE_FLAGS_DATA_ID, BEE_DEFAULT_FLAGS) & BEE_FLAG_ROLL != 0
 }
 
 fn panda_pose_flags(data_values: &[EntityDataValue]) -> (bool, bool, bool) {

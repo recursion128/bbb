@@ -21,7 +21,9 @@ use super::schema::{
     VANILLA_ABSTRACT_MINECART_CUSTOM_DISPLAY_BLOCK_DATA_ID as MINECART_CUSTOM_DISPLAY_BLOCK_DATA_ID,
     VANILLA_ABSTRACT_MINECART_DISPLAY_OFFSET_DATA_ID as MINECART_DISPLAY_OFFSET_DATA_ID,
     VANILLA_BAT_DEFAULT_FLAGS as BAT_DEFAULT_FLAGS, VANILLA_BAT_FLAGS_DATA_ID as BAT_FLAGS_DATA_ID,
-    VANILLA_BAT_FLAG_RESTING as BAT_FLAG_RESTING,
+    VANILLA_BAT_FLAG_RESTING as BAT_FLAG_RESTING, VANILLA_BEE_DEFAULT_FLAGS as BEE_DEFAULT_FLAGS,
+    VANILLA_BEE_FLAGS_DATA_ID as BEE_FLAGS_DATA_ID,
+    VANILLA_BEE_FLAG_HAS_STUNG as BEE_FLAG_HAS_STUNG,
     VANILLA_ENDERMAN_CARRY_STATE_DATA_ID as ENDERMAN_CARRY_STATE_DATA_ID,
     VANILLA_ENDERMAN_CREEPY_DATA_ID as ENDERMAN_CREEPY_DATA_ID,
     VANILLA_ENDERMAN_DEFAULT_CARRY_STATE as ENDERMAN_DEFAULT_CARRY_STATE,
@@ -295,14 +297,6 @@ fn vanilla_mob_item_in_hand_layer_type(entity_type_id: i32) -> bool {
                 | VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID
         )
 }
-
-/// Vanilla `Bee.DATA_FLAGS_ID` data id (18): the byte holding the bee flags, the first `Bee`
-/// accessor after the two `AgeableMob` accessors `DATA_BABY_ID` (16) / `AGE_LOCKED` (17).
-const VANILLA_BEE_FLAGS_DATA_ID: u8 = 18;
-
-/// Vanilla `Bee.FLAG_HAS_STUNG` (4): the `DATA_FLAGS_ID` bit set once the bee has stung and
-/// lost its stinger (`Bee.hasStung`).
-const BEE_FLAG_HAS_STUNG: i8 = 4;
 
 /// Vanilla `Fox.DATA_FLAGS_ID` data id (19): the byte holding the fox flags, defined after the
 /// `AgeableMob` accessors (`16..=17`) and the fox's own `DATA_TYPE_ID` variant int (18).
@@ -1664,8 +1658,8 @@ impl EntityStore {
         // its stinger field at the `true` default (and never renders a stinger anyway).
         let bee_has_stinger = !vanilla_is_bee(identity.entity_type_id)
             || self
-                .metadata_byte(id, VANILLA_BEE_FLAGS_DATA_ID, 0)
-                .unwrap_or(0)
+                .metadata_byte(id, BEE_FLAGS_DATA_ID, BEE_DEFAULT_FLAGS)
+                .unwrap_or(BEE_DEFAULT_FLAGS)
                 & BEE_FLAG_HAS_STUNG
                 == 0;
         // Vanilla `FoxModel.setupAnim` reads the fox's synced `DATA_FLAGS_ID` (19) crouch / sleep /

@@ -667,7 +667,11 @@ pub(super) fn bee_is_angry(
     if entity_type_id != VANILLA_ENTITY_TYPE_BEE_ID {
         return false;
     }
-    let end_time = entity_data_long(values, BEE_ANGER_END_TIME_DATA_ID, -1);
+    let end_time = entity_data_long(
+        values,
+        BEE_ANGER_END_TIME_DATA_ID,
+        BEE_DEFAULT_ANGER_END_TIME,
+    );
     end_time > 0 && end_time - game_time > 0
 }
 
@@ -681,7 +685,7 @@ pub(super) fn bee_has_nectar(
     if entity_type_id != VANILLA_ENTITY_TYPE_BEE_ID {
         return false;
     }
-    entity_data_byte(values, BEE_FLAGS_DATA_ID, 0) & BEE_FLAG_HAS_NECTAR != 0
+    entity_data_byte(values, BEE_FLAGS_DATA_ID, BEE_DEFAULT_FLAGS) & BEE_FLAG_HAS_NECTAR != 0
 }
 
 /// The three projected camel sit/stand elapsed-seconds values, each `-1.0` when its

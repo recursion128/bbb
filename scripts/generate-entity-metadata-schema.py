@@ -49,6 +49,7 @@ FAMILIES = (
     FamilySpec("Shulker", "net.minecraft.world.entity.monster.Shulker", "Mob"),
     FamilySpec("Zombie", "net.minecraft.world.entity.monster.zombie.Zombie", "Mob"),
     FamilySpec("AgeableMob", "net.minecraft.world.entity.AgeableMob", "Mob"),
+    FamilySpec("Bee", "net.minecraft.world.entity.animal.bee.Bee", "AgeableMob"),
     FamilySpec("PolarBear", "net.minecraft.world.entity.animal.polarbear.PolarBear", "AgeableMob"),
     FamilySpec(
         "AbstractHorse",
@@ -164,6 +165,8 @@ DATA_ALIASES = {
     "VANILLA_ENDERMAN_CARRY_STATE_DATA_ID": ("net.minecraft.world.entity.monster.EnderMan", "DATA_CARRY_STATE"),
     "VANILLA_ENDERMAN_CREEPY_DATA_ID": ("net.minecraft.world.entity.monster.EnderMan", "DATA_CREEPY"),
     "VANILLA_ENDERMAN_STARED_AT_DATA_ID": ("net.minecraft.world.entity.monster.EnderMan", "DATA_STARED_AT"),
+    "VANILLA_BEE_FLAGS_DATA_ID": ("net.minecraft.world.entity.animal.bee.Bee", "DATA_FLAGS_ID"),
+    "VANILLA_BEE_ANGER_END_TIME_DATA_ID": ("net.minecraft.world.entity.animal.bee.Bee", "DATA_ANGER_END_TIME"),
     "VANILLA_POLAR_BEAR_STANDING_DATA_ID": ("net.minecraft.world.entity.animal.polarbear.PolarBear", "DATA_STANDING_ID"),
     "VANILLA_SLIME_SIZE_DATA_ID": ("net.minecraft.world.entity.monster.Slime", "ID_SIZE"),
     "VANILLA_SHULKER_ATTACH_FACE_DATA_ID": ("net.minecraft.world.entity.monster.Shulker", "DATA_ATTACH_FACE_ID"),
@@ -258,6 +261,8 @@ DEFAULT_ALIASES = {
     "VANILLA_ENDERMAN_DEFAULT_CARRY_STATE": ("net.minecraft.world.entity.monster.EnderMan", "DATA_CARRY_STATE"),
     "VANILLA_ENDERMAN_DEFAULT_CREEPY": ("net.minecraft.world.entity.monster.EnderMan", "DATA_CREEPY"),
     "VANILLA_ENDERMAN_DEFAULT_STARED_AT": ("net.minecraft.world.entity.monster.EnderMan", "DATA_STARED_AT"),
+    "VANILLA_BEE_DEFAULT_FLAGS": ("net.minecraft.world.entity.animal.bee.Bee", "DATA_FLAGS_ID"),
+    "VANILLA_BEE_DEFAULT_ANGER_END_TIME": ("net.minecraft.world.entity.animal.bee.Bee", "DATA_ANGER_END_TIME"),
     "VANILLA_POLAR_BEAR_DEFAULT_STANDING": ("net.minecraft.world.entity.animal.polarbear.PolarBear", "DATA_STANDING_ID"),
     "VANILLA_AVATAR_DEFAULT_MODEL_CUSTOMIZATION": ("net.minecraft.world.entity.Avatar", "DATA_PLAYER_MODE_CUSTOMISATION"),
     "VANILLA_SLIME_DEFAULT_SIZE": ("net.minecraft.world.entity.monster.Slime", "ID_SIZE"),
@@ -329,6 +334,9 @@ DEFAULT_ALIASES = {
 
 
 NAMED_FLAG_ALIASES = {
+    "VANILLA_BEE_FLAG_ROLL": ("net.minecraft.world.entity.animal.bee.Bee", "DATA_FLAGS_ID", "FLAG_ROLL"),
+    "VANILLA_BEE_FLAG_HAS_STUNG": ("net.minecraft.world.entity.animal.bee.Bee", "DATA_FLAGS_ID", "FLAG_HAS_STUNG"),
+    "VANILLA_BEE_FLAG_HAS_NECTAR": ("net.minecraft.world.entity.animal.bee.Bee", "DATA_FLAGS_ID", "FLAG_HAS_NECTAR"),
     "VANILLA_VEX_FLAG_CHARGING": ("net.minecraft.world.entity.monster.Vex", "DATA_FLAGS_ID", "FLAG_IS_CHARGING"),
     "VANILLA_BAT_FLAG_RESTING": ("net.minecraft.world.entity.ambient.Bat", "DATA_ID_FLAGS", "FLAG_RESTING"),
     "VANILLA_SNOW_GOLEM_PUMPKIN_FLAG": ("net.minecraft.world.entity.animal.golem.SnowGolem", "DATA_PUMPKIN_ID", "PUMPKIN_FLAG"),
@@ -518,7 +526,7 @@ def normalize_default(result: ExtractionResult, accessor: Accessor) -> Normalize
     serializer = accessor.serializer
     if serializer == "BOOLEAN" and node.type in {"true", "false"}:
         return NormalizedDefault(f"VanillaEntityMetadataDefault::Boolean({compact})", "bool", compact)
-    if serializer in {"BYTE", "INT"}:
+    if serializer in {"BYTE", "INT", "LONG"}:
         if compact in {"this.getMaxAirSupply()", "getMaxAirSupply()"}:
             return NormalizedDefault("VanillaEntityMetadataDefault::MaxAirSupply")
         if compact in {"this.getDefaultDisplayOffset()", "getDefaultDisplayOffset()"}:
@@ -531,6 +539,8 @@ def normalize_default(result: ExtractionResult, accessor: Accessor) -> Normalize
             if value >= 128:
                 value -= 256
             return NormalizedDefault(f"VanillaEntityMetadataDefault::Byte({value})", "i8", str(value))
+        if serializer == "LONG":
+            return NormalizedDefault(f"VanillaEntityMetadataDefault::Long({value})", "i64", str(value))
         return NormalizedDefault(f"VanillaEntityMetadataDefault::Int({value})", "i32", str(value))
     if serializer == "FLOAT" and node.type in {"decimal_floating_point_literal", "decimal_integer_literal"}:
         value = float(source.text(node).rstrip("fFdD"))
