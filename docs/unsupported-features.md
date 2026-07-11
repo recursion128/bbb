@@ -539,6 +539,10 @@ back into a todo. Do not delete these.
   `DATA_ITEM` descriptor instead of borrowing the coincidentally equal item-entity
   index; server spawn delay, item/projectile creation and world modification are
   not client work.
+  Thrown-item billboards resolve `DATA_ITEM_STACK` through the generated
+  EntityType/schema-class inheritance catalog for `ThrowableItemProjectile`,
+  `EyeOfEnder`, and `Fireball`; their runtime-dependent `getDefaultItem()` values
+  remain unresolved rather than guessed.
 - **Baby `ageScale`** — the `0.5` proportions applied in model `setupAnim`,
   distinct from the projected `SCALE`-attribute `scale`.
 - **Armor trims and the remaining mob-specific armor models.**

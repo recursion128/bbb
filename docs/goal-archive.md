@@ -10121,3 +10121,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   id 不会投影。同一反向审查也让 firework item render 使用已有的
   `FireworkRocketEntity.DATA_ID_FIREWORKS_ITEM` generated alias。server spawn delay、
   item/projectile 创建与 world modification 不属于客户端 authority。
+
+## 2026-07-11：Generated EntityType accessor inheritance query
+
+- [x] metadata facade 新增按 generated EntityType `schema_class` 沿 generated superclass 链查询
+  accessor、以及按 serializer 要求唯一 accessor 的通用 API。item/thrown-item billboard
+  不再借用 firework/item-entity 的偶合 id8，而是
+  以 `DATA_ITEM_STACK` 自动解析到 `ThrowableItemProjectile`、`EyeOfEnder` 或 `Fireball`
+  descriptor；测试锁定 owner/serializer/index 与非适用类型拒绝。各 leaf 的
+  `getDefaultItem()` 仍保持 unresolved，未用源码名称猜默认物品。

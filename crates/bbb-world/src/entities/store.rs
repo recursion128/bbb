@@ -111,6 +111,7 @@ use crate::entities::projectiles::{
     entity_hurting_projectile_from_state, entity_projectile_lifecycle_from_state,
 };
 use crate::entities::schema::{
+    vanilla_entity_metadata_unique_accessor_for_entity_type_and_serializer,
     VANILLA_ABSTRACT_VILLAGER_DEFAULT_UNHAPPY_COUNTER,
     VANILLA_ABSTRACT_VILLAGER_UNHAPPY_COUNTER_DATA_ID, VANILLA_AVATAR_DEFAULT_MODEL_CUSTOMIZATION,
     VANILLA_AVATAR_MAIN_HAND_DATA_ID, VANILLA_AVATAR_MODEL_CUSTOMIZATION_DATA_ID,
@@ -2875,7 +2876,17 @@ impl EntityStore {
             let Ok(metadata) = self.ecs.get::<&EntityMetadata>(entity) else {
                 continue;
             };
-            let Some(stack) = firework_rocket_render_stack(&metadata.data_values) else {
+            let Some(accessor) =
+                vanilla_entity_metadata_unique_accessor_for_entity_type_and_serializer(
+                    identity.entity_type_id,
+                    "ITEM_STACK",
+                )
+            else {
+                continue;
+            };
+            let Some(stack) = metadata_item_stack(&metadata.data_values, accessor.data_id)
+                .filter(|stack| stack.item_id.is_some() && stack.count > 0)
+            else {
                 continue;
             };
             items.push(ItemEntityStackState {

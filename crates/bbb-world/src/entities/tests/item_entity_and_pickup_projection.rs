@@ -87,9 +87,9 @@ fn item_entity_stacks_filters_and_preserves_protocol_order() {
 
 #[test]
 fn item_stacks_for_entity_types_collects_thrown_item_projectiles() {
-    // The thrown-item projectiles carry their displayed item in the same `DATA_ITEM_STACK` (id 8) as
-    // the dropped item, so the type-filtered accessor reads them for the billboard layer. Snowball is
-    // type id 120, egg 39; a plain item (71) is excluded when those types are requested.
+    // The thrown-item projectiles carry their displayed item in owner-specific `DATA_ITEM_STACK`
+    // accessors. Snowball is type id 120, egg 39; a plain item (71) is excluded when those types are
+    // requested.
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type(60, 120));
     store.apply_add_entity(protocol_add_entity_with_type(61, 39));
@@ -121,6 +121,20 @@ fn item_stacks_for_entity_types_collects_thrown_item_projectiles() {
     );
     assert_eq!(projectiles[0].stack, item_stack(880, 1));
     assert_eq!(projectiles[1].stack, item_stack(881, 1));
+
+    for type_id in [120, 39] {
+        let accessor = vanilla_entity_metadata_accessor_for_entity_type(type_id, "DATA_ITEM_STACK")
+            .expect("fixture projectile type must resolve its generated item-stack accessor");
+        assert_eq!(accessor.data_id, 8);
+        assert_eq!(accessor.serializer_name, "ITEM_STACK");
+        assert_eq!(
+            vanilla_entity_metadata_unique_accessor_for_entity_type_and_serializer(
+                type_id,
+                "ITEM_STACK"
+            ),
+            Some(accessor)
+        );
+    }
 
     // The dropped item (type 71) is untouched by the projectile-only query.
     assert!(!projectiles.iter().any(|item| item.entity_id == 62));

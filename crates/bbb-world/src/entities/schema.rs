@@ -245,6 +245,63 @@ pub fn vanilla_entity_metadata_field(
     }
 }
 
+/// Resolves an accessor declared by an entity type's generated schema class or one of its
+/// superclasses. This exposes extracted wire metadata without requiring a typed-default family
+/// facade for accessors whose vanilla default remains runtime-dependent.
+pub fn vanilla_entity_metadata_accessor_for_entity_type(
+    entity_type_id: i32,
+    java_name: &str,
+) -> Option<&'static VanillaEntityMetadataAccessorCatalogEntry> {
+    let mut java_class = VANILLA_ENTITY_TYPE_METADATA_26_1
+        .iter()
+        .find(|entry| entry.entity_type_id == entity_type_id)?
+        .schema_class?;
+    loop {
+        if let Some(accessor) = VANILLA_ENTITY_METADATA_ACCESSORS_26_1
+            .iter()
+            .find(|entry| entry.owner == java_class && entry.java_name == java_name)
+        {
+            return Some(accessor);
+        }
+        java_class = VANILLA_ENTITY_METADATA_CLASSES_26_1
+            .iter()
+            .find(|entry| entry.java_class == java_class)?
+            .superclass?;
+    }
+}
+
+/// Resolves the single accessor with `serializer_name` along an entity type's generated schema
+/// inheritance chain. Missing and ambiguous matches both return `None`, so consumers cannot silently
+/// choose one of several same-serializer fields.
+pub fn vanilla_entity_metadata_unique_accessor_for_entity_type_and_serializer(
+    entity_type_id: i32,
+    serializer_name: &str,
+) -> Option<&'static VanillaEntityMetadataAccessorCatalogEntry> {
+    let mut java_class = VANILLA_ENTITY_TYPE_METADATA_26_1
+        .iter()
+        .find(|entry| entry.entity_type_id == entity_type_id)?
+        .schema_class?;
+    let mut resolved = None;
+    loop {
+        for accessor in VANILLA_ENTITY_METADATA_ACCESSORS_26_1
+            .iter()
+            .filter(|entry| entry.owner == java_class && entry.serializer_name == serializer_name)
+        {
+            if resolved.replace(accessor).is_some() {
+                return None;
+            }
+        }
+        let Some(superclass) = VANILLA_ENTITY_METADATA_CLASSES_26_1
+            .iter()
+            .find(|entry| entry.java_class == java_class)
+            .and_then(|entry| entry.superclass)
+        else {
+            return resolved;
+        };
+        java_class = superclass;
+    }
+}
+
 pub const fn vanilla_minecart_default_display_offset(entity_type_id: i32) -> i32 {
     match entity_type_id {
         VANILLA_ENTITY_TYPE_CHEST_MINECART_ID => VANILLA_CHEST_MINECART_DEFAULT_DISPLAY_OFFSET,
@@ -354,6 +411,97 @@ mod tests {
             assert!(entry.schema_class.is_some());
             assert_eq!(entry.diagnostic, None);
         }
+    }
+
+    #[test]
+    fn generated_entity_type_accessor_query_follows_schema_inheritance() {
+        for (resource_id, expected_owner) in [
+            (
+                "minecraft:egg",
+                "net.minecraft.world.entity.projectile.throwableitemprojectile.ThrowableItemProjectile",
+            ),
+            (
+                "minecraft:ender_pearl",
+                "net.minecraft.world.entity.projectile.throwableitemprojectile.ThrowableItemProjectile",
+            ),
+            (
+                "minecraft:experience_bottle",
+                "net.minecraft.world.entity.projectile.throwableitemprojectile.ThrowableItemProjectile",
+            ),
+            (
+                "minecraft:eye_of_ender",
+                "net.minecraft.world.entity.projectile.EyeOfEnder",
+            ),
+            (
+                "minecraft:fireball",
+                "net.minecraft.world.entity.projectile.hurtingprojectile.Fireball",
+            ),
+            (
+                "minecraft:lingering_potion",
+                "net.minecraft.world.entity.projectile.throwableitemprojectile.ThrowableItemProjectile",
+            ),
+            (
+                "minecraft:small_fireball",
+                "net.minecraft.world.entity.projectile.hurtingprojectile.Fireball",
+            ),
+            (
+                "minecraft:snowball",
+                "net.minecraft.world.entity.projectile.throwableitemprojectile.ThrowableItemProjectile",
+            ),
+            (
+                "minecraft:splash_potion",
+                "net.minecraft.world.entity.projectile.throwableitemprojectile.ThrowableItemProjectile",
+            ),
+        ] {
+            let entity_type_id = VANILLA_ENTITY_TYPE_METADATA_26_1
+                .iter()
+                .find(|entry| entry.resource_id == resource_id)
+                .unwrap()
+                .entity_type_id;
+            let accessor = vanilla_entity_metadata_accessor_for_entity_type(
+                entity_type_id,
+                "DATA_ITEM_STACK",
+            )
+            .unwrap();
+            assert_eq!(accessor.owner, expected_owner);
+            assert_eq!(accessor.data_id, 8);
+            assert_eq!(accessor.serializer_name, "ITEM_STACK");
+            assert_eq!(accessor.typed_default, None);
+        }
+
+        let item_type_id = VANILLA_ENTITY_TYPE_METADATA_26_1
+            .iter()
+            .find(|entry| entry.resource_id == "minecraft:item")
+            .unwrap()
+            .entity_type_id;
+        assert!(
+            vanilla_entity_metadata_accessor_for_entity_type(item_type_id, "DATA_ITEM_STACK")
+                .is_none()
+        );
+        let item_accessor = vanilla_entity_metadata_unique_accessor_for_entity_type_and_serializer(
+            item_type_id,
+            "ITEM_STACK",
+        )
+        .unwrap();
+        assert_eq!(
+            item_accessor.owner,
+            "net.minecraft.world.entity.item.ItemEntity"
+        );
+        assert_eq!(item_accessor.java_name, "DATA_ITEM");
+        assert_eq!(item_accessor.data_id, 8);
+
+        let player_type_id = VANILLA_ENTITY_TYPE_METADATA_26_1
+            .iter()
+            .find(|entry| entry.resource_id == "minecraft:player")
+            .unwrap()
+            .entity_type_id;
+        assert!(
+            vanilla_entity_metadata_unique_accessor_for_entity_type_and_serializer(
+                player_type_id,
+                "INT"
+            )
+            .is_none()
+        );
     }
 
     #[test]
