@@ -118,6 +118,7 @@ FAMILIES = (
     FamilySpec("Interaction", "net.minecraft.world.entity.Interaction", "Entity"),
     FamilySpec("ExperienceOrb", "net.minecraft.world.entity.ExperienceOrb", "Entity"),
     FamilySpec("ItemEntity", "net.minecraft.world.entity.item.ItemEntity", "Entity"),
+    FamilySpec("PrimedTnt", "net.minecraft.world.entity.item.PrimedTnt", "Entity"),
     FamilySpec(
         "FireworkRocket",
         "net.minecraft.world.entity.projectile.FireworkRocketEntity",
@@ -284,6 +285,8 @@ DATA_ALIASES = {
     "VANILLA_INTERACTION_RESPONSE_DATA_ID": ("net.minecraft.world.entity.Interaction", "DATA_RESPONSE_ID"),
     "VANILLA_EXPERIENCE_ORB_VALUE_DATA_ID": ("net.minecraft.world.entity.ExperienceOrb", "DATA_VALUE"),
     "VANILLA_ITEM_ENTITY_STACK_DATA_ID": ("net.minecraft.world.entity.item.ItemEntity", "DATA_ITEM"),
+    "VANILLA_PRIMED_TNT_FUSE_DATA_ID": ("net.minecraft.world.entity.item.PrimedTnt", "DATA_FUSE_ID"),
+    "VANILLA_PRIMED_TNT_BLOCK_STATE_DATA_ID": ("net.minecraft.world.entity.item.PrimedTnt", "DATA_BLOCK_STATE_ID"),
     "VANILLA_FIREWORK_ROCKET_ITEM_DATA_ID": ("net.minecraft.world.entity.projectile.FireworkRocketEntity", "DATA_ID_FIREWORKS_ITEM"),
     "VANILLA_FIREWORK_ROCKET_ATTACHED_TO_TARGET_DATA_ID": ("net.minecraft.world.entity.projectile.FireworkRocketEntity", "DATA_ATTACHED_TO_TARGET"),
     "VANILLA_FIREWORK_ROCKET_SHOT_AT_ANGLE_DATA_ID": ("net.minecraft.world.entity.projectile.FireworkRocketEntity", "DATA_SHOT_AT_ANGLE"),
@@ -414,6 +417,7 @@ DEFAULT_ALIASES = {
     "VANILLA_INTERACTION_DEFAULT_HEIGHT": ("net.minecraft.world.entity.Interaction", "DATA_HEIGHT_ID"),
     "VANILLA_INTERACTION_DEFAULT_RESPONSE": ("net.minecraft.world.entity.Interaction", "DATA_RESPONSE_ID"),
     "VANILLA_EXPERIENCE_ORB_DEFAULT_VALUE": ("net.minecraft.world.entity.ExperienceOrb", "DATA_VALUE"),
+    "VANILLA_PRIMED_TNT_DEFAULT_FUSE": ("net.minecraft.world.entity.item.PrimedTnt", "DATA_FUSE_ID"),
     "VANILLA_FIREWORK_ROCKET_DEFAULT_ITEM_RESOURCE_ID": ("net.minecraft.world.entity.projectile.FireworkRocketEntity", "DATA_ID_FIREWORKS_ITEM"),
     "VANILLA_FIREWORK_ROCKET_DEFAULT_SHOT_AT_ANGLE": ("net.minecraft.world.entity.projectile.FireworkRocketEntity", "DATA_SHOT_AT_ANGLE"),
     "VANILLA_GUARDIAN_DEFAULT_MOVING": ("net.minecraft.world.entity.monster.Guardian", "DATA_ID_MOVING"),
@@ -461,6 +465,14 @@ DEFAULT_ALIASES = {
     "VANILLA_ITEM_FRAME_DEFAULT_ROTATION": ("net.minecraft.world.entity.decoration.ItemFrame", "DATA_ROTATION"),
     "VANILLA_PLAYER_DEFAULT_ABSORPTION": ("net.minecraft.world.entity.player.Player", "DATA_PLAYER_ABSORPTION_ID"),
     "VANILLA_PLAYER_DEFAULT_SCORE": ("net.minecraft.world.entity.player.Player", "DATA_SCORE_ID"),
+}
+
+
+TYPED_DEFAULT_ALIASES = {
+    "VANILLA_PRIMED_TNT_DEFAULT_BLOCK_STATE": (
+        "net.minecraft.world.entity.item.PrimedTnt",
+        "DATA_BLOCK_STATE_ID",
+    ),
 }
 
 
@@ -649,6 +661,23 @@ STATIC_ITEM_STACK_DEFAULT_RESOLVERS = (
         "new ItemStack (Items.FIREWORK_ROCKET)",
         "minecraft:firework_rocket",
         "the synced item-stack default is returned by a source method rather than an inline expression",
+    ),
+)
+
+
+STATIC_BLOCK_STATE_DEFAULT_RESOLVERS = (
+    (
+        "net.minecraft.world.entity.item.PrimedTnt",
+        "DATA_BLOCK_STATE_ID",
+        "DEFAULT_BLOCK_STATE",
+        "DEFAULT_BLOCK_STATE",
+        "Blocks.TNT.defaultBlockState ()",
+        "net.minecraft.world.level.block.TntBlock",
+        "registerDefaultState",
+        "this.registerDefaultState (this.defaultBlockState ().setValue (UNSTABLE, false))",
+        "minecraft:tnt",
+        (("unstable", "false"),),
+        "the synced block-state default is split between the entity field and the block constructor default-state declaration",
     ),
 )
 
@@ -1064,6 +1093,72 @@ def resolve_semantic_defaults(
                 reason,
             )
         )
+    for (
+        owner,
+        accessor_name,
+        default_field_name,
+        expected_expression,
+        expected_field_expression,
+        evidence_class,
+        evidence_call_name,
+        expected_evidence_expression,
+        resource_id,
+        properties,
+        reason,
+    ) in STATIC_BLOCK_STATE_DEFAULT_RESOLVERS:
+        key = (owner, accessor_name)
+        if key in resolved:
+            raise ExtractionError(f"duplicate static block-state default resolver: {owner}.{accessor_name}")
+        accessor = accessor_for(result, owner, accessor_name)
+        if accessor.serializer != "BLOCK_STATE":
+            raise ExtractionError(
+                f"{owner}.{accessor_name}: static block-state resolver requires BLOCK_STATE serializer"
+            )
+        if accessor.default_expression != expected_expression:
+            raise ExtractionError(
+                f"{owner}.{accessor_name}: stale static block-state resolver expression; "
+                f"expected {expected_expression!r}, found {accessor.default_expression!r}"
+            )
+        default_field = field_for(result, owner, default_field_name)
+        if default_field.initializer is None:
+            raise ExtractionError(f"{owner}.{default_field_name}: missing initializer")
+        field_expression = default_field.initializer.canonical
+        if field_expression != expected_field_expression:
+            raise ExtractionError(
+                f"{owner}.{default_field_name}: stale block-state initializer; "
+                f"expected {expected_field_expression!r}, found {field_expression!r}"
+            )
+        evidence_source = source_for_owner(result, evidence_class)
+        evidence_calls = [
+            call
+            for call in evidence_source.calls_for(evidence_class)
+            if call.name == evidence_call_name
+            and evidence_source.expression(call.node).canonical == expected_evidence_expression
+        ]
+        if len(evidence_calls) != 1:
+            raise ExtractionError(
+                f"{evidence_class}.{evidence_call_name}: expected one "
+                f"{expected_evidence_expression!r} call, found {len(evidence_calls)}"
+            )
+        resource_rust = rust_string(resource_id)
+        properties_rust = "&[" + ", ".join(
+            f"({rust_string(name)}, {rust_string(value)})" for name, value in properties
+        ) + "]"
+        resolved[key] = NormalizedDefault(
+            "VanillaEntityMetadataDefault::BlockStateDefault { "
+            f"resource_id: {resource_rust}, properties: {properties_rust} "
+            "}",
+        )
+        evidence.append(
+            ResolvedDefaultEvidence(
+                owner,
+                accessor_name,
+                evidence_class,
+                evidence_call_name,
+                f"{expected_expression} -> {expected_field_expression}; {expected_evidence_expression}",
+                reason,
+            )
+        )
     return resolved, evidence
 
 
@@ -1368,6 +1463,17 @@ def render(result: ExtractionResult) -> str:
             raise ExtractionError(f"{public_name}: default has no scalar compatibility value")
         lines.append(f"const GENERATED_{public_name}: {value.scalar_type} = {value.scalar_rust};")
         lines.append(f"pub const {public_name}: {value.scalar_type} = GENERATED_{public_name};")
+
+    for public_name, key in TYPED_DEFAULT_ALIASES.items():
+        value = normalized[key]
+        if value is None:
+            raise ExtractionError(f"{public_name}: typed default unresolved")
+        lines.append(
+            f"const GENERATED_{public_name}: VanillaEntityMetadataDefault = {value.rust};"
+        )
+        lines.append(
+            f"pub const {public_name}: VanillaEntityMetadataDefault = GENERATED_{public_name};"
+        )
 
     virtual_values = {
         "VANILLA_ENTITY_DEFAULT_MAX_AIR_SUPPLY_TICKS": integer_constants(result, "net.minecraft.world.entity.Entity")["TOTAL_AIR_SUPPLY"],

@@ -56,6 +56,7 @@ pub enum VanillaEntityMetadataFamily {
     Interaction,
     ExperienceOrb,
     ItemEntity,
+    PrimedTnt,
     FireworkRocket,
     Guardian,
     SnowGolem,
@@ -105,6 +106,10 @@ pub enum VanillaEntityMetadataDefault {
     Direction(i32),
     ItemStackEmpty,
     ItemStackDefaultItem(&'static str),
+    BlockStateDefault {
+        resource_id: &'static str,
+        properties: &'static [(&'static str, &'static str)],
+    },
     OptionalBlockStateNone,
     OptionalLivingEntityReferenceNone,
     MinecartDefaultDisplayOffset,
@@ -405,6 +410,7 @@ mod tests {
             VanillaEntityMetadataFamily::Interaction,
             VanillaEntityMetadataFamily::ExperienceOrb,
             VanillaEntityMetadataFamily::ItemEntity,
+            VanillaEntityMetadataFamily::PrimedTnt,
             VanillaEntityMetadataFamily::FireworkRocket,
             VanillaEntityMetadataFamily::Guardian,
             VanillaEntityMetadataFamily::SnowGolem,
@@ -766,7 +772,7 @@ mod tests {
         assert_eq!(VANILLA_SALMON_DEFAULT_VARIANT, 1);
         assert_eq!(
             VANILLA_ENTITY_METADATA_DEFAULT_RESOLVER_EVIDENCE_26_1.len(),
-            9
+            10
         );
         let default_evidence = |java_class| {
             VANILLA_ENTITY_METADATA_DEFAULT_RESOLVER_EVIDENCE_26_1
@@ -853,6 +859,20 @@ mod tests {
         assert_eq!(
             firework_default_evidence.source_expression,
             "getDefaultItem () -> new ItemStack (Items.FIREWORK_ROCKET)"
+        );
+        let primed_tnt_default_evidence =
+            default_evidence("net.minecraft.world.entity.item.PrimedTnt");
+        assert_eq!(
+            primed_tnt_default_evidence.accessor_name,
+            "DATA_BLOCK_STATE_ID"
+        );
+        assert_eq!(
+            primed_tnt_default_evidence.evidence_member,
+            "net.minecraft.world.level.block.TntBlock.registerDefaultState"
+        );
+        assert_eq!(
+            primed_tnt_default_evidence.source_expression,
+            "DEFAULT_BLOCK_STATE -> Blocks.TNT.defaultBlockState (); this.registerDefaultState (this.defaultBlockState ().setValue (UNSTABLE, false))"
         );
         for evidence in VANILLA_ENTITY_METADATA_DEFAULT_RESOLVER_EVIDENCE_26_1 {
             assert!(!evidence.evidence_member.is_empty());
@@ -1016,6 +1036,20 @@ mod tests {
             }]
         );
         assert_eq!(VANILLA_ITEM_ENTITY_STACK_DATA_ID, 8);
+        let primed_tnt = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::PrimedTnt);
+        assert_eq!(primed_tnt.parent, Some(VanillaEntityMetadataFamily::Entity));
+        assert_eq!(primed_tnt.inherited_field_count, 8);
+        assert_eq!(primed_tnt.own_fields.len(), 2);
+        assert_eq!(VANILLA_PRIMED_TNT_FUSE_DATA_ID, 8);
+        assert_eq!(VANILLA_PRIMED_TNT_BLOCK_STATE_DATA_ID, 9);
+        assert_eq!(VANILLA_PRIMED_TNT_DEFAULT_FUSE, 80);
+        assert_eq!(
+            VANILLA_PRIMED_TNT_DEFAULT_BLOCK_STATE,
+            VanillaEntityMetadataDefault::BlockStateDefault {
+                resource_id: "minecraft:tnt",
+                properties: &[("unstable", "false")],
+            }
+        );
         let firework = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::FireworkRocket);
         assert_eq!(firework.parent, Some(VanillaEntityMetadataFamily::Entity));
         assert_eq!(firework.inherited_field_count, 8);

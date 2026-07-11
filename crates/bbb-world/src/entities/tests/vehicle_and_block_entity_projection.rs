@@ -495,9 +495,6 @@ fn falling_block_state_projects_add_entity_block_state_data() {
 
 #[test]
 fn primed_tnt_projects_block_state_and_fuse_metadata() {
-    const PRIMED_TNT_FUSE_DATA_ID: u8 = 8;
-    const PRIMED_TNT_BLOCK_STATE_DATA_ID: u8 = 9;
-
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type(
         133,
@@ -529,8 +526,8 @@ fn primed_tnt_projects_block_state_and_fuse_metadata() {
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 133,
         values: vec![
-            protocol_int_data(PRIMED_TNT_FUSE_DATA_ID, 4),
-            protocol_block_state_data(PRIMED_TNT_BLOCK_STATE_DATA_ID, grass_id),
+            protocol_int_data(VANILLA_PRIMED_TNT_FUSE_DATA_ID, 4),
+            protocol_block_state_data(VANILLA_PRIMED_TNT_BLOCK_STATE_DATA_ID, grass_id),
         ],
     }));
 
@@ -553,7 +550,7 @@ fn primed_tnt_projects_block_state_and_fuse_metadata() {
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 133,
         values: vec![protocol_block_state_data(
-            PRIMED_TNT_BLOCK_STATE_DATA_ID,
+            VANILLA_PRIMED_TNT_BLOCK_STATE_DATA_ID,
             air_id,
         )],
     }));

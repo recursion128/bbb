@@ -2,7 +2,7 @@
 // Vanilla version: 26.1.
 // Update: scripts/vanilla-source-tools.sh scripts/generate-entity-metadata-schema.py update
 // Check: scripts/vanilla-source-tools.sh scripts/generate-entity-metadata-schema.py check
-// Stable source manifest SHA-256: 6631d17022639b79b8797c2e96fd59f381d7d2e94b1afd09c6a6f43103b20040
+// Stable source manifest SHA-256: 7bd8f6d5f6a6ce25146d2bf1149c6fe69e278d2b57ca6141a57c97854678e911
 
 use bbb_protocol::entity_data_serializers::*;
 
@@ -246,6 +246,11 @@ const GENERATED_VANILLA_EXPERIENCE_ORB_VALUE_DATA_ID: u8 = 8;
 pub const VANILLA_EXPERIENCE_ORB_VALUE_DATA_ID: u8 = GENERATED_VANILLA_EXPERIENCE_ORB_VALUE_DATA_ID;
 const GENERATED_VANILLA_ITEM_ENTITY_STACK_DATA_ID: u8 = 8;
 pub const VANILLA_ITEM_ENTITY_STACK_DATA_ID: u8 = GENERATED_VANILLA_ITEM_ENTITY_STACK_DATA_ID;
+const GENERATED_VANILLA_PRIMED_TNT_FUSE_DATA_ID: u8 = 8;
+pub const VANILLA_PRIMED_TNT_FUSE_DATA_ID: u8 = GENERATED_VANILLA_PRIMED_TNT_FUSE_DATA_ID;
+const GENERATED_VANILLA_PRIMED_TNT_BLOCK_STATE_DATA_ID: u8 = 9;
+pub const VANILLA_PRIMED_TNT_BLOCK_STATE_DATA_ID: u8 =
+    GENERATED_VANILLA_PRIMED_TNT_BLOCK_STATE_DATA_ID;
 const GENERATED_VANILLA_FIREWORK_ROCKET_ITEM_DATA_ID: u8 = 8;
 pub const VANILLA_FIREWORK_ROCKET_ITEM_DATA_ID: u8 = GENERATED_VANILLA_FIREWORK_ROCKET_ITEM_DATA_ID;
 const GENERATED_VANILLA_FIREWORK_ROCKET_ATTACHED_TO_TARGET_DATA_ID: u8 = 9;
@@ -719,6 +724,8 @@ pub const VANILLA_INTERACTION_DEFAULT_RESPONSE: bool =
 const GENERATED_VANILLA_EXPERIENCE_ORB_DEFAULT_VALUE: i32 = 0;
 pub const VANILLA_EXPERIENCE_ORB_DEFAULT_VALUE: i32 =
     GENERATED_VANILLA_EXPERIENCE_ORB_DEFAULT_VALUE;
+const GENERATED_VANILLA_PRIMED_TNT_DEFAULT_FUSE: i32 = 80;
+pub const VANILLA_PRIMED_TNT_DEFAULT_FUSE: i32 = GENERATED_VANILLA_PRIMED_TNT_DEFAULT_FUSE;
 const GENERATED_VANILLA_FIREWORK_ROCKET_DEFAULT_ITEM_RESOURCE_ID: &str =
     "minecraft:firework_rocket";
 pub const VANILLA_FIREWORK_ROCKET_DEFAULT_ITEM_RESOURCE_ID: &str =
@@ -838,6 +845,13 @@ const GENERATED_VANILLA_PLAYER_DEFAULT_ABSORPTION: f32 = 0.0;
 pub const VANILLA_PLAYER_DEFAULT_ABSORPTION: f32 = GENERATED_VANILLA_PLAYER_DEFAULT_ABSORPTION;
 const GENERATED_VANILLA_PLAYER_DEFAULT_SCORE: i32 = 0;
 pub const VANILLA_PLAYER_DEFAULT_SCORE: i32 = GENERATED_VANILLA_PLAYER_DEFAULT_SCORE;
+const GENERATED_VANILLA_PRIMED_TNT_DEFAULT_BLOCK_STATE: VanillaEntityMetadataDefault =
+    VanillaEntityMetadataDefault::BlockStateDefault {
+        resource_id: "minecraft:tnt",
+        properties: &[("unstable", "false")],
+    };
+pub const VANILLA_PRIMED_TNT_DEFAULT_BLOCK_STATE: VanillaEntityMetadataDefault =
+    GENERATED_VANILLA_PRIMED_TNT_DEFAULT_BLOCK_STATE;
 const GENERATED_VANILLA_ENTITY_DEFAULT_MAX_AIR_SUPPLY_TICKS: i32 = 300;
 pub const VANILLA_ENTITY_DEFAULT_MAX_AIR_SUPPLY_TICKS: i32 =
     GENERATED_VANILLA_ENTITY_DEFAULT_MAX_AIR_SUPPLY_TICKS;
@@ -10349,7 +10363,7 @@ pub const VANILLA_ENTITY_METADATA_ACCESSORS_26_1: &[VanillaEntityMetadataAccesso
         data_id: 9,
         source_path: "net/minecraft/world/entity/item/PrimedTnt.java",
         default_expression: "DEFAULT_BLOCK_STATE",
-        typed_default: None,
+        typed_default: Some(VanillaEntityMetadataDefault::BlockStateDefault { resource_id: "minecraft:tnt", properties: &[("unstable", "false")] }),
     },
     VanillaEntityMetadataAccessorCatalogEntry {
         owner: "net.minecraft.world.entity.monster.Blaze",
@@ -11704,6 +11718,13 @@ pub const VANILLA_ENTITY_METADATA_DEFAULT_RESOLVER_EVIDENCE_26_1: &[VanillaEntit
         evidence_member: "net.minecraft.world.entity.projectile.FireworkRocketEntity.getDefaultItem",
         source_expression: "getDefaultItem () -> new ItemStack (Items.FIREWORK_ROCKET)",
         reason: "the synced item-stack default is returned by a source method rather than an inline expression",
+    },
+    VanillaEntityMetadataResolverEvidence {
+        java_class: "net.minecraft.world.entity.item.PrimedTnt",
+        accessor_name: "DATA_BLOCK_STATE_ID",
+        evidence_member: "net.minecraft.world.level.block.TntBlock.registerDefaultState",
+        source_expression: "DEFAULT_BLOCK_STATE -> Blocks.TNT.defaultBlockState (); this.registerDefaultState (this.defaultBlockState ().setValue (UNSTABLE, false))",
+        reason: "the synced block-state default is split between the entity field and the block constructor default-state declaration",
     },
 ];
 
@@ -14673,6 +14694,32 @@ const ITEMENTITY_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetada
     own_flags: ITEMENTITY_FLAGS,
 };
 
+const PRIMEDTNT_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_FUSE_ID",
+        data_id: 8,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+        default: VanillaEntityMetadataDefault::Int(80),
+    },
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_BLOCK_STATE_ID",
+        data_id: 9,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BLOCK_STATE_ID,
+        default: VanillaEntityMetadataDefault::BlockStateDefault {
+            resource_id: "minecraft:tnt",
+            properties: &[("unstable", "false")],
+        },
+    },
+];
+const PRIMEDTNT_FLAGS: &[VanillaEntityMetadataFlagSchema] = &[];
+const PRIMEDTNT_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamilySchema {
+    family: VanillaEntityMetadataFamily::PrimedTnt,
+    parent: Some(VanillaEntityMetadataFamily::Entity),
+    inherited_field_count: 8,
+    own_fields: PRIMEDTNT_FIELDS,
+    own_flags: PRIMEDTNT_FLAGS,
+};
+
 const FIREWORKROCKET_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[
     VanillaEntityMetadataFieldSchema {
         name: "DATA_ID_FIREWORKS_ITEM",
@@ -15371,6 +15418,7 @@ pub(super) const fn generated_entity_metadata_schema(
         VanillaEntityMetadataFamily::Interaction => &INTERACTION_SCHEMA,
         VanillaEntityMetadataFamily::ExperienceOrb => &EXPERIENCEORB_SCHEMA,
         VanillaEntityMetadataFamily::ItemEntity => &ITEMENTITY_SCHEMA,
+        VanillaEntityMetadataFamily::PrimedTnt => &PRIMEDTNT_SCHEMA,
         VanillaEntityMetadataFamily::FireworkRocket => &FIREWORKROCKET_SCHEMA,
         VanillaEntityMetadataFamily::Guardian => &GUARDIAN_SCHEMA,
         VanillaEntityMetadataFamily::SnowGolem => &SNOWGOLEM_SCHEMA,

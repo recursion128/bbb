@@ -35,10 +35,12 @@ ENTITY_TYPE_SOURCE = ENTITY_TREE / "EntityType.java"
 SERIALIZER_SOURCE = Path("net/minecraft/network/syncher/EntityDataSerializers.java")
 DIRECTION_SOURCE = Path("net/minecraft/core/Direction.java")
 WEATHERING_COPPER_SOURCE = Path("net/minecraft/world/level/block/WeatheringCopper.java")
+TNT_BLOCK_SOURCE = Path("net/minecraft/world/level/block/TntBlock.java")
 SUPPORTING_SOURCES = (
     SERIALIZER_SOURCE,
     DIRECTION_SOURCE,
     WEATHERING_COPPER_SOURCE,
+    TNT_BLOCK_SOURCE,
 )
 
 

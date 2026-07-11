@@ -602,8 +602,6 @@ fn local_player_using_item_flags_do_not_replace_existing_started_hand() {
 
 #[test]
 fn primed_tnt_smoke_particles_use_current_position_when_post_decrement_fuse_survives() {
-    const PRIMED_TNT_FUSE_DATA_ID: u8 = 8;
-
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type(
         200,
@@ -619,11 +617,11 @@ fn primed_tnt_smoke_particles_use_current_position_when_post_decrement_fuse_surv
     ));
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 200,
-        values: vec![protocol_int_data(PRIMED_TNT_FUSE_DATA_ID, 2)],
+        values: vec![protocol_int_data(VANILLA_PRIMED_TNT_FUSE_DATA_ID, 2)],
     }));
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 201,
-        values: vec![protocol_int_data(PRIMED_TNT_FUSE_DATA_ID, 1)],
+        values: vec![protocol_int_data(VANILLA_PRIMED_TNT_FUSE_DATA_ID, 1)],
     }));
 
     let states = store.primed_tnt_smoke_particle_states();

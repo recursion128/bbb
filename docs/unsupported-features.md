@@ -511,7 +511,7 @@ back into a todo. Do not delete these.
   `Entity -> AbstractArrow -> Arrow` /
   `ThrownTrident` leaves, the `Entity -> WitherSkull` projectile leaf,
   `Entity -> EndCrystal` / `Interaction` / `ExperienceOrb` / `ItemEntity` /
-  `FireworkRocket`, the
+  `PrimedTnt` / `FireworkRocket`, the
   `Entity -> VehicleEntity -> AbstractBoat` / `AbstractMinecart -> MinecartFurnace` branches, and
   `HangingEntity -> ItemFrame`. Remaining
   concrete entity consumers still keep local ids/masks until their projections

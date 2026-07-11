@@ -132,7 +132,9 @@ use crate::entities::schema::{
     VANILLA_MOB_FLAGS_DATA_ID, VANILLA_MOB_FLAG_AGGRESSIVE as MOB_FLAG_AGGRESSIVE,
     VANILLA_MOB_FLAG_LEFT_HANDED as MOB_FLAG_LEFTHANDED, VANILLA_PLAYER_ABSORPTION_DATA_ID,
     VANILLA_PLAYER_DEFAULT_ABSORPTION, VANILLA_PLAYER_SHOULDER_PARROT_LEFT_DATA_ID,
-    VANILLA_PLAYER_SHOULDER_PARROT_RIGHT_DATA_ID,
+    VANILLA_PLAYER_SHOULDER_PARROT_RIGHT_DATA_ID, VANILLA_PRIMED_TNT_BLOCK_STATE_DATA_ID,
+    VANILLA_PRIMED_TNT_DEFAULT_BLOCK_STATE, VANILLA_PRIMED_TNT_DEFAULT_FUSE,
+    VANILLA_PRIMED_TNT_FUSE_DATA_ID,
 };
 use crate::registries::RegistrySet;
 use crate::ItemEquipmentSlot;
@@ -148,12 +150,6 @@ const VANILLA_TICKS_REQUIRED_TO_FREEZE: i32 = 140;
 /// and therefore feed `ItemInHandLayer` through `getItemHeldByArm`.
 /// Vanilla 26.1 `EvokerRenderer` installs an `ItemInHandLayer` over the illager model.
 /// Vanilla 26.1 `ZombifiedPiglinRenderer` extends `HumanoidMobRenderer`.
-/// Vanilla `PrimedTnt.DATA_FUSE_ID` int metadata: `PrimedTnt` directly extends
-/// `Entity`, whose base accessors occupy ids `0..=7`.
-const PRIMED_TNT_FUSE_DATA_ID: u8 = 8;
-/// Vanilla `PrimedTnt.DATA_BLOCK_STATE_ID` block-state metadata, declared after fuse.
-const PRIMED_TNT_BLOCK_STATE_DATA_ID: u8 = 9;
-const DEFAULT_PRIMED_TNT_FUSE: i32 = 80;
 fn wolf_armor_crackiness(
     item: &ItemStackSummary,
     default_item_max_damage: &BTreeMap<i32, i32>,
@@ -979,7 +975,7 @@ impl EntityStore {
         }
 
         let state_id = self
-            .metadata_block_state(id, PRIMED_TNT_BLOCK_STATE_DATA_ID)
+            .metadata_block_state(id, VANILLA_PRIMED_TNT_BLOCK_STATE_DATA_ID)
             .unwrap_or(None);
         if let Some(state_id) = state_id {
             let state = registries.block_state(state_id)?;
@@ -1005,8 +1001,12 @@ impl EntityStore {
             return None;
         }
         let fuse = self
-            .metadata_int(id, PRIMED_TNT_FUSE_DATA_ID, DEFAULT_PRIMED_TNT_FUSE)
-            .unwrap_or(DEFAULT_PRIMED_TNT_FUSE);
+            .metadata_int(
+                id,
+                VANILLA_PRIMED_TNT_FUSE_DATA_ID,
+                VANILLA_PRIMED_TNT_DEFAULT_FUSE,
+            )
+            .unwrap_or(VANILLA_PRIMED_TNT_DEFAULT_FUSE);
         Some(fuse as f32 - partial_ticks + 1.0)
     }
 
@@ -1033,10 +1033,10 @@ impl EntityStore {
             let fuse = self
                 .metadata_int(
                     identity.id,
-                    PRIMED_TNT_FUSE_DATA_ID,
-                    DEFAULT_PRIMED_TNT_FUSE,
+                    VANILLA_PRIMED_TNT_FUSE_DATA_ID,
+                    VANILLA_PRIMED_TNT_DEFAULT_FUSE,
                 )
-                .unwrap_or(DEFAULT_PRIMED_TNT_FUSE);
+                .unwrap_or(VANILLA_PRIMED_TNT_DEFAULT_FUSE);
             // Vanilla `PrimedTnt.tick` decrements fuse first and only emits smoke when the
             // resulting fuse remains positive.
             if fuse <= 1 {
@@ -3877,10 +3877,20 @@ fn default_minecart_display_block_state(
 }
 
 fn default_primed_tnt_block_state(registries: &RegistrySet) -> Option<EntityBlockModelState> {
+    let crate::entities::schema::VanillaEntityMetadataDefault::BlockStateDefault {
+        resource_id,
+        properties,
+    } = VANILLA_PRIMED_TNT_DEFAULT_BLOCK_STATE
+    else {
+        unreachable!("generated PrimedTnt block-state default has the wrong kind")
+    };
     registered_block_model_state(
         registries,
-        "minecraft:tnt",
-        BTreeMap::from([("unstable".to_string(), "false".to_string())]),
+        resource_id,
+        properties
+            .iter()
+            .map(|(name, value)| ((*name).to_string(), (*value).to_string()))
+            .collect(),
     )
 }
 

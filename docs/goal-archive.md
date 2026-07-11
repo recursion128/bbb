@@ -9968,3 +9968,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   id9、BOOLEAN shot-at-angle id10；world render/particle projection 与 native debug-save
   删除手抄 id/default/resource。飞行、attachment 跟随、爆炸和 lifetime 行为仍由对应
   语义 owner 管理。
+
+## 2026-07-11：Generated block-state default resolver 与 PrimedTnt metadata
+
+- [x] extractor 将 `TntBlock.java` 纳入稳定 supporting-source manifest；generator
+  新增窄 block-state default resolver，同时锁定 `PrimedTnt.DEFAULT_BLOCK_STATE =
+  Blocks.TNT.defaultBlockState()` 与 `TntBlock.registerDefaultState(...UNSTABLE, false)`
+  CST evidence，生成 typed `BlockStateDefault`，不手写 numeric block-state id。建立
+  `Entity -> PrimedTnt` family：INT fuse id8/default80、BLOCK_STATE id9/default
+  `minecraft:tnt[unstable=false]`；world model/fuse/smoke 与 native debug-save 删除手抄
+  synced id/default/properties。爆炸、portal 和 owner 行为仍由对应语义 owner 管理。

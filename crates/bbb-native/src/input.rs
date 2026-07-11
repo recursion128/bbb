@@ -137,6 +137,8 @@ use bbb_world::{
     VANILLA_PANDA_MAIN_GENE_DATA_ID as PANDA_MAIN_GENE_DATA_ID,
     VANILLA_PARROT_DEFAULT_VARIANT as PARROT_DEFAULT_VARIANT,
     VANILLA_PARROT_VARIANT_DATA_ID as PARROT_VARIANT_DATA_ID,
+    VANILLA_PRIMED_TNT_DEFAULT_FUSE as PRIMED_TNT_DEFAULT_FUSE,
+    VANILLA_PRIMED_TNT_FUSE_DATA_ID as PRIMED_TNT_FUSE_DATA_ID,
     VANILLA_SHEEP_DEFAULT_WOOL as SHEEP_DEFAULT_WOOL,
     VANILLA_SHEEP_FLAG_SHEARED as SHEEP_WOOL_SHEARED_FLAG,
     VANILLA_SHEEP_WOOL_DATA_ID as SHEEP_WOOL_DATA_ID,
@@ -486,8 +488,6 @@ const ITEM_FRAME_DEFAULT_DROP_CHANCE: f32 = 1.0;
 const ITEM_FRAME_DEFAULT_INVISIBLE: bool = false;
 /// Server-private NBT field with the same client-only default boundary as drop chance.
 const ITEM_FRAME_DEFAULT_FIXED: bool = false;
-const PRIMED_TNT_FUSE_DATA_ID: u8 = 8;
-const PRIMED_TNT_DEFAULT_FUSE: i16 = 80;
 const ABSTRACT_ARROW_DEFAULT_LIFE: i16 = 0;
 const ABSTRACT_ARROW_DEFAULT_SHAKE: i8 = 0;
 const ABSTRACT_ARROW_DEFAULT_PICKUP: i8 = 0;
@@ -6058,7 +6058,7 @@ fn debug_push_primed_tnt_additional_save_data(
     fields: &mut Vec<String>,
 ) {
     let fuse = debug_entity_data_int_present(entity, PRIMED_TNT_FUSE_DATA_ID)
-        .unwrap_or(PRIMED_TNT_DEFAULT_FUSE as i32) as i16;
+        .unwrap_or(PRIMED_TNT_DEFAULT_FUSE) as i16;
     fields.push(format!("fuse: {fuse}s"));
     if let Some(block_state) = world.primed_tnt_block_state(entity.id) {
         fields.push(format!(
