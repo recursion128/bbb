@@ -29,6 +29,8 @@ use super::schema::{
     VANILLA_ABSTRACT_BOAT_DEFAULT_PADDLE_RIGHT as ABSTRACT_BOAT_DEFAULT_PADDLE_RIGHT,
     VANILLA_ABSTRACT_BOAT_PADDLE_LEFT_DATA_ID as ABSTRACT_BOAT_PADDLE_LEFT_DATA_ID,
     VANILLA_ABSTRACT_BOAT_PADDLE_RIGHT_DATA_ID as ABSTRACT_BOAT_PADDLE_RIGHT_DATA_ID,
+    VANILLA_ALLAY_DANCING_DATA_ID as ALLAY_DANCING_DATA_ID,
+    VANILLA_ALLAY_DEFAULT_DANCING as ALLAY_DEFAULT_DANCING,
     VANILLA_CREAKING_CAN_MOVE_DATA_ID as CREAKING_CAN_MOVE_DATA_ID,
     VANILLA_CREAKING_DEFAULT_CAN_MOVE as CREAKING_DEFAULT_CAN_MOVE,
     VANILLA_CREAKING_DEFAULT_TEARING_DOWN as CREAKING_DEFAULT_TEARING_DOWN,
@@ -218,7 +220,6 @@ const AXOLOTL_ANIMATOR_LENGTH: i32 = 10;
 /// 0–7, LivingEntity 8–14, Mob 15, then `Allay`'s first own accessor `DATA_DANCING`; the allay is a
 /// `PathfinderMob`, not an `AgeableMob`, so there is no baby slot). `Allay.tick` advances the dance /
 /// spin accumulators while `isDancing()`.
-const ALLAY_DANCING_DATA_ID: u8 = 16;
 /// Vanilla `Camel.DASH`, the synced `EntityDataSerializers.BOOLEAN` accessor at id 19 (Entity 0–7,
 /// LivingEntity 8–14, Mob 15, AgeableMob 16–17, `AbstractHorse.DATA_ID_FLAGS` 18, then Camel's first
 /// own accessor `DASH`; `LAST_POSE_CHANGE_TICK` follows at 20). `Camel.setupAnimationStates` reads
@@ -6020,7 +6021,7 @@ pub(crate) fn player_is_using_item(data_values: &[EntityDataValue]) -> bool {
 /// dance/spin accumulators. Read straight from the entity metadata in the tick loop; non-allays (whose
 /// synced slot `16` is not this boolean) fall back to `false`.
 pub(crate) fn allay_is_dancing(data_values: &[EntityDataValue]) -> bool {
-    entity_data_bool(data_values, ALLAY_DANCING_DATA_ID, false)
+    entity_data_bool(data_values, ALLAY_DANCING_DATA_ID, ALLAY_DEFAULT_DANCING)
 }
 
 /// Vanilla `Axolotl.isPlayingDead()` (`entityData.get(DATA_PLAYING_DEAD)`): the synced boolean that

@@ -46,6 +46,10 @@ pub const VANILLA_LIVING_ENTITY_SLEEPING_POS_DATA_ID: u8 =
     GENERATED_VANILLA_LIVING_ENTITY_SLEEPING_POS_DATA_ID;
 const GENERATED_VANILLA_MOB_FLAGS_DATA_ID: u8 = 15;
 pub const VANILLA_MOB_FLAGS_DATA_ID: u8 = GENERATED_VANILLA_MOB_FLAGS_DATA_ID;
+const GENERATED_VANILLA_ALLAY_DANCING_DATA_ID: u8 = 16;
+pub const VANILLA_ALLAY_DANCING_DATA_ID: u8 = GENERATED_VANILLA_ALLAY_DANCING_DATA_ID;
+const GENERATED_VANILLA_ALLAY_CAN_DUPLICATE_DATA_ID: u8 = 17;
+pub const VANILLA_ALLAY_CAN_DUPLICATE_DATA_ID: u8 = GENERATED_VANILLA_ALLAY_CAN_DUPLICATE_DATA_ID;
 const GENERATED_VANILLA_SLIME_SIZE_DATA_ID: u8 = 16;
 pub const VANILLA_SLIME_SIZE_DATA_ID: u8 = GENERATED_VANILLA_SLIME_SIZE_DATA_ID;
 const GENERATED_VANILLA_SHULKER_ATTACH_FACE_DATA_ID: u8 = 16;
@@ -325,6 +329,10 @@ pub const VANILLA_HUMANOID_ARM_LEFT_ID: i32 = GENERATED_VANILLA_HUMANOID_ARM_LEF
 const GENERATED_VANILLA_HUMANOID_ARM_RIGHT_ID: i32 = 1;
 pub const VANILLA_HUMANOID_ARM_RIGHT_ID: i32 = GENERATED_VANILLA_HUMANOID_ARM_RIGHT_ID;
 
+const GENERATED_VANILLA_ALLAY_DEFAULT_DANCING: bool = false;
+pub const VANILLA_ALLAY_DEFAULT_DANCING: bool = GENERATED_VANILLA_ALLAY_DEFAULT_DANCING;
+const GENERATED_VANILLA_ALLAY_DEFAULT_CAN_DUPLICATE: bool = true;
+pub const VANILLA_ALLAY_DEFAULT_CAN_DUPLICATE: bool = GENERATED_VANILLA_ALLAY_DEFAULT_CAN_DUPLICATE;
 const GENERATED_VANILLA_AVATAR_DEFAULT_MODEL_CUSTOMIZATION: i8 = 0;
 pub const VANILLA_AVATAR_DEFAULT_MODEL_CUSTOMIZATION: i8 =
     GENERATED_VANILLA_AVATAR_DEFAULT_MODEL_CUSTOMIZATION;
@@ -13042,6 +13050,29 @@ const MOB_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamil
     own_flags: MOB_FLAGS,
 };
 
+const ALLAY_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_DANCING",
+        data_id: 16,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+        default: VanillaEntityMetadataDefault::Boolean(false),
+    },
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_CAN_DUPLICATE",
+        data_id: 17,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+        default: VanillaEntityMetadataDefault::Boolean(true),
+    },
+];
+const ALLAY_FLAGS: &[VanillaEntityMetadataFlagSchema] = &[];
+const ALLAY_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamilySchema {
+    family: VanillaEntityMetadataFamily::Allay,
+    parent: Some(VanillaEntityMetadataFamily::Mob),
+    inherited_field_count: 16,
+    own_fields: ALLAY_FIELDS,
+    own_flags: ALLAY_FLAGS,
+};
+
 const SLIME_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[VanillaEntityMetadataFieldSchema {
     name: "ID_SIZE",
     data_id: 16,
@@ -14045,6 +14076,7 @@ pub(super) const fn generated_entity_metadata_schema(
         VanillaEntityMetadataFamily::Entity => &ENTITY_SCHEMA,
         VanillaEntityMetadataFamily::LivingEntity => &LIVINGENTITY_SCHEMA,
         VanillaEntityMetadataFamily::Mob => &MOB_SCHEMA,
+        VanillaEntityMetadataFamily::Allay => &ALLAY_SCHEMA,
         VanillaEntityMetadataFamily::Slime => &SLIME_SCHEMA,
         VanillaEntityMetadataFamily::Shulker => &SHULKER_SCHEMA,
         VanillaEntityMetadataFamily::Zombie => &ZOMBIE_SCHEMA,

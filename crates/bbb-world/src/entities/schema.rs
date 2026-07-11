@@ -14,6 +14,7 @@ pub enum VanillaEntityMetadataFamily {
     Entity,
     LivingEntity,
     Mob,
+    Allay,
     Slime,
     Shulker,
     Zombie,
@@ -303,6 +304,7 @@ mod tests {
             VanillaEntityMetadataFamily::Entity,
             VanillaEntityMetadataFamily::LivingEntity,
             VanillaEntityMetadataFamily::Mob,
+            VanillaEntityMetadataFamily::Allay,
             VanillaEntityMetadataFamily::Slime,
             VanillaEntityMetadataFamily::Shulker,
             VanillaEntityMetadataFamily::Zombie,
@@ -370,6 +372,14 @@ mod tests {
     #[test]
     fn compatibility_queries_and_virtual_defaults_preserve_existing_semantics() {
         let arrow = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Arrow);
+        let allay = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Allay);
+        assert_eq!(allay.parent, Some(VanillaEntityMetadataFamily::Mob));
+        assert_eq!(allay.inherited_field_count, 16);
+        assert_eq!(allay.own_fields.len(), 2);
+        assert_eq!(VANILLA_ALLAY_DANCING_DATA_ID, 16);
+        assert_eq!(VANILLA_ALLAY_CAN_DUPLICATE_DATA_ID, 17);
+        assert!(!VANILLA_ALLAY_DEFAULT_DANCING);
+        assert!(VANILLA_ALLAY_DEFAULT_CAN_DUPLICATE);
         assert_eq!(
             arrow.parent,
             Some(VanillaEntityMetadataFamily::AbstractArrow)

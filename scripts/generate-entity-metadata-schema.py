@@ -40,6 +40,7 @@ FAMILIES = (
     FamilySpec("Entity", "net.minecraft.world.entity.Entity", None),
     FamilySpec("LivingEntity", "net.minecraft.world.entity.LivingEntity", "Entity"),
     FamilySpec("Mob", "net.minecraft.world.entity.Mob", "LivingEntity"),
+    FamilySpec("Allay", "net.minecraft.world.entity.animal.allay.Allay", "Mob"),
     FamilySpec("Slime", "net.minecraft.world.entity.monster.Slime", "Mob"),
     FamilySpec("Shulker", "net.minecraft.world.entity.monster.Shulker", "Mob"),
     FamilySpec("Zombie", "net.minecraft.world.entity.monster.zombie.Zombie", "Mob"),
@@ -145,6 +146,8 @@ DATA_ALIASES = {
     "VANILLA_LIVING_ENTITY_STINGER_COUNT_DATA_ID": ("net.minecraft.world.entity.LivingEntity", "DATA_STINGER_COUNT_ID"),
     "VANILLA_LIVING_ENTITY_SLEEPING_POS_DATA_ID": ("net.minecraft.world.entity.LivingEntity", "SLEEPING_POS_ID"),
     "VANILLA_MOB_FLAGS_DATA_ID": ("net.minecraft.world.entity.Mob", "DATA_MOB_FLAGS_ID"),
+    "VANILLA_ALLAY_DANCING_DATA_ID": ("net.minecraft.world.entity.animal.allay.Allay", "DATA_DANCING"),
+    "VANILLA_ALLAY_CAN_DUPLICATE_DATA_ID": ("net.minecraft.world.entity.animal.allay.Allay", "DATA_CAN_DUPLICATE"),
     "VANILLA_SLIME_SIZE_DATA_ID": ("net.minecraft.world.entity.monster.Slime", "ID_SIZE"),
     "VANILLA_SHULKER_ATTACH_FACE_DATA_ID": ("net.minecraft.world.entity.monster.Shulker", "DATA_ATTACH_FACE_ID"),
     "VANILLA_SHULKER_PEEK_DATA_ID": ("net.minecraft.world.entity.monster.Shulker", "DATA_PEEK_ID"),
@@ -225,6 +228,8 @@ DATA_ALIASES = {
 
 
 DEFAULT_ALIASES = {
+    "VANILLA_ALLAY_DEFAULT_DANCING": ("net.minecraft.world.entity.animal.allay.Allay", "DATA_DANCING"),
+    "VANILLA_ALLAY_DEFAULT_CAN_DUPLICATE": ("net.minecraft.world.entity.animal.allay.Allay", "DATA_CAN_DUPLICATE"),
     "VANILLA_AVATAR_DEFAULT_MODEL_CUSTOMIZATION": ("net.minecraft.world.entity.Avatar", "DATA_PLAYER_MODE_CUSTOMISATION"),
     "VANILLA_SLIME_DEFAULT_SIZE": ("net.minecraft.world.entity.monster.Slime", "ID_SIZE"),
     "VANILLA_SHULKER_DEFAULT_ATTACH_FACE_ID": ("net.minecraft.world.entity.monster.Shulker", "DATA_ATTACH_FACE_ID"),
