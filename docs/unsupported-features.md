@@ -134,7 +134,9 @@ Inventory:
 Owner: `bbb-renderer` + `bbb-native` + `bbb-pack`
 
 The fixed vanilla 26.1 particle type id/resource/override-limiter catalog is
-generated; the remaining items below are provider and presentation behavior.
+generated. Particle definition JSON and atlas sprites remain resource-pack-owned
+runtime catalogs rather than fixed vanilla snapshots; the remaining items below
+are provider and presentation behavior.
 
 - Implement full vanilla provider behavior and presentation parity. New gaps
   enter through the per-provider coverage matrix at the end of this file: add

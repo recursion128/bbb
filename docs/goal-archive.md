@@ -10278,3 +10278,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   item-model bootstrap 生成物不再重复拥有 jukebox key 数组。fixtures 锁定声明/注册顺序、
   constant join 和显式失败，普通 build/test 只读取 checked-in Rust 生成物；dynamic server
   registry 仍优先，未把 JukeboxSong Codec、音频行为或 component wire 语义冒充为已生成。
+
+## 2026-07-11：Particle catalog authority audit
+
+- [x] 审计确认 particle numeric/resource snapshot 已由 core-registry Tree-sitter generator
+  从 `ParticleTypes.java` 唯一生成 117 项 id/resource/constant/override-limiter，native 与
+  renderer 均消费 protocol catalog，不存在待迁移的第二份固定表。`assets/*/particles/*.json`
+  definition 与 particle atlas texture/sprite 属于资源包可覆盖数据，继续由
+  `ParticleDefinitionCatalog`、`ParticleSpriteCatalog` 和 pack precedence 动态加载，不生成
+  会屏蔽资源包的固定 vanilla 快照。开放项仅保留 provider/option/GPU presentation parity，
+  未把这些渲染行为误标完成。
