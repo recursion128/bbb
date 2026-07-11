@@ -10182,3 +10182,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   update/check 与二次 update 零 diff；普通 Rust tests 不再探测 `$HOME` 或运行维护脚本。
   component wire handler 仍由 protocol semantic owner 手写并与 generated metadata zip，
   未把源码结构冒充 codec 行为。
+
+## 2026-07-11：Gameplay numeric-id catalog Tree-sitter frontend migration
+
+- [x] `generate-gameplay-id-catalog.py` 删除 register/enum/static-block regex 与手写
+  parenthesis scanner，由 `gameplay_id_catalog_extractor.py` 消费共享 CST/IR，覆盖
+  attributes、mob effects、menu types、equipment slots/groups、entity poses、entity-data
+  serializers、client game-event types 与 sound sources。domain fixtures 锁定 multiline
+  builder metadata、nested enum 排除、enum constructor 参数、同一 static block call order、
+  explicit event id、comment/string 干扰与 unsupported register source-span 失败。
+  八份 checked-in Rust catalog 的条目/API 保持不变，maintenance update/check 与二次
+  update 零 diff；普通 Rust tests 不再探测 `$HOME` 或运行维护脚本。

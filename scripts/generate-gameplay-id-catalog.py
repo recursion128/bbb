@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate checked-in vanilla 26.1 gameplay numeric-id catalogs.
+"""Generate vanilla 26.1 gameplay numeric-id catalogs from Tree-sitter CST facts.
 
 The current catalog covers attributes, mob effects, menu types, equipment slot
 ordinals, entity poses, entity-data serializers, client game-event types, and
@@ -11,11 +11,31 @@ from __future__ import annotations
 
 import argparse
 import difflib
-import re
 import subprocess
 import sys
-from dataclasses import dataclass
 from pathlib import Path
+
+from gameplay_id_catalog_extractor import (
+    AttributeEntry,
+    ClientGameEventTypeEntry,
+    EntityDataSerializerEntry,
+    EntityPoseEntry,
+    EquipmentSlotEntry,
+    EquipmentSlotGroupEntry,
+    MenuTypeEntry,
+    MobEffectEntry,
+    SoundSourceEntry,
+    attribute_entries,
+    client_game_event_type_entries,
+    entity_data_serializer_entries,
+    entity_pose_entries,
+    equipment_slot_entries,
+    equipment_slot_group_entries,
+    menu_type_entries,
+    mob_effect_entries,
+    sound_source_entries,
+)
+from vanilla_java_source import parse_source
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -55,69 +75,6 @@ GAME_EVENT_TYPES_SOURCE = Path(
 SOUND_SOURCES_SOURCE = Path("net/minecraft/sounds/SoundSource.java")
 
 
-@dataclass(frozen=True)
-class AttributeEntry:
-    constant_name: str
-    resource_id: str
-    description_key: str
-    sentiment: str
-    syncable: bool
-
-
-@dataclass(frozen=True)
-class MobEffectEntry:
-    constant_name: str
-    resource_id: str
-    category: str
-
-
-@dataclass(frozen=True)
-class MenuTypeEntry:
-    constant_name: str
-    resource_id: str
-
-
-@dataclass(frozen=True)
-class EquipmentSlotEntry:
-    constant_name: str
-    slot_type: str
-    index: int
-    count_limit: int
-    slot_id: int
-    serialized_name: str
-
-
-@dataclass(frozen=True)
-class EquipmentSlotGroupEntry:
-    constant_name: str
-    group_id: int
-    serialized_name: str
-
-
-@dataclass(frozen=True)
-class EntityPoseEntry:
-    constant_name: str
-    pose_id: int
-    serialized_name: str
-
-
-@dataclass(frozen=True)
-class EntityDataSerializerEntry:
-    constant_name: str
-
-
-@dataclass(frozen=True)
-class ClientGameEventTypeEntry:
-    constant_name: str
-    event_id: int
-
-
-@dataclass(frozen=True)
-class SoundSourceEntry:
-    constant_name: str
-    serialized_name: str
-
-
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--source-root", type=Path, default=DEFAULT_SOURCE_ROOT)
@@ -153,266 +110,6 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def parenthesized_body(source: str, opening_parenthesis: int) -> str:
-    depth = 0
-    in_string = False
-    escaped = False
-    for index in range(opening_parenthesis, len(source)):
-        character = source[index]
-        if in_string:
-            if escaped:
-                escaped = False
-            elif character == "\\":
-                escaped = True
-            elif character == '"':
-                in_string = False
-            continue
-        if character == '"':
-            in_string = True
-        elif character == "(":
-            depth += 1
-        elif character == ")":
-            depth -= 1
-            if depth == 0:
-                return source[opening_parenthesis + 1 : index]
-    raise ValueError("unterminated register call")
-
-
-def attribute_entries(source: str) -> list[AttributeEntry]:
-    declaration = re.compile(
-        r"public static final Holder<Attribute>\s+(\w+)\s*=\s*register\("
-    )
-    entries: list[AttributeEntry] = []
-    for match in declaration.finditer(source):
-        constant_name = match.group(1)
-        arguments = parenthesized_body(source, match.end() - 1)
-        metadata = re.match(
-            r'\s*"([^"]+)"\s*,\s*new RangedAttribute\(\s*"([^"]+)"',
-            arguments,
-        )
-        if metadata is None:
-            raise ValueError(f"missing attribute metadata for {constant_name}")
-        path, description_key = metadata.groups()
-        sentiment_match = re.search(
-            r"\.setSentiment\(Attribute\.Sentiment\.(POSITIVE|NEUTRAL|NEGATIVE)\)",
-            arguments,
-        )
-        entries.append(
-            AttributeEntry(
-                constant_name=constant_name,
-                resource_id=f"minecraft:{path}",
-                description_key=description_key,
-                sentiment=(sentiment_match.group(1) if sentiment_match else "POSITIVE"),
-                syncable=".setSyncable(true)" in arguments,
-            )
-        )
-    if len(entries) != 35:
-        raise ValueError(f"expected 35 attributes, parsed {len(entries)}")
-    if len({entry.constant_name for entry in entries}) != len(entries):
-        raise ValueError("duplicate attribute constant")
-    if len({entry.resource_id for entry in entries}) != len(entries):
-        raise ValueError("duplicate attribute resource id")
-    return entries
-
-
-def mob_effect_entries(source: str) -> list[MobEffectEntry]:
-    declaration = re.compile(
-        r"public static final Holder<MobEffect>\s+(\w+)\s*=\s*register\("
-    )
-    entries: list[MobEffectEntry] = []
-    for match in declaration.finditer(source):
-        constant_name = match.group(1)
-        arguments = parenthesized_body(source, match.end() - 1)
-        resource = re.match(r'\s*"([^"]+)"\s*,', arguments)
-        category = re.search(
-            r"MobEffectCategory\.(BENEFICIAL|HARMFUL|NEUTRAL)", arguments
-        )
-        if resource is None or category is None:
-            raise ValueError(f"missing mob effect metadata for {constant_name}")
-        entries.append(
-            MobEffectEntry(
-                constant_name=constant_name,
-                resource_id=f"minecraft:{resource.group(1)}",
-                category=category.group(1),
-            )
-        )
-    if len(entries) != 40:
-        raise ValueError(f"expected 40 mob effects, parsed {len(entries)}")
-    if len({entry.constant_name for entry in entries}) != len(entries):
-        raise ValueError("duplicate mob effect constant")
-    if len({entry.resource_id for entry in entries}) != len(entries):
-        raise ValueError("duplicate mob effect resource id")
-    return entries
-
-
-def menu_type_entries(source: str) -> list[MenuTypeEntry]:
-    declaration = re.compile(
-        r"public static final MenuType<[^>]+>\s+(\w+)\s*=\s*register\("
-    )
-    entries: list[MenuTypeEntry] = []
-    for match in declaration.finditer(source):
-        constant_name = match.group(1)
-        arguments = parenthesized_body(source, match.end() - 1)
-        resource = re.match(r'\s*"([^"]+)"\s*,', arguments)
-        if resource is None:
-            raise ValueError(f"missing menu type metadata for {constant_name}")
-        entries.append(
-            MenuTypeEntry(
-                constant_name=constant_name,
-                resource_id=f"minecraft:{resource.group(1)}",
-            )
-        )
-    if len(entries) != 25:
-        raise ValueError(f"expected 25 menu types, parsed {len(entries)}")
-    if len({entry.constant_name for entry in entries}) != len(entries):
-        raise ValueError("duplicate menu type constant")
-    if len({entry.resource_id for entry in entries}) != len(entries):
-        raise ValueError("duplicate menu type resource id")
-    return entries
-
-
-def equipment_slot_entries(source: str) -> list[EquipmentSlotEntry]:
-    declaration = re.compile(
-        r'^\s+([A-Z_]+)\(EquipmentSlot\.Type\.([A-Z_]+),\s*([0-9]+),\s*([0-9]+)(?:,\s*([0-9]+))?,\s*"([^"]+)"\)[,;]$',
-        re.MULTILINE,
-    )
-    entries: list[EquipmentSlotEntry] = []
-    for match in declaration.finditer(source):
-        constant_name, slot_type, index, third, explicit_id, serialized_name = (
-            match.groups()
-        )
-        entries.append(
-            EquipmentSlotEntry(
-                constant_name=constant_name,
-                slot_type=slot_type,
-                index=int(index),
-                count_limit=int(third) if explicit_id is not None else 0,
-                slot_id=int(explicit_id) if explicit_id is not None else int(third),
-                serialized_name=serialized_name,
-            )
-        )
-    if len(entries) != 8:
-        raise ValueError(f"expected 8 equipment slots, parsed {len(entries)}")
-    if len({entry.constant_name for entry in entries}) != len(entries):
-        raise ValueError("duplicate equipment slot constant")
-    if len({entry.slot_id for entry in entries}) != len(entries):
-        raise ValueError("duplicate equipment slot id")
-    if len({entry.serialized_name for entry in entries}) != len(entries):
-        raise ValueError("duplicate equipment slot serialized name")
-    return entries
-
-
-def equipment_slot_group_entries(source: str) -> list[EquipmentSlotGroupEntry]:
-    declaration = re.compile(
-        r'^\s+([A-Z_]+)\(([0-9]+),\s*"([^"]+)",', re.MULTILINE
-    )
-    entries = [
-        EquipmentSlotGroupEntry(
-            constant_name=match.group(1),
-            group_id=int(match.group(2)),
-            serialized_name=match.group(3),
-        )
-        for match in declaration.finditer(source)
-    ]
-    if len(entries) != 11:
-        raise ValueError(f"expected 11 equipment slot groups, parsed {len(entries)}")
-    if len({entry.constant_name for entry in entries}) != len(entries):
-        raise ValueError("duplicate equipment slot group constant")
-    if len({entry.group_id for entry in entries}) != len(entries):
-        raise ValueError("duplicate equipment slot group id")
-    if len({entry.serialized_name for entry in entries}) != len(entries):
-        raise ValueError("duplicate equipment slot group serialized name")
-    return entries
-
-
-def entity_pose_entries(source: str) -> list[EntityPoseEntry]:
-    declaration = re.compile(
-        r'^\s+([A-Z_]+)\(([0-9]+),\s*"([^"]+)"\)[,;]$', re.MULTILINE
-    )
-    entries = [
-        EntityPoseEntry(
-            constant_name=match.group(1),
-            pose_id=int(match.group(2)),
-            serialized_name=match.group(3),
-        )
-        for match in declaration.finditer(source)
-    ]
-    if len(entries) != 18:
-        raise ValueError(f"expected 18 entity poses, parsed {len(entries)}")
-    if len({entry.constant_name for entry in entries}) != len(entries):
-        raise ValueError("duplicate entity pose constant")
-    if len({entry.pose_id for entry in entries}) != len(entries):
-        raise ValueError("duplicate entity pose id")
-    if len({entry.serialized_name for entry in entries}) != len(entries):
-        raise ValueError("duplicate entity pose serialized name")
-    return entries
-
-
-def entity_data_serializer_entries(source: str) -> list[EntityDataSerializerEntry]:
-    entries = [
-        EntityDataSerializerEntry(constant_name=constant_name)
-        for constant_name in re.findall(r"registerSerializer\(([A-Z0-9_]+)\);", source)
-    ]
-    if len(entries) != 43:
-        raise ValueError(
-            f"expected 43 entity-data serializers, parsed {len(entries)}"
-        )
-    if len({entry.constant_name for entry in entries}) != len(entries):
-        raise ValueError("duplicate entity-data serializer constant")
-    declarations = set(
-        re.findall(
-            r"public static final EntityDataSerializer(?:<[^;=]+>)?\s+([A-Z0-9_]+)\s*=",
-            source,
-        )
-    )
-    missing = [entry.constant_name for entry in entries if entry.constant_name not in declarations]
-    if missing:
-        raise ValueError(f"undeclared entity-data serializers: {missing}")
-    return entries
-
-
-def client_game_event_type_entries(source: str) -> list[ClientGameEventTypeEntry]:
-    declaration = re.compile(
-        r"public static final ClientboundGameEventPacket\.Type\s+([A-Z0-9_]+)\s*=\s*"
-        r"new ClientboundGameEventPacket\.Type\((\d+)\);"
-    )
-    entries = [
-        ClientGameEventTypeEntry(
-            constant_name=match.group(1),
-            event_id=int(match.group(2)),
-        )
-        for match in declaration.finditer(source)
-    ]
-    if len(entries) != 14:
-        raise ValueError(f"expected 14 client game-event types, parsed {len(entries)}")
-    if len({entry.constant_name for entry in entries}) != len(entries):
-        raise ValueError("duplicate client game-event type constant")
-    if [entry.event_id for entry in entries] != list(range(14)):
-        raise ValueError("client game-event type ids are not contiguous 0..13")
-    return entries
-
-
-def sound_source_entries(source: str) -> list[SoundSourceEntry]:
-    entries = [
-        SoundSourceEntry(
-            constant_name=match.group(1),
-            serialized_name=match.group(2),
-        )
-        for match in re.finditer(
-            r'^\s*([A-Z_]+)\("([a-z_]+)"\)[,;]\s*$',
-            source,
-            re.MULTILINE,
-        )
-    ]
-    if len(entries) != 11:
-        raise ValueError(f"expected 11 sound sources, parsed {len(entries)}")
-    if len({entry.constant_name for entry in entries}) != len(entries):
-        raise ValueError("duplicate sound source constant")
-    if len({entry.serialized_name for entry in entries}) != len(entries):
-        raise ValueError("duplicate sound source serialized name")
-    return entries
-
-
 def rust_string(value: str) -> str:
     return '"' + value.replace("\\", "\\\\").replace('"', '\\"') + '"'
 
@@ -425,6 +122,8 @@ def render_attributes(entries: list[AttributeEntry]) -> str:
     lines = [
         "// @generated by scripts/generate-gameplay-id-catalog.py; do not edit manually.",
         "// Source: vanilla 26.1 Attributes.java static register calls.",
+        "// Update: scripts/vanilla-source-tools.sh scripts/generate-gameplay-id-catalog.py",
+        "// Check: scripts/vanilla-source-tools.sh scripts/generate-gameplay-id-catalog.py --check",
         "",
         "#[derive(Debug, Clone, Copy, PartialEq, Eq)]",
         "pub enum AttributeSentiment {",
@@ -480,8 +179,6 @@ def render_attributes(entries: list[AttributeEntry]) -> str:
             "#[cfg(test)]",
             "mod tests {",
             "    use std::collections::HashSet;",
-            "    use std::path::PathBuf;",
-            "    use std::process::Command;",
             "",
             "    use super::*;",
             "",
@@ -511,38 +208,6 @@ def render_attributes(entries: list[AttributeEntry]) -> str:
             "        assert_eq!(vanilla_attribute_type(-1), None);",
             "        assert_eq!(vanilla_attribute_type(35), None);",
             "    }",
-            "",
-            "    #[test]",
-            "    fn generated_catalog_matches_local_vanilla_sources_when_available() {",
-            "        let Some(home) = std::env::var_os(\"HOME\") else { return; };",
-            "        let source_root = PathBuf::from(home).join(\"Work/mc-code/sources/26.1\");",
-            "        if !source_root.join(\"net/minecraft/world/entity/ai/attributes/Attributes.java\").is_file() { return; }",
-            "        let manifest_dir = PathBuf::from(env!(\"CARGO_MANIFEST_DIR\"));",
-            "        let repo_root = manifest_dir.ancestors().nth(2).unwrap();",
-            "        let status = Command::new(repo_root.join(\"scripts/generate-gameplay-id-catalog.py\"))",
-            "            .arg(\"--check\")",
-            "            .arg(\"--source-root\")",
-            "            .arg(source_root)",
-            "            .arg(\"--attribute-types-output\")",
-            "            .arg(manifest_dir.join(\"src/attribute_types.rs\"))",
-            "            .arg(\"--mob-effect-types-output\")",
-            "            .arg(manifest_dir.join(\"src/mob_effect_types.rs\"))",
-            "            .arg(\"--menu-types-output\")",
-            "            .arg(manifest_dir.join(\"src/menu_types.rs\"))",
-            "            .arg(\"--equipment-slots-output\")",
-            "            .arg(manifest_dir.join(\"src/equipment_slots.rs\"))",
-            "            .arg(\"--entity-poses-output\")",
-            "            .arg(manifest_dir.join(\"src/entity_poses.rs\"))",
-            "            .arg(\"--entity-data-serializers-output\")",
-            "            .arg(manifest_dir.join(\"src/entity_data_serializers.rs\"))",
-            "            .arg(\"--game-event-types-output\")",
-            "            .arg(manifest_dir.join(\"src/game_event_types.rs\"))",
-            "            .arg(\"--sound-sources-output\")",
-            "            .arg(manifest_dir.join(\"src/sound_sources.rs\"))",
-            "            .status()",
-            "            .unwrap();",
-            "        assert!(status.success());",
-            "    }",
             "}",
             "",
         )
@@ -554,6 +219,8 @@ def render_mob_effects(entries: list[MobEffectEntry]) -> str:
     lines = [
         "// @generated by scripts/generate-gameplay-id-catalog.py; do not edit manually.",
         "// Source: vanilla 26.1 MobEffects.java static register calls.",
+        "// Update: scripts/vanilla-source-tools.sh scripts/generate-gameplay-id-catalog.py",
+        "// Check: scripts/vanilla-source-tools.sh scripts/generate-gameplay-id-catalog.py --check",
         "",
         "#[derive(Debug, Clone, Copy, PartialEq, Eq)]",
         "pub enum MobEffectCategory {",
@@ -607,8 +274,6 @@ def render_mob_effects(entries: list[MobEffectEntry]) -> str:
             "#[cfg(test)]",
             "mod tests {",
             "    use std::collections::HashSet;",
-            "    use std::path::PathBuf;",
-            "    use std::process::Command;",
             "",
             "    use super::*;",
             "",
@@ -638,38 +303,6 @@ def render_mob_effects(entries: list[MobEffectEntry]) -> str:
             "        assert_eq!(vanilla_mob_effect_type(-1), None);",
             "        assert_eq!(vanilla_mob_effect_type(40), None);",
             "    }",
-            "",
-            "    #[test]",
-            "    fn generated_catalog_matches_local_vanilla_sources_when_available() {",
-            "        let Some(home) = std::env::var_os(\"HOME\") else { return; };",
-            "        let source_root = PathBuf::from(home).join(\"Work/mc-code/sources/26.1\");",
-            "        if !source_root.join(\"net/minecraft/world/effect/MobEffects.java\").is_file() { return; }",
-            "        let manifest_dir = PathBuf::from(env!(\"CARGO_MANIFEST_DIR\"));",
-            "        let repo_root = manifest_dir.ancestors().nth(2).unwrap();",
-            "        let status = Command::new(repo_root.join(\"scripts/generate-gameplay-id-catalog.py\"))",
-            "            .arg(\"--check\")",
-            "            .arg(\"--source-root\")",
-            "            .arg(source_root)",
-            "            .arg(\"--attribute-types-output\")",
-            "            .arg(manifest_dir.join(\"src/attribute_types.rs\"))",
-            "            .arg(\"--mob-effect-types-output\")",
-            "            .arg(manifest_dir.join(\"src/mob_effect_types.rs\"))",
-            "            .arg(\"--menu-types-output\")",
-            "            .arg(manifest_dir.join(\"src/menu_types.rs\"))",
-            "            .arg(\"--equipment-slots-output\")",
-            "            .arg(manifest_dir.join(\"src/equipment_slots.rs\"))",
-            "            .arg(\"--entity-poses-output\")",
-            "            .arg(manifest_dir.join(\"src/entity_poses.rs\"))",
-            "            .arg(\"--entity-data-serializers-output\")",
-            "            .arg(manifest_dir.join(\"src/entity_data_serializers.rs\"))",
-            "            .arg(\"--game-event-types-output\")",
-            "            .arg(manifest_dir.join(\"src/game_event_types.rs\"))",
-            "            .arg(\"--sound-sources-output\")",
-            "            .arg(manifest_dir.join(\"src/sound_sources.rs\"))",
-            "            .status()",
-            "            .unwrap();",
-            "        assert!(status.success());",
-            "    }",
             "}",
             "",
         )
@@ -681,6 +314,8 @@ def render_menu_types(entries: list[MenuTypeEntry]) -> str:
     lines = [
         "// @generated by scripts/generate-gameplay-id-catalog.py; do not edit manually.",
         "// Source: vanilla 26.1 MenuType.java static register calls.",
+        "// Update: scripts/vanilla-source-tools.sh scripts/generate-gameplay-id-catalog.py",
+        "// Check: scripts/vanilla-source-tools.sh scripts/generate-gameplay-id-catalog.py --check",
         "",
         "#[derive(Debug, Clone, Copy, PartialEq, Eq)]",
         "pub struct MenuTypeCatalogEntry {",
@@ -722,8 +357,6 @@ def render_menu_types(entries: list[MenuTypeEntry]) -> str:
             "#[cfg(test)]",
             "mod tests {",
             "    use std::collections::HashSet;",
-            "    use std::path::PathBuf;",
-            "    use std::process::Command;",
             "",
             "    use super::*;",
             "",
@@ -749,38 +382,6 @@ def render_menu_types(entries: list[MenuTypeEntry]) -> str:
             "        assert_eq!(vanilla_menu_type(-1), None);",
             "        assert_eq!(vanilla_menu_type(25), None);",
             "    }",
-            "",
-            "    #[test]",
-            "    fn generated_catalog_matches_local_vanilla_sources_when_available() {",
-            "        let Some(home) = std::env::var_os(\"HOME\") else { return; };",
-            "        let source_root = PathBuf::from(home).join(\"Work/mc-code/sources/26.1\");",
-            "        if !source_root.join(\"net/minecraft/world/inventory/MenuType.java\").is_file() { return; }",
-            "        let manifest_dir = PathBuf::from(env!(\"CARGO_MANIFEST_DIR\"));",
-            "        let repo_root = manifest_dir.ancestors().nth(2).unwrap();",
-            "        let status = Command::new(repo_root.join(\"scripts/generate-gameplay-id-catalog.py\"))",
-            "            .arg(\"--check\")",
-            "            .arg(\"--source-root\")",
-            "            .arg(source_root)",
-            "            .arg(\"--attribute-types-output\")",
-            "            .arg(manifest_dir.join(\"src/attribute_types.rs\"))",
-            "            .arg(\"--mob-effect-types-output\")",
-            "            .arg(manifest_dir.join(\"src/mob_effect_types.rs\"))",
-            "            .arg(\"--menu-types-output\")",
-            "            .arg(manifest_dir.join(\"src/menu_types.rs\"))",
-            "            .arg(\"--equipment-slots-output\")",
-            "            .arg(manifest_dir.join(\"src/equipment_slots.rs\"))",
-            "            .arg(\"--entity-poses-output\")",
-            "            .arg(manifest_dir.join(\"src/entity_poses.rs\"))",
-            "            .arg(\"--entity-data-serializers-output\")",
-            "            .arg(manifest_dir.join(\"src/entity_data_serializers.rs\"))",
-            "            .arg(\"--game-event-types-output\")",
-            "            .arg(manifest_dir.join(\"src/game_event_types.rs\"))",
-            "            .arg(\"--sound-sources-output\")",
-            "            .arg(manifest_dir.join(\"src/sound_sources.rs\"))",
-            "            .status()",
-            "            .unwrap();",
-            "        assert!(status.success());",
-            "    }",
             "}",
             "",
         )
@@ -794,6 +395,8 @@ def render_equipment_slots(
     lines = [
         "// @generated by scripts/generate-gameplay-id-catalog.py; do not edit manually.",
         "// Sources: vanilla 26.1 EquipmentSlot.java and EquipmentSlotGroup.java enum entries.",
+        "// Update: scripts/vanilla-source-tools.sh scripts/generate-gameplay-id-catalog.py",
+        "// Check: scripts/vanilla-source-tools.sh scripts/generate-gameplay-id-catalog.py --check",
         "",
         "#[derive(Debug, Clone, Copy, PartialEq, Eq)]",
         "pub enum EquipmentSlotType {",
@@ -904,8 +507,6 @@ def render_equipment_slots(
             "#[cfg(test)]",
             "mod tests {",
             "    use std::collections::HashSet;",
-            "    use std::path::PathBuf;",
-            "    use std::process::Command;",
             "",
             "    use super::*;",
             "",
@@ -945,39 +546,6 @@ def render_equipment_slots(
             "        assert_eq!(vanilla_equipment_slot_group(-1), None);",
             "        assert_eq!(vanilla_equipment_slot_group(11), None);",
             "    }",
-            "",
-            "    #[test]",
-            "    fn generated_catalog_matches_local_vanilla_sources_when_available() {",
-            "        let Some(home) = std::env::var_os(\"HOME\") else { return; };",
-            "        let source_root = PathBuf::from(home).join(\"Work/mc-code/sources/26.1\");",
-            "        if !source_root.join(\"net/minecraft/world/entity/EquipmentSlot.java\").is_file() { return; }",
-            "        if !source_root.join(\"net/minecraft/world/entity/EquipmentSlotGroup.java\").is_file() { return; }",
-            "        let manifest_dir = PathBuf::from(env!(\"CARGO_MANIFEST_DIR\"));",
-            "        let repo_root = manifest_dir.ancestors().nth(2).unwrap();",
-            "        let status = Command::new(repo_root.join(\"scripts/generate-gameplay-id-catalog.py\"))",
-            "            .arg(\"--check\")",
-            "            .arg(\"--source-root\")",
-            "            .arg(source_root)",
-            "            .arg(\"--attribute-types-output\")",
-            "            .arg(manifest_dir.join(\"src/attribute_types.rs\"))",
-            "            .arg(\"--mob-effect-types-output\")",
-            "            .arg(manifest_dir.join(\"src/mob_effect_types.rs\"))",
-            "            .arg(\"--menu-types-output\")",
-            "            .arg(manifest_dir.join(\"src/menu_types.rs\"))",
-            "            .arg(\"--equipment-slots-output\")",
-            "            .arg(manifest_dir.join(\"src/equipment_slots.rs\"))",
-            "            .arg(\"--entity-poses-output\")",
-            "            .arg(manifest_dir.join(\"src/entity_poses.rs\"))",
-            "            .arg(\"--entity-data-serializers-output\")",
-            "            .arg(manifest_dir.join(\"src/entity_data_serializers.rs\"))",
-            "            .arg(\"--game-event-types-output\")",
-            "            .arg(manifest_dir.join(\"src/game_event_types.rs\"))",
-            "            .arg(\"--sound-sources-output\")",
-            "            .arg(manifest_dir.join(\"src/sound_sources.rs\"))",
-            "            .status()",
-            "            .unwrap();",
-            "        assert!(status.success());",
-            "    }",
             "}",
             "",
         )
@@ -989,6 +557,8 @@ def render_entity_poses(entries: list[EntityPoseEntry]) -> str:
     lines = [
         "// @generated by scripts/generate-gameplay-id-catalog.py; do not edit manually.",
         "// Source: vanilla 26.1 Pose.java enum entries.",
+        "// Update: scripts/vanilla-source-tools.sh scripts/generate-gameplay-id-catalog.py",
+        "// Check: scripts/vanilla-source-tools.sh scripts/generate-gameplay-id-catalog.py --check",
         "",
         "#[derive(Debug, Clone, Copy, PartialEq, Eq)]",
         "pub struct EntityPoseCatalogEntry {",
@@ -1030,8 +600,6 @@ def render_entity_poses(entries: list[EntityPoseEntry]) -> str:
             "#[cfg(test)]",
             "mod tests {",
             "    use std::collections::HashSet;",
-            "    use std::path::PathBuf;",
-            "    use std::process::Command;",
             "",
             "    use super::*;",
             "",
@@ -1057,38 +625,6 @@ def render_entity_poses(entries: list[EntityPoseEntry]) -> str:
             "        assert_eq!(vanilla_entity_pose(-1), None);",
             "        assert_eq!(vanilla_entity_pose(18), None);",
             "    }",
-            "",
-            "    #[test]",
-            "    fn generated_catalog_matches_local_vanilla_sources_when_available() {",
-            "        let Some(home) = std::env::var_os(\"HOME\") else { return; };",
-            "        let source_root = PathBuf::from(home).join(\"Work/mc-code/sources/26.1\");",
-            "        if !source_root.join(\"net/minecraft/world/entity/Pose.java\").is_file() { return; }",
-            "        let manifest_dir = PathBuf::from(env!(\"CARGO_MANIFEST_DIR\"));",
-            "        let repo_root = manifest_dir.ancestors().nth(2).unwrap();",
-            "        let status = Command::new(repo_root.join(\"scripts/generate-gameplay-id-catalog.py\"))",
-            "            .arg(\"--check\")",
-            "            .arg(\"--source-root\")",
-            "            .arg(source_root)",
-            "            .arg(\"--attribute-types-output\")",
-            "            .arg(manifest_dir.join(\"src/attribute_types.rs\"))",
-            "            .arg(\"--mob-effect-types-output\")",
-            "            .arg(manifest_dir.join(\"src/mob_effect_types.rs\"))",
-            "            .arg(\"--menu-types-output\")",
-            "            .arg(manifest_dir.join(\"src/menu_types.rs\"))",
-            "            .arg(\"--equipment-slots-output\")",
-            "            .arg(manifest_dir.join(\"src/equipment_slots.rs\"))",
-            "            .arg(\"--entity-poses-output\")",
-            "            .arg(manifest_dir.join(\"src/entity_poses.rs\"))",
-            "            .arg(\"--entity-data-serializers-output\")",
-            "            .arg(manifest_dir.join(\"src/entity_data_serializers.rs\"))",
-            "            .arg(\"--game-event-types-output\")",
-            "            .arg(manifest_dir.join(\"src/game_event_types.rs\"))",
-            "            .arg(\"--sound-sources-output\")",
-            "            .arg(manifest_dir.join(\"src/sound_sources.rs\"))",
-            "            .status()",
-            "            .unwrap();",
-            "        assert!(status.success());",
-            "    }",
             "}",
             "",
         )
@@ -1100,6 +636,8 @@ def render_entity_data_serializers(entries: list[EntityDataSerializerEntry]) -> 
     lines = [
         "// @generated by scripts/generate-gameplay-id-catalog.py; do not edit manually.",
         "// Source: vanilla 26.1 EntityDataSerializers.java static registration block.",
+        "// Update: scripts/vanilla-source-tools.sh scripts/generate-gameplay-id-catalog.py",
+        "// Check: scripts/vanilla-source-tools.sh scripts/generate-gameplay-id-catalog.py --check",
         "",
         "#[derive(Debug, Clone, Copy, PartialEq, Eq)]",
         "pub struct EntityDataSerializerCatalogEntry {",
@@ -1146,8 +684,6 @@ def render_entity_data_serializers(entries: list[EntityDataSerializerEntry]) -> 
             "#[cfg(test)]",
             "mod tests {",
             "    use std::collections::HashSet;",
-            "    use std::path::PathBuf;",
-            "    use std::process::Command;",
             "",
             "    use super::*;",
             "",
@@ -1171,38 +707,6 @@ def render_entity_data_serializers(entries: list[EntityDataSerializerEntry]) -> 
             "        assert_eq!(vanilla_entity_data_serializer(-1), None);",
             "        assert_eq!(vanilla_entity_data_serializer(43), None);",
             "    }",
-            "",
-            "    #[test]",
-            "    fn generated_catalog_matches_local_vanilla_sources_when_available() {",
-            "        let Some(home) = std::env::var_os(\"HOME\") else { return; };",
-            "        let source_root = PathBuf::from(home).join(\"Work/mc-code/sources/26.1\");",
-            "        if !source_root.join(\"net/minecraft/network/syncher/EntityDataSerializers.java\").is_file() { return; }",
-            "        let manifest_dir = PathBuf::from(env!(\"CARGO_MANIFEST_DIR\"));",
-            "        let repo_root = manifest_dir.ancestors().nth(2).unwrap();",
-            "        let status = Command::new(repo_root.join(\"scripts/generate-gameplay-id-catalog.py\"))",
-            "            .arg(\"--check\")",
-            "            .arg(\"--source-root\")",
-            "            .arg(source_root)",
-            "            .arg(\"--attribute-types-output\")",
-            "            .arg(manifest_dir.join(\"src/attribute_types.rs\"))",
-            "            .arg(\"--mob-effect-types-output\")",
-            "            .arg(manifest_dir.join(\"src/mob_effect_types.rs\"))",
-            "            .arg(\"--menu-types-output\")",
-            "            .arg(manifest_dir.join(\"src/menu_types.rs\"))",
-            "            .arg(\"--equipment-slots-output\")",
-            "            .arg(manifest_dir.join(\"src/equipment_slots.rs\"))",
-            "            .arg(\"--entity-poses-output\")",
-            "            .arg(manifest_dir.join(\"src/entity_poses.rs\"))",
-            "            .arg(\"--entity-data-serializers-output\")",
-            "            .arg(manifest_dir.join(\"src/entity_data_serializers.rs\"))",
-            "            .arg(\"--game-event-types-output\")",
-            "            .arg(manifest_dir.join(\"src/game_event_types.rs\"))",
-            "            .arg(\"--sound-sources-output\")",
-            "            .arg(manifest_dir.join(\"src/sound_sources.rs\"))",
-            "            .status()",
-            "            .unwrap();",
-            "        assert!(status.success());",
-            "    }",
             "}",
             "",
         )
@@ -1214,6 +718,8 @@ def render_client_game_event_types(entries: list[ClientGameEventTypeEntry]) -> s
     lines = [
         "// @generated by scripts/generate-gameplay-id-catalog.py; do not edit manually.",
         "// Source: vanilla 26.1 ClientboundGameEventPacket.java Type declarations.",
+        "// Update: scripts/vanilla-source-tools.sh scripts/generate-gameplay-id-catalog.py",
+        "// Check: scripts/vanilla-source-tools.sh scripts/generate-gameplay-id-catalog.py --check",
         "",
         "#[derive(Debug, Clone, Copy, PartialEq, Eq)]",
         "pub struct ClientGameEventTypeCatalogEntry {",
@@ -1260,8 +766,6 @@ def render_client_game_event_types(entries: list[ClientGameEventTypeEntry]) -> s
             "#[cfg(test)]",
             "mod tests {",
             "    use std::collections::HashSet;",
-            "    use std::path::PathBuf;",
-            "    use std::process::Command;",
             "",
             "    use super::*;",
             "",
@@ -1284,38 +788,6 @@ def render_client_game_event_types(entries: list[ClientGameEventTypeEntry]) -> s
             "        assert_eq!(vanilla_client_game_event_type_for_constant_name(\"LIMITED_CRAFTING\").unwrap().id, 12);",
             "        assert_eq!(vanilla_client_game_event_type(14), None);",
             "    }",
-            "",
-            "    #[test]",
-            "    fn generated_catalog_matches_local_vanilla_sources_when_available() {",
-            "        let Some(home) = std::env::var_os(\"HOME\") else { return; };",
-            "        let source_root = PathBuf::from(home).join(\"Work/mc-code/sources/26.1\");",
-            "        if !source_root.join(\"net/minecraft/network/protocol/game/ClientboundGameEventPacket.java\").is_file() { return; }",
-            "        let manifest_dir = PathBuf::from(env!(\"CARGO_MANIFEST_DIR\"));",
-            "        let repo_root = manifest_dir.ancestors().nth(2).unwrap();",
-            "        let status = Command::new(repo_root.join(\"scripts/generate-gameplay-id-catalog.py\"))",
-            "            .arg(\"--check\")",
-            "            .arg(\"--source-root\")",
-            "            .arg(source_root)",
-            "            .arg(\"--attribute-types-output\")",
-            "            .arg(manifest_dir.join(\"src/attribute_types.rs\"))",
-            "            .arg(\"--mob-effect-types-output\")",
-            "            .arg(manifest_dir.join(\"src/mob_effect_types.rs\"))",
-            "            .arg(\"--menu-types-output\")",
-            "            .arg(manifest_dir.join(\"src/menu_types.rs\"))",
-            "            .arg(\"--equipment-slots-output\")",
-            "            .arg(manifest_dir.join(\"src/equipment_slots.rs\"))",
-            "            .arg(\"--entity-poses-output\")",
-            "            .arg(manifest_dir.join(\"src/entity_poses.rs\"))",
-            "            .arg(\"--entity-data-serializers-output\")",
-            "            .arg(manifest_dir.join(\"src/entity_data_serializers.rs\"))",
-            "            .arg(\"--game-event-types-output\")",
-            "            .arg(manifest_dir.join(\"src/game_event_types.rs\"))",
-            "            .arg(\"--sound-sources-output\")",
-            "            .arg(manifest_dir.join(\"src/sound_sources.rs\"))",
-            "            .status()",
-            "            .unwrap();",
-            "        assert!(status.success());",
-            "    }",
             "}",
             "",
         )
@@ -1327,6 +799,8 @@ def render_sound_sources(entries: list[SoundSourceEntry]) -> str:
     lines = [
         "// @generated by scripts/generate-gameplay-id-catalog.py; do not edit manually.",
         "// Source: vanilla 26.1 SoundSource.java enum declaration.",
+        "// Update: scripts/vanilla-source-tools.sh scripts/generate-gameplay-id-catalog.py",
+        "// Check: scripts/vanilla-source-tools.sh scripts/generate-gameplay-id-catalog.py --check",
         "",
         "use serde::{Deserialize, Serialize};",
         "",
@@ -1404,8 +878,6 @@ def render_sound_sources(entries: list[SoundSourceEntry]) -> str:
             "#[cfg(test)]",
             "mod tests {",
             "    use std::collections::HashSet;",
-            "    use std::path::PathBuf;",
-            "    use std::process::Command;",
             "",
             "    use super::*;",
             "",
@@ -1434,38 +906,6 @@ def render_sound_sources(entries: list[SoundSourceEntry]) -> str:
             "        assert_eq!(SoundSource::from_ordinal(11), None);",
             "        assert_eq!(vanilla_sound_source_for_serialized_name(\"weather\").unwrap().source, SoundSource::Weather);",
             "    }",
-            "",
-            "    #[test]",
-            "    fn generated_catalog_matches_local_vanilla_sources_when_available() {",
-            "        let Some(home) = std::env::var_os(\"HOME\") else { return; };",
-            "        let source_root = PathBuf::from(home).join(\"Work/mc-code/sources/26.1\");",
-            "        if !source_root.join(\"net/minecraft/sounds/SoundSource.java\").is_file() { return; }",
-            "        let manifest_dir = PathBuf::from(env!(\"CARGO_MANIFEST_DIR\"));",
-            "        let repo_root = manifest_dir.ancestors().nth(2).unwrap();",
-            "        let status = Command::new(repo_root.join(\"scripts/generate-gameplay-id-catalog.py\"))",
-            "            .arg(\"--check\")",
-            "            .arg(\"--source-root\")",
-            "            .arg(source_root)",
-            "            .arg(\"--attribute-types-output\")",
-            "            .arg(manifest_dir.join(\"src/attribute_types.rs\"))",
-            "            .arg(\"--mob-effect-types-output\")",
-            "            .arg(manifest_dir.join(\"src/mob_effect_types.rs\"))",
-            "            .arg(\"--menu-types-output\")",
-            "            .arg(manifest_dir.join(\"src/menu_types.rs\"))",
-            "            .arg(\"--equipment-slots-output\")",
-            "            .arg(manifest_dir.join(\"src/equipment_slots.rs\"))",
-            "            .arg(\"--entity-poses-output\")",
-            "            .arg(manifest_dir.join(\"src/entity_poses.rs\"))",
-            "            .arg(\"--entity-data-serializers-output\")",
-            "            .arg(manifest_dir.join(\"src/entity_data_serializers.rs\"))",
-            "            .arg(\"--game-event-types-output\")",
-            "            .arg(manifest_dir.join(\"src/game_event_types.rs\"))",
-            "            .arg(\"--sound-sources-output\")",
-            "            .arg(manifest_dir.join(\"src/sound_sources.rs\"))",
-            "            .status()",
-            "            .unwrap();",
-            "        assert!(status.success());",
-            "    }",
             "}",
             "",
         )
@@ -1484,24 +924,28 @@ def format_rust(rendered: str) -> str:
     return formatted.stdout
 
 
+def parse_java(source_root: Path, relative_path: Path):
+    return parse_source(relative_path.as_posix(), (source_root / relative_path).read_bytes())
+
+
 def generate_attributes(source_root: Path) -> str:
-    source = (source_root / ATTRIBUTE_TYPES_SOURCE).read_text()
+    source = parse_java(source_root, ATTRIBUTE_TYPES_SOURCE)
     return format_rust(render_attributes(attribute_entries(source)))
 
 
 def generate_mob_effects(source_root: Path) -> str:
-    source = (source_root / MOB_EFFECT_TYPES_SOURCE).read_text()
+    source = parse_java(source_root, MOB_EFFECT_TYPES_SOURCE)
     return format_rust(render_mob_effects(mob_effect_entries(source)))
 
 
 def generate_menu_types(source_root: Path) -> str:
-    source = (source_root / MENU_TYPES_SOURCE).read_text()
+    source = parse_java(source_root, MENU_TYPES_SOURCE)
     return format_rust(render_menu_types(menu_type_entries(source)))
 
 
 def generate_equipment_slots(source_root: Path) -> str:
-    slots_source = (source_root / EQUIPMENT_SLOTS_SOURCE).read_text()
-    groups_source = (source_root / EQUIPMENT_SLOT_GROUPS_SOURCE).read_text()
+    slots_source = parse_java(source_root, EQUIPMENT_SLOTS_SOURCE)
+    groups_source = parse_java(source_root, EQUIPMENT_SLOT_GROUPS_SOURCE)
     return format_rust(
         render_equipment_slots(
             equipment_slot_entries(slots_source),
@@ -1511,26 +955,26 @@ def generate_equipment_slots(source_root: Path) -> str:
 
 
 def generate_entity_poses(source_root: Path) -> str:
-    source = (source_root / ENTITY_POSES_SOURCE).read_text()
+    source = parse_java(source_root, ENTITY_POSES_SOURCE)
     return format_rust(render_entity_poses(entity_pose_entries(source)))
 
 
 def generate_entity_data_serializers(source_root: Path) -> str:
-    source = (source_root / ENTITY_DATA_SERIALIZERS_SOURCE).read_text()
+    source = parse_java(source_root, ENTITY_DATA_SERIALIZERS_SOURCE)
     return format_rust(
         render_entity_data_serializers(entity_data_serializer_entries(source))
     )
 
 
 def generate_client_game_event_types(source_root: Path) -> str:
-    source = (source_root / GAME_EVENT_TYPES_SOURCE).read_text()
+    source = parse_java(source_root, GAME_EVENT_TYPES_SOURCE)
     return format_rust(
         render_client_game_event_types(client_game_event_type_entries(source))
     )
 
 
 def generate_sound_sources(source_root: Path) -> str:
-    source = (source_root / SOUND_SOURCES_SOURCE).read_text()
+    source = parse_java(source_root, SOUND_SOURCES_SOURCE)
     return format_rust(render_sound_sources(sound_source_entries(source)))
 
 

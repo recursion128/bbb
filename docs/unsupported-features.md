@@ -43,10 +43,9 @@ Owner: `bbb-protocol`
 
 Owner: `scripts/` + each generated catalog's semantic crate
 
-- Migrate the existing gameplay-id/bootstrap Java source generators to the
-  shared Tree-sitter Java frontend in independent slices. Entity metadata,
-  packet catalogs, and core built-in registry catalogs are migrated; the other
-  generators still retain their older parsing paths and are not migrated yet.
+- Migrate the existing bootstrap Java source generator to the shared Tree-sitter
+  Java frontend. Entity metadata, packet, core registry, and gameplay-id catalogs
+  are migrated; bootstrap still retains its older parsing path.
 
 ## Unknown clientbound packets in login, configuration, and play
 
