@@ -81,6 +81,7 @@ FAMILIES = (
     FamilySpec("ItemEntity", "net.minecraft.world.entity.item.ItemEntity", "Entity"),
     FamilySpec("Guardian", "net.minecraft.world.entity.monster.Guardian", "Mob"),
     FamilySpec("SnowGolem", "net.minecraft.world.entity.animal.golem.SnowGolem", "Mob"),
+    FamilySpec("IronGolem", "net.minecraft.world.entity.animal.golem.IronGolem", "Mob"),
     FamilySpec("Bat", "net.minecraft.world.entity.ambient.Bat", "Mob"),
     FamilySpec("Phantom", "net.minecraft.world.entity.monster.Phantom", "Mob"),
     FamilySpec(
@@ -177,6 +178,7 @@ DATA_ALIASES = {
     "VANILLA_GUARDIAN_MOVING_DATA_ID": ("net.minecraft.world.entity.monster.Guardian", "DATA_ID_MOVING"),
     "VANILLA_GUARDIAN_ATTACK_TARGET_DATA_ID": ("net.minecraft.world.entity.monster.Guardian", "DATA_ID_ATTACK_TARGET"),
     "VANILLA_SNOW_GOLEM_PUMPKIN_DATA_ID": ("net.minecraft.world.entity.animal.golem.SnowGolem", "DATA_PUMPKIN_ID"),
+    "VANILLA_IRON_GOLEM_FLAGS_DATA_ID": ("net.minecraft.world.entity.animal.golem.IronGolem", "DATA_FLAGS_ID"),
     "VANILLA_BAT_FLAGS_DATA_ID": ("net.minecraft.world.entity.ambient.Bat", "DATA_ID_FLAGS"),
     "VANILLA_PHANTOM_SIZE_DATA_ID": ("net.minecraft.world.entity.monster.Phantom", "ID_SIZE"),
     "VANILLA_BOGGED_SHEARED_DATA_ID": ("net.minecraft.world.entity.monster.skeleton.Bogged", "DATA_SHEARED"),
@@ -244,6 +246,7 @@ DEFAULT_ALIASES = {
     "VANILLA_GUARDIAN_DEFAULT_MOVING": ("net.minecraft.world.entity.monster.Guardian", "DATA_ID_MOVING"),
     "VANILLA_GUARDIAN_DEFAULT_ATTACK_TARGET": ("net.minecraft.world.entity.monster.Guardian", "DATA_ID_ATTACK_TARGET"),
     "VANILLA_SNOW_GOLEM_DEFAULT_PUMPKIN_FLAGS": ("net.minecraft.world.entity.animal.golem.SnowGolem", "DATA_PUMPKIN_ID"),
+    "VANILLA_IRON_GOLEM_DEFAULT_FLAGS": ("net.minecraft.world.entity.animal.golem.IronGolem", "DATA_FLAGS_ID"),
     "VANILLA_BAT_DEFAULT_FLAGS": ("net.minecraft.world.entity.ambient.Bat", "DATA_ID_FLAGS"),
     "VANILLA_PHANTOM_DEFAULT_SIZE": ("net.minecraft.world.entity.monster.Phantom", "ID_SIZE"),
     "VANILLA_BOGGED_DEFAULT_SHEARED": ("net.minecraft.world.entity.monster.skeleton.Bogged", "DATA_SHEARED"),
@@ -301,6 +304,7 @@ NAMED_FLAG_ALIASES = {
 
 
 METHOD_FLAG_ALIASES = {
+    "VANILLA_IRON_GOLEM_FLAG_PLAYER_CREATED": ("net.minecraft.world.entity.animal.golem.IronGolem", "DATA_FLAGS_ID", "net.minecraft.world.entity.animal.golem.IronGolem", "isPlayerCreated", "inline_mask"),
     "VANILLA_ENTITY_SHARED_FLAG_ON_FIRE": ("net.minecraft.world.entity.Entity", "DATA_SHARED_FLAGS_ID", "net.minecraft.world.entity.Entity", "isOnFire", "shared_bit"),
     "VANILLA_ENTITY_SHARED_FLAG_SHIFT_KEY_DOWN": ("net.minecraft.world.entity.Entity", "DATA_SHARED_FLAGS_ID", "net.minecraft.world.entity.Entity", "isShiftKeyDown", "shared_bit"),
     "VANILLA_ENTITY_SHARED_FLAG_SPRINTING": ("net.minecraft.world.entity.Entity", "DATA_SHARED_FLAGS_ID", "net.minecraft.world.entity.Entity", "isSprinting", "shared_bit"),

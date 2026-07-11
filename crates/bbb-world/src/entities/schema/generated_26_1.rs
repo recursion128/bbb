@@ -133,6 +133,8 @@ pub const VANILLA_GUARDIAN_ATTACK_TARGET_DATA_ID: u8 =
     GENERATED_VANILLA_GUARDIAN_ATTACK_TARGET_DATA_ID;
 const GENERATED_VANILLA_SNOW_GOLEM_PUMPKIN_DATA_ID: u8 = 16;
 pub const VANILLA_SNOW_GOLEM_PUMPKIN_DATA_ID: u8 = GENERATED_VANILLA_SNOW_GOLEM_PUMPKIN_DATA_ID;
+const GENERATED_VANILLA_IRON_GOLEM_FLAGS_DATA_ID: u8 = 16;
+pub const VANILLA_IRON_GOLEM_FLAGS_DATA_ID: u8 = GENERATED_VANILLA_IRON_GOLEM_FLAGS_DATA_ID;
 const GENERATED_VANILLA_BAT_FLAGS_DATA_ID: u8 = 16;
 pub const VANILLA_BAT_FLAGS_DATA_ID: u8 = GENERATED_VANILLA_BAT_FLAGS_DATA_ID;
 const GENERATED_VANILLA_PHANTOM_SIZE_DATA_ID: u8 = 16;
@@ -255,6 +257,9 @@ pub const VANILLA_ARMOR_STAND_CLIENT_FLAG_NO_BASEPLATE: i8 =
 const GENERATED_VANILLA_ARMOR_STAND_CLIENT_FLAG_MARKER: i8 = 16;
 pub const VANILLA_ARMOR_STAND_CLIENT_FLAG_MARKER: i8 =
     GENERATED_VANILLA_ARMOR_STAND_CLIENT_FLAG_MARKER;
+const GENERATED_VANILLA_IRON_GOLEM_FLAG_PLAYER_CREATED: i8 = 1;
+pub const VANILLA_IRON_GOLEM_FLAG_PLAYER_CREATED: i8 =
+    GENERATED_VANILLA_IRON_GOLEM_FLAG_PLAYER_CREATED;
 const GENERATED_VANILLA_ENTITY_SHARED_FLAG_ON_FIRE: i8 = 1;
 pub const VANILLA_ENTITY_SHARED_FLAG_ON_FIRE: i8 = GENERATED_VANILLA_ENTITY_SHARED_FLAG_ON_FIRE;
 const GENERATED_VANILLA_ENTITY_SHARED_FLAG_SHIFT_KEY_DOWN: i8 = 2;
@@ -378,6 +383,8 @@ pub const VANILLA_GUARDIAN_DEFAULT_ATTACK_TARGET: i32 =
 const GENERATED_VANILLA_SNOW_GOLEM_DEFAULT_PUMPKIN_FLAGS: i8 = 16;
 pub const VANILLA_SNOW_GOLEM_DEFAULT_PUMPKIN_FLAGS: i8 =
     GENERATED_VANILLA_SNOW_GOLEM_DEFAULT_PUMPKIN_FLAGS;
+const GENERATED_VANILLA_IRON_GOLEM_DEFAULT_FLAGS: i8 = 0;
+pub const VANILLA_IRON_GOLEM_DEFAULT_FLAGS: i8 = GENERATED_VANILLA_IRON_GOLEM_DEFAULT_FLAGS;
 const GENERATED_VANILLA_BAT_DEFAULT_FLAGS: i8 = 0;
 pub const VANILLA_BAT_DEFAULT_FLAGS: i8 = GENERATED_VANILLA_BAT_DEFAULT_FLAGS;
 const GENERATED_VANILLA_PHANTOM_DEFAULT_SIZE: i32 = 0;
@@ -11369,6 +11376,13 @@ pub const VANILLA_ENTITY_METADATA_FLAG_RESOLVER_EVIDENCE_26_1:
         reason: "named vanilla flag constant",
     },
     VanillaEntityMetadataResolverEvidence {
+        java_class: "net.minecraft.world.entity.animal.golem.IronGolem",
+        accessor_name: "DATA_FLAGS_ID",
+        evidence_member: "isPlayerCreated",
+        source_expression: "this.entityData.get (DATA_FLAGS_ID) & 1",
+        reason: "vanilla uses an inline accessor mask rather than a named constant",
+    },
+    VanillaEntityMetadataResolverEvidence {
         java_class: "net.minecraft.world.entity.Entity",
         accessor_name: "DATA_SHARED_FLAGS_ID",
         evidence_member: "isOnFire",
@@ -13478,6 +13492,25 @@ const SNOWGOLEM_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadat
     own_flags: SNOWGOLEM_FLAGS,
 };
 
+const IRONGOLEM_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[VanillaEntityMetadataFieldSchema {
+    name: "DATA_FLAGS_ID",
+    data_id: 16,
+    serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+    default: VanillaEntityMetadataDefault::Byte(0),
+}];
+const IRONGOLEM_FLAGS: &[VanillaEntityMetadataFlagSchema] = &[VanillaEntityMetadataFlagSchema {
+    name: "isPlayerCreated",
+    data_id: 16,
+    mask: VANILLA_IRON_GOLEM_FLAG_PLAYER_CREATED,
+}];
+const IRONGOLEM_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamilySchema {
+    family: VanillaEntityMetadataFamily::IronGolem,
+    parent: Some(VanillaEntityMetadataFamily::Mob),
+    inherited_field_count: 16,
+    own_fields: IRONGOLEM_FIELDS,
+    own_flags: IRONGOLEM_FLAGS,
+};
+
 const BAT_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[VanillaEntityMetadataFieldSchema {
     name: "DATA_ID_FLAGS",
     data_id: 16,
@@ -13966,6 +13999,7 @@ pub(super) const fn generated_entity_metadata_schema(
         VanillaEntityMetadataFamily::ItemEntity => &ITEMENTITY_SCHEMA,
         VanillaEntityMetadataFamily::Guardian => &GUARDIAN_SCHEMA,
         VanillaEntityMetadataFamily::SnowGolem => &SNOWGOLEM_SCHEMA,
+        VanillaEntityMetadataFamily::IronGolem => &IRONGOLEM_SCHEMA,
         VanillaEntityMetadataFamily::Bat => &BAT_SCHEMA,
         VanillaEntityMetadataFamily::Phantom => &PHANTOM_SCHEMA,
         VanillaEntityMetadataFamily::Bogged => &BOGGED_SCHEMA,

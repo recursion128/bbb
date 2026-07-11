@@ -497,7 +497,7 @@ back into a todo. Do not delete these.
   `Entity`, `LivingEntity`, `Mob`, `Avatar`, `Player`, `AgeableMob ->
   AbstractHorse` / `TamableAnimal`, `ArmorStand`, `Slime` (also consumed by
   `MagmaCube`), `Shulker`, `Zombie`, `Mob -> Guardian` / `SnowGolem` / `Bat` /
-  `Phantom` / `Bogged` / `Ghast` / `Vex` / `Creaking` / `Zoglin`,
+  `Phantom` / `Bogged` / `Ghast` / `Vex` / `Creaking` / `Zoglin` / `IronGolem`,
   `AgeableMob -> Strider` / `Hoglin`, `Mob -> AbstractFish -> Pufferfish`,
   `Mob -> AbstractPiglin -> Piglin`,
   `Entity -> AbstractArrow -> Arrow` /

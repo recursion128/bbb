@@ -31,6 +31,7 @@ pub enum VanillaEntityMetadataFamily {
     ItemEntity,
     Guardian,
     SnowGolem,
+    IronGolem,
     Bat,
     Phantom,
     Bogged,
@@ -316,6 +317,7 @@ mod tests {
             VanillaEntityMetadataFamily::ItemEntity,
             VanillaEntityMetadataFamily::Guardian,
             VanillaEntityMetadataFamily::SnowGolem,
+            VanillaEntityMetadataFamily::IronGolem,
             VanillaEntityMetadataFamily::Bat,
             VanillaEntityMetadataFamily::Phantom,
             VanillaEntityMetadataFamily::Bogged,
@@ -554,6 +556,13 @@ mod tests {
         assert_eq!(VANILLA_SNOW_GOLEM_PUMPKIN_DATA_ID, 16);
         assert_eq!(VANILLA_SNOW_GOLEM_DEFAULT_PUMPKIN_FLAGS, 16);
         assert_eq!(VANILLA_SNOW_GOLEM_PUMPKIN_FLAG, 16);
+        let iron_golem = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::IronGolem);
+        assert_eq!(iron_golem.parent, Some(VanillaEntityMetadataFamily::Mob));
+        assert_eq!(iron_golem.inherited_field_count, 16);
+        assert_eq!(iron_golem.own_fields.len(), 1);
+        assert_eq!(VANILLA_IRON_GOLEM_FLAGS_DATA_ID, 16);
+        assert_eq!(VANILLA_IRON_GOLEM_DEFAULT_FLAGS, 0);
+        assert_eq!(VANILLA_IRON_GOLEM_FLAG_PLAYER_CREATED, 1);
         assert_eq!(
             snow_golem.own_flags,
             &[VanillaEntityMetadataFlagSchema {

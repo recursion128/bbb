@@ -9747,3 +9747,10 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   charging/dancing ids 16/17/18/19、defaults false 替代 world/native 手抄值。baby bounds、
   charging tick/hand pose、dancing model、zombifying shake 与 F3+I 统一消费 generated aliases；
   非 synced 的 loot/time/cannot-hunt 保存字段保持原语义 owner。
+
+## 2026-07-11：Generated entity metadata consumer（IronGolem）
+
+- [x] 从 generated catalog 建立 `Mob -> IronGolem` family：BYTE `DATA_FLAGS_ID`
+  id 16/default 0，并由 evidence-backed method resolver 从 `isPlayerCreated()` 的 `& 1`
+  提取 player-created mask；F3+I 删除 id/default/mask 手抄值。未修改 attack/flower timer、
+  persistent anger 或 renderer。
