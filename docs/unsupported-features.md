@@ -302,6 +302,12 @@ Environment:
 
 Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
 
+- Preserve and render full trusted Components for action-bar, title, and
+  subtitle packets, including translation, siblings, style/color/font and text
+  effects. Their wire is consumed and the vanilla timers/fades/scales are
+  implemented, but canonical state currently projects only a readable String.
+  Restart by sharing the repo-native rich Component/text layout path rather than
+  adding packet-specific style fields.
 - `chunk_section_paths`, `chunk_section_octree`, and
   `chunk_section_visibility` are `deferred` until the renderer retains
   per-section residency plus a repo-native `SectionOcclusionGraph`/octree and

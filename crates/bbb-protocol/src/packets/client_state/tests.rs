@@ -601,6 +601,54 @@ fn decodes_title_camera_and_ticking_packets() {
         })
     );
 
+    for (packet_id, text, packet_name) in [
+        (
+            ids::play::CLIENTBOUND_SET_ACTION_BAR_TEXT,
+            "Action",
+            "set action bar text",
+        ),
+        (
+            ids::play::CLIENTBOUND_SET_TITLE_TEXT,
+            "Title",
+            "set title text",
+        ),
+        (
+            ids::play::CLIENTBOUND_SET_SUBTITLE_TEXT,
+            "Subtitle",
+            "set subtitle text",
+        ),
+    ] {
+        let mut trailing = nbt_string_root(text);
+        trailing.push(0);
+        assert!(decode_play_clientbound(packet_id, &trailing)
+            .unwrap_err()
+            .to_string()
+            .contains(&format!("trailing bytes after {packet_name} packet")));
+    }
+
+    let mut trailing = Encoder::new();
+    trailing.write_bool(true);
+    trailing.write_u8(0);
+    assert!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_CLEAR_TITLES, &trailing.into_inner())
+            .unwrap_err()
+            .to_string()
+            .contains("trailing bytes after clear titles packet")
+    );
+
+    let mut trailing = Encoder::new();
+    trailing.write_i32(10);
+    trailing.write_i32(70);
+    trailing.write_i32(-5);
+    trailing.write_u8(0);
+    assert!(decode_play_clientbound(
+        ids::play::CLIENTBOUND_SET_TITLES_ANIMATION,
+        &trailing.into_inner()
+    )
+    .unwrap_err()
+    .to_string()
+    .contains("trailing bytes after set titles animation packet"));
+
     let mut payload = Encoder::new();
     payload.write_f32(0.25);
     payload.write_bool(true);

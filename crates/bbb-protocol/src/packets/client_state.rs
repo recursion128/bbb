@@ -365,15 +365,19 @@ pub(super) fn decode_remove_mob_effect(decoder: &mut Decoder<'_>) -> Result<Remo
 }
 
 pub(super) fn decode_set_action_bar_text(decoder: &mut Decoder<'_>) -> Result<SetActionBarText> {
-    Ok(SetActionBarText {
+    let update = SetActionBarText {
         content: decode_component_summary_from_decoder(decoder)?,
-    })
+    };
+    ensure_client_state_packet_consumed(decoder, "set action bar text")?;
+    Ok(update)
 }
 
 pub(super) fn decode_clear_titles(decoder: &mut Decoder<'_>) -> Result<ClearTitles> {
-    Ok(ClearTitles {
+    let update = ClearTitles {
         reset_times: decoder.read_bool()?,
-    })
+    };
+    ensure_client_state_packet_consumed(decoder, "clear titles")?;
+    Ok(update)
 }
 
 pub(super) fn decode_set_camera(decoder: &mut Decoder<'_>) -> Result<SetCamera> {
@@ -460,9 +464,11 @@ pub(super) fn decode_set_simulation_distance(
 }
 
 pub(super) fn decode_set_subtitle_text(decoder: &mut Decoder<'_>) -> Result<SetSubtitleText> {
-    Ok(SetSubtitleText {
+    let update = SetSubtitleText {
         content: decode_component_summary_from_decoder(decoder)?,
-    })
+    };
+    ensure_client_state_packet_consumed(decoder, "set subtitle text")?;
+    Ok(update)
 }
 
 pub(super) fn decode_play_time(decoder: &mut Decoder<'_>) -> Result<PlayTime> {
@@ -496,17 +502,21 @@ pub(super) fn decode_play_time(decoder: &mut Decoder<'_>) -> Result<PlayTime> {
 }
 
 pub(super) fn decode_set_title_text(decoder: &mut Decoder<'_>) -> Result<SetTitleText> {
-    Ok(SetTitleText {
+    let update = SetTitleText {
         content: decode_component_summary_from_decoder(decoder)?,
-    })
+    };
+    ensure_client_state_packet_consumed(decoder, "set title text")?;
+    Ok(update)
 }
 
 pub(super) fn decode_set_titles_animation(decoder: &mut Decoder<'_>) -> Result<SetTitlesAnimation> {
-    Ok(SetTitlesAnimation {
+    let update = SetTitlesAnimation {
         fade_in: decoder.read_i32()?,
         stay: decoder.read_i32()?,
         fade_out: decoder.read_i32()?,
-    })
+    };
+    ensure_client_state_packet_consumed(decoder, "set titles animation")?;
+    Ok(update)
 }
 
 pub(super) fn decode_system_chat(decoder: &mut Decoder<'_>) -> Result<SystemChat> {
@@ -549,6 +559,15 @@ pub(super) fn decode_update_mob_effect(decoder: &mut Decoder<'_>) -> Result<Upda
         duration_ticks: decoder.read_var_i32()?,
         flags: MobEffectFlags::from_bits(decoder.read_u8()?),
     })
+}
+
+fn ensure_client_state_packet_consumed(decoder: &Decoder<'_>, packet: &str) -> Result<()> {
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(format!(
+            "trailing bytes after {packet} packet"
+        )));
+    }
+    Ok(())
 }
 
 #[cfg(test)]

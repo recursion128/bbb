@@ -11223,3 +11223,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   已闭合，frozen step budget 由 native client tick sequence 消费。
 - [x] TickingStep 五格全闭合；TickingState 的 freeze 已生效且 tick-rate 已进入 debug MSPT/tooltip，
   但 entity/world client tick cadence 仍固定 20Hz，runtime 保持 partial。该状态不代表本地服务器。
+
+## 2026-07-11：title/action-bar packet coverage audit
+
+- [x] 对照五个 title/action-bar packet 与 `Gui` handlers 锁定 trusted Component、clear bool、三项 i32
+  timing wire 并逐包拒绝 trailing bytes；negative timing 保留旧值、active title 重算总时长、clear 与
+  reset-times 分离，protocol/world/net/native/renderer tests 覆盖 timer/fade/scale 行为。
+- [x] ClearTitles 与 SetTitlesAnimation 五格全闭合。ActionBar/Title/Subtitle 的 decode/ownership/tests
+  闭合，但当前 String summary 不保留完整 Component style/translation/siblings，canonical/runtime 两格
+  保持 partial，未用纯文本渲染冒充 rich Component parity。

@@ -1303,6 +1303,47 @@ mod tests {
             .all(|cell| cell.status == PacketCoverageStatus::Complete));
     }
 
+    #[test]
+    fn play_title_controls_close_while_text_components_stay_open() {
+        let ledger = vanilla_packet_coverage_26_1().unwrap();
+        for constant_name in [
+            "CLIENTBOUND_CLEAR_TITLES",
+            "CLIENTBOUND_SET_TITLES_ANIMATION",
+        ] {
+            let entry = ledger
+                .entries
+                .iter()
+                .find(|entry| entry.state == "play" && entry.constant_name == constant_name)
+                .expect("title control coverage row");
+            assert!(entry
+                .coverage
+                .values()
+                .all(|cell| cell.status == PacketCoverageStatus::Complete));
+        }
+        for constant_name in [
+            "CLIENTBOUND_SET_ACTION_BAR_TEXT",
+            "CLIENTBOUND_SET_TITLE_TEXT",
+            "CLIENTBOUND_SET_SUBTITLE_TEXT",
+        ] {
+            let entry = ledger
+                .entries
+                .iter()
+                .find(|entry| entry.state == "play" && entry.constant_name == constant_name)
+                .expect("title text coverage row");
+            let partial: BTreeSet<_> = entry
+                .coverage
+                .iter()
+                .filter_map(|(dimension, cell)| {
+                    (cell.status == PacketCoverageStatus::Partial).then_some(dimension.as_str())
+                })
+                .collect();
+            assert_eq!(
+                partial,
+                BTreeSet::from(["canonical_apply", "runtime_side_effect"])
+            );
+        }
+    }
+
     fn state_name(state: PacketState) -> &'static str {
         match state {
             PacketState::Handshake => "handshake",

@@ -5274,29 +5274,45 @@
       "constant_name": "CLIENTBOUND_CLEAR_TITLES",
       "coverage": {
         "canonical_apply": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/client/hud.rs#apply_clear_titles",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleTitlesClear"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/client_state/tests.rs#decodes_title_camera_and_ticking_packets",
+            "vanilla:net/minecraft/network/protocol/game/ClientboundClearTitlesPacket.java#STREAM_CODEC"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "ownership": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/play_apply.rs#PlayClientbound::ClearTitles"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "runtime_side_effect": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-native/src/runtime.rs#hud_title_text_from_world",
+            "crates/bbb-renderer/src/hud.rs#hud_title_text_draws"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/client_state/tests.rs#decodes_title_camera_and_ticking_packets",
+            "crates/bbb-world/src/client/hud.rs#title_packets_match_vanilla_timing_rules",
+            "crates/bbb-net/src/probe/play.rs#probe_applies_hud_text_packets_to_world",
+            "crates/bbb-native/src/runtime/tests.rs#hud_action_bar_and_title_projection_matches_world_state"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "clientbound",
@@ -8062,29 +8078,43 @@
       "constant_name": "CLIENTBOUND_SET_ACTION_BAR_TEXT",
       "coverage": {
         "canonical_apply": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
+          "evidence": [
+            "crates/bbb-world/src/client/hud.rs#apply_action_bar_text",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#setActionBarText"
+          ],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
           "status": "partial"
         },
         "decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/client_state/tests.rs#decodes_title_camera_and_ticking_packets",
+            "vanilla:net/minecraft/network/protocol/game/ClientboundSetActionBarTextPacket.java#STREAM_CODEC"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "ownership": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/play_apply.rs#PlayClientbound::SetActionBarText"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "runtime_side_effect": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
+          "evidence": [
+            "crates/bbb-native/src/runtime.rs#hud_action_bar_text_from_world",
+            "crates/bbb-renderer/src/hud.rs#hud_action_bar_text_draw"
+          ],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
           "status": "partial"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/client/hud.rs#hud_text_packets_update_canonical_state",
+            "crates/bbb-renderer/src/hud.rs#action_bar_draw_centers_above_the_hotbar_and_fades_out"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "clientbound",
@@ -9096,29 +9126,43 @@
       "constant_name": "CLIENTBOUND_SET_SUBTITLE_TEXT",
       "coverage": {
         "canonical_apply": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
+          "evidence": [
+            "crates/bbb-world/src/client/hud.rs#apply_subtitle_text",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#setSubtitleText"
+          ],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
           "status": "partial"
         },
         "decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/client_state/tests.rs#decodes_title_camera_and_ticking_packets",
+            "vanilla:net/minecraft/network/protocol/game/ClientboundSetSubtitleTextPacket.java#STREAM_CODEC"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "ownership": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/play_apply.rs#PlayClientbound::SetSubtitleText"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "runtime_side_effect": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
+          "evidence": [
+            "crates/bbb-native/src/runtime.rs#hud_title_text_from_world",
+            "crates/bbb-renderer/src/hud.rs#hud_title_text_draws"
+          ],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
           "status": "partial"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/client/hud.rs#title_packets_match_vanilla_timing_rules",
+            "crates/bbb-renderer/src/hud.rs#title_draws_center_and_scale_title_4x_and_subtitle_2x"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "clientbound",
@@ -9182,29 +9226,43 @@
       "constant_name": "CLIENTBOUND_SET_TITLE_TEXT",
       "coverage": {
         "canonical_apply": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
+          "evidence": [
+            "crates/bbb-world/src/client/hud.rs#apply_title_text",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#setTitleText"
+          ],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
           "status": "partial"
         },
         "decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/client_state/tests.rs#decodes_title_camera_and_ticking_packets",
+            "vanilla:net/minecraft/network/protocol/game/ClientboundSetTitleTextPacket.java#STREAM_CODEC"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "ownership": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/play_apply.rs#PlayClientbound::SetTitleText"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "runtime_side_effect": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
+          "evidence": [
+            "crates/bbb-native/src/runtime.rs#hud_title_text_from_world",
+            "crates/bbb-renderer/src/hud.rs#hud_title_text_draws"
+          ],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
           "status": "partial"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/client/hud.rs#title_packets_match_vanilla_timing_rules",
+            "crates/bbb-renderer/src/hud.rs#title_alpha_follows_the_fade_in_stay_fade_out_windows"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "clientbound",
@@ -9217,29 +9275,43 @@
       "constant_name": "CLIENTBOUND_SET_TITLES_ANIMATION",
       "coverage": {
         "canonical_apply": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/client/hud.rs#apply_titles_animation",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#setTitlesAnimation"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/client_state/tests.rs#decodes_title_camera_and_ticking_packets",
+            "vanilla:net/minecraft/network/protocol/game/ClientboundSetTitlesAnimationPacket.java#STREAM_CODEC"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "ownership": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/play_apply.rs#PlayClientbound::SetTitlesAnimation"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "runtime_side_effect": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/client/hud.rs#advance_hud_text_ticks",
+            "crates/bbb-renderer/src/hud.rs#hud_title_alpha"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/client/hud.rs#title_packets_match_vanilla_timing_rules",
+            "crates/bbb-renderer/src/hud.rs#title_alpha_follows_the_fade_in_stay_fade_out_windows"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "clientbound",
