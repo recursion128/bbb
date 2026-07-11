@@ -121,9 +121,10 @@ use crate::entities::schema::{
     VANILLA_ENTITY_SHARED_FLAG_INVISIBLE as ENTITY_SHARED_FLAG_INVISIBLE,
     VANILLA_ENTITY_SHARED_FLAG_SHIFT_KEY_DOWN as ENTITY_SHARED_FLAG_DESCENDING,
     VANILLA_ENTITY_SHARED_FLAG_SPRINTING as ENTITY_SHARED_FLAG_SPRINTING,
-    VANILLA_FURNACE_MINECART_DEFAULT_FUEL, VANILLA_FURNACE_MINECART_FUEL_DATA_ID,
-    VANILLA_HUMANOID_ARM_LEFT_ID, VANILLA_HUMANOID_ARM_RIGHT_ID,
-    VANILLA_LIVING_ENTITY_FLAGS_DATA_ID,
+    VANILLA_FIREWORK_ROCKET_ATTACHED_TO_TARGET_DATA_ID, VANILLA_FIREWORK_ROCKET_ITEM_DATA_ID,
+    VANILLA_FIREWORK_ROCKET_SHOT_AT_ANGLE_DATA_ID, VANILLA_FURNACE_MINECART_DEFAULT_FUEL,
+    VANILLA_FURNACE_MINECART_FUEL_DATA_ID, VANILLA_HUMANOID_ARM_LEFT_ID,
+    VANILLA_HUMANOID_ARM_RIGHT_ID, VANILLA_LIVING_ENTITY_FLAGS_DATA_ID,
     VANILLA_LIVING_ENTITY_FLAG_IS_USING as LIVING_ENTITY_FLAG_IS_USING,
     VANILLA_LIVING_ENTITY_FLAG_OFF_HAND as LIVING_ENTITY_FLAG_OFF_HAND,
     VANILLA_LIVING_ENTITY_FLAG_SPIN_ATTACK as LIVING_ENTITY_FLAG_SPIN_ATTACK,
@@ -153,12 +154,6 @@ const PRIMED_TNT_FUSE_DATA_ID: u8 = 8;
 /// Vanilla `PrimedTnt.DATA_BLOCK_STATE_ID` block-state metadata, declared after fuse.
 const PRIMED_TNT_BLOCK_STATE_DATA_ID: u8 = 9;
 const DEFAULT_PRIMED_TNT_FUSE: i32 = 80;
-/// Vanilla `FireworkRocketEntity.DATA_ATTACHED_TO_TARGET` optional unsigned int, after the firework
-/// item stack at id 8. Present rockets are attached to an elytra user and `shouldRender` returns false.
-const FIREWORK_ROCKET_ATTACHED_TO_TARGET_DATA_ID: u8 = 9;
-/// Vanilla `FireworkRocketEntity.DATA_SHOT_AT_ANGLE` boolean, declared after attached-target.
-const FIREWORK_ROCKET_SHOT_AT_ANGLE_DATA_ID: u8 = 10;
-
 fn wolf_armor_crackiness(
     item: &ItemStackSummary,
     default_item_max_damage: &BTreeMap<i32, i32>,
@@ -2880,7 +2875,7 @@ impl EntityStore {
             let Ok(metadata) = self.ecs.get::<&EntityMetadata>(entity) else {
                 continue;
             };
-            let Some(stack) = item_entity_render_stack(&metadata.data_values) else {
+            let Some(stack) = firework_rocket_render_stack(&metadata.data_values) else {
                 continue;
             };
             items.push(ItemEntityStackState {
@@ -2945,7 +2940,7 @@ impl EntityStore {
             .ecs
             .get::<&EntityMetadata>(entity)
             .ok()
-            .and_then(|metadata| item_entity_render_stack(&metadata.data_values).cloned());
+            .and_then(|metadata| firework_rocket_render_stack(&metadata.data_values).cloned());
         let has_explosions = stack
             .as_ref()
             .is_some_and(firework_rocket_stack_has_explosions);
@@ -4053,14 +4048,29 @@ fn shulker_attach_face(
 fn item_entity_render_stack(
     data_values: &[bbb_protocol::packets::EntityDataValue],
 ) -> Option<&bbb_protocol::packets::ItemStackSummary> {
-    raw_item_stack(data_values).filter(|stack| stack.item_id.is_some() && stack.count > 0)
+    metadata_item_stack(data_values, VANILLA_ITEM_ENTITY_STACK_DATA_ID)
+        .filter(|stack| stack.item_id.is_some() && stack.count > 0)
+}
+
+fn firework_rocket_render_stack(
+    data_values: &[bbb_protocol::packets::EntityDataValue],
+) -> Option<&bbb_protocol::packets::ItemStackSummary> {
+    metadata_item_stack(data_values, VANILLA_FIREWORK_ROCKET_ITEM_DATA_ID)
+        .filter(|stack| stack.item_id.is_some() && stack.count > 0)
 }
 
 fn raw_item_stack(
     data_values: &[bbb_protocol::packets::EntityDataValue],
 ) -> Option<&bbb_protocol::packets::ItemStackSummary> {
+    metadata_item_stack(data_values, VANILLA_ITEM_ENTITY_STACK_DATA_ID)
+}
+
+fn metadata_item_stack(
+    data_values: &[bbb_protocol::packets::EntityDataValue],
+    data_id: u8,
+) -> Option<&bbb_protocol::packets::ItemStackSummary> {
     data_values.iter().find_map(|value| {
-        if value.data_id != VANILLA_ITEM_ENTITY_STACK_DATA_ID {
+        if value.data_id != data_id {
             return None;
         }
         let EntityDataValueKind::ItemStack(stack) = &value.value else {
@@ -4074,7 +4084,7 @@ fn firework_rocket_attached_to_entity(
     data_values: &[bbb_protocol::packets::EntityDataValue],
 ) -> bool {
     data_values.iter().any(|value| {
-        value.data_id == FIREWORK_ROCKET_ATTACHED_TO_TARGET_DATA_ID
+        value.data_id == VANILLA_FIREWORK_ROCKET_ATTACHED_TO_TARGET_DATA_ID
             && matches!(
                 &value.value,
                 EntityDataValueKind::OptionalUnsignedInt(Some(_))
@@ -4084,7 +4094,7 @@ fn firework_rocket_attached_to_entity(
 
 fn firework_rocket_shot_at_angle(data_values: &[bbb_protocol::packets::EntityDataValue]) -> bool {
     data_values.iter().any(|value| {
-        value.data_id == FIREWORK_ROCKET_SHOT_AT_ANGLE_DATA_ID
+        value.data_id == VANILLA_FIREWORK_ROCKET_SHOT_AT_ANGLE_DATA_ID
             && matches!(&value.value, EntityDataValueKind::Boolean(true))
     })
 }

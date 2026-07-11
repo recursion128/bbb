@@ -118,6 +118,11 @@ FAMILIES = (
     FamilySpec("Interaction", "net.minecraft.world.entity.Interaction", "Entity"),
     FamilySpec("ExperienceOrb", "net.minecraft.world.entity.ExperienceOrb", "Entity"),
     FamilySpec("ItemEntity", "net.minecraft.world.entity.item.ItemEntity", "Entity"),
+    FamilySpec(
+        "FireworkRocket",
+        "net.minecraft.world.entity.projectile.FireworkRocketEntity",
+        "Entity",
+    ),
     FamilySpec("Guardian", "net.minecraft.world.entity.monster.Guardian", "Mob"),
     FamilySpec("SnowGolem", "net.minecraft.world.entity.animal.golem.SnowGolem", "Mob"),
     FamilySpec("IronGolem", "net.minecraft.world.entity.animal.golem.IronGolem", "Mob"),
@@ -279,6 +284,9 @@ DATA_ALIASES = {
     "VANILLA_INTERACTION_RESPONSE_DATA_ID": ("net.minecraft.world.entity.Interaction", "DATA_RESPONSE_ID"),
     "VANILLA_EXPERIENCE_ORB_VALUE_DATA_ID": ("net.minecraft.world.entity.ExperienceOrb", "DATA_VALUE"),
     "VANILLA_ITEM_ENTITY_STACK_DATA_ID": ("net.minecraft.world.entity.item.ItemEntity", "DATA_ITEM"),
+    "VANILLA_FIREWORK_ROCKET_ITEM_DATA_ID": ("net.minecraft.world.entity.projectile.FireworkRocketEntity", "DATA_ID_FIREWORKS_ITEM"),
+    "VANILLA_FIREWORK_ROCKET_ATTACHED_TO_TARGET_DATA_ID": ("net.minecraft.world.entity.projectile.FireworkRocketEntity", "DATA_ATTACHED_TO_TARGET"),
+    "VANILLA_FIREWORK_ROCKET_SHOT_AT_ANGLE_DATA_ID": ("net.minecraft.world.entity.projectile.FireworkRocketEntity", "DATA_SHOT_AT_ANGLE"),
     "VANILLA_GUARDIAN_MOVING_DATA_ID": ("net.minecraft.world.entity.monster.Guardian", "DATA_ID_MOVING"),
     "VANILLA_GUARDIAN_ATTACK_TARGET_DATA_ID": ("net.minecraft.world.entity.monster.Guardian", "DATA_ID_ATTACK_TARGET"),
     "VANILLA_SNOW_GOLEM_PUMPKIN_DATA_ID": ("net.minecraft.world.entity.animal.golem.SnowGolem", "DATA_PUMPKIN_ID"),
@@ -406,6 +414,8 @@ DEFAULT_ALIASES = {
     "VANILLA_INTERACTION_DEFAULT_HEIGHT": ("net.minecraft.world.entity.Interaction", "DATA_HEIGHT_ID"),
     "VANILLA_INTERACTION_DEFAULT_RESPONSE": ("net.minecraft.world.entity.Interaction", "DATA_RESPONSE_ID"),
     "VANILLA_EXPERIENCE_ORB_DEFAULT_VALUE": ("net.minecraft.world.entity.ExperienceOrb", "DATA_VALUE"),
+    "VANILLA_FIREWORK_ROCKET_DEFAULT_ITEM_RESOURCE_ID": ("net.minecraft.world.entity.projectile.FireworkRocketEntity", "DATA_ID_FIREWORKS_ITEM"),
+    "VANILLA_FIREWORK_ROCKET_DEFAULT_SHOT_AT_ANGLE": ("net.minecraft.world.entity.projectile.FireworkRocketEntity", "DATA_SHOT_AT_ANGLE"),
     "VANILLA_GUARDIAN_DEFAULT_MOVING": ("net.minecraft.world.entity.monster.Guardian", "DATA_ID_MOVING"),
     "VANILLA_GUARDIAN_DEFAULT_ATTACK_TARGET": ("net.minecraft.world.entity.monster.Guardian", "DATA_ID_ATTACK_TARGET"),
     "VANILLA_SNOW_GOLEM_DEFAULT_PUMPKIN_FLAGS": ("net.minecraft.world.entity.animal.golem.SnowGolem", "DATA_PUMPKIN_ID"),
@@ -630,6 +640,19 @@ ENUM_ORDINAL_DEFAULT_RESOLVERS = (
 )
 
 
+STATIC_ITEM_STACK_DEFAULT_RESOLVERS = (
+    (
+        "net.minecraft.world.entity.projectile.FireworkRocketEntity",
+        "DATA_ID_FIREWORKS_ITEM",
+        "getDefaultItem",
+        "getDefaultItem ()",
+        "new ItemStack (Items.FIREWORK_ROCKET)",
+        "minecraft:firework_rocket",
+        "the synced item-stack default is returned by a source method rather than an inline expression",
+    ),
+)
+
+
 ENUM_CONSTRUCTOR_ID_ALIASES = {
     "VANILLA_ARMADILLO_STATE_IDLE_ID": ("net.minecraft.world.entity.animal.armadillo.Armadillo.ArmadilloState", "IDLE", 3),
     "VANILLA_ARMADILLO_STATE_ROLLING_ID": ("net.minecraft.world.entity.animal.armadillo.Armadillo.ArmadilloState", "ROLLING", 3),
@@ -696,7 +719,6 @@ class ResolvedDefaultEvidence:
     evidence_class: str
     evidence_member: str
     expression: str
-    value: int
     reason: str
 
 
@@ -866,7 +888,7 @@ def enum_constant_constructor_integer(
     )
 
 
-def resolve_enum_id_defaults(
+def resolve_semantic_defaults(
     result: ExtractionResult,
 ) -> tuple[dict[tuple[str, str], NormalizedDefault], list[ResolvedDefaultEvidence]]:
     resolved: dict[tuple[str, str], NormalizedDefault] = {}
@@ -913,7 +935,6 @@ def resolve_enum_id_defaults(
                 enum_fqcn,
                 f"{default_field} -> {constant_name}",
                 expected_expression,
-                value,
                 reason,
             )
         )
@@ -958,7 +979,6 @@ def resolve_enum_id_defaults(
                 enum_fqcn,
                 constant_name,
                 expected_expression,
-                value,
                 reason,
             )
         )
@@ -997,7 +1017,50 @@ def resolve_enum_id_defaults(
                 enum_fqcn,
                 constant_name,
                 expected_expression,
-                value,
+                reason,
+            )
+        )
+    for (
+        owner,
+        accessor_name,
+        method_name,
+        expected_expression,
+        expected_return_expression,
+        resource_id,
+        reason,
+    ) in STATIC_ITEM_STACK_DEFAULT_RESOLVERS:
+        key = (owner, accessor_name)
+        if key in resolved:
+            raise ExtractionError(f"duplicate static item default resolver: {owner}.{accessor_name}")
+        accessor = accessor_for(result, owner, accessor_name)
+        if accessor.serializer != "ITEM_STACK":
+            raise ExtractionError(
+                f"{owner}.{accessor_name}: static item resolver requires ITEM_STACK serializer"
+            )
+        if accessor.default_expression != expected_expression:
+            raise ExtractionError(
+                f"{owner}.{accessor_name}: stale static item resolver expression; "
+                f"expected {expected_expression!r}, found {accessor.default_expression!r}"
+            )
+        return_expression = method_single_return_expression(result, owner, method_name)
+        if return_expression != expected_return_expression:
+            raise ExtractionError(
+                f"{owner}.{method_name}: stale static item resolver return; "
+                f"expected {expected_return_expression!r}, found {return_expression!r}"
+            )
+        resource_rust = rust_string(resource_id)
+        resolved[key] = NormalizedDefault(
+            f"VanillaEntityMetadataDefault::ItemStackDefaultItem({resource_rust})",
+            "&str",
+            resource_rust,
+        )
+        evidence.append(
+            ResolvedDefaultEvidence(
+                owner,
+                accessor_name,
+                owner,
+                method_name,
+                f"{expected_expression} -> {expected_return_expression}",
                 reason,
             )
         )
@@ -1091,6 +1154,15 @@ def method_for(result: ExtractionResult, owner: str, name: str) -> tuple[JavaSou
     if len(matches) != 1:
         raise ExtractionError(f"{owner}.{name}: expected one method, found {len(matches)}")
     return source, matches[0]
+
+
+def method_single_return_expression(result: ExtractionResult, owner: str, name: str) -> str:
+    source, method = method_for(result, owner, name)
+    body = method.node.child_by_field_name("body")
+    returns = [item for item in descendants(body) if item.type == "return_statement"]
+    if len(returns) != 1 or len(returns[0].named_children) != 1:
+        raise ExtractionError(f"{owner}.{name}: expected one return expression")
+    return source.expression(returns[0].named_children[0]).canonical
 
 
 def method_mask(result: ExtractionResult, owner: str, name: str, mode: str) -> tuple[int, str]:
@@ -1203,7 +1275,7 @@ def option_string(value: str | None) -> str:
 
 def render(result: ExtractionResult) -> str:
     accessors = {(item.owner, item.java_name): item for item in result.accessors}
-    resolved_defaults, default_evidence = resolve_enum_id_defaults(result)
+    resolved_defaults, default_evidence = resolve_semantic_defaults(result)
     normalized = {
         key: normalize_default(result, item, resolved_defaults) for key, item in accessors.items()
     }

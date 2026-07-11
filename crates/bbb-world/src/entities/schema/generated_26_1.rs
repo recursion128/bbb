@@ -246,6 +246,14 @@ const GENERATED_VANILLA_EXPERIENCE_ORB_VALUE_DATA_ID: u8 = 8;
 pub const VANILLA_EXPERIENCE_ORB_VALUE_DATA_ID: u8 = GENERATED_VANILLA_EXPERIENCE_ORB_VALUE_DATA_ID;
 const GENERATED_VANILLA_ITEM_ENTITY_STACK_DATA_ID: u8 = 8;
 pub const VANILLA_ITEM_ENTITY_STACK_DATA_ID: u8 = GENERATED_VANILLA_ITEM_ENTITY_STACK_DATA_ID;
+const GENERATED_VANILLA_FIREWORK_ROCKET_ITEM_DATA_ID: u8 = 8;
+pub const VANILLA_FIREWORK_ROCKET_ITEM_DATA_ID: u8 = GENERATED_VANILLA_FIREWORK_ROCKET_ITEM_DATA_ID;
+const GENERATED_VANILLA_FIREWORK_ROCKET_ATTACHED_TO_TARGET_DATA_ID: u8 = 9;
+pub const VANILLA_FIREWORK_ROCKET_ATTACHED_TO_TARGET_DATA_ID: u8 =
+    GENERATED_VANILLA_FIREWORK_ROCKET_ATTACHED_TO_TARGET_DATA_ID;
+const GENERATED_VANILLA_FIREWORK_ROCKET_SHOT_AT_ANGLE_DATA_ID: u8 = 10;
+pub const VANILLA_FIREWORK_ROCKET_SHOT_AT_ANGLE_DATA_ID: u8 =
+    GENERATED_VANILLA_FIREWORK_ROCKET_SHOT_AT_ANGLE_DATA_ID;
 const GENERATED_VANILLA_GUARDIAN_MOVING_DATA_ID: u8 = 16;
 pub const VANILLA_GUARDIAN_MOVING_DATA_ID: u8 = GENERATED_VANILLA_GUARDIAN_MOVING_DATA_ID;
 const GENERATED_VANILLA_GUARDIAN_ATTACK_TARGET_DATA_ID: u8 = 17;
@@ -711,6 +719,13 @@ pub const VANILLA_INTERACTION_DEFAULT_RESPONSE: bool =
 const GENERATED_VANILLA_EXPERIENCE_ORB_DEFAULT_VALUE: i32 = 0;
 pub const VANILLA_EXPERIENCE_ORB_DEFAULT_VALUE: i32 =
     GENERATED_VANILLA_EXPERIENCE_ORB_DEFAULT_VALUE;
+const GENERATED_VANILLA_FIREWORK_ROCKET_DEFAULT_ITEM_RESOURCE_ID: &str =
+    "minecraft:firework_rocket";
+pub const VANILLA_FIREWORK_ROCKET_DEFAULT_ITEM_RESOURCE_ID: &str =
+    GENERATED_VANILLA_FIREWORK_ROCKET_DEFAULT_ITEM_RESOURCE_ID;
+const GENERATED_VANILLA_FIREWORK_ROCKET_DEFAULT_SHOT_AT_ANGLE: bool = false;
+pub const VANILLA_FIREWORK_ROCKET_DEFAULT_SHOT_AT_ANGLE: bool =
+    GENERATED_VANILLA_FIREWORK_ROCKET_DEFAULT_SHOT_AT_ANGLE;
 const GENERATED_VANILLA_GUARDIAN_DEFAULT_MOVING: bool = false;
 pub const VANILLA_GUARDIAN_DEFAULT_MOVING: bool = GENERATED_VANILLA_GUARDIAN_DEFAULT_MOVING;
 const GENERATED_VANILLA_GUARDIAN_DEFAULT_ATTACK_TARGET: i32 = 0;
@@ -10884,7 +10899,7 @@ pub const VANILLA_ENTITY_METADATA_ACCESSORS_26_1: &[VanillaEntityMetadataAccesso
         data_id: 8,
         source_path: "net/minecraft/world/entity/projectile/FireworkRocketEntity.java",
         default_expression: "getDefaultItem ()",
-        typed_default: None,
+        typed_default: Some(VanillaEntityMetadataDefault::ItemStackDefaultItem("minecraft:firework_rocket")),
     },
     VanillaEntityMetadataAccessorCatalogEntry {
         owner: "net.minecraft.world.entity.projectile.FireworkRocketEntity",
@@ -11682,6 +11697,13 @@ pub const VANILLA_ENTITY_METADATA_DEFAULT_RESOLVER_EVIDENCE_26_1: &[VanillaEntit
         evidence_member: "net.minecraft.world.level.block.WeatheringCopper.WeatherState.UNAFFECTED",
         source_expression: "WeatheringCopper.WeatherState.UNAFFECTED",
         reason: "the synced enum default is encoded by the enum ordinal",
+    },
+    VanillaEntityMetadataResolverEvidence {
+        java_class: "net.minecraft.world.entity.projectile.FireworkRocketEntity",
+        accessor_name: "DATA_ID_FIREWORKS_ITEM",
+        evidence_member: "net.minecraft.world.entity.projectile.FireworkRocketEntity.getDefaultItem",
+        source_expression: "getDefaultItem () -> new ItemStack (Items.FIREWORK_ROCKET)",
+        reason: "the synced item-stack default is returned by a source method rather than an inline expression",
     },
 ];
 
@@ -14651,6 +14673,36 @@ const ITEMENTITY_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetada
     own_flags: ITEMENTITY_FLAGS,
 };
 
+const FIREWORKROCKET_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_ID_FIREWORKS_ITEM",
+        data_id: 8,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_ITEM_STACK_ID,
+        default: VanillaEntityMetadataDefault::ItemStackDefaultItem("minecraft:firework_rocket"),
+    },
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_ATTACHED_TO_TARGET",
+        data_id: 9,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_UNSIGNED_INT_ID,
+        default: VanillaEntityMetadataDefault::OptionalUnsignedIntNone,
+    },
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_SHOT_AT_ANGLE",
+        data_id: 10,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+        default: VanillaEntityMetadataDefault::Boolean(false),
+    },
+];
+const FIREWORKROCKET_FLAGS: &[VanillaEntityMetadataFlagSchema] = &[];
+const FIREWORKROCKET_SCHEMA: VanillaEntityMetadataFamilySchema =
+    VanillaEntityMetadataFamilySchema {
+        family: VanillaEntityMetadataFamily::FireworkRocket,
+        parent: Some(VanillaEntityMetadataFamily::Entity),
+        inherited_field_count: 8,
+        own_fields: FIREWORKROCKET_FIELDS,
+        own_flags: FIREWORKROCKET_FLAGS,
+    };
+
 const GUARDIAN_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[
     VanillaEntityMetadataFieldSchema {
         name: "DATA_ID_MOVING",
@@ -15319,6 +15371,7 @@ pub(super) const fn generated_entity_metadata_schema(
         VanillaEntityMetadataFamily::Interaction => &INTERACTION_SCHEMA,
         VanillaEntityMetadataFamily::ExperienceOrb => &EXPERIENCEORB_SCHEMA,
         VanillaEntityMetadataFamily::ItemEntity => &ITEMENTITY_SCHEMA,
+        VanillaEntityMetadataFamily::FireworkRocket => &FIREWORKROCKET_SCHEMA,
         VanillaEntityMetadataFamily::Guardian => &GUARDIAN_SCHEMA,
         VanillaEntityMetadataFamily::SnowGolem => &SNOWGOLEM_SCHEMA,
         VanillaEntityMetadataFamily::IronGolem => &IRONGOLEM_SCHEMA,

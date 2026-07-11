@@ -108,6 +108,10 @@ use bbb_world::{
     VANILLA_DOLPHIN_DEFAULT_MOISTNESS as DOLPHIN_DEFAULT_MOISTNESS,
     VANILLA_DOLPHIN_GOT_FISH_DATA_ID as DOLPHIN_GOT_FISH_DATA_ID,
     VANILLA_DOLPHIN_MOISTNESS_DATA_ID as DOLPHIN_MOISTNESS_DATA_ID,
+    VANILLA_FIREWORK_ROCKET_DEFAULT_ITEM_RESOURCE_ID as FIREWORK_ROCKET_DEFAULT_ITEM_RESOURCE_ID,
+    VANILLA_FIREWORK_ROCKET_DEFAULT_SHOT_AT_ANGLE as FIREWORK_ROCKET_DEFAULT_SHOT_AT_ANGLE,
+    VANILLA_FIREWORK_ROCKET_ITEM_DATA_ID as FIREWORK_ROCKET_ITEM_DATA_ID,
+    VANILLA_FIREWORK_ROCKET_SHOT_AT_ANGLE_DATA_ID as FIREWORK_ROCKET_SHOT_AT_ANGLE_DATA_ID,
     VANILLA_GLOW_SQUID_DARK_TICKS_DATA_ID as GLOW_SQUID_DARK_TICKS_DATA_ID,
     VANILLA_GLOW_SQUID_DEFAULT_DARK_TICKS as GLOW_SQUID_DEFAULT_DARK_TICKS_REMAINING,
     VANILLA_GOAT_DEFAULT_HAS_LEFT_HORN as GOAT_DEFAULT_HAS_LEFT_HORN,
@@ -446,8 +450,6 @@ const ENTITY_DEFAULT_INVULNERABLE: bool = false;
 const ENTITY_DEFAULT_PORTAL_COOLDOWN: i32 = 0;
 const HURTING_PROJECTILE_DEFAULT_ACCELERATION_POWER: f64 = 0.1;
 const FIREBALL_DEFAULT_EXPLOSION_POWER: i8 = 1;
-const FIREWORK_ROCKET_ITEM_DATA_ID: u8 = 8;
-const FIREWORK_ROCKET_SHOT_AT_ANGLE_DATA_ID: u8 = 10;
 const FIREWORK_ROCKET_DEFAULT_LIFETIME: i32 = 0;
 /// The remaining falling-block save scalars are not synchronized by add-entity
 /// or metadata. Their client constructor values cannot be changed by any
@@ -4607,7 +4609,7 @@ fn debug_push_firework_rocket_additional_save_data(
     ));
     let shot_at_angle =
         debug_entity_data_bool_present(entity, FIREWORK_ROCKET_SHOT_AT_ANGLE_DATA_ID)
-            .unwrap_or(false);
+            .unwrap_or(FIREWORK_ROCKET_DEFAULT_SHOT_AT_ANGLE);
     fields.push(format!("ShotAtAngle: {}", debug_snbt_bool(shot_at_angle)));
 }
 
@@ -4619,14 +4621,19 @@ fn debug_firework_rocket_item_stack(
     let resource_id = stack
         .and_then(|stack| stack.item_id)
         .and_then(|item_id| item_runtime.and_then(|runtime| runtime.item_resource_id(item_id)))
-        .unwrap_or("minecraft:firework_rocket");
+        .unwrap_or(FIREWORK_ROCKET_DEFAULT_ITEM_RESOURCE_ID);
     stack
         .and_then(|stack| {
             debug_item_stack_snbt(resource_id, stack.count, Some(stack), item_runtime)
         })
         .unwrap_or_else(|| {
-            debug_item_stack_snbt("minecraft:firework_rocket", 1, None, item_runtime)
-                .expect("default firework item stack is valid")
+            debug_item_stack_snbt(
+                FIREWORK_ROCKET_DEFAULT_ITEM_RESOURCE_ID,
+                1,
+                None,
+                item_runtime,
+            )
+            .expect("default firework item stack is valid")
         })
 }
 

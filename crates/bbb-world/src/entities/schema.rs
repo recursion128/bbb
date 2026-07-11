@@ -56,6 +56,7 @@ pub enum VanillaEntityMetadataFamily {
     Interaction,
     ExperienceOrb,
     ItemEntity,
+    FireworkRocket,
     Guardian,
     SnowGolem,
     IronGolem,
@@ -103,6 +104,7 @@ pub enum VanillaEntityMetadataDefault {
     Rotations([f32; 3]),
     Direction(i32),
     ItemStackEmpty,
+    ItemStackDefaultItem(&'static str),
     OptionalBlockStateNone,
     OptionalLivingEntityReferenceNone,
     MinecartDefaultDisplayOffset,
@@ -403,6 +405,7 @@ mod tests {
             VanillaEntityMetadataFamily::Interaction,
             VanillaEntityMetadataFamily::ExperienceOrb,
             VanillaEntityMetadataFamily::ItemEntity,
+            VanillaEntityMetadataFamily::FireworkRocket,
             VanillaEntityMetadataFamily::Guardian,
             VanillaEntityMetadataFamily::SnowGolem,
             VanillaEntityMetadataFamily::IronGolem,
@@ -763,7 +766,7 @@ mod tests {
         assert_eq!(VANILLA_SALMON_DEFAULT_VARIANT, 1);
         assert_eq!(
             VANILLA_ENTITY_METADATA_DEFAULT_RESOLVER_EVIDENCE_26_1.len(),
-            8
+            9
         );
         let default_evidence = |java_class| {
             VANILLA_ENTITY_METADATA_DEFAULT_RESOLVER_EVIDENCE_26_1
@@ -836,6 +839,20 @@ mod tests {
         assert_eq!(
             copper_default_evidence("COPPER_GOLEM_STATE").source_expression,
             "CopperGolemState.IDLE"
+        );
+        let firework_default_evidence =
+            default_evidence("net.minecraft.world.entity.projectile.FireworkRocketEntity");
+        assert_eq!(
+            firework_default_evidence.accessor_name,
+            "DATA_ID_FIREWORKS_ITEM"
+        );
+        assert_eq!(
+            firework_default_evidence.evidence_member,
+            "net.minecraft.world.entity.projectile.FireworkRocketEntity.getDefaultItem"
+        );
+        assert_eq!(
+            firework_default_evidence.source_expression,
+            "getDefaultItem () -> new ItemStack (Items.FIREWORK_ROCKET)"
         );
         for evidence in VANILLA_ENTITY_METADATA_DEFAULT_RESOLVER_EVIDENCE_26_1 {
             assert!(!evidence.evidence_member.is_empty());
@@ -999,6 +1016,26 @@ mod tests {
             }]
         );
         assert_eq!(VANILLA_ITEM_ENTITY_STACK_DATA_ID, 8);
+        let firework = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::FireworkRocket);
+        assert_eq!(firework.parent, Some(VanillaEntityMetadataFamily::Entity));
+        assert_eq!(firework.inherited_field_count, 8);
+        assert_eq!(firework.own_fields.len(), 3);
+        assert_eq!(VANILLA_FIREWORK_ROCKET_ITEM_DATA_ID, 8);
+        assert_eq!(VANILLA_FIREWORK_ROCKET_ATTACHED_TO_TARGET_DATA_ID, 9);
+        assert_eq!(VANILLA_FIREWORK_ROCKET_SHOT_AT_ANGLE_DATA_ID, 10);
+        assert_eq!(
+            firework.own_fields[0].default,
+            VanillaEntityMetadataDefault::ItemStackDefaultItem("minecraft:firework_rocket")
+        );
+        assert_eq!(
+            firework.own_fields[1].default,
+            VanillaEntityMetadataDefault::OptionalUnsignedIntNone
+        );
+        assert_eq!(
+            VANILLA_FIREWORK_ROCKET_DEFAULT_ITEM_RESOURCE_ID,
+            "minecraft:firework_rocket"
+        );
+        assert!(!VANILLA_FIREWORK_ROCKET_DEFAULT_SHOT_AT_ANGLE);
         let guardian = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Guardian);
         assert_eq!(guardian.parent, Some(VanillaEntityMetadataFamily::Mob));
         assert_eq!(guardian.inherited_field_count, 16);

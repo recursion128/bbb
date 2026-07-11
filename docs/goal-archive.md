@@ -9957,3 +9957,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] 从 generated catalog 建立 `VehicleEntity -> AbstractMinecart -> MinecartFurnace`
   family：BOOLEAN fuel id13/default false；world 默认 display-block projection 删除手抄
   synced id/default。燃料消耗、推力和烟雾行为仍由对应语义 owner 管理。
+
+## 2026-07-11：Generated static-item default resolver 与 FireworkRocket metadata
+
+- [x] generator 新增窄 static-item default resolver：同时锁定 accessor 的
+  `getDefaultItem ()` 与方法唯一 return 的
+  `new ItemStack (Items.FIREWORK_ROCKET)` CST expression，生成 typed
+  `ItemStackDefaultItem("minecraft:firework_rocket")` 与 evidence。建立
+  `Entity -> FireworkRocket` family：ITEM_STACK id8、OPTIONAL_UNSIGNED_INT attached-target
+  id9、BOOLEAN shot-at-angle id10；world render/particle projection 与 native debug-save
+  删除手抄 id/default/resource。飞行、attachment 跟随、爆炸和 lifetime 行为仍由对应
+  语义 owner 管理。
