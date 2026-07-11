@@ -419,6 +419,8 @@ BundleDelimiter 的 empty wire、connection ownership 与 no-response tests 已�
 state；bundle atomic dispatch、terminal gate 与 4096 packet limit 尚未实现，runtime 保持 partial。
 play PongResponse 的 echoed i64 wire、F3+3 client-tick PingRequest、latency sampler、240-sample HUD
 projection 与 protocol/world/net/native tests 已全行闭合。
+LowDiskSpaceWarning 的 unit wire、canonical counter、ownership 与 apply tests 已闭合；vanilla 10 秒
+SystemToast presentation 尚未实现，runtime 保持 partial，且不由客户端推断本地磁盘状态。
 
 完成标准：全部 vanilla 26.1 catalog entry 都有矩阵行；所有目标客户端适用项为
 `complete`，其余只有带 vanilla 依据的 `not-applicable` 或带重启判据的窄 `deferred`；

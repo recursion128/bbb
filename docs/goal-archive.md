@@ -11278,3 +11278,10 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   `ClientPacketListener.tick` 锁定 echoed i64 wire 并拒绝 trailing bytes。
 - [x] F3+3 可见时 client tick 发送当前毫秒 PingRequest，response 驱动 240-sample latency logger 与
   network chart；protocol/world/net/native/driver tests 闭合五格，未混同 common Ping/Pong keepalive。
+
+## 2026-07-11：low-disk-space-warning packet coverage audit
+
+- [x] 对照 `ClientboundLowDiskSpaceWarningPacket`、`handleLowDiskSpaceWarning` 与
+  `SystemToast.onLowDiskSpace` 锁定 unit/empty wire；非空 payload 已拒绝，canonical/ownership/tests 闭合。
+- [x] world/native 保留服务器 warning counter，但尚未展示/更新 10 秒 LOW_DISK_SPACE system toast；
+  runtime 保持 partial，未把远端 warning 解释为客户端本地磁盘检测或 IntegratedServer 行为。

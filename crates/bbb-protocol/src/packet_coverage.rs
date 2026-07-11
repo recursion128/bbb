@@ -1470,6 +1470,26 @@ mod tests {
             .all(|cell| cell.status == PacketCoverageStatus::Complete));
     }
 
+    #[test]
+    fn play_low_disk_space_warning_keeps_system_toast_open() {
+        let ledger = vanilla_packet_coverage_26_1().unwrap();
+        let entry = ledger
+            .entries
+            .iter()
+            .find(|entry| {
+                entry.state == "play" && entry.constant_name == "CLIENTBOUND_LOW_DISK_SPACE_WARNING"
+            })
+            .expect("low disk space warning coverage row");
+        let partial: BTreeSet<_> = entry
+            .coverage
+            .iter()
+            .filter_map(|(dimension, cell)| {
+                (cell.status == PacketCoverageStatus::Partial).then_some(dimension.as_str())
+            })
+            .collect();
+        assert_eq!(partial, BTreeSet::from(["runtime_side_effect"]));
+    }
+
     fn state_name(state: PacketState) -> &'static str {
         match state {
             PacketState::Handshake => "handshake",

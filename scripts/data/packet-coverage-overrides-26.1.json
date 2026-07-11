@@ -380,6 +380,47 @@
         "status": "complete"
       }
     },
+    "play/clientbound/CLIENTBOUND_LOW_DISK_SPACE_WARNING": {
+      "canonical_apply": {
+        "evidence": [
+          "crates/bbb-world/src/client/ui.rs#apply_low_disk_space_warning",
+          "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleLowDiskSpaceWarning"
+        ],
+        "status": "complete"
+      },
+      "decode": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/client_ui/tests.rs#decodes_low_disk_space_warning_packet",
+          "crates/bbb-protocol/src/packets/client_ui/tests.rs#rejects_trailing_low_disk_space_warning_payload",
+          "vanilla:net/minecraft/network/protocol/game/ClientboundLowDiskSpaceWarningPacket.java#STREAM_CODEC"
+        ],
+        "status": "complete"
+      },
+      "ownership": {
+        "evidence": [
+          "crates/bbb-world/src/play_apply.rs#PlayClientbound::LowDiskSpaceWarning"
+        ],
+        "status": "complete"
+      },
+      "runtime_side_effect": {
+        "evidence": [
+          "crates/bbb-world/src/client/ui.rs#low_disk_space_warning_count",
+          "vanilla:net/minecraft/client/gui/components/toasts/SystemToast.java#onLowDiskSpace"
+        ],
+        "gap": "docs/unsupported-features.md#screens-and-presentation",
+        "status": "partial"
+      },
+      "tests": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/client_ui/tests.rs#decodes_low_disk_space_warning_packet",
+          "crates/bbb-protocol/src/packets/client_ui/tests.rs#rejects_trailing_low_disk_space_warning_payload",
+          "crates/bbb-world/src/client/ui.rs#tracks_client_ui_warnings_and_dialogs",
+          "crates/bbb-net/src/probe/play.rs#probe_applies_client_ui_packets_to_world",
+          "crates/bbb-native/src/runtime/events/tests/session_protocol_events.rs#client_ui_events_update_world_and_world_counters"
+        ],
+        "status": "complete"
+      }
+    },
     "play/clientbound/CLIENTBOUND_PLAYER_POSITION": {
       "canonical_apply": {
         "evidence": [
