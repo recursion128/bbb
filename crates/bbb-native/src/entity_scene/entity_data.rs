@@ -23,9 +23,8 @@ pub(super) fn creeper_powered(
     entity_type_id: i32,
     values: &[bbb_protocol::packets::EntityDataValue],
 ) -> bool {
-    const CREEPER_IS_POWERED_DATA_ID: u8 = 17;
     entity_type_id == VANILLA_ENTITY_TYPE_CREEPER_ID
-        && entity_data_bool(values, CREEPER_IS_POWERED_DATA_ID, false)
+        && entity_data_bool(values, CREEPER_IS_POWERED_DATA_ID, CREEPER_DEFAULT_POWERED)
 }
 
 /// Vanilla `WitherBoss.isPowered()` = `getHealth() <= getMaxHealth() / 2.0`, gating the

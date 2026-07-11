@@ -35,6 +35,10 @@ use super::schema::{
     VANILLA_CREAKING_DEFAULT_CAN_MOVE as CREAKING_DEFAULT_CAN_MOVE,
     VANILLA_CREAKING_DEFAULT_TEARING_DOWN as CREAKING_DEFAULT_TEARING_DOWN,
     VANILLA_CREAKING_TEARING_DOWN_DATA_ID as CREAKING_IS_TEARING_DOWN_DATA_ID,
+    VANILLA_CREEPER_DEFAULT_IGNITED as CREEPER_DEFAULT_IGNITED,
+    VANILLA_CREEPER_DEFAULT_SWELL_DIR as CREEPER_DEFAULT_SWELL_DIR,
+    VANILLA_CREEPER_IGNITED_DATA_ID as CREEPER_IGNITED_DATA_ID,
+    VANILLA_CREEPER_SWELL_DIR_DATA_ID as CREEPER_SWELL_DIR_DATA_ID,
     VANILLA_GUARDIAN_ATTACK_TARGET_DATA_ID as GUARDIAN_ATTACK_TARGET_DATA_ID,
     VANILLA_GUARDIAN_DEFAULT_ATTACK_TARGET as GUARDIAN_DEFAULT_ATTACK_TARGET,
     VANILLA_GUARDIAN_DEFAULT_MOVING as GUARDIAN_DEFAULT_MOVING,
@@ -143,8 +147,6 @@ const POLAR_BEAR_STAND_ANIMATION_TICKS: f32 = 6.0;
 /// Vanilla `Creeper.DATA_SWELL_DIR` (synced fuse direction, default `-1`) and
 /// `DATA_IS_IGNITED`; the client advances `swell` toward `maxSwell` while the
 /// effective direction is positive.
-const CREEPER_SWELL_DIR_DATA_ID: u8 = 16;
-const CREEPER_IGNITED_DATA_ID: u8 = 18;
 /// Vanilla `Creeper.DEFAULT_MAX_SWELL`. `getSwelling` divides the lerped swell
 /// by `maxSwell - 2`.
 const CREEPER_MAX_SWELL: i32 = 30;
@@ -6221,10 +6223,18 @@ fn fox_is_crouching(data_values: &[EntityDataValue]) -> bool {
 /// creeper forces the direction to `1`. Mirrors that effective direction from
 /// the synced `DATA_SWELL_DIR` (default `-1`) and `DATA_IS_IGNITED`.
 fn creeper_effective_swell_dir(data_values: &[EntityDataValue]) -> i32 {
-    if entity_data_bool(data_values, CREEPER_IGNITED_DATA_ID, false) {
+    if entity_data_bool(
+        data_values,
+        CREEPER_IGNITED_DATA_ID,
+        CREEPER_DEFAULT_IGNITED,
+    ) {
         1
     } else {
-        entity_data_int(data_values, CREEPER_SWELL_DIR_DATA_ID, -1)
+        entity_data_int(
+            data_values,
+            CREEPER_SWELL_DIR_DATA_ID,
+            CREEPER_DEFAULT_SWELL_DIR,
+        )
     }
 }
 

@@ -50,6 +50,12 @@ const GENERATED_VANILLA_ALLAY_DANCING_DATA_ID: u8 = 16;
 pub const VANILLA_ALLAY_DANCING_DATA_ID: u8 = GENERATED_VANILLA_ALLAY_DANCING_DATA_ID;
 const GENERATED_VANILLA_ALLAY_CAN_DUPLICATE_DATA_ID: u8 = 17;
 pub const VANILLA_ALLAY_CAN_DUPLICATE_DATA_ID: u8 = GENERATED_VANILLA_ALLAY_CAN_DUPLICATE_DATA_ID;
+const GENERATED_VANILLA_CREEPER_SWELL_DIR_DATA_ID: u8 = 16;
+pub const VANILLA_CREEPER_SWELL_DIR_DATA_ID: u8 = GENERATED_VANILLA_CREEPER_SWELL_DIR_DATA_ID;
+const GENERATED_VANILLA_CREEPER_POWERED_DATA_ID: u8 = 17;
+pub const VANILLA_CREEPER_POWERED_DATA_ID: u8 = GENERATED_VANILLA_CREEPER_POWERED_DATA_ID;
+const GENERATED_VANILLA_CREEPER_IGNITED_DATA_ID: u8 = 18;
+pub const VANILLA_CREEPER_IGNITED_DATA_ID: u8 = GENERATED_VANILLA_CREEPER_IGNITED_DATA_ID;
 const GENERATED_VANILLA_POLAR_BEAR_STANDING_DATA_ID: u8 = 18;
 pub const VANILLA_POLAR_BEAR_STANDING_DATA_ID: u8 = GENERATED_VANILLA_POLAR_BEAR_STANDING_DATA_ID;
 const GENERATED_VANILLA_SLIME_SIZE_DATA_ID: u8 = 16;
@@ -335,6 +341,12 @@ const GENERATED_VANILLA_ALLAY_DEFAULT_DANCING: bool = false;
 pub const VANILLA_ALLAY_DEFAULT_DANCING: bool = GENERATED_VANILLA_ALLAY_DEFAULT_DANCING;
 const GENERATED_VANILLA_ALLAY_DEFAULT_CAN_DUPLICATE: bool = true;
 pub const VANILLA_ALLAY_DEFAULT_CAN_DUPLICATE: bool = GENERATED_VANILLA_ALLAY_DEFAULT_CAN_DUPLICATE;
+const GENERATED_VANILLA_CREEPER_DEFAULT_SWELL_DIR: i32 = -1;
+pub const VANILLA_CREEPER_DEFAULT_SWELL_DIR: i32 = GENERATED_VANILLA_CREEPER_DEFAULT_SWELL_DIR;
+const GENERATED_VANILLA_CREEPER_DEFAULT_POWERED: bool = false;
+pub const VANILLA_CREEPER_DEFAULT_POWERED: bool = GENERATED_VANILLA_CREEPER_DEFAULT_POWERED;
+const GENERATED_VANILLA_CREEPER_DEFAULT_IGNITED: bool = false;
+pub const VANILLA_CREEPER_DEFAULT_IGNITED: bool = GENERATED_VANILLA_CREEPER_DEFAULT_IGNITED;
 const GENERATED_VANILLA_POLAR_BEAR_DEFAULT_STANDING: bool = false;
 pub const VANILLA_POLAR_BEAR_DEFAULT_STANDING: bool = GENERATED_VANILLA_POLAR_BEAR_DEFAULT_STANDING;
 const GENERATED_VANILLA_AVATAR_DEFAULT_MODEL_CUSTOMIZATION: i8 = 0;
@@ -13077,6 +13089,35 @@ const ALLAY_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFam
     own_flags: ALLAY_FLAGS,
 };
 
+const CREEPER_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_SWELL_DIR",
+        data_id: 16,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+        default: VanillaEntityMetadataDefault::Int(-1),
+    },
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_IS_POWERED",
+        data_id: 17,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+        default: VanillaEntityMetadataDefault::Boolean(false),
+    },
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_IS_IGNITED",
+        data_id: 18,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+        default: VanillaEntityMetadataDefault::Boolean(false),
+    },
+];
+const CREEPER_FLAGS: &[VanillaEntityMetadataFlagSchema] = &[];
+const CREEPER_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamilySchema {
+    family: VanillaEntityMetadataFamily::Creeper,
+    parent: Some(VanillaEntityMetadataFamily::Mob),
+    inherited_field_count: 16,
+    own_fields: CREEPER_FIELDS,
+    own_flags: CREEPER_FLAGS,
+};
+
 const SLIME_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[VanillaEntityMetadataFieldSchema {
     name: "ID_SIZE",
     data_id: 16,
@@ -14096,6 +14137,7 @@ pub(super) const fn generated_entity_metadata_schema(
         VanillaEntityMetadataFamily::LivingEntity => &LIVINGENTITY_SCHEMA,
         VanillaEntityMetadataFamily::Mob => &MOB_SCHEMA,
         VanillaEntityMetadataFamily::Allay => &ALLAY_SCHEMA,
+        VanillaEntityMetadataFamily::Creeper => &CREEPER_SCHEMA,
         VanillaEntityMetadataFamily::Slime => &SLIME_SCHEMA,
         VanillaEntityMetadataFamily::Shulker => &SHULKER_SCHEMA,
         VanillaEntityMetadataFamily::Zombie => &ZOMBIE_SCHEMA,

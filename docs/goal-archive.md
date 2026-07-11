@@ -9779,3 +9779,10 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] 从 generated catalog 建立 `AgeableMob -> PolarBear` family：BOOLEAN standing
   id18/default false；world 站立动画删除手抄 metadata id/default，现有动画与 renderer
   行为保持不变。
+
+## 2026-07-11：Generated entity metadata consumer（Creeper）
+
+- [x] 从 generated catalog 建立 `Mob -> Creeper` family：INT swell-dir
+  id16/default -1、BOOLEAN powered id17/default false、ignited id18/default false；world
+  swell 动画、native charged layer 与 debug-save 删除手抄 synced id/default。非 synced
+  `Fuse` / `ExplosionRadius` save defaults 仍由 native input 语义 owner 管理。

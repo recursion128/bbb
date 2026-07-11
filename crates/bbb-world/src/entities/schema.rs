@@ -15,6 +15,7 @@ pub enum VanillaEntityMetadataFamily {
     LivingEntity,
     Mob,
     Allay,
+    Creeper,
     Slime,
     Shulker,
     Zombie,
@@ -306,6 +307,7 @@ mod tests {
             VanillaEntityMetadataFamily::LivingEntity,
             VanillaEntityMetadataFamily::Mob,
             VanillaEntityMetadataFamily::Allay,
+            VanillaEntityMetadataFamily::Creeper,
             VanillaEntityMetadataFamily::Slime,
             VanillaEntityMetadataFamily::Shulker,
             VanillaEntityMetadataFamily::Zombie,
@@ -382,6 +384,16 @@ mod tests {
         assert_eq!(VANILLA_ALLAY_CAN_DUPLICATE_DATA_ID, 17);
         assert!(!VANILLA_ALLAY_DEFAULT_DANCING);
         assert!(VANILLA_ALLAY_DEFAULT_CAN_DUPLICATE);
+        let creeper = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Creeper);
+        assert_eq!(creeper.parent, Some(VanillaEntityMetadataFamily::Mob));
+        assert_eq!(creeper.inherited_field_count, 16);
+        assert_eq!(creeper.own_fields.len(), 3);
+        assert_eq!(VANILLA_CREEPER_SWELL_DIR_DATA_ID, 16);
+        assert_eq!(VANILLA_CREEPER_POWERED_DATA_ID, 17);
+        assert_eq!(VANILLA_CREEPER_IGNITED_DATA_ID, 18);
+        assert_eq!(VANILLA_CREEPER_DEFAULT_SWELL_DIR, -1);
+        assert!(!VANILLA_CREEPER_DEFAULT_POWERED);
+        assert!(!VANILLA_CREEPER_DEFAULT_IGNITED);
         let polar_bear = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::PolarBear);
         assert_eq!(
             polar_bear.parent,
