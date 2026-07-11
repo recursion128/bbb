@@ -153,6 +153,13 @@ class ObjectiveRenderTypeEntry:
     serialized_name: str
 
 
+@dataclass(frozen=True)
+class AdvancementFrameTypeEntry:
+    constant_name: str
+    ordinal: int
+    serialized_name: str
+
+
 def _fail(source: JavaSource, expression: JavaExpression, message: str) -> None:
     span = expression.span
     raise GameplayIdExtractionError(
@@ -599,6 +606,24 @@ def objective_render_type_entries(
         )
     _validate(entries, "objective render type", "ordinal")
     _validate(entries, "objective render type", "serialized_name")
+    return entries
+
+
+def advancement_frame_type_entries(
+    source: JavaSource, expected_count: int = 3
+) -> list[AdvancementFrameTypeEntry]:
+    entries = []
+    for ordinal, (name, arguments) in enumerate(_enum_constants(source)):
+        if len(arguments) != 2:
+            expression = arguments[0] if arguments else source.expression(source.types[0].node)
+            _fail(source, expression, f"advancement frame type {name} must have two arguments")
+        entries.append(AdvancementFrameTypeEntry(name, ordinal, _string(source, arguments[0])))
+    if len(entries) != expected_count:
+        raise GameplayIdExtractionError(
+            f"expected {expected_count} advancement frame types, extracted {len(entries)}"
+        )
+    _validate(entries, "advancement frame type", "ordinal")
+    _validate(entries, "advancement frame type", "serialized_name")
     return entries
 
 

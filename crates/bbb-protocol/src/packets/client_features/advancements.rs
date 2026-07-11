@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 
+pub use crate::advancement_frame_types::AdvancementFrameType;
 use crate::codec::{Decoder, ProtocolError, Result};
 
 use super::super::{
@@ -49,28 +50,6 @@ pub struct AdvancementIconSummary {
     pub item_id: i32,
     pub count: i32,
     pub component_patch: DataComponentPatchSummary,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum AdvancementFrameType {
-    Task,
-    Challenge,
-    Goal,
-}
-
-impl AdvancementFrameType {
-    fn from_ordinal(ordinal: i32) -> Result<Self> {
-        Ok(match ordinal {
-            0 => Self::Task,
-            1 => Self::Challenge,
-            2 => Self::Goal,
-            other => {
-                return Err(ProtocolError::InvalidData(format!(
-                    "invalid advancement frame type ordinal {other}"
-                )))
-            }
-        })
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -145,7 +124,10 @@ fn decode_advancement_display_summary(
     let title = super::super::decode_component_summary_from_decoder(decoder)?;
     let description = super::super::decode_component_summary_from_decoder(decoder)?;
     let icon = decode_advancement_icon_summary(decoder)?;
-    let frame_type = AdvancementFrameType::from_ordinal(decoder.read_var_i32()?)?;
+    let ordinal = decoder.read_var_i32()?;
+    let frame_type = AdvancementFrameType::from_ordinal(ordinal).ok_or_else(|| {
+        ProtocolError::InvalidData(format!("invalid advancement frame type ordinal {ordinal}"))
+    })?;
     let flags = decoder.read_i32()?;
     let background = if flags & 1 != 0 {
         Some(read_identifier(decoder)?)

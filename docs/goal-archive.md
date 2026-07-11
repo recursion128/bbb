@@ -10550,3 +10550,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   world scoreboard 删除平行名称 match。新增 invalid ordinal 诊断测试，生成完整性/唯一性/
   反向门禁以及 protocol/world/net/native scoreboard focused tests 均通过；scoreboard method、
   number format 与 HUD 渲染语义仍由原 owner 手写。
+
+## 2026-07-11：Generated advancement frame type catalog
+
+- [x] gameplay-id extractor 通过共享 Tree-sitter frontend 读取 vanilla 顶层
+  `AdvancementType` 的 `TASK/CHALLENGE/GOAL` 声明顺序及显式 serialized name，生成
+  typed `AdvancementFrameType` catalog/ordinal/name lookup。protocol advancements facade
+  保持原 re-export，删除 decode ordinal match并新增 invalid ordinal 诊断测试。生成完整性/
+  唯一性/反向门禁以及 protocol/world/net/native advancement focused tests 不改语义通过；
+  chat color、toast、widget frame 和 hover 渲染仍由 native 语义 owner 手写。

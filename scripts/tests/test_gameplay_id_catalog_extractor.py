@@ -11,6 +11,7 @@ sys.path.insert(0, str(SCRIPTS))
 from gameplay_id_catalog_extractor import (  # noqa: E402
     GameplayIdExtractionError,
     attribute_entries,
+    advancement_frame_type_entries,
     client_game_event_type_entries,
     client_command_action_entries,
     custom_chat_completions_action_entries,
@@ -405,6 +406,30 @@ public class ObjectiveCriteria {
                 for entry in objective_render_type_entries(source)
             ],
             [("INTEGER", 0, "integer"), ("HEARTS", 1, "hearts")],
+        )
+
+    def test_advancement_frame_types_preserve_top_level_order_and_names(self) -> None:
+        source = parse_source(
+            "fixture/AdvancementType.java",
+            b"""
+package fixture;
+public enum AdvancementType {
+  TASK("task", ChatFormatting.GREEN),
+  CHALLENGE("challenge", ChatFormatting.DARK_PURPLE),
+  GOAL("goal", ChatFormatting.GREEN);
+}
+""",
+        )
+        self.assertEqual(
+            [
+                (entry.constant_name, entry.ordinal, entry.serialized_name)
+                for entry in advancement_frame_type_entries(source)
+            ],
+            [
+                ("TASK", 0, "task"),
+                ("CHALLENGE", 1, "challenge"),
+                ("GOAL", 2, "goal"),
+            ],
         )
 
     def test_unsupported_register_shape_reports_source_span(self) -> None:

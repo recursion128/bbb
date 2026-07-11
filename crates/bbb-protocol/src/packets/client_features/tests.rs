@@ -887,6 +887,32 @@ fn rejects_invalid_update_advancements_identifier() {
 }
 
 #[test]
+fn rejects_invalid_advancement_frame_type_ordinal() {
+    let mut payload = Encoder::new();
+    payload.write_bool(false);
+    payload.write_var_i32(1);
+    payload.write_string("minecraft:story/root");
+    payload.write_bool(false);
+    payload.write_bool(true);
+    payload.write_bytes(&nbt_string_root("Root"));
+    payload.write_bytes(&nbt_string_root("Description"));
+    payload.write_var_i32(42);
+    payload.write_var_i32(1);
+    payload.write_var_i32(0);
+    payload.write_var_i32(0);
+    payload.write_var_i32(3);
+
+    let error = decode_play_clientbound(
+        ids::play::CLIENTBOUND_UPDATE_ADVANCEMENTS,
+        &payload.into_inner(),
+    )
+    .unwrap_err();
+    assert!(error
+        .to_string()
+        .contains("invalid advancement frame type ordinal 3"));
+}
+
+#[test]
 fn decodes_tag_query_packet_raw_nbt() {
     let mut payload = Encoder::new();
     payload.write_var_i32(12);
