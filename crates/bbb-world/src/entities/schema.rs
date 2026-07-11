@@ -38,6 +38,7 @@ pub enum VanillaEntityMetadataFamily {
     Vex,
     Creaking,
     Strider,
+    Zoglin,
     AbstractFish,
     Pufferfish,
     VehicleEntity,
@@ -319,6 +320,7 @@ mod tests {
             VanillaEntityMetadataFamily::Vex,
             VanillaEntityMetadataFamily::Creaking,
             VanillaEntityMetadataFamily::Strider,
+            VanillaEntityMetadataFamily::Zoglin,
             VanillaEntityMetadataFamily::AbstractFish,
             VanillaEntityMetadataFamily::Pufferfish,
             VanillaEntityMetadataFamily::VehicleEntity,
@@ -695,6 +697,21 @@ mod tests {
         assert_eq!(VANILLA_STRIDER_SUFFOCATING_DATA_ID, 19);
         assert_eq!(VANILLA_STRIDER_DEFAULT_BOOST_TIME, 0);
         assert!(!VANILLA_STRIDER_DEFAULT_SUFFOCATING);
+        let zoglin = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Zoglin);
+        assert_eq!(zoglin.parent, Some(VanillaEntityMetadataFamily::Mob));
+        assert_eq!(zoglin.inherited_field_count, 16);
+        assert_eq!(
+            zoglin.own_fields,
+            &[VanillaEntityMetadataFieldSchema {
+                name: "DATA_BABY_ID",
+                data_id: 16,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+                default: VanillaEntityMetadataDefault::Boolean(false),
+            }]
+        );
+        assert_eq!(VANILLA_ZOGLIN_BABY_DATA_ID, 16);
+        assert!(!VANILLA_ZOGLIN_DEFAULT_BABY);
         let abstract_fish =
             vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::AbstractFish);
         assert_eq!(abstract_fish.parent, Some(VanillaEntityMetadataFamily::Mob));

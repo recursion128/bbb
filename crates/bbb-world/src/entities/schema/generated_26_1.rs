@@ -156,6 +156,8 @@ const GENERATED_VANILLA_STRIDER_BOOST_TIME_DATA_ID: u8 = 18;
 pub const VANILLA_STRIDER_BOOST_TIME_DATA_ID: u8 = GENERATED_VANILLA_STRIDER_BOOST_TIME_DATA_ID;
 const GENERATED_VANILLA_STRIDER_SUFFOCATING_DATA_ID: u8 = 19;
 pub const VANILLA_STRIDER_SUFFOCATING_DATA_ID: u8 = GENERATED_VANILLA_STRIDER_SUFFOCATING_DATA_ID;
+const GENERATED_VANILLA_ZOGLIN_BABY_DATA_ID: u8 = 16;
+pub const VANILLA_ZOGLIN_BABY_DATA_ID: u8 = GENERATED_VANILLA_ZOGLIN_BABY_DATA_ID;
 const GENERATED_VANILLA_ABSTRACT_FISH_FROM_BUCKET_DATA_ID: u8 = 16;
 pub const VANILLA_ABSTRACT_FISH_FROM_BUCKET_DATA_ID: u8 =
     GENERATED_VANILLA_ABSTRACT_FISH_FROM_BUCKET_DATA_ID;
@@ -384,6 +386,8 @@ const GENERATED_VANILLA_STRIDER_DEFAULT_BOOST_TIME: i32 = 0;
 pub const VANILLA_STRIDER_DEFAULT_BOOST_TIME: i32 = GENERATED_VANILLA_STRIDER_DEFAULT_BOOST_TIME;
 const GENERATED_VANILLA_STRIDER_DEFAULT_SUFFOCATING: bool = false;
 pub const VANILLA_STRIDER_DEFAULT_SUFFOCATING: bool = GENERATED_VANILLA_STRIDER_DEFAULT_SUFFOCATING;
+const GENERATED_VANILLA_ZOGLIN_DEFAULT_BABY: bool = false;
+pub const VANILLA_ZOGLIN_DEFAULT_BABY: bool = GENERATED_VANILLA_ZOGLIN_DEFAULT_BABY;
 const GENERATED_VANILLA_ABSTRACT_FISH_DEFAULT_FROM_BUCKET: bool = false;
 pub const VANILLA_ABSTRACT_FISH_DEFAULT_FROM_BUCKET: bool =
     GENERATED_VANILLA_ABSTRACT_FISH_DEFAULT_FROM_BUCKET;
@@ -13589,6 +13593,21 @@ const STRIDER_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataF
     own_flags: STRIDER_FLAGS,
 };
 
+const ZOGLIN_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[VanillaEntityMetadataFieldSchema {
+    name: "DATA_BABY_ID",
+    data_id: 16,
+    serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+    default: VanillaEntityMetadataDefault::Boolean(false),
+}];
+const ZOGLIN_FLAGS: &[VanillaEntityMetadataFlagSchema] = &[];
+const ZOGLIN_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamilySchema {
+    family: VanillaEntityMetadataFamily::Zoglin,
+    parent: Some(VanillaEntityMetadataFamily::Mob),
+    inherited_field_count: 16,
+    own_fields: ZOGLIN_FIELDS,
+    own_flags: ZOGLIN_FLAGS,
+};
+
 const ABSTRACTFISH_FIELDS: &[VanillaEntityMetadataFieldSchema] =
     &[VanillaEntityMetadataFieldSchema {
         name: "FROM_BUCKET",
@@ -13867,6 +13886,7 @@ pub(super) const fn generated_entity_metadata_schema(
         VanillaEntityMetadataFamily::Vex => &VEX_SCHEMA,
         VanillaEntityMetadataFamily::Creaking => &CREAKING_SCHEMA,
         VanillaEntityMetadataFamily::Strider => &STRIDER_SCHEMA,
+        VanillaEntityMetadataFamily::Zoglin => &ZOGLIN_SCHEMA,
         VanillaEntityMetadataFamily::AbstractFish => &ABSTRACTFISH_SCHEMA,
         VanillaEntityMetadataFamily::Pufferfish => &PUFFERFISH_SCHEMA,
         VanillaEntityMetadataFamily::VehicleEntity => &VEHICLEENTITY_SCHEMA,

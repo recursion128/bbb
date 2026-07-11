@@ -9727,3 +9727,9 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   `DATA_BOOST_TIME` id 18/default 0 与 BOOLEAN `DATA_SUFFOCATING` id 19/default false；
   native cold model/instance projection 删除手抄 suffocating id/default，并预留 generated
   boost-time compatibility aliases。未修改 saddle/ridden、环境温度判断或 renderer。
+
+## 2026-07-11：Generated entity metadata consumer（Zoglin）
+
+- [x] 从 generated catalog 建立 `Mob -> Zoglin` compatibility family：BOOLEAN
+  `DATA_BABY_ID` id 16/default false 替代 native F3+I 保存路径的手抄值；focused tests
+  锁定继承 offset、serializer/default 与 `IsBaby` 保存语义。未修改 attack event、模型或 AI。
