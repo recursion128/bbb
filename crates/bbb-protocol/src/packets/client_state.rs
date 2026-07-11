@@ -391,9 +391,15 @@ pub(super) fn decode_player_health(decoder: &mut Decoder<'_>) -> Result<PlayerHe
 }
 
 pub(super) fn decode_set_held_slot(decoder: &mut Decoder<'_>) -> Result<SetHeldSlot> {
-    Ok(SetHeldSlot {
+    let update = SetHeldSlot {
         slot: decoder.read_var_i32()?,
-    })
+    };
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after set held slot packet".to_string(),
+        ));
+    }
+    Ok(update)
 }
 
 pub(super) fn decode_default_spawn_position(

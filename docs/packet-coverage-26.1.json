@@ -8754,29 +8754,46 @@
       "constant_name": "CLIENTBOUND_SET_HELD_SLOT",
       "coverage": {
         "canonical_apply": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/client/local_player.rs#apply_held_slot",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleSetHeldSlot"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/client_state/tests.rs#decodes_held_slot",
+            "vanilla:net/minecraft/network/protocol/game/ClientboundSetHeldSlotPacket.java#STREAM_CODEC"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "ownership": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/play_apply.rs#PlayClientbound::SetHeldSlot"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "runtime_side_effect": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-native/src/runtime.rs#hud_selected_slot",
+            "crates/bbb-native/src/input/mouse.rs#selected_hotbar_slot",
+            "crates/bbb-world/src/client/inventory.rs#selected_hotbar_slot"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/client_state/tests.rs#decodes_held_slot",
+            "crates/bbb-world/src/client/local_player.rs#local_player_packets_update_canonical_state",
+            "crates/bbb-net/src/probe/play.rs#probe_applies_local_player_status_packets_to_world",
+            "crates/bbb-native/src/runtime/events/client_state/tests.rs#held_slot_updates_world_counters"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "clientbound",

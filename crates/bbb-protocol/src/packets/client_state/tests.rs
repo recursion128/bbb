@@ -462,6 +462,16 @@ fn decodes_held_slot() {
         packet,
         PlayClientbound::SetHeldSlot(SetHeldSlot { slot: 6 })
     );
+
+    let mut trailing = Encoder::new();
+    trailing.write_var_i32(6);
+    trailing.write_u8(0);
+    assert!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_SET_HELD_SLOT, &trailing.into_inner())
+            .unwrap_err()
+            .to_string()
+            .contains("trailing bytes after set held slot packet")
+    );
 }
 
 #[test]

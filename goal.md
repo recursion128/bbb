@@ -390,6 +390,8 @@ SetHealth 的 health/food/saturation wire、local-player assignment、HUD projec
 world/net/native tests 已全行闭合；health 只接收服务器结果，不在客户端判定权威伤害或自动 respawn。
 SetExperience 的 progress/level/total wire 顺序、local-player assignment、HUD/container consumers 与
 world/net/native tests 已全行闭合。
+SetHeldSlot 的 slot VarInt wire、0..8 validation、local inventory selection 与 HUD/input/container
+consumers 已全行闭合；非法 slot 与 vanilla 一致安全忽略。
 
 完成标准：全部 vanilla 26.1 catalog entry 都有矩阵行；所有目标客户端适用项为
 `complete`，其余只有带 vanilla 依据的 `not-applicable` 或带重启判据的窄 `deferred`；

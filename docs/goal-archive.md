@@ -11167,3 +11167,10 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   progress f32、level VarInt、total VarInt wire（刻意不同于 Java 构造参数顺序），并拒绝 trailing
   bytes；local-player canonical state、HUD progress/level、container consumers 与 tests 使五格闭合。
 - [x] 该 packet 只接受服务器同步的玩家经验结果；未从客户端行为推导、奖励或写回权威经验值。
+
+## 2026-07-11：set-held-slot packet coverage audit
+
+- [x] 对照 `ClientboundSetHeldSlotPacket` 与 `ClientPacketListener.handleSetHeldSlot` 锁定 slot
+  VarInt wire 并拒绝 trailing bytes；bbb 与 vanilla 均只接受 hotbar 0..8，非法值安全忽略。
+- [x] server-synchronized selection 已进入 local inventory、HUD hotbar、input/item-use 和 container
+  consumers；protocol/world/net/native tests 使五格全部闭合，本地输入的 serverbound 路径保持独立。
