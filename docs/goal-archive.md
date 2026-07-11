@@ -10352,3 +10352,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   JSON root/value shape、namespace、禁止静默忽略 nested ref、顺序、固定数量与唯一性均受
   fixtures/update/check 锁定；本切片不改变 session `UpdateTags` owner，也不把 glass pane/
   stained pane 的独立 IronBarsBlock class 语义混入 bars tag。
+
+## 2026-07-11：Resolved terrain block-tag memberships
+
+- [x] block-membership extractor 将 bars 的 direct-only JSON reader 收敛为单一 nested tag
+  resolver，按稳定 source order 展开 `#tag`、首次出现去重，并对 missing ref、cycle、非法
+  root/value/namespace 与固定数量显式失败。generator 现从 vanilla block tags 生成 doors
+  21、trapdoors 21、rails 4、all_signs 48、campfires 2（以及既有 bars 9）六组 fallback；
+  world terrain 删除对应五张 hand-written family match，完整 generated sets 直接进入 cutout
+  coverage test。未迁移 tag 不能精确表达的 block class/render behavior，也未改 session tag
+  state 与服务器 authority。

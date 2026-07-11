@@ -92,38 +92,67 @@ def air_blocks(
     return _builder_property_blocks(source, "air", expected_count)
 
 
-def direct_block_tag_membership(
-    relative_path: str, raw: bytes, expected_count: int
+def block_tag_membership(
+    tag_resources: dict[str, tuple[str, bytes]],
+    tag_id: str,
+    expected_count: int,
 ) -> tuple[str, ...]:
-    try:
-        root = json.loads(raw)
-    except (json.JSONDecodeError, UnicodeDecodeError) as error:
-        raise BlockMembershipCatalogExtractionError(
-            f"{relative_path}: invalid block tag JSON: {error}"
-        ) from error
-    if not isinstance(root, dict) or set(root) - {"replace", "values"}:
-        raise BlockMembershipCatalogExtractionError(
-            f"{relative_path}: unsupported block tag root"
-        )
-    values = root.get("values")
-    if not isinstance(values, list):
-        raise BlockMembershipCatalogExtractionError(
-            f"{relative_path}: block tag values is not an array"
-        )
-    entries: list[str] = []
-    for index, value in enumerate(values):
+    parsed: dict[str, list[str]] = {}
+    for resource_id, (relative_path, raw) in sorted(tag_resources.items()):
+        try:
+            root = json.loads(raw)
+        except (json.JSONDecodeError, UnicodeDecodeError) as error:
+            raise BlockMembershipCatalogExtractionError(
+                f"{relative_path}: invalid block tag JSON: {error}"
+            ) from error
         if (
-            not isinstance(value, str)
-            or value.startswith("#")
-            or not value.startswith("minecraft:")
+            not isinstance(root, dict)
+            or set(root) - {"replace", "values"}
+            or root.get("replace", False) not in {True, False}
         ):
             raise BlockMembershipCatalogExtractionError(
-                f"{relative_path}: unsupported direct block tag value at index {index}"
+                f"{relative_path}: unsupported block tag root"
             )
-        entries.append(value)
-    if len(entries) != expected_count or len(set(entries)) != expected_count:
+        values = root.get("values")
+        if not isinstance(values, list):
+            raise BlockMembershipCatalogExtractionError(
+                f"{relative_path}: block tag values is not an array"
+            )
+        parsed_values: list[str] = []
+        for index, value in enumerate(values):
+            if not isinstance(value, str) or not value.removeprefix("#").startswith(
+                "minecraft:"
+            ):
+                raise BlockMembershipCatalogExtractionError(
+                    f"{relative_path}: unsupported block tag value at index {index}"
+                )
+            parsed_values.append(value)
+        parsed[resource_id] = parsed_values
+
+    resolving: list[str] = []
+
+    def resolve(resource_id: str) -> list[str]:
+        if resource_id in resolving:
+            raise BlockMembershipCatalogExtractionError(
+                f"block tag reference cycle: {' -> '.join([*resolving, resource_id])}"
+            )
+        values = parsed.get(resource_id)
+        if values is None:
+            raise BlockMembershipCatalogExtractionError(
+                f"missing required block tag reference {resource_id}"
+            )
+        resolving.append(resource_id)
+        resolved: list[str] = []
+        for value in values:
+            resolved.extend(resolve(value[1:]) if value.startswith("#") else [value])
+        resolving.pop()
+        return resolved
+
+    entries = tuple(dict.fromkeys(resolve(tag_id)))
+    if len(entries) != expected_count:
+        relative_path = tag_resources.get(tag_id, (tag_id, b""))[0]
         raise BlockMembershipCatalogExtractionError(
-            f"{relative_path}: expected {expected_count} unique direct block tag values, "
-            f"extracted {len(entries)}/{len(set(entries))}"
+            f"{relative_path}: expected {expected_count} unique resolved block tag values, "
+            f"extracted {len(entries)}"
         )
-    return tuple(entries)
+    return entries

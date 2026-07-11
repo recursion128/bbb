@@ -6,7 +6,11 @@ use crate::{BlockPos, ChunkPos, PaletteKind};
 
 mod generated_26_1;
 
-use generated_26_1::{VANILLA_AIR_BLOCKS, VANILLA_BARS_BLOCKS, VANILLA_NO_TERRAIN_PARTICLE_BLOCKS};
+use generated_26_1::{
+    VANILLA_AIR_BLOCKS, VANILLA_BARS_BLOCKS, VANILLA_CAMPFIRE_BLOCKS, VANILLA_DOOR_BLOCKS,
+    VANILLA_NO_TERRAIN_PARTICLE_BLOCKS, VANILLA_RAIL_BLOCKS, VANILLA_SIGN_BLOCKS,
+    VANILLA_TRAPDOOR_BLOCKS,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct BlockProbe {
@@ -405,67 +409,15 @@ fn is_chain_block_name(name: &str) -> bool {
 }
 
 fn is_door_block_name(name: &str) -> bool {
-    matches!(
-        name,
-        "minecraft:oak_door"
-            | "minecraft:spruce_door"
-            | "minecraft:birch_door"
-            | "minecraft:jungle_door"
-            | "minecraft:acacia_door"
-            | "minecraft:cherry_door"
-            | "minecraft:dark_oak_door"
-            | "minecraft:pale_oak_door"
-            | "minecraft:mangrove_door"
-            | "minecraft:bamboo_door"
-            | "minecraft:crimson_door"
-            | "minecraft:warped_door"
-            | "minecraft:iron_door"
-            | "minecraft:copper_door"
-            | "minecraft:exposed_copper_door"
-            | "minecraft:weathered_copper_door"
-            | "minecraft:oxidized_copper_door"
-            | "minecraft:waxed_copper_door"
-            | "minecraft:waxed_exposed_copper_door"
-            | "minecraft:waxed_weathered_copper_door"
-            | "minecraft:waxed_oxidized_copper_door"
-    )
+    VANILLA_DOOR_BLOCKS.contains(&name)
 }
 
 fn is_trapdoor_block_name(name: &str) -> bool {
-    matches!(
-        name,
-        "minecraft:oak_trapdoor"
-            | "minecraft:spruce_trapdoor"
-            | "minecraft:birch_trapdoor"
-            | "minecraft:jungle_trapdoor"
-            | "minecraft:acacia_trapdoor"
-            | "minecraft:cherry_trapdoor"
-            | "minecraft:dark_oak_trapdoor"
-            | "minecraft:pale_oak_trapdoor"
-            | "minecraft:mangrove_trapdoor"
-            | "minecraft:bamboo_trapdoor"
-            | "minecraft:crimson_trapdoor"
-            | "minecraft:warped_trapdoor"
-            | "minecraft:iron_trapdoor"
-            | "minecraft:copper_trapdoor"
-            | "minecraft:exposed_copper_trapdoor"
-            | "minecraft:weathered_copper_trapdoor"
-            | "minecraft:oxidized_copper_trapdoor"
-            | "minecraft:waxed_copper_trapdoor"
-            | "minecraft:waxed_exposed_copper_trapdoor"
-            | "minecraft:waxed_weathered_copper_trapdoor"
-            | "minecraft:waxed_oxidized_copper_trapdoor"
-    )
+    VANILLA_TRAPDOOR_BLOCKS.contains(&name)
 }
 
 fn is_rail_block_name(name: &str) -> bool {
-    matches!(
-        name,
-        "minecraft:rail"
-            | "minecraft:powered_rail"
-            | "minecraft:detector_rail"
-            | "minecraft:activator_rail"
-    )
+    VANILLA_RAIL_BLOCKS.contains(&name)
 }
 
 fn is_ladder_block_name(name: &str) -> bool {
@@ -616,8 +568,7 @@ fn is_no_collision_banner_block_name(name: &str) -> bool {
 }
 
 fn is_sign_block_name(name: &str) -> bool {
-    name.strip_prefix("minecraft:")
-        .is_some_and(|path| path.ends_with("_sign"))
+    VANILLA_SIGN_BLOCKS.contains(&name)
 }
 
 fn is_lantern_block_name(name: &str) -> bool {
@@ -655,7 +606,7 @@ fn is_end_rod_block_name(name: &str) -> bool {
 }
 
 fn is_campfire_block_name(name: &str) -> bool {
-    matches!(name, "minecraft:campfire" | "minecraft:soul_campfire")
+    VANILLA_CAMPFIRE_BLOCKS.contains(&name)
 }
 
 fn is_pointed_dripstone_block_name(name: &str) -> bool {
@@ -803,17 +754,7 @@ mod tests {
                 TerrainMaterialClass::Cutout
             );
         }
-        for name in [
-            "minecraft:iron_bars",
-            "minecraft:copper_bars",
-            "minecraft:exposed_copper_bars",
-            "minecraft:weathered_copper_bars",
-            "minecraft:oxidized_copper_bars",
-            "minecraft:waxed_copper_bars",
-            "minecraft:waxed_exposed_copper_bars",
-            "minecraft:waxed_weathered_copper_bars",
-            "minecraft:waxed_oxidized_copper_bars",
-        ] {
+        for &name in VANILLA_BARS_BLOCKS {
             assert_eq!(
                 classify_terrain_material(Some(name)),
                 TerrainMaterialClass::Cutout
@@ -839,68 +780,19 @@ mod tests {
             classify_terrain_material(Some("minecraft:chain_command_block")),
             TerrainMaterialClass::Opaque
         );
-        for name in [
-            "minecraft:oak_door",
-            "minecraft:spruce_door",
-            "minecraft:birch_door",
-            "minecraft:jungle_door",
-            "minecraft:acacia_door",
-            "minecraft:cherry_door",
-            "minecraft:dark_oak_door",
-            "minecraft:pale_oak_door",
-            "minecraft:mangrove_door",
-            "minecraft:bamboo_door",
-            "minecraft:crimson_door",
-            "minecraft:warped_door",
-            "minecraft:iron_door",
-            "minecraft:copper_door",
-            "minecraft:exposed_copper_door",
-            "minecraft:weathered_copper_door",
-            "minecraft:oxidized_copper_door",
-            "minecraft:waxed_copper_door",
-            "minecraft:waxed_exposed_copper_door",
-            "minecraft:waxed_weathered_copper_door",
-            "minecraft:waxed_oxidized_copper_door",
-        ] {
+        for &name in VANILLA_DOOR_BLOCKS {
             assert_eq!(
                 classify_terrain_material(Some(name)),
                 TerrainMaterialClass::Cutout
             );
         }
-        for name in [
-            "minecraft:oak_trapdoor",
-            "minecraft:spruce_trapdoor",
-            "minecraft:birch_trapdoor",
-            "minecraft:jungle_trapdoor",
-            "minecraft:acacia_trapdoor",
-            "minecraft:cherry_trapdoor",
-            "minecraft:dark_oak_trapdoor",
-            "minecraft:pale_oak_trapdoor",
-            "minecraft:mangrove_trapdoor",
-            "minecraft:bamboo_trapdoor",
-            "minecraft:crimson_trapdoor",
-            "minecraft:warped_trapdoor",
-            "minecraft:iron_trapdoor",
-            "minecraft:copper_trapdoor",
-            "minecraft:exposed_copper_trapdoor",
-            "minecraft:weathered_copper_trapdoor",
-            "minecraft:oxidized_copper_trapdoor",
-            "minecraft:waxed_copper_trapdoor",
-            "minecraft:waxed_exposed_copper_trapdoor",
-            "minecraft:waxed_weathered_copper_trapdoor",
-            "minecraft:waxed_oxidized_copper_trapdoor",
-        ] {
+        for &name in VANILLA_TRAPDOOR_BLOCKS {
             assert_eq!(
                 classify_terrain_material(Some(name)),
                 TerrainMaterialClass::Cutout
             );
         }
-        for name in [
-            "minecraft:rail",
-            "minecraft:powered_rail",
-            "minecraft:detector_rail",
-            "minecraft:activator_rail",
-        ] {
+        for &name in VANILLA_RAIL_BLOCKS {
             assert_eq!(
                 classify_terrain_material(Some(name)),
                 TerrainMaterialClass::Cutout
@@ -973,16 +865,7 @@ mod tests {
                 TerrainMaterialClass::Cutout
             );
         }
-        for name in [
-            "minecraft:oak_sign",
-            "minecraft:crimson_sign",
-            "minecraft:oak_wall_sign",
-            "minecraft:warped_wall_sign",
-            "minecraft:oak_hanging_sign",
-            "minecraft:bamboo_hanging_sign",
-            "minecraft:oak_wall_hanging_sign",
-            "minecraft:crimson_wall_hanging_sign",
-        ] {
+        for &name in VANILLA_SIGN_BLOCKS {
             assert_eq!(
                 classify_terrain_material(Some(name)),
                 TerrainMaterialClass::Cutout
@@ -1020,12 +903,13 @@ mod tests {
                 TerrainMaterialClass::Cutout
             );
         }
-        for name in [
-            "minecraft:end_rod",
-            "minecraft:campfire",
-            "minecraft:soul_campfire",
-            "minecraft:pointed_dripstone",
-        ] {
+        for name in ["minecraft:end_rod", "minecraft:pointed_dripstone"] {
+            assert_eq!(
+                classify_terrain_material(Some(name)),
+                TerrainMaterialClass::Cutout
+            );
+        }
+        for &name in VANILLA_CAMPFIRE_BLOCKS {
             assert_eq!(
                 classify_terrain_material(Some(name)),
                 TerrainMaterialClass::Cutout

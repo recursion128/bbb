@@ -21,6 +21,115 @@ pub(super) const VANILLA_BARS_BLOCKS: &[&str] = &[
     "minecraft:waxed_oxidized_copper_bars",
 ];
 
+pub(super) const VANILLA_DOOR_BLOCKS: &[&str] = &[
+    "minecraft:oak_door",
+    "minecraft:spruce_door",
+    "minecraft:birch_door",
+    "minecraft:jungle_door",
+    "minecraft:acacia_door",
+    "minecraft:dark_oak_door",
+    "minecraft:pale_oak_door",
+    "minecraft:crimson_door",
+    "minecraft:warped_door",
+    "minecraft:mangrove_door",
+    "minecraft:bamboo_door",
+    "minecraft:cherry_door",
+    "minecraft:copper_door",
+    "minecraft:exposed_copper_door",
+    "minecraft:weathered_copper_door",
+    "minecraft:oxidized_copper_door",
+    "minecraft:waxed_copper_door",
+    "minecraft:waxed_exposed_copper_door",
+    "minecraft:waxed_weathered_copper_door",
+    "minecraft:waxed_oxidized_copper_door",
+    "minecraft:iron_door",
+];
+
+pub(super) const VANILLA_TRAPDOOR_BLOCKS: &[&str] = &[
+    "minecraft:acacia_trapdoor",
+    "minecraft:birch_trapdoor",
+    "minecraft:dark_oak_trapdoor",
+    "minecraft:pale_oak_trapdoor",
+    "minecraft:jungle_trapdoor",
+    "minecraft:oak_trapdoor",
+    "minecraft:spruce_trapdoor",
+    "minecraft:crimson_trapdoor",
+    "minecraft:warped_trapdoor",
+    "minecraft:mangrove_trapdoor",
+    "minecraft:bamboo_trapdoor",
+    "minecraft:cherry_trapdoor",
+    "minecraft:iron_trapdoor",
+    "minecraft:copper_trapdoor",
+    "minecraft:exposed_copper_trapdoor",
+    "minecraft:weathered_copper_trapdoor",
+    "minecraft:oxidized_copper_trapdoor",
+    "minecraft:waxed_copper_trapdoor",
+    "minecraft:waxed_exposed_copper_trapdoor",
+    "minecraft:waxed_weathered_copper_trapdoor",
+    "minecraft:waxed_oxidized_copper_trapdoor",
+];
+
+pub(super) const VANILLA_RAIL_BLOCKS: &[&str] = &[
+    "minecraft:rail",
+    "minecraft:powered_rail",
+    "minecraft:detector_rail",
+    "minecraft:activator_rail",
+];
+
+pub(super) const VANILLA_SIGN_BLOCKS: &[&str] = &[
+    "minecraft:oak_sign",
+    "minecraft:spruce_sign",
+    "minecraft:birch_sign",
+    "minecraft:acacia_sign",
+    "minecraft:jungle_sign",
+    "minecraft:dark_oak_sign",
+    "minecraft:pale_oak_sign",
+    "minecraft:crimson_sign",
+    "minecraft:warped_sign",
+    "minecraft:mangrove_sign",
+    "minecraft:bamboo_sign",
+    "minecraft:cherry_sign",
+    "minecraft:oak_wall_sign",
+    "minecraft:spruce_wall_sign",
+    "minecraft:birch_wall_sign",
+    "minecraft:acacia_wall_sign",
+    "minecraft:jungle_wall_sign",
+    "minecraft:dark_oak_wall_sign",
+    "minecraft:pale_oak_wall_sign",
+    "minecraft:crimson_wall_sign",
+    "minecraft:warped_wall_sign",
+    "minecraft:mangrove_wall_sign",
+    "minecraft:bamboo_wall_sign",
+    "minecraft:cherry_wall_sign",
+    "minecraft:oak_hanging_sign",
+    "minecraft:spruce_hanging_sign",
+    "minecraft:birch_hanging_sign",
+    "minecraft:acacia_hanging_sign",
+    "minecraft:cherry_hanging_sign",
+    "minecraft:jungle_hanging_sign",
+    "minecraft:dark_oak_hanging_sign",
+    "minecraft:pale_oak_hanging_sign",
+    "minecraft:crimson_hanging_sign",
+    "minecraft:warped_hanging_sign",
+    "minecraft:mangrove_hanging_sign",
+    "minecraft:bamboo_hanging_sign",
+    "minecraft:oak_wall_hanging_sign",
+    "minecraft:spruce_wall_hanging_sign",
+    "minecraft:birch_wall_hanging_sign",
+    "minecraft:acacia_wall_hanging_sign",
+    "minecraft:cherry_wall_hanging_sign",
+    "minecraft:jungle_wall_hanging_sign",
+    "minecraft:dark_oak_wall_hanging_sign",
+    "minecraft:pale_oak_wall_hanging_sign",
+    "minecraft:crimson_wall_hanging_sign",
+    "minecraft:warped_wall_hanging_sign",
+    "minecraft:mangrove_wall_hanging_sign",
+    "minecraft:bamboo_wall_hanging_sign",
+];
+
+pub(super) const VANILLA_CAMPFIRE_BLOCKS: &[&str] =
+    &["minecraft:campfire", "minecraft:soul_campfire"];
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -36,10 +145,13 @@ mod tests {
             &["minecraft:air", "minecraft:void_air", "minecraft:cave_air"]
         );
         assert_eq!(VANILLA_BARS_BLOCKS.len(), 9);
-        assert_eq!(VANILLA_BARS_BLOCKS.first(), Some(&"minecraft:iron_bars"));
+        assert_eq!(VANILLA_DOOR_BLOCKS.len(), 21);
+        assert_eq!(VANILLA_TRAPDOOR_BLOCKS.len(), 21);
+        assert_eq!(VANILLA_RAIL_BLOCKS.len(), 4);
+        assert_eq!(VANILLA_SIGN_BLOCKS.len(), 48);
         assert_eq!(
-            VANILLA_BARS_BLOCKS.last(),
-            Some(&"minecraft:waxed_oxidized_copper_bars")
+            VANILLA_CAMPFIRE_BLOCKS,
+            &["minecraft:campfire", "minecraft:soul_campfire"]
         );
     }
 }

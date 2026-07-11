@@ -11,33 +11,61 @@ sys.path.insert(0, str(SCRIPTS))
 from block_membership_catalog_extractor import (  # noqa: E402
     BlockMembershipCatalogExtractionError,
     air_blocks,
-    direct_block_tag_membership,
+    block_tag_membership,
     no_terrain_particle_blocks,
 )
 from vanilla_java_source import parse_source  # noqa: E402
 
 
 class BlockMembershipCatalogExtractorTests(unittest.TestCase):
-    def test_direct_block_tag_membership_preserves_order(self) -> None:
-        self.assertEqual(
-            direct_block_tag_membership(
+    def test_block_tag_membership_resolves_nested_references_in_order(self) -> None:
+        resources = {
+            "minecraft:example": (
                 "data/minecraft/tags/block/example.json",
-                b'{"values":["minecraft:first","minecraft:second"]}',
-                2,
+                b'{"values":["minecraft:first","#minecraft:nested"]}',
             ),
+            "minecraft:nested": (
+                "data/minecraft/tags/block/nested.json",
+                b'{"values":["minecraft:second","minecraft:first"]}',
+            ),
+        }
+        self.assertEqual(
+            block_tag_membership(resources, "minecraft:example", 2),
             ("minecraft:first", "minecraft:second"),
         )
 
-    def test_direct_block_tag_membership_rejects_unresolved_references(self) -> None:
+    def test_block_tag_membership_rejects_unresolved_references(self) -> None:
         with self.assertRaisesRegex(
             BlockMembershipCatalogExtractionError,
-            "unsupported direct block tag value at index 0",
+            "missing required block tag reference minecraft:nested",
         ):
-            direct_block_tag_membership(
-                "data/minecraft/tags/block/example.json",
-                b'{"values":["#minecraft:nested"]}',
+            block_tag_membership(
+                {
+                    "minecraft:example": (
+                        "data/minecraft/tags/block/example.json",
+                        b'{"values":["#minecraft:nested"]}',
+                    )
+                },
+                "minecraft:example",
                 1,
             )
+
+    def test_block_tag_membership_rejects_cycles(self) -> None:
+        resources = {
+            "minecraft:first": (
+                "data/minecraft/tags/block/first.json",
+                b'{"values":["#minecraft:second"]}',
+            ),
+            "minecraft:second": (
+                "data/minecraft/tags/block/second.json",
+                b'{"values":["#minecraft:first"]}',
+            ),
+        }
+        with self.assertRaisesRegex(
+            BlockMembershipCatalogExtractionError,
+            "block tag reference cycle: minecraft:first -> minecraft:second -> minecraft:first",
+        ):
+            block_tag_membership(resources, "minecraft:first", 0)
 
     def test_builder_call_membership_uses_field_order_and_ignores_pseudo_calls(self) -> None:
         source = parse_source(
