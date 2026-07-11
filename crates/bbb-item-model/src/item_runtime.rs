@@ -64,6 +64,7 @@ use crate::{
 
 mod bootstrap_catalog;
 mod icon_model;
+mod item_membership_catalog;
 mod profile_skin;
 
 pub use bootstrap_catalog::{
@@ -241,36 +242,7 @@ const TOOLTIP_TEXT_BLUE: [f32; 4] = [85.0 / 255.0, 85.0 / 255.0, 1.0, 1.0];
 
 const TOOLTIP_TEXT_RED: [f32; 4] = [1.0, 85.0 / 255.0, 85.0 / 255.0, 1.0];
 
-const BREWING_POTION_ITEM_IDS: &[&str] = &[
-    "minecraft:potion",
-    "minecraft:splash_potion",
-    "minecraft:lingering_potion",
-    "minecraft:glass_bottle",
-];
-
-const BREWING_INGREDIENT_ITEM_IDS: &[&str] = &[
-    "minecraft:gunpowder",
-    "minecraft:dragon_breath",
-    "minecraft:glowstone_dust",
-    "minecraft:redstone",
-    "minecraft:nether_wart",
-    "minecraft:breeze_rod",
-    "minecraft:slime_block",
-    "minecraft:stone",
-    "minecraft:cobweb",
-    "minecraft:golden_carrot",
-    "minecraft:fermented_spider_eye",
-    "minecraft:magma_cream",
-    "minecraft:rabbit_foot",
-    "minecraft:turtle_helmet",
-    "minecraft:sugar",
-    "minecraft:pufferfish",
-    "minecraft:glistering_melon_slice",
-    "minecraft:spider_eye",
-    "minecraft:ghast_tear",
-    "minecraft:blaze_powder",
-    "minecraft:phantom_membrane",
-];
+use item_membership_catalog::{BREWING_INGREDIENT_ITEM_IDS, BREWING_POTION_ITEM_IDS};
 
 const ENCHANTMENT_LAPIS_LAZULI_ITEM_IDS: &[&str] = &["minecraft:lapis_lazuli"];
 

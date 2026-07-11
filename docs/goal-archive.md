@@ -10288,3 +10288,15 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   `ParticleDefinitionCatalog`、`ParticleSpriteCatalog` 和 pack precedence 动态加载，不生成
   会屏蔽资源包的固定 vanilla 快照。开放项仅保留 provider/option/GPU presentation parity，
   未把这些渲染行为误标完成。
+
+## 2026-07-11：Generated brewing item memberships
+
+- [x] 新增 item-membership Tree-sitter extractor 与 repo-level update/check，从
+  `BrewingStandMenu.PotionSlot.mayPlaceItem` 的 `ItemStack.is` CST calls 生成 4 个 potion
+  slot item，并从 `PotionBrewing.addVanillaMixes` 的 `addContainerRecipe`/`addMix`/
+  `addStartMix` builder calls 生成按首次声明顺序去重的 21 个 ingredient item。resource id
+  通过 `Items` direct registration 或 `Items.registerBlock`→`Blocks` registration 解析，
+  不以 Java constant 名猜测路径；相关常量无法解析、call qualifier/arity 变化、数量或重复
+  均显式失败。item-model 删除两张手写数组并消费 checked-in generated module，既有
+  protocol-id API 与 client slot behavior 不变；brewing recipes/mix transition 仍是独立行为，
+  未被 membership source extraction 冒充完成。
