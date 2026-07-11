@@ -5,7 +5,14 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 
-from vanilla_java_source import JavaCall, JavaExpression, JavaMethod, JavaSource, SourceSpan
+from vanilla_java_source import (
+    JavaCall,
+    JavaExpression,
+    JavaMethod,
+    JavaSource,
+    SourceSpan,
+    descendants,
+)
 
 
 class ItemMembershipCatalogExtractionError(ValueError):
@@ -16,6 +23,12 @@ class ItemMembershipCatalogExtractionError(ValueError):
 class BrewingMembership:
     potion_slot_item_ids: tuple[str, ...]
     ingredient_item_ids: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class MenuMembership:
+    enchantment_lapis_item_ids: tuple[str, ...]
+    cartography_additional_item_ids: tuple[str, ...]
 
 
 def _fail(source: JavaSource, expression: JavaExpression, message: str) -> None:
@@ -238,3 +251,76 @@ def brewing_membership(
             f"brewing ingredients, extracted {len(ingredient_ids_tuple)}"
         )
     return BrewingMembership(potion_ids, ingredient_ids_tuple)
+
+
+def _unique_item_predicate(
+    source: JavaSource,
+    resources: dict[str, str],
+    expected_count: int,
+) -> tuple[str, ...]:
+    candidates: list[tuple[str, list[JavaCall]]] = []
+    for node in descendants(source.root_node):
+        if node.type != "method_declaration":
+            continue
+        name = node.child_by_field_name("name")
+        body = node.child_by_field_name("body")
+        parameters = node.child_by_field_name("parameters")
+        if (
+            name is None
+            or source.text(name) != "mayPlace"
+            or body is None
+            or parameters is None
+            or len(parameters.named_children) != 1
+        ):
+            continue
+        parameter_name = parameters.named_children[0].child_by_field_name("name")
+        if parameter_name is None:
+            _fail(source, source.expression(node), "mayPlace parameter lacks a name")
+        calls = _calls_in_body(source, source.span(body), {"is"})
+        if calls:
+            candidates.append((source.text(parameter_name), calls))
+    if len(candidates) != 1:
+        raise ItemMembershipCatalogExtractionError(
+            f"{source.relative_path}: expected exactly one item-based mayPlace predicate, "
+            f"found {len(candidates)}"
+        )
+    stack_name, calls = candidates[0]
+    item_ids: list[str] = []
+    for call in calls:
+        if (
+            call.qualifier is None
+            or call.qualifier.canonical != stack_name
+            or len(call.arguments) != 1
+        ):
+            _fail(source, source.expression(call.node), "unsupported menu item predicate")
+        item_ids.append(_resolve_item(source, call.arguments[0], resources))
+    unique_ids = _unique(item_ids)
+    if len(unique_ids) != expected_count:
+        raise ItemMembershipCatalogExtractionError(
+            f"{source.relative_path}: expected {expected_count} menu predicate items, "
+            f"extracted {len(unique_ids)}"
+        )
+    return unique_ids
+
+
+def menu_membership(
+    enchantment_menu_source: JavaSource,
+    cartography_menu_source: JavaSource,
+    items_source: JavaSource,
+    blocks_source: JavaSource,
+    expected_lapis_count: int = 1,
+    expected_cartography_count: int = 3,
+) -> MenuMembership:
+    resources = item_constant_resource_ids(items_source, blocks_source)
+    return MenuMembership(
+        enchantment_lapis_item_ids=_unique_item_predicate(
+            enchantment_menu_source,
+            resources,
+            expected_lapis_count,
+        ),
+        cartography_additional_item_ids=_unique_item_predicate(
+            cartography_menu_source,
+            resources,
+            expected_cartography_count,
+        ),
+    )

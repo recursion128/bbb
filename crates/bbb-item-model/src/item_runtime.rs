@@ -242,12 +242,10 @@ const TOOLTIP_TEXT_BLUE: [f32; 4] = [85.0 / 255.0, 85.0 / 255.0, 1.0, 1.0];
 
 const TOOLTIP_TEXT_RED: [f32; 4] = [1.0, 85.0 / 255.0, 85.0 / 255.0, 1.0];
 
-use item_membership_catalog::{BREWING_INGREDIENT_ITEM_IDS, BREWING_POTION_ITEM_IDS};
-
-const ENCHANTMENT_LAPIS_LAZULI_ITEM_IDS: &[&str] = &["minecraft:lapis_lazuli"];
-
-const CARTOGRAPHY_ADDITIONAL_ITEM_IDS: &[&str] =
-    &["minecraft:paper", "minecraft:map", "minecraft:glass_pane"];
+use item_membership_catalog::{
+    BREWING_INGREDIENT_ITEM_IDS, BREWING_POTION_ITEM_IDS, CARTOGRAPHY_ADDITIONAL_ITEM_IDS,
+    ENCHANTMENT_LAPIS_LAZULI_ITEM_IDS,
+};
 
 const RECIPE_SPECIFIC_CRAFTING_REMAINDER_ITEM_IDS: &[&str] = &[
     "minecraft:white_banner",

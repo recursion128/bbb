@@ -10300,3 +10300,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   均显式失败。item-model 删除两张手写数组并消费 checked-in generated module，既有
   protocol-id API 与 client slot behavior 不变；brewing recipes/mix transition 仍是独立行为，
   未被 membership source extraction 冒充完成。
+
+## 2026-07-11：Generated enchanting and cartography memberships
+
+- [x] 扩展 item-membership extractor，通过共享 Tree-sitter CST 遍历匿名 Slot class 的
+  `mayPlace` method declarations，并按 method body span 查询公共 frontend call nodes：从
+  `EnchantmentMenu` 唯一 item-based predicate 生成 lapis lazuli 集合，从
+  `CartographyTableMenu` 三个 anonymous slots 中唯一选择含 `ItemStack.is` 的 additional
+  slot，生成 paper/map/glass-pane 集合。qualifier、argument、predicate 唯一性、固定数量和
+  `Items`/`Blocks` resource resolution 均受 fixtures/update/check 锁定；item-model 删除余下
+  两张 menu 手写数组，现有 world/native quick-move 与 slot API 不变。map component predicate、
+  cartography result transition 和 enchanting 算法仍由各自语义 owner 手写。

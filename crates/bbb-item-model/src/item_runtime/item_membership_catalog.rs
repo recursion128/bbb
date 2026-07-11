@@ -34,6 +34,11 @@ pub(super) const BREWING_INGREDIENT_ITEM_IDS: &[&str] = &[
     "minecraft:phantom_membrane",
 ];
 
+pub(super) const ENCHANTMENT_LAPIS_LAZULI_ITEM_IDS: &[&str] = &["minecraft:lapis_lazuli"];
+
+pub(super) const CARTOGRAPHY_ADDITIONAL_ITEM_IDS: &[&str] =
+    &["minecraft:paper", "minecraft:map", "minecraft:glass_pane"];
+
 #[cfg(test)]
 mod tests {
     use std::collections::HashSet;
@@ -41,9 +46,17 @@ mod tests {
     use super::*;
 
     #[test]
-    fn brewing_memberships_are_complete_and_unique() {
+    fn generated_item_memberships_are_complete_and_unique() {
         assert_eq!(BREWING_POTION_ITEM_IDS.len(), 4);
         assert_eq!(BREWING_INGREDIENT_ITEM_IDS.len(), 21);
+        assert_eq!(
+            ENCHANTMENT_LAPIS_LAZULI_ITEM_IDS,
+            &["minecraft:lapis_lazuli"]
+        );
+        assert_eq!(
+            CARTOGRAPHY_ADDITIONAL_ITEM_IDS,
+            &["minecraft:paper", "minecraft:map", "minecraft:glass_pane"]
+        );
         assert_eq!(
             BREWING_POTION_ITEM_IDS
                 .iter()

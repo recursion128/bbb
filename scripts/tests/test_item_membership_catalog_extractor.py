@@ -11,6 +11,7 @@ sys.path.insert(0, str(SCRIPTS))
 from item_membership_catalog_extractor import (  # noqa: E402
     ItemMembershipCatalogExtractionError,
     brewing_membership,
+    menu_membership,
 )
 from vanilla_java_source import JavaSource, parse_source  # noqa: E402
 
@@ -30,6 +31,10 @@ class Items {
   static final Item GLASS_BOTTLE = registerItem("glass_bottle");
   static final Item GUNPOWDER = registerItem("gunpowder");
   static final Item STONE = registerBlock(Blocks.STONE);
+  static final Item LAPIS_LAZULI = registerItem("lapis_lazuli");
+  static final Item PAPER = registerItem("paper");
+  static final Item MAP = registerItem("map");
+  static final Item GLASS_PANE = registerBlock(Blocks.GLASS_PANE);
 }''',
     )
 
@@ -38,7 +43,10 @@ def blocks_source() -> JavaSource:
     return source(
         "net/minecraft/world/level/block/Blocks.java",
         '''package net.minecraft.world.level.block;
-class Blocks { static final Block STONE = register("stone", Block::new); }''',
+class Blocks {
+  static final Block STONE = register("stone", Block::new);
+  static final Block GLASS_PANE = register("glass_pane", Block::new);
+}''',
     )
 
 
@@ -72,7 +80,59 @@ class PotionBrewing {{
     )
 
 
+def enchantment_menu_source() -> JavaSource:
+    return source(
+        "net/minecraft/world/inventory/EnchantmentMenu.java",
+        '''package net.minecraft.world.inventory;
+class EnchantmentMenu {
+  EnchantmentMenu() {
+    addSlot(new Slot() {
+      boolean mayPlace(ItemStack stack) { return stack.is(Items.LAPIS_LAZULI); }
+    });
+  }
+}''',
+    )
+
+
+def cartography_menu_source() -> JavaSource:
+    return source(
+        "net/minecraft/world/inventory/CartographyTableMenu.java",
+        '''package net.minecraft.world.inventory;
+class CartographyTableMenu {
+  CartographyTableMenu() {
+    addSlot(new Slot() {
+      boolean mayPlace(ItemStack stack) { return stack.has(DataComponents.MAP_ID); }
+    });
+    addSlot(new Slot() {
+      boolean mayPlace(ItemStack stack) {
+        return stack.is(Items.PAPER) || stack.is(Items.MAP)
+            || stack.is(Items.GLASS_PANE);
+      }
+    });
+    addSlot(new Slot() {
+      boolean mayPlace(ItemStack stack) { return false; }
+    });
+  }
+}''',
+    )
+
+
 class ItemMembershipCatalogExtractorTests(unittest.TestCase):
+    def test_menu_memberships_select_the_unique_item_predicate(self) -> None:
+        catalog = menu_membership(
+            enchantment_menu_source(),
+            cartography_menu_source(),
+            items_source(),
+            blocks_source(),
+        )
+        self.assertEqual(
+            catalog.enchantment_lapis_item_ids, ("minecraft:lapis_lazuli",)
+        )
+        self.assertEqual(
+            catalog.cartography_additional_item_ids,
+            ("minecraft:paper", "minecraft:map", "minecraft:glass_pane"),
+        )
+
     def test_brewing_membership_uses_menu_and_builder_call_order(self) -> None:
         catalog = brewing_membership(
             potion_brewing_source(),
