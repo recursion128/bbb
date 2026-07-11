@@ -89,6 +89,16 @@ FAMILIES = (
     FamilySpec("MushroomCow", "net.minecraft.world.entity.animal.cow.MushroomCow", "AgeableMob"),
     FamilySpec("Pig", "net.minecraft.world.entity.animal.pig.Pig", "AgeableMob"),
     FamilySpec("Frog", "net.minecraft.world.entity.animal.frog.Frog", "AgeableMob"),
+    FamilySpec(
+        "AbstractNautilus",
+        "net.minecraft.world.entity.animal.nautilus.AbstractNautilus",
+        "TamableAnimal",
+    ),
+    FamilySpec(
+        "ZombieNautilus",
+        "net.minecraft.world.entity.animal.nautilus.ZombieNautilus",
+        "AbstractNautilus",
+    ),
     FamilySpec("Parrot", "net.minecraft.world.entity.animal.parrot.Parrot", "TamableAnimal"),
     FamilySpec("Rabbit", "net.minecraft.world.entity.animal.rabbit.Rabbit", "AgeableMob"),
     FamilySpec(
@@ -293,6 +303,8 @@ DATA_ALIASES = {
     "VANILLA_PIG_SOUND_VARIANT_DATA_ID": ("net.minecraft.world.entity.animal.pig.Pig", "DATA_SOUND_VARIANT_ID"),
     "VANILLA_FROG_VARIANT_DATA_ID": ("net.minecraft.world.entity.animal.frog.Frog", "DATA_VARIANT_ID"),
     "VANILLA_FROG_TONGUE_TARGET_DATA_ID": ("net.minecraft.world.entity.animal.frog.Frog", "DATA_TONGUE_TARGET_ID"),
+    "VANILLA_ABSTRACT_NAUTILUS_DASH_DATA_ID": ("net.minecraft.world.entity.animal.nautilus.AbstractNautilus", "DASH"),
+    "VANILLA_ZOMBIE_NAUTILUS_VARIANT_DATA_ID": ("net.minecraft.world.entity.animal.nautilus.ZombieNautilus", "DATA_VARIANT_ID"),
     "VANILLA_PARROT_VARIANT_DATA_ID": ("net.minecraft.world.entity.animal.parrot.Parrot", "DATA_VARIANT_ID"),
     "VANILLA_RABBIT_TYPE_DATA_ID": ("net.minecraft.world.entity.animal.rabbit.Rabbit", "DATA_TYPE_ID"),
     "VANILLA_ABSTRACT_VILLAGER_UNHAPPY_COUNTER_DATA_ID": ("net.minecraft.world.entity.npc.villager.AbstractVillager", "DATA_UNHAPPY_COUNTER"),
@@ -454,6 +466,8 @@ DEFAULT_ALIASES = {
     "VANILLA_PIG_DEFAULT_VARIANT_RESOURCE_ID": ("net.minecraft.world.entity.animal.pig.Pig", "DATA_VARIANT_ID"),
     "VANILLA_PIG_DEFAULT_SOUND_VARIANT_RESOURCE_ID": ("net.minecraft.world.entity.animal.pig.Pig", "DATA_SOUND_VARIANT_ID"),
     "VANILLA_FROG_DEFAULT_VARIANT_RESOURCE_ID": ("net.minecraft.world.entity.animal.frog.Frog", "DATA_VARIANT_ID"),
+    "VANILLA_ABSTRACT_NAUTILUS_DEFAULT_DASH": ("net.minecraft.world.entity.animal.nautilus.AbstractNautilus", "DASH"),
+    "VANILLA_ZOMBIE_NAUTILUS_DEFAULT_VARIANT_RESOURCE_ID": ("net.minecraft.world.entity.animal.nautilus.ZombieNautilus", "DATA_VARIANT_ID"),
     "VANILLA_PARROT_DEFAULT_VARIANT": ("net.minecraft.world.entity.animal.parrot.Parrot", "DATA_VARIANT_ID"),
     "VANILLA_RABBIT_DEFAULT_TYPE": ("net.minecraft.world.entity.animal.rabbit.Rabbit", "DATA_TYPE_ID"),
     "VANILLA_ABSTRACT_VILLAGER_DEFAULT_UNHAPPY_COUNTER": ("net.minecraft.world.entity.npc.villager.AbstractVillager", "DATA_UNHAPPY_COUNTER"),
@@ -1104,6 +1118,34 @@ STATIC_REGISTRY_RESOURCE_DEFAULT_RESOLVERS = (
         None,
         "minecraft:temperate",
         "the synced holder default is a resource key selected through Frog.DEFAULT_VARIANT and TemperatureVariants",
+    ),
+    (
+        "net.minecraft.world.entity.animal.nautilus.ZombieNautilus",
+        "DATA_VARIANT_ID",
+        "ZOMBIE_NAUTILUS_VARIANT",
+        "VariantUtils.getDefaultOrAny (this.registryAccess (), ZombieNautilusVariants.TEMPERATE)",
+        (
+            (
+                "net.minecraft.world.entity.animal.nautilus.ZombieNautilusVariants",
+                "TEMPERATE",
+                "createKey (TemperatureVariants.TEMPERATE)",
+            ),
+            (
+                "net.minecraft.world.entity.animal.TemperatureVariants",
+                "TEMPERATE",
+                'Identifier.withDefaultNamespace ("temperate")',
+            ),
+        ),
+        (
+            (
+                "net.minecraft.world.entity.animal.nautilus.ZombieNautilusVariants",
+                "createKey",
+                "ResourceKey.create (Registries.ZOMBIE_NAUTILUS_VARIANT, id)",
+            ),
+        ),
+        None,
+        "minecraft:temperate",
+        "the synced holder default is a resource key selected through ZombieNautilusVariants.TEMPERATE and TemperatureVariants",
     ),
 )
 

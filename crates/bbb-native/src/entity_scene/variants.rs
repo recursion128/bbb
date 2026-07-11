@@ -383,7 +383,15 @@ pub(super) fn zombie_nautilus_coral(values: &[bbb_protocol::packets::EntityDataV
             _ => None,
         })
         .map(|id| id >= 1)
-        .unwrap_or(false)
+        .unwrap_or_else(zombie_nautilus_default_is_coral)
+}
+
+fn zombie_nautilus_default_is_coral() -> bool {
+    match ZOMBIE_NAUTILUS_DEFAULT_VARIANT_RESOURCE_ID {
+        "minecraft:temperate" => false,
+        "minecraft:warm" => true,
+        _ => panic!("generated vanilla zombie nautilus default variant must map to a model"),
+    }
 }
 
 pub(super) fn boat(family: BoatModelFamily, chest: bool) -> EntityModelKind {

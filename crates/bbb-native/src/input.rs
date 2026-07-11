@@ -290,6 +290,10 @@ use bbb_world::{
     VANILLA_WOLF_SOUND_VARIANT_DATA_ID as WOLF_SOUND_VARIANT_DATA_ID,
     VANILLA_WOLF_VARIANT_DATA_ID as WOLF_VARIANT_DATA_ID,
 };
+use bbb_world::{
+    VANILLA_ZOMBIE_NAUTILUS_DEFAULT_VARIANT_RESOURCE_ID as ZOMBIE_NAUTILUS_DEFAULT_VARIANT_RESOURCE_ID,
+    VANILLA_ZOMBIE_NAUTILUS_VARIANT_DATA_ID as ZOMBIE_NAUTILUS_VARIANT_DATA_ID,
+};
 use tokio::sync::mpsc;
 use winit::{
     dpi::{PhysicalPosition, PhysicalSize},
@@ -485,8 +489,6 @@ const TNT_MINECART_DEFAULT_FUSE: i32 = -1;
 const AGEABLE_MOB_CLIENT_ADULT_AGE: i32 = 1;
 const AGEABLE_MOB_CLIENT_BABY_AGE: i32 = -1;
 const LLAMA_MAX_VARIANT: i32 = 3;
-const ZOMBIE_NAUTILUS_VARIANT_DATA_ID: u8 = 21;
-const ZOMBIE_NAUTILUS_DEFAULT_VARIANT_ID: i32 = 0;
 const PARROT_MAX_VARIANT: i32 = 4;
 const SHEEP_WOOL_COLOR_MASK: u8 = 0x0f;
 const SLIME_MIN_SIZE: i32 = 1;
@@ -6208,13 +6210,9 @@ fn debug_push_zombie_nautilus_additional_save_data(entity: &EntityState, fields:
         ZOMBIE_NAUTILUS_VARIANT_DATA_ID,
         EntityDataRegistryHolder::ZombieNautilusVariant,
     )
-    .unwrap_or(ZOMBIE_NAUTILUS_DEFAULT_VARIANT_ID);
-    fields.push(format!(
-        "variant: {}",
-        debug_snbt_string(
-            zombie_nautilus_variant_resource_id(variant).unwrap_or("minecraft:temperate")
-        )
-    ));
+    .and_then(zombie_nautilus_variant_resource_id)
+    .unwrap_or(ZOMBIE_NAUTILUS_DEFAULT_VARIANT_RESOURCE_ID);
+    fields.push(format!("variant: {}", debug_snbt_string(variant)));
 }
 
 fn zombie_nautilus_variant_resource_id(variant: i32) -> Option<&'static str> {

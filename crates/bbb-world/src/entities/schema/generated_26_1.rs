@@ -226,6 +226,12 @@ const GENERATED_VANILLA_FROG_VARIANT_DATA_ID: u8 = 18;
 pub const VANILLA_FROG_VARIANT_DATA_ID: u8 = GENERATED_VANILLA_FROG_VARIANT_DATA_ID;
 const GENERATED_VANILLA_FROG_TONGUE_TARGET_DATA_ID: u8 = 19;
 pub const VANILLA_FROG_TONGUE_TARGET_DATA_ID: u8 = GENERATED_VANILLA_FROG_TONGUE_TARGET_DATA_ID;
+const GENERATED_VANILLA_ABSTRACT_NAUTILUS_DASH_DATA_ID: u8 = 20;
+pub const VANILLA_ABSTRACT_NAUTILUS_DASH_DATA_ID: u8 =
+    GENERATED_VANILLA_ABSTRACT_NAUTILUS_DASH_DATA_ID;
+const GENERATED_VANILLA_ZOMBIE_NAUTILUS_VARIANT_DATA_ID: u8 = 21;
+pub const VANILLA_ZOMBIE_NAUTILUS_VARIANT_DATA_ID: u8 =
+    GENERATED_VANILLA_ZOMBIE_NAUTILUS_VARIANT_DATA_ID;
 const GENERATED_VANILLA_PARROT_VARIANT_DATA_ID: u8 = 20;
 pub const VANILLA_PARROT_VARIANT_DATA_ID: u8 = GENERATED_VANILLA_PARROT_VARIANT_DATA_ID;
 const GENERATED_VANILLA_RABBIT_TYPE_DATA_ID: u8 = 18;
@@ -780,6 +786,12 @@ pub const VANILLA_PIG_DEFAULT_SOUND_VARIANT_RESOURCE_ID: &str =
 const GENERATED_VANILLA_FROG_DEFAULT_VARIANT_RESOURCE_ID: &str = "minecraft:temperate";
 pub const VANILLA_FROG_DEFAULT_VARIANT_RESOURCE_ID: &str =
     GENERATED_VANILLA_FROG_DEFAULT_VARIANT_RESOURCE_ID;
+const GENERATED_VANILLA_ABSTRACT_NAUTILUS_DEFAULT_DASH: bool = false;
+pub const VANILLA_ABSTRACT_NAUTILUS_DEFAULT_DASH: bool =
+    GENERATED_VANILLA_ABSTRACT_NAUTILUS_DEFAULT_DASH;
+const GENERATED_VANILLA_ZOMBIE_NAUTILUS_DEFAULT_VARIANT_RESOURCE_ID: &str = "minecraft:temperate";
+pub const VANILLA_ZOMBIE_NAUTILUS_DEFAULT_VARIANT_RESOURCE_ID: &str =
+    GENERATED_VANILLA_ZOMBIE_NAUTILUS_DEFAULT_VARIANT_RESOURCE_ID;
 const GENERATED_VANILLA_PARROT_DEFAULT_VARIANT: i32 = 0;
 pub const VANILLA_PARROT_DEFAULT_VARIANT: i32 = GENERATED_VANILLA_PARROT_DEFAULT_VARIANT;
 const GENERATED_VANILLA_RABBIT_DEFAULT_TYPE: i32 = 0;
@@ -9931,7 +9943,7 @@ pub const VANILLA_ENTITY_METADATA_ACCESSORS_26_1: &[VanillaEntityMetadataAccesso
         data_id: 21,
         source_path: "net/minecraft/world/entity/animal/nautilus/ZombieNautilus.java",
         default_expression: "VariantUtils.getDefaultOrAny (this.registryAccess (), ZombieNautilusVariants.TEMPERATE)",
-        typed_default: None,
+        typed_default: Some(VanillaEntityMetadataDefault::RegistryHolderResource("minecraft:temperate")),
     },
     VanillaEntityMetadataAccessorCatalogEntry {
         owner: "net.minecraft.world.entity.animal.panda.Panda",
@@ -11912,6 +11924,13 @@ pub const VANILLA_ENTITY_METADATA_DEFAULT_RESOLVER_EVIDENCE_26_1: &[VanillaEntit
         evidence_member: "net.minecraft.world.entity.animal.frog.Frog.DEFAULT_VARIANT -> FrogVariants.TEMPERATE -> TemperatureVariants.TEMPERATE -> FrogVariants.createKey",
         source_expression: "VariantUtils.getDefaultOrAny (this.registryAccess (), DEFAULT_VARIANT) -> FrogVariants.TEMPERATE -> createKey (TemperatureVariants.TEMPERATE) -> Identifier.withDefaultNamespace (\"temperate\") -> ResourceKey.create (Registries.FROG_VARIANT, id)",
         reason: "the synced holder default is a resource key selected through Frog.DEFAULT_VARIANT and TemperatureVariants",
+    },
+    VanillaEntityMetadataResolverEvidence {
+        java_class: "net.minecraft.world.entity.animal.nautilus.ZombieNautilus",
+        accessor_name: "DATA_VARIANT_ID",
+        evidence_member: "net.minecraft.world.entity.animal.nautilus.ZombieNautilusVariants.TEMPERATE -> TemperatureVariants.TEMPERATE -> ZombieNautilusVariants.createKey",
+        source_expression: "VariantUtils.getDefaultOrAny (this.registryAccess (), ZombieNautilusVariants.TEMPERATE) -> createKey (TemperatureVariants.TEMPERATE) -> Identifier.withDefaultNamespace (\"temperate\") -> ResourceKey.create (Registries.ZOMBIE_NAUTILUS_VARIANT, id)",
+        reason: "the synced holder default is a resource key selected through ZombieNautilusVariants.TEMPERATE and TemperatureVariants",
     },
     VanillaEntityMetadataResolverEvidence {
         java_class: "net.minecraft.world.entity.animal.feline.Cat",
@@ -14792,6 +14811,40 @@ const FROG_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFami
     own_flags: FROG_FLAGS,
 };
 
+const ABSTRACTNAUTILUS_FIELDS: &[VanillaEntityMetadataFieldSchema] =
+    &[VanillaEntityMetadataFieldSchema {
+        name: "DASH",
+        data_id: 20,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+        default: VanillaEntityMetadataDefault::Boolean(false),
+    }];
+const ABSTRACTNAUTILUS_FLAGS: &[VanillaEntityMetadataFlagSchema] = &[];
+const ABSTRACTNAUTILUS_SCHEMA: VanillaEntityMetadataFamilySchema =
+    VanillaEntityMetadataFamilySchema {
+        family: VanillaEntityMetadataFamily::AbstractNautilus,
+        parent: Some(VanillaEntityMetadataFamily::TamableAnimal),
+        inherited_field_count: 20,
+        own_fields: ABSTRACTNAUTILUS_FIELDS,
+        own_flags: ABSTRACTNAUTILUS_FLAGS,
+    };
+
+const ZOMBIENAUTILUS_FIELDS: &[VanillaEntityMetadataFieldSchema] =
+    &[VanillaEntityMetadataFieldSchema {
+        name: "DATA_VARIANT_ID",
+        data_id: 21,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_ZOMBIE_NAUTILUS_VARIANT_ID,
+        default: VanillaEntityMetadataDefault::RegistryHolderResource("minecraft:temperate"),
+    }];
+const ZOMBIENAUTILUS_FLAGS: &[VanillaEntityMetadataFlagSchema] = &[];
+const ZOMBIENAUTILUS_SCHEMA: VanillaEntityMetadataFamilySchema =
+    VanillaEntityMetadataFamilySchema {
+        family: VanillaEntityMetadataFamily::ZombieNautilus,
+        parent: Some(VanillaEntityMetadataFamily::AbstractNautilus),
+        inherited_field_count: 21,
+        own_fields: ZOMBIENAUTILUS_FIELDS,
+        own_flags: ZOMBIENAUTILUS_FLAGS,
+    };
+
 const PARROT_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[VanillaEntityMetadataFieldSchema {
     name: "DATA_VARIANT_ID",
     data_id: 20,
@@ -15826,6 +15879,8 @@ pub(super) const fn generated_entity_metadata_schema(
         VanillaEntityMetadataFamily::MushroomCow => &MUSHROOMCOW_SCHEMA,
         VanillaEntityMetadataFamily::Pig => &PIG_SCHEMA,
         VanillaEntityMetadataFamily::Frog => &FROG_SCHEMA,
+        VanillaEntityMetadataFamily::AbstractNautilus => &ABSTRACTNAUTILUS_SCHEMA,
+        VanillaEntityMetadataFamily::ZombieNautilus => &ZOMBIENAUTILUS_SCHEMA,
         VanillaEntityMetadataFamily::Parrot => &PARROT_SCHEMA,
         VanillaEntityMetadataFamily::Rabbit => &RABBIT_SCHEMA,
         VanillaEntityMetadataFamily::AbstractVillager => &ABSTRACTVILLAGER_SCHEMA,

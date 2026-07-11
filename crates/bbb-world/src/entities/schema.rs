@@ -51,6 +51,8 @@ pub enum VanillaEntityMetadataFamily {
     MushroomCow,
     Pig,
     Frog,
+    AbstractNautilus,
+    ZombieNautilus,
     Parrot,
     Rabbit,
     AbstractVillager,
@@ -414,6 +416,8 @@ mod tests {
             VanillaEntityMetadataFamily::MushroomCow,
             VanillaEntityMetadataFamily::Pig,
             VanillaEntityMetadataFamily::Frog,
+            VanillaEntityMetadataFamily::AbstractNautilus,
+            VanillaEntityMetadataFamily::ZombieNautilus,
             VanillaEntityMetadataFamily::Parrot,
             VanillaEntityMetadataFamily::Rabbit,
             VanillaEntityMetadataFamily::AbstractVillager,
@@ -918,6 +922,37 @@ mod tests {
                 VanillaEntityMetadataDefault::OptionalUnsignedIntNone,
             ]
         );
+        let abstract_nautilus =
+            vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::AbstractNautilus);
+        assert_eq!(
+            abstract_nautilus.parent,
+            Some(VanillaEntityMetadataFamily::TamableAnimal)
+        );
+        assert_eq!(abstract_nautilus.inherited_field_count, 20);
+        assert_eq!(abstract_nautilus.own_fields.len(), 1);
+        assert_eq!(VANILLA_ABSTRACT_NAUTILUS_DASH_DATA_ID, 20);
+        assert!(!VANILLA_ABSTRACT_NAUTILUS_DEFAULT_DASH);
+        assert_eq!(
+            abstract_nautilus.own_fields[0].default,
+            VanillaEntityMetadataDefault::Boolean(false)
+        );
+        let zombie_nautilus =
+            vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::ZombieNautilus);
+        assert_eq!(
+            zombie_nautilus.parent,
+            Some(VanillaEntityMetadataFamily::AbstractNautilus)
+        );
+        assert_eq!(zombie_nautilus.inherited_field_count, 21);
+        assert_eq!(zombie_nautilus.own_fields.len(), 1);
+        assert_eq!(VANILLA_ZOMBIE_NAUTILUS_VARIANT_DATA_ID, 21);
+        assert_eq!(
+            VANILLA_ZOMBIE_NAUTILUS_DEFAULT_VARIANT_RESOURCE_ID,
+            "minecraft:temperate"
+        );
+        assert_eq!(
+            zombie_nautilus.own_fields[0].default,
+            VanillaEntityMetadataDefault::RegistryHolderResource("minecraft:temperate")
+        );
         let parrot = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Parrot);
         assert_eq!(
             parrot.parent,
@@ -974,7 +1009,7 @@ mod tests {
         assert_eq!(VANILLA_TROPICAL_FISH_DEFAULT_VARIANT, 0);
         assert_eq!(
             VANILLA_ENTITY_METADATA_DEFAULT_RESOLVER_EVIDENCE_26_1.len(),
-            25
+            26
         );
         let default_evidence = |java_class| {
             VANILLA_ENTITY_METADATA_DEFAULT_RESOLVER_EVIDENCE_26_1
@@ -1134,6 +1169,16 @@ mod tests {
         assert_eq!(
             frog_default_evidence.source_expression,
             "VariantUtils.getDefaultOrAny (this.registryAccess (), DEFAULT_VARIANT) -> FrogVariants.TEMPERATE -> createKey (TemperatureVariants.TEMPERATE) -> Identifier.withDefaultNamespace (\"temperate\") -> ResourceKey.create (Registries.FROG_VARIANT, id)"
+        );
+        let zombie_nautilus_default_evidence =
+            default_evidence("net.minecraft.world.entity.animal.nautilus.ZombieNautilus");
+        assert_eq!(
+            zombie_nautilus_default_evidence.accessor_name,
+            "DATA_VARIANT_ID"
+        );
+        assert_eq!(
+            zombie_nautilus_default_evidence.source_expression,
+            "VariantUtils.getDefaultOrAny (this.registryAccess (), ZombieNautilusVariants.TEMPERATE) -> createKey (TemperatureVariants.TEMPERATE) -> Identifier.withDefaultNamespace (\"temperate\") -> ResourceKey.create (Registries.ZOMBIE_NAUTILUS_VARIANT, id)"
         );
         let fox_default_evidence = default_evidence("net.minecraft.world.entity.animal.fox.Fox");
         assert_eq!(fox_default_evidence.accessor_name, "DATA_TYPE_ID");

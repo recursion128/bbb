@@ -10058,3 +10058,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   `OptionalUnsignedIntNone`。native model/debug-save 删除手抄 variant id/numeric default；
   tongue-target presentation、session registry 顺序和 persistent Codec/SNBT 仍由对应 owner
   管理。
+
+## 2026-07-11：Generated Zombie Nautilus metadata
+
+- [x] 由统一 Tree-sitter Java frontend 生成 `AbstractNautilus.DASH` id20/默认 `false`
+  和 `ZombieNautilus.DATA_VARIANT_ID` id21，并通过
+  `ZombieNautilusVariants.TEMPERATE -> TemperatureVariants.TEMPERATE` evidence chain 生成
+  `minecraft:temperate` holder default。native model/debug-save 删除手抄 id 与 numeric
+  default；动态 registry 顺序、locally controlled ride prediction、AI 和 persistent
+  Codec/SNBT 仍由对应 owner 管理。

@@ -255,6 +255,10 @@ use bbb_world::{
     VANILLA_WOLF_DEFAULT_COLLAR_COLOR as WOLF_DEFAULT_COLLAR_COLOR_ID,
     VANILLA_WOLF_VARIANT_DATA_ID as WOLF_VARIANT_DATA_ID,
 };
+use bbb_world::{
+    VANILLA_ZOMBIE_NAUTILUS_DEFAULT_VARIANT_RESOURCE_ID as ZOMBIE_NAUTILUS_DEFAULT_VARIANT_RESOURCE_ID,
+    VANILLA_ZOMBIE_NAUTILUS_VARIANT_DATA_ID as ZOMBIE_NAUTILUS_VARIANT_DATA_ID,
+};
 // Vanilla `Zombie.DATA_DROWNED_CONVERSION_ID`: `Entity` 0..=7, `LivingEntity` 8..=14,
 // `Mob` 15, then Zombie baby/special-type/drowned-conversion at 16..=18.
 use bbb_world::{
@@ -321,10 +325,6 @@ const SHEEP_WOOL_COLOR_MASK: u8 = 0x0f;
 // starts the seven-tick `shakeTime` impact wobble that `ArrowRenderer.extractRenderState` projects.
 #[cfg(test)]
 const ARROW_IN_GROUND_DATA_ID: u8 = 10;
-/// `ZombieNautilus.DATA_VARIANT_ID` data id (21): the synced `Holder<ZombieNautilusVariant>` registry
-/// id. `AbstractNautilus extends TamableAnimal` adds flags(18)+owner(19) then DASH(20), so the
-/// `ZombieNautilus`-own variant lands at 21.
-const ZOMBIE_NAUTILUS_VARIANT_DATA_ID: u8 = 21;
 /// Vanilla `Camel.SITDOWN_DURATION_TICKS` (40 ticks = 2.0 s `CAMEL_SIT`): the sit-down
 /// window, after which `CAMEL_SIT_POSE` takes over.
 const CAMEL_SITDOWN_DURATION_TICKS: i64 = 40;
