@@ -158,6 +158,9 @@ Movement:
 - Gate HurtAnimation's ten-tick red-overlay state on vanilla `LivingEntity`;
   base `Entity.animateHurt` is a no-op, and the client must not infer or apply
   authoritative damage from this presentation packet.
+- Complete ClientboundAnimate action 2 (`Player.stopSleepInBed(false, false)`)
+  and gate actions 0/3 on `LivingEntity` plus action 2 on `Player`; keep 4/5 as
+  presentation-only crit tracking emitters, not authoritative attacks.
 - Implement full vanilla boat physics, water/buoyancy/collision parity, and
   non-boat vehicle movement only for the locally controlled instance; resolve
   entity-specific `getControllingPassenger` gates (saddle/held item/armor and

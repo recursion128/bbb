@@ -4797,29 +4797,44 @@
       "constant_name": "CLIENTBOUND_ANIMATE",
       "coverage": {
         "canonical_apply": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
+          "evidence": [
+            "crates/bbb-world/src/entities/updates.rs#apply_entity_animation",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleAnimate"
+          ],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
           "status": "partial"
         },
         "decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/entities/tests.rs#decodes_entity_transient_event_packets",
+            "vanilla:net/minecraft/network/protocol/game/ClientboundAnimatePacket.java#STREAM_CODEC"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "ownership": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/play_apply.rs#PlayClientbound::EntityAnimation"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "runtime_side_effect": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
+          "evidence": [
+            "crates/bbb-world/src/play_apply.rs#tracking_emitter_for_entity_animation",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleAnimate"
+          ],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
           "status": "partial"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/entities/tests.rs#decodes_entity_transient_event_packets",
+            "crates/bbb-world/src/entities/tests/movement_combat_and_swing_projection.rs#entity_model_sources_project_attack_swing_ramp",
+            "crates/bbb-native/src/runtime/events/tests/entity_particle_events.rs#entity_animation_emits_crit_tracking_emitter_particles"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "clientbound",

@@ -815,11 +815,19 @@ fn decodes_entity_transient_event_packets() {
     let mut payload = Encoder::new();
     payload.write_var_i32(123);
     payload.write_u8(3);
-    let packet =
-        decode_play_clientbound(ids::play::CLIENTBOUND_ANIMATE, &payload.into_inner()).unwrap();
+    let payload = payload.into_inner();
+    let packet = decode_play_clientbound(ids::play::CLIENTBOUND_ANIMATE, &payload).unwrap();
     assert_eq!(
         packet,
         PlayClientbound::EntityAnimation(EntityAnimation { id: 123, action: 3 })
+    );
+    let mut trailing = payload;
+    trailing.push(0);
+    assert!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_ANIMATE, &trailing)
+            .unwrap_err()
+            .to_string()
+            .contains("trailing bytes after entity animation packet")
     );
 
     let mut payload = Encoder::new();

@@ -11093,3 +11093,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] vanilla base `Entity.animateHurt` no-op，只有 `LivingEntity` 设置 hurtDuration/hurtTime=10；
   bbb 当前通用 animation component 缺 capability gate，故 canonical/runtime 保持 partial。此 packet
   只驱动客户端呈现，不被解释为伤害、击退或任何服务端权威战斗状态。
+
+## 2026-07-11：animate packet coverage audit
+
+- [x] 对照 `ClientboundAnimatePacket` 锁定 entity VarInt + unsigned action byte 并拒绝 trailing
+  bytes；现有 world/native tests 覆盖 0/3 主副手 swing 与 4/5 crit/enchanted-hit tracking emitter，
+  因此 decode/ownership/tests 三格闭合。
+- [x] action 2 的 `Player.stopSleepInBed(false,false)` 尚未应用，且 0/3/2 缺少 vanilla
+  LivingEntity/Player type gates；canonical/runtime 保持 partial。4/5 只作为客户端粒子呈现，
+  不外推攻击命中、伤害或任何服务端权威战斗结果。
