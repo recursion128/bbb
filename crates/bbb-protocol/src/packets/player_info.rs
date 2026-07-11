@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::codec::{Decoder, ProtocolError, Result};
+pub use crate::game_types::GameType;
 
 use super::{
     decode_byte_array, decode_optional_component_summary_from_decoder, GameProfile,
@@ -104,41 +105,6 @@ pub struct PlayerInfoChatSession {
     pub expires_at_epoch_millis: i64,
     pub public_key: Vec<u8>,
     pub key_signature: Vec<u8>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum GameType {
-    Survival,
-    Creative,
-    Adventure,
-    Spectator,
-}
-
-impl Default for GameType {
-    fn default() -> Self {
-        Self::Survival
-    }
-}
-
-impl GameType {
-    pub fn id(self) -> i32 {
-        match self {
-            Self::Survival => 0,
-            Self::Creative => 1,
-            Self::Adventure => 2,
-            Self::Spectator => 3,
-        }
-    }
-
-    pub fn from_id(id: i32) -> Self {
-        match id {
-            0 => Self::Survival,
-            1 => Self::Creative,
-            2 => Self::Adventure,
-            3 => Self::Spectator,
-            _ => Self::Survival,
-        }
-    }
 }
 
 pub(super) fn decode_player_info_remove(decoder: &mut Decoder<'_>) -> Result<PlayerInfoRemove> {

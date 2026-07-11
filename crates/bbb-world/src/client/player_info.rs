@@ -158,12 +158,7 @@ impl WorldStore {
 }
 
 fn player_info_game_mode_name(game_mode: ProtocolGameType) -> &'static str {
-    match game_mode {
-        ProtocolGameType::Survival => "survival",
-        ProtocolGameType::Creative => "creative",
-        ProtocolGameType::Adventure => "adventure",
-        ProtocolGameType::Spectator => "spectator",
-    }
+    game_mode.serialized_name()
 }
 
 #[cfg(test)]

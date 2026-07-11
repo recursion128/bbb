@@ -5,6 +5,10 @@ use bbb_protocol::game_event_types::{
     VANILLA_CLIENT_GAME_EVENT_START_RAINING_ID, VANILLA_CLIENT_GAME_EVENT_STOP_RAINING_ID,
     VANILLA_CLIENT_GAME_EVENT_THUNDER_LEVEL_CHANGE_ID,
 };
+use bbb_protocol::game_types::{
+    GameType, VANILLA_GAME_TYPE_NOT_SET_ID, VANILLA_GAME_TYPE_SPECTATOR_ID,
+    VANILLA_GAME_TYPE_SURVIVAL_ID,
+};
 use bbb_protocol::packets::{
     ClockUpdate as ProtocolClockUpdate, CommonPlayerSpawnInfo as ProtocolSpawnInfo,
     GameEvent as ProtocolGameEvent, PlayLogin as ProtocolPlayLogin, PlayTime as ProtocolPlayTime,
@@ -15,7 +19,6 @@ use serde::{Deserialize, Serialize};
 
 use crate::{BlockPos, WorldStore};
 
-const VANILLA_SPECTATOR_GAME_TYPE_ID: i32 = 3;
 const RESPAWN_KEEP_ATTRIBUTE_MODIFIERS: i8 = 1;
 const RESPAWN_KEEP_ENTITY_DATA: i8 = 2;
 const MAX_DIMENSION_TYPE_NBT_DEPTH: usize = 64;
@@ -113,8 +116,8 @@ pub struct WorldGameplayState {
 impl Default for WorldGameplayState {
     fn default() -> Self {
         Self {
-            game_type: 0,
-            game_type_name: game_type_name(0).to_string(),
+            game_type: VANILLA_GAME_TYPE_SURVIVAL_ID,
+            game_type_name: GameType::Survival.serialized_name().to_string(),
             previous_game_type: None,
             previous_game_type_name: None,
             show_death_screen: true,
@@ -437,17 +440,17 @@ impl WorldStore {
     }
 
     fn set_game_type_from_spawn_info(&mut self, game_type: i32, previous_game_type: i32) {
-        let game_type = canonical_game_type_id(game_type);
-        self.gameplay.game_type = game_type;
-        self.gameplay.game_type_name = game_type_name(game_type).to_string();
-        if previous_game_type == -1 {
+        let game_type = GameType::from_id(game_type);
+        self.gameplay.game_type = game_type.id();
+        self.gameplay.game_type_name = game_type.serialized_name().to_string();
+        if previous_game_type == VANILLA_GAME_TYPE_NOT_SET_ID {
             self.gameplay.previous_game_type = None;
             self.gameplay.previous_game_type_name = None;
         } else {
-            let previous_game_type = canonical_game_type_id(previous_game_type);
-            self.gameplay.previous_game_type = Some(previous_game_type);
+            let previous_game_type = GameType::from_id(previous_game_type);
+            self.gameplay.previous_game_type = Some(previous_game_type.id());
             self.gameplay.previous_game_type_name =
-                Some(game_type_name(previous_game_type).to_string());
+                Some(previous_game_type.serialized_name().to_string());
         }
     }
 
@@ -506,13 +509,13 @@ impl WorldStore {
     }
 
     fn set_game_type_from_game_event_param(&mut self, param: f32) {
-        let game_type = canonical_game_type_id(rounded_game_event_param(param));
-        if self.gameplay.game_type != game_type {
+        let game_type = GameType::from_id(rounded_game_event_param(param));
+        if self.gameplay.game_type != game_type.id() {
             self.gameplay.previous_game_type = Some(self.gameplay.game_type);
             self.gameplay.previous_game_type_name = Some(self.gameplay.game_type_name.clone());
         }
-        self.gameplay.game_type = game_type;
-        self.gameplay.game_type_name = game_type_name(game_type).to_string();
+        self.gameplay.game_type = game_type.id();
+        self.gameplay.game_type_name = game_type.serialized_name().to_string();
     }
 
     fn clear_level_bound_state(&mut self) {
@@ -558,7 +561,7 @@ impl WorldStore {
     }
 
     pub fn local_player_is_spectator(&self) -> bool {
-        self.gameplay.game_type == VANILLA_SPECTATOR_GAME_TYPE_ID
+        self.gameplay.game_type == VANILLA_GAME_TYPE_SPECTATOR_ID
     }
 
     pub fn local_player_has_reduced_debug_info(&self) -> bool {
@@ -838,15 +841,7 @@ fn rounded_game_event_param(param: f32) -> i32 {
     if param.is_finite() {
         (param + 0.5).floor() as i32
     } else {
-        0
-    }
-}
-
-fn canonical_game_type_id(id: i32) -> i32 {
-    if (0..=3).contains(&id) {
-        id
-    } else {
-        0
+        VANILLA_GAME_TYPE_SURVIVAL_ID
     }
 }
 
@@ -864,15 +859,6 @@ fn advance_client_clock(clock: &mut ClockUpdateState, game_time_delta: i64) {
 
 fn positive_tick_steps(tick_steps: i32) -> u32 {
     u32::try_from(tick_steps).unwrap_or(0)
-}
-
-fn game_type_name(id: i32) -> &'static str {
-    match canonical_game_type_id(id) {
-        1 => "creative",
-        2 => "adventure",
-        VANILLA_SPECTATOR_GAME_TYPE_ID => "spectator",
-        _ => "survival",
-    }
 }
 
 #[cfg(test)]

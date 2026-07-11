@@ -15,6 +15,8 @@ from gameplay_id_catalog_extractor import (  # noqa: E402
     entity_data_serializer_entries,
     entity_pose_entries,
     equipment_slot_entries,
+    game_type_entries,
+    game_type_not_set_id,
     heightmap_type_entries,
     mob_effect_entries,
     sound_source_entries,
@@ -143,6 +145,26 @@ public class Heightmap {
             [(entry.type_id, entry.serialization_key, entry.usage) for entry in entries],
             [(0, "WORLD_SURFACE_WG", "WORLDGEN"), (1, "MOTION_BLOCKING", "CLIENT")],
         )
+
+    def test_game_types_preserve_explicit_ids_names_and_nullable_sentinel(self) -> None:
+        source = parse_source(
+            "fixture/GameType.java",
+            b"""
+package fixture;
+public enum GameType {
+  SURVIVAL(0, "survival"), CREATIVE(1, "creative"),
+  ADVENTURE(2, "adventure"), SPECTATOR(3, "spectator");
+  private static final int NOT_SET = -1;
+  GameType(int id, String name) {}
+}
+""",
+        )
+        entries = game_type_entries(source)
+        self.assertEqual(
+            [(entry.game_type_id, entry.serialized_name) for entry in entries],
+            [(0, "survival"), (1, "creative"), (2, "adventure"), (3, "spectator")],
+        )
+        self.assertEqual(game_type_not_set_id(source), -1)
 
     def test_unsupported_register_shape_reports_source_span(self) -> None:
         source = parse_source(

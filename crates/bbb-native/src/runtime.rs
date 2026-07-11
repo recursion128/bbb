@@ -5484,7 +5484,7 @@ fn hud_inventory_screen_with_local_state_for_surface(
             &layout.slots,
             container,
             local_state.advanced_item_tooltips,
-            world.gameplay().game_type == 1,
+            world.gameplay().game_type == GameType::Creative.id(),
         ),
     })
 }
@@ -8763,7 +8763,7 @@ fn anvil_cost_text_label(world: &WorldStore) -> Option<HudInventoryTextLabel> {
         return None;
     }
 
-    let creative = world.gameplay().game_type == 1;
+    let creative = world.gameplay().game_type == GameType::Creative.id();
     let (text, tint) = if cost >= ANVIL_TOO_EXPENSIVE_LEVEL_COST && !creative {
         ("Too Expensive!".to_string(), ANVIL_COST_ERROR_TEXT_COLOR)
     } else {
@@ -10473,7 +10473,7 @@ fn enchanting_table_option_layers(world: &WorldStore) -> Vec<HudInventoryBackgro
 }
 
 fn enchanting_table_option_is_enabled(world: &WorldStore, index: i16, cost: i16) -> bool {
-    if world.gameplay().game_type == 1 {
+    if world.gameplay().game_type == GameType::Creative.id() {
         return true;
     }
     let required_lapis = i32::from(index) + 1;

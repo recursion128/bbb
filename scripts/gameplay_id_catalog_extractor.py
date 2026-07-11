@@ -83,6 +83,13 @@ class HeightmapTypeEntry:
     usage: str
 
 
+@dataclass(frozen=True)
+class GameTypeEntry:
+    constant_name: str
+    game_type_id: int
+    serialized_name: str
+
+
 def _fail(source: JavaSource, expression: JavaExpression, message: str) -> None:
     span = expression.span
     raise GameplayIdExtractionError(
@@ -316,6 +323,43 @@ def heightmap_type_entries(
     if [entry.type_id for entry in entries] != list(range(expected_count)):
         raise GameplayIdExtractionError("heightmap type ids are not contiguous declaration order")
     return entries
+
+
+def game_type_entries(
+    source: JavaSource, expected_count: int = 4
+) -> list[GameTypeEntry]:
+    entries = []
+    for name, arguments in _enum_constants(source):
+        if len(arguments) != 2:
+            _fail(source, arguments[0], f"game type {name} must have two arguments")
+        entries.append(
+            GameTypeEntry(
+                name,
+                _integer(source, arguments[0]),
+                _string(source, arguments[1]),
+            )
+        )
+    if len(entries) != expected_count:
+        raise GameplayIdExtractionError(
+            f"expected {expected_count} game types, extracted {len(entries)}"
+        )
+    _validate(entries, "game type", "game_type_id")
+    _validate(entries, "game type", "serialized_name")
+    if [entry.game_type_id for entry in entries] != list(range(expected_count)):
+        raise GameplayIdExtractionError("game type ids are not contiguous declaration order")
+    return entries
+
+
+def game_type_not_set_id(source: JavaSource) -> int:
+    fields = [field for field in source.fields if field.name == "NOT_SET"]
+    if len(fields) != 1 or fields[0].initializer is None:
+        raise GameplayIdExtractionError(
+            f"{source.relative_path}: expected one initialized NOT_SET field"
+        )
+    initializer = fields[0].initializer
+    if initializer.canonical.replace(" ", "") != "-1":
+        _fail(source, initializer, "game type NOT_SET must be -1")
+    return int(initializer.canonical.replace(" ", ""), 0)
 
 
 def equipment_slot_entries(

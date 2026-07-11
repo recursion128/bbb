@@ -10431,3 +10431,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   projection 删除 1/3/4/5 手写 id。fixtures 锁定 nested enum、lambda argument、显式 id 和
   usage，production-source 结构测试阻止 heightmap 数字常量回流。block-state opacity
   predicate、packed heightmap 数据与 client/world behavior 仍由各语义 owner 手写。
+
+## 2026-07-11：Generated game type catalog
+
+- [x] gameplay-id extractor 通过共享 Tree-sitter frontend 读取 vanilla `GameType` enum，
+  生成 Survival/Creative/Adventure/Spectator 四项 explicit id、serialized name 与 nullable
+  `NOT_SET=-1` sentinel。protocol `GameType` 公共 API 迁入 checked-in generated owner，
+  world level/player-info 与 native HUD/inventory 删除各自的 id/name match、spectator 常量和
+  creative=1 比较；既有 `bbb_protocol::packets::GameType` re-export 保持兼容。fixture、生成
+  顺序/唯一性/fallback 测试及跨 crate production-source 反向扫描锁定单一事实源；abilities、
+  权限、游戏模式切换行为与 packet wire 仍由对应语义 owner 手写。
