@@ -18,6 +18,7 @@ pub enum VanillaEntityMetadataFamily {
     Creeper,
     Warden,
     WitherBoss,
+    EnderMan,
     Slime,
     Shulker,
     Zombie,
@@ -312,6 +313,7 @@ mod tests {
             VanillaEntityMetadataFamily::Creeper,
             VanillaEntityMetadataFamily::Warden,
             VanillaEntityMetadataFamily::WitherBoss,
+            VanillaEntityMetadataFamily::EnderMan,
             VanillaEntityMetadataFamily::Slime,
             VanillaEntityMetadataFamily::Shulker,
             VanillaEntityMetadataFamily::Zombie,
@@ -416,6 +418,16 @@ mod tests {
         assert_eq!(VANILLA_WITHER_DEFAULT_TARGET_B, 0);
         assert_eq!(VANILLA_WITHER_DEFAULT_TARGET_C, 0);
         assert_eq!(VANILLA_WITHER_DEFAULT_INVULNERABLE_TICKS, 0);
+        let enderman = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::EnderMan);
+        assert_eq!(enderman.parent, Some(VanillaEntityMetadataFamily::Mob));
+        assert_eq!(enderman.inherited_field_count, 16);
+        assert_eq!(enderman.own_fields.len(), 3);
+        assert_eq!(VANILLA_ENDERMAN_CARRY_STATE_DATA_ID, 16);
+        assert_eq!(VANILLA_ENDERMAN_CREEPY_DATA_ID, 17);
+        assert_eq!(VANILLA_ENDERMAN_STARED_AT_DATA_ID, 18);
+        assert_eq!(VANILLA_ENDERMAN_DEFAULT_CARRY_STATE, None);
+        assert!(!VANILLA_ENDERMAN_DEFAULT_CREEPY);
+        assert!(!VANILLA_ENDERMAN_DEFAULT_STARED_AT);
         let polar_bear = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::PolarBear);
         assert_eq!(
             polar_bear.parent,

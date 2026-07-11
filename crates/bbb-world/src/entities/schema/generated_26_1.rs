@@ -67,6 +67,12 @@ pub const VANILLA_WITHER_TARGET_C_DATA_ID: u8 = GENERATED_VANILLA_WITHER_TARGET_
 const GENERATED_VANILLA_WITHER_INVULNERABLE_TICKS_DATA_ID: u8 = 19;
 pub const VANILLA_WITHER_INVULNERABLE_TICKS_DATA_ID: u8 =
     GENERATED_VANILLA_WITHER_INVULNERABLE_TICKS_DATA_ID;
+const GENERATED_VANILLA_ENDERMAN_CARRY_STATE_DATA_ID: u8 = 16;
+pub const VANILLA_ENDERMAN_CARRY_STATE_DATA_ID: u8 = GENERATED_VANILLA_ENDERMAN_CARRY_STATE_DATA_ID;
+const GENERATED_VANILLA_ENDERMAN_CREEPY_DATA_ID: u8 = 17;
+pub const VANILLA_ENDERMAN_CREEPY_DATA_ID: u8 = GENERATED_VANILLA_ENDERMAN_CREEPY_DATA_ID;
+const GENERATED_VANILLA_ENDERMAN_STARED_AT_DATA_ID: u8 = 18;
+pub const VANILLA_ENDERMAN_STARED_AT_DATA_ID: u8 = GENERATED_VANILLA_ENDERMAN_STARED_AT_DATA_ID;
 const GENERATED_VANILLA_POLAR_BEAR_STANDING_DATA_ID: u8 = 18;
 pub const VANILLA_POLAR_BEAR_STANDING_DATA_ID: u8 = GENERATED_VANILLA_POLAR_BEAR_STANDING_DATA_ID;
 const GENERATED_VANILLA_SLIME_SIZE_DATA_ID: u8 = 16;
@@ -369,6 +375,13 @@ pub const VANILLA_WITHER_DEFAULT_TARGET_C: i32 = GENERATED_VANILLA_WITHER_DEFAUL
 const GENERATED_VANILLA_WITHER_DEFAULT_INVULNERABLE_TICKS: i32 = 0;
 pub const VANILLA_WITHER_DEFAULT_INVULNERABLE_TICKS: i32 =
     GENERATED_VANILLA_WITHER_DEFAULT_INVULNERABLE_TICKS;
+const GENERATED_VANILLA_ENDERMAN_DEFAULT_CARRY_STATE: Option<i32> = None;
+pub const VANILLA_ENDERMAN_DEFAULT_CARRY_STATE: Option<i32> =
+    GENERATED_VANILLA_ENDERMAN_DEFAULT_CARRY_STATE;
+const GENERATED_VANILLA_ENDERMAN_DEFAULT_CREEPY: bool = false;
+pub const VANILLA_ENDERMAN_DEFAULT_CREEPY: bool = GENERATED_VANILLA_ENDERMAN_DEFAULT_CREEPY;
+const GENERATED_VANILLA_ENDERMAN_DEFAULT_STARED_AT: bool = false;
+pub const VANILLA_ENDERMAN_DEFAULT_STARED_AT: bool = GENERATED_VANILLA_ENDERMAN_DEFAULT_STARED_AT;
 const GENERATED_VANILLA_POLAR_BEAR_DEFAULT_STANDING: bool = false;
 pub const VANILLA_POLAR_BEAR_DEFAULT_STANDING: bool = GENERATED_VANILLA_POLAR_BEAR_DEFAULT_STANDING;
 const GENERATED_VANILLA_AVATAR_DEFAULT_MODEL_CUSTOMIZATION: i8 = 0;
@@ -13190,6 +13203,35 @@ const WITHERBOSS_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetada
     own_flags: WITHERBOSS_FLAGS,
 };
 
+const ENDERMAN_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_CARRY_STATE",
+        data_id: 16,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_BLOCK_STATE_ID,
+        default: VanillaEntityMetadataDefault::OptionalBlockStateNone,
+    },
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_CREEPY",
+        data_id: 17,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+        default: VanillaEntityMetadataDefault::Boolean(false),
+    },
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_STARED_AT",
+        data_id: 18,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+        default: VanillaEntityMetadataDefault::Boolean(false),
+    },
+];
+const ENDERMAN_FLAGS: &[VanillaEntityMetadataFlagSchema] = &[];
+const ENDERMAN_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamilySchema {
+    family: VanillaEntityMetadataFamily::EnderMan,
+    parent: Some(VanillaEntityMetadataFamily::Mob),
+    inherited_field_count: 16,
+    own_fields: ENDERMAN_FIELDS,
+    own_flags: ENDERMAN_FLAGS,
+};
+
 const SLIME_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[VanillaEntityMetadataFieldSchema {
     name: "ID_SIZE",
     data_id: 16,
@@ -14212,6 +14254,7 @@ pub(super) const fn generated_entity_metadata_schema(
         VanillaEntityMetadataFamily::Creeper => &CREEPER_SCHEMA,
         VanillaEntityMetadataFamily::Warden => &WARDEN_SCHEMA,
         VanillaEntityMetadataFamily::WitherBoss => &WITHERBOSS_SCHEMA,
+        VanillaEntityMetadataFamily::EnderMan => &ENDERMAN_SCHEMA,
         VanillaEntityMetadataFamily::Slime => &SLIME_SCHEMA,
         VanillaEntityMetadataFamily::Shulker => &SHULKER_SCHEMA,
         VanillaEntityMetadataFamily::Zombie => &ZOMBIE_SCHEMA,

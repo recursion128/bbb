@@ -494,7 +494,8 @@ back into a todo. Do not delete these.
   a vanilla-source-generated 26.1 catalog for all 227 accessors/defaults,
   inherited indices, serializer references, fixed EntityType mappings, and
   explicit flag diagnostics. The compatibility facade currently exposes
-  `Entity`, `LivingEntity`, `Mob -> Allay` / `Creeper` / `Warden` / `WitherBoss`,
+  `Entity`, `LivingEntity`, `Mob -> Allay` / `Creeper` / `Warden` / `WitherBoss` /
+  `EnderMan`,
   `Avatar`, `Player`, `AgeableMob -> AbstractHorse` / `TamableAnimal` / `PolarBear`,
   `ArmorStand`,
   `Slime` (also consumed by `MagmaCube`), `Shulker`, `Zombie`, `Mob -> Guardian` /

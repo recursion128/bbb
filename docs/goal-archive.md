@@ -9799,3 +9799,10 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   id16..18/default 0 与 invulnerable ticks id19/default 0；world side-head/render-state 和
   native debug-save 删除手抄 synced id/default。固定 220-tick spawn 算法仍由行为 owner
   管理。
+
+## 2026-07-11：Generated entity metadata consumer（EnderMan）
+
+- [x] 从 generated catalog 建立 `Mob -> EnderMan` family：optional block-state carry
+  id16/default none、BOOLEAN creepy id17/default false、stared-at id18/default false；world
+  carried-block/model projection 删除手抄 synced id/default。optional-none 标量 alias 仍由
+  Tree-sitter 提取的 `Optional.empty()` 确定性生成。

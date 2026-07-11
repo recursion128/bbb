@@ -44,6 +44,7 @@ FAMILIES = (
     FamilySpec("Creeper", "net.minecraft.world.entity.monster.Creeper", "Mob"),
     FamilySpec("Warden", "net.minecraft.world.entity.monster.warden.Warden", "Mob"),
     FamilySpec("WitherBoss", "net.minecraft.world.entity.boss.wither.WitherBoss", "Mob"),
+    FamilySpec("EnderMan", "net.minecraft.world.entity.monster.EnderMan", "Mob"),
     FamilySpec("Slime", "net.minecraft.world.entity.monster.Slime", "Mob"),
     FamilySpec("Shulker", "net.minecraft.world.entity.monster.Shulker", "Mob"),
     FamilySpec("Zombie", "net.minecraft.world.entity.monster.zombie.Zombie", "Mob"),
@@ -160,6 +161,9 @@ DATA_ALIASES = {
     "VANILLA_WITHER_TARGET_B_DATA_ID": ("net.minecraft.world.entity.boss.wither.WitherBoss", "DATA_TARGET_B"),
     "VANILLA_WITHER_TARGET_C_DATA_ID": ("net.minecraft.world.entity.boss.wither.WitherBoss", "DATA_TARGET_C"),
     "VANILLA_WITHER_INVULNERABLE_TICKS_DATA_ID": ("net.minecraft.world.entity.boss.wither.WitherBoss", "DATA_ID_INV"),
+    "VANILLA_ENDERMAN_CARRY_STATE_DATA_ID": ("net.minecraft.world.entity.monster.EnderMan", "DATA_CARRY_STATE"),
+    "VANILLA_ENDERMAN_CREEPY_DATA_ID": ("net.minecraft.world.entity.monster.EnderMan", "DATA_CREEPY"),
+    "VANILLA_ENDERMAN_STARED_AT_DATA_ID": ("net.minecraft.world.entity.monster.EnderMan", "DATA_STARED_AT"),
     "VANILLA_POLAR_BEAR_STANDING_DATA_ID": ("net.minecraft.world.entity.animal.polarbear.PolarBear", "DATA_STANDING_ID"),
     "VANILLA_SLIME_SIZE_DATA_ID": ("net.minecraft.world.entity.monster.Slime", "ID_SIZE"),
     "VANILLA_SHULKER_ATTACH_FACE_DATA_ID": ("net.minecraft.world.entity.monster.Shulker", "DATA_ATTACH_FACE_ID"),
@@ -251,6 +255,9 @@ DEFAULT_ALIASES = {
     "VANILLA_WITHER_DEFAULT_TARGET_B": ("net.minecraft.world.entity.boss.wither.WitherBoss", "DATA_TARGET_B"),
     "VANILLA_WITHER_DEFAULT_TARGET_C": ("net.minecraft.world.entity.boss.wither.WitherBoss", "DATA_TARGET_C"),
     "VANILLA_WITHER_DEFAULT_INVULNERABLE_TICKS": ("net.minecraft.world.entity.boss.wither.WitherBoss", "DATA_ID_INV"),
+    "VANILLA_ENDERMAN_DEFAULT_CARRY_STATE": ("net.minecraft.world.entity.monster.EnderMan", "DATA_CARRY_STATE"),
+    "VANILLA_ENDERMAN_DEFAULT_CREEPY": ("net.minecraft.world.entity.monster.EnderMan", "DATA_CREEPY"),
+    "VANILLA_ENDERMAN_DEFAULT_STARED_AT": ("net.minecraft.world.entity.monster.EnderMan", "DATA_STARED_AT"),
     "VANILLA_POLAR_BEAR_DEFAULT_STANDING": ("net.minecraft.world.entity.animal.polarbear.PolarBear", "DATA_STANDING_ID"),
     "VANILLA_AVATAR_DEFAULT_MODEL_CUSTOMIZATION": ("net.minecraft.world.entity.Avatar", "DATA_PLAYER_MODE_CUSTOMISATION"),
     "VANILLA_SLIME_DEFAULT_SIZE": ("net.minecraft.world.entity.monster.Slime", "ID_SIZE"),
@@ -530,14 +537,19 @@ def normalize_default(result: ExtractionResult, accessor: Accessor) -> Normalize
         rust = f"{value:.1f}"
         return NormalizedDefault(f"VanillaEntityMetadataDefault::Float({rust})", "f32", rust)
     optional = {
-        "OPTIONAL_COMPONENT": "OptionalComponentNone",
-        "OPTIONAL_BLOCK_POS": "OptionalBlockPosNone",
-        "OPTIONAL_BLOCK_STATE": "OptionalBlockStateNone",
-        "OPTIONAL_UNSIGNED_INT": "OptionalUnsignedIntNone",
-        "OPTIONAL_LIVING_ENTITY_REFERENCE": "OptionalLivingEntityReferenceNone",
+        "OPTIONAL_COMPONENT": ("OptionalComponentNone", None, None),
+        "OPTIONAL_BLOCK_POS": ("OptionalBlockPosNone", None, None),
+        "OPTIONAL_BLOCK_STATE": ("OptionalBlockStateNone", "Option<i32>", "None"),
+        "OPTIONAL_UNSIGNED_INT": ("OptionalUnsignedIntNone", None, None),
+        "OPTIONAL_LIVING_ENTITY_REFERENCE": ("OptionalLivingEntityReferenceNone", None, None),
     }
     if serializer in optional and compact in {"Optional.empty()", "OptionalInt.empty()"}:
-        return NormalizedDefault(f"VanillaEntityMetadataDefault::{optional[serializer]}")
+        variant, scalar_type, scalar_rust = optional[serializer]
+        return NormalizedDefault(
+            f"VanillaEntityMetadataDefault::{variant}",
+            scalar_type,
+            scalar_rust,
+        )
     if serializer == "PARTICLES" and compact == "List.of()":
         return NormalizedDefault("VanillaEntityMetadataDefault::ParticlesEmpty")
     if serializer == "ITEM_STACK" and compact == "ItemStack.EMPTY":

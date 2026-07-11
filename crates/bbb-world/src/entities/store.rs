@@ -22,6 +22,10 @@ use super::schema::{
     VANILLA_ABSTRACT_MINECART_DISPLAY_OFFSET_DATA_ID as MINECART_DISPLAY_OFFSET_DATA_ID,
     VANILLA_BAT_DEFAULT_FLAGS as BAT_DEFAULT_FLAGS, VANILLA_BAT_FLAGS_DATA_ID as BAT_FLAGS_DATA_ID,
     VANILLA_BAT_FLAG_RESTING as BAT_FLAG_RESTING,
+    VANILLA_ENDERMAN_CARRY_STATE_DATA_ID as ENDERMAN_CARRY_STATE_DATA_ID,
+    VANILLA_ENDERMAN_CREEPY_DATA_ID as ENDERMAN_CREEPY_DATA_ID,
+    VANILLA_ENDERMAN_DEFAULT_CARRY_STATE as ENDERMAN_DEFAULT_CARRY_STATE,
+    VANILLA_ENDERMAN_DEFAULT_CREEPY as ENDERMAN_DEFAULT_CREEPY,
     VANILLA_END_CRYSTAL_BEAM_TARGET_DATA_ID as END_CRYSTAL_BEAM_TARGET_DATA_ID,
     VANILLA_SHULKER_ATTACH_FACE_DATA_ID as SHULKER_ATTACH_FACE_DATA_ID,
     VANILLA_SNOW_GOLEM_DEFAULT_PUMPKIN_FLAGS as SNOW_GOLEM_DEFAULT_PUMPKIN_FLAGS,
@@ -291,14 +295,6 @@ fn vanilla_mob_item_in_hand_layer_type(entity_type_id: i32) -> bool {
                 | VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID
         )
 }
-
-/// Vanilla `Enderman.DATA_CARRY_STATE` data id (16): the optional carried `BlockState`.
-/// The enderman is the first `Monster` accessor after `Mob.DATA_MOB_FLAGS_ID` (15).
-const VANILLA_ENDERMAN_CARRY_STATE_DATA_ID: u8 = 16;
-
-/// Vanilla `Enderman.DATA_CREEPY` data id (17): the boolean staring/aggressive flag,
-/// defined right after `DATA_CARRY_STATE` (16).
-const VANILLA_ENDERMAN_CREEPY_DATA_ID: u8 = 17;
 
 /// Vanilla `Bee.DATA_FLAGS_ID` data id (18): the byte holding the bee flags, the first `Bee`
 /// accessor after the two `AgeableMob` accessors `DATA_BABY_ID` (16) / `AGE_LOCKED` (17).
@@ -923,7 +919,7 @@ impl EntityStore {
         if !vanilla_is_enderman(identity.entity_type_id) {
             return Some(None);
         }
-        self.metadata_optional_block_state(id, VANILLA_ENDERMAN_CARRY_STATE_DATA_ID)
+        self.metadata_optional_block_state(id, ENDERMAN_CARRY_STATE_DATA_ID)
     }
 
     pub(crate) fn minecart_display_block_state(
@@ -1638,8 +1634,8 @@ impl EntityStore {
         // these accessors, so the projections are gated to it and default off otherwise.
         let is_enderman = vanilla_is_enderman(identity.entity_type_id);
         let enderman_carried_block_state_id = if is_enderman {
-            self.metadata_optional_block_state(id, VANILLA_ENDERMAN_CARRY_STATE_DATA_ID)
-                .unwrap_or(None)
+            self.metadata_optional_block_state(id, ENDERMAN_CARRY_STATE_DATA_ID)
+                .unwrap_or(ENDERMAN_DEFAULT_CARRY_STATE)
         } else {
             None
         };
@@ -1652,8 +1648,8 @@ impl EntityStore {
             });
         let enderman_creepy = is_enderman
             && self
-                .metadata_bool(id, VANILLA_ENDERMAN_CREEPY_DATA_ID, false)
-                .unwrap_or(false);
+                .metadata_bool(id, ENDERMAN_CREEPY_DATA_ID, ENDERMAN_DEFAULT_CREEPY)
+                .unwrap_or(ENDERMAN_DEFAULT_CREEPY);
         // Vanilla `BatModel.setupAnim` swaps to the `BAT_RESTING` hanging pose while
         // `Bat.isResting` (`DATA_ID_FLAGS & 1`). Only the bat defines that flags byte, so
         // the projection is gated to it and defaults to flying otherwise.
