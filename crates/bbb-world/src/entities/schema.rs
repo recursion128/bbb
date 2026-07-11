@@ -6,6 +6,7 @@ use bbb_protocol::entity_data_serializers::{
     VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_BLOCK_POS_ID,
     VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_BLOCK_STATE_ID,
     VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_COMPONENT_ID,
+    VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_LIVING_ENTITY_REFERENCE_ID,
     VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_UNSIGNED_INT_ID,
     VANILLA_ENTITY_DATA_SERIALIZER_PARTICLES_ID, VANILLA_ENTITY_DATA_SERIALIZER_POSE_ID,
     VANILLA_ENTITY_DATA_SERIALIZER_ROTATIONS_ID,
@@ -25,6 +26,7 @@ pub enum VanillaEntityMetadataFamily {
     Zombie,
     AgeableMob,
     AbstractHorse,
+    TamableAnimal,
     ArmorStand,
     AbstractArrow,
     VehicleEntity,
@@ -52,6 +54,7 @@ pub enum VanillaEntityMetadataDefault {
     Direction(i32),
     ItemStackEmpty,
     OptionalBlockStateNone,
+    OptionalLivingEntityReferenceNone,
     MinecartDefaultDisplayOffset,
     MaxAirSupply,
 }
@@ -107,6 +110,8 @@ pub const VANILLA_ZOMBIE_DROWNED_CONVERSION_DATA_ID: u8 = 18;
 pub const VANILLA_AGEABLE_MOB_BABY_DATA_ID: u8 = 16;
 pub const VANILLA_AGEABLE_MOB_AGE_LOCKED_DATA_ID: u8 = 17;
 pub const VANILLA_ABSTRACT_HORSE_FLAGS_DATA_ID: u8 = 18;
+pub const VANILLA_TAMABLE_ANIMAL_FLAGS_DATA_ID: u8 = 18;
+pub const VANILLA_TAMABLE_ANIMAL_OWNER_DATA_ID: u8 = 19;
 pub const VANILLA_ARMOR_STAND_CLIENT_FLAGS_DATA_ID: u8 = 15;
 pub const VANILLA_ARMOR_STAND_HEAD_POSE_DATA_ID: u8 = 16;
 pub const VANILLA_ARMOR_STAND_BODY_POSE_DATA_ID: u8 = 17;
@@ -154,6 +159,8 @@ pub const VANILLA_ABSTRACT_HORSE_FLAG_BRED: i8 = 8;
 pub const VANILLA_ABSTRACT_HORSE_FLAG_EATING: i8 = 16;
 pub const VANILLA_ABSTRACT_HORSE_FLAG_STANDING: i8 = 32;
 pub const VANILLA_ABSTRACT_HORSE_FLAG_OPEN_MOUTH: i8 = 64;
+pub const VANILLA_TAMABLE_ANIMAL_FLAG_SITTING: i8 = 1;
+pub const VANILLA_TAMABLE_ANIMAL_FLAG_TAME: i8 = 4;
 pub const VANILLA_ABSTRACT_ARROW_FLAG_CRIT: i8 = 1;
 pub const VANILLA_ABSTRACT_ARROW_FLAG_NO_PHYSICS: i8 = 2;
 pub const VANILLA_ARMOR_STAND_CLIENT_FLAG_SMALL: i8 = 1 << 0;
@@ -181,6 +188,7 @@ pub const VANILLA_ZOMBIE_DEFAULT_DROWNED_CONVERSION: bool = false;
 pub const VANILLA_AGEABLE_MOB_DEFAULT_BABY: bool = false;
 pub const VANILLA_AGEABLE_MOB_DEFAULT_AGE_LOCKED: bool = false;
 pub const VANILLA_ABSTRACT_HORSE_DEFAULT_FLAGS: i8 = 0;
+pub const VANILLA_TAMABLE_ANIMAL_DEFAULT_FLAGS: i8 = 0;
 pub const VANILLA_ABSTRACT_ARROW_DEFAULT_FLAGS: i8 = 0;
 pub const VANILLA_ABSTRACT_ARROW_DEFAULT_PIERCE_LEVEL: i8 = 0;
 pub const VANILLA_ABSTRACT_ARROW_DEFAULT_IN_GROUND: bool = false;
@@ -484,6 +492,34 @@ const ABSTRACT_HORSE_FLAGS: &[VanillaEntityMetadataFlagSchema] = &[
         name: "FLAG_OPEN_MOUTH",
         data_id: VANILLA_ABSTRACT_HORSE_FLAGS_DATA_ID,
         mask: VANILLA_ABSTRACT_HORSE_FLAG_OPEN_MOUTH,
+    },
+];
+
+const TAMABLE_ANIMAL_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_FLAGS_ID",
+        data_id: VANILLA_TAMABLE_ANIMAL_FLAGS_DATA_ID,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+        default: VanillaEntityMetadataDefault::Byte(VANILLA_TAMABLE_ANIMAL_DEFAULT_FLAGS),
+    },
+    VanillaEntityMetadataFieldSchema {
+        name: "DATA_OWNERUUID_ID",
+        data_id: VANILLA_TAMABLE_ANIMAL_OWNER_DATA_ID,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_LIVING_ENTITY_REFERENCE_ID,
+        default: VanillaEntityMetadataDefault::OptionalLivingEntityReferenceNone,
+    },
+];
+
+const TAMABLE_ANIMAL_FLAGS: &[VanillaEntityMetadataFlagSchema] = &[
+    VanillaEntityMetadataFlagSchema {
+        name: "FLAG_SITTING",
+        data_id: VANILLA_TAMABLE_ANIMAL_FLAGS_DATA_ID,
+        mask: VANILLA_TAMABLE_ANIMAL_FLAG_SITTING,
+    },
+    VanillaEntityMetadataFlagSchema {
+        name: "FLAG_TAME",
+        data_id: VANILLA_TAMABLE_ANIMAL_FLAGS_DATA_ID,
+        mask: VANILLA_TAMABLE_ANIMAL_FLAG_TAME,
     },
 ];
 
@@ -822,6 +858,16 @@ const ABSTRACT_HORSE_SCHEMA: VanillaEntityMetadataFamilySchema =
         own_flags: ABSTRACT_HORSE_FLAGS,
     };
 
+const TAMABLE_ANIMAL_SCHEMA: VanillaEntityMetadataFamilySchema =
+    VanillaEntityMetadataFamilySchema {
+        family: VanillaEntityMetadataFamily::TamableAnimal,
+        parent: Some(VanillaEntityMetadataFamily::AgeableMob),
+        inherited_field_count: AGEABLE_MOB_SCHEMA.inherited_field_count
+            + AGEABLE_MOB_FIELDS.len() as u8,
+        own_fields: TAMABLE_ANIMAL_FIELDS,
+        own_flags: TAMABLE_ANIMAL_FLAGS,
+    };
+
 const ARMOR_STAND_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamilySchema {
     family: VanillaEntityMetadataFamily::ArmorStand,
     parent: Some(VanillaEntityMetadataFamily::LivingEntity),
@@ -912,6 +958,7 @@ pub const fn vanilla_entity_metadata_schema(
         VanillaEntityMetadataFamily::Zombie => &ZOMBIE_SCHEMA,
         VanillaEntityMetadataFamily::AgeableMob => &AGEABLE_MOB_SCHEMA,
         VanillaEntityMetadataFamily::AbstractHorse => &ABSTRACT_HORSE_SCHEMA,
+        VanillaEntityMetadataFamily::TamableAnimal => &TAMABLE_ANIMAL_SCHEMA,
         VanillaEntityMetadataFamily::ArmorStand => &ARMOR_STAND_SCHEMA,
         VanillaEntityMetadataFamily::AbstractArrow => &ABSTRACT_ARROW_SCHEMA,
         VanillaEntityMetadataFamily::VehicleEntity => &VEHICLE_SCHEMA,
@@ -1038,6 +1085,21 @@ mod tests {
         );
         assert_eq!(abstract_horse.inherited_field_count, 18);
         assert_eq!(abstract_horse.own_fields[0].data_id, 18);
+
+        let tamable = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::TamableAnimal);
+        assert_eq!(
+            tamable.parent,
+            Some(VanillaEntityMetadataFamily::AgeableMob)
+        );
+        assert_eq!(tamable.inherited_field_count, 18);
+        assert_eq!(
+            tamable
+                .own_fields
+                .iter()
+                .map(|field| field.data_id)
+                .collect::<Vec<_>>(),
+            (18..=19).collect::<Vec<_>>()
+        );
 
         let armor_stand = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::ArmorStand);
         assert_eq!(
@@ -1354,6 +1416,24 @@ mod tests {
                 serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 default: VanillaEntityMetadataDefault::Byte(0),
             }]
+        );
+        assert_eq!(
+            vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::TamableAnimal).own_fields,
+            &[
+                VanillaEntityMetadataFieldSchema {
+                    name: "DATA_FLAGS_ID",
+                    data_id: 18,
+                    serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+                    default: VanillaEntityMetadataDefault::Byte(0),
+                },
+                VanillaEntityMetadataFieldSchema {
+                    name: "DATA_OWNERUUID_ID",
+                    data_id: 19,
+                    serializer_id:
+                        VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_LIVING_ENTITY_REFERENCE_ID,
+                    default: VanillaEntityMetadataDefault::OptionalLivingEntityReferenceNone,
+                },
+            ]
         );
         assert_eq!(
             vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::ArmorStand).own_fields,
@@ -1711,6 +1791,21 @@ mod tests {
             ]
         );
         assert_eq!(
+            vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::TamableAnimal).own_flags,
+            &[
+                VanillaEntityMetadataFlagSchema {
+                    name: "FLAG_SITTING",
+                    data_id: 18,
+                    mask: 1,
+                },
+                VanillaEntityMetadataFlagSchema {
+                    name: "FLAG_TAME",
+                    data_id: 18,
+                    mask: 4,
+                },
+            ]
+        );
+        assert_eq!(
             vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::AbstractArrow).own_flags,
             &[
                 VanillaEntityMetadataFlagSchema {
@@ -1800,6 +1895,7 @@ mod tests {
             VanillaEntityMetadataFamily::Zombie,
             VanillaEntityMetadataFamily::AgeableMob,
             VanillaEntityMetadataFamily::AbstractHorse,
+            VanillaEntityMetadataFamily::TamableAnimal,
             VanillaEntityMetadataFamily::ArmorStand,
             VanillaEntityMetadataFamily::AbstractArrow,
             VanillaEntityMetadataFamily::VehicleEntity,

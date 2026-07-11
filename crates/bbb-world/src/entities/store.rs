@@ -21,6 +21,9 @@ use super::schema::{
     VANILLA_ABSTRACT_MINECART_CUSTOM_DISPLAY_BLOCK_DATA_ID as MINECART_CUSTOM_DISPLAY_BLOCK_DATA_ID,
     VANILLA_ABSTRACT_MINECART_DISPLAY_OFFSET_DATA_ID as MINECART_DISPLAY_OFFSET_DATA_ID,
     VANILLA_SHULKER_ATTACH_FACE_DATA_ID as SHULKER_ATTACH_FACE_DATA_ID,
+    VANILLA_TAMABLE_ANIMAL_DEFAULT_FLAGS as TAMABLE_ANIMAL_DEFAULT_FLAGS,
+    VANILLA_TAMABLE_ANIMAL_FLAGS_DATA_ID as TAMABLE_ANIMAL_FLAGS_DATA_ID,
+    VANILLA_TAMABLE_ANIMAL_FLAG_SITTING as TAMABLE_ANIMAL_SITTING_FLAG,
 };
 
 use super::{
@@ -118,10 +121,6 @@ const ABSTRACT_VILLAGER_UNHAPPY_COUNTER_DATA_ID: u8 = 18;
 /// Vanilla `Entity.getTicksRequiredToFreeze()`: the powder-snow freeze threshold
 /// at which `isFullyFrozen()` becomes true and the body starts shaking.
 const VANILLA_TICKS_REQUIRED_TO_FREEZE: i32 = 140;
-/// Vanilla `TamableAnimal.DATA_FLAGS_ID`: Cat extends TamableAnimal, while the ocelot does not.
-const TAMABLE_ANIMAL_FLAGS_DATA_ID: u8 = 18;
-/// Vanilla `TamableAnimal.isInSittingPose()` reads `DATA_FLAGS_ID & 1`.
-const TAMABLE_ANIMAL_SITTING_FLAG: i8 = 0x01;
 
 /// Vanilla 26.1 `EntityType.PIG` registry id, used to gate `PigRenderState.saddle`.
 /// Vanilla 26.1 `EntityType.WOLF` registry id, used to gate `WolfArmorLayer`.
@@ -1724,8 +1723,12 @@ impl EntityStore {
                 != 0;
         let feline_is_sitting = vanilla_is_cat(identity.entity_type_id)
             && self
-                .metadata_byte(id, TAMABLE_ANIMAL_FLAGS_DATA_ID, 0)
-                .unwrap_or(0)
+                .metadata_byte(
+                    id,
+                    TAMABLE_ANIMAL_FLAGS_DATA_ID,
+                    TAMABLE_ANIMAL_DEFAULT_FLAGS,
+                )
+                .unwrap_or(TAMABLE_ANIMAL_DEFAULT_FLAGS)
                 & TAMABLE_ANIMAL_SITTING_FLAG
                 != 0;
         // Vanilla `VexModel.setupAnim` levels the body (`xRot = 0`) and raises both arms

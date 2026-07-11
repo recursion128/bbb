@@ -218,8 +218,12 @@ pub(super) fn feline_model_kind(
     cat: bool,
     cat_variants: Option<&RegistryContentState>,
 ) -> EntityModelKind {
-    let tame =
-        (entity_data_byte(values, TAMABLE_ANIMAL_FLAGS_DATA_ID, 0) & TAMABLE_ANIMAL_TAME_FLAG) != 0;
+    let tame = (entity_data_byte(
+        values,
+        TAMABLE_ANIMAL_FLAGS_DATA_ID,
+        TAMABLE_ANIMAL_DEFAULT_FLAGS,
+    ) & TAMABLE_ANIMAL_TAME_FLAG)
+        != 0;
     EntityModelKind::Feline {
         cat,
         baby: ageable_baby(values),
@@ -545,8 +549,12 @@ pub(super) fn wolf_model_kind(
     game_time: i64,
     wolf_variants: Option<&RegistryContentState>,
 ) -> EntityModelKind {
-    let tame =
-        (entity_data_byte(values, TAMABLE_ANIMAL_FLAGS_DATA_ID, 0) & TAMABLE_ANIMAL_TAME_FLAG) != 0;
+    let tame = (entity_data_byte(
+        values,
+        TAMABLE_ANIMAL_FLAGS_DATA_ID,
+        TAMABLE_ANIMAL_DEFAULT_FLAGS,
+    ) & TAMABLE_ANIMAL_TAME_FLAG)
+        != 0;
     EntityModelKind::Wolf {
         baby: ageable_baby(values),
         tame,
@@ -784,8 +792,12 @@ pub(super) fn wolf_tail_angle(
         // `Wolf.getTailAngle()` angry branch returns this exact constant.
         return 1.5393804;
     }
-    let tame =
-        (entity_data_byte(values, TAMABLE_ANIMAL_FLAGS_DATA_ID, 0) & TAMABLE_ANIMAL_TAME_FLAG) != 0;
+    let tame = (entity_data_byte(
+        values,
+        TAMABLE_ANIMAL_FLAGS_DATA_ID,
+        TAMABLE_ANIMAL_DEFAULT_FLAGS,
+    ) & TAMABLE_ANIMAL_TAME_FLAG)
+        != 0;
     if !tame {
         return WILD_TAIL_ANGLE;
     }
@@ -803,7 +815,11 @@ pub(super) fn wolf_sitting(
     values: &[bbb_protocol::packets::EntityDataValue],
 ) -> bool {
     entity_type_id == VANILLA_ENTITY_TYPE_WOLF_ID
-        && (entity_data_byte(values, TAMABLE_ANIMAL_FLAGS_DATA_ID, 0) & TAMABLE_ANIMAL_SITTING_FLAG)
+        && (entity_data_byte(
+            values,
+            TAMABLE_ANIMAL_FLAGS_DATA_ID,
+            TAMABLE_ANIMAL_DEFAULT_FLAGS,
+        ) & TAMABLE_ANIMAL_SITTING_FLAG)
             != 0
 }
 
@@ -815,7 +831,11 @@ pub(super) fn parrot_sitting(
     values: &[bbb_protocol::packets::EntityDataValue],
 ) -> bool {
     entity_type_id == VANILLA_ENTITY_TYPE_PARROT_ID
-        && (entity_data_byte(values, TAMABLE_ANIMAL_FLAGS_DATA_ID, 0) & TAMABLE_ANIMAL_SITTING_FLAG)
+        && (entity_data_byte(
+            values,
+            TAMABLE_ANIMAL_FLAGS_DATA_ID,
+            TAMABLE_ANIMAL_DEFAULT_FLAGS,
+        ) & TAMABLE_ANIMAL_SITTING_FLAG)
             != 0
 }
 

@@ -152,7 +152,7 @@ fn mount_equipment_visibility_uses_tame_and_baby_entity_data() {
         mount_visibility_for_entity(
             VANILLA_ENTITY_TYPE_DONKEY_ID,
             vec![protocol_byte_data(
-                VANILLA_MOUNT_TAME_FLAGS_DATA_ID,
+                VANILLA_ABSTRACT_HORSE_FLAGS_DATA_ID,
                 VANILLA_ABSTRACT_HORSE_TAME_FLAG,
             )],
         ),
@@ -167,7 +167,7 @@ fn mount_equipment_visibility_uses_tame_and_baby_entity_data() {
             vec![
                 protocol_bool_data(VANILLA_AGEABLE_MOB_BABY_DATA_ID, true),
                 protocol_byte_data(
-                    VANILLA_MOUNT_TAME_FLAGS_DATA_ID,
+                    VANILLA_ABSTRACT_HORSE_FLAGS_DATA_ID,
                     VANILLA_ABSTRACT_HORSE_TAME_FLAG,
                 ),
             ],
@@ -181,7 +181,7 @@ fn mount_equipment_visibility_uses_tame_and_baby_entity_data() {
         mount_visibility_for_entity(
             VANILLA_ENTITY_TYPE_NAUTILUS_ID,
             vec![protocol_byte_data(
-                VANILLA_MOUNT_TAME_FLAGS_DATA_ID,
+                VANILLA_TAMABLE_ANIMAL_TAME_FLAGS_DATA_ID,
                 VANILLA_TAMABLE_ANIMAL_TAME_FLAG,
             )],
         ),

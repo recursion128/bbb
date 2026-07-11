@@ -156,6 +156,11 @@ use bbb_world::{
     VANILLA_SHULKER_DEFAULT_PEEK as SHULKER_DEFAULT_PEEK,
     VANILLA_SHULKER_PEEK_DATA_ID as SHULKER_PEEK_DATA_ID,
 };
+use bbb_world::{
+    VANILLA_TAMABLE_ANIMAL_DEFAULT_FLAGS as TAMABLE_ANIMAL_DEFAULT_FLAGS,
+    VANILLA_TAMABLE_ANIMAL_FLAGS_DATA_ID as TAMABLE_ANIMAL_FLAGS_DATA_ID,
+    VANILLA_TAMABLE_ANIMAL_FLAG_SITTING as TAMABLE_ANIMAL_SITTING_FLAG,
+};
 use tokio::sync::mpsc;
 use winit::{
     dpi::{PhysicalPosition, PhysicalSize},
@@ -420,8 +425,6 @@ const TURTLE_DEFAULT_HOME_POS_X: i32 = 0;
 const TURTLE_DEFAULT_HOME_POS_Y: i32 = 0;
 const TURTLE_DEFAULT_HOME_POS_Z: i32 = 0;
 const TURTLE_DEFAULT_HAS_EGG: bool = false;
-const TAMABLE_ANIMAL_FLAGS_DATA_ID: u8 = 18;
-const TAMABLE_ANIMAL_SITTING_FLAG: i8 = 0x01;
 const CAT_VARIANT_DATA_ID: u8 = 20;
 const CAT_COLLAR_COLOR_DATA_ID: u8 = 23;
 const CAT_SOUND_VARIANT_DATA_ID: u8 = 24;
@@ -6320,7 +6323,8 @@ fn debug_push_trader_llama_additional_save_data(fields: &mut Vec<String>) {
 }
 
 fn debug_push_tamable_animal_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
-    let flags = debug_entity_data_byte_present(entity, TAMABLE_ANIMAL_FLAGS_DATA_ID).unwrap_or(0);
+    let flags = debug_entity_data_byte_present(entity, TAMABLE_ANIMAL_FLAGS_DATA_ID)
+        .unwrap_or(TAMABLE_ANIMAL_DEFAULT_FLAGS);
     fields.push(format!(
         "Sitting: {}",
         debug_snbt_bool(flags & TAMABLE_ANIMAL_SITTING_FLAG != 0)

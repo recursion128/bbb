@@ -63,6 +63,12 @@ use bbb_world::{
     VANILLA_SHULKER_COLOR_DATA_ID as SHULKER_COLOR_DATA_ID,
     VANILLA_SHULKER_DEFAULT_COLOR as SHULKER_DEFAULT_COLOR,
 };
+use bbb_world::{
+    VANILLA_TAMABLE_ANIMAL_DEFAULT_FLAGS as TAMABLE_ANIMAL_DEFAULT_FLAGS,
+    VANILLA_TAMABLE_ANIMAL_FLAGS_DATA_ID as TAMABLE_ANIMAL_FLAGS_DATA_ID,
+    VANILLA_TAMABLE_ANIMAL_FLAG_SITTING as TAMABLE_ANIMAL_SITTING_FLAG,
+    VANILLA_TAMABLE_ANIMAL_FLAG_TAME as TAMABLE_ANIMAL_TAME_FLAG,
+};
 // Vanilla `Zombie.DATA_DROWNED_CONVERSION_ID`: `Entity` 0..=7, `LivingEntity` 8..=14,
 // `Mob` 15, then Zombie baby/special-type/drowned-conversion at 16..=18.
 use bbb_world::{
@@ -263,8 +269,6 @@ const ARROW_IN_GROUND_DATA_ID: u8 = 10;
 // Vanilla `ThrownTrident.ID_FOIL` (12, BOOLEAN): after Entity (0-7) and AbstractArrow's
 // ID_FLAGS / PIERCE_LEVEL / IN_GROUND (8/9/10), trident defines ID_LOYALTY (11) then ID_FOIL (12).
 const TRIDENT_FOIL_DATA_ID: u8 = 12;
-const TAMABLE_ANIMAL_FLAGS_DATA_ID: u8 = 18;
-const TAMABLE_ANIMAL_TAME_FLAG: i8 = 0x04;
 /// Vanilla `Creaking.IS_ACTIVE` data id (17, BOOLEAN): `Creaking extends Monster` (not ageable), so
 /// after `Mob.DATA_MOB_FLAGS_ID` (15) come `CAN_MOVE` (16) / `IS_ACTIVE` (17) / `IS_TEARING_DOWN`
 /// (18). The renderer's `eyesGlowing` is `isActive()` for a live creaking (the death-flicker is deferred).
@@ -277,8 +281,6 @@ const TURTLE_LAYING_EGG_DATA_ID: u8 = 19;
 /// Vanilla `EndCrystal.DATA_SHOW_BOTTOM` data id (9): EndCrystal extends Entity directly (0-7),
 /// then declares `DATA_BEAM_TARGET` (8) and `DATA_SHOW_BOTTOM` (9). Synced boolean, default `true`.
 const END_CRYSTAL_SHOW_BOTTOM_DATA_ID: u8 = 9;
-/// `TamableAnimal` `DATA_FLAGS_ID` sitting bit (`isInSittingPose()` reads `& 1`).
-const TAMABLE_ANIMAL_SITTING_FLAG: i8 = 0x01;
 const WOLF_COLLAR_COLOR_DATA_ID: u8 = 21;
 const WOLF_ANGER_END_TIME_DATA_ID: u8 = 22;
 const WOLF_DEFAULT_COLLAR_COLOR_ID: i32 = 14;

@@ -18,8 +18,11 @@ pub(super) fn mount_horse_saddle_slot_is_active(
         return true;
     }
     !mount_entity_is_ageable_baby(data_values)
-        && (entity_data_byte(data_values, VANILLA_MOUNT_TAME_FLAGS_DATA_ID, 0)
-            & VANILLA_ABSTRACT_HORSE_TAME_FLAG)
+        && (entity_data_byte(
+            data_values,
+            VANILLA_ABSTRACT_HORSE_FLAGS_DATA_ID,
+            VANILLA_ABSTRACT_HORSE_DEFAULT_FLAGS,
+        ) & VANILLA_ABSTRACT_HORSE_TAME_FLAG)
             != 0
 }
 
@@ -37,8 +40,11 @@ pub(super) fn mount_nautilus_can_use_equipment_slots(
     data_values: &[ProtocolEntityDataValue],
 ) -> bool {
     !mount_entity_is_ageable_baby(data_values)
-        && (entity_data_byte(data_values, VANILLA_MOUNT_TAME_FLAGS_DATA_ID, 0)
-            & VANILLA_TAMABLE_ANIMAL_TAME_FLAG)
+        && (entity_data_byte(
+            data_values,
+            VANILLA_TAMABLE_ANIMAL_TAME_FLAGS_DATA_ID,
+            VANILLA_TAMABLE_ANIMAL_DEFAULT_FLAGS,
+        ) & VANILLA_TAMABLE_ANIMAL_TAME_FLAG)
             != 0
 }
 

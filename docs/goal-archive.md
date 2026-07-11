@@ -9574,3 +9574,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   ids/default match，统一引用 schema。focused tests 覆盖 serializer/default、三个虚拟默认、
   custom block/offset render state，以及 Chest/Hopper 显式 offset 6 必须持久化而不能按 base
   default 错误省略。具体 minecart 子类自有 metadata 仍留给后续 family slice。
+
+## 2026-07-11：Entity metadata schema phase 15（TamableAnimal）
+
+- [x] entity metadata schema 的 tamable 父链：确认 `Animal` 无 accessor，新增
+  `AgeableMob -> TamableAnimal` family，集中声明 BYTE flags id 18/default 0、sitting/tame
+  masks 1/4，以及 OPTIONAL_LIVING_ENTITY_REFERENCE owner id 19/default none。world feline
+  sitting/render 与 mount inventory tame checks、native Cat/Wolf/Parrot model/layer/sitting 及
+  F3+I save projection 删除本地 ids/defaults/masks，统一引用 schema；focused tests 锁定继承
+  offset、serializer/default/masks、cat/parrot/wolf tame+sitting render、mount slot rules 与
+  tamable save-NBT。`orderedToSit` 仍是客户端不可直接获得的 private save state 边界。
