@@ -274,6 +274,8 @@ pub const VANILLA_ABSTRACT_FISH_FROM_BUCKET_DATA_ID: u8 =
 const GENERATED_VANILLA_PUFFERFISH_PUFF_STATE_DATA_ID: u8 = 17;
 pub const VANILLA_PUFFERFISH_PUFF_STATE_DATA_ID: u8 =
     GENERATED_VANILLA_PUFFERFISH_PUFF_STATE_DATA_ID;
+const GENERATED_VANILLA_TADPOLE_AGE_LOCKED_DATA_ID: u8 = 17;
+pub const VANILLA_TADPOLE_AGE_LOCKED_DATA_ID: u8 = GENERATED_VANILLA_TADPOLE_AGE_LOCKED_DATA_ID;
 const GENERATED_VANILLA_VEHICLE_HURT_TIME_DATA_ID: u8 = 8;
 pub const VANILLA_VEHICLE_HURT_TIME_DATA_ID: u8 = GENERATED_VANILLA_VEHICLE_HURT_TIME_DATA_ID;
 const GENERATED_VANILLA_VEHICLE_HURT_DIR_DATA_ID: u8 = 9;
@@ -636,6 +638,8 @@ pub const VANILLA_ABSTRACT_FISH_DEFAULT_FROM_BUCKET: bool =
 const GENERATED_VANILLA_PUFFERFISH_DEFAULT_PUFF_STATE: i32 = 0;
 pub const VANILLA_PUFFERFISH_DEFAULT_PUFF_STATE: i32 =
     GENERATED_VANILLA_PUFFERFISH_DEFAULT_PUFF_STATE;
+const GENERATED_VANILLA_TADPOLE_DEFAULT_AGE_LOCKED: bool = false;
+pub const VANILLA_TADPOLE_DEFAULT_AGE_LOCKED: bool = GENERATED_VANILLA_TADPOLE_DEFAULT_AGE_LOCKED;
 const GENERATED_VANILLA_VEHICLE_DEFAULT_HURT_TIME: i32 = 0;
 pub const VANILLA_VEHICLE_DEFAULT_HURT_TIME: i32 = GENERATED_VANILLA_VEHICLE_DEFAULT_HURT_TIME;
 const GENERATED_VANILLA_VEHICLE_DEFAULT_HURT_DIR: i32 = 1;
@@ -14556,6 +14560,21 @@ const PUFFERFISH_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetada
     own_flags: PUFFERFISH_FLAGS,
 };
 
+const TADPOLE_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[VanillaEntityMetadataFieldSchema {
+    name: "AGE_LOCKED",
+    data_id: 17,
+    serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+    default: VanillaEntityMetadataDefault::Boolean(false),
+}];
+const TADPOLE_FLAGS: &[VanillaEntityMetadataFlagSchema] = &[];
+const TADPOLE_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamilySchema {
+    family: VanillaEntityMetadataFamily::Tadpole,
+    parent: Some(VanillaEntityMetadataFamily::AbstractFish),
+    inherited_field_count: 17,
+    own_fields: TADPOLE_FIELDS,
+    own_flags: TADPOLE_FLAGS,
+};
+
 const VEHICLEENTITY_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[
     VanillaEntityMetadataFieldSchema {
         name: "DATA_ID_HURT",
@@ -14831,6 +14850,7 @@ pub(super) const fn generated_entity_metadata_schema(
         VanillaEntityMetadataFamily::SpellcasterIllager => &SPELLCASTERILLAGER_SCHEMA,
         VanillaEntityMetadataFamily::AbstractFish => &ABSTRACTFISH_SCHEMA,
         VanillaEntityMetadataFamily::Pufferfish => &PUFFERFISH_SCHEMA,
+        VanillaEntityMetadataFamily::Tadpole => &TADPOLE_SCHEMA,
         VanillaEntityMetadataFamily::VehicleEntity => &VEHICLEENTITY_SCHEMA,
         VanillaEntityMetadataFamily::AbstractBoat => &ABSTRACTBOAT_SCHEMA,
         VanillaEntityMetadataFamily::AbstractMinecart => &ABSTRACTMINECART_SCHEMA,

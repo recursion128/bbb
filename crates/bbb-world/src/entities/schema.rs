@@ -67,6 +67,7 @@ pub enum VanillaEntityMetadataFamily {
     SpellcasterIllager,
     AbstractFish,
     Pufferfish,
+    Tadpole,
     VehicleEntity,
     AbstractBoat,
     AbstractMinecart,
@@ -403,6 +404,7 @@ mod tests {
             VanillaEntityMetadataFamily::SpellcasterIllager,
             VanillaEntityMetadataFamily::AbstractFish,
             VanillaEntityMetadataFamily::Pufferfish,
+            VanillaEntityMetadataFamily::Tadpole,
             VanillaEntityMetadataFamily::VehicleEntity,
             VanillaEntityMetadataFamily::AbstractBoat,
             VanillaEntityMetadataFamily::AbstractMinecart,
@@ -1084,6 +1086,15 @@ mod tests {
         assert!(!VANILLA_ABSTRACT_FISH_DEFAULT_FROM_BUCKET);
         assert_eq!(VANILLA_PUFFERFISH_PUFF_STATE_DATA_ID, 17);
         assert_eq!(VANILLA_PUFFERFISH_DEFAULT_PUFF_STATE, 0);
+        let tadpole = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Tadpole);
+        assert_eq!(
+            tadpole.parent,
+            Some(VanillaEntityMetadataFamily::AbstractFish)
+        );
+        assert_eq!(tadpole.inherited_field_count, 17);
+        assert_eq!(tadpole.own_fields.len(), 1);
+        assert_eq!(VANILLA_TADPOLE_AGE_LOCKED_DATA_ID, 17);
+        assert!(!VANILLA_TADPOLE_DEFAULT_AGE_LOCKED);
         assert_eq!(
             vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Entity)
                 .own_flags

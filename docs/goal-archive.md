@@ -9880,3 +9880,9 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] 从 generated catalog 建立 `AgeableMob -> Ocelot` family：BOOLEAN trusting
   id18/default false；native debug-save 删除手抄 synced id/default，不扩张模型或 AI 行为。
+
+## 2026-07-11：Generated entity metadata consumer（Tadpole）
+
+- [x] 从 generated catalog 建立 `AbstractFish -> Tadpole` family：BOOLEAN age-locked
+  id17/default false；native debug-save 删除手抄 synced id/default。普通保存字段 `Age`
+  继续由 native 保存语义 owner 管理。

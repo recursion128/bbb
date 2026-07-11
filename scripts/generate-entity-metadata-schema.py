@@ -133,6 +133,7 @@ FAMILIES = (
         "net.minecraft.world.entity.animal.fish.Pufferfish",
         "AbstractFish",
     ),
+    FamilySpec("Tadpole", "net.minecraft.world.entity.animal.frog.Tadpole", "AbstractFish"),
     FamilySpec("VehicleEntity", "net.minecraft.world.entity.vehicle.VehicleEntity", "Entity"),
     FamilySpec(
         "AbstractBoat",
@@ -268,6 +269,7 @@ DATA_ALIASES = {
     "VANILLA_SPELLCASTER_ILLAGER_CASTING_DATA_ID": ("net.minecraft.world.entity.monster.illager.SpellcasterIllager", "DATA_SPELL_CASTING_ID"),
     "VANILLA_ABSTRACT_FISH_FROM_BUCKET_DATA_ID": ("net.minecraft.world.entity.animal.fish.AbstractFish", "FROM_BUCKET"),
     "VANILLA_PUFFERFISH_PUFF_STATE_DATA_ID": ("net.minecraft.world.entity.animal.fish.Pufferfish", "PUFF_STATE"),
+    "VANILLA_TADPOLE_AGE_LOCKED_DATA_ID": ("net.minecraft.world.entity.animal.frog.Tadpole", "AGE_LOCKED"),
     "VANILLA_VEHICLE_HURT_TIME_DATA_ID": ("net.minecraft.world.entity.vehicle.VehicleEntity", "DATA_ID_HURT"),
     "VANILLA_VEHICLE_HURT_DIR_DATA_ID": ("net.minecraft.world.entity.vehicle.VehicleEntity", "DATA_ID_HURTDIR"),
     "VANILLA_VEHICLE_DAMAGE_DATA_ID": ("net.minecraft.world.entity.vehicle.VehicleEntity", "DATA_ID_DAMAGE"),
@@ -379,6 +381,7 @@ DEFAULT_ALIASES = {
     "VANILLA_SPELLCASTER_ILLAGER_DEFAULT_CASTING": ("net.minecraft.world.entity.monster.illager.SpellcasterIllager", "DATA_SPELL_CASTING_ID"),
     "VANILLA_ABSTRACT_FISH_DEFAULT_FROM_BUCKET": ("net.minecraft.world.entity.animal.fish.AbstractFish", "FROM_BUCKET"),
     "VANILLA_PUFFERFISH_DEFAULT_PUFF_STATE": ("net.minecraft.world.entity.animal.fish.Pufferfish", "PUFF_STATE"),
+    "VANILLA_TADPOLE_DEFAULT_AGE_LOCKED": ("net.minecraft.world.entity.animal.frog.Tadpole", "AGE_LOCKED"),
     "VANILLA_VEHICLE_DEFAULT_HURT_TIME": ("net.minecraft.world.entity.vehicle.VehicleEntity", "DATA_ID_HURT"),
     "VANILLA_VEHICLE_DEFAULT_HURT_DIR": ("net.minecraft.world.entity.vehicle.VehicleEntity", "DATA_ID_HURTDIR"),
     "VANILLA_VEHICLE_DEFAULT_DAMAGE": ("net.minecraft.world.entity.vehicle.VehicleEntity", "DATA_ID_DAMAGE"),
