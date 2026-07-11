@@ -211,6 +211,13 @@ use bbb_world::{
     VANILLA_ABSTRACT_ARROW_PIERCE_LEVEL_DATA_ID as ABSTRACT_ARROW_PIERCE_LEVEL_DATA_ID,
 };
 use bbb_world::{
+    VANILLA_ARMADILLO_DEFAULT_STATE as ARMADILLO_DEFAULT_STATE,
+    VANILLA_ARMADILLO_STATE_DATA_ID as ARMADILLO_STATE_DATA_ID,
+    VANILLA_ARMADILLO_STATE_ROLLING_ID as ARMADILLO_STATE_ROLLING_ID,
+    VANILLA_ARMADILLO_STATE_SCARED_ID as ARMADILLO_STATE_SCARED_ID,
+    VANILLA_ARMADILLO_STATE_UNROLLING_ID as ARMADILLO_STATE_UNROLLING_ID,
+};
+use bbb_world::{
     VANILLA_FOX_DEFAULT_FLAGS as FOX_DEFAULT_FLAGS,
     VANILLA_FOX_DEFAULT_TYPE as FOX_DEFAULT_VARIANT_ID,
     VANILLA_FOX_FLAGS_DATA_ID as FOX_FLAGS_DATA_ID,
@@ -497,8 +504,6 @@ const SKELETON_HORSE_DEFAULT_TRAP: bool = false;
 const SKELETON_HORSE_DEFAULT_TRAP_TIME: i32 = 0;
 const LLAMA_MAX_VARIANT: i32 = 3;
 const TRADER_LLAMA_DEFAULT_DESPAWN_DELAY: i32 = 47999;
-const ARMADILLO_STATE_DATA_ID: u8 = 18;
-const ARMADILLO_STATE_IDLE_ID: i32 = 0;
 const ARMADILLO_DEFAULT_SCUTE_TIME: i32 = 0;
 const BEE_DEFAULT_TICKS_SINCE_POLLINATION: i32 = 0;
 const BEE_DEFAULT_CANNOT_ENTER_HIVE_TICKS: i32 = 0;
@@ -6491,7 +6496,7 @@ fn debug_push_armadillo_additional_save_data(entity: &EntityState, fields: &mut 
         ARMADILLO_STATE_DATA_ID,
         EntityDataEnumSerializer::ArmadilloState,
     )
-    .unwrap_or(ARMADILLO_STATE_IDLE_ID);
+    .unwrap_or(ARMADILLO_DEFAULT_STATE);
     fields.push(format!(
         "state: {}",
         debug_snbt_string(debug_armadillo_state_name(state_id))
@@ -6501,9 +6506,9 @@ fn debug_push_armadillo_additional_save_data(entity: &EntityState, fields: &mut 
 
 fn debug_armadillo_state_name(state_id: i32) -> &'static str {
     match state_id {
-        1 => "rolling",
-        2 => "scared",
-        3 => "unrolling",
+        ARMADILLO_STATE_ROLLING_ID => "rolling",
+        ARMADILLO_STATE_SCARED_ID => "scared",
+        ARMADILLO_STATE_UNROLLING_ID => "unrolling",
         _ => "idle",
     }
 }

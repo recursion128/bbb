@@ -49,6 +49,7 @@ FAMILIES = (
     FamilySpec("Shulker", "net.minecraft.world.entity.monster.Shulker", "Mob"),
     FamilySpec("Zombie", "net.minecraft.world.entity.monster.zombie.Zombie", "Mob"),
     FamilySpec("AgeableMob", "net.minecraft.world.entity.AgeableMob", "Mob"),
+    FamilySpec("Armadillo", "net.minecraft.world.entity.animal.armadillo.Armadillo", "AgeableMob"),
     FamilySpec("Axolotl", "net.minecraft.world.entity.animal.axolotl.Axolotl", "AgeableMob"),
     FamilySpec("Bee", "net.minecraft.world.entity.animal.bee.Bee", "AgeableMob"),
     FamilySpec("Dolphin", "net.minecraft.world.entity.animal.dolphin.Dolphin", "AgeableMob"),
@@ -199,6 +200,7 @@ DATA_ALIASES = {
     "VANILLA_ZOMBIE_DROWNED_CONVERSION_DATA_ID": ("net.minecraft.world.entity.monster.zombie.Zombie", "DATA_DROWNED_CONVERSION_ID"),
     "VANILLA_AGEABLE_MOB_BABY_DATA_ID": ("net.minecraft.world.entity.AgeableMob", "DATA_BABY_ID"),
     "VANILLA_AGEABLE_MOB_AGE_LOCKED_DATA_ID": ("net.minecraft.world.entity.AgeableMob", "AGE_LOCKED"),
+    "VANILLA_ARMADILLO_STATE_DATA_ID": ("net.minecraft.world.entity.animal.armadillo.Armadillo", "ARMADILLO_STATE"),
     "VANILLA_AXOLOTL_VARIANT_DATA_ID": ("net.minecraft.world.entity.animal.axolotl.Axolotl", "DATA_VARIANT"),
     "VANILLA_AXOLOTL_PLAYING_DEAD_DATA_ID": ("net.minecraft.world.entity.animal.axolotl.Axolotl", "DATA_PLAYING_DEAD"),
     "VANILLA_AXOLOTL_FROM_BUCKET_DATA_ID": ("net.minecraft.world.entity.animal.axolotl.Axolotl", "FROM_BUCKET"),
@@ -331,6 +333,7 @@ DEFAULT_ALIASES = {
     "VANILLA_ZOMBIE_DEFAULT_DROWNED_CONVERSION": ("net.minecraft.world.entity.monster.zombie.Zombie", "DATA_DROWNED_CONVERSION_ID"),
     "VANILLA_AGEABLE_MOB_DEFAULT_BABY": ("net.minecraft.world.entity.AgeableMob", "DATA_BABY_ID"),
     "VANILLA_AGEABLE_MOB_DEFAULT_AGE_LOCKED": ("net.minecraft.world.entity.AgeableMob", "AGE_LOCKED"),
+    "VANILLA_ARMADILLO_DEFAULT_STATE": ("net.minecraft.world.entity.animal.armadillo.Armadillo", "ARMADILLO_STATE"),
     "VANILLA_AXOLOTL_DEFAULT_VARIANT": ("net.minecraft.world.entity.animal.axolotl.Axolotl", "DATA_VARIANT"),
     "VANILLA_AXOLOTL_DEFAULT_PLAYING_DEAD": ("net.minecraft.world.entity.animal.axolotl.Axolotl", "DATA_PLAYING_DEAD"),
     "VANILLA_AXOLOTL_DEFAULT_FROM_BUCKET": ("net.minecraft.world.entity.animal.axolotl.Axolotl", "FROM_BUCKET"),
@@ -554,6 +557,16 @@ ENUM_ID_DEFAULT_RESOLVERS = (
 
 ENUM_CONSTANT_DEFAULT_RESOLVERS = (
     (
+        "net.minecraft.world.entity.animal.armadillo.Armadillo",
+        "ARMADILLO_STATE",
+        "ARMADILLO_STATE",
+        "net.minecraft.world.entity.animal.armadillo.Armadillo.ArmadilloState",
+        "IDLE",
+        3,
+        "Armadillo.ArmadilloState.IDLE",
+        "the synced enum default is encoded by an explicit enum constructor id",
+    ),
+    (
         "net.minecraft.world.entity.animal.sniffer.Sniffer",
         "DATA_STATE",
         "SNIFFER_STATE",
@@ -567,6 +580,10 @@ ENUM_CONSTANT_DEFAULT_RESOLVERS = (
 
 
 ENUM_CONSTRUCTOR_ID_ALIASES = {
+    "VANILLA_ARMADILLO_STATE_IDLE_ID": ("net.minecraft.world.entity.animal.armadillo.Armadillo.ArmadilloState", "IDLE", 3),
+    "VANILLA_ARMADILLO_STATE_ROLLING_ID": ("net.minecraft.world.entity.animal.armadillo.Armadillo.ArmadilloState", "ROLLING", 3),
+    "VANILLA_ARMADILLO_STATE_SCARED_ID": ("net.minecraft.world.entity.animal.armadillo.Armadillo.ArmadilloState", "SCARED", 3),
+    "VANILLA_ARMADILLO_STATE_UNROLLING_ID": ("net.minecraft.world.entity.animal.armadillo.Armadillo.ArmadilloState", "UNROLLING", 3),
     "VANILLA_SNIFFER_STATE_IDLING_ID": ("net.minecraft.world.entity.animal.sniffer.Sniffer.State", "IDLING", 0),
     "VANILLA_SNIFFER_STATE_FEELING_HAPPY_ID": ("net.minecraft.world.entity.animal.sniffer.Sniffer.State", "FEELING_HAPPY", 0),
     "VANILLA_SNIFFER_STATE_SCENTING_ID": ("net.minecraft.world.entity.animal.sniffer.Sniffer.State", "SCENTING", 0),

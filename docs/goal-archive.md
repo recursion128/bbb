@@ -9920,3 +9920,11 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   drop-seed tick id19/default0，以及七个 state ids 0–6；world animation/dimensions 删除手抄
   synced id/default/state id。动画状态机、digging bounds 和 seed-drop 行为仍由对应语义
   owner 管理。
+
+## 2026-07-11：Generated entity metadata consumer（Armadillo）
+
+- [x] 复用 enum constructor-id helper，从 `ArmadilloState` 每个 enum constant 的参数3
+  生成 IDLE/ROLLING/SCARED/UNROLLING ids 0–3，并建立 `AgeableMob -> Armadillo`
+  family：state id18/default IDLE(0)。world animation、native rolled-up model/debug-save 删除
+  手抄 synced id/default/state id；shell 隐藏时序、peek animation duration 与普通 scute
+  保存字段仍由对应语义 owner 管理。

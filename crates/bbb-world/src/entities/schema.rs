@@ -23,6 +23,7 @@ pub enum VanillaEntityMetadataFamily {
     Shulker,
     Zombie,
     AgeableMob,
+    Armadillo,
     Axolotl,
     Bee,
     Dolphin,
@@ -365,6 +366,7 @@ mod tests {
             VanillaEntityMetadataFamily::Shulker,
             VanillaEntityMetadataFamily::Zombie,
             VanillaEntityMetadataFamily::AgeableMob,
+            VanillaEntityMetadataFamily::Armadillo,
             VanillaEntityMetadataFamily::Axolotl,
             VanillaEntityMetadataFamily::Bee,
             VanillaEntityMetadataFamily::Dolphin,
@@ -494,6 +496,19 @@ mod tests {
         assert_eq!(VANILLA_ENDERMAN_DEFAULT_CARRY_STATE, None);
         assert!(!VANILLA_ENDERMAN_DEFAULT_CREEPY);
         assert!(!VANILLA_ENDERMAN_DEFAULT_STARED_AT);
+        let armadillo = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Armadillo);
+        assert_eq!(
+            armadillo.parent,
+            Some(VanillaEntityMetadataFamily::AgeableMob)
+        );
+        assert_eq!(armadillo.inherited_field_count, 18);
+        assert_eq!(armadillo.own_fields.len(), 1);
+        assert_eq!(VANILLA_ARMADILLO_STATE_DATA_ID, 18);
+        assert_eq!(VANILLA_ARMADILLO_DEFAULT_STATE, 0);
+        assert_eq!(VANILLA_ARMADILLO_STATE_IDLE_ID, 0);
+        assert_eq!(VANILLA_ARMADILLO_STATE_ROLLING_ID, 1);
+        assert_eq!(VANILLA_ARMADILLO_STATE_SCARED_ID, 2);
+        assert_eq!(VANILLA_ARMADILLO_STATE_UNROLLING_ID, 3);
         let axolotl = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Axolotl);
         assert_eq!(
             axolotl.parent,
@@ -692,7 +707,7 @@ mod tests {
         assert_eq!(VANILLA_SALMON_DEFAULT_VARIANT, 1);
         assert_eq!(
             VANILLA_ENTITY_METADATA_DEFAULT_RESOLVER_EVIDENCE_26_1.len(),
-            5
+            6
         );
         let default_evidence = |java_class| {
             VANILLA_ENTITY_METADATA_DEFAULT_RESOLVER_EVIDENCE_26_1
@@ -740,6 +755,13 @@ mod tests {
         assert_eq!(
             sniffer_default_evidence.source_expression,
             "Sniffer.State.IDLING"
+        );
+        let armadillo_default_evidence =
+            default_evidence("net.minecraft.world.entity.animal.armadillo.Armadillo");
+        assert_eq!(armadillo_default_evidence.accessor_name, "ARMADILLO_STATE");
+        assert_eq!(
+            armadillo_default_evidence.source_expression,
+            "Armadillo.ArmadilloState.IDLE"
         );
         for evidence in VANILLA_ENTITY_METADATA_DEFAULT_RESOLVER_EVIDENCE_26_1 {
             assert!(!evidence.evidence_member.is_empty());

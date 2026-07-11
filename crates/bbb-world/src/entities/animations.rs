@@ -31,6 +31,11 @@ use super::schema::{
     VANILLA_ABSTRACT_BOAT_PADDLE_RIGHT_DATA_ID as ABSTRACT_BOAT_PADDLE_RIGHT_DATA_ID,
     VANILLA_ALLAY_DANCING_DATA_ID as ALLAY_DANCING_DATA_ID,
     VANILLA_ALLAY_DEFAULT_DANCING as ALLAY_DEFAULT_DANCING,
+    VANILLA_ARMADILLO_DEFAULT_STATE as ARMADILLO_DEFAULT_STATE,
+    VANILLA_ARMADILLO_STATE_DATA_ID as ARMADILLO_STATE_DATA_ID,
+    VANILLA_ARMADILLO_STATE_ROLLING_ID as ARMADILLO_STATE_ROLLING_ID,
+    VANILLA_ARMADILLO_STATE_SCARED_ID as ARMADILLO_STATE_SCARED_ID,
+    VANILLA_ARMADILLO_STATE_UNROLLING_ID as ARMADILLO_STATE_UNROLLING_ID,
     VANILLA_AXOLOTL_DEFAULT_PLAYING_DEAD as AXOLOTL_DEFAULT_PLAYING_DEAD,
     VANILLA_AXOLOTL_PLAYING_DEAD_DATA_ID as AXOLOTL_PLAYING_DEAD_DATA_ID,
     VANILLA_BEE_DEFAULT_FLAGS as BEE_DEFAULT_FLAGS, VANILLA_BEE_FLAGS_DATA_ID as BEE_FLAGS_DATA_ID,
@@ -130,17 +135,6 @@ const ARMOR_STAND_WOBBLE_TIME: i32 = 5;
 const PANDA_AMOUNT_RISE_PER_TICK: f32 = 0.15;
 const PANDA_AMOUNT_FALL_PER_TICK: f32 = 0.19;
 const PANDA_ROLL_COUNTER_MAX: i32 = 32;
-/// Vanilla `Armadillo.ARMADILLO_STATE`, the synced `EntityDataSerializers.ARMADILLO_STATE` accessor
-/// serialized as the `ArmadilloState` ordinal-id VarInt. Like `Sniffer.DATA_STATE` it is the first
-/// own accessor after `AgeableMob` (Entity 0–7, LivingEntity 8–14, Mob 15, AgeableMob 16–17), id 18.
-/// `Armadillo.onSyncedDataUpdated` reads it to `setupAnimationStates()`.
-const ARMADILLO_STATE_DATA_ID: u8 = 18;
-/// `ArmadilloState` ids (the 4th enum-ctor arg, which is the serialized VarInt; this is the declared
-/// order too). Each state carries an `animationDuration` and a `shouldHideInShell(ticksInState)`.
-const ARMADILLO_STATE_IDLE_ID: i32 = 0;
-const ARMADILLO_STATE_ROLLING_ID: i32 = 1;
-const ARMADILLO_STATE_SCARED_ID: i32 = 2;
-const ARMADILLO_STATE_UNROLLING_ID: i32 = 3;
 /// Vanilla `Armadillo.ArmadilloState.SCARED.animationDuration()`; the first SCARED
 /// setup tick starts `peekAnimationState` and `fastForward`s it by this many ticks.
 const ARMADILLO_STATE_SCARED_ANIMATION_TICKS: i32 = 50;
@@ -4109,11 +4103,11 @@ impl EntityClientAnimationState {
                     data_values,
                     ARMADILLO_STATE_DATA_ID,
                     EntityDataEnumSerializer::ArmadilloState,
-                    ARMADILLO_STATE_IDLE_ID,
+                    ARMADILLO_DEFAULT_STATE,
                 );
                 if let Some(armadillo) = self.armadillo.as_mut() {
                     armadillo.set_state(state_id, self.age_ticks);
-                } else if state_id != ARMADILLO_STATE_IDLE_ID {
+                } else if state_id != ARMADILLO_DEFAULT_STATE {
                     self.armadillo = Some(ArmadilloAnimationState::new(state_id, self.age_ticks));
                 }
             }
@@ -4295,7 +4289,7 @@ impl EntityClientAnimationState {
             let age_ticks = self.age_ticks;
             self.armadillo
                 .get_or_insert_with(|| {
-                    ArmadilloAnimationState::new(ARMADILLO_STATE_IDLE_ID, age_ticks)
+                    ArmadilloAnimationState::new(ARMADILLO_DEFAULT_STATE, age_ticks)
                 })
                 .peek_received_client = true;
         } else if entity_type_id == VANILLA_ENTITY_TYPE_CREAKING_ID

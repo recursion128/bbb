@@ -84,6 +84,10 @@ pub(crate) use bbb_world::{
     VANILLA_PIGLIN_DEFAULT_DANCING as PIGLIN_DEFAULT_DANCING,
 };
 use bbb_world::{
+    VANILLA_ARMADILLO_STATE_DATA_ID as ARMADILLO_STATE_DATA_ID,
+    VANILLA_ARMADILLO_STATE_SCARED_ID as ARMADILLO_STATE_SCARED_ID,
+};
+use bbb_world::{
     VANILLA_AXOLOTL_DEFAULT_VARIANT as AXOLOTL_DEFAULT_VARIANT,
     VANILLA_AXOLOTL_VARIANT_DATA_ID as AXOLOTL_VARIANT_DATA_ID,
 };
@@ -269,14 +273,6 @@ const COPPER_GOLEM_WEATHER_STATE_DATA_ID: u8 = 16;
 /// declared immediately after `DATA_WEATHER_STATE`.
 #[cfg(test)]
 const COPPER_GOLEM_STATE_DATA_ID: u8 = 17;
-/// Vanilla `Armadillo.ARMADILLO_STATE` data id (18): the synced `ArmadilloState` enum, the
-/// armadillo's first own accessor after `AgeableMob.AGE_LOCKED` (17). Matches the
-/// `Sniffer.DATA_STATE` slot (both `extends Animal`).
-const ARMADILLO_STATE_DATA_ID: u8 = 18;
-/// Vanilla `Armadillo.ArmadilloState.SCARED` ordinal (2): the steady rolled-into-a-ball state
-/// whose `shouldHideInShell` is `true` for every `inStateTicks` (server-derivable, unlike the
-/// tick-gated ROLLING/UNROLLING transitions).
-const ARMADILLO_STATE_SCARED_ID: i32 = 2;
 /// Vanilla `SpellcasterIllager.DATA_SPELL_CASTING_ID` data id (17): the byte holding the spell
 /// id, the first `SpellcasterIllager` accessor after `Raider.IS_CELEBRATING` (16). The byte is
 /// `> 0` while `isCastingSpell()`.

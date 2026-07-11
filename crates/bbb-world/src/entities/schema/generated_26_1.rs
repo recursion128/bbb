@@ -99,6 +99,8 @@ pub const VANILLA_AGEABLE_MOB_BABY_DATA_ID: u8 = GENERATED_VANILLA_AGEABLE_MOB_B
 const GENERATED_VANILLA_AGEABLE_MOB_AGE_LOCKED_DATA_ID: u8 = 17;
 pub const VANILLA_AGEABLE_MOB_AGE_LOCKED_DATA_ID: u8 =
     GENERATED_VANILLA_AGEABLE_MOB_AGE_LOCKED_DATA_ID;
+const GENERATED_VANILLA_ARMADILLO_STATE_DATA_ID: u8 = 18;
+pub const VANILLA_ARMADILLO_STATE_DATA_ID: u8 = GENERATED_VANILLA_ARMADILLO_STATE_DATA_ID;
 const GENERATED_VANILLA_AXOLOTL_VARIANT_DATA_ID: u8 = 18;
 pub const VANILLA_AXOLOTL_VARIANT_DATA_ID: u8 = GENERATED_VANILLA_AXOLOTL_VARIANT_DATA_ID;
 const GENERATED_VANILLA_AXOLOTL_PLAYING_DEAD_DATA_ID: u8 = 19;
@@ -463,6 +465,15 @@ pub const VANILLA_HUMANOID_ARM_LEFT_ID: i32 = GENERATED_VANILLA_HUMANOID_ARM_LEF
 const GENERATED_VANILLA_HUMANOID_ARM_RIGHT_ID: i32 = 1;
 pub const VANILLA_HUMANOID_ARM_RIGHT_ID: i32 = GENERATED_VANILLA_HUMANOID_ARM_RIGHT_ID;
 
+const GENERATED_VANILLA_ARMADILLO_STATE_IDLE_ID: i32 = 0;
+pub const VANILLA_ARMADILLO_STATE_IDLE_ID: i32 = GENERATED_VANILLA_ARMADILLO_STATE_IDLE_ID;
+const GENERATED_VANILLA_ARMADILLO_STATE_ROLLING_ID: i32 = 1;
+pub const VANILLA_ARMADILLO_STATE_ROLLING_ID: i32 = GENERATED_VANILLA_ARMADILLO_STATE_ROLLING_ID;
+const GENERATED_VANILLA_ARMADILLO_STATE_SCARED_ID: i32 = 2;
+pub const VANILLA_ARMADILLO_STATE_SCARED_ID: i32 = GENERATED_VANILLA_ARMADILLO_STATE_SCARED_ID;
+const GENERATED_VANILLA_ARMADILLO_STATE_UNROLLING_ID: i32 = 3;
+pub const VANILLA_ARMADILLO_STATE_UNROLLING_ID: i32 =
+    GENERATED_VANILLA_ARMADILLO_STATE_UNROLLING_ID;
 const GENERATED_VANILLA_SNIFFER_STATE_IDLING_ID: i32 = 0;
 pub const VANILLA_SNIFFER_STATE_IDLING_ID: i32 = GENERATED_VANILLA_SNIFFER_STATE_IDLING_ID;
 const GENERATED_VANILLA_SNIFFER_STATE_FEELING_HAPPY_ID: i32 = 1;
@@ -537,6 +548,8 @@ pub const VANILLA_AGEABLE_MOB_DEFAULT_BABY: bool = GENERATED_VANILLA_AGEABLE_MOB
 const GENERATED_VANILLA_AGEABLE_MOB_DEFAULT_AGE_LOCKED: bool = false;
 pub const VANILLA_AGEABLE_MOB_DEFAULT_AGE_LOCKED: bool =
     GENERATED_VANILLA_AGEABLE_MOB_DEFAULT_AGE_LOCKED;
+const GENERATED_VANILLA_ARMADILLO_DEFAULT_STATE: i32 = 0;
+pub const VANILLA_ARMADILLO_DEFAULT_STATE: i32 = GENERATED_VANILLA_ARMADILLO_DEFAULT_STATE;
 const GENERATED_VANILLA_AXOLOTL_DEFAULT_VARIANT: i32 = 0;
 pub const VANILLA_AXOLOTL_DEFAULT_VARIANT: i32 = GENERATED_VANILLA_AXOLOTL_DEFAULT_VARIANT;
 const GENERATED_VANILLA_AXOLOTL_DEFAULT_PLAYING_DEAD: bool = false;
@@ -9215,7 +9228,7 @@ pub const VANILLA_ENTITY_METADATA_ACCESSORS_26_1: &[VanillaEntityMetadataAccesso
         data_id: 18,
         source_path: "net/minecraft/world/entity/animal/armadillo/Armadillo.java",
         default_expression: "Armadillo.ArmadilloState.IDLE",
-        typed_default: None,
+        typed_default: Some(VanillaEntityMetadataDefault::Int(0)),
     },
     VanillaEntityMetadataAccessorCatalogEntry {
         owner: "net.minecraft.world.entity.animal.axolotl.Axolotl",
@@ -11582,6 +11595,13 @@ pub const VANILLA_ENTITY_METADATA_DEFAULT_RESOLVER_EVIDENCE_26_1: &[VanillaEntit
         reason: "the synced INT default is stored in a nested enum constant rather than an integer expression",
     },
     VanillaEntityMetadataResolverEvidence {
+        java_class: "net.minecraft.world.entity.animal.armadillo.Armadillo",
+        accessor_name: "ARMADILLO_STATE",
+        evidence_member: "net.minecraft.world.entity.animal.armadillo.Armadillo.ArmadilloState.IDLE",
+        source_expression: "Armadillo.ArmadilloState.IDLE",
+        reason: "the synced enum default is encoded by an explicit enum constructor id",
+    },
+    VanillaEntityMetadataResolverEvidence {
         java_class: "net.minecraft.world.entity.animal.sniffer.Sniffer",
         accessor_name: "DATA_STATE",
         evidence_member: "net.minecraft.world.entity.animal.sniffer.Sniffer.State.IDLING",
@@ -13673,6 +13693,21 @@ const AGEABLEMOB_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetada
     own_flags: AGEABLEMOB_FLAGS,
 };
 
+const ARMADILLO_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[VanillaEntityMetadataFieldSchema {
+    name: "ARMADILLO_STATE",
+    data_id: 18,
+    serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_ARMADILLO_STATE_ID,
+    default: VanillaEntityMetadataDefault::Int(0),
+}];
+const ARMADILLO_FLAGS: &[VanillaEntityMetadataFlagSchema] = &[];
+const ARMADILLO_SCHEMA: VanillaEntityMetadataFamilySchema = VanillaEntityMetadataFamilySchema {
+    family: VanillaEntityMetadataFamily::Armadillo,
+    parent: Some(VanillaEntityMetadataFamily::AgeableMob),
+    inherited_field_count: 18,
+    own_fields: ARMADILLO_FIELDS,
+    own_flags: ARMADILLO_FLAGS,
+};
+
 const AXOLOTL_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[
     VanillaEntityMetadataFieldSchema {
         name: "DATA_VARIANT",
@@ -15096,6 +15131,7 @@ pub(super) const fn generated_entity_metadata_schema(
         VanillaEntityMetadataFamily::Shulker => &SHULKER_SCHEMA,
         VanillaEntityMetadataFamily::Zombie => &ZOMBIE_SCHEMA,
         VanillaEntityMetadataFamily::AgeableMob => &AGEABLEMOB_SCHEMA,
+        VanillaEntityMetadataFamily::Armadillo => &ARMADILLO_SCHEMA,
         VanillaEntityMetadataFamily::Axolotl => &AXOLOTL_SCHEMA,
         VanillaEntityMetadataFamily::Bee => &BEE_SCHEMA,
         VanillaEntityMetadataFamily::Dolphin => &DOLPHIN_SCHEMA,
