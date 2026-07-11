@@ -11241,3 +11241,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] center 已参与 terrain upload ordering、radius 已进入 client storage debug projection，但 bbb 尚未像
   `ClientChunkCache.updateViewCenter/updateViewRadius` 淘汰窗口外 chunk；两行 runtime 保持 partial。
   该缓存仅是外部服务器下发 chunk 的客户端 residency，不是 IntegratedServer/server chunk cache。
+
+## 2026-07-11：award-stats packet coverage audit
+
+- [x] 对照 `ClientboundAwardStatsPacket`、`Stat.STREAM_CODEC` 与 `handleAwardStats` 锁定 bounded map、
+  StatType holder VarInt、value holder VarInt、amount VarInt wire 并拒绝 trailing bytes；ownership 与
+  protocol/world/net/native tests 已闭合，重复 key 按最后更新覆盖并保留 last batch。
+- [x] numeric StatType/value ids 尚未通过 session RegistryAccess 解析为 resource identity，StatsScreen
+  也仍只有 loading shell，故 canonical/runtime 保持 partial；未把 numeric pair 或 loading 文本冒充
+  完整 statistics UI。

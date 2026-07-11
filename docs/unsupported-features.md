@@ -70,6 +70,11 @@ Owner: `bbb-protocol`
   preserves every numeric clock update but derives `day_time` from the first
   wire entry; the encoded HashMap order is not semantic. Restart by replacing
   that first-entry shortcut and retaining all custom clocks for their consumers.
+- Resolve AwardStats `StatType` and type-specific value holder ids through the
+  session RegistryAccess, retain their resource identities/formatters, and
+  render the category/general/item/mob StatsScreen tabs. The current canonical
+  store preserves numeric pairs and amounts, while the native screen remains a
+  loading shell; neither is registry-aware statistics presentation.
 - Resolve UpdateAttributes holder ids through that session RegistryAccess and
   validate each snapshot against the target living entity's actual AttributeMap
   instance set; do not accept arbitrary fixed-id attributes on every living type.

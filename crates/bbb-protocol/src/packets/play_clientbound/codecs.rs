@@ -23,7 +23,13 @@ pub(super) fn decode_award_stats(decoder: &mut Decoder<'_>) -> Result<AwardStats
             amount: decoder.read_var_i32()?,
         });
     }
-    Ok(AwardStats { stats })
+    let update = AwardStats { stats };
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after award stats packet".to_string(),
+        ));
+    }
+    Ok(update)
 }
 
 pub(super) fn decode_play_login(decoder: &mut Decoder<'_>) -> Result<PlayLogin> {

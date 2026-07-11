@@ -2114,6 +2114,16 @@ fn decodes_award_stats() {
             ],
         })
     );
+
+    let mut trailing = Encoder::new();
+    trailing.write_var_i32(0);
+    trailing.write_u8(0);
+    assert!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_AWARD_STATS, &trailing.into_inner())
+            .unwrap_err()
+            .to_string()
+            .contains("trailing bytes after award stats packet")
+    );
 }
 
 #[test]
