@@ -11861,3 +11861,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] packed BlockPos、levels VarInt、keep-jigsaws boolean wire 已按 26.1 `ServerboundJigsawGeneratePacket` 补齐 protocol encoder 与 focused test，encoder 闭合。
 - [x] vanilla 入口是 game-master `JigsawBlockEditScreen`，Generate 先发送 SetJigsawBlock 再发送本包；服务端仅在权限和 jigsaw block-entity gate 通过时生成，结果通过普通 block/chunk updates 返回而无专用 ack。bbb 尚无该 block-entity/UI/command owner，command/state/tests 保持 partial。
+
+## 2026-07-12：play serverbound lock-difficulty packet coverage audit
+
+- [x] boolean wire、maintenance control、native queue、NetCommand/driver send、服务器 permission authority 与 `ClientboundChangeDifficulty` canonical response 已审计并全行闭合。
+- [x] vanilla `DifficultyButtons` 只在 integrated server 启用且确认后发送 lock=true；bbb 是 external multiplayer client，不复制该 in-game configuration UI。control 可表达协议允许的 true/false，但不会预测成功，最终 locked 状态只由服务器广播更新。

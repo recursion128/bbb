@@ -3241,6 +3241,7 @@ mod tests {
         for packet in [
             "SERVERBOUND_CHANGE_DIFFICULTY",
             "SERVERBOUND_CHANGE_GAME_MODE",
+            "SERVERBOUND_LOCK_DIFFICULTY",
         ] {
             let entry = ledger
                 .entries
