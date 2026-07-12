@@ -680,8 +680,8 @@ back into a todo. Do not delete these.
 
 ## Screens and presentation
 
-- Complete client game-event types 0/4/5/13: show the invalid-respawn-block
-  system message, open WinScreen and send PerformRespawn on completion, implement
+- Complete client game-event types 4/5/13: render the typed invalid-respawn-block
+  client-system message already stored by type 0, open WinScreen and send PerformRespawn on completion, implement
   demo intro/hints with chat+narration, and notify the level-load tracker. The
   other ten fixed 26.1 event types have canonical/presentation owners; none of
   these four require an IntegratedServer.

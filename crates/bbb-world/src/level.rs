@@ -1,8 +1,9 @@
 use bbb_protocol::game_event_types::{
     VANILLA_CLIENT_GAME_EVENT_CHANGE_GAME_MODE_ID, VANILLA_CLIENT_GAME_EVENT_IMMEDIATE_RESPAWN_ID,
-    VANILLA_CLIENT_GAME_EVENT_LIMITED_CRAFTING_ID, VANILLA_CLIENT_GAME_EVENT_RAIN_LEVEL_CHANGE_ID,
-    VANILLA_CLIENT_GAME_EVENT_START_RAINING_ID, VANILLA_CLIENT_GAME_EVENT_STOP_RAINING_ID,
-    VANILLA_CLIENT_GAME_EVENT_THUNDER_LEVEL_CHANGE_ID,
+    VANILLA_CLIENT_GAME_EVENT_LIMITED_CRAFTING_ID,
+    VANILLA_CLIENT_GAME_EVENT_NO_RESPAWN_BLOCK_AVAILABLE_ID,
+    VANILLA_CLIENT_GAME_EVENT_RAIN_LEVEL_CHANGE_ID, VANILLA_CLIENT_GAME_EVENT_START_RAINING_ID,
+    VANILLA_CLIENT_GAME_EVENT_STOP_RAINING_ID, VANILLA_CLIENT_GAME_EVENT_THUNDER_LEVEL_CHANGE_ID,
 };
 use bbb_protocol::game_types::{
     GameType, VANILLA_GAME_TYPE_NOT_SET_ID, VANILLA_GAME_TYPE_SPECTATOR_ID,
@@ -301,6 +302,11 @@ impl WorldStore {
         self.weather.last_game_event_param = event.param;
 
         match event.event_id {
+            VANILLA_CLIENT_GAME_EVENT_NO_RESPAWN_BLOCK_AVAILABLE_ID => {
+                self.push_translatable_client_system_chat_message(
+                    "block.minecraft.spawn.not_valid",
+                );
+            }
             VANILLA_CLIENT_GAME_EVENT_START_RAINING_ID => {
                 self.weather.rain_level = 0.0;
                 self.weather.raining = false;
@@ -1464,6 +1470,25 @@ mod tests {
             }
         );
         assert_eq!(store.counters().game_event_packets, 3);
+    }
+
+    #[test]
+    fn no_respawn_block_game_event_records_translatable_client_system_message() {
+        let mut store = WorldStore::new();
+
+        store.apply_game_event(ProtocolGameEvent {
+            event_id: VANILLA_CLIENT_GAME_EVENT_NO_RESPAWN_BLOCK_AVAILABLE_ID,
+            param: 0.0,
+        });
+
+        let message = store.client_chat().messages.last().unwrap();
+        assert_eq!(message.kind, crate::ChatMessageKind::ClientSystem);
+        assert_eq!(message.content, "block.minecraft.spawn.not_valid");
+        assert_eq!(
+            message.content_translation_key.as_deref(),
+            Some("block.minecraft.spawn.not_valid")
+        );
+        assert!(message.styled_content.is_empty());
     }
 
     fn respawn_state_with_local_player_data() -> WorldStore {

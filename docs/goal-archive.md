@@ -12686,3 +12686,9 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] native inventory/runtime 与 world inventory 删除 23 项 generated menu type import alias，
   slot layout、generic-container 范围、Crafter 与 Loom 分支直接使用 protocol catalog 常量；新增
   跨 consumer 结构测试阻止恢复局部 menu ID 名称，点击与投影语义不变。
+
+## 2026-07-12：GameEvent invalid-respawn translatable message
+
+- [x] Play GameEvent type 0 按 vanilla `ClientPacketListener` 写入 client-system chat，并保留
+  `block.minecraft.spawn.not_valid` typed translation key；兼容摘要不冒充已本地化文本，Win/Demo
+  screen、chat renderer 与 level-load tracker 仍保持开放。

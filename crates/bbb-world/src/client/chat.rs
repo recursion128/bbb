@@ -47,6 +47,8 @@ pub struct ChatMessageState {
     pub kind: ChatMessageKind,
     pub content: String,
     #[serde(default)]
+    pub content_translation_key: Option<String>,
+    #[serde(default)]
     pub styled_content: Vec<StyledTextRun>,
     pub sender: Option<Uuid>,
     pub sender_name: String,
@@ -168,29 +170,50 @@ impl WorldStore {
     pub fn push_client_system_chat_message(&mut self, content: impl Into<String>) {
         let content = content.into();
         let styled_content = plain_chat_styled_content(&content);
-        self.push_system_chat_message_state(ChatMessageKind::ClientSystem, content, styled_content);
+        self.push_system_chat_message_state(
+            ChatMessageKind::ClientSystem,
+            content,
+            None,
+            styled_content,
+        );
     }
 
     pub fn push_styled_client_system_chat_message(&mut self, styled_content: Vec<StyledTextRun>) {
         let content = styled_chat_summary_text(&styled_content);
-        self.push_system_chat_message_state(ChatMessageKind::ClientSystem, content, styled_content);
+        self.push_system_chat_message_state(
+            ChatMessageKind::ClientSystem,
+            content,
+            None,
+            styled_content,
+        );
+    }
+
+    pub fn push_translatable_client_system_chat_message(&mut self, translation_key: &str) {
+        self.push_system_chat_message_state(
+            ChatMessageKind::ClientSystem,
+            translation_key.to_string(),
+            Some(translation_key.to_string()),
+            Vec::new(),
+        );
     }
 
     pub fn push_server_system_chat_message(&mut self, content: impl Into<String>) {
         let content = content.into();
         let styled_content = plain_chat_styled_content(&content);
-        self.push_system_chat_message_state(ChatMessageKind::System, content, styled_content);
+        self.push_system_chat_message_state(ChatMessageKind::System, content, None, styled_content);
     }
 
     fn push_system_chat_message_state(
         &mut self,
         kind: ChatMessageKind,
         content: String,
+        content_translation_key: Option<String>,
         styled_content: Vec<StyledTextRun>,
     ) {
         self.client_chat.messages.push(ChatMessageState {
             kind,
             content,
+            content_translation_key,
             styled_content,
             sender: None,
             sender_name: String::new(),
@@ -274,6 +297,7 @@ impl WorldStore {
             kind: ChatMessageKind::Player,
             styled_content: plain_chat_styled_content(&packet.body.content),
             content: packet.body.content,
+            content_translation_key: None,
             sender: Some(packet.sender),
             sender_name: packet.chat_type.name,
             target_name: packet.chat_type.target_name,
@@ -296,6 +320,7 @@ impl WorldStore {
             kind: ChatMessageKind::Disguised,
             styled_content: plain_chat_styled_content(&packet.message),
             content: packet.message,
+            content_translation_key: None,
             sender: None,
             sender_name: packet.chat_type.name,
             target_name: packet.chat_type.target_name,
