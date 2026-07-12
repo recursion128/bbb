@@ -10846,29 +10846,49 @@
       "constant_name": "CLIENTBOUND_UPDATE_TAGS",
       "coverage": {
         "canonical_apply": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/registries/store.rs#apply_update_tags",
+            "crates/bbb-world/src/registries/tests.rs#update_tags_replace_network_tag_state",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleUpdateTags"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/tags/tests.rs#decodes_update_tags_in_play_state",
+            "crates/bbb-protocol/src/packets/tags/tests.rs#rejects_update_tags_with_trailing_bytes",
+            "crates/bbb-protocol/src/packets/tags/tests.rs#rejects_update_tags_collection_counts_before_allocation",
+            "vanilla:net/minecraft/network/protocol/common/ClientboundUpdateTagsPacket.java#STREAM_CODEC"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "ownership": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/play_apply.rs#PlayClientbound::UpdateTags"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "runtime_side_effect": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
+          "evidence": [
+            "crates/bbb-native/src/entity_scene/tests.rs#entity_model_instances_project_piglin_admiring_a_loved_offhand_item",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleUpdateTags"
+          ],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
           "status": "partial"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/tags/tests.rs#decodes_update_tags_in_play_state",
+            "crates/bbb-net/src/event_stream.rs#play_passive_world_apply_packets_emit_matching_events",
+            "crates/bbb-net/src/probe/play.rs#probe_applies_command_tree_and_update_tags_to_world",
+            "crates/bbb-world/src/registries/tests.rs#update_tags_replace_network_tag_state",
+            "crates/bbb-native/src/runtime/events/tests/session_protocol_events.rs#update_tags_event_updates_world_state_and_counters"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "clientbound",

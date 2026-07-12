@@ -11527,3 +11527,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] property-set map + stonecutter selectable list framing、strict trailing、replace ownership 与跨 crate tests 闭合。
 - [x] 剩余 SlotDisplay/component 语义和 recipe/menu presentation 未完成，decode/canonical/runtime 保持 partial。
+
+## 2026-07-12：play update-tags packet coverage audit
+
+- [x] registry/tag/value framing、strict trailing、per-registry replace ownership 与跨 crate tests 闭合。
+- [x] 现有 tag consumers 有证据；fuel values/creative search-tree 派生刷新未完成，runtime 保持 partial。

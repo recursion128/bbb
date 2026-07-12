@@ -69,6 +69,8 @@ Owner: `bbb-protocol`
   static tags and data-component initializers, and preserve reconnect replacement
   semantics. Raw NBT summaries and a few derived audio registries are not that
   runtime.
+- Recompute vanilla fuel values and creative search-tree tag membership after
+  play UpdateTags reloads, following `ClientPacketListener.handleUpdateTags`.
 - Resolve SetTime's `WorldClock` holder ids through that session RegistryAccess
   and select the current dimension's clock by identity. The client currently
   preserves every numeric clock update but derives `day_time` from the first
