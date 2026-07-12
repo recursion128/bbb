@@ -11886,3 +11886,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] serverbound packet 只携带 flying bit；creative 双击切换、spectator 获权后自动起飞、can-fly gate、本地预测、NetCommand/driver/wire 与服务端 `packet.flying && mayfly` authority 已反向审计。
 - [x] 补齐非 spectator 落地后关闭 flying 并上报，spectator 落地不关闭；服务端无 dedicated ack，后续 ClientboundPlayerAbilities 仍可覆盖全部权威 ability 字段，因此 request 行除 ack=N/A 外闭合。同步 walking-speed 的既有 clientbound runtime 缺口未在本切片误标完成。
+
+## 2026-07-12：play serverbound player-action packet coverage audit
+
+- [x] 8 个 26.1 action（start/abort/stop destroy、drop all/one、release use、swap offhand、stab）的 generated ordinal、通用 wire、native key/mouse/focus-loss command surface、driver 与 focused tests 已反向审计；command/encoder 闭合。
+- [x] destroy prediction sequence/BlockChangedAck reconcile 已存在，但剩余 STOP sequencing、block attack/particle/profile 语义继续开放；drop/swap/release/stab 的 inventory/item-use/effect 结果仍由服务器广播权威确认且受 component-rich state 缺口约束，因此 ack/state/tests 保持 partial。
