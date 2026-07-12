@@ -12146,3 +12146,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] F3 targeted-entity identity 删除 native 内第二层 protocol catalog fallback，只消费 `bbb-world` 的 source-aware entity-type resolver；focused test 锁定 no-contents vanilla fallback、server contents 优先及 server unknown 不回退。
 - [x] F3 block-tag projection 不再靠测试注入伪 registry contents，直接通过 checked-in block registry 反查 UpdateTags numeric holders；source-rule test 继续锁定 server block contents 优先且 unknown 不回退，custom fluid coverage 保持不变。
+
+## 2026-07-12：dimension presentation holder-identity precedence
+
+- [x] native lightmap、fog、sky、weather 与相关 dimension presentation 共用的 dimension-kind classifier 现在只要有 session dimension-type resource identity，就不再按 numeric holder 0/1/2/3 解释；reordered nether identity 与 custom id 0 focused cases 已锁定。
+- [x] 缺 registry identity 的 clean/offline path 仍保留 dimension key/id fallback；custom dimension 的 typed skybox/environment attributes 继续开放，unknown identity 安全归为 `Other` 而不是猜测 overworld。

@@ -904,8 +904,8 @@
       "canonical_apply": {"evidence": ["crates/bbb-world/src/level.rs#apply_login", "crates/bbb-world/src/level.rs#play_login_updates_world_dimension_and_level_info", "crates/bbb-world/src/level.rs#dimension_type_registry_shape_overrides_builtin_and_rejects_invalid_shape", "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleLogin"], "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families", "status": "partial"},
       "decode": {"evidence": ["crates/bbb-protocol/src/packets/tests.rs#decodes_play_login_spawn_info", "crates/bbb-protocol/src/packets/tests.rs#rejects_invalid_play_login_dimension_key", "vanilla:net/minecraft/network/protocol/game/ClientboundLoginPacket.java#STREAM_CODEC", "vanilla:net/minecraft/network/protocol/game/CommonPlayerSpawnInfo.java#CommonPlayerSpawnInfo"], "status": "complete"},
       "ownership": {"evidence": ["crates/bbb-world/src/play_apply.rs#PlayClientbound::Login", "crates/bbb-world/src/level.rs#apply_login"], "status": "complete"},
-      "runtime_side_effect": {"evidence": ["crates/bbb-world/src/level.rs#apply_login", "crates/bbb-native/src/runtime/events/tests/session_hud_and_vehicle_events.rs#login_tracks_local_player_id_in_world", "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleLogin"], "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families", "status": "partial"},
-      "tests": {"evidence": ["crates/bbb-protocol/src/packets/tests.rs#decodes_play_login_spawn_info", "crates/bbb-net/src/event_stream.rs#play_session_and_player_info_packets_emit_matching_events_without_responses", "crates/bbb-world/src/level.rs#play_login_updates_world_dimension_and_level_info", "crates/bbb-world/src/level.rs#dimension_type_registry_shape_overrides_builtin_and_rejects_invalid_shape", "crates/bbb-native/src/runtime/events/tests/session_hud_and_vehicle_events.rs#login_tracks_local_player_id_in_world"], "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families", "status": "partial"}
+      "runtime_side_effect": {"evidence": ["crates/bbb-world/src/level.rs#apply_login", "crates/bbb-native/src/runtime.rs#vanilla_lightmap_dimension_kind", "crates/bbb-native/src/runtime/events/tests/session_hud_and_vehicle_events.rs#login_tracks_local_player_id_in_world", "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleLogin"], "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families", "status": "partial"},
+      "tests": {"evidence": ["crates/bbb-protocol/src/packets/tests.rs#decodes_play_login_spawn_info", "crates/bbb-net/src/event_stream.rs#play_session_and_player_info_packets_emit_matching_events_without_responses", "crates/bbb-world/src/level.rs#play_login_updates_world_dimension_and_level_info", "crates/bbb-world/src/level.rs#dimension_type_registry_shape_overrides_builtin_and_rejects_invalid_shape", "crates/bbb-native/src/runtime/tests.rs#lightmap_dimension_kind_prefers_registry_identity_over_bootstrap_holder_id", "crates/bbb-native/src/runtime/events/tests/session_hud_and_vehicle_events.rs#login_tracks_local_player_id_in_world"], "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families", "status": "partial"}
     },
     "play/clientbound/CLIENTBOUND_MAP_ITEM_DATA": {
       "canonical_apply": {"evidence": ["crates/bbb-world/src/maps.rs#apply_map_item_data", "crates/bbb-world/src/maps.rs#map_item_data_creates_and_updates_map_state", "crates/bbb-world/src/maps.rs#map_item_data_absent_optionals_preserve_existing_sections", "vanilla:net/minecraft/network/protocol/game/ClientboundMapItemDataPacket.java#applyToMap"], "status": "complete"},
@@ -4548,6 +4548,7 @@
       "runtime_side_effect": {
         "evidence": [
           "crates/bbb-native/src/runtime/events/dispatcher.rs#synchronize_audio_registries_from_world",
+          "crates/bbb-native/src/runtime.rs#vanilla_lightmap_dimension_kind",
           "vanilla:net/minecraft/client/multiplayer/RegistryDataCollector.java#collectGameRegistries"
         ],
         "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
@@ -4560,6 +4561,7 @@
           "crates/bbb-world/src/registries/tests.rs#configuration_registry_collection_commits_atomically_and_replaces_holder_order",
           "crates/bbb-world/src/registries/tests.rs#tag_only_configuration_preserves_registry_contents_and_replaces_named_tags",
           "crates/bbb-world/src/level.rs#dimension_type_registry_cardinal_light_overrides_builtin_fallback",
+          "crates/bbb-native/src/runtime/tests.rs#lightmap_dimension_kind_prefers_registry_identity_over_bootstrap_holder_id",
           "crates/bbb-native/src/runtime/tests.rs#hud_debug_overlay_projects_custom_biome_from_camera_feet_block",
           "crates/bbb-native/src/runtime/tests.rs#hud_debug_overlay_projects_custom_looking_at_entity",
           "crates/bbb-native/src/runtime/tests.rs#hud_debug_entity_type_name_uses_world_registry_source_rules",

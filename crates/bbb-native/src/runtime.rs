@@ -1843,21 +1843,23 @@ pub(crate) enum VanillaLightmapDimensionKind {
 }
 
 fn vanilla_lightmap_dimension_kind(level: &WorldLevelInfo) -> VanillaLightmapDimensionKind {
+    if let Some(dimension_type) = level.dimension_type_name.as_deref() {
+        return match dimension_type {
+            "minecraft:the_nether" => VanillaLightmapDimensionKind::Nether,
+            "minecraft:the_end" => VanillaLightmapDimensionKind::End,
+            "minecraft:overworld" | "minecraft:overworld_caves" => {
+                VanillaLightmapDimensionKind::Overworld
+            }
+            _ => VanillaLightmapDimensionKind::Other,
+        };
+    }
     let dimension = level.dimension.as_str();
-    let dimension_type = level.dimension_type_name.as_deref();
-    match (level.dimension_type_id, dimension, dimension_type) {
-        (1, _, _) | (_, "minecraft:the_nether", _) | (_, _, Some("minecraft:the_nether")) => {
-            VanillaLightmapDimensionKind::Nether
+    match (level.dimension_type_id, dimension) {
+        (1, _) | (_, "minecraft:the_nether") => VanillaLightmapDimensionKind::Nether,
+        (2, _) | (_, "minecraft:the_end") => VanillaLightmapDimensionKind::End,
+        (0, _) | (3, _) | (_, "minecraft:overworld") | (_, "minecraft:overworld_caves") => {
+            VanillaLightmapDimensionKind::Overworld
         }
-        (2, _, _) | (_, "minecraft:the_end", _) | (_, _, Some("minecraft:the_end")) => {
-            VanillaLightmapDimensionKind::End
-        }
-        (0, _, _)
-        | (3, _, _)
-        | (_, "minecraft:overworld", _)
-        | (_, "minecraft:overworld_caves", _)
-        | (_, _, Some("minecraft:overworld"))
-        | (_, _, Some("minecraft:overworld_caves")) => VanillaLightmapDimensionKind::Overworld,
         _ => VanillaLightmapDimensionKind::Other,
     }
 }

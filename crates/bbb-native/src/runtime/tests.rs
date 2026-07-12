@@ -4824,6 +4824,32 @@ fn clear_color_uses_vanilla_dimension_fog_and_sky_color_without_camera_biome() {
 }
 
 #[test]
+fn lightmap_dimension_kind_prefers_registry_identity_over_bootstrap_holder_id() {
+    let world = world_with_dimension(0, "minecraft:overworld");
+    let mut level = world.level_info().unwrap().clone();
+
+    level.dimension_type_id = 0;
+    level.dimension_type_name = Some("minecraft:the_nether".to_string());
+    assert_eq!(
+        vanilla_lightmap_dimension_kind(&level),
+        VanillaLightmapDimensionKind::Nether
+    );
+
+    level.dimension_type_name = Some("example:custom".to_string());
+    assert_eq!(
+        vanilla_lightmap_dimension_kind(&level),
+        VanillaLightmapDimensionKind::Other
+    );
+
+    level.dimension_type_id = 1;
+    level.dimension_type_name = None;
+    assert_eq!(
+        vanilla_lightmap_dimension_kind(&level),
+        VanillaLightmapDimensionKind::Nether
+    );
+}
+
+#[test]
 fn clear_color_samples_camera_biome_fog_and_sky_color_attributes() {
     let mut world = world_with_dimension(0, "minecraft:overworld");
     set_world_day_time(&mut world, 6_000);
