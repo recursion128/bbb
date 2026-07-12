@@ -43,6 +43,7 @@ impl ClientInputState {
     }
 }
 
+#[cfg(test)]
 pub(crate) fn advance_player_input(
     input: &mut ClientInputState,
     world: &mut WorldStore,
@@ -50,6 +51,8 @@ pub(crate) fn advance_player_input(
     net_commands: &Option<mpsc::Sender<NetCommand>>,
     now: Instant,
 ) {
+    // Legacy fixed-clock fixture adapter. Production receives the authoritative
+    // client tick count from runtime through `advance_player_input_for_client_ticks`.
     let dt_seconds = input
         .last_step
         .and_then(|last| now.checked_duration_since(last))
@@ -57,20 +60,47 @@ pub(crate) fn advance_player_input(
         .as_secs_f64()
         .min(0.25);
     input.last_step = Some(now);
+    input.local_player_movement_tick_accumulator_seconds =
+        (input.local_player_movement_tick_accumulator_seconds + dt_seconds.max(0.0))
+            .min(0.25 + LOCAL_PLAYER_MOVEMENT_TICK_SECONDS);
+    let client_ticks = (input.local_player_movement_tick_accumulator_seconds
+        / LOCAL_PLAYER_MOVEMENT_TICK_SECONDS)
+        .floor() as u32;
+    input.local_player_movement_tick_accumulator_seconds -=
+        f64::from(client_ticks) * LOCAL_PLAYER_MOVEMENT_TICK_SECONDS;
+    advance_player_input_for_client_ticks(input, world, counters, net_commands, now, client_ticks);
+}
+
+pub(crate) fn advance_player_input_for_client_ticks(
+    input: &mut ClientInputState,
+    world: &mut WorldStore,
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    now: Instant,
+    client_ticks: u32,
+) {
+    // Vanilla calls LocalPlayer.tick from Minecraft.tick, so movement constants
+    // remain per-tick (0.05 s) even when synchronized tick rate slows wall time.
+    // Preserve bbb's existing five-tick catch-up bound for a stalled frame.
+    let client_ticks = client_ticks.min(5);
+    let dt_seconds = f64::from(client_ticks) * LOCAL_PLAYER_MOVEMENT_TICK_SECONDS;
     input.advance_debug_crash_hold(world, now);
     input.advance_sprint_trigger(dt_seconds);
     input.advance_creative_flight_jump_trigger(dt_seconds);
     maybe_enable_spectator_flying(counters, world, net_commands);
 
     if world.local_player_root_vehicle_id().is_some() {
-        input.local_player_movement_tick_accumulator_seconds = 0.0;
         let input_state = input.local_player_input();
         if let Some(pose) = world.advance_local_player_look_input(input_state) {
-            maybe_queue_passenger_rotation_command(input, counters, net_commands, pose, now);
+            if client_ticks > 0 || input.last_move_command_at.is_none() {
+                maybe_queue_passenger_rotation_command(input, counters, net_commands, pose, now);
+            }
         }
         maybe_queue_riding_jump_command(input, world, counters, net_commands, dt_seconds);
         let boat_report = world.advance_local_boat_vehicle_input(input_state, dt_seconds);
-        maybe_queue_boat_commands(input, world, counters, net_commands, now, boat_report);
+        if client_ticks > 0 || input.last_paddle_boat_command_at.is_none() {
+            maybe_queue_boat_commands(input, world, counters, net_commands, now, boat_report);
+        }
         input.mouse_delta_x = 0.0;
         input.mouse_delta_y = 0.0;
         return;
@@ -78,7 +108,7 @@ pub(crate) fn advance_player_input(
     input.last_paddle_boat_command_at = None;
     input.riding_jump_charge_seconds = None;
 
-    let Some(pose) = advance_unmounted_local_player_input(input, world, dt_seconds) else {
+    let Some(pose) = advance_unmounted_local_player_input(input, world, client_ticks) else {
         input.mouse_delta_x = 0.0;
         input.mouse_delta_y = 0.0;
         return;
@@ -87,7 +117,9 @@ pub(crate) fn advance_player_input(
 
     input.mouse_delta_x = 0.0;
     input.mouse_delta_y = 0.0;
-    if world.local_player().camera.follows_player {
+    if world.local_player().camera.follows_player
+        && (client_ticks > 0 || input.last_move_command_at.is_none())
+    {
         maybe_queue_player_move_command(input, counters, net_commands, pose, now);
     }
 }
@@ -95,7 +127,7 @@ pub(crate) fn advance_player_input(
 fn advance_unmounted_local_player_input(
     input: &mut ClientInputState,
     world: &mut WorldStore,
-    dt_seconds: f64,
+    client_ticks: u32,
 ) -> Option<LocalPlayerPoseState> {
     let input_state = input.local_player_input();
     let mut pose = world.advance_local_player_look_input(input_state)?;
@@ -103,13 +135,7 @@ fn advance_unmounted_local_player_input(
     movement_input.mouse_delta_x = 0.0;
     movement_input.mouse_delta_y = 0.0;
 
-    input.local_player_movement_tick_accumulator_seconds =
-        (input.local_player_movement_tick_accumulator_seconds + dt_seconds.max(0.0))
-            .min(0.25 + LOCAL_PLAYER_MOVEMENT_TICK_SECONDS);
-    while input.local_player_movement_tick_accumulator_seconds + f64::EPSILON
-        >= LOCAL_PLAYER_MOVEMENT_TICK_SECONDS
-    {
-        input.local_player_movement_tick_accumulator_seconds -= LOCAL_PLAYER_MOVEMENT_TICK_SECONDS;
+    for _ in 0..client_ticks {
         pose =
             world.advance_local_player_input(movement_input, LOCAL_PLAYER_MOVEMENT_TICK_SECONDS)?;
     }
@@ -552,6 +578,56 @@ mod tests {
             fixed_tick.state.position,
             world.local_player_pose().unwrap().position
         );
+        assert_eq!(counters.player_move_commands_queued, 2);
+    }
+
+    #[test]
+    fn synchronized_client_ticks_are_the_only_production_movement_clock() {
+        let (tx, mut rx) = mpsc::channel(4);
+        let commands = Some(tx);
+        let start = Instant::now();
+        let mut input = ClientInputState::new(true);
+        let mut world = WorldStore::new();
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.0, 64.0, 0.0),
+            ..LocalPlayerPoseState::default()
+        });
+        let mut counters = NetCounters::default();
+
+        advance_player_input_for_client_ticks(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            start,
+            0,
+        );
+        assert!(matches!(rx.try_recv().unwrap(), NetCommand::MovePlayer(_)));
+        let initial_pose = world.local_player_pose().unwrap();
+
+        input.forward = true;
+        advance_player_input_for_client_ticks(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            start + Duration::from_millis(50),
+            0,
+        );
+        assert_eq!(world.local_player_pose(), Some(initial_pose));
+        assert!(rx.try_recv().is_err());
+
+        advance_player_input_for_client_ticks(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            start + Duration::from_millis(100),
+            1,
+        );
+        let moved = world.local_player_pose().unwrap();
+        assert!(moved.position.z > initial_pose.position.z);
+        assert!(matches!(rx.try_recv().unwrap(), NetCommand::MovePlayer(_)));
         assert_eq!(counters.player_move_commands_queued, 2);
     }
 

@@ -93,7 +93,7 @@ use crate::{
         entity_scene_outline_from_world_at_partial_tick_with_server_details,
     },
     input::{
-        advance_destroying_block_at_partial_tick, advance_player_input,
+        advance_destroying_block_at_partial_tick, advance_player_input_for_client_ticks,
         advance_using_item_at_partial_tick, inventory_screen_layout_for_surface,
         inventory_screen_selected_hotbar_slot_id, pause_screen_advancements_button_contains,
         pause_screen_disconnect_button_contains, pause_screen_options_button_contains,
@@ -2091,7 +2091,14 @@ pub(crate) fn pump_network_and_terrain(
     // entity spin only while a nearby player exists.
     world.advance_spawner_block_ticks(running_ticks);
     world.advance_item_cooldowns(advanced_ticks);
-    advance_player_input(input, world, net_counters, net_commands, now);
+    advance_player_input_for_client_ticks(
+        input,
+        world,
+        net_counters,
+        net_commands,
+        now,
+        advanced_ticks,
+    );
     // Vanilla Minecraft.tick handles keybinds before GameRenderer.tick, whose
     // Camera.tickFov eases the current camera's target once per client tick.
     camera_fov_ticks.advance_for_world(advanced_ticks, world);

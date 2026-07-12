@@ -12757,3 +12757,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] client tick state 改为按每帧当前 interval 累加无量纲 residual，tick-rate 中途切换不会把
   已累计时间整段按新速率重解释；focused tests 锁定 10/20/40 TPS、冻结态、partial tick 与速率
   切换。local-player prediction 的独立 fixed-20Hz accumulator 仍在 unsupported ledger 开放。
+
+## 2026-07-12：Synchronized local prediction cadence
+
+- [x] 对照 vanilla `Minecraft.tick` 与 `LocalPlayer.tick`，native runtime 将同一
+  `advanced_ticks` 直接交给 local-player prediction、locally-controlled vehicle 与 movement
+  command opportunity；低 TPS 正常态不再由 input owner 的独立 50ms 墙钟继续推进本地物理，
+  冻结态仍按 vanilla 的 player/player-passenger exemption 保持 raw client ticks。
+- [x] release 路径只保留 client-tick 驱动入口；原固定墙钟 accumulator 限于 `cfg(test)` fixture
+  wrapper。新 focused test 锁定零 client tick 时不移动/不重复发包、收到一个 client tick 后才推进
+  prediction 并提交 movement。剩余 voxel collision、travel ordering 与 vehicle edge parity 继续开放。

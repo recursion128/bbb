@@ -400,7 +400,9 @@ pub(crate) use mouse::{
     advance_destroying_block_at_partial_tick, advance_using_item_at_partial_tick,
     handle_mouse_input_at_partial_tick, handle_mouse_motion, handle_mouse_wheel,
 };
+#[cfg(test)]
 pub(crate) use movement::advance_player_input;
+pub(crate) use movement::advance_player_input_for_client_ticks;
 
 const CREATIVE_FLIGHT_JUMP_TRIGGER_TICKS: u8 = 7;
 const CREATIVE_FLIGHT_TICK_SECONDS: f64 = 0.05;
@@ -756,7 +758,9 @@ pub(crate) struct ClientInputState {
     dismissed_sign_editor: Option<SignEditorInputSignature>,
     merchant_trade_scrolling: bool,
     chat_entry: Option<ChatEntryState>,
+    #[cfg(test)]
     last_step: Option<Instant>,
+    #[cfg(test)]
     local_player_movement_tick_accumulator_seconds: f64,
     last_move_command_at: Option<Instant>,
     move_position_reminder_ticks: u32,
@@ -938,7 +942,10 @@ impl ClientInputState {
         self.advancement_is_scrolling = false;
         self.reset_debug_crash_hold();
         self.chat_entry = None;
-        self.local_player_movement_tick_accumulator_seconds = 0.0;
+        #[cfg(test)]
+        {
+            self.local_player_movement_tick_accumulator_seconds = 0.0;
+        }
         self.last_paddle_boat_command_at = None;
         self.riding_jump_charge_seconds = None;
         self.clear_sprint_trigger();

@@ -224,12 +224,8 @@ Movement:
   configurable base FOV/effect scale, bow-use/scoping zoom, and death/fluid
   modifiers. Vanilla keeps `walkingSpeed` as the FOV ratio denominator; it does
   not replace the separately synchronized movement-speed attribute base.
-- Reconcile the local-player movement accumulator and movement packet opportunity
-  cadence with the synchronized client game-tick clock. Entity/world presentation
-  ticks now follow `TickingState.tickRate`, but local prediction still uses its
-  separately owned fixed-20Hz accumulator. This is multiplayer prediction timing,
-  not an `IntegratedServer` tick owner.
-- Cover the remaining vanilla survival physics beyond that local movement cadence.
+- Cover the remaining vanilla survival physics beyond the synchronized local
+  movement cadence.
 - Cover the remaining vanilla voxel collision shapes.
 - Implement full vanilla post-`Entity.move` `deltaMovement` travel ordering.
 - Add sprint-swim camera, animation, and presentation nuance.

@@ -770,7 +770,7 @@ fn renderer_frame_sky_flash_environment_extracts_after_client_level_tick() {
 fn renderer_frame_hud_extracts_after_input_and_use_item_tick() {
     let source = include_str!("../runtime.rs");
     let input_advance = source
-        .find("advance_player_input(input, world, net_counters, net_commands, now);")
+        .find("advance_player_input_for_client_ticks(")
         .expect("pump should advance player input before HUD extraction");
     let destroy_advance = source
         .find("advance_destroying_block_at_partial_tick(")
@@ -4263,7 +4263,7 @@ fn renderer_frame_item_and_entity_projections_extract_after_tick_advances() {
         .find("world.advance_item_cooldowns(advanced_ticks);")
         .expect("pump should advance item cooldowns before item model extraction");
     let input_advance = source
-        .find("advance_player_input(input, world, net_counters, net_commands, now);")
+        .find("advance_player_input_for_client_ticks(")
         .expect("pump should advance input before held item extraction");
     let using_item_tick = source
         .find("world.advance_local_using_item_ticks(advanced_ticks);")
@@ -4488,7 +4488,7 @@ fn renderer_frame_block_destroy_overlays_extract_after_destroy_tick() {
 fn renderer_frame_outlines_extract_after_input_camera_and_partial_tick() {
     let source = include_str!("../runtime.rs");
     let input_advance = source
-        .find("advance_player_input(input, world, net_counters, net_commands, now);")
+        .find("advance_player_input_for_client_ticks(")
         .expect("pump should advance player input before outline extraction");
     let using_item_tick = source
         .find("world.advance_local_using_item_ticks(advanced_ticks);")
@@ -4672,7 +4672,7 @@ fn renderer_frame_weather_extracts_after_client_time_camera_and_partial_tick() {
 fn particle_lights_refresh_after_particle_tick_and_frame_extract_inputs() {
     let source = include_str!("../runtime.rs");
     let input_advance = source
-        .find("advance_player_input(input, world, net_counters, net_commands, now);")
+        .find("advance_player_input_for_client_ticks(")
         .expect("pump should advance player input before particle tick");
     let destroy_advance = source
         .find("advance_destroying_block_at_partial_tick(")
@@ -15796,6 +15796,14 @@ fn entity_client_tick_cadence_preserves_residual_across_rate_changes_and_freeze(
         ),
         1
     );
+}
+
+#[test]
+fn local_prediction_consumes_the_runtime_client_tick_batch() {
+    let source = include_str!("../runtime.rs");
+    assert!(source.contains(
+        "advance_player_input_for_client_ticks(\n        input,\n        world,\n        net_counters,\n        net_commands,\n        now,\n        advanced_ticks,\n    );"
+    ));
 }
 
 #[test]
