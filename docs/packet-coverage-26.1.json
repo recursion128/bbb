@@ -7087,28 +7087,50 @@
       "constant_name": "CLIENTBOUND_LEVEL_CHUNK_WITH_LIGHT",
       "coverage": {
         "canonical_apply": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
+          "evidence": [
+            "crates/bbb-world/src/chunks/store.rs#insert_level_chunk_with_light",
+            "crates/bbb-world/src/chunks/decode.rs#decode_level_chunk_with_light",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleLevelChunkWithLight"
+          ],
+          "gap": "docs/unsupported-features.md#block-entities-and-terrain",
           "status": "partial"
         },
         "decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "evidence": [
+            "crates/bbb-protocol/src/packets/chunks/tests.rs#decodes_level_chunk_envelope",
+            "crates/bbb-protocol/src/packets/chunks/tests.rs#rejects_oversized_level_chunk_section_buffer",
+            "crates/bbb-protocol/src/packets/chunks/tests.rs#rejects_light_update_arrays_that_are_not_data_layers",
+            "vanilla:net/minecraft/network/protocol/game/ClientboundLevelChunkWithLightPacket.java#STREAM_CODEC"
+          ],
+          "gap": "docs/unsupported-features.md#block-entities-and-terrain",
           "status": "partial"
         },
         "ownership": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/play_apply.rs#PlayClientbound::LevelChunkWithLight"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "runtime_side_effect": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
+          "evidence": [
+            "crates/bbb-native/src/terrain_runtime.rs#maybe_upload_decoded_terrain",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleLevelChunkWithLight"
+          ],
+          "gap": "docs/unsupported-features.md#block-entities-and-terrain",
           "status": "partial"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "evidence": [
+            "crates/bbb-protocol/src/packets/chunks/tests.rs#decodes_level_chunk_envelope",
+            "crates/bbb-net/src/event_stream.rs#play_chunk_terrain_packets_emit_matching_events_without_responses",
+            "crates/bbb-net/src/probe/play.rs#probe_applies_chunk_view_and_block_updates_to_world",
+            "crates/bbb-world/src/chunks/tests.rs#decodes_level_chunk_with_light_structure",
+            "crates/bbb-world/src/chunks/tests.rs#applies_light_update_to_existing_chunk_sections",
+            "crates/bbb-world/src/chunks/tests.rs#applies_biome_update_to_existing_chunk_sections",
+            "crates/bbb-native/src/runtime/events/tests/world_state_lifecycle.rs#terrain_chunk_events_update_world_counters"
+          ],
+          "gap": "docs/unsupported-features.md#block-entities-and-terrain",
           "status": "partial"
         }
       },

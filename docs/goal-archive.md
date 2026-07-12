@@ -11651,3 +11651,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] 完整 snapshot framing/strict trailing、canonical tick lerp、partial-tick forcefield extract 与跨 crate tests 闭合。
 - [x] warningBlocks/warningTime/lerp-speed 驱动的 HUD vignette 未完成，runtime/tests 保持 partial。
+
+## 2026-07-12：play level chunk with light packet coverage audit
+
+- [x] 2 MiB section buffer、2048-byte light layers、strict trailing、section/heightmap/light/chunk-column replacement 与 tests 已审计。
+- [x] collection/registry validation、session biome、完整 block-entity semantics、queued light/neighbor dirty/render-ready 和 terrain parity 未完成，四格保持 partial。
