@@ -605,6 +605,8 @@ back into a todo. Do not delete these.
   remain diagnostic but does not establish a client combat-mode transition.
 - PlayerCombatKill still needs the local-player identity gate, DeathScreen versus
   respawn branch, and full rich death-message Component preservation.
+- ResetScore owner/nullable-objective decode and all/single-score removal semantics
+  are covered; remaining scoreboard gaps are objective/team text and presentation specific.
 - `BeaconMenu`: confirm/cancel hover state, effect highlighted hover state,
   labels/tooltips.
 - `EnchantmentMenu`: animated book model, enchanting glyph text and its

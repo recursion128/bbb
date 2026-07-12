@@ -85,10 +85,16 @@ impl PlayerTeamMethod {
 }
 
 pub(super) fn decode_reset_score(decoder: &mut Decoder<'_>) -> Result<ResetScore> {
-    Ok(ResetScore {
+    let packet = ResetScore {
         owner: decoder.read_string(32767)?,
         objective_name: decode_nullable_string(decoder)?,
-    })
+    };
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after reset score packet".to_string(),
+        ));
+    }
+    Ok(packet)
 }
 
 pub(super) fn decode_set_display_objective(
@@ -356,10 +362,9 @@ mod tests {
         payload.write_string("Alex");
         payload.write_bool(true);
         payload.write_string("kills");
+        let mut bytes = payload.into_inner();
 
-        let packet =
-            decode_play_clientbound(ids::play::CLIENTBOUND_RESET_SCORE, &payload.into_inner())
-                .unwrap();
+        let packet = decode_play_clientbound(ids::play::CLIENTBOUND_RESET_SCORE, &bytes).unwrap();
         assert_eq!(
             packet,
             PlayClientbound::ResetScore(ResetScore {
@@ -367,6 +372,12 @@ mod tests {
                 objective_name: Some("kills".to_string()),
             })
         );
+        bytes.push(0);
+        let error =
+            decode_play_clientbound(ids::play::CLIENTBOUND_RESET_SCORE, &bytes).unwrap_err();
+        assert!(error
+            .to_string()
+            .contains("trailing bytes after reset score packet"));
     }
 
     #[test]

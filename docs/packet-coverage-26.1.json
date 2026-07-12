@@ -8135,29 +8135,46 @@
       "constant_name": "CLIENTBOUND_RESET_SCORE",
       "coverage": {
         "canonical_apply": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/client/scoreboard.rs#apply_reset_score",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleResetScore"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/scoreboard.rs#decodes_scoreboard_reset_score_null_and_objective_packets",
+            "vanilla:net/minecraft/network/protocol/game/ClientboundResetScorePacket.java#STREAM_CODEC"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "ownership": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/play_apply.rs#PlayClientbound::ResetScore"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "runtime_side_effect": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/client/scoreboard/tests.rs#scoreboard_sets_and_resets_scores",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleResetScore"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/scoreboard.rs#decodes_scoreboard_reset_score_null_and_objective_packets",
+            "crates/bbb-net/src/event_stream.rs#play_border_and_scoreboard_packets_emit_matching_events_without_responses",
+            "crates/bbb-net/src/probe/play.rs#probe_applies_scoreboard_packets_to_world",
+            "crates/bbb-world/src/client/scoreboard/tests.rs#scoreboard_sets_and_resets_scores",
+            "crates/bbb-native/src/runtime/events/tests/session_hud_and_vehicle_events.rs#scoreboard_events_update_world_and_world_counters"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "clientbound",

@@ -11467,3 +11467,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] 对照 `ClientboundPlayerCombatKillPacket` 锁定 player id + trusted Component wire并测试 trailing rejection；
   diagnostics 与跨 crate tests 闭合。
 - [x] 本地 player identity gate、DeathScreen/respawn 分支和完整 rich Component 尚未闭合，canonical/runtime 保持 partial。
+
+## 2026-07-12：play reset-score packet coverage audit
+
+- [x] 对照 `ClientboundResetScorePacket` 锁定 owner + nullable objective wire并拒绝 trailing bytes。
+- [x] null objective 全删、known objective 单删、unknown objective 忽略以及 protocol/net/world/native tests 五格闭合。
