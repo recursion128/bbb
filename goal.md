@@ -529,6 +529,7 @@ play SectionBlocksUpdate 的 packed SectionPos/state/relative-pos wire、4096 �
 play SetBorder Center/LerpSize/Size/WarningDelay/WarningDistance 的 wire、strict trailing、canonical field mutation、tick/partial-tick interpolation、forcefield/input consumers 与 ownership 已审计；`Gui.extractVignette` warning-distance/lerp-speed 层尚未实现，五包 runtime/tests 保持 partial。
 play SetEntityData 的 entity id、255-terminated accessor list、43 serializer dispatch、255 项上限、strict trailing、known/unknown entity apply gate 与 ownership 已审计；rich Component/ItemStack、registry holder resolution、generated accessor serializer validation 和剩余 family consumers 尚未闭合，仅 ownership 为 complete。
 play serverbound Attack 的独立 VarInt entity-id wire、mouse/command/driver surface、range/spectator/using-item/piercing 分流与无专用 ack 语义已审计；hands-busy/feature/item/miss-time/carried-item/local presentation/attack-strength parity 未闭合，state_guard/tests 保持 partial。
+play serverbound BlockEntityTagQuery/EntityTagQuery 的 transaction+target wire、F3+I request/permission gate、driver send、匹配 response 消费、wrong/null/disappeared 拒绝与 server-NBT clipboard 权威边界已闭合。
 
 完成标准：全部 vanilla 26.1 catalog entry 都有矩阵行；所有目标客户端适用项为
 `complete`，其余只有带 vanilla 依据的 `not-applicable` 或带重启判据的窄 `deferred`；

@@ -3192,6 +3192,25 @@ mod tests {
         );
     }
 
+    #[test]
+    fn play_serverbound_tag_query_family_locks_authoritative_response_boundary() {
+        let ledger = vanilla_packet_coverage_26_1().unwrap();
+        for packet in [
+            "SERVERBOUND_BLOCK_ENTITY_TAG_QUERY",
+            "SERVERBOUND_ENTITY_TAG_QUERY",
+        ] {
+            let entry = ledger
+                .entries
+                .iter()
+                .find(|entry| entry.state == "play" && entry.constant_name == packet)
+                .expect("play serverbound tag query coverage row");
+            assert!(entry
+                .coverage
+                .values()
+                .all(|cell| cell.status == PacketCoverageStatus::Complete));
+        }
+    }
+
     fn state_name(state: PacketState) -> &'static str {
         match state {
             PacketState::Handshake => "handshake",

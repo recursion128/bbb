@@ -11746,3 +11746,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] 26.1 独立 VarInt entity-id wire、mouse → NetCommand → driver → encoder 路径、range/spectator/using-item/piercing 分流与无专用 ack 的 server handler 已审计。
 - [x] hands-busy/feature/item/miss-time/carried-item ordering、local `Player.attack` presentation 与 attack-strength reset 保持开放；未在客户端模拟权威伤害。
+
+## 2026-07-12：play serverbound tag query packet coverage audit
+
+- [x] BlockEntityTagQuery/EntityTagQuery 的 transaction+target wire、F3+I request/permission gate、NetCommand/driver send 与 matching `ClientboundTagQuery` response consumption 已闭合。
+- [x] wrong transaction、null tag、entity disappeared 不写 clipboard；server response 保持完整 NBT 权威，不由 local projection 覆盖。
