@@ -3583,6 +3583,30 @@ mod tests {
         }
     }
 
+    #[test]
+    fn play_serverbound_container_close_is_closed_without_a_server_response() {
+        let ledger = vanilla_packet_coverage_26_1().unwrap();
+        let entry = ledger
+            .entries
+            .iter()
+            .find(|entry| {
+                entry.state == "play" && entry.constant_name == "SERVERBOUND_CONTAINER_CLOSE"
+            })
+            .expect("play serverbound container close coverage row");
+
+        assert_eq!(
+            entry.coverage["ack_response"].status,
+            PacketCoverageStatus::NotApplicable
+        );
+        for dimension in ["command_surface", "encoder", "state_guard", "tests"] {
+            assert_eq!(
+                entry.coverage[dimension].status,
+                PacketCoverageStatus::Complete,
+                "{dimension}"
+            );
+        }
+    }
+
     fn state_name(state: PacketState) -> &'static str {
         match state {
             PacketState::Handshake => "handshake",

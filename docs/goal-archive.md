@@ -11821,3 +11821,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] `ServerboundContainerClickPacket` 的 container/state VarInt、slot short、button byte、七种 generated ContainerInput、最多 128 个 changed slots、HashedStack/carried item wire 已审计；补齐 changed-slots 128 与 hashed added/removed 各 256 的 encoder 拒绝门禁。
 - [x] 本地 active-menu/slot gate、常用 click prediction、changed-slot/carried hash、unhashable/specialized result 的保守 server-authoritative fallback 与普通 container correction 已审计。服务端无专用 acknowledgement；剩余 rich component hash 与专用 menu prediction 由 container parity ledger 保持开放。
+
+## 2026-07-12：play serverbound container close packet coverage audit
+
+- [x] `ServerboundContainerClosePacket` 的 container-id VarInt、Escape/E/菜单按钮输入、container 0 与 server-opened menu、本地 immediate close/quick-craft reset、NetCommand/driver 发送已审计并闭合。
+- [x] vanilla server handler 不校验包内 id，直接关闭当前 menu 且不发专用 response；ack 明确为 not-applicable。bbb 的生产路径只发送当前 active id，本地关闭不伪装成 clientbound close counter。
