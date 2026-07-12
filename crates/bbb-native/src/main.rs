@@ -394,7 +394,7 @@ fn main() -> Result<()> {
         args.client_vsync,
     ))?;
     renderer.set_lightmap_brightness_factor(args.client_gamma);
-    let terrain_textures = load_terrain_textures(&mut renderer, pack_roots.as_ref());
+    let mut terrain_textures = load_terrain_textures(&mut renderer, pack_roots.as_ref());
     if let Some(particles) = particle_runtime.as_mut() {
         particles.set_terrain_particle_sprite_ids(&terrain_textures);
         if let Some(items) = &item_runtime {
@@ -1066,7 +1066,7 @@ fn main() -> Result<()> {
                         &mut lightmap_ticks,
                         &mut level_event_sound_random,
                         &mut terrain_upload,
-                        &terrain_textures,
+                        &mut terrain_textures,
                         item_runtime.as_ref(),
                         &snapshot,
                         &control_requests,
@@ -1234,7 +1234,7 @@ fn main() -> Result<()> {
                     &mut lightmap_ticks,
                     &mut level_event_sound_random,
                     &mut terrain_upload,
-                    &terrain_textures,
+                    &mut terrain_textures,
                     item_runtime.as_ref(),
                     &snapshot,
                     &control_requests,

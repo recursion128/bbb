@@ -1915,7 +1915,7 @@ pub(crate) fn pump_network_and_terrain(
     lightmap_ticks: &mut LightmapTickState,
     level_event_sound_random: &mut LevelEventSoundRandomState,
     terrain_upload: &mut TerrainUploadState,
-    terrain_textures: &TerrainTextureState,
+    terrain_textures: &mut TerrainTextureState,
     item_runtime: Option<&NativeItemRuntime>,
     snapshot: &SharedSnapshot,
     control_requests: &SharedControlRequests,
@@ -1949,6 +1949,9 @@ pub(crate) fn pump_network_and_terrain(
             Some(hud_debug_tps_sampler),
             level_event_sound_random,
         );
+    }
+    if terrain_textures.synchronize_biome_registry(world) {
+        terrain_upload.request_reload_all_chunks();
     }
     release_input_if_screen_opened(
         input_screen_was_open,

@@ -854,9 +854,11 @@ back into a todo. Do not delete these.
   every section, and drop typed debug-subscription values for that chunk. World
   chunk-column removal is covered; add runtime tests that stale terrain, light and
   debug presentation cannot survive the packet.
-- Resolve ChunksBiomes palette ids through the session biome RegistryAccess and
-  match vanilla's 3x3 neighboring-section rerender/tint invalidation, including
-  custom synchronized biome color effects.
+- Decode custom synchronized biome color effects and match vanilla's 3x3
+  neighboring-section rerender/tint invalidation. Known resource-pack biome
+  profiles already remap through the active session holder order and trigger a
+  coarse full-chunk remesh; refresh the particle tint snapshot on the same
+  lifecycle instead of retaining startup ordinals.
 - **Client chunk-view residency pruning.** SetChunkCacheCenter/Radius currently
   preserve the synchronized view and use the center for terrain upload order,
   but do not evict chunks outside the updated vanilla ClientChunkCache window.

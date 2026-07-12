@@ -225,6 +225,27 @@ impl BiomeColorCatalog {
         self.profiles.get(&id)
     }
 
+    pub fn remapped_to_resource_order<'a>(
+        &self,
+        resource_ids: impl IntoIterator<Item = &'a str>,
+    ) -> Self {
+        let profiles_by_name = self
+            .profiles
+            .values()
+            .map(|profile| (profile.name.as_str(), profile))
+            .collect::<BTreeMap<_, _>>();
+        Self::new(
+            resource_ids
+                .into_iter()
+                .enumerate()
+                .filter_map(|(holder_id, resource_id)| {
+                    let mut profile = (*profiles_by_name.get(resource_id)?).clone();
+                    profile.id = i32::try_from(holder_id).ok()?;
+                    Some(profile)
+                }),
+        )
+    }
+
     pub fn len(&self) -> usize {
         self.profiles.len()
     }
@@ -341,7 +362,10 @@ struct RawBiomeColorEffects {
 
 #[cfg(test)]
 mod tests {
-    use super::ColorMapImage;
+    use super::{
+        BiomeColorCatalog, BiomeColorProfile, BiomeTemperatureModifier, ColorMapImage,
+        GrassColorModifier,
+    };
 
     #[test]
     fn colormap_samples_temperature_downfall_coordinates() {
@@ -356,5 +380,44 @@ mod tests {
         assert_eq!(colormap.sample_temperature_downfall(1.0, 1.0), [0, 0, 0]);
         assert_eq!(colormap.sample_temperature_downfall(0.5, 1.0), [10, 20, 2]);
         assert_eq!(colormap.sample_temperature_downfall(0.0, 1.0), [30, 60, 6]);
+    }
+
+    #[test]
+    fn biome_catalog_remaps_profiles_by_resource_identity() {
+        let source = BiomeColorCatalog::new([
+            biome_profile(10, "minecraft:plains", [1, 2, 3]),
+            biome_profile(20, "minecraft:desert", [4, 5, 6]),
+        ]);
+        let remapped = source.remapped_to_resource_order([
+            "example:custom",
+            "minecraft:desert",
+            "minecraft:plains",
+        ]);
+
+        assert!(remapped.profile(0).is_none());
+        assert_eq!(remapped.profile(1).unwrap().name, "minecraft:desert");
+        assert_eq!(remapped.profile(1).unwrap().sky_color, Some([4, 5, 6]));
+        assert_eq!(remapped.profile(2).unwrap().name, "minecraft:plains");
+        assert_eq!(remapped.profile(2).unwrap().sky_color, Some([1, 2, 3]));
+    }
+
+    fn biome_profile(id: i32, name: &str, sky_color: [u8; 3]) -> BiomeColorProfile {
+        BiomeColorProfile {
+            id,
+            name: name.to_string(),
+            temperature: 0.5,
+            temperature_modifier: BiomeTemperatureModifier::None,
+            downfall: 0.5,
+            has_precipitation: true,
+            grass_color: None,
+            foliage_color: None,
+            dry_foliage_color: None,
+            water_color: None,
+            fog_color: None,
+            sky_color: Some(sky_color),
+            water_fog_color: None,
+            water_fog_end_distance: None,
+            grass_color_modifier: GrassColorModifier::None,
+        }
     }
 }

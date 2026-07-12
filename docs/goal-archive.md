@@ -12166,3 +12166,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] `DimensionType.has_ceiling` 现在与既有 `has_skylight` 一起进入 `WorldLevelInfo`；world semantic owner 提供 vanilla `hasSkyLight && !hasCeiling && dimension != END` 的 `can_have_weather` 查询。
 - [x] native weather renderer 删除 `dimension_type_id == 0` bootstrap 猜测；custom holder 0 即使有 skylight、只要 ceiling=true 也不会生成降水，builtin overworld/nether tests 保持通过。
+
+## 2026-07-12：session biome profile remapping
+
+- [x] resource-pack `BiomeColorCatalog` 可按 session biome resource-id order 重建 holder-id profile；unknown/custom entry 不套用同 numeric id 的 vanilla profile。
+- [x] `TerrainTextureState` 在 configuration Finish 后切换 active remap并请求全 chunk remesh，pending state 不泄漏；terrain water tint及 camera/weather biome profile查询共享 remapped catalog。custom biome NBT effects、particle tint snapshot refresh与精确 3x3 invalidation仍开放。

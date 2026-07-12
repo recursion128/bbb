@@ -27,6 +27,8 @@ pub(crate) struct TerrainTextureState {
     indices: HashMap<String, u32>,
     block_models: Option<BlockModelCatalog>,
     colormaps: Option<TerrainColorMaps>,
+    biome_color_source: Option<BiomeColorCatalog>,
+    biome_registry_order: Option<Vec<String>>,
     biome_colors: Option<BiomeColorCatalog>,
     transparencies: Vec<TerrainTransparency>,
     sprite_alphas: HashMap<String, SpriteAlpha>,
@@ -53,6 +55,8 @@ impl Default for TerrainTextureState {
             indices: HashMap::new(),
             block_models: None,
             colormaps: None,
+            biome_color_source: None,
+            biome_registry_order: None,
             biome_colors: None,
             transparencies: vec![TerrainTransparency::OPAQUE],
             sprite_alphas: HashMap::new(),
@@ -213,6 +217,8 @@ impl TerrainTextureState {
             indices,
             block_models,
             colormaps,
+            biome_color_source: biome_colors.clone(),
+            biome_registry_order: None,
             biome_colors,
             transparencies,
             sprite_alphas,
@@ -263,6 +269,37 @@ impl TerrainTextureState {
             colormaps: self.colormaps.clone(),
             biome_colors: self.biome_colors.clone(),
         }
+    }
+
+    pub(crate) fn synchronize_biome_registry(&mut self, world: &bbb_world::WorldStore) -> bool {
+        let order_is_unchanged =
+            match world.registry_resource_ids_in_holder_order("minecraft:worldgen/biome") {
+                None => self.biome_registry_order.is_none(),
+                Some(resource_ids) => self.biome_registry_order.as_ref().is_some_and(|current| {
+                    current.len() == resource_ids.len()
+                        && current.iter().map(String::as_str).eq(resource_ids)
+                }),
+            };
+        if order_is_unchanged {
+            return false;
+        }
+        let next_order = world
+            .registry_resource_ids_in_holder_order("minecraft:worldgen/biome")
+            .map(|resource_ids| resource_ids.map(str::to_string).collect::<Vec<_>>());
+        let next = self.biome_color_source.as_ref().map(|source| {
+            next_order
+                .as_deref()
+                .map(|resource_ids| {
+                    source.remapped_to_resource_order(resource_ids.iter().map(String::as_str))
+                })
+                .unwrap_or_else(|| source.clone())
+        });
+        self.biome_registry_order = next_order;
+        if self.biome_colors == next {
+            return false;
+        }
+        self.biome_colors = next;
+        true
     }
 
     pub(crate) fn terrain_particle_tint_color_for_block_state(
@@ -430,6 +467,7 @@ impl TerrainTextureState {
     #[cfg(test)]
     pub(crate) fn with_biome_colors_for_tests(biome_colors: BiomeColorCatalog) -> Self {
         let mut state = Self::default();
+        state.biome_color_source = Some(biome_colors.clone());
         state.biome_colors = Some(biome_colors);
         state
     }

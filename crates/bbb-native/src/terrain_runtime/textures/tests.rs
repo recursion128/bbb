@@ -1074,6 +1074,52 @@ fn blend_biome_profile(id: i32, water: [u8; 3], modifier: GrassColorModifier) ->
     }
 }
 
+#[test]
+fn biome_colors_follow_active_registry_resource_order_after_finish() {
+    let mut plains = blend_biome_profile(10, [1, 2, 3], GrassColorModifier::None);
+    plains.name = "minecraft:plains".to_string();
+    plains.sky_color = Some([10, 20, 30]);
+    let mut desert = blend_biome_profile(20, [4, 5, 6], GrassColorModifier::None);
+    desert.name = "minecraft:desert".to_string();
+    desert.sky_color = Some([40, 50, 60]);
+    let mut textures =
+        TerrainTextureState::with_biome_colors_for_tests(BiomeColorCatalog::new([plains, desert]));
+    let mut world = bbb_world::WorldStore::new();
+
+    assert_eq!(textures.biome_sky_color(Some(10)), Some([10, 20, 30]));
+    world.begin_registry_configuration();
+    world.record_registry_entries(
+        "minecraft:worldgen/biome",
+        0,
+        vec![
+            bbb_world::RegistryPacketEntry::stub("example:custom"),
+            bbb_world::RegistryPacketEntry::stub("minecraft:desert"),
+            bbb_world::RegistryPacketEntry::stub("minecraft:plains"),
+        ],
+    );
+    assert!(!textures.synchronize_biome_registry(&world));
+
+    world.finish_registry_configuration();
+    assert!(textures.synchronize_biome_registry(&world));
+    assert_eq!(textures.biome_sky_color(Some(0)), None);
+    assert_eq!(textures.biome_sky_color(Some(1)), Some([40, 50, 60]));
+    assert_eq!(textures.biome_sky_color(Some(2)), Some([10, 20, 30]));
+    assert_eq!(
+        textures.block_tint(
+            "minecraft:water",
+            bbb_world::TerrainMaterialClass::Fluid,
+            Some(0),
+            Some(1),
+            None,
+        ),
+        TerrainTint::from_rgb_u8(4, 5, 6)
+    );
+    assert!(!textures.synchronize_biome_registry(&world));
+
+    assert!(textures.synchronize_biome_registry(&bbb_world::WorldStore::new()));
+    assert_eq!(textures.biome_sky_color(Some(10)), Some([10, 20, 30]));
+}
+
 /// Builds a blend window centred on `center`; `fill(dcol, drow)` returns the
 /// biome id for the column offset `(dcol, drow)` from the centre (or `None` for
 /// an unavailable / unloaded column), matching `BiomeBlend::samples` geometry.
