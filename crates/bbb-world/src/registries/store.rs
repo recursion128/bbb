@@ -48,6 +48,32 @@ impl WorldStore {
         self.registries.contents.get(registry)
     }
 
+    pub fn registry_entry_by_holder_id(
+        &self,
+        registry: &str,
+        holder_id: i32,
+    ) -> Option<&RegistryPacketEntry> {
+        self.registries.entry_by_holder_id(registry, holder_id)
+    }
+
+    pub fn registry_resource_id_by_holder_id(
+        &self,
+        registry: &str,
+        holder_id: i32,
+    ) -> Option<&str> {
+        self.registries
+            .resource_id_by_holder_id(registry, holder_id)
+    }
+
+    pub fn registry_holder_id_by_resource_id(
+        &self,
+        registry: &str,
+        resource_id: &str,
+    ) -> Option<i32> {
+        self.registries
+            .holder_id_by_resource_id(registry, resource_id)
+    }
+
     fn sync_registry_counters(&mut self) {
         self.counters.registries_seen = self.registries.registries.len();
         self.counters.registry_entries_seen = self

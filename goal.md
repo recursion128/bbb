@@ -321,7 +321,8 @@ show-dialog 仍缺 `Dialog` semantic codec/screen，custom-click 仍缺 NBT enco
 configuration custom-payload 的 Brand/Discarded wire、bounded 自动 brand send、canonical server brand 与
 diagnostics 已闭合；Mojang telemetry callback 按无 external sender 的架构边界为 not-applicable。
 configuration registry-data/update-tags 的 wire、ownership、packet projection 与 tests 已审计；
-完整 `RegistryAccess`/typed codec/holder tags/component initializer 仍是明确 canonical/runtime partial。
+checked wire-order holder identity 已由 registry semantic owner 统一查询；完整
+`RegistryAccess`/typed codec/holder tags/component initializer 仍是明确 canonical/runtime partial。
 
 matrix inventory + state/framing + required login/config/play handoff 是本队列的 foundation
 milestone；完成后即可进入 RegistryAccess/playable foundation，不等待全部长尾 packet

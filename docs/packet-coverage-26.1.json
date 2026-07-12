@@ -1613,6 +1613,8 @@
         "canonical_apply": {
           "evidence": [
             "crates/bbb-world/src/registries/store.rs#record_registry_data",
+            "crates/bbb-world/src/registries/store.rs#registry_entry_by_holder_id",
+            "crates/bbb-world/src/registries/tests.rs#registry_holder_lookup_uses_checked_wire_order_identity",
             "vanilla:net/minecraft/client/multiplayer/RegistryDataCollector.java#appendContents"
           ],
           "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
@@ -1645,6 +1647,7 @@
         "tests": {
           "evidence": [
             "crates/bbb-world/src/registries/tests.rs#registry_data_entries_decode_nbt_payload_summary",
+            "crates/bbb-world/src/registries/tests.rs#registry_holder_lookup_uses_checked_wire_order_identity",
             "crates/bbb-native/src/runtime/events/tests/session_protocol_events.rs#registry_data_event_updates_world_state_and_counters"
           ],
           "gap": null,

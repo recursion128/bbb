@@ -12076,3 +12076,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] 架构明确不收集或上传 Mojang client telemetry；vanilla `onServerBrandReceived` 仅设置 `WorldLoadEvent` brand 并触发 external telemetry sender，不影响服务器协议或 bbb 的 canonical brand/HUD diagnostics。
 - [x] configuration/play `CLIENTBOUND_CUSTOM_PAYLOAD` 的 runtime telemetry callback 格改为 evidence-backed not-applicable；typed Brand/Discarded decode、canonical apply 与本地呈现测试保持 complete。
+
+## 2026-07-12：registry holder identity lookup
+
+- [x] `bbb-world` registry semantic owner 现在提供 checked wire-order holder-id ↔ resource-id/entry 查询；负数、越界、缺失 registry fail closed，重复 resource id 的反向查询拒绝猜测。
+- [x] enchantment attribute modifier projection 成为首个统一 lookup 消费者，stub/raw-data fail-closed 语义不变；element codec、tag holder resolution、freeze 与 reconnect replacement 继续开放。

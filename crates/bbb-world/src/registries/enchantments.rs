@@ -76,14 +76,10 @@ impl WorldStore {
         &self,
         enchantments: &[ItemEnchantmentSummary],
     ) -> Vec<EnchantmentAttributeModifier> {
-        let Some(registry) = self.registry_content(ENCHANTMENT_REGISTRY) else {
-            return Vec::new();
-        };
         let mut modifiers = Vec::new();
         for enchantment in enchantments {
-            let Some(entry) = usize::try_from(enchantment.holder_id)
-                .ok()
-                .and_then(|index| registry.entries.get(index))
+            let Some(entry) =
+                self.registry_entry_by_holder_id(ENCHANTMENT_REGISTRY, enchantment.holder_id)
             else {
                 continue;
             };

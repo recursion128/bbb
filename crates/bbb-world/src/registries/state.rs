@@ -90,6 +90,25 @@ impl RegistrySet {
     pub fn block_registry_count(&self) -> usize {
         self.block_states.block_registry_len()
     }
+
+    pub fn entry_by_holder_id(
+        &self,
+        registry: &str,
+        holder_id: i32,
+    ) -> Option<&RegistryPacketEntry> {
+        self.contents.get(registry)?.entry_by_holder_id(holder_id)
+    }
+
+    pub fn resource_id_by_holder_id(&self, registry: &str, holder_id: i32) -> Option<&str> {
+        self.entry_by_holder_id(registry, holder_id)
+            .map(|entry| entry.id.as_str())
+    }
+
+    pub fn holder_id_by_resource_id(&self, registry: &str, resource_id: &str) -> Option<i32> {
+        self.contents
+            .get(registry)?
+            .holder_id_by_resource_id(resource_id)
+    }
 }
 
 impl Default for RegistrySet {
@@ -160,6 +179,25 @@ impl RegistryContentState {
 
     pub fn duplicate_entry_count(&self) -> usize {
         self.duplicate_entry_ids.values().sum()
+    }
+
+    pub fn entry_by_holder_id(&self, holder_id: i32) -> Option<&RegistryPacketEntry> {
+        usize::try_from(holder_id)
+            .ok()
+            .and_then(|index| self.entries.get(index))
+    }
+
+    pub fn holder_id_by_resource_id(&self, resource_id: &str) -> Option<i32> {
+        let mut matches = self
+            .entries
+            .iter()
+            .enumerate()
+            .filter(|(_, entry)| entry.id == resource_id);
+        let (index, _) = matches.next()?;
+        if matches.next().is_some() {
+            return None;
+        }
+        i32::try_from(index).ok()
     }
 }
 

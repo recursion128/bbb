@@ -154,6 +154,56 @@ fn registry_data_entries_decode_nbt_payload_summary() {
 }
 
 #[test]
+fn registry_holder_lookup_uses_checked_wire_order_identity() {
+    let mut store = WorldStore::new();
+    store.record_registry_entries(
+        "minecraft:test",
+        0,
+        vec![
+            RegistryPacketEntry::stub("minecraft:first"),
+            RegistryPacketEntry::with_raw_data("minecraft:second", vec![10, 0, 0]),
+            RegistryPacketEntry::stub("minecraft:duplicate"),
+            RegistryPacketEntry::stub("minecraft:duplicate"),
+        ],
+    );
+
+    assert_eq!(
+        store.registry_resource_id_by_holder_id("minecraft:test", 0),
+        Some("minecraft:first")
+    );
+    assert_eq!(
+        store.registry_resource_id_by_holder_id("minecraft:test", 1),
+        Some("minecraft:second")
+    );
+    assert!(
+        store
+            .registry_entry_by_holder_id("minecraft:test", 1)
+            .unwrap()
+            .has_data
+    );
+    assert_eq!(
+        store.registry_holder_id_by_resource_id("minecraft:test", "minecraft:second"),
+        Some(1)
+    );
+    assert_eq!(
+        store.registry_holder_id_by_resource_id("minecraft:test", "minecraft:duplicate"),
+        None
+    );
+    assert_eq!(
+        store.registry_resource_id_by_holder_id("minecraft:test", -1),
+        None
+    );
+    assert_eq!(
+        store.registry_resource_id_by_holder_id("minecraft:test", 4),
+        None
+    );
+    assert_eq!(
+        store.registry_resource_id_by_holder_id("minecraft:missing", 0),
+        None
+    );
+}
+
+#[test]
 fn update_tags_replace_network_tag_state() {
     let mut store = WorldStore::new();
     store.apply_update_tags(UpdateTags {
