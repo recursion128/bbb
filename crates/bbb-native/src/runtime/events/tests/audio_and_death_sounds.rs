@@ -856,6 +856,85 @@ fn sound_event_registry_data_updates_audio_reference_resolution() {
 }
 
 #[test]
+fn configuration_audio_registry_projections_commit_at_play_transition() {
+    let mut world = WorldStore::new();
+    world.record_registry_entries(
+        "minecraft:sound_event",
+        0,
+        vec![bbb_world::RegistryPacketEntry::stub(
+            "minecraft:entity.cat.ambient",
+        )],
+    );
+    world.record_registry_entries(
+        "minecraft:jukebox_song",
+        0,
+        vec![bbb_world::RegistryPacketEntry::stub("minecraft:cat")],
+    );
+    let mut counters = NetCounters::default();
+    let mut audio = RecordingAudioSink::new(
+        test_sound_catalog(),
+        SoundEventRegistry::from_ids(["minecraft:entity.cat.ambient"]),
+    );
+    audio.jukebox_registry = JukeboxSongRegistry::from_registry_entry_ids(["minecraft:cat"]);
+
+    let (tx, mut rx) = mpsc::channel(3);
+    tx.try_send(NetEvent::StateChanged {
+        state: bbb_net::ConnectionState::Configuration,
+    })
+    .unwrap();
+    tx.try_send(NetEvent::RegistryData(RegistryData {
+        registry: "minecraft:sound_event".to_string(),
+        raw_payload_len: 64,
+        entries: vec![RegistryDataEntry {
+            id: "minecraft:ambient.cave".to_string(),
+            raw_data: None,
+        }],
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::RegistryData(RegistryData {
+        registry: "minecraft:jukebox_song".to_string(),
+        raw_payload_len: 32,
+        entries: vec![RegistryDataEntry {
+            id: "minecraft:tears".to_string(),
+            raw_data: None,
+        }],
+    }))
+    .unwrap();
+    drop(tx);
+
+    assert_eq!(
+        drain_net_events_with_audio(&mut rx, &mut world, &mut counters, &None, Some(&mut audio)),
+        3
+    );
+    assert_eq!(
+        world.registry_resource_id_by_holder_id("minecraft:sound_event", 0),
+        Some("minecraft:entity.cat.ambient")
+    );
+    assert_eq!(
+        audio.registry.event_id(0),
+        Some("minecraft:entity.cat.ambient")
+    );
+    assert_eq!(audio.jukebox_registry.song_id(0), Some("minecraft:cat"));
+
+    let (tx, mut rx) = mpsc::channel(1);
+    tx.try_send(NetEvent::StateChanged {
+        state: bbb_net::ConnectionState::Play,
+    })
+    .unwrap();
+    drop(tx);
+    assert_eq!(
+        drain_net_events_with_audio(&mut rx, &mut world, &mut counters, &None, Some(&mut audio)),
+        1
+    );
+    assert_eq!(
+        world.registry_resource_id_by_holder_id("minecraft:sound_event", 0),
+        Some("minecraft:ambient.cave")
+    );
+    assert_eq!(audio.registry.event_id(0), Some("minecraft:ambient.cave"));
+    assert_eq!(audio.jukebox_registry.song_id(0), Some("minecraft:tears"));
+}
+
+#[test]
 fn silent_entity_sound_events_do_not_emit_runtime_commands() {
     let (tx, mut rx) = mpsc::channel(2);
     tx.try_send(NetEvent::Play(PlayClientbound::SetEntityData(

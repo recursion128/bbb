@@ -325,6 +325,7 @@ checked wire-order holder identity 已由 registry semantic owner 统一查询�
 lookup 已供 enchantment、dimension-type、HUD biome 与 targeted entity identity 消费；完整
 wire-order bulk lookup 也已供 item-model enchantment/trim-material/attribute keys 消费；完整
 reverse lookup 已供 HUD targeted block/fluid tag identity 消费；完整
+audio holder-order projection 已从 active world registry 派生并在 Finish 后原子切换；完整
 `RegistryAccess`/typed codec/holder tags/component initializer 仍是明确 canonical/runtime partial。每轮 configuration registry
 collection 已 staging，并在 Finish 原子替换或按 vanilla tag-only 路径保留原 contents。
 

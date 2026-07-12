@@ -3,8 +3,7 @@ use bbb_item_model::NativeItemRuntime;
 use bbb_net::{ConnectionState, NetCommand, NetEvent};
 use bbb_pack::{JukeboxSongRegistry, SoundEventRegistry};
 use bbb_protocol::packets::{
-    BlockPos as ProtocolBlockPos, LevelParticles, ParticlePayload, RegistryData,
-    Vec3d as ProtocolVec3d,
+    BlockPos as ProtocolBlockPos, LevelParticles, ParticlePayload, Vec3d as ProtocolVec3d,
 };
 use bbb_world::{
     AllayDuplicationParticleState, AnimalLoveParticleState, ArrowEffectParticleState,
@@ -176,6 +175,9 @@ pub(in crate::runtime) fn drain_net_events_with_sinks_and_debug(
                 state: ConnectionState::Play,
             } => {
                 world.finish_registry_configuration();
+                if let Some(audio_events) = audio_events.as_deref_mut() {
+                    synchronize_audio_registries_from_world(world, audio_events);
+                }
             }
             NetEvent::CookieRequest {
                 key,
@@ -236,16 +238,10 @@ pub(in crate::runtime) fn drain_net_events_with_sinks_and_debug(
                 world.apply_resource_pack_pop(update);
             }
             NetEvent::RegistryData(update) => {
-                let sound_event_registry = sound_event_registry_from_registry_data(&update);
-                let jukebox_song_registry = jukebox_song_registry_from_registry_data(&update);
+                let registry = update.registry.clone();
                 world.record_registry_data(update);
-                if let Some(audio_events) = audio_events.as_mut() {
-                    if let Some(registry) = sound_event_registry {
-                        audio_events.set_sound_event_registry(registry);
-                    }
-                    if let Some(registry) = jukebox_song_registry {
-                        audio_events.set_jukebox_song_registry(registry);
-                    }
+                if let Some(audio_events) = audio_events.as_deref_mut() {
+                    synchronize_audio_registry_from_world(world, audio_events, &registry);
                 }
             }
             NetEvent::Connected
@@ -506,22 +502,46 @@ impl PlayApplyEffects for NativePlayEffects<'_, '_, '_, '_, '_, '_> {
     }
 }
 
-fn sound_event_registry_from_registry_data(update: &RegistryData) -> Option<SoundEventRegistry> {
-    if update.registry != "minecraft:sound_event" || update.entries.is_empty() {
-        return None;
-    }
+fn sound_event_registry_from_world(world: &WorldStore) -> Option<SoundEventRegistry> {
     Some(SoundEventRegistry::from_ids(
-        update.entries.iter().map(|entry| entry.id.as_str()),
+        world.registry_resource_ids_in_holder_order("minecraft:sound_event")?,
     ))
 }
 
-fn jukebox_song_registry_from_registry_data(update: &RegistryData) -> Option<JukeboxSongRegistry> {
-    if update.registry != "minecraft:jukebox_song" || update.entries.is_empty() {
-        return None;
-    }
+fn jukebox_song_registry_from_world(world: &WorldStore) -> Option<JukeboxSongRegistry> {
     Some(JukeboxSongRegistry::from_registry_entry_ids(
-        update.entries.iter().map(|entry| entry.id.as_str()),
+        world.registry_resource_ids_in_holder_order("minecraft:jukebox_song")?,
     ))
+}
+
+fn synchronize_audio_registry_from_world(
+    world: &WorldStore,
+    audio_events: &mut dyn AudioEventSink,
+    registry: &str,
+) {
+    match registry {
+        "minecraft:sound_event" => {
+            if let Some(registry) = sound_event_registry_from_world(world) {
+                audio_events.set_sound_event_registry(registry);
+            }
+        }
+        "minecraft:jukebox_song" => {
+            if let Some(registry) = jukebox_song_registry_from_world(world) {
+                audio_events.set_jukebox_song_registry(registry);
+            }
+        }
+        _ => {}
+    }
+}
+
+fn synchronize_audio_registries_from_world(
+    world: &WorldStore,
+    audio_events: &mut dyn AudioEventSink,
+) {
+    audio_events
+        .set_sound_event_registry(sound_event_registry_from_world(world).unwrap_or_default());
+    audio_events
+        .set_jukebox_song_registry(jukebox_song_registry_from_world(world).unwrap_or_default());
 }
 
 fn emit_positioned_sound(
