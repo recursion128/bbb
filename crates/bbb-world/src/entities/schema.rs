@@ -228,6 +228,7 @@ pub struct VanillaEntityTypeMetadataCatalogEntry {
     pub is_abstract_horse: bool,
     pub is_abstract_nautilus: bool,
     pub is_llama: bool,
+    pub is_item_frame: bool,
     pub is_player_rideable_jumping: bool,
     pub has_custom_inventory_screen: bool,
     pub diagnostic: Option<&'static str>,
@@ -397,6 +398,13 @@ pub fn vanilla_entity_metadata_type_is_llama(entity_type_id: i32) -> bool {
     VANILLA_ENTITY_TYPE_METADATA_26_1
         .get(usize::try_from(entity_type_id).unwrap_or(usize::MAX))
         .map(|entry| entry.is_llama)
+        .unwrap_or(false)
+}
+
+pub fn vanilla_entity_metadata_type_is_item_frame(entity_type_id: i32) -> bool {
+    VANILLA_ENTITY_TYPE_METADATA_26_1
+        .get(usize::try_from(entity_type_id).unwrap_or(usize::MAX))
+        .map(|entry| entry.is_item_frame)
         .unwrap_or(false)
 }
 
@@ -614,6 +622,13 @@ mod tests {
         assert_eq!(
             VANILLA_ENTITY_TYPE_METADATA_26_1
                 .iter()
+                .filter(|entry| entry.is_item_frame)
+                .count(),
+            2
+        );
+        assert_eq!(
+            VANILLA_ENTITY_TYPE_METADATA_26_1
+                .iter()
                 .filter(|entry| entry.is_player_rideable_jumping)
                 .count(),
             11
@@ -709,6 +724,7 @@ mod tests {
             assert!(!body.contains("matches!"));
         }
         let dimensions_source = include_str!("dimensions.rs");
+        assert!(!dimensions_source.contains("ITEM_FRAME_ENTITY_TYPE_IDS"));
         let chest_boat_query = dimensions_source
             .split("fn is_vanilla_chest_boat_or_raft_type")
             .nth(1)

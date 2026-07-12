@@ -104,8 +104,7 @@ use crate::entities::dimensions::{
     vanilla_living_entity_type, vanilla_model_source_bounds_for_entity_data,
     vanilla_passenger_vehicle_debug_target_for_entity_data, vanilla_pick_bounds_for_entity_data,
     vanilla_piglin_melee_attack_family, vanilla_render_scale, vanilla_zombie_model_family,
-    ENTITY_DATA_POSE_ID, ITEM_FRAME_ENTITY_TYPE_IDS, VANILLA_POSE_CROUCHING_ID,
-    VANILLA_POSE_SLEEPING_ID,
+    ENTITY_DATA_POSE_ID, VANILLA_POSE_CROUCHING_ID, VANILLA_POSE_SLEEPING_ID,
 };
 use crate::entities::dragon::{
     ender_dragon_parent_pick_target, ender_dragon_part_parent_id,
@@ -115,6 +114,7 @@ use crate::entities::projectiles::{
     entity_hurting_projectile_from_state, entity_projectile_lifecycle_from_state,
 };
 use crate::entities::schema::{
+    vanilla_entity_metadata_type_is_item_frame,
     vanilla_entity_metadata_unique_accessor_for_entity_type_and_serializer,
     VANILLA_ABSTRACT_VILLAGER_DEFAULT_UNHAPPY_COUNTER,
     VANILLA_ABSTRACT_VILLAGER_UNHAPPY_COUNTER_DATA_ID, VANILLA_AVATAR_DEFAULT_MODEL_CUSTOMIZATION,
@@ -2798,7 +2798,7 @@ impl EntityStore {
             let Ok(identity) = self.ecs.get::<&EntityIdentity>(entity) else {
                 continue;
             };
-            if !ITEM_FRAME_ENTITY_TYPE_IDS.contains(&identity.entity_type_id) {
+            if !vanilla_entity_metadata_type_is_item_frame(identity.entity_type_id) {
                 continue;
             }
             let Ok(transform) = self.ecs.get::<&EntityTransform>(entity) else {

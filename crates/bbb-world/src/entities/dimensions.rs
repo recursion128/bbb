@@ -65,11 +65,6 @@ pub(crate) use block_attached::{
     item_frame_facing, item_frame_item, item_frame_map_id, item_frame_rotation,
 };
 
-pub(crate) const ITEM_FRAME_ENTITY_TYPE_IDS: [i32; 2] = [
-    VANILLA_ENTITY_TYPE_ITEM_FRAME_ID,
-    VANILLA_ENTITY_TYPE_GLOW_ITEM_FRAME_ID,
-];
-
 const SLIME_BASE_SIZE: f32 = 0.52;
 const ARMOR_STAND_WIDTH: f32 = 0.5;
 const ARMOR_STAND_HEIGHT: f32 = 1.975;

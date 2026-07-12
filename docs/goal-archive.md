@@ -12574,3 +12574,9 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] core registry Tree-sitter extractor 归一化 57 项 `passengerAttachments(float...)` /
   `passengerAttachments(new Vec3(...))` builder declarations，含 signed literal 与四座 HappyGhast；protocol
   提供 static-slice query，world 删除完整手抄 attachment 表，动态 camel/boat placement 仍由 world owner。
+
+## 2026-07-12：Derived item-frame class membership
+
+- [x] metadata class hierarchy 从 `GlowItemFrame extends ItemFrame` 派生两项 membership；world
+  item-frame render projection 删除 `ITEM_FRAME_ENTITY_TYPE_IDS` 平行表并改用 generated query，native
+  F3+I 同 handler dispatch 保持行为 owner，不在本切片重写。

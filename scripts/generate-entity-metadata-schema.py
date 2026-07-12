@@ -2848,6 +2848,7 @@ def render(result: ExtractionResult) -> str:
                 f"        is_abstract_horse: {str(extends_class(item.runtime_class, 'net.minecraft.world.entity.animal.equine.AbstractHorse')).lower()},",
                 f"        is_abstract_nautilus: {str(extends_class(item.runtime_class, 'net.minecraft.world.entity.animal.nautilus.AbstractNautilus')).lower()},",
                 f"        is_llama: {str(extends_class(item.runtime_class, 'net.minecraft.world.entity.animal.equine.Llama')).lower()},",
+                f"        is_item_frame: {str(extends_class(item.runtime_class, 'net.minecraft.world.entity.decoration.ItemFrame')).lower()},",
                 f"        is_player_rideable_jumping: {str(implements_interface(item.runtime_class, 'net.minecraft.world.entity.PlayerRideableJumping')).lower()},",
                 f"        has_custom_inventory_screen: {str(implements_interface(item.runtime_class, 'net.minecraft.world.entity.HasCustomInventoryScreen')).lower()},",
                 f"        diagnostic: {option_string(item.diagnostic)},",
