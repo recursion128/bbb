@@ -840,15 +840,22 @@ fn decodes_entity_transient_event_packets() {
     let mut payload = Encoder::new();
     payload.write_i32(123);
     payload.write_i8(35);
-    let packet =
-        decode_play_clientbound(ids::play::CLIENTBOUND_ENTITY_EVENT, &payload.into_inner())
-            .unwrap();
+    let payload = payload.into_inner();
+    let packet = decode_play_clientbound(ids::play::CLIENTBOUND_ENTITY_EVENT, &payload).unwrap();
     assert_eq!(
         packet,
         PlayClientbound::EntityEvent(EntityEvent {
             entity_id: 123,
             event_id: 35,
         })
+    );
+    let mut trailing = payload;
+    trailing.push(0);
+    assert!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_ENTITY_EVENT, &trailing)
+            .unwrap_err()
+            .to_string()
+            .contains("trailing bytes after entity event packet")
     );
 
     let mut payload = Encoder::new();

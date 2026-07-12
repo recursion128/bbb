@@ -11616,3 +11616,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] trusted-Component/ChatType holder wire shape、strict trailing、history ownership 与跨 crate tests 已审计。
 - [x] rich Component、session ChatType resolution、decoration/receive gate/delay/narration/logging 未完成，decode/canonical/runtime 保持 partial。
+
+## 2026-07-12：play entity event packet coverage audit
+
+- [x] i32/i8 framing、strict trailing、missing-entity gate 与现有 client animation/particle/audio 分支已审计。
+- [x] 完整 vanilla subclass/event-id 反向清单未完成，canonical/runtime/tests 保持 partial；未引入服务端权威行为。

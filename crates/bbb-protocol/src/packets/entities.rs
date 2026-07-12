@@ -397,10 +397,16 @@ pub(super) fn decode_entity_animation(decoder: &mut Decoder<'_>) -> Result<Entit
 }
 
 pub(super) fn decode_entity_event(decoder: &mut Decoder<'_>) -> Result<EntityEvent> {
-    Ok(EntityEvent {
+    let update = EntityEvent {
         entity_id: decoder.read_i32()?,
         event_id: decoder.read_i8()?,
-    })
+    };
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after entity event packet".to_string(),
+        ));
+    }
+    Ok(update)
 }
 
 pub(super) fn decode_hurt_animation(decoder: &mut Decoder<'_>) -> Result<HurtAnimation> {

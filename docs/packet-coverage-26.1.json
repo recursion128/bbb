@@ -6511,28 +6511,47 @@
       "constant_name": "CLIENTBOUND_ENTITY_EVENT",
       "coverage": {
         "canonical_apply": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
+          "evidence": [
+            "crates/bbb-world/src/entities/updates.rs#apply_entity_event",
+            "crates/bbb-world/src/play_apply.rs#PlayClientbound::EntityEvent",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleEntityEvent"
+          ],
+          "gap": "docs/unsupported-features.md#entity-models-and-animation",
           "status": "partial"
         },
         "decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/entities/tests.rs#decodes_entity_transient_event_packets",
+            "vanilla:net/minecraft/network/protocol/game/ClientboundEntityEventPacket.java#STREAM_CODEC"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "ownership": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/play_apply.rs#PlayClientbound::EntityEvent"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "runtime_side_effect": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
+          "evidence": [
+            "crates/bbb-native/src/runtime/events/tests/entity_particle_events.rs#totem_entity_event_emits_tracking_emitter_particles",
+            "crates/bbb-native/src/runtime/events/tests/audio_and_death_sounds.rs#attack_entity_events_emit_positioned_audio_commands",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleEntityEvent"
+          ],
+          "gap": "docs/unsupported-features.md#entity-models-and-animation",
           "status": "partial"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "evidence": [
+            "crates/bbb-protocol/src/packets/entities/tests.rs#decodes_entity_transient_event_packets",
+            "crates/bbb-net/src/event_stream.rs#play_entity_and_respawn_packets_emit_matching_events",
+            "crates/bbb-world/src/entities/tests/transient_events_and_animation_triggers.rs#tracks_entity_transient_events",
+            "crates/bbb-native/src/runtime/events/tests/entity_particle_events.rs#entity_events_update_world_and_world_counters",
+            "crates/bbb-native/src/runtime/events/tests/audio_and_death_sounds.rs#attack_entity_events_emit_positioned_audio_commands"
+          ],
+          "gap": "docs/unsupported-features.md#entity-models-and-animation",
           "status": "partial"
         }
       },

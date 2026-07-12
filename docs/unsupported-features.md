@@ -750,6 +750,12 @@ back into a todo. Do not delete these.
 
 ## Entity models and animation
 
+- **Entity-event subclass dispatch audit.** Enumerate every vanilla 26.1
+  client-side `handleEntityEvent(byte)` override and the listener-special cases,
+  map each applicable event id to bbb's animation/particle/audio/presentation
+  owner, and add a reverse coverage test. Existing focused mappings are not proof
+  that every subclass event is covered; server-authoritative effects stay out of
+  this client-only matrix.
 - **Simulation-distance death-tick gate.** `ClientLevel.shouldTickDeath` only
   advances a dying LivingEntity's death timer when its chunk's chessboard
   distance from the local player's chunk is at most the server simulation
