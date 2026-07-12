@@ -257,7 +257,6 @@ mod tests {
                 ("SERVERBOUND_KEY", "encoder"),
                 ("SERVERBOUND_KEY", "state_guard"),
                 ("SERVERBOUND_KEY", "tests"),
-                ("CLIENTBOUND_HELLO", "decode"),
                 ("CLIENTBOUND_HELLO", "runtime_side_effect"),
                 ("CLIENTBOUND_HELLO", "tests"),
             ])

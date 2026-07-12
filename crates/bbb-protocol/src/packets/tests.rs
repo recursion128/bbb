@@ -1028,6 +1028,47 @@ fn offline_login_clientbound_codecs_and_ack_match_vanilla_fields() {
 }
 
 #[test]
+fn decodes_login_encryption_request_strictly() {
+    let mut hello = Encoder::new();
+    hello.write_string("");
+    hello.write_var_i32(4);
+    hello.write_bytes(&[0x30, 0x82, 0x01, 0x22]);
+    hello.write_var_i32(3);
+    hello.write_bytes(&[0xaa, 0xbb, 0xcc]);
+    hello.write_bool(true);
+    assert_eq!(
+        decode_login_clientbound(ids::login::CLIENTBOUND_HELLO, &hello.into_inner()).unwrap(),
+        LoginClientbound::EncryptionRequest(EncryptionRequest {
+            server_id: String::new(),
+            public_key: vec![0x30, 0x82, 0x01, 0x22],
+            challenge: vec![0xaa, 0xbb, 0xcc],
+            should_authenticate: true,
+        })
+    );
+
+    let mut trailing = Encoder::new();
+    trailing.write_string("server");
+    trailing.write_var_i32(0);
+    trailing.write_var_i32(0);
+    trailing.write_bool(false);
+    trailing.write_u8(0);
+    assert!(
+        decode_login_clientbound(ids::login::CLIENTBOUND_HELLO, &trailing.into_inner())
+            .unwrap_err()
+            .to_string()
+            .contains("trailing bytes after login hello packet")
+    );
+
+    let mut truncated = Encoder::new();
+    truncated.write_string("server");
+    truncated.write_var_i32(4);
+    truncated.write_bytes(&[1, 2]);
+    assert!(
+        decode_login_clientbound(ids::login::CLIENTBOUND_HELLO, &truncated.into_inner()).is_err()
+    );
+}
+
+#[test]
 fn decodes_disconnect_component_in_configuration_and_play() {
     let mut payload = Vec::new();
     payload.push(8);

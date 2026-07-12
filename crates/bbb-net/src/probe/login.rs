@@ -9,7 +9,7 @@ impl ProbeContext {
             LoginClientbound::Disconnect { reason, .. } => {
                 bail!("login disconnected: {reason}")
             }
-            LoginClientbound::EncryptionRequest => {
+            LoginClientbound::EncryptionRequest(_) => {
                 bail!("server requested encryption; offline-mode probe cannot continue")
             }
             LoginClientbound::SetCompression { threshold } => {
@@ -111,7 +111,14 @@ mod tests {
         assert_eq!(probe.state, ConnectionState::Login);
 
         let error = probe
-            .handle_login_packet(LoginClientbound::EncryptionRequest)
+            .handle_login_packet(LoginClientbound::EncryptionRequest(
+                bbb_protocol::packets::EncryptionRequest {
+                    server_id: String::new(),
+                    public_key: vec![1, 2, 3],
+                    challenge: vec![4, 5, 6],
+                    should_authenticate: true,
+                },
+            ))
             .await
             .unwrap_err();
         assert!(error.to_string().contains("server requested encryption"));

@@ -9,7 +9,7 @@ pub use crate::client_information_options::{
 
 use super::{
     client_common::{self, CustomPayload, ShowDialog},
-    read_resource_location,
+    decode_byte_array, read_resource_location,
     server_presentation::{self, ResourcePackPop, ResourcePackPush},
     tags::UpdateTags,
 };
@@ -87,12 +87,20 @@ impl Default for ClientInformation {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum LoginClientbound {
     Disconnect { reason: String, raw_reason: String },
-    EncryptionRequest,
+    EncryptionRequest(EncryptionRequest),
     LoginFinished { profile: GameProfile },
     SetCompression { threshold: i32 },
     CustomQuery { transaction_id: i32 },
     CookieRequest(CookieRequest),
     Unknown { packet_id: i32, len: usize },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct EncryptionRequest {
+    pub server_id: String,
+    pub public_key: Vec<u8>,
+    pub challenge: Vec<u8>,
+    pub should_authenticate: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -296,7 +304,28 @@ pub fn decode_login_clientbound(packet_id: i32, payload: &[u8]) -> Result<LoginC
                 raw_reason,
             })
         }
-        ids::login::CLIENTBOUND_HELLO => Ok(LoginClientbound::EncryptionRequest),
+        ids::login::CLIENTBOUND_HELLO => {
+            let mut decoder = Decoder::new(payload);
+            let server_id = decoder.read_string(20)?;
+            let public_key_max = decoder.remaining_len();
+            let public_key =
+                decode_byte_array(&mut decoder, public_key_max, "login encryption public key")?;
+            let challenge_max = decoder.remaining_len();
+            let challenge =
+                decode_byte_array(&mut decoder, challenge_max, "login encryption challenge")?;
+            let should_authenticate = decoder.read_bool()?;
+            if !decoder.is_empty() {
+                return Err(ProtocolError::InvalidData(
+                    "trailing bytes after login hello packet".to_string(),
+                ));
+            }
+            Ok(LoginClientbound::EncryptionRequest(EncryptionRequest {
+                server_id,
+                public_key,
+                challenge,
+                should_authenticate,
+            }))
+        }
         ids::login::CLIENTBOUND_LOGIN_FINISHED => {
             let mut decoder = Decoder::new(payload);
             Ok(LoginClientbound::LoginFinished {

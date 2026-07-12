@@ -12021,3 +12021,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] `ClientboundLoginDisconnectPacket` 现在按 262144 上限读取 lenient JSON Component，复用共享 Component 文本/样式遍历生成 semantic reason，并保留 raw JSON 仅作诊断；malformed JSON 与 trailing bytes 会明确拒绝。
 - [x] event-stream/probe 的终止错误使用 semantic reason；online encryption hello/key 仍保持开放，未由 disconnect decode 外推认证完成。
+
+## 2026-07-12：login encryption request wire decode
+
+- [x] `ClientboundHelloPacket` 现在严格解码 20-char server id、length-prefixed public key/challenge 与 authenticate flag，并拒绝 truncated/trailing payload；typed `EncryptionRequest` 保留后续 RSA/AES/session owner 所需全部 wire 数据。
+- [x] offline event-stream/probe 仍对 typed request 明确终止；session join、`ServerboundKeyPacket`、cipher install 和握手状态机继续开放，未把 wire decode 冒充在线登录完成。

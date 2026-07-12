@@ -12,7 +12,7 @@ impl EventStreamContext {
             LoginClientbound::Disconnect { reason, .. } => {
                 bail!("login disconnected: {reason}")
             }
-            LoginClientbound::EncryptionRequest => {
+            LoginClientbound::EncryptionRequest(_) => {
                 bail!("server requested encryption; offline-mode event stream cannot continue")
             }
             LoginClientbound::SetCompression { threshold } => {

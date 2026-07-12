@@ -560,11 +560,13 @@
         },
         "decode": {
           "evidence": [
+            "crates/bbb-protocol/src/packets/connection.rs#EncryptionRequest",
             "crates/bbb-protocol/src/packets/connection.rs#decode_login_clientbound",
+            "crates/bbb-protocol/src/packets/tests.rs#decodes_login_encryption_request_strictly",
             "vanilla:net/minecraft/network/protocol/login/ClientboundHelloPacket.java#STREAM_CODEC"
           ],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "ownership": {
           "evidence": [
