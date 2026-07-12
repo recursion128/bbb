@@ -11996,3 +11996,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] vanilla wire 已锁定为 BlockPos + 7-action id + registry-aware `TestInstanceBlockEntity.Data`（optional test key、size、rotation、ignore-entities 与状态字段）；服务端保留 game-master permission、block-entity type、test registry、save/export/run 与 world update 权威。
 - [x] bbb 当前只有 generated packet catalog 和 clientbound status 的 plain-text diagnostic projection，无 serverbound encoder/net command/TestInstanceBlockEditScreen/guards/focused request tests；五维保持 partial，未将 response-only diagnostic 或 catalog presence 误标为编辑器实现。
+
+## 2026-07-12：play serverbound use-item-on coverage audit
+
+- [x] `ServerboundUseItemOnPacket` 的 hand、BlockHitResult、prediction sequence wire，native block-target/right-click/repeat/world-border/hand selection、command queue 与 driver send 已反向审计；command/encoder 闭合。
+- [x] 服务端先 ack sequence，再执行距离、命中点、build height、spawn protection、feature/item 和 world mutation 权威校验并回发目标/相邻 block update；bbb 尚未执行 vanilla `performUseItemOn` 的本地 block/item prediction、swing-source 与 held-item presentation，ack/state/tests 保持 partial。

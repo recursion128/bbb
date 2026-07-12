@@ -4373,6 +4373,30 @@ mod tests {
             .all(|cell| cell.status == PacketCoverageStatus::Partial));
     }
 
+    #[test]
+    fn play_serverbound_use_item_on_keeps_local_prediction_open() {
+        let ledger = vanilla_packet_coverage_26_1().unwrap();
+        let entry = ledger
+            .entries
+            .iter()
+            .find(|entry| entry.state == "play" && entry.constant_name == "SERVERBOUND_USE_ITEM_ON")
+            .expect("play serverbound use item on coverage row");
+        for dimension in ["command_surface", "encoder"] {
+            assert_eq!(
+                entry.coverage[dimension].status,
+                PacketCoverageStatus::Complete,
+                "{dimension}"
+            );
+        }
+        for dimension in ["ack_response", "state_guard", "tests"] {
+            assert_eq!(
+                entry.coverage[dimension].status,
+                PacketCoverageStatus::Partial,
+                "{dimension}"
+            );
+        }
+    }
+
     fn state_name(state: PacketState) -> &'static str {
         match state {
             PacketState::Handshake => "handshake",
