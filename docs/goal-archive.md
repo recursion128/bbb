@@ -12096,3 +12096,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] F3 biome identity 不再直接转换 numeric biome id 并索引 registry vector，改用 `bbb-world` checked holder lookup；negative/out-of-range 继续显示 unregistered fallback。
 - [x] existing chunk/heightmap/biome HUD projection test 保持通过；typed biome codec、tint resource reload 与其余 dynamic holders 继续开放。
+
+## 2026-07-12：targeted entity holder lookup migration
+
+- [x] F3 targeted-entity identity 不再把协议 entity-type id 转成 `usize` 后直接索引 registry vector，改用 `bbb-world` checked holder lookup。
+- [x] configuration registry 中的同步 identity 继续优先于静态 26.1 fallback；existing custom-registry HUD projection test 锁定该顺序，typed entity registry 与 variant consumers 继续开放。

@@ -322,8 +322,7 @@ configuration custom-payload 的 Brand/Discarded wire、bounded 自动 brand sen
 diagnostics 已闭合；Mojang telemetry callback 按无 external sender 的架构边界为 not-applicable。
 configuration registry-data/update-tags 的 wire、ownership、packet projection 与 tests 已审计；
 checked wire-order holder identity 已由 registry semantic owner 统一查询；完整
-lookup 已供 enchantment 与 dimension-type 消费；完整 `RegistryAccess`/typed codec/holder
-lookup 已供 enchantment、dimension-type 与 HUD biome identity 消费；完整
+lookup 已供 enchantment、dimension-type、HUD biome 与 targeted entity identity 消费；完整
 `RegistryAccess`/typed codec/holder tags/component initializer 仍是明确 canonical/runtime partial。每轮 configuration registry
 collection 已 staging，并在 Finish 原子替换或按 vanilla tag-only 路径保留原 contents。
 
