@@ -2758,12 +2758,17 @@ fn play_custom_payload_rejects_invalid_ids_and_oversized_brand() {
 
 #[test]
 fn encodes_play_debug_subscription_request_for_tick_time() {
+    use crate::debug_subscription_types::VANILLA_DEBUG_SUBSCRIPTION_DEDICATED_SERVER_TICK_TIME_ID;
+
     let (id, payload) = encode_play_debug_subscription_request(true);
     assert_eq!(id, ids::play::SERVERBOUND_DEBUG_SUBSCRIPTION_REQUEST);
 
     let mut decoder = Decoder::new(&payload);
     assert_eq!(decoder.read_var_i32().unwrap(), 1);
-    assert_eq!(decoder.read_var_i32().unwrap(), 0);
+    assert_eq!(
+        decoder.read_var_i32().unwrap(),
+        VANILLA_DEBUG_SUBSCRIPTION_DEDICATED_SERVER_TICK_TIME_ID
+    );
     assert!(decoder.is_empty());
 
     let (id, payload) = encode_play_debug_subscription_request(false);

@@ -23,6 +23,7 @@ from gameplay_id_catalog_extractor import (  # noqa: E402
     container_input_entries,
     consume_effect_type_entries,
     custom_chat_completions_action_entries,
+    debug_subscription_entries,
     difficulty_entries,
     difficulty_out_of_bounds_strategy,
     entity_data_serializer_entries,
@@ -417,6 +418,49 @@ public enum RemoteDebugSampleType {
             ],
             [("TICK_TIME", 0)],
         )
+
+    def test_debug_subscriptions_preserve_field_order_and_registration_resources(self) -> None:
+        source = parse_source(
+            "fixture/DebugSubscriptions.java",
+            b'''\
+package fixture;
+public class DebugSubscriptions<T> {
+  public static final DebugSubscription<?> TICK = registerSimple("tick");
+  // registerWithValue("fake", Fake.CODEC)
+  public static final DebugSubscription<Value> VALUE = registerWithValue(
+      "value", Value.STREAM_CODEC);
+  public static final DebugSubscription<Value> TEMP = registerTemporaryValue(
+      "temporary", Value.STREAM_CODEC.apply(Codecs.list()), 100);
+}
+''',
+        )
+        self.assertEqual(
+            [
+                (entry.constant_name, entry.subscription_id, entry.resource_id)
+                for entry in debug_subscription_entries(source, 3)
+            ],
+            [
+                ("TICK", 0, "minecraft:tick"),
+                ("VALUE", 1, "minecraft:value"),
+                ("TEMP", 2, "minecraft:temporary"),
+            ],
+        )
+
+    def test_debug_subscriptions_reject_unknown_registration_calls(self) -> None:
+        source = parse_source(
+            "fixture/DebugSubscriptions.java",
+            b'''\
+package fixture;
+public class DebugSubscriptions<T> {
+  public static final DebugSubscription<?> TICK = guessSubscription("tick");
+}
+''',
+        )
+        with self.assertRaisesRegex(
+            GameplayIdExtractionError,
+            "DebugSubscriptions.java:.*unsupported debug subscription registration guessSubscription",
+        ):
+            debug_subscription_entries(source, 1)
 
     def test_objective_render_types_preserve_nested_order_and_names(self) -> None:
         source = parse_source(

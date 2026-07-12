@@ -165,6 +165,13 @@ class RemoteDebugSampleTypeEntry:
 
 
 @dataclass(frozen=True)
+class DebugSubscriptionEntry:
+    constant_name: str
+    subscription_id: int
+    resource_id: str
+
+
+@dataclass(frozen=True)
 class ObjectiveRenderTypeEntry:
     constant_name: str
     ordinal: int
@@ -839,6 +846,52 @@ def remote_debug_sample_type_entries(
             f"expected {expected_count} remote debug sample types, extracted {len(entries)}"
         )
     _validate(entries, "remote debug sample type", "ordinal")
+    return entries
+
+
+def debug_subscription_entries(
+    source: JavaSource, expected_count: int = 16
+) -> list[DebugSubscriptionEntry]:
+    entries = []
+    registration_methods = {
+        "registerSimple",
+        "registerTemporaryValue",
+        "registerWithValue",
+    }
+    for field in _fields(source, "DebugSubscription<"):
+        initializer = field.initializer
+        if initializer is None or initializer.node.type != "method_invocation":
+            expression = initializer or JavaExpression("", field.span, field.node)
+            _fail(source, expression, f"{field.name} lacks a debug subscription register call")
+        name = initializer.node.child_by_field_name("name")
+        arguments = initializer.node.child_by_field_name("arguments")
+        if name is None or arguments is None:
+            _fail(source, initializer, f"{field.name} has an incomplete register call")
+        registration_method = source.text(name)
+        if registration_method not in registration_methods:
+            _fail(
+                source,
+                initializer,
+                f"{field.name} uses unsupported debug subscription registration {registration_method}",
+            )
+        call_arguments = tuple(
+            source.expression(node) for node in arguments.named_children
+        )
+        if not call_arguments:
+            _fail(source, initializer, f"{field.name} register call lacks a resource id")
+        entries.append(
+            DebugSubscriptionEntry(
+                field.name,
+                len(entries),
+                "minecraft:" + _string(source, call_arguments[0]),
+            )
+        )
+    if len(entries) != expected_count:
+        raise GameplayIdExtractionError(
+            f"expected {expected_count} debug subscriptions, extracted {len(entries)}"
+        )
+    _validate(entries, "debug subscription", "subscription_id")
+    _validate(entries, "debug subscription", "resource_id")
     return entries
 
 

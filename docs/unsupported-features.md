@@ -69,8 +69,10 @@ Owner: `bbb-protocol`
 - Decode block/chunk/entity/event debug subscription payloads through the synced
   `DEBUG_SUBSCRIPTION` registry codecs, retain typed values with vanilla game-time
   expiry/removal semantics, ignore entity updates whose target is absent, and feed
-  the matching debug renderers. Bounded raw payload diagnostics are not typed
-  subscription support.
+  the matching debug renderers. The fixed 16-entry vanilla registration-order and
+  resource-id catalog now owns the serverbound tick-time subscription ID, but it
+  does not implement the per-subscription value codecs. Bounded raw payload
+  diagnostics are not typed subscription support.
 - Build the received configuration registry entries and tags into a frozen,
   typed `RegistryAccess` on top of the checked holder-identity lookup: decode
   each synchronized registry with its element codec, merge known-pack stubs,

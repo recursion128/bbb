@@ -12720,3 +12720,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   `data_component_types.rs` 迁入 `generate-core-registry-catalog.py` 模板；core-registry
   update/check 与二次 update 幂等通过，随后全部 checked-in catalog generator maintenance
   checks 均无 diff。map component consumers 与 110-entry descriptor catalog 行为未改变。
+
+## 2026-07-12：Generated debug-subscription ID catalog
+
+- [x] gameplay-id generator 通过共享 Tree-sitter Java frontend，从 vanilla 26.1
+  `DebugSubscriptions.java` 的 16 个静态注册字段机械生成连续 ID、常量名与 resource id；
+  fixture 对三种注册调用和未知调用显式失败进行了锁定。
+- [x] serverbound tick-time subscription request 删除手写 ID 0，直接消费 generated
+  `DEDICATED_SERVER_TICK_TIME` 常量；generated 结构测试锁定完整声明顺序、唯一性、查询和
+  production anti-alias。该 catalog 不冒充其余 15 项 value codec、expiry 或 renderer 已实现。

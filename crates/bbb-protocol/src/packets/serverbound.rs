@@ -5,6 +5,7 @@ use uuid::Uuid;
 
 pub use crate::client_command_actions::ClientCommandAction;
 pub use crate::container_inputs::ContainerInput;
+use crate::debug_subscription_types::VANILLA_DEBUG_SUBSCRIPTION_DEDICATED_SERVER_TICK_TIME_ID;
 pub use crate::interaction_hands::InteractionHand;
 pub use crate::player_action_kinds::PlayerActionKind;
 pub use crate::player_command_actions::PlayerCommandAction;
@@ -42,7 +43,6 @@ const MAX_CUSTOM_PAYLOAD_STRING_UTF16_UNITS: usize = 32767;
 const MAX_EDIT_BOOK_PAGES: usize = 100;
 const MAX_EDIT_BOOK_PAGE_UTF16_UNITS: usize = 1024;
 const MAX_EDIT_BOOK_TITLE_UTF16_UNITS: usize = 32;
-const DEBUG_SUBSCRIPTION_DEDICATED_SERVER_TICK_TIME_ID: i32 = 0;
 const LP_VEC3_ABS_MAX_VALUE: f64 = 1.7179869183E10;
 const LP_VEC3_ABS_MIN_VALUE: f64 = 3.051944088384301E-5;
 const LP_VEC3_MAX_QUANTIZED_VALUE: f64 = 32766.0;
@@ -527,7 +527,7 @@ pub fn encode_play_debug_subscription_request(tick_time: bool) -> (i32, Vec<u8>)
     let mut out = Encoder::new();
     out.write_var_i32(if tick_time { 1 } else { 0 });
     if tick_time {
-        out.write_var_i32(DEBUG_SUBSCRIPTION_DEDICATED_SERVER_TICK_TIME_ID);
+        out.write_var_i32(VANILLA_DEBUG_SUBSCRIPTION_DEDICATED_SERVER_TICK_TIME_ID);
     }
     (
         ids::play::SERVERBOUND_DEBUG_SUBSCRIPTION_REQUEST,

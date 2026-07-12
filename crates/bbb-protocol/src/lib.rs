@@ -22,6 +22,7 @@ pub mod container_inputs;
 pub mod custom_chat_completions_actions;
 pub mod damage_types;
 pub mod data_component_types;
+pub mod debug_subscription_types;
 pub mod difficulties;
 pub mod entity_anchors;
 pub mod entity_data_serializers;
