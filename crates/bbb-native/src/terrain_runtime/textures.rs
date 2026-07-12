@@ -4,7 +4,8 @@ use anyhow::Result;
 use bbb_pack::{
     AtlasLayout, AtlasMipImage, AtlasPacker, BiomeColorCatalog, BiomeColorProfile,
     BiomeTemperatureModifier, BlockFaceTextures, BlockModelCatalog, BlockModelFace,
-    BlockModelShape, GrassColorModifier, PackRoots, SpriteImage, TerrainColorMaps,
+    BlockModelShape, FloatAttributeModifier, GrassColorModifier, PackRoots, SpriteImage,
+    TerrainColorMaps,
 };
 use bbb_renderer::{
     terrain::{
@@ -286,14 +287,40 @@ impl TerrainTextureState {
         let next_order = world
             .registry_resource_ids_in_holder_order("minecraft:worldgen/biome")
             .map(|resource_ids| resource_ids.map(str::to_string).collect::<Vec<_>>());
-        let next = self.biome_color_source.as_ref().map(|source| {
-            next_order
-                .as_deref()
-                .map(|resource_ids| {
-                    source.remapped_to_resource_order(resource_ids.iter().map(String::as_str))
-                })
-                .unwrap_or_else(|| source.clone())
-        });
+        let next = self
+            .biome_color_source
+            .as_ref()
+            .map(|source| match next_order.as_deref() {
+                None => source.clone(),
+                Some(resource_ids) => {
+                    BiomeColorCatalog::new(resource_ids.iter().enumerate().filter_map(
+                        |(holder_id, resource_id)| {
+                            match world.registry_biome_client_projection(holder_id as i32) {
+                                Ok(Some(projection)) => Some(biome_profile_from_projection(
+                                    holder_id as i32,
+                                    resource_id.clone(),
+                                    projection,
+                                )),
+                                Ok(None) => {
+                                    let mut profile = source.profile_by_name(resource_id)?.clone();
+                                    profile.id = holder_id as i32;
+                                    Some(profile)
+                                }
+                                Err(err) => {
+                                    tracing::warn!(
+                                        holder_id,
+                                        resource_id,
+                                        field = %err.field,
+                                        reason = err.reason,
+                                        "ignoring malformed synchronized biome client projection"
+                                    );
+                                    None
+                                }
+                            }
+                        },
+                    ))
+                }
+            });
         self.biome_registry_order = next_order;
         if self.biome_colors == next {
             return false;
@@ -1190,6 +1217,39 @@ impl TerrainTextureState {
             colormaps: self.colormaps.as_ref(),
             biome_colors: self.biome_colors.as_ref(),
         }
+    }
+}
+
+fn biome_profile_from_projection(
+    id: i32,
+    name: String,
+    projection: bbb_world::BiomeClientProjection,
+) -> BiomeColorProfile {
+    BiomeColorProfile {
+        id,
+        name,
+        temperature: projection.temperature,
+        temperature_modifier: match projection.temperature_modifier {
+            bbb_world::BiomeTemperatureModifier::None => BiomeTemperatureModifier::None,
+            bbb_world::BiomeTemperatureModifier::Frozen => BiomeTemperatureModifier::Frozen,
+        },
+        downfall: projection.downfall,
+        has_precipitation: projection.has_precipitation,
+        grass_color: projection.grass_color,
+        foliage_color: projection.foliage_color,
+        dry_foliage_color: projection.dry_foliage_color,
+        water_color: Some(projection.water_color),
+        fog_color: projection.fog_color,
+        sky_color: projection.sky_color,
+        water_fog_color: projection.water_fog_color,
+        water_fog_end_distance: projection
+            .water_fog_end_distance
+            .map(FloatAttributeModifier::override_value),
+        grass_color_modifier: match projection.grass_color_modifier {
+            bbb_world::BiomeGrassColorModifier::None => GrassColorModifier::None,
+            bbb_world::BiomeGrassColorModifier::DarkForest => GrassColorModifier::DarkForest,
+            bbb_world::BiomeGrassColorModifier::Swamp => GrassColorModifier::Swamp,
+        },
     }
 }
 

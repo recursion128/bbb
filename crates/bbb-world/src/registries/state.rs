@@ -6,7 +6,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::chunks::{decode_nbt_payload_summary, NbtPayloadSummary};
 
-use super::BlockStateRegistry;
+use super::biomes::decode_biome_client_projection;
+use super::{BiomeClientProjection, BiomeProjectionError, BlockStateRegistry};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RegistrySet {
@@ -133,6 +134,16 @@ impl RegistrySet {
     pub fn resource_id_by_holder_id(&self, registry: &str, holder_id: i32) -> Option<&str> {
         self.resolved_entry_by_holder_id(registry, holder_id)
             .map(|entry| entry.resource_id)
+    }
+
+    pub fn biome_client_projection(
+        &self,
+        holder_id: i32,
+    ) -> Result<Option<BiomeClientProjection>, BiomeProjectionError> {
+        let Some(entry) = self.entry_by_holder_id("minecraft:worldgen/biome", holder_id) else {
+            return Ok(None);
+        };
+        decode_biome_client_projection(entry)
     }
 
     pub fn resolved_entry_by_holder_id(

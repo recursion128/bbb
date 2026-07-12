@@ -1129,6 +1129,107 @@ fn biome_colors_follow_active_registry_resource_order_after_finish() {
     assert_eq!(textures.biome_sky_color(Some(10)), Some([10, 20, 30]));
 }
 
+#[test]
+fn synchronized_biome_data_overrides_pack_fallback_without_guessing_malformed_entries() {
+    let mut plains = blend_biome_profile(10, [1, 2, 3], GrassColorModifier::None);
+    plains.name = "minecraft:plains".to_string();
+    plains.sky_color = Some([10, 20, 30]);
+    let mut desert = blend_biome_profile(20, [4, 5, 6], GrassColorModifier::None);
+    desert.name = "minecraft:desert".to_string();
+    desert.sky_color = Some([40, 50, 60]);
+    let mut textures =
+        TerrainTextureState::with_biome_colors_for_tests(BiomeColorCatalog::new([plains, desert]));
+    let mut world = bbb_world::WorldStore::new();
+
+    world.record_registry_entries(
+        "minecraft:worldgen/biome",
+        0,
+        vec![
+            bbb_world::RegistryPacketEntry::with_raw_data(
+                "minecraft:plains",
+                synchronized_biome_nbt(true),
+            ),
+            bbb_world::RegistryPacketEntry::stub("minecraft:desert"),
+            bbb_world::RegistryPacketEntry::with_raw_data(
+                "minecraft:plains",
+                synchronized_biome_nbt(false),
+            ),
+        ],
+    );
+
+    assert!(textures.synchronize_biome_registry(&world));
+    assert_eq!(textures.biome_sky_color(Some(0)), Some([0x55, 0x77, 0x99]));
+    assert_eq!(textures.biome_fog_color(Some(0)), Some([0x44, 0x66, 0x88]));
+    assert_eq!(
+        textures.biome_water_fog_color(Some(0)),
+        Some([0x66, 0x88, 0xaa])
+    );
+    assert_eq!(
+        textures.biome_water_fog_end_distance(Some(0), 96.0),
+        Some(48.0)
+    );
+    assert_eq!(textures.biome_temperature(Some(0)), Some(0.35));
+    assert_eq!(textures.biome_has_precipitation(Some(0)), Some(true));
+    assert_eq!(textures.biome_sky_color(Some(1)), Some([40, 50, 60]));
+    assert_eq!(textures.biome_sky_color(Some(2)), None);
+}
+
+fn synchronized_biome_nbt(include_effects: bool) -> Vec<u8> {
+    let mut out = vec![10];
+    test_nbt_byte(&mut out, "has_precipitation", 1);
+    test_nbt_float(&mut out, "temperature", 0.35);
+    test_nbt_string(&mut out, "temperature_modifier", "frozen");
+    test_nbt_float(&mut out, "downfall", 0.8);
+    if include_effects {
+        test_nbt_compound(&mut out, "effects");
+        test_nbt_string(&mut out, "water_color", "#112233");
+        test_nbt_string(&mut out, "grass_color_modifier", "swamp");
+        out.push(0);
+        test_nbt_compound(&mut out, "attributes");
+        test_nbt_string(&mut out, "minecraft:visual/fog_color", "#446688");
+        test_nbt_string(&mut out, "minecraft:visual/sky_color", "#557799");
+        test_nbt_int(&mut out, "minecraft:visual/water_fog_color", 0x6688aa);
+        test_nbt_float(&mut out, "minecraft:visual/water_fog_end_distance", 48.0);
+        out.push(0);
+    }
+    out.push(0);
+    out
+}
+
+fn test_nbt_compound(out: &mut Vec<u8>, name: &str) {
+    out.push(10);
+    test_nbt_utf(out, name);
+}
+
+fn test_nbt_byte(out: &mut Vec<u8>, name: &str, value: i8) {
+    out.push(1);
+    test_nbt_utf(out, name);
+    out.push(value as u8);
+}
+
+fn test_nbt_int(out: &mut Vec<u8>, name: &str, value: i32) {
+    out.push(3);
+    test_nbt_utf(out, name);
+    out.extend_from_slice(&value.to_be_bytes());
+}
+
+fn test_nbt_float(out: &mut Vec<u8>, name: &str, value: f32) {
+    out.push(5);
+    test_nbt_utf(out, name);
+    out.extend_from_slice(&value.to_bits().to_be_bytes());
+}
+
+fn test_nbt_string(out: &mut Vec<u8>, name: &str, value: &str) {
+    out.push(8);
+    test_nbt_utf(out, name);
+    test_nbt_utf(out, value);
+}
+
+fn test_nbt_utf(out: &mut Vec<u8>, value: &str) {
+    out.extend_from_slice(&(value.len() as u16).to_be_bytes());
+    out.extend_from_slice(value.as_bytes());
+}
+
 /// Builds a blend window centred on `center`; `fill(dcol, drow)` returns the
 /// biome id for the column offset `(dcol, drow)` from the centre (or `None` for
 /// an unavailable / unloaded column), matching `BiomeBlend::samples` geometry.

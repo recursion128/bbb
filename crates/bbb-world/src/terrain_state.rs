@@ -42,9 +42,10 @@ pub use crate::end_portal_blocks::{
 pub use crate::lectern_books::{is_lectern_block_name, LecternBookModelSourceState};
 pub use crate::position::{BlockPos, ChunkPos};
 pub use crate::registries::{
-    vanilla_air_block_state_id, vanilla_block_state_id, BlockStateInfo, BlockStateRegistry,
-    EnchantmentAttributeModifier, RegistryContentState, RegistryEntrySource, RegistryPacket,
-    RegistryPacketEntry, RegistrySet, RegistryTagState, ResolvedRegistryEntry,
+    vanilla_air_block_state_id, vanilla_block_state_id, BiomeClientProjection,
+    BiomeGrassColorModifier, BiomeProjectionError, BiomeTemperatureModifier, BlockStateInfo,
+    BlockStateRegistry, EnchantmentAttributeModifier, RegistryContentState, RegistryEntrySource,
+    RegistryPacket, RegistryPacketEntry, RegistrySet, RegistryTagState, ResolvedRegistryEntry,
     UnresolvedRegistryTagHolder,
 };
 pub use crate::shulker_box_blocks::{

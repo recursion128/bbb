@@ -3,8 +3,9 @@ use bbb_protocol::packets::{RegistryData, UpdateTags};
 use crate::WorldStore;
 
 use super::{
-    state::PendingRegistryCollection, RegistryContentState, RegistryPacket, RegistryPacketEntry,
-    RegistryTagState, ResolvedRegistryEntry, UnresolvedRegistryTagHolder,
+    state::PendingRegistryCollection, BiomeClientProjection, BiomeProjectionError,
+    RegistryContentState, RegistryPacket, RegistryPacketEntry, RegistryTagState,
+    ResolvedRegistryEntry, UnresolvedRegistryTagHolder,
 };
 
 impl WorldStore {
@@ -96,6 +97,13 @@ impl WorldStore {
     ) -> Option<&str> {
         self.registries
             .resource_id_by_holder_id(registry, holder_id)
+    }
+
+    pub fn registry_biome_client_projection(
+        &self,
+        holder_id: i32,
+    ) -> Result<Option<BiomeClientProjection>, BiomeProjectionError> {
+        self.registries.biome_client_projection(holder_id)
     }
 
     pub fn resolved_registry_entry_by_holder_id(

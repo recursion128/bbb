@@ -1627,6 +1627,7 @@
             "crates/bbb-world/src/registries/tests.rs#configuration_registry_collection_commits_atomically_and_replaces_holder_order",
             "crates/bbb-world/src/level.rs#dimension_type_registry_cardinal_light_overrides_builtin_fallback",
             "crates/bbb-world/src/level.rs#dimension_type_registry_shape_overrides_builtin_and_rejects_invalid_shape",
+            "crates/bbb-world/src/registries/biomes.rs#decode_biome_client_projection",
             "vanilla:net/minecraft/client/multiplayer/RegistryDataCollector.java#appendContents"
           ],
           "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
@@ -1674,6 +1675,9 @@
             "crates/bbb-native/src/runtime/tests.rs#lightmap_environment_uses_vanilla_dimension_attributes",
             "crates/bbb-native/src/runtime/tests.rs#weather_render_state_is_empty_without_rain_or_weather_dimension",
             "crates/bbb-native/src/terrain_runtime/textures/tests.rs#biome_colors_follow_active_registry_resource_order_after_finish",
+            "crates/bbb-world/src/registries/biomes.rs#decodes_network_biome_client_projection",
+            "crates/bbb-world/src/registries/biomes.rs#rejects_relevant_attribute_modifier_without_guessing",
+            "crates/bbb-native/src/terrain_runtime/textures/tests.rs#synchronized_biome_data_overrides_pack_fallback_without_guessing_malformed_entries",
             "crates/bbb-native/src/particle_runtime/tests.rs#terrain_particle_tint_snapshot_accepts_session_biome_remap",
             "crates/bbb-native/src/runtime/tests.rs#hud_debug_overlay_projects_custom_biome_from_camera_feet_block",
             "crates/bbb-native/src/runtime/tests.rs#hud_debug_overlay_projects_custom_looking_at_entity",

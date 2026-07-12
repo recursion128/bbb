@@ -12176,3 +12176,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] `ParticleEventSink` 增加默认 no-op terrain-texture lifecycle hook，真实 `NativeParticleRuntime` 在 active biome order 变化时重建 terrain sprite/tint snapshot；测试 sink无需依赖 concrete runtime。
 - [x] focused resolver test锁定 `[custom, desert]` order 的 holder 1 使用 desert grass particle tint；order 未变化时 texture sync保持零刷新。
+
+## 2026-07-12：custom synchronized biome client projection
+
+- [x] `bbb-world` 从 synchronized biome raw NBT 严格投影 precipitation、temperature/downfall、temperature/grass modifier、water/grass/foliage colors，以及 direct fog/sky/water-fog attributes；缺 required field、非法 enum/type 或未支持 attribute modifier compound 都显式失败。
+- [x] native 按 active holder order 优先物化服务器 typed projection；只有无 raw data 的 known-pack stub 才按 resource id 回退 pack profile。malformed raw entry 即使与 vanilla biome 同名也安全省略，不用默认值冒充服务器状态；terrain、camera/weather 与 particle tint 继续共享同一 active catalog。

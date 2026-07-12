@@ -1,8 +1,12 @@
+mod biomes;
 mod block_states;
 mod enchantments;
 mod state;
 mod store;
 
+pub use biomes::{
+    BiomeClientProjection, BiomeGrassColorModifier, BiomeProjectionError, BiomeTemperatureModifier,
+};
 pub use block_states::{
     vanilla_air_block_state_id, vanilla_block_state_id, BlockStateInfo, BlockStateRegistry,
 };

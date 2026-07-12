@@ -225,21 +225,20 @@ impl BiomeColorCatalog {
         self.profiles.get(&id)
     }
 
+    pub fn profile_by_name(&self, name: &str) -> Option<&BiomeColorProfile> {
+        self.profiles.values().find(|profile| profile.name == name)
+    }
+
     pub fn remapped_to_resource_order<'a>(
         &self,
         resource_ids: impl IntoIterator<Item = &'a str>,
     ) -> Self {
-        let profiles_by_name = self
-            .profiles
-            .values()
-            .map(|profile| (profile.name.as_str(), profile))
-            .collect::<BTreeMap<_, _>>();
         Self::new(
             resource_ids
                 .into_iter()
                 .enumerate()
                 .filter_map(|(holder_id, resource_id)| {
-                    let mut profile = (*profiles_by_name.get(resource_id)?).clone();
+                    let mut profile = self.profile_by_name(resource_id)?.clone();
                     profile.id = i32::try_from(holder_id).ok()?;
                     Some(profile)
                 }),
