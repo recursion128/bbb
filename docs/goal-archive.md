@@ -11522,3 +11522,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] entity/effect/amplifier/duration/ambient-visible-icon-blend flags wire、strict trailing、living-entity gate、force replacement 与 tests 闭合。
 - [x] common movement/render consumers已有证据；全部 40 项 effect 的 attributes/particles/HUD/special movement parity 未反向闭合，runtime 保持 partial。
+
+## 2026-07-12：play update-recipes packet coverage audit
+
+- [x] property-set map + stonecutter selectable list framing、strict trailing、replace ownership 与跨 crate tests 闭合。
+- [x] 剩余 SlotDisplay/component 语义和 recipe/menu presentation 未完成，decode/canonical/runtime 保持 partial。

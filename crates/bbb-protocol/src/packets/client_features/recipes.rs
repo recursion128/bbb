@@ -256,10 +256,16 @@ pub(crate) fn decode_update_recipes(decoder: &mut Decoder<'_>) -> Result<UpdateR
         });
     }
 
-    Ok(UpdateRecipes {
+    let packet = UpdateRecipes {
         property_sets,
         stonecutter_recipes,
-    })
+    };
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after update recipes packet".to_string(),
+        ));
+    }
+    Ok(packet)
 }
 
 fn decode_recipe_display_entry(decoder: &mut Decoder<'_>) -> Result<RecipeDisplayEntry> {

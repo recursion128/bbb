@@ -586,6 +586,8 @@ back into a todo. Do not delete these.
 
 ## Container menu presentation parity
 
+- UpdateRecipes property sets and stonecutter replacement are covered; remaining
+  SlotDisplay/component variants and recipe/menu presentation stay open.
 - Preserve the full trusted OpenScreen title Component and finish dedicated
   presentation for every generated vanilla MenuType. The fixed 25-entry menu
   catalog and unknown-id rejection are covered; current canonical state keeps

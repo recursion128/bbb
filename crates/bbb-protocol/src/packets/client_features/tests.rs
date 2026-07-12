@@ -451,9 +451,9 @@ fn decodes_update_recipes_packet_wire_order() {
     payload.write_var_i32(4);
     payload.write_var_i32(77);
 
+    let mut bytes = payload.into_inner();
     assert_eq!(
-        decode_play_clientbound(ids::play::CLIENTBOUND_UPDATE_RECIPES, &payload.into_inner())
-            .unwrap(),
+        decode_play_clientbound(ids::play::CLIENTBOUND_UPDATE_RECIPES, &bytes).unwrap(),
         PlayClientbound::UpdateRecipes(UpdateRecipes {
             property_sets: vec![
                 RecipePropertySetSummary {
@@ -478,6 +478,13 @@ fn decodes_update_recipes_packet_wire_order() {
                 },
             }],
         })
+    );
+    bytes.push(0);
+    assert!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_UPDATE_RECIPES, &bytes)
+            .unwrap_err()
+            .to_string()
+            .contains("trailing bytes after update recipes packet")
     );
 }
 
