@@ -1974,6 +1974,29 @@ mod tests {
             .all(|dimension| entry.coverage[dimension].status == PacketCoverageStatus::Complete));
     }
 
+    #[test]
+    fn play_player_combat_end_is_closed_as_a_vanilla_noop() {
+        let ledger = vanilla_packet_coverage_26_1().unwrap();
+        let entry = ledger
+            .entries
+            .iter()
+            .find(|entry| {
+                entry.state == "play" && entry.constant_name == "CLIENTBOUND_PLAYER_COMBAT_END"
+            })
+            .expect("play player combat end coverage row");
+        assert_eq!(
+            entry.coverage["canonical_apply"].status,
+            PacketCoverageStatus::NotApplicable
+        );
+        assert_eq!(
+            entry.coverage["runtime_side_effect"].status,
+            PacketCoverageStatus::NotApplicable
+        );
+        assert!(["decode", "ownership", "tests"]
+            .into_iter()
+            .all(|dimension| entry.coverage[dimension].status == PacketCoverageStatus::Complete));
+    }
+
     fn state_name(state: PacketState) -> &'static str {
         match state {
             PacketState::Handshake => "handshake",

@@ -11455,3 +11455,9 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   tests 覆盖 packet 传递和诊断 counter。
 - [x] `ClientPacketListener.handlePlayerCombatEnter` 在 26.1 为空；不虚构 combat-mode state 或 presentation，
   canonical/runtime 两格以 vanilla 证据标记 not-applicable。
+
+## 2026-07-12：play player-combat-end packet coverage audit
+
+- [x] 对照 `ClientboundPlayerCombatEndPacket` 锁定 duration VarInt wire、trailing-byte rejection 与跨 crate 诊断链。
+- [x] `ClientPacketListener.handlePlayerCombatEnd` 在 26.1 为空；duration 只作为可观察 packet diagnostics 保存，
+  不冒充客户端 combat runtime，canonical/runtime 两格标记 not-applicable。

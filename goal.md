@@ -469,6 +469,8 @@ play SetPlayerInventory 的 slot + optional ItemStack wire、strict decode、0..
 tests 已闭合；tutorial presentation 和剩余 ItemStack component 语义保持 canonical/runtime partial。
 play PlayerCombatEnter 的 unit wire、strict decode、world diagnostics 与跨 crate tests 已闭合；vanilla 26.1 handler
 为空，故 canonical apply 与即时 runtime side effect 明确为 not-applicable。
+play PlayerCombatEnd 的 duration VarInt wire、strict decode、world diagnostics 与跨 crate tests 已闭合；vanilla 26.1
+handler 同样为空，canonical apply 与即时 runtime side effect 明确为 not-applicable。
 
 完成标准：全部 vanilla 26.1 catalog entry 都有矩阵行；所有目标客户端适用项为
 `complete`，其余只有带 vanilla 依据的 `not-applicable` 或带重启判据的窄 `deferred`；

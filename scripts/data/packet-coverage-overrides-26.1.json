@@ -1333,6 +1333,46 @@
         "status": "complete"
       }
     },
+    "play/clientbound/CLIENTBOUND_PLAYER_COMBAT_END": {
+      "canonical_apply": {
+        "evidence": [
+          "crates/bbb-world/src/client/combat.rs#apply_player_combat_end",
+          "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handlePlayerCombatEnd"
+        ],
+        "gap": "docs/unsupported-features.md#packet-canonical-state",
+        "status": "not-applicable"
+      },
+      "decode": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/player_actions/tests.rs#decodes_player_combat_end_duration",
+          "vanilla:net/minecraft/network/protocol/game/ClientboundPlayerCombatEndPacket.java#STREAM_CODEC"
+        ],
+        "status": "complete"
+      },
+      "ownership": {
+        "evidence": [
+          "crates/bbb-world/src/play_apply.rs#PlayClientbound::PlayerCombatEnd"
+        ],
+        "status": "complete"
+      },
+      "runtime_side_effect": {
+        "evidence": [
+          "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handlePlayerCombatEnd"
+        ],
+        "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+        "status": "not-applicable"
+      },
+      "tests": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/player_actions/tests.rs#decodes_player_combat_end_duration",
+          "crates/bbb-net/src/event_stream.rs#play_stats_cooldown_boss_and_combat_packets_emit_matching_events_without_responses",
+          "crates/bbb-net/src/probe/play.rs#probe_applies_player_combat_packets_to_world",
+          "crates/bbb-world/src/client/combat.rs#tracks_last_player_combat_event_and_counters",
+          "crates/bbb-native/src/runtime/events/tests/entity_and_inventory_counters.rs#player_action_events_update_snapshot_counters"
+        ],
+        "status": "complete"
+      }
+    },
     "play/clientbound/CLIENTBOUND_PLAYER_POSITION": {
       "canonical_apply": {
         "evidence": [

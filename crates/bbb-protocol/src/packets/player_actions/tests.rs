@@ -24,16 +24,19 @@ fn rejects_player_combat_enter_with_trailing_bytes() {
 fn decodes_player_combat_end_duration() {
     let mut payload = Encoder::new();
     payload.write_var_i32(37);
+    let mut bytes = payload.into_inner();
 
-    let packet = decode_play_clientbound(
-        ids::play::CLIENTBOUND_PLAYER_COMBAT_END,
-        &payload.into_inner(),
-    )
-    .unwrap();
+    let packet = decode_play_clientbound(ids::play::CLIENTBOUND_PLAYER_COMBAT_END, &bytes).unwrap();
     assert_eq!(
         packet,
         PlayClientbound::PlayerCombatEnd(PlayerCombatEnd { duration: 37 })
     );
+    bytes.push(0);
+    let error =
+        decode_play_clientbound(ids::play::CLIENTBOUND_PLAYER_COMBAT_END, &bytes).unwrap_err();
+    assert!(error
+        .to_string()
+        .contains("trailing bytes after player combat end packet"));
 }
 
 #[test]

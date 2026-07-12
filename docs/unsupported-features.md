@@ -601,6 +601,8 @@ back into a todo. Do not delete these.
   semantics are still open.
 - PlayerCombatEnter is a strict unit packet whose 26.1 client handler is empty;
   its diagnostic counter is not evidence of an additional combat-mode runtime.
+- PlayerCombatEnd likewise has an empty 26.1 handler; its decoded duration may
+  remain diagnostic but does not establish a client combat-mode transition.
 - `BeaconMenu`: confirm/cancel hover state, effect highlighted hover state,
   labels/tooltips.
 - `EnchantmentMenu`: animated book model, enchanting glyph text and its
