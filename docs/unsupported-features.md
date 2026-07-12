@@ -694,6 +694,10 @@ back into a todo. Do not delete these.
 
 ## HUD and debug overlay
 
+- Render the world-border warning vignette from camera distance,
+  `warningBlocks`, `warningTime`, lerp speed and lerp target/size delta, matching
+  `Gui.extractVignette`. Canonical border fields, tick lerp and forcefield render
+  extraction are covered; storing warning fields alone is not their HUD consumer.
 - **UpdateAdvancements rich display/toast parity.** Reset/remove/add/known-progress
   tree semantics are covered, but title/description and icon stacks remain summary
   projections, and completion telemetry/toast presentation is not complete.

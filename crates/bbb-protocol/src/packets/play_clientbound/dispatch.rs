@@ -301,7 +301,7 @@ pub fn decode_play_clientbound(packet_id: i32, payload: &[u8]) -> Result<PlayCli
         }
         ids::play::CLIENTBOUND_INITIALIZE_BORDER => {
             let mut decoder = Decoder::new(payload);
-            Ok(PlayClientbound::InitializeBorder(InitializeBorder {
+            let packet = InitializeBorder {
                 new_center_x: decoder.read_f64()?,
                 new_center_z: decoder.read_f64()?,
                 old_size: decoder.read_f64()?,
@@ -310,7 +310,13 @@ pub fn decode_play_clientbound(packet_id: i32, payload: &[u8]) -> Result<PlayCli
                 new_absolute_max_size: decoder.read_var_i32()?,
                 warning_blocks: decoder.read_var_i32()?,
                 warning_time: decoder.read_var_i32()?,
-            }))
+            };
+            if !decoder.is_empty() {
+                return Err(ProtocolError::InvalidData(
+                    "trailing bytes after initialize border packet".to_string(),
+                ));
+            }
+            Ok(PlayClientbound::InitializeBorder(packet))
         }
         ids::play::CLIENTBOUND_KEEP_ALIVE => {
             let mut decoder = Decoder::new(payload);

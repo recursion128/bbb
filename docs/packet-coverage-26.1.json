@@ -6985,28 +6985,48 @@
       "constant_name": "CLIENTBOUND_INITIALIZE_BORDER",
       "coverage": {
         "canonical_apply": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/client/world_border.rs#apply_initialize_border",
+            "crates/bbb-world/src/client/world_border.rs#initialize_border_with_lerp_records_old_new_and_time",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleInitializeBorder"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/world_border.rs#decodes_initialize_border_packet",
+            "vanilla:net/minecraft/network/protocol/game/ClientboundInitializeBorderPacket.java#STREAM_CODEC"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "ownership": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/play_apply.rs#PlayClientbound::InitializeBorder"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "runtime_side_effect": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
+          "evidence": [
+            "crates/bbb-native/src/runtime/render_extract.rs#world_border_render_state_for_world",
+            "crates/bbb-native/src/runtime/tests.rs#renderer_frame_world_border_extracts_after_border_tick_and_weather",
+            "vanilla:net/minecraft/client/gui/Gui.java#extractVignette"
+          ],
+          "gap": "docs/unsupported-features.md#hud-and-debug-overlay",
           "status": "partial"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "evidence": [
+            "crates/bbb-protocol/src/packets/world_border.rs#decodes_initialize_border_packet",
+            "crates/bbb-net/src/event_stream.rs#play_border_and_scoreboard_packets_emit_matching_events_without_responses",
+            "crates/bbb-net/src/probe/play.rs#probe_applies_world_border_packets_to_world",
+            "crates/bbb-world/src/client/world_border.rs#initialize_border_with_lerp_records_old_new_and_time",
+            "crates/bbb-native/src/runtime/events/tests/session_hud_and_vehicle_events.rs#border_events_update_world_and_world_counters",
+            "crates/bbb-native/src/runtime/tests.rs#renderer_frame_world_border_extracts_after_border_tick_and_weather"
+          ],
+          "gap": "docs/unsupported-features.md#hud-and-debug-overlay",
           "status": "partial"
         }
       },

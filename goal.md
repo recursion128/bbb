@@ -509,6 +509,7 @@ play ForgetLevelChunk 的 ChunkPos framing/strict trailing、canonical chunk-col
 play GameEvent 的 14-type generated catalog、u8/f32 framing/strict trailing 与十类 weather/mode/audio/particle/gameplay 分支已审计；type 0/4/5/13 的 respawn message、win/demo UI 与 level-load tracker 保持 canonical/runtime/tests partial。
 play GameRuleValues 的 bounded resource-key/string map、strict trailing、request command、diagnostic ownership 与跨 crate tests 已闭合；active-screen/first-response gate、built-in rule lookup、typed deserialize 与表单 apply 保持 canonical/runtime partial。
 play GameTestHighlightPos 的 absolute/relative BlockPos framing、strict trailing、diagnostic ownership 与跨 crate tests 已闭合；multi-marker map、10-second expiry、cuboid/text gizmo 与 level-reset clear 保持 canonical/runtime partial。
+play InitializeBorder 的完整 snapshot framing/strict trailing、canonical tick lerp、partial-tick forcefield extract 与跨 crate tests 已闭合；warningBlocks/warningTime/lerp-speed 驱动的 HUD vignette 保持 runtime/tests partial。
 
 完成标准：全部 vanilla 26.1 catalog entry 都有矩阵行；所有目标客户端适用项为
 `complete`，其余只有带 vanilla 依据的 `not-applicable` 或带重启判据的窄 `deferred`；
