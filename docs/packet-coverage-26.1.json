@@ -5310,28 +5310,44 @@
       "constant_name": "SERVERBOUND_SET_COMMAND_MINECART",
       "coverage": {
         "ack_response": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "evidence": [
+            "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#handleSetCommandMinecart",
+            "vanilla:net/minecraft/world/entity/vehicle/minecart/MinecartCommandBlock.java#DATA_ID_LAST_OUTPUT"
+          ],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
           "status": "partial"
         },
         "command_surface": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "evidence": [
+            "crates/bbb-protocol/src/packet_catalog.rs#SERVERBOUND_SET_COMMAND_MINECART",
+            "vanilla:net/minecraft/client/player/LocalPlayer.java#openMinecartCommandBlock",
+            "vanilla:net/minecraft/client/gui/screens/inventory/MinecartCommandBlockEditScreen.java#populateAndSendPacket"
+          ],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
           "status": "partial"
         },
         "encoder": {
-          "evidence": [],
+          "evidence": [
+            "crates/bbb-protocol/src/packet_catalog.rs#SERVERBOUND_SET_COMMAND_MINECART",
+            "vanilla:net/minecraft/network/protocol/game/ServerboundSetCommandMinecartPacket.java#STREAM_CODEC"
+          ],
           "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
           "status": "partial"
         },
         "state_guard": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "evidence": [
+            "vanilla:net/minecraft/client/gui/screens/inventory/MinecartCommandBlockEditScreen.java#init",
+            "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#handleSetCommandMinecart"
+          ],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
           "status": "partial"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "evidence": [
+            "crates/bbb-protocol/src/packet_coverage.rs#coverage_ledger_matches_every_packet_catalog_entry_in_order",
+            "scripts/generate-packet-catalog.py#extract_catalogs"
+          ],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
           "status": "partial"
         }
       },

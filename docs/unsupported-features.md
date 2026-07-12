@@ -444,6 +444,12 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   bounded command text, mode ordinal and flag bits; and leave command execution,
   block replacement and block-entity updates server-authoritative. Packet catalog
   presence alone is not an editor or command-block state implementation.
+- Implement the game-master `MinecartCommandBlockEditScreen` owner and typed
+  `ServerboundSetCommandMinecartPacket`: consume the command/last-output synced
+  metadata for the target minecart, preload command and track-output state,
+  encode entity id + bounded command text + track-output, and retain server
+  permission/entity-type/command-block-enabled authority. Generated metadata
+  schema and packet catalog presence are not an interactive editor.
 - Complete `AbstractSignEditScreen` parity after the OpenSignEditor authority
   gate: choose filtered sign messages, enforce the 90-pixel font-width limit,
   support clipboard/IME preedit, and close when the sign is removed or the
