@@ -156,10 +156,11 @@ Owner: `bbb-protocol`
 Owner: `scripts/` + each generated catalog's semantic crate
 
 - Complete the remaining cross-crate registry/ordinal and resource-membership
-  audit. Terrain families without an exact vanilla tag, including torch, pane
-  and copper-grate class membership, still need source-fact extraction before
-  their name tables can be removed; do not substitute approximate tags. Any
-  newly found Java-source catalog extractor must consume the shared Tree-sitter
+  audit. Terrain's remaining manually maintained fixed-source-water,
+  invisible-render-shape, vegetation and thin-overlay families need exact
+  class/property extraction or explicit semantic-owner evidence before their
+  name tables can be removed; do not substitute approximate tags. Any newly
+  found Java-source catalog extractor must consume the shared Tree-sitter
   frontend and checked-in deterministic output; ordinary build/test must not
   read local vanilla sources. Migrate each newly identified legacy parser as
   its own semantic-owner slice.

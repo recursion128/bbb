@@ -8,10 +8,11 @@ mod generated_26_1;
 
 use generated_26_1::{
     VANILLA_AIR_BLOCKS, VANILLA_BANNER_BLOCKS, VANILLA_BARS_BLOCKS, VANILLA_BUTTON_BLOCKS,
-    VANILLA_CAMPFIRE_BLOCKS, VANILLA_CHAIN_BLOCKS, VANILLA_CROP_BLOCKS, VANILLA_DOOR_BLOCKS,
-    VANILLA_FIRE_BLOCKS, VANILLA_LANTERN_BLOCKS, VANILLA_LIGHTNING_ROD_BLOCKS,
-    VANILLA_NO_TERRAIN_PARTICLE_BLOCKS, VANILLA_PRESSURE_PLATE_BLOCKS, VANILLA_RAIL_BLOCKS,
-    VANILLA_SIGN_BLOCKS, VANILLA_SMALL_FLOWER_BLOCKS, VANILLA_TRAPDOOR_BLOCKS,
+    VANILLA_CAMPFIRE_BLOCKS, VANILLA_CHAIN_BLOCKS, VANILLA_COPPER_GRATE_BLOCKS,
+    VANILLA_CROP_BLOCKS, VANILLA_DOOR_BLOCKS, VANILLA_FIRE_BLOCKS, VANILLA_IRON_BARS_CLASS_BLOCKS,
+    VANILLA_LANTERN_BLOCKS, VANILLA_LIGHTNING_ROD_BLOCKS, VANILLA_NO_TERRAIN_PARTICLE_BLOCKS,
+    VANILLA_PRESSURE_PLATE_BLOCKS, VANILLA_RAIL_BLOCKS, VANILLA_SIGN_BLOCKS,
+    VANILLA_SMALL_FLOWER_BLOCKS, VANILLA_TORCH_BLOCKS, VANILLA_TRAPDOOR_BLOCKS,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -248,7 +249,7 @@ pub(crate) fn terrain_fluid_state(
             return Some(TerrainFluidState::new(
                 TerrainFluidKind::Water,
                 8,
-                is_copper_grate_block_name(name),
+                block_name_is_copper_grate(name),
             ));
         }
         _ => return None,
@@ -282,18 +283,8 @@ fn is_fixed_source_water_block_name(name: &str) -> bool {
     )
 }
 
-fn is_copper_grate_block_name(name: &str) -> bool {
-    matches!(
-        name,
-        "minecraft:copper_grate"
-            | "minecraft:exposed_copper_grate"
-            | "minecraft:weathered_copper_grate"
-            | "minecraft:oxidized_copper_grate"
-            | "minecraft:waxed_copper_grate"
-            | "minecraft:waxed_exposed_copper_grate"
-            | "minecraft:waxed_weathered_copper_grate"
-            | "minecraft:waxed_oxidized_copper_grate"
-    )
+pub(crate) fn block_name_is_copper_grate(name: &str) -> bool {
+    VANILLA_COPPER_GRATE_BLOCKS.contains(&name)
 }
 
 pub fn block_name_has_invisible_render_shape(name: &str) -> bool {
@@ -332,7 +323,7 @@ fn is_cutout_block_name(name: &str) -> bool {
         || is_no_collision_thin_overlay_block_name(name)
         || is_no_collision_fire_or_wire_block_name(name)
         || is_no_collision_banner_block_name(name)
-        || is_copper_grate_block_name(name)
+        || block_name_is_copper_grate(name)
         || is_bars_tag_block_name(name)
         || is_chain_block_name(name)
         || is_door_block_name(name)
@@ -356,11 +347,7 @@ fn is_bars_tag_block_name(name: &str) -> bool {
 }
 
 fn is_iron_bars_block_name(name: &str) -> bool {
-    is_bars_tag_block_name(name)
-        || matches!(name, "minecraft:glass_pane")
-        || name
-            .strip_prefix("minecraft:")
-            .is_some_and(|stem| stem.ends_with("_stained_glass_pane"))
+    is_bars_tag_block_name(name) || VANILLA_IRON_BARS_CLASS_BLOCKS.contains(&name)
 }
 
 fn is_half_transparent_skip_rendering_block_name(name: &str) -> bool {
@@ -416,17 +403,7 @@ fn is_ladder_block_name(name: &str) -> bool {
 }
 
 fn is_torch_block_name(name: &str) -> bool {
-    matches!(
-        name,
-        "minecraft:torch"
-            | "minecraft:wall_torch"
-            | "minecraft:redstone_torch"
-            | "minecraft:redstone_wall_torch"
-            | "minecraft:soul_torch"
-            | "minecraft:soul_wall_torch"
-            | "minecraft:copper_torch"
-            | "minecraft:copper_wall_torch"
-    )
+    VANILLA_TORCH_BLOCKS.contains(&name)
 }
 
 fn is_lever_block_name(name: &str) -> bool {
@@ -639,16 +616,7 @@ mod tests {
             classify_terrain_material(Some("minecraft:nether_wart_block")),
             TerrainMaterialClass::Opaque
         );
-        for name in [
-            "minecraft:copper_grate",
-            "minecraft:exposed_copper_grate",
-            "minecraft:weathered_copper_grate",
-            "minecraft:oxidized_copper_grate",
-            "minecraft:waxed_copper_grate",
-            "minecraft:waxed_exposed_copper_grate",
-            "minecraft:waxed_weathered_copper_grate",
-            "minecraft:waxed_oxidized_copper_grate",
-        ] {
+        for &name in VANILLA_COPPER_GRATE_BLOCKS {
             assert_eq!(
                 classify_terrain_material(Some(name)),
                 TerrainMaterialClass::Cutout
@@ -692,16 +660,7 @@ mod tests {
             classify_terrain_material(Some("minecraft:ladder")),
             TerrainMaterialClass::Cutout
         );
-        for name in [
-            "minecraft:torch",
-            "minecraft:wall_torch",
-            "minecraft:redstone_torch",
-            "minecraft:redstone_wall_torch",
-            "minecraft:soul_torch",
-            "minecraft:soul_wall_torch",
-            "minecraft:copper_torch",
-            "minecraft:copper_wall_torch",
-        ] {
+        for &name in VANILLA_TORCH_BLOCKS {
             assert_eq!(
                 classify_terrain_material(Some(name)),
                 TerrainMaterialClass::Cutout
@@ -871,6 +830,10 @@ mod tests {
         assert!(!pane.west);
         assert!(pane.east);
 
+        for &name in VANILLA_IRON_BARS_CLASS_BLOCKS {
+            assert!(classify_terrain_skip_rendering(Some(name), &BTreeMap::new()).iron_bars_block);
+        }
+
         let bars = classify_terrain_skip_rendering(
             Some("minecraft:copper_bars"),
             &properties([
@@ -914,16 +877,7 @@ mod tests {
             ),
             Some(TerrainFluidState::new(TerrainFluidKind::Water, 8, false))
         );
-        for name in [
-            "minecraft:copper_grate",
-            "minecraft:exposed_copper_grate",
-            "minecraft:weathered_copper_grate",
-            "minecraft:oxidized_copper_grate",
-            "minecraft:waxed_copper_grate",
-            "minecraft:waxed_exposed_copper_grate",
-            "minecraft:waxed_weathered_copper_grate",
-            "minecraft:waxed_oxidized_copper_grate",
-        ] {
+        for &name in VANILLA_COPPER_GRATE_BLOCKS {
             assert_eq!(
                 terrain_fluid_state(Some(name), &properties([("waterlogged", "true")])),
                 Some(TerrainFluidState::new(TerrainFluidKind::Water, 8, true))

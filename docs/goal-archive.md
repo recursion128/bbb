@@ -12201,3 +12201,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   证明所有生成成员仍走 cutout；nether wart/attached stem/sugar cane 与 redstone/tripwire 等
   非 tag 语义保持窄补充。没有精确 tag 的 torch/pane/copper-grate 等 family 继续开放，未用
   名称猜测或近似 tag 冒充机械派生完成，也未改变 session `UpdateTags` 权威。
+
+## 2026-07-12：Generated terrain constructor families
+
+- [x] block-membership extractor 通过统一 Tree-sitter CST 的 object creation / constructor
+  method-reference 节点，从 `Blocks.java` 直接 `Block` 字段按声明顺序生成 torch 8 项、
+  `IronBarsBlock`/`StainedGlassPaneBlock` 18 项与 copper-grate 8 项；comment/string 伪构造、
+  lambda/method reference、多重 family 命中、注册形状与固定数量漂移均有显式 fixture/诊断。
+- [x] terrain cutout、iron-bars connection/skip-rendering、waterlogged copper-grate fluid 与
+  local-player copper-grate collision 统一消费 generated membership，删除三张名称/后缀判断。
+  weathering copper bars 的宏字段继续由 generated `bars` tag 覆盖；生成层只拥有 membership，
+  未生成 collision/render/fluid 行为，也未让普通 Cargo build/test 读取本地 vanilla source。

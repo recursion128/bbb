@@ -23,7 +23,7 @@ use crate::entities::{
     VANILLA_CREAKING_DEFAULT_CAN_MOVE, VANILLA_HAPPY_GHAST_DEFAULT_STAYS_STILL,
     VANILLA_HAPPY_GHAST_STAYS_STILL_DATA_ID,
 };
-use crate::terrain::block_name_is_air;
+use crate::terrain::{block_name_is_air, block_name_is_copper_grate};
 use crate::{BlockPos, BlockProbe, TerrainFluidKind, TerrainMaterialClass, WorldStore};
 
 pub(super) const COLLISION_EPSILON: f64 = 1.0e-7;
@@ -1156,7 +1156,7 @@ fn block_collision_shape(block: &BlockProbe, pos: BlockPos) -> Option<BlockColli
         ) {
             return Some(azalea_collision_shape());
         }
-        if is_copper_grate_block_name(block_name) {
+        if block_name_is_copper_grate(block_name) {
             return Some(BlockCollisionShape::single(BlockCollisionBox::FULL));
         }
         if is_piston_base_block_name(block_name) {
@@ -1417,12 +1417,6 @@ fn is_flat_carpet_block_name(block_name: &str) -> bool {
             | "black_carpet"
             | "moss_carpet"
     )
-}
-
-fn is_copper_grate_block_name(block_name: &str) -> bool {
-    block_name
-        .strip_prefix("minecraft:")
-        .is_some_and(|path| path == "copper_grate" || path.ends_with("_copper_grate"))
 }
 
 fn is_piston_base_block_name(block_name: &str) -> bool {

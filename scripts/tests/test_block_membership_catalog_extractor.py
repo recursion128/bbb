@@ -12,6 +12,7 @@ from block_membership_catalog_extractor import (  # noqa: E402
     BlockMembershipCatalogExtractionError,
     air_blocks,
     block_tag_membership,
+    constructor_family_blocks,
     no_terrain_particle_blocks,
 )
 from vanilla_java_source import parse_source  # noqa: E402
@@ -109,6 +110,53 @@ class Blocks {
             r"Blocks\.java: expected 2 noTerrainParticles blocks, extracted 1",
         ):
             no_terrain_particle_blocks(source)
+
+    def test_constructor_family_uses_cst_lambdas_and_method_references(self) -> None:
+        source = parse_source(
+            "net/minecraft/world/level/block/Blocks.java",
+            b'''package net.minecraft.world.level.block;
+class Blocks {
+  // new TorchBlock() and WallTorchBlock::new do not count.
+  static final String TEXT = "register(\\\"fake\\\", TorchBlock::new)";
+  static final Block FIRST = register(
+      "first", p -> new TorchBlock(p), Properties.of());
+  static final Block NORMAL = register(
+      "normal", NormalBlock::new, Properties.of());
+  static final Block SECOND = register(
+      "second", WallTorchBlock::new, Properties.of());
+}''',
+        )
+        self.assertEqual(
+            [
+                (entry.constant_name, entry.resource_id)
+                for entry in constructor_family_blocks(
+                    source, frozenset({"TorchBlock", "WallTorchBlock"}), 2
+                )
+            ],
+            [("FIRST", "minecraft:first"), ("SECOND", "minecraft:second")],
+        )
+
+    def test_constructor_family_rejects_ambiguous_and_count_drift(self) -> None:
+        source = parse_source(
+            "net/minecraft/world/level/block/Blocks.java",
+            b'''package net.minecraft.world.level.block;
+class Blocks {
+  static final Block AMBIGUOUS = register(
+      "ambiguous", flag ? FirstBlock::new : SecondBlock::new, Properties.of());
+}''',
+        )
+        with self.assertRaisesRegex(
+            BlockMembershipCatalogExtractionError,
+            "block registration matches multiple constructor family types",
+        ):
+            constructor_family_blocks(
+                source, frozenset({"FirstBlock", "SecondBlock"}), 1
+            )
+        with self.assertRaisesRegex(
+            BlockMembershipCatalogExtractionError,
+            "expected 2 blocks constructed by",
+        ):
+            constructor_family_blocks(source, frozenset({"FirstBlock"}), 2)
 
 
 if __name__ == "__main__":

@@ -12,6 +12,7 @@ from pathlib import Path
 from block_membership_catalog_extractor import (
     air_blocks,
     block_tag_membership,
+    constructor_family_blocks,
     no_terrain_particle_blocks,
 )
 from vanilla_java_source import parse_source
@@ -42,6 +43,31 @@ BLOCK_TAG_CATALOGS = (
     ("VANILLA_FIRE_BLOCKS", "minecraft:fire", 2),
 )
 
+CONSTRUCTOR_FAMILY_CATALOGS = (
+    (
+        "VANILLA_TORCH_BLOCKS",
+        frozenset(
+            {
+                "TorchBlock",
+                "WallTorchBlock",
+                "RedstoneTorchBlock",
+                "RedstoneWallTorchBlock",
+            }
+        ),
+        8,
+    ),
+    (
+        "VANILLA_IRON_BARS_CLASS_BLOCKS",
+        frozenset({"IronBarsBlock", "StainedGlassPaneBlock"}),
+        18,
+    ),
+    (
+        "VANILLA_COPPER_GRATE_BLOCKS",
+        frozenset({"WeatheringCopperGrateBlock", "WaterloggedTransparentBlock"}),
+        8,
+    ),
+)
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
@@ -57,6 +83,10 @@ def generate(source_root: Path) -> str:
     )
     entries = no_terrain_particle_blocks(source)
     air_entries = air_blocks(source)
+    constructor_catalogs = [
+        (name, constructor_family_blocks(source, constructor_types, expected_count))
+        for name, constructor_types, expected_count in CONSTRUCTOR_FAMILY_CATALOGS
+    ]
     tag_resources = load_tag_resources(source_root, BLOCK_TAG_SOURCE_DIR)
     tag_catalogs = [
         (name, block_tag_membership(tag_resources, tag_id, expected_count))
@@ -77,6 +107,15 @@ def generate(source_root: Path) -> str:
         "];",
         "",
     ]
+    for name, values in constructor_catalogs:
+        lines.extend(
+            [
+                f"pub(super) const {name}: &[&str] = &[",
+                *(f'    "{entry.resource_id}",' for entry in values),
+                "];",
+                "",
+            ]
+        )
     for name, values in tag_catalogs:
         lines.extend(
             [
@@ -96,6 +135,9 @@ def generate(source_root: Path) -> str:
             "    fn block_memberships_match_vanilla_order() {",
             '        assert_eq!(VANILLA_NO_TERRAIN_PARTICLE_BLOCKS, &["minecraft:barrier", "minecraft:structure_void"]);',
             '        assert_eq!(VANILLA_AIR_BLOCKS, &["minecraft:air", "minecraft:void_air", "minecraft:cave_air"]);',
+            "        assert_eq!(VANILLA_TORCH_BLOCKS.len(), 8);",
+            "        assert_eq!(VANILLA_IRON_BARS_CLASS_BLOCKS.len(), 18);",
+            "        assert_eq!(VANILLA_COPPER_GRATE_BLOCKS.len(), 8);",
             "        assert_eq!(VANILLA_BARS_BLOCKS.len(), 9);",
             "        assert_eq!(VANILLA_DOOR_BLOCKS.len(), 21);",
             "        assert_eq!(VANILLA_TRAPDOOR_BLOCKS.len(), 21);",

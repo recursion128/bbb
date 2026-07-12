@@ -9,6 +9,49 @@ pub(super) const VANILLA_NO_TERRAIN_PARTICLE_BLOCKS: &[&str] =
 pub(super) const VANILLA_AIR_BLOCKS: &[&str] =
     &["minecraft:air", "minecraft:void_air", "minecraft:cave_air"];
 
+pub(super) const VANILLA_TORCH_BLOCKS: &[&str] = &[
+    "minecraft:torch",
+    "minecraft:wall_torch",
+    "minecraft:redstone_torch",
+    "minecraft:redstone_wall_torch",
+    "minecraft:soul_torch",
+    "minecraft:soul_wall_torch",
+    "minecraft:copper_torch",
+    "minecraft:copper_wall_torch",
+];
+
+pub(super) const VANILLA_IRON_BARS_CLASS_BLOCKS: &[&str] = &[
+    "minecraft:iron_bars",
+    "minecraft:glass_pane",
+    "minecraft:white_stained_glass_pane",
+    "minecraft:orange_stained_glass_pane",
+    "minecraft:magenta_stained_glass_pane",
+    "minecraft:light_blue_stained_glass_pane",
+    "minecraft:yellow_stained_glass_pane",
+    "minecraft:lime_stained_glass_pane",
+    "minecraft:pink_stained_glass_pane",
+    "minecraft:gray_stained_glass_pane",
+    "minecraft:light_gray_stained_glass_pane",
+    "minecraft:cyan_stained_glass_pane",
+    "minecraft:purple_stained_glass_pane",
+    "minecraft:blue_stained_glass_pane",
+    "minecraft:brown_stained_glass_pane",
+    "minecraft:green_stained_glass_pane",
+    "minecraft:red_stained_glass_pane",
+    "minecraft:black_stained_glass_pane",
+];
+
+pub(super) const VANILLA_COPPER_GRATE_BLOCKS: &[&str] = &[
+    "minecraft:copper_grate",
+    "minecraft:exposed_copper_grate",
+    "minecraft:weathered_copper_grate",
+    "minecraft:oxidized_copper_grate",
+    "minecraft:waxed_copper_grate",
+    "minecraft:waxed_exposed_copper_grate",
+    "minecraft:waxed_weathered_copper_grate",
+    "minecraft:waxed_oxidized_copper_grate",
+];
+
 pub(super) const VANILLA_BARS_BLOCKS: &[&str] = &[
     "minecraft:iron_bars",
     "minecraft:copper_bars",
@@ -284,6 +327,9 @@ mod tests {
             VANILLA_AIR_BLOCKS,
             &["minecraft:air", "minecraft:void_air", "minecraft:cave_air"]
         );
+        assert_eq!(VANILLA_TORCH_BLOCKS.len(), 8);
+        assert_eq!(VANILLA_IRON_BARS_CLASS_BLOCKS.len(), 18);
+        assert_eq!(VANILLA_COPPER_GRATE_BLOCKS.len(), 8);
         assert_eq!(VANILLA_BARS_BLOCKS.len(), 9);
         assert_eq!(VANILLA_DOOR_BLOCKS.len(), 21);
         assert_eq!(VANILLA_TRAPDOOR_BLOCKS.len(), 21);
