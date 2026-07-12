@@ -686,6 +686,9 @@ back into a todo. Do not delete these.
   patches and specialized result-slot semantics until their local menu rules are
   complete; ordinary ContainerSetContent/Slot/Data updates remain the correction
   path rather than a synthetic acknowledgement.
+- Crafter slot-state requests cover the empty-grid pickup toggle, but still need
+  vanilla's hotbar `SWAP` enable path plus immediate local menu data/audio mutation.
+  The server's CrafterBlockEntity remains authoritative and has no dedicated ack.
 - Preserve the full trusted OpenScreen title Component and finish dedicated
   presentation for every generated vanilla MenuType. The fixed 25-entry menu
   catalog and unknown-id rejection are covered; current canonical state keeps
