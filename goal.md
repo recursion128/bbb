@@ -499,6 +499,7 @@ play BossEvent 的六种 operation/style/flags framing、strict trailing、UUID 
 play ChunksBiomes 的 bounded collection/per-chunk buffer、strict trailing、section palette replacement ownership 与 tests 已闭合；剩余 dynamic biome registry 与 3x3 neighbor rerender/custom tint 保持 canonical/runtime partial。
 play Commands 的 bounded nodes/children、flags/redirect/parser properties/suggestions、strict trailing、topology validation 与 replace ownership 已闭合；剩余 registry-aware repo-native dispatcher/local parse-completion 保持 runtime partial。
 play CustomPayload 的 Brand/Discarded gameplay framing、1 MiB 上限、canonical server brand/diagnostics 与跨 crate tests 已闭合；仅 vanilla telemetry brand callback 保持 runtime partial。
+play DebugBlock/Chunk/EntityValue 与 DebugEvent 的位置/target framing、bounded raw diagnostics、ownership 与跨 crate tests 已审计；registry-aware subscription/event decode、game-time expiry 与 debug renderer consumer 未实现，decode/canonical/runtime 保持 partial。
 
 完成标准：全部 vanilla 26.1 catalog entry 都有矩阵行；所有目标客户端适用项为
 `complete`，其余只有带 vanilla 依据的 `not-applicable` 或带重启判据的窄 `deferred`；

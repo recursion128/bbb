@@ -63,6 +63,11 @@ Owner: `bbb-protocol`
 - Route the configuration/play server-brand payload into a telemetry owner if
   client telemetry is retained; canonical brand state, HUD projection and bounded
   unknown-payload diagnostics are already separate from that missing callback.
+- Decode block/chunk/entity/event debug subscription payloads through the synced
+  `DEBUG_SUBSCRIPTION` registry codecs, retain typed values with vanilla game-time
+  expiry/removal semantics, ignore entity updates whose target is absent, and feed
+  the matching debug renderers. Bounded raw payload diagnostics are not typed
+  subscription support.
 - Build the received configuration registry entries and tags into a frozen,
   typed `RegistryAccess`: decode each synchronized registry with its element
   codec, merge known-pack stubs, resolve numeric tag ids to holders, apply pending

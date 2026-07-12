@@ -6087,29 +6087,46 @@
       "constant_name": "CLIENTBOUND_DEBUG_BLOCK_VALUE",
       "coverage": {
         "canonical_apply": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
+          "evidence": [
+            "crates/bbb-world/src/client/debug_game.rs#apply_debug_block_value",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleDebugBlockValue"
+          ],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
           "status": "partial"
         },
         "decode": {
-          "evidence": [],
+          "evidence": [
+            "crates/bbb-protocol/src/packets/debug_game/tests.rs#decodes_debug_value_packets_with_raw_subscription_payloads",
+            "vanilla:net/minecraft/network/protocol/game/ClientboundDebugBlockValuePacket.java#STREAM_CODEC"
+          ],
           "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
           "status": "partial"
         },
         "ownership": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/play_apply.rs#PlayClientbound::DebugBlockValue"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "runtime_side_effect": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
+          "evidence": [
+            "crates/bbb-world/src/client/debug_game.rs#last_debug_block_value",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleDebugBlockValue"
+          ],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
           "status": "partial"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/debug_game/tests.rs#decodes_debug_value_packets_with_raw_subscription_payloads",
+            "crates/bbb-net/src/event_stream.rs#play_debug_game_packets_emit_matching_events_without_responses",
+            "crates/bbb-net/src/probe/play.rs#probe_applies_debug_game_packets_to_world",
+            "crates/bbb-world/src/client/debug_game.rs#tracks_debug_game_events_and_counters",
+            "crates/bbb-native/src/runtime/events/tests/level_event_particle_batches.rs#debug_game_events_update_world_counters"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "clientbound",
@@ -6122,29 +6139,46 @@
       "constant_name": "CLIENTBOUND_DEBUG_CHUNK_VALUE",
       "coverage": {
         "canonical_apply": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
+          "evidence": [
+            "crates/bbb-world/src/client/debug_game.rs#apply_debug_chunk_value",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleDebugChunkValue"
+          ],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
           "status": "partial"
         },
         "decode": {
-          "evidence": [],
+          "evidence": [
+            "crates/bbb-protocol/src/packets/debug_game/tests.rs#decodes_debug_value_packets_with_raw_subscription_payloads",
+            "vanilla:net/minecraft/network/protocol/game/ClientboundDebugChunkValuePacket.java#STREAM_CODEC"
+          ],
           "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
           "status": "partial"
         },
         "ownership": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/play_apply.rs#PlayClientbound::DebugChunkValue"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "runtime_side_effect": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
+          "evidence": [
+            "crates/bbb-world/src/client/debug_game.rs#last_debug_chunk_value",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleDebugChunkValue"
+          ],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
           "status": "partial"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/debug_game/tests.rs#decodes_debug_value_packets_with_raw_subscription_payloads",
+            "crates/bbb-net/src/event_stream.rs#play_debug_game_packets_emit_matching_events_without_responses",
+            "crates/bbb-net/src/probe/play.rs#probe_applies_debug_game_packets_to_world",
+            "crates/bbb-world/src/client/debug_game.rs#tracks_debug_game_events_and_counters",
+            "crates/bbb-native/src/runtime/events/tests/level_event_particle_batches.rs#debug_game_events_update_world_counters"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "clientbound",
@@ -6157,29 +6191,46 @@
       "constant_name": "CLIENTBOUND_DEBUG_ENTITY_VALUE",
       "coverage": {
         "canonical_apply": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
+          "evidence": [
+            "crates/bbb-world/src/client/debug_game.rs#apply_debug_entity_value",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleDebugEntityValue"
+          ],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
           "status": "partial"
         },
         "decode": {
-          "evidence": [],
+          "evidence": [
+            "crates/bbb-protocol/src/packets/debug_game/tests.rs#decodes_debug_value_packets_with_raw_subscription_payloads",
+            "vanilla:net/minecraft/network/protocol/game/ClientboundDebugEntityValuePacket.java#STREAM_CODEC"
+          ],
           "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
           "status": "partial"
         },
         "ownership": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/play_apply.rs#PlayClientbound::DebugEntityValue"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "runtime_side_effect": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
+          "evidence": [
+            "crates/bbb-world/src/client/debug_game.rs#last_debug_entity_value",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleDebugEntityValue"
+          ],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
           "status": "partial"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/debug_game/tests.rs#decodes_debug_value_packets_with_raw_subscription_payloads",
+            "crates/bbb-net/src/event_stream.rs#play_debug_game_packets_emit_matching_events_without_responses",
+            "crates/bbb-net/src/probe/play.rs#probe_applies_debug_game_packets_to_world",
+            "crates/bbb-world/src/client/debug_game.rs#tracks_debug_game_events_and_counters",
+            "crates/bbb-native/src/runtime/events/tests/level_event_particle_batches.rs#debug_game_events_update_world_counters"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "clientbound",
@@ -6192,29 +6243,46 @@
       "constant_name": "CLIENTBOUND_DEBUG_EVENT",
       "coverage": {
         "canonical_apply": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
+          "evidence": [
+            "crates/bbb-world/src/client/debug_game.rs#apply_debug_event",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleDebugEvent"
+          ],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
           "status": "partial"
         },
         "decode": {
-          "evidence": [],
+          "evidence": [
+            "crates/bbb-protocol/src/packets/debug_game/tests.rs#decodes_debug_event_raw_payload",
+            "vanilla:net/minecraft/network/protocol/game/ClientboundDebugEventPacket.java#STREAM_CODEC"
+          ],
           "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
           "status": "partial"
         },
         "ownership": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/play_apply.rs#PlayClientbound::DebugEvent"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "runtime_side_effect": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
+          "evidence": [
+            "crates/bbb-world/src/client/debug_game.rs#last_debug_event",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleDebugEvent"
+          ],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
           "status": "partial"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/debug_game/tests.rs#decodes_debug_event_raw_payload",
+            "crates/bbb-net/src/event_stream.rs#play_debug_game_packets_emit_matching_events_without_responses",
+            "crates/bbb-net/src/probe/play.rs#probe_applies_debug_game_packets_to_world",
+            "crates/bbb-world/src/client/debug_game.rs#tracks_debug_game_events_and_counters",
+            "crates/bbb-native/src/runtime/events/tests/level_event_particle_batches.rs#debug_game_events_update_world_counters"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "clientbound",

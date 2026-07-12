@@ -2531,6 +2531,39 @@ mod tests {
         assert_eq!(partial, BTreeSet::from(["runtime_side_effect"]));
     }
 
+    #[test]
+    fn play_debug_subscription_packets_do_not_treat_raw_payloads_as_typed_support() {
+        let ledger = vanilla_packet_coverage_26_1().unwrap();
+        let packets = BTreeSet::from([
+            "CLIENTBOUND_DEBUG_BLOCK_VALUE",
+            "CLIENTBOUND_DEBUG_CHUNK_VALUE",
+            "CLIENTBOUND_DEBUG_ENTITY_VALUE",
+            "CLIENTBOUND_DEBUG_EVENT",
+        ]);
+        let entries: Vec<_> = ledger
+            .entries
+            .iter()
+            .filter(|entry| entry.state == "play" && packets.contains(entry.constant_name.as_str()))
+            .collect();
+        assert_eq!(entries.len(), packets.len());
+
+        for entry in entries {
+            let partial: BTreeSet<_> = entry
+                .coverage
+                .iter()
+                .filter_map(|(dimension, cell)| {
+                    (cell.status == PacketCoverageStatus::Partial).then_some(dimension.as_str())
+                })
+                .collect();
+            assert_eq!(
+                partial,
+                BTreeSet::from(["canonical_apply", "decode", "runtime_side_effect"]),
+                "{}",
+                entry.constant_name
+            );
+        }
+    }
+
     fn state_name(state: PacketState) -> &'static str {
         match state {
             PacketState::Handshake => "handshake",

@@ -11596,3 +11596,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] Brand/Discarded gameplay framing、1 MiB 上限、canonical server brand/unknown diagnostics 与跨 crate tests 闭合。
 - [x] vanilla telemetry brand callback 未完成，runtime 保持 partial；unknown payload 未被外推为领域支持。
+
+## 2026-07-12：play debug subscription packet coverage audit
+
+- [x] DebugBlock/Chunk/EntityValue 与 DebugEvent 的 target framing、bounded raw diagnostics、ownership 与跨 crate tests 已审计。
+- [x] registry-aware subscription/event decode、game-time expiry 与 debug renderer consumer 未完成；raw payload 没有被误标为 typed support。
