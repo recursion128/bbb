@@ -11314,3 +11314,10 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   并拒绝 request trailing bytes。
 - [x] play connection owner 共用 session cookie map，命中回原 payload、缺失回 null；protocol/world/net/native
   tests 覆盖 response 与 telemetry，五格全部闭合。
+
+## 2026-07-12：play store-cookie packet coverage audit
+
+- [x] 对照 `ClientboundStoreCookiePacket` 与 `handleStoreCookie` 锁定 Identifier key、5120-byte bounded
+  payload wire并拒绝 trailing bytes；normal-play session map upsert、ownership 与 tests 闭合。
+- [x] transfer closing window 的 late StoreCookie 接收及 cookie carry/reconnect 尚未实现，runtime 保持
+  partial；未把普通 play storage 冒充完整 transfer lifecycle。

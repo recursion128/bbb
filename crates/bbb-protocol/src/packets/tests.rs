@@ -2541,6 +2541,15 @@ fn decodes_and_encodes_cookie_packets() {
         PlayClientbound::StoreCookie(store)
     );
 
+    let mut trailing_store = store_payload.clone();
+    trailing_store.push(0);
+    assert!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_STORE_COOKIE, &trailing_store)
+            .unwrap_err()
+            .to_string()
+            .contains("trailing bytes after store cookie packet")
+    );
+
     let (id, payload) = encode_login_cookie_response("bbb:session", Some(&[1, 2, 3]));
     assert_eq!(id, ids::login::SERVERBOUND_COOKIE_RESPONSE);
     assert_cookie_response_payload(&payload, "bbb:session", Some(&[1, 2, 3]));

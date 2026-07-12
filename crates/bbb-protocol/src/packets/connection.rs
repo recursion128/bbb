@@ -758,10 +758,16 @@ pub(super) fn decode_store_cookie(decoder: &mut Decoder<'_>) -> Result<StoreCook
     if len > MAX_COOKIE_PAYLOAD_SIZE {
         return Err(ProtocolError::PacketTooLarge(len, MAX_COOKIE_PAYLOAD_SIZE));
     }
-    Ok(StoreCookie {
+    let cookie = StoreCookie {
         key,
         payload: decoder.read_exact(len, "cookie payload")?.to_vec(),
-    })
+    };
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after store cookie packet".to_string(),
+        ));
+    }
+    Ok(cookie)
 }
 
 pub(super) fn decode_transfer(decoder: &mut Decoder<'_>) -> Result<Transfer> {

@@ -429,6 +429,8 @@ CommandSuggestions 的 id/range/list/optional tooltip wire、pending-id gate、f
 tests 已闭合；rich tooltip Component 与 scroll/select/hover/narration list UI 未完成，canonical/runtime partial。
 play CookieRequest 的 resource id wire、shared session cookie lookup、hit payload/miss null response、ownership
 与 protocol/world/net/native tests 已全行闭合；StoreCookie 的 5120-byte 上限继续约束可回传数据。
+play StoreCookie 的 resource id + bounded payload wire、normal-play upsert 与 tests 已闭合；transfer close
+window 接收及 cookie carry/reconnect 依赖尚未实现的 transfer lifecycle，runtime 保持 partial。
 
 完成标准：全部 vanilla 26.1 catalog entry 都有矩阵行；所有目标客户端适用项为
 `complete`，其余只有带 vanilla 依据的 `not-applicable` 或带重启判据的窄 `deferred`；
