@@ -12526,3 +12526,9 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] generated entity descriptor 从统一 Tree-sitter class hierarchy 派生 20 项 `AbstractBoat`
   subclass 与 7 项 `AbstractMinecart` subclass；world vehicle dispatch 删除两张手抄 entity-type
   matches，locally-controlled prediction、remote interpolation 与各 vehicle 行为仍由 world owner 实现。
+
+## 2026-07-12：Derived mount class memberships
+
+- [x] generated entity descriptor 从统一 Java class hierarchy 派生 9 项 `AbstractHorse`、2 项
+  `AbstractNautilus` 与 2 项 `Llama` subclass；world inventory/collision/model consumers 保持原 API，
+  三张手抄 class-membership matches 已移除，saddle tags 与 slot/presentation 行为集合未被近似替换。
