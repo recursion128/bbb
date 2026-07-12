@@ -11896,3 +11896,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] 7 个 26.1 action 的 generated ordinal、entity-id/action/data wire，以及 stop-sleeping、sprint start/stop、charged riding jump、server-controlled mount inventory、start-fall-flying 的 vanilla-emitted native paths 已反向审计；command/encoder 闭合。`STOP_RIDING_JUMP` 在 enum 中保留但 vanilla 26.1 client 无发送点。
 - [x] sleeping position、mount screen/jump、fall-flying metadata 等结果仍以服务器广播为权威，并受相邻 player-position/open-screen/entity-metadata/vehicle runtime 缺口约束；因此 ack/state/tests 保持 partial，未把请求可发送误标为完整行为。
+
+## 2026-07-12：play serverbound player-input packet coverage audit
+
+- [x] forward/backward/left/right/jump/shift/sprint 七位 wire、按 key-state 变化发送、重复按键去重、失焦全 false release、mounted/unmounted 共用 raw input、Play driver 与 focused tests 已反向审计。
+- [x] 服务端仅保存 last client input 并更新 shift state，无 dedicated ack；该 packet 不替代独立 sprint command、vehicle movement 或 server correction。因此 ack=N/A，其余四格闭合。
