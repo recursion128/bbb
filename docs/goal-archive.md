@@ -12011,3 +12011,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] 两个协议状态共用的 `ServerboundCustomClickActionPacket` wire 已锁定为 Identifier + 64 KiB length-prefixed optional Tag，NBT quota 32 KiB、最大 depth 16；服务端只转交 `MinecraftServer.handleCustomClickAction` hook，没有 dedicated acknowledgement。
 - [x] bbb 当前只保留 raw/reference dialog diagnostic，尚未解 typed Dialog/ClickEvent、渲染 active screen 或编码 bounded NBT action；两行均保持 ack=N/A、其余四格 partial，未把 raw dialog bytes 或 catalog presence 冒充可点击 dialog 实现。
+
+## 2026-07-12：authenticated login packet coverage evidence audit
+
+- [x] `ServerboundHelloPacket` 的 16-char name + UUID offline sender，以及 `ClientboundHelloPacket` 的 server-id/public-key/challenge/authenticate flag、`ServerboundKeyPacket` 的 encrypted secret/challenge 和 login disconnect Component wire 已逐项反向核对。
+- [x] bbb 仍在收到 encryption request 时明确终止，只把 login disconnect 保留为 raw JSON；对应 partial 状态和 authenticated-login todo 均保持开放。本切片仅消除 coverage evidence 空洞，未把 catalog、unit EncryptionRequest 或失败路径冒充在线认证/加密实现。

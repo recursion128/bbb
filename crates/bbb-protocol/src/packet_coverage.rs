@@ -263,6 +263,16 @@ mod tests {
                 ("CLIENTBOUND_HELLO", "tests"),
             ])
         );
+
+        for entry in login_entries {
+            for (dimension, cell) in &entry.coverage {
+                assert!(
+                    !cell.evidence.is_empty(),
+                    "{} {dimension} must retain audit evidence",
+                    entry.constant_name
+                );
+            }
+        }
     }
 
     #[test]
