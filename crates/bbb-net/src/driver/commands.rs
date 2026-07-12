@@ -351,7 +351,7 @@ pub(crate) async fn send_command_suggestion_request(
     conn: &mut RawConnection,
     request: CommandSuggestionRequest,
 ) -> Result<()> {
-    let (id, payload) = packets::encode_play_command_suggestion_request(request);
+    let (id, payload) = packets::encode_play_command_suggestion_request(request)?;
     conn.send_packet(id, &payload).await
 }
 

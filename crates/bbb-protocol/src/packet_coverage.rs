@@ -3476,6 +3476,33 @@ mod tests {
         }
     }
 
+    #[test]
+    fn play_serverbound_command_suggestion_keeps_dispatcher_and_ui_open() {
+        let ledger = vanilla_packet_coverage_26_1().unwrap();
+        let entry = ledger
+            .entries
+            .iter()
+            .find(|entry| {
+                entry.state == "play" && entry.constant_name == "SERVERBOUND_COMMAND_SUGGESTION"
+            })
+            .expect("play serverbound command suggestion coverage row");
+
+        for dimension in ["command_surface", "encoder"] {
+            assert_eq!(
+                entry.coverage[dimension].status,
+                PacketCoverageStatus::Complete,
+                "{dimension}"
+            );
+        }
+        for dimension in ["ack_response", "state_guard", "tests"] {
+            assert_eq!(
+                entry.coverage[dimension].status,
+                PacketCoverageStatus::Partial,
+                "{dimension}"
+            );
+        }
+    }
+
     fn state_name(state: PacketState) -> &'static str {
         match state {
             PacketState::Handshake => "handshake",

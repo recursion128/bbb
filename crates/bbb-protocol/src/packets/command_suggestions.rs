@@ -8,6 +8,7 @@ use crate::{
 use super::decode_optional_component_summary_from_decoder;
 
 const MAX_COMMAND_SUGGESTIONS: usize = 8192;
+const MAX_COMMAND_SUGGESTION_INPUT_LENGTH: usize = 32_500;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CommandSuggestions {
@@ -29,11 +30,20 @@ pub struct CommandSuggestionRequest {
     pub command: String,
 }
 
-pub fn encode_play_command_suggestion_request(request: CommandSuggestionRequest) -> (i32, Vec<u8>) {
+pub fn encode_play_command_suggestion_request(
+    request: CommandSuggestionRequest,
+) -> Result<(i32, Vec<u8>)> {
+    let command_len = request.command.encode_utf16().count();
+    if command_len > MAX_COMMAND_SUGGESTION_INPUT_LENGTH {
+        return Err(ProtocolError::StringTooLong {
+            actual: command_len,
+            max: MAX_COMMAND_SUGGESTION_INPUT_LENGTH,
+        });
+    }
     let mut out = Encoder::new();
     out.write_var_i32(request.id);
     out.write_string(&request.command);
-    (ids::play::SERVERBOUND_COMMAND_SUGGESTION, out.into_inner())
+    Ok((ids::play::SERVERBOUND_COMMAND_SUGGESTION, out.into_inner()))
 }
 
 pub(super) fn decode_command_suggestions(decoder: &mut Decoder<'_>) -> Result<CommandSuggestions> {
@@ -145,7 +155,8 @@ mod tests {
         let (id, payload) = encode_play_command_suggestion_request(CommandSuggestionRequest {
             id: 33,
             command: "/give @p minecraft:stone".to_string(),
-        });
+        })
+        .unwrap();
 
         assert_eq!(id, ids::play::SERVERBOUND_COMMAND_SUGGESTION);
         assert_eq!(id, 15);
@@ -156,6 +167,22 @@ mod tests {
             "/give @p minecraft:stone"
         );
         assert!(decoder.is_empty());
+    }
+
+    #[test]
+    fn command_suggestion_request_rejects_more_than_32500_utf16_code_units() {
+        let command = format!("{}a", "😀".repeat(MAX_COMMAND_SUGGESTION_INPUT_LENGTH / 2));
+        let error =
+            encode_play_command_suggestion_request(CommandSuggestionRequest { id: 33, command })
+                .unwrap_err();
+
+        assert!(matches!(
+            error,
+            ProtocolError::StringTooLong {
+                actual: 32_501,
+                max: 32_500
+            }
+        ));
     }
 
     fn nbt_string_root(text: &str) -> Vec<u8> {

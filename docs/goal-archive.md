@@ -11801,3 +11801,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] 九字段 ClientInformation wire、CLI startup value、configuration/play ids 与 play handoff send 已审计；encoder 和现有生产入口闭合，服务端无专用 acknowledgement。
 - [x] vanilla play 路径只在 Options 内容变化时发送并以 remote snapshot 去重；bbb 当前在 configuration→play 无条件重复 startup snapshot，state guard/tests 保持 partial，且未引入被架构禁止的 in-game configuration UI。
+
+## 2026-07-12：play serverbound command suggestion packet coverage audit
+
+- [x] transaction VarInt + 32500 UTF-16 code-unit command wire、chat input/control/native/net production path、pending-id stale response gate 与 server suggestion response 已审计；encoder 新增 vanilla 长度拒绝并闭合。
+- [x] registry-aware local dispatcher/custom request cancellation 与 rich tooltip/scrollable list presentation 仍开放；ack/state/tests 保持 partial，没有把 first-result Tab replacement 冒充完整 CommandSuggestions UI。
