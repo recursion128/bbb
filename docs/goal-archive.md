@@ -12713,3 +12713,10 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   `VANILLA_ENTITY_DATA_SERIALIZER_INT_ID`，删除最后一个生产 `*_INT_SERIALIZER_ID` 重命名；
   gameplay-id generator 同步输出 production-source 反向扫描，43-entry serializer catalog
   的注册顺序、wire codec 与 metadata 行为保持不变。
+
+## 2026-07-12：Generated data-component alias guard
+
+- [x] `production_sources_do_not_restore_removed_map_component_aliases` 已从手改
+  `data_component_types.rs` 迁入 `generate-core-registry-catalog.py` 模板；core-registry
+  update/check 与二次 update 幂等通过，随后全部 checked-in catalog generator maintenance
+  checks 均无 diff。map component consumers 与 110-entry descriptor catalog 行为未改变。
