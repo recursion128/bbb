@@ -32,6 +32,8 @@ BLOCK_CLASS_SOURCE_DIR = Path("net/minecraft/world/level/block")
 
 BLOCK_TAG_CATALOGS = (
     ("VANILLA_BARS_BLOCKS", "minecraft:bars", 9),
+    ("VANILLA_DOOR_BLOCKS", "minecraft:doors", 21),
+    ("VANILLA_TRAPDOOR_BLOCKS", "minecraft:trapdoors", 21),
     ("VANILLA_NO_COLLISION_RAIL_BLOCKS", "minecraft:rails", 4),
     ("VANILLA_NO_COLLISION_SIGN_BLOCKS", "minecraft:all_signs", 48),
     ("VANILLA_NO_COLLISION_BUTTON_BLOCKS", "minecraft:buttons", 14),
@@ -237,6 +239,8 @@ def generate(source_root: Path) -> str:
             "        assert_eq!(VANILLA_LEAVES_BLOCKS.len(), 11);",
             "        assert_eq!(VANILLA_INVISIBLE_RENDER_SHAPE_BLOCKS.len(), 12);",
             "        assert_eq!(VANILLA_BARS_BLOCKS.len(), 9);",
+            "        assert_eq!(VANILLA_DOOR_BLOCKS.len(), 21);",
+            "        assert_eq!(VANILLA_TRAPDOOR_BLOCKS.len(), 21);",
             "        assert_eq!(VANILLA_NO_COLLISION_RAIL_BLOCKS.len(), 4);",
             "        assert_eq!(VANILLA_NO_COLLISION_SIGN_BLOCKS.len(), 48);",
             "        assert_eq!(VANILLA_NO_COLLISION_BUTTON_BLOCKS.len(), 14);",

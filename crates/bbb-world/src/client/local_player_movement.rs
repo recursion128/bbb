@@ -21,7 +21,7 @@ use super::local_player_collision::{
     LocalPlayerBounds, LocalPlayerCollisionContext, COLLISION_EPSILON,
 };
 use super::local_player_fluid::local_player_fluid_contact;
-use crate::{BlockPos, BlockProbe, WorldStore};
+use crate::{block_name_is_trapdoor, BlockPos, BlockProbe, WorldStore};
 
 mod fluid;
 #[cfg(test)]
@@ -1000,7 +1000,7 @@ fn local_player_trapdoor_usable_as_ladder(
     if !block
         .block_name
         .as_deref()
-        .is_some_and(is_trapdoor_block_name)
+        .is_some_and(block_name_is_trapdoor)
     {
         return false;
     }
@@ -1023,12 +1023,6 @@ fn local_player_trapdoor_usable_as_ladder(
             .get("facing")
             .map(String::as_str)
             == Some(facing)
-}
-
-fn is_trapdoor_block_name(block_name: &str) -> bool {
-    block_name
-        .strip_prefix("minecraft:")
-        .is_some_and(|path| path.ends_with("_trapdoor"))
 }
 
 fn local_player_climbable_limited_velocity(

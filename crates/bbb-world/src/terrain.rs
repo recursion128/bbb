@@ -7,7 +7,7 @@ use crate::{BlockPos, ChunkPos, PaletteKind};
 mod generated_26_1;
 
 use generated_26_1::{
-    VANILLA_AIR_BLOCKS, VANILLA_BARS_BLOCKS, VANILLA_COPPER_GRATE_BLOCKS,
+    VANILLA_AIR_BLOCKS, VANILLA_BARS_BLOCKS, VANILLA_COPPER_GRATE_BLOCKS, VANILLA_DOOR_BLOCKS,
     VANILLA_FIXED_SOURCE_WATER_BLOCKS, VANILLA_HALF_TRANSPARENT_SKIP_RENDERING_BLOCKS,
     VANILLA_INVISIBLE_RENDER_SHAPE_BLOCKS, VANILLA_IRON_BARS_CLASS_BLOCKS, VANILLA_LEAVES_BLOCKS,
     VANILLA_NO_COLLISION_BANNER_BLOCKS, VANILLA_NO_COLLISION_BUTTON_BLOCKS,
@@ -17,7 +17,7 @@ use generated_26_1::{
     VANILLA_NO_COLLISION_SMALL_FLOWER_BLOCKS, VANILLA_NO_COLLISION_THIN_OVERLAY_BLOCKS,
     VANILLA_NO_COLLISION_TORCH_BLOCKS, VANILLA_NO_COLLISION_WIRE_BLOCKS,
     VANILLA_NO_TERRAIN_PARTICLE_BLOCKS, VANILLA_SAME_BLOCK_ALL_FACE_SKIP_RENDERING_BLOCKS,
-    VANILLA_SAME_BLOCK_VERTICAL_FACE_SKIP_RENDERING_BLOCKS,
+    VANILLA_SAME_BLOCK_VERTICAL_FACE_SKIP_RENDERING_BLOCKS, VANILLA_TRAPDOOR_BLOCKS,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -306,6 +306,14 @@ pub fn block_name_is_leaves(name: &str) -> bool {
     VANILLA_LEAVES_BLOCKS.contains(&name)
 }
 
+pub fn block_name_is_door(name: &str) -> bool {
+    VANILLA_DOOR_BLOCKS.contains(&name)
+}
+
+pub fn block_name_is_trapdoor(name: &str) -> bool {
+    VANILLA_TRAPDOOR_BLOCKS.contains(&name)
+}
+
 pub(crate) fn block_name_has_empty_collision_shape(name: &str) -> bool {
     name.contains("sapling")
         || matches!(
@@ -486,6 +494,12 @@ mod tests {
             assert!(block_name_is_leaves(name), "{name}");
             assert!(!block_name_is_half_transparent(name), "{name}");
         }
+        assert!(block_name_is_door("minecraft:oak_door"));
+        assert!(block_name_is_door("minecraft:iron_door"));
+        assert!(!block_name_is_door("minecraft:custom_door"));
+        assert!(block_name_is_trapdoor("minecraft:oak_trapdoor"));
+        assert!(block_name_is_trapdoor("minecraft:iron_trapdoor"));
+        assert!(!block_name_is_trapdoor("minecraft:custom_trapdoor"));
         assert!(
             classify_terrain_skip_rendering(Some("minecraft:copper_grate"), &BTreeMap::new())
                 .same_block_culls_all_faces

@@ -12292,3 +12292,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   class member。
 - [x] biome tint 中的 foliage-resolver 子集保留独立手写语义：spruce/birch 使用常量颜色，
   azalea/cherry 等也不是同一 resolver 集合，不能用完整 LeavesBlock membership 替换。
+
+## 2026-07-12：Shared exact door and trapdoor memberships
+
+- [x] block-membership generator 从 vanilla `doors` / `trapdoors` tag 各生成 21 项稳定 catalog，
+  world 导出窄查询；local collision shape、open-trapdoor ladder gate 与 native block outline
+  删除三份 `*_door` / `*_trapdoor` 后缀识别。
+- [x] 全部 vanilla door/trapdoor 继续进入现有 property-aware thin shape，unknown namespace 与
+  `minecraft:custom_door` / `custom_trapdoor` lookalike 回到普通 full-cube fallback，不再把名称
+  启发式冒充 class/tag membership；未改变 door/trapdoor 的碰撞或交互算法。

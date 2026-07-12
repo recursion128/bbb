@@ -25,7 +25,7 @@ use crate::entities::{
 };
 use crate::terrain::{
     block_name_has_empty_collision_shape, block_name_is_air, block_name_is_copper_grate,
-    block_name_is_leaves,
+    block_name_is_door, block_name_is_leaves, block_name_is_trapdoor,
 };
 use crate::{BlockPos, BlockProbe, TerrainFluidKind, TerrainMaterialClass, WorldStore};
 
@@ -790,7 +790,7 @@ impl WorldStore {
             return !(self.entities.is_fall_flying(entity_id).unwrap_or(false)
                 && debug_can_glide_through_block_name(block_name));
         }
-        if !is_trapdoor_block_name(block_name)
+        if !block_name_is_trapdoor(block_name)
             || block.block_properties.get("open").map(String::as_str) != Some("true")
         {
             return false;
@@ -1340,10 +1340,10 @@ fn block_collision_shape(block: &BlockProbe, pos: BlockPos) -> Option<BlockColli
         if is_anvil_block_name(block_name) {
             return anvil_collision_shape(&block.block_properties);
         }
-        if is_door_block_name(block_name) {
+        if block_name_is_door(block_name) {
             return door_collision_shape(&block.block_properties);
         }
-        if is_trapdoor_block_name(block_name) {
+        if block_name_is_trapdoor(block_name) {
             return trapdoor_collision_shape(&block.block_properties);
         }
         if is_fence_gate_block_name(block_name) {
@@ -1580,18 +1580,6 @@ fn is_shulker_box_block_name(block_name: &str) -> bool {
     block_name
         .strip_prefix("minecraft:")
         .is_some_and(|path| path == "shulker_box" || path.ends_with("_shulker_box"))
-}
-
-fn is_door_block_name(block_name: &str) -> bool {
-    block_name
-        .strip_prefix("minecraft:")
-        .is_some_and(|path| path.ends_with("_door"))
-}
-
-fn is_trapdoor_block_name(block_name: &str) -> bool {
-    block_name
-        .strip_prefix("minecraft:")
-        .is_some_and(|path| path.ends_with("_trapdoor"))
 }
 
 fn is_fence_gate_block_name(block_name: &str) -> bool {

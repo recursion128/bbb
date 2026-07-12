@@ -427,6 +427,22 @@ fn outline_shape_rejects_invalid_door_properties() {
 }
 
 #[test]
+fn outline_shape_rejects_door_and_trapdoor_suffix_lookalikes() {
+    assert_eq!(
+        outline_shape_for_block(Some("minecraft:custom_door"), &BTreeMap::new()),
+        Some(BlockOutlineShape::single(BlockOutlineBox::FULL))
+    );
+    assert_eq!(
+        outline_shape_for_block(Some("minecraft:custom_trapdoor"), &BTreeMap::new()),
+        Some(BlockOutlineShape::single(BlockOutlineBox::FULL))
+    );
+    assert_eq!(
+        outline_shape_for_block(Some("example:oak_door"), &BTreeMap::new()),
+        Some(BlockOutlineShape::single(BlockOutlineBox::FULL))
+    );
+}
+
+#[test]
 fn outline_shape_uses_vanilla_ladder_direction_shape() {
     assert_eq!(
         outline_shape_for_block(Some("minecraft:ladder"), &ladder_properties("north")),

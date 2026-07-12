@@ -1,5 +1,7 @@
 use std::collections::BTreeMap;
 
+use bbb_world::{block_name_is_door, block_name_is_trapdoor};
+
 use super::{BlockOutlineBox, BlockOutlineShape, HorizontalDirection};
 
 mod objects;
@@ -62,10 +64,10 @@ pub(super) fn outline_shape_for_block(
     if is_stair_block_name(block_name) {
         return stair_outline_shape(properties);
     }
-    if is_trapdoor_block_name(block_name) {
+    if block_name_is_trapdoor(block_name) {
         return trapdoor_outline_shape(properties);
     }
-    if is_door_block_name(block_name) {
+    if block_name_is_door(block_name) {
         return door_outline_shape(properties);
     }
     if block_name == "minecraft:ladder" {
@@ -597,18 +599,6 @@ fn is_standing_sign_block_name(block_name: &str) -> bool {
     block_name
         .strip_prefix("minecraft:")
         .is_some_and(|path| path.ends_with("_sign") && !path.ends_with("_hanging_sign"))
-}
-
-fn is_trapdoor_block_name(block_name: &str) -> bool {
-    block_name
-        .strip_prefix("minecraft:")
-        .is_some_and(|path| path.ends_with("_trapdoor"))
-}
-
-fn is_door_block_name(block_name: &str) -> bool {
-    block_name
-        .strip_prefix("minecraft:")
-        .is_some_and(|path| path.ends_with("_door"))
 }
 
 fn is_fence_gate_block_name(block_name: &str) -> bool {

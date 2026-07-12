@@ -164,6 +164,54 @@ pub(super) const VANILLA_BARS_BLOCKS: &[&str] = &[
     "minecraft:waxed_oxidized_copper_bars",
 ];
 
+pub(super) const VANILLA_DOOR_BLOCKS: &[&str] = &[
+    "minecraft:oak_door",
+    "minecraft:spruce_door",
+    "minecraft:birch_door",
+    "minecraft:jungle_door",
+    "minecraft:acacia_door",
+    "minecraft:dark_oak_door",
+    "minecraft:pale_oak_door",
+    "minecraft:crimson_door",
+    "minecraft:warped_door",
+    "minecraft:mangrove_door",
+    "minecraft:bamboo_door",
+    "minecraft:cherry_door",
+    "minecraft:copper_door",
+    "minecraft:exposed_copper_door",
+    "minecraft:weathered_copper_door",
+    "minecraft:oxidized_copper_door",
+    "minecraft:waxed_copper_door",
+    "minecraft:waxed_exposed_copper_door",
+    "minecraft:waxed_weathered_copper_door",
+    "minecraft:waxed_oxidized_copper_door",
+    "minecraft:iron_door",
+];
+
+pub(super) const VANILLA_TRAPDOOR_BLOCKS: &[&str] = &[
+    "minecraft:acacia_trapdoor",
+    "minecraft:birch_trapdoor",
+    "minecraft:dark_oak_trapdoor",
+    "minecraft:pale_oak_trapdoor",
+    "minecraft:jungle_trapdoor",
+    "minecraft:oak_trapdoor",
+    "minecraft:spruce_trapdoor",
+    "minecraft:crimson_trapdoor",
+    "minecraft:warped_trapdoor",
+    "minecraft:mangrove_trapdoor",
+    "minecraft:bamboo_trapdoor",
+    "minecraft:cherry_trapdoor",
+    "minecraft:iron_trapdoor",
+    "minecraft:copper_trapdoor",
+    "minecraft:exposed_copper_trapdoor",
+    "minecraft:weathered_copper_trapdoor",
+    "minecraft:oxidized_copper_trapdoor",
+    "minecraft:waxed_copper_trapdoor",
+    "minecraft:waxed_exposed_copper_trapdoor",
+    "minecraft:waxed_weathered_copper_trapdoor",
+    "minecraft:waxed_oxidized_copper_trapdoor",
+];
+
 pub(super) const VANILLA_NO_COLLISION_RAIL_BLOCKS: &[&str] = &[
     "minecraft:rail",
     "minecraft:powered_rail",
@@ -360,6 +408,8 @@ mod tests {
         assert_eq!(VANILLA_LEAVES_BLOCKS.len(), 11);
         assert_eq!(VANILLA_INVISIBLE_RENDER_SHAPE_BLOCKS.len(), 12);
         assert_eq!(VANILLA_BARS_BLOCKS.len(), 9);
+        assert_eq!(VANILLA_DOOR_BLOCKS.len(), 21);
+        assert_eq!(VANILLA_TRAPDOOR_BLOCKS.len(), 21);
         assert_eq!(VANILLA_NO_COLLISION_RAIL_BLOCKS.len(), 4);
         assert_eq!(VANILLA_NO_COLLISION_SIGN_BLOCKS.len(), 48);
         assert_eq!(VANILLA_NO_COLLISION_BUTTON_BLOCKS.len(), 14);
