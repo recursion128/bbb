@@ -464,6 +464,46 @@
         "status": "complete"
       }
     },
+    "play/clientbound/CLIENTBOUND_CUSTOM_CHAT_COMPLETIONS": {
+      "canonical_apply": {
+        "evidence": [
+          "crates/bbb-world/src/client/command_suggestions.rs#apply_custom_chat_completions",
+          "vanilla:net/minecraft/client/multiplayer/ClientSuggestionProvider.java#modifyCustomCompletions"
+        ],
+        "status": "complete"
+      },
+      "decode": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/client_features/tests.rs#decodes_custom_chat_completions_packet_wire_order",
+          "crates/bbb-protocol/src/packets/client_features/tests.rs#rejects_unknown_custom_chat_completion_action",
+          "vanilla:net/minecraft/network/protocol/game/ClientboundCustomChatCompletionsPacket.java#STREAM_CODEC"
+        ],
+        "status": "complete"
+      },
+      "ownership": {
+        "evidence": [
+          "crates/bbb-world/src/play_apply.rs#PlayClientbound::CustomChatCompletions"
+        ],
+        "status": "complete"
+      },
+      "runtime_side_effect": {
+        "evidence": [
+          "crates/bbb-world/src/client/command_suggestions.rs#custom_chat_completions",
+          "crates/bbb-native/src/input.rs#latest_command_suggestion_text"
+        ],
+        "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+        "status": "partial"
+      },
+      "tests": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/client_features/tests.rs#decodes_custom_chat_completions_packet_wire_order",
+          "crates/bbb-world/src/client/command_suggestions.rs#custom_chat_completions_apply_set_add_and_remove_as_suggestions_set",
+          "crates/bbb-net/src/probe/play.rs#probe_applies_command_suggestion_packets_to_world",
+          "crates/bbb-native/src/runtime/events/tests/session_protocol_events.rs#client_feature_events_update_world_and_world_counters"
+        ],
+        "status": "complete"
+      }
+    },
     "play/clientbound/CLIENTBOUND_PLAYER_POSITION": {
       "canonical_apply": {
         "evidence": [

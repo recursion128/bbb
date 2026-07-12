@@ -95,6 +95,9 @@ Owner: `bbb-protocol`
   prediction teleport sequence as `ClientPacketListener.handleMovePlayer` does.
 - Then cover play, movement, inventory, chat, interaction and command suggestion
   end to end.
+- Merge `ClientSuggestionProvider` custom completion ADD/REMOVE/SET state into
+  native chat-input suggestion candidates. Canonical state is tracked, but the
+  current Tab completion path only consumes request-scoped server suggestions.
 
 ## Vanilla Java generator frontend migration
 

@@ -423,6 +423,8 @@ LowDiskSpaceWarning 的 unit wire、canonical counter、ownership 与 apply test
 SystemToast presentation 尚未实现，runtime 保持 partial，且不由客户端推断本地磁盘状态。
 SelectAdvancementsTab 的 nullable resource id wire、known/unknown/null selection、canonical root state、
 native advancements screen consumer 与 protocol/world/net/native tests 已全行闭合。
+CustomChatCompletions 的 action/list wire、ADD/REMOVE/SET canonical state 与 apply tests 已闭合；native
+chat suggestion candidate consumer 尚未合并该集合，runtime 保持 partial。
 
 完成标准：全部 vanilla 26.1 catalog entry 都有矩阵行；所有目标客户端适用项为
 `complete`，其余只有带 vanilla 依据的 `not-applicable` 或带重启判据的窄 `deferred`；

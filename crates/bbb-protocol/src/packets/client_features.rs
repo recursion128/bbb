@@ -70,6 +70,11 @@ pub(crate) fn decode_custom_chat_completions(
         entries.push(decoder.read_string(32767)?);
     }
 
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after custom chat completions packet".to_string(),
+        ));
+    }
     Ok(CustomChatCompletions { action, entries })
 }
 

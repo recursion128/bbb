@@ -11292,3 +11292,9 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   `ClientAdvancements.setSelectedTab` 锁定 nullable Identifier wire 并拒绝 trailing bytes。
 - [x] known id 选择 holder、unknown id/null 清空，native screen 从 canonical root/tab/widget state 更新；
   default namespace、invalid id、packet-order first-root 与 protocol/world/net/native tests 闭合五格。
+
+## 2026-07-11：custom-chat-completions packet coverage audit
+
+- [x] 对照 `ClientboundCustomChatCompletionsPacket` 与 `ClientSuggestionProvider.modifyCustomCompletions`
+  锁定 ADD/REMOVE/SET ordinal、string list wire 并拒绝 trailing bytes；canonical/ownership/tests 闭合。
+- [x] native chat Tab path 尚未把 custom set 合并进 suggestion candidates，runtime 保持 partial。

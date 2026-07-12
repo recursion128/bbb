@@ -32,6 +32,15 @@ fn decodes_custom_chat_completions_packet_wire_order() {
     assert_eq!(decoder.read_string(32767).unwrap(), "/warp");
     assert_eq!(decoder.read_string(32767).unwrap(), "/spawn");
     assert!(decoder.is_empty());
+
+    let mut trailing = payload.clone();
+    trailing.push(0);
+    assert!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_CUSTOM_CHAT_COMPLETIONS, &trailing)
+            .unwrap_err()
+            .to_string()
+            .contains("trailing bytes after custom chat completions packet")
+    );
 }
 
 #[test]
