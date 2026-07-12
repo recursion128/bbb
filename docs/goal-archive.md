@@ -11851,3 +11851,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] slot VarInt、最多 100 页、每页 1024 UTF-16 units、optional 32-unit title、signed/unsigned wire 与 control/native/net 发送已审计；补齐 protocol encoder 与 control 的 UTF-16/collection 拒绝门禁，encoder 闭合。
 - [x] vanilla server 只接受 hotbar/offhand 中含 writable-book component 的当前物品，并异步 text-filter 后更新或签名；bbb 尚无 native BookEditScreen、held-slot/component guard 和本地/响应 projection，command/state/tests 保持 partial，服务端无专用 ack。
+
+## 2026-07-12：play serverbound interact packet coverage audit
+
+- [x] 26.1 `ServerboundInteractPacket` 的 entity-id VarInt、hand enum、relative LP Vec3 与 secondary-action boolean wire，native crosshair/right-click、command queue、driver send 和 world-border/dragon-part guards 已审计；command/encoder 闭合。
+- [x] vanilla server 没有专用 acknowledgement，交互结果仍由普通 entity/inventory updates 同步。精确 main/offhand success 迭代、hands-busy/feature/item gates、carried-item ordering、local `interactOn`/swing-source 与 held-item presentation 仍开放，state/tests 保持 partial。

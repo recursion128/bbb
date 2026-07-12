@@ -286,6 +286,11 @@ Commands:
   `MultiPlayerGameMode.attack`: hands-busy/feature/item gates, miss-time,
   carried-item ordering, client presentation from `Player.attack`, and attack
   strength reset. Damage and combat outcomes remain server-authoritative.
+- Complete local entity-use parity from `Minecraft.startUseItem` and
+  `MultiPlayerGameMode.interact`: exact main/offhand iteration until a local
+  `InteractionResult.Success`, hands-busy and enabled-item gates, carried-item
+  ordering, local `interactOn` prediction, swing-source handling, and held-item
+  presentation. Entity state and inventory corrections remain server-authoritative.
 - Implement `ServerboundSignUpdatePacket` clipboard copy/cut/paste parity.
 
 Inventory:
