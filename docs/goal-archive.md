@@ -11866,3 +11866,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] boolean wire、maintenance control、native queue、NetCommand/driver send、服务器 permission authority 与 `ClientboundChangeDifficulty` canonical response 已审计并全行闭合。
 - [x] vanilla `DifficultyButtons` 只在 integrated server 启用且确认后发送 lock=true；bbb 是 external multiplayer client，不复制该 in-game configuration UI。control 可表达协议允许的 true/false，但不会预测成功，最终 locked 状态只由服务器广播更新。
+
+## 2026-07-12：play serverbound pick-item packet coverage audit
+
+- [x] block packed position/entity VarInt、include-data boolean、middle-click/Ctrl modifier、crosshair target、command queue、driver send 与 server range/creative/game-master authority 已审计；两行 command/encoder/state 闭合。
+- [x] vanilla 通过 SetHeldSlot 和普通 inventory/menu broadcasts 返回结果，不要求客户端本地预测。bbb 的 held-slot apply 已闭合，但 component-rich creative clone 仍受 SetPlayerInventory/ItemStack added-value 语义缺口影响，因此 ack/tests 保持 partial。

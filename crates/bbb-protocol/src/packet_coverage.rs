@@ -3786,6 +3786,36 @@ mod tests {
         }
     }
 
+    #[test]
+    fn play_serverbound_pick_item_family_keeps_component_response_open() {
+        let ledger = vanilla_packet_coverage_26_1().unwrap();
+        for packet in [
+            "SERVERBOUND_PICK_ITEM_FROM_BLOCK",
+            "SERVERBOUND_PICK_ITEM_FROM_ENTITY",
+        ] {
+            let entry = ledger
+                .entries
+                .iter()
+                .find(|entry| entry.state == "play" && entry.constant_name == packet)
+                .expect("play serverbound pick item coverage row");
+
+            for dimension in ["command_surface", "encoder", "state_guard"] {
+                assert_eq!(
+                    entry.coverage[dimension].status,
+                    PacketCoverageStatus::Complete,
+                    "{packet} {dimension}"
+                );
+            }
+            for dimension in ["ack_response", "tests"] {
+                assert_eq!(
+                    entry.coverage[dimension].status,
+                    PacketCoverageStatus::Partial,
+                    "{packet} {dimension}"
+                );
+            }
+        }
+    }
+
     fn state_name(state: PacketState) -> &'static str {
         match state {
             PacketState::Handshake => "handshake",

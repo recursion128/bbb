@@ -4193,28 +4193,50 @@
       "constant_name": "SERVERBOUND_PICK_ITEM_FROM_BLOCK",
       "coverage": {
         "ack_response": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "evidence": [
+            "crates/bbb-world/src/client/local_player.rs#apply_held_slot",
+            "crates/bbb-world/src/client/inventory.rs#apply_set_player_inventory",
+            "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#tryPickItem"
+          ],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
           "status": "partial"
         },
         "command_surface": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-native/src/input/mouse.rs#handle_mouse_input",
+            "crates/bbb-native/src/input/commands.rs#queue_pick_item_from_block_command",
+            "crates/bbb-net/src/driver/commands.rs#send_pick_item_from_block"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "encoder": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/serverbound.rs#encode_play_pick_item_from_block",
+            "vanilla:net/minecraft/network/protocol/game/ServerboundPickItemFromBlockPacket.java#STREAM_CODEC"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "state_guard": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-native/src/input/mouse.rs#control_middle_mouse_press_on_block_queues_pick_block_with_data",
+            "crates/bbb-native/src/input/mouse.rs#sprint_middle_mouse_press_does_not_include_pick_data",
+            "vanilla:net/minecraft/client/Minecraft.java#pickBlockOrEntity",
+            "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#handlePickItemFromBlock"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "evidence": [
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_pick_item_from_block_packet",
+            "crates/bbb-net/src/driver/commands/tests.rs#send_pick_item_from_block_encodes_pick_packet",
+            "crates/bbb-native/src/input/commands.rs#queues_pick_item_from_block_for_crosshair_hit",
+            "crates/bbb-native/src/input/mouse.rs#control_middle_mouse_press_on_block_queues_pick_block_with_data",
+            "crates/bbb-protocol/src/packet_coverage.rs#play_serverbound_pick_item_family_keeps_component_response_open"
+          ],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
           "status": "partial"
         }
       },
@@ -4228,28 +4250,50 @@
       "constant_name": "SERVERBOUND_PICK_ITEM_FROM_ENTITY",
       "coverage": {
         "ack_response": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "evidence": [
+            "crates/bbb-world/src/client/local_player.rs#apply_held_slot",
+            "crates/bbb-world/src/client/inventory.rs#apply_set_player_inventory",
+            "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#tryPickItem"
+          ],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
           "status": "partial"
         },
         "command_surface": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-native/src/input/mouse.rs#handle_mouse_input",
+            "crates/bbb-native/src/input/commands.rs#queue_pick_item_from_entity_command",
+            "crates/bbb-net/src/driver/commands.rs#send_pick_item_from_entity"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "encoder": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/serverbound.rs#encode_play_pick_item_from_entity",
+            "vanilla:net/minecraft/network/protocol/game/ServerboundPickItemFromEntityPacket.java#STREAM_CODEC"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "state_guard": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-native/src/input/mouse.rs#control_middle_mouse_press_on_entity_queues_pick_entity_with_data",
+            "crates/bbb-native/src/input/mouse.rs#sprint_middle_mouse_press_does_not_include_pick_data",
+            "vanilla:net/minecraft/client/Minecraft.java#pickBlockOrEntity",
+            "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#handlePickItemFromEntity"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "evidence": [
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_pick_item_from_entity_packet",
+            "crates/bbb-net/src/driver/commands/tests.rs#send_pick_item_from_entity_encodes_pick_packet",
+            "crates/bbb-native/src/input/commands.rs#queues_pick_item_from_entity",
+            "crates/bbb-native/src/input/mouse.rs#control_middle_mouse_press_on_entity_queues_pick_entity_with_data",
+            "crates/bbb-protocol/src/packet_coverage.rs#play_serverbound_pick_item_family_keeps_component_response_open"
+          ],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
           "status": "partial"
         }
       },

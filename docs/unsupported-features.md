@@ -295,6 +295,12 @@ Commands:
 
 Inventory:
 
+- Complete component-rich creative pick-item response parity. Middle-click/Ctrl
+  input, block/entity target selection and both serverbound packets are covered;
+  the server remains authoritative for reach, creative/game-master data access,
+  hotbar selection and inventory mutation. Remaining added-value ItemStack
+  components in SetPlayerInventory/container broadcasts can still lose clone
+  data and therefore keep the response family partial.
 - Complete the remaining ItemStack added-value component semantics consumed by
   SetEquipment; wire-safe type presence is not sufficient for canonical item
   state or component-driven held/armor rendering.
