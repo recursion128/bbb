@@ -33,6 +33,8 @@ const MESSAGE_SIGNATURE_BYTES: usize = 256;
 const MAX_ARGUMENT_SIGNATURE_COUNT: usize = 8;
 const MAX_ARGUMENT_SIGNATURE_NAME_CHARS: usize = 16;
 const MAX_CHAT_MESSAGE_CHARS: usize = 256;
+const MAX_CONTAINER_CLICK_CHANGED_SLOTS: usize = 128;
+const MAX_HASHED_COMPONENT_PATCH_ENTRIES: usize = 256;
 const MAX_PROFILE_PUBLIC_KEY_BYTES: usize = 512;
 const MAX_PROFILE_PUBLIC_KEY_SIGNATURE_BYTES: usize = 4096;
 const MAX_SERVERBOUND_CUSTOM_PAYLOAD: usize = 32767;
@@ -891,7 +893,21 @@ pub fn encode_play_container_button_click(packet: ContainerButtonClick) -> (i32,
     )
 }
 
-pub fn encode_play_container_click(packet: ContainerClick) -> (i32, Vec<u8>) {
+pub fn encode_play_container_click(packet: ContainerClick) -> Result<(i32, Vec<u8>)> {
+    if packet.changed_slots.len() > MAX_CONTAINER_CLICK_CHANGED_SLOTS {
+        return Err(ProtocolError::InvalidData(format!(
+            "container click changed slot count {} exceeds vanilla maximum {MAX_CONTAINER_CLICK_CHANGED_SLOTS}",
+            packet.changed_slots.len()
+        )));
+    }
+    for stack in packet
+        .changed_slots
+        .values()
+        .chain(std::iter::once(&packet.carried_item))
+    {
+        validate_hashed_stack(stack)?;
+    }
+
     let mut out = Encoder::new();
     out.write_var_i32(packet.container_id);
     out.write_var_i32(packet.state_id);
@@ -904,7 +920,7 @@ pub fn encode_play_container_click(packet: ContainerClick) -> (i32, Vec<u8>) {
         encode_hashed_stack(&mut out, stack);
     }
     encode_hashed_stack(&mut out, &packet.carried_item);
-    (ids::play::SERVERBOUND_CONTAINER_CLICK, out.into_inner())
+    Ok((ids::play::SERVERBOUND_CONTAINER_CLICK, out.into_inner()))
 }
 
 pub fn encode_play_container_close(packet: ContainerCloseRequest) -> (i32, Vec<u8>) {
@@ -936,6 +952,25 @@ fn encode_hashed_stack(out: &mut Encoder, stack: &HashedStack) {
             encode_hashed_component_patch(out, &stack.components);
         }
     }
+}
+
+fn validate_hashed_stack(stack: &HashedStack) -> Result<()> {
+    let HashedStack::Item(stack) = stack else {
+        return Ok(());
+    };
+    if stack.components.added_components.len() > MAX_HASHED_COMPONENT_PATCH_ENTRIES {
+        return Err(ProtocolError::InvalidData(format!(
+            "hashed component added count {} exceeds vanilla maximum {MAX_HASHED_COMPONENT_PATCH_ENTRIES}",
+            stack.components.added_components.len()
+        )));
+    }
+    if stack.components.removed_components.len() > MAX_HASHED_COMPONENT_PATCH_ENTRIES {
+        return Err(ProtocolError::InvalidData(format!(
+            "hashed component removed count {} exceeds vanilla maximum {MAX_HASHED_COMPONENT_PATCH_ENTRIES}",
+            stack.components.removed_components.len()
+        )));
+    }
+    Ok(())
 }
 
 fn encode_hashed_component_patch(out: &mut Encoder, patch: &HashedComponentPatch) {

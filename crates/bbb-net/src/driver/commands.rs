@@ -327,7 +327,7 @@ pub(crate) async fn send_container_click(
     conn: &mut RawConnection,
     packet: ContainerClick,
 ) -> Result<()> {
-    let (id, payload) = packets::encode_play_container_click(packet);
+    let (id, payload) = packets::encode_play_container_click(packet)?;
     conn.send_packet(id, &payload).await
 }
 

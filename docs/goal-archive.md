@@ -11816,3 +11816,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] `ServerboundContainerButtonClickPacket` 的 container-id/button-id 双 VarInt wire、lectern/enchantment/loom/stonecutter 原生输入面、NetCommand/driver 发送与 active-menu 类型 gate 已审计；command/encoder 闭合。
 - [x] 服务端仍以当前 menu id、spectator、`stillValid` 与 `clickMenuButton` 结果作权威校验，并只通过普通 container 更新广播结果，没有专用 acknowledgement。客户端本地 `clickMenuButton` 状态变化与完整 enchantment eligibility 尚未对齐，state/tests 保持 partial。
+
+## 2026-07-12：play serverbound container click packet coverage audit
+
+- [x] `ServerboundContainerClickPacket` 的 container/state VarInt、slot short、button byte、七种 generated ContainerInput、最多 128 个 changed slots、HashedStack/carried item wire 已审计；补齐 changed-slots 128 与 hashed added/removed 各 256 的 encoder 拒绝门禁。
+- [x] 本地 active-menu/slot gate、常用 click prediction、changed-slot/carried hash、unhashable/specialized result 的保守 server-authoritative fallback 与普通 container correction 已审计。服务端无专用 acknowledgement；剩余 rich component hash 与专用 menu prediction 由 container parity ledger 保持开放。

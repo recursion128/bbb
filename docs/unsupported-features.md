@@ -680,6 +680,12 @@ back into a todo. Do not delete these.
   `clickMenuButton` parity for lectern page state, stonecutter/loom result projection,
   and the complete enchantment item/currency/experience/creative eligibility path;
   the packet has no dedicated acknowledgement.
+- ContainerClick encodes all seven generated ContainerInput ids and predicts common
+  pickup, quick-move, swap, clone, throw, quick-craft, and pickup-all paths. Keep the
+  conservative empty-delta/server-authoritative fallback for unhashable component
+  patches and specialized result-slot semantics until their local menu rules are
+  complete; ordinary ContainerSetContent/Slot/Data updates remain the correction
+  path rather than a synthetic acknowledgement.
 - Preserve the full trusted OpenScreen title Component and finish dedicated
   presentation for every generated vanilla MenuType. The fixed 25-entry menu
   catalog and unknown-id rejection are covered; current canonical state keeps

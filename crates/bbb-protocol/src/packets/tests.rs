@@ -1338,7 +1338,8 @@ fn encodes_container_inventory_packets() {
         input: ContainerInput::Pickup,
         changed_slots,
         carried_item: HashedStack::empty(),
-    });
+    })
+    .unwrap();
     assert_eq!(id, ids::play::SERVERBOUND_CONTAINER_CLICK);
     let mut decoder = Decoder::new(&payload);
     assert_eq!(decoder.read_var_i32().unwrap(), 7);
@@ -1376,6 +1377,44 @@ fn encodes_container_inventory_packets() {
     assert_eq!(decoder.read_var_i32().unwrap(), 7);
     assert!(decoder.read_bool().unwrap());
     assert!(decoder.is_empty());
+}
+
+#[test]
+fn container_click_rejects_vanilla_bounded_collections_before_encoding() {
+    let click = |changed_slots, carried_item| ContainerClick {
+        container_id: 7,
+        state_id: 33,
+        slot_num: 5,
+        button_num: 0,
+        input: ContainerInput::Pickup,
+        changed_slots,
+        carried_item,
+    };
+
+    let changed_slots = (0..=128).map(|slot| (slot, HashedStack::empty())).collect();
+    assert!(encode_play_container_click(click(changed_slots, HashedStack::empty())).is_err());
+
+    let added_components = (0..=256).map(|id| (id, id)).collect();
+    let oversized_added = HashedStack::Item(HashedItemStack {
+        item_id: 42,
+        count: 1,
+        components: HashedComponentPatch {
+            added_components,
+            removed_components: BTreeSet::new(),
+        },
+    });
+    assert!(encode_play_container_click(click(BTreeMap::new(), oversized_added)).is_err());
+
+    let removed_components = (0..=256).collect();
+    let oversized_removed = HashedStack::Item(HashedItemStack {
+        item_id: 42,
+        count: 1,
+        components: HashedComponentPatch {
+            added_components: BTreeMap::new(),
+            removed_components,
+        },
+    });
+    assert!(encode_play_container_click(click(BTreeMap::new(), oversized_removed)).is_err());
 }
 
 #[test]
