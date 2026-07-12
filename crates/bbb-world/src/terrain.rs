@@ -16,12 +16,12 @@ use generated_26_1::{
     VANILLA_FLOWER_POT_BLOCKS, VANILLA_HALF_TRANSPARENT_SKIP_RENDERING_BLOCKS,
     VANILLA_HANGING_SIGN_BLOCKS, VANILLA_INVISIBLE_RENDER_SHAPE_BLOCKS,
     VANILLA_IRON_BARS_CLASS_BLOCKS, VANILLA_LANTERN_BLOCKS, VANILLA_LEAVES_BLOCKS,
-    VANILLA_LIGHTNING_ROD_BLOCKS, VANILLA_NO_COLLISION_BANNER_BLOCKS,
+    VANILLA_LIGHTNING_ROD_BLOCKS, VANILLA_LOG_BLOCKS, VANILLA_NO_COLLISION_BANNER_BLOCKS,
     VANILLA_NO_COLLISION_CROP_SUPPLEMENT_BLOCKS, VANILLA_NO_COLLISION_FIRE_BLOCKS,
     VANILLA_NO_COLLISION_SIGN_BLOCKS, VANILLA_NO_COLLISION_SMALL_FLOWER_BLOCKS,
     VANILLA_NO_COLLISION_THIN_OVERLAY_BLOCKS, VANILLA_NO_COLLISION_WIRE_BLOCKS,
-    VANILLA_NO_TERRAIN_PARTICLE_BLOCKS, VANILLA_PRESSURE_PLATE_BLOCKS, VANILLA_RAIL_BLOCKS,
-    VANILLA_SAME_BLOCK_ALL_FACE_SKIP_RENDERING_BLOCKS,
+    VANILLA_NO_TERRAIN_PARTICLE_BLOCKS, VANILLA_PLANK_BLOCKS, VANILLA_PRESSURE_PLATE_BLOCKS,
+    VANILLA_RAIL_BLOCKS, VANILLA_SAME_BLOCK_ALL_FACE_SKIP_RENDERING_BLOCKS,
     VANILLA_SAME_BLOCK_VERTICAL_FACE_SKIP_RENDERING_BLOCKS, VANILLA_SAPLING_BLOCKS,
     VANILLA_SHELF_BLOCKS, VANILLA_SHULKER_BOX_BLOCKS, VANILLA_SLAB_BLOCKS, VANILLA_STAIR_BLOCKS,
     VANILLA_STANDING_SIGN_BLOCKS, VANILLA_TRAPDOOR_BLOCKS, VANILLA_WALL_BLOCKS,
@@ -459,6 +459,14 @@ pub fn block_name_is_wall_torch(name: &str) -> bool {
     VANILLA_WALL_TORCH_BLOCKS.contains(&name)
 }
 
+pub fn block_name_is_log(name: &str) -> bool {
+    VANILLA_LOG_BLOCKS.contains(&name)
+}
+
+pub fn block_name_is_planks(name: &str) -> bool {
+    VANILLA_PLANK_BLOCKS.contains(&name)
+}
+
 pub(crate) fn block_name_has_empty_collision_shape(name: &str) -> bool {
     name.contains("sapling")
         || matches!(
@@ -713,6 +721,17 @@ mod tests {
         assert!(!block_name_is_floor_torch("minecraft:copper_wall_torch"));
         assert!(block_name_is_wall_torch("minecraft:copper_wall_torch"));
         assert!(!block_name_is_wall_torch("minecraft:copper_torch"));
+        for block_name in [
+            "minecraft:oak_log",
+            "minecraft:stripped_oak_wood",
+            "minecraft:crimson_stem",
+            "minecraft:warped_hyphae",
+        ] {
+            assert!(block_name_is_log(block_name), "{block_name}");
+        }
+        assert!(block_name_is_planks("minecraft:bamboo_planks"));
+        assert!(!block_name_is_log("minecraft:custom_log"));
+        assert!(!block_name_is_planks("minecraft:custom_planks"));
     }
 
     #[test]

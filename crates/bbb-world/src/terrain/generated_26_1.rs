@@ -650,6 +650,68 @@ pub(super) const VANILLA_CAULDRON_BLOCKS: &[&str] = &[
     "minecraft:powder_snow_cauldron",
 ];
 
+pub(super) const VANILLA_LOG_BLOCKS: &[&str] = &[
+    "minecraft:dark_oak_log",
+    "minecraft:dark_oak_wood",
+    "minecraft:stripped_dark_oak_log",
+    "minecraft:stripped_dark_oak_wood",
+    "minecraft:pale_oak_log",
+    "minecraft:pale_oak_wood",
+    "minecraft:stripped_pale_oak_log",
+    "minecraft:stripped_pale_oak_wood",
+    "minecraft:oak_log",
+    "minecraft:oak_wood",
+    "minecraft:stripped_oak_log",
+    "minecraft:stripped_oak_wood",
+    "minecraft:acacia_log",
+    "minecraft:acacia_wood",
+    "minecraft:stripped_acacia_log",
+    "minecraft:stripped_acacia_wood",
+    "minecraft:birch_log",
+    "minecraft:birch_wood",
+    "minecraft:stripped_birch_log",
+    "minecraft:stripped_birch_wood",
+    "minecraft:jungle_log",
+    "minecraft:jungle_wood",
+    "minecraft:stripped_jungle_log",
+    "minecraft:stripped_jungle_wood",
+    "minecraft:spruce_log",
+    "minecraft:spruce_wood",
+    "minecraft:stripped_spruce_log",
+    "minecraft:stripped_spruce_wood",
+    "minecraft:mangrove_log",
+    "minecraft:mangrove_wood",
+    "minecraft:stripped_mangrove_log",
+    "minecraft:stripped_mangrove_wood",
+    "minecraft:cherry_log",
+    "minecraft:cherry_wood",
+    "minecraft:stripped_cherry_log",
+    "minecraft:stripped_cherry_wood",
+    "minecraft:crimson_stem",
+    "minecraft:stripped_crimson_stem",
+    "minecraft:crimson_hyphae",
+    "minecraft:stripped_crimson_hyphae",
+    "minecraft:warped_stem",
+    "minecraft:stripped_warped_stem",
+    "minecraft:warped_hyphae",
+    "minecraft:stripped_warped_hyphae",
+];
+
+pub(super) const VANILLA_PLANK_BLOCKS: &[&str] = &[
+    "minecraft:oak_planks",
+    "minecraft:spruce_planks",
+    "minecraft:birch_planks",
+    "minecraft:jungle_planks",
+    "minecraft:acacia_planks",
+    "minecraft:dark_oak_planks",
+    "minecraft:pale_oak_planks",
+    "minecraft:crimson_planks",
+    "minecraft:warped_planks",
+    "minecraft:mangrove_planks",
+    "minecraft:bamboo_planks",
+    "minecraft:cherry_planks",
+];
+
 pub(super) const VANILLA_DOOR_BLOCKS: &[&str] = &[
     "minecraft:oak_door",
     "minecraft:spruce_door",
@@ -950,6 +1012,8 @@ mod tests {
         assert_eq!(VANILLA_ANVIL_BLOCKS.len(), 3);
         assert_eq!(VANILLA_CAMPFIRE_BLOCKS.len(), 2);
         assert_eq!(VANILLA_CAULDRON_BLOCKS.len(), 4);
+        assert_eq!(VANILLA_LOG_BLOCKS.len(), 44);
+        assert_eq!(VANILLA_PLANK_BLOCKS.len(), 12);
         assert_eq!(VANILLA_DOOR_BLOCKS.len(), 21);
         assert_eq!(VANILLA_TRAPDOOR_BLOCKS.len(), 21);
         assert_eq!(VANILLA_RAIL_BLOCKS.len(), 4);

@@ -12383,3 +12383,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   SkullBlock / WallSkullBlock queries，删除 `_wall_skull` / `_wall_head` suffix 判断；palette
   prefilter 同样使用 generated union。skull kind 映射继续由其语义 owner 手写，测试反向证明
   已知 kind 属于 catalog，custom/other-namespace lookalikes 不被识别。
+
+## 2026-07-12：Generated exact destroy-fallback wood memberships
+
+- [x] block-membership generator 递归展开 vanilla `logs` 44 项与 `planks` 12 项 tags，world
+  导出精确查询；local destroy 仅在启动时 generated destroy-profile catalog 未注入的兼容
+  fallback 中复用这些查询，保留 hardness 2.0 与 tool 语义不变。
+- [x] fallback 删除 `_log/_wood/_stem/_hyphae/_planks` suffix 猜测；全部 vanilla logs、woods、
+  stems、hyphae、planks 仍覆盖，custom/other-namespace lookalikes 不再获得伪造破坏速度。正常
+  native startup 继续以 `bbb-pack` 的完整 generated destroy-profile catalog 为首选权威。

@@ -10,7 +10,10 @@ use bbb_protocol::packets::Direction as ProtocolDirection;
 use serde::{Deserialize, Serialize};
 
 use super::local_player_fluid::local_player_eye_in_water;
-use crate::{block_name_is_air, block_name_is_leaves, BlockPos, WorldStore};
+use crate::{
+    block_name_is_air, block_name_is_leaves, block_name_is_log, block_name_is_planks, BlockPos,
+    WorldStore,
+};
 
 const LOCAL_DESTROY_PROGRESS_SCALE: u32 = 1_000_000;
 pub(crate) const LOCAL_DESTROY_COMPLETION_DELAY_TICKS: u8 = 5;
@@ -310,14 +313,7 @@ fn fallback_local_block_destroy_profile(block_name: &str) -> Option<LocalBlockDe
         | "minecraft:calcite" => Some(profile(15, true)),
         "minecraft:cobblestone" | "minecraft:mossy_cobblestone" => Some(profile(20, true)),
         "minecraft:obsidian" => Some(profile(500, true)),
-        name if name.ends_with("_log")
-            || name.ends_with("_wood")
-            || name.ends_with("_stem")
-            || name.ends_with("_hyphae")
-            || name.ends_with("_planks") =>
-        {
-            Some(profile(20, false))
-        }
+        name if block_name_is_log(name) || block_name_is_planks(name) => Some(profile(20, false)),
         name if block_name_is_leaves(name) => Some(profile(2, false)),
         _ => None,
     }
@@ -407,6 +403,35 @@ mod tests {
         assert!(!leaves.requires_correct_tool);
         assert!(fallback_local_block_destroy_profile("minecraft:custom_leaves").is_none());
         assert!(fallback_local_block_destroy_profile("example:oak_leaves").is_none());
+    }
+
+    #[test]
+    fn fallback_destroy_profile_uses_exact_log_and_plank_memberships() {
+        for block_name in [
+            "minecraft:oak_log",
+            "minecraft:stripped_mangrove_wood",
+            "minecraft:crimson_stem",
+            "minecraft:warped_hyphae",
+            "minecraft:bamboo_planks",
+        ] {
+            let profile = fallback_local_block_destroy_profile(block_name)
+                .expect("generated vanilla log/plank member");
+            assert_eq!(profile.destroy_time_tenths, Some(20), "{block_name}");
+            assert!(!profile.requires_correct_tool, "{block_name}");
+        }
+        for block_name in [
+            "minecraft:custom_log",
+            "minecraft:custom_wood",
+            "minecraft:custom_stem",
+            "minecraft:custom_hyphae",
+            "minecraft:custom_planks",
+            "example:oak_log",
+        ] {
+            assert!(
+                fallback_local_block_destroy_profile(block_name).is_none(),
+                "{block_name}"
+            );
+        }
     }
 
     #[test]
