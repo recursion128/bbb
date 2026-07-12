@@ -268,16 +268,19 @@ pub(crate) fn sky_environment_for_world_with_environment_colors(
     colors: CameraEnvironmentColors,
     hide_lightning_flash: bool,
 ) -> SkyEnvironment {
+    match world
+        .level_info()
+        .map(WorldLevelInfo::skybox)
+        .unwrap_or(WorldSkybox::Overworld)
+    {
+        WorldSkybox::None => return SkyEnvironment::disabled(),
+        WorldSkybox::End => return SkyEnvironment::end(),
+        WorldSkybox::Overworld => {}
+    }
     let dimension_kind = world
         .level_info()
         .map(vanilla_lightmap_dimension_kind)
         .unwrap_or(VanillaLightmapDimensionKind::Overworld);
-    if dimension_kind == VanillaLightmapDimensionKind::End {
-        return SkyEnvironment::end();
-    }
-    if dimension_kind != VanillaLightmapDimensionKind::Overworld {
-        return SkyEnvironment::disabled();
-    }
 
     let day_time = world.world_time().map(|time| time.day_time).unwrap_or(6000);
     let weather = world.weather();

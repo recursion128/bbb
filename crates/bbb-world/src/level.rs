@@ -59,6 +59,8 @@ pub struct WorldLevelInfo {
     #[serde(default)]
     pub cardinal_lighting: WorldCardinalLighting,
     #[serde(default)]
+    pub skybox: WorldSkybox,
+    #[serde(default)]
     pub last_death_location: Option<WorldGlobalPos>,
     pub sea_level: i32,
     pub is_debug: bool,
@@ -74,6 +76,14 @@ pub enum WorldCardinalLighting {
     Nether,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub enum WorldSkybox {
+    None,
+    #[default]
+    Overworld,
+    End,
+}
+
 impl WorldLevelInfo {
     pub fn has_sky_light(&self) -> bool {
         self.has_sky_light
@@ -81,6 +91,10 @@ impl WorldLevelInfo {
 
     pub fn cardinal_lighting(&self) -> WorldCardinalLighting {
         self.cardinal_lighting
+    }
+
+    pub fn skybox(&self) -> WorldSkybox {
+        self.skybox
     }
 }
 
@@ -412,6 +426,11 @@ impl WorldStore {
                     &spawn_info.dimension,
                 )
             });
+        let skybox = dimension_type
+            .and_then(|projection| projection.skybox)
+            .unwrap_or_else(|| {
+                built_in_dimension_skybox(spawn_info.dimension_type_id, &spawn_info.dimension)
+            });
         let dimension_key_changed = self
             .level
             .as_ref()
@@ -426,6 +445,7 @@ impl WorldStore {
             dimension_type_name,
             has_sky_light,
             cardinal_lighting,
+            skybox,
             last_death_location: spawn_info
                 .last_death_location
                 .as_ref()
@@ -646,11 +666,20 @@ fn built_in_dimension_has_sky_light(dimension_type_id: i32, dimension: &str) -> 
     )
 }
 
+fn built_in_dimension_skybox(dimension_type_id: i32, dimension: &str) -> WorldSkybox {
+    match dimension_profile(dimension_type_id, dimension).name {
+        Some("minecraft:the_nether") => WorldSkybox::None,
+        Some("minecraft:the_end") => WorldSkybox::End,
+        _ => WorldSkybox::Overworld,
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct DimensionTypeClientProjection {
     dimension: Option<WorldDimension>,
     has_sky_light: Option<bool>,
     cardinal_lighting: Option<WorldCardinalLighting>,
+    skybox: Option<WorldSkybox>,
 }
 
 fn dimension_type_client_projection_from_registry(
@@ -670,10 +699,16 @@ fn dimension_type_client_projection_from_registry(
         None => Some(WorldCardinalLighting::Default),
         _ => None,
     };
+    let skybox = match find_nbt_entry(&fields, "skybox") {
+        Some(NbtValue::String(name)) => skybox_from_name(name),
+        None => Some(WorldSkybox::Overworld),
+        _ => None,
+    };
     Some(DimensionTypeClientProjection {
         dimension,
         has_sky_light,
         cardinal_lighting,
+        skybox,
     })
 }
 
@@ -712,6 +747,15 @@ fn cardinal_lighting_type_from_name(name: &str) -> Option<WorldCardinalLighting>
     match name {
         "default" => Some(WorldCardinalLighting::Default),
         "nether" => Some(WorldCardinalLighting::Nether),
+        _ => None,
+    }
+}
+
+fn skybox_from_name(name: &str) -> Option<WorldSkybox> {
+    match name {
+        "none" => Some(WorldSkybox::None),
+        "overworld" => Some(WorldSkybox::Overworld),
+        "end" => Some(WorldSkybox::End),
         _ => None,
     }
 }
@@ -990,6 +1034,7 @@ mod tests {
             dimension_type_name: Some("minecraft:the_nether".to_string()),
             has_sky_light: false,
             cardinal_lighting: WorldCardinalLighting::Nether,
+            skybox: WorldSkybox::None,
             last_death_location: None,
             sea_level: 32,
             is_debug: false,
@@ -1500,7 +1545,7 @@ mod tests {
         let mut custom_nether = WorldStore::new();
         record_custom_dimension_type_registry(
             &mut custom_nether,
-            dimension_type_nbt(Some("nether"), Some(false), None),
+            dimension_type_nbt(Some("nether"), Some(false), None, Some("none")),
         );
         custom_nether.apply_login(&login_packet(4, "example:custom"));
         assert!(!custom_nether.level_info().unwrap().has_sky_light());
@@ -1516,7 +1561,7 @@ mod tests {
         let mut omitted_field = WorldStore::new();
         record_custom_dimension_type_registry(
             &mut omitted_field,
-            dimension_type_nbt(None, None, None),
+            dimension_type_nbt(None, None, None, None),
         );
         omitted_field.apply_login(&login_packet(4, "minecraft:the_nether"));
         assert_eq!(
@@ -1530,7 +1575,7 @@ mod tests {
         let mut custom = WorldStore::new();
         record_custom_dimension_type_registry(
             &mut custom,
-            dimension_type_nbt(None, Some(true), Some((-32, 512, 384))),
+            dimension_type_nbt(None, Some(true), Some((-32, 512, 384)), Some("end")),
         );
         custom.apply_login(&login_packet(4, "example:custom"));
         assert_eq!(
@@ -1544,6 +1589,7 @@ mod tests {
                 height: 512,
             }
         );
+        assert_eq!(custom.level_info().unwrap().skybox(), WorldSkybox::End);
 
         for invalid_shape in [
             (-31, 512, 384),
@@ -1556,7 +1602,7 @@ mod tests {
             let mut invalid = WorldStore::new();
             record_custom_dimension_type_registry(
                 &mut invalid,
-                dimension_type_nbt(None, Some(true), Some(invalid_shape)),
+                dimension_type_nbt(None, Some(true), Some(invalid_shape), None),
             );
             invalid.apply_login(&login_packet(4, "example:custom"));
             assert_eq!(invalid.dimension(), WorldDimension::default());
@@ -1634,6 +1680,7 @@ mod tests {
         cardinal_light: Option<&str>,
         has_sky_light: Option<bool>,
         shape: Option<(i32, i32, i32)>,
+        skybox: Option<&str>,
     ) -> Vec<u8> {
         let mut payload = vec![10];
         if let Some((min_y, height, logical_height)) = shape {
@@ -1656,6 +1703,11 @@ mod tests {
             payload.push(8);
             write_nbt_string(&mut payload, "cardinal_light");
             write_nbt_string(&mut payload, cardinal_light);
+        }
+        if let Some(skybox) = skybox {
+            payload.push(8);
+            write_nbt_string(&mut payload, "skybox");
+            write_nbt_string(&mut payload, skybox);
         }
         payload.push(0);
         payload

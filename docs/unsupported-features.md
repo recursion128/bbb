@@ -81,9 +81,9 @@ Owner: `bbb-protocol`
   static tags and data-component initializers, and freeze typed lookup state.
   Raw NBT summaries, the narrow validated dimension shape/lighting projection,
   individual checked tag queries, and a few derived audio registries are not
-  that runtime. Custom dimension presentation still needs the typed skybox and
-  environment attributes instead of treating unknown resource identities as a
-  vanilla dimension kind.
+  that runtime. Custom dimension presentation still needs typed environment
+  attributes instead of treating unknown resource identities as a vanilla
+  lightmap/fog dimension kind; typed `skybox` projection is complete.
 - Complete play Login session initialization beyond the current player-id and
   partial dimension/gameplay projection: retain the initial level set, chunk
   radius, simulation distance, secure-chat enforcement, seed and portal

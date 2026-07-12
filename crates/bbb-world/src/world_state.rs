@@ -6,6 +6,6 @@ pub use crate::diagnostics::{WorldApplyDiagnosticsState, WorldApplyErrorState};
 pub use crate::error::{Result, WorldDecodeError};
 pub use crate::level::{
     ClockUpdateState, WorldCardinalLighting, WorldDimension, WorldGameplayState, WorldLevelInfo,
-    WorldTickingState, WorldTimeState, WorldWeatherState,
+    WorldSkybox, WorldTickingState, WorldTimeState, WorldWeatherState,
 };
 pub use crate::store::WorldStore;

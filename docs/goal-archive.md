@@ -12150,4 +12150,9 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 ## 2026-07-12：dimension presentation holder-identity precedence
 
 - [x] native lightmap、fog、sky、weather 与相关 dimension presentation 共用的 dimension-kind classifier 现在只要有 session dimension-type resource identity，就不再按 numeric holder 0/1/2/3 解释；reordered nether identity 与 custom id 0 focused cases 已锁定。
-- [x] 缺 registry identity 的 clean/offline path 仍保留 dimension key/id fallback；custom dimension 的 typed skybox/environment attributes 继续开放，unknown identity 安全归为 `Other` 而不是猜测 overworld。
+- [x] 缺 registry identity 的 clean/offline path 仍保留 dimension key/id fallback；custom dimension 的 typed environment attributes 继续开放，unknown identity 安全归为 `Other` 而不是猜测 overworld。
+
+## 2026-07-12：typed dimension skybox projection
+
+- [x] `DimensionType.skybox` 现在从 shared NBT projection 解析为 `None/Overworld/End`，字段缺失遵循 vanilla Codec 的 `Overworld` 默认，非法值或缺 registry 时走 builtin profile fallback。
+- [x] native sky render extraction 不再由 dimension resource identity猜测天空类型，直接消费 typed skybox；custom `end` projection 与既有 end/overworld/nether renderer tests 保持通过。environment attributes、timeline 与 clock holder 仍开放。

@@ -1619,6 +1619,7 @@
             "crates/bbb-native/src/entity_scene.rs#EntityVariantRegistryLookup",
             "crates/bbb-world/src/level.rs#dimension_type_client_projection_from_registry",
             "crates/bbb-world/src/level.rs#dimension_type_shape_from_fields",
+            "crates/bbb-world/src/level.rs#skybox_from_name",
             "crates/bbb-world/src/registries/tests.rs#registry_holder_lookup_uses_checked_wire_order_identity",
             "crates/bbb-world/src/registries/tests.rs#registry_lookup_uses_static_fallback_only_without_server_contents",
             "crates/bbb-world/src/registries/tests.rs#configuration_registry_collection_commits_atomically_and_replaces_holder_order",
@@ -1649,6 +1650,7 @@
           "evidence": [
             "crates/bbb-native/src/runtime/events/dispatcher.rs#synchronize_audio_registries_from_world",
             "crates/bbb-native/src/runtime.rs#vanilla_lightmap_dimension_kind",
+            "crates/bbb-native/src/runtime/render_extract.rs#sky_environment_for_world_with_environment_colors",
             "vanilla:net/minecraft/client/multiplayer/RegistryDataCollector.java#collectGameRegistries"
           ],
           "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
@@ -1662,6 +1664,7 @@
             "crates/bbb-world/src/registries/tests.rs#tag_only_configuration_preserves_registry_contents_and_replaces_named_tags",
             "crates/bbb-world/src/level.rs#dimension_type_registry_cardinal_light_overrides_builtin_fallback",
             "crates/bbb-native/src/runtime/tests.rs#lightmap_dimension_kind_prefers_registry_identity_over_bootstrap_holder_id",
+            "crates/bbb-native/src/runtime/tests.rs#sky_environment_projects_end_skybox_state",
             "crates/bbb-native/src/runtime/tests.rs#hud_debug_overlay_projects_custom_biome_from_camera_feet_block",
             "crates/bbb-native/src/runtime/tests.rs#hud_debug_overlay_projects_custom_looking_at_entity",
             "crates/bbb-native/src/runtime/tests.rs#hud_debug_entity_type_name_uses_world_registry_source_rules",

@@ -60,7 +60,7 @@ use bbb_world::{
     ItemEquipmentSlot, MerchantOfferState, MerchantOffersState, MobEffectState, MountArmorSlotKind,
     MountInventoryKind, OminousItemSpawnerParticleState, PrimedTntSmokeParticleState,
     RavagerStunParticleState, SignBlockForm, SoundEventState, SoundHolderState, TerrainFluidKind,
-    TerrainFluidState, TerrainLight, TerrainMaterialClass, WorldLevelInfo, WorldStore,
+    TerrainFluidState, TerrainLight, TerrainMaterialClass, WorldLevelInfo, WorldSkybox, WorldStore,
     WorldWeatherState,
 };
 use tokio::sync::mpsc;
