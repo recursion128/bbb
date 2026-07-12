@@ -12800,18 +12800,20 @@
         },
         "runtime_side_effect": {
           "evidence": [
-            "crates/bbb-world/src/client/hud.rs#tab_list",
-            "crates/bbb-native/src/runtime/events/tests/session_hud_and_vehicle_events.rs#hud_session_events_update_world_and_world_counters"
+            "crates/bbb-native/src/runtime/render_extract.rs#hud_player_list_from_world",
+            "crates/bbb-renderer/src/hud.rs#push_hud_player_list"
           ],
-          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [
             "crates/bbb-protocol/src/packets/server_presentation.rs#decodes_tab_list_header_footer",
             "crates/bbb-world/src/client/hud.rs#tab_list_empty_components_clear_header_and_footer",
             "crates/bbb-net/src/probe/play.rs#probe_applies_hud_session_packets_to_world",
-            "crates/bbb-native/src/runtime/events/tests/session_hud_and_vehicle_events.rs#hud_session_events_update_world_and_world_counters"
+            "crates/bbb-native/src/runtime/tests.rs#player_list_projection_uses_tab_visibility_and_vanilla_entry_order",
+            "crates/bbb-renderer/src/hud.rs#player_list_grid_matches_vanilla_twenty_row_columns_and_eighty_cap",
+            "crates/bbb-renderer/src/hud.rs#player_list_ping_thresholds_and_plain_wrapping_match_projection_contract"
           ],
           "gap": null,
           "status": "complete"

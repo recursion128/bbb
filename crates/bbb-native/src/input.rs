@@ -979,6 +979,10 @@ impl ClientInputState {
         self.shift_left_down || self.shift_right_down
     }
 
+    pub(crate) fn player_list_key_down(&self) -> bool {
+        self.pressed_keys.contains(&KeyCode::Tab)
+    }
+
     fn set_key_down(&mut self, code: KeyCode, pressed: bool) {
         if pressed {
             self.pressed_keys.insert(code);

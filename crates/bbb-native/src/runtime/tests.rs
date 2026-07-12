@@ -295,6 +295,85 @@ fn particle_player_motion_contexts_track_local_and_remote_players() {
 }
 
 #[test]
+fn player_list_projection_uses_tab_visibility_and_vanilla_entry_order() {
+    let mut world = WorldStore::new();
+    let entries = [
+        (
+            1u128,
+            "alpha",
+            0,
+            bbb_protocol::packets::GameType::Survival,
+            40,
+        ),
+        (
+            2,
+            "Zulu",
+            5,
+            bbb_protocol::packets::GameType::Spectator,
+            900,
+        ),
+        (3, "beta", 5, bbb_protocol::packets::GameType::Creative, 120),
+    ];
+    world.apply_player_info_update(bbb_protocol::packets::PlayerInfoUpdate {
+        actions: vec![
+            bbb_protocol::packets::PlayerInfoAction::AddPlayer,
+            bbb_protocol::packets::PlayerInfoAction::UpdateListed,
+            bbb_protocol::packets::PlayerInfoAction::UpdateGameMode,
+            bbb_protocol::packets::PlayerInfoAction::UpdateLatency,
+            bbb_protocol::packets::PlayerInfoAction::UpdateListOrder,
+        ],
+        entries: entries
+            .into_iter()
+            .map(|(id, name, list_order, game_mode, latency)| {
+                bbb_protocol::packets::PlayerInfoEntry {
+                    profile_id: uuid::Uuid::from_u128(id),
+                    profile: Some(bbb_protocol::packets::GameProfile {
+                        uuid: uuid::Uuid::from_u128(id),
+                        name: name.to_string(),
+                        properties: Vec::new(),
+                    }),
+                    listed: true,
+                    latency,
+                    game_mode,
+                    display_name: None,
+                    show_hat: false,
+                    list_order,
+                    chat_session: None,
+                }
+            })
+            .collect(),
+    });
+    world.apply_tab_list(bbb_protocol::packets::TabList {
+        header: Some("Welcome".to_string()),
+        footer: Some("Online".to_string()),
+    });
+    let mut input = ClientInputState::new(true);
+    assert_eq!(hud_player_list_from_world(&input, &world), None);
+    crate::input::handle_key_input(
+        &mut input,
+        &mut NetCounters::default(),
+        &mut world,
+        &None,
+        PhysicalKey::Code(KeyCode::Tab),
+        ElementState::Pressed,
+    );
+
+    let list = hud_player_list_from_world(&input, &world).expect("Tab list");
+    assert_eq!(list.header.as_deref(), Some("Welcome"));
+    assert_eq!(list.footer.as_deref(), Some("Online"));
+    assert_eq!(
+        list.entries
+            .iter()
+            .map(|entry| entry.name_runs[0].text.as_str())
+            .collect::<Vec<_>>(),
+        vec!["beta", "Zulu", "alpha"]
+    );
+    assert!(!list.entries[0].spectator);
+    assert!(list.entries[1].spectator);
+    assert_eq!(list.entries[0].latency, 120);
+}
+
+#[test]
 fn particle_entity_target_contexts_track_world_entity_positions() {
     let mut world = WorldStore::new();
     assert!(particle_entity_target_contexts(&world).is_empty());

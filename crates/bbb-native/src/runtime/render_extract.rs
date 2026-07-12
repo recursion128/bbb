@@ -10,11 +10,12 @@ use bbb_renderer::{
     EntityModelInstance, FirstPersonMapBackgroundSurface, FirstPersonMapBackgroundTexture,
     FirstPersonPlayerArm, HudActionBarText, HudAirSupply, HudBlockItemModel, HudBossBar,
     HudBossBarColor, HudBossBarOverlay, HudDebugOptionsScreen, HudDebugOverlay, HudFoodEffect,
-    HudInventoryScreen, HudJumpBar, HudPauseScreen, HudPlayerHealth, HudSignEditorScreen,
-    HudStatsScreen, HudStyledTextRun, HudTitleText, HudVehicleHealth, ItemEntityBillboard,
-    ItemFrameMapDecorationSurface, ItemFrameMapDecorationTexture, ItemFrameMapSurface,
-    ItemFrameMapTextSurface, ItemFrameMapTexture, ItemModelMesh, Renderer, SelectionOutline,
-    SignTextSurface, WorldBorderRenderState,
+    HudInventoryScreen, HudJumpBar, HudPauseScreen, HudPlayerHealth, HudPlayerList,
+    HudPlayerListEntry, HudSignEditorScreen, HudStatsScreen, HudStyledTextRun, HudTextStyle,
+    HudTitleText, HudVehicleHealth, ItemEntityBillboard, ItemFrameMapDecorationSurface,
+    ItemFrameMapDecorationTexture, ItemFrameMapSurface, ItemFrameMapTextSurface,
+    ItemFrameMapTexture, ItemModelMesh, Renderer, SelectionOutline, SignTextSurface,
+    WorldBorderRenderState,
 };
 
 use super::*;
@@ -777,6 +778,80 @@ pub(crate) fn hud_boss_bars_from_world(world: &WorldStore) -> Vec<HudBossBar> {
         .collect()
 }
 
+pub(crate) fn hud_player_list_from_world(
+    input: &ClientInputState,
+    world: &WorldStore,
+) -> Option<HudPlayerList> {
+    if !input.player_list_key_down() || input_screen_is_open(input, world) {
+        return None;
+    }
+    let scoreboard = world.scoreboard();
+    let mut entries: Vec<_> = world
+        .listed_players()
+        .iter()
+        .filter_map(|id| world.player_info_entry(*id))
+        .collect();
+    entries.sort_by(|left, right| {
+        let left_team = scoreboard
+            .team_for_scoreboard_name(&left.profile.name)
+            .map(|team| team.name.as_str())
+            .unwrap_or("");
+        let right_team = scoreboard
+            .team_for_scoreboard_name(&right.profile.name)
+            .map(|team| team.name.as_str())
+            .unwrap_or("");
+        right
+            .list_order
+            .cmp(&left.list_order)
+            .then_with(|| left.is_spectator().cmp(&right.is_spectator()))
+            .then_with(|| left_team.cmp(right_team))
+            .then_with(|| {
+                left.profile
+                    .name
+                    .to_lowercase()
+                    .cmp(&right.profile.name.to_lowercase())
+            })
+    });
+    let entries = entries
+        .into_iter()
+        .take(80)
+        .map(|entry| {
+            let name = entry.display_name.clone().unwrap_or_else(|| {
+                let team = scoreboard.team_for_scoreboard_name(&entry.profile.name);
+                format!(
+                    "{}{}{}",
+                    team.and_then(|team| team.parameters.as_ref())
+                        .map(|parameters| parameters.player_prefix.as_str())
+                        .unwrap_or(""),
+                    entry.profile.name,
+                    team.and_then(|team| team.parameters.as_ref())
+                        .map(|parameters| parameters.player_suffix.as_str())
+                        .unwrap_or("")
+                )
+            });
+            HudPlayerListEntry {
+                name_runs: vec![HudStyledTextRun {
+                    text: name,
+                    style: HudTextStyle {
+                        italic: entry.is_spectator(),
+                        ..Default::default()
+                    },
+                    color: None,
+                }],
+                latency: entry.latency,
+                spectator: entry.is_spectator(),
+            }
+        })
+        .collect::<Vec<_>>();
+    let header = world.tab_list().header.clone();
+    let footer = world.tab_list().footer.clone();
+    (!entries.is_empty() || header.is_some() || footer.is_some()).then_some(HudPlayerList {
+        header,
+        footer,
+        entries,
+    })
+}
+
 /// One frame's worth of world->renderer state.
 ///
 /// `pump_network_and_terrain` extracts each field at a vanilla-verified
@@ -808,6 +883,7 @@ pub(crate) struct RendererFrame {
     pub(crate) hud_debug_options_screen: Option<HudDebugOptionsScreen>,
     pub(crate) hud_action_bar_text: Option<HudActionBarText>,
     pub(crate) hud_title_text: Option<HudTitleText>,
+    pub(crate) hud_player_list: Option<HudPlayerList>,
     pub(crate) hud_debug_overlay: Option<HudDebugOverlay>,
     pub(crate) hud_boss_bars: Vec<HudBossBar>,
     pub(crate) item_entity_billboards: Vec<ItemEntityBillboard>,
@@ -889,6 +965,7 @@ pub(crate) fn apply_renderer_frame(renderer: &mut Renderer, frame: RendererFrame
     renderer.set_hud_debug_options_screen(frame.hud_debug_options_screen);
     renderer.set_hud_action_bar_text(frame.hud_action_bar_text);
     renderer.set_hud_title_text(frame.hud_title_text);
+    renderer.set_hud_player_list(frame.hud_player_list);
     renderer.set_hud_debug_overlay(frame.hud_debug_overlay);
     renderer.set_hud_boss_bars(frame.hud_boss_bars);
     renderer.set_item_entity_billboards(frame.item_entity_billboards);

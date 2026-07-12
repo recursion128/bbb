@@ -653,6 +653,7 @@ pub struct Renderer {
     pub(super) hud_selected_slot: u8,
     pub(super) hud_action_bar_text: Option<crate::hud::HudActionBarText>,
     pub(super) hud_title_text: Option<crate::hud::HudTitleText>,
+    pub(super) hud_player_list: Option<crate::hud::HudPlayerList>,
     pub(super) hud_debug_overlay: Option<crate::hud::HudDebugOverlay>,
     /// This frame's projected boss bars plus the 182x5 sprite sheets (one
     /// texture per vanilla `boss_bar/*` GUI sprite, indexed by the enum
@@ -1743,6 +1744,7 @@ impl Renderer {
             hud_selected_slot: 0,
             hud_action_bar_text: None,
             hud_title_text: None,
+            hud_player_list: None,
             hud_debug_overlay: None,
             hud_boss_bars: Vec::new(),
             hud_boss_bar_backgrounds: Default::default(),

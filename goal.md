@@ -441,8 +441,8 @@ SetChunkCacheCenter/Radius 的 VarInt wire、canonical view state、vanilla stor
 淘汰、terrain residency refresh 与 tests 已闭合，五格全部闭合。
 AwardStats 的 bounded map wire、ownership 与 tests 已闭合；StatType/value holder 尚未按 session registry
 解析且 StatsScreen 仍是 loading shell，canonical/runtime 保持 partial。
-TabList 的双 Component wire、empty→null、ownership 与 apply tests 已闭合；rich Component 与 tab overlay
-header/footer render 尚未完成，canonical/runtime 保持 partial。
+TabList 的双 Component wire、empty→null、ownership、player-list/header/footer overlay 与 tests 已闭合；
+rich Component canonical state 尚未保留，canonical 保持 partial，runtime 已 complete。
 ServerData 的 trusted MOTD Component + optional icon wire、缺省 icon 保留旧值、ownership 与 apply tests
 已闭合；rich MOTD、icon validation 与 multiplayer server-list persistence 尚未完成，canonical/runtime
 保持 partial。

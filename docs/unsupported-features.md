@@ -480,10 +480,11 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   implemented, but canonical state currently projects only a readable String.
   Restart by sharing the repo-native rich Component/text layout path rather than
   adding packet-specific style fields.
-- Render TabList header/footer around the player-list overlay and preserve their
-  full trusted Components. The client applies vanilla empty-component clearing
-  and stores readable strings, but the current tab overlay has no header/footer
-  presentation surface.
+- Preserve full trusted Components in the TabList header/footer and complete
+  remaining player-list presentation parity: encrypted-session player heads,
+  LIST objective scores/hearts, narrator visibility announcements, and vanilla
+  ping sprites. The current overlay covers Tab visibility, vanilla ordering,
+  80-entry/20-row columns, plain header/footer wrapping and ping thresholds.
 - `chunk_section_paths`, `chunk_section_octree`, and
   `chunk_section_visibility` are `deferred` until the renderer retains
   per-section residency plus a repo-native `SectionOcclusionGraph`/octree and

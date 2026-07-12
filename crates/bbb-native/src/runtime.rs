@@ -2232,6 +2232,7 @@ pub(crate) fn pump_network_and_terrain(
     // alpha per frame from these projected timers.
     let hud_action_bar_text = hud_action_bar_text_from_world(world, entity_partial_tick);
     let hud_title_text = hud_title_text_from_world(world, entity_partial_tick);
+    let hud_player_list = hud_player_list_from_world(input, world);
     // Vanilla `Gui.extractBossOverlay` re-walks the tracked boss events every
     // frame with no countdown state, so the projection is pure world state.
     let hud_boss_bars = hud_boss_bars_from_world(world);
@@ -2617,6 +2618,7 @@ pub(crate) fn pump_network_and_terrain(
             hud_debug_options_screen,
             hud_action_bar_text,
             hud_title_text,
+            hud_player_list,
             hud_debug_overlay,
             hud_boss_bars,
             item_entity_billboards,

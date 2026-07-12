@@ -12776,3 +12776,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] pruning 不冒充显式 ForgetLevelChunk packet/counters；canonical chunk count 变化复用既有 terrain
   upload invalidation，同步替换 GPU mesh residency。focused tests 锁定未知 center 不早删、边界 5 保留、
   边界 6 删除、center 移动与越界新包拒绝，两条 packet coverage 五格闭合。
+
+## 2026-07-12：TabList player overlay
+
+- [x] native 以按住 Tab 且无打开 screen 为可见条件，从 listed-player canonical state 按 vanilla
+  comparator（list order 降序、spectator 后置、team、忽略大小写的 profile name）投影最多 80 项；
+  team prefix/suffix、display name、spectator italic/alpha 与 latency 一并进入 renderer state。
+- [x] renderer 实现每列最多 20 行的居中布局、header/footer `screenWidth-50` plain-text 换行、共享
+  背景宽度、player row 与 vanilla ping threshold 柱状 fallback。TabList runtime coverage complete；
+  rich Component、player head、LIST objective、narrator 与原版 ping sprite 仍明确开放。
