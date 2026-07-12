@@ -107,9 +107,9 @@ fn decodes_player_chat_wire_order() {
     payload.write_var_i32(1);
     payload.write_i64(0b101);
     write_chat_type_bound(&mut payload, 1, "Alice", Some("Bob"));
+    let payload = payload.into_inner();
 
-    let packet =
-        decode_play_clientbound(ids::play::CLIENTBOUND_PLAYER_CHAT, &payload.into_inner()).unwrap();
+    let packet = decode_play_clientbound(ids::play::CLIENTBOUND_PLAYER_CHAT, &payload).unwrap();
 
     assert_eq!(
         packet,
@@ -140,6 +140,15 @@ fn decodes_player_chat_wire_order() {
                 target_name: Some("Bob".to_string()),
             },
         })
+    );
+
+    let mut trailing = payload;
+    trailing.push(0);
+    assert!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_PLAYER_CHAT, &trailing)
+            .unwrap_err()
+            .to_string()
+            .contains("trailing bytes after player chat packet")
     );
 }
 

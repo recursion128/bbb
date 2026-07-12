@@ -517,6 +517,7 @@ play LightUpdate 的 chunk VarInt、四组 bitset、2048-byte layer、strict tra
 play Login 的完整 wire envelope/CommonPlayerSpawnInfo/resource-key/strict trailing 与 world ownership 已闭合；initial levels/radius/simulation distance/secure-chat/seed/portal cooldown、level-bound reset 与 level-load lifecycle 仍使 canonical/runtime/tests 保持 partial。
 play MapItemData 的 MapId/scale/locked、optional decorations/patch、rotation/bounds/strict trailing、canonical 128×128 merge 与 item-frame/first-person map texture/decoration/text dispatch/tests 已闭合；rich Component/font/bidi 细节仍由对应呈现 owner 维护。
 play MerchantOffers 的基础 wire/strict trailing、matching active MerchantMenu ownership 与 offer state/UI baseline 已审计；exact component predicate value、component-aware local trade/cost presentation 与 stack decorations/tooltips 未完成，除 ownership 外四格保持 partial。
+play PlayerChat 的 full wire/strict trailing、filter/index/signature-cache/64-offset acknowledgement baseline 与 ownership 已审计；trusted Component/ChatType registry、RemoteChatSession 验签、错误断连和 ChatListener decoration/delay/narration/logging 未完成，除 ownership 外四格保持 partial。
 
 完成标准：全部 vanilla 26.1 catalog entry 都有矩阵行；所有目标客户端适用项为
 `complete`，其余只有带 vanilla 依据的 `not-applicable` 或带重启判据的窄 `deferred`；

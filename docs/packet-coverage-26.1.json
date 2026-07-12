@@ -8165,28 +8165,51 @@
       "constant_name": "CLIENTBOUND_PLAYER_CHAT",
       "coverage": {
         "canonical_apply": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
+          "evidence": [
+            "crates/bbb-world/src/client/chat.rs#apply_player_chat",
+            "crates/bbb-world/src/client/chat.rs#player_chat_tracks_message_and_signature_cache",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handlePlayerChat"
+          ],
+          "gap": "docs/unsupported-features.md#signed-chat-and-chat-acknowledgement-production",
           "status": "partial"
         },
         "decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "evidence": [
+            "crates/bbb-protocol/src/packets/chat/tests.rs#decodes_player_chat_wire_order",
+            "crates/bbb-protocol/src/packets/chat/tests.rs#rejects_unknown_filter_mask_type",
+            "vanilla:net/minecraft/network/protocol/game/ClientboundPlayerChatPacket.java#STREAM_CODEC"
+          ],
+          "gap": "docs/unsupported-features.md#signed-chat-and-chat-acknowledgement-production",
           "status": "partial"
         },
         "ownership": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/play_apply.rs#PlayClientbound::PlayerChat",
+            "crates/bbb-world/src/client/chat.rs#apply_player_chat",
+            "crates/bbb-native/src/runtime/events/dispatcher.rs#take_pending_player_chat_acknowledgement"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "runtime_side_effect": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
+          "evidence": [
+            "crates/bbb-world/src/client/chat.rs#apply_player_chat",
+            "crates/bbb-net/src/probe/play.rs#probe_player_chat_sends_chat_acknowledgement_after_threshold",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handlePlayerChat"
+          ],
+          "gap": "docs/unsupported-features.md#signed-chat-and-chat-acknowledgement-production",
           "status": "partial"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "evidence": [
+            "crates/bbb-protocol/src/packets/chat/tests.rs#decodes_player_chat_wire_order",
+            "crates/bbb-net/src/event_stream.rs#play_command_and_chat_packets_emit_matching_events_without_responses",
+            "crates/bbb-net/src/probe/play.rs#probe_player_chat_sends_chat_acknowledgement_after_threshold",
+            "crates/bbb-world/src/client/chat.rs#player_chat_generates_acknowledgement_after_vanilla_offset_threshold",
+            "crates/bbb-native/src/runtime/events/tests/session_protocol_events.rs#client_chat_events_update_world_and_world_counters",
+            "crates/bbb-native/src/runtime/events/tests/session_protocol_events.rs#player_chat_events_queue_vanilla_threshold_acknowledgement"
+          ],
+          "gap": "docs/unsupported-features.md#signed-chat-and-chat-acknowledgement-production",
           "status": "partial"
         }
       },
