@@ -12366,3 +12366,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   resource matches，统一消费 world 查询。此前回退 full cube 的 copper chest 现在继承既有
   property-aware single/double chest shape；ender chest 仍走其独立 shape，custom lookalikes
   不被扩大纳入。chest lid/model runtime 保持原 owner 与行为。
+
+## 2026-07-12：Generated directional torch, skull, and amethyst memberships
+
+- [x] block-membership generator 通过统一 Tree-sitter hierarchy IR 生成 AmethystClusterBlock
+  1 类/4 注册项、SkullBlock 3 类/7 floor 项与 WallSkullBlock 4 类/7 wall 项；world collision
+  删除对应 18 个手写 resource literals，并保持 floor/wall shape 分发互斥。
+- [x] torch 因 `WallTorchBlock extends TorchBlock` 不能用根类闭包区分方向，generator 改用
+  direct constructor families 生成 floor 4 / wall 4，取代原混合 8 项 no-collision catalog；
+  world no-collision 与 native property-aware outline 复用同一对查询。custom lookalikes 不进入
+  torch shape，生成 membership 不接管粒子、光照或 redstone tick 语义。

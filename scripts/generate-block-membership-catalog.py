@@ -89,16 +89,14 @@ CONSTRUCTOR_FAMILY_CATALOGS = (
         1,
     ),
     (
-        "VANILLA_NO_COLLISION_TORCH_BLOCKS",
-        frozenset(
-            {
-                "TorchBlock",
-                "WallTorchBlock",
-                "RedstoneTorchBlock",
-                "RedstoneWallTorchBlock",
-            }
-        ),
-        8,
+        "VANILLA_FLOOR_TORCH_BLOCKS",
+        frozenset({"TorchBlock", "RedstoneTorchBlock"}),
+        4,
+    ),
+    (
+        "VANILLA_WALL_TORCH_BLOCKS",
+        frozenset({"WallTorchBlock", "RedstoneWallTorchBlock"}),
+        4,
     ),
     (
         "VANILLA_IRON_BARS_CLASS_BLOCKS",
@@ -198,6 +196,21 @@ def generate(source_root: Path) -> str:
         "net.minecraft.world.level.block.ChestBlock",
         4,
     )
+    amethyst_cluster_types = constructor_types_extending(
+        block_class_sources,
+        "net.minecraft.world.level.block.AmethystClusterBlock",
+        1,
+    )
+    floor_skull_types = constructor_types_extending(
+        block_class_sources,
+        "net.minecraft.world.level.block.SkullBlock",
+        3,
+    )
+    wall_skull_types = constructor_types_extending(
+        block_class_sources,
+        "net.minecraft.world.level.block.WallSkullBlock",
+        4,
+    )
     entries = no_terrain_particle_blocks(source)
     air_entries = air_blocks(source)
     constructor_catalogs = [
@@ -218,6 +231,9 @@ def generate(source_root: Path) -> str:
             ("VANILLA_SAPLING_BLOCKS", sapling_types, 9),
             ("VANILLA_SHELF_BLOCKS", shelf_types, 12),
             ("VANILLA_CHEST_BLOCKS", chest_types, 10),
+            ("VANILLA_AMETHYST_CLUSTER_BLOCKS", amethyst_cluster_types, 4),
+            ("VANILLA_FLOOR_SKULL_BLOCKS", floor_skull_types, 7),
+            ("VANILLA_WALL_SKULL_BLOCKS", wall_skull_types, 7),
             (
                 "VANILLA_INVISIBLE_RENDER_SHAPE_BLOCKS",
                 invisible_render_shape_types,
@@ -275,7 +291,8 @@ def generate(source_root: Path) -> str:
             '        assert_eq!(VANILLA_AIR_BLOCKS, &["minecraft:air", "minecraft:void_air", "minecraft:cave_air"]);',
             '        assert_eq!(VANILLA_SAME_BLOCK_ALL_FACE_SKIP_RENDERING_BLOCKS, &["minecraft:powder_snow"]);',
             '        assert_eq!(VANILLA_SAME_BLOCK_VERTICAL_FACE_SKIP_RENDERING_BLOCKS, &["minecraft:mangrove_roots"]);',
-            "        assert_eq!(VANILLA_NO_COLLISION_TORCH_BLOCKS.len(), 8);",
+            "        assert_eq!(VANILLA_FLOOR_TORCH_BLOCKS.len(), 4);",
+            "        assert_eq!(VANILLA_WALL_TORCH_BLOCKS.len(), 4);",
             "        assert_eq!(VANILLA_IRON_BARS_CLASS_BLOCKS.len(), 18);",
             "        assert_eq!(VANILLA_COPPER_GRATE_BLOCKS.len(), 8);",
             "        assert_eq!(VANILLA_FIXED_SOURCE_WATER_BLOCKS.len(), 5);",
@@ -287,6 +304,9 @@ def generate(source_root: Path) -> str:
             "        assert_eq!(VANILLA_SAPLING_BLOCKS.len(), 9);",
             "        assert_eq!(VANILLA_SHELF_BLOCKS.len(), 12);",
             "        assert_eq!(VANILLA_CHEST_BLOCKS.len(), 10);",
+            "        assert_eq!(VANILLA_AMETHYST_CLUSTER_BLOCKS.len(), 4);",
+            "        assert_eq!(VANILLA_FLOOR_SKULL_BLOCKS.len(), 7);",
+            "        assert_eq!(VANILLA_WALL_SKULL_BLOCKS.len(), 7);",
             "        assert_eq!(VANILLA_INVISIBLE_RENDER_SHAPE_BLOCKS.len(), 12);",
             "        assert_eq!(VANILLA_BARS_BLOCKS.len(), 9);",
             "        assert_eq!(VANILLA_SLAB_BLOCKS.len(), 62);",

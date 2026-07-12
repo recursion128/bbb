@@ -2,10 +2,11 @@ use std::collections::BTreeMap;
 
 use bbb_world::{
     block_name_is_bars_or_pane, block_name_is_button, block_name_is_crop, block_name_is_door,
-    block_name_is_fence, block_name_is_fence_gate, block_name_is_flower_pot,
-    block_name_is_pressure_plate, block_name_is_rail, block_name_is_sapling, block_name_is_slab,
-    block_name_is_stair, block_name_is_standing_sign, block_name_is_trapdoor, block_name_is_wall,
-    block_name_is_wall_sign, block_name_is_wool_carpet,
+    block_name_is_fence, block_name_is_fence_gate, block_name_is_floor_torch,
+    block_name_is_flower_pot, block_name_is_pressure_plate, block_name_is_rail,
+    block_name_is_sapling, block_name_is_slab, block_name_is_stair, block_name_is_standing_sign,
+    block_name_is_trapdoor, block_name_is_wall, block_name_is_wall_sign, block_name_is_wall_torch,
+    block_name_is_wool_carpet,
 };
 
 use super::{BlockOutlineBox, BlockOutlineShape, HorizontalDirection};
@@ -577,23 +578,11 @@ fn simple_vegetation_outline_box(block_name: &str) -> Option<BlockOutlineBox> {
 }
 
 fn is_floor_torch_block_name(block_name: &str) -> bool {
-    matches!(
-        block_name,
-        "minecraft:torch"
-            | "minecraft:redstone_torch"
-            | "minecraft:soul_torch"
-            | "minecraft:copper_torch"
-    )
+    block_name_is_floor_torch(block_name)
 }
 
 fn is_wall_torch_block_name(block_name: &str) -> bool {
-    matches!(
-        block_name,
-        "minecraft:wall_torch"
-            | "minecraft:redstone_wall_torch"
-            | "minecraft:soul_wall_torch"
-            | "minecraft:copper_wall_torch"
-    )
+    block_name_is_wall_torch(block_name)
 }
 
 fn is_flat_carpet_block_name(block_name: &str) -> bool {

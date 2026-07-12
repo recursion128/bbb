@@ -15,14 +15,17 @@ pub(super) const VANILLA_SAME_BLOCK_ALL_FACE_SKIP_RENDERING_BLOCKS: &[&str] =
 pub(super) const VANILLA_SAME_BLOCK_VERTICAL_FACE_SKIP_RENDERING_BLOCKS: &[&str] =
     &["minecraft:mangrove_roots"];
 
-pub(super) const VANILLA_NO_COLLISION_TORCH_BLOCKS: &[&str] = &[
+pub(super) const VANILLA_FLOOR_TORCH_BLOCKS: &[&str] = &[
     "minecraft:torch",
-    "minecraft:wall_torch",
     "minecraft:redstone_torch",
-    "minecraft:redstone_wall_torch",
     "minecraft:soul_torch",
-    "minecraft:soul_wall_torch",
     "minecraft:copper_torch",
+];
+
+pub(super) const VANILLA_WALL_TORCH_BLOCKS: &[&str] = &[
+    "minecraft:wall_torch",
+    "minecraft:redstone_wall_torch",
+    "minecraft:soul_wall_torch",
     "minecraft:copper_wall_torch",
 ];
 
@@ -175,6 +178,33 @@ pub(super) const VANILLA_CHEST_BLOCKS: &[&str] = &[
     "minecraft:waxed_exposed_copper_chest",
     "minecraft:waxed_weathered_copper_chest",
     "minecraft:waxed_oxidized_copper_chest",
+];
+
+pub(super) const VANILLA_AMETHYST_CLUSTER_BLOCKS: &[&str] = &[
+    "minecraft:amethyst_cluster",
+    "minecraft:large_amethyst_bud",
+    "minecraft:medium_amethyst_bud",
+    "minecraft:small_amethyst_bud",
+];
+
+pub(super) const VANILLA_FLOOR_SKULL_BLOCKS: &[&str] = &[
+    "minecraft:skeleton_skull",
+    "minecraft:wither_skeleton_skull",
+    "minecraft:zombie_head",
+    "minecraft:player_head",
+    "minecraft:creeper_head",
+    "minecraft:dragon_head",
+    "minecraft:piglin_head",
+];
+
+pub(super) const VANILLA_WALL_SKULL_BLOCKS: &[&str] = &[
+    "minecraft:skeleton_wall_skull",
+    "minecraft:wither_skeleton_wall_skull",
+    "minecraft:zombie_wall_head",
+    "minecraft:player_wall_head",
+    "minecraft:creeper_wall_head",
+    "minecraft:dragon_wall_head",
+    "minecraft:piglin_wall_head",
 ];
 
 pub(super) const VANILLA_INVISIBLE_RENDER_SHAPE_BLOCKS: &[&str] = &[
@@ -883,7 +913,8 @@ mod tests {
             VANILLA_SAME_BLOCK_VERTICAL_FACE_SKIP_RENDERING_BLOCKS,
             &["minecraft:mangrove_roots"]
         );
-        assert_eq!(VANILLA_NO_COLLISION_TORCH_BLOCKS.len(), 8);
+        assert_eq!(VANILLA_FLOOR_TORCH_BLOCKS.len(), 4);
+        assert_eq!(VANILLA_WALL_TORCH_BLOCKS.len(), 4);
         assert_eq!(VANILLA_IRON_BARS_CLASS_BLOCKS.len(), 18);
         assert_eq!(VANILLA_COPPER_GRATE_BLOCKS.len(), 8);
         assert_eq!(VANILLA_FIXED_SOURCE_WATER_BLOCKS.len(), 5);
@@ -895,6 +926,9 @@ mod tests {
         assert_eq!(VANILLA_SAPLING_BLOCKS.len(), 9);
         assert_eq!(VANILLA_SHELF_BLOCKS.len(), 12);
         assert_eq!(VANILLA_CHEST_BLOCKS.len(), 10);
+        assert_eq!(VANILLA_AMETHYST_CLUSTER_BLOCKS.len(), 4);
+        assert_eq!(VANILLA_FLOOR_SKULL_BLOCKS.len(), 7);
+        assert_eq!(VANILLA_WALL_SKULL_BLOCKS.len(), 7);
         assert_eq!(VANILLA_INVISIBLE_RENDER_SHAPE_BLOCKS.len(), 12);
         assert_eq!(VANILLA_BARS_BLOCKS.len(), 9);
         assert_eq!(VANILLA_SLAB_BLOCKS.len(), 62);

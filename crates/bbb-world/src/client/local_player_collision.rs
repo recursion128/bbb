@@ -24,14 +24,15 @@ use crate::entities::{
     VANILLA_HAPPY_GHAST_STAYS_STILL_DATA_ID,
 };
 use crate::terrain::{
-    block_name_has_empty_collision_shape, block_name_is_air, block_name_is_anvil,
-    block_name_is_bars_or_pane, block_name_is_bed, block_name_is_campfire, block_name_is_candle,
-    block_name_is_candle_cake, block_name_is_cauldron, block_name_is_chain, block_name_is_chest,
-    block_name_is_copper_golem_statue, block_name_is_copper_grate, block_name_is_door,
-    block_name_is_fence, block_name_is_fence_gate, block_name_is_flower_pot,
-    block_name_is_hanging_sign, block_name_is_lantern, block_name_is_leaves, block_name_is_rod,
-    block_name_is_shelf, block_name_is_shulker_box, block_name_is_slab, block_name_is_stair,
-    block_name_is_trapdoor, block_name_is_wall, block_name_is_wool_carpet,
+    block_name_has_empty_collision_shape, block_name_is_air, block_name_is_amethyst_cluster,
+    block_name_is_anvil, block_name_is_bars_or_pane, block_name_is_bed, block_name_is_campfire,
+    block_name_is_candle, block_name_is_candle_cake, block_name_is_cauldron, block_name_is_chain,
+    block_name_is_chest, block_name_is_copper_golem_statue, block_name_is_copper_grate,
+    block_name_is_door, block_name_is_fence, block_name_is_fence_gate, block_name_is_floor_skull,
+    block_name_is_flower_pot, block_name_is_hanging_sign, block_name_is_lantern,
+    block_name_is_leaves, block_name_is_rod, block_name_is_shelf, block_name_is_shulker_box,
+    block_name_is_slab, block_name_is_stair, block_name_is_trapdoor, block_name_is_wall,
+    block_name_is_wall_skull, block_name_is_wool_carpet,
 };
 use crate::{BlockPos, BlockProbe, TerrainFluidKind, TerrainMaterialClass, WorldStore};
 
@@ -1424,13 +1425,7 @@ fn is_shelf_block_name(block_name: &str) -> bool {
 }
 
 fn is_amethyst_cluster_block_name(block_name: &str) -> bool {
-    matches!(
-        block_name,
-        "minecraft:amethyst_cluster"
-            | "minecraft:large_amethyst_bud"
-            | "minecraft:medium_amethyst_bud"
-            | "minecraft:small_amethyst_bud"
-    )
+    block_name_is_amethyst_cluster(block_name)
 }
 
 fn is_copper_golem_statue_block_name(block_name: &str) -> bool {
@@ -1445,29 +1440,11 @@ fn is_sculk_sensor_block_name(block_name: &str) -> bool {
 }
 
 fn is_floor_skull_block_name(block_name: &str) -> bool {
-    matches!(
-        block_name,
-        "minecraft:skeleton_skull"
-            | "minecraft:wither_skeleton_skull"
-            | "minecraft:zombie_head"
-            | "minecraft:player_head"
-            | "minecraft:creeper_head"
-            | "minecraft:dragon_head"
-            | "minecraft:piglin_head"
-    )
+    block_name_is_floor_skull(block_name)
 }
 
 fn is_wall_skull_block_name(block_name: &str) -> bool {
-    matches!(
-        block_name,
-        "minecraft:skeleton_wall_skull"
-            | "minecraft:wither_skeleton_wall_skull"
-            | "minecraft:zombie_wall_head"
-            | "minecraft:player_wall_head"
-            | "minecraft:creeper_wall_head"
-            | "minecraft:dragon_wall_head"
-            | "minecraft:piglin_wall_head"
-    )
+    block_name_is_wall_skull(block_name)
 }
 
 fn is_chain_block_name(block_name: &str) -> bool {
@@ -3996,6 +3973,18 @@ mod tests {
 
     #[test]
     fn amethyst_cluster_shape_matches_vanilla_size_and_facing() {
+        for block_name in [
+            "minecraft:amethyst_cluster",
+            "minecraft:large_amethyst_bud",
+            "minecraft:medium_amethyst_bud",
+            "minecraft:small_amethyst_bud",
+        ] {
+            assert!(is_amethyst_cluster_block_name(block_name), "{block_name}");
+        }
+        assert!(!is_amethyst_cluster_block_name(
+            "minecraft:custom_amethyst_bud"
+        ));
+
         let mut properties = BTreeMap::new();
         properties.insert("facing".to_owned(), "north".to_owned());
 

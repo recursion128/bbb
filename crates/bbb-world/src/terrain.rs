@@ -7,25 +7,26 @@ use crate::{BlockPos, ChunkPos, PaletteKind};
 mod generated_26_1;
 
 use generated_26_1::{
-    VANILLA_AIR_BLOCKS, VANILLA_ANVIL_BLOCKS, VANILLA_BARS_BLOCKS, VANILLA_BED_BLOCKS,
-    VANILLA_BUTTON_BLOCKS, VANILLA_CAMPFIRE_BLOCKS, VANILLA_CANDLE_BLOCKS,
+    VANILLA_AIR_BLOCKS, VANILLA_AMETHYST_CLUSTER_BLOCKS, VANILLA_ANVIL_BLOCKS, VANILLA_BARS_BLOCKS,
+    VANILLA_BED_BLOCKS, VANILLA_BUTTON_BLOCKS, VANILLA_CAMPFIRE_BLOCKS, VANILLA_CANDLE_BLOCKS,
     VANILLA_CANDLE_CAKE_BLOCKS, VANILLA_CAULDRON_BLOCKS, VANILLA_CHAIN_BLOCKS,
     VANILLA_CHEST_BLOCKS, VANILLA_COPPER_GOLEM_STATUE_BLOCKS, VANILLA_COPPER_GRATE_BLOCKS,
     VANILLA_CROP_BLOCKS, VANILLA_DOOR_BLOCKS, VANILLA_FENCE_BLOCKS, VANILLA_FENCE_GATE_BLOCKS,
-    VANILLA_FIXED_SOURCE_WATER_BLOCKS, VANILLA_FLOWER_POT_BLOCKS,
-    VANILLA_HALF_TRANSPARENT_SKIP_RENDERING_BLOCKS, VANILLA_HANGING_SIGN_BLOCKS,
-    VANILLA_INVISIBLE_RENDER_SHAPE_BLOCKS, VANILLA_IRON_BARS_CLASS_BLOCKS, VANILLA_LANTERN_BLOCKS,
-    VANILLA_LEAVES_BLOCKS, VANILLA_LIGHTNING_ROD_BLOCKS, VANILLA_NO_COLLISION_BANNER_BLOCKS,
+    VANILLA_FIXED_SOURCE_WATER_BLOCKS, VANILLA_FLOOR_SKULL_BLOCKS, VANILLA_FLOOR_TORCH_BLOCKS,
+    VANILLA_FLOWER_POT_BLOCKS, VANILLA_HALF_TRANSPARENT_SKIP_RENDERING_BLOCKS,
+    VANILLA_HANGING_SIGN_BLOCKS, VANILLA_INVISIBLE_RENDER_SHAPE_BLOCKS,
+    VANILLA_IRON_BARS_CLASS_BLOCKS, VANILLA_LANTERN_BLOCKS, VANILLA_LEAVES_BLOCKS,
+    VANILLA_LIGHTNING_ROD_BLOCKS, VANILLA_NO_COLLISION_BANNER_BLOCKS,
     VANILLA_NO_COLLISION_CROP_SUPPLEMENT_BLOCKS, VANILLA_NO_COLLISION_FIRE_BLOCKS,
     VANILLA_NO_COLLISION_SIGN_BLOCKS, VANILLA_NO_COLLISION_SMALL_FLOWER_BLOCKS,
-    VANILLA_NO_COLLISION_THIN_OVERLAY_BLOCKS, VANILLA_NO_COLLISION_TORCH_BLOCKS,
-    VANILLA_NO_COLLISION_WIRE_BLOCKS, VANILLA_NO_TERRAIN_PARTICLE_BLOCKS,
-    VANILLA_PRESSURE_PLATE_BLOCKS, VANILLA_RAIL_BLOCKS,
+    VANILLA_NO_COLLISION_THIN_OVERLAY_BLOCKS, VANILLA_NO_COLLISION_WIRE_BLOCKS,
+    VANILLA_NO_TERRAIN_PARTICLE_BLOCKS, VANILLA_PRESSURE_PLATE_BLOCKS, VANILLA_RAIL_BLOCKS,
     VANILLA_SAME_BLOCK_ALL_FACE_SKIP_RENDERING_BLOCKS,
     VANILLA_SAME_BLOCK_VERTICAL_FACE_SKIP_RENDERING_BLOCKS, VANILLA_SAPLING_BLOCKS,
     VANILLA_SHELF_BLOCKS, VANILLA_SHULKER_BOX_BLOCKS, VANILLA_SLAB_BLOCKS, VANILLA_STAIR_BLOCKS,
     VANILLA_STANDING_SIGN_BLOCKS, VANILLA_TRAPDOOR_BLOCKS, VANILLA_WALL_BLOCKS,
-    VANILLA_WALL_SIGN_BLOCKS, VANILLA_WOOL_CARPET_BLOCKS,
+    VANILLA_WALL_SIGN_BLOCKS, VANILLA_WALL_SKULL_BLOCKS, VANILLA_WALL_TORCH_BLOCKS,
+    VANILLA_WOOL_CARPET_BLOCKS,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -438,6 +439,26 @@ pub fn block_name_is_chest(name: &str) -> bool {
     VANILLA_CHEST_BLOCKS.contains(&name)
 }
 
+pub fn block_name_is_amethyst_cluster(name: &str) -> bool {
+    VANILLA_AMETHYST_CLUSTER_BLOCKS.contains(&name)
+}
+
+pub fn block_name_is_floor_skull(name: &str) -> bool {
+    VANILLA_FLOOR_SKULL_BLOCKS.contains(&name)
+}
+
+pub fn block_name_is_wall_skull(name: &str) -> bool {
+    VANILLA_WALL_SKULL_BLOCKS.contains(&name)
+}
+
+pub fn block_name_is_floor_torch(name: &str) -> bool {
+    VANILLA_FLOOR_TORCH_BLOCKS.contains(&name)
+}
+
+pub fn block_name_is_wall_torch(name: &str) -> bool {
+    VANILLA_WALL_TORCH_BLOCKS.contains(&name)
+}
+
 pub(crate) fn block_name_has_empty_collision_shape(name: &str) -> bool {
     name.contains("sapling")
         || matches!(
@@ -482,7 +503,8 @@ pub(crate) fn block_name_has_empty_collision_shape(name: &str) -> bool {
                 | "minecraft:spore_blossom"
                 | "minecraft:lever"
         )
-        || VANILLA_NO_COLLISION_TORCH_BLOCKS.contains(&name)
+        || block_name_is_floor_torch(name)
+        || block_name_is_wall_torch(name)
         || VANILLA_NO_COLLISION_CROP_SUPPLEMENT_BLOCKS.contains(&name)
         || VANILLA_NO_COLLISION_WIRE_BLOCKS.contains(&name)
         || VANILLA_NO_COLLISION_THIN_OVERLAY_BLOCKS.contains(&name)
@@ -677,6 +699,20 @@ mod tests {
         }
         assert!(!block_name_is_chest("minecraft:ender_chest"));
         assert!(!block_name_is_chest("minecraft:custom_chest"));
+        assert!(block_name_is_amethyst_cluster(
+            "minecraft:small_amethyst_bud"
+        ));
+        assert!(!block_name_is_amethyst_cluster(
+            "minecraft:custom_amethyst_bud"
+        ));
+        assert!(block_name_is_floor_skull("minecraft:player_head"));
+        assert!(!block_name_is_floor_skull("minecraft:player_wall_head"));
+        assert!(block_name_is_wall_skull("minecraft:player_wall_head"));
+        assert!(!block_name_is_wall_skull("minecraft:player_head"));
+        assert!(block_name_is_floor_torch("minecraft:copper_torch"));
+        assert!(!block_name_is_floor_torch("minecraft:copper_wall_torch"));
+        assert!(block_name_is_wall_torch("minecraft:copper_wall_torch"));
+        assert!(!block_name_is_wall_torch("minecraft:copper_torch"));
     }
 
     #[test]

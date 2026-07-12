@@ -470,6 +470,8 @@ fn outline_shape_rejects_generated_family_suffix_lookalikes() {
         "minecraft:custom_campfire",
         "minecraft:custom_cauldron",
         "minecraft:custom_chest",
+        "minecraft:custom_torch",
+        "minecraft:custom_wall_torch",
         "example:oak_door",
         "example:oak_button",
     ] {
