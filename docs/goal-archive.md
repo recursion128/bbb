@@ -11626,3 +11626,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] center/radius/blockCount/optional-knockback framing、本地玩家 knockback apply 与跨 crate tests 已审计。
 - [x] typed particle/sound/weighted block-particle decode 和 client explosion tracker 未完成；raw tail 未误标支持，服务端权威伤害/方块修改明确排除。
+
+## 2026-07-12：play forget level chunk packet coverage audit
+
+- [x] ChunkPos framing/strict trailing、canonical chunk-column removal 与 missing-count ownership 闭合。
+- [x] last-chunk renderer clear、light-section removal、debug-subscription drop 与 runtime reverse tests 未完成，runtime/tests 保持 partial。

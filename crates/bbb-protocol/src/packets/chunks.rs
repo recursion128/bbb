@@ -238,9 +238,15 @@ pub(crate) fn decode_chunks_biomes(decoder: &mut Decoder<'_>) -> Result<ChunksBi
 }
 
 pub(crate) fn decode_forget_level_chunk(decoder: &mut Decoder<'_>) -> Result<ForgetLevelChunk> {
-    Ok(ForgetLevelChunk {
+    let packet = ForgetLevelChunk {
         pos: decode_chunk_pos(decoder.read_i64()?),
-    })
+    };
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after forget level chunk packet".to_string(),
+        ));
+    }
+    Ok(packet)
 }
 
 pub(crate) fn decode_level_event(decoder: &mut Decoder<'_>) -> Result<LevelEvent> {

@@ -6669,28 +6669,47 @@
       "constant_name": "CLIENTBOUND_FORGET_LEVEL_CHUNK",
       "coverage": {
         "canonical_apply": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/chunks/store.rs#forget_chunk",
+            "crates/bbb-world/src/chunks/tests.rs#forgets_loaded_chunk",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleForgetLevelChunk"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/chunks/tests.rs#decodes_forget_level_chunk",
+            "vanilla:net/minecraft/network/protocol/game/ClientboundForgetLevelChunkPacket.java#STREAM_CODEC"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "ownership": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/play_apply.rs#PlayClientbound::ForgetLevelChunk"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "runtime_side_effect": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
+          "evidence": [
+            "crates/bbb-native/src/terrain_runtime.rs#maybe_upload_decoded_terrain",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleForgetLevelChunk"
+          ],
+          "gap": "docs/unsupported-features.md#block-entities-and-terrain",
           "status": "partial"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "evidence": [
+            "crates/bbb-protocol/src/packets/chunks/tests.rs#decodes_forget_level_chunk",
+            "crates/bbb-net/src/event_stream.rs#play_chunk_terrain_packets_emit_matching_events_without_responses",
+            "crates/bbb-net/src/probe/play.rs#probe_applies_chunk_view_and_block_updates_to_world",
+            "crates/bbb-world/src/chunks/tests.rs#forgets_loaded_chunk",
+            "crates/bbb-world/src/chunks/tests.rs#forget_missing_chunk_is_counted_but_not_applied",
+            "crates/bbb-native/src/runtime/events/tests/world_state_lifecycle.rs#terrain_chunk_events_update_world_counters"
+          ],
+          "gap": "docs/unsupported-features.md#block-entities-and-terrain",
           "status": "partial"
         }
       },

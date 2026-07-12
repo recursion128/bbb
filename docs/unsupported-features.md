@@ -714,6 +714,11 @@ back into a todo. Do not delete these.
 
 ## Block entities and terrain
 
+- **ForgetLevelChunk runtime cache cleanup.** On unload, clear the renderer even
+  when the last canonical chunk disappears, remove queued sky/block light for
+  every section, and drop typed debug-subscription values for that chunk. World
+  chunk-column removal is covered; add runtime tests that stale terrain, light and
+  debug presentation cannot survive the packet.
 - Resolve ChunksBiomes palette ids through the session biome RegistryAccess and
   match vanilla's 3x3 neighboring-section rerender/tint invalidation, including
   custom synchronized biome color effects.

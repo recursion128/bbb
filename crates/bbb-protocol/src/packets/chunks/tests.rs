@@ -327,16 +327,23 @@ fn decodes_forget_level_chunk() {
     let mut payload = Encoder::new();
     payload.write_i64(pack_chunk_pos(12, -4));
 
-    let packet = decode_play_clientbound(
-        ids::play::CLIENTBOUND_FORGET_LEVEL_CHUNK,
-        &payload.into_inner(),
-    )
-    .unwrap();
+    let payload = payload.into_inner();
+    let packet =
+        decode_play_clientbound(ids::play::CLIENTBOUND_FORGET_LEVEL_CHUNK, &payload).unwrap();
     assert_eq!(
         packet,
         PlayClientbound::ForgetLevelChunk(ForgetLevelChunk {
             pos: ChunkPos { x: 12, z: -4 },
         })
+    );
+
+    let mut trailing = payload;
+    trailing.push(0);
+    assert!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_FORGET_LEVEL_CHUNK, &trailing)
+            .unwrap_err()
+            .to_string()
+            .contains("trailing bytes after forget level chunk packet")
     );
 }
 
