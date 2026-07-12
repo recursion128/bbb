@@ -12086,3 +12086,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] play Login 的 dimension-type cardinal-light 与 has-skylight projection 不再自行转换/index registry entries，统一通过 checked registry holder lookup 获取对应 raw entry。
 - [x] existing dynamic dimension NBT override 与 builtin fallback tests 保持语义；typed dimension codec、registry freeze 与其余 holder consumers 继续开放。
+
+## 2026-07-12：configuration registry staging
+
+- [x] configuration registry entries/tags 现在进入本轮 pending collector，active holder identity 在 Finish 前保持不变；收到 contents 时 Finish 原子替换旧 order，并清除被替换 registry 的旧 tags。
+- [x] tag-only reconfiguration 保留原 registry contents 并覆盖本轮 named tags；initial/reconfiguration 的 native StateChanged 与 probe lifecycle 均接入 begin/finish，typed codecs/frozen holder tags 继续开放。

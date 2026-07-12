@@ -170,6 +170,12 @@ pub(in crate::runtime) fn drain_net_events_with_sinks_and_debug(
                 state: ConnectionState::Configuration,
             } => {
                 world.clear_client_level();
+                world.begin_registry_configuration();
+            }
+            NetEvent::StateChanged {
+                state: ConnectionState::Play,
+            } => {
+                world.finish_registry_configuration();
             }
             NetEvent::CookieRequest {
                 key,

@@ -323,7 +323,8 @@ diagnostics 已闭合；Mojang telemetry callback 按无 external sender 的架�
 configuration registry-data/update-tags 的 wire、ownership、packet projection 与 tests 已审计；
 checked wire-order holder identity 已由 registry semantic owner 统一查询；完整
 lookup 已供 enchantment 与 dimension-type 消费；完整 `RegistryAccess`/typed codec/holder
-tags/component initializer 仍是明确 canonical/runtime partial。
+tags/component initializer 仍是明确 canonical/runtime partial。每轮 configuration registry
+collection 已 staging，并在 Finish 原子替换或按 vanilla tag-only 路径保留原 contents。
 
 matrix inventory + state/framing + required login/config/play handoff 是本队列的 foundation
 milestone；完成后即可进入 RegistryAccess/playable foundation，不等待全部长尾 packet

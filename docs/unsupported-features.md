@@ -76,8 +76,8 @@ Owner: `bbb-protocol`
   each synchronized registry with its element codec, merge known-pack stubs,
   migrate the remaining dynamic-holder consumers, resolve numeric tag ids to
   holders, apply pending static tags and data-component initializers, and
-  preserve reconnect replacement semantics.
-  Raw NBT summaries and a few derived audio registries are not that runtime.
+  freeze typed lookup state. Raw NBT summaries and a few derived audio
+  registries are not that runtime.
 - Complete play Login session initialization beyond the current player-id and
   partial dimension/gameplay projection: retain the initial level set, chunk
   radius, simulation distance, secure-chat enforcement, seed and portal

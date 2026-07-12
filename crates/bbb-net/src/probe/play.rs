@@ -97,6 +97,7 @@ impl ProbeContext {
                 let (id, payload) = packets::encode_play_configuration_acknowledged();
                 self.conn.send_packet(id, &payload).await?;
                 self.state = ConnectionState::Configuration;
+                self.world.begin_registry_configuration();
                 self.play_tick = None;
                 self.seen_code_of_conduct = false;
                 self.world.clear_client_level();

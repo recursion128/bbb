@@ -17,6 +17,7 @@ impl ProbeContext {
                 let (id, payload) = packets::encode_configuration_finish();
                 self.conn.send_packet(id, &payload).await?;
                 self.state = ConnectionState::Play;
+                self.world.finish_registry_configuration();
                 self.play_tick = Some(play_tick_interval());
             }
             ConfigurationClientbound::Disconnect { reason, .. } => {

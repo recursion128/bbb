@@ -2,9 +2,32 @@ use bbb_protocol::packets::{RegistryData, UpdateTags};
 
 use crate::WorldStore;
 
-use super::{RegistryContentState, RegistryPacket, RegistryPacketEntry, RegistryTagState};
+use super::{
+    state::PendingRegistryCollection, RegistryContentState, RegistryPacket, RegistryPacketEntry,
+    RegistryTagState,
+};
 
 impl WorldStore {
+    pub fn begin_registry_configuration(&mut self) {
+        self.registries.pending = Some(PendingRegistryCollection::default());
+    }
+
+    pub fn finish_registry_configuration(&mut self) {
+        let Some(mut pending) = self.registries.pending.take() else {
+            return;
+        };
+        if !pending.registries.is_empty() {
+            for registry in pending.contents.keys() {
+                self.registries.tags.remove(registry);
+            }
+            self.registries.registries = pending.registries;
+            self.registries.contents = pending.contents;
+        }
+        self.registries.tags.append(&mut pending.tags);
+        self.sync_registry_counters();
+        self.sync_registry_tag_counters();
+    }
+
     pub fn record_registry(&mut self, name: impl Into<String>, raw_payload_len: usize) {
         self.record_registry_entries(name, raw_payload_len, Vec::new());
     }
@@ -27,17 +50,27 @@ impl WorldStore {
         let name = name.into();
         self.counters.last_registry_data_registry = Some(name.clone());
         self.counters.last_registry_data_entry_count = entries.len();
-        self.registries
-            .contents
-            .entry(name.clone())
-            .or_insert_with(|| RegistryContentState::new(name.clone()))
-            .append_packet(&entries);
-        self.registries.registries.push(RegistryPacket {
+        let packet = RegistryPacket {
             name,
             raw_payload_len,
             entries,
-        });
-        self.sync_registry_counters();
+        };
+        if let Some(pending) = self.registries.pending.as_mut() {
+            pending
+                .contents
+                .entry(packet.name.clone())
+                .or_insert_with(|| RegistryContentState::new(packet.name.clone()))
+                .append_packet(&packet.entries);
+            pending.registries.push(packet);
+        } else {
+            self.registries
+                .contents
+                .entry(packet.name.clone())
+                .or_insert_with(|| RegistryContentState::new(packet.name.clone()))
+                .append_packet(&packet.entries);
+            self.registries.registries.push(packet);
+            self.sync_registry_counters();
+        }
     }
 
     pub fn registries(&self) -> &super::RegistrySet {
@@ -149,7 +182,11 @@ impl WorldStore {
                 .into_iter()
                 .map(|tag| (tag.tag, tag.entries))
                 .collect();
-            self.registries.tags.insert(
+            let target = match self.registries.pending.as_mut() {
+                Some(pending) => &mut pending.tags,
+                None => &mut self.registries.tags,
+            };
+            target.insert(
                 registry.registry.clone(),
                 RegistryTagState {
                     registry: registry.registry,
@@ -158,6 +195,12 @@ impl WorldStore {
             );
         }
 
+        if self.registries.pending.is_none() {
+            self.sync_registry_tag_counters();
+        }
+    }
+
+    fn sync_registry_tag_counters(&mut self) {
         self.counters.tag_registries_tracked = self.registries.tags.len();
         self.counters.tags_tracked = self
             .registries

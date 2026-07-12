@@ -204,6 +204,73 @@ fn registry_holder_lookup_uses_checked_wire_order_identity() {
 }
 
 #[test]
+fn configuration_registry_collection_commits_atomically_and_replaces_holder_order() {
+    let mut store = WorldStore::new();
+    store.record_registry_entries(
+        "minecraft:test",
+        0,
+        vec![RegistryPacketEntry::stub("minecraft:old")],
+    );
+    store.apply_update_tags(UpdateTags {
+        registries: vec![RegistryTags {
+            registry: "minecraft:test".to_string(),
+            tags: vec![TagNetworkPayload {
+                tag: "minecraft:old_tag".to_string(),
+                entries: vec![0],
+            }],
+        }],
+    });
+
+    store.begin_registry_configuration();
+    store.record_registry_entries(
+        "minecraft:test",
+        0,
+        vec![RegistryPacketEntry::stub("minecraft:new")],
+    );
+    assert_eq!(
+        store.registry_resource_id_by_holder_id("minecraft:test", 0),
+        Some("minecraft:old")
+    );
+
+    store.finish_registry_configuration();
+    assert_eq!(
+        store.registry_resource_id_by_holder_id("minecraft:test", 0),
+        Some("minecraft:new")
+    );
+    assert!(store.registry_tags("minecraft:test").is_none());
+}
+
+#[test]
+fn tag_only_configuration_preserves_registry_contents_and_replaces_named_tags() {
+    let mut store = WorldStore::new();
+    store.record_registry_entries(
+        "minecraft:test",
+        0,
+        vec![RegistryPacketEntry::stub("minecraft:kept")],
+    );
+    store.begin_registry_configuration();
+    store.apply_update_tags(UpdateTags {
+        registries: vec![RegistryTags {
+            registry: "minecraft:test".to_string(),
+            tags: vec![TagNetworkPayload {
+                tag: "minecraft:new_tag".to_string(),
+                entries: vec![0],
+            }],
+        }],
+    });
+    store.finish_registry_configuration();
+
+    assert_eq!(
+        store.registry_resource_id_by_holder_id("minecraft:test", 0),
+        Some("minecraft:kept")
+    );
+    assert_eq!(
+        store.registry_tags("minecraft:test").unwrap().tags["minecraft:new_tag"],
+        vec![0]
+    );
+}
+
+#[test]
 fn update_tags_replace_network_tag_state() {
     let mut store = WorldStore::new();
     store.apply_update_tags(UpdateTags {

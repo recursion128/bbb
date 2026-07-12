@@ -16,6 +16,15 @@ pub struct RegistrySet {
     pub tags: BTreeMap<String, RegistryTagState>,
     #[serde(skip)]
     pub block_states: BlockStateRegistry,
+    #[serde(skip)]
+    pub(super) pending: Option<PendingRegistryCollection>,
+}
+
+#[derive(Debug, Clone, Default)]
+pub(super) struct PendingRegistryCollection {
+    pub registries: Vec<RegistryPacket>,
+    pub contents: BTreeMap<String, RegistryContentState>,
+    pub tags: BTreeMap<String, RegistryTagState>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -62,6 +71,7 @@ impl RegistrySet {
             contents: BTreeMap::new(),
             tags: BTreeMap::new(),
             block_states: BlockStateRegistry::vanilla_26_1(),
+            pending: None,
         }
     }
 
