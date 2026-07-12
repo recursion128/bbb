@@ -450,6 +450,12 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   encode entity id + bounded command text + track-output, and retain server
   permission/entity-type/command-block-enabled authority. Generated metadata
   schema and packet catalog presence are not an interactive editor.
+- Implement the game-master `StructureBlockEditScreen` owner and typed
+  `ServerboundSetStructureBlockPacket`: preload the canonical block-entity
+  fields, validate and clamp name/offset/size/data/integrity/seed, expose
+  update/save/load/scan plus mirror/rotation/flag controls, and preserve server
+  permission, structure storage, world mutation and feedback authority. The
+  multiplayer client must not own structure save/load operations.
 - Complete `AbstractSignEditScreen` parity after the OpenSignEditor authority
   gate: choose filtered sign messages, enforce the 90-pixel font-width limit,
   support clipboard/IME preedit, and close when the sign is removed or the
