@@ -185,7 +185,7 @@ fn terrain_cells_include_vanilla_fluid_state() {
         })
         .unwrap();
     assert_eq!(seagrass.block_name.as_deref(), Some("minecraft:seagrass"));
-    assert_eq!(seagrass.material, TerrainMaterialClass::Cutout);
+    assert_eq!(seagrass.material, TerrainMaterialClass::Opaque);
     assert_eq!(seagrass.fluid, source_water);
 
     let copper_grate = store
@@ -199,7 +199,7 @@ fn terrain_cells_include_vanilla_fluid_state() {
         copper_grate.block_name.as_deref(),
         Some("minecraft:copper_grate")
     );
-    assert_eq!(copper_grate.material, TerrainMaterialClass::Cutout);
+    assert_eq!(copper_grate.material, TerrainMaterialClass::Opaque);
     assert_eq!(copper_grate.fluid, falling_source_water);
 
     let iron_bars = store
@@ -210,7 +210,7 @@ fn terrain_cells_include_vanilla_fluid_state() {
         })
         .unwrap();
     assert_eq!(iron_bars.block_name.as_deref(), Some("minecraft:iron_bars"));
-    assert_eq!(iron_bars.material, TerrainMaterialClass::Cutout);
+    assert_eq!(iron_bars.material, TerrainMaterialClass::Opaque);
     assert_eq!(iron_bars.fluid, source_water);
 
     let waxed_copper_bars = store
@@ -224,7 +224,7 @@ fn terrain_cells_include_vanilla_fluid_state() {
         waxed_copper_bars.block_name.as_deref(),
         Some("minecraft:waxed_copper_bars")
     );
-    assert_eq!(waxed_copper_bars.material, TerrainMaterialClass::Cutout);
+    assert_eq!(waxed_copper_bars.material, TerrainMaterialClass::Opaque);
     assert_eq!(waxed_copper_bars.fluid, source_water);
 
     let iron_chain = store
@@ -238,7 +238,7 @@ fn terrain_cells_include_vanilla_fluid_state() {
         iron_chain.block_name.as_deref(),
         Some("minecraft:iron_chain")
     );
-    assert_eq!(iron_chain.material, TerrainMaterialClass::Cutout);
+    assert_eq!(iron_chain.material, TerrainMaterialClass::Opaque);
     assert_eq!(iron_chain.fluid, source_water);
 
     let waxed_copper_chain = store
@@ -252,7 +252,7 @@ fn terrain_cells_include_vanilla_fluid_state() {
         waxed_copper_chain.block_name.as_deref(),
         Some("minecraft:waxed_copper_chain")
     );
-    assert_eq!(waxed_copper_chain.material, TerrainMaterialClass::Cutout);
+    assert_eq!(waxed_copper_chain.material, TerrainMaterialClass::Opaque);
     assert_eq!(waxed_copper_chain.fluid, source_water);
 
     let oak_door = store
@@ -263,7 +263,7 @@ fn terrain_cells_include_vanilla_fluid_state() {
         })
         .unwrap();
     assert_eq!(oak_door.block_name.as_deref(), Some("minecraft:oak_door"));
-    assert_eq!(oak_door.material, TerrainMaterialClass::Cutout);
+    assert_eq!(oak_door.material, TerrainMaterialClass::Opaque);
     assert_eq!(oak_door.fluid, None);
 
     let oak_trapdoor = store
@@ -277,7 +277,7 @@ fn terrain_cells_include_vanilla_fluid_state() {
         oak_trapdoor.block_name.as_deref(),
         Some("minecraft:oak_trapdoor")
     );
-    assert_eq!(oak_trapdoor.material, TerrainMaterialClass::Cutout);
+    assert_eq!(oak_trapdoor.material, TerrainMaterialClass::Opaque);
     assert_eq!(oak_trapdoor.fluid, source_water);
 
     let terrain = store
@@ -333,8 +333,8 @@ fn terrain_cells_include_vanilla_fluid_state() {
     assert_eq!(summary.fluid_state_blocks, 11);
     assert_eq!(summary.fluid_blocks, 1);
     assert_eq!(summary.invisible_blocks, 2);
-    assert_eq!(summary.cutout_blocks, 8);
-    assert_eq!(summary.opaque_blocks, 4085);
+    assert_eq!(summary.cutout_blocks, 0);
+    assert_eq!(summary.opaque_blocks, 4093);
     assert_eq!(
         store
             .probe_chunk(ChunkPos { x: 2, z: -3 })

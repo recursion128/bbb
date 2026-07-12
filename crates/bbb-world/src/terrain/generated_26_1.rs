@@ -9,7 +9,7 @@ pub(super) const VANILLA_NO_TERRAIN_PARTICLE_BLOCKS: &[&str] =
 pub(super) const VANILLA_AIR_BLOCKS: &[&str] =
     &["minecraft:air", "minecraft:void_air", "minecraft:cave_air"];
 
-pub(super) const VANILLA_TORCH_BLOCKS: &[&str] = &[
+pub(super) const VANILLA_NO_COLLISION_TORCH_BLOCKS: &[&str] = &[
     "minecraft:torch",
     "minecraft:wall_torch",
     "minecraft:redstone_torch",
@@ -60,27 +60,20 @@ pub(super) const VANILLA_FIXED_SOURCE_WATER_BLOCKS: &[&str] = &[
     "minecraft:bubble_column",
 ];
 
-pub(super) const VANILLA_CUTOUT_ATTACHMENT_BLOCKS: &[&str] = &[
-    "minecraft:ladder",
-    "minecraft:lever",
-    "minecraft:end_rod",
-    "minecraft:pointed_dripstone",
-];
-
-pub(super) const VANILLA_CROP_SUPPLEMENT_BLOCKS: &[&str] = &[
+pub(super) const VANILLA_NO_COLLISION_CROP_SUPPLEMENT_BLOCKS: &[&str] = &[
     "minecraft:sugar_cane",
     "minecraft:attached_pumpkin_stem",
     "minecraft:attached_melon_stem",
     "minecraft:nether_wart",
 ];
 
-pub(super) const VANILLA_WIRE_CUTOUT_BLOCKS: &[&str] = &[
+pub(super) const VANILLA_NO_COLLISION_WIRE_BLOCKS: &[&str] = &[
     "minecraft:redstone_wire",
     "minecraft:tripwire_hook",
     "minecraft:tripwire",
 ];
 
-pub(super) const VANILLA_THIN_OVERLAY_BLOCKS: &[&str] = &[
+pub(super) const VANILLA_NO_COLLISION_THIN_OVERLAY_BLOCKS: &[&str] = &[
     "minecraft:glow_lichen",
     "minecraft:resin_clump",
     "minecraft:sculk_vein",
@@ -117,62 +110,14 @@ pub(super) const VANILLA_BARS_BLOCKS: &[&str] = &[
     "minecraft:waxed_oxidized_copper_bars",
 ];
 
-pub(super) const VANILLA_DOOR_BLOCKS: &[&str] = &[
-    "minecraft:oak_door",
-    "minecraft:spruce_door",
-    "minecraft:birch_door",
-    "minecraft:jungle_door",
-    "minecraft:acacia_door",
-    "minecraft:dark_oak_door",
-    "minecraft:pale_oak_door",
-    "minecraft:crimson_door",
-    "minecraft:warped_door",
-    "minecraft:mangrove_door",
-    "minecraft:bamboo_door",
-    "minecraft:cherry_door",
-    "minecraft:copper_door",
-    "minecraft:exposed_copper_door",
-    "minecraft:weathered_copper_door",
-    "minecraft:oxidized_copper_door",
-    "minecraft:waxed_copper_door",
-    "minecraft:waxed_exposed_copper_door",
-    "minecraft:waxed_weathered_copper_door",
-    "minecraft:waxed_oxidized_copper_door",
-    "minecraft:iron_door",
-];
-
-pub(super) const VANILLA_TRAPDOOR_BLOCKS: &[&str] = &[
-    "minecraft:acacia_trapdoor",
-    "minecraft:birch_trapdoor",
-    "minecraft:dark_oak_trapdoor",
-    "minecraft:pale_oak_trapdoor",
-    "minecraft:jungle_trapdoor",
-    "minecraft:oak_trapdoor",
-    "minecraft:spruce_trapdoor",
-    "minecraft:crimson_trapdoor",
-    "minecraft:warped_trapdoor",
-    "minecraft:mangrove_trapdoor",
-    "minecraft:bamboo_trapdoor",
-    "minecraft:cherry_trapdoor",
-    "minecraft:iron_trapdoor",
-    "minecraft:copper_trapdoor",
-    "minecraft:exposed_copper_trapdoor",
-    "minecraft:weathered_copper_trapdoor",
-    "minecraft:oxidized_copper_trapdoor",
-    "minecraft:waxed_copper_trapdoor",
-    "minecraft:waxed_exposed_copper_trapdoor",
-    "minecraft:waxed_weathered_copper_trapdoor",
-    "minecraft:waxed_oxidized_copper_trapdoor",
-];
-
-pub(super) const VANILLA_RAIL_BLOCKS: &[&str] = &[
+pub(super) const VANILLA_NO_COLLISION_RAIL_BLOCKS: &[&str] = &[
     "minecraft:rail",
     "minecraft:powered_rail",
     "minecraft:detector_rail",
     "minecraft:activator_rail",
 ];
 
-pub(super) const VANILLA_SIGN_BLOCKS: &[&str] = &[
+pub(super) const VANILLA_NO_COLLISION_SIGN_BLOCKS: &[&str] = &[
     "minecraft:oak_sign",
     "minecraft:spruce_sign",
     "minecraft:birch_sign",
@@ -223,22 +168,7 @@ pub(super) const VANILLA_SIGN_BLOCKS: &[&str] = &[
     "minecraft:bamboo_wall_hanging_sign",
 ];
 
-pub(super) const VANILLA_CAMPFIRE_BLOCKS: &[&str] =
-    &["minecraft:campfire", "minecraft:soul_campfire"];
-
-pub(super) const VANILLA_CHAIN_BLOCKS: &[&str] = &[
-    "minecraft:iron_chain",
-    "minecraft:copper_chain",
-    "minecraft:waxed_copper_chain",
-    "minecraft:exposed_copper_chain",
-    "minecraft:waxed_exposed_copper_chain",
-    "minecraft:weathered_copper_chain",
-    "minecraft:waxed_weathered_copper_chain",
-    "minecraft:oxidized_copper_chain",
-    "minecraft:waxed_oxidized_copper_chain",
-];
-
-pub(super) const VANILLA_BUTTON_BLOCKS: &[&str] = &[
+pub(super) const VANILLA_NO_COLLISION_BUTTON_BLOCKS: &[&str] = &[
     "minecraft:oak_button",
     "minecraft:spruce_button",
     "minecraft:birch_button",
@@ -255,7 +185,7 @@ pub(super) const VANILLA_BUTTON_BLOCKS: &[&str] = &[
     "minecraft:polished_blackstone_button",
 ];
 
-pub(super) const VANILLA_PRESSURE_PLATE_BLOCKS: &[&str] = &[
+pub(super) const VANILLA_NO_COLLISION_PRESSURE_PLATE_BLOCKS: &[&str] = &[
     "minecraft:light_weighted_pressure_plate",
     "minecraft:heavy_weighted_pressure_plate",
     "minecraft:oak_pressure_plate",
@@ -274,7 +204,7 @@ pub(super) const VANILLA_PRESSURE_PLATE_BLOCKS: &[&str] = &[
     "minecraft:polished_blackstone_pressure_plate",
 ];
 
-pub(super) const VANILLA_BANNER_BLOCKS: &[&str] = &[
+pub(super) const VANILLA_NO_COLLISION_BANNER_BLOCKS: &[&str] = &[
     "minecraft:white_banner",
     "minecraft:orange_banner",
     "minecraft:magenta_banner",
@@ -309,31 +239,7 @@ pub(super) const VANILLA_BANNER_BLOCKS: &[&str] = &[
     "minecraft:black_wall_banner",
 ];
 
-pub(super) const VANILLA_LANTERN_BLOCKS: &[&str] = &[
-    "minecraft:lantern",
-    "minecraft:soul_lantern",
-    "minecraft:copper_lantern",
-    "minecraft:waxed_copper_lantern",
-    "minecraft:exposed_copper_lantern",
-    "minecraft:waxed_exposed_copper_lantern",
-    "minecraft:weathered_copper_lantern",
-    "minecraft:waxed_weathered_copper_lantern",
-    "minecraft:oxidized_copper_lantern",
-    "minecraft:waxed_oxidized_copper_lantern",
-];
-
-pub(super) const VANILLA_LIGHTNING_ROD_BLOCKS: &[&str] = &[
-    "minecraft:lightning_rod",
-    "minecraft:exposed_lightning_rod",
-    "minecraft:weathered_lightning_rod",
-    "minecraft:oxidized_lightning_rod",
-    "minecraft:waxed_lightning_rod",
-    "minecraft:waxed_exposed_lightning_rod",
-    "minecraft:waxed_weathered_lightning_rod",
-    "minecraft:waxed_oxidized_lightning_rod",
-];
-
-pub(super) const VANILLA_SMALL_FLOWER_BLOCKS: &[&str] = &[
+pub(super) const VANILLA_NO_COLLISION_SMALL_FLOWER_BLOCKS: &[&str] = &[
     "minecraft:dandelion",
     "minecraft:open_eyeblossom",
     "minecraft:poppy",
@@ -353,7 +259,7 @@ pub(super) const VANILLA_SMALL_FLOWER_BLOCKS: &[&str] = &[
     "minecraft:golden_dandelion",
 ];
 
-pub(super) const VANILLA_CROP_BLOCKS: &[&str] = &[
+pub(super) const VANILLA_NO_COLLISION_CROP_BLOCKS: &[&str] = &[
     "minecraft:beetroots",
     "minecraft:carrots",
     "minecraft:potatoes",
@@ -364,7 +270,8 @@ pub(super) const VANILLA_CROP_BLOCKS: &[&str] = &[
     "minecraft:pitcher_crop",
 ];
 
-pub(super) const VANILLA_FIRE_BLOCKS: &[&str] = &["minecraft:fire", "minecraft:soul_fire"];
+pub(super) const VANILLA_NO_COLLISION_FIRE_BLOCKS: &[&str] =
+    &["minecraft:fire", "minecraft:soul_fire"];
 
 #[cfg(test)]
 mod tests {
@@ -380,34 +287,24 @@ mod tests {
             VANILLA_AIR_BLOCKS,
             &["minecraft:air", "minecraft:void_air", "minecraft:cave_air"]
         );
-        assert_eq!(VANILLA_TORCH_BLOCKS.len(), 8);
+        assert_eq!(VANILLA_NO_COLLISION_TORCH_BLOCKS.len(), 8);
         assert_eq!(VANILLA_IRON_BARS_CLASS_BLOCKS.len(), 18);
         assert_eq!(VANILLA_COPPER_GRATE_BLOCKS.len(), 8);
         assert_eq!(VANILLA_FIXED_SOURCE_WATER_BLOCKS.len(), 5);
-        assert_eq!(VANILLA_CUTOUT_ATTACHMENT_BLOCKS.len(), 4);
-        assert_eq!(VANILLA_CROP_SUPPLEMENT_BLOCKS.len(), 4);
-        assert_eq!(VANILLA_WIRE_CUTOUT_BLOCKS.len(), 3);
-        assert_eq!(VANILLA_THIN_OVERLAY_BLOCKS.len(), 7);
+        assert_eq!(VANILLA_NO_COLLISION_CROP_SUPPLEMENT_BLOCKS.len(), 4);
+        assert_eq!(VANILLA_NO_COLLISION_WIRE_BLOCKS.len(), 3);
+        assert_eq!(VANILLA_NO_COLLISION_THIN_OVERLAY_BLOCKS.len(), 7);
         assert_eq!(VANILLA_INVISIBLE_RENDER_SHAPE_BLOCKS.len(), 12);
         assert_eq!(VANILLA_BARS_BLOCKS.len(), 9);
-        assert_eq!(VANILLA_DOOR_BLOCKS.len(), 21);
-        assert_eq!(VANILLA_TRAPDOOR_BLOCKS.len(), 21);
-        assert_eq!(VANILLA_RAIL_BLOCKS.len(), 4);
-        assert_eq!(VANILLA_SIGN_BLOCKS.len(), 48);
+        assert_eq!(VANILLA_NO_COLLISION_RAIL_BLOCKS.len(), 4);
+        assert_eq!(VANILLA_NO_COLLISION_SIGN_BLOCKS.len(), 48);
+        assert_eq!(VANILLA_NO_COLLISION_BUTTON_BLOCKS.len(), 14);
+        assert_eq!(VANILLA_NO_COLLISION_PRESSURE_PLATE_BLOCKS.len(), 16);
+        assert_eq!(VANILLA_NO_COLLISION_BANNER_BLOCKS.len(), 32);
+        assert_eq!(VANILLA_NO_COLLISION_SMALL_FLOWER_BLOCKS.len(), 17);
+        assert_eq!(VANILLA_NO_COLLISION_CROP_BLOCKS.len(), 8);
         assert_eq!(
-            VANILLA_CAMPFIRE_BLOCKS,
-            &["minecraft:campfire", "minecraft:soul_campfire"]
-        );
-        assert_eq!(VANILLA_CHAIN_BLOCKS.len(), 9);
-        assert_eq!(VANILLA_BUTTON_BLOCKS.len(), 14);
-        assert_eq!(VANILLA_PRESSURE_PLATE_BLOCKS.len(), 16);
-        assert_eq!(VANILLA_BANNER_BLOCKS.len(), 32);
-        assert_eq!(VANILLA_LANTERN_BLOCKS.len(), 10);
-        assert_eq!(VANILLA_LIGHTNING_ROD_BLOCKS.len(), 8);
-        assert_eq!(VANILLA_SMALL_FLOWER_BLOCKS.len(), 17);
-        assert_eq!(VANILLA_CROP_BLOCKS.len(), 8);
-        assert_eq!(
-            VANILLA_FIRE_BLOCKS,
+            VANILLA_NO_COLLISION_FIRE_BLOCKS,
             &["minecraft:fire", "minecraft:soul_fire"]
         );
     }

@@ -23,7 +23,9 @@ use crate::entities::{
     VANILLA_CREAKING_DEFAULT_CAN_MOVE, VANILLA_HAPPY_GHAST_DEFAULT_STAYS_STILL,
     VANILLA_HAPPY_GHAST_STAYS_STILL_DATA_ID,
 };
-use crate::terrain::{block_name_is_air, block_name_is_copper_grate};
+use crate::terrain::{
+    block_name_has_empty_collision_shape, block_name_is_air, block_name_is_copper_grate,
+};
 use crate::{BlockPos, BlockProbe, TerrainFluidKind, TerrainMaterialClass, WorldStore};
 
 pub(super) const COLLISION_EPSILON: f64 = 1.0e-7;
@@ -1354,6 +1356,11 @@ fn block_collision_shape(block: &BlockProbe, pos: BlockPos) -> Option<BlockColli
         }
         if is_wall_block_name(block_name) {
             return wall_collision_shape(&block.block_properties);
+        }
+        // Collision shape is independent of the baked texture render layer.
+        // Keep this fallback after every concrete vanilla collision shape.
+        if block_name_has_empty_collision_shape(block_name) {
+            return None;
         }
     }
     match block.material {

@@ -12235,3 +12235,19 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] `block_name_has_invisible_render_shape` 删除 12 项手写 resource match，统一消费 generated
   catalog；air 的 Empty 与 water/lava 的 Fluid 分类优先级保持不变，表只替代 render-shape
   membership，不生成渲染算法或碰撞行为。普通 Cargo build/test 仍只读取 checked-in Rust。
+
+## 2026-07-12：Texture-owned terrain render layers
+
+- [x] vanilla 26.1 `BakedQuad.MaterialInfo.of` 将 resolved material transparency 交给
+  `ChunkSectionLayer.byTransparency`，按 translucent、transparent、opaque 依次选择
+  Translucent、Cutout、Solid；terrain render layer 因而不是 block resource membership。
+- [x] world 基础分类现在只拥有 Empty、Fluid、Invisible 与普通 Opaque，删除按名称、tag 或
+  constructor family 猜测 Cutout/Translucent 的生成表和手写补充。pack texture alpha → native
+  per-face/per-quad transparency → renderer effective material 仍是唯一动态分发链，缺失贴图保持
+  opaque missing-sprite fallback。
+- [x] local-player collision 不再借 Cutout 当空 collision shape 代理；rail/sign/button/pressure
+  plate/banner/vegetation 等精确 tag/constructor memberships 以 `VANILLA_NO_COLLISION_*` 独立
+  命名，并在 leaves、grate、door、chain 等具体形状之后分发。bars face skip-rendering、
+  fixed-source fluid、air、terrain-particle gate 与直接 `RenderShape.INVISIBLE` 同样继续使用
+  各自 catalog。本条以更准确的动态权威边界取代上述历史切片中“生成成员仍走 cutout”的
+  结论，不改写其生成器演进记录。

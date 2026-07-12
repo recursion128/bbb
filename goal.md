@@ -240,7 +240,9 @@ entity metadata extractor 是统一 Tree-sitter Java extraction foundation 的�
 
 1. **资源与 tag 派生表**：继续审计手写 block/item/entity membership；有精确 vanilla tag
    的直接从 tag 派生，没有精确 tag 的只在 class/property/registry source fact 能证明等价时
-   生成，禁止用名称启发式或近似 tag 扩大集合。资源缺失必须保留明确 vanilla fallback。
+   生成，禁止用名称启发式或近似 tag 扩大集合。block terrain render layer 不是固定
+   membership：必须由 baked material/sprite 的实际 transparency 动态决定，缺失贴图使用
+   明确的 opaque missing-sprite fallback，不能按 block 名或旧 render-type 表猜测。
 2. **跨 crate 去重与反向门禁**：审计 protocol/world/native/item-model/renderer 中
    重复 registry/ordinal 表和生产代码裸 id；消费者改用 typed catalog API，并增加
    机械扫描或结构测试，阻止已收敛语义重新出现第二事实源。测试 fixture 可保留

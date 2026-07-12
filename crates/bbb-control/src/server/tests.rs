@@ -3645,8 +3645,8 @@ fn probes_chunk_and_block_from_world_store() {
     assert!(terrain_response.ok);
     let terrain = terrain_response.result.unwrap();
     assert_eq!(terrain["total_blocks"], 4096);
-    assert_eq!(terrain["opaque_blocks"], 0);
-    assert_eq!(terrain["cutout_blocks"], 4096);
+    assert_eq!(terrain["opaque_blocks"], 4096);
+    assert_eq!(terrain["cutout_blocks"], 0);
     assert_eq!(terrain["empty_blocks"], 0);
 
     let missing_response = dispatch(

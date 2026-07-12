@@ -10,7 +10,7 @@ use bbb_protocol::packets::{
 };
 
 #[test]
-fn terrain_cells_classify_waterlogged_rails_as_cutout() {
+fn terrain_cells_classify_waterlogged_rails_as_opaque_base_material() {
     let mut store = WorldStore::with_dimension(WorldDimension {
         min_y: 0,
         height: 16,
@@ -70,7 +70,7 @@ fn terrain_cells_classify_waterlogged_rails_as_cutout() {
     ] {
         let probe = store.probe_block(BlockPos { x, y: 1, z: -44 }).unwrap();
         assert_eq!(probe.block_name.as_deref(), Some(block_name));
-        assert_eq!(probe.material, TerrainMaterialClass::Cutout);
+        assert_eq!(probe.material, TerrainMaterialClass::Opaque);
         assert_eq!(probe.fluid, source_water);
     }
 
@@ -86,8 +86,8 @@ fn terrain_cells_classify_waterlogged_rails_as_cutout() {
 
     let summary = terrain.summary();
     assert_eq!(summary.fluid_state_blocks, 4);
-    assert_eq!(summary.cutout_blocks, 4);
-    assert_eq!(summary.opaque_blocks, 4092);
+    assert_eq!(summary.cutout_blocks, 0);
+    assert_eq!(summary.opaque_blocks, 4096);
     assert_eq!(
         store
             .probe_chunk(ChunkPos { x: 2, z: -3 })
@@ -99,7 +99,7 @@ fn terrain_cells_classify_waterlogged_rails_as_cutout() {
 }
 
 #[test]
-fn terrain_cells_classify_ladders_and_torches_as_cutout() {
+fn terrain_cells_classify_ladders_and_torches_as_opaque_base_material() {
     let mut store = WorldStore::with_dimension(WorldDimension {
         min_y: 0,
         height: 16,
@@ -204,7 +204,7 @@ fn terrain_cells_classify_ladders_and_torches_as_cutout() {
     ] {
         let probe = store.probe_block(BlockPos { x, y: 1, z: -43 }).unwrap();
         assert_eq!(probe.block_name.as_deref(), Some(block_name));
-        assert_eq!(probe.material, TerrainMaterialClass::Cutout);
+        assert_eq!(probe.material, TerrainMaterialClass::Opaque);
         assert_eq!(probe.fluid, expected_fluid);
     }
 
@@ -224,8 +224,8 @@ fn terrain_cells_classify_ladders_and_torches_as_cutout() {
 
     let summary = terrain.summary();
     assert_eq!(summary.fluid_state_blocks, 1);
-    assert_eq!(summary.cutout_blocks, 9);
-    assert_eq!(summary.opaque_blocks, 4087);
+    assert_eq!(summary.cutout_blocks, 0);
+    assert_eq!(summary.opaque_blocks, 4096);
     assert_eq!(
         store
             .probe_chunk(ChunkPos { x: 2, z: -3 })
@@ -237,7 +237,7 @@ fn terrain_cells_classify_ladders_and_torches_as_cutout() {
 }
 
 #[test]
-fn terrain_cells_classify_redstone_controls_as_cutout() {
+fn terrain_cells_classify_redstone_controls_as_opaque_base_material() {
     let mut store = WorldStore::with_dimension(WorldDimension {
         min_y: 0,
         height: 16,
@@ -368,7 +368,7 @@ fn terrain_cells_classify_redstone_controls_as_cutout() {
     ] {
         let probe = store.probe_block(BlockPos { x, y: 1, z: -42 }).unwrap();
         assert_eq!(probe.block_name.as_deref(), Some(block_name));
-        assert_eq!(probe.material, TerrainMaterialClass::Cutout);
+        assert_eq!(probe.material, TerrainMaterialClass::Opaque);
         assert_eq!(probe.fluid, None);
     }
 
@@ -384,8 +384,8 @@ fn terrain_cells_classify_redstone_controls_as_cutout() {
 
     let summary = terrain.summary();
     assert_eq!(summary.fluid_state_blocks, 0);
-    assert_eq!(summary.cutout_blocks, 12);
-    assert_eq!(summary.opaque_blocks, 4084);
+    assert_eq!(summary.cutout_blocks, 0);
+    assert_eq!(summary.opaque_blocks, 4096);
     assert_eq!(
         store
             .probe_chunk(ChunkPos { x: 2, z: -3 })
@@ -397,7 +397,7 @@ fn terrain_cells_classify_redstone_controls_as_cutout() {
 }
 
 #[test]
-fn terrain_cells_classify_waterlogged_lanterns_as_cutout() {
+fn terrain_cells_classify_waterlogged_lanterns_as_opaque_base_material() {
     let mut store = WorldStore::with_dimension(WorldDimension {
         min_y: 0,
         height: 16,
@@ -457,7 +457,7 @@ fn terrain_cells_classify_waterlogged_lanterns_as_cutout() {
     ] {
         let probe = store.probe_block(BlockPos { x, y: 1, z: -41 }).unwrap();
         assert_eq!(probe.block_name.as_deref(), Some(block_name));
-        assert_eq!(probe.material, TerrainMaterialClass::Cutout);
+        assert_eq!(probe.material, TerrainMaterialClass::Opaque);
         assert_eq!(probe.fluid, source_water);
     }
 
@@ -473,8 +473,8 @@ fn terrain_cells_classify_waterlogged_lanterns_as_cutout() {
 
     let summary = terrain.summary();
     assert_eq!(summary.fluid_state_blocks, 4);
-    assert_eq!(summary.cutout_blocks, 4);
-    assert_eq!(summary.opaque_blocks, 4092);
+    assert_eq!(summary.cutout_blocks, 0);
+    assert_eq!(summary.opaque_blocks, 4096);
     assert_eq!(
         store
             .probe_chunk(ChunkPos { x: 2, z: -3 })
@@ -486,7 +486,7 @@ fn terrain_cells_classify_waterlogged_lanterns_as_cutout() {
 }
 
 #[test]
-fn terrain_cells_classify_waterlogged_lightning_rods_as_cutout() {
+fn terrain_cells_classify_waterlogged_lightning_rods_as_opaque_base_material() {
     let mut store = WorldStore::with_dimension(WorldDimension {
         min_y: 0,
         height: 16,
@@ -546,7 +546,7 @@ fn terrain_cells_classify_waterlogged_lightning_rods_as_cutout() {
     ] {
         let probe = store.probe_block(BlockPos { x, y: 1, z: -40 }).unwrap();
         assert_eq!(probe.block_name.as_deref(), Some(block_name));
-        assert_eq!(probe.material, TerrainMaterialClass::Cutout);
+        assert_eq!(probe.material, TerrainMaterialClass::Opaque);
         assert_eq!(probe.fluid, source_water);
     }
 
@@ -562,8 +562,8 @@ fn terrain_cells_classify_waterlogged_lightning_rods_as_cutout() {
 
     let summary = terrain.summary();
     assert_eq!(summary.fluid_state_blocks, 4);
-    assert_eq!(summary.cutout_blocks, 4);
-    assert_eq!(summary.opaque_blocks, 4092);
+    assert_eq!(summary.cutout_blocks, 0);
+    assert_eq!(summary.opaque_blocks, 4096);
     assert_eq!(
         store
             .probe_chunk(ChunkPos { x: 2, z: -3 })
@@ -575,7 +575,7 @@ fn terrain_cells_classify_waterlogged_lightning_rods_as_cutout() {
 }
 
 #[test]
-fn terrain_cells_classify_dripstone_campfires_and_end_rods_as_cutout() {
+fn terrain_cells_classify_dripstone_campfires_and_end_rods_as_opaque_base_material() {
     let mut store = WorldStore::with_dimension(WorldDimension {
         min_y: 0,
         height: 16,
@@ -644,7 +644,7 @@ fn terrain_cells_classify_dripstone_campfires_and_end_rods_as_cutout() {
     ] {
         let probe = store.probe_block(BlockPos { x, y: 1, z: -39 }).unwrap();
         assert_eq!(probe.block_name.as_deref(), Some(block_name));
-        assert_eq!(probe.material, TerrainMaterialClass::Cutout);
+        assert_eq!(probe.material, TerrainMaterialClass::Opaque);
         assert_eq!(probe.fluid, fluid);
     }
 
@@ -662,8 +662,8 @@ fn terrain_cells_classify_dripstone_campfires_and_end_rods_as_cutout() {
 
     let summary = terrain.summary();
     assert_eq!(summary.fluid_state_blocks, 3);
-    assert_eq!(summary.cutout_blocks, 5);
-    assert_eq!(summary.opaque_blocks, 4091);
+    assert_eq!(summary.cutout_blocks, 0);
+    assert_eq!(summary.opaque_blocks, 4096);
     assert_eq!(
         store
             .probe_chunk(ChunkPos { x: 2, z: -3 })
