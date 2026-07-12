@@ -1656,6 +1656,8 @@
             "crates/bbb-world/src/level.rs#dimension_type_registry_cardinal_light_overrides_builtin_fallback",
             "crates/bbb-native/src/runtime/tests.rs#hud_debug_overlay_projects_custom_biome_from_camera_feet_block",
             "crates/bbb-native/src/runtime/tests.rs#hud_debug_overlay_projects_custom_looking_at_entity",
+            "crates/bbb-native/src/runtime/tests.rs#hud_debug_overlay_projects_custom_looking_at_block_tags",
+            "crates/bbb-native/src/runtime/tests.rs#hud_debug_overlay_projects_custom_looking_at_fluid_tags",
             "crates/bbb-native/src/runtime/tests.rs#dropped_item_models_use_world_trim_material_select_context",
             "crates/bbb-native/src/runtime/tests.rs#hud_inventory_tooltip_applies_synced_enchantment_attribute_effects",
             "crates/bbb-native/src/runtime/events/tests/session_protocol_events.rs#registry_data_event_updates_world_state_and_counters"

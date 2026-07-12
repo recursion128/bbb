@@ -4736,12 +4736,7 @@ fn hud_debug_looking_at_block_tag_lines(
 ) -> Option<Vec<String>> {
     let hit = debug_looking_at_block_hit_from_camera(world, camera_pose)?;
     let block_name = world.probe_block(hit.pos)?.block_name?;
-    let block_id = world
-        .registry_content("minecraft:block")?
-        .entries
-        .iter()
-        .position(|entry| entry.id == block_name)?;
-    let block_id = i32::try_from(block_id).ok()?;
+    let block_id = world.registry_holder_id_by_resource_id("minecraft:block", &block_name)?;
     let tags = world.registry_tags("minecraft:block")?;
     Some(
         tags.tags
@@ -4779,12 +4774,7 @@ fn hud_debug_looking_at_fluid_tag_lines(
     let hit = debug_looking_at_fluid_hit_from_camera(world, camera_pose)?;
     let fluid = world.probe_block(hit.pos)?.fluid?;
     let fluid_name = hud_debug_fluid_state_name(fluid);
-    let fluid_id = world
-        .registry_content("minecraft:fluid")?
-        .entries
-        .iter()
-        .position(|entry| entry.id == fluid_name)?;
-    let fluid_id = i32::try_from(fluid_id).ok()?;
+    let fluid_id = world.registry_holder_id_by_resource_id("minecraft:fluid", fluid_name)?;
     let tags = world.registry_tags("minecraft:fluid")?;
     Some(
         tags.tags

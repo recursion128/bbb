@@ -12106,3 +12106,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] `bbb-world` registry owner 提供 active holder wire-order resource-id iterator；缺失 registry 显式返回 `None`，且 configuration pending contents 在 Finish 前仍不可见。
 - [x] enchantment、trim-material 与 attribute 的 item-model key projection 从 runtime/dropped 两份直接 `entries` 遍历收口到 item-model semantic owner；trim select 与 synced enchantment attribute focused projections 保持通过。
+
+## 2026-07-12：HUD block/fluid tag holder lookup migration
+
+- [x] F3 targeted block/fluid tag projection 不再各自遍历 registry entries 反查 numeric id，改用 registry owner 的 checked resource-id → holder-id lookup。
+- [x] synced tag order/membership 保持不变；缺失或重复 resource id 不再猜测首个 entry，existing custom block/fluid registry projections 保持通过，typed holder-tag resolution 继续开放。
