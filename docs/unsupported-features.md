@@ -732,6 +732,11 @@ back into a todo. Do not delete these.
 
 ## Block entities and terrain
 
+- **Light-update queue and section-neighbor rebuild parity.** Packet decode and
+  canonical mask/empty-mask merging are covered, but bbb applies updates during
+  net-event drain and uses a coarse terrain-upload counter. Vanilla queues them
+  through `ClientLevel.queueLightUpdate`, consumes a bounded amount per frame,
+  and calls `setSectionDirtyWithNeighbors` for changed standalone light sections.
 - **ForgetLevelChunk runtime cache cleanup.** On unload, clear the renderer even
   when the last canonical chunk disappears, remove queued sky/block light for
   every section, and drop typed debug-subscription values for that chunk. World

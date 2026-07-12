@@ -513,6 +513,7 @@ play InitializeBorder 的完整 snapshot framing/strict trailing、canonical tic
 play LevelChunkWithLight 的 2 MiB section buffer、2048-byte light layers、strict trailing、section/heightmap/light/chunk-column replacement 与 tests 已审计；collection/registry validation、session biome、完整 block-entity semantics、queued light/neighbor dirty/render-ready 和 terrain parity 保持 decode/canonical/runtime/tests partial。
 play LevelEvent 的 type/BlockPos/data/global framing、strict trailing、canonical event/jukebox 与完整 LevelEventHandler sound/particle switch/tests 已闭合；terrain/item atlas/block-entity/audio-device 相邻 parity 仍按各自开放条目维护。
 play LevelParticles 的 limiter/show、position/offset/speed/count、117 项 registry-dispatched ParticleOptions framing/strict trailing、canonical snapshot 与 native spawn/renderer dispatch/tests 已闭合；provider-specific 与 terrain/item atlas 呈现细节仍按 particle ledger 维护。
+play LightUpdate 的 chunk VarInt、四组 bitset、2048-byte layer、strict trailing 与 canonical merge 已闭合；vanilla bounded light-update queue、逐 section neighbor dirty/rebuild 及对应 runtime tests 保持 partial。
 
 完成标准：全部 vanilla 26.1 catalog entry 都有矩阵行；所有目标客户端适用项为
 `complete`，其余只有带 vanilla 依据的 `not-applicable` 或带重启判据的窄 `deferred`；

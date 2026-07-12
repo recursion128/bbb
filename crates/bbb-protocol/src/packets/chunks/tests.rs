@@ -54,10 +54,9 @@ fn decodes_light_update_envelope() {
     payload.write_var_i32(12);
     payload.write_var_i32(-4);
     write_light_data(&mut payload, &[0b10], &[0b100], &[0b1000], &[], 1, 1);
+    let payload = payload.into_inner();
 
-    let packet =
-        decode_play_clientbound(ids::play::CLIENTBOUND_LIGHT_UPDATE, &payload.into_inner())
-            .unwrap();
+    let packet = decode_play_clientbound(ids::play::CLIENTBOUND_LIGHT_UPDATE, &payload).unwrap();
     assert_eq!(
         packet,
         PlayClientbound::LightUpdate(LightUpdate {
@@ -72,6 +71,15 @@ fn decodes_light_update_envelope() {
                 block_updates: vec![vec![2; 2048]],
             },
         })
+    );
+
+    let mut trailing = payload;
+    trailing.push(0);
+    assert!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_LIGHT_UPDATE, &trailing)
+            .unwrap_err()
+            .to_string()
+            .contains("trailing 1 bytes after light update packet")
     );
 }
 

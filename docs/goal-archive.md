@@ -11666,3 +11666,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] limiter/show、position/offset/speed/count、117 项 registry-dispatched ParticleOptions、strict trailing 与 unknown-id rejection 已审计。
 - [x] world snapshot、net/probe 转发、native limiter/count/random/context spawn 和 renderer dispatch/tests 闭合；provider-specific 与 terrain/item atlas 细节继续由 particle ledger 维护。
+
+## 2026-07-12：play light update packet coverage audit
+
+- [x] chunk VarInt、四组 bitset、固定 2048-byte layer、strict trailing、loaded/missing chunk canonical merge 与跨 crate tests 已审计。
+- [x] vanilla bounded light-update queue、逐 section neighbor dirty/rebuild 尚未实现，runtime/tests 保持 partial 并写入 terrain ledger。
