@@ -22,6 +22,7 @@ const MAX_ENTITY_ATTRIBUTES: usize = 1024;
 const MAX_ENTITY_ID_LIST: usize = 8192;
 const MAX_EQUIPMENT_SLOTS: usize = 8;
 const MAX_ATTRIBUTE_MODIFIERS: usize = 1024;
+const MAX_ENTITY_DATA_VALUES: usize = 255;
 const MAX_ENTITY_DATA_PARTICLES: usize = 65_536;
 const MAX_GAME_PROFILE_PROPERTIES: usize = 16;
 const MAX_GAME_PROFILE_PROPERTY_NAME_CHARS: usize = 64;
@@ -680,6 +681,12 @@ pub(super) fn decode_set_entity_data(decoder: &mut Decoder<'_>) -> Result<SetEnt
         if data_id == 0xff {
             break;
         }
+        if values.len() >= MAX_ENTITY_DATA_VALUES {
+            return Err(ProtocolError::PacketTooLarge(
+                values.len() + 1,
+                MAX_ENTITY_DATA_VALUES,
+            ));
+        }
         let serializer_id = decoder.read_var_i32()?;
         values.push(EntityDataValue {
             data_id,
@@ -687,7 +694,13 @@ pub(super) fn decode_set_entity_data(decoder: &mut Decoder<'_>) -> Result<SetEnt
             value: decode_entity_data_value(decoder, serializer_id)?,
         });
     }
-    Ok(SetEntityData { id, values })
+    let packet = SetEntityData { id, values };
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after set entity data packet".to_string(),
+        ));
+    }
+    Ok(packet)
 }
 
 fn decode_entity_data_value(

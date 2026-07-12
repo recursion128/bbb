@@ -11736,3 +11736,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] Center/LerpSize/Size/WarningDelay/WarningDistance wire、strict trailing、canonical mutation、tick/partial-tick interpolation、forcefield/input consumers、ownership 与跨 crate tests 已审计。
 - [x] `Gui.extractVignette` 的 warning distance/time 与 lerp-speed 屏幕警告继续由 HUD ledger 维护；五包 runtime/tests 保持 partial。
+
+## 2026-07-12：play set entity data packet coverage audit
+
+- [x] entity id、255-terminated accessor list、43 个固定 serializer 的显式 dispatch、255 项分配前上限、strict trailing、known/unknown entity apply gate、metadata merge/callback baseline 与 ownership 已审计。
+- [x] rich Component/ItemStack、registry-holder resolution、generated accessor serializer validation 与剩余 family consumers 保持开放；本切片未增加 metadata family。

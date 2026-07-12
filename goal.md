@@ -527,6 +527,7 @@ play ResourcePack Pop/Push 的 optional UUID、URL/hash/required/prompt wire、s
 play Respawn 的 CommonPlayerSpawnInfo/dataToKeep wire、strict trailing、dimension-change level clear、keep-bit local reset 与 ownership 已审计；seed/portal canonical、LocalPlayer/map/container/camera/music/debug subscriber/LevelLoadTracker 完整生命周期尚未实现，canonical/runtime/tests 保持 partial。
 play SectionBlocksUpdate 的 packed SectionPos/state/relative-pos wire、4096 上限、strict trailing、wire-order apply、prediction reconciliation、terrain reupload 与 tests 已审计；通用 block-entity 清理及 vanilla flag-19 light/neighbor side effects 尚未完整，canonical/runtime 保持 partial。
 play SetBorder Center/LerpSize/Size/WarningDelay/WarningDistance 的 wire、strict trailing、canonical field mutation、tick/partial-tick interpolation、forcefield/input consumers 与 ownership 已审计；`Gui.extractVignette` warning-distance/lerp-speed 层尚未实现，五包 runtime/tests 保持 partial。
+play SetEntityData 的 entity id、255-terminated accessor list、43 serializer dispatch、255 项上限、strict trailing、known/unknown entity apply gate 与 ownership 已审计；rich Component/ItemStack、registry holder resolution、generated accessor serializer validation 和剩余 family consumers 尚未闭合，仅 ownership 为 complete。
 
 完成标准：全部 vanilla 26.1 catalog entry 都有矩阵行；所有目标客户端适用项为
 `complete`，其余只有带 vanilla 依据的 `not-applicable` 或带重启判据的窄 `deferred`；

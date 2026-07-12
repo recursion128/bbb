@@ -327,11 +327,8 @@ fn decodes_entity_lifecycle_packets() {
     payload.write_var_i32(0);
     payload.write_var_i32(0);
     payload.write_u8(0xff);
-    let packet = decode_play_clientbound(
-        ids::play::CLIENTBOUND_SET_ENTITY_DATA,
-        &payload.into_inner(),
-    )
-    .unwrap();
+    let payload = payload.into_inner();
+    let packet = decode_play_clientbound(ids::play::CLIENTBOUND_SET_ENTITY_DATA, &payload).unwrap();
     assert_eq!(
         packet,
         PlayClientbound::SetEntityData(SetEntityData {
@@ -378,6 +375,54 @@ fn decodes_entity_lifecycle_packets() {
             ],
         })
     );
+
+    let mut trailing = payload;
+    trailing.push(0);
+    assert!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_SET_ENTITY_DATA, &trailing)
+            .unwrap_err()
+            .to_string()
+            .contains("trailing bytes after set entity data packet")
+    );
+}
+
+#[test]
+fn bounds_set_entity_data_values_to_accessor_id_space() {
+    let mut payload = Encoder::new();
+    payload.write_var_i32(123);
+    for data_id in 0..=254u8 {
+        payload.write_u8(data_id);
+        payload.write_var_i32(0);
+        payload.write_i8(0);
+    }
+    payload.write_u8(0xff);
+
+    let packet = decode_play_clientbound(
+        ids::play::CLIENTBOUND_SET_ENTITY_DATA,
+        &payload.into_inner(),
+    )
+    .unwrap();
+    let PlayClientbound::SetEntityData(packet) = packet else {
+        panic!("expected set entity data packet");
+    };
+    assert_eq!(packet.values.len(), MAX_ENTITY_DATA_VALUES);
+
+    let mut oversized = Encoder::new();
+    oversized.write_var_i32(123);
+    for data_id in 0..=254u8 {
+        oversized.write_u8(data_id);
+        oversized.write_var_i32(0);
+        oversized.write_i8(0);
+    }
+    oversized.write_u8(0);
+    assert!(matches!(
+        decode_play_clientbound(
+            ids::play::CLIENTBOUND_SET_ENTITY_DATA,
+            &oversized.into_inner()
+        ),
+        Err(ProtocolError::PacketTooLarge(actual, max))
+            if actual == MAX_ENTITY_DATA_VALUES + 1 && max == MAX_ENTITY_DATA_VALUES
+    ));
 }
 
 #[test]

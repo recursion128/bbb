@@ -9990,27 +9990,56 @@
       "constant_name": "CLIENTBOUND_SET_ENTITY_DATA",
       "coverage": {
         "canonical_apply": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
+          "evidence": [
+            "crates/bbb-world/src/entities/metadata.rs#apply_set_entity_data",
+            "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#tracks_entity_lifecycle_and_absolute_state_updates",
+            "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#set_entity_data_ignores_unknown_entities",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleSetEntityData",
+            "vanilla:net/minecraft/network/syncher/SynchedEntityData.java#assignValues"
+          ],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
           "status": "partial"
         },
         "decode": {
-          "evidence": [],
+          "evidence": [
+            "crates/bbb-protocol/src/packets/entities/tests.rs#decodes_entity_lifecycle_packets",
+            "crates/bbb-protocol/src/packets/entities/tests.rs#bounds_set_entity_data_values_to_accessor_id_space",
+            "crates/bbb-protocol/src/packets/entities/tests.rs#decodes_additional_entity_data_serializers",
+            "crates/bbb-protocol/src/packets/entities/tests.rs#decodes_registered_entity_variant_data_serializers",
+            "crates/bbb-protocol/src/entity_data_serializers.rs#VANILLA_ENTITY_DATA_SERIALIZERS",
+            "vanilla:net/minecraft/network/protocol/game/ClientboundSetEntityDataPacket.java#STREAM_CODEC"
+          ],
           "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
           "status": "partial"
         },
         "ownership": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/play_apply.rs#PlayClientbound::SetEntityData",
+            "crates/bbb-world/src/entities/metadata.rs#apply_set_entity_data"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "runtime_side_effect": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
+          "evidence": [
+            "crates/bbb-world/src/entities/metadata.rs#apply_set_entity_data",
+            "crates/bbb-world/src/entities/animations.rs#sync_events_from_metadata_update",
+            "crates/bbb-native/src/entity_scene.rs#entity_model_instances_from_world_at_partial_tick",
+            "vanilla:net/minecraft/network/syncher/SynchedEntityData.java#assignValues"
+          ],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
           "status": "partial"
         },
         "tests": {
-          "evidence": [],
+          "evidence": [
+            "crates/bbb-protocol/src/packets/entities/tests.rs#decodes_entity_lifecycle_packets",
+            "crates/bbb-protocol/src/packets/entities/tests.rs#bounds_set_entity_data_values_to_accessor_id_space",
+            "crates/bbb-net/src/event_stream.rs#play_entity_state_packets_emit_matching_events_without_responses",
+            "crates/bbb-net/src/probe/play.rs#probe_applies_entity_state_packets_to_world",
+            "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#tracks_entity_lifecycle_and_absolute_state_updates",
+            "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#set_entity_data_ignores_unknown_entities",
+            "crates/bbb-native/src/runtime/events/tests/entity_particle_events.rs#entity_events_update_world_and_world_counters"
+          ],
           "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
           "status": "partial"
         }

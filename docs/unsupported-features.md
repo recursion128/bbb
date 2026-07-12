@@ -102,6 +102,12 @@ Owner: `bbb-protocol`
 - Resolve UpdateAttributes holder ids through that session RegistryAccess and
   validate each snapshot against the target living entity's actual AttributeMap
   instance set; do not accept arbitrary fixed-id attributes on every living type.
+- Complete SetEntityData semantic fidelity: preserve rich Component and full
+  ItemStack/component values, resolve registry-holder ids through the session
+  RegistryAccess, validate each data id/serializer against the generated entity
+  accessor schema like `SynchedEntityData.assignValues`, and close the remaining
+  family consumers through the entity matrix. The current flat summary merge is
+  not proof of complete metadata behavior.
 - Defer configuration/play keepalive responses while client event polling is
   render-frozen, with vanilla's one-minute expiry, instead of always replying
   immediately. Ping/pong remains immediate and is already separate.

@@ -3150,6 +3150,26 @@ mod tests {
         }
     }
 
+    #[test]
+    fn play_set_entity_data_keeps_schema_and_family_consumers_open() {
+        let ledger = vanilla_packet_coverage_26_1().unwrap();
+        let entry = ledger
+            .entries
+            .iter()
+            .find(|entry| {
+                entry.state == "play" && entry.constant_name == "CLIENTBOUND_SET_ENTITY_DATA"
+            })
+            .expect("play set entity data coverage row");
+        let complete: BTreeSet<_> = entry
+            .coverage
+            .iter()
+            .filter_map(|(dimension, cell)| {
+                (cell.status == PacketCoverageStatus::Complete).then_some(dimension.as_str())
+            })
+            .collect();
+        assert_eq!(complete, BTreeSet::from(["ownership"]));
+    }
+
     fn state_name(state: PacketState) -> &'static str {
         match state {
             PacketState::Handshake => "handshake",
