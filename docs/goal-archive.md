@@ -12346,3 +12346,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] `pink_petals` 与 `wildflowers` 的第二 texture layer 现在进入 vanilla grass resolver；
   tint membership、biome blend 与默认 colormap focused tests 锁定该边界。颜色采样、blend、
   terrain-particle 特例仍由 native 手写语义拥有，没有把 Java source expression 当作算法。
+
+## 2026-07-12：Completed crop outline membership and shapes
+
+- [x] `minecraft:crops` 的八项 generated tag catalog 改为通用 crop membership，并由 world
+  no-collision 与 native outline 共用；native 仅保留 tag 外但有独立 vanilla class shape 的
+  nether wart / sweet berry bush 补充，不用近似 tag 扩大集合。
+- [x] 根据 vanilla `StemBlock.SHAPES` 与 `PitcherCropBlock.makeShapes` 补齐 melon/pumpkin stem
+  的 age 0..7 高度，以及 pitcher age 0..4、lower/upper、负一像素下沿与空 upper shape。
+  invalid age/half 显式拒绝；本切片只补 selection outline，未关闭账本中更广的 voxel collision
+  或 vegetation parity 条目。

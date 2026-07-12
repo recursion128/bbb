@@ -66,7 +66,7 @@ pub use crate::spawner_blocks::{
 pub use crate::terrain::{
     block_name_has_invisible_render_shape, block_name_is_air, block_name_is_bars_or_pane,
     block_name_is_bed, block_name_is_button, block_name_is_candle, block_name_is_candle_cake,
-    block_name_is_chain, block_name_is_copper_golem_statue, block_name_is_door,
+    block_name_is_chain, block_name_is_copper_golem_statue, block_name_is_crop, block_name_is_door,
     block_name_is_fence, block_name_is_fence_gate, block_name_is_flower_pot,
     block_name_is_half_transparent, block_name_is_hanging_sign, block_name_is_lantern,
     block_name_is_leaves, block_name_is_pressure_plate, block_name_is_rail, block_name_is_rod,

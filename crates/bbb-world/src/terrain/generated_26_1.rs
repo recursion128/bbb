@@ -818,7 +818,7 @@ pub(super) const VANILLA_NO_COLLISION_SMALL_FLOWER_BLOCKS: &[&str] = &[
     "minecraft:golden_dandelion",
 ];
 
-pub(super) const VANILLA_NO_COLLISION_CROP_BLOCKS: &[&str] = &[
+pub(super) const VANILLA_CROP_BLOCKS: &[&str] = &[
     "minecraft:beetroots",
     "minecraft:carrots",
     "minecraft:potatoes",
@@ -893,7 +893,7 @@ mod tests {
         assert_eq!(VANILLA_PRESSURE_PLATE_BLOCKS.len(), 16);
         assert_eq!(VANILLA_NO_COLLISION_BANNER_BLOCKS.len(), 32);
         assert_eq!(VANILLA_NO_COLLISION_SMALL_FLOWER_BLOCKS.len(), 17);
-        assert_eq!(VANILLA_NO_COLLISION_CROP_BLOCKS.len(), 8);
+        assert_eq!(VANILLA_CROP_BLOCKS.len(), 8);
         assert_eq!(
             VANILLA_NO_COLLISION_FIRE_BLOCKS,
             &["minecraft:fire", "minecraft:soul_fire"]

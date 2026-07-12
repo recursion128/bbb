@@ -70,7 +70,7 @@ BLOCK_TAG_CATALOGS = (
     ),
     ("VANILLA_NO_COLLISION_BANNER_BLOCKS", "minecraft:banners", 32),
     ("VANILLA_NO_COLLISION_SMALL_FLOWER_BLOCKS", "minecraft:small_flowers", 17),
-    ("VANILLA_NO_COLLISION_CROP_BLOCKS", "minecraft:crops", 8),
+    ("VANILLA_CROP_BLOCKS", "minecraft:crops", 8),
     ("VANILLA_NO_COLLISION_FIRE_BLOCKS", "minecraft:fire", 2),
 )
 
@@ -305,7 +305,7 @@ def generate(source_root: Path) -> str:
             "        assert_eq!(VANILLA_PRESSURE_PLATE_BLOCKS.len(), 16);",
             "        assert_eq!(VANILLA_NO_COLLISION_BANNER_BLOCKS.len(), 32);",
             "        assert_eq!(VANILLA_NO_COLLISION_SMALL_FLOWER_BLOCKS.len(), 17);",
-            "        assert_eq!(VANILLA_NO_COLLISION_CROP_BLOCKS.len(), 8);",
+            "        assert_eq!(VANILLA_CROP_BLOCKS.len(), 8);",
             '        assert_eq!(VANILLA_NO_COLLISION_FIRE_BLOCKS, &["minecraft:fire", "minecraft:soul_fire"]);',
             "    }",
             "}",

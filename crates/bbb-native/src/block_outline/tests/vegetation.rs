@@ -103,6 +103,56 @@ fn outline_shape_uses_vanilla_crop_age_heights() {
             6.0, 6.0, 0.0, 10.0,
         )))
     );
+    assert_eq!(
+        outline_shape_for_block(Some("minecraft:melon_stem"), &age_properties(0)),
+        Some(BlockOutlineShape::single(BlockOutlineBox::centered_column(
+            2.0, 2.0, 0.0, 2.0,
+        )))
+    );
+    assert_eq!(
+        outline_shape_for_block(Some("minecraft:pumpkin_stem"), &age_properties(7)),
+        Some(BlockOutlineShape::single(BlockOutlineBox::centered_column(
+            2.0, 2.0, 0.0, 16.0,
+        )))
+    );
+}
+
+#[test]
+fn outline_shape_uses_vanilla_pitcher_crop_age_and_half() {
+    assert_eq!(
+        outline_shape_for_block(
+            Some("minecraft:pitcher_crop"),
+            &pitcher_crop_properties(0, "lower"),
+        ),
+        Some(BlockOutlineShape::single(BlockOutlineBox::centered_column(
+            6.0, 6.0, -1.0, 3.0,
+        )))
+    );
+    assert_eq!(
+        outline_shape_for_block(
+            Some("minecraft:pitcher_crop"),
+            &pitcher_crop_properties(1, "upper"),
+        ),
+        Some(BlockOutlineShape::from_boxes(Vec::new()))
+    );
+    assert_eq!(
+        outline_shape_for_block(
+            Some("minecraft:pitcher_crop"),
+            &pitcher_crop_properties(3, "upper"),
+        ),
+        Some(BlockOutlineShape::single(BlockOutlineBox::centered_column(
+            10.0, 10.0, 0.0, 11.0,
+        )))
+    );
+    assert_eq!(
+        outline_shape_for_block(
+            Some("minecraft:pitcher_crop"),
+            &pitcher_crop_properties(4, "lower"),
+        ),
+        Some(BlockOutlineShape::single(BlockOutlineBox::centered_column(
+            10.0, 10.0, -1.0, 16.0,
+        )))
+    );
 }
 
 #[test]
@@ -137,6 +187,20 @@ fn outline_shape_rejects_invalid_crop_age_properties() {
     );
     assert_eq!(
         outline_shape_for_block(Some("minecraft:torchflower_crop"), &age_properties(2)),
+        None
+    );
+    assert_eq!(
+        outline_shape_for_block(
+            Some("minecraft:pitcher_crop"),
+            &pitcher_crop_properties(5, "lower"),
+        ),
+        None
+    );
+    assert_eq!(
+        outline_shape_for_block(
+            Some("minecraft:pitcher_crop"),
+            &pitcher_crop_properties(2, "middle"),
+        ),
         None
     );
 }
@@ -209,6 +273,13 @@ fn lily_pad_outline_clip_uses_thin_vanilla_height() {
 
 fn age_properties(age: u8) -> BTreeMap<String, String> {
     BTreeMap::from([("age".to_string(), age.to_string())])
+}
+
+fn pitcher_crop_properties(age: u8, half: &str) -> BTreeMap<String, String> {
+    BTreeMap::from([
+        ("age".to_string(), age.to_string()),
+        ("half".to_string(), half.to_string()),
+    ])
 }
 
 fn stage_properties(stage: u8) -> BTreeMap<String, String> {

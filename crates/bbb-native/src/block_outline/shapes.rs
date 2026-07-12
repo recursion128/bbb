@@ -1,10 +1,10 @@
 use std::collections::BTreeMap;
 
 use bbb_world::{
-    block_name_is_bars_or_pane, block_name_is_button, block_name_is_door, block_name_is_fence,
-    block_name_is_fence_gate, block_name_is_flower_pot, block_name_is_pressure_plate,
-    block_name_is_rail, block_name_is_sapling, block_name_is_slab, block_name_is_stair,
-    block_name_is_standing_sign, block_name_is_trapdoor, block_name_is_wall,
+    block_name_is_bars_or_pane, block_name_is_button, block_name_is_crop, block_name_is_door,
+    block_name_is_fence, block_name_is_fence_gate, block_name_is_flower_pot,
+    block_name_is_pressure_plate, block_name_is_rail, block_name_is_sapling, block_name_is_slab,
+    block_name_is_stair, block_name_is_standing_sign, block_name_is_trapdoor, block_name_is_wall,
     block_name_is_wall_sign, block_name_is_wool_carpet,
 };
 
@@ -500,6 +500,11 @@ fn crop_outline_shape(
             let age = age_property(properties, 1)?;
             BlockOutlineBox::centered_column(6.0, 6.0, 0.0, f64::from(6 + age * 4))
         }
+        "minecraft:melon_stem" | "minecraft:pumpkin_stem" => {
+            let age = age_property(properties, 7)?;
+            BlockOutlineBox::centered_column(2.0, 2.0, 0.0, f64::from(2 + age * 2))
+        }
+        "minecraft:pitcher_crop" => return pitcher_crop_outline_shape(properties),
         "minecraft:sweet_berry_bush" => match age_property(properties, 3)? {
             0 => BlockOutlineBox::SWEET_BERRY_SAPLING,
             3 => BlockOutlineBox::FULL,
@@ -511,22 +516,38 @@ fn crop_outline_shape(
     Some(BlockOutlineShape::single(outline))
 }
 
+fn pitcher_crop_outline_shape(properties: &BTreeMap<String, String>) -> Option<BlockOutlineShape> {
+    let age = age_property(properties, 4)?;
+    let (width, height) = if age == 0 {
+        (6.0, 4)
+    } else {
+        (10.0, [0, 9, 11, 22, 26][usize::from(age)] + 6)
+    };
+    let (min_y, max_y) = match properties.get("half").map(String::as_str)? {
+        "lower" => (-1.0, f64::from((-1 + height).min(16))),
+        "upper" => (0.0, f64::from((-1 + height - 16).max(0))),
+        _ => return None,
+    };
+    if max_y <= min_y {
+        Some(BlockOutlineShape::from_boxes(Vec::new()))
+    } else {
+        Some(BlockOutlineShape::single(BlockOutlineBox::centered_column(
+            width, width, min_y, max_y,
+        )))
+    }
+}
+
 fn age_property(properties: &BTreeMap<String, String>, max_age: u8) -> Option<u8> {
     let age = properties.get("age")?.parse::<u8>().ok()?;
     (age <= max_age).then_some(age)
 }
 
 fn is_crop_block_name(block_name: &str) -> bool {
-    matches!(
-        block_name,
-        "minecraft:wheat"
-            | "minecraft:carrots"
-            | "minecraft:potatoes"
-            | "minecraft:beetroots"
-            | "minecraft:nether_wart"
-            | "minecraft:torchflower_crop"
-            | "minecraft:sweet_berry_bush"
-    )
+    block_name_is_crop(block_name)
+        || matches!(
+            block_name,
+            "minecraft:nether_wart" | "minecraft:sweet_berry_bush"
+        )
 }
 
 fn snow_layer_outline_box(properties: &BTreeMap<String, String>) -> Option<BlockOutlineBox> {
