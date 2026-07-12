@@ -17,7 +17,7 @@ use super::client_features::{RecipeBookType, RecipeDisplayId};
 use super::client_state::Difficulty;
 use super::inventory::{DataComponentPatchSummary, ItemStackSummary};
 use super::player_info::{GameType, PlayerInfoChatSession};
-use super::{chunks, connection, BlockPos, MessageSignature, Vec3d};
+use super::{chunks, connection, normalize_resource_location, BlockPos, MessageSignature, Vec3d};
 
 const PLAYER_INPUT_FORWARD: u8 = 1;
 const PLAYER_INPUT_BACKWARD: u8 = 2;
@@ -38,6 +38,7 @@ const MAX_HASHED_COMPONENT_PATCH_ENTRIES: usize = 256;
 const MAX_PROFILE_PUBLIC_KEY_BYTES: usize = 512;
 const MAX_PROFILE_PUBLIC_KEY_SIGNATURE_BYTES: usize = 4096;
 const MAX_SERVERBOUND_CUSTOM_PAYLOAD: usize = 32767;
+const MAX_CUSTOM_PAYLOAD_STRING_UTF16_UNITS: usize = 32767;
 const DEBUG_SUBSCRIPTION_DEDICATED_SERVER_TICK_TIME_ID: i32 = 0;
 const LP_VEC3_ABS_MAX_VALUE: f64 = 1.7179869183E10;
 const LP_VEC3_ABS_MIN_VALUE: f64 = 3.051944088384301E-5;
@@ -484,17 +485,28 @@ pub fn encode_play_custom_payload(packet: &ServerboundCustomPayload) -> Result<(
     let mut out = Encoder::new();
     match packet {
         ServerboundCustomPayload::Brand { brand } => {
+            if brand.encode_utf16().count() > MAX_CUSTOM_PAYLOAD_STRING_UTF16_UNITS {
+                return Err(ProtocolError::InvalidData(format!(
+                    "custom payload brand exceeds vanilla maximum of {MAX_CUSTOM_PAYLOAD_STRING_UTF16_UNITS} UTF-16 code units"
+                )));
+            }
             out.write_string("minecraft:brand");
             out.write_string(brand);
         }
         ServerboundCustomPayload::Unknown { id, raw_payload } => {
+            let id = normalize_resource_location(id.clone())?;
+            if id.encode_utf16().count() > MAX_CUSTOM_PAYLOAD_STRING_UTF16_UNITS {
+                return Err(ProtocolError::InvalidData(format!(
+                    "custom payload id exceeds vanilla maximum of {MAX_CUSTOM_PAYLOAD_STRING_UTF16_UNITS} UTF-16 code units"
+                )));
+            }
             if raw_payload.len() > MAX_SERVERBOUND_CUSTOM_PAYLOAD {
                 return Err(ProtocolError::PacketTooLarge(
                     raw_payload.len(),
                     MAX_SERVERBOUND_CUSTOM_PAYLOAD,
                 ));
             }
-            out.write_string(id);
+            out.write_string(&id);
             out.write_bytes(raw_payload);
         }
     }

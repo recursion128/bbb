@@ -11836,3 +11836,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] play CookieRequest 的 validated resource key、StoreCookie 的 5120-byte 上限、shared cookie store hit/miss、nullable response wire、event-stream/probe 发送已审计并全行闭合。
 - [x] response 只由对应 clientbound request 触发；vanilla server common listener 将意外 response 视为协议错误，不存在 response-to-response acknowledgement，ack 明确为 not-applicable。
+
+## 2026-07-12：play serverbound custom payload packet coverage audit
+
+- [x] Brand typed payload、unknown/discarded raw payload、resource id、32767-byte raw 上限、play-only NetCommand/driver 发送已审计；补齐非法 id 与超过 32767 UTF-16 units brand 的 encoder 拒绝门禁并全行闭合。
+- [x] vanilla 26.1 serverbound registry 只有 Brand codec，play/common server handler 均为 no-op 且无专用 response；未知 payload 不被冒充为领域语义支持。

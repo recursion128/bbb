@@ -2567,6 +2567,23 @@ fn encodes_play_brand_custom_payload() {
 }
 
 #[test]
+fn play_custom_payload_rejects_invalid_ids_and_oversized_brand() {
+    assert!(
+        encode_play_custom_payload(&ServerboundCustomPayload::Unknown {
+            id: "BBB:debug".to_string(),
+            raw_payload: Vec::new(),
+        })
+        .is_err()
+    );
+    assert!(
+        encode_play_custom_payload(&ServerboundCustomPayload::Brand {
+            brand: "😀".repeat(16_384),
+        })
+        .is_err()
+    );
+}
+
+#[test]
 fn encodes_play_debug_subscription_request_for_tick_time() {
     let (id, payload) = encode_play_debug_subscription_request(true);
     assert_eq!(id, ids::play::SERVERBOUND_DEBUG_SUBSCRIPTION_REQUEST);
