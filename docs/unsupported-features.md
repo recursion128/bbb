@@ -155,11 +155,14 @@ Owner: `bbb-protocol`
 
 Owner: `scripts/` + each generated catalog's semantic crate
 
-- Complete the remaining cross-crate registry/ordinal audit. Any newly found
-  Java-source catalog extractor must consume the shared Tree-sitter frontend and
-  checked-in deterministic output; ordinary build/test must not read local vanilla
-  sources. Migrate each newly identified legacy parser as its own semantic-owner
-  slice.
+- Complete the remaining cross-crate registry/ordinal and resource-membership
+  audit. Terrain families without an exact vanilla tag, including torch, pane
+  and copper-grate class membership, still need source-fact extraction before
+  their name tables can be removed; do not substitute approximate tags. Any
+  newly found Java-source catalog extractor must consume the shared Tree-sitter
+  frontend and checked-in deterministic output; ordinary build/test must not
+  read local vanilla sources. Migrate each newly identified legacy parser as
+  its own semantic-owner slice.
 
 ## Unknown clientbound packets in login, configuration, and play
 

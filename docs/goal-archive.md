@@ -12191,3 +12191,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] `bbb-world` 建立 dimension/biome 共用的窄 `ClientEnvironmentAttributes` projection，严格解码 direct RGB/float visual values 与 vanilla range；已知 modifier compound、错误类型和非法 range 显式失败，biome 不再维护第二份 RGB/float attribute parser。
 - [x] custom dimension direct fog/sky/water-fog color 与 start/end distance 贯通 camera clear/fog，block/sky/ambient/night-vision light color 与 sky-light factor 贯通 GPU lightmap input；已有 biome fog/sky/water-fog positional value 覆盖对应 dimension base，既有 vanilla timeline/weather 层继续后置。modifier compounds、biome 其余 positional visual fields、其余 syncable audio/gameplay attributes、timeline/default-clock holder codec 继续开放。
+
+## 2026-07-12：Expanded exact terrain tag memberships
+
+- [x] 既有 block-membership generator 继续复用统一 vanilla tag resolver，从 26.1
+  `small_flowers`、`crops` 与 `fire` JSON 按 source order 生成 17/8/2 项 checked-in
+  fallback；missing/nested/cycle/count 诊断、update/check 与二次 update 幂等继续受门禁锁定。
+- [x] world terrain 的 small-flower、crop 与 fire 主集合改为消费 generated catalog，测试逐项
+  证明所有生成成员仍走 cutout；nether wart/attached stem/sugar cane 与 redstone/tripwire 等
+  非 tag 语义保持窄补充。没有精确 tag 的 torch/pane/copper-grate 等 family 继续开放，未用
+  名称猜测或近似 tag 冒充机械派生完成，也未改变 session `UpdateTags` 权威。

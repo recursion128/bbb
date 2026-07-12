@@ -237,6 +237,39 @@ pub(super) const VANILLA_LIGHTNING_ROD_BLOCKS: &[&str] = &[
     "minecraft:waxed_oxidized_lightning_rod",
 ];
 
+pub(super) const VANILLA_SMALL_FLOWER_BLOCKS: &[&str] = &[
+    "minecraft:dandelion",
+    "minecraft:open_eyeblossom",
+    "minecraft:poppy",
+    "minecraft:blue_orchid",
+    "minecraft:allium",
+    "minecraft:azure_bluet",
+    "minecraft:red_tulip",
+    "minecraft:orange_tulip",
+    "minecraft:white_tulip",
+    "minecraft:pink_tulip",
+    "minecraft:oxeye_daisy",
+    "minecraft:cornflower",
+    "minecraft:lily_of_the_valley",
+    "minecraft:wither_rose",
+    "minecraft:torchflower",
+    "minecraft:closed_eyeblossom",
+    "minecraft:golden_dandelion",
+];
+
+pub(super) const VANILLA_CROP_BLOCKS: &[&str] = &[
+    "minecraft:beetroots",
+    "minecraft:carrots",
+    "minecraft:potatoes",
+    "minecraft:wheat",
+    "minecraft:melon_stem",
+    "minecraft:pumpkin_stem",
+    "minecraft:torchflower_crop",
+    "minecraft:pitcher_crop",
+];
+
+pub(super) const VANILLA_FIRE_BLOCKS: &[&str] = &["minecraft:fire", "minecraft:soul_fire"];
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -266,5 +299,11 @@ mod tests {
         assert_eq!(VANILLA_BANNER_BLOCKS.len(), 32);
         assert_eq!(VANILLA_LANTERN_BLOCKS.len(), 10);
         assert_eq!(VANILLA_LIGHTNING_ROD_BLOCKS.len(), 8);
+        assert_eq!(VANILLA_SMALL_FLOWER_BLOCKS.len(), 17);
+        assert_eq!(VANILLA_CROP_BLOCKS.len(), 8);
+        assert_eq!(
+            VANILLA_FIRE_BLOCKS,
+            &["minecraft:fire", "minecraft:soul_fire"]
+        );
     }
 }

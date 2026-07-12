@@ -8,10 +8,10 @@ mod generated_26_1;
 
 use generated_26_1::{
     VANILLA_AIR_BLOCKS, VANILLA_BANNER_BLOCKS, VANILLA_BARS_BLOCKS, VANILLA_BUTTON_BLOCKS,
-    VANILLA_CAMPFIRE_BLOCKS, VANILLA_CHAIN_BLOCKS, VANILLA_DOOR_BLOCKS, VANILLA_LANTERN_BLOCKS,
-    VANILLA_LIGHTNING_ROD_BLOCKS, VANILLA_NO_TERRAIN_PARTICLE_BLOCKS,
-    VANILLA_PRESSURE_PLATE_BLOCKS, VANILLA_RAIL_BLOCKS, VANILLA_SIGN_BLOCKS,
-    VANILLA_TRAPDOOR_BLOCKS,
+    VANILLA_CAMPFIRE_BLOCKS, VANILLA_CHAIN_BLOCKS, VANILLA_CROP_BLOCKS, VANILLA_DOOR_BLOCKS,
+    VANILLA_FIRE_BLOCKS, VANILLA_LANTERN_BLOCKS, VANILLA_LIGHTNING_ROD_BLOCKS,
+    VANILLA_NO_TERRAIN_PARTICLE_BLOCKS, VANILLA_PRESSURE_PLATE_BLOCKS, VANILLA_RAIL_BLOCKS,
+    VANILLA_SIGN_BLOCKS, VANILLA_SMALL_FLOWER_BLOCKS, VANILLA_TRAPDOOR_BLOCKS,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -442,58 +442,38 @@ fn is_pressure_plate_block_name(name: &str) -> bool {
 }
 
 fn is_no_collision_vegetation_block_name(name: &str) -> bool {
-    matches!(
-        name,
-        "minecraft:dandelion"
-            | "minecraft:golden_dandelion"
-            | "minecraft:poppy"
-            | "minecraft:blue_orchid"
-            | "minecraft:allium"
-            | "minecraft:azure_bluet"
-            | "minecraft:red_tulip"
-            | "minecraft:orange_tulip"
-            | "minecraft:white_tulip"
-            | "minecraft:pink_tulip"
-            | "minecraft:oxeye_daisy"
-            | "minecraft:lily_of_the_valley"
-            | "minecraft:wither_rose"
-            | "minecraft:lilac"
-            | "minecraft:rose_bush"
-            | "minecraft:peony"
-            | "minecraft:pitcher_plant"
-            | "minecraft:open_eyeblossom"
-            | "minecraft:closed_eyeblossom"
-            | "minecraft:dead_bush"
-            | "minecraft:bush"
-            | "minecraft:firefly_bush"
-            | "minecraft:short_dry_grass"
-            | "minecraft:tall_dry_grass"
-            | "minecraft:mangrove_propagule"
-            | "minecraft:crimson_fungus"
-            | "minecraft:warped_fungus"
-            | "minecraft:nether_sprouts"
-            | "minecraft:small_dripleaf"
-            | "minecraft:big_dripleaf_stem"
-            | "minecraft:spore_blossom"
-            | "minecraft:pale_hanging_moss"
-    )
+    VANILLA_SMALL_FLOWER_BLOCKS.contains(&name)
+        || matches!(
+            name,
+            "minecraft:lilac"
+                | "minecraft:rose_bush"
+                | "minecraft:peony"
+                | "minecraft:pitcher_plant"
+                | "minecraft:dead_bush"
+                | "minecraft:bush"
+                | "minecraft:firefly_bush"
+                | "minecraft:short_dry_grass"
+                | "minecraft:tall_dry_grass"
+                | "minecraft:mangrove_propagule"
+                | "minecraft:crimson_fungus"
+                | "minecraft:warped_fungus"
+                | "minecraft:nether_sprouts"
+                | "minecraft:small_dripleaf"
+                | "minecraft:big_dripleaf_stem"
+                | "minecraft:spore_blossom"
+                | "minecraft:pale_hanging_moss"
+        )
 }
 
 fn is_no_collision_crop_block_name(name: &str) -> bool {
-    matches!(
-        name,
-        "minecraft:wheat"
-            | "minecraft:carrots"
-            | "minecraft:potatoes"
-            | "minecraft:beetroots"
-            | "minecraft:nether_wart"
-            | "minecraft:pitcher_crop"
-            | "minecraft:pumpkin_stem"
-            | "minecraft:melon_stem"
-            | "minecraft:attached_pumpkin_stem"
-            | "minecraft:attached_melon_stem"
-            | "minecraft:sugar_cane"
-    )
+    VANILLA_CROP_BLOCKS.contains(&name)
+        || matches!(
+            name,
+            "minecraft:nether_wart"
+                | "minecraft:attached_pumpkin_stem"
+                | "minecraft:attached_melon_stem"
+                | "minecraft:sugar_cane"
+        )
 }
 
 fn is_no_collision_thin_overlay_block_name(name: &str) -> bool {
@@ -509,14 +489,11 @@ fn is_no_collision_thin_overlay_block_name(name: &str) -> bool {
 }
 
 fn is_no_collision_fire_or_wire_block_name(name: &str) -> bool {
-    matches!(
-        name,
-        "minecraft:fire"
-            | "minecraft:soul_fire"
-            | "minecraft:redstone_wire"
-            | "minecraft:tripwire"
-            | "minecraft:tripwire_hook"
-    )
+    VANILLA_FIRE_BLOCKS.contains(&name)
+        || matches!(
+            name,
+            "minecraft:redstone_wire" | "minecraft:tripwire" | "minecraft:tripwire_hook"
+        )
 }
 
 fn is_no_collision_banner_block_name(name: &str) -> bool {
@@ -583,26 +560,17 @@ mod tests {
                 TerrainMaterialClass::Cutout
             );
         }
+        for &name in VANILLA_SMALL_FLOWER_BLOCKS {
+            assert_eq!(
+                classify_terrain_material(Some(name)),
+                TerrainMaterialClass::Cutout
+            );
+        }
         for name in [
-            "minecraft:dandelion",
-            "minecraft:golden_dandelion",
-            "minecraft:poppy",
-            "minecraft:blue_orchid",
-            "minecraft:allium",
-            "minecraft:azure_bluet",
-            "minecraft:red_tulip",
-            "minecraft:orange_tulip",
-            "minecraft:white_tulip",
-            "minecraft:pink_tulip",
-            "minecraft:oxeye_daisy",
-            "minecraft:lily_of_the_valley",
-            "minecraft:wither_rose",
             "minecraft:lilac",
             "minecraft:rose_bush",
             "minecraft:peony",
             "minecraft:pitcher_plant",
-            "minecraft:open_eyeblossom",
-            "minecraft:closed_eyeblossom",
             "minecraft:dead_bush",
             "minecraft:bush",
             "minecraft:firefly_bush",
@@ -622,19 +590,24 @@ mod tests {
                 TerrainMaterialClass::Cutout
             );
         }
+        for &name in VANILLA_CROP_BLOCKS {
+            assert_eq!(
+                classify_terrain_material(Some(name)),
+                TerrainMaterialClass::Cutout
+            );
+        }
         for name in [
-            "minecraft:wheat",
-            "minecraft:carrots",
-            "minecraft:potatoes",
-            "minecraft:beetroots",
             "minecraft:nether_wart",
-            "minecraft:pitcher_crop",
-            "minecraft:pumpkin_stem",
-            "minecraft:melon_stem",
             "minecraft:attached_pumpkin_stem",
             "minecraft:attached_melon_stem",
             "minecraft:sugar_cane",
         ] {
+            assert_eq!(
+                classify_terrain_material(Some(name)),
+                TerrainMaterialClass::Cutout
+            );
+        }
+        for &name in VANILLA_FIRE_BLOCKS {
             assert_eq!(
                 classify_terrain_material(Some(name)),
                 TerrainMaterialClass::Cutout
@@ -647,8 +620,6 @@ mod tests {
             "minecraft:glow_lichen",
             "minecraft:resin_clump",
             "minecraft:frogspawn",
-            "minecraft:fire",
-            "minecraft:soul_fire",
             "minecraft:redstone_wire",
             "minecraft:tripwire",
             "minecraft:tripwire_hook",

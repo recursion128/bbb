@@ -37,6 +37,9 @@ BLOCK_TAG_CATALOGS = (
     ("VANILLA_BANNER_BLOCKS", "minecraft:banners", 32),
     ("VANILLA_LANTERN_BLOCKS", "minecraft:lanterns", 10),
     ("VANILLA_LIGHTNING_ROD_BLOCKS", "minecraft:lightning_rods", 8),
+    ("VANILLA_SMALL_FLOWER_BLOCKS", "minecraft:small_flowers", 17),
+    ("VANILLA_CROP_BLOCKS", "minecraft:crops", 8),
+    ("VANILLA_FIRE_BLOCKS", "minecraft:fire", 2),
 )
 
 
@@ -105,6 +108,9 @@ def generate(source_root: Path) -> str:
             "        assert_eq!(VANILLA_BANNER_BLOCKS.len(), 32);",
             "        assert_eq!(VANILLA_LANTERN_BLOCKS.len(), 10);",
             "        assert_eq!(VANILLA_LIGHTNING_ROD_BLOCKS.len(), 8);",
+            "        assert_eq!(VANILLA_SMALL_FLOWER_BLOCKS.len(), 17);",
+            "        assert_eq!(VANILLA_CROP_BLOCKS.len(), 8);",
+            '        assert_eq!(VANILLA_FIRE_BLOCKS, &["minecraft:fire", "minecraft:soul_fire"]);',
             "    }",
             "}",
             "",
