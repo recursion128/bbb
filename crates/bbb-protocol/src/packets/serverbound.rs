@@ -39,6 +39,9 @@ const MAX_PROFILE_PUBLIC_KEY_BYTES: usize = 512;
 const MAX_PROFILE_PUBLIC_KEY_SIGNATURE_BYTES: usize = 4096;
 const MAX_SERVERBOUND_CUSTOM_PAYLOAD: usize = 32767;
 const MAX_CUSTOM_PAYLOAD_STRING_UTF16_UNITS: usize = 32767;
+const MAX_EDIT_BOOK_PAGES: usize = 100;
+const MAX_EDIT_BOOK_PAGE_UTF16_UNITS: usize = 1024;
+const MAX_EDIT_BOOK_TITLE_UTF16_UNITS: usize = 32;
 const DEBUG_SUBSCRIPTION_DEDICATED_SERVER_TICK_TIME_ID: i32 = 0;
 const LP_VEC3_ABS_MAX_VALUE: f64 = 1.7179869183E10;
 const LP_VEC3_ABS_MIN_VALUE: f64 = 3.051944088384301E-5;
@@ -614,7 +617,30 @@ pub fn encode_play_recipe_book_seen_recipe(command: RecipeBookSeenRecipeCommand)
     )
 }
 
-pub fn encode_play_edit_book(packet: &EditBook) -> (i32, Vec<u8>) {
+pub fn encode_play_edit_book(packet: &EditBook) -> Result<(i32, Vec<u8>)> {
+    if packet.pages.len() > MAX_EDIT_BOOK_PAGES {
+        return Err(ProtocolError::InvalidData(format!(
+            "edit book page count {} exceeds vanilla maximum {MAX_EDIT_BOOK_PAGES}",
+            packet.pages.len()
+        )));
+    }
+    for (index, page) in packet.pages.iter().enumerate() {
+        if page.encode_utf16().count() > MAX_EDIT_BOOK_PAGE_UTF16_UNITS {
+            return Err(ProtocolError::InvalidData(format!(
+                "edit book page {index} exceeds vanilla maximum of {MAX_EDIT_BOOK_PAGE_UTF16_UNITS} UTF-16 code units"
+            )));
+        }
+    }
+    if packet
+        .title
+        .as_ref()
+        .is_some_and(|title| title.encode_utf16().count() > MAX_EDIT_BOOK_TITLE_UTF16_UNITS)
+    {
+        return Err(ProtocolError::InvalidData(format!(
+            "edit book title exceeds vanilla maximum of {MAX_EDIT_BOOK_TITLE_UTF16_UNITS} UTF-16 code units"
+        )));
+    }
+
     let mut out = Encoder::new();
     out.write_var_i32(packet.slot);
     out.write_var_i32(packet.pages.len() as i32);
@@ -628,7 +654,7 @@ pub fn encode_play_edit_book(packet: &EditBook) -> (i32, Vec<u8>) {
         }
         None => out.write_bool(false),
     }
-    (ids::play::SERVERBOUND_EDIT_BOOK, out.into_inner())
+    Ok((ids::play::SERVERBOUND_EDIT_BOOK, out.into_inner()))
 }
 
 pub fn encode_play_rename_item(packet: &RenameItem) -> (i32, Vec<u8>) {

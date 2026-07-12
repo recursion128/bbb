@@ -410,6 +410,11 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   semantics in `BookViewScreen`; the current OpenBook path gates on the held
   written/writable component and supports literal-page navigation, but flattens
   pages to strings and does not execute page click events.
+- Implement the writable `BookEditScreen` owner: edit/paginate text, map the
+  selected hotbar/offhand inventory slot, require the held writable-book
+  component, submit unsigned/signed edits, and project the server-confirmed
+  writable/written item. The current `net.edit_book` maintenance command is not
+  an interactive editor or a held-item authority check.
 - Complete `AbstractSignEditScreen` parity after the OpenSignEditor authority
   gate: choose filtered sign messages, enforce the 90-pixel font-width limit,
   support clipboard/IME preedit, and close when the sign is removed or the

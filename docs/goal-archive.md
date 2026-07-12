@@ -11846,3 +11846,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] holder-set wire、`dedicated_server_tick_time` registry id 0、empty/unsubscribe、F3+2/TPS sampler dedup/reset 与 typed DebugSample response 已审计。
 - [x] 其余 15 个 vanilla debug subscription 的 set encoder、typed block/chunk/entity/event decode、game-time expiry/drop 与 renderer consumers 仍开放；五格保持 partial，没有以 tick-time 单项外推整个 registry family。
+
+## 2026-07-12：play serverbound edit book packet coverage audit
+
+- [x] slot VarInt、最多 100 页、每页 1024 UTF-16 units、optional 32-unit title、signed/unsigned wire 与 control/native/net 发送已审计；补齐 protocol encoder 与 control 的 UTF-16/collection 拒绝门禁，encoder 闭合。
+- [x] vanilla server 只接受 hotbar/offhand 中含 writable-book component 的当前物品，并异步 text-filter 后更新或签名；bbb 尚无 native BookEditScreen、held-slot/component guard 和本地/响应 projection，command/state/tests 保持 partial，服务端无专用 ack。

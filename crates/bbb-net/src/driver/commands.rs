@@ -248,7 +248,7 @@ pub(crate) async fn send_recipe_book_seen_recipe(
 }
 
 pub(crate) async fn send_edit_book(conn: &mut RawConnection, packet: EditBook) -> Result<()> {
-    let (id, payload) = packets::encode_play_edit_book(&packet);
+    let (id, payload) = packets::encode_play_edit_book(&packet)?;
     conn.send_packet(id, &payload).await
 }
 

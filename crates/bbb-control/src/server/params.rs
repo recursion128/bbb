@@ -185,7 +185,7 @@ pub(super) fn edit_book_pages_param(
         let page = page
             .as_str()
             .ok_or_else(|| format!("net.edit_book page {index} must be a string"))?;
-        if page.chars().count() > EDIT_BOOK_MAX_PAGE_CHARS {
+        if page.encode_utf16().count() > EDIT_BOOK_MAX_PAGE_CHARS {
             return Err(format!(
                 "net.edit_book page {index} exceeds {EDIT_BOOK_MAX_PAGE_CHARS} characters"
             ));
@@ -209,7 +209,7 @@ pub(super) fn edit_book_title_param(
     let title = title
         .as_str()
         .ok_or_else(|| "net.edit_book title must be a string or null".to_string())?;
-    if title.chars().count() > EDIT_BOOK_MAX_TITLE_CHARS {
+    if title.encode_utf16().count() > EDIT_BOOK_MAX_TITLE_CHARS {
         return Err(format!(
             "net.edit_book title exceeds {EDIT_BOOK_MAX_TITLE_CHARS} characters"
         ));

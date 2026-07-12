@@ -1313,6 +1313,32 @@ fn net_edit_book_rejects_oversized_title() {
 }
 
 #[test]
+fn net_edit_book_limits_count_utf16_code_units() {
+    let state = ControlState::new("test");
+    for params in [
+        json!({
+            "slot": 3,
+            "pages": ["😀".repeat(EDIT_BOOK_MAX_PAGE_CHARS / 2 + 1)],
+        }),
+        json!({
+            "slot": 3,
+            "pages": ["page"],
+            "title": "😀".repeat(EDIT_BOOK_MAX_TITLE_CHARS / 2 + 1),
+        }),
+    ] {
+        let response = dispatch(
+            ControlRequest {
+                method: "net.edit_book".to_string(),
+                params,
+            },
+            &state,
+        );
+        assert!(!response.ok);
+    }
+    assert!(state.requests.lock().unwrap().net_requests.is_empty());
+}
+
+#[test]
 fn net_update_sign_queues_request_and_validates_lines() {
     let state = ControlState::new("test");
     let response = dispatch(

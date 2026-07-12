@@ -1544,7 +1544,8 @@ fn encodes_edit_book_unsigned_packet() {
         slot: 3,
         pages: vec!["page 1".to_string(), "page 2".to_string()],
         title: None,
-    });
+    })
+    .unwrap();
 
     assert_eq!(id, ids::play::SERVERBOUND_EDIT_BOOK);
     let mut decoder = Decoder::new(&payload);
@@ -1562,7 +1563,8 @@ fn encodes_edit_book_signed_packet() {
         slot: 5,
         pages: vec!["final page".to_string()],
         title: Some("Field Notes".to_string()),
-    });
+    })
+    .unwrap();
 
     assert_eq!(id, ids::play::SERVERBOUND_EDIT_BOOK);
     let mut decoder = Decoder::new(&payload);
@@ -1572,6 +1574,18 @@ fn encodes_edit_book_signed_packet() {
     assert!(decoder.read_bool().unwrap());
     assert_eq!(decoder.read_string(32).unwrap(), "Field Notes");
     assert!(decoder.is_empty());
+}
+
+#[test]
+fn edit_book_rejects_vanilla_collection_and_utf16_limits() {
+    let packet = |pages, title| EditBook {
+        slot: 3,
+        pages,
+        title,
+    };
+    assert!(encode_play_edit_book(&packet(vec![String::new(); 101], None)).is_err());
+    assert!(encode_play_edit_book(&packet(vec!["😀".repeat(513)], None)).is_err());
+    assert!(encode_play_edit_book(&packet(vec![String::new()], Some("😀".repeat(17)))).is_err());
 }
 
 #[test]

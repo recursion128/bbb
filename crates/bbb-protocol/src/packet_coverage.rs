@@ -3702,6 +3702,32 @@ mod tests {
             .all(|cell| cell.status == PacketCoverageStatus::Partial));
     }
 
+    #[test]
+    fn play_serverbound_edit_book_keeps_native_editor_and_slot_guards_open() {
+        let ledger = vanilla_packet_coverage_26_1().unwrap();
+        let entry = ledger
+            .entries
+            .iter()
+            .find(|entry| entry.state == "play" && entry.constant_name == "SERVERBOUND_EDIT_BOOK")
+            .expect("play serverbound edit book coverage row");
+
+        assert_eq!(
+            entry.coverage["ack_response"].status,
+            PacketCoverageStatus::NotApplicable
+        );
+        assert_eq!(
+            entry.coverage["encoder"].status,
+            PacketCoverageStatus::Complete
+        );
+        for dimension in ["command_surface", "state_guard", "tests"] {
+            assert_eq!(
+                entry.coverage[dimension].status,
+                PacketCoverageStatus::Partial,
+                "{dimension}"
+            );
+        }
+    }
+
     fn state_name(state: PacketState) -> &'static str {
         match state {
             PacketState::Handshake => "handshake",
