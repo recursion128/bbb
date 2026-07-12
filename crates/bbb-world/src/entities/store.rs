@@ -52,36 +52,33 @@ use super::schema::{
 };
 
 use super::{
-    is_vanilla_abstract_nautilus_type, is_vanilla_can_wear_horse_armor_type, is_vanilla_llama_type,
-    is_vanilla_minecart_type, ArmorMaterialKind, EntityAttachmentFace, EntityAttributes,
-    EntityBlockModelState, EntityCameraPoseState, EntityClientAnimationState,
-    EntityClientAnimations, EntityDamage, EntityEquipment, EntityHurtingProjectile, EntityIdentity,
-    EntityLeash, EntityMetadata, EntityMinecartLerp, EntityMobEffects, EntityModelSourceState,
-    EntityMount, EntityProjectileLifecycle, EntityState, EntitySupportingBlock, EntityTransform,
-    EntityTransformState, EntityTransientEvents, EvokerFangsCritParticleState,
-    FallingBlockModelState, FireworkRocketExplosionParticleState, FireworkRocketItemState,
-    FireworkRocketTrailParticleState, FoxEatParticleState, ItemEntityStackState,
-    ItemFrameRenderState, LlamaBodyDecorColor, LocalPlayerAttackSwingState,
+    is_vanilla_abstract_nautilus_type, is_vanilla_camel_type, is_vanilla_can_wear_horse_armor_type,
+    is_vanilla_llama_type, is_vanilla_minecart_type, is_vanilla_squid_type, ArmorMaterialKind,
+    EntityAttachmentFace, EntityAttributes, EntityBlockModelState, EntityCameraPoseState,
+    EntityClientAnimationState, EntityClientAnimations, EntityDamage, EntityEquipment,
+    EntityHurtingProjectile, EntityIdentity, EntityLeash, EntityMetadata, EntityMinecartLerp,
+    EntityMobEffects, EntityModelSourceState, EntityMount, EntityProjectileLifecycle, EntityState,
+    EntitySupportingBlock, EntityTransform, EntityTransformState, EntityTransientEvents,
+    EvokerFangsCritParticleState, FallingBlockModelState, FireworkRocketExplosionParticleState,
+    FireworkRocketItemState, FireworkRocketTrailParticleState, FoxEatParticleState,
+    ItemEntityStackState, ItemFrameRenderState, LlamaBodyDecorColor, LocalPlayerAttackSwingState,
     MinecartDisplayBlockState, OminousItemSpawnerItemState, OminousItemSpawnerParticleState,
     RavagerRoarParticleState, RavagerStunParticleState, WolfArmorCrackiness,
     VANILLA_ENTITY_AIR_SUPPLY_DATA_ID, VANILLA_ENTITY_NO_GRAVITY_DATA_ID,
     VANILLA_ENTITY_SILENT_DATA_ID, VANILLA_ENTITY_TICKS_FROZEN_DATA_ID,
-    VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID, VANILLA_ENTITY_TYPE_CAMEL_ID,
     VANILLA_ENTITY_TYPE_CHEST_MINECART_ID, VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID,
     VANILLA_ENTITY_TYPE_DONKEY_ID, VANILLA_ENTITY_TYPE_END_CRYSTAL_ID,
     VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID, VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID,
-    VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID, VANILLA_ENTITY_TYPE_GLOW_SQUID_ID,
-    VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID, VANILLA_ENTITY_TYPE_HORSE_ID,
-    VANILLA_ENTITY_TYPE_ITEM_ID, VANILLA_ENTITY_TYPE_MINECART_ID, VANILLA_ENTITY_TYPE_MULE_ID,
-    VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID, VANILLA_ENTITY_TYPE_PANDA_ID,
-    VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_SHULKER_ID,
+    VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID, VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID,
+    VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_ITEM_ID, VANILLA_ENTITY_TYPE_MINECART_ID,
+    VANILLA_ENTITY_TYPE_MULE_ID, VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID,
+    VANILLA_ENTITY_TYPE_PANDA_ID, VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_SHULKER_ID,
     VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID, VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID,
-    VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID, VANILLA_ENTITY_TYPE_SQUID_ID,
-    VANILLA_ENTITY_TYPE_STRIDER_ID, VANILLA_ENTITY_TYPE_TNT_ID,
-    VANILLA_ENTITY_TYPE_TNT_MINECART_ID, VANILLA_ENTITY_TYPE_VILLAGER_ID,
-    VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID, VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID,
-    VANILLA_EXPERIENCE_ORB_VALUE_DATA_ID, VANILLA_ITEM_ENTITY_STACK_DATA_ID,
-    VANILLA_MAX_AIR_SUPPLY_TICKS, VANILLA_UPSIDE_DOWN_NAMES,
+    VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID, VANILLA_ENTITY_TYPE_STRIDER_ID,
+    VANILLA_ENTITY_TYPE_TNT_ID, VANILLA_ENTITY_TYPE_TNT_MINECART_ID,
+    VANILLA_ENTITY_TYPE_VILLAGER_ID, VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID,
+    VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID, VANILLA_EXPERIENCE_ORB_VALUE_DATA_ID,
+    VANILLA_ITEM_ENTITY_STACK_DATA_ID, VANILLA_MAX_AIR_SUPPLY_TICKS, VANILLA_UPSIDE_DOWN_NAMES,
 };
 use crate::entities::animations::{
     allay_is_dancing, axolotl_is_playing_dead, boat_bubble_time, boat_paddle_states,
@@ -249,10 +246,7 @@ fn vanilla_equine_saddle_type(entity_type_id: i32) -> bool {
 }
 
 fn vanilla_camel_saddle_type(entity_type_id: i32) -> bool {
-    matches!(
-        entity_type_id,
-        VANILLA_ENTITY_TYPE_CAMEL_ID | VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID
-    )
+    is_vanilla_camel_type(entity_type_id)
 }
 
 fn equipment_contains_saddle_item(
@@ -516,10 +510,7 @@ impl EntityStore {
     ) -> Option<f32> {
         let entity = self.by_protocol_id.get(&id).copied()?;
         let identity = self.ecs.get::<&EntityIdentity>(entity).ok()?;
-        if !matches!(
-            identity.entity_type_id,
-            VANILLA_ENTITY_TYPE_CAMEL_ID | VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID
-        ) {
+        if !is_vanilla_camel_type(identity.entity_type_id) {
             return Some(0.0);
         }
         let client_animations = self.ecs.get::<&EntityClientAnimations>(entity).ok()?;
@@ -1908,10 +1899,7 @@ impl EntityStore {
         // the add-entity head yaw; `Squid.aiStep` then refines it from movement
         // while in water. Keep it as renderer-only body yaw so the synced
         // transform yaw remains canonical.
-        let squid_y_body_rot = if matches!(
-            identity.entity_type_id,
-            VANILLA_ENTITY_TYPE_SQUID_ID | VANILLA_ENTITY_TYPE_GLOW_SQUID_ID
-        ) {
+        let squid_y_body_rot = if is_vanilla_squid_type(identity.entity_type_id) {
             client_animations
                 .animations
                 .squid_y_body_rot(partial_ticks)

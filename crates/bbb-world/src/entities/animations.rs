@@ -103,7 +103,8 @@ use super::schema::{
     VANILLA_WOLF_INTERESTED_DATA_ID as WOLF_INTERESTED_DATA_ID,
 };
 use super::{
-    is_vanilla_boat_type, is_vanilla_vehicle_entity_type, EntityTransform, EntityVec3,
+    is_vanilla_boat_type, is_vanilla_camel_type, is_vanilla_slime_type, is_vanilla_squid_type,
+    is_vanilla_vehicle_entity_type, EntityTransform, EntityVec3,
     VANILLA_ABSTRACT_HORSE_DEFAULT_FLAGS as ABSTRACT_HORSE_DEFAULT_FLAGS,
     VANILLA_ABSTRACT_HORSE_FLAGS_DATA_ID as ABSTRACT_HORSE_FLAGS_DATA_ID,
     VANILLA_ABSTRACT_HORSE_FLAG_EATING as ABSTRACT_HORSE_FLAG_EATING,
@@ -4184,10 +4185,7 @@ impl EntityClientAnimationState {
             self.warden_combat
                 .get_or_insert_with(WardenCombatAnimationState::default)
                 .start_sonic_boom(self.age_ticks);
-        } else if matches!(
-            entity_type_id,
-            VANILLA_ENTITY_TYPE_SQUID_ID | VANILLA_ENTITY_TYPE_GLOW_SQUID_ID
-        ) && event_id == SQUID_RESET_MOVEMENT_EVENT_ID
+        } else if is_vanilla_squid_type(entity_type_id) && event_id == SQUID_RESET_MOVEMENT_EVENT_ID
         {
             // Vanilla `Squid.handleEntityEvent(19)`: `tentacleMovement = 0`. Only an
             // already-ticked squid has a state; if the event arrives first the
@@ -5623,7 +5621,7 @@ impl EntityClientAnimationState {
                 .ender_dragon
                 .get_or_insert_with(EnderDragonAnimationState::default)
                 .advance_client_tick(transform),
-            VANILLA_ENTITY_TYPE_SQUID_ID | VANILLA_ENTITY_TYPE_GLOW_SQUID_ID => self
+            _ if is_vanilla_squid_type(entity_type_id) => self
                 .squid
                 .get_or_insert_with(|| {
                     SquidAnimationState::new_with_y_body_rot(entity_id, transform.y_head_rot)
@@ -5641,7 +5639,7 @@ impl EntityClientAnimationState {
                     pose.advance_client_tick();
                 }
             }
-            VANILLA_ENTITY_TYPE_GUARDIAN_ID | VANILLA_ENTITY_TYPE_ELDER_GUARDIAN_ID => {
+            _ if is_guardian_entity_type(entity_type_id) => {
                 // Vanilla `Guardian.aiStep` reads `isInWater()` (the world fact
                 // threaded in) and the synced `isMoving()` flag (`DATA_ID_MOVING`).
                 self.guardian_tail
@@ -5676,7 +5674,7 @@ impl EntityClientAnimationState {
                     .get_or_insert_with(|| KeyframeAnimationState { start_age: None })
                     .animate_when(in_water && !walk_is_moving, self.age_ticks);
             }
-            VANILLA_ENTITY_TYPE_CAMEL_ID | VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID => {
+            _ if is_vanilla_camel_type(entity_type_id) => {
                 self.camel_idle
                     .get_or_insert_with(|| CamelIdleAnimationState::new(entity_id))
                     .advance_client_tick(self.age_ticks);
@@ -5780,7 +5778,7 @@ impl EntityClientAnimationState {
                 // synced ground flag defaults to on-ground (wings still), the safe
                 // common case.
                 .advance_client_tick(transform.on_ground.unwrap_or(true)),
-            VANILLA_ENTITY_TYPE_SLIME_ID | VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID => self
+            _ if is_vanilla_slime_type(entity_type_id) => self
                 .slime
                 .get_or_insert_with(SlimeAnimationState::default)
                 // Vanilla `Slime.tick` reads `onGround()` for the squish target. A
@@ -5871,16 +5869,14 @@ impl EntityClientAnimationState {
 /// probe for every other entity. Adding a consumer (the frog swim-idle, wolf wet shade,
 /// dolphin, axolotl, fish, …) is just another arm here.
 pub(crate) fn entity_animation_uses_in_water(entity_type_id: i32) -> bool {
-    matches!(
-        entity_type_id,
-        VANILLA_ENTITY_TYPE_GUARDIAN_ID
-            | VANILLA_ENTITY_TYPE_ELDER_GUARDIAN_ID
-            | VANILLA_ENTITY_TYPE_FROG_ID
-            | VANILLA_ENTITY_TYPE_WOLF_ID
-            | VANILLA_ENTITY_TYPE_AXOLOTL_ID
-            | VANILLA_ENTITY_TYPE_SQUID_ID
-            | VANILLA_ENTITY_TYPE_GLOW_SQUID_ID
-    )
+    is_guardian_entity_type(entity_type_id)
+        || is_vanilla_squid_type(entity_type_id)
+        || matches!(
+            entity_type_id,
+            VANILLA_ENTITY_TYPE_FROG_ID
+                | VANILLA_ENTITY_TYPE_WOLF_ID
+                | VANILLA_ENTITY_TYPE_AXOLOTL_ID
+        )
 }
 
 fn is_vanilla_arrow_type(entity_type_id: i32) -> bool {

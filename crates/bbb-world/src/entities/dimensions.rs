@@ -55,7 +55,8 @@ use super::schema::{
     VANILLA_ZOMBIE_DEFAULT_BABY as ZOMBIE_DEFAULT_BABY,
 };
 use super::{
-    is_vanilla_boat_type, is_vanilla_minecart_type, EntityClientAnimationState, EntityVec3,
+    is_vanilla_boat_type, is_vanilla_camel_type, is_vanilla_minecart_type, is_vanilla_slime_type,
+    is_vanilla_squid_type, EntityClientAnimationState, EntityVec3,
 };
 use bbb_protocol::entity_types::*;
 
@@ -192,9 +193,7 @@ pub(crate) fn vanilla_pick_bounds_for_entity_data(
         living_sleeping_pick_bounds()
     } else if is_warden_fixed_pose(entity_type_id, data_values) {
         EntityPickBoundsState::from_base_size(0.9, 1.0, 0.0)
-    } else if entity_type_id == VANILLA_ENTITY_TYPE_CAMEL_ID
-        || entity_type_id == VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID
-    {
+    } else if is_vanilla_camel_type(entity_type_id) {
         camel_pick_bounds(entity_type_id, data_values)
     } else if entity_type_id == VANILLA_ENTITY_TYPE_GOAT_ID {
         goat_pick_bounds(data_values)
@@ -216,9 +215,7 @@ pub(crate) fn vanilla_pick_bounds_for_entity_data(
         block_attached::painting_pick_bounds(add_entity_data, data_values)?
     } else if entity_type_id == VANILLA_ENTITY_TYPE_LEASH_KNOT_ID {
         EntityPickBoundsState::from_base_size(0.375, 0.5, 0.0)
-    } else if entity_type_id == VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID
-        || entity_type_id == VANILLA_ENTITY_TYPE_SLIME_ID
-    {
+    } else if is_vanilla_slime_type(entity_type_id) {
         slime_pick_bounds(data_values)
     } else if entity_type_id == VANILLA_ENTITY_TYPE_PUFFERFISH_ID {
         pufferfish_pick_bounds(data_values)
@@ -326,9 +323,7 @@ pub(crate) fn vanilla_body_anchor_y_offset_for_entity_data(
     is_front: bool,
     partial_ticks: f32,
 ) -> Option<f32> {
-    if entity_type_id != VANILLA_ENTITY_TYPE_CAMEL_ID
-        && entity_type_id != VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID
-    {
+    if !is_vanilla_camel_type(entity_type_id) {
         return None;
     }
 
@@ -428,9 +423,7 @@ fn vanilla_passenger_attachment_point(
         );
     }
 
-    if vehicle_entity_type_id == VANILLA_ENTITY_TYPE_CAMEL_ID
-        || vehicle_entity_type_id == VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID
-    {
+    if is_vanilla_camel_type(vehicle_entity_type_id) {
         return rotated_y(
             camel_passenger_attachment_point(
                 vehicle_entity_type_id,
@@ -459,9 +452,7 @@ fn vanilla_passenger_attachment_point(
         passenger_index,
     );
 
-    if vehicle_entity_type_id == VANILLA_ENTITY_TYPE_SLIME_ID
-        || vehicle_entity_type_id == VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID
-    {
+    if is_vanilla_slime_type(vehicle_entity_type_id) {
         point = [
             0.0,
             bounds_height(vehicle_bounds)
@@ -971,7 +962,7 @@ fn baby_pick_bounds(
         }
         VANILLA_ENTITY_TYPE_RABBIT_ID => EntityPickBoundsState::from_base_size(0.24, 0.4, 0.0),
         VANILLA_ENTITY_TYPE_AXOLOTL_ID => EntityPickBoundsState::from_base_size(0.5, 0.25, 0.0),
-        VANILLA_ENTITY_TYPE_GLOW_SQUID_ID | VANILLA_ENTITY_TYPE_SQUID_ID => {
+        _ if is_vanilla_squid_type(entity_type_id) => {
             EntityPickBoundsState::from_base_size(0.5, 0.63, 0.0)
         }
         VANILLA_ENTITY_TYPE_TURTLE_ID => {

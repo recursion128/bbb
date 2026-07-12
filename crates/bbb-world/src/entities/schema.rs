@@ -231,6 +231,9 @@ pub struct VanillaEntityTypeMetadataCatalogEntry {
     pub is_item_frame: bool,
     pub is_guardian: bool,
     pub is_flying_animal: bool,
+    pub is_camel: bool,
+    pub is_squid: bool,
+    pub is_slime: bool,
     pub is_player_rideable_jumping: bool,
     pub has_custom_inventory_screen: bool,
     pub diagnostic: Option<&'static str>,
@@ -421,6 +424,27 @@ pub fn vanilla_entity_metadata_type_is_flying_animal(entity_type_id: i32) -> boo
     VANILLA_ENTITY_TYPE_METADATA_26_1
         .get(usize::try_from(entity_type_id).unwrap_or(usize::MAX))
         .map(|entry| entry.is_flying_animal)
+        .unwrap_or(false)
+}
+
+pub fn vanilla_entity_metadata_type_is_camel(entity_type_id: i32) -> bool {
+    VANILLA_ENTITY_TYPE_METADATA_26_1
+        .get(usize::try_from(entity_type_id).unwrap_or(usize::MAX))
+        .map(|entry| entry.is_camel)
+        .unwrap_or(false)
+}
+
+pub fn vanilla_entity_metadata_type_is_squid(entity_type_id: i32) -> bool {
+    VANILLA_ENTITY_TYPE_METADATA_26_1
+        .get(usize::try_from(entity_type_id).unwrap_or(usize::MAX))
+        .map(|entry| entry.is_squid)
+        .unwrap_or(false)
+}
+
+pub fn vanilla_entity_metadata_type_is_slime(entity_type_id: i32) -> bool {
+    VANILLA_ENTITY_TYPE_METADATA_26_1
+        .get(usize::try_from(entity_type_id).unwrap_or(usize::MAX))
+        .map(|entry| entry.is_slime)
         .unwrap_or(false)
 }
 
@@ -659,6 +683,27 @@ mod tests {
         assert_eq!(
             VANILLA_ENTITY_TYPE_METADATA_26_1
                 .iter()
+                .filter(|entry| entry.is_camel)
+                .count(),
+            2
+        );
+        assert_eq!(
+            VANILLA_ENTITY_TYPE_METADATA_26_1
+                .iter()
+                .filter(|entry| entry.is_squid)
+                .count(),
+            2
+        );
+        assert_eq!(
+            VANILLA_ENTITY_TYPE_METADATA_26_1
+                .iter()
+                .filter(|entry| entry.is_slime)
+                .count(),
+            2
+        );
+        assert_eq!(
+            VANILLA_ENTITY_TYPE_METADATA_26_1
+                .iter()
                 .filter(|entry| entry.is_player_rideable_jumping)
                 .count(),
             11
@@ -742,6 +787,9 @@ mod tests {
             "is_vanilla_abstract_horse_type",
             "is_vanilla_abstract_nautilus_type",
             "is_vanilla_llama_type",
+            "is_vanilla_camel_type",
+            "is_vanilla_squid_type",
+            "is_vanilla_slime_type",
             "is_vanilla_can_equip_saddle_type",
             "is_vanilla_can_wear_horse_armor_type",
         ] {

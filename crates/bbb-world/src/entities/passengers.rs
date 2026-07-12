@@ -9,9 +9,9 @@ use super::schema::{
     vanilla_entity_metadata_type_is_player_rideable_jumping,
 };
 use super::{
-    is_vanilla_boat_type,
+    is_vanilla_boat_type, is_vanilla_camel_type,
     movement::{entity_distance_squared, entity_vec3},
-    VehicleMoveReport, VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID, VANILLA_ENTITY_TYPE_CAMEL_ID,
+    VehicleMoveReport,
 };
 
 const MOVE_VEHICLE_SNAP_EPSILON_SQUARED: f64 = 1e-10;
@@ -353,10 +353,7 @@ fn is_vanilla_player_rideable_jumping_type(entity_type_id: i32) -> bool {
 }
 
 fn is_vanilla_sprintable_vehicle_type(entity_type_id: i32) -> bool {
-    matches!(
-        entity_type_id,
-        VANILLA_ENTITY_TYPE_CAMEL_ID | VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID
-    )
+    is_vanilla_camel_type(entity_type_id)
 }
 
 fn is_vanilla_custom_inventory_screen_type(entity_type_id: i32) -> bool {

@@ -12586,3 +12586,9 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] metadata hierarchy 派生 2 项 Guardian subclass 与 2 项 FlyingAnimal implementor；world
   guardian beam gate 和 flying walk-distance gate 删除手抄 matches，attack-duration 与 walk-animation
   算法继续由 client presentation owner 手写。
+
+## 2026-07-12：Derived small entity class families
+
+- [x] metadata class hierarchy 派生 Camel/CamelHusk、Squid/GlowSquid、Slime/MagmaCube 三组
+  两项 family membership；world 的载具、尺寸、乘客 attachment、render projection 与 client
+  animation gate 统一消费 generated query，单体特例和呈现算法仍由原 semantic owner 手写。
