@@ -417,8 +417,8 @@ header/footer render 尚未完成，canonical/runtime 保持 partial。
 ServerData 的 trusted MOTD Component + optional icon wire、缺省 icon 保留旧值、ownership 与 apply tests
 已闭合；rich MOTD、icon validation 与 multiplayer server-list persistence 尚未完成，canonical/runtime
 保持 partial。
-BundleDelimiter 的 empty wire、connection ownership 与 no-response tests 已闭合，且无 canonical world
-state；bundle atomic dispatch、terminal gate 与 4096 packet limit 尚未实现，runtime 保持 partial。
+BundleDelimiter 的 empty wire、connection-owned atomic batch、wire-order dispatch、terminal gate 与
+4096 packet limit 已闭合；delimiter 不进入 canonical world state，online/probe 复用同一 assembler。
 play PongResponse 的 echoed i64 wire、F3+3 client-tick PingRequest、latency sampler、240-sample HUD
 projection 与 protocol/world/net/native tests 已全行闭合。
 LowDiskSpaceWarning 的 unit wire、canonical counter、ownership 与 apply tests 已闭合；vanilla 10 秒

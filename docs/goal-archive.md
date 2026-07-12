@@ -12026,3 +12026,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] `ClientboundHelloPacket` 现在严格解码 20-char server id、length-prefixed public key/challenge 与 authenticate flag，并拒绝 truncated/trailing payload；typed `EncryptionRequest` 保留后续 RSA/AES/session owner 所需全部 wire 数据。
 - [x] offline event-stream/probe 仍对 typed request 明确终止；session join、`ServerboundKeyPacket`、cipher install 和握手状态机继续开放，未把 wire decode 冒充在线登录完成。
+
+## 2026-07-12：play clientbound bundle atomic framing
+
+- [x] connection-owned `PlayPacketBundleAssembler` 现在在 closing delimiter 前隔离 subpackets，按 wire order 一次交付完整 batch；online event-stream 与 probe 共享同一实现，delimiter 不再进入 gameplay/world owner。
+- [x] 与 vanilla `BundlerInfo` 一致允许最多 4096 个 subpacket、允许 empty bundle，并拒绝 bundle 内 terminal `StartConfiguration`；focused tests 锁定上限、顺序、复用和 terminal gate。

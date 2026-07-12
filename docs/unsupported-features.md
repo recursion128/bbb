@@ -120,11 +120,6 @@ Owner: `bbb-protocol`
   already sent in configuration; the current configuration-to-play handoff sends
   the same snapshot again unconditionally, and bbb intentionally has no in-game
   configuration UI that would justify treating that duplicate as option-change parity.
-- Assemble play packets between bundle delimiters in the connection owner like
-  `PacketBundlePacker` / `BundlerInfo`: dispatch the bundle as one scheduled
-  unit, reject terminal packets inside it, and enforce the 4096-packet limit.
-  The current stream preserves packet order but treats both delimiters as
-  transport no-ops.
 - Replace the current first-`ClientboundPlayerPositionPacket` trigger for
   `ServerboundPlayerLoadedPacket` with vanilla `LevelLoadTracker` readiness:
   wait for server loading packets, then for the local-player section to be

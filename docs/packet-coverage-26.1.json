@@ -6199,17 +6199,25 @@
         },
         "runtime_side_effect": {
           "evidence": [
-            "crates/bbb-net/src/event_stream.rs#play_bundle_delimiter_is_transport_noop",
+            "crates/bbb-net/src/play_bundle.rs#PlayPacketBundleAssembler",
+            "crates/bbb-net/src/play_bundle.rs#bundle_holds_packets_until_closing_delimiter_and_preserves_order",
+            "crates/bbb-net/src/play_bundle.rs#bundle_accepts_4096_packets_and_rejects_the_next",
+            "crates/bbb-net/src/play_bundle.rs#terminal_packet_is_rejected_only_inside_bundle",
+            "crates/bbb-net/src/event_stream.rs#run_offline_event_stream",
+            "crates/bbb-net/src/probe.rs#run_offline_probe_inner",
+            "vanilla:net/minecraft/network/PacketBundlePacker.java#decode",
             "vanilla:net/minecraft/network/protocol/BundlerInfo.java#BUNDLE_SIZE_LIMIT"
           ],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [
             "crates/bbb-protocol/src/packets/tests.rs#decodes_bundle_delimiter_packet",
-            "crates/bbb-net/src/event_stream.rs#play_bundle_delimiter_is_transport_noop",
-            "crates/bbb-net/src/probe/play.rs#probe_bundle_delimiter_is_transport_noop"
+            "crates/bbb-net/src/play_bundle.rs#bundle_holds_packets_until_closing_delimiter_and_preserves_order",
+            "crates/bbb-net/src/play_bundle.rs#empty_bundle_dispatches_an_empty_atomic_batch",
+            "crates/bbb-net/src/play_bundle.rs#bundle_accepts_4096_packets_and_rejects_the_next",
+            "crates/bbb-net/src/play_bundle.rs#terminal_packet_is_rejected_only_inside_bundle"
           ],
           "gap": null,
           "status": "complete"

@@ -1439,7 +1439,7 @@ mod tests {
     }
 
     #[test]
-    fn play_bundle_delimiter_keeps_bundle_framing_runtime_open() {
+    fn play_bundle_delimiter_closes_connection_owned_framing() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
@@ -1452,14 +1452,13 @@ mod tests {
             entry.coverage["canonical_apply"].status,
             PacketCoverageStatus::NotApplicable
         );
-        let partial: BTreeSet<_> = entry
-            .coverage
-            .iter()
-            .filter_map(|(dimension, cell)| {
-                (cell.status == PacketCoverageStatus::Partial).then_some(dimension.as_str())
-            })
-            .collect();
-        assert_eq!(partial, BTreeSet::from(["runtime_side_effect"]));
+        for dimension in ["decode", "ownership", "runtime_side_effect", "tests"] {
+            assert_eq!(
+                entry.coverage[dimension].status,
+                PacketCoverageStatus::Complete,
+                "{dimension}"
+            );
+        }
     }
 
     #[test]

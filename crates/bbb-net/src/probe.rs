@@ -9,6 +9,7 @@ use crate::{
     chunk_batch::ChunkBatchSizeCalculator,
     connection::RawConnection,
     driver::read_packet_or_send_play_tick,
+    play_bundle::PlayPacketBundleAssembler,
     types::{ChunkProbeSummary, ConnectionOptions, ConnectionState, ProbeReport},
 };
 
@@ -159,6 +160,7 @@ async fn run_offline_probe_inner(options: ConnectionOptions) -> Result<ProbeRepo
     probe.conn.send_packet(id, &payload).await?;
 
     let mut drain = ProbeDrain::new(options.probe_after_first_chunk_packets);
+    let mut play_bundle = PlayPacketBundleAssembler::default();
     loop {
         let (packet_id, payload) =
             read_packet_or_send_play_tick(&mut probe.conn, probe.state, &mut probe.play_tick)
@@ -171,26 +173,35 @@ async fn run_offline_probe_inner(options: ConnectionOptions) -> Result<ProbeRepo
             "clientbound packet"
         );
 
-        let mut packet_first_chunk = None;
+        let mut packet_first_chunks = Vec::new();
         match probe.state {
             ConnectionState::Login => {
                 let packet = packets::decode_login_clientbound(packet_id, &payload)?;
                 probe.handle_login_packet(packet).await?;
+                packet_first_chunks.push(None);
             }
             ConnectionState::Configuration => {
                 let packet = packets::decode_configuration_clientbound(packet_id, &payload)?;
                 probe.handle_configuration_packet(packet).await?;
+                packet_first_chunks.push(None);
             }
             ConnectionState::Play => {
                 let packet = packets::decode_play_clientbound(packet_id, &payload)?;
-                packet_first_chunk = probe.handle_play_packet(packet).await?;
+                if let Some(batch) = play_bundle.push(packet)? {
+                    for packet in batch {
+                        packet_first_chunks.push(probe.handle_play_packet(packet).await?);
+                    }
+                }
             }
             ConnectionState::Handshake | ConnectionState::Status => {
                 unreachable!("probe starts at login")
             }
         }
 
-        if drain.observe_packet(packet_first_chunk) {
+        let should_finish = packet_first_chunks
+            .into_iter()
+            .any(|packet_first_chunk| drain.observe_packet(packet_first_chunk));
+        if should_finish {
             break;
         }
     }

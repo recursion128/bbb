@@ -14,6 +14,7 @@ use crate::{
     chunk_batch::ChunkBatchSizeCalculator,
     connection::RawConnection,
     driver::{read_packet_or_drive_connection, ConnectionDrive},
+    play_bundle::PlayPacketBundleAssembler,
     types::{ConnectionOptions, ConnectionState, NetCommand, NetEvent},
 };
 
@@ -76,6 +77,7 @@ pub async fn run_offline_event_stream(
     let (id, payload) = packets::encode_login_hello(&options.username, options.profile_id);
     stream.conn.send_packet(id, &payload).await?;
 
+    let mut play_bundle = PlayPacketBundleAssembler::default();
     loop {
         let drive = read_packet_or_drive_connection(
             &mut stream.conn,
@@ -114,7 +116,11 @@ pub async fn run_offline_event_stream(
             }
             ConnectionState::Play => {
                 let packet = packets::decode_play_clientbound(packet_id, &payload)?;
-                stream.handle_play_packet(packet).await?;
+                if let Some(batch) = play_bundle.push(packet)? {
+                    for packet in batch {
+                        stream.handle_play_packet(packet).await?;
+                    }
+                }
             }
             ConnectionState::Handshake | ConnectionState::Status => {
                 unreachable!("event stream starts at login")
