@@ -3093,29 +3093,50 @@
       "constant_name": "SERVERBOUND_CONFIGURATION_ACKNOWLEDGED",
       "coverage": {
         "ack_response": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-net/src/event_stream.rs#play_start_configuration_acknowledges_and_resets_configuration_dedup_state",
+            "crates/bbb-net/src/probe/play.rs#probe_start_configuration_acknowledges_and_resets_configuration_dedup_state",
+            "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#handleConfigurationAcknowledged"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "command_surface": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-net/src/event_stream/play.rs#PlayClientbound::StartConfiguration",
+            "crates/bbb-net/src/event_stream/play.rs#acknowledge_start_configuration"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "encoder": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/serverbound.rs#encode_play_configuration_acknowledged",
+            "vanilla:net/minecraft/network/protocol/game/ServerboundConfigurationAcknowledgedPacket.java#STREAM_CODEC"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "state_guard": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-net/src/event_stream/play.rs#acknowledge_start_configuration",
+            "crates/bbb-net/src/event_stream.rs#play_start_configuration_flushes_pending_chat_acknowledgement_first",
+            "crates/bbb-native/src/runtime/events/dispatcher.rs#NetEvent::StartConfiguration",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleConfigurationStart"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_play_connection_lifecycle_packets",
+            "crates/bbb-net/src/event_stream.rs#play_start_configuration_acknowledges_and_resets_configuration_dedup_state",
+            "crates/bbb-net/src/event_stream.rs#play_start_configuration_flushes_pending_chat_acknowledgement_first",
+            "crates/bbb-net/src/probe/play.rs#probe_start_configuration_acknowledges_and_resets_configuration_dedup_state",
+            "crates/bbb-native/src/runtime/events/tests/world_state_lifecycle.rs#start_configuration_flushes_pending_chat_acknowledgement_before_clearing_level"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "serverbound",

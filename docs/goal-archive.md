@@ -11806,3 +11806,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] transaction VarInt + 32500 UTF-16 code-unit command wire、chat input/control/native/net production path、pending-id stale response gate 与 server suggestion response 已审计；encoder 新增 vanilla 长度拒绝并闭合。
 - [x] registry-aware local dispatcher/custom request cancellation 与 rich tooltip/scrollable list presentation 仍开放；ack/state/tests 保持 partial，没有把 first-result Tab replacement 冒充完整 CommandSuggestions UI。
+
+## 2026-07-12：play serverbound configuration acknowledged packet coverage audit
+
+- [x] terminal unit wire、StartConfiguration-only trigger、pending chat acknowledgement flush-before-ack、play→configuration state switch、play tick stop、configuration dedup reset 与 level clear 已审计并全行闭合。
+- [x] 后续 configuration packet consumption/re-entry tests 已覆盖；没有把该 terminal acknowledgement 当作普通可重复命令，也没有在 world owner 中复制 connection state。
