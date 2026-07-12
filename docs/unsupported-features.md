@@ -868,12 +868,6 @@ back into a todo. Do not delete these.
   rerender/tint invalidation. Direct custom climate and color effects already
   project through the active holder order; malformed synchronized data is
   omitted instead of falling back to a same-name pack default.
-- **Client chunk-view residency pruning.** SetChunkCacheCenter/Radius currently
-  preserve the synchronized view and use the center for terrain upload order,
-  but do not evict chunks outside the updated vanilla ClientChunkCache window.
-  Restart by applying center/radius changes to world and GPU residency together,
-  retaining explicit forget-packet behavior and never introducing a server
-  chunk-cache or IntegratedServer owner.
 - **Block-entity `breakProgress` crumbling** and per-block-entity distance/frustum
   culling. A cross-cutting boundary shared by every block-entity renderer slice:
   block entities currently submit like entities, unculled.

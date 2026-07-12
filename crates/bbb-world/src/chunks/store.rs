@@ -57,13 +57,16 @@ impl WorldStore {
 
     pub fn insert_decoded_chunk(&mut self, column: ChunkColumn) {
         let pos = column.pos;
-        self.first_chunk.get_or_insert(pos);
         self.counters.chunks_received += 1;
         self.counters.chunks_decoded += 1;
         self.counters.sections_decoded += column.sections.len();
         self.counters.block_entities_seen += column.block_entities.len();
         self.counters.light_arrays_seen +=
             column.light.sky_updates.len() + column.light.block_updates.len();
+        if !chunk_is_in_view(self.chunk_view, pos) {
+            return;
+        }
+        self.first_chunk.get_or_insert(pos);
         if let Some(existing) = self.chunks.iter_mut().find(|chunk| chunk.pos == pos) {
             *existing = column;
         } else {
@@ -272,6 +275,7 @@ impl WorldStore {
             x: update.chunk_x,
             z: update.chunk_z,
         });
+        self.prune_chunks_outside_view();
         self.chunk_view
     }
 
@@ -281,6 +285,7 @@ impl WorldStore {
     ) -> ChunkViewState {
         self.counters.chunk_cache_radius_updates_received += 1;
         self.chunk_view.radius = Some(update.radius);
+        self.prune_chunks_outside_view();
         self.chunk_view
     }
 
@@ -298,6 +303,12 @@ impl WorldStore {
 
     pub fn chunk_cache_radius(&self) -> Option<i32> {
         self.chunk_view.radius
+    }
+
+    fn prune_chunks_outside_view(&mut self) {
+        let view = self.chunk_view;
+        self.chunks
+            .retain(|chunk| chunk_is_in_view(view, chunk.pos));
     }
 
     pub fn forget_chunk(&mut self, pos: ChunkPos) -> bool {
@@ -861,6 +872,15 @@ impl WorldStore {
             .block_state_id_by_name_and_properties(name, &properties)
             .unwrap_or(0)
     }
+}
+
+fn chunk_is_in_view(view: ChunkViewState, pos: ChunkPos) -> bool {
+    let (Some(center), Some(view_range)) = (view.center, view.radius) else {
+        return true;
+    };
+    let storage_radius = view_range.max(2).saturating_add(3);
+    (i64::from(pos.x) - i64::from(center.x)).abs() <= i64::from(storage_radius)
+        && (i64::from(pos.z) - i64::from(center.z)).abs() <= i64::from(storage_radius)
 }
 
 fn fluid_legacy_level(fluid: crate::TerrainFluidState) -> u8 {

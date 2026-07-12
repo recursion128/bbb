@@ -12767,3 +12767,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] release 路径只保留 client-tick 驱动入口；原固定墙钟 accumulator 限于 `cfg(test)` fixture
   wrapper。新 focused test 锁定零 client tick 时不移动/不重复发包、收到一个 client tick 后才推进
   prediction 并提交 movement。剩余 voxel collision、travel ordering 与 vehicle edge parity 继续开放。
+
+## 2026-07-12：Client chunk-view residency pruning
+
+- [x] world 以 vanilla `ClientChunkCache.calculateStorageRange(viewRange) = max(2, range) + 3`
+  与 Chebyshev center window 为唯一 residency 边界；center/radius 更新立即删除窗口外列，后续越界
+  chunk packet 解码计数保留但不进入 canonical store。
+- [x] pruning 不冒充显式 ForgetLevelChunk packet/counters；canonical chunk count 变化复用既有 terrain
+  upload invalidation，同步替换 GPU mesh residency。focused tests 锁定未知 center 不早删、边界 5 保留、
+  边界 6 删除、center 移动与越界新包拒绝，两条 packet coverage 五格闭合。

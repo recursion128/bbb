@@ -437,8 +437,8 @@ TickingStep 的 frozen step wire、consumption 与 tests 已全行闭合；Ticki
 variable tick-rate client cadence 与 local prediction consumer 已消费，五格全部闭合。
 ClearTitles/SetTitlesAnimation 已全行闭合；action-bar/title/subtitle 的 Component wire、timers 与 tests
 已闭合，但完整 rich Component style/translation 尚未保留，三条 text 的 canonical/runtime 保持 partial。
-SetChunkCacheCenter/Radius 的 VarInt wire、canonical view state 与 tests 已闭合；窗口外 chunk residency
-淘汰尚未按 vanilla ClientChunkCache 实现，两行 runtime 保持 partial。
+SetChunkCacheCenter/Radius 的 VarInt wire、canonical view state、vanilla storage-range residency
+淘汰、terrain residency refresh 与 tests 已闭合，五格全部闭合。
 AwardStats 的 bounded map wire、ownership 与 tests 已闭合；StatType/value holder 尚未按 session registry
 解析且 StatsScreen 仍是 loading shell，canonical/runtime 保持 partial。
 TabList 的双 Component wire、empty→null、ownership 与 apply tests 已闭合；rich Component 与 tab overlay

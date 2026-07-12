@@ -1356,7 +1356,7 @@ mod tests {
     }
 
     #[test]
-    fn play_chunk_cache_view_keeps_residency_pruning_open() {
+    fn play_chunk_cache_view_is_closed() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         for constant_name in [
             "CLIENTBOUND_SET_CHUNK_CACHE_CENTER",
@@ -1367,14 +1367,17 @@ mod tests {
                 .iter()
                 .find(|entry| entry.state == "play" && entry.constant_name == constant_name)
                 .expect("chunk cache view coverage row");
-            let partial: BTreeSet<_> = entry
+            let incomplete: BTreeSet<_> = entry
                 .coverage
                 .iter()
                 .filter_map(|(dimension, cell)| {
-                    (cell.status == PacketCoverageStatus::Partial).then_some(dimension.as_str())
+                    (cell.status != PacketCoverageStatus::Complete).then_some(dimension.as_str())
                 })
                 .collect();
-            assert_eq!(partial, BTreeSet::from(["runtime_side_effect"]));
+            assert!(
+                incomplete.is_empty(),
+                "incomplete {constant_name}: {incomplete:?}"
+            );
         }
     }
 

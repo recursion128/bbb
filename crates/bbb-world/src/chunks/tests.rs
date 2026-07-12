@@ -644,6 +644,44 @@ fn chunk_cache_updates_track_view_state() {
 }
 
 #[test]
+fn chunk_cache_view_prunes_and_rejects_columns_outside_vanilla_storage_range() {
+    let mut store = WorldStore::new();
+    for x in [0, 5, 6, 20] {
+        let mut packet = synthetic_level_chunk_packet();
+        packet.x = x;
+        packet.z = 0;
+        store.insert_level_chunk_with_light(packet).unwrap();
+    }
+    assert_eq!(store.chunk_positions().len(), 4);
+
+    store.apply_set_chunk_cache_radius(ProtocolSetChunkCacheRadius { radius: 2 });
+    assert_eq!(store.chunk_positions().len(), 4, "center is not known yet");
+    store.apply_set_chunk_cache_center(ProtocolSetChunkCacheCenter {
+        chunk_x: 0,
+        chunk_z: 0,
+    });
+    assert!(store.probe_chunk(ChunkPos { x: 0, z: 0 }).is_some());
+    assert!(store.probe_chunk(ChunkPos { x: 5, z: 0 }).is_some());
+    assert!(store.probe_chunk(ChunkPos { x: 6, z: 0 }).is_none());
+    assert!(store.probe_chunk(ChunkPos { x: 20, z: 0 }).is_none());
+
+    let mut packet = synthetic_level_chunk_packet();
+    packet.x = -6;
+    packet.z = 0;
+    store.insert_level_chunk_with_light(packet).unwrap();
+    assert!(store.probe_chunk(ChunkPos { x: -6, z: 0 }).is_none());
+    assert_eq!(store.counters().chunk_forgets_received, 0);
+    assert_eq!(store.counters().chunks_forgotten, 0);
+
+    store.apply_set_chunk_cache_center(ProtocolSetChunkCacheCenter {
+        chunk_x: 10,
+        chunk_z: 0,
+    });
+    assert!(store.probe_chunk(ChunkPos { x: 0, z: 0 }).is_none());
+    assert!(store.probe_chunk(ChunkPos { x: 5, z: 0 }).is_some());
+}
+
+#[test]
 fn probes_block_state_from_local_palette() {
     let mut store = WorldStore::with_dimension(WorldDimension {
         min_y: 0,

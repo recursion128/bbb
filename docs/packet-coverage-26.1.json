@@ -11314,15 +11314,17 @@
         "runtime_side_effect": {
           "evidence": [
             "crates/bbb-native/src/terrain_runtime.rs#terrain_upload_center",
+            "crates/bbb-world/src/chunks/store.rs#prune_chunks_outside_view",
             "vanilla:net/minecraft/client/multiplayer/ClientChunkCache.java#updateViewCenter"
           ],
-          "gap": "docs/unsupported-features.md#block-entities-and-terrain",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [
             "crates/bbb-protocol/src/packets/chunks/tests.rs#decodes_chunk_cache_center_and_radius",
             "crates/bbb-world/src/chunks/tests.rs#chunk_cache_updates_track_view_state",
+            "crates/bbb-world/src/chunks/tests.rs#chunk_cache_view_prunes_and_rejects_columns_outside_vanilla_storage_range",
             "crates/bbb-net/src/probe/play.rs#probe_applies_chunk_view_and_block_updates_to_world",
             "crates/bbb-native/src/runtime/events/tests/world_state_lifecycle.rs#chunk_cache_events_update_world_counters"
           ],
@@ -11365,15 +11367,17 @@
         "runtime_side_effect": {
           "evidence": [
             "crates/bbb-native/src/runtime.rs#hud_debug_client_chunk_storage_slots",
+            "crates/bbb-world/src/chunks/store.rs#prune_chunks_outside_view",
             "vanilla:net/minecraft/client/multiplayer/ClientChunkCache.java#updateViewRadius"
           ],
-          "gap": "docs/unsupported-features.md#block-entities-and-terrain",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [
             "crates/bbb-protocol/src/packets/chunks/tests.rs#decodes_chunk_cache_center_and_radius",
             "crates/bbb-world/src/chunks/tests.rs#chunk_cache_updates_track_view_state",
+            "crates/bbb-world/src/chunks/tests.rs#chunk_cache_view_prunes_and_rejects_columns_outside_vanilla_storage_range",
             "crates/bbb-net/src/probe/play.rs#probe_applies_chunk_view_and_block_updates_to_world",
             "crates/bbb-native/src/runtime/events/tests/world_state_lifecycle.rs#chunk_cache_events_update_world_counters"
           ],
