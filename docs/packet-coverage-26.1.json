@@ -324,11 +324,13 @@
         },
         "encoder": {
           "evidence": [
-            "crates/bbb-protocol/src/packet_catalog.rs#SERVERBOUND_KEY",
+            "crates/bbb-protocol/src/packets/connection.rs#LoginKey",
+            "crates/bbb-protocol/src/packets/connection.rs#encode_login_key",
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_login_key_encrypted_arrays_in_wire_order",
             "vanilla:net/minecraft/network/protocol/login/ServerboundKeyPacket.java#STREAM_CODEC"
           ],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "state_guard": {
           "evidence": [

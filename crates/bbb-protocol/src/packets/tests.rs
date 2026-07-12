@@ -1069,6 +1069,28 @@ fn decodes_login_encryption_request_strictly() {
 }
 
 #[test]
+fn encodes_login_key_encrypted_arrays_in_wire_order() {
+    let packet = LoginKey {
+        encrypted_secret: vec![0x10, 0x20, 0x30, 0x40],
+        encrypted_challenge: vec![0xaa, 0xbb, 0xcc],
+    };
+    let (id, payload) = encode_login_key(&packet).unwrap();
+    assert_eq!(id, ids::login::SERVERBOUND_KEY);
+    let mut decoder = Decoder::new(&payload);
+    assert_eq!(decoder.read_len().unwrap(), 4);
+    assert_eq!(
+        decoder.read_exact(4, "encrypted secret").unwrap(),
+        packet.encrypted_secret
+    );
+    assert_eq!(decoder.read_len().unwrap(), 3);
+    assert_eq!(
+        decoder.read_exact(3, "encrypted challenge").unwrap(),
+        packet.encrypted_challenge
+    );
+    assert!(decoder.is_empty());
+}
+
+#[test]
 fn decodes_disconnect_component_in_configuration_and_play() {
     let mut payload = Vec::new();
     payload.push(8);

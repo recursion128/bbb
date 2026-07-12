@@ -254,7 +254,6 @@ mod tests {
                 ("SERVERBOUND_HELLO", "state_guard"),
                 ("SERVERBOUND_KEY", "ack_response"),
                 ("SERVERBOUND_KEY", "command_surface"),
-                ("SERVERBOUND_KEY", "encoder"),
                 ("SERVERBOUND_KEY", "state_guard"),
                 ("SERVERBOUND_KEY", "tests"),
                 ("CLIENTBOUND_HELLO", "runtime_side_effect"),

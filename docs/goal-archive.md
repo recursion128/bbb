@@ -12036,3 +12036,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] `ServerboundSelectKnownPacks` 现在可按 wire order 编码最多 64 个 `(namespace,id,version)`，逐字段执行 STRING_UTF8 32767 UTF-16-unit guard；focused tests 锁定 64/65 边界和字段顺序。
 - [x] online/probe 的当前空选择委托通用 encoder；在本地 server-data resource manager/RegistryAccess 可实际提供对应 pack 前仍不认领 server offer，selection runtime/command 保持 partial。
+
+## 2026-07-12：login key response wire encoder
+
+- [x] `ServerboundKeyPacket` 现在通过 typed `LoginKey` 按 wire order 编码 encrypted secret 与 encrypted challenge 两个 VarInt-length byte array，并有 focused field-order test。
+- [x] encoder 只接受密码学 owner 已产生的密文；session join、secret/RSA/AES 生成、cipher install 与握手状态机继续开放，未引入 raw-secret fallback。

@@ -106,6 +106,12 @@ pub struct EncryptionRequest {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LoginKey {
+    pub encrypted_secret: Vec<u8>,
+    pub encrypted_challenge: Vec<u8>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ConfigurationClientbound {
     Disconnect { reason: String, raw_reason: Vec<u8> },
     CustomPayload(CustomPayload),
@@ -289,6 +295,26 @@ pub fn encode_login_hello(username: &str, profile_id: Uuid) -> (i32, Vec<u8>) {
 
 pub fn encode_login_acknowledged() -> (i32, Vec<u8>) {
     (ids::login::SERVERBOUND_LOGIN_ACKNOWLEDGED, Vec::new())
+}
+
+pub fn encode_login_key(packet: &LoginKey) -> Result<(i32, Vec<u8>)> {
+    let encrypted_secret_len = i32::try_from(packet.encrypted_secret.len()).map_err(|_| {
+        ProtocolError::InvalidData(
+            "encrypted login secret does not fit a VarInt length".to_string(),
+        )
+    })?;
+    let encrypted_challenge_len =
+        i32::try_from(packet.encrypted_challenge.len()).map_err(|_| {
+            ProtocolError::InvalidData(
+                "encrypted login challenge does not fit a VarInt length".to_string(),
+            )
+        })?;
+    let mut out = Encoder::new();
+    out.write_var_i32(encrypted_secret_len);
+    out.write_bytes(&packet.encrypted_secret);
+    out.write_var_i32(encrypted_challenge_len);
+    out.write_bytes(&packet.encrypted_challenge);
+    Ok((ids::login::SERVERBOUND_KEY, out.into_inner()))
 }
 
 pub fn decode_login_clientbound(packet_id: i32, payload: &[u8]) -> Result<LoginClientbound> {

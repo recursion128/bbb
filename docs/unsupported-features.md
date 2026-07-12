@@ -44,7 +44,8 @@ Owner: `bbb-protocol`
   generic dispatch arm alone is not completion.
 - Add the production Transfer-intent handshake entry and state transition.
 - Complete authenticated login: perform session authentication/encryption from the
-  typed `ClientboundHelloPacket`, encode `ServerboundKeyPacket`, and lock the
+  typed `ClientboundHelloPacket`, generate the encrypted inputs for the existing
+  `ServerboundKeyPacket` encoder, install the negotiated ciphers, and lock the
   initial hello response state.
 - Complete configuration resource-pack runtime behavior: download allowed packs,
   verify hashes, apply/reload them, enforce required-pack outcomes, emit the full
