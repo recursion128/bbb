@@ -3445,6 +3445,37 @@ mod tests {
         }
     }
 
+    #[test]
+    fn play_serverbound_client_information_keeps_change_dedup_open() {
+        let ledger = vanilla_packet_coverage_26_1().unwrap();
+        let entry = ledger
+            .entries
+            .iter()
+            .find(|entry| {
+                entry.state == "play" && entry.constant_name == "SERVERBOUND_CLIENT_INFORMATION"
+            })
+            .expect("play serverbound client information coverage row");
+
+        assert_eq!(
+            entry.coverage["ack_response"].status,
+            PacketCoverageStatus::NotApplicable
+        );
+        for dimension in ["command_surface", "encoder"] {
+            assert_eq!(
+                entry.coverage[dimension].status,
+                PacketCoverageStatus::Complete,
+                "{dimension}"
+            );
+        }
+        for dimension in ["state_guard", "tests"] {
+            assert_eq!(
+                entry.coverage[dimension].status,
+                PacketCoverageStatus::Partial,
+                "{dimension}"
+            );
+        }
+    }
+
     fn state_name(state: PacketState) -> &'static str {
         match state {
             PacketState::Handshake => "handshake",
