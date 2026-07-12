@@ -11621,3 +11621,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] i32/i8 framing、strict trailing、missing-entity gate 与现有 client animation/particle/audio 分支已审计。
 - [x] 完整 vanilla subclass/event-id 反向清单未完成，canonical/runtime/tests 保持 partial；未引入服务端权威行为。
+
+## 2026-07-12：play explode packet coverage audit
+
+- [x] center/radius/blockCount/optional-knockback framing、本地玩家 knockback apply 与跨 crate tests 已审计。
+- [x] typed particle/sound/weighted block-particle decode 和 client explosion tracker 未完成；raw tail 未误标支持，服务端权威伤害/方块修改明确排除。
