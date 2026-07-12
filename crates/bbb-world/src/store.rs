@@ -12,7 +12,7 @@ use crate::{
     LastMapColorPatchState, LevelEventRecord, LocalBlockPredictionState, LocalPlayerState,
     MapItemState, PlayerInfoState, ProjectilePowerUpdateState, RegistrySet, ScoreboardState,
     ServerPresentationState, WorldApplyDiagnosticsState, WorldBorderState, WorldCounters,
-    WorldDimension, WorldGameplayState, WorldLevelInfo,
+    WorldDimension, WorldGameplayState, WorldLevelInfo, WorldLevelLoadState,
 };
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -31,6 +31,8 @@ pub struct WorldStore {
     pub(crate) sky_flash_time: i32,
     #[serde(default)]
     pub(crate) ticking: crate::WorldTickingState,
+    #[serde(default)]
+    pub(crate) level_load: WorldLevelLoadState,
     pub(crate) registries: RegistrySet,
     pub(crate) chunks: Vec<ChunkColumn>,
     #[serde(default)]

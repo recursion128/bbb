@@ -12692,3 +12692,9 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] Play GameEvent type 0 按 vanilla `ClientPacketListener` 写入 client-system chat，并保留
   `block.minecraft.spawn.not_valid` typed translation key；兼容摘要不冒充已本地化文本，Win/Demo
   screen、chat renderer 与 level-load tracker 仍保持开放。
+
+## 2026-07-12：GameEvent level-load tracker notification
+
+- [x] Login/Respawn 按 vanilla 启动 WaitingForServer，Play GameEvent type 13 将 active tracker
+  推进到 WaitingForPlayerChunk，重复通知不重复推进；section compiled/visible、30 秒 timeout 与
+  500ms close delay 仍明确归 runtime 后续阶段。

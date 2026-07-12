@@ -1,5 +1,6 @@
 use bbb_protocol::game_event_types::{
     VANILLA_CLIENT_GAME_EVENT_CHANGE_GAME_MODE_ID, VANILLA_CLIENT_GAME_EVENT_IMMEDIATE_RESPAWN_ID,
+    VANILLA_CLIENT_GAME_EVENT_LEVEL_CHUNKS_LOAD_START_ID,
     VANILLA_CLIENT_GAME_EVENT_LIMITED_CRAFTING_ID,
     VANILLA_CLIENT_GAME_EVENT_NO_RESPAWN_BLOCK_AVAILABLE_ID,
     VANILLA_CLIENT_GAME_EVENT_RAIN_LEVEL_CHANGE_ID, VANILLA_CLIENT_GAME_EVENT_START_RAINING_ID,
@@ -204,6 +205,21 @@ pub struct WorldWeatherState {
     pub last_game_event_param: f32,
 }
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum WorldLevelLoadPhase {
+    #[default]
+    Idle,
+    WaitingForServer,
+    WaitingForPlayerChunk,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct WorldLevelLoadState {
+    pub phase: WorldLevelLoadPhase,
+    pub starts: usize,
+    pub loading_packets_received: usize,
+}
+
 impl Default for WorldWeatherState {
     fn default() -> Self {
         Self {
@@ -267,12 +283,14 @@ impl WorldStore {
         self.gameplay.reduced_debug_info = login.reduced_debug_info;
         self.gameplay.hardcore = login.hardcore;
         self.apply_spawn_info(&login.common_spawn_info);
+        self.start_client_level_load();
     }
 
     pub fn apply_respawn(&mut self, respawn: &ProtocolRespawn) {
         self.counters.respawns_received += 1;
         self.reset_local_player_for_respawn(respawn.data_to_keep);
         self.apply_spawn_info(&respawn.common_spawn_info);
+        self.start_client_level_load();
     }
 
     pub fn apply_world_time(&mut self, time: ProtocolPlayTime) -> &WorldTimeState {
@@ -306,6 +324,15 @@ impl WorldStore {
                 self.push_translatable_client_system_chat_message(
                     "block.minecraft.spawn.not_valid",
                 );
+            }
+            VANILLA_CLIENT_GAME_EVENT_LEVEL_CHUNKS_LOAD_START_ID => {
+                if self.level_load.phase != WorldLevelLoadPhase::Idle {
+                    self.level_load.loading_packets_received =
+                        self.level_load.loading_packets_received.saturating_add(1);
+                    if self.level_load.phase == WorldLevelLoadPhase::WaitingForServer {
+                        self.level_load.phase = WorldLevelLoadPhase::WaitingForPlayerChunk;
+                    }
+                }
             }
             VANILLA_CLIENT_GAME_EVENT_START_RAINING_ID => {
                 self.weather.rain_level = 0.0;
@@ -422,6 +449,7 @@ impl WorldStore {
         self.weather = crate::WorldWeatherState::default();
         self.sky_flash_time = 0;
         self.ticking = crate::WorldTickingState::default();
+        self.level_load = WorldLevelLoadState::default();
         self.chunk_view = crate::ChunkViewState::default();
         self.last_block_changed_ack = None;
         self.local_player = crate::LocalPlayerState::default();
@@ -429,6 +457,16 @@ impl WorldStore {
         self.local_player_vehicle_id = None;
         self.last_projectile_power = None;
         self.clear_level_bound_state();
+    }
+
+    pub fn level_load(&self) -> &WorldLevelLoadState {
+        &self.level_load
+    }
+
+    fn start_client_level_load(&mut self) {
+        self.level_load.phase = WorldLevelLoadPhase::WaitingForServer;
+        self.level_load.starts = self.level_load.starts.saturating_add(1);
+        self.level_load.loading_packets_received = 0;
     }
 
     fn apply_spawn_info(&mut self, spawn_info: &ProtocolSpawnInfo) {
@@ -1489,6 +1527,41 @@ mod tests {
             Some("block.minecraft.spawn.not_valid")
         );
         assert!(message.styled_content.is_empty());
+    }
+
+    #[test]
+    fn level_chunks_load_start_advances_active_level_load_tracker_once() {
+        let mut store = WorldStore::new();
+        let event = ProtocolGameEvent {
+            event_id: VANILLA_CLIENT_GAME_EVENT_LEVEL_CHUNKS_LOAD_START_ID,
+            param: 0.0,
+        };
+        store.apply_game_event(event);
+        assert_eq!(store.level_load(), &WorldLevelLoadState::default());
+
+        store.apply_login(&login_packet(0, "minecraft:overworld"));
+        assert_eq!(
+            store.level_load().phase,
+            WorldLevelLoadPhase::WaitingForServer
+        );
+        assert_eq!(store.level_load().starts, 1);
+
+        store.apply_game_event(event);
+        store.apply_game_event(event);
+
+        assert_eq!(
+            store.level_load().phase,
+            WorldLevelLoadPhase::WaitingForPlayerChunk
+        );
+        assert_eq!(store.level_load().loading_packets_received, 2);
+
+        store.apply_respawn(&respawn_packet(0));
+        assert_eq!(
+            store.level_load().phase,
+            WorldLevelLoadPhase::WaitingForServer
+        );
+        assert_eq!(store.level_load().starts, 2);
+        assert_eq!(store.level_load().loading_packets_received, 0);
     }
 
     fn respawn_state_with_local_player_data() -> WorldStore {
