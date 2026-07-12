@@ -3170,6 +3170,28 @@ mod tests {
         assert_eq!(complete, BTreeSet::from(["ownership"]));
     }
 
+    #[test]
+    fn play_serverbound_attack_keeps_local_prediction_and_guards_open() {
+        let ledger = vanilla_packet_coverage_26_1().unwrap();
+        let entry = ledger
+            .entries
+            .iter()
+            .find(|entry| entry.state == "play" && entry.constant_name == "SERVERBOUND_ATTACK")
+            .expect("play serverbound attack coverage row");
+        let complete: BTreeSet<_> = entry
+            .coverage
+            .iter()
+            .filter_map(|(dimension, cell)| {
+                (cell.status == PacketCoverageStatus::Complete).then_some(dimension.as_str())
+            })
+            .collect();
+        assert_eq!(complete, BTreeSet::from(["command_surface", "encoder"]));
+        assert_eq!(
+            entry.coverage["ack_response"].status,
+            PacketCoverageStatus::NotApplicable
+        );
+    }
+
     fn state_name(state: PacketState) -> &'static str {
         match state {
             PacketState::Handshake => "handshake",

@@ -11741,3 +11741,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] entity id、255-terminated accessor list、43 个固定 serializer 的显式 dispatch、255 项分配前上限、strict trailing、known/unknown entity apply gate、metadata merge/callback baseline 与 ownership 已审计。
 - [x] rich Component/ItemStack、registry-holder resolution、generated accessor serializer validation 与剩余 family consumers 保持开放；本切片未增加 metadata family。
+
+## 2026-07-12：play serverbound attack packet coverage audit
+
+- [x] 26.1 独立 VarInt entity-id wire、mouse → NetCommand → driver → encoder 路径、range/spectator/using-item/piercing 分流与无专用 ack 的 server handler 已审计。
+- [x] hands-busy/feature/item/miss-time/carried-item ordering、local `Player.attack` presentation 与 attack-strength reset 保持开放；未在客户端模拟权威伤害。

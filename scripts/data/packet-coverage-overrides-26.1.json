@@ -32,6 +32,13 @@
         "status": "complete"
       }
     },
+    "play/serverbound/SERVERBOUND_ATTACK": {
+      "ack_response": {"evidence": ["vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#handleAttack"], "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families", "status": "not-applicable"},
+      "command_surface": {"evidence": ["crates/bbb-native/src/input/mouse.rs#handle_mouse_input", "crates/bbb-native/src/input/commands.rs#queue_attack_entity_command", "crates/bbb-protocol/src/packets/serverbound.rs#AttackEntity", "crates/bbb-net/src/driver/commands.rs#send_attack_entity"], "status": "complete"},
+      "encoder": {"evidence": ["crates/bbb-protocol/src/packets/serverbound.rs#encode_play_attack_entity", "vanilla:net/minecraft/network/protocol/game/ServerboundAttackPacket.java#STREAM_CODEC"], "status": "complete"},
+      "state_guard": {"evidence": ["crates/bbb-native/src/input/mouse.rs#local_player_attack_is_blocked", "crates/bbb-native/src/input/mouse.rs#selected_attack_range_allows_entity_hit", "crates/bbb-native/src/input/mouse.rs#left_mouse_press_with_piercing_weapon_queues_stab_and_swing_on_entity", "vanilla:net/minecraft/client/Minecraft.java#startAttack", "vanilla:net/minecraft/client/multiplayer/MultiPlayerGameMode.java#attack"], "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows", "status": "partial"},
+      "tests": {"evidence": ["crates/bbb-protocol/src/packets/tests.rs#encodes_entity_interaction_packets", "crates/bbb-net/src/driver/commands/tests.rs#send_entity_interaction_commands_encode_packets", "crates/bbb-native/src/input/commands.rs#queues_entity_attack_and_interact_commands", "crates/bbb-native/src/input/mouse.rs#left_mouse_press_on_entity_queues_attack_and_swing", "crates/bbb-native/src/input/mouse.rs#left_mouse_press_on_entity_outside_selected_attack_range_swings_without_attack"], "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows", "status": "partial"}
+    },
     "play/serverbound/SERVERBOUND_MOVE_PLAYER_POS": {
       "ack_response": {
         "evidence": ["vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#handleMovePlayer"],

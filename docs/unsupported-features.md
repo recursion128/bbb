@@ -268,6 +268,10 @@ Commands:
 
 - Add focused command-queue and encode tests for inventory, interaction, chat,
   command, and sign editing.
+- Complete local attack input parity from `Minecraft.startAttack` and
+  `MultiPlayerGameMode.attack`: hands-busy/feature/item gates, miss-time,
+  carried-item ordering, client presentation from `Player.attack`, and attack
+  strength reset. Damage and combat outcomes remain server-authoritative.
 - Implement `ServerboundSignUpdatePacket` clipboard copy/cut/paste parity.
 
 Inventory:
