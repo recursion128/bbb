@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 
-from block_registry_catalog_extractor import resolve_block_resource_path
+from block_registry_catalog_extractor import field_constant, resolve_block_resource_path
 from vanilla_java_source import JavaExpression, JavaSource, descendants
 from vanilla_tag_source import VanillaTagSourceError, resolve_tag_values
 
@@ -175,6 +175,69 @@ def constructor_family_blocks(
             f"{source.relative_path}: duplicate constructor-family block resource id"
         )
     return entries
+
+
+def invisible_render_shape_constructor_types(
+    sources: list[JavaSource], expected_count: int = 9
+) -> frozenset[str]:
+    classes: list[str] = []
+    for source in sources:
+        types = {item.fqcn: item for item in source.types}
+        for method in source.methods:
+            if method.name != "getRenderShape" or method.body is None:
+                continue
+            returns = [
+                node
+                for node in descendants(method.node)
+                if node.type == "return_statement"
+                and _nearest_method(node) == method.node
+            ]
+            values: list[str | None] = []
+            for return_node in returns:
+                expressions = return_node.named_children
+                if len(expressions) != 1:
+                    _fail(
+                        source,
+                        source.expression(return_node),
+                        "getRenderShape return lacks unique expression",
+                    )
+                values.append(
+                    field_constant(
+                        source, source.expression(expressions[0]), "RenderShape"
+                    )
+                )
+            if "INVISIBLE" not in values:
+                continue
+            if values != ["INVISIBLE"]:
+                _fail(
+                    source,
+                    source.expression(method.node),
+                    "getRenderShape mixes INVISIBLE with other returns",
+                )
+            owner = types.get(method.owner)
+            if owner is None:
+                _fail(source, source.expression(method.node), "getRenderShape owner is missing")
+            classes.append(owner.simple_name)
+
+    if len(classes) != expected_count:
+        raise BlockMembershipCatalogExtractionError(
+            f"expected {expected_count} getRenderShape(INVISIBLE) block classes, "
+            f"extracted {len(classes)}"
+        )
+    if len(set(classes)) != len(classes):
+        raise BlockMembershipCatalogExtractionError(
+            "duplicate getRenderShape(INVISIBLE) block class"
+        )
+    return frozenset(classes)
+
+
+def _nearest_method(node):
+    current = node.parent
+    while current is not None:
+        if current.type in {"method_declaration", "constructor_declaration"}:
+            return current
+        current = current.parent
+    return None
 
 
 def block_tag_membership(

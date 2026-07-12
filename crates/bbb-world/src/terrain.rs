@@ -11,10 +11,11 @@ use generated_26_1::{
     VANILLA_CAMPFIRE_BLOCKS, VANILLA_CHAIN_BLOCKS, VANILLA_COPPER_GRATE_BLOCKS,
     VANILLA_CROP_BLOCKS, VANILLA_CROP_SUPPLEMENT_BLOCKS, VANILLA_CUTOUT_ATTACHMENT_BLOCKS,
     VANILLA_DOOR_BLOCKS, VANILLA_FIRE_BLOCKS, VANILLA_FIXED_SOURCE_WATER_BLOCKS,
-    VANILLA_IRON_BARS_CLASS_BLOCKS, VANILLA_LANTERN_BLOCKS, VANILLA_LIGHTNING_ROD_BLOCKS,
-    VANILLA_NO_TERRAIN_PARTICLE_BLOCKS, VANILLA_PRESSURE_PLATE_BLOCKS, VANILLA_RAIL_BLOCKS,
-    VANILLA_SIGN_BLOCKS, VANILLA_SMALL_FLOWER_BLOCKS, VANILLA_THIN_OVERLAY_BLOCKS,
-    VANILLA_TORCH_BLOCKS, VANILLA_TRAPDOOR_BLOCKS, VANILLA_WIRE_CUTOUT_BLOCKS,
+    VANILLA_INVISIBLE_RENDER_SHAPE_BLOCKS, VANILLA_IRON_BARS_CLASS_BLOCKS, VANILLA_LANTERN_BLOCKS,
+    VANILLA_LIGHTNING_ROD_BLOCKS, VANILLA_NO_TERRAIN_PARTICLE_BLOCKS,
+    VANILLA_PRESSURE_PLATE_BLOCKS, VANILLA_RAIL_BLOCKS, VANILLA_SIGN_BLOCKS,
+    VANILLA_SMALL_FLOWER_BLOCKS, VANILLA_THIN_OVERLAY_BLOCKS, VANILLA_TORCH_BLOCKS,
+    VANILLA_TRAPDOOR_BLOCKS, VANILLA_WIRE_CUTOUT_BLOCKS,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -283,19 +284,7 @@ pub(crate) fn block_name_is_copper_grate(name: &str) -> bool {
 }
 
 pub fn block_name_has_invisible_render_shape(name: &str) -> bool {
-    block_name_is_air(name)
-        || matches!(
-            name,
-            "minecraft:water"
-                | "minecraft:lava"
-                | "minecraft:barrier"
-                | "minecraft:bubble_column"
-                | "minecraft:structure_void"
-                | "minecraft:end_gateway"
-                | "minecraft:end_portal"
-                | "minecraft:light"
-                | "minecraft:moving_piston"
-        )
+    VANILLA_INVISIBLE_RENDER_SHAPE_BLOCKS.contains(&name)
 }
 
 fn is_cutout_block_name(name: &str) -> bool {
@@ -692,20 +681,7 @@ mod tests {
 
     #[test]
     fn identifies_vanilla_invisible_render_shape_block_names() {
-        for name in [
-            "minecraft:air",
-            "minecraft:cave_air",
-            "minecraft:void_air",
-            "minecraft:water",
-            "minecraft:lava",
-            "minecraft:barrier",
-            "minecraft:bubble_column",
-            "minecraft:structure_void",
-            "minecraft:end_gateway",
-            "minecraft:end_portal",
-            "minecraft:light",
-            "minecraft:moving_piston",
-        ] {
+        for &name in VANILLA_INVISIBLE_RENDER_SHAPE_BLOCKS {
             assert!(block_name_has_invisible_render_shape(name), "{name}");
         }
 

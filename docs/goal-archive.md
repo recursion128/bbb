@@ -12224,3 +12224,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   读取同一 Tree-sitter `BlockIds.java` facts，attached stems 由真实 key 解析。两套 extractor
   fixtures、block-registry check、membership update/check/二次 update 幂等均锁定；生成层未
   接管 fluid、collision 或 render-shape 行为。
+
+## 2026-07-12：Generated invisible render-shape membership
+
+- [x] block-membership generator 按稳定相对路径扫描 vanilla block Java compilation units，
+  通过统一 Tree-sitter method/return/field-reference CST 机械识别 9 个直接 override
+  `getRenderShape` 且唯一返回 `RenderShape.INVISIBLE` 的 class，再复用 constructor mapping
+  生成 12 个注册 block。comment/string 伪返回、普通 MODEL return、多 return 混合、class/
+  resource 固定计数与 source parse 失败均由 fixtures/update/check 显式门禁。
+- [x] `block_name_has_invisible_render_shape` 删除 12 项手写 resource match，统一消费 generated
+  catalog；air 的 Empty 与 water/lava 的 Fluid 分类优先级保持不变，表只替代 render-shape
+  membership，不生成渲染算法或碰撞行为。普通 Cargo build/test 仍只读取 checked-in Rust。

@@ -56,7 +56,7 @@ def _string(source: JavaSource, expression: JavaExpression) -> str:
     return value
 
 
-def _field_constant(
+def field_constant(
     source: JavaSource, expression: JavaExpression, owner: str
 ) -> str | None:
     node = expression.node
@@ -78,7 +78,7 @@ def resolve_block_resource_path(
 ) -> str:
     if expression.node.type == "string_literal":
         return _string(source, expression)
-    constant = _field_constant(source, expression, "BlockIds")
+    constant = field_constant(source, expression, "BlockIds")
     if constant is None:
         _fail(source, expression, "unsupported block resource id expression")
     resource_path = block_id_constants.get(constant)

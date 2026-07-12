@@ -14,6 +14,7 @@ from block_membership_catalog_extractor import (  # noqa: E402
     air_blocks,
     block_tag_membership,
     constructor_family_blocks,
+    invisible_render_shape_constructor_types,
     no_terrain_particle_blocks,
 )
 from vanilla_java_source import parse_source  # noqa: E402
@@ -177,6 +178,50 @@ class Blocks {
             ),
             [BlockMembershipEntry("ATTACHED", "minecraft:attached")],
         )
+
+    def test_invisible_render_shape_classes_use_method_return_cst(self) -> None:
+        source = parse_source(
+            "net/minecraft/world/level/block/Fixture.java",
+            b'''package net.minecraft.world.level.block;
+class VisibleBlock {
+  String fake = "return RenderShape.INVISIBLE";
+  // return RenderShape.INVISIBLE;
+  protected RenderShape getRenderShape(BlockState state) {
+    return RenderShape.MODEL;
+  }
+}
+class InvisibleBlock {
+  protected RenderShape getRenderShape(BlockState state) {
+    return RenderShape.INVISIBLE;
+  }
+}''',
+        )
+        self.assertEqual(
+            invisible_render_shape_constructor_types([source], 1),
+            frozenset({"InvisibleBlock"}),
+        )
+
+    def test_invisible_render_shape_classes_reject_mixed_returns_and_count_drift(self) -> None:
+        source = parse_source(
+            "net/minecraft/world/level/block/AmbiguousBlock.java",
+            b'''package net.minecraft.world.level.block;
+class AmbiguousBlock {
+  protected RenderShape getRenderShape(BlockState state) {
+    if (state.isAir()) return RenderShape.INVISIBLE;
+    return RenderShape.MODEL;
+  }
+}''',
+        )
+        with self.assertRaisesRegex(
+            BlockMembershipCatalogExtractionError,
+            "getRenderShape mixes INVISIBLE with other returns",
+        ):
+            invisible_render_shape_constructor_types([source], 1)
+        with self.assertRaisesRegex(
+            BlockMembershipCatalogExtractionError,
+            "expected 2 getRenderShape\\(INVISIBLE\\) block classes",
+        ):
+            invisible_render_shape_constructor_types([], 2)
 
 
 if __name__ == "__main__":
