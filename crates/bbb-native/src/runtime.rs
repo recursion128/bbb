@@ -4681,9 +4681,7 @@ fn hud_debug_biome_line(world: &WorldStore, camera_pose: CameraPose) -> Option<S
     let feet_pos = camera_feet_block_position(camera_pose)?;
     let biome_id = world.probe_block(feet_pos)?.biome_id?;
     let biome = world
-        .registry_content("minecraft:worldgen/biome")
-        .and_then(|registry| registry.entries.get(usize::try_from(biome_id).ok()?))
-        .map(|entry| entry.id.as_str())
+        .registry_resource_id_by_holder_id("minecraft:worldgen/biome", biome_id)
         .map(str::to_string)
         .unwrap_or_else(|| format!("[unregistered {biome_id}]"));
     Some(format!("Biome: {biome}"))
