@@ -21,10 +21,9 @@ fn decodes_map_item_data_with_decorations_and_patch() {
     payload.write_u8(4);
     payload.write_var_i32(4);
     payload.write_bytes(&[1, 2, 3, 4]);
+    let payload = payload.into_inner();
 
-    let packet =
-        decode_play_clientbound(ids::play::CLIENTBOUND_MAP_ITEM_DATA, &payload.into_inner())
-            .unwrap();
+    let packet = decode_play_clientbound(ids::play::CLIENTBOUND_MAP_ITEM_DATA, &payload).unwrap();
     assert_eq!(
         packet,
         PlayClientbound::MapItemData(MapItemData {
@@ -55,6 +54,15 @@ fn decodes_map_item_data_with_decorations_and_patch() {
                 colors: vec![1, 2, 3, 4],
             }),
         })
+    );
+
+    let mut trailing = payload;
+    trailing.push(0);
+    assert!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_MAP_ITEM_DATA, &trailing)
+            .unwrap_err()
+            .to_string()
+            .contains("trailing bytes after map item data packet")
     );
 }
 

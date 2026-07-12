@@ -515,6 +515,7 @@ play LevelEvent 的 type/BlockPos/data/global framing、strict trailing、canoni
 play LevelParticles 的 limiter/show、position/offset/speed/count、117 项 registry-dispatched ParticleOptions framing/strict trailing、canonical snapshot 与 native spawn/renderer dispatch/tests 已闭合；provider-specific 与 terrain/item atlas 呈现细节仍按 particle ledger 维护。
 play LightUpdate 的 chunk VarInt、四组 bitset、2048-byte layer、strict trailing 与 canonical merge 已闭合；vanilla bounded light-update queue、逐 section neighbor dirty/rebuild 及对应 runtime tests 保持 partial。
 play Login 的完整 wire envelope/CommonPlayerSpawnInfo/resource-key/strict trailing 与 world ownership 已闭合；initial levels/radius/simulation distance/secure-chat/seed/portal cooldown、level-bound reset 与 level-load lifecycle 仍使 canonical/runtime/tests 保持 partial。
+play MapItemData 的 MapId/scale/locked、optional decorations/patch、rotation/bounds/strict trailing、canonical 128×128 merge 与 item-frame/first-person map texture/decoration/text dispatch/tests 已闭合；rich Component/font/bidi 细节仍由对应呈现 owner 维护。
 
 完成标准：全部 vanilla 26.1 catalog entry 都有矩阵行；所有目标客户端适用项为
 `complete`，其余只有带 vanilla 依据的 `not-applicable` 或带重启判据的窄 `deferred`；

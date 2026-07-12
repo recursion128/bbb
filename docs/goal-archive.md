@@ -11676,3 +11676,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] Login/CommonPlayerSpawnInfo wire 顺序、resource-key、last-death GlobalPos、strict trailing 与 world ownership 已审计。
 - [x] 当前 canonical 仅覆盖 player id 与部分 dimension/gameplay 投影；完整 session reset、初始 radius/simulation/secure-chat 等状态和 level-load lifecycle 保持开放。
+
+## 2026-07-12：play map item data packet coverage audit
+
+- [x] MapId/scale/locked、optional decoration/patch、rotation mask、128×128 bounds、strict trailing 与 canonical patch/preserve semantics 已审计。
+- [x] net/probe、dynamic map texture、item-frame 与 first-person decoration/text dispatch/tests 闭合；rich Component/font/bidi 继续由相邻呈现 owner 维护。

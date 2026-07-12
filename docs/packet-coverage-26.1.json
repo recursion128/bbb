@@ -7429,29 +7429,56 @@
       "constant_name": "CLIENTBOUND_MAP_ITEM_DATA",
       "coverage": {
         "canonical_apply": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/maps.rs#apply_map_item_data",
+            "crates/bbb-world/src/maps.rs#map_item_data_creates_and_updates_map_state",
+            "crates/bbb-world/src/maps.rs#map_item_data_absent_optionals_preserve_existing_sections",
+            "vanilla:net/minecraft/network/protocol/game/ClientboundMapItemDataPacket.java#applyToMap"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/maps/tests.rs#decodes_map_item_data_with_decorations_and_patch",
+            "crates/bbb-protocol/src/packets/maps/tests.rs#decodes_map_item_data_without_optional_sections",
+            "crates/bbb-protocol/src/packets/maps/tests.rs#rejects_map_color_patch_with_wrong_color_count",
+            "vanilla:net/minecraft/network/protocol/game/ClientboundMapItemDataPacket.java#STREAM_CODEC"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "ownership": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/play_apply.rs#PlayClientbound::MapItemData",
+            "crates/bbb-world/src/maps.rs#apply_map_item_data"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "runtime_side_effect": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-native/src/item_frames.rs#item_frame_models",
+            "crates/bbb-native/src/item_models/tests.rs#first_person_item_models_render_filled_map_decorations_and_text",
+            "crates/bbb-renderer/src/item_models/map.rs#set_map_surfaces",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleMapItemData"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/maps/tests.rs#decodes_map_item_data_with_decorations_and_patch",
+            "crates/bbb-net/src/event_stream.rs#play_map_particle_and_audio_packets_emit_matching_events_without_responses",
+            "crates/bbb-net/src/probe/play.rs#probe_applies_map_item_data_to_world",
+            "crates/bbb-world/src/maps.rs#map_item_data_creates_and_updates_map_state",
+            "crates/bbb-native/src/runtime/events/tests/session_protocol_events.rs#map_item_data_event_updates_world_state",
+            "crates/bbb-native/src/item_frames.rs#filled_map_frame_renders_frame_visible_decoration_sprites",
+            "crates/bbb-native/src/item_models/tests.rs#first_person_item_models_render_filled_map_decorations_and_text",
+            "crates/bbb-renderer/src/item_models/map.rs#map_decoration_type_mapping_matches_vanilla_registration_order"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "clientbound",
