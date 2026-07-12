@@ -11561,3 +11561,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] id/position/progress framing、strict trailing、progress replace/remove/expiry ownership 与跨 crate tests 闭合。
 - [x] full model-shaped crack decal parity 未完成，runtime 保持 partial。
+
+## 2026-07-12：play block-entity-data packet coverage audit
+
+- [x] position/type/raw-NBT framing、world NBT validation、已实现 semantic projections、ownership 与跨 crate tests 有证据。
+- [x] session registry/type gate、全部 typed Codec 与 block-entity runtime 未完成，decode/canonical/runtime 保持 partial。

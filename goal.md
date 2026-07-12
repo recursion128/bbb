@@ -492,6 +492,7 @@ play ShowDialog 的 reference/direct holder framing、bounded raw preservation�
 play AddEntity 的 id/uuid/type/position/LP velocity/rotation/data framing、strict trailing、basic world ownership 与 tests 已闭合；剩余 session registry validation、entity factory/player-info gate 与全类型 runtime 初始化保持 decode/canonical/runtime partial。
 play BlockChangedAck 的 sequence framing、strict trailing、prediction reconciliation/player correction ownership 与 tests 已闭合，五维 complete。
 play BlockDestruction 的 id/position/progress framing、strict trailing、progress replace/remove/expiry ownership 与 tests 已闭合；剩余 full model-shaped crack decal parity 保持 runtime partial。
+play BlockEntityData 的 position/type/raw-NBT framing、world NBT validation、已实现 semantic projections、ownership 与 tests 已闭合；剩余 session registry/type gate、全部 typed Codec 与 block-entity runtime 保持 decode/canonical/runtime partial。
 
 完成标准：全部 vanilla 26.1 catalog entry 都有矩阵行；所有目标客户端适用项为
 `complete`，其余只有带 vanilla 依据的 `not-applicable` 或带重启判据的窄 `deferred`；
