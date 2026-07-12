@@ -7,17 +7,18 @@ use crate::{BlockPos, ChunkPos, PaletteKind};
 mod generated_26_1;
 
 use generated_26_1::{
-    VANILLA_AIR_BLOCKS, VANILLA_BARS_BLOCKS, VANILLA_COPPER_GRATE_BLOCKS, VANILLA_DOOR_BLOCKS,
-    VANILLA_FIXED_SOURCE_WATER_BLOCKS, VANILLA_HALF_TRANSPARENT_SKIP_RENDERING_BLOCKS,
-    VANILLA_INVISIBLE_RENDER_SHAPE_BLOCKS, VANILLA_IRON_BARS_CLASS_BLOCKS, VANILLA_LEAVES_BLOCKS,
-    VANILLA_NO_COLLISION_BANNER_BLOCKS, VANILLA_NO_COLLISION_BUTTON_BLOCKS,
+    VANILLA_AIR_BLOCKS, VANILLA_BARS_BLOCKS, VANILLA_BUTTON_BLOCKS, VANILLA_COPPER_GRATE_BLOCKS,
+    VANILLA_DOOR_BLOCKS, VANILLA_FIXED_SOURCE_WATER_BLOCKS,
+    VANILLA_HALF_TRANSPARENT_SKIP_RENDERING_BLOCKS, VANILLA_INVISIBLE_RENDER_SHAPE_BLOCKS,
+    VANILLA_IRON_BARS_CLASS_BLOCKS, VANILLA_LEAVES_BLOCKS, VANILLA_NO_COLLISION_BANNER_BLOCKS,
     VANILLA_NO_COLLISION_CROP_BLOCKS, VANILLA_NO_COLLISION_CROP_SUPPLEMENT_BLOCKS,
-    VANILLA_NO_COLLISION_FIRE_BLOCKS, VANILLA_NO_COLLISION_PRESSURE_PLATE_BLOCKS,
-    VANILLA_NO_COLLISION_RAIL_BLOCKS, VANILLA_NO_COLLISION_SIGN_BLOCKS,
+    VANILLA_NO_COLLISION_FIRE_BLOCKS, VANILLA_NO_COLLISION_SIGN_BLOCKS,
     VANILLA_NO_COLLISION_SMALL_FLOWER_BLOCKS, VANILLA_NO_COLLISION_THIN_OVERLAY_BLOCKS,
     VANILLA_NO_COLLISION_TORCH_BLOCKS, VANILLA_NO_COLLISION_WIRE_BLOCKS,
-    VANILLA_NO_TERRAIN_PARTICLE_BLOCKS, VANILLA_SAME_BLOCK_ALL_FACE_SKIP_RENDERING_BLOCKS,
-    VANILLA_SAME_BLOCK_VERTICAL_FACE_SKIP_RENDERING_BLOCKS, VANILLA_TRAPDOOR_BLOCKS,
+    VANILLA_NO_TERRAIN_PARTICLE_BLOCKS, VANILLA_PRESSURE_PLATE_BLOCKS, VANILLA_RAIL_BLOCKS,
+    VANILLA_SAME_BLOCK_ALL_FACE_SKIP_RENDERING_BLOCKS,
+    VANILLA_SAME_BLOCK_VERTICAL_FACE_SKIP_RENDERING_BLOCKS, VANILLA_STANDING_SIGN_BLOCKS,
+    VANILLA_TRAPDOOR_BLOCKS, VANILLA_WALL_SIGN_BLOCKS,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -314,6 +315,26 @@ pub fn block_name_is_trapdoor(name: &str) -> bool {
     VANILLA_TRAPDOOR_BLOCKS.contains(&name)
 }
 
+pub fn block_name_is_rail(name: &str) -> bool {
+    VANILLA_RAIL_BLOCKS.contains(&name)
+}
+
+pub fn block_name_is_button(name: &str) -> bool {
+    VANILLA_BUTTON_BLOCKS.contains(&name)
+}
+
+pub fn block_name_is_pressure_plate(name: &str) -> bool {
+    VANILLA_PRESSURE_PLATE_BLOCKS.contains(&name)
+}
+
+pub fn block_name_is_standing_sign(name: &str) -> bool {
+    VANILLA_STANDING_SIGN_BLOCKS.contains(&name)
+}
+
+pub fn block_name_is_wall_sign(name: &str) -> bool {
+    VANILLA_WALL_SIGN_BLOCKS.contains(&name)
+}
+
 pub(crate) fn block_name_has_empty_collision_shape(name: &str) -> bool {
     name.contains("sapling")
         || matches!(
@@ -362,10 +383,10 @@ pub(crate) fn block_name_has_empty_collision_shape(name: &str) -> bool {
         || VANILLA_NO_COLLISION_CROP_SUPPLEMENT_BLOCKS.contains(&name)
         || VANILLA_NO_COLLISION_WIRE_BLOCKS.contains(&name)
         || VANILLA_NO_COLLISION_THIN_OVERLAY_BLOCKS.contains(&name)
-        || VANILLA_NO_COLLISION_RAIL_BLOCKS.contains(&name)
+        || VANILLA_RAIL_BLOCKS.contains(&name)
         || VANILLA_NO_COLLISION_SIGN_BLOCKS.contains(&name)
-        || VANILLA_NO_COLLISION_BUTTON_BLOCKS.contains(&name)
-        || VANILLA_NO_COLLISION_PRESSURE_PLATE_BLOCKS.contains(&name)
+        || VANILLA_BUTTON_BLOCKS.contains(&name)
+        || VANILLA_PRESSURE_PLATE_BLOCKS.contains(&name)
         || VANILLA_NO_COLLISION_BANNER_BLOCKS.contains(&name)
         || VANILLA_NO_COLLISION_SMALL_FLOWER_BLOCKS.contains(&name)
         || VANILLA_NO_COLLISION_CROP_BLOCKS.contains(&name)
@@ -500,6 +521,18 @@ mod tests {
         assert!(block_name_is_trapdoor("minecraft:oak_trapdoor"));
         assert!(block_name_is_trapdoor("minecraft:iron_trapdoor"));
         assert!(!block_name_is_trapdoor("minecraft:custom_trapdoor"));
+        assert!(block_name_is_rail("minecraft:powered_rail"));
+        assert!(!block_name_is_rail("minecraft:custom_rail"));
+        assert!(block_name_is_button("minecraft:stone_button"));
+        assert!(!block_name_is_button("minecraft:custom_button"));
+        assert!(block_name_is_pressure_plate("minecraft:oak_pressure_plate"));
+        assert!(!block_name_is_pressure_plate(
+            "minecraft:custom_pressure_plate"
+        ));
+        assert!(block_name_is_standing_sign("minecraft:oak_sign"));
+        assert!(!block_name_is_standing_sign("minecraft:oak_wall_sign"));
+        assert!(block_name_is_wall_sign("minecraft:oak_wall_sign"));
+        assert!(!block_name_is_wall_sign("minecraft:oak_hanging_sign"));
         assert!(
             classify_terrain_skip_rendering(Some("minecraft:copper_grate"), &BTreeMap::new())
                 .same_block_culls_all_faces

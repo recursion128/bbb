@@ -1,6 +1,9 @@
 use std::collections::BTreeMap;
 
-use bbb_world::{block_name_is_door, block_name_is_trapdoor};
+use bbb_world::{
+    block_name_is_button, block_name_is_door, block_name_is_pressure_plate, block_name_is_rail,
+    block_name_is_standing_sign, block_name_is_trapdoor, block_name_is_wall_sign,
+};
 
 use super::{BlockOutlineBox, BlockOutlineShape, HorizontalDirection};
 
@@ -34,10 +37,10 @@ pub(super) fn outline_shape_for_block(
             _ => None,
         };
     }
-    if is_pressure_plate_block_name(block_name) {
+    if block_name_is_pressure_plate(block_name) {
         return pressure_plate_outline_shape(properties);
     }
-    if is_rail_block_name(block_name) {
+    if block_name_is_rail(block_name) {
         return rail_outline_shape(properties);
     }
     if let Some(outline) = objects::object_outline_shape_for_block(block_name, properties) {
@@ -55,10 +58,10 @@ pub(super) fn outline_shape_for_block(
     if is_crop_block_name(block_name) {
         return crop_outline_shape(block_name, properties);
     }
-    if is_wall_sign_block_name(block_name) {
+    if block_name_is_wall_sign(block_name) {
         return wall_sign_outline_shape(properties);
     }
-    if is_standing_sign_block_name(block_name) {
+    if block_name_is_standing_sign(block_name) {
         return Some(BlockOutlineShape::single(BlockOutlineBox::SIGN));
     }
     if is_stair_block_name(block_name) {
@@ -79,7 +82,7 @@ pub(super) fn outline_shape_for_block(
     if is_floor_torch_block_name(block_name) {
         return Some(BlockOutlineShape::single(BlockOutlineBox::TORCH));
     }
-    if is_button_block_name(block_name) {
+    if block_name_is_button(block_name) {
         return button_outline_shape(properties);
     }
     if block_name == "minecraft:lever" {
@@ -546,22 +549,6 @@ fn is_stair_block_name(block_name: &str) -> bool {
         .is_some_and(|path| path.ends_with("_stairs"))
 }
 
-fn is_pressure_plate_block_name(block_name: &str) -> bool {
-    block_name
-        .strip_prefix("minecraft:")
-        .is_some_and(|path| path.ends_with("_pressure_plate"))
-}
-
-fn is_rail_block_name(block_name: &str) -> bool {
-    matches!(
-        block_name,
-        "minecraft:rail"
-            | "minecraft:powered_rail"
-            | "minecraft:detector_rail"
-            | "minecraft:activator_rail"
-    )
-}
-
 fn is_flower_pot_block_name(block_name: &str) -> bool {
     block_name
         .strip_prefix("minecraft:")
@@ -589,18 +576,6 @@ fn simple_vegetation_outline_box(block_name: &str) -> Option<BlockOutlineBox> {
     }
 }
 
-fn is_wall_sign_block_name(block_name: &str) -> bool {
-    block_name
-        .strip_prefix("minecraft:")
-        .is_some_and(|path| path.ends_with("_wall_sign"))
-}
-
-fn is_standing_sign_block_name(block_name: &str) -> bool {
-    block_name
-        .strip_prefix("minecraft:")
-        .is_some_and(|path| path.ends_with("_sign") && !path.ends_with("_hanging_sign"))
-}
-
 fn is_fence_gate_block_name(block_name: &str) -> bool {
     block_name
         .strip_prefix("minecraft:")
@@ -625,12 +600,6 @@ fn is_wall_torch_block_name(block_name: &str) -> bool {
             | "minecraft:soul_wall_torch"
             | "minecraft:copper_wall_torch"
     )
-}
-
-fn is_button_block_name(block_name: &str) -> bool {
-    block_name
-        .strip_prefix("minecraft:")
-        .is_some_and(|path| path.ends_with("_button"))
 }
 
 fn is_fence_block_name(block_name: &str) -> bool {

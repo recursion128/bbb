@@ -64,9 +64,10 @@ pub use crate::spawner_blocks::{
     is_spawner_block_name, SpawnerBlockState, SpawnerDisplayEntitySourceState,
 };
 pub use crate::terrain::{
-    block_name_has_invisible_render_shape, block_name_is_air, block_name_is_door,
-    block_name_is_half_transparent, block_name_is_leaves, block_name_is_trapdoor,
-    block_name_should_spawn_terrain_particles, BlockProbe, TerrainBlockCell, TerrainChunkSnapshot,
-    TerrainChunkSummary, TerrainFluidKind, TerrainFluidState, TerrainLight, TerrainMaterialClass,
-    TerrainSkipRendering,
+    block_name_has_invisible_render_shape, block_name_is_air, block_name_is_button,
+    block_name_is_door, block_name_is_half_transparent, block_name_is_leaves,
+    block_name_is_pressure_plate, block_name_is_rail, block_name_is_standing_sign,
+    block_name_is_trapdoor, block_name_is_wall_sign, block_name_should_spawn_terrain_particles,
+    BlockProbe, TerrainBlockCell, TerrainChunkSnapshot, TerrainChunkSummary, TerrainFluidKind,
+    TerrainFluidState, TerrainLight, TerrainMaterialClass, TerrainSkipRendering,
 };

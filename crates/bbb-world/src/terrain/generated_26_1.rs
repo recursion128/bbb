@@ -212,7 +212,7 @@ pub(super) const VANILLA_TRAPDOOR_BLOCKS: &[&str] = &[
     "minecraft:waxed_oxidized_copper_trapdoor",
 ];
 
-pub(super) const VANILLA_NO_COLLISION_RAIL_BLOCKS: &[&str] = &[
+pub(super) const VANILLA_RAIL_BLOCKS: &[&str] = &[
     "minecraft:rail",
     "minecraft:powered_rail",
     "minecraft:detector_rail",
@@ -270,7 +270,37 @@ pub(super) const VANILLA_NO_COLLISION_SIGN_BLOCKS: &[&str] = &[
     "minecraft:bamboo_wall_hanging_sign",
 ];
 
-pub(super) const VANILLA_NO_COLLISION_BUTTON_BLOCKS: &[&str] = &[
+pub(super) const VANILLA_STANDING_SIGN_BLOCKS: &[&str] = &[
+    "minecraft:oak_sign",
+    "minecraft:spruce_sign",
+    "minecraft:birch_sign",
+    "minecraft:acacia_sign",
+    "minecraft:jungle_sign",
+    "minecraft:dark_oak_sign",
+    "minecraft:pale_oak_sign",
+    "minecraft:crimson_sign",
+    "minecraft:warped_sign",
+    "minecraft:mangrove_sign",
+    "minecraft:bamboo_sign",
+    "minecraft:cherry_sign",
+];
+
+pub(super) const VANILLA_WALL_SIGN_BLOCKS: &[&str] = &[
+    "minecraft:oak_wall_sign",
+    "minecraft:spruce_wall_sign",
+    "minecraft:birch_wall_sign",
+    "minecraft:acacia_wall_sign",
+    "minecraft:jungle_wall_sign",
+    "minecraft:dark_oak_wall_sign",
+    "minecraft:pale_oak_wall_sign",
+    "minecraft:crimson_wall_sign",
+    "minecraft:warped_wall_sign",
+    "minecraft:mangrove_wall_sign",
+    "minecraft:bamboo_wall_sign",
+    "minecraft:cherry_wall_sign",
+];
+
+pub(super) const VANILLA_BUTTON_BLOCKS: &[&str] = &[
     "minecraft:oak_button",
     "minecraft:spruce_button",
     "minecraft:birch_button",
@@ -287,7 +317,7 @@ pub(super) const VANILLA_NO_COLLISION_BUTTON_BLOCKS: &[&str] = &[
     "minecraft:polished_blackstone_button",
 ];
 
-pub(super) const VANILLA_NO_COLLISION_PRESSURE_PLATE_BLOCKS: &[&str] = &[
+pub(super) const VANILLA_PRESSURE_PLATE_BLOCKS: &[&str] = &[
     "minecraft:light_weighted_pressure_plate",
     "minecraft:heavy_weighted_pressure_plate",
     "minecraft:oak_pressure_plate",
@@ -410,10 +440,12 @@ mod tests {
         assert_eq!(VANILLA_BARS_BLOCKS.len(), 9);
         assert_eq!(VANILLA_DOOR_BLOCKS.len(), 21);
         assert_eq!(VANILLA_TRAPDOOR_BLOCKS.len(), 21);
-        assert_eq!(VANILLA_NO_COLLISION_RAIL_BLOCKS.len(), 4);
+        assert_eq!(VANILLA_RAIL_BLOCKS.len(), 4);
         assert_eq!(VANILLA_NO_COLLISION_SIGN_BLOCKS.len(), 48);
-        assert_eq!(VANILLA_NO_COLLISION_BUTTON_BLOCKS.len(), 14);
-        assert_eq!(VANILLA_NO_COLLISION_PRESSURE_PLATE_BLOCKS.len(), 16);
+        assert_eq!(VANILLA_STANDING_SIGN_BLOCKS.len(), 12);
+        assert_eq!(VANILLA_WALL_SIGN_BLOCKS.len(), 12);
+        assert_eq!(VANILLA_BUTTON_BLOCKS.len(), 14);
+        assert_eq!(VANILLA_PRESSURE_PLATE_BLOCKS.len(), 16);
         assert_eq!(VANILLA_NO_COLLISION_BANNER_BLOCKS.len(), 32);
         assert_eq!(VANILLA_NO_COLLISION_SMALL_FLOWER_BLOCKS.len(), 17);
         assert_eq!(VANILLA_NO_COLLISION_CROP_BLOCKS.len(), 8);

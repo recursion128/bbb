@@ -12301,3 +12301,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] 全部 vanilla door/trapdoor 继续进入现有 property-aware thin shape，unknown namespace 与
   `minecraft:custom_door` / `custom_trapdoor` lookalike 回到普通 full-cube fallback，不再把名称
   启发式冒充 class/tag membership；未改变 door/trapdoor 的碰撞或交互算法。
+
+## 2026-07-12：Shared exact outline-family memberships
+
+- [x] rail、button、pressure-plate catalog 改为通用 tag membership 命名，并从 vanilla
+  `standing_signs` / `wall_signs` 各生成 12 项子 catalog；world 导出五个窄查询，native block
+  outline 删除逐项 rail match 与四份 suffix classifier。
+- [x] vanilla members 继续使用既有 property-aware outline shapes；custom rail/button/pressure
+  plate/standing-sign/wall-sign 与其他 namespace lookalike 回到普通 full cube。all-signs 的
+  no-collision membership 与 hanging-sign objects 仍各自保留独立语义，没有为去重混合 shape
+  family。
