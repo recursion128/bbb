@@ -3,7 +3,7 @@ use std::{net::ToSocketAddrs, time::Duration};
 use anyhow::{anyhow, Result};
 use bbb_protocol::{
     codec::offline_player_uuid,
-    packets::{validate_login_username, ClientInformation},
+    packets::{validate_handshake_host, validate_login_username, ClientInformation},
 };
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -62,10 +62,12 @@ pub struct StatusPing {
 
 pub(crate) fn split_host_port(address: &str) -> Result<(String, u16)> {
     if let Some((host, port)) = address.rsplit_once(':') {
+        validate_handshake_host(host)?;
         let port = port.parse::<u16>()?;
         return Ok((host.to_string(), port));
     }
 
+    validate_handshake_host(address)?;
     let mut addrs = (address, 25565).to_socket_addrs()?;
     let first = addrs
         .next()
@@ -82,5 +84,16 @@ mod tests {
         assert!(ConnectionOptions::offline("localhost:25565", "valid_name").is_ok());
         assert!(ConnectionOptions::offline("localhost:25565", "invalid name").is_err());
         assert!(ConnectionOptions::offline("localhost:25565", "abcdefghijklmnopq").is_err());
+    }
+
+    #[test]
+    fn connection_addresses_delegate_handshake_host_validation() {
+        let maximum_host = "a".repeat(255);
+        assert!(ConnectionOptions::offline(format!("{maximum_host}:25565"), "valid_name").is_ok());
+
+        let oversized_host = "a".repeat(256);
+        assert!(
+            ConnectionOptions::offline(format!("{oversized_host}:25565"), "valid_name").is_err()
+        );
     }
 }

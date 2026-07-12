@@ -256,16 +256,27 @@ impl ServerLinkKnownType {
     }
 }
 
-pub fn encode_handshake(host: &str, port: u16, intent: ClientIntent) -> (i32, Vec<u8>) {
+pub fn validate_handshake_host(host: &str) -> Result<()> {
+    let utf16_len = host.encode_utf16().count();
+    if utf16_len > 255 {
+        return Err(ProtocolError::InvalidData(format!(
+            "handshake host has {utf16_len} UTF-16 code units, maximum is 255"
+        )));
+    }
+    Ok(())
+}
+
+pub fn encode_handshake(host: &str, port: u16, intent: ClientIntent) -> Result<(i32, Vec<u8>)> {
+    validate_handshake_host(host)?;
     let mut out = Encoder::new();
     out.write_var_i32(PROTOCOL_VERSION);
     out.write_string(host);
     out.write_u16(port);
     out.write_var_i32(intent as i32);
-    (
+    Ok((
         ids::handshake::SERVERBOUND_CLIENT_INTENTION,
         out.into_inner(),
-    )
+    ))
 }
 
 pub fn encode_status_request() -> (i32, Vec<u8>) {

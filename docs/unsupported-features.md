@@ -42,7 +42,8 @@ Owner: `bbb-protocol`
   cell remains `partial` until it carries implementation and semantic-test
   evidence through the checked-in sparse overrides; catalog presence or a
   generic dispatch arm alone is not completion.
-- Add the production Transfer-intent handshake entry and state transition.
+- Route a transferred target into production reconnect, send its Transfer-intent
+  handshake, and lock the closing-to-handshake state transition.
 - Complete authenticated login: perform session authentication/encryption from the
   typed `ClientboundHelloPacket`, generate the encrypted inputs for the existing
   `ServerboundKeyPacket` encoder, install the negotiated ciphers, lock the

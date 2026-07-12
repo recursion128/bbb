@@ -30,14 +30,17 @@
         },
         "encoder": {
           "evidence": [
+            "crates/bbb-protocol/src/packets/connection.rs#validate_handshake_host",
             "crates/bbb-protocol/src/packets/connection.rs#encode_handshake",
-            "vanilla:net/minecraft/network/protocol/handshake/ClientIntentionPacket.java#STREAM_CODEC"
+            "crates/bbb-protocol/src/packets/tests.rs#handshake_and_status_codecs_match_vanilla_sequence_payloads",
+            "vanilla:net/minecraft/network/protocol/handshake/ClientIntentionPacket.java#MAX_HOST_LENGTH"
           ],
           "gap": null,
           "status": "complete"
         },
         "state_guard": {
           "evidence": [
+            "crates/bbb-net/src/types/connection.rs#connection_addresses_delegate_handshake_host_validation",
             "crates/bbb-net/src/status.rs#status_ping_enforces_handshake_request_response_and_pong_sequence",
             "crates/bbb-net/src/event_stream.rs#ClientIntent::Login"
           ],

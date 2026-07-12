@@ -13,7 +13,7 @@ fn handshake_and_status_codecs_match_vanilla_sequence_payloads() {
         (ClientIntent::Login, 2),
         (ClientIntent::Transfer, 3),
     ] {
-        let (packet_id, payload) = encode_handshake("example.test", 25565, intent);
+        let (packet_id, payload) = encode_handshake("example.test", 25565, intent).unwrap();
         assert_eq!(packet_id, ids::handshake::SERVERBOUND_CLIENT_INTENTION);
         let mut decoder = Decoder::new(&payload);
         assert_eq!(decoder.read_var_i32().unwrap(), crate::PROTOCOL_VERSION);
@@ -22,6 +22,10 @@ fn handshake_and_status_codecs_match_vanilla_sequence_payloads() {
         assert_eq!(decoder.read_var_i32().unwrap(), expected_id);
         assert!(decoder.is_empty());
     }
+
+    encode_handshake(&"a".repeat(255), 25565, ClientIntent::Login).unwrap();
+    assert!(encode_handshake(&"a".repeat(256), 25565, ClientIntent::Login).is_err());
+    assert!(encode_handshake(&"😀".repeat(128), 25565, ClientIntent::Login).is_err());
 
     assert_eq!(
         encode_status_request(),

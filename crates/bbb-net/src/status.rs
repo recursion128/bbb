@@ -13,7 +13,7 @@ pub async fn status_ping(address: &str) -> Result<StatusPing> {
     let (host, port) = split_host_port(address)?;
     let mut conn = RawConnection::connect(address, None).await?;
 
-    let (id, payload) = packets::encode_handshake(&host, port, ClientIntent::Status);
+    let (id, payload) = packets::encode_handshake(&host, port, ClientIntent::Status)?;
     conn.send_packet(id, &payload).await?;
     let (id, payload) = packets::encode_status_request();
     conn.send_packet(id, &payload).await?;

@@ -288,8 +288,8 @@ extractor 可直接消费统一 CST/IR 而不复制 tokenizer/parser，普通 bu
 `partial`。后续 slice 必须用具体 evidence 逐格收敛，不能把“存在 dispatch arm”单独当作
 `complete`，也不能删除 partial 行来缩小分母。逐格状态只通过 checked-in sparse evidence
 overrides 维护；未知 packet/dimension、非法状态、无 evidence 的 complete/deferred/
-not-applicable 必须令 generator 失败。status family 已逐格闭合；handshake 的 encoder/tests
-已闭合且无 clientbound acknowledgement 的事实已有 vanilla evidence，但 Transfer intent 的
+not-applicable 必须令 generator 失败。status family 已逐格闭合；handshake 的 host bound、
+encoder/tests 已闭合且无 clientbound acknowledgement 的事实已有 vanilla evidence，但 Transfer intent 的
 production command surface 与状态切换仍保持 `partial`。offline login 的 cookie/custom
 query/compression/LoginFinished → acknowledgement → configuration 路径已逐格反审计；login
 disconnect 已按 lenient JSON Component 严格解码，ClientboundHello 的 server-id/public-key/

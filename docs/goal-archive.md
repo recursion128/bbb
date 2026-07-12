@@ -12046,3 +12046,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] `ServerboundHelloPacket` 的 username 现在由单一 protocol validator 锁定 vanilla `StringUtil.isValidPlayerName`：最多 16 UTF-16 units，且每个 code point 必须在 ASCII 33..126；encoder 与 `ConnectionOptions::offline` 共同委托。
 - [x] focused tests 覆盖 16/17 边界、space/control/DEL/non-ASCII 与 surrogate-pair 长度；在线 hello→key/auth 状态转换继续开放，state guard 未被误标 complete。
+
+## 2026-07-12：handshake host bound
+
+- [x] `ClientIntentionPacket` host 现在由单一 protocol validator 锁定 vanilla `MAX_HOST_LENGTH = 255` 的 UTF-16-unit 上限；handshake encoder、offline connection options 与 status address parsing 共用该边界。
+- [x] focused tests 覆盖 255/256 ASCII 边界与 surrogate-pair 长度；Transfer-intent production reconnect 和 closing→handshake 转换继续开放，未由通用 encoder 外推完成。

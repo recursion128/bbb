@@ -154,7 +154,8 @@ async fn run_offline_probe_inner(options: ConnectionOptions) -> Result<ProbeRepo
     probe.client_information = options.client_information.clone();
     let mut packets_seen = 0usize;
 
-    let (id, payload) = packets::encode_handshake(&options.host, options.port, ClientIntent::Login);
+    let (id, payload) =
+        packets::encode_handshake(&options.host, options.port, ClientIntent::Login)?;
     probe.conn.send_packet(id, &payload).await?;
     let (id, payload) = packets::encode_login_hello(&options.username, options.profile_id)?;
     probe.conn.send_packet(id, &payload).await?;
