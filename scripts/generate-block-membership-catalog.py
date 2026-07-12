@@ -48,6 +48,16 @@ BLOCK_TAG_CATALOGS = (
 
 CONSTRUCTOR_FAMILY_CATALOGS = (
     (
+        "VANILLA_SAME_BLOCK_ALL_FACE_SKIP_RENDERING_BLOCKS",
+        frozenset({"PowderSnowBlock"}),
+        1,
+    ),
+    (
+        "VANILLA_SAME_BLOCK_VERTICAL_FACE_SKIP_RENDERING_BLOCKS",
+        frozenset({"MangroveRootsBlock"}),
+        1,
+    ),
+    (
         "VANILLA_NO_COLLISION_TORCH_BLOCKS",
         frozenset(
             {
@@ -214,6 +224,8 @@ def generate(source_root: Path) -> str:
             "    fn block_memberships_match_vanilla_order() {",
             '        assert_eq!(VANILLA_NO_TERRAIN_PARTICLE_BLOCKS, &["minecraft:barrier", "minecraft:structure_void"]);',
             '        assert_eq!(VANILLA_AIR_BLOCKS, &["minecraft:air", "minecraft:void_air", "minecraft:cave_air"]);',
+            '        assert_eq!(VANILLA_SAME_BLOCK_ALL_FACE_SKIP_RENDERING_BLOCKS, &["minecraft:powder_snow"]);',
+            '        assert_eq!(VANILLA_SAME_BLOCK_VERTICAL_FACE_SKIP_RENDERING_BLOCKS, &["minecraft:mangrove_roots"]);',
             "        assert_eq!(VANILLA_NO_COLLISION_TORCH_BLOCKS.len(), 8);",
             "        assert_eq!(VANILLA_IRON_BARS_CLASS_BLOCKS.len(), 18);",
             "        assert_eq!(VANILLA_COPPER_GRATE_BLOCKS.len(), 8);",

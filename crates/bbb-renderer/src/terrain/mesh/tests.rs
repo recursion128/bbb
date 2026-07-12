@@ -930,6 +930,38 @@ fn different_translucent_block_keys_keep_shared_face() {
 }
 
 #[test]
+fn same_block_vertical_skip_only_culls_up_down_faces() {
+    let skip = same_block_vertical_faces_skip(9);
+    let mut vertical_cells = vec![TerrainCell::EMPTY; 16 * 2 * 16];
+    vertical_cells[cell_index(1, 0, 2, 2)] =
+        TerrainCell::with_texture(10, TerrainMaterialClass::Translucent, 0)
+            .with_skip_rendering(skip);
+    vertical_cells[cell_index(1, 1, 2, 2)] =
+        TerrainCell::with_texture(11, TerrainMaterialClass::Translucent, 0)
+            .with_skip_rendering(skip);
+    let vertical = TerrainChunkSnapshot::new(0, 0, 0, 2, vertical_cells);
+
+    let vertical_layers =
+        build_terrain_mesh_layers_with_atlas(&[vertical], &TerrainTextureAtlas::unit());
+    assert_eq!(vertical_layers.translucent[0].translucent_faces, 10);
+    assert_eq!(vertical_layers.translucent[0].culled_faces, 2);
+
+    let mut horizontal_cells = vec![TerrainCell::EMPTY; 16 * 1 * 16];
+    horizontal_cells[cell_index(1, 0, 2, 1)] =
+        TerrainCell::with_texture(10, TerrainMaterialClass::Translucent, 0)
+            .with_skip_rendering(skip);
+    horizontal_cells[cell_index(2, 0, 2, 1)] =
+        TerrainCell::with_texture(11, TerrainMaterialClass::Translucent, 0)
+            .with_skip_rendering(skip);
+    let horizontal = TerrainChunkSnapshot::new(0, 0, 0, 1, horizontal_cells);
+
+    let horizontal_layers =
+        build_terrain_mesh_layers_with_atlas(&[horizontal], &TerrainTextureAtlas::unit());
+    assert_eq!(horizontal_layers.translucent[0].translucent_faces, 12);
+    assert_eq!(horizontal_layers.translucent[0].culled_faces, 0);
+}
+
+#[test]
 fn iron_bars_skip_connected_same_tag_faces() {
     let mut cells = vec![TerrainCell::EMPTY; 16 * 1 * 16];
     cells[cell_index(1, 0, 2, 1)] = TerrainCell::with_texture(20, TerrainMaterialClass::Cutout, 0)
@@ -1745,6 +1777,14 @@ fn same_block_all_faces_skip(same_block_key: u64) -> TerrainSkipRendering {
     TerrainSkipRendering {
         same_block_key,
         same_block_culls_all_faces: true,
+        ..TerrainSkipRendering::NONE
+    }
+}
+
+fn same_block_vertical_faces_skip(same_block_key: u64) -> TerrainSkipRendering {
+    TerrainSkipRendering {
+        same_block_key,
+        same_block_culls_vertical_faces: true,
         ..TerrainSkipRendering::NONE
     }
 }

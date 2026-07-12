@@ -147,6 +147,8 @@ pub struct TerrainCell {
 pub struct TerrainSkipRendering {
     pub same_block_key: u64,
     pub same_block_culls_all_faces: bool,
+    #[serde(default)]
+    pub same_block_culls_vertical_faces: bool,
     pub iron_bars_block: bool,
     pub bars_tag: bool,
     pub north: bool,
@@ -159,6 +161,7 @@ impl TerrainSkipRendering {
     pub const NONE: Self = Self {
         same_block_key: 0,
         same_block_culls_all_faces: false,
+        same_block_culls_vertical_faces: false,
         iron_bars_block: false,
         bars_tag: false,
         north: false,

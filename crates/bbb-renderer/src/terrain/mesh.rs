@@ -431,6 +431,12 @@ pub(super) fn culls_face_between_cells(
     if current_skip.same_block_culls_all_faces && current_skip.is_same_block(neighbor_skip) {
         return true;
     }
+    if current_skip.same_block_culls_vertical_faces
+        && !direction.is_horizontal()
+        && current_skip.is_same_block(neighbor_skip)
+    {
+        return true;
+    }
     if current_skip.iron_bars_block {
         let same_block = current_skip.is_same_block(neighbor_skip);
         let bars_pair =

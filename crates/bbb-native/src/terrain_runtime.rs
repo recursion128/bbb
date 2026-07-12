@@ -350,6 +350,7 @@ fn renderer_skip_rendering(
     TerrainSkipRendering {
         same_block_key: skip_rendering.same_block_key,
         same_block_culls_all_faces: skip_rendering.same_block_culls_all_faces,
+        same_block_culls_vertical_faces: skip_rendering.same_block_culls_vertical_faces,
         iron_bars_block: skip_rendering.iron_bars_block,
         bars_tag: skip_rendering.bars_tag,
         north: skip_rendering.north,
@@ -405,6 +406,7 @@ mod tests {
         let skip = bbb_world::TerrainSkipRendering {
             same_block_key: 42,
             same_block_culls_all_faces: true,
+            same_block_culls_vertical_faces: true,
             iron_bars_block: true,
             bars_tag: true,
             north: true,
@@ -418,6 +420,7 @@ mod tests {
             TerrainSkipRendering {
                 same_block_key: 42,
                 same_block_culls_all_faces: true,
+                same_block_culls_vertical_faces: true,
                 iron_bars_block: true,
                 bars_tag: true,
                 north: true,

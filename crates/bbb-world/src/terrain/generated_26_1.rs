@@ -9,6 +9,12 @@ pub(super) const VANILLA_NO_TERRAIN_PARTICLE_BLOCKS: &[&str] =
 pub(super) const VANILLA_AIR_BLOCKS: &[&str] =
     &["minecraft:air", "minecraft:void_air", "minecraft:cave_air"];
 
+pub(super) const VANILLA_SAME_BLOCK_ALL_FACE_SKIP_RENDERING_BLOCKS: &[&str] =
+    &["minecraft:powder_snow"];
+
+pub(super) const VANILLA_SAME_BLOCK_VERTICAL_FACE_SKIP_RENDERING_BLOCKS: &[&str] =
+    &["minecraft:mangrove_roots"];
+
 pub(super) const VANILLA_NO_COLLISION_TORCH_BLOCKS: &[&str] = &[
     "minecraft:torch",
     "minecraft:wall_torch",
@@ -334,6 +340,14 @@ mod tests {
         assert_eq!(
             VANILLA_AIR_BLOCKS,
             &["minecraft:air", "minecraft:void_air", "minecraft:cave_air"]
+        );
+        assert_eq!(
+            VANILLA_SAME_BLOCK_ALL_FACE_SKIP_RENDERING_BLOCKS,
+            &["minecraft:powder_snow"]
+        );
+        assert_eq!(
+            VANILLA_SAME_BLOCK_VERTICAL_FACE_SKIP_RENDERING_BLOCKS,
+            &["minecraft:mangrove_roots"]
         );
         assert_eq!(VANILLA_NO_COLLISION_TORCH_BLOCKS.len(), 8);
         assert_eq!(VANILLA_IRON_BARS_CLASS_BLOCKS.len(), 18);

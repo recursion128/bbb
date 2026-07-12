@@ -12273,3 +12273,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] vanilla `LiquidBlock.skipRendering` 的 same-fluid 语义已由 renderer 按 canonical
   `TerrainFluidKind` 比较覆盖；本 slice 只去重 `FluidRenderer` 的 overlay neighbor class test，
   不把 fluid rendering behavior 塞进 catalog，也不声称 fast-leaves option parity 完成。
+
+## 2026-07-12：Completed fixed block skip-rendering overrides
+
+- [x] generator 从 `PowderSnowBlock` 与 `MangroveRootsBlock` constructor facts 分别生成单项
+  all-face 与 vertical-face same-block memberships；world `TerrainSkipRendering` 增加向后兼容的
+  generic `same_block_culls_vertical_faces`，没有把 resource 专名传入 renderer。
+- [x] renderer 对 PowderSnow 复用既有同块全方向规则，对 MangroveRoots 仅在同 key 且 Up/Down
+  边界裁面，水平边界保留；muddy mangrove roots 不被错误纳入。Liquid same-fluid、IronBars 与
+  HalfTransparentBlock 路径保持独立，Leaves 的 runtime graphics-option 分支继续由明确 ledger
+  条目跟踪。

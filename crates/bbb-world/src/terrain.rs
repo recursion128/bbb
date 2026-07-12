@@ -16,7 +16,8 @@ use generated_26_1::{
     VANILLA_NO_COLLISION_RAIL_BLOCKS, VANILLA_NO_COLLISION_SIGN_BLOCKS,
     VANILLA_NO_COLLISION_SMALL_FLOWER_BLOCKS, VANILLA_NO_COLLISION_THIN_OVERLAY_BLOCKS,
     VANILLA_NO_COLLISION_TORCH_BLOCKS, VANILLA_NO_COLLISION_WIRE_BLOCKS,
-    VANILLA_NO_TERRAIN_PARTICLE_BLOCKS,
+    VANILLA_NO_TERRAIN_PARTICLE_BLOCKS, VANILLA_SAME_BLOCK_ALL_FACE_SKIP_RENDERING_BLOCKS,
+    VANILLA_SAME_BLOCK_VERTICAL_FACE_SKIP_RENDERING_BLOCKS,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -93,6 +94,8 @@ pub struct TerrainBlockCell {
 pub struct TerrainSkipRendering {
     pub same_block_key: u64,
     pub same_block_culls_all_faces: bool,
+    #[serde(default)]
+    pub same_block_culls_vertical_faces: bool,
     pub iron_bars_block: bool,
     pub bars_tag: bool,
     pub north: bool,
@@ -105,6 +108,7 @@ impl TerrainSkipRendering {
     pub const NONE: Self = Self {
         same_block_key: 0,
         same_block_culls_all_faces: false,
+        same_block_culls_vertical_faces: false,
         iron_bars_block: false,
         bars_tag: false,
         north: false,
@@ -211,9 +215,17 @@ pub fn classify_terrain_skip_rendering(
     let Some(name) = block_name else {
         return TerrainSkipRendering::NONE;
     };
-    if is_half_transparent_skip_rendering_block_name(name) {
+    if is_half_transparent_skip_rendering_block_name(name)
+        || VANILLA_SAME_BLOCK_ALL_FACE_SKIP_RENDERING_BLOCKS.contains(&name)
+    {
         return TerrainSkipRendering {
             same_block_culls_all_faces: true,
+            ..TerrainSkipRendering::NONE.with_same_block_key(name)
+        };
+    }
+    if VANILLA_SAME_BLOCK_VERTICAL_FACE_SKIP_RENDERING_BLOCKS.contains(&name) {
+        return TerrainSkipRendering {
+            same_block_culls_vertical_faces: true,
             ..TerrainSkipRendering::NONE.with_same_block_key(name)
         };
     }
@@ -477,6 +489,21 @@ mod tests {
         assert!(
             classify_terrain_skip_rendering(Some("minecraft:copper_grate"), &BTreeMap::new())
                 .same_block_culls_all_faces
+        );
+        assert!(
+            classify_terrain_skip_rendering(Some("minecraft:powder_snow"), &BTreeMap::new())
+                .same_block_culls_all_faces
+        );
+        let mangrove_roots =
+            classify_terrain_skip_rendering(Some("minecraft:mangrove_roots"), &BTreeMap::new());
+        assert!(mangrove_roots.same_block_culls_vertical_faces);
+        assert!(!mangrove_roots.same_block_culls_all_faces);
+        assert_eq!(
+            classify_terrain_skip_rendering(
+                Some("minecraft:muddy_mangrove_roots"),
+                &BTreeMap::new()
+            ),
+            TerrainSkipRendering::NONE
         );
 
         let pane = classify_terrain_skip_rendering(
