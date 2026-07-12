@@ -427,6 +427,8 @@ CustomChatCompletions 的 action/list wire、ADD/REMOVE/SET canonical state 与 
 chat suggestion candidate consumer 尚未合并该集合，runtime 保持 partial。
 CommandSuggestions 的 id/range/list/optional tooltip wire、pending-id gate、first-result Tab replacement 与
 tests 已闭合；rich tooltip Component 与 scroll/select/hover/narration list UI 未完成，canonical/runtime partial。
+play CookieRequest 的 resource id wire、shared session cookie lookup、hit payload/miss null response、ownership
+与 protocol/world/net/native tests 已全行闭合；StoreCookie 的 5120-byte 上限继续约束可回传数据。
 
 完成标准：全部 vanilla 26.1 catalog entry 都有矩阵行；所有目标客户端适用项为
 `complete`，其余只有带 vanilla 依据的 `not-applicable` 或带重启判据的窄 `deferred`；

@@ -11306,3 +11306,11 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   不再覆盖已接受结果。
 - [x] native Tab 安全应用首项 replacement range；rich tooltip 与完整 scroll/select/hover/narration list UI
   仍未实现，canonical/runtime 保持 partial，decode/ownership/tests 闭合。
+
+## 2026-07-12：play cookie-request packet coverage audit
+
+- [x] 对照 `ClientboundCookieRequestPacket`、`ServerboundCookieResponsePacket` 与
+  `ClientCommonPacketListenerImpl.handleRequestCookie` 锁定 Identifier key、nullable 5120-byte payload wire，
+  并拒绝 request trailing bytes。
+- [x] play connection owner 共用 session cookie map，命中回原 payload、缺失回 null；protocol/world/net/native
+  tests 覆盖 response 与 telemetry，五格全部闭合。

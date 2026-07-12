@@ -2509,6 +2509,15 @@ fn decodes_and_encodes_cookie_packets() {
         })
     );
 
+    let mut trailing_request = request_payload.clone();
+    trailing_request.push(0);
+    assert!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_COOKIE_REQUEST, &trailing_request)
+            .unwrap_err()
+            .to_string()
+            .contains("trailing bytes after cookie request packet")
+    );
+
     let mut store_payload = Encoder::new();
     store_payload.write_string("session");
     store_payload.write_var_i32(3);

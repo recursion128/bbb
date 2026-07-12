@@ -5585,29 +5585,47 @@
       "constant_name": "CLIENTBOUND_COOKIE_REQUEST",
       "coverage": {
         "canonical_apply": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-net/src/event_stream/play.rs#PlayClientbound::CookieRequest",
+            "crates/bbb-world/src/client/server_presentation.rs#apply_cookie_request",
+            "vanilla:net/minecraft/client/multiplayer/ClientCommonPacketListenerImpl.java#handleRequestCookie"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/tests.rs#decodes_and_encodes_cookie_packets",
+            "vanilla:net/minecraft/network/protocol/cookie/ClientboundCookieRequestPacket.java#STREAM_CODEC"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "ownership": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-net/src/event_stream/play.rs#PlayClientbound::CookieRequest"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "runtime_side_effect": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-net/src/event_stream.rs#play_server_presentation_packets_emit_matching_events_and_cookie_response",
+            "crates/bbb-protocol/src/packets/serverbound.rs#encode_play_cookie_response"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/tests.rs#decodes_and_encodes_cookie_packets",
+            "crates/bbb-net/src/event_stream.rs#play_server_presentation_packets_emit_matching_events_and_cookie_response",
+            "crates/bbb-net/src/probe/play.rs#probe_play_cookie_events_update_world_and_respond",
+            "crates/bbb-world/src/client/server_presentation.rs#cookie_metadata_tracks_requests_and_stores",
+            "crates/bbb-native/src/runtime/events/tests/session_protocol_events.rs#cookie_events_update_world_counters"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "clientbound",

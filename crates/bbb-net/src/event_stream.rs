@@ -1734,6 +1734,33 @@ mod tests {
             } if key == "bbb:session"
         ));
 
+        stream
+            .handle_play_packet(PlayClientbound::CookieRequest(packets::CookieRequest {
+                key: "bbb:missing".to_string(),
+            }))
+            .await
+            .unwrap();
+        let (packet_id, payload) = timeout(Duration::from_secs(1), server.read_packet())
+            .await
+            .expect("missing cookie response should be sent")
+            .unwrap();
+        assert_eq!(packet_id, ids::play::SERVERBOUND_COOKIE_RESPONSE);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_string(32767).unwrap(), "bbb:missing");
+        assert!(!decoder.read_bool().unwrap());
+        assert!(decoder.is_empty());
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("missing cookie request event should be emitted")
+            .unwrap();
+        assert!(matches!(
+            event,
+            NetEvent::CookieRequest {
+                key,
+                response_payload_present: false,
+            } if key == "bbb:missing"
+        ));
+
         let custom_payload = packets::CustomPayload {
             id: "minecraft:brand".to_string(),
             payload: packets::CustomPayloadBody::Brand {

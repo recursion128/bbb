@@ -741,9 +741,15 @@ fn read_registry_nbt_bytes<'a>(
 }
 
 pub(super) fn decode_cookie_request(decoder: &mut Decoder<'_>) -> Result<CookieRequest> {
-    Ok(CookieRequest {
+    let request = CookieRequest {
         key: read_resource_location(decoder)?,
-    })
+    };
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after cookie request packet".to_string(),
+        ));
+    }
+    Ok(request)
 }
 
 pub(super) fn decode_store_cookie(decoder: &mut Decoder<'_>) -> Result<StoreCookie> {
