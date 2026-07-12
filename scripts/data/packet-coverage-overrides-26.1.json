@@ -586,6 +586,50 @@
         "status": "complete"
       }
     },
+    "play/clientbound/CLIENTBOUND_START_CONFIGURATION": {
+      "canonical_apply": {
+        "evidence": [
+          "crates/bbb-native/src/runtime/events/dispatcher.rs#NetEvent::StartConfiguration",
+          "crates/bbb-world/src/level.rs#clear_client_level",
+          "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleConfigurationStart"
+        ],
+        "status": "complete"
+      },
+      "decode": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/tests.rs#decodes_start_configuration_unit_packet_strictly",
+          "vanilla:net/minecraft/network/protocol/game/ClientboundStartConfigurationPacket.java#STREAM_CODEC"
+        ],
+        "status": "complete"
+      },
+      "ownership": {
+        "evidence": [
+          "crates/bbb-net/src/event_stream/play.rs#PlayClientbound::StartConfiguration"
+        ],
+        "status": "complete"
+      },
+      "runtime_side_effect": {
+        "evidence": [
+          "crates/bbb-net/src/event_stream.rs#play_start_configuration_acknowledges_and_resets_configuration_dedup_state",
+          "crates/bbb-net/src/event_stream.rs#play_start_configuration_flushes_pending_chat_acknowledgement_first",
+          "crates/bbb-net/src/probe/play.rs#probe_start_configuration_acknowledges_and_resets_configuration_dedup_state",
+          "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleConfigurationStart"
+        ],
+        "status": "complete"
+      },
+      "tests": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/tests.rs#decodes_start_configuration_unit_packet_strictly",
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_play_connection_lifecycle_packets",
+          "crates/bbb-net/src/event_stream.rs#play_start_configuration_acknowledges_and_resets_configuration_dedup_state",
+          "crates/bbb-net/src/event_stream.rs#play_start_configuration_flushes_pending_chat_acknowledgement_first",
+          "crates/bbb-net/src/probe/play.rs#probe_start_configuration_acknowledges_and_resets_configuration_dedup_state",
+          "crates/bbb-net/src/probe/play.rs#probe_start_configuration_flushes_pending_chat_acknowledgement_first",
+          "crates/bbb-native/src/runtime/events/tests/world_state_lifecycle.rs#start_configuration_flushes_pending_chat_acknowledgement_before_clearing_level"
+        ],
+        "status": "complete"
+      }
+    },
     "play/clientbound/CLIENTBOUND_STORE_COOKIE": {
       "canonical_apply": {
         "evidence": [

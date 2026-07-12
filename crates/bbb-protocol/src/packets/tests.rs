@@ -826,6 +826,20 @@ fn decodes_bundle_delimiter_packet() {
 }
 
 #[test]
+fn decodes_start_configuration_unit_packet_strictly() {
+    assert_eq!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_START_CONFIGURATION, &[]).unwrap(),
+        PlayClientbound::StartConfiguration
+    );
+    assert!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_START_CONFIGURATION, &[0])
+            .unwrap_err()
+            .to_string()
+            .contains("trailing bytes after start configuration packet")
+    );
+}
+
+#[test]
 fn encodes_login_hello() {
     let uuid = offline_player_uuid("bbb-client");
     let (id, payload) = encode_login_hello("bbb-client", uuid);

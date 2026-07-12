@@ -11321,3 +11321,11 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   payload wire并拒绝 trailing bytes；normal-play session map upsert、ownership 与 tests 闭合。
 - [x] transfer closing window 的 late StoreCookie 接收及 cookie carry/reconnect 尚未实现，runtime 保持
   partial；未把普通 play storage 冒充完整 transfer lifecycle。
+
+## 2026-07-12：play start-configuration packet coverage audit
+
+- [x] 对照 `ClientboundStartConfigurationPacket` / `ClientPacketListener.handleConfigurationStart`
+  锁定 terminal unit wire，并拒绝 trailing bytes。
+- [x] online/probe/native 已按 vanilla 顺序先 flush pending chat acknowledgement，再清空 client level、
+  发送 configuration acknowledgement 并切换 connection state；五格证据与反向测试闭合。bundle 内
+  terminal packet enforcement 继续由 bundle runtime gap 单独拥有。

@@ -34,8 +34,9 @@ Owner: `bbb-protocol`
 
 - Audit field order, nullability, enum ordinals, and serverbound encoders against
   `<MC_CODE_ROOT>/sources/26.1/`, adding focused encode/decode tests with each
-  packet slice; keep handwritten handler coverage aligned with the generated
-  packet catalog as unsupported families are implemented.
+  packet slice, including strict unit-payload and terminal-state boundaries;
+  keep handwritten handler coverage aligned with the generated packet catalog
+  as unsupported families are implemented.
 - Use `docs/packet-coverage-26.1.json` as the complete 256-entry inventory. A
   cell remains `partial` until it carries implementation and semantic-test
   evidence through the checked-in sparse overrides; catalog presence or a

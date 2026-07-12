@@ -1568,6 +1568,22 @@ mod tests {
     }
 
     #[test]
+    fn play_start_configuration_is_closed() {
+        let ledger = vanilla_packet_coverage_26_1().unwrap();
+        let entry = ledger
+            .entries
+            .iter()
+            .find(|entry| {
+                entry.state == "play" && entry.constant_name == "CLIENTBOUND_START_CONFIGURATION"
+            })
+            .expect("play start configuration coverage row");
+        assert!(entry
+            .coverage
+            .values()
+            .all(|cell| cell.status == PacketCoverageStatus::Complete));
+    }
+
+    #[test]
     fn play_store_cookie_keeps_transfer_lifecycle_open() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger

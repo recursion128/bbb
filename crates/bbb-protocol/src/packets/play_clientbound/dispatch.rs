@@ -775,7 +775,14 @@ pub fn decode_play_clientbound(packet_id: i32, payload: &[u8]) -> Result<PlayCli
                 &mut decoder,
             )?))
         }
-        ids::play::CLIENTBOUND_START_CONFIGURATION => Ok(PlayClientbound::StartConfiguration),
+        ids::play::CLIENTBOUND_START_CONFIGURATION => {
+            if !payload.is_empty() {
+                return Err(ProtocolError::InvalidData(
+                    "trailing bytes after start configuration packet".to_string(),
+                ));
+            }
+            Ok(PlayClientbound::StartConfiguration)
+        }
         ids::play::CLIENTBOUND_STOP_SOUND => {
             let mut decoder = Decoder::new(payload);
             Ok(PlayClientbound::StopSound(client_audio::decode_stop_sound(
