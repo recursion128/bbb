@@ -11497,3 +11497,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] reference/direct SoundEvent holder、SoundSource、entity id、volume/pitch/seed wire 与 strict trailing 闭合。
 - [x] missing/silent entity gate、dynamic sound registry、fixed range、seed selection、entity following 与 removal stop 均有 world/native/audio tests，五格闭合；设备诊断仍由全局 audio ledger 拥有。
+
+## 2026-07-12：play sound packet coverage audit
+
+- [x] reference/direct SoundEvent holder、SoundSource、三个 signed fixed-point 坐标、volume/pitch/seed wire 与 strict trailing 闭合。
+- [x] no-distance-delay、dynamic sound registry、fixed range、seed selection 与 spatial attenuation 均有 world/native/audio tests，五格闭合；StopSound 与设备诊断仍由各自 ledger 拥有。

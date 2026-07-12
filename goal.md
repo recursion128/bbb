@@ -479,6 +479,7 @@ play SetObjective 的 add/remove/change framing、strict trailing、ownership �
 play SetScore 的 owner/objective/value/optional-display/NumberFormat framing、unknown-objective gate、ownership 与 tests 已闭合；rich Component 与 typed NumberFormat 保持 decode/canonical/runtime partial。
 play SetPlayerTeam 的 add/change/remove/join/leave framing、strict trailing、唯一 team membership、ownership 与 tests 已闭合；unknown method no-op 与 rich team Component/presentation 保持 decode/canonical/runtime partial。
 play SoundEntity 的 holder/category/entity/volume/pitch/seed wire、strict decode、missing/silent gate、dynamic registry resolution、fixed range、entity following/removal stop 与 tests 已闭合。
+play Sound 的 holder/category/fixed-point position/volume/pitch/seed wire、strict decode、no-distance-delay、dynamic registry resolution、fixed range/attenuation 与 tests 已闭合。
 
 完成标准：全部 vanilla 26.1 catalog entry 都有矩阵行；所有目标客户端适用项为
 `complete`，其余只有带 vanilla 依据的 `not-applicable` 或带重启判据的窄 `deferred`；

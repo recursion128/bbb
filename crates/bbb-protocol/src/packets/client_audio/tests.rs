@@ -16,7 +16,7 @@ fn decodes_sound_packet_wire_order_and_fixed_position() {
     payload.write_f32(0.75);
     payload.write_f32(1.25);
     payload.write_i64(123456789);
-    let payload = payload.into_inner();
+    let mut payload = payload.into_inner();
 
     let packet = decode_play_clientbound(ids::play::CLIENTBOUND_SOUND, &payload).unwrap();
     assert_eq!(
@@ -45,6 +45,12 @@ fn decodes_sound_packet_wire_order_and_fixed_position() {
     assert_eq!(decoder.read_f32().unwrap(), 1.25);
     assert_eq!(decoder.read_i64().unwrap(), 123456789);
     assert!(decoder.is_empty());
+
+    payload.push(0);
+    let err = decode_play_clientbound(ids::play::CLIENTBOUND_SOUND, &payload).unwrap_err();
+    assert!(err
+        .to_string()
+        .contains("trailing bytes after sound packet"));
 }
 
 #[test]

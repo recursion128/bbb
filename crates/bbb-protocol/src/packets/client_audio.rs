@@ -43,14 +43,20 @@ pub enum SoundEventHolder {
 }
 
 pub(crate) fn decode_sound_event(decoder: &mut Decoder<'_>) -> Result<SoundEvent> {
-    Ok(SoundEvent {
+    let packet = SoundEvent {
         sound: decode_sound_event_holder(decoder)?,
         source: decode_sound_source(decoder)?,
         position: decode_sound_position(decoder)?,
         volume: decoder.read_f32()?,
         pitch: decoder.read_f32()?,
         seed: decoder.read_i64()?,
-    })
+    };
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after sound packet".to_string(),
+        ));
+    }
+    Ok(packet)
 }
 
 pub(crate) fn decode_sound_entity_event(decoder: &mut Decoder<'_>) -> Result<SoundEntityEvent> {
