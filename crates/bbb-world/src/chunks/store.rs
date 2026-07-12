@@ -1,4 +1,5 @@
 use bbb_protocol::{
+    block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_VAULT_ID,
     codec::ProtocolError,
     packets::{
         BlockEntityData as ProtocolBlockEntityData, BlockUpdate as ProtocolBlockUpdate,
@@ -32,9 +33,6 @@ use super::{
     merge_light_data, sample_terrain_light,
     sign_text::decode_sign_block_entity_text,
 };
-
-const VANILLA_VAULT_BLOCK_ENTITY_TYPE_ID: i32 =
-    bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_VAULT_ID;
 
 impl WorldStore {
     pub fn insert_level_chunk_with_light(
@@ -372,7 +370,7 @@ impl WorldStore {
         pos: BlockPos,
     ) -> Option<VaultConnectionParticleState> {
         let record = self.block_entity_record_at(pos)?;
-        if record.type_id != VANILLA_VAULT_BLOCK_ENTITY_TYPE_ID {
+        if record.type_id != VANILLA_BLOCK_ENTITY_TYPE_VAULT_ID {
             return None;
         }
         let shared_data = record.vault_shared_data.as_ref()?;

@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 
 use bbb_protocol::{
+    block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_VAULT_ID,
     entity_types::*,
     game_event_types::{
         VANILLA_CLIENT_GAME_EVENT_GUARDIAN_ELDER_EFFECT_ID,
@@ -48,8 +49,6 @@ const STRAY_DEATH_SOUND_EVENT: &str = "minecraft:entity.stray.death";
 const BOGGED_DEATH_SOUND_EVENT: &str = "minecraft:entity.bogged.death";
 const ITEM_PICKUP_SOUND_EVENT: &str = "minecraft:entity.item.pickup";
 const EXPERIENCE_ORB_PICKUP_SOUND_EVENT: &str = "minecraft:entity.experience_orb.pickup";
-const VANILLA_VAULT_BLOCK_ENTITY_TYPE_ID: i32 =
-    bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_VAULT_ID;
 const GLOBAL_LEVEL_EVENT_SOUND_DISTANCE: f64 = 2.0;
 const VANILLA_VEC3_NORMALIZE_EPSILON: f64 = 1.0e-5;
 const SCULK_SHRIEKER_TOP_Y: f64 = 0.5;
@@ -827,7 +826,7 @@ impl WorldStore {
         let sound = match event.event_type {
             VAULT_ACTIVATE_LEVEL_EVENT
                 if self.block_entity_type_id_at(crate::protocol_block_pos(event.pos))
-                    == Some(VANILLA_VAULT_BLOCK_ENTITY_TYPE_ID) =>
+                    == Some(VANILLA_BLOCK_ENTITY_TYPE_VAULT_ID) =>
             {
                 "minecraft:block.vault.activate"
             }

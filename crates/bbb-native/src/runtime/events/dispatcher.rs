@@ -2,6 +2,7 @@ use bbb_control::NetCounters;
 use bbb_item_model::NativeItemRuntime;
 use bbb_net::{ConnectionState, NetCommand, NetEvent};
 use bbb_pack::{JukeboxSongRegistry, SoundEventRegistry};
+use bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_VAULT_ID;
 use bbb_protocol::packets::{
     BlockPos as ProtocolBlockPos, LevelParticles, ParticlePayload, Vec3d as ProtocolVec3d,
 };
@@ -38,9 +39,6 @@ const BEE_GROWTH_PARTICLES_LEVEL_EVENT: i32 = 2011;
 const TURTLE_EGG_PLACEMENT_PARTICLES_LEVEL_EVENT: i32 = 2012;
 const VAULT_ACTIVATE_LEVEL_EVENT: i32 = 3015;
 const POINTED_DRIPSTONE_ROOT_SEARCH_LENGTH: i32 = 11;
-const VANILLA_VAULT_BLOCK_ENTITY_TYPE_ID: i32 =
-    bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_VAULT_ID;
-
 #[cfg(test)]
 pub(in crate::runtime) fn drain_net_events(
     rx: &mut mpsc::Receiver<NetEvent>,
@@ -1039,7 +1037,7 @@ fn vault_block_entity_at_event_pos_context(
 ) -> bool {
     event.event_type == VAULT_ACTIVATE_LEVEL_EVENT
         && world.block_entity_type_id_at(protocol_to_world_block_pos(event.pos))
-            == Some(VANILLA_VAULT_BLOCK_ENTITY_TYPE_ID)
+            == Some(VANILLA_BLOCK_ENTITY_TYPE_VAULT_ID)
 }
 
 fn vault_connection_particle_context(

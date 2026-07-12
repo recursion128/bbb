@@ -12627,3 +12627,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] world 导出既有 generated AbstractHurtingProjectile membership；native F3+I 对 6 个
   subtype 统一写入可观察的 projectile 基类字段，Fireball/SmallFireball/WitherSkull 分支只保留
   各自额外编码，不引入命中、爆炸或服务端权威模拟。
+
+## 2026-07-12：Removed duplicate Vault block-entity ID aliases
+
+- [x] world chunk/apply/audio 与 native event dispatcher 删除四个本地 Vault type-id alias，统一直接
+  消费 protocol generated block-entity catalog constant；Vault 粒子、音频与事件分发语义不变。

@@ -6,6 +6,7 @@
 //! (audio sinks, particle sinks, serverbound acknowledgements); world
 //! mutation and the deterministic level-event random stream live here.
 
+use bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_VAULT_ID;
 use bbb_protocol::game_event_types::VANILLA_CLIENT_GAME_EVENT_GUARDIAN_ELDER_EFFECT_ID;
 use bbb_protocol::packets::{
     ChatAcknowledgement, GameEvent as ProtocolGameEvent, LevelEvent as ProtocolLevelEvent,
@@ -55,8 +56,6 @@ const SCRAPE_LEVEL_EVENT: i32 = 3005;
 const SPLASH_CLOUD_LEVEL_EVENT: i32 = 2009;
 const WAX_OFF_LEVEL_EVENT: i32 = 3004;
 const WAX_ON_LEVEL_EVENT: i32 = 3003;
-const VANILLA_VAULT_BLOCK_ENTITY_TYPE_ID: i32 =
-    bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_VAULT_ID;
 const CRITICAL_HIT_ANIMATION_ACTION: u8 = 4;
 const MAGIC_CRITICAL_HIT_ANIMATION_ACTION: u8 = 5;
 const TRACKING_EMITTER_DEFAULT_LIFETIME_TICKS: u32 = 3;
@@ -1026,7 +1025,7 @@ impl WorldStore {
             };
             let vault_block_entity_at_event_pos = event.event_type == VAULT_ACTIVATE_LEVEL_EVENT
                 && self.block_entity_type_id_at(event_pos)
-                    == Some(VANILLA_VAULT_BLOCK_ENTITY_TYPE_ID);
+                    == Some(VANILLA_BLOCK_ENTITY_TYPE_VAULT_ID);
             let vault_connection_target_count = if vault_block_entity_at_event_pos {
                 self.vault_connection_particle_state(event_pos)
                     .map(|state| state.targets.len())
@@ -1530,6 +1529,7 @@ mod tests {
         VANILLA_ENTITY_TYPE_WITCH_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
         VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID,
     };
+
     use bbb_protocol::packets::{
         AddEntity, BlockPos as ProtocolBlockPos, EntityAnimation, EntityDataValue,
         EntityDataValueKind, EntityEvent, EntityPositionSync, EquipmentSlot, EquipmentSlotUpdate,
@@ -1537,6 +1537,20 @@ mod tests {
         SetEquipment, SoundEvent, SoundEventHolder, SoundSource, TakeItemEntity, Vec3d,
     };
     use uuid::Uuid;
+
+    #[test]
+    fn vault_block_entity_consumers_use_the_generated_protocol_id() {
+        let old_alias = ["VANILLA_VAULT_", "BLOCK_ENTITY_TYPE_ID"].concat();
+        for source in [
+            include_str!("play_apply.rs"),
+            include_str!("chunks/store.rs"),
+            include_str!("client/audio.rs"),
+            include_str!("../../bbb-native/src/runtime/events/dispatcher.rs"),
+        ] {
+            assert!(!source.contains(&old_alias));
+            assert!(source.contains("VANILLA_BLOCK_ENTITY_TYPE_VAULT_ID"));
+        }
+    }
 
     #[derive(Default)]
     struct RecordingEffects {
