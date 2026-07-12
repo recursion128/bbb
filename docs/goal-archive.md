@@ -12016,3 +12016,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] `ServerboundHelloPacket` 的 16-char name + UUID offline sender，以及 `ClientboundHelloPacket` 的 server-id/public-key/challenge/authenticate flag、`ServerboundKeyPacket` 的 encrypted secret/challenge 和 login disconnect Component wire 已逐项反向核对。
 - [x] bbb 仍在收到 encryption request 时明确终止，只把 login disconnect 保留为 raw JSON；对应 partial 状态和 authenticated-login todo 均保持开放。本切片仅消除 coverage evidence 空洞，未把 catalog、unit EncryptionRequest 或失败路径冒充在线认证/加密实现。
+
+## 2026-07-12：login disconnect Component decode
+
+- [x] `ClientboundLoginDisconnectPacket` 现在按 262144 上限读取 lenient JSON Component，复用共享 Component 文本/样式遍历生成 semantic reason，并保留 raw JSON 仅作诊断；malformed JSON 与 trailing bytes 会明确拒绝。
+- [x] event-stream/probe 的终止错误使用 semantic reason；online encryption hello/key 仍保持开放，未由 disconnect decode 外推认证完成。

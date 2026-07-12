@@ -511,10 +511,12 @@
           "evidence": [
             "crates/bbb-protocol/src/packets/connection.rs#LoginClientbound::Disconnect",
             "crates/bbb-protocol/src/packets/connection.rs#decode_login_clientbound",
+            "crates/bbb-protocol/src/component.rs#decode_json_component_summary",
+            "crates/bbb-protocol/src/packets/tests.rs#offline_login_clientbound_codecs_and_ack_match_vanilla_fields",
             "vanilla:net/minecraft/network/protocol/login/ClientboundLoginDisconnectPacket.java#STREAM_CODEC"
           ],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "ownership": {
           "evidence": [

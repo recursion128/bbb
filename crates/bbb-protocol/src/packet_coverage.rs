@@ -229,7 +229,7 @@ mod tests {
     }
 
     #[test]
-    fn offline_login_coverage_keeps_online_encryption_and_raw_disconnect_gaps_explicit() {
+    fn offline_login_coverage_keeps_online_encryption_gaps_explicit() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let login_entries: Vec<_> = ledger
             .entries
@@ -257,7 +257,6 @@ mod tests {
                 ("SERVERBOUND_KEY", "encoder"),
                 ("SERVERBOUND_KEY", "state_guard"),
                 ("SERVERBOUND_KEY", "tests"),
-                ("CLIENTBOUND_LOGIN_DISCONNECT", "decode"),
                 ("CLIENTBOUND_HELLO", "decode"),
                 ("CLIENTBOUND_HELLO", "runtime_side_effect"),
                 ("CLIENTBOUND_HELLO", "tests"),

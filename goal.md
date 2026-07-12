@@ -291,8 +291,9 @@ overrides 维护；未知 packet/dimension、非法状态、无 evidence 的 com
 not-applicable 必须令 generator 失败。status family 已逐格闭合；handshake 的 encoder/tests
 已闭合且无 clientbound acknowledgement 的事实已有 vanilla evidence，但 Transfer intent 的
 production command surface 与状态切换仍保持 `partial`。offline login 的 cookie/custom
-query/compression/LoginFinished → acknowledgement → configuration 路径已逐格反审计；在线
-encryption hello/key、初始 hello 的完整响应状态与 disconnect Component 语义仍为 `partial`。
+query/compression/LoginFinished → acknowledgement → configuration 路径已逐格反审计；login
+disconnect 已按 lenient JSON Component 严格解码；在线 encryption hello/key 与初始 hello 的
+完整响应状态仍为 `partial`。
 下一步继续 configuration 的 state/framing 与 handoff，不能由 offline login 成功路径外推
 在线认证或 configuration family 的完成状态。configuration 的 disconnect、ping/pong、
 Finish → Play 核心控制与 cookie request/store/response 路径已闭合；keepalive wire/response

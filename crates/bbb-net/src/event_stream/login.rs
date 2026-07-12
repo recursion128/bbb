@@ -9,8 +9,8 @@ use crate::{
 impl EventStreamContext {
     pub(super) async fn handle_login_packet(&mut self, packet: LoginClientbound) -> Result<()> {
         match packet {
-            LoginClientbound::Disconnect { raw_json } => {
-                bail!("login disconnected: {raw_json}")
+            LoginClientbound::Disconnect { reason, .. } => {
+                bail!("login disconnected: {reason}")
             }
             LoginClientbound::EncryptionRequest => {
                 bail!("server requested encryption; offline-mode event stream cannot continue")

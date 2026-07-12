@@ -45,8 +45,7 @@ Owner: `bbb-protocol`
 - Add the production Transfer-intent handshake entry and state transition.
 - Complete authenticated login: decode `ClientboundHelloPacket`, perform session
   authentication/encryption, encode `ServerboundKeyPacket`, and lock the initial
-  hello response state. Decode login disconnect reasons as Components instead of
-  retaining only diagnostic JSON.
+  hello response state.
 - Complete configuration resource-pack runtime behavior: download allowed packs,
   verify hashes, apply/reload them, enforce required-pack outcomes, emit the full
   response lifecycle, and unload one/all packs on pop.

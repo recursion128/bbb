@@ -16,7 +16,10 @@ use super::{
 
 use crate::{
     codec::{Decoder, Encoder, ProtocolError, Result},
-    component::{decode_component_summary, decode_component_summary_from_decoder},
+    component::{
+        decode_component_summary, decode_component_summary_from_decoder,
+        decode_json_component_summary,
+    },
     ids, PROTOCOL_VERSION,
 };
 
@@ -83,7 +86,7 @@ impl Default for ClientInformation {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum LoginClientbound {
-    Disconnect { raw_json: String },
+    Disconnect { reason: String, raw_reason: String },
     EncryptionRequest,
     LoginFinished { profile: GameProfile },
     SetCompression { threshold: i32 },
@@ -280,9 +283,19 @@ pub fn encode_login_acknowledged() -> (i32, Vec<u8>) {
 
 pub fn decode_login_clientbound(packet_id: i32, payload: &[u8]) -> Result<LoginClientbound> {
     match packet_id {
-        ids::login::CLIENTBOUND_LOGIN_DISCONNECT => Ok(LoginClientbound::Disconnect {
-            raw_json: Decoder::new(payload).read_string(262144)?,
-        }),
+        ids::login::CLIENTBOUND_LOGIN_DISCONNECT => {
+            let mut decoder = Decoder::new(payload);
+            let raw_reason = decoder.read_string(262144)?;
+            if !decoder.is_empty() {
+                return Err(ProtocolError::InvalidData(
+                    "trailing bytes after login disconnect packet".to_string(),
+                ));
+            }
+            Ok(LoginClientbound::Disconnect {
+                reason: decode_json_component_summary(&raw_reason)?,
+                raw_reason,
+            })
+        }
         ids::login::CLIENTBOUND_HELLO => Ok(LoginClientbound::EncryptionRequest),
         ids::login::CLIENTBOUND_LOGIN_FINISHED => {
             let mut decoder = Decoder::new(payload);

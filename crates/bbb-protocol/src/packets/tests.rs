@@ -942,9 +942,45 @@ fn offline_login_clientbound_codecs_and_ack_match_vanilla_fields() {
         )
         .unwrap(),
         LoginClientbound::Disconnect {
-            raw_json: r#"{"text":"bye"}"#.to_string(),
+            reason: "bye".to_string(),
+            raw_reason: r#"{"text":"bye"}"#.to_string(),
         }
     );
+
+    let mut styled_disconnect = Encoder::new();
+    styled_disconnect.write_string(r#"{"text":"bye","extra":[{"text":" now","bold":true}]}"#);
+    assert_eq!(
+        decode_login_clientbound(
+            ids::login::CLIENTBOUND_LOGIN_DISCONNECT,
+            &styled_disconnect.into_inner(),
+        )
+        .unwrap(),
+        LoginClientbound::Disconnect {
+            reason: "bye now".to_string(),
+            raw_reason: r#"{"text":"bye","extra":[{"text":" now","bold":true}]}"#.to_string(),
+        }
+    );
+
+    let mut malformed_disconnect = Encoder::new();
+    malformed_disconnect.write_string(r#"{"text":}"#);
+    assert!(decode_login_clientbound(
+        ids::login::CLIENTBOUND_LOGIN_DISCONNECT,
+        &malformed_disconnect.into_inner(),
+    )
+    .unwrap_err()
+    .to_string()
+    .contains("invalid component json"));
+
+    let mut trailing_disconnect = Encoder::new();
+    trailing_disconnect.write_string(r#"{"text":"bye"}"#);
+    trailing_disconnect.write_u8(0);
+    assert!(decode_login_clientbound(
+        ids::login::CLIENTBOUND_LOGIN_DISCONNECT,
+        &trailing_disconnect.into_inner(),
+    )
+    .unwrap_err()
+    .to_string()
+    .contains("trailing bytes after login disconnect packet"));
 
     let uuid = Uuid::from_u128(0x12345678_1234_5678_90ab_cdef12345678);
     let mut finished = Encoder::new();
