@@ -12674,3 +12674,9 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] item-model icon condition/select/tint owner 删除 29 项仅转发 protocol generated catalog
   的 component ID const，直接消费 catalog namespace；model dispatch、predicate、range 与 tint
   语义不变，既有 raw numeric gate 扩展为同时禁止恢复本地 ID const。
+
+## 2026-07-12：Removed writable-book component ID alias
+
+- [x] world UI book projection 删除最后一项 production component ID 转发 const，直接消费
+  protocol generated writable-book-content type constant；written/writable page fallback 顺序不变，
+  并由源码反向测试防止旧别名恢复。

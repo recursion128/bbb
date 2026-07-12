@@ -1,9 +1,12 @@
-use bbb_protocol::packets::{
-    DialogHolder, InteractionHand, ItemStackSummary as ProtocolItemStackSummary,
-    MountScreenOpen as ProtocolMountScreenOpen, OpenBook as ProtocolOpenBook,
-    OpenSignEditor as ProtocolOpenSignEditor, PlaceGhostRecipe as ProtocolPlaceGhostRecipe,
-    PongResponse as ProtocolPongResponse, RecipeDisplaySummary as ProtocolRecipeDisplaySummary,
-    ShowDialog as ProtocolShowDialog,
+use bbb_protocol::{
+    data_component_types::VANILLA_DATA_COMPONENT_WRITABLE_BOOK_CONTENT_TYPE_ID,
+    packets::{
+        DialogHolder, InteractionHand, ItemStackSummary as ProtocolItemStackSummary,
+        MountScreenOpen as ProtocolMountScreenOpen, OpenBook as ProtocolOpenBook,
+        OpenSignEditor as ProtocolOpenSignEditor, PlaceGhostRecipe as ProtocolPlaceGhostRecipe,
+        PongResponse as ProtocolPongResponse, RecipeDisplaySummary as ProtocolRecipeDisplaySummary,
+        ShowDialog as ProtocolShowDialog,
+    },
 };
 use serde::{Deserialize, Serialize};
 
@@ -341,16 +344,13 @@ fn book_pages_from_item(item: &ProtocolItemStackSummary) -> Option<Vec<String>> 
     if item
         .component_patch
         .added_type_ids
-        .contains(&VANILLA_WRITABLE_BOOK_CONTENT_COMPONENT_ID)
+        .contains(&VANILLA_DATA_COMPONENT_WRITABLE_BOOK_CONTENT_TYPE_ID)
         || !item.component_patch.writable_book_pages.is_empty()
     {
         return Some(item.component_patch.writable_book_pages.clone());
     }
     None
 }
-
-const VANILLA_WRITABLE_BOOK_CONTENT_COMPONENT_ID: i32 =
-    bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_WRITABLE_BOOK_CONTENT_TYPE_ID;
 
 pub fn code_of_conduct_text_hash(text: &str) -> i32 {
     java_string_hash_code(text)
@@ -374,6 +374,13 @@ mod tests {
         WrittenBookContentSummary,
     };
     use uuid::Uuid;
+
+    #[test]
+    fn ui_does_not_restore_writable_book_component_id_alias() {
+        let source = include_str!("ui.rs");
+        let old_alias = ["VANILLA_WRITABLE_BOOK_CONTENT_", "COMPONENT_ID"].concat();
+        assert!(!source.contains(&format!("const {old_alias}")));
+    }
 
     #[test]
     fn tracks_client_ui_warnings_and_dialogs() {
@@ -758,7 +765,7 @@ mod tests {
         stack
             .component_patch
             .added_type_ids
-            .push(VANILLA_WRITABLE_BOOK_CONTENT_COMPONENT_ID);
+            .push(VANILLA_DATA_COMPONENT_WRITABLE_BOOK_CONTENT_TYPE_ID);
         stack.component_patch.writable_book_pages = pages.into_iter().map(str::to_string).collect();
         stack
     }
