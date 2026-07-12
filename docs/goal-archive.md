@@ -11921,3 +11921,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] `OPENED_TAB(0) + Identifier` / `CLOSED_SCREEN(1)` wire、control/runtime command path、visible-root selection guard、screen open/tab-click/escape/done close behavior 已与 vanilla `ClientAdvancements.setSelectedTab` 及 `AdvancementsScreen.removed` 反向对齐。
 - [x] 服务端仅在 opened-tab 且 id 有效时记录 selected tab，该 response 无 dedicated acknowledgement；command/encoder/state/tests 闭合，ack=N/A。
+
+## 2026-07-12：play serverbound select-trade coverage audit
+
+- [x] VarInt offer index wire、control/runtime/UI command path、active merchant + existing offer guard、local selection/payment autofill 与 vanilla `MerchantScreen.postButtonClick` 已反向对齐；command/encoder/state/tests 闭合。
+- [x] 服务端 `handleSelectTrade` 仍对有效 MerchantMenu 执行 `setSelectionHint + tryMoveItems`，支付槽/结果槽以后续 container broadcasts 为权威；remaining ItemStack component 语义使 ack/response 保持 partial，未把 local autofill 当服务端确认。

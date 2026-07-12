@@ -4075,6 +4075,29 @@ mod tests {
         }
     }
 
+    #[test]
+    fn play_serverbound_select_trade_keeps_component_response_open() {
+        let ledger = vanilla_packet_coverage_26_1().unwrap();
+        let entry = ledger
+            .entries
+            .iter()
+            .find(|entry| {
+                entry.state == "play" && entry.constant_name == "SERVERBOUND_SELECT_TRADE"
+            })
+            .expect("play serverbound select trade coverage row");
+        assert_eq!(
+            entry.coverage["ack_response"].status,
+            PacketCoverageStatus::Partial
+        );
+        for dimension in ["command_surface", "encoder", "state_guard", "tests"] {
+            assert_eq!(
+                entry.coverage[dimension].status,
+                PacketCoverageStatus::Complete,
+                "{dimension}"
+            );
+        }
+    }
+
     fn state_name(state: PacketState) -> &'static str {
         match state {
             PacketState::Handshake => "handshake",

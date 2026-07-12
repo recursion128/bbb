@@ -5066,29 +5066,57 @@
       "constant_name": "SERVERBOUND_SELECT_TRADE",
       "coverage": {
         "ack_response": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "evidence": [
+            "crates/bbb-world/src/client/inventory.rs#apply_container_set_content",
+            "crates/bbb-world/src/client/inventory.rs#apply_container_set_slot",
+            "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#handleSelectTrade"
+          ],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
           "status": "partial"
         },
         "command_surface": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-control/src/server.rs#net.select_trade",
+            "crates/bbb-native/src/runtime/control_requests.rs#NetControlRequest::SelectTrade",
+            "crates/bbb-native/src/input/inventory.rs#maybe_queue_merchant_trade_click",
+            "crates/bbb-native/src/input/commands.rs#queue_select_trade_command"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "encoder": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/serverbound.rs#encode_play_select_trade",
+            "crates/bbb-net/src/driver/commands.rs#send_select_trade",
+            "vanilla:net/minecraft/network/protocol/game/ServerboundSelectTradePacket.java#STREAM_CODEC"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "state_guard": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/client/inventory.rs#set_local_merchant_selected_offer",
+            "crates/bbb-native/src/input/inventory.rs#merchant_trade_at_position",
+            "crates/bbb-native/src/input/inventory.rs#maybe_queue_merchant_trade_click",
+            "vanilla:net/minecraft/client/gui/screens/inventory/MerchantScreen.java#postButtonClick",
+            "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#handleSelectTrade"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_select_trade_packet",
+            "crates/bbb-net/src/driver/commands/tests.rs#send_select_trade_encodes_select_trade_packet",
+            "crates/bbb-net/src/driver.rs#drive_connection_sends_select_trade_net_command_in_play",
+            "crates/bbb-control/src/server/tests.rs#net_select_trade_queues_request",
+            "crates/bbb-native/src/runtime/control_requests.rs#pump_control_net_requests_queues_select_trade",
+            "crates/bbb-native/src/input/inventory/tests.rs#merchant_trade_row_click_queues_select_trade_command",
+            "crates/bbb-native/src/input/inventory/tests.rs#merchant_trade_row_click_ignores_missing_offer",
+            "crates/bbb-world/src/client/inventory/tests.rs#merchant_offers_apply_only_to_matching_open_container"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "serverbound",
