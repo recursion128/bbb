@@ -161,16 +161,22 @@ impl EntityPickBoundsState {
 }
 
 pub(crate) fn vanilla_pick_bounds_for_type(entity_type_id: i32) -> Option<EntityPickBoundsState> {
-    VANILLA_ENTITY_PICK_BOUNDS
-        .binary_search_by_key(&entity_type_id, |(id, _)| *id)
-        .ok()
-        .map(|index| {
-            let mut bounds = VANILLA_ENTITY_PICK_BOUNDS[index].1;
-            if vanilla_entity_type_is_redirectable_projectile(entity_type_id) {
-                bounds.pick_radius = 1.0;
-            }
-            bounds
-        })
+    VANILLA_ENTITY_PICKABLE_TYPE_IDS
+        .binary_search(&entity_type_id)
+        .ok()?;
+    let [width, height] = vanilla_entity_type_dimensions(entity_type_id)?;
+    let pick_radius = if entity_type_id == VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID
+        || vanilla_entity_type_is_redirectable_projectile(entity_type_id)
+    {
+        1.0
+    } else {
+        0.0
+    };
+    Some(EntityPickBoundsState::from_base_size(
+        width,
+        height,
+        pick_radius,
+    ))
 }
 
 pub(crate) fn vanilla_pick_bounds_for_entity_data(
@@ -1452,10 +1458,6 @@ fn vanilla_direction_from_3d_data(data: i32) -> VanillaDirection {
     }
 }
 
-const fn pick(width: f32, height: f32, pick_radius: f32) -> EntityPickBoundsState {
-    EntityPickBoundsState::from_base_size(width, height, pick_radius)
-}
-
 // IDs and points follow vanilla 26.1 `EntityType.Builder.passengerAttachments(...)`.
 const VANILLA_PASSENGER_ATTACHMENT_OVERRIDES: &[(i32, &[[f32; 3]])] = &[
     (VANILLA_ENTITY_TYPE_CAT_ID, &[[0.0, 0.5125, 0.0]]),
@@ -1547,138 +1549,138 @@ const VANILLA_PASSENGER_ATTACHMENT_OVERRIDES: &[(i32, &[[f32; 3]])] = &[
 ];
 
 // IDs are the vanilla 26.1 EntityType registry order from EntityType.java.
-const VANILLA_ENTITY_PICK_BOUNDS: &[(i32, EntityPickBoundsState)] = &[
-    (0, pick(1.375, 0.5625, 0.0)),    // minecraft:acacia_boat
-    (1, pick(1.375, 0.5625, 0.0)),    // minecraft:acacia_chest_boat
-    (2, pick(0.35, 0.6, 0.0)),        // minecraft:allay
-    (4, pick(0.7, 0.65, 0.0)),        // minecraft:armadillo
-    (5, pick(0.5, 1.975, 0.0)),       // minecraft:armor_stand
-    (6, pick(0.5, 0.5, 0.0)),         // minecraft:arrow
-    (7, pick(0.75, 0.42, 0.0)),       // minecraft:axolotl
-    (8, pick(1.375, 0.5625, 0.0)),    // minecraft:bamboo_chest_raft
-    (9, pick(1.375, 0.5625, 0.0)),    // minecraft:bamboo_raft
-    (10, pick(0.5, 0.9, 0.0)),        // minecraft:bat
-    (11, pick(0.7, 0.6, 0.0)),        // minecraft:bee
-    (12, pick(1.375, 0.5625, 0.0)),   // minecraft:birch_boat
-    (13, pick(1.375, 0.5625, 0.0)),   // minecraft:birch_chest_boat
-    (14, pick(0.6, 1.8, 0.0)),        // minecraft:blaze
-    (16, pick(0.6, 1.99, 0.0)),       // minecraft:bogged
-    (17, pick(0.6, 1.77, 0.0)),       // minecraft:breeze
-    (18, pick(0.3125, 0.3125, 0.0)),  // minecraft:breeze_wind_charge
-    (19, pick(1.7, 2.375, 0.0)),      // minecraft:camel
-    (20, pick(1.7, 2.375, 0.0)),      // minecraft:camel_husk
-    (21, pick(0.6, 0.7, 0.0)),        // minecraft:cat
-    (22, pick(0.7, 0.5, 0.0)),        // minecraft:cave_spider
-    (23, pick(1.375, 0.5625, 0.0)),   // minecraft:cherry_boat
-    (24, pick(1.375, 0.5625, 0.0)),   // minecraft:cherry_chest_boat
-    (25, pick(0.98, 0.7, 0.0)),       // minecraft:chest_minecart
-    (26, pick(0.4, 0.7, 0.0)),        // minecraft:chicken
-    (27, pick(0.5, 0.3, 0.0)),        // minecraft:cod
-    (28, pick(0.49, 0.98, 0.0)),      // minecraft:copper_golem
-    (29, pick(0.98, 0.7, 0.0)),       // minecraft:command_block_minecart
-    (30, pick(0.9, 1.4, 0.0)),        // minecraft:cow
-    (31, pick(0.9, 2.7, 0.0)),        // minecraft:creaking
-    (32, pick(0.6, 1.7, 0.0)),        // minecraft:creeper
-    (33, pick(1.375, 0.5625, 0.0)),   // minecraft:dark_oak_boat
-    (34, pick(1.375, 0.5625, 0.0)),   // minecraft:dark_oak_chest_boat
-    (35, pick(0.9, 0.6, 0.0)),        // minecraft:dolphin
-    (36, pick(1.3964844, 1.5, 0.0)),  // minecraft:donkey
-    (37, pick(1.0, 1.0, 0.0)),        // minecraft:dragon_fireball
-    (38, pick(0.6, 1.95, 0.0)),       // minecraft:drowned
-    (40, pick(1.9975, 1.9975, 0.0)),  // minecraft:elder_guardian
-    (41, pick(0.6, 2.9, 0.0)),        // minecraft:enderman
-    (42, pick(0.4, 0.3, 0.0)),        // minecraft:endermite
-    (45, pick(2.0, 2.0, 0.0)),        // minecraft:end_crystal
-    (46, pick(0.6, 1.95, 0.0)),       // minecraft:evoker
-    (47, pick(0.5, 0.8, 0.0)),        // minecraft:evoker_fangs
-    (49, pick(0.5, 0.5, 0.0)),        // minecraft:experience_orb
-    (51, pick(0.98, 0.98, 0.0)),      // minecraft:falling_block
-    (52, pick(1.0, 1.0, 0.0)),        // minecraft:fireball
-    (54, pick(0.6, 0.7, 0.0)),        // minecraft:fox
-    (55, pick(0.5, 0.5, 0.0)),        // minecraft:frog
-    (56, pick(0.98, 0.7, 0.0)),       // minecraft:furnace_minecart
-    (57, pick(4.0, 4.0, 0.0)),        // minecraft:ghast
-    (58, pick(4.0, 4.0, 0.0)),        // minecraft:happy_ghast
-    (59, pick(3.6, 12.0, 0.0)),       // minecraft:giant
-    (61, pick(0.8, 0.8, 0.0)),        // minecraft:glow_squid
-    (62, pick(0.9, 1.3, 0.0)),        // minecraft:goat
-    (63, pick(0.85, 0.85, 0.0)),      // minecraft:guardian
-    (64, pick(1.3964844, 1.4, 0.0)),  // minecraft:hoglin
-    (65, pick(0.98, 0.7, 0.0)),       // minecraft:hopper_minecart
-    (66, pick(1.3964844, 1.6, 0.0)),  // minecraft:horse
-    (67, pick(0.6, 1.95, 0.0)),       // minecraft:husk
-    (68, pick(0.6, 1.95, 0.0)),       // minecraft:illusioner
-    (70, pick(1.4, 2.7, 0.0)),        // minecraft:iron_golem
-    (74, pick(1.375, 0.5625, 0.0)),   // minecraft:jungle_boat
-    (75, pick(1.375, 0.5625, 0.0)),   // minecraft:jungle_chest_boat
-    (78, pick(0.9, 1.87, 0.0)),       // minecraft:llama
-    (79, pick(0.25, 0.25, 0.0)),      // minecraft:llama_spit
-    (80, pick(0.52, 0.52, 0.0)),      // minecraft:magma_cube
-    (81, pick(1.375, 0.5625, 0.0)),   // minecraft:mangrove_boat
-    (82, pick(1.375, 0.5625, 0.0)),   // minecraft:mangrove_chest_boat
-    (83, pick(0.6, 1.8, 0.0)),        // minecraft:mannequin
-    (85, pick(0.98, 0.7, 0.0)),       // minecraft:minecart
-    (86, pick(0.9, 1.4, 0.0)),        // minecraft:mooshroom
-    (87, pick(1.3964844, 1.6, 0.0)),  // minecraft:mule
-    (88, pick(0.875, 0.95, 0.0)),     // minecraft:nautilus
-    (89, pick(1.375, 0.5625, 0.0)),   // minecraft:oak_boat
-    (90, pick(1.375, 0.5625, 0.0)),   // minecraft:oak_chest_boat
-    (91, pick(0.6, 0.7, 0.0)),        // minecraft:ocelot
-    (94, pick(1.375, 0.5625, 0.0)),   // minecraft:pale_oak_boat
-    (95, pick(1.375, 0.5625, 0.0)),   // minecraft:pale_oak_chest_boat
-    (96, pick(1.3, 1.25, 0.0)),       // minecraft:panda
-    (97, pick(0.6, 1.99, 0.0)),       // minecraft:parched
-    (98, pick(0.5, 0.9, 0.0)),        // minecraft:parrot
-    (99, pick(0.9, 0.5, 0.0)),        // minecraft:phantom
-    (100, pick(0.9, 0.9, 0.0)),       // minecraft:pig
-    (101, pick(0.6, 1.95, 0.0)),      // minecraft:piglin
-    (102, pick(0.6, 1.95, 0.0)),      // minecraft:piglin_brute
-    (103, pick(0.6, 1.95, 0.0)),      // minecraft:pillager
-    (104, pick(1.4, 1.4, 0.0)),       // minecraft:polar_bear
-    (107, pick(0.7, 0.7, 0.0)),       // minecraft:pufferfish
-    (108, pick(0.49, 0.6, 0.0)),      // minecraft:rabbit
-    (109, pick(1.95, 2.2, 0.0)),      // minecraft:ravager
-    (110, pick(0.7, 0.4, 0.0)),       // minecraft:salmon
-    (111, pick(0.9, 1.3, 0.0)),       // minecraft:sheep
-    (112, pick(1.0, 1.0, 0.0)),       // minecraft:shulker
-    (113, pick(0.3125, 0.3125, 1.0)), // minecraft:shulker_bullet
-    (114, pick(0.4, 0.3, 0.0)),       // minecraft:silverfish
-    (115, pick(0.6, 1.99, 0.0)),      // minecraft:skeleton
-    (116, pick(1.3964844, 1.6, 0.0)), // minecraft:skeleton_horse
-    (117, pick(0.52, 0.52, 0.0)),     // minecraft:slime
-    (119, pick(1.9, 1.75, 0.0)),      // minecraft:sniffer
-    (121, pick(0.7, 1.9, 0.0)),       // minecraft:snow_golem
-    (122, pick(0.98, 0.7, 0.0)),      // minecraft:spawner_minecart
-    (123, pick(0.5, 0.5, 0.0)),       // minecraft:spectral_arrow
-    (124, pick(1.4, 0.9, 0.0)),       // minecraft:spider
-    (125, pick(1.375, 0.5625, 0.0)),  // minecraft:spruce_boat
-    (126, pick(1.375, 0.5625, 0.0)),  // minecraft:spruce_chest_boat
-    (127, pick(0.8, 0.8, 0.0)),       // minecraft:squid
-    (128, pick(0.6, 1.99, 0.0)),      // minecraft:stray
-    (129, pick(0.9, 1.7, 0.0)),       // minecraft:strider
-    (130, pick(0.4, 0.3, 0.0)),       // minecraft:tadpole
-    (132, pick(0.98, 0.98, 0.0)),     // minecraft:tnt
-    (133, pick(0.98, 0.7, 0.0)),      // minecraft:tnt_minecart
-    (134, pick(0.9, 1.87, 0.0)),      // minecraft:trader_llama
-    (135, pick(0.5, 0.5, 0.0)),       // minecraft:trident
-    (136, pick(0.5, 0.4, 0.0)),       // minecraft:tropical_fish
-    (137, pick(1.2, 0.4, 0.0)),       // minecraft:turtle
-    (138, pick(0.4, 0.8, 0.0)),       // minecraft:vex
-    (139, pick(0.6, 1.95, 0.0)),      // minecraft:villager
-    (140, pick(0.6, 1.95, 0.0)),      // minecraft:vindicator
-    (141, pick(0.6, 1.95, 0.0)),      // minecraft:wandering_trader
-    (142, pick(0.9, 2.9, 0.0)),       // minecraft:warden
-    (143, pick(0.3125, 0.3125, 0.0)), // minecraft:wind_charge
-    (144, pick(0.6, 1.95, 0.0)),      // minecraft:witch
-    (145, pick(0.9, 3.5, 0.0)),       // minecraft:wither
-    (146, pick(0.7, 2.4, 0.0)),       // minecraft:wither_skeleton
-    (147, pick(0.3125, 0.3125, 0.0)), // minecraft:wither_skull
-    (148, pick(0.6, 0.85, 0.0)),      // minecraft:wolf
-    (149, pick(1.3964844, 1.4, 0.0)), // minecraft:zoglin
-    (150, pick(0.6, 1.95, 0.0)),      // minecraft:zombie
-    (151, pick(1.3964844, 1.6, 0.0)), // minecraft:zombie_horse
-    (152, pick(0.875, 0.95, 0.0)),    // minecraft:zombie_nautilus
-    (153, pick(0.6, 1.95, 0.0)),      // minecraft:zombie_villager
-    (154, pick(0.6, 1.95, 0.0)),      // minecraft:zombified_piglin
-    (155, pick(0.6, 1.8, 0.0)),       // minecraft:player
+const VANILLA_ENTITY_PICKABLE_TYPE_IDS: &[i32] = &[
+    0,   // minecraft:acacia_boat
+    1,   // minecraft:acacia_chest_boat
+    2,   // minecraft:allay
+    4,   // minecraft:armadillo
+    5,   // minecraft:armor_stand
+    6,   // minecraft:arrow
+    7,   // minecraft:axolotl
+    8,   // minecraft:bamboo_chest_raft
+    9,   // minecraft:bamboo_raft
+    10,  // minecraft:bat
+    11,  // minecraft:bee
+    12,  // minecraft:birch_boat
+    13,  // minecraft:birch_chest_boat
+    14,  // minecraft:blaze
+    16,  // minecraft:bogged
+    17,  // minecraft:breeze
+    18,  // minecraft:breeze_wind_charge
+    19,  // minecraft:camel
+    20,  // minecraft:camel_husk
+    21,  // minecraft:cat
+    22,  // minecraft:cave_spider
+    23,  // minecraft:cherry_boat
+    24,  // minecraft:cherry_chest_boat
+    25,  // minecraft:chest_minecart
+    26,  // minecraft:chicken
+    27,  // minecraft:cod
+    28,  // minecraft:copper_golem
+    29,  // minecraft:command_block_minecart
+    30,  // minecraft:cow
+    31,  // minecraft:creaking
+    32,  // minecraft:creeper
+    33,  // minecraft:dark_oak_boat
+    34,  // minecraft:dark_oak_chest_boat
+    35,  // minecraft:dolphin
+    36,  // minecraft:donkey
+    37,  // minecraft:dragon_fireball
+    38,  // minecraft:drowned
+    40,  // minecraft:elder_guardian
+    41,  // minecraft:enderman
+    42,  // minecraft:endermite
+    45,  // minecraft:end_crystal
+    46,  // minecraft:evoker
+    47,  // minecraft:evoker_fangs
+    49,  // minecraft:experience_orb
+    51,  // minecraft:falling_block
+    52,  // minecraft:fireball
+    54,  // minecraft:fox
+    55,  // minecraft:frog
+    56,  // minecraft:furnace_minecart
+    57,  // minecraft:ghast
+    58,  // minecraft:happy_ghast
+    59,  // minecraft:giant
+    61,  // minecraft:glow_squid
+    62,  // minecraft:goat
+    63,  // minecraft:guardian
+    64,  // minecraft:hoglin
+    65,  // minecraft:hopper_minecart
+    66,  // minecraft:horse
+    67,  // minecraft:husk
+    68,  // minecraft:illusioner
+    70,  // minecraft:iron_golem
+    74,  // minecraft:jungle_boat
+    75,  // minecraft:jungle_chest_boat
+    78,  // minecraft:llama
+    79,  // minecraft:llama_spit
+    80,  // minecraft:magma_cube
+    81,  // minecraft:mangrove_boat
+    82,  // minecraft:mangrove_chest_boat
+    83,  // minecraft:mannequin
+    85,  // minecraft:minecart
+    86,  // minecraft:mooshroom
+    87,  // minecraft:mule
+    88,  // minecraft:nautilus
+    89,  // minecraft:oak_boat
+    90,  // minecraft:oak_chest_boat
+    91,  // minecraft:ocelot
+    94,  // minecraft:pale_oak_boat
+    95,  // minecraft:pale_oak_chest_boat
+    96,  // minecraft:panda
+    97,  // minecraft:parched
+    98,  // minecraft:parrot
+    99,  // minecraft:phantom
+    100, // minecraft:pig
+    101, // minecraft:piglin
+    102, // minecraft:piglin_brute
+    103, // minecraft:pillager
+    104, // minecraft:polar_bear
+    107, // minecraft:pufferfish
+    108, // minecraft:rabbit
+    109, // minecraft:ravager
+    110, // minecraft:salmon
+    111, // minecraft:sheep
+    112, // minecraft:shulker
+    113, // minecraft:shulker_bullet
+    114, // minecraft:silverfish
+    115, // minecraft:skeleton
+    116, // minecraft:skeleton_horse
+    117, // minecraft:slime
+    119, // minecraft:sniffer
+    121, // minecraft:snow_golem
+    122, // minecraft:spawner_minecart
+    123, // minecraft:spectral_arrow
+    124, // minecraft:spider
+    125, // minecraft:spruce_boat
+    126, // minecraft:spruce_chest_boat
+    127, // minecraft:squid
+    128, // minecraft:stray
+    129, // minecraft:strider
+    130, // minecraft:tadpole
+    132, // minecraft:tnt
+    133, // minecraft:tnt_minecart
+    134, // minecraft:trader_llama
+    135, // minecraft:trident
+    136, // minecraft:tropical_fish
+    137, // minecraft:turtle
+    138, // minecraft:vex
+    139, // minecraft:villager
+    140, // minecraft:vindicator
+    141, // minecraft:wandering_trader
+    142, // minecraft:warden
+    143, // minecraft:wind_charge
+    144, // minecraft:witch
+    145, // minecraft:wither
+    146, // minecraft:wither_skeleton
+    147, // minecraft:wither_skull
+    148, // minecraft:wolf
+    149, // minecraft:zoglin
+    150, // minecraft:zombie
+    151, // minecraft:zombie_horse
+    152, // minecraft:zombie_nautilus
+    153, // minecraft:zombie_villager
+    154, // minecraft:zombified_piglin
+    155, // minecraft:player
 ];

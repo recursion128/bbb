@@ -26,6 +26,8 @@ class EntityTypeEntry:
     allowed_in_peaceful: bool
     only_op_can_set_nbt: bool
     serializable: bool
+    width: float
+    height: float
     eye_height: float | None
 
 
@@ -230,6 +232,20 @@ def entity_type_entries(
         arguments = _register_arguments(source, field)
         if len(arguments) != 2:
             _fail(source, field.initializer, f"entity register has {len(arguments)} arguments")
+        sized_calls = _calls_in_expression(source, field.initializer, "sized")
+        if len(sized_calls) != 1:
+            _fail(
+                source,
+                field.initializer,
+                f"entity builder expected one sized call, found {len(sized_calls)}",
+            )
+        sized_call = sized_calls[0]
+        if len(sized_call.arguments) != 2:
+            _fail(source, source.expression(sized_call.node), "sized expects two arguments")
+        width = _float_literal(source, sized_call.arguments[0], "entity width")
+        height = _float_literal(source, sized_call.arguments[1], "entity height")
+        if width < 0.0 or height < 0.0:
+            _fail(source, source.expression(sized_call.node), "entity dimensions are negative")
         eye_height_calls = _calls_in_expression(source, field.initializer, "eyeHeight")
         if len(eye_height_calls) > 1:
             _fail(source, field.initializer, "entity builder has multiple eyeHeight calls")
@@ -246,6 +262,8 @@ def entity_type_entries(
                 not _calls_in_expression(source, field.initializer, "notInPeaceful"),
                 field.name in op_only_constants,
                 not _calls_in_expression(source, field.initializer, "noSave"),
+                width,
+                height,
                 eye_height,
             )
         )

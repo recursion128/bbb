@@ -12562,3 +12562,9 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] core registry Tree-sitter extractor 从 157 项 EntityType builder initializer 严格提取 101 个
   `.eyeHeight(float literal)`，非 literal/重复调用显式失败；protocol catalog 提供 typed optional query，
   world 删除 94 项手抄 override 表并保留 pose/scale 等运行时 eye-height semantic owner。
+
+## 2026-07-12：Generated entity dimensions
+
+- [x] core registry Tree-sitter extractor 严格闭合 157/157 项 `.sized(width, height)` literal 并生成
+  typed dimensions query；world pickable subset 保留独立行为 membership，但移除 133 项重复 width/height
+  数值，动态 pose/baby/scale bounds、redirectable tag 与 ShulkerBullet override 语义不变。

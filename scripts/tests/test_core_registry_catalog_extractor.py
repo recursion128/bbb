@@ -53,7 +53,7 @@ public class EntityType {
       "one", Builder.of(One::new).sized(1, 1).eyeHeight(1.25F));
   public static final EntityType<Two> TWO = register(
       "two", Builder.of(Two::new)
-          .notInPeaceful().noSave());
+          .sized(0.6F, 1.8F).notInPeaceful().noSave());
   private static final Set<EntityType<?>> OP_ONLY_CUSTOM_DATA = Set.of(TWO);
   private static String fake = ".notInPeaceful() register(\\\"fake\\\")";
 }
@@ -64,6 +64,7 @@ public class EntityType {
         self.assertEqual([entry.allowed_in_peaceful for entry in entries], [True, False])
         self.assertEqual([entry.only_op_can_set_nbt for entry in entries], [False, True])
         self.assertEqual([entry.serializable for entry in entries], [True, False])
+        self.assertEqual([(entry.width, entry.height) for entry in entries], [(1.0, 1.0), (0.6, 1.8)])
         self.assertEqual([entry.eye_height for entry in entries], [1.25, None])
 
     def test_entity_eye_height_rejects_non_literal_builder_values(self) -> None:
@@ -73,7 +74,7 @@ public class EntityType {
 package fixture;
 public class EntityType {
   public static final EntityType<One> ONE = register(
-      "one", Builder.of(One::new).eyeHeight(DEFAULT_EYE_HEIGHT));
+      "one", Builder.of(One::new).sized(1, 1).eyeHeight(DEFAULT_EYE_HEIGHT));
   private static final Set<EntityType<?>> OP_ONLY_CUSTOM_DATA = Set.of();
 }
 """,
@@ -81,6 +82,24 @@ public class EntityType {
         with self.assertRaisesRegex(
             CoreRegistryExtractionError,
             r"DynamicEntityEyeHeight\.java:\d+:\d+: eyeHeight is not a numeric literal",
+        ):
+            entity_type_entries(source, expected_count=1)
+
+    def test_entity_dimensions_reject_non_literal_builder_values(self) -> None:
+        source = parse_source(
+            "fixture/DynamicEntityDimensions.java",
+            b"""
+package fixture;
+public class EntityType {
+  public static final EntityType<One> ONE = register(
+      "one", Builder.of(One::new).sized(DEFAULT_WIDTH, 1));
+  private static final Set<EntityType<?>> OP_ONLY_CUSTOM_DATA = Set.of();
+}
+""",
+        )
+        with self.assertRaisesRegex(
+            CoreRegistryExtractionError,
+            r"DynamicEntityDimensions\.java:\d+:\d+: entity width is not a numeric literal",
         ):
             entity_type_entries(source, expected_count=1)
 
@@ -174,7 +193,7 @@ public class BadEntityType {
             b"""
 package fixture;
 public class EntityType {
-  public static final EntityType<One> ONE = register("one", Builder.of(One::new));
+  public static final EntityType<One> ONE = register("one", Builder.of(One::new).sized(1, 1));
   private static final Set<EntityType<?>> OP_ONLY_CUSTOM_DATA = Set.of(MISSING);
 }
 """,
