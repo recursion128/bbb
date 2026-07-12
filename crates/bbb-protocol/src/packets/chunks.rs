@@ -180,12 +180,18 @@ pub(crate) fn decode_block_entity_data(decoder: &mut Decoder<'_>) -> Result<Bloc
 }
 
 pub(crate) fn decode_block_event(decoder: &mut Decoder<'_>) -> Result<BlockEvent> {
-    Ok(BlockEvent {
+    let packet = BlockEvent {
         pos: decode_block_pos(decoder.read_i64()?),
         b0: decoder.read_u8()?,
         b1: decoder.read_u8()?,
         block_id: decoder.read_var_i32()?,
-    })
+    };
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after block event packet".to_string(),
+        ));
+    }
+    Ok(packet)
 }
 
 pub(crate) fn decode_block_update(decoder: &mut Decoder<'_>) -> Result<BlockUpdate> {

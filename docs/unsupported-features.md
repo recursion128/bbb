@@ -278,6 +278,10 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-pack` + `bbb-world`
   resolve entity types through session RegistryAccess, enforce the PlayerInfo
   gate for player creation, and cover every type-specific `recreateFromPacket`
   initialization and post-add client sound path.
+- Complete ClientLevel block-event dispatch for the remaining client
+  `triggerEvent` families (including piston and note-block behavior), resolving
+  the packet block holder through session RegistryAccess and validating it
+  against the current block before applying the event.
 
 Submission surfaces:
 

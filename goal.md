@@ -493,6 +493,7 @@ play AddEntity 的 id/uuid/type/position/LP velocity/rotation/data framing、str
 play BlockChangedAck 的 sequence framing、strict trailing、prediction reconciliation/player correction ownership 与 tests 已闭合，五维 complete。
 play BlockDestruction 的 id/position/progress framing、strict trailing、progress replace/remove/expiry ownership 与 tests 已闭合；剩余 full model-shaped crack decal parity 保持 runtime partial。
 play BlockEntityData 的 position/type/raw-NBT framing、world NBT validation、已实现 semantic projections、ownership 与 tests 已闭合；剩余 session registry/type gate、全部 typed Codec 与 block-entity runtime 保持 decode/canonical/runtime partial。
+play BlockEvent 的 position/b0/b1/block framing、strict trailing、已实现 trigger families、ownership 与 tests 已闭合；剩余 session registry/current-block validation 与其他 client triggerEvent families 保持 decode/canonical/runtime partial。
 
 完成标准：全部 vanilla 26.1 catalog entry 都有矩阵行；所有目标客户端适用项为
 `complete`，其余只有带 vanilla 依据的 `not-applicable` 或带重启判据的窄 `deferred`；

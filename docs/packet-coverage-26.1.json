@@ -5094,29 +5094,49 @@
       "constant_name": "CLIENTBOUND_BLOCK_EVENT",
       "coverage": {
         "canonical_apply": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
+          "evidence": [
+            "crates/bbb-world/src/block_events.rs#apply_block_event",
+            "crates/bbb-world/src/chest_lids.rs#block_event_opens_and_ticks_chest_lid_like_vanilla",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleBlockEvent"
+          ],
+          "gap": "docs/unsupported-features.md#renderer-scene-parity",
           "status": "partial"
         },
         "decode": {
-          "evidence": [],
+          "evidence": [
+            "crates/bbb-protocol/src/packets/chunks/tests.rs#decodes_block_ack_and_block_updates",
+            "vanilla:net/minecraft/network/protocol/game/ClientboundBlockEventPacket.java#STREAM_CODEC"
+          ],
           "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
           "status": "partial"
         },
         "ownership": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/play_apply.rs#PlayClientbound::BlockEvent"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "runtime_side_effect": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
+          "evidence": [
+            "crates/bbb-world/src/bell_blocks.rs#block_event_starts_and_ticks_the_shake_like_vanilla",
+            "crates/bbb-world/src/decorated_pot_blocks.rs#block_event_starts_and_expires_the_wobble_like_vanilla",
+            "crates/bbb-world/src/spawner_blocks.rs#spawner_block_event_resets_delay_to_min_spawn_delay",
+            "vanilla:net/minecraft/world/level/Level.java#blockEvent"
+          ],
+          "gap": "docs/unsupported-features.md#renderer-scene-parity",
           "status": "partial"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/chunks/tests.rs#decodes_block_ack_and_block_updates",
+            "crates/bbb-net/src/event_stream.rs#play_level_state_packets_emit_matching_events_without_responses",
+            "crates/bbb-net/src/probe/play.rs#probe_applies_block_and_level_events_to_world",
+            "crates/bbb-world/src/shulker_box_blocks.rs#block_event_opens_and_ticks_the_lid_like_vanilla",
+            "crates/bbb-native/src/runtime/events/tests/level_event_block_and_potion_sounds.rs#block_and_level_events_update_world_and_world_counters"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "clientbound",

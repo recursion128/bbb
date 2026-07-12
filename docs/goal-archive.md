@@ -11566,3 +11566,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] position/type/raw-NBT framing、world NBT validation、已实现 semantic projections、ownership 与跨 crate tests 有证据。
 - [x] session registry/type gate、全部 typed Codec 与 block-entity runtime 未完成，decode/canonical/runtime 保持 partial。
+
+## 2026-07-12：play block-event packet coverage audit
+
+- [x] position/b0/b1/block framing、strict trailing、已实现 trigger families、ownership 与跨 crate tests 有证据。
+- [x] session registry/current-block validation 与其他 client triggerEvent families 未完成，decode/canonical/runtime 保持 partial。
