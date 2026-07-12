@@ -29,7 +29,7 @@ const PLAYER_INPUT_SPRINT: u8 = 64;
 const LAST_SEEN_MESSAGES_BITSET_BITS: u32 = 20;
 const LAST_SEEN_MESSAGES_BITSET_BYTES: usize = 3;
 const EMPTY_LAST_SEEN_MESSAGES_CHECKSUM: u8 = 1;
-const ARGUMENT_SIGNATURE_BYTES: usize = 256;
+const MESSAGE_SIGNATURE_BYTES: usize = 256;
 const MAX_ARGUMENT_SIGNATURE_COUNT: usize = 8;
 const MAX_ARGUMENT_SIGNATURE_NAME_CHARS: usize = 16;
 const MAX_CHAT_MESSAGE_CHARS: usize = 256;
@@ -111,6 +111,8 @@ pub struct ChatMessage {
     pub message: String,
     pub timestamp_millis: i64,
     pub salt: i64,
+    #[serde(default)]
+    pub signature: Option<MessageSignature>,
     pub last_seen_messages: LastSeenMessagesUpdate,
 }
 
@@ -120,6 +122,7 @@ impl ChatMessage {
             message: message.into(),
             timestamp_millis,
             salt,
+            signature: None,
             last_seen_messages: LastSeenMessagesUpdate::default(),
         }
     }
@@ -727,7 +730,17 @@ pub fn encode_play_chat_message(packet: &ChatMessage) -> (i32, Vec<u8>) {
     out.write_string(&packet.message);
     out.write_i64(packet.timestamp_millis);
     out.write_i64(packet.salt);
-    out.write_bool(false);
+    match packet.signature.as_ref() {
+        Some(signature) => {
+            assert!(
+                signature.bytes.len() == MESSAGE_SIGNATURE_BYTES,
+                "chat message signature must be exactly 256 bytes"
+            );
+            out.write_bool(true);
+            out.write_bytes(&signature.bytes);
+        }
+        None => out.write_bool(false),
+    }
     encode_last_seen_messages_update(&mut out, packet.last_seen_messages);
     (ids::play::SERVERBOUND_CHAT, out.into_inner())
 }
@@ -745,7 +758,7 @@ fn encode_argument_signatures(out: &mut Encoder, signatures: &ArgumentSignatures
             "argument signature name exceeds vanilla maximum of 16 characters"
         );
         assert!(
-            entry.signature.bytes.len() == ARGUMENT_SIGNATURE_BYTES,
+            entry.signature.bytes.len() == MESSAGE_SIGNATURE_BYTES,
             "argument signature must be exactly 256 bytes"
         );
         out.write_string(&entry.name);

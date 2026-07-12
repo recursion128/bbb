@@ -3332,6 +3332,32 @@ mod tests {
         }
     }
 
+    #[test]
+    fn play_serverbound_chat_keeps_production_signature_and_echo_open() {
+        let ledger = vanilla_packet_coverage_26_1().unwrap();
+        let entry = ledger
+            .entries
+            .iter()
+            .find(|entry| entry.state == "play" && entry.constant_name == "SERVERBOUND_CHAT")
+            .expect("play serverbound chat coverage row");
+        let complete: BTreeSet<_> = entry
+            .coverage
+            .iter()
+            .filter_map(|(dimension, cell)| {
+                (cell.status == PacketCoverageStatus::Complete).then_some(dimension.as_str())
+            })
+            .collect();
+
+        assert_eq!(complete, BTreeSet::from(["encoder"]));
+        for dimension in ["ack_response", "command_surface", "state_guard", "tests"] {
+            assert_eq!(
+                entry.coverage[dimension].status,
+                PacketCoverageStatus::Partial,
+                "{dimension}"
+            );
+        }
+    }
+
     fn state_name(state: PacketState) -> &'static str {
         match state {
             PacketState::Handshake => "handshake",

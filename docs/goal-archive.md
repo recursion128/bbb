@@ -11776,3 +11776,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] `ServerboundChatCommandSignedPacket` 的 command/timestamp/salt、最多 8 个 16-char name + 256-byte signature、20-bit last-seen update wire 与发送路径已审计，encoder 单格闭合。
 - [x] production 能按 command tree 分流并携带 last-seen，但仍构造空 argument signatures；RemoteChatSession/key-backed per-argument signing 与 secure-server integration 继续由 signed-chat ledger 开放，未把 unsigned fallback 冒充完成。
+
+## 2026-07-12：play serverbound chat message packet coverage audit
+
+- [x] `ServerboundChatPacket` 的 256-char message、timestamp/salt、optional 256-byte signature 与 20-bit last-seen wire 已审计；补齐 bbb 此前缺失的 optional signature 字段/编码、非空 fixture 和错误长度拒绝，encoder 单格闭合。
+- [x] production chat 仍发送 `signature=None`；LocalChatSession/key-backed message signing、secure-server integration 和可信 PlayerChat echo/presentation 继续开放，其余四格保持 partial。

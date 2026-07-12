@@ -2688,28 +2688,57 @@
       "constant_name": "SERVERBOUND_CHAT",
       "coverage": {
         "ack_response": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "evidence": [
+            "crates/bbb-protocol/src/packets/chat.rs#decode_player_chat",
+            "crates/bbb-world/src/client/chat.rs#apply_player_chat",
+            "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#broadcastChatMessage"
+          ],
+          "gap": "docs/unsupported-features.md#signed-chat-and-chat-acknowledgement-production",
           "status": "partial"
         },
         "command_surface": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "evidence": [
+            "crates/bbb-native/src/input.rs#submit_chat_entry",
+            "crates/bbb-native/src/input/commands.rs#queue_chat_message_command",
+            "crates/bbb-net/src/driver/commands.rs#send_chat_message",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#sendChat"
+          ],
+          "gap": "docs/unsupported-features.md#signed-chat-and-chat-acknowledgement-production",
           "status": "partial"
         },
         "encoder": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/serverbound.rs#encode_play_chat_message",
+            "crates/bbb-protocol/src/packets/serverbound.rs#encode_last_seen_messages_update",
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_signed_chat_message_packet",
+            "crates/bbb-protocol/src/packets/tests.rs#rejects_invalid_chat_message_signature_length",
+            "vanilla:net/minecraft/network/protocol/game/ServerboundChatPacket.java#STREAM_CODEC"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "state_guard": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "evidence": [
+            "crates/bbb-native/src/input.rs#normalize_chat_entry",
+            "crates/bbb-protocol/src/packets/serverbound.rs#unsigned",
+            "crates/bbb-world/src/client/chat.rs#take_last_seen_messages_update_for_outbound_chat",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#sendChat",
+            "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#getSignedMessage"
+          ],
+          "gap": "docs/unsupported-features.md#signed-chat-and-chat-acknowledgement-production",
           "status": "partial"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "evidence": [
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_unsigned_chat_message_packet",
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_signed_chat_message_packet",
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_chat_message_last_seen_update_bitset_little_endian",
+            "crates/bbb-net/src/driver/commands/tests.rs#send_chat_message_encodes_unsigned_chat_packet",
+            "crates/bbb-native/src/input/commands.rs#queues_unsigned_chat_message",
+            "crates/bbb-native/src/input/tests.rs#chat_key_opens_chat_entry_and_submits_unsigned_message",
+            "crates/bbb-native/src/input/tests.rs#chat_key_submits_message_with_pending_last_seen_update"
+          ],
+          "gap": "docs/unsupported-features.md#signed-chat-and-chat-acknowledgement-production",
           "status": "partial"
         }
       },

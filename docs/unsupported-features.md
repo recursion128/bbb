@@ -168,7 +168,8 @@ Owner: `bbb-world` + `bbb-native` + `bbb-control`
 
 Owner: `bbb-protocol` + `bbb-net` + `bbb-world` + `bbb-native`
 
-- Produce `ServerboundChatPacket` signatures.
+- Produce `ServerboundChatPacket` signatures. The protocol encoder accepts the
+  optional 256-byte signature, but the production chat path still sends `None`.
 - Produce non-empty `ServerboundChatCommandSignedPacket` argument signatures.
 - Handle session/key state if offline-compatible servers require it.
 - On DeleteChat, disconnect for a packed signature that cannot be resolved,

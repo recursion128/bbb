@@ -1909,11 +1909,51 @@ fn rejects_oversized_unsigned_chat_message_packet() {
 }
 
 #[test]
+fn encodes_signed_chat_message_packet() {
+    let mut packet = ChatMessage::unsigned("hello", 1_717_986_918_300, 0x0102_0304_0506_0708);
+    packet.signature = Some(MessageSignature {
+        bytes: vec![0xab; 256],
+    });
+
+    let (id, payload) = encode_play_chat_message(&packet);
+
+    assert_eq!(id, ids::play::SERVERBOUND_CHAT);
+    let mut decoder = Decoder::new(&payload);
+    assert_eq!(decoder.read_string(256).unwrap(), "hello");
+    assert_eq!(decoder.read_i64().unwrap(), 1_717_986_918_300);
+    assert_eq!(decoder.read_i64().unwrap(), 0x0102_0304_0506_0708);
+    assert!(decoder.read_bool().unwrap());
+    assert_eq!(
+        decoder.read_exact(256, "chat message signature").unwrap(),
+        vec![0xab; 256]
+    );
+    assert_eq!(decoder.read_var_i32().unwrap(), 0);
+    assert_eq!(
+        decoder.read_exact(3, "last seen bitset").unwrap(),
+        &[0, 0, 0]
+    );
+    assert_eq!(decoder.read_u8().unwrap(), 1);
+    assert!(decoder.is_empty());
+}
+
+#[test]
+#[should_panic(expected = "chat message signature must be exactly 256 bytes")]
+fn rejects_invalid_chat_message_signature_length() {
+    let mut packet = ChatMessage::unsigned("hello", 1_717_986_918_300, 7);
+    packet.signature = Some(MessageSignature {
+        bytes: vec![0xab; 255],
+    });
+
+    let _ = encode_play_chat_message(&packet);
+}
+
+#[test]
 fn encodes_chat_message_last_seen_update_bitset_little_endian() {
     let (id, payload) = encode_play_chat_message(&ChatMessage {
         message: "hello".to_string(),
         timestamp_millis: 1_717_986_918_300,
         salt: 0x0102_0304_0506_0708,
+        signature: None,
         last_seen_messages: LastSeenMessagesUpdate {
             offset: 3,
             acknowledged: (1 << 0) | (1 << 8) | (1 << 19),
