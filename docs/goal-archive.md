@@ -11761,3 +11761,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] `ChangeDifficulty` / `ChangeGameMode` 的 enum-id VarInt wire、typed control 输入、F3+N/F3+F4 multiplayer permission gate、NetCommand/driver send 与服务端权限检查已审计。
 - [x] 发送请求不预写 canonical difficulty/game mode；成功状态分别只从 `ClientboundChangeDifficultyPacket` 和 `ClientboundGameEventPacket.CHANGE_GAME_MODE` 应用。DifficultyButtons 的 IntegratedServer-only UI 未引入 multiplayer client。
+
+## 2026-07-12：play serverbound chat acknowledgement packet coverage audit
+
+- [x] `ServerboundChatAckPacket` 的 VarInt offset wire、20-entry last-seen ring、重复签名抑制、filtered-message bit、`offset > 64` 自动发送与 outbound chat update 共享状态已闭合。
+- [x] play→configuration 转换前会先 flush 未满阈值的 pending offset；服务端只验证并推进 window，没有专用 response，未虚构确认状态。
