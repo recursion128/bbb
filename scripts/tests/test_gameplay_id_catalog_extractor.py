@@ -45,6 +45,7 @@ from gameplay_id_catalog_extractor import (  # noqa: E402
     recipe_wire_type_entries,
     remote_debug_sample_type_entries,
     sound_source_entries,
+    stat_catalog_entries,
     tropical_fish_pattern_entries,
     scoreboard_display_slot_entries,
     scoreboard_method_entries,
@@ -56,6 +57,43 @@ from vanilla_java_source import parse_source  # noqa: E402
 
 
 class GameplayIdCatalogExtractorTests(unittest.TestCase):
+    def test_stat_catalogs_extract_dispatch_registries_and_custom_formatters(self) -> None:
+        source = parse_source(
+            "fixture/Stats.java",
+            b"""package fixture;
+class Stats {
+ static final StatType<Block> BLOCK_MINED = makeRegistryStatType("mined", BuiltInRegistries.BLOCK);
+ static final StatType<Identifier> CUSTOM = makeRegistryStatType("custom", BuiltInRegistries.CUSTOM_STAT);
+ static final Identifier LEAVE_GAME = makeCustomStat("leave_game", StatFormatter.DEFAULT);
+ static final Identifier WALK_ONE_CM = makeCustomStat("walk_one_cm", StatFormatter.DISTANCE);
+}
+""",
+        )
+        types, custom = stat_catalog_entries(source, 2, 2)
+        self.assertEqual(
+            [(entry.resource_id, entry.value_registry) for entry in types],
+            [("minecraft:mined", "minecraft:block"), ("minecraft:custom", "minecraft:custom_stat")],
+        )
+        self.assertEqual(
+            [(entry.resource_id, entry.formatter) for entry in custom],
+            [("minecraft:leave_game", "DEFAULT"), ("minecraft:walk_one_cm", "DISTANCE")],
+        )
+
+    def test_stat_catalog_unknown_value_registry_fails_with_span(self) -> None:
+        source = parse_source(
+            "fixture/BadStats.java",
+            b"""package fixture;
+class BadStats {
+ static final StatType<Object> BAD = makeRegistryStatType("bad", BuiltInRegistries.UNKNOWN);
+}
+""",
+        )
+        with self.assertRaisesRegex(
+            GameplayIdExtractionError,
+            r"fixture/BadStats\.java:\d+:\d+: BAD has unsupported value registry",
+        ):
+            stat_catalog_entries(source, 1, 0)
+
     def test_register_fields_extract_builder_metadata_without_text_matching(self) -> None:
         attributes = parse_source(
             "fixture/Attributes.java",

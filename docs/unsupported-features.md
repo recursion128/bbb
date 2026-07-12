@@ -105,11 +105,11 @@ Owner: `bbb-protocol`
   the full client lifecycle.
 - Recompute vanilla fuel values and creative search-tree tag membership after
   play UpdateTags reloads, following `ClientPacketListener.handleUpdateTags`.
-- Resolve AwardStats `StatType` and type-specific value holder ids through the
-  session RegistryAccess, retain their resource identities/formatters, and
-  render the category/general/item/mob StatsScreen tabs. The current canonical
-  store preserves numeric pairs and amounts, while the native screen remains a
-  loading shell; neither is registry-aware statistics presentation.
+- Render AwardStats in the category/general/item/mob StatsScreen tabs, including
+  localized names, formatter output, sorting and scrolling. Canonical state now
+  resolves `StatType` and type-specific value holders through session registry
+  identity and retains explicit unresolved entries; the native screen remains a
+  loading shell.
 - Resolve UpdateAttributes holder ids through that session RegistryAccess and
   validate each snapshot against the target living entity's actual AttributeMap
   instance set; do not accept arbitrary fixed-id attributes on every living type.

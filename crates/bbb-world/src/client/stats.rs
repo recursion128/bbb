@@ -8,6 +8,8 @@ pub struct ClientStatsState {
     #[serde(default)]
     pub values: Vec<StatValueState>,
     #[serde(default)]
+    pub identities: Vec<StatIdentityState>,
+    #[serde(default)]
     pub last_update: Option<StatsUpdateState>,
 }
 
@@ -23,6 +25,16 @@ pub struct StatValueState {
     pub amount: i32,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct StatIdentityState {
+    pub stat_type_id: i32,
+    pub value_id: i32,
+    pub stat_type_resource_id: Option<String>,
+    pub value_registry: Option<String>,
+    pub value_resource_id: Option<String>,
+    pub formatter: Option<String>,
+}
+
 impl WorldStore {
     pub fn apply_award_stats(&mut self, packet: ProtocolAwardStats) {
         self.counters.award_stats_packets += 1;
@@ -36,6 +48,8 @@ impl WorldStore {
                 amount: stat.amount,
             };
             upsert_stat_value(&mut self.client_stats.values, state);
+            let identity = self.resolve_stat_identity(stat.stat_type_id, stat.value_id);
+            upsert_stat_identity(&mut self.client_stats.identities, identity);
             last_entries.push(state);
         }
 
@@ -65,6 +79,43 @@ impl WorldStore {
     pub fn last_stats_update(&self) -> Option<&StatsUpdateState> {
         self.client_stats.last_update.as_ref()
     }
+
+    pub fn stat_identity(&self, stat_type_id: i32, value_id: i32) -> Option<&StatIdentityState> {
+        self.client_stats
+            .identities
+            .iter()
+            .find(|identity| identity.stat_type_id == stat_type_id && identity.value_id == value_id)
+    }
+
+    fn resolve_stat_identity(&self, stat_type_id: i32, value_id: i32) -> StatIdentityState {
+        let stat_type_resource_id = self
+            .registry_resource_id_by_holder_id("minecraft:stat_type", stat_type_id)
+            .map(str::to_owned);
+        let descriptor = stat_type_resource_id
+            .as_deref()
+            .and_then(bbb_protocol::stat_types::vanilla_stat_type_by_resource_id);
+        let value_registry = descriptor.map(|descriptor| descriptor.value_registry.to_string());
+        let value_resource_id = value_registry
+            .as_deref()
+            .and_then(|registry| self.registry_resource_id_by_holder_id(registry, value_id))
+            .map(str::to_owned);
+        let formatter = (value_registry.as_deref() == Some("minecraft:custom_stat"))
+            .then(|| {
+                value_resource_id
+                    .as_deref()
+                    .and_then(bbb_protocol::stat_types::vanilla_custom_stat_by_resource_id)
+                    .map(|entry| entry.formatter.to_string())
+            })
+            .flatten();
+        StatIdentityState {
+            stat_type_id,
+            value_id,
+            stat_type_resource_id,
+            value_registry,
+            value_resource_id,
+            formatter,
+        }
+    }
 }
 
 fn upsert_stat_value(values: &mut Vec<StatValueState>, state: StatValueState) {
@@ -76,9 +127,19 @@ fn upsert_stat_value(values: &mut Vec<StatValueState>, state: StatValueState) {
     }
 }
 
+fn upsert_stat_identity(values: &mut Vec<StatIdentityState>, state: StatIdentityState) {
+    match values.binary_search_by_key(&(state.stat_type_id, state.value_id), |value| {
+        (value.stat_type_id, value.value_id)
+    }) {
+        Ok(index) => values[index] = state,
+        Err(index) => values.insert(index, state),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::RegistryPacketEntry;
     use bbb_protocol::packets::{AwardStats, StatUpdate};
 
     #[test]
@@ -108,6 +169,23 @@ mod tests {
         assert_eq!(store.stat_value(8, 10), Some(5));
         assert_eq!(store.stat_value(0, 4), Some(11));
         assert_eq!(store.stat_value(1, 4), None);
+        assert_eq!(
+            store.stat_identity(8, 10),
+            Some(&StatIdentityState {
+                stat_type_id: 8,
+                value_id: 10,
+                stat_type_resource_id: Some("minecraft:custom".to_string()),
+                value_registry: Some("minecraft:custom_stat".to_string()),
+                value_resource_id: Some("minecraft:fall_one_cm".to_string()),
+                formatter: Some("DISTANCE".to_string()),
+            })
+        );
+        assert!(store.stat_identity(0, 4).is_some_and(|identity| identity
+            .stat_type_resource_id
+            .as_deref()
+            == Some("minecraft:mined")
+            && identity.value_registry.as_deref() == Some("minecraft:block")
+            && identity.value_resource_id.is_some()));
         assert_eq!(
             store.client_stats().values,
             vec![
@@ -178,5 +256,79 @@ mod tests {
         assert_eq!(counters.award_stats_entries_received, 1);
         assert_eq!(counters.last_award_stats_entry_count, 0);
         assert_eq!(counters.stats_tracked, 1);
+    }
+
+    #[test]
+    fn award_stats_retains_explicit_unresolved_identity_without_guessing() {
+        let mut store = WorldStore::new();
+        store.apply_award_stats(AwardStats {
+            stats: vec![StatUpdate {
+                stat_type_id: 99,
+                value_id: 123,
+                amount: 7,
+            }],
+        });
+
+        assert_eq!(store.stat_value(99, 123), Some(7));
+        assert_eq!(
+            store.stat_identity(99, 123),
+            Some(&StatIdentityState {
+                stat_type_id: 99,
+                value_id: 123,
+                stat_type_resource_id: None,
+                value_registry: None,
+                value_resource_id: None,
+                formatter: None,
+            })
+        );
+    }
+
+    #[test]
+    fn award_stats_resolves_reordered_session_holder_identity() {
+        let mut store = WorldStore::new();
+        store.record_registry_entries(
+            "minecraft:stat_type",
+            0,
+            vec![RegistryPacketEntry {
+                id: "minecraft:custom".to_string(),
+                has_data: false,
+                raw_data_len: 0,
+                raw_data: None,
+                nbt: None,
+            }],
+        );
+        store.record_registry_entries(
+            "minecraft:custom_stat",
+            0,
+            vec![RegistryPacketEntry {
+                id: "minecraft:walk_one_cm".to_string(),
+                has_data: false,
+                raw_data_len: 0,
+                raw_data: None,
+                nbt: None,
+            }],
+        );
+        store.apply_award_stats(AwardStats {
+            stats: vec![StatUpdate {
+                stat_type_id: 0,
+                value_id: 0,
+                amount: 250,
+            }],
+        });
+
+        let identity = store.stat_identity(0, 0).unwrap();
+        assert_eq!(
+            identity.stat_type_resource_id.as_deref(),
+            Some("minecraft:custom")
+        );
+        assert_eq!(
+            identity.value_registry.as_deref(),
+            Some("minecraft:custom_stat")
+        );
+        assert_eq!(
+            identity.value_resource_id.as_deref(),
+            Some("minecraft:walk_one_cm")
+        );
+        assert_eq!(identity.formatter.as_deref(), Some("DISTANCE"));
     }
 }

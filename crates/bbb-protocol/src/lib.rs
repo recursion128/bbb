@@ -55,6 +55,7 @@ pub mod scoreboard_display_slots;
 pub mod scoreboard_methods;
 pub mod scoreboard_team_options;
 pub mod sound_sources;
+pub mod stat_types;
 pub mod tropical_fish_patterns;
 pub mod waypoint_wire_types;
 pub mod world_clock_types;

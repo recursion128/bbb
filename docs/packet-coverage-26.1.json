@@ -6429,10 +6429,11 @@
         "canonical_apply": {
           "evidence": [
             "crates/bbb-world/src/client/stats.rs#apply_award_stats",
+            "crates/bbb-world/src/client/stats.rs#resolve_stat_identity",
             "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleAwardStats"
           ],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "decode": {
           "evidence": [
@@ -6461,6 +6462,8 @@
           "evidence": [
             "crates/bbb-protocol/src/packets/tests.rs#decodes_award_stats",
             "crates/bbb-world/src/client/stats.rs#award_stats_updates_canonical_values_and_last_batch",
+            "crates/bbb-world/src/client/stats.rs#award_stats_resolves_reordered_session_holder_identity",
+            "crates/bbb-world/src/client/stats.rs#award_stats_retains_explicit_unresolved_identity_without_guessing",
             "crates/bbb-net/src/probe/play.rs#probe_applies_award_stats_to_world",
             "crates/bbb-native/src/runtime/events/tests/session_protocol_events.rs#award_stats_event_updates_world_state_and_world_counters"
           ],

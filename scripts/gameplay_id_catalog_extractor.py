@@ -179,6 +179,22 @@ class WorldClockEntry:
 
 
 @dataclass(frozen=True)
+class StatTypeEntry:
+    constant_name: str
+    type_id: int
+    resource_id: str
+    value_registry: str
+
+
+@dataclass(frozen=True)
+class CustomStatEntry:
+    constant_name: str
+    value_id: int
+    resource_id: str
+    formatter: str
+
+
+@dataclass(frozen=True)
 class ObjectiveRenderTypeEntry:
     constant_name: str
     ordinal: int
@@ -959,6 +975,66 @@ def world_clock_entries(
     _validate(entries, "world clock", "clock_id")
     _validate(entries, "world clock", "resource_id")
     return entries
+
+
+def stat_catalog_entries(
+    source: JavaSource,
+    expected_type_count: int = 9,
+    expected_custom_count: int = 77,
+) -> tuple[list[StatTypeEntry], list[CustomStatEntry]]:
+    registry_names = {
+        "BuiltInRegistries.BLOCK": "minecraft:block",
+        "BuiltInRegistries.ITEM": "minecraft:item",
+        "BuiltInRegistries.ENTITY_TYPE": "minecraft:entity_type",
+        "BuiltInRegistries.CUSTOM_STAT": "minecraft:custom_stat",
+    }
+    types = []
+    for field in _fields(source, "StatType<"):
+        initializer = field.initializer
+        if initializer is None or initializer.node.type != "method_invocation":
+            expression = initializer or JavaExpression("", field.span, field.node)
+            _fail(source, expression, f"{field.name} lacks makeRegistryStatType")
+        name = initializer.node.child_by_field_name("name")
+        arguments = initializer.node.child_by_field_name("arguments")
+        if name is None or arguments is None or source.text(name) != "makeRegistryStatType":
+            _fail(source, initializer, f"{field.name} is not initialized by makeRegistryStatType")
+        call_arguments = tuple(source.expression(node) for node in arguments.named_children)
+        if len(call_arguments) != 2:
+            _fail(source, initializer, f"{field.name} stat type call must have two arguments")
+        registry = registry_names.get(call_arguments[1].canonical)
+        if registry is None:
+            _fail(source, call_arguments[1], f"{field.name} has unsupported value registry")
+        types.append(StatTypeEntry(
+            field.name, len(types), "minecraft:" + _string(source, call_arguments[0]), registry
+        ))
+    custom = []
+    for field in _fields(source, "Identifier"):
+        initializer = field.initializer
+        if initializer is None or initializer.node.type != "method_invocation":
+            continue
+        name = initializer.node.child_by_field_name("name")
+        arguments = initializer.node.child_by_field_name("arguments")
+        if name is None or arguments is None or source.text(name) != "makeCustomStat":
+            continue
+        call_arguments = tuple(source.expression(node) for node in arguments.named_children)
+        if len(call_arguments) != 2:
+            _fail(source, initializer, f"{field.name} custom stat call must have two arguments")
+        formatter = call_arguments[1].canonical.removeprefix("StatFormatter.")
+        if formatter not in {"DEFAULT", "TIME", "DISTANCE", "DIVIDE_BY_TEN"}:
+            _fail(source, call_arguments[1], f"{field.name} has unsupported formatter")
+        custom.append(CustomStatEntry(
+            field.name, len(custom), "minecraft:" + _string(source, call_arguments[0]), formatter
+        ))
+    if len(types) != expected_type_count or len(custom) != expected_custom_count:
+        raise GameplayIdExtractionError(
+            f"expected {expected_type_count} stat types/{expected_custom_count} custom stats, "
+            f"extracted {len(types)}/{len(custom)}"
+        )
+    _validate(types, "stat type", "type_id")
+    _validate(types, "stat type", "resource_id")
+    _validate(custom, "custom stat", "value_id")
+    _validate(custom, "custom stat", "resource_id")
+    return types, custom
 
 
 def objective_render_type_entries(

@@ -12785,3 +12785,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] renderer 实现每列最多 20 行的居中布局、header/footer `screenWidth-50` plain-text 换行、共享
   背景宽度、player row 与 vanilla ping threshold 柱状 fallback。TabList runtime coverage complete；
   rich Component、player head、LIST objective、narrator 与原版 ping sprite 仍明确开放。
+
+## 2026-07-12：AwardStats registry identity
+
+- [x] gameplay-id generator 通过共享 Tree-sitter frontend 从 vanilla `Stats.java` 机械生成 9 项
+  StatType dispatch registry 与 77 项 custom-stat id/resource/formatter catalog；普通 Cargo build/test
+  只消费 checked-in `stat_types.rs`，不读取工作区外源码。
+- [x] RegistrySet 增加 `minecraft:stat_type` / `minecraft:custom_stat` static fallback；AwardStats 按
+  session holder identity 先解 type、再由 descriptor 选择 block/item/entity/custom registry 解 value，
+  并保留 formatter。重排 session registry 有测试，未知 type/value 显式保留 unresolved identity，
+  不猜默认资源名。canonical coverage complete；StatsScreen tabs 仍在 runtime ledger 开放。
