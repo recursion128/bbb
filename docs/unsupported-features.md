@@ -152,6 +152,10 @@ Owner: `bbb-protocol` + `bbb-net` + `bbb-world` + `bbb-native`
 - Produce `ServerboundChatPacket` signatures.
 - Produce non-empty `ServerboundChatCommandSignedPacket` argument signatures.
 - Handle session/key state if offline-compatible servers require it.
+- On DeleteChat, disconnect for a packed signature that cannot be resolved,
+  remove matching delayed-listener messages, and replace the visible message
+  with vanilla's deleted marker no earlier than 60 GUI ticks after insertion.
+  The current resolved-signature diagnostic record is not visible chat deletion.
 
 ## Crosshair entity interaction parity
 

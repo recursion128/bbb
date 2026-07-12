@@ -6351,29 +6351,49 @@
       "constant_name": "CLIENTBOUND_DELETE_CHAT",
       "coverage": {
         "canonical_apply": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
+          "evidence": [
+            "crates/bbb-world/src/client/chat.rs#apply_delete_chat",
+            "crates/bbb-world/src/client/chat.rs#delete_chat_resolves_cached_signature",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleDeleteChat"
+          ],
+          "gap": "docs/unsupported-features.md#signed-chat-and-chat-acknowledgement-production",
           "status": "partial"
         },
         "decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/chat/tests.rs#decodes_delete_chat_with_full_signature",
+            "crates/bbb-protocol/src/packets/chat/tests.rs#rejects_negative_packed_message_signature_id",
+            "vanilla:net/minecraft/network/protocol/game/ClientboundDeleteChatPacket.java#STREAM_CODEC"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "ownership": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/play_apply.rs#PlayClientbound::DeleteChat"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "runtime_side_effect": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
+          "evidence": [
+            "crates/bbb-world/src/client/chat.rs#delete_chat_ignores_pending_full_signature_for_last_seen_updates",
+            "vanilla:net/minecraft/client/gui/components/ChatComponent.java#deleteMessage"
+          ],
+          "gap": "docs/unsupported-features.md#signed-chat-and-chat-acknowledgement-production",
           "status": "partial"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/chat/tests.rs#decodes_delete_chat_with_full_signature",
+            "crates/bbb-net/src/event_stream.rs#play_command_and_chat_packets_emit_matching_events_without_responses",
+            "crates/bbb-net/src/probe/play.rs#probe_applies_delete_and_disguised_chat_to_world",
+            "crates/bbb-world/src/client/chat.rs#delete_chat_resolves_cached_signature",
+            "crates/bbb-world/src/client/chat.rs#delete_chat_ignores_pending_full_signature_for_last_seen_updates",
+            "crates/bbb-native/src/runtime/events/tests/session_protocol_events.rs#client_chat_events_update_world_and_world_counters"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "clientbound",

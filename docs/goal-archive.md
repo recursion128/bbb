@@ -11606,3 +11606,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] bounded long-array/type ordinal/strict trailing、F3+2 subscription、240-sample TPS presentation 与跨 crate tests 闭合。
 - [x] typed tick-time sample path 与 raw registry-dispatched debug subscription 缺口保持分离。
+
+## 2026-07-12：play delete chat packet coverage audit
+
+- [x] packed signature/strict trailing、signature-cache resolution、pending last-seen ignore 与跨 crate tests 闭合。
+- [x] invalid-cache disconnect、delayed listener removal 与 60-GUI-tick deleted marker 未完成，canonical/runtime 保持 partial。

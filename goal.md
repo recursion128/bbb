@@ -501,6 +501,7 @@ play Commands 的 bounded nodes/children、flags/redirect/parser properties/sugg
 play CustomPayload 的 Brand/Discarded gameplay framing、1 MiB 上限、canonical server brand/diagnostics 与跨 crate tests 已闭合；仅 vanilla telemetry brand callback 保持 runtime partial。
 play DebugBlock/Chunk/EntityValue 与 DebugEvent 的位置/target framing、bounded raw diagnostics、ownership 与跨 crate tests 已审计；registry-aware subscription/event decode、game-time expiry 与 debug renderer consumer 未实现，decode/canonical/runtime 保持 partial。
 play DebugSample 的 bounded long-array/type ordinal/strict trailing、F3+2 subscription、240-sample TPS presentation 与跨 crate tests 已闭合。
+play DeleteChat 的 packed signature/strict trailing、signature-cache resolution、pending last-seen ignore 与跨 crate tests 已闭合；invalid-cache disconnect、delayed listener removal 与 60-GUI-tick deleted marker 保持 canonical/runtime partial。
 
 完成标准：全部 vanilla 26.1 catalog entry 都有矩阵行；所有目标客户端适用项为
 `complete`，其余只有带 vanilla 依据的 `not-applicable` 或带重启判据的窄 `deferred`；
