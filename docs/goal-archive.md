@@ -11841,3 +11841,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] Brand typed payload、unknown/discarded raw payload、resource id、32767-byte raw 上限、play-only NetCommand/driver 发送已审计；补齐非法 id 与超过 32767 UTF-16 units brand 的 encoder 拒绝门禁并全行闭合。
 - [x] vanilla 26.1 serverbound registry 只有 Brand codec，play/common server handler 均为 no-op 且无专用 response；未知 payload 不被冒充为领域语义支持。
+
+## 2026-07-12：play serverbound debug subscription request coverage audit
+
+- [x] holder-set wire、`dedicated_server_tick_time` registry id 0、empty/unsubscribe、F3+2/TPS sampler dedup/reset 与 typed DebugSample response 已审计。
+- [x] 其余 15 个 vanilla debug subscription 的 set encoder、typed block/chunk/entity/event decode、game-time expiry/drop 与 renderer consumers 仍开放；五格保持 partial，没有以 tick-time 单项外推整个 registry family。
