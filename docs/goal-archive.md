@@ -12621,3 +12621,9 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] world 导出既有 generated AbstractWindCharge membership；world pick/lifecycle 与 native
   entity-scene/F3+I 删除 BreezeWindCharge/WindCharge 平行判断，具体 projectile 行为、模型算法与
   persistent 字段编码仍由原 semantic owner 手写。
+
+## 2026-07-12：Shared generated hurting-projectile membership
+
+- [x] world 导出既有 generated AbstractHurtingProjectile membership；native F3+I 对 6 个
+  subtype 统一写入可观察的 projectile 基类字段，Fireball/SmallFireball/WitherSkull 分支只保留
+  各自额外编码，不引入命中、爆炸或服务端权威模拟。

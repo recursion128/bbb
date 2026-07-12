@@ -11493,12 +11493,26 @@ fn wind_charge_dispatch_uses_the_world_generated_catalog() {
 
     assert!(include_str!("../entity_scene/kind.rs")
         .contains("bbb_world::vanilla_entity_type_is_wind_charge(entity_type_id)"));
-    assert!(include_str!("../input.rs")
-        .contains("bbb_world::vanilla_entity_type_is_wind_charge(entity.entity_type_id)"));
     assert!(
         include_str!("../../../bbb-world/src/entities/projectiles.rs")
             .contains("super::vanilla_entity_type_is_wind_charge(entity_type_id)")
     );
+}
+
+#[test]
+fn hurting_projectile_save_dispatch_uses_the_world_generated_catalog() {
+    for entry in bbb_world::VANILLA_ENTITY_TYPE_METADATA_26_1 {
+        assert_eq!(
+            bbb_world::vanilla_entity_type_is_hurting_projectile(entry.entity_type_id),
+            entry.is_hurting_projectile,
+            "hurting-projectile membership for {}",
+            entry.resource_id
+        );
+    }
+
+    assert!(include_str!("../input.rs").contains(
+        "if bbb_world::vanilla_entity_type_is_hurting_projectile(entity.entity_type_id)"
+    ));
 }
 
 #[test]
