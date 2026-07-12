@@ -11946,3 +11946,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] vanilla wire 已锁定为 entity VarInt + UTF command + track-output bool；编辑器从 minecart synced command/last-output metadata 预载，服务端仍拥有 game-master permission、entity-type、command-block-enabled 与 command execution 权威。
 - [x] bbb 当前仅有 generated packet/metadata catalog 条目，无 command-minecart metadata consumer、typed encoder/net command/editor/guards/focused tests；五维保持 partial，并新增明确 unsupported gap。
+
+## 2026-07-12：play serverbound set-creative-mode-slot coverage audit
+
+- [x] signed-short slot + validated optional-untrusted ItemStack wire、`HAS_INFINITE_MATERIALS` codec context、server slot/item/feature/drop-throttle authority 已与 vanilla 反向核对；最终 inventory 仍以 server broadcasts 为准。
+- [x] bbb 已有 maintenance command 与 componentless/empty-stack encoder，但无 CreativeModeInventoryScreen、infinite-materials runtime gate、clone/drop UI lifecycle，且 summarized component patch 会安全拒绝；五维保持 partial，未将安全子集误标完整支持。
