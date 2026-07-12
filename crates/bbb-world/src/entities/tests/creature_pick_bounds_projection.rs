@@ -1,4 +1,5 @@
 use super::*;
+use bbb_protocol::entity_poses::VANILLA_ENTITY_POSE_SLEEPING_ID;
 
 #[test]
 fn ender_dragon_pick_targets_use_vanilla_part_ids_and_bounds() {
@@ -875,7 +876,7 @@ fn local_player_is_sleeping_true_for_sleeping_local_entity() {
         id: 32,
         values: vec![protocol_pose_data(
             super::dimensions::ENTITY_DATA_POSE_ID,
-            super::dimensions::VANILLA_POSE_SLEEPING_ID,
+            VANILLA_ENTITY_POSE_SLEEPING_ID,
         )],
     }));
 
@@ -893,7 +894,7 @@ fn local_player_is_sleeping_false_without_local_id_or_entity() {
         id: 32,
         values: vec![protocol_pose_data(
             super::dimensions::ENTITY_DATA_POSE_ID,
-            super::dimensions::VANILLA_POSE_SLEEPING_ID,
+            VANILLA_ENTITY_POSE_SLEEPING_ID,
         )],
     }));
     assert!(!store.local_player_is_sleeping());

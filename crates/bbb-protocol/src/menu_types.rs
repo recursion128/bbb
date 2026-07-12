@@ -237,7 +237,6 @@ mod tests {
                 }
             }
         }
-
         let crates = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
         let mut violations = Vec::new();
         for path in [

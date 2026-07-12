@@ -3,19 +3,12 @@ use bbb_protocol::attribute_modifier_types::{
     VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_MULTIPLIED_TOTAL_ID,
 };
 use bbb_protocol::attribute_types::VANILLA_ATTRIBUTE_SCALE_ID;
-pub(crate) use bbb_protocol::entity_poses::{
-    VANILLA_ENTITY_POSE_CROUCHING_ID as VANILLA_POSE_CROUCHING_ID,
-    VANILLA_ENTITY_POSE_SLEEPING_ID as VANILLA_POSE_SLEEPING_ID,
-};
 use bbb_protocol::entity_poses::{
-    VANILLA_ENTITY_POSE_DIGGING_ID as VANILLA_POSE_DIGGING_ID,
-    VANILLA_ENTITY_POSE_DYING_ID as VANILLA_POSE_DYING_ID,
-    VANILLA_ENTITY_POSE_EMERGING_ID as VANILLA_POSE_EMERGING_ID,
-    VANILLA_ENTITY_POSE_FALL_FLYING_ID as VANILLA_POSE_FALL_FLYING_ID,
-    VANILLA_ENTITY_POSE_LONG_JUMPING_ID as VANILLA_POSE_LONG_JUMPING_ID,
-    VANILLA_ENTITY_POSE_SITTING_ID as VANILLA_POSE_SITTING_ID,
-    VANILLA_ENTITY_POSE_SPIN_ATTACK_ID as VANILLA_POSE_SPIN_ATTACK_ID,
-    VANILLA_ENTITY_POSE_SWIMMING_ID as VANILLA_POSE_SWIMMING_ID,
+    VANILLA_ENTITY_POSE_CROUCHING_ID, VANILLA_ENTITY_POSE_DIGGING_ID, VANILLA_ENTITY_POSE_DYING_ID,
+    VANILLA_ENTITY_POSE_EMERGING_ID, VANILLA_ENTITY_POSE_FALL_FLYING_ID,
+    VANILLA_ENTITY_POSE_LONG_JUMPING_ID, VANILLA_ENTITY_POSE_SITTING_ID,
+    VANILLA_ENTITY_POSE_SLEEPING_ID, VANILLA_ENTITY_POSE_SPIN_ATTACK_ID,
+    VANILLA_ENTITY_POSE_SWIMMING_ID,
 };
 use bbb_protocol::packets::{
     AttributeSnapshot, EntityDataEnumSerializer, EntityDataValue, EntityDataValueKind,
@@ -702,11 +695,15 @@ fn interaction_pick_bounds(data_values: &[EntityDataValue]) -> EntityPickBoundsS
 
 fn avatar_pick_bounds(data_values: &[EntityDataValue]) -> EntityPickBoundsState {
     match entity_data_pose(data_values) {
-        VANILLA_POSE_SLEEPING_ID | VANILLA_POSE_DYING_ID => living_sleeping_pick_bounds(),
-        VANILLA_POSE_FALL_FLYING_ID | VANILLA_POSE_SWIMMING_ID | VANILLA_POSE_SPIN_ATTACK_ID => {
+        VANILLA_ENTITY_POSE_SLEEPING_ID | VANILLA_ENTITY_POSE_DYING_ID => {
+            living_sleeping_pick_bounds()
+        }
+        VANILLA_ENTITY_POSE_FALL_FLYING_ID
+        | VANILLA_ENTITY_POSE_SWIMMING_ID
+        | VANILLA_ENTITY_POSE_SPIN_ATTACK_ID => {
             EntityPickBoundsState::from_base_size(0.6, 0.6, 0.0)
         }
-        VANILLA_POSE_CROUCHING_ID => EntityPickBoundsState::from_base_size(0.6, 1.5, 0.0),
+        VANILLA_ENTITY_POSE_CROUCHING_ID => EntityPickBoundsState::from_base_size(0.6, 1.5, 0.0),
         _ => EntityPickBoundsState::from_base_size(0.6, 1.8, 0.0),
     }
 }
@@ -719,7 +716,7 @@ fn camel_pick_bounds(
     entity_type_id: i32,
     data_values: &[EntityDataValue],
 ) -> EntityPickBoundsState {
-    let height = if entity_data_pose(data_values) == VANILLA_POSE_SITTING_ID {
+    let height = if entity_data_pose(data_values) == VANILLA_ENTITY_POSE_SITTING_ID {
         2.375 - CAMEL_SITTING_HEIGHT_DIFFERENCE
     } else {
         2.375
@@ -821,7 +818,7 @@ fn camel_body_anchor_animation_y_offset(
 }
 
 fn goat_pick_bounds(data_values: &[EntityDataValue]) -> EntityPickBoundsState {
-    let bounds = if entity_data_pose(data_values) == VANILLA_POSE_LONG_JUMPING_ID {
+    let bounds = if entity_data_pose(data_values) == VANILLA_ENTITY_POSE_LONG_JUMPING_ID {
         EntityPickBoundsState::from_base_size(0.9, 1.3, 0.0)
             .scale_dimensions(GOAT_LONG_JUMPING_SCALE)
     } else {
@@ -1027,7 +1024,7 @@ fn armor_stand_pick_bounds(data_values: &[EntityDataValue]) -> Option<EntityPick
     if armor_stand_is_marker(data_values) {
         return None;
     }
-    if entity_data_pose(data_values) == VANILLA_POSE_SLEEPING_ID {
+    if entity_data_pose(data_values) == VANILLA_ENTITY_POSE_SLEEPING_ID {
         return Some(living_sleeping_pick_bounds());
     }
     let scale = if flags & ARMOR_STAND_CLIENT_FLAG_SMALL != 0 {
@@ -1263,20 +1260,20 @@ fn scales_with_living_scale_attribute(
 
 fn is_living_sleeping(entity_type_id: i32, data_values: &[EntityDataValue]) -> bool {
     vanilla_living_entity_type(entity_type_id)
-        && entity_data_pose(data_values) == VANILLA_POSE_SLEEPING_ID
+        && entity_data_pose(data_values) == VANILLA_ENTITY_POSE_SLEEPING_ID
 }
 
 fn is_avatar_dying_pose(entity_type_id: i32, data_values: &[EntityDataValue]) -> bool {
     (entity_type_id == VANILLA_ENTITY_TYPE_PLAYER_ID
         || entity_type_id == VANILLA_ENTITY_TYPE_MANNEQUIN_ID)
-        && entity_data_pose(data_values) == VANILLA_POSE_DYING_ID
+        && entity_data_pose(data_values) == VANILLA_ENTITY_POSE_DYING_ID
 }
 
 fn is_warden_fixed_pose(entity_type_id: i32, data_values: &[EntityDataValue]) -> bool {
     entity_type_id == VANILLA_ENTITY_TYPE_WARDEN_ID
         && matches!(
             entity_data_pose(data_values),
-            VANILLA_POSE_EMERGING_ID | VANILLA_POSE_DIGGING_ID
+            VANILLA_ENTITY_POSE_EMERGING_ID | VANILLA_ENTITY_POSE_DIGGING_ID
         )
 }
 

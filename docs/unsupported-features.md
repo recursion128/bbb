@@ -156,8 +156,10 @@ Owner: `bbb-protocol`
 Owner: `scripts/` + each generated catalog's semantic crate
 
 - Complete the remaining cross-crate registry/ordinal and resource-membership
-  audit. Generate a membership only when an exact tag, class, property, or
-  registry source fact owns that semantic; do not substitute approximate tags.
+  audit, and emit every new generated-catalog consumer guard from that catalog's
+  generator rather than hand-editing its checked-in output. Generate a membership
+  only when an exact tag, class, property, or registry source fact owns that
+  semantic; do not substitute approximate tags.
   Terrain render layer is deliberately excluded from this catalog work because
   vanilla 26.1 derives it per baked material/quad from the resolved sprite's
   transparency. Any newly found Java-source catalog extractor must consume the

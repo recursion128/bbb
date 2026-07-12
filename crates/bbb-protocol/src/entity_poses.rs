@@ -136,7 +136,7 @@ pub fn vanilla_entity_pose_for_serialized_name(
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashSet;
+    use std::{collections::HashSet, fs, path::Path};
 
     use super::*;
 
@@ -166,5 +166,43 @@ mod tests {
         );
         assert_eq!(vanilla_entity_pose(-1), None);
         assert_eq!(vanilla_entity_pose(18), None);
+    }
+
+    #[test]
+    fn entity_pose_consumers_do_not_restore_local_id_aliases() {
+        fn visit(path: &Path, violations: &mut Vec<String>) {
+            if path.is_dir() {
+                for entry in fs::read_dir(path).unwrap() {
+                    visit(&entry.unwrap().path(), violations);
+                }
+                return;
+            }
+            if path.extension().and_then(|value| value.to_str()) != Some("rs") {
+                return;
+            }
+            let source = fs::read_to_string(path).unwrap();
+            for identifier in source
+                .split(|character: char| !character.is_ascii_alphanumeric() && character != '_')
+            {
+                if identifier.starts_with("VANILLA_POSE_") {
+                    violations.push(format!("{}: {identifier}", path.display()));
+                }
+            }
+        }
+        let crates = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
+        let mut violations = Vec::new();
+        for path in [
+            crates.join("bbb-world/src/entities"),
+            crates.join("bbb-world/src/entities.rs"),
+            crates.join("bbb-world/src/client/local_player_collision.rs"),
+            crates.join("bbb-native/src/input/tests.rs"),
+        ] {
+            visit(&path, &mut violations);
+        }
+        assert!(
+            violations.is_empty(),
+            "local entity-pose aliases:\n{}",
+            violations.join("\n")
+        );
     }
 }

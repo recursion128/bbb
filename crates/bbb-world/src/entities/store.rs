@@ -8,8 +8,8 @@ use bbb_protocol::attribute_modifier_types::{
     VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_MULTIPLIED_TOTAL_ID,
 };
 use bbb_protocol::entity_poses::{
-    VANILLA_ENTITY_POSE_STANDING_ID as VANILLA_POSE_STANDING_ID,
-    VANILLA_ENTITY_POSE_SWIMMING_ID as VANILLA_POSE_SWIMMING_ID,
+    VANILLA_ENTITY_POSE_CROUCHING_ID, VANILLA_ENTITY_POSE_SLEEPING_ID,
+    VANILLA_ENTITY_POSE_STANDING_ID, VANILLA_ENTITY_POSE_SWIMMING_ID,
 };
 use bbb_protocol::packets::AttributeSnapshot as ProtocolAttributeSnapshot;
 use hecs::{Entity, World};
@@ -102,7 +102,7 @@ use crate::entities::dimensions::{
     vanilla_living_entity_type, vanilla_model_source_bounds_for_entity_data,
     vanilla_passenger_vehicle_debug_target_for_entity_data, vanilla_pick_bounds_for_entity_data,
     vanilla_piglin_melee_attack_family, vanilla_render_scale, vanilla_zombie_model_family,
-    ENTITY_DATA_POSE_ID, VANILLA_POSE_CROUCHING_ID, VANILLA_POSE_SLEEPING_ID,
+    ENTITY_DATA_POSE_ID,
 };
 use crate::entities::dragon::{
     ender_dragon_parent_pick_target, ender_dragon_part_parent_id,
@@ -1672,8 +1672,8 @@ impl EntityStore {
         // synced `Pose.CROUCHING`; the latter is shared entity flags bit 3. `CatRenderer` additionally
         // projects `Cat.isInSittingPose()` from `TamableAnimal.DATA_FLAGS_ID & 1`; `OcelotRenderer`
         // leaves `isSitting` at its default.
-        let feline_is_crouching =
-            is_feline && entity_data_pose(&metadata.data_values) == VANILLA_POSE_CROUCHING_ID;
+        let feline_is_crouching = is_feline
+            && entity_data_pose(&metadata.data_values) == VANILLA_ENTITY_POSE_CROUCHING_ID;
         let feline_is_sprinting = is_feline
             && self
                 .metadata_byte(id, ENTITY_SHARED_FLAGS_DATA_ID, 0)
@@ -1776,12 +1776,12 @@ impl EntityStore {
         // the WorldStore aggregation (which owns the block data); the per-entity
         // source defaults to the no-bed fallback.
         let is_sleeping = vanilla_living_entity_type(identity.entity_type_id)
-            && entity_data_pose(&metadata.data_values) == VANILLA_POSE_SLEEPING_ID;
+            && entity_data_pose(&metadata.data_values) == VANILLA_ENTITY_POSE_SLEEPING_ID;
         // Vanilla `Entity.isCrouching` (`Pose.CROUCHING`): only the player is ever put into the
         // crouch pose by the server, and only the player model has the `HumanoidModel.setupAnim`
         // crouch, so the projection is gated to the player.
         let is_crouching = identity.entity_type_id == VANILLA_ENTITY_TYPE_PLAYER_ID
-            && entity_data_pose(&metadata.data_values) == VANILLA_POSE_CROUCHING_ID;
+            && entity_data_pose(&metadata.data_values) == VANILLA_ENTITY_POSE_CROUCHING_ID;
         // Vanilla `LivingEntityRenderState.scale` (`LivingEntity.getScale`, the SCALE
         // attribute): only living entities carry a render scale; everything else
         // renders at its default size.
@@ -3386,9 +3386,9 @@ impl EntityStore {
                 let is_baby = vanilla_is_baby(identity.entity_type_id, &metadata.data_values);
                 let is_fall_flying = entity_is_fall_flying(&metadata.data_values);
                 let is_crouching =
-                    entity_data_pose(&metadata.data_values) == VANILLA_POSE_CROUCHING_ID;
+                    entity_data_pose(&metadata.data_values) == VANILLA_ENTITY_POSE_CROUCHING_ID;
                 let is_swimming =
-                    entity_data_pose(&metadata.data_values) == VANILLA_POSE_SWIMMING_ID;
+                    entity_data_pose(&metadata.data_values) == VANILLA_ENTITY_POSE_SWIMMING_ID;
                 // The per-tick world fact (`isInWater()`) the world resolved before
                 // this mutable pass, defaulting to `false` for non-consumers, and the
                 // synced `Guardian.DATA_ID_MOVING` flag read from the metadata here.
@@ -3398,7 +3398,7 @@ impl EntityStore {
                 let guardian_attack_target_id = guardian_attack_target_id(&metadata.data_values);
                 let wither_head_targets = wither_head_targets_by_id.get(&identity.id).copied();
                 let camel_is_standing =
-                    entity_data_pose(&metadata.data_values) == VANILLA_POSE_STANDING_ID;
+                    entity_data_pose(&metadata.data_values) == VANILLA_ENTITY_POSE_STANDING_ID;
                 let camel_is_dashing = camel_is_dashing(&metadata.data_values);
                 let copper_golem_is_idle = copper_golem_is_idle(&metadata.data_values);
                 let copper_golem_is_getting_item =

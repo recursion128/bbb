@@ -1,15 +1,10 @@
 use bbb_protocol::entity_poses::{
-    VANILLA_ENTITY_POSE_CROAKING_ID as VANILLA_POSE_CROAKING_ID,
-    VANILLA_ENTITY_POSE_DIGGING_ID as VANILLA_POSE_DIGGING_ID,
-    VANILLA_ENTITY_POSE_EMERGING_ID as VANILLA_POSE_EMERGING_ID,
-    VANILLA_ENTITY_POSE_INHALING_ID as VANILLA_POSE_INHALING_ID,
-    VANILLA_ENTITY_POSE_LONG_JUMPING_ID as VANILLA_POSE_LONG_JUMPING_ID,
-    VANILLA_ENTITY_POSE_ROARING_ID as VANILLA_POSE_ROARING_ID,
-    VANILLA_ENTITY_POSE_SHOOTING_ID as VANILLA_POSE_SHOOTING_ID,
-    VANILLA_ENTITY_POSE_SLIDING_ID as VANILLA_POSE_SLIDING_ID,
-    VANILLA_ENTITY_POSE_SNIFFING_ID as VANILLA_POSE_SNIFFING_ID,
-    VANILLA_ENTITY_POSE_SWIMMING_ID as VANILLA_POSE_SWIMMING_ID,
-    VANILLA_ENTITY_POSE_USING_TONGUE_ID as VANILLA_POSE_USING_TONGUE_ID,
+    VANILLA_ENTITY_POSE_CROAKING_ID, VANILLA_ENTITY_POSE_DIGGING_ID,
+    VANILLA_ENTITY_POSE_EMERGING_ID, VANILLA_ENTITY_POSE_INHALING_ID,
+    VANILLA_ENTITY_POSE_LONG_JUMPING_ID, VANILLA_ENTITY_POSE_ROARING_ID,
+    VANILLA_ENTITY_POSE_SHOOTING_ID, VANILLA_ENTITY_POSE_SLIDING_ID,
+    VANILLA_ENTITY_POSE_SNIFFING_ID, VANILLA_ENTITY_POSE_SWIMMING_ID,
+    VANILLA_ENTITY_POSE_USING_TONGUE_ID,
 };
 use bbb_protocol::packets::{EntityDataEnumSerializer, EntityDataValue, EntityDataValueKind};
 use serde::{Deserialize, Serialize};
@@ -2095,10 +2090,10 @@ impl WardenCombatAnimationState {
         }
         self.prev_pose = pose_id;
         match pose_id {
-            VANILLA_POSE_ROARING_ID => self.roar.start_age = Some(age_ticks),
-            VANILLA_POSE_SNIFFING_ID => self.sniff.start_age = Some(age_ticks),
-            VANILLA_POSE_EMERGING_ID => self.emerge.start_age = Some(age_ticks),
-            VANILLA_POSE_DIGGING_ID => self.dig.start_age = Some(age_ticks),
+            VANILLA_ENTITY_POSE_ROARING_ID => self.roar.start_age = Some(age_ticks),
+            VANILLA_ENTITY_POSE_SNIFFING_ID => self.sniff.start_age = Some(age_ticks),
+            VANILLA_ENTITY_POSE_EMERGING_ID => self.emerge.start_age = Some(age_ticks),
+            VANILLA_ENTITY_POSE_DIGGING_ID => self.dig.start_age = Some(age_ticks),
             _ => {}
         }
     }
@@ -2684,18 +2679,20 @@ impl BreezeAnimationState {
     /// — vanilla's `resetAnimations` + per-tick `startIfStopped`), and fire `slideBack` on the falling
     /// edge of `Pose.SLIDING`.
     fn set_pose(&mut self, pose_id: i32, age_ticks: u32) {
-        if self.prev_pose == VANILLA_POSE_SLIDING_ID && pose_id != VANILLA_POSE_SLIDING_ID {
+        if self.prev_pose == VANILLA_ENTITY_POSE_SLIDING_ID
+            && pose_id != VANILLA_ENTITY_POSE_SLIDING_ID
+        {
             self.slide_back.start_age = Some(age_ticks);
         }
         self.prev_pose = pose_id;
         self.shoot
-            .animate_when(pose_id == VANILLA_POSE_SHOOTING_ID, age_ticks);
+            .animate_when(pose_id == VANILLA_ENTITY_POSE_SHOOTING_ID, age_ticks);
         self.inhale
-            .animate_when(pose_id == VANILLA_POSE_INHALING_ID, age_ticks);
+            .animate_when(pose_id == VANILLA_ENTITY_POSE_INHALING_ID, age_ticks);
         self.slide
-            .animate_when(pose_id == VANILLA_POSE_SLIDING_ID, age_ticks);
+            .animate_when(pose_id == VANILLA_ENTITY_POSE_SLIDING_ID, age_ticks);
         self.long_jump
-            .animate_when(pose_id == VANILLA_POSE_LONG_JUMPING_ID, age_ticks);
+            .animate_when(pose_id == VANILLA_ENTITY_POSE_LONG_JUMPING_ID, age_ticks);
     }
 }
 
@@ -3877,7 +3874,8 @@ impl EntityClientAnimationState {
                     self.death = None;
                 }
             }
-            let visually_swimming = entity_data_pose(data_values) == VANILLA_POSE_SWIMMING_ID;
+            let visually_swimming =
+                entity_data_pose(data_values) == VANILLA_ENTITY_POSE_SWIMMING_ID;
             if let Some(swim) = self.living_swim.as_mut() {
                 swim.set_visually_swimming(visually_swimming);
             } else if visually_swimming {
@@ -4003,7 +4001,7 @@ impl EntityClientAnimationState {
                 // into their pose and stopped on leaving it. The frog's `aiStep` runs client-side for
                 // remote entities, so the synced pose drives both directly.
                 let pose = entity_data_pose(data_values);
-                let croaking = pose == VANILLA_POSE_CROAKING_ID;
+                let croaking = pose == VANILLA_ENTITY_POSE_CROAKING_ID;
                 if let Some(croak) = self.frog_croak.as_mut() {
                     croak.animate_when(croaking, self.age_ticks);
                 } else if croaking {
@@ -4014,7 +4012,7 @@ impl EntityClientAnimationState {
                 // Vanilla `Frog.onSyncedDataUpdated`: `tongueAnimationState` is started on the synced
                 // `Pose.USING_TONGUE` and stopped otherwise — the same rising-edge pattern as the
                 // croak, driving the `FROG_TONGUE` keyframe (head dip + the tongue's z-scale lash).
-                let using_tongue = pose == VANILLA_POSE_USING_TONGUE_ID;
+                let using_tongue = pose == VANILLA_ENTITY_POSE_USING_TONGUE_ID;
                 if let Some(tongue) = self.frog_tongue.as_mut() {
                     tongue.animate_when(using_tongue, self.age_ticks);
                 } else if using_tongue {
@@ -4022,7 +4020,7 @@ impl EntityClientAnimationState {
                         start_age: Some(self.age_ticks),
                     });
                 }
-                let jumping = pose == VANILLA_POSE_LONG_JUMPING_ID;
+                let jumping = pose == VANILLA_ENTITY_POSE_LONG_JUMPING_ID;
                 if let Some(jump) = self.frog_jump.as_mut() {
                     jump.animate_when(jumping, self.age_ticks);
                 } else if jumping {

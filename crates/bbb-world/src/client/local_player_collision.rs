@@ -1,9 +1,6 @@
 use std::collections::BTreeMap;
 
-use bbb_protocol::entity_poses::{
-    VANILLA_ENTITY_POSE_DIGGING_ID as VANILLA_POSE_DIGGING_ID,
-    VANILLA_ENTITY_POSE_EMERGING_ID as VANILLA_POSE_EMERGING_ID,
-};
+use bbb_protocol::entity_poses::{VANILLA_ENTITY_POSE_DIGGING_ID, VANILLA_ENTITY_POSE_EMERGING_ID};
 use bbb_protocol::entity_types::{
     VANILLA_ENTITY_TYPE_ARMOR_STAND_ID, VANILLA_ENTITY_TYPE_BAT_ID,
     VANILLA_ENTITY_TYPE_CREAKING_ID, VANILLA_ENTITY_TYPE_ENDERMITE_ID,
@@ -761,7 +758,10 @@ impl WorldStore {
         }
         if target_type == VANILLA_ENTITY_TYPE_WARDEN_ID
             && self.entities.pose(target_id).is_some_and(|pose| {
-                matches!(pose, VANILLA_POSE_EMERGING_ID | VANILLA_POSE_DIGGING_ID)
+                matches!(
+                    pose,
+                    VANILLA_ENTITY_POSE_EMERGING_ID | VANILLA_ENTITY_POSE_DIGGING_ID
+                )
             })
         {
             return false;

@@ -2,6 +2,7 @@ use super::*;
 use crate::entities::schema::{
     VANILLA_GUARDIAN_ATTACK_TARGET_DATA_ID, VANILLA_GUARDIAN_MOVING_DATA_ID,
 };
+use bbb_protocol::entity_poses::VANILLA_ENTITY_POSE_LONG_JUMPING_ID;
 
 #[test]
 fn entity_model_sources_project_creeper_swelling_fuse() {
@@ -843,8 +844,6 @@ fn frog_swim_idle_activates_only_in_water_and_idle() {
 
 #[test]
 fn frog_walk_animation_uses_vanilla_update_override() {
-    const VANILLA_POSE_LONG_JUMPING_ID: i32 = 6;
-
     let walk = |store: &WorldStore| -> (f32, f32) {
         let source = store
             .entity_model_sources_at_partial_tick(1.0)
@@ -891,7 +890,7 @@ fn frog_walk_animation_uses_vanilla_update_override() {
     // the target speed to 0, so the existing speed decays by the same 0.4 factor.
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 82,
-        values: vec![protocol_pose_data(6, VANILLA_POSE_LONG_JUMPING_ID)],
+        values: vec![protocol_pose_data(6, VANILLA_ENTITY_POSE_LONG_JUMPING_ID)],
     }));
     sync_position(&mut store, 0.04);
     store.advance_entity_client_animations(1);

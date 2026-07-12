@@ -1,3 +1,4 @@
+use bbb_protocol::entity_poses::VANILLA_ENTITY_POSE_SLEEPING_ID;
 use bbb_protocol::packets::{
     EntityDataValueKind, InteractionHand, SetEntityData as ProtocolSetEntityData,
     SetEquipment as ProtocolSetEquipment, UpdateAttributes as ProtocolUpdateAttributes,
@@ -5,7 +6,7 @@ use bbb_protocol::packets::{
 
 use crate::WorldStore;
 
-use super::dimensions::{vanilla_living_entity_type, VANILLA_POSE_SLEEPING_ID};
+use super::dimensions::vanilla_living_entity_type;
 use super::schema::{
     VANILLA_LIVING_ENTITY_FLAGS_DATA_ID,
     VANILLA_LIVING_ENTITY_FLAG_IS_USING as LIVING_ENTITY_FLAG_IS_USING,
@@ -82,7 +83,7 @@ impl WorldStore {
     pub fn local_player_is_sleeping(&self) -> bool {
         self.local_player_id
             .and_then(|id| self.entities.pose(id))
-            .is_some_and(|pose| pose == VANILLA_POSE_SLEEPING_ID)
+            .is_some_and(|pose| pose == VANILLA_ENTITY_POSE_SLEEPING_ID)
     }
 
     pub fn apply_set_equipment(&mut self, packet: ProtocolSetEquipment) -> bool {

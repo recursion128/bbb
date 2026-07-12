@@ -246,7 +246,8 @@ entity metadata extractor 是统一 Tree-sitter Java extraction foundation 的�
 2. **跨 crate 去重与反向门禁**：审计 protocol/world/native/item-model/renderer 中
    重复 registry/ordinal 表和生产代码裸 id；消费者改用 typed catalog API，并增加
    机械扫描或结构测试，阻止已收敛语义重新出现第二事实源。测试 fixture 可保留
-   局部数字，但须标明 wire 样本，不得被生产逻辑引用。
+   局部数字，但须标明 wire 样本，不得被生产逻辑引用。反向门禁若位于 generated
+   catalog 中，必须由同一 generator 模板输出，禁止手改生成物造成 update/check 漂移。
 
 完成标准：上述三类各有唯一权威输入和 deterministic check；修改生成输入而未
 更新生成物会在门禁失败；clean checkout 无本地 vanilla 源码也能正常构建测试；

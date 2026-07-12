@@ -1,6 +1,7 @@
 use super::*;
 use bbb_item_model::NativeItemRuntime;
 use bbb_pack::{EquipmentAssetCatalog, ItemRegistryCatalog};
+use bbb_protocol::entity_poses::VANILLA_ENTITY_POSE_SLEEPING_ID;
 use bbb_protocol::entity_types::{
     VANILLA_ENTITY_TYPE_ALLAY_ID, VANILLA_ENTITY_TYPE_ARMADILLO_ID,
     VANILLA_ENTITY_TYPE_ARMOR_STAND_ID, VANILLA_ENTITY_TYPE_ARROW_ID,
@@ -109,7 +110,6 @@ const VANILLA_26_1_OAK_BOAT_ENTITY_TYPE_ID: i32 = 89;
 const VANILLA_26_1_PLAYER_ENTITY_TYPE_ID: i32 = 155;
 const TEST_SADDLE_ITEM_ID: i32 = 8_903;
 const VANILLA_ENTITY_DATA_POSE_ID: u8 = 6;
-const VANILLA_POSE_SLEEPING_ID: i32 = 2;
 const VANILLA_PLAYER_CHEST_EQUIPMENT_SLOT: i32 = 38;
 
 fn handle_key_input_without_world(
@@ -601,7 +601,7 @@ fn world_with_sleeping_local_player(player_id: i32) -> WorldStore {
         values: vec![ProtocolEntityDataValue {
             data_id: VANILLA_ENTITY_DATA_POSE_ID,
             serializer_id: 20,
-            value: EntityDataValueKind::Pose(VANILLA_POSE_SLEEPING_ID),
+            value: EntityDataValueKind::Pose(VANILLA_ENTITY_POSE_SLEEPING_ID),
         }],
     }));
     world

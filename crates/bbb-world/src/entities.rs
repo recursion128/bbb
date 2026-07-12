@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 
 use bbb_protocol::attribute_types::VANILLA_ATTRIBUTE_MAX_HEALTH_ID;
+use bbb_protocol::entity_poses::VANILLA_ENTITY_POSE_SLEEPING_ID;
 use bbb_protocol::packets::{
     AddEntity as ProtocolAddEntity, AttributeSnapshot as ProtocolAttributeSnapshot,
     EntityDataValue as ProtocolEntityDataValue, EntityDataValueKind,
@@ -44,9 +45,7 @@ pub use dimensions::EntityPickBoundsState;
 pub(crate) use dimensions::{
     vanilla_animal_entity_type, vanilla_living_entity_type, vanilla_pick_bounds_for_type,
 };
-use dimensions::{
-    vanilla_client_position_for_entity_data, vanilla_is_cat, VANILLA_POSE_SLEEPING_ID,
-};
+use dimensions::{vanilla_client_position_for_entity_data, vanilla_is_cat};
 pub use dragon::{DragonFlightHistorySample, DragonFlightHistoryState, EnderDragonAnimationState};
 use movement::entity_vec3;
 pub(crate) use schema::VANILLA_ITEM_ENTITY_STACK_DATA_ID;
@@ -3113,7 +3112,7 @@ impl WorldStore {
             target.entity_id != cat_target.entity_id
                 && self.entities.entity_type_id(target.entity_id)
                     == Some(VANILLA_ENTITY_TYPE_PLAYER_ID)
-                && self.entities.pose(target.entity_id) == Some(VANILLA_POSE_SLEEPING_ID)
+                && self.entities.pose(target.entity_id) == Some(VANILLA_ENTITY_POSE_SLEEPING_ID)
                 && {
                     let (player_min, player_max) = model_target_world_aabb(target);
                     aabb_intersects(search_min, search_max, player_min, player_max)

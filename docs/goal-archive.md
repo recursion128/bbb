@@ -12698,3 +12698,11 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] Login/Respawn 按 vanilla 启动 WaitingForServer，Play GameEvent type 13 将 active tracker
   推进到 WaitingForPlayerChunk，重复通知不重复推进；section compiled/visible、30 秒 timeout 与
   500ms close delay 仍明确归 runtime 后续阶段。
+
+## 2026-07-12：Generated catalog consumer guards
+
+- [x] gameplay-id generator 现在拥有 menu-type consumer anti-alias test，修复曾经手改
+  `menu_types.rs` 导致 maintenance `--check` 失败的漂移；连续 update 已恢复幂等。
+- [x] entity-pose consumer 全部直接引用 generated `VANILLA_ENTITY_POSE_*` 常量，删除 world/native
+  的 `VANILLA_POSE_*` aliases 与 focused-test 裸 ordinal；同一 generator 输出反向扫描门禁，后续
+  重新引入本地 pose id 名称会直接失败。
