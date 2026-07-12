@@ -24,7 +24,7 @@ use serde::{Deserialize, Serialize};
 
 pub(crate) use super::schema::VANILLA_ENTITY_POSE_DATA_ID as ENTITY_DATA_POSE_ID;
 use super::schema::{
-    vanilla_entity_metadata_type_is_living,
+    vanilla_entity_metadata_type_is_animal, vanilla_entity_metadata_type_is_living,
     VANILLA_AGEABLE_MOB_BABY_DATA_ID as AGEABLE_MOB_BABY_DATA_ID,
     VANILLA_AGEABLE_MOB_DEFAULT_BABY as AGEABLE_MOB_DEFAULT_BABY,
     VANILLA_ARMOR_STAND_CLIENT_FLAGS_DATA_ID as ARMOR_STAND_CLIENT_FLAGS_DATA_ID,
@@ -1163,42 +1163,7 @@ pub(crate) fn vanilla_living_entity_type(entity_type_id: i32) -> bool {
 /// the same as the registry's creature/water categories: Allay has a separate
 /// 3-heart event-18 branch, while Dolphin/fish/squid are not `Animal`.
 pub(crate) fn vanilla_animal_entity_type(entity_type_id: i32) -> bool {
-    matches!(
-        entity_type_id,
-        VANILLA_ENTITY_TYPE_ARMADILLO_ID
-            | VANILLA_ENTITY_TYPE_AXOLOTL_ID
-            | VANILLA_ENTITY_TYPE_BEE_ID
-            | VANILLA_ENTITY_TYPE_CAMEL_ID
-            | VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID
-            | VANILLA_ENTITY_TYPE_CAT_ID
-            | VANILLA_ENTITY_TYPE_CHICKEN_ID
-            | VANILLA_ENTITY_TYPE_COW_ID
-            | VANILLA_ENTITY_TYPE_DONKEY_ID
-            | VANILLA_ENTITY_TYPE_FOX_ID
-            | VANILLA_ENTITY_TYPE_FROG_ID
-            | VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID
-            | VANILLA_ENTITY_TYPE_GOAT_ID
-            | VANILLA_ENTITY_TYPE_HOGLIN_ID
-            | VANILLA_ENTITY_TYPE_HORSE_ID
-            | VANILLA_ENTITY_TYPE_LLAMA_ID
-            | VANILLA_ENTITY_TYPE_MOOSHROOM_ID
-            | VANILLA_ENTITY_TYPE_MULE_ID
-            | VANILLA_ENTITY_TYPE_NAUTILUS_ID
-            | VANILLA_ENTITY_TYPE_OCELOT_ID
-            | VANILLA_ENTITY_TYPE_PANDA_ID
-            | VANILLA_ENTITY_TYPE_PARROT_ID
-            | VANILLA_ENTITY_TYPE_PIG_ID
-            | VANILLA_ENTITY_TYPE_POLAR_BEAR_ID
-            | VANILLA_ENTITY_TYPE_RABBIT_ID
-            | VANILLA_ENTITY_TYPE_SHEEP_ID
-            | VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID
-            | VANILLA_ENTITY_TYPE_SNIFFER_ID
-            | VANILLA_ENTITY_TYPE_STRIDER_ID
-            | VANILLA_ENTITY_TYPE_TRADER_LLAMA_ID
-            | VANILLA_ENTITY_TYPE_TURTLE_ID
-            | VANILLA_ENTITY_TYPE_WOLF_ID
-            | VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID
-    )
+    vanilla_entity_metadata_type_is_animal(entity_type_id)
 }
 
 /// Entities rendered with the vanilla `ZombieModel` / `GiantZombieModel`, whose

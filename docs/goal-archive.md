@@ -12485,3 +12485,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   `Mob extends LivingEntity` 的源码链确认 generated 92 项 class-membership 结果正确；world 的通用 living
   presentation gate 保留末影龙这一项窄语义排除，因为 vanilla 使用独立 200-tick dragon death lifecycle，
   不走 generic 20-tick living death flip。未在本切片扩张 AI 或服务端行为。
+
+## 2026-07-12：Derived animal membership from generated inheritance
+
+- [x] entity metadata descriptor 增加由 runtime class/superclass 图派生的 `is_animal`，锁定 34 项
+  `Animal` 子类及 Axolotl/ZombieHorse/ZombieNautilus 正例、Dolphin/unknown 负例；world 删除 33 项
+  entity-type match 并用反向结构测试阻止恢复。集合差分补出旧 match 漏掉的
+  `ZombieNautilus extends AbstractNautilus extends TamableAnimal`。
+- [x] `Animal.handleEntityEvent(18)` 的七心分支继续由 world 行为 owner 消费 class membership；Allay 的
+  独立三心分支与 Dolphin/fish/squid 非 Animal 路径不变，未把继承事实冒充繁殖、AI 或服务端状态实现。
