@@ -165,11 +165,8 @@ fn decodes_block_ack_and_block_updates() {
     payload.write_var_i32(1234);
     payload.write_i64(pack_block_pos(34, -12, -45));
     payload.write_u8(7);
-    let packet = decode_play_clientbound(
-        ids::play::CLIENTBOUND_BLOCK_DESTRUCTION,
-        &payload.into_inner(),
-    )
-    .unwrap();
+    let mut bytes = payload.into_inner();
+    let packet = decode_play_clientbound(ids::play::CLIENTBOUND_BLOCK_DESTRUCTION, &bytes).unwrap();
     assert_eq!(
         packet,
         PlayClientbound::BlockDestruction(BlockDestruction {
@@ -181,6 +178,13 @@ fn decodes_block_ack_and_block_updates() {
             },
             progress: 7,
         })
+    );
+    bytes.push(0);
+    assert!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_BLOCK_DESTRUCTION, &bytes)
+            .unwrap_err()
+            .to_string()
+            .contains("trailing bytes after block destruction packet")
     );
 
     let mut payload = Encoder::new();

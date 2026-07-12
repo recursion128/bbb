@@ -4986,29 +4986,48 @@
       "constant_name": "CLIENTBOUND_BLOCK_DESTRUCTION",
       "coverage": {
         "canonical_apply": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/block_events.rs#apply_block_destruction",
+            "crates/bbb-world/src/block_events.rs#tracks_block_destruction_progress_by_id",
+            "crates/bbb-world/src/block_events.rs#block_destruction_progress_expires_after_vanilla_render_tick_window",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleBlockDestruction"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/chunks/tests.rs#decodes_block_ack_and_block_updates",
+            "vanilla:net/minecraft/network/protocol/game/ClientboundBlockDestructionPacket.java#STREAM_CODEC"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "ownership": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/play_apply.rs#PlayClientbound::BlockDestruction"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "runtime_side_effect": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
+          "evidence": [
+            "crates/bbb-native/src/runtime/tests.rs#block_destroy_overlays_include_server_progress_and_keep_highest_per_position",
+            "vanilla:net/minecraft/client/multiplayer/ClientLevel.java#destroyBlockProgress"
+          ],
+          "gap": "docs/unsupported-features.md#block-destroy",
           "status": "partial"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/chunks/tests.rs#decodes_block_ack_and_block_updates",
+            "crates/bbb-net/src/event_stream.rs#play_level_state_packets_emit_matching_events_without_responses",
+            "crates/bbb-net/src/probe/play.rs#probe_applies_block_destruction_to_world",
+            "crates/bbb-world/src/block_events.rs#tracks_block_destruction_progress_by_id",
+            "crates/bbb-native/src/runtime/events/tests/level_event_block_and_potion_sounds.rs#block_destruction_event_updates_world_and_counter"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "clientbound",

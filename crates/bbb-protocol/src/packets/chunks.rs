@@ -158,11 +158,17 @@ pub(crate) fn decode_block_changed_ack(decoder: &mut Decoder<'_>) -> Result<Bloc
 }
 
 pub(crate) fn decode_block_destruction(decoder: &mut Decoder<'_>) -> Result<BlockDestruction> {
-    Ok(BlockDestruction {
+    let packet = BlockDestruction {
         id: decoder.read_var_i32()?,
         pos: decode_block_pos(decoder.read_i64()?),
         progress: decoder.read_u8()?,
-    })
+    };
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after block destruction packet".to_string(),
+        ));
+    }
+    Ok(packet)
 }
 
 pub(crate) fn decode_block_entity_data(decoder: &mut Decoder<'_>) -> Result<BlockEntityData> {
