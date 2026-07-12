@@ -11971,3 +11971,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] vanilla wire 已锁定为 BlockPos + TestBlockMode stream ordinal + UTF message；editor 从 block entity 预载 mode/message、限制 128 字符且 START 模式隐藏 message，server 保留 game-master/type/update 权威。
 - [x] bbb 当前仅有 generated catalog 与 generic block-entity path，无 typed projection/editor/encoder/net command/guards/focused tests；五维保持 partial，并记录明确 TestBlockEditScreen gap。
+
+## 2026-07-12：play serverbound sign-update coverage audit
+
+- [x] BlockPos + front/back bool + exactly four UTF lines wire、control/runtime/native editor command path、front/back server preload、submit 与 server block-entity update authority 已反向核对；command/encoder 闭合。
+- [x] server text filtering/rich sign confirmation、90-pixel font-width、clipboard/IME、sign removal/distance close parity 仍未闭合；ack/state/tests 保持 partial，未把当前 character-count guard 冒充 vanilla 宽度限制。

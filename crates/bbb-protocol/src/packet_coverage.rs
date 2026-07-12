@@ -4254,6 +4254,31 @@ mod tests {
             .all(|cell| cell.status == PacketCoverageStatus::Partial));
     }
 
+    #[test]
+    fn play_serverbound_sign_update_keeps_remaining_editor_parity_open() {
+        let ledger = vanilla_packet_coverage_26_1().unwrap();
+        let entry = ledger
+            .entries
+            .iter()
+            .find(|entry| entry.state == "play" && entry.constant_name == "SERVERBOUND_SIGN_UPDATE")
+            .expect("play serverbound sign update coverage row");
+        assert_eq!(
+            entry.coverage["command_surface"].status,
+            PacketCoverageStatus::Complete
+        );
+        assert_eq!(
+            entry.coverage["encoder"].status,
+            PacketCoverageStatus::Complete
+        );
+        for dimension in ["ack_response", "state_guard", "tests"] {
+            assert_eq!(
+                entry.coverage[dimension].status,
+                PacketCoverageStatus::Partial,
+                "{dimension}"
+            );
+        }
+    }
+
     fn state_name(state: PacketState) -> &'static str {
         match state {
             PacketState::Handshake => "handshake",
