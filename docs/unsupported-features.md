@@ -49,8 +49,10 @@ Owner: `bbb-protocol`
 - Complete configuration resource-pack runtime behavior: download allowed packs,
   verify hashes, apply/reload them, enforce required-pack outcomes, emit the full
   response lifecycle, and unload one/all packs on pop.
-- Select matching locally available known packs and encode up to 64 selected
-  entries instead of always returning an empty configuration response.
+- Build a local `KnownPacksManager`/server-data resource manager, select only
+  offered packs whose registry data bbb can actually provide, and pass that
+  intersection to the existing 64-entry response encoder instead of always
+  returning an empty configuration response.
 - Complete configuration/play transfer runtime behavior: enter a closing state,
   continue accepting late StoreCookie/Transfer packets, disconnect and make the
   current connection read-only, carry cookies/seen-player/insecure-chat transfer

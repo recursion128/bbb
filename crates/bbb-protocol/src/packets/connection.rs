@@ -26,6 +26,8 @@ use crate::{
 const MAX_COOKIE_PAYLOAD_SIZE: usize = 5120;
 const MAX_GAME_PROFILE_PROPERTIES: usize = 16;
 const MAX_LOGIN_CUSTOM_QUERY_PAYLOAD: usize = 1_048_576;
+const MAX_SELECTED_KNOWN_PACKS: usize = 64;
+const MAX_KNOWN_PACK_STRING_CHARS: usize = 32_767;
 const MAX_CUSTOM_REPORT_DETAILS: usize = 32;
 const MAX_REGISTRY_DATA_ENTRIES: usize = 131_072;
 const MAX_REGISTRY_DATA_NBT_BYTES: usize = 2 * 1024 * 1024;
@@ -447,13 +449,34 @@ pub fn encode_configuration_accept_code_of_conduct() -> (i32, Vec<u8>) {
     )
 }
 
-pub fn encode_select_known_packs_empty() -> (i32, Vec<u8>) {
+pub fn encode_select_known_packs(known_packs: &[KnownPack]) -> Result<(i32, Vec<u8>)> {
+    if known_packs.len() > MAX_SELECTED_KNOWN_PACKS {
+        return Err(ProtocolError::InvalidData(format!(
+            "selected known pack count {} exceeds vanilla maximum {MAX_SELECTED_KNOWN_PACKS}",
+            known_packs.len()
+        )));
+    }
     let mut out = Encoder::new();
-    out.write_var_i32(0);
-    (
+    out.write_var_i32(known_packs.len() as i32);
+    for (index, pack) in known_packs.iter().enumerate() {
+        for (field, value) in [
+            ("namespace", &pack.namespace),
+            ("id", &pack.id),
+            ("version", &pack.version),
+        ] {
+            let actual = value.encode_utf16().count();
+            if actual > MAX_KNOWN_PACK_STRING_CHARS {
+                return Err(ProtocolError::InvalidData(format!(
+                    "selected known pack {index} {field} has {actual} UTF-16 code units, maximum is {MAX_KNOWN_PACK_STRING_CHARS}"
+                )));
+            }
+            out.write_string(value);
+        }
+    }
+    Ok((
         ids::configuration::SERVERBOUND_SELECT_KNOWN_PACKS,
         out.into_inner(),
-    )
+    ))
 }
 
 pub fn decode_configuration_clientbound(

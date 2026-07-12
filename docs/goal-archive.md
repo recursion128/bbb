@@ -12031,3 +12031,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] connection-owned `PlayPacketBundleAssembler` 现在在 closing delimiter 前隔离 subpackets，按 wire order 一次交付完整 batch；online event-stream 与 probe 共享同一实现，delimiter 不再进入 gameplay/world owner。
 - [x] 与 vanilla `BundlerInfo` 一致允许最多 4096 个 subpacket、允许 empty bundle，并拒绝 bundle 内 terminal `StartConfiguration`；focused tests 锁定上限、顺序、复用和 terminal gate。
+
+## 2026-07-12：configuration known-packs response encoder
+
+- [x] `ServerboundSelectKnownPacks` 现在可按 wire order 编码最多 64 个 `(namespace,id,version)`，逐字段执行 STRING_UTF8 32767 UTF-16-unit guard；focused tests 锁定 64/65 边界和字段顺序。
+- [x] online/probe 的当前空选择委托通用 encoder；在本地 server-data resource manager/RegistryAccess 可实际提供对应 pack 前仍不认领 server offer，selection runtime/command 保持 partial。

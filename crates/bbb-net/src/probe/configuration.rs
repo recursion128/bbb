@@ -61,9 +61,11 @@ impl ProbeContext {
                 self.world.apply_update_enabled_features(update);
             }
             ConfigurationClientbound::SelectKnownPacks { known_packs } => {
-                let (id, payload) = packets::encode_select_known_packs_empty();
+                let selected_packs = Vec::new();
+                let (id, payload) = packets::encode_select_known_packs(&selected_packs)?;
                 self.conn.send_packet(id, &payload).await?;
-                self.world.apply_select_known_packs(known_packs, Vec::new());
+                self.world
+                    .apply_select_known_packs(known_packs, selected_packs);
             }
             ConfigurationClientbound::CookieRequest(request) => {
                 let payload = self.server_cookies.get(&request.key).map(Vec::as_slice);

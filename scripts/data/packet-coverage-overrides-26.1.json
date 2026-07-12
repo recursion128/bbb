@@ -4855,7 +4855,7 @@
       },
       "runtime_side_effect": {
         "evidence": [
-          "crates/bbb-protocol/src/packets/connection.rs#encode_select_known_packs_empty",
+          "crates/bbb-protocol/src/packets/connection.rs#encode_select_known_packs",
           "vanilla:net/minecraft/client/multiplayer/ClientConfigurationPacketListenerImpl.java#trySelectingPacks"
         ],
         "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
@@ -4873,24 +4873,24 @@
         "status": "not-applicable"
       },
       "command_surface": {
-        "evidence": ["crates/bbb-protocol/src/packets/connection.rs#encode_select_known_packs_empty"],
+        "evidence": ["crates/bbb-protocol/src/packets/connection.rs#encode_select_known_packs"],
         "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
         "status": "partial"
       },
       "encoder": {
         "evidence": [
-          "crates/bbb-protocol/src/packets/connection.rs#encode_select_known_packs_empty",
+          "crates/bbb-protocol/src/packets/connection.rs#encode_select_known_packs",
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_selected_known_packs_with_vanilla_limit_and_field_order",
           "vanilla:net/minecraft/network/protocol/configuration/ServerboundSelectKnownPacks.java#list(64)"
         ],
-        "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-        "status": "partial"
+        "status": "complete"
       },
       "state_guard": {
         "evidence": ["crates/bbb-net/src/event_stream.rs#configuration_select_known_packs_emits_event_and_sends_empty_response"],
         "status": "complete"
       },
       "tests": {
-        "evidence": ["crates/bbb-net/src/event_stream.rs#configuration_select_known_packs_emits_event_and_sends_empty_response"],
+        "evidence": ["crates/bbb-protocol/src/packets/tests.rs#encodes_selected_known_packs_with_vanilla_limit_and_field_order", "crates/bbb-net/src/event_stream.rs#configuration_select_known_packs_emits_event_and_sends_empty_response"],
         "status": "complete"
       }
     },

@@ -71,13 +71,14 @@ impl EventStreamContext {
                 emit(&self.events, NetEvent::UpdateEnabledFeatures(update)).await?;
             }
             ConfigurationClientbound::SelectKnownPacks { known_packs } => {
-                let (id, payload) = packets::encode_select_known_packs_empty();
+                let selected_packs = Vec::new();
+                let (id, payload) = packets::encode_select_known_packs(&selected_packs)?;
                 self.conn.send_packet(id, &payload).await?;
                 emit(
                     &self.events,
                     NetEvent::SelectKnownPacks {
                         known_packs,
-                        selected_packs: Vec::new(),
+                        selected_packs,
                     },
                 )
                 .await?;

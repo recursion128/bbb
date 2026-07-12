@@ -302,8 +302,9 @@ Finish → Play 核心控制与 cookie request/store/response 路径已闭合；
 其余 configuration packet 仍须按各自语义 owner 逐格
 审计。resource-pack 的 wire/ownership/canonical projection 已审计，但下载、hash 校验、reload、
 required-pack 生命周期和运行时 pop 仍为具体 `partial`，不能把 Declined fallback 当作完成。
-known-packs offer 的 decode/ownership/canonical 路径也已审计，但 bbb 尚无本地
-`KnownPacksManager` 等价物，空 response 的 runtime/encoder/command 单元保持 `partial`。
+known-packs offer 的 decode/ownership/canonical 路径与最多 64 项的通用 response encoder 已闭合，
+但 bbb 尚无本地 `KnownPacksManager`/server-data resource manager 等价物；production 继续安全发送
+空选择，runtime/command 单元保持 `partial`。
 code-of-conduct 的单次展示、自动/手工接受、持久 hash、拒绝断开与 configuration-only accept
 已闭合；不再把它列作剩余 configuration gap。
 enabled-features 的 Set 去重/unknown 过滤及 reset-chat canonical clear 也已闭合。

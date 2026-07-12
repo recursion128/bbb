@@ -395,7 +395,6 @@ mod tests {
             partial,
             BTreeSet::from([
                 ("SERVERBOUND_SELECT_KNOWN_PACKS", "command_surface"),
-                ("SERVERBOUND_SELECT_KNOWN_PACKS", "encoder"),
                 ("CLIENTBOUND_SELECT_KNOWN_PACKS", "runtime_side_effect"),
             ])
         );

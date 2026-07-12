@@ -3249,6 +3249,50 @@ fn decodes_configuration_common_packets() {
 }
 
 #[test]
+fn encodes_selected_known_packs_with_vanilla_limit_and_field_order() {
+    let packs = vec![
+        KnownPack {
+            namespace: "minecraft".to_string(),
+            id: "core".to_string(),
+            version: "26.1".to_string(),
+        },
+        KnownPack {
+            namespace: "example".to_string(),
+            id: "feature".to_string(),
+            version: "1".to_string(),
+        },
+    ];
+    let (id, payload) = encode_select_known_packs(&packs).unwrap();
+    assert_eq!(id, ids::configuration::SERVERBOUND_SELECT_KNOWN_PACKS);
+    let mut decoder = Decoder::new(&payload);
+    assert_eq!(decoder.read_var_i32().unwrap(), 2);
+    for pack in &packs {
+        assert_eq!(decoder.read_string(32_767).unwrap(), pack.namespace);
+        assert_eq!(decoder.read_string(32_767).unwrap(), pack.id);
+        assert_eq!(decoder.read_string(32_767).unwrap(), pack.version);
+    }
+    assert!(decoder.is_empty());
+
+    let sixty_four = vec![packs[0].clone(); 64];
+    encode_select_known_packs(&sixty_four).unwrap();
+    let sixty_five = vec![packs[0].clone(); 65];
+    assert!(encode_select_known_packs(&sixty_five)
+        .unwrap_err()
+        .to_string()
+        .contains("maximum 64"));
+
+    let oversized = [KnownPack {
+        namespace: "😀".repeat(16_384),
+        id: "core".to_string(),
+        version: "26.1".to_string(),
+    }];
+    assert!(encode_select_known_packs(&oversized)
+        .unwrap_err()
+        .to_string()
+        .contains("maximum is 32767"));
+}
+
+#[test]
 fn decodes_configuration_registry_data_entries() {
     let raw_plains = nbt_compound_with_string("name", "minecraft:plains");
     let raw_temperature = nbt_list_of_floats(&[0.8, 0.4]);
