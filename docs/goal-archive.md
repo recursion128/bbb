@@ -11706,3 +11706,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] from/to anchor、absolute/entity target、strict trailing、missing-entity absolute fallback 与 local-player rotation apply 已审计。
 - [x] 修正 entity `EYES` target 从固定玩家 1.62 眼高为 canonical type/pose-aware camera eye height，并以非玩家 target focused test 锁定。
+
+## 2026-07-12：play recipe book packet family coverage audit
+
+- [x] Add/Remove/Settings wire、strict trailing、replace/known/highlight/remove 与四类 open/filter settings canonical semantics 已审计。
+- [x] Remove/Settings 五格闭合；Add 的 RecipeToast 和剩余 SlotDisplay/component menu 呈现仍开放，runtime/tests 保持 partial。

@@ -201,10 +201,12 @@ pub(crate) fn decode_recipe_book_add(decoder: &mut Decoder<'_>) -> Result<Recipe
             highlight: flags & 2 != 0,
         });
     }
-    Ok(RecipeBookAdd {
+    let packet = RecipeBookAdd {
         entries,
         replace: decoder.read_bool()?,
-    })
+    };
+    reject_recipe_book_trailing(decoder, "recipe book add packet")?;
+    Ok(packet)
 }
 
 pub(crate) fn decode_recipe_book_remove(decoder: &mut Decoder<'_>) -> Result<RecipeBookRemove> {
@@ -213,16 +215,29 @@ pub(crate) fn decode_recipe_book_remove(decoder: &mut Decoder<'_>) -> Result<Rec
     for _ in 0..count {
         recipe_ids.push(decode_recipe_display_id(decoder)?);
     }
-    Ok(RecipeBookRemove { recipe_ids })
+    let packet = RecipeBookRemove { recipe_ids };
+    reject_recipe_book_trailing(decoder, "recipe book remove packet")?;
+    Ok(packet)
 }
 
 pub(crate) fn decode_recipe_book_settings(decoder: &mut Decoder<'_>) -> Result<RecipeBookSettings> {
-    Ok(RecipeBookSettings {
+    let packet = RecipeBookSettings {
         crafting: decode_recipe_book_type_settings(decoder)?,
         furnace: decode_recipe_book_type_settings(decoder)?,
         blast_furnace: decode_recipe_book_type_settings(decoder)?,
         smoker: decode_recipe_book_type_settings(decoder)?,
-    })
+    };
+    reject_recipe_book_trailing(decoder, "recipe book settings packet")?;
+    Ok(packet)
+}
+
+fn reject_recipe_book_trailing(decoder: &Decoder<'_>, packet_name: &'static str) -> Result<()> {
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(format!(
+            "trailing bytes after {packet_name}"
+        )));
+    }
+    Ok(())
 }
 
 pub(crate) fn decode_update_recipes(decoder: &mut Decoder<'_>) -> Result<UpdateRecipes> {

@@ -2989,6 +2989,44 @@ mod tests {
             .all(|cell| cell.status == PacketCoverageStatus::Complete));
     }
 
+    #[test]
+    fn play_recipe_book_family_locks_add_remove_and_settings_boundaries() {
+        let ledger = vanilla_packet_coverage_26_1().unwrap();
+        let add = ledger
+            .entries
+            .iter()
+            .find(|entry| {
+                entry.state == "play" && entry.constant_name == "CLIENTBOUND_RECIPE_BOOK_ADD"
+            })
+            .expect("play recipe book add coverage row");
+        let add_partial: BTreeSet<_> = add
+            .coverage
+            .iter()
+            .filter_map(|(dimension, cell)| {
+                (cell.status == PacketCoverageStatus::Partial).then_some(dimension.as_str())
+            })
+            .collect();
+        assert_eq!(
+            add_partial,
+            BTreeSet::from(["runtime_side_effect", "tests"])
+        );
+
+        for packet in [
+            "CLIENTBOUND_RECIPE_BOOK_REMOVE",
+            "CLIENTBOUND_RECIPE_BOOK_SETTINGS",
+        ] {
+            let entry = ledger
+                .entries
+                .iter()
+                .find(|entry| entry.state == "play" && entry.constant_name == packet)
+                .expect("play recipe book coverage row");
+            assert!(entry
+                .coverage
+                .values()
+                .all(|cell| cell.status == PacketCoverageStatus::Complete));
+        }
+    }
+
     fn state_name(state: PacketState) -> &'static str {
         match state {
             PacketState::Handshake => "handshake",

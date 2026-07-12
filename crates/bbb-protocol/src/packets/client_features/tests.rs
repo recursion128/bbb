@@ -168,6 +168,14 @@ fn decodes_recipe_book_add_packet_wire_order() {
             replace: true,
         })
     );
+    let mut trailing = payload;
+    trailing.push(0);
+    assert!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_RECIPE_BOOK_ADD, &trailing)
+            .unwrap_err()
+            .to_string()
+            .contains("trailing bytes after recipe book add packet")
+    );
 }
 
 #[test]
@@ -378,19 +386,24 @@ fn decodes_recipe_book_remove_packet_wire_order() {
     payload.write_var_i32(2);
     payload.write_var_i32(123);
     payload.write_var_i32(124);
+    let payload = payload.into_inner();
 
     assert_eq!(
-        decode_play_clientbound(
-            ids::play::CLIENTBOUND_RECIPE_BOOK_REMOVE,
-            &payload.into_inner()
-        )
-        .unwrap(),
+        decode_play_clientbound(ids::play::CLIENTBOUND_RECIPE_BOOK_REMOVE, &payload).unwrap(),
         PlayClientbound::RecipeBookRemove(RecipeBookRemove {
             recipe_ids: vec![
                 RecipeDisplayId { index: 123 },
                 RecipeDisplayId { index: 124 },
             ],
         })
+    );
+    let mut trailing = payload;
+    trailing.push(0);
+    assert!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_RECIPE_BOOK_REMOVE, &trailing)
+            .unwrap_err()
+            .to_string()
+            .contains("trailing bytes after recipe book remove packet")
     );
 }
 
@@ -405,13 +418,10 @@ fn decodes_recipe_book_settings_packet_wire_order() {
     payload.write_bool(true);
     payload.write_bool(false);
     payload.write_bool(false);
+    let payload = payload.into_inner();
 
     assert_eq!(
-        decode_play_clientbound(
-            ids::play::CLIENTBOUND_RECIPE_BOOK_SETTINGS,
-            &payload.into_inner()
-        )
-        .unwrap(),
+        decode_play_clientbound(ids::play::CLIENTBOUND_RECIPE_BOOK_SETTINGS, &payload).unwrap(),
         PlayClientbound::RecipeBookSettings(RecipeBookSettings {
             crafting: RecipeBookTypeSettings {
                 open: true,
@@ -430,6 +440,14 @@ fn decodes_recipe_book_settings_packet_wire_order() {
                 filtering: false,
             },
         })
+    );
+    let mut trailing = payload;
+    trailing.push(0);
+    assert!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_RECIPE_BOOK_SETTINGS, &trailing)
+            .unwrap_err()
+            .to_string()
+            .contains("trailing bytes after recipe book settings packet")
     );
 }
 

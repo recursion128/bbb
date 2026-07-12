@@ -8651,28 +8651,52 @@
       "constant_name": "CLIENTBOUND_RECIPE_BOOK_ADD",
       "coverage": {
         "canonical_apply": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/recipe_book.rs#apply_recipe_book_add",
+            "crates/bbb-world/src/recipe_book.rs#recipe_book_add_remove_and_settings_follow_client_semantics",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleRecipeBookAdd"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/client_features/tests.rs#decodes_recipe_book_add_packet_wire_order",
+            "crates/bbb-protocol/src/packets/client_features/tests.rs#decodes_recipe_book_add_with_structured_shaped_crafting_display",
+            "crates/bbb-protocol/src/packets/client_features/tests.rs#decodes_recipe_book_add_with_structured_furnace_display",
+            "vanilla:net/minecraft/network/protocol/game/ClientboundRecipeBookAddPacket.java#STREAM_CODEC"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "ownership": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/play_apply.rs#PlayClientbound::RecipeBookAdd",
+            "crates/bbb-world/src/recipe_book.rs#apply_recipe_book_add"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "runtime_side_effect": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
+          "evidence": [
+            "crates/bbb-native/src/runtime.rs#recipe_book_tab_animation_scale_y",
+            "crates/bbb-native/src/runtime.rs#hud_recipe_book_recipe_button_layers",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleRecipeBookAdd",
+            "vanilla:net/minecraft/client/gui/components/toasts/RecipeToast.java#addOrUpdate"
+          ],
+          "gap": "docs/unsupported-features.md#container-menu-presentation-parity",
           "status": "partial"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "evidence": [
+            "crates/bbb-protocol/src/packets/client_features/tests.rs#decodes_recipe_book_add_packet_wire_order",
+            "crates/bbb-net/src/event_stream.rs#play_passive_world_apply_packets_emit_matching_events",
+            "crates/bbb-net/src/probe/play.rs#probe_applies_recipe_book_packets_to_world",
+            "crates/bbb-world/src/recipe_book.rs#recipe_book_add_remove_and_settings_follow_client_semantics",
+            "crates/bbb-native/src/runtime/events/tests/entity_and_inventory_counters.rs#recipe_book_events_update_world_state_and_world_counters",
+            "crates/bbb-native/src/runtime/tests.rs#hud_inventory_screen_projects_crafting_recipe_book_buttons"
+          ],
+          "gap": "docs/unsupported-features.md#container-menu-presentation-parity",
           "status": "partial"
         }
       },
@@ -8686,29 +8710,48 @@
       "constant_name": "CLIENTBOUND_RECIPE_BOOK_REMOVE",
       "coverage": {
         "canonical_apply": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/recipe_book.rs#apply_recipe_book_remove",
+            "crates/bbb-world/src/recipe_book.rs#recipe_book_add_remove_and_settings_follow_client_semantics",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleRecipeBookRemove"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/client_features/tests.rs#decodes_recipe_book_remove_packet_wire_order",
+            "vanilla:net/minecraft/network/protocol/game/ClientboundRecipeBookRemovePacket.java#STREAM_CODEC"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "ownership": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/play_apply.rs#PlayClientbound::RecipeBookRemove"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "runtime_side_effect": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/recipe_book.rs#apply_recipe_book_remove",
+            "crates/bbb-native/src/runtime.rs#hud_recipe_book_recipe_button_layers",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleRecipeBookRemove"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/client_features/tests.rs#decodes_recipe_book_remove_packet_wire_order",
+            "crates/bbb-net/src/event_stream.rs#play_passive_world_apply_packets_emit_matching_events",
+            "crates/bbb-net/src/probe/play.rs#probe_applies_recipe_book_packets_to_world",
+            "crates/bbb-world/src/recipe_book.rs#recipe_book_add_remove_and_settings_follow_client_semantics",
+            "crates/bbb-native/src/runtime/events/tests/entity_and_inventory_counters.rs#recipe_book_events_update_world_state_and_world_counters"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "clientbound",
@@ -8721,29 +8764,48 @@
       "constant_name": "CLIENTBOUND_RECIPE_BOOK_SETTINGS",
       "coverage": {
         "canonical_apply": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/recipe_book.rs#apply_recipe_book_settings",
+            "crates/bbb-world/src/recipe_book.rs#recipe_book_add_remove_and_settings_follow_client_semantics",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleRecipeBookSettings"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/client_features/tests.rs#decodes_recipe_book_settings_packet_wire_order",
+            "vanilla:net/minecraft/network/protocol/game/ClientboundRecipeBookSettingsPacket.java#STREAM_CODEC"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "ownership": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/play_apply.rs#PlayClientbound::RecipeBookSettings"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "runtime_side_effect": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-native/src/input/inventory.rs#maybe_queue_recipe_book_toggle_click",
+            "crates/bbb-native/src/input/inventory/tests.rs#recipe_book_button_click_toggles_local_setting_and_queues_packet",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleRecipeBookSettings"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/client_features/tests.rs#decodes_recipe_book_settings_packet_wire_order",
+            "crates/bbb-net/src/event_stream.rs#play_passive_world_apply_packets_emit_matching_events",
+            "crates/bbb-net/src/probe/play.rs#probe_applies_recipe_book_packets_to_world",
+            "crates/bbb-world/src/recipe_book.rs#recipe_book_add_remove_and_settings_follow_client_semantics",
+            "crates/bbb-native/src/input/inventory/tests.rs#recipe_book_button_click_toggles_local_setting_and_queues_packet"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "clientbound",
