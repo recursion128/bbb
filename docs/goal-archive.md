@@ -11482,3 +11482,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] add/remove/change framing、render-type validation、strict trailing、ownership 与跨 crate tests 闭合。
 - [x] bbb 仍拒绝 vanilla 可解码但 handler no-op 的 unknown method；rich Component/NumberFormat 仍为 summary，故 decode/canonical/runtime 保持 partial。
+
+## 2026-07-12：play set-score packet coverage audit
+
+- [x] owner/objective/value/optional-display/NumberFormat framing、absent-format trailing rejection、unknown-objective gate、ownership 与 tests 闭合。
+- [x] display Component 仍被 flatten，NumberFormat 仍为 raw trailing summary，故 decode/canonical/runtime 保持 partial。

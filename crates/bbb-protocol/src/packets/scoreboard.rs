@@ -149,13 +149,19 @@ pub(super) fn decode_set_objective(decoder: &mut Decoder<'_>) -> Result<SetObjec
 }
 
 pub(super) fn decode_set_score(decoder: &mut Decoder<'_>) -> Result<SetScore> {
-    Ok(SetScore {
+    let packet = SetScore {
         owner: decoder.read_string(32767)?,
         objective_name: decoder.read_string(32767)?,
         score: decoder.read_var_i32()?,
         display: decode_optional_component_summary_from_decoder(decoder)?,
         number_format: decode_optional_trailing_number_format(decoder)?,
-    })
+    };
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after set score packet".to_string(),
+        ));
+    }
+    Ok(packet)
 }
 
 pub(super) fn decode_set_player_team(decoder: &mut Decoder<'_>) -> Result<SetPlayerTeam> {
@@ -243,6 +249,7 @@ mod tests {
                 objective_name: None,
             })
         );
+
         bytes.push(0);
         let error = decode_play_clientbound(ids::play::CLIENTBOUND_SET_DISPLAY_OBJECTIVE, &bytes)
             .unwrap_err();
@@ -360,6 +367,20 @@ mod tests {
                 number_format: Some(vec![0]),
             })
         );
+
+        let mut trailing = Encoder::new();
+        trailing.write_string("Steve");
+        trailing.write_string("kills");
+        trailing.write_var_i32(42);
+        trailing.write_bool(false);
+        trailing.write_bool(false);
+        trailing.write_u8(0);
+        let error =
+            decode_play_clientbound(ids::play::CLIENTBOUND_SET_SCORE, &trailing.into_inner())
+                .unwrap_err();
+        assert!(error
+            .to_string()
+            .contains("trailing bytes after set score packet"));
     }
 
     #[test]
