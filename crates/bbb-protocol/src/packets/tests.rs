@@ -2667,7 +2667,7 @@ fn decodes_chunk_batch_and_encodes_client_play_status_packets() {
     assert_eq!(id, ids::play::SERVERBOUND_CLIENT_TICK_END);
     assert!(payload.is_empty());
 
-    let (id, payload) = encode_play_client_information_default();
+    let (id, payload) = encode_play_client_information_default().unwrap();
     assert_eq!(id, ids::play::SERVERBOUND_CLIENT_INFORMATION);
     let mut decoder = Decoder::new(&payload);
     assert_eq!(decoder.read_string(16).unwrap(), "en_us");
@@ -2688,13 +2688,26 @@ fn encodes_client_information_from_struct() {
         particle_status: ClientParticleStatus::Minimal,
     };
 
-    let (id, payload) = encode_client_information(&information);
+    let (id, payload) = encode_client_information(&information).unwrap();
     assert_eq!(id, ids::configuration::SERVERBOUND_CLIENT_INFORMATION);
     assert_client_information_payload(&payload, &information);
 
-    let (id, play_payload) = encode_play_client_information(&information);
+    let (id, play_payload) = encode_play_client_information(&information).unwrap();
     assert_eq!(id, ids::play::SERVERBOUND_CLIENT_INFORMATION);
     assert_eq!(play_payload, payload);
+
+    let mut maximum_language = information.clone();
+    maximum_language.language = "a".repeat(16);
+    encode_client_information(&maximum_language).unwrap();
+    encode_play_client_information(&maximum_language).unwrap();
+
+    let mut oversized_language = information;
+    oversized_language.language = "a".repeat(17);
+    assert!(encode_client_information(&oversized_language).is_err());
+    assert!(encode_play_client_information(&oversized_language).is_err());
+    oversized_language.language = "😀".repeat(9);
+    assert!(encode_client_information(&oversized_language).is_err());
+    assert!(encode_play_client_information(&oversized_language).is_err());
 }
 
 #[test]

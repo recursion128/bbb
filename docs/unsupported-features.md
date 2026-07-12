@@ -120,11 +120,10 @@ Owner: `bbb-protocol`
   independent Tokio interval whose first deadline fires immediately. The current
   play-only 20 Hz sender keeps servers live but does not prove vanilla movement
   grouping semantics from `handleClientTickEnd`.
-- Align play `ServerboundClientInformationPacket` with vanilla's change-triggered,
-  equality-deduplicated `Options.broadcastOptions` path. Startup CLI options are
-  already sent in configuration; the current configuration-to-play handoff sends
-  the same snapshot again unconditionally, and bbb intentionally has no in-game
-  configuration UI that would justify treating that duplicate as option-change parity.
+- Track the last sent `ClientInformation` snapshot across configuration-to-play,
+  suppress an unchanged handoff duplicate, and send play
+  `ServerboundClientInformationPacket` only from vanilla's change-triggered,
+  equality-deduplicated `Options.broadcastOptions` equivalent.
 - Replace the current first-`ClientboundPlayerPositionPacket` trigger for
   `ServerboundPlayerLoadedPacket` with vanilla `LevelLoadTracker` readiness:
   wait for server loading packets, then for the local-player section to be

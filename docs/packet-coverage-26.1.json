@@ -823,7 +823,9 @@
         "encoder": {
           "evidence": [
             "crates/bbb-protocol/src/packets/connection.rs#encode_client_information",
-            "vanilla:net/minecraft/network/protocol/common/ServerboundClientInformationPacket.java#STREAM_CODEC"
+            "crates/bbb-protocol/src/packets/connection.rs#encode_client_information_payload",
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_client_information_from_struct",
+            "vanilla:net/minecraft/server/level/ClientInformation.java#MAX_LANGUAGE_LENGTH"
           ],
           "gap": null,
           "status": "complete"
@@ -3061,8 +3063,9 @@
         "encoder": {
           "evidence": [
             "crates/bbb-protocol/src/packets/serverbound.rs#encode_play_client_information",
-            "vanilla:net/minecraft/network/protocol/common/ServerboundClientInformationPacket.java#STREAM_CODEC",
-            "vanilla:net/minecraft/server/level/ClientInformation.java#write"
+            "crates/bbb-protocol/src/packets/connection.rs#encode_client_information_payload",
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_client_information_from_struct",
+            "vanilla:net/minecraft/server/level/ClientInformation.java#MAX_LANGUAGE_LENGTH"
           ],
           "gap": null,
           "status": "complete"

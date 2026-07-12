@@ -18,7 +18,7 @@ impl ProbeContext {
                 self.conn.send_packet(id, &payload).await?;
                 self.state = ConnectionState::Play;
                 let (id, payload) =
-                    packets::encode_play_client_information(&self.client_information);
+                    packets::encode_play_client_information(&self.client_information)?;
                 self.conn.send_packet(id, &payload).await?;
                 self.play_tick = Some(play_tick_interval());
             }

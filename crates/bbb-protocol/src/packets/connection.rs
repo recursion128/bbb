@@ -438,15 +438,15 @@ pub fn encode_login_custom_query_answer(transaction_id: i32) -> (i32, Vec<u8>) {
     )
 }
 
-pub fn encode_client_information_default() -> (i32, Vec<u8>) {
+pub fn encode_client_information_default() -> Result<(i32, Vec<u8>)> {
     encode_client_information(&ClientInformation::default())
 }
 
-pub fn encode_client_information(information: &ClientInformation) -> (i32, Vec<u8>) {
-    (
+pub fn encode_client_information(information: &ClientInformation) -> Result<(i32, Vec<u8>)> {
+    Ok((
         ids::configuration::SERVERBOUND_CLIENT_INFORMATION,
-        encode_client_information_payload(information),
-    )
+        encode_client_information_payload(information)?,
+    ))
 }
 
 pub fn encode_configuration_brand_custom_payload(brand: &str) -> (i32, Vec<u8>) {
@@ -459,7 +459,15 @@ pub fn encode_configuration_brand_custom_payload(brand: &str) -> (i32, Vec<u8>) 
     )
 }
 
-pub(super) fn encode_client_information_payload(information: &ClientInformation) -> Vec<u8> {
+pub(super) fn encode_client_information_payload(
+    information: &ClientInformation,
+) -> Result<Vec<u8>> {
+    let language_utf16_len = information.language.encode_utf16().count();
+    if language_utf16_len > 16 {
+        return Err(ProtocolError::InvalidData(format!(
+            "client information language has {language_utf16_len} UTF-16 code units, maximum is 16"
+        )));
+    }
     let mut out = Encoder::new();
     out.write_string(&information.language);
     out.write_i8(information.view_distance);
@@ -470,7 +478,7 @@ pub(super) fn encode_client_information_payload(information: &ClientInformation)
     out.write_bool(information.text_filtering_enabled);
     out.write_bool(information.allows_listing);
     out.write_var_i32(information.particle_status.id());
-    out.into_inner()
+    Ok(out.into_inner())
 }
 
 pub fn encode_configuration_finish() -> (i32, Vec<u8>) {

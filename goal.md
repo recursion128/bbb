@@ -313,7 +313,7 @@ enabled-features 的 Set 去重/unknown 过滤及 reset-chat canonical clear 也
 custom-report details 与 server-links 的 decode/ownership/canonical/runtime 适用格已闭合；
 transfer 的 target decode 与 canonical projection 已审计，但 vanilla 的断开当前连接、携带
 transfer state 并重连仍保持具体 `partial`，不能把记录 host/port 当作完成 transfer runtime。
-configuration client-information 的 startup command owner、9 字段 encoder、configuration/play
+configuration client-information 的 startup command owner、language bound、9 字段 encoder、configuration/play
 状态切换与无 ack 语义已闭合；后续 option 更新仍使用同一 generated ordinal/catalog owner。
 dialog unit clear 的 wire/ownership/canonical projection 已闭合，但 previous-screen 恢复仍 partial；
 show-dialog 仍缺 `Dialog` semantic codec/screen，custom-click 仍缺 NBT encoder 与 command surface。

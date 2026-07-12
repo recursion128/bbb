@@ -12051,3 +12051,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] `ClientIntentionPacket` host 现在由单一 protocol validator 锁定 vanilla `MAX_HOST_LENGTH = 255` 的 UTF-16-unit 上限；handshake encoder、offline connection options 与 status address parsing 共用该边界。
 - [x] focused tests 覆盖 255/256 ASCII 边界与 surrogate-pair 长度；Transfer-intent production reconnect 和 closing→handshake 转换继续开放，未由通用 encoder 外推完成。
+
+## 2026-07-12：client information language bound
+
+- [x] configuration/play `ServerboundClientInformationPacket` 现在共用 fallible payload encoder，并按 vanilla `ClientInformation.MAX_LANGUAGE_LENGTH = 16` 拒绝超长 UTF-16 language code。
+- [x] focused tests 锁定两个 phase 的同一 9 字段 payload、16/17 ASCII 边界与 surrogate-pair 长度；play option change dedup/state guard 继续开放。
