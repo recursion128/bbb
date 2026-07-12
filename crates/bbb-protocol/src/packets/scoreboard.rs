@@ -102,10 +102,16 @@ pub(super) fn decode_set_display_objective(
 ) -> Result<SetDisplayObjective> {
     let slot = ScoreboardDisplaySlot::from_id(decoder.read_var_i32()?);
     let objective_name = decoder.read_string(32767)?;
-    Ok(SetDisplayObjective {
+    let packet = SetDisplayObjective {
         slot,
         objective_name: (!objective_name.is_empty()).then_some(objective_name),
-    })
+    };
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after set display objective packet".to_string(),
+        ));
+    }
+    Ok(packet)
 }
 
 pub(super) fn decode_set_objective(decoder: &mut Decoder<'_>) -> Result<SetObjective> {
@@ -220,12 +226,10 @@ mod tests {
         let mut payload = Encoder::new();
         payload.write_var_i32(1);
         payload.write_string("");
+        let mut bytes = payload.into_inner();
 
-        let packet = decode_play_clientbound(
-            ids::play::CLIENTBOUND_SET_DISPLAY_OBJECTIVE,
-            &payload.into_inner(),
-        )
-        .unwrap();
+        let packet =
+            decode_play_clientbound(ids::play::CLIENTBOUND_SET_DISPLAY_OBJECTIVE, &bytes).unwrap();
         assert_eq!(
             packet,
             PlayClientbound::SetDisplayObjective(SetDisplayObjective {
@@ -233,6 +237,12 @@ mod tests {
                 objective_name: None,
             })
         );
+        bytes.push(0);
+        let error = decode_play_clientbound(ids::play::CLIENTBOUND_SET_DISPLAY_OBJECTIVE, &bytes)
+            .unwrap_err();
+        assert!(error
+            .to_string()
+            .contains("trailing bytes after set display objective packet"));
     }
 
     #[test]

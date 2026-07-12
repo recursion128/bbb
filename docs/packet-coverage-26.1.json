@@ -8965,29 +8965,47 @@
       "constant_name": "CLIENTBOUND_SET_DISPLAY_OBJECTIVE",
       "coverage": {
         "canonical_apply": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/client/scoreboard.rs#apply_set_display_objective",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleSetDisplayObjective"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/scoreboard.rs#decodes_scoreboard_display_objective_packet",
+            "crates/bbb-protocol/src/scoreboard_display_slots.rs#scoreboard_display_slot_catalog_is_complete_contiguous_and_unique",
+            "vanilla:net/minecraft/network/protocol/game/ClientboundSetDisplayObjectivePacket.java#STREAM_CODEC"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "ownership": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/play_apply.rs#PlayClientbound::SetDisplayObjective"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "runtime_side_effect": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/client/scoreboard/tests.rs#scoreboard_display_objective_can_be_cleared_by_empty_name",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleSetDisplayObjective"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/scoreboard.rs#decodes_scoreboard_display_objective_packet",
+            "crates/bbb-net/src/event_stream.rs#play_border_and_scoreboard_packets_emit_matching_events_without_responses",
+            "crates/bbb-net/src/probe/play.rs#probe_applies_scoreboard_packets_to_world",
+            "crates/bbb-world/src/client/scoreboard/tests.rs#scoreboard_display_objective_can_be_cleared_by_empty_name",
+            "crates/bbb-native/src/runtime/events/tests/session_hud_and_vehicle_events.rs#scoreboard_events_update_world_and_world_counters"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "clientbound",

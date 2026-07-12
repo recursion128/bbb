@@ -607,6 +607,8 @@ back into a todo. Do not delete these.
   respawn branch, and full rich death-message Component preservation.
 - ResetScore owner/nullable-objective decode and all/single-score removal semantics
   are covered; remaining scoreboard gaps are objective/team text and presentation specific.
+- SetDisplayObjective slot selection and clear/unknown-objective behavior are covered;
+  rich objective/team content remains tracked by the packets that carry it.
 - `BeaconMenu`: confirm/cancel hover state, effect highlighted hover state,
   labels/tooltips.
 - `EnchantmentMenu`: animated book model, enchanting glyph text and its

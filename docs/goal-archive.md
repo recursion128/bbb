@@ -11472,3 +11472,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] 对照 `ClientboundResetScorePacket` 锁定 owner + nullable objective wire并拒绝 trailing bytes。
 - [x] null objective 全删、known objective 单删、unknown objective 忽略以及 protocol/net/world/native tests 五格闭合。
+
+## 2026-07-12：play set-display-objective packet coverage audit
+
+- [x] 对照 `ClientboundSetDisplayObjectivePacket` 锁定 DisplaySlot BY_ID（越界回退 LIST）+ empty-as-null objective wire并拒绝 trailing bytes。
+- [x] known objective 绑定、empty/unknown objective 清槽以及 protocol/net/world/native tests 五格闭合。
