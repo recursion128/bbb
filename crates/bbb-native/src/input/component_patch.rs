@@ -533,8 +533,10 @@ fn encode_component_tree(
     _item_runtime: Option<&NativeItemRuntime>,
 ) -> Option<String> {
     let component = match type_id {
-        6 => patch.custom_name_nbt.as_ref()?,
-        9 => patch.item_name_nbt.as_ref()?,
+        component_id::VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID => {
+            patch.custom_name_nbt.as_ref()?
+        }
+        component_id::VANILLA_DATA_COMPONENT_ITEM_NAME_TYPE_ID => patch.item_name_nbt.as_ref()?,
         _ => return None,
     };
     Some(debug_nbt_summary_snbt(component))
@@ -599,8 +601,10 @@ fn encode_enchantments(
     _item_runtime: Option<&NativeItemRuntime>,
 ) -> Option<String> {
     let enchantments = match type_id {
-        13 => &patch.enchantments,
-        42 => &patch.stored_enchantments,
+        component_id::VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID => &patch.enchantments,
+        component_id::VANILLA_DATA_COMPONENT_STORED_ENCHANTMENTS_TYPE_ID => {
+            &patch.stored_enchantments
+        }
         _ => return None,
     };
     let entries = enchantments
@@ -622,8 +626,12 @@ fn encode_adventure_mode_predicate(
     item_runtime: Option<&NativeItemRuntime>,
 ) -> Option<String> {
     let predicate = match type_id {
-        14 => patch.can_place_on_persistent.as_ref()?,
-        15 => patch.can_break_persistent.as_ref()?,
+        component_id::VANILLA_DATA_COMPONENT_CAN_PLACE_ON_TYPE_ID => {
+            patch.can_place_on_persistent.as_ref()?
+        }
+        component_id::VANILLA_DATA_COMPONENT_CAN_BREAK_TYPE_ID => {
+            patch.can_break_persistent.as_ref()?
+        }
         _ => return None,
     };
     let predicates = predicate
@@ -1652,19 +1660,45 @@ fn encode_named_variant(
     _item_runtime: Option<&NativeItemRuntime>,
 ) -> Option<String> {
     let resource_id = match type_id {
-        81 => vanilla_villager_type_resource_id(patch.villager_variant_id?)?,
-        82 => vanilla_wolf_variant_resource_id(patch.wolf_variant_id?)?,
-        83 => vanilla_wolf_sound_variant_resource_id(patch.wolf_sound_variant_id?)?,
-        93 => pig_variant_resource_id(patch.pig_variant_id?)?,
-        94 => pig_sound_variant_resource_id(patch.pig_sound_variant_id?)?,
-        95 => cow_variant_resource_id(patch.cow_variant_id?)?,
-        96 => cow_sound_variant_resource_id(patch.cow_sound_variant_id?)?,
-        97 => chicken_variant_resource_id(patch.chicken_variant_id?)?,
-        98 => chicken_sound_variant_resource_id(patch.chicken_sound_variant_id?)?,
-        99 => zombie_nautilus_variant_resource_id(patch.zombie_nautilus_variant_id?)?,
-        100 => frog_variant_resource_id(patch.frog_variant_id?)?,
-        105 => cat_variant_resource_id(patch.cat_variant_id?)?,
-        106 => cat_sound_variant_resource_id(patch.cat_sound_variant_id?)?,
+        component_id::VANILLA_DATA_COMPONENT_VILLAGER_VARIANT_TYPE_ID => {
+            vanilla_villager_type_resource_id(patch.villager_variant_id?)?
+        }
+        component_id::VANILLA_DATA_COMPONENT_WOLF_VARIANT_TYPE_ID => {
+            vanilla_wolf_variant_resource_id(patch.wolf_variant_id?)?
+        }
+        component_id::VANILLA_DATA_COMPONENT_WOLF_SOUND_VARIANT_TYPE_ID => {
+            vanilla_wolf_sound_variant_resource_id(patch.wolf_sound_variant_id?)?
+        }
+        component_id::VANILLA_DATA_COMPONENT_PIG_VARIANT_TYPE_ID => {
+            pig_variant_resource_id(patch.pig_variant_id?)?
+        }
+        component_id::VANILLA_DATA_COMPONENT_PIG_SOUND_VARIANT_TYPE_ID => {
+            pig_sound_variant_resource_id(patch.pig_sound_variant_id?)?
+        }
+        component_id::VANILLA_DATA_COMPONENT_COW_VARIANT_TYPE_ID => {
+            cow_variant_resource_id(patch.cow_variant_id?)?
+        }
+        component_id::VANILLA_DATA_COMPONENT_COW_SOUND_VARIANT_TYPE_ID => {
+            cow_sound_variant_resource_id(patch.cow_sound_variant_id?)?
+        }
+        component_id::VANILLA_DATA_COMPONENT_CHICKEN_VARIANT_TYPE_ID => {
+            chicken_variant_resource_id(patch.chicken_variant_id?)?
+        }
+        component_id::VANILLA_DATA_COMPONENT_CHICKEN_SOUND_VARIANT_TYPE_ID => {
+            chicken_sound_variant_resource_id(patch.chicken_sound_variant_id?)?
+        }
+        component_id::VANILLA_DATA_COMPONENT_ZOMBIE_NAUTILUS_VARIANT_TYPE_ID => {
+            zombie_nautilus_variant_resource_id(patch.zombie_nautilus_variant_id?)?
+        }
+        component_id::VANILLA_DATA_COMPONENT_FROG_VARIANT_TYPE_ID => {
+            frog_variant_resource_id(patch.frog_variant_id?)?
+        }
+        component_id::VANILLA_DATA_COMPONENT_CAT_VARIANT_TYPE_ID => {
+            cat_variant_resource_id(patch.cat_variant_id?)?
+        }
+        component_id::VANILLA_DATA_COMPONENT_CAT_SOUND_VARIANT_TYPE_ID => {
+            cat_sound_variant_resource_id(patch.cat_sound_variant_id?)?
+        }
         _ => return None,
     };
     Some(debug_snbt_string(resource_id))
@@ -1729,6 +1763,29 @@ mod tests {
     use std::collections::HashSet;
 
     use super::*;
+
+    #[test]
+    fn production_encoder_matches_do_not_use_raw_component_type_ids() {
+        let production = include_str!("component_patch.rs")
+            .split("#[cfg(test)]")
+            .next()
+            .unwrap();
+        let violations = production
+            .lines()
+            .filter(|line| {
+                let Some((pattern, _)) = line.split_once("=>") else {
+                    return false;
+                };
+                pattern
+                    .split(|character: char| !character.is_ascii_digit())
+                    .any(|token| !token.is_empty() && token.parse::<i32>().is_ok())
+            })
+            .collect::<Vec<_>>();
+        assert!(
+            violations.is_empty(),
+            "raw numeric encoder match arms: {violations:?}"
+        );
+    }
 
     #[test]
     fn encoder_registry_is_unique_sorted_and_persistent() {

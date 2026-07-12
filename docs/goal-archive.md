@@ -12448,3 +12448,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] item-model 暴露只读 default kinetic query，native entity-hand 与 first-person 共用同一查询并
   删除七项 resource match 与第二份 timing 表；threshold、damage multiplier、sounds 以及 kinetic
   movement 算法未在本切片误标实现，component patch removal 仍优先于 defaults。
+
+## 2026-07-12：Removed raw native component encoder ids
+
+- [x] native persistent-SNBT encoder 的四个共享 handler 保留 descriptor-dispatched type-id 分流，
+  但 custom/item name、enchantments、adventure predicates 与 named variants 的 19 个裸数字 arm
+  全部改为 protocol generated component constants；encoder registry、输出与 unsupported omission
+  语义不变。
+- [x] source-structure test 排除 test fixture 后拒绝 component-patch encoder 生产代码重新引入裸数字
+  match arm，确保新增/共享 encoder 只引用统一 catalog aliases。
