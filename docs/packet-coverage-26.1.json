@@ -5825,28 +5825,54 @@
       "constant_name": "SERVERBOUND_TELEPORT_TO_ENTITY",
       "coverage": {
         "ack_response": {
-          "evidence": [],
+          "evidence": [
+            "crates/bbb-world/src/client/local_player.rs#apply_player_position",
+            "crates/bbb-world/src/level.rs#apply_respawn",
+            "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#handleTeleportToEntityPacket"
+          ],
           "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
           "status": "partial"
         },
         "command_surface": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "evidence": [
+            "crates/bbb-control/src/server.rs#net.teleport_to_entity",
+            "crates/bbb-native/src/runtime/control_requests.rs#NetControlRequest::TeleportToEntity",
+            "crates/bbb-native/src/input/commands.rs#queue_teleport_to_entity_command",
+            "vanilla:net/minecraft/client/gui/spectator/PlayerMenuItem.java#selectItem"
+          ],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
           "status": "partial"
         },
         "encoder": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/serverbound.rs#TeleportToEntity",
+            "crates/bbb-protocol/src/packets/serverbound.rs#encode_play_teleport_to_entity",
+            "crates/bbb-net/src/driver/commands.rs#send_teleport_to_entity",
+            "vanilla:net/minecraft/network/protocol/game/ServerboundTeleportToEntityPacket.java#STREAM_CODEC"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "state_guard": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "evidence": [
+            "crates/bbb-control/src/server.rs#net.teleport_to_entity",
+            "crates/bbb-native/src/runtime/control_requests.rs#NetControlRequest::TeleportToEntity",
+            "vanilla:net/minecraft/client/gui/spectator/PlayerMenuItem.java#selectItem",
+            "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#handleTeleportToEntityPacket"
+          ],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
           "status": "partial"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "evidence": [
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_spectator_entity_packets",
+            "crates/bbb-net/src/driver/commands/tests.rs#send_spectator_entity_commands_encode_packets",
+            "crates/bbb-net/src/driver.rs#drive_connection_sends_spectator_entity_net_commands_in_play",
+            "crates/bbb-control/src/server/tests.rs#net_teleport_to_entity_queues_request",
+            "crates/bbb-control/src/server/tests.rs#net_teleport_to_entity_rejects_missing_non_string_or_invalid_uuid",
+            "crates/bbb-native/src/runtime/control_requests.rs#pump_control_net_requests_queues_spectator_entity_commands"
+          ],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
           "status": "partial"
         }
       },

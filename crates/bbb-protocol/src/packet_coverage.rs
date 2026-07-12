@@ -4333,6 +4333,29 @@ mod tests {
         }
     }
 
+    #[test]
+    fn play_serverbound_teleport_to_entity_keeps_spectator_menu_and_response_open() {
+        let ledger = vanilla_packet_coverage_26_1().unwrap();
+        let entry = ledger
+            .entries
+            .iter()
+            .find(|entry| {
+                entry.state == "play" && entry.constant_name == "SERVERBOUND_TELEPORT_TO_ENTITY"
+            })
+            .expect("play serverbound teleport to entity coverage row");
+        assert_eq!(
+            entry.coverage["encoder"].status,
+            PacketCoverageStatus::Complete
+        );
+        for dimension in ["ack_response", "command_surface", "state_guard", "tests"] {
+            assert_eq!(
+                entry.coverage[dimension].status,
+                PacketCoverageStatus::Partial,
+                "{dimension}"
+            );
+        }
+    }
+
     fn state_name(state: PacketState) -> &'static str {
         match state {
             PacketState::Handshake => "handshake",
