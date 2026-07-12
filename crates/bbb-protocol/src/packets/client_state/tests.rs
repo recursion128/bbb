@@ -333,7 +333,7 @@ fn decodes_update_mob_effect_packet_wire_order_and_flags() {
     payload.write_var_i32(2);
     payload.write_var_i32(600);
     payload.write_u8(flags);
-    let payload = payload.into_inner();
+    let mut payload = payload.into_inner();
 
     let packet =
         decode_play_clientbound(ids::play::CLIENTBOUND_UPDATE_MOB_EFFECT, &payload).unwrap();
@@ -361,6 +361,14 @@ fn decodes_update_mob_effect_packet_wire_order_and_flags() {
     assert_eq!(decoder.read_var_i32().unwrap(), 600);
     assert_eq!(decoder.read_u8().unwrap(), flags);
     assert!(decoder.is_empty());
+
+    payload.push(0);
+    assert!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_UPDATE_MOB_EFFECT, &payload)
+            .unwrap_err()
+            .to_string()
+            .contains("trailing bytes after update mob effect packet")
+    );
 }
 
 #[test]

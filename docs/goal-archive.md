@@ -11517,3 +11517,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] reset/add/remove/progress/show wire 顺序、Identifier normalization、strict trailing、tree/progress ownership 与跨 crate tests 闭合。
 - [x] rich title/description、完整 icon ItemStack、completion toast/telemetry 未闭合，故 decode/canonical/runtime 保持 partial。
+
+## 2026-07-12：play update-mob-effect packet coverage audit
+
+- [x] entity/effect/amplifier/duration/ambient-visible-icon-blend flags wire、strict trailing、living-entity gate、force replacement 与 tests 闭合。
+- [x] common movement/render consumers已有证据；全部 40 项 effect 的 attributes/particles/HUD/special movement parity 未反向闭合，runtime 保持 partial。

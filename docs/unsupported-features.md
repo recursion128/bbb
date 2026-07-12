@@ -156,6 +156,9 @@ Owner: `bbb-native` + `bbb-net` + `bbb-protocol` + `bbb-world`
 
 Movement:
 
+- UpdateMobEffect wire/state replacement, living-entity gate and common movement/
+  render consumers are covered; remaining vanilla client behavior across all mob
+  effects (attributes, particles, HUD and specialized movement) stays open.
 - Drive the native client-tick cadence from synchronized `TickingState.tickRate`
   while preserving the existing frozen/step budget ordering. The value currently
   feeds debug MSPT/tooltip state, but entity/world client ticks remain fixed at

@@ -10736,29 +10736,49 @@
       "constant_name": "CLIENTBOUND_UPDATE_MOB_EFFECT",
       "coverage": {
         "canonical_apply": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/entities/status.rs#apply_update_mob_effect",
+            "crates/bbb-world/src/entities/status.rs#mob_effects_upsert_remove_and_ignore_unknown_entities",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleUpdateMobEffect"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/client_state/tests.rs#decodes_update_mob_effect_packet_wire_order_and_flags",
+            "vanilla:net/minecraft/network/protocol/game/ClientboundUpdateMobEffectPacket.java#STREAM_CODEC"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "ownership": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/play_apply.rs#PlayClientbound::UpdateMobEffect"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "runtime_side_effect": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
+          "evidence": [
+            "crates/bbb-world/src/client/local_player_movement/tests.rs#local_player_levitation_moves_vertical_velocity_toward_effect_target",
+            "crates/bbb-world/src/entities/tests/movement_combat_and_swing_projection.rs#entity_model_sources_apply_mob_effect_swing_duration_modifiers",
+            "crates/bbb-native/src/runtime/events/tests/session_hud_and_vehicle_events.rs#entity_status_events_update_world_and_world_counters",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleUpdateMobEffect"
+          ],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
           "status": "partial"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/client_state/tests.rs#decodes_update_mob_effect_packet_wire_order_and_flags",
+            "crates/bbb-net/src/event_stream.rs#play_entity_state_packets_emit_matching_events_without_responses",
+            "crates/bbb-net/src/probe/play.rs#probe_applies_entity_state_packets_to_world",
+            "crates/bbb-world/src/entities/status.rs#mob_effects_upsert_remove_and_ignore_unknown_entities",
+            "crates/bbb-native/src/runtime/events/tests/session_hud_and_vehicle_events.rs#entity_status_events_update_world_and_world_counters"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "clientbound",

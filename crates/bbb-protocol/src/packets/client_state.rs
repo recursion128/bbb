@@ -554,13 +554,15 @@ pub(super) fn decode_ticking_step(decoder: &mut Decoder<'_>) -> Result<TickingSt
 }
 
 pub(super) fn decode_update_mob_effect(decoder: &mut Decoder<'_>) -> Result<UpdateMobEffect> {
-    Ok(UpdateMobEffect {
+    let update = UpdateMobEffect {
         entity_id: decoder.read_var_i32()?,
         effect_id: decoder.read_var_i32()?,
         amplifier: decoder.read_var_i32()?,
         duration_ticks: decoder.read_var_i32()?,
         flags: MobEffectFlags::from_bits(decoder.read_u8()?),
-    })
+    };
+    ensure_client_state_packet_consumed(decoder, "update mob effect")?;
+    Ok(update)
 }
 
 fn ensure_client_state_packet_consumed(decoder: &Decoder<'_>, packet: &str) -> Result<()> {
