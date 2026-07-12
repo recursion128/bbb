@@ -1,14 +1,14 @@
 use anyhow::Result;
 use bbb_protocol::packets::{
     self, AttackEntity, BlockEntityTagQuery, ChangeDifficultyCommand, ChangeGameModeCommand,
-    ChatAcknowledgement, ChatCommand, ChatCommandSigned, ChatMessage, ClientCommandAction,
-    CommandSuggestionRequest, ContainerButtonClick, ContainerClick, ContainerCloseRequest,
-    ContainerSlotStateChanged, EditBook, EntityTagQuery, InteractEntity, InteractionHand,
-    LockDifficultyCommand, PaddleBoat, PickItemFromBlock, PickItemFromEntity, PlaceRecipeCommand,
-    PlayerAbilitiesCommand, PlayerAction, PlayerCommand, PlayerInput, PlayerPositionState,
-    RecipeBookChangeSettingsCommand, RecipeBookSeenRecipeCommand, RenameItem, SeenAdvancements,
-    SelectBundleItem, SelectTradeCommand, ServerboundCustomPayload, SetBeacon, SetCreativeModeSlot,
-    SignUpdate, SpectateEntity, TeleportToEntity, UseItem, UseItemOn,
+    ChatAcknowledgement, ChatCommand, ChatCommandSigned, ChatMessage, ChatSessionUpdate,
+    ClientCommandAction, CommandSuggestionRequest, ContainerButtonClick, ContainerClick,
+    ContainerCloseRequest, ContainerSlotStateChanged, EditBook, EntityTagQuery, InteractEntity,
+    InteractionHand, LockDifficultyCommand, PaddleBoat, PickItemFromBlock, PickItemFromEntity,
+    PlaceRecipeCommand, PlayerAbilitiesCommand, PlayerAction, PlayerCommand, PlayerInput,
+    PlayerPositionState, RecipeBookChangeSettingsCommand, RecipeBookSeenRecipeCommand, RenameItem,
+    SeenAdvancements, SelectBundleItem, SelectTradeCommand, ServerboundCustomPayload, SetBeacon,
+    SetCreativeModeSlot, SignUpdate, SpectateEntity, TeleportToEntity, UseItem, UseItemOn,
 };
 
 use crate::{
@@ -59,6 +59,14 @@ pub(crate) async fn send_chat_command_signed(
 
 pub(crate) async fn send_chat_message(conn: &mut RawConnection, packet: ChatMessage) -> Result<()> {
     let (id, payload) = packets::encode_play_chat_message(&packet);
+    conn.send_packet(id, &payload).await
+}
+
+pub(crate) async fn send_chat_session_update(
+    conn: &mut RawConnection,
+    packet: ChatSessionUpdate,
+) -> Result<()> {
+    let (id, payload) = packets::encode_play_chat_session_update(&packet);
     conn.send_packet(id, &payload).await
 }
 

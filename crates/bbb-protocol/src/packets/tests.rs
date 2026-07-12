@@ -1977,6 +1977,57 @@ fn encodes_chat_message_last_seen_update_bitset_little_endian() {
 }
 
 #[test]
+fn encodes_chat_session_update_packet() {
+    let session_id = Uuid::from_u128(0x12345678_90ab_cdef_1020_304050607080);
+    let (id, payload) = encode_play_chat_session_update(&ChatSessionUpdate {
+        session_id,
+        expires_at_epoch_millis: 1_717_986_918_300,
+        public_key: vec![0x30, 0x82, 0x01, 0x22],
+        key_signature: vec![0xab; 256],
+    });
+
+    assert_eq!(id, ids::play::SERVERBOUND_CHAT_SESSION_UPDATE);
+    let mut decoder = Decoder::new(&payload);
+    assert_eq!(decoder.read_uuid().unwrap(), session_id);
+    assert_eq!(decoder.read_i64().unwrap(), 1_717_986_918_300);
+    assert_eq!(decoder.read_var_i32().unwrap(), 4);
+    assert_eq!(
+        decoder.read_exact(4, "profile public key").unwrap(),
+        &[0x30, 0x82, 0x01, 0x22]
+    );
+    assert_eq!(decoder.read_var_i32().unwrap(), 256);
+    assert_eq!(
+        decoder
+            .read_exact(256, "profile public key signature")
+            .unwrap(),
+        vec![0xab; 256]
+    );
+    assert!(decoder.is_empty());
+}
+
+#[test]
+#[should_panic(expected = "profile public key exceeds vanilla maximum of 512 bytes")]
+fn rejects_oversized_chat_session_public_key() {
+    let _ = encode_play_chat_session_update(&ChatSessionUpdate {
+        session_id: Uuid::nil(),
+        expires_at_epoch_millis: 0,
+        public_key: vec![0; 513],
+        key_signature: Vec::new(),
+    });
+}
+
+#[test]
+#[should_panic(expected = "profile public key signature exceeds vanilla maximum of 4096 bytes")]
+fn rejects_oversized_chat_session_key_signature() {
+    let _ = encode_play_chat_session_update(&ChatSessionUpdate {
+        session_id: Uuid::nil(),
+        expires_at_epoch_millis: 0,
+        public_key: Vec::new(),
+        key_signature: vec![0; 4097],
+    });
+}
+
+#[test]
 fn encodes_entity_interaction_packets() {
     let (id, payload) = encode_play_attack_entity(AttackEntity { entity_id: 123 });
     assert_eq!(id, ids::play::SERVERBOUND_ATTACK);

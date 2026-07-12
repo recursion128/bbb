@@ -16,7 +16,7 @@ use crate::{
 use super::client_features::{RecipeBookType, RecipeDisplayId};
 use super::client_state::Difficulty;
 use super::inventory::{DataComponentPatchSummary, ItemStackSummary};
-use super::player_info::GameType;
+use super::player_info::{GameType, PlayerInfoChatSession};
 use super::{chunks, connection, BlockPos, MessageSignature, Vec3d};
 
 const PLAYER_INPUT_FORWARD: u8 = 1;
@@ -33,6 +33,8 @@ const MESSAGE_SIGNATURE_BYTES: usize = 256;
 const MAX_ARGUMENT_SIGNATURE_COUNT: usize = 8;
 const MAX_ARGUMENT_SIGNATURE_NAME_CHARS: usize = 16;
 const MAX_CHAT_MESSAGE_CHARS: usize = 256;
+const MAX_PROFILE_PUBLIC_KEY_BYTES: usize = 512;
+const MAX_PROFILE_PUBLIC_KEY_SIGNATURE_BYTES: usize = 4096;
 const MAX_SERVERBOUND_CUSTOM_PAYLOAD: usize = 32767;
 const DEBUG_SUBSCRIPTION_DEDICATED_SERVER_TICK_TIME_ID: i32 = 0;
 const LP_VEC3_ABS_MAX_VALUE: f64 = 1.7179869183E10;
@@ -115,6 +117,8 @@ pub struct ChatMessage {
     pub signature: Option<MessageSignature>,
     pub last_seen_messages: LastSeenMessagesUpdate,
 }
+
+pub type ChatSessionUpdate = PlayerInfoChatSession;
 
 impl ChatMessage {
     pub fn unsigned(message: impl Into<String>, timestamp_millis: i64, salt: i64) -> Self {
@@ -743,6 +747,26 @@ pub fn encode_play_chat_message(packet: &ChatMessage) -> (i32, Vec<u8>) {
     }
     encode_last_seen_messages_update(&mut out, packet.last_seen_messages);
     (ids::play::SERVERBOUND_CHAT, out.into_inner())
+}
+
+pub fn encode_play_chat_session_update(packet: &ChatSessionUpdate) -> (i32, Vec<u8>) {
+    assert!(
+        packet.public_key.len() <= MAX_PROFILE_PUBLIC_KEY_BYTES,
+        "profile public key exceeds vanilla maximum of 512 bytes"
+    );
+    assert!(
+        packet.key_signature.len() <= MAX_PROFILE_PUBLIC_KEY_SIGNATURE_BYTES,
+        "profile public key signature exceeds vanilla maximum of 4096 bytes"
+    );
+
+    let mut out = Encoder::new();
+    out.write_uuid(packet.session_id);
+    out.write_i64(packet.expires_at_epoch_millis);
+    out.write_var_i32(packet.public_key.len() as i32);
+    out.write_bytes(&packet.public_key);
+    out.write_var_i32(packet.key_signature.len() as i32);
+    out.write_bytes(&packet.key_signature);
+    (ids::play::SERVERBOUND_CHAT_SESSION_UPDATE, out.into_inner())
 }
 
 fn encode_argument_signatures(out: &mut Encoder, signatures: &ArgumentSignatures) {

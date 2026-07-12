@@ -11781,3 +11781,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] `ServerboundChatPacket` 的 256-char message、timestamp/salt、optional 256-byte signature 与 20-bit last-seen wire 已审计；补齐 bbb 此前缺失的 optional signature 字段/编码、非空 fixture 和错误长度拒绝，encoder 单格闭合。
 - [x] production chat 仍发送 `signature=None`；LocalChatSession/key-backed message signing、secure-server integration 和可信 PlayerChat echo/presentation 继续开放，其余四格保持 partial。
+
+## 2026-07-12：play serverbound chat session update packet coverage audit
+
+- [x] 复用 `PlayerInfoChatSession` 作为唯一 `RemoteChatSession.Data` value，补齐 session UUID、expires-at、最多 512-byte X.509 public key、最多 4096-byte key signature encoder，以及 NetCommand/driver 发送面和边界测试。
+- [x] production 尚无 profile-key fetch/refresh、LocalChatSession/message encoder 或自动发送 owner；服务端 INITIALIZE_CHAT 广播也只投影 present flag，除 encoder 外四格保持 partial。

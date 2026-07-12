@@ -12,7 +12,7 @@ mod commands;
 pub(crate) use commands::{
     send_accept_code_of_conduct, send_attack_entity, send_block_entity_tag_query,
     send_change_difficulty, send_change_game_mode, send_chat_acknowledgement, send_chat_command,
-    send_chat_command_signed, send_chat_message, send_client_command,
+    send_chat_command_signed, send_chat_message, send_chat_session_update, send_client_command,
     send_command_suggestion_request, send_container_button_click, send_container_click,
     send_container_close, send_container_slot_state_changed, send_custom_payload,
     send_debug_subscription_request, send_edit_book, send_entity_tag_query, send_interact_entity,
@@ -109,6 +109,9 @@ pub(crate) async fn read_packet_or_drive_connection(
                     }
                     Some(NetCommand::ChatMessage(message)) => {
                         send_chat_message(conn, message).await?;
+                    }
+                    Some(NetCommand::ChatSessionUpdate(session)) => {
+                        send_chat_session_update(conn, session).await?;
                     }
                     Some(NetCommand::CustomPayload(packet)) => {
                         send_custom_payload(conn, packet).await?;
@@ -259,6 +262,7 @@ async fn read_packet_or_disconnect_command(
                     Some(NetCommand::ChatCommand(_)) => {}
                     Some(NetCommand::ChatCommandSigned(_)) => {}
                     Some(NetCommand::ChatMessage(_)) => {}
+                    Some(NetCommand::ChatSessionUpdate(_)) => {}
                     Some(NetCommand::CustomPayload(_)) => {}
                     Some(NetCommand::DebugSubscriptionRequest { .. }) => {}
                     Some(NetCommand::AttackEntity(_)) => {}
