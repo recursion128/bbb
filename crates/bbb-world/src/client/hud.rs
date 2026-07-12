@@ -215,6 +215,8 @@ impl WorldStore {
         };
         if line.overlay {
             self.set_overlay_message(line.content.clone());
+        } else {
+            self.push_server_system_chat_message(line.content.clone());
         }
         self.client_hud.system_chat = Some(line);
     }
@@ -592,6 +594,15 @@ mod tests {
             })
         );
         assert_eq!(store.action_bar(), None);
+        assert_eq!(store.client_chat().messages.len(), 1);
+        assert_eq!(
+            store.client_chat().messages[0].kind,
+            crate::ChatMessageKind::System
+        );
+        assert_eq!(
+            store.client_chat().messages[0].content,
+            "Server restart soon"
+        );
 
         store.apply_system_chat(ProtocolSystemChat {
             content: "Overlay warning".to_string(),
@@ -605,6 +616,7 @@ mod tests {
                 animate_color: false,
             })
         );
+        assert_eq!(store.client_chat().messages.len(), 1);
 
         store.apply_action_bar_text(ProtocolSetActionBarText {
             content: "Action ready".to_string(),

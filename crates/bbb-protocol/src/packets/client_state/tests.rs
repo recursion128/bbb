@@ -842,6 +842,13 @@ fn decodes_player_abilities_spawn_distance_and_system_chat() {
             overlay: true,
         })
     );
+    payload.push(0);
+    assert!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_SYSTEM_CHAT, &payload)
+            .unwrap_err()
+            .to_string()
+            .contains("trailing bytes after system chat packet")
+    );
 }
 
 fn boss_event_payload(id: Uuid, operation: i32, write_body: impl FnOnce(&mut Encoder)) -> Vec<u8> {

@@ -64,6 +64,7 @@ pub struct ChatMessageState {
 pub enum ChatMessageKind {
     Player,
     Disguised,
+    System,
     ClientSystem,
 }
 
@@ -72,6 +73,7 @@ impl ChatMessageKind {
         match self {
             Self::Player => "player",
             Self::Disguised => "disguised",
+            Self::System => "system",
             Self::ClientSystem => "client_system",
         }
     }
@@ -166,21 +168,28 @@ impl WorldStore {
     pub fn push_client_system_chat_message(&mut self, content: impl Into<String>) {
         let content = content.into();
         let styled_content = plain_chat_styled_content(&content);
-        self.push_client_system_chat_message_state(content, styled_content);
+        self.push_system_chat_message_state(ChatMessageKind::ClientSystem, content, styled_content);
     }
 
     pub fn push_styled_client_system_chat_message(&mut self, styled_content: Vec<StyledTextRun>) {
         let content = styled_chat_summary_text(&styled_content);
-        self.push_client_system_chat_message_state(content, styled_content);
+        self.push_system_chat_message_state(ChatMessageKind::ClientSystem, content, styled_content);
     }
 
-    fn push_client_system_chat_message_state(
+    pub fn push_server_system_chat_message(&mut self, content: impl Into<String>) {
+        let content = content.into();
+        let styled_content = plain_chat_styled_content(&content);
+        self.push_system_chat_message_state(ChatMessageKind::System, content, styled_content);
+    }
+
+    fn push_system_chat_message_state(
         &mut self,
+        kind: ChatMessageKind,
         content: String,
         styled_content: Vec<StyledTextRun>,
     ) {
         self.client_chat.messages.push(ChatMessageState {
-            kind: ChatMessageKind::ClientSystem,
+            kind,
             content,
             styled_content,
             sender: None,

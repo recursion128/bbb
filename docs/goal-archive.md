@@ -11507,3 +11507,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] source/name/all 四组合、未知高位忽略、default namespace 与 strict trailing 闭合。
 - [x] 修正 delayed queue 范围：带 source/name 的 filtered stop 只停 active sound，只有 stop-all 清空 distance-delayed queue；与 SoundEngine.stop/stopAll 一致，五格闭合。
+
+## 2026-07-12：play system-chat packet coverage audit
+
+- [x] trusted Component + overlay bool wire、strict trailing、ownership 与跨 crate tests 闭合。
+- [x] overlay=false 现在进入独立 server-system chat history，overlay=true 继续走 action-bar；rich style/click/hover Component 仍被 flatten，canonical/runtime 保持 partial。

@@ -520,10 +520,12 @@ pub(super) fn decode_set_titles_animation(decoder: &mut Decoder<'_>) -> Result<S
 }
 
 pub(super) fn decode_system_chat(decoder: &mut Decoder<'_>) -> Result<SystemChat> {
-    Ok(SystemChat {
+    let update = SystemChat {
         content: decode_component_summary_from_decoder(decoder)?,
         overlay: decoder.read_bool()?,
-    })
+    };
+    ensure_client_state_packet_consumed(decoder, "system chat")?;
+    Ok(update)
 }
 
 pub(super) fn decode_ticking_state(decoder: &mut Decoder<'_>) -> Result<TickingState> {

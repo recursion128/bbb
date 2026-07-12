@@ -643,6 +643,9 @@ back into a todo. Do not delete these.
 
 ## HUD and debug overlay
 
+- **SystemChat rich Component presentation.** Overlay=false now enters canonical
+  server-system chat history and overlay=true follows the action-bar path, but the
+  trusted Component is still flattened before style/click/hover rendering.
 - **Advancement hover title/description boxes** and full scroll/scissor behavior.
 - **Heart damage/heal blink flash.** Needs the untracked
   `player.invulnerableTime` (no client-side sync) and the wall-clock

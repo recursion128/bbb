@@ -1612,6 +1612,30 @@
         "status": "complete"
       }
     },
+    "play/clientbound/CLIENTBOUND_SYSTEM_CHAT": {
+      "canonical_apply": {
+        "evidence": ["crates/bbb-world/src/client/hud.rs#apply_system_chat", "crates/bbb-world/src/client/hud.rs#hud_text_packets_update_canonical_state", "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleSystemChat"],
+        "gap": "docs/unsupported-features.md#hud-and-debug-overlay",
+        "status": "partial"
+      },
+      "decode": {
+        "evidence": ["crates/bbb-protocol/src/packets/client_state/tests.rs#decodes_player_abilities_spawn_distance_and_system_chat", "vanilla:net/minecraft/network/protocol/game/ClientboundSystemChatPacket.java#STREAM_CODEC"],
+        "status": "complete"
+      },
+      "ownership": {
+        "evidence": ["crates/bbb-world/src/play_apply.rs#PlayClientbound::SystemChat"],
+        "status": "complete"
+      },
+      "runtime_side_effect": {
+        "evidence": ["crates/bbb-world/src/client/hud.rs#hud_text_packets_update_canonical_state", "crates/bbb-native/src/runtime/events/client_state/tests.rs#player_abilities_spawn_distance_and_chat_update_world_counters", "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleSystemChat"],
+        "gap": "docs/unsupported-features.md#hud-and-debug-overlay",
+        "status": "partial"
+      },
+      "tests": {
+        "evidence": ["crates/bbb-protocol/src/packets/client_state/tests.rs#decodes_player_abilities_spawn_distance_and_system_chat", "crates/bbb-net/src/event_stream.rs#play_command_and_chat_packets_emit_matching_events_without_responses", "crates/bbb-net/src/probe/play.rs#probe_applies_hud_text_packets_to_world", "crates/bbb-world/src/client/hud.rs#hud_text_packets_update_canonical_state", "crates/bbb-native/src/runtime/events/client_state/tests.rs#player_abilities_spawn_distance_and_chat_update_world_counters"],
+        "status": "complete"
+      }
+    },
     "play/clientbound/CLIENTBOUND_PLAYER_POSITION": {
       "canonical_apply": {
         "evidence": [

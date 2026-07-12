@@ -3270,6 +3270,15 @@ mod tests {
         let system_chat = probe.world.system_chat().unwrap();
         assert_eq!(system_chat.content, "Now entering camp");
         assert!(system_chat.overlay);
+        assert_eq!(probe.world.client_chat().messages.len(), 1);
+        assert_eq!(
+            probe.world.client_chat().messages[0].kind,
+            bbb_world::ChatMessageKind::System
+        );
+        assert_eq!(
+            probe.world.client_chat().messages[0].content,
+            "Server restart soon"
+        );
         let action_bar = probe.world.action_bar().unwrap();
         assert_eq!(action_bar.content, "Action ready");
         assert_eq!(action_bar.display_ticks, 60);
