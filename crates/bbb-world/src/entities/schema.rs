@@ -697,6 +697,8 @@ mod tests {
             "is_vanilla_abstract_horse_type",
             "is_vanilla_abstract_nautilus_type",
             "is_vanilla_llama_type",
+            "is_vanilla_can_equip_saddle_type",
+            "is_vanilla_can_wear_horse_armor_type",
         ] {
             let body = entity_source
                 .split(&format!("fn {function}"))

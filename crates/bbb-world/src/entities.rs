@@ -462,25 +462,11 @@ pub(crate) fn is_vanilla_taming_particle_entity_type(entity_type_id: i32) -> boo
 }
 
 pub(crate) fn is_vanilla_can_equip_saddle_type(entity_type_id: i32) -> bool {
-    matches!(
-        entity_type_id,
-        VANILLA_ENTITY_TYPE_CAMEL_ID
-            | VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID
-            | VANILLA_ENTITY_TYPE_DONKEY_ID
-            | VANILLA_ENTITY_TYPE_HORSE_ID
-            | VANILLA_ENTITY_TYPE_MULE_ID
-            | VANILLA_ENTITY_TYPE_NAUTILUS_ID
-            | VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID
-            | VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID
-            | VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID
-    )
+    vanilla_entity_type_can_equip_saddle(entity_type_id)
 }
 
 pub(crate) fn is_vanilla_can_wear_horse_armor_type(entity_type_id: i32) -> bool {
-    matches!(
-        entity_type_id,
-        VANILLA_ENTITY_TYPE_HORSE_ID | VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID
-    )
+    vanilla_entity_type_can_wear_horse_armor(entity_type_id)
 }
 
 pub(crate) fn is_vanilla_horse_slot_always_active_type(entity_type_id: i32) -> bool {
