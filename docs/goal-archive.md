@@ -12006,3 +12006,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] `ServerboundUseItemPacket` 的 hand、prediction sequence、yRot/xRot wire，native air-use/right-click/hand selection、local using-item hand/tick projection、command queue 与 driver send 已反向审计；command/encoder 闭合。
 - [x] 服务端先 ack sequence，再以 held item/feature/cooldown/use result 为权威并可校正玩家朝向；bbb 尚未执行 vanilla `ItemStack.use`、transformed stack、InteractionResult/swing-source 和 held-item presentation 的完整本地预测，ack/state/tests 保持 partial。
+
+## 2026-07-12：configuration/play serverbound custom-click-action coverage audit
+
+- [x] 两个协议状态共用的 `ServerboundCustomClickActionPacket` wire 已锁定为 Identifier + 64 KiB length-prefixed optional Tag，NBT quota 32 KiB、最大 depth 16；服务端只转交 `MinecraftServer.handleCustomClickAction` hook，没有 dedicated acknowledgement。
+- [x] bbb 当前只保留 raw/reference dialog diagnostic，尚未解 typed Dialog/ClickEvent、渲染 active screen 或编码 bounded NBT action；两行均保持 ack=N/A、其余四格 partial，未把 raw dialog bytes 或 catalog presence 冒充可点击 dialog 实现。

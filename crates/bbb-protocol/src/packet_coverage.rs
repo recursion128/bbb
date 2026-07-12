@@ -4421,6 +4421,37 @@ mod tests {
         }
     }
 
+    #[test]
+    fn custom_click_action_keeps_dialog_codec_open_in_both_states() {
+        let ledger = vanilla_packet_coverage_26_1().unwrap();
+        let entries: Vec<_> = ledger
+            .entries
+            .iter()
+            .filter(|entry| {
+                matches!(entry.state.as_str(), "configuration" | "play")
+                    && entry.direction == "serverbound"
+                    && entry.constant_name == "SERVERBOUND_CUSTOM_CLICK_ACTION"
+            })
+            .collect();
+        assert_eq!(entries.len(), 2);
+        for entry in entries {
+            assert_eq!(
+                entry.coverage["ack_response"].status,
+                PacketCoverageStatus::NotApplicable,
+                "{}",
+                entry.state
+            );
+            for dimension in ["command_surface", "encoder", "state_guard", "tests"] {
+                assert_eq!(
+                    entry.coverage[dimension].status,
+                    PacketCoverageStatus::Partial,
+                    "{} {dimension}",
+                    entry.state
+                );
+            }
+        }
+    }
+
     fn state_name(state: PacketState) -> &'static str {
         match state {
             PacketState::Handshake => "handshake",

@@ -1132,28 +1132,46 @@
       "coverage": {
         "ack_response": {
           "evidence": [
-            "vanilla:net/minecraft/server/network/ServerCommonPacketListenerImpl.java#handleCustomClickAction"
+            "vanilla:net/minecraft/server/network/ServerCommonPacketListenerImpl.java#handleCustomClickAction",
+            "vanilla:net/minecraft/server/MinecraftServer.java#handleCustomClickAction"
           ],
           "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
           "status": "not-applicable"
         },
         "command_surface": {
-          "evidence": [],
+          "evidence": [
+            "crates/bbb-world/src/client/ui.rs#apply_show_dialog",
+            "vanilla:net/minecraft/client/multiplayer/ClientCommonPacketListenerImpl.java#sendCustomAction",
+            "vanilla:net/minecraft/client/gui/screens/Screen.java#defaultHandleGameClickEvent"
+          ],
           "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
           "status": "partial"
         },
         "encoder": {
-          "evidence": [],
+          "evidence": [
+            "crates/bbb-protocol/src/packet_catalog.rs#SERVERBOUND_CUSTOM_CLICK_ACTION",
+            "vanilla:net/minecraft/network/protocol/common/ServerboundCustomClickActionPacket.java#UNTRUSTED_TAG_CODEC",
+            "vanilla:net/minecraft/network/protocol/common/ServerboundCustomClickActionPacket.java#STREAM_CODEC"
+          ],
           "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
           "status": "partial"
         },
         "state_guard": {
-          "evidence": [],
+          "evidence": [
+            "crates/bbb-world/src/client/ui.rs#current_dialog",
+            "vanilla:net/minecraft/client/multiplayer/ClientCommonPacketListenerImpl.java#sendCustomAction",
+            "vanilla:net/minecraft/client/gui/screens/Screen.java#defaultHandleGameClickEvent"
+          ],
           "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
           "status": "partial"
         },
         "tests": {
-          "evidence": [],
+          "evidence": [
+            "crates/bbb-protocol/src/packets/client_common/tests.rs#decodes_show_dialog_reference_holder",
+            "crates/bbb-protocol/src/packets/client_common/tests.rs#decodes_show_dialog_direct_holder_as_raw_payload",
+            "crates/bbb-world/src/client/ui.rs#tracks_client_ui_warnings_and_dialogs",
+            "crates/bbb-protocol/src/packet_coverage.rs#coverage_ledger_matches_every_packet_catalog_entry_in_order"
+          ],
           "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
           "status": "partial"
         }
@@ -6068,27 +6086,47 @@
       "constant_name": "SERVERBOUND_CUSTOM_CLICK_ACTION",
       "coverage": {
         "ack_response": {
-          "evidence": [],
+          "evidence": [
+            "vanilla:net/minecraft/server/network/ServerCommonPacketListenerImpl.java#handleCustomClickAction",
+            "vanilla:net/minecraft/server/MinecraftServer.java#handleCustomClickAction"
+          ],
           "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "status": "not-applicable"
         },
         "command_surface": {
-          "evidence": [],
+          "evidence": [
+            "crates/bbb-world/src/client/ui.rs#apply_show_dialog",
+            "vanilla:net/minecraft/client/multiplayer/ClientCommonPacketListenerImpl.java#sendCustomAction",
+            "vanilla:net/minecraft/client/gui/screens/Screen.java#defaultHandleGameClickEvent"
+          ],
           "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
           "status": "partial"
         },
         "encoder": {
-          "evidence": [],
+          "evidence": [
+            "crates/bbb-protocol/src/packet_catalog.rs#SERVERBOUND_CUSTOM_CLICK_ACTION",
+            "vanilla:net/minecraft/network/protocol/common/ServerboundCustomClickActionPacket.java#UNTRUSTED_TAG_CODEC",
+            "vanilla:net/minecraft/network/protocol/common/ServerboundCustomClickActionPacket.java#STREAM_CODEC"
+          ],
           "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
           "status": "partial"
         },
         "state_guard": {
-          "evidence": [],
+          "evidence": [
+            "crates/bbb-world/src/client/ui.rs#current_dialog",
+            "vanilla:net/minecraft/client/multiplayer/ClientCommonPacketListenerImpl.java#sendCustomAction",
+            "vanilla:net/minecraft/client/gui/screens/Screen.java#defaultHandleGameClickEvent"
+          ],
           "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
           "status": "partial"
         },
         "tests": {
-          "evidence": [],
+          "evidence": [
+            "crates/bbb-protocol/src/packets/client_common/tests.rs#decodes_show_dialog_reference_holder",
+            "crates/bbb-protocol/src/packets/client_common/tests.rs#decodes_show_dialog_direct_holder_as_raw_payload",
+            "crates/bbb-world/src/client/ui.rs#tracks_client_ui_warnings_and_dialogs",
+            "crates/bbb-protocol/src/packet_coverage.rs#coverage_ledger_matches_every_packet_catalog_entry_in_order"
+          ],
           "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
           "status": "partial"
         }
