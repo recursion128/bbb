@@ -79,8 +79,9 @@ Owner: `bbb-protocol`
   frozen lookup, extend the source-aware built-in fallback beyond the current
   item/block/entity-type catalogs where a consumer requires it, apply pending
   static tags and data-component initializers, and freeze typed lookup state.
-  Raw NBT summaries, individual checked tag queries, and a few derived audio
-  registries are not that runtime.
+  Raw NBT summaries, the narrow validated dimension shape/lighting projection,
+  individual checked tag queries, and a few derived audio registries are not
+  that runtime.
 - Complete play Login session initialization beyond the current player-id and
   partial dimension/gameplay projection: retain the initial level set, chunk
   radius, simulation distance, secure-chat enforcement, seed and portal

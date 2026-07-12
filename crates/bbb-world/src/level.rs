@@ -387,11 +387,15 @@ impl WorldStore {
 
     fn apply_spawn_info(&mut self, spawn_info: &ProtocolSpawnInfo) {
         let profile = dimension_profile(spawn_info.dimension_type_id, &spawn_info.dimension);
-        let dimension_type =
-            dimension_type_client_projection_from_registry(self.registry_entry_by_holder_id(
-                "minecraft:dimension_type",
-                spawn_info.dimension_type_id,
-            ));
+        let dimension_type_entry = self
+            .registry_entry_by_holder_id("minecraft:dimension_type", spawn_info.dimension_type_id);
+        let dimension_type = dimension_type_client_projection_from_registry(dimension_type_entry);
+        let dimension_type_name = dimension_type_entry
+            .map(|entry| entry.id.clone())
+            .or_else(|| profile.name.map(str::to_string));
+        let dimension = dimension_type
+            .and_then(|projection| projection.dimension)
+            .unwrap_or(profile.dimension);
         let has_sky_light = dimension_type
             .and_then(|projection| projection.has_sky_light)
             .unwrap_or_else(|| {
@@ -412,14 +416,14 @@ impl WorldStore {
             .level
             .as_ref()
             .is_some_and(|level| level.dimension != spawn_info.dimension);
-        if self.dimension != profile.dimension || dimension_key_changed {
+        if self.dimension != dimension || dimension_key_changed {
             self.clear_level_bound_state();
         }
-        self.dimension = profile.dimension;
+        self.dimension = dimension;
         self.level = Some(WorldLevelInfo {
             dimension: spawn_info.dimension.clone(),
             dimension_type_id: spawn_info.dimension_type_id,
-            dimension_type_name: profile.name.map(str::to_string),
+            dimension_type_name,
             has_sky_light,
             cardinal_lighting,
             last_death_location: spawn_info
@@ -644,6 +648,7 @@ fn built_in_dimension_has_sky_light(dimension_type_id: i32, dimension: &str) -> 
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct DimensionTypeClientProjection {
+    dimension: Option<WorldDimension>,
     has_sky_light: Option<bool>,
     cardinal_lighting: Option<WorldCardinalLighting>,
 }
@@ -655,6 +660,7 @@ fn dimension_type_client_projection_from_registry(
     let NbtValue::Compound(fields) = root else {
         return None;
     };
+    let dimension = dimension_type_shape_from_fields(&fields);
     let has_sky_light = match find_nbt_entry(&fields, "has_skylight") {
         Some(NbtValue::Byte(value)) => Some(*value != 0),
         _ => None,
@@ -665,8 +671,40 @@ fn dimension_type_client_projection_from_registry(
         _ => None,
     };
     Some(DimensionTypeClientProjection {
+        dimension,
         has_sky_light,
         cardinal_lighting,
+    })
+}
+
+fn dimension_type_shape_from_fields(fields: &[(String, NbtValue)]) -> Option<WorldDimension> {
+    // DimensionType.MIN_Y/MAX_Y/Y_SIZE with BlockPos.PACKED_Y_LENGTH = 12.
+    const MIN_Y: i32 = -2032;
+    const MAX_Y: i32 = 2031;
+    const MAX_HEIGHT: i32 = 4064;
+
+    let NbtValue::Int(min_y) = find_nbt_entry(fields, "min_y")? else {
+        return None;
+    };
+    let NbtValue::Int(height) = find_nbt_entry(fields, "height")? else {
+        return None;
+    };
+    let NbtValue::Int(logical_height) = find_nbt_entry(fields, "logical_height")? else {
+        return None;
+    };
+    if !(MIN_Y..=MAX_Y).contains(min_y)
+        || !(16..=MAX_HEIGHT).contains(height)
+        || !(0..=MAX_HEIGHT).contains(logical_height)
+        || logical_height > height
+        || min_y.rem_euclid(16) != 0
+        || height % 16 != 0
+        || min_y.checked_add(*height)? > MAX_Y + 1
+    {
+        return None;
+    }
+    Some(WorldDimension {
+        min_y: *min_y,
+        height: *height,
     })
 }
 
@@ -1462,7 +1500,7 @@ mod tests {
         let mut custom_nether = WorldStore::new();
         record_custom_dimension_type_registry(
             &mut custom_nether,
-            dimension_type_nbt(Some("nether"), Some(false)),
+            dimension_type_nbt(Some("nether"), Some(false), None),
         );
         custom_nether.apply_login(&login_packet(4, "example:custom"));
         assert!(!custom_nether.level_info().unwrap().has_sky_light());
@@ -1476,12 +1514,53 @@ mod tests {
         );
 
         let mut omitted_field = WorldStore::new();
-        record_custom_dimension_type_registry(&mut omitted_field, dimension_type_nbt(None, None));
+        record_custom_dimension_type_registry(
+            &mut omitted_field,
+            dimension_type_nbt(None, None, None),
+        );
         omitted_field.apply_login(&login_packet(4, "minecraft:the_nether"));
         assert_eq!(
             omitted_field.level_info().unwrap().cardinal_lighting(),
             WorldCardinalLighting::Default
         );
+    }
+
+    #[test]
+    fn dimension_type_registry_shape_overrides_builtin_and_rejects_invalid_shape() {
+        let mut custom = WorldStore::new();
+        record_custom_dimension_type_registry(
+            &mut custom,
+            dimension_type_nbt(None, Some(true), Some((-32, 512, 384))),
+        );
+        custom.apply_login(&login_packet(4, "example:custom"));
+        assert_eq!(
+            custom.level_info().unwrap().dimension_type_name.as_deref(),
+            Some("example:custom")
+        );
+        assert_eq!(
+            custom.dimension(),
+            WorldDimension {
+                min_y: -32,
+                height: 512,
+            }
+        );
+
+        for invalid_shape in [
+            (-31, 512, 384),
+            (-32, 512, 513),
+            (0, 15, 15),
+            (0, 4080, 384),
+            (2016, 32, 32),
+            (-2048, 16, 16),
+        ] {
+            let mut invalid = WorldStore::new();
+            record_custom_dimension_type_registry(
+                &mut invalid,
+                dimension_type_nbt(None, Some(true), Some(invalid_shape)),
+            );
+            invalid.apply_login(&login_packet(4, "example:custom"));
+            assert_eq!(invalid.dimension(), WorldDimension::default());
+        }
     }
 
     #[test]
@@ -1551,11 +1630,23 @@ mod tests {
         }
     }
 
-    fn dimension_type_nbt(cardinal_light: Option<&str>, has_sky_light: Option<bool>) -> Vec<u8> {
+    fn dimension_type_nbt(
+        cardinal_light: Option<&str>,
+        has_sky_light: Option<bool>,
+        shape: Option<(i32, i32, i32)>,
+    ) -> Vec<u8> {
         let mut payload = vec![10];
-        payload.push(3);
-        write_nbt_string(&mut payload, "height");
-        payload.extend_from_slice(&384_i32.to_be_bytes());
+        if let Some((min_y, height, logical_height)) = shape {
+            for (name, value) in [
+                ("min_y", min_y),
+                ("height", height),
+                ("logical_height", logical_height),
+            ] {
+                payload.push(3);
+                write_nbt_string(&mut payload, name);
+                payload.extend_from_slice(&value.to_be_bytes());
+            }
+        }
         if let Some(has_sky_light) = has_sky_light {
             payload.push(1);
             write_nbt_string(&mut payload, "has_skylight");

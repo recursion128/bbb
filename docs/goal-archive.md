@@ -12136,3 +12136,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] `bbb-world` registry owner 的双向 holder/resource 查询现在显式返回 `Server` 或 `VanillaFallback` 来源；item、block 与 entity-type 在没有同步 contents 时使用 checked-in 26.1 catalog，item tag value resolution 复用同一入口。
 - [x] 只要当前 session 已记录同名 registry contents，查询就严格按服务器 wire order 且 unknown fail closed，不会退回 vanilla ordinal；typed entry codec、最终 frozen tag view 与其余 static registry fallback 继续开放。
+
+## 2026-07-12：dynamic dimension-type world shape projection
+
+- [x] play Login/Respawn 的 world `min_y`/`height` 现在从当前 session dimension-type holder 的 raw NBT 读取，并连同 `logical_height` 按 vanilla 26.1 range、16-block alignment 与 top bound 原子验证；custom holder 不再被 bootstrap dimension id 固定成默认 shape。
+- [x] dimension-type resource identity 同样取自 checked wire-order entry；缺字段或非法 shape 继续安全回退现有 builtin profile。完整 `DimensionType.NETWORK_CODEC` 的其余字段、environment attributes/timeline/clock holder 仍开放。

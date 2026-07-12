@@ -1618,10 +1618,12 @@
             "crates/bbb-world/src/registries/store.rs#registry_resource_ids_in_holder_order",
             "crates/bbb-native/src/entity_scene.rs#EntityVariantRegistryLookup",
             "crates/bbb-world/src/level.rs#dimension_type_client_projection_from_registry",
+            "crates/bbb-world/src/level.rs#dimension_type_shape_from_fields",
             "crates/bbb-world/src/registries/tests.rs#registry_holder_lookup_uses_checked_wire_order_identity",
             "crates/bbb-world/src/registries/tests.rs#registry_lookup_uses_static_fallback_only_without_server_contents",
             "crates/bbb-world/src/registries/tests.rs#configuration_registry_collection_commits_atomically_and_replaces_holder_order",
             "crates/bbb-world/src/level.rs#dimension_type_registry_cardinal_light_overrides_builtin_fallback",
+            "crates/bbb-world/src/level.rs#dimension_type_registry_shape_overrides_builtin_and_rejects_invalid_shape",
             "vanilla:net/minecraft/client/multiplayer/RegistryDataCollector.java#appendContents"
           ],
           "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
@@ -8840,6 +8842,7 @@
           "evidence": [
             "crates/bbb-world/src/level.rs#apply_login",
             "crates/bbb-world/src/level.rs#play_login_updates_world_dimension_and_level_info",
+            "crates/bbb-world/src/level.rs#dimension_type_registry_shape_overrides_builtin_and_rejects_invalid_shape",
             "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleLogin"
           ],
           "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
@@ -8877,6 +8880,7 @@
             "crates/bbb-protocol/src/packets/tests.rs#decodes_play_login_spawn_info",
             "crates/bbb-net/src/event_stream.rs#play_session_and_player_info_packets_emit_matching_events_without_responses",
             "crates/bbb-world/src/level.rs#play_login_updates_world_dimension_and_level_info",
+            "crates/bbb-world/src/level.rs#dimension_type_registry_shape_overrides_builtin_and_rejects_invalid_shape",
             "crates/bbb-native/src/runtime/events/tests/session_hud_and_vehicle_events.rs#login_tracks_local_player_id_in_world"
           ],
           "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
