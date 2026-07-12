@@ -11916,3 +11916,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] UUID + 8-action ordinal wire、http/https URL gate、`INVALID_URL`/安全 `DECLINED` fallback、push/response event 与 per-pack diagnostic state 已反向审计；encoder 闭合且 response 本身无 dedicated ack。
 - [x] prompt policy、download/hash、accepted/downloaded/applied、reload failure/discard 与 required-pack lifecycle 尚未实现，不能把 Declined fallback 当完整 client behavior；command/state/tests 保持 partial，ack=N/A。
+
+## 2026-07-12：play serverbound seen-advancements coverage audit
+
+- [x] `OPENED_TAB(0) + Identifier` / `CLOSED_SCREEN(1)` wire、control/runtime command path、visible-root selection guard、screen open/tab-click/escape/done close behavior 已与 vanilla `ClientAdvancements.setSelectedTab` 及 `AdvancementsScreen.removed` 反向对齐。
+- [x] 服务端仅在 opened-tab 且 id 有效时记录 selected tab，该 response 无 dedicated acknowledgement；command/encoder/state/tests 闭合，ack=N/A。

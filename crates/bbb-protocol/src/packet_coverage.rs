@@ -4052,6 +4052,29 @@ mod tests {
         }
     }
 
+    #[test]
+    fn play_serverbound_seen_advancements_is_complete_without_dedicated_ack() {
+        let ledger = vanilla_packet_coverage_26_1().unwrap();
+        let entry = ledger
+            .entries
+            .iter()
+            .find(|entry| {
+                entry.state == "play" && entry.constant_name == "SERVERBOUND_SEEN_ADVANCEMENTS"
+            })
+            .expect("play serverbound seen advancements coverage row");
+        assert_eq!(
+            entry.coverage["ack_response"].status,
+            PacketCoverageStatus::NotApplicable
+        );
+        for dimension in ["command_surface", "encoder", "state_guard", "tests"] {
+            assert_eq!(
+                entry.coverage[dimension].status,
+                PacketCoverageStatus::Complete,
+                "{dimension}"
+            );
+        }
+    }
+
     fn state_name(state: PacketState) -> &'static str {
         match state {
             PacketState::Handshake => "handshake",
