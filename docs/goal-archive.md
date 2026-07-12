@@ -11911,3 +11911,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] active AnvilMenu/slot-0 item gate、初始 hover/custom-name 空串语义、50 UTF-16-unit limit、字符过滤、文本编辑、command/driver/string wire 与服务端 menu/still-valid authority 已反向审计；command/encoder/state/tests 闭合。
 - [x] anvil result/cost/item 仍由服务器 container content/slot/data broadcasts 确认；remaining ItemStack added-value component 语义使 response 保持 partial，未用本地编辑文本冒充最终物品状态。
+
+## 2026-07-12：play serverbound resource-pack response coverage audit
+
+- [x] UUID + 8-action ordinal wire、http/https URL gate、`INVALID_URL`/安全 `DECLINED` fallback、push/response event 与 per-pack diagnostic state 已反向审计；encoder 闭合且 response 本身无 dedicated ack。
+- [x] prompt policy、download/hash、accepted/downloaded/applied、reload failure/discard 与 required-pack lifecycle 尚未实现，不能把 Declined fallback 当完整 client behavior；command/state/tests 保持 partial，ack=N/A。

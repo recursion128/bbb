@@ -4943,28 +4943,50 @@
       "constant_name": "SERVERBOUND_RESOURCE_PACK",
       "coverage": {
         "ack_response": {
-          "evidence": [],
+          "evidence": [
+            "vanilla:net/minecraft/server/network/ServerCommonPacketListenerImpl.java#handleResourcePackResponse"
+          ],
           "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "status": "not-applicable"
         },
         "command_surface": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "evidence": [
+            "crates/bbb-net/src/resource_pack.rs#response_action_for_push",
+            "crates/bbb-net/src/event_stream/play.rs#PlayClientbound::ResourcePackPush",
+            "vanilla:net/minecraft/client/resources/server/DownloadedPackSource.java#configureForServerControl"
+          ],
+          "gap": "docs/unsupported-features.md#native-client-runtime",
           "status": "partial"
         },
         "encoder": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/resource_pack_response_actions.rs#VANILLA_RESOURCE_PACK_RESPONSE_ACTIONS",
+            "crates/bbb-protocol/src/packets/server_presentation.rs#encode_play_resource_pack_response",
+            "vanilla:net/minecraft/network/protocol/common/ServerboundResourcePackPacket.java#STREAM_CODEC"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "state_guard": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "evidence": [
+            "crates/bbb-world/src/client/server_presentation.rs#apply_resource_pack_response",
+            "crates/bbb-net/src/resource_pack.rs#is_allowed_resource_pack_url",
+            "vanilla:net/minecraft/client/multiplayer/ClientCommonPacketListenerImpl.java#handleResourcePackPush",
+            "vanilla:net/minecraft/client/resources/server/ServerPackManager.java#tick"
+          ],
+          "gap": "docs/unsupported-features.md#native-client-runtime",
           "status": "partial"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "evidence": [
+            "crates/bbb-protocol/src/resource_pack_response_actions.rs#resource_pack_response_action_catalog_is_complete_contiguous_and_unique",
+            "crates/bbb-protocol/src/packets/server_presentation.rs#encodes_resource_pack_response_packets",
+            "crates/bbb-net/src/resource_pack.rs#resource_pack_response_follows_vanilla_url_scheme_gate",
+            "crates/bbb-net/src/event_stream.rs#play_resource_pack_push_emits_push_and_response_events",
+            "crates/bbb-net/src/event_stream.rs#play_resource_pack_push_with_invalid_url_sends_invalid_url_response",
+            "crates/bbb-world/src/client/server_presentation.rs#resource_pack_response_updates_existing_pack_only"
+          ],
+          "gap": "docs/unsupported-features.md#native-client-runtime",
           "status": "partial"
         }
       },
