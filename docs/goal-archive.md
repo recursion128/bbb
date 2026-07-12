@@ -12544,3 +12544,9 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] core entity-type catalog 复用统一 data-tag frontend，从 vanilla 26.1
   `can_equip_saddle` / `can_wear_horse_armor` 生成 11/2 项 membership 与 typed query；world mount
   helper 删除两张手抄表，tag 中的 pig/strider 不再被遗漏，普通 Cargo build/test 不读取外部源码。
+
+## 2026-07-12：Generated arrow entity membership
+
+- [x] core entity-type catalog 从 vanilla `entity_type/arrows` data tag 生成 Arrow/SpectralArrow
+  两项 membership；world arrow presentation 查询删除手抄 type-id match，并用 Trident 负例锁定 tag
+  语义不等于 `AbstractArrow` superclass。

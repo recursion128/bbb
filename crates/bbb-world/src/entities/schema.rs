@@ -716,6 +716,14 @@ mod tests {
             .map(|(body, _)| body)
             .expect("chest boat class query source");
         assert!(!chest_boat_query.contains("matches!"));
+        let animations_source = include_str!("animations.rs");
+        let arrow_query = animations_source
+            .split("fn is_vanilla_arrow_type")
+            .nth(1)
+            .and_then(|source| source.split_once("\n}"))
+            .map(|(body, _)| body)
+            .expect("arrow tag query source");
+        assert!(!arrow_query.contains("matches!"));
     }
 
     #[test]

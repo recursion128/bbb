@@ -5890,10 +5890,7 @@ pub(crate) fn entity_animation_uses_in_water(entity_type_id: i32) -> bool {
 }
 
 fn is_vanilla_arrow_type(entity_type_id: i32) -> bool {
-    matches!(
-        entity_type_id,
-        VANILLA_ENTITY_TYPE_ARROW_ID | VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID
-    )
+    bbb_protocol::entity_types::vanilla_entity_type_is_arrow_tagged(entity_type_id)
 }
 
 /// Vanilla `Guardian.isMoving()` = the synced `DATA_ID_MOVING` boolean (default
