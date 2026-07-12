@@ -11542,3 +11542,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] unit payload、strict trailing、canonical dialog clear ownership 与跨 crate tests 闭合。
 - [x] previous/warning screen-stack restoration 未完成，runtime 保持 partial。
+
+## 2026-07-12：play show-dialog packet coverage audit
+
+- [x] reference/direct holder framing、bounded raw preservation、ownership 与跨 crate tests 闭合。
+- [x] typed Dialog decode/canonical screen data/runtime screen stack 未完成，对应三维保持 partial。
