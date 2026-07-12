@@ -11931,3 +11931,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] 两个 optional MobEffect holder-id wire、control/runtime/UI command path、active beacon + level + payment + primary guards、effect selection 与 set-beacon 后 close 顺序已与 vanilla `BeaconScreen` 反向对齐；command/encoder/state/tests 闭合。
 - [x] 服务端仍在 still-valid BeaconMenu 上消耗 payment 并更新 block entity，该 command 无 dedicated acknowledgement；ack=N/A，未把 beacon world effect 归为客户端权威。
+
+## 2026-07-12：play serverbound set-carried-item coverage audit
+
+- [x] signed-short slot wire、0..8 local/control guard、digit/wheel selection、spectator exclusion、world local selection 与 driver command path 已与 vanilla `MultiPlayerGameMode.ensureHasSentCarriedItem` 反向对齐；command/encoder/state/tests 闭合。
+- [x] 服务端对有效 slot 更新 selected slot，对非法 slot 仅拒绝并警告，该 command 无 dedicated acknowledgement；ack=N/A；后续 clientbound held-slot correction 仍覆盖本地选择。
