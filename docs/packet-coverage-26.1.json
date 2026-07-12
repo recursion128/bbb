@@ -7113,29 +7113,48 @@
       "constant_name": "CLIENTBOUND_OPEN_BOOK",
       "coverage": {
         "canonical_apply": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
+          "evidence": [
+            "crates/bbb-world/src/client/ui.rs#apply_open_book",
+            "vanilla:net/minecraft/client/gui/screens/inventory/BookViewScreen.java#fromItem"
+          ],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
           "status": "partial"
         },
         "decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/client_ui/tests.rs#decodes_open_book_packet",
+            "vanilla:net/minecraft/network/protocol/game/ClientboundOpenBookPacket.java#STREAM_CODEC"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "ownership": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/play_apply.rs#PlayClientbound::OpenBook"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "runtime_side_effect": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
+          "evidence": [
+            "crates/bbb-native/src/input/tests.rs#book_screen_keys_turn_pages_close_and_block_gameplay_input",
+            "crates/bbb-native/src/input/tests.rs#book_screen_mouse_clicks_turn_pages_and_close",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleOpenBook"
+          ],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
           "status": "partial"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/client_ui/tests.rs#decodes_open_book_packet",
+            "crates/bbb-net/src/event_stream.rs#play_server_presentation_packets_emit_matching_events_and_cookie_response",
+            "crates/bbb-net/src/probe/play.rs#probe_open_book_uses_held_written_book_for_active_screen",
+            "crates/bbb-world/src/client/ui.rs#open_book_without_book_access_records_request_without_screen",
+            "crates/bbb-world/src/client/ui.rs#open_book_from_held_written_book_tracks_active_screen",
+            "crates/bbb-native/src/runtime/events/tests/session_protocol_events.rs#open_book_event_uses_held_written_book_for_active_screen"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "clientbound",

@@ -11380,3 +11380,10 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] world 现在与 `ClientPacketListener.handleMountScreenOpen` 一致，仅为已知 AbstractHorse/AbstractNautilus
   打开 menu；missing/其他实体不再合成 mount screen 或覆盖当前 UI。canonical/decode/ownership/tests 闭合，
   entity-preview GPU drawing 继续由既有 presentation gap 独立追踪。
+
+## 2026-07-12：play open-book packet coverage audit
+
+- [x] 对照 `ClientboundOpenBookPacket` 锁定 InteractionHand enum wire，decoder 现在拒绝 invalid ordinal 与
+  trailing bytes；无 book component 时保留当前 screen，written/writable component 才建立 BookView screen。
+- [x] ownership/decode/tests 闭合；written page 的 filtering、完整 Component/style/click events 尚未保留，故
+  canonical/runtime 精确保留 partial，不把 literal string navigation 误标为完整 BookAccess parity。

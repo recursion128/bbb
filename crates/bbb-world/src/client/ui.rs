@@ -539,6 +539,9 @@ mod tests {
     #[test]
     fn open_book_without_book_access_records_request_without_screen() {
         let mut store = WorldStore::new();
+        store.apply_show_dialog(ProtocolShowDialog {
+            dialog: DialogHolder::Reference { registry_id: 7 },
+        });
         store.apply_set_player_inventory(ProtocolSetPlayerInventory {
             slot: 0,
             item: item_stack(42, 1),
@@ -555,6 +558,7 @@ mod tests {
             })
         );
         assert_eq!(store.current_book(), None);
+        assert!(store.current_dialog().is_some());
         assert_eq!(store.counters().open_book_packets, 1);
     }
 

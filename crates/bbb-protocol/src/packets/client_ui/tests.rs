@@ -54,6 +54,23 @@ fn decodes_open_book_packet() {
             hand: InteractionHand::OffHand,
         })
     );
+
+    let mut trailing = Encoder::new();
+    trailing.write_var_i32(1);
+    trailing.write_u8(0);
+    let error = decode_play_clientbound(ids::play::CLIENTBOUND_OPEN_BOOK, &trailing.into_inner())
+        .unwrap_err();
+    assert!(error
+        .to_string()
+        .contains("trailing bytes after open book packet"));
+
+    let mut invalid = Encoder::new();
+    invalid.write_var_i32(2);
+    let error = decode_play_clientbound(ids::play::CLIENTBOUND_OPEN_BOOK, &invalid.into_inner())
+        .unwrap_err();
+    assert!(error
+        .to_string()
+        .contains("invalid interaction hand ordinal 2"));
 }
 
 #[test]

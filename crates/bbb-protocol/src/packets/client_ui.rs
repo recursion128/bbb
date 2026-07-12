@@ -43,11 +43,17 @@ pub(crate) fn decode_mount_screen_open(decoder: &mut Decoder<'_>) -> Result<Moun
 
 pub(crate) fn decode_open_book(decoder: &mut Decoder<'_>) -> Result<OpenBook> {
     let ordinal = decoder.read_var_i32()?;
-    Ok(OpenBook {
+    let packet = OpenBook {
         hand: InteractionHand::from_ordinal(ordinal).ok_or_else(|| {
             ProtocolError::InvalidData(format!("invalid interaction hand ordinal {ordinal}"))
         })?,
-    })
+    };
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after open book packet".to_string(),
+        ));
+    }
+    Ok(packet)
 }
 
 pub(crate) fn decode_open_sign_editor(decoder: &mut Decoder<'_>) -> Result<OpenSignEditor> {
