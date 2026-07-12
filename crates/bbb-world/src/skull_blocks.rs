@@ -9,6 +9,7 @@
 
 use serde::{Deserialize, Serialize};
 
+use crate::terrain::{block_name_is_floor_skull, block_name_is_wall_skull};
 use crate::{
     sign_blocks::sign_rotation_segment_to_degrees, BlockPos, ChunkColumn, PaletteKind, RegistrySet,
     WorldStore,
@@ -120,7 +121,7 @@ pub fn skull_kind_for_block_name(block_name: &str) -> Option<SkullBlockKind> {
 }
 
 pub fn is_skull_block_name(block_name: &str) -> bool {
-    skull_kind_for_block_name(block_name).is_some()
+    block_name_is_floor_skull(block_name) || block_name_is_wall_skull(block_name)
 }
 
 impl WorldStore {
@@ -270,15 +271,16 @@ fn skull_attachment_for_block_state<'a>(
             _ => {}
         }
     }
-    let name = block_name.strip_prefix("minecraft:")?;
-    if name.ends_with("_wall_skull") || name.ends_with("_wall_head") {
+    if block_name_is_wall_skull(block_name) {
         Some(SkullBlockAttachment::Wall {
             facing: facing.unwrap_or(SkullWallFacing::North),
         })
-    } else {
+    } else if block_name_is_floor_skull(block_name) {
         Some(SkullBlockAttachment::Ground {
             rotation_segment: rotation.unwrap_or(0),
         })
+    } else {
+        None
     }
 }
 
@@ -389,6 +391,16 @@ mod tests {
             Some(SkullBlockKind::Piglin)
         );
         assert_eq!(skull_kind_for_block_name("minecraft:stone"), None);
+        for block_name in [
+            "minecraft:skeleton_skull",
+            "minecraft:wither_skeleton_wall_skull",
+            "minecraft:player_wall_head",
+            "minecraft:piglin_head",
+        ] {
+            assert!(is_skull_block_name(block_name), "{block_name}");
+        }
+        assert!(!is_skull_block_name("minecraft:custom_wall_head"));
+        assert!(!is_skull_block_name("example:player_head"));
     }
 
     #[test]

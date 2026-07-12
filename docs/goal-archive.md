@@ -12376,3 +12376,10 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   direct constructor families 生成 floor 4 / wall 4，取代原混合 8 项 no-collision catalog；
   world no-collision 与 native property-aware outline 复用同一对查询。custom lookalikes 不进入
   torch shape，生成 membership 不接管粒子、光照或 redstone tick 语义。
+
+## 2026-07-12：Reused generated skull attachment membership
+
+- [x] skull block renderer source enumeration 的 floor/wall attachment 分发改为消费 generated
+  SkullBlock / WallSkullBlock queries，删除 `_wall_skull` / `_wall_head` suffix 判断；palette
+  prefilter 同样使用 generated union。skull kind 映射继续由其语义 owner 手写，测试反向证明
+  已知 kind 属于 catalog，custom/other-namespace lookalikes 不被识别。
