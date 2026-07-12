@@ -3120,6 +3120,36 @@ mod tests {
         );
     }
 
+    #[test]
+    fn play_incremental_world_border_family_keeps_warning_vignette_open() {
+        let ledger = vanilla_packet_coverage_26_1().unwrap();
+        for packet in [
+            "CLIENTBOUND_SET_BORDER_CENTER",
+            "CLIENTBOUND_SET_BORDER_LERP_SIZE",
+            "CLIENTBOUND_SET_BORDER_SIZE",
+            "CLIENTBOUND_SET_BORDER_WARNING_DELAY",
+            "CLIENTBOUND_SET_BORDER_WARNING_DISTANCE",
+        ] {
+            let entry = ledger
+                .entries
+                .iter()
+                .find(|entry| entry.state == "play" && entry.constant_name == packet)
+                .expect("play incremental world border coverage row");
+            let partial: BTreeSet<_> = entry
+                .coverage
+                .iter()
+                .filter_map(|(dimension, cell)| {
+                    (cell.status == PacketCoverageStatus::Partial).then_some(dimension.as_str())
+                })
+                .collect();
+            assert_eq!(
+                partial,
+                BTreeSet::from(["runtime_side_effect", "tests"]),
+                "{packet}"
+            );
+        }
+    }
+
     fn state_name(state: PacketState) -> &'static str {
         match state {
             PacketState::Handshake => "handshake",

@@ -6,10 +6,7 @@ use crate::{
         chat, chunks, client_audio, client_common, client_features, client_state, client_ui,
         command_suggestions, commands, connection, debug_game, entities, inventory, maps, merchant,
         player_actions, player_info, scoreboard, server_presentation, tags, waypoints,
-        world_border::{
-            InitializeBorder, SetBorderCenter, SetBorderLerpSize, SetBorderSize,
-            SetBorderWarningDelay, SetBorderWarningDistance,
-        },
+        world_border::{self, InitializeBorder},
         world_effects,
     },
 };
@@ -578,39 +575,32 @@ pub fn decode_play_clientbound(packet_id: i32, payload: &[u8]) -> Result<PlayCli
         }
         ids::play::CLIENTBOUND_SET_BORDER_CENTER => {
             let mut decoder = Decoder::new(payload);
-            Ok(PlayClientbound::SetBorderCenter(SetBorderCenter {
-                new_center_x: decoder.read_f64()?,
-                new_center_z: decoder.read_f64()?,
-            }))
+            Ok(PlayClientbound::SetBorderCenter(
+                world_border::decode_set_border_center(&mut decoder)?,
+            ))
         }
         ids::play::CLIENTBOUND_SET_BORDER_LERP_SIZE => {
             let mut decoder = Decoder::new(payload);
-            Ok(PlayClientbound::SetBorderLerpSize(SetBorderLerpSize {
-                old_size: decoder.read_f64()?,
-                new_size: decoder.read_f64()?,
-                lerp_time: decoder.read_var_i64()?,
-            }))
+            Ok(PlayClientbound::SetBorderLerpSize(
+                world_border::decode_set_border_lerp_size(&mut decoder)?,
+            ))
         }
         ids::play::CLIENTBOUND_SET_BORDER_SIZE => {
             let mut decoder = Decoder::new(payload);
-            Ok(PlayClientbound::SetBorderSize(SetBorderSize {
-                size: decoder.read_f64()?,
-            }))
+            Ok(PlayClientbound::SetBorderSize(
+                world_border::decode_set_border_size(&mut decoder)?,
+            ))
         }
         ids::play::CLIENTBOUND_SET_BORDER_WARNING_DELAY => {
             let mut decoder = Decoder::new(payload);
             Ok(PlayClientbound::SetBorderWarningDelay(
-                SetBorderWarningDelay {
-                    warning_delay: decoder.read_var_i32()?,
-                },
+                world_border::decode_set_border_warning_delay(&mut decoder)?,
             ))
         }
         ids::play::CLIENTBOUND_SET_BORDER_WARNING_DISTANCE => {
             let mut decoder = Decoder::new(payload);
             Ok(PlayClientbound::SetBorderWarningDistance(
-                SetBorderWarningDistance {
-                    warning_blocks: decoder.read_var_i32()?,
-                },
+                world_border::decode_set_border_warning_distance(&mut decoder)?,
             ))
         }
         ids::play::CLIENTBOUND_SET_CAMERA => {

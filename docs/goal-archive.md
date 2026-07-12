@@ -11731,3 +11731,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] packed SectionPos/state/relative-pos wire、一个 section 的 4096 项分配前上限、strict trailing、wire-order canonical apply、prediction reconciliation、terrain reupload 与跨 crate tests 已审计。
 - [x] 通用 block-entity record removal 与 `setServerVerifiedBlockState(..., 19)` 的 light/neighbor side effects 继续由 terrain ledger 维护，canonical/runtime 保持 partial。
+
+## 2026-07-12：play incremental world border packet coverage audit
+
+- [x] Center/LerpSize/Size/WarningDelay/WarningDistance wire、strict trailing、canonical mutation、tick/partial-tick interpolation、forcefield/input consumers、ownership 与跨 crate tests 已审计。
+- [x] `Gui.extractVignette` 的 warning distance/time 与 lerp-speed 屏幕警告继续由 HUD ledger 维护；五包 runtime/tests 保持 partial。

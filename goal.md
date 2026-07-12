@@ -526,6 +526,7 @@ play RemoveMobEffect 的 entity/effect holder wire、strict trailing、living/cu
 play ResourcePack Pop/Push 的 optional UUID、URL/hash/required/prompt wire、strict trailing、one/all canonical pop、push tracking、URL gate、response 与跨 crate tests 已审计；Push 的 rich prompt/策略状态以及两者的 download/hash/reload/required lifecycle 仍开放，runtime 保持 partial，Push canonical 也保持 partial。
 play Respawn 的 CommonPlayerSpawnInfo/dataToKeep wire、strict trailing、dimension-change level clear、keep-bit local reset 与 ownership 已审计；seed/portal canonical、LocalPlayer/map/container/camera/music/debug subscriber/LevelLoadTracker 完整生命周期尚未实现，canonical/runtime/tests 保持 partial。
 play SectionBlocksUpdate 的 packed SectionPos/state/relative-pos wire、4096 上限、strict trailing、wire-order apply、prediction reconciliation、terrain reupload 与 tests 已审计；通用 block-entity 清理及 vanilla flag-19 light/neighbor side effects 尚未完整，canonical/runtime 保持 partial。
+play SetBorder Center/LerpSize/Size/WarningDelay/WarningDistance 的 wire、strict trailing、canonical field mutation、tick/partial-tick interpolation、forcefield/input consumers 与 ownership 已审计；`Gui.extractVignette` warning-distance/lerp-speed 层尚未实现，五包 runtime/tests 保持 partial。
 
 完成标准：全部 vanilla 26.1 catalog entry 都有矩阵行；所有目标客户端适用项为
 `complete`，其余只有带 vanilla 依据的 `not-applicable` 或带重启判据的窄 `deferred`；

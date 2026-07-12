@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+use crate::codec::{Decoder, ProtocolError, Result};
+
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct InitializeBorder {
     pub new_center_x: f64,
@@ -38,6 +40,57 @@ pub struct SetBorderWarningDelay {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SetBorderWarningDistance {
     pub warning_blocks: i32,
+}
+
+pub(super) fn decode_set_border_center(decoder: &mut Decoder<'_>) -> Result<SetBorderCenter> {
+    let packet = SetBorderCenter {
+        new_center_x: decoder.read_f64()?,
+        new_center_z: decoder.read_f64()?,
+    };
+    finish_border_packet(decoder, packet, "set border center")
+}
+
+pub(super) fn decode_set_border_lerp_size(decoder: &mut Decoder<'_>) -> Result<SetBorderLerpSize> {
+    let packet = SetBorderLerpSize {
+        old_size: decoder.read_f64()?,
+        new_size: decoder.read_f64()?,
+        lerp_time: decoder.read_var_i64()?,
+    };
+    finish_border_packet(decoder, packet, "set border lerp size")
+}
+
+pub(super) fn decode_set_border_size(decoder: &mut Decoder<'_>) -> Result<SetBorderSize> {
+    let packet = SetBorderSize {
+        size: decoder.read_f64()?,
+    };
+    finish_border_packet(decoder, packet, "set border size")
+}
+
+pub(super) fn decode_set_border_warning_delay(
+    decoder: &mut Decoder<'_>,
+) -> Result<SetBorderWarningDelay> {
+    let packet = SetBorderWarningDelay {
+        warning_delay: decoder.read_var_i32()?,
+    };
+    finish_border_packet(decoder, packet, "set border warning delay")
+}
+
+pub(super) fn decode_set_border_warning_distance(
+    decoder: &mut Decoder<'_>,
+) -> Result<SetBorderWarningDistance> {
+    let packet = SetBorderWarningDistance {
+        warning_blocks: decoder.read_var_i32()?,
+    };
+    finish_border_packet(decoder, packet, "set border warning distance")
+}
+
+fn finish_border_packet<T>(decoder: &Decoder<'_>, packet: T, name: &str) -> Result<T> {
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(format!(
+            "trailing bytes after {name} packet"
+        )));
+    }
+    Ok(packet)
 }
 
 #[cfg(test)]
@@ -93,17 +146,20 @@ mod tests {
         payload.write_f64(-7.75);
         payload.write_f64(42.125);
 
-        let packet = decode_play_clientbound(
-            ids::play::CLIENTBOUND_SET_BORDER_CENTER,
-            &payload.into_inner(),
-        )
-        .unwrap();
+        let payload = payload.into_inner();
+        let packet =
+            decode_play_clientbound(ids::play::CLIENTBOUND_SET_BORDER_CENTER, &payload).unwrap();
         assert_eq!(
             packet,
             PlayClientbound::SetBorderCenter(SetBorderCenter {
                 new_center_x: -7.75,
                 new_center_z: 42.125,
             })
+        );
+        assert_trailing_rejected(
+            ids::play::CLIENTBOUND_SET_BORDER_CENTER,
+            payload,
+            "set border center",
         );
     }
 
@@ -114,11 +170,9 @@ mod tests {
         payload.write_f64(128.0);
         payload.write_var_i64(6000);
 
-        let packet = decode_play_clientbound(
-            ids::play::CLIENTBOUND_SET_BORDER_LERP_SIZE,
-            &payload.into_inner(),
-        )
-        .unwrap();
+        let payload = payload.into_inner();
+        let packet =
+            decode_play_clientbound(ids::play::CLIENTBOUND_SET_BORDER_LERP_SIZE, &payload).unwrap();
         assert_eq!(
             packet,
             PlayClientbound::SetBorderLerpSize(SetBorderLerpSize {
@@ -127,6 +181,11 @@ mod tests {
                 lerp_time: 6000,
             })
         );
+        assert_trailing_rejected(
+            ids::play::CLIENTBOUND_SET_BORDER_LERP_SIZE,
+            payload,
+            "set border lerp size",
+        );
     }
 
     #[test]
@@ -134,14 +193,17 @@ mod tests {
         let mut payload = Encoder::new();
         payload.write_f64(2048.0);
 
-        let packet = decode_play_clientbound(
-            ids::play::CLIENTBOUND_SET_BORDER_SIZE,
-            &payload.into_inner(),
-        )
-        .unwrap();
+        let payload = payload.into_inner();
+        let packet =
+            decode_play_clientbound(ids::play::CLIENTBOUND_SET_BORDER_SIZE, &payload).unwrap();
         assert_eq!(
             packet,
             PlayClientbound::SetBorderSize(SetBorderSize { size: 2048.0 })
+        );
+        assert_trailing_rejected(
+            ids::play::CLIENTBOUND_SET_BORDER_SIZE,
+            payload,
+            "set border size",
         );
     }
 
@@ -150,14 +212,18 @@ mod tests {
         let mut payload = Encoder::new();
         payload.write_var_i32(30);
 
-        let packet = decode_play_clientbound(
-            ids::play::CLIENTBOUND_SET_BORDER_WARNING_DELAY,
-            &payload.into_inner(),
-        )
-        .unwrap();
+        let payload = payload.into_inner();
+        let packet =
+            decode_play_clientbound(ids::play::CLIENTBOUND_SET_BORDER_WARNING_DELAY, &payload)
+                .unwrap();
         assert_eq!(
             packet,
             PlayClientbound::SetBorderWarningDelay(SetBorderWarningDelay { warning_delay: 30 })
+        );
+        assert_trailing_rejected(
+            ids::play::CLIENTBOUND_SET_BORDER_WARNING_DELAY,
+            payload,
+            "set border warning delay",
         );
     }
 
@@ -166,16 +232,28 @@ mod tests {
         let mut payload = Encoder::new();
         payload.write_var_i32(8);
 
-        let packet = decode_play_clientbound(
-            ids::play::CLIENTBOUND_SET_BORDER_WARNING_DISTANCE,
-            &payload.into_inner(),
-        )
-        .unwrap();
+        let payload = payload.into_inner();
+        let packet =
+            decode_play_clientbound(ids::play::CLIENTBOUND_SET_BORDER_WARNING_DISTANCE, &payload)
+                .unwrap();
         assert_eq!(
             packet,
             PlayClientbound::SetBorderWarningDistance(SetBorderWarningDistance {
                 warning_blocks: 8
             })
         );
+        assert_trailing_rejected(
+            ids::play::CLIENTBOUND_SET_BORDER_WARNING_DISTANCE,
+            payload,
+            "set border warning distance",
+        );
+    }
+
+    fn assert_trailing_rejected(packet_id: i32, mut payload: Vec<u8>, packet_name: &str) {
+        payload.push(0);
+        assert!(decode_play_clientbound(packet_id, &payload)
+            .unwrap_err()
+            .to_string()
+            .contains(&format!("trailing bytes after {packet_name} packet")));
     }
 }
