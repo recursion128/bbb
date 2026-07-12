@@ -339,10 +339,16 @@ pub(super) fn decode_damage_event(decoder: &mut Decoder<'_>) -> Result<DamageEve
 }
 
 pub(super) fn decode_game_event(decoder: &mut Decoder<'_>) -> Result<GameEvent> {
-    Ok(GameEvent {
+    let update = GameEvent {
         event_id: decoder.read_u8()?,
         param: decoder.read_f32()?,
-    })
+    };
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after game event packet".to_string(),
+        ));
+    }
+    Ok(update)
 }
 
 pub(super) fn decode_player_abilities(decoder: &mut Decoder<'_>) -> Result<PlayerAbilities> {

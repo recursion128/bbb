@@ -6723,28 +6723,47 @@
       "constant_name": "CLIENTBOUND_GAME_EVENT",
       "coverage": {
         "canonical_apply": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
+          "evidence": [
+            "crates/bbb-world/src/level.rs#apply_game_event",
+            "crates/bbb-world/src/client/audio.rs#game_event_positioned_sound",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleGameEvent"
+          ],
+          "gap": "docs/unsupported-features.md#screens-and-presentation",
           "status": "partial"
         },
         "decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/client_state/tests.rs#decodes_game_event_and_set_time",
+            "crates/bbb-protocol/src/game_event_types.rs#client_game_event_type_catalog_is_complete_contiguous_and_unique",
+            "vanilla:net/minecraft/network/protocol/game/ClientboundGameEventPacket.java#STREAM_CODEC"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "ownership": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/play_apply.rs#PlayClientbound::GameEvent"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "runtime_side_effect": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
+          "evidence": [
+            "crates/bbb-native/src/runtime/events/tests/level_event_particle_batches.rs#game_events_emit_local_player_sounds_and_elder_guardian_particles",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleGameEvent"
+          ],
+          "gap": "docs/unsupported-features.md#screens-and-presentation",
           "status": "partial"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "evidence": [
+            "crates/bbb-protocol/src/packets/client_state/tests.rs#decodes_game_event_and_set_time",
+            "crates/bbb-net/src/probe/play.rs#probe_applies_world_time_weather_and_ticking_to_world",
+            "crates/bbb-world/src/level.rs#game_events_update_local_gameplay_state",
+            "crates/bbb-native/src/runtime/events/tests/level_event_particle_batches.rs#game_events_emit_local_player_sounds_and_elder_guardian_particles",
+            "crates/bbb-native/src/runtime/events/tests/session_hud_and_vehicle_events.rs#world_time_and_weather_update_world_counters_and_clear_color"
+          ],
+          "gap": "docs/unsupported-features.md#screens-and-presentation",
           "status": "partial"
         }
       },

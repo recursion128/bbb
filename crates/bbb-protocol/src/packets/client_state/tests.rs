@@ -496,14 +496,22 @@ fn decodes_game_event_and_set_time() {
     let mut payload = Encoder::new();
     payload.write_u8(7);
     payload.write_f32(0.75);
-    let packet =
-        decode_play_clientbound(ids::play::CLIENTBOUND_GAME_EVENT, &payload.into_inner()).unwrap();
+    let payload = payload.into_inner();
+    let packet = decode_play_clientbound(ids::play::CLIENTBOUND_GAME_EVENT, &payload).unwrap();
     assert_eq!(
         packet,
         PlayClientbound::GameEvent(GameEvent {
             event_id: 7,
             param: 0.75,
         })
+    );
+    let mut trailing = payload;
+    trailing.push(0);
+    assert!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_GAME_EVENT, &trailing)
+            .unwrap_err()
+            .to_string()
+            .contains("trailing bytes after game event packet")
     );
 
     let mut payload = Encoder::new();

@@ -11631,3 +11631,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] ChunkPos framing/strict trailing、canonical chunk-column removal 与 missing-count ownership 闭合。
 - [x] last-chunk renderer clear、light-section removal、debug-subscription drop 与 runtime reverse tests 未完成，runtime/tests 保持 partial。
+
+## 2026-07-12：play game event packet coverage audit
+
+- [x] 14-type generated catalog、u8/f32 framing/strict trailing 与十类 weather/mode/audio/particle/gameplay 分支已审计。
+- [x] type 0/4/5/13 的 respawn message、win/demo UI 与 level-load tracker 未完成，canonical/runtime/tests 保持 partial。

@@ -506,6 +506,7 @@ play DisguisedChat 的 trusted-Component/ChatType holder wire shape、strict tra
 play EntityEvent 的 i32/i8 framing、strict trailing、missing-entity gate 与大量已实现 client animation/particle/audio 分支已审计；完整 vanilla subclass/event-id 反向清单尚未闭合，canonical/runtime/tests 保持 partial。
 play Explode 的 center/radius/blockCount/optional-knockback framing、本地玩家 knockback apply 与跨 crate tests 已审计；typed particle/sound/weighted block-particle decode 和 client explosion tracker 未实现，decode/canonical/runtime 保持 partial，服务端伤害/方块修改不在客户端范围。
 play ForgetLevelChunk 的 ChunkPos framing/strict trailing、canonical chunk-column removal/missing-count ownership 已闭合；last-chunk renderer clear、light-section removal、debug-subscription drop 与 runtime reverse tests 保持 runtime/tests partial。
+play GameEvent 的 14-type generated catalog、u8/f32 framing/strict trailing 与十类 weather/mode/audio/particle/gameplay 分支已审计；type 0/4/5/13 的 respawn message、win/demo UI 与 level-load tracker 保持 canonical/runtime/tests partial。
 
 完成标准：全部 vanilla 26.1 catalog entry 都有矩阵行；所有目标客户端适用项为
 `complete`，其余只有带 vanilla 依据的 `not-applicable` 或带重启判据的窄 `deferred`；
