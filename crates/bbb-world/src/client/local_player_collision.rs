@@ -25,6 +25,7 @@ use crate::entities::{
 };
 use crate::terrain::{
     block_name_has_empty_collision_shape, block_name_is_air, block_name_is_copper_grate,
+    block_name_is_leaves,
 };
 use crate::{BlockPos, BlockProbe, TerrainFluidKind, TerrainMaterialClass, WorldStore};
 
@@ -1395,9 +1396,7 @@ fn is_stair_block(block: &BlockProbe) -> bool {
 }
 
 fn is_leaves_block_name(block_name: &str) -> bool {
-    block_name
-        .strip_prefix("minecraft:")
-        .is_some_and(|path| path.ends_with("_leaves"))
+    block_name_is_leaves(block_name)
 }
 
 fn is_flat_carpet_block_name(block_name: &str) -> bool {
@@ -3983,11 +3982,18 @@ impl BlockCollisionBox {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     use crate::{
         ChunkColumn, ChunkPos, ChunkSection, ChunkState, LightData, PaletteDomain, PaletteKind,
         PalettedContainerData, WorldDimension,
     };
+
+    #[test]
+    fn leaves_collision_membership_rejects_suffix_lookalikes() {
+        assert!(is_leaves_block_name("minecraft:oak_leaves"));
+        assert!(is_leaves_block_name("minecraft:flowering_azalea_leaves"));
+        assert!(!is_leaves_block_name("minecraft:custom_leaves"));
+        assert!(!is_leaves_block_name("example:oak_leaves"));
+    }
 
     #[test]
     fn cocoa_shape_matches_vanilla_age_and_facing() {

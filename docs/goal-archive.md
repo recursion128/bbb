@@ -12283,3 +12283,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   边界裁面，水平边界保留；muddy mangrove roots 不被错误纳入。Liquid same-fluid、IronBars 与
   HalfTransparentBlock 路径保持独立，Leaves 的 runtime graphics-option 分支继续由明确 ledger
   条目跟踪。
+
+## 2026-07-12：Reused exact leaves membership in world behavior
+
+- [x] local-player collision 的 full-cube LeavesBlock gate 与 legacy destroy-profile fallback
+  改为消费 generated `block_name_is_leaves`，删除两处任意 `*_leaves` 后缀猜测；11 个 vanilla
+  leaves 保持原行为，`minecraft:custom_leaves` 与其他 namespace lookalike 不再被冒充成 vanilla
+  class member。
+- [x] biome tint 中的 foliage-resolver 子集保留独立手写语义：spruce/birch 使用常量颜色，
+  azalea/cherry 等也不是同一 resolver 集合，不能用完整 LeavesBlock membership 替换。

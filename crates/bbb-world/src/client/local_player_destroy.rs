@@ -10,7 +10,7 @@ use bbb_protocol::packets::Direction as ProtocolDirection;
 use serde::{Deserialize, Serialize};
 
 use super::local_player_fluid::local_player_eye_in_water;
-use crate::{block_name_is_air, BlockPos, WorldStore};
+use crate::{block_name_is_air, block_name_is_leaves, BlockPos, WorldStore};
 
 const LOCAL_DESTROY_PROGRESS_SCALE: u32 = 1_000_000;
 pub(crate) const LOCAL_DESTROY_COMPLETION_DELAY_TICKS: u8 = 5;
@@ -318,7 +318,7 @@ fn fallback_local_block_destroy_profile(block_name: &str) -> Option<LocalBlockDe
         {
             Some(profile(20, false))
         }
-        name if name.ends_with("_leaves") => Some(profile(2, false)),
+        name if block_name_is_leaves(name) => Some(profile(2, false)),
         _ => None,
     }
 }
@@ -398,6 +398,16 @@ mod tests {
     const SOURCE_WATER_BLOCK_STATE_ID: i32 = 86;
     const FLOWING_WATER_LEVEL_3_BLOCK_STATE_ID: i32 = 89;
     const PLAYER_HEAD_EQUIPMENT_SLOT: i32 = 39;
+
+    #[test]
+    fn fallback_destroy_profile_uses_exact_leaves_membership() {
+        let leaves = fallback_local_block_destroy_profile("minecraft:oak_leaves")
+            .expect("generated vanilla leaves member");
+        assert_eq!(leaves.destroy_time_tenths, Some(2));
+        assert!(!leaves.requires_correct_tool);
+        assert!(fallback_local_block_destroy_profile("minecraft:custom_leaves").is_none());
+        assert!(fallback_local_block_destroy_profile("example:oak_leaves").is_none());
+    }
 
     #[test]
     fn local_destroy_progress_uses_vanilla_hand_formula_for_known_blocks() {
