@@ -1052,22 +1052,7 @@ fn entity_model_instances_project_ender_dragon_death_time() {
     }))
     .unwrap();
 
-    let instance = entity_model_instance(
-        source,
-        &WorldStore::new(),
-        None,
-        0,
-        0.0,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-    )
-    .unwrap();
+    let instance = entity_model_instance(source, &WorldStore::new(), None, 0, 0.0, None).unwrap();
 
     assert_eq!(instance.kind, EntityModelKind::EnderDragon);
     assert_eq!(instance.render_state.death_time, 0.0);
@@ -1538,22 +1523,7 @@ fn entity_model_instance_projects_old_minecart_rail_render_points_from_source() 
     }))
     .unwrap();
 
-    let instance = entity_model_instance(
-        source,
-        &WorldStore::new(),
-        None,
-        0,
-        1.0,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-    )
-    .unwrap();
+    let instance = entity_model_instance(source, &WorldStore::new(), None, 0, 1.0, None).unwrap();
 
     assert_eq!(
         instance.render_state.minecart_pos_on_rail,
@@ -1585,22 +1555,7 @@ fn entity_model_instance_projects_boat_underwater_from_source() {
     }))
     .unwrap();
 
-    let instance = entity_model_instance(
-        source,
-        &WorldStore::new(),
-        None,
-        0,
-        1.0,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-    )
-    .unwrap();
+    let instance = entity_model_instance(source, &WorldStore::new(), None, 0, 1.0, None).unwrap();
 
     assert_eq!(
         instance.kind,
@@ -2335,22 +2290,7 @@ fn entity_model_instance_projects_drowned_swim_amount_from_source() {
     }))
     .unwrap();
 
-    let instance = entity_model_instance(
-        source,
-        &WorldStore::new(),
-        None,
-        0,
-        1.0,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-    )
-    .unwrap();
+    let instance = entity_model_instance(source, &WorldStore::new(), None, 0, 1.0, None).unwrap();
 
     assert_eq!(
         instance.kind,
@@ -2381,22 +2321,7 @@ fn entity_model_instance_projects_elytra_animation_state_from_source() {
     }))
     .unwrap();
 
-    let instance = entity_model_instance(
-        source,
-        &WorldStore::new(),
-        None,
-        0,
-        1.0,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-    )
-    .unwrap();
+    let instance = entity_model_instance(source, &WorldStore::new(), None, 0, 1.0, None).unwrap();
 
     assert!((instance.render_state.elytra_rot_x - 0.42).abs() < 1.0e-6);
     assert!((instance.render_state.elytra_rot_y - 0.08).abs() < 1.0e-6);
@@ -4501,22 +4426,7 @@ fn entity_model_instance_projects_ender_dragon_healing_beam_from_source() {
     }))
     .unwrap();
 
-    let instance = entity_model_instance(
-        source,
-        &WorldStore::new(),
-        None,
-        0,
-        0.0,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-    )
-    .unwrap();
+    let instance = entity_model_instance(source, &WorldStore::new(), None, 0, 0.0, None).unwrap();
 
     assert_eq!(instance.kind, EntityModelKind::EnderDragon);
     assert_eq!(instance.render_state.ender_dragon_death_time, 44.5);
@@ -5410,17 +5320,11 @@ fn entity_model_instances_project_chicken_variants_from_world_registry_order() {
             RegistryPacketEntry::stub("minecraft:warm"),
         ],
     );
-    let chicken_registry = world.registry_content("minecraft:chicken_variant").unwrap();
     assert_eq!(
         entity_model_kind_with_registries(
             VANILLA_ENTITY_TYPE_CHICKEN_ID,
             &[protocol_chicken_variant_data(99)],
-            Some(chicken_registry),
-            None,
-            None,
-            None,
-            None,
-            None,
+            Some(&world),
         ),
         EntityModelKind::Chicken {
             variant: ChickenModelVariant::Temperate,
@@ -5518,17 +5422,11 @@ fn entity_model_instances_project_cow_variants_from_world_registry_order() {
             RegistryPacketEntry::stub("minecraft:warm"),
         ],
     );
-    let cow_registry = world.registry_content("minecraft:cow_variant").unwrap();
     assert_eq!(
         entity_model_kind_with_registries(
             VANILLA_ENTITY_TYPE_COW_ID,
             &[protocol_cow_variant_data(99)],
-            None,
-            Some(cow_registry),
-            None,
-            None,
-            None,
-            None,
+            Some(&world),
         ),
         EntityModelKind::Cow {
             variant: CowModelVariant::Temperate,
@@ -5626,17 +5524,11 @@ fn entity_model_instances_project_pig_variants_from_world_registry_order() {
             RegistryPacketEntry::stub("minecraft:warm"),
         ],
     );
-    let pig_registry = world.registry_content("minecraft:pig_variant").unwrap();
     assert_eq!(
         entity_model_kind_with_registries(
             VANILLA_ENTITY_TYPE_PIG_ID,
             &[protocol_pig_variant_data(99)],
-            None,
-            None,
-            Some(pig_registry),
-            None,
-            None,
-            None,
+            Some(&world),
         ),
         EntityModelKind::Pig {
             variant: PigModelVariant::Temperate,
@@ -5835,22 +5727,7 @@ fn entity_model_instance_projects_equine_tail_counter_from_source() {
     }))
     .unwrap();
 
-    let instance = entity_model_instance(
-        source,
-        &WorldStore::new(),
-        None,
-        0,
-        1.0,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-    )
-    .unwrap();
+    let instance = entity_model_instance(source, &WorldStore::new(), None, 0, 1.0, None).unwrap();
 
     assert_eq!(
         instance.kind,
@@ -5880,22 +5757,7 @@ fn entity_model_instance_projects_equine_pose_animations_from_source() {
     }))
     .unwrap();
 
-    let instance = entity_model_instance(
-        source,
-        &WorldStore::new(),
-        None,
-        0,
-        1.0,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-    )
-    .unwrap();
+    let instance = entity_model_instance(source, &WorldStore::new(), None, 0, 1.0, None).unwrap();
 
     assert_eq!(instance.render_state.equine_eat_animation, 0.25);
     assert_eq!(instance.render_state.equine_stand_animation, 0.5);
@@ -7528,11 +7390,6 @@ fn entity_model_kind_projects_bee_nectar_and_angry_texture_flags() {
             0.0,
             0,
             None,
-            None,
-            None,
-            None,
-            None,
-            None,
         ),
         EntityModelKind::Bee {
             baby: false,
@@ -7548,11 +7405,6 @@ fn entity_model_kind_projects_bee_nectar_and_angry_texture_flags() {
             &[protocol_long_data(BEE_ANGER_END_TIME_DATA_ID, 100)],
             0.0,
             10,
-            None,
-            None,
-            None,
-            None,
-            None,
             None,
         ),
         EntityModelKind::Bee {
@@ -7644,6 +7496,27 @@ fn entity_model_kind_maps_frog_to_real_model() {
             EntityModelKind::Frog { variant }
         );
     }
+
+    let mut world = WorldStore::new();
+    world.record_registry_entries(
+        "minecraft:frog_variant",
+        0,
+        vec![
+            RegistryPacketEntry::stub("minecraft:cold"),
+            RegistryPacketEntry::stub("minecraft:warm"),
+            RegistryPacketEntry::stub("minecraft:temperate"),
+        ],
+    );
+    assert_eq!(
+        entity_model_kind_with_registries(
+            VANILLA_ENTITY_TYPE_FROG_ID,
+            &[protocol_frog_variant_data(0)],
+            Some(&world),
+        ),
+        EntityModelKind::Frog {
+            variant: FrogModelVariant::Cold
+        }
+    );
 }
 
 #[test]
@@ -8154,11 +8027,6 @@ fn entity_model_kind_projects_sheep_jeb_custom_name_and_age() {
             12.5,
             0,
             None,
-            None,
-            None,
-            None,
-            None,
-            None,
         ),
         EntityModelKind::Sheep {
             baby: false,
@@ -8178,11 +8046,6 @@ fn entity_model_kind_projects_sheep_jeb_custom_name_and_age() {
             25.0,
             0,
             None,
-            None,
-            None,
-            None,
-            None,
-            None,
         ),
         EntityModelKind::Sheep {
             baby: false,
@@ -8201,11 +8064,6 @@ fn entity_model_kind_projects_sheep_jeb_custom_name_and_age() {
             )],
             25.0,
             0,
-            None,
-            None,
-            None,
-            None,
-            None,
             None,
         ),
         EntityModelKind::Sheep {
@@ -9083,14 +8941,13 @@ fn entity_model_kind_uses_exact_models_for_villagers() {
 #[test]
 fn villager_model_data_reads_vanilla_serializer_and_static_fallback_order() {
     assert_eq!(
-        villager_model_data(VANILLA_ENTITY_TYPE_VILLAGER_ID, &[], None, None),
+        villager_model_data(VANILLA_ENTITY_TYPE_VILLAGER_ID, &[], None),
         VillagerModelData::DEFAULT
     );
     assert_eq!(
         villager_model_data(
             VANILLA_ENTITY_TYPE_VILLAGER_ID,
             &[protocol_villager_data(18, 6, 14, 9)],
-            None,
             None,
         ),
         VillagerModelData::DEFAULT,
@@ -9100,7 +8957,6 @@ fn villager_model_data_reads_vanilla_serializer_and_static_fallback_order() {
         villager_model_data(
             VANILLA_ENTITY_TYPE_VILLAGER_ID,
             &[protocol_villager_data(VILLAGER_DATA_DATA_ID, 6, 14, 9)],
-            None,
             None,
         ),
         VillagerModelData::new(
@@ -9119,7 +8975,6 @@ fn villager_model_data_reads_vanilla_serializer_and_static_fallback_order() {
                 2
             )],
             None,
-            None,
         ),
         VillagerModelData::new(VillagerModelType::Snow, VillagerModelProfession::Nitwit, 2,)
     );
@@ -9127,7 +8982,6 @@ fn villager_model_data_reads_vanilla_serializer_and_static_fallback_order() {
         villager_model_data(
             VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID,
             &[protocol_villager_data(VILLAGER_DATA_DATA_ID, 4, 11, 2)],
-            None,
             None,
         ),
         VillagerModelData::DEFAULT,
@@ -9158,8 +9012,7 @@ fn villager_model_data_prefers_dynamic_registry_order() {
         villager_model_data(
             VANILLA_ENTITY_TYPE_VILLAGER_ID,
             &[protocol_villager_data(VILLAGER_DATA_DATA_ID, 1, 0, 5)],
-            world.registry_content("minecraft:villager_type"),
-            world.registry_content("minecraft:villager_profession"),
+            Some(&world),
         ),
         VillagerModelData::new(
             VillagerModelType::Desert,
@@ -9171,8 +9024,7 @@ fn villager_model_data_prefers_dynamic_registry_order() {
         villager_model_data(
             VANILLA_ENTITY_TYPE_VILLAGER_ID,
             &[protocol_villager_data(VILLAGER_DATA_DATA_ID, 99, -1, 3)],
-            world.registry_content("minecraft:villager_type"),
-            world.registry_content("minecraft:villager_profession"),
+            Some(&world),
         ),
         VillagerModelData::new(VillagerModelType::Plains, VillagerModelProfession::None, 3,)
     );
@@ -9436,19 +9288,12 @@ fn entity_model_kind_projects_wolf_variant_from_registry_and_fallback() {
             RegistryPacketEntry::stub("minecraft:woods"),
         ],
     );
-    let wolf_registry = world.registry_content("minecraft:wolf_variant").unwrap();
-
     // Registry id 1 → the second entry the server declared (`ashen`).
     assert_eq!(
         entity_model_kind_with_registries(
             VANILLA_ENTITY_TYPE_WOLF_ID,
             &[protocol_wolf_variant_data(1)],
-            None,
-            None,
-            None,
-            None,
-            None,
-            Some(wolf_registry),
+            Some(&world),
         ),
         EntityModelKind::Wolf {
             baby: false,
@@ -9599,17 +9444,11 @@ fn entity_model_instances_project_cat_variants_from_world_registry_order() {
             RegistryPacketEntry::stub("minecraft:white"),
         ],
     );
-    let cat_registry = world.registry_content("minecraft:cat_variant").unwrap();
     assert_eq!(
         entity_model_kind_with_registries(
             VANILLA_ENTITY_TYPE_CAT_ID,
             &[protocol_cat_variant_data(99)],
-            None,
-            None,
-            None,
-            None,
-            Some(cat_registry),
-            None,
+            Some(&world),
         ),
         EntityModelKind::Feline {
             cat: true,
@@ -9876,11 +9715,6 @@ fn entity_model_kind_uses_vanilla_wolf_anger_end_time_metadata() {
             0.0,
             199,
             None,
-            None,
-            None,
-            None,
-            None,
-            None,
         ),
         EntityModelKind::Wolf {
             baby: false,
@@ -9896,11 +9730,6 @@ fn entity_model_kind_uses_vanilla_wolf_anger_end_time_metadata() {
             &[protocol_long_data(WOLF_ANGER_END_TIME_DATA_ID, 200)],
             0.0,
             200,
-            None,
-            None,
-            None,
-            None,
-            None,
             None,
         ),
         EntityModelKind::Wolf {
@@ -9920,11 +9749,6 @@ fn entity_model_kind_uses_vanilla_wolf_anger_end_time_metadata() {
             ],
             0.0,
             199,
-            None,
-            None,
-            None,
-            None,
-            None,
             None,
         ),
         EntityModelKind::Wolf {
@@ -10147,22 +9971,7 @@ fn entity_model_instance_projects_wolf_wet_shade_from_source() {
     }))
     .unwrap();
 
-    let instance = entity_model_instance(
-        source,
-        &WorldStore::new(),
-        None,
-        0,
-        1.0,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-    )
-    .unwrap();
+    let instance = entity_model_instance(source, &WorldStore::new(), None, 0, 1.0, None).unwrap();
 
     assert_eq!(
         instance.kind,
@@ -10258,22 +10067,7 @@ fn entity_model_instances_preserve_parrot_party_from_world_source() {
     }))
     .unwrap();
 
-    let instance = entity_model_instance(
-        source,
-        &WorldStore::new(),
-        None,
-        0,
-        1.0,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-    )
-    .unwrap();
+    let instance = entity_model_instance(source, &WorldStore::new(), None, 0, 1.0, None).unwrap();
 
     assert_eq!(
         instance.kind,

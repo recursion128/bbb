@@ -12116,3 +12116,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] sound-event 与 jukebox-song runtime projections 不再直接从单个 incoming RegistryData packet 建表，统一从 `WorldStore` active holder order 派生。
 - [x] non-staged registry apply 仍立即刷新 audio；configuration/reconfiguration pending 阶段保持旧表，Play transition 在 Finish 后同时切换，两张表的 focused lifecycle test 已锁定。typed sound/jukebox element codecs 继续开放。
+
+## 2026-07-12：entity variant holder lookup consolidation
+
+- [x] entity render scene 的 chicken/cow/pig/frog/cat/wolf variant 与 villager type/profession 不再接收八份 `RegistryContentState` 或自行索引 entries；production 只注入一个窄 `resource_id_by_holder_id` lookup。
+- [x] dynamic registry order、unknown/negative fallback 与 static 26.1 fallback 语义保持通过；新增 frog reordered-registry assertion。custom variant element payload 的 typed codec/asset semantics 继续开放，不能由 resource id lookup 冒充。

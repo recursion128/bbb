@@ -3,8 +3,7 @@ use super::*;
 pub(super) fn villager_model_data(
     entity_type_id: i32,
     values: &[bbb_protocol::packets::EntityDataValue],
-    villager_types: Option<&RegistryContentState>,
-    villager_professions: Option<&RegistryContentState>,
+    registries: Option<&dyn EntityVariantRegistryLookup>,
 ) -> VillagerModelData {
     let data_id = match entity_type_id {
         VANILLA_ENTITY_TYPE_VILLAGER_ID => VILLAGER_DATA_DATA_ID,
@@ -25,8 +24,8 @@ pub(super) fn villager_model_data(
         })
         .map(|(villager_type, profession, level)| {
             VillagerModelData::new(
-                resolve_villager_type(villager_type, villager_types),
-                resolve_villager_profession(profession, villager_professions),
+                resolve_villager_type(villager_type, registries),
+                resolve_villager_profession(profession, registries),
                 level,
             )
         })
@@ -35,26 +34,22 @@ pub(super) fn villager_model_data(
 
 pub(super) fn resolve_villager_type(
     registry_id: i32,
-    registry: Option<&RegistryContentState>,
+    registries: Option<&dyn EntityVariantRegistryLookup>,
 ) -> VillagerModelType {
-    if let Some(registry) = registry {
-        villager_type_from_registry_id(registry, registry_id).unwrap_or(VillagerModelType::Plains)
+    if let Some(registries) = registries {
+        villager_type_from_registry_id(registries, registry_id).unwrap_or(VillagerModelType::Plains)
     } else {
         villager_type_from_vanilla_registry_id(registry_id)
     }
 }
 
 pub(super) fn villager_type_from_registry_id(
-    registry: &RegistryContentState,
+    registries: &dyn EntityVariantRegistryLookup,
     registry_id: i32,
 ) -> Option<VillagerModelType> {
-    if registry_id < 0 {
-        return None;
-    }
-    registry
-        .entries
-        .get(registry_id as usize)
-        .and_then(|entry| villager_type_from_entry_id(entry.id.as_str()))
+    registries
+        .resource_id_by_holder_id("minecraft:villager_type", registry_id)
+        .and_then(villager_type_from_entry_id)
 }
 
 pub(super) fn villager_type_from_entry_id(id: &str) -> Option<VillagerModelType> {
@@ -78,10 +73,10 @@ pub(super) fn villager_type_from_vanilla_registry_id(registry_id: i32) -> Villag
 
 pub(super) fn resolve_villager_profession(
     registry_id: i32,
-    registry: Option<&RegistryContentState>,
+    registries: Option<&dyn EntityVariantRegistryLookup>,
 ) -> VillagerModelProfession {
-    if let Some(registry) = registry {
-        villager_profession_from_registry_id(registry, registry_id)
+    if let Some(registries) = registries {
+        villager_profession_from_registry_id(registries, registry_id)
             .unwrap_or(VillagerModelProfession::None)
     } else {
         villager_profession_from_vanilla_registry_id(registry_id)
@@ -89,16 +84,12 @@ pub(super) fn resolve_villager_profession(
 }
 
 pub(super) fn villager_profession_from_registry_id(
-    registry: &RegistryContentState,
+    registries: &dyn EntityVariantRegistryLookup,
     registry_id: i32,
 ) -> Option<VillagerModelProfession> {
-    if registry_id < 0 {
-        return None;
-    }
-    registry
-        .entries
-        .get(registry_id as usize)
-        .and_then(|entry| villager_profession_from_entry_id(entry.id.as_str()))
+    registries
+        .resource_id_by_holder_id("minecraft:villager_profession", registry_id)
+        .and_then(villager_profession_from_entry_id)
 }
 
 pub(super) fn villager_profession_from_entry_id(id: &str) -> Option<VillagerModelProfession> {
@@ -219,7 +210,7 @@ pub(super) fn panda_model_kind(
 pub(super) fn feline_model_kind(
     values: &[bbb_protocol::packets::EntityDataValue],
     cat: bool,
-    cat_variants: Option<&RegistryContentState>,
+    registries: Option<&dyn EntityVariantRegistryLookup>,
 ) -> EntityModelKind {
     let tame = (entity_data_byte(
         values,
@@ -231,7 +222,7 @@ pub(super) fn feline_model_kind(
         cat,
         baby: ageable_baby(values),
         cat_variant: if cat {
-            cat_model_variant(values, cat_variants)
+            cat_model_variant(values, registries)
         } else {
             CatModelVariant::Black
         },
@@ -247,7 +238,7 @@ pub(super) fn feline_model_kind(
 
 pub(super) fn cat_model_variant(
     values: &[bbb_protocol::packets::EntityDataValue],
-    variants: Option<&RegistryContentState>,
+    registries: Option<&dyn EntityVariantRegistryLookup>,
 ) -> CatModelVariant {
     values
         .iter()
@@ -261,8 +252,8 @@ pub(super) fn cat_model_variant(
             _ => None,
         })
         .map(|id| {
-            if let Some(registry) = variants {
-                cat_variant_from_registry_id(registry, id).unwrap_or(CatModelVariant::Black)
+            if let Some(registries) = registries {
+                cat_variant_from_registry_id(registries, id).unwrap_or(CatModelVariant::Black)
             } else {
                 cat_variant_from_vanilla_registry_id(id)
             }
@@ -271,16 +262,12 @@ pub(super) fn cat_model_variant(
 }
 
 pub(super) fn cat_variant_from_registry_id(
-    registry: &RegistryContentState,
+    registries: &dyn EntityVariantRegistryLookup,
     registry_id: i32,
 ) -> Option<CatModelVariant> {
-    if registry_id < 0 {
-        return None;
-    }
-    registry
-        .entries
-        .get(registry_id as usize)
-        .and_then(|entry| cat_variant_from_entry_id(entry.id.as_str()))
+    registries
+        .resource_id_by_holder_id("minecraft:cat_variant", registry_id)
+        .and_then(cat_variant_from_entry_id)
 }
 
 pub(super) fn cat_variant_from_entry_id(id: &str) -> Option<CatModelVariant> {
@@ -392,30 +379,30 @@ pub(super) fn boat(family: BoatModelFamily, chest: bool) -> EntityModelKind {
 
 pub(super) fn chicken_model_kind(
     values: &[bbb_protocol::packets::EntityDataValue],
-    variants: Option<&RegistryContentState>,
+    registries: Option<&dyn EntityVariantRegistryLookup>,
 ) -> EntityModelKind {
     EntityModelKind::Chicken {
-        variant: chicken_model_variant(values, variants),
+        variant: chicken_model_variant(values, registries),
         baby: ageable_baby(values),
     }
 }
 
 pub(super) fn pig_model_kind(
     values: &[bbb_protocol::packets::EntityDataValue],
-    variants: Option<&RegistryContentState>,
+    registries: Option<&dyn EntityVariantRegistryLookup>,
 ) -> EntityModelKind {
     EntityModelKind::Pig {
-        variant: pig_model_variant(values, variants),
+        variant: pig_model_variant(values, registries),
         baby: ageable_baby(values),
     }
 }
 
 pub(super) fn cow_model_kind(
     values: &[bbb_protocol::packets::EntityDataValue],
-    variants: Option<&RegistryContentState>,
+    registries: Option<&dyn EntityVariantRegistryLookup>,
 ) -> EntityModelKind {
     EntityModelKind::Cow {
-        variant: cow_model_variant(values, variants),
+        variant: cow_model_variant(values, registries),
         baby: ageable_baby(values),
     }
 }
@@ -561,7 +548,7 @@ pub(super) fn player_info_profile_resolvable(
 pub(super) fn wolf_model_kind(
     values: &[bbb_protocol::packets::EntityDataValue],
     game_time: i64,
-    wolf_variants: Option<&RegistryContentState>,
+    registries: Option<&dyn EntityVariantRegistryLookup>,
 ) -> EntityModelKind {
     let tame = (entity_data_byte(
         values,
@@ -580,7 +567,7 @@ pub(super) fn wolf_model_kind(
                 WOLF_DEFAULT_COLLAR_COLOR_ID,
             ))
         }),
-        variant: wolf_model_variant(values, wolf_variants),
+        variant: wolf_model_variant(values, registries),
     }
 }
 
@@ -590,7 +577,7 @@ pub(super) fn wolf_model_kind(
 /// `WolfVariants.DEFAULT`) when no holder is present.
 pub(super) fn wolf_model_variant(
     values: &[bbb_protocol::packets::EntityDataValue],
-    variants: Option<&RegistryContentState>,
+    registries: Option<&dyn EntityVariantRegistryLookup>,
 ) -> WolfModelVariant {
     values
         .iter()
@@ -604,8 +591,8 @@ pub(super) fn wolf_model_variant(
             _ => None,
         })
         .map(|id| {
-            if let Some(registry) = variants {
-                wolf_variant_from_registry_id(registry, id).unwrap_or(WolfModelVariant::Pale)
+            if let Some(registries) = registries {
+                wolf_variant_from_registry_id(registries, id).unwrap_or(WolfModelVariant::Pale)
             } else {
                 wolf_variant_from_vanilla_registry_id(id)
             }
@@ -614,16 +601,12 @@ pub(super) fn wolf_model_variant(
 }
 
 pub(super) fn wolf_variant_from_registry_id(
-    registry: &RegistryContentState,
+    registries: &dyn EntityVariantRegistryLookup,
     registry_id: i32,
 ) -> Option<WolfModelVariant> {
-    if registry_id < 0 {
-        return None;
-    }
-    registry
-        .entries
-        .get(registry_id as usize)
-        .and_then(|entry| wolf_variant_from_entry_id(entry.id.as_str()))
+    registries
+        .resource_id_by_holder_id("minecraft:wolf_variant", registry_id)
+        .and_then(wolf_variant_from_entry_id)
 }
 
 pub(super) fn wolf_variant_from_entry_id(id: &str) -> Option<WolfModelVariant> {
@@ -1328,7 +1311,7 @@ pub(super) fn armadillo_rolled_up(values: &[bbb_protocol::packets::EntityDataVal
 
 pub(super) fn chicken_model_variant(
     values: &[bbb_protocol::packets::EntityDataValue],
-    variants: Option<&RegistryContentState>,
+    registries: Option<&dyn EntityVariantRegistryLookup>,
 ) -> ChickenModelVariant {
     values
         .iter()
@@ -1342,8 +1325,8 @@ pub(super) fn chicken_model_variant(
             _ => None,
         })
         .map(|id| {
-            if let Some(registry) = variants {
-                chicken_variant_from_registry_id(registry, id)
+            if let Some(registries) = registries {
+                chicken_variant_from_registry_id(registries, id)
                     .unwrap_or_else(chicken_default_model_variant)
             } else {
                 chicken_variant_from_vanilla_registry_id(id)
@@ -1358,16 +1341,12 @@ fn chicken_default_model_variant() -> ChickenModelVariant {
 }
 
 pub(super) fn chicken_variant_from_registry_id(
-    registry: &RegistryContentState,
+    registries: &dyn EntityVariantRegistryLookup,
     registry_id: i32,
 ) -> Option<ChickenModelVariant> {
-    if registry_id < 0 {
-        return None;
-    }
-    registry
-        .entries
-        .get(registry_id as usize)
-        .and_then(|entry| chicken_variant_from_entry_id(entry.id.as_str()))
+    registries
+        .resource_id_by_holder_id("minecraft:chicken_variant", registry_id)
+        .and_then(chicken_variant_from_entry_id)
 }
 
 pub(super) fn chicken_variant_from_entry_id(id: &str) -> Option<ChickenModelVariant> {
@@ -1387,16 +1366,16 @@ pub(super) fn chicken_variant_from_vanilla_registry_id(registry_id: i32) -> Chic
 
 pub(super) fn frog_model_kind(
     values: &[bbb_protocol::packets::EntityDataValue],
-    variants: Option<&RegistryContentState>,
+    registries: Option<&dyn EntityVariantRegistryLookup>,
 ) -> EntityModelKind {
     EntityModelKind::Frog {
-        variant: frog_model_variant(values, variants),
+        variant: frog_model_variant(values, registries),
     }
 }
 
 pub(super) fn frog_model_variant(
     values: &[bbb_protocol::packets::EntityDataValue],
-    variants: Option<&RegistryContentState>,
+    registries: Option<&dyn EntityVariantRegistryLookup>,
 ) -> FrogModelVariant {
     values
         .iter()
@@ -1410,8 +1389,8 @@ pub(super) fn frog_model_variant(
             _ => None,
         })
         .map(|id| {
-            if let Some(registry) = variants {
-                frog_variant_from_registry_id(registry, id)
+            if let Some(registries) = registries {
+                frog_variant_from_registry_id(registries, id)
                     .unwrap_or_else(frog_default_model_variant)
             } else {
                 frog_variant_from_vanilla_registry_id(id)
@@ -1426,16 +1405,12 @@ fn frog_default_model_variant() -> FrogModelVariant {
 }
 
 pub(super) fn frog_variant_from_registry_id(
-    registry: &RegistryContentState,
+    registries: &dyn EntityVariantRegistryLookup,
     registry_id: i32,
 ) -> Option<FrogModelVariant> {
-    if registry_id < 0 {
-        return None;
-    }
-    registry
-        .entries
-        .get(registry_id as usize)
-        .and_then(|entry| frog_variant_from_entry_id(entry.id.as_str()))
+    registries
+        .resource_id_by_holder_id("minecraft:frog_variant", registry_id)
+        .and_then(frog_variant_from_entry_id)
 }
 
 pub(super) fn frog_variant_from_entry_id(id: &str) -> Option<FrogModelVariant> {
@@ -1457,7 +1432,7 @@ pub(super) fn frog_variant_from_vanilla_registry_id(registry_id: i32) -> FrogMod
 
 pub(super) fn pig_model_variant(
     values: &[bbb_protocol::packets::EntityDataValue],
-    variants: Option<&RegistryContentState>,
+    registries: Option<&dyn EntityVariantRegistryLookup>,
 ) -> PigModelVariant {
     values
         .iter()
@@ -1471,8 +1446,9 @@ pub(super) fn pig_model_variant(
             _ => None,
         })
         .map(|id| {
-            if let Some(registry) = variants {
-                pig_variant_from_registry_id(registry, id).unwrap_or_else(pig_default_model_variant)
+            if let Some(registries) = registries {
+                pig_variant_from_registry_id(registries, id)
+                    .unwrap_or_else(pig_default_model_variant)
             } else {
                 pig_variant_from_vanilla_registry_id(id)
             }
@@ -1486,16 +1462,12 @@ fn pig_default_model_variant() -> PigModelVariant {
 }
 
 pub(super) fn pig_variant_from_registry_id(
-    registry: &RegistryContentState,
+    registries: &dyn EntityVariantRegistryLookup,
     registry_id: i32,
 ) -> Option<PigModelVariant> {
-    if registry_id < 0 {
-        return None;
-    }
-    registry
-        .entries
-        .get(registry_id as usize)
-        .and_then(|entry| pig_variant_from_entry_id(entry.id.as_str()))
+    registries
+        .resource_id_by_holder_id("minecraft:pig_variant", registry_id)
+        .and_then(pig_variant_from_entry_id)
 }
 
 pub(super) fn pig_variant_from_entry_id(id: &str) -> Option<PigModelVariant> {
@@ -1515,7 +1487,7 @@ pub(super) fn pig_variant_from_vanilla_registry_id(registry_id: i32) -> PigModel
 
 pub(super) fn cow_model_variant(
     values: &[bbb_protocol::packets::EntityDataValue],
-    variants: Option<&RegistryContentState>,
+    registries: Option<&dyn EntityVariantRegistryLookup>,
 ) -> CowModelVariant {
     values
         .iter()
@@ -1529,8 +1501,9 @@ pub(super) fn cow_model_variant(
             _ => None,
         })
         .map(|id| {
-            if let Some(registry) = variants {
-                cow_variant_from_registry_id(registry, id).unwrap_or_else(cow_default_model_variant)
+            if let Some(registries) = registries {
+                cow_variant_from_registry_id(registries, id)
+                    .unwrap_or_else(cow_default_model_variant)
             } else {
                 cow_variant_from_vanilla_registry_id(id)
             }
@@ -1544,16 +1517,12 @@ fn cow_default_model_variant() -> CowModelVariant {
 }
 
 pub(super) fn cow_variant_from_registry_id(
-    registry: &RegistryContentState,
+    registries: &dyn EntityVariantRegistryLookup,
     registry_id: i32,
 ) -> Option<CowModelVariant> {
-    if registry_id < 0 {
-        return None;
-    }
-    registry
-        .entries
-        .get(registry_id as usize)
-        .and_then(|entry| cow_variant_from_entry_id(entry.id.as_str()))
+    registries
+        .resource_id_by_holder_id("minecraft:cow_variant", registry_id)
+        .and_then(cow_variant_from_entry_id)
 }
 
 pub(super) fn cow_variant_from_entry_id(id: &str) -> Option<CowModelVariant> {

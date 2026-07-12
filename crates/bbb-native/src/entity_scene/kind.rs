@@ -5,40 +5,21 @@ pub(super) fn entity_model_kind(
     entity_type_id: i32,
     data_values: &[bbb_protocol::packets::EntityDataValue],
 ) -> EntityModelKind {
-    entity_model_kind_with_registries(
-        entity_type_id,
-        data_values,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-    )
+    entity_model_kind_with_registries(entity_type_id, data_values, None)
 }
 
 #[cfg(test)]
 pub(super) fn entity_model_kind_with_registries(
     entity_type_id: i32,
     data_values: &[bbb_protocol::packets::EntityDataValue],
-    chicken_variants: Option<&RegistryContentState>,
-    cow_variants: Option<&RegistryContentState>,
-    pig_variants: Option<&RegistryContentState>,
-    frog_variants: Option<&RegistryContentState>,
-    cat_variants: Option<&RegistryContentState>,
-    wolf_variants: Option<&RegistryContentState>,
+    variant_registries: Option<&dyn EntityVariantRegistryLookup>,
 ) -> EntityModelKind {
     entity_model_kind_with_time_and_registries(
         entity_type_id,
         data_values,
         0.0,
         0,
-        chicken_variants,
-        cow_variants,
-        pig_variants,
-        frog_variants,
-        cat_variants,
-        wolf_variants,
+        variant_registries,
     )
 }
 
@@ -47,15 +28,10 @@ pub(super) fn entity_model_kind_with_time_and_registries(
     data_values: &[bbb_protocol::packets::EntityDataValue],
     entity_age_ticks: f32,
     game_time: i64,
-    chicken_variants: Option<&RegistryContentState>,
-    cow_variants: Option<&RegistryContentState>,
-    pig_variants: Option<&RegistryContentState>,
-    frog_variants: Option<&RegistryContentState>,
-    cat_variants: Option<&RegistryContentState>,
-    wolf_variants: Option<&RegistryContentState>,
+    variant_registries: Option<&dyn EntityVariantRegistryLookup>,
 ) -> EntityModelKind {
     match entity_type_id {
-        VANILLA_ENTITY_TYPE_CHICKEN_ID => chicken_model_kind(data_values, chicken_variants),
+        VANILLA_ENTITY_TYPE_CHICKEN_ID => chicken_model_kind(data_values, variant_registries),
         VANILLA_ENTITY_TYPE_PLAYER_ID | VANILLA_ENTITY_TYPE_MANNEQUIN_ID => {
             player_model_kind(entity_type_id, data_values)
         }
@@ -128,8 +104,8 @@ pub(super) fn entity_model_kind_with_time_and_registries(
             weathering: copper_golem_weathering(data_values),
         },
         VANILLA_ENTITY_TYPE_CREEPER_ID => EntityModelKind::Creeper,
-        VANILLA_ENTITY_TYPE_PIG_ID => pig_model_kind(data_values, pig_variants),
-        VANILLA_ENTITY_TYPE_COW_ID => cow_model_kind(data_values, cow_variants),
+        VANILLA_ENTITY_TYPE_PIG_ID => pig_model_kind(data_values, variant_registries),
+        VANILLA_ENTITY_TYPE_COW_ID => cow_model_kind(data_values, variant_registries),
         VANILLA_ENTITY_TYPE_MOOSHROOM_ID => mooshroom_model_kind(data_values),
         VANILLA_ENTITY_TYPE_PANDA_ID => panda_model_kind(data_values),
         VANILLA_ENTITY_TYPE_SNIFFER_ID => EntityModelKind::Sniffer {
@@ -176,10 +152,10 @@ pub(super) fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_GOAT_ID => goat_model_kind(data_values),
         VANILLA_ENTITY_TYPE_NAUTILUS_ID => nautilus_model_kind(data_values),
         VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID => zombie_nautilus_model_kind(data_values),
-        VANILLA_ENTITY_TYPE_WOLF_ID => wolf_model_kind(data_values, game_time, wolf_variants),
+        VANILLA_ENTITY_TYPE_WOLF_ID => wolf_model_kind(data_values, game_time, variant_registries),
         VANILLA_ENTITY_TYPE_FOX_ID => fox_model_kind(data_values),
-        VANILLA_ENTITY_TYPE_CAT_ID => feline_model_kind(data_values, true, cat_variants),
-        VANILLA_ENTITY_TYPE_OCELOT_ID => feline_model_kind(data_values, false, cat_variants),
+        VANILLA_ENTITY_TYPE_CAT_ID => feline_model_kind(data_values, true, variant_registries),
+        VANILLA_ENTITY_TYPE_OCELOT_ID => feline_model_kind(data_values, false, variant_registries),
         VANILLA_ENTITY_TYPE_RABBIT_ID => rabbit_model_kind(data_values),
         VANILLA_ENTITY_TYPE_MINECART_ID
         | VANILLA_ENTITY_TYPE_CHEST_MINECART_ID
@@ -291,7 +267,7 @@ pub(super) fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID => {
             entity_type_bounds_placeholder("fishing_bobber_entity_type_bounds", 0.25, 0.25)
         }
-        VANILLA_ENTITY_TYPE_FROG_ID => frog_model_kind(data_values, frog_variants),
+        VANILLA_ENTITY_TYPE_FROG_ID => frog_model_kind(data_values, variant_registries),
         VANILLA_ENTITY_TYPE_GHAST_ID => EntityModelKind::Ghast {
             charging: entity_data_bool(
                 data_values,

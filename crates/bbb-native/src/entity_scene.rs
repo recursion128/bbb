@@ -35,7 +35,7 @@ use bbb_world::{
     EnderDragonBeamSource as WorldEnderDragonBeamSource,
     EntityAttachmentFace as WorldEntityAttachmentFace, EntityModelSourceState,
     EntityPickTargetState, GuardianBeamSource as WorldGuardianBeamSource,
-    LlamaBodyDecorColor as WorldLlamaBodyDecorColor, RegistryContentState,
+    LlamaBodyDecorColor as WorldLlamaBodyDecorColor,
     WolfArmorCrackiness as WorldWolfArmorCrackiness, WorldStore,
     VANILLA_AGEABLE_MOB_BABY_DATA_ID as AGEABLE_MOB_BABY_DATA_ID,
     VANILLA_AGEABLE_MOB_DEFAULT_BABY as AGEABLE_MOB_DEFAULT_BABY,
@@ -295,6 +295,16 @@ use bbb_item_model::{
 };
 use bbb_protocol::entity_types::*;
 
+trait EntityVariantRegistryLookup {
+    fn resource_id_by_holder_id(&self, registry: &str, holder_id: i32) -> Option<&str>;
+}
+
+impl EntityVariantRegistryLookup for WorldStore {
+    fn resource_id_by_holder_id(&self, registry: &str, holder_id: i32) -> Option<&str> {
+        self.registry_resource_id_by_holder_id(registry, holder_id)
+    }
+}
+
 /// The thrown-item projectiles whose vanilla `ThrownItemRenderer` draws a camera-facing item sprite,
 /// paired with that renderer's sprite scale (`poseStack.scale(scale)`). They render through the
 /// item-entity billboard layer rather than the 3D model scene (see
@@ -424,14 +434,6 @@ pub(crate) fn entity_model_instances_from_world_at_partial_tick(
     let entity_partial_tick = entity_partial_tick.clamp(0.0, 1.0);
     let local_player_id = world.local_player_id();
     let camera_entity_id = world.local_player().camera.entity_id;
-    let chicken_variants = world.registry_content("minecraft:chicken_variant");
-    let cow_variants = world.registry_content("minecraft:cow_variant");
-    let pig_variants = world.registry_content("minecraft:pig_variant");
-    let frog_variants = world.registry_content("minecraft:frog_variant");
-    let cat_variants = world.registry_content("minecraft:cat_variant");
-    let wolf_variants = world.registry_content("minecraft:wolf_variant");
-    let villager_types = world.registry_content("minecraft:villager_type");
-    let villager_professions = world.registry_content("minecraft:villager_profession");
     let game_time = world.world_time().map(|time| time.game_time).unwrap_or(0);
     world
         .entity_model_sources_at_partial_tick(entity_partial_tick)
@@ -446,14 +448,7 @@ pub(crate) fn entity_model_instances_from_world_at_partial_tick(
                 item_runtime,
                 game_time,
                 entity_partial_tick,
-                chicken_variants,
-                cow_variants,
-                pig_variants,
-                frog_variants,
-                cat_variants,
-                wolf_variants,
-                villager_types,
-                villager_professions,
+                Some(world),
             )
         })
         .collect()
@@ -467,14 +462,6 @@ pub(crate) fn entity_model_instance_from_world_entity_at_partial_tick(
 ) -> Option<EntityModelInstance> {
     let entity_partial_tick = entity_partial_tick.clamp(0.0, 1.0);
     let source = world.entity_model_source_at_partial_tick(entity_id, entity_partial_tick)?;
-    let chicken_variants = world.registry_content("minecraft:chicken_variant");
-    let cow_variants = world.registry_content("minecraft:cow_variant");
-    let pig_variants = world.registry_content("minecraft:pig_variant");
-    let frog_variants = world.registry_content("minecraft:frog_variant");
-    let cat_variants = world.registry_content("minecraft:cat_variant");
-    let wolf_variants = world.registry_content("minecraft:wolf_variant");
-    let villager_types = world.registry_content("minecraft:villager_type");
-    let villager_professions = world.registry_content("minecraft:villager_profession");
     let game_time = world.world_time().map(|time| time.game_time).unwrap_or(0);
     entity_model_instance(
         source,
@@ -482,14 +469,7 @@ pub(crate) fn entity_model_instance_from_world_entity_at_partial_tick(
         item_runtime,
         game_time,
         entity_partial_tick,
-        chicken_variants,
-        cow_variants,
-        pig_variants,
-        frog_variants,
-        cat_variants,
-        wolf_variants,
-        villager_types,
-        villager_professions,
+        Some(world),
     )
 }
 
@@ -504,12 +484,7 @@ pub(crate) fn entity_model_kind_for_world_entity_type_at_partial_tick(
         data_values,
         entity_age_ticks,
         world.world_time().map(|time| time.game_time).unwrap_or(0),
-        world.registry_content("minecraft:chicken_variant"),
-        world.registry_content("minecraft:cow_variant"),
-        world.registry_content("minecraft:pig_variant"),
-        world.registry_content("minecraft:frog_variant"),
-        world.registry_content("minecraft:cat_variant"),
-        world.registry_content("minecraft:wolf_variant"),
+        Some(world),
     )
 }
 

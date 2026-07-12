@@ -6,26 +6,14 @@ pub(super) fn entity_model_instance(
     item_runtime: Option<&NativeItemRuntime>,
     game_time: i64,
     entity_partial_tick: f32,
-    chicken_variants: Option<&RegistryContentState>,
-    cow_variants: Option<&RegistryContentState>,
-    pig_variants: Option<&RegistryContentState>,
-    frog_variants: Option<&RegistryContentState>,
-    cat_variants: Option<&RegistryContentState>,
-    wolf_variants: Option<&RegistryContentState>,
-    villager_types: Option<&RegistryContentState>,
-    villager_professions: Option<&RegistryContentState>,
+    variant_registries: Option<&dyn EntityVariantRegistryLookup>,
 ) -> Option<EntityModelInstance> {
     let mut kind = entity_model_kind_with_time_and_registries(
         source.entity_type_id,
         &source.data_values,
         source.age_ticks as f32 + entity_partial_tick,
         game_time,
-        chicken_variants,
-        cow_variants,
-        pig_variants,
-        frog_variants,
-        cat_variants,
-        wolf_variants,
+        variant_registries,
     );
     // Vanilla `Armadillo.shouldHideInShell()` = `getState().shouldHideInShell(inStateTicks)`: the
     // shell-ball swap is gated on the client `inStateTicks`, which `entity_model_kind` (data-only)
@@ -659,8 +647,7 @@ pub(super) fn entity_model_instance(
         .with_villager_model_data(villager_model_data(
             source.entity_type_id,
             &source.data_values,
-            villager_types,
-            villager_professions,
+            variant_registries,
         ))
         .with_shulker_attach_face(entity_attachment_face(source.shulker_attach_face))
         .with_squid_body_tilt(source.squid_x_body_rot, source.squid_z_body_rot)
