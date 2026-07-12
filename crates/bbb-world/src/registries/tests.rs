@@ -175,6 +175,21 @@ fn registry_holder_lookup_uses_checked_wire_order_identity() {
         store.registry_resource_id_by_holder_id("minecraft:test", 1),
         Some("minecraft:second")
     );
+    assert_eq!(
+        store
+            .registry_resource_ids_in_holder_order("minecraft:test")
+            .unwrap()
+            .collect::<Vec<_>>(),
+        vec![
+            "minecraft:first",
+            "minecraft:second",
+            "minecraft:duplicate",
+            "minecraft:duplicate",
+        ]
+    );
+    assert!(store
+        .registry_resource_ids_in_holder_order("minecraft:missing")
+        .is_none());
     assert!(
         store
             .registry_entry_by_holder_id("minecraft:test", 1)
@@ -231,11 +246,25 @@ fn configuration_registry_collection_commits_atomically_and_replaces_holder_orde
         store.registry_resource_id_by_holder_id("minecraft:test", 0),
         Some("minecraft:old")
     );
+    assert_eq!(
+        store
+            .registry_resource_ids_in_holder_order("minecraft:test")
+            .unwrap()
+            .collect::<Vec<_>>(),
+        vec!["minecraft:old"]
+    );
 
     store.finish_registry_configuration();
     assert_eq!(
         store.registry_resource_id_by_holder_id("minecraft:test", 0),
         Some("minecraft:new")
+    );
+    assert_eq!(
+        store
+            .registry_resource_ids_in_holder_order("minecraft:test")
+            .unwrap()
+            .collect::<Vec<_>>(),
+        vec!["minecraft:new"]
     );
     assert!(store.registry_tags("minecraft:test").is_none());
 }

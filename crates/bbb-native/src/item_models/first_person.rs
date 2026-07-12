@@ -1,7 +1,4 @@
-use super::dropped::{
-    bake_item_stack_at_transform, world_attribute_keys, world_enchantment_keys,
-    world_trim_material_keys,
-};
+use super::dropped::bake_item_stack_at_transform;
 use super::*;
 
 /// Vanilla `DataComponents.KINETIC_WEAPON` network type id, used by item-stack

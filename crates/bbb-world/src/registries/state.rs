@@ -114,6 +114,19 @@ impl RegistrySet {
             .map(|entry| entry.id.as_str())
     }
 
+    pub fn resource_ids_in_holder_order<'a>(
+        &'a self,
+        registry: &str,
+    ) -> Option<impl ExactSizeIterator<Item = &'a str> + 'a> {
+        Some(
+            self.contents
+                .get(registry)?
+                .entries
+                .iter()
+                .map(|entry| entry.id.as_str()),
+        )
+    }
+
     pub fn holder_id_by_resource_id(&self, registry: &str, resource_id: &str) -> Option<i32> {
         self.contents
             .get(registry)?

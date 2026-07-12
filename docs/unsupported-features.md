@@ -74,8 +74,8 @@ Owner: `bbb-protocol`
 - Build the received configuration registry entries and tags into a frozen,
   typed `RegistryAccess` on top of the checked holder-identity lookup: decode
   each synchronized registry with its element codec, merge known-pack stubs,
-  migrate the remaining entity-variant/audio and bulk-order consumers, resolve
-  numeric tag ids to holders, apply pending static tags and data-component
+  migrate the remaining entity-variant/audio consumers, resolve numeric tag
+  ids to holders, apply pending static tags and data-component
   initializers, and freeze typed lookup state. Raw NBT summaries and a few
   derived audio registries are not that runtime.
 - Complete play Login session initialization beyond the current player-id and

@@ -123,7 +123,8 @@ use crate::{
     item_models::{
         dropped_item_models, entity_block_models, first_person_item_models,
         first_person_player_arms, held_item_models, item_pickup_particle_item_models,
-        ominous_item_spawner_models,
+        ominous_item_spawner_models, world_attribute_keys, world_enchantment_keys,
+        world_trim_material_keys,
     },
     lectern_book_scene::lectern_book_model_instances_from_world,
     particle_runtime::{
@@ -10856,51 +10857,6 @@ fn hud_inventory_background_layer(
             max: uv_max,
         },
     }
-}
-
-/// The `minecraft:trim_material` registry keys by holder id (registration
-/// order), projected from the world's synced dynamic registry so trimmed-armor
-/// icons select their trim model (vanilla `TrimMaterialProperty`).
-fn world_trim_material_keys(world: &WorldStore) -> Option<Vec<String>> {
-    world
-        .registry_content("minecraft:trim_material")
-        .map(|registry| {
-            registry
-                .entries
-                .iter()
-                .map(|entry| entry.id.clone())
-                .collect()
-        })
-}
-
-/// The `minecraft:enchantment` registry keys by holder id (registration
-/// order), projected from the world's synced dynamic registry so item-model
-/// use properties can apply vanilla enchantment effects such as Quick Charge.
-fn world_enchantment_keys(world: &WorldStore) -> Option<Vec<String>> {
-    world
-        .registry_content("minecraft:enchantment")
-        .map(|registry| {
-            registry
-                .entries
-                .iter()
-                .map(|entry| entry.id.clone())
-                .collect()
-        })
-}
-
-/// The `minecraft:attribute` registry keys by holder id (registration order),
-/// projected from the world's synced dynamic registry so item-model
-/// `minecraft:attribute_modifiers` predicates can match entry attributes.
-fn world_attribute_keys(world: &WorldStore) -> Option<Vec<String>> {
-    world
-        .registry_content("minecraft:attribute")
-        .map(|registry| {
-            registry
-                .entries
-                .iter()
-                .map(|entry| entry.id.clone())
-                .collect()
-        })
 }
 
 fn registry_key_id(keys: Option<&[String]>, key: &str, fallback: i32) -> i32 {

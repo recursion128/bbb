@@ -66,5 +66,26 @@ pub(crate) use dropped::{
 };
 pub(crate) use first_person::{first_person_item_models, first_person_player_arms};
 
+/// Item-model registry keys indexed by network holder id. The checked world
+/// registry API owns wire-order identity; these wrappers only materialize the
+/// owned slices required by the item-model runtime.
+pub(crate) fn world_enchantment_keys(world: &WorldStore) -> Option<Vec<String>> {
+    world_registry_keys(world, "minecraft:enchantment")
+}
+
+pub(crate) fn world_trim_material_keys(world: &WorldStore) -> Option<Vec<String>> {
+    world_registry_keys(world, "minecraft:trim_material")
+}
+
+pub(crate) fn world_attribute_keys(world: &WorldStore) -> Option<Vec<String>> {
+    world_registry_keys(world, "minecraft:attribute")
+}
+
+fn world_registry_keys(world: &WorldStore, registry: &str) -> Option<Vec<String>> {
+    world
+        .registry_resource_ids_in_holder_order(registry)
+        .map(|resource_ids| resource_ids.map(str::to_string).collect())
+}
+
 #[cfg(test)]
 mod tests;

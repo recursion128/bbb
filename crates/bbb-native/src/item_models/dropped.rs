@@ -949,42 +949,6 @@ pub(crate) fn held_item_models(
     }
 }
 
-pub(super) fn world_enchantment_keys(world: &WorldStore) -> Option<Vec<String>> {
-    world
-        .registry_content("minecraft:enchantment")
-        .map(|registry| {
-            registry
-                .entries
-                .iter()
-                .map(|entry| entry.id.clone())
-                .collect()
-        })
-}
-
-pub(super) fn world_trim_material_keys(world: &WorldStore) -> Option<Vec<String>> {
-    world
-        .registry_content("minecraft:trim_material")
-        .map(|registry| {
-            registry
-                .entries
-                .iter()
-                .map(|entry| entry.id.clone())
-                .collect()
-        })
-}
-
-pub(super) fn world_attribute_keys(world: &WorldStore) -> Option<Vec<String>> {
-    world
-        .registry_content("minecraft:attribute")
-        .map(|registry| {
-            registry
-                .entries
-                .iter()
-                .map(|entry| entry.id.clone())
-                .collect()
-        })
-}
-
 /// Bakes one arm's held item onto its arm bone with that arm's own
 /// `thirdperson_{left,right}hand` display transform. The logical hand slot is
 /// resolved from the entity's main arm, mirroring vanilla `getItemHeldByArm`.

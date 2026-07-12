@@ -98,6 +98,13 @@ impl WorldStore {
             .resource_id_by_holder_id(registry, holder_id)
     }
 
+    pub fn registry_resource_ids_in_holder_order<'a>(
+        &'a self,
+        registry: &str,
+    ) -> Option<impl ExactSizeIterator<Item = &'a str> + 'a> {
+        self.registries.resource_ids_in_holder_order(registry)
+    }
+
     pub fn registry_holder_id_by_resource_id(
         &self,
         registry: &str,
