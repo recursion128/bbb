@@ -5,7 +5,10 @@ use bbb_renderer::terrain::{
     TerrainChunkSnapshot, TerrainFluid, TerrainFluidKind, TerrainLight, TerrainMaterialClass,
     TerrainSkipRendering, TerrainTint,
 };
-use bbb_world::{ChunkPos, WorldCardinalLighting, WorldCounters, WorldStore};
+use bbb_world::{
+    block_name_is_half_transparent, block_name_is_leaves, ChunkPos, WorldCardinalLighting,
+    WorldCounters, WorldStore,
+};
 
 use crate::biome_tint::{
     block_wants_biome_blend, BiomeBlend, BIOME_BLEND_DIAMETER, BIOME_BLEND_RADIUS,
@@ -365,22 +368,10 @@ fn renderer_fluid(fluid: bbb_world::TerrainFluidState) -> TerrainFluid {
 }
 
 fn block_uses_fluid_water_overlay(block_name: Option<&str>) -> bool {
-    let Some(block_name) = block_name.and_then(|name| name.strip_prefix("minecraft:")) else {
+    let Some(block_name) = block_name else {
         return false;
     };
-
-    matches!(
-        block_name,
-        "glass"
-            | "tinted_glass"
-            | "ice"
-            | "frosted_ice"
-            | "blue_ice"
-            | "slime_block"
-            | "honey_block"
-    ) || block_name.ends_with("_stained_glass")
-        || block_name.ends_with("copper_grate")
-        || block_name.ends_with("_leaves")
+    block_name_is_half_transparent(block_name) || block_name_is_leaves(block_name)
 }
 
 #[cfg(test)]

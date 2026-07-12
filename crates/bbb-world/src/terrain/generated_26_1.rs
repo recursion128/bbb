@@ -117,6 +117,20 @@ pub(super) const VANILLA_HALF_TRANSPARENT_SKIP_RENDERING_BLOCKS: &[&str] = &[
     "minecraft:waxed_oxidized_copper_grate",
 ];
 
+pub(super) const VANILLA_LEAVES_BLOCKS: &[&str] = &[
+    "minecraft:oak_leaves",
+    "minecraft:spruce_leaves",
+    "minecraft:birch_leaves",
+    "minecraft:jungle_leaves",
+    "minecraft:acacia_leaves",
+    "minecraft:cherry_leaves",
+    "minecraft:dark_oak_leaves",
+    "minecraft:pale_oak_leaves",
+    "minecraft:mangrove_leaves",
+    "minecraft:azalea_leaves",
+    "minecraft:flowering_azalea_leaves",
+];
+
 pub(super) const VANILLA_INVISIBLE_RENDER_SHAPE_BLOCKS: &[&str] = &[
     "minecraft:air",
     "minecraft:water",
@@ -329,6 +343,7 @@ mod tests {
         assert_eq!(VANILLA_NO_COLLISION_WIRE_BLOCKS.len(), 3);
         assert_eq!(VANILLA_NO_COLLISION_THIN_OVERLAY_BLOCKS.len(), 7);
         assert_eq!(VANILLA_HALF_TRANSPARENT_SKIP_RENDERING_BLOCKS.len(), 31);
+        assert_eq!(VANILLA_LEAVES_BLOCKS.len(), 11);
         assert_eq!(VANILLA_INVISIBLE_RENDER_SHAPE_BLOCKS.len(), 12);
         assert_eq!(VANILLA_BARS_BLOCKS.len(), 9);
         assert_eq!(VANILLA_NO_COLLISION_RAIL_BLOCKS.len(), 4);

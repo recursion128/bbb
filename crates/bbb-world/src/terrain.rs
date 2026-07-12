@@ -9,7 +9,7 @@ mod generated_26_1;
 use generated_26_1::{
     VANILLA_AIR_BLOCKS, VANILLA_BARS_BLOCKS, VANILLA_COPPER_GRATE_BLOCKS,
     VANILLA_FIXED_SOURCE_WATER_BLOCKS, VANILLA_HALF_TRANSPARENT_SKIP_RENDERING_BLOCKS,
-    VANILLA_INVISIBLE_RENDER_SHAPE_BLOCKS, VANILLA_IRON_BARS_CLASS_BLOCKS,
+    VANILLA_INVISIBLE_RENDER_SHAPE_BLOCKS, VANILLA_IRON_BARS_CLASS_BLOCKS, VANILLA_LEAVES_BLOCKS,
     VANILLA_NO_COLLISION_BANNER_BLOCKS, VANILLA_NO_COLLISION_BUTTON_BLOCKS,
     VANILLA_NO_COLLISION_CROP_BLOCKS, VANILLA_NO_COLLISION_CROP_SUPPLEMENT_BLOCKS,
     VANILLA_NO_COLLISION_FIRE_BLOCKS, VANILLA_NO_COLLISION_PRESSURE_PLATE_BLOCKS,
@@ -286,6 +286,14 @@ pub fn block_name_has_invisible_render_shape(name: &str) -> bool {
     VANILLA_INVISIBLE_RENDER_SHAPE_BLOCKS.contains(&name)
 }
 
+pub fn block_name_is_half_transparent(name: &str) -> bool {
+    VANILLA_HALF_TRANSPARENT_SKIP_RENDERING_BLOCKS.contains(&name)
+}
+
+pub fn block_name_is_leaves(name: &str) -> bool {
+    VANILLA_LEAVES_BLOCKS.contains(&name)
+}
+
 pub(crate) fn block_name_has_empty_collision_shape(name: &str) -> bool {
     name.contains("sapling")
         || matches!(
@@ -353,7 +361,7 @@ fn is_iron_bars_block_name(name: &str) -> bool {
 }
 
 fn is_half_transparent_skip_rendering_block_name(name: &str) -> bool {
-    VANILLA_HALF_TRANSPARENT_SKIP_RENDERING_BLOCKS.contains(&name)
+    block_name_is_half_transparent(name)
 }
 
 fn block_property_is_true(properties: &BTreeMap<String, String>, key: &str) -> bool {
@@ -461,6 +469,10 @@ mod tests {
             let skip = classify_terrain_skip_rendering(Some(name), &BTreeMap::new());
             assert!(skip.same_block_culls_all_faces, "{name}");
             assert_ne!(skip.same_block_key, 0, "{name}");
+        }
+        for &name in VANILLA_LEAVES_BLOCKS {
+            assert!(block_name_is_leaves(name), "{name}");
+            assert!(!block_name_is_half_transparent(name), "{name}");
         }
         assert!(
             classify_terrain_skip_rendering(Some("minecraft:copper_grate"), &BTreeMap::new())

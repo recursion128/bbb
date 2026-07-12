@@ -137,6 +137,11 @@ def generate(source_root: Path) -> str:
         "net.minecraft.world.level.block.HalfTransparentBlock",
         10,
     )
+    leaves_types = constructor_types_extending(
+        block_class_sources,
+        "net.minecraft.world.level.block.LeavesBlock",
+        4,
+    )
     entries = no_terrain_particle_blocks(source)
     air_entries = air_blocks(source)
     constructor_catalogs = [
@@ -153,6 +158,7 @@ def generate(source_root: Path) -> str:
                 half_transparent_types,
                 31,
             ),
+            ("VANILLA_LEAVES_BLOCKS", leaves_types, 11),
             (
                 "VANILLA_INVISIBLE_RENDER_SHAPE_BLOCKS",
                 invisible_render_shape_types,
@@ -216,6 +222,7 @@ def generate(source_root: Path) -> str:
             "        assert_eq!(VANILLA_NO_COLLISION_WIRE_BLOCKS.len(), 3);",
             "        assert_eq!(VANILLA_NO_COLLISION_THIN_OVERLAY_BLOCKS.len(), 7);",
             "        assert_eq!(VANILLA_HALF_TRANSPARENT_SKIP_RENDERING_BLOCKS.len(), 31);",
+            "        assert_eq!(VANILLA_LEAVES_BLOCKS.len(), 11);",
             "        assert_eq!(VANILLA_INVISIBLE_RENDER_SHAPE_BLOCKS.len(), 12);",
             "        assert_eq!(VANILLA_BARS_BLOCKS.len(), 9);",
             "        assert_eq!(VANILLA_NO_COLLISION_RAIL_BLOCKS.len(), 4);",

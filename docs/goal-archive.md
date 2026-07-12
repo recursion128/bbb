@@ -12263,3 +12263,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   `VANILLA_HALF_TRANSPARENT_SKIP_RENDERING_BLOCKS`。生成集合同时补齐原先遗漏的 8 个 copper
   grate；stained-glass pane 仍归 `IronBarsBlock` 的连接性规则，贴图 Cutout/Translucent 层继续由
   baked sprite transparency 动态决定，未与 face-culling membership 混合。
+
+## 2026-07-12：Shared fluid-overlay block memberships
+
+- [x] 同一 class-hierarchy extractor 从 `LeavesBlock` 的 4-class closure 按 `Blocks.java`
+  registration order 生成 11 个 leaves blocks；world 导出 narrow half-transparent/leaves
+  membership queries，native `FluidRenderer` projection 删除 glass/ice/slime/honey match、
+  stained-glass/copper-grate/leaves 后缀判断，只组合这两个 catalog API。
+- [x] vanilla `LiquidBlock.skipRendering` 的 same-fluid 语义已由 renderer 按 canonical
+  `TerrainFluidKind` 比较覆盖；本 slice 只去重 `FluidRenderer` 的 overlay neighbor class test，
+  不把 fluid rendering behavior 塞进 catalog，也不声称 fast-leaves option parity 完成。

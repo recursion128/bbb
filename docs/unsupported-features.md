@@ -852,6 +852,11 @@ back into a todo. Do not delete these.
 
 ## Block entities and terrain
 
+- **Fast-leaves graphics-option parity.** The current baked sprite-transparency path keeps
+  leaves in the cutout-style behavior. Vanilla toggles both `LeavesBlock.skipRendering`
+  between adjacent leaves and `ModelBlockRenderer.forceOpaque` from the effective graphics
+  option; add the same resource-remesh boundary without reintroducing block-name render-layer
+  guesses. The exact 11-block leaves membership is generated and shared already.
 - **Light-update queue and section-neighbor rebuild parity.** Packet decode and
   canonical mask/empty-mask merging are covered, but bbb applies updates during
   net-event drain and uses a coarse terrain-upload counter. Vanilla queues them
