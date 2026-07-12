@@ -12181,3 +12181,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] `bbb-world` 从 synchronized biome raw NBT 严格投影 precipitation、temperature/downfall、temperature/grass modifier、water/grass/foliage colors，以及 direct fog/sky/water-fog attributes；缺 required field、非法 enum/type 或未支持 attribute modifier compound 都显式失败。
 - [x] native 按 active holder order 优先物化服务器 typed projection；只有无 raw data 的 known-pack stub 才按 resource id 回退 pack profile。malformed raw entry 即使与 vanilla biome 同名也安全省略，不用默认值冒充服务器状态；terrain、camera/weather 与 particle tint 继续共享同一 active catalog。
+
+## 2026-07-12：F3+I pending entity identity hardening
+
+- [x] multiplayer-only authority 反向审计确认 local-player prediction、first-passenger controlled vehicle、remote packet/interpolation 与 client presentation tick 边界未回退；`IntegratedServer`、`GoalSelector`、`PathNavigation` 只会作为 generated vanilla source evidence 字符串出现，不存在 Rust runtime owner。
+- [x] ordinary F3+I pending entity query 现在锁定 numeric id 与 UUID；匹配 transaction 即使返回非空 server NBT，只要原目标已消失或 id 已被另一实体复用，就清除 pending、输出诊断且不生成 clipboard command。完整 server response 仍独占 NBT 权威，不与 Shift-local projection 合并。

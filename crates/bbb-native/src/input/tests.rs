@@ -2529,6 +2529,8 @@ fn f3_i_entity_disappearing_before_matching_response_does_not_copy() {
     input.pending_debug_recreate_server_query = Some(PendingDebugRecreateServerQuery {
         transaction_id: 7,
         target: PendingDebugRecreateServerQueryTarget::Entity {
+            entity_id: 51,
+            entity_uuid: Uuid::from_u128(51),
             entity_type: "minecraft:creeper".to_string(),
             position: [1.0, 2.0, 3.0],
         },
@@ -2539,10 +2541,25 @@ fn f3_i_entity_disappearing_before_matching_response_does_not_copy() {
         }),
         1
     );
+    world.apply_add_entity(AddEntity {
+        id: 51,
+        uuid: Uuid::from_u128(52),
+        entity_type_id: VANILLA_ENTITY_TYPE_CREEPER_ID,
+        position: ProtocolVec3d {
+            x: 1.0,
+            y: 2.0,
+            z: 3.0,
+        },
+        delta_movement: ProtocolVec3d::default(),
+        x_rot: 0.0,
+        y_rot: 0.0,
+        y_head_rot: 0.0,
+        data: 0,
+    });
     world.apply_tag_query(TagQuery {
         transaction_id: 7,
-        tag_present: false,
-        raw_nbt: Vec::new(),
+        tag_present: true,
+        raw_nbt: nbt_compound(vec![nbt_byte("Charged", 1)]),
     });
     let mut clipboard = MockDebugClipboard::accepting();
 
@@ -2551,7 +2568,7 @@ fn f3_i_entity_disappearing_before_matching_response_does_not_copy() {
     assert_eq!(input.pending_debug_recreate_server_query, None);
     assert_eq!(
         world.client_chat().messages[0].content,
-        "[Debug]: Server returned no recreate data"
+        "[Debug]: Debug recreate target disappeared before server response"
     );
 }
 

@@ -880,6 +880,8 @@ enum PendingDebugRecreateServerQueryTarget {
         description: String,
     },
     Entity {
+        entity_id: i32,
+        entity_uuid: uuid::Uuid,
         entity_type: String,
         position: [f64; 3],
     },
@@ -2011,6 +2013,23 @@ impl ClientInputState {
         }
 
         self.pending_debug_recreate_server_query = None;
+        if let PendingDebugRecreateServerQueryTarget::Entity {
+            entity_id,
+            entity_uuid,
+            ..
+        } = &pending.target
+        {
+            if world
+                .probe_entity(*entity_id)
+                .is_none_or(|entity| entity.uuid != *entity_uuid)
+            {
+                push_debug_feedback_chat_message(
+                    Some(world),
+                    "Debug recreate target disappeared before server response",
+                );
+                return true;
+            }
+        }
         if !response.tag_present {
             push_debug_feedback_chat_message(Some(world), "Server returned no recreate data");
             return true;
@@ -3637,6 +3656,7 @@ fn debug_copy_recreate_server_response_command(
         PendingDebugRecreateServerQueryTarget::Entity {
             entity_type,
             position,
+            ..
         } => debug_copy_recreate_server_entity_command(entity_type, *position, response),
     }
 }
@@ -3687,6 +3707,8 @@ fn pending_debug_recreate_server_query(
             let entity = world.probe_entity(entity_id)?;
             let entity_type = vanilla_entity_resource_id_for_type_id(entity.entity_type_id)?;
             PendingDebugRecreateServerQueryTarget::Entity {
+                entity_id,
+                entity_uuid: entity.uuid,
                 entity_type: entity_type.to_string(),
                 position: [entity.position.x, entity.position.y, entity.position.z],
             }
