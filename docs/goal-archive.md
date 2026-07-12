@@ -11956,3 +11956,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] vanilla wire 已锁定为 `(game-rule resource key, UTF-8 value)` list；InWorldGameRulesScreen 先请求 server values、仅接受首个初始响应、typed 解析并仅提交 changed entries，权限撤销时关闭。
 - [x] bbb 当前只有 request + key/string diagnostic snapshot，无 typed screen、set encoder/net command/guards/focused tests；五维保持 partial，服务端 typed deserialization、rule mutation 与 operator broadcast 仍为权威。
+
+## 2026-07-12：play serverbound set-jigsaw-block coverage audit
+
+- [x] vanilla wire 已锁定为 BlockPos + name/target/pool Identifier + final-state/joint UTF + selection/placement priority VarInt；Done/Generate 顺序与 server game-master + JigsawBlockEntity authority 已反向核对。
+- [x] bbb 当前仅有 generated catalog 与 generic block-entity diagnostic，无 typed jigsaw projection/editor/set encoder/net command/guards/focused tests；五维保持 partial，复用已有 JigsawBlockEditScreen gap。
