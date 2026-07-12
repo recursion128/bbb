@@ -194,6 +194,13 @@ pub struct EntityTagQuery {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct JigsawGenerate {
+    pub pos: BlockPos,
+    pub levels: i32,
+    pub keep_jigsaws: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AttackEntity {
     pub entity_id: i32,
 }
@@ -549,6 +556,14 @@ pub fn encode_play_entity_tag_query(packet: EntityTagQuery) -> (i32, Vec<u8>) {
     out.write_var_i32(packet.transaction_id);
     out.write_var_i32(packet.entity_id);
     (ids::play::SERVERBOUND_ENTITY_TAG_QUERY, out.into_inner())
+}
+
+pub fn encode_play_jigsaw_generate(packet: JigsawGenerate) -> (i32, Vec<u8>) {
+    let mut out = Encoder::new();
+    out.write_i64(chunks::encode_block_pos(packet.pos));
+    out.write_var_i32(packet.levels);
+    out.write_bool(packet.keep_jigsaws);
+    (ids::play::SERVERBOUND_JIGSAW_GENERATE, out.into_inner())
 }
 
 pub fn encode_play_player_input(input: PlayerInput) -> (i32, Vec<u8>) {

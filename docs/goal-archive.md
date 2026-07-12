@@ -11856,3 +11856,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] 26.1 `ServerboundInteractPacket` 的 entity-id VarInt、hand enum、relative LP Vec3 与 secondary-action boolean wire，native crosshair/right-click、command queue、driver send 和 world-border/dragon-part guards 已审计；command/encoder 闭合。
 - [x] vanilla server 没有专用 acknowledgement，交互结果仍由普通 entity/inventory updates 同步。精确 main/offhand success 迭代、hands-busy/feature/item gates、carried-item ordering、local `interactOn`/swing-source 与 held-item presentation 仍开放，state/tests 保持 partial。
+
+## 2026-07-12：play serverbound jigsaw-generate packet coverage audit
+
+- [x] packed BlockPos、levels VarInt、keep-jigsaws boolean wire 已按 26.1 `ServerboundJigsawGeneratePacket` 补齐 protocol encoder 与 focused test，encoder 闭合。
+- [x] vanilla 入口是 game-master `JigsawBlockEditScreen`，Generate 先发送 SetJigsawBlock 再发送本包；服务端仅在权限和 jigsaw block-entity gate 通过时生成，结果通过普通 block/chunk updates 返回而无专用 ack。bbb 尚无该 block-entity/UI/command owner，command/state/tests 保持 partial。

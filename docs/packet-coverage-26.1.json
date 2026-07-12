@@ -3732,28 +3732,43 @@
       "constant_name": "SERVERBOUND_JIGSAW_GENERATE",
       "coverage": {
         "ack_response": {
-          "evidence": [],
+          "evidence": [
+            "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#handleJigsawGenerate"
+          ],
           "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "status": "not-applicable"
         },
         "command_surface": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "evidence": [
+            "vanilla:net/minecraft/client/player/LocalPlayer.java#openJigsawBlock",
+            "vanilla:net/minecraft/client/gui/screens/inventory/JigsawBlockEditScreen.java#sendGenerate"
+          ],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
           "status": "partial"
         },
         "encoder": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/serverbound.rs#encode_play_jigsaw_generate",
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_jigsaw_generate_packet",
+            "vanilla:net/minecraft/network/protocol/game/ServerboundJigsawGeneratePacket.java#STREAM_CODEC"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "state_guard": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "evidence": [
+            "vanilla:net/minecraft/client/gui/screens/inventory/JigsawBlockEditScreen.java#updateValidity",
+            "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#handleJigsawGenerate"
+          ],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
           "status": "partial"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "evidence": [
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_jigsaw_generate_packet",
+            "crates/bbb-protocol/src/packet_coverage.rs#play_serverbound_jigsaw_generate_keeps_game_master_screen_open"
+          ],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
           "status": "partial"
         }
       },

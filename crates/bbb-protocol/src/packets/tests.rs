@@ -2124,6 +2124,30 @@ fn encodes_entity_interaction_packets() {
 }
 
 #[test]
+fn encodes_jigsaw_generate_packet() {
+    let packet = JigsawGenerate {
+        pos: BlockPos {
+            x: -12,
+            y: 64,
+            z: 9,
+        },
+        levels: 20,
+        keep_jigsaws: true,
+    };
+    let (id, payload) = encode_play_jigsaw_generate(packet);
+
+    assert_eq!(id, ids::play::SERVERBOUND_JIGSAW_GENERATE);
+    let mut decoder = Decoder::new(&payload);
+    assert_eq!(
+        decoder.read_i64().unwrap(),
+        encode_block_pos(packet.pos.x, packet.pos.y, packet.pos.z)
+    );
+    assert_eq!(decoder.read_var_i32().unwrap(), 20);
+    assert!(decoder.read_bool().unwrap());
+    assert!(decoder.is_empty());
+}
+
+#[test]
 fn encodes_swing_hand() {
     let (id, payload) = encode_play_swing(InteractionHand::MainHand);
     assert_eq!(id, ids::play::SERVERBOUND_SWING);
