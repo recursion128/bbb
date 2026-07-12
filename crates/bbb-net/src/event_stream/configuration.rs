@@ -87,7 +87,7 @@ impl EventStreamContext {
                 let payload = self.server_cookies.get(&request.key).map(Vec::as_slice);
                 let payload_present = payload.is_some();
                 let (id, response) =
-                    packets::encode_configuration_cookie_response(&request.key, payload);
+                    packets::encode_configuration_cookie_response(&request.key, payload)?;
                 self.conn.send_packet(id, &response).await?;
                 emit(
                     &self.events,

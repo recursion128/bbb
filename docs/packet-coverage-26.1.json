@@ -480,7 +480,10 @@
         "encoder": {
           "evidence": [
             "crates/bbb-protocol/src/packets/connection.rs#encode_login_cookie_response",
-            "vanilla:net/minecraft/network/protocol/cookie/ServerboundCookieResponsePacket.java#STREAM_CODEC"
+            "crates/bbb-protocol/src/packets/connection.rs#encode_cookie_response_payload",
+            "crates/bbb-protocol/src/packets/tests.rs#decodes_and_encodes_cookie_packets",
+            "vanilla:net/minecraft/network/protocol/common/ClientboundStoreCookiePacket.java#PAYLOAD_STREAM_CODEC",
+            "vanilla:net/minecraft/network/protocol/cookie/ServerboundCookieResponsePacket.java#write"
           ],
           "gap": null,
           "status": "complete"
@@ -872,7 +875,11 @@
         },
         "encoder": {
           "evidence": [
-            "crates/bbb-protocol/src/packets/connection.rs#encode_configuration_cookie_response"
+            "crates/bbb-protocol/src/packets/connection.rs#encode_configuration_cookie_response",
+            "crates/bbb-protocol/src/packets/connection.rs#encode_cookie_response_payload",
+            "crates/bbb-protocol/src/packets/tests.rs#decodes_and_encodes_cookie_packets",
+            "vanilla:net/minecraft/network/protocol/common/ClientboundStoreCookiePacket.java#PAYLOAD_STREAM_CODEC",
+            "vanilla:net/minecraft/network/protocol/cookie/ServerboundCookieResponsePacket.java#write"
           ],
           "gap": null,
           "status": "complete"
@@ -3475,7 +3482,9 @@
           "evidence": [
             "crates/bbb-protocol/src/packets/serverbound.rs#encode_play_cookie_response",
             "crates/bbb-protocol/src/packets/connection.rs#encode_cookie_response_payload",
-            "vanilla:net/minecraft/network/protocol/cookie/ServerboundCookieResponsePacket.java#STREAM_CODEC"
+            "crates/bbb-protocol/src/packets/tests.rs#decodes_and_encodes_cookie_packets",
+            "vanilla:net/minecraft/network/protocol/common/ClientboundStoreCookiePacket.java#PAYLOAD_STREAM_CODEC",
+            "vanilla:net/minecraft/network/protocol/cookie/ServerboundCookieResponsePacket.java#write"
           ],
           "gap": null,
           "status": "complete"

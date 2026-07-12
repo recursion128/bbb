@@ -168,7 +168,7 @@
     "play/serverbound/SERVERBOUND_COOKIE_RESPONSE": {
       "ack_response": {"evidence": ["vanilla:net/minecraft/client/multiplayer/ClientCommonPacketListenerImpl.java#handleRequestCookie", "vanilla:net/minecraft/server/network/ServerCommonPacketListenerImpl.java#handleCookieResponse"], "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families", "status": "not-applicable"},
       "command_surface": {"evidence": ["crates/bbb-net/src/event_stream/play.rs#PlayClientbound::CookieRequest", "crates/bbb-net/src/probe/play.rs#PlayClientbound::CookieRequest"], "status": "complete"},
-      "encoder": {"evidence": ["crates/bbb-protocol/src/packets/serverbound.rs#encode_play_cookie_response", "crates/bbb-protocol/src/packets/connection.rs#encode_cookie_response_payload", "vanilla:net/minecraft/network/protocol/cookie/ServerboundCookieResponsePacket.java#STREAM_CODEC"], "status": "complete"},
+      "encoder": {"evidence": ["crates/bbb-protocol/src/packets/serverbound.rs#encode_play_cookie_response", "crates/bbb-protocol/src/packets/connection.rs#encode_cookie_response_payload", "crates/bbb-protocol/src/packets/tests.rs#decodes_and_encodes_cookie_packets", "vanilla:net/minecraft/network/protocol/common/ClientboundStoreCookiePacket.java#PAYLOAD_STREAM_CODEC", "vanilla:net/minecraft/network/protocol/cookie/ServerboundCookieResponsePacket.java#write"], "status": "complete"},
       "state_guard": {"evidence": ["crates/bbb-protocol/src/packets/connection.rs#decode_cookie_request", "crates/bbb-protocol/src/packets/connection.rs#decode_store_cookie", "crates/bbb-net/src/event_stream/play.rs#PlayClientbound::CookieRequest", "crates/bbb-net/src/event_stream/play.rs#PlayClientbound::StoreCookie"], "status": "complete"},
       "tests": {"evidence": ["crates/bbb-protocol/src/packets/tests.rs#decodes_and_encodes_cookie_packets", "crates/bbb-net/src/event_stream.rs#play_server_presentation_packets_emit_matching_events_and_cookie_response", "crates/bbb-net/src/probe/play.rs#probe_play_cookie_events_update_world_and_respond"], "status": "complete"}
     },
@@ -5047,7 +5047,13 @@
         "status": "complete"
       },
       "encoder": {
-        "evidence": ["crates/bbb-protocol/src/packets/connection.rs#encode_configuration_cookie_response"],
+        "evidence": [
+          "crates/bbb-protocol/src/packets/connection.rs#encode_configuration_cookie_response",
+          "crates/bbb-protocol/src/packets/connection.rs#encode_cookie_response_payload",
+          "crates/bbb-protocol/src/packets/tests.rs#decodes_and_encodes_cookie_packets",
+          "vanilla:net/minecraft/network/protocol/common/ClientboundStoreCookiePacket.java#PAYLOAD_STREAM_CODEC",
+          "vanilla:net/minecraft/network/protocol/cookie/ServerboundCookieResponsePacket.java#write"
+        ],
         "status": "complete"
       },
       "state_guard": {
@@ -5509,7 +5515,10 @@
       "encoder": {
         "evidence": [
           "crates/bbb-protocol/src/packets/connection.rs#encode_login_cookie_response",
-          "vanilla:net/minecraft/network/protocol/cookie/ServerboundCookieResponsePacket.java#STREAM_CODEC"
+          "crates/bbb-protocol/src/packets/connection.rs#encode_cookie_response_payload",
+          "crates/bbb-protocol/src/packets/tests.rs#decodes_and_encodes_cookie_packets",
+          "vanilla:net/minecraft/network/protocol/common/ClientboundStoreCookiePacket.java#PAYLOAD_STREAM_CODEC",
+          "vanilla:net/minecraft/network/protocol/cookie/ServerboundCookieResponsePacket.java#write"
         ],
         "status": "complete"
       },

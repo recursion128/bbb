@@ -12061,3 +12061,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] configuration `ServerboundCustomPayloadPacket` 的 brand encoder 现在按 `BrandPayload.write → FriendlyByteBuf.writeUtf()` 拒绝超过 32,767 UTF-16 units 的 brand，并向 login sender 传播错误。
 - [x] focused tests 覆盖 32,767/32,768 ASCII 边界与 surrogate-pair 长度；没有把 fallback `DiscardedPayload` 的 raw-size cap 错套到 typed brand 语义。
+
+## 2026-07-12：cookie response encoder bounds
+
+- [x] login/configuration/play 三个 `ServerboundCookieResponsePacket` 现在共用 fallible payload encoder：key 经 typed resource-id 规则规范化，optional payload 在分配/写入前限制为 vanilla 5,120 bytes。
+- [x] focused tests 锁定三 phase packet id/wire order、default namespace、5,120/5,121 边界与 invalid key；服务器请求驱动的 response 时序不变。

@@ -408,11 +408,11 @@ pub fn encode_play_keep_alive(id: i64) -> (i32, Vec<u8>) {
     (ids::play::SERVERBOUND_KEEP_ALIVE, out.into_inner())
 }
 
-pub fn encode_play_cookie_response(key: &str, payload: Option<&[u8]>) -> (i32, Vec<u8>) {
-    (
+pub fn encode_play_cookie_response(key: &str, payload: Option<&[u8]>) -> Result<(i32, Vec<u8>)> {
+    Ok((
         ids::play::SERVERBOUND_COOKIE_RESPONSE,
-        super::connection::encode_cookie_response_payload(key, payload),
-    )
+        super::connection::encode_cookie_response_payload(key, payload)?,
+    ))
 }
 
 pub fn encode_play_pong(id: i32) -> (i32, Vec<u8>) {

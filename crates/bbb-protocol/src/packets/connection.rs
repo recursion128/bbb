@@ -9,7 +9,7 @@ pub use crate::client_information_options::{
 
 use super::{
     client_common::{self, CustomPayload, ShowDialog},
-    decode_byte_array, read_resource_location,
+    decode_byte_array, normalize_resource_location, read_resource_location,
     server_presentation::{self, ResourcePackPop, ResourcePackPush},
     tags::UpdateTags,
 };
@@ -421,11 +421,11 @@ pub fn decode_login_clientbound(packet_id: i32, payload: &[u8]) -> Result<LoginC
     }
 }
 
-pub fn encode_login_cookie_response(key: &str, payload: Option<&[u8]>) -> (i32, Vec<u8>) {
-    (
+pub fn encode_login_cookie_response(key: &str, payload: Option<&[u8]>) -> Result<(i32, Vec<u8>)> {
+    Ok((
         ids::login::SERVERBOUND_COOKIE_RESPONSE,
-        encode_cookie_response_payload(key, payload),
-    )
+        encode_cookie_response_payload(key, payload)?,
+    ))
 }
 
 pub fn encode_login_custom_query_answer(transaction_id: i32) -> (i32, Vec<u8>) {
@@ -500,11 +500,14 @@ pub fn encode_configuration_keep_alive(id: i64) -> (i32, Vec<u8>) {
     (ids::configuration::SERVERBOUND_KEEP_ALIVE, out.into_inner())
 }
 
-pub fn encode_configuration_cookie_response(key: &str, payload: Option<&[u8]>) -> (i32, Vec<u8>) {
-    (
+pub fn encode_configuration_cookie_response(
+    key: &str,
+    payload: Option<&[u8]>,
+) -> Result<(i32, Vec<u8>)> {
+    Ok((
         ids::configuration::SERVERBOUND_COOKIE_RESPONSE,
-        encode_cookie_response_payload(key, payload),
-    )
+        encode_cookie_response_payload(key, payload)?,
+    ))
 }
 
 pub fn encode_configuration_pong(id: i32) -> (i32, Vec<u8>) {
@@ -971,9 +974,18 @@ fn decode_server_link_entry(decoder: &mut Decoder<'_>) -> Result<ServerLinkEntry
     })
 }
 
-pub(super) fn encode_cookie_response_payload(key: &str, payload: Option<&[u8]>) -> Vec<u8> {
+pub(super) fn encode_cookie_response_payload(key: &str, payload: Option<&[u8]>) -> Result<Vec<u8>> {
+    let key = normalize_resource_location(key.to_string())?;
+    if let Some(payload) = payload {
+        if payload.len() > MAX_COOKIE_PAYLOAD_SIZE {
+            return Err(ProtocolError::PacketTooLarge(
+                payload.len(),
+                MAX_COOKIE_PAYLOAD_SIZE,
+            ));
+        }
+    }
     let mut out = Encoder::new();
-    out.write_string(key);
+    out.write_string(&key);
     if let Some(payload) = payload {
         out.write_bool(true);
         out.write_var_i32(payload.len() as i32);
@@ -981,7 +993,7 @@ pub(super) fn encode_cookie_response_payload(key: &str, payload: Option<&[u8]>) 
     } else {
         out.write_bool(false);
     }
-    out.into_inner()
+    Ok(out.into_inner())
 }
 
 fn decode_game_profile(decoder: &mut Decoder<'_>) -> Result<GameProfile> {

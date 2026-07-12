@@ -2934,17 +2934,23 @@ fn decodes_and_encodes_cookie_packets() {
             .contains("trailing bytes after store cookie packet")
     );
 
-    let (id, payload) = encode_login_cookie_response("bbb:session", Some(&[1, 2, 3]));
+    let (id, payload) = encode_login_cookie_response("bbb:session", Some(&[1, 2, 3])).unwrap();
     assert_eq!(id, ids::login::SERVERBOUND_COOKIE_RESPONSE);
     assert_cookie_response_payload(&payload, "bbb:session", Some(&[1, 2, 3]));
 
-    let (id, payload) = encode_configuration_cookie_response("bbb:missing", None);
+    let (id, payload) = encode_configuration_cookie_response("bbb:missing", None).unwrap();
     assert_eq!(id, ids::configuration::SERVERBOUND_COOKIE_RESPONSE);
     assert_cookie_response_payload(&payload, "bbb:missing", None);
 
-    let (id, payload) = encode_play_cookie_response("bbb:session", Some(&[4, 5]));
+    let (id, payload) = encode_play_cookie_response("bbb:session", Some(&[4, 5])).unwrap();
     assert_eq!(id, ids::play::SERVERBOUND_COOKIE_RESPONSE);
     assert_cookie_response_payload(&payload, "bbb:session", Some(&[4, 5]));
+
+    let maximum_payload = vec![7; 5120];
+    let (_, payload) = encode_login_cookie_response("session", Some(&maximum_payload)).unwrap();
+    assert_cookie_response_payload(&payload, "minecraft:session", Some(&maximum_payload));
+    assert!(encode_configuration_cookie_response("bbb:session", Some(&vec![7; 5121])).is_err());
+    assert!(encode_play_cookie_response("INVALID:session", None).is_err());
 }
 
 #[test]
