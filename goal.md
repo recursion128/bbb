@@ -477,6 +477,7 @@ play ResetScore 的 owner + nullable objective wire、strict decode、all/single
 play SetDisplayObjective 的 BY_ID display-slot + nullable-by-empty objective wire、strict decode、clear/unknown gate 与 tests 已闭合。
 play SetObjective 的 add/remove/change framing、strict trailing、ownership 与 tests 已闭合；unknown method no-op、rich Component/NumberFormat 保持 decode/canonical/runtime partial。
 play SetScore 的 owner/objective/value/optional-display/NumberFormat framing、unknown-objective gate、ownership 与 tests 已闭合；rich Component 与 typed NumberFormat 保持 decode/canonical/runtime partial。
+play SetPlayerTeam 的 add/change/remove/join/leave framing、strict trailing、唯一 team membership、ownership 与 tests 已闭合；unknown method no-op 与 rich team Component/presentation 保持 decode/canonical/runtime partial。
 
 完成标准：全部 vanilla 26.1 catalog entry 都有矩阵行；所有目标客户端适用项为
 `complete`，其余只有带 vanilla 依据的 `not-applicable` 或带重启判据的窄 `deferred`；

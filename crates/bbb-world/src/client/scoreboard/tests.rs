@@ -282,6 +282,14 @@ fn scoreboard_teams_add_change_join_leave_and_remove() {
     )));
     assert!(!store.scoreboard().teams.contains_key("red"));
     assert!(store.scoreboard().teams.contains_key("blue"));
+    assert!(store
+        .scoreboard()
+        .team_for_scoreboard_name("Alice")
+        .is_none());
+    assert!(store
+        .scoreboard()
+        .team_for_scoreboard_name("Cara")
+        .is_none());
     assert_eq!(store.counters().set_player_team_packets, 7);
     assert_eq!(store.counters().set_player_team_updates_applied, 6);
     assert_eq!(store.counters().set_player_team_updates_ignored, 1);

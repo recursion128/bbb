@@ -181,12 +181,18 @@ pub(super) fn decode_set_player_team(decoder: &mut Decoder<'_>) -> Result<SetPla
         Vec::new()
     };
 
-    Ok(SetPlayerTeam {
+    let packet = SetPlayerTeam {
         name,
         method,
         parameters,
         players,
-    })
+    };
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after set player team packet".to_string(),
+        ));
+    }
+    Ok(packet)
 }
 
 pub(super) fn decode_player_team_parameters(
@@ -438,11 +444,9 @@ mod tests {
         payload.write_string("Steve");
         payload.write_string("Alex");
 
-        let packet = decode_play_clientbound(
-            ids::play::CLIENTBOUND_SET_PLAYER_TEAM,
-            &payload.into_inner(),
-        )
-        .unwrap();
+        let mut bytes = payload.into_inner();
+        let packet =
+            decode_play_clientbound(ids::play::CLIENTBOUND_SET_PLAYER_TEAM, &bytes).unwrap();
         assert_eq!(
             packet,
             PlayClientbound::SetPlayerTeam(SetPlayerTeam {
@@ -502,6 +506,13 @@ mod tests {
                 players: vec!["Sam".to_string()],
             })
         );
+
+        bytes.push(0);
+        let error =
+            decode_play_clientbound(ids::play::CLIENTBOUND_SET_PLAYER_TEAM, &bytes).unwrap_err();
+        assert!(error
+            .to_string()
+            .contains("trailing bytes after set player team packet"));
     }
 
     fn nbt_string_root(text: &str) -> Vec<u8> {
