@@ -853,6 +853,33 @@ fn hud_text_timers_tick_before_projection_like_gui_tick() {
 }
 
 #[test]
+fn camera_fov_tick_state_eases_player_abilities_modifier_like_vanilla() {
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    world.apply_player_abilities(bbb_protocol::packets::PlayerAbilities {
+        invulnerable: false,
+        flying: false,
+        can_fly: false,
+        instabuild: false,
+        flying_speed: 0.05,
+        walking_speed: 0.2,
+    });
+    let mut fov = CameraFovTickState::default();
+
+    assert!((fov.fov_degrees(1.0) - 70.0).abs() < 1.0e-6);
+    fov.advance_for_world(1, &world);
+    assert!((fov.fov_degrees(0.0) - 70.0).abs() < 1.0e-6);
+    assert!((fov.fov_degrees(1.0) - 61.25).abs() < 1.0e-6);
+
+    fov.advance_for_world(1, &world);
+    assert!((fov.fov_degrees(1.0) - 56.875).abs() < 1.0e-6);
+
+    world.apply_add_entity(test_add_entity(100, VANILLA_ENTITY_TYPE_CREEPER_ID));
+    assert!(world.apply_set_camera(bbb_protocol::packets::SetCamera { camera_id: 100 }));
+    fov.advance_for_world(1, &world);
+    assert!((fov.fov_degrees(1.0) - 63.4375).abs() < 1.0e-6);
+}
+
+#[test]
 fn hud_action_bar_and_title_projection_matches_world_state() {
     let mut world = WorldStore::new();
     assert_eq!(hud_action_bar_text_from_world(&world, 0.25), None);

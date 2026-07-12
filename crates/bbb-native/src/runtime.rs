@@ -947,6 +947,44 @@ impl HudDebugTpsSampler {
     }
 }
 
+const VANILLA_BASE_CAMERA_FOV_DEGREES: f32 = 70.0;
+
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct CameraFovTickState {
+    old_modifier: f32,
+    modifier: f32,
+}
+
+impl Default for CameraFovTickState {
+    fn default() -> Self {
+        Self {
+            old_modifier: 1.0,
+            modifier: 1.0,
+        }
+    }
+}
+
+impl CameraFovTickState {
+    fn advance_for_world(&mut self, ticks: u32, world: &WorldStore) {
+        for _ in 0..ticks {
+            let target = if world.local_player().camera.follows_player {
+                world.local_player_abilities_fov_modifier()
+            } else {
+                1.0
+            };
+            self.old_modifier = self.modifier;
+            self.modifier += (target - self.modifier) * 0.5;
+            self.modifier = self.modifier.clamp(0.1, 1.5);
+        }
+    }
+
+    fn fov_degrees(self, partial_tick: f32) -> f32 {
+        let partial_tick = partial_tick.clamp(0.0, 1.0);
+        let modifier = self.old_modifier + (self.modifier - self.old_modifier) * partial_tick;
+        VANILLA_BASE_CAMERA_FOV_DEGREES * modifier
+    }
+}
+
 #[derive(Debug)]
 pub(crate) struct LightmapTickState {
     random: LevelEventSoundRandomState,
@@ -1899,6 +1937,7 @@ pub(crate) fn pump_network_and_terrain(
     surface_size: winit::dpi::PhysicalSize<u32>,
     net_counters: &mut NetCounters,
     client_animation_ticks: &mut ClientAnimationTickState,
+    camera_fov_ticks: &mut CameraFovTickState,
     hud_debug_fps_sampler: &mut HudDebugFpsSampler,
     hud_debug_network_sampler: &mut HudDebugNetworkSampler,
     hud_debug_tps_sampler: &mut HudDebugTpsSampler,
@@ -2057,6 +2096,9 @@ pub(crate) fn pump_network_and_terrain(
     world.advance_spawner_block_ticks(running_ticks);
     world.advance_item_cooldowns(advanced_ticks);
     advance_player_input(input, world, net_counters, net_commands, now);
+    // Vanilla Minecraft.tick handles keybinds before GameRenderer.tick, whose
+    // Camera.tickFov eases the current camera's target once per client tick.
+    camera_fov_ticks.advance_for_world(advanced_ticks, world);
     let audio_events_for_destroy = audio_events
         .as_mut()
         .map(|audio_events| &mut **audio_events as &mut dyn AudioEventSink);
@@ -2279,6 +2321,7 @@ pub(crate) fn pump_network_and_terrain(
     let enchantment_keys = world_enchantment_keys(world);
     let attribute_keys = world_attribute_keys(world);
     let camera_pose = camera_pose_from_world(world);
+    let camera_fov_degrees = camera_fov_ticks.fov_degrees(entity_partial_tick);
     // Vanilla `GameRenderer.checkEntityPostEffect` stores this independently from the
     // post-chain active toggle. bbb is currently first-person-only, so the current camera
     // entity is the complete input to the same-frame renderer mirror.
@@ -2629,6 +2672,7 @@ pub(crate) fn pump_network_and_terrain(
             sign_text_surfaces,
             entity_model_instances: entity_instances,
             camera_pose,
+            camera_fov_degrees,
             current_post_effect_id: current_post_effect_id.map(str::to_owned),
             shader_game_time_ticks,
             cloud_frame,

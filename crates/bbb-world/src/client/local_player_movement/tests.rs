@@ -3717,6 +3717,43 @@ fn local_player_movement_speed_attribute_scales_horizontal_movement() {
 }
 
 #[test]
+fn player_abilities_walking_speed_scales_fov_without_mutating_movement_attribute() {
+    let mut world = flat_collision_world();
+    attach_local_player_entity(&mut world, 123);
+    world.apply_player_abilities(bbb_protocol::packets::PlayerAbilities {
+        invulnerable: false,
+        flying: false,
+        can_fly: false,
+        instabuild: false,
+        flying_speed: 0.05,
+        walking_speed: 0.2,
+    });
+
+    assert!((world.local_player_abilities_fov_modifier() - 0.75).abs() < 1.0e-6);
+    assert!(world.probe_entity(123).unwrap().attributes.is_empty());
+
+    assert!(world.apply_update_attributes(ProtocolUpdateAttributes {
+        entity_id: 123,
+        attributes: vec![ProtocolAttributeSnapshot {
+            attribute_id: VANILLA_ATTRIBUTE_MOVEMENT_SPEED_ID,
+            base: 0.2,
+            modifiers: Vec::new(),
+        }],
+    }));
+    assert!((world.local_player_abilities_fov_modifier() - 1.0).abs() < 1.0e-6);
+
+    world.apply_player_abilities(bbb_protocol::packets::PlayerAbilities {
+        invulnerable: false,
+        flying: true,
+        can_fly: true,
+        instabuild: false,
+        flying_speed: 0.05,
+        walking_speed: 0.2,
+    });
+    assert!((world.local_player_abilities_fov_modifier() - 1.1).abs() < 1.0e-6);
+}
+
+#[test]
 fn local_player_slow_block_speed_factor_scales_horizontal_movement() {
     for (name, block_state_id, player_y) in [
         ("soul sand", SOUL_SAND_BLOCK_STATE_ID, 0.875),

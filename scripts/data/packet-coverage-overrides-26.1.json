@@ -3641,15 +3641,17 @@
       "runtime_side_effect": {
         "evidence": [
           "crates/bbb-world/src/client/local_player_movement.rs#local_player_flying_abilities",
-          "crates/bbb-native/src/input/mouse.rs#local_player_instabuild"
+          "crates/bbb-world/src/client/local_player_movement.rs#local_player_abilities_fov_modifier",
+          "crates/bbb-native/src/input/mouse.rs#local_player_instabuild",
+          "crates/bbb-native/src/runtime.rs#CameraFovTickState"
         ],
-        "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-        "status": "partial"
+        "status": "complete"
       },
       "tests": {
         "evidence": [
           "crates/bbb-protocol/src/packets/client_state/tests.rs#decodes_player_abilities_spawn_distance_and_system_chat",
           "crates/bbb-world/src/client/local_player.rs#local_player_packets_update_canonical_state",
+          "crates/bbb-world/src/client/local_player_movement/tests.rs#player_abilities_walking_speed_scales_fov_without_mutating_movement_attribute",
           "crates/bbb-net/src/probe/play.rs#probe_applies_local_player_status_packets_to_world",
           "crates/bbb-native/src/input/movement.rs#advance_player_input_enables_spectator_flying_when_server_allows"
         ],

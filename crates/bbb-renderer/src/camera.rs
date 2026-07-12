@@ -486,7 +486,12 @@ impl CameraUniform {
         }
     }
 
+    #[cfg(test)]
     pub(crate) fn from_pose(pose: CameraPose, aspect: f32) -> Self {
+        Self::from_pose_with_fov(pose, aspect, 70.0)
+    }
+
+    pub(crate) fn from_pose_with_fov(pose: CameraPose, aspect: f32, fov_degrees: f32) -> Self {
         let eye = Vec3::from_array(pose.position) + Vec3::Y * pose.eye_height;
         let yaw = pose.y_rot.to_radians();
         let pitch = pose.x_rot.to_radians();
@@ -499,7 +504,13 @@ impl CameraUniform {
             } else {
                 Vec3::Z
             };
-        let projection = Mat4::perspective_rh(70.0_f32.to_radians(), aspect.max(0.1), 0.05, 2048.0);
+        let fov_degrees = if fov_degrees.is_finite() {
+            fov_degrees.clamp(7.0, 105.0)
+        } else {
+            70.0
+        };
+        let projection =
+            Mat4::perspective_rh(fov_degrees.to_radians(), aspect.max(0.1), 0.05, 2048.0);
         let view = Mat4::look_at_rh(eye, target, Vec3::Y);
 
         Self {
@@ -1194,6 +1205,19 @@ mod tests {
         assert!(!uniform
             .view_proj()
             .abs_diff_eq(uniform.view_proj_view_offset_z(), 1.0e-8));
+    }
+
+    #[test]
+    fn camera_uniform_uses_dynamic_perspective_fov() {
+        let pose = CameraPose {
+            position: [0.0, 0.0, 0.0],
+            eye_height: 1.62,
+            y_rot: 0.0,
+            x_rot: 0.0,
+        };
+        let uniform = CameraUniform::from_pose_with_fov(pose, 16.0 / 9.0, 35.0);
+        let expected = Mat4::perspective_rh(35.0_f32.to_radians(), 16.0 / 9.0, 0.05, 2048.0);
+        assert_mat4_close(uniform.projection(), expected);
     }
 
     #[test]

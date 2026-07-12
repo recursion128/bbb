@@ -76,8 +76,8 @@ use input::{
 use particle_runtime::{NativeParticleRuntime, ParticleEventSink};
 use runtime::{
     control_renderer_counters, publish_snapshot, pump_network_and_terrain, request_net_disconnect,
-    snapshot_is_running, take_control_screenshot, ClientAnimationTickState, DebugCollisionCache,
-    DebugSkyLightSectionCache, DebugSupportingBlockCache, HudDebugFpsSampler,
+    snapshot_is_running, take_control_screenshot, CameraFovTickState, ClientAnimationTickState,
+    DebugCollisionCache, DebugSkyLightSectionCache, DebugSupportingBlockCache, HudDebugFpsSampler,
     HudDebugNetworkSampler, HudDebugTpsSampler, LevelEventSoundRandomState, LightmapTickState,
 };
 use sky_assets::load_sky_textures;
@@ -428,6 +428,7 @@ fn main() -> Result<()> {
     let exit_after_screenshot = args.exit_after_screenshot;
     let mut terrain_upload = TerrainUploadState::default();
     let mut client_animation_ticks = ClientAnimationTickState::default();
+    let mut camera_fov_ticks = CameraFovTickState::default();
     let mut hud_debug_fps_sampler = HudDebugFpsSampler::default();
     let mut hud_debug_network_sampler = HudDebugNetworkSampler::default();
     let mut hud_debug_tps_sampler = HudDebugTpsSampler::default();
@@ -1057,6 +1058,7 @@ fn main() -> Result<()> {
                         window.inner_size(),
                         &mut net_counters,
                         &mut client_animation_ticks,
+                        &mut camera_fov_ticks,
                         &mut hud_debug_fps_sampler,
                         &mut hud_debug_network_sampler,
                         &mut hud_debug_tps_sampler,
@@ -1225,6 +1227,7 @@ fn main() -> Result<()> {
                     window.inner_size(),
                     &mut net_counters,
                     &mut client_animation_ticks,
+                    &mut camera_fov_ticks,
                     &mut hud_debug_fps_sampler,
                     &mut hud_debug_network_sampler,
                     &mut hud_debug_tps_sampler,

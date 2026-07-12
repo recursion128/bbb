@@ -225,11 +225,10 @@ Movement:
   feeds debug MSPT/tooltip state, but entity/world client ticks remain fixed at
   20 Hz. This is multiplayer client presentation/prediction timing, not an
   IntegratedServer tick owner.
-- Apply synchronized player-abilities `walkingSpeed` as the local player's
-  movement-speed attribute base and use the same value in the vanilla FOV speed
-  ratio. bbb currently stores it while prediction keeps the fixed default 0.1
-  base. Restart by updating the owned attribute/FOV inputs together; do not add
-  a second ad-hoc speed multiplier beside the attribute path.
+- Complete the remaining camera-FOV inputs beyond synchronized player abilities:
+  configurable base FOV/effect scale, bow-use/scoping zoom, and death/fluid
+  modifiers. Vanilla keeps `walkingSpeed` as the FOV ratio denominator; it does
+  not replace the separately synchronized movement-speed attribute base.
 - Cover the remaining vanilla survival physics beyond the native fixed-20Hz
   local movement cadence.
 - Cover the remaining vanilla voxel collision shapes.

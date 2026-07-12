@@ -325,6 +325,7 @@ pub struct Renderer {
     pub(super) terrain_bounds: Option<TerrainBounds>,
     pub(super) entity_model_bounds: Option<TerrainBounds>,
     pub(super) camera_pose: Option<CameraPose>,
+    pub(super) camera_fov_degrees: f32,
     pub(super) lightmap_environment: LightmapEnvironment,
     pub(super) fog_environment: FogEnvironment,
     pub(super) sky_environment: SkyEnvironment,
@@ -1430,6 +1431,7 @@ impl Renderer {
             terrain_bounds: None,
             entity_model_bounds: None,
             camera_pose: None,
+            camera_fov_degrees: 70.0,
             lightmap_environment: LightmapEnvironment::default(),
             fog_environment: FogEnvironment::default(),
             sky_environment: SkyEnvironment::default(),
@@ -1850,6 +1852,19 @@ impl Renderer {
         self.update_camera();
     }
 
+    pub fn set_camera_fov_degrees(&mut self, fov_degrees: f32) {
+        let fov_degrees = if fov_degrees.is_finite() {
+            fov_degrees.clamp(7.0, 105.0)
+        } else {
+            70.0
+        };
+        if self.camera_fov_degrees == fov_degrees {
+            return;
+        }
+        self.camera_fov_degrees = fov_degrees;
+        self.update_camera();
+    }
+
     pub fn set_shader_game_time_ticks(&mut self, ticks: f64) {
         let ticks = if ticks.is_finite() {
             ticks.max(0.0)
@@ -2228,7 +2243,7 @@ impl Renderer {
         let aspect = self.config.width as f32 / self.config.height.max(1) as f32;
         let glint_elapsed_millis = self.started_at.elapsed().as_secs_f64() * 1000.0;
         let uniform = if let Some(pose) = self.camera_pose {
-            CameraUniform::from_pose(pose, aspect)
+            CameraUniform::from_pose_with_fov(pose, aspect, self.camera_fov_degrees)
         } else {
             self.scene_bounds()
                 .map(|bounds| CameraUniform::from_bounds(bounds, aspect))

@@ -12738,3 +12738,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] dimension-type `default_clock` resource id 进入 client projection，SetTime clock updates
   按 holder identity 持久 merge/tick，`day_time` 随 login/respawn 当前维度重选；无 default clock
   返回 0，不再猜测 wire 第一项。native End flash 删除 holder ID 1，直接消费该统一投影。
+
+## 2026-07-12：PlayerAbilities walking-speed FOV consumer
+
+- [x] 对照 `ClientPacketListener.handlePlayerAbilities`、`AbstractClientPlayer.getFieldOfViewModifier`
+  与 `Camera.tickFov`，walkingSpeed 只作为 movement-speed attribute 的 FOV 比率分母；没有错误覆盖
+  服务器同步的 attribute base。
+- [x] world 提供 abilities FOV 投影，native 按每 client tick 0.5 easing 和 partial tick 插值，renderer
+  使用动态 perspective FOV；flying 贡献沿同一链路。bow/scoping、配置 effect scale 与 death/fluid
+  modifier 仍在 presentation 账本开放，不阻塞 PlayerAbilities packet 五格闭合。

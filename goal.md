@@ -428,8 +428,9 @@ SetCamera 的 entity VarInt wire、known/unknown gate、camera pose/raycast/post
 world/net/native tests 已全行闭合；相机实体移除后视点安全回退本地玩家。
 SetDefaultSpawnPosition 的 dimension/BlockPos/yaw/pitch wire、client respawn state、spawn-compass
 item-model consumer 与 world/net/native tests 已全行闭合。
-PlayerAbilities 的 flags/flying-speed/walking-speed wire、canonical state 与 apply tests 已闭合；
-walking-speed 尚未进入 movement attribute base/FOV，runtime 保持 partial。
+PlayerAbilities 的 flags/flying-speed/walking-speed wire、canonical state、prediction/instabuild 与
+walkingSpeed denominator/FOV easing consumers 已闭合；movement-speed attribute 仍由 attribute sync
+独立拥有，符合 vanilla，五格全部闭合。
 SetTime 的 game-time/WorldClock-map wire、session holder identity、当前维度 default clock、merge/tick、
 ownership、render consumers 与 tests 已闭合；不再依赖 HashMap/wire 第一项，五格全部闭合。
 TickingStep 的 frozen step wire、consumption 与 tests 已全行闭合；TickingState 的 freeze 语义已消费，
