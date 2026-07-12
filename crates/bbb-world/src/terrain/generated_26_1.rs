@@ -164,6 +164,19 @@ pub(super) const VANILLA_SHELF_BLOCKS: &[&str] = &[
     "minecraft:warped_shelf",
 ];
 
+pub(super) const VANILLA_CHEST_BLOCKS: &[&str] = &[
+    "minecraft:chest",
+    "minecraft:trapped_chest",
+    "minecraft:copper_chest",
+    "minecraft:exposed_copper_chest",
+    "minecraft:weathered_copper_chest",
+    "minecraft:oxidized_copper_chest",
+    "minecraft:waxed_copper_chest",
+    "minecraft:waxed_exposed_copper_chest",
+    "minecraft:waxed_weathered_copper_chest",
+    "minecraft:waxed_oxidized_copper_chest",
+];
+
 pub(super) const VANILLA_INVISIBLE_RENDER_SHAPE_BLOCKS: &[&str] = &[
     "minecraft:air",
     "minecraft:water",
@@ -591,6 +604,22 @@ pub(super) const VANILLA_SHULKER_BOX_BLOCKS: &[&str] = &[
     "minecraft:yellow_shulker_box",
 ];
 
+pub(super) const VANILLA_ANVIL_BLOCKS: &[&str] = &[
+    "minecraft:anvil",
+    "minecraft:chipped_anvil",
+    "minecraft:damaged_anvil",
+];
+
+pub(super) const VANILLA_CAMPFIRE_BLOCKS: &[&str] =
+    &["minecraft:campfire", "minecraft:soul_campfire"];
+
+pub(super) const VANILLA_CAULDRON_BLOCKS: &[&str] = &[
+    "minecraft:cauldron",
+    "minecraft:water_cauldron",
+    "minecraft:lava_cauldron",
+    "minecraft:powder_snow_cauldron",
+];
+
 pub(super) const VANILLA_DOOR_BLOCKS: &[&str] = &[
     "minecraft:oak_door",
     "minecraft:spruce_door",
@@ -865,6 +894,7 @@ mod tests {
         assert_eq!(VANILLA_LEAVES_BLOCKS.len(), 11);
         assert_eq!(VANILLA_SAPLING_BLOCKS.len(), 9);
         assert_eq!(VANILLA_SHELF_BLOCKS.len(), 12);
+        assert_eq!(VANILLA_CHEST_BLOCKS.len(), 10);
         assert_eq!(VANILLA_INVISIBLE_RENDER_SHAPE_BLOCKS.len(), 12);
         assert_eq!(VANILLA_BARS_BLOCKS.len(), 9);
         assert_eq!(VANILLA_SLAB_BLOCKS.len(), 62);
@@ -883,6 +913,9 @@ mod tests {
         assert_eq!(VANILLA_LIGHTNING_ROD_BLOCKS.len(), 8);
         assert_eq!(VANILLA_HANGING_SIGN_BLOCKS.len(), 24);
         assert_eq!(VANILLA_SHULKER_BOX_BLOCKS.len(), 17);
+        assert_eq!(VANILLA_ANVIL_BLOCKS.len(), 3);
+        assert_eq!(VANILLA_CAMPFIRE_BLOCKS.len(), 2);
+        assert_eq!(VANILLA_CAULDRON_BLOCKS.len(), 4);
         assert_eq!(VANILLA_DOOR_BLOCKS.len(), 21);
         assert_eq!(VANILLA_TRAPDOOR_BLOCKS.len(), 21);
         assert_eq!(VANILLA_RAIL_BLOCKS.len(), 4);

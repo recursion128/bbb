@@ -24,8 +24,9 @@ use crate::entities::{
     VANILLA_HAPPY_GHAST_STAYS_STILL_DATA_ID,
 };
 use crate::terrain::{
-    block_name_has_empty_collision_shape, block_name_is_air, block_name_is_bars_or_pane,
-    block_name_is_bed, block_name_is_candle, block_name_is_candle_cake, block_name_is_chain,
+    block_name_has_empty_collision_shape, block_name_is_air, block_name_is_anvil,
+    block_name_is_bars_or_pane, block_name_is_bed, block_name_is_campfire, block_name_is_candle,
+    block_name_is_candle_cake, block_name_is_cauldron, block_name_is_chain, block_name_is_chest,
     block_name_is_copper_golem_statue, block_name_is_copper_grate, block_name_is_door,
     block_name_is_fence, block_name_is_fence_gate, block_name_is_flower_pot,
     block_name_is_hanging_sign, block_name_is_lantern, block_name_is_leaves, block_name_is_rod,
@@ -1514,7 +1515,7 @@ fn is_rod_block_name(block_name: &str) -> bool {
 }
 
 fn is_campfire_block_name(block_name: &str) -> bool {
-    matches!(block_name, "minecraft:campfire" | "minecraft:soul_campfire")
+    block_name_is_campfire(block_name)
 }
 
 fn is_cactus_or_honey_block_name(block_name: &str) -> bool {
@@ -1554,17 +1555,11 @@ fn is_wall_block_name(block_name: &str) -> bool {
 }
 
 fn is_cauldron_block_name(block_name: &str) -> bool {
-    matches!(
-        block_name,
-        "minecraft:cauldron"
-            | "minecraft:water_cauldron"
-            | "minecraft:lava_cauldron"
-            | "minecraft:powder_snow_cauldron"
-    )
+    block_name_is_cauldron(block_name)
 }
 
 fn is_standard_chest_block_name(block_name: &str) -> bool {
-    matches!(block_name, "minecraft:chest" | "minecraft:trapped_chest")
+    block_name_is_chest(block_name)
 }
 
 fn is_bed_block_name(block_name: &str) -> bool {
@@ -1572,10 +1567,7 @@ fn is_bed_block_name(block_name: &str) -> bool {
 }
 
 fn is_anvil_block_name(block_name: &str) -> bool {
-    matches!(
-        block_name,
-        "minecraft:anvil" | "minecraft:chipped_anvil" | "minecraft:damaged_anvil"
-    )
+    block_name_is_anvil(block_name)
 }
 
 fn stair_collision_shape(properties: &BTreeMap<String, String>) -> Option<BlockCollisionShape> {

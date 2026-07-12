@@ -10,6 +10,8 @@ fn outline_shape_uses_vanilla_single_chest_shape() {
     for block_name in [
         "minecraft:chest",
         "minecraft:trapped_chest",
+        "minecraft:copper_chest",
+        "minecraft:waxed_oxidized_copper_chest",
         "minecraft:ender_chest",
     ] {
         let properties = if block_name == "minecraft:ender_chest" {

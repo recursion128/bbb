@@ -7,10 +7,11 @@ use crate::{BlockPos, ChunkPos, PaletteKind};
 mod generated_26_1;
 
 use generated_26_1::{
-    VANILLA_AIR_BLOCKS, VANILLA_BARS_BLOCKS, VANILLA_BED_BLOCKS, VANILLA_BUTTON_BLOCKS,
-    VANILLA_CANDLE_BLOCKS, VANILLA_CANDLE_CAKE_BLOCKS, VANILLA_CHAIN_BLOCKS,
-    VANILLA_COPPER_GOLEM_STATUE_BLOCKS, VANILLA_COPPER_GRATE_BLOCKS, VANILLA_CROP_BLOCKS,
-    VANILLA_DOOR_BLOCKS, VANILLA_FENCE_BLOCKS, VANILLA_FENCE_GATE_BLOCKS,
+    VANILLA_AIR_BLOCKS, VANILLA_ANVIL_BLOCKS, VANILLA_BARS_BLOCKS, VANILLA_BED_BLOCKS,
+    VANILLA_BUTTON_BLOCKS, VANILLA_CAMPFIRE_BLOCKS, VANILLA_CANDLE_BLOCKS,
+    VANILLA_CANDLE_CAKE_BLOCKS, VANILLA_CAULDRON_BLOCKS, VANILLA_CHAIN_BLOCKS,
+    VANILLA_CHEST_BLOCKS, VANILLA_COPPER_GOLEM_STATUE_BLOCKS, VANILLA_COPPER_GRATE_BLOCKS,
+    VANILLA_CROP_BLOCKS, VANILLA_DOOR_BLOCKS, VANILLA_FENCE_BLOCKS, VANILLA_FENCE_GATE_BLOCKS,
     VANILLA_FIXED_SOURCE_WATER_BLOCKS, VANILLA_FLOWER_POT_BLOCKS,
     VANILLA_HALF_TRANSPARENT_SKIP_RENDERING_BLOCKS, VANILLA_HANGING_SIGN_BLOCKS,
     VANILLA_INVISIBLE_RENDER_SHAPE_BLOCKS, VANILLA_IRON_BARS_CLASS_BLOCKS, VANILLA_LANTERN_BLOCKS,
@@ -421,6 +422,22 @@ pub fn block_name_is_crop(name: &str) -> bool {
     VANILLA_CROP_BLOCKS.contains(&name)
 }
 
+pub fn block_name_is_anvil(name: &str) -> bool {
+    VANILLA_ANVIL_BLOCKS.contains(&name)
+}
+
+pub fn block_name_is_campfire(name: &str) -> bool {
+    VANILLA_CAMPFIRE_BLOCKS.contains(&name)
+}
+
+pub fn block_name_is_cauldron(name: &str) -> bool {
+    VANILLA_CAULDRON_BLOCKS.contains(&name)
+}
+
+pub fn block_name_is_chest(name: &str) -> bool {
+    VANILLA_CHEST_BLOCKS.contains(&name)
+}
+
 pub(crate) fn block_name_has_empty_collision_shape(name: &str) -> bool {
     name.contains("sapling")
         || matches!(
@@ -641,6 +658,25 @@ mod tests {
         }
         assert!(!block_name_is_crop("minecraft:nether_wart"));
         assert!(!block_name_is_crop("minecraft:custom_crop"));
+        for block_name in [
+            "minecraft:anvil",
+            "minecraft:soul_campfire",
+            "minecraft:powder_snow_cauldron",
+            "minecraft:chest",
+            "minecraft:trapped_chest",
+            "minecraft:copper_chest",
+            "minecraft:waxed_oxidized_copper_chest",
+        ] {
+            assert!(
+                block_name_is_anvil(block_name)
+                    || block_name_is_campfire(block_name)
+                    || block_name_is_cauldron(block_name)
+                    || block_name_is_chest(block_name),
+                "{block_name}"
+            );
+        }
+        assert!(!block_name_is_chest("minecraft:ender_chest"));
+        assert!(!block_name_is_chest("minecraft:custom_chest"));
     }
 
     #[test]

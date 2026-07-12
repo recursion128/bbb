@@ -466,6 +466,10 @@ fn outline_shape_rejects_generated_family_suffix_lookalikes() {
         "minecraft:custom_candle_cake",
         "minecraft:custom_chain",
         "minecraft:custom_copper_lantern",
+        "minecraft:custom_anvil",
+        "minecraft:custom_campfire",
+        "minecraft:custom_cauldron",
+        "minecraft:custom_chest",
         "example:oak_door",
         "example:oak_button",
     ] {

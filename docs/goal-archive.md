@@ -12356,3 +12356,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   的 age 0..7 高度，以及 pitcher age 0..4、lower/upper、负一像素下沿与空 upper shape。
   invalid age/half 显式拒绝；本切片只补 selection outline，未关闭账本中更广的 voxel collision
   或 vegetation parity 条目。
+
+## 2026-07-12：Shared exact chest and solid-object memberships
+
+- [x] block-membership generator 从 vanilla anvil、campfires、cauldrons tags 派生精确 catalog；
+  chest 则通过统一 Tree-sitter hierarchy IR 计算 `ChestBlock` 四类闭包并映射 10 个注册项，
+  数量/顺序/update-check 幂等门禁覆盖 chest、trapped chest 与八个 copper chest。
+- [x] world local collision 与 native object outline 删除 cauldron/anvil/campfire/chest 的重复
+  resource matches，统一消费 world 查询。此前回退 full cube 的 copper chest 现在继承既有
+  property-aware single/double chest shape；ender chest 仍走其独立 shape，custom lookalikes
+  不被扩大纳入。chest lid/model runtime 保持原 owner 与行为。

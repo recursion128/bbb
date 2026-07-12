@@ -1,7 +1,8 @@
 use std::collections::BTreeMap;
 
 use bbb_world::{
-    block_name_is_bed, block_name_is_candle, block_name_is_candle_cake, block_name_is_chain,
+    block_name_is_anvil, block_name_is_bed, block_name_is_campfire, block_name_is_candle,
+    block_name_is_candle_cake, block_name_is_cauldron, block_name_is_chain, block_name_is_chest,
     block_name_is_lantern,
 };
 
@@ -405,17 +406,11 @@ fn lectern_north_boxes() -> Vec<BlockOutlineBox> {
 }
 
 fn is_cauldron_block_name(block_name: &str) -> bool {
-    matches!(
-        block_name,
-        "minecraft:cauldron"
-            | "minecraft:water_cauldron"
-            | "minecraft:lava_cauldron"
-            | "minecraft:powder_snow_cauldron"
-    )
+    block_name_is_cauldron(block_name)
 }
 
 fn is_standard_chest_block_name(block_name: &str) -> bool {
-    matches!(block_name, "minecraft:chest" | "minecraft:trapped_chest")
+    block_name_is_chest(block_name)
 }
 
 fn is_bed_block_name(block_name: &str) -> bool {
@@ -423,14 +418,11 @@ fn is_bed_block_name(block_name: &str) -> bool {
 }
 
 fn is_anvil_block_name(block_name: &str) -> bool {
-    matches!(
-        block_name,
-        "minecraft:anvil" | "minecraft:chipped_anvil" | "minecraft:damaged_anvil"
-    )
+    block_name_is_anvil(block_name)
 }
 
 fn is_campfire_block_name(block_name: &str) -> bool {
-    matches!(block_name, "minecraft:campfire" | "minecraft:soul_campfire")
+    block_name_is_campfire(block_name)
 }
 
 fn is_chain_block_name(block_name: &str) -> bool {

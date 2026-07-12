@@ -56,6 +56,9 @@ BLOCK_TAG_CATALOGS = (
         24,
     ),
     ("VANILLA_SHULKER_BOX_BLOCKS", "minecraft:shulker_boxes", 17),
+    ("VANILLA_ANVIL_BLOCKS", "minecraft:anvil", 3),
+    ("VANILLA_CAMPFIRE_BLOCKS", "minecraft:campfires", 2),
+    ("VANILLA_CAULDRON_BLOCKS", "minecraft:cauldrons", 4),
     ("VANILLA_DOOR_BLOCKS", "minecraft:doors", 21),
     ("VANILLA_TRAPDOOR_BLOCKS", "minecraft:trapdoors", 21),
     ("VANILLA_RAIL_BLOCKS", "minecraft:rails", 4),
@@ -190,6 +193,11 @@ def generate(source_root: Path) -> str:
         "net.minecraft.world.level.block.ShelfBlock",
         1,
     )
+    chest_types = constructor_types_extending(
+        block_class_sources,
+        "net.minecraft.world.level.block.ChestBlock",
+        4,
+    )
     entries = no_terrain_particle_blocks(source)
     air_entries = air_blocks(source)
     constructor_catalogs = [
@@ -209,6 +217,7 @@ def generate(source_root: Path) -> str:
             ("VANILLA_LEAVES_BLOCKS", leaves_types, 11),
             ("VANILLA_SAPLING_BLOCKS", sapling_types, 9),
             ("VANILLA_SHELF_BLOCKS", shelf_types, 12),
+            ("VANILLA_CHEST_BLOCKS", chest_types, 10),
             (
                 "VANILLA_INVISIBLE_RENDER_SHAPE_BLOCKS",
                 invisible_render_shape_types,
@@ -277,6 +286,7 @@ def generate(source_root: Path) -> str:
             "        assert_eq!(VANILLA_LEAVES_BLOCKS.len(), 11);",
             "        assert_eq!(VANILLA_SAPLING_BLOCKS.len(), 9);",
             "        assert_eq!(VANILLA_SHELF_BLOCKS.len(), 12);",
+            "        assert_eq!(VANILLA_CHEST_BLOCKS.len(), 10);",
             "        assert_eq!(VANILLA_INVISIBLE_RENDER_SHAPE_BLOCKS.len(), 12);",
             "        assert_eq!(VANILLA_BARS_BLOCKS.len(), 9);",
             "        assert_eq!(VANILLA_SLAB_BLOCKS.len(), 62);",
@@ -295,6 +305,9 @@ def generate(source_root: Path) -> str:
             "        assert_eq!(VANILLA_LIGHTNING_ROD_BLOCKS.len(), 8);",
             "        assert_eq!(VANILLA_HANGING_SIGN_BLOCKS.len(), 24);",
             "        assert_eq!(VANILLA_SHULKER_BOX_BLOCKS.len(), 17);",
+            "        assert_eq!(VANILLA_ANVIL_BLOCKS.len(), 3);",
+            "        assert_eq!(VANILLA_CAMPFIRE_BLOCKS.len(), 2);",
+            "        assert_eq!(VANILLA_CAULDRON_BLOCKS.len(), 4);",
             "        assert_eq!(VANILLA_DOOR_BLOCKS.len(), 21);",
             "        assert_eq!(VANILLA_TRAPDOOR_BLOCKS.len(), 21);",
             "        assert_eq!(VANILLA_RAIL_BLOCKS.len(), 4);",
