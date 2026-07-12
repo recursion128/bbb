@@ -11691,3 +11691,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] global/sender/message index、signature/body/last-seen、filter、ChatType wire、strict trailing、signature-cache 与 acknowledgement baseline 已审计。
 - [x] trusted Component/registry decoration、RemoteChatSession 验签、错误断连和完整 ChatListener presentation 继续开放，除 ownership 外四格保持 partial。
+
+## 2026-07-12：play player info remove packet coverage audit
+
+- [x] bounded UUID list、strict trailing、player-info/listed canonical removal、net/probe/native state tests 已审计。
+- [x] vanilla 同步调用的 PlayerSocialManager removal 尚无 bbb owner；Social Interactions screen/state 写入 HUD backlog，runtime/tests 保持 partial。

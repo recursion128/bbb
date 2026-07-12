@@ -369,6 +369,9 @@ Environment:
 
 Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
 
+- Implement `PlayerSocialManager` state and the Social Interactions screen,
+  including add/remove cleanup driven by PlayerInfo packets and blocked/hidden
+  player filtering. Current player-info/listed state is not a social manager.
 - Render tracked waypoints through the vanilla locator contextual bar: load
   waypoint-style assets, derive distance/yaw/pitch indicators, and apply
   `Gui.nextContextualInfoState` priority rules.

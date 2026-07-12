@@ -76,7 +76,13 @@ pub(super) fn decode_player_info_remove(decoder: &mut Decoder<'_>) -> Result<Pla
     for _ in 0..count {
         profile_ids.push(decoder.read_uuid()?);
     }
-    Ok(PlayerInfoRemove { profile_ids })
+    let packet = PlayerInfoRemove { profile_ids };
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after player info remove packet".to_string(),
+        ));
+    }
+    Ok(packet)
 }
 
 pub(super) fn decode_player_info_update(decoder: &mut Decoder<'_>) -> Result<PlayerInfoUpdate> {
@@ -212,17 +218,24 @@ mod tests {
         payload.write_var_i32(2);
         payload.write_uuid(first);
         payload.write_uuid(second);
+        let payload = payload.into_inner();
 
-        let packet = decode_play_clientbound(
-            ids::play::CLIENTBOUND_PLAYER_INFO_REMOVE,
-            &payload.into_inner(),
-        )
-        .unwrap();
+        let packet =
+            decode_play_clientbound(ids::play::CLIENTBOUND_PLAYER_INFO_REMOVE, &payload).unwrap();
         assert_eq!(
             packet,
             PlayClientbound::PlayerInfoRemove(PlayerInfoRemove {
                 profile_ids: vec![first, second],
             })
+        );
+
+        let mut trailing = payload;
+        trailing.push(0);
+        assert!(
+            decode_play_clientbound(ids::play::CLIENTBOUND_PLAYER_INFO_REMOVE, &trailing)
+                .unwrap_err()
+                .to_string()
+                .contains("trailing bytes after player info remove packet")
         );
     }
 
