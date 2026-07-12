@@ -93,7 +93,6 @@ const VANILLA_SCALE_MAX: f64 = 16.0;
 const SNIFFER_DIGGING_HEIGHT_OFFSET: f32 = 0.4;
 const WIND_CHARGE_BOUNDS_SIZE: f32 = 0.3125;
 const WIND_CHARGE_BOUNDS_Y_OFFSET: f32 = -0.15;
-const WIND_CHARGE_PICK_RADIUS: f32 = 1.0;
 const DEFAULT_ENTITY_EYE_HEIGHT_RATIO: f32 = 0.85;
 pub(crate) const ENTITY_PASSENGER_VEHICLE_BOX_HEIGHT: f32 = 0.0625;
 
@@ -165,7 +164,13 @@ pub(crate) fn vanilla_pick_bounds_for_type(entity_type_id: i32) -> Option<Entity
     VANILLA_ENTITY_PICK_BOUNDS
         .binary_search_by_key(&entity_type_id, |(id, _)| *id)
         .ok()
-        .map(|index| VANILLA_ENTITY_PICK_BOUNDS[index].1)
+        .map(|index| {
+            let mut bounds = VANILLA_ENTITY_PICK_BOUNDS[index].1;
+            if vanilla_entity_type_is_redirectable_projectile(entity_type_id) {
+                bounds.pick_radius = 1.0;
+            }
+            bounds
+        })
 }
 
 pub(crate) fn vanilla_pick_bounds_for_entity_data(
@@ -223,7 +228,7 @@ pub(crate) fn vanilla_pick_bounds_for_entity_data(
     } else if entity_type_id == VANILLA_ENTITY_TYPE_BREEZE_WIND_CHARGE_ID
         || entity_type_id == VANILLA_ENTITY_TYPE_WIND_CHARGE_ID
     {
-        wind_charge_pick_bounds()
+        wind_charge_pick_bounds(entity_type_id)
     } else {
         vanilla_pick_bounds_for_type(entity_type_id)?
     };
@@ -1016,7 +1021,7 @@ fn phantom_pick_bounds(data_values: &[EntityDataValue]) -> EntityPickBoundsState
     EntityPickBoundsState::from_base_size(0.9, 0.5, 0.0).scale_dimensions(1.0 + 0.15 * size)
 }
 
-fn wind_charge_pick_bounds() -> EntityPickBoundsState {
+fn wind_charge_pick_bounds(entity_type_id: i32) -> EntityPickBoundsState {
     let half_width = WIND_CHARGE_BOUNDS_SIZE / 2.0;
     EntityPickBoundsState {
         min: [-half_width, WIND_CHARGE_BOUNDS_Y_OFFSET, -half_width],
@@ -1025,7 +1030,11 @@ fn wind_charge_pick_bounds() -> EntityPickBoundsState {
             WIND_CHARGE_BOUNDS_Y_OFFSET + WIND_CHARGE_BOUNDS_SIZE,
             half_width,
         ],
-        pick_radius: WIND_CHARGE_PICK_RADIUS,
+        pick_radius: if vanilla_entity_type_is_redirectable_projectile(entity_type_id) {
+            1.0
+        } else {
+            0.0
+        },
     }
 }
 
@@ -1656,7 +1665,7 @@ const VANILLA_ENTITY_PICK_BOUNDS: &[(i32, EntityPickBoundsState)] = &[
     (14, pick(0.6, 1.8, 0.0)),        // minecraft:blaze
     (16, pick(0.6, 1.99, 0.0)),       // minecraft:bogged
     (17, pick(0.6, 1.77, 0.0)),       // minecraft:breeze
-    (18, pick(0.3125, 0.3125, 1.0)),  // minecraft:breeze_wind_charge
+    (18, pick(0.3125, 0.3125, 0.0)),  // minecraft:breeze_wind_charge
     (19, pick(1.7, 2.375, 0.0)),      // minecraft:camel
     (20, pick(1.7, 2.375, 0.0)),      // minecraft:camel_husk
     (21, pick(0.6, 0.7, 0.0)),        // minecraft:cat
@@ -1685,7 +1694,7 @@ const VANILLA_ENTITY_PICK_BOUNDS: &[(i32, EntityPickBoundsState)] = &[
     (47, pick(0.5, 0.8, 0.0)),        // minecraft:evoker_fangs
     (49, pick(0.5, 0.5, 0.0)),        // minecraft:experience_orb
     (51, pick(0.98, 0.98, 0.0)),      // minecraft:falling_block
-    (52, pick(1.0, 1.0, 1.0)),        // minecraft:fireball
+    (52, pick(1.0, 1.0, 0.0)),        // minecraft:fireball
     (54, pick(0.6, 0.7, 0.0)),        // minecraft:fox
     (55, pick(0.5, 0.5, 0.0)),        // minecraft:frog
     (56, pick(0.98, 0.7, 0.0)),       // minecraft:furnace_minecart
@@ -1760,7 +1769,7 @@ const VANILLA_ENTITY_PICK_BOUNDS: &[(i32, EntityPickBoundsState)] = &[
     (140, pick(0.6, 1.95, 0.0)),      // minecraft:vindicator
     (141, pick(0.6, 1.95, 0.0)),      // minecraft:wandering_trader
     (142, pick(0.9, 2.9, 0.0)),       // minecraft:warden
-    (143, pick(0.3125, 0.3125, 1.0)), // minecraft:wind_charge
+    (143, pick(0.3125, 0.3125, 0.0)), // minecraft:wind_charge
     (144, pick(0.6, 1.95, 0.0)),      // minecraft:witch
     (145, pick(0.9, 3.5, 0.0)),       // minecraft:wither
     (146, pick(0.7, 2.4, 0.0)),       // minecraft:wither_skeleton

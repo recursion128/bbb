@@ -12550,3 +12550,9 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] core entity-type catalog 从 vanilla `entity_type/arrows` data tag 生成 Arrow/SpectralArrow
   两项 membership；world arrow presentation 查询删除手抄 type-id match，并用 Trident 负例锁定 tag
   语义不等于 `AbstractArrow` superclass。
+
+## 2026-07-12：Generated redirectable projectile membership
+
+- [x] core entity-type catalog 从 vanilla `redirectable_projectile` tag 生成 fireball 与两项
+  wind-charge membership；world pick radius 改由 typed tag query 派生，ShulkerBullet 的显式
+  `isPickable` override 仍作为独立源码行为特例，未扩张命中、伤害或权威 lifecycle。

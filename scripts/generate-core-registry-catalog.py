@@ -162,6 +162,7 @@ def render_damage_types(entries: list[RegistryEntry]) -> str:
 def render_entity_types(
     entries: list[EntityTypeEntry],
     arrows: frozenset[str],
+    redirectable_projectiles: frozenset[str],
     can_equip_saddle: frozenset[str],
     can_wear_horse_armor: frozenset[str],
 ) -> str:
@@ -180,6 +181,7 @@ def render_entity_types(
         "    pub only_op_can_set_nbt: bool,",
         "    pub serializable: bool,",
         "    pub in_arrows_tag: bool,",
+        "    pub redirectable_projectile: bool,",
         "    pub can_equip_saddle: bool,",
         "    pub can_wear_horse_armor: bool,",
         "}",
@@ -201,6 +203,7 @@ def render_entity_types(
                 f"        only_op_can_set_nbt: {str(entry.only_op_can_set_nbt).lower()},",
                 f"        serializable: {str(entry.serializable).lower()},",
                 f"        in_arrows_tag: {str(entry.resource_id in arrows).lower()},",
+                f"        redirectable_projectile: {str(entry.resource_id in redirectable_projectiles).lower()},",
                 f"        can_equip_saddle: {str(entry.resource_id in can_equip_saddle).lower()},",
                 f"        can_wear_horse_armor: {str(entry.resource_id in can_wear_horse_armor).lower()},",
                 "    },",
@@ -264,6 +267,12 @@ def render_entity_types(
             "        .unwrap_or(false)",
             "}",
             "",
+            "pub fn vanilla_entity_type_is_redirectable_projectile(entity_type_id: i32) -> bool {",
+            "    vanilla_entity_type(entity_type_id)",
+            "        .map(|entry| entry.redirectable_projectile)",
+            "        .unwrap_or(false)",
+            "}",
+            "",
             "pub fn vanilla_entity_type_can_wear_horse_armor(entity_type_id: i32) -> bool {",
             "    vanilla_entity_type(entity_type_id)",
             "        .map(|entry| entry.can_wear_horse_armor)",
@@ -291,6 +300,7 @@ def render_entity_types(
             "        assert_eq!(VANILLA_ENTITY_TYPES.iter().filter(|entry| entry.only_op_can_set_nbt).count(), 3);",
             "        assert_eq!(VANILLA_ENTITY_TYPES.iter().filter(|entry| !entry.serializable).count(), 4);",
             "        assert_eq!(VANILLA_ENTITY_TYPES.iter().filter(|entry| entry.in_arrows_tag).count(), 2);",
+            "        assert_eq!(VANILLA_ENTITY_TYPES.iter().filter(|entry| entry.redirectable_projectile).count(), 3);",
             "        assert_eq!(VANILLA_ENTITY_TYPES.iter().filter(|entry| entry.can_equip_saddle).count(), 11);",
             "        assert_eq!(VANILLA_ENTITY_TYPES.iter().filter(|entry| entry.can_wear_horse_armor).count(), 2);",
             "    }",
@@ -314,6 +324,15 @@ def render_entity_types(
             "        assert!(vanilla_entity_type_is_arrow_tagged(VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID));",
             "        assert!(!vanilla_entity_type_is_arrow_tagged(VANILLA_ENTITY_TYPE_TRIDENT_ID));",
             "        assert!(!vanilla_entity_type_is_arrow_tagged(-1));",
+            "    }",
+            "",
+            "    #[test]",
+            "    fn redirectable_projectile_membership_comes_from_the_vanilla_tag() {",
+            "        assert!(vanilla_entity_type_is_redirectable_projectile(VANILLA_ENTITY_TYPE_FIREBALL_ID));",
+            "        assert!(vanilla_entity_type_is_redirectable_projectile(VANILLA_ENTITY_TYPE_WIND_CHARGE_ID));",
+            "        assert!(vanilla_entity_type_is_redirectable_projectile(VANILLA_ENTITY_TYPE_BREEZE_WIND_CHARGE_ID));",
+            "        assert!(!vanilla_entity_type_is_redirectable_projectile(VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID));",
+            "        assert!(!vanilla_entity_type_is_redirectable_projectile(-1));",
             "    }",
             "",
             "    #[test]",
@@ -784,6 +803,14 @@ def generated_files(
             registry_name="entity type",
         )
     )
+    redirectable_projectiles = frozenset(
+        resolve_tag_values(
+            entity_type_tags,
+            "minecraft:redirectable_projectile",
+            3,
+            registry_name="entity type",
+        )
+    )
     can_equip_saddle = frozenset(
         resolve_tag_values(
             entity_type_tags,
@@ -801,7 +828,10 @@ def generated_files(
         )
     )
     unknown_tag_values = (
-        arrows | can_equip_saddle | can_wear_horse_armor
+        arrows
+        | redirectable_projectiles
+        | can_equip_saddle
+        | can_wear_horse_armor
     ) - entity_type_resources
     if unknown_tag_values:
         raise ValueError(
@@ -817,7 +847,11 @@ def generated_files(
         ),
         entity_types_output: format_rust(
             render_entity_types(
-                entity_types, arrows, can_equip_saddle, can_wear_horse_armor
+                entity_types,
+                arrows,
+                redirectable_projectiles,
+                can_equip_saddle,
+                can_wear_horse_armor,
             )
         ),
         block_entity_types_output: format_rust(
