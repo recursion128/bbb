@@ -54,6 +54,7 @@ public class EntityType {
   public static final EntityType<Two> TWO = register(
       "two", Builder.of(Two::new)
           .notInPeaceful());
+  private static final Set<EntityType<?>> OP_ONLY_CUSTOM_DATA = Set.of(TWO);
   private static String fake = ".notInPeaceful() register(\\\"fake\\\")";
 }
 """,
@@ -61,6 +62,7 @@ public class EntityType {
         entries = entity_type_entries(source, expected_count=2)
         self.assertEqual([entry.resource_id for entry in entries], ["minecraft:one", "minecraft:two"])
         self.assertEqual([entry.allowed_in_peaceful for entry in entries], [True, False])
+        self.assertEqual([entry.only_op_can_set_nbt for entry in entries], [False, True])
 
     def test_other_registry_field_shapes_use_cst_arguments_and_builder_calls(self) -> None:
         block_source = parse_source(
@@ -70,6 +72,7 @@ package fixture;
 public class BlockEntityType {
   public static final BlockEntityType<One> ONE = register(
       "one", One::new, Blocks.ONE, Blocks.OTHER);
+  private static final Set<BlockEntityType<?>> OP_ONLY_CUSTOM_DATA = Set.of(ONE);
 }
 """,
         )
@@ -110,6 +113,9 @@ public class ParticleTypes {
             block_entity_type_entries(block_source, expected_count=1)[0].resource_id,
             "minecraft:one",
         )
+        self.assertTrue(
+            block_entity_type_entries(block_source, expected_count=1)[0].only_op_can_set_nbt
+        )
         self.assertEqual(
             data_component_predicate_type_entries(predicate_source, expected_count=1)[
                 0
@@ -132,12 +138,30 @@ public class ParticleTypes {
 package fixture;
 public class BadEntityType {
   public static final EntityType<One> ONE = guess("one", Builder.of(One::new));
+  private static final Set<EntityType<?>> OP_ONLY_CUSTOM_DATA = Set.of();
 }
 """,
         )
         with self.assertRaisesRegex(
             CoreRegistryExtractionError,
             r"fixture/BadEntityType\.java:\d+:\d+: .*not initialized by register",
+        ):
+            entity_type_entries(source, expected_count=1)
+
+    def test_operator_only_set_rejects_unknown_registry_constants(self) -> None:
+        source = parse_source(
+            "fixture/UnknownOperatorEntityType.java",
+            b"""
+package fixture;
+public class EntityType {
+  public static final EntityType<One> ONE = register("one", Builder.of(One::new));
+  private static final Set<EntityType<?>> OP_ONLY_CUSTOM_DATA = Set.of(MISSING);
+}
+""",
+        )
+        with self.assertRaisesRegex(
+            CoreRegistryExtractionError,
+            r"UnknownOperatorEntityType\.java: OP_ONLY_CUSTOM_DATA references unknown entity types",
         ):
             entity_type_entries(source, expected_count=1)
 

@@ -12457,3 +12457,11 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   语义不变。
 - [x] source-structure test 排除 test fixture 后拒绝 component-patch encoder 生产代码重新引入裸数字
   match arm，确保新增/共享 encoder 只引用统一 catalog aliases。
+
+## 2026-07-12：Generated operator-only custom-data memberships
+
+- [x] core registry extractor 通过统一 Tree-sitter Java frontend 从 `EntityType` 与
+  `BlockEntityType` 的 `OP_ONLY_CUSTOM_DATA = Set.of(...)` 提取纯声明属性；generated descriptor
+  分别锁定 3 个 entity type 与 6 个 block-entity type，并对重复、非常量、未知成员显式失败。
+- [x] item tooltip 的 operator NBT warning 删除 block-entity 裸协议 ID 与 entity 平行列表，统一查询
+  generated catalog 的 `only_op_can_set_nbt`；tooltip 行为、权限检查与 component removal 优先级不变。

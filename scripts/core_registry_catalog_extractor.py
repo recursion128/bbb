@@ -23,6 +23,14 @@ class EntityTypeEntry:
     constant_name: str
     resource_id: str
     allowed_in_peaceful: bool
+    only_op_can_set_nbt: bool
+
+
+@dataclass(frozen=True)
+class BlockEntityTypeEntry:
+    constant_name: str
+    resource_id: str
+    only_op_can_set_nbt: bool
 
 
 @dataclass(frozen=True)
@@ -112,6 +120,38 @@ def _fields_with_type(source: JavaSource, prefixes: tuple[str, ...]) -> list[Jav
     ]
 
 
+def _constant_set_members(source: JavaSource, field_name: str) -> set[str]:
+    fields = [field for field in source.fields if field.name == field_name]
+    if len(fields) != 1:
+        raise CoreRegistryExtractionError(
+            f"{source.relative_path}: expected one {field_name} field, found {len(fields)}"
+        )
+    field = fields[0]
+    initializer = field.initializer
+    if initializer is None:
+        _fail(
+            source,
+            JavaExpression("", field.span, field.node),
+            f"{field_name} lacks an initializer",
+        )
+    calls = _calls_in_expression(source, initializer, "of")
+    calls = [
+        call
+        for call in calls
+        if call.qualifier is not None and call.qualifier.canonical == "Set"
+    ]
+    if len(calls) != 1 or calls[0].span != initializer.span:
+        _fail(source, initializer, f"{field_name} is not initialized by Set.of")
+    members: list[str] = []
+    for argument in calls[0].arguments:
+        if argument.node.type != "identifier":
+            _fail(source, argument, f"{field_name} member is not a registry constant")
+        members.append(argument.canonical)
+    if len(members) != len(set(members)):
+        _fail(source, initializer, f"{field_name} contains duplicate constants")
+    return set(members)
+
+
 def damage_type_entries(source: JavaSource) -> list[RegistryEntry]:
     resources: dict[str, str] = {}
     fields = _fields_with_type(source, ("ResourceKey<DamageType>",))
@@ -162,6 +202,7 @@ def damage_type_entries(source: JavaSource) -> list[RegistryEntry]:
 def entity_type_entries(
     source: JavaSource, expected_count: int = 157
 ) -> list[EntityTypeEntry]:
+    op_only_constants = _constant_set_members(source, "OP_ONLY_CUSTOM_DATA")
     entries: list[EntityTypeEntry] = []
     for field in _fields_with_type(source, ("EntityType<",)):
         arguments = _register_arguments(source, field)
@@ -172,6 +213,7 @@ def entity_type_entries(
                 field.name,
                 _string_literal(source, arguments[0]),
                 not _calls_in_expression(source, field.initializer, "notInPeaceful"),
+                field.name in op_only_constants,
             )
         )
     if len(entries) != expected_count:
@@ -179,23 +221,42 @@ def entity_type_entries(
             f"expected {expected_count} entity types, extracted {len(entries)}"
         )
     _validate_unique(entries, "entity type")
+    unknown = op_only_constants - {entry.constant_name for entry in entries}
+    if unknown:
+        raise CoreRegistryExtractionError(
+            f"{source.relative_path}: OP_ONLY_CUSTOM_DATA references unknown entity types: "
+            f"{sorted(unknown)}"
+        )
     return entries
 
 
 def block_entity_type_entries(
     source: JavaSource, expected_count: int = 49
-) -> list[RegistryEntry]:
-    entries: list[RegistryEntry] = []
+) -> list[BlockEntityTypeEntry]:
+    op_only_constants = _constant_set_members(source, "OP_ONLY_CUSTOM_DATA")
+    entries: list[BlockEntityTypeEntry] = []
     for field in _fields_with_type(source, ("BlockEntityType<",)):
         arguments = _register_arguments(source, field)
         if len(arguments) < 2:
             _fail(source, field.initializer, f"block entity register has {len(arguments)} arguments")
-        entries.append(RegistryEntry(field.name, _string_literal(source, arguments[0])))
+        entries.append(
+            BlockEntityTypeEntry(
+                field.name,
+                _string_literal(source, arguments[0]),
+                field.name in op_only_constants,
+            )
+        )
     if len(entries) != expected_count:
         raise CoreRegistryExtractionError(
             f"expected {expected_count} block entity types, extracted {len(entries)}"
         )
     _validate_unique(entries, "block entity type")
+    unknown = op_only_constants - {entry.constant_name for entry in entries}
+    if unknown:
+        raise CoreRegistryExtractionError(
+            f"{source.relative_path}: OP_ONLY_CUSTOM_DATA references unknown block entity types: "
+            f"{sorted(unknown)}"
+        )
     return entries
 
 

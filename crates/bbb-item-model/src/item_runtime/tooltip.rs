@@ -7,8 +7,11 @@ use bbb_protocol::{
         VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_MULTIPLIED_TOTAL_ID,
     },
     attribute_types::vanilla_attribute_type,
+    block_entity_types::vanilla_block_entity_type_only_op_can_set_nbt,
     builtin_enum_component_values::{normalize_vanilla_dye_color_id, vanilla_dye_color_name},
-    entity_types::vanilla_entity_type_allowed_in_peaceful,
+    entity_types::{
+        vanilla_entity_type_allowed_in_peaceful, vanilla_entity_type_only_op_can_set_nbt,
+    },
     equipment_slots::VANILLA_EQUIPMENT_SLOT_GROUPS,
     packets::{
         AdventureModePredicateSummary, AttributeModifierSummary, PaintingVariantSummary,
@@ -139,12 +142,6 @@ const COMPONENT_PAINTING_VARIANT_TYPE_ID: i32 =
     component_id::VANILLA_DATA_COMPONENT_PAINTING_VARIANT_TYPE_ID;
 const COMPONENT_BLOCK_ENTITY_DATA_TYPE_ID: i32 =
     component_id::VANILLA_DATA_COMPONENT_BLOCK_ENTITY_DATA_TYPE_ID;
-const OP_ONLY_BLOCK_ENTITY_TYPE_IDS: &[i32] = &[7, 8, 9, 23, 30, 44];
-const OP_ONLY_ENTITY_TYPE_IDS: &[i32] = &[
-    bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID,
-    bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID,
-    bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID,
-];
 #[cfg(test)]
 const fn painting_variant(
     key: &'static str,
@@ -1114,6 +1111,19 @@ fn push_smithing_template_tooltip_lines(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn operator_only_type_membership_stays_delegated_to_generated_catalogs() {
+        let source = include_str!("tooltip.rs");
+        for old_table in [
+            ["const OP_ONLY_BLOCK_", "ENTITY_TYPE_IDS"].concat(),
+            ["const OP_ONLY_", "ENTITY_TYPE_IDS"].concat(),
+        ] {
+            assert!(!source.contains(&old_table));
+        }
+        assert!(source.contains("vanilla_block_entity_type_only_op_can_set_nbt"));
+        assert!(source.contains("vanilla_entity_type_only_op_can_set_nbt"));
+    }
 
     #[test]
     fn vanilla_instrument_keys_follow_26_1_goat_horn_registry_order() {
@@ -3094,7 +3104,7 @@ impl NativeItemRuntime {
                 .contains(&COMPONENT_BLOCK_ENTITY_DATA_TYPE_ID)
             && component_patch
                 .block_entity_data_type_id
-                .is_some_and(|type_id| OP_ONLY_BLOCK_ENTITY_TYPE_IDS.contains(&type_id))
+                .is_some_and(vanilla_block_entity_type_only_op_can_set_nbt)
         {
             return true;
         }
@@ -3104,7 +3114,7 @@ impl NativeItemRuntime {
                 .contains(&COMPONENT_ENTITY_DATA_TYPE_ID)
             && component_patch
                 .entity_data_entity_type_id
-                .is_some_and(|type_id| OP_ONLY_ENTITY_TYPE_IDS.contains(&type_id))
+                .is_some_and(vanilla_entity_type_only_op_can_set_nbt)
     }
 
     fn template_hover_name_arg(&self, item: &ItemStackTemplateSummary) -> Option<TooltipTextArg> {
