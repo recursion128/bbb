@@ -3907,6 +3907,32 @@ mod tests {
         }
     }
 
+    #[test]
+    fn play_serverbound_player_command_keeps_response_runtime_gaps_open() {
+        let ledger = vanilla_packet_coverage_26_1().unwrap();
+        let entry = ledger
+            .entries
+            .iter()
+            .find(|entry| {
+                entry.state == "play" && entry.constant_name == "SERVERBOUND_PLAYER_COMMAND"
+            })
+            .expect("play serverbound player command coverage row");
+        for dimension in ["command_surface", "encoder"] {
+            assert_eq!(
+                entry.coverage[dimension].status,
+                PacketCoverageStatus::Complete,
+                "{dimension}"
+            );
+        }
+        for dimension in ["ack_response", "state_guard", "tests"] {
+            assert_eq!(
+                entry.coverage[dimension].status,
+                PacketCoverageStatus::Partial,
+                "{dimension}"
+            );
+        }
+    }
+
     fn state_name(state: PacketState) -> &'static str {
         match state {
             PacketState::Handshake => "handshake",

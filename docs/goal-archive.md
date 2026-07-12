@@ -11891,3 +11891,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] 8 个 26.1 action（start/abort/stop destroy、drop all/one、release use、swap offhand、stab）的 generated ordinal、通用 wire、native key/mouse/focus-loss command surface、driver 与 focused tests 已反向审计；command/encoder 闭合。
 - [x] destroy prediction sequence/BlockChangedAck reconcile 已存在，但剩余 STOP sequencing、block attack/particle/profile 语义继续开放；drop/swap/release/stab 的 inventory/item-use/effect 结果仍由服务器广播权威确认且受 component-rich state 缺口约束，因此 ack/state/tests 保持 partial。
+
+## 2026-07-12：play serverbound player-command packet coverage audit
+
+- [x] 7 个 26.1 action 的 generated ordinal、entity-id/action/data wire，以及 stop-sleeping、sprint start/stop、charged riding jump、server-controlled mount inventory、start-fall-flying 的 vanilla-emitted native paths 已反向审计；command/encoder 闭合。`STOP_RIDING_JUMP` 在 enum 中保留但 vanilla 26.1 client 无发送点。
+- [x] sleeping position、mount screen/jump、fall-flying metadata 等结果仍以服务器广播为权威，并受相邻 player-position/open-screen/entity-metadata/vehicle runtime 缺口约束；因此 ack/state/tests 保持 partial，未把请求可发送误标为完整行为。
