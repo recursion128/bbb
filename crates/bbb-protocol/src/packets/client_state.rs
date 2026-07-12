@@ -370,10 +370,12 @@ pub(super) fn decode_player_abilities(decoder: &mut Decoder<'_>) -> Result<Playe
 }
 
 pub(super) fn decode_remove_mob_effect(decoder: &mut Decoder<'_>) -> Result<RemoveMobEffect> {
-    Ok(RemoveMobEffect {
+    let packet = RemoveMobEffect {
         entity_id: decoder.read_var_i32()?,
         effect_id: decoder.read_var_i32()?,
-    })
+    };
+    ensure_client_state_packet_consumed(decoder, "remove mob effect")?;
+    Ok(packet)
 }
 
 pub(super) fn decode_set_action_bar_text(decoder: &mut Decoder<'_>) -> Result<SetActionBarText> {

@@ -401,6 +401,15 @@ fn decodes_remove_mob_effect_packet_wire_order() {
     assert_eq!(decoder.read_var_i32().unwrap(), 123);
     assert_eq!(decoder.read_var_i32().unwrap(), 5);
     assert!(decoder.is_empty());
+
+    let mut trailing = payload;
+    trailing.push(0);
+    assert!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_REMOVE_MOB_EFFECT, &trailing)
+            .unwrap_err()
+            .to_string()
+            .contains("trailing bytes after remove mob effect packet")
+    );
 }
 
 #[test]

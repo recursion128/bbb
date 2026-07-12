@@ -11711,3 +11711,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] Add/Remove/Settings wire、strict trailing、replace/known/highlight/remove 与四类 open/filter settings canonical semantics 已审计。
 - [x] Remove/Settings 五格闭合；Add 的 RecipeToast 和剩余 SlotDisplay/component menu 呈现仍开放，runtime/tests 保持 partial。
+
+## 2026-07-12：play remove mob effect packet coverage audit
+
+- [x] entity/effect holder wire、strict trailing、missing/non-living/no-current-effect gate、canonical removal/count refresh 与跨 crate tests 已审计。
+- [x] 完整 effect attributes/HUD/particles/specialized movement/render consumers 继续由既有 mob-effect ledger 维护，runtime 保持 partial。

@@ -522,6 +522,7 @@ play PlayerInfoRemove 的 bounded UUID list/strict trailing、player-info/listed
 play PlayerInfoUpdate 的 8-action/bounded profile-property/key wire、strict trailing、unknown-player gating、canonical profile/listed/latency/game-mode baseline 与 ownership 已审计；rich display Component、chat-session key validation/secure policy、PlayerSocialManager add 与完整 tab/social presentation 未完成，除 ownership 外四格保持 partial。
 play PlayerLookAt 的 anchor/absolute-or-entity wire、strict trailing、missing-entity fallback、local from-anchor eye height 与 target type/pose-aware eye height rotation/runtime tests 已闭合。
 play RecipeBook Add/Remove/Settings 的 bounded display-id/settings wire、strict trailing、replace/known/highlight/remove/open/filter canonical ownership 已审计；Remove/Settings 五格闭合，Add 的 RecipeToast 与剩余 SlotDisplay/component menu 呈现使 runtime/tests 保持 partial。
+play RemoveMobEffect 的 entity/effect holder wire、strict trailing、living/current-effect removal gate、canonical counters/refresh、ownership 与 tests 已闭合；完整 vanilla effect attributes/HUD/particles/specialized consumers 使 runtime 保持 partial。
 
 完成标准：全部 vanilla 26.1 catalog entry 都有矩阵行；所有目标客户端适用项为
 `complete`，其余只有带 vanilla 依据的 `not-applicable` 或带重启判据的窄 `deferred`；
