@@ -743,11 +743,22 @@ impl InventoryState {
         &mut self,
         counters: &mut WorldCounters,
         packet: ProtocolContainerSetData,
-    ) {
+    ) -> bool {
         counters.container_data_updates_received += 1;
-        let container = self.ensure_container(packet.container_id);
+        let container = if packet.container_id == INVENTORY_MENU_CONTAINER_ID {
+            self.inventory_menu_container()
+        } else if let Some(container) = self
+            .open_container
+            .as_mut()
+            .filter(|container| container.container_id == packet.container_id)
+        {
+            container
+        } else {
+            return false;
+        };
         set_container_data_value(&mut container.data_values, packet.id, packet.value);
         self.update_merchant_offer_count(counters);
+        true
     }
 
     pub(crate) fn apply_container_close(
@@ -2073,7 +2084,7 @@ impl WorldStore {
             .apply_container_set_slot(&mut self.counters, packet)
     }
 
-    pub fn apply_container_set_data(&mut self, packet: ProtocolContainerSetData) {
+    pub fn apply_container_set_data(&mut self, packet: ProtocolContainerSetData) -> bool {
         self.inventory
             .apply_container_set_data(&mut self.counters, packet)
     }

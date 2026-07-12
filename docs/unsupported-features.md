@@ -584,6 +584,9 @@ back into a todo. Do not delete these.
   packet field is redundant: ContainerClose carries an id but the 26.1 client
   closes its current menu unconditionally; matching-id behavior is not an
   additional authority check.
+- ContainerSetData is gated by the current `containerMenu` id in vanilla.
+  Mismatched property updates must remain ignored rather than creating a future
+  synthetic menu or replacing the active one.
 - `BeaconMenu`: confirm/cancel hover state, effect highlighted hover state,
   labels/tooltips.
 - `EnchantmentMenu`: animated book model, enchanting glyph text and its

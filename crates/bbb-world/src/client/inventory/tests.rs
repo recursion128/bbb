@@ -122,6 +122,51 @@ fn tracks_player_inventory_and_container_state() {
 }
 
 #[test]
+fn container_set_data_only_updates_the_matching_active_menu() {
+    let mut store = WorldStore::new();
+
+    assert!(!store.apply_container_set_data(ProtocolContainerSetData {
+        container_id: 7,
+        id: 2,
+        value: 9,
+    }));
+    assert!(store.inventory().open_container.is_none());
+
+    assert!(store.apply_container_set_data(ProtocolContainerSetData {
+        container_id: 0,
+        id: 1,
+        value: 3,
+    }));
+    assert_eq!(
+        store.inventory().inventory_menu.data_values,
+        vec![ContainerDataValue { id: 1, value: 3 }]
+    );
+
+    store.apply_open_screen(ProtocolOpenScreen {
+        container_id: 7,
+        menu_type_id: 2,
+        title: "Chest".to_string(),
+        title_styled: Vec::new(),
+    });
+    assert!(!store.apply_container_set_data(ProtocolContainerSetData {
+        container_id: 8,
+        id: 2,
+        value: 10,
+    }));
+    let container = store.inventory().open_container.as_ref().unwrap();
+    assert_eq!(container.container_id, 7);
+    assert!(container.data_values.is_empty());
+
+    assert!(store.apply_container_set_data(ProtocolContainerSetData {
+        container_id: 7,
+        id: 2,
+        value: 11,
+    }));
+    assert_eq!(store.open_container_data_value(2), Some(11));
+    assert_eq!(store.counters().container_data_updates_received, 4);
+}
+
+#[test]
 fn mount_equipment_visibility_follows_vanilla_horse_type_tags() {
     assert_eq!(
         mount_visibility_for_entity(VANILLA_ENTITY_TYPE_HORSE_ID, Vec::new()),

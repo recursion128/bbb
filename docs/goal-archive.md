@@ -11414,3 +11414,10 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] 对照 `ClientboundContainerClosePacket` 锁定 container id VarInt wire并拒绝 trailing bytes。
 - [x] 修正 bbb 先前 matching-id gate：vanilla handler 忽略 packet id 并无条件 `clientSideCloseContainer`；现在
   任意合法 packet 关闭当前 local/server menu，仅无 active container 时 ignored，五格证据闭合。
+
+## 2026-07-12：play container-set-data packet coverage audit
+
+- [x] 对照 `ClientboundContainerSetDataPacket` 锁定 container id VarInt + property/value signed-short wire并拒绝
+  trailing bytes。
+- [x] world 只对 inventory menu id 0 或匹配当前 active server menu 的 packet 更新 property；不匹配 id 不再通过
+  `ensure_container` 创建/替换 synthetic menu，五格证据闭合。

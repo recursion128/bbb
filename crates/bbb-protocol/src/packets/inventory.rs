@@ -150,11 +150,17 @@ pub(super) fn decode_container_set_content(
 }
 
 pub(super) fn decode_container_set_data(decoder: &mut Decoder<'_>) -> Result<ContainerSetData> {
-    Ok(ContainerSetData {
+    let packet = ContainerSetData {
         container_id: decoder.read_var_i32()?,
         id: decoder.read_i16()?,
         value: decoder.read_i16()?,
-    })
+    };
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after container set data packet".to_string(),
+        ));
+    }
+    Ok(packet)
 }
 
 pub(super) fn decode_container_set_slot(decoder: &mut Decoder<'_>) -> Result<ContainerSetSlot> {
@@ -415,6 +421,19 @@ mod tests {
                 value: 42,
             })
         );
+        let mut trailing = Encoder::new();
+        trailing.write_var_i32(7);
+        trailing.write_i16(3);
+        trailing.write_i16(42);
+        trailing.write_u8(0);
+        let error = decode_play_clientbound(
+            ids::play::CLIENTBOUND_CONTAINER_SET_DATA,
+            &trailing.into_inner(),
+        )
+        .unwrap_err();
+        assert!(error
+            .to_string()
+            .contains("trailing bytes after container set data packet"));
 
         let mut payload = Encoder::new();
         payload.write_var_i32(7);
