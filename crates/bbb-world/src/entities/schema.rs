@@ -219,6 +219,8 @@ pub struct VanillaEntityTypeMetadataCatalogEntry {
     pub is_living: bool,
     pub is_animal: bool,
     pub is_projectile: bool,
+    pub is_hurting_projectile: bool,
+    pub is_wind_charge: bool,
     pub diagnostic: Option<&'static str>,
 }
 
@@ -330,6 +332,20 @@ pub fn vanilla_entity_metadata_type_is_projectile(entity_type_id: i32) -> bool {
     VANILLA_ENTITY_TYPE_METADATA_26_1
         .get(usize::try_from(entity_type_id).unwrap_or(usize::MAX))
         .map(|entry| entry.is_projectile)
+        .unwrap_or(false)
+}
+
+pub fn vanilla_entity_metadata_type_is_hurting_projectile(entity_type_id: i32) -> bool {
+    VANILLA_ENTITY_TYPE_METADATA_26_1
+        .get(usize::try_from(entity_type_id).unwrap_or(usize::MAX))
+        .map(|entry| entry.is_hurting_projectile)
+        .unwrap_or(false)
+}
+
+pub fn vanilla_entity_metadata_type_is_wind_charge(entity_type_id: i32) -> bool {
+    VANILLA_ENTITY_TYPE_METADATA_26_1
+        .get(usize::try_from(entity_type_id).unwrap_or(usize::MAX))
+        .map(|entry| entry.is_wind_charge)
         .unwrap_or(false)
 }
 
@@ -468,6 +484,20 @@ mod tests {
                 .filter(|entry| entry.is_projectile)
                 .count(),
             19
+        );
+        assert_eq!(
+            VANILLA_ENTITY_TYPE_METADATA_26_1
+                .iter()
+                .filter(|entry| entry.is_hurting_projectile)
+                .count(),
+            6
+        );
+        assert_eq!(
+            VANILLA_ENTITY_TYPE_METADATA_26_1
+                .iter()
+                .filter(|entry| entry.is_wind_charge)
+                .count(),
+            2
         );
         assert!(vanilla_entity_metadata_type_is_living(
             VANILLA_ENTITY_TYPE_PLAYER_ID

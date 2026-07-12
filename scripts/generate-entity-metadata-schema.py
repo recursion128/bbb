@@ -2817,6 +2817,8 @@ def render(result: ExtractionResult) -> str:
                 f"        is_living: {str(extends_class(item.runtime_class, 'net.minecraft.world.entity.LivingEntity')).lower()},",
                 f"        is_animal: {str(extends_class(item.runtime_class, 'net.minecraft.world.entity.animal.Animal')).lower()},",
                 f"        is_projectile: {str(extends_class(item.runtime_class, 'net.minecraft.world.entity.projectile.Projectile')).lower()},",
+                f"        is_hurting_projectile: {str(extends_class(item.runtime_class, 'net.minecraft.world.entity.projectile.hurtingprojectile.AbstractHurtingProjectile')).lower()},",
+                f"        is_wind_charge: {str(extends_class(item.runtime_class, 'net.minecraft.world.entity.projectile.hurtingprojectile.windcharge.AbstractWindCharge')).lower()},",
                 f"        diagnostic: {option_string(item.diagnostic)},",
                 "    },",
             ]

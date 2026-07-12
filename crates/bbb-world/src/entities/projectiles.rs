@@ -8,7 +8,8 @@ use uuid::Uuid;
 use crate::{HurtingProjectileState, ProjectilePowerUpdateState, WorldStore};
 
 use super::schema::{
-    vanilla_entity_metadata_type_is_projectile,
+    vanilla_entity_metadata_type_is_hurting_projectile, vanilla_entity_metadata_type_is_projectile,
+    vanilla_entity_metadata_type_is_wind_charge,
     VANILLA_ABSTRACT_ARROW_DEFAULT_FLAGS as ABSTRACT_ARROW_DEFAULT_FLAGS,
     VANILLA_ABSTRACT_ARROW_DEFAULT_IN_GROUND as ABSTRACT_ARROW_DEFAULT_IN_GROUND,
     VANILLA_ABSTRACT_ARROW_FLAGS_DATA_ID as ABSTRACT_ARROW_FLAGS_DATA_ID,
@@ -439,22 +440,11 @@ fn advance_trident_lifecycle(
 }
 
 fn is_vanilla_hurting_projectile_type(entity_type_id: i32) -> bool {
-    matches!(
-        entity_type_id,
-        VANILLA_ENTITY_TYPE_BREEZE_WIND_CHARGE_ID
-            | VANILLA_ENTITY_TYPE_DRAGON_FIREBALL_ID
-            | VANILLA_ENTITY_TYPE_FIREBALL_ID
-            | VANILLA_ENTITY_TYPE_SMALL_FIREBALL_ID
-            | VANILLA_ENTITY_TYPE_WIND_CHARGE_ID
-            | VANILLA_ENTITY_TYPE_WITHER_SKULL_ID
-    )
+    vanilla_entity_metadata_type_is_hurting_projectile(entity_type_id)
 }
 
 fn is_vanilla_wind_charge_type(entity_type_id: i32) -> bool {
-    matches!(
-        entity_type_id,
-        VANILLA_ENTITY_TYPE_BREEZE_WIND_CHARGE_ID | VANILLA_ENTITY_TYPE_WIND_CHARGE_ID
-    )
+    vanilla_entity_metadata_type_is_wind_charge(entity_type_id)
 }
 
 #[cfg(test)]
@@ -489,6 +479,28 @@ mod tests {
         ));
         assert!(!is_vanilla_saved_projectile_type(
             VANILLA_ENTITY_TYPE_OAK_BOAT_ID
+        ));
+    }
+
+    #[test]
+    fn hurting_projectile_subclasses_come_from_generated_inheritance() {
+        assert_eq!(
+            (0..157)
+                .filter(|id| is_vanilla_hurting_projectile_type(*id))
+                .count(),
+            6
+        );
+        assert_eq!(
+            (0..157)
+                .filter(|id| is_vanilla_wind_charge_type(*id))
+                .count(),
+            2
+        );
+        assert!(is_vanilla_hurting_projectile_type(
+            VANILLA_ENTITY_TYPE_WITHER_SKULL_ID
+        ));
+        assert!(!is_vanilla_hurting_projectile_type(
+            VANILLA_ENTITY_TYPE_ARROW_ID
         ));
     }
 

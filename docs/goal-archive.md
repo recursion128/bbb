@@ -12503,3 +12503,11 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] `FishingHook extends Projectile` 但其 builder 明确 `.noSave()`，因此仍被安全排除；其余 18 个
   saveable projectile 的 owner/left-owner/shot/trident lifecycle 行为保持原 world owner，本切片不扩张
   命中、伤害、爆炸或服务端权威移除。
+
+## 2026-07-12：Derived hurting-projectile subclasses
+
+- [x] metadata descriptor 从 runtime superclass 图派生 6 项 `AbstractHurtingProjectile` 与 2 项
+  `AbstractWindCharge` membership；world 删除对应 type-id matches，projectile power、加速度与
+  client presentation 仍由原 semantic owner 实现。
+- [x] focused tests 锁定 WitherSkull 正例、Arrow 负例以及 6/2 完整计数；继承事实不代表命中、伤害、
+  爆炸、方块修改或服务端权威 lifecycle 已实现。

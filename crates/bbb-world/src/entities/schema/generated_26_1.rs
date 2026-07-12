@@ -12433,6 +12433,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: false,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12444,6 +12446,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: false,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12455,6 +12459,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12466,6 +12472,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: false,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12477,6 +12485,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: true,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12488,6 +12498,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12499,6 +12511,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: false,
         is_animal: false,
         is_projectile: true,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12510,6 +12524,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: true,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12521,6 +12537,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: false,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12532,6 +12550,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: false,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12543,6 +12563,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12554,6 +12576,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: true,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12565,6 +12589,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: false,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12576,6 +12602,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: false,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12587,6 +12615,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12598,6 +12628,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: false,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12609,6 +12641,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12620,6 +12654,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12633,6 +12669,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: false,
         is_animal: false,
         is_projectile: true,
+        is_hurting_projectile: true,
+        is_wind_charge: true,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12644,6 +12682,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: true,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12655,6 +12695,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: true,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12666,6 +12708,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: true,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12677,6 +12721,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12688,6 +12734,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: false,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12699,6 +12747,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: false,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12710,6 +12760,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: false,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12721,6 +12773,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: true,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12732,6 +12786,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12743,6 +12799,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12754,6 +12812,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: false,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12765,6 +12825,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: true,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12776,6 +12838,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12787,6 +12851,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12798,6 +12864,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: false,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12809,6 +12877,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: false,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12820,6 +12890,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12831,6 +12903,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: true,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12844,6 +12918,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: false,
         is_animal: false,
         is_projectile: true,
+        is_hurting_projectile: true,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12855,6 +12931,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12870,6 +12948,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: false,
         is_animal: false,
         is_projectile: true,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12881,6 +12961,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12892,6 +12974,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12903,6 +12987,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12914,6 +13000,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12929,6 +13017,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: false,
         is_animal: false,
         is_projectile: true,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12940,6 +13030,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: false,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12951,6 +13043,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12962,6 +13056,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: false,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12977,6 +13073,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: false,
         is_animal: false,
         is_projectile: true,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12988,6 +13086,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: false,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12999,6 +13099,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: false,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13010,6 +13112,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: false,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13023,6 +13127,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: false,
         is_animal: false,
         is_projectile: true,
+        is_hurting_projectile: true,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13034,6 +13140,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: false,
         is_animal: false,
         is_projectile: true,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13045,6 +13153,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: true,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13056,6 +13166,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: true,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13067,6 +13179,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: false,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13078,6 +13192,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13089,6 +13205,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: true,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13100,6 +13218,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13111,6 +13231,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: false,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13122,6 +13244,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13133,6 +13257,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: true,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13144,6 +13270,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13155,6 +13283,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: true,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13166,6 +13296,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: false,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13177,6 +13309,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: true,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13188,6 +13322,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13199,6 +13335,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13210,6 +13348,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: false,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13221,6 +13361,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13232,6 +13374,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: false,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13243,6 +13387,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: false,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13254,6 +13400,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: false,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13265,6 +13413,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: false,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13276,6 +13426,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: false,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13287,6 +13439,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: false,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13298,6 +13452,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: false,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13309,6 +13465,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: true,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13320,6 +13478,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: false,
         is_animal: false,
         is_projectile: true,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13331,6 +13491,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13342,6 +13504,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: false,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13353,6 +13517,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: false,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13364,6 +13530,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13375,6 +13543,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: false,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13386,6 +13556,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: false,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13397,6 +13569,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: true,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13408,6 +13582,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: true,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13419,6 +13595,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: true,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13430,6 +13608,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: false,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13441,6 +13621,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: false,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13452,6 +13634,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: true,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13463,6 +13647,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: false,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13474,6 +13660,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: false,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13485,6 +13673,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: false,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13496,6 +13686,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: false,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13507,6 +13699,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: true,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13518,6 +13712,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13529,6 +13725,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: true,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13540,6 +13738,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13551,6 +13751,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: true,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13562,6 +13764,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13573,6 +13777,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13584,6 +13790,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13595,6 +13803,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: true,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13610,6 +13820,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: false,
         is_animal: false,
         is_projectile: true,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13625,6 +13837,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: false,
         is_animal: false,
         is_projectile: true,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13636,6 +13850,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13647,6 +13863,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: true,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13658,6 +13876,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13669,6 +13889,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13680,6 +13902,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: true,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13691,6 +13915,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13702,6 +13928,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: false,
         is_animal: false,
         is_projectile: true,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13713,6 +13941,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13724,6 +13954,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13735,6 +13967,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: true,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13746,6 +13980,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13759,6 +13995,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: false,
         is_animal: false,
         is_projectile: true,
+        is_hurting_projectile: true,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13770,6 +14008,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: true,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13785,6 +14025,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: false,
         is_animal: false,
         is_projectile: true,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13796,6 +14038,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13807,6 +14051,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: false,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13818,6 +14064,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: false,
         is_animal: false,
         is_projectile: true,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13829,6 +14077,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13840,6 +14090,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: false,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13851,6 +14103,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: false,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13862,6 +14116,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13873,6 +14129,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13884,6 +14142,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: true,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13895,6 +14155,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13906,6 +14168,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: false,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13917,6 +14181,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: false,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13928,6 +14194,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: false,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13939,6 +14207,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: true,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13950,6 +14220,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: false,
         is_animal: false,
         is_projectile: true,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13961,6 +14233,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13972,6 +14246,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: true,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13983,6 +14259,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13994,6 +14272,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -14005,6 +14285,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -14016,6 +14298,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -14027,6 +14311,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -14040,6 +14326,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: false,
         is_animal: false,
         is_projectile: true,
+        is_hurting_projectile: true,
+        is_wind_charge: true,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -14051,6 +14339,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -14062,6 +14352,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -14073,6 +14365,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -14084,6 +14378,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: false,
         is_animal: false,
         is_projectile: true,
+        is_hurting_projectile: true,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -14095,6 +14391,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: true,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -14106,6 +14404,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -14117,6 +14417,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -14128,6 +14430,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: true,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -14139,6 +14443,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: true,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -14150,6 +14456,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -14161,6 +14469,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -14172,6 +14482,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: true,
         is_animal: false,
         is_projectile: false,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -14183,6 +14495,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_living: false,
         is_animal: false,
         is_projectile: true,
+        is_hurting_projectile: false,
+        is_wind_charge: false,
         diagnostic: None,
     },
 ];
