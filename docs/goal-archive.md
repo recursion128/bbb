@@ -12615,3 +12615,9 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] metadata hierarchy 派生 AbstractPiglin 与 Spider 两组两项 membership；world aggressive-pose
   projection、native zombification overlay、F3+I spider save dispatch 与 camera post-effect 统一消费
   generated query，具体呈现与持久化算法保持原 owner。
+
+## 2026-07-12：Shared generated wind-charge membership
+
+- [x] world 导出既有 generated AbstractWindCharge membership；world pick/lifecycle 与 native
+  entity-scene/F3+I 删除 BreezeWindCharge/WindCharge 平行判断，具体 projectile 行为、模型算法与
+  persistent 字段编码仍由原 semantic owner 手写。

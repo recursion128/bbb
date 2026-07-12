@@ -230,7 +230,9 @@ pub(super) fn entity_model_kind_with_time_and_registries(
         },
         VANILLA_ENTITY_TYPE_BLAZE_ID => EntityModelKind::Blaze,
         VANILLA_ENTITY_TYPE_BREEZE_ID => EntityModelKind::Breeze,
-        VANILLA_ENTITY_TYPE_BREEZE_WIND_CHARGE_ID => EntityModelKind::WindCharge,
+        _ if bbb_world::vanilla_entity_type_is_wind_charge(entity_type_id) => {
+            EntityModelKind::WindCharge
+        }
         VANILLA_ENTITY_TYPE_CAVE_SPIDER_ID => EntityModelKind::CaveSpider,
         VANILLA_ENTITY_TYPE_COD_ID => EntityModelKind::Cod,
         VANILLA_ENTITY_TYPE_CREAKING_ID => EntityModelKind::Creaking {
@@ -356,7 +358,6 @@ pub(super) fn entity_model_kind_with_time_and_registries(
                 != 0,
         },
         VANILLA_ENTITY_TYPE_WARDEN_ID => EntityModelKind::Warden,
-        VANILLA_ENTITY_TYPE_WIND_CHARGE_ID => EntityModelKind::WindCharge,
         VANILLA_ENTITY_TYPE_WITHER_ID => EntityModelKind::Wither,
         VANILLA_ENTITY_TYPE_WITHER_SKULL_ID => EntityModelKind::WitherSkull {
             dangerous: entity_data_bool(

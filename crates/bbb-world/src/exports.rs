@@ -9,7 +9,7 @@ pub use crate::entities::{
     vanilla_entity_type_is_abstract_piglin, vanilla_entity_type_is_boat,
     vanilla_entity_type_is_chest_boat, vanilla_entity_type_is_item_frame,
     vanilla_entity_type_is_living, vanilla_entity_type_is_minecart, vanilla_entity_type_is_spider,
-    vanilla_entity_type_is_squid, LocalPlayerVehicleHealth,
+    vanilla_entity_type_is_squid, vanilla_entity_type_is_wind_charge, LocalPlayerVehicleHealth,
     VanillaEntityMetadataAccessorCatalogEntry, VanillaEntityMetadataClassCatalogEntry,
     VanillaEntityMetadataDefault, VanillaEntityMetadataFamily, VanillaEntityMetadataFamilySchema,
     VanillaEntityMetadataFieldSchema, VanillaEntityMetadataFlagCatalogEntry,

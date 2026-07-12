@@ -223,9 +223,7 @@ pub(crate) fn vanilla_pick_bounds_for_entity_data(
         salmon_pick_bounds(data_values)
     } else if entity_type_id == VANILLA_ENTITY_TYPE_PHANTOM_ID {
         phantom_pick_bounds(data_values)
-    } else if entity_type_id == VANILLA_ENTITY_TYPE_BREEZE_WIND_CHARGE_ID
-        || entity_type_id == VANILLA_ENTITY_TYPE_WIND_CHARGE_ID
-    {
+    } else if super::vanilla_entity_type_is_wind_charge(entity_type_id) {
         wind_charge_pick_bounds(entity_type_id)
     } else {
         vanilla_pick_bounds_for_type(entity_type_id)?
