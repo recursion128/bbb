@@ -868,7 +868,30 @@ public class RecipeDisplays {
 }
 """,
         )
-        book_entries, display_entries = recipe_wire_type_entries(books, displays)
+        categories = parse_source(
+            "fixture/RecipeBookCategories.java",
+            b"""
+package fixture;
+public class RecipeBookCategories {
+  public static final RecipeBookCategory CRAFTING_BUILDING_BLOCKS = register("crafting_building_blocks");
+  public static final RecipeBookCategory CRAFTING_REDSTONE = register("crafting_redstone");
+  public static final RecipeBookCategory CRAFTING_EQUIPMENT = register("crafting_equipment");
+  public static final RecipeBookCategory CRAFTING_MISC = register("crafting_misc");
+  public static final RecipeBookCategory FURNACE_FOOD = register("furnace_food");
+  public static final RecipeBookCategory FURNACE_BLOCKS = register("furnace_blocks");
+  public static final RecipeBookCategory FURNACE_MISC = register("furnace_misc");
+  public static final RecipeBookCategory BLAST_FURNACE_BLOCKS = register("blast_furnace_blocks");
+  public static final RecipeBookCategory BLAST_FURNACE_MISC = register("blast_furnace_misc");
+  public static final RecipeBookCategory SMOKER_FOOD = register("smoker_food");
+  public static final RecipeBookCategory STONECUTTER = register("stonecutter");
+  public static final RecipeBookCategory SMITHING = register("smithing");
+  public static final RecipeBookCategory CAMPFIRE = register("campfire");
+}
+""",
+        )
+        book_entries, display_entries, category_entries = recipe_wire_type_entries(
+            books, displays, categories
+        )
         self.assertEqual(
             [(entry.constant_name, entry.ordinal) for entry in book_entries],
             [("CRAFTING", 0), ("FURNACE", 1), ("BLAST_FURNACE", 2), ("SMOKER", 3)],
@@ -884,6 +907,27 @@ public class RecipeDisplays {
                 ("FURNACE", 2, "minecraft:furnace"),
                 ("STONECUTTER", 3, "minecraft:stonecutter"),
                 ("SMITHING", 4, "minecraft:smithing"),
+            ],
+        )
+        self.assertEqual(
+            [
+                (entry.constant_name, entry.category_id, entry.resource_id)
+                for entry in category_entries
+            ],
+            [
+                ("CRAFTING_BUILDING_BLOCKS", 0, "minecraft:crafting_building_blocks"),
+                ("CRAFTING_REDSTONE", 1, "minecraft:crafting_redstone"),
+                ("CRAFTING_EQUIPMENT", 2, "minecraft:crafting_equipment"),
+                ("CRAFTING_MISC", 3, "minecraft:crafting_misc"),
+                ("FURNACE_FOOD", 4, "minecraft:furnace_food"),
+                ("FURNACE_BLOCKS", 5, "minecraft:furnace_blocks"),
+                ("FURNACE_MISC", 6, "minecraft:furnace_misc"),
+                ("BLAST_FURNACE_BLOCKS", 7, "minecraft:blast_furnace_blocks"),
+                ("BLAST_FURNACE_MISC", 8, "minecraft:blast_furnace_misc"),
+                ("SMOKER_FOOD", 9, "minecraft:smoker_food"),
+                ("STONECUTTER", 10, "minecraft:stonecutter"),
+                ("SMITHING", 11, "minecraft:smithing"),
+                ("CAMPFIRE", 12, "minecraft:campfire"),
             ],
         )
 

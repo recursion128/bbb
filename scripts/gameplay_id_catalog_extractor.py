@@ -267,6 +267,13 @@ class RecipeBookTypeEntry:
 
 
 @dataclass(frozen=True)
+class RecipeBookCategoryEntry:
+    constant_name: str
+    category_id: int
+    resource_id: str
+
+
+@dataclass(frozen=True)
 class RecipeDisplayTypeEntry:
     constant_name: str
     type_id: int
@@ -1380,7 +1387,12 @@ def container_input_entries(
 def recipe_wire_type_entries(
     book_type_source: JavaSource,
     display_types_source: JavaSource,
-) -> tuple[list[RecipeBookTypeEntry], list[RecipeDisplayTypeEntry]]:
+    category_source: JavaSource,
+) -> tuple[
+    list[RecipeBookTypeEntry],
+    list[RecipeDisplayTypeEntry],
+    list[RecipeBookCategoryEntry],
+]:
     book_names = ["CRAFTING", "FURNACE", "BLAST_FURNACE", "SMOKER"]
     books = []
     for ordinal, (name, arguments) in enumerate(_enum_constants(book_type_source)):
@@ -1456,7 +1468,44 @@ def recipe_wire_type_entries(
         )
     _validate(displays, "recipe display type", "type_id")
     _validate(displays, "recipe display type", "resource_id")
-    return books, displays
+
+    category_names = [
+        "CRAFTING_BUILDING_BLOCKS",
+        "CRAFTING_REDSTONE",
+        "CRAFTING_EQUIPMENT",
+        "CRAFTING_MISC",
+        "FURNACE_FOOD",
+        "FURNACE_BLOCKS",
+        "FURNACE_MISC",
+        "BLAST_FURNACE_BLOCKS",
+        "BLAST_FURNACE_MISC",
+        "SMOKER_FOOD",
+        "STONECUTTER",
+        "SMITHING",
+        "CAMPFIRE",
+    ]
+    categories = []
+    for category_id, field in enumerate(_fields(category_source, "RecipeBookCategory")):
+        arguments = _register_arguments(category_source, field)
+        if len(arguments) != 1:
+            _fail(
+                category_source,
+                field.initializer,
+                f"recipe book category {field.name} must register one resource id",
+            )
+        resource_path = _string(category_source, arguments[0])
+        categories.append(
+            RecipeBookCategoryEntry(
+                field.name, category_id, "minecraft:" + resource_path
+            )
+        )
+    if [entry.constant_name for entry in categories] != category_names:
+        raise GameplayIdExtractionError(
+            "recipe book categories differ from expected registration order"
+        )
+    _validate(categories, "recipe book category", "category_id")
+    _validate(categories, "recipe book category", "resource_id")
+    return books, displays, categories
 
 
 def item_component_value_type_entries(

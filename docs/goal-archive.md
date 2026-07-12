@@ -12465,3 +12465,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   分别锁定 3 个 entity type 与 6 个 block-entity type，并对重复、非常量、未知成员显式失败。
 - [x] item tooltip 的 operator NBT warning 删除 block-entity 裸协议 ID 与 entity 平行列表，统一查询
   generated catalog 的 `only_op_can_set_nbt`；tooltip 行为、权限检查与 component removal 优先级不变。
+
+## 2026-07-12：Generated recipe-book category ids
+
+- [x] gameplay-id extractor 通过统一 Tree-sitter Java frontend 从
+  `RecipeBookCategories.java` 的 13 项 `register` 声明生成 category id/resource catalog，锁定连续性、
+  唯一性、注册顺序与 update/check/idempotence；packet 的 registry-friendly decode 与 UI 行为仍由原
+  semantic owner 负责。
+- [x] native recipe-book crafting/furnace/blast-furnace/smoker tab 删除 0..9 手抄 category ordinal，
+  search-tab 组合继续保留 `SearchRecipeBookCategory` 的呈现顺序并统一引用 protocol generated aliases；
+  反向门禁拒绝生产代码重新声明同名 category ID 表。
