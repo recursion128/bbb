@@ -3452,7 +3452,7 @@ mod tests {
     }
 
     #[test]
-    fn play_serverbound_client_information_keeps_change_dedup_open() {
+    fn play_serverbound_client_information_is_encoder_only_without_option_ui() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
@@ -3466,17 +3466,17 @@ mod tests {
             entry.coverage["ack_response"].status,
             PacketCoverageStatus::NotApplicable
         );
-        for dimension in ["command_surface", "encoder"] {
+        for dimension in ["command_surface", "state_guard"] {
             assert_eq!(
                 entry.coverage[dimension].status,
-                PacketCoverageStatus::Complete,
+                PacketCoverageStatus::NotApplicable,
                 "{dimension}"
             );
         }
-        for dimension in ["state_guard", "tests"] {
+        for dimension in ["encoder", "tests"] {
             assert_eq!(
                 entry.coverage[dimension].status,
-                PacketCoverageStatus::Partial,
+                PacketCoverageStatus::Complete,
                 "{dimension}"
             );
         }

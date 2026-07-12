@@ -17,9 +17,6 @@ impl ProbeContext {
                 let (id, payload) = packets::encode_configuration_finish();
                 self.conn.send_packet(id, &payload).await?;
                 self.state = ConnectionState::Play;
-                let (id, payload) =
-                    packets::encode_play_client_information(&self.client_information)?;
-                self.conn.send_packet(id, &payload).await?;
                 self.play_tick = Some(play_tick_interval());
             }
             ConfigurationClientbound::Disconnect { reason, .. } => {
@@ -159,6 +156,33 @@ mod tests {
             .to_string()
             .contains("configuration disconnected: Configuration closed"));
         assert_eq!(probe.state, ConnectionState::Configuration);
+    }
+
+    #[tokio::test]
+    async fn probe_finish_configuration_does_not_resend_client_information() {
+        let (client, mut server) = raw_connection_pair().await;
+        let mut probe = ProbeContext::new(client);
+        probe.state = ConnectionState::Configuration;
+
+        probe
+            .handle_configuration_packet(ConfigurationClientbound::Finish)
+            .await
+            .unwrap();
+
+        let (packet_id, payload) = timeout(Duration::from_secs(1), server.read_packet())
+            .await
+            .expect("finish configuration should be sent")
+            .unwrap();
+        assert_eq!(
+            packet_id,
+            ids::configuration::SERVERBOUND_FINISH_CONFIGURATION
+        );
+        assert!(payload.is_empty());
+        assert!(timeout(Duration::from_millis(50), server.read_packet())
+            .await
+            .is_err());
+        assert_eq!(probe.state, ConnectionState::Play);
+        assert!(probe.play_tick.is_some());
     }
 
     #[tokio::test]

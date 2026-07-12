@@ -122,10 +122,6 @@ Owner: `bbb-protocol`
   independent Tokio interval whose first deadline fires immediately. The current
   play-only 20 Hz sender keeps servers live but does not prove vanilla movement
   grouping semantics from `handleClientTickEnd`.
-- Track the last sent `ClientInformation` snapshot across configuration-to-play,
-  suppress an unchanged handoff duplicate, and send play
-  `ServerboundClientInformationPacket` only from vanilla's change-triggered,
-  equality-deduplicated `Options.broadcastOptions` equivalent.
 - Replace the current first-`ClientboundPlayerPositionPacket` trigger for
   `ServerboundPlayerLoadedPacket` with vanilla `LevelLoadTracker` readiness:
   wait for server loading packets, then for the local-player section to be

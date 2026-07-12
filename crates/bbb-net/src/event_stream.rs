@@ -368,22 +368,9 @@ mod tests {
         );
         assert!(payload.is_empty());
 
-        let (packet_id, payload) = timeout(Duration::from_secs(1), server.read_packet())
+        assert!(timeout(Duration::from_millis(50), server.read_packet())
             .await
-            .expect("play client information should be sent")
-            .unwrap();
-        assert_eq!(packet_id, ids::play::SERVERBOUND_CLIENT_INFORMATION);
-        let mut decoder = Decoder::new(&payload);
-        assert_eq!(decoder.read_string(16).unwrap(), "ja_jp");
-        assert_eq!(decoder.read_i8().unwrap(), 8);
-        assert_eq!(decoder.read_var_i32().unwrap(), 2);
-        assert!(decoder.read_bool().unwrap());
-        assert_eq!(decoder.read_u8().unwrap(), 0x03);
-        assert_eq!(decoder.read_var_i32().unwrap(), 1);
-        assert!(!decoder.read_bool().unwrap());
-        assert!(decoder.read_bool().unwrap());
-        assert_eq!(decoder.read_var_i32().unwrap(), 1);
-        assert!(decoder.is_empty());
+            .is_err());
         assert_eq!(stream.state, ConnectionState::Play);
         assert!(stream.play_tick.is_some());
 

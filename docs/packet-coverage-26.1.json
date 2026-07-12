@@ -3062,12 +3062,11 @@
         },
         "command_surface": {
           "evidence": [
-            "crates/bbb-native/src/startup.rs#client_information_from_args",
-            "crates/bbb-net/src/event_stream/configuration.rs#packets::encode_play_client_information",
-            "crates/bbb-net/src/probe/configuration.rs#packets::encode_play_client_information"
+            "AGENTS.md#Configuration is supplied at command-line startup.",
+            "vanilla:net/minecraft/client/Options.java#broadcastOptions"
           ],
-          "gap": null,
-          "status": "complete"
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "not-applicable"
         },
         "encoder": {
           "evidence": [
@@ -3081,21 +3080,23 @@
         },
         "state_guard": {
           "evidence": [
-            "crates/bbb-net/src/event_stream/configuration.rs#ConfigurationClientbound::Finish",
-            "vanilla:net/minecraft/client/Options.java#broadcastOptions",
-            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#broadcastClientInformation"
+            "AGENTS.md#Configuration is supplied at command-line startup.",
+            "crates/bbb-net/src/event_stream.rs#configuration_control_responses_precede_finish_and_play_handoff",
+            "crates/bbb-net/src/probe/configuration.rs#probe_finish_configuration_does_not_resend_client_information",
+            "vanilla:net/minecraft/client/multiplayer/ClientConfigurationPacketListenerImpl.java#handleConfigurationFinished"
           ],
           "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "status": "not-applicable"
         },
         "tests": {
           "evidence": [
             "crates/bbb-protocol/src/packets/tests.rs#encodes_client_information_from_struct",
-            "crates/bbb-native/src/startup.rs#args_build_client_information_from_startup_options",
-            "crates/bbb-net/src/event_stream.rs#configuration_control_responses_precede_finish_and_play_handoff"
+            "crates/bbb-protocol/src/packet_coverage.rs#play_serverbound_client_information_is_encoder_only_without_option_ui",
+            "crates/bbb-net/src/event_stream.rs#configuration_control_responses_precede_finish_and_play_handoff",
+            "crates/bbb-net/src/probe/configuration.rs#probe_finish_configuration_does_not_resend_client_information"
           ],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "serverbound",

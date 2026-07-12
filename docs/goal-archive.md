@@ -12066,3 +12066,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] login/configuration/play 三个 `ServerboundCookieResponsePacket` 现在共用 fallible payload encoder：key 经 typed resource-id 规则规范化，optional payload 在分配/写入前限制为 vanilla 5,120 bytes。
 - [x] focused tests 锁定三 phase packet id/wire order、default namespace、5,120/5,121 边界与 invalid key；服务器请求驱动的 response 时序不变。
+
+## 2026-07-12：client information phase handoff
+
+- [x] configuration finish 现在只发送 `ServerboundFinishConfigurationPacket`、切换 play 并启动 tick，不再额外发送 vanilla `handleConfigurationFinished` 不会发送的 play `ServerboundClientInformationPacket`；online/probe 均有无额外 packet 断言。
+- [x] play client-information encoder 保留并有 wire/boundary test；因 bbb 明确禁止 in-game configuration UI，`Options.broadcastOptions` 对应的 play command/state surface 记为 not-applicable，而不是伪造跨 phase last-sent 状态。
