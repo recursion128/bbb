@@ -478,6 +478,9 @@ Owner: `bbb-audio` + `bbb-native` + `bbb-pack` + `bbb-world`
 
 - Validate source/category mapping, spatial and entity-following sounds, and
   stop semantics against vanilla.
+- Clientbound SoundEntity holder/category/entity/volume/pitch/seed handling,
+  missing or silent entity gates, fixed range, entity following, and removal stop
+  are covered; keep ordinary positioned-sound and stop-sound audits separate.
 - Cover device/runtime diagnostics.
 - Keep unit tests independent of an audio device.
 

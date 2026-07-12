@@ -9869,29 +9869,54 @@
       "constant_name": "CLIENTBOUND_SOUND_ENTITY",
       "coverage": {
         "canonical_apply": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/client/audio.rs#apply_sound_entity_event",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleSoundEntityEvent",
+            "vanilla:net/minecraft/client/resources/sounds/EntityBoundSoundInstance.java#canPlaySound"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/client_audio/tests.rs#decodes_sound_entity_packet_with_direct_sound_holder",
+            "crates/bbb-protocol/src/packets/client_audio/tests.rs#decodes_direct_sound_holder_with_default_namespace",
+            "vanilla:net/minecraft/network/protocol/game/ClientboundSoundEntityPacket.java#STREAM_CODEC",
+            "vanilla:net/minecraft/sounds/SoundEvent.java#STREAM_CODEC"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "ownership": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/play_apply.rs#PlayClientbound::SoundEntity"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "runtime_side_effect": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-native/src/runtime/events/tests/audio_and_death_sounds.rs#client_audio_events_emit_runtime_commands_for_applied_events",
+            "crates/bbb-native/src/runtime/events/tests/audio_and_death_sounds.rs#silent_entity_sound_events_do_not_emit_runtime_commands",
+            "crates/bbb-native/src/audio_runtime/resolver.rs#resolves_reference_entity_sound_with_registry_input",
+            "crates/bbb-native/src/runtime/tests.rs#audio_scene_command_tracks_listener_and_entity_positions",
+            "crates/bbb-audio/src/runtime.rs#entity_bound_sound_is_missing_when_entity_position_is_absent",
+            "vanilla:net/minecraft/client/resources/sounds/EntityBoundSoundInstance.java#tick"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/client_audio/tests.rs#decodes_sound_entity_packet_with_direct_sound_holder",
+            "crates/bbb-net/src/event_stream.rs#play_map_particle_and_audio_packets_emit_matching_events_without_responses",
+            "crates/bbb-net/src/probe/play.rs#probe_applies_audio_packets_to_world",
+            "crates/bbb-world/src/client/audio.rs#tracks_last_sound_events_and_counters",
+            "crates/bbb-native/src/runtime/events/tests/audio_and_death_sounds.rs#client_audio_events_emit_runtime_commands_for_applied_events",
+            "crates/bbb-native/src/runtime/tests.rs#audio_scene_command_tracks_listener_and_entity_positions"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "clientbound",

@@ -11492,3 +11492,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] add/change/remove/join/leave framing、strict trailing、旧 team 移除、team 删除与跨 crate tests 闭合。
 - [x] bbb 仍拒绝 vanilla 可解码但 handler no-op 的 unknown method；rich team Components 仍为 plain-text projection，故 decode/canonical/runtime 保持 partial。
+
+## 2026-07-12：play sound-entity packet coverage audit
+
+- [x] reference/direct SoundEvent holder、SoundSource、entity id、volume/pitch/seed wire 与 strict trailing 闭合。
+- [x] missing/silent entity gate、dynamic sound registry、fixed range、seed selection、entity following 与 removal stop 均有 world/native/audio tests，五格闭合；设备诊断仍由全局 audio ledger 拥有。

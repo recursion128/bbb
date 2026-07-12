@@ -59,7 +59,7 @@ fn decodes_sound_entity_packet_with_direct_sound_holder() {
     payload.write_f32(1.0);
     payload.write_f32(0.5);
     payload.write_i64(-9);
-    let payload = payload.into_inner();
+    let mut payload = payload.into_inner();
 
     let packet = decode_play_clientbound(ids::play::CLIENTBOUND_SOUND_ENTITY, &payload).unwrap();
     assert_eq!(
@@ -91,6 +91,12 @@ fn decodes_sound_entity_packet_with_direct_sound_holder() {
     assert_eq!(decoder.read_f32().unwrap(), 0.5);
     assert_eq!(decoder.read_i64().unwrap(), -9);
     assert!(decoder.is_empty());
+
+    payload.push(0);
+    let err = decode_play_clientbound(ids::play::CLIENTBOUND_SOUND_ENTITY, &payload).unwrap_err();
+    assert!(err
+        .to_string()
+        .contains("trailing bytes after sound entity packet"));
 }
 
 #[test]

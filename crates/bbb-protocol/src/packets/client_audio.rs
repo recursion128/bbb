@@ -54,14 +54,20 @@ pub(crate) fn decode_sound_event(decoder: &mut Decoder<'_>) -> Result<SoundEvent
 }
 
 pub(crate) fn decode_sound_entity_event(decoder: &mut Decoder<'_>) -> Result<SoundEntityEvent> {
-    Ok(SoundEntityEvent {
+    let packet = SoundEntityEvent {
         sound: decode_sound_event_holder(decoder)?,
         source: decode_sound_source(decoder)?,
         entity_id: decoder.read_var_i32()?,
         volume: decoder.read_f32()?,
         pitch: decoder.read_f32()?,
         seed: decoder.read_i64()?,
-    })
+    };
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after sound entity packet".to_string(),
+        ));
+    }
+    Ok(packet)
 }
 
 pub(crate) fn decode_stop_sound(decoder: &mut Decoder<'_>) -> Result<StopSound> {
