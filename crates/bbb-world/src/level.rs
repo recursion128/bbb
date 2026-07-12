@@ -18,6 +18,10 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     chunks::{decode_nbt_root, find_nbt_entry, NbtValue},
+    registries::{
+        decode_client_environment_attributes, ClientEnvironmentAttributes,
+        EnvironmentAttributeProjectionError,
+    },
     BlockPos, WorldStore,
 };
 
@@ -65,6 +69,8 @@ pub struct WorldLevelInfo {
     #[serde(default)]
     pub ambient_light: f32,
     #[serde(default)]
+    pub environment_attributes: ClientEnvironmentAttributes,
+    #[serde(default)]
     pub last_death_location: Option<WorldGlobalPos>,
     pub sea_level: i32,
     pub is_debug: bool,
@@ -111,6 +117,10 @@ impl WorldLevelInfo {
 
     pub fn ambient_light(&self) -> f32 {
         self.ambient_light
+    }
+
+    pub fn environment_attributes(&self) -> ClientEnvironmentAttributes {
+        self.environment_attributes
     }
 }
 
@@ -460,6 +470,12 @@ impl WorldStore {
                     &spawn_info.dimension,
                 )
             });
+        let environment_attributes = dimension_type
+            .map(|projection| projection.environment_attributes)
+            .unwrap_or_default();
+        if let Some(err) = dimension_type.and_then(|projection| projection.environment_error) {
+            self.record_apply_error("dimension_type_environment_attributes", err);
+        }
         let dimension_key_changed = self
             .level
             .as_ref()
@@ -477,6 +493,7 @@ impl WorldStore {
             cardinal_lighting,
             skybox,
             ambient_light,
+            environment_attributes,
             last_death_location: spawn_info
                 .last_death_location
                 .as_ref()
@@ -725,6 +742,8 @@ struct DimensionTypeClientProjection {
     cardinal_lighting: Option<WorldCardinalLighting>,
     skybox: Option<WorldSkybox>,
     ambient_light: Option<f32>,
+    environment_attributes: ClientEnvironmentAttributes,
+    environment_error: Option<EnvironmentAttributeProjectionError>,
 }
 
 fn dimension_type_client_projection_from_registry(
@@ -757,6 +776,20 @@ fn dimension_type_client_projection_from_registry(
         Some(NbtValue::Float(value)) => Some(*value),
         _ => None,
     };
+    let (environment_attributes, environment_error) = match find_nbt_entry(&fields, "attributes") {
+        Some(NbtValue::Compound(entries)) => match decode_client_environment_attributes(entries) {
+            Ok(attributes) => (attributes, None),
+            Err(err) => (ClientEnvironmentAttributes::default(), Some(err)),
+        },
+        Some(_) => (
+            ClientEnvironmentAttributes::default(),
+            Some(EnvironmentAttributeProjectionError {
+                field: "attributes",
+                reason: "expected compound",
+            }),
+        ),
+        None => (ClientEnvironmentAttributes::default(), None),
+    };
     Some(DimensionTypeClientProjection {
         dimension,
         has_sky_light,
@@ -764,6 +797,8 @@ fn dimension_type_client_projection_from_registry(
         cardinal_lighting,
         skybox,
         ambient_light,
+        environment_attributes,
+        environment_error,
     })
 }
 
@@ -1092,6 +1127,7 @@ mod tests {
             cardinal_lighting: WorldCardinalLighting::Nether,
             skybox: WorldSkybox::None,
             ambient_light: 0.1,
+            environment_attributes: ClientEnvironmentAttributes::default(),
             last_death_location: None,
             sea_level: 32,
             is_debug: false,
@@ -1684,6 +1720,49 @@ mod tests {
     }
 
     #[test]
+    fn dimension_type_registry_projects_direct_environment_attributes_and_diagnoses_modifiers() {
+        let mut custom = WorldStore::new();
+        record_custom_dimension_type_registry(
+            &mut custom,
+            dimension_type_nbt_with_environment_attributes(false),
+        );
+        custom.apply_login(&login_packet(4, "example:custom"));
+
+        let attributes = custom.level_info().unwrap().environment_attributes();
+        assert_eq!(attributes.fog_color, Some([0x12, 0x34, 0x56]));
+        assert_eq!(attributes.fog_start_distance, Some(12.0));
+        assert_eq!(attributes.fog_end_distance, Some(144.0));
+        assert_eq!(attributes.water_fog_start_distance, Some(-4.0));
+        assert_eq!(attributes.water_fog_end_distance, Some(48.0));
+        assert_eq!(attributes.block_light_tint, Some([0x20, 0x40, 0x60]));
+        assert_eq!(attributes.sky_light_factor, Some(0.25));
+        assert_eq!(attributes.ambient_light_color, Some([0x30, 0x50, 0x70]));
+        assert!(custom.apply_diagnostics().apply_errors.is_empty());
+
+        let mut unsupported = WorldStore::new();
+        record_custom_dimension_type_registry(
+            &mut unsupported,
+            dimension_type_nbt_with_environment_attributes(true),
+        );
+        unsupported.apply_login(&login_packet(4, "example:custom"));
+        assert_eq!(
+            unsupported.level_info().unwrap().environment_attributes(),
+            ClientEnvironmentAttributes::default()
+        );
+        assert_eq!(
+            unsupported
+                .apply_diagnostics()
+                .last_apply_error
+                .as_ref()
+                .map(|error| (error.source.as_str(), error.message.as_str())),
+            Some((
+                "dimension_type_environment_attributes",
+                "minecraft:visual/fog_color: attribute modifiers are not yet supported",
+            ))
+        );
+    }
+
+    #[test]
     fn apply_login_records_the_hardcore_flag() {
         let mut world = WorldStore::new();
         assert!(!world.is_hardcore());
@@ -1797,6 +1876,81 @@ mod tests {
         }
         payload.push(0);
         payload
+    }
+
+    fn dimension_type_nbt_with_environment_attributes(modified_fog_color: bool) -> Vec<u8> {
+        let mut payload = dimension_type_nbt(
+            None,
+            Some(true),
+            Some(false),
+            Some((-64, 384, 384)),
+            Some("overworld"),
+            Some(0.0),
+        );
+        assert_eq!(payload.pop(), Some(0));
+        payload.push(10);
+        write_nbt_string(&mut payload, "attributes");
+        if modified_fog_color {
+            payload.push(10);
+            write_nbt_string(&mut payload, "minecraft:visual/fog_color");
+            payload.push(8);
+            write_nbt_string(&mut payload, "modifier");
+            write_nbt_string(&mut payload, "minecraft:override");
+            payload.push(8);
+            write_nbt_string(&mut payload, "argument");
+            write_nbt_string(&mut payload, "#123456");
+            payload.push(0);
+        } else {
+            write_nbt_named_string(&mut payload, "minecraft:visual/fog_color", "#123456");
+        }
+        write_nbt_named_string(&mut payload, "minecraft:visual/sky_color", "#345678");
+        write_nbt_named_string(&mut payload, "minecraft:visual/water_fog_color", "#56789a");
+        write_nbt_named_float(&mut payload, "minecraft:visual/fog_start_distance", 12.0);
+        write_nbt_named_float(&mut payload, "minecraft:visual/fog_end_distance", 144.0);
+        write_nbt_named_float(&mut payload, "minecraft:visual/sky_fog_end_distance", 96.0);
+        write_nbt_named_float(
+            &mut payload,
+            "minecraft:visual/cloud_fog_end_distance",
+            192.0,
+        );
+        write_nbt_named_float(
+            &mut payload,
+            "minecraft:visual/water_fog_start_distance",
+            -4.0,
+        );
+        write_nbt_named_float(
+            &mut payload,
+            "minecraft:visual/water_fog_end_distance",
+            48.0,
+        );
+        write_nbt_named_string(&mut payload, "minecraft:visual/block_light_tint", "#204060");
+        write_nbt_named_string(&mut payload, "minecraft:visual/sky_light_color", "#406080");
+        write_nbt_named_float(&mut payload, "minecraft:visual/sky_light_factor", 0.25);
+        write_nbt_named_string(
+            &mut payload,
+            "minecraft:visual/night_vision_color",
+            "#507090",
+        );
+        write_nbt_named_string(
+            &mut payload,
+            "minecraft:visual/ambient_light_color",
+            "#305070",
+        );
+        payload.push(0);
+        payload.push(0);
+        payload
+    }
+
+    fn write_nbt_named_string(out: &mut Vec<u8>, name: &str, value: &str) {
+        out.push(8);
+        write_nbt_string(out, name);
+        write_nbt_string(out, value);
+    }
+
+    fn write_nbt_named_float(out: &mut Vec<u8>, name: &str, value: f32) {
+        out.push(5);
+        write_nbt_string(out, name);
+        out.extend_from_slice(&value.to_bits().to_be_bytes());
     }
 
     fn write_nbt_string(out: &mut Vec<u8>, value: &str) {

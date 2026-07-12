@@ -8,4 +8,5 @@ pub use crate::level::{
     ClockUpdateState, WorldCardinalLighting, WorldDimension, WorldGameplayState, WorldLevelInfo,
     WorldSkybox, WorldTickingState, WorldTimeState, WorldWeatherState,
 };
+pub use crate::registries::ClientEnvironmentAttributes;
 pub use crate::store::WorldStore;

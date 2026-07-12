@@ -1,5 +1,6 @@
 use crate::chunks::{decode_nbt_root, find_nbt_entry, NbtValue};
 
+use super::environment_attributes::{decode_client_environment_attributes, parse_rgb};
 use super::RegistryPacketEntry;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -69,12 +70,11 @@ pub(super) fn decode_biome_client_projection(
         Some("swamp") => BiomeGrassColorModifier::Swamp,
         Some(_) => return Err(error("effects.grass_color_modifier", "unknown enum value")),
     };
-    let attributes = optional_compound(&fields, "attributes")?;
-    let fog_color = optional_attribute_rgb(attributes, "minecraft:visual/fog_color")?;
-    let sky_color = optional_attribute_rgb(attributes, "minecraft:visual/sky_color")?;
-    let water_fog_color = optional_attribute_rgb(attributes, "minecraft:visual/water_fog_color")?;
-    let water_fog_end_distance =
-        optional_attribute_float(attributes, "minecraft:visual/water_fog_end_distance")?;
+    let attributes = optional_compound(&fields, "attributes")?
+        .map(decode_client_environment_attributes)
+        .transpose()
+        .map_err(|err| error(format!("attributes.{}", err.field), err.reason))?
+        .unwrap_or_default();
 
     Ok(Some(BiomeClientProjection {
         has_precipitation,
@@ -86,10 +86,10 @@ pub(super) fn decode_biome_client_projection(
         dry_foliage_color,
         grass_color,
         grass_color_modifier,
-        fog_color,
-        sky_color,
-        water_fog_color,
-        water_fog_end_distance,
+        fog_color: attributes.fog_color,
+        sky_color: attributes.sky_color,
+        water_fog_color: attributes.water_fog_color,
+        water_fog_end_distance: attributes.water_fog_end_distance,
     }))
 }
 
@@ -162,59 +162,6 @@ fn optional_rgb(
             .ok_or_else(|| error(field, "expected #RRGGBB string or RGB int")),
         None => Ok(None),
     }
-}
-
-fn optional_attribute_rgb(
-    entries: Option<&[(String, NbtValue)]>,
-    field: &str,
-) -> Result<Option<[u8; 3]>, BiomeProjectionError> {
-    let Some(entries) = entries else {
-        return Ok(None);
-    };
-    optional_rgb(entries, field).map_err(|mut err| {
-        err.field = format!("attributes.{field}");
-        err
-    })
-}
-
-fn optional_attribute_float(
-    entries: Option<&[(String, NbtValue)]>,
-    field: &str,
-) -> Result<Option<f32>, BiomeProjectionError> {
-    let Some(entries) = entries else {
-        return Ok(None);
-    };
-    match find_nbt_entry(entries, field) {
-        Some(NbtValue::Float(value)) if value.is_finite() && *value >= 0.0 => Ok(Some(*value)),
-        Some(NbtValue::Compound(_)) => Err(error(
-            format!("attributes.{field}"),
-            "attribute modifiers are not yet supported",
-        )),
-        Some(_) => Err(error(
-            format!("attributes.{field}"),
-            "expected non-negative float",
-        )),
-        None => Ok(None),
-    }
-}
-
-fn parse_rgb(value: &NbtValue) -> Option<[u8; 3]> {
-    let value = match value {
-        NbtValue::String(value) => {
-            let hex = value.strip_prefix('#')?;
-            if hex.len() != 6 {
-                return None;
-            }
-            u32::from_str_radix(hex, 16).ok()?
-        }
-        NbtValue::Int(value) => *value as u32 & 0x00ff_ffff,
-        _ => return None,
-    };
-    Some([
-        ((value >> 16) & 0xff) as u8,
-        ((value >> 8) & 0xff) as u8,
-        (value & 0xff) as u8,
-    ])
 }
 
 fn error(field: impl Into<String>, reason: &'static str) -> BiomeProjectionError {

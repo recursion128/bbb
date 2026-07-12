@@ -12186,3 +12186,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] multiplayer-only authority 反向审计确认 local-player prediction、first-passenger controlled vehicle、remote packet/interpolation 与 client presentation tick 边界未回退；`IntegratedServer`、`GoalSelector`、`PathNavigation` 只会作为 generated vanilla source evidence 字符串出现，不存在 Rust runtime owner。
 - [x] ordinary F3+I pending entity query 现在锁定 numeric id 与 UUID；匹配 transaction 即使返回非空 server NBT，只要原目标已消失或 id 已被另一实体复用，就清除 pending、输出诊断且不生成 clipboard command。完整 server response 仍独占 NBT 权威，不与 Shift-local projection 合并。
+
+## 2026-07-12：typed dimension environment attributes
+
+- [x] `bbb-world` 建立 dimension/biome 共用的窄 `ClientEnvironmentAttributes` projection，严格解码 direct RGB/float visual values 与 vanilla range；已知 modifier compound、错误类型和非法 range 显式失败，biome 不再维护第二份 RGB/float attribute parser。
+- [x] custom dimension direct fog/sky/water-fog color 与 start/end distance 贯通 camera clear/fog，block/sky/ambient/night-vision light color 与 sky-light factor 贯通 GPU lightmap input；已有 biome fog/sky/water-fog positional value 覆盖对应 dimension base，既有 vanilla timeline/weather 层继续后置。modifier compounds、biome 其余 positional visual fields、其余 syncable audio/gameplay attributes、timeline/default-clock holder codec 继续开放。

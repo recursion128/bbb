@@ -1,6 +1,7 @@
 mod biomes;
 mod block_states;
 mod enchantments;
+mod environment_attributes;
 mod state;
 mod store;
 
@@ -11,6 +12,10 @@ pub use block_states::{
     vanilla_air_block_state_id, vanilla_block_state_id, BlockStateInfo, BlockStateRegistry,
 };
 pub use enchantments::EnchantmentAttributeModifier;
+pub use environment_attributes::ClientEnvironmentAttributes;
+pub(crate) use environment_attributes::{
+    decode_client_environment_attributes, EnvironmentAttributeProjectionError,
+};
 pub use state::{
     RegistryContentState, RegistryEntrySource, RegistryPacket, RegistryPacketEntry, RegistrySet,
     RegistryTagState, ResolvedRegistryEntry, UnresolvedRegistryTagHolder,

@@ -1832,6 +1832,22 @@ fn dimension_lightmap_environment(level: &WorldLevelInfo) -> LightmapEnvironment
         }
         VanillaLightmapDimensionKind::Other => {}
     }
+    let attributes = level.environment_attributes();
+    if let Some(value) = attributes.block_light_tint {
+        environment.block_light_tint = rgb24(rgb_u8_to_argb(value));
+    }
+    if let Some(value) = attributes.sky_light_color {
+        environment.sky_light_color = rgb24(rgb_u8_to_argb(value));
+    }
+    if let Some(value) = attributes.sky_light_factor {
+        environment.sky_factor = value;
+    }
+    if let Some(value) = attributes.ambient_light_color {
+        environment.ambient_color = rgb24(rgb_u8_to_argb(value));
+    }
+    if let Some(value) = attributes.night_vision_color {
+        environment.night_vision_color = rgb24(rgb_u8_to_argb(value));
+    }
     environment
 }
 
@@ -11139,7 +11155,12 @@ fn advance_entity_client_animations(
 pub(crate) struct CameraEnvironmentColors {
     sky_color: Option<[u8; 3]>,
     fog_color: Option<[u8; 3]>,
+    fog_start_distance: Option<f32>,
+    fog_end_distance: Option<f32>,
+    sky_fog_end_distance: Option<f32>,
+    cloud_fog_end_distance: Option<f32>,
     water_fog_color: Option<[u8; 3]>,
+    water_fog_start_distance: Option<f32>,
     water_fog_end_distance: Option<f32>,
     camera_forward: Option<[f32; 3]>,
     fog_type: CameraFogType,
@@ -11824,22 +11845,38 @@ fn camera_environment_colors(
         return CameraEnvironmentColors::default();
     };
     let eye = camera_eye_position(camera);
+    let dimension_attributes = world
+        .level_info()
+        .map(WorldLevelInfo::environment_attributes)
+        .unwrap_or_default();
+    let water_fog_end_base = dimension_attributes
+        .water_fog_end_distance
+        .unwrap_or(VANILLA_DEFAULT_WATER_FOG_END_DISTANCE);
     CameraEnvironmentColors {
-        sky_color: gaussian_biome_rgb_color(world, terrain_textures, eye, BiomeRgbAttribute::Sky),
-        fog_color: gaussian_biome_rgb_color(world, terrain_textures, eye, BiomeRgbAttribute::Fog),
+        sky_color: gaussian_biome_rgb_color(world, terrain_textures, eye, BiomeRgbAttribute::Sky)
+            .or(dimension_attributes.sky_color),
+        fog_color: gaussian_biome_rgb_color(world, terrain_textures, eye, BiomeRgbAttribute::Fog)
+            .or(dimension_attributes.fog_color),
+        fog_start_distance: dimension_attributes.fog_start_distance,
+        fog_end_distance: dimension_attributes.fog_end_distance,
+        sky_fog_end_distance: dimension_attributes.sky_fog_end_distance,
+        cloud_fog_end_distance: dimension_attributes.cloud_fog_end_distance,
         water_fog_color: gaussian_biome_rgb_color(
             world,
             terrain_textures,
             eye,
             BiomeRgbAttribute::WaterFog,
-        ),
+        )
+        .or(dimension_attributes.water_fog_color),
+        water_fog_start_distance: dimension_attributes.water_fog_start_distance,
         water_fog_end_distance: gaussian_biome_float_attribute(
             world,
             terrain_textures,
             eye,
             BiomeFloatAttribute::WaterFogEndDistance,
-            VANILLA_DEFAULT_WATER_FOG_END_DISTANCE,
-        ),
+            water_fog_end_base,
+        )
+        .or(dimension_attributes.water_fog_end_distance),
         camera_forward: Some(camera_forward_vector(camera)),
         fog_type: if camera_eye_in_water(world, eye) {
             CameraFogType::Water

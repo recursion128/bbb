@@ -650,8 +650,14 @@ pub(crate) fn fog_environment_for_world_with_environment_colors(
                 .unwrap_or(VanillaLightmapDimensionKind::Overworld);
             let (mut environmental_start, mut environmental_end) =
                 atmospheric_fog_distance_for_dimension(dimension_kind);
-            let mut sky_end = atmospheric_sky_fog_end(render_distance_chunks);
-            let mut cloud_end = atmospheric_cloud_fog_end();
+            environmental_start = colors.fog_start_distance.unwrap_or(environmental_start);
+            environmental_end = colors.fog_end_distance.unwrap_or(environmental_end);
+            let mut sky_end = colors
+                .sky_fog_end_distance
+                .unwrap_or_else(|| atmospheric_sky_fog_end(render_distance_chunks));
+            let mut cloud_end = colors
+                .cloud_fog_end_distance
+                .unwrap_or_else(atmospheric_cloud_fog_end);
             apply_atmospheric_rain_fog_distance(
                 &mut environmental_start,
                 &mut environmental_end,
@@ -679,7 +685,9 @@ pub(crate) fn fog_environment_for_world_with_environment_colors(
                 * water_vision.max(0.25);
             FogEnvironment::world_with_visibility_ends(
                 color,
-                VANILLA_DEFAULT_WATER_FOG_START_DISTANCE,
+                colors
+                    .water_fog_start_distance
+                    .unwrap_or(VANILLA_DEFAULT_WATER_FOG_START_DISTANCE),
                 environmental_end,
                 render_distance_chunks,
                 environmental_end,

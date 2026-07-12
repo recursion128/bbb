@@ -334,7 +334,9 @@ lightmap/sky classification 在 holder identity 存在时不再回退 bootstrap 
 dimension-type `skybox` 已按 typed `none/overworld/end` 投影并直接驱动 sky renderer；完整
 dimension-type `ambient_light` 已贯通 world→native→GPU lightmap brightness curve；完整
 dimension-type `has_ceiling` 与 `has_skylight` 已按 vanilla `canHaveWeather` 规则驱动 weather gate，
-不再以 holder id 0 猜测 overworld；完整
+不再以 holder id 0 猜测 overworld；完整 dimension-type direct visual environment attributes
+已从统一 typed projection 驱动 fog/sky/water-fog distance/color 与 GPU lightmap tint/factor，
+已知 modifier compound 显式诊断而不猜测；完整
 item/block/entity-type built-in registry 已接入带来源的双向 fallback；仅在当前 session
 没有该 registry contents 时使用 checked-in 26.1 catalog，一旦存在 server contents 就只按其
 wire order 解析，item tag 与 F3 block/entity identity/tag consumer 也复用同一规则；完整

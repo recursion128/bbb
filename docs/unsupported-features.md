@@ -81,10 +81,13 @@ Owner: `bbb-protocol`
   static tags and data-component initializers, and freeze typed lookup state.
   Raw NBT summaries, the narrow validated dimension shape/lighting projection,
   individual checked tag queries, and a few derived audio registries are not
-  that runtime. Custom dimension presentation still needs typed environment
-  attributes instead of treating unknown resource identities as a vanilla
-  lightmap/fog dimension kind; typed `skybox` and direct `ambient_light`
-  projections plus `has_skylight`/`has_ceiling` weather gating are complete.
+  that runtime. Dimension-type direct visual environment attributes now drive
+  custom fog/sky/water-fog colors and distances plus lightmap tint/factor
+  without classifying an unknown resource as a vanilla dimension. Remaining
+  work includes environment-attribute modifier compounds, syncable audio/gameplay
+  attributes, timeline/clock holders and their layer ordering; typed `skybox`,
+  direct `ambient_light`, and `has_skylight`/`has_ceiling` weather gating are
+  complete.
 - Complete play Login session initialization beyond the current player-id and
   partial dimension/gameplay projection: retain the initial level set, chunk
   radius, simulation distance, secure-chat enforcement, seed and portal
@@ -408,8 +411,9 @@ Attachment and spawner presentation:
 
 Environment:
 
-- Expand custom-dimension `EnvironmentAttributes` maps instead of collapsing
-  them to the built-in dimension profile.
+- Complete custom-dimension `EnvironmentAttributes` beyond the current direct
+  fog/lightmap visual projection: modifier compounds, remaining visual/audio/
+  gameplay attributes, and timeline/default-clock layers are still open.
 - Implement the creeper/spider/invert spectator post chains, the independent
   F4 `effectActive` toggle, and the perspective-change clear lifecycle. The
   renderer-owned current id currently drives only the debug entry mirror.
@@ -854,9 +858,10 @@ back into a todo. Do not delete these.
   every section, and drop typed debug-subscription values for that chunk. World
   chunk-column removal is covered; add runtime tests that stale terrain, light and
   debug presentation cannot survive the packet.
-- Decode synchronized biome environment-attribute modifier compounds and match
-  vanilla's 3x3 neighboring-section rerender/tint invalidation. Direct custom
-  climate, color effects and relevant client environment attributes already
+- Decode synchronized biome environment-attribute modifier compounds and the
+  remaining positional visual fields beyond current fog/sky/water-fog colors
+  and water-fog end distance; then match vanilla's 3x3 neighboring-section
+  rerender/tint invalidation. Direct custom climate and color effects already
   project through the active holder order; malformed synchronized data is
   omitted instead of falling back to a same-name pack default.
 - **Client chunk-view residency pruning.** SetChunkCacheCenter/Radius currently
@@ -970,9 +975,6 @@ back into a todo. Do not delete these.
   and diffuse visual parity. Not a blocker for the CPU submission graph.
 - **Standalone mip/sampler generalization**, full vanilla mip generation, and
   standalone texture sampler parity. Belongs to resource parity work.
-- **Custom-pack `EnvironmentAttribute` generalization.** Restart when a concrete
-  renderer surface exists.
-
 ## Movement and interaction
 
 - **Non-player `POWDER_SNOW_WALKABLE_MOBS` entity collision.** Restart when

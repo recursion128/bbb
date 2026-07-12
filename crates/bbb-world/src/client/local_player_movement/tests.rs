@@ -3297,6 +3297,7 @@ fn local_player_in_nether_lava_current_uses_fast_lava_push() {
         cardinal_lighting: WorldCardinalLighting::Nether,
         skybox: crate::WorldSkybox::None,
         ambient_light: 0.1,
+        environment_attributes: crate::ClientEnvironmentAttributes::default(),
         last_death_location: None,
         sea_level: 32,
         is_debug: false,

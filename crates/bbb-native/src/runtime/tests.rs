@@ -4853,6 +4853,134 @@ fn lightmap_dimension_kind_prefers_registry_identity_over_bootstrap_holder_id() 
 }
 
 #[test]
+fn custom_dimension_direct_environment_attributes_drive_lightmap_and_fog() {
+    let mut world = world_with_custom_dimension_environment();
+    world.set_local_player_pose(local_player_pose([0.5, 0.0, 0.5], 0.0, 0.0));
+
+    let lightmap = lightmap_environment_attributes_for_world(&world);
+    assert_eq!(lightmap.sky_factor, 0.25);
+    assert_close3(
+        lightmap.block_light_tint,
+        [
+            0x20 as f32 / 255.0,
+            0x40 as f32 / 255.0,
+            0x60 as f32 / 255.0,
+        ],
+    );
+    assert_close3(
+        lightmap.sky_light_color,
+        [
+            0x40 as f32 / 255.0,
+            0x60 as f32 / 255.0,
+            0x80 as f32 / 255.0,
+        ],
+    );
+    assert_close3(
+        lightmap.ambient_color,
+        [
+            0x30 as f32 / 255.0,
+            0x50 as f32 / 255.0,
+            0x70 as f32 / 255.0,
+        ],
+    );
+    assert_close3(
+        lightmap.night_vision_color,
+        [
+            0x50 as f32 / 255.0,
+            0x70 as f32 / 255.0,
+            0x90 as f32 / 255.0,
+        ],
+    );
+
+    let atmospheric = fog_environment_for_world_at_camera(
+        &world,
+        &TerrainTextureState::default(),
+        camera_pose_from_world(&world),
+        12,
+        0.0,
+        0.0,
+        false,
+    );
+    assert_eq!(atmospheric.environmental_start, 12.0);
+    assert_eq!(atmospheric.environmental_end, 144.0);
+    assert_eq!(atmospheric.sky_end, 96.0);
+    assert_eq!(atmospheric.cloud_end, 192.0);
+    assert_fog_environment_close(
+        atmospheric,
+        FogEnvironment::world_with_visibility_ends(
+            clear_color_to_fog_color(clear_color_for_day_time_with_environment_colors(
+                6_000,
+                0.0,
+                0.0,
+                Some([0x12, 0x34, 0x56]),
+                Some([0x34, 0x56, 0x78]),
+                VanillaLightmapDimensionKind::Other,
+            )),
+            12.0,
+            144.0,
+            12,
+            96.0,
+            192.0,
+        ),
+    );
+
+    world.insert_decoded_chunk(empty_lightmap_test_chunk(world.dimension()));
+    set_lightmap_test_block(
+        &mut world,
+        BlockPos { x: 0, y: 1, z: 0 },
+        SOURCE_WATER_BLOCK_STATE_ID,
+    );
+    let water = fog_environment_for_world_at_camera(
+        &world,
+        &TerrainTextureState::default(),
+        camera_pose_from_world(&world),
+        12,
+        0.5,
+        0.0,
+        false,
+    );
+    assert_fog_environment_close(
+        water,
+        FogEnvironment::world_with_visibility_ends(
+            clear_color_to_fog_color(clear_color_from_argb(apply_fog_brightening(
+                rgb_u8_to_argb([0x56, 0x78, 0x9a]),
+                0.5,
+            ))),
+            -4.0,
+            24.0,
+            12,
+            24.0,
+            24.0,
+        ),
+    );
+}
+
+#[test]
+fn biome_positional_environment_values_override_custom_dimension_base() {
+    let mut world = world_with_custom_dimension_environment();
+    world.set_local_player_pose(local_player_pose([0.5, 0.0, 0.5], 0.0, 0.0));
+    world.insert_decoded_chunk(empty_lightmap_test_chunk_with_biome(world.dimension(), 42));
+    let mut profile = biome_profile_with_environment(
+        42,
+        Some([0xa0, 0xb0, 0xc0]),
+        Some([0x90, 0x80, 0x70]),
+        Some([0x60, 0x50, 0x40]),
+    );
+    profile.water_fog_end_distance = Some(FloatAttributeModifier {
+        modifier: FloatAttributeModifierKind::Multiply,
+        argument: 0.5,
+    });
+    let textures =
+        TerrainTextureState::with_biome_colors_for_tests(BiomeColorCatalog::new([profile]));
+
+    let colors = camera_environment_colors(&world, &textures, camera_pose_from_world(&world));
+    assert_eq!(colors.sky_color, Some([0xa0, 0xb0, 0xc0]));
+    assert_eq!(colors.fog_color, Some([0x90, 0x80, 0x70]));
+    assert_eq!(colors.water_fog_color, Some([0x60, 0x50, 0x40]));
+    assert_eq!(colors.water_fog_end_distance, Some(24.0));
+}
+
+#[test]
 fn clear_color_samples_camera_biome_fog_and_sky_color_attributes() {
     let mut world = world_with_dimension(0, "minecraft:overworld");
     set_world_day_time(&mut world, 6_000);
@@ -6190,6 +6318,83 @@ fn world_with_dimension(dimension_type_id: i32, dimension: &str) -> WorldStore {
     world_with_dimension_height(dimension_type_id, dimension, 16)
 }
 
+fn world_with_custom_dimension_environment() -> WorldStore {
+    let mut world = WorldStore::with_dimension(WorldDimension::default());
+    world.record_registry_entries(
+        "minecraft:dimension_type",
+        0,
+        vec![RegistryPacketEntry::with_raw_data(
+            "example:custom",
+            custom_dimension_environment_nbt(),
+        )],
+    );
+    world.apply_login(&PlayLogin {
+        player_id: 42,
+        hardcore: false,
+        levels: vec!["example:level".to_string()],
+        max_players: 20,
+        chunk_radius: 8,
+        simulation_distance: 6,
+        reduced_debug_info: false,
+        show_death_screen: true,
+        do_limited_crafting: false,
+        common_spawn_info: CommonPlayerSpawnInfo {
+            dimension_type_id: 0,
+            dimension: "example:level".to_string(),
+            seed: 12345,
+            game_type: 0,
+            previous_game_type: -1,
+            is_debug: false,
+            is_flat: false,
+            last_death_location: None,
+            portal_cooldown: 0,
+            sea_level: 63,
+        },
+        enforces_secure_chat: true,
+    });
+    set_world_day_time(&mut world, 6_000);
+    world
+}
+
+fn custom_dimension_environment_nbt() -> Vec<u8> {
+    let mut out = vec![10, 10];
+    test_nbt_utf(&mut out, "attributes");
+    for (name, value) in [
+        ("minecraft:visual/fog_color", "#123456"),
+        ("minecraft:visual/sky_color", "#345678"),
+        ("minecraft:visual/water_fog_color", "#56789a"),
+        ("minecraft:visual/block_light_tint", "#204060"),
+        ("minecraft:visual/sky_light_color", "#406080"),
+        ("minecraft:visual/night_vision_color", "#507090"),
+        ("minecraft:visual/ambient_light_color", "#305070"),
+    ] {
+        out.push(8);
+        test_nbt_utf(&mut out, name);
+        test_nbt_utf(&mut out, value);
+    }
+    for (name, value) in [
+        ("minecraft:visual/fog_start_distance", 12.0_f32),
+        ("minecraft:visual/fog_end_distance", 144.0),
+        ("minecraft:visual/sky_fog_end_distance", 96.0),
+        ("minecraft:visual/cloud_fog_end_distance", 192.0),
+        ("minecraft:visual/water_fog_start_distance", -4.0),
+        ("minecraft:visual/water_fog_end_distance", 48.0),
+        ("minecraft:visual/sky_light_factor", 0.25),
+    ] {
+        out.push(5);
+        test_nbt_utf(&mut out, name);
+        out.extend_from_slice(&value.to_bits().to_be_bytes());
+    }
+    out.push(0);
+    out.push(0);
+    out
+}
+
+fn test_nbt_utf(out: &mut Vec<u8>, value: &str) {
+    out.extend_from_slice(&(value.len() as u16).to_be_bytes());
+    out.extend_from_slice(value.as_bytes());
+}
+
 fn world_with_dimension_last_death_location(
     dimension_type_id: i32,
     dimension: &str,
@@ -6665,7 +6870,10 @@ fn clear_color_to_fog_color(clear: ClearColor) -> [f32; 4] {
 
 fn assert_fog_environment_close(actual: FogEnvironment, expected: FogEnvironment) {
     for (actual, expected) in actual.color.iter().zip(expected.color.iter()) {
-        assert!((*actual - *expected).abs() < 1e-6);
+        assert!(
+            (*actual - *expected).abs() < 1e-6,
+            "fog color component {actual} != {expected}"
+        );
     }
     assert!((actual.environmental_start - expected.environmental_start).abs() < 1e-6);
     assert!((actual.environmental_end - expected.environmental_end).abs() < 1e-6);
