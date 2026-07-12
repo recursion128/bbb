@@ -11681,3 +11681,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] MapId/scale/locked、optional decoration/patch、rotation mask、128×128 bounds、strict trailing 与 canonical patch/preserve semantics 已审计。
 - [x] net/probe、dynamic map texture、item-frame 与 first-person decoration/text dispatch/tests 闭合；rich Component/font/bidi 继续由相邻呈现 owner 维护。
+
+## 2026-07-12：play merchant offers packet coverage audit
+
+- [x] offer wire 顺序、strict trailing、active MerchantMenu/container-id gate、canonical offer state 与 merchant UI baseline 已审计。
+- [x] exact component predicate 仍只保留 type ids；component-aware local trade/cost/stack presentation 继续开放，除 ownership 外四格保持 partial。

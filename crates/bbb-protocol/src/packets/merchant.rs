@@ -63,14 +63,20 @@ pub(super) fn decode_merchant_offers(decoder: &mut Decoder<'_>) -> Result<Mercha
         offers.push(decode_merchant_offer(decoder)?);
     }
 
-    Ok(MerchantOffers {
+    let packet = MerchantOffers {
         container_id,
         offers,
         villager_level: decoder.read_var_i32()?,
         villager_xp: decoder.read_var_i32()?,
         show_progress: decoder.read_bool()?,
         can_restock: decoder.read_bool()?,
-    })
+    };
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after merchant offers packet".to_string(),
+        ));
+    }
+    Ok(packet)
 }
 
 fn decode_merchant_offer(decoder: &mut Decoder<'_>) -> Result<MerchantOffer> {
@@ -157,12 +163,10 @@ mod tests {
         payload.write_var_i32(120);
         payload.write_bool(true);
         payload.write_bool(false);
+        let payload = payload.into_inner();
 
-        let packet = decode_play_clientbound(
-            ids::play::CLIENTBOUND_MERCHANT_OFFERS,
-            &payload.into_inner(),
-        )
-        .unwrap();
+        let packet =
+            decode_play_clientbound(ids::play::CLIENTBOUND_MERCHANT_OFFERS, &payload).unwrap();
 
         assert_eq!(
             packet,
@@ -189,6 +193,15 @@ mod tests {
                 show_progress: true,
                 can_restock: false,
             })
+        );
+
+        let mut trailing = payload;
+        trailing.push(0);
+        assert!(
+            decode_play_clientbound(ids::play::CLIENTBOUND_MERCHANT_OFFERS, &trailing)
+                .unwrap_err()
+                .to_string()
+                .contains("trailing bytes after merchant offers packet")
         );
     }
 
