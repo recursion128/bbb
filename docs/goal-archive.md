@@ -11951,3 +11951,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] signed-short slot + validated optional-untrusted ItemStack wire、`HAS_INFINITE_MATERIALS` codec context、server slot/item/feature/drop-throttle authority 已与 vanilla 反向核对；最终 inventory 仍以 server broadcasts 为准。
 - [x] bbb 已有 maintenance command 与 componentless/empty-stack encoder，但无 CreativeModeInventoryScreen、infinite-materials runtime gate、clone/drop UI lifecycle，且 summarized component patch 会安全拒绝；五维保持 partial，未将安全子集误标完整支持。
+
+## 2026-07-12：play serverbound set-game-rule coverage audit
+
+- [x] vanilla wire 已锁定为 `(game-rule resource key, UTF-8 value)` list；InWorldGameRulesScreen 先请求 server values、仅接受首个初始响应、typed 解析并仅提交 changed entries，权限撤销时关闭。
+- [x] bbb 当前只有 request + key/string diagnostic snapshot，无 typed screen、set encoder/net command/guards/focused tests；五维保持 partial，服务端 typed deserialization、rule mutation 与 operator broadcast 仍为权威。

@@ -4190,6 +4190,22 @@ mod tests {
             .all(|cell| cell.status == PacketCoverageStatus::Partial));
     }
 
+    #[test]
+    fn play_serverbound_set_game_rule_keeps_typed_screen_and_submit_open() {
+        let ledger = vanilla_packet_coverage_26_1().unwrap();
+        let entry = ledger
+            .entries
+            .iter()
+            .find(|entry| {
+                entry.state == "play" && entry.constant_name == "SERVERBOUND_SET_GAME_RULE"
+            })
+            .expect("play serverbound set game rule coverage row");
+        assert!(entry
+            .coverage
+            .values()
+            .all(|cell| cell.status == PacketCoverageStatus::Partial));
+    }
+
     fn state_name(state: PacketState) -> &'static str {
         match state {
             PacketState::Handshake => "handshake",

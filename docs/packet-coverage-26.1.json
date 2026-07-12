@@ -5424,28 +5424,50 @@
       "constant_name": "SERVERBOUND_SET_GAME_RULE",
       "coverage": {
         "ack_response": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "evidence": [
+            "crates/bbb-world/src/client/debug_game.rs#apply_game_rule_values",
+            "crates/bbb-world/src/client/hud.rs#apply_system_chat",
+            "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#handleSetGameRule",
+            "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#broadcastGameRuleChangeToOperators"
+          ],
+          "gap": "docs/unsupported-features.md#screens-and-presentation",
           "status": "partial"
         },
         "command_surface": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "evidence": [
+            "crates/bbb-control/src/server.rs#net.request_game_rule_values",
+            "crates/bbb-native/src/input/commands.rs#queue_request_game_rule_values_command",
+            "vanilla:net/minecraft/client/gui/screens/options/InWorldGameRulesScreen.java#onDone"
+          ],
+          "gap": "docs/unsupported-features.md#screens-and-presentation",
           "status": "partial"
         },
         "encoder": {
-          "evidence": [],
+          "evidence": [
+            "crates/bbb-protocol/src/packet_catalog.rs#SERVERBOUND_SET_GAME_RULE",
+            "vanilla:net/minecraft/network/protocol/game/ServerboundSetGameRulePacket.java#STREAM_CODEC"
+          ],
           "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
           "status": "partial"
         },
         "state_guard": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "evidence": [
+            "crates/bbb-world/src/client/debug_game.rs#apply_game_rule_values",
+            "vanilla:net/minecraft/client/gui/screens/options/InWorldGameRulesScreen.java#onGameRuleValuesUpdated",
+            "vanilla:net/minecraft/client/gui/screens/options/InWorldGameRulesScreen.java#onGamemasterPermissionChanged",
+            "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#handleSetGameRule"
+          ],
+          "gap": "docs/unsupported-features.md#screens-and-presentation",
           "status": "partial"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "evidence": [
+            "crates/bbb-protocol/src/packets/debug_game/tests.rs#decodes_game_rule_values_packet_wire_order",
+            "crates/bbb-world/src/client/debug_game.rs#tracks_debug_game_events_and_counters",
+            "crates/bbb-protocol/src/packet_coverage.rs#play_game_rule_values_keeps_typed_screen_apply_open",
+            "scripts/generate-packet-catalog.py#extract_catalogs"
+          ],
+          "gap": "docs/unsupported-features.md#screens-and-presentation",
           "status": "partial"
         }
       },
