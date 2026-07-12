@@ -135,11 +135,17 @@ pub(super) fn decode_set_objective(decoder: &mut Decoder<'_>) -> Result<SetObjec
         None
     };
 
-    Ok(SetObjective {
+    let packet = SetObjective {
         objective_name,
         method,
         parameters,
-    })
+    };
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after set objective packet".to_string(),
+        ));
+    }
+    Ok(packet)
 }
 
 pub(super) fn decode_set_score(decoder: &mut Decoder<'_>) -> Result<SetScore> {
@@ -274,10 +280,9 @@ mod tests {
         let mut payload = Encoder::new();
         payload.write_string("kills");
         payload.write_i8(1);
+        let mut bytes = payload.into_inner();
 
-        let packet =
-            decode_play_clientbound(ids::play::CLIENTBOUND_SET_OBJECTIVE, &payload.into_inner())
-                .unwrap();
+        let packet = decode_play_clientbound(ids::play::CLIENTBOUND_SET_OBJECTIVE, &bytes).unwrap();
         assert_eq!(
             packet,
             PlayClientbound::SetObjective(SetObjective {
@@ -286,6 +291,12 @@ mod tests {
                 parameters: None,
             })
         );
+        bytes.push(0);
+        let error =
+            decode_play_clientbound(ids::play::CLIENTBOUND_SET_OBJECTIVE, &bytes).unwrap_err();
+        assert!(error
+            .to_string()
+            .contains("trailing bytes after set objective packet"));
     }
 
     #[test]

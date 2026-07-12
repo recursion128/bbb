@@ -9358,29 +9358,47 @@
       "constant_name": "CLIENTBOUND_SET_OBJECTIVE",
       "coverage": {
         "canonical_apply": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
+          "evidence": [
+            "crates/bbb-world/src/client/scoreboard.rs#apply_set_objective",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleAddObjective"
+          ],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
           "status": "partial"
         },
         "decode": {
-          "evidence": [],
+          "evidence": [
+            "crates/bbb-protocol/src/packets/scoreboard.rs#decodes_scoreboard_set_objective_add_and_remove_packets",
+            "crates/bbb-protocol/src/packets/scoreboard.rs#rejects_invalid_scoreboard_method_ids",
+            "vanilla:net/minecraft/network/protocol/game/ClientboundSetObjectivePacket.java#STREAM_CODEC"
+          ],
           "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
           "status": "partial"
         },
         "ownership": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/play_apply.rs#PlayClientbound::SetObjective"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "runtime_side_effect": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
+          "evidence": [
+            "crates/bbb-world/src/client/scoreboard/tests.rs#scoreboard_objective_lifecycle_clears_display_and_scores",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleAddObjective"
+          ],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
           "status": "partial"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/scoreboard.rs#decodes_scoreboard_set_objective_add_and_remove_packets",
+            "crates/bbb-net/src/event_stream.rs#play_border_and_scoreboard_packets_emit_matching_events_without_responses",
+            "crates/bbb-net/src/probe/play.rs#probe_applies_scoreboard_packets_to_world",
+            "crates/bbb-world/src/client/scoreboard/tests.rs#scoreboard_objective_lifecycle_clears_display_and_scores",
+            "crates/bbb-native/src/runtime/events/tests/session_hud_and_vehicle_events.rs#scoreboard_events_update_world_and_world_counters"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "clientbound",

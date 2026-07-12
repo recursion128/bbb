@@ -11477,3 +11477,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] 对照 `ClientboundSetDisplayObjectivePacket` 锁定 DisplaySlot BY_ID（越界回退 LIST）+ empty-as-null objective wire并拒绝 trailing bytes。
 - [x] known objective 绑定、empty/unknown objective 清槽以及 protocol/net/world/native tests 五格闭合。
+
+## 2026-07-12：play set-objective packet coverage audit
+
+- [x] add/remove/change framing、render-type validation、strict trailing、ownership 与跨 crate tests 闭合。
+- [x] bbb 仍拒绝 vanilla 可解码但 handler no-op 的 unknown method；rich Component/NumberFormat 仍为 summary，故 decode/canonical/runtime 保持 partial。

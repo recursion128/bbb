@@ -609,6 +609,8 @@ back into a todo. Do not delete these.
   are covered; remaining scoreboard gaps are objective/team text and presentation specific.
 - SetDisplayObjective slot selection and clear/unknown-objective behavior are covered;
   rich objective/team content remains tracked by the packets that carry it.
+- SetObjective still rejects unknown method bytes that vanilla decodes as handler no-ops,
+  and its rich Component/NumberFormat values remain summary projections.
 - `BeaconMenu`: confirm/cancel hover state, effect highlighted hover state,
   labels/tooltips.
 - `EnchantmentMenu`: animated book model, enchanting glyph text and its

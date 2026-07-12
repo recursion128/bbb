@@ -475,6 +475,7 @@ play PlayerCombatKill 的 player-id + trusted Component wire、strict decode、w
 player gate、DeathScreen/respawn 和完整 Component 保持 canonical/runtime partial。
 play ResetScore 的 owner + nullable objective wire、strict decode、all/single reset、unknown-objective gate 与 tests 已闭合。
 play SetDisplayObjective 的 BY_ID display-slot + nullable-by-empty objective wire、strict decode、clear/unknown gate 与 tests 已闭合。
+play SetObjective 的 add/remove/change framing、strict trailing、ownership 与 tests 已闭合；unknown method no-op、rich Component/NumberFormat 保持 decode/canonical/runtime partial。
 
 完成标准：全部 vanilla 26.1 catalog entry 都有矩阵行；所有目标客户端适用项为
 `complete`，其余只有带 vanilla 依据的 `not-applicable` 或带重启判据的窄 `deferred`；
