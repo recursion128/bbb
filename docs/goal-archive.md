@@ -11766,3 +11766,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] `ServerboundChatAckPacket` 的 VarInt offset wire、20-entry last-seen ring、重复签名抑制、filtered-message bit、`offset > 64` 自动发送与 outbound chat update 共享状态已闭合。
 - [x] play→configuration 转换前会先 flush 未满阈值的 pending offset；服务端只验证并推进 window，没有专用 response，未虚构确认状态。
+
+## 2026-07-12：play serverbound unsigned chat command packet coverage audit
+
+- [x] `ServerboundChatCommandPacket` 的 UTF command wire、chat UI slash/empty/format/length gate、control/native/net send 与 vanilla server unsigned-command handler 已闭合。
+- [x] 同步 command tree 检出的 signable arguments 会分流到 `SERVERBOUND_CHAT_COMMAND_SIGNED`，不会混入本行；普通 command output/error 不是专用 acknowledgement。
