@@ -163,6 +163,7 @@ pub struct VanillaEntityMetadataFamilySchema {
 pub struct VanillaEntityMetadataClassCatalogEntry {
     pub java_class: &'static str,
     pub superclass: Option<&'static str>,
+    pub interfaces: &'static [&'static str],
     pub source_path: &'static str,
     pub kind: &'static str,
     pub inherited_accessor_count: u16,
@@ -221,6 +222,8 @@ pub struct VanillaEntityTypeMetadataCatalogEntry {
     pub is_projectile: bool,
     pub is_hurting_projectile: bool,
     pub is_wind_charge: bool,
+    pub is_player_rideable_jumping: bool,
+    pub has_custom_inventory_screen: bool,
     pub diagnostic: Option<&'static str>,
 }
 
@@ -349,6 +352,20 @@ pub fn vanilla_entity_metadata_type_is_wind_charge(entity_type_id: i32) -> bool 
         .unwrap_or(false)
 }
 
+pub fn vanilla_entity_metadata_type_is_player_rideable_jumping(entity_type_id: i32) -> bool {
+    VANILLA_ENTITY_TYPE_METADATA_26_1
+        .get(usize::try_from(entity_type_id).unwrap_or(usize::MAX))
+        .map(|entry| entry.is_player_rideable_jumping)
+        .unwrap_or(false)
+}
+
+pub fn vanilla_entity_metadata_type_has_custom_inventory_screen(entity_type_id: i32) -> bool {
+    VANILLA_ENTITY_TYPE_METADATA_26_1
+        .get(usize::try_from(entity_type_id).unwrap_or(usize::MAX))
+        .map(|entry| entry.has_custom_inventory_screen)
+        .unwrap_or(false)
+}
+
 pub const fn vanilla_minecart_default_display_offset(entity_type_id: i32) -> i32 {
     match entity_type_id {
         VANILLA_ENTITY_TYPE_CHEST_MINECART_ID => VANILLA_CHEST_MINECART_DEFAULT_DISPLAY_OFFSET,
@@ -396,6 +413,11 @@ mod tests {
             .map(|entry| (entry.java_class, entry))
             .collect::<HashMap<_, _>>();
         assert_eq!(classes.len(), VANILLA_ENTITY_METADATA_CLASSES_26_1.len());
+        for class in VANILLA_ENTITY_METADATA_CLASSES_26_1 {
+            for interface in class.interfaces {
+                assert!(classes.contains_key(interface));
+            }
+        }
 
         let mut by_owner: HashMap<&str, Vec<&VanillaEntityMetadataAccessorCatalogEntry>> =
             HashMap::new();
@@ -499,6 +521,20 @@ mod tests {
                 .count(),
             2
         );
+        assert_eq!(
+            VANILLA_ENTITY_TYPE_METADATA_26_1
+                .iter()
+                .filter(|entry| entry.is_player_rideable_jumping)
+                .count(),
+            11
+        );
+        assert_eq!(
+            VANILLA_ENTITY_TYPE_METADATA_26_1
+                .iter()
+                .filter(|entry| entry.has_custom_inventory_screen)
+                .count(),
+            21
+        );
         assert!(vanilla_entity_metadata_type_is_living(
             VANILLA_ENTITY_TYPE_PLAYER_ID
         ));
@@ -551,6 +587,19 @@ mod tests {
             .map(|(body, _)| body)
             .expect("saved projectile query source");
         assert!(!saved_query.contains("matches!"));
+        let passenger_source = include_str!("passengers.rs");
+        for function in [
+            "is_vanilla_player_rideable_jumping_type",
+            "is_vanilla_custom_inventory_screen_type",
+        ] {
+            let body = passenger_source
+                .split(&format!("fn {function}"))
+                .nth(1)
+                .and_then(|source| source.split_once("\n}"))
+                .map(|(body, _)| body)
+                .expect("passenger interface query source");
+            assert!(!body.contains("matches!"));
+        }
     }
 
     #[test]

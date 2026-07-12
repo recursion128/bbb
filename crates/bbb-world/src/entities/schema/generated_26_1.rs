@@ -1070,6 +1070,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.AgeableMob",
         superclass: Some("net.minecraft.world.entity.PathfinderMob"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/AgeableMob.java",
         kind: "class",
         inherited_accessor_count: 16,
@@ -1078,6 +1079,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.AgeableMob.AgeableMobGroupData",
         superclass: None,
+        interfaces: &["net.minecraft.world.entity.SpawnGroupData"],
         source_path: "net/minecraft/world/entity/AgeableMob.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -1086,6 +1088,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.AnimationState",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/AnimationState.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -1094,6 +1097,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.AreaEffectCloud",
         superclass: Some("net.minecraft.world.entity.Entity"),
+        interfaces: &["net.minecraft.world.entity.TraceableEntity"],
         source_path: "net/minecraft/world/entity/AreaEffectCloud.java",
         kind: "class",
         inherited_accessor_count: 8,
@@ -1102,6 +1106,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.Attackable",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/Attackable.java",
         kind: "interface",
         inherited_accessor_count: 0,
@@ -1110,6 +1115,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.Avatar",
         superclass: Some("net.minecraft.world.entity.LivingEntity"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/Avatar.java",
         kind: "class",
         inherited_accessor_count: 15,
@@ -1118,6 +1124,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ContainerUser",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ContainerUser.java",
         kind: "interface",
         inherited_accessor_count: 0,
@@ -1126,6 +1133,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ConversionParams",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ConversionParams.java",
         kind: "record",
         inherited_accessor_count: 0,
@@ -1134,6 +1142,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ConversionParams.AfterConversion",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ConversionParams.java",
         kind: "interface",
         inherited_accessor_count: 0,
@@ -1142,6 +1151,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ConversionType",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ConversionType.java",
         kind: "enum",
         inherited_accessor_count: 0,
@@ -1150,6 +1160,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.Crackiness",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/Crackiness.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -1158,6 +1169,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.Crackiness.Level",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/Crackiness.java",
         kind: "enum",
         inherited_accessor_count: 0,
@@ -1166,6 +1178,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.Display",
         superclass: Some("net.minecraft.world.entity.Entity"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/Display.java",
         kind: "class",
         inherited_accessor_count: 8,
@@ -1174,6 +1187,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.Display.BillboardConstraints",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/Display.java",
         kind: "enum",
         inherited_accessor_count: 0,
@@ -1182,6 +1196,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.Display.BlockDisplay",
         superclass: Some("net.minecraft.world.entity.Display"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/Display.java",
         kind: "class",
         inherited_accessor_count: 23,
@@ -1190,6 +1205,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.Display.BlockDisplay.BlockRenderState",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/Display.java",
         kind: "record",
         inherited_accessor_count: 0,
@@ -1198,6 +1214,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.Display.ColorInterpolator",
         superclass: None,
+        interfaces: &["net.minecraft.world.entity.Display.IntInterpolator"],
         source_path: "net/minecraft/world/entity/Display.java",
         kind: "record",
         inherited_accessor_count: 0,
@@ -1206,6 +1223,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.Display.FloatInterpolator",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/Display.java",
         kind: "interface",
         inherited_accessor_count: 0,
@@ -1214,6 +1232,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.Display.GenericInterpolator",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/Display.java",
         kind: "interface",
         inherited_accessor_count: 0,
@@ -1222,6 +1241,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.Display.IntInterpolator",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/Display.java",
         kind: "interface",
         inherited_accessor_count: 0,
@@ -1230,6 +1250,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.Display.ItemDisplay",
         superclass: Some("net.minecraft.world.entity.Display"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/Display.java",
         kind: "class",
         inherited_accessor_count: 23,
@@ -1238,6 +1259,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.Display.ItemDisplay.ItemRenderState",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/Display.java",
         kind: "record",
         inherited_accessor_count: 0,
@@ -1246,6 +1268,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.Display.LinearFloatInterpolator",
         superclass: None,
+        interfaces: &["net.minecraft.world.entity.Display.FloatInterpolator"],
         source_path: "net/minecraft/world/entity/Display.java",
         kind: "record",
         inherited_accessor_count: 0,
@@ -1254,6 +1277,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.Display.LinearIntInterpolator",
         superclass: None,
+        interfaces: &["net.minecraft.world.entity.Display.IntInterpolator"],
         source_path: "net/minecraft/world/entity/Display.java",
         kind: "record",
         inherited_accessor_count: 0,
@@ -1262,6 +1286,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.Display.RenderState",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/Display.java",
         kind: "record",
         inherited_accessor_count: 0,
@@ -1270,6 +1295,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.Display.TextDisplay",
         superclass: Some("net.minecraft.world.entity.Display"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/Display.java",
         kind: "class",
         inherited_accessor_count: 23,
@@ -1278,6 +1304,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.Display.TextDisplay.Align",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/Display.java",
         kind: "enum",
         inherited_accessor_count: 0,
@@ -1286,6 +1313,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.Display.TextDisplay.CachedInfo",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/Display.java",
         kind: "record",
         inherited_accessor_count: 0,
@@ -1294,6 +1322,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.Display.TextDisplay.CachedLine",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/Display.java",
         kind: "record",
         inherited_accessor_count: 0,
@@ -1302,6 +1331,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.Display.TextDisplay.LineSplitter",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/Display.java",
         kind: "interface",
         inherited_accessor_count: 0,
@@ -1310,6 +1340,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.Display.TextDisplay.TextRenderState",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/Display.java",
         kind: "record",
         inherited_accessor_count: 0,
@@ -1318,6 +1349,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.Display.TransformationInterpolator",
         superclass: None,
+        interfaces: &["net.minecraft.world.entity.Display.GenericInterpolator"],
         source_path: "net/minecraft/world/entity/Display.java",
         kind: "record",
         inherited_accessor_count: 0,
@@ -1326,6 +1358,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.DropChances",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/DropChances.java",
         kind: "record",
         inherited_accessor_count: 0,
@@ -1334,6 +1367,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ElytraAnimationState",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ElytraAnimationState.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -1342,6 +1376,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.Entity",
         superclass: None,
+        interfaces: &["net.minecraft.world.entity.ItemOwner", "net.minecraft.world.entity.SlotProvider"],
         source_path: "net/minecraft/world/entity/Entity.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -1350,6 +1385,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.Entity.EntityPathElement",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/Entity.java",
         kind: "record",
         inherited_accessor_count: 0,
@@ -1358,6 +1394,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.Entity.Flags",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/Entity.java",
         kind: "annotation",
         inherited_accessor_count: 0,
@@ -1366,6 +1403,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.Entity.MoveFunction",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/Entity.java",
         kind: "interface",
         inherited_accessor_count: 0,
@@ -1374,6 +1412,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.Entity.Movement",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/Entity.java",
         kind: "record",
         inherited_accessor_count: 0,
@@ -1382,6 +1421,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.Entity.MovementEmission",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/Entity.java",
         kind: "enum",
         inherited_accessor_count: 0,
@@ -1390,6 +1430,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.Entity.RemovalReason",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/Entity.java",
         kind: "enum",
         inherited_accessor_count: 0,
@@ -1398,6 +1439,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.EntityAttachment",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/EntityAttachment.java",
         kind: "enum",
         inherited_accessor_count: 0,
@@ -1406,6 +1448,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.EntityAttachment.Fallback",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/EntityAttachment.java",
         kind: "interface",
         inherited_accessor_count: 0,
@@ -1414,6 +1457,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.EntityAttachments",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/EntityAttachments.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -1422,6 +1466,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.EntityAttachments.Builder",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/EntityAttachments.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -1430,6 +1475,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.EntityDimensions",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/EntityDimensions.java",
         kind: "record",
         inherited_accessor_count: 0,
@@ -1438,6 +1484,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.EntityEquipment",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/EntityEquipment.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -1446,6 +1493,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.EntityEvent",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/EntityEvent.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -1454,6 +1502,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.EntityFluidInteraction",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/EntityFluidInteraction.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -1462,6 +1511,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.EntityFluidInteraction.Tracker",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/EntityFluidInteraction.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -1470,6 +1520,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.EntityProcessor",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/EntityProcessor.java",
         kind: "interface",
         inherited_accessor_count: 0,
@@ -1478,6 +1529,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.EntityReference",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/EntityReference.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -1486,6 +1538,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.EntitySelector",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/EntitySelector.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -1494,6 +1547,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.EntitySpawnReason",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/EntitySpawnReason.java",
         kind: "enum",
         inherited_accessor_count: 0,
@@ -1502,6 +1556,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.EntityType",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/EntityType.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -1510,6 +1565,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.EntityType.Builder",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/EntityType.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -1518,6 +1574,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.EntityType.EntityFactory",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/EntityType.java",
         kind: "interface",
         inherited_accessor_count: 0,
@@ -1526,6 +1583,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.EquipmentSlot",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/EquipmentSlot.java",
         kind: "enum",
         inherited_accessor_count: 0,
@@ -1534,6 +1592,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.EquipmentSlot.Type",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/EquipmentSlot.java",
         kind: "enum",
         inherited_accessor_count: 0,
@@ -1542,6 +1601,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.EquipmentSlotGroup",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/EquipmentSlotGroup.java",
         kind: "enum",
         inherited_accessor_count: 0,
@@ -1550,6 +1610,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.EquipmentTable",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/EquipmentTable.java",
         kind: "record",
         inherited_accessor_count: 0,
@@ -1558,6 +1619,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.EquipmentUser",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/EquipmentUser.java",
         kind: "interface",
         inherited_accessor_count: 0,
@@ -1566,6 +1628,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ExperienceOrb",
         superclass: Some("net.minecraft.world.entity.Entity"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ExperienceOrb.java",
         kind: "class",
         inherited_accessor_count: 8,
@@ -1574,6 +1637,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.HasCustomInventoryScreen",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/HasCustomInventoryScreen.java",
         kind: "interface",
         inherited_accessor_count: 0,
@@ -1582,6 +1646,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.HumanoidArm",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/HumanoidArm.java",
         kind: "enum",
         inherited_accessor_count: 0,
@@ -1590,6 +1655,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.InsideBlockEffectApplier",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/InsideBlockEffectApplier.java",
         kind: "interface",
         inherited_accessor_count: 0,
@@ -1598,6 +1664,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.InsideBlockEffectApplier.StepBasedCollector",
         superclass: None,
+        interfaces: &["net.minecraft.world.entity.InsideBlockEffectApplier"],
         source_path: "net/minecraft/world/entity/InsideBlockEffectApplier.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -1606,6 +1673,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.InsideBlockEffectType",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/InsideBlockEffectType.java",
         kind: "enum",
         inherited_accessor_count: 0,
@@ -1614,6 +1682,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.Interaction",
         superclass: Some("net.minecraft.world.entity.Entity"),
+        interfaces: &["net.minecraft.world.entity.Attackable", "net.minecraft.world.entity.Targeting"],
         source_path: "net/minecraft/world/entity/Interaction.java",
         kind: "class",
         inherited_accessor_count: 8,
@@ -1622,6 +1691,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.Interaction.PlayerAction",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/Interaction.java",
         kind: "record",
         inherited_accessor_count: 0,
@@ -1630,6 +1700,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.InterpolationHandler",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/InterpolationHandler.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -1638,6 +1709,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.InterpolationHandler.InterpolationData",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/InterpolationHandler.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -1646,6 +1718,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ItemBasedSteering",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ItemBasedSteering.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -1654,6 +1727,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ItemOwner",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ItemOwner.java",
         kind: "interface",
         inherited_accessor_count: 0,
@@ -1662,6 +1736,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ItemOwner.OffsetFromOwner",
         superclass: None,
+        interfaces: &["net.minecraft.world.entity.ItemOwner"],
         source_path: "net/minecraft/world/entity/ItemOwner.java",
         kind: "record",
         inherited_accessor_count: 0,
@@ -1670,6 +1745,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ItemSteerable",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ItemSteerable.java",
         kind: "interface",
         inherited_accessor_count: 0,
@@ -1678,6 +1754,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.Leashable",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/Leashable.java",
         kind: "interface",
         inherited_accessor_count: 0,
@@ -1686,6 +1763,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.Leashable.LeashData",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/Leashable.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -1694,6 +1772,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.Leashable.Wrench",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/Leashable.java",
         kind: "record",
         inherited_accessor_count: 0,
@@ -1702,6 +1781,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.LightningBolt",
         superclass: Some("net.minecraft.world.entity.Entity"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/LightningBolt.java",
         kind: "class",
         inherited_accessor_count: 8,
@@ -1710,6 +1790,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.LivingEntity",
         superclass: Some("net.minecraft.world.entity.Entity"),
+        interfaces: &["net.minecraft.world.entity.Attackable"],
         source_path: "net/minecraft/world/entity/LivingEntity.java",
         kind: "class",
         inherited_accessor_count: 8,
@@ -1718,6 +1799,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.LivingEntity.Fallsounds",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/LivingEntity.java",
         kind: "record",
         inherited_accessor_count: 0,
@@ -1726,6 +1808,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.Marker",
         superclass: Some("net.minecraft.world.entity.Entity"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/Marker.java",
         kind: "class",
         inherited_accessor_count: 8,
@@ -1734,6 +1817,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.Mob",
         superclass: Some("net.minecraft.world.entity.LivingEntity"),
+        interfaces: &["net.minecraft.world.entity.Targeting", "net.minecraft.world.entity.EquipmentUser", "net.minecraft.world.entity.Leashable"],
         source_path: "net/minecraft/world/entity/Mob.java",
         kind: "class",
         inherited_accessor_count: 15,
@@ -1742,6 +1826,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.MobCategory",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/MobCategory.java",
         kind: "enum",
         inherited_accessor_count: 0,
@@ -1750,6 +1835,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.MoverType",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/MoverType.java",
         kind: "enum",
         inherited_accessor_count: 0,
@@ -1758,6 +1844,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.NeutralMob",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/NeutralMob.java",
         kind: "interface",
         inherited_accessor_count: 0,
@@ -1766,6 +1853,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.OminousItemSpawner",
         superclass: Some("net.minecraft.world.entity.Entity"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/OminousItemSpawner.java",
         kind: "class",
         inherited_accessor_count: 8,
@@ -1774,6 +1862,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.OwnableEntity",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/OwnableEntity.java",
         kind: "interface",
         inherited_accessor_count: 0,
@@ -1782,6 +1871,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.PathfinderMob",
         superclass: Some("net.minecraft.world.entity.Mob"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/PathfinderMob.java",
         kind: "class",
         inherited_accessor_count: 16,
@@ -1790,6 +1880,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.PlayerRideable",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/PlayerRideable.java",
         kind: "interface",
         inherited_accessor_count: 0,
@@ -1798,6 +1889,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.PlayerRideableJumping",
         superclass: None,
+        interfaces: &["net.minecraft.world.entity.PlayerRideable"],
         source_path: "net/minecraft/world/entity/PlayerRideableJumping.java",
         kind: "interface",
         inherited_accessor_count: 0,
@@ -1806,6 +1898,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.PortalProcessor",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/PortalProcessor.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -1814,6 +1907,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.Pose",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/Pose.java",
         kind: "enum",
         inherited_accessor_count: 0,
@@ -1822,6 +1916,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.PositionMoveRotation",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/PositionMoveRotation.java",
         kind: "record",
         inherited_accessor_count: 0,
@@ -1830,6 +1925,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.Relative",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/Relative.java",
         kind: "enum",
         inherited_accessor_count: 0,
@@ -1838,6 +1934,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ReputationEventHandler",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ReputationEventHandler.java",
         kind: "interface",
         inherited_accessor_count: 0,
@@ -1846,6 +1943,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.Shearable",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/Shearable.java",
         kind: "interface",
         inherited_accessor_count: 0,
@@ -1854,6 +1952,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.SlotAccess",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/SlotAccess.java",
         kind: "interface",
         inherited_accessor_count: 0,
@@ -1862,6 +1961,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.SlotProvider",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/SlotProvider.java",
         kind: "interface",
         inherited_accessor_count: 0,
@@ -1870,6 +1970,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.SpawnGroupData",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/SpawnGroupData.java",
         kind: "interface",
         inherited_accessor_count: 0,
@@ -1878,6 +1979,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.SpawnPlacementType",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/SpawnPlacementType.java",
         kind: "interface",
         inherited_accessor_count: 0,
@@ -1886,6 +1988,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.SpawnPlacementTypes",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/SpawnPlacementTypes.java",
         kind: "interface",
         inherited_accessor_count: 0,
@@ -1894,6 +1997,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.SpawnPlacements",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/SpawnPlacements.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -1902,6 +2006,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.SpawnPlacements.Data",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/SpawnPlacements.java",
         kind: "record",
         inherited_accessor_count: 0,
@@ -1910,6 +2015,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.SpawnPlacements.SpawnPredicate",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/SpawnPlacements.java",
         kind: "interface",
         inherited_accessor_count: 0,
@@ -1918,6 +2024,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.TamableAnimal",
         superclass: Some("net.minecraft.world.entity.animal.Animal"),
+        interfaces: &["net.minecraft.world.entity.OwnableEntity"],
         source_path: "net/minecraft/world/entity/TamableAnimal.java",
         kind: "class",
         inherited_accessor_count: 18,
@@ -1926,6 +2033,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.TamableAnimal.TamableAnimalPanicGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.PanicGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/TamableAnimal.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -1934,6 +2042,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.Targeting",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/Targeting.java",
         kind: "interface",
         inherited_accessor_count: 0,
@@ -1942,6 +2051,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.TraceableEntity",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/TraceableEntity.java",
         kind: "interface",
         inherited_accessor_count: 0,
@@ -1950,6 +2060,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.WalkAnimationState",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/WalkAnimationState.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -1958,6 +2069,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.ActivityData",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/ActivityData.java",
         kind: "record",
         inherited_accessor_count: 0,
@@ -1966,6 +2078,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.Brain",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/Brain.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -1974,6 +2087,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.Brain.ActivitySupplier",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/Brain.java",
         kind: "interface",
         inherited_accessor_count: 0,
@@ -1982,6 +2096,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.Brain.Packed",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/Brain.java",
         kind: "record",
         inherited_accessor_count: 0,
@@ -1990,6 +2105,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.Brain.Provider",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/Brain.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -1998,6 +2114,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.Brain.Visitor",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/Brain.java",
         kind: "interface",
         inherited_accessor_count: 0,
@@ -2006,6 +2123,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.attributes.Attribute",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/attributes/Attribute.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2014,6 +2132,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.attributes.Attribute.Sentiment",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/attributes/Attribute.java",
         kind: "enum",
         inherited_accessor_count: 0,
@@ -2022,6 +2141,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.attributes.AttributeInstance",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/attributes/AttributeInstance.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2030,6 +2150,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.attributes.AttributeInstance.Packed",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/attributes/AttributeInstance.java",
         kind: "record",
         inherited_accessor_count: 0,
@@ -2038,6 +2159,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.attributes.AttributeMap",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/attributes/AttributeMap.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2046,6 +2168,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.attributes.AttributeModifier",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/attributes/AttributeModifier.java",
         kind: "record",
         inherited_accessor_count: 0,
@@ -2054,6 +2177,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.attributes.AttributeModifier.Operation",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/attributes/AttributeModifier.java",
         kind: "enum",
         inherited_accessor_count: 0,
@@ -2062,6 +2186,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.attributes.AttributeSupplier",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/attributes/AttributeSupplier.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2070,6 +2195,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.attributes.AttributeSupplier.Builder",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/attributes/AttributeSupplier.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2078,6 +2204,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.attributes.Attributes",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/attributes/Attributes.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2086,6 +2213,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.attributes.DefaultAttributes",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/attributes/DefaultAttributes.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2094,6 +2222,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.attributes.RangedAttribute",
         superclass: Some("net.minecraft.world.entity.ai.attributes.Attribute"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/attributes/RangedAttribute.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2102,6 +2231,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.AcquirePoi",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/AcquirePoi.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2110,6 +2240,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.AcquirePoi.JitteredLinearRetry",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/AcquirePoi.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2118,6 +2249,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.AnimalMakeLove",
         superclass: Some("net.minecraft.world.entity.ai.behavior.Behavior"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/AnimalMakeLove.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2126,6 +2258,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.AnimalPanic",
         superclass: Some("net.minecraft.world.entity.ai.behavior.Behavior"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/AnimalPanic.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2134,6 +2267,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.AssignProfessionFromJobSite",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/AssignProfessionFromJobSite.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2142,6 +2276,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.BabyFollowAdult",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/BabyFollowAdult.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2150,6 +2285,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.BackUpIfTooClose",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/BackUpIfTooClose.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2158,6 +2294,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.BecomePassiveIfMemoryPresent",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/BecomePassiveIfMemoryPresent.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2166,6 +2303,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.Behavior",
         superclass: None,
+        interfaces: &["net.minecraft.world.entity.ai.behavior.BehaviorControl"],
         source_path: "net/minecraft/world/entity/ai/behavior/Behavior.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2174,6 +2312,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.Behavior.Status",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/Behavior.java",
         kind: "enum",
         inherited_accessor_count: 0,
@@ -2182,6 +2321,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.BehaviorControl",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/BehaviorControl.java",
         kind: "interface",
         inherited_accessor_count: 0,
@@ -2190,6 +2330,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.BehaviorUtils",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/BehaviorUtils.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2198,6 +2339,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.BlockPosTracker",
         superclass: None,
+        interfaces: &["net.minecraft.world.entity.ai.behavior.PositionTracker"],
         source_path: "net/minecraft/world/entity/ai/behavior/BlockPosTracker.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2206,6 +2348,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.CelebrateVillagersSurvivedRaid",
         superclass: Some("net.minecraft.world.entity.ai.behavior.Behavior"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/CelebrateVillagersSurvivedRaid.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2214,6 +2357,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.ChargeAttack",
         superclass: Some("net.minecraft.world.entity.ai.behavior.Behavior"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/ChargeAttack.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2222,6 +2366,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.CopyMemoryWithExpiry",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/CopyMemoryWithExpiry.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2230,6 +2375,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.CountDownCooldownTicks",
         superclass: Some("net.minecraft.world.entity.ai.behavior.Behavior"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/CountDownCooldownTicks.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2238,6 +2384,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.Croak",
         superclass: Some("net.minecraft.world.entity.ai.behavior.Behavior"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/Croak.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2246,6 +2393,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.CrossbowAttack",
         superclass: Some("net.minecraft.world.entity.ai.behavior.Behavior"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/CrossbowAttack.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2254,6 +2402,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.CrossbowAttack.CrossbowState",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/CrossbowAttack.java",
         kind: "enum",
         inherited_accessor_count: 0,
@@ -2262,6 +2411,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.DismountOrSkipMounting",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/DismountOrSkipMounting.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2270,6 +2420,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.DoNothing",
         superclass: None,
+        interfaces: &["net.minecraft.world.entity.ai.behavior.BehaviorControl"],
         source_path: "net/minecraft/world/entity/ai/behavior/DoNothing.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2278,6 +2429,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.EntityTracker",
         superclass: None,
+        interfaces: &["net.minecraft.world.entity.ai.behavior.PositionTracker"],
         source_path: "net/minecraft/world/entity/ai/behavior/EntityTracker.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2286,6 +2438,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.EraseMemoryIf",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/EraseMemoryIf.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2294,6 +2447,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.FollowTemptation",
         superclass: Some("net.minecraft.world.entity.ai.behavior.Behavior"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/FollowTemptation.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2302,6 +2456,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.GateBehavior",
         superclass: None,
+        interfaces: &["net.minecraft.world.entity.ai.behavior.BehaviorControl"],
         source_path: "net/minecraft/world/entity/ai/behavior/GateBehavior.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2310,6 +2465,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.GateBehavior.OrderPolicy",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/GateBehavior.java",
         kind: "enum",
         inherited_accessor_count: 0,
@@ -2318,6 +2474,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.GateBehavior.RunningPolicy",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/GateBehavior.java",
         kind: "enum",
         inherited_accessor_count: 0,
@@ -2326,6 +2483,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.GiveGiftToHero",
         superclass: Some("net.minecraft.world.entity.ai.behavior.Behavior"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/GiveGiftToHero.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2334,6 +2492,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.GoAndGiveItemsToTarget",
         superclass: Some("net.minecraft.world.entity.ai.behavior.Behavior"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/GoAndGiveItemsToTarget.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2342,6 +2501,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.GoAndGiveItemsToTarget.ItemThrower",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/GoAndGiveItemsToTarget.java",
         kind: "interface",
         inherited_accessor_count: 0,
@@ -2350,6 +2510,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.GoToClosestVillage",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/GoToClosestVillage.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2358,6 +2519,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.GoToPotentialJobSite",
         superclass: Some("net.minecraft.world.entity.ai.behavior.Behavior"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/GoToPotentialJobSite.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2366,6 +2528,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.GoToTargetLocation",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/GoToTargetLocation.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2374,6 +2537,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.GoToWantedItem",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/GoToWantedItem.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2382,6 +2546,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.HarvestFarmland",
         superclass: Some("net.minecraft.world.entity.ai.behavior.Behavior"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/HarvestFarmland.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2390,6 +2555,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.InsideBrownianWalk",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/InsideBrownianWalk.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2398,6 +2564,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.InteractWith",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/InteractWith.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2406,6 +2573,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.InteractWithDoor",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/InteractWithDoor.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2414,6 +2582,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.JumpOnBed",
         superclass: Some("net.minecraft.world.entity.ai.behavior.Behavior"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/JumpOnBed.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2422,6 +2591,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.LocateHidingPlace",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/LocateHidingPlace.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2430,6 +2600,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.LongJumpMidJump",
         superclass: Some("net.minecraft.world.entity.ai.behavior.Behavior"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/LongJumpMidJump.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2438,6 +2609,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.LongJumpToPreferredBlock",
         superclass: Some("net.minecraft.world.entity.ai.behavior.LongJumpToRandomPos"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/LongJumpToPreferredBlock.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2446,6 +2618,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.LongJumpToRandomPos",
         superclass: Some("net.minecraft.world.entity.ai.behavior.Behavior"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/LongJumpToRandomPos.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2454,6 +2627,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.LongJumpToRandomPos.PossibleJump",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/LongJumpToRandomPos.java",
         kind: "record",
         inherited_accessor_count: 0,
@@ -2462,6 +2636,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.LongJumpUtil",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/LongJumpUtil.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2470,6 +2645,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.LookAndFollowTradingPlayerSink",
         superclass: Some("net.minecraft.world.entity.ai.behavior.Behavior"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/LookAndFollowTradingPlayerSink.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2478,6 +2654,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.LookAtTargetSink",
         superclass: Some("net.minecraft.world.entity.ai.behavior.Behavior"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/LookAtTargetSink.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2486,6 +2663,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.MeleeAttack",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/MeleeAttack.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2494,6 +2672,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.Mount",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/Mount.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2502,6 +2681,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.MoveToSkySeeingSpot",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/MoveToSkySeeingSpot.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2510,6 +2690,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.MoveToTargetSink",
         superclass: Some("net.minecraft.world.entity.ai.behavior.Behavior"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/MoveToTargetSink.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2518,6 +2699,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.OneShot",
         superclass: None,
+        interfaces: &["net.minecraft.world.entity.ai.behavior.BehaviorControl", "net.minecraft.world.entity.ai.behavior.declarative.Trigger"],
         source_path: "net/minecraft/world/entity/ai/behavior/OneShot.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2526,6 +2708,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.PlayTagWithOtherKids",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/PlayTagWithOtherKids.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2534,6 +2717,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.PoiCompetitorScan",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/PoiCompetitorScan.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2542,6 +2726,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.PositionTracker",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/PositionTracker.java",
         kind: "interface",
         inherited_accessor_count: 0,
@@ -2550,6 +2735,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.PrepareRamNearestTarget",
         superclass: Some("net.minecraft.world.entity.ai.behavior.Behavior"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/PrepareRamNearestTarget.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2558,6 +2744,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.PrepareRamNearestTarget.RamCandidate",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/PrepareRamNearestTarget.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2566,6 +2753,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.RamTarget",
         superclass: Some("net.minecraft.world.entity.ai.behavior.Behavior"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/RamTarget.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2574,6 +2762,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.RandomLookAround",
         superclass: Some("net.minecraft.world.entity.ai.behavior.Behavior"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/RandomLookAround.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2582,6 +2771,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.RandomStroll",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/RandomStroll.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2590,6 +2780,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.ReactToBell",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/ReactToBell.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2598,6 +2789,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.ResetProfession",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/ResetProfession.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2606,6 +2798,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.ResetRaidStatus",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/ResetRaidStatus.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2614,6 +2807,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.RingBell",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/RingBell.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2622,6 +2816,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.RunOne",
         superclass: Some("net.minecraft.world.entity.ai.behavior.GateBehavior"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/RunOne.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2630,6 +2825,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.SetClosestHomeAsWalkTarget",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/SetClosestHomeAsWalkTarget.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2638,6 +2834,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.SetEntityLookTarget",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/SetEntityLookTarget.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2646,6 +2843,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.SetEntityLookTargetSometimes",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/SetEntityLookTargetSometimes.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2654,6 +2852,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.SetEntityLookTargetSometimes.Ticker",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/SetEntityLookTargetSometimes.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2662,6 +2861,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.SetHiddenState",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/SetHiddenState.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2670,6 +2870,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.SetLookAndInteract",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/SetLookAndInteract.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2678,6 +2879,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.SetRaidStatus",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/SetRaidStatus.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2686,6 +2888,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.SetWalkTargetAwayFrom",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/SetWalkTargetAwayFrom.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2694,6 +2897,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.SetWalkTargetFromAttackTargetIfTargetOutOfReach",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/SetWalkTargetFromAttackTargetIfTargetOutOfReach.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2702,6 +2906,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.SetWalkTargetFromBlockMemory",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/SetWalkTargetFromBlockMemory.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2710,6 +2915,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.SetWalkTargetFromLookTarget",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/SetWalkTargetFromLookTarget.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2718,6 +2924,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.ShowTradesToPlayer",
         superclass: Some("net.minecraft.world.entity.ai.behavior.Behavior"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/ShowTradesToPlayer.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2726,6 +2933,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.ShufflingList",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/ShufflingList.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2734,6 +2942,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.ShufflingList.WeightedEntry",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/ShufflingList.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2742,6 +2951,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.SleepInBed",
         superclass: Some("net.minecraft.world.entity.ai.behavior.Behavior"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/SleepInBed.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2750,6 +2960,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.SocializeAtBell",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/SocializeAtBell.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2758,6 +2969,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.SpearApproach",
         superclass: Some("net.minecraft.world.entity.ai.behavior.Behavior"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/SpearApproach.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2766,6 +2978,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.SpearAttack",
         superclass: Some("net.minecraft.world.entity.ai.behavior.Behavior"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/SpearAttack.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2774,6 +2987,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.SpearAttack.SpearStatus",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/SpearAttack.java",
         kind: "enum",
         inherited_accessor_count: 0,
@@ -2782,6 +2996,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.SpearRetreat",
         superclass: Some("net.minecraft.world.entity.ai.behavior.Behavior"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/SpearRetreat.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2790,6 +3005,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.StartAttacking",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/StartAttacking.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2798,6 +3014,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.StartAttacking.StartAttackingCondition",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/StartAttacking.java",
         kind: "interface",
         inherited_accessor_count: 0,
@@ -2806,6 +3023,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.StartAttacking.TargetFinder",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/StartAttacking.java",
         kind: "interface",
         inherited_accessor_count: 0,
@@ -2814,6 +3032,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.StartCelebratingIfTargetDead",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/StartCelebratingIfTargetDead.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2822,6 +3041,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.StayCloseToTarget",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/StayCloseToTarget.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2830,6 +3050,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.StopAttackingIfTargetInvalid",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/StopAttackingIfTargetInvalid.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2838,6 +3059,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.StopAttackingIfTargetInvalid.StopAttackCondition",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/StopAttackingIfTargetInvalid.java",
         kind: "interface",
         inherited_accessor_count: 0,
@@ -2846,6 +3068,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.StopAttackingIfTargetInvalid.TargetErasedCallback",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/StopAttackingIfTargetInvalid.java",
         kind: "interface",
         inherited_accessor_count: 0,
@@ -2854,6 +3077,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.StopBeingAngryIfTargetDead",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/StopBeingAngryIfTargetDead.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2862,6 +3086,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.StrollAroundPoi",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/StrollAroundPoi.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2870,6 +3095,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.StrollToPoi",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/StrollToPoi.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2878,6 +3104,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.StrollToPoiList",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/StrollToPoiList.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2886,6 +3113,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.Swim",
         superclass: Some("net.minecraft.world.entity.ai.behavior.Behavior"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/Swim.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2894,6 +3122,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.TradeWithVillager",
         superclass: Some("net.minecraft.world.entity.ai.behavior.Behavior"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/TradeWithVillager.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2902,6 +3131,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.TransportItemsBetweenContainers",
         superclass: Some("net.minecraft.world.entity.ai.behavior.Behavior"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/TransportItemsBetweenContainers.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2910,6 +3140,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.TransportItemsBetweenContainers.ContainerInteractionState",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/TransportItemsBetweenContainers.java",
         kind: "enum",
         inherited_accessor_count: 0,
@@ -2918,6 +3149,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.TransportItemsBetweenContainers.OnTargetReachedInteraction",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/TransportItemsBetweenContainers.java",
         kind: "interface",
         inherited_accessor_count: 0,
@@ -2926,6 +3158,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.TransportItemsBetweenContainers.TransportItemState",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/TransportItemsBetweenContainers.java",
         kind: "enum",
         inherited_accessor_count: 0,
@@ -2934,6 +3167,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.TransportItemsBetweenContainers.TransportItemTarget",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/TransportItemsBetweenContainers.java",
         kind: "record",
         inherited_accessor_count: 0,
@@ -2942,6 +3176,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.TriggerGate",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/TriggerGate.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2950,6 +3185,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.TryFindLand",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/TryFindLand.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2958,6 +3194,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.TryFindLandNearWater",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/TryFindLandNearWater.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2966,6 +3203,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.TryFindWater",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/TryFindWater.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2974,6 +3212,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.TryLaySpawnOnFluidNearLand",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/TryLaySpawnOnFluidNearLand.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2982,6 +3221,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.UpdateActivityFromSchedule",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/UpdateActivityFromSchedule.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2990,6 +3230,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.UseBonemeal",
         superclass: Some("net.minecraft.world.entity.ai.behavior.Behavior"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/UseBonemeal.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -2998,6 +3239,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.ValidateNearbyPoi",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/ValidateNearbyPoi.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3006,6 +3248,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.VillageBoundRandomStroll",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/VillageBoundRandomStroll.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3014,6 +3257,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.VillagerCalmDown",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/VillagerCalmDown.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3022,6 +3266,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.VillagerGoalPackages",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/VillagerGoalPackages.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3030,6 +3275,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.VillagerMakeLove",
         superclass: Some("net.minecraft.world.entity.ai.behavior.Behavior"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/VillagerMakeLove.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3038,6 +3284,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.VillagerPanicTrigger",
         superclass: Some("net.minecraft.world.entity.ai.behavior.Behavior"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/VillagerPanicTrigger.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3046,6 +3293,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.WakeUp",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/WakeUp.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3054,6 +3302,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.WorkAtComposter",
         superclass: Some("net.minecraft.world.entity.ai.behavior.WorkAtPoi"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/WorkAtComposter.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3062,6 +3311,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.WorkAtPoi",
         superclass: Some("net.minecraft.world.entity.ai.behavior.Behavior"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/WorkAtPoi.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3070,6 +3320,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.YieldJobSite",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/YieldJobSite.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3078,6 +3329,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.declarative.BehaviorBuilder",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/declarative/BehaviorBuilder.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3086,6 +3338,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.declarative.BehaviorBuilder.Constant",
         superclass: Some("net.minecraft.world.entity.ai.behavior.declarative.BehaviorBuilder"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/declarative/BehaviorBuilder.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3094,6 +3347,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.declarative.BehaviorBuilder.Instance",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/declarative/BehaviorBuilder.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3102,6 +3356,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.declarative.BehaviorBuilder.Instance.Mu",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/declarative/BehaviorBuilder.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3110,6 +3365,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.declarative.BehaviorBuilder.Mu",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/declarative/BehaviorBuilder.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3118,6 +3374,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.declarative.BehaviorBuilder.PureMemory",
         superclass: Some("net.minecraft.world.entity.ai.behavior.declarative.BehaviorBuilder"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/declarative/BehaviorBuilder.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3126,6 +3383,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.declarative.BehaviorBuilder.TriggerWithResult",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/declarative/BehaviorBuilder.java",
         kind: "interface",
         inherited_accessor_count: 0,
@@ -3134,6 +3392,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.declarative.BehaviorBuilder.TriggerWrapper",
         superclass: Some("net.minecraft.world.entity.ai.behavior.declarative.BehaviorBuilder"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/declarative/BehaviorBuilder.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3142,6 +3401,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.declarative.MemoryAccessor",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/declarative/MemoryAccessor.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3150,6 +3410,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.declarative.MemoryCondition",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/declarative/MemoryCondition.java",
         kind: "interface",
         inherited_accessor_count: 0,
@@ -3158,6 +3419,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.declarative.MemoryCondition.Absent",
         superclass: None,
+        interfaces: &["net.minecraft.world.entity.ai.behavior.declarative.MemoryCondition"],
         source_path: "net/minecraft/world/entity/ai/behavior/declarative/MemoryCondition.java",
         kind: "record",
         inherited_accessor_count: 0,
@@ -3166,6 +3428,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.declarative.MemoryCondition.Present",
         superclass: None,
+        interfaces: &["net.minecraft.world.entity.ai.behavior.declarative.MemoryCondition"],
         source_path: "net/minecraft/world/entity/ai/behavior/declarative/MemoryCondition.java",
         kind: "record",
         inherited_accessor_count: 0,
@@ -3174,6 +3437,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.declarative.MemoryCondition.Registered",
         superclass: None,
+        interfaces: &["net.minecraft.world.entity.ai.behavior.declarative.MemoryCondition"],
         source_path: "net/minecraft/world/entity/ai/behavior/declarative/MemoryCondition.java",
         kind: "record",
         inherited_accessor_count: 0,
@@ -3182,6 +3446,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.declarative.Trigger",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/declarative/Trigger.java",
         kind: "interface",
         inherited_accessor_count: 0,
@@ -3190,6 +3455,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.warden.Digging",
         superclass: Some("net.minecraft.world.entity.ai.behavior.Behavior"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/warden/Digging.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3198,6 +3464,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.warden.Emerging",
         superclass: Some("net.minecraft.world.entity.ai.behavior.Behavior"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/warden/Emerging.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3206,6 +3473,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.warden.ForceUnmount",
         superclass: Some("net.minecraft.world.entity.ai.behavior.Behavior"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/warden/ForceUnmount.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3214,6 +3482,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.warden.Roar",
         superclass: Some("net.minecraft.world.entity.ai.behavior.Behavior"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/warden/Roar.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3222,6 +3491,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.warden.SetRoarTarget",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/warden/SetRoarTarget.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3230,6 +3500,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.warden.SetWardenLookTarget",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/warden/SetWardenLookTarget.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3238,6 +3509,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.warden.Sniffing",
         superclass: Some("net.minecraft.world.entity.ai.behavior.Behavior"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/warden/Sniffing.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3246,6 +3518,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.warden.SonicBoom",
         superclass: Some("net.minecraft.world.entity.ai.behavior.Behavior"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/warden/SonicBoom.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3254,6 +3527,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.behavior.warden.TryToSniff",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/behavior/warden/TryToSniff.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3262,6 +3536,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.control.BodyRotationControl",
         superclass: None,
+        interfaces: &["net.minecraft.world.entity.ai.control.Control"],
         source_path: "net/minecraft/world/entity/ai/control/BodyRotationControl.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3270,6 +3545,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.control.Control",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/control/Control.java",
         kind: "interface",
         inherited_accessor_count: 0,
@@ -3278,6 +3554,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.control.FlyingMoveControl",
         superclass: Some("net.minecraft.world.entity.ai.control.MoveControl"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/control/FlyingMoveControl.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3286,6 +3563,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.control.JumpControl",
         superclass: None,
+        interfaces: &["net.minecraft.world.entity.ai.control.Control"],
         source_path: "net/minecraft/world/entity/ai/control/JumpControl.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3294,6 +3572,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.control.LookControl",
         superclass: None,
+        interfaces: &["net.minecraft.world.entity.ai.control.Control"],
         source_path: "net/minecraft/world/entity/ai/control/LookControl.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3302,6 +3581,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.control.MoveControl",
         superclass: None,
+        interfaces: &["net.minecraft.world.entity.ai.control.Control"],
         source_path: "net/minecraft/world/entity/ai/control/MoveControl.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3310,6 +3590,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.control.MoveControl.Operation",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/control/MoveControl.java",
         kind: "enum",
         inherited_accessor_count: 0,
@@ -3318,6 +3599,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.control.SmoothSwimmingLookControl",
         superclass: Some("net.minecraft.world.entity.ai.control.LookControl"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/control/SmoothSwimmingLookControl.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3326,6 +3608,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.control.SmoothSwimmingMoveControl",
         superclass: Some("net.minecraft.world.entity.ai.control.MoveControl"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/control/SmoothSwimmingMoveControl.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3334,6 +3617,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.goal.AvoidEntityGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/goal/AvoidEntityGoal.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3342,6 +3626,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.goal.BegGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/goal/BegGoal.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3350,6 +3635,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.goal.BreakDoorGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.DoorInteractGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/goal/BreakDoorGoal.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3358,6 +3644,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.goal.BreathAirGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/goal/BreathAirGoal.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3366,6 +3653,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.goal.BreedGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/goal/BreedGoal.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3374,6 +3662,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.goal.CatLieOnBedGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.MoveToBlockGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/goal/CatLieOnBedGoal.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3382,6 +3671,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.goal.CatSitOnBlockGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.MoveToBlockGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/goal/CatSitOnBlockGoal.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3390,6 +3680,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.goal.ClimbOnTopOfPowderSnowGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/goal/ClimbOnTopOfPowderSnowGoal.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3398,6 +3689,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.goal.DolphinJumpGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.JumpGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/goal/DolphinJumpGoal.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3406,6 +3698,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.goal.DoorInteractGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/goal/DoorInteractGoal.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3414,6 +3707,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.goal.EatBlockGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/goal/EatBlockGoal.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3422,6 +3716,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.goal.FleeSunGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/goal/FleeSunGoal.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3430,6 +3725,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.goal.FloatGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/goal/FloatGoal.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3438,6 +3734,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.goal.FollowFlockLeaderGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/goal/FollowFlockLeaderGoal.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3446,6 +3743,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.goal.FollowMobGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/goal/FollowMobGoal.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3454,6 +3752,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.goal.FollowOwnerGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/goal/FollowOwnerGoal.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3462,6 +3761,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.goal.FollowParentGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/goal/FollowParentGoal.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3470,6 +3770,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.goal.FollowPlayerRiddenEntityGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/goal/FollowPlayerRiddenEntityGoal.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3478,6 +3779,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.goal.FollowPlayerRiddenEntityGoal.FollowEntityGoal",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/goal/FollowPlayerRiddenEntityGoal.java",
         kind: "enum",
         inherited_accessor_count: 0,
@@ -3486,6 +3788,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.goal.Goal",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/goal/Goal.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3494,6 +3797,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.goal.Goal.Flag",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/goal/Goal.java",
         kind: "enum",
         inherited_accessor_count: 0,
@@ -3502,6 +3806,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.goal.GoalSelector",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/goal/GoalSelector.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3510,6 +3815,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.goal.GolemRandomStrollInVillageGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.RandomStrollGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/goal/GolemRandomStrollInVillageGoal.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3518,6 +3824,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.goal.InteractGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.LookAtPlayerGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/goal/InteractGoal.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3526,6 +3833,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.goal.JumpGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/goal/JumpGoal.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3534,6 +3842,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.goal.LandOnOwnersShoulderGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/goal/LandOnOwnersShoulderGoal.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3542,6 +3851,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.goal.LeapAtTargetGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/goal/LeapAtTargetGoal.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3550,6 +3860,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.goal.LlamaFollowCaravanGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/goal/LlamaFollowCaravanGoal.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3558,6 +3869,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.goal.LookAtPlayerGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/goal/LookAtPlayerGoal.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3566,6 +3878,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.goal.LookAtTradingPlayerGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.LookAtPlayerGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/goal/LookAtTradingPlayerGoal.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3574,6 +3887,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.goal.MeleeAttackGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/goal/MeleeAttackGoal.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3582,6 +3896,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.goal.MoveBackToVillageGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.RandomStrollGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/goal/MoveBackToVillageGoal.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3590,6 +3905,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.goal.MoveThroughVillageGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/goal/MoveThroughVillageGoal.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3598,6 +3914,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.goal.MoveToBlockGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/goal/MoveToBlockGoal.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3606,6 +3923,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.goal.MoveTowardsRestrictionGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/goal/MoveTowardsRestrictionGoal.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3614,6 +3932,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.goal.MoveTowardsTargetGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/goal/MoveTowardsTargetGoal.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3622,6 +3941,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.goal.OcelotAttackGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/goal/OcelotAttackGoal.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3630,6 +3950,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.goal.OfferFlowerGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/goal/OfferFlowerGoal.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3638,6 +3959,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.goal.OpenDoorGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.DoorInteractGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/goal/OpenDoorGoal.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3646,6 +3968,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.goal.PanicGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/goal/PanicGoal.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3654,6 +3977,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.goal.PathfindToRaidGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/goal/PathfindToRaidGoal.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3662,6 +3986,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.goal.RandomLookAroundGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/goal/RandomLookAroundGoal.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3670,6 +3995,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.goal.RandomStandGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/goal/RandomStandGoal.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3678,6 +4004,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.goal.RandomStrollGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/goal/RandomStrollGoal.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3686,6 +4013,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.goal.RandomSwimmingGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.RandomStrollGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/goal/RandomSwimmingGoal.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3694,6 +4022,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.goal.RangedAttackGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/goal/RangedAttackGoal.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3702,6 +4031,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.goal.RangedBowAttackGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/goal/RangedBowAttackGoal.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3710,6 +4040,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.goal.RangedCrossbowAttackGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/goal/RangedCrossbowAttackGoal.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3718,6 +4049,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.goal.RangedCrossbowAttackGoal.CrossbowState",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/goal/RangedCrossbowAttackGoal.java",
         kind: "enum",
         inherited_accessor_count: 0,
@@ -3726,6 +4058,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.goal.RemoveBlockGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.MoveToBlockGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/goal/RemoveBlockGoal.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3734,6 +4067,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.goal.RestrictSunGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/goal/RestrictSunGoal.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3742,6 +4076,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.goal.RunAroundLikeCrazyGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/goal/RunAroundLikeCrazyGoal.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3750,6 +4085,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.goal.SitWhenOrderedToGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/goal/SitWhenOrderedToGoal.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3758,6 +4094,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.goal.SpearUseGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/goal/SpearUseGoal.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3766,6 +4103,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.goal.SpearUseGoal.SpearUseState",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/goal/SpearUseGoal.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3774,6 +4112,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.goal.StrollThroughVillageGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/goal/StrollThroughVillageGoal.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3782,6 +4121,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.goal.SwellGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/goal/SwellGoal.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3790,6 +4130,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.goal.TemptGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/goal/TemptGoal.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3798,6 +4139,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.goal.TemptGoal.ForNonPathfinders",
         superclass: Some("net.minecraft.world.entity.ai.goal.TemptGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/goal/TemptGoal.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3806,6 +4148,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.goal.TradeWithPlayerGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/goal/TradeWithPlayerGoal.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3814,6 +4157,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.goal.TryFindWaterGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/goal/TryFindWaterGoal.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3822,6 +4166,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.goal.UseItemGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/goal/UseItemGoal.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3830,6 +4175,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.goal.WaterAvoidingRandomFlyingGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.WaterAvoidingRandomStrollGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/goal/WaterAvoidingRandomFlyingGoal.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3838,6 +4184,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.goal.WaterAvoidingRandomStrollGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.RandomStrollGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/goal/WaterAvoidingRandomStrollGoal.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3846,6 +4193,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.goal.WrappedGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/goal/WrappedGoal.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3854,6 +4202,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.goal.ZombieAttackGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.MeleeAttackGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/goal/ZombieAttackGoal.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3862,6 +4211,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.goal.target.DefendVillageTargetGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.target.TargetGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/goal/target/DefendVillageTargetGoal.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3870,6 +4220,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.goal.target.HurtByTargetGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.target.TargetGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/goal/target/HurtByTargetGoal.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3878,6 +4229,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.target.TargetGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/goal/target/NearestAttackableTargetGoal.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3886,6 +4238,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.goal.target.NearestAttackableWitchTargetGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/goal/target/NearestAttackableWitchTargetGoal.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3894,6 +4247,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.goal.target.NearestHealableRaiderTargetGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/goal/target/NearestHealableRaiderTargetGoal.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3902,6 +4256,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.goal.target.NonTameRandomTargetGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/goal/target/NonTameRandomTargetGoal.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3910,6 +4265,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.goal.target.OwnerHurtByTargetGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.target.TargetGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/goal/target/OwnerHurtByTargetGoal.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3918,6 +4274,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.goal.target.OwnerHurtTargetGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.target.TargetGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/goal/target/OwnerHurtTargetGoal.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3926,6 +4283,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.goal.target.ResetUniversalAngerTargetGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/goal/target/ResetUniversalAngerTargetGoal.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3934,6 +4292,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.goal.target.TargetGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/goal/target/TargetGoal.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3942,6 +4301,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.gossip.GossipContainer",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/gossip/GossipContainer.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3950,6 +4310,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.gossip.GossipContainer.EntityGossips",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/gossip/GossipContainer.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3958,6 +4319,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.gossip.GossipContainer.GossipEntry",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/gossip/GossipContainer.java",
         kind: "record",
         inherited_accessor_count: 0,
@@ -3966,6 +4328,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.gossip.GossipType",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/gossip/GossipType.java",
         kind: "enum",
         inherited_accessor_count: 0,
@@ -3974,6 +4337,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.memory.ExpirableValue",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/memory/ExpirableValue.java",
         kind: "record",
         inherited_accessor_count: 0,
@@ -3982,6 +4346,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.memory.MemoryMap",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/memory/MemoryMap.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3990,6 +4355,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.memory.MemoryMap.Builder",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/memory/MemoryMap.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -3998,6 +4364,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.memory.MemoryMap.Value",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/memory/MemoryMap.java",
         kind: "record",
         inherited_accessor_count: 0,
@@ -4006,6 +4373,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.memory.MemoryModuleType",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/memory/MemoryModuleType.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -4014,6 +4382,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.memory.MemorySlot",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/memory/MemorySlot.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -4022,6 +4391,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.memory.MemoryStatus",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/memory/MemoryStatus.java",
         kind: "enum",
         inherited_accessor_count: 0,
@@ -4030,6 +4400,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.memory.NearestVisibleLivingEntities",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/memory/NearestVisibleLivingEntities.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -4038,6 +4409,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.memory.WalkTarget",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/memory/WalkTarget.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -4046,6 +4418,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.navigation.AmphibiousPathNavigation",
         superclass: Some("net.minecraft.world.entity.ai.navigation.PathNavigation"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/navigation/AmphibiousPathNavigation.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -4054,6 +4427,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.navigation.FlyingPathNavigation",
         superclass: Some("net.minecraft.world.entity.ai.navigation.PathNavigation"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/navigation/FlyingPathNavigation.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -4062,6 +4436,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.navigation.GroundPathNavigation",
         superclass: Some("net.minecraft.world.entity.ai.navigation.PathNavigation"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/navigation/GroundPathNavigation.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -4070,6 +4445,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.navigation.PathNavigation",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/navigation/PathNavigation.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -4078,6 +4454,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.navigation.WallClimberNavigation",
         superclass: Some("net.minecraft.world.entity.ai.navigation.GroundPathNavigation"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/navigation/WallClimberNavigation.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -4086,6 +4463,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.navigation.WaterBoundPathNavigation",
         superclass: Some("net.minecraft.world.entity.ai.navigation.PathNavigation"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/navigation/WaterBoundPathNavigation.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -4094,6 +4472,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.sensing.AdultSensor",
         superclass: Some("net.minecraft.world.entity.ai.sensing.Sensor"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/sensing/AdultSensor.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -4102,6 +4481,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.sensing.AdultSensorAnyType",
         superclass: Some("net.minecraft.world.entity.ai.sensing.AdultSensor"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/sensing/AdultSensorAnyType.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -4110,6 +4490,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.sensing.AxolotlAttackablesSensor",
         superclass: Some("net.minecraft.world.entity.ai.sensing.NearestVisibleLivingEntitySensor"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/sensing/AxolotlAttackablesSensor.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -4118,6 +4499,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.sensing.BreezeAttackEntitySensor",
         superclass: Some("net.minecraft.world.entity.ai.sensing.NearestLivingEntitySensor"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/sensing/BreezeAttackEntitySensor.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -4126,6 +4508,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.sensing.DummySensor",
         superclass: Some("net.minecraft.world.entity.ai.sensing.Sensor"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/sensing/DummySensor.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -4134,6 +4517,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.sensing.FrogAttackablesSensor",
         superclass: Some("net.minecraft.world.entity.ai.sensing.NearestVisibleLivingEntitySensor"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/sensing/FrogAttackablesSensor.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -4142,6 +4526,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.sensing.GolemSensor",
         superclass: Some("net.minecraft.world.entity.ai.sensing.Sensor"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/sensing/GolemSensor.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -4150,6 +4535,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.sensing.HoglinSpecificSensor",
         superclass: Some("net.minecraft.world.entity.ai.sensing.Sensor"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/sensing/HoglinSpecificSensor.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -4158,6 +4544,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.sensing.HurtBySensor",
         superclass: Some("net.minecraft.world.entity.ai.sensing.Sensor"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/sensing/HurtBySensor.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -4166,6 +4553,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.sensing.IsInWaterSensor",
         superclass: Some("net.minecraft.world.entity.ai.sensing.Sensor"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/sensing/IsInWaterSensor.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -4174,6 +4562,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.sensing.MobSensor",
         superclass: Some("net.minecraft.world.entity.ai.sensing.Sensor"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/sensing/MobSensor.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -4182,6 +4571,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.sensing.NearestBedSensor",
         superclass: Some("net.minecraft.world.entity.ai.sensing.Sensor"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/sensing/NearestBedSensor.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -4190,6 +4580,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.sensing.NearestItemSensor",
         superclass: Some("net.minecraft.world.entity.ai.sensing.Sensor"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/sensing/NearestItemSensor.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -4198,6 +4589,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.sensing.NearestLivingEntitySensor",
         superclass: Some("net.minecraft.world.entity.ai.sensing.Sensor"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/sensing/NearestLivingEntitySensor.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -4206,6 +4598,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.sensing.NearestVisibleLivingEntitySensor",
         superclass: Some("net.minecraft.world.entity.ai.sensing.Sensor"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/sensing/NearestVisibleLivingEntitySensor.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -4214,6 +4607,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.sensing.PiglinBruteSpecificSensor",
         superclass: Some("net.minecraft.world.entity.ai.sensing.Sensor"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/sensing/PiglinBruteSpecificSensor.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -4222,6 +4616,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.sensing.PiglinSpecificSensor",
         superclass: Some("net.minecraft.world.entity.ai.sensing.Sensor"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/sensing/PiglinSpecificSensor.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -4230,6 +4625,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.sensing.PlayerSensor",
         superclass: Some("net.minecraft.world.entity.ai.sensing.Sensor"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/sensing/PlayerSensor.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -4238,6 +4634,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.sensing.SecondaryPoiSensor",
         superclass: Some("net.minecraft.world.entity.ai.sensing.Sensor"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/sensing/SecondaryPoiSensor.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -4246,6 +4643,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.sensing.Sensing",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/sensing/Sensing.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -4254,6 +4652,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.sensing.Sensor",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/sensing/Sensor.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -4262,6 +4661,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.sensing.SensorType",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/sensing/SensorType.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -4270,6 +4670,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.sensing.TemptingSensor",
         superclass: Some("net.minecraft.world.entity.ai.sensing.Sensor"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/sensing/TemptingSensor.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -4278,6 +4679,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.sensing.VillagerBabiesSensor",
         superclass: Some("net.minecraft.world.entity.ai.sensing.Sensor"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/sensing/VillagerBabiesSensor.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -4286,6 +4688,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.sensing.VillagerHostilesSensor",
         superclass: Some("net.minecraft.world.entity.ai.sensing.NearestVisibleLivingEntitySensor"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/sensing/VillagerHostilesSensor.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -4294,6 +4697,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.sensing.WardenEntitySensor",
         superclass: Some("net.minecraft.world.entity.ai.sensing.NearestLivingEntitySensor"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/sensing/WardenEntitySensor.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -4302,6 +4706,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.targeting.TargetingConditions",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/targeting/TargetingConditions.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -4310,6 +4715,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.targeting.TargetingConditions.Selector",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/targeting/TargetingConditions.java",
         kind: "interface",
         inherited_accessor_count: 0,
@@ -4318,6 +4724,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.util.AirAndWaterRandomPos",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/util/AirAndWaterRandomPos.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -4326,6 +4733,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.util.AirRandomPos",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/util/AirRandomPos.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -4334,6 +4742,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.util.DefaultRandomPos",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/util/DefaultRandomPos.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -4342,6 +4751,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.util.GoalUtils",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/util/GoalUtils.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -4350,6 +4760,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.util.HoverRandomPos",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/util/HoverRandomPos.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -4358,6 +4769,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.util.LandRandomPos",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/util/LandRandomPos.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -4366,6 +4778,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.util.RandomPos",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/util/RandomPos.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -4374,6 +4787,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.village.ReputationEventType",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/village/ReputationEventType.java",
         kind: "interface",
         inherited_accessor_count: 0,
@@ -4382,6 +4796,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.village.VillageSiege",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/village/VillageSiege.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -4390,6 +4805,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.village.VillageSiege.State",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/village/VillageSiege.java",
         kind: "enum",
         inherited_accessor_count: 0,
@@ -4398,6 +4814,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.village.poi.PoiManager",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/village/poi/PoiManager.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -4406,6 +4823,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.village.poi.PoiManager.DistanceTracker",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/village/poi/PoiManager.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -4414,6 +4832,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.village.poi.PoiManager.Occupancy",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/village/poi/PoiManager.java",
         kind: "enum",
         inherited_accessor_count: 0,
@@ -4422,6 +4841,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.village.poi.PoiRecord",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/village/poi/PoiRecord.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -4430,6 +4850,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.village.poi.PoiRecord.Packed",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/village/poi/PoiRecord.java",
         kind: "record",
         inherited_accessor_count: 0,
@@ -4438,6 +4859,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.village.poi.PoiSection",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/village/poi/PoiSection.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -4446,6 +4868,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.village.poi.PoiSection.Packed",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/village/poi/PoiSection.java",
         kind: "record",
         inherited_accessor_count: 0,
@@ -4454,6 +4877,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.village.poi.PoiType",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/village/poi/PoiType.java",
         kind: "record",
         inherited_accessor_count: 0,
@@ -4462,6 +4886,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ai.village.poi.PoiTypes",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ai/village/poi/PoiTypes.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -4470,6 +4895,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ambient.AmbientCreature",
         superclass: Some("net.minecraft.world.entity.Mob"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ambient/AmbientCreature.java",
         kind: "class",
         inherited_accessor_count: 16,
@@ -4478,6 +4904,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.ambient.Bat",
         superclass: Some("net.minecraft.world.entity.ambient.AmbientCreature"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/ambient/Bat.java",
         kind: "class",
         inherited_accessor_count: 16,
@@ -4486,6 +4913,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.AgeableWaterCreature",
         superclass: Some("net.minecraft.world.entity.AgeableMob"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/AgeableWaterCreature.java",
         kind: "class",
         inherited_accessor_count: 18,
@@ -4494,6 +4922,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.Animal",
         superclass: Some("net.minecraft.world.entity.AgeableMob"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/Animal.java",
         kind: "class",
         inherited_accessor_count: 18,
@@ -4502,6 +4931,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.Bucketable",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/Bucketable.java",
         kind: "interface",
         inherited_accessor_count: 0,
@@ -4510,6 +4940,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.FlyingAnimal",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/FlyingAnimal.java",
         kind: "interface",
         inherited_accessor_count: 0,
@@ -4518,6 +4949,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.TemperatureVariants",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/TemperatureVariants.java",
         kind: "interface",
         inherited_accessor_count: 0,
@@ -4526,6 +4958,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.allay.Allay",
         superclass: Some("net.minecraft.world.entity.PathfinderMob"),
+        interfaces: &["net.minecraft.world.entity.npc.InventoryCarrier"],
         source_path: "net/minecraft/world/entity/animal/allay/Allay.java",
         kind: "class",
         inherited_accessor_count: 16,
@@ -4534,6 +4967,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.allay.Allay.JukeboxListener",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/allay/Allay.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -4542,6 +4976,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.allay.Allay.VibrationUser",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/allay/Allay.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -4550,6 +4985,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.allay.AllayAi",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/allay/AllayAi.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -4558,6 +4994,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.armadillo.Armadillo",
         superclass: Some("net.minecraft.world.entity.animal.Animal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/armadillo/Armadillo.java",
         kind: "class",
         inherited_accessor_count: 18,
@@ -4566,6 +5003,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.armadillo.Armadillo.ArmadilloState",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/armadillo/Armadillo.java",
         kind: "enum",
         inherited_accessor_count: 0,
@@ -4574,6 +5012,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.armadillo.ArmadilloAi",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/armadillo/ArmadilloAi.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -4582,6 +5021,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.armadillo.ArmadilloAi.ArmadilloBallUp",
         superclass: Some("net.minecraft.world.entity.ai.behavior.Behavior"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/armadillo/ArmadilloAi.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -4590,6 +5030,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.armadillo.ArmadilloAi.ArmadilloPanic",
         superclass: Some("net.minecraft.world.entity.ai.behavior.AnimalPanic"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/armadillo/ArmadilloAi.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -4598,6 +5039,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.axolotl.Axolotl",
         superclass: Some("net.minecraft.world.entity.animal.Animal"),
+        interfaces: &["net.minecraft.world.entity.animal.Bucketable"],
         source_path: "net/minecraft/world/entity/animal/axolotl/Axolotl.java",
         kind: "class",
         inherited_accessor_count: 18,
@@ -4606,6 +5048,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.axolotl.Axolotl.AxolotlAnimationState",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/axolotl/Axolotl.java",
         kind: "enum",
         inherited_accessor_count: 0,
@@ -4614,6 +5057,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.axolotl.Axolotl.AxolotlGroupData",
         superclass: Some("net.minecraft.world.entity.AgeableMob.AgeableMobGroupData"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/axolotl/Axolotl.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -4622,6 +5066,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.axolotl.Axolotl.AxolotlLookControl",
         superclass: Some("net.minecraft.world.entity.ai.control.SmoothSwimmingLookControl"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/axolotl/Axolotl.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -4630,6 +5075,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.axolotl.Axolotl.AxolotlMoveControl",
         superclass: Some("net.minecraft.world.entity.ai.control.SmoothSwimmingMoveControl"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/axolotl/Axolotl.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -4638,6 +5084,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.axolotl.Axolotl.Variant",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/axolotl/Axolotl.java",
         kind: "enum",
         inherited_accessor_count: 0,
@@ -4646,6 +5093,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.axolotl.AxolotlAi",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/axolotl/AxolotlAi.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -4654,6 +5102,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.axolotl.PlayDead",
         superclass: Some("net.minecraft.world.entity.ai.behavior.Behavior"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/axolotl/PlayDead.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -4662,6 +5111,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.axolotl.ValidatePlayDead",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/axolotl/ValidatePlayDead.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -4670,6 +5120,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.bee.Bee",
         superclass: Some("net.minecraft.world.entity.animal.Animal"),
+        interfaces: &["net.minecraft.world.entity.animal.FlyingAnimal", "net.minecraft.world.entity.NeutralMob"],
         source_path: "net/minecraft/world/entity/animal/bee/Bee.java",
         kind: "class",
         inherited_accessor_count: 18,
@@ -4678,6 +5129,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.bee.Bee.BaseBeeGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/bee/Bee.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -4686,6 +5138,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.bee.Bee.BeeAttackGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.MeleeAttackGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/bee/Bee.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -4694,6 +5147,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.bee.Bee.BeeBecomeAngryTargetGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/bee/Bee.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -4702,6 +5156,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.bee.Bee.BeeEnterHiveGoal",
         superclass: Some("net.minecraft.world.entity.animal.bee.Bee.BaseBeeGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/bee/Bee.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -4710,6 +5165,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.bee.Bee.BeeGoToHiveGoal",
         superclass: Some("net.minecraft.world.entity.animal.bee.Bee.BaseBeeGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/bee/Bee.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -4718,6 +5174,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.bee.Bee.BeeGoToKnownFlowerGoal",
         superclass: Some("net.minecraft.world.entity.animal.bee.Bee.BaseBeeGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/bee/Bee.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -4726,6 +5183,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.bee.Bee.BeeGrowCropGoal",
         superclass: Some("net.minecraft.world.entity.animal.bee.Bee.BaseBeeGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/bee/Bee.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -4734,6 +5192,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.bee.Bee.BeeHurtByOtherGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.target.HurtByTargetGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/bee/Bee.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -4742,6 +5201,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.bee.Bee.BeeLocateHiveGoal",
         superclass: Some("net.minecraft.world.entity.animal.bee.Bee.BaseBeeGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/bee/Bee.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -4750,6 +5210,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.bee.Bee.BeeLookControl",
         superclass: Some("net.minecraft.world.entity.ai.control.LookControl"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/bee/Bee.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -4758,6 +5219,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.bee.Bee.BeePollinateGoal",
         superclass: Some("net.minecraft.world.entity.animal.bee.Bee.BaseBeeGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/bee/Bee.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -4766,6 +5228,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.bee.Bee.BeeWanderGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/bee/Bee.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -4774,6 +5237,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.bee.Bee.ValidateFlowerGoal",
         superclass: Some("net.minecraft.world.entity.animal.bee.Bee.BaseBeeGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/bee/Bee.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -4782,6 +5246,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.bee.Bee.ValidateHiveGoal",
         superclass: Some("net.minecraft.world.entity.animal.bee.Bee.BaseBeeGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/bee/Bee.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -4790,6 +5255,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.camel.Camel",
         superclass: Some("net.minecraft.world.entity.animal.equine.AbstractHorse"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/camel/Camel.java",
         kind: "class",
         inherited_accessor_count: 19,
@@ -4798,6 +5264,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.camel.Camel.CamelBodyRotationControl",
         superclass: Some("net.minecraft.world.entity.ai.control.BodyRotationControl"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/camel/Camel.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -4806,6 +5273,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.camel.Camel.CamelLookControl",
         superclass: Some("net.minecraft.world.entity.ai.control.LookControl"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/camel/Camel.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -4814,6 +5282,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.camel.Camel.CamelMoveControl",
         superclass: Some("net.minecraft.world.entity.ai.control.MoveControl"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/camel/Camel.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -4822,6 +5291,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.camel.CamelAi",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/camel/CamelAi.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -4830,6 +5300,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.camel.CamelAi.CamelPanic",
         superclass: Some("net.minecraft.world.entity.ai.behavior.AnimalPanic"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/camel/CamelAi.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -4838,6 +5309,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.camel.CamelAi.RandomSitting",
         superclass: Some("net.minecraft.world.entity.ai.behavior.Behavior"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/camel/CamelAi.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -4846,6 +5318,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.camel.CamelHusk",
         superclass: Some("net.minecraft.world.entity.animal.camel.Camel"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/camel/CamelHusk.java",
         kind: "class",
         inherited_accessor_count: 21,
@@ -4854,6 +5327,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.chicken.Chicken",
         superclass: Some("net.minecraft.world.entity.animal.Animal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/chicken/Chicken.java",
         kind: "class",
         inherited_accessor_count: 18,
@@ -4862,6 +5336,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.chicken.ChickenSoundVariant",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/chicken/ChickenSoundVariant.java",
         kind: "record",
         inherited_accessor_count: 0,
@@ -4870,6 +5345,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.chicken.ChickenSoundVariant.ChickenSoundSet",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/chicken/ChickenSoundVariant.java",
         kind: "record",
         inherited_accessor_count: 0,
@@ -4878,6 +5354,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.chicken.ChickenSoundVariants",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/chicken/ChickenSoundVariants.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -4886,6 +5363,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.chicken.ChickenSoundVariants.SoundSet",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/chicken/ChickenSoundVariants.java",
         kind: "enum",
         inherited_accessor_count: 0,
@@ -4894,6 +5372,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.chicken.ChickenVariant",
         superclass: None,
+        interfaces: &["net.minecraft.world.entity.variant.PriorityProvider"],
         source_path: "net/minecraft/world/entity/animal/chicken/ChickenVariant.java",
         kind: "record",
         inherited_accessor_count: 0,
@@ -4902,6 +5381,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.chicken.ChickenVariant.ModelType",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/chicken/ChickenVariant.java",
         kind: "enum",
         inherited_accessor_count: 0,
@@ -4910,6 +5390,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.chicken.ChickenVariants",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/chicken/ChickenVariants.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -4918,6 +5399,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.cow.AbstractCow",
         superclass: Some("net.minecraft.world.entity.animal.Animal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/cow/AbstractCow.java",
         kind: "class",
         inherited_accessor_count: 18,
@@ -4926,6 +5408,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.cow.Cow",
         superclass: Some("net.minecraft.world.entity.animal.cow.AbstractCow"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/cow/Cow.java",
         kind: "class",
         inherited_accessor_count: 18,
@@ -4934,6 +5417,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.cow.CowSoundVariant",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/cow/CowSoundVariant.java",
         kind: "record",
         inherited_accessor_count: 0,
@@ -4942,6 +5426,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.cow.CowSoundVariants",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/cow/CowSoundVariants.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -4950,6 +5435,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.cow.CowSoundVariants.SoundSet",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/cow/CowSoundVariants.java",
         kind: "enum",
         inherited_accessor_count: 0,
@@ -4958,6 +5444,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.cow.CowVariant",
         superclass: None,
+        interfaces: &["net.minecraft.world.entity.variant.PriorityProvider"],
         source_path: "net/minecraft/world/entity/animal/cow/CowVariant.java",
         kind: "record",
         inherited_accessor_count: 0,
@@ -4966,6 +5453,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.cow.CowVariant.ModelType",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/cow/CowVariant.java",
         kind: "enum",
         inherited_accessor_count: 0,
@@ -4974,6 +5462,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.cow.CowVariants",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/cow/CowVariants.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -4982,6 +5471,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.cow.MushroomCow",
         superclass: Some("net.minecraft.world.entity.animal.cow.AbstractCow"),
+        interfaces: &["net.minecraft.world.entity.Shearable"],
         source_path: "net/minecraft/world/entity/animal/cow/MushroomCow.java",
         kind: "class",
         inherited_accessor_count: 18,
@@ -4990,6 +5480,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.cow.MushroomCow.Variant",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/cow/MushroomCow.java",
         kind: "enum",
         inherited_accessor_count: 0,
@@ -4998,6 +5489,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.dolphin.Dolphin",
         superclass: Some("net.minecraft.world.entity.animal.AgeableWaterCreature"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/dolphin/Dolphin.java",
         kind: "class",
         inherited_accessor_count: 18,
@@ -5006,6 +5498,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.dolphin.Dolphin.DolphinSwimToTreasureGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/dolphin/Dolphin.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -5014,6 +5507,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.dolphin.Dolphin.DolphinSwimWithPlayerGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/dolphin/Dolphin.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -5022,6 +5516,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.dolphin.Dolphin.PlayWithItemsGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/dolphin/Dolphin.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -5030,6 +5525,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.equine.AbstractChestedHorse",
         superclass: Some("net.minecraft.world.entity.animal.equine.AbstractHorse"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/equine/AbstractChestedHorse.java",
         kind: "class",
         inherited_accessor_count: 19,
@@ -5038,6 +5534,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.equine.AbstractHorse",
         superclass: Some("net.minecraft.world.entity.animal.Animal"),
+        interfaces: &["net.minecraft.world.entity.PlayerRideableJumping", "net.minecraft.world.entity.HasCustomInventoryScreen", "net.minecraft.world.entity.OwnableEntity"],
         source_path: "net/minecraft/world/entity/animal/equine/AbstractHorse.java",
         kind: "class",
         inherited_accessor_count: 18,
@@ -5046,6 +5543,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.equine.AbstractHorse.MountPanicGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.PanicGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/equine/AbstractHorse.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -5054,6 +5552,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.equine.Donkey",
         superclass: Some("net.minecraft.world.entity.animal.equine.AbstractChestedHorse"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/equine/Donkey.java",
         kind: "class",
         inherited_accessor_count: 20,
@@ -5062,6 +5561,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.equine.Horse",
         superclass: Some("net.minecraft.world.entity.animal.equine.AbstractHorse"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/equine/Horse.java",
         kind: "class",
         inherited_accessor_count: 19,
@@ -5070,6 +5570,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.equine.Horse.HorseGroupData",
         superclass: Some("net.minecraft.world.entity.AgeableMob.AgeableMobGroupData"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/equine/Horse.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -5078,6 +5579,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.equine.Llama",
         superclass: Some("net.minecraft.world.entity.animal.equine.AbstractChestedHorse"),
+        interfaces: &["net.minecraft.world.entity.monster.RangedAttackMob"],
         source_path: "net/minecraft/world/entity/animal/equine/Llama.java",
         kind: "class",
         inherited_accessor_count: 20,
@@ -5086,6 +5588,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.equine.Llama.LlamaAttackWolfGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/equine/Llama.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -5094,6 +5597,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.equine.Llama.LlamaGroupData",
         superclass: Some("net.minecraft.world.entity.AgeableMob.AgeableMobGroupData"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/equine/Llama.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -5102,6 +5606,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.equine.Llama.LlamaHurtByTargetGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.target.HurtByTargetGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/equine/Llama.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -5110,6 +5615,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.equine.Llama.Variant",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/equine/Llama.java",
         kind: "enum",
         inherited_accessor_count: 0,
@@ -5118,6 +5624,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.equine.Markings",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/equine/Markings.java",
         kind: "enum",
         inherited_accessor_count: 0,
@@ -5126,6 +5633,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.equine.Mule",
         superclass: Some("net.minecraft.world.entity.animal.equine.AbstractChestedHorse"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/equine/Mule.java",
         kind: "class",
         inherited_accessor_count: 20,
@@ -5134,6 +5642,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.equine.SkeletonHorse",
         superclass: Some("net.minecraft.world.entity.animal.equine.AbstractHorse"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/equine/SkeletonHorse.java",
         kind: "class",
         inherited_accessor_count: 19,
@@ -5142,6 +5651,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.equine.SkeletonTrapGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/equine/SkeletonTrapGoal.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -5150,6 +5660,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.equine.TraderLlama",
         superclass: Some("net.minecraft.world.entity.animal.equine.Llama"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/equine/TraderLlama.java",
         kind: "class",
         inherited_accessor_count: 22,
@@ -5158,6 +5669,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.equine.TraderLlama.TraderLlamaDefendWanderingTraderGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.target.TargetGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/equine/TraderLlama.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -5166,6 +5678,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.equine.Variant",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/equine/Variant.java",
         kind: "enum",
         inherited_accessor_count: 0,
@@ -5174,6 +5687,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.equine.ZombieHorse",
         superclass: Some("net.minecraft.world.entity.animal.equine.AbstractHorse"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/equine/ZombieHorse.java",
         kind: "class",
         inherited_accessor_count: 19,
@@ -5182,6 +5696,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.feline.Cat",
         superclass: Some("net.minecraft.world.entity.TamableAnimal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/feline/Cat.java",
         kind: "class",
         inherited_accessor_count: 20,
@@ -5190,6 +5705,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.feline.Cat.CatAvoidEntityGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.AvoidEntityGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/feline/Cat.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -5198,6 +5714,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.feline.Cat.CatRelaxOnOwnerGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/feline/Cat.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -5206,6 +5723,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.feline.Cat.CatTemptGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.TemptGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/feline/Cat.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -5214,6 +5732,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.feline.CatSoundVariant",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/feline/CatSoundVariant.java",
         kind: "record",
         inherited_accessor_count: 0,
@@ -5222,6 +5741,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.feline.CatSoundVariant.CatSoundSet",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/feline/CatSoundVariant.java",
         kind: "record",
         inherited_accessor_count: 0,
@@ -5230,6 +5750,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.feline.CatSoundVariants",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/feline/CatSoundVariants.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -5238,6 +5759,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.feline.CatSoundVariants.SoundSet",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/feline/CatSoundVariants.java",
         kind: "enum",
         inherited_accessor_count: 0,
@@ -5246,6 +5768,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.feline.CatVariant",
         superclass: None,
+        interfaces: &["net.minecraft.world.entity.variant.PriorityProvider"],
         source_path: "net/minecraft/world/entity/animal/feline/CatVariant.java",
         kind: "record",
         inherited_accessor_count: 0,
@@ -5254,6 +5777,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.feline.CatVariants",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/feline/CatVariants.java",
         kind: "interface",
         inherited_accessor_count: 0,
@@ -5262,6 +5786,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.feline.Ocelot",
         superclass: Some("net.minecraft.world.entity.animal.Animal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/feline/Ocelot.java",
         kind: "class",
         inherited_accessor_count: 18,
@@ -5270,6 +5795,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.feline.Ocelot.OcelotAvoidEntityGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.AvoidEntityGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/feline/Ocelot.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -5278,6 +5804,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.feline.Ocelot.OcelotTemptGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.TemptGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/feline/Ocelot.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -5286,6 +5813,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.fish.AbstractFish",
         superclass: Some("net.minecraft.world.entity.animal.fish.WaterAnimal"),
+        interfaces: &["net.minecraft.world.entity.animal.Bucketable"],
         source_path: "net/minecraft/world/entity/animal/fish/AbstractFish.java",
         kind: "class",
         inherited_accessor_count: 16,
@@ -5294,6 +5822,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.fish.AbstractFish.FishMoveControl",
         superclass: Some("net.minecraft.world.entity.ai.control.MoveControl"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/fish/AbstractFish.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -5302,6 +5831,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.fish.AbstractFish.FishSwimGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.RandomSwimmingGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/fish/AbstractFish.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -5310,6 +5840,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.fish.AbstractSchoolingFish",
         superclass: Some("net.minecraft.world.entity.animal.fish.AbstractFish"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/fish/AbstractSchoolingFish.java",
         kind: "class",
         inherited_accessor_count: 17,
@@ -5318,6 +5849,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.fish.AbstractSchoolingFish.SchoolSpawnGroupData",
         superclass: None,
+        interfaces: &["net.minecraft.world.entity.SpawnGroupData"],
         source_path: "net/minecraft/world/entity/animal/fish/AbstractSchoolingFish.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -5326,6 +5858,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.fish.Cod",
         superclass: Some("net.minecraft.world.entity.animal.fish.AbstractSchoolingFish"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/fish/Cod.java",
         kind: "class",
         inherited_accessor_count: 17,
@@ -5334,6 +5867,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.fish.Pufferfish",
         superclass: Some("net.minecraft.world.entity.animal.fish.AbstractFish"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/fish/Pufferfish.java",
         kind: "class",
         inherited_accessor_count: 17,
@@ -5342,6 +5876,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.fish.Pufferfish.PufferfishPuffGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/fish/Pufferfish.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -5350,6 +5885,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.fish.Salmon",
         superclass: Some("net.minecraft.world.entity.animal.fish.AbstractSchoolingFish"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/fish/Salmon.java",
         kind: "class",
         inherited_accessor_count: 17,
@@ -5358,6 +5894,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.fish.Salmon.Variant",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/fish/Salmon.java",
         kind: "enum",
         inherited_accessor_count: 0,
@@ -5366,6 +5903,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.fish.TropicalFish",
         superclass: Some("net.minecraft.world.entity.animal.fish.AbstractSchoolingFish"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/fish/TropicalFish.java",
         kind: "class",
         inherited_accessor_count: 17,
@@ -5374,6 +5912,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.fish.TropicalFish.Base",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/fish/TropicalFish.java",
         kind: "enum",
         inherited_accessor_count: 0,
@@ -5382,6 +5921,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.fish.TropicalFish.Pattern",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/fish/TropicalFish.java",
         kind: "enum",
         inherited_accessor_count: 0,
@@ -5390,6 +5930,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.fish.TropicalFish.TropicalFishGroupData",
         superclass: Some("net.minecraft.world.entity.animal.fish.AbstractSchoolingFish.SchoolSpawnGroupData"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/fish/TropicalFish.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -5398,6 +5939,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.fish.TropicalFish.Variant",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/fish/TropicalFish.java",
         kind: "record",
         inherited_accessor_count: 0,
@@ -5406,6 +5948,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.fish.WaterAnimal",
         superclass: Some("net.minecraft.world.entity.PathfinderMob"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/fish/WaterAnimal.java",
         kind: "class",
         inherited_accessor_count: 16,
@@ -5414,6 +5957,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.fox.Fox",
         superclass: Some("net.minecraft.world.entity.animal.Animal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/fox/Fox.java",
         kind: "class",
         inherited_accessor_count: 18,
@@ -5422,6 +5966,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.fox.Fox.DefendTrustedTargetGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/fox/Fox.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -5430,6 +5975,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.fox.Fox.FaceplantGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/fox/Fox.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -5438,6 +5984,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.fox.Fox.FoxAlertableEntitiesSelector",
         superclass: None,
+        interfaces: &["net.minecraft.world.entity.ai.targeting.TargetingConditions.Selector"],
         source_path: "net/minecraft/world/entity/animal/fox/Fox.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -5446,6 +5993,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.fox.Fox.FoxBehaviorGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/fox/Fox.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -5454,6 +6002,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.fox.Fox.FoxBreedGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.BreedGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/fox/Fox.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -5462,6 +6011,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.fox.Fox.FoxEatBerriesGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.MoveToBlockGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/fox/Fox.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -5470,6 +6020,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.fox.Fox.FoxFloatGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.FloatGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/fox/Fox.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -5478,6 +6029,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.fox.Fox.FoxFollowParentGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.FollowParentGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/fox/Fox.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -5486,6 +6038,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.fox.Fox.FoxGroupData",
         superclass: Some("net.minecraft.world.entity.AgeableMob.AgeableMobGroupData"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/fox/Fox.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -5494,6 +6047,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.fox.Fox.FoxLookAtPlayerGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.LookAtPlayerGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/fox/Fox.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -5502,6 +6056,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.fox.Fox.FoxLookControl",
         superclass: Some("net.minecraft.world.entity.ai.control.LookControl"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/fox/Fox.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -5510,6 +6065,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.fox.Fox.FoxMeleeAttackGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.MeleeAttackGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/fox/Fox.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -5518,6 +6074,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.fox.Fox.FoxMoveControl",
         superclass: Some("net.minecraft.world.entity.ai.control.MoveControl"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/fox/Fox.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -5526,6 +6083,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.fox.Fox.FoxPanicGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.PanicGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/fox/Fox.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -5534,6 +6092,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.fox.Fox.FoxPounceGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.JumpGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/fox/Fox.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -5542,6 +6101,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.fox.Fox.FoxSearchForItemsGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/fox/Fox.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -5550,6 +6110,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.fox.Fox.FoxStrollThroughVillageGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.StrollThroughVillageGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/fox/Fox.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -5558,6 +6119,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.fox.Fox.PerchAndSearchGoal",
         superclass: Some("net.minecraft.world.entity.animal.fox.Fox.FoxBehaviorGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/fox/Fox.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -5566,6 +6128,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.fox.Fox.SeekShelterGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.FleeSunGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/fox/Fox.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -5574,6 +6137,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.fox.Fox.SleepGoal",
         superclass: Some("net.minecraft.world.entity.animal.fox.Fox.FoxBehaviorGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/fox/Fox.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -5582,6 +6146,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.fox.Fox.StalkPreyGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/fox/Fox.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -5590,6 +6155,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.fox.Fox.Variant",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/fox/Fox.java",
         kind: "enum",
         inherited_accessor_count: 0,
@@ -5598,6 +6164,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.frog.Frog",
         superclass: Some("net.minecraft.world.entity.animal.Animal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/frog/Frog.java",
         kind: "class",
         inherited_accessor_count: 18,
@@ -5606,6 +6173,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.frog.Frog.FrogLookControl",
         superclass: Some("net.minecraft.world.entity.ai.control.LookControl"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/frog/Frog.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -5614,6 +6182,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.frog.Frog.FrogNodeEvaluator",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/frog/Frog.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -5622,6 +6191,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.frog.Frog.FrogPathNavigation",
         superclass: Some("net.minecraft.world.entity.ai.navigation.AmphibiousPathNavigation"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/frog/Frog.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -5630,6 +6200,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.frog.FrogAi",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/frog/FrogAi.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -5638,6 +6209,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.frog.FrogVariant",
         superclass: None,
+        interfaces: &["net.minecraft.world.entity.variant.PriorityProvider"],
         source_path: "net/minecraft/world/entity/animal/frog/FrogVariant.java",
         kind: "record",
         inherited_accessor_count: 0,
@@ -5646,6 +6218,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.frog.FrogVariants",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/frog/FrogVariants.java",
         kind: "interface",
         inherited_accessor_count: 0,
@@ -5654,6 +6227,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.frog.ShootTongue",
         superclass: Some("net.minecraft.world.entity.ai.behavior.Behavior"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/frog/ShootTongue.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -5662,6 +6236,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.frog.ShootTongue.State",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/frog/ShootTongue.java",
         kind: "enum",
         inherited_accessor_count: 0,
@@ -5670,6 +6245,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.frog.Tadpole",
         superclass: Some("net.minecraft.world.entity.animal.fish.AbstractFish"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/frog/Tadpole.java",
         kind: "class",
         inherited_accessor_count: 17,
@@ -5678,6 +6254,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.frog.TadpoleAi",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/frog/TadpoleAi.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -5686,6 +6263,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.goat.Goat",
         superclass: Some("net.minecraft.world.entity.animal.Animal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/goat/Goat.java",
         kind: "class",
         inherited_accessor_count: 18,
@@ -5694,6 +6272,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.goat.GoatAi",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/goat/GoatAi.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -5702,6 +6281,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.golem.AbstractGolem",
         superclass: Some("net.minecraft.world.entity.PathfinderMob"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/golem/AbstractGolem.java",
         kind: "class",
         inherited_accessor_count: 16,
@@ -5710,6 +6290,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.golem.CopperGolem",
         superclass: Some("net.minecraft.world.entity.animal.golem.AbstractGolem"),
+        interfaces: &["net.minecraft.world.entity.ContainerUser", "net.minecraft.world.entity.Shearable"],
         source_path: "net/minecraft/world/entity/animal/golem/CopperGolem.java",
         kind: "class",
         inherited_accessor_count: 16,
@@ -5718,6 +6299,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.golem.CopperGolemAi",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/golem/CopperGolemAi.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -5726,6 +6308,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.golem.CopperGolemOxidationLevel",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/golem/CopperGolemOxidationLevel.java",
         kind: "record",
         inherited_accessor_count: 0,
@@ -5734,6 +6317,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.golem.CopperGolemOxidationLevels",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/golem/CopperGolemOxidationLevels.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -5742,6 +6326,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.golem.CopperGolemState",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/golem/CopperGolemState.java",
         kind: "enum",
         inherited_accessor_count: 0,
@@ -5750,6 +6335,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.golem.IronGolem",
         superclass: Some("net.minecraft.world.entity.animal.golem.AbstractGolem"),
+        interfaces: &["net.minecraft.world.entity.NeutralMob"],
         source_path: "net/minecraft/world/entity/animal/golem/IronGolem.java",
         kind: "class",
         inherited_accessor_count: 16,
@@ -5758,6 +6344,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.golem.SnowGolem",
         superclass: Some("net.minecraft.world.entity.animal.golem.AbstractGolem"),
+        interfaces: &["net.minecraft.world.entity.monster.RangedAttackMob", "net.minecraft.world.entity.Shearable"],
         source_path: "net/minecraft/world/entity/animal/golem/SnowGolem.java",
         kind: "class",
         inherited_accessor_count: 16,
@@ -5766,6 +6353,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.happyghast.HappyGhast",
         superclass: Some("net.minecraft.world.entity.animal.Animal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/happyghast/HappyGhast.java",
         kind: "class",
         inherited_accessor_count: 18,
@@ -5774,6 +6362,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.happyghast.HappyGhast.BabyFlyingPathNavigation",
         superclass: Some("net.minecraft.world.entity.ai.navigation.FlyingPathNavigation"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/happyghast/HappyGhast.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -5782,6 +6371,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.happyghast.HappyGhast.HappyGhastBodyRotationControl",
         superclass: Some("net.minecraft.world.entity.ai.control.BodyRotationControl"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/happyghast/HappyGhast.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -5790,6 +6380,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.happyghast.HappyGhast.HappyGhastFloatGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.FloatGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/happyghast/HappyGhast.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -5798,6 +6389,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.happyghast.HappyGhast.HappyGhastLookControl",
         superclass: Some("net.minecraft.world.entity.ai.control.LookControl"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/happyghast/HappyGhast.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -5806,6 +6398,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.happyghast.HappyGhastAi",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/happyghast/HappyGhastAi.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -5814,6 +6407,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.nautilus.AbstractNautilus",
         superclass: Some("net.minecraft.world.entity.TamableAnimal"),
+        interfaces: &["net.minecraft.world.entity.PlayerRideableJumping", "net.minecraft.world.entity.HasCustomInventoryScreen"],
         source_path: "net/minecraft/world/entity/animal/nautilus/AbstractNautilus.java",
         kind: "class",
         inherited_accessor_count: 20,
@@ -5822,6 +6416,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.nautilus.Nautilus",
         superclass: Some("net.minecraft.world.entity.animal.nautilus.AbstractNautilus"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/nautilus/Nautilus.java",
         kind: "class",
         inherited_accessor_count: 21,
@@ -5830,6 +6425,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.nautilus.NautilusAi",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/nautilus/NautilusAi.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -5838,6 +6434,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.nautilus.ZombieNautilus",
         superclass: Some("net.minecraft.world.entity.animal.nautilus.AbstractNautilus"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/nautilus/ZombieNautilus.java",
         kind: "class",
         inherited_accessor_count: 21,
@@ -5846,6 +6443,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.nautilus.ZombieNautilusAi",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/nautilus/ZombieNautilusAi.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -5854,6 +6452,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.nautilus.ZombieNautilusVariant",
         superclass: None,
+        interfaces: &["net.minecraft.world.entity.variant.PriorityProvider"],
         source_path: "net/minecraft/world/entity/animal/nautilus/ZombieNautilusVariant.java",
         kind: "record",
         inherited_accessor_count: 0,
@@ -5862,6 +6461,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.nautilus.ZombieNautilusVariant.ModelType",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/nautilus/ZombieNautilusVariant.java",
         kind: "enum",
         inherited_accessor_count: 0,
@@ -5870,6 +6470,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.nautilus.ZombieNautilusVariants",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/nautilus/ZombieNautilusVariants.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -5878,6 +6479,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.panda.Panda",
         superclass: Some("net.minecraft.world.entity.animal.Animal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/panda/Panda.java",
         kind: "class",
         inherited_accessor_count: 18,
@@ -5886,6 +6488,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.panda.Panda.Gene",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/panda/Panda.java",
         kind: "enum",
         inherited_accessor_count: 0,
@@ -5894,6 +6497,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.panda.Panda.PandaAttackGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.MeleeAttackGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/panda/Panda.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -5902,6 +6506,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.panda.Panda.PandaAvoidGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.AvoidEntityGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/panda/Panda.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -5910,6 +6515,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.panda.Panda.PandaBreedGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.BreedGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/panda/Panda.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -5918,6 +6524,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.panda.Panda.PandaHurtByTargetGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.target.HurtByTargetGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/panda/Panda.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -5926,6 +6533,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.panda.Panda.PandaLieOnBackGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/panda/Panda.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -5934,6 +6542,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.panda.Panda.PandaLookAtPlayerGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.LookAtPlayerGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/panda/Panda.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -5942,6 +6551,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.panda.Panda.PandaMoveControl",
         superclass: Some("net.minecraft.world.entity.ai.control.MoveControl"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/panda/Panda.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -5950,6 +6560,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.panda.Panda.PandaPanicGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.PanicGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/panda/Panda.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -5958,6 +6569,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.panda.Panda.PandaRollGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/panda/Panda.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -5966,6 +6578,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.panda.Panda.PandaSitGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/panda/Panda.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -5974,6 +6587,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.panda.Panda.PandaSneezeGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/panda/Panda.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -5982,6 +6596,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.parrot.Parrot",
         superclass: Some("net.minecraft.world.entity.animal.parrot.ShoulderRidingEntity"),
+        interfaces: &["net.minecraft.world.entity.animal.FlyingAnimal"],
         source_path: "net/minecraft/world/entity/animal/parrot/Parrot.java",
         kind: "class",
         inherited_accessor_count: 20,
@@ -5990,6 +6605,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.parrot.Parrot.ParrotWanderGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.WaterAvoidingRandomFlyingGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/parrot/Parrot.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -5998,6 +6614,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.parrot.Parrot.Variant",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/parrot/Parrot.java",
         kind: "enum",
         inherited_accessor_count: 0,
@@ -6006,6 +6623,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.parrot.ShoulderRidingEntity",
         superclass: Some("net.minecraft.world.entity.TamableAnimal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/parrot/ShoulderRidingEntity.java",
         kind: "class",
         inherited_accessor_count: 20,
@@ -6014,6 +6632,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.pig.Pig",
         superclass: Some("net.minecraft.world.entity.animal.Animal"),
+        interfaces: &["net.minecraft.world.entity.ItemSteerable"],
         source_path: "net/minecraft/world/entity/animal/pig/Pig.java",
         kind: "class",
         inherited_accessor_count: 18,
@@ -6022,6 +6641,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.pig.PigSoundVariant",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/pig/PigSoundVariant.java",
         kind: "record",
         inherited_accessor_count: 0,
@@ -6030,6 +6650,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.pig.PigSoundVariant.PigSoundSet",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/pig/PigSoundVariant.java",
         kind: "record",
         inherited_accessor_count: 0,
@@ -6038,6 +6659,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.pig.PigSoundVariants",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/pig/PigSoundVariants.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -6046,6 +6668,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.pig.PigSoundVariants.SoundSet",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/pig/PigSoundVariants.java",
         kind: "enum",
         inherited_accessor_count: 0,
@@ -6054,6 +6677,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.pig.PigVariant",
         superclass: None,
+        interfaces: &["net.minecraft.world.entity.variant.PriorityProvider"],
         source_path: "net/minecraft/world/entity/animal/pig/PigVariant.java",
         kind: "record",
         inherited_accessor_count: 0,
@@ -6062,6 +6686,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.pig.PigVariant.ModelType",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/pig/PigVariant.java",
         kind: "enum",
         inherited_accessor_count: 0,
@@ -6070,6 +6695,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.pig.PigVariants",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/pig/PigVariants.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -6078,6 +6704,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.polarbear.PolarBear",
         superclass: Some("net.minecraft.world.entity.animal.Animal"),
+        interfaces: &["net.minecraft.world.entity.NeutralMob"],
         source_path: "net/minecraft/world/entity/animal/polarbear/PolarBear.java",
         kind: "class",
         inherited_accessor_count: 18,
@@ -6086,6 +6713,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.polarbear.PolarBear.PolarBearAttackPlayersGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/polarbear/PolarBear.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -6094,6 +6722,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.polarbear.PolarBear.PolarBearHurtByTargetGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.target.HurtByTargetGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/polarbear/PolarBear.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -6102,6 +6731,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.polarbear.PolarBear.PolarBearMeleeAttackGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.MeleeAttackGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/polarbear/PolarBear.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -6110,6 +6740,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.rabbit.Rabbit",
         superclass: Some("net.minecraft.world.entity.animal.Animal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/rabbit/Rabbit.java",
         kind: "class",
         inherited_accessor_count: 18,
@@ -6118,6 +6749,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.rabbit.Rabbit.RabbitAvoidEntityGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.AvoidEntityGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/rabbit/Rabbit.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -6126,6 +6758,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.rabbit.Rabbit.RabbitGroupData",
         superclass: Some("net.minecraft.world.entity.AgeableMob.AgeableMobGroupData"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/rabbit/Rabbit.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -6134,6 +6767,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.rabbit.Rabbit.RabbitJumpControl",
         superclass: Some("net.minecraft.world.entity.ai.control.JumpControl"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/rabbit/Rabbit.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -6142,6 +6776,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.rabbit.Rabbit.RabbitMoveControl",
         superclass: Some("net.minecraft.world.entity.ai.control.MoveControl"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/rabbit/Rabbit.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -6150,6 +6785,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.rabbit.Rabbit.RabbitPanicGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.PanicGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/rabbit/Rabbit.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -6158,6 +6794,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.rabbit.Rabbit.RaidGardenGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.MoveToBlockGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/rabbit/Rabbit.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -6166,6 +6803,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.rabbit.Rabbit.Variant",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/rabbit/Rabbit.java",
         kind: "enum",
         inherited_accessor_count: 0,
@@ -6174,6 +6812,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.sheep.Sheep",
         superclass: Some("net.minecraft.world.entity.animal.Animal"),
+        interfaces: &["net.minecraft.world.entity.Shearable"],
         source_path: "net/minecraft/world/entity/animal/sheep/Sheep.java",
         kind: "class",
         inherited_accessor_count: 18,
@@ -6182,6 +6821,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.sheep.SheepColorSpawnRules",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/sheep/SheepColorSpawnRules.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -6190,6 +6830,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.sheep.SheepColorSpawnRules.SheepColorProvider",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/sheep/SheepColorSpawnRules.java",
         kind: "interface",
         inherited_accessor_count: 0,
@@ -6198,6 +6839,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.sheep.SheepColorSpawnRules.SheepColorSpawnConfiguration",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/sheep/SheepColorSpawnRules.java",
         kind: "record",
         inherited_accessor_count: 0,
@@ -6206,6 +6848,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.sniffer.Sniffer",
         superclass: Some("net.minecraft.world.entity.animal.Animal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/sniffer/Sniffer.java",
         kind: "class",
         inherited_accessor_count: 18,
@@ -6214,6 +6857,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.sniffer.Sniffer.State",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/sniffer/Sniffer.java",
         kind: "enum",
         inherited_accessor_count: 0,
@@ -6222,6 +6866,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.sniffer.SnifferAi",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/sniffer/SnifferAi.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -6230,6 +6875,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.sniffer.SnifferAi.Digging",
         superclass: Some("net.minecraft.world.entity.ai.behavior.Behavior"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/sniffer/SnifferAi.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -6238,6 +6884,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.sniffer.SnifferAi.FeelingHappy",
         superclass: Some("net.minecraft.world.entity.ai.behavior.Behavior"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/sniffer/SnifferAi.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -6246,6 +6893,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.sniffer.SnifferAi.FinishedDigging",
         superclass: Some("net.minecraft.world.entity.ai.behavior.Behavior"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/sniffer/SnifferAi.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -6254,6 +6902,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.sniffer.SnifferAi.Scenting",
         superclass: Some("net.minecraft.world.entity.ai.behavior.Behavior"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/sniffer/SnifferAi.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -6262,6 +6911,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.sniffer.SnifferAi.Searching",
         superclass: Some("net.minecraft.world.entity.ai.behavior.Behavior"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/sniffer/SnifferAi.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -6270,6 +6920,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.sniffer.SnifferAi.Sniffing",
         superclass: Some("net.minecraft.world.entity.ai.behavior.Behavior"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/sniffer/SnifferAi.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -6278,6 +6929,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.squid.GlowSquid",
         superclass: Some("net.minecraft.world.entity.animal.squid.Squid"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/squid/GlowSquid.java",
         kind: "class",
         inherited_accessor_count: 18,
@@ -6286,6 +6938,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.squid.Squid",
         superclass: Some("net.minecraft.world.entity.animal.AgeableWaterCreature"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/squid/Squid.java",
         kind: "class",
         inherited_accessor_count: 18,
@@ -6294,6 +6947,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.squid.Squid.SquidFleeGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/squid/Squid.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -6302,6 +6956,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.squid.Squid.SquidRandomMovementGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/squid/Squid.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -6310,6 +6965,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.turtle.Turtle",
         superclass: Some("net.minecraft.world.entity.animal.Animal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/turtle/Turtle.java",
         kind: "class",
         inherited_accessor_count: 18,
@@ -6318,6 +6974,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.turtle.Turtle.TurtleBreedGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.BreedGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/turtle/Turtle.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -6326,6 +6983,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.turtle.Turtle.TurtleGoHomeGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/turtle/Turtle.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -6334,6 +6992,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.turtle.Turtle.TurtleGoToWaterGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.MoveToBlockGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/turtle/Turtle.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -6342,6 +7001,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.turtle.Turtle.TurtleLayEggGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.MoveToBlockGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/turtle/Turtle.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -6350,6 +7010,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.turtle.Turtle.TurtleMoveControl",
         superclass: Some("net.minecraft.world.entity.ai.control.MoveControl"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/turtle/Turtle.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -6358,6 +7019,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.turtle.Turtle.TurtlePanicGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.PanicGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/turtle/Turtle.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -6366,6 +7028,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.turtle.Turtle.TurtlePathNavigation",
         superclass: Some("net.minecraft.world.entity.ai.navigation.AmphibiousPathNavigation"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/turtle/Turtle.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -6374,6 +7037,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.turtle.Turtle.TurtleRandomStrollGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.RandomStrollGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/turtle/Turtle.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -6382,6 +7046,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.turtle.Turtle.TurtleTravelGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/turtle/Turtle.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -6390,6 +7055,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.wolf.Wolf",
         superclass: Some("net.minecraft.world.entity.TamableAnimal"),
+        interfaces: &["net.minecraft.world.entity.NeutralMob"],
         source_path: "net/minecraft/world/entity/animal/wolf/Wolf.java",
         kind: "class",
         inherited_accessor_count: 20,
@@ -6398,6 +7064,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.wolf.Wolf.WolfAvoidEntityGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.AvoidEntityGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/wolf/Wolf.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -6406,6 +7073,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.wolf.Wolf.WolfPackData",
         superclass: Some("net.minecraft.world.entity.AgeableMob.AgeableMobGroupData"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/wolf/Wolf.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -6414,6 +7082,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.wolf.WolfSoundVariant",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/wolf/WolfSoundVariant.java",
         kind: "record",
         inherited_accessor_count: 0,
@@ -6422,6 +7091,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.wolf.WolfSoundVariant.WolfSoundSet",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/wolf/WolfSoundVariant.java",
         kind: "record",
         inherited_accessor_count: 0,
@@ -6430,6 +7100,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.wolf.WolfSoundVariants",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/wolf/WolfSoundVariants.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -6438,6 +7109,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.wolf.WolfSoundVariants.SoundSet",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/wolf/WolfSoundVariants.java",
         kind: "enum",
         inherited_accessor_count: 0,
@@ -6446,6 +7118,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.wolf.WolfVariant",
         superclass: None,
+        interfaces: &["net.minecraft.world.entity.variant.PriorityProvider"],
         source_path: "net/minecraft/world/entity/animal/wolf/WolfVariant.java",
         kind: "record",
         inherited_accessor_count: 0,
@@ -6454,6 +7127,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.wolf.WolfVariant.AssetInfo",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/wolf/WolfVariant.java",
         kind: "record",
         inherited_accessor_count: 0,
@@ -6462,6 +7136,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.animal.wolf.WolfVariants",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/animal/wolf/WolfVariants.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -6470,6 +7145,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.boss.enderdragon.DragonFlightHistory",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/boss/enderdragon/DragonFlightHistory.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -6478,6 +7154,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.boss.enderdragon.DragonFlightHistory.Sample",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/boss/enderdragon/DragonFlightHistory.java",
         kind: "record",
         inherited_accessor_count: 0,
@@ -6486,6 +7163,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.boss.enderdragon.EndCrystal",
         superclass: Some("net.minecraft.world.entity.Entity"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/boss/enderdragon/EndCrystal.java",
         kind: "class",
         inherited_accessor_count: 8,
@@ -6494,6 +7172,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.boss.enderdragon.EnderDragon",
         superclass: Some("net.minecraft.world.entity.Mob"),
+        interfaces: &["net.minecraft.world.entity.monster.Enemy"],
         source_path: "net/minecraft/world/entity/boss/enderdragon/EnderDragon.java",
         kind: "class",
         inherited_accessor_count: 16,
@@ -6502,6 +7181,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.boss.enderdragon.EnderDragonPart",
         superclass: Some("net.minecraft.world.entity.Entity"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/boss/enderdragon/EnderDragonPart.java",
         kind: "class",
         inherited_accessor_count: 8,
@@ -6510,6 +7190,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.boss.enderdragon.phases.AbstractDragonPhaseInstance",
         superclass: None,
+        interfaces: &["net.minecraft.world.entity.boss.enderdragon.phases.DragonPhaseInstance"],
         source_path: "net/minecraft/world/entity/boss/enderdragon/phases/AbstractDragonPhaseInstance.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -6518,6 +7199,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.boss.enderdragon.phases.AbstractDragonSittingPhase",
         superclass: Some("net.minecraft.world.entity.boss.enderdragon.phases.AbstractDragonPhaseInstance"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/boss/enderdragon/phases/AbstractDragonSittingPhase.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -6526,6 +7208,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.boss.enderdragon.phases.DragonChargePlayerPhase",
         superclass: Some("net.minecraft.world.entity.boss.enderdragon.phases.AbstractDragonPhaseInstance"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/boss/enderdragon/phases/DragonChargePlayerPhase.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -6534,6 +7217,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.boss.enderdragon.phases.DragonDeathPhase",
         superclass: Some("net.minecraft.world.entity.boss.enderdragon.phases.AbstractDragonPhaseInstance"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/boss/enderdragon/phases/DragonDeathPhase.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -6542,6 +7226,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.boss.enderdragon.phases.DragonHoldingPatternPhase",
         superclass: Some("net.minecraft.world.entity.boss.enderdragon.phases.AbstractDragonPhaseInstance"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/boss/enderdragon/phases/DragonHoldingPatternPhase.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -6550,6 +7235,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.boss.enderdragon.phases.DragonHoverPhase",
         superclass: Some("net.minecraft.world.entity.boss.enderdragon.phases.AbstractDragonPhaseInstance"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/boss/enderdragon/phases/DragonHoverPhase.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -6558,6 +7244,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.boss.enderdragon.phases.DragonLandingApproachPhase",
         superclass: Some("net.minecraft.world.entity.boss.enderdragon.phases.AbstractDragonPhaseInstance"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/boss/enderdragon/phases/DragonLandingApproachPhase.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -6566,6 +7253,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.boss.enderdragon.phases.DragonLandingPhase",
         superclass: Some("net.minecraft.world.entity.boss.enderdragon.phases.AbstractDragonPhaseInstance"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/boss/enderdragon/phases/DragonLandingPhase.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -6574,6 +7262,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.boss.enderdragon.phases.DragonPhaseInstance",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/boss/enderdragon/phases/DragonPhaseInstance.java",
         kind: "interface",
         inherited_accessor_count: 0,
@@ -6582,6 +7271,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.boss.enderdragon.phases.DragonSittingAttackingPhase",
         superclass: Some("net.minecraft.world.entity.boss.enderdragon.phases.AbstractDragonSittingPhase"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/boss/enderdragon/phases/DragonSittingAttackingPhase.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -6590,6 +7280,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.boss.enderdragon.phases.DragonSittingFlamingPhase",
         superclass: Some("net.minecraft.world.entity.boss.enderdragon.phases.AbstractDragonSittingPhase"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/boss/enderdragon/phases/DragonSittingFlamingPhase.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -6598,6 +7289,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.boss.enderdragon.phases.DragonSittingScanningPhase",
         superclass: Some("net.minecraft.world.entity.boss.enderdragon.phases.AbstractDragonSittingPhase"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/boss/enderdragon/phases/DragonSittingScanningPhase.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -6606,6 +7298,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.boss.enderdragon.phases.DragonStrafePlayerPhase",
         superclass: Some("net.minecraft.world.entity.boss.enderdragon.phases.AbstractDragonPhaseInstance"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/boss/enderdragon/phases/DragonStrafePlayerPhase.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -6614,6 +7307,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.boss.enderdragon.phases.DragonTakeoffPhase",
         superclass: Some("net.minecraft.world.entity.boss.enderdragon.phases.AbstractDragonPhaseInstance"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/boss/enderdragon/phases/DragonTakeoffPhase.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -6622,6 +7316,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.boss.enderdragon.phases.EnderDragonPhase",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/boss/enderdragon/phases/EnderDragonPhase.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -6630,6 +7325,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.boss.enderdragon.phases.EnderDragonPhaseManager",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/boss/enderdragon/phases/EnderDragonPhaseManager.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -6638,6 +7334,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.boss.wither.WitherBoss",
         superclass: Some("net.minecraft.world.entity.monster.Monster"),
+        interfaces: &["net.minecraft.world.entity.monster.RangedAttackMob"],
         source_path: "net/minecraft/world/entity/boss/wither/WitherBoss.java",
         kind: "class",
         inherited_accessor_count: 16,
@@ -6646,6 +7343,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.boss.wither.WitherBoss.WitherDoNothingGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/boss/wither/WitherBoss.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -6654,6 +7352,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.decoration.ArmorStand",
         superclass: Some("net.minecraft.world.entity.LivingEntity"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/decoration/ArmorStand.java",
         kind: "class",
         inherited_accessor_count: 15,
@@ -6662,6 +7361,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.decoration.ArmorStand.ArmorStandPose",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/decoration/ArmorStand.java",
         kind: "record",
         inherited_accessor_count: 0,
@@ -6670,6 +7370,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.decoration.BlockAttachedEntity",
         superclass: Some("net.minecraft.world.entity.Entity"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/decoration/BlockAttachedEntity.java",
         kind: "class",
         inherited_accessor_count: 8,
@@ -6678,6 +7379,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.decoration.GlowItemFrame",
         superclass: Some("net.minecraft.world.entity.decoration.ItemFrame"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/decoration/GlowItemFrame.java",
         kind: "class",
         inherited_accessor_count: 11,
@@ -6686,6 +7388,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.decoration.HangingEntity",
         superclass: Some("net.minecraft.world.entity.decoration.BlockAttachedEntity"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/decoration/HangingEntity.java",
         kind: "class",
         inherited_accessor_count: 8,
@@ -6694,6 +7397,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.decoration.ItemFrame",
         superclass: Some("net.minecraft.world.entity.decoration.HangingEntity"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/decoration/ItemFrame.java",
         kind: "class",
         inherited_accessor_count: 9,
@@ -6702,6 +7406,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.decoration.LeashFenceKnotEntity",
         superclass: Some("net.minecraft.world.entity.decoration.BlockAttachedEntity"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/decoration/LeashFenceKnotEntity.java",
         kind: "class",
         inherited_accessor_count: 8,
@@ -6710,6 +7415,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.decoration.Mannequin",
         superclass: Some("net.minecraft.world.entity.Avatar"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/decoration/Mannequin.java",
         kind: "class",
         inherited_accessor_count: 17,
@@ -6718,6 +7424,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.decoration.painting.Painting",
         superclass: Some("net.minecraft.world.entity.decoration.HangingEntity"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/decoration/painting/Painting.java",
         kind: "class",
         inherited_accessor_count: 9,
@@ -6726,6 +7433,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.decoration.painting.PaintingVariant",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/decoration/painting/PaintingVariant.java",
         kind: "record",
         inherited_accessor_count: 0,
@@ -6734,6 +7442,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.decoration.painting.PaintingVariants",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/decoration/painting/PaintingVariants.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -6742,6 +7451,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.item.FallingBlockEntity",
         superclass: Some("net.minecraft.world.entity.Entity"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/item/FallingBlockEntity.java",
         kind: "class",
         inherited_accessor_count: 8,
@@ -6750,6 +7460,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.item.ItemEntity",
         superclass: Some("net.minecraft.world.entity.Entity"),
+        interfaces: &["net.minecraft.world.entity.TraceableEntity"],
         source_path: "net/minecraft/world/entity/item/ItemEntity.java",
         kind: "class",
         inherited_accessor_count: 8,
@@ -6758,6 +7469,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.item.PrimedTnt",
         superclass: Some("net.minecraft.world.entity.Entity"),
+        interfaces: &["net.minecraft.world.entity.TraceableEntity"],
         source_path: "net/minecraft/world/entity/item/PrimedTnt.java",
         kind: "class",
         inherited_accessor_count: 8,
@@ -6766,6 +7478,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.Blaze",
         superclass: Some("net.minecraft.world.entity.monster.Monster"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/Blaze.java",
         kind: "class",
         inherited_accessor_count: 16,
@@ -6774,6 +7487,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.Blaze.BlazeAttackGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/Blaze.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -6782,6 +7496,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.Creeper",
         superclass: Some("net.minecraft.world.entity.monster.Monster"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/Creeper.java",
         kind: "class",
         inherited_accessor_count: 16,
@@ -6790,6 +7505,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.CrossbowAttackMob",
         superclass: None,
+        interfaces: &["net.minecraft.world.entity.monster.RangedAttackMob"],
         source_path: "net/minecraft/world/entity/monster/CrossbowAttackMob.java",
         kind: "interface",
         inherited_accessor_count: 0,
@@ -6798,6 +7514,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.ElderGuardian",
         superclass: Some("net.minecraft.world.entity.monster.Guardian"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/ElderGuardian.java",
         kind: "class",
         inherited_accessor_count: 18,
@@ -6806,6 +7523,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.EnderMan",
         superclass: Some("net.minecraft.world.entity.monster.Monster"),
+        interfaces: &["net.minecraft.world.entity.NeutralMob"],
         source_path: "net/minecraft/world/entity/monster/EnderMan.java",
         kind: "class",
         inherited_accessor_count: 16,
@@ -6814,6 +7532,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.EnderMan.EndermanFreezeWhenLookedAt",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/EnderMan.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -6822,6 +7541,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.EnderMan.EndermanLeaveBlockGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/EnderMan.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -6830,6 +7550,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.EnderMan.EndermanLookForPlayerGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/EnderMan.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -6838,6 +7559,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.EnderMan.EndermanTakeBlockGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/EnderMan.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -6846,6 +7568,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.Endermite",
         superclass: Some("net.minecraft.world.entity.monster.Monster"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/Endermite.java",
         kind: "class",
         inherited_accessor_count: 16,
@@ -6854,6 +7577,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.Enemy",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/Enemy.java",
         kind: "interface",
         inherited_accessor_count: 0,
@@ -6862,6 +7586,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.Ghast",
         superclass: Some("net.minecraft.world.entity.Mob"),
+        interfaces: &["net.minecraft.world.entity.monster.Enemy"],
         source_path: "net/minecraft/world/entity/monster/Ghast.java",
         kind: "class",
         inherited_accessor_count: 16,
@@ -6870,6 +7595,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.Ghast.GhastLookGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/Ghast.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -6878,6 +7604,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.Ghast.GhastMoveControl",
         superclass: Some("net.minecraft.world.entity.ai.control.MoveControl"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/Ghast.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -6886,6 +7613,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.Ghast.GhastShootFireballGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/Ghast.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -6894,6 +7622,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.Ghast.RandomFloatAroundGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/Ghast.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -6902,6 +7631,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.Giant",
         superclass: Some("net.minecraft.world.entity.monster.Monster"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/Giant.java",
         kind: "class",
         inherited_accessor_count: 16,
@@ -6910,6 +7640,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.Guardian",
         superclass: Some("net.minecraft.world.entity.monster.Monster"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/Guardian.java",
         kind: "class",
         inherited_accessor_count: 16,
@@ -6918,6 +7649,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.Guardian.GuardianAttackGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/Guardian.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -6926,6 +7658,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.Guardian.GuardianAttackSelector",
         superclass: None,
+        interfaces: &["net.minecraft.world.entity.ai.targeting.TargetingConditions.Selector"],
         source_path: "net/minecraft/world/entity/monster/Guardian.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -6934,6 +7667,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.Guardian.GuardianMoveControl",
         superclass: Some("net.minecraft.world.entity.ai.control.MoveControl"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/Guardian.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -6942,6 +7676,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.MagmaCube",
         superclass: Some("net.minecraft.world.entity.monster.Slime"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/MagmaCube.java",
         kind: "class",
         inherited_accessor_count: 17,
@@ -6950,6 +7685,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.Monster",
         superclass: Some("net.minecraft.world.entity.PathfinderMob"),
+        interfaces: &["net.minecraft.world.entity.monster.Enemy"],
         source_path: "net/minecraft/world/entity/monster/Monster.java",
         kind: "class",
         inherited_accessor_count: 16,
@@ -6958,6 +7694,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.PatrollingMonster",
         superclass: Some("net.minecraft.world.entity.monster.Monster"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/PatrollingMonster.java",
         kind: "class",
         inherited_accessor_count: 16,
@@ -6966,6 +7703,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.PatrollingMonster.LongDistancePatrolGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/PatrollingMonster.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -6974,6 +7712,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.Phantom",
         superclass: Some("net.minecraft.world.entity.Mob"),
+        interfaces: &["net.minecraft.world.entity.monster.Enemy"],
         source_path: "net/minecraft/world/entity/monster/Phantom.java",
         kind: "class",
         inherited_accessor_count: 16,
@@ -6982,6 +7721,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.Phantom.AttackPhase",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/Phantom.java",
         kind: "enum",
         inherited_accessor_count: 0,
@@ -6990,6 +7730,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.Phantom.PhantomAttackPlayerTargetGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/Phantom.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -6998,6 +7739,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.Phantom.PhantomAttackStrategyGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/Phantom.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -7006,6 +7748,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.Phantom.PhantomBodyRotationControl",
         superclass: Some("net.minecraft.world.entity.ai.control.BodyRotationControl"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/Phantom.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -7014,6 +7757,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.Phantom.PhantomCircleAroundAnchorGoal",
         superclass: Some("net.minecraft.world.entity.monster.Phantom.PhantomMoveTargetGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/Phantom.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -7022,6 +7766,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.Phantom.PhantomLookControl",
         superclass: Some("net.minecraft.world.entity.ai.control.LookControl"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/Phantom.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -7030,6 +7775,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.Phantom.PhantomMoveControl",
         superclass: Some("net.minecraft.world.entity.ai.control.MoveControl"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/Phantom.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -7038,6 +7784,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.Phantom.PhantomMoveTargetGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/Phantom.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -7046,6 +7793,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.Phantom.PhantomSweepAttackGoal",
         superclass: Some("net.minecraft.world.entity.monster.Phantom.PhantomMoveTargetGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/Phantom.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -7054,6 +7802,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.RangedAttackMob",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/RangedAttackMob.java",
         kind: "interface",
         inherited_accessor_count: 0,
@@ -7062,6 +7811,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.Ravager",
         superclass: Some("net.minecraft.world.entity.raid.Raider"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/Ravager.java",
         kind: "class",
         inherited_accessor_count: 17,
@@ -7070,6 +7820,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.Shulker",
         superclass: Some("net.minecraft.world.entity.animal.golem.AbstractGolem"),
+        interfaces: &["net.minecraft.world.entity.monster.Enemy"],
         source_path: "net/minecraft/world/entity/monster/Shulker.java",
         kind: "class",
         inherited_accessor_count: 16,
@@ -7078,6 +7829,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.Shulker.ShulkerAttackGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/Shulker.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -7086,6 +7838,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.Shulker.ShulkerBodyRotationControl",
         superclass: Some("net.minecraft.world.entity.ai.control.BodyRotationControl"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/Shulker.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -7094,6 +7847,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.Shulker.ShulkerDefenseAttackGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/Shulker.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -7102,6 +7856,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.Shulker.ShulkerLookControl",
         superclass: Some("net.minecraft.world.entity.ai.control.LookControl"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/Shulker.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -7110,6 +7865,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.Shulker.ShulkerNearestAttackGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/Shulker.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -7118,6 +7874,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.Shulker.ShulkerPeekGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/Shulker.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -7126,6 +7883,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.Silverfish",
         superclass: Some("net.minecraft.world.entity.monster.Monster"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/Silverfish.java",
         kind: "class",
         inherited_accessor_count: 16,
@@ -7134,6 +7892,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.Silverfish.SilverfishMergeWithStoneGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.RandomStrollGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/Silverfish.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -7142,6 +7901,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.Silverfish.SilverfishWakeUpFriendsGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/Silverfish.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -7150,6 +7910,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.Slime",
         superclass: Some("net.minecraft.world.entity.Mob"),
+        interfaces: &["net.minecraft.world.entity.monster.Enemy"],
         source_path: "net/minecraft/world/entity/monster/Slime.java",
         kind: "class",
         inherited_accessor_count: 16,
@@ -7158,6 +7919,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.Slime.SlimeAttackGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/Slime.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -7166,6 +7928,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.Slime.SlimeFloatGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/Slime.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -7174,6 +7937,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.Slime.SlimeKeepOnJumpingGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/Slime.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -7182,6 +7946,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.Slime.SlimeMoveControl",
         superclass: Some("net.minecraft.world.entity.ai.control.MoveControl"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/Slime.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -7190,6 +7955,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.Slime.SlimeRandomDirectionGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/Slime.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -7198,6 +7964,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.Strider",
         superclass: Some("net.minecraft.world.entity.animal.Animal"),
+        interfaces: &["net.minecraft.world.entity.ItemSteerable"],
         source_path: "net/minecraft/world/entity/monster/Strider.java",
         kind: "class",
         inherited_accessor_count: 18,
@@ -7206,6 +7973,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.Strider.StriderGoToLavaGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.MoveToBlockGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/Strider.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -7214,6 +7982,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.Strider.StriderPathNavigation",
         superclass: Some("net.minecraft.world.entity.ai.navigation.GroundPathNavigation"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/Strider.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -7222,6 +7991,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.Vex",
         superclass: Some("net.minecraft.world.entity.monster.Monster"),
+        interfaces: &["net.minecraft.world.entity.TraceableEntity"],
         source_path: "net/minecraft/world/entity/monster/Vex.java",
         kind: "class",
         inherited_accessor_count: 16,
@@ -7230,6 +8000,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.Vex.VexChargeAttackGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/Vex.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -7238,6 +8009,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.Vex.VexCopyOwnerTargetGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.target.TargetGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/Vex.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -7246,6 +8018,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.Vex.VexMoveControl",
         superclass: Some("net.minecraft.world.entity.ai.control.MoveControl"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/Vex.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -7254,6 +8027,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.Vex.VexRandomMoveGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/Vex.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -7262,6 +8036,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.Witch",
         superclass: Some("net.minecraft.world.entity.raid.Raider"),
+        interfaces: &["net.minecraft.world.entity.monster.RangedAttackMob"],
         source_path: "net/minecraft/world/entity/monster/Witch.java",
         kind: "class",
         inherited_accessor_count: 17,
@@ -7270,6 +8045,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.Zoglin",
         superclass: Some("net.minecraft.world.entity.monster.Monster"),
+        interfaces: &["net.minecraft.world.entity.monster.hoglin.HoglinBase"],
         source_path: "net/minecraft/world/entity/monster/Zoglin.java",
         kind: "class",
         inherited_accessor_count: 16,
@@ -7278,6 +8054,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.breeze.Breeze",
         superclass: Some("net.minecraft.world.entity.monster.Monster"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/breeze/Breeze.java",
         kind: "class",
         inherited_accessor_count: 16,
@@ -7286,6 +8063,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.breeze.BreezeAi",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/breeze/BreezeAi.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -7294,6 +8072,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.breeze.BreezeAi.SlideToTargetSink",
         superclass: Some("net.minecraft.world.entity.ai.behavior.MoveToTargetSink"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/breeze/BreezeAi.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -7302,6 +8081,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.breeze.BreezeUtil",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/breeze/BreezeUtil.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -7310,6 +8090,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.breeze.LongJump",
         superclass: Some("net.minecraft.world.entity.ai.behavior.Behavior"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/breeze/LongJump.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -7318,6 +8099,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.breeze.Shoot",
         superclass: Some("net.minecraft.world.entity.ai.behavior.Behavior"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/breeze/Shoot.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -7326,6 +8108,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.breeze.ShootWhenStuck",
         superclass: Some("net.minecraft.world.entity.ai.behavior.Behavior"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/breeze/ShootWhenStuck.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -7334,6 +8117,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.breeze.Slide",
         superclass: Some("net.minecraft.world.entity.ai.behavior.Behavior"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/breeze/Slide.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -7342,6 +8126,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.creaking.Creaking",
         superclass: Some("net.minecraft.world.entity.monster.Monster"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/creaking/Creaking.java",
         kind: "class",
         inherited_accessor_count: 16,
@@ -7350,6 +8135,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.creaking.Creaking.CreakingBodyRotationControl",
         superclass: Some("net.minecraft.world.entity.ai.control.BodyRotationControl"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/creaking/Creaking.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -7358,6 +8144,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.creaking.Creaking.CreakingJumpControl",
         superclass: Some("net.minecraft.world.entity.ai.control.JumpControl"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/creaking/Creaking.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -7366,6 +8153,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.creaking.Creaking.CreakingLookControl",
         superclass: Some("net.minecraft.world.entity.ai.control.LookControl"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/creaking/Creaking.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -7374,6 +8162,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.creaking.Creaking.CreakingMoveControl",
         superclass: Some("net.minecraft.world.entity.ai.control.MoveControl"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/creaking/Creaking.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -7382,6 +8171,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.creaking.Creaking.CreakingPathNavigation",
         superclass: Some("net.minecraft.world.entity.ai.navigation.GroundPathNavigation"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/creaking/Creaking.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -7390,6 +8180,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.creaking.Creaking.HomeNodeEvaluator",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/creaking/Creaking.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -7398,6 +8189,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.creaking.CreakingAi",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/creaking/CreakingAi.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -7406,6 +8198,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.hoglin.Hoglin",
         superclass: Some("net.minecraft.world.entity.animal.Animal"),
+        interfaces: &["net.minecraft.world.entity.monster.Enemy", "net.minecraft.world.entity.monster.hoglin.HoglinBase"],
         source_path: "net/minecraft/world/entity/monster/hoglin/Hoglin.java",
         kind: "class",
         inherited_accessor_count: 18,
@@ -7414,6 +8207,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.hoglin.HoglinAi",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/hoglin/HoglinAi.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -7422,6 +8216,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.hoglin.HoglinBase",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/hoglin/HoglinBase.java",
         kind: "interface",
         inherited_accessor_count: 0,
@@ -7430,6 +8225,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.illager.AbstractIllager",
         superclass: Some("net.minecraft.world.entity.raid.Raider"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/illager/AbstractIllager.java",
         kind: "class",
         inherited_accessor_count: 17,
@@ -7438,6 +8234,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.illager.AbstractIllager.IllagerArmPose",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/illager/AbstractIllager.java",
         kind: "enum",
         inherited_accessor_count: 0,
@@ -7446,6 +8243,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.illager.AbstractIllager.RaiderOpenDoorGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.OpenDoorGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/illager/AbstractIllager.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -7454,6 +8252,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.illager.Evoker",
         superclass: Some("net.minecraft.world.entity.monster.illager.SpellcasterIllager"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/illager/Evoker.java",
         kind: "class",
         inherited_accessor_count: 18,
@@ -7462,6 +8261,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.illager.Evoker.EvokerAttackSpellGoal",
         superclass: Some("net.minecraft.world.entity.monster.illager.SpellcasterIllager.SpellcasterUseSpellGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/illager/Evoker.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -7470,6 +8270,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.illager.Evoker.EvokerCastingSpellGoal",
         superclass: Some("net.minecraft.world.entity.monster.illager.SpellcasterIllager.SpellcasterCastingSpellGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/illager/Evoker.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -7478,6 +8279,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.illager.Evoker.EvokerSummonSpellGoal",
         superclass: Some("net.minecraft.world.entity.monster.illager.SpellcasterIllager.SpellcasterUseSpellGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/illager/Evoker.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -7486,6 +8288,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.illager.Evoker.EvokerWololoSpellGoal",
         superclass: Some("net.minecraft.world.entity.monster.illager.SpellcasterIllager.SpellcasterUseSpellGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/illager/Evoker.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -7494,6 +8297,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.illager.Illusioner",
         superclass: Some("net.minecraft.world.entity.monster.illager.SpellcasterIllager"),
+        interfaces: &["net.minecraft.world.entity.monster.RangedAttackMob"],
         source_path: "net/minecraft/world/entity/monster/illager/Illusioner.java",
         kind: "class",
         inherited_accessor_count: 18,
@@ -7502,6 +8306,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.illager.Illusioner.IllusionerBlindnessSpellGoal",
         superclass: Some("net.minecraft.world.entity.monster.illager.SpellcasterIllager.SpellcasterUseSpellGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/illager/Illusioner.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -7510,6 +8315,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.illager.Illusioner.IllusionerMirrorSpellGoal",
         superclass: Some("net.minecraft.world.entity.monster.illager.SpellcasterIllager.SpellcasterUseSpellGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/illager/Illusioner.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -7518,6 +8324,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.illager.Pillager",
         superclass: Some("net.minecraft.world.entity.monster.illager.AbstractIllager"),
+        interfaces: &["net.minecraft.world.entity.monster.CrossbowAttackMob", "net.minecraft.world.entity.npc.InventoryCarrier"],
         source_path: "net/minecraft/world/entity/monster/illager/Pillager.java",
         kind: "class",
         inherited_accessor_count: 17,
@@ -7526,6 +8333,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.illager.SpellcasterIllager",
         superclass: Some("net.minecraft.world.entity.monster.illager.AbstractIllager"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/illager/SpellcasterIllager.java",
         kind: "class",
         inherited_accessor_count: 17,
@@ -7534,6 +8342,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.illager.SpellcasterIllager.IllagerSpell",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/illager/SpellcasterIllager.java",
         kind: "enum",
         inherited_accessor_count: 0,
@@ -7542,6 +8351,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.illager.SpellcasterIllager.SpellcasterCastingSpellGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/illager/SpellcasterIllager.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -7550,6 +8360,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.illager.SpellcasterIllager.SpellcasterUseSpellGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/illager/SpellcasterIllager.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -7558,6 +8369,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.illager.Vindicator",
         superclass: Some("net.minecraft.world.entity.monster.illager.AbstractIllager"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/illager/Vindicator.java",
         kind: "class",
         inherited_accessor_count: 17,
@@ -7566,6 +8378,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.illager.Vindicator.VindicatorBreakDoorGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.BreakDoorGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/illager/Vindicator.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -7574,6 +8387,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.illager.Vindicator.VindicatorJohnnyAttackGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/illager/Vindicator.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -7582,6 +8396,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.piglin.AbstractPiglin",
         superclass: Some("net.minecraft.world.entity.monster.Monster"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/piglin/AbstractPiglin.java",
         kind: "class",
         inherited_accessor_count: 16,
@@ -7590,6 +8405,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.piglin.Piglin",
         superclass: Some("net.minecraft.world.entity.monster.piglin.AbstractPiglin"),
+        interfaces: &["net.minecraft.world.entity.monster.CrossbowAttackMob", "net.minecraft.world.entity.npc.InventoryCarrier"],
         source_path: "net/minecraft/world/entity/monster/piglin/Piglin.java",
         kind: "class",
         inherited_accessor_count: 17,
@@ -7598,6 +8414,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.piglin.PiglinAi",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/piglin/PiglinAi.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -7606,6 +8423,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.piglin.PiglinArmPose",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/piglin/PiglinArmPose.java",
         kind: "enum",
         inherited_accessor_count: 0,
@@ -7614,6 +8432,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.piglin.PiglinBrute",
         superclass: Some("net.minecraft.world.entity.monster.piglin.AbstractPiglin"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/piglin/PiglinBrute.java",
         kind: "class",
         inherited_accessor_count: 17,
@@ -7622,6 +8441,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.piglin.PiglinBruteAi",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/piglin/PiglinBruteAi.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -7630,6 +8450,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.piglin.RememberIfHoglinWasKilled",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/piglin/RememberIfHoglinWasKilled.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -7638,6 +8459,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.piglin.StartAdmiringItemIfSeen",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/piglin/StartAdmiringItemIfSeen.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -7646,6 +8468,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.piglin.StartHuntingHoglin",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/piglin/StartHuntingHoglin.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -7654,6 +8477,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.piglin.StopAdmiringIfItemTooFarAway",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/piglin/StopAdmiringIfItemTooFarAway.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -7662,6 +8486,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.piglin.StopAdmiringIfTiredOfTryingToReachItem",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/piglin/StopAdmiringIfTiredOfTryingToReachItem.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -7670,6 +8495,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.piglin.StopHoldingItemIfNoLongerAdmiring",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/piglin/StopHoldingItemIfNoLongerAdmiring.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -7678,6 +8504,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.skeleton.AbstractSkeleton",
         superclass: Some("net.minecraft.world.entity.monster.Monster"),
+        interfaces: &["net.minecraft.world.entity.monster.RangedAttackMob"],
         source_path: "net/minecraft/world/entity/monster/skeleton/AbstractSkeleton.java",
         kind: "class",
         inherited_accessor_count: 16,
@@ -7686,6 +8513,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.skeleton.Bogged",
         superclass: Some("net.minecraft.world.entity.monster.skeleton.AbstractSkeleton"),
+        interfaces: &["net.minecraft.world.entity.Shearable"],
         source_path: "net/minecraft/world/entity/monster/skeleton/Bogged.java",
         kind: "class",
         inherited_accessor_count: 16,
@@ -7694,6 +8522,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.skeleton.Parched",
         superclass: Some("net.minecraft.world.entity.monster.skeleton.AbstractSkeleton"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/skeleton/Parched.java",
         kind: "class",
         inherited_accessor_count: 16,
@@ -7702,6 +8531,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.skeleton.Skeleton",
         superclass: Some("net.minecraft.world.entity.monster.skeleton.AbstractSkeleton"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/skeleton/Skeleton.java",
         kind: "class",
         inherited_accessor_count: 16,
@@ -7710,6 +8540,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.skeleton.Stray",
         superclass: Some("net.minecraft.world.entity.monster.skeleton.AbstractSkeleton"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/skeleton/Stray.java",
         kind: "class",
         inherited_accessor_count: 16,
@@ -7718,6 +8549,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.skeleton.WitherSkeleton",
         superclass: Some("net.minecraft.world.entity.monster.skeleton.AbstractSkeleton"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/skeleton/WitherSkeleton.java",
         kind: "class",
         inherited_accessor_count: 16,
@@ -7726,6 +8558,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.spider.CaveSpider",
         superclass: Some("net.minecraft.world.entity.monster.spider.Spider"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/spider/CaveSpider.java",
         kind: "class",
         inherited_accessor_count: 17,
@@ -7734,6 +8567,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.spider.Spider",
         superclass: Some("net.minecraft.world.entity.monster.Monster"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/spider/Spider.java",
         kind: "class",
         inherited_accessor_count: 16,
@@ -7742,6 +8576,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.spider.Spider.SpiderAttackGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.MeleeAttackGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/spider/Spider.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -7750,6 +8585,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.spider.Spider.SpiderEffectsGroupData",
         superclass: None,
+        interfaces: &["net.minecraft.world.entity.SpawnGroupData"],
         source_path: "net/minecraft/world/entity/monster/spider/Spider.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -7758,6 +8594,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.spider.Spider.SpiderTargetGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/spider/Spider.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -7766,6 +8603,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.warden.AngerLevel",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/warden/AngerLevel.java",
         kind: "enum",
         inherited_accessor_count: 0,
@@ -7774,6 +8612,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.warden.AngerManagement",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/warden/AngerManagement.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -7782,6 +8621,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.warden.AngerManagement.Sorter",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/warden/AngerManagement.java",
         kind: "record",
         inherited_accessor_count: 0,
@@ -7790,6 +8630,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.warden.Warden",
         superclass: Some("net.minecraft.world.entity.monster.Monster"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/warden/Warden.java",
         kind: "class",
         inherited_accessor_count: 16,
@@ -7798,6 +8639,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.warden.Warden.VibrationUser",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/warden/Warden.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -7806,6 +8648,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.warden.WardenAi",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/warden/WardenAi.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -7814,6 +8657,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.warden.WardenSpawnTracker",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/warden/WardenSpawnTracker.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -7822,6 +8666,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.zombie.Drowned",
         superclass: Some("net.minecraft.world.entity.monster.zombie.Zombie"),
+        interfaces: &["net.minecraft.world.entity.monster.RangedAttackMob"],
         source_path: "net/minecraft/world/entity/monster/zombie/Drowned.java",
         kind: "class",
         inherited_accessor_count: 19,
@@ -7830,6 +8675,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.zombie.Drowned.DrownedAttackGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.ZombieAttackGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/zombie/Drowned.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -7838,6 +8684,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.zombie.Drowned.DrownedGoToBeachGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.MoveToBlockGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/zombie/Drowned.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -7846,6 +8693,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.zombie.Drowned.DrownedGoToWaterGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/zombie/Drowned.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -7854,6 +8702,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.zombie.Drowned.DrownedMoveControl",
         superclass: Some("net.minecraft.world.entity.ai.control.MoveControl"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/zombie/Drowned.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -7862,6 +8711,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.zombie.Drowned.DrownedSwimUpGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/zombie/Drowned.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -7870,6 +8720,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.zombie.Drowned.DrownedTridentAttackGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.RangedAttackGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/zombie/Drowned.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -7878,6 +8729,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.zombie.Husk",
         superclass: Some("net.minecraft.world.entity.monster.zombie.Zombie"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/zombie/Husk.java",
         kind: "class",
         inherited_accessor_count: 19,
@@ -7886,6 +8738,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.zombie.Husk.HuskGroupData",
         superclass: Some("net.minecraft.world.entity.monster.zombie.Zombie.ZombieGroupData"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/zombie/Husk.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -7894,6 +8747,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.zombie.Zombie",
         superclass: Some("net.minecraft.world.entity.monster.Monster"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/zombie/Zombie.java",
         kind: "class",
         inherited_accessor_count: 16,
@@ -7902,6 +8756,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.zombie.Zombie.ZombieAttackTurtleEggGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.RemoveBlockGoal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/monster/zombie/Zombie.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -7910,6 +8765,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.zombie.Zombie.ZombieGroupData",
         superclass: None,
+        interfaces: &["net.minecraft.world.entity.SpawnGroupData"],
         source_path: "net/minecraft/world/entity/monster/zombie/Zombie.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -7918,6 +8774,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.zombie.ZombieVillager",
         superclass: Some("net.minecraft.world.entity.monster.zombie.Zombie"),
+        interfaces: &["net.minecraft.world.entity.npc.villager.VillagerDataHolder"],
         source_path: "net/minecraft/world/entity/monster/zombie/ZombieVillager.java",
         kind: "class",
         inherited_accessor_count: 19,
@@ -7926,6 +8783,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.monster.zombie.ZombifiedPiglin",
         superclass: Some("net.minecraft.world.entity.monster.zombie.Zombie"),
+        interfaces: &["net.minecraft.world.entity.NeutralMob"],
         source_path: "net/minecraft/world/entity/monster/zombie/ZombifiedPiglin.java",
         kind: "class",
         inherited_accessor_count: 19,
@@ -7934,6 +8792,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.npc.CatSpawner",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/npc/CatSpawner.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -7942,6 +8801,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.npc.ClientSideMerchant",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/npc/ClientSideMerchant.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -7950,6 +8810,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.npc.InventoryCarrier",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/npc/InventoryCarrier.java",
         kind: "interface",
         inherited_accessor_count: 0,
@@ -7958,6 +8819,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.npc.Npc",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/npc/Npc.java",
         kind: "interface",
         inherited_accessor_count: 0,
@@ -7966,6 +8828,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.npc.villager.AbstractVillager",
         superclass: Some("net.minecraft.world.entity.AgeableMob"),
+        interfaces: &["net.minecraft.world.entity.npc.Npc", "net.minecraft.world.entity.npc.InventoryCarrier"],
         source_path: "net/minecraft/world/entity/npc/villager/AbstractVillager.java",
         kind: "class",
         inherited_accessor_count: 18,
@@ -7974,6 +8837,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.npc.villager.Villager",
         superclass: Some("net.minecraft.world.entity.npc.villager.AbstractVillager"),
+        interfaces: &["net.minecraft.world.entity.npc.villager.VillagerDataHolder", "net.minecraft.world.entity.ReputationEventHandler"],
         source_path: "net/minecraft/world/entity/npc/villager/Villager.java",
         kind: "class",
         inherited_accessor_count: 19,
@@ -7982,6 +8846,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.npc.villager.VillagerData",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/npc/villager/VillagerData.java",
         kind: "record",
         inherited_accessor_count: 0,
@@ -7990,6 +8855,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.npc.villager.VillagerDataHolder",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/npc/villager/VillagerDataHolder.java",
         kind: "interface",
         inherited_accessor_count: 0,
@@ -7998,6 +8864,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.npc.villager.VillagerProfession",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/npc/villager/VillagerProfession.java",
         kind: "record",
         inherited_accessor_count: 0,
@@ -8006,6 +8873,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.npc.villager.VillagerType",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/npc/villager/VillagerType.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -8014,6 +8882,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.npc.wanderingtrader.WanderingTrader",
         superclass: Some("net.minecraft.world.entity.npc.villager.AbstractVillager"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/npc/wanderingtrader/WanderingTrader.java",
         kind: "class",
         inherited_accessor_count: 19,
@@ -8022,6 +8891,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.npc.wanderingtrader.WanderingTrader.WanderToPositionGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/npc/wanderingtrader/WanderingTrader.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -8030,6 +8900,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.npc.wanderingtrader.WanderingTraderSpawner",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/npc/wanderingtrader/WanderingTraderSpawner.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -8038,6 +8909,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.player.Abilities",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/player/Abilities.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -8046,6 +8918,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.player.Abilities.Packed",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/player/Abilities.java",
         kind: "record",
         inherited_accessor_count: 0,
@@ -8054,6 +8927,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.player.ChatVisiblity",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/player/ChatVisiblity.java",
         kind: "enum",
         inherited_accessor_count: 0,
@@ -8062,6 +8936,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.player.Input",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/player/Input.java",
         kind: "record",
         inherited_accessor_count: 0,
@@ -8070,6 +8945,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.player.Inventory",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/player/Inventory.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -8078,6 +8954,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.player.Player",
         superclass: Some("net.minecraft.world.entity.Avatar"),
+        interfaces: &["net.minecraft.world.entity.ContainerUser"],
         source_path: "net/minecraft/world/entity/player/Player.java",
         kind: "class",
         inherited_accessor_count: 17,
@@ -8086,6 +8963,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.player.Player.BedSleepingProblem",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/player/Player.java",
         kind: "record",
         inherited_accessor_count: 0,
@@ -8094,6 +8972,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.player.PlayerEquipment",
         superclass: Some("net.minecraft.world.entity.EntityEquipment"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/player/PlayerEquipment.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -8102,6 +8981,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.player.PlayerModelPart",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/player/PlayerModelPart.java",
         kind: "enum",
         inherited_accessor_count: 0,
@@ -8110,6 +8990,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.player.PlayerModelType",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/player/PlayerModelType.java",
         kind: "enum",
         inherited_accessor_count: 0,
@@ -8118,6 +8999,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.player.PlayerSkin",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/player/PlayerSkin.java",
         kind: "record",
         inherited_accessor_count: 0,
@@ -8126,6 +9008,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.player.PlayerSkin.Patch",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/player/PlayerSkin.java",
         kind: "record",
         inherited_accessor_count: 0,
@@ -8134,6 +9017,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.player.ProfileKeyPair",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/player/ProfileKeyPair.java",
         kind: "record",
         inherited_accessor_count: 0,
@@ -8142,6 +9026,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.player.ProfilePublicKey",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/player/ProfilePublicKey.java",
         kind: "record",
         inherited_accessor_count: 0,
@@ -8150,6 +9035,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.player.ProfilePublicKey.Data",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/player/ProfilePublicKey.java",
         kind: "record",
         inherited_accessor_count: 0,
@@ -8158,6 +9044,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.player.ProfilePublicKey.ValidationException",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/player/ProfilePublicKey.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -8166,6 +9053,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.player.StackedContents",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/player/StackedContents.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -8174,6 +9062,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.player.StackedContents.IngredientInfo",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/player/StackedContents.java",
         kind: "interface",
         inherited_accessor_count: 0,
@@ -8182,6 +9071,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.player.StackedContents.Output",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/player/StackedContents.java",
         kind: "interface",
         inherited_accessor_count: 0,
@@ -8190,6 +9080,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.player.StackedContents.RecipePicker",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/player/StackedContents.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -8198,6 +9089,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.player.StackedItemContents",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/player/StackedItemContents.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -8206,6 +9098,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.projectile.EvokerFangs",
         superclass: Some("net.minecraft.world.entity.Entity"),
+        interfaces: &["net.minecraft.world.entity.TraceableEntity"],
         source_path: "net/minecraft/world/entity/projectile/EvokerFangs.java",
         kind: "class",
         inherited_accessor_count: 8,
@@ -8214,6 +9107,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.projectile.EyeOfEnder",
         superclass: Some("net.minecraft.world.entity.Entity"),
+        interfaces: &["net.minecraft.world.entity.projectile.ItemSupplier"],
         source_path: "net/minecraft/world/entity/projectile/EyeOfEnder.java",
         kind: "class",
         inherited_accessor_count: 8,
@@ -8222,6 +9116,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.projectile.FireworkRocketEntity",
         superclass: Some("net.minecraft.world.entity.projectile.Projectile"),
+        interfaces: &["net.minecraft.world.entity.projectile.ItemSupplier"],
         source_path: "net/minecraft/world/entity/projectile/FireworkRocketEntity.java",
         kind: "class",
         inherited_accessor_count: 8,
@@ -8230,6 +9125,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.projectile.FishingHook",
         superclass: Some("net.minecraft.world.entity.projectile.Projectile"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/projectile/FishingHook.java",
         kind: "class",
         inherited_accessor_count: 8,
@@ -8238,6 +9134,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.projectile.FishingHook.FishHookState",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/projectile/FishingHook.java",
         kind: "enum",
         inherited_accessor_count: 0,
@@ -8246,6 +9143,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.projectile.FishingHook.OpenWaterType",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/projectile/FishingHook.java",
         kind: "enum",
         inherited_accessor_count: 0,
@@ -8254,6 +9152,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.projectile.ItemSupplier",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/projectile/ItemSupplier.java",
         kind: "interface",
         inherited_accessor_count: 0,
@@ -8262,6 +9161,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.projectile.LlamaSpit",
         superclass: Some("net.minecraft.world.entity.projectile.Projectile"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/projectile/LlamaSpit.java",
         kind: "class",
         inherited_accessor_count: 8,
@@ -8270,6 +9170,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.projectile.Projectile",
         superclass: Some("net.minecraft.world.entity.Entity"),
+        interfaces: &["net.minecraft.world.entity.TraceableEntity"],
         source_path: "net/minecraft/world/entity/projectile/Projectile.java",
         kind: "class",
         inherited_accessor_count: 8,
@@ -8278,6 +9179,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.projectile.Projectile.ProjectileFactory",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/projectile/Projectile.java",
         kind: "interface",
         inherited_accessor_count: 0,
@@ -8286,6 +9188,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.projectile.ProjectileDeflection",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/projectile/ProjectileDeflection.java",
         kind: "interface",
         inherited_accessor_count: 0,
@@ -8294,6 +9197,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.projectile.ProjectileUtil",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/projectile/ProjectileUtil.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -8302,6 +9206,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.projectile.ShulkerBullet",
         superclass: Some("net.minecraft.world.entity.projectile.Projectile"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/projectile/ShulkerBullet.java",
         kind: "class",
         inherited_accessor_count: 8,
@@ -8310,6 +9215,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.projectile.ThrowableProjectile",
         superclass: Some("net.minecraft.world.entity.projectile.Projectile"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/projectile/ThrowableProjectile.java",
         kind: "class",
         inherited_accessor_count: 8,
@@ -8318,6 +9224,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.projectile.arrow.AbstractArrow",
         superclass: Some("net.minecraft.world.entity.projectile.Projectile"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/projectile/arrow/AbstractArrow.java",
         kind: "class",
         inherited_accessor_count: 8,
@@ -8326,6 +9233,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.projectile.arrow.AbstractArrow.Pickup",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/projectile/arrow/AbstractArrow.java",
         kind: "enum",
         inherited_accessor_count: 0,
@@ -8334,6 +9242,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.projectile.arrow.Arrow",
         superclass: Some("net.minecraft.world.entity.projectile.arrow.AbstractArrow"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/projectile/arrow/Arrow.java",
         kind: "class",
         inherited_accessor_count: 11,
@@ -8342,6 +9251,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.projectile.arrow.SpectralArrow",
         superclass: Some("net.minecraft.world.entity.projectile.arrow.AbstractArrow"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/projectile/arrow/SpectralArrow.java",
         kind: "class",
         inherited_accessor_count: 11,
@@ -8350,6 +9260,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.projectile.arrow.ThrownTrident",
         superclass: Some("net.minecraft.world.entity.projectile.arrow.AbstractArrow"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/projectile/arrow/ThrownTrident.java",
         kind: "class",
         inherited_accessor_count: 11,
@@ -8358,6 +9269,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.projectile.hurtingprojectile.AbstractHurtingProjectile",
         superclass: Some("net.minecraft.world.entity.projectile.Projectile"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/projectile/hurtingprojectile/AbstractHurtingProjectile.java",
         kind: "class",
         inherited_accessor_count: 8,
@@ -8366,6 +9278,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.projectile.hurtingprojectile.DragonFireball",
         superclass: Some("net.minecraft.world.entity.projectile.hurtingprojectile.AbstractHurtingProjectile"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/projectile/hurtingprojectile/DragonFireball.java",
         kind: "class",
         inherited_accessor_count: 8,
@@ -8374,6 +9287,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.projectile.hurtingprojectile.Fireball",
         superclass: Some("net.minecraft.world.entity.projectile.hurtingprojectile.AbstractHurtingProjectile"),
+        interfaces: &["net.minecraft.world.entity.projectile.ItemSupplier"],
         source_path: "net/minecraft/world/entity/projectile/hurtingprojectile/Fireball.java",
         kind: "class",
         inherited_accessor_count: 8,
@@ -8382,6 +9296,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.projectile.hurtingprojectile.LargeFireball",
         superclass: Some("net.minecraft.world.entity.projectile.hurtingprojectile.Fireball"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/projectile/hurtingprojectile/LargeFireball.java",
         kind: "class",
         inherited_accessor_count: 9,
@@ -8390,6 +9305,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.projectile.hurtingprojectile.SmallFireball",
         superclass: Some("net.minecraft.world.entity.projectile.hurtingprojectile.Fireball"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/projectile/hurtingprojectile/SmallFireball.java",
         kind: "class",
         inherited_accessor_count: 9,
@@ -8398,6 +9314,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.projectile.hurtingprojectile.WitherSkull",
         superclass: Some("net.minecraft.world.entity.projectile.hurtingprojectile.AbstractHurtingProjectile"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/projectile/hurtingprojectile/WitherSkull.java",
         kind: "class",
         inherited_accessor_count: 8,
@@ -8406,6 +9323,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.projectile.hurtingprojectile.windcharge.AbstractWindCharge",
         superclass: Some("net.minecraft.world.entity.projectile.hurtingprojectile.AbstractHurtingProjectile"),
+        interfaces: &["net.minecraft.world.entity.projectile.ItemSupplier"],
         source_path: "net/minecraft/world/entity/projectile/hurtingprojectile/windcharge/AbstractWindCharge.java",
         kind: "class",
         inherited_accessor_count: 8,
@@ -8414,6 +9332,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.projectile.hurtingprojectile.windcharge.BreezeWindCharge",
         superclass: Some("net.minecraft.world.entity.projectile.hurtingprojectile.windcharge.AbstractWindCharge"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/projectile/hurtingprojectile/windcharge/BreezeWindCharge.java",
         kind: "class",
         inherited_accessor_count: 8,
@@ -8422,6 +9341,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.projectile.hurtingprojectile.windcharge.WindCharge",
         superclass: Some("net.minecraft.world.entity.projectile.hurtingprojectile.windcharge.AbstractWindCharge"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/projectile/hurtingprojectile/windcharge/WindCharge.java",
         kind: "class",
         inherited_accessor_count: 8,
@@ -8430,6 +9350,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.projectile.throwableitemprojectile.AbstractThrownPotion",
         superclass: Some("net.minecraft.world.entity.projectile.throwableitemprojectile.ThrowableItemProjectile"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/projectile/throwableitemprojectile/AbstractThrownPotion.java",
         kind: "class",
         inherited_accessor_count: 9,
@@ -8438,6 +9359,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.projectile.throwableitemprojectile.Snowball",
         superclass: Some("net.minecraft.world.entity.projectile.throwableitemprojectile.ThrowableItemProjectile"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/projectile/throwableitemprojectile/Snowball.java",
         kind: "class",
         inherited_accessor_count: 9,
@@ -8446,6 +9368,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.projectile.throwableitemprojectile.ThrowableItemProjectile",
         superclass: Some("net.minecraft.world.entity.projectile.ThrowableProjectile"),
+        interfaces: &["net.minecraft.world.entity.projectile.ItemSupplier"],
         source_path: "net/minecraft/world/entity/projectile/throwableitemprojectile/ThrowableItemProjectile.java",
         kind: "class",
         inherited_accessor_count: 8,
@@ -8454,6 +9377,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.projectile.throwableitemprojectile.ThrownEgg",
         superclass: Some("net.minecraft.world.entity.projectile.throwableitemprojectile.ThrowableItemProjectile"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/projectile/throwableitemprojectile/ThrownEgg.java",
         kind: "class",
         inherited_accessor_count: 9,
@@ -8462,6 +9386,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.projectile.throwableitemprojectile.ThrownEnderpearl",
         superclass: Some("net.minecraft.world.entity.projectile.throwableitemprojectile.ThrowableItemProjectile"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/projectile/throwableitemprojectile/ThrownEnderpearl.java",
         kind: "class",
         inherited_accessor_count: 9,
@@ -8470,6 +9395,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.projectile.throwableitemprojectile.ThrownExperienceBottle",
         superclass: Some("net.minecraft.world.entity.projectile.throwableitemprojectile.ThrowableItemProjectile"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/projectile/throwableitemprojectile/ThrownExperienceBottle.java",
         kind: "class",
         inherited_accessor_count: 9,
@@ -8478,6 +9404,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.projectile.throwableitemprojectile.ThrownLingeringPotion",
         superclass: Some("net.minecraft.world.entity.projectile.throwableitemprojectile.AbstractThrownPotion"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/projectile/throwableitemprojectile/ThrownLingeringPotion.java",
         kind: "class",
         inherited_accessor_count: 9,
@@ -8486,6 +9413,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.projectile.throwableitemprojectile.ThrownSplashPotion",
         superclass: Some("net.minecraft.world.entity.projectile.throwableitemprojectile.AbstractThrownPotion"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/projectile/throwableitemprojectile/ThrownSplashPotion.java",
         kind: "class",
         inherited_accessor_count: 9,
@@ -8494,6 +9422,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.raid.Raid",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/raid/Raid.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -8502,6 +9431,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.raid.Raid.RaidStatus",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/raid/Raid.java",
         kind: "enum",
         inherited_accessor_count: 0,
@@ -8510,6 +9440,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.raid.Raid.RaiderType",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/raid/Raid.java",
         kind: "enum",
         inherited_accessor_count: 0,
@@ -8518,6 +9449,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.raid.Raider",
         superclass: Some("net.minecraft.world.entity.monster.PatrollingMonster"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/raid/Raider.java",
         kind: "class",
         inherited_accessor_count: 16,
@@ -8526,6 +9458,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.raid.Raider.HoldGroundAttackGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/raid/Raider.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -8534,6 +9467,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.raid.Raider.ObtainRaidLeaderBannerGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/raid/Raider.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -8542,6 +9476,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.raid.Raider.RaiderCelebration",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/raid/Raider.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -8550,6 +9485,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.raid.Raider.RaiderMoveThroughVillageGoal",
         superclass: Some("net.minecraft.world.entity.ai.goal.Goal"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/raid/Raider.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -8558,6 +9494,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.raid.Raids",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/raid/Raids.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -8566,6 +9503,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.raid.Raids.RaidWithId",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/raid/Raids.java",
         kind: "record",
         inherited_accessor_count: 0,
@@ -8574,6 +9512,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.schedule.Activity",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/schedule/Activity.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -8582,6 +9521,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.variant.BiomeCheck",
         superclass: None,
+        interfaces: &["net.minecraft.world.entity.variant.SpawnCondition"],
         source_path: "net/minecraft/world/entity/variant/BiomeCheck.java",
         kind: "record",
         inherited_accessor_count: 0,
@@ -8590,6 +9530,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.variant.ModelAndTexture",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/variant/ModelAndTexture.java",
         kind: "record",
         inherited_accessor_count: 0,
@@ -8598,6 +9539,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.variant.MoonBrightnessCheck",
         superclass: None,
+        interfaces: &["net.minecraft.world.entity.variant.SpawnCondition"],
         source_path: "net/minecraft/world/entity/variant/MoonBrightnessCheck.java",
         kind: "record",
         inherited_accessor_count: 0,
@@ -8606,6 +9548,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.variant.PriorityProvider",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/variant/PriorityProvider.java",
         kind: "interface",
         inherited_accessor_count: 0,
@@ -8614,6 +9557,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.variant.PriorityProvider.Selector",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/variant/PriorityProvider.java",
         kind: "record",
         inherited_accessor_count: 0,
@@ -8622,6 +9566,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.variant.PriorityProvider.SelectorCondition",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/variant/PriorityProvider.java",
         kind: "interface",
         inherited_accessor_count: 0,
@@ -8630,6 +9575,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.variant.PriorityProvider.UnpackedEntry",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/variant/PriorityProvider.java",
         kind: "record",
         inherited_accessor_count: 0,
@@ -8638,6 +9584,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.variant.SpawnCondition",
         superclass: None,
+        interfaces: &["net.minecraft.world.entity.variant.PriorityProvider.SelectorCondition"],
         source_path: "net/minecraft/world/entity/variant/SpawnCondition.java",
         kind: "interface",
         inherited_accessor_count: 0,
@@ -8646,6 +9593,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.variant.SpawnConditions",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/variant/SpawnConditions.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -8654,6 +9602,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.variant.SpawnContext",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/variant/SpawnContext.java",
         kind: "record",
         inherited_accessor_count: 0,
@@ -8662,6 +9611,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.variant.SpawnPrioritySelectors",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/variant/SpawnPrioritySelectors.java",
         kind: "record",
         inherited_accessor_count: 0,
@@ -8670,6 +9620,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.variant.StructureCheck",
         superclass: None,
+        interfaces: &["net.minecraft.world.entity.variant.SpawnCondition"],
         source_path: "net/minecraft/world/entity/variant/StructureCheck.java",
         kind: "record",
         inherited_accessor_count: 0,
@@ -8678,6 +9629,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.variant.VariantUtils",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/variant/VariantUtils.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -8686,6 +9638,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.vehicle.ContainerEntity",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/vehicle/ContainerEntity.java",
         kind: "interface",
         inherited_accessor_count: 0,
@@ -8694,6 +9647,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.vehicle.DismountHelper",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/vehicle/DismountHelper.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -8702,6 +9656,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.vehicle.VehicleEntity",
         superclass: Some("net.minecraft.world.entity.Entity"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/vehicle/VehicleEntity.java",
         kind: "class",
         inherited_accessor_count: 8,
@@ -8710,6 +9665,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.vehicle.boat.AbstractBoat",
         superclass: Some("net.minecraft.world.entity.vehicle.VehicleEntity"),
+        interfaces: &["net.minecraft.world.entity.Leashable"],
         source_path: "net/minecraft/world/entity/vehicle/boat/AbstractBoat.java",
         kind: "class",
         inherited_accessor_count: 11,
@@ -8718,6 +9674,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.vehicle.boat.AbstractBoat.Status",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/vehicle/boat/AbstractBoat.java",
         kind: "enum",
         inherited_accessor_count: 0,
@@ -8726,6 +9683,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.vehicle.boat.AbstractChestBoat",
         superclass: Some("net.minecraft.world.entity.vehicle.boat.AbstractBoat"),
+        interfaces: &["net.minecraft.world.entity.HasCustomInventoryScreen", "net.minecraft.world.entity.vehicle.ContainerEntity"],
         source_path: "net/minecraft/world/entity/vehicle/boat/AbstractChestBoat.java",
         kind: "class",
         inherited_accessor_count: 14,
@@ -8734,6 +9692,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.vehicle.boat.Boat",
         superclass: Some("net.minecraft.world.entity.vehicle.boat.AbstractBoat"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/vehicle/boat/Boat.java",
         kind: "class",
         inherited_accessor_count: 14,
@@ -8742,6 +9701,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.vehicle.boat.ChestBoat",
         superclass: Some("net.minecraft.world.entity.vehicle.boat.AbstractChestBoat"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/vehicle/boat/ChestBoat.java",
         kind: "class",
         inherited_accessor_count: 14,
@@ -8750,6 +9710,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.vehicle.boat.ChestRaft",
         superclass: Some("net.minecraft.world.entity.vehicle.boat.AbstractChestBoat"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/vehicle/boat/ChestRaft.java",
         kind: "class",
         inherited_accessor_count: 14,
@@ -8758,6 +9719,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.vehicle.boat.Raft",
         superclass: Some("net.minecraft.world.entity.vehicle.boat.AbstractBoat"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/vehicle/boat/Raft.java",
         kind: "class",
         inherited_accessor_count: 14,
@@ -8766,6 +9728,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.vehicle.minecart.AbstractMinecart",
         superclass: Some("net.minecraft.world.entity.vehicle.VehicleEntity"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/vehicle/minecart/AbstractMinecart.java",
         kind: "class",
         inherited_accessor_count: 11,
@@ -8774,6 +9737,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.vehicle.minecart.AbstractMinecartContainer",
         superclass: Some("net.minecraft.world.entity.vehicle.minecart.AbstractMinecart"),
+        interfaces: &["net.minecraft.world.entity.vehicle.ContainerEntity"],
         source_path: "net/minecraft/world/entity/vehicle/minecart/AbstractMinecartContainer.java",
         kind: "class",
         inherited_accessor_count: 13,
@@ -8782,6 +9746,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.vehicle.minecart.Minecart",
         superclass: Some("net.minecraft.world.entity.vehicle.minecart.AbstractMinecart"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/vehicle/minecart/Minecart.java",
         kind: "class",
         inherited_accessor_count: 13,
@@ -8790,6 +9755,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.vehicle.minecart.MinecartBehavior",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/vehicle/minecart/MinecartBehavior.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -8798,6 +9764,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.vehicle.minecart.MinecartChest",
         superclass: Some("net.minecraft.world.entity.vehicle.minecart.AbstractMinecartContainer"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/vehicle/minecart/MinecartChest.java",
         kind: "class",
         inherited_accessor_count: 13,
@@ -8806,6 +9773,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.vehicle.minecart.MinecartCommandBlock",
         superclass: Some("net.minecraft.world.entity.vehicle.minecart.AbstractMinecart"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/vehicle/minecart/MinecartCommandBlock.java",
         kind: "class",
         inherited_accessor_count: 13,
@@ -8814,6 +9782,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.vehicle.minecart.MinecartCommandBlock.MinecartCommandBase",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/vehicle/minecart/MinecartCommandBlock.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -8822,6 +9791,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.vehicle.minecart.MinecartFurnace",
         superclass: Some("net.minecraft.world.entity.vehicle.minecart.AbstractMinecart"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/vehicle/minecart/MinecartFurnace.java",
         kind: "class",
         inherited_accessor_count: 13,
@@ -8830,6 +9800,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.vehicle.minecart.MinecartHopper",
         superclass: Some("net.minecraft.world.entity.vehicle.minecart.AbstractMinecartContainer"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/vehicle/minecart/MinecartHopper.java",
         kind: "class",
         inherited_accessor_count: 13,
@@ -8838,6 +9809,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.vehicle.minecart.MinecartSpawner",
         superclass: Some("net.minecraft.world.entity.vehicle.minecart.AbstractMinecart"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/vehicle/minecart/MinecartSpawner.java",
         kind: "class",
         inherited_accessor_count: 13,
@@ -8846,6 +9818,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.vehicle.minecart.MinecartTNT",
         superclass: Some("net.minecraft.world.entity.vehicle.minecart.AbstractMinecart"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/vehicle/minecart/MinecartTNT.java",
         kind: "class",
         inherited_accessor_count: 13,
@@ -8854,6 +9827,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.vehicle.minecart.NewMinecartBehavior",
         superclass: Some("net.minecraft.world.entity.vehicle.minecart.MinecartBehavior"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/vehicle/minecart/NewMinecartBehavior.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -8862,6 +9836,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.vehicle.minecart.NewMinecartBehavior.MinecartStep",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/vehicle/minecart/NewMinecartBehavior.java",
         kind: "record",
         inherited_accessor_count: 0,
@@ -8870,6 +9845,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.vehicle.minecart.NewMinecartBehavior.StepPartialTicks",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/vehicle/minecart/NewMinecartBehavior.java",
         kind: "record",
         inherited_accessor_count: 0,
@@ -8878,6 +9854,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.vehicle.minecart.NewMinecartBehavior.TrackIteration",
         superclass: None,
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/vehicle/minecart/NewMinecartBehavior.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -8886,6 +9863,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
     VanillaEntityMetadataClassCatalogEntry {
         java_class: "net.minecraft.world.entity.vehicle.minecart.OldMinecartBehavior",
         superclass: Some("net.minecraft.world.entity.vehicle.minecart.MinecartBehavior"),
+        interfaces: &[],
         source_path: "net/minecraft/world/entity/vehicle/minecart/OldMinecartBehavior.java",
         kind: "class",
         inherited_accessor_count: 0,
@@ -12435,6 +13413,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12448,6 +13428,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: true,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12461,6 +13443,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12474,6 +13458,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12487,6 +13473,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12500,6 +13488,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12513,6 +13503,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: true,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12526,6 +13518,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12539,6 +13533,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: true,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12552,6 +13548,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12565,6 +13563,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12578,6 +13578,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12591,6 +13593,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12604,6 +13608,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: true,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12617,6 +13623,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12630,6 +13638,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12643,6 +13653,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12656,6 +13668,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12671,6 +13685,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: true,
         is_hurting_projectile: true,
         is_wind_charge: true,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12684,6 +13700,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: true,
+        has_custom_inventory_screen: true,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12697,6 +13715,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: true,
+        has_custom_inventory_screen: true,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12710,6 +13730,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12723,6 +13745,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12736,6 +13760,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12749,6 +13775,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: true,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12762,6 +13790,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12775,6 +13805,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12788,6 +13820,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12801,6 +13835,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12814,6 +13850,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12827,6 +13865,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12840,6 +13880,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12853,6 +13895,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12866,6 +13910,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12879,6 +13925,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: true,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12892,6 +13940,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12905,6 +13955,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: true,
+        has_custom_inventory_screen: true,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12920,6 +13972,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: true,
         is_hurting_projectile: true,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12933,6 +13987,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12950,6 +14006,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: true,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12963,6 +14021,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12976,6 +14036,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12989,6 +14051,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13002,6 +14066,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13019,6 +14085,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: true,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13032,6 +14100,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13045,6 +14115,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13058,6 +14130,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13075,6 +14149,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: true,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13088,6 +14164,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13101,6 +14179,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13114,6 +14194,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13129,6 +14211,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: true,
         is_hurting_projectile: true,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13142,6 +14226,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: true,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13155,6 +14241,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13168,6 +14256,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13181,6 +14271,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13194,6 +14286,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13207,6 +14301,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13220,6 +14316,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13233,6 +14331,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13246,6 +14346,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13259,6 +14361,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13272,6 +14376,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13285,6 +14391,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13298,6 +14406,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13311,6 +14421,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: true,
+        has_custom_inventory_screen: true,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13324,6 +14436,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13337,6 +14451,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13350,6 +14466,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13363,6 +14481,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13376,6 +14496,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13389,6 +14511,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13402,6 +14526,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13415,6 +14541,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13428,6 +14556,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: true,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13441,6 +14571,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13454,6 +14586,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13467,6 +14601,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: true,
+        has_custom_inventory_screen: true,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13480,6 +14616,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: true,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13493,6 +14631,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13506,6 +14646,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13519,6 +14661,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: true,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13532,6 +14676,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13545,6 +14691,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13558,6 +14706,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13571,6 +14721,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13584,6 +14736,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: true,
+        has_custom_inventory_screen: true,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13597,6 +14751,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: true,
+        has_custom_inventory_screen: true,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13610,6 +14766,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13623,6 +14781,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: true,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13636,6 +14796,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13649,6 +14811,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13662,6 +14826,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13675,6 +14841,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13688,6 +14856,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: true,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13701,6 +14871,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13714,6 +14886,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13727,6 +14901,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13740,6 +14916,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13753,6 +14931,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13766,6 +14946,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13779,6 +14961,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13792,6 +14976,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13805,6 +14991,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13822,6 +15010,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: true,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13839,6 +15029,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: true,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13852,6 +15044,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13865,6 +15059,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13878,6 +15074,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13891,6 +15089,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13904,6 +15104,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13917,6 +15119,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13930,6 +15134,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: true,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13943,6 +15149,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13956,6 +15164,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13969,6 +15179,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: true,
+        has_custom_inventory_screen: true,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13982,6 +15194,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13997,6 +15211,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: true,
         is_hurting_projectile: true,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -14010,6 +15226,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -14027,6 +15245,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: true,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -14040,6 +15260,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -14053,6 +15275,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -14066,6 +15290,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: true,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -14079,6 +15305,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -14092,6 +15320,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -14105,6 +15335,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: true,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -14118,6 +15350,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -14131,6 +15365,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -14144,6 +15380,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -14157,6 +15395,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -14170,6 +15410,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -14183,6 +15425,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -14196,6 +15440,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -14209,6 +15455,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: true,
+        has_custom_inventory_screen: true,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -14222,6 +15470,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: true,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -14235,6 +15485,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -14248,6 +15500,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -14261,6 +15515,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -14274,6 +15530,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -14287,6 +15545,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -14300,6 +15560,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -14313,6 +15575,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -14328,6 +15592,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: true,
         is_hurting_projectile: true,
         is_wind_charge: true,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -14341,6 +15607,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -14354,6 +15622,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -14367,6 +15637,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -14380,6 +15652,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: true,
         is_hurting_projectile: true,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -14393,6 +15667,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -14406,6 +15682,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -14419,6 +15697,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -14432,6 +15712,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: true,
+        has_custom_inventory_screen: true,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -14445,6 +15727,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: true,
+        has_custom_inventory_screen: true,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -14458,6 +15742,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -14471,6 +15757,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -14484,6 +15772,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: false,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -14497,6 +15787,8 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         is_projectile: true,
         is_hurting_projectile: false,
         is_wind_charge: false,
+        is_player_rideable_jumping: false,
+        has_custom_inventory_screen: false,
         diagnostic: None,
     },
 ];

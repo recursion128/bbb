@@ -22,7 +22,7 @@ class VanillaJavaSourceFrontendTests(unittest.TestCase):
             package fixture.child;
             import fixture.base.Parent;
             // Fake.call(one, two);
-            public class Child<T> extends Parent {
+            public class Child<T> extends Parent implements Runnable, java.io.Serializable {
                 private static final java.util.Map<String,
                     java.util.List<Integer>> VALUES = Factory.make(
                         "Fake.call(ignored)", '}', java.util.List.of(1, 2));
@@ -42,6 +42,10 @@ class VanillaJavaSourceFrontendTests(unittest.TestCase):
             ["fixture.child.Child", "fixture.child.Child.Nested"],
         )
         self.assertEqual(source.types[0].superclass_spelling, "Parent")
+        self.assertEqual(
+            source.types[0].interface_spellings,
+            ("Runnable", "java.io.Serializable"),
+        )
 
         values = next(item for item in source.fields if item.name == "VALUES")
         self.assertEqual(
@@ -98,6 +102,24 @@ class VanillaJavaSourceFrontendTests(unittest.TestCase):
         types = parent.types + child.types
         resolve_class_hierarchy(types)
         self.assertEqual(child.types[0].superclass, "fixture.base.Parent")
+
+    def test_class_and_interface_supertypes_resolve_through_shared_type_ir(self) -> None:
+        interface = parse_source(
+            "fixture/base/Capability.java",
+            b"package fixture.base; public interface Capability {}",
+        )
+        extended = parse_source(
+            "fixture/base/Extended.java",
+            b"package fixture.base; public interface Extended extends Capability {}",
+        )
+        child = parse_source(
+            "fixture/child/Child.java",
+            b"package fixture.child; import fixture.base.Extended; public class Child implements Extended {}",
+        )
+        types = interface.types + extended.types + child.types
+        resolve_class_hierarchy(types)
+        self.assertEqual(extended.types[0].interfaces, ("fixture.base.Capability",))
+        self.assertEqual(child.types[0].interfaces, ("fixture.base.Extended",))
 
     def test_nested_enum_body_declarations_are_public_fields_and_methods(self) -> None:
         raw = b"""package fixture; class Owner { enum Variant {

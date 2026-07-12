@@ -12511,3 +12511,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   client presentation 仍由原 semantic owner 实现。
 - [x] focused tests 锁定 WitherSkull 正例、Arrow 负例以及 6/2 完整计数；继承事实不代表命中、伤害、
   爆炸、方块修改或服务端权威 lifecycle 已实现。
+
+## 2026-07-12：Extracted Java interface memberships
+
+- [x] 统一 Tree-sitter Java frontend 的 `JavaType` IR 增加 class `implements` 与 interface `extends`
+  type references、import/package resolution 和稳定 tuple；frontend fixtures 覆盖多接口与继承接口，metadata
+  extractor 未增加私有 lexer、正则或 fallback。
+- [x] generated entity descriptor 通过 superclass + interface transitive closure 派生 11 项
+  `PlayerRideableJumping` 与 21 项 `HasCustomInventoryScreen`；world passenger/control 查询删除对应手抄
+  entity-type matches，camel sprintability 等行为特例仍留在 world semantic owner。

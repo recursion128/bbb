@@ -4,20 +4,14 @@ use bbb_protocol::packets::{
 
 use crate::{LocalPlayerInputState, WorldStore};
 
+use super::schema::{
+    vanilla_entity_metadata_type_has_custom_inventory_screen,
+    vanilla_entity_metadata_type_is_player_rideable_jumping,
+};
 use super::{
     is_vanilla_boat_type,
     movement::{entity_distance_squared, entity_vec3},
-    VehicleMoveReport, VANILLA_ENTITY_TYPE_ACACIA_CHEST_BOAT_ID,
-    VANILLA_ENTITY_TYPE_BAMBOO_CHEST_RAFT_ID, VANILLA_ENTITY_TYPE_BIRCH_CHEST_BOAT_ID,
-    VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID, VANILLA_ENTITY_TYPE_CAMEL_ID,
-    VANILLA_ENTITY_TYPE_CHERRY_CHEST_BOAT_ID, VANILLA_ENTITY_TYPE_DARK_OAK_CHEST_BOAT_ID,
-    VANILLA_ENTITY_TYPE_DONKEY_ID, VANILLA_ENTITY_TYPE_HORSE_ID,
-    VANILLA_ENTITY_TYPE_JUNGLE_CHEST_BOAT_ID, VANILLA_ENTITY_TYPE_LLAMA_ID,
-    VANILLA_ENTITY_TYPE_MANGROVE_CHEST_BOAT_ID, VANILLA_ENTITY_TYPE_MULE_ID,
-    VANILLA_ENTITY_TYPE_NAUTILUS_ID, VANILLA_ENTITY_TYPE_OAK_CHEST_BOAT_ID,
-    VANILLA_ENTITY_TYPE_PALE_OAK_CHEST_BOAT_ID, VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID,
-    VANILLA_ENTITY_TYPE_SPRUCE_CHEST_BOAT_ID, VANILLA_ENTITY_TYPE_TRADER_LLAMA_ID,
-    VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
+    VehicleMoveReport, VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID, VANILLA_ENTITY_TYPE_CAMEL_ID,
 };
 
 const MOVE_VEHICLE_SNAP_EPSILON_SQUARED: f64 = 1e-10;
@@ -355,20 +349,7 @@ fn wrap_degrees_f32(degrees: f32) -> f32 {
 }
 
 fn is_vanilla_player_rideable_jumping_type(entity_type_id: i32) -> bool {
-    matches!(
-        entity_type_id,
-        VANILLA_ENTITY_TYPE_CAMEL_ID
-            | VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID
-            | VANILLA_ENTITY_TYPE_DONKEY_ID
-            | VANILLA_ENTITY_TYPE_HORSE_ID
-            | VANILLA_ENTITY_TYPE_LLAMA_ID
-            | VANILLA_ENTITY_TYPE_MULE_ID
-            | VANILLA_ENTITY_TYPE_NAUTILUS_ID
-            | VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID
-            | VANILLA_ENTITY_TYPE_TRADER_LLAMA_ID
-            | VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID
-            | VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID
-    )
+    vanilla_entity_metadata_type_is_player_rideable_jumping(entity_type_id)
 }
 
 fn is_vanilla_sprintable_vehicle_type(entity_type_id: i32) -> bool {
@@ -379,18 +360,5 @@ fn is_vanilla_sprintable_vehicle_type(entity_type_id: i32) -> bool {
 }
 
 fn is_vanilla_custom_inventory_screen_type(entity_type_id: i32) -> bool {
-    is_vanilla_player_rideable_jumping_type(entity_type_id)
-        || matches!(
-            entity_type_id,
-            VANILLA_ENTITY_TYPE_ACACIA_CHEST_BOAT_ID
-                | VANILLA_ENTITY_TYPE_BAMBOO_CHEST_RAFT_ID
-                | VANILLA_ENTITY_TYPE_BIRCH_CHEST_BOAT_ID
-                | VANILLA_ENTITY_TYPE_CHERRY_CHEST_BOAT_ID
-                | VANILLA_ENTITY_TYPE_DARK_OAK_CHEST_BOAT_ID
-                | VANILLA_ENTITY_TYPE_JUNGLE_CHEST_BOAT_ID
-                | VANILLA_ENTITY_TYPE_MANGROVE_CHEST_BOAT_ID
-                | VANILLA_ENTITY_TYPE_OAK_CHEST_BOAT_ID
-                | VANILLA_ENTITY_TYPE_PALE_OAK_CHEST_BOAT_ID
-                | VANILLA_ENTITY_TYPE_SPRUCE_CHEST_BOAT_ID
-        )
+    vanilla_entity_metadata_type_has_custom_inventory_screen(entity_type_id)
 }

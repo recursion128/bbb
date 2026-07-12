@@ -64,6 +64,8 @@ class JavaType:
     kind: str
     superclass_spelling: str | None
     superclass: str | None
+    interface_spellings: tuple[str, ...]
+    interfaces: tuple[str, ...]
     declaration_order: int
     span: SourceSpan
     node: Node = field(repr=False)
@@ -345,6 +347,24 @@ def _parse_types(relative_path: str, source: bytes, root: Node, package: str, im
             named = superclass_node.named_children
             if named:
                 superclass_spelling = canonical_expression(source, named[0]).replace(" ", "")
+        interface_spellings: tuple[str, ...] = ()
+        interfaces_node = next(
+            (
+                child
+                for child in node.named_children
+                if child.type in {"super_interfaces", "extends_interfaces"}
+            ),
+            None,
+        )
+        if interfaces_node is not None:
+            type_list = next(
+                (child for child in interfaces_node.named_children if child.type == "type_list"),
+                interfaces_node,
+            )
+            interface_spellings = tuple(
+                canonical_expression(source, child).replace(" ", "")
+                for child in type_list.named_children
+            )
         result.append(
             JavaType(
                 package + "." + ".".join(names),
@@ -354,6 +374,8 @@ def _parse_types(relative_path: str, source: bytes, root: Node, package: str, im
                 TYPE_NODE_KINDS[node.type],
                 superclass_spelling,
                 None,
+                interface_spellings,
+                (),
                 order,
                 _span(relative_path, node),
                 node,
@@ -523,3 +545,8 @@ def resolve_class_hierarchy(types: list[JavaType]) -> None:
     known = {item.fqcn: item for item in types}
     for item in types:
         item.superclass = resolve_type_reference(item.superclass_spelling, item, known)
+        item.interfaces = tuple(
+            resolved
+            for spelling in item.interface_spellings
+            if (resolved := resolve_type_reference(spelling, item, known)) is not None
+        )
