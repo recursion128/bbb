@@ -2927,27 +2927,45 @@
       "constant_name": "SERVERBOUND_CLIENT_TICK_END",
       "coverage": {
         "ack_response": {
-          "evidence": [],
+          "evidence": [
+            "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#handleClientTickEnd"
+          ],
           "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "status": "not-applicable"
         },
         "command_surface": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-net/src/connection.rs#play_tick_interval",
+            "crates/bbb-net/src/event_stream/configuration.rs#ConfigurationClientbound::Finish",
+            "crates/bbb-net/src/driver.rs#read_packet_or_drive_connection"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "encoder": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/serverbound.rs#encode_play_client_tick_end",
+            "vanilla:net/minecraft/network/protocol/game/ServerboundClientTickEndPacket.java#STREAM_CODEC"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "state_guard": {
-          "evidence": [],
+          "evidence": [
+            "crates/bbb-net/src/driver.rs#read_packet_or_drive_connection",
+            "crates/bbb-net/src/probe.rs#read_packet_or_send_play_tick",
+            "vanilla:net/minecraft/client/Minecraft.java#tick",
+            "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#handleClientTickEnd"
+          ],
           "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
           "status": "partial"
         },
         "tests": {
-          "evidence": [],
+          "evidence": [
+            "crates/bbb-protocol/src/packets/tests.rs#decodes_chunk_batch_and_encodes_client_play_status_packets",
+            "crates/bbb-net/src/driver.rs#drive_connection_sends_client_tick_end_while_waiting_in_play",
+            "crates/bbb-net/src/probe/play.rs#probe_start_configuration_acknowledges_and_resets_configuration_dedup_state"
+          ],
           "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
           "status": "partial"
         }

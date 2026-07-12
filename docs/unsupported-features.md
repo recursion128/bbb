@@ -111,6 +111,11 @@ Owner: `bbb-protocol`
 - Defer configuration/play keepalive responses while client event polling is
   render-frozen, with vanilla's one-minute expiry, instead of always replying
   immediately. Ping/pong remains immediate and is already separate.
+- Drive `ServerboundClientTickEndPacket` from the actual native client-tick end,
+  after that tick's player/vehicle movement has been queued, instead of an
+  independent Tokio interval whose first deadline fires immediately. The current
+  play-only 20 Hz sender keeps servers live but does not prove vanilla movement
+  grouping semantics from `handleClientTickEnd`.
 - Assemble play packets between bundle delimiters in the connection owner like
   `PacketBundlePacker` / `BundlerInfo`: dispatch the bundle as one scheduled
   unit, reject terminal packets inside it, and enforce the 4096-packet limit.

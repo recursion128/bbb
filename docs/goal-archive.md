@@ -11791,3 +11791,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] `ServerboundClientCommandPacket` 的三个 generated enum ordinal、VarInt wire、NetCommand/driver 分发、死亡态 PerformRespawn guard 与 StatsScreen 请求入口已审计，encoder 单格闭合。
 - [x] `REQUEST_GAMERULE_VALUES` 目前只有维护控制面，缺少 vanilla gamemaster-gated in-world GameRules screen；Respawn、AwardStats、GameRuleValues 的完整响应生命周期也仍开放，未用控制入口或 diagnostic snapshot 冒充客户端 UI 完成。
+
+## 2026-07-12：play serverbound client tick-end packet coverage audit
+
+- [x] `ServerboundClientTickEndPacket` 的 unit wire、play-only 20 Hz sender、play/configuration lifecycle 与服务端 `receivedMovementThisTick` reset 语义已审计；服务端无专用 response。
+- [x] 当前 sender 是独立 Tokio interval，首次立即触发且未绑定 native tick 末尾/本 tick movement 之后；state guard/tests 保持 partial，没有把近似 cadence 冒充 vanilla movement grouping。
