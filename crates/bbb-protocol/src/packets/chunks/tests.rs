@@ -147,14 +147,18 @@ fn decodes_chunks_biomes_update() {
 fn decodes_block_ack_and_block_updates() {
     let mut payload = Encoder::new();
     payload.write_var_i32(17);
-    let packet = decode_play_clientbound(
-        ids::play::CLIENTBOUND_BLOCK_CHANGED_ACK,
-        &payload.into_inner(),
-    )
-    .unwrap();
+    let mut bytes = payload.into_inner();
+    let packet = decode_play_clientbound(ids::play::CLIENTBOUND_BLOCK_CHANGED_ACK, &bytes).unwrap();
     assert_eq!(
         packet,
         PlayClientbound::BlockChangedAck(BlockChangedAck { sequence: 17 })
+    );
+    bytes.push(0);
+    assert!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_BLOCK_CHANGED_ACK, &bytes)
+            .unwrap_err()
+            .to_string()
+            .contains("trailing bytes after block changed ack packet")
     );
 
     let mut payload = Encoder::new();

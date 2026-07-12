@@ -305,6 +305,13 @@
       "runtime_side_effect": {"evidence": ["crates/bbb-native/src/entity_scene/tests.rs#entity_scene_outline_projects_pick_bounds_for_all_visible_targets", "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#createEntityFromPacket"], "gap": "docs/unsupported-features.md#renderer-scene-parity", "status": "partial"},
       "tests": {"evidence": ["crates/bbb-protocol/src/packets/entities/tests.rs#decodes_entity_lifecycle_packets", "crates/bbb-net/src/event_stream.rs#play_entity_state_packets_emit_matching_events_without_responses", "crates/bbb-net/src/probe/play.rs#probe_applies_entity_state_packets_to_world", "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#tracks_entity_lifecycle_and_absolute_state_updates", "crates/bbb-native/src/runtime/events/tests/entity_and_inventory_counters.rs#add_entity_replacement_updates_world_active_effect_counters"], "status": "complete"}
     },
+    "play/clientbound/CLIENTBOUND_BLOCK_CHANGED_ACK": {
+      "canonical_apply": {"evidence": ["crates/bbb-world/src/block_events.rs#apply_block_changed_ack", "crates/bbb-world/src/chunks/tests.rs#local_destroy_prediction_accepts_matching_server_update_on_ack", "vanilla:net/minecraft/client/multiplayer/ClientLevel.java#handleBlockChangedAck"], "status": "complete"},
+      "decode": {"evidence": ["crates/bbb-protocol/src/packets/chunks/tests.rs#decodes_block_ack_and_block_updates", "vanilla:net/minecraft/network/protocol/game/ClientboundBlockChangedAckPacket.java#STREAM_CODEC"], "status": "complete"},
+      "ownership": {"evidence": ["crates/bbb-world/src/play_apply.rs#PlayClientbound::BlockChangedAck"], "status": "complete"},
+      "runtime_side_effect": {"evidence": ["crates/bbb-world/src/chunks/tests.rs#local_destroy_prediction_rejected_ack_snaps_colliding_player_to_prediction_position", "crates/bbb-world/src/chunks/tests.rs#local_destroy_prediction_rejected_ack_keeps_non_colliding_player_position", "vanilla:net/minecraft/client/multiplayer/ClientLevel.java#handleBlockChangedAck"], "status": "complete"},
+      "tests": {"evidence": ["crates/bbb-protocol/src/packets/chunks/tests.rs#decodes_block_ack_and_block_updates", "crates/bbb-net/src/event_stream.rs#play_level_state_packets_emit_matching_events_without_responses", "crates/bbb-net/src/probe/play.rs#probe_applies_block_changed_ack_to_world", "crates/bbb-world/src/chunks/tests.rs#local_destroy_prediction_defers_server_block_update_until_ack", "crates/bbb-native/src/runtime/events/tests/world_state_lifecycle.rs#block_changed_ack_updates_world_counters"], "status": "complete"}
+    },
     "play/clientbound/CLIENTBOUND_BUNDLE_DELIMITER": {
       "canonical_apply": {
         "evidence": [

@@ -146,9 +146,15 @@ pub struct LightUpdateData {
 }
 
 pub(crate) fn decode_block_changed_ack(decoder: &mut Decoder<'_>) -> Result<BlockChangedAck> {
-    Ok(BlockChangedAck {
+    let packet = BlockChangedAck {
         sequence: decoder.read_var_i32()?,
-    })
+    };
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after block changed ack packet".to_string(),
+        ));
+    }
+    Ok(packet)
 }
 
 pub(crate) fn decode_block_destruction(decoder: &mut Decoder<'_>) -> Result<BlockDestruction> {

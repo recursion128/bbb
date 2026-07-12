@@ -11552,3 +11552,7 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] id/uuid/type/position/LP velocity/rotation/data framing、strict trailing、basic world ownership 与跨 crate tests 闭合。
 - [x] session registry validation、entity factory/player-info gate 与全类型 runtime 初始化未完成，decode/canonical/runtime 保持 partial。
+
+## 2026-07-12：play block-changed-ack packet coverage audit
+
+- [x] sequence framing、strict trailing、prediction reconciliation/player correction ownership 与跨 crate tests 闭合，五维 complete。
