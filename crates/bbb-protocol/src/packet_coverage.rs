@@ -4356,6 +4356,23 @@ mod tests {
         }
     }
 
+    #[test]
+    fn play_serverbound_test_instance_action_keeps_editor_and_codec_open() {
+        let ledger = vanilla_packet_coverage_26_1().unwrap();
+        let entry = ledger
+            .entries
+            .iter()
+            .find(|entry| {
+                entry.state == "play"
+                    && entry.constant_name == "SERVERBOUND_TEST_INSTANCE_BLOCK_ACTION"
+            })
+            .expect("play serverbound test instance block action coverage row");
+        assert!(entry
+            .coverage
+            .values()
+            .all(|cell| cell.status == PacketCoverageStatus::Partial));
+    }
+
     fn state_name(state: PacketState) -> &'static str {
         match state {
             PacketState::Handshake => "handshake",

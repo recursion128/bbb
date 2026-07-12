@@ -5886,28 +5886,49 @@
       "constant_name": "SERVERBOUND_TEST_INSTANCE_BLOCK_ACTION",
       "coverage": {
         "ack_response": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "evidence": [
+            "crates/bbb-world/src/client/debug_game.rs#apply_test_instance_block_status",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleTestInstanceBlockStatus",
+            "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#handleTestInstanceBlockAction"
+          ],
+          "gap": "docs/unsupported-features.md#screens-and-presentation",
           "status": "partial"
         },
         "command_surface": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "evidence": [
+            "crates/bbb-protocol/src/packet_catalog.rs#SERVERBOUND_TEST_INSTANCE_BLOCK_ACTION",
+            "vanilla:net/minecraft/client/player/LocalPlayer.java#openTestInstanceBlock",
+            "vanilla:net/minecraft/client/gui/screens/inventory/TestInstanceBlockEditScreen.java#sendToServer"
+          ],
+          "gap": "docs/unsupported-features.md#screens-and-presentation",
           "status": "partial"
         },
         "encoder": {
-          "evidence": [],
+          "evidence": [
+            "crates/bbb-protocol/src/packet_catalog.rs#SERVERBOUND_TEST_INSTANCE_BLOCK_ACTION",
+            "vanilla:net/minecraft/network/protocol/game/ServerboundTestInstanceBlockActionPacket.java#STREAM_CODEC",
+            "vanilla:net/minecraft/world/level/block/entity/TestInstanceBlockEntity.java#Data"
+          ],
           "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
           "status": "partial"
         },
         "state_guard": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "evidence": [
+            "crates/bbb-world/src/client/debug_game.rs#last_test_instance_block_status",
+            "vanilla:net/minecraft/client/gui/screens/inventory/TestInstanceBlockEditScreen.java#updateSaveState",
+            "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#handleTestInstanceBlockAction"
+          ],
+          "gap": "docs/unsupported-features.md#screens-and-presentation",
           "status": "partial"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "evidence": [
+            "crates/bbb-protocol/src/packets/debug_game/tests.rs#decodes_test_instance_block_status_with_optional_size",
+            "crates/bbb-world/src/client/debug_game.rs#tracks_debug_game_events_and_counters",
+            "crates/bbb-protocol/src/packet_coverage.rs#coverage_ledger_matches_every_packet_catalog_entry_in_order",
+            "scripts/generate-packet-catalog.py#extract_catalogs"
+          ],
+          "gap": "docs/unsupported-features.md#screens-and-presentation",
           "status": "partial"
         }
       },

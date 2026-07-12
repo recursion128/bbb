@@ -11991,3 +11991,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] `ServerboundTeleportToEntityPacket` 的 UUID wire、maintenance control/runtime/driver 发送链与服务端 spectator-only、跨全部 ServerLevel 查找和传送权威已反向审计；encoder 闭合。
 - [x] vanilla 生产入口属于 SpectatorGui player menu；bbb 尚无该菜单及本地 spectator/eligible-player gate，成功结果又依赖 Respawn/PlayerPosition 等普通权威回灌的剩余 lifecycle parity，因此 ack/command/state/tests 保持 partial，未把维护命令冒充 spectator UI。
+
+## 2026-07-12：play serverbound test-instance-block-action coverage audit
+
+- [x] vanilla wire 已锁定为 BlockPos + 7-action id + registry-aware `TestInstanceBlockEntity.Data`（optional test key、size、rotation、ignore-entities 与状态字段）；服务端保留 game-master permission、block-entity type、test registry、save/export/run 与 world update 权威。
+- [x] bbb 当前只有 generated packet catalog 和 clientbound status 的 plain-text diagnostic projection，无 serverbound encoder/net command/TestInstanceBlockEditScreen/guards/focused request tests；五维保持 partial，未将 response-only diagnostic 或 catalog presence 误标为编辑器实现。
