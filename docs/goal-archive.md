@@ -12001,3 +12001,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] `ServerboundUseItemOnPacket` 的 hand、BlockHitResult、prediction sequence wire，native block-target/right-click/repeat/world-border/hand selection、command queue 与 driver send 已反向审计；command/encoder 闭合。
 - [x] 服务端先 ack sequence，再执行距离、命中点、build height、spawn protection、feature/item 和 world mutation 权威校验并回发目标/相邻 block update；bbb 尚未执行 vanilla `performUseItemOn` 的本地 block/item prediction、swing-source 与 held-item presentation，ack/state/tests 保持 partial。
+
+## 2026-07-12：play serverbound use-item coverage audit
+
+- [x] `ServerboundUseItemPacket` 的 hand、prediction sequence、yRot/xRot wire，native air-use/right-click/hand selection、local using-item hand/tick projection、command queue 与 driver send 已反向审计；command/encoder 闭合。
+- [x] 服务端先 ack sequence，再以 held item/feature/cooldown/use result 为权威并可校正玩家朝向；bbb 尚未执行 vanilla `ItemStack.use`、transformed stack、InteractionResult/swing-source 和 held-item presentation 的完整本地预测，ack/state/tests 保持 partial。
