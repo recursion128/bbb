@@ -456,6 +456,11 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   update/save/load/scan plus mirror/rotation/flag controls, and preserve server
   permission, structure storage, world mutation and feedback authority. The
   multiplayer client must not own structure save/load operations.
+- Implement the game-master `TestBlockEditScreen` owner and typed
+  `ServerboundSetTestBlockPacket`: preload mode/message from the canonical
+  block entity, expose all TestBlockMode values, enforce the 128-character
+  message limit and START visibility rule, and retain server permission,
+  block-entity mutation and block-update authority.
 - Complete `AbstractSignEditScreen` parity after the OpenSignEditor authority
   gate: choose filtered sign messages, enforce the 90-pixel font-width limit,
   support clipboard/IME preedit, and close when the sign is removed or the

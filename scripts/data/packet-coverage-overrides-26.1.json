@@ -603,6 +603,13 @@
       "state_guard": {"evidence": ["vanilla:net/minecraft/client/gui/screens/inventory/StructureBlockEditScreen.java#sendToServer", "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#handleSetStructureBlock"], "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces", "status": "partial"},
       "tests": {"evidence": ["crates/bbb-protocol/src/packet_coverage.rs#coverage_ledger_matches_every_packet_catalog_entry_in_order", "scripts/generate-packet-catalog.py#extract_catalogs"], "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces", "status": "partial"}
     },
+    "play/serverbound/SERVERBOUND_SET_TEST_BLOCK": {
+      "ack_response": {"evidence": ["crates/bbb-world/src/chunks/store.rs#apply_block_entity_data", "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#handleSetTestBlock"], "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces", "status": "partial"},
+      "command_surface": {"evidence": ["crates/bbb-protocol/src/packet_catalog.rs#SERVERBOUND_SET_TEST_BLOCK", "vanilla:net/minecraft/client/player/LocalPlayer.java#openTestBlock", "vanilla:net/minecraft/client/gui/screens/inventory/TestBlockEditScreen.java#onDone"], "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces", "status": "partial"},
+      "encoder": {"evidence": ["crates/bbb-protocol/src/packet_catalog.rs#SERVERBOUND_SET_TEST_BLOCK", "vanilla:net/minecraft/network/protocol/game/ServerboundSetTestBlockPacket.java#STREAM_CODEC"], "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families", "status": "partial"},
+      "state_guard": {"evidence": ["vanilla:net/minecraft/client/gui/screens/inventory/TestBlockEditScreen.java#updateMode", "vanilla:net/minecraft/client/gui/screens/inventory/TestBlockEditScreen.java#onDone", "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#handleSetTestBlock"], "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces", "status": "partial"},
+      "tests": {"evidence": ["crates/bbb-protocol/src/packet_coverage.rs#coverage_ledger_matches_every_packet_catalog_entry_in_order", "scripts/generate-packet-catalog.py#extract_catalogs"], "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces", "status": "partial"}
+    },
     "play/serverbound/SERVERBOUND_PLAYER_LOADED": {
       "ack_response": {
         "evidence": ["vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#handleAcceptPlayerLoad"],

@@ -11966,3 +11966,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] vanilla wire 已锁定为 BlockPos + update/mode enums + name + clamped byte offset/size + mirror/rotation + 128-char data + clamped integrity + VarLong seed + four flags；update/save/load/scan 均为服务端权威操作。
 - [x] bbb 当前仅有 generated catalog 与 generic block-entity/system-chat 路径，无 typed projection/editor/encoder/net command/guards/focused tests；五维保持 partial，并记录明确 StructureBlockEditScreen gap。
+
+## 2026-07-12：play serverbound set-test-block coverage audit
+
+- [x] vanilla wire 已锁定为 BlockPos + TestBlockMode stream ordinal + UTF message；editor 从 block entity 预载 mode/message、限制 128 字符且 START 模式隐藏 message，server 保留 game-master/type/update 权威。
+- [x] bbb 当前仅有 generated catalog 与 generic block-entity path，无 typed projection/editor/encoder/net command/guards/focused tests；五维保持 partial，并记录明确 TestBlockEditScreen gap。
