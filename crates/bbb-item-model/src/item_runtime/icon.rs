@@ -117,7 +117,7 @@ pub(super) fn item_model_id_for_stack<'a>(
     if component_patch.is_some_and(|patch| {
         patch
             .removed_type_ids
-            .contains(&VANILLA_ITEM_MODEL_COMPONENT_ID)
+            .contains(&VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID)
     }) {
         return None;
     }
@@ -160,10 +160,10 @@ pub(super) fn item_use_duration_ticks(
     }
     if component_patch
         .added_type_ids
-        .contains(&VANILLA_BLOCKS_ATTACKS_COMPONENT_ID)
+        .contains(&VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID)
         || component_patch
             .added_type_ids
-            .contains(&VANILLA_KINETIC_WEAPON_COMPONENT_ID)
+            .contains(&VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID)
     {
         return VANILLA_LONG_USE_DURATION_TICKS;
     }

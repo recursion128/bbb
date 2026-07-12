@@ -384,10 +384,10 @@ pub(super) fn profile_skin_model(
 pub(super) fn component_patch_has_profile(component_patch: &DataComponentPatchSummary) -> bool {
     component_patch
         .added_type_ids
-        .contains(&DATA_COMPONENT_PROFILE_TYPE_ID)
+        .contains(&VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID)
         && !component_patch
             .removed_type_ids
-            .contains(&DATA_COMPONENT_PROFILE_TYPE_ID)
+            .contains(&VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID)
 }
 
 pub(super) fn world_item_mining_profile(profile: &PackItemMiningProfile) -> WorldItemMiningProfile {

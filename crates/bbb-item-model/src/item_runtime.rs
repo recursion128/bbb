@@ -21,6 +21,10 @@ use bbb_pack::{
     ItemUseEffects as PackItemUseEffects, JukeboxSongRegistry, LanguageCatalog, PackResourceStack,
     PackRoots, ResourceLocation, SpriteImage, TagCatalog, TerrainColorMaps, DEFAULT_LANGUAGE_CODE,
 };
+use bbb_protocol::data_component_types::{
+    VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID, VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID,
+    VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID, VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID,
+};
 use bbb_protocol::packets::{
     AttributeModifierSummary, BannerPatternLayerSummary, ConsumableSummary,
     DataComponentPatchSummary, FireworkExplosionShapeSummary, FireworkExplosionSummary,
@@ -138,15 +142,6 @@ const VANILLA_SPYGLASS_USE_DURATION_TICKS: i32 = 1_200;
 const VANILLA_ENDER_EYE_USE_DURATION_TICKS: i32 = 0;
 
 const VANILLA_CROSSBOW_CHARGE_DURATION_TICKS: i32 = 25;
-
-const VANILLA_ITEM_MODEL_COMPONENT_ID: i32 =
-    bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID;
-
-const VANILLA_BLOCKS_ATTACKS_COMPONENT_ID: i32 =
-    bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID;
-
-const VANILLA_KINETIC_WEAPON_COMPONENT_ID: i32 =
-    bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID;
 
 const ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
     path: "textures/entity/equipment/wings/elytra.png",
@@ -293,9 +288,6 @@ pub struct NativeItemRuntime {
     compass_wobblers: RefCell<HashMap<ItemCompassWobblerKey, ItemNeedleWobbler>>,
     compass_randoms: RefCell<HashMap<ItemCompassRandomKey, ItemLegacyRandom>>,
 }
-
-const DATA_COMPONENT_PROFILE_TYPE_ID: i32 =
-    bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID;
 
 fn load_local_dynamic_player_texture(
     resources: &PackResourceStack,

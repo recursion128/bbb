@@ -16,6 +16,22 @@ use std::{
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
+#[test]
+fn item_runtime_does_not_restore_removed_component_id_aliases() {
+    let source = include_str!("../item_runtime.rs");
+    for old_alias in [
+        ["VANILLA_ITEM_MODEL_", "COMPONENT_ID"].concat(),
+        ["VANILLA_BLOCKS_ATTACKS_", "COMPONENT_ID"].concat(),
+        ["VANILLA_KINETIC_WEAPON_", "COMPONENT_ID"].concat(),
+        ["DATA_COMPONENT_PROFILE_", "TYPE_ID"].concat(),
+    ] {
+        assert!(
+            !source.contains(&format!("const {old_alias}")),
+            "restored `{old_alias}` alias"
+        );
+    }
+}
+
 static NEXT_TEMP_DIR_ID: AtomicU64 = AtomicU64::new(0);
 
 fn tooltip_line(text: &str, tint: [f32; 4]) -> NativeItemTooltipLine {
@@ -3315,7 +3331,7 @@ fn custom_head_skull_projection_resolves_profiled_player_head_default_skins() {
     profiled
         .component_patch
         .added_type_ids
-        .push(DATA_COMPONENT_PROFILE_TYPE_ID);
+        .push(VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID);
     assert_eq!(runtime.custom_head_skull_for_stack(&profiled), None);
 
     profiled.component_patch.profile = Some(ResolvableProfileSummary {
@@ -3482,7 +3498,7 @@ fn custom_head_skull_projection_resolves_profiled_player_head_default_skins() {
     profile_removed
         .component_patch
         .removed_type_ids
-        .push(DATA_COMPONENT_PROFILE_TYPE_ID);
+        .push(VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID);
     assert_eq!(
         runtime.custom_head_skull_for_stack(&profile_removed),
         Some(EntityCustomHeadSkull::Player(EntityPlayerSkin::Default(
