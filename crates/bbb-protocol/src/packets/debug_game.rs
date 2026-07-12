@@ -164,10 +164,16 @@ pub(crate) fn decode_game_rule_values(decoder: &mut Decoder<'_>) -> Result<GameR
 pub(crate) fn decode_game_test_highlight_pos(
     decoder: &mut Decoder<'_>,
 ) -> Result<GameTestHighlightPos> {
-    Ok(GameTestHighlightPos {
+    let packet = GameTestHighlightPos {
         absolute_pos: chunks::decode_block_pos(decoder.read_i64()?),
         relative_pos: chunks::decode_block_pos(decoder.read_i64()?),
-    })
+    };
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after game test highlight pos packet".to_string(),
+        ));
+    }
+    Ok(packet)
 }
 
 pub(crate) fn decode_test_instance_block_status(

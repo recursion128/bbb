@@ -6830,29 +6830,46 @@
       "constant_name": "CLIENTBOUND_GAME_TEST_HIGHLIGHT_POS",
       "coverage": {
         "canonical_apply": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
+          "evidence": [
+            "crates/bbb-world/src/client/debug_game.rs#apply_game_test_highlight_pos",
+            "vanilla:net/minecraft/client/renderer/debug/GameTestBlockHighlightRenderer.java#highlightPos"
+          ],
+          "gap": "docs/unsupported-features.md#renderer-scene-parity",
           "status": "partial"
         },
         "decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/debug_game/tests.rs#decodes_game_test_highlight_positions",
+            "vanilla:net/minecraft/network/protocol/game/ClientboundGameTestHighlightPosPacket.java#STREAM_CODEC"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "ownership": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/play_apply.rs#PlayClientbound::GameTestHighlightPos"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "runtime_side_effect": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
+          "evidence": [
+            "crates/bbb-world/src/client/debug_game.rs#last_game_test_highlight_pos",
+            "vanilla:net/minecraft/client/renderer/debug/GameTestBlockHighlightRenderer.java#emitGizmos"
+          ],
+          "gap": "docs/unsupported-features.md#renderer-scene-parity",
           "status": "partial"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/debug_game/tests.rs#decodes_game_test_highlight_positions",
+            "crates/bbb-net/src/event_stream.rs#play_debug_game_packets_emit_matching_events_without_responses",
+            "crates/bbb-net/src/probe/play.rs#probe_applies_debug_game_packets_to_world",
+            "crates/bbb-world/src/client/debug_game.rs#tracks_debug_game_events_and_counters",
+            "crates/bbb-native/src/runtime/events/tests/level_event_particle_batches.rs#debug_game_events_update_world_counters"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "clientbound",

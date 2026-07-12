@@ -11641,3 +11641,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] bounded resource-key/string map、strict trailing、request command、diagnostic ownership 与跨 crate tests 闭合。
 - [x] active-screen/first-response gate、built-in rule lookup、typed deserialize 与表单 apply 未完成，canonical/runtime 保持 partial。
+
+## 2026-07-12：play game-test highlight packet coverage audit
+
+- [x] absolute/relative BlockPos framing、strict trailing、diagnostic ownership 与跨 crate tests 闭合。
+- [x] multi-marker map、10-second expiry、cuboid/text gizmo 与 level-reset clear 未完成，canonical/runtime 保持 partial。

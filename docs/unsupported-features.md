@@ -292,6 +292,10 @@ are provider and presentation behavior.
 
 Owner: `bbb-renderer` + `bbb-native` + `bbb-pack` + `bbb-world`
 
+- Implement GameTest block highlight marker presentation: retain multiple markers
+  keyed by absolute position, refresh their 10-second expiry, render the padded
+  translucent cuboid and always-on-top relative-position text, and clear them on
+  level reset. The current last-position diagnostic snapshot is not a gizmo.
 - Complete `ClientPacketListener.createEntityFromPacket` parity for AddEntity:
   resolve entity types through session RegistryAccess, enforce the PlayerInfo
   gate for player creation, and cover every type-specific `recreateFromPacket`

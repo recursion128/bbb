@@ -190,7 +190,7 @@ fn decodes_game_test_highlight_positions() {
         z: 22,
     }));
     payload.write_i64(chunks::encode_block_pos(BlockPos { x: 1, y: 2, z: 3 }));
-    let payload = payload.into_inner();
+    let mut payload = payload.into_inner();
 
     assert_eq!(
         decode_play_clientbound(ids::play::CLIENTBOUND_GAME_TEST_HIGHLIGHT_POS, &payload).unwrap(),
@@ -202,6 +202,14 @@ fn decodes_game_test_highlight_positions() {
             },
             relative_pos: BlockPos { x: 1, y: 2, z: 3 },
         })
+    );
+
+    payload.push(0);
+    assert!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_GAME_TEST_HIGHLIGHT_POS, &payload)
+            .unwrap_err()
+            .to_string()
+            .contains("trailing bytes after game test highlight pos packet")
     );
 }
 
