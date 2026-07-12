@@ -11726,3 +11726,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] CommonPlayerSpawnInfo/dataToKeep wire、strict trailing、dimension-change level clear、entity-data/attribute keep bits、local runtime reset、ownership 与跨 crate tests 已审计。
 - [x] seed/portal cooldown canonical、LocalPlayer/map/container/camera/music/debug-subscriber/LevelLoadTracker 完整生命周期保持开放；没有把 reset baseline 外推为完整 respawn。
+
+## 2026-07-12：play section blocks update packet coverage audit
+
+- [x] packed SectionPos/state/relative-pos wire、一个 section 的 4096 项分配前上限、strict trailing、wire-order canonical apply、prediction reconciliation、terrain reupload 与跨 crate tests 已审计。
+- [x] 通用 block-entity record removal 与 `setServerVerifiedBlockState(..., 19)` 的 light/neighbor side effects 继续由 terrain ledger 维护，canonical/runtime 保持 partial。

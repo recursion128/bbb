@@ -7,6 +7,7 @@ use super::BlockHitResult;
 const MAX_CHUNKS_BIOMES_BUFFER: usize = 2 * 1024 * 1024;
 const MAX_CHUNKS_BIOMES_UPDATES: usize = 65_536;
 const MAX_LEVEL_CHUNK_BUFFER: usize = 2 * 1024 * 1024;
+const MAX_SECTION_BLOCK_UPDATES: usize = 4096;
 const LIGHT_ARRAY_BYTES: usize = 2048;
 const MAX_NBT_DEPTH: usize = 64;
 const MAX_NBT_LIST_ITEMS: usize = 4096;
@@ -483,6 +484,12 @@ pub(crate) fn decode_section_blocks_update(
 ) -> Result<SectionBlocksUpdate> {
     let (section_x, section_y, section_z) = decode_section_pos(decoder.read_i64()?);
     let count = decoder.read_len()?;
+    if count > MAX_SECTION_BLOCK_UPDATES {
+        return Err(ProtocolError::PacketTooLarge(
+            count,
+            MAX_SECTION_BLOCK_UPDATES,
+        ));
+    }
     let mut updates = Vec::with_capacity(count);
     for _ in 0..count {
         let packed_change = decoder.read_var_i64()? as u64;
@@ -497,12 +504,18 @@ pub(crate) fn decode_section_blocks_update(
             block_state_id,
         });
     }
-    Ok(SectionBlocksUpdate {
+    let update = SectionBlocksUpdate {
         section_x,
         section_y,
         section_z,
         updates,
-    })
+    };
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after section blocks update packet".to_string(),
+        ));
+    }
+    Ok(update)
 }
 
 pub(crate) fn decode_set_chunk_cache_center(

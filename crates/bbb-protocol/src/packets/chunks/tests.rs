@@ -270,11 +270,9 @@ fn decodes_block_ack_and_block_updates() {
     payload.write_var_i32(2);
     payload.write_var_i64((9 << 12) | section_relative_pos(2, 1, 3));
     payload.write_var_i64(section_relative_pos(15, 15, 15));
-    let packet = decode_play_clientbound(
-        ids::play::CLIENTBOUND_SECTION_BLOCKS_UPDATE,
-        &payload.into_inner(),
-    )
-    .unwrap();
+    let mut bytes = payload.into_inner();
+    let packet =
+        decode_play_clientbound(ids::play::CLIENTBOUND_SECTION_BLOCKS_UPDATE, &bytes).unwrap();
     assert_eq!(
         packet,
         PlayClientbound::SectionBlocksUpdate(SectionBlocksUpdate {
@@ -301,6 +299,26 @@ fn decodes_block_ack_and_block_updates() {
             ],
         })
     );
+
+    bytes.push(0);
+    assert!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_SECTION_BLOCKS_UPDATE, &bytes)
+            .unwrap_err()
+            .to_string()
+            .contains("trailing bytes after section blocks update packet")
+    );
+
+    let mut oversized = Encoder::new();
+    oversized.write_i64(pack_section_pos(2, -1, -3));
+    oversized.write_var_i32((MAX_SECTION_BLOCK_UPDATES + 1) as i32);
+    assert!(matches!(
+        decode_play_clientbound(
+            ids::play::CLIENTBOUND_SECTION_BLOCKS_UPDATE,
+            &oversized.into_inner()
+        ),
+        Err(ProtocolError::PacketTooLarge(actual, max))
+            if actual == MAX_SECTION_BLOCK_UPDATES + 1 && max == MAX_SECTION_BLOCK_UPDATES
+    ));
 }
 
 #[test]

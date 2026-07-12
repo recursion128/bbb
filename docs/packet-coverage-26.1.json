@@ -9194,29 +9194,51 @@
       "constant_name": "CLIENTBOUND_SECTION_BLOCKS_UPDATE",
       "coverage": {
         "canonical_apply": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
+          "evidence": [
+            "crates/bbb-world/src/chunks/store.rs#apply_section_blocks_update",
+            "crates/bbb-world/src/chunks/tests.rs#applies_section_blocks_update",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleChunkBlocksUpdate"
+          ],
+          "gap": "docs/unsupported-features.md#block-entities-and-terrain",
           "status": "partial"
         },
         "decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/chunks/tests.rs#decodes_block_ack_and_block_updates",
+            "vanilla:net/minecraft/network/protocol/game/ClientboundSectionBlocksUpdatePacket.java#STREAM_CODEC"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "ownership": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/play_apply.rs#PlayClientbound::SectionBlocksUpdate",
+            "crates/bbb-world/src/chunks/store.rs#apply_section_blocks_update"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "runtime_side_effect": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
+          "evidence": [
+            "crates/bbb-world/src/chunks/store.rs#apply_section_blocks_update",
+            "crates/bbb-native/src/terrain_runtime.rs#maybe_upload_decoded_terrain",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleChunkBlocksUpdate",
+            "vanilla:net/minecraft/client/multiplayer/ClientLevel.java#setServerVerifiedBlockState"
+          ],
+          "gap": "docs/unsupported-features.md#block-entities-and-terrain",
           "status": "partial"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/chunks/tests.rs#decodes_block_ack_and_block_updates",
+            "crates/bbb-net/src/event_stream.rs#play_chunk_terrain_packets_emit_matching_events_without_responses",
+            "crates/bbb-net/src/probe/play.rs#probe_applies_chunk_view_and_block_updates_to_world",
+            "crates/bbb-world/src/chunks/tests.rs#applies_section_blocks_update",
+            "crates/bbb-world/src/chunks/tests.rs#block_updates_for_missing_targets_are_counted_but_not_applied",
+            "crates/bbb-native/src/runtime/events/tests/world_state_lifecycle.rs#terrain_chunk_events_update_world_counters"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "clientbound",
