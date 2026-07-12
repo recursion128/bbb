@@ -35,7 +35,7 @@ impl ProbeContext {
                 self.world.clear_client_level();
 
                 let (id, payload) =
-                    packets::encode_configuration_brand_custom_payload("bbb-native");
+                    packets::encode_configuration_brand_custom_payload("bbb-native")?;
                 self.conn.send_packet(id, &payload).await?;
 
                 let (id, payload) = packets::encode_client_information(&self.client_information)?;

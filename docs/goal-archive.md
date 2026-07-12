@@ -12056,3 +12056,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] configuration/play `ServerboundClientInformationPacket` 现在共用 fallible payload encoder，并按 vanilla `ClientInformation.MAX_LANGUAGE_LENGTH = 16` 拒绝超长 UTF-16 language code。
 - [x] focused tests 锁定两个 phase 的同一 9 字段 payload、16/17 ASCII 边界与 surrogate-pair 长度；play option change dedup/state guard 继续开放。
+
+## 2026-07-12：configuration brand string bound
+
+- [x] configuration `ServerboundCustomPayloadPacket` 的 brand encoder 现在按 `BrandPayload.write → FriendlyByteBuf.writeUtf()` 拒绝超过 32,767 UTF-16 units 的 brand，并向 login sender 传播错误。
+- [x] focused tests 覆盖 32,767/32,768 ASCII 边界与 surrogate-pair 长度；没有把 fallback `DiscardedPayload` 的 raw-size cap 错套到 typed brand 语义。

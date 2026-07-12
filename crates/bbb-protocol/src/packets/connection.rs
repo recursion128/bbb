@@ -449,14 +449,20 @@ pub fn encode_client_information(information: &ClientInformation) -> Result<(i32
     ))
 }
 
-pub fn encode_configuration_brand_custom_payload(brand: &str) -> (i32, Vec<u8>) {
+pub fn encode_configuration_brand_custom_payload(brand: &str) -> Result<(i32, Vec<u8>)> {
+    let brand_utf16_len = brand.encode_utf16().count();
+    if brand_utf16_len > 32_767 {
+        return Err(ProtocolError::InvalidData(format!(
+            "brand has {brand_utf16_len} UTF-16 code units, maximum is 32767"
+        )));
+    }
     let mut out = Encoder::new();
     out.write_string("minecraft:brand");
     out.write_string(brand);
-    (
+    Ok((
         ids::configuration::SERVERBOUND_CUSTOM_PAYLOAD,
         out.into_inner(),
-    )
+    ))
 }
 
 pub(super) fn encode_client_information_payload(

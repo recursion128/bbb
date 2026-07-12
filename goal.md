@@ -317,7 +317,7 @@ configuration client-information 的 startup command owner、language bound、9 
 状态切换与无 ack 语义已闭合；后续 option 更新仍使用同一 generated ordinal/catalog owner。
 dialog unit clear 的 wire/ownership/canonical projection 已闭合，但 previous-screen 恢复仍 partial；
 show-dialog 仍缺 `Dialog` semantic codec/screen，custom-click 仍缺 NBT encoder 与 command surface。
-configuration custom-payload 的 Brand/Discarded wire、自动 brand send、canonical server brand 与
+configuration custom-payload 的 Brand/Discarded wire、bounded 自动 brand send、canonical server brand 与
 diagnostics 已闭合；仅 vanilla telemetry callback 保持 runtime partial。
 configuration registry-data/update-tags 的 wire、ownership、packet projection 与 tests 已审计；
 完整 `RegistryAccess`/typed codec/holder tags/component initializer 仍是明确 canonical/runtime partial。

@@ -2712,13 +2712,17 @@ fn encodes_client_information_from_struct() {
 
 #[test]
 fn encodes_configuration_brand_custom_payload() {
-    let (id, payload) = encode_configuration_brand_custom_payload("bbb-native");
+    let (id, payload) = encode_configuration_brand_custom_payload("bbb-native").unwrap();
     assert_eq!(id, ids::configuration::SERVERBOUND_CUSTOM_PAYLOAD);
 
     let mut decoder = Decoder::new(&payload);
     assert_eq!(decoder.read_string(32767).unwrap(), "minecraft:brand");
     assert_eq!(decoder.read_string(32767).unwrap(), "bbb-native");
     assert!(decoder.is_empty());
+
+    encode_configuration_brand_custom_payload(&"a".repeat(32_767)).unwrap();
+    assert!(encode_configuration_brand_custom_payload(&"a".repeat(32_768)).is_err());
+    assert!(encode_configuration_brand_custom_payload(&"😀".repeat(16_384)).is_err());
 }
 
 #[test]

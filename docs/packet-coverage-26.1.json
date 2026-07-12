@@ -918,7 +918,9 @@
         "encoder": {
           "evidence": [
             "crates/bbb-protocol/src/packets/connection.rs#encode_configuration_brand_custom_payload",
-            "vanilla:net/minecraft/network/protocol/common/ServerboundCustomPayloadPacket.java#STREAM_CODEC"
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_configuration_brand_custom_payload",
+            "vanilla:net/minecraft/network/FriendlyByteBuf.java#writeUtf",
+            "vanilla:net/minecraft/network/protocol/common/custom/BrandPayload.java#write"
           ],
           "gap": null,
           "status": "complete"

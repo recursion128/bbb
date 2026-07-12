@@ -34,8 +34,9 @@ Owner: `bbb-protocol`
 
 - Audit field order, nullability, enum ordinals, and serverbound encoders against
   `<MC_CODE_ROOT>/sources/26.1/`, adding focused encode/decode tests with each
-  packet slice, including strict unit-payload, terminal packet/component roots, bounded map
-  count/key/value, untrusted URI validation and NBT-root/depth/count boundaries;
+  packet slice, including strict unit-payload, terminal packet/component roots,
+  remaining bounded UTF-16/encoded-byte strings, bounded map count/key/value,
+  untrusted URI validation and NBT-root/depth/count boundaries;
   keep handwritten handler coverage aligned with the generated packet catalog
   as unsupported families are implemented.
 - Use `docs/packet-coverage-26.1.json` as the complete 256-entry inventory. A
