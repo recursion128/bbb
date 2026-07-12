@@ -594,7 +594,7 @@ fn rotated_y(point: [f32; 3], y_rot: f32) -> [f64; 3] {
 }
 
 fn is_vanilla_chest_boat_or_raft_type(entity_type_id: i32) -> bool {
-    super::schema::vanilla_entity_metadata_type_is_abstract_chest_boat(entity_type_id)
+    super::vanilla_entity_type_is_chest_boat(entity_type_id)
 }
 
 fn is_vanilla_raft_type(entity_type_id: i32) -> bool {

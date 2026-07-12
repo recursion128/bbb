@@ -4372,52 +4372,7 @@ fn debug_push_abstract_boat_additional_save_data(
 }
 
 fn debug_entity_type_writes_abstract_boat_save_data(entity_type_id: i32) -> bool {
-    use bbb_protocol::entity_types::{
-        VANILLA_ENTITY_TYPE_ACACIA_BOAT_ID, VANILLA_ENTITY_TYPE_BAMBOO_RAFT_ID,
-        VANILLA_ENTITY_TYPE_BIRCH_BOAT_ID, VANILLA_ENTITY_TYPE_CHERRY_BOAT_ID,
-        VANILLA_ENTITY_TYPE_DARK_OAK_BOAT_ID, VANILLA_ENTITY_TYPE_JUNGLE_BOAT_ID,
-        VANILLA_ENTITY_TYPE_MANGROVE_BOAT_ID, VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
-        VANILLA_ENTITY_TYPE_PALE_OAK_BOAT_ID, VANILLA_ENTITY_TYPE_SPRUCE_BOAT_ID,
-    };
-
-    debug_entity_type_writes_abstract_chest_boat_save_data(entity_type_id)
-        || matches!(
-            entity_type_id,
-            VANILLA_ENTITY_TYPE_ACACIA_BOAT_ID
-                | VANILLA_ENTITY_TYPE_BAMBOO_RAFT_ID
-                | VANILLA_ENTITY_TYPE_BIRCH_BOAT_ID
-                | VANILLA_ENTITY_TYPE_CHERRY_BOAT_ID
-                | VANILLA_ENTITY_TYPE_DARK_OAK_BOAT_ID
-                | VANILLA_ENTITY_TYPE_JUNGLE_BOAT_ID
-                | VANILLA_ENTITY_TYPE_MANGROVE_BOAT_ID
-                | VANILLA_ENTITY_TYPE_OAK_BOAT_ID
-                | VANILLA_ENTITY_TYPE_PALE_OAK_BOAT_ID
-                | VANILLA_ENTITY_TYPE_SPRUCE_BOAT_ID
-        )
-}
-
-fn debug_entity_type_writes_abstract_chest_boat_save_data(entity_type_id: i32) -> bool {
-    use bbb_protocol::entity_types::{
-        VANILLA_ENTITY_TYPE_ACACIA_CHEST_BOAT_ID, VANILLA_ENTITY_TYPE_BAMBOO_CHEST_RAFT_ID,
-        VANILLA_ENTITY_TYPE_BIRCH_CHEST_BOAT_ID, VANILLA_ENTITY_TYPE_CHERRY_CHEST_BOAT_ID,
-        VANILLA_ENTITY_TYPE_DARK_OAK_CHEST_BOAT_ID, VANILLA_ENTITY_TYPE_JUNGLE_CHEST_BOAT_ID,
-        VANILLA_ENTITY_TYPE_MANGROVE_CHEST_BOAT_ID, VANILLA_ENTITY_TYPE_OAK_CHEST_BOAT_ID,
-        VANILLA_ENTITY_TYPE_PALE_OAK_CHEST_BOAT_ID, VANILLA_ENTITY_TYPE_SPRUCE_CHEST_BOAT_ID,
-    };
-
-    matches!(
-        entity_type_id,
-        VANILLA_ENTITY_TYPE_ACACIA_CHEST_BOAT_ID
-            | VANILLA_ENTITY_TYPE_BAMBOO_CHEST_RAFT_ID
-            | VANILLA_ENTITY_TYPE_BIRCH_CHEST_BOAT_ID
-            | VANILLA_ENTITY_TYPE_CHERRY_CHEST_BOAT_ID
-            | VANILLA_ENTITY_TYPE_DARK_OAK_CHEST_BOAT_ID
-            | VANILLA_ENTITY_TYPE_JUNGLE_CHEST_BOAT_ID
-            | VANILLA_ENTITY_TYPE_MANGROVE_CHEST_BOAT_ID
-            | VANILLA_ENTITY_TYPE_OAK_CHEST_BOAT_ID
-            | VANILLA_ENTITY_TYPE_PALE_OAK_CHEST_BOAT_ID
-            | VANILLA_ENTITY_TYPE_SPRUCE_CHEST_BOAT_ID
-    )
+    bbb_world::vanilla_entity_type_is_boat(entity_type_id)
 }
 
 fn debug_push_evoker_fangs_additional_save_data(_fields: &mut Vec<String>) {}

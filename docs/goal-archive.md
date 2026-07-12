@@ -12597,3 +12597,9 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] world 导出 generated Squid class-family typed query，native entity-scene 删除独立的
   Squid/GlowSquid `matches!`，renderer body-yaw projection 通过同一 catalog 分发并由反向测试锁定。
+
+## 2026-07-12：Shared generated boat memberships across crates
+
+- [x] world 导出 generated boat 与 chest-boat class-family typed query；native F3+I synthetic
+  save projection 删除 20/10 项平行 matches，保留 save-data handler ownership，并逐项对照全部
+  157 个 EntityType 的 generated membership。

@@ -11400,6 +11400,33 @@ fn shift_f3_i_with_permission_copies_local_glow_item_frame_save_nbt_to_clipboard
 }
 
 #[test]
+fn debug_boat_save_memberships_use_the_world_generated_catalog() {
+    for entry in bbb_world::VANILLA_ENTITY_TYPE_METADATA_26_1 {
+        assert_eq!(
+            debug_entity_type_writes_abstract_boat_save_data(entry.entity_type_id),
+            entry.is_boat,
+            "boat membership for {}",
+            entry.resource_id
+        );
+        assert_eq!(
+            bbb_world::vanilla_entity_type_is_chest_boat(entry.entity_type_id),
+            entry.is_abstract_chest_boat,
+            "chest-boat membership for {}",
+            entry.resource_id
+        );
+    }
+
+    let source = include_str!("../input.rs");
+    let body = source
+        .split("fn debug_entity_type_writes_abstract_boat_save_data")
+        .nth(1)
+        .and_then(|source| source.split_once("\n}"))
+        .map(|(body, _)| body)
+        .expect("debug boat membership query source");
+    assert!(!body.contains("matches!"));
+}
+
+#[test]
 fn shift_f3_i_with_permission_copies_local_boat_leash_save_nbt_to_clipboard() {
     let mut input = ClientInputState::new(true);
     let mut world = world_with_debug_player(false);
