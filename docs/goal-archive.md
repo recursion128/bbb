@@ -12141,3 +12141,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] play Login/Respawn 的 world `min_y`/`height` 现在从当前 session dimension-type holder 的 raw NBT 读取，并连同 `logical_height` 按 vanilla 26.1 range、16-block alignment 与 top bound 原子验证；custom holder 不再被 bootstrap dimension id 固定成默认 shape。
 - [x] dimension-type resource identity 同样取自 checked wire-order entry；缺字段或非法 shape 继续安全回退现有 builtin profile。完整 `DimensionType.NETWORK_CODEC` 的其余字段、environment attributes/timeline/clock holder 仍开放。
+
+## 2026-07-12：F3 fixed-registry source consolidation
+
+- [x] F3 targeted-entity identity 删除 native 内第二层 protocol catalog fallback，只消费 `bbb-world` 的 source-aware entity-type resolver；focused test 锁定 no-contents vanilla fallback、server contents 优先及 server unknown 不回退。
+- [x] F3 block-tag projection 不再靠测试注入伪 registry contents，直接通过 checked-in block registry 反查 UpdateTags numeric holders；source-rule test 继续锁定 server block contents 优先且 unknown 不回退，custom fluid coverage 保持不变。

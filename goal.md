@@ -332,7 +332,7 @@ dimension-type 当前 client fields 已改用共享 bounded NBT frontend 单次�
 min_y/height/logical_height 按 vanilla 范围与 16 对齐约束原子决定 world shape；完整
 item/block/entity-type built-in registry 已接入带来源的双向 fallback；仅在当前 session
 没有该 registry contents 时使用 checked-in 26.1 catalog，一旦存在 server contents 就只按其
-wire order 解析，item tag 也复用同一规则；完整
+wire order 解析，item tag 与 F3 block/entity identity/tag consumer 也复用同一规则；完整
 `RegistryAccess`/typed codec/holder tags/component initializer 仍是明确 canonical/runtime partial。每轮 configuration registry
 collection 已 staging，并在 Finish 原子替换或按 vanilla tag-only 路径保留原 contents。
 

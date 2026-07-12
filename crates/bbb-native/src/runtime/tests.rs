@@ -1454,21 +1454,21 @@ fn hud_debug_overlay_projects_custom_looking_at_block_state() {
 #[test]
 fn hud_debug_overlay_projects_custom_looking_at_block_tags() {
     let mut world = world_with_dimension(0, "minecraft:overworld");
-    world.record_registry_entries(
-        "minecraft:block",
-        0,
-        vec![
-            RegistryPacketEntry::stub("minecraft:stone"),
-            RegistryPacketEntry::stub("minecraft:barrel"),
-            RegistryPacketEntry::stub("minecraft:chest"),
-        ],
-    );
+    let stone_id = world
+        .registry_holder_id_by_resource_id("minecraft:block", "minecraft:stone")
+        .expect("vanilla block registry contains stone");
+    let barrel_id = world
+        .registry_holder_id_by_resource_id("minecraft:block", "minecraft:barrel")
+        .expect("vanilla block registry contains barrel");
+    let chest_id = world
+        .registry_holder_id_by_resource_id("minecraft:block", "minecraft:chest")
+        .expect("vanilla block registry contains chest");
     apply_block_tags(
         &mut world,
         vec![
-            ("minecraft:guarded_by_piglins", vec![1]),
-            ("minecraft:mineable/axe", vec![1, 2]),
-            ("minecraft:mineable/pickaxe", vec![0]),
+            ("minecraft:guarded_by_piglins", vec![barrel_id]),
+            ("minecraft:mineable/axe", vec![barrel_id, chest_id]),
+            ("minecraft:mineable/pickaxe", vec![stone_id]),
         ],
     );
     world.insert_decoded_chunk(empty_lightmap_test_chunk(world.dimension()));
@@ -1677,6 +1677,29 @@ fn hud_debug_overlay_projects_custom_looking_at_entity() {
         ]
     );
     assert!(overlay.right_lines.is_empty());
+}
+
+#[test]
+fn hud_debug_entity_type_name_uses_world_registry_source_rules() {
+    let mut world = WorldStore::new();
+    assert_eq!(
+        hud_debug_entity_type_name(&world, VANILLA_ENTITY_TYPE_ZOMBIE_ID).as_deref(),
+        Some("minecraft:zombie")
+    );
+
+    world.record_registry_entries(
+        "minecraft:entity_type",
+        0,
+        vec![RegistryPacketEntry::stub("example:server_first")],
+    );
+    assert_eq!(
+        hud_debug_entity_type_name(&world, 0).as_deref(),
+        Some("example:server_first")
+    );
+    assert_eq!(
+        hud_debug_entity_type_name(&world, VANILLA_ENTITY_TYPE_ZOMBIE_ID),
+        None
+    );
 }
 
 #[test]

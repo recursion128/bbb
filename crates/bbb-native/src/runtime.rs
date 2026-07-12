@@ -4926,12 +4926,9 @@ fn hud_debug_client_chunk_storage_slots(radius: Option<i32>) -> usize {
 }
 
 fn hud_debug_entity_type_name(world: &WorldStore, entity_type_id: i32) -> Option<String> {
-    if let Some(resource_id) =
-        world.registry_resource_id_by_holder_id("minecraft:entity_type", entity_type_id)
-    {
-        return Some(resource_id.to_string());
-    }
-    vanilla_entity_resource_id_for_type_id(entity_type_id)
+    world
+        .registry_resource_id_by_holder_id("minecraft:entity_type", entity_type_id)
+        .map(str::to_string)
 }
 
 fn hud_debug_fluid_state_name(fluid: TerrainFluidState) -> &'static str {

@@ -257,6 +257,23 @@ fn registry_lookup_uses_static_fallback_only_without_server_contents() {
         .resolved_registry_entry_by_resource_id("minecraft:item", "snowball")
         .is_none());
 
+    store.record_registry_entries(
+        "minecraft:block",
+        0,
+        vec![RegistryPacketEntry::stub("example:custom_block")],
+    );
+    assert_eq!(
+        store.resolved_registry_entry_by_holder_id("minecraft:block", 0),
+        Some(crate::ResolvedRegistryEntry {
+            holder_id: 0,
+            resource_id: "example:custom_block",
+            source: RegistryEntrySource::Server,
+        })
+    );
+    assert!(store
+        .resolved_registry_entry_by_resource_id("minecraft:block", "minecraft:stone")
+        .is_none());
+
     store.apply_update_tags(UpdateTags {
         registries: vec![RegistryTags {
             registry: "minecraft:item".to_string(),

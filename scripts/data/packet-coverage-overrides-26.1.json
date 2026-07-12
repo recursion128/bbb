@@ -4562,6 +4562,7 @@
           "crates/bbb-world/src/level.rs#dimension_type_registry_cardinal_light_overrides_builtin_fallback",
           "crates/bbb-native/src/runtime/tests.rs#hud_debug_overlay_projects_custom_biome_from_camera_feet_block",
           "crates/bbb-native/src/runtime/tests.rs#hud_debug_overlay_projects_custom_looking_at_entity",
+          "crates/bbb-native/src/runtime/tests.rs#hud_debug_entity_type_name_uses_world_registry_source_rules",
           "crates/bbb-native/src/runtime/tests.rs#hud_debug_overlay_projects_custom_looking_at_block_tags",
           "crates/bbb-native/src/runtime/tests.rs#hud_debug_overlay_projects_custom_looking_at_fluid_tags",
           "crates/bbb-native/src/runtime/tests.rs#dropped_item_models_use_world_trim_material_select_context",
@@ -4614,6 +4615,7 @@
           "crates/bbb-world/src/registries/tests.rs#update_tags_replace_network_tag_state",
           "crates/bbb-world/src/registries/tests.rs#registry_tag_holder_resolution_is_ordered_and_rejects_unknown_holders",
           "crates/bbb-world/src/registries/tests.rs#registry_lookup_uses_static_fallback_only_without_server_contents",
+          "crates/bbb-native/src/runtime/tests.rs#hud_debug_overlay_projects_custom_looking_at_block_tags",
           "crates/bbb-native/src/runtime/tests.rs#hud_debug_overlay_projects_custom_looking_at_entity_tags",
           "crates/bbb-native/src/runtime/events/tests/session_protocol_events.rs#update_tags_event_updates_world_state_and_counters"
         ],
