@@ -11701,3 +11701,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] 8-action bitset、bounded entries/properties/key blobs、strict trailing、unknown-player gate、profile/listed/latency/game-mode baseline 与 dynamic skin consumption 已审计。
 - [x] rich display Component、chat-session profile-key validation/secure policy、PlayerSocialManager add 和完整 tab/social presentation 继续开放，除 ownership 外四格保持 partial。
+
+## 2026-07-12：play player look at packet coverage audit
+
+- [x] from/to anchor、absolute/entity target、strict trailing、missing-entity absolute fallback 与 local-player rotation apply 已审计。
+- [x] 修正 entity `EYES` target 从固定玩家 1.62 眼高为 canonical type/pose-aware camera eye height，并以非玩家 target focused test 锁定。

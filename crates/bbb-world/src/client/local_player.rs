@@ -16,7 +16,7 @@ use super::local_player_movement::{
     apply_local_player_input_look, integrate_local_player_input_pose_with_world_effects,
     local_player_effective_sprint,
 };
-use crate::{protocol_block_pos, BlockPos, EntityVec3, WorldStore};
+use crate::{protocol_block_pos, BlockPos, WorldStore};
 
 const STANDING_EYE_HEIGHT: f64 = 1.62;
 const CROUCHING_EYE_HEIGHT: f64 = 1.27;
@@ -693,9 +693,23 @@ impl WorldStore {
     fn resolve_look_at_target_position(&self, packet: ProtocolPlayerLookAt) -> ProtocolVec3d {
         packet
             .target
-            .and_then(|target| {
-                self.probe_entity(target.entity_id)
-                    .map(|entity| entity_anchor_position(entity.position, target.to_anchor))
+            .and_then(|target| match target.to_anchor {
+                EntityAnchor::Feet => {
+                    self.probe_entity(target.entity_id)
+                        .map(|entity| ProtocolVec3d {
+                            x: entity.position.x,
+                            y: entity.position.y,
+                            z: entity.position.z,
+                        })
+                }
+                EntityAnchor::Eyes => {
+                    self.probe_entity_camera_pose(target.entity_id)
+                        .map(|pose| ProtocolVec3d {
+                            x: pose.position.x,
+                            y: pose.position.y + f64::from(pose.eye_height),
+                            z: pose.position.z,
+                        })
+                }
             })
             .unwrap_or(packet.position)
     }
@@ -727,18 +741,6 @@ fn apply_look_at_to_pose(
         y_rot,
         x_rot,
         ..pose
-    }
-}
-
-fn entity_anchor_position(position: EntityVec3, anchor: EntityAnchor) -> ProtocolVec3d {
-    ProtocolVec3d {
-        x: position.x,
-        y: position.y
-            + match anchor {
-                EntityAnchor::Feet => 0.0,
-                EntityAnchor::Eyes => STANDING_EYE_HEIGHT,
-            },
-        z: position.z,
     }
 }
 
@@ -1462,6 +1464,42 @@ mod tests {
             })
         );
         assert_eq!(store.counters().player_look_at_packets, 1);
+    }
+
+    #[test]
+    fn local_player_look_at_uses_target_entity_specific_eye_height() {
+        let mut store = WorldStore::new();
+        store.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.0, 64.0, 0.0),
+            ..LocalPlayerPoseState::default()
+        });
+        store.apply_add_entity(protocol_add_entity_at(123, vec3(0.0, 70.0, 10.0)));
+        let target_eye_height = f64::from(
+            store
+                .probe_entity_camera_pose(123)
+                .expect("known target camera pose")
+                .eye_height,
+        );
+
+        let pose = store
+            .apply_player_look_at(ProtocolPlayerLookAt {
+                from_anchor: EntityAnchor::Eyes,
+                position: vec3(50.0, 50.0, 50.0),
+                target: Some(PlayerLookAtTarget {
+                    entity_id: 123,
+                    to_anchor: EntityAnchor::Eyes,
+                }),
+            })
+            .unwrap();
+
+        let expected_x_rot = -((70.0 + target_eye_height - 65.62_f64)
+            .atan2(10.0)
+            .to_degrees() as f32);
+        assert!((pose.x_rot - expected_x_rot).abs() < 0.001);
+        assert_eq!(
+            store.local_player().last_look_at.unwrap().position,
+            vec3(0.0, 70.0 + target_eye_height, 10.0)
+        );
     }
 
     #[test]

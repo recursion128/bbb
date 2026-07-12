@@ -8493,29 +8493,52 @@
       "constant_name": "CLIENTBOUND_PLAYER_LOOK_AT",
       "coverage": {
         "canonical_apply": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/client/local_player.rs#apply_player_look_at",
+            "crates/bbb-world/src/client/local_player.rs#resolve_look_at_target_position",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleLookAt"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/player_actions/tests.rs#decodes_player_look_at_position",
+            "crates/bbb-protocol/src/packets/player_actions/tests.rs#decodes_player_look_at_entity_target",
+            "crates/bbb-protocol/src/packets/player_actions/tests.rs#rejects_invalid_player_look_at_anchor",
+            "vanilla:net/minecraft/network/protocol/game/ClientboundPlayerLookAtPacket.java#STREAM_CODEC"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "ownership": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/play_apply.rs#PlayClientbound::PlayerLookAt",
+            "crates/bbb-native/src/runtime/events/client_state.rs#apply_player_look_at_update"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "runtime_side_effect": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/client/local_player.rs#apply_player_look_at",
+            "crates/bbb-world/src/client/local_player.rs#local_player_look_at_uses_target_entity_specific_eye_height",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleLookAt"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/player_actions/tests.rs#decodes_player_look_at_entity_target",
+            "crates/bbb-net/src/event_stream.rs#play_local_player_state_packets_emit_matching_events_without_responses",
+            "crates/bbb-net/src/probe/play.rs#probe_applies_player_look_at_to_world",
+            "crates/bbb-world/src/client/local_player.rs#local_player_look_at_uses_known_target_entity_anchor",
+            "crates/bbb-world/src/client/local_player.rs#local_player_look_at_uses_target_entity_specific_eye_height",
+            "crates/bbb-native/src/runtime/events/client_state/tests.rs#player_look_at_updates_world_pose_orientation"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "clientbound",

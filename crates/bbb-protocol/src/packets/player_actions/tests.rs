@@ -71,10 +71,9 @@ fn decodes_player_look_at_position() {
     payload.write_f64(64.0);
     payload.write_f64(-2.25);
     payload.write_bool(false);
+    let payload = payload.into_inner();
 
-    let packet =
-        decode_play_clientbound(ids::play::CLIENTBOUND_PLAYER_LOOK_AT, &payload.into_inner())
-            .unwrap();
+    let packet = decode_play_clientbound(ids::play::CLIENTBOUND_PLAYER_LOOK_AT, &payload).unwrap();
     assert_eq!(
         packet,
         PlayClientbound::PlayerLookAt(PlayerLookAt {
@@ -86,6 +85,15 @@ fn decodes_player_look_at_position() {
             },
             target: None,
         })
+    );
+
+    let mut trailing = payload;
+    trailing.push(0);
+    assert!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_PLAYER_LOOK_AT, &trailing)
+            .unwrap_err()
+            .to_string()
+            .contains("trailing bytes after player look at packet")
     );
 }
 

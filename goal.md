@@ -520,6 +520,7 @@ play MerchantOffers 的基础 wire/strict trailing、matching active MerchantMen
 play PlayerChat 的 full wire/strict trailing、filter/index/signature-cache/64-offset acknowledgement baseline 与 ownership 已审计；trusted Component/ChatType registry、RemoteChatSession 验签、错误断连和 ChatListener decoration/delay/narration/logging 未完成，除 ownership 外四格保持 partial。
 play PlayerInfoRemove 的 bounded UUID list/strict trailing、player-info/listed canonical removal 与 ownership 已闭合；PlayerSocialManager/Social Interactions cleanup 尚无 owner，runtime/tests 保持 partial。
 play PlayerInfoUpdate 的 8-action/bounded profile-property/key wire、strict trailing、unknown-player gating、canonical profile/listed/latency/game-mode baseline 与 ownership 已审计；rich display Component、chat-session key validation/secure policy、PlayerSocialManager add 与完整 tab/social presentation 未完成，除 ownership 外四格保持 partial。
+play PlayerLookAt 的 anchor/absolute-or-entity wire、strict trailing、missing-entity fallback、local from-anchor eye height 与 target type/pose-aware eye height rotation/runtime tests 已闭合。
 
 完成标准：全部 vanilla 26.1 catalog entry 都有矩阵行；所有目标客户端适用项为
 `complete`，其余只有带 vanilla 依据的 `not-applicable` 或带重启判据的窄 `deferred`；
