@@ -24,6 +24,22 @@ const OPTIONAL_BLOCK_STATE_SERIALIZER_ID: i32 = 15;
 const AIR_BLOCK_STATE_ID: i32 = 0;
 const GRASS_BLOCK_STATE_ID: i32 = 9;
 
+#[test]
+fn first_person_projection_does_not_restore_component_id_aliases() {
+    let source = include_str!("first_person.rs");
+    for old_alias in [
+        ["VANILLA_KINETIC_WEAPON_", "COMPONENT_ID"].concat(),
+        ["VANILLA_SWING_ANIMATION_", "COMPONENT_ID"].concat(),
+        ["VANILLA_CONSUMABLE_", "COMPONENT_ID"].concat(),
+        ["VANILLA_BLOCKS_ATTACKS_", "COMPONENT_ID"].concat(),
+    ] {
+        assert!(
+            !source.contains(&format!("const {old_alias}")),
+            "restored `{old_alias}` alias"
+        );
+    }
+}
+
 fn unit_block_quads() -> Vec<ItemModelQuad> {
     // A single full-cube face spanning the 0..16 Z range, enough to exercise depth + transforms.
     vec![ItemModelQuad {
@@ -127,7 +143,7 @@ fn first_person_test_consumable_stack(
         component_patch: DataComponentPatchSummary::default(),
     };
     item.component_patch.added = 1;
-    item.component_patch.added_type_ids = vec![VANILLA_CONSUMABLE_COMPONENT_ID];
+    item.component_patch.added_type_ids = vec![VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID];
     item.component_patch.consumable = Some(ConsumableSummary {
         consume_seconds,
         animation,
@@ -1467,7 +1483,7 @@ fn first_person_item_models_apply_block_use_pose_for_shield_and_blocks_attacks()
         component_patch: DataComponentPatchSummary::default(),
     };
     shield.component_patch.added = 1;
-    shield.component_patch.added_type_ids = vec![VANILLA_SWING_ANIMATION_COMPONENT_ID];
+    shield.component_patch.added_type_ids = vec![VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID];
     shield.component_patch.swing_animation = Some(SwingAnimationSummary {
         animation_type: SwingAnimationTypeSummary::None,
         duration: 0,
@@ -1478,12 +1494,12 @@ fn first_person_item_models_apply_block_use_pose_for_shield_and_blocks_attacks()
         component_patch: DataComponentPatchSummary::default(),
     };
     guard_item.component_patch.added = 1;
-    guard_item.component_patch.added_type_ids = vec![VANILLA_BLOCKS_ATTACKS_COMPONENT_ID];
+    guard_item.component_patch.added_type_ids = vec![VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID];
     let mut consumable_guard = guard_item.clone();
     consumable_guard
         .component_patch
         .added_type_ids
-        .push(VANILLA_CONSUMABLE_COMPONENT_ID);
+        .push(VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID);
     let camera = Some(CameraPose {
         position: [0.0, 64.0, 0.0],
         y_rot: 0.0,
@@ -1571,7 +1587,7 @@ fn first_person_item_models_apply_consumable_eat_and_drink_use_pose() {
         component_patch: DataComponentPatchSummary::default(),
     };
     snack.component_patch.added = 1;
-    snack.component_patch.added_type_ids = vec![VANILLA_CONSUMABLE_COMPONENT_ID];
+    snack.component_patch.added_type_ids = vec![VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID];
     snack.component_patch.consumable = Some(ConsumableSummary {
         consume_seconds: 1.6,
         animation: ItemUseAnimationSummary::Eat,
@@ -1866,7 +1882,7 @@ fn first_person_item_models_apply_goat_horn_base_use_pose() {
         component_patch: DataComponentPatchSummary::default(),
     };
     goat_horn.component_patch.added = 1;
-    goat_horn.component_patch.added_type_ids = vec![VANILLA_SWING_ANIMATION_COMPONENT_ID];
+    goat_horn.component_patch.added_type_ids = vec![VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID];
     goat_horn.component_patch.swing_animation = Some(SwingAnimationSummary {
         animation_type: SwingAnimationTypeSummary::None,
         duration: 0,
@@ -1926,7 +1942,7 @@ fn first_person_item_models_apply_brush_use_pose() {
     };
     let mut edible_brush = brush.clone();
     edible_brush.component_patch.added = 1;
-    edible_brush.component_patch.added_type_ids = vec![VANILLA_CONSUMABLE_COMPONENT_ID];
+    edible_brush.component_patch.added_type_ids = vec![VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID];
     edible_brush.component_patch.consumable = Some(ConsumableSummary {
         consume_seconds: 1.6,
         animation: ItemUseAnimationSummary::Eat,
@@ -1994,7 +2010,7 @@ fn first_person_item_models_apply_bundle_use_swing() {
     };
     let mut edible_bundle = bundle.clone();
     edible_bundle.component_patch.added = 1;
-    edible_bundle.component_patch.added_type_ids = vec![VANILLA_CONSUMABLE_COMPONENT_ID];
+    edible_bundle.component_patch.added_type_ids = vec![VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID];
     edible_bundle.component_patch.consumable = Some(ConsumableSummary {
         consume_seconds: 1.6,
         animation: ItemUseAnimationSummary::Eat,
@@ -2057,7 +2073,7 @@ fn first_person_item_models_apply_trident_use_pose() {
     };
     let mut edible_trident = trident.clone();
     edible_trident.component_patch.added = 1;
-    edible_trident.component_patch.added_type_ids = vec![VANILLA_CONSUMABLE_COMPONENT_ID];
+    edible_trident.component_patch.added_type_ids = vec![VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID];
     edible_trident.component_patch.consumable = Some(ConsumableSummary {
         consume_seconds: 1.6,
         animation: ItemUseAnimationSummary::Eat,
@@ -2130,7 +2146,7 @@ fn first_person_item_models_apply_bow_use_pose_and_hand_selection() {
     };
     let mut edible_bow = bow.clone();
     edible_bow.component_patch.added = 1;
-    edible_bow.component_patch.added_type_ids = vec![VANILLA_CONSUMABLE_COMPONENT_ID];
+    edible_bow.component_patch.added_type_ids = vec![VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID];
     edible_bow.component_patch.consumable = Some(ConsumableSummary {
         consume_seconds: 1.6,
         animation: ItemUseAnimationSummary::Eat,
@@ -2261,7 +2277,8 @@ fn first_person_item_models_apply_crossbow_use_and_charged_pose() {
     };
     let mut edible_crossbow = crossbow.clone();
     edible_crossbow.component_patch.added = 1;
-    edible_crossbow.component_patch.added_type_ids = vec![VANILLA_CONSUMABLE_COMPONENT_ID];
+    edible_crossbow.component_patch.added_type_ids =
+        vec![VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID];
     edible_crossbow.component_patch.consumable = Some(ConsumableSummary {
         consume_seconds: 1.6,
         animation: ItemUseAnimationSummary::Eat,
@@ -2379,7 +2396,7 @@ fn first_person_stack_supported_use_animation_resolves_spear_kinetic_weapon() {
     removed_kinetic
         .component_patch
         .removed_type_ids
-        .push(VANILLA_KINETIC_WEAPON_COMPONENT_ID);
+        .push(VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID);
     assert_eq!(
         first_person_stack_supported_use_animation(&removed_kinetic, &item_runtime),
         None,
@@ -2778,7 +2795,8 @@ fn first_person_whack_swing_transform_matches_vanilla_swing_arm() {
         FirstPersonSwingAnimation::None
     );
 
-    none_stack.component_patch.removed_type_ids = vec![VANILLA_SWING_ANIMATION_COMPONENT_ID];
+    none_stack.component_patch.removed_type_ids =
+        vec![VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID];
     assert_eq!(
         first_person_stack_swing_animation(&none_stack, &runtime),
         FirstPersonSwingAnimation::Whack,

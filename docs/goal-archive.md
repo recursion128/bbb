@@ -12650,3 +12650,9 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] item-model runtime 的 item-model、blocks-attacks、kinetic-weapon 与 profile 分发直接消费
   protocol generated component catalog 常量，删除父模块向 icon/profile 子模块隐式泄漏的四项
   type-id alias；运行时 membership 与 dynamic profile resolution 语义不变。
+
+## 2026-07-12：Removed native presentation component ID aliases
+
+- [x] native entity hand pose 与 first-person item presentation 删除八项重复 component type-id
+  alias，父模块直接导入 protocol generated catalog 常量供既有子模块消费；consumable 优先级、
+  block/swing/tool/kinetic-weapon 判定与呈现算法不变。

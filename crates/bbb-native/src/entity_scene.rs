@@ -1,10 +1,16 @@
 use std::collections::HashMap;
 
-use bbb_protocol::packets::{
-    decode_profile_textures_from_properties, EntityDataEnumSerializer, EntityDataRegistryHolder,
-    EntityDataValueKind, EquipmentSlot, GameProfilePropertySummary, ItemStackSummary,
-    PlayerSkinPatchSummary, ResolvableProfileKindSummary, ResolvableProfileSummary,
-    SwingAnimationTypeSummary,
+use bbb_protocol::{
+    data_component_types::{
+        VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID, VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID, VANILLA_DATA_COMPONENT_TOOL_TYPE_ID,
+    },
+    packets::{
+        decode_profile_textures_from_properties, EntityDataEnumSerializer,
+        EntityDataRegistryHolder, EntityDataValueKind, EquipmentSlot, GameProfilePropertySummary,
+        ItemStackSummary, PlayerSkinPatchSummary, ResolvableProfileKindSummary,
+        ResolvableProfileSummary, SwingAnimationTypeSummary,
+    },
 };
 use bbb_renderer::{
     ArmorStandModelPose, ArrowModelTexture, AxolotlModelVariant, BoatModelFamily, CamelModelFamily,

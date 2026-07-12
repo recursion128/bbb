@@ -17,6 +17,22 @@ use bbb_world::{
 };
 use uuid::Uuid;
 
+#[test]
+fn entity_hand_projection_does_not_restore_component_id_aliases() {
+    let source = include_str!("hands.rs");
+    for old_alias in [
+        ["DATA_COMPONENT_CONSUMABLE_", "TYPE_ID"].concat(),
+        ["DATA_COMPONENT_SWING_ANIMATION_", "TYPE_ID"].concat(),
+        ["DATA_COMPONENT_BLOCKS_ATTACKS_", "TYPE_ID"].concat(),
+        ["DATA_COMPONENT_TOOL_", "TYPE_ID"].concat(),
+    ] {
+        assert!(
+            !source.contains(&format!("const {old_alias}")),
+            "restored `{old_alias}` alias"
+        );
+    }
+}
+
 fn vanilla_kinetic_weapon_fixture(resource_ids: &[&str]) -> serde_json::Value {
     let catalog =
         serde_json::to_value(bbb_pack::ItemRegistryCatalog::vanilla_26_1().unwrap()).unwrap();
@@ -2789,7 +2805,7 @@ fn entity_model_instances_project_stab_from_stack_swing_animation_patch() {
         component_patch: DataComponentPatchSummary::default(),
     };
     item.component_patch.added = 1;
-    item.component_patch.added_type_ids = vec![DATA_COMPONENT_SWING_ANIMATION_TYPE_ID];
+    item.component_patch.added_type_ids = vec![VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID];
     item.component_patch.swing_animation = Some(SwingAnimationSummary {
         animation_type: SwingAnimationTypeSummary::Stab,
         duration: 17,
@@ -2861,7 +2877,7 @@ fn entity_model_instances_stack_swing_animation_overrides_default_spear_stab() {
         count: 1,
         component_patch: DataComponentPatchSummary::default(),
     };
-    removed.component_patch.removed_type_ids = vec![DATA_COMPONENT_SWING_ANIMATION_TYPE_ID];
+    removed.component_patch.removed_type_ids = vec![VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID];
 
     let mut whack = ItemStackSummary {
         item_id: Some(WOODEN_SPEAR_ID),
@@ -2869,7 +2885,7 @@ fn entity_model_instances_stack_swing_animation_overrides_default_spear_stab() {
         component_patch: DataComponentPatchSummary::default(),
     };
     whack.component_patch.added = 1;
-    whack.component_patch.added_type_ids = vec![DATA_COMPONENT_SWING_ANIMATION_TYPE_ID];
+    whack.component_patch.added_type_ids = vec![VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID];
     whack.component_patch.swing_animation = Some(SwingAnimationSummary {
         animation_type: SwingAnimationTypeSummary::Whack,
         duration: 6,
@@ -2881,7 +2897,7 @@ fn entity_model_instances_stack_swing_animation_overrides_default_spear_stab() {
         component_patch: DataComponentPatchSummary::default(),
     };
     none.component_patch.added = 1;
-    none.component_patch.added_type_ids = vec![DATA_COMPONENT_SWING_ANIMATION_TYPE_ID];
+    none.component_patch.added_type_ids = vec![VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID];
     none.component_patch.swing_animation = Some(SwingAnimationSummary {
         animation_type: SwingAnimationTypeSummary::None,
         duration: 6,
@@ -3430,7 +3446,10 @@ fn entity_model_instances_block_pose_uses_shield_or_blocks_attacks_component() {
         VANILLA_ENTITY_TYPE_PLAYER_ID,
         [5.0, 64.0, -10.0],
     ));
-    assert!(world.apply_set_equipment(equip(254, vec![DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID])));
+    assert!(world.apply_set_equipment(equip(
+        254,
+        vec![VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID]
+    )));
     assert!(world.apply_set_entity_data(set_using(254)));
     assert!(blocking(&world, 254));
 
@@ -3444,8 +3463,8 @@ fn entity_model_instances_block_pose_uses_shield_or_blocks_attacks_component() {
     assert!(world.apply_set_equipment(equip(
         255,
         vec![
-            DATA_COMPONENT_CONSUMABLE_TYPE_ID,
-            DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID
+            VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID,
+            VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID
         ]
     )));
     assert!(world.apply_set_entity_data(set_using(255)));
@@ -3879,7 +3898,7 @@ fn entity_model_instances_project_piglin_melee_attack_pose() {
                 item_id: Some(MELEE_ITEM_ID),
                 count: 1,
                 component_patch: DataComponentPatchSummary {
-                    added_type_ids: vec![DATA_COMPONENT_TOOL_TYPE_ID],
+                    added_type_ids: vec![VANILLA_DATA_COMPONENT_TOOL_TYPE_ID],
                     ..DataComponentPatchSummary::default()
                 },
             },
@@ -3972,7 +3991,7 @@ fn entity_model_instances_project_piglin_admiring_a_loved_offhand_item() {
                 count: 1,
                 component_patch: DataComponentPatchSummary {
                     added_type_ids: if tool {
-                        vec![DATA_COMPONENT_TOOL_TYPE_ID]
+                        vec![VANILLA_DATA_COMPONENT_TOOL_TYPE_ID]
                     } else {
                         Vec::new()
                     },

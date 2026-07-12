@@ -13,6 +13,10 @@ use std::{
 };
 
 use bbb_pack::{BlockModelDisplayContext, BlockModelDisplayTransform};
+use bbb_protocol::data_component_types::{
+    VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID, VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID, VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID,
+};
 #[cfg(test)]
 use bbb_protocol::packets::ItemStackTemplateSummary;
 use bbb_protocol::packets::{

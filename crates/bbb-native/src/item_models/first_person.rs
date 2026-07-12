@@ -1,25 +1,6 @@
 use super::dropped::bake_item_stack_at_transform;
 use super::*;
 
-/// Vanilla `DataComponents.KINETIC_WEAPON` network type id, used by item-stack
-/// patches to remove a spear's prototype kinetic weapon component.
-pub(super) const VANILLA_KINETIC_WEAPON_COMPONENT_ID: i32 =
-    bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID;
-/// Vanilla `DataComponents.SWING_ANIMATION` network type id, used by item-stack
-/// patches to remove prototype STAB/NONE data and fall back to
-/// `SwingAnimation.DEFAULT` (WHACK, 6 ticks).
-pub(super) const VANILLA_SWING_ANIMATION_COMPONENT_ID: i32 =
-    bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID;
-/// Vanilla `DataComponents.CONSUMABLE` network type id. `Item.getUseAnimation`
-/// checks this before `BLOCKS_ATTACKS`, so consumable stacks do not use the
-/// BLOCK first-person transform even when a patch also adds `blocks_attacks`.
-pub(super) const VANILLA_CONSUMABLE_COMPONENT_ID: i32 =
-    bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID;
-/// Vanilla `DataComponents.BLOCKS_ATTACKS` network type id. Non-consumable
-/// stacks carrying it use `ItemUseAnimation.BLOCK`; the vanilla shield has it as
-/// a prototype component.
-pub(super) const VANILLA_BLOCKS_ATTACKS_COMPONENT_ID: i32 =
-    bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID;
 /// Vanilla `BrushItem.USE_DURATION`. The first-person BRUSH swipe uses the
 /// remaining use ticks modulo `BrushItem.ANIMATION_DURATION` (10).
 pub(super) const VANILLA_BRUSH_USE_DURATION_TICKS: f32 = 200.0;
@@ -583,13 +564,13 @@ pub(super) fn first_person_stack_block_use_kind(
     let Some(item_id) = stack.item_id else {
         return None;
     };
-    if first_person_stack_has_added_component(stack, VANILLA_CONSUMABLE_COMPONENT_ID) {
+    if first_person_stack_has_added_component(stack, VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID) {
         return None;
     }
     if stack
         .component_patch
         .removed_type_ids
-        .contains(&VANILLA_BLOCKS_ATTACKS_COMPONENT_ID)
+        .contains(&VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID)
     {
         return None;
     }
@@ -597,7 +578,7 @@ pub(super) fn first_person_stack_block_use_kind(
     if is_shield {
         return Some(FirstPersonBlockUseKind::Shield);
     }
-    first_person_stack_has_added_component(stack, VANILLA_BLOCKS_ATTACKS_COMPONENT_ID)
+    first_person_stack_has_added_component(stack, VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID)
         .then_some(FirstPersonBlockUseKind::NonShieldBlock)
 }
 
@@ -693,12 +674,12 @@ fn first_person_stack_consumable_summary(
     if stack
         .component_patch
         .removed_type_ids
-        .contains(&VANILLA_CONSUMABLE_COMPONENT_ID)
+        .contains(&VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID)
     {
         return None;
     }
     stack.component_patch.consumable.or_else(|| {
-        first_person_stack_has_added_component(stack, VANILLA_CONSUMABLE_COMPONENT_ID)
+        first_person_stack_has_added_component(stack, VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID)
             .then(ConsumableSummary::default)
             .or_else(|| {
                 stack
@@ -766,7 +747,7 @@ fn first_person_stack_spear_kinetic_weapon(
     if stack
         .component_patch
         .removed_type_ids
-        .contains(&VANILLA_KINETIC_WEAPON_COMPONENT_ID)
+        .contains(&VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID)
     {
         return None;
     }
@@ -778,7 +759,7 @@ fn first_person_stack_removes_swing_animation(stack: &ItemStackSummary) -> bool 
     stack
         .component_patch
         .removed_type_ids
-        .contains(&VANILLA_SWING_ANIMATION_COMPONENT_ID)
+        .contains(&VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID)
 }
 
 fn local_player_is_scoping(world: &WorldStore, item_runtime: &NativeItemRuntime) -> bool {

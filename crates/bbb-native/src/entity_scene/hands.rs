@@ -188,23 +188,6 @@ pub(super) fn entity_hand_holds_brush(
     item_runtime.item_resource_id(item_id) == Some("minecraft:brush")
 }
 
-/// Vanilla `DataComponents.CONSUMABLE` network type id (24, the registry order of `minecraft:consumable` in
-/// `DataComponents`). `Item.getUseAnimation` checks `CONSUMABLE` before `BLOCKS_ATTACKS`, so a stack patch
-/// that adds both should stay on EAT/DRINK rather than the block pose.
-pub(super) const DATA_COMPONENT_CONSUMABLE_TYPE_ID: i32 =
-    bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID;
-
-/// Vanilla `DataComponents.SWING_ANIMATION` network type id (40, the registry order of
-/// `minecraft:swing_animation` in `DataComponents`).
-pub(super) const DATA_COMPONENT_SWING_ANIMATION_TYPE_ID: i32 =
-    bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID;
-
-/// Vanilla `DataComponents.BLOCKS_ATTACKS` network type id (37, the registry order of
-/// `minecraft:blocks_attacks` in `DataComponents`). `Item.getUseAnimation` returns `BLOCK` for a non-consumable
-/// item carrying this component.
-pub(super) const DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID: i32 =
-    bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID;
-
 pub(super) fn component_patch_has_added_component(
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
     type_id: i32,
@@ -224,7 +207,7 @@ pub(super) fn entity_hand_swing_is_stab(
     if stack
         .component_patch
         .removed_type_ids
-        .contains(&DATA_COMPONENT_SWING_ANIMATION_TYPE_ID)
+        .contains(&VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID)
     {
         return false;
     }
@@ -245,7 +228,7 @@ pub(super) fn entity_hand_swing_is_none(
     if stack
         .component_patch
         .removed_type_ids
-        .contains(&DATA_COMPONENT_SWING_ANIMATION_TYPE_ID)
+        .contains(&VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID)
     {
         return false;
     }
@@ -277,20 +260,20 @@ pub(super) fn entity_hand_blocks_attacks(
     };
     if component_patch_has_added_component(
         &stack.component_patch,
-        DATA_COMPONENT_CONSUMABLE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID,
     ) {
         return false;
     }
     if component_patch_has_added_component(
         &stack.component_patch,
-        DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID,
+        VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID,
     ) {
         return true;
     }
     if stack
         .component_patch
         .removed_type_ids
-        .contains(&DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID)
+        .contains(&VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID)
     {
         return false;
     }
@@ -376,17 +359,11 @@ pub(super) fn entity_hand_holds_charged_crossbow(
         && !stack.component_patch.charged_projectiles_items.is_empty()
 }
 
-/// Vanilla `DataComponents.TOOL` network type id (28, the registry order of `minecraft:tool` in
-/// `DataComponents`). `AbstractPiglin.isHoldingMeleeWeapon()` is `getMainHandItem().has(DataComponents.TOOL)`,
-/// so a main-hand stack counts as a melee weapon when its decoded component patch added this type.
-pub(super) const DATA_COMPONENT_TOOL_TYPE_ID: i32 =
-    bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_TOOL_TYPE_ID;
-
 /// Whether the entity's main-hand item is a melee weapon (vanilla
 /// `AbstractPiglin.isHoldingMeleeWeapon()` = `getMainHandItem().has(DataComponents.TOOL)`), driving the
 /// piglin/brute `ATTACKING_WITH_MELEE_WEAPON` arm pose when aggressive. The decoded component patch records
 /// every added component's type id, so the `minecraft:tool` component shows up as
-/// [`DATA_COMPONENT_TOOL_TYPE_ID`] in `added_type_ids` — no item-registry lookup is needed (unlike the
+/// [`VANILLA_DATA_COMPONENT_TOOL_TYPE_ID`] in `added_type_ids` — no item-registry lookup is needed (unlike the
 /// crossbow/bow checks, which resolve the item id). `false` for an empty hand or a non-tool main-hand item.
 pub(super) fn entity_main_hand_holds_melee_weapon(world: &WorldStore, entity_id: i32) -> bool {
     let Some(stack) = world.held_item(entity_id, false) else {
@@ -395,7 +372,7 @@ pub(super) fn entity_main_hand_holds_melee_weapon(world: &WorldStore, entity_id:
     stack
         .component_patch
         .added_type_ids
-        .contains(&DATA_COMPONENT_TOOL_TYPE_ID)
+        .contains(&VANILLA_DATA_COMPONENT_TOOL_TYPE_ID)
 }
 
 /// Whether the entity's main hand holds any item at all. Vanilla `AvatarRenderer.getArmPose` falls back to
