@@ -1659,6 +1659,29 @@ mod tests {
         );
     }
 
+    #[test]
+    fn play_custom_report_details_is_closed_without_immediate_runtime_effect() {
+        let ledger = vanilla_packet_coverage_26_1().unwrap();
+        let entry = ledger
+            .entries
+            .iter()
+            .find(|entry| {
+                entry.state == "play" && entry.constant_name == "CLIENTBOUND_CUSTOM_REPORT_DETAILS"
+            })
+            .expect("play custom report details coverage row");
+        assert_eq!(
+            entry.coverage["runtime_side_effect"].status,
+            PacketCoverageStatus::NotApplicable
+        );
+        for dimension in ["canonical_apply", "decode", "ownership", "tests"] {
+            assert_eq!(
+                entry.coverage[dimension].status,
+                PacketCoverageStatus::Complete,
+                "{dimension}"
+            );
+        }
+    }
+
     fn state_name(state: PacketState) -> &'static str {
         match state {
             PacketState::Handshake => "handshake",

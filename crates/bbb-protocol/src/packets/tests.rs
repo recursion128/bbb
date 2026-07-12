@@ -3084,6 +3084,22 @@ fn decodes_custom_report_details_in_configuration_and_play() {
         PlayClientbound::CustomReportDetails(expected)
     );
 
+    let mut trailing = payload;
+    trailing.push(0);
+    for error in [
+        decode_configuration_clientbound(
+            ids::configuration::CLIENTBOUND_CUSTOM_REPORT_DETAILS,
+            &trailing,
+        )
+        .unwrap_err(),
+        decode_play_clientbound(ids::play::CLIENTBOUND_CUSTOM_REPORT_DETAILS, &trailing)
+            .unwrap_err(),
+    ] {
+        assert!(error
+            .to_string()
+            .contains("trailing bytes after custom report details packet"));
+    }
+
     let mut oversized = Encoder::new();
     oversized.write_var_i32(33);
     let error = decode_configuration_clientbound(

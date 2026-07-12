@@ -118,6 +118,29 @@ fn custom_report_details_event_updates_world_counters() {
 }
 
 #[test]
+fn play_custom_report_details_update_world_through_shared_apply() {
+    let details = BTreeMap::from([("Server".to_string(), "play shard".to_string())]);
+    let (tx, mut rx) = mpsc::channel(1);
+    tx.try_send(NetEvent::Play(PlayClientbound::CustomReportDetails(
+        bbb_protocol::packets::CustomReportDetails {
+            details: details.clone(),
+        },
+    )))
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+
+    assert_eq!(
+        drain_net_events(&mut rx, &mut world, &mut counters, &None),
+        1
+    );
+    assert_eq!(world.custom_report_details(), &details);
+    assert_eq!(world.counters().custom_report_detail_packets, 1);
+    assert_eq!(world.counters().custom_report_details_tracked, 1);
+}
+
+#[test]
 fn award_stats_event_updates_world_state_and_world_counters() {
     let (tx, mut rx) = mpsc::channel(1);
     tx.try_send(NetEvent::Play(PlayClientbound::AwardStats(AwardStats {

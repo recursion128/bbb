@@ -802,6 +802,45 @@
         "status": "complete"
       }
     },
+    "play/clientbound/CLIENTBOUND_CUSTOM_REPORT_DETAILS": {
+      "canonical_apply": {
+        "evidence": [
+          "crates/bbb-world/src/client/server_presentation.rs#apply_custom_report_details",
+          "crates/bbb-world/src/play_apply.rs#PlayClientbound::CustomReportDetails"
+        ],
+        "status": "complete"
+      },
+      "decode": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/tests.rs#decodes_custom_report_details_in_configuration_and_play",
+          "vanilla:net/minecraft/network/protocol/common/ClientboundCustomReportDetailsPacket.java#MAX_DETAIL_COUNT"
+        ],
+        "status": "complete"
+      },
+      "ownership": {
+        "evidence": [
+          "crates/bbb-world/src/play_apply.rs#PlayClientbound::CustomReportDetails"
+        ],
+        "status": "complete"
+      },
+      "runtime_side_effect": {
+        "evidence": [
+          "vanilla:net/minecraft/client/multiplayer/ClientCommonPacketListenerImpl.java#handleCustomReportDetails"
+        ],
+        "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+        "status": "not-applicable"
+      },
+      "tests": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/tests.rs#decodes_custom_report_details_in_configuration_and_play",
+          "crates/bbb-net/src/event_stream.rs#play_server_presentation_packets_emit_matching_events_and_cookie_response",
+          "crates/bbb-net/src/probe/play.rs#probe_play_common_server_presentation_packets_update_world",
+          "crates/bbb-world/src/client/server_presentation.rs#custom_report_details_replace_current_details",
+          "crates/bbb-native/src/runtime/events/tests/session_protocol_events.rs#play_custom_report_details_update_world_through_shared_apply"
+        ],
+        "status": "complete"
+      }
+    },
     "play/clientbound/CLIENTBOUND_PLAYER_POSITION": {
       "canonical_apply": {
         "evidence": [

@@ -439,6 +439,8 @@ play TagQuery 的 transaction + nullable CompoundTag wire、bounded/strict NBT v
 matching/null/stale callback tests 已全行闭合；persistent entity Codec/SNBT 仍由各语义 owner 单独实现。
 play TestInstanceBlockStatus 的 Component + optional Vec3i wire、strict decode、world ownership 与 tests 已闭合；
 rich status preservation 与 active TestInstanceBlockEditScreen update 未实现，canonical/runtime 保持 partial。
+play CustomReportDetails 的 bounded map wire、strict config/play decode、replace semantics 与 shared apply tests 已闭合；
+vanilla handler 只有 canonical map replacement，故即时 runtime side-effect 格为 not-applicable。
 
 完成标准：全部 vanilla 26.1 catalog entry 都有矩阵行；所有目标客户端适用项为
 `complete`，其余只有带 vanilla 依据的 `not-applicable` 或带重启判据的窄 `deferred`；

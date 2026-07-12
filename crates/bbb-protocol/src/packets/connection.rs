@@ -800,6 +800,11 @@ pub(super) fn decode_custom_report_details(
         let value = decoder.read_string(4096)?;
         details.insert(key, value);
     }
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after custom report details packet".to_string(),
+        ));
+    }
     Ok(CustomReportDetails { details })
 }
 
