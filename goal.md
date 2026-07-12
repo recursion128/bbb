@@ -445,6 +445,8 @@ play ServerLinks 的 shared list wire、strict config/play decode、URI trust fi
 已闭合；rich Component label 保持现有兼容 projection，不在 packet coverage 中冒充完整 text parity。
 play Disconnect 的 shared Component wire、strict config/play decode 与 terminal event/probe tests 已闭合；packet 不写
 canonical world state，rich disconnect reason presentation 继续由 text component/screen ledger 独立追踪。
+play MountScreenOpen 的 container/columns/entity wire、strict decode、mount-type gate、menu ownership 与 tests 已闭合；
+Horse/Nautilus menu/screen 已消费，entity preview GPU drawing 仍保持窄 runtime partial。
 
 完成标准：全部 vanilla 26.1 catalog entry 都有矩阵行；所有目标客户端适用项为
 `complete`，其余只有带 vanilla 依据的 `not-applicable` 或带重启判据的窄 `deferred`；

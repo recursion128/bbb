@@ -11372,3 +11372,11 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   现在共用严格 component-root decode，均拒绝 trailing bytes。
 - [x] online/probe play handlers 将 packet 作为 terminal error，不发送响应或写 canonical world state；外层连接任务
   继续发布 `Disconnected` 给 native control projection。rich reason presentation 由 text/screen ledger 独立追踪。
+
+## 2026-07-12：play mount-screen-open packet coverage audit
+
+- [x] 对照 `ClientboundMountScreenOpenPacket` 锁定 container id VarInt、inventory columns VarInt、entity id i32
+  wire并拒绝 trailing bytes。
+- [x] world 现在与 `ClientPacketListener.handleMountScreenOpen` 一致，仅为已知 AbstractHorse/AbstractNautilus
+  打开 menu；missing/其他实体不再合成 mount screen 或覆盖当前 UI。canonical/decode/ownership/tests 闭合，
+  entity-preview GPU drawing 继续由既有 presentation gap 独立追踪。

@@ -2669,6 +2669,28 @@ mod tests {
             .await
             .unwrap();
         probe
+            .handle_play_packet(PlayClientbound::AddEntity(AddEntity {
+                id: 42,
+                uuid: Uuid::from_u128(42),
+                entity_type_id: VANILLA_ENTITY_TYPE_HORSE_ID,
+                position: ProtocolVec3d {
+                    x: 0.0,
+                    y: 64.0,
+                    z: 0.0,
+                },
+                delta_movement: ProtocolVec3d {
+                    x: 0.0,
+                    y: 0.0,
+                    z: 0.0,
+                },
+                x_rot: 0.0,
+                y_rot: 0.0,
+                y_head_rot: 0.0,
+                data: 0,
+            }))
+            .await
+            .unwrap();
+        probe
             .handle_play_packet(PlayClientbound::MountScreenOpen(MountScreenOpen {
                 container_id: 11,
                 inventory_columns: 5,

@@ -25,6 +25,20 @@ fn decodes_mount_screen_open_packet() {
             entity_id: 345,
         })
     );
+
+    let mut trailing = Encoder::new();
+    trailing.write_var_i32(12);
+    trailing.write_var_i32(5);
+    trailing.write_i32(345);
+    trailing.write_u8(0);
+    let error = decode_play_clientbound(
+        ids::play::CLIENTBOUND_MOUNT_SCREEN_OPEN,
+        &trailing.into_inner(),
+    )
+    .unwrap_err();
+    assert!(error
+        .to_string()
+        .contains("trailing bytes after mount screen open packet"));
 }
 
 #[test]

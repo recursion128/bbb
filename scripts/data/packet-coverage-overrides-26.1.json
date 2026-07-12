@@ -919,6 +919,47 @@
         "status": "complete"
       }
     },
+    "play/clientbound/CLIENTBOUND_MOUNT_SCREEN_OPEN": {
+      "canonical_apply": {
+        "evidence": [
+          "crates/bbb-world/src/client/ui.rs#apply_mount_screen_open",
+          "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleMountScreenOpen"
+        ],
+        "status": "complete"
+      },
+      "decode": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/client_ui/tests.rs#decodes_mount_screen_open_packet",
+          "vanilla:net/minecraft/network/protocol/game/ClientboundMountScreenOpenPacket.java#STREAM_CODEC"
+        ],
+        "status": "complete"
+      },
+      "ownership": {
+        "evidence": [
+          "crates/bbb-world/src/play_apply.rs#PlayClientbound::MountScreenOpen"
+        ],
+        "status": "complete"
+      },
+      "runtime_side_effect": {
+        "evidence": [
+          "crates/bbb-native/src/input/inventory/tests.rs#mount_horse_layout_matches_vanilla_horse_inventory_menu",
+          "crates/bbb-native/src/input/inventory/tests.rs#mount_nautilus_layout_uses_equipment_and_player_slots_only",
+          "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleMountScreenOpen"
+        ],
+        "gap": "docs/unsupported-features.md#screens-and-presentation",
+        "status": "partial"
+      },
+      "tests": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/client_ui/tests.rs#decodes_mount_screen_open_packet",
+          "crates/bbb-net/src/event_stream.rs#play_server_presentation_packets_emit_matching_events_and_cookie_response",
+          "crates/bbb-net/src/probe/play.rs#probe_applies_client_ui_packets_to_world",
+          "crates/bbb-world/src/client/ui.rs#mount_screen_open_ignores_missing_and_non_mount_entities",
+          "crates/bbb-native/src/runtime/events/tests/session_protocol_events.rs#client_ui_events_update_world_and_world_counters"
+        ],
+        "status": "complete"
+      }
+    },
     "play/clientbound/CLIENTBOUND_PLAYER_POSITION": {
       "canonical_apply": {
         "evidence": [

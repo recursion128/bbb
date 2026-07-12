@@ -459,9 +459,29 @@ fn play_server_links_update_world_through_shared_apply() {
 
 #[test]
 fn client_ui_events_update_world_and_world_counters() {
-    let (tx, mut rx) = mpsc::channel(5);
+    let (tx, mut rx) = mpsc::channel(6);
     tx.try_send(NetEvent::Play(PlayClientbound::LowDiskSpaceWarning))
         .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::AddEntity(AddEntity {
+        id: 42,
+        uuid: Uuid::from_u128(42),
+        entity_type_id: VANILLA_ENTITY_TYPE_HORSE_ID,
+        position: ProtocolVec3d {
+            x: 0.0,
+            y: 64.0,
+            z: 0.0,
+        },
+        delta_movement: ProtocolVec3d {
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
+        },
+        x_rot: 0.0,
+        y_rot: 0.0,
+        y_head_rot: 0.0,
+        data: 0,
+    })))
+    .unwrap();
     tx.try_send(NetEvent::Play(PlayClientbound::MountScreenOpen(
         MountScreenOpen {
             container_id: 11,
@@ -495,7 +515,7 @@ fn client_ui_events_update_world_and_world_counters() {
 
     assert_eq!(
         drain_net_events(&mut rx, &mut world, &mut counters, &None),
-        5
+        6
     );
     assert_eq!(world.low_disk_space_warning_count(), 1);
     assert_eq!(

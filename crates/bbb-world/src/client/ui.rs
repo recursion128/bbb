@@ -7,7 +7,10 @@ use bbb_protocol::packets::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::{protocol_block_pos, BlockPos, WorldStore};
+use crate::{
+    entities::{is_vanilla_abstract_horse_type, is_vanilla_abstract_nautilus_type},
+    protocol_block_pos, BlockPos, WorldStore,
+};
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ClientUiState {
@@ -118,6 +121,14 @@ impl WorldStore {
 
     pub fn apply_mount_screen_open(&mut self, packet: ProtocolMountScreenOpen) {
         self.counters.mount_screen_open_packets += 1;
+        let Some(entity_type_id) = self.entity_type_id(packet.entity_id) else {
+            return;
+        };
+        if !is_vanilla_abstract_horse_type(entity_type_id)
+            && !is_vanilla_abstract_nautilus_type(entity_type_id)
+        {
+            return;
+        }
         self.client_ui.current_book = None;
         self.client_ui.current_advancements_screen = false;
         let mount = MountScreenState {
@@ -342,11 +353,14 @@ pub fn java_string_hash_code(text: &str) -> i32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use bbb_protocol::entity_types::{VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_PLAYER_ID};
     use bbb_protocol::packets::{
-        BlockPos as ProtocolBlockPos, DataComponentPatchSummary, DialogHolder, InteractionHand,
-        ItemStackSummary, SetPlayerInventory as ProtocolSetPlayerInventory,
+        AddEntity as ProtocolAddEntity, BlockPos as ProtocolBlockPos, DataComponentPatchSummary,
+        DialogHolder, InteractionHand, ItemStackSummary,
+        SetPlayerInventory as ProtocolSetPlayerInventory, Vec3d as ProtocolVec3d,
         WrittenBookContentSummary,
     };
+    use uuid::Uuid;
 
     #[test]
     fn tracks_client_ui_warnings_and_dialogs() {
@@ -421,6 +435,7 @@ mod tests {
     #[test]
     fn tracks_client_ui_open_requests() {
         let mut store = WorldStore::new();
+        store.apply_add_entity(test_entity(42, VANILLA_ENTITY_TYPE_HORSE_ID));
 
         store.apply_mount_screen_open(ProtocolMountScreenOpen {
             container_id: 11,
@@ -480,6 +495,45 @@ mod tests {
         assert_eq!(counters.mount_screen_open_packets, 1);
         assert_eq!(counters.open_book_packets, 1);
         assert_eq!(counters.open_sign_editor_packets, 1);
+    }
+
+    #[test]
+    fn mount_screen_open_ignores_missing_and_non_mount_entities() {
+        let mut store = WorldStore::new();
+        store.apply_show_dialog(ProtocolShowDialog {
+            dialog: DialogHolder::Direct {
+                raw_dialog_payload: vec![1, 2, 3],
+            },
+        });
+
+        store.apply_mount_screen_open(ProtocolMountScreenOpen {
+            container_id: 11,
+            inventory_columns: 5,
+            entity_id: 42,
+        });
+        assert_eq!(store.last_mount_screen(), None);
+        assert_eq!(store.inventory().open_container, None);
+
+        store.apply_add_entity(test_entity(42, VANILLA_ENTITY_TYPE_PLAYER_ID));
+        store.apply_mount_screen_open(ProtocolMountScreenOpen {
+            container_id: 11,
+            inventory_columns: 5,
+            entity_id: 42,
+        });
+        assert_eq!(store.last_mount_screen(), None);
+        assert_eq!(store.inventory().open_container, None);
+        assert!(store.current_dialog().is_some());
+
+        store.apply_add_entity(test_entity(42, VANILLA_ENTITY_TYPE_HORSE_ID));
+        store.apply_mount_screen_open(ProtocolMountScreenOpen {
+            container_id: 11,
+            inventory_columns: 5,
+            entity_id: 42,
+        });
+        assert!(store.last_mount_screen().is_some());
+        assert!(store.inventory().open_container.is_some());
+        assert_eq!(store.current_dialog(), None);
+        assert_eq!(store.counters().mount_screen_open_packets, 3);
     }
 
     #[test]
@@ -654,6 +708,28 @@ mod tests {
             .push(VANILLA_WRITABLE_BOOK_CONTENT_COMPONENT_ID);
         stack.component_patch.writable_book_pages = pages.into_iter().map(str::to_string).collect();
         stack
+    }
+
+    fn test_entity(id: i32, entity_type_id: i32) -> ProtocolAddEntity {
+        ProtocolAddEntity {
+            id,
+            uuid: Uuid::from_u128(id as u128),
+            entity_type_id,
+            position: ProtocolVec3d {
+                x: 0.0,
+                y: 64.0,
+                z: 0.0,
+            },
+            delta_movement: ProtocolVec3d {
+                x: 0.0,
+                y: 0.0,
+                z: 0.0,
+            },
+            x_rot: 0.0,
+            y_rot: 0.0,
+            y_head_rot: 0.0,
+            data: 0,
+        }
     }
 
     #[test]

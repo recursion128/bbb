@@ -2615,6 +2615,10 @@ fn client_ui_reads_canonical_world_state() {
         let mut store = WorldStore::new();
         store.apply_low_disk_space_warning();
         store.apply_code_of_conduct("Respect the realm.".to_string());
+        store.apply_add_entity(protocol_add_entity(
+            42,
+            bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_HORSE_ID,
+        ));
         store.apply_mount_screen_open(MountScreenOpen {
             container_id: 11,
             inventory_columns: 5,

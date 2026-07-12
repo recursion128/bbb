@@ -28,11 +28,17 @@ pub struct PongResponse {
 }
 
 pub(crate) fn decode_mount_screen_open(decoder: &mut Decoder<'_>) -> Result<MountScreenOpen> {
-    Ok(MountScreenOpen {
+    let packet = MountScreenOpen {
         container_id: decoder.read_var_i32()?,
         inventory_columns: decoder.read_var_i32()?,
         entity_id: decoder.read_i32()?,
-    })
+    };
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after mount screen open packet".to_string(),
+        ));
+    }
+    Ok(packet)
 }
 
 pub(crate) fn decode_open_book(decoder: &mut Decoder<'_>) -> Result<OpenBook> {

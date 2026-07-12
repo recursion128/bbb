@@ -544,8 +544,9 @@ back into a todo. Do not delete these.
   (`HudEntityPreviewItemLayer` / `GuiEntityRenderer`). Hand/head item models need
   a native-side baked item-quad handoff. Restart with GUI surface work.
 - **Entity-in-UI item/entity lighting contexts.** Restart with GUI surface work.
-- **Mount (`MountScreenOpen`) entity preview rendering.** Restart with
-  entity-in-UI presentation work.
+- **Mount (`MountScreenOpen`) entity preview rendering.** Horse/Nautilus type
+  gating, menu ownership and native inventory layouts are covered; restart with
+  entity-in-UI presentation work for the remaining preview drawing.
 - **Full Spectator GUI selection/menu behavior.** The wheel currently adjusts
   local flying speed while the Spectator GUI menu is inactive.
 

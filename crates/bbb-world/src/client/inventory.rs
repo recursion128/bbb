@@ -688,6 +688,7 @@ impl InventoryState {
         ui: &mut ClientUiState,
         mount: MountScreenState,
     ) {
+        ui.current_dialog = None;
         ui.current_book = None;
         ui.current_advancements_screen = false;
         ui.current_stats_screen = false;
