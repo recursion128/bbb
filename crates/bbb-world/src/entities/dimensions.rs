@@ -1173,10 +1173,7 @@ pub(crate) fn vanilla_zombie_model_family(entity_type_id: i32) -> bool {
 /// them. The zombified piglin is excluded: it is a `Zombie` whose `animateZombieArms` pose
 /// is deferred (covered by [`vanilla_zombie_model_family`] semantics, not the piglin pose).
 pub(crate) fn vanilla_piglin_melee_attack_family(entity_type_id: i32) -> bool {
-    matches!(
-        entity_type_id,
-        VANILLA_ENTITY_TYPE_PIGLIN_ID | VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID
-    )
+    super::vanilla_entity_type_is_abstract_piglin(entity_type_id)
 }
 
 /// The illagers whose vanilla `getArmPose` branches on `isAggressive()`, and whose bbb arm pose is

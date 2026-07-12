@@ -11456,6 +11456,31 @@ fn minecart_and_item_frame_dispatch_use_the_world_generated_catalog() {
 }
 
 #[test]
+fn piglin_and_spider_dispatch_use_the_world_generated_catalog() {
+    for entry in bbb_world::VANILLA_ENTITY_TYPE_METADATA_26_1 {
+        assert_eq!(
+            bbb_world::vanilla_entity_type_is_abstract_piglin(entry.entity_type_id),
+            entry.is_abstract_piglin,
+            "abstract-piglin membership for {}",
+            entry.resource_id
+        );
+        assert_eq!(
+            bbb_world::vanilla_entity_type_is_spider(entry.entity_type_id),
+            entry.is_spider,
+            "spider membership for {}",
+            entry.resource_id
+        );
+    }
+
+    assert!(include_str!("../entity_scene/instance.rs")
+        .contains("bbb_world::vanilla_entity_type_is_abstract_piglin(entity_type_id)"));
+    assert!(include_str!("../input.rs")
+        .contains("bbb_world::vanilla_entity_type_is_spider(entity.entity_type_id)"));
+    assert!(include_str!("../runtime.rs")
+        .contains("bbb_world::vanilla_entity_type_is_spider(entity_type_id)"));
+}
+
+#[test]
 fn shift_f3_i_with_permission_copies_local_boat_leash_save_nbt_to_clipboard() {
     let mut input = ClientInputState::new(true);
     let mut world = world_with_debug_player(false);

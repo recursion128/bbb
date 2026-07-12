@@ -12609,3 +12609,9 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] world 导出 generated minecart 与 item-frame typed query；native entity-scene 删除 7 项
   minecart model dispatch 与 2 项 item-frame no-render dispatch，F3+I 统一按 minecart family 写基类
   数据、subtype 分支仅保留各自额外字段，item-frame save handler 同样改为 catalog guard。
+
+## 2026-07-12：Derived piglin and spider class families
+
+- [x] metadata hierarchy 派生 AbstractPiglin 与 Spider 两组两项 membership；world aggressive-pose
+  projection、native zombification overlay、F3+I spider save dispatch 与 camera post-effect 统一消费
+  generated query，具体呈现与持久化算法保持原 owner。

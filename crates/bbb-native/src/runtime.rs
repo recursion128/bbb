@@ -15,10 +15,7 @@ use bbb_item_model::{
 use bbb_net::{NetCommand, NetEvent};
 use bbb_protocol::{
     codec::Decoder,
-    entity_types::{
-        VANILLA_ENTITY_TYPE_CAVE_SPIDER_ID, VANILLA_ENTITY_TYPE_CREEPER_ID,
-        VANILLA_ENTITY_TYPE_ENDERMAN_ID, VANILLA_ENTITY_TYPE_SPIDER_ID,
-    },
+    entity_types::{VANILLA_ENTITY_TYPE_CREEPER_ID, VANILLA_ENTITY_TYPE_ENDERMAN_ID},
     packets::{
         AdvancementFrameType, GameType, ItemCostSummary, ItemStackSummary,
         MapPostProcessingSummary, RemoteDebugSampleType, SlotDisplaySummary, Vec3d,
@@ -4921,11 +4918,10 @@ fn hud_debug_post_effect_line(current_post_effect_id: Option<&str>) -> Option<St
 
 fn current_post_effect_id_from_world(world: &WorldStore) -> Option<&'static str> {
     let camera_entity_id = world.local_player().camera.entity_id?;
-    match world.entity_type_id(camera_entity_id)? {
+    let entity_type_id = world.entity_type_id(camera_entity_id)?;
+    match entity_type_id {
         VANILLA_ENTITY_TYPE_CREEPER_ID => Some("minecraft:creeper"),
-        VANILLA_ENTITY_TYPE_CAVE_SPIDER_ID | VANILLA_ENTITY_TYPE_SPIDER_ID => {
-            Some("minecraft:spider")
-        }
+        _ if bbb_world::vanilla_entity_type_is_spider(entity_type_id) => Some("minecraft:spider"),
         VANILLA_ENTITY_TYPE_ENDERMAN_ID => Some("minecraft:invert"),
         _ => None,
     }

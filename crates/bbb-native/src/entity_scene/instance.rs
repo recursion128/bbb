@@ -865,7 +865,7 @@ pub(super) fn entity_shaking(
             STRIDER_SUFFOCATING_DATA_ID,
             STRIDER_DEFAULT_SUFFOCATING,
         ),
-        VANILLA_ENTITY_TYPE_PIGLIN_ID | VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID => {
+        _ if bbb_world::vanilla_entity_type_is_abstract_piglin(entity_type_id) => {
             piglins_zombify
                 && !entity_data_bool(
                     data_values,
