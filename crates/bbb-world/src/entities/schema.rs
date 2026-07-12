@@ -222,6 +222,8 @@ pub struct VanillaEntityTypeMetadataCatalogEntry {
     pub is_projectile: bool,
     pub is_hurting_projectile: bool,
     pub is_wind_charge: bool,
+    pub is_boat: bool,
+    pub is_minecart: bool,
     pub is_player_rideable_jumping: bool,
     pub has_custom_inventory_screen: bool,
     pub diagnostic: Option<&'static str>,
@@ -349,6 +351,20 @@ pub fn vanilla_entity_metadata_type_is_wind_charge(entity_type_id: i32) -> bool 
     VANILLA_ENTITY_TYPE_METADATA_26_1
         .get(usize::try_from(entity_type_id).unwrap_or(usize::MAX))
         .map(|entry| entry.is_wind_charge)
+        .unwrap_or(false)
+}
+
+pub fn vanilla_entity_metadata_type_is_boat(entity_type_id: i32) -> bool {
+    VANILLA_ENTITY_TYPE_METADATA_26_1
+        .get(usize::try_from(entity_type_id).unwrap_or(usize::MAX))
+        .map(|entry| entry.is_boat)
+        .unwrap_or(false)
+}
+
+pub fn vanilla_entity_metadata_type_is_minecart(entity_type_id: i32) -> bool {
+    VANILLA_ENTITY_TYPE_METADATA_26_1
+        .get(usize::try_from(entity_type_id).unwrap_or(usize::MAX))
+        .map(|entry| entry.is_minecart)
         .unwrap_or(false)
 }
 
@@ -524,6 +540,20 @@ mod tests {
         assert_eq!(
             VANILLA_ENTITY_TYPE_METADATA_26_1
                 .iter()
+                .filter(|entry| entry.is_boat)
+                .count(),
+            20
+        );
+        assert_eq!(
+            VANILLA_ENTITY_TYPE_METADATA_26_1
+                .iter()
+                .filter(|entry| entry.is_minecart)
+                .count(),
+            7
+        );
+        assert_eq!(
+            VANILLA_ENTITY_TYPE_METADATA_26_1
+                .iter()
                 .filter(|entry| entry.is_player_rideable_jumping)
                 .count(),
             11
@@ -598,6 +628,16 @@ mod tests {
                 .and_then(|source| source.split_once("\n}"))
                 .map(|(body, _)| body)
                 .expect("passenger interface query source");
+            assert!(!body.contains("matches!"));
+        }
+        let entity_source = include_str!("../entities.rs");
+        for function in ["is_vanilla_boat_type", "is_vanilla_minecart_type"] {
+            let body = entity_source
+                .split(&format!("fn {function}"))
+                .nth(1)
+                .and_then(|source| source.split_once("\n}"))
+                .map(|(body, _)| body)
+                .expect("vehicle class query source");
             assert!(!body.contains("matches!"));
         }
     }

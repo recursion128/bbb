@@ -12520,3 +12520,9 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] generated entity descriptor 通过 superclass + interface transitive closure 派生 11 项
   `PlayerRideableJumping` 与 21 项 `HasCustomInventoryScreen`；world passenger/control 查询删除对应手抄
   entity-type matches，camel sprintability 等行为特例仍留在 world semantic owner。
+
+## 2026-07-12：Derived boat and minecart class memberships
+
+- [x] generated entity descriptor 从统一 Tree-sitter class hierarchy 派生 20 项 `AbstractBoat`
+  subclass 与 7 项 `AbstractMinecart` subclass；world vehicle dispatch 删除两张手抄 entity-type
+  matches，locally-controlled prediction、remote interpolation 与各 vehicle 行为仍由 world owner 实现。

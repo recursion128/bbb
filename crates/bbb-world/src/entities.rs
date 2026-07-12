@@ -431,42 +431,11 @@ pub struct LocalPlayerAttackSwingState {
 }
 
 pub(crate) fn is_vanilla_boat_type(entity_type_id: i32) -> bool {
-    matches!(
-        entity_type_id,
-        VANILLA_ENTITY_TYPE_ACACIA_BOAT_ID
-            | VANILLA_ENTITY_TYPE_ACACIA_CHEST_BOAT_ID
-            | VANILLA_ENTITY_TYPE_BAMBOO_CHEST_RAFT_ID
-            | VANILLA_ENTITY_TYPE_BAMBOO_RAFT_ID
-            | VANILLA_ENTITY_TYPE_BIRCH_BOAT_ID
-            | VANILLA_ENTITY_TYPE_BIRCH_CHEST_BOAT_ID
-            | VANILLA_ENTITY_TYPE_CHERRY_BOAT_ID
-            | VANILLA_ENTITY_TYPE_CHERRY_CHEST_BOAT_ID
-            | VANILLA_ENTITY_TYPE_DARK_OAK_BOAT_ID
-            | VANILLA_ENTITY_TYPE_DARK_OAK_CHEST_BOAT_ID
-            | VANILLA_ENTITY_TYPE_JUNGLE_BOAT_ID
-            | VANILLA_ENTITY_TYPE_JUNGLE_CHEST_BOAT_ID
-            | VANILLA_ENTITY_TYPE_MANGROVE_BOAT_ID
-            | VANILLA_ENTITY_TYPE_MANGROVE_CHEST_BOAT_ID
-            | VANILLA_ENTITY_TYPE_OAK_BOAT_ID
-            | VANILLA_ENTITY_TYPE_OAK_CHEST_BOAT_ID
-            | VANILLA_ENTITY_TYPE_PALE_OAK_BOAT_ID
-            | VANILLA_ENTITY_TYPE_PALE_OAK_CHEST_BOAT_ID
-            | VANILLA_ENTITY_TYPE_SPRUCE_BOAT_ID
-            | VANILLA_ENTITY_TYPE_SPRUCE_CHEST_BOAT_ID
-    )
+    schema::vanilla_entity_metadata_type_is_boat(entity_type_id)
 }
 
 pub(crate) fn is_vanilla_minecart_type(entity_type_id: i32) -> bool {
-    matches!(
-        entity_type_id,
-        VANILLA_ENTITY_TYPE_CHEST_MINECART_ID
-            | VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID
-            | VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID
-            | VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID
-            | VANILLA_ENTITY_TYPE_MINECART_ID
-            | VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID
-            | VANILLA_ENTITY_TYPE_TNT_MINECART_ID
-    )
+    schema::vanilla_entity_metadata_type_is_minecart(entity_type_id)
 }
 
 pub(crate) fn is_vanilla_vehicle_entity_type(entity_type_id: i32) -> bool {
