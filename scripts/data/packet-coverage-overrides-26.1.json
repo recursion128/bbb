@@ -445,6 +445,13 @@
       "runtime_side_effect": {"evidence": ["crates/bbb-native/src/runtime/events/tests/level_event_particle_batches.rs#game_events_emit_local_player_sounds_and_elder_guardian_particles", "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleGameEvent"], "gap": "docs/unsupported-features.md#screens-and-presentation", "status": "partial"},
       "tests": {"evidence": ["crates/bbb-protocol/src/packets/client_state/tests.rs#decodes_game_event_and_set_time", "crates/bbb-net/src/probe/play.rs#probe_applies_world_time_weather_and_ticking_to_world", "crates/bbb-world/src/level.rs#game_events_update_local_gameplay_state", "crates/bbb-native/src/runtime/events/tests/level_event_particle_batches.rs#game_events_emit_local_player_sounds_and_elder_guardian_particles", "crates/bbb-native/src/runtime/events/tests/session_hud_and_vehicle_events.rs#world_time_and_weather_update_world_counters_and_clear_color"], "gap": "docs/unsupported-features.md#screens-and-presentation", "status": "partial"}
     },
+    "play/clientbound/CLIENTBOUND_GAME_RULE_VALUES": {
+      "canonical_apply": {"evidence": ["crates/bbb-world/src/client/debug_game.rs#apply_game_rule_values", "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleGameRuleValues"], "gap": "docs/unsupported-features.md#screens-and-presentation", "status": "partial"},
+      "decode": {"evidence": ["crates/bbb-protocol/src/packets/debug_game/tests.rs#decodes_game_rule_values_packet_wire_order", "crates/bbb-protocol/src/packets/debug_game/tests.rs#rejects_invalid_game_rule_id", "vanilla:net/minecraft/network/protocol/game/ClientboundGameRuleValuesPacket.java#STREAM_CODEC"], "status": "complete"},
+      "ownership": {"evidence": ["crates/bbb-world/src/play_apply.rs#PlayClientbound::GameRuleValues"], "status": "complete"},
+      "runtime_side_effect": {"evidence": ["crates/bbb-world/src/client/debug_game.rs#last_game_rule_values", "vanilla:net/minecraft/client/gui/screens/options/InWorldGameRulesScreen.java#onGameRuleValuesUpdated"], "gap": "docs/unsupported-features.md#screens-and-presentation", "status": "partial"},
+      "tests": {"evidence": ["crates/bbb-protocol/src/packets/debug_game/tests.rs#decodes_game_rule_values_packet_wire_order", "crates/bbb-net/src/event_stream.rs#play_debug_game_packets_emit_matching_events_without_responses", "crates/bbb-net/src/probe/play.rs#probe_applies_debug_game_packets_to_world", "crates/bbb-world/src/client/debug_game.rs#tracks_debug_game_events_and_counters", "crates/bbb-native/src/runtime/events/tests/level_event_particle_batches.rs#debug_game_events_update_world_counters"], "status": "complete"}
+    },
     "play/clientbound/CLIENTBOUND_BUNDLE_DELIMITER": {
       "canonical_apply": {
         "evidence": [

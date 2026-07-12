@@ -576,6 +576,11 @@ back into a todo. Do not delete these.
   demo intro/hints with chat+narration, and notify the level-load tracker. The
   other ten fixed 26.1 event types have canonical/presentation owners; none of
   these four require an IntegratedServer.
+- Implement the in-world GameRules screen request/response lifecycle: apply only
+  the first GameRuleValues response while that screen is active, resolve keys
+  through the built-in game-rule catalog, typed-deserialize valid values, ignore
+  unknown/invalid entries, remove loading state, and submit changed rules. The
+  current unconditional key/string diagnostic snapshot is not rule state.
 - **Test-instance block status screen update.** Preserve the full status
   Component and apply the optional size only while a native
   `TestInstanceBlockEditScreen` equivalent is active, matching

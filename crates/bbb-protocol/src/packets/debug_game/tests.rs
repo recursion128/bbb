@@ -122,7 +122,7 @@ fn decodes_game_rule_values_packet_wire_order() {
     payload.write_string("false");
     payload.write_string("minecraft:random_tick_speed");
     payload.write_string("3");
-    let payload = payload.into_inner();
+    let mut payload = payload.into_inner();
 
     assert_eq!(
         decode_play_clientbound(ids::play::CLIENTBOUND_GAME_RULE_VALUES, &payload).unwrap(),
@@ -138,6 +138,14 @@ fn decodes_game_rule_values_packet_wire_order() {
                 },
             ],
         })
+    );
+
+    payload.push(0);
+    assert!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_GAME_RULE_VALUES, &payload)
+            .unwrap_err()
+            .to_string()
+            .contains("trailing bytes after game rule values packet")
     );
 }
 

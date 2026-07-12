@@ -153,6 +153,11 @@ pub(crate) fn decode_game_rule_values(decoder: &mut Decoder<'_>) -> Result<GameR
         });
     }
 
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after game rule values packet".to_string(),
+        ));
+    }
     Ok(GameRuleValues { values })
 }
 
