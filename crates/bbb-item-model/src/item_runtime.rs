@@ -520,6 +520,12 @@ fn item_uv_rect(layout: &AtlasLayout, sprite: &AtlasSprite) -> ItemAtlasUvRect {
 }
 
 impl NativeItemRuntime {
+    /// Resolves a client language key from the same selected pack stack used by item tooltips.
+    /// GUI consumers keep their own semantic formatting and use this only for final labels.
+    pub fn localized_text<'a>(&'a self, key: &'a str) -> &'a str {
+        self.language.get_or_key(key)
+    }
+
     pub fn load(roots: &PackRoots) -> Result<Self> {
         Self::load_with_locale(roots, DEFAULT_LANGUAGE_CODE)
     }

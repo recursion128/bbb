@@ -12,7 +12,7 @@ use bbb_pack::{
 use bbb_protocol::packets::ClockUpdate as ProtocolClockUpdate;
 use bbb_protocol::packets::{
     AdvancementCriterionProgressSummary, AdvancementDisplaySummary, AdvancementFrameType,
-    AdvancementIconSummary, AdvancementProgressSummary, AdvancementSummary,
+    AdvancementIconSummary, AdvancementProgressSummary, AdvancementSummary, AwardStats,
     BlockPos as ProtocolBlockPos, BlockUpdate as ProtocolBlockUpdate, BossBarColor, BossBarOverlay,
     BossEvent as ProtocolBossEvent, BossEventFlags as ProtocolBossEventFlags,
     BossEventOperation as ProtocolBossEventOperation, CommonPlayerSpawnInfo,
@@ -21,7 +21,7 @@ use bbb_protocol::packets::{
     MerchantOffer, MerchantOffers, MobEffectFlags, OpenBook, OpenSignEditor, PlayLogin, PlayTime,
     RemoveMobEffect, SetBorderLerpSize as ProtocolSetBorderLerpSize,
     SetCursorItem as ProtocolSetCursorItem, SetPlayerInventory as ProtocolSetPlayerInventory,
-    ShowDialog, UpdateAdvancements, UpdateMobEffect, WrittenBookContentSummary,
+    ShowDialog, StatUpdate, UpdateAdvancements, UpdateMobEffect, WrittenBookContentSummary,
 };
 use bbb_world::{
     BlockPos, ChunkColumn, ChunkPos, ChunkSection, ChunkState, HeightmapData, LightData,
@@ -7399,22 +7399,57 @@ fn hud_pause_screen_projects_disconnect_hover_and_disabled_after_click() {
 }
 
 #[test]
-fn hud_stats_screen_projects_loading_shell_and_done_hover() {
+fn hud_stats_screen_waits_for_response_then_projects_general_rows() {
     let mut input = ClientInputState::new(true);
     let mut world = WorldStore::new();
     let surface = winit::dpi::PhysicalSize::new(320, 240);
 
-    assert!(hud_stats_screen(&input, &world, surface).is_none());
+    assert!(hud_stats_screen(&input, &world, None, surface).is_none());
     assert!(world.open_stats_screen());
     assert!(input.handle_stats_screen_cursor_moved(
         &world,
         Some(winit::dpi::PhysicalPosition::new(70.0, 223.0))
     ));
 
-    let screen = hud_stats_screen(&input, &world, surface).expect("stats screen");
+    let screen = hud_stats_screen(&input, &world, None, surface).expect("stats screen");
     assert_eq!(screen.title, "Stats");
     assert_eq!(screen.loading_text, "Downloading statistics...");
+    assert!(screen.is_loading);
+    assert!(screen.rows.is_empty());
     assert!(screen.done_hovered);
+
+    world.apply_award_stats(AwardStats {
+        stats: vec![StatUpdate {
+            stat_type_id: 8,
+            value_id: 6,
+            amount: 12_345,
+        }],
+    });
+    let screen = hud_stats_screen(
+        &input,
+        &world,
+        None,
+        winit::dpi::PhysicalSize::new(320, 1_200),
+    )
+    .expect("stats screen");
+    assert!(!screen.is_loading);
+    assert_eq!(screen.total_rows, 77);
+    assert_eq!(screen.visible_rows, 80);
+    assert!(screen
+        .rows
+        .iter()
+        .any(|row| { row.label == "minecraft:walk_one_cm" && row.value == "123.45 m" }));
+}
+
+#[test]
+fn vanilla_stat_formatters_preserve_thresholds_and_grouping() {
+    assert_eq!(format_vanilla_stat_value("DEFAULT", 1_234_567), "1,234,567");
+    assert_eq!(format_vanilla_stat_value("DIVIDE_BY_TEN", 123), "12.30");
+    assert_eq!(format_vanilla_stat_value("DISTANCE", 50), "50 cm");
+    assert_eq!(format_vanilla_stat_value("DISTANCE", 51), "0.51 m");
+    assert_eq!(format_vanilla_stat_value("DISTANCE", 50_001), "0.50 km");
+    assert_eq!(format_vanilla_stat_value("TIME", 20), "1.0 s");
+    assert_eq!(format_vanilla_stat_value("TIME", 601), "0.50 min");
 }
 
 #[test]

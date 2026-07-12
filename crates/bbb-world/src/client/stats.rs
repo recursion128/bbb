@@ -56,6 +56,9 @@ impl WorldStore {
         self.client_stats.last_update = Some(StatsUpdateState {
             entries: last_entries,
         });
+        if self.client_ui.current_stats_screen {
+            self.client_ui.stats_screen_loading = false;
+        }
         self.counters.stats_tracked = self.client_stats.values.len();
         self.counters.last_award_stats_entry_count = self
             .client_stats
@@ -281,6 +284,22 @@ mod tests {
                 formatter: None,
             })
         );
+    }
+
+    #[test]
+    fn award_stats_only_completes_an_open_stats_screen_request() {
+        let mut store = WorldStore::new();
+        store.apply_award_stats(AwardStats { stats: Vec::new() });
+        assert!(!store.stats_screen_is_loading());
+
+        assert!(store.open_stats_screen());
+        assert!(store.stats_screen_is_loading());
+        store.apply_award_stats(AwardStats { stats: Vec::new() });
+        assert!(!store.stats_screen_is_loading());
+
+        assert!(store.close_stats_screen());
+        assert!(store.open_stats_screen());
+        assert!(store.stats_screen_is_loading());
     }
 
     #[test]

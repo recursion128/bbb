@@ -96,8 +96,9 @@ pub use crate::hud::{
     HudInventoryTextInputDecoration, HudInventoryTextLabel, HudInventoryTooltip,
     HudInventoryTooltipLine, HudItemCountLabel, HudItemDurabilityBar, HudItemFoil, HudItemIcon,
     HudJumpBar, HudNineSliceScaling, HudPauseScreen, HudPlayerHealth, HudPlayerList,
-    HudPlayerListEntry, HudSignEditorKind, HudSignEditorScreen, HudStatsScreen, HudStyledTextRun,
-    HudTextStyle, HudTitleText, HudUvRect, HudVehicleHealth, HUD_FONT_BASELINE, HUD_HOTBAR_SLOTS,
+    HudPlayerListEntry, HudSignEditorKind, HudSignEditorScreen, HudStatsRow, HudStatsScreen,
+    HudStyledTextRun, HudTextStyle, HudTitleText, HudUvRect, HudVehicleHealth, HUD_FONT_BASELINE,
+    HUD_HOTBAR_SLOTS,
 };
 pub use crate::item_entities::{
     ItemEntityBillboard, ItemEntityBillboardLayer, ItemEntityBillboardOrientation, ItemEntityUvRect,

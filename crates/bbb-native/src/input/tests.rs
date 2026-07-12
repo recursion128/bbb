@@ -20100,6 +20100,23 @@ fn stats_screen_done_button_closes_stats_screen() {
 }
 
 #[test]
+fn stats_screen_mouse_wheel_scrolls_general_rows_and_resets_on_close() {
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+    assert!(world.open_stats_screen());
+
+    assert!(input.handle_stats_screen_mouse_wheel(&world, MouseScrollDelta::LineDelta(0.0, -3.0),));
+    assert_eq!(input.stats_screen_scroll_row(), 3);
+    assert!(input.handle_stats_screen_mouse_wheel(&world, MouseScrollDelta::LineDelta(0.0, 1.0),));
+    assert_eq!(input.stats_screen_scroll_row(), 2);
+
+    close_stats_screen(&mut input, &mut counters, &mut world, &None);
+    assert_eq!(input.stats_screen_scroll_row(), 0);
+    assert!(!input.handle_stats_screen_mouse_wheel(&world, MouseScrollDelta::LineDelta(0.0, -1.0),));
+}
+
+#[test]
 fn escape_key_closes_stats_screen_without_requesting_stats_again() {
     let (tx, mut rx) = mpsc::channel(1);
     let commands = Some(tx);

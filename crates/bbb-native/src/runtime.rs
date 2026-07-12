@@ -44,14 +44,15 @@ use bbb_renderer::{
     HudInventorySlot, HudInventoryTextBackground, HudInventoryTextInputDecoration,
     HudInventoryTextLabel, HudInventoryTooltip, HudInventoryTooltipLine, HudItemCountLabel,
     HudItemDurabilityBar, HudItemFoil, HudItemIcon, HudJumpBar, HudPauseScreen, HudPlayerHealth,
-    HudSignEditorKind, HudSignEditorScreen, HudStatsScreen, HudUvRect, HudVehicleHealth,
-    LevelLighting, LightmapEnvironment, LightningBoltRenderState, ParticleBlockFluidSurfaceSample,
-    ParticleEntityTargetContext, ParticleFluidKind, ParticleLocalPlayerScopeContext,
-    ParticlePlayerMotionContext, ParticleSoundEvent, ParticleSpawnBatch, ParticleSpawnCommand,
-    Renderer, SelectionColoredBox, SelectionLine, SelectionOutline, SignModelAttachment,
-    SignModelWood, SkyEnvironment, SkyMoonPhase, WeatherColumn, WeatherFrame, WeatherRenderState,
-    DEFAULT_ARMOR_STAND_MODEL_POSE, ENTITY_FULL_BRIGHT_LIGHT_COORDS, HUD_HOTBAR_SLOTS,
-    ITEM_MODEL_NO_OVERLAY, VANILLA_DEFAULT_CLOUD_COLOR, VANILLA_DEFAULT_CLOUD_HEIGHT,
+    HudSignEditorKind, HudSignEditorScreen, HudStatsRow, HudStatsScreen, HudUvRect,
+    HudVehicleHealth, LevelLighting, LightmapEnvironment, LightningBoltRenderState,
+    ParticleBlockFluidSurfaceSample, ParticleEntityTargetContext, ParticleFluidKind,
+    ParticleLocalPlayerScopeContext, ParticlePlayerMotionContext, ParticleSoundEvent,
+    ParticleSpawnBatch, ParticleSpawnCommand, Renderer, SelectionColoredBox, SelectionLine,
+    SelectionOutline, SignModelAttachment, SignModelWood, SkyEnvironment, SkyMoonPhase,
+    WeatherColumn, WeatherFrame, WeatherRenderState, DEFAULT_ARMOR_STAND_MODEL_POSE,
+    ENTITY_FULL_BRIGHT_LIGHT_COORDS, HUD_HOTBAR_SLOTS, ITEM_MODEL_NO_OVERLAY,
+    VANILLA_DEFAULT_CLOUD_COLOR, VANILLA_DEFAULT_CLOUD_HEIGHT,
     VANILLA_DEFAULT_LIGHTMAP_BLOCK_FACTOR, VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR,
     VANILLA_DEFAULT_LIGHTMAP_SKY_FACTOR, VANILLA_DEFAULT_LIGHTMAP_SKY_LIGHT_COLOR,
     VANILLA_MAX_RENDER_DISTANCE_CHUNKS, VANILLA_MIN_RENDER_DISTANCE_CHUNKS,
@@ -2262,7 +2263,7 @@ pub(crate) fn pump_network_and_terrain(
     let hud_stats_screen = if hud_debug_options_screen.is_some() || hud_pause_screen.is_some() {
         None
     } else {
-        hud_stats_screen(input, world, surface_size)
+        hud_stats_screen(input, world, item_runtime, surface_size)
     };
     let hud_sign_editor_screen = if hud_debug_options_screen.is_some()
         || hud_pause_screen.is_some()
@@ -3182,16 +3183,155 @@ fn hud_pause_screen(
 fn hud_stats_screen(
     input: &ClientInputState,
     world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
     surface_size: winit::dpi::PhysicalSize<u32>,
 ) -> Option<HudStatsScreen> {
-    world.stats_screen_is_open().then(|| HudStatsScreen {
-        title: "Stats".to_string(),
-        loading_text: "Downloading statistics...".to_string(),
-        done_hovered: stats_screen_done_button_contains(
-            input.stats_screen_cursor_position(),
-            surface_size,
-        ),
+    world.stats_screen_is_open().then(|| {
+        let is_loading = world.stats_screen_is_loading();
+        let mut rows = bbb_protocol::stat_types::VANILLA_CUSTOM_STATS
+            .iter()
+            .map(|entry| {
+                let translation_key = format!("stat.{}", entry.resource_id.replace(':', "."));
+                let label = localized_gui_text(item_runtime, &translation_key, entry.resource_id);
+                let amount = world
+                    .client_stats()
+                    .identities
+                    .iter()
+                    .find(|identity| {
+                        identity.stat_type_resource_id.as_deref() == Some("minecraft:custom")
+                            && identity.value_resource_id.as_deref() == Some(entry.resource_id)
+                    })
+                    .and_then(|identity| world.stat_value(identity.stat_type_id, identity.value_id))
+                    .unwrap_or_default();
+                HudStatsRow {
+                    label,
+                    value: format_vanilla_stat_value(entry.formatter, amount),
+                }
+            })
+            .collect::<Vec<_>>();
+        rows.sort_by(|left, right| left.label.cmp(&right.label));
+        let visible_rows = stats_screen_visible_rows(surface_size);
+        let total_rows = rows.len();
+        let scroll_row = input
+            .stats_screen_scroll_row()
+            .min(total_rows.saturating_sub(visible_rows));
+        let rows = if is_loading {
+            Vec::new()
+        } else {
+            rows.into_iter()
+                .skip(scroll_row)
+                .take(visible_rows)
+                .collect()
+        };
+        HudStatsScreen {
+            title: localized_gui_text(item_runtime, "gui.stats", "Stats"),
+            loading_text: localized_gui_text(
+                item_runtime,
+                "multiplayer.downloadingStats",
+                "Downloading statistics...",
+            ),
+            is_loading,
+            general_tab: localized_gui_text(item_runtime, "stat.generalButton", "General"),
+            items_tab: localized_gui_text(item_runtime, "stat.itemsButton", "Items"),
+            mobs_tab: localized_gui_text(item_runtime, "stat.mobsButton", "Mobs"),
+            rows,
+            scroll_row,
+            total_rows,
+            visible_rows,
+            done_hovered: stats_screen_done_button_contains(
+                input.stats_screen_cursor_position(),
+                surface_size,
+            ),
+        }
     })
+}
+
+fn localized_gui_text(
+    item_runtime: Option<&NativeItemRuntime>,
+    translation_key: &str,
+    fallback: &str,
+) -> String {
+    item_runtime
+        .map(|runtime| runtime.localized_text(translation_key))
+        .filter(|text| *text != translation_key)
+        .unwrap_or(fallback)
+        .to_string()
+}
+
+fn stats_screen_visible_rows(surface_size: winit::dpi::PhysicalSize<u32>) -> usize {
+    const LIST_TOP: i32 = 46;
+    const FOOTER_HEIGHT: i32 = 33;
+    const ROW_HEIGHT: i32 = 14;
+    let height = i32::try_from(surface_size.height).unwrap_or(i32::MAX);
+    usize::try_from((height - FOOTER_HEIGHT - LIST_TOP).max(ROW_HEIGHT) / ROW_HEIGHT).unwrap_or(1)
+}
+
+fn format_vanilla_stat_value(formatter: &str, value: i32) -> String {
+    match formatter {
+        "DIVIDE_BY_TEN" => format!("{:.2}", f64::from(value) * 0.1),
+        "DISTANCE" => {
+            let meters = f64::from(value) / 100.0;
+            let kilometers = meters / 1000.0;
+            if kilometers > 0.5 {
+                format!("{kilometers:.2} km")
+            } else if meters > 0.5 {
+                format!("{meters:.2} m")
+            } else {
+                format!("{value} cm")
+            }
+        }
+        "TIME" => {
+            let seconds = f64::from(value) / 20.0;
+            let minutes = seconds / 60.0;
+            let hours = minutes / 60.0;
+            let days = hours / 24.0;
+            let years = days / 365.0;
+            if years > 0.5 {
+                format!("{years:.2} y")
+            } else if days > 0.5 {
+                format!("{days:.2} d")
+            } else if hours > 0.5 {
+                format!("{hours:.2} h")
+            } else if minutes > 0.5 {
+                format!("{minutes:.2} min")
+            } else {
+                format!("{} s", java_double_string(seconds))
+            }
+        }
+        _ => format_grouped_integer(value),
+    }
+}
+
+fn java_double_string(value: f64) -> String {
+    if value.fract() == 0.0 {
+        format!("{value:.1}")
+    } else {
+        value.to_string()
+    }
+}
+
+fn format_grouped_integer(value: i32) -> String {
+    let negative = value < 0;
+    let digits = i64::from(value).abs().to_string();
+    let mut grouped =
+        String::with_capacity(digits.len() + digits.len() / 3 + usize::from(negative));
+    if negative {
+        grouped.push('-');
+    }
+    let first = digits.len() % 3;
+    if first != 0 {
+        grouped.push_str(&digits[..first]);
+        if digits.len() > first {
+            grouped.push(',');
+        }
+    }
+    for (index, chunk) in digits.as_bytes()[first..].chunks(3).enumerate() {
+        if index > 0 {
+            grouped.push(',');
+        }
+        grouped.push_str(std::str::from_utf8(chunk).expect("decimal digits are valid UTF-8"));
+    }
+    grouped
 }
 
 fn hud_debug_options_screen(

@@ -12795,3 +12795,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   session holder identity 先解 type、再由 descriptor 选择 block/item/entity/custom registry 解 value，
   并保留 formatter。重排 session registry 有测试，未知 type/value 显式保留 unresolved identity，
   不猜默认资源名。canonical coverage complete；StatsScreen tabs 仍在 runtime ledger 开放。
+
+## 2026-07-12：StatsScreen General tab
+
+- [x] StatsScreen 每次打开重新进入 loading，并仅由随后到达的 AwardStats response 切换为列表；旧的
+  StatsCounter 数据不会让新请求提前显示 ready。General 页从 generated custom-stat catalog 补齐全部
+  77 行，收到的 session identity 值覆盖默认 0，未知身份不被猜测。
+- [x] native 复用 selected pack language 解析 `stat.minecraft.*`/screen 标签，按 vanilla
+  `StatFormatter` 的 DEFAULT/DIVIDE_BY_TEN/DISTANCE/TIME 阈值格式化、按显示标签排序并支持滚轮浏览；
+  renderer 绘制三页 tab 与 General 行，Items/Mobs 保持 disabled 且在 unsupported ledger 开放。

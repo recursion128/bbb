@@ -985,6 +985,7 @@ fn main() -> Result<()> {
                     }
                     if world.stats_screen_is_open() {
                         set_cursor_capture(&window, &mut cursor_captured, false);
+                        input.handle_stats_screen_mouse_wheel(&world, delta);
                         return;
                     }
                     if world.current_book().is_some() {

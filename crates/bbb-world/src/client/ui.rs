@@ -28,6 +28,8 @@ pub struct ClientUiState {
     #[serde(default)]
     pub current_stats_screen: bool,
     #[serde(default)]
+    pub stats_screen_loading: bool,
+    #[serde(default)]
     pub last_code_of_conduct: Option<CodeOfConductState>,
     #[serde(default)]
     pub last_mount_screen: Option<MountScreenState>,
@@ -244,6 +246,7 @@ impl WorldStore {
         self.client_ui.current_book = None;
         self.client_ui.current_advancements_screen = false;
         self.client_ui.current_stats_screen = true;
+        self.client_ui.stats_screen_loading = true;
         !was_open
     }
 
@@ -251,6 +254,10 @@ impl WorldStore {
         let was_open = self.client_ui.current_stats_screen;
         self.client_ui.current_stats_screen = false;
         was_open
+    }
+
+    pub fn stats_screen_is_loading(&self) -> bool {
+        self.client_ui.current_stats_screen && self.client_ui.stats_screen_loading
     }
 
     pub fn close_current_book(&mut self) -> bool {

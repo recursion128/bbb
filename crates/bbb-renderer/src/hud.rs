@@ -153,11 +153,27 @@ pub struct HudPauseScreen {
     pub disconnect_enabled: bool,
 }
 
-/// Vanilla `StatsScreen` loading shell: title, pending-text body, and footer Done button.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct HudStatsRow {
+    pub label: String,
+    pub value: String,
+}
+
+/// Vanilla `StatsScreen` projection. The general-stat list becomes visible only after the
+/// requested AwardStats response; item and mob tabs remain disabled until their list projections
+/// are implemented.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct HudStatsScreen {
     pub title: String,
     pub loading_text: String,
+    pub is_loading: bool,
+    pub general_tab: String,
+    pub items_tab: String,
+    pub mobs_tab: String,
+    pub rows: Vec<HudStatsRow>,
+    pub scroll_row: usize,
+    pub total_rows: usize,
+    pub visible_rows: usize,
     pub done_hovered: bool,
 }
 
@@ -658,6 +674,11 @@ const HUD_STATS_DONE_BUTTON_WIDTH: i32 = 200;
 const HUD_STATS_DONE_BUTTON_HEIGHT: i32 = 20;
 const HUD_STATS_FOOTER_HEIGHT: i32 = 33;
 const HUD_STATS_TITLE_Y: i32 = 8;
+const HUD_STATS_TAB_Y: i32 = 22;
+const HUD_STATS_TAB_HEIGHT: i32 = 20;
+const HUD_STATS_LIST_WIDTH: i32 = 280;
+const HUD_STATS_LIST_TOP: i32 = 46;
+const HUD_STATS_ROW_HEIGHT: i32 = 14;
 const HUD_DEBUG_CROSSHAIR_SCALE: f32 = 0.01;
 const HUD_DEBUG_CROSSHAIR_FOV_DEGREES: f32 = 70.0;
 const HUD_DEBUG_CROSSHAIR_OUTLINE_WIDTH: f32 = 4.0;
@@ -6148,20 +6169,97 @@ fn push_hud_stats_screen<'a>(
         HUD_STATS_TITLE_Y,
         HUD_TINT_WHITE,
     );
-    let loading_y = i32::try_from(surface_size.height).unwrap_or(i32::MAX) / 2 - 4;
-    push_hud_debug_options_centered_text(
-        vertices,
-        commands,
-        white_pixel,
-        font_atlas,
-        glyphs,
-        obfuscated_pool,
-        frame_index,
-        surface_size,
-        &screen.loading_text,
-        loading_y,
-        HUD_TINT_WHITE,
-    );
+    let screen_width = i32::try_from(surface_size.width).unwrap_or(i32::MAX);
+    let list_x = screen_width / 2 - HUD_STATS_LIST_WIDTH / 2;
+    let tab_width = HUD_STATS_LIST_WIDTH / 3;
+    for (index, (label, enabled)) in [
+        (screen.general_tab.as_str(), true),
+        (screen.items_tab.as_str(), false),
+        (screen.mobs_tab.as_str(), false),
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        push_hud_pause_button(
+            vertices,
+            commands,
+            white_pixel,
+            font_atlas,
+            glyphs,
+            obfuscated_pool,
+            frame_index,
+            surface_size,
+            (
+                list_x + i32::try_from(index).unwrap_or(i32::MAX) * tab_width,
+                HUD_STATS_TAB_Y,
+                if index == 2 {
+                    HUD_STATS_LIST_WIDTH - tab_width * 2
+                } else {
+                    tab_width
+                },
+                HUD_STATS_TAB_HEIGHT,
+            ),
+            label,
+            index == 0 && !screen.is_loading,
+            enabled,
+        );
+    }
+    if screen.is_loading {
+        let loading_y = i32::try_from(surface_size.height).unwrap_or(i32::MAX) / 2 - 4;
+        push_hud_debug_options_centered_text(
+            vertices,
+            commands,
+            white_pixel,
+            font_atlas,
+            glyphs,
+            obfuscated_pool,
+            frame_index,
+            surface_size,
+            &screen.loading_text,
+            loading_y,
+            HUD_TINT_WHITE,
+        );
+    } else {
+        for (index, row) in screen.rows.iter().enumerate() {
+            let y = HUD_STATS_LIST_TOP
+                + i32::try_from(index).unwrap_or(i32::MAX) * HUD_STATS_ROW_HEIGHT;
+            let tint = if (screen.scroll_row + index) % 2 == 0 {
+                HUD_TINT_WHITE
+            } else {
+                hud_argb_to_tint(0xFFBABABA)
+            };
+            push_hud_debug_options_text(
+                vertices,
+                commands,
+                white_pixel,
+                font_atlas,
+                glyphs,
+                obfuscated_pool,
+                frame_index,
+                surface_size,
+                &row.label,
+                ((list_x + 2) as f32, y as f32),
+                tint,
+            );
+            let value_width = hud_plain_text_width(&row.value, glyphs) as i32;
+            push_hud_debug_options_text(
+                vertices,
+                commands,
+                white_pixel,
+                font_atlas,
+                glyphs,
+                obfuscated_pool,
+                frame_index,
+                surface_size,
+                &row.value,
+                (
+                    (list_x + HUD_STATS_LIST_WIDTH - value_width - 4) as f32,
+                    y as f32,
+                ),
+                tint,
+            );
+        }
+    }
     push_hud_pause_button(
         vertices,
         commands,
@@ -11147,9 +11245,34 @@ fn sanitize_hud_pause_screen(screen: HudPauseScreen) -> Option<HudPauseScreen> {
 fn sanitize_hud_stats_screen(screen: HudStatsScreen) -> Option<HudStatsScreen> {
     let title = sanitize_hud_text_line(screen.title)?;
     let loading_text = sanitize_hud_text_line(screen.loading_text)?;
+    let general_tab = sanitize_hud_text_line(screen.general_tab)?;
+    let items_tab = sanitize_hud_text_line(screen.items_tab)?;
+    let mobs_tab = sanitize_hud_text_line(screen.mobs_tab)?;
+    let visible_rows = screen.visible_rows.min(64);
+    let rows = screen
+        .rows
+        .into_iter()
+        .filter_map(|row| {
+            Some(HudStatsRow {
+                label: sanitize_hud_text_line(row.label)?,
+                value: sanitize_hud_text_line(row.value)?,
+            })
+        })
+        .take(visible_rows)
+        .collect();
     (!title.is_empty() && !loading_text.is_empty()).then_some(HudStatsScreen {
         title,
         loading_text,
+        is_loading: screen.is_loading,
+        general_tab,
+        items_tab,
+        mobs_tab,
+        rows,
+        scroll_row: screen
+            .scroll_row
+            .min(screen.total_rows.saturating_sub(visible_rows)),
+        total_rows: screen.total_rows,
+        visible_rows,
         done_hovered: screen.done_hovered,
     })
 }
@@ -15603,16 +15726,38 @@ mod tests {
         let screen = sanitize_hud_stats_screen(HudStatsScreen {
             title: "St\nats".to_string(),
             loading_text: "Downloading\n statistics...".to_string(),
+            is_loading: false,
+            general_tab: "Gen\neral".to_string(),
+            items_tab: "Items".to_string(),
+            mobs_tab: "Mobs".to_string(),
+            rows: vec![HudStatsRow {
+                label: "Walk\none cm".to_string(),
+                value: "1\n.00 m".to_string(),
+            }],
+            scroll_row: 3,
+            total_rows: 12,
+            visible_rows: 1,
             done_hovered: true,
         })
         .expect("stats screen");
         assert_eq!(screen.title, "Stats");
         assert_eq!(screen.loading_text, "Downloading statistics...");
+        assert_eq!(screen.general_tab, "General");
+        assert_eq!(screen.rows[0].label, "Walkone cm");
+        assert_eq!(screen.rows[0].value, "1.00 m");
         assert!(screen.done_hovered);
 
         assert!(sanitize_hud_stats_screen(HudStatsScreen {
             title: "Stats".to_string(),
             loading_text: "\n\t".to_string(),
+            is_loading: true,
+            general_tab: "General".to_string(),
+            items_tab: "Items".to_string(),
+            mobs_tab: "Mobs".to_string(),
+            rows: Vec::new(),
+            scroll_row: 0,
+            total_rows: 0,
+            visible_rows: 0,
             done_hovered: false,
         })
         .is_none());

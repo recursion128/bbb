@@ -483,6 +483,7 @@ const PAUSE_SCREEN_DISCONNECT_ROW_TOP_OFFSET: i32 = 128;
 const STATS_SCREEN_DONE_BUTTON_WIDTH: i32 = 200;
 const STATS_SCREEN_DONE_BUTTON_HEIGHT: i32 = 20;
 const STATS_SCREEN_FOOTER_HEIGHT: i32 = 33;
+const STATS_SCREEN_ROW_HEIGHT: i32 = 14;
 const PAUSE_SCREEN_RELEASE_FEEDBACK_URL: &str = "https://aka.ms/javafeedback?ref=game";
 const PAUSE_SCREEN_SNAPSHOT_FEEDBACK_URL: &str = "https://aka.ms/snapshotfeedback?ref=game";
 const PAUSE_SCREEN_SNAPSHOT_BUGS_URL: &str = "https://aka.ms/snapshotbugs?ref=game";
@@ -718,6 +719,7 @@ pub(crate) struct ClientInputState {
     advancement_mouse_left_down: bool,
     advancement_is_scrolling: bool,
     stats_screen_cursor_position: Option<(i32, i32)>,
+    stats_screen_scroll_row: usize,
     pause_screen_link_requests: Vec<PauseScreenLinkRequest>,
     pause_screen_disconnect_requested: bool,
     debug_entries: DebugScreenEntryList,
@@ -1893,6 +1895,38 @@ impl ClientInputState {
 
     pub(crate) fn stats_screen_cursor_position(&self) -> Option<(i32, i32)> {
         self.stats_screen_cursor_position
+    }
+
+    pub(crate) fn stats_screen_scroll_row(&self) -> usize {
+        self.stats_screen_scroll_row
+    }
+
+    pub(crate) fn handle_stats_screen_mouse_wheel(
+        &mut self,
+        world: &WorldStore,
+        delta: MouseScrollDelta,
+    ) -> bool {
+        if !world.stats_screen_is_open() {
+            return false;
+        }
+        let delta_rows = match delta {
+            MouseScrollDelta::LineDelta(_, y) => y.round() as i32,
+            MouseScrollDelta::PixelDelta(position) => {
+                (position.y / f64::from(STATS_SCREEN_ROW_HEIGHT))
+                    .round()
+                    .clamp(f64::from(i32::MIN), f64::from(i32::MAX)) as i32
+            }
+        };
+        if delta_rows < 0 {
+            self.stats_screen_scroll_row = self
+                .stats_screen_scroll_row
+                .saturating_add(delta_rows.unsigned_abs() as usize);
+        } else if delta_rows > 0 {
+            self.stats_screen_scroll_row = self
+                .stats_screen_scroll_row
+                .saturating_sub(delta_rows as usize);
+        }
+        true
     }
 
     pub(crate) fn handle_stats_screen_cursor_moved(
@@ -7202,6 +7236,7 @@ fn open_stats_screen(
     if world.open_stats_screen() {
         release_active_input(input, world, counters, net_commands);
         input.stats_screen_cursor_position = None;
+        input.stats_screen_scroll_row = 0;
         queue_request_stats_command(counters, net_commands);
     }
 }
@@ -7215,6 +7250,7 @@ fn close_stats_screen(
     if world.close_stats_screen() {
         release_active_input(input, world, counters, net_commands);
         input.stats_screen_cursor_position = None;
+        input.stats_screen_scroll_row = 0;
     }
 }
 
