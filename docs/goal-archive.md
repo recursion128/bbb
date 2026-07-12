@@ -11981,3 +11981,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] entity VarInt wire、spectator crosshair-click + control/runtime/driver path、local spectator guard、server loaded/spectator/range/world-border/pickable authority 与 clientbound SetCamera correction 已反向核对；ack/encoder/state 闭合。
 - [x] vanilla SpectatorGui 的 player/team categories、filtering、paging、hotbar selection/fade/close surface 尚未实现；command/tests 保持 partial，未把 crosshair shortcut 与 maintenance command 误标为完整 spectator menu。
+
+## 2026-07-12：play serverbound swing coverage audit
+
+- [x] `ServerboundSwingPacket` 的 InteractionHand ordinal wire、native 鼠标输入、command queue、driver send 与 clientbound swing 动画投影已反向审计；command/encoder 闭合，服务端 `handleAnimate` 只接受并广播 swing，没有 dedicated acknowledgement。
+- [x] vanilla `LocalPlayer.swing` 会先启动本地动画再发包；bbb 仍缺精确 attack/use gates、swing-source 与本地立即呈现，因此 state/tests 保持 partial，未把 server 回播动画或能发包冒充本地预测 parity。
