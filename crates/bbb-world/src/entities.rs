@@ -443,7 +443,15 @@ pub fn vanilla_entity_type_is_chest_boat(entity_type_id: i32) -> bool {
 }
 
 pub(crate) fn is_vanilla_minecart_type(entity_type_id: i32) -> bool {
+    vanilla_entity_type_is_minecart(entity_type_id)
+}
+
+pub fn vanilla_entity_type_is_minecart(entity_type_id: i32) -> bool {
     schema::vanilla_entity_metadata_type_is_minecart(entity_type_id)
+}
+
+pub fn vanilla_entity_type_is_item_frame(entity_type_id: i32) -> bool {
+    schema::vanilla_entity_metadata_type_is_item_frame(entity_type_id)
 }
 
 pub(crate) fn is_vanilla_vehicle_entity_type(entity_type_id: i32) -> bool {

@@ -12603,3 +12603,9 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] world 导出 generated boat 与 chest-boat class-family typed query；native F3+I synthetic
   save projection 删除 20/10 项平行 matches，保留 save-data handler ownership，并逐项对照全部
   157 个 EntityType 的 generated membership。
+
+## 2026-07-12：Shared generated minecart and item-frame memberships
+
+- [x] world 导出 generated minecart 与 item-frame typed query；native entity-scene 删除 7 项
+  minecart model dispatch 与 2 项 item-frame no-render dispatch，F3+I 统一按 minecart family 写基类
+  数据、subtype 分支仅保留各自额外字段，item-frame save handler 同样改为 catalog guard。

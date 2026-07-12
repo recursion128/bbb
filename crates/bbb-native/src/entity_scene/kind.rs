@@ -157,13 +157,9 @@ pub(super) fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_CAT_ID => feline_model_kind(data_values, true, variant_registries),
         VANILLA_ENTITY_TYPE_OCELOT_ID => feline_model_kind(data_values, false, variant_registries),
         VANILLA_ENTITY_TYPE_RABBIT_ID => rabbit_model_kind(data_values),
-        VANILLA_ENTITY_TYPE_MINECART_ID
-        | VANILLA_ENTITY_TYPE_CHEST_MINECART_ID
-        | VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID
-        | VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID
-        | VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID
-        | VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID
-        | VANILLA_ENTITY_TYPE_TNT_MINECART_ID => EntityModelKind::Minecart,
+        _ if bbb_world::vanilla_entity_type_is_minecart(entity_type_id) => {
+            EntityModelKind::Minecart
+        }
         VANILLA_ENTITY_TYPE_AREA_EFFECT_CLOUD_ID => EntityModelKind::NoRender,
         VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID => EntityModelKind::Arrow {
             texture: ArrowModelTexture::Spectral,
@@ -279,7 +275,9 @@ pub(super) fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_GIANT_ID => EntityModelKind::Giant,
         // Item frames render via the 3D item-model pass (border + framed item, native `item_frames`),
         // not the entity-model scene.
-        VANILLA_ENTITY_TYPE_GLOW_ITEM_FRAME_ID => EntityModelKind::NoRender,
+        _ if bbb_world::vanilla_entity_type_is_item_frame(entity_type_id) => {
+            EntityModelKind::NoRender
+        }
         VANILLA_ENTITY_TYPE_GLOW_SQUID_ID => EntityModelKind::Squid {
             glow: true,
             baby: ageable_baby(data_values),
@@ -292,7 +290,6 @@ pub(super) fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_ITEM_DISPLAY_ID => {
             placeholder("todo_item_display_bounds", 1.0, 1.0, 1.0)
         }
-        VANILLA_ENTITY_TYPE_ITEM_FRAME_ID => EntityModelKind::NoRender,
         VANILLA_ENTITY_TYPE_LEASH_KNOT_ID => EntityModelKind::LeashKnot,
         // Lightning bolts render as custom `RenderTypes.lightning()` geometry on the weather target.
         VANILLA_ENTITY_TYPE_LIGHTNING_BOLT_ID => EntityModelKind::NoRender,
