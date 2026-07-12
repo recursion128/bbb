@@ -596,6 +596,9 @@ back into a todo. Do not delete these.
 - SetCursorItem updates carried state outside creative inventory; the creative
   screen suppression branch and remaining ItemStack added-value semantics are
   still open.
+- SetPlayerInventory now limits canonical state to vanilla inventory/equipment
+  slots 0..42. Tutorial pickup presentation and remaining ItemStack added-value
+  semantics are still open.
 - `BeaconMenu`: confirm/cancel hover state, effect highlighted hover state,
   labels/tooltips.
 - `EnchantmentMenu`: animated book model, enchanting glyph text and its

@@ -131,6 +131,51 @@ fn tracks_player_inventory_and_container_state() {
 }
 
 #[test]
+fn set_player_inventory_only_tracks_vanilla_inventory_and_equipment_slots() {
+    let mut store = WorldStore::new();
+
+    assert!(
+        !store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: -1,
+            item: item_stack(20, 1),
+        })
+    );
+    assert!(
+        !store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 43,
+            item: item_stack(21, 1),
+        })
+    );
+    assert!(store.inventory().player_slots.is_empty());
+
+    assert!(
+        store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: PLAYER_SADDLE_EQUIPMENT_SLOT,
+            item: item_stack(22, 1),
+        })
+    );
+    assert_eq!(
+        player_slot_item(&store, PLAYER_SADDLE_EQUIPMENT_SLOT),
+        item_stack(22, 1)
+    );
+    assert!(store.inventory().inventory_menu.slots.is_empty());
+
+    assert!(
+        store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 0,
+            item: item_stack(23, 2),
+        })
+    );
+    assert_eq!(player_slot_item(&store, 0), item_stack(23, 2));
+    assert_eq!(
+        inventory_menu_slot_item(&store, INVENTORY_MENU_HOTBAR_START),
+        item_stack(23, 2)
+    );
+    assert_eq!(store.counters().inventory_slot_updates_received, 4);
+    assert_eq!(store.counters().inventory_slots_tracked, 2);
+}
+
+#[test]
 fn container_set_data_only_updates_the_matching_active_menu() {
     let mut store = WorldStore::new();
 

@@ -220,10 +220,16 @@ pub(super) fn decode_set_cursor_item(decoder: &mut Decoder<'_>) -> Result<SetCur
 }
 
 pub(super) fn decode_set_player_inventory(decoder: &mut Decoder<'_>) -> Result<SetPlayerInventory> {
-    Ok(SetPlayerInventory {
+    let packet = SetPlayerInventory {
         slot: decoder.read_var_i32()?,
         item: decode_item_stack_summary(decoder)?,
-    })
+    };
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after set player inventory packet".to_string(),
+        ));
+    }
+    Ok(packet)
 }
 
 pub(super) fn decode_item_stack_summary(decoder: &mut Decoder<'_>) -> Result<ItemStackSummary> {
@@ -564,11 +570,9 @@ mod tests {
         payload.write_var_i32(42);
         payload.write_var_i32(0);
         payload.write_var_i32(0);
-        let packet = decode_play_clientbound(
-            ids::play::CLIENTBOUND_SET_PLAYER_INVENTORY,
-            &payload.into_inner(),
-        )
-        .unwrap();
+        let mut bytes = payload.into_inner();
+        let packet =
+            decode_play_clientbound(ids::play::CLIENTBOUND_SET_PLAYER_INVENTORY, &bytes).unwrap();
         assert_eq!(
             packet,
             PlayClientbound::SetPlayerInventory(SetPlayerInventory {
@@ -580,6 +584,12 @@ mod tests {
                 },
             })
         );
+        bytes.push(0);
+        let error = decode_play_clientbound(ids::play::CLIENTBOUND_SET_PLAYER_INVENTORY, &bytes)
+            .unwrap_err();
+        assert!(error
+            .to_string()
+            .contains("trailing bytes after set player inventory packet"));
     }
 
     #[test]

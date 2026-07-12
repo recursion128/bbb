@@ -206,6 +206,7 @@ const PLAYER_CHEST_EQUIPMENT_SLOT: i32 = 38;
 const PLAYER_HEAD_EQUIPMENT_SLOT: i32 = 39;
 const PLAYER_OFFHAND_SLOT: i32 = 40;
 const PLAYER_BODY_EQUIPMENT_SLOT: i32 = 41;
+const PLAYER_SADDLE_EQUIPMENT_SLOT: i32 = 42;
 const INVENTORY_MENU_CONTAINER_ID: i32 = 0;
 const INVENTORY_MENU_MAIN_START: i16 = 9;
 const INVENTORY_MENU_MAIN_END: i16 = 36;
@@ -521,9 +522,12 @@ impl InventoryState {
         &mut self,
         counters: &mut WorldCounters,
         packet: ProtocolSetPlayerInventory,
-    ) {
+    ) -> bool {
         counters.inventory_slot_updates_received += 1;
         let slot_id = packet.slot;
+        if !(0..=PLAYER_SADDLE_EQUIPMENT_SLOT).contains(&slot_id) {
+            return false;
+        }
         let menu_slot = inventory_slot_to_inventory_menu_slot(slot_id);
         let item = packet.item;
         set_inventory_slot(
@@ -545,6 +549,7 @@ impl InventoryState {
             );
         }
         self.update_inventory_slot_count(counters);
+        true
     }
 
     pub(crate) fn apply_set_cursor_item(
@@ -2030,7 +2035,7 @@ macro_rules! inventory_ctx {
 /// `WorldStore` keeps the public signatures and forwards, splitting off
 /// cross-domain borrows explicitly.
 impl WorldStore {
-    pub fn apply_set_player_inventory(&mut self, packet: ProtocolSetPlayerInventory) {
+    pub fn apply_set_player_inventory(&mut self, packet: ProtocolSetPlayerInventory) -> bool {
         self.inventory
             .apply_set_player_inventory(&mut self.counters, packet)
     }

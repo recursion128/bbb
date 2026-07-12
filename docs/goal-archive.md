@@ -11442,3 +11442,9 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   carried-item replacement、world ownership 与跨 crate tests 闭合。
 - [x] creative inventory screen suppression 与剩余 ItemStack added-value component 语义保持 canonical/runtime
   partial，不把现有 summary projection 冒充完整栈语义。
+
+## 2026-07-12：play set-player-inventory packet coverage audit
+
+- [x] 对照 `ClientboundSetPlayerInventoryPacket` 锁定 slot VarInt + optional ItemStack wire并拒绝 trailing bytes。
+- [x] world 只接受 vanilla `Inventory.setItem` 可观察的 0..35 inventory 与 36..42 equipment mapping；负数和未知
+  正 slot 不再进入 synthetic player inventory。decode/ownership/tests 闭合，tutorial/component 语义保持 partial。
