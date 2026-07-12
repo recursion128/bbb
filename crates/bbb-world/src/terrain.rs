@@ -473,7 +473,7 @@ pub fn block_name_is_ore(name: &str) -> bool {
 }
 
 pub(crate) fn block_name_has_empty_collision_shape(name: &str) -> bool {
-    name.contains("sapling")
+    block_name_is_sapling(name)
         || matches!(
             name,
             "minecraft:short_grass"
@@ -832,6 +832,19 @@ mod tests {
         assert!(block_name_is_sapling("minecraft:mangrove_propagule"));
         assert!(!block_name_is_sapling("minecraft:bamboo_sapling"));
         assert!(!block_name_is_sapling("minecraft:custom_sapling"));
+        assert!(block_name_has_empty_collision_shape(
+            "minecraft:oak_sapling"
+        ));
+        assert!(block_name_has_empty_collision_shape(
+            "minecraft:mangrove_propagule"
+        ));
+        assert!(!block_name_has_empty_collision_shape(
+            "minecraft:bamboo_sapling"
+        ));
+        assert!(!block_name_has_empty_collision_shape(
+            "minecraft:custom_sapling"
+        ));
+        assert!(!block_name_has_empty_collision_shape("example:oak_sapling"));
         assert!(block_name_is_bars_or_pane("minecraft:copper_bars"));
         assert!(block_name_is_bars_or_pane(
             "minecraft:white_stained_glass_pane"

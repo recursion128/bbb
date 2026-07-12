@@ -12402,3 +12402,11 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   只对 generated vanilla membership 分配 STONE、DEEPSLATE 或 NETHER map color；custom 与其他
   namespace lookalike 不再获得伪造颜色。颜色选择仍由 native 呈现语义拥有，生成表只提供
   tag/resource membership。
+
+## 2026-07-12：Reused exact sapling collision membership
+
+- [x] world empty-collision gate 改为复用既有 Tree-sitter 生成的九项 `SaplingBlock` 闭包，删除
+  `contains("sapling")` 名称猜测；oak 等八种 sapling 与 tag 外的 mangrove propagule 继续保持
+  空碰撞，`bamboo_sapling`、custom 及其他 namespace lookalike 不再被冒充为 vanilla sapling。
+- [x] 本切片只收敛 sapling membership；empty-collision 中其他仍待来源审计的手写成员保持原样，
+  没有把 class membership 生成物扩张为 collision-shape 算法。
