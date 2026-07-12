@@ -98,6 +98,10 @@ Owner: `bbb-protocol`
 - Merge `ClientSuggestionProvider` custom completion ADD/REMOVE/SET state into
   native chat-input suggestion candidates. Canonical state is tracked, but the
   current Tab completion path only consumes request-scoped server suggestions.
+- Preserve rich Components for command-suggestion tooltips and render vanilla's
+  scrollable suggestion list, selection suffix, hover tooltip and narration.
+  Matching responses currently support safe first-result Tab replacement;
+  stale/wrong transaction ids are ignored.
 
 ## Vanilla Java generator frontend migration
 

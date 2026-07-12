@@ -847,7 +847,7 @@ fn command_suggestions_event_updates_world_and_world_counters() {
     let (tx, mut rx) = mpsc::channel(1);
     tx.try_send(NetEvent::Play(PlayClientbound::CommandSuggestions(
         bbb_protocol::packets::CommandSuggestions {
-            id: 7,
+            id: 0,
             start: 1,
             length: 4,
             suggestions: vec![
@@ -865,6 +865,7 @@ fn command_suggestions_event_updates_world_and_world_counters() {
     .unwrap();
 
     let mut world = WorldStore::new();
+    assert_eq!(world.next_command_suggestion_request("/give").id, 0);
     let mut counters = NetCounters::default();
 
     assert_eq!(
@@ -874,7 +875,7 @@ fn command_suggestions_event_updates_world_and_world_counters() {
     assert_eq!(world.counters().command_suggestion_packets, 1);
     assert_eq!(world.counters().command_suggestion_entries_tracked, 2);
 
-    let result = world.command_suggestions_by_id(7).unwrap();
+    let result = world.command_suggestions_by_id(0).unwrap();
     assert_eq!(result.start, 1);
     assert_eq!(result.length, 4);
     assert_eq!(result.suggestions.len(), 2);

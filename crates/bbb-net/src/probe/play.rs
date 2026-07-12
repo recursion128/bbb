@@ -459,9 +459,10 @@ mod tests {
             ))
             .await
             .unwrap();
+        assert_eq!(probe.world.next_command_suggestion_request("/give").id, 0);
         probe
             .handle_play_packet(PlayClientbound::CommandSuggestions(CommandSuggestions {
-                id: 77,
+                id: 0,
                 start: 1,
                 length: 4,
                 suggestions: vec![
@@ -492,7 +493,7 @@ mod tests {
 
         let suggestions = report
             .world
-            .command_suggestions_by_id(77)
+            .command_suggestions_by_id(0)
             .expect("suggestions tracked by id");
         assert_eq!(suggestions.start, 1);
         assert_eq!(suggestions.length, 4);

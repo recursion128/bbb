@@ -56,6 +56,12 @@ pub(super) fn decode_command_suggestions(decoder: &mut Decoder<'_>) -> Result<Co
         });
     }
 
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after command suggestions packet".to_string(),
+        ));
+    }
+
     Ok(CommandSuggestions {
         id,
         start,
@@ -123,6 +129,15 @@ mod tests {
         assert_eq!(decoder.read_string(32767).unwrap(), "gamemode");
         assert!(!decoder.read_bool().unwrap());
         assert!(decoder.is_empty());
+
+        let mut trailing = payload.clone();
+        trailing.push(0);
+        assert!(
+            decode_play_clientbound(ids::play::CLIENTBOUND_COMMAND_SUGGESTIONS, &trailing)
+                .unwrap_err()
+                .to_string()
+                .contains("trailing bytes after command suggestions packet")
+        );
     }
 
     #[test]

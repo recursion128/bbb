@@ -5357,29 +5357,47 @@
       "constant_name": "CLIENTBOUND_COMMAND_SUGGESTIONS",
       "coverage": {
         "canonical_apply": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
+          "evidence": [
+            "crates/bbb-world/src/client/command_suggestions.rs#apply_command_suggestions",
+            "vanilla:net/minecraft/client/multiplayer/ClientSuggestionProvider.java#completeCustomSuggestions"
+          ],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
           "status": "partial"
         },
         "decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/command_suggestions.rs#decodes_command_suggestions_packet_wire_order",
+            "vanilla:net/minecraft/network/protocol/game/ClientboundCommandSuggestionsPacket.java#STREAM_CODEC"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "ownership": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/play_apply.rs#PlayClientbound::CommandSuggestions"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "runtime_side_effect": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
+          "evidence": [
+            "crates/bbb-native/src/input.rs#latest_command_suggestion_text",
+            "vanilla:net/minecraft/client/gui/components/CommandSuggestions.java#SuggestionsList"
+          ],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
           "status": "partial"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/command_suggestions.rs#decodes_command_suggestions_packet_wire_order",
+            "crates/bbb-world/src/client/command_suggestions.rs#command_suggestions_ignore_stale_and_clear_matching_pending_request",
+            "crates/bbb-net/src/probe/play.rs#probe_applies_command_suggestion_packets_to_world",
+            "crates/bbb-native/src/runtime/events/tests/session_protocol_events.rs#command_suggestions_event_updates_world_and_world_counters",
+            "crates/bbb-native/src/input/tests.rs#command_entry_tab_applies_latest_suggestion_range",
+            "crates/bbb-native/src/input/tests.rs#command_entry_tab_ignores_stale_suggestion_response"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "clientbound",

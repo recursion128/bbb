@@ -18,6 +18,8 @@ pub struct CommandSuggestionsState {
     #[serde(default)]
     pub last_request: Option<CommandSuggestionRequestState>,
     #[serde(default)]
+    pub pending_request_id: Option<i32>,
+    #[serde(default)]
     pub custom_completions: BTreeSet<String>,
     #[serde(default)]
     pub last_custom_completion_update: Option<CustomChatCompletionUpdateState>,
@@ -83,6 +85,7 @@ impl WorldStore {
                 self.command_suggestions.next_request_id + 1
             };
         self.command_suggestions.last_request = Some(request.clone());
+        self.command_suggestions.pending_request_id = Some(request.id);
         request
     }
 
@@ -117,17 +120,18 @@ impl WorldStore {
     pub fn apply_command_suggestions(
         &mut self,
         packet: ProtocolCommandSuggestions,
-    ) -> &CommandSuggestionsResultState {
+    ) -> Option<&CommandSuggestionsResultState> {
         self.counters.command_suggestion_packets += 1;
         let id = packet.id;
+        if self.command_suggestions.pending_request_id != Some(id) {
+            return None;
+        }
+        self.command_suggestions.pending_request_id = None;
         let result = CommandSuggestionsResultState::from(packet);
         self.command_suggestions.last_id = Some(id);
         self.command_suggestions.by_id.insert(id, result);
         self.update_command_suggestion_count();
-        self.command_suggestions
-            .by_id
-            .get(&id)
-            .expect("command suggestions result was inserted")
+        self.command_suggestions.by_id.get(&id)
     }
 
     pub fn command_suggestions(&self) -> &CommandSuggestionsState {
@@ -266,6 +270,7 @@ mod tests {
     #[test]
     fn command_suggestions_store_by_id_and_last_response() {
         let mut store = WorldStore::new();
+        store.command_suggestions.pending_request_id = Some(7);
         store.apply_command_suggestions(CommandSuggestions {
             id: 7,
             start: 1,
@@ -296,6 +301,7 @@ mod tests {
     #[test]
     fn command_suggestions_update_existing_response_id() {
         let mut store = WorldStore::new();
+        store.command_suggestions.pending_request_id = Some(7);
         store.apply_command_suggestions(CommandSuggestions {
             id: 7,
             start: 0,
@@ -305,6 +311,7 @@ mod tests {
                 tooltip: None,
             }],
         });
+        store.command_suggestions.pending_request_id = Some(7);
         store.apply_command_suggestions(CommandSuggestions {
             id: 7,
             start: 2,
@@ -326,6 +333,7 @@ mod tests {
     #[test]
     fn command_suggestions_count_all_cached_entries() {
         let mut store = WorldStore::new();
+        store.command_suggestions.pending_request_id = Some(7);
         store.apply_command_suggestions(CommandSuggestions {
             id: 7,
             start: 0,
@@ -335,6 +343,7 @@ mod tests {
                 tooltip: None,
             }],
         });
+        store.command_suggestions.pending_request_id = Some(8);
         store.apply_command_suggestions(CommandSuggestions {
             id: 8,
             start: 0,
@@ -353,5 +362,50 @@ mod tests {
 
         assert_eq!(store.command_suggestions().by_id.len(), 2);
         assert_eq!(store.counters().command_suggestion_entries_tracked, 3);
+    }
+
+    #[test]
+    fn command_suggestions_ignore_stale_and_clear_matching_pending_request() {
+        let mut store = WorldStore::new();
+        store.command_suggestions.next_request_id = 7;
+        let request = store.next_command_suggestion_request("/give");
+        assert_eq!(request.id, 7);
+
+        assert!(store
+            .apply_command_suggestions(CommandSuggestions {
+                id: 6,
+                start: 1,
+                length: 3,
+                suggestions: vec![CommandSuggestion {
+                    text: "stale".to_string(),
+                    tooltip: None,
+                }],
+            })
+            .is_none());
+        assert_eq!(store.command_suggestions.pending_request_id, Some(7));
+        assert!(store.command_suggestions.by_id.is_empty());
+
+        assert!(store
+            .apply_command_suggestions(CommandSuggestions {
+                id: 7,
+                start: 1,
+                length: 4,
+                suggestions: vec![CommandSuggestion {
+                    text: "give".to_string(),
+                    tooltip: None,
+                }],
+            })
+            .is_some());
+        assert_eq!(store.command_suggestions.pending_request_id, None);
+
+        assert!(store
+            .apply_command_suggestions(CommandSuggestions {
+                id: 6,
+                start: 0,
+                length: 0,
+                suggestions: Vec::new(),
+            })
+            .is_none());
+        assert_eq!(store.command_suggestions().last_id, Some(7));
     }
 }

@@ -11298,3 +11298,11 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] 对照 `ClientboundCustomChatCompletionsPacket` 与 `ClientSuggestionProvider.modifyCustomCompletions`
   锁定 ADD/REMOVE/SET ordinal、string list wire 并拒绝 trailing bytes；canonical/ownership/tests 闭合。
 - [x] native chat Tab path 尚未把 custom set 合并进 suggestion candidates，runtime 保持 partial。
+
+## 2026-07-12：command-suggestions packet coverage audit
+
+- [x] 对照 `ClientboundCommandSuggestionsPacket` 与 `completeCustomSuggestions` 锁定 id/range/list/
+  optional trusted Component wire并拒绝 trailing bytes；world 只接受当前 pending id，stale/wrong/late response
+  不再覆盖已接受结果。
+- [x] native Tab 安全应用首项 replacement range；rich tooltip 与完整 scroll/select/hover/narration list UI
+  仍未实现，canonical/runtime 保持 partial，decode/ownership/tests 闭合。
