@@ -57,6 +57,8 @@ pub struct WorldLevelInfo {
     #[serde(default = "world_level_has_sky_light_default")]
     pub has_sky_light: bool,
     #[serde(default)]
+    pub has_ceiling: bool,
+    #[serde(default)]
     pub cardinal_lighting: WorldCardinalLighting,
     #[serde(default)]
     pub skybox: WorldSkybox,
@@ -89,6 +91,14 @@ pub enum WorldSkybox {
 impl WorldLevelInfo {
     pub fn has_sky_light(&self) -> bool {
         self.has_sky_light
+    }
+
+    pub fn has_ceiling(&self) -> bool {
+        self.has_ceiling
+    }
+
+    pub fn can_have_weather(&self) -> bool {
+        self.has_sky_light && !self.has_ceiling && self.dimension != "minecraft:the_end"
     }
 
     pub fn cardinal_lighting(&self) -> WorldCardinalLighting {
@@ -424,6 +434,11 @@ impl WorldStore {
                     &spawn_info.dimension,
                 )
             });
+        let has_ceiling = dimension_type
+            .and_then(|projection| projection.has_ceiling)
+            .unwrap_or_else(|| {
+                built_in_dimension_has_ceiling(spawn_info.dimension_type_id, &spawn_info.dimension)
+            });
         let cardinal_lighting = dimension_type
             .and_then(|projection| projection.cardinal_lighting)
             .unwrap_or_else(|| {
@@ -458,6 +473,7 @@ impl WorldStore {
             dimension_type_id: spawn_info.dimension_type_id,
             dimension_type_name,
             has_sky_light,
+            has_ceiling,
             cardinal_lighting,
             skybox,
             ambient_light,
@@ -681,6 +697,10 @@ fn built_in_dimension_has_sky_light(dimension_type_id: i32, dimension: &str) -> 
     )
 }
 
+fn built_in_dimension_has_ceiling(dimension_type_id: i32, dimension: &str) -> bool {
+    dimension_profile(dimension_type_id, dimension).name == Some("minecraft:the_nether")
+}
+
 fn built_in_dimension_skybox(dimension_type_id: i32, dimension: &str) -> WorldSkybox {
     match dimension_profile(dimension_type_id, dimension).name {
         Some("minecraft:the_nether") => WorldSkybox::None,
@@ -701,6 +721,7 @@ fn built_in_dimension_ambient_light(dimension_type_id: i32, dimension: &str) -> 
 struct DimensionTypeClientProjection {
     dimension: Option<WorldDimension>,
     has_sky_light: Option<bool>,
+    has_ceiling: Option<bool>,
     cardinal_lighting: Option<WorldCardinalLighting>,
     skybox: Option<WorldSkybox>,
     ambient_light: Option<f32>,
@@ -715,6 +736,10 @@ fn dimension_type_client_projection_from_registry(
     };
     let dimension = dimension_type_shape_from_fields(&fields);
     let has_sky_light = match find_nbt_entry(&fields, "has_skylight") {
+        Some(NbtValue::Byte(value)) => Some(*value != 0),
+        _ => None,
+    };
+    let has_ceiling = match find_nbt_entry(&fields, "has_ceiling") {
         Some(NbtValue::Byte(value)) => Some(*value != 0),
         _ => None,
     };
@@ -735,6 +760,7 @@ fn dimension_type_client_projection_from_registry(
     Some(DimensionTypeClientProjection {
         dimension,
         has_sky_light,
+        has_ceiling,
         cardinal_lighting,
         skybox,
         ambient_light,
@@ -1062,6 +1088,7 @@ mod tests {
             dimension_type_id: 1,
             dimension_type_name: Some("minecraft:the_nether".to_string()),
             has_sky_light: false,
+            has_ceiling: true,
             cardinal_lighting: WorldCardinalLighting::Nether,
             skybox: WorldSkybox::None,
             ambient_light: 0.1,
@@ -1575,7 +1602,14 @@ mod tests {
         let mut custom_nether = WorldStore::new();
         record_custom_dimension_type_registry(
             &mut custom_nether,
-            dimension_type_nbt(Some("nether"), Some(false), None, Some("none"), Some(0.1)),
+            dimension_type_nbt(
+                Some("nether"),
+                Some(false),
+                Some(true),
+                None,
+                Some("none"),
+                Some(0.1),
+            ),
         );
         custom_nether.apply_login(&login_packet(4, "example:custom"));
         assert!(!custom_nether.level_info().unwrap().has_sky_light());
@@ -1591,7 +1625,7 @@ mod tests {
         let mut omitted_field = WorldStore::new();
         record_custom_dimension_type_registry(
             &mut omitted_field,
-            dimension_type_nbt(None, None, None, None, None),
+            dimension_type_nbt(None, None, None, None, None, None),
         );
         omitted_field.apply_login(&login_packet(4, "minecraft:the_nether"));
         assert_eq!(
@@ -1607,6 +1641,7 @@ mod tests {
             &mut custom,
             dimension_type_nbt(
                 None,
+                Some(true),
                 Some(true),
                 Some((-32, 512, 384)),
                 Some("end"),
@@ -1627,6 +1662,8 @@ mod tests {
         );
         assert_eq!(custom.level_info().unwrap().skybox(), WorldSkybox::End);
         assert_eq!(custom.level_info().unwrap().ambient_light(), 0.35);
+        assert!(custom.level_info().unwrap().has_ceiling());
+        assert!(!custom.level_info().unwrap().can_have_weather());
 
         for invalid_shape in [
             (-31, 512, 384),
@@ -1639,7 +1676,7 @@ mod tests {
             let mut invalid = WorldStore::new();
             record_custom_dimension_type_registry(
                 &mut invalid,
-                dimension_type_nbt(None, Some(true), Some(invalid_shape), None, None),
+                dimension_type_nbt(None, Some(true), None, Some(invalid_shape), None, None),
             );
             invalid.apply_login(&login_packet(4, "example:custom"));
             assert_eq!(invalid.dimension(), WorldDimension::default());
@@ -1716,6 +1753,7 @@ mod tests {
     fn dimension_type_nbt(
         cardinal_light: Option<&str>,
         has_sky_light: Option<bool>,
+        has_ceiling: Option<bool>,
         shape: Option<(i32, i32, i32)>,
         skybox: Option<&str>,
         ambient_light: Option<f32>,
@@ -1736,6 +1774,11 @@ mod tests {
             payload.push(1);
             write_nbt_string(&mut payload, "has_skylight");
             payload.push(u8::from(has_sky_light));
+        }
+        if let Some(has_ceiling) = has_ceiling {
+            payload.push(1);
+            write_nbt_string(&mut payload, "has_ceiling");
+            payload.push(u8::from(has_ceiling));
         }
         if let Some(cardinal_light) = cardinal_light {
             payload.push(8);

@@ -12161,3 +12161,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] `DimensionType.ambient_light` 的 NBT float 现在进入 `WorldLevelInfo`，无 registry 时按 vanilla builtins 使用 overworld `0.0`、nether `0.1`、end `0.25`；custom `0.35` holder projection 有 focused test。
 - [x] renderer `LightmapInfo` 增加 ambient-light scalar，brightness 改为 vanilla `mix(level/(4-3*level), 1, ambientLight)`，与 environment ambient RGB 分离；non-finite runtime input在 uniform sanitation 中 fail closed 为 `0.0`。
+
+## 2026-07-12：typed dimension weather gate
+
+- [x] `DimensionType.has_ceiling` 现在与既有 `has_skylight` 一起进入 `WorldLevelInfo`；world semantic owner 提供 vanilla `hasSkyLight && !hasCeiling && dimension != END` 的 `can_have_weather` 查询。
+- [x] native weather renderer 删除 `dimension_type_id == 0` bootstrap 猜测；custom holder 0 即使有 skylight、只要 ceiling=true 也不会生成降水，builtin overworld/nether tests 保持通过。

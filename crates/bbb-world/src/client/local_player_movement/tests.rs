@@ -3293,6 +3293,7 @@ fn local_player_in_nether_lava_current_uses_fast_lava_push() {
         dimension_type_id: 1,
         dimension_type_name: Some("minecraft:the_nether".to_string()),
         has_sky_light: false,
+        has_ceiling: true,
         cardinal_lighting: WorldCardinalLighting::Nether,
         skybox: crate::WorldSkybox::None,
         ambient_light: 0.1,

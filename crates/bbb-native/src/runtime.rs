@@ -11206,9 +11206,9 @@ fn lightning_bolt_seed(uuid: uuid::Uuid) -> i64 {
 }
 
 fn world_can_have_weather(world: &WorldStore) -> bool {
-    world.level_info().is_some_and(|level| {
-        level.dimension == "minecraft:overworld" || level.dimension_type_id == 0
-    })
+    world
+        .level_info()
+        .is_some_and(WorldLevelInfo::can_have_weather)
 }
 
 fn weather_precipitation_at(

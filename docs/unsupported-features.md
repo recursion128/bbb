@@ -84,7 +84,7 @@ Owner: `bbb-protocol`
   that runtime. Custom dimension presentation still needs typed environment
   attributes instead of treating unknown resource identities as a vanilla
   lightmap/fog dimension kind; typed `skybox` and direct `ambient_light`
-  projections are complete.
+  projections plus `has_skylight`/`has_ceiling` weather gating are complete.
 - Complete play Login session initialization beyond the current player-id and
   partial dimension/gameplay projection: retain the initial level set, chunk
   radius, simulation distance, secure-chat enforcement, seed and portal
