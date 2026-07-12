@@ -49,7 +49,7 @@ impl WorldDimension {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct WorldLevelInfo {
     pub dimension: String,
     pub dimension_type_id: i32,
@@ -60,6 +60,8 @@ pub struct WorldLevelInfo {
     pub cardinal_lighting: WorldCardinalLighting,
     #[serde(default)]
     pub skybox: WorldSkybox,
+    #[serde(default)]
+    pub ambient_light: f32,
     #[serde(default)]
     pub last_death_location: Option<WorldGlobalPos>,
     pub sea_level: i32,
@@ -95,6 +97,10 @@ impl WorldLevelInfo {
 
     pub fn skybox(&self) -> WorldSkybox {
         self.skybox
+    }
+
+    pub fn ambient_light(&self) -> f32 {
+        self.ambient_light
     }
 }
 
@@ -431,6 +437,14 @@ impl WorldStore {
             .unwrap_or_else(|| {
                 built_in_dimension_skybox(spawn_info.dimension_type_id, &spawn_info.dimension)
             });
+        let ambient_light = dimension_type
+            .and_then(|projection| projection.ambient_light)
+            .unwrap_or_else(|| {
+                built_in_dimension_ambient_light(
+                    spawn_info.dimension_type_id,
+                    &spawn_info.dimension,
+                )
+            });
         let dimension_key_changed = self
             .level
             .as_ref()
@@ -446,6 +460,7 @@ impl WorldStore {
             has_sky_light,
             cardinal_lighting,
             skybox,
+            ambient_light,
             last_death_location: spawn_info
                 .last_death_location
                 .as_ref()
@@ -674,12 +689,21 @@ fn built_in_dimension_skybox(dimension_type_id: i32, dimension: &str) -> WorldSk
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+fn built_in_dimension_ambient_light(dimension_type_id: i32, dimension: &str) -> f32 {
+    match dimension_profile(dimension_type_id, dimension).name {
+        Some("minecraft:the_nether") => 0.1,
+        Some("minecraft:the_end") => 0.25,
+        _ => 0.0,
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
 struct DimensionTypeClientProjection {
     dimension: Option<WorldDimension>,
     has_sky_light: Option<bool>,
     cardinal_lighting: Option<WorldCardinalLighting>,
     skybox: Option<WorldSkybox>,
+    ambient_light: Option<f32>,
 }
 
 fn dimension_type_client_projection_from_registry(
@@ -704,11 +728,16 @@ fn dimension_type_client_projection_from_registry(
         None => Some(WorldSkybox::Overworld),
         _ => None,
     };
+    let ambient_light = match find_nbt_entry(&fields, "ambient_light") {
+        Some(NbtValue::Float(value)) => Some(*value),
+        _ => None,
+    };
     Some(DimensionTypeClientProjection {
         dimension,
         has_sky_light,
         cardinal_lighting,
         skybox,
+        ambient_light,
     })
 }
 
@@ -1035,6 +1064,7 @@ mod tests {
             has_sky_light: false,
             cardinal_lighting: WorldCardinalLighting::Nether,
             skybox: WorldSkybox::None,
+            ambient_light: 0.1,
             last_death_location: None,
             sea_level: 32,
             is_debug: false,
@@ -1545,7 +1575,7 @@ mod tests {
         let mut custom_nether = WorldStore::new();
         record_custom_dimension_type_registry(
             &mut custom_nether,
-            dimension_type_nbt(Some("nether"), Some(false), None, Some("none")),
+            dimension_type_nbt(Some("nether"), Some(false), None, Some("none"), Some(0.1)),
         );
         custom_nether.apply_login(&login_packet(4, "example:custom"));
         assert!(!custom_nether.level_info().unwrap().has_sky_light());
@@ -1561,7 +1591,7 @@ mod tests {
         let mut omitted_field = WorldStore::new();
         record_custom_dimension_type_registry(
             &mut omitted_field,
-            dimension_type_nbt(None, None, None, None),
+            dimension_type_nbt(None, None, None, None, None),
         );
         omitted_field.apply_login(&login_packet(4, "minecraft:the_nether"));
         assert_eq!(
@@ -1575,7 +1605,13 @@ mod tests {
         let mut custom = WorldStore::new();
         record_custom_dimension_type_registry(
             &mut custom,
-            dimension_type_nbt(None, Some(true), Some((-32, 512, 384)), Some("end")),
+            dimension_type_nbt(
+                None,
+                Some(true),
+                Some((-32, 512, 384)),
+                Some("end"),
+                Some(0.35),
+            ),
         );
         custom.apply_login(&login_packet(4, "example:custom"));
         assert_eq!(
@@ -1590,6 +1626,7 @@ mod tests {
             }
         );
         assert_eq!(custom.level_info().unwrap().skybox(), WorldSkybox::End);
+        assert_eq!(custom.level_info().unwrap().ambient_light(), 0.35);
 
         for invalid_shape in [
             (-31, 512, 384),
@@ -1602,7 +1639,7 @@ mod tests {
             let mut invalid = WorldStore::new();
             record_custom_dimension_type_registry(
                 &mut invalid,
-                dimension_type_nbt(None, Some(true), Some(invalid_shape), None),
+                dimension_type_nbt(None, Some(true), Some(invalid_shape), None, None),
             );
             invalid.apply_login(&login_packet(4, "example:custom"));
             assert_eq!(invalid.dimension(), WorldDimension::default());
@@ -1681,6 +1718,7 @@ mod tests {
         has_sky_light: Option<bool>,
         shape: Option<(i32, i32, i32)>,
         skybox: Option<&str>,
+        ambient_light: Option<f32>,
     ) -> Vec<u8> {
         let mut payload = vec![10];
         if let Some((min_y, height, logical_height)) = shape {
@@ -1708,6 +1746,11 @@ mod tests {
             payload.push(8);
             write_nbt_string(&mut payload, "skybox");
             write_nbt_string(&mut payload, skybox);
+        }
+        if let Some(ambient_light) = ambient_light {
+            payload.push(5);
+            write_nbt_string(&mut payload, "ambient_light");
+            payload.extend_from_slice(&ambient_light.to_bits().to_be_bytes());
         }
         payload.push(0);
         payload

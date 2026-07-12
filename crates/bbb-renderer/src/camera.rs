@@ -61,6 +61,7 @@ pub(crate) enum LightingEntry {
 pub struct LightmapEnvironment {
     pub sky_factor: f32,
     pub block_factor: f32,
+    pub ambient_light: f32,
     pub night_vision_factor: f32,
     pub darkness_scale: f32,
     pub boss_overlay_world_darkening: f32,
@@ -77,6 +78,7 @@ impl Default for LightmapEnvironment {
         Self {
             sky_factor: VANILLA_DEFAULT_LIGHTMAP_SKY_FACTOR,
             block_factor: VANILLA_DEFAULT_LIGHTMAP_BLOCK_FACTOR,
+            ambient_light: 0.0,
             night_vision_factor: 0.0,
             darkness_scale: 0.0,
             boss_overlay_world_darkening: 0.0,
@@ -95,6 +97,7 @@ impl LightmapEnvironment {
         Self {
             sky_factor: sanitize_unit_factor(self.sky_factor, VANILLA_DEFAULT_LIGHTMAP_SKY_FACTOR),
             block_factor: sanitize_lightmap_block_factor(self.block_factor),
+            ambient_light: sanitize_unit_factor(self.ambient_light, 0.0),
             night_vision_factor: sanitize_unit_factor(self.night_vision_factor, 0.0),
             darkness_scale: sanitize_unit_factor(self.darkness_scale, 0.0),
             boss_overlay_world_darkening: sanitize_unit_factor(
@@ -604,6 +607,7 @@ impl CameraUniform {
             darkness_scale: self.lightmap_factors[3],
             boss_overlay_world_darkening: self.lightmap_effects[0],
             brightness_factor: self.lightmap_effects[1],
+            ambient_light: self.lightmap_effects[2],
             block_light_tint: self.block_light_tint[0..3].try_into().unwrap(),
             sky_light_color: self.sky_light_color[0..3].try_into().unwrap(),
             ambient_color: self.ambient_color[0..3].try_into().unwrap(),
@@ -696,7 +700,7 @@ impl CameraUniform {
             lightmap_effects: [
                 environment.boss_overlay_world_darkening,
                 environment.brightness_factor,
-                0.0,
+                environment.ambient_light,
                 0.0,
             ],
             block_light_tint: rgb_to_vec4(environment.block_light_tint),
@@ -1376,6 +1380,7 @@ mod tests {
         let environment = LightmapEnvironment {
             sky_factor: 1.5,
             block_factor: -2.0,
+            ambient_light: f32::NAN,
             night_vision_factor: f32::NAN,
             darkness_scale: 0.25,
             boss_overlay_world_darkening: -0.5,
@@ -1392,6 +1397,7 @@ mod tests {
 
         assert_eq!(sanitized.sky_factor, 1.0);
         assert_eq!(sanitized.block_factor, 0.0);
+        assert_eq!(sanitized.ambient_light, 0.0);
         assert_eq!(sanitized.night_vision_factor, 0.0);
         assert_eq!(sanitized.darkness_scale, 0.25);
         assert_eq!(sanitized.boss_overlay_world_darkening, 0.0);

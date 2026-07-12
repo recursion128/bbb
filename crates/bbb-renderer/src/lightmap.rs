@@ -12,7 +12,8 @@ struct LightmapInfo {
     DarknessScale: f32,
     BossOverlayWorldDarkeningFactor: f32,
     BrightnessFactor: f32,
-    _padding0: vec2<f32>,
+    AmbientLight: f32,
+    _padding0: f32,
     BlockLightTint: vec4<f32>,
     SkyLightColor: vec4<f32>,
     AmbientColor: vec4<f32>,
@@ -43,7 +44,8 @@ fn vs_main(@builtin(vertex_index) vertex_index: u32) -> VertexOut {
 }
 
 fn getBrightness(level: f32) -> f32 {
-    return level / (4.0 - 3.0 * level);
+    let curved = level / (4.0 - 3.0 * level);
+    return mix(curved, 1.0, lightmapInfo.AmbientLight);
 }
 
 fn notGamma(color: vec3<f32>) -> vec3<f32> {
@@ -105,7 +107,8 @@ struct LightmapUniform {
     darkness_scale: f32,
     boss_overlay_world_darkening_factor: f32,
     brightness_factor: f32,
-    _padding0: [f32; 2],
+    ambient_light: f32,
+    _padding0: f32,
     block_light_tint: [f32; 4],
     sky_light_color: [f32; 4],
     ambient_color: [f32; 4],
@@ -122,7 +125,8 @@ impl LightmapUniform {
             darkness_scale: environment.darkness_scale,
             boss_overlay_world_darkening_factor: environment.boss_overlay_world_darkening,
             brightness_factor: environment.brightness_factor,
-            _padding0: [0.0; 2],
+            ambient_light: environment.ambient_light,
+            _padding0: 0.0,
             block_light_tint: rgb_to_vec4(environment.block_light_tint),
             sky_light_color: rgb_to_vec4(environment.sky_light_color),
             ambient_color: rgb_to_vec4(environment.ambient_color),
@@ -314,11 +318,12 @@ mod tests {
 
     #[test]
     fn lightmap_uniform_matches_vanilla_lightmap_info_layout() {
-        // Vanilla LightmapInfo is six scalar factors followed by four std140 vec3 colors.
+        // Seven scalar factors plus padding, followed by four std140 vec3 colors.
         assert_eq!(std::mem::size_of::<LightmapUniform>(), 96);
         let uniform = LightmapUniform::from_environment(LightmapEnvironment {
             sky_factor: 0.25,
             block_factor: 1.5,
+            ambient_light: 0.2,
             night_vision_factor: 0.75,
             darkness_scale: 0.125,
             boss_overlay_world_darkening: 0.5,
@@ -335,6 +340,7 @@ mod tests {
         assert_eq!(uniform.darkness_scale, 0.125);
         assert_eq!(uniform.boss_overlay_world_darkening_factor, 0.5);
         assert_eq!(uniform.brightness_factor, 0.875);
+        assert_eq!(uniform.ambient_light, 0.2);
         assert_eq!(uniform.block_light_tint, [0.1, 0.2, 0.3, 0.0]);
         assert_eq!(uniform.sky_light_color, [0.4, 0.5, 0.6, 0.0]);
         assert_eq!(uniform.ambient_color, [0.7, 0.8, 0.9, 0.0]);
@@ -346,6 +352,7 @@ mod tests {
         assert!(LIGHTMAP_SHADER.contains("floor(input.tex_coord.x * 16.0) / 15.0"));
         assert!(LIGHTMAP_SHADER.contains("floor(input.tex_coord.y * 16.0) / 15.0"));
         assert!(LIGHTMAP_SHADER.contains("level / (4.0 - 3.0 * level)"));
+        assert!(LIGHTMAP_SHADER.contains("mix(curved, 1.0, lightmapInfo.AmbientLight)"));
         assert!(LIGHTMAP_SHADER
             .contains("lightmapInfo.NightVisionColor.rgb * lightmapInfo.NightVisionFactor"));
         assert!(LIGHTMAP_SHADER.contains("mix(\n        lightmapInfo.BlockLightTint.rgb"));

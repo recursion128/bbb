@@ -83,7 +83,8 @@ Owner: `bbb-protocol`
   individual checked tag queries, and a few derived audio registries are not
   that runtime. Custom dimension presentation still needs typed environment
   attributes instead of treating unknown resource identities as a vanilla
-  lightmap/fog dimension kind; typed `skybox` projection is complete.
+  lightmap/fog dimension kind; typed `skybox` and direct `ambient_light`
+  projections are complete.
 - Complete play Login session initialization beyond the current player-id and
   partial dimension/gameplay projection: retain the initial level set, chunk
   radius, simulation distance, secure-chat enforcement, seed and portal

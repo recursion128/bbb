@@ -1812,6 +1812,7 @@ fn random_between_inclusive(
 
 fn dimension_lightmap_environment(level: &WorldLevelInfo) -> LightmapEnvironment {
     let mut environment = LightmapEnvironment::default();
+    environment.ambient_light = level.ambient_light();
     match vanilla_lightmap_dimension_kind(level) {
         VanillaLightmapDimensionKind::Nether => {
             environment.sky_factor = 0.0;

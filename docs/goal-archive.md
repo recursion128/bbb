@@ -12156,3 +12156,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] `DimensionType.skybox` 现在从 shared NBT projection 解析为 `None/Overworld/End`，字段缺失遵循 vanilla Codec 的 `Overworld` 默认，非法值或缺 registry 时走 builtin profile fallback。
 - [x] native sky render extraction 不再由 dimension resource identity猜测天空类型，直接消费 typed skybox；custom `end` projection 与既有 end/overworld/nether renderer tests 保持通过。environment attributes、timeline 与 clock holder 仍开放。
+
+## 2026-07-12：typed dimension ambient-light projection
+
+- [x] `DimensionType.ambient_light` 的 NBT float 现在进入 `WorldLevelInfo`，无 registry 时按 vanilla builtins 使用 overworld `0.0`、nether `0.1`、end `0.25`；custom `0.35` holder projection 有 focused test。
+- [x] renderer `LightmapInfo` 增加 ambient-light scalar，brightness 改为 vanilla `mix(level/(4-3*level), 1, ambientLight)`，与 environment ambient RGB 分离；non-finite runtime input在 uniform sanitation 中 fail closed 为 `0.0`。

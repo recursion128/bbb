@@ -506,6 +506,7 @@ fn lightmap_environment_uses_vanilla_dimension_attributes() {
     let overworld = world_with_dimension(0, "minecraft:overworld");
     let overworld_environment = lightmap_environment_for_world(&overworld, 0.75, 1.25);
     assert_eq!(overworld_environment.sky_factor, 1.0);
+    assert_eq!(overworld_environment.ambient_light, 0.0);
     assert_close3(
         overworld_environment.sky_light_color,
         VANILLA_DEFAULT_LIGHTMAP_SKY_LIGHT_COLOR,
@@ -518,6 +519,7 @@ fn lightmap_environment_uses_vanilla_dimension_attributes() {
     let nether = world_with_dimension(1, "minecraft:the_nether");
     let nether_environment = lightmap_environment_for_world(&nether, 0.5, 1.4);
     assert_eq!(nether_environment.sky_factor, 0.0);
+    assert_eq!(nether_environment.ambient_light, 0.1);
     assert_close3(
         nether_environment.sky_light_color,
         [122.0 / 255.0, 122.0 / 255.0, 1.0],
@@ -531,6 +533,7 @@ fn lightmap_environment_uses_vanilla_dimension_attributes() {
     let end = world_with_dimension(2, "minecraft:the_end");
     let end_environment = lightmap_environment_for_world(&end, 0.5, 1.4);
     assert_eq!(end_environment.sky_factor, 0.0);
+    assert_eq!(end_environment.ambient_light, 0.25);
     assert_close3(
         end_environment.sky_light_color,
         [172.0 / 255.0, 96.0 / 255.0, 205.0 / 255.0],
