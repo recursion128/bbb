@@ -668,6 +668,17 @@ fn decodes_select_advancements_tab_present_and_absent() {
         decode_play_clientbound(ids::play::CLIENTBOUND_SELECT_ADVANCEMENTS_TAB, &absent).unwrap(),
         PlayClientbound::SelectAdvancementsTab(SelectAdvancementsTab { tab: None })
     );
+
+    let mut trailing = Encoder::new();
+    trailing.write_bool(false);
+    trailing.write_u8(0);
+    assert!(decode_play_clientbound(
+        ids::play::CLIENTBOUND_SELECT_ADVANCEMENTS_TAB,
+        &trailing.into_inner()
+    )
+    .unwrap_err()
+    .to_string()
+    .contains("trailing bytes after select advancements tab packet"));
 }
 
 #[test]

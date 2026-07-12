@@ -421,6 +421,49 @@
         "status": "complete"
       }
     },
+    "play/clientbound/CLIENTBOUND_SELECT_ADVANCEMENTS_TAB": {
+      "canonical_apply": {
+        "evidence": [
+          "crates/bbb-world/src/advancements.rs#apply_select_advancements_tab",
+          "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleSelectAdvancementsTab"
+        ],
+        "status": "complete"
+      },
+      "decode": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/client_features/tests.rs#decodes_select_advancements_tab_present_and_absent",
+          "crates/bbb-protocol/src/packets/client_features/tests.rs#normalizes_select_advancements_tab_default_namespace",
+          "crates/bbb-protocol/src/packets/client_features/tests.rs#rejects_invalid_select_advancements_tab_identifier",
+          "vanilla:net/minecraft/network/protocol/game/ClientboundSelectAdvancementsTabPacket.java#STREAM_CODEC"
+        ],
+        "status": "complete"
+      },
+      "ownership": {
+        "evidence": [
+          "crates/bbb-world/src/play_apply.rs#PlayClientbound::SelectAdvancementsTab"
+        ],
+        "status": "complete"
+      },
+      "runtime_side_effect": {
+        "evidence": [
+          "crates/bbb-world/src/advancements.rs#selected_advancement_root_tab",
+          "crates/bbb-native/src/runtime.rs#hud_advancements_screen",
+          "vanilla:net/minecraft/client/gui/screens/advancements/AdvancementsScreen.java#onSelectedTabChanged"
+        ],
+        "status": "complete"
+      },
+      "tests": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/client_features/tests.rs#decodes_select_advancements_tab_present_and_absent",
+          "crates/bbb-world/src/advancements.rs#select_advancements_tab_tracks_nullable_tab_and_counter",
+          "crates/bbb-world/src/advancements.rs#screen_open_selects_first_root_in_packet_order",
+          "crates/bbb-net/src/probe/play.rs#probe_applies_advancement_packets_to_world",
+          "crates/bbb-native/src/runtime/events/tests/session_protocol_events.rs#client_feature_events_update_world_and_world_counters",
+          "crates/bbb-native/src/runtime/tests.rs#hud_inventory_screen_projects_advancement_root_tabs"
+        ],
+        "status": "complete"
+      }
+    },
     "play/clientbound/CLIENTBOUND_PLAYER_POSITION": {
       "canonical_apply": {
         "evidence": [

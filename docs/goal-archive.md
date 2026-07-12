@@ -11285,3 +11285,10 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   `SystemToast.onLowDiskSpace` 锁定 unit/empty wire；非空 payload 已拒绝，canonical/ownership/tests 闭合。
 - [x] world/native 保留服务器 warning counter，但尚未展示/更新 10 秒 LOW_DISK_SPACE system toast；
   runtime 保持 partial，未把远端 warning 解释为客户端本地磁盘检测或 IntegratedServer 行为。
+
+## 2026-07-11：select-advancements-tab packet coverage audit
+
+- [x] 对照 `ClientboundSelectAdvancementsTabPacket`、`handleSelectAdvancementsTab` 与
+  `ClientAdvancements.setSelectedTab` 锁定 nullable Identifier wire 并拒绝 trailing bytes。
+- [x] known id 选择 holder、unknown id/null 清空，native screen 从 canonical root/tab/widget state 更新；
+  default namespace、invalid id、packet-order first-root 与 protocol/world/net/native tests 闭合五格。

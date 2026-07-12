@@ -1490,6 +1490,23 @@ mod tests {
         assert_eq!(partial, BTreeSet::from(["runtime_side_effect"]));
     }
 
+    #[test]
+    fn play_select_advancements_tab_is_closed() {
+        let ledger = vanilla_packet_coverage_26_1().unwrap();
+        let entry = ledger
+            .entries
+            .iter()
+            .find(|entry| {
+                entry.state == "play"
+                    && entry.constant_name == "CLIENTBOUND_SELECT_ADVANCEMENTS_TAB"
+            })
+            .expect("select advancements tab coverage row");
+        assert!(entry
+            .coverage
+            .values()
+            .all(|cell| cell.status == PacketCoverageStatus::Complete));
+    }
+
     fn state_name(state: PacketState) -> &'static str {
         match state {
             PacketState::Handshake => "handshake",

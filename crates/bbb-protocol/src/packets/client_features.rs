@@ -82,6 +82,11 @@ pub(crate) fn decode_select_advancements_tab(
         None
     };
 
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after select advancements tab packet".to_string(),
+        ));
+    }
     Ok(SelectAdvancementsTab { tab })
 }
 
