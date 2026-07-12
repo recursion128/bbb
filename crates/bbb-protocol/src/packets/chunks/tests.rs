@@ -218,9 +218,8 @@ fn decodes_block_ack_and_block_updates() {
     let mut payload = Encoder::new();
     payload.write_i64(pack_block_pos(34, -12, -45));
     payload.write_var_i32(9);
-    let packet =
-        decode_play_clientbound(ids::play::CLIENTBOUND_BLOCK_UPDATE, &payload.into_inner())
-            .unwrap();
+    let mut bytes = payload.into_inner();
+    let packet = decode_play_clientbound(ids::play::CLIENTBOUND_BLOCK_UPDATE, &bytes).unwrap();
     assert_eq!(
         packet,
         PlayClientbound::BlockUpdate(BlockUpdate {
@@ -231,6 +230,13 @@ fn decodes_block_ack_and_block_updates() {
             },
             block_state_id: 9,
         })
+    );
+    bytes.push(0);
+    assert!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_BLOCK_UPDATE, &bytes)
+            .unwrap_err()
+            .to_string()
+            .contains("trailing bytes after block update packet")
     );
 
     let mut payload = Encoder::new();

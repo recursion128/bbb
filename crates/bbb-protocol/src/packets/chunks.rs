@@ -195,10 +195,16 @@ pub(crate) fn decode_block_event(decoder: &mut Decoder<'_>) -> Result<BlockEvent
 }
 
 pub(crate) fn decode_block_update(decoder: &mut Decoder<'_>) -> Result<BlockUpdate> {
-    Ok(BlockUpdate {
+    let packet = BlockUpdate {
         pos: decode_block_pos(decoder.read_i64()?),
         block_state_id: decoder.read_var_i32()?,
-    })
+    };
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after block update packet".to_string(),
+        ));
+    }
+    Ok(packet)
 }
 
 pub(crate) fn decode_chunks_biomes(decoder: &mut Decoder<'_>) -> Result<ChunksBiomes> {

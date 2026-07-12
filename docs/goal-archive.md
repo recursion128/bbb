@@ -11571,3 +11571,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] position/b0/b1/block framing、strict trailing、已实现 trigger families、ownership 与跨 crate tests 有证据。
 - [x] session registry/current-block validation 与其他 client triggerEvent families 未完成，decode/canonical/runtime 保持 partial。
+
+## 2026-07-12：play block-update packet coverage audit
+
+- [x] position/state framing、strict trailing、prediction reconciliation、palette/heightmap apply ownership 与跨 crate tests 有证据。
+- [x] BlockState id validation、general block-entity pruning 与完整 level/render invalidation 未完成，decode/canonical/runtime 保持 partial。
