@@ -53,15 +53,16 @@ use super::schema::{
 
 use super::{
     is_vanilla_abstract_nautilus_type, is_vanilla_camel_type, is_vanilla_can_wear_horse_armor_type,
-    is_vanilla_llama_type, is_vanilla_minecart_type, is_vanilla_squid_type, ArmorMaterialKind,
-    EntityAttachmentFace, EntityAttributes, EntityBlockModelState, EntityCameraPoseState,
-    EntityClientAnimationState, EntityClientAnimations, EntityDamage, EntityEquipment,
-    EntityHurtingProjectile, EntityIdentity, EntityLeash, EntityMetadata, EntityMinecartLerp,
-    EntityMobEffects, EntityModelSourceState, EntityMount, EntityProjectileLifecycle, EntityState,
-    EntitySupportingBlock, EntityTransform, EntityTransformState, EntityTransientEvents,
-    EvokerFangsCritParticleState, FallingBlockModelState, FireworkRocketExplosionParticleState,
-    FireworkRocketItemState, FireworkRocketTrailParticleState, FoxEatParticleState,
-    ItemEntityStackState, ItemFrameRenderState, LlamaBodyDecorColor, LocalPlayerAttackSwingState,
+    is_vanilla_llama_type, is_vanilla_minecart_type, vanilla_entity_type_is_squid,
+    ArmorMaterialKind, EntityAttachmentFace, EntityAttributes, EntityBlockModelState,
+    EntityCameraPoseState, EntityClientAnimationState, EntityClientAnimations, EntityDamage,
+    EntityEquipment, EntityHurtingProjectile, EntityIdentity, EntityLeash, EntityMetadata,
+    EntityMinecartLerp, EntityMobEffects, EntityModelSourceState, EntityMount,
+    EntityProjectileLifecycle, EntityState, EntitySupportingBlock, EntityTransform,
+    EntityTransformState, EntityTransientEvents, EvokerFangsCritParticleState,
+    FallingBlockModelState, FireworkRocketExplosionParticleState, FireworkRocketItemState,
+    FireworkRocketTrailParticleState, FoxEatParticleState, ItemEntityStackState,
+    ItemFrameRenderState, LlamaBodyDecorColor, LocalPlayerAttackSwingState,
     MinecartDisplayBlockState, OminousItemSpawnerItemState, OminousItemSpawnerParticleState,
     RavagerRoarParticleState, RavagerStunParticleState, WolfArmorCrackiness,
     VANILLA_ENTITY_AIR_SUPPLY_DATA_ID, VANILLA_ENTITY_NO_GRAVITY_DATA_ID,
@@ -1899,7 +1900,7 @@ impl EntityStore {
         // the add-entity head yaw; `Squid.aiStep` then refines it from movement
         // while in water. Keep it as renderer-only body yaw so the synced
         // transform yaw remains canonical.
-        let squid_y_body_rot = if is_vanilla_squid_type(identity.entity_type_id) {
+        let squid_y_body_rot = if vanilla_entity_type_is_squid(identity.entity_type_id) {
             client_animations
                 .animations
                 .squid_y_body_rot(partial_ticks)

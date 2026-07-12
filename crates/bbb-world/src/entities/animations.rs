@@ -103,8 +103,8 @@ use super::schema::{
     VANILLA_WOLF_INTERESTED_DATA_ID as WOLF_INTERESTED_DATA_ID,
 };
 use super::{
-    is_vanilla_boat_type, is_vanilla_camel_type, is_vanilla_slime_type, is_vanilla_squid_type,
-    is_vanilla_vehicle_entity_type, EntityTransform, EntityVec3,
+    is_vanilla_boat_type, is_vanilla_camel_type, is_vanilla_slime_type,
+    is_vanilla_vehicle_entity_type, vanilla_entity_type_is_squid, EntityTransform, EntityVec3,
     VANILLA_ABSTRACT_HORSE_DEFAULT_FLAGS as ABSTRACT_HORSE_DEFAULT_FLAGS,
     VANILLA_ABSTRACT_HORSE_FLAGS_DATA_ID as ABSTRACT_HORSE_FLAGS_DATA_ID,
     VANILLA_ABSTRACT_HORSE_FLAG_EATING as ABSTRACT_HORSE_FLAG_EATING,
@@ -4185,7 +4185,8 @@ impl EntityClientAnimationState {
             self.warden_combat
                 .get_or_insert_with(WardenCombatAnimationState::default)
                 .start_sonic_boom(self.age_ticks);
-        } else if is_vanilla_squid_type(entity_type_id) && event_id == SQUID_RESET_MOVEMENT_EVENT_ID
+        } else if vanilla_entity_type_is_squid(entity_type_id)
+            && event_id == SQUID_RESET_MOVEMENT_EVENT_ID
         {
             // Vanilla `Squid.handleEntityEvent(19)`: `tentacleMovement = 0`. Only an
             // already-ticked squid has a state; if the event arrives first the
@@ -5621,7 +5622,7 @@ impl EntityClientAnimationState {
                 .ender_dragon
                 .get_or_insert_with(EnderDragonAnimationState::default)
                 .advance_client_tick(transform),
-            _ if is_vanilla_squid_type(entity_type_id) => self
+            _ if vanilla_entity_type_is_squid(entity_type_id) => self
                 .squid
                 .get_or_insert_with(|| {
                     SquidAnimationState::new_with_y_body_rot(entity_id, transform.y_head_rot)
@@ -5870,7 +5871,7 @@ impl EntityClientAnimationState {
 /// dolphin, axolotl, fish, …) is just another arm here.
 pub(crate) fn entity_animation_uses_in_water(entity_type_id: i32) -> bool {
     is_guardian_entity_type(entity_type_id)
-        || is_vanilla_squid_type(entity_type_id)
+        || vanilla_entity_type_is_squid(entity_type_id)
         || matches!(
             entity_type_id,
             VANILLA_ENTITY_TYPE_FROG_ID

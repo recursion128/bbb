@@ -12592,3 +12592,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] metadata class hierarchy 派生 Camel/CamelHusk、Squid/GlowSquid、Slime/MagmaCube 三组
   两项 family membership；world 的载具、尺寸、乘客 attachment、render projection 与 client
   animation gate 统一消费 generated query，单体特例和呈现算法仍由原 semantic owner 手写。
+
+## 2026-07-12：Shared generated squid membership across crates
+
+- [x] world 导出 generated Squid class-family typed query，native entity-scene 删除独立的
+  Squid/GlowSquid `matches!`，renderer body-yaw projection 通过同一 catalog 分发并由反向测试锁定。

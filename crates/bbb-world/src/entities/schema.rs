@@ -788,7 +788,7 @@ mod tests {
             "is_vanilla_abstract_nautilus_type",
             "is_vanilla_llama_type",
             "is_vanilla_camel_type",
-            "is_vanilla_squid_type",
+            "vanilla_entity_type_is_squid",
             "is_vanilla_slime_type",
             "is_vanilla_can_equip_saddle_type",
             "is_vanilla_can_wear_horse_armor_type",

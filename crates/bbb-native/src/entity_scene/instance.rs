@@ -914,10 +914,7 @@ pub(super) fn wrap_degrees(degrees: f32) -> f32 {
 }
 
 pub(super) fn is_squid_entity_type(entity_type_id: i32) -> bool {
-    matches!(
-        entity_type_id,
-        VANILLA_ENTITY_TYPE_SQUID_ID | VANILLA_ENTITY_TYPE_GLOW_SQUID_ID
-    )
+    bbb_world::vanilla_entity_type_is_squid(entity_type_id)
 }
 
 /// Vanilla `CreeperRenderer.getWhiteOverlayProgress`: with `step` =

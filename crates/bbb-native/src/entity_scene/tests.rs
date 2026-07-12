@@ -34,6 +34,22 @@ fn vanilla_kinetic_weapon_fixture(resource_ids: &[&str]) -> serde_json::Value {
 }
 
 #[test]
+fn squid_scene_membership_uses_the_world_generated_catalog() {
+    assert!(is_squid_entity_type(VANILLA_ENTITY_TYPE_SQUID_ID));
+    assert!(is_squid_entity_type(VANILLA_ENTITY_TYPE_GLOW_SQUID_ID));
+    assert!(!is_squid_entity_type(VANILLA_ENTITY_TYPE_COD_ID));
+
+    let source = include_str!("instance.rs");
+    let body = source
+        .split("fn is_squid_entity_type")
+        .nth(1)
+        .and_then(|source| source.split_once("\n}"))
+        .map(|(body, _)| body)
+        .expect("squid entity type query source");
+    assert!(!body.contains("matches!"));
+}
+
+#[test]
 fn entity_scene_outline_is_none_without_visible_entity_targets() {
     assert_eq!(
         entity_scene_outline_from_world_at_partial_tick(&WorldStore::new(), 1.0),

@@ -56,7 +56,7 @@ use super::schema::{
 };
 use super::{
     is_vanilla_boat_type, is_vanilla_camel_type, is_vanilla_minecart_type, is_vanilla_slime_type,
-    is_vanilla_squid_type, EntityClientAnimationState, EntityVec3,
+    vanilla_entity_type_is_squid, EntityClientAnimationState, EntityVec3,
 };
 use bbb_protocol::entity_types::*;
 
@@ -962,7 +962,7 @@ fn baby_pick_bounds(
         }
         VANILLA_ENTITY_TYPE_RABBIT_ID => EntityPickBoundsState::from_base_size(0.24, 0.4, 0.0),
         VANILLA_ENTITY_TYPE_AXOLOTL_ID => EntityPickBoundsState::from_base_size(0.5, 0.25, 0.0),
-        _ if is_vanilla_squid_type(entity_type_id) => {
+        _ if vanilla_entity_type_is_squid(entity_type_id) => {
             EntityPickBoundsState::from_base_size(0.5, 0.63, 0.0)
         }
         VANILLA_ENTITY_TYPE_TURTLE_ID => {
