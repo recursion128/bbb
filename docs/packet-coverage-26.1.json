@@ -7167,29 +7167,48 @@
       "constant_name": "CLIENTBOUND_OPEN_SCREEN",
       "coverage": {
         "canonical_apply": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
+          "evidence": [
+            "crates/bbb-world/src/client/inventory.rs#apply_open_screen",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleOpenScreen"
+          ],
+          "gap": "docs/unsupported-features.md#container-menu-presentation-parity",
           "status": "partial"
         },
         "decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/inventory.rs#open_screen_rejects_unknown_menu_type_and_trailing_bytes",
+            "crates/bbb-protocol/src/packets/inventory.rs#decodes_container_and_inventory_item_updates",
+            "vanilla:net/minecraft/network/protocol/game/ClientboundOpenScreenPacket.java#STREAM_CODEC"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "ownership": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/play_apply.rs#PlayClientbound::OpenScreen"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "runtime_side_effect": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
+          "evidence": [
+            "crates/bbb-native/src/input/inventory/tests.rs#generic_container_layout_matches_vanilla_chest_menu",
+            "crates/bbb-native/src/runtime/tests.rs#hud_inventory_screen_projects_crafting_table_layout",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleOpenScreen"
+          ],
+          "gap": "docs/unsupported-features.md#container-menu-presentation-parity",
           "status": "partial"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/inventory.rs#open_screen_rejects_unknown_menu_type_and_trailing_bytes",
+            "crates/bbb-net/src/event_stream.rs#play_inventory_packets_emit_matching_events_without_responses",
+            "crates/bbb-net/src/probe/play.rs#probe_applies_inventory_container_packets_to_world",
+            "crates/bbb-world/src/client/inventory/tests.rs#open_screen_styled_title_is_stored_and_survives_set_content",
+            "crates/bbb-native/src/runtime/events/tests/session_protocol_events.rs#inventory_events_update_world_and_world_counters"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "clientbound",

@@ -575,6 +575,11 @@ back into a todo. Do not delete these.
 
 ## Container menu presentation parity
 
+- Preserve the full trusted OpenScreen title Component and finish dedicated
+  presentation for every generated vanilla MenuType. The fixed 25-entry menu
+  catalog and unknown-id rejection are covered; current canonical state keeps
+  styled runs plus a plain title while remaining menu-specific UI gaps stay
+  listed below.
 - `BeaconMenu`: confirm/cancel hover state, effect highlighted hover state,
   labels/tooltips.
 - `EnchantmentMenu`: animated book model, enchanting glyph text and its

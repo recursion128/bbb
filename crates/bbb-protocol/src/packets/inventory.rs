@@ -5,6 +5,7 @@ use crate::{
     component::{
         decode_styled_component_summary_from_decoder, styled_runs_summary_text, StyledTextRun,
     },
+    menu_types::vanilla_menu_type,
     packets::data_components,
 };
 
@@ -162,13 +163,24 @@ pub(super) fn decode_container_set_slot(decoder: &mut Decoder<'_>) -> Result<Con
 pub(super) fn decode_open_screen(decoder: &mut Decoder<'_>) -> Result<OpenScreen> {
     let container_id = decoder.read_var_i32()?;
     let menu_type_id = decoder.read_var_i32()?;
+    if vanilla_menu_type(menu_type_id).is_none() {
+        return Err(ProtocolError::InvalidData(format!(
+            "invalid vanilla menu type id {menu_type_id}"
+        )));
+    }
     let title_styled = decode_styled_component_summary_from_decoder(decoder)?;
-    Ok(OpenScreen {
+    let packet = OpenScreen {
         container_id,
         menu_type_id,
         title: styled_runs_summary_text(&title_styled),
         title_styled,
-    })
+    };
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after open screen packet".to_string(),
+        ));
+    }
+    Ok(packet)
 }
 
 pub(super) fn decode_set_cursor_item(decoder: &mut Decoder<'_>) -> Result<SetCursorItem> {
@@ -502,6 +514,31 @@ mod tests {
                 },
             })
         );
+    }
+
+    #[test]
+    fn open_screen_rejects_unknown_menu_type_and_trailing_bytes() {
+        let mut trailing = Encoder::new();
+        trailing.write_var_i32(7);
+        trailing.write_var_i32(2);
+        trailing.write_bytes(&nbt_string_root("Chest"));
+        trailing.write_u8(0);
+        let error =
+            decode_play_clientbound(ids::play::CLIENTBOUND_OPEN_SCREEN, &trailing.into_inner())
+                .unwrap_err();
+        assert!(error
+            .to_string()
+            .contains("trailing bytes after open screen packet"));
+
+        let mut unknown = Encoder::new();
+        unknown.write_var_i32(7);
+        unknown.write_var_i32(25);
+        let error =
+            decode_play_clientbound(ids::play::CLIENTBOUND_OPEN_SCREEN, &unknown.into_inner())
+                .unwrap_err();
+        assert!(error
+            .to_string()
+            .contains("invalid vanilla menu type id 25"));
     }
 
     fn nbt_string_root(text: &str) -> Vec<u8> {

@@ -11401,3 +11401,10 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   active RecipeUpdateListener container 接受，mismatch 不再缓存并在未来复用 id 时错误显示。
 - [x] received/applied/ignored、world/native ghost overlays 与 tests 闭合；剩余 SlotDisplay/component semantics
   和 recipe-book presentation 保持 canonical/runtime partial。
+
+## 2026-07-12：play open-screen packet coverage audit
+
+- [x] 对照 `ClientboundOpenScreenPacket` 锁定 container id + fixed MenuType registry holder + trusted Component
+  title wire；decoder 拒绝 25-entry vanilla catalog 外 id 与 trailing bytes，不再创建 synthetic unknown menu。
+- [x] container ownership/decode/tests 闭合；完整 rich title tree 与尚缺专用 menu presentation 继续保持
+  canonical/runtime partial。
