@@ -12131,3 +12131,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] dimension-type `has_skylight`/`cardinal_light` 不再各自维护 modified-UTF、delimiter depth、list bounds 与 payload skip scanner；统一通过 `bbb-world` shared bounded NBT frontend 一次解析为窄 typed client projection。
 - [x] missing/wrong field 继续逐字段走 builtin dimension fallback，custom nether cardinal-light 与 has-skylight focused tests 保持通过；完整 `DimensionType.NETWORK_CODEC` 其余字段仍开放。
+
+## 2026-07-12：source-aware built-in registry fallback
+
+- [x] `bbb-world` registry owner 的双向 holder/resource 查询现在显式返回 `Server` 或 `VanillaFallback` 来源；item、block 与 entity-type 在没有同步 contents 时使用 checked-in 26.1 catalog，item tag value resolution 复用同一入口。
+- [x] 只要当前 session 已记录同名 registry contents，查询就严格按服务器 wire order 且 unknown fail closed，不会退回 vanilla ordinal；typed entry codec、最终 frozen tag view 与其余 static registry fallback 继续开放。

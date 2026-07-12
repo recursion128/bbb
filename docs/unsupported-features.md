@@ -76,9 +76,11 @@ Owner: `bbb-protocol`
   each synchronized registry with its element codec, merge known-pack stubs,
   replace resource-id-only entity-variant and derived audio projections with
   typed element codecs, materialize the checked tag-resolution view in the
-  frozen lookup, apply pending static tags and data-component
-  initializers, and freeze typed lookup state. Raw NBT summaries and a few
-  derived audio registries are not that runtime.
+  frozen lookup, extend the source-aware built-in fallback beyond the current
+  item/block/entity-type catalogs where a consumer requires it, apply pending
+  static tags and data-component initializers, and freeze typed lookup state.
+  Raw NBT summaries, individual checked tag queries, and a few derived audio
+  registries are not that runtime.
 - Complete play Login session initialization beyond the current player-id and
   partial dimension/gameplay projection: retain the initial level set, chunk
   radius, simulation distance, secure-chat enforcement, seed and portal

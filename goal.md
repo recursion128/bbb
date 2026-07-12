@@ -329,6 +329,9 @@ audio holder-order projection 已从 active world registry 派生并在 Finish �
 entity variant/villager render projection 已统一消费单一 checked holder lookup；完整
 numeric tags 已有 checked ordered holder/resource resolution，F3 与 piglin-loved 已消费窄 tag query；完整
 dimension-type 当前 client fields 已改用共享 bounded NBT frontend 单次投影；完整
+item/block/entity-type built-in registry 已接入带来源的双向 fallback；仅在当前 session
+没有该 registry contents 时使用 checked-in 26.1 catalog，一旦存在 server contents 就只按其
+wire order 解析，item tag 也复用同一规则；完整
 `RegistryAccess`/typed codec/holder tags/component initializer 仍是明确 canonical/runtime partial。每轮 configuration registry
 collection 已 staging，并在 Finish 原子替换或按 vanilla tag-only 路径保留原 contents。
 
@@ -572,7 +575,9 @@ owner 按消费需要实现 typed value decode。
 2. **统一查询 API**：在 world registry owner 提供 typed/narrow `RegistryView`/resolver，
    至少覆盖 `(registry, numeric id) -> resource id`、反向 resource id -> numeric id、
    ordered entries、tag membership、raw/decoded entry value 与来源（server/fallback）；
-   protocol/native/item-model/renderer 不得各自重建 lookup 表。
+   protocol/native/item-model/renderer 不得各自重建 lookup 表。固定 item/block/entity-type
+   catalog 的双向查询和 tag value resolution 已共享该来源 surface；其余 static registry
+   与最终 frozen typed view 仍开放。
 3. **上下文贯通**：把 registry resolver 作为显式只读上下文传入需要它的 component
    persistent encoder、item-model property、entity metadata/variant、tooltip、audio、
    particle、HUD/debug 与本地保存路径；不得以全局变量、native→protocol 反向依赖或

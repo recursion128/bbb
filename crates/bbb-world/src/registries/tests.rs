@@ -3,6 +3,7 @@ use bbb_protocol::packets::{
 };
 use std::collections::BTreeMap;
 
+use crate::RegistryEntrySource;
 use crate::{RegistryPacketEntry, RegistrySet, UnresolvedRegistryTagHolder, WorldStore};
 
 #[test]
@@ -216,6 +217,81 @@ fn registry_holder_lookup_uses_checked_wire_order_identity() {
         store.registry_resource_id_by_holder_id("minecraft:missing", 0),
         None
     );
+}
+
+#[test]
+fn registry_lookup_uses_static_fallback_only_without_server_contents() {
+    let mut store = WorldStore::new();
+    let snowball_id = bbb_protocol::item_types::VANILLA_ITEM_SNOWBALL_ID;
+    let zombie_id = bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_ZOMBIE_ID;
+
+    assert_eq!(
+        store.resolved_registry_entry_by_holder_id("minecraft:item", snowball_id),
+        Some(crate::ResolvedRegistryEntry {
+            holder_id: snowball_id,
+            resource_id: "minecraft:snowball",
+            source: RegistryEntrySource::VanillaFallback,
+        })
+    );
+    assert_eq!(
+        store.resolved_registry_entry_by_holder_id("minecraft:block", 1),
+        Some(crate::ResolvedRegistryEntry {
+            holder_id: 1,
+            resource_id: "minecraft:stone",
+            source: RegistryEntrySource::VanillaFallback,
+        })
+    );
+    assert_eq!(
+        store.resolved_registry_entry_by_holder_id("minecraft:entity_type", zombie_id),
+        Some(crate::ResolvedRegistryEntry {
+            holder_id: zombie_id,
+            resource_id: "minecraft:zombie",
+            source: RegistryEntrySource::VanillaFallback,
+        })
+    );
+    assert_eq!(
+        store.resolved_registry_entry_by_resource_id("minecraft:item", "minecraft:snowball"),
+        store.resolved_registry_entry_by_holder_id("minecraft:item", snowball_id)
+    );
+    assert!(store
+        .resolved_registry_entry_by_resource_id("minecraft:item", "snowball")
+        .is_none());
+
+    store.apply_update_tags(UpdateTags {
+        registries: vec![RegistryTags {
+            registry: "minecraft:item".to_string(),
+            tags: vec![TagNetworkPayload {
+                tag: "minecraft:projectiles".to_string(),
+                entries: vec![snowball_id, bbb_protocol::item_types::VANILLA_ITEM_EGG_ID],
+            }],
+        }],
+    });
+    assert_eq!(
+        store
+            .registry_resource_ids_for_tag("minecraft:item", "minecraft:projectiles")
+            .unwrap(),
+        Some(vec!["minecraft:snowball", "minecraft:egg"])
+    );
+
+    store.record_registry_entries(
+        "minecraft:item",
+        0,
+        vec![RegistryPacketEntry::stub("example:custom_item")],
+    );
+    assert_eq!(
+        store.resolved_registry_entry_by_holder_id("minecraft:item", 0),
+        Some(crate::ResolvedRegistryEntry {
+            holder_id: 0,
+            resource_id: "example:custom_item",
+            source: RegistryEntrySource::Server,
+        })
+    );
+    assert!(store
+        .resolved_registry_entry_by_holder_id("minecraft:item", snowball_id)
+        .is_none());
+    assert!(store
+        .resolved_registry_entry_by_resource_id("minecraft:item", "minecraft:snowball")
+        .is_none());
 }
 
 #[test]

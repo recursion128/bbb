@@ -4,7 +4,7 @@ use crate::WorldStore;
 
 use super::{
     state::PendingRegistryCollection, RegistryContentState, RegistryPacket, RegistryPacketEntry,
-    RegistryTagState, UnresolvedRegistryTagHolder,
+    RegistryTagState, ResolvedRegistryEntry, UnresolvedRegistryTagHolder,
 };
 
 impl WorldStore {
@@ -98,6 +98,15 @@ impl WorldStore {
             .resource_id_by_holder_id(registry, holder_id)
     }
 
+    pub fn resolved_registry_entry_by_holder_id(
+        &self,
+        registry: &str,
+        holder_id: i32,
+    ) -> Option<ResolvedRegistryEntry<'_>> {
+        self.registries
+            .resolved_entry_by_holder_id(registry, holder_id)
+    }
+
     pub fn registry_resource_ids_in_holder_order<'a>(
         &'a self,
         registry: &str,
@@ -112,6 +121,15 @@ impl WorldStore {
     ) -> Option<i32> {
         self.registries
             .holder_id_by_resource_id(registry, resource_id)
+    }
+
+    pub fn resolved_registry_entry_by_resource_id(
+        &self,
+        registry: &str,
+        resource_id: &str,
+    ) -> Option<ResolvedRegistryEntry<'_>> {
+        self.registries
+            .resolved_entry_by_resource_id(registry, resource_id)
     }
 
     pub fn registry_holder_ids_for_tag(&self, registry: &str, tag: &str) -> Option<&[i32]> {

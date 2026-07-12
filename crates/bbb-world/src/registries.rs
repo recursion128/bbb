@@ -8,8 +8,8 @@ pub use block_states::{
 };
 pub use enchantments::EnchantmentAttributeModifier;
 pub use state::{
-    RegistryContentState, RegistryPacket, RegistryPacketEntry, RegistrySet, RegistryTagState,
-    UnresolvedRegistryTagHolder,
+    RegistryContentState, RegistryEntrySource, RegistryPacket, RegistryPacketEntry, RegistrySet,
+    RegistryTagState, ResolvedRegistryEntry, UnresolvedRegistryTagHolder,
 };
 
 #[cfg(test)]

@@ -1,6 +1,7 @@
 use std::{collections::BTreeMap, sync::Arc};
 
 use bbb_protocol::packets::RegistryDataEntry as ProtocolRegistryDataEntry;
+use bbb_protocol::{entity_types::vanilla_entity_type, item_types::vanilla_item_type};
 use serde::{Deserialize, Serialize};
 
 use crate::chunks::{decode_nbt_payload_summary, NbtPayloadSummary};
@@ -71,6 +72,19 @@ pub struct UnresolvedRegistryTagHolder {
     pub holder_id: i32,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RegistryEntrySource {
+    Server,
+    VanillaFallback,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ResolvedRegistryEntry<'a> {
+    pub holder_id: i32,
+    pub resource_id: &'a str,
+    pub source: RegistryEntrySource,
+}
+
 impl RegistrySet {
     pub fn vanilla_26_1() -> Self {
         Self {
@@ -117,8 +131,27 @@ impl RegistrySet {
     }
 
     pub fn resource_id_by_holder_id(&self, registry: &str, holder_id: i32) -> Option<&str> {
-        self.entry_by_holder_id(registry, holder_id)
-            .map(|entry| entry.id.as_str())
+        self.resolved_entry_by_holder_id(registry, holder_id)
+            .map(|entry| entry.resource_id)
+    }
+
+    pub fn resolved_entry_by_holder_id(
+        &self,
+        registry: &str,
+        holder_id: i32,
+    ) -> Option<ResolvedRegistryEntry<'_>> {
+        if let Some(contents) = self.contents.get(registry) {
+            return Some(ResolvedRegistryEntry {
+                holder_id,
+                resource_id: contents.entry_by_holder_id(holder_id)?.id.as_str(),
+                source: RegistryEntrySource::Server,
+            });
+        }
+        Some(ResolvedRegistryEntry {
+            holder_id,
+            resource_id: self.vanilla_fallback_resource_id(registry, holder_id)?,
+            source: RegistryEntrySource::VanillaFallback,
+        })
     }
 
     pub fn resource_ids_in_holder_order<'a>(
@@ -135,9 +168,29 @@ impl RegistrySet {
     }
 
     pub fn holder_id_by_resource_id(&self, registry: &str, resource_id: &str) -> Option<i32> {
-        self.contents
-            .get(registry)?
-            .holder_id_by_resource_id(resource_id)
+        self.resolved_entry_by_resource_id(registry, resource_id)
+            .map(|entry| entry.holder_id)
+    }
+
+    pub fn resolved_entry_by_resource_id(
+        &self,
+        registry: &str,
+        resource_id: &str,
+    ) -> Option<ResolvedRegistryEntry<'_>> {
+        if let Some(contents) = self.contents.get(registry) {
+            let holder_id = contents.holder_id_by_resource_id(resource_id)?;
+            return Some(ResolvedRegistryEntry {
+                holder_id,
+                resource_id: contents.entry_by_holder_id(holder_id)?.id.as_str(),
+                source: RegistryEntrySource::Server,
+            });
+        }
+        let holder_id = self.vanilla_fallback_holder_id(registry, resource_id)?;
+        Some(ResolvedRegistryEntry {
+            holder_id,
+            resource_id: self.vanilla_fallback_resource_id(registry, holder_id)?,
+            source: RegistryEntrySource::VanillaFallback,
+        })
     }
 
     pub fn holder_ids_for_tag(&self, registry: &str, tag: &str) -> Option<&[i32]> {
@@ -184,6 +237,31 @@ impl RegistrySet {
             resource_ids.push(resource_id);
         }
         Ok(Some(resource_ids))
+    }
+
+    fn vanilla_fallback_resource_id(&self, registry: &str, holder_id: i32) -> Option<&str> {
+        match registry {
+            "minecraft:item" => Some(vanilla_item_type(holder_id)?.resource_id),
+            "minecraft:block" => self.block_states.block_name_by_registry_id(holder_id),
+            "minecraft:entity_type" => Some(vanilla_entity_type(holder_id)?.resource_id),
+            _ => None,
+        }
+    }
+
+    fn vanilla_fallback_holder_id(&self, registry: &str, resource_id: &str) -> Option<i32> {
+        if !resource_id.starts_with("minecraft:") {
+            return None;
+        }
+        match registry {
+            "minecraft:item" => {
+                Some(bbb_protocol::item_types::vanilla_item_type_for_resource_id(resource_id)?.id)
+            }
+            "minecraft:block" => self.block_states.block_registry_id_by_name(resource_id),
+            "minecraft:entity_type" => Some(
+                bbb_protocol::entity_types::vanilla_entity_type_for_resource_id(resource_id)?.id,
+            ),
+            _ => None,
+        }
     }
 }
 

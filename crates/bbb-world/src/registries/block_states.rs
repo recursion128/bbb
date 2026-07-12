@@ -69,6 +69,14 @@ impl BlockStateRegistry {
         self.block_registry_names.get(id).map(String::as_str)
     }
 
+    pub fn block_registry_id_by_name(&self, name: &str) -> Option<i32> {
+        let index = self
+            .block_registry_names
+            .iter()
+            .position(|candidate| candidate == name)?;
+        i32::try_from(index).ok()
+    }
+
     pub fn block_registry_len(&self) -> usize {
         self.block_registry_names.len()
     }
