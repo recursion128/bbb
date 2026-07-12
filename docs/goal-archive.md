@@ -12081,3 +12081,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] `bbb-world` registry semantic owner 现在提供 checked wire-order holder-id ↔ resource-id/entry 查询；负数、越界、缺失 registry fail closed，重复 resource id 的反向查询拒绝猜测。
 - [x] enchantment attribute modifier projection 成为首个统一 lookup 消费者，stub/raw-data fail-closed 语义不变；element codec、tag holder resolution、freeze 与 reconnect replacement 继续开放。
+
+## 2026-07-12：dimension-type holder lookup migration
+
+- [x] play Login 的 dimension-type cardinal-light 与 has-skylight projection 不再自行转换/index registry entries，统一通过 checked registry holder lookup 获取对应 raw entry。
+- [x] existing dynamic dimension NBT override 与 builtin fallback tests 保持语义；typed dimension codec、registry freeze 与其余 holder consumers 继续开放。

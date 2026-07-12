@@ -425,16 +425,14 @@ impl WorldStore {
         dimension: &str,
     ) -> WorldCardinalLighting {
         dimension_type_cardinal_lighting_from_registry(
-            self.registry_content("minecraft:dimension_type"),
-            dimension_type_id,
+            self.registry_entry_by_holder_id("minecraft:dimension_type", dimension_type_id),
         )
         .unwrap_or_else(|| built_in_dimension_cardinal_lighting(dimension_type_id, dimension))
     }
 
     fn dimension_type_has_sky_light(&self, dimension_type_id: i32, dimension: &str) -> bool {
         dimension_type_has_sky_light_from_registry(
-            self.registry_content("minecraft:dimension_type"),
-            dimension_type_id,
+            self.registry_entry_by_holder_id("minecraft:dimension_type", dimension_type_id),
         )
         .unwrap_or_else(|| built_in_dimension_has_sky_light(dimension_type_id, dimension))
     }
@@ -646,24 +644,16 @@ fn built_in_dimension_has_sky_light(dimension_type_id: i32, dimension: &str) -> 
 }
 
 fn dimension_type_cardinal_lighting_from_registry(
-    registry: Option<&crate::RegistryContentState>,
-    dimension_type_id: i32,
+    entry: Option<&crate::RegistryPacketEntry>,
 ) -> Option<WorldCardinalLighting> {
-    let registry = registry?;
-    let index = usize::try_from(dimension_type_id).ok()?;
-    let entry = registry.entries.get(index)?;
-    let raw_data = entry.raw_data()?;
+    let raw_data = entry?.raw_data()?;
     dimension_type_cardinal_lighting_from_nbt(raw_data)
 }
 
 fn dimension_type_has_sky_light_from_registry(
-    registry: Option<&crate::RegistryContentState>,
-    dimension_type_id: i32,
+    entry: Option<&crate::RegistryPacketEntry>,
 ) -> Option<bool> {
-    let registry = registry?;
-    let index = usize::try_from(dimension_type_id).ok()?;
-    let entry = registry.entries.get(index)?;
-    let raw_data = entry.raw_data()?;
+    let raw_data = entry?.raw_data()?;
     read_nbt_root_byte_field(raw_data, "has_skylight")?.map(|value| value != 0)
 }
 
