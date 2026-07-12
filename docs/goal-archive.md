@@ -11906,3 +11906,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] ChangeSettings 的四类 book type/open/filter wire、native toggle/filter/窄布局关闭、本地 canonical settings 更新、driver 与服务端持久化已审计；无 dedicated ack，除 ack=N/A 外闭合。
 - [x] SeenRecipe 的 RecipeDisplayId wire、maintenance command/driver/server remove-highlight 已审计；native recipe button 首次显示 highlighted recipe 时尚未执行 vanilla one-shot local remove+send，因此仅 encoder 闭合、ack=N/A，command/state/tests 保持 partial。
+
+## 2026-07-12：play serverbound rename-item packet coverage audit
+
+- [x] active AnvilMenu/slot-0 item gate、初始 hover/custom-name 空串语义、50 UTF-16-unit limit、字符过滤、文本编辑、command/driver/string wire 与服务端 menu/still-valid authority 已反向审计；command/encoder/state/tests 闭合。
+- [x] anvil result/cost/item 仍由服务器 container content/slot/data broadcasts 确认；remaining ItemStack added-value component 语义使 response 保持 partial，未用本地编辑文本冒充最终物品状态。
