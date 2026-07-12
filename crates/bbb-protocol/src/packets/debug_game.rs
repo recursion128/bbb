@@ -128,6 +128,11 @@ pub(crate) fn decode_debug_sample(decoder: &mut Decoder<'_>) -> Result<DebugSamp
             "invalid remote debug sample type ordinal {ordinal}"
         ))
     })?;
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after debug sample packet".to_string(),
+        ));
+    }
     Ok(DebugSample {
         sample,
         sample_type,

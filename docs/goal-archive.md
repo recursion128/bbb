@@ -11601,3 +11601,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] DebugBlock/Chunk/EntityValue 与 DebugEvent 的 target framing、bounded raw diagnostics、ownership 与跨 crate tests 已审计。
 - [x] registry-aware subscription/event decode、game-time expiry 与 debug renderer consumer 未完成；raw payload 没有被误标为 typed support。
+
+## 2026-07-12：play debug sample packet coverage audit
+
+- [x] bounded long-array/type ordinal/strict trailing、F3+2 subscription、240-sample TPS presentation 与跨 crate tests 闭合。
+- [x] typed tick-time sample path 与 raw registry-dispatched debug subscription 缺口保持分离。

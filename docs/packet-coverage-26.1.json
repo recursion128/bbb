@@ -6295,29 +6295,50 @@
       "constant_name": "CLIENTBOUND_DEBUG_SAMPLE",
       "coverage": {
         "canonical_apply": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/client/debug_game.rs#apply_debug_sample",
+            "crates/bbb-native/src/runtime.rs#HudDebugTpsSampler",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleDebugSample"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/debug_game/tests.rs#decodes_debug_sample_packet_wire_order",
+            "crates/bbb-protocol/src/packets/debug_game/tests.rs#rejects_unknown_debug_sample_type",
+            "vanilla:net/minecraft/network/protocol/game/ClientboundDebugSamplePacket.java#STREAM_CODEC"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "ownership": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/play_apply.rs#PlayClientbound::DebugSample",
+            "crates/bbb-native/src/runtime.rs#HudDebugTpsSampler"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "runtime_side_effect": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-native/src/runtime/tests.rs#hud_debug_tps_sampler_records_tick_time_samples_and_syncs_subscription",
+            "vanilla:net/minecraft/client/gui/components/DebugScreenOverlay.java#logRemoteSample"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/debug_game/tests.rs#decodes_debug_sample_packet_wire_order",
+            "crates/bbb-net/src/event_stream.rs#play_debug_game_packets_emit_matching_events_without_responses",
+            "crates/bbb-net/src/probe/play.rs#probe_applies_debug_game_packets_to_world",
+            "crates/bbb-world/src/client/debug_game.rs#tracks_debug_game_events_and_counters",
+            "crates/bbb-native/src/runtime/tests.rs#hud_debug_tps_sampler_records_tick_time_samples_and_syncs_subscription",
+            "crates/bbb-native/src/runtime/events/tests/level_event_particle_batches.rs#debug_game_events_update_world_counters"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "clientbound",

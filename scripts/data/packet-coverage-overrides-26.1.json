@@ -396,6 +396,13 @@
       "runtime_side_effect": {"evidence": ["crates/bbb-world/src/client/debug_game.rs#last_debug_event", "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleDebugEvent"], "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families", "status": "partial"},
       "tests": {"evidence": ["crates/bbb-protocol/src/packets/debug_game/tests.rs#decodes_debug_event_raw_payload", "crates/bbb-net/src/event_stream.rs#play_debug_game_packets_emit_matching_events_without_responses", "crates/bbb-net/src/probe/play.rs#probe_applies_debug_game_packets_to_world", "crates/bbb-world/src/client/debug_game.rs#tracks_debug_game_events_and_counters", "crates/bbb-native/src/runtime/events/tests/level_event_particle_batches.rs#debug_game_events_update_world_counters"], "status": "complete"}
     },
+    "play/clientbound/CLIENTBOUND_DEBUG_SAMPLE": {
+      "canonical_apply": {"evidence": ["crates/bbb-world/src/client/debug_game.rs#apply_debug_sample", "crates/bbb-native/src/runtime.rs#HudDebugTpsSampler", "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleDebugSample"], "status": "complete"},
+      "decode": {"evidence": ["crates/bbb-protocol/src/packets/debug_game/tests.rs#decodes_debug_sample_packet_wire_order", "crates/bbb-protocol/src/packets/debug_game/tests.rs#rejects_unknown_debug_sample_type", "vanilla:net/minecraft/network/protocol/game/ClientboundDebugSamplePacket.java#STREAM_CODEC"], "status": "complete"},
+      "ownership": {"evidence": ["crates/bbb-world/src/play_apply.rs#PlayClientbound::DebugSample", "crates/bbb-native/src/runtime.rs#HudDebugTpsSampler"], "status": "complete"},
+      "runtime_side_effect": {"evidence": ["crates/bbb-native/src/runtime/tests.rs#hud_debug_tps_sampler_records_tick_time_samples_and_syncs_subscription", "vanilla:net/minecraft/client/gui/components/DebugScreenOverlay.java#logRemoteSample"], "status": "complete"},
+      "tests": {"evidence": ["crates/bbb-protocol/src/packets/debug_game/tests.rs#decodes_debug_sample_packet_wire_order", "crates/bbb-net/src/event_stream.rs#play_debug_game_packets_emit_matching_events_without_responses", "crates/bbb-net/src/probe/play.rs#probe_applies_debug_game_packets_to_world", "crates/bbb-world/src/client/debug_game.rs#tracks_debug_game_events_and_counters", "crates/bbb-native/src/runtime/tests.rs#hud_debug_tps_sampler_records_tick_time_samples_and_syncs_subscription", "crates/bbb-native/src/runtime/events/tests/level_event_particle_batches.rs#debug_game_events_update_world_counters"], "status": "complete"}
+    },
     "play/clientbound/CLIENTBOUND_BUNDLE_DELIMITER": {
       "canonical_apply": {
         "evidence": [
