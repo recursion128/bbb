@@ -7144,29 +7144,50 @@
       "constant_name": "CLIENTBOUND_LEVEL_EVENT",
       "coverage": {
         "canonical_apply": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/block_events.rs#apply_level_event",
+            "crates/bbb-world/src/play_apply.rs#apply_level_event_with_effects",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleLevelEvent"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/chunks/tests.rs#decodes_level_event",
+            "vanilla:net/minecraft/network/protocol/game/ClientboundLevelEventPacket.java#STREAM_CODEC"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "ownership": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/play_apply.rs#PlayClientbound::LevelEvent"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "runtime_side_effect": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/play_apply.rs#apply_level_event_with_effects",
+            "crates/bbb-native/src/runtime/events/tests/level_event_block_and_potion_sounds.rs#block_and_level_events_update_world_and_world_counters",
+            "crates/bbb-native/src/runtime/events/tests/level_event_particle_batches.rs#particle_only_level_events_advance_randoms_without_particle_sink_before_followup_sound",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleLevelEvent"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/chunks/tests.rs#decodes_level_event",
+            "crates/bbb-net/src/event_stream.rs#play_level_state_packets_emit_matching_events_without_responses",
+            "crates/bbb-net/src/probe/play.rs#probe_applies_block_and_level_events_to_world",
+            "crates/bbb-world/src/play_apply.rs#sink_less_level_event_advances_particle_randoms_like_online_dispatcher",
+            "crates/bbb-native/src/runtime/events/tests/level_event_block_and_potion_sounds.rs#block_and_level_events_update_world_and_world_counters",
+            "crates/bbb-native/src/runtime/events/tests/level_event_particle_batches.rs#particle_only_level_events_advance_randoms_without_particle_sink_before_followup_sound"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "clientbound",

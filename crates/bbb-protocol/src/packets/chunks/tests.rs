@@ -408,8 +408,8 @@ fn decodes_level_event() {
     payload.write_i64(pack_block_pos(34, 64, -45));
     payload.write_i32(9);
     payload.write_bool(true);
-    let packet =
-        decode_play_clientbound(ids::play::CLIENTBOUND_LEVEL_EVENT, &payload.into_inner()).unwrap();
+    let payload = payload.into_inner();
+    let packet = decode_play_clientbound(ids::play::CLIENTBOUND_LEVEL_EVENT, &payload).unwrap();
     assert_eq!(
         packet,
         PlayClientbound::LevelEvent(LevelEvent {
@@ -422,6 +422,14 @@ fn decodes_level_event() {
             data: 9,
             global: true,
         })
+    );
+    let mut trailing = payload;
+    trailing.push(0);
+    assert!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_LEVEL_EVENT, &trailing)
+            .unwrap_err()
+            .to_string()
+            .contains("trailing bytes after level event packet")
     );
 }
 

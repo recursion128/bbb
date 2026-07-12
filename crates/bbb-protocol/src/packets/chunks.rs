@@ -250,12 +250,18 @@ pub(crate) fn decode_forget_level_chunk(decoder: &mut Decoder<'_>) -> Result<For
 }
 
 pub(crate) fn decode_level_event(decoder: &mut Decoder<'_>) -> Result<LevelEvent> {
-    Ok(LevelEvent {
+    let packet = LevelEvent {
         event_type: decoder.read_i32()?,
         pos: decode_block_pos(decoder.read_i64()?),
         data: decoder.read_i32()?,
         global: decoder.read_bool()?,
-    })
+    };
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after level event packet".to_string(),
+        ));
+    }
+    Ok(packet)
 }
 
 pub(crate) fn decode_level_chunk_with_light(

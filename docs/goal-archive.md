@@ -11656,3 +11656,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] 2 MiB section buffer、2048-byte light layers、strict trailing、section/heightmap/light/chunk-column replacement 与 tests 已审计。
 - [x] collection/registry validation、session biome、完整 block-entity semantics、queued light/neighbor dirty/render-ready 和 terrain parity 未完成，四格保持 partial。
+
+## 2026-07-12：play level event packet coverage audit
+
+- [x] type/BlockPos/data/global framing、strict trailing、canonical event/jukebox 与完整 LevelEventHandler sound/particle switch/tests 闭合。
+- [x] terrain/item atlas/block-entity/audio-device 相邻 parity 未被误标完成，继续由既有 ledger 条目维护。

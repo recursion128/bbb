@@ -511,6 +511,7 @@ play GameRuleValues 的 bounded resource-key/string map、strict trailing、requ
 play GameTestHighlightPos 的 absolute/relative BlockPos framing、strict trailing、diagnostic ownership 与跨 crate tests 已闭合；multi-marker map、10-second expiry、cuboid/text gizmo 与 level-reset clear 保持 canonical/runtime partial。
 play InitializeBorder 的完整 snapshot framing/strict trailing、canonical tick lerp、partial-tick forcefield extract 与跨 crate tests 已闭合；warningBlocks/warningTime/lerp-speed 驱动的 HUD vignette 保持 runtime/tests partial。
 play LevelChunkWithLight 的 2 MiB section buffer、2048-byte light layers、strict trailing、section/heightmap/light/chunk-column replacement 与 tests 已审计；collection/registry validation、session biome、完整 block-entity semantics、queued light/neighbor dirty/render-ready 和 terrain parity 保持 decode/canonical/runtime/tests partial。
+play LevelEvent 的 type/BlockPos/data/global framing、strict trailing、canonical event/jukebox 与完整 LevelEventHandler sound/particle switch/tests 已闭合；terrain/item atlas/block-entity/audio-device 相邻 parity 仍按各自开放条目维护。
 
 完成标准：全部 vanilla 26.1 catalog entry 都有矩阵行；所有目标客户端适用项为
 `complete`，其余只有带 vanilla 依据的 `not-applicable` 或带重启判据的窄 `deferred`；
