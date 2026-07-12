@@ -11344,3 +11344,10 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   CompoundTag wire；protocol 保留完整 raw NBT，并验证 End/Compound root、深度/count 与 trailing bytes。
 - [x] packet 经唯一 play apply 写入 debug-query state；native F3+I 只消费 matching transaction，wrong/stale
   response 保持 pending，null response 明确失败且不复制伪造命令。protocol/net/world/native 五格闭合。
+
+## 2026-07-12：play test-instance block-status packet coverage audit
+
+- [x] 对照 `ClientboundTestInstanceBlockStatus.STREAM_CODEC` 锁定 Component + optional Vec3i wire，decoder
+  现在拒绝 trailing bytes；protocol/net/world/native tests 覆盖 size present/absent 与 canonical diagnostic snapshot。
+- [x] vanilla 只在 active `TestInstanceBlockEditScreen` 更新 rich status/size；bbb 尚无该 screen 且仅保存 plain
+  text，故 decode/ownership/tests 闭合，canonical/runtime 精确保留 partial。

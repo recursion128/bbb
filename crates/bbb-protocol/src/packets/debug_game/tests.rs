@@ -227,4 +227,18 @@ fn decodes_test_instance_block_status_with_optional_size() {
             size: None,
         })
     );
+
+    let mut trailing = Encoder::new();
+    trailing.write_u8(8);
+    trailing.write_u16(4);
+    trailing.write_bytes(b"Idle");
+    trailing.write_bool(false);
+    trailing.write_u8(0);
+    assert!(decode_play_clientbound(
+        ids::play::CLIENTBOUND_TEST_INSTANCE_BLOCK_STATUS,
+        &trailing.into_inner(),
+    )
+    .unwrap_err()
+    .to_string()
+    .contains("trailing bytes after test instance block status packet"));
 }

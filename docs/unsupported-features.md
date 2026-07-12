@@ -514,6 +514,12 @@ back into a todo. Do not delete these.
 
 ## Screens and presentation
 
+- **Test-instance block status screen update.** Preserve the full status
+  Component and apply the optional size only while a native
+  `TestInstanceBlockEditScreen` equivalent is active, matching
+  `ClientPacketListener.handleTestInstanceBlockStatus`. The world currently
+  retains a plain-text diagnostic snapshot. Restart when the test-instance
+  block edit screen has a native UI owner.
 - **Low-disk-space system toast.** On
   `ClientboundLowDiskSpaceWarningPacket`, show/update the 10-second
   `SystemToastId.LOW_DISK_SPACE` toast with vanilla's title and description.

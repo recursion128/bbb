@@ -170,6 +170,12 @@ pub(crate) fn decode_test_instance_block_status(
         None
     };
 
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after test instance block status packet".to_string(),
+        ));
+    }
+
     Ok(TestInstanceBlockStatus { status, size })
 }
 

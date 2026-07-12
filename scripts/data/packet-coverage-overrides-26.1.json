@@ -761,6 +761,47 @@
         "status": "complete"
       }
     },
+    "play/clientbound/CLIENTBOUND_TEST_INSTANCE_BLOCK_STATUS": {
+      "canonical_apply": {
+        "evidence": [
+          "crates/bbb-world/src/client/debug_game.rs#apply_test_instance_block_status",
+          "vanilla:net/minecraft/network/protocol/game/ClientboundTestInstanceBlockStatus.java#STREAM_CODEC"
+        ],
+        "gap": "docs/unsupported-features.md#screens-and-presentation",
+        "status": "partial"
+      },
+      "decode": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/debug_game/tests.rs#decodes_test_instance_block_status_with_optional_size",
+          "vanilla:net/minecraft/network/protocol/game/ClientboundTestInstanceBlockStatus.java#STREAM_CODEC"
+        ],
+        "status": "complete"
+      },
+      "ownership": {
+        "evidence": [
+          "crates/bbb-world/src/play_apply.rs#PlayClientbound::TestInstanceBlockStatus"
+        ],
+        "status": "complete"
+      },
+      "runtime_side_effect": {
+        "evidence": [
+          "crates/bbb-world/src/client/debug_game.rs#last_test_instance_block_status",
+          "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleTestInstanceBlockStatus"
+        ],
+        "gap": "docs/unsupported-features.md#screens-and-presentation",
+        "status": "partial"
+      },
+      "tests": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/debug_game/tests.rs#decodes_test_instance_block_status_with_optional_size",
+          "crates/bbb-net/src/event_stream.rs#play_debug_game_packets_emit_matching_events_without_responses",
+          "crates/bbb-net/src/probe/play.rs#probe_applies_debug_game_packets_to_world",
+          "crates/bbb-world/src/client/debug_game.rs#tracks_debug_game_events_and_counters",
+          "crates/bbb-native/src/runtime/events/tests/level_event_particle_batches.rs#debug_game_events_update_world_counters"
+        ],
+        "status": "complete"
+      }
+    },
     "play/clientbound/CLIENTBOUND_PLAYER_POSITION": {
       "canonical_apply": {
         "evidence": [

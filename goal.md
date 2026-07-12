@@ -437,6 +437,8 @@ play Transfer 的 shared host/port wire、strict payload consumption、world pro
 tests 已闭合；断开、closing-window late packet、transfer-state carry 与 Transfer-intent reconnect 保持 runtime partial。
 play TagQuery 的 transaction + nullable CompoundTag wire、bounded/strict NBT validation、world apply 与 F3+I
 matching/null/stale callback tests 已全行闭合；persistent entity Codec/SNBT 仍由各语义 owner 单独实现。
+play TestInstanceBlockStatus 的 Component + optional Vec3i wire、strict decode、world ownership 与 tests 已闭合；
+rich status preservation 与 active TestInstanceBlockEditScreen update 未实现，canonical/runtime 保持 partial。
 
 完成标准：全部 vanilla 26.1 catalog entry 都有矩阵行；所有目标客户端适用项为
 `complete`，其余只有带 vanilla 依据的 `not-applicable` 或带重启判据的窄 `deferred`；
