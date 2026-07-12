@@ -8,7 +8,8 @@ mod generated_26_1;
 
 use generated_26_1::{
     VANILLA_AIR_BLOCKS, VANILLA_BARS_BLOCKS, VANILLA_BUTTON_BLOCKS, VANILLA_COPPER_GRATE_BLOCKS,
-    VANILLA_DOOR_BLOCKS, VANILLA_FIXED_SOURCE_WATER_BLOCKS,
+    VANILLA_DOOR_BLOCKS, VANILLA_FENCE_BLOCKS, VANILLA_FENCE_GATE_BLOCKS,
+    VANILLA_FIXED_SOURCE_WATER_BLOCKS, VANILLA_FLOWER_POT_BLOCKS,
     VANILLA_HALF_TRANSPARENT_SKIP_RENDERING_BLOCKS, VANILLA_INVISIBLE_RENDER_SHAPE_BLOCKS,
     VANILLA_IRON_BARS_CLASS_BLOCKS, VANILLA_LEAVES_BLOCKS, VANILLA_NO_COLLISION_BANNER_BLOCKS,
     VANILLA_NO_COLLISION_CROP_BLOCKS, VANILLA_NO_COLLISION_CROP_SUPPLEMENT_BLOCKS,
@@ -17,8 +18,10 @@ use generated_26_1::{
     VANILLA_NO_COLLISION_TORCH_BLOCKS, VANILLA_NO_COLLISION_WIRE_BLOCKS,
     VANILLA_NO_TERRAIN_PARTICLE_BLOCKS, VANILLA_PRESSURE_PLATE_BLOCKS, VANILLA_RAIL_BLOCKS,
     VANILLA_SAME_BLOCK_ALL_FACE_SKIP_RENDERING_BLOCKS,
-    VANILLA_SAME_BLOCK_VERTICAL_FACE_SKIP_RENDERING_BLOCKS, VANILLA_STANDING_SIGN_BLOCKS,
-    VANILLA_TRAPDOOR_BLOCKS, VANILLA_WALL_SIGN_BLOCKS,
+    VANILLA_SAME_BLOCK_VERTICAL_FACE_SKIP_RENDERING_BLOCKS, VANILLA_SAPLING_BLOCKS,
+    VANILLA_SLAB_BLOCKS, VANILLA_STAIR_BLOCKS, VANILLA_STANDING_SIGN_BLOCKS,
+    VANILLA_TRAPDOOR_BLOCKS, VANILLA_WALL_BLOCKS, VANILLA_WALL_SIGN_BLOCKS,
+    VANILLA_WOOL_CARPET_BLOCKS,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -335,6 +338,42 @@ pub fn block_name_is_wall_sign(name: &str) -> bool {
     VANILLA_WALL_SIGN_BLOCKS.contains(&name)
 }
 
+pub fn block_name_is_slab(name: &str) -> bool {
+    VANILLA_SLAB_BLOCKS.contains(&name)
+}
+
+pub fn block_name_is_stair(name: &str) -> bool {
+    VANILLA_STAIR_BLOCKS.contains(&name)
+}
+
+pub fn block_name_is_wall(name: &str) -> bool {
+    VANILLA_WALL_BLOCKS.contains(&name)
+}
+
+pub fn block_name_is_fence(name: &str) -> bool {
+    VANILLA_FENCE_BLOCKS.contains(&name)
+}
+
+pub fn block_name_is_fence_gate(name: &str) -> bool {
+    VANILLA_FENCE_GATE_BLOCKS.contains(&name)
+}
+
+pub fn block_name_is_wool_carpet(name: &str) -> bool {
+    VANILLA_WOOL_CARPET_BLOCKS.contains(&name)
+}
+
+pub fn block_name_is_flower_pot(name: &str) -> bool {
+    VANILLA_FLOWER_POT_BLOCKS.contains(&name)
+}
+
+pub fn block_name_is_sapling(name: &str) -> bool {
+    VANILLA_SAPLING_BLOCKS.contains(&name)
+}
+
+pub fn block_name_is_bars_or_pane(name: &str) -> bool {
+    VANILLA_BARS_BLOCKS.contains(&name) || VANILLA_IRON_BARS_CLASS_BLOCKS.contains(&name)
+}
+
 pub(crate) fn block_name_has_empty_collision_shape(name: &str) -> bool {
     name.contains("sapling")
         || matches!(
@@ -533,6 +572,43 @@ mod tests {
         assert!(!block_name_is_standing_sign("minecraft:oak_wall_sign"));
         assert!(block_name_is_wall_sign("minecraft:oak_wall_sign"));
         assert!(!block_name_is_wall_sign("minecraft:oak_hanging_sign"));
+        for (member, lookalike) in [
+            ("minecraft:oak_slab", "minecraft:custom_slab"),
+            ("minecraft:oak_stairs", "minecraft:custom_stairs"),
+            ("minecraft:cobblestone_wall", "minecraft:custom_wall"),
+            ("minecraft:oak_fence", "minecraft:custom_fence"),
+            ("minecraft:oak_fence_gate", "minecraft:custom_fence_gate"),
+            ("minecraft:white_carpet", "minecraft:custom_carpet"),
+            ("minecraft:flower_pot", "minecraft:potted_custom"),
+        ] {
+            assert!(
+                block_name_is_slab(member)
+                    || block_name_is_stair(member)
+                    || block_name_is_wall(member)
+                    || block_name_is_fence(member)
+                    || block_name_is_fence_gate(member)
+                    || block_name_is_wool_carpet(member)
+                    || block_name_is_flower_pot(member),
+                "{member}"
+            );
+            assert!(!block_name_is_slab(lookalike));
+            assert!(!block_name_is_stair(lookalike));
+            assert!(!block_name_is_wall(lookalike));
+            assert!(!block_name_is_fence(lookalike));
+            assert!(!block_name_is_fence_gate(lookalike));
+            assert!(!block_name_is_wool_carpet(lookalike));
+            assert!(!block_name_is_flower_pot(lookalike));
+        }
+        assert!(block_name_is_sapling("minecraft:oak_sapling"));
+        assert!(block_name_is_sapling("minecraft:mangrove_propagule"));
+        assert!(!block_name_is_sapling("minecraft:bamboo_sapling"));
+        assert!(!block_name_is_sapling("minecraft:custom_sapling"));
+        assert!(block_name_is_bars_or_pane("minecraft:copper_bars"));
+        assert!(block_name_is_bars_or_pane(
+            "minecraft:white_stained_glass_pane"
+        ));
+        assert!(!block_name_is_bars_or_pane("minecraft:custom_bars"));
+        assert!(!block_name_is_bars_or_pane("minecraft:custom_glass_pane"));
         assert!(
             classify_terrain_skip_rendering(Some("minecraft:copper_grate"), &BTreeMap::new())
                 .same_block_culls_all_faces

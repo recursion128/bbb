@@ -131,6 +131,21 @@ fn outline_shape_uses_vanilla_flower_pot_shape() {
 }
 
 #[test]
+fn outline_shape_uses_generated_sapling_class_membership() {
+    for block_name in ["minecraft:oak_sapling", "minecraft:mangrove_propagule"] {
+        assert_eq!(
+            outline_shape_for_block(Some(block_name), &BTreeMap::new()),
+            Some(BlockOutlineShape::single(BlockOutlineBox::SAPLING)),
+            "{block_name}"
+        );
+    }
+    assert_eq!(
+        outline_shape_for_block(Some("minecraft:bamboo_sapling"), &BTreeMap::new()),
+        Some(BlockOutlineShape::single(BlockOutlineBox::FULL))
+    );
+}
+
+#[test]
 fn outline_shape_uses_vanilla_standing_sign_shape() {
     assert_eq!(
         outline_shape_for_block(Some("minecraft:oak_sign"), &standing_sign_properties(0)),
@@ -436,6 +451,16 @@ fn outline_shape_rejects_generated_family_suffix_lookalikes() {
         "minecraft:custom_button",
         "minecraft:custom_sign",
         "minecraft:custom_wall_sign",
+        "minecraft:custom_slab",
+        "minecraft:custom_stairs",
+        "minecraft:custom_wall",
+        "minecraft:custom_fence",
+        "minecraft:custom_fence_gate",
+        "minecraft:custom_carpet",
+        "minecraft:potted_custom",
+        "minecraft:custom_sapling",
+        "minecraft:custom_bars",
+        "minecraft:custom_glass_pane",
         "example:oak_door",
         "example:oak_button",
     ] {
@@ -810,6 +835,10 @@ fn outline_shape_uses_vanilla_disconnected_pane_post() {
     );
     assert_eq!(
         outline_shape_for_block(Some("minecraft:iron_bars"), &pane_properties([])),
+        Some(BlockOutlineShape::single(BlockOutlineBox::PANE_POST))
+    );
+    assert_eq!(
+        outline_shape_for_block(Some("minecraft:copper_bars"), &pane_properties([])),
         Some(BlockOutlineShape::single(BlockOutlineBox::PANE_POST))
     );
 }

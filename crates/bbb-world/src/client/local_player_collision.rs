@@ -24,8 +24,10 @@ use crate::entities::{
     VANILLA_HAPPY_GHAST_STAYS_STILL_DATA_ID,
 };
 use crate::terrain::{
-    block_name_has_empty_collision_shape, block_name_is_air, block_name_is_copper_grate,
-    block_name_is_door, block_name_is_leaves, block_name_is_trapdoor,
+    block_name_has_empty_collision_shape, block_name_is_air, block_name_is_bars_or_pane,
+    block_name_is_copper_grate, block_name_is_door, block_name_is_fence, block_name_is_fence_gate,
+    block_name_is_flower_pot, block_name_is_leaves, block_name_is_slab, block_name_is_stair,
+    block_name_is_trapdoor, block_name_is_wall, block_name_is_wool_carpet,
 };
 use crate::{BlockPos, BlockProbe, TerrainFluidKind, TerrainMaterialClass, WorldStore};
 
@@ -1382,17 +1384,11 @@ fn block_collision_shape(block: &BlockProbe, pos: BlockPos) -> Option<BlockColli
 }
 
 fn is_slab_block(block: &BlockProbe) -> bool {
-    block
-        .block_name
-        .as_deref()
-        .is_some_and(|name| name.ends_with("_slab"))
+    block.block_name.as_deref().is_some_and(block_name_is_slab)
 }
 
 fn is_stair_block(block: &BlockProbe) -> bool {
-    block
-        .block_name
-        .as_deref()
-        .is_some_and(|name| name.ends_with("_stairs"))
+    block.block_name.as_deref().is_some_and(block_name_is_stair)
 }
 
 fn is_leaves_block_name(block_name: &str) -> bool {
@@ -1400,29 +1396,7 @@ fn is_leaves_block_name(block_name: &str) -> bool {
 }
 
 fn is_flat_carpet_block_name(block_name: &str) -> bool {
-    let Some(path) = block_name.strip_prefix("minecraft:") else {
-        return false;
-    };
-    matches!(
-        path,
-        "white_carpet"
-            | "orange_carpet"
-            | "magenta_carpet"
-            | "light_blue_carpet"
-            | "yellow_carpet"
-            | "lime_carpet"
-            | "pink_carpet"
-            | "gray_carpet"
-            | "light_gray_carpet"
-            | "cyan_carpet"
-            | "purple_carpet"
-            | "blue_carpet"
-            | "brown_carpet"
-            | "green_carpet"
-            | "red_carpet"
-            | "black_carpet"
-            | "moss_carpet"
-    )
+    block_name_is_wool_carpet(block_name) || block_name == "minecraft:moss_carpet"
 }
 
 fn is_piston_base_block_name(block_name: &str) -> bool {
@@ -1430,9 +1404,7 @@ fn is_piston_base_block_name(block_name: &str) -> bool {
 }
 
 fn is_flower_pot_block_name(block_name: &str) -> bool {
-    block_name
-        .strip_prefix("minecraft:")
-        .is_some_and(|path| path == "flower_pot" || path.starts_with("potted_"))
+    block_name_is_flower_pot(block_name)
 }
 
 fn is_candle_block_name(block_name: &str) -> bool {
@@ -1583,28 +1555,19 @@ fn is_shulker_box_block_name(block_name: &str) -> bool {
 }
 
 fn is_fence_gate_block_name(block_name: &str) -> bool {
-    block_name
-        .strip_prefix("minecraft:")
-        .is_some_and(|path| path.ends_with("_fence_gate"))
+    block_name_is_fence_gate(block_name)
 }
 
 fn is_fence_block_name(block_name: &str) -> bool {
-    block_name
-        .strip_prefix("minecraft:")
-        .is_some_and(|path| path.ends_with("_fence"))
+    block_name_is_fence(block_name)
 }
 
 fn is_bars_or_pane_block_name(block_name: &str) -> bool {
-    block_name == "minecraft:iron_bars"
-        || block_name
-            .strip_prefix("minecraft:")
-            .is_some_and(|path| path.ends_with("_bars") || path.ends_with("glass_pane"))
+    block_name_is_bars_or_pane(block_name)
 }
 
 fn is_wall_block_name(block_name: &str) -> bool {
-    block_name
-        .strip_prefix("minecraft:")
-        .is_some_and(|path| path.ends_with("_wall"))
+    block_name_is_wall(block_name)
 }
 
 fn is_cauldron_block_name(block_name: &str) -> bool {

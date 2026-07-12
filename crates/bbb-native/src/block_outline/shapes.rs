@@ -1,8 +1,11 @@
 use std::collections::BTreeMap;
 
 use bbb_world::{
-    block_name_is_button, block_name_is_door, block_name_is_pressure_plate, block_name_is_rail,
-    block_name_is_standing_sign, block_name_is_trapdoor, block_name_is_wall_sign,
+    block_name_is_bars_or_pane, block_name_is_button, block_name_is_door, block_name_is_fence,
+    block_name_is_fence_gate, block_name_is_flower_pot, block_name_is_pressure_plate,
+    block_name_is_rail, block_name_is_sapling, block_name_is_slab, block_name_is_stair,
+    block_name_is_standing_sign, block_name_is_trapdoor, block_name_is_wall,
+    block_name_is_wall_sign, block_name_is_wool_carpet,
 };
 
 use super::{BlockOutlineBox, BlockOutlineShape, HorizontalDirection};
@@ -29,7 +32,7 @@ pub(super) fn outline_shape_for_block(
     if block_name == "minecraft:snow" {
         return snow_layer_outline_box(properties).map(BlockOutlineShape::single);
     }
-    if is_slab_block_name(block_name) {
+    if block_name_is_slab(block_name) {
         return match properties.get("type").map(String::as_str) {
             Some("bottom") => Some(BlockOutlineShape::single(BlockOutlineBox::BOTTOM_SLAB)),
             Some("top") => Some(BlockOutlineShape::single(BlockOutlineBox::TOP_SLAB)),
@@ -46,10 +49,10 @@ pub(super) fn outline_shape_for_block(
     if let Some(outline) = objects::object_outline_shape_for_block(block_name, properties) {
         return outline;
     }
-    if is_flower_pot_block_name(block_name) {
+    if block_name_is_flower_pot(block_name) {
         return Some(BlockOutlineShape::single(BlockOutlineBox::FLOWER_POT));
     }
-    if is_sapling_block_name(block_name) {
+    if block_name_is_sapling(block_name) {
         return Some(BlockOutlineShape::single(BlockOutlineBox::SAPLING));
     }
     if let Some(outline) = simple_vegetation_outline_box(block_name) {
@@ -64,7 +67,7 @@ pub(super) fn outline_shape_for_block(
     if block_name_is_standing_sign(block_name) {
         return Some(BlockOutlineShape::single(BlockOutlineBox::SIGN));
     }
-    if is_stair_block_name(block_name) {
+    if block_name_is_stair(block_name) {
         return stair_outline_shape(properties);
     }
     if block_name_is_trapdoor(block_name) {
@@ -88,16 +91,16 @@ pub(super) fn outline_shape_for_block(
     if block_name == "minecraft:lever" {
         return lever_outline_shape(properties);
     }
-    if is_fence_gate_block_name(block_name) {
+    if block_name_is_fence_gate(block_name) {
         return fence_gate_outline_shape(properties);
     }
-    if is_fence_block_name(block_name) {
+    if block_name_is_fence(block_name) {
         return fence_outline_shape(properties);
     }
-    if is_pane_block_name(block_name) {
+    if block_name_is_bars_or_pane(block_name) {
         return pane_outline_shape(properties);
     }
-    if is_wall_block_name(block_name) {
+    if block_name_is_wall(block_name) {
         return wall_outline_shape(properties);
     }
     if block_name == "minecraft:pale_moss_carpet" {
@@ -537,30 +540,6 @@ fn snow_layer_outline_box(properties: &BTreeMap<String, String>) -> Option<Block
     })
 }
 
-fn is_slab_block_name(block_name: &str) -> bool {
-    block_name
-        .strip_prefix("minecraft:")
-        .is_some_and(|path| path.ends_with("_slab"))
-}
-
-fn is_stair_block_name(block_name: &str) -> bool {
-    block_name
-        .strip_prefix("minecraft:")
-        .is_some_and(|path| path.ends_with("_stairs"))
-}
-
-fn is_flower_pot_block_name(block_name: &str) -> bool {
-    block_name
-        .strip_prefix("minecraft:")
-        .is_some_and(|path| path == "flower_pot" || path.starts_with("potted_"))
-}
-
-fn is_sapling_block_name(block_name: &str) -> bool {
-    block_name
-        .strip_prefix("minecraft:")
-        .is_some_and(|path| path.ends_with("_sapling") && path != "bamboo_sapling")
-}
-
 fn simple_vegetation_outline_box(block_name: &str) -> Option<BlockOutlineBox> {
     match block_name {
         "minecraft:short_grass" | "minecraft:fern" | "minecraft:dead_bush" => {
@@ -574,12 +553,6 @@ fn simple_vegetation_outline_box(block_name: &str) -> Option<BlockOutlineBox> {
         "minecraft:lily_pad" => Some(BlockOutlineBox::LILY_PAD),
         _ => None,
     }
-}
-
-fn is_fence_gate_block_name(block_name: &str) -> bool {
-    block_name
-        .strip_prefix("minecraft:")
-        .is_some_and(|path| path.ends_with("_fence_gate"))
 }
 
 fn is_floor_torch_block_name(block_name: &str) -> bool {
@@ -602,47 +575,6 @@ fn is_wall_torch_block_name(block_name: &str) -> bool {
     )
 }
 
-fn is_fence_block_name(block_name: &str) -> bool {
-    block_name
-        .strip_prefix("minecraft:")
-        .is_some_and(|path| path.ends_with("_fence"))
-}
-
-fn is_pane_block_name(block_name: &str) -> bool {
-    block_name == "minecraft:iron_bars"
-        || block_name
-            .strip_prefix("minecraft:")
-            .is_some_and(|path| path.ends_with("glass_pane"))
-}
-
-fn is_wall_block_name(block_name: &str) -> bool {
-    block_name
-        .strip_prefix("minecraft:")
-        .is_some_and(|path| path.ends_with("_wall"))
-}
-
 fn is_flat_carpet_block_name(block_name: &str) -> bool {
-    let Some(path) = block_name.strip_prefix("minecraft:") else {
-        return false;
-    };
-    matches!(
-        path,
-        "white_carpet"
-            | "orange_carpet"
-            | "magenta_carpet"
-            | "light_blue_carpet"
-            | "yellow_carpet"
-            | "lime_carpet"
-            | "pink_carpet"
-            | "gray_carpet"
-            | "light_gray_carpet"
-            | "cyan_carpet"
-            | "purple_carpet"
-            | "blue_carpet"
-            | "brown_carpet"
-            | "green_carpet"
-            | "red_carpet"
-            | "black_carpet"
-            | "moss_carpet"
-    )
+    block_name_is_wool_carpet(block_name) || block_name == "minecraft:moss_carpet"
 }

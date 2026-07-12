@@ -32,6 +32,13 @@ BLOCK_CLASS_SOURCE_DIR = Path("net/minecraft/world/level/block")
 
 BLOCK_TAG_CATALOGS = (
     ("VANILLA_BARS_BLOCKS", "minecraft:bars", 9),
+    ("VANILLA_SLAB_BLOCKS", "minecraft:slabs", 62),
+    ("VANILLA_STAIR_BLOCKS", "minecraft:stairs", 58),
+    ("VANILLA_WALL_BLOCKS", "minecraft:walls", 26),
+    ("VANILLA_FENCE_BLOCKS", "minecraft:fences", 13),
+    ("VANILLA_FENCE_GATE_BLOCKS", "minecraft:fence_gates", 12),
+    ("VANILLA_WOOL_CARPET_BLOCKS", "minecraft:wool_carpets", 16),
+    ("VANILLA_FLOWER_POT_BLOCKS", "minecraft:flower_pots", 39),
     ("VANILLA_DOOR_BLOCKS", "minecraft:doors", 21),
     ("VANILLA_TRAPDOOR_BLOCKS", "minecraft:trapdoors", 21),
     ("VANILLA_RAIL_BLOCKS", "minecraft:rails", 4),
@@ -156,6 +163,11 @@ def generate(source_root: Path) -> str:
         "net.minecraft.world.level.block.LeavesBlock",
         4,
     )
+    sapling_types = constructor_types_extending(
+        block_class_sources,
+        "net.minecraft.world.level.block.SaplingBlock",
+        2,
+    )
     entries = no_terrain_particle_blocks(source)
     air_entries = air_blocks(source)
     constructor_catalogs = [
@@ -173,6 +185,7 @@ def generate(source_root: Path) -> str:
                 31,
             ),
             ("VANILLA_LEAVES_BLOCKS", leaves_types, 11),
+            ("VANILLA_SAPLING_BLOCKS", sapling_types, 9),
             (
                 "VANILLA_INVISIBLE_RENDER_SHAPE_BLOCKS",
                 invisible_render_shape_types,
@@ -239,8 +252,16 @@ def generate(source_root: Path) -> str:
             "        assert_eq!(VANILLA_NO_COLLISION_THIN_OVERLAY_BLOCKS.len(), 7);",
             "        assert_eq!(VANILLA_HALF_TRANSPARENT_SKIP_RENDERING_BLOCKS.len(), 31);",
             "        assert_eq!(VANILLA_LEAVES_BLOCKS.len(), 11);",
+            "        assert_eq!(VANILLA_SAPLING_BLOCKS.len(), 9);",
             "        assert_eq!(VANILLA_INVISIBLE_RENDER_SHAPE_BLOCKS.len(), 12);",
             "        assert_eq!(VANILLA_BARS_BLOCKS.len(), 9);",
+            "        assert_eq!(VANILLA_SLAB_BLOCKS.len(), 62);",
+            "        assert_eq!(VANILLA_STAIR_BLOCKS.len(), 58);",
+            "        assert_eq!(VANILLA_WALL_BLOCKS.len(), 26);",
+            "        assert_eq!(VANILLA_FENCE_BLOCKS.len(), 13);",
+            "        assert_eq!(VANILLA_FENCE_GATE_BLOCKS.len(), 12);",
+            "        assert_eq!(VANILLA_WOOL_CARPET_BLOCKS.len(), 16);",
+            "        assert_eq!(VANILLA_FLOWER_POT_BLOCKS.len(), 39);",
             "        assert_eq!(VANILLA_DOOR_BLOCKS.len(), 21);",
             "        assert_eq!(VANILLA_TRAPDOOR_BLOCKS.len(), 21);",
             "        assert_eq!(VANILLA_RAIL_BLOCKS.len(), 4);",

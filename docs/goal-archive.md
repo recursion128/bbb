@@ -12311,3 +12311,16 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   plate/standing-sign/wall-sign 与其他 namespace lookalike 回到普通 full cube。all-signs 的
   no-collision membership 与 hanging-sign objects 仍各自保留独立语义，没有为去重混合 shape
   family。
+
+## 2026-07-12：Shared exact block-shape memberships
+
+- [x] block-membership generator 从 vanilla `slabs`、`stairs`、`walls`、`fences`、
+  `fence_gates`、`wool_carpets`、`flower_pots` tags 生成稳定成员表；Sapling 通过统一
+  Tree-sitter class hierarchy IR 计算 `SaplingBlock` 两类闭包并映射九个注册项，避免把 tag
+  中语义不同的 azalea 混入。bars/panes 复用既有 `bars` 与 `IronBarsBlock` constructor catalog
+  的并集，补齐 copper bars。
+- [x] world local collision 与 native block outline 统一消费窄 membership queries，删除相应
+  resource suffix/prefix 和重复颜色 carpet matches；moss carpet 保留其独立精确特例，既有
+  property-aware collision/outline 算法未变。vanilla 成员保持原行为，mangrove propagule
+  获得 SaplingBlock shape，custom suffix lookalikes 回到普通 full-cube fallback；生成表不接管
+  collision、render、fluid 或 persistent 语义。
