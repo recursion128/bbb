@@ -157,21 +157,18 @@ fn bed_map_color(
 }
 
 fn ore_map_color(name: &str) -> Option<u32> {
+    if !bbb_world::block_name_is_ore(name) {
+        return None;
+    }
     let name = name.strip_prefix("minecraft:")?;
     match name {
         "nether_gold_ore" | "nether_quartz_ore" => return Some(MAP_COLOR_NETHER),
         _ => {}
     }
-    if name
-        .strip_prefix("deepslate_")
-        .is_some_and(|ore| ore.ends_with("_ore"))
-    {
+    if name.starts_with("deepslate_") {
         return Some(MAP_COLOR_DEEPSLATE);
     }
-    if name.ends_with("_ore") {
-        return Some(MAP_COLOR_STONE);
-    }
-    None
+    Some(MAP_COLOR_STONE)
 }
 
 fn deepslate_family_map_color(name: &str) -> Option<u32> {
@@ -1156,3 +1153,27 @@ const MAP_COLOR_WARPED_WART_BLOCK: u32 = 1_356_933;
 const MAP_COLOR_DEEPSLATE: u32 = 6_579_300;
 const MAP_COLOR_RAW_IRON: u32 = 14_200_723;
 const MAP_COLOR_GLOW_LICHEN: u32 = 8_365_974;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn ore_map_color_uses_exact_vanilla_membership() {
+        assert_eq!(ore_map_color("minecraft:gold_ore"), Some(MAP_COLOR_STONE));
+        assert_eq!(
+            ore_map_color("minecraft:deepslate_iron_ore"),
+            Some(MAP_COLOR_DEEPSLATE)
+        );
+        for block_name in ["minecraft:nether_gold_ore", "minecraft:nether_quartz_ore"] {
+            assert_eq!(ore_map_color(block_name), Some(MAP_COLOR_NETHER));
+        }
+        for block_name in [
+            "minecraft:custom_ore",
+            "minecraft:deepslate_custom_ore",
+            "example:diamond_ore",
+        ] {
+            assert_eq!(ore_map_color(block_name), None, "{block_name}");
+        }
+    }
+}

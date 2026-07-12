@@ -20,8 +20,9 @@ use generated_26_1::{
     VANILLA_NO_COLLISION_CROP_SUPPLEMENT_BLOCKS, VANILLA_NO_COLLISION_FIRE_BLOCKS,
     VANILLA_NO_COLLISION_SIGN_BLOCKS, VANILLA_NO_COLLISION_SMALL_FLOWER_BLOCKS,
     VANILLA_NO_COLLISION_THIN_OVERLAY_BLOCKS, VANILLA_NO_COLLISION_WIRE_BLOCKS,
-    VANILLA_NO_TERRAIN_PARTICLE_BLOCKS, VANILLA_PLANK_BLOCKS, VANILLA_PRESSURE_PLATE_BLOCKS,
-    VANILLA_RAIL_BLOCKS, VANILLA_SAME_BLOCK_ALL_FACE_SKIP_RENDERING_BLOCKS,
+    VANILLA_NO_TERRAIN_PARTICLE_BLOCKS, VANILLA_ORE_BLOCKS, VANILLA_PLANK_BLOCKS,
+    VANILLA_PRESSURE_PLATE_BLOCKS, VANILLA_RAIL_BLOCKS,
+    VANILLA_SAME_BLOCK_ALL_FACE_SKIP_RENDERING_BLOCKS,
     VANILLA_SAME_BLOCK_VERTICAL_FACE_SKIP_RENDERING_BLOCKS, VANILLA_SAPLING_BLOCKS,
     VANILLA_SHELF_BLOCKS, VANILLA_SHULKER_BOX_BLOCKS, VANILLA_SLAB_BLOCKS, VANILLA_STAIR_BLOCKS,
     VANILLA_STANDING_SIGN_BLOCKS, VANILLA_TRAPDOOR_BLOCKS, VANILLA_WALL_BLOCKS,
@@ -467,6 +468,10 @@ pub fn block_name_is_planks(name: &str) -> bool {
     VANILLA_PLANK_BLOCKS.contains(&name)
 }
 
+pub fn block_name_is_ore(name: &str) -> bool {
+    name == "minecraft:nether_quartz_ore" || VANILLA_ORE_BLOCKS.contains(&name)
+}
+
 pub(crate) fn block_name_has_empty_collision_shape(name: &str) -> bool {
     name.contains("sapling")
         || matches!(
@@ -732,6 +737,21 @@ mod tests {
         assert!(block_name_is_planks("minecraft:bamboo_planks"));
         assert!(!block_name_is_log("minecraft:custom_log"));
         assert!(!block_name_is_planks("minecraft:custom_planks"));
+        for block_name in [
+            "minecraft:coal_ore",
+            "minecraft:deepslate_diamond_ore",
+            "minecraft:nether_gold_ore",
+            "minecraft:nether_quartz_ore",
+        ] {
+            assert!(block_name_is_ore(block_name), "{block_name}");
+        }
+        for block_name in [
+            "minecraft:custom_ore",
+            "minecraft:deepslate_custom_ore",
+            "example:diamond_ore",
+        ] {
+            assert!(!block_name_is_ore(block_name), "{block_name}");
+        }
     }
 
     #[test]

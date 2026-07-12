@@ -12392,3 +12392,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] fallback 删除 `_log/_wood/_stem/_hyphae/_planks` suffix 猜测；全部 vanilla logs、woods、
   stems、hyphae、planks 仍覆盖，custom/other-namespace lookalikes 不再获得伪造破坏速度。正常
   native startup 继续以 `bbb-pack` 的完整 generated destroy-profile catalog 为首选权威。
+
+## 2026-07-12：Generated exact ore map-color membership
+
+- [x] block-membership generator 按 vanilla coal/copper/diamond/emerald/gold/iron/lapis/redstone
+  ore tags 的稳定顺序生成 17 项去重并集，world 以 `nether_quartz_ore` 这一 tag 外精确补充导出
+  18 项 ore 查询；各源 tag 数量、最终去重数量与 update/check 幂等门禁锁定输入漂移。
+- [x] falling-dust 静态 map-color fallback 删除任意 `*_ore` / `deepslate_*_ore` 后缀猜测，改为
+  只对 generated vanilla membership 分配 STONE、DEEPSLATE 或 NETHER map color；custom 与其他
+  namespace lookalike 不再获得伪造颜色。颜色选择仍由 native 呈现语义拥有，生成表只提供
+  tag/resource membership。
