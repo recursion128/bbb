@@ -589,6 +589,23 @@ mod tests {
     }
 
     #[test]
+    fn component_patch_membership_checks_do_not_use_raw_type_ids() {
+        let source: String = include_str!("icon_model.rs")
+            .chars()
+            .filter(|character| !character.is_whitespace())
+            .collect();
+        for collection in ["added_type_ids", "removed_type_ids"] {
+            for type_id in 0..bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_TYPES.len()
+            {
+                assert!(
+                    !source.contains(&format!("{collection}.contains(&{type_id})")),
+                    "{collection} checks raw component type id {type_id}"
+                );
+            }
+        }
+    }
+
+    #[test]
     fn exact_sound_event_matches_registry_and_direct_holders() {
         let registry_value = Value::String("minecraft:entity.cat.ambient".to_string());
         let registry_expected = exact_sound_event_value(&registry_value).unwrap();
@@ -7189,17 +7206,27 @@ fn effective_damage_state(
     default_max_damage: Option<i32>,
 ) -> Option<(i32, i32)> {
     let component_patch = component_patch?;
-    if component_patch.unbreakable && !component_patch.removed_type_ids.contains(&4) {
+    if component_patch.unbreakable
+        && !component_patch
+            .removed_type_ids
+            .contains(&UNBREAKABLE_COMPONENT_ID)
+    {
         return None;
     }
-    if component_patch.removed_type_ids.contains(&2) {
+    if component_patch
+        .removed_type_ids
+        .contains(&MAX_DAMAGE_COMPONENT_ID)
+    {
         return None;
     }
     let max_damage = component_patch
         .max_damage
         .or(default_max_damage)
         .filter(|max_damage| *max_damage > 0)?;
-    if component_patch.removed_type_ids.contains(&3) {
+    if component_patch
+        .removed_type_ids
+        .contains(&DAMAGE_COMPONENT_ID)
+    {
         return None;
     }
     if component_patch.damage.is_none() && default_max_damage.is_none() {

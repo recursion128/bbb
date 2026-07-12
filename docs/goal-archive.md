@@ -12422,3 +12422,11 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   properties catalog；移除 26.1 不存在的 `minecraft:grass`，补齐源码明确无碰撞的 bamboo sapling、
   coral/fan、portal、liquid 等成员。`scaffolding` 因重写 context-dependent collision 被显式排除，
   继续走现有专用 shape；生成数据不接管碰撞上下文或 voxel-shape 算法。
+
+## 2026-07-12：Removed raw item-model component ids
+
+- [x] item-model damage state 的 max-damage、damage、unbreakable removal checks 删除裸
+  `2/3/4`，统一使用本模块已指向 protocol generated 26.1 component catalog 的 aliases；现有
+  effective damage/unbreakable 行为不变。
+- [x] source-structure test 扫描 `added_type_ids` / `removed_type_ids` membership calls，拒绝在
+  item-model 生产文件重新引入 0..109 的裸 component type id；测试 fixture 数据不受限制。
