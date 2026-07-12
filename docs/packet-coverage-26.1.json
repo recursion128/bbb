@@ -5497,29 +5497,47 @@
       "constant_name": "CLIENTBOUND_CONTAINER_SET_CONTENT",
       "coverage": {
         "canonical_apply": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
+          "evidence": [
+            "crates/bbb-world/src/client/inventory.rs#apply_container_set_content",
+            "crates/bbb-protocol/src/packets/data_components.rs#DataComponentPatchSummary",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleContainerContent"
+          ],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
           "status": "partial"
         },
         "decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/inventory.rs#decodes_container_and_inventory_item_updates",
+            "vanilla:net/minecraft/network/protocol/game/ClientboundContainerSetContentPacket.java#STREAM_CODEC"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "ownership": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/play_apply.rs#PlayClientbound::ContainerSetContent"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "runtime_side_effect": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
+          "evidence": [
+            "crates/bbb-world/src/client/inventory/tests.rs#container_content_only_updates_the_matching_active_menu",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleContainerContent"
+          ],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
           "status": "partial"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/inventory.rs#decodes_container_and_inventory_item_updates",
+            "crates/bbb-net/src/event_stream.rs#play_inventory_packets_emit_matching_events_without_responses",
+            "crates/bbb-net/src/probe/play.rs#probe_applies_inventory_container_packets_to_world",
+            "crates/bbb-world/src/client/inventory/tests.rs#container_content_only_updates_the_matching_active_menu",
+            "crates/bbb-native/src/runtime/events/tests/session_protocol_events.rs#inventory_events_update_world_and_world_counters"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "clientbound",

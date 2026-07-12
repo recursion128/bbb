@@ -217,7 +217,8 @@ fn scroll_signum(value: f64) -> f64 {
 mod tests {
     use super::*;
     use bbb_protocol::packets::{
-        ContainerSetContent, DataComponentPatchSummary, ItemStackSummary, SetPlayerInventory,
+        ContainerSetContent, DataComponentPatchSummary, ItemStackSummary, OpenScreen,
+        SetPlayerInventory,
     };
 
     #[test]
@@ -331,6 +332,12 @@ mod tests {
         world.apply_set_player_inventory(SetPlayerInventory {
             slot: 1,
             item: bundle_stack(42, 1, 3),
+        });
+        world.apply_open_screen(OpenScreen {
+            container_id: 7,
+            menu_type_id: 2,
+            title: "Chest".to_string(),
+            title_styled: Vec::new(),
         });
         world.apply_container_set_content(ContainerSetContent {
             container_id: 7,

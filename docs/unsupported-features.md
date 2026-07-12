@@ -587,6 +587,9 @@ back into a todo. Do not delete these.
 - ContainerSetData is gated by the current `containerMenu` id in vanilla.
   Mismatched property updates must remain ignored rather than creating a future
   synthetic menu or replacing the active one.
+- ContainerSetContent follows the same inventory-menu-or-matching-active-menu
+  authority gate; a mismatched packet must not update the carried item or create
+  synthetic slots. Remaining ItemStack added-value semantics stay tracked above.
 - `BeaconMenu`: confirm/cancel hover state, effect highlighted hover state,
   labels/tooltips.
 - `EnchantmentMenu`: animated book model, enchanting glyph text and its

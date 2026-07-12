@@ -18,6 +18,15 @@ use bbb_protocol::packets::{
 };
 use uuid::Uuid;
 
+fn open_test_container(store: &mut WorldStore, container_id: i32) {
+    store.apply_open_screen(ProtocolOpenScreen {
+        container_id,
+        menu_type_id: 2,
+        title: "Chest".to_string(),
+        title_styled: Vec::new(),
+    });
+}
+
 #[test]
 fn tracks_player_inventory_and_container_state() {
     let mut store = WorldStore::new();
@@ -164,6 +173,49 @@ fn container_set_data_only_updates_the_matching_active_menu() {
     }));
     assert_eq!(store.open_container_data_value(2), Some(11));
     assert_eq!(store.counters().container_data_updates_received, 4);
+}
+
+#[test]
+fn container_content_only_updates_the_matching_active_menu() {
+    let mut store = WorldStore::new();
+    store.apply_set_cursor_item(ProtocolSetCursorItem {
+        item: item_stack(10, 1),
+    });
+    store.apply_open_screen(ProtocolOpenScreen {
+        container_id: 7,
+        menu_type_id: 2,
+        title: "Chest".to_string(),
+        title_styled: Vec::new(),
+    });
+
+    assert!(
+        !store.apply_container_set_content(ProtocolContainerSetContent {
+            container_id: 8,
+            state_id: 4,
+            items: vec![item_stack(20, 2)],
+            carried_item: item_stack(30, 3),
+        })
+    );
+    let container = store.inventory().open_container.as_ref().unwrap();
+    assert_eq!(container.container_id, 7);
+    assert_eq!(container.state_id, 0);
+    assert!(container.slots.is_empty());
+    assert_eq!(store.inventory().cursor_item, item_stack(10, 1));
+
+    assert!(
+        store.apply_container_set_content(ProtocolContainerSetContent {
+            container_id: 7,
+            state_id: 5,
+            items: vec![item_stack(21, 2)],
+            carried_item: item_stack(31, 3),
+        })
+    );
+    let container = store.inventory().open_container.as_ref().unwrap();
+    assert_eq!(container.container_id, 7);
+    assert_eq!(container.state_id, 5);
+    assert_eq!(container.slots[0].item, item_stack(21, 2));
+    assert_eq!(store.inventory().cursor_item, item_stack(31, 3));
+    assert_eq!(store.counters().container_content_updates_received, 2);
 }
 
 #[test]
@@ -1215,6 +1267,7 @@ fn local_bundle_selection_applies_to_open_container_slots() {
         slot: 1,
         item: bundle_item_stack(99, 1, 2),
     });
+    open_test_container(&mut store, 7);
     store.apply_container_set_content(ProtocolContainerSetContent {
         container_id: 7,
         state_id: 1,
@@ -1518,6 +1571,7 @@ fn build_container_click_slot_rejects_missing_container_invalid_slot_and_unhasha
         ContainerClickBuildError::NoOpenContainer
     );
 
+    open_test_container(&mut store, 7);
     store.apply_container_set_content(ProtocolContainerSetContent {
         container_id: 7,
         state_id: 13,
@@ -1622,6 +1676,7 @@ fn apply_local_container_click_slot_picks_up_and_places_stack() {
 #[test]
 fn apply_local_container_click_slot_hashes_removed_only_component_patch() {
     let mut store = WorldStore::new();
+    open_test_container(&mut store, 7);
     store.apply_container_set_content(ProtocolContainerSetContent {
         container_id: 7,
         state_id: 13,
@@ -1669,6 +1724,7 @@ fn apply_local_container_click_slot_hashes_integer_component_patches() {
     ] {
         let mut store = WorldStore::new();
         let patched_stack = item_stack_with_int_component_summary(42, 1, component_type_id, value);
+        open_test_container(&mut store, 7);
         store.apply_container_set_content(ProtocolContainerSetContent {
             container_id: 7,
             state_id: 13,
@@ -1710,6 +1766,7 @@ fn apply_local_container_click_slot_hashes_multiple_integer_and_removed_componen
     patched_stack.component_patch.max_damage = Some(250);
     patched_stack.component_patch.damage = Some(7);
     patched_stack.component_patch.removed_type_ids = vec![VANILLA_MAP_ID_COMPONENT_ID];
+    open_test_container(&mut store, 7);
     store.apply_container_set_content(ProtocolContainerSetContent {
         container_id: 7,
         state_id: 13,
@@ -1756,6 +1813,7 @@ fn apply_local_container_click_slot_rejects_incomplete_integer_component_patch()
         .component_patch
         .added_type_ids
         .push(VANILLA_DAMAGE_COMPONENT_ID);
+    open_test_container(&mut store, 7);
     store.apply_container_set_content(ProtocolContainerSetContent {
         container_id: 7,
         state_id: 13,
@@ -1776,6 +1834,7 @@ fn apply_local_container_click_slot_rejects_incomplete_integer_component_patch()
 #[test]
 fn apply_local_container_click_slot_rejects_profile_component_patch() {
     let mut store = WorldStore::new();
+    open_test_container(&mut store, 7);
     store.apply_container_set_content(ProtocolContainerSetContent {
         container_id: 7,
         state_id: 13,

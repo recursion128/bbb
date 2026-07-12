@@ -594,7 +594,7 @@ impl InventoryState {
         &mut self,
         counters: &mut WorldCounters,
         packet: ProtocolContainerSetContent,
-    ) {
+    ) -> bool {
         counters.container_content_updates_received += 1;
         let ProtocolContainerSetContent {
             container_id,
@@ -602,6 +602,14 @@ impl InventoryState {
             items,
             carried_item,
         } = packet;
+        if container_id != INVENTORY_MENU_CONTAINER_ID
+            && self
+                .open_container
+                .as_ref()
+                .is_none_or(|container| container.container_id != container_id)
+        {
+            return false;
+        }
         self.cursor_item = carried_item;
         self.local_quick_craft.reset();
         let slots = items
@@ -627,38 +635,27 @@ impl InventoryState {
                 data_values: existing.data_values,
                 merchant_offers: existing.merchant_offers,
             };
-            return;
+            return true;
         }
 
         let existing = self
             .open_container
             .take()
-            .filter(|container| container.container_id == container_id);
-        let merchant_offers = existing
-            .as_ref()
-            .and_then(|container| container.merchant_offers.clone());
+            .expect("matching open container was checked");
+        let merchant_offers = existing.merchant_offers.clone();
         self.open_container = Some(ContainerState {
             container_id,
-            menu_type_id: existing
-                .as_ref()
-                .and_then(|container| container.menu_type_id),
-            title: existing
-                .as_ref()
-                .and_then(|container| container.title.clone()),
-            title_styled: existing
-                .as_ref()
-                .map(|container| container.title_styled.clone())
-                .unwrap_or_default(),
-            mount: existing.as_ref().and_then(|container| container.mount),
+            menu_type_id: existing.menu_type_id,
+            title: existing.title,
+            title_styled: existing.title_styled,
+            mount: existing.mount,
             state_id,
             slots,
-            data_values: existing
-                .as_ref()
-                .map(|container| container.data_values.clone())
-                .unwrap_or_default(),
+            data_values: existing.data_values,
             merchant_offers,
         });
         self.update_merchant_offer_count(counters);
+        true
     }
 
     pub(crate) fn apply_merchant_offers(
@@ -2061,7 +2058,7 @@ impl WorldStore {
             .apply_open_screen(&mut self.counters, &mut self.client_ui, packet)
     }
 
-    pub fn apply_container_set_content(&mut self, packet: ProtocolContainerSetContent) {
+    pub fn apply_container_set_content(&mut self, packet: ProtocolContainerSetContent) -> bool {
         self.inventory
             .apply_container_set_content(&mut self.counters, packet)
     }

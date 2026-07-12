@@ -11421,3 +11421,10 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   trailing bytes。
 - [x] world 只对 inventory menu id 0 或匹配当前 active server menu 的 packet 更新 property；不匹配 id 不再通过
   `ensure_container` 创建/替换 synthetic menu，五格证据闭合。
+
+## 2026-07-12：play container-set-content packet coverage audit
+
+- [x] 对照 `ClientboundContainerSetContentPacket` 锁定 container/state/list/carried-item wire、现有长度上限与
+  trailing-byte rejection。
+- [x] world 只对 inventory menu id 0 或匹配当前 active server menu 更新 slots/state/cursor；不匹配 packet 不再
+  覆盖 cursor 或创建 synthetic menu。decode/ownership/tests 闭合，剩余 ItemStack component 语义保持 partial。

@@ -141,12 +141,18 @@ pub(super) fn decode_container_set_content(
         items.push(decode_item_stack_summary(decoder)?);
     }
     let carried_item = decode_item_stack_summary(decoder)?;
-    Ok(ContainerSetContent {
+    let packet = ContainerSetContent {
         container_id,
         state_id,
         items,
         carried_item,
-    })
+    };
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after container set content packet".to_string(),
+        ));
+    }
+    Ok(packet)
 }
 
 pub(super) fn decode_container_set_data(decoder: &mut Decoder<'_>) -> Result<ContainerSetData> {
@@ -465,11 +471,9 @@ mod tests {
         payload.write_var_i32(0);
         payload.write_var_i32(0);
         payload.write_var_i32(0);
-        let packet = decode_play_clientbound(
-            ids::play::CLIENTBOUND_CONTAINER_SET_CONTENT,
-            &payload.into_inner(),
-        )
-        .unwrap();
+        let mut bytes = payload.into_inner();
+        let packet =
+            decode_play_clientbound(ids::play::CLIENTBOUND_CONTAINER_SET_CONTENT, &bytes).unwrap();
         assert_eq!(
             packet,
             PlayClientbound::ContainerSetContent(ContainerSetContent {
@@ -486,6 +490,12 @@ mod tests {
                 carried_item: ItemStackSummary::empty(),
             })
         );
+        bytes.push(0);
+        let error = decode_play_clientbound(ids::play::CLIENTBOUND_CONTAINER_SET_CONTENT, &bytes)
+            .unwrap_err();
+        assert!(error
+            .to_string()
+            .contains("trailing bytes after container set content packet"));
 
         let mut payload = Encoder::new();
         payload.write_var_i32(7);

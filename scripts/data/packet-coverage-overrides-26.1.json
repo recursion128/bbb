@@ -1169,6 +1169,48 @@
         "status": "complete"
       }
     },
+    "play/clientbound/CLIENTBOUND_CONTAINER_SET_CONTENT": {
+      "canonical_apply": {
+        "evidence": [
+          "crates/bbb-world/src/client/inventory.rs#apply_container_set_content",
+          "crates/bbb-protocol/src/packets/data_components.rs#DataComponentPatchSummary",
+          "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleContainerContent"
+        ],
+        "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+        "status": "partial"
+      },
+      "decode": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/inventory.rs#decodes_container_and_inventory_item_updates",
+          "vanilla:net/minecraft/network/protocol/game/ClientboundContainerSetContentPacket.java#STREAM_CODEC"
+        ],
+        "status": "complete"
+      },
+      "ownership": {
+        "evidence": [
+          "crates/bbb-world/src/play_apply.rs#PlayClientbound::ContainerSetContent"
+        ],
+        "status": "complete"
+      },
+      "runtime_side_effect": {
+        "evidence": [
+          "crates/bbb-world/src/client/inventory/tests.rs#container_content_only_updates_the_matching_active_menu",
+          "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleContainerContent"
+        ],
+        "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+        "status": "partial"
+      },
+      "tests": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/inventory.rs#decodes_container_and_inventory_item_updates",
+          "crates/bbb-net/src/event_stream.rs#play_inventory_packets_emit_matching_events_without_responses",
+          "crates/bbb-net/src/probe/play.rs#probe_applies_inventory_container_packets_to_world",
+          "crates/bbb-world/src/client/inventory/tests.rs#container_content_only_updates_the_matching_active_menu",
+          "crates/bbb-native/src/runtime/events/tests/session_protocol_events.rs#inventory_events_update_world_and_world_counters"
+        ],
+        "status": "complete"
+      }
+    },
     "play/clientbound/CLIENTBOUND_CONTAINER_SET_DATA": {
       "canonical_apply": {
         "evidence": [
