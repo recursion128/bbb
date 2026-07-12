@@ -12668,3 +12668,9 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] item-model tooltip 删除 32 项仅转发 protocol generated catalog 的 component type-id
   const，visibility、operator-only NBT、advanced count 与各 tooltip line 分支直接消费 catalog
   namespace；tooltip 顺序、文本和隐藏语义不变，并由结构测试禁止恢复别名块。
+
+## 2026-07-12：Removed icon-model component ID aliases
+
+- [x] item-model icon condition/select/tint owner 删除 29 项仅转发 protocol generated catalog
+  的 component ID const，直接消费 catalog namespace；model dispatch、predicate、range 与 tint
+  语义不变，既有 raw numeric gate 扩展为同时禁止恢复本地 ID const。

@@ -39,50 +39,6 @@ use super::{
     ItemTextureState,
 };
 
-// 26.1 DataComponents ids from vanilla registration order.
-const CUSTOM_DATA_COMPONENT_ID: i32 = component_id::VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID;
-const MAX_STACK_SIZE_COMPONENT_ID: i32 =
-    component_id::VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID;
-const MAX_DAMAGE_COMPONENT_ID: i32 = component_id::VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID;
-const DAMAGE_COMPONENT_ID: i32 = component_id::VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID;
-const UNBREAKABLE_COMPONENT_ID: i32 = component_id::VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID;
-const CUSTOM_NAME_COMPONENT_ID: i32 = component_id::VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID;
-const ITEM_NAME_COMPONENT_ID: i32 = component_id::VANILLA_DATA_COMPONENT_ITEM_NAME_TYPE_ID;
-const ITEM_MODEL_COMPONENT_ID: i32 = component_id::VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID;
-const LORE_COMPONENT_ID: i32 = component_id::VANILLA_DATA_COMPONENT_LORE_TYPE_ID;
-const RARITY_COMPONENT_ID: i32 = component_id::VANILLA_DATA_COMPONENT_RARITY_TYPE_ID;
-const ENCHANTMENTS_COMPONENT_ID: i32 = component_id::VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID;
-const ATTRIBUTE_MODIFIERS_COMPONENT_ID: i32 =
-    component_id::VANILLA_DATA_COMPONENT_ATTRIBUTE_MODIFIERS_TYPE_ID;
-const CUSTOM_MODEL_DATA_COMPONENT_ID: i32 =
-    component_id::VANILLA_DATA_COMPONENT_CUSTOM_MODEL_DATA_TYPE_ID;
-const ENCHANTMENT_GLINT_OVERRIDE_COMPONENT_ID: i32 =
-    component_id::VANILLA_DATA_COMPONENT_ENCHANTMENT_GLINT_OVERRIDE_TYPE_ID;
-const MAP_ID_COMPONENT_ID: i32 = component_id::VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID;
-const STORED_ENCHANTMENTS_COMPONENT_ID: i32 =
-    component_id::VANILLA_DATA_COMPONENT_STORED_ENCHANTMENTS_TYPE_ID;
-const DYED_COLOR_COMPONENT_ID: i32 = component_id::VANILLA_DATA_COMPONENT_DYED_COLOR_TYPE_ID;
-const MAP_COLOR_COMPONENT_ID: i32 = component_id::VANILLA_DATA_COMPONENT_MAP_COLOR_TYPE_ID;
-const BUNDLE_CONTENTS_COMPONENT_ID: i32 =
-    component_id::VANILLA_DATA_COMPONENT_BUNDLE_CONTENTS_TYPE_ID;
-const POTION_CONTENTS_COMPONENT_ID: i32 =
-    component_id::VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID;
-const WRITABLE_BOOK_CONTENT_COMPONENT_ID: i32 =
-    component_id::VANILLA_DATA_COMPONENT_WRITABLE_BOOK_CONTENT_TYPE_ID;
-const WRITTEN_BOOK_CONTENT_COMPONENT_ID: i32 =
-    component_id::VANILLA_DATA_COMPONENT_WRITTEN_BOOK_CONTENT_TYPE_ID;
-const TRIM_COMPONENT_ID: i32 = component_id::VANILLA_DATA_COMPONENT_TRIM_TYPE_ID;
-const JUKEBOX_PLAYABLE_COMPONENT_ID: i32 =
-    component_id::VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID;
-const LODESTONE_TRACKER_COMPONENT_ID: i32 =
-    component_id::VANILLA_DATA_COMPONENT_LODESTONE_TRACKER_TYPE_ID;
-const FIREWORK_EXPLOSION_COMPONENT_ID: i32 =
-    component_id::VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID;
-const FIREWORKS_COMPONENT_ID: i32 = component_id::VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID;
-const CONTAINER_COMPONENT_ID: i32 = component_id::VANILLA_DATA_COMPONENT_CONTAINER_TYPE_ID;
-const VILLAGER_VARIANT_COMPONENT_ID: i32 =
-    component_id::VANILLA_DATA_COMPONENT_VILLAGER_VARIANT_TYPE_ID;
-
 pub(super) const VANILLA_TRIM_MATERIAL_COLORS: &[u32] = &[
     0xE3_D4_C4, 0xEC_EC_EC, 0x62_58_59, 0x97_16_07, 0xB4_68_4D, 0xDE_B1_2D, 0x11_A0_36, 0x6E_EC_D2,
     0x41_6E_97, 0x9A_5C_C6, 0xFC_78_12,
@@ -589,8 +545,20 @@ mod tests {
     }
 
     #[test]
-    fn component_patch_membership_checks_do_not_use_raw_type_ids() {
-        let source: String = include_str!("icon_model.rs")
+    fn component_patch_membership_checks_use_catalog_type_ids() {
+        let source = include_str!("icon_model.rs");
+        let aliases = source
+            .lines()
+            .filter(|line| {
+                line.trim_start().starts_with("const ") && line.contains("_COMPONENT_ID")
+            })
+            .collect::<Vec<_>>();
+        assert!(
+            aliases.is_empty(),
+            "icon model restored component id aliases:\n{}",
+            aliases.join("\n")
+        );
+        let compact_source: String = source
             .chars()
             .filter(|character| !character.is_whitespace())
             .collect();
@@ -598,7 +566,7 @@ mod tests {
             for type_id in 0..bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_TYPES.len()
             {
                 assert!(
-                    !source.contains(&format!("{collection}.contains(&{type_id})")),
+                    !compact_source.contains(&format!("{collection}.contains(&{type_id})")),
                     "{collection} checks raw component type id {type_id}"
                 );
             }
@@ -846,17 +814,19 @@ impl ComponentSelectProperty {
 
     fn component_id(self) -> i32 {
         match self {
-            Self::MaxStackSize => MAX_STACK_SIZE_COMPONENT_ID,
-            Self::MaxDamage => MAX_DAMAGE_COMPONENT_ID,
-            Self::Damage => DAMAGE_COMPONENT_ID,
-            Self::ItemModel => ITEM_MODEL_COMPONENT_ID,
-            Self::ItemName => ITEM_NAME_COMPONENT_ID,
-            Self::Rarity => RARITY_COMPONENT_ID,
-            Self::CustomName => CUSTOM_NAME_COMPONENT_ID,
-            Self::EnchantmentGlintOverride => ENCHANTMENT_GLINT_OVERRIDE_COMPONENT_ID,
-            Self::MapId => MAP_ID_COMPONENT_ID,
-            Self::DyedColor => DYED_COLOR_COMPONENT_ID,
-            Self::MapColor => MAP_COLOR_COMPONENT_ID,
+            Self::MaxStackSize => component_id::VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
+            Self::MaxDamage => component_id::VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID,
+            Self::Damage => component_id::VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID,
+            Self::ItemModel => component_id::VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID,
+            Self::ItemName => component_id::VANILLA_DATA_COMPONENT_ITEM_NAME_TYPE_ID,
+            Self::Rarity => component_id::VANILLA_DATA_COMPONENT_RARITY_TYPE_ID,
+            Self::CustomName => component_id::VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID,
+            Self::EnchantmentGlintOverride => {
+                component_id::VANILLA_DATA_COMPONENT_ENCHANTMENT_GLINT_OVERRIDE_TYPE_ID
+            }
+            Self::MapId => component_id::VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID,
+            Self::DyedColor => component_id::VANILLA_DATA_COMPONENT_DYED_COLOR_TYPE_ID,
+            Self::MapColor => component_id::VANILLA_DATA_COMPONENT_MAP_COLOR_TYPE_ID,
         }
     }
 
@@ -2147,7 +2117,7 @@ fn lodestone_target_for_patch(
 ) -> Option<&bbb_protocol::packets::LodestoneTargetSummary> {
     if patch
         .removed_type_ids
-        .contains(&LODESTONE_TRACKER_COMPONENT_ID)
+        .contains(&component_id::VANILLA_DATA_COMPONENT_LODESTONE_TRACKER_TYPE_ID)
     {
         return None;
     }
@@ -2610,7 +2580,7 @@ fn item_stack_custom_model_data_flag(
     };
     if patch
         .removed_type_ids
-        .contains(&CUSTOM_MODEL_DATA_COMPONENT_ID)
+        .contains(&component_id::VANILLA_DATA_COMPONENT_CUSTOM_MODEL_DATA_TYPE_ID)
     {
         return false;
     }
@@ -2807,14 +2777,24 @@ fn empty_single_component_predicate_id(property: &ItemModelProperty) -> Option<i
         return None;
     }
     match component_condition_predicate(property)? {
-        "minecraft:bundle_contents" => Some(BUNDLE_CONTENTS_COMPONENT_ID),
-        "minecraft:container" => Some(CONTAINER_COMPONENT_ID),
-        "minecraft:firework_explosion" => Some(FIREWORK_EXPLOSION_COMPONENT_ID),
-        "minecraft:fireworks" => Some(FIREWORKS_COMPONENT_ID),
-        "minecraft:jukebox_playable" => Some(JUKEBOX_PLAYABLE_COMPONENT_ID),
-        "minecraft:trim" => Some(TRIM_COMPONENT_ID),
-        "minecraft:writable_book_content" => Some(WRITABLE_BOOK_CONTENT_COMPONENT_ID),
-        "minecraft:written_book_content" => Some(WRITTEN_BOOK_CONTENT_COMPONENT_ID),
+        "minecraft:bundle_contents" => {
+            Some(component_id::VANILLA_DATA_COMPONENT_BUNDLE_CONTENTS_TYPE_ID)
+        }
+        "minecraft:container" => Some(component_id::VANILLA_DATA_COMPONENT_CONTAINER_TYPE_ID),
+        "minecraft:firework_explosion" => {
+            Some(component_id::VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID)
+        }
+        "minecraft:fireworks" => Some(component_id::VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID),
+        "minecraft:jukebox_playable" => {
+            Some(component_id::VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID)
+        }
+        "minecraft:trim" => Some(component_id::VANILLA_DATA_COMPONENT_TRIM_TYPE_ID),
+        "minecraft:writable_book_content" => {
+            Some(component_id::VANILLA_DATA_COMPONENT_WRITABLE_BOOK_CONTENT_TYPE_ID)
+        }
+        "minecraft:written_book_content" => {
+            Some(component_id::VANILLA_DATA_COMPONENT_WRITTEN_BOOK_CONTENT_TYPE_ID)
+        }
         _ => None,
     }
 }
@@ -2935,8 +2915,10 @@ enum EnchantmentComponentKind {
 impl EnchantmentComponentKind {
     fn component_id(self) -> i32 {
         match self {
-            Self::Enchantments => ENCHANTMENTS_COMPONENT_ID,
-            Self::StoredEnchantments => STORED_ENCHANTMENTS_COMPONENT_ID,
+            Self::Enchantments => component_id::VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID,
+            Self::StoredEnchantments => {
+                component_id::VANILLA_DATA_COMPONENT_STORED_ENCHANTMENTS_TYPE_ID
+            }
         }
     }
 
@@ -3163,7 +3145,7 @@ fn item_stack_matches_bundle_contents_predicate(
         return false;
     }
     if !item_stack_has_component_id(
-        BUNDLE_CONTENTS_COMPONENT_ID,
+        component_id::VANILLA_DATA_COMPONENT_BUNDLE_CONTENTS_TYPE_ID,
         ctx.component_patch,
         None,
         Some(ctx.default_item_model_id),
@@ -3228,7 +3210,7 @@ fn item_stack_matches_container_predicate(
         return false;
     }
     if !item_stack_has_component_id(
-        CONTAINER_COMPONENT_ID,
+        component_id::VANILLA_DATA_COMPONENT_CONTAINER_TYPE_ID,
         ctx.component_patch,
         None,
         Some(ctx.default_item_model_id),
@@ -3587,7 +3569,10 @@ fn item_stack_matches_custom_data_value(
     let empty = NbtSummaryValue::Compound(Vec::new());
     let actual = component_patch
         .and_then(|patch| {
-            if patch.removed_type_ids.contains(&CUSTOM_DATA_COMPONENT_ID) {
+            if patch
+                .removed_type_ids
+                .contains(&component_id::VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID)
+            {
                 None
             } else {
                 patch.custom_data.as_ref()
@@ -4030,10 +4015,10 @@ fn lodestone_tracker_exact_match(
 ) -> bool {
     if component_patch
         .removed_type_ids
-        .contains(&LODESTONE_TRACKER_COMPONENT_ID)
+        .contains(&component_id::VANILLA_DATA_COMPONENT_LODESTONE_TRACKER_TYPE_ID)
         || !component_patch
             .added_type_ids
-            .contains(&LODESTONE_TRACKER_COMPONENT_ID)
+            .contains(&component_id::VANILLA_DATA_COMPONENT_LODESTONE_TRACKER_TYPE_ID)
         || component_patch.lodestone_tracked != Some(expected.tracked)
     {
         return false;
@@ -4368,13 +4353,13 @@ pub(super) fn effective_attribute_modifiers<'a>(
     };
     if component_patch
         .removed_type_ids
-        .contains(&ATTRIBUTE_MODIFIERS_COMPONENT_ID)
+        .contains(&component_id::VANILLA_DATA_COMPONENT_ATTRIBUTE_MODIFIERS_TYPE_ID)
     {
         return None;
     }
     if component_patch
         .added_type_ids
-        .contains(&ATTRIBUTE_MODIFIERS_COMPONENT_ID)
+        .contains(&component_id::VANILLA_DATA_COMPONENT_ATTRIBUTE_MODIFIERS_TYPE_ID)
     {
         return Some(&component_patch.attribute_modifiers);
     }
@@ -4865,11 +4850,11 @@ fn item_exact_component_matches(
         };
         let (component_id, actual) = match component {
             "minecraft:custom_name" => (
-                CUSTOM_NAME_COMPONENT_ID,
+                component_id::VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID,
                 item.component_patch.custom_name.as_deref(),
             ),
             "minecraft:item_name" => (
-                ITEM_NAME_COMPONENT_ID,
+                component_id::VANILLA_DATA_COMPONENT_ITEM_NAME_TYPE_ID,
                 item.component_patch.item_name.as_deref(),
             ),
             _ => unreachable!(),
@@ -4901,7 +4886,7 @@ fn item_exact_component_matches(
         return !item
             .component_patch
             .removed_type_ids
-            .contains(&LORE_COMPONENT_ID)
+            .contains(&component_id::VANILLA_DATA_COMPONENT_LORE_TYPE_ID)
             && item.component_patch.lore.len() == expected.len()
             && item
                 .component_patch
@@ -4917,7 +4902,7 @@ fn item_exact_component_matches(
             && !item
                 .component_patch
                 .removed_type_ids
-                .contains(&UNBREAKABLE_COMPONENT_ID);
+                .contains(&component_id::VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID);
     }
 
     if component == "minecraft:custom_data" {
@@ -4927,7 +4912,7 @@ fn item_exact_component_matches(
         return !item
             .component_patch
             .removed_type_ids
-            .contains(&CUSTOM_DATA_COMPONENT_ID)
+            .contains(&component_id::VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID)
             && item
                 .component_patch
                 .custom_data
@@ -5314,8 +5299,10 @@ fn item_stack_matches_trim_value(
     };
     if component_patch
         .removed_type_ids
-        .contains(&TRIM_COMPONENT_ID)
-        || !component_patch.added_type_ids.contains(&TRIM_COMPONENT_ID)
+        .contains(&component_id::VANILLA_DATA_COMPONENT_TRIM_TYPE_ID)
+        || !component_patch
+            .added_type_ids
+            .contains(&component_id::VANILLA_DATA_COMPONENT_TRIM_TYPE_ID)
     {
         return false;
     }
@@ -5477,8 +5464,10 @@ fn trim_exact_match(
 ) -> bool {
     if component_patch
         .removed_type_ids
-        .contains(&TRIM_COMPONENT_ID)
-        || !component_patch.added_type_ids.contains(&TRIM_COMPONENT_ID)
+        .contains(&component_id::VANILLA_DATA_COMPONENT_TRIM_TYPE_ID)
+        || !component_patch
+            .added_type_ids
+            .contains(&component_id::VANILLA_DATA_COMPONENT_TRIM_TYPE_ID)
     {
         return false;
     }
@@ -5594,10 +5583,10 @@ fn item_stack_matches_jukebox_playable_value(
     };
     if component_patch
         .removed_type_ids
-        .contains(&JUKEBOX_PLAYABLE_COMPONENT_ID)
+        .contains(&component_id::VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID)
         || !component_patch
             .added_type_ids
-            .contains(&JUKEBOX_PLAYABLE_COMPONENT_ID)
+            .contains(&component_id::VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID)
     {
         return false;
     }
@@ -5714,10 +5703,10 @@ fn jukebox_playable_exact_match(
 ) -> bool {
     if component_patch
         .removed_type_ids
-        .contains(&JUKEBOX_PLAYABLE_COMPONENT_ID)
+        .contains(&component_id::VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID)
         || !component_patch
             .added_type_ids
-            .contains(&JUKEBOX_PLAYABLE_COMPONENT_ID)
+            .contains(&component_id::VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID)
     {
         return false;
     }
@@ -5804,10 +5793,10 @@ fn item_stack_matches_potion_contents_value(
     };
     if component_patch
         .removed_type_ids
-        .contains(&POTION_CONTENTS_COMPONENT_ID)
+        .contains(&component_id::VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID)
         || !component_patch
             .added_type_ids
-            .contains(&POTION_CONTENTS_COMPONENT_ID)
+            .contains(&component_id::VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID)
     {
         return false;
     }
@@ -5980,10 +5969,10 @@ fn potion_contents_exact_match(
 ) -> bool {
     if component_patch
         .removed_type_ids
-        .contains(&POTION_CONTENTS_COMPONENT_ID)
+        .contains(&component_id::VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID)
         || !component_patch
             .added_type_ids
-            .contains(&POTION_CONTENTS_COMPONENT_ID)
+            .contains(&component_id::VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID)
     {
         return false;
     }
@@ -6118,10 +6107,10 @@ fn writable_book_exact_match(
 ) -> bool {
     if component_patch
         .removed_type_ids
-        .contains(&WRITABLE_BOOK_CONTENT_COMPONENT_ID)
+        .contains(&component_id::VANILLA_DATA_COMPONENT_WRITABLE_BOOK_CONTENT_TYPE_ID)
         || !component_patch
             .added_type_ids
-            .contains(&WRITABLE_BOOK_CONTENT_COMPONENT_ID)
+            .contains(&component_id::VANILLA_DATA_COMPONENT_WRITABLE_BOOK_CONTENT_TYPE_ID)
         || component_patch.writable_book_pages.len() != expected.pages.len()
         || component_patch.writable_book_page_filters.len() != expected.pages.len()
     {
@@ -6222,10 +6211,10 @@ fn written_book_exact_match(
 ) -> bool {
     if component_patch
         .removed_type_ids
-        .contains(&WRITTEN_BOOK_CONTENT_COMPONENT_ID)
+        .contains(&component_id::VANILLA_DATA_COMPONENT_WRITTEN_BOOK_CONTENT_TYPE_ID)
         || !component_patch
             .added_type_ids
-            .contains(&WRITTEN_BOOK_CONTENT_COMPONENT_ID)
+            .contains(&component_id::VANILLA_DATA_COMPONENT_WRITTEN_BOOK_CONTENT_TYPE_ID)
     {
         return false;
     }
@@ -6295,10 +6284,10 @@ fn item_stack_matches_writable_book_value(
     };
     if component_patch
         .removed_type_ids
-        .contains(&WRITABLE_BOOK_CONTENT_COMPONENT_ID)
+        .contains(&component_id::VANILLA_DATA_COMPONENT_WRITABLE_BOOK_CONTENT_TYPE_ID)
         || !component_patch
             .added_type_ids
-            .contains(&WRITABLE_BOOK_CONTENT_COMPONENT_ID)
+            .contains(&component_id::VANILLA_DATA_COMPONENT_WRITABLE_BOOK_CONTENT_TYPE_ID)
     {
         return false;
     }
@@ -6364,10 +6353,10 @@ fn item_stack_matches_written_book_value(
     };
     if component_patch
         .removed_type_ids
-        .contains(&WRITTEN_BOOK_CONTENT_COMPONENT_ID)
+        .contains(&component_id::VANILLA_DATA_COMPONENT_WRITTEN_BOOK_CONTENT_TYPE_ID)
         || !component_patch
             .added_type_ids
-            .contains(&WRITTEN_BOOK_CONTENT_COMPONENT_ID)
+            .contains(&component_id::VANILLA_DATA_COMPONENT_WRITTEN_BOOK_CONTENT_TYPE_ID)
     {
         return false;
     }
@@ -6454,10 +6443,10 @@ fn item_stack_matches_villager_variant_value(
     };
     if component_patch
         .removed_type_ids
-        .contains(&VILLAGER_VARIANT_COMPONENT_ID)
+        .contains(&component_id::VANILLA_DATA_COMPONENT_VILLAGER_VARIANT_TYPE_ID)
         || !component_patch
             .added_type_ids
-            .contains(&VILLAGER_VARIANT_COMPONENT_ID)
+            .contains(&component_id::VANILLA_DATA_COMPONENT_VILLAGER_VARIANT_TYPE_ID)
     {
         return false;
     }
@@ -6476,10 +6465,10 @@ fn villager_variant_exact_match(
 ) -> bool {
     if component_patch
         .removed_type_ids
-        .contains(&VILLAGER_VARIANT_COMPONENT_ID)
+        .contains(&component_id::VANILLA_DATA_COMPONENT_VILLAGER_VARIANT_TYPE_ID)
         || !component_patch
             .added_type_ids
-            .contains(&VILLAGER_VARIANT_COMPONENT_ID)
+            .contains(&component_id::VANILLA_DATA_COMPONENT_VILLAGER_VARIANT_TYPE_ID)
     {
         return false;
     }
@@ -6673,10 +6662,10 @@ fn item_stack_matches_fireworks_value(
     };
     if component_patch
         .removed_type_ids
-        .contains(&FIREWORKS_COMPONENT_ID)
+        .contains(&component_id::VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID)
         || !component_patch
             .added_type_ids
-            .contains(&FIREWORKS_COMPONENT_ID)
+            .contains(&component_id::VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID)
     {
         return false;
     }
@@ -6809,10 +6798,10 @@ fn item_stack_matches_firework_explosion_value(
     };
     if component_patch
         .removed_type_ids
-        .contains(&FIREWORK_EXPLOSION_COMPONENT_ID)
+        .contains(&component_id::VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID)
         || !component_patch
             .added_type_ids
-            .contains(&FIREWORK_EXPLOSION_COMPONENT_ID)
+            .contains(&component_id::VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID)
     {
         return false;
     }
@@ -6893,10 +6882,10 @@ fn firework_explosion_exact_match(
 ) -> bool {
     if component_patch
         .removed_type_ids
-        .contains(&FIREWORK_EXPLOSION_COMPONENT_ID)
+        .contains(&component_id::VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID)
         || !component_patch
             .added_type_ids
-            .contains(&FIREWORK_EXPLOSION_COMPONENT_ID)
+            .contains(&component_id::VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID)
     {
         return false;
     }
@@ -6944,10 +6933,10 @@ fn fireworks_exact_match(
 ) -> bool {
     if component_patch
         .removed_type_ids
-        .contains(&FIREWORKS_COMPONENT_ID)
+        .contains(&component_id::VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID)
         || !component_patch
             .added_type_ids
-            .contains(&FIREWORKS_COMPONENT_ID)
+            .contains(&component_id::VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID)
         || component_patch.fireworks_flight_duration != Some(expected.flight_duration)
         || component_patch.fireworks_explosions_count != Some(expected.explosions.len())
         || component_patch.fireworks_explosions.len() != expected.explosions.len()
@@ -7005,15 +6994,21 @@ fn damage_component_predicate_state(
     component_patch: Option<&DataComponentPatchSummary>,
     default_max_damage: Option<i32>,
 ) -> Option<(i32, i32)> {
-    if component_patch.is_some_and(|patch| patch.removed_type_ids.contains(&DAMAGE_COMPONENT_ID)) {
+    if component_patch.is_some_and(|patch| {
+        patch
+            .removed_type_ids
+            .contains(&component_id::VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID)
+    }) {
         return None;
     }
     let damage = component_patch
         .and_then(|patch| patch.damage)
         .or_else(|| default_max_damage.map(|_| 0))?;
-    let max_damage = if component_patch
-        .is_some_and(|patch| patch.removed_type_ids.contains(&MAX_DAMAGE_COMPONENT_ID))
-    {
+    let max_damage = if component_patch.is_some_and(|patch| {
+        patch
+            .removed_type_ids
+            .contains(&component_id::VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID)
+    }) {
         0
     } else {
         component_patch
@@ -7154,32 +7149,58 @@ fn data_component_predicate_type_is_complex(predicate: &str) -> bool {
 
 fn data_component_type_id(component: &str) -> Option<i32> {
     match component {
-        "minecraft:custom_data" => Some(CUSTOM_DATA_COMPONENT_ID),
-        "minecraft:max_stack_size" => Some(MAX_STACK_SIZE_COMPONENT_ID),
-        "minecraft:max_damage" => Some(MAX_DAMAGE_COMPONENT_ID),
-        "minecraft:damage" => Some(DAMAGE_COMPONENT_ID),
-        "minecraft:unbreakable" => Some(UNBREAKABLE_COMPONENT_ID),
-        "minecraft:item_model" => Some(ITEM_MODEL_COMPONENT_ID),
-        "minecraft:rarity" => Some(RARITY_COMPONENT_ID),
-        "minecraft:attribute_modifiers" => Some(ATTRIBUTE_MODIFIERS_COMPONENT_ID),
-        "minecraft:custom_model_data" => Some(CUSTOM_MODEL_DATA_COMPONENT_ID),
-        "minecraft:enchantment_glint_override" => Some(ENCHANTMENT_GLINT_OVERRIDE_COMPONENT_ID),
-        "minecraft:dyed_color" => Some(DYED_COLOR_COMPONENT_ID),
-        "minecraft:map_color" => Some(MAP_COLOR_COMPONENT_ID),
-        "minecraft:map_id" => Some(MAP_ID_COMPONENT_ID),
-        "minecraft:enchantments" => Some(ENCHANTMENTS_COMPONENT_ID),
-        "minecraft:stored_enchantments" => Some(STORED_ENCHANTMENTS_COMPONENT_ID),
-        "minecraft:bundle_contents" => Some(BUNDLE_CONTENTS_COMPONENT_ID),
-        "minecraft:potion_contents" => Some(POTION_CONTENTS_COMPONENT_ID),
-        "minecraft:writable_book_content" => Some(WRITABLE_BOOK_CONTENT_COMPONENT_ID),
-        "minecraft:written_book_content" => Some(WRITTEN_BOOK_CONTENT_COMPONENT_ID),
-        "minecraft:trim" => Some(TRIM_COMPONENT_ID),
-        "minecraft:jukebox_playable" => Some(JUKEBOX_PLAYABLE_COMPONENT_ID),
-        "minecraft:lodestone_tracker" => Some(LODESTONE_TRACKER_COMPONENT_ID),
-        "minecraft:firework_explosion" => Some(FIREWORK_EXPLOSION_COMPONENT_ID),
-        "minecraft:fireworks" => Some(FIREWORKS_COMPONENT_ID),
-        "minecraft:container" => Some(CONTAINER_COMPONENT_ID),
-        "minecraft:villager/variant" => Some(VILLAGER_VARIANT_COMPONENT_ID),
+        "minecraft:custom_data" => Some(component_id::VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID),
+        "minecraft:max_stack_size" => {
+            Some(component_id::VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID)
+        }
+        "minecraft:max_damage" => Some(component_id::VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID),
+        "minecraft:damage" => Some(component_id::VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID),
+        "minecraft:unbreakable" => Some(component_id::VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID),
+        "minecraft:item_model" => Some(component_id::VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID),
+        "minecraft:rarity" => Some(component_id::VANILLA_DATA_COMPONENT_RARITY_TYPE_ID),
+        "minecraft:attribute_modifiers" => {
+            Some(component_id::VANILLA_DATA_COMPONENT_ATTRIBUTE_MODIFIERS_TYPE_ID)
+        }
+        "minecraft:custom_model_data" => {
+            Some(component_id::VANILLA_DATA_COMPONENT_CUSTOM_MODEL_DATA_TYPE_ID)
+        }
+        "minecraft:enchantment_glint_override" => {
+            Some(component_id::VANILLA_DATA_COMPONENT_ENCHANTMENT_GLINT_OVERRIDE_TYPE_ID)
+        }
+        "minecraft:dyed_color" => Some(component_id::VANILLA_DATA_COMPONENT_DYED_COLOR_TYPE_ID),
+        "minecraft:map_color" => Some(component_id::VANILLA_DATA_COMPONENT_MAP_COLOR_TYPE_ID),
+        "minecraft:map_id" => Some(component_id::VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID),
+        "minecraft:enchantments" => Some(component_id::VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID),
+        "minecraft:stored_enchantments" => {
+            Some(component_id::VANILLA_DATA_COMPONENT_STORED_ENCHANTMENTS_TYPE_ID)
+        }
+        "minecraft:bundle_contents" => {
+            Some(component_id::VANILLA_DATA_COMPONENT_BUNDLE_CONTENTS_TYPE_ID)
+        }
+        "minecraft:potion_contents" => {
+            Some(component_id::VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID)
+        }
+        "minecraft:writable_book_content" => {
+            Some(component_id::VANILLA_DATA_COMPONENT_WRITABLE_BOOK_CONTENT_TYPE_ID)
+        }
+        "minecraft:written_book_content" => {
+            Some(component_id::VANILLA_DATA_COMPONENT_WRITTEN_BOOK_CONTENT_TYPE_ID)
+        }
+        "minecraft:trim" => Some(component_id::VANILLA_DATA_COMPONENT_TRIM_TYPE_ID),
+        "minecraft:jukebox_playable" => {
+            Some(component_id::VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID)
+        }
+        "minecraft:lodestone_tracker" => {
+            Some(component_id::VANILLA_DATA_COMPONENT_LODESTONE_TRACKER_TYPE_ID)
+        }
+        "minecraft:firework_explosion" => {
+            Some(component_id::VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID)
+        }
+        "minecraft:fireworks" => Some(component_id::VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID),
+        "minecraft:container" => Some(component_id::VANILLA_DATA_COMPONENT_CONTAINER_TYPE_ID),
+        "minecraft:villager/variant" => {
+            Some(component_id::VANILLA_DATA_COMPONENT_VILLAGER_VARIANT_TYPE_ID)
+        }
         _ => None,
     }
 }
@@ -7191,13 +7212,16 @@ fn item_default_has_component(
 ) -> bool {
     matches!(
         component_id,
-        MAX_STACK_SIZE_COMPONENT_ID
-            | ITEM_MODEL_COMPONENT_ID
-            | RARITY_COMPONENT_ID
-            | ENCHANTMENTS_COMPONENT_ID
-    ) || (matches!(component_id, MAX_DAMAGE_COMPONENT_ID | DAMAGE_COMPONENT_ID)
-        && default_max_damage.is_some())
-        || (component_id == STORED_ENCHANTMENTS_COMPONENT_ID
+        component_id::VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID
+            | component_id::VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID
+            | component_id::VANILLA_DATA_COMPONENT_RARITY_TYPE_ID
+            | component_id::VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID
+    ) || (matches!(
+        component_id,
+        component_id::VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID
+            | component_id::VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID
+    ) && default_max_damage.is_some())
+        || (component_id == component_id::VANILLA_DATA_COMPONENT_STORED_ENCHANTMENTS_TYPE_ID
             && default_item_model_id == Some("minecraft:enchanted_book"))
 }
 
@@ -7209,13 +7233,13 @@ fn effective_damage_state(
     if component_patch.unbreakable
         && !component_patch
             .removed_type_ids
-            .contains(&UNBREAKABLE_COMPONENT_ID)
+            .contains(&component_id::VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID)
     {
         return None;
     }
     if component_patch
         .removed_type_ids
-        .contains(&MAX_DAMAGE_COMPONENT_ID)
+        .contains(&component_id::VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID)
     {
         return None;
     }
@@ -7225,7 +7249,7 @@ fn effective_damage_state(
         .filter(|max_damage| *max_damage > 0)?;
     if component_patch
         .removed_type_ids
-        .contains(&DAMAGE_COMPONENT_ID)
+        .contains(&component_id::VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID)
     {
         return None;
     }
