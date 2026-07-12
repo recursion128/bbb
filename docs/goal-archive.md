@@ -11581,3 +11581,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] 六种 operation/style/flags framing、strict trailing、UUID lifecycle、HUD style submission ownership 与跨 crate tests 有证据。
 - [x] rich name、insertion order、100ms lerp 与 darken/fog/music consumers 未完成，decode/canonical/runtime 保持 partial。
+
+## 2026-07-12：play chunks-biomes packet coverage audit
+
+- [x] bounded collection/per-chunk buffer、strict trailing、section palette replacement ownership 与跨 crate tests 有证据。
+- [x] dynamic biome registry 与 3x3 neighbor rerender/custom tint 未完成，canonical/runtime 保持 partial。

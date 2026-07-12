@@ -696,6 +696,9 @@ back into a todo. Do not delete these.
 
 ## Block entities and terrain
 
+- Resolve ChunksBiomes palette ids through the session biome RegistryAccess and
+  match vanilla's 3x3 neighboring-section rerender/tint invalidation, including
+  custom synchronized biome color effects.
 - **Client chunk-view residency pruning.** SetChunkCacheCenter/Radius currently
   preserve the synchronized view and use the center for terrain upload order,
   but do not evict chunks outside the updated vanilla ClientChunkCache window.

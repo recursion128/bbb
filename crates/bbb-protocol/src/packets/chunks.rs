@@ -5,6 +5,7 @@ use crate::codec::{Decoder, Encoder, ProtocolError, Result};
 use super::BlockHitResult;
 
 const MAX_CHUNKS_BIOMES_BUFFER: usize = 2 * 1024 * 1024;
+const MAX_CHUNKS_BIOMES_UPDATES: usize = 65_536;
 const MAX_LEVEL_CHUNK_BUFFER: usize = 2 * 1024 * 1024;
 const LIGHT_ARRAY_BYTES: usize = 2048;
 const MAX_NBT_DEPTH: usize = 64;
@@ -209,6 +210,12 @@ pub(crate) fn decode_block_update(decoder: &mut Decoder<'_>) -> Result<BlockUpda
 
 pub(crate) fn decode_chunks_biomes(decoder: &mut Decoder<'_>) -> Result<ChunksBiomes> {
     let count = decoder.read_len()?;
+    if count > MAX_CHUNKS_BIOMES_UPDATES {
+        return Err(ProtocolError::PacketTooLarge(
+            count,
+            MAX_CHUNKS_BIOMES_UPDATES,
+        ));
+    }
     let mut chunks = Vec::with_capacity(count);
     for _ in 0..count {
         let pos = decode_chunk_pos(decoder.read_i64()?);
@@ -221,7 +228,13 @@ pub(crate) fn decode_chunks_biomes(decoder: &mut Decoder<'_>) -> Result<ChunksBi
             raw_biomes: decoder.read_exact(len, "chunk biome data")?.to_vec(),
         });
     }
-    Ok(ChunksBiomes { chunks })
+    let packet = ChunksBiomes { chunks };
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after chunks biomes packet".to_string(),
+        ));
+    }
+    Ok(packet)
 }
 
 pub(crate) fn decode_forget_level_chunk(decoder: &mut Decoder<'_>) -> Result<ForgetLevelChunk> {

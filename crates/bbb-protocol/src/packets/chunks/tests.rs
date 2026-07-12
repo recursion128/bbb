@@ -123,9 +123,8 @@ fn decodes_chunks_biomes_update() {
     payload.write_var_i32(2);
     payload.write_bytes(&[4, 5]);
 
-    let packet =
-        decode_play_clientbound(ids::play::CLIENTBOUND_CHUNKS_BIOMES, &payload.into_inner())
-            .unwrap();
+    let mut bytes = payload.into_inner();
+    let packet = decode_play_clientbound(ids::play::CLIENTBOUND_CHUNKS_BIOMES, &bytes).unwrap();
     assert_eq!(
         packet,
         PlayClientbound::ChunksBiomes(ChunksBiomes {
@@ -141,6 +140,25 @@ fn decodes_chunks_biomes_update() {
             ],
         })
     );
+
+    bytes.push(0);
+    assert!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_CHUNKS_BIOMES, &bytes)
+            .unwrap_err()
+            .to_string()
+            .contains("trailing bytes after chunks biomes packet")
+    );
+
+    let mut oversized = Encoder::new();
+    oversized.write_var_i32((MAX_CHUNKS_BIOMES_UPDATES + 1) as i32);
+    assert!(matches!(
+        decode_play_clientbound(
+            ids::play::CLIENTBOUND_CHUNKS_BIOMES,
+            &oversized.into_inner()
+        ),
+        Err(ProtocolError::PacketTooLarge(actual, max))
+            if actual == MAX_CHUNKS_BIOMES_UPDATES + 1 && max == MAX_CHUNKS_BIOMES_UPDATES
+    ));
 }
 
 #[test]
