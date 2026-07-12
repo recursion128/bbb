@@ -3976,7 +3976,7 @@ fn local_player_in_powder_snow_increments_ticks_frozen() {
             .iter()
             .find(|value| { value.data_id == crate::entities::VANILLA_ENTITY_TICKS_FROZEN_DATA_ID })
             .map(|value| value.serializer_id),
-        Some(VANILLA_ENTITY_DATA_INT_SERIALIZER_ID)
+        Some(VANILLA_ENTITY_DATA_SERIALIZER_INT_ID)
     );
 }
 

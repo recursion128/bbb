@@ -12706,3 +12706,10 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] entity-pose consumer 全部直接引用 generated `VANILLA_ENTITY_POSE_*` 常量，删除 world/native
   的 `VANILLA_POSE_*` aliases 与 focused-test 裸 ordinal；同一 generator 输出反向扫描门禁，后续
   重新引入本地 pose id 名称会直接失败。
+
+## 2026-07-12：Entity-data serializer consumer naming
+
+- [x] local-player movement 的 powder-snow freezing metadata update 直接引用 generated
+  `VANILLA_ENTITY_DATA_SERIALIZER_INT_ID`，删除最后一个生产 `*_INT_SERIALIZER_ID` 重命名；
+  gameplay-id generator 同步输出 production-source 反向扫描，43-entry serializer catalog
+  的注册顺序、wire codec 与 metadata 行为保持不变。

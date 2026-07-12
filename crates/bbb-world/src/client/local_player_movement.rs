@@ -3,7 +3,7 @@ use bbb_protocol::attribute_types::{
     VANILLA_ATTRIBUTE_MOVEMENT_EFFICIENCY_ID, VANILLA_ATTRIBUTE_MOVEMENT_SPEED_ID,
     VANILLA_ATTRIBUTE_SNEAKING_SPEED_ID, VANILLA_ATTRIBUTE_WATER_MOVEMENT_EFFICIENCY_ID,
 };
-use bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID as VANILLA_ENTITY_DATA_INT_SERIALIZER_ID;
+use bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID;
 use bbb_protocol::mob_effect_types::{
     VANILLA_MOB_EFFECT_BLINDNESS_ID, VANILLA_MOB_EFFECT_DOLPHINS_GRACE_ID,
     VANILLA_MOB_EFFECT_JUMP_BOOST_ID, VANILLA_MOB_EFFECT_LEVITATION_ID,
@@ -852,12 +852,12 @@ fn local_player_update_powder_snow_freezing(world: &mut WorldStore, pose: LocalP
                 if let Some(value) = metadata.data_values.iter_mut().find(|value| {
                     value.data_id == crate::entities::VANILLA_ENTITY_TICKS_FROZEN_DATA_ID
                 }) {
-                    value.serializer_id = VANILLA_ENTITY_DATA_INT_SERIALIZER_ID;
+                    value.serializer_id = VANILLA_ENTITY_DATA_SERIALIZER_INT_ID;
                     value.value = ProtocolEntityDataValueKind::Int(next_ticks);
                 } else {
                     metadata.data_values.push(ProtocolEntityDataValue {
                         data_id: crate::entities::VANILLA_ENTITY_TICKS_FROZEN_DATA_ID,
-                        serializer_id: VANILLA_ENTITY_DATA_INT_SERIALIZER_ID,
+                        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
                         value: ProtocolEntityDataValueKind::Int(next_ticks),
                     });
                 }
