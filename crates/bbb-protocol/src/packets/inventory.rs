@@ -113,9 +113,15 @@ pub struct SetPlayerInventory {
 }
 
 pub(super) fn decode_container_close(decoder: &mut Decoder<'_>) -> Result<ContainerClose> {
-    Ok(ContainerClose {
+    let packet = ContainerClose {
         container_id: decoder.read_var_i32()?,
-    })
+    };
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after container close packet".to_string(),
+        ));
+    }
+    Ok(packet)
 }
 
 pub(super) fn decode_container_set_content(
@@ -380,6 +386,17 @@ mod tests {
             packet,
             PlayClientbound::ContainerClose(ContainerClose { container_id: 7 })
         );
+        let mut trailing = Encoder::new();
+        trailing.write_var_i32(7);
+        trailing.write_u8(0);
+        let error = decode_play_clientbound(
+            ids::play::CLIENTBOUND_CONTAINER_CLOSE,
+            &trailing.into_inner(),
+        )
+        .unwrap_err();
+        assert!(error
+            .to_string()
+            .contains("trailing bytes after container close packet"));
 
         let mut payload = Encoder::new();
         payload.write_var_i32(7);

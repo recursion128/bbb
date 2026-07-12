@@ -753,25 +753,15 @@ impl InventoryState {
     pub(crate) fn apply_container_close(
         &mut self,
         counters: &mut WorldCounters,
-        packet: ProtocolContainerClose,
+        _packet: ProtocolContainerClose,
     ) -> bool {
         counters.container_close_updates_received += 1;
-        if packet.container_id == INVENTORY_MENU_CONTAINER_ID {
-            if self.local_inventory_open {
-                self.local_inventory_open = false;
-                self.local_quick_craft.reset();
-                counters.container_close_updates_applied += 1;
-                return true;
-            }
-            counters.container_close_updates_ignored += 1;
-            return false;
-        }
-
-        if self
-            .open_container
-            .as_ref()
-            .is_some_and(|container| container.container_id == packet.container_id)
-        {
+        if self.local_inventory_open {
+            self.local_inventory_open = false;
+            self.local_quick_craft.reset();
+            counters.container_close_updates_applied += 1;
+            true
+        } else if self.open_container.is_some() {
             self.open_container = None;
             self.local_quick_craft.reset();
             counters.merchant_offers_tracked = 0;

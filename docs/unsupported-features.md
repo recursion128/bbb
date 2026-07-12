@@ -580,6 +580,10 @@ back into a todo. Do not delete these.
   catalog and unknown-id rejection are covered; current canonical state keeps
   styled runs plus a plain title while remaining menu-specific UI gaps stay
   listed below.
+- Keep clientbound container lifecycle audits aligned with vanilla even when a
+  packet field is redundant: ContainerClose carries an id but the 26.1 client
+  closes its current menu unconditionally; matching-id behavior is not an
+  additional authority check.
 - `BeaconMenu`: confirm/cancel hover state, effect highlighted hover state,
   labels/tooltips.
 - `EnchantmentMenu`: animated book model, enchanting glyph text and its

@@ -104,10 +104,10 @@ fn tracks_player_inventory_and_container_state() {
         ProtocolItemStackSummary::empty()
     );
 
-    assert!(store.apply_container_close(ProtocolContainerClose { container_id: 7 }));
+    assert!(store.apply_container_close(ProtocolContainerClose { container_id: 99 }));
     assert!(store.inventory().open_container.is_none());
     assert_eq!(store.open_container_data_value(2), None);
-    assert!(!store.apply_container_close(ProtocolContainerClose { container_id: 99 }));
+    assert!(!store.apply_container_close(ProtocolContainerClose { container_id: 7 }));
 
     assert_eq!(store.counters().inventory_slot_updates_received, 2);
     assert_eq!(store.counters().inventory_slots_tracked, 1);

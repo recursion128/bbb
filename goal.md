@@ -455,6 +455,8 @@ play PlaceGhostRecipe 的 container id + RecipeDisplay wire、strict decode、ac
 已闭合；剩余 SlotDisplay/component semantics 与 recipe-book presentation 保持 canonical/runtime partial。
 play OpenScreen 的 container/menu holder/title wire、strict decode、fixed menu catalog gate、container ownership 与
 tests 已闭合；完整 rich title 和剩余专用 menu presentation 保持 canonical/runtime partial。
+play ContainerClose 的 container-id wire、strict decode 与 vanilla unconditional client-side close 语义已闭合；
+packet id 仍按 wire 解码但不参与 authority gate，不再错误阻止当前 menu 关闭。
 
 完成标准：全部 vanilla 26.1 catalog entry 都有矩阵行；所有目标客户端适用项为
 `complete`，其余只有带 vanilla 依据的 `not-applicable` 或带重启判据的窄 `deferred`；

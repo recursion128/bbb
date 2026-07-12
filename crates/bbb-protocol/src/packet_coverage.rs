@@ -1827,6 +1827,22 @@ mod tests {
         );
     }
 
+    #[test]
+    fn play_container_close_is_closed() {
+        let ledger = vanilla_packet_coverage_26_1().unwrap();
+        let entry = ledger
+            .entries
+            .iter()
+            .find(|entry| {
+                entry.state == "play" && entry.constant_name == "CLIENTBOUND_CONTAINER_CLOSE"
+            })
+            .expect("play container close coverage row");
+        assert!(entry
+            .coverage
+            .values()
+            .all(|cell| cell.status == PacketCoverageStatus::Complete));
+    }
+
     fn state_name(state: PacketState) -> &'static str {
         match state {
             PacketState::Handshake => "handshake",
