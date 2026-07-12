@@ -105,31 +105,20 @@ pub(super) fn entity_hand_spear_kinetic_weapon(
     let Some(item_id) = stack.item_id else {
         return None;
     };
-    spear_kinetic_weapon_for_resource_id(item_runtime.item_resource_id(item_id)?)
+    spear_kinetic_weapon_for_resource_id(item_runtime, item_runtime.item_resource_id(item_id)?)
 }
 
 pub(super) fn spear_kinetic_weapon_for_resource_id(
+    item_runtime: &NativeItemRuntime,
     resource_id: &str,
 ) -> Option<SpearKineticWeapon> {
-    let (delay, dismount, knockback, damage) = match resource_id {
-        // Vanilla `Items.*_SPEAR` -> `Item.Properties.spear(... delay, dismountTime,
-        // knockbackTime, damageTime ...)`, each seconds value multiplied by 20 for
-        // `KineticWeapon` ticks.
-        "minecraft:wooden_spear" => (15.0, 100.0, 200.0, 300.0),
-        "minecraft:stone_spear" => (14.0, 90.0, 180.0, 275.0),
-        "minecraft:copper_spear" => (13.0, 80.0, 165.0, 250.0),
-        "minecraft:iron_spear" => (12.0, 50.0, 135.0, 225.0),
-        "minecraft:golden_spear" => (14.0, 70.0, 170.0, 275.0),
-        "minecraft:diamond_spear" => (10.0, 60.0, 130.0, 200.0),
-        "minecraft:netherite_spear" => (8.0, 50.0, 110.0, 175.0),
-        _ => return None,
-    };
+    let defaults = item_runtime.item_default_kinetic_weapon(resource_id)?;
     Some(SpearKineticWeapon {
-        delay_ticks: delay,
-        dismount_duration_ticks: dismount,
-        knockback_duration_ticks: knockback,
-        damage_duration_ticks: damage,
-        forward_movement: 0.38,
+        delay_ticks: defaults.delay_ticks as f32,
+        dismount_duration_ticks: defaults.dismount_duration_ticks as f32,
+        knockback_duration_ticks: defaults.knockback_duration_ticks as f32,
+        damage_duration_ticks: defaults.damage_duration_ticks as f32,
+        forward_movement: defaults.forward_movement,
     })
 }
 

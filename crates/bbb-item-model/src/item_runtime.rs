@@ -13,12 +13,13 @@ use bbb_pack::{
     ItemAttackRange as PackItemAttackRange, ItemConsumable as PackItemConsumable, ItemCuboidModel,
     ItemCuboidModelCatalog, ItemCuboidModelSet, ItemCuboidTextureImageCatalog,
     ItemDefaultAttributeModifier as PackItemDefaultAttributeModifier,
-    ItemEquipmentSlot as PackItemEquipmentSlot, ItemMiningProfile as PackItemMiningProfile,
-    ItemMiningRule as PackItemMiningRule, ItemModelCatalog, ItemModelDefinition,
-    ItemMountBodyArmorKind as PackItemMountBodyArmorKind, ItemRegistryCatalog, ItemTintSource,
-    ItemUseAnimation as PackItemUseAnimation, ItemUseEffects as PackItemUseEffects,
-    JukeboxSongRegistry, LanguageCatalog, PackResourceStack, PackRoots, ResourceLocation,
-    SpriteImage, TagCatalog, TerrainColorMaps, DEFAULT_LANGUAGE_CODE,
+    ItemEquipmentSlot as PackItemEquipmentSlot,
+    ItemKineticWeaponDefaults as PackItemKineticWeaponDefaults,
+    ItemMiningProfile as PackItemMiningProfile, ItemMiningRule as PackItemMiningRule,
+    ItemModelCatalog, ItemModelDefinition, ItemMountBodyArmorKind as PackItemMountBodyArmorKind,
+    ItemRegistryCatalog, ItemTintSource, ItemUseAnimation as PackItemUseAnimation,
+    ItemUseEffects as PackItemUseEffects, JukeboxSongRegistry, LanguageCatalog, PackResourceStack,
+    PackRoots, ResourceLocation, SpriteImage, TagCatalog, TerrainColorMaps, DEFAULT_LANGUAGE_CODE,
 };
 use bbb_protocol::packets::{
     AttributeModifierSummary, BannerPatternLayerSummary, ConsumableSummary,
@@ -943,6 +944,13 @@ impl NativeItemRuntime {
     /// The protocol id for an item resource id via the loaded item registry.
     pub fn item_protocol_id(&self, resource_id: &str) -> Option<i32> {
         self.registry.as_ref()?.protocol_id(resource_id)
+    }
+
+    pub fn item_default_kinetic_weapon(
+        &self,
+        resource_id: &str,
+    ) -> Option<PackItemKineticWeaponDefaults> {
+        self.registry.as_ref()?.default_kinetic_weapon(resource_id)
     }
 
     /// The `minecraft:jukebox_song` resource id for a component holder id.

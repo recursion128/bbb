@@ -749,7 +749,11 @@ pub(super) fn first_person_stack_swing_animation(
     stack
         .item_id
         .and_then(|item_id| item_runtime.item_resource_id(item_id))
-        .filter(|resource_id| first_person_resource_id_is_spear(resource_id))
+        .filter(|resource_id| {
+            item_runtime
+                .item_default_kinetic_weapon(resource_id)
+                .is_some()
+        })
         .map_or(FirstPersonSwingAnimation::Whack, |_| {
             FirstPersonSwingAnimation::Stab
         })
@@ -767,20 +771,7 @@ fn first_person_stack_spear_kinetic_weapon(
         return None;
     }
     let resource_id = first_person_stack_resource_id(stack, item_runtime)?;
-    default_spear_kinetic_weapon_for_resource_id(resource_id)
-}
-
-fn first_person_resource_id_is_spear(resource_id: &str) -> bool {
-    matches!(
-        resource_id,
-        "minecraft:wooden_spear"
-            | "minecraft:stone_spear"
-            | "minecraft:copper_spear"
-            | "minecraft:iron_spear"
-            | "minecraft:golden_spear"
-            | "minecraft:diamond_spear"
-            | "minecraft:netherite_spear"
-    )
+    default_spear_kinetic_weapon_for_resource_id(item_runtime, resource_id)
 }
 
 fn first_person_stack_removes_swing_animation(stack: &ItemStackSummary) -> bool {

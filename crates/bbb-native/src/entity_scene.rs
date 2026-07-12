@@ -685,9 +685,10 @@ use kind::*;
 use variants::*;
 
 pub(crate) fn default_spear_kinetic_weapon_for_resource_id(
+    item_runtime: &NativeItemRuntime,
     resource_id: &str,
 ) -> Option<SpearKineticWeapon> {
-    hands::spear_kinetic_weapon_for_resource_id(resource_id)
+    hands::spear_kinetic_weapon_for_resource_id(item_runtime, resource_id)
 }
 
 #[cfg(test)]

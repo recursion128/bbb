@@ -87,6 +87,8 @@ pub struct ItemRegistryCatalog {
     #[serde(default)]
     default_swing_animation_durations: BTreeMap<String, i32>,
     #[serde(default)]
+    default_kinetic_weapons: BTreeMap<String, ItemKineticWeaponDefaults>,
+    #[serde(default)]
     default_attribute_modifiers: BTreeMap<String, Vec<ItemDefaultAttributeModifier>>,
     #[serde(default)]
     default_use_effects: BTreeMap<String, ItemUseEffects>,
@@ -146,6 +148,30 @@ impl PartialEq for ItemUseEffects {
 }
 
 impl Eq for ItemUseEffects {}
+
+/// Default `KineticWeapon` fields currently consumed by client presentation.
+/// Damage multipliers, thresholds, and sounds remain outside this projection
+/// until their semantic owners consume them.
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize)]
+pub struct ItemKineticWeaponDefaults {
+    pub delay_ticks: i32,
+    pub dismount_duration_ticks: i32,
+    pub knockback_duration_ticks: i32,
+    pub damage_duration_ticks: i32,
+    pub forward_movement: f32,
+}
+
+impl PartialEq for ItemKineticWeaponDefaults {
+    fn eq(&self, other: &Self) -> bool {
+        self.delay_ticks == other.delay_ticks
+            && self.dismount_duration_ticks == other.dismount_duration_ticks
+            && self.knockback_duration_ticks == other.knockback_duration_ticks
+            && self.damage_duration_ticks == other.damage_duration_ticks
+            && self.forward_movement.to_bits() == other.forward_movement.to_bits()
+    }
+}
+
+impl Eq for ItemKineticWeaponDefaults {}
 
 #[derive(Debug, Clone, Copy, Default, Serialize, Deserialize)]
 pub struct ItemConsumable {
@@ -318,6 +344,7 @@ impl ItemRegistryCatalog {
         let mut default_piercing_weapon_ids = BTreeSet::new();
         let mut default_attack_ranges = BTreeMap::new();
         let mut default_swing_animation_durations = BTreeMap::new();
+        let mut default_kinetic_weapons = BTreeMap::new();
         let mut default_attribute_modifiers = BTreeMap::new();
         let mut default_use_effects = BTreeMap::new();
         let mut default_consumables = BTreeMap::new();
@@ -375,6 +402,8 @@ impl ItemRegistryCatalog {
             let default_swing_animation_duration =
                 default_swing_animation_duration_for_declaration(expression)
                     .with_context(source_context)?;
+            let default_kinetic_weapon =
+                default_kinetic_weapon_for_declaration(expression).with_context(source_context)?;
             let default_attribute_modifier_entries =
                 default_attribute_modifiers_for_declaration(expression)
                     .with_context(source_context)?;
@@ -436,6 +465,9 @@ impl ItemRegistryCatalog {
                     default_swing_animation_durations
                         .insert(resource_id.clone(), default_swing_animation_duration);
                 }
+                if let Some(default_kinetic_weapon) = default_kinetic_weapon {
+                    default_kinetic_weapons.insert(resource_id.clone(), default_kinetic_weapon);
+                }
                 if !default_attribute_modifier_entries.is_empty() {
                     default_attribute_modifiers.insert(
                         resource_id.clone(),
@@ -489,6 +521,7 @@ impl ItemRegistryCatalog {
             default_piercing_weapon_ids,
             default_attack_ranges,
             default_swing_animation_durations,
+            default_kinetic_weapons,
             default_attribute_modifiers,
             default_use_effects,
             default_consumables,
@@ -625,6 +658,11 @@ impl ItemRegistryCatalog {
         self.default_swing_animation_durations
             .get(&resource_id)
             .copied()
+    }
+
+    pub fn default_kinetic_weapon(&self, resource_id: &str) -> Option<ItemKineticWeaponDefaults> {
+        let resource_id = ResourceLocation::parse(resource_id).ok()?.id();
+        self.default_kinetic_weapons.get(&resource_id).copied()
     }
 
     pub fn default_attribute_modifiers(
@@ -1167,6 +1205,33 @@ fn default_attack_range_for_declaration(
         max_creative_reach: parse_java_float_literal(&creation.arguments[3].canonical)?,
         hitbox_margin: parse_java_float_literal(&creation.arguments[4].canonical)?,
         mob_factor: parse_java_float_literal(&creation.arguments[5].canonical)?,
+    }))
+}
+
+fn default_kinetic_weapon_for_declaration(
+    expression: &GeneratedJavaExpression,
+) -> Result<Option<ItemKineticWeaponDefaults>> {
+    let Some(call) = expression.call("spear") else {
+        return Ok(None);
+    };
+    if call.arguments.len() != 10 {
+        bail!("spear declaration must have ten arguments");
+    }
+    let ticks = |index: usize, field: &str| -> Result<i32> {
+        let seconds = parse_java_float_literal(&call.arguments[index].canonical)?;
+        if !seconds.is_finite() || seconds < 0.0 || seconds * 20.0 > i32::MAX as f32 {
+            bail!("spear {field} must be a finite non-negative tick duration");
+        }
+        Ok((seconds * 20.0) as i32)
+    };
+    Ok(Some(ItemKineticWeaponDefaults {
+        delay_ticks: ticks(3, "delay")?,
+        dismount_duration_ticks: ticks(4, "dismount time")?,
+        knockback_duration_ticks: ticks(6, "knockback time")?,
+        damage_duration_ticks: ticks(8, "damage time")?,
+        // Vanilla `Item.Properties.spear` supplies this fixed presentation
+        // multiplier to every default KineticWeapon component.
+        forward_movement: 0.38,
     }))
 }
 
@@ -1912,6 +1977,34 @@ mod tests {
         assert_eq!(catalog.max_stack_size("minecraft:ender_pearl"), Some(16));
         assert_eq!(catalog.max_stack_size("minecraft:diamond_sword"), Some(1));
         assert_eq!(catalog.max_stack_size("minecraft:diamond_shovel"), Some(1));
+        for (resource_id, expected) in [
+            ("minecraft:wooden_spear", (15, 100, 200, 300)),
+            ("minecraft:stone_spear", (14, 90, 180, 275)),
+            ("minecraft:copper_spear", (13, 80, 165, 250)),
+            ("minecraft:iron_spear", (12, 50, 135, 225)),
+            ("minecraft:golden_spear", (14, 70, 170, 275)),
+            ("minecraft:diamond_spear", (10, 60, 130, 200)),
+            ("minecraft:netherite_spear", (8, 50, 110, 175)),
+        ] {
+            let defaults = catalog
+                .default_kinetic_weapon(resource_id)
+                .unwrap_or_else(|| panic!("missing {resource_id} kinetic defaults"));
+            assert_eq!(
+                (
+                    defaults.delay_ticks,
+                    defaults.dismount_duration_ticks,
+                    defaults.knockback_duration_ticks,
+                    defaults.damage_duration_ticks,
+                ),
+                expected,
+                "{resource_id}"
+            );
+            assert_eq!(defaults.forward_movement.to_bits(), 0.38f32.to_bits());
+        }
+        assert_eq!(
+            catalog.default_kinetic_weapon("minecraft:diamond_sword"),
+            None
+        );
         assert_eq!(
             catalog.default_attack_range("minecraft:wooden_spear"),
             Some(ItemAttackRange {

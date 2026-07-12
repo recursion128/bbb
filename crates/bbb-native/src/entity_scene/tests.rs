@@ -17,6 +17,22 @@ use bbb_world::{
 };
 use uuid::Uuid;
 
+fn vanilla_kinetic_weapon_fixture(resource_ids: &[&str]) -> serde_json::Value {
+    let catalog =
+        serde_json::to_value(bbb_pack::ItemRegistryCatalog::vanilla_26_1().unwrap()).unwrap();
+    serde_json::Value::Object(
+        resource_ids
+            .iter()
+            .map(|resource_id| {
+                (
+                    (*resource_id).to_string(),
+                    catalog["default_kinetic_weapons"][*resource_id].clone(),
+                )
+            })
+            .collect(),
+    )
+}
+
 #[test]
 fn entity_scene_outline_is_none_without_visible_entity_targets() {
     assert_eq!(
@@ -2674,7 +2690,10 @@ fn entity_model_instances_project_stab_from_attack_arm_item() {
         "protocol_ids": {
             "minecraft:wooden_spear": WOODEN_SPEAR_ID,
             "minecraft:stick": PLAIN_ITEM_ID
-        }
+        },
+        "default_kinetic_weapons": vanilla_kinetic_weapon_fixture(&[
+            "minecraft:wooden_spear"
+        ])
     }))
     .unwrap();
     let runtime = NativeItemRuntime::for_test_with_registry_and_equipment_assets(
@@ -2906,7 +2925,11 @@ fn entity_model_instances_project_player_spear_use_kinetic_state() {
             "minecraft:wooden_spear": WOODEN_SPEAR_ID,
             "minecraft:iron_spear": IRON_SPEAR_ID,
             "minecraft:stick": PLAIN_ITEM_ID
-        }
+        },
+        "default_kinetic_weapons": vanilla_kinetic_weapon_fixture(&[
+            "minecraft:wooden_spear",
+            "minecraft:iron_spear"
+        ])
     }))
     .unwrap();
     let runtime = NativeItemRuntime::for_test_with_registry_and_equipment_assets(
@@ -3028,7 +3051,11 @@ fn entity_model_instances_project_player_held_spear_arm_pose() {
             "minecraft:iron_spear": IRON_SPEAR_ID,
             "minecraft:stick": PLAIN_ITEM_ID,
             "minecraft:crossbow": CROSSBOW_ID
-        }
+        },
+        "default_kinetic_weapons": vanilla_kinetic_weapon_fixture(&[
+            "minecraft:wooden_spear",
+            "minecraft:iron_spear"
+        ])
     }))
     .unwrap();
     let runtime = NativeItemRuntime::for_test_with_registry_and_equipment_assets(
@@ -3140,7 +3167,11 @@ fn entity_model_instances_project_humanoid_mob_held_spear_arm_pose() {
             "minecraft:wooden_spear": WOODEN_SPEAR_ID,
             "minecraft:iron_spear": IRON_SPEAR_ID,
             "minecraft:stick": PLAIN_ITEM_ID
-        }
+        },
+        "default_kinetic_weapons": vanilla_kinetic_weapon_fixture(&[
+            "minecraft:wooden_spear",
+            "minecraft:iron_spear"
+        ])
     }))
     .unwrap();
     let runtime = NativeItemRuntime::for_test_with_registry_and_equipment_assets(

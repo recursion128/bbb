@@ -16409,6 +16409,7 @@ fn item_registry_override_value(item_ids: &[&str]) -> serde_json::Value {
         "mount_body_armor_assets",
         "default_attack_ranges",
         "default_swing_animation_durations",
+        "default_kinetic_weapons",
         "default_attribute_modifiers",
         "default_use_effects",
         "default_consumables",
@@ -16430,6 +16431,10 @@ fn item_registry_override_value(item_ids: &[&str]) -> serde_json::Value {
                     resource_id.to_string(),
                     vanilla[field]["minecraft:stick"].clone(),
                 );
+            } else if field == "default_kinetic_weapons" {
+                if let Some(value) = vanilla[field].get(resource_id) {
+                    values.insert(resource_id.to_string(), value.clone());
+                }
             }
         }
         catalog[field] = serde_json::Value::Object(values);
@@ -16463,6 +16468,7 @@ fn copy_item_registry_profile(
         "mount_body_armor_assets",
         "default_attack_ranges",
         "default_swing_animation_durations",
+        "default_kinetic_weapons",
         "default_attribute_modifiers",
         "default_use_effects",
         "default_consumables",

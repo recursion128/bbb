@@ -12438,3 +12438,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   `constant_name/type_id`；item default value、builder 识别与 runtime 行为保持原 owner。
 - [x] 110 项 generated constant name 全量 round-trip 与 unknown/case-sensitive 反向测试锁定查询
   边界；新增 component 不再需要同步修改 pack 中央 match。
+
+## 2026-07-12：Projected spear kinetic defaults from item declarations
+
+- [x] item registry 从 checked-in `Items.java` `.spear(...)` expression 机械解析七种 spear 的
+  delay/dismount/knockback/damage 秒数并按 vanilla `(int)(seconds * 20)` 生成 tick defaults；
+  `Item.Properties.spear` 固定的 0.38 forward-movement 由唯一、带 source 注释的 semantic resolver
+  提供。七项精确值与非 spear 缺失路径均有测试。
+- [x] item-model 暴露只读 default kinetic query，native entity-hand 与 first-person 共用同一查询并
+  删除七项 resource match 与第二份 timing 表；threshold、damage multiplier、sounds 以及 kinetic
+  movement 算法未在本切片误标实现，component patch removal 仍优先于 defaults。
