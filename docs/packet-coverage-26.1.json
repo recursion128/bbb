@@ -11109,29 +11109,47 @@
       "constant_name": "CLIENTBOUND_CLEAR_DIALOG",
       "coverage": {
         "canonical_apply": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/client/ui.rs#apply_clear_dialog",
+            "crates/bbb-world/src/client/ui.rs#tracks_client_ui_warnings_and_dialogs"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/client_common/tests.rs#decodes_clear_dialog_as_empty_packet",
+            "crates/bbb-protocol/src/packets/client_common/tests.rs#rejects_clear_dialog_with_trailing_bytes",
+            "vanilla:net/minecraft/network/protocol/common/ClientboundClearDialogPacket.java#STREAM_CODEC"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "ownership": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/play_apply.rs#PlayClientbound::ClearDialog"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "runtime_side_effect": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
+          "evidence": [
+            "crates/bbb-world/src/client/ui.rs#apply_clear_dialog",
+            "vanilla:net/minecraft/client/multiplayer/ClientCommonPacketListenerImpl.java#clearDialog"
+          ],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
           "status": "partial"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/client_common/tests.rs#rejects_clear_dialog_with_trailing_bytes",
+            "crates/bbb-net/src/event_stream.rs#play_hud_and_ui_packets_emit_matching_events_without_responses",
+            "crates/bbb-net/src/probe/play.rs#probe_applies_client_ui_packets_to_world",
+            "crates/bbb-world/src/client/ui.rs#tracks_client_ui_warnings_and_dialogs",
+            "crates/bbb-native/src/runtime/events/tests/entity_and_inventory_counters.rs#client_common_waypoint_events_update_world_and_snapshot_counters"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "clientbound",

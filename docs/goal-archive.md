@@ -11537,3 +11537,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] operation WRAP、identifier/icon/data framing、strict trailing、track/update/untrack ownership 与跨 crate tests 闭合。
 - [x] manager/counter consumers 有证据；locator contextual-bar 呈现未完成，runtime 保持 partial。
+
+## 2026-07-12：play clear-dialog packet coverage audit
+
+- [x] unit payload、strict trailing、canonical dialog clear ownership 与跨 crate tests 闭合。
+- [x] previous/warning screen-stack restoration 未完成，runtime 保持 partial。
