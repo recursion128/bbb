@@ -2843,6 +2843,7 @@ def render(result: ExtractionResult) -> str:
                 f"        is_hurting_projectile: {str(extends_class(item.runtime_class, 'net.minecraft.world.entity.projectile.hurtingprojectile.AbstractHurtingProjectile')).lower()},",
                 f"        is_wind_charge: {str(extends_class(item.runtime_class, 'net.minecraft.world.entity.projectile.hurtingprojectile.windcharge.AbstractWindCharge')).lower()},",
                 f"        is_boat: {str(extends_class(item.runtime_class, 'net.minecraft.world.entity.vehicle.boat.AbstractBoat')).lower()},",
+                f"        is_abstract_chest_boat: {str(extends_class(item.runtime_class, 'net.minecraft.world.entity.vehicle.boat.AbstractChestBoat')).lower()},",
                 f"        is_minecart: {str(extends_class(item.runtime_class, 'net.minecraft.world.entity.vehicle.minecart.AbstractMinecart')).lower()},",
                 f"        is_abstract_horse: {str(extends_class(item.runtime_class, 'net.minecraft.world.entity.animal.equine.AbstractHorse')).lower()},",
                 f"        is_abstract_nautilus: {str(extends_class(item.runtime_class, 'net.minecraft.world.entity.animal.nautilus.AbstractNautilus')).lower()},",

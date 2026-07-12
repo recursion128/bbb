@@ -600,19 +600,7 @@ fn rotated_y(point: [f32; 3], y_rot: f32) -> [f64; 3] {
 }
 
 fn is_vanilla_chest_boat_or_raft_type(entity_type_id: i32) -> bool {
-    matches!(
-        entity_type_id,
-        VANILLA_ENTITY_TYPE_ACACIA_CHEST_BOAT_ID
-            | VANILLA_ENTITY_TYPE_BAMBOO_CHEST_RAFT_ID
-            | VANILLA_ENTITY_TYPE_BIRCH_CHEST_BOAT_ID
-            | VANILLA_ENTITY_TYPE_CHERRY_CHEST_BOAT_ID
-            | VANILLA_ENTITY_TYPE_DARK_OAK_CHEST_BOAT_ID
-            | VANILLA_ENTITY_TYPE_JUNGLE_CHEST_BOAT_ID
-            | VANILLA_ENTITY_TYPE_MANGROVE_CHEST_BOAT_ID
-            | VANILLA_ENTITY_TYPE_OAK_CHEST_BOAT_ID
-            | VANILLA_ENTITY_TYPE_PALE_OAK_CHEST_BOAT_ID
-            | VANILLA_ENTITY_TYPE_SPRUCE_CHEST_BOAT_ID
-    )
+    super::schema::vanilla_entity_metadata_type_is_abstract_chest_boat(entity_type_id)
 }
 
 fn is_vanilla_raft_type(entity_type_id: i32) -> bool {

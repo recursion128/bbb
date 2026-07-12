@@ -12532,3 +12532,9 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] generated entity descriptor 从统一 Java class hierarchy 派生 9 项 `AbstractHorse`、2 项
   `AbstractNautilus` 与 2 项 `Llama` subclass；world inventory/collision/model consumers 保持原 API，
   三张手抄 class-membership matches 已移除，saddle tags 与 slot/presentation 行为集合未被近似替换。
+
+## 2026-07-12：Derived chest-boat class membership
+
+- [x] generated entity descriptor 从 Java inheritance 派生 10 项 `AbstractChestBoat` subclass，
+  dimensions passenger attachment 删除对应手抄 entity-type 表；`Raft`/`ChestRaft` sibling 的 ride-height
+  行为集合继续留在 dimensions semantic owner，未用近似 superclass 冒充。

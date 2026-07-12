@@ -223,6 +223,7 @@ pub struct VanillaEntityTypeMetadataCatalogEntry {
     pub is_hurting_projectile: bool,
     pub is_wind_charge: bool,
     pub is_boat: bool,
+    pub is_abstract_chest_boat: bool,
     pub is_minecart: bool,
     pub is_abstract_horse: bool,
     pub is_abstract_nautilus: bool,
@@ -361,6 +362,13 @@ pub fn vanilla_entity_metadata_type_is_boat(entity_type_id: i32) -> bool {
     VANILLA_ENTITY_TYPE_METADATA_26_1
         .get(usize::try_from(entity_type_id).unwrap_or(usize::MAX))
         .map(|entry| entry.is_boat)
+        .unwrap_or(false)
+}
+
+pub fn vanilla_entity_metadata_type_is_abstract_chest_boat(entity_type_id: i32) -> bool {
+    VANILLA_ENTITY_TYPE_METADATA_26_1
+        .get(usize::try_from(entity_type_id).unwrap_or(usize::MAX))
+        .map(|entry| entry.is_abstract_chest_boat)
         .unwrap_or(false)
 }
 
@@ -571,6 +579,13 @@ mod tests {
         assert_eq!(
             VANILLA_ENTITY_TYPE_METADATA_26_1
                 .iter()
+                .filter(|entry| entry.is_abstract_chest_boat)
+                .count(),
+            10
+        );
+        assert_eq!(
+            VANILLA_ENTITY_TYPE_METADATA_26_1
+                .iter()
                 .filter(|entry| entry.is_minecart)
                 .count(),
             7
@@ -691,6 +706,14 @@ mod tests {
                 .expect("vehicle class query source");
             assert!(!body.contains("matches!"));
         }
+        let dimensions_source = include_str!("dimensions.rs");
+        let chest_boat_query = dimensions_source
+            .split("fn is_vanilla_chest_boat_or_raft_type")
+            .nth(1)
+            .and_then(|source| source.split_once("\n}"))
+            .map(|(body, _)| body)
+            .expect("chest boat class query source");
+        assert!(!chest_boat_query.contains("matches!"));
     }
 
     #[test]
