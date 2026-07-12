@@ -11358,3 +11358,10 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   map wire；configuration/play 共用 decoder 现在拒绝 trailing bytes。
 - [x] play packet 经唯一 shared apply 替换 canonical report detail map，并补 native play-path test；vanilla
   handler 无独立即时 runtime effect，故四格 complete、runtime 标为 not-applicable。
+
+## 2026-07-12：play server-links packet coverage audit
+
+- [x] 对照 shared `ClientboundServerLinksPacket` / `ServerLinks.UNTRUSTED_LINKS_STREAM_CODEC` 锁定 list
+  wire；configuration/play 共用 decoder 现在拒绝 trailing bytes。
+- [x] world 按 vanilla handler 验证 untrusted URI、丢弃非法项并原子替换 trusted links；play net/probe/native
+  shared apply tests 与五格证据闭合。rich Component label parity 仍由 text component ledger 独立追踪。

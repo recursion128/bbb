@@ -3147,6 +3147,18 @@ fn decodes_server_links_in_configuration_and_play() {
         PlayClientbound::ServerLinks(expected)
     );
 
+    let mut trailing = payload;
+    trailing.push(0);
+    for error in [
+        decode_configuration_clientbound(ids::configuration::CLIENTBOUND_SERVER_LINKS, &trailing)
+            .unwrap_err(),
+        decode_play_clientbound(ids::play::CLIENTBOUND_SERVER_LINKS, &trailing).unwrap_err(),
+    ] {
+        assert!(error
+            .to_string()
+            .contains("trailing bytes after server links packet"));
+    }
+
     let mut hostile = Encoder::new();
     hostile.write_var_i32(i32::MAX);
     let error = decode_configuration_clientbound(

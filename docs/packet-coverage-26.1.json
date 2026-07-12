@@ -10478,29 +10478,46 @@
       "constant_name": "CLIENTBOUND_SERVER_LINKS",
       "coverage": {
         "canonical_apply": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/client/server_presentation.rs#apply_server_links",
+            "crates/bbb-world/src/play_apply.rs#PlayClientbound::ServerLinks"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/tests.rs#decodes_server_links_in_configuration_and_play",
+            "vanilla:net/minecraft/server/ServerLinks.java#UNTRUSTED_LINKS_STREAM_CODEC"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "ownership": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/play_apply.rs#PlayClientbound::ServerLinks"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "runtime_side_effect": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/client/server_presentation.rs#is_allowed_untrusted_uri",
+            "vanilla:net/minecraft/client/multiplayer/ClientCommonPacketListenerImpl.java#handleServerLinks"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/tests.rs#decodes_server_links_in_configuration_and_play",
+            "crates/bbb-net/src/event_stream.rs#play_server_presentation_packets_emit_matching_events_and_cookie_response",
+            "crates/bbb-net/src/probe/play.rs#probe_play_common_server_presentation_packets_update_world",
+            "crates/bbb-world/src/client/server_presentation.rs#server_links_replace_trusted_links_and_count_invalid_entries",
+            "crates/bbb-native/src/runtime/events/tests/session_protocol_events.rs#play_server_links_update_world_through_shared_apply"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "clientbound",

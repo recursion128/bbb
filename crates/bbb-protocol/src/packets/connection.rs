@@ -814,6 +814,11 @@ pub(super) fn decode_server_links(decoder: &mut Decoder<'_>) -> Result<ServerLin
     for _ in 0..count {
         links.push(decode_server_link_entry(decoder)?);
     }
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after server links packet".to_string(),
+        ));
+    }
     Ok(ServerLinks { links })
 }
 

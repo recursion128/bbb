@@ -431,6 +431,33 @@ fn server_links_event_updates_world_and_world_counters() {
 }
 
 #[test]
+fn play_server_links_update_world_through_shared_apply() {
+    let (tx, mut rx) = mpsc::channel(1);
+    tx.try_send(NetEvent::Play(PlayClientbound::ServerLinks(ServerLinks {
+        links: vec![ServerLinkEntry {
+            link_type: ServerLinkType::Known(ServerLinkKnownType::Support),
+            url: "https://example.invalid/support".to_string(),
+        }],
+    })))
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+
+    assert_eq!(
+        drain_net_events(&mut rx, &mut world, &mut counters, &None),
+        1
+    );
+    assert_eq!(world.server_links().len(), 1);
+    assert_eq!(
+        world.server_links()[0].known_type.as_deref(),
+        Some("support")
+    );
+    assert_eq!(world.counters().server_link_packets, 1);
+    assert_eq!(world.counters().server_links_tracked, 1);
+}
+
+#[test]
 fn client_ui_events_update_world_and_world_counters() {
     let (tx, mut rx) = mpsc::channel(5);
     tx.try_send(NetEvent::Play(PlayClientbound::LowDiskSpaceWarning))

@@ -441,6 +441,8 @@ play TestInstanceBlockStatus 的 Component + optional Vec3i wire、strict decode
 rich status preservation 与 active TestInstanceBlockEditScreen update 未实现，canonical/runtime 保持 partial。
 play CustomReportDetails 的 bounded map wire、strict config/play decode、replace semantics 与 shared apply tests 已闭合；
 vanilla handler 只有 canonical map replacement，故即时 runtime side-effect 格为 not-applicable。
+play ServerLinks 的 shared list wire、strict config/play decode、URI trust filtering、replace semantics 与 shared apply tests
+已闭合；rich Component label 保持现有兼容 projection，不在 packet coverage 中冒充完整 text parity。
 
 完成标准：全部 vanilla 26.1 catalog entry 都有矩阵行；所有目标客户端适用项为
 `complete`，其余只有带 vanilla 依据的 `not-applicable` 或带重启判据的窄 `deferred`；
