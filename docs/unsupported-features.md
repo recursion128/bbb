@@ -308,6 +308,12 @@ Inventory:
   italic/complex component styles, and component-specific detail lines from
   `font/default.json`.
 - Implement recipe book and creative inventory variants.
+- When a highlighted recipe first becomes visible in a native recipe button,
+  remove its local highlight and send `RecipeBookSeenRecipe` exactly once like
+  vanilla `RecipeButton.init`/`RecipeBookComponent.recipeShown`. The generic
+  encoder and maintenance command exist, but the automatic UI lifecycle does
+  not; do not leave highlights permanently animated or treat manual control as
+  client parity.
 - Complete PlaceGhostRecipe presentation for every remaining SlotDisplay/item
   component semantic. Active Inventory/Crafting/Furnace/Blast/Smoker container
   gating and current crafting/furnace ghost overlays are covered; invalid or

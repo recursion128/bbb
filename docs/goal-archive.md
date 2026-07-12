@@ -11901,3 +11901,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] forward/backward/left/right/jump/shift/sprint 七位 wire、按 key-state 变化发送、重复按键去重、失焦全 false release、mounted/unmounted 共用 raw input、Play driver 与 focused tests 已反向审计。
 - [x] 服务端仅保存 last client input 并更新 shift state，无 dedicated ack；该 packet 不替代独立 sprint command、vehicle movement 或 server correction。因此 ack=N/A，其余四格闭合。
+
+## 2026-07-12：play serverbound recipe-book command coverage audit
+
+- [x] ChangeSettings 的四类 book type/open/filter wire、native toggle/filter/窄布局关闭、本地 canonical settings 更新、driver 与服务端持久化已审计；无 dedicated ack，除 ack=N/A 外闭合。
+- [x] SeenRecipe 的 RecipeDisplayId wire、maintenance command/driver/server remove-highlight 已审计；native recipe button 首次显示 highlighted recipe 时尚未执行 vanilla one-shot local remove+send，因此仅 encoder 闭合、ack=N/A，command/state/tests 保持 partial。

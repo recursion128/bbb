@@ -3956,6 +3956,54 @@ mod tests {
         }
     }
 
+    #[test]
+    fn play_serverbound_recipe_book_commands_keep_seen_ui_lifecycle_open() {
+        let ledger = vanilla_packet_coverage_26_1().unwrap();
+        let settings = ledger
+            .entries
+            .iter()
+            .find(|entry| {
+                entry.state == "play"
+                    && entry.constant_name == "SERVERBOUND_RECIPE_BOOK_CHANGE_SETTINGS"
+            })
+            .expect("play serverbound recipe book settings coverage row");
+        assert_eq!(
+            settings.coverage["ack_response"].status,
+            PacketCoverageStatus::NotApplicable
+        );
+        for dimension in ["command_surface", "encoder", "state_guard", "tests"] {
+            assert_eq!(
+                settings.coverage[dimension].status,
+                PacketCoverageStatus::Complete,
+                "settings {dimension}"
+            );
+        }
+
+        let seen = ledger
+            .entries
+            .iter()
+            .find(|entry| {
+                entry.state == "play"
+                    && entry.constant_name == "SERVERBOUND_RECIPE_BOOK_SEEN_RECIPE"
+            })
+            .expect("play serverbound recipe book seen coverage row");
+        assert_eq!(
+            seen.coverage["ack_response"].status,
+            PacketCoverageStatus::NotApplicable
+        );
+        assert_eq!(
+            seen.coverage["encoder"].status,
+            PacketCoverageStatus::Complete
+        );
+        for dimension in ["command_surface", "state_guard", "tests"] {
+            assert_eq!(
+                seen.coverage[dimension].status,
+                PacketCoverageStatus::Partial,
+                "seen {dimension}"
+            );
+        }
+    }
+
     fn state_name(state: PacketState) -> &'static str {
         match state {
             PacketState::Handshake => "handshake",
