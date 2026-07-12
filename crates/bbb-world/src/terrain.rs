@@ -8,14 +8,15 @@ mod generated_26_1;
 
 use generated_26_1::{
     VANILLA_AIR_BLOCKS, VANILLA_BARS_BLOCKS, VANILLA_COPPER_GRATE_BLOCKS,
-    VANILLA_FIXED_SOURCE_WATER_BLOCKS, VANILLA_INVISIBLE_RENDER_SHAPE_BLOCKS,
-    VANILLA_IRON_BARS_CLASS_BLOCKS, VANILLA_NO_COLLISION_BANNER_BLOCKS,
-    VANILLA_NO_COLLISION_BUTTON_BLOCKS, VANILLA_NO_COLLISION_CROP_BLOCKS,
-    VANILLA_NO_COLLISION_CROP_SUPPLEMENT_BLOCKS, VANILLA_NO_COLLISION_FIRE_BLOCKS,
-    VANILLA_NO_COLLISION_PRESSURE_PLATE_BLOCKS, VANILLA_NO_COLLISION_RAIL_BLOCKS,
-    VANILLA_NO_COLLISION_SIGN_BLOCKS, VANILLA_NO_COLLISION_SMALL_FLOWER_BLOCKS,
-    VANILLA_NO_COLLISION_THIN_OVERLAY_BLOCKS, VANILLA_NO_COLLISION_TORCH_BLOCKS,
-    VANILLA_NO_COLLISION_WIRE_BLOCKS, VANILLA_NO_TERRAIN_PARTICLE_BLOCKS,
+    VANILLA_FIXED_SOURCE_WATER_BLOCKS, VANILLA_HALF_TRANSPARENT_SKIP_RENDERING_BLOCKS,
+    VANILLA_INVISIBLE_RENDER_SHAPE_BLOCKS, VANILLA_IRON_BARS_CLASS_BLOCKS,
+    VANILLA_NO_COLLISION_BANNER_BLOCKS, VANILLA_NO_COLLISION_BUTTON_BLOCKS,
+    VANILLA_NO_COLLISION_CROP_BLOCKS, VANILLA_NO_COLLISION_CROP_SUPPLEMENT_BLOCKS,
+    VANILLA_NO_COLLISION_FIRE_BLOCKS, VANILLA_NO_COLLISION_PRESSURE_PLATE_BLOCKS,
+    VANILLA_NO_COLLISION_RAIL_BLOCKS, VANILLA_NO_COLLISION_SIGN_BLOCKS,
+    VANILLA_NO_COLLISION_SMALL_FLOWER_BLOCKS, VANILLA_NO_COLLISION_THIN_OVERLAY_BLOCKS,
+    VANILLA_NO_COLLISION_TORCH_BLOCKS, VANILLA_NO_COLLISION_WIRE_BLOCKS,
+    VANILLA_NO_TERRAIN_PARTICLE_BLOCKS,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -352,18 +353,7 @@ fn is_iron_bars_block_name(name: &str) -> bool {
 }
 
 fn is_half_transparent_skip_rendering_block_name(name: &str) -> bool {
-    matches!(
-        name,
-        "minecraft:glass"
-            | "minecraft:tinted_glass"
-            | "minecraft:ice"
-            | "minecraft:frosted_ice"
-            | "minecraft:blue_ice"
-            | "minecraft:slime_block"
-            | "minecraft:honey_block"
-    ) || name
-        .strip_prefix("minecraft:")
-        .is_some_and(|stem| stem.ends_with("_stained_glass"))
+    VANILLA_HALF_TRANSPARENT_SKIP_RENDERING_BLOCKS.contains(&name)
 }
 
 fn block_property_is_true(properties: &BTreeMap<String, String>, key: &str) -> bool {
@@ -466,6 +456,15 @@ mod tests {
                 &BTreeMap::new()
             )
             .same_block_key
+        );
+        for &name in VANILLA_HALF_TRANSPARENT_SKIP_RENDERING_BLOCKS {
+            let skip = classify_terrain_skip_rendering(Some(name), &BTreeMap::new());
+            assert!(skip.same_block_culls_all_faces, "{name}");
+            assert_ne!(skip.same_block_key, 0, "{name}");
+        }
+        assert!(
+            classify_terrain_skip_rendering(Some("minecraft:copper_grate"), &BTreeMap::new())
+                .same_block_culls_all_faces
         );
 
         let pane = classify_terrain_skip_rendering(

@@ -12251,3 +12251,15 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   fixed-source fluid、air、terrain-particle gate 与直接 `RenderShape.INVISIBLE` 同样继续使用
   各自 catalog。本条以更准确的动态权威边界取代上述历史切片中“生成成员仍走 cutout”的
   结论，不改写其生成器演进记录。
+
+## 2026-07-12：Generated half-transparent face-culling membership
+
+- [x] block-membership extractor 从统一 Tree-sitter type/superclass IR 计算
+  `HalfTransparentBlock` 的 10-class inheritance closure，再映射 `Blocks.java` 的 direct
+  constructor、lambda、method reference 与唯一 register-helper forwarding，按声明顺序生成
+  31 个 same-block `skipRendering` 成员；helper 未转发 resource 参数、重复/歧义或固定数量漂移
+  都显式失败。
+- [x] world 删除 glass/ice/slime/honey 的 7 项 match 与 stained-glass 名称后缀启发式，统一消费
+  `VANILLA_HALF_TRANSPARENT_SKIP_RENDERING_BLOCKS`。生成集合同时补齐原先遗漏的 8 个 copper
+  grate；stained-glass pane 仍归 `IronBarsBlock` 的连接性规则，贴图 Cutout/Translucent 层继续由
+  baked sprite transparency 动态决定，未与 face-culling membership 混合。

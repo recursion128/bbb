@@ -14,6 +14,7 @@ from block_membership_catalog_extractor import (  # noqa: E402
     air_blocks,
     block_tag_membership,
     constructor_family_blocks,
+    constructor_types_extending,
     invisible_render_shape_constructor_types,
     no_terrain_particle_blocks,
 )
@@ -126,16 +127,28 @@ class Blocks {
       "normal", NormalBlock::new, Properties.of());
   static final Block SECOND = register(
       "second", WallTorchBlock::new, Properties.of());
+  static final Block THIRD = registerSpecial("third");
+  private static Block registerSpecial(final String id) {
+    return register(id, SpecialTorchBlock::new, Properties.of());
+  }
 }''',
         )
         self.assertEqual(
             [
                 (entry.constant_name, entry.resource_id)
                 for entry in constructor_family_blocks(
-                    source, frozenset({"TorchBlock", "WallTorchBlock"}), 2
+                    source,
+                    frozenset(
+                        {"TorchBlock", "WallTorchBlock", "SpecialTorchBlock"}
+                    ),
+                    3,
                 )
             ],
-            [("FIRST", "minecraft:first"), ("SECOND", "minecraft:second")],
+            [
+                ("FIRST", "minecraft:first"),
+                ("SECOND", "minecraft:second"),
+                ("THIRD", "minecraft:third"),
+            ],
         )
 
     def test_constructor_family_rejects_ambiguous_and_count_drift(self) -> None:
@@ -160,6 +173,23 @@ class Blocks {
         ):
             constructor_family_blocks(source, frozenset({"FirstBlock"}), 2)
 
+    def test_constructor_family_rejects_helper_without_resource_forwarding(self) -> None:
+        source = parse_source(
+            "net/minecraft/world/level/block/Blocks.java",
+            b'''package net.minecraft.world.level.block;
+class Blocks {
+  static final Block FIRST = registerSpecial("first");
+  private static Block registerSpecial(final String id) {
+    return register("different", SpecialBlock::new, Properties.of());
+  }
+}''',
+        )
+        with self.assertRaisesRegex(
+            BlockMembershipCatalogExtractionError,
+            "constructor helper does not forward its first parameter to register",
+        ):
+            constructor_family_blocks(source, frozenset({"SpecialBlock"}), 1)
+
     def test_constructor_family_resolves_block_id_resource_keys(self) -> None:
         source = parse_source(
             "net/minecraft/world/level/block/Blocks.java",
@@ -178,6 +208,35 @@ class Blocks {
             ),
             [BlockMembershipEntry("ATTACHED", "minecraft:attached")],
         )
+
+    def test_constructor_types_extending_resolves_cross_file_hierarchy(self) -> None:
+        base = parse_source(
+            "net/minecraft/world/level/block/BaseBlock.java",
+            b"""package net.minecraft.world.level.block;
+class BaseBlock extends Block {}
+class DirectBlock extends BaseBlock {}
+""",
+        )
+        child = parse_source(
+            "net/minecraft/world/level/block/IndirectBlock.java",
+            b"""package net.minecraft.world.level.block;
+class IndirectBlock extends DirectBlock {}
+class OtherBlock extends Block {}
+""",
+        )
+        self.assertEqual(
+            constructor_types_extending(
+                [base, child], "net.minecraft.world.level.block.BaseBlock", 3
+            ),
+            frozenset({"BaseBlock", "DirectBlock", "IndirectBlock"}),
+        )
+        with self.assertRaisesRegex(
+            BlockMembershipCatalogExtractionError,
+            "expected 4 classes extending",
+        ):
+            constructor_types_extending(
+                [base, child], "net.minecraft.world.level.block.BaseBlock", 4
+            )
 
     def test_invisible_render_shape_classes_use_method_return_cst(self) -> None:
         source = parse_source(

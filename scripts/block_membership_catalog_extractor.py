@@ -6,7 +6,12 @@ import json
 from dataclasses import dataclass
 
 from block_registry_catalog_extractor import field_constant, resolve_block_resource_path
-from vanilla_java_source import JavaExpression, JavaSource, descendants
+from vanilla_java_source import (
+    JavaExpression,
+    JavaSource,
+    descendants,
+    resolve_class_hierarchy,
+)
 from vanilla_tag_source import VanillaTagSourceError, resolve_tag_values
 
 
@@ -122,6 +127,61 @@ def constructor_family_blocks(
         raise BlockMembershipCatalogExtractionError(
             f"{source.relative_path}: constructor family cannot be empty"
         )
+
+    helper_types: dict[str, str] = {}
+    for method in source.methods_for("net.minecraft.world.level.block.Blocks"):
+        if method.body is None:
+            continue
+        constructed_types = {
+            type_name
+            for node in descendants(method.node)
+            if (type_name := _constructed_type_name(source, node)) in constructor_types
+        }
+        if not constructed_types:
+            continue
+        if len(constructed_types) != 1:
+            _fail(
+                source,
+                source.expression(method.node),
+                "constructor helper matches multiple family types",
+            )
+        register_calls = [
+            call
+            for call in source.calls
+            if method.span.start_byte <= call.span.start_byte
+            and call.span.end_byte <= method.span.end_byte
+            and call.name == "register"
+        ]
+        if len(register_calls) != 1 or not register_calls[0].arguments:
+            _fail(
+                source,
+                source.expression(method.node),
+                "constructor helper lacks unique register call",
+            )
+        if not method.parameters:
+            _fail(
+                source,
+                source.expression(method.node),
+                "constructor helper lacks resource parameter",
+            )
+        parameter_name = method.parameters[0].node.child_by_field_name("name")
+        if parameter_name is None or (
+            register_calls[0].arguments[0].canonical
+            != source.expression(parameter_name).canonical
+        ):
+            _fail(
+                source,
+                source.expression(method.node),
+                "constructor helper does not forward its first parameter to register",
+            )
+        if method.name in helper_types:
+            _fail(
+                source,
+                source.expression(method.node),
+                "duplicate constructor helper name",
+            )
+        helper_types[method.name] = next(iter(constructed_types))
+
     entries: list[BlockMembershipEntry] = []
     for field in source.fields_for("net.minecraft.world.level.block.Blocks"):
         if field.type_spelling != "Block" or field.initializer is None:
@@ -131,30 +191,54 @@ def constructor_family_blocks(
             for node in descendants(field.initializer.node)
             if (type_name := _constructed_type_name(source, node)) in constructor_types
         }
-        if not constructed_types:
+        helper_calls = [
+            call
+            for call in source.calls
+            if field.initializer.span.start_byte <= call.span.start_byte
+            and call.span.end_byte <= field.initializer.span.end_byte
+            and call.name in helper_types
+        ]
+        matched_types = constructed_types | {
+            helper_types[call.name] for call in helper_calls
+        }
+        if not matched_types:
             continue
-        if len(constructed_types) != 1:
+        if len(matched_types) != 1 or len(helper_calls) > 1:
             _fail(
                 source,
                 field.initializer,
                 "block registration matches multiple constructor family types",
             )
-        register_calls = [
-            call
-            for call in source.calls
-            if field.initializer.span.start_byte <= call.span.start_byte
-            and call.span.end_byte <= field.initializer.span.end_byte
-            and call.name == "register"
-        ]
-        if len(register_calls) != 1 or not register_calls[0].arguments:
-            _fail(source, field.initializer, "constructor family lacks unique register call")
+        if helper_calls:
+            if constructed_types or not helper_calls[0].arguments:
+                _fail(
+                    source,
+                    field.initializer,
+                    "constructor family has ambiguous direct/helper registration",
+                )
+            resource_expression = helper_calls[0].arguments[0]
+        else:
+            register_calls = [
+                call
+                for call in source.calls
+                if field.initializer.span.start_byte <= call.span.start_byte
+                and call.span.end_byte <= field.initializer.span.end_byte
+                and call.name == "register"
+            ]
+            if len(register_calls) != 1 or not register_calls[0].arguments:
+                _fail(
+                    source,
+                    field.initializer,
+                    "constructor family lacks unique register call",
+                )
+            resource_expression = register_calls[0].arguments[0]
         entries.append(
             BlockMembershipEntry(
                 field.name,
                 "minecraft:"
                 + resolve_block_resource_path(
                     source,
-                    register_calls[0].arguments[0],
+                    resource_expression,
                     block_id_constants or {},
                 ),
             )
@@ -175,6 +259,42 @@ def constructor_family_blocks(
             f"{source.relative_path}: duplicate constructor-family block resource id"
         )
     return entries
+
+
+def constructor_types_extending(
+    sources: list[JavaSource], base_fqcn: str, expected_count: int
+) -> frozenset[str]:
+    types = [item for source in sources for item in source.types]
+    resolve_class_hierarchy(types)
+    known = {item.fqcn: item for item in types}
+    if base_fqcn not in known:
+        raise BlockMembershipCatalogExtractionError(
+            f"missing constructor-family base class {base_fqcn}"
+        )
+
+    members: list[str] = []
+    for item in types:
+        current = item
+        visited: set[str] = set()
+        while current.fqcn not in visited:
+            visited.add(current.fqcn)
+            if current.fqcn == base_fqcn:
+                members.append(item.simple_name)
+                break
+            if current.superclass is None or current.superclass not in known:
+                break
+            current = known[current.superclass]
+
+    if len(members) != expected_count:
+        raise BlockMembershipCatalogExtractionError(
+            f"expected {expected_count} classes extending {base_fqcn}, "
+            f"extracted {len(members)}"
+        )
+    if len(set(members)) != len(members):
+        raise BlockMembershipCatalogExtractionError(
+            f"duplicate simple class name extending {base_fqcn}"
+        )
+    return frozenset(members)
 
 
 def invisible_render_shape_constructor_types(

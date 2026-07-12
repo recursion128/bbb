@@ -13,6 +13,7 @@ from block_membership_catalog_extractor import (
     air_blocks,
     block_tag_membership,
     constructor_family_blocks,
+    constructor_types_extending,
     invisible_render_shape_constructor_types,
     no_terrain_particle_blocks,
 )
@@ -131,6 +132,11 @@ def generate(source_root: Path) -> str:
     invisible_render_shape_types = invisible_render_shape_constructor_types(
         block_class_sources
     )
+    half_transparent_types = constructor_types_extending(
+        block_class_sources,
+        "net.minecraft.world.level.block.HalfTransparentBlock",
+        10,
+    )
     entries = no_terrain_particle_blocks(source)
     air_entries = air_blocks(source)
     constructor_catalogs = [
@@ -142,6 +148,11 @@ def generate(source_root: Path) -> str:
         )
         for name, constructor_types, expected_count in (
             *CONSTRUCTOR_FAMILY_CATALOGS,
+            (
+                "VANILLA_HALF_TRANSPARENT_SKIP_RENDERING_BLOCKS",
+                half_transparent_types,
+                31,
+            ),
             (
                 "VANILLA_INVISIBLE_RENDER_SHAPE_BLOCKS",
                 invisible_render_shape_types,
@@ -204,6 +215,7 @@ def generate(source_root: Path) -> str:
             "        assert_eq!(VANILLA_NO_COLLISION_CROP_SUPPLEMENT_BLOCKS.len(), 4);",
             "        assert_eq!(VANILLA_NO_COLLISION_WIRE_BLOCKS.len(), 3);",
             "        assert_eq!(VANILLA_NO_COLLISION_THIN_OVERLAY_BLOCKS.len(), 7);",
+            "        assert_eq!(VANILLA_HALF_TRANSPARENT_SKIP_RENDERING_BLOCKS.len(), 31);",
             "        assert_eq!(VANILLA_INVISIBLE_RENDER_SHAPE_BLOCKS.len(), 12);",
             "        assert_eq!(VANILLA_BARS_BLOCKS.len(), 9);",
             "        assert_eq!(VANILLA_NO_COLLISION_RAIL_BLOCKS.len(), 4);",

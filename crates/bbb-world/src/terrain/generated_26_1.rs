@@ -83,6 +83,40 @@ pub(super) const VANILLA_NO_COLLISION_THIN_OVERLAY_BLOCKS: &[&str] = &[
     "minecraft:frogspawn",
 ];
 
+pub(super) const VANILLA_HALF_TRANSPARENT_SKIP_RENDERING_BLOCKS: &[&str] = &[
+    "minecraft:glass",
+    "minecraft:ice",
+    "minecraft:white_stained_glass",
+    "minecraft:orange_stained_glass",
+    "minecraft:magenta_stained_glass",
+    "minecraft:light_blue_stained_glass",
+    "minecraft:yellow_stained_glass",
+    "minecraft:lime_stained_glass",
+    "minecraft:pink_stained_glass",
+    "minecraft:gray_stained_glass",
+    "minecraft:light_gray_stained_glass",
+    "minecraft:cyan_stained_glass",
+    "minecraft:purple_stained_glass",
+    "minecraft:blue_stained_glass",
+    "minecraft:brown_stained_glass",
+    "minecraft:green_stained_glass",
+    "minecraft:red_stained_glass",
+    "minecraft:black_stained_glass",
+    "minecraft:slime_block",
+    "minecraft:frosted_ice",
+    "minecraft:blue_ice",
+    "minecraft:honey_block",
+    "minecraft:tinted_glass",
+    "minecraft:copper_grate",
+    "minecraft:exposed_copper_grate",
+    "minecraft:weathered_copper_grate",
+    "minecraft:oxidized_copper_grate",
+    "minecraft:waxed_copper_grate",
+    "minecraft:waxed_exposed_copper_grate",
+    "minecraft:waxed_weathered_copper_grate",
+    "minecraft:waxed_oxidized_copper_grate",
+];
+
 pub(super) const VANILLA_INVISIBLE_RENDER_SHAPE_BLOCKS: &[&str] = &[
     "minecraft:air",
     "minecraft:water",
@@ -294,6 +328,7 @@ mod tests {
         assert_eq!(VANILLA_NO_COLLISION_CROP_SUPPLEMENT_BLOCKS.len(), 4);
         assert_eq!(VANILLA_NO_COLLISION_WIRE_BLOCKS.len(), 3);
         assert_eq!(VANILLA_NO_COLLISION_THIN_OVERLAY_BLOCKS.len(), 7);
+        assert_eq!(VANILLA_HALF_TRANSPARENT_SKIP_RENDERING_BLOCKS.len(), 31);
         assert_eq!(VANILLA_INVISIBLE_RENDER_SHAPE_BLOCKS.len(), 12);
         assert_eq!(VANILLA_BARS_BLOCKS.len(), 9);
         assert_eq!(VANILLA_NO_COLLISION_RAIL_BLOCKS.len(), 4);
