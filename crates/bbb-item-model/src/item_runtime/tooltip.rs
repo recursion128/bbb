@@ -92,56 +92,6 @@ const SMITHING_TEMPLATE_NETHERITE_UPGRADE_APPLIES_TO_KEY: &str =
     "item.minecraft.smithing_template.netherite_upgrade.applies_to";
 const SMITHING_TEMPLATE_NETHERITE_UPGRADE_INGREDIENTS_KEY: &str =
     "item.minecraft.smithing_template.netherite_upgrade.ingredients";
-const COMPONENT_DAMAGE_TYPE_ID: i32 = component_id::VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID;
-const COMPONENT_UNBREAKABLE_TYPE_ID: i32 = component_id::VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID;
-const COMPONENT_LORE_TYPE_ID: i32 = component_id::VANILLA_DATA_COMPONENT_LORE_TYPE_ID;
-const COMPONENT_ENCHANTMENTS_TYPE_ID: i32 =
-    component_id::VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID;
-const COMPONENT_CAN_PLACE_ON_TYPE_ID: i32 =
-    component_id::VANILLA_DATA_COMPONENT_CAN_PLACE_ON_TYPE_ID;
-const COMPONENT_CAN_BREAK_TYPE_ID: i32 = component_id::VANILLA_DATA_COMPONENT_CAN_BREAK_TYPE_ID;
-const COMPONENT_ATTRIBUTE_MODIFIERS_TYPE_ID: i32 =
-    component_id::VANILLA_DATA_COMPONENT_ATTRIBUTE_MODIFIERS_TYPE_ID;
-const COMPONENT_INTANGIBLE_PROJECTILE_TYPE_ID: i32 =
-    component_id::VANILLA_DATA_COMPONENT_INTANGIBLE_PROJECTILE_TYPE_ID;
-const COMPONENT_MAP_ID_TYPE_ID: i32 = component_id::VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID;
-const COMPONENT_STORED_ENCHANTMENTS_TYPE_ID: i32 =
-    component_id::VANILLA_DATA_COMPONENT_STORED_ENCHANTMENTS_TYPE_ID;
-const COMPONENT_DYED_COLOR_TYPE_ID: i32 = component_id::VANILLA_DATA_COMPONENT_DYED_COLOR_TYPE_ID;
-const COMPONENT_CHARGED_PROJECTILES_TYPE_ID: i32 =
-    component_id::VANILLA_DATA_COMPONENT_CHARGED_PROJECTILES_TYPE_ID;
-const COMPONENT_POTION_CONTENTS_TYPE_ID: i32 =
-    component_id::VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID;
-const COMPONENT_SUSPICIOUS_STEW_EFFECTS_TYPE_ID: i32 =
-    component_id::VANILLA_DATA_COMPONENT_SUSPICIOUS_STEW_EFFECTS_TYPE_ID;
-const COMPONENT_WRITTEN_BOOK_CONTENT_TYPE_ID: i32 =
-    component_id::VANILLA_DATA_COMPONENT_WRITTEN_BOOK_CONTENT_TYPE_ID;
-const COMPONENT_TRIM_TYPE_ID: i32 = component_id::VANILLA_DATA_COMPONENT_TRIM_TYPE_ID;
-const COMPONENT_ENTITY_DATA_TYPE_ID: i32 = component_id::VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID;
-const COMPONENT_INSTRUMENT_TYPE_ID: i32 = component_id::VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID;
-const COMPONENT_OMINOUS_BOTTLE_AMPLIFIER_TYPE_ID: i32 =
-    component_id::VANILLA_DATA_COMPONENT_OMINOUS_BOTTLE_AMPLIFIER_TYPE_ID;
-const COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID: i32 =
-    component_id::VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID;
-const COMPONENT_FIREWORK_EXPLOSION_TYPE_ID: i32 =
-    component_id::VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID;
-const COMPONENT_FIREWORKS_TYPE_ID: i32 = component_id::VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID;
-const COMPONENT_PROFILE_TYPE_ID: i32 = component_id::VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID;
-const COMPONENT_BANNER_PATTERNS_TYPE_ID: i32 =
-    component_id::VANILLA_DATA_COMPONENT_BANNER_PATTERNS_TYPE_ID;
-const COMPONENT_POT_DECORATIONS_TYPE_ID: i32 =
-    component_id::VANILLA_DATA_COMPONENT_POT_DECORATIONS_TYPE_ID;
-const COMPONENT_CONTAINER_TYPE_ID: i32 = component_id::VANILLA_DATA_COMPONENT_CONTAINER_TYPE_ID;
-const COMPONENT_BLOCK_STATE_TYPE_ID: i32 = component_id::VANILLA_DATA_COMPONENT_BLOCK_STATE_TYPE_ID;
-const COMPONENT_BEES_TYPE_ID: i32 = component_id::VANILLA_DATA_COMPONENT_BEES_TYPE_ID;
-const COMPONENT_CONTAINER_LOOT_TYPE_ID: i32 =
-    component_id::VANILLA_DATA_COMPONENT_CONTAINER_LOOT_TYPE_ID;
-const COMPONENT_TROPICAL_FISH_PATTERN_TYPE_ID: i32 =
-    component_id::VANILLA_DATA_COMPONENT_TROPICAL_FISH_PATTERN_TYPE_ID;
-const COMPONENT_PAINTING_VARIANT_TYPE_ID: i32 =
-    component_id::VANILLA_DATA_COMPONENT_PAINTING_VARIANT_TYPE_ID;
-const COMPONENT_BLOCK_ENTITY_DATA_TYPE_ID: i32 =
-    component_id::VANILLA_DATA_COMPONENT_BLOCK_ENTITY_DATA_TYPE_ID;
 #[cfg(test)]
 const fn painting_variant(
     key: &'static str,
@@ -804,7 +754,10 @@ fn push_item_specific_tooltip_lines(
         push_smithing_template_tooltip_lines(language, applies_to_key, ingredients_key, lines);
     }
     if item_id == PAINTING_RESOURCE_ID
-        && tooltip_display_shows(component_patch, COMPONENT_PAINTING_VARIANT_TYPE_ID)
+        && tooltip_display_shows(
+            component_patch,
+            component_id::VANILLA_DATA_COMPONENT_PAINTING_VARIANT_TYPE_ID,
+        )
     {
         push_painting_tooltip_lines(language, component_patch, options.creative, lines);
     }
@@ -1111,6 +1064,20 @@ fn push_smithing_template_tooltip_lines(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn tooltip_does_not_restore_component_type_id_aliases() {
+        let source = include_str!("tooltip.rs");
+        let aliases = source
+            .lines()
+            .filter(|line| line.trim_start().starts_with("const COMPONENT_"))
+            .collect::<Vec<_>>();
+        assert!(
+            aliases.is_empty(),
+            "tooltip restored component type id aliases:\n{}",
+            aliases.join("\n")
+        );
+    }
 
     #[test]
     fn operator_only_type_membership_stays_delegated_to_generated_catalogs() {
@@ -2822,16 +2789,16 @@ impl NativeItemRuntime {
         let shows = |type_id| tooltip_display_shows(component_patch, type_id);
         let tooltip_tick_rate = effective_tooltip_tick_rate(options);
         push_item_specific_tooltip_lines(&self.language, item_id, component_patch, options, lines);
-        if shows(COMPONENT_TROPICAL_FISH_PATTERN_TYPE_ID) {
+        if shows(component_id::VANILLA_DATA_COMPONENT_TROPICAL_FISH_PATTERN_TYPE_ID) {
             push_tropical_fish_tooltip_lines(&self.language, component_patch, lines);
         }
-        if shows(COMPONENT_INSTRUMENT_TYPE_ID) {
+        if shows(component_id::VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID) {
             push_instrument_tooltip_lines(&self.language, component_patch, lines);
         }
-        if shows(COMPONENT_MAP_ID_TYPE_ID) {
+        if shows(component_id::VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID) {
             push_map_id_tooltip_lines(&self.language, component_patch, options, lines);
         }
-        if shows(COMPONENT_BEES_TYPE_ID) {
+        if shows(component_id::VANILLA_DATA_COMPONENT_BEES_TYPE_ID) {
             push_bees_tooltip_lines(
                 &self.language,
                 component_patch.bees_present,
@@ -2839,24 +2806,24 @@ impl NativeItemRuntime {
                 lines,
             );
         }
-        if shows(COMPONENT_CONTAINER_LOOT_TYPE_ID) {
+        if shows(component_id::VANILLA_DATA_COMPONENT_CONTAINER_LOOT_TYPE_ID) {
             push_container_loot_tooltip_lines(
                 &self.language,
                 component_patch.container_loot,
                 lines,
             );
         }
-        if shows(COMPONENT_CONTAINER_TYPE_ID) {
+        if shows(component_id::VANILLA_DATA_COMPONENT_CONTAINER_TYPE_ID) {
             self.push_container_items_tooltip_lines(&component_patch.container_items, lines);
         }
-        if shows(COMPONENT_BANNER_PATTERNS_TYPE_ID) {
+        if shows(component_id::VANILLA_DATA_COMPONENT_BANNER_PATTERNS_TYPE_ID) {
             push_banner_pattern_tooltip_lines(
                 &self.language,
                 &component_patch.banner_pattern_layers,
                 lines,
             );
         }
-        if shows(COMPONENT_POT_DECORATIONS_TYPE_ID) {
+        if shows(component_id::VANILLA_DATA_COMPONENT_POT_DECORATIONS_TYPE_ID) {
             self.push_pot_decorations_tooltip_lines(
                 &component_patch.pot_decorations_item_ids,
                 lines,
@@ -2865,18 +2832,18 @@ impl NativeItemRuntime {
         if let Some(book) = component_patch
             .written_book
             .as_ref()
-            .filter(|_| shows(COMPONENT_WRITTEN_BOOK_CONTENT_TYPE_ID))
+            .filter(|_| shows(component_id::VANILLA_DATA_COMPONENT_WRITTEN_BOOK_CONTENT_TYPE_ID))
         {
             push_written_book_tooltip_lines(&self.language, book, lines);
         }
-        if shows(COMPONENT_CHARGED_PROJECTILES_TYPE_ID) {
+        if shows(component_id::VANILLA_DATA_COMPONENT_CHARGED_PROJECTILES_TYPE_ID) {
             self.push_charged_projectiles_tooltip_lines(
                 &component_patch.charged_projectiles_items,
                 options,
                 lines,
             );
         }
-        if shows(COMPONENT_FIREWORKS_TYPE_ID) {
+        if shows(component_id::VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID) {
             push_fireworks_tooltip_lines(
                 &self.language,
                 component_patch.fireworks_flight_duration,
@@ -2884,10 +2851,10 @@ impl NativeItemRuntime {
                 lines,
             );
         }
-        if shows(COMPONENT_FIREWORK_EXPLOSION_TYPE_ID) {
+        if shows(component_id::VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID) {
             push_firework_explosion_tooltip_lines(&self.language, component_patch, lines);
         }
-        if shows(COMPONENT_POTION_CONTENTS_TYPE_ID) {
+        if shows(component_id::VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID) {
             push_potion_contents_tooltip_lines(
                 &self.language,
                 component_patch,
@@ -2895,7 +2862,7 @@ impl NativeItemRuntime {
                 lines,
             );
         }
-        if shows(COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID) {
+        if shows(component_id::VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID) {
             push_jukebox_playable_tooltip_lines(
                 &self.language,
                 &self.jukebox_songs,
@@ -2904,7 +2871,7 @@ impl NativeItemRuntime {
                 lines,
             );
         }
-        if shows(COMPONENT_TRIM_TYPE_ID) {
+        if shows(component_id::VANILLA_DATA_COMPONENT_TRIM_TYPE_ID) {
             push_armor_trim_tooltip_lines(
                 &self.language,
                 component_patch.armor_trim_material_id,
@@ -2917,7 +2884,7 @@ impl NativeItemRuntime {
         let enchantment_tags = self.enchantment_tags.as_ref();
         let tooltip_order =
             enchantment_tags.and_then(|tags| tags.values("minecraft:tooltip_order"));
-        if shows(COMPONENT_STORED_ENCHANTMENTS_TYPE_ID) {
+        if shows(component_id::VANILLA_DATA_COMPONENT_STORED_ENCHANTMENTS_TYPE_ID) {
             push_enchantments_tooltip_lines(
                 &self.language,
                 &component_patch.stored_enchantments,
@@ -2927,7 +2894,7 @@ impl NativeItemRuntime {
                 lines,
             );
         }
-        if shows(COMPONENT_ENCHANTMENTS_TYPE_ID) {
+        if shows(component_id::VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID) {
             push_enchantments_tooltip_lines(
                 &self.language,
                 &component_patch.enchantments,
@@ -2937,7 +2904,7 @@ impl NativeItemRuntime {
                 lines,
             );
         }
-        if shows(COMPONENT_DYED_COLOR_TYPE_ID) {
+        if shows(component_id::VANILLA_DATA_COMPONENT_DYED_COLOR_TYPE_ID) {
             push_dyed_color_tooltip_lines(
                 &self.language,
                 component_patch.dyed_color,
@@ -2945,12 +2912,12 @@ impl NativeItemRuntime {
                 lines,
             );
         }
-        if shows(COMPONENT_PROFILE_TYPE_ID) {
+        if shows(component_id::VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID) {
             push_profile_tooltip_lines(&self.language, component_patch.profile.as_ref(), lines);
         }
         // Vanilla `ItemLore.styledLines`: every lore line gets `LORE_STYLE`
         // (DARK_PURPLE + italic) merged under its own style keys.
-        if shows(COMPONENT_LORE_TYPE_ID) {
+        if shows(component_id::VANILLA_DATA_COMPONENT_LORE_TYPE_ID) {
             lines.extend(
                 component_patch
                     .lore
@@ -2971,7 +2938,7 @@ impl NativeItemRuntime {
                     }),
             );
         }
-        if shows(COMPONENT_ATTRIBUTE_MODIFIERS_TYPE_ID) {
+        if shows(component_id::VANILLA_DATA_COMPONENT_ATTRIBUTE_MODIFIERS_TYPE_ID) {
             let default_modifiers =
                 self.default_attribute_modifiers_for_resource_id(item_id, options.attribute_keys);
             let modifiers =
@@ -2985,20 +2952,22 @@ impl NativeItemRuntime {
                 lines,
             );
         }
-        if shows(COMPONENT_INTANGIBLE_PROJECTILE_TYPE_ID) {
+        if shows(component_id::VANILLA_DATA_COMPONENT_INTANGIBLE_PROJECTILE_TYPE_ID) {
             push_intangible_projectile_tooltip_line(
                 &self.language,
                 component_patch.intangible_projectile,
                 lines,
             );
         }
-        if shows(COMPONENT_UNBREAKABLE_TYPE_ID) && component_patch.unbreakable {
+        if shows(component_id::VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID)
+            && component_patch.unbreakable
+        {
             lines.push(NativeItemTooltipLine::plain(
                 self.language.get_or_key("item.unbreakable").to_string(),
                 TOOLTIP_TEXT_BLUE,
             ));
         }
-        if shows(COMPONENT_OMINOUS_BOTTLE_AMPLIFIER_TYPE_ID) {
+        if shows(component_id::VANILLA_DATA_COMPONENT_OMINOUS_BOTTLE_AMPLIFIER_TYPE_ID) {
             push_ominous_bottle_tooltip_lines(
                 &self.language,
                 component_patch.ominous_bottle_amplifier,
@@ -3006,7 +2975,7 @@ impl NativeItemRuntime {
                 lines,
             );
         }
-        if shows(COMPONENT_SUSPICIOUS_STEW_EFFECTS_TYPE_ID) {
+        if shows(component_id::VANILLA_DATA_COMPONENT_SUSPICIOUS_STEW_EFFECTS_TYPE_ID) {
             push_suspicious_stew_tooltip_lines(
                 &self.language,
                 &component_patch.suspicious_stew_effects,
@@ -3015,14 +2984,14 @@ impl NativeItemRuntime {
                 lines,
             );
         }
-        if shows(COMPONENT_BLOCK_STATE_TYPE_ID) {
+        if shows(component_id::VANILLA_DATA_COMPONENT_BLOCK_STATE_TYPE_ID) {
             push_block_state_tooltip_lines(
                 &self.language,
                 &component_patch.block_state_properties,
                 lines,
             );
         }
-        if shows(COMPONENT_ENTITY_DATA_TYPE_ID) {
+        if shows(component_id::VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID) {
             push_entity_data_tooltip_lines(
                 &self.language,
                 component_patch,
@@ -3030,17 +2999,21 @@ impl NativeItemRuntime {
                 lines,
             );
         }
-        if item_is_spawner(item_id) && shows(COMPONENT_BLOCK_ENTITY_DATA_TYPE_ID) {
+        if item_is_spawner(item_id)
+            && shows(component_id::VANILLA_DATA_COMPONENT_BLOCK_ENTITY_DATA_TYPE_ID)
+        {
             push_spawner_block_entity_tooltip_lines(&self.language, component_patch, lines);
         }
-        if (shows(COMPONENT_CAN_BREAK_TYPE_ID) && component_patch.can_break.is_some())
-            || (shows(COMPONENT_CAN_PLACE_ON_TYPE_ID) && component_patch.can_place_on.is_some())
+        if (shows(component_id::VANILLA_DATA_COMPONENT_CAN_BREAK_TYPE_ID)
+            && component_patch.can_break.is_some())
+            || (shows(component_id::VANILLA_DATA_COMPONENT_CAN_PLACE_ON_TYPE_ID)
+                && component_patch.can_place_on.is_some())
         {
             let block_registries = RegistrySet::vanilla_26_1();
             if let Some(predicate) = component_patch
                 .can_break
                 .as_ref()
-                .filter(|_| shows(COMPONENT_CAN_BREAK_TYPE_ID))
+                .filter(|_| shows(component_id::VANILLA_DATA_COMPONENT_CAN_BREAK_TYPE_ID))
             {
                 push_adventure_mode_predicate_tooltip_lines(
                     &self.language,
@@ -3053,7 +3026,7 @@ impl NativeItemRuntime {
             if let Some(predicate) = component_patch
                 .can_place_on
                 .as_ref()
-                .filter(|_| shows(COMPONENT_CAN_PLACE_ON_TYPE_ID))
+                .filter(|_| shows(component_id::VANILLA_DATA_COMPONENT_CAN_PLACE_ON_TYPE_ID))
             {
                 push_adventure_mode_predicate_tooltip_lines(
                     &self.language,
@@ -3071,7 +3044,7 @@ impl NativeItemRuntime {
                 component_patch,
                 self.default_max_damage_for_protocol_id(protocol_id),
                 self.default_component_type_ids_for_resource_id(item_id),
-                shows(COMPONENT_DAMAGE_TYPE_ID),
+                shows(component_id::VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID),
                 lines,
             );
         }
@@ -3101,7 +3074,7 @@ impl NativeItemRuntime {
         if registry.is_block_item(item_id)
             && !component_patch
                 .removed_type_ids
-                .contains(&COMPONENT_BLOCK_ENTITY_DATA_TYPE_ID)
+                .contains(&component_id::VANILLA_DATA_COMPONENT_BLOCK_ENTITY_DATA_TYPE_ID)
             && component_patch
                 .block_entity_data_type_id
                 .is_some_and(vanilla_block_entity_type_only_op_can_set_nbt)
@@ -3111,7 +3084,7 @@ impl NativeItemRuntime {
         registry.is_spawn_egg_item(item_id)
             && !component_patch
                 .removed_type_ids
-                .contains(&COMPONENT_ENTITY_DATA_TYPE_ID)
+                .contains(&component_id::VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID)
             && component_patch
                 .entity_data_entity_type_id
                 .is_some_and(vanilla_entity_type_only_op_can_set_nbt)
