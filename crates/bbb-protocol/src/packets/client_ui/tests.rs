@@ -99,6 +99,23 @@ fn decodes_open_sign_editor_packet() {
             is_front_text: false,
         })
     );
+
+    let mut trailing = Encoder::new();
+    trailing.write_i64(chunks::encode_block_pos(BlockPos {
+        x: -5,
+        y: 70,
+        z: 12,
+    }));
+    trailing.write_bool(false);
+    trailing.write_u8(0);
+    let error = decode_play_clientbound(
+        ids::play::CLIENTBOUND_OPEN_SIGN_EDITOR,
+        &trailing.into_inner(),
+    )
+    .unwrap_err();
+    assert!(error
+        .to_string()
+        .contains("trailing bytes after open sign editor packet"));
 }
 
 #[test]

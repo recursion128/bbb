@@ -8474,7 +8474,7 @@ fn sync_sign_editor_input(
 
 fn sign_editor_signature_from_world(world: &WorldStore) -> Option<SignEditorInputSignature> {
     let editor = world.last_open_sign_editor()?;
-    let open_count = world.counters().open_sign_editor_packets;
+    let open_count = world.counters().open_sign_editor_updates_applied;
     if open_count == 0 {
         return None;
     }

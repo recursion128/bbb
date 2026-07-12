@@ -532,17 +532,7 @@ fn client_ui_events_update_world_and_world_counters() {
             hand: "off_hand".to_string(),
         })
     );
-    assert_eq!(
-        world.last_open_sign_editor(),
-        Some(&bbb_world::OpenSignEditorState {
-            pos: BlockPos {
-                x: -5,
-                y: 70,
-                z: 12,
-            },
-            is_front_text: false,
-        })
-    );
+    assert_eq!(world.last_open_sign_editor(), None);
     assert_eq!(
         world.last_pong_response(),
         Some(&bbb_world::PongResponseState { time: 123456789 })
@@ -553,6 +543,8 @@ fn client_ui_events_update_world_and_world_counters() {
     assert_eq!(world_counters.mount_screen_open_packets, 1);
     assert_eq!(world_counters.open_book_packets, 1);
     assert_eq!(world_counters.open_sign_editor_packets, 1);
+    assert_eq!(world_counters.open_sign_editor_updates_applied, 0);
+    assert_eq!(world_counters.open_sign_editor_updates_ignored, 1);
     assert_eq!(world_counters.pong_response_packets, 1);
 }
 

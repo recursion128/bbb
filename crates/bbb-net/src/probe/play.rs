@@ -2753,17 +2753,7 @@ mod tests {
                 hand: "off_hand".to_string()
             })
         );
-        assert_eq!(
-            ui.last_open_sign_editor,
-            Some(bbb_world::OpenSignEditorState {
-                pos: BlockPos {
-                    x: -5,
-                    y: 70,
-                    z: 12,
-                },
-                is_front_text: false,
-            })
-        );
+        assert_eq!(ui.last_open_sign_editor, None);
         assert_eq!(
             ui.last_ghost_recipe,
             Some(bbb_world::GhostRecipeState {
@@ -2789,6 +2779,8 @@ mod tests {
         assert_eq!(report.world_counters.mount_screen_open_packets, 1);
         assert_eq!(report.world_counters.open_book_packets, 1);
         assert_eq!(report.world_counters.open_sign_editor_packets, 1);
+        assert_eq!(report.world_counters.open_sign_editor_updates_applied, 0);
+        assert_eq!(report.world_counters.open_sign_editor_updates_ignored, 1);
         assert_eq!(report.world_counters.ghost_recipe_packets, 1);
         assert_eq!(report.world_counters.pong_response_packets, 1);
     }

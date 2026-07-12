@@ -57,10 +57,16 @@ pub(crate) fn decode_open_book(decoder: &mut Decoder<'_>) -> Result<OpenBook> {
 }
 
 pub(crate) fn decode_open_sign_editor(decoder: &mut Decoder<'_>) -> Result<OpenSignEditor> {
-    Ok(OpenSignEditor {
+    let packet = OpenSignEditor {
         pos: chunks::decode_block_pos(decoder.read_i64()?),
         is_front_text: decoder.read_bool()?,
-    })
+    };
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after open sign editor packet".to_string(),
+        ));
+    }
+    Ok(packet)
 }
 
 pub(crate) fn decode_play_pong_response(decoder: &mut Decoder<'_>) -> Result<PongResponse> {

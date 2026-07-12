@@ -1460,6 +1460,10 @@ mod tests {
         BlockPos as ProtocolBlockPos, CommonPlayerSpawnInfo, EntityEvent as ProtocolEntityEvent,
         OpenSignEditor, PlayLogin,
     };
+    use bbb_world::{
+        BlockEntityRecord, BlockPos, ChunkColumn, ChunkPos, ChunkState, LightData,
+        SignBlockEntityTextState,
+    };
 
     #[test]
     fn runtime_wants_cursor_for_pending_sign_editor() {
@@ -1468,12 +1472,40 @@ mod tests {
 
         assert!(!runtime_wants_cursor(&input, &world));
 
+        insert_empty_sign(&mut world, BlockPos { x: 1, y: 2, z: 3 });
         world.apply_open_sign_editor(OpenSignEditor {
             pos: ProtocolBlockPos { x: 1, y: 2, z: 3 },
             is_front_text: true,
         });
 
         assert!(runtime_wants_cursor(&input, &world));
+    }
+
+    fn insert_empty_sign(world: &mut WorldStore, pos: BlockPos) {
+        world.insert_decoded_chunk(ChunkColumn {
+            pos: ChunkPos {
+                x: pos.x.div_euclid(16),
+                z: pos.z.div_euclid(16),
+            },
+            state: ChunkState::Decoded,
+            heightmaps: Vec::new(),
+            sections: Vec::new(),
+            block_entities: vec![BlockEntityRecord {
+                local_x: pos.x.rem_euclid(16) as u8,
+                y: i16::try_from(pos.y).unwrap(),
+                local_z: pos.z.rem_euclid(16) as u8,
+                type_id: bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_SIGN_ID,
+                raw_nbt: vec![0],
+                nbt: None,
+                sign_text: Some(SignBlockEntityTextState::default()),
+                vault_shared_data: None,
+                decorated_pot_sherds: None,
+                banner_patterns: None,
+                end_gateway: None,
+                spawner: None,
+            }],
+            light: LightData::default(),
+        });
     }
 
     #[test]

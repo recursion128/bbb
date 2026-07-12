@@ -327,6 +327,11 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   semantics in `BookViewScreen`; the current OpenBook path gates on the held
   written/writable component and supports literal-page navigation, but flattens
   pages to strings and does not execute page click events.
+- Complete `AbstractSignEditScreen` parity after the OpenSignEditor authority
+  gate: choose filtered sign messages, enforce the 90-pixel font-width limit,
+  support clipboard/IME preedit, and close when the sign is removed or the
+  player is too far away. The current editor has front/back preload, editing,
+  preview and serverbound submit, but retains a defensive character-count cap.
 - Preserve and render full trusted Components for action-bar, title, and
   subtitle packets, including translation, siblings, style/color/font and text
   effects. Their wire is consumed and the vanilla timers/fades/scales are

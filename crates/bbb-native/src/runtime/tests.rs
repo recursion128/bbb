@@ -6708,7 +6708,13 @@ fn sign_editor_open_releases_held_movement() {
     let (tx, mut rx) = mpsc::channel(4);
     let commands = Some(tx);
     let mut input = ClientInputState::new(true);
-    let mut world = WorldStore::new();
+    let mut world = WorldStore::with_dimension(WorldDimension {
+        min_y: 0,
+        height: 16,
+    });
+    world.insert_decoded_chunk(empty_lightmap_test_chunk(world.dimension()));
+    let sign_pos = BlockPos { x: 1, y: 2, z: 3 };
+    set_lightmap_test_block(&mut world, sign_pos, OAK_SIGN_ROTATION_0_BLOCK_STATE_ID);
     let mut counters = NetCounters::default();
 
     crate::input::handle_key_input(

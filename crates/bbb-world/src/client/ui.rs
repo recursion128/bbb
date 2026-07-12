@@ -158,11 +158,18 @@ impl WorldStore {
 
     pub fn apply_open_sign_editor(&mut self, packet: ProtocolOpenSignEditor) {
         self.counters.open_sign_editor_packets += 1;
+        let pos = protocol_block_pos(packet.pos);
+        if !self.has_sign_block_entity_at(pos) {
+            self.counters.open_sign_editor_updates_ignored += 1;
+            return;
+        }
+        self.counters.open_sign_editor_updates_applied += 1;
+        self.client_ui.current_dialog = None;
         self.client_ui.current_book = None;
         self.client_ui.current_advancements_screen = false;
         self.client_ui.current_stats_screen = false;
         self.client_ui.last_open_sign_editor = Some(OpenSignEditorState {
-            pos: protocol_block_pos(packet.pos),
+            pos,
             is_front_text: packet.is_front_text,
         });
     }
@@ -353,6 +360,7 @@ pub fn java_string_hash_code(text: &str) -> i32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_SIGN_ID;
     use bbb_protocol::entity_types::{VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_PLAYER_ID};
     use bbb_protocol::packets::{
         AddEntity as ProtocolAddEntity, BlockPos as ProtocolBlockPos, DataComponentPatchSummary,
@@ -436,6 +444,12 @@ mod tests {
     fn tracks_client_ui_open_requests() {
         let mut store = WorldStore::new();
         store.apply_add_entity(test_entity(42, VANILLA_ENTITY_TYPE_HORSE_ID));
+        let sign_pos = BlockPos {
+            x: -5,
+            y: 70,
+            z: 12,
+        };
+        insert_test_sign(&mut store, sign_pos);
 
         store.apply_mount_screen_open(ProtocolMountScreenOpen {
             container_id: 11,
@@ -495,6 +509,36 @@ mod tests {
         assert_eq!(counters.mount_screen_open_packets, 1);
         assert_eq!(counters.open_book_packets, 1);
         assert_eq!(counters.open_sign_editor_packets, 1);
+        assert_eq!(counters.open_sign_editor_updates_applied, 1);
+        assert_eq!(counters.open_sign_editor_updates_ignored, 0);
+    }
+
+    #[test]
+    fn open_sign_editor_ignores_missing_sign_without_replacing_screen() {
+        let mut store = WorldStore::new();
+        store.apply_show_dialog(ProtocolShowDialog {
+            dialog: DialogHolder::Reference { registry_id: 7 },
+        });
+        let packet = ProtocolOpenSignEditor {
+            pos: ProtocolBlockPos { x: 3, y: 64, z: -9 },
+            is_front_text: true,
+        };
+
+        store.apply_open_sign_editor(packet);
+        assert_eq!(store.last_open_sign_editor(), None);
+        assert!(store.current_dialog().is_some());
+        assert_eq!(store.counters().open_sign_editor_packets, 1);
+        assert_eq!(store.counters().open_sign_editor_updates_applied, 0);
+        assert_eq!(store.counters().open_sign_editor_updates_ignored, 1);
+
+        let pos = BlockPos { x: 3, y: 64, z: -9 };
+        insert_test_sign(&mut store, pos);
+        store.apply_open_sign_editor(packet);
+        assert_eq!(store.last_open_sign_editor().unwrap().pos, pos);
+        assert_eq!(store.current_dialog(), None);
+        assert_eq!(store.counters().open_sign_editor_packets, 2);
+        assert_eq!(store.counters().open_sign_editor_updates_applied, 1);
+        assert_eq!(store.counters().open_sign_editor_updates_ignored, 1);
     }
 
     #[test]
@@ -734,6 +778,33 @@ mod tests {
             y_head_rot: 0.0,
             data: 0,
         }
+    }
+
+    fn insert_test_sign(store: &mut WorldStore, pos: BlockPos) {
+        store.insert_decoded_chunk(crate::ChunkColumn {
+            pos: crate::ChunkPos {
+                x: pos.x.div_euclid(16),
+                z: pos.z.div_euclid(16),
+            },
+            state: crate::ChunkState::Decoded,
+            heightmaps: Vec::new(),
+            sections: Vec::new(),
+            block_entities: vec![crate::BlockEntityRecord {
+                local_x: pos.x.rem_euclid(16) as u8,
+                y: i16::try_from(pos.y).unwrap(),
+                local_z: pos.z.rem_euclid(16) as u8,
+                type_id: VANILLA_BLOCK_ENTITY_TYPE_SIGN_ID,
+                raw_nbt: vec![0],
+                nbt: None,
+                sign_text: Some(crate::SignBlockEntityTextState::default()),
+                vault_shared_data: None,
+                decorated_pot_sherds: None,
+                banner_patterns: None,
+                end_gateway: None,
+                spawner: None,
+            }],
+            light: crate::LightData::default(),
+        });
     }
 
     #[test]

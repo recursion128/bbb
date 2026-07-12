@@ -449,6 +449,8 @@ play MountScreenOpen 的 container/columns/entity wire、strict decode、mount-t
 Horse/Nautilus menu/screen 已消费，entity preview GPU drawing 仍保持窄 runtime partial。
 play OpenBook 的 hand enum wire、strict decode、held written/writable component gate 与 tests 已闭合；filtered
 page selection、rich Component/style/click events 未实现，canonical/runtime 保持 partial。
+play OpenSignEditor 的 BlockPos/front-side wire、strict decode、sign block-entity authority gate、applied/ignored
+generation 与 tests 已闭合；filtered text、font-width/clipboard/IME 和 removed/distance validity 保持 partial。
 
 完成标准：全部 vanilla 26.1 catalog entry 都有矩阵行；所有目标客户端适用项为
 `complete`，其余只有带 vanilla 依据的 `not-applicable` 或带重启判据的窄 `deferred`；

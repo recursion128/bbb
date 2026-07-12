@@ -2671,10 +2671,7 @@ fn client_ui_reads_canonical_world_state() {
     assert_eq!(ui["last_mount_screen"]["inventory_columns"], 5);
     assert_eq!(ui["last_mount_screen"]["entity_id"], 42);
     assert_eq!(ui["last_open_book"]["hand"], "off_hand");
-    assert_eq!(ui["last_open_sign_editor"]["pos"]["x"], -5);
-    assert_eq!(ui["last_open_sign_editor"]["pos"]["y"], 70);
-    assert_eq!(ui["last_open_sign_editor"]["pos"]["z"], 12);
-    assert_eq!(ui["last_open_sign_editor"]["is_front_text"], false);
+    assert_eq!(ui["last_open_sign_editor"], serde_json::Value::Null);
     assert_eq!(ui["last_ghost_recipe"]["container_id"], 9);
     assert_eq!(ui["last_ghost_recipe"]["recipe_display_type_id"], 3);
     assert_eq!(

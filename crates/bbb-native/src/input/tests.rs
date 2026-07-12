@@ -389,6 +389,11 @@ fn sign_text_side(lines: [&str; 4]) -> bbb_world::SignTextSideState {
 
 fn world_with_sign_text(pos: BlockPos, front: [&str; 4], back: [&str; 4]) -> WorldStore {
     let mut world = WorldStore::new();
+    insert_sign_text(&mut world, pos, front, back);
+    world
+}
+
+fn insert_sign_text(world: &mut WorldStore, pos: BlockPos, front: [&str; 4], back: [&str; 4]) {
     world.insert_decoded_chunk(ChunkColumn {
         pos: ChunkPos {
             x: pos.x.div_euclid(16),
@@ -417,7 +422,6 @@ fn world_with_sign_text(pos: BlockPos, front: [&str; 4], back: [&str; 4]) -> Wor
         }],
         light: LightData::default(),
     });
-    world
 }
 
 fn insert_empty_chunk_for_block(world: &mut WorldStore, pos: BlockPos) {
@@ -15313,10 +15317,14 @@ fn f3_f4_game_mode_switcher_does_not_open_over_existing_screen() {
             ExistingScreen::Advancements => {
                 assert!(world.open_advancements_screen());
             }
-            ExistingScreen::SignEditor => world.apply_open_sign_editor(OpenSignEditor {
-                pos: ProtocolBlockPos { x: 1, y: 2, z: 3 },
-                is_front_text: true,
-            }),
+            ExistingScreen::SignEditor => {
+                let pos = BlockPos { x: 1, y: 2, z: 3 };
+                insert_sign_text(&mut world, pos, ["", "", "", ""], ["", "", "", ""]);
+                world.apply_open_sign_editor(OpenSignEditor {
+                    pos: ProtocolBlockPos { x: 1, y: 2, z: 3 },
+                    is_front_text: true,
+                });
+            }
         }
 
         assert!(input.handle_debug_overlay_key(
@@ -18036,7 +18044,12 @@ fn pending_sign_editor_escape_queues_empty_sign_update() {
     let commands = Some(tx);
     let mut input = ClientInputState::new(true);
     let mut counters = NetCounters::default();
-    let mut world = WorldStore::new();
+    let sign_pos = BlockPos {
+        x: -5,
+        y: 70,
+        z: 12,
+    };
+    let mut world = world_with_sign_text(sign_pos, ["", "", "", ""], ["", "", "", ""]);
     world.apply_open_sign_editor(OpenSignEditor {
         pos: ProtocolBlockPos {
             x: -5,
@@ -18211,13 +18224,54 @@ fn pending_sign_editor_escape_preserves_existing_sign_text() {
 }
 
 #[test]
+fn invalid_sign_editor_packet_does_not_reopen_previous_editor() {
+    let sign_pos = BlockPos { x: 3, y: 64, z: -9 };
+    let mut world = world_with_sign_text(sign_pos, ["Front", "", "", ""], ["", "", "", ""]);
+    world.apply_open_sign_editor(OpenSignEditor {
+        pos: ProtocolBlockPos { x: 3, y: 64, z: -9 },
+        is_front_text: true,
+    });
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+
+    assert!(sync_sign_editor_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &None,
+    ));
+    let signature = input.sign_editor.as_ref().unwrap().signature.clone();
+
+    world.apply_open_sign_editor(OpenSignEditor {
+        pos: ProtocolBlockPos {
+            x: 99,
+            y: 64,
+            z: 99,
+        },
+        is_front_text: false,
+    });
+
+    assert!(!sync_sign_editor_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &None,
+    ));
+    assert_eq!(input.sign_editor.as_ref().unwrap().signature, signature);
+    assert_eq!(world.counters().open_sign_editor_packets, 2);
+    assert_eq!(world.counters().open_sign_editor_updates_applied, 1);
+    assert_eq!(world.counters().open_sign_editor_updates_ignored, 1);
+}
+
+#[test]
 fn sign_editor_text_input_changes_lines_and_queues_sign_update() {
     let (tx, mut rx) = mpsc::channel(4);
     let commands = Some(tx);
     let mut input = ClientInputState::new(true);
     input.forward = true;
     let mut counters = NetCounters::default();
-    let mut world = WorldStore::new();
+    let sign_pos = BlockPos { x: 3, y: 64, z: -9 };
+    let mut world = world_with_sign_text(sign_pos, ["", "", "", ""], ["", "", "", ""]);
     world.apply_open_sign_editor(OpenSignEditor {
         pos: ProtocolBlockPos { x: 3, y: 64, z: -9 },
         is_front_text: true,
@@ -18288,7 +18342,8 @@ fn sign_editor_cursor_keys_edit_inside_current_line() {
     let commands = Some(tx);
     let mut input = ClientInputState::new(true);
     let mut counters = NetCounters::default();
-    let mut world = WorldStore::new();
+    let sign_pos = BlockPos { x: 8, y: 65, z: -3 };
+    let mut world = world_with_sign_text(sign_pos, ["", "", "", ""], ["", "", "", ""]);
     world.apply_open_sign_editor(OpenSignEditor {
         pos: ProtocolBlockPos { x: 8, y: 65, z: -3 },
         is_front_text: true,
@@ -18378,7 +18433,8 @@ fn sign_editor_control_word_keys_edit_current_line() {
     let commands = Some(tx);
     let mut input = ClientInputState::new(true);
     let mut counters = NetCounters::default();
-    let mut world = WorldStore::new();
+    let sign_pos = BlockPos { x: -4, y: 70, z: 9 };
+    let mut world = world_with_sign_text(sign_pos, ["", "", "", ""], ["", "", "", ""]);
     world.apply_open_sign_editor(OpenSignEditor {
         pos: ProtocolBlockPos { x: -4, y: 70, z: 9 },
         is_front_text: false,
@@ -18479,7 +18535,8 @@ fn sign_editor_control_a_selection_replaces_and_deletes_current_line() {
     let commands = Some(tx);
     let mut input = ClientInputState::new(true);
     let mut counters = NetCounters::default();
-    let mut world = WorldStore::new();
+    let sign_pos = BlockPos { x: 2, y: 68, z: -7 };
+    let mut world = world_with_sign_text(sign_pos, ["", "", "", ""], ["", "", "", ""]);
     world.apply_open_sign_editor(OpenSignEditor {
         pos: ProtocolBlockPos { x: 2, y: 68, z: -7 },
         is_front_text: true,
@@ -18645,7 +18702,8 @@ fn sign_editor_text_input_filters_invalid_chars_and_max_length() {
     let commands = Some(tx);
     let mut input = ClientInputState::new(true);
     let mut counters = NetCounters::default();
-    let mut world = WorldStore::new();
+    let sign_pos = BlockPos { x: 0, y: 1, z: 2 };
+    let mut world = world_with_sign_text(sign_pos, ["", "", "", ""], ["", "", "", ""]);
     world.apply_open_sign_editor(OpenSignEditor {
         pos: ProtocolBlockPos { x: 0, y: 1, z: 2 },
         is_front_text: true,

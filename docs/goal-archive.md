@@ -11387,3 +11387,10 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   trailing bytes；无 book component 时保留当前 screen，written/writable component 才建立 BookView screen。
 - [x] ownership/decode/tests 闭合；written page 的 filtering、完整 Component/style/click events 尚未保留，故
   canonical/runtime 精确保留 partial，不把 literal string navigation 误标为完整 BookAccess parity。
+
+## 2026-07-12：play open-sign-editor packet coverage audit
+
+- [x] 对照 `ClientboundOpenSignEditorPacket` 锁定 BlockPos + front-side bool wire并拒绝 trailing bytes；world
+  仅在 sign/hanging-sign block entity 或已加载 sign-family block state 可证明时接受，invalid 不再合成空 sign editor。
+- [x] received/applied/ignored counters 与 native applied generation 分离，invalid packet 不会重开旧 editor；
+  decode/ownership/tests 闭合。filtered text、font-width/clipboard/IME、removed/distance validity 保持 precise partial。

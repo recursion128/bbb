@@ -14,6 +14,10 @@
 
 use serde::{Deserialize, Serialize};
 
+use bbb_protocol::block_entity_types::{
+    VANILLA_BLOCK_ENTITY_TYPE_HANGING_SIGN_ID, VANILLA_BLOCK_ENTITY_TYPE_SIGN_ID,
+};
+
 use crate::{BlockPos, ChunkColumn, PaletteKind, RegistrySet, SignTextSideState, WorldStore};
 
 /// Vanilla `WoodType` families that register sign blocks (`WoodType.values()`
@@ -142,6 +146,20 @@ fn facing_to_y_rot(facing: &str) -> Option<f32> {
 }
 
 impl WorldStore {
+    /// Whether the loaded client world can prove vanilla would materialise a
+    /// `SignBlockEntity` at `pos`. Chunk block-entity records are authoritative;
+    /// the sign-family block state is the equivalent fallback used by the
+    /// renderer when the text record has not arrived yet.
+    pub fn has_sign_block_entity_at(&self, pos: BlockPos) -> bool {
+        matches!(
+            self.block_entity_type_id_at(pos),
+            Some(VANILLA_BLOCK_ENTITY_TYPE_SIGN_ID | VANILLA_BLOCK_ENTITY_TYPE_HANGING_SIGN_ID)
+        ) || self
+            .probe_block(pos)
+            .and_then(|block| block.block_name)
+            .is_some_and(|name| sign_wood_and_form_for_block_name(&name).is_some())
+    }
+
     /// Enumerates every sign-family block in the loaded chunks as a render
     /// source, deriving wood/attachment/yaw from the block state (the vanilla
     /// client materialises a `SignBlockEntity` per sign block state) and the
