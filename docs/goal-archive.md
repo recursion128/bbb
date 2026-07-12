@@ -12580,3 +12580,9 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] metadata class hierarchy 从 `GlowItemFrame extends ItemFrame` 派生两项 membership；world
   item-frame render projection 删除 `ITEM_FRAME_ENTITY_TYPE_IDS` 平行表并改用 generated query，native
   F3+I 同 handler dispatch 保持行为 owner，不在本切片重写。
+
+## 2026-07-12：Derived animation class/interface memberships
+
+- [x] metadata hierarchy 派生 2 项 Guardian subclass 与 2 项 FlyingAnimal implementor；world
+  guardian beam gate 和 flying walk-distance gate 删除手抄 matches，attack-duration 与 walk-animation
+  算法继续由 client presentation owner 手写。

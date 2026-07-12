@@ -2745,10 +2745,7 @@ impl GuardianAttackAnimationState {
 /// Whether the entity type is a guardian or elder guardian (the two `Guardian` subclasses carrying the
 /// attack beam + the `DATA_ID_ATTACK_TARGET` int at slot `17`).
 pub(crate) fn is_guardian_entity_type(entity_type_id: i32) -> bool {
-    matches!(
-        entity_type_id,
-        VANILLA_ENTITY_TYPE_GUARDIAN_ID | VANILLA_ENTITY_TYPE_ELDER_GUARDIAN_ID
-    )
+    super::schema::vanilla_entity_metadata_type_is_guardian(entity_type_id)
 }
 
 /// Vanilla `Guardian.getAttackDuration()`: `80` for a guardian, `60` for an elder guardian.
@@ -2894,10 +2891,7 @@ impl WalkAnimationState {
 /// Vanilla `FlyingAnimal` test used by `calculateEntityAnimation` to decide
 /// whether the limb-swing travel distance includes the vertical component.
 fn is_flying_animal(entity_type_id: i32) -> bool {
-    matches!(
-        entity_type_id,
-        VANILLA_ENTITY_TYPE_BEE_ID | VANILLA_ENTITY_TYPE_PARROT_ID
-    )
+    super::schema::vanilla_entity_metadata_type_is_flying_animal(entity_type_id)
 }
 
 /// Vanilla `updateWalkAnimation`'s per-entity distance→target-speed mapping, fed to

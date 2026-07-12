@@ -229,6 +229,8 @@ pub struct VanillaEntityTypeMetadataCatalogEntry {
     pub is_abstract_nautilus: bool,
     pub is_llama: bool,
     pub is_item_frame: bool,
+    pub is_guardian: bool,
+    pub is_flying_animal: bool,
     pub is_player_rideable_jumping: bool,
     pub has_custom_inventory_screen: bool,
     pub diagnostic: Option<&'static str>,
@@ -405,6 +407,20 @@ pub fn vanilla_entity_metadata_type_is_item_frame(entity_type_id: i32) -> bool {
     VANILLA_ENTITY_TYPE_METADATA_26_1
         .get(usize::try_from(entity_type_id).unwrap_or(usize::MAX))
         .map(|entry| entry.is_item_frame)
+        .unwrap_or(false)
+}
+
+pub fn vanilla_entity_metadata_type_is_guardian(entity_type_id: i32) -> bool {
+    VANILLA_ENTITY_TYPE_METADATA_26_1
+        .get(usize::try_from(entity_type_id).unwrap_or(usize::MAX))
+        .map(|entry| entry.is_guardian)
+        .unwrap_or(false)
+}
+
+pub fn vanilla_entity_metadata_type_is_flying_animal(entity_type_id: i32) -> bool {
+    VANILLA_ENTITY_TYPE_METADATA_26_1
+        .get(usize::try_from(entity_type_id).unwrap_or(usize::MAX))
+        .map(|entry| entry.is_flying_animal)
         .unwrap_or(false)
 }
 
@@ -629,6 +645,20 @@ mod tests {
         assert_eq!(
             VANILLA_ENTITY_TYPE_METADATA_26_1
                 .iter()
+                .filter(|entry| entry.is_guardian)
+                .count(),
+            2
+        );
+        assert_eq!(
+            VANILLA_ENTITY_TYPE_METADATA_26_1
+                .iter()
+                .filter(|entry| entry.is_flying_animal)
+                .count(),
+            2
+        );
+        assert_eq!(
+            VANILLA_ENTITY_TYPE_METADATA_26_1
+                .iter()
                 .filter(|entry| entry.is_player_rideable_jumping)
                 .count(),
             11
@@ -733,6 +763,15 @@ mod tests {
             .expect("chest boat class query source");
         assert!(!chest_boat_query.contains("matches!"));
         let animations_source = include_str!("animations.rs");
+        for function in ["is_guardian_entity_type", "is_flying_animal"] {
+            let body = animations_source
+                .split(&format!("fn {function}"))
+                .nth(1)
+                .and_then(|source| source.split_once("\n}"))
+                .map(|(body, _)| body)
+                .expect("animation membership query source");
+            assert!(!body.contains("matches!"));
+        }
         let arrow_query = animations_source
             .split("fn is_vanilla_arrow_type")
             .nth(1)
