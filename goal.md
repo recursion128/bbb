@@ -319,7 +319,7 @@ configuration finish 无 play duplicate 与无 ack 语义已闭合；仓库禁�
 dialog unit clear 的 wire/ownership/canonical projection 已闭合，但 previous-screen 恢复仍 partial；
 show-dialog 仍缺 `Dialog` semantic codec/screen，custom-click 仍缺 NBT encoder 与 command surface。
 configuration custom-payload 的 Brand/Discarded wire、bounded 自动 brand send、canonical server brand 与
-diagnostics 已闭合；仅 vanilla telemetry callback 保持 runtime partial。
+diagnostics 已闭合；Mojang telemetry callback 按无 external sender 的架构边界为 not-applicable。
 configuration registry-data/update-tags 的 wire、ownership、packet projection 与 tests 已审计；
 完整 `RegistryAccess`/typed codec/holder tags/component initializer 仍是明确 canonical/runtime partial。
 
@@ -504,7 +504,7 @@ play BlockUpdate 的 position/state framing、strict trailing、prediction recon
 play BossEvent 的六种 operation/style/flags framing、strict trailing、UUID lifecycle、HUD style submission ownership 与 tests 已闭合；剩余 rich name、insertion order、100ms lerp 与 darken/fog/music consumers 保持 decode/canonical/runtime partial。
 play ChunksBiomes 的 bounded collection/per-chunk buffer、strict trailing、section palette replacement ownership 与 tests 已闭合；剩余 dynamic biome registry 与 3x3 neighbor rerender/custom tint 保持 canonical/runtime partial。
 play Commands 的 bounded nodes/children、flags/redirect/parser properties/suggestions、strict trailing、topology validation 与 replace ownership 已闭合；剩余 registry-aware repo-native dispatcher/local parse-completion 保持 runtime partial。
-play CustomPayload 的 Brand/Discarded gameplay framing、1 MiB 上限、canonical server brand/diagnostics 与跨 crate tests 已闭合；仅 vanilla telemetry brand callback 保持 runtime partial。
+play CustomPayload 的 Brand/Discarded gameplay framing、1 MiB 上限、canonical server brand/diagnostics 与跨 crate tests 已闭合；Mojang telemetry brand callback 按架构边界为 not-applicable。
 play DebugBlock/Chunk/EntityValue 与 DebugEvent 的位置/target framing、bounded raw diagnostics、ownership 与跨 crate tests 已审计；registry-aware subscription/event decode、game-time expiry 与 debug renderer consumer 未实现，decode/canonical/runtime 保持 partial。
 play DebugSample 的 bounded long-array/type ordinal/strict trailing、F3+2 subscription、240-sample TPS presentation 与跨 crate tests 已闭合。
 play DeleteChat 的 packed signature/strict trailing、signature-cache resolution、pending last-seen ignore 与跨 crate tests 已闭合；invalid-cache disconnect、delayed listener removal 与 60-GUI-tick deleted marker 保持 canonical/runtime partial。

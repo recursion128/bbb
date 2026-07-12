@@ -1357,11 +1357,12 @@
         },
         "runtime_side_effect": {
           "evidence": [
+            "docs/native-client-architecture.md#Do not collect or upload Mojang client telemetry.",
             "crates/bbb-native/src/runtime/tests.rs#hud_debug_overlay_projects_tps_server_brand_and_freeze_status",
-            "vanilla:net/minecraft/client/multiplayer/ClientCommonPacketListenerImpl.java#handleCustomPayload"
+            "vanilla:net/minecraft/client/telemetry/WorldSessionTelemetryManager.java#onServerBrandReceived"
           ],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "gap": "docs/unsupported-features.md#not-needed",
+          "status": "not-applicable"
         },
         "tests": {
           "evidence": [
@@ -7490,11 +7491,12 @@
         },
         "runtime_side_effect": {
           "evidence": [
+            "docs/native-client-architecture.md#Do not collect or upload Mojang client telemetry.",
             "crates/bbb-native/src/runtime/tests.rs#hud_debug_overlay_projects_tps_server_brand_and_freeze_status",
-            "vanilla:net/minecraft/client/multiplayer/ClientCommonPacketListenerImpl.java#handleCustomPayload"
+            "vanilla:net/minecraft/client/telemetry/WorldSessionTelemetryManager.java#onServerBrandReceived"
           ],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "gap": "docs/unsupported-features.md#not-needed",
+          "status": "not-applicable"
         },
         "tests": {
           "evidence": [

@@ -12071,3 +12071,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] configuration finish 现在只发送 `ServerboundFinishConfigurationPacket`、切换 play 并启动 tick，不再额外发送 vanilla `handleConfigurationFinished` 不会发送的 play `ServerboundClientInformationPacket`；online/probe 均有无额外 packet 断言。
 - [x] play client-information encoder 保留并有 wire/boundary test；因 bbb 明确禁止 in-game configuration UI，`Options.broadcastOptions` 对应的 play command/state surface 记为 not-applicable，而不是伪造跨 phase last-sent 状态。
+
+## 2026-07-12：Mojang telemetry boundary
+
+- [x] 架构明确不收集或上传 Mojang client telemetry；vanilla `onServerBrandReceived` 仅设置 `WorldLoadEvent` brand 并触发 external telemetry sender，不影响服务器协议或 bbb 的 canonical brand/HUD diagnostics。
+- [x] configuration/play `CLIENTBOUND_CUSTOM_PAYLOAD` 的 runtime telemetry callback 格改为 evidence-backed not-applicable；typed Brand/Discarded decode、canonical apply 与本地呈现测试保持 complete。

@@ -66,9 +66,6 @@ Owner: `bbb-protocol`
 - Decode configuration/play dialog holders into typed `Dialog` data, render the
   corresponding screens, restore the previous screen on clear, and encode
   resource-id plus bounded optional-NBT custom click actions in the active state.
-- Route the configuration/play server-brand payload into a telemetry owner if
-  client telemetry is retained; canonical brand state, HUD projection and bounded
-  unknown-payload diagnostics are already separate from that missing callback.
 - Decode block/chunk/entity/event debug subscription payloads through the synced
   `DEBUG_SUBSCRIPTION` registry codecs, retain typed values with vanilla game-time
   expiry/removal semantics, ignore entity updates whose target is absent, and feed
@@ -1007,6 +1004,11 @@ Vanilla 26.1 has no such behavior, or bbb has no surface for it. Each carries th
 vanilla evidence. Deleting one of these re-opens work already decided against.
 
 ## Packet canonical state
+
+- **Mojang client telemetry callbacks.** `bbb` has no external telemetry sender.
+  Vanilla `WorldSessionTelemetryManager.onServerBrandReceived` only stores the
+  brand on `WorldLoadEvent` and attempts a Mojang telemetry send; server-brand
+  protocol state and local diagnostics remain independently owned.
 
 - **Bundle delimiter world state.** `ClientboundBundleDelimiterPacket` is
   consumed by `PacketBundlePacker` / `BundlerInfo` as connection framing before

@@ -572,7 +572,7 @@ mod tests {
     }
 
     #[test]
-    fn configuration_custom_payload_only_leaves_brand_telemetry_open() {
+    fn configuration_custom_payload_closes_without_external_telemetry() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let packets = BTreeSet::from(["SERVERBOUND_CUSTOM_PAYLOAD", "CLIENTBOUND_CUSTOM_PAYLOAD"]);
         let entries: Vec<_> = ledger
@@ -593,9 +593,15 @@ mod tests {
                 })
             })
             .collect();
+        assert!(partial.is_empty());
         assert_eq!(
-            partial,
-            BTreeSet::from([("CLIENTBOUND_CUSTOM_PAYLOAD", "runtime_side_effect")])
+            entries
+                .iter()
+                .find(|entry| entry.constant_name == "CLIENTBOUND_CUSTOM_PAYLOAD")
+                .unwrap()
+                .coverage["runtime_side_effect"]
+                .status,
+            PacketCoverageStatus::NotApplicable
         );
         assert_eq!(
             entries
@@ -2517,7 +2523,7 @@ mod tests {
     }
 
     #[test]
-    fn play_custom_payload_only_leaves_brand_telemetry_open() {
+    fn play_custom_payload_closes_without_external_telemetry() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
@@ -2533,7 +2539,11 @@ mod tests {
                 (cell.status == PacketCoverageStatus::Partial).then_some(dimension.as_str())
             })
             .collect();
-        assert_eq!(partial, BTreeSet::from(["runtime_side_effect"]));
+        assert!(partial.is_empty());
+        assert_eq!(
+            entry.coverage["runtime_side_effect"].status,
+            PacketCoverageStatus::NotApplicable
+        );
     }
 
     #[test]
