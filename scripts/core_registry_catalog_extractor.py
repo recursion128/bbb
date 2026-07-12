@@ -29,6 +29,7 @@ class EntityTypeEntry:
     width: float
     height: float
     eye_height: float | None
+    passenger_attachments: tuple[tuple[float, float, float], ...]
 
 
 @dataclass(frozen=True)
@@ -73,6 +74,13 @@ def _string_literal(source: JavaSource, expression: JavaExpression) -> str:
 
 
 def _float_literal(source: JavaSource, expression: JavaExpression, description: str) -> float:
+    if expression.node.type == "unary_expression":
+        children = expression.node.named_children
+        spelling = expression.canonical
+        if len(children) != 1 or not spelling or spelling[0] not in "+-":
+            _fail(source, expression, f"{description} is not a signed numeric literal")
+        value = _float_literal(source, source.expression(children[0]), description)
+        return -value if spelling[0] == "-" else value
     if expression.node.type not in {
         "decimal_floating_point_literal",
         "decimal_integer_literal",
@@ -255,6 +263,49 @@ def entity_type_entries(
             if len(call.arguments) != 1:
                 _fail(source, source.expression(call.node), "eyeHeight expects one argument")
             eye_height = _float_literal(source, call.arguments[0], "eyeHeight")
+        passenger_attachment_calls = _calls_in_expression(
+            source, field.initializer, "passengerAttachments"
+        )
+        if len(passenger_attachment_calls) > 1:
+            _fail(
+                source,
+                field.initializer,
+                "entity builder has multiple passengerAttachments calls",
+            )
+        passenger_attachments: list[tuple[float, float, float]] = []
+        if passenger_attachment_calls:
+            call = passenger_attachment_calls[0]
+            if not call.arguments:
+                _fail(source, source.expression(call.node), "passengerAttachments is empty")
+            argument_kinds = {argument.node.type for argument in call.arguments}
+            if argument_kinds == {"object_creation_expression"}:
+                for argument in call.arguments:
+                    type_node = argument.node.child_by_field_name("type")
+                    arguments_node = argument.node.child_by_field_name("arguments")
+                    if (
+                        type_node is None
+                        or source.text(type_node).replace(" ", "").split(".")[-1] != "Vec3"
+                        or arguments_node is None
+                        or len(arguments_node.named_children) != 3
+                    ):
+                        _fail(source, argument, "passenger attachment is not new Vec3(x, y, z)")
+                    passenger_attachments.append(
+                        tuple(
+                            _float_literal(
+                                source,
+                                source.expression(component),
+                                "passenger attachment coordinate",
+                            )
+                            for component in arguments_node.named_children
+                        )
+                    )
+            elif not any(kind == "object_creation_expression" for kind in argument_kinds):
+                passenger_attachments.extend(
+                    (0.0, _float_literal(source, argument, "passenger attachment y"), 0.0)
+                    for argument in call.arguments
+                )
+            else:
+                _fail(source, source.expression(call.node), "mixed passenger attachment overload")
         entries.append(
             EntityTypeEntry(
                 field.name,
@@ -265,6 +316,7 @@ def entity_type_entries(
                 width,
                 height,
                 eye_height,
+                tuple(passenger_attachments),
             )
         )
     if len(entries) != expected_count:

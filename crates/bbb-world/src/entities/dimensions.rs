@@ -585,10 +585,7 @@ fn vanilla_default_passenger_attachment_point(
 }
 
 fn vanilla_passenger_attachment_overrides(entity_type_id: i32) -> Option<&'static [[f32; 3]]> {
-    VANILLA_PASSENGER_ATTACHMENT_OVERRIDES
-        .binary_search_by_key(&entity_type_id, |(id, _)| *id)
-        .ok()
-        .map(|index| VANILLA_PASSENGER_ATTACHMENT_OVERRIDES[index].1)
+    vanilla_entity_type_passenger_attachments(entity_type_id)
 }
 
 fn scale_axis(current: f32, base: f32) -> f32 {
@@ -1457,96 +1454,6 @@ fn vanilla_direction_from_3d_data(data: i32) -> VanillaDirection {
         _ => VanillaDirection::East,
     }
 }
-
-// IDs and points follow vanilla 26.1 `EntityType.Builder.passengerAttachments(...)`.
-const VANILLA_PASSENGER_ATTACHMENT_OVERRIDES: &[(i32, &[[f32; 3]])] = &[
-    (VANILLA_ENTITY_TYPE_CAT_ID, &[[0.0, 0.5125, 0.0]]),
-    (VANILLA_ENTITY_TYPE_CHEST_MINECART_ID, &[[0.0, 0.1875, 0.0]]),
-    (VANILLA_ENTITY_TYPE_CHICKEN_ID, &[[0.0, 0.7, -0.1]]),
-    (
-        VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID,
-        &[[0.0, 0.1875, 0.0]],
-    ),
-    (VANILLA_ENTITY_TYPE_COW_ID, &[[0.0, 1.36875, 0.0]]),
-    (VANILLA_ENTITY_TYPE_DONKEY_ID, &[[0.0, 1.1125, 0.0]]),
-    (VANILLA_ENTITY_TYPE_DROWNED_ID, &[[0.0, 2.0125, 0.0]]),
-    (
-        VANILLA_ENTITY_TYPE_ELDER_GUARDIAN_ID,
-        &[[0.0, 2.350625, 0.0]],
-    ),
-    (VANILLA_ENTITY_TYPE_ENDERMAN_ID, &[[0.0, 2.80625, 0.0]]),
-    (VANILLA_ENTITY_TYPE_ENDERMITE_ID, &[[0.0, 0.2375, 0.0]]),
-    (VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID, &[[0.0, 3.0, 0.0]]),
-    (VANILLA_ENTITY_TYPE_EVOKER_ID, &[[0.0, 2.0, 0.0]]),
-    (VANILLA_ENTITY_TYPE_FOX_ID, &[[0.0, 0.6375, -0.25]]),
-    (VANILLA_ENTITY_TYPE_FROG_ID, &[[0.0, 0.375, -0.25]]),
-    (
-        VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID,
-        &[[0.0, 0.1875, 0.0]],
-    ),
-    (VANILLA_ENTITY_TYPE_GHAST_ID, &[[0.0, 4.0625, 0.0]]),
-    (
-        VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID,
-        &[
-            [0.0, 4.0, 1.7],
-            [-1.7, 4.0, 0.0],
-            [0.0, 4.0, -1.7],
-            [1.7, 4.0, 0.0],
-        ],
-    ),
-    (VANILLA_ENTITY_TYPE_GOAT_ID, &[[0.0, 1.1125, 0.0]]),
-    (VANILLA_ENTITY_TYPE_GUARDIAN_ID, &[[0.0, 0.975, 0.0]]),
-    (VANILLA_ENTITY_TYPE_HOGLIN_ID, &[[0.0, 1.49375, 0.0]]),
-    (
-        VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID,
-        &[[0.0, 0.1875, 0.0]],
-    ),
-    (VANILLA_ENTITY_TYPE_HORSE_ID, &[[0.0, 1.44375, 0.0]]),
-    (VANILLA_ENTITY_TYPE_HUSK_ID, &[[0.0, 2.075, 0.0]]),
-    (VANILLA_ENTITY_TYPE_ILLUSIONER_ID, &[[0.0, 2.0, 0.0]]),
-    (VANILLA_ENTITY_TYPE_LLAMA_ID, &[[0.0, 1.37, -0.3]]),
-    (VANILLA_ENTITY_TYPE_MINECART_ID, &[[0.0, 0.1875, 0.0]]),
-    (VANILLA_ENTITY_TYPE_MOOSHROOM_ID, &[[0.0, 1.36875, 0.0]]),
-    (VANILLA_ENTITY_TYPE_MULE_ID, &[[0.0, 1.2125, 0.0]]),
-    (VANILLA_ENTITY_TYPE_NAUTILUS_ID, &[[0.0, 1.1375, 0.0]]),
-    (VANILLA_ENTITY_TYPE_OCELOT_ID, &[[0.0, 0.6375, 0.0]]),
-    (VANILLA_ENTITY_TYPE_PARROT_ID, &[[0.0, 0.4625, 0.0]]),
-    (VANILLA_ENTITY_TYPE_PHANTOM_ID, &[[0.0, 0.3375, 0.0]]),
-    (VANILLA_ENTITY_TYPE_PIG_ID, &[[0.0, 0.86875, 0.0]]),
-    (VANILLA_ENTITY_TYPE_PIGLIN_ID, &[[0.0, 2.0125, 0.0]]),
-    (VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID, &[[0.0, 2.0125, 0.0]]),
-    (VANILLA_ENTITY_TYPE_PILLAGER_ID, &[[0.0, 2.0, 0.0]]),
-    (VANILLA_ENTITY_TYPE_RAVAGER_ID, &[[0.0, 2.2625, -0.0625]]),
-    (VANILLA_ENTITY_TYPE_SHEEP_ID, &[[0.0, 1.2375, 0.0]]),
-    (VANILLA_ENTITY_TYPE_SILVERFISH_ID, &[[0.0, 0.2375, 0.0]]),
-    (
-        VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID,
-        &[[0.0, 1.31875, 0.0]],
-    ),
-    (VANILLA_ENTITY_TYPE_SNIFFER_ID, &[[0.0, 2.09375, 0.0]]),
-    (
-        VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID,
-        &[[0.0, 0.1875, 0.0]],
-    ),
-    (VANILLA_ENTITY_TYPE_SPIDER_ID, &[[0.0, 0.765, 0.0]]),
-    (VANILLA_ENTITY_TYPE_TNT_MINECART_ID, &[[0.0, 0.1875, 0.0]]),
-    (VANILLA_ENTITY_TYPE_TRADER_LLAMA_ID, &[[0.0, 1.37, -0.3]]),
-    (VANILLA_ENTITY_TYPE_TURTLE_ID, &[[0.0, 0.55625, -0.25]]),
-    (VANILLA_ENTITY_TYPE_VEX_ID, &[[0.0, 0.7375, 0.0]]),
-    (VANILLA_ENTITY_TYPE_VINDICATOR_ID, &[[0.0, 2.0, 0.0]]),
-    (VANILLA_ENTITY_TYPE_WARDEN_ID, &[[0.0, 3.15, 0.0]]),
-    (VANILLA_ENTITY_TYPE_WITCH_ID, &[[0.0, 2.2625, 0.0]]),
-    (VANILLA_ENTITY_TYPE_WOLF_ID, &[[0.0, 0.81875, -0.0625]]),
-    (VANILLA_ENTITY_TYPE_ZOGLIN_ID, &[[0.0, 1.49375, 0.0]]),
-    (VANILLA_ENTITY_TYPE_ZOMBIE_ID, &[[0.0, 2.0125, 0.0]]),
-    (VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID, &[[0.0, 1.31875, 0.0]]),
-    (
-        VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
-        &[[0.0, 1.1375, 0.0]],
-    ),
-    (VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID, &[[0.0, 2.125, 0.0]]),
-    (VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID, &[[0.0, 2.0, 0.0]]),
-];
 
 // IDs are the vanilla 26.1 EntityType registry order from EntityType.java.
 const VANILLA_ENTITY_PICKABLE_TYPE_IDS: &[i32] = &[

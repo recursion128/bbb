@@ -50,10 +50,10 @@ public interface DamageTypes {
 package fixture;
 public class EntityType {
   public static final EntityType<One> ONE = register(
-      "one", Builder.of(One::new).sized(1, 1).eyeHeight(1.25F));
+      "one", Builder.of(One::new).sized(1, 1).eyeHeight(1.25F).passengerAttachments(0.5F));
   public static final EntityType<Two> TWO = register(
       "two", Builder.of(Two::new)
-          .sized(0.6F, 1.8F).notInPeaceful().noSave());
+          .sized(0.6F, 1.8F).passengerAttachments(new Vec3(0.25, 1.0, -0.5)).notInPeaceful().noSave());
   private static final Set<EntityType<?>> OP_ONLY_CUSTOM_DATA = Set.of(TWO);
   private static String fake = ".notInPeaceful() register(\\\"fake\\\")";
 }
@@ -66,6 +66,10 @@ public class EntityType {
         self.assertEqual([entry.serializable for entry in entries], [True, False])
         self.assertEqual([(entry.width, entry.height) for entry in entries], [(1.0, 1.0), (0.6, 1.8)])
         self.assertEqual([entry.eye_height for entry in entries], [1.25, None])
+        self.assertEqual(
+            [entry.passenger_attachments for entry in entries],
+            [((0.0, 0.5, 0.0),), ((0.25, 1.0, -0.5),)],
+        )
 
     def test_entity_eye_height_rejects_non_literal_builder_values(self) -> None:
         source = parse_source(
@@ -100,6 +104,25 @@ public class EntityType {
         with self.assertRaisesRegex(
             CoreRegistryExtractionError,
             r"DynamicEntityDimensions\.java:\d+:\d+: entity width is not a numeric literal",
+        ):
+            entity_type_entries(source, expected_count=1)
+
+    def test_entity_passenger_attachment_rejects_non_literal_coordinates(self) -> None:
+        source = parse_source(
+            "fixture/DynamicPassengerAttachment.java",
+            b"""
+package fixture;
+public class EntityType {
+  public static final EntityType<One> ONE = register(
+      "one", Builder.of(One::new).sized(1, 1)
+          .passengerAttachments(new Vec3(0, DEFAULT_Y, 0)));
+  private static final Set<EntityType<?>> OP_ONLY_CUSTOM_DATA = Set.of();
+}
+""",
+        )
+        with self.assertRaisesRegex(
+            CoreRegistryExtractionError,
+            r"DynamicPassengerAttachment\.java:\d+:\d+: passenger attachment coordinate is not a numeric literal",
         ):
             entity_type_entries(source, expected_count=1)
 

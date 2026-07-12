@@ -12568,3 +12568,9 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] core registry Tree-sitter extractor 严格闭合 157/157 项 `.sized(width, height)` literal 并生成
   typed dimensions query；world pickable subset 保留独立行为 membership，但移除 133 项重复 width/height
   数值，动态 pose/baby/scale bounds、redirectable tag 与 ShulkerBullet override 语义不变。
+
+## 2026-07-12：Generated passenger attachments
+
+- [x] core registry Tree-sitter extractor 归一化 57 项 `passengerAttachments(float...)` /
+  `passengerAttachments(new Vec3(...))` builder declarations，含 signed literal 与四座 HappyGhast；protocol
+  提供 static-slice query，world 删除完整手抄 attachment 表，动态 camel/boat placement 仍由 world owner。
