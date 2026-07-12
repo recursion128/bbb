@@ -50,7 +50,7 @@ public interface DamageTypes {
 package fixture;
 public class EntityType {
   public static final EntityType<One> ONE = register(
-      "one", Builder.of(One::new).sized(1, 1));
+      "one", Builder.of(One::new).sized(1, 1).eyeHeight(1.25F));
   public static final EntityType<Two> TWO = register(
       "two", Builder.of(Two::new)
           .notInPeaceful().noSave());
@@ -64,6 +64,25 @@ public class EntityType {
         self.assertEqual([entry.allowed_in_peaceful for entry in entries], [True, False])
         self.assertEqual([entry.only_op_can_set_nbt for entry in entries], [False, True])
         self.assertEqual([entry.serializable for entry in entries], [True, False])
+        self.assertEqual([entry.eye_height for entry in entries], [1.25, None])
+
+    def test_entity_eye_height_rejects_non_literal_builder_values(self) -> None:
+        source = parse_source(
+            "fixture/DynamicEntityEyeHeight.java",
+            b"""
+package fixture;
+public class EntityType {
+  public static final EntityType<One> ONE = register(
+      "one", Builder.of(One::new).eyeHeight(DEFAULT_EYE_HEIGHT));
+  private static final Set<EntityType<?>> OP_ONLY_CUSTOM_DATA = Set.of();
+}
+""",
+        )
+        with self.assertRaisesRegex(
+            CoreRegistryExtractionError,
+            r"DynamicEntityEyeHeight\.java:\d+:\d+: eyeHeight is not a numeric literal",
+        ):
+            entity_type_entries(source, expected_count=1)
 
     def test_other_registry_field_shapes_use_cst_arguments_and_builder_calls(self) -> None:
         block_source = parse_source(

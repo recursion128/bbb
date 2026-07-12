@@ -12556,3 +12556,9 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] core entity-type catalog 从 vanilla `redirectable_projectile` tag 生成 fireball 与两项
   wind-charge membership；world pick radius 改由 typed tag query 派生，ShulkerBullet 的显式
   `isPickable` override 仍作为独立源码行为特例，未扩张命中、伤害或权威 lifecycle。
+
+## 2026-07-12：Generated entity eye heights
+
+- [x] core registry Tree-sitter extractor 从 157 项 EntityType builder initializer 严格提取 101 个
+  `.eyeHeight(float literal)`，非 literal/重复调用显式失败；protocol catalog 提供 typed optional query，
+  world 删除 94 项手抄 override 表并保留 pose/scale 等运行时 eye-height semantic owner。

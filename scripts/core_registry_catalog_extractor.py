@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 from dataclasses import dataclass
 
 from vanilla_java_source import JavaExpression, JavaField, JavaMethod, JavaSource
@@ -25,6 +26,7 @@ class EntityTypeEntry:
     allowed_in_peaceful: bool
     only_op_can_set_nbt: bool
     serializable: bool
+    eye_height: float | None
 
 
 @dataclass(frozen=True)
@@ -66,6 +68,25 @@ def _string_literal(source: JavaSource, expression: JavaExpression) -> str:
     if not isinstance(value, str) or not value:
         _fail(source, expression, "registry resource id is empty or non-string")
     return "minecraft:" + value
+
+
+def _float_literal(source: JavaSource, expression: JavaExpression, description: str) -> float:
+    if expression.node.type not in {
+        "decimal_floating_point_literal",
+        "decimal_integer_literal",
+        "hex_floating_point_literal",
+        "hex_integer_literal",
+    }:
+        _fail(source, expression, f"{description} is not a numeric literal")
+    spelling = expression.canonical.replace("_", "").removesuffix("F").removesuffix("f")
+    spelling = spelling.removesuffix("D").removesuffix("d")
+    try:
+        value = float.fromhex(spelling) if spelling.lower().startswith("0x") else float(spelling)
+    except ValueError as error:
+        _fail(source, expression, f"invalid {description} literal: {error}")
+    if not math.isfinite(value):
+        _fail(source, expression, f"{description} literal is not finite")
+    return value
 
 
 def _register_arguments(source: JavaSource, field: JavaField) -> tuple[JavaExpression, ...]:
@@ -209,6 +230,15 @@ def entity_type_entries(
         arguments = _register_arguments(source, field)
         if len(arguments) != 2:
             _fail(source, field.initializer, f"entity register has {len(arguments)} arguments")
+        eye_height_calls = _calls_in_expression(source, field.initializer, "eyeHeight")
+        if len(eye_height_calls) > 1:
+            _fail(source, field.initializer, "entity builder has multiple eyeHeight calls")
+        eye_height = None
+        if eye_height_calls:
+            call = eye_height_calls[0]
+            if len(call.arguments) != 1:
+                _fail(source, source.expression(call.node), "eyeHeight expects one argument")
+            eye_height = _float_literal(source, call.arguments[0], "eyeHeight")
         entries.append(
             EntityTypeEntry(
                 field.name,
@@ -216,6 +246,7 @@ def entity_type_entries(
                 not _calls_in_expression(source, field.initializer, "notInPeaceful"),
                 field.name in op_only_constants,
                 not _calls_in_expression(source, field.initializer, "noSave"),
+                eye_height,
             )
         )
     if len(entries) != expected_count:
