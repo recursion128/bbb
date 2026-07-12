@@ -11811,3 +11811,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] terminal unit wire、StartConfiguration-only trigger、pending chat acknowledgement flush-before-ack、play→configuration state switch、play tick stop、configuration dedup reset 与 level clear 已审计并全行闭合。
 - [x] 后续 configuration packet consumption/re-entry tests 已覆盖；没有把该 terminal acknowledgement 当作普通可重复命令，也没有在 world owner 中复制 connection state。
+
+## 2026-07-12：play serverbound container button click packet coverage audit
+
+- [x] `ServerboundContainerButtonClickPacket` 的 container-id/button-id 双 VarInt wire、lectern/enchantment/loom/stonecutter 原生输入面、NetCommand/driver 发送与 active-menu 类型 gate 已审计；command/encoder 闭合。
+- [x] 服务端仍以当前 menu id、spectator、`stillValid` 与 `clickMenuButton` 结果作权威校验，并只通过普通 container 更新广播结果，没有专用 acknowledgement。客户端本地 `clickMenuButton` 状态变化与完整 enchantment eligibility 尚未对齐，state/tests 保持 partial。

@@ -674,6 +674,12 @@ back into a todo. Do not delete these.
 
 - UpdateRecipes property sets and stonecutter replacement are covered; remaining
   SlotDisplay/component variants and recipe/menu presentation stay open.
+- ContainerButtonClick reaches all four vanilla 26.1 menu owners (lectern,
+  enchantment, loom, and stonecutter), with menu-specific hit testing and ordinary
+  server container updates remaining authoritative. Finish the client-side
+  `clickMenuButton` parity for lectern page state, stonecutter/loom result projection,
+  and the complete enchantment item/currency/experience/creative eligibility path;
+  the packet has no dedicated acknowledgement.
 - Preserve the full trusted OpenScreen title Component and finish dedicated
   presentation for every generated vanilla MenuType. The fixed 25-entry menu
   catalog and unknown-id rejection are covered; current canonical state keeps
