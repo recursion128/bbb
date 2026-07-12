@@ -208,9 +208,15 @@ pub(super) fn decode_open_screen(decoder: &mut Decoder<'_>) -> Result<OpenScreen
 }
 
 pub(super) fn decode_set_cursor_item(decoder: &mut Decoder<'_>) -> Result<SetCursorItem> {
-    Ok(SetCursorItem {
+    let packet = SetCursorItem {
         item: decode_item_stack_summary(decoder)?,
-    })
+    };
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after set cursor item packet".to_string(),
+        ));
+    }
+    Ok(packet)
 }
 
 pub(super) fn decode_set_player_inventory(decoder: &mut Decoder<'_>) -> Result<SetPlayerInventory> {
@@ -534,19 +540,23 @@ mod tests {
             .to_string()
             .contains("trailing bytes after container set slot packet"));
 
-        let mut payload = Encoder::new();
-        payload.write_var_i32(0);
-        let packet = decode_play_clientbound(
-            ids::play::CLIENTBOUND_SET_CURSOR_ITEM,
-            &payload.into_inner(),
-        )
-        .unwrap();
+        let mut bytes = Encoder::new();
+        bytes.write_var_i32(0);
+        let mut bytes = bytes.into_inner();
+        let packet =
+            decode_play_clientbound(ids::play::CLIENTBOUND_SET_CURSOR_ITEM, &bytes).unwrap();
         assert_eq!(
             packet,
             PlayClientbound::SetCursorItem(SetCursorItem {
                 item: ItemStackSummary::empty(),
             })
         );
+        bytes.push(0);
+        let error =
+            decode_play_clientbound(ids::play::CLIENTBOUND_SET_CURSOR_ITEM, &bytes).unwrap_err();
+        assert!(error
+            .to_string()
+            .contains("trailing bytes after set cursor item packet"));
 
         let mut payload = Encoder::new();
         payload.write_var_i32(36);

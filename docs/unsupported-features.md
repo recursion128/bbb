@@ -593,6 +593,9 @@ back into a todo. Do not delete these.
 - ContainerSetSlot also rejects mismatched nonzero menu ids. Remaining parity
   includes creative-inventory remote-slot synchronization, hotbar pop-time
   presentation, and the ItemStack added-value semantics tracked above.
+- SetCursorItem updates carried state outside creative inventory; the creative
+  screen suppression branch and remaining ItemStack added-value semantics are
+  still open.
 - `BeaconMenu`: confirm/cancel hover state, effect highlighted hover state,
   labels/tooltips.
 - `EnchantmentMenu`: animated book model, enchanting glyph text and its

@@ -11435,3 +11435,10 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   cursor/player-inventory 更新已由独立 packet 承担，不沿用旧版负 container-id 分支。
 - [x] world 只更新 id 0 inventory menu 或匹配当前 active server menu；不匹配 packet 不再创建 synthetic menu。
   decode/ownership/tests 闭合，creative remote-slot/pop-time 与剩余 ItemStack component 语义保持 partial。
+
+## 2026-07-12：play set-cursor-item packet coverage audit
+
+- [x] 对照 `ClientboundSetCursorItemPacket` 锁定 optional ItemStack wire并拒绝 trailing bytes；非 creative screen 的
+  carried-item replacement、world ownership 与跨 crate tests 闭合。
+- [x] creative inventory screen suppression 与剩余 ItemStack added-value component 语义保持 canonical/runtime
+  partial，不把现有 summary projection 冒充完整栈语义。
