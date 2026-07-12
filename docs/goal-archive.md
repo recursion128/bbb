@@ -11876,3 +11876,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] F3+3 network-chart visibility/Play-state gate、每 client network tick 的 wall-clock i64 request、NetCommand/driver/wire、服务器原值 Pong、strict response decode、canonical record 与 native RTT/HUD sampler 已反向审计并全行闭合。
 - [x] 该 family 与 gameplay keepalive 分离；断开时 sampler reset，隐藏 chart 时不发送，未把 Pong timestamp 当作服务器时间或 gameplay state。
+
+## 2026-07-12：play serverbound place-recipe packet coverage audit
+
+- [x] container-id/RecipeDisplayId/use-max-items wire、native crafting/furnace recipe-book click、不可制作 recipe 重试守卫、Shift max、NetCommand/driver 与服务端 spectator/current-menu/unlocked-recipe authority 已反向审计；command/encoder/state/tests 闭合。
+- [x] 成功放置仍由服务器 container broadcasts 确认，无法放置时可返回 PlaceGhostRecipe；剩余 SlotDisplay/ItemStack component 语义继续由既有 inventory ledger 维护，因此 ack 保持 partial，客户端不预测菜单成功状态。

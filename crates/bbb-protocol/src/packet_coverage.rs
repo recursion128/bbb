@@ -3835,6 +3835,29 @@ mod tests {
         }
     }
 
+    #[test]
+    fn play_serverbound_place_recipe_keeps_response_semantics_open() {
+        let ledger = vanilla_packet_coverage_26_1().unwrap();
+        let entry = ledger
+            .entries
+            .iter()
+            .find(|entry| {
+                entry.state == "play" && entry.constant_name == "SERVERBOUND_PLACE_RECIPE"
+            })
+            .expect("play serverbound place recipe coverage row");
+        for dimension in ["command_surface", "encoder", "state_guard", "tests"] {
+            assert_eq!(
+                entry.coverage[dimension].status,
+                PacketCoverageStatus::Complete,
+                "{dimension}"
+            );
+        }
+        assert_eq!(
+            entry.coverage["ack_response"].status,
+            PacketCoverageStatus::Partial
+        );
+    }
+
     fn state_name(state: PacketState) -> &'static str {
         match state {
             PacketState::Handshake => "handshake",

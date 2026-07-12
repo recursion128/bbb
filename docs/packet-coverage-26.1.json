@@ -4365,29 +4365,55 @@
       "constant_name": "SERVERBOUND_PLACE_RECIPE",
       "coverage": {
         "ack_response": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "evidence": [
+            "crates/bbb-protocol/src/packets/client_features/recipes.rs#decode_place_ghost_recipe",
+            "crates/bbb-world/src/client/ui.rs#apply_place_ghost_recipe",
+            "crates/bbb-world/src/client/inventory.rs#apply_container_set_content",
+            "crates/bbb-world/src/client/inventory.rs#apply_container_set_slot",
+            "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#handlePlaceRecipe"
+          ],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
           "status": "partial"
         },
         "command_surface": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-native/src/input/inventory.rs#maybe_queue_recipe_book_place_recipe",
+            "crates/bbb-native/src/input/commands.rs#queue_place_recipe_command",
+            "crates/bbb-net/src/types/commands.rs#PlaceRecipe",
+            "crates/bbb-net/src/driver/commands.rs#send_place_recipe"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "encoder": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/serverbound.rs#encode_play_place_recipe",
+            "vanilla:net/minecraft/network/protocol/game/ServerboundPlaceRecipePacket.java#STREAM_CODEC"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "state_guard": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-native/src/input/inventory.rs#maybe_queue_recipe_book_place_recipe",
+            "crates/bbb-native/src/input/tests.rs#recipe_book_uncraftable_recipe_button_retry_is_guarded",
+            "vanilla:net/minecraft/client/gui/screens/recipebook/RecipeBookComponent.java#tryPlaceRecipe",
+            "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#handlePlaceRecipe"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_place_recipe_packet",
+            "crates/bbb-net/src/driver/commands/tests.rs#send_place_recipe_encodes_place_recipe_packet",
+            "crates/bbb-net/src/driver.rs#drive_connection_sends_place_recipe_net_command_in_play",
+            "crates/bbb-native/src/input/tests.rs#recipe_book_recipe_button_click_queues_place_recipe_command",
+            "crates/bbb-native/src/input/tests.rs#furnace_recipe_book_recipe_button_click_queues_place_recipe_command",
+            "crates/bbb-world/src/client/ui.rs#ghost_recipe_ignores_inactive_container_without_caching_for_later"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "serverbound",
