@@ -176,7 +176,7 @@ mod events;
 
 pub(crate) use debug_light_sections::DebugSkyLightSectionCache;
 
-const CLIENT_ENTITY_ANIMATION_TICK_INTERVAL: Duration = Duration::from_millis(50);
+const VANILLA_CLIENT_TICK_INTERVAL: Duration = Duration::from_millis(50);
 const VANILLA_OVERWORLD_AMBIENT_LIGHT_COLOR: [f32; 3] = rgb24(-16_119_286);
 const VANILLA_NETHER_SKY_LIGHT_COLOR: [f32; 3] = [122.0 / 255.0, 122.0 / 255.0, 1.0];
 const VANILLA_NETHER_AMBIENT_LIGHT_COLOR: [f32; 3] = rgb24(-13_621_215);
@@ -628,16 +628,12 @@ fn push_capped_hud_debug_sample<T>(samples: &mut Vec<T>, value: T, capacity: usi
 #[derive(Debug, Default)]
 pub(crate) struct ClientAnimationTickState {
     last_entity_animation_at: Option<Instant>,
+    entity_animation_tick_residual: f64,
 }
 
 impl ClientAnimationTickState {
-    pub(crate) fn entity_partial_tick(&self, now: Instant) -> f32 {
-        let Some(last) = self.last_entity_animation_at else {
-            return 1.0;
-        };
-        let elapsed = now.saturating_duration_since(last);
-        (elapsed.as_secs_f32() / CLIENT_ENTITY_ANIMATION_TICK_INTERVAL.as_secs_f32())
-            .clamp(0.0, 1.0)
+    pub(crate) fn entity_partial_tick(&self) -> f32 {
+        self.entity_animation_tick_residual.clamp(0.0, 1.0) as f32
     }
 }
 
@@ -2013,7 +2009,7 @@ pub(crate) fn pump_network_and_terrain(
     );
     hud_debug_tps_sampler.sync_subscription(input, net_counters, net_commands);
     let advanced_ticks = advance_entity_client_animations(world, client_animation_ticks, now);
-    let entity_partial_tick = client_animation_ticks.entity_partial_tick(now);
+    let entity_partial_tick = client_animation_ticks.entity_partial_tick();
     let running_ticks = world.consume_running_render_ticks(advanced_ticks);
     // Vanilla `ClientLevel.tick` runs `this.getWorldBorder().tick()` right
     // before `this.tickTime()` when the tick rate manager runs normally
@@ -11156,19 +11152,35 @@ fn advance_entity_client_animations(
         return 0;
     };
     let elapsed = now.saturating_duration_since(last);
-    let raw_ticks = elapsed.as_millis() / CLIENT_ENTITY_ANIMATION_TICK_INTERVAL.as_millis();
-    if raw_ticks == 0 {
+    ticks.last_entity_animation_at = Some(now);
+    let tick_interval = world_client_tick_interval(world);
+    // Vanilla `DeltaTracker.Timer.advanceGameTime` converts only the time since
+    // the previous frame with the current target MSPT, then carries a
+    // dimensionless residual. Keeping that shape matters when a TickingState
+    // update changes the target between two frames.
+    ticks.entity_animation_tick_residual += elapsed.as_secs_f64() / tick_interval.as_secs_f64();
+    let raw_ticks = ticks.entity_animation_tick_residual.floor();
+    if raw_ticks == 0.0 {
         return 0;
     }
 
-    let advanced_ticks = u32::try_from(raw_ticks).unwrap_or(u32::MAX);
+    let advanced_ticks = raw_ticks.min(f64::from(u32::MAX)) as u32;
+    ticks.entity_animation_tick_residual -= f64::from(advanced_ticks);
     world.advance_entity_client_animations(advanced_ticks);
-    let advanced = Duration::from_millis(
-        u64::from(advanced_ticks)
-            .saturating_mul(CLIENT_ENTITY_ANIMATION_TICK_INTERVAL.as_millis() as u64),
-    );
-    ticks.last_entity_animation_at = last.checked_add(advanced).or(Some(now));
     advanced_ticks
+}
+
+fn world_client_tick_interval(world: &WorldStore) -> Duration {
+    let ticking = world.ticking();
+    // `Minecraft.getTickTargetMillis` keeps the base 20 Hz timer while frozen;
+    // otherwise it returns max(base MSPT, TickRateManager.millisecondsPerTick).
+    // A server tick rate above 20 therefore never accelerates client ticks.
+    if ticking.frozen || !ticking.tick_rate.is_finite() || ticking.tick_rate >= 20.0 {
+        return VANILLA_CLIENT_TICK_INTERVAL;
+    }
+
+    let nanos_per_tick = (1_000_000_000.0_f64 / f64::from(ticking.tick_rate)) as u64;
+    Duration::from_nanos(nanos_per_tick).max(VANILLA_CLIENT_TICK_INTERVAL)
 }
 
 #[derive(Debug, Default, Clone, Copy, PartialEq)]

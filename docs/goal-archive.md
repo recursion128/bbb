@@ -12747,3 +12747,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] world 提供 abilities FOV 投影，native 按每 client tick 0.5 easing 和 partial tick 插值，renderer
   使用动态 perspective FOV；flying 贡献沿同一链路。bow/scoping、配置 effect scale 与 death/fluid
   modifier 仍在 presentation 账本开放，不阻塞 PlayerAbilities packet 五格闭合。
+
+## 2026-07-12：TickingState client cadence
+
+- [x] 对照 vanilla `DeltaTracker.Timer`、`Minecraft.getTickTargetMillis` 与 `TickRateManager`，native
+  entity/world client tick cadence 在正常态采用 `max(50ms, server ms/tick)`：低于 20 TPS 会减速，
+  高于 20 TPS 不会把客户端推进到 20 Hz 以上；冻结态仍保留基础 20 Hz raw client tick，既有
+  freeze/step budget 继续只门控 level-running consumers。
+- [x] client tick state 改为按每帧当前 interval 累加无量纲 residual，tick-rate 中途切换不会把
+  已累计时间整段按新速率重解释；focused tests 锁定 10/20/40 TPS、冻结态、partial tick 与速率
+  切换。local-player prediction 的独立 fixed-20Hz accumulator 仍在 unsupported ledger 开放。

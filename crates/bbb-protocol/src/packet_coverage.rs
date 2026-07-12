@@ -1276,7 +1276,7 @@ mod tests {
     }
 
     #[test]
-    fn play_ticking_state_keeps_variable_tick_cadence_open() {
+    fn play_ticking_state_is_closed() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
@@ -1285,14 +1285,17 @@ mod tests {
                 entry.state == "play" && entry.constant_name == "CLIENTBOUND_TICKING_STATE"
             })
             .expect("ticking state coverage row");
-        let partial: BTreeSet<_> = entry
+        let incomplete: BTreeSet<_> = entry
             .coverage
             .iter()
             .filter_map(|(dimension, cell)| {
-                (cell.status == PacketCoverageStatus::Partial).then_some(dimension.as_str())
+                (cell.status != PacketCoverageStatus::Complete).then_some(dimension.as_str())
             })
             .collect();
-        assert_eq!(partial, BTreeSet::from(["runtime_side_effect"]));
+        assert!(
+            incomplete.is_empty(),
+            "incomplete TickingState coverage: {incomplete:?}"
+        );
     }
 
     #[test]

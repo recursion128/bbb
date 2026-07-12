@@ -461,20 +461,22 @@ fn entity_animation_partial_tick_tracks_time_since_last_client_tick() {
     let mut ticks = ClientAnimationTickState::default();
     let mut world = WorldStore::new();
 
-    assert_eq!(ticks.entity_partial_tick(now), 1.0);
+    assert_eq!(ticks.entity_partial_tick(), 0.0);
     assert_eq!(
         advance_entity_client_animations(&mut world, &mut ticks, now),
         0
     );
-    assert_eq!(ticks.entity_partial_tick(now), 0.0);
+    assert_eq!(ticks.entity_partial_tick(), 0.0);
     assert_eq!(
-        ticks.entity_partial_tick(now + Duration::from_millis(25)),
-        0.5
+        advance_entity_client_animations(&mut world, &mut ticks, now + Duration::from_millis(25)),
+        0
     );
+    assert_eq!(ticks.entity_partial_tick(), 0.5);
     assert_eq!(
-        ticks.entity_partial_tick(now + Duration::from_millis(75)),
-        1.0
+        advance_entity_client_animations(&mut world, &mut ticks, now + Duration::from_millis(75)),
+        1
     );
+    assert_eq!(ticks.entity_partial_tick(), 0.5);
 }
 
 #[test]
@@ -4252,7 +4254,7 @@ fn renderer_frame_item_and_entity_projections_extract_after_tick_advances() {
         .find("let advanced_ticks = advance_entity_client_animations(")
         .expect("pump should advance entity client animations before render extraction");
     let partial_tick = source
-        .find("let entity_partial_tick = client_animation_ticks.entity_partial_tick(now);")
+        .find("let entity_partial_tick = client_animation_ticks.entity_partial_tick();")
         .expect("pump should compute the render partial tick");
     let client_time = source
         .find("world.advance_client_time(running_ticks);")
@@ -4495,7 +4497,7 @@ fn renderer_frame_outlines_extract_after_input_camera_and_partial_tick() {
         .find("let advanced_ticks = advance_entity_client_animations(")
         .expect("pump should advance entity client animations before outline extraction");
     let partial_tick = source
-        .find("let entity_partial_tick = client_animation_ticks.entity_partial_tick(now);")
+        .find("let entity_partial_tick = client_animation_ticks.entity_partial_tick();")
         .expect("pump should compute partial tick before outline extraction");
     let camera_pose = source
         .find("let camera_pose = camera_pose_from_world(world);")
@@ -4611,7 +4613,7 @@ fn renderer_frame_cloud_frame_extracts_after_client_time_camera_and_partial_tick
         .find("let advanced_ticks = advance_entity_client_animations(")
         .expect("pump should advance entity client animations before cloud frame extraction");
     let partial_tick = source
-        .find("let entity_partial_tick = client_animation_ticks.entity_partial_tick(now);")
+        .find("let entity_partial_tick = client_animation_ticks.entity_partial_tick();")
         .expect("pump should compute the render partial tick before cloud frame extraction");
     let client_time = source
         .find("world.advance_client_time(running_ticks);")
@@ -4642,7 +4644,7 @@ fn renderer_frame_weather_extracts_after_client_time_camera_and_partial_tick() {
         .find("let advanced_ticks = advance_entity_client_animations(")
         .expect("pump should advance entity client animations before weather extraction");
     let partial_tick = source
-        .find("let entity_partial_tick = client_animation_ticks.entity_partial_tick(now);")
+        .find("let entity_partial_tick = client_animation_ticks.entity_partial_tick();")
         .expect("pump should compute the render partial tick before weather extraction");
     let client_time = source
         .find("world.advance_client_time(running_ticks);")
@@ -15706,6 +15708,93 @@ fn entity_client_animations_advance_at_vanilla_tick_interval() {
         Some(bbb_world::EntityPickBoundsState::from_base_size(
             1.4, 2.8, 0.0
         ))
+    );
+}
+
+#[test]
+fn entity_client_tick_cadence_tracks_normal_world_tick_rate() {
+    let start = Instant::now();
+    let mut ticks = ClientAnimationTickState::default();
+    let mut world = WorldStore::new();
+    world.apply_ticking_state(bbb_protocol::packets::TickingState {
+        tick_rate: 10.0,
+        frozen: false,
+    });
+
+    assert_eq!(
+        world_client_tick_interval(&world),
+        Duration::from_millis(100)
+    );
+    assert_eq!(
+        advance_entity_client_animations(&mut world, &mut ticks, start),
+        0
+    );
+    assert_eq!(
+        advance_entity_client_animations(&mut world, &mut ticks, start + Duration::from_millis(99),),
+        0
+    );
+    assert!((ticks.entity_partial_tick() - 0.99).abs() < 0.000_001);
+    assert_eq!(
+        advance_entity_client_animations(
+            &mut world,
+            &mut ticks,
+            start + Duration::from_millis(100),
+        ),
+        1
+    );
+    assert_eq!(ticks.entity_partial_tick(), 0.0);
+
+    world.apply_ticking_state(bbb_protocol::packets::TickingState {
+        tick_rate: 40.0,
+        frozen: false,
+    });
+    assert_eq!(
+        world_client_tick_interval(&world),
+        Duration::from_millis(50)
+    );
+}
+
+#[test]
+fn entity_client_tick_cadence_preserves_residual_across_rate_changes_and_freeze() {
+    let start = Instant::now();
+    let mut ticks = ClientAnimationTickState::default();
+    let mut world = WorldStore::new();
+
+    assert_eq!(
+        advance_entity_client_animations(&mut world, &mut ticks, start),
+        0
+    );
+    assert_eq!(
+        advance_entity_client_animations(&mut world, &mut ticks, start + Duration::from_millis(25),),
+        0
+    );
+    assert_eq!(ticks.entity_partial_tick(), 0.5);
+
+    world.apply_ticking_state(bbb_protocol::packets::TickingState {
+        tick_rate: 10.0,
+        frozen: false,
+    });
+    assert_eq!(
+        advance_entity_client_animations(&mut world, &mut ticks, start + Duration::from_millis(75),),
+        1
+    );
+    assert_eq!(ticks.entity_partial_tick(), 0.0);
+
+    world.apply_ticking_state(bbb_protocol::packets::TickingState {
+        tick_rate: 1.0,
+        frozen: true,
+    });
+    assert_eq!(
+        world_client_tick_interval(&world),
+        Duration::from_millis(50)
+    );
+    assert_eq!(
+        advance_entity_client_animations(
+            &mut world,
+            &mut ticks,
+            start + Duration::from_millis(125),
+        ),
+        1
     );
 }
 

@@ -433,8 +433,8 @@ walkingSpeed denominator/FOV easing consumers 已闭合；movement-speed attribu
 独立拥有，符合 vanilla，五格全部闭合。
 SetTime 的 game-time/WorldClock-map wire、session holder identity、当前维度 default clock、merge/tick、
 ownership、render consumers 与 tests 已闭合；不再依赖 HashMap/wire 第一项，五格全部闭合。
-TickingStep 的 frozen step wire、consumption 与 tests 已全行闭合；TickingState 的 freeze 语义已消费，
-但 variable tick-rate 尚未驱动 client tick cadence，runtime 保持 partial。
+TickingStep 的 frozen step wire、consumption 与 tests 已全行闭合；TickingState 的 freeze/step 与
+variable tick-rate client cadence 已消费，正常态采用 `max(50ms, server ms/tick)`，五格全部闭合。
 ClearTitles/SetTitlesAnimation 已全行闭合；action-bar/title/subtitle 的 Component wire、timers 与 tests
 已闭合，但完整 rich Component style/translation 尚未保留，三条 text 的 canonical/runtime 保持 partial。
 SetChunkCacheCenter/Radius 的 VarInt wire、canonical view state 与 tests 已闭合；窗口外 chunk residency

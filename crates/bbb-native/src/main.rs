@@ -966,7 +966,7 @@ fn main() -> Result<()> {
                         &net_commands,
                         button,
                         state,
-                        client_animation_ticks.entity_partial_tick(std::time::Instant::now()),
+                        client_animation_ticks.entity_partial_tick(),
                     );
                 }
                 WindowEvent::MouseWheel { delta, .. } => {

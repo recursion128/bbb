@@ -3721,17 +3721,18 @@
       "runtime_side_effect": {
         "evidence": [
           "crates/bbb-world/src/level.rs#consume_running_render_ticks",
-          "crates/bbb-native/src/runtime.rs#world_ticking_milliseconds_per_tick"
+          "crates/bbb-native/src/runtime.rs#world_client_tick_interval",
+          "crates/bbb-native/src/runtime.rs#advance_entity_client_animations"
         ],
-        "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-        "status": "partial"
+        "status": "complete"
       },
       "tests": {
         "evidence": [
           "crates/bbb-protocol/src/packets/client_state/tests.rs#decodes_title_camera_and_ticking_packets",
           "crates/bbb-world/src/level.rs#consume_running_render_ticks_respects_frozen_tick_steps",
           "crates/bbb-net/src/probe/play.rs#probe_applies_world_time_weather_and_ticking_to_world",
-          "crates/bbb-native/src/runtime/tests.rs#hud_debug_overlay_projects_tps_server_brand_and_freeze_status"
+          "crates/bbb-native/src/runtime/tests.rs#entity_client_tick_cadence_tracks_normal_world_tick_rate",
+          "crates/bbb-native/src/runtime/tests.rs#entity_client_tick_cadence_preserves_residual_across_rate_changes_and_freeze"
         ],
         "status": "complete"
       }
