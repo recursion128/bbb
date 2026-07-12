@@ -435,6 +435,8 @@ play StartConfiguration 的 strict unit wire、pending chat ack 先发、level c
 transition/ack 与 online/probe/native tests 已全行闭合；bundle 内 terminal enforcement 仍由 bundle 行拥有。
 play Transfer 的 shared host/port wire、strict payload consumption、world projection 与 online/probe/native
 tests 已闭合；断开、closing-window late packet、transfer-state carry 与 Transfer-intent reconnect 保持 runtime partial。
+play TagQuery 的 transaction + nullable CompoundTag wire、bounded/strict NBT validation、world apply 与 F3+I
+matching/null/stale callback tests 已全行闭合；persistent entity Codec/SNBT 仍由各语义 owner 单独实现。
 
 完成标准：全部 vanilla 26.1 catalog entry 都有矩阵行；所有目标客户端适用项为
 `complete`，其余只有带 vanilla 依据的 `not-applicable` 或带重启判据的窄 `deferred`；

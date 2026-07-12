@@ -11337,3 +11337,10 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] decode/canonical/ownership/tests 闭合；vanilla `handleTransfer` 的 closing state、late
   StoreCookie/Transfer、断开只读化、transfer-state carry 与 Transfer-intent reconnect 尚未实现，故仅
   runtime 保持 partial。
+
+## 2026-07-12：play tag-query packet coverage audit
+
+- [x] 对照 `ClientboundTagQueryPacket` / `DebugQueryHandler.handleResponse` 锁定 transaction id + nullable
+  CompoundTag wire；protocol 保留完整 raw NBT，并验证 End/Compound root、深度/count 与 trailing bytes。
+- [x] packet 经唯一 play apply 写入 debug-query state；native F3+I 只消费 matching transaction，wrong/stale
+  response 保持 pending，null response 明确失败且不复制伪造命令。protocol/net/world/native 五格闭合。

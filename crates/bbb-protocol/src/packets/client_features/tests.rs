@@ -990,6 +990,20 @@ fn rejects_null_tag_query_with_trailing_bytes() {
         .contains("trailing bytes after null tag query nbt"));
 }
 
+#[test]
+fn rejects_compound_tag_query_with_trailing_bytes() {
+    let mut payload = Encoder::new();
+    payload.write_var_i32(14);
+    payload.write_bytes(&compound_with_string("name", "Chest"));
+    payload.write_u8(1);
+
+    let err = decode_play_clientbound(ids::play::CLIENTBOUND_TAG_QUERY, &payload.into_inner())
+        .unwrap_err();
+    assert!(err
+        .to_string()
+        .contains("trailing bytes after tag query nbt"));
+}
+
 fn item_stack(item_id: i32, count: i32) -> ItemStackSummary {
     ItemStackSummary {
         item_id: Some(item_id),
