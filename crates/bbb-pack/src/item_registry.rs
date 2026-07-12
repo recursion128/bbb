@@ -942,119 +942,10 @@ fn applies_tool_material_defaults(expression: &GeneratedJavaExpression) -> bool 
 }
 
 fn data_component_type_id_from_name(name: &str) -> Option<i32> {
-    Some(match name {
-        "CUSTOM_DATA" => 0,
-        "MAX_STACK_SIZE" => MAX_STACK_SIZE_COMPONENT_ID,
-        "MAX_DAMAGE" => MAX_DAMAGE_COMPONENT_ID,
-        "DAMAGE" => DAMAGE_COMPONENT_ID,
-        "UNBREAKABLE" => 4,
-        "USE_EFFECTS" => USE_EFFECTS_COMPONENT_ID,
-        "CUSTOM_NAME" => 6,
-        "MINIMUM_ATTACK_CHARGE" => MINIMUM_ATTACK_CHARGE_COMPONENT_ID,
-        "DAMAGE_TYPE" => DAMAGE_TYPE_COMPONENT_ID,
-        "ITEM_NAME" => ITEM_NAME_COMPONENT_ID,
-        "ITEM_MODEL" => ITEM_MODEL_COMPONENT_ID,
-        "LORE" => LORE_COMPONENT_ID,
-        "RARITY" => RARITY_COMPONENT_ID,
-        "ENCHANTMENTS" => ENCHANTMENTS_COMPONENT_ID,
-        "CAN_PLACE_ON" => 14,
-        "CAN_BREAK" => 15,
-        "ATTRIBUTE_MODIFIERS" => ATTRIBUTE_MODIFIERS_COMPONENT_ID,
-        "CUSTOM_MODEL_DATA" => 17,
-        "TOOLTIP_DISPLAY" => TOOLTIP_DISPLAY_COMPONENT_ID,
-        "REPAIR_COST" => REPAIR_COST_COMPONENT_ID,
-        "CREATIVE_SLOT_LOCK" => 20,
-        "ENCHANTMENT_GLINT_OVERRIDE" => 21,
-        "INTANGIBLE_PROJECTILE" => 22,
-        "FOOD" => FOOD_COMPONENT_ID,
-        "CONSUMABLE" => CONSUMABLE_COMPONENT_ID,
-        "USE_REMAINDER" => USE_REMAINDER_COMPONENT_ID,
-        "USE_COOLDOWN" => USE_COOLDOWN_COMPONENT_ID,
-        "DAMAGE_RESISTANT" => DAMAGE_RESISTANT_COMPONENT_ID,
-        "TOOL" => TOOL_COMPONENT_ID,
-        "WEAPON" => WEAPON_COMPONENT_ID,
-        "ATTACK_RANGE" => ATTACK_RANGE_COMPONENT_ID,
-        "ENCHANTABLE" => ENCHANTABLE_COMPONENT_ID,
-        "EQUIPPABLE" => EQUIPPABLE_COMPONENT_ID,
-        "REPAIRABLE" => REPAIRABLE_COMPONENT_ID,
-        "GLIDER" => 34,
-        "TOOLTIP_STYLE" => 35,
-        "DEATH_PROTECTION" => 36,
-        "BLOCKS_ATTACKS" => 37,
-        "PIERCING_WEAPON" => PIERCING_WEAPON_COMPONENT_ID,
-        "KINETIC_WEAPON" => KINETIC_WEAPON_COMPONENT_ID,
-        "SWING_ANIMATION" => SWING_ANIMATION_COMPONENT_ID,
-        "ADDITIONAL_TRADE_COST" => 41,
-        "STORED_ENCHANTMENTS" => 42,
-        "DYE" => 43,
-        "DYED_COLOR" => 44,
-        "MAP_COLOR" => 45,
-        "MAP_ID" => 46,
-        "MAP_DECORATIONS" => 47,
-        "MAP_POST_PROCESSING" => 48,
-        "CHARGED_PROJECTILES" => 49,
-        "BUNDLE_CONTENTS" => 50,
-        "POTION_CONTENTS" => 51,
-        "POTION_DURATION_SCALE" => 52,
-        "SUSPICIOUS_STEW_EFFECTS" => 53,
-        "WRITABLE_BOOK_CONTENT" => 54,
-        "WRITTEN_BOOK_CONTENT" => 55,
-        "TRIM" => 56,
-        "DEBUG_STICK_STATE" => 57,
-        "ENTITY_DATA" => ENTITY_DATA_COMPONENT_ID,
-        "BUCKET_ENTITY_DATA" => 59,
-        "BLOCK_ENTITY_DATA" => 60,
-        "INSTRUMENT" => 61,
-        "PROVIDES_TRIM_MATERIAL" => PROVIDES_TRIM_MATERIAL_COMPONENT_ID,
-        "OMINOUS_BOTTLE_AMPLIFIER" => 63,
-        "JUKEBOX_PLAYABLE" => JUKEBOX_PLAYABLE_COMPONENT_ID,
-        "PROVIDES_BANNER_PATTERNS" => 65,
-        "RECIPES" => 66,
-        "LODESTONE_TRACKER" => 67,
-        "FIREWORK_EXPLOSION" => 68,
-        "FIREWORKS" => 69,
-        "PROFILE" => 70,
-        "NOTE_BLOCK_SOUND" => 71,
-        "BANNER_PATTERNS" => 72,
-        "BASE_COLOR" => 73,
-        "POT_DECORATIONS" => 74,
-        "CONTAINER" => 75,
-        "BLOCK_STATE" => 76,
-        "BEES" => 77,
-        "LOCK" => 78,
-        "CONTAINER_LOOT" => 79,
-        "BREAK_SOUND" => BREAK_SOUND_COMPONENT_ID,
-        "VILLAGER_VARIANT" => 81,
-        "WOLF_VARIANT" => 82,
-        "WOLF_SOUND_VARIANT" => 83,
-        "WOLF_COLLAR" => 84,
-        "FOX_VARIANT" => 85,
-        "SALMON_SIZE" => 86,
-        "PARROT_VARIANT" => 87,
-        "TROPICAL_FISH_PATTERN" => 88,
-        "TROPICAL_FISH_BASE_COLOR" => 89,
-        "TROPICAL_FISH_PATTERN_COLOR" => 90,
-        "MOOSHROOM_VARIANT" => 91,
-        "RABBIT_VARIANT" => 92,
-        "PIG_VARIANT" => 93,
-        "PIG_SOUND_VARIANT" => 94,
-        "COW_VARIANT" => 95,
-        "COW_SOUND_VARIANT" => 96,
-        "CHICKEN_VARIANT" => 97,
-        "CHICKEN_SOUND_VARIANT" => 98,
-        "ZOMBIE_NAUTILUS_VARIANT" => 99,
-        "FROG_VARIANT" => 100,
-        "HORSE_VARIANT" => 101,
-        "PAINTING_VARIANT" => 102,
-        "LLAMA_VARIANT" => 103,
-        "AXOLOTL_VARIANT" => 104,
-        "CAT_VARIANT" => 105,
-        "CAT_SOUND_VARIANT" => 106,
-        "CAT_COLLAR" => 107,
-        "SHEEP_COLOR" => 108,
-        "SHULKER_COLOR" => 109,
-        _ => return None,
-    })
+    component_id::VANILLA_DATA_COMPONENT_TYPES
+        .iter()
+        .find(|entry| entry.constant_name == name)
+        .map(|entry| entry.type_id)
 }
 
 fn tool_material_for_durability(expression: &GeneratedJavaExpression) -> Result<Option<String>> {
@@ -1986,6 +1877,21 @@ fn minecraft_id(path: &str) -> Result<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn data_component_constant_names_delegate_to_generated_catalog() {
+        assert_eq!(component_id::VANILLA_DATA_COMPONENT_TYPES.len(), 110);
+        for entry in component_id::VANILLA_DATA_COMPONENT_TYPES {
+            assert_eq!(
+                data_component_type_id_from_name(entry.constant_name),
+                Some(entry.type_id),
+                "{}",
+                entry.constant_name
+            );
+        }
+        assert_eq!(data_component_type_id_from_name("UNKNOWN_COMPONENT"), None);
+        assert_eq!(data_component_type_id_from_name("pig_sound_variant"), None);
+    }
 
     #[test]
     fn loads_checked_in_vanilla_item_registry() {

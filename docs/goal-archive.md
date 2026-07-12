@@ -12430,3 +12430,11 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   effective damage/unbreakable 行为不变。
 - [x] source-structure test 扫描 `added_type_ids` / `removed_type_ids` membership calls，拒绝在
   item-model 生产文件重新引入 0..109 的裸 component type id；测试 fixture 数据不受限制。
+
+## 2026-07-12：Delegated item-registry component names to the catalog
+
+- [x] `bbb-pack` item declaration extractor 的 `DataComponents.CONSTANT -> type_id` 查询删除完整
+  0..109 手抄 match（含一项重复 arm），直接消费 protocol generated component catalog 已有的
+  `constant_name/type_id`；item default value、builder 识别与 runtime 行为保持原 owner。
+- [x] 110 项 generated constant name 全量 round-trip 与 unknown/case-sensitive 反向测试锁定查询
+  边界；新增 component 不再需要同步修改 pack 中央 match。
