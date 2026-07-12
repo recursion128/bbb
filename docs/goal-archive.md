@@ -11751,3 +11751,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] BlockEntityTagQuery/EntityTagQuery 的 transaction+target wire、F3+I request/permission gate、NetCommand/driver send 与 matching `ClientboundTagQuery` response consumption 已闭合。
 - [x] wrong transaction、null tag、entity disappeared 不写 clipboard；server response 保持完整 NBT 权威，不由 local projection 覆盖。
+
+## 2026-07-12：play serverbound bundle selected-item packet coverage audit
+
+- [x] `ServerboundSelectBundleItemPacket` 的 slot/index 双 VarInt wire、`-1` 取消与非法负数 gate、滚轮 wrap、shown-item-count bounds、本地 bundle 选择态、hover/click 取消、NetCommand/driver send 已闭合。
+- [x] vanilla 服务端仅把选择索引应用到当前 container menu，没有专用 acknowledgement；该维度明确标为 not-applicable，没有虚构响应或服务端状态。

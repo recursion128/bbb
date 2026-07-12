@@ -2319,29 +2319,52 @@
       "constant_name": "SERVERBOUND_BUNDLE_ITEM_SELECTED",
       "coverage": {
         "ack_response": {
-          "evidence": [],
+          "evidence": [
+            "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#handleBundleItemSelectedPacket"
+          ],
           "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "status": "not-applicable"
         },
         "command_surface": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-native/src/input/bundle.rs#handle_bundle_slot_mouse_scroll",
+            "crates/bbb-native/src/input/bundle.rs#handle_bundle_slot_hover_end",
+            "crates/bbb-native/src/input/bundle.rs#handle_bundle_slot_click",
+            "crates/bbb-native/src/input/commands.rs#queue_select_bundle_item_command",
+            "crates/bbb-net/src/driver/commands.rs#send_select_bundle_item"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "encoder": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/serverbound.rs#encode_play_select_bundle_item",
+            "vanilla:net/minecraft/network/protocol/game/ServerboundSelectBundleItemPacket.java#STREAM_CODEC"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "state_guard": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/client/inventory.rs#apply_local_select_bundle_item",
+            "crates/bbb-native/src/input/bundle.rs#bundle_item_index_for_scroll_matches_vanilla_selection_wrap",
+            "crates/bbb-native/src/input/bundle.rs#select_bundle_item_from_scroll_uses_shown_item_count_not_total_contents",
+            "crates/bbb-native/src/input/commands.rs#queues_select_bundle_item_command_and_rejects_invalid_index",
+            "vanilla:net/minecraft/client/gui/BundleMouseActions.java#toggleSelectedBundleItem"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_select_bundle_item_packet",
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_select_bundle_item_unselect_packet",
+            "crates/bbb-net/src/driver/commands/tests.rs#send_select_bundle_item_encodes_bundle_item_selected_packet",
+            "crates/bbb-native/src/input/bundle.rs#select_bundle_item_from_scroll_updates_world_and_queues_command",
+            "crates/bbb-world/src/client/inventory/tests.rs#local_bundle_selection_tracks_player_inventory_slot"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "serverbound",
