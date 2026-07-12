@@ -44,12 +44,10 @@ fn decodes_player_combat_kill_message() {
     let mut payload = Encoder::new();
     payload.write_var_i32(123);
     payload.write_bytes(&nbt_string_root("You died"));
+    let mut bytes = payload.into_inner();
 
-    let packet = decode_play_clientbound(
-        ids::play::CLIENTBOUND_PLAYER_COMBAT_KILL,
-        &payload.into_inner(),
-    )
-    .unwrap();
+    let packet =
+        decode_play_clientbound(ids::play::CLIENTBOUND_PLAYER_COMBAT_KILL, &bytes).unwrap();
     assert_eq!(
         packet,
         PlayClientbound::PlayerCombatKill(PlayerCombatKill {
@@ -57,6 +55,12 @@ fn decodes_player_combat_kill_message() {
             message: "You died".to_string(),
         })
     );
+    bytes.push(0);
+    let error =
+        decode_play_clientbound(ids::play::CLIENTBOUND_PLAYER_COMBAT_KILL, &bytes).unwrap_err();
+    assert!(error
+        .to_string()
+        .contains("trailing bytes after player combat kill packet"));
 }
 
 #[test]

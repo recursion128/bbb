@@ -11461,3 +11461,9 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] 对照 `ClientboundPlayerCombatEndPacket` 锁定 duration VarInt wire、trailing-byte rejection 与跨 crate 诊断链。
 - [x] `ClientPacketListener.handlePlayerCombatEnd` 在 26.1 为空；duration 只作为可观察 packet diagnostics 保存，
   不冒充客户端 combat runtime，canonical/runtime 两格标记 not-applicable。
+
+## 2026-07-12：play player-combat-kill packet coverage audit
+
+- [x] 对照 `ClientboundPlayerCombatKillPacket` 锁定 player id + trusted Component wire并测试 trailing rejection；
+  diagnostics 与跨 crate tests 闭合。
+- [x] 本地 player identity gate、DeathScreen/respawn 分支和完整 rich Component 尚未闭合，canonical/runtime 保持 partial。

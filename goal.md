@@ -471,6 +471,8 @@ play PlayerCombatEnter 的 unit wire、strict decode、world diagnostics 与跨 
 为空，故 canonical apply 与即时 runtime side effect 明确为 not-applicable。
 play PlayerCombatEnd 的 duration VarInt wire、strict decode、world diagnostics 与跨 crate tests 已闭合；vanilla 26.1
 handler 同样为空，canonical apply 与即时 runtime side effect 明确为 not-applicable。
+play PlayerCombatKill 的 player-id + trusted Component wire、strict decode、world diagnostics 与 tests 已闭合；本地
+player gate、DeathScreen/respawn 和完整 Component 保持 canonical/runtime partial。
 
 完成标准：全部 vanilla 26.1 catalog entry 都有矩阵行；所有目标客户端适用项为
 `complete`，其余只有带 vanilla 依据的 `not-applicable` 或带重启判据的窄 `deferred`；
