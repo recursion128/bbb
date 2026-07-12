@@ -3300,6 +3300,38 @@ mod tests {
         }
     }
 
+    #[test]
+    fn play_serverbound_signed_chat_command_keeps_production_signing_open() {
+        let ledger = vanilla_packet_coverage_26_1().unwrap();
+        let entry = ledger
+            .entries
+            .iter()
+            .find(|entry| {
+                entry.state == "play" && entry.constant_name == "SERVERBOUND_CHAT_COMMAND_SIGNED"
+            })
+            .expect("play serverbound signed chat command coverage row");
+        let complete: BTreeSet<_> = entry
+            .coverage
+            .iter()
+            .filter_map(|(dimension, cell)| {
+                (cell.status == PacketCoverageStatus::Complete).then_some(dimension.as_str())
+            })
+            .collect();
+
+        assert_eq!(complete, BTreeSet::from(["encoder"]));
+        assert_eq!(
+            entry.coverage["ack_response"].status,
+            PacketCoverageStatus::NotApplicable
+        );
+        for dimension in ["command_surface", "state_guard", "tests"] {
+            assert_eq!(
+                entry.coverage[dimension].status,
+                PacketCoverageStatus::Partial,
+                "{dimension}"
+            );
+        }
+    }
+
     fn state_name(state: PacketState) -> &'static str {
         match state {
             PacketState::Handshake => "handshake",

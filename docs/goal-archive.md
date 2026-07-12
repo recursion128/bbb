@@ -11771,3 +11771,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] `ServerboundChatCommandPacket` 的 UTF command wire、chat UI slash/empty/format/length gate、control/native/net send 与 vanilla server unsigned-command handler 已闭合。
 - [x] 同步 command tree 检出的 signable arguments 会分流到 `SERVERBOUND_CHAT_COMMAND_SIGNED`，不会混入本行；普通 command output/error 不是专用 acknowledgement。
+
+## 2026-07-12：play serverbound signed chat command packet coverage audit
+
+- [x] `ServerboundChatCommandSignedPacket` 的 command/timestamp/salt、最多 8 个 16-char name + 256-byte signature、20-bit last-seen update wire 与发送路径已审计，encoder 单格闭合。
+- [x] production 能按 command tree 分流并携带 last-seen，但仍构造空 argument signatures；RemoteChatSession/key-backed per-argument signing 与 secure-server integration 继续由 signed-chat ledger 开放，未把 unsigned fallback 冒充完成。
