@@ -590,6 +590,9 @@ back into a todo. Do not delete these.
 - ContainerSetContent follows the same inventory-menu-or-matching-active-menu
   authority gate; a mismatched packet must not update the carried item or create
   synthetic slots. Remaining ItemStack added-value semantics stay tracked above.
+- ContainerSetSlot also rejects mismatched nonzero menu ids. Remaining parity
+  includes creative-inventory remote-slot synchronization, hotbar pop-time
+  presentation, and the ItemStack added-value semantics tracked above.
 - `BeaconMenu`: confirm/cancel hover state, effect highlighted hover state,
   labels/tooltips.
 - `EnchantmentMenu`: animated book model, enchanting glyph text and its

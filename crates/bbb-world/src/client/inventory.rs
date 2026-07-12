@@ -717,12 +717,18 @@ impl InventoryState {
         &mut self,
         counters: &mut WorldCounters,
         packet: ProtocolContainerSetSlot,
-    ) {
+    ) -> bool {
         counters.container_slot_updates_received += 1;
         let container = if packet.container_id == INVENTORY_MENU_CONTAINER_ID {
-            &mut self.inventory_menu
+            self.inventory_menu_container()
+        } else if let Some(container) = self
+            .open_container
+            .as_mut()
+            .filter(|container| container.container_id == packet.container_id)
+        {
+            container
         } else {
-            self.ensure_container(packet.container_id)
+            return false;
         };
         container.state_id = packet.state_id;
         set_container_slot(
@@ -734,6 +740,7 @@ impl InventoryState {
             },
         );
         self.update_merchant_offer_count(counters);
+        true
     }
 
     pub(crate) fn apply_container_set_data(
@@ -1978,26 +1985,6 @@ impl InventoryState {
         &mut self.inventory_menu
     }
 
-    fn ensure_container(&mut self, container_id: i32) -> &mut ContainerState {
-        if container_id == INVENTORY_MENU_CONTAINER_ID {
-            return self.inventory_menu_container();
-        }
-
-        if self
-            .open_container
-            .as_ref()
-            .is_none_or(|container| container.container_id != container_id)
-        {
-            self.open_container = Some(ContainerState {
-                container_id,
-                ..ContainerState::default()
-            })
-        }
-        self.open_container
-            .as_mut()
-            .expect("container was initialized")
-    }
-
     fn update_inventory_slot_count(&mut self, counters: &mut WorldCounters) {
         counters.inventory_slots_tracked = self.player_slots.len();
     }
@@ -2076,7 +2063,7 @@ impl WorldStore {
         )
     }
 
-    pub fn apply_container_set_slot(&mut self, packet: ProtocolContainerSetSlot) {
+    pub fn apply_container_set_slot(&mut self, packet: ProtocolContainerSetSlot) -> bool {
         self.inventory
             .apply_container_set_slot(&mut self.counters, packet)
     }

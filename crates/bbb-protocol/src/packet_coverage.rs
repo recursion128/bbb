@@ -1882,6 +1882,29 @@ mod tests {
         );
     }
 
+    #[test]
+    fn play_container_slot_keeps_remaining_component_and_creative_semantics_open() {
+        let ledger = vanilla_packet_coverage_26_1().unwrap();
+        let entry = ledger
+            .entries
+            .iter()
+            .find(|entry| {
+                entry.state == "play" && entry.constant_name == "CLIENTBOUND_CONTAINER_SET_SLOT"
+            })
+            .expect("play container set slot coverage row");
+        let partial: BTreeSet<_> = entry
+            .coverage
+            .iter()
+            .filter_map(|(dimension, cell)| {
+                (cell.status == PacketCoverageStatus::Partial).then_some(dimension.as_str())
+            })
+            .collect();
+        assert_eq!(
+            partial,
+            BTreeSet::from(["canonical_apply", "runtime_side_effect"])
+        );
+    }
+
     fn state_name(state: PacketState) -> &'static str {
         match state {
             PacketState::Handshake => "handshake",

@@ -170,12 +170,18 @@ pub(super) fn decode_container_set_data(decoder: &mut Decoder<'_>) -> Result<Con
 }
 
 pub(super) fn decode_container_set_slot(decoder: &mut Decoder<'_>) -> Result<ContainerSetSlot> {
-    Ok(ContainerSetSlot {
+    let packet = ContainerSetSlot {
         container_id: decoder.read_var_i32()?,
         state_id: decoder.read_var_i32()?,
         slot: decoder.read_i16()?,
         item: decode_item_stack_summary(decoder)?,
-    })
+    };
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after container set slot packet".to_string(),
+        ));
+    }
+    Ok(packet)
 }
 
 pub(super) fn decode_open_screen(decoder: &mut Decoder<'_>) -> Result<OpenScreen> {
@@ -505,11 +511,9 @@ mod tests {
         payload.write_var_i32(99);
         payload.write_var_i32(0);
         payload.write_var_i32(0);
-        let packet = decode_play_clientbound(
-            ids::play::CLIENTBOUND_CONTAINER_SET_SLOT,
-            &payload.into_inner(),
-        )
-        .unwrap();
+        let mut bytes = payload.into_inner();
+        let packet =
+            decode_play_clientbound(ids::play::CLIENTBOUND_CONTAINER_SET_SLOT, &bytes).unwrap();
         assert_eq!(
             packet,
             PlayClientbound::ContainerSetSlot(ContainerSetSlot {
@@ -523,6 +527,12 @@ mod tests {
                 },
             })
         );
+        bytes.push(0);
+        let error =
+            decode_play_clientbound(ids::play::CLIENTBOUND_CONTAINER_SET_SLOT, &bytes).unwrap_err();
+        assert!(error
+            .to_string()
+            .contains("trailing bytes after container set slot packet"));
 
         let mut payload = Encoder::new();
         payload.write_var_i32(0);

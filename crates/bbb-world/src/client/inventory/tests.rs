@@ -219,6 +219,45 @@ fn container_content_only_updates_the_matching_active_menu() {
 }
 
 #[test]
+fn container_set_slot_only_updates_inventory_or_the_matching_active_menu() {
+    let mut store = WorldStore::new();
+    open_test_container(&mut store, 7);
+
+    assert!(!store.apply_container_set_slot(ProtocolContainerSetSlot {
+        container_id: 8,
+        state_id: 4,
+        slot: 1,
+        item: item_stack(20, 2),
+    }));
+    let container = store.inventory().open_container.as_ref().unwrap();
+    assert_eq!(container.container_id, 7);
+    assert_eq!(container.state_id, 0);
+    assert!(container.slots.is_empty());
+
+    assert!(store.apply_container_set_slot(ProtocolContainerSetSlot {
+        container_id: 0,
+        state_id: 5,
+        slot: INVENTORY_MENU_HOTBAR_START,
+        item: item_stack(21, 2),
+    }));
+    assert_eq!(
+        inventory_menu_slot_item(&store, INVENTORY_MENU_HOTBAR_START),
+        item_stack(21, 2)
+    );
+
+    assert!(store.apply_container_set_slot(ProtocolContainerSetSlot {
+        container_id: 7,
+        state_id: 6,
+        slot: 1,
+        item: item_stack(22, 3),
+    }));
+    let container = store.inventory().open_container.as_ref().unwrap();
+    assert_eq!(container.state_id, 6);
+    assert_eq!(container.slots[0].item, item_stack(22, 3));
+    assert_eq!(store.counters().container_slot_updates_received, 3);
+}
+
+#[test]
 fn mount_equipment_visibility_follows_vanilla_horse_type_tags() {
     assert_eq!(
         mount_visibility_for_entity(VANILLA_ENTITY_TYPE_HORSE_ID, Vec::new()),

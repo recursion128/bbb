@@ -11428,3 +11428,10 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   trailing-byte rejection。
 - [x] world 只对 inventory menu id 0 或匹配当前 active server menu 更新 slots/state/cursor；不匹配 packet 不再
   覆盖 cursor 或创建 synthetic menu。decode/ownership/tests 闭合，剩余 ItemStack component 语义保持 partial。
+
+## 2026-07-12：play container-set-slot packet coverage audit
+
+- [x] 对照 `ClientboundContainerSetSlotPacket` 锁定 container/state/slot/item wire并拒绝 trailing bytes；26.1 的
+  cursor/player-inventory 更新已由独立 packet 承担，不沿用旧版负 container-id 分支。
+- [x] world 只更新 id 0 inventory menu 或匹配当前 active server menu；不匹配 packet 不再创建 synthetic menu。
+  decode/ownership/tests 闭合，creative remote-slot/pop-time 与剩余 ItemStack component 语义保持 partial。
