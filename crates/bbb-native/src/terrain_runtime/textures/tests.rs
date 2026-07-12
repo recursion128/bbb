@@ -770,6 +770,37 @@ fn block_tint_uses_default_vanilla_color_classes() {
         ),
         TerrainTint::from_rgb_u8(0x91, 0xbd, 0x59)
     );
+    for block_name in ["minecraft:pink_petals", "minecraft:wildflowers"] {
+        assert_eq!(
+            textures.block_tint(
+                block_name,
+                bbb_world::TerrainMaterialClass::Opaque,
+                Some(1),
+                None,
+                None
+            ),
+            TerrainTint::from_rgb_u8(0x91, 0xbd, 0x59),
+            "{block_name}"
+        );
+    }
+    for block_name in [
+        "minecraft:cave_vines",
+        "minecraft:weeping_vines",
+        "minecraft:twisting_vines",
+        "minecraft:divine_block",
+    ] {
+        assert_eq!(
+            textures.block_tint(
+                block_name,
+                bbb_world::TerrainMaterialClass::Opaque,
+                Some(0),
+                None,
+                None
+            ),
+            TerrainTint::WHITE,
+            "{block_name}"
+        );
+    }
     assert_eq!(
         textures.block_tint(
             "minecraft:oak_leaves",

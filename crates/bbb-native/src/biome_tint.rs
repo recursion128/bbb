@@ -347,8 +347,10 @@ pub(crate) fn is_grass_tinted_block(block_name: &str) -> bool {
             | "minecraft:large_fern"
             | "minecraft:potted_fern"
             | "minecraft:bush"
+            | "minecraft:pink_petals"
+            | "minecraft:wildflowers"
             | "minecraft:sugar_cane"
-    ) || block_name.contains("vine")
+    )
 }
 
 pub(crate) fn is_foliage_tinted_block(block_name: &str) -> bool {
@@ -498,5 +500,29 @@ mod tests {
             ),
             SWAMP_GRASS_DARK
         );
+    }
+
+    #[test]
+    fn block_color_memberships_follow_vanilla_registrations() {
+        for block_name in [
+            "minecraft:grass_block",
+            "minecraft:pink_petals",
+            "minecraft:wildflowers",
+            "minecraft:sugar_cane",
+        ] {
+            assert!(is_grass_tinted_block(block_name), "{block_name}");
+        }
+        assert!(is_foliage_tinted_block("minecraft:vine"));
+        assert!(!is_grass_tinted_block("minecraft:vine"));
+        for block_name in [
+            "minecraft:cave_vines",
+            "minecraft:weeping_vines",
+            "minecraft:twisting_vines",
+            "minecraft:divine_block",
+            "example:vine",
+        ] {
+            assert!(!is_grass_tinted_block(block_name), "{block_name}");
+            assert!(!is_foliage_tinted_block(block_name), "{block_name}");
+        }
     }
 }

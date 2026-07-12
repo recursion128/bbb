@@ -12336,3 +12336,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   删除重复的 suffix/color/manual resource classifiers；`end_rod` 作为 rod shape 的独立精确成员
   与 generated lightning-rods 组合。原 property-aware shape 算法保持不变，vanilla 成员继续
   覆盖，custom suffix 与其他 namespace lookalike 不再被当作 vanilla block class/tag 成员。
+
+## 2026-07-12：Corrected vanilla block tint memberships
+
+- [x] 按 vanilla 26.1 `BlockColors.createDefault` 的实际 handler registrations 收缩 biome tint
+  membership：只有 `minecraft:vine` 使用 foliage source，cave/weeping/twisting vines 不再因
+  `contains("vine")` 被错误套用 grass tint；其他 namespace 与名称内含 vine 的 block 同样保持
+  white fallback。
+- [x] `pink_petals` 与 `wildflowers` 的第二 texture layer 现在进入 vanilla grass resolver；
+  tint membership、biome blend 与默认 colormap focused tests 锁定该边界。颜色采样、blend、
+  terrain-particle 特例仍由 native 手写语义拥有，没有把 Java source expression 当作算法。
