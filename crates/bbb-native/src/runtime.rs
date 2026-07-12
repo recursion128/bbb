@@ -16,6 +16,10 @@ use bbb_net::{NetCommand, NetEvent};
 use bbb_protocol::{
     codec::Decoder,
     entity_types::{VANILLA_ENTITY_TYPE_CREEPER_ID, VANILLA_ENTITY_TYPE_ENDERMAN_ID},
+    heightmap_types::{
+        VANILLA_HEIGHTMAP_MOTION_BLOCKING_ID, VANILLA_HEIGHTMAP_MOTION_BLOCKING_NO_LEAVES_ID,
+        VANILLA_HEIGHTMAP_OCEAN_FLOOR_ID, VANILLA_HEIGHTMAP_WORLD_SURFACE_ID,
+    },
     packets::{
         AdvancementFrameType, GameType, ItemCostSummary, ItemStackSummary,
         MapPostProcessingSummary, RemoteDebugSampleType, SlotDisplaySummary, Vec3d,
@@ -179,14 +183,6 @@ const VANILLA_END_SKY_LIGHT_COLOR: [f32; 3] = rgb24(-5_480_243);
 const VANILLA_END_AMBIENT_LIGHT_COLOR: [f32; 3] = rgb24(-12_630_209);
 const VANILLA_LIGHTMAP_DEFAULT_DAY_TIME: i64 = 6_000;
 const VANILLA_LIGHTMAP_DAY_PERIOD_TICKS: i64 = 24_000;
-const VANILLA_HEIGHTMAP_WORLD_SURFACE_ID: i32 =
-    bbb_protocol::heightmap_types::VANILLA_HEIGHTMAP_WORLD_SURFACE_ID;
-const VANILLA_HEIGHTMAP_OCEAN_FLOOR_ID: i32 =
-    bbb_protocol::heightmap_types::VANILLA_HEIGHTMAP_OCEAN_FLOOR_ID;
-const VANILLA_HEIGHTMAP_MOTION_BLOCKING_ID: i32 =
-    bbb_protocol::heightmap_types::VANILLA_HEIGHTMAP_MOTION_BLOCKING_ID;
-const VANILLA_HEIGHTMAP_MOTION_BLOCKING_NO_LEAVES_ID: i32 =
-    bbb_protocol::heightmap_types::VANILLA_HEIGHTMAP_MOTION_BLOCKING_NO_LEAVES_ID;
 const VANILLA_TIMELINE_NIGHT_SKY_LIGHT_COLOR: i32 = argb_color(255, 122, 122, 255);
 const VANILLA_WEATHER_SKY_LIGHT_FACTOR: f32 = 0.24;
 const VANILLA_WEATHER_RAIN_ALPHA: f32 = 0.3125;

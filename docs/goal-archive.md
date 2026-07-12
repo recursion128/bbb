@@ -12632,3 +12632,9 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] world chunk/apply/audio 与 native event dispatcher 删除四个本地 Vault type-id alias，统一直接
   消费 protocol generated block-entity catalog constant；Vault 粒子、音频与事件分发语义不变。
+
+## 2026-07-12：Removed duplicate heightmap ID aliases
+
+- [x] native runtime 删除四个本地 heightmap type-id const alias，world chunk heightmap 改为窄
+  re-export；所有消费者直接引用 protocol generated catalog 常量，client/server height debug
+  选择顺序与 motion-blocking 更新语义不变。

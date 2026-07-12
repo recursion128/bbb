@@ -7,8 +7,7 @@ use crate::{
 
 use super::palette::packed_long_len;
 
-pub(super) const VANILLA_HEIGHTMAP_MOTION_BLOCKING_ID: i32 =
-    bbb_protocol::heightmap_types::VANILLA_HEIGHTMAP_MOTION_BLOCKING_ID;
+pub(super) use bbb_protocol::heightmap_types::VANILLA_HEIGHTMAP_MOTION_BLOCKING_ID;
 
 const VANILLA_HEIGHTMAP_KIND_COUNT: usize = 6;
 const VANILLA_HEIGHTMAP_ENTRY_COUNT: usize = 16 * 16;
