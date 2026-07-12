@@ -24,6 +24,7 @@ use serde::{Deserialize, Serialize};
 
 pub(crate) use super::schema::VANILLA_ENTITY_POSE_DATA_ID as ENTITY_DATA_POSE_ID;
 use super::schema::{
+    vanilla_entity_metadata_type_is_living,
     VANILLA_AGEABLE_MOB_BABY_DATA_ID as AGEABLE_MOB_BABY_DATA_ID,
     VANILLA_AGEABLE_MOB_DEFAULT_BABY as AGEABLE_MOB_DEFAULT_BABY,
     VANILLA_ARMOR_STAND_CLIENT_FLAGS_DATA_ID as ARMOR_STAND_CLIENT_FLAGS_DATA_ID,
@@ -1148,10 +1149,13 @@ fn sanitize_vanilla_scale(value: f64) -> f64 {
     }
 }
 
+/// Whether the entity uses the shared living-entity metadata and presentation path.
+///
+/// The generated class catalog proves that the ender dragon inherits `LivingEntity`, but vanilla
+/// gives it a dedicated renderer/lifecycle path rather than the generic 20-tick living death flip.
 pub(crate) fn vanilla_living_entity_type(entity_type_id: i32) -> bool {
-    VANILLA_LIVING_ENTITY_TYPE_IDS
-        .binary_search(&entity_type_id)
-        .is_ok()
+    entity_type_id != VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID
+        && vanilla_entity_metadata_type_is_living(entity_type_id)
 }
 
 /// Vanilla entity classes that inherit `Animal` and therefore use
@@ -1816,100 +1820,4 @@ const VANILLA_ENTITY_PICK_BOUNDS: &[(i32, EntityPickBoundsState)] = &[
     (153, pick(0.6, 1.95, 0.0)),      // minecraft:zombie_villager
     (154, pick(0.6, 1.95, 0.0)),      // minecraft:zombified_piglin
     (155, pick(0.6, 1.8, 0.0)),       // minecraft:player
-];
-
-// IDs are vanilla 26.1 EntityType registry ids whose client class extends
-// LivingEntity. ClientboundUpdateAttributes is only valid for this set.
-const VANILLA_LIVING_ENTITY_TYPE_IDS: &[i32] = &[
-    2,   // minecraft:allay
-    4,   // minecraft:armadillo
-    5,   // minecraft:armor_stand
-    7,   // minecraft:axolotl
-    10,  // minecraft:bat
-    11,  // minecraft:bee
-    14,  // minecraft:blaze
-    16,  // minecraft:bogged
-    17,  // minecraft:breeze
-    19,  // minecraft:camel
-    20,  // minecraft:camel_husk
-    21,  // minecraft:cat
-    22,  // minecraft:cave_spider
-    26,  // minecraft:chicken
-    27,  // minecraft:cod
-    28,  // minecraft:copper_golem
-    30,  // minecraft:cow
-    31,  // minecraft:creaking
-    32,  // minecraft:creeper
-    35,  // minecraft:dolphin
-    36,  // minecraft:donkey
-    38,  // minecraft:drowned
-    40,  // minecraft:elder_guardian
-    41,  // minecraft:enderman
-    42,  // minecraft:endermite
-    46,  // minecraft:evoker
-    54,  // minecraft:fox
-    55,  // minecraft:frog
-    57,  // minecraft:ghast
-    58,  // minecraft:happy_ghast
-    59,  // minecraft:giant
-    61,  // minecraft:glow_squid
-    62,  // minecraft:goat
-    63,  // minecraft:guardian
-    64,  // minecraft:hoglin
-    66,  // minecraft:horse
-    67,  // minecraft:husk
-    68,  // minecraft:illusioner
-    70,  // minecraft:iron_golem
-    78,  // minecraft:llama
-    80,  // minecraft:magma_cube
-    83,  // minecraft:mannequin
-    86,  // minecraft:mooshroom
-    87,  // minecraft:mule
-    88,  // minecraft:nautilus
-    91,  // minecraft:ocelot
-    96,  // minecraft:panda
-    97,  // minecraft:parched
-    98,  // minecraft:parrot
-    99,  // minecraft:phantom
-    100, // minecraft:pig
-    101, // minecraft:piglin
-    102, // minecraft:piglin_brute
-    103, // minecraft:pillager
-    104, // minecraft:polar_bear
-    107, // minecraft:pufferfish
-    108, // minecraft:rabbit
-    109, // minecraft:ravager
-    110, // minecraft:salmon
-    111, // minecraft:sheep
-    112, // minecraft:shulker
-    114, // minecraft:silverfish
-    115, // minecraft:skeleton
-    116, // minecraft:skeleton_horse
-    117, // minecraft:slime
-    119, // minecraft:sniffer
-    121, // minecraft:snow_golem
-    124, // minecraft:spider
-    127, // minecraft:squid
-    128, // minecraft:stray
-    129, // minecraft:strider
-    130, // minecraft:tadpole
-    134, // minecraft:trader_llama
-    136, // minecraft:tropical_fish
-    137, // minecraft:turtle
-    138, // minecraft:vex
-    139, // minecraft:villager
-    140, // minecraft:vindicator
-    141, // minecraft:wandering_trader
-    142, // minecraft:warden
-    144, // minecraft:witch
-    145, // minecraft:wither
-    146, // minecraft:wither_skeleton
-    148, // minecraft:wolf
-    149, // minecraft:zoglin
-    150, // minecraft:zombie
-    151, // minecraft:zombie_horse
-    152, // minecraft:zombie_nautilus
-    153, // minecraft:zombie_villager
-    154, // minecraft:zombified_piglin
-    155, // minecraft:player
 ];

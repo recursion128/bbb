@@ -216,6 +216,7 @@ pub struct VanillaEntityTypeMetadataCatalogEntry {
     pub resource_id: &'static str,
     pub runtime_class: Option<&'static str>,
     pub schema_class: Option<&'static str>,
+    pub is_living: bool,
     pub diagnostic: Option<&'static str>,
 }
 
@@ -303,6 +304,17 @@ pub fn vanilla_entity_metadata_unique_accessor_for_entity_type_and_serializer(
     }
 }
 
+/// Returns whether the generated vanilla runtime class inherits `LivingEntity`.
+///
+/// This is class/inheritance catalog data only; living-entity behavior remains owned by the
+/// world client simulation and presentation modules.
+pub fn vanilla_entity_metadata_type_is_living(entity_type_id: i32) -> bool {
+    VANILLA_ENTITY_TYPE_METADATA_26_1
+        .get(usize::try_from(entity_type_id).unwrap_or(usize::MAX))
+        .map(|entry| entry.is_living)
+        .unwrap_or(false)
+}
+
 pub const fn vanilla_minecart_default_display_offset(entity_type_id: i32) -> i32 {
     match entity_type_id {
         VANILLA_ENTITY_TYPE_CHEST_MINECART_ID => VANILLA_CHEST_MINECART_DEFAULT_DISPLAY_OFFSET,
@@ -318,7 +330,11 @@ mod tests {
     use bbb_protocol::entity_data_serializers::{
         vanilla_entity_data_serializer_for_constant_name, VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
     };
-    use bbb_protocol::entity_types::VANILLA_ENTITY_TYPES;
+    use bbb_protocol::entity_types::{
+        VANILLA_ENTITY_TYPES, VANILLA_ENTITY_TYPE_ARMOR_STAND_ID,
+        VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID, VANILLA_ENTITY_TYPE_MINECART_ID,
+        VANILLA_ENTITY_TYPE_PLAYER_ID,
+    };
 
     use super::*;
 
@@ -412,6 +428,30 @@ mod tests {
             assert!(entry.schema_class.is_some());
             assert_eq!(entry.diagnostic, None);
         }
+        assert_eq!(
+            VANILLA_ENTITY_TYPE_METADATA_26_1
+                .iter()
+                .filter(|entry| entry.is_living)
+                .count(),
+            92
+        );
+        assert!(vanilla_entity_metadata_type_is_living(
+            VANILLA_ENTITY_TYPE_PLAYER_ID
+        ));
+        assert!(vanilla_entity_metadata_type_is_living(
+            VANILLA_ENTITY_TYPE_ARMOR_STAND_ID
+        ));
+        assert!(vanilla_entity_metadata_type_is_living(
+            VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID
+        ));
+        assert!(!vanilla_entity_metadata_type_is_living(
+            VANILLA_ENTITY_TYPE_MINECART_ID
+        ));
+        assert!(!vanilla_entity_metadata_type_is_living(-1));
+        assert!(!vanilla_entity_metadata_type_is_living(157));
+
+        let old_table = ["VANILLA_LIVING_", "ENTITY_TYPE_IDS"].concat();
+        assert!(!include_str!("dimensions.rs").contains(&old_table));
     }
 
     #[test]

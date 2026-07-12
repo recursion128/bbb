@@ -12475,3 +12475,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] native recipe-book crafting/furnace/blast-furnace/smoker tab 删除 0..9 手抄 category ordinal，
   search-tab 组合继续保留 `SearchRecipeBookCategory` 的呈现顺序并统一引用 protocol generated aliases；
   反向门禁拒绝生产代码重新声明同名 category ID 表。
+
+## 2026-07-12：Derived living-entity membership from generated inheritance
+
+- [x] entity metadata generator 根据 157/157 runtime class 与 checked-in superclass 图派生
+  `is_living` descriptor 属性；world 的高频查询改为按 entity type id 直接读取 generated catalog，删除
+  91 项手抄 registry-id 表并增加反向门禁。
+- [x] 集合差分发现旧表漏掉 `minecraft:ender_dragon`；vanilla 26.1 `EnderDragon extends Mob`、
+  `Mob extends LivingEntity` 的源码链确认 generated 92 项 class-membership 结果正确；world 的通用 living
+  presentation gate 保留末影龙这一项窄语义排除，因为 vanilla 使用独立 200-tick dragon death lifecycle，
+  不走 generic 20-tick living death flip。未在本切片扩张 AI 或服务端行为。
