@@ -599,6 +599,8 @@ back into a todo. Do not delete these.
 - SetPlayerInventory now limits canonical state to vanilla inventory/equipment
   slots 0..42. Tutorial pickup presentation and remaining ItemStack added-value
   semantics are still open.
+- PlayerCombatEnter is a strict unit packet whose 26.1 client handler is empty;
+  its diagnostic counter is not evidence of an additional combat-mode runtime.
 - `BeaconMenu`: confirm/cancel hover state, effect highlighted hover state,
   labels/tooltips.
 - `EnchantmentMenu`: animated book model, enchanting glyph text and its

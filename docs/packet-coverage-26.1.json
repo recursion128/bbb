@@ -7620,29 +7620,46 @@
       "constant_name": "CLIENTBOUND_PLAYER_COMBAT_ENTER",
       "coverage": {
         "canonical_apply": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/client/combat.rs#apply_player_combat_enter",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handlePlayerCombatEnter"
+          ],
+          "gap": "docs/unsupported-features.md#packet-canonical-state",
+          "status": "not-applicable"
         },
         "decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/player_actions/tests.rs#decodes_player_combat_enter_empty_packet",
+            "crates/bbb-protocol/src/packets/player_actions/tests.rs#rejects_player_combat_enter_with_trailing_bytes",
+            "vanilla:net/minecraft/network/protocol/game/ClientboundPlayerCombatEnterPacket.java#STREAM_CODEC"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "ownership": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/play_apply.rs#PlayClientbound::PlayerCombatEnter"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "runtime_side_effect": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handlePlayerCombatEnter"
+          ],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "not-applicable"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/player_actions/tests.rs#decodes_player_combat_enter_empty_packet",
+            "crates/bbb-net/src/event_stream.rs#play_stats_cooldown_boss_and_combat_packets_emit_matching_events_without_responses",
+            "crates/bbb-net/src/probe/play.rs#probe_applies_player_combat_packets_to_world",
+            "crates/bbb-world/src/client/combat.rs#tracks_last_player_combat_event_and_counters",
+            "crates/bbb-native/src/runtime/events/tests/entity_and_inventory_counters.rs#player_action_events_update_snapshot_counters"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "clientbound",

@@ -11448,3 +11448,10 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] 对照 `ClientboundSetPlayerInventoryPacket` 锁定 slot VarInt + optional ItemStack wire并拒绝 trailing bytes。
 - [x] world 只接受 vanilla `Inventory.setItem` 可观察的 0..35 inventory 与 36..42 equipment mapping；负数和未知
   正 slot 不再进入 synthetic player inventory。decode/ownership/tests 闭合，tutorial/component 语义保持 partial。
+
+## 2026-07-12：play player-combat-enter packet coverage audit
+
+- [x] 对照 `ClientboundPlayerCombatEnterPacket` 锁定 unit wire与 trailing-byte rejection；protocol/net/world/native
+  tests 覆盖 packet 传递和诊断 counter。
+- [x] `ClientPacketListener.handlePlayerCombatEnter` 在 26.1 为空；不虚构 combat-mode state 或 presentation，
+  canonical/runtime 两格以 vanilla 证据标记 not-applicable。
