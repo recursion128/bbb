@@ -4279,6 +4279,32 @@ mod tests {
         }
     }
 
+    #[test]
+    fn play_serverbound_spectate_entity_keeps_spectator_menu_open() {
+        let ledger = vanilla_packet_coverage_26_1().unwrap();
+        let entry = ledger
+            .entries
+            .iter()
+            .find(|entry| {
+                entry.state == "play" && entry.constant_name == "SERVERBOUND_SPECTATE_ENTITY"
+            })
+            .expect("play serverbound spectate entity coverage row");
+        for dimension in ["ack_response", "encoder", "state_guard"] {
+            assert_eq!(
+                entry.coverage[dimension].status,
+                PacketCoverageStatus::Complete,
+                "{dimension}"
+            );
+        }
+        for dimension in ["command_surface", "tests"] {
+            assert_eq!(
+                entry.coverage[dimension].status,
+                PacketCoverageStatus::Partial,
+                "{dimension}"
+            );
+        }
+    }
+
     fn state_name(state: PacketState) -> &'static str {
         match state {
             PacketState::Handshake => "handshake",

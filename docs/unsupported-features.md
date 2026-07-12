@@ -423,6 +423,11 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
 - Render tracked waypoints through the vanilla locator contextual bar: load
   waypoint-style assets, derive distance/yaw/pitch indicators, and apply
   `Gui.nextContextualInfoState` priority rules.
+- Implement the multiplayer `SpectatorGui` menu surface: root/player/team
+  categories, eligible-target filtering, paging, hotbar selection and fade/
+  close behavior. Spectator crosshair-click + `ServerboundSpectateEntityPacket`
+  and server-confirmed SetCamera handling are covered, but that shortcut and a
+  maintenance command do not replace the vanilla spectator menu.
 - Preserve written-book filtered pages and full Component/style/click-event
   semantics in `BookViewScreen`; the current OpenBook path gates on the held
   written/writable component and supports literal-page navigation, but flattens

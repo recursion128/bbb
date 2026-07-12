@@ -11976,3 +11976,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] BlockPos + front/back bool + exactly four UTF lines wire、control/runtime/native editor command path、front/back server preload、submit 与 server block-entity update authority 已反向核对；command/encoder 闭合。
 - [x] server text filtering/rich sign confirmation、90-pixel font-width、clipboard/IME、sign removal/distance close parity 仍未闭合；ack/state/tests 保持 partial，未把当前 character-count guard 冒充 vanilla 宽度限制。
+
+## 2026-07-12：play serverbound spectate-entity coverage audit
+
+- [x] entity VarInt wire、spectator crosshair-click + control/runtime/driver path、local spectator guard、server loaded/spectator/range/world-border/pickable authority 与 clientbound SetCamera correction 已反向核对；ack/encoder/state 闭合。
+- [x] vanilla SpectatorGui 的 player/team categories、filtering、paging、hotbar selection/fade/close surface 尚未实现；command/tests 保持 partial，未把 crosshair shortcut 与 maintenance command 误标为完整 spectator menu。
