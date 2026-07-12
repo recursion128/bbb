@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass
 
 from block_registry_catalog_extractor import field_constant, resolve_block_resource_path
@@ -33,25 +32,67 @@ def _fail(source: JavaSource, expression: JavaExpression, message: str) -> None:
     )
 
 
-def _string(source: JavaSource, expression: JavaExpression) -> str:
-    if expression.node.type != "string_literal":
-        _fail(source, expression, "expected string literal block resource path")
-    try:
-        value = json.loads(source.text(expression.node))
-    except (json.JSONDecodeError, TypeError) as error:
-        _fail(source, expression, f"invalid Java string literal: {error}")
-    if not isinstance(value, str) or not value:
-        _fail(source, expression, "expected non-empty block resource path")
-    return value
-
-
 def _builder_property_blocks(
-    source: JavaSource, property_name: str, expected_count: int
+    source: JavaSource,
+    property_name: str,
+    expected_count: int,
+    block_id_constants: dict[str, str] | None = None,
+    include_property_helpers: bool = False,
 ) -> list[BlockMembershipEntry]:
+    property_helpers: set[str] = set()
+    if include_property_helpers:
+        for method in source.methods_for("net.minecraft.world.level.block.Blocks"):
+            if method.body is None:
+                continue
+            property_calls = [
+                call
+                for call in source.calls
+                if method.span.start_byte <= call.span.start_byte
+                and call.span.end_byte <= method.span.end_byte
+                and call.name == property_name
+            ]
+            if not property_calls:
+                continue
+            return_type = method.node.child_by_field_name("type")
+            if return_type is None or source.expression(return_type).canonical.replace(
+                " ", ""
+            ) not in {"Properties", "BlockBehaviour.Properties"}:
+                _fail(
+                    source,
+                    source.expression(method.node),
+                    f"unsupported {property_name} registration helper",
+                )
+            return_statements = [
+                node
+                for node in descendants(method.node)
+                if node.type == "return_statement"
+            ]
+            if (
+                len(return_statements) != 1
+                or len(return_statements[0].named_children) != 1
+                or return_statements[0].named_children[0].type != "method_invocation"
+                or not all(
+                    return_statements[0].start_byte <= call.span.start_byte
+                    and call.span.end_byte <= return_statements[0].end_byte
+                    for call in property_calls
+                )
+            ):
+                _fail(
+                    source,
+                    source.expression(method.node),
+                    f"{property_name} registration helper must return one "
+                    "unconditional call chain",
+                )
+            property_helpers.add(method.name)
+
     entries: list[BlockMembershipEntry] = []
     for field in source.fields_for("net.minecraft.world.level.block.Blocks"):
         initializer = field.initializer
-        if initializer is None or initializer.node.type != "method_invocation":
+        if (
+            field.type_spelling != "Block"
+            or initializer is None
+            or initializer.node.type != "method_invocation"
+        ):
             continue
         calls = [
             call
@@ -59,7 +100,18 @@ def _builder_property_blocks(
             if initializer.span.start_byte <= call.span.start_byte
             and call.span.end_byte <= initializer.span.end_byte
         ]
-        if not any(call.name == property_name for call in calls):
+        if not any(
+            call.name == property_name
+            or (
+                call.name in property_helpers
+                and (
+                    call.qualifier is None
+                    or call.qualifier.canonical.replace(" ", "")
+                    in {"Blocks", "net.minecraft.world.level.block.Blocks"}
+                )
+            )
+            for call in calls
+        ):
             continue
         register_calls = [call for call in calls if call.name == "register"]
         if len(register_calls) != 1 or not register_calls[0].arguments:
@@ -67,9 +119,37 @@ def _builder_property_blocks(
         entries.append(
             BlockMembershipEntry(
                 field.name,
-                "minecraft:" + _string(source, register_calls[0].arguments[0]),
+                "minecraft:"
+                + resolve_block_resource_path(
+                    source,
+                    register_calls[0].arguments[0],
+                    block_id_constants or {},
+                ),
             )
         )
+
+    selected_constants = {entry.constant_name for entry in entries}
+    for field in source.fields_for("net.minecraft.world.level.block.Blocks"):
+        if field.initializer is None or field.name in selected_constants:
+            continue
+        for call in source.calls:
+            if not (
+                field.initializer.span.start_byte <= call.span.start_byte
+                and call.span.end_byte <= field.initializer.span.end_byte
+                and call.name in {"ofFullCopy", "ofLegacyCopy"}
+                and call.arguments
+            ):
+                continue
+            copied_constant = (
+                call.arguments[0].canonical.replace(" ", "").rsplit(".", 1)[-1]
+            )
+            if copied_constant in selected_constants:
+                _fail(
+                    source,
+                    call.arguments[0],
+                    f"{field.name} copies {property_name} from {copied_constant}; "
+                    "copy propagation requires an explicit resolver",
+                )
 
     if len(entries) != expected_count:
         raise BlockMembershipCatalogExtractionError(
@@ -91,6 +171,20 @@ def no_terrain_particle_blocks(
     source: JavaSource, expected_count: int = 2
 ) -> list[BlockMembershipEntry]:
     return _builder_property_blocks(source, "noTerrainParticles", expected_count)
+
+
+def no_collision_blocks(
+    source: JavaSource,
+    block_id_constants: dict[str, str],
+    expected_count: int = 255,
+) -> list[BlockMembershipEntry]:
+    return _builder_property_blocks(
+        source,
+        "noCollision",
+        expected_count,
+        block_id_constants,
+        include_property_helpers=True,
+    )
 
 
 def air_blocks(

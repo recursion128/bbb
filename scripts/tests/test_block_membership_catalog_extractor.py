@@ -16,6 +16,7 @@ from block_membership_catalog_extractor import (  # noqa: E402
     constructor_family_blocks,
     constructor_types_extending,
     invisible_render_shape_constructor_types,
+    no_collision_blocks,
     no_terrain_particle_blocks,
 )
 from vanilla_java_source import parse_source  # noqa: E402
@@ -113,6 +114,70 @@ class Blocks {
             r"Blocks\.java: expected 2 noTerrainParticles blocks, extracted 1",
         ):
             no_terrain_particle_blocks(source)
+
+    def test_no_collision_membership_resolves_helpers_and_block_ids(self) -> None:
+        source = parse_source(
+            "net/minecraft/world/level/block/Blocks.java",
+            b'''package net.minecraft.world.level.block;
+class Blocks {
+  static final Block DIRECT = register(
+      "direct", Block::new, BlockBehaviour.Properties.of().noCollision());
+  static final Block CONSTANT = register(
+      BlockIds.CONSTANT, Block::new, BlockBehaviour.Properties.of().noCollision());
+  static final Block HELPER = register(
+      "helper", Block::new, buttonProperties());
+  static final Block SOLID = register(
+      "solid", Block::new, BlockBehaviour.Properties.of());
+  private static BlockBehaviour.Properties buttonProperties() {
+    return BlockBehaviour.Properties.of().noCollision();
+  }
+}''',
+        )
+        self.assertEqual(
+            [
+                entry.resource_id
+                for entry in no_collision_blocks(
+                    source, {"CONSTANT": "constant"}, 3
+                )
+            ],
+            ["minecraft:direct", "minecraft:constant", "minecraft:helper"],
+        )
+
+    def test_no_collision_membership_rejects_unresolved_copy_propagation(self) -> None:
+        source = parse_source(
+            "net/minecraft/world/level/block/Blocks.java",
+            b'''package net.minecraft.world.level.block;
+class Blocks {
+  static final Block BASE = register(
+      "base", Block::new, BlockBehaviour.Properties.of().noCollision());
+  static final Block COPY = register(
+      "copy", Block::new, BlockBehaviour.Properties.ofFullCopy(BASE));
+}''',
+        )
+        with self.assertRaisesRegex(
+            BlockMembershipCatalogExtractionError,
+            "COPY copies noCollision from BASE",
+        ):
+            no_collision_blocks(source, {}, 1)
+
+    def test_no_collision_membership_rejects_conditional_property_helper(self) -> None:
+        source = parse_source(
+            "net/minecraft/world/level/block/Blocks.java",
+            b'''package net.minecraft.world.level.block;
+class Blocks {
+  static final Block VALUE = register("value", Block::new, properties(true));
+  private static BlockBehaviour.Properties properties(boolean empty) {
+    return empty
+        ? BlockBehaviour.Properties.of().noCollision()
+        : BlockBehaviour.Properties.of();
+  }
+}''',
+        )
+        with self.assertRaisesRegex(
+            BlockMembershipCatalogExtractionError,
+            "must return one unconditional call chain",
+        ):
+            no_collision_blocks(source, {}, 1)
 
     def test_constructor_family_uses_cst_lambdas_and_method_references(self) -> None:
         source = parse_source(

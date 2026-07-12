@@ -15,6 +15,7 @@ from block_membership_catalog_extractor import (
     constructor_family_blocks,
     constructor_types_extending,
     invisible_render_shape_constructor_types,
+    no_collision_blocks,
     no_terrain_particle_blocks,
 )
 from block_registry_catalog_extractor import extract_block_id_constants
@@ -64,7 +65,6 @@ BLOCK_TAG_CATALOGS = (
     ("VANILLA_DOOR_BLOCKS", "minecraft:doors", 21),
     ("VANILLA_TRAPDOOR_BLOCKS", "minecraft:trapdoors", 21),
     ("VANILLA_RAIL_BLOCKS", "minecraft:rails", 4),
-    ("VANILLA_NO_COLLISION_SIGN_BLOCKS", "minecraft:all_signs", 48),
     ("VANILLA_STANDING_SIGN_BLOCKS", "minecraft:standing_signs", 12),
     ("VANILLA_WALL_SIGN_BLOCKS", "minecraft:wall_signs", 12),
     ("VANILLA_BUTTON_BLOCKS", "minecraft:buttons", 14),
@@ -73,10 +73,7 @@ BLOCK_TAG_CATALOGS = (
         "minecraft:pressure_plates",
         16,
     ),
-    ("VANILLA_NO_COLLISION_BANNER_BLOCKS", "minecraft:banners", 32),
-    ("VANILLA_NO_COLLISION_SMALL_FLOWER_BLOCKS", "minecraft:small_flowers", 17),
     ("VANILLA_CROP_BLOCKS", "minecraft:crops", 8),
-    ("VANILLA_NO_COLLISION_FIRE_BLOCKS", "minecraft:fire", 2),
 )
 
 BLOCK_TAG_UNION_CATALOGS = (
@@ -139,30 +136,6 @@ CONSTRUCTOR_FAMILY_CATALOGS = (
             }
         ),
         5,
-    ),
-    (
-        "VANILLA_NO_COLLISION_CROP_SUPPLEMENT_BLOCKS",
-        frozenset({"NetherWartBlock", "AttachedStemBlock", "SugarCaneBlock"}),
-        4,
-    ),
-    (
-        "VANILLA_NO_COLLISION_WIRE_BLOCKS",
-        frozenset({"RedStoneWireBlock", "TripWireBlock", "TripWireHookBlock"}),
-        3,
-    ),
-    (
-        "VANILLA_NO_COLLISION_THIN_OVERLAY_BLOCKS",
-        frozenset(
-            {
-                "FlowerBedBlock",
-                "LeafLitterBlock",
-                "SculkVeinBlock",
-                "GlowLichenBlock",
-                "MultifaceBlock",
-                "FrogspawnBlock",
-            }
-        ),
-        7,
     ),
 )
 
@@ -231,6 +204,7 @@ def generate(source_root: Path) -> str:
         4,
     )
     entries = no_terrain_particle_blocks(source)
+    no_collision_entries = no_collision_blocks(source, block_id_constants)
     air_entries = air_blocks(source)
     constructor_catalogs = [
         (
@@ -291,6 +265,10 @@ def generate(source_root: Path) -> str:
         *(f'    "{entry.resource_id}",' for entry in entries),
         "];",
         "",
+        "pub(super) const VANILLA_NO_COLLISION_BLOCKS: &[&str] = &[",
+        *(f'    "{entry.resource_id}",' for entry in no_collision_entries),
+        "];",
+        "",
         "pub(super) const VANILLA_AIR_BLOCKS: &[&str] = &[",
         *(f'    "{entry.resource_id}",' for entry in air_entries),
         "];",
@@ -323,6 +301,7 @@ def generate(source_root: Path) -> str:
             "    #[test]",
             "    fn block_memberships_match_vanilla_order() {",
             '        assert_eq!(VANILLA_NO_TERRAIN_PARTICLE_BLOCKS, &["minecraft:barrier", "minecraft:structure_void"]);',
+            "        assert_eq!(VANILLA_NO_COLLISION_BLOCKS.len(), 255);",
             '        assert_eq!(VANILLA_AIR_BLOCKS, &["minecraft:air", "minecraft:void_air", "minecraft:cave_air"]);',
             '        assert_eq!(VANILLA_SAME_BLOCK_ALL_FACE_SKIP_RENDERING_BLOCKS, &["minecraft:powder_snow"]);',
             '        assert_eq!(VANILLA_SAME_BLOCK_VERTICAL_FACE_SKIP_RENDERING_BLOCKS, &["minecraft:mangrove_roots"]);',
@@ -331,9 +310,6 @@ def generate(source_root: Path) -> str:
             "        assert_eq!(VANILLA_IRON_BARS_CLASS_BLOCKS.len(), 18);",
             "        assert_eq!(VANILLA_COPPER_GRATE_BLOCKS.len(), 8);",
             "        assert_eq!(VANILLA_FIXED_SOURCE_WATER_BLOCKS.len(), 5);",
-            "        assert_eq!(VANILLA_NO_COLLISION_CROP_SUPPLEMENT_BLOCKS.len(), 4);",
-            "        assert_eq!(VANILLA_NO_COLLISION_WIRE_BLOCKS.len(), 3);",
-            "        assert_eq!(VANILLA_NO_COLLISION_THIN_OVERLAY_BLOCKS.len(), 7);",
             "        assert_eq!(VANILLA_HALF_TRANSPARENT_SKIP_RENDERING_BLOCKS.len(), 31);",
             "        assert_eq!(VANILLA_LEAVES_BLOCKS.len(), 11);",
             "        assert_eq!(VANILLA_SAPLING_BLOCKS.len(), 9);",
@@ -369,15 +345,11 @@ def generate(source_root: Path) -> str:
             "        assert_eq!(VANILLA_DOOR_BLOCKS.len(), 21);",
             "        assert_eq!(VANILLA_TRAPDOOR_BLOCKS.len(), 21);",
             "        assert_eq!(VANILLA_RAIL_BLOCKS.len(), 4);",
-            "        assert_eq!(VANILLA_NO_COLLISION_SIGN_BLOCKS.len(), 48);",
             "        assert_eq!(VANILLA_STANDING_SIGN_BLOCKS.len(), 12);",
             "        assert_eq!(VANILLA_WALL_SIGN_BLOCKS.len(), 12);",
             "        assert_eq!(VANILLA_BUTTON_BLOCKS.len(), 14);",
             "        assert_eq!(VANILLA_PRESSURE_PLATE_BLOCKS.len(), 16);",
-            "        assert_eq!(VANILLA_NO_COLLISION_BANNER_BLOCKS.len(), 32);",
-            "        assert_eq!(VANILLA_NO_COLLISION_SMALL_FLOWER_BLOCKS.len(), 17);",
             "        assert_eq!(VANILLA_CROP_BLOCKS.len(), 8);",
-            '        assert_eq!(VANILLA_NO_COLLISION_FIRE_BLOCKS, &["minecraft:fire", "minecraft:soul_fire"]);',
             "    }",
             "}",
             "",

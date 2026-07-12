@@ -16,10 +16,7 @@ use generated_26_1::{
     VANILLA_FLOWER_POT_BLOCKS, VANILLA_HALF_TRANSPARENT_SKIP_RENDERING_BLOCKS,
     VANILLA_HANGING_SIGN_BLOCKS, VANILLA_INVISIBLE_RENDER_SHAPE_BLOCKS,
     VANILLA_IRON_BARS_CLASS_BLOCKS, VANILLA_LANTERN_BLOCKS, VANILLA_LEAVES_BLOCKS,
-    VANILLA_LIGHTNING_ROD_BLOCKS, VANILLA_LOG_BLOCKS, VANILLA_NO_COLLISION_BANNER_BLOCKS,
-    VANILLA_NO_COLLISION_CROP_SUPPLEMENT_BLOCKS, VANILLA_NO_COLLISION_FIRE_BLOCKS,
-    VANILLA_NO_COLLISION_SIGN_BLOCKS, VANILLA_NO_COLLISION_SMALL_FLOWER_BLOCKS,
-    VANILLA_NO_COLLISION_THIN_OVERLAY_BLOCKS, VANILLA_NO_COLLISION_WIRE_BLOCKS,
+    VANILLA_LIGHTNING_ROD_BLOCKS, VANILLA_LOG_BLOCKS, VANILLA_NO_COLLISION_BLOCKS,
     VANILLA_NO_TERRAIN_PARTICLE_BLOCKS, VANILLA_ORE_BLOCKS, VANILLA_PLANK_BLOCKS,
     VANILLA_PRESSURE_PLATE_BLOCKS, VANILLA_RAIL_BLOCKS,
     VANILLA_SAME_BLOCK_ALL_FACE_SKIP_RENDERING_BLOCKS,
@@ -473,62 +470,9 @@ pub fn block_name_is_ore(name: &str) -> bool {
 }
 
 pub(crate) fn block_name_has_empty_collision_shape(name: &str) -> bool {
-    block_name_is_sapling(name)
-        || matches!(
-            name,
-            "minecraft:short_grass"
-                | "minecraft:tall_grass"
-                | "minecraft:grass"
-                | "minecraft:fern"
-                | "minecraft:large_fern"
-                | "minecraft:cobweb"
-                | "minecraft:sweet_berry_bush"
-                | "minecraft:brown_mushroom"
-                | "minecraft:red_mushroom"
-                | "minecraft:crimson_roots"
-                | "minecraft:warped_roots"
-                | "minecraft:nether_sprouts"
-                | "minecraft:weeping_vines"
-                | "minecraft:weeping_vines_plant"
-                | "minecraft:twisting_vines"
-                | "minecraft:twisting_vines_plant"
-                | "minecraft:cave_vines"
-                | "minecraft:cave_vines_plant"
-                | "minecraft:vine"
-                | "minecraft:pale_hanging_moss"
-                | "minecraft:kelp"
-                | "minecraft:kelp_plant"
-                | "minecraft:seagrass"
-                | "minecraft:tall_seagrass"
-                | "minecraft:lilac"
-                | "minecraft:rose_bush"
-                | "minecraft:peony"
-                | "minecraft:pitcher_plant"
-                | "minecraft:dead_bush"
-                | "minecraft:bush"
-                | "minecraft:firefly_bush"
-                | "minecraft:short_dry_grass"
-                | "minecraft:tall_dry_grass"
-                | "minecraft:mangrove_propagule"
-                | "minecraft:crimson_fungus"
-                | "minecraft:warped_fungus"
-                | "minecraft:small_dripleaf"
-                | "minecraft:spore_blossom"
-                | "minecraft:lever"
-        )
-        || block_name_is_floor_torch(name)
-        || block_name_is_wall_torch(name)
-        || VANILLA_NO_COLLISION_CROP_SUPPLEMENT_BLOCKS.contains(&name)
-        || VANILLA_NO_COLLISION_WIRE_BLOCKS.contains(&name)
-        || VANILLA_NO_COLLISION_THIN_OVERLAY_BLOCKS.contains(&name)
-        || VANILLA_RAIL_BLOCKS.contains(&name)
-        || VANILLA_NO_COLLISION_SIGN_BLOCKS.contains(&name)
-        || VANILLA_BUTTON_BLOCKS.contains(&name)
-        || VANILLA_PRESSURE_PLATE_BLOCKS.contains(&name)
-        || VANILLA_NO_COLLISION_BANNER_BLOCKS.contains(&name)
-        || VANILLA_NO_COLLISION_SMALL_FLOWER_BLOCKS.contains(&name)
-        || block_name_is_crop(name)
-        || VANILLA_NO_COLLISION_FIRE_BLOCKS.contains(&name)
+    // Scaffolding overrides the default no-collision behavior with a
+    // CollisionContext-dependent shape and is handled before this fallback.
+    name != "minecraft:scaffolding" && VANILLA_NO_COLLISION_BLOCKS.contains(&name)
 }
 
 fn is_bars_tag_block_name(name: &str) -> bool {
@@ -838,13 +782,31 @@ mod tests {
         assert!(block_name_has_empty_collision_shape(
             "minecraft:mangrove_propagule"
         ));
-        assert!(!block_name_has_empty_collision_shape(
+        assert!(block_name_has_empty_collision_shape(
             "minecraft:bamboo_sapling"
         ));
+        for block_name in [
+            "minecraft:air",
+            "minecraft:stone_button",
+            "minecraft:leaf_litter",
+            "minecraft:pink_petals",
+            "minecraft:attached_pumpkin_stem",
+            "minecraft:copper_wall_torch",
+            "minecraft:tube_coral_wall_fan",
+        ] {
+            assert!(
+                block_name_has_empty_collision_shape(block_name),
+                "{block_name}"
+            );
+        }
         assert!(!block_name_has_empty_collision_shape(
             "minecraft:custom_sapling"
         ));
         assert!(!block_name_has_empty_collision_shape("example:oak_sapling"));
+        assert!(!block_name_has_empty_collision_shape(
+            "minecraft:scaffolding"
+        ));
+        assert!(!block_name_has_empty_collision_shape("minecraft:grass"));
         assert!(block_name_is_bars_or_pane("minecraft:copper_bars"));
         assert!(block_name_is_bars_or_pane(
             "minecraft:white_stained_glass_pane"

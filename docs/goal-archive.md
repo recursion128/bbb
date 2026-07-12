@@ -12410,3 +12410,15 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   空碰撞，`bamboo_sapling`、custom 及其他 namespace lookalike 不再被冒充为 vanilla sapling。
 - [x] 本切片只收敛 sapling membership；empty-collision 中其他仍待来源审计的手写成员保持原样，
   没有把 class membership 生成物扩张为 collision-shape 算法。
+
+## 2026-07-12：Generated exact no-collision property membership
+
+- [x] block-domain extractor 通过统一 Tree-sitter frontend 从 vanilla `Blocks.java` 提取 241 个
+  直接 `.noCollision()` 注册与唯一 `buttonProperties()` helper 的 14 个调用，按声明顺序生成
+  255 项 checked-in catalog；`BlockIds` resource 引用、helper 的无条件 return call chain、数量、
+  唯一性与 update/check 幂等均有门禁，未来从 no-collision block 复制 properties 会显式失败，
+  不会静默漏掉 copy propagation。
+- [x] world default collision fallback 删除 210 项手写 literal/tag/class 并集，统一消费 generated
+  properties catalog；移除 26.1 不存在的 `minecraft:grass`，补齐源码明确无碰撞的 bamboo sapling、
+  coral/fan、portal、liquid 等成员。`scaffolding` 因重写 context-dependent collision 被显式排除，
+  继续走现有专用 shape；生成数据不接管碰撞上下文或 voxel-shape 算法。
