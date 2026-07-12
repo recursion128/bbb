@@ -11786,3 +11786,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] 复用 `PlayerInfoChatSession` 作为唯一 `RemoteChatSession.Data` value，补齐 session UUID、expires-at、最多 512-byte X.509 public key、最多 4096-byte key signature encoder，以及 NetCommand/driver 发送面和边界测试。
 - [x] production 尚无 profile-key fetch/refresh、LocalChatSession/message encoder 或自动发送 owner；服务端 INITIALIZE_CHAT 广播也只投影 present flag，除 encoder 外四格保持 partial。
+
+## 2026-07-12：play serverbound client command packet coverage audit
+
+- [x] `ServerboundClientCommandPacket` 的三个 generated enum ordinal、VarInt wire、NetCommand/driver 分发、死亡态 PerformRespawn guard 与 StatsScreen 请求入口已审计，encoder 单格闭合。
+- [x] `REQUEST_GAMERULE_VALUES` 目前只有维护控制面，缺少 vanilla gamemaster-gated in-world GameRules screen；Respawn、AwardStats、GameRuleValues 的完整响应生命周期也仍开放，未用控制入口或 diagnostic snapshot 冒充客户端 UI 完成。
