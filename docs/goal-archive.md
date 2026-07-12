@@ -11547,3 +11547,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] reference/direct holder framing、bounded raw preservation、ownership 与跨 crate tests 闭合。
 - [x] typed Dialog decode/canonical screen data/runtime screen stack 未完成，对应三维保持 partial。
+
+## 2026-07-12：play add-entity packet coverage audit
+
+- [x] id/uuid/type/position/LP velocity/rotation/data framing、strict trailing、basic world ownership 与跨 crate tests 闭合。
+- [x] session registry validation、entity factory/player-info gate 与全类型 runtime 初始化未完成，decode/canonical/runtime 保持 partial。

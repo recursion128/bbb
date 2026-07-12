@@ -489,6 +489,7 @@ play UpdateTags 的 registry/tag/value framing、strict trailing、per-registry 
 play Waypoint 的 operation WRAP、identifier/icon/data framing、strict trailing、manager apply ownership 与 tests 已闭合；剩余 locator contextual-bar presentation 保持 runtime partial。
 play ClearDialog 的 unit payload、strict trailing、canonical clear ownership 与 tests 已闭合；剩余 previous/warning screen-stack restoration 保持 runtime partial。
 play ShowDialog 的 reference/direct holder framing、bounded raw preservation、ownership 与 tests 已闭合；剩余 typed Dialog decode/canonical screen data/runtime screen stack 保持 partial。
+play AddEntity 的 id/uuid/type/position/LP velocity/rotation/data framing、strict trailing、basic world ownership 与 tests 已闭合；剩余 session registry validation、entity factory/player-info gate 与全类型 runtime 初始化保持 decode/canonical/runtime partial。
 
 完成标准：全部 vanilla 26.1 catalog entry 都有矩阵行；所有目标客户端适用项为
 `complete`，其余只有带 vanilla 依据的 `not-applicable` 或带重启判据的窄 `deferred`；

@@ -274,6 +274,11 @@ are provider and presentation behavior.
 
 Owner: `bbb-renderer` + `bbb-native` + `bbb-pack` + `bbb-world`
 
+- Complete `ClientPacketListener.createEntityFromPacket` parity for AddEntity:
+  resolve entity types through session RegistryAccess, enforce the PlayerInfo
+  gate for player creation, and cover every type-specific `recreateFromPacket`
+  initialization and post-add client sound path.
+
 Submission surfaces:
 
 - Add renderer submission surfaces for generic name-tag text, sign/display text,

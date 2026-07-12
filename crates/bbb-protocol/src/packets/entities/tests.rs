@@ -23,8 +23,8 @@ fn decodes_entity_lifecycle_packets() {
     payload.write_i8(64);
     payload.write_i8(32);
     payload.write_var_i32(99);
-    let packet =
-        decode_play_clientbound(ids::play::CLIENTBOUND_ADD_ENTITY, &payload.into_inner()).unwrap();
+    let mut bytes = payload.into_inner();
+    let packet = decode_play_clientbound(ids::play::CLIENTBOUND_ADD_ENTITY, &bytes).unwrap();
     assert_eq!(
         packet,
         PlayClientbound::AddEntity(AddEntity {
@@ -46,6 +46,13 @@ fn decodes_entity_lifecycle_packets() {
             y_head_rot: 45.0,
             data: 99,
         })
+    );
+    bytes.push(0);
+    assert!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_ADD_ENTITY, &bytes)
+            .unwrap_err()
+            .to_string()
+            .contains("trailing bytes after add entity packet")
     );
 
     let mut payload = Encoder::new();

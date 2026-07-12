@@ -364,7 +364,7 @@ pub struct TeleportEntity {
 }
 
 pub(super) fn decode_add_entity(decoder: &mut Decoder<'_>) -> Result<AddEntity> {
-    Ok(AddEntity {
+    let packet = AddEntity {
         id: decoder.read_var_i32()?,
         uuid: decoder.read_uuid()?,
         entity_type_id: decoder.read_var_i32()?,
@@ -374,7 +374,13 @@ pub(super) fn decode_add_entity(decoder: &mut Decoder<'_>) -> Result<AddEntity> 
         y_rot: unpack_degrees(decoder.read_i8()?),
         y_head_rot: unpack_degrees(decoder.read_i8()?),
         data: decoder.read_var_i32()?,
-    })
+    };
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after add entity packet".to_string(),
+        ));
+    }
+    Ok(packet)
 }
 
 pub(super) fn decode_entity_animation(decoder: &mut Decoder<'_>) -> Result<EntityAnimation> {
