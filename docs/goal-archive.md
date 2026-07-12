@@ -12680,3 +12680,9 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] world UI book projection 删除最后一项 production component ID 转发 const，直接消费
   protocol generated writable-book-content type constant；written/writable page fallback 顺序不变，
   并由源码反向测试防止旧别名恢复。
+
+## 2026-07-12：Removed menu type ID aliases
+
+- [x] native inventory/runtime 与 world inventory 删除 23 项 generated menu type import alias，
+  slot layout、generic-container 范围、Crafter 与 Loom 分支直接使用 protocol catalog 常量；新增
+  跨 consumer 结构测试阻止恢复局部 menu ID 名称，点击与投影语义不变。

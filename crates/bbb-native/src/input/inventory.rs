@@ -3,27 +3,15 @@ use std::time::{Duration, Instant};
 use bbb_control::NetCounters;
 use bbb_net::NetCommand;
 use bbb_protocol::menu_types::{
-    VANILLA_MENU_TYPE_ANVIL_ID as ANVIL_MENU_TYPE_ID,
-    VANILLA_MENU_TYPE_BEACON_ID as BEACON_MENU_TYPE_ID,
-    VANILLA_MENU_TYPE_BLAST_FURNACE_ID as BLAST_FURNACE_MENU_TYPE_ID,
-    VANILLA_MENU_TYPE_BREWING_STAND_ID as BREWING_STAND_MENU_TYPE_ID,
-    VANILLA_MENU_TYPE_CARTOGRAPHY_TABLE_ID as CARTOGRAPHY_TABLE_MENU_TYPE_ID,
-    VANILLA_MENU_TYPE_CRAFTER_3X3_ID as CRAFTER_MENU_TYPE_ID,
-    VANILLA_MENU_TYPE_CRAFTING_ID as CRAFTING_MENU_TYPE_ID,
-    VANILLA_MENU_TYPE_ENCHANTMENT_ID as ENCHANTMENT_MENU_TYPE_ID,
-    VANILLA_MENU_TYPE_FURNACE_ID as FURNACE_MENU_TYPE_ID,
-    VANILLA_MENU_TYPE_GENERIC_3X3_ID as GENERIC_3X3_MENU_TYPE_ID,
-    VANILLA_MENU_TYPE_GENERIC_9X1_ID as GENERIC_CONTAINER_FIRST_MENU_TYPE_ID,
-    VANILLA_MENU_TYPE_GENERIC_9X6_ID as GENERIC_CONTAINER_LAST_MENU_TYPE_ID,
-    VANILLA_MENU_TYPE_GRINDSTONE_ID as GRINDSTONE_MENU_TYPE_ID,
-    VANILLA_MENU_TYPE_HOPPER_ID as HOPPER_MENU_TYPE_ID,
-    VANILLA_MENU_TYPE_LECTERN_ID as LECTERN_MENU_TYPE_ID,
-    VANILLA_MENU_TYPE_LOOM_ID as LOOM_MENU_TYPE_ID,
-    VANILLA_MENU_TYPE_MERCHANT_ID as MERCHANT_MENU_TYPE_ID,
-    VANILLA_MENU_TYPE_SHULKER_BOX_ID as SHULKER_BOX_MENU_TYPE_ID,
-    VANILLA_MENU_TYPE_SMITHING_ID as SMITHING_MENU_TYPE_ID,
-    VANILLA_MENU_TYPE_SMOKER_ID as SMOKER_MENU_TYPE_ID,
-    VANILLA_MENU_TYPE_STONECUTTER_ID as STONECUTTER_MENU_TYPE_ID,
+    VANILLA_MENU_TYPE_ANVIL_ID, VANILLA_MENU_TYPE_BEACON_ID, VANILLA_MENU_TYPE_BLAST_FURNACE_ID,
+    VANILLA_MENU_TYPE_BREWING_STAND_ID, VANILLA_MENU_TYPE_CARTOGRAPHY_TABLE_ID,
+    VANILLA_MENU_TYPE_CRAFTER_3X3_ID, VANILLA_MENU_TYPE_CRAFTING_ID,
+    VANILLA_MENU_TYPE_ENCHANTMENT_ID, VANILLA_MENU_TYPE_FURNACE_ID,
+    VANILLA_MENU_TYPE_GENERIC_3X3_ID, VANILLA_MENU_TYPE_GENERIC_9X1_ID,
+    VANILLA_MENU_TYPE_GENERIC_9X6_ID, VANILLA_MENU_TYPE_GRINDSTONE_ID, VANILLA_MENU_TYPE_HOPPER_ID,
+    VANILLA_MENU_TYPE_LECTERN_ID, VANILLA_MENU_TYPE_LOOM_ID, VANILLA_MENU_TYPE_MERCHANT_ID,
+    VANILLA_MENU_TYPE_SHULKER_BOX_ID, VANILLA_MENU_TYPE_SMITHING_ID, VANILLA_MENU_TYPE_SMOKER_ID,
+    VANILLA_MENU_TYPE_STONECUTTER_ID,
 };
 use bbb_protocol::mob_effect_types::{
     VANILLA_MOB_EFFECT_HASTE_ID, VANILLA_MOB_EFFECT_JUMP_BOOST_ID,
@@ -1347,7 +1335,7 @@ fn maybe_queue_crafter_slot_state_changed(
     let Some(container) = world.inventory().open_container.as_ref() else {
         return;
     };
-    if container.menu_type_id != Some(CRAFTER_MENU_TYPE_ID) {
+    if container.menu_type_id != Some(VANILLA_MENU_TYPE_CRAFTER_3X3_ID) {
         return;
     }
     let Some(slot) = container.slots.iter().find(|slot| slot.slot == slot_num) else {
@@ -2062,12 +2050,12 @@ fn anvil_screen_is_open(world: &WorldStore) -> bool {
         .inventory()
         .open_container
         .as_ref()
-        .is_some_and(|container| container.menu_type_id == Some(ANVIL_MENU_TYPE_ID))
+        .is_some_and(|container| container.menu_type_id == Some(VANILLA_MENU_TYPE_ANVIL_ID))
 }
 
 fn anvil_rename_input_signature(world: &WorldStore) -> Option<AnvilRenameInputSignature> {
     let container = world.inventory().open_container.as_ref()?;
-    if container.menu_type_id != Some(ANVIL_MENU_TYPE_ID) {
+    if container.menu_type_id != Some(VANILLA_MENU_TYPE_ANVIL_ID) {
         return None;
     }
     let item = container
@@ -2086,7 +2074,7 @@ fn anvil_rename_input_signature(world: &WorldStore) -> Option<AnvilRenameInputSi
 
 fn anvil_input_slot_item(world: &WorldStore) -> Option<&ItemStackSummary> {
     let container = world.inventory().open_container.as_ref()?;
-    if container.menu_type_id != Some(ANVIL_MENU_TYPE_ID) {
+    if container.menu_type_id != Some(VANILLA_MENU_TYPE_ANVIL_ID) {
         return None;
     }
     let item = container
@@ -3324,7 +3312,7 @@ fn loom_pattern_max_scroll_row(world: &WorldStore) -> Option<i32> {
 
 fn loom_selectable_pattern_count(world: &WorldStore) -> Option<i32> {
     let container = world.inventory().open_container.as_ref()?;
-    if container.menu_type_id != Some(LOOM_MENU_TYPE_ID) {
+    if container.menu_type_id != Some(VANILLA_MENU_TYPE_LOOM_ID) {
         return None;
     }
     if !inventory_slot_has_item(world, 0) || !inventory_slot_has_item(world, 1) {
@@ -3383,7 +3371,7 @@ fn sync_loom_pattern_state(input: &mut ClientInputState, world: &WorldStore) {
         input.loom_pattern_scrolling = false;
         return;
     };
-    if container.menu_type_id != Some(LOOM_MENU_TYPE_ID) {
+    if container.menu_type_id != Some(VANILLA_MENU_TYPE_LOOM_ID) {
         input.loom_pattern_selection_container_id = None;
         input.loom_pattern_selection_dirty = false;
         input.loom_selected_pattern_index = None;
@@ -3429,7 +3417,7 @@ pub(crate) fn sync_beacon_effect_selection_state(input: &mut ClientInputState, w
 
 fn stonecutter_input_item_id(world: &WorldStore) -> Option<i32> {
     let container = world.inventory().open_container.as_ref()?;
-    if container.menu_type_id != Some(STONECUTTER_MENU_TYPE_ID) {
+    if container.menu_type_id != Some(VANILLA_MENU_TYPE_STONECUTTER_ID) {
         return None;
     }
     container
@@ -3447,7 +3435,7 @@ fn sync_beacon_effect_selection(input: &mut ClientInputState, world: &WorldStore
         input.beacon_secondary_effect = None;
         return;
     };
-    if container.menu_type_id != Some(BEACON_MENU_TYPE_ID) {
+    if container.menu_type_id != Some(VANILLA_MENU_TYPE_BEACON_ID) {
         input.beacon_effect_selection_container_id = None;
         input.beacon_effect_selection_dirty = false;
         input.beacon_primary_effect = None;

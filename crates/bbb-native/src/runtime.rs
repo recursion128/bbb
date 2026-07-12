@@ -159,7 +159,7 @@ use bbb_protocol::attribute_types::{
     VANILLA_ATTRIBUTE_ATTACK_DAMAGE_ID, VANILLA_ATTRIBUTE_ATTACK_SPEED_ID,
 };
 use bbb_protocol::entity_types::*;
-use bbb_protocol::menu_types::VANILLA_MENU_TYPE_LOOM_ID as LOOM_MENU_TYPE_ID;
+use bbb_protocol::menu_types::VANILLA_MENU_TYPE_LOOM_ID;
 use bbb_protocol::mob_effect_types::{
     VANILLA_MOB_EFFECT_CONDUIT_POWER_ID, VANILLA_MOB_EFFECT_DARKNESS_ID,
     VANILLA_MOB_EFFECT_HASTE_ID, VANILLA_MOB_EFFECT_HUNGER_ID, VANILLA_MOB_EFFECT_JUMP_BOOST_ID,
@@ -10353,7 +10353,7 @@ fn push_loom_state_layers(
 
 fn loom_selectable_pattern_count(world: &WorldStore) -> Option<i32> {
     let container = world.inventory().open_container.as_ref()?;
-    if container.menu_type_id != Some(LOOM_MENU_TYPE_ID) {
+    if container.menu_type_id != Some(VANILLA_MENU_TYPE_LOOM_ID) {
         return None;
     }
     if !open_container_slot_has_item(world, 0) || !open_container_slot_has_item(world, 1) {

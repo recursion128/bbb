@@ -1713,7 +1713,7 @@ pub(super) fn menu_result_slot_requires_server_authority(
                 Some(VANILLA_MENU_TYPE_CARTOGRAPHY_TABLE_ID),
                 CARTOGRAPHY_TABLE_RESULT_SLOT
             )
-            | (Some(VANILLA_MENU_TYPE_CRAFTER_ID), CRAFTER_RESULT_SLOT)
+            | (Some(VANILLA_MENU_TYPE_CRAFTER_3X3_ID), CRAFTER_RESULT_SLOT)
             | (Some(VANILLA_MENU_TYPE_LOOM_ID), LOOM_RESULT_SLOT)
             | (
                 Some(VANILLA_MENU_TYPE_GRINDSTONE_ID),

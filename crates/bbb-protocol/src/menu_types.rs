@@ -178,7 +178,7 @@ pub fn vanilla_menu_type_for_resource_id(
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashSet;
+    use std::{collections::HashSet, fs, path::Path};
 
     use super::*;
 
@@ -211,5 +211,48 @@ mod tests {
         );
         assert_eq!(vanilla_menu_type(-1), None);
         assert_eq!(vanilla_menu_type(25), None);
+    }
+
+    #[test]
+    fn menu_consumers_do_not_restore_local_id_aliases() {
+        fn visit(path: &Path, violations: &mut Vec<String>) {
+            if path.is_dir() {
+                for entry in fs::read_dir(path).unwrap() {
+                    visit(&entry.unwrap().path(), violations);
+                }
+                return;
+            }
+            if path.extension().and_then(|value| value.to_str()) != Some("rs") {
+                return;
+            }
+            let source = fs::read_to_string(path).unwrap();
+            for identifier in source
+                .split(|character: char| !character.is_ascii_alphanumeric() && character != '_')
+            {
+                if (identifier.ends_with("_MENU_TYPE_ID")
+                    && !identifier.starts_with("VANILLA_MENU_TYPE_"))
+                    || identifier == "VANILLA_MENU_TYPE_CRAFTER_ID"
+                {
+                    violations.push(format!("{}: {identifier}", path.display()));
+                }
+            }
+        }
+
+        let crates = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
+        let mut violations = Vec::new();
+        for path in [
+            crates.join("bbb-native/src/input/inventory.rs"),
+            crates.join("bbb-native/src/input/inventory"),
+            crates.join("bbb-native/src/runtime.rs"),
+            crates.join("bbb-world/src/client/inventory.rs"),
+            crates.join("bbb-world/src/client/inventory"),
+        ] {
+            visit(&path, &mut violations);
+        }
+        assert!(
+            violations.is_empty(),
+            "local menu type aliases:\n{}",
+            violations.join("\n")
+        );
     }
 }

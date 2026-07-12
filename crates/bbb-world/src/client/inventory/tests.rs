@@ -4011,7 +4011,7 @@ fn apply_local_crafter_quick_move_moves_grid_to_player_backwards() {
     let mut store = WorldStore::new();
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
-        menu_type_id: VANILLA_MENU_TYPE_CRAFTER_ID,
+        menu_type_id: VANILLA_MENU_TYPE_CRAFTER_3X3_ID,
         title: "Crafter".to_string(),
         title_styled: Vec::new(),
     });
@@ -4051,7 +4051,7 @@ fn apply_local_crafter_quick_move_skips_disabled_grid_slots() {
     let mut store = WorldStore::new();
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
-        menu_type_id: VANILLA_MENU_TYPE_CRAFTER_ID,
+        menu_type_id: VANILLA_MENU_TYPE_CRAFTER_3X3_ID,
         title: "Crafter".to_string(),
         title_styled: Vec::new(),
     });
@@ -4100,7 +4100,7 @@ fn apply_local_crafter_result_slot_requires_server_authority() {
     let mut store = WorldStore::new();
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
-        menu_type_id: VANILLA_MENU_TYPE_CRAFTER_ID,
+        menu_type_id: VANILLA_MENU_TYPE_CRAFTER_3X3_ID,
         title: "Crafter".to_string(),
         title_styled: Vec::new(),
     });

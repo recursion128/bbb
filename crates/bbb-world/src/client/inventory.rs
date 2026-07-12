@@ -8,8 +8,8 @@ use bbb_protocol::item_types::VANILLA_ITEM_ELYTRA_ID;
 use bbb_protocol::menu_types::{
     VANILLA_MENU_TYPE_ANVIL_ID, VANILLA_MENU_TYPE_BEACON_ID, VANILLA_MENU_TYPE_BLAST_FURNACE_ID,
     VANILLA_MENU_TYPE_BREWING_STAND_ID, VANILLA_MENU_TYPE_CARTOGRAPHY_TABLE_ID,
-    VANILLA_MENU_TYPE_CRAFTER_3X3_ID as VANILLA_MENU_TYPE_CRAFTER_ID,
-    VANILLA_MENU_TYPE_CRAFTING_ID, VANILLA_MENU_TYPE_ENCHANTMENT_ID, VANILLA_MENU_TYPE_FURNACE_ID,
+    VANILLA_MENU_TYPE_CRAFTER_3X3_ID, VANILLA_MENU_TYPE_CRAFTING_ID,
+    VANILLA_MENU_TYPE_ENCHANTMENT_ID, VANILLA_MENU_TYPE_FURNACE_ID,
     VANILLA_MENU_TYPE_GENERIC_3X3_ID, VANILLA_MENU_TYPE_GENERIC_9X1_ID,
     VANILLA_MENU_TYPE_GENERIC_9X6_ID, VANILLA_MENU_TYPE_GRINDSTONE_ID, VANILLA_MENU_TYPE_HOPPER_ID,
     VANILLA_MENU_TYPE_LOOM_ID, VANILLA_MENU_TYPE_MERCHANT_ID, VANILLA_MENU_TYPE_SHULKER_BOX_ID,
@@ -1532,7 +1532,7 @@ impl InventoryState {
                                 &ctx.items.default_item_max_stack_sizes,
                             )
                         }
-                    } else if menu_type_id == Some(VANILLA_MENU_TYPE_CRAFTER_ID) {
+                    } else if menu_type_id == Some(VANILLA_MENU_TYPE_CRAFTER_3X3_ID) {
                         let disabled_slots = crafter_disabled_slots(&data_values);
                         apply_crafter_menu_quick_move_to_slots(
                             container_id,

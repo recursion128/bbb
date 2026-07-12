@@ -200,7 +200,7 @@ fn inventory_screen_layout_with_recipe_book_mode(
             slots: generic_container_slot_layouts(rows),
         });
     }
-    if menu_type_id == GENERIC_3X3_MENU_TYPE_ID {
+    if menu_type_id == VANILLA_MENU_TYPE_GENERIC_3X3_ID {
         return Some(InventoryScreenLayout {
             width: GENERIC_3X3_SCREEN_WIDTH,
             height: GENERIC_3X3_SCREEN_HEIGHT,
@@ -209,7 +209,7 @@ fn inventory_screen_layout_with_recipe_book_mode(
             slots: generic_3x3_slot_layouts(),
         });
     }
-    if menu_type_id == CRAFTER_MENU_TYPE_ID {
+    if menu_type_id == VANILLA_MENU_TYPE_CRAFTER_3X3_ID {
         return Some(InventoryScreenLayout {
             width: CRAFTER_SCREEN_WIDTH,
             height: CRAFTER_SCREEN_HEIGHT,
@@ -218,7 +218,7 @@ fn inventory_screen_layout_with_recipe_book_mode(
             slots: crafter_slot_layouts(),
         });
     }
-    if menu_type_id == CRAFTING_MENU_TYPE_ID {
+    if menu_type_id == VANILLA_MENU_TYPE_CRAFTING_ID {
         return Some(recipe_book_overlay_layout(
             world,
             InventoryScreenLayout {
@@ -231,7 +231,7 @@ fn inventory_screen_layout_with_recipe_book_mode(
             recipe_book_narrow,
         ));
     }
-    if menu_type_id == ENCHANTMENT_MENU_TYPE_ID {
+    if menu_type_id == VANILLA_MENU_TYPE_ENCHANTMENT_ID {
         return Some(InventoryScreenLayout {
             width: ENCHANTMENT_SCREEN_WIDTH,
             height: ENCHANTMENT_SCREEN_HEIGHT,
@@ -240,7 +240,7 @@ fn inventory_screen_layout_with_recipe_book_mode(
             slots: enchantment_table_slot_layouts(),
         });
     }
-    if menu_type_id == ANVIL_MENU_TYPE_ID {
+    if menu_type_id == VANILLA_MENU_TYPE_ANVIL_ID {
         return Some(InventoryScreenLayout {
             width: ANVIL_SCREEN_WIDTH,
             height: ANVIL_SCREEN_HEIGHT,
@@ -249,7 +249,7 @@ fn inventory_screen_layout_with_recipe_book_mode(
             slots: anvil_slot_layouts(),
         });
     }
-    if menu_type_id == BEACON_MENU_TYPE_ID {
+    if menu_type_id == VANILLA_MENU_TYPE_BEACON_ID {
         return Some(InventoryScreenLayout {
             width: BEACON_SCREEN_WIDTH,
             height: BEACON_SCREEN_HEIGHT,
@@ -258,7 +258,7 @@ fn inventory_screen_layout_with_recipe_book_mode(
             slots: beacon_slot_layouts(),
         });
     }
-    if menu_type_id == BREWING_STAND_MENU_TYPE_ID {
+    if menu_type_id == VANILLA_MENU_TYPE_BREWING_STAND_ID {
         return Some(InventoryScreenLayout {
             width: BREWING_STAND_SCREEN_WIDTH,
             height: BREWING_STAND_SCREEN_HEIGHT,
@@ -280,7 +280,7 @@ fn inventory_screen_layout_with_recipe_book_mode(
             recipe_book_narrow,
         ));
     }
-    if menu_type_id == GRINDSTONE_MENU_TYPE_ID {
+    if menu_type_id == VANILLA_MENU_TYPE_GRINDSTONE_ID {
         return Some(InventoryScreenLayout {
             width: GRINDSTONE_SCREEN_WIDTH,
             height: GRINDSTONE_SCREEN_HEIGHT,
@@ -289,7 +289,7 @@ fn inventory_screen_layout_with_recipe_book_mode(
             slots: grindstone_slot_layouts(),
         });
     }
-    if menu_type_id == HOPPER_MENU_TYPE_ID {
+    if menu_type_id == VANILLA_MENU_TYPE_HOPPER_ID {
         return Some(InventoryScreenLayout {
             width: HOPPER_SCREEN_WIDTH,
             height: HOPPER_SCREEN_HEIGHT,
@@ -298,7 +298,7 @@ fn inventory_screen_layout_with_recipe_book_mode(
             slots: hopper_slot_layouts(),
         });
     }
-    if menu_type_id == LECTERN_MENU_TYPE_ID {
+    if menu_type_id == VANILLA_MENU_TYPE_LECTERN_ID {
         return Some(InventoryScreenLayout {
             width: LECTERN_SCREEN_WIDTH,
             height: LECTERN_SCREEN_HEIGHT,
@@ -307,7 +307,7 @@ fn inventory_screen_layout_with_recipe_book_mode(
             slots: Vec::new(),
         });
     }
-    if menu_type_id == LOOM_MENU_TYPE_ID {
+    if menu_type_id == VANILLA_MENU_TYPE_LOOM_ID {
         return Some(InventoryScreenLayout {
             width: LOOM_SCREEN_WIDTH,
             height: LOOM_SCREEN_HEIGHT,
@@ -316,7 +316,7 @@ fn inventory_screen_layout_with_recipe_book_mode(
             slots: loom_slot_layouts(),
         });
     }
-    if menu_type_id == MERCHANT_MENU_TYPE_ID {
+    if menu_type_id == VANILLA_MENU_TYPE_MERCHANT_ID {
         return Some(InventoryScreenLayout {
             width: MERCHANT_SCREEN_WIDTH,
             height: MERCHANT_SCREEN_HEIGHT,
@@ -325,7 +325,7 @@ fn inventory_screen_layout_with_recipe_book_mode(
             slots: merchant_slot_layouts(),
         });
     }
-    if menu_type_id == SHULKER_BOX_MENU_TYPE_ID {
+    if menu_type_id == VANILLA_MENU_TYPE_SHULKER_BOX_ID {
         return Some(InventoryScreenLayout {
             width: SHULKER_BOX_SCREEN_WIDTH,
             height: SHULKER_BOX_SCREEN_HEIGHT,
@@ -334,7 +334,7 @@ fn inventory_screen_layout_with_recipe_book_mode(
             slots: shulker_box_slot_layouts(),
         });
     }
-    if menu_type_id == SMITHING_MENU_TYPE_ID {
+    if menu_type_id == VANILLA_MENU_TYPE_SMITHING_ID {
         return Some(InventoryScreenLayout {
             width: SMITHING_SCREEN_WIDTH,
             height: SMITHING_SCREEN_HEIGHT,
@@ -343,7 +343,7 @@ fn inventory_screen_layout_with_recipe_book_mode(
             slots: smithing_slot_layouts(),
         });
     }
-    if menu_type_id == CARTOGRAPHY_TABLE_MENU_TYPE_ID {
+    if menu_type_id == VANILLA_MENU_TYPE_CARTOGRAPHY_TABLE_ID {
         return Some(InventoryScreenLayout {
             width: CARTOGRAPHY_TABLE_SCREEN_WIDTH,
             height: CARTOGRAPHY_TABLE_SCREEN_HEIGHT,
@@ -352,7 +352,7 @@ fn inventory_screen_layout_with_recipe_book_mode(
             slots: cartography_table_slot_layouts(),
         });
     }
-    if menu_type_id == STONECUTTER_MENU_TYPE_ID {
+    if menu_type_id == VANILLA_MENU_TYPE_STONECUTTER_ID {
         return Some(InventoryScreenLayout {
             width: STONECUTTER_SCREEN_WIDTH,
             height: STONECUTTER_SCREEN_HEIGHT,
@@ -497,40 +497,40 @@ fn inventory_screen_hotbar_start(menu_type_id: i32) -> Option<i16> {
     }
 
     match menu_type_id {
-        GENERIC_3X3_MENU_TYPE_ID => Some(GENERIC_3X3_SLOT_COUNT + 27),
-        CRAFTER_MENU_TYPE_ID => Some(CRAFTER_GRID_SLOT_COUNT + 27),
-        CRAFTING_MENU_TYPE_ID => Some(CRAFTING_SLOT_COUNT + 27),
-        ENCHANTMENT_MENU_TYPE_ID => Some(ENCHANTMENT_SLOT_COUNT + 27),
-        ANVIL_MENU_TYPE_ID => Some(ANVIL_SLOT_COUNT + 27),
-        BEACON_MENU_TYPE_ID => Some(BEACON_SLOT_COUNT + 27),
-        BREWING_STAND_MENU_TYPE_ID => Some(BREWING_STAND_SLOT_COUNT + 27),
-        BLAST_FURNACE_MENU_TYPE_ID | FURNACE_MENU_TYPE_ID | SMOKER_MENU_TYPE_ID => {
-            Some(FURNACE_SLOT_COUNT + 27)
-        }
-        GRINDSTONE_MENU_TYPE_ID => Some(GRINDSTONE_SLOT_COUNT + 27),
-        HOPPER_MENU_TYPE_ID => Some(HOPPER_SLOT_COUNT + 27),
-        LOOM_MENU_TYPE_ID => Some(LOOM_SLOT_COUNT + 27),
-        MERCHANT_MENU_TYPE_ID => Some(MERCHANT_SLOT_COUNT + 27),
-        SHULKER_BOX_MENU_TYPE_ID => Some(SHULKER_BOX_SLOT_COUNT + 27),
-        SMITHING_MENU_TYPE_ID => Some(SMITHING_SLOT_COUNT + 27),
-        CARTOGRAPHY_TABLE_MENU_TYPE_ID => Some(CARTOGRAPHY_TABLE_SLOT_COUNT + 27),
-        STONECUTTER_MENU_TYPE_ID => Some(STONECUTTER_SLOT_COUNT + 27),
-        LECTERN_MENU_TYPE_ID => None,
+        VANILLA_MENU_TYPE_GENERIC_3X3_ID => Some(GENERIC_3X3_SLOT_COUNT + 27),
+        VANILLA_MENU_TYPE_CRAFTER_3X3_ID => Some(CRAFTER_GRID_SLOT_COUNT + 27),
+        VANILLA_MENU_TYPE_CRAFTING_ID => Some(CRAFTING_SLOT_COUNT + 27),
+        VANILLA_MENU_TYPE_ENCHANTMENT_ID => Some(ENCHANTMENT_SLOT_COUNT + 27),
+        VANILLA_MENU_TYPE_ANVIL_ID => Some(ANVIL_SLOT_COUNT + 27),
+        VANILLA_MENU_TYPE_BEACON_ID => Some(BEACON_SLOT_COUNT + 27),
+        VANILLA_MENU_TYPE_BREWING_STAND_ID => Some(BREWING_STAND_SLOT_COUNT + 27),
+        VANILLA_MENU_TYPE_BLAST_FURNACE_ID
+        | VANILLA_MENU_TYPE_FURNACE_ID
+        | VANILLA_MENU_TYPE_SMOKER_ID => Some(FURNACE_SLOT_COUNT + 27),
+        VANILLA_MENU_TYPE_GRINDSTONE_ID => Some(GRINDSTONE_SLOT_COUNT + 27),
+        VANILLA_MENU_TYPE_HOPPER_ID => Some(HOPPER_SLOT_COUNT + 27),
+        VANILLA_MENU_TYPE_LOOM_ID => Some(LOOM_SLOT_COUNT + 27),
+        VANILLA_MENU_TYPE_MERCHANT_ID => Some(MERCHANT_SLOT_COUNT + 27),
+        VANILLA_MENU_TYPE_SHULKER_BOX_ID => Some(SHULKER_BOX_SLOT_COUNT + 27),
+        VANILLA_MENU_TYPE_SMITHING_ID => Some(SMITHING_SLOT_COUNT + 27),
+        VANILLA_MENU_TYPE_CARTOGRAPHY_TABLE_ID => Some(CARTOGRAPHY_TABLE_SLOT_COUNT + 27),
+        VANILLA_MENU_TYPE_STONECUTTER_ID => Some(STONECUTTER_SLOT_COUNT + 27),
+        VANILLA_MENU_TYPE_LECTERN_ID => None,
         _ => None,
     }
 }
 
 fn generic_container_rows(menu_type_id: i32) -> Option<u8> {
-    (GENERIC_CONTAINER_FIRST_MENU_TYPE_ID..=GENERIC_CONTAINER_LAST_MENU_TYPE_ID)
+    (VANILLA_MENU_TYPE_GENERIC_9X1_ID..=VANILLA_MENU_TYPE_GENERIC_9X6_ID)
         .contains(&menu_type_id)
-        .then(|| (menu_type_id - GENERIC_CONTAINER_FIRST_MENU_TYPE_ID + 1) as u8)
+        .then(|| (menu_type_id - VANILLA_MENU_TYPE_GENERIC_9X1_ID + 1) as u8)
 }
 
 fn furnace_screen_background(menu_type_id: i32) -> Option<InventoryScreenBackground> {
     match menu_type_id {
-        BLAST_FURNACE_MENU_TYPE_ID => Some(InventoryScreenBackground::BlastFurnace),
-        FURNACE_MENU_TYPE_ID => Some(InventoryScreenBackground::Furnace),
-        SMOKER_MENU_TYPE_ID => Some(InventoryScreenBackground::Smoker),
+        VANILLA_MENU_TYPE_BLAST_FURNACE_ID => Some(InventoryScreenBackground::BlastFurnace),
+        VANILLA_MENU_TYPE_FURNACE_ID => Some(InventoryScreenBackground::Furnace),
+        VANILLA_MENU_TYPE_SMOKER_ID => Some(InventoryScreenBackground::Smoker),
         _ => None,
     }
 }
