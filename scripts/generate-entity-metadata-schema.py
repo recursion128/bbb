@@ -2816,6 +2816,7 @@ def render(result: ExtractionResult) -> str:
                 f"        schema_class: {option_string(schema_class(item.runtime_class))},",
                 f"        is_living: {str(extends_class(item.runtime_class, 'net.minecraft.world.entity.LivingEntity')).lower()},",
                 f"        is_animal: {str(extends_class(item.runtime_class, 'net.minecraft.world.entity.animal.Animal')).lower()},",
+                f"        is_projectile: {str(extends_class(item.runtime_class, 'net.minecraft.world.entity.projectile.Projectile')).lower()},",
                 f"        diagnostic: {option_string(item.diagnostic)},",
                 "    },",
             ]

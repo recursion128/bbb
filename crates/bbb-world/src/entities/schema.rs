@@ -218,6 +218,7 @@ pub struct VanillaEntityTypeMetadataCatalogEntry {
     pub schema_class: Option<&'static str>,
     pub is_living: bool,
     pub is_animal: bool,
+    pub is_projectile: bool,
     pub diagnostic: Option<&'static str>,
 }
 
@@ -324,6 +325,14 @@ pub fn vanilla_entity_metadata_type_is_animal(entity_type_id: i32) -> bool {
         .unwrap_or(false)
 }
 
+/// Returns whether the generated vanilla runtime class inherits `Projectile`.
+pub fn vanilla_entity_metadata_type_is_projectile(entity_type_id: i32) -> bool {
+    VANILLA_ENTITY_TYPE_METADATA_26_1
+        .get(usize::try_from(entity_type_id).unwrap_or(usize::MAX))
+        .map(|entry| entry.is_projectile)
+        .unwrap_or(false)
+}
+
 pub const fn vanilla_minecart_default_display_offset(entity_type_id: i32) -> i32 {
     match entity_type_id {
         VANILLA_ENTITY_TYPE_CHEST_MINECART_ID => VANILLA_CHEST_MINECART_DEFAULT_DISPLAY_OFFSET,
@@ -342,8 +351,9 @@ mod tests {
     use bbb_protocol::entity_types::{
         VANILLA_ENTITY_TYPES, VANILLA_ENTITY_TYPE_ARMOR_STAND_ID, VANILLA_ENTITY_TYPE_AXOLOTL_ID,
         VANILLA_ENTITY_TYPE_DOLPHIN_ID, VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID,
-        VANILLA_ENTITY_TYPE_MINECART_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
-        VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
+        VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID, VANILLA_ENTITY_TYPE_MINECART_ID,
+        VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID,
+        VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
     };
 
     use super::*;
@@ -452,6 +462,13 @@ mod tests {
                 .count(),
             34
         );
+        assert_eq!(
+            VANILLA_ENTITY_TYPE_METADATA_26_1
+                .iter()
+                .filter(|entry| entry.is_projectile)
+                .count(),
+            19
+        );
         assert!(vanilla_entity_metadata_type_is_living(
             VANILLA_ENTITY_TYPE_PLAYER_ID
         ));
@@ -479,6 +496,12 @@ mod tests {
             VANILLA_ENTITY_TYPE_DOLPHIN_ID
         ));
         assert!(!vanilla_entity_metadata_type_is_animal(-1));
+        assert!(vanilla_entity_metadata_type_is_projectile(
+            VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID
+        ));
+        assert!(!vanilla_entity_metadata_type_is_projectile(
+            VANILLA_ENTITY_TYPE_MINECART_ID
+        ));
 
         let old_table = ["VANILLA_LIVING_", "ENTITY_TYPE_IDS"].concat();
         let dimensions = include_str!("dimensions.rs");
@@ -490,6 +513,14 @@ mod tests {
             .map(|(body, _)| body)
             .expect("animal query source");
         assert!(!animal_query.contains("matches!"));
+        let projectile_source = include_str!("projectiles.rs");
+        let saved_query = projectile_source
+            .split("pub(crate) fn is_vanilla_saved_projectile_type")
+            .nth(1)
+            .and_then(|source| source.split_once("\n}"))
+            .map(|(body, _)| body)
+            .expect("saved projectile query source");
+        assert!(!saved_query.contains("matches!"));
     }
 
     #[test]

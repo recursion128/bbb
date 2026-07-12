@@ -10,6 +10,7 @@ pub struct EntityTypeCatalogEntry {
     pub resource_id: &'static str,
     pub allowed_in_peaceful: bool,
     pub only_op_can_set_nbt: bool,
+    pub serializable: bool,
 }
 
 pub const VANILLA_ENTITY_TYPE_ACACIA_BOAT_ID: i32 = 0;
@@ -177,6 +178,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:acacia_boat",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 1,
@@ -184,6 +186,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:acacia_chest_boat",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 2,
@@ -191,6 +194,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:allay",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 3,
@@ -198,6 +202,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:area_effect_cloud",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 4,
@@ -205,6 +210,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:armadillo",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 5,
@@ -212,6 +218,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:armor_stand",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 6,
@@ -219,6 +226,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:arrow",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 7,
@@ -226,6 +234,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:axolotl",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 8,
@@ -233,6 +242,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:bamboo_chest_raft",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 9,
@@ -240,6 +250,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:bamboo_raft",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 10,
@@ -247,6 +258,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:bat",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 11,
@@ -254,6 +266,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:bee",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 12,
@@ -261,6 +274,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:birch_boat",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 13,
@@ -268,6 +282,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:birch_chest_boat",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 14,
@@ -275,6 +290,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:blaze",
         allowed_in_peaceful: false,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 15,
@@ -282,6 +298,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:block_display",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 16,
@@ -289,6 +306,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:bogged",
         allowed_in_peaceful: false,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 17,
@@ -296,6 +314,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:breeze",
         allowed_in_peaceful: false,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 18,
@@ -303,6 +322,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:breeze_wind_charge",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 19,
@@ -310,6 +330,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:camel",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 20,
@@ -317,6 +338,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:camel_husk",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 21,
@@ -324,6 +346,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:cat",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 22,
@@ -331,6 +354,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:cave_spider",
         allowed_in_peaceful: false,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 23,
@@ -338,6 +362,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:cherry_boat",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 24,
@@ -345,6 +370,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:cherry_chest_boat",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 25,
@@ -352,6 +378,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:chest_minecart",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 26,
@@ -359,6 +386,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:chicken",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 27,
@@ -366,6 +394,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:cod",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 28,
@@ -373,6 +402,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:copper_golem",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 29,
@@ -380,6 +410,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:command_block_minecart",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: true,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 30,
@@ -387,6 +418,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:cow",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 31,
@@ -394,6 +426,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:creaking",
         allowed_in_peaceful: false,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 32,
@@ -401,6 +434,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:creeper",
         allowed_in_peaceful: false,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 33,
@@ -408,6 +442,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:dark_oak_boat",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 34,
@@ -415,6 +450,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:dark_oak_chest_boat",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 35,
@@ -422,6 +458,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:dolphin",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 36,
@@ -429,6 +466,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:donkey",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 37,
@@ -436,6 +474,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:dragon_fireball",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 38,
@@ -443,6 +482,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:drowned",
         allowed_in_peaceful: false,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 39,
@@ -450,6 +490,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:egg",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 40,
@@ -457,6 +498,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:elder_guardian",
         allowed_in_peaceful: false,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 41,
@@ -464,6 +506,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:enderman",
         allowed_in_peaceful: false,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 42,
@@ -471,6 +514,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:endermite",
         allowed_in_peaceful: false,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 43,
@@ -478,6 +522,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:ender_dragon",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 44,
@@ -485,6 +530,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:ender_pearl",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 45,
@@ -492,6 +538,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:end_crystal",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 46,
@@ -499,6 +546,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:evoker",
         allowed_in_peaceful: false,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 47,
@@ -506,6 +554,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:evoker_fangs",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 48,
@@ -513,6 +562,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:experience_bottle",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 49,
@@ -520,6 +570,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:experience_orb",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 50,
@@ -527,6 +578,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:eye_of_ender",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 51,
@@ -534,6 +586,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:falling_block",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: true,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 52,
@@ -541,6 +594,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:fireball",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 53,
@@ -548,6 +602,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:firework_rocket",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 54,
@@ -555,6 +610,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:fox",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 55,
@@ -562,6 +618,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:frog",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 56,
@@ -569,6 +626,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:furnace_minecart",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 57,
@@ -576,6 +634,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:ghast",
         allowed_in_peaceful: false,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 58,
@@ -583,6 +642,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:happy_ghast",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 59,
@@ -590,6 +650,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:giant",
         allowed_in_peaceful: false,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 60,
@@ -597,6 +658,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:glow_item_frame",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 61,
@@ -604,6 +666,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:glow_squid",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 62,
@@ -611,6 +674,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:goat",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 63,
@@ -618,6 +682,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:guardian",
         allowed_in_peaceful: false,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 64,
@@ -625,6 +690,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:hoglin",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 65,
@@ -632,6 +698,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:hopper_minecart",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 66,
@@ -639,6 +706,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:horse",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 67,
@@ -646,6 +714,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:husk",
         allowed_in_peaceful: false,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 68,
@@ -653,6 +722,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:illusioner",
         allowed_in_peaceful: false,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 69,
@@ -660,6 +730,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:interaction",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 70,
@@ -667,6 +738,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:iron_golem",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 71,
@@ -674,6 +746,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:item",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 72,
@@ -681,6 +754,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:item_display",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 73,
@@ -688,6 +762,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:item_frame",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 74,
@@ -695,6 +770,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:jungle_boat",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 75,
@@ -702,6 +778,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:jungle_chest_boat",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 76,
@@ -709,6 +786,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:leash_knot",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: false,
     },
     EntityTypeCatalogEntry {
         id: 77,
@@ -716,6 +794,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:lightning_bolt",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: false,
     },
     EntityTypeCatalogEntry {
         id: 78,
@@ -723,6 +802,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:llama",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 79,
@@ -730,6 +810,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:llama_spit",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 80,
@@ -737,6 +818,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:magma_cube",
         allowed_in_peaceful: false,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 81,
@@ -744,6 +826,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:mangrove_boat",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 82,
@@ -751,6 +834,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:mangrove_chest_boat",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 83,
@@ -758,6 +842,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:mannequin",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 84,
@@ -765,6 +850,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:marker",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 85,
@@ -772,6 +858,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:minecart",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 86,
@@ -779,6 +866,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:mooshroom",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 87,
@@ -786,6 +874,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:mule",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 88,
@@ -793,6 +882,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:nautilus",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 89,
@@ -800,6 +890,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:oak_boat",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 90,
@@ -807,6 +898,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:oak_chest_boat",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 91,
@@ -814,6 +906,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:ocelot",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 92,
@@ -821,6 +914,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:ominous_item_spawner",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 93,
@@ -828,6 +922,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:painting",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 94,
@@ -835,6 +930,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:pale_oak_boat",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 95,
@@ -842,6 +938,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:pale_oak_chest_boat",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 96,
@@ -849,6 +946,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:panda",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 97,
@@ -856,6 +954,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:parched",
         allowed_in_peaceful: false,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 98,
@@ -863,6 +962,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:parrot",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 99,
@@ -870,6 +970,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:phantom",
         allowed_in_peaceful: false,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 100,
@@ -877,6 +978,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:pig",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 101,
@@ -884,6 +986,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:piglin",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 102,
@@ -891,6 +994,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:piglin_brute",
         allowed_in_peaceful: false,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 103,
@@ -898,6 +1002,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:pillager",
         allowed_in_peaceful: false,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 104,
@@ -905,6 +1010,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:polar_bear",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 105,
@@ -912,6 +1018,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:splash_potion",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 106,
@@ -919,6 +1026,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:lingering_potion",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 107,
@@ -926,6 +1034,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:pufferfish",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 108,
@@ -933,6 +1042,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:rabbit",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 109,
@@ -940,6 +1050,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:ravager",
         allowed_in_peaceful: false,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 110,
@@ -947,6 +1058,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:salmon",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 111,
@@ -954,6 +1066,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:sheep",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 112,
@@ -961,6 +1074,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:shulker",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 113,
@@ -968,6 +1082,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:shulker_bullet",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 114,
@@ -975,6 +1090,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:silverfish",
         allowed_in_peaceful: false,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 115,
@@ -982,6 +1098,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:skeleton",
         allowed_in_peaceful: false,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 116,
@@ -989,6 +1106,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:skeleton_horse",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 117,
@@ -996,6 +1114,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:slime",
         allowed_in_peaceful: false,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 118,
@@ -1003,6 +1122,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:small_fireball",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 119,
@@ -1010,6 +1130,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:sniffer",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 120,
@@ -1017,6 +1138,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:snowball",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 121,
@@ -1024,6 +1146,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:snow_golem",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 122,
@@ -1031,6 +1154,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:spawner_minecart",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: true,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 123,
@@ -1038,6 +1162,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:spectral_arrow",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 124,
@@ -1045,6 +1170,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:spider",
         allowed_in_peaceful: false,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 125,
@@ -1052,6 +1178,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:spruce_boat",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 126,
@@ -1059,6 +1186,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:spruce_chest_boat",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 127,
@@ -1066,6 +1194,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:squid",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 128,
@@ -1073,6 +1202,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:stray",
         allowed_in_peaceful: false,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 129,
@@ -1080,6 +1210,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:strider",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 130,
@@ -1087,6 +1218,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:tadpole",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 131,
@@ -1094,6 +1226,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:text_display",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 132,
@@ -1101,6 +1234,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:tnt",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 133,
@@ -1108,6 +1242,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:tnt_minecart",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 134,
@@ -1115,6 +1250,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:trader_llama",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 135,
@@ -1122,6 +1258,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:trident",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 136,
@@ -1129,6 +1266,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:tropical_fish",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 137,
@@ -1136,6 +1274,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:turtle",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 138,
@@ -1143,6 +1282,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:vex",
         allowed_in_peaceful: false,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 139,
@@ -1150,6 +1290,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:villager",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 140,
@@ -1157,6 +1298,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:vindicator",
         allowed_in_peaceful: false,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 141,
@@ -1164,6 +1306,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:wandering_trader",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 142,
@@ -1171,6 +1314,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:warden",
         allowed_in_peaceful: false,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 143,
@@ -1178,6 +1322,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:wind_charge",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 144,
@@ -1185,6 +1330,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:witch",
         allowed_in_peaceful: false,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 145,
@@ -1192,6 +1338,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:wither",
         allowed_in_peaceful: false,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 146,
@@ -1199,6 +1346,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:wither_skeleton",
         allowed_in_peaceful: false,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 147,
@@ -1206,6 +1354,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:wither_skull",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 148,
@@ -1213,6 +1362,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:wolf",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 149,
@@ -1220,6 +1370,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:zoglin",
         allowed_in_peaceful: false,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 150,
@@ -1227,6 +1378,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:zombie",
         allowed_in_peaceful: false,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 151,
@@ -1234,6 +1386,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:zombie_horse",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 152,
@@ -1241,6 +1394,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:zombie_nautilus",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 153,
@@ -1248,6 +1402,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:zombie_villager",
         allowed_in_peaceful: false,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 154,
@@ -1255,6 +1410,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:zombified_piglin",
         allowed_in_peaceful: false,
         only_op_can_set_nbt: false,
+        serializable: true,
     },
     EntityTypeCatalogEntry {
         id: 155,
@@ -1262,6 +1418,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:player",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: false,
     },
     EntityTypeCatalogEntry {
         id: 156,
@@ -1269,6 +1426,7 @@ pub const VANILLA_ENTITY_TYPES: &[EntityTypeCatalogEntry] = &[
         resource_id: "minecraft:fishing_bobber",
         allowed_in_peaceful: true,
         only_op_can_set_nbt: false,
+        serializable: false,
     },
 ];
 
@@ -1310,6 +1468,12 @@ pub fn vanilla_entity_type_only_op_can_set_nbt(entity_type_id: i32) -> bool {
         .unwrap_or(false)
 }
 
+pub fn vanilla_entity_type_is_serializable(entity_type_id: i32) -> bool {
+    vanilla_entity_type(entity_type_id)
+        .map(|entry| entry.serializable)
+        .unwrap_or(false)
+}
+
 #[cfg(test)]
 mod tests {
     use std::collections::HashSet;
@@ -1341,6 +1505,13 @@ mod tests {
                 .count(),
             3
         );
+        assert_eq!(
+            VANILLA_ENTITY_TYPES
+                .iter()
+                .filter(|entry| !entry.serializable)
+                .count(),
+            4
+        );
     }
 
     #[test]
@@ -1358,6 +1529,20 @@ mod tests {
             VANILLA_ENTITY_TYPE_PIG_ID
         ));
         assert!(!vanilla_entity_type_only_op_can_set_nbt(-1));
+    }
+
+    #[test]
+    fn serializable_property_comes_from_generated_builder_metadata() {
+        assert!(vanilla_entity_type_is_serializable(
+            VANILLA_ENTITY_TYPE_ARROW_ID
+        ));
+        assert!(!vanilla_entity_type_is_serializable(
+            VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID
+        ));
+        assert!(!vanilla_entity_type_is_serializable(
+            VANILLA_ENTITY_TYPE_PLAYER_ID
+        ));
+        assert!(!vanilla_entity_type_is_serializable(-1));
     }
 
     #[test]

@@ -24,6 +24,7 @@ class EntityTypeEntry:
     resource_id: str
     allowed_in_peaceful: bool
     only_op_can_set_nbt: bool
+    serializable: bool
 
 
 @dataclass(frozen=True)
@@ -214,6 +215,7 @@ def entity_type_entries(
                 _string_literal(source, arguments[0]),
                 not _calls_in_expression(source, field.initializer, "notInPeaceful"),
                 field.name in op_only_constants,
+                not _calls_in_expression(source, field.initializer, "noSave"),
             )
         )
     if len(entries) != expected_count:

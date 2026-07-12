@@ -12494,3 +12494,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   `ZombieNautilus extends AbstractNautilus extends TamableAnimal`。
 - [x] `Animal.handleEntityEvent(18)` 的七心分支继续由 world 行为 owner 消费 class membership；Allay 的
   独立三心分支与 Dolphin/fish/squid 非 Animal 路径不变，未把继承事实冒充繁殖、AI 或服务端状态实现。
+
+## 2026-07-12：Derived saveable projectile membership
+
+- [x] protocol entity-type descriptor 从 `EntityType.Builder.noSave()` 生成 `serializable`，metadata descriptor
+  从 runtime class 图生成 19 项 `is_projectile`；world 的 projectile lifecycle 以两项纯声明事实相交，
+  删除 18 项手写 entity-type match 并增加反向结构测试。
+- [x] `FishingHook extends Projectile` 但其 builder 明确 `.noSave()`，因此仍被安全排除；其余 18 个
+  saveable projectile 的 owner/left-owner/shot/trident lifecycle 行为保持原 world owner，本切片不扩张
+  命中、伤害、爆炸或服务端权威移除。

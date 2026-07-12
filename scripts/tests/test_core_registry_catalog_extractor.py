@@ -53,7 +53,7 @@ public class EntityType {
       "one", Builder.of(One::new).sized(1, 1));
   public static final EntityType<Two> TWO = register(
       "two", Builder.of(Two::new)
-          .notInPeaceful());
+          .notInPeaceful().noSave());
   private static final Set<EntityType<?>> OP_ONLY_CUSTOM_DATA = Set.of(TWO);
   private static String fake = ".notInPeaceful() register(\\\"fake\\\")";
 }
@@ -63,6 +63,7 @@ public class EntityType {
         self.assertEqual([entry.resource_id for entry in entries], ["minecraft:one", "minecraft:two"])
         self.assertEqual([entry.allowed_in_peaceful for entry in entries], [True, False])
         self.assertEqual([entry.only_op_can_set_nbt for entry in entries], [False, True])
+        self.assertEqual([entry.serializable for entry in entries], [True, False])
 
     def test_other_registry_field_shapes_use_cst_arguments_and_builder_calls(self) -> None:
         block_source = parse_source(

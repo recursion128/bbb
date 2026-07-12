@@ -1,5 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
+use bbb_protocol::entity_types::vanilla_entity_type_is_serializable;
 use bbb_protocol::packets::ProjectilePower as ProtocolProjectilePower;
 
 use uuid::Uuid;
@@ -7,6 +8,7 @@ use uuid::Uuid;
 use crate::{HurtingProjectileState, ProjectilePowerUpdateState, WorldStore};
 
 use super::schema::{
+    vanilla_entity_metadata_type_is_projectile,
     VANILLA_ABSTRACT_ARROW_DEFAULT_FLAGS as ABSTRACT_ARROW_DEFAULT_FLAGS,
     VANILLA_ABSTRACT_ARROW_DEFAULT_IN_GROUND as ABSTRACT_ARROW_DEFAULT_IN_GROUND,
     VANILLA_ABSTRACT_ARROW_FLAGS_DATA_ID as ABSTRACT_ARROW_FLAGS_DATA_ID,
@@ -140,27 +142,8 @@ pub(crate) fn entity_projectile_lifecycle_from_state(
 }
 
 pub(crate) fn is_vanilla_saved_projectile_type(entity_type_id: i32) -> bool {
-    matches!(
-        entity_type_id,
-        VANILLA_ENTITY_TYPE_ARROW_ID
-            | VANILLA_ENTITY_TYPE_BREEZE_WIND_CHARGE_ID
-            | VANILLA_ENTITY_TYPE_DRAGON_FIREBALL_ID
-            | VANILLA_ENTITY_TYPE_EGG_ID
-            | VANILLA_ENTITY_TYPE_ENDER_PEARL_ID
-            | VANILLA_ENTITY_TYPE_EXPERIENCE_BOTTLE_ID
-            | VANILLA_ENTITY_TYPE_FIREBALL_ID
-            | VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID
-            | VANILLA_ENTITY_TYPE_LINGERING_POTION_ID
-            | VANILLA_ENTITY_TYPE_LLAMA_SPIT_ID
-            | VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID
-            | VANILLA_ENTITY_TYPE_SMALL_FIREBALL_ID
-            | VANILLA_ENTITY_TYPE_SNOWBALL_ID
-            | VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID
-            | VANILLA_ENTITY_TYPE_SPLASH_POTION_ID
-            | VANILLA_ENTITY_TYPE_TRIDENT_ID
-            | VANILLA_ENTITY_TYPE_WIND_CHARGE_ID
-            | VANILLA_ENTITY_TYPE_WITHER_SKULL_ID
-    )
+    vanilla_entity_metadata_type_is_projectile(entity_type_id)
+        && vanilla_entity_type_is_serializable(entity_type_id)
 }
 
 /// Vanilla 26.1 `EntityType.Builder.sized` dimensions for every saveable
@@ -478,7 +461,10 @@ fn is_vanilla_wind_charge_type(entity_type_id: i32) -> bool {
 mod tests {
     use super::*;
     use crate::WorldStore;
-    use bbb_protocol::entity_types::{VANILLA_ENTITY_TYPE_COW_ID, VANILLA_ENTITY_TYPE_OAK_BOAT_ID};
+    use bbb_protocol::entity_types::{
+        VANILLA_ENTITY_TYPE_COW_ID, VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID,
+        VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+    };
     use bbb_protocol::packets::{
         AddEntity as ProtocolAddEntity, EntityDataValue as ProtocolEntityDataValue,
         EntityDataValueKind, EntityPositionSync as ProtocolEntityPositionSync,
@@ -486,6 +472,25 @@ mod tests {
         SetPassengers as ProtocolSetPassengers, Vec3d as ProtocolVec3d,
     };
     use uuid::Uuid;
+
+    #[test]
+    fn saveable_projectile_membership_combines_class_and_builder_metadata() {
+        assert_eq!(
+            (0..157)
+                .filter(|id| is_vanilla_saved_projectile_type(*id))
+                .count(),
+            18
+        );
+        assert!(is_vanilla_saved_projectile_type(
+            VANILLA_ENTITY_TYPE_ARROW_ID
+        ));
+        assert!(!is_vanilla_saved_projectile_type(
+            VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID
+        ));
+        assert!(!is_vanilla_saved_projectile_type(
+            VANILLA_ENTITY_TYPE_OAK_BOAT_ID
+        ));
+    }
 
     #[test]
     fn applies_projectile_power_to_hurting_projectiles_only() {

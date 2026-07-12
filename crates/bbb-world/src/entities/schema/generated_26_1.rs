@@ -12432,6 +12432,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.vehicle.boat.AbstractBoat"),
         is_living: false,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12442,6 +12443,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.vehicle.boat.AbstractBoat"),
         is_living: false,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12452,6 +12454,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.animal.allay.Allay"),
         is_living: true,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12462,6 +12465,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.AreaEffectCloud"),
         is_living: false,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12472,6 +12476,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.animal.armadillo.Armadillo"),
         is_living: true,
         is_animal: true,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12482,6 +12487,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.decoration.ArmorStand"),
         is_living: true,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12492,6 +12498,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.projectile.arrow.Arrow"),
         is_living: false,
         is_animal: false,
+        is_projectile: true,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12502,6 +12509,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.animal.axolotl.Axolotl"),
         is_living: true,
         is_animal: true,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12512,6 +12520,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.vehicle.boat.AbstractBoat"),
         is_living: false,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12522,6 +12531,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.vehicle.boat.AbstractBoat"),
         is_living: false,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12532,6 +12542,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.ambient.Bat"),
         is_living: true,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12542,6 +12553,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.animal.bee.Bee"),
         is_living: true,
         is_animal: true,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12552,6 +12564,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.vehicle.boat.AbstractBoat"),
         is_living: false,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12562,6 +12575,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.vehicle.boat.AbstractBoat"),
         is_living: false,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12572,6 +12586,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.monster.Blaze"),
         is_living: true,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12582,6 +12597,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.Display.BlockDisplay"),
         is_living: false,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12592,6 +12608,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.monster.skeleton.Bogged"),
         is_living: true,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12602,6 +12619,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.Mob"),
         is_living: true,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12614,6 +12632,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.Entity"),
         is_living: false,
         is_animal: false,
+        is_projectile: true,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12624,6 +12643,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.animal.camel.Camel"),
         is_living: true,
         is_animal: true,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12634,6 +12654,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.animal.camel.Camel"),
         is_living: true,
         is_animal: true,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12644,6 +12665,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.animal.feline.Cat"),
         is_living: true,
         is_animal: true,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12654,6 +12676,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.monster.spider.Spider"),
         is_living: true,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12664,6 +12687,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.vehicle.boat.AbstractBoat"),
         is_living: false,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12674,6 +12698,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.vehicle.boat.AbstractBoat"),
         is_living: false,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12684,6 +12709,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.vehicle.minecart.AbstractMinecart"),
         is_living: false,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12694,6 +12720,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.animal.chicken.Chicken"),
         is_living: true,
         is_animal: true,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12704,6 +12731,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.animal.fish.AbstractFish"),
         is_living: true,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12714,6 +12742,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.animal.golem.CopperGolem"),
         is_living: true,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12724,6 +12753,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.vehicle.minecart.MinecartCommandBlock"),
         is_living: false,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12734,6 +12764,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.animal.cow.Cow"),
         is_living: true,
         is_animal: true,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12744,6 +12775,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.monster.creaking.Creaking"),
         is_living: true,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12754,6 +12786,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.monster.Creeper"),
         is_living: true,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12764,6 +12797,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.vehicle.boat.AbstractBoat"),
         is_living: false,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12774,6 +12808,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.vehicle.boat.AbstractBoat"),
         is_living: false,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12784,6 +12819,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.animal.dolphin.Dolphin"),
         is_living: true,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12794,6 +12830,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.animal.equine.AbstractChestedHorse"),
         is_living: true,
         is_animal: true,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12806,6 +12843,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.Entity"),
         is_living: false,
         is_animal: false,
+        is_projectile: true,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12816,6 +12854,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.monster.zombie.Zombie"),
         is_living: true,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12830,6 +12869,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         ),
         is_living: false,
         is_animal: false,
+        is_projectile: true,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12840,6 +12880,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.monster.Guardian"),
         is_living: true,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12850,6 +12891,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.monster.EnderMan"),
         is_living: true,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12860,6 +12902,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.Mob"),
         is_living: true,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12870,6 +12913,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.boss.enderdragon.EnderDragon"),
         is_living: true,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12884,6 +12928,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         ),
         is_living: false,
         is_animal: false,
+        is_projectile: true,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12894,6 +12939,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.boss.enderdragon.EndCrystal"),
         is_living: false,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12904,6 +12950,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.monster.illager.SpellcasterIllager"),
         is_living: true,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12914,6 +12961,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.Entity"),
         is_living: false,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12928,6 +12976,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         ),
         is_living: false,
         is_animal: false,
+        is_projectile: true,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12938,6 +12987,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.ExperienceOrb"),
         is_living: false,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12948,6 +12998,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.projectile.EyeOfEnder"),
         is_living: false,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12958,6 +13009,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.item.FallingBlockEntity"),
         is_living: false,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12970,6 +13022,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.projectile.hurtingprojectile.Fireball"),
         is_living: false,
         is_animal: false,
+        is_projectile: true,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12980,6 +13033,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.projectile.FireworkRocketEntity"),
         is_living: false,
         is_animal: false,
+        is_projectile: true,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -12990,6 +13044,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.animal.fox.Fox"),
         is_living: true,
         is_animal: true,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13000,6 +13055,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.animal.frog.Frog"),
         is_living: true,
         is_animal: true,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13010,6 +13066,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.vehicle.minecart.MinecartFurnace"),
         is_living: false,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13020,6 +13077,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.monster.Ghast"),
         is_living: true,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13030,6 +13088,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.animal.happyghast.HappyGhast"),
         is_living: true,
         is_animal: true,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13040,6 +13099,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.Mob"),
         is_living: true,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13050,6 +13110,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.decoration.ItemFrame"),
         is_living: false,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13060,6 +13121,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.animal.squid.GlowSquid"),
         is_living: true,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13070,6 +13132,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.animal.goat.Goat"),
         is_living: true,
         is_animal: true,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13080,6 +13143,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.monster.Guardian"),
         is_living: true,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13090,6 +13154,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.monster.hoglin.Hoglin"),
         is_living: true,
         is_animal: true,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13100,6 +13165,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.vehicle.minecart.AbstractMinecart"),
         is_living: false,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13110,6 +13176,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.animal.equine.Horse"),
         is_living: true,
         is_animal: true,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13120,6 +13187,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.monster.zombie.Zombie"),
         is_living: true,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13130,6 +13198,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.monster.illager.SpellcasterIllager"),
         is_living: true,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13140,6 +13209,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.Interaction"),
         is_living: false,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13150,6 +13220,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.animal.golem.IronGolem"),
         is_living: true,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13160,6 +13231,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.item.ItemEntity"),
         is_living: false,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13170,6 +13242,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.Display.ItemDisplay"),
         is_living: false,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13180,6 +13253,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.decoration.ItemFrame"),
         is_living: false,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13190,6 +13264,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.vehicle.boat.AbstractBoat"),
         is_living: false,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13200,6 +13275,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.vehicle.boat.AbstractBoat"),
         is_living: false,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13210,6 +13286,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.Entity"),
         is_living: false,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13220,6 +13297,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.Entity"),
         is_living: false,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13230,6 +13308,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.animal.equine.Llama"),
         is_living: true,
         is_animal: true,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13240,6 +13319,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.Entity"),
         is_living: false,
         is_animal: false,
+        is_projectile: true,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13250,6 +13330,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.monster.Slime"),
         is_living: true,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13260,6 +13341,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.vehicle.boat.AbstractBoat"),
         is_living: false,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13270,6 +13352,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.vehicle.boat.AbstractBoat"),
         is_living: false,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13280,6 +13363,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.decoration.Mannequin"),
         is_living: true,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13290,6 +13374,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.Entity"),
         is_living: false,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13300,6 +13385,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.vehicle.minecart.AbstractMinecart"),
         is_living: false,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13310,6 +13396,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.animal.cow.MushroomCow"),
         is_living: true,
         is_animal: true,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13320,6 +13407,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.animal.equine.AbstractChestedHorse"),
         is_living: true,
         is_animal: true,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13330,6 +13418,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.animal.nautilus.AbstractNautilus"),
         is_living: true,
         is_animal: true,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13340,6 +13429,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.vehicle.boat.AbstractBoat"),
         is_living: false,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13350,6 +13440,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.vehicle.boat.AbstractBoat"),
         is_living: false,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13360,6 +13451,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.animal.feline.Ocelot"),
         is_living: true,
         is_animal: true,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13370,6 +13462,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.OminousItemSpawner"),
         is_living: false,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13380,6 +13473,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.decoration.painting.Painting"),
         is_living: false,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13390,6 +13484,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.vehicle.boat.AbstractBoat"),
         is_living: false,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13400,6 +13495,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.vehicle.boat.AbstractBoat"),
         is_living: false,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13410,6 +13506,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.animal.panda.Panda"),
         is_living: true,
         is_animal: true,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13420,6 +13517,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.Mob"),
         is_living: true,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13430,6 +13528,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.animal.parrot.Parrot"),
         is_living: true,
         is_animal: true,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13440,6 +13539,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.monster.Phantom"),
         is_living: true,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13450,6 +13550,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.animal.pig.Pig"),
         is_living: true,
         is_animal: true,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13460,6 +13561,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.monster.piglin.Piglin"),
         is_living: true,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13470,6 +13572,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.monster.piglin.AbstractPiglin"),
         is_living: true,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13480,6 +13583,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.monster.illager.Pillager"),
         is_living: true,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13490,6 +13594,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.animal.polarbear.PolarBear"),
         is_living: true,
         is_animal: true,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13504,6 +13609,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         ),
         is_living: false,
         is_animal: false,
+        is_projectile: true,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13518,6 +13624,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         ),
         is_living: false,
         is_animal: false,
+        is_projectile: true,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13528,6 +13635,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.animal.fish.Pufferfish"),
         is_living: true,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13538,6 +13646,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.animal.rabbit.Rabbit"),
         is_living: true,
         is_animal: true,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13548,6 +13657,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.raid.Raider"),
         is_living: true,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13558,6 +13668,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.animal.fish.Salmon"),
         is_living: true,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13568,6 +13679,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.animal.sheep.Sheep"),
         is_living: true,
         is_animal: true,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13578,6 +13690,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.monster.Shulker"),
         is_living: true,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13588,6 +13701,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.Entity"),
         is_living: false,
         is_animal: false,
+        is_projectile: true,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13598,6 +13712,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.Mob"),
         is_living: true,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13608,6 +13723,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.monster.skeleton.Skeleton"),
         is_living: true,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13618,6 +13734,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.animal.equine.AbstractHorse"),
         is_living: true,
         is_animal: true,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13628,6 +13745,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.monster.Slime"),
         is_living: true,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13640,6 +13758,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.projectile.hurtingprojectile.Fireball"),
         is_living: false,
         is_animal: false,
+        is_projectile: true,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13650,6 +13769,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.animal.sniffer.Sniffer"),
         is_living: true,
         is_animal: true,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13664,6 +13784,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         ),
         is_living: false,
         is_animal: false,
+        is_projectile: true,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13674,6 +13795,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.animal.golem.SnowGolem"),
         is_living: true,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13684,6 +13806,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.vehicle.minecart.AbstractMinecart"),
         is_living: false,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13694,6 +13817,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.projectile.arrow.AbstractArrow"),
         is_living: false,
         is_animal: false,
+        is_projectile: true,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13704,6 +13828,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.monster.spider.Spider"),
         is_living: true,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13714,6 +13839,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.vehicle.boat.AbstractBoat"),
         is_living: false,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13724,6 +13850,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.vehicle.boat.AbstractBoat"),
         is_living: false,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13734,6 +13861,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.AgeableMob"),
         is_living: true,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13744,6 +13872,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.Mob"),
         is_living: true,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13754,6 +13883,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.monster.Strider"),
         is_living: true,
         is_animal: true,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13764,6 +13894,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.animal.frog.Tadpole"),
         is_living: true,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13774,6 +13905,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.Display.TextDisplay"),
         is_living: false,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13784,6 +13916,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.item.PrimedTnt"),
         is_living: false,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13794,6 +13927,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.vehicle.minecart.AbstractMinecart"),
         is_living: false,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13804,6 +13938,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.animal.equine.Llama"),
         is_living: true,
         is_animal: true,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13814,6 +13949,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.projectile.arrow.ThrownTrident"),
         is_living: false,
         is_animal: false,
+        is_projectile: true,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13824,6 +13960,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.animal.fish.TropicalFish"),
         is_living: true,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13834,6 +13971,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.animal.turtle.Turtle"),
         is_living: true,
         is_animal: true,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13844,6 +13982,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.monster.Vex"),
         is_living: true,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13854,6 +13993,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.npc.villager.Villager"),
         is_living: true,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13864,6 +14004,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.raid.Raider"),
         is_living: true,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13874,6 +14015,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.npc.villager.AbstractVillager"),
         is_living: true,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13884,6 +14026,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.monster.warden.Warden"),
         is_living: true,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13896,6 +14039,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.Entity"),
         is_living: false,
         is_animal: false,
+        is_projectile: true,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13906,6 +14050,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.monster.Witch"),
         is_living: true,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13916,6 +14061,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.boss.wither.WitherBoss"),
         is_living: true,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13926,6 +14072,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.Mob"),
         is_living: true,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13936,6 +14083,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.projectile.hurtingprojectile.WitherSkull"),
         is_living: false,
         is_animal: false,
+        is_projectile: true,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13946,6 +14094,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.animal.wolf.Wolf"),
         is_living: true,
         is_animal: true,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13956,6 +14105,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.monster.Zoglin"),
         is_living: true,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13966,6 +14116,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.monster.zombie.Zombie"),
         is_living: true,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13976,6 +14127,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.animal.equine.AbstractHorse"),
         is_living: true,
         is_animal: true,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13986,6 +14138,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.animal.nautilus.ZombieNautilus"),
         is_living: true,
         is_animal: true,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13996,6 +14149,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.monster.zombie.ZombieVillager"),
         is_living: true,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -14006,6 +14160,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.monster.zombie.Zombie"),
         is_living: true,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -14016,6 +14171,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.player.Player"),
         is_living: true,
         is_animal: false,
+        is_projectile: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -14026,6 +14182,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         schema_class: Some("net.minecraft.world.entity.projectile.FishingHook"),
         is_living: false,
         is_animal: false,
+        is_projectile: true,
         diagnostic: None,
     },
 ];
