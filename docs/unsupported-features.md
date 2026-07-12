@@ -75,8 +75,8 @@ Owner: `bbb-protocol`
   typed `RegistryAccess` on top of the checked holder-identity lookup: decode
   each synchronized registry with its element codec, merge known-pack stubs,
   replace resource-id-only entity-variant and derived audio projections with
-  typed element codecs, resolve numeric tag ids to holders, apply pending
-  static tags and data-component
+  typed element codecs, materialize the checked tag-resolution view in the
+  frozen lookup, apply pending static tags and data-component
   initializers, and freeze typed lookup state. Raw NBT summaries and a few
   derived audio registries are not that runtime.
 - Complete play Login session initialization beyond the current player-id and

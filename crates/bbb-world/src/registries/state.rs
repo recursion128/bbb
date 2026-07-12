@@ -64,6 +64,13 @@ pub struct RegistryTagState {
     pub tags: BTreeMap<String, Vec<i32>>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct UnresolvedRegistryTagHolder {
+    pub registry: String,
+    pub tag: String,
+    pub holder_id: i32,
+}
+
 impl RegistrySet {
     pub fn vanilla_26_1() -> Self {
         Self {
@@ -131,6 +138,52 @@ impl RegistrySet {
         self.contents
             .get(registry)?
             .holder_id_by_resource_id(resource_id)
+    }
+
+    pub fn holder_ids_for_tag(&self, registry: &str, tag: &str) -> Option<&[i32]> {
+        self.tags.get(registry)?.tags.get(tag).map(Vec::as_slice)
+    }
+
+    pub fn holder_is_in_tag(&self, registry: &str, tag: &str, holder_id: i32) -> bool {
+        self.holder_ids_for_tag(registry, tag)
+            .is_some_and(|holder_ids| holder_ids.contains(&holder_id))
+    }
+
+    pub fn tag_names_containing_holder_id<'a>(
+        &'a self,
+        registry: &str,
+        holder_id: i32,
+    ) -> Option<impl Iterator<Item = &'a str> + 'a> {
+        Some(
+            self.tags
+                .get(registry)?
+                .tags
+                .iter()
+                .filter(move |(_, holder_ids)| holder_ids.contains(&holder_id))
+                .map(|(tag, _)| tag.as_str()),
+        )
+    }
+
+    pub fn resource_ids_for_tag<'a>(
+        &'a self,
+        registry: &str,
+        tag: &str,
+    ) -> Result<Option<Vec<&'a str>>, UnresolvedRegistryTagHolder> {
+        let Some(holder_ids) = self.holder_ids_for_tag(registry, tag) else {
+            return Ok(None);
+        };
+        let mut resource_ids = Vec::with_capacity(holder_ids.len());
+        for holder_id in holder_ids {
+            let Some(resource_id) = self.resource_id_by_holder_id(registry, *holder_id) else {
+                return Err(UnresolvedRegistryTagHolder {
+                    registry: registry.to_string(),
+                    tag: tag.to_string(),
+                    holder_id: *holder_id,
+                });
+            };
+            resource_ids.push(resource_id);
+        }
+        Ok(Some(resource_ids))
     }
 }
 

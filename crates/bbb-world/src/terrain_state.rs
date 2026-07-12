@@ -44,7 +44,7 @@ pub use crate::position::{BlockPos, ChunkPos};
 pub use crate::registries::{
     vanilla_air_block_state_id, vanilla_block_state_id, BlockStateInfo, BlockStateRegistry,
     EnchantmentAttributeModifier, RegistryContentState, RegistryPacket, RegistryPacketEntry,
-    RegistrySet, RegistryTagState,
+    RegistrySet, RegistryTagState, UnresolvedRegistryTagHolder,
 };
 pub use crate::shulker_box_blocks::{
     shulker_box_color_for_block_name, ShulkerBoxAnimationStatus, ShulkerBoxColorKind,

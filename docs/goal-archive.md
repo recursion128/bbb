@@ -12121,3 +12121,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] entity render scene 的 chicken/cow/pig/frog/cat/wolf variant 与 villager type/profession 不再接收八份 `RegistryContentState` 或自行索引 entries；production 只注入一个窄 `resource_id_by_holder_id` lookup。
 - [x] dynamic registry order、unknown/negative fallback 与 static 26.1 fallback 语义保持通过；新增 frog reordered-registry assertion。custom variant element payload 的 typed codec/asset semantics 继续开放，不能由 resource id lookup 冒充。
+
+## 2026-07-12：checked registry tag holder resolution
+
+- [x] registry owner 提供 tag holder slice、membership、containing-tag iterator 与 tag-order resource-id resolution；missing tag 返回 `None`，非法 holder 返回包含 registry/tag/id 的显式错误，不静默丢弃。
+- [x] F3 block/fluid/entity tag 列表与 piglin-loved pose 改用窄 tag queries，保持 BTree tag order 和 membership 语义；将 resolved tags materialize 到最终 frozen typed RegistryAccess 继续开放。

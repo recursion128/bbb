@@ -1922,7 +1922,8 @@
       "coverage": {
         "canonical_apply": {
           "evidence": [
-            "crates/bbb-world/src/registries/store.rs#apply_update_tags"
+            "crates/bbb-world/src/registries/store.rs#apply_update_tags",
+            "crates/bbb-world/src/registries/state.rs#resource_ids_for_tag"
           ],
           "gap": null,
           "status": "complete"
@@ -1946,6 +1947,7 @@
         "runtime_side_effect": {
           "evidence": [
             "crates/bbb-native/src/entity_scene/hands.rs#entity_offhand_holds_loved_item",
+            "crates/bbb-native/src/runtime.rs#hud_debug_looking_at_block_tag_lines",
             "vanilla:net/minecraft/client/multiplayer/RegistryDataCollector.java#resolveRegistryTags"
           ],
           "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
@@ -1954,6 +1956,8 @@
         "tests": {
           "evidence": [
             "crates/bbb-world/src/registries/tests.rs#update_tags_replace_network_tag_state",
+            "crates/bbb-world/src/registries/tests.rs#registry_tag_holder_resolution_is_ordered_and_rejects_unknown_holders",
+            "crates/bbb-native/src/runtime/tests.rs#hud_debug_overlay_projects_custom_looking_at_entity_tags",
             "crates/bbb-native/src/runtime/events/tests/session_protocol_events.rs#update_tags_event_updates_world_state_and_counters"
           ],
           "gap": null,

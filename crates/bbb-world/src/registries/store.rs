@@ -4,7 +4,7 @@ use crate::WorldStore;
 
 use super::{
     state::PendingRegistryCollection, RegistryContentState, RegistryPacket, RegistryPacketEntry,
-    RegistryTagState,
+    RegistryTagState, UnresolvedRegistryTagHolder,
 };
 
 impl WorldStore {
@@ -112,6 +112,31 @@ impl WorldStore {
     ) -> Option<i32> {
         self.registries
             .holder_id_by_resource_id(registry, resource_id)
+    }
+
+    pub fn registry_holder_ids_for_tag(&self, registry: &str, tag: &str) -> Option<&[i32]> {
+        self.registries.holder_ids_for_tag(registry, tag)
+    }
+
+    pub fn registry_holder_is_in_tag(&self, registry: &str, tag: &str, holder_id: i32) -> bool {
+        self.registries.holder_is_in_tag(registry, tag, holder_id)
+    }
+
+    pub fn registry_tag_names_containing_holder_id<'a>(
+        &'a self,
+        registry: &str,
+        holder_id: i32,
+    ) -> Option<impl Iterator<Item = &'a str> + 'a> {
+        self.registries
+            .tag_names_containing_holder_id(registry, holder_id)
+    }
+
+    pub fn registry_resource_ids_for_tag<'a>(
+        &'a self,
+        registry: &str,
+        tag: &str,
+    ) -> Result<Option<Vec<&'a str>>, UnresolvedRegistryTagHolder> {
+        self.registries.resource_ids_for_tag(registry, tag)
     }
 
     fn sync_registry_counters(&mut self) {

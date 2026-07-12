@@ -4737,12 +4737,10 @@ fn hud_debug_looking_at_block_tag_lines(
     let hit = debug_looking_at_block_hit_from_camera(world, camera_pose)?;
     let block_name = world.probe_block(hit.pos)?.block_name?;
     let block_id = world.registry_holder_id_by_resource_id("minecraft:block", &block_name)?;
-    let tags = world.registry_tags("minecraft:block")?;
     Some(
-        tags.tags
-            .iter()
-            .filter(|(_, entries)| entries.contains(&block_id))
-            .map(|(tag, _)| format!("#{tag}"))
+        world
+            .registry_tag_names_containing_holder_id("minecraft:block", block_id)?
+            .map(|tag| format!("#{tag}"))
             .collect(),
     )
 }
@@ -4775,12 +4773,10 @@ fn hud_debug_looking_at_fluid_tag_lines(
     let fluid = world.probe_block(hit.pos)?.fluid?;
     let fluid_name = hud_debug_fluid_state_name(fluid);
     let fluid_id = world.registry_holder_id_by_resource_id("minecraft:fluid", fluid_name)?;
-    let tags = world.registry_tags("minecraft:fluid")?;
     Some(
-        tags.tags
-            .iter()
-            .filter(|(_, entries)| entries.contains(&fluid_id))
-            .map(|(tag, _)| format!("#{tag}"))
+        world
+            .registry_tag_names_containing_holder_id("minecraft:fluid", fluid_id)?
+            .map(|tag| format!("#{tag}"))
             .collect(),
     )
 }
@@ -4803,12 +4799,13 @@ fn hud_debug_looking_at_entity_tag_lines(
     entity_partial_tick: f32,
 ) -> Option<Vec<String>> {
     let entity = hud_debug_looking_at_entity(world, camera_pose, entity_partial_tick)?;
-    let tags = world.registry_tags("minecraft:entity_type")?;
     Some(
-        tags.tags
-            .iter()
-            .filter(|(_, entries)| entries.contains(&entity.entity_type_id))
-            .map(|(tag, _)| format!("#{tag}"))
+        world
+            .registry_tag_names_containing_holder_id(
+                "minecraft:entity_type",
+                entity.entity_type_id,
+            )?
+            .map(|tag| format!("#{tag}"))
             .collect(),
     )
 }

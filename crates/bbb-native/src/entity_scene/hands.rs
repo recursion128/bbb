@@ -463,10 +463,7 @@ pub(super) fn entity_offhand_holds_loved_item(world: &WorldStore, entity_id: i32
     let Some(item_id) = stack.item_id else {
         return false;
     };
-    world
-        .registry_tags("minecraft:item")
-        .and_then(|registry| registry.tags.get(PIGLIN_LOVED_ITEM_TAG))
-        .is_some_and(|entries| entries.contains(&item_id))
+    world.registry_holder_is_in_tag("minecraft:item", PIGLIN_LOVED_ITEM_TAG, item_id)
 }
 
 /// Vanilla `Piglin.isChargingCrossbow()` (the synced `DATA_IS_CHARGING_CROSSBOW` boolean, id 18): the

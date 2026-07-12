@@ -9,6 +9,7 @@ pub use block_states::{
 pub use enchantments::EnchantmentAttributeModifier;
 pub use state::{
     RegistryContentState, RegistryPacket, RegistryPacketEntry, RegistrySet, RegistryTagState,
+    UnresolvedRegistryTagHolder,
 };
 
 #[cfg(test)]

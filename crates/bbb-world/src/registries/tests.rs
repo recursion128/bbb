@@ -3,7 +3,7 @@ use bbb_protocol::packets::{
 };
 use std::collections::BTreeMap;
 
-use crate::{RegistryPacketEntry, RegistrySet, WorldStore};
+use crate::{RegistryPacketEntry, RegistrySet, UnresolvedRegistryTagHolder, WorldStore};
 
 #[test]
 fn loads_vanilla_block_state_registry() {
@@ -215,6 +215,71 @@ fn registry_holder_lookup_uses_checked_wire_order_identity() {
     assert_eq!(
         store.registry_resource_id_by_holder_id("minecraft:missing", 0),
         None
+    );
+}
+
+#[test]
+fn registry_tag_holder_resolution_is_ordered_and_rejects_unknown_holders() {
+    let mut store = WorldStore::new();
+    store.record_registry_entries(
+        "minecraft:test",
+        0,
+        vec![
+            RegistryPacketEntry::stub("minecraft:first"),
+            RegistryPacketEntry::stub("minecraft:second"),
+            RegistryPacketEntry::stub("minecraft:third"),
+        ],
+    );
+    store.apply_update_tags(UpdateTags {
+        registries: vec![RegistryTags {
+            registry: "minecraft:test".to_string(),
+            tags: vec![
+                TagNetworkPayload {
+                    tag: "minecraft:ordered".to_string(),
+                    entries: vec![2, 0],
+                },
+                TagNetworkPayload {
+                    tag: "minecraft:invalid".to_string(),
+                    entries: vec![1, 7],
+                },
+            ],
+        }],
+    });
+
+    assert_eq!(
+        store.registry_holder_ids_for_tag("minecraft:test", "minecraft:ordered"),
+        Some([2, 0].as_slice())
+    );
+    assert!(store.registry_holder_is_in_tag("minecraft:test", "minecraft:ordered", 2));
+    assert!(!store.registry_holder_is_in_tag("minecraft:test", "minecraft:ordered", 1));
+    assert_eq!(
+        store
+            .registry_tag_names_containing_holder_id("minecraft:test", 0)
+            .unwrap()
+            .collect::<Vec<_>>(),
+        vec!["minecraft:ordered"]
+    );
+    assert_eq!(
+        store
+            .registry_resource_ids_for_tag("minecraft:test", "minecraft:ordered")
+            .unwrap(),
+        Some(vec!["minecraft:third", "minecraft:first"])
+    );
+    assert_eq!(
+        store
+            .registry_resource_ids_for_tag("minecraft:test", "minecraft:missing")
+            .unwrap(),
+        None
+    );
+    assert_eq!(
+        store
+            .registry_resource_ids_for_tag("minecraft:test", "minecraft:invalid")
+            .unwrap_err(),
+        UnresolvedRegistryTagHolder {
+            registry: "minecraft:test".to_string(),
+            tag: "minecraft:invalid".to_string(),
+            holder_id: 7,
+        }
     );
 }
 
