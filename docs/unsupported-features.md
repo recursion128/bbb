@@ -74,6 +74,12 @@ Owner: `bbb-protocol`
   static tags and data-component initializers, and preserve reconnect replacement
   semantics. Raw NBT summaries and a few derived audio registries are not that
   runtime.
+- Complete play Login session initialization beyond the current player-id and
+  partial dimension/gameplay projection: retain the initial level set, chunk
+  radius, simulation distance, secure-chat enforcement, seed and portal
+  cooldown; reset level-bound debug/chat/camera/player state; and enter the
+  vanilla level-load readiness lifecycle without introducing an
+  `IntegratedServer` owner.
 - Recompute vanilla fuel values and creative search-tree tag membership after
   play UpdateTags reloads, following `ClientPacketListener.handleUpdateTags`.
 - Resolve SetTime's `WorldClock` holder ids through that session RegistryAccess

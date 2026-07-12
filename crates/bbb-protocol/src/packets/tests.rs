@@ -1056,9 +1056,9 @@ fn decodes_play_login_spawn_info() {
     payload.write_var_i32(7);
     payload.write_var_i32(32);
     payload.write_bool(true);
+    let payload = payload.into_inner();
 
-    let packet =
-        decode_play_clientbound(ids::play::CLIENTBOUND_LOGIN, &payload.into_inner()).unwrap();
+    let packet = decode_play_clientbound(ids::play::CLIENTBOUND_LOGIN, &payload).unwrap();
     assert_eq!(
         packet,
         PlayClientbound::Login(PlayLogin {
@@ -1092,6 +1092,15 @@ fn decodes_play_login_spawn_info() {
             },
             enforces_secure_chat: true,
         })
+    );
+
+    let mut trailing = payload;
+    trailing.push(0);
+    assert!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_LOGIN, &trailing)
+            .unwrap_err()
+            .to_string()
+            .contains("trailing bytes after play login packet")
     );
 }
 

@@ -7320,27 +7320,48 @@
       "constant_name": "CLIENTBOUND_LOGIN",
       "coverage": {
         "canonical_apply": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
-        },
-        "decode": {
-          "evidence": [],
+          "evidence": [
+            "crates/bbb-world/src/level.rs#apply_login",
+            "crates/bbb-world/src/level.rs#play_login_updates_world_dimension_and_level_info",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleLogin"
+          ],
           "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
           "status": "partial"
         },
+        "decode": {
+          "evidence": [
+            "crates/bbb-protocol/src/packets/tests.rs#decodes_play_login_spawn_info",
+            "crates/bbb-protocol/src/packets/tests.rs#rejects_invalid_play_login_dimension_key",
+            "vanilla:net/minecraft/network/protocol/game/ClientboundLoginPacket.java#STREAM_CODEC",
+            "vanilla:net/minecraft/network/protocol/game/CommonPlayerSpawnInfo.java#CommonPlayerSpawnInfo"
+          ],
+          "gap": null,
+          "status": "complete"
+        },
         "ownership": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/play_apply.rs#PlayClientbound::Login",
+            "crates/bbb-world/src/level.rs#apply_login"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "runtime_side_effect": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
+          "evidence": [
+            "crates/bbb-world/src/level.rs#apply_login",
+            "crates/bbb-native/src/runtime/events/tests/session_hud_and_vehicle_events.rs#login_tracks_local_player_id_in_world",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleLogin"
+          ],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
           "status": "partial"
         },
         "tests": {
-          "evidence": [],
+          "evidence": [
+            "crates/bbb-protocol/src/packets/tests.rs#decodes_play_login_spawn_info",
+            "crates/bbb-net/src/event_stream.rs#play_session_and_player_info_packets_emit_matching_events_without_responses",
+            "crates/bbb-world/src/level.rs#play_login_updates_world_dimension_and_level_info",
+            "crates/bbb-native/src/runtime/events/tests/session_hud_and_vehicle_events.rs#login_tracks_local_player_id_in_world"
+          ],
           "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
           "status": "partial"
         }

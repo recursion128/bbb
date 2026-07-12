@@ -40,7 +40,7 @@ pub(super) fn decode_play_login(decoder: &mut Decoder<'_>) -> Result<PlayLogin> 
     for _ in 0..level_count {
         levels.push(read_resource_location(decoder)?);
     }
-    Ok(PlayLogin {
+    let packet = PlayLogin {
         player_id,
         hardcore,
         levels,
@@ -52,7 +52,13 @@ pub(super) fn decode_play_login(decoder: &mut Decoder<'_>) -> Result<PlayLogin> 
         do_limited_crafting: decoder.read_bool()?,
         common_spawn_info: decode_common_spawn_info(decoder)?,
         enforces_secure_chat: decoder.read_bool()?,
-    })
+    };
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after play login packet".to_string(),
+        ));
+    }
+    Ok(packet)
 }
 
 pub(super) fn decode_respawn(decoder: &mut Decoder<'_>) -> Result<Respawn> {
