@@ -2377,29 +2377,55 @@
       "constant_name": "SERVERBOUND_CHANGE_DIFFICULTY",
       "coverage": {
         "ack_response": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/client_state.rs#decode_change_difficulty",
+            "crates/bbb-world/src/client/hud.rs#apply_change_difficulty",
+            "vanilla:net/minecraft/server/MinecraftServer.java#sendDifficultyUpdate"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "command_surface": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-control/src/server.rs#net.change_difficulty",
+            "crates/bbb-native/src/runtime/control_requests.rs#pump_control_net_requests",
+            "crates/bbb-native/src/input/commands.rs#queue_change_difficulty_command",
+            "crates/bbb-net/src/driver/commands.rs#send_change_difficulty"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "encoder": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/serverbound.rs#encode_play_change_difficulty",
+            "vanilla:net/minecraft/network/protocol/game/ServerboundChangeDifficultyPacket.java#STREAM_CODEC",
+            "vanilla:net/minecraft/world/Difficulty.java#STREAM_CODEC"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "state_guard": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-control/src/server/params.rs#change_difficulty_request_param",
+            "crates/bbb-native/src/runtime/control_requests.rs#pump_control_net_requests_queues_difficulty_commands",
+            "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#handleChangeDifficulty",
+            "vanilla:net/minecraft/server/MinecraftServer.java#setDifficulty",
+            "vanilla:net/minecraft/client/gui/screens/options/DifficultyButtons.java#playerHasPermissionToChangeDifficulty"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-control/src/server/tests.rs#net_change_difficulty_queues_request",
+            "crates/bbb-control/src/server/tests.rs#net_change_difficulty_rejects_missing_or_invalid_difficulty",
+            "crates/bbb-native/src/runtime/control_requests.rs#pump_control_net_requests_queues_difficulty_commands",
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_change_difficulty_packet",
+            "crates/bbb-net/src/driver/commands/tests.rs#send_difficulty_commands_encode_packets",
+            "crates/bbb-world/src/client/hud.rs#change_difficulty_updates_client_level_data_state"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "serverbound",
@@ -2412,29 +2438,58 @@
       "constant_name": "SERVERBOUND_CHANGE_GAME_MODE",
       "coverage": {
         "ack_response": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/client_state.rs#decode_game_event",
+            "crates/bbb-world/src/level.rs#apply_game_event",
+            "vanilla:net/minecraft/server/level/ServerPlayer.java#setGameMode",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleGameEvent"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "command_surface": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-native/src/input.rs#handle_debug_overlay_modifier_key",
+            "crates/bbb-control/src/server.rs#net.change_game_mode",
+            "crates/bbb-native/src/runtime/control_requests.rs#pump_control_net_requests",
+            "crates/bbb-native/src/input/commands.rs#queue_change_game_mode_command",
+            "crates/bbb-net/src/driver/commands.rs#send_change_game_mode"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "encoder": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/serverbound.rs#encode_play_change_game_mode",
+            "vanilla:net/minecraft/network/protocol/game/ServerboundChangeGameModePacket.java#STREAM_CODEC",
+            "vanilla:net/minecraft/world/level/GameType.java#STREAM_CODEC"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "state_guard": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-control/src/server/params.rs#change_game_mode_request_param",
+            "crates/bbb-native/src/input/tests.rs#f3_game_mode_keys_report_no_permission_without_gameplay_commands",
+            "crates/bbb-native/src/input.rs#queue_debug_game_mode_switcher_selection",
+            "crates/bbb-native/src/runtime/control_requests.rs#pump_control_net_requests_queues_difficulty_commands",
+            "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#handleChangeGameMode"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-control/src/server/tests.rs#net_change_game_mode_queues_request",
+            "crates/bbb-control/src/server/tests.rs#net_change_game_mode_rejects_missing_non_string_or_invalid_game_mode",
+            "crates/bbb-native/src/input/tests.rs#f3_n_queues_spectator_game_mode_with_permission",
+            "crates/bbb-native/src/input/tests.rs#f3_f4_game_mode_switcher_queues_default_selection_on_f3_release",
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_change_game_mode_packet",
+            "crates/bbb-net/src/driver/commands/tests.rs#send_difficulty_commands_encode_packets",
+            "crates/bbb-world/src/level.rs#game_events_update_local_gameplay_state"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "serverbound",

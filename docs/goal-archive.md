@@ -11756,3 +11756,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] `ServerboundSelectBundleItemPacket` 的 slot/index 双 VarInt wire、`-1` 取消与非法负数 gate、滚轮 wrap、shown-item-count bounds、本地 bundle 选择态、hover/click 取消、NetCommand/driver send 已闭合。
 - [x] vanilla 服务端仅把选择索引应用到当前 container menu，没有专用 acknowledgement；该维度明确标为 not-applicable，没有虚构响应或服务端状态。
+
+## 2026-07-12：play serverbound difficulty/game-mode packet coverage audit
+
+- [x] `ChangeDifficulty` / `ChangeGameMode` 的 enum-id VarInt wire、typed control 输入、F3+N/F3+F4 multiplayer permission gate、NetCommand/driver send 与服务端权限检查已审计。
+- [x] 发送请求不预写 canonical difficulty/game mode；成功状态分别只从 `ClientboundChangeDifficultyPacket` 和 `ClientboundGameEventPacket.CHANGE_GAME_MODE` 应用。DifficultyButtons 的 IntegratedServer-only UI 未引入 multiplayer client。

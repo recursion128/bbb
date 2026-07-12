@@ -769,6 +769,8 @@ mod tests {
 
         pump_control_net_requests(&requests, &Some(tx), &mut counters, &mut world, None);
 
+        assert_eq!(world.difficulty().difficulty, "normal");
+        assert_eq!(world.gameplay().game_type, GameType::Survival.id());
         assert_eq!(counters.change_difficulty_commands_queued, 1);
         assert_eq!(counters.change_game_mode_commands_queued, 1);
         assert_eq!(counters.lock_difficulty_commands_queued, 1);
