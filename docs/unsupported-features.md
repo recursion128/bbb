@@ -45,8 +45,9 @@ Owner: `bbb-protocol`
 - Add the production Transfer-intent handshake entry and state transition.
 - Complete authenticated login: perform session authentication/encryption from the
   typed `ClientboundHelloPacket`, generate the encrypted inputs for the existing
-  `ServerboundKeyPacket` encoder, install the negotiated ciphers, and lock the
-  initial hello response state.
+  `ServerboundKeyPacket` encoder, install the negotiated ciphers, lock the
+  sent-hello to encryption-request transition, and reject duplicate or out-of-state
+  login responses.
 - Complete configuration resource-pack runtime behavior: download allowed packs,
   verify hashes, apply/reload them, enforce required-pack outcomes, emit the full
   response lifecycle, and unload one/all packs on pop.

@@ -5572,14 +5572,19 @@
       },
       "encoder": {
         "evidence": [
+          "crates/bbb-protocol/src/packets/connection.rs#validate_login_username",
           "crates/bbb-protocol/src/packets/connection.rs#encode_login_hello",
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_login_hello",
           "vanilla:net/minecraft/network/protocol/login/ServerboundHelloPacket.java#STREAM_CODEC"
         ],
         "status": "complete"
       },
       "state_guard": {
         "evidence": [
+          "crates/bbb-protocol/src/packets/connection.rs#validate_login_username",
+          "crates/bbb-net/src/types/connection.rs#offline_connection_options_delegate_login_username_validation",
           "crates/bbb-net/src/event_stream.rs#run_offline_event_stream",
+          "vanilla:net/minecraft/util/StringUtil.java#isValidPlayerName",
           "vanilla:net/minecraft/server/network/ServerLoginPacketListenerImpl.java#handleHello"
         ],
         "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",

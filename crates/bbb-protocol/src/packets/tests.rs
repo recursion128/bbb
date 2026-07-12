@@ -842,13 +842,28 @@ fn decodes_start_configuration_unit_packet_strictly() {
 #[test]
 fn encodes_login_hello() {
     let uuid = offline_player_uuid("bbb-client");
-    let (id, payload) = encode_login_hello("bbb-client", uuid);
+    let (id, payload) = encode_login_hello("bbb-client", uuid).unwrap();
     assert_eq!(id, ids::login::SERVERBOUND_HELLO);
 
     let mut decoder = Decoder::new(&payload);
     assert_eq!(decoder.read_string(16).unwrap(), "bbb-client");
     assert_eq!(decoder.read_uuid().unwrap(), uuid);
     assert!(decoder.is_empty());
+
+    encode_login_hello("abcdefghijklmnop", uuid).unwrap();
+    for invalid in [
+        "abcdefghijklmnopq",
+        "name with space",
+        "line\nbreak",
+        "name\u{7f}",
+        "玩家",
+        "😀😀😀😀😀😀😀😀😀",
+    ] {
+        assert!(
+            encode_login_hello(invalid, uuid).is_err(),
+            "{invalid:?} must fail vanilla login-name validation"
+        );
+    }
 }
 
 #[test]

@@ -74,7 +74,7 @@ pub async fn run_offline_event_stream(
 
     let (id, payload) = packets::encode_handshake(&options.host, options.port, ClientIntent::Login);
     stream.conn.send_packet(id, &payload).await?;
-    let (id, payload) = packets::encode_login_hello(&options.username, options.profile_id);
+    let (id, payload) = packets::encode_login_hello(&options.username, options.profile_id)?;
     stream.conn.send_packet(id, &payload).await?;
 
     let mut play_bundle = PlayPacketBundleAssembler::default();

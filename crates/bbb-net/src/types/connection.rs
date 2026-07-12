@@ -1,7 +1,10 @@
 use std::{net::ToSocketAddrs, time::Duration};
 
 use anyhow::{anyhow, Result};
-use bbb_protocol::{codec::offline_player_uuid, packets::ClientInformation};
+use bbb_protocol::{
+    codec::offline_player_uuid,
+    packets::{validate_login_username, ClientInformation},
+};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -25,6 +28,7 @@ impl ConnectionOptions {
     pub fn offline(address: impl Into<String>, username: impl Into<String>) -> Result<Self> {
         let address = address.into();
         let username = username.into();
+        validate_login_username(&username)?;
         let (host, port) = split_host_port(&address)?;
         let profile_id = offline_player_uuid(&username);
         Ok(Self {
@@ -67,4 +71,16 @@ pub(crate) fn split_host_port(address: &str) -> Result<(String, u16)> {
         .next()
         .ok_or_else(|| anyhow!("could not resolve {address}:25565"))?;
     Ok((address.to_string(), first.port()))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ConnectionOptions;
+
+    #[test]
+    fn offline_connection_options_delegate_login_username_validation() {
+        assert!(ConnectionOptions::offline("localhost:25565", "valid_name").is_ok());
+        assert!(ConnectionOptions::offline("localhost:25565", "invalid name").is_err());
+        assert!(ConnectionOptions::offline("localhost:25565", "abcdefghijklmnopq").is_err());
+    }
 }

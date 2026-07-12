@@ -12041,3 +12041,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] `ServerboundKeyPacket` 现在通过 typed `LoginKey` 按 wire order 编码 encrypted secret 与 encrypted challenge 两个 VarInt-length byte array，并有 focused field-order test。
 - [x] encoder 只接受密码学 owner 已产生的密文；session join、secret/RSA/AES 生成、cipher install 与握手状态机继续开放，未引入 raw-secret fallback。
+
+## 2026-07-12：login hello username guard
+
+- [x] `ServerboundHelloPacket` 的 username 现在由单一 protocol validator 锁定 vanilla `StringUtil.isValidPlayerName`：最多 16 UTF-16 units，且每个 code point 必须在 ASCII 33..126；encoder 与 `ConnectionOptions::offline` 共同委托。
+- [x] focused tests 覆盖 16/17 边界、space/control/DEL/non-ASCII 与 surrogate-pair 长度；在线 hello→key/auth 状态转换继续开放，state guard 未被误标 complete。

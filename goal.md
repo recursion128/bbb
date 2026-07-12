@@ -293,7 +293,8 @@ not-applicable 必须令 generator 失败。status family 已逐格闭合；hand
 production command surface 与状态切换仍保持 `partial`。offline login 的 cookie/custom
 query/compression/LoginFinished → acknowledgement → configuration 路径已逐格反审计；login
 disconnect 已按 lenient JSON Component 严格解码，ClientboundHello 的 server-id/public-key/
-challenge/authenticate flag wire 与 ServerboundKey 双密文数组 encoder 也已闭合；在线 session
+challenge/authenticate flag wire、ServerboundHello username guard 与 ServerboundKey 双密文数组
+encoder 也已闭合；在线 session
 authentication、RSA/AES secret/challenge 生成、cipher install 与初始 hello 的完整响应状态仍为
 `partial`。
 下一步继续 configuration 的 state/framing 与 handoff，不能由 offline login 成功路径外推

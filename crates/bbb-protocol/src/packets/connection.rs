@@ -286,11 +286,31 @@ pub fn decode_pong_response(payload: &[u8]) -> Result<i64> {
     Decoder::new(payload).read_i64()
 }
 
-pub fn encode_login_hello(username: &str, profile_id: Uuid) -> (i32, Vec<u8>) {
+pub fn validate_login_username(username: &str) -> Result<()> {
+    let utf16_len = username.encode_utf16().count();
+    if utf16_len > 16 {
+        return Err(ProtocolError::InvalidData(format!(
+            "login username has {utf16_len} UTF-16 code units, maximum is 16"
+        )));
+    }
+    if let Some(ch) = username
+        .chars()
+        .find(|ch| (*ch as u32) <= 32 || (*ch as u32) >= 127)
+    {
+        return Err(ProtocolError::InvalidData(format!(
+            "login username contains disallowed character U+{:04X}",
+            ch as u32
+        )));
+    }
+    Ok(())
+}
+
+pub fn encode_login_hello(username: &str, profile_id: Uuid) -> Result<(i32, Vec<u8>)> {
+    validate_login_username(username)?;
     let mut out = Encoder::new();
     out.write_string(username);
     out.write_uuid(profile_id);
-    (ids::login::SERVERBOUND_HELLO, out.into_inner())
+    Ok((ids::login::SERVERBOUND_HELLO, out.into_inner()))
 }
 
 pub fn encode_login_acknowledged() -> (i32, Vec<u8>) {
