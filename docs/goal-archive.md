@@ -11576,3 +11576,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] position/state framing、strict trailing、prediction reconciliation、palette/heightmap apply ownership 与跨 crate tests 有证据。
 - [x] BlockState id validation、general block-entity pruning 与完整 level/render invalidation 未完成，decode/canonical/runtime 保持 partial。
+
+## 2026-07-12：play boss-event packet coverage audit
+
+- [x] 六种 operation/style/flags framing、strict trailing、UUID lifecycle、HUD style submission ownership 与跨 crate tests 有证据。
+- [x] rich name、insertion order、100ms lerp 与 darken/fog/music consumers 未完成，decode/canonical/runtime 保持 partial。

@@ -273,7 +273,13 @@ pub(super) fn decode_boss_event(decoder: &mut Decoder<'_>) -> Result<BossEvent> 
         },
     };
 
-    Ok(BossEvent { id, operation })
+    let packet = BossEvent { id, operation };
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after boss event packet".to_string(),
+        ));
+    }
+    Ok(packet)
 }
 
 fn decode_boss_bar_color(decoder: &mut Decoder<'_>) -> Result<BossBarColor> {

@@ -105,6 +105,15 @@ fn decodes_boss_event_operations() {
             },
         })
     );
+
+    let mut trailing = boss_event_payload(id, 1, |_| {});
+    trailing.push(0);
+    assert!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_BOSS_EVENT, &trailing)
+            .unwrap_err()
+            .to_string()
+            .contains("trailing bytes after boss event packet")
+    );
 }
 
 #[test]

@@ -5203,29 +5203,49 @@
       "constant_name": "CLIENTBOUND_BOSS_EVENT",
       "coverage": {
         "canonical_apply": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
+          "evidence": [
+            "crates/bbb-world/src/client/hud.rs#apply_boss_event",
+            "crates/bbb-world/src/client/hud.rs#boss_overlay_queries_fold_any_active_boss_bar_property",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleBossUpdate"
+          ],
+          "gap": "docs/unsupported-features.md#hud-and-debug-overlay",
           "status": "partial"
         },
         "decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "evidence": [
+            "crates/bbb-protocol/src/packets/client_state/tests.rs#decodes_boss_event_operations",
+            "crates/bbb-protocol/src/packets/client_state/tests.rs#rejects_invalid_boss_bar_style_ordinals",
+            "vanilla:net/minecraft/network/protocol/game/ClientboundBossEventPacket.java#STREAM_CODEC"
+          ],
+          "gap": "docs/unsupported-features.md#hud-and-debug-overlay",
           "status": "partial"
         },
         "ownership": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/play_apply.rs#PlayClientbound::BossEvent"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "runtime_side_effect": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
+          "evidence": [
+            "crates/bbb-native/src/runtime/tests.rs#hud_boss_bar_projection_orders_by_uuid_and_maps_style_names",
+            "crates/bbb-native/src/runtime/tests.rs#hud_boss_bar_projection_covers_every_vanilla_color_and_overlay",
+            "vanilla:net/minecraft/client/gui/components/BossHealthOverlay.java#update"
+          ],
+          "gap": "docs/unsupported-features.md#hud-and-debug-overlay",
           "status": "partial"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/client_state/tests.rs#decodes_boss_event_operations",
+            "crates/bbb-net/src/event_stream.rs#play_hud_and_ui_packets_emit_matching_events_without_responses",
+            "crates/bbb-net/src/probe/play.rs#probe_applies_hud_session_packets_to_world",
+            "crates/bbb-world/src/client/hud.rs#boss_events_add_update_remove_and_ignore_unknown_updates",
+            "crates/bbb-native/src/runtime/events/tests/session_hud_and_vehicle_events.rs#hud_session_events_update_world_and_world_counters"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "clientbound",
