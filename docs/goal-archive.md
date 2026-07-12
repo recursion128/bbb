@@ -11936,3 +11936,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] signed-short slot wire、0..8 local/control guard、digit/wheel selection、spectator exclusion、world local selection 与 driver command path 已与 vanilla `MultiPlayerGameMode.ensureHasSentCarriedItem` 反向对齐；command/encoder/state/tests 闭合。
 - [x] 服务端对有效 slot 更新 selected slot，对非法 slot 仅拒绝并警告，该 command 无 dedicated acknowledgement；ack=N/A；后续 clientbound held-slot correction 仍覆盖本地选择。
+
+## 2026-07-12：play serverbound set-command-block coverage audit
+
+- [x] vanilla wire 已锁定为 BlockPos + UTF command + mode ordinal + track-output/conditional/automatic flag bits；服务端仍拥有 game-master permission、command-block-enabled、block replacement、command execution 与 block-entity update 权威。
+- [x] bbb 当前仅有 generated packet catalog 条目，无 typed encoder/net command/editor/state guards/focused tests；五维均保持 partial，并在 unsupported ledger 记录可执行的 game-master screen gap，未将 catalog presence 误标为实现。

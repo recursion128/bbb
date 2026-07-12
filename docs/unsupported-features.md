@@ -437,6 +437,13 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   and priorities; validate resource ids; expose the 0..20 generation-level and
   keep-jigsaws controls; send SetJigsawBlock before JigsawGenerate; and let
   ordinary server block/chunk updates remain authoritative for generated output.
+- Implement the game-master `CommandBlockEditScreen` owner and typed
+  `ServerboundSetCommandBlockPacket`: preload the server-supplied command,
+  previous output, mode/conditional/automatic/track-output state; preserve the
+  vanilla permission and command-block-enabled diagnostics; encode BlockPos,
+  bounded command text, mode ordinal and flag bits; and leave command execution,
+  block replacement and block-entity updates server-authoritative. Packet catalog
+  presence alone is not an editor or command-block state implementation.
 - Complete `AbstractSignEditScreen` parity after the OpenSignEditor authority
   gate: choose filtered sign messages, enforce the 90-pixel font-width limit,
   support clipboard/IME preedit, and close when the sign is removed or the
