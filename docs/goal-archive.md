@@ -11512,3 +11512,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] trusted Component + overlay bool wire、strict trailing、ownership 与跨 crate tests 闭合。
 - [x] overlay=false 现在进入独立 server-system chat history，overlay=true 继续走 action-bar；rich style/click/hover Component 仍被 flatten，canonical/runtime 保持 partial。
+
+## 2026-07-12：play update-advancements packet coverage audit
+
+- [x] reset/add/remove/progress/show wire 顺序、Identifier normalization、strict trailing、tree/progress ownership 与跨 crate tests 闭合。
+- [x] rich title/description、完整 icon ItemStack、completion toast/telemetry 未闭合，故 decode/canonical/runtime 保持 partial。

@@ -482,6 +482,7 @@ play SoundEntity 的 holder/category/entity/volume/pitch/seed wire、strict deco
 play Sound 的 holder/category/fixed-point position/volume/pitch/seed wire、strict decode、no-distance-delay、dynamic registry resolution、fixed range/attenuation 与 tests 已闭合。
 play StopSound 的 source/name flags、strict decode、active sound filter 与 stop-all delayed-queue clear 语义及 tests 已闭合。
 play SystemChat 的 trusted Component + overlay wire、strict decode、non-overlay server-system history、overlay action-bar route、ownership 与 tests 已闭合；rich Component presentation 保持 canonical/runtime partial。
+play UpdateAdvancements 的 reset/add/remove/progress/show framing、strict trailing、tree/progress ownership 与 tests 已闭合；rich display/icon、toast/telemetry 保持 decode/canonical/runtime partial。
 
 完成标准：全部 vanilla 26.1 catalog entry 都有矩阵行；所有目标客户端适用项为
 `complete`，其余只有带 vanilla 依据的 `not-applicable` 或带重启判据的窄 `deferred`；

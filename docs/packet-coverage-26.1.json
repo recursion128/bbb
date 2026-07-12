@@ -10630,29 +10630,49 @@
       "constant_name": "CLIENTBOUND_UPDATE_ADVANCEMENTS",
       "coverage": {
         "canonical_apply": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
+          "evidence": [
+            "crates/bbb-world/src/advancements.rs#apply_update_advancements",
+            "crates/bbb-world/src/advancements.rs#update_advancements_applies_reset_removal_and_known_progress_only",
+            "vanilla:net/minecraft/client/multiplayer/ClientAdvancements.java#update"
+          ],
+          "gap": "docs/unsupported-features.md#hud-and-debug-overlay",
           "status": "partial"
         },
         "decode": {
-          "evidence": [],
+          "evidence": [
+            "crates/bbb-protocol/src/packets/client_features/tests.rs#decodes_update_advancements_packet_wire_order",
+            "crates/bbb-protocol/src/packets/client_features/tests.rs#normalizes_update_advancements_identifiers",
+            "vanilla:net/minecraft/network/protocol/game/ClientboundUpdateAdvancementsPacket.java#STREAM_CODEC"
+          ],
           "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
           "status": "partial"
         },
         "ownership": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/play_apply.rs#PlayClientbound::UpdateAdvancements"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "runtime_side_effect": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
+          "evidence": [
+            "crates/bbb-world/src/advancements.rs#selected_advancement_widgets",
+            "crates/bbb-native/src/runtime/events/tests/entity_and_inventory_counters.rs#update_advancements_event_updates_world_state_and_world_counters",
+            "vanilla:net/minecraft/client/multiplayer/ClientAdvancements.java#update"
+          ],
+          "gap": "docs/unsupported-features.md#hud-and-debug-overlay",
           "status": "partial"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/client_features/tests.rs#decodes_update_advancements_packet_wire_order",
+            "crates/bbb-net/src/event_stream.rs#play_passive_world_apply_packets_emit_matching_events",
+            "crates/bbb-net/src/probe/play.rs#probe_applies_advancement_packets_to_world",
+            "crates/bbb-world/src/advancements.rs#update_advancements_applies_reset_removal_and_known_progress_only",
+            "crates/bbb-native/src/runtime/events/tests/entity_and_inventory_counters.rs#update_advancements_event_updates_world_state_and_world_counters"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "clientbound",

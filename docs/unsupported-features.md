@@ -643,6 +643,9 @@ back into a todo. Do not delete these.
 
 ## HUD and debug overlay
 
+- **UpdateAdvancements rich display/toast parity.** Reset/remove/add/known-progress
+  tree semantics are covered, but title/description and icon stacks remain summary
+  projections, and completion telemetry/toast presentation is not complete.
 - **SystemChat rich Component presentation.** Overlay=false now enters canonical
   server-system chat history and overlay=true follows the action-bar path, but the
   trusted Component is still flattened before style/click/hover rendering.

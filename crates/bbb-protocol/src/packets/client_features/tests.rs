@@ -770,12 +770,9 @@ fn decodes_update_advancements_packet_wire_order() {
 
     payload.write_bool(true);
 
+    let mut bytes = payload.into_inner();
     assert_eq!(
-        decode_play_clientbound(
-            ids::play::CLIENTBOUND_UPDATE_ADVANCEMENTS,
-            &payload.into_inner()
-        )
-        .unwrap(),
+        decode_play_clientbound(ids::play::CLIENTBOUND_UPDATE_ADVANCEMENTS, &bytes).unwrap(),
         PlayClientbound::UpdateAdvancements(UpdateAdvancements {
             reset: true,
             added: vec![AdvancementSummary {
@@ -817,6 +814,14 @@ fn decodes_update_advancements_packet_wire_order() {
             }],
             show_advancements: true,
         })
+    );
+
+    bytes.push(0);
+    assert!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_UPDATE_ADVANCEMENTS, &bytes)
+            .unwrap_err()
+            .to_string()
+            .contains("trailing bytes after update advancements packet")
     );
 }
 

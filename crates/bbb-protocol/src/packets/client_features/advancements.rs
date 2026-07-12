@@ -85,13 +85,19 @@ pub(crate) fn decode_update_advancements(decoder: &mut Decoder<'_>) -> Result<Up
         progress.push(decode_advancement_progress_summary(decoder)?);
     }
 
-    Ok(UpdateAdvancements {
+    let packet = UpdateAdvancements {
         reset,
         added,
         removed,
         progress,
         show_advancements: decoder.read_bool()?,
-    })
+    };
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after update advancements packet".to_string(),
+        ));
+    }
+    Ok(packet)
 }
 
 fn decode_advancement_summary(decoder: &mut Decoder<'_>) -> Result<AdvancementSummary> {
