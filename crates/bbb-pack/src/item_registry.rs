@@ -211,62 +211,19 @@ impl Default for ItemUseAnimation {
     }
 }
 
-// Compatibility aliases into the generated vanilla 26.1 component catalog.
 use bbb_protocol::data_component_types as component_id;
-const MAX_STACK_SIZE_COMPONENT_ID: i32 =
-    component_id::VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID;
-const MAX_DAMAGE_COMPONENT_ID: i32 = component_id::VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID;
-const DAMAGE_COMPONENT_ID: i32 = component_id::VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID;
-const USE_EFFECTS_COMPONENT_ID: i32 = component_id::VANILLA_DATA_COMPONENT_USE_EFFECTS_TYPE_ID;
-const MINIMUM_ATTACK_CHARGE_COMPONENT_ID: i32 =
-    component_id::VANILLA_DATA_COMPONENT_MINIMUM_ATTACK_CHARGE_TYPE_ID;
-const DAMAGE_TYPE_COMPONENT_ID: i32 = component_id::VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID;
-const ITEM_NAME_COMPONENT_ID: i32 = component_id::VANILLA_DATA_COMPONENT_ITEM_NAME_TYPE_ID;
-const ITEM_MODEL_COMPONENT_ID: i32 = component_id::VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID;
-const LORE_COMPONENT_ID: i32 = component_id::VANILLA_DATA_COMPONENT_LORE_TYPE_ID;
-const RARITY_COMPONENT_ID: i32 = component_id::VANILLA_DATA_COMPONENT_RARITY_TYPE_ID;
-const ENCHANTMENTS_COMPONENT_ID: i32 = component_id::VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID;
-const ATTRIBUTE_MODIFIERS_COMPONENT_ID: i32 =
-    component_id::VANILLA_DATA_COMPONENT_ATTRIBUTE_MODIFIERS_TYPE_ID;
-const TOOLTIP_DISPLAY_COMPONENT_ID: i32 =
-    component_id::VANILLA_DATA_COMPONENT_TOOLTIP_DISPLAY_TYPE_ID;
-const REPAIR_COST_COMPONENT_ID: i32 = component_id::VANILLA_DATA_COMPONENT_REPAIR_COST_TYPE_ID;
-const FOOD_COMPONENT_ID: i32 = component_id::VANILLA_DATA_COMPONENT_FOOD_TYPE_ID;
-const CONSUMABLE_COMPONENT_ID: i32 = component_id::VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID;
-const USE_REMAINDER_COMPONENT_ID: i32 = component_id::VANILLA_DATA_COMPONENT_USE_REMAINDER_TYPE_ID;
-const USE_COOLDOWN_COMPONENT_ID: i32 = component_id::VANILLA_DATA_COMPONENT_USE_COOLDOWN_TYPE_ID;
-const DAMAGE_RESISTANT_COMPONENT_ID: i32 =
-    component_id::VANILLA_DATA_COMPONENT_DAMAGE_RESISTANT_TYPE_ID;
-const TOOL_COMPONENT_ID: i32 = component_id::VANILLA_DATA_COMPONENT_TOOL_TYPE_ID;
-const WEAPON_COMPONENT_ID: i32 = component_id::VANILLA_DATA_COMPONENT_WEAPON_TYPE_ID;
-const ATTACK_RANGE_COMPONENT_ID: i32 = component_id::VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID;
-const ENCHANTABLE_COMPONENT_ID: i32 = component_id::VANILLA_DATA_COMPONENT_ENCHANTABLE_TYPE_ID;
-const EQUIPPABLE_COMPONENT_ID: i32 = component_id::VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID;
-const REPAIRABLE_COMPONENT_ID: i32 = component_id::VANILLA_DATA_COMPONENT_REPAIRABLE_TYPE_ID;
-const PIERCING_WEAPON_COMPONENT_ID: i32 =
-    component_id::VANILLA_DATA_COMPONENT_PIERCING_WEAPON_TYPE_ID;
-const KINETIC_WEAPON_COMPONENT_ID: i32 =
-    component_id::VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID;
-const SWING_ANIMATION_COMPONENT_ID: i32 =
-    component_id::VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID;
-const JUKEBOX_PLAYABLE_COMPONENT_ID: i32 =
-    component_id::VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID;
-const PROVIDES_TRIM_MATERIAL_COMPONENT_ID: i32 =
-    component_id::VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID;
-const ENTITY_DATA_COMPONENT_ID: i32 = component_id::VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID;
-const BREAK_SOUND_COMPONENT_ID: i32 = component_id::VANILLA_DATA_COMPONENT_BREAK_SOUND_TYPE_ID;
 
 const COMMON_ITEM_COMPONENT_TYPE_IDS: &[i32] = &[
-    MAX_STACK_SIZE_COMPONENT_ID,
-    LORE_COMPONENT_ID,
-    ENCHANTMENTS_COMPONENT_ID,
-    REPAIR_COST_COMPONENT_ID,
-    USE_EFFECTS_COMPONENT_ID,
-    ATTRIBUTE_MODIFIERS_COMPONENT_ID,
-    RARITY_COMPONENT_ID,
-    BREAK_SOUND_COMPONENT_ID,
-    TOOLTIP_DISPLAY_COMPONENT_ID,
-    SWING_ANIMATION_COMPONENT_ID,
+    component_id::VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
+    component_id::VANILLA_DATA_COMPONENT_LORE_TYPE_ID,
+    component_id::VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID,
+    component_id::VANILLA_DATA_COMPONENT_REPAIR_COST_TYPE_ID,
+    component_id::VANILLA_DATA_COMPONENT_USE_EFFECTS_TYPE_ID,
+    component_id::VANILLA_DATA_COMPONENT_ATTRIBUTE_MODIFIERS_TYPE_ID,
+    component_id::VANILLA_DATA_COMPONENT_RARITY_TYPE_ID,
+    component_id::VANILLA_DATA_COMPONENT_BREAK_SOUND_TYPE_ID,
+    component_id::VANILLA_DATA_COMPONENT_TOOLTIP_DISPLAY_TYPE_ID,
+    component_id::VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID,
 ];
 
 const GENERATED_ITEM_DECLARATIONS: &str =
@@ -873,62 +830,62 @@ fn default_component_type_ids_for_declaration(
         .iter()
         .copied()
         .collect::<BTreeSet<_>>();
-    type_ids.insert(ITEM_NAME_COMPONENT_ID);
-    type_ids.insert(ITEM_MODEL_COMPONENT_ID);
+    type_ids.insert(component_id::VANILLA_DATA_COMPONENT_ITEM_NAME_TYPE_ID);
+    type_ids.insert(component_id::VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID);
 
     if durability_for_declaration(expression)?.is_some() {
-        type_ids.insert(MAX_DAMAGE_COMPONENT_ID);
-        type_ids.insert(DAMAGE_COMPONENT_ID);
+        type_ids.insert(component_id::VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID);
+        type_ids.insert(component_id::VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID);
     }
     if expression.call("food").is_some() {
-        type_ids.insert(FOOD_COMPONENT_ID);
-        type_ids.insert(CONSUMABLE_COMPONENT_ID);
+        type_ids.insert(component_id::VANILLA_DATA_COMPONENT_FOOD_TYPE_ID);
+        type_ids.insert(component_id::VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID);
     }
     if expression.call("usingConvertsTo").is_some() {
-        type_ids.insert(USE_REMAINDER_COMPONENT_ID);
+        type_ids.insert(component_id::VANILLA_DATA_COMPONENT_USE_REMAINDER_TYPE_ID);
     }
     if expression.call("useCooldown").is_some() {
-        type_ids.insert(USE_COOLDOWN_COMPONENT_ID);
+        type_ids.insert(component_id::VANILLA_DATA_COMPONENT_USE_COOLDOWN_TYPE_ID);
     }
     if expression.call("fireResistant").is_some() {
-        type_ids.insert(DAMAGE_RESISTANT_COMPONENT_ID);
+        type_ids.insert(component_id::VANILLA_DATA_COMPONENT_DAMAGE_RESISTANT_TYPE_ID);
     }
     if expression.call("jukeboxPlayable").is_some() {
-        type_ids.insert(JUKEBOX_PLAYABLE_COMPONENT_ID);
+        type_ids.insert(component_id::VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID);
     }
     if expression.name.as_deref() == Some("registerSpawnEgg")
         || expression.call("spawnEgg").is_some()
     {
-        type_ids.insert(ENTITY_DATA_COMPONENT_ID);
+        type_ids.insert(component_id::VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID);
     }
     if applies_tool_material_defaults(expression) {
-        type_ids.insert(REPAIRABLE_COMPONENT_ID);
-        type_ids.insert(ENCHANTABLE_COMPONENT_ID);
-        type_ids.insert(TOOL_COMPONENT_ID);
-        type_ids.insert(WEAPON_COMPONENT_ID);
+        type_ids.insert(component_id::VANILLA_DATA_COMPONENT_REPAIRABLE_TYPE_ID);
+        type_ids.insert(component_id::VANILLA_DATA_COMPONENT_ENCHANTABLE_TYPE_ID);
+        type_ids.insert(component_id::VANILLA_DATA_COMPONENT_TOOL_TYPE_ID);
+        type_ids.insert(component_id::VANILLA_DATA_COMPONENT_WEAPON_TYPE_ID);
     }
     if expression.call("spear").is_some() {
-        type_ids.insert(REPAIRABLE_COMPONENT_ID);
-        type_ids.insert(ENCHANTABLE_COMPONENT_ID);
-        type_ids.insert(DAMAGE_TYPE_COMPONENT_ID);
-        type_ids.insert(KINETIC_WEAPON_COMPONENT_ID);
-        type_ids.insert(PIERCING_WEAPON_COMPONENT_ID);
-        type_ids.insert(ATTACK_RANGE_COMPONENT_ID);
-        type_ids.insert(MINIMUM_ATTACK_CHARGE_COMPONENT_ID);
-        type_ids.insert(SWING_ANIMATION_COMPONENT_ID);
-        type_ids.insert(WEAPON_COMPONENT_ID);
+        type_ids.insert(component_id::VANILLA_DATA_COMPONENT_REPAIRABLE_TYPE_ID);
+        type_ids.insert(component_id::VANILLA_DATA_COMPONENT_ENCHANTABLE_TYPE_ID);
+        type_ids.insert(component_id::VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID);
+        type_ids.insert(component_id::VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID);
+        type_ids.insert(component_id::VANILLA_DATA_COMPONENT_PIERCING_WEAPON_TYPE_ID);
+        type_ids.insert(component_id::VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID);
+        type_ids.insert(component_id::VANILLA_DATA_COMPONENT_MINIMUM_ATTACK_CHARGE_TYPE_ID);
+        type_ids.insert(component_id::VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID);
+        type_ids.insert(component_id::VANILLA_DATA_COMPONENT_WEAPON_TYPE_ID);
     }
     if expression.call("humanoidArmor").is_some() {
-        type_ids.insert(ENCHANTABLE_COMPONENT_ID);
-        type_ids.insert(EQUIPPABLE_COMPONENT_ID);
-        type_ids.insert(REPAIRABLE_COMPONENT_ID);
+        type_ids.insert(component_id::VANILLA_DATA_COMPONENT_ENCHANTABLE_TYPE_ID);
+        type_ids.insert(component_id::VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID);
+        type_ids.insert(component_id::VANILLA_DATA_COMPONENT_REPAIRABLE_TYPE_ID);
     }
     if expression.call("wolfArmor").is_some() {
-        type_ids.insert(EQUIPPABLE_COMPONENT_ID);
-        type_ids.insert(REPAIRABLE_COMPONENT_ID);
+        type_ids.insert(component_id::VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID);
+        type_ids.insert(component_id::VANILLA_DATA_COMPONENT_REPAIRABLE_TYPE_ID);
     }
     if expression.call("horseArmor").is_some() || expression.call("nautilusArmor").is_some() {
-        type_ids.insert(EQUIPPABLE_COMPONENT_ID);
+        type_ids.insert(component_id::VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID);
     }
     if [
         "equippable",
@@ -941,16 +898,16 @@ fn default_component_type_ids_for_declaration(
     .iter()
     .any(|name| expression.call(name).is_some())
     {
-        type_ids.insert(EQUIPPABLE_COMPONENT_ID);
+        type_ids.insert(component_id::VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID);
     }
     if expression.call("repairable").is_some() {
-        type_ids.insert(REPAIRABLE_COMPONENT_ID);
+        type_ids.insert(component_id::VANILLA_DATA_COMPONENT_REPAIRABLE_TYPE_ID);
     }
     if expression.call("enchantable").is_some() {
-        type_ids.insert(ENCHANTABLE_COMPONENT_ID);
+        type_ids.insert(component_id::VANILLA_DATA_COMPONENT_ENCHANTABLE_TYPE_ID);
     }
     if expression.call("trimMaterial").is_some() {
-        type_ids.insert(PROVIDES_TRIM_MATERIAL_COMPONENT_ID);
+        type_ids.insert(component_id::VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID);
     }
 
     for name in expression
@@ -1959,6 +1916,20 @@ mod tests {
     }
 
     #[test]
+    fn item_registry_does_not_restore_component_id_const_aliases() {
+        let source = include_str!("item_registry.rs");
+        let aliases = source
+            .lines()
+            .filter(|line| line.trim_start().starts_with("const ") && line.contains("COMPONENT_ID"))
+            .collect::<Vec<_>>();
+        assert!(
+            aliases.is_empty(),
+            "item registry restored component id aliases:\n{}",
+            aliases.join("\n")
+        );
+    }
+
+    #[test]
     fn loads_checked_in_vanilla_item_registry() {
         let block_tags = test_block_tags();
         let catalog =
@@ -2066,11 +2037,16 @@ mod tests {
 
         let component_ids = |resource_id| catalog.default_component_type_ids(resource_id).unwrap();
         assert_eq!(component_ids("minecraft:stick").len(), 12);
-        assert!(component_ids("minecraft:elytra").contains(&MAX_DAMAGE_COMPONENT_ID));
-        assert!(component_ids("minecraft:apple").contains(&FOOD_COMPONENT_ID));
-        assert!(component_ids("minecraft:iron_sword").contains(&TOOL_COMPONENT_ID));
-        assert!(component_ids("minecraft:wooden_spear").contains(&KINETIC_WEAPON_COMPONENT_ID));
-        assert!(component_ids("minecraft:creeper_spawn_egg").contains(&ENTITY_DATA_COMPONENT_ID));
+        assert!(component_ids("minecraft:elytra")
+            .contains(&component_id::VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID));
+        assert!(component_ids("minecraft:apple")
+            .contains(&component_id::VANILLA_DATA_COMPONENT_FOOD_TYPE_ID));
+        assert!(component_ids("minecraft:iron_sword")
+            .contains(&component_id::VANILLA_DATA_COMPONENT_TOOL_TYPE_ID));
+        assert!(component_ids("minecraft:wooden_spear")
+            .contains(&component_id::VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID));
+        assert!(component_ids("minecraft:creeper_spawn_egg")
+            .contains(&component_id::VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID));
 
         assert_eq!(
             catalog.default_consumable("minecraft:apple"),

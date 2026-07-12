@@ -12656,3 +12656,9 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] native entity hand pose 与 first-person item presentation 删除八项重复 component type-id
   alias，父模块直接导入 protocol generated catalog 常量供既有子模块消费；consumable 优先级、
   block/swing/tool/kinetic-weapon 判定与呈现算法不变。
+
+## 2026-07-12：Removed item-registry component ID aliases
+
+- [x] pack item registry 删除 32 项仅转发 protocol generated catalog 的 production component
+  ID const，默认 component membership 构建直接使用 catalog namespace；item declaration 解析、
+  默认值归一化与 checked-in catalog 输出不变，并由结构测试禁止恢复本地 ID const。
