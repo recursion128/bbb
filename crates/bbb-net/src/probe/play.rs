@@ -2754,21 +2754,7 @@ mod tests {
             })
         );
         assert_eq!(ui.last_open_sign_editor, None);
-        assert_eq!(
-            ui.last_ghost_recipe,
-            Some(bbb_world::GhostRecipeState {
-                container_id: 9,
-                recipe_display_type_id: 3,
-                recipe_display_type: "stonecutter".to_string(),
-                recipe_display_body_len: 7,
-                recipe_display: Some(packets::RecipeDisplaySummary {
-                    display_type: packets::RecipeDisplayType::Stonecutter,
-                    raw_body: vec![3, 4, 100, 4, 101, 4, 102],
-                    crafting: None,
-                    furnace: None,
-                }),
-            })
-        );
+        assert_eq!(ui.last_ghost_recipe, None);
         assert_eq!(
             ui.last_pong_response,
             Some(bbb_world::PongResponseState { time: 123456789 })
@@ -2782,6 +2768,8 @@ mod tests {
         assert_eq!(report.world_counters.open_sign_editor_updates_applied, 0);
         assert_eq!(report.world_counters.open_sign_editor_updates_ignored, 1);
         assert_eq!(report.world_counters.ghost_recipe_packets, 1);
+        assert_eq!(report.world_counters.ghost_recipe_updates_applied, 0);
+        assert_eq!(report.world_counters.ghost_recipe_updates_ignored, 1);
         assert_eq!(report.world_counters.pong_response_packets, 1);
     }
 

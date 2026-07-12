@@ -10077,8 +10077,11 @@ fn hud_inventory_screen_projects_crafting_table_ghost_recipe_slots() {
         },
     });
     let stale = hud_inventory_screen(&world, Some(&item_runtime), None, 0.0).unwrap();
-    assert!(stale.fill_layers.is_empty());
-    assert!(stale.ghost_items.is_empty());
+    assert_eq!(stale.fill_layers, screen.fill_layers);
+    assert_eq!(stale.ghost_items, screen.ghost_items);
+    assert_eq!(world.counters().ghost_recipe_packets, 2);
+    assert_eq!(world.counters().ghost_recipe_updates_applied, 1);
+    assert_eq!(world.counters().ghost_recipe_updates_ignored, 1);
 }
 
 #[test]

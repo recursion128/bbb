@@ -97,6 +97,14 @@ fn decodes_place_ghost_recipe_packet_wire_prefix() {
     assert_eq!(decoder.read_var_i32().unwrap(), 4);
     assert_eq!(decoder.read_var_i32().unwrap(), 102);
     assert!(decoder.is_empty());
+
+    let mut trailing = payload;
+    trailing.push(0);
+    let err =
+        decode_play_clientbound(ids::play::CLIENTBOUND_PLACE_GHOST_RECIPE, &trailing).unwrap_err();
+    assert!(err
+        .to_string()
+        .contains("trailing bytes after place ghost recipe packet"));
 }
 
 #[test]

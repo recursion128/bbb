@@ -11394,3 +11394,10 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   仅在 sign/hanging-sign block entity 或已加载 sign-family block state 可证明时接受，invalid 不再合成空 sign editor。
 - [x] received/applied/ignored counters 与 native applied generation 分离，invalid packet 不会重开旧 editor；
   decode/ownership/tests 闭合。filtered text、font-width/clipboard/IME、removed/distance validity 保持 precise partial。
+
+## 2026-07-12：play place-ghost-recipe packet coverage audit
+
+- [x] 对照 `ClientboundPlaceGhostRecipePacket` 锁定 container id + RecipeDisplay wire并拒绝 trailing bytes；仅
+  active RecipeUpdateListener container 接受，mismatch 不再缓存并在未来复用 id 时错误显示。
+- [x] received/applied/ignored、world/native ghost overlays 与 tests 闭合；剩余 SlotDisplay/component semantics
+  和 recipe-book presentation 保持 canonical/runtime partial。

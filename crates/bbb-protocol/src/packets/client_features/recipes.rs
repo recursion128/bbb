@@ -176,10 +176,16 @@ pub(crate) fn decode_place_ghost_recipe(decoder: &mut Decoder<'_>) -> Result<Pla
     let container_id = decoder.read_var_i32()?;
     let recipe_display = decode_recipe_display_summary(decoder)?;
 
-    Ok(PlaceGhostRecipe {
+    let packet = PlaceGhostRecipe {
         container_id,
         recipe_display,
-    })
+    };
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after place ghost recipe packet".to_string(),
+        ));
+    }
+    Ok(packet)
 }
 
 pub(crate) fn decode_recipe_book_add(decoder: &mut Decoder<'_>) -> Result<RecipeBookAdd> {

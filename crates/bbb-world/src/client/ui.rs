@@ -176,6 +176,11 @@ impl WorldStore {
 
     pub fn apply_place_ghost_recipe(&mut self, packet: ProtocolPlaceGhostRecipe) {
         self.counters.ghost_recipe_packets += 1;
+        if self.recipe_update_listener_container_id() != Some(packet.container_id) {
+            self.counters.ghost_recipe_updates_ignored += 1;
+            return;
+        }
+        self.counters.ghost_recipe_updates_applied += 1;
         let recipe_display = packet.recipe_display;
         self.client_ui.last_ghost_recipe = Some(GhostRecipeState {
             container_id: packet.container_id,
@@ -810,9 +815,10 @@ mod tests {
     #[test]
     fn tracks_client_ui_ghost_recipe_request() {
         let mut store = WorldStore::new();
+        assert!(store.open_local_inventory());
 
         store.apply_place_ghost_recipe(ProtocolPlaceGhostRecipe {
-            container_id: 9,
+            container_id: 0,
             recipe_display: bbb_protocol::packets::RecipeDisplaySummary {
                 display_type: bbb_protocol::packets::RecipeDisplayType::Stonecutter,
                 raw_body: vec![3, 4, 100, 4, 101, 4, 102],
@@ -824,7 +830,7 @@ mod tests {
         assert_eq!(
             store.last_ghost_recipe(),
             Some(&GhostRecipeState {
-                container_id: 9,
+                container_id: 0,
                 recipe_display_type_id: 3,
                 recipe_display_type: "stonecutter".to_string(),
                 recipe_display_body_len: 7,
@@ -837,14 +843,42 @@ mod tests {
             })
         );
         assert_eq!(store.counters().ghost_recipe_packets, 1);
+        assert_eq!(store.counters().ghost_recipe_updates_applied, 1);
+        assert_eq!(store.counters().ghost_recipe_updates_ignored, 0);
+    }
+
+    #[test]
+    fn ghost_recipe_ignores_inactive_container_without_caching_for_later() {
+        let mut store = WorldStore::new();
+        let packet = ProtocolPlaceGhostRecipe {
+            container_id: 9,
+            recipe_display: bbb_protocol::packets::RecipeDisplaySummary {
+                display_type: bbb_protocol::packets::RecipeDisplayType::Stonecutter,
+                raw_body: vec![3],
+                crafting: None,
+                furnace: None,
+            },
+        };
+
+        store.apply_place_ghost_recipe(packet.clone());
+        assert_eq!(store.last_ghost_recipe(), None);
+        assert_eq!(store.counters().ghost_recipe_updates_ignored, 1);
+
+        assert!(store.open_local_inventory());
+        store.apply_place_ghost_recipe(packet);
+        assert_eq!(store.last_ghost_recipe(), None);
+        assert_eq!(store.counters().ghost_recipe_packets, 2);
+        assert_eq!(store.counters().ghost_recipe_updates_applied, 0);
+        assert_eq!(store.counters().ghost_recipe_updates_ignored, 2);
     }
 
     #[test]
     fn clears_client_ui_ghost_recipe_without_packet_counter() {
         let mut store = WorldStore::new();
+        assert!(store.open_local_inventory());
 
         store.apply_place_ghost_recipe(ProtocolPlaceGhostRecipe {
-            container_id: 9,
+            container_id: 0,
             recipe_display: bbb_protocol::packets::RecipeDisplaySummary {
                 display_type: bbb_protocol::packets::RecipeDisplayType::Stonecutter,
                 raw_body: vec![3],

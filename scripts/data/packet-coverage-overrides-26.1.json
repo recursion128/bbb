@@ -1046,6 +1046,47 @@
         "status": "complete"
       }
     },
+    "play/clientbound/CLIENTBOUND_PLACE_GHOST_RECIPE": {
+      "canonical_apply": {
+        "evidence": [
+          "crates/bbb-world/src/client/ui.rs#apply_place_ghost_recipe",
+          "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handlePlaceRecipe"
+        ],
+        "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+        "status": "partial"
+      },
+      "decode": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/client_features/tests.rs#decodes_place_ghost_recipe_packet_wire_prefix",
+          "vanilla:net/minecraft/network/protocol/game/ClientboundPlaceGhostRecipePacket.java#STREAM_CODEC"
+        ],
+        "status": "complete"
+      },
+      "ownership": {
+        "evidence": [
+          "crates/bbb-world/src/play_apply.rs#PlayClientbound::PlaceGhostRecipe"
+        ],
+        "status": "complete"
+      },
+      "runtime_side_effect": {
+        "evidence": [
+          "crates/bbb-native/src/runtime/tests.rs#hud_inventory_screen_projects_crafting_table_ghost_recipe_slots",
+          "crates/bbb-native/src/runtime/tests.rs#hud_inventory_screen_projects_furnace_ghost_recipe_slots",
+          "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handlePlaceRecipe"
+        ],
+        "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+        "status": "partial"
+      },
+      "tests": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/client_features/tests.rs#decodes_place_ghost_recipe_packet_wire_prefix",
+          "crates/bbb-world/src/client/ui.rs#ghost_recipe_ignores_inactive_container_without_caching_for_later",
+          "crates/bbb-world/src/client/ui.rs#tracks_client_ui_ghost_recipe_request",
+          "crates/bbb-native/src/runtime/tests.rs#hud_inventory_screen_projects_crafting_table_ghost_recipe_slots"
+        ],
+        "status": "complete"
+      }
+    },
     "play/clientbound/CLIENTBOUND_PLAYER_POSITION": {
       "canonical_apply": {
         "evidence": [

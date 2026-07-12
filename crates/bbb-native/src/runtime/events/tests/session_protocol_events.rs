@@ -1216,22 +1216,10 @@ fn client_feature_events_update_world_and_world_counters() {
     assert!(world.custom_chat_completions().contains("/spawn"));
     assert_eq!(world.counters().custom_chat_completion_packets, 1);
     assert_eq!(world.counters().custom_chat_completions_tracked, 2);
-    assert_eq!(
-        world.last_ghost_recipe(),
-        Some(&bbb_world::GhostRecipeState {
-            container_id: 9,
-            recipe_display_type_id: 3,
-            recipe_display_type: "stonecutter".to_string(),
-            recipe_display_body_len: 7,
-            recipe_display: Some(bbb_protocol::packets::RecipeDisplaySummary {
-                display_type: bbb_protocol::packets::RecipeDisplayType::Stonecutter,
-                raw_body: vec![3, 4, 100, 4, 101, 4, 102],
-                crafting: None,
-                furnace: None,
-            }),
-        })
-    );
+    assert_eq!(world.last_ghost_recipe(), None);
     assert_eq!(world.counters().ghost_recipe_packets, 1);
+    assert_eq!(world.counters().ghost_recipe_updates_applied, 0);
+    assert_eq!(world.counters().ghost_recipe_updates_ignored, 1);
     assert_eq!(
         world.selected_advancements_tab(),
         Some("minecraft:story/root")

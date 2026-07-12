@@ -840,6 +840,23 @@ impl InventoryState {
             })
     }
 
+    pub(crate) fn recipe_update_listener_container_id(&self) -> Option<i32> {
+        if self.local_inventory_open {
+            return Some(INVENTORY_MENU_CONTAINER_ID);
+        }
+        let container = self.open_container.as_ref()?;
+        matches!(
+            container.menu_type_id,
+            Some(
+                VANILLA_MENU_TYPE_CRAFTING_ID
+                    | VANILLA_MENU_TYPE_FURNACE_ID
+                    | VANILLA_MENU_TYPE_BLAST_FURNACE_ID
+                    | VANILLA_MENU_TYPE_SMOKER_ID
+            )
+        )
+        .then_some(container.container_id)
+    }
+
     pub(crate) fn open_container_data_value(&self, id: i16) -> Option<i16> {
         self.open_container
             .as_ref()?
@@ -2091,6 +2108,10 @@ impl WorldStore {
 
     pub fn open_container_id(&self) -> Option<i32> {
         self.inventory.open_container_id()
+    }
+
+    pub(crate) fn recipe_update_listener_container_id(&self) -> Option<i32> {
+        self.inventory.recipe_update_listener_container_id()
     }
 
     pub fn open_container_data_value(&self, id: i16) -> Option<i16> {

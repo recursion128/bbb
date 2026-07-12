@@ -451,6 +451,8 @@ play OpenBook 的 hand enum wire、strict decode、held written/writable compone
 page selection、rich Component/style/click events 未实现，canonical/runtime 保持 partial。
 play OpenSignEditor 的 BlockPos/front-side wire、strict decode、sign block-entity authority gate、applied/ignored
 generation 与 tests 已闭合；filtered text、font-width/clipboard/IME 和 removed/distance validity 保持 partial。
+play PlaceGhostRecipe 的 container id + RecipeDisplay wire、strict decode、active RecipeUpdateListener gate 与 tests
+已闭合；剩余 SlotDisplay/component semantics 与 recipe-book presentation 保持 canonical/runtime partial。
 
 完成标准：全部 vanilla 26.1 catalog entry 都有矩阵行；所有目标客户端适用项为
 `complete`，其余只有带 vanilla 依据的 `not-applicable` 或带重启判据的窄 `deferred`；
