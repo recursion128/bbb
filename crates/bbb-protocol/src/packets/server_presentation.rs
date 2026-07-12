@@ -67,19 +67,31 @@ fn encode_resource_pack_response_payload(id: Uuid, action: ResourcePackResponseA
 }
 
 pub(super) fn decode_resource_pack_pop(decoder: &mut Decoder<'_>) -> Result<ResourcePackPop> {
-    Ok(ResourcePackPop {
+    let packet = ResourcePackPop {
         id: decode_optional_uuid(decoder)?,
-    })
+    };
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after resource pack pop packet".to_string(),
+        ));
+    }
+    Ok(packet)
 }
 
 pub(super) fn decode_resource_pack_push(decoder: &mut Decoder<'_>) -> Result<ResourcePackPush> {
-    Ok(ResourcePackPush {
+    let packet = ResourcePackPush {
         id: decoder.read_uuid()?,
         url: decoder.read_string(32767)?,
         hash: decoder.read_string(40)?,
         required: decoder.read_bool()?,
         prompt: decode_optional_component_summary_from_decoder(decoder)?,
-    })
+    };
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after resource pack push packet".to_string(),
+        ));
+    }
+    Ok(packet)
 }
 
 pub(super) fn decode_server_data(decoder: &mut Decoder<'_>) -> Result<ServerData> {
@@ -187,11 +199,9 @@ mod tests {
         payload.write_bool(true);
         payload.write_bytes(&nbt_string_root("Install this pack"));
 
-        let packet = decode_play_clientbound(
-            ids::play::CLIENTBOUND_RESOURCE_PACK_PUSH,
-            &payload.into_inner(),
-        )
-        .unwrap();
+        let payload = payload.into_inner();
+        let packet =
+            decode_play_clientbound(ids::play::CLIENTBOUND_RESOURCE_PACK_PUSH, &payload).unwrap();
         assert_eq!(
             packet,
             PlayClientbound::ResourcePackPush(ResourcePackPush {
@@ -202,6 +212,15 @@ mod tests {
                 prompt: Some("Install this pack".to_string()),
             })
         );
+
+        let mut trailing = payload;
+        trailing.push(0);
+        assert!(
+            decode_play_clientbound(ids::play::CLIENTBOUND_RESOURCE_PACK_PUSH, &trailing)
+                .unwrap_err()
+                .to_string()
+                .contains("trailing bytes after resource pack push packet")
+        );
     }
 
     #[test]
@@ -211,14 +230,21 @@ mod tests {
         payload.write_bool(true);
         payload.write_uuid(pack_id);
 
-        let packet = decode_play_clientbound(
-            ids::play::CLIENTBOUND_RESOURCE_PACK_POP,
-            &payload.into_inner(),
-        )
-        .unwrap();
+        let payload = payload.into_inner();
+        let packet =
+            decode_play_clientbound(ids::play::CLIENTBOUND_RESOURCE_PACK_POP, &payload).unwrap();
         assert_eq!(
             packet,
             PlayClientbound::ResourcePackPop(ResourcePackPop { id: Some(pack_id) })
+        );
+
+        let mut trailing = payload;
+        trailing.push(0);
+        assert!(
+            decode_play_clientbound(ids::play::CLIENTBOUND_RESOURCE_PACK_POP, &trailing)
+                .unwrap_err()
+                .to_string()
+                .contains("trailing bytes after resource pack pop packet")
         );
     }
 

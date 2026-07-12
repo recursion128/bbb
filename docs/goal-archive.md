@@ -11716,3 +11716,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] entity/effect holder wire、strict trailing、missing/non-living/no-current-effect gate、canonical removal/count refresh 与跨 crate tests 已审计。
 - [x] 完整 effect attributes/HUD/particles/specialized movement/render consumers 继续由既有 mob-effect ledger 维护，runtime 保持 partial。
+
+## 2026-07-12：play resource pack packet coverage audit
+
+- [x] Pop/Push 的 optional UUID、URL/hash/required/prompt wire、strict trailing、one/all canonical pop、push/response tracking、URL gate 与跨 crate tests 已审计。
+- [x] rich prompt/用户策略、download/hash/reload/required-pack lifecycle 与实际 pack-source pop 继续由既有 resource-pack ledger 维护；没有把 `Declined` fallback 误标为完成。
