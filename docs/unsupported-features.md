@@ -156,6 +156,11 @@ Owner: `bbb-protocol` + `bbb-net` + `bbb-world` + `bbb-native`
   remove matching delayed-listener messages, and replace the visible message
   with vanilla's deleted marker no earlier than 60 GUI ticks after insertion.
   The current resolved-signature diagnostic record is not visible chat deletion.
+- Decode PlayerChat/DisguisedChat trusted Components without flattening style,
+  translation, siblings or interactions; resolve numeric `ChatType` holders from
+  session RegistryAccess; apply chat/narration decoration; and run chat receive
+  ability, delay queue, narration and logging behavior. Plain-text history with a
+  numeric holder id is not the `ChatListener` presentation path.
 
 ## Crosshair entity interaction parity
 

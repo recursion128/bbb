@@ -11611,3 +11611,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] packed signature/strict trailing、signature-cache resolution、pending last-seen ignore 与跨 crate tests 闭合。
 - [x] invalid-cache disconnect、delayed listener removal 与 60-GUI-tick deleted marker 未完成，canonical/runtime 保持 partial。
+
+## 2026-07-12：play disguised chat packet coverage audit
+
+- [x] trusted-Component/ChatType holder wire shape、strict trailing、history ownership 与跨 crate tests 已审计。
+- [x] rich Component、session ChatType resolution、decoration/receive gate/delay/narration/logging 未完成，decode/canonical/runtime 保持 partial。
