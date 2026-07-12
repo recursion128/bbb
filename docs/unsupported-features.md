@@ -51,9 +51,11 @@ Owner: `bbb-protocol`
   response lifecycle, and unload one/all packs on pop.
 - Select matching locally available known packs and encode up to 64 selected
   entries instead of always returning an empty configuration response.
-- Complete configuration transfer runtime behavior: disconnect the current
-  connection, carry cookies/seen-player/insecure-chat transfer state, and reconnect
-  with the Transfer intent instead of only recording the requested host and port.
+- Complete configuration/play transfer runtime behavior: enter a closing state,
+  continue accepting late StoreCookie/Transfer packets, disconnect and make the
+  current connection read-only, carry cookies/seen-player/insecure-chat transfer
+  state, and reconnect with the Transfer intent instead of only recording the
+  requested host and port.
 - Decode configuration/play dialog holders into typed `Dialog` data, render the
   corresponding screens, restore the previous screen on clear, and encode
   resource-id plus bounded optional-NBT custom click actions in the active state.

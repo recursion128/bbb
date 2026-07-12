@@ -11329,3 +11329,11 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] online/probe/native 已按 vanilla 顺序先 flush pending chat acknowledgement，再清空 client level、
   发送 configuration acknowledgement 并切换 connection state；五格证据与反向测试闭合。bundle 内
   terminal packet enforcement 继续由 bundle runtime gap 单独拥有。
+
+## 2026-07-12：play transfer packet coverage audit
+
+- [x] 对照 shared `ClientboundTransferPacket` 锁定 host + VarInt port wire，configuration/play 共用
+  decoder 现在都拒绝 trailing bytes；play packet 经唯一 `WorldStore::apply_play_packet` 路径投影目标。
+- [x] decode/canonical/ownership/tests 闭合；vanilla `handleTransfer` 的 closing state、late
+  StoreCookie/Transfer、断开只读化、transfer-state carry 与 Transfer-intent reconnect 尚未实现，故仅
+  runtime 保持 partial。

@@ -433,6 +433,8 @@ play StoreCookie 的 resource id + bounded payload wire、normal-play upsert 与
 window 接收及 cookie carry/reconnect 依赖尚未实现的 transfer lifecycle，runtime 保持 partial。
 play StartConfiguration 的 strict unit wire、pending chat ack 先发、level clear、configuration state
 transition/ack 与 online/probe/native tests 已全行闭合；bundle 内 terminal enforcement 仍由 bundle 行拥有。
+play Transfer 的 shared host/port wire、strict payload consumption、world projection 与 online/probe/native
+tests 已闭合；断开、closing-window late packet、transfer-state carry 与 Transfer-intent reconnect 保持 runtime partial。
 
 完成标准：全部 vanilla 26.1 catalog entry 都有矩阵行；所有目标客户端适用项为
 `complete`，其余只有带 vanilla 依据的 `not-applicable` 或带重启判据的窄 `deferred`；

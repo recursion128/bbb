@@ -27,6 +27,34 @@ fn transfer_event_updates_world_and_world_counters() {
 }
 
 #[test]
+fn play_transfer_event_updates_world_through_shared_apply() {
+    let (tx, mut rx) = mpsc::channel(1);
+    tx.try_send(NetEvent::Play(PlayClientbound::Transfer(
+        bbb_protocol::packets::Transfer {
+            host: "play-next.example.com".to_string(),
+            port: 25567,
+        },
+    )))
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+
+    assert_eq!(
+        drain_net_events(&mut rx, &mut world, &mut counters, &None),
+        1
+    );
+    assert_eq!(
+        world.last_transfer(),
+        Some(&bbb_world::TransferTargetState {
+            host: "play-next.example.com".to_string(),
+            port: 25567,
+        })
+    );
+    assert_eq!(world.counters().transfer_packets, 1);
+}
+
+#[test]
 fn cookie_events_update_world_counters() {
     let (tx, mut rx) = mpsc::channel(3);
     tx.try_send(NetEvent::StoreCookie {

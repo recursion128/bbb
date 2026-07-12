@@ -2492,6 +2492,18 @@ fn decodes_transfer_packets_in_configuration_and_play() {
             port: 25566,
         })
     );
+
+    let mut trailing = payload;
+    trailing.push(0);
+    for error in [
+        decode_configuration_clientbound(ids::configuration::CLIENTBOUND_TRANSFER, &trailing)
+            .unwrap_err(),
+        decode_play_clientbound(ids::play::CLIENTBOUND_TRANSFER, &trailing).unwrap_err(),
+    ] {
+        assert!(error
+            .to_string()
+            .contains("trailing bytes after transfer packet"));
+    }
 }
 
 #[test]

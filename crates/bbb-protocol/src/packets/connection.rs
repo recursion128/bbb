@@ -771,10 +771,16 @@ pub(super) fn decode_store_cookie(decoder: &mut Decoder<'_>) -> Result<StoreCook
 }
 
 pub(super) fn decode_transfer(decoder: &mut Decoder<'_>) -> Result<Transfer> {
-    Ok(Transfer {
+    let transfer = Transfer {
         host: decoder.read_string(32767)?,
         port: decoder.read_var_i32()?,
-    })
+    };
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after transfer packet".to_string(),
+        ));
+    }
+    Ok(transfer)
 }
 
 pub(super) fn decode_custom_report_details(

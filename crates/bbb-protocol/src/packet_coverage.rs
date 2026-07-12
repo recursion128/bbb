@@ -1603,6 +1603,24 @@ mod tests {
         assert_eq!(partial, BTreeSet::from(["runtime_side_effect"]));
     }
 
+    #[test]
+    fn play_transfer_keeps_reconnect_lifecycle_open() {
+        let ledger = vanilla_packet_coverage_26_1().unwrap();
+        let entry = ledger
+            .entries
+            .iter()
+            .find(|entry| entry.state == "play" && entry.constant_name == "CLIENTBOUND_TRANSFER")
+            .expect("play transfer coverage row");
+        let partial: BTreeSet<_> = entry
+            .coverage
+            .iter()
+            .filter_map(|(dimension, cell)| {
+                (cell.status == PacketCoverageStatus::Partial).then_some(dimension.as_str())
+            })
+            .collect();
+        assert_eq!(partial, BTreeSet::from(["runtime_side_effect"]));
+    }
+
     fn state_name(state: PacketState) -> &'static str {
         match state {
             PacketState::Handshake => "handshake",

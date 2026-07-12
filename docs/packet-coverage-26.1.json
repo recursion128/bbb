@@ -10091,29 +10091,48 @@
       "constant_name": "CLIENTBOUND_TRANSFER",
       "coverage": {
         "canonical_apply": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/client/server_presentation.rs#apply_transfer",
+            "crates/bbb-world/src/play_apply.rs#PlayClientbound::Transfer"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/tests.rs#decodes_transfer_packets_in_configuration_and_play",
+            "vanilla:net/minecraft/network/protocol/common/ClientboundTransferPacket.java#STREAM_CODEC"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "ownership": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-net/src/event_stream/play.rs#handle_play_packet",
+            "crates/bbb-world/src/play_apply.rs#PlayClientbound::Transfer"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "runtime_side_effect": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
+          "evidence": [
+            "crates/bbb-net/src/event_stream.rs#play_server_presentation_packets_emit_matching_events_and_cookie_response",
+            "vanilla:net/minecraft/client/multiplayer/ClientCommonPacketListenerImpl.java#handleTransfer",
+            "vanilla:net/minecraft/client/multiplayer/ClientCommonPacketListenerImpl.java#shouldHandleMessage"
+          ],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
           "status": "partial"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/tests.rs#decodes_transfer_packets_in_configuration_and_play",
+            "crates/bbb-net/src/event_stream.rs#play_server_presentation_packets_emit_matching_events_and_cookie_response",
+            "crates/bbb-net/src/probe/play.rs#probe_play_transfer_updates_world",
+            "crates/bbb-world/src/client/server_presentation.rs#transfer_stores_latest_server_target",
+            "crates/bbb-native/src/runtime/events/tests/session_protocol_events.rs#play_transfer_event_updates_world_through_shared_apply"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "clientbound",
