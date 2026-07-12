@@ -11831,3 +11831,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] `ServerboundContainerSlotStateChangedPacket` 的 slot VarInt、container VarInt、boolean wire 与 crafter-only server authority 已审计，encoder 闭合且无专用 acknowledgement。
 - [x] bbb 已覆盖空 crafter grid 的 pickup toggle、active menu/type/empty slot/cursor gate 与发送路径；vanilla hotbar `SWAP` enable、立即本地 data mutation 和 UI click audio 仍开放，command/state/tests 保持 partial。
+
+## 2026-07-12：play serverbound cookie response packet coverage audit
+
+- [x] play CookieRequest 的 validated resource key、StoreCookie 的 5120-byte 上限、shared cookie store hit/miss、nullable response wire、event-stream/probe 发送已审计并全行闭合。
+- [x] response 只由对应 clientbound request 触发；vanilla server common listener 将意外 response 视为协议错误，不存在 response-to-response acknowledgement，ack 明确为 not-applicable。

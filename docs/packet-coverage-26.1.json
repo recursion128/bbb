@@ -3388,29 +3388,48 @@
       "constant_name": "SERVERBOUND_COOKIE_RESPONSE",
       "coverage": {
         "ack_response": {
-          "evidence": [],
+          "evidence": [
+            "vanilla:net/minecraft/client/multiplayer/ClientCommonPacketListenerImpl.java#handleRequestCookie",
+            "vanilla:net/minecraft/server/network/ServerCommonPacketListenerImpl.java#handleCookieResponse"
+          ],
           "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "status": "not-applicable"
         },
         "command_surface": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-net/src/event_stream/play.rs#PlayClientbound::CookieRequest",
+            "crates/bbb-net/src/probe/play.rs#PlayClientbound::CookieRequest"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "encoder": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/serverbound.rs#encode_play_cookie_response",
+            "crates/bbb-protocol/src/packets/connection.rs#encode_cookie_response_payload",
+            "vanilla:net/minecraft/network/protocol/cookie/ServerboundCookieResponsePacket.java#STREAM_CODEC"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "state_guard": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/connection.rs#decode_cookie_request",
+            "crates/bbb-protocol/src/packets/connection.rs#decode_store_cookie",
+            "crates/bbb-net/src/event_stream/play.rs#PlayClientbound::CookieRequest",
+            "crates/bbb-net/src/event_stream/play.rs#PlayClientbound::StoreCookie"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/tests.rs#decodes_and_encodes_cookie_packets",
+            "crates/bbb-net/src/event_stream.rs#play_server_presentation_packets_emit_matching_events_and_cookie_response",
+            "crates/bbb-net/src/probe/play.rs#probe_play_cookie_events_update_world_and_respond"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "serverbound",
