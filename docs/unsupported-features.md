@@ -108,6 +108,10 @@ Owner: `bbb-protocol`
   scrollable suggestion list, selection suffix, hover tooltip and narration.
   Matching responses currently support safe first-result Tab replacement;
   stale/wrong transaction ids are ignored.
+- Build a registry-aware repo-native command dispatcher from the Commands tree,
+  matching `CommandBuildContext.simple` argument construction, local parsing,
+  validation, redirects and completion rather than retaining only structural
+  nodes and signed-message detection.
 
 ## Vanilla Java generator frontend migration
 

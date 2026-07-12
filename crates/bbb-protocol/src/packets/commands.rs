@@ -66,7 +66,13 @@ pub(super) fn decode_commands(decoder: &mut Decoder<'_>) -> Result<Commands> {
     let root_index = decoder.read_var_i32()?;
     validate_command_tree(&nodes, root_index)?;
 
-    Ok(Commands { nodes, root_index })
+    let packet = Commands { nodes, root_index };
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after commands packet".to_string(),
+        ));
+    }
+    Ok(packet)
 }
 
 fn decode_command_node(decoder: &mut Decoder<'_>) -> Result<CommandNode> {
@@ -364,7 +370,7 @@ mod tests {
         payload.write_string("ask_server");
 
         payload.write_var_i32(0);
-        let payload = payload.into_inner();
+        let mut payload = payload.into_inner();
 
         let packet = decode_play_clientbound(ids::play::CLIENTBOUND_COMMANDS, &payload).unwrap();
         let PlayClientbound::Commands(commands) = packet else {
@@ -414,6 +420,14 @@ mod tests {
         assert_eq!(decoder.read_string(32767).unwrap(), "ask_server");
         assert_eq!(decoder.read_var_i32().unwrap(), 0);
         assert!(decoder.is_empty());
+
+        payload.push(0);
+        assert!(
+            decode_play_clientbound(ids::play::CLIENTBOUND_COMMANDS, &payload)
+                .unwrap_err()
+                .to_string()
+                .contains("trailing bytes after commands packet")
+        );
     }
 
     #[test]

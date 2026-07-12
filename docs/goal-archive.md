@@ -11586,3 +11586,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] bounded collection/per-chunk buffer、strict trailing、section palette replacement ownership 与跨 crate tests 有证据。
 - [x] dynamic biome registry 与 3x3 neighbor rerender/custom tint 未完成，canonical/runtime 保持 partial。
+
+## 2026-07-12：play commands packet coverage audit
+
+- [x] bounded nodes/children、flags/redirect/parser properties/suggestions、strict trailing、topology validation 与 replace ownership 闭合。
+- [x] registry-aware repo-native dispatcher/local parse-completion 未完成，runtime 保持 partial。
