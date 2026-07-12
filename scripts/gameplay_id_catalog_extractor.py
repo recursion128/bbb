@@ -172,6 +172,13 @@ class DebugSubscriptionEntry:
 
 
 @dataclass(frozen=True)
+class WorldClockEntry:
+    constant_name: str
+    clock_id: int
+    resource_id: str
+
+
+@dataclass(frozen=True)
 class ObjectiveRenderTypeEntry:
     constant_name: str
     ordinal: int
@@ -892,6 +899,65 @@ def debug_subscription_entries(
         )
     _validate(entries, "debug subscription", "subscription_id")
     _validate(entries, "debug subscription", "resource_id")
+    return entries
+
+
+def world_clock_entries(
+    source: JavaSource, expected_count: int = 2
+) -> list[WorldClockEntry]:
+    keys: dict[str, str] = {}
+    for field in _fields(source, "ResourceKey<WorldClock>"):
+        initializer = field.initializer
+        if initializer is None or initializer.node.type != "method_invocation":
+            expression = initializer or JavaExpression("", field.span, field.node)
+            _fail(source, expression, f"{field.name} lacks a world clock key call")
+        name = initializer.node.child_by_field_name("name")
+        arguments = initializer.node.child_by_field_name("arguments")
+        if name is None or arguments is None or source.text(name) != "key":
+            _fail(source, initializer, f"{field.name} is not initialized by key")
+        call_arguments = tuple(
+            source.expression(node) for node in arguments.named_children
+        )
+        if len(call_arguments) != 1:
+            _fail(source, initializer, f"{field.name} key call must have one argument")
+        keys[field.name] = "minecraft:" + _string(source, call_arguments[0])
+
+    entries = []
+    used_keys = set()
+    for call in source.calls:
+        if (
+            call.name != "register"
+            or call.qualifier is None
+            or call.qualifier.canonical != "context"
+        ):
+            continue
+        if len(call.arguments) != 2:
+            _fail(source, source.expression(call.node), "world clock register must have two arguments")
+        constant_name = call.arguments[0].canonical
+        if constant_name not in keys:
+            _fail(
+                source,
+                call.arguments[0],
+                f"world clock register references unknown key {constant_name}",
+            )
+        if constant_name in used_keys:
+            _fail(source, call.arguments[0], f"duplicate world clock register {constant_name}")
+        used_keys.add(constant_name)
+        entries.append(
+            WorldClockEntry(constant_name, len(entries), keys[constant_name])
+        )
+
+    unused_keys = sorted(set(keys) - used_keys)
+    if unused_keys:
+        raise GameplayIdExtractionError(
+            f"{source.relative_path}: unregistered world clock keys: {', '.join(unused_keys)}"
+        )
+    if len(entries) != expected_count:
+        raise GameplayIdExtractionError(
+            f"expected {expected_count} world clocks, extracted {len(entries)}"
+        )
+    _validate(entries, "world clock", "clock_id")
+    _validate(entries, "world clock", "resource_id")
     return entries
 
 

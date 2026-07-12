@@ -226,7 +226,6 @@ const VANILLA_GAUSSIAN_SAMPLE_KERNEL: [f64; 7] = [0.0, 1.0, 4.0, 6.0, 4.0, 1.0, 
 const VANILLA_SKY_FLASH_SKY_COLOR: i32 = argb_color(255, 204, 204, 255);
 const VANILLA_SKY_FLASH_SKY_COLOR_ALPHA: f32 = 0.22;
 const VANILLA_PARTICLE_MISSING_CHUNK_LIGHT: TerrainLight = TerrainLight { sky: 15, block: 15 };
-const VANILLA_WORLD_CLOCK_THE_END_ID: i32 = 1;
 const VANILLA_END_FLASH_INTERVAL_TICKS: i64 = 600;
 const VANILLA_END_FLASH_MAX_OFFSET_TICKS: i32 = 200;
 const VANILLA_END_FLASH_MIN_DURATION_TICKS: i32 = 100;
@@ -1147,10 +1146,8 @@ impl LightmapTickState {
             return;
         }
 
-        self.end_flash_state.tick(world_clock_total_ticks(
-            world,
-            VANILLA_WORLD_CLOCK_THE_END_ID,
-        ));
+        self.end_flash_state
+            .tick(world.world_time().map(|time| time.day_time).unwrap_or(0));
     }
 
     fn end_flash_sky_factor(&self, world: &WorldStore) -> f32 {
@@ -1780,18 +1777,6 @@ fn sanitize_weather_lightmap_level(level: f32) -> f32 {
     } else {
         0.0
     }
-}
-
-fn world_clock_total_ticks(world: &WorldStore, clock_id: i32) -> i64 {
-    world
-        .world_time()
-        .and_then(|time| {
-            time.clock_updates
-                .iter()
-                .find(|clock| clock.clock_id == clock_id)
-                .map(|clock| clock.total_ticks)
-        })
-        .unwrap_or(0)
 }
 
 fn random_between_inclusive(

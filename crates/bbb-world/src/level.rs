@@ -60,6 +60,8 @@ pub struct WorldLevelInfo {
     pub dimension: String,
     pub dimension_type_id: i32,
     pub dimension_type_name: Option<String>,
+    #[serde(default)]
+    pub default_clock_resource_id: Option<String>,
     #[serde(default = "world_level_has_sky_light_default")]
     pub has_sky_light: bool,
     #[serde(default)]
@@ -295,15 +297,30 @@ impl WorldStore {
 
     pub fn apply_world_time(&mut self, time: ProtocolPlayTime) -> &WorldTimeState {
         self.counters.world_time_packets += 1;
-        let clock_updates: Vec<_> = time
-            .clock_updates
-            .into_iter()
-            .map(ClockUpdateState::from)
-            .collect();
-        let day_time = clock_updates
-            .first()
-            .map(|clock| clock.total_ticks)
-            .unwrap_or(time.game_time);
+        // Vanilla ClientClockManager ticks every existing holder instance to the
+        // packet game time, then overwrites only the holders present in this map.
+        let mut clock_updates = self
+            .world_time
+            .take()
+            .map(|mut previous| {
+                let game_time_delta = time.game_time.saturating_sub(previous.game_time);
+                for clock in &mut previous.clock_updates {
+                    advance_client_clock(clock, game_time_delta);
+                }
+                previous.clock_updates
+            })
+            .unwrap_or_default();
+        for update in time.clock_updates {
+            let update = ClockUpdateState::from(update);
+            match clock_updates
+                .iter_mut()
+                .find(|clock| clock.clock_id == update.clock_id)
+            {
+                Some(clock) => *clock = update,
+                None => clock_updates.push(update),
+            }
+        }
+        let day_time = default_clock_total_ticks(&clock_updates, self.current_default_clock_id());
         self.world_time = Some(WorldTimeState {
             game_time: time.game_time,
             day_time,
@@ -401,6 +418,7 @@ impl WorldStore {
 
         self.advance_recipe_book_tab_animation(ticks);
 
+        let default_clock_id = self.current_default_clock_id();
         let Some(time) = self.world_time.as_mut() else {
             return;
         };
@@ -411,11 +429,7 @@ impl WorldStore {
         for clock in &mut time.clock_updates {
             advance_client_clock(clock, game_time_delta);
         }
-        time.day_time = time
-            .clock_updates
-            .first()
-            .map(|clock| clock.total_ticks)
-            .unwrap_or(time.game_time);
+        time.day_time = default_clock_total_ticks(&time.clock_updates, default_clock_id);
 
         // Vanilla `Minecraft.tick` runs entity ticks before `ClientLevel.tickTime`,
         // so entity tick side effects read the pre-increment gameTime for each tick.
@@ -474,13 +488,16 @@ impl WorldStore {
         let dimension_type_entry = self
             .registry_entry_by_holder_id("minecraft:dimension_type", spawn_info.dimension_type_id);
         let dimension_type = dimension_type_client_projection_from_registry(dimension_type_entry);
-        let dimension_type_name = dimension_type_entry
-            .map(|entry| entry.id.clone())
+        let dimension_type_entry_name = dimension_type_entry.map(|entry| entry.id.clone());
+        let dimension_type_name = dimension_type_entry_name
+            .clone()
             .or_else(|| profile.name.map(str::to_string));
         let dimension = dimension_type
+            .as_ref()
             .and_then(|projection| projection.dimension)
             .unwrap_or(profile.dimension);
         let has_sky_light = dimension_type
+            .as_ref()
             .and_then(|projection| projection.has_sky_light)
             .unwrap_or_else(|| {
                 built_in_dimension_has_sky_light(
@@ -489,11 +506,13 @@ impl WorldStore {
                 )
             });
         let has_ceiling = dimension_type
+            .as_ref()
             .and_then(|projection| projection.has_ceiling)
             .unwrap_or_else(|| {
                 built_in_dimension_has_ceiling(spawn_info.dimension_type_id, &spawn_info.dimension)
             });
         let cardinal_lighting = dimension_type
+            .as_ref()
             .and_then(|projection| projection.cardinal_lighting)
             .unwrap_or_else(|| {
                 built_in_dimension_cardinal_lighting(
@@ -502,11 +521,13 @@ impl WorldStore {
                 )
             });
         let skybox = dimension_type
+            .as_ref()
             .and_then(|projection| projection.skybox)
             .unwrap_or_else(|| {
                 built_in_dimension_skybox(spawn_info.dimension_type_id, &spawn_info.dimension)
             });
         let ambient_light = dimension_type
+            .as_ref()
             .and_then(|projection| projection.ambient_light)
             .unwrap_or_else(|| {
                 built_in_dimension_ambient_light(
@@ -515,11 +536,26 @@ impl WorldStore {
                 )
             });
         let environment_attributes = dimension_type
+            .as_ref()
             .map(|projection| projection.environment_attributes)
             .unwrap_or_default();
-        if let Some(err) = dimension_type.and_then(|projection| projection.environment_error) {
+        if let Some(err) = dimension_type
+            .as_ref()
+            .and_then(|projection| projection.environment_error)
+        {
             self.record_apply_error("dimension_type_environment_attributes", err);
         }
+        let default_clock_resource_id = dimension_type
+            .as_ref()
+            .and_then(|projection| projection.default_clock_resource_id.clone())
+            .or_else(|| {
+                let (dimension_type_id, dimension_type_name) = dimension_type_entry_name
+                    .as_deref()
+                    .map(|name| (-1, name))
+                    .unwrap_or((spawn_info.dimension_type_id, spawn_info.dimension.as_str()));
+                built_in_dimension_default_clock_resource_id(dimension_type_id, dimension_type_name)
+                    .map(str::to_string)
+            });
         let dimension_key_changed = self
             .level
             .as_ref()
@@ -532,6 +568,7 @@ impl WorldStore {
             dimension: spawn_info.dimension.clone(),
             dimension_type_id: spawn_info.dimension_type_id,
             dimension_type_name,
+            default_clock_resource_id,
             has_sky_light,
             has_ceiling,
             cardinal_lighting,
@@ -546,6 +583,7 @@ impl WorldStore {
             is_debug: spawn_info.is_debug,
             is_flat: spawn_info.is_flat,
         });
+        self.refresh_day_time_from_default_clock();
         self.set_game_type_from_spawn_info(
             i32::from(spawn_info.game_type),
             i32::from(spawn_info.previous_game_type),
@@ -685,6 +723,24 @@ impl WorldStore {
         self.world_time.as_ref()
     }
 
+    fn current_default_clock_id(&self) -> Option<i32> {
+        // Vanilla Level.getDefaultClockTime resolves DimensionType.defaultClock
+        // through the active RegistryAccess. A pre-login store has the repo's
+        // vanilla-overworld default; a loaded dimension with no clock stays None.
+        let resource_id = match self.level.as_ref() {
+            Some(level) => level.default_clock_resource_id.as_deref()?,
+            None => "minecraft:overworld",
+        };
+        self.registry_holder_id_by_resource_id("minecraft:world_clock", resource_id)
+    }
+
+    fn refresh_day_time_from_default_clock(&mut self) {
+        let default_clock_id = self.current_default_clock_id();
+        if let Some(time) = self.world_time.as_mut() {
+            time.day_time = default_clock_total_ticks(&time.clock_updates, default_clock_id);
+        }
+    }
+
     pub fn weather(&self) -> WorldWeatherState {
         self.weather
     }
@@ -778,7 +834,18 @@ fn built_in_dimension_ambient_light(dimension_type_id: i32, dimension: &str) -> 
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+fn built_in_dimension_default_clock_resource_id(
+    dimension_type_id: i32,
+    dimension: &str,
+) -> Option<&'static str> {
+    match dimension_profile(dimension_type_id, dimension).name {
+        Some("minecraft:overworld" | "minecraft:overworld_caves") => Some("minecraft:overworld"),
+        Some("minecraft:the_end") => Some("minecraft:the_end"),
+        _ => None,
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
 struct DimensionTypeClientProjection {
     dimension: Option<WorldDimension>,
     has_sky_light: Option<bool>,
@@ -786,6 +853,7 @@ struct DimensionTypeClientProjection {
     cardinal_lighting: Option<WorldCardinalLighting>,
     skybox: Option<WorldSkybox>,
     ambient_light: Option<f32>,
+    default_clock_resource_id: Option<String>,
     environment_attributes: ClientEnvironmentAttributes,
     environment_error: Option<EnvironmentAttributeProjectionError>,
 }
@@ -820,6 +888,10 @@ fn dimension_type_client_projection_from_registry(
         Some(NbtValue::Float(value)) => Some(*value),
         _ => None,
     };
+    let default_clock_resource_id = match find_nbt_entry(&fields, "default_clock") {
+        Some(NbtValue::String(resource_id)) => Some(resource_id.clone()),
+        _ => None,
+    };
     let (environment_attributes, environment_error) = match find_nbt_entry(&fields, "attributes") {
         Some(NbtValue::Compound(entries)) => match decode_client_environment_attributes(entries) {
             Ok(attributes) => (attributes, None),
@@ -841,6 +913,7 @@ fn dimension_type_client_projection_from_registry(
         cardinal_lighting,
         skybox,
         ambient_light,
+        default_clock_resource_id,
         environment_attributes,
         environment_error,
     })
@@ -912,6 +985,20 @@ fn advance_client_clock(clock: &mut ClockUpdateState, game_time_delta: i64) {
     let full_ticks = new_partial_ticks.floor() as i64;
     clock.partial_tick = (new_partial_ticks - full_ticks as f64) as f32;
     clock.total_ticks = clock.total_ticks.saturating_add(full_ticks);
+}
+
+fn default_clock_total_ticks(
+    clock_updates: &[ClockUpdateState],
+    default_clock_id: Option<i32>,
+) -> i64 {
+    default_clock_id
+        .and_then(|clock_id| {
+            clock_updates
+                .iter()
+                .find(|clock| clock.clock_id == clock_id)
+        })
+        .map(|clock| clock.total_ticks)
+        .unwrap_or(0)
 }
 
 fn positive_tick_steps(tick_steps: i32) -> u32 {
@@ -1166,6 +1253,7 @@ mod tests {
             dimension: "minecraft:the_nether".to_string(),
             dimension_type_id: 1,
             dimension_type_name: Some("minecraft:the_nether".to_string()),
+            default_clock_resource_id: None,
             has_sky_light: false,
             has_ceiling: true,
             cardinal_lighting: WorldCardinalLighting::Nether,
@@ -1324,13 +1412,109 @@ mod tests {
     }
 
     #[test]
+    fn world_time_selects_dimension_default_clock_by_session_holder_identity() {
+        let mut store = WorldStore::new();
+        store.record_registry_data(RegistryData {
+            registry: "minecraft:world_clock".to_string(),
+            raw_payload_len: 0,
+            entries: vec![
+                registry_stub("minecraft:the_end"),
+                registry_stub("minecraft:overworld"),
+            ],
+        });
+        record_custom_dimension_type_registry(
+            &mut store,
+            dimension_type_nbt_with_default_clock("minecraft:overworld"),
+        );
+        store.apply_login(&login_packet(4, "example:custom"));
+
+        store.apply_world_time(ProtocolPlayTime {
+            game_time: 100,
+            clock_updates: vec![
+                ProtocolClockUpdate {
+                    clock_id: 0,
+                    total_ticks: 9_000,
+                    partial_tick: 0.0,
+                    rate: 1.0,
+                },
+                ProtocolClockUpdate {
+                    clock_id: 1,
+                    total_ticks: 6_000,
+                    partial_tick: 0.0,
+                    rate: 1.0,
+                },
+            ],
+        });
+
+        assert_eq!(
+            store
+                .level_info()
+                .unwrap()
+                .default_clock_resource_id
+                .as_deref(),
+            Some("minecraft:overworld")
+        );
+        assert_eq!(store.world_time().unwrap().day_time, 6_000);
+
+        store.apply_respawn(&ProtocolRespawn {
+            common_spawn_info: login_packet(2, "minecraft:the_end").common_spawn_info,
+            data_to_keep: 3,
+        });
+        assert_eq!(store.world_time().unwrap().day_time, 9_000);
+
+        store.apply_respawn(&ProtocolRespawn {
+            common_spawn_info: login_packet(1, "minecraft:the_nether").common_spawn_info,
+            data_to_keep: 3,
+        });
+        assert_eq!(store.level_info().unwrap().default_clock_resource_id, None);
+        assert_eq!(store.world_time().unwrap().day_time, 0);
+    }
+
+    #[test]
+    fn world_time_merges_partial_clock_updates_like_client_clock_manager() {
+        let mut store = WorldStore::new();
+        store.apply_world_time(ProtocolPlayTime {
+            game_time: 100,
+            clock_updates: vec![
+                ProtocolClockUpdate {
+                    clock_id: 0,
+                    total_ticks: 10,
+                    partial_tick: 0.0,
+                    rate: 1.0,
+                },
+                ProtocolClockUpdate {
+                    clock_id: 1,
+                    total_ticks: 20,
+                    partial_tick: 0.0,
+                    rate: 1.0,
+                },
+            ],
+        });
+        store.apply_world_time(ProtocolPlayTime {
+            game_time: 102,
+            clock_updates: vec![ProtocolClockUpdate {
+                clock_id: 1,
+                total_ticks: 50,
+                partial_tick: 0.5,
+                rate: 0.0,
+            }],
+        });
+
+        let time = store.world_time().unwrap();
+        assert_eq!(time.day_time, 12);
+        assert_eq!(time.clock_updates.len(), 2);
+        assert_eq!(time.clock_updates[0].total_ticks, 12);
+        assert_eq!(time.clock_updates[1].total_ticks, 50);
+    }
+
+    #[test]
     fn advance_client_time_ticks_game_time_and_clock_instances_like_vanilla() {
         let mut store = WorldStore::new();
         store.apply_world_time(ProtocolPlayTime {
             game_time: 100,
             clock_updates: vec![
                 ProtocolClockUpdate {
-                    clock_id: 1,
+                    clock_id: 0,
                     total_ticks: 1_485,
                     partial_tick: 0.75,
                     rate: 0.5,
@@ -1353,7 +1537,7 @@ mod tests {
             time.clock_updates,
             vec![
                 ClockUpdateState {
-                    clock_id: 1,
+                    clock_id: 0,
                     total_ticks: 1_486,
                     partial_tick: 0.25,
                     rate: 0.5,
@@ -1374,7 +1558,7 @@ mod tests {
         store.apply_world_time(ProtocolPlayTime {
             game_time: 100,
             clock_updates: vec![ProtocolClockUpdate {
-                clock_id: 1,
+                clock_id: 0,
                 total_ticks: 1_485,
                 partial_tick: 0.75,
                 rate: 0.0,
@@ -1389,7 +1573,7 @@ mod tests {
         assert_eq!(
             time.clock_updates,
             vec![ClockUpdateState {
-                clock_id: 1,
+                clock_id: 0,
                 total_ticks: 1_485,
                 partial_tick: 0.75,
                 rate: 0.0,
@@ -2035,6 +2219,16 @@ mod tests {
             "#305070",
         );
         payload.push(0);
+        payload.push(0);
+        payload
+    }
+
+    fn dimension_type_nbt_with_default_clock(default_clock: &str) -> Vec<u8> {
+        let mut payload = dimension_type_nbt(None, None, None, None, None, None);
+        assert_eq!(payload.pop(), Some(0));
+        payload.push(8);
+        write_nbt_string(&mut payload, "default_clock");
+        write_nbt_string(&mut payload, default_clock);
         payload.push(0);
         payload
     }

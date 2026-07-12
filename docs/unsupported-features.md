@@ -105,11 +105,6 @@ Owner: `bbb-protocol`
   the full client lifecycle.
 - Recompute vanilla fuel values and creative search-tree tag membership after
   play UpdateTags reloads, following `ClientPacketListener.handleUpdateTags`.
-- Resolve SetTime's `WorldClock` holder ids through that session RegistryAccess
-  and select the current dimension's clock by identity. The client currently
-  preserves every numeric clock update but derives `day_time` from the first
-  wire entry; the encoded HashMap order is not semantic. Restart by replacing
-  that first-entry shortcut and retaining all custom clocks for their consumers.
 - Resolve AwardStats `StatType` and type-specific value holder ids through the
   session RegistryAccess, retain their resource identities/formatters, and
   render the category/general/item/mob StatsScreen tabs. The current canonical

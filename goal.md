@@ -430,8 +430,8 @@ SetDefaultSpawnPosition 的 dimension/BlockPos/yaw/pitch wire、client respawn s
 item-model consumer 与 world/net/native tests 已全行闭合。
 PlayerAbilities 的 flags/flying-speed/walking-speed wire、canonical state 与 apply tests 已闭合；
 walking-speed 尚未进入 movement attribute base/FOV，runtime 保持 partial。
-SetTime 的 game-time/WorldClock-map wire、ownership 与 tests 已闭合；WorldClock holder 尚未按 session
-registry 解析，不能以 map 第一项冒充当前维度 day-time，canonical/runtime 保持 partial。
+SetTime 的 game-time/WorldClock-map wire、session holder identity、当前维度 default clock、merge/tick、
+ownership、render consumers 与 tests 已闭合；不再依赖 HashMap/wire 第一项，五格全部闭合。
 TickingStep 的 frozen step wire、consumption 与 tests 已全行闭合；TickingState 的 freeze 语义已消费，
 但 variable tick-rate 尚未驱动 client tick cadence，runtime 保持 partial。
 ClearTitles/SetTitlesAnimation 已全行闭合；action-bar/title/subtitle 的 Component wire、timers 与 tests

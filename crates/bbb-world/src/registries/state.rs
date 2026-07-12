@@ -1,6 +1,9 @@
 use std::{collections::BTreeMap, sync::Arc};
 
 use bbb_protocol::packets::RegistryDataEntry as ProtocolRegistryDataEntry;
+use bbb_protocol::world_clock_types::{
+    vanilla_world_clock_type_by_id, vanilla_world_clock_type_by_resource_id,
+};
 use bbb_protocol::{entity_types::vanilla_entity_type, item_types::vanilla_item_type};
 use serde::{Deserialize, Serialize};
 
@@ -255,6 +258,7 @@ impl RegistrySet {
             "minecraft:item" => Some(vanilla_item_type(holder_id)?.resource_id),
             "minecraft:block" => self.block_states.block_name_by_registry_id(holder_id),
             "minecraft:entity_type" => Some(vanilla_entity_type(holder_id)?.resource_id),
+            "minecraft:world_clock" => Some(vanilla_world_clock_type_by_id(holder_id)?.resource_id),
             _ => None,
         }
     }
@@ -271,6 +275,9 @@ impl RegistrySet {
             "minecraft:entity_type" => Some(
                 bbb_protocol::entity_types::vanilla_entity_type_for_resource_id(resource_id)?.id,
             ),
+            "minecraft:world_clock" => {
+                Some(vanilla_world_clock_type_by_resource_id(resource_id)?.id)
+            }
             _ => None,
         }
     }

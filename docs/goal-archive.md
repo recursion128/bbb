@@ -12729,3 +12729,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] serverbound tick-time subscription request 删除手写 ID 0，直接消费 generated
   `DEDICATED_SERVER_TICK_TIME` 常量；generated 结构测试锁定完整声明顺序、唯一性、查询和
   production anti-alias。该 catalog 不冒充其余 15 项 value codec、expiry 或 renderer 已实现。
+
+## 2026-07-12：SetTime WorldClock holder identity
+
+- [x] gameplay-id generator 通过共享 Tree-sitter frontend，从 vanilla 26.1 `WorldClocks.java`
+  的 bootstrap call 顺序生成 overworld/the_end fallback holder catalog；server 同步
+  `minecraft:world_clock` 内容存在时仍以 session holder 顺序为权威。
+- [x] dimension-type `default_clock` resource id 进入 client projection，SetTime clock updates
+  按 holder identity 持久 merge/tick，`day_time` 随 login/respawn 当前维度重选；无 default clock
+  返回 0，不再猜测 wire 第一项。native End flash 删除 holder ID 1，直接消费该统一投影。

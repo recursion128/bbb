@@ -50,6 +50,7 @@ from gameplay_id_catalog_extractor import (  # noqa: E402
     scoreboard_method_entries,
     scoreboard_team_option_entries,
     waypoint_wire_type_entries,
+    world_clock_entries,
 )
 from vanilla_java_source import parse_source  # noqa: E402
 
@@ -461,6 +462,53 @@ public class DebugSubscriptions<T> {
             "DebugSubscriptions.java:.*unsupported debug subscription registration guessSubscription",
         ):
             debug_subscription_entries(source, 1)
+
+    def test_world_clocks_follow_bootstrap_registration_order(self) -> None:
+        source = parse_source(
+            "fixture/WorldClocks.java",
+            b'''\
+package fixture;
+public interface WorldClocks {
+  ResourceKey<WorldClock> OVERWORLD = key("overworld");
+  ResourceKey<WorldClock> THE_END = key("the_end");
+  static void bootstrap(final BootstrapContext<WorldClock> context) {
+    context.register(THE_END, new WorldClock());
+    context.register(OVERWORLD, new WorldClock());
+  }
+  private static ResourceKey<WorldClock> key(final String id) { return null; }
+}
+''',
+        )
+        self.assertEqual(
+            [
+                (entry.constant_name, entry.clock_id, entry.resource_id)
+                for entry in world_clock_entries(source)
+            ],
+            [
+                ("THE_END", 0, "minecraft:the_end"),
+                ("OVERWORLD", 1, "minecraft:overworld"),
+            ],
+        )
+
+    def test_world_clocks_reject_unregistered_keys(self) -> None:
+        source = parse_source(
+            "fixture/WorldClocks.java",
+            b'''\
+package fixture;
+public interface WorldClocks {
+  ResourceKey<WorldClock> OVERWORLD = key("overworld");
+  ResourceKey<WorldClock> UNUSED = key("unused");
+  static void bootstrap(final BootstrapContext<WorldClock> context) {
+    context.register(OVERWORLD, new WorldClock());
+  }
+  private static ResourceKey<WorldClock> key(final String id) { return null; }
+}
+''',
+        )
+        with self.assertRaisesRegex(
+            GameplayIdExtractionError, "unregistered world clock keys: UNUSED"
+        ):
+            world_clock_entries(source, 1)
 
     def test_objective_render_types_preserve_nested_order_and_names(self) -> None:
         source = parse_source(

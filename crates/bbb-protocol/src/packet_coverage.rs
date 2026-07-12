@@ -1259,23 +1259,23 @@ mod tests {
     }
 
     #[test]
-    fn play_set_time_keeps_world_clock_resolution_open() {
+    fn play_set_time_is_complete_after_world_clock_resolution() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
             .iter()
             .find(|entry| entry.state == "play" && entry.constant_name == "CLIENTBOUND_SET_TIME")
             .expect("set time coverage row");
-        let partial: BTreeSet<_> = entry
+        let incomplete: BTreeSet<_> = entry
             .coverage
             .iter()
             .filter_map(|(dimension, cell)| {
-                (cell.status == PacketCoverageStatus::Partial).then_some(dimension.as_str())
+                (cell.status != PacketCoverageStatus::Complete).then_some(dimension.as_str())
             })
             .collect();
-        assert_eq!(
-            partial,
-            BTreeSet::from(["canonical_apply", "runtime_side_effect"])
+        assert!(
+            incomplete.is_empty(),
+            "incomplete SetTime coverage: {incomplete:?}"
         );
     }
 
