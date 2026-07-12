@@ -138,7 +138,13 @@ pub(super) fn decode_player_info_update(decoder: &mut Decoder<'_>) -> Result<Pla
         entries.push(entry);
     }
 
-    Ok(PlayerInfoUpdate { actions, entries })
+    let packet = PlayerInfoUpdate { actions, entries };
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after player info update packet".to_string(),
+        ));
+    }
+    Ok(packet)
 }
 
 fn decode_player_info_actions(decoder: &mut Decoder<'_>) -> Result<Vec<PlayerInfoAction>> {
@@ -269,12 +275,10 @@ mod tests {
         payload.write_bytes(&nbt_string_root("Captain Steve"));
         payload.write_var_i32(12);
         payload.write_bool(true);
+        let payload = payload.into_inner();
 
-        let packet = decode_play_clientbound(
-            ids::play::CLIENTBOUND_PLAYER_INFO_UPDATE,
-            &payload.into_inner(),
-        )
-        .unwrap();
+        let packet =
+            decode_play_clientbound(ids::play::CLIENTBOUND_PLAYER_INFO_UPDATE, &payload).unwrap();
         assert_eq!(
             packet,
             PlayClientbound::PlayerInfoUpdate(PlayerInfoUpdate {
@@ -299,6 +303,15 @@ mod tests {
                     chat_session: None,
                 }],
             })
+        );
+
+        let mut trailing = payload;
+        trailing.push(0);
+        assert!(
+            decode_play_clientbound(ids::play::CLIENTBOUND_PLAYER_INFO_UPDATE, &trailing)
+                .unwrap_err()
+                .to_string()
+                .contains("trailing bytes after player info update packet")
         );
     }
 

@@ -519,6 +519,7 @@ play MapItemData 的 MapId/scale/locked、optional decorations/patch、rotation/
 play MerchantOffers 的基础 wire/strict trailing、matching active MerchantMenu ownership 与 offer state/UI baseline 已审计；exact component predicate value、component-aware local trade/cost presentation 与 stack decorations/tooltips 未完成，除 ownership 外四格保持 partial。
 play PlayerChat 的 full wire/strict trailing、filter/index/signature-cache/64-offset acknowledgement baseline 与 ownership 已审计；trusted Component/ChatType registry、RemoteChatSession 验签、错误断连和 ChatListener decoration/delay/narration/logging 未完成，除 ownership 外四格保持 partial。
 play PlayerInfoRemove 的 bounded UUID list/strict trailing、player-info/listed canonical removal 与 ownership 已闭合；PlayerSocialManager/Social Interactions cleanup 尚无 owner，runtime/tests 保持 partial。
+play PlayerInfoUpdate 的 8-action/bounded profile-property/key wire、strict trailing、unknown-player gating、canonical profile/listed/latency/game-mode baseline 与 ownership 已审计；rich display Component、chat-session key validation/secure policy、PlayerSocialManager add 与完整 tab/social presentation 未完成，除 ownership 外四格保持 partial。
 
 完成标准：全部 vanilla 26.1 catalog entry 都有矩阵行；所有目标客户端适用项为
 `complete`，其余只有带 vanilla 依据的 `not-applicable` 或带重启判据的窄 `deferred`；

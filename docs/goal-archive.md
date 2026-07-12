@@ -11696,3 +11696,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] bounded UUID list、strict trailing、player-info/listed canonical removal、net/probe/native state tests 已审计。
 - [x] vanilla 同步调用的 PlayerSocialManager removal 尚无 bbb owner；Social Interactions screen/state 写入 HUD backlog，runtime/tests 保持 partial。
+
+## 2026-07-12：play player info update packet coverage audit
+
+- [x] 8-action bitset、bounded entries/properties/key blobs、strict trailing、unknown-player gate、profile/listed/latency/game-mode baseline 与 dynamic skin consumption 已审计。
+- [x] rich display Component、chat-session profile-key validation/secure policy、PlayerSocialManager add 和完整 tab/social presentation 继续开放，除 ownership 外四格保持 partial。

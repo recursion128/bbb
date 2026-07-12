@@ -2950,6 +2950,29 @@ mod tests {
         assert_eq!(partial, BTreeSet::from(["runtime_side_effect", "tests"]));
     }
 
+    #[test]
+    fn play_player_info_update_keeps_chat_session_and_social_semantics_open() {
+        let ledger = vanilla_packet_coverage_26_1().unwrap();
+        let entry = ledger
+            .entries
+            .iter()
+            .find(|entry| {
+                entry.state == "play" && entry.constant_name == "CLIENTBOUND_PLAYER_INFO_UPDATE"
+            })
+            .expect("play player info update coverage row");
+        let partial: BTreeSet<_> = entry
+            .coverage
+            .iter()
+            .filter_map(|(dimension, cell)| {
+                (cell.status == PacketCoverageStatus::Partial).then_some(dimension.as_str())
+            })
+            .collect();
+        assert_eq!(
+            partial,
+            BTreeSet::from(["canonical_apply", "decode", "runtime_side_effect", "tests"])
+        );
+    }
+
     fn state_name(state: PacketState) -> &'static str {
         match state {
             PacketState::Handshake => "handshake",
