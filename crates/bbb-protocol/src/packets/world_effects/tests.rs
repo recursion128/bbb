@@ -3,6 +3,7 @@ use crate::{
     codec::{Decoder, Encoder},
     ids,
     packets::{chunks, decode_play_clientbound, BlockPos, PlayClientbound},
+    particle_types::VANILLA_PARTICLE_TYPES,
 };
 
 #[test]
@@ -148,6 +149,88 @@ fn decodes_level_particles_packet_wire_order() {
     assert_eq!(decoder.read_i32().unwrap(), 0x00ff00);
     assert_eq!(decoder.read_f32().unwrap(), 0.5);
     assert!(decoder.is_empty());
+
+    let mut trailing = payload;
+    trailing.push(0);
+    assert!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_LEVEL_PARTICLES, &trailing)
+            .unwrap_err()
+            .to_string()
+            .contains("particle packet has 1 trailing byte(s)")
+    );
+}
+
+#[test]
+fn rejects_unknown_level_particle_type() {
+    let mut payload = Encoder::new();
+    payload.write_bool(false);
+    payload.write_bool(false);
+    payload.write_f64(0.0);
+    payload.write_f64(0.0);
+    payload.write_f64(0.0);
+    payload.write_f32(0.0);
+    payload.write_f32(0.0);
+    payload.write_f32(0.0);
+    payload.write_f32(0.0);
+    payload.write_i32(1);
+    payload.write_var_i32(117);
+
+    assert!(decode_play_clientbound(
+        ids::play::CLIENTBOUND_LEVEL_PARTICLES,
+        &payload.into_inner(),
+    )
+    .unwrap_err()
+    .to_string()
+    .contains("unknown particle type id 117"));
+}
+
+#[test]
+fn every_vanilla_particle_type_has_a_wire_decoder() {
+    for particle_type in VANILLA_PARTICLE_TYPES {
+        let mut options = Encoder::new();
+        match particle_type.id {
+            1 | 2 | 29 | 105 | 111 | 115 => options.write_var_i32(0),
+            8 | 38 => options.write_f32(0.0),
+            14 => {
+                options.write_i32(0);
+                options.write_f32(1.0);
+            }
+            15 => {
+                options.write_i32(0);
+                options.write_i32(0);
+                options.write_f32(1.0);
+            }
+            16 | 46 => {
+                options.write_i32(0);
+                options.write_f32(0.0);
+            }
+            21 | 36 | 42 => options.write_i32(0),
+            47 => {
+                options.write_var_i32(0);
+                options.write_var_i32(1);
+                options.write_var_i32(0);
+                options.write_var_i32(0);
+            }
+            48 => {
+                options.write_var_i32(0);
+                options.write_i64(chunks::encode_block_pos(BlockPos { x: 0, y: 0, z: 0 }));
+                options.write_var_i32(0);
+            }
+            49 => {
+                options.write_f64(0.0);
+                options.write_f64(0.0);
+                options.write_f64(0.0);
+                options.write_i32(0);
+                options.write_var_i32(0);
+            }
+            id if is_simple_particle_type(id) => {}
+            id => panic!("particle type {id} has no test wire payload"),
+        }
+        let options = options.into_inner();
+        let packet = decode_level_particles_with_options(particle_type.id, &options);
+        assert_eq!(packet.particle.particle_type_id, particle_type.id);
+        assert_eq!(packet.particle.raw_options, options);
+    }
 }
 
 #[test]

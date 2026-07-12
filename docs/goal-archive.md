@@ -11661,3 +11661,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] type/BlockPos/data/global framing、strict trailing、canonical event/jukebox 与完整 LevelEventHandler sound/particle switch/tests 闭合。
 - [x] terrain/item atlas/block-entity/audio-device 相邻 parity 未被误标完成，继续由既有 ledger 条目维护。
+
+## 2026-07-12：play level particles packet coverage audit
+
+- [x] limiter/show、position/offset/speed/count、117 项 registry-dispatched ParticleOptions、strict trailing 与 unknown-id rejection 已审计。
+- [x] world snapshot、net/probe 转发、native limiter/count/random/context spawn 和 renderer dispatch/tests 闭合；provider-specific 与 terrain/item atlas 细节继续由 particle ledger 维护。

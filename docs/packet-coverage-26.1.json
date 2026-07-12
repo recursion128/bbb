@@ -7200,29 +7200,56 @@
       "constant_name": "CLIENTBOUND_LEVEL_PARTICLES",
       "coverage": {
         "canonical_apply": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/client/effects.rs#apply_level_particles",
+            "crates/bbb-world/src/play_apply.rs#PlayClientbound::LevelParticles",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleParticleEvent"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/world_effects/tests.rs#decodes_level_particles_packet_wire_order",
+            "crates/bbb-protocol/src/packets/world_effects/tests.rs#every_vanilla_particle_type_has_a_wire_decoder",
+            "crates/bbb-protocol/src/packets/world_effects/tests.rs#rejects_unknown_level_particle_type",
+            "crates/bbb-protocol/src/particle_types.rs#particle_type_catalog_is_complete_contiguous_and_unique",
+            "vanilla:net/minecraft/network/protocol/game/ClientboundLevelParticlesPacket.java#STREAM_CODEC"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "ownership": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/play_apply.rs#PlayClientbound::LevelParticles",
+            "crates/bbb-native/src/runtime/events/dispatcher.rs#level_particles"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "runtime_side_effect": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-native/src/runtime/events/dispatcher.rs#emit_level_particles",
+            "crates/bbb-native/src/particle_runtime/resolver_core.rs#resolve_level_particles_with_context",
+            "crates/bbb-native/src/runtime/events/tests/level_event_particle_batches.rs#level_particles_emit_particle_runtime_batch_and_world_counters",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleParticleEvent"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/world_effects/tests.rs#decodes_level_particles_packet_wire_order",
+            "crates/bbb-protocol/src/packets/world_effects/tests.rs#every_vanilla_particle_type_has_a_wire_decoder",
+            "crates/bbb-protocol/src/packets/world_effects/tests.rs#rejects_unknown_level_particle_type",
+            "crates/bbb-net/src/event_stream.rs#play_map_particle_and_audio_packets_emit_matching_events_without_responses",
+            "crates/bbb-net/src/probe/play.rs#probe_applies_visual_effect_packets_to_world",
+            "crates/bbb-native/src/runtime/events/tests/level_event_particle_batches.rs#level_particles_emit_particle_runtime_batch_and_world_counters",
+            "crates/bbb-native/src/particle_runtime/tests.rs#negative_count_emits_no_spawn_commands",
+            "crates/bbb-native/src/particle_runtime/tests.rs#level_particles_override_limiter_bypasses_distance_and_particle_status"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "clientbound",
