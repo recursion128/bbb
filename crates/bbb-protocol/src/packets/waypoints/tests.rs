@@ -21,7 +21,7 @@ fn decodes_position_waypoint_packet_wire_order() {
     payload.write_var_i32(10);
     payload.write_var_i32(64);
     payload.write_var_i32(-5);
-    let payload = payload.into_inner();
+    let mut payload = payload.into_inner();
 
     assert_eq!(
         decode_play_clientbound(ids::play::CLIENTBOUND_WAYPOINT, &payload).unwrap(),
@@ -56,6 +56,14 @@ fn decodes_position_waypoint_packet_wire_order() {
     assert_eq!(decoder.read_var_i32().unwrap(), 64);
     assert_eq!(decoder.read_var_i32().unwrap(), -5);
     assert!(decoder.is_empty());
+
+    payload.push(0);
+    assert!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_WAYPOINT, &payload)
+            .unwrap_err()
+            .to_string()
+            .contains("trailing bytes after waypoint packet")
+    );
 }
 
 #[test]

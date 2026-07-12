@@ -11054,29 +11054,49 @@
       "constant_name": "CLIENTBOUND_WAYPOINT",
       "coverage": {
         "canonical_apply": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/client/waypoints.rs#apply_waypoint",
+            "crates/bbb-world/src/client/waypoints.rs#tracks_updates_and_untracks_waypoints",
+            "vanilla:net/minecraft/client/waypoints/ClientWaypointManager.java#trackWaypoint"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/waypoints/tests.rs#decodes_position_waypoint_packet_wire_order",
+            "crates/bbb-protocol/src/packets/waypoints/tests.rs#decodes_empty_and_azimuth_waypoints",
+            "crates/bbb-protocol/src/waypoint_wire_types.rs#VANILLA_WAYPOINT_OPERATIONS",
+            "vanilla:net/minecraft/network/protocol/game/ClientboundTrackedWaypointPacket.java#STREAM_CODEC"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "ownership": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/play_apply.rs#PlayClientbound::Waypoint"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "runtime_side_effect": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
+          "evidence": [
+            "crates/bbb-native/src/runtime/events/tests/entity_and_inventory_counters.rs#client_common_waypoint_events_update_world_and_snapshot_counters",
+            "vanilla:net/minecraft/client/gui/contextualbar/LocatorBarRenderer.java#render"
+          ],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
           "status": "partial"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/waypoints/tests.rs#decodes_position_waypoint_packet_wire_order",
+            "crates/bbb-net/src/event_stream.rs#play_passive_world_apply_packets_emit_matching_events",
+            "crates/bbb-net/src/probe/play.rs#probe_applies_waypoint_to_world",
+            "crates/bbb-world/src/client/waypoints.rs#tracks_updates_and_untracks_waypoints",
+            "crates/bbb-native/src/runtime/events/tests/entity_and_inventory_counters.rs#client_common_waypoint_events_update_world_and_snapshot_counters"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "clientbound",

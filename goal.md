@@ -486,6 +486,7 @@ play UpdateAdvancements 的 reset/add/remove/progress/show framing、strict trai
 play UpdateMobEffect 的 entity/effect/amplifier/duration/flags wire、strict decode、living-entity force-replace gate、ownership 与 tests 已闭合；剩余完整 client effect 行为保持 runtime partial。
 play UpdateRecipes 的 property-set/stonecutter framing、strict trailing、replace ownership 与 tests 已闭合；剩余 SlotDisplay/component/menu presentation 保持 decode/canonical/runtime partial。
 play UpdateTags 的 registry/tag/value framing、strict trailing、per-registry replace ownership 与 tests 已闭合；剩余 fuel values/creative search-tree 派生刷新保持 runtime partial。
+play Waypoint 的 operation WRAP、identifier/icon/data framing、strict trailing、manager apply ownership 与 tests 已闭合；剩余 locator contextual-bar presentation 保持 runtime partial。
 
 完成标准：全部 vanilla 26.1 catalog entry 都有矩阵行；所有目标客户端适用项为
 `complete`，其余只有带 vanilla 依据的 `not-applicable` 或带重启判据的窄 `deferred`；

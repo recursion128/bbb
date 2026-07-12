@@ -332,6 +332,9 @@ Environment:
 
 Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
 
+- Render tracked waypoints through the vanilla locator contextual bar: load
+  waypoint-style assets, derive distance/yaw/pitch indicators, and apply
+  `Gui.nextContextualInfoState` priority rules.
 - Preserve written-book filtered pages and full Component/style/click-event
   semantics in `BookViewScreen`; the current OpenBook path gates on the held
   written/writable component and supports literal-page navigation, but flattens
