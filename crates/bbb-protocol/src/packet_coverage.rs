@@ -3816,6 +3816,25 @@ mod tests {
         }
     }
 
+    #[test]
+    fn play_serverbound_ping_request_closes_debug_monitor_round_trip() {
+        let ledger = vanilla_packet_coverage_26_1().unwrap();
+        for packet in ["SERVERBOUND_PING_REQUEST", "CLIENTBOUND_PONG_RESPONSE"] {
+            let entry = ledger
+                .entries
+                .iter()
+                .find(|entry| entry.state == "play" && entry.constant_name == packet)
+                .expect("play ping monitor coverage row");
+            assert!(
+                entry
+                    .coverage
+                    .values()
+                    .all(|cell| cell.status == PacketCoverageStatus::Complete),
+                "{packet}"
+            );
+        }
+    }
+
     fn state_name(state: PacketState) -> &'static str {
         match state {
             PacketState::Handshake => "handshake",

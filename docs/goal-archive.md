@@ -11871,3 +11871,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] block packed position/entity VarInt、include-data boolean、middle-click/Ctrl modifier、crosshair target、command queue、driver send 与 server range/creative/game-master authority 已审计；两行 command/encoder/state 闭合。
 - [x] vanilla 通过 SetHeldSlot 和普通 inventory/menu broadcasts 返回结果，不要求客户端本地预测。bbb 的 held-slot apply 已闭合，但 component-rich creative clone 仍受 SetPlayerInventory/ItemStack added-value 语义缺口影响，因此 ack/tests 保持 partial。
+
+## 2026-07-12：play serverbound ping-request packet coverage audit
+
+- [x] F3+3 network-chart visibility/Play-state gate、每 client network tick 的 wall-clock i64 request、NetCommand/driver/wire、服务器原值 Pong、strict response decode、canonical record 与 native RTT/HUD sampler 已反向审计并全行闭合。
+- [x] 该 family 与 gameplay keepalive 分离；断开时 sampler reset，隐藏 chart 时不发送，未把 Pong timestamp 当作服务器时间或 gameplay state。
