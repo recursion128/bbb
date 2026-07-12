@@ -1132,8 +1132,8 @@ fn decodes_respawn_spawn_info() {
     payload.write_var_i32(63);
     payload.write_i8(3);
 
-    let packet =
-        decode_play_clientbound(ids::play::CLIENTBOUND_RESPAWN, &payload.into_inner()).unwrap();
+    let payload = payload.into_inner();
+    let packet = decode_play_clientbound(ids::play::CLIENTBOUND_RESPAWN, &payload).unwrap();
     assert_eq!(
         packet,
         PlayClientbound::Respawn(Respawn {
@@ -1151,6 +1151,15 @@ fn decodes_respawn_spawn_info() {
             },
             data_to_keep: 3,
         })
+    );
+
+    let mut trailing = payload;
+    trailing.push(0);
+    assert!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_RESPAWN, &trailing)
+            .unwrap_err()
+            .to_string()
+            .contains("trailing bytes after respawn packet")
     );
 }
 

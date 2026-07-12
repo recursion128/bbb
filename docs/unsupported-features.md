@@ -80,6 +80,13 @@ Owner: `bbb-protocol`
   cooldown; reset level-bound debug/chat/camera/player state; and enter the
   vanilla level-load readiness lifecycle without introducing an
   `IntegratedServer` owner.
+- Complete play Respawn lifecycle from
+  `ClientPacketListener.handleRespawn`: retain seed and portal cooldown in the
+  canonical spawn state, reconstruct the local player according to both keep
+  bits, preserve map data across dimension replacement, close the active
+  container, reset camera/music/debug-subscriber state, and re-enter
+  `LevelLoadTracker` readiness. The current world reset/keep-bit baseline is not
+  the full client lifecycle.
 - Recompute vanilla fuel values and creative search-tree tag membership after
   play UpdateTags reloads, following `ClientPacketListener.handleUpdateTags`.
 - Resolve SetTime's `WorldClock` holder ids through that session RegistryAccess

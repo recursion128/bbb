@@ -524,6 +524,7 @@ play PlayerLookAt 的 anchor/absolute-or-entity wire、strict trailing、missing
 play RecipeBook Add/Remove/Settings 的 bounded display-id/settings wire、strict trailing、replace/known/highlight/remove/open/filter canonical ownership 已审计；Remove/Settings 五格闭合，Add 的 RecipeToast 与剩余 SlotDisplay/component menu 呈现使 runtime/tests 保持 partial。
 play RemoveMobEffect 的 entity/effect holder wire、strict trailing、living/current-effect removal gate、canonical counters/refresh、ownership 与 tests 已闭合；完整 vanilla effect attributes/HUD/particles/specialized consumers 使 runtime 保持 partial。
 play ResourcePack Pop/Push 的 optional UUID、URL/hash/required/prompt wire、strict trailing、one/all canonical pop、push tracking、URL gate、response 与跨 crate tests 已审计；Push 的 rich prompt/策略状态以及两者的 download/hash/reload/required lifecycle 仍开放，runtime 保持 partial，Push canonical 也保持 partial。
+play Respawn 的 CommonPlayerSpawnInfo/dataToKeep wire、strict trailing、dimension-change level clear、keep-bit local reset 与 ownership 已审计；seed/portal canonical、LocalPlayer/map/container/camera/music/debug subscriber/LevelLoadTracker 完整生命周期尚未实现，canonical/runtime/tests 保持 partial。
 
 完成标准：全部 vanilla 26.1 catalog entry 都有矩阵行；所有目标客户端适用项为
 `complete`，其余只有带 vanilla 依据的 `not-applicable` 或带重启判据的窄 `deferred`；

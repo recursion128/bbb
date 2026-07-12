@@ -9085,27 +9085,52 @@
       "constant_name": "CLIENTBOUND_RESPAWN",
       "coverage": {
         "canonical_apply": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
-        },
-        "decode": {
-          "evidence": [],
+          "evidence": [
+            "crates/bbb-world/src/level.rs#apply_respawn",
+            "crates/bbb-world/src/level.rs#respawn_updates_dimension_and_clears_old_chunks",
+            "crates/bbb-world/src/level.rs#respawn_keep_all_data_preserves_entity_data_pose_and_attribute_modifiers",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleRespawn"
+          ],
           "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
           "status": "partial"
         },
+        "decode": {
+          "evidence": [
+            "crates/bbb-protocol/src/packets/tests.rs#decodes_respawn_spawn_info",
+            "vanilla:net/minecraft/network/protocol/game/ClientboundRespawnPacket.java#STREAM_CODEC"
+          ],
+          "gap": null,
+          "status": "complete"
+        },
         "ownership": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/play_apply.rs#PlayClientbound::Respawn",
+            "crates/bbb-world/src/level.rs#apply_respawn"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "runtime_side_effect": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
+          "evidence": [
+            "crates/bbb-world/src/level.rs#reset_local_player_for_respawn",
+            "crates/bbb-native/src/runtime/events/tests/session_hud_and_vehicle_events.rs#respawn_event_resets_local_player_runtime_state",
+            "crates/bbb-native/src/runtime/events/tests/world_state_lifecycle.rs#respawn_clears_world_first_chunk_when_world_changes",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleRespawn"
+          ],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
           "status": "partial"
         },
         "tests": {
-          "evidence": [],
+          "evidence": [
+            "crates/bbb-protocol/src/packets/tests.rs#decodes_respawn_spawn_info",
+            "crates/bbb-net/src/event_stream.rs#play_entity_and_respawn_packets_emit_matching_events",
+            "crates/bbb-net/src/probe/play.rs#probe_respawn_updates_world_and_clears_level_bound_state_when_dimension_changes",
+            "crates/bbb-net/src/probe/play.rs#probe_respawn_keep_all_data_preserves_local_pose_entity_data_and_attribute_modifiers",
+            "crates/bbb-world/src/level.rs#respawn_without_keep_data_resets_local_player_runtime_state",
+            "crates/bbb-world/src/level.rs#respawn_keep_all_data_preserves_entity_data_pose_and_attribute_modifiers",
+            "crates/bbb-native/src/runtime/events/tests/session_hud_and_vehicle_events.rs#respawn_event_resets_local_player_runtime_state",
+            "crates/bbb-native/src/runtime/events/tests/world_state_lifecycle.rs#respawn_clears_world_first_chunk_when_world_changes"
+          ],
           "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
           "status": "partial"
         }

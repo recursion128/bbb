@@ -62,10 +62,16 @@ pub(super) fn decode_play_login(decoder: &mut Decoder<'_>) -> Result<PlayLogin> 
 }
 
 pub(super) fn decode_respawn(decoder: &mut Decoder<'_>) -> Result<Respawn> {
-    Ok(Respawn {
+    let packet = Respawn {
         common_spawn_info: decode_common_spawn_info(decoder)?,
         data_to_keep: decoder.read_i8()?,
-    })
+    };
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after respawn packet".to_string(),
+        ));
+    }
+    Ok(packet)
 }
 
 pub(super) fn decode_player_position(decoder: &mut Decoder<'_>) -> Result<PlayerPositionUpdate> {
