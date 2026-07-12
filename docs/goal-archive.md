@@ -12170,4 +12170,9 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 ## 2026-07-12：session biome profile remapping
 
 - [x] resource-pack `BiomeColorCatalog` 可按 session biome resource-id order 重建 holder-id profile；unknown/custom entry 不套用同 numeric id 的 vanilla profile。
-- [x] `TerrainTextureState` 在 configuration Finish 后切换 active remap并请求全 chunk remesh，pending state 不泄漏；terrain water tint及 camera/weather biome profile查询共享 remapped catalog。custom biome NBT effects、particle tint snapshot refresh与精确 3x3 invalidation仍开放。
+- [x] `TerrainTextureState` 在 configuration Finish 后切换 active remap并请求全 chunk remesh，pending state 不泄漏；terrain water tint及 camera/weather biome profile查询共享 remapped catalog。custom biome NBT effects与精确 3x3 invalidation仍开放。
+
+## 2026-07-12：particle biome tint registry refresh
+
+- [x] `ParticleEventSink` 增加默认 no-op terrain-texture lifecycle hook，真实 `NativeParticleRuntime` 在 active biome order 变化时重建 terrain sprite/tint snapshot；测试 sink无需依赖 concrete runtime。
+- [x] focused resolver test锁定 `[custom, desert]` order 的 holder 1 使用 desert grass particle tint；order 未变化时 texture sync保持零刷新。

@@ -1952,6 +1952,9 @@ pub(crate) fn pump_network_and_terrain(
     }
     if terrain_textures.synchronize_biome_registry(world) {
         terrain_upload.request_reload_all_chunks();
+        if let Some(particle_events) = particle_events.as_mut() {
+            particle_events.synchronize_terrain_textures(terrain_textures);
+        }
     }
     release_input_if_screen_opened(
         input_screen_was_open,

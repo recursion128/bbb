@@ -1114,6 +1114,15 @@ fn biome_colors_follow_active_registry_resource_order_after_finish() {
         ),
         TerrainTint::from_rgb_u8(4, 5, 6)
     );
+    let particle_tints = textures.particle_tint_catalog();
+    assert_eq!(
+        particle_tints
+            .biome_colors
+            .as_ref()
+            .and_then(|catalog| catalog.profile(1))
+            .map(|profile| profile.name.as_str()),
+        Some("minecraft:desert")
+    );
     assert!(!textures.synchronize_biome_registry(&world));
 
     assert!(textures.synchronize_biome_registry(&bbb_world::WorldStore::new()));

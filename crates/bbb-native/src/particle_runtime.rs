@@ -57,6 +57,8 @@ const FIREWORK_ROCKET_TWINKLE_FAR_SOUND_EVENT_ID: &str =
 pub(crate) trait ParticleEventSink {
     fn maybe_upload_particle_atlas_animation(&mut self, _renderer: &mut Renderer) {}
 
+    fn synchronize_terrain_textures(&mut self, _textures: &TerrainTextureState) {}
+
     fn spawn_level_particles(
         &mut self,
         packet: &LevelParticles,
@@ -323,6 +325,10 @@ impl NativeParticleRuntime {
 impl ParticleEventSink for NativeParticleRuntime {
     fn maybe_upload_particle_atlas_animation(&mut self, renderer: &mut Renderer) {
         NativeParticleRuntime::maybe_upload_particle_atlas_animation(self, renderer);
+    }
+
+    fn synchronize_terrain_textures(&mut self, textures: &TerrainTextureState) {
+        self.set_terrain_particle_sprite_ids(textures);
     }
 
     fn spawn_level_particles(

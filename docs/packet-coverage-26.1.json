@@ -1656,6 +1656,7 @@
             "crates/bbb-native/src/runtime.rs#dimension_lightmap_environment",
             "crates/bbb-native/src/runtime.rs#world_can_have_weather",
             "crates/bbb-native/src/terrain_runtime/textures.rs#synchronize_biome_registry",
+            "crates/bbb-native/src/particle_runtime.rs#synchronize_terrain_textures",
             "vanilla:net/minecraft/client/multiplayer/RegistryDataCollector.java#collectGameRegistries"
           ],
           "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
@@ -1673,6 +1674,7 @@
             "crates/bbb-native/src/runtime/tests.rs#lightmap_environment_uses_vanilla_dimension_attributes",
             "crates/bbb-native/src/runtime/tests.rs#weather_render_state_is_empty_without_rain_or_weather_dimension",
             "crates/bbb-native/src/terrain_runtime/textures/tests.rs#biome_colors_follow_active_registry_resource_order_after_finish",
+            "crates/bbb-native/src/particle_runtime/tests.rs#terrain_particle_tint_snapshot_accepts_session_biome_remap",
             "crates/bbb-native/src/runtime/tests.rs#hud_debug_overlay_projects_custom_biome_from_camera_feet_block",
             "crates/bbb-native/src/runtime/tests.rs#hud_debug_overlay_projects_custom_looking_at_entity",
             "crates/bbb-native/src/runtime/tests.rs#hud_debug_entity_type_name_uses_world_registry_source_rules",
@@ -6965,6 +6967,7 @@
           "evidence": [
             "crates/bbb-native/src/terrain_runtime.rs#maybe_upload_decoded_terrain",
             "crates/bbb-native/src/terrain_runtime/textures.rs#synchronize_biome_registry",
+            "crates/bbb-native/src/particle_runtime.rs#synchronize_terrain_textures",
             "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleChunksBiomes"
           ],
           "gap": "docs/unsupported-features.md#block-entities-and-terrain",
@@ -6977,6 +6980,7 @@
             "crates/bbb-net/src/probe/play.rs#probe_applies_light_and_biome_updates_to_world",
             "crates/bbb-world/src/chunks/tests.rs#applies_biome_update_to_existing_chunk_sections",
             "crates/bbb-native/src/terrain_runtime/textures/tests.rs#biome_colors_follow_active_registry_resource_order_after_finish",
+            "crates/bbb-native/src/particle_runtime/tests.rs#terrain_particle_tint_snapshot_accepts_session_biome_remap",
             "crates/bbb-native/src/runtime/events/tests/world_state_lifecycle.rs#terrain_chunk_events_update_world_counters"
           ],
           "gap": null,

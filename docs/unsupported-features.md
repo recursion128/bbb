@@ -857,8 +857,8 @@ back into a todo. Do not delete these.
 - Decode custom synchronized biome color effects and match vanilla's 3x3
   neighboring-section rerender/tint invalidation. Known resource-pack biome
   profiles already remap through the active session holder order and trigger a
-  coarse full-chunk remesh; refresh the particle tint snapshot on the same
-  lifecycle instead of retaining startup ordinals.
+  coarse full-chunk remesh; particle tint snapshots refresh on the same
+  lifecycle.
 - **Client chunk-view residency pruning.** SetChunkCacheCenter/Radius currently
   preserve the synchronized view and use the center for terrain upload order,
   but do not evict chunks outside the updated vanilla ClientChunkCache window.

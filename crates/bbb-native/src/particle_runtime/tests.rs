@@ -1481,6 +1481,56 @@ fn terrain_particle_tint_samples_biome_at_each_spawn_position() {
 }
 
 #[test]
+fn terrain_particle_tint_snapshot_accepts_session_biome_remap() {
+    let mut plains =
+        test_biome_color_profile(7, [10, 20, 30], [40, 50, 60], [70, 80, 90], [1, 2, 3]);
+    plains.name = "minecraft:plains".to_string();
+    let mut desert = test_biome_color_profile(
+        11,
+        [100, 110, 120],
+        [130, 140, 150],
+        [160, 170, 180],
+        [4, 5, 6],
+    );
+    desert.name = "minecraft:desert".to_string();
+    let mut textures =
+        TerrainTextureState::with_biome_colors_for_tests(BiomeColorCatalog::new([plains, desert]));
+    let mut world = bbb_world::WorldStore::new();
+    world.record_registry_entries(
+        "minecraft:worldgen/biome",
+        0,
+        vec![
+            bbb_world::RegistryPacketEntry::stub("example:custom"),
+            bbb_world::RegistryPacketEntry::stub("minecraft:desert"),
+        ],
+    );
+    assert!(textures.synchronize_biome_registry(&world));
+
+    let mut resolver = test_resolver(0);
+    resolver.set_terrain_particle_sprite_ids(&textures);
+    let short_grass_id = test_block_state_id("minecraft:short_grass", []);
+    let sampler = SplitXBiomeSampler {
+        split_x: 0,
+        left_biome_id: 1,
+        right_biome_id: 1,
+    };
+    let mut packet = level_particles_packet(BLOCK_PARTICLE_TYPE_ID, 0);
+    packet.particle.raw_options = block_particle_options(short_grass_id);
+    let batch = resolver.resolve_level_particles_with_context(
+        &packet,
+        LevelParticleSpawnContext::default(),
+        Some(&sampler),
+        None,
+    );
+
+    assert_eq!(batch.len(), 1);
+    assert_eq!(
+        batch.commands[0].option_color,
+        Some(rgb_option_06(100, 110, 120))
+    );
+}
+
+#[test]
 fn falling_dust_tint_samples_biome_foliage_color_at_spawn_position() {
     let mut resolver = test_resolver(0);
     let textures = TerrainTextureState::with_biome_colors_for_tests(BiomeColorCatalog::new([
