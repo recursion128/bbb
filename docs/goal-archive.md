@@ -11591,3 +11591,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] bounded nodes/children、flags/redirect/parser properties/suggestions、strict trailing、topology validation 与 replace ownership 闭合。
 - [x] registry-aware repo-native dispatcher/local parse-completion 未完成，runtime 保持 partial。
+
+## 2026-07-12：play custom payload packet coverage audit
+
+- [x] Brand/Discarded gameplay framing、1 MiB 上限、canonical server brand/unknown diagnostics 与跨 crate tests 闭合。
+- [x] vanilla telemetry brand callback 未完成，runtime 保持 partial；unknown payload 未被外推为领域支持。

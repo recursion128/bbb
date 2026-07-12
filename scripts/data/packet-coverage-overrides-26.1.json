@@ -361,6 +361,13 @@
       "runtime_side_effect": {"evidence": ["crates/bbb-world/src/commands.rs#command_requires_signed_arguments", "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleCommands"], "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families", "status": "partial"},
       "tests": {"evidence": ["crates/bbb-protocol/src/packets/commands.rs#decodes_commands_packet_wire_order", "crates/bbb-net/src/event_stream.rs#play_command_and_chat_packets_emit_matching_events_without_responses", "crates/bbb-net/src/probe/play.rs#probe_applies_command_tree_and_update_tags_to_world", "crates/bbb-world/src/commands.rs#commands_replace_current_command_tree_and_counters", "crates/bbb-native/src/runtime/events/tests/session_protocol_events.rs#commands_event_updates_world_and_world_counters"], "status": "complete"}
     },
+    "play/clientbound/CLIENTBOUND_CUSTOM_PAYLOAD": {
+      "canonical_apply": {"evidence": ["crates/bbb-world/src/client/server_presentation.rs#apply_custom_payload", "vanilla:net/minecraft/client/multiplayer/ClientCommonPacketListenerImpl.java#handleCustomPayload"], "status": "complete"},
+      "decode": {"evidence": ["crates/bbb-protocol/src/packets/client_common/tests.rs#decodes_brand_custom_payload", "crates/bbb-protocol/src/packets/client_common/tests.rs#decodes_unknown_custom_payload_raw_body", "vanilla:net/minecraft/network/protocol/common/ClientboundCustomPayloadPacket.java#GAMEPLAY_STREAM_CODEC"], "status": "complete"},
+      "ownership": {"evidence": ["crates/bbb-world/src/play_apply.rs#PlayClientbound::CustomPayload"], "status": "complete"},
+      "runtime_side_effect": {"evidence": ["crates/bbb-native/src/runtime/tests.rs#hud_debug_overlay_projects_tps_server_brand_and_freeze_status", "vanilla:net/minecraft/client/multiplayer/ClientCommonPacketListenerImpl.java#handleCustomPayload"], "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families", "status": "partial"},
+      "tests": {"evidence": ["crates/bbb-protocol/src/packets/client_common/tests.rs#decodes_brand_custom_payload", "crates/bbb-net/src/event_stream.rs#play_server_presentation_packets_emit_matching_events_and_cookie_response", "crates/bbb-net/src/probe/play.rs#probe_play_custom_payload_updates_world_brand_and_unknown_payload", "crates/bbb-world/src/client/server_presentation.rs#custom_payload_tracks_server_brand_and_unknown_payloads", "crates/bbb-native/src/runtime/events/tests/entity_and_inventory_counters.rs#client_common_waypoint_events_update_world_and_snapshot_counters"], "status": "complete"}
+    },
     "play/clientbound/CLIENTBOUND_BUNDLE_DELIMITER": {
       "canonical_apply": {
         "evidence": [
