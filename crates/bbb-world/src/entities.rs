@@ -12,6 +12,7 @@ use bbb_protocol::packets::{
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+use crate::terrain::block_name_is_bed;
 use crate::{BlockPos, TerrainLight, WorldStore};
 
 mod animations;
@@ -3565,21 +3566,12 @@ fn sleeping_bed_yaw_and_offset(
     properties: &BTreeMap<String, String>,
     standing_eye_height: f32,
 ) -> Option<(f32, [f32; 2])> {
-    if !is_bed_block_name(block_name) {
+    if !block_name_is_bed(block_name) {
         return None;
     }
     let (yaw, step_x, step_z) = sleep_direction_rotation_and_step(properties.get("facing")?)?;
     let head_offset = standing_eye_height - 0.1;
     Some((yaw, [-step_x * head_offset, -step_z * head_offset]))
-}
-
-/// Vanilla bed blocks are the `<color>_bed` family that `BedBlock.getBedOrientation`
-/// matches with `instanceof BedBlock`.
-fn is_bed_block_name(block_name: &str) -> bool {
-    block_name
-        .rsplit(':')
-        .next()
-        .is_some_and(|path| path.ends_with("_bed"))
 }
 
 /// Vanilla `LivingEntityRenderer.sleepDirectionToRotation` (the sleeping yaw, in

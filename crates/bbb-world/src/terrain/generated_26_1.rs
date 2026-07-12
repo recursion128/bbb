@@ -149,6 +149,21 @@ pub(super) const VANILLA_SAPLING_BLOCKS: &[&str] = &[
     "minecraft:mangrove_propagule",
 ];
 
+pub(super) const VANILLA_SHELF_BLOCKS: &[&str] = &[
+    "minecraft:acacia_shelf",
+    "minecraft:bamboo_shelf",
+    "minecraft:birch_shelf",
+    "minecraft:cherry_shelf",
+    "minecraft:crimson_shelf",
+    "minecraft:dark_oak_shelf",
+    "minecraft:jungle_shelf",
+    "minecraft:mangrove_shelf",
+    "minecraft:oak_shelf",
+    "minecraft:pale_oak_shelf",
+    "minecraft:spruce_shelf",
+    "minecraft:warped_shelf",
+];
+
 pub(super) const VANILLA_INVISIBLE_RENDER_SHAPE_BLOCKS: &[&str] = &[
     "minecraft:air",
     "minecraft:water",
@@ -421,6 +436,159 @@ pub(super) const VANILLA_FLOWER_POT_BLOCKS: &[&str] = &[
     "minecraft:potted_cherry_sapling",
     "minecraft:potted_torchflower",
     "minecraft:potted_golden_dandelion",
+];
+
+pub(super) const VANILLA_BED_BLOCKS: &[&str] = &[
+    "minecraft:red_bed",
+    "minecraft:black_bed",
+    "minecraft:blue_bed",
+    "minecraft:brown_bed",
+    "minecraft:cyan_bed",
+    "minecraft:gray_bed",
+    "minecraft:green_bed",
+    "minecraft:light_blue_bed",
+    "minecraft:light_gray_bed",
+    "minecraft:lime_bed",
+    "minecraft:magenta_bed",
+    "minecraft:orange_bed",
+    "minecraft:pink_bed",
+    "minecraft:purple_bed",
+    "minecraft:white_bed",
+    "minecraft:yellow_bed",
+];
+
+pub(super) const VANILLA_CANDLE_BLOCKS: &[&str] = &[
+    "minecraft:candle",
+    "minecraft:white_candle",
+    "minecraft:orange_candle",
+    "minecraft:magenta_candle",
+    "minecraft:light_blue_candle",
+    "minecraft:yellow_candle",
+    "minecraft:lime_candle",
+    "minecraft:pink_candle",
+    "minecraft:gray_candle",
+    "minecraft:light_gray_candle",
+    "minecraft:cyan_candle",
+    "minecraft:purple_candle",
+    "minecraft:blue_candle",
+    "minecraft:brown_candle",
+    "minecraft:green_candle",
+    "minecraft:red_candle",
+    "minecraft:black_candle",
+];
+
+pub(super) const VANILLA_CANDLE_CAKE_BLOCKS: &[&str] = &[
+    "minecraft:candle_cake",
+    "minecraft:white_candle_cake",
+    "minecraft:orange_candle_cake",
+    "minecraft:magenta_candle_cake",
+    "minecraft:light_blue_candle_cake",
+    "minecraft:yellow_candle_cake",
+    "minecraft:lime_candle_cake",
+    "minecraft:pink_candle_cake",
+    "minecraft:gray_candle_cake",
+    "minecraft:light_gray_candle_cake",
+    "minecraft:cyan_candle_cake",
+    "minecraft:purple_candle_cake",
+    "minecraft:blue_candle_cake",
+    "minecraft:brown_candle_cake",
+    "minecraft:green_candle_cake",
+    "minecraft:red_candle_cake",
+    "minecraft:black_candle_cake",
+];
+
+pub(super) const VANILLA_CHAIN_BLOCKS: &[&str] = &[
+    "minecraft:iron_chain",
+    "minecraft:copper_chain",
+    "minecraft:waxed_copper_chain",
+    "minecraft:exposed_copper_chain",
+    "minecraft:waxed_exposed_copper_chain",
+    "minecraft:weathered_copper_chain",
+    "minecraft:waxed_weathered_copper_chain",
+    "minecraft:oxidized_copper_chain",
+    "minecraft:waxed_oxidized_copper_chain",
+];
+
+pub(super) const VANILLA_COPPER_GOLEM_STATUE_BLOCKS: &[&str] = &[
+    "minecraft:copper_golem_statue",
+    "minecraft:exposed_copper_golem_statue",
+    "minecraft:weathered_copper_golem_statue",
+    "minecraft:oxidized_copper_golem_statue",
+    "minecraft:waxed_copper_golem_statue",
+    "minecraft:waxed_exposed_copper_golem_statue",
+    "minecraft:waxed_weathered_copper_golem_statue",
+    "minecraft:waxed_oxidized_copper_golem_statue",
+];
+
+pub(super) const VANILLA_LANTERN_BLOCKS: &[&str] = &[
+    "minecraft:lantern",
+    "minecraft:soul_lantern",
+    "minecraft:copper_lantern",
+    "minecraft:waxed_copper_lantern",
+    "minecraft:exposed_copper_lantern",
+    "minecraft:waxed_exposed_copper_lantern",
+    "minecraft:weathered_copper_lantern",
+    "minecraft:waxed_weathered_copper_lantern",
+    "minecraft:oxidized_copper_lantern",
+    "minecraft:waxed_oxidized_copper_lantern",
+];
+
+pub(super) const VANILLA_LIGHTNING_ROD_BLOCKS: &[&str] = &[
+    "minecraft:lightning_rod",
+    "minecraft:exposed_lightning_rod",
+    "minecraft:weathered_lightning_rod",
+    "minecraft:oxidized_lightning_rod",
+    "minecraft:waxed_lightning_rod",
+    "minecraft:waxed_exposed_lightning_rod",
+    "minecraft:waxed_weathered_lightning_rod",
+    "minecraft:waxed_oxidized_lightning_rod",
+];
+
+pub(super) const VANILLA_HANGING_SIGN_BLOCKS: &[&str] = &[
+    "minecraft:oak_hanging_sign",
+    "minecraft:spruce_hanging_sign",
+    "minecraft:birch_hanging_sign",
+    "minecraft:acacia_hanging_sign",
+    "minecraft:cherry_hanging_sign",
+    "minecraft:jungle_hanging_sign",
+    "minecraft:dark_oak_hanging_sign",
+    "minecraft:pale_oak_hanging_sign",
+    "minecraft:crimson_hanging_sign",
+    "minecraft:warped_hanging_sign",
+    "minecraft:mangrove_hanging_sign",
+    "minecraft:bamboo_hanging_sign",
+    "minecraft:oak_wall_hanging_sign",
+    "minecraft:spruce_wall_hanging_sign",
+    "minecraft:birch_wall_hanging_sign",
+    "minecraft:acacia_wall_hanging_sign",
+    "minecraft:cherry_wall_hanging_sign",
+    "minecraft:jungle_wall_hanging_sign",
+    "minecraft:dark_oak_wall_hanging_sign",
+    "minecraft:pale_oak_wall_hanging_sign",
+    "minecraft:crimson_wall_hanging_sign",
+    "minecraft:warped_wall_hanging_sign",
+    "minecraft:mangrove_wall_hanging_sign",
+    "minecraft:bamboo_wall_hanging_sign",
+];
+
+pub(super) const VANILLA_SHULKER_BOX_BLOCKS: &[&str] = &[
+    "minecraft:shulker_box",
+    "minecraft:black_shulker_box",
+    "minecraft:blue_shulker_box",
+    "minecraft:brown_shulker_box",
+    "minecraft:cyan_shulker_box",
+    "minecraft:gray_shulker_box",
+    "minecraft:green_shulker_box",
+    "minecraft:light_blue_shulker_box",
+    "minecraft:light_gray_shulker_box",
+    "minecraft:lime_shulker_box",
+    "minecraft:magenta_shulker_box",
+    "minecraft:orange_shulker_box",
+    "minecraft:pink_shulker_box",
+    "minecraft:purple_shulker_box",
+    "minecraft:red_shulker_box",
+    "minecraft:white_shulker_box",
+    "minecraft:yellow_shulker_box",
 ];
 
 pub(super) const VANILLA_DOOR_BLOCKS: &[&str] = &[
@@ -696,6 +864,7 @@ mod tests {
         assert_eq!(VANILLA_HALF_TRANSPARENT_SKIP_RENDERING_BLOCKS.len(), 31);
         assert_eq!(VANILLA_LEAVES_BLOCKS.len(), 11);
         assert_eq!(VANILLA_SAPLING_BLOCKS.len(), 9);
+        assert_eq!(VANILLA_SHELF_BLOCKS.len(), 12);
         assert_eq!(VANILLA_INVISIBLE_RENDER_SHAPE_BLOCKS.len(), 12);
         assert_eq!(VANILLA_BARS_BLOCKS.len(), 9);
         assert_eq!(VANILLA_SLAB_BLOCKS.len(), 62);
@@ -705,6 +874,15 @@ mod tests {
         assert_eq!(VANILLA_FENCE_GATE_BLOCKS.len(), 12);
         assert_eq!(VANILLA_WOOL_CARPET_BLOCKS.len(), 16);
         assert_eq!(VANILLA_FLOWER_POT_BLOCKS.len(), 39);
+        assert_eq!(VANILLA_BED_BLOCKS.len(), 16);
+        assert_eq!(VANILLA_CANDLE_BLOCKS.len(), 17);
+        assert_eq!(VANILLA_CANDLE_CAKE_BLOCKS.len(), 17);
+        assert_eq!(VANILLA_CHAIN_BLOCKS.len(), 9);
+        assert_eq!(VANILLA_COPPER_GOLEM_STATUE_BLOCKS.len(), 8);
+        assert_eq!(VANILLA_LANTERN_BLOCKS.len(), 10);
+        assert_eq!(VANILLA_LIGHTNING_ROD_BLOCKS.len(), 8);
+        assert_eq!(VANILLA_HANGING_SIGN_BLOCKS.len(), 24);
+        assert_eq!(VANILLA_SHULKER_BOX_BLOCKS.len(), 17);
         assert_eq!(VANILLA_DOOR_BLOCKS.len(), 21);
         assert_eq!(VANILLA_TRAPDOOR_BLOCKS.len(), 21);
         assert_eq!(VANILLA_RAIL_BLOCKS.len(), 4);

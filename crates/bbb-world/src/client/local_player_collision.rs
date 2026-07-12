@@ -25,8 +25,11 @@ use crate::entities::{
 };
 use crate::terrain::{
     block_name_has_empty_collision_shape, block_name_is_air, block_name_is_bars_or_pane,
-    block_name_is_copper_grate, block_name_is_door, block_name_is_fence, block_name_is_fence_gate,
-    block_name_is_flower_pot, block_name_is_leaves, block_name_is_slab, block_name_is_stair,
+    block_name_is_bed, block_name_is_candle, block_name_is_candle_cake, block_name_is_chain,
+    block_name_is_copper_golem_statue, block_name_is_copper_grate, block_name_is_door,
+    block_name_is_fence, block_name_is_fence_gate, block_name_is_flower_pot,
+    block_name_is_hanging_sign, block_name_is_lantern, block_name_is_leaves, block_name_is_rod,
+    block_name_is_shelf, block_name_is_shulker_box, block_name_is_slab, block_name_is_stair,
     block_name_is_trapdoor, block_name_is_wall, block_name_is_wool_carpet,
 };
 use crate::{BlockPos, BlockProbe, TerrainFluidKind, TerrainMaterialClass, WorldStore};
@@ -1408,21 +1411,15 @@ fn is_flower_pot_block_name(block_name: &str) -> bool {
 }
 
 fn is_candle_block_name(block_name: &str) -> bool {
-    block_name
-        .strip_prefix("minecraft:")
-        .is_some_and(|path| path == "candle" || path.ends_with("_candle"))
+    block_name_is_candle(block_name)
 }
 
 fn is_candle_cake_block_name(block_name: &str) -> bool {
-    block_name
-        .strip_prefix("minecraft:")
-        .is_some_and(|path| path == "candle_cake" || path.ends_with("_candle_cake"))
+    block_name_is_candle_cake(block_name)
 }
 
 fn is_shelf_block_name(block_name: &str) -> bool {
-    block_name
-        .strip_prefix("minecraft:")
-        .is_some_and(|path| path.ends_with("_shelf"))
+    block_name_is_shelf(block_name)
 }
 
 fn is_amethyst_cluster_block_name(block_name: &str) -> bool {
@@ -1436,9 +1433,7 @@ fn is_amethyst_cluster_block_name(block_name: &str) -> bool {
 }
 
 fn is_copper_golem_statue_block_name(block_name: &str) -> bool {
-    block_name
-        .strip_prefix("minecraft:")
-        .is_some_and(|path| path == "copper_golem_statue" || path.ends_with("_copper_golem_statue"))
+    block_name_is_copper_golem_statue(block_name)
 }
 
 fn is_sculk_sensor_block_name(block_name: &str) -> bool {
@@ -1475,9 +1470,7 @@ fn is_wall_skull_block_name(block_name: &str) -> bool {
 }
 
 fn is_chain_block_name(block_name: &str) -> bool {
-    block_name
-        .strip_prefix("minecraft:")
-        .is_some_and(|path| path.ends_with("_chain"))
+    block_name_is_chain(block_name)
 }
 
 fn is_ladder_block_name(block_name: &str) -> bool {
@@ -1513,17 +1506,11 @@ fn debug_can_glide_through_block_name(block_name: &str) -> bool {
 }
 
 fn is_lantern_block_name(block_name: &str) -> bool {
-    let Some(path) = block_name.strip_prefix("minecraft:") else {
-        return false;
-    };
-    matches!(path, "lantern" | "soul_lantern") || path.ends_with("_copper_lantern")
+    block_name_is_lantern(block_name)
 }
 
 fn is_rod_block_name(block_name: &str) -> bool {
-    let Some(path) = block_name.strip_prefix("minecraft:") else {
-        return false;
-    };
-    matches!(path, "end_rod" | "lightning_rod") || path.ends_with("_lightning_rod")
+    block_name_is_rod(block_name)
 }
 
 fn is_campfire_block_name(block_name: &str) -> bool {
@@ -1543,15 +1530,11 @@ fn is_soul_sand_or_mud_block_name(block_name: &str) -> bool {
 }
 
 fn is_hanging_sign_block_name(block_name: &str) -> bool {
-    block_name
-        .strip_prefix("minecraft:")
-        .is_some_and(|path| path.ends_with("_hanging_sign"))
+    block_name_is_hanging_sign(block_name)
 }
 
 fn is_shulker_box_block_name(block_name: &str) -> bool {
-    block_name
-        .strip_prefix("minecraft:")
-        .is_some_and(|path| path == "shulker_box" || path.ends_with("_shulker_box"))
+    block_name_is_shulker_box(block_name)
 }
 
 fn is_fence_gate_block_name(block_name: &str) -> bool {
@@ -1585,9 +1568,7 @@ fn is_standard_chest_block_name(block_name: &str) -> bool {
 }
 
 fn is_bed_block_name(block_name: &str) -> bool {
-    block_name
-        .strip_prefix("minecraft:")
-        .is_some_and(|path| path.ends_with("_bed"))
+    block_name_is_bed(block_name)
 }
 
 fn is_anvil_block_name(block_name: &str) -> bool {

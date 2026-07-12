@@ -12324,3 +12324,15 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   property-aware collision/outline 算法未变。vanilla 成员保持原行为，mangrove propagule
   获得 SaplingBlock shape，custom suffix lookalikes 回到普通 full-cube fallback；生成表不接管
   collision、render、fluid 或 persistent 语义。
+
+## 2026-07-12：Shared exact object-shape memberships
+
+- [x] block-membership generator 继续从 vanilla beds、candles、candle-cakes、chains、
+  copper-golem-statues、lanterns、lightning-rods、all-hanging-signs 与 shulker-boxes tags 派生
+  稳定 catalog；无等价 tag 的 12 个 shelf 由统一 Tree-sitter class hierarchy IR 对
+  `ShelfBlock` 的闭包与注册映射生成。tag 引用由既有递归 resolver 展开，数量漂移令 update/
+  check 失败。
+- [x] world local collision、sleeping bed orientation 与 native object outline 统一消费窄查询，
+  删除重复的 suffix/color/manual resource classifiers；`end_rod` 作为 rod shape 的独立精确成员
+  与 generated lightning-rods 组合。原 property-aware shape 算法保持不变，vanilla 成员继续
+  覆盖，custom suffix 与其他 namespace lookalike 不再被当作 vanilla block class/tag 成员。

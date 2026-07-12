@@ -7,11 +7,14 @@ use crate::{BlockPos, ChunkPos, PaletteKind};
 mod generated_26_1;
 
 use generated_26_1::{
-    VANILLA_AIR_BLOCKS, VANILLA_BARS_BLOCKS, VANILLA_BUTTON_BLOCKS, VANILLA_COPPER_GRATE_BLOCKS,
-    VANILLA_DOOR_BLOCKS, VANILLA_FENCE_BLOCKS, VANILLA_FENCE_GATE_BLOCKS,
-    VANILLA_FIXED_SOURCE_WATER_BLOCKS, VANILLA_FLOWER_POT_BLOCKS,
-    VANILLA_HALF_TRANSPARENT_SKIP_RENDERING_BLOCKS, VANILLA_INVISIBLE_RENDER_SHAPE_BLOCKS,
-    VANILLA_IRON_BARS_CLASS_BLOCKS, VANILLA_LEAVES_BLOCKS, VANILLA_NO_COLLISION_BANNER_BLOCKS,
+    VANILLA_AIR_BLOCKS, VANILLA_BARS_BLOCKS, VANILLA_BED_BLOCKS, VANILLA_BUTTON_BLOCKS,
+    VANILLA_CANDLE_BLOCKS, VANILLA_CANDLE_CAKE_BLOCKS, VANILLA_CHAIN_BLOCKS,
+    VANILLA_COPPER_GOLEM_STATUE_BLOCKS, VANILLA_COPPER_GRATE_BLOCKS, VANILLA_DOOR_BLOCKS,
+    VANILLA_FENCE_BLOCKS, VANILLA_FENCE_GATE_BLOCKS, VANILLA_FIXED_SOURCE_WATER_BLOCKS,
+    VANILLA_FLOWER_POT_BLOCKS, VANILLA_HALF_TRANSPARENT_SKIP_RENDERING_BLOCKS,
+    VANILLA_HANGING_SIGN_BLOCKS, VANILLA_INVISIBLE_RENDER_SHAPE_BLOCKS,
+    VANILLA_IRON_BARS_CLASS_BLOCKS, VANILLA_LANTERN_BLOCKS, VANILLA_LEAVES_BLOCKS,
+    VANILLA_LIGHTNING_ROD_BLOCKS, VANILLA_NO_COLLISION_BANNER_BLOCKS,
     VANILLA_NO_COLLISION_CROP_BLOCKS, VANILLA_NO_COLLISION_CROP_SUPPLEMENT_BLOCKS,
     VANILLA_NO_COLLISION_FIRE_BLOCKS, VANILLA_NO_COLLISION_SIGN_BLOCKS,
     VANILLA_NO_COLLISION_SMALL_FLOWER_BLOCKS, VANILLA_NO_COLLISION_THIN_OVERLAY_BLOCKS,
@@ -19,9 +22,9 @@ use generated_26_1::{
     VANILLA_NO_TERRAIN_PARTICLE_BLOCKS, VANILLA_PRESSURE_PLATE_BLOCKS, VANILLA_RAIL_BLOCKS,
     VANILLA_SAME_BLOCK_ALL_FACE_SKIP_RENDERING_BLOCKS,
     VANILLA_SAME_BLOCK_VERTICAL_FACE_SKIP_RENDERING_BLOCKS, VANILLA_SAPLING_BLOCKS,
-    VANILLA_SLAB_BLOCKS, VANILLA_STAIR_BLOCKS, VANILLA_STANDING_SIGN_BLOCKS,
-    VANILLA_TRAPDOOR_BLOCKS, VANILLA_WALL_BLOCKS, VANILLA_WALL_SIGN_BLOCKS,
-    VANILLA_WOOL_CARPET_BLOCKS,
+    VANILLA_SHELF_BLOCKS, VANILLA_SHULKER_BOX_BLOCKS, VANILLA_SLAB_BLOCKS, VANILLA_STAIR_BLOCKS,
+    VANILLA_STANDING_SIGN_BLOCKS, VANILLA_TRAPDOOR_BLOCKS, VANILLA_WALL_BLOCKS,
+    VANILLA_WALL_SIGN_BLOCKS, VANILLA_WOOL_CARPET_BLOCKS,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -374,6 +377,46 @@ pub fn block_name_is_bars_or_pane(name: &str) -> bool {
     VANILLA_BARS_BLOCKS.contains(&name) || VANILLA_IRON_BARS_CLASS_BLOCKS.contains(&name)
 }
 
+pub fn block_name_is_bed(name: &str) -> bool {
+    VANILLA_BED_BLOCKS.contains(&name)
+}
+
+pub fn block_name_is_candle(name: &str) -> bool {
+    VANILLA_CANDLE_BLOCKS.contains(&name)
+}
+
+pub fn block_name_is_candle_cake(name: &str) -> bool {
+    VANILLA_CANDLE_CAKE_BLOCKS.contains(&name)
+}
+
+pub fn block_name_is_chain(name: &str) -> bool {
+    VANILLA_CHAIN_BLOCKS.contains(&name)
+}
+
+pub fn block_name_is_copper_golem_statue(name: &str) -> bool {
+    VANILLA_COPPER_GOLEM_STATUE_BLOCKS.contains(&name)
+}
+
+pub fn block_name_is_hanging_sign(name: &str) -> bool {
+    VANILLA_HANGING_SIGN_BLOCKS.contains(&name)
+}
+
+pub fn block_name_is_lantern(name: &str) -> bool {
+    VANILLA_LANTERN_BLOCKS.contains(&name)
+}
+
+pub fn block_name_is_rod(name: &str) -> bool {
+    name == "minecraft:end_rod" || VANILLA_LIGHTNING_ROD_BLOCKS.contains(&name)
+}
+
+pub fn block_name_is_shelf(name: &str) -> bool {
+    VANILLA_SHELF_BLOCKS.contains(&name)
+}
+
+pub fn block_name_is_shulker_box(name: &str) -> bool {
+    VANILLA_SHULKER_BOX_BLOCKS.contains(&name)
+}
+
 pub(crate) fn block_name_has_empty_collision_shape(name: &str) -> bool {
     name.contains("sapling")
         || matches!(
@@ -523,6 +566,67 @@ mod tests {
         ] {
             assert!(block_name_should_spawn_terrain_particles(name), "{name}");
         }
+    }
+
+    #[test]
+    fn identifies_generated_object_shape_memberships_without_suffix_guessing() {
+        for (member, lookalike, classifier) in [
+            (
+                "minecraft:white_bed",
+                "minecraft:custom_bed",
+                block_name_is_bed as fn(&str) -> bool,
+            ),
+            (
+                "minecraft:white_candle",
+                "minecraft:custom_candle",
+                block_name_is_candle,
+            ),
+            (
+                "minecraft:white_candle_cake",
+                "minecraft:custom_candle_cake",
+                block_name_is_candle_cake,
+            ),
+            (
+                "minecraft:copper_chain",
+                "minecraft:custom_chain",
+                block_name_is_chain,
+            ),
+            (
+                "minecraft:waxed_copper_golem_statue",
+                "minecraft:custom_copper_golem_statue",
+                block_name_is_copper_golem_statue,
+            ),
+            (
+                "minecraft:copper_lantern",
+                "minecraft:custom_copper_lantern",
+                block_name_is_lantern,
+            ),
+            (
+                "minecraft:waxed_lightning_rod",
+                "minecraft:custom_lightning_rod",
+                block_name_is_rod,
+            ),
+            (
+                "minecraft:oak_hanging_sign",
+                "minecraft:custom_hanging_sign",
+                block_name_is_hanging_sign,
+            ),
+            (
+                "minecraft:white_shulker_box",
+                "minecraft:custom_shulker_box",
+                block_name_is_shulker_box,
+            ),
+            (
+                "minecraft:oak_shelf",
+                "minecraft:custom_shelf",
+                block_name_is_shelf,
+            ),
+        ] {
+            assert!(classifier(member), "{member}");
+            assert!(!classifier(lookalike), "{lookalike}");
+        }
+        assert!(block_name_is_rod("minecraft:end_rod"));
+        assert!(!block_name_is_bed("example:white_bed"));
     }
 
     #[test]

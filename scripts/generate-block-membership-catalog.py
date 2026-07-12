@@ -39,6 +39,23 @@ BLOCK_TAG_CATALOGS = (
     ("VANILLA_FENCE_GATE_BLOCKS", "minecraft:fence_gates", 12),
     ("VANILLA_WOOL_CARPET_BLOCKS", "minecraft:wool_carpets", 16),
     ("VANILLA_FLOWER_POT_BLOCKS", "minecraft:flower_pots", 39),
+    ("VANILLA_BED_BLOCKS", "minecraft:beds", 16),
+    ("VANILLA_CANDLE_BLOCKS", "minecraft:candles", 17),
+    ("VANILLA_CANDLE_CAKE_BLOCKS", "minecraft:candle_cakes", 17),
+    ("VANILLA_CHAIN_BLOCKS", "minecraft:chains", 9),
+    (
+        "VANILLA_COPPER_GOLEM_STATUE_BLOCKS",
+        "minecraft:copper_golem_statues",
+        8,
+    ),
+    ("VANILLA_LANTERN_BLOCKS", "minecraft:lanterns", 10),
+    ("VANILLA_LIGHTNING_ROD_BLOCKS", "minecraft:lightning_rods", 8),
+    (
+        "VANILLA_HANGING_SIGN_BLOCKS",
+        "minecraft:all_hanging_signs",
+        24,
+    ),
+    ("VANILLA_SHULKER_BOX_BLOCKS", "minecraft:shulker_boxes", 17),
     ("VANILLA_DOOR_BLOCKS", "minecraft:doors", 21),
     ("VANILLA_TRAPDOOR_BLOCKS", "minecraft:trapdoors", 21),
     ("VANILLA_RAIL_BLOCKS", "minecraft:rails", 4),
@@ -168,6 +185,11 @@ def generate(source_root: Path) -> str:
         "net.minecraft.world.level.block.SaplingBlock",
         2,
     )
+    shelf_types = constructor_types_extending(
+        block_class_sources,
+        "net.minecraft.world.level.block.ShelfBlock",
+        1,
+    )
     entries = no_terrain_particle_blocks(source)
     air_entries = air_blocks(source)
     constructor_catalogs = [
@@ -186,6 +208,7 @@ def generate(source_root: Path) -> str:
             ),
             ("VANILLA_LEAVES_BLOCKS", leaves_types, 11),
             ("VANILLA_SAPLING_BLOCKS", sapling_types, 9),
+            ("VANILLA_SHELF_BLOCKS", shelf_types, 12),
             (
                 "VANILLA_INVISIBLE_RENDER_SHAPE_BLOCKS",
                 invisible_render_shape_types,
@@ -253,6 +276,7 @@ def generate(source_root: Path) -> str:
             "        assert_eq!(VANILLA_HALF_TRANSPARENT_SKIP_RENDERING_BLOCKS.len(), 31);",
             "        assert_eq!(VANILLA_LEAVES_BLOCKS.len(), 11);",
             "        assert_eq!(VANILLA_SAPLING_BLOCKS.len(), 9);",
+            "        assert_eq!(VANILLA_SHELF_BLOCKS.len(), 12);",
             "        assert_eq!(VANILLA_INVISIBLE_RENDER_SHAPE_BLOCKS.len(), 12);",
             "        assert_eq!(VANILLA_BARS_BLOCKS.len(), 9);",
             "        assert_eq!(VANILLA_SLAB_BLOCKS.len(), 62);",
@@ -262,6 +286,15 @@ def generate(source_root: Path) -> str:
             "        assert_eq!(VANILLA_FENCE_GATE_BLOCKS.len(), 12);",
             "        assert_eq!(VANILLA_WOOL_CARPET_BLOCKS.len(), 16);",
             "        assert_eq!(VANILLA_FLOWER_POT_BLOCKS.len(), 39);",
+            "        assert_eq!(VANILLA_BED_BLOCKS.len(), 16);",
+            "        assert_eq!(VANILLA_CANDLE_BLOCKS.len(), 17);",
+            "        assert_eq!(VANILLA_CANDLE_CAKE_BLOCKS.len(), 17);",
+            "        assert_eq!(VANILLA_CHAIN_BLOCKS.len(), 9);",
+            "        assert_eq!(VANILLA_COPPER_GOLEM_STATUE_BLOCKS.len(), 8);",
+            "        assert_eq!(VANILLA_LANTERN_BLOCKS.len(), 10);",
+            "        assert_eq!(VANILLA_LIGHTNING_ROD_BLOCKS.len(), 8);",
+            "        assert_eq!(VANILLA_HANGING_SIGN_BLOCKS.len(), 24);",
+            "        assert_eq!(VANILLA_SHULKER_BOX_BLOCKS.len(), 17);",
             "        assert_eq!(VANILLA_DOOR_BLOCKS.len(), 21);",
             "        assert_eq!(VANILLA_TRAPDOOR_BLOCKS.len(), 21);",
             "        assert_eq!(VANILLA_RAIL_BLOCKS.len(), 4);",

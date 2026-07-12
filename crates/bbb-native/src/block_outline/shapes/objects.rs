@@ -1,5 +1,10 @@
 use std::collections::BTreeMap;
 
+use bbb_world::{
+    block_name_is_bed, block_name_is_candle, block_name_is_candle_cake, block_name_is_chain,
+    block_name_is_lantern,
+};
+
 use crate::block_outline::{BlockOutlineBox, BlockOutlineShape, HorizontalDirection};
 
 pub(super) fn object_outline_shape_for_block(
@@ -414,9 +419,7 @@ fn is_standard_chest_block_name(block_name: &str) -> bool {
 }
 
 fn is_bed_block_name(block_name: &str) -> bool {
-    block_name
-        .strip_prefix("minecraft:")
-        .is_some_and(|path| path.ends_with("_bed"))
+    block_name_is_bed(block_name)
 }
 
 fn is_anvil_block_name(block_name: &str) -> bool {
@@ -431,37 +434,17 @@ fn is_campfire_block_name(block_name: &str) -> bool {
 }
 
 fn is_chain_block_name(block_name: &str) -> bool {
-    matches!(
-        block_name,
-        "minecraft:iron_chain"
-            | "minecraft:copper_chain"
-            | "minecraft:exposed_copper_chain"
-            | "minecraft:weathered_copper_chain"
-            | "minecraft:oxidized_copper_chain"
-            | "minecraft:waxed_copper_chain"
-            | "minecraft:waxed_exposed_copper_chain"
-            | "minecraft:waxed_weathered_copper_chain"
-            | "minecraft:waxed_oxidized_copper_chain"
-    )
+    block_name_is_chain(block_name)
 }
 
 fn is_lantern_block_name(block_name: &str) -> bool {
-    block_name.strip_prefix("minecraft:").is_some_and(|path| {
-        path == "lantern"
-            || path == "soul_lantern"
-            || path == "copper_lantern"
-            || path.ends_with("_copper_lantern")
-    })
+    block_name_is_lantern(block_name)
 }
 
 fn is_candle_cake_block_name(block_name: &str) -> bool {
-    block_name
-        .strip_prefix("minecraft:")
-        .is_some_and(|path| path == "candle_cake" || path.ends_with("_candle_cake"))
+    block_name_is_candle_cake(block_name)
 }
 
 fn is_candle_block_name(block_name: &str) -> bool {
-    block_name
-        .strip_prefix("minecraft:")
-        .is_some_and(|path| path == "candle" || path.ends_with("_candle"))
+    block_name_is_candle(block_name)
 }

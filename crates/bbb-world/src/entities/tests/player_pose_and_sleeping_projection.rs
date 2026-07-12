@@ -480,6 +480,10 @@ fn sleeping_bed_yaw_and_offset_matches_vanilla() {
         None
     );
     assert_eq!(
+        super::sleeping_bed_yaw_and_offset("example:white_bed", &props, eye),
+        None
+    );
+    assert_eq!(
         super::sleeping_bed_yaw_and_offset(
             "minecraft:white_bed",
             &std::collections::BTreeMap::new(),
