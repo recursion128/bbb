@@ -11365,3 +11365,10 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   wire；configuration/play 共用 decoder 现在拒绝 trailing bytes。
 - [x] world 按 vanilla handler 验证 untrusted URI、丢弃非法项并原子替换 trusted links；play net/probe/native
   shared apply tests 与五格证据闭合。rich Component label parity 仍由 text component ledger 独立追踪。
+
+## 2026-07-12：play disconnect packet coverage audit
+
+- [x] 对照 shared `ClientboundDisconnectPacket` 锁定 trusted context-free Component wire；configuration/play
+  现在共用严格 component-root decode，均拒绝 trailing bytes。
+- [x] online/probe play handlers 将 packet 作为 terminal error，不发送响应或写 canonical world state；外层连接任务
+  继续发布 `Disconnected` 给 native control projection。rich reason presentation 由 text/screen ledger 独立追踪。

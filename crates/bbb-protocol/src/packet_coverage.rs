@@ -1698,6 +1698,27 @@ mod tests {
             .all(|cell| cell.status == PacketCoverageStatus::Complete));
     }
 
+    #[test]
+    fn play_disconnect_is_closed_without_canonical_world_apply() {
+        let ledger = vanilla_packet_coverage_26_1().unwrap();
+        let entry = ledger
+            .entries
+            .iter()
+            .find(|entry| entry.state == "play" && entry.constant_name == "CLIENTBOUND_DISCONNECT")
+            .expect("play disconnect coverage row");
+        assert_eq!(
+            entry.coverage["canonical_apply"].status,
+            PacketCoverageStatus::NotApplicable
+        );
+        for dimension in ["decode", "ownership", "runtime_side_effect", "tests"] {
+            assert_eq!(
+                entry.coverage[dimension].status,
+                PacketCoverageStatus::Complete,
+                "{dimension}"
+            );
+        }
+    }
+
     fn state_name(state: PacketState) -> &'static str {
         match state {
             PacketState::Handshake => "handshake",

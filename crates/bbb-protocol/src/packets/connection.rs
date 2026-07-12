@@ -16,7 +16,7 @@ use super::{
 
 use crate::{
     codec::{Decoder, Encoder, ProtocolError, Result},
-    component::decode_component_summary_from_decoder,
+    component::{decode_component_summary, decode_component_summary_from_decoder},
     ids, PROTOCOL_VERSION,
 };
 
@@ -431,13 +431,10 @@ pub fn decode_configuration_clientbound(
                 client_common::decode_custom_payload(&mut decoder)?,
             ))
         }
-        ids::configuration::CLIENTBOUND_DISCONNECT => {
-            let mut decoder = Decoder::new(payload);
-            Ok(ConfigurationClientbound::Disconnect {
-                reason: decode_component_summary_from_decoder(&mut decoder)?,
-                raw_reason: payload.to_vec(),
-            })
-        }
+        ids::configuration::CLIENTBOUND_DISCONNECT => Ok(ConfigurationClientbound::Disconnect {
+            reason: decode_component_summary(payload)?,
+            raw_reason: payload.to_vec(),
+        }),
         ids::configuration::CLIENTBOUND_FINISH_CONFIGURATION => {
             Ok(ConfigurationClientbound::Finish)
         }

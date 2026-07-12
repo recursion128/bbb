@@ -880,6 +880,45 @@
         "status": "complete"
       }
     },
+    "play/clientbound/CLIENTBOUND_DISCONNECT": {
+      "canonical_apply": {
+        "evidence": [
+          "vanilla:net/minecraft/client/multiplayer/ClientCommonPacketListenerImpl.java#handleDisconnect"
+        ],
+        "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+        "status": "not-applicable"
+      },
+      "decode": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/tests.rs#decodes_disconnect_component_in_configuration_and_play",
+          "vanilla:net/minecraft/network/protocol/common/ClientboundDisconnectPacket.java#STREAM_CODEC"
+        ],
+        "status": "complete"
+      },
+      "ownership": {
+        "evidence": [
+          "crates/bbb-net/src/event_stream/play.rs#PlayClientbound::Disconnect"
+        ],
+        "status": "complete"
+      },
+      "runtime_side_effect": {
+        "evidence": [
+          "crates/bbb-net/src/event_stream.rs#play_disconnect_packet_returns_disconnect_error",
+          "crates/bbb-native/src/startup.rs#start_network_if_requested",
+          "vanilla:net/minecraft/client/multiplayer/ClientCommonPacketListenerImpl.java#handleDisconnect"
+        ],
+        "status": "complete"
+      },
+      "tests": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/tests.rs#decodes_disconnect_component_in_configuration_and_play",
+          "crates/bbb-net/src/event_stream.rs#play_disconnect_packet_returns_disconnect_error",
+          "crates/bbb-net/src/probe/play.rs#probe_play_disconnect_returns_disconnect_error",
+          "crates/bbb-native/src/runtime/events/control_state.rs#control_projection_updates_runtime_status_without_consuming_events"
+        ],
+        "status": "complete"
+      }
+    },
     "play/clientbound/CLIENTBOUND_PLAYER_POSITION": {
       "canonical_apply": {
         "evidence": [
@@ -3379,7 +3418,7 @@
         "status": "not-applicable"
       },
       "decode": {
-        "evidence": ["crates/bbb-protocol/src/packets/tests.rs#decodes_configuration_common_packets"],
+        "evidence": ["crates/bbb-protocol/src/packets/tests.rs#decodes_disconnect_component_in_configuration_and_play"],
         "status": "complete"
       },
       "ownership": {

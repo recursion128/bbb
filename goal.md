@@ -443,6 +443,8 @@ play CustomReportDetails 的 bounded map wire、strict config/play decode、repl
 vanilla handler 只有 canonical map replacement，故即时 runtime side-effect 格为 not-applicable。
 play ServerLinks 的 shared list wire、strict config/play decode、URI trust filtering、replace semantics 与 shared apply tests
 已闭合；rich Component label 保持现有兼容 projection，不在 packet coverage 中冒充完整 text parity。
+play Disconnect 的 shared Component wire、strict config/play decode 与 terminal event/probe tests 已闭合；packet 不写
+canonical world state，rich disconnect reason presentation 继续由 text component/screen ledger 独立追踪。
 
 完成标准：全部 vanilla 26.1 catalog entry 都有矩阵行；所有目标客户端适用项为
 `complete`，其余只有带 vanilla 依据的 `not-applicable` 或带重启判据的窄 `deferred`；

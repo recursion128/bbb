@@ -992,20 +992,40 @@ fn offline_login_clientbound_codecs_and_ack_match_vanilla_fields() {
 }
 
 #[test]
-fn decodes_play_disconnect_component() {
+fn decodes_disconnect_component_in_configuration_and_play() {
     let mut payload = Vec::new();
     payload.push(8);
     payload.extend_from_slice(&6u16.to_be_bytes());
     payload.extend_from_slice(b"Kicked");
 
+    assert_eq!(
+        decode_configuration_clientbound(ids::configuration::CLIENTBOUND_DISCONNECT, &payload)
+            .unwrap(),
+        ConfigurationClientbound::Disconnect {
+            reason: "Kicked".to_string(),
+            raw_reason: payload.clone(),
+        }
+    );
     let packet = decode_play_clientbound(ids::play::CLIENTBOUND_DISCONNECT, &payload).unwrap();
     assert_eq!(
         packet,
         PlayClientbound::Disconnect(Disconnect {
             reason: "Kicked".to_string(),
-            raw_reason: payload,
+            raw_reason: payload.clone(),
         })
     );
+
+    let mut trailing = payload;
+    trailing.push(0);
+    for error in [
+        decode_configuration_clientbound(ids::configuration::CLIENTBOUND_DISCONNECT, &trailing)
+            .unwrap_err(),
+        decode_play_clientbound(ids::play::CLIENTBOUND_DISCONNECT, &trailing).unwrap_err(),
+    ] {
+        assert!(error
+            .to_string()
+            .contains("trailing bytes after component nbt"));
+    }
 }
 
 #[test]
