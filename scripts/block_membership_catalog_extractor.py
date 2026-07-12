@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 
+from block_registry_catalog_extractor import resolve_block_resource_path
 from vanilla_java_source import JavaExpression, JavaSource, descendants
 from vanilla_tag_source import VanillaTagSourceError, resolve_tag_values
 
@@ -115,6 +116,7 @@ def constructor_family_blocks(
     source: JavaSource,
     constructor_types: frozenset[str],
     expected_count: int,
+    block_id_constants: dict[str, str] | None = None,
 ) -> list[BlockMembershipEntry]:
     if not constructor_types:
         raise BlockMembershipCatalogExtractionError(
@@ -149,7 +151,12 @@ def constructor_family_blocks(
         entries.append(
             BlockMembershipEntry(
                 field.name,
-                "minecraft:" + _string(source, register_calls[0].arguments[0]),
+                "minecraft:"
+                + resolve_block_resource_path(
+                    source,
+                    register_calls[0].arguments[0],
+                    block_id_constants or {},
+                ),
             )
         )
 

@@ -9,10 +9,12 @@ mod generated_26_1;
 use generated_26_1::{
     VANILLA_AIR_BLOCKS, VANILLA_BANNER_BLOCKS, VANILLA_BARS_BLOCKS, VANILLA_BUTTON_BLOCKS,
     VANILLA_CAMPFIRE_BLOCKS, VANILLA_CHAIN_BLOCKS, VANILLA_COPPER_GRATE_BLOCKS,
-    VANILLA_CROP_BLOCKS, VANILLA_DOOR_BLOCKS, VANILLA_FIRE_BLOCKS, VANILLA_IRON_BARS_CLASS_BLOCKS,
-    VANILLA_LANTERN_BLOCKS, VANILLA_LIGHTNING_ROD_BLOCKS, VANILLA_NO_TERRAIN_PARTICLE_BLOCKS,
-    VANILLA_PRESSURE_PLATE_BLOCKS, VANILLA_RAIL_BLOCKS, VANILLA_SIGN_BLOCKS,
-    VANILLA_SMALL_FLOWER_BLOCKS, VANILLA_TORCH_BLOCKS, VANILLA_TRAPDOOR_BLOCKS,
+    VANILLA_CROP_BLOCKS, VANILLA_CROP_SUPPLEMENT_BLOCKS, VANILLA_CUTOUT_ATTACHMENT_BLOCKS,
+    VANILLA_DOOR_BLOCKS, VANILLA_FIRE_BLOCKS, VANILLA_FIXED_SOURCE_WATER_BLOCKS,
+    VANILLA_IRON_BARS_CLASS_BLOCKS, VANILLA_LANTERN_BLOCKS, VANILLA_LIGHTNING_ROD_BLOCKS,
+    VANILLA_NO_TERRAIN_PARTICLE_BLOCKS, VANILLA_PRESSURE_PLATE_BLOCKS, VANILLA_RAIL_BLOCKS,
+    VANILLA_SIGN_BLOCKS, VANILLA_SMALL_FLOWER_BLOCKS, VANILLA_THIN_OVERLAY_BLOCKS,
+    VANILLA_TORCH_BLOCKS, VANILLA_TRAPDOOR_BLOCKS, VANILLA_WIRE_CUTOUT_BLOCKS,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -273,14 +275,7 @@ fn is_waterlogged(properties: &BTreeMap<String, String>) -> bool {
 }
 
 fn is_fixed_source_water_block_name(name: &str) -> bool {
-    matches!(
-        name,
-        "minecraft:bubble_column"
-            | "minecraft:seagrass"
-            | "minecraft:tall_seagrass"
-            | "minecraft:kelp"
-            | "minecraft:kelp_plant"
-    )
+    VANILLA_FIXED_SOURCE_WATER_BLOCKS.contains(&name)
 }
 
 pub(crate) fn block_name_is_copper_grate(name: &str) -> bool {
@@ -329,17 +324,14 @@ fn is_cutout_block_name(name: &str) -> bool {
         || is_door_block_name(name)
         || is_trapdoor_block_name(name)
         || is_rail_block_name(name)
-        || is_ladder_block_name(name)
+        || is_cutout_attachment_block_name(name)
         || is_torch_block_name(name)
-        || is_lever_block_name(name)
         || is_button_block_name(name)
         || is_pressure_plate_block_name(name)
         || is_sign_block_name(name)
         || is_lantern_block_name(name)
         || is_lightning_rod_block_name(name)
-        || is_end_rod_block_name(name)
         || is_campfire_block_name(name)
-        || is_pointed_dripstone_block_name(name)
 }
 
 fn is_bars_tag_block_name(name: &str) -> bool {
@@ -398,16 +390,12 @@ fn is_rail_block_name(name: &str) -> bool {
     VANILLA_RAIL_BLOCKS.contains(&name)
 }
 
-fn is_ladder_block_name(name: &str) -> bool {
-    matches!(name, "minecraft:ladder")
+fn is_cutout_attachment_block_name(name: &str) -> bool {
+    VANILLA_CUTOUT_ATTACHMENT_BLOCKS.contains(&name)
 }
 
 fn is_torch_block_name(name: &str) -> bool {
     VANILLA_TORCH_BLOCKS.contains(&name)
-}
-
-fn is_lever_block_name(name: &str) -> bool {
-    matches!(name, "minecraft:lever")
 }
 
 fn is_button_block_name(name: &str) -> bool {
@@ -443,34 +431,15 @@ fn is_no_collision_vegetation_block_name(name: &str) -> bool {
 }
 
 fn is_no_collision_crop_block_name(name: &str) -> bool {
-    VANILLA_CROP_BLOCKS.contains(&name)
-        || matches!(
-            name,
-            "minecraft:nether_wart"
-                | "minecraft:attached_pumpkin_stem"
-                | "minecraft:attached_melon_stem"
-                | "minecraft:sugar_cane"
-        )
+    VANILLA_CROP_BLOCKS.contains(&name) || VANILLA_CROP_SUPPLEMENT_BLOCKS.contains(&name)
 }
 
 fn is_no_collision_thin_overlay_block_name(name: &str) -> bool {
-    matches!(
-        name,
-        "minecraft:pink_petals"
-            | "minecraft:leaf_litter"
-            | "minecraft:sculk_vein"
-            | "minecraft:glow_lichen"
-            | "minecraft:resin_clump"
-            | "minecraft:frogspawn"
-    )
+    VANILLA_THIN_OVERLAY_BLOCKS.contains(&name)
 }
 
 fn is_no_collision_fire_or_wire_block_name(name: &str) -> bool {
-    VANILLA_FIRE_BLOCKS.contains(&name)
-        || matches!(
-            name,
-            "minecraft:redstone_wire" | "minecraft:tripwire" | "minecraft:tripwire_hook"
-        )
+    VANILLA_FIRE_BLOCKS.contains(&name) || VANILLA_WIRE_CUTOUT_BLOCKS.contains(&name)
 }
 
 fn is_no_collision_banner_block_name(name: &str) -> bool {
@@ -489,16 +458,8 @@ fn is_lightning_rod_block_name(name: &str) -> bool {
     VANILLA_LIGHTNING_ROD_BLOCKS.contains(&name)
 }
 
-fn is_end_rod_block_name(name: &str) -> bool {
-    matches!(name, "minecraft:end_rod")
-}
-
 fn is_campfire_block_name(name: &str) -> bool {
     VANILLA_CAMPFIRE_BLOCKS.contains(&name)
-}
-
-fn is_pointed_dripstone_block_name(name: &str) -> bool {
-    matches!(name, "minecraft:pointed_dripstone")
 }
 
 fn is_translucent_block_name(name: &str) -> bool {
@@ -573,12 +534,7 @@ mod tests {
                 TerrainMaterialClass::Cutout
             );
         }
-        for name in [
-            "minecraft:nether_wart",
-            "minecraft:attached_pumpkin_stem",
-            "minecraft:attached_melon_stem",
-            "minecraft:sugar_cane",
-        ] {
+        for &name in VANILLA_CROP_SUPPLEMENT_BLOCKS {
             assert_eq!(
                 classify_terrain_material(Some(name)),
                 TerrainMaterialClass::Cutout
@@ -590,17 +546,13 @@ mod tests {
                 TerrainMaterialClass::Cutout
             );
         }
-        for name in [
-            "minecraft:pink_petals",
-            "minecraft:leaf_litter",
-            "minecraft:sculk_vein",
-            "minecraft:glow_lichen",
-            "minecraft:resin_clump",
-            "minecraft:frogspawn",
-            "minecraft:redstone_wire",
-            "minecraft:tripwire",
-            "minecraft:tripwire_hook",
-        ] {
+        for &name in VANILLA_THIN_OVERLAY_BLOCKS {
+            assert_eq!(
+                classify_terrain_material(Some(name)),
+                TerrainMaterialClass::Cutout
+            );
+        }
+        for &name in VANILLA_WIRE_CUTOUT_BLOCKS {
             assert_eq!(
                 classify_terrain_material(Some(name)),
                 TerrainMaterialClass::Cutout
@@ -656,20 +608,18 @@ mod tests {
                 TerrainMaterialClass::Cutout
             );
         }
-        assert_eq!(
-            classify_terrain_material(Some("minecraft:ladder")),
-            TerrainMaterialClass::Cutout
-        );
+        for &name in VANILLA_CUTOUT_ATTACHMENT_BLOCKS {
+            assert_eq!(
+                classify_terrain_material(Some(name)),
+                TerrainMaterialClass::Cutout
+            );
+        }
         for &name in VANILLA_TORCH_BLOCKS {
             assert_eq!(
                 classify_terrain_material(Some(name)),
                 TerrainMaterialClass::Cutout
             );
         }
-        assert_eq!(
-            classify_terrain_material(Some("minecraft:lever")),
-            TerrainMaterialClass::Cutout
-        );
         for &name in VANILLA_BUTTON_BLOCKS {
             assert_eq!(
                 classify_terrain_material(Some(name)),
@@ -695,12 +645,6 @@ mod tests {
             );
         }
         for &name in VANILLA_LIGHTNING_ROD_BLOCKS {
-            assert_eq!(
-                classify_terrain_material(Some(name)),
-                TerrainMaterialClass::Cutout
-            );
-        }
-        for name in ["minecraft:end_rod", "minecraft:pointed_dripstone"] {
             assert_eq!(
                 classify_terrain_material(Some(name)),
                 TerrainMaterialClass::Cutout
@@ -890,13 +834,7 @@ mod tests {
             ),
             None
         );
-        for name in [
-            "minecraft:bubble_column",
-            "minecraft:seagrass",
-            "minecraft:tall_seagrass",
-            "minecraft:kelp",
-            "minecraft:kelp_plant",
-        ] {
+        for &name in VANILLA_FIXED_SOURCE_WATER_BLOCKS {
             assert_eq!(
                 terrain_fluid_state(Some(name), &BTreeMap::new()),
                 Some(TerrainFluidState::new(TerrainFluidKind::Water, 8, false))

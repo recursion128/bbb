@@ -71,6 +71,22 @@ def _field_constant(
     return source.text(field_node)
 
 
+def resolve_block_resource_path(
+    source: JavaSource,
+    expression: JavaExpression,
+    block_id_constants: dict[str, str],
+) -> str:
+    if expression.node.type == "string_literal":
+        return _string(source, expression)
+    constant = _field_constant(source, expression, "BlockIds")
+    if constant is None:
+        _fail(source, expression, "unsupported block resource id expression")
+    resource_path = block_id_constants.get(constant)
+    if resource_path is None:
+        _fail(source, expression, f"unresolved BlockIds.{constant}")
+    return resource_path
+
+
 def extract_block_id_constants(source: JavaSource) -> dict[str, str]:
     constants: dict[str, str] = {}
     for field in source.fields_for(BLOCK_IDS_OWNER):
@@ -142,18 +158,9 @@ def extract_block_registry_catalog(
         arguments = _arguments(blocks_source, initializer)
         if not arguments:
             _fail(blocks_source, initializer, "block registration lacks resource id")
-        resource_path = (
-            _string(blocks_source, arguments[0])
-            if arguments[0].node.type == "string_literal"
-            else None
+        resource_path = resolve_block_resource_path(
+            blocks_source, arguments[0], constants
         )
-        if resource_path is None:
-            constant = _field_constant(blocks_source, arguments[0], "BlockIds")
-            if constant is None:
-                _fail(blocks_source, arguments[0], "unsupported block resource id expression")
-            resource_path = constants.get(constant)
-            if resource_path is None:
-                _fail(blocks_source, arguments[0], f"unresolved BlockIds.{constant}")
         declarations.append(
             {
                 "field": field.name,

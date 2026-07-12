@@ -156,14 +156,14 @@ Owner: `bbb-protocol`
 Owner: `scripts/` + each generated catalog's semantic crate
 
 - Complete the remaining cross-crate registry/ordinal and resource-membership
-  audit. Terrain's remaining manually maintained fixed-source-water,
-  invisible-render-shape, vegetation and thin-overlay families need exact
-  class/property extraction or explicit semantic-owner evidence before their
-  name tables can be removed; do not substitute approximate tags. Any newly
-  found Java-source catalog extractor must consume the shared Tree-sitter
-  frontend and checked-in deterministic output; ordinary build/test must not
-  read local vanilla sources. Migrate each newly identified legacy parser as
-  its own semantic-owner slice.
+  audit. Terrain's remaining manually maintained invisible-render-shape and
+  broad vegetation/render-material families need exact class/property
+  extraction or explicit semantic-owner evidence before their name tables can
+  be removed; do not substitute approximate tags. Any newly found Java-source
+  catalog extractor must consume the shared Tree-sitter frontend and checked-in
+  deterministic output; ordinary build/test must not read local vanilla
+  sources. Migrate each newly identified legacy parser as its own semantic-owner
+  slice.
 
 ## Unknown clientbound packets in login, configuration, and play
 

@@ -12212,3 +12212,15 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   local-player copper-grate collision 统一消费 generated membership，删除三张名称/后缀判断。
   weathering copper bars 的宏字段继续由 generated `bars` tag 覆盖；生成层只拥有 membership，
   未生成 collision/render/fluid 行为，也未让普通 Cargo build/test 读取本地 vanilla source。
+
+## 2026-07-12：Expanded terrain constructor semantics
+
+- [x] constructor-family generator 继续从 `Blocks.java` 机械生成 fixed-source-water 5 项、
+  cutout attachment 4 项、non-tag crop supplement 4 项、wire cutout 3 项与 thin-overlay 7 项；
+  第二个 `FlowerBedBlock`（wildflowers）由固定计数门禁发现并纳入完整 class family，既有
+  cutout 行为不变。terrain 删除对应逐项 matches，测试改为遍历全部 generated members。
+- [x] `BlockIds.*` 注册参数不再令 membership extractor 猜 constant 名；block-registry owner
+  提供 string/`BlockIds.createKey` 共用 resource-expression resolver，membership generator
+  读取同一 Tree-sitter `BlockIds.java` facts，attached stems 由真实 key 解析。两套 extractor
+  fixtures、block-registry check、membership update/check/二次 update 幂等均锁定；生成层未
+  接管 fluid、collision 或 render-shape 行为。

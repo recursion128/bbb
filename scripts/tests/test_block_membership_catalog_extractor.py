@@ -10,6 +10,7 @@ sys.path.insert(0, str(SCRIPTS))
 
 from block_membership_catalog_extractor import (  # noqa: E402
     BlockMembershipCatalogExtractionError,
+    BlockMembershipEntry,
     air_blocks,
     block_tag_membership,
     constructor_family_blocks,
@@ -157,6 +158,25 @@ class Blocks {
             "expected 2 blocks constructed by",
         ):
             constructor_family_blocks(source, frozenset({"FirstBlock"}), 2)
+
+    def test_constructor_family_resolves_block_id_resource_keys(self) -> None:
+        source = parse_source(
+            "net/minecraft/world/level/block/Blocks.java",
+            b'''package net.minecraft.world.level.block;
+class Blocks {
+  static final Block ATTACHED = register(
+      BlockIds.ATTACHED, AttachedStemBlock::new, Properties.of());
+}''',
+        )
+        self.assertEqual(
+            constructor_family_blocks(
+                source,
+                frozenset({"AttachedStemBlock"}),
+                1,
+                {"ATTACHED": "attached"},
+            ),
+            [BlockMembershipEntry("ATTACHED", "minecraft:attached")],
+        )
 
 
 if __name__ == "__main__":
