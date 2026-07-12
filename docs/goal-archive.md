@@ -12126,3 +12126,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] registry owner 提供 tag holder slice、membership、containing-tag iterator 与 tag-order resource-id resolution；missing tag 返回 `None`，非法 holder 返回包含 registry/tag/id 的显式错误，不静默丢弃。
 - [x] F3 block/fluid/entity tag 列表与 piglin-loved pose 改用窄 tag queries，保持 BTree tag order 和 membership 语义；将 resolved tags materialize 到最终 frozen typed RegistryAccess 继续开放。
+
+## 2026-07-12：dimension-type client projection NBT consolidation
+
+- [x] dimension-type `has_skylight`/`cardinal_light` 不再各自维护 modified-UTF、delimiter depth、list bounds 与 payload skip scanner；统一通过 `bbb-world` shared bounded NBT frontend 一次解析为窄 typed client projection。
+- [x] missing/wrong field 继续逐字段走 builtin dimension fallback，custom nether cardinal-light 与 has-skylight focused tests 保持通过；完整 `DimensionType.NETWORK_CODEC` 其余字段仍开放。

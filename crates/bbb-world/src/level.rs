@@ -1,4 +1,3 @@
-use bbb_protocol::codec::Decoder;
 use bbb_protocol::game_event_types::{
     VANILLA_CLIENT_GAME_EVENT_CHANGE_GAME_MODE_ID, VANILLA_CLIENT_GAME_EVENT_IMMEDIATE_RESPAWN_ID,
     VANILLA_CLIENT_GAME_EVENT_LIMITED_CRAFTING_ID, VANILLA_CLIENT_GAME_EVENT_RAIN_LEVEL_CHANGE_ID,
@@ -17,12 +16,13 @@ use bbb_protocol::packets::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::{BlockPos, WorldStore};
+use crate::{
+    chunks::{decode_nbt_root, find_nbt_entry, NbtValue},
+    BlockPos, WorldStore,
+};
 
 const RESPAWN_KEEP_ATTRIBUTE_MODIFIERS: i8 = 1;
 const RESPAWN_KEEP_ENTITY_DATA: i8 = 2;
-const MAX_DIMENSION_TYPE_NBT_DEPTH: usize = 64;
-const MAX_DIMENSION_TYPE_NBT_LIST_ITEMS: usize = 4096;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct WorldDimension {
@@ -387,10 +387,27 @@ impl WorldStore {
 
     fn apply_spawn_info(&mut self, spawn_info: &ProtocolSpawnInfo) {
         let profile = dimension_profile(spawn_info.dimension_type_id, &spawn_info.dimension);
-        let has_sky_light =
-            self.dimension_type_has_sky_light(spawn_info.dimension_type_id, &spawn_info.dimension);
-        let cardinal_lighting = self
-            .dimension_type_cardinal_lighting(spawn_info.dimension_type_id, &spawn_info.dimension);
+        let dimension_type =
+            dimension_type_client_projection_from_registry(self.registry_entry_by_holder_id(
+                "minecraft:dimension_type",
+                spawn_info.dimension_type_id,
+            ));
+        let has_sky_light = dimension_type
+            .and_then(|projection| projection.has_sky_light)
+            .unwrap_or_else(|| {
+                built_in_dimension_has_sky_light(
+                    spawn_info.dimension_type_id,
+                    &spawn_info.dimension,
+                )
+            });
+        let cardinal_lighting = dimension_type
+            .and_then(|projection| projection.cardinal_lighting)
+            .unwrap_or_else(|| {
+                built_in_dimension_cardinal_lighting(
+                    spawn_info.dimension_type_id,
+                    &spawn_info.dimension,
+                )
+            });
         let dimension_key_changed = self
             .level
             .as_ref()
@@ -417,24 +434,6 @@ impl WorldStore {
             i32::from(spawn_info.game_type),
             i32::from(spawn_info.previous_game_type),
         );
-    }
-
-    fn dimension_type_cardinal_lighting(
-        &self,
-        dimension_type_id: i32,
-        dimension: &str,
-    ) -> WorldCardinalLighting {
-        dimension_type_cardinal_lighting_from_registry(
-            self.registry_entry_by_holder_id("minecraft:dimension_type", dimension_type_id),
-        )
-        .unwrap_or_else(|| built_in_dimension_cardinal_lighting(dimension_type_id, dimension))
-    }
-
-    fn dimension_type_has_sky_light(&self, dimension_type_id: i32, dimension: &str) -> bool {
-        dimension_type_has_sky_light_from_registry(
-            self.registry_entry_by_holder_id("minecraft:dimension_type", dimension_type_id),
-        )
-        .unwrap_or_else(|| built_in_dimension_has_sky_light(dimension_type_id, dimension))
     }
 
     fn set_game_type_from_spawn_info(&mut self, game_type: i32, previous_game_type: i32) {
@@ -643,25 +642,32 @@ fn built_in_dimension_has_sky_light(dimension_type_id: i32, dimension: &str) -> 
     )
 }
 
-fn dimension_type_cardinal_lighting_from_registry(
-    entry: Option<&crate::RegistryPacketEntry>,
-) -> Option<WorldCardinalLighting> {
-    let raw_data = entry?.raw_data()?;
-    dimension_type_cardinal_lighting_from_nbt(raw_data)
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct DimensionTypeClientProjection {
+    has_sky_light: Option<bool>,
+    cardinal_lighting: Option<WorldCardinalLighting>,
 }
 
-fn dimension_type_has_sky_light_from_registry(
+fn dimension_type_client_projection_from_registry(
     entry: Option<&crate::RegistryPacketEntry>,
-) -> Option<bool> {
-    let raw_data = entry?.raw_data()?;
-    read_nbt_root_byte_field(raw_data, "has_skylight")?.map(|value| value != 0)
-}
-
-fn dimension_type_cardinal_lighting_from_nbt(raw_data: &[u8]) -> Option<WorldCardinalLighting> {
-    match read_nbt_root_string_field(raw_data, "cardinal_light")? {
-        Some(name) => cardinal_lighting_type_from_name(&name),
+) -> Option<DimensionTypeClientProjection> {
+    let root = decode_nbt_root(entry?.raw_data()?).ok()??;
+    let NbtValue::Compound(fields) = root else {
+        return None;
+    };
+    let has_sky_light = match find_nbt_entry(&fields, "has_skylight") {
+        Some(NbtValue::Byte(value)) => Some(*value != 0),
+        _ => None,
+    };
+    let cardinal_lighting = match find_nbt_entry(&fields, "cardinal_light") {
+        Some(NbtValue::String(name)) => cardinal_lighting_type_from_name(name),
         None => Some(WorldCardinalLighting::Default),
-    }
+        _ => None,
+    };
+    Some(DimensionTypeClientProjection {
+        has_sky_light,
+        cardinal_lighting,
+    })
 }
 
 fn cardinal_lighting_type_from_name(name: &str) -> Option<WorldCardinalLighting> {
@@ -670,161 +676,6 @@ fn cardinal_lighting_type_from_name(name: &str) -> Option<WorldCardinalLighting>
         "nether" => Some(WorldCardinalLighting::Nether),
         _ => None,
     }
-}
-
-fn read_nbt_root_string_field(raw_data: &[u8], field: &str) -> Option<Option<String>> {
-    let mut decoder = Decoder::new(raw_data);
-    let root_type = decoder.read_u8().ok()?;
-    if root_type != 10 {
-        return None;
-    }
-
-    loop {
-        let tag_id = decoder.read_u8().ok()?;
-        if tag_id == 0 {
-            break;
-        }
-        let name = read_nbt_modified_utf8(&mut decoder)?;
-        if name == field {
-            if tag_id != 8 {
-                return None;
-            }
-            let value = read_nbt_modified_utf8(&mut decoder)?;
-            return Some(Some(value));
-        }
-        skip_nbt_payload(&mut decoder, tag_id, 0)?;
-    }
-
-    decoder.is_empty().then_some(None)
-}
-
-fn read_nbt_root_byte_field(raw_data: &[u8], field: &str) -> Option<Option<u8>> {
-    let mut decoder = Decoder::new(raw_data);
-    let root_type = decoder.read_u8().ok()?;
-    if root_type != 10 {
-        return None;
-    }
-
-    loop {
-        let tag_id = decoder.read_u8().ok()?;
-        if tag_id == 0 {
-            break;
-        }
-        let name = read_nbt_modified_utf8(&mut decoder)?;
-        if name == field {
-            if tag_id != 1 {
-                return None;
-            }
-            return Some(Some(decoder.read_u8().ok()?));
-        }
-        skip_nbt_payload(&mut decoder, tag_id, 0)?;
-    }
-
-    decoder.is_empty().then_some(None)
-}
-
-fn skip_nbt_payload(decoder: &mut Decoder<'_>, tag_id: u8, depth: usize) -> Option<()> {
-    if depth > MAX_DIMENSION_TYPE_NBT_DEPTH {
-        return None;
-    }
-    match tag_id {
-        0 => Some(()),
-        1 => decoder.read_exact(1, "nbt byte").ok().map(|_| ()),
-        2 => decoder.read_exact(2, "nbt short").ok().map(|_| ()),
-        3 | 5 => decoder.read_exact(4, "nbt int/float").ok().map(|_| ()),
-        4 | 6 => decoder.read_exact(8, "nbt long/double").ok().map(|_| ()),
-        7 => {
-            let len = read_nbt_len(decoder)?;
-            decoder.read_exact(len, "nbt byte array").ok().map(|_| ())
-        }
-        8 => read_nbt_modified_utf8(decoder).map(|_| ()),
-        9 => {
-            let element_type = decoder.read_u8().ok()?;
-            let len = read_nbt_len(decoder)?;
-            if len > MAX_DIMENSION_TYPE_NBT_LIST_ITEMS || (element_type == 0 && len > 0) {
-                return None;
-            }
-            for _ in 0..len {
-                skip_nbt_payload(decoder, element_type, depth + 1)?;
-            }
-            Some(())
-        }
-        10 => {
-            loop {
-                let nested_type = decoder.read_u8().ok()?;
-                if nested_type == 0 {
-                    break;
-                }
-                read_nbt_modified_utf8(decoder)?;
-                skip_nbt_payload(decoder, nested_type, depth + 1)?;
-            }
-            Some(())
-        }
-        11 => {
-            let len = read_nbt_len(decoder)?;
-            let byte_len = len.checked_mul(4)?;
-            decoder
-                .read_exact(byte_len, "nbt int array")
-                .ok()
-                .map(|_| ())
-        }
-        12 => {
-            let len = read_nbt_len(decoder)?;
-            let byte_len = len.checked_mul(8)?;
-            decoder
-                .read_exact(byte_len, "nbt long array")
-                .ok()
-                .map(|_| ())
-        }
-        _ => None,
-    }
-}
-
-fn read_nbt_len(decoder: &mut Decoder<'_>) -> Option<usize> {
-    let len = decoder.read_i32().ok()?;
-    usize::try_from(len).ok()
-}
-
-fn read_nbt_modified_utf8(decoder: &mut Decoder<'_>) -> Option<String> {
-    let len = decoder.read_u16().ok()? as usize;
-    let bytes = decoder.read_exact(len, "nbt string").ok()?;
-    let mut units = Vec::with_capacity(len);
-    let mut cursor = 0;
-
-    while cursor < bytes.len() {
-        let b0 = bytes[cursor];
-        if b0 & 0x80 == 0 {
-            units.push(u16::from(b0));
-            cursor += 1;
-        } else if b0 & 0xe0 == 0xc0 {
-            if cursor + 1 >= bytes.len() {
-                return None;
-            }
-            let b1 = bytes[cursor + 1];
-            if b1 & 0xc0 != 0x80 {
-                return None;
-            }
-            units.push((u16::from(b0 & 0x1f) << 6) | u16::from(b1 & 0x3f));
-            cursor += 2;
-        } else if b0 & 0xf0 == 0xe0 {
-            if cursor + 2 >= bytes.len() {
-                return None;
-            }
-            let b1 = bytes[cursor + 1];
-            let b2 = bytes[cursor + 2];
-            if b1 & 0xc0 != 0x80 || b2 & 0xc0 != 0x80 {
-                return None;
-            }
-            units.push(
-                (u16::from(b0 & 0x0f) << 12) | (u16::from(b1 & 0x3f) << 6) | u16::from(b2 & 0x3f),
-            );
-            cursor += 3;
-        } else {
-            return None;
-        }
-    }
-
-    String::from_utf16(&units).ok()
 }
 
 fn rounded_game_event_param(param: f32) -> i32 {

@@ -328,6 +328,7 @@ reverse lookup 已供 HUD targeted block/fluid tag identity 消费；完整
 audio holder-order projection 已从 active world registry 派生并在 Finish 后原子切换；完整
 entity variant/villager render projection 已统一消费单一 checked holder lookup；完整
 numeric tags 已有 checked ordered holder/resource resolution，F3 与 piglin-loved 已消费窄 tag query；完整
+dimension-type 当前 client fields 已改用共享 bounded NBT frontend 单次投影；完整
 `RegistryAccess`/typed codec/holder tags/component initializer 仍是明确 canonical/runtime partial。每轮 configuration registry
 collection 已 staging，并在 Finish 原子替换或按 vanilla tag-only 路径保留原 contents。
 

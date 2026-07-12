@@ -4520,6 +4520,7 @@
           "crates/bbb-world/src/registries/store.rs#registry_entry_by_holder_id",
           "crates/bbb-world/src/registries/store.rs#registry_resource_ids_in_holder_order",
           "crates/bbb-native/src/entity_scene.rs#EntityVariantRegistryLookup",
+          "crates/bbb-world/src/level.rs#dimension_type_client_projection_from_registry",
           "crates/bbb-world/src/registries/tests.rs#registry_holder_lookup_uses_checked_wire_order_identity",
           "crates/bbb-world/src/registries/tests.rs#configuration_registry_collection_commits_atomically_and_replaces_holder_order",
           "crates/bbb-world/src/level.rs#dimension_type_registry_cardinal_light_overrides_builtin_fallback",
