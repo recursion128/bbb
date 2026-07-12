@@ -370,6 +370,7 @@ fn shader_light(light: TerrainLight) -> [f32; 2] {
 mod tests {
     use super::*;
     use crate::map_textures::map_color_rgba8;
+    use bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID;
     use bbb_protocol::packets::{
         AddEntity, DataComponentPatchSummary, EntityDataValue, EntityDataValueKind,
         ItemStackSummary, MapColorPatch, MapItemData, SetEntityData, Vec3d,
@@ -380,9 +381,6 @@ mod tests {
     const ENTITY_SHARED_FLAG_INVISIBLE: i8 = 1 << 5;
     const ITEM_FRAME_DATA_ITEM_ID: u8 = 9;
     const ITEM_FRAME_DATA_ROTATION_ID: u8 = 10;
-    const MAP_ID_DATA_COMPONENT_TYPE_ID: i32 =
-        bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID;
-
     #[test]
     fn horizontal_and_vertical_facings_map_to_vanilla_rotations() {
         assert_eq!(frame_face_rotation(ItemFrameFacing::North), (0.0, 0.0));
@@ -819,7 +817,7 @@ mod tests {
             count: 1,
             component_patch: DataComponentPatchSummary::default(),
         };
-        item.component_patch.added_type_ids = vec![MAP_ID_DATA_COMPONENT_TYPE_ID];
+        item.component_patch.added_type_ids = vec![VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID];
         item.component_patch.map_id = Some(map_id);
         item
     }

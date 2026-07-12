@@ -870,7 +870,11 @@ fn local_selected_main_hand_has_piercing_weapon_true_for_added_component() {
     let mut store = WorldStore::new();
     store.apply_set_player_inventory(ProtocolSetPlayerInventory {
         slot: 0,
-        item: item_stack_with_component_summary(99, 1, VANILLA_PIERCING_WEAPON_COMPONENT_ID),
+        item: item_stack_with_component_summary(
+            99,
+            1,
+            VANILLA_DATA_COMPONENT_PIERCING_WEAPON_TYPE_ID,
+        ),
     });
 
     assert!(store.local_selected_main_hand_has_piercing_weapon());
@@ -880,8 +884,9 @@ fn local_selected_main_hand_has_piercing_weapon_true_for_added_component() {
 fn local_selected_main_hand_has_piercing_weapon_removed_component_overrides_default_and_added() {
     let mut store = WorldStore::new();
     store.set_default_piercing_weapon_item_ids(BTreeSet::from([42]));
-    let mut item = item_stack_with_component_summary(42, 1, VANILLA_PIERCING_WEAPON_COMPONENT_ID);
-    item.component_patch.removed_type_ids = vec![VANILLA_PIERCING_WEAPON_COMPONENT_ID];
+    let mut item =
+        item_stack_with_component_summary(42, 1, VANILLA_DATA_COMPONENT_PIERCING_WEAPON_TYPE_ID);
+    item.component_patch.removed_type_ids = vec![VANILLA_DATA_COMPONENT_PIERCING_WEAPON_TYPE_ID];
     store.apply_set_player_inventory(ProtocolSetPlayerInventory { slot: 0, item });
 
     assert!(!store.local_selected_main_hand_has_piercing_weapon());
@@ -951,7 +956,7 @@ fn local_selected_main_hand_attack_range_reads_default_and_patch_components() {
 
     let mut patched = item_stack(99, 1);
     patched.component_patch.added = 1;
-    patched.component_patch.added_type_ids = vec![VANILLA_ATTACK_RANGE_COMPONENT_ID];
+    patched.component_patch.added_type_ids = vec![VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID];
     patched.component_patch.attack_range = Some(patch_range);
     store.apply_set_player_inventory(ProtocolSetPlayerInventory {
         slot: 0,
@@ -977,7 +982,7 @@ fn local_selected_main_hand_attack_range_removed_component_overrides_default_and
     store.set_default_item_attack_ranges(BTreeMap::from([(42, item_attack_range(2.0, 4.5))]));
     let mut item = item_stack(42, 1);
     item.component_patch.added = 1;
-    item.component_patch.added_type_ids = vec![VANILLA_ATTACK_RANGE_COMPONENT_ID];
+    item.component_patch.added_type_ids = vec![VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID];
     item.component_patch.attack_range = Some(ProtocolAttackRangeSummary {
         min_reach: 1.0,
         max_reach: 2.25,
@@ -986,7 +991,7 @@ fn local_selected_main_hand_attack_range_removed_component_overrides_default_and
         hitbox_margin: 0.25,
         mob_factor: 0.75,
     });
-    item.component_patch.removed_type_ids = vec![VANILLA_ATTACK_RANGE_COMPONENT_ID];
+    item.component_patch.removed_type_ids = vec![VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID];
     store.apply_set_player_inventory(ProtocolSetPlayerInventory { slot: 0, item });
 
     assert_eq!(store.local_selected_main_hand_attack_range(), None);
@@ -1052,7 +1057,7 @@ fn local_using_item_use_effects_reads_default_and_patch_components() {
 
     let mut patched = item_stack(99, 1);
     patched.component_patch.added = 1;
-    patched.component_patch.added_type_ids = vec![VANILLA_USE_EFFECTS_COMPONENT_ID];
+    patched.component_patch.added_type_ids = vec![VANILLA_DATA_COMPONENT_USE_EFFECTS_TYPE_ID];
     patched.component_patch.use_effects = Some(ProtocolUseEffectsSummary {
         can_sprint: false,
         interact_vibrations: true,
@@ -1085,7 +1090,7 @@ fn local_using_item_use_effects_removed_component_falls_back_to_vanilla_default(
         },
     )]));
     let mut item = item_stack(42, 1);
-    item.component_patch.removed_type_ids = vec![VANILLA_USE_EFFECTS_COMPONENT_ID];
+    item.component_patch.removed_type_ids = vec![VANILLA_DATA_COMPONENT_USE_EFFECTS_TYPE_ID];
     store.apply_set_player_inventory(ProtocolSetPlayerInventory { slot: 0, item });
     store.set_local_using_item(true);
 
@@ -1768,7 +1773,7 @@ fn apply_local_container_click_slot_hashes_removed_only_component_patch() {
         carried_item: item_stack_with_removed_component_summary(
             42,
             3,
-            VANILLA_MAX_DAMAGE_COMPONENT_ID,
+            VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID,
         ),
     });
 
@@ -1784,13 +1789,13 @@ fn apply_local_container_click_slot_hashes_removed_only_component_patch() {
         place.changed_slots,
         BTreeMap::from([(
             0,
-            hashed_removed_component_item_stack(42, 3, VANILLA_MAX_DAMAGE_COMPONENT_ID)
+            hashed_removed_component_item_stack(42, 3, VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID)
         )])
     );
     assert_eq!(place.carried_item, ProtocolHashedStack::Empty);
     assert_eq!(
         open_container_slot_item(&store, 0),
-        item_stack_with_removed_component_summary(42, 3, VANILLA_MAX_DAMAGE_COMPONENT_ID)
+        item_stack_with_removed_component_summary(42, 3, VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID)
     );
     assert_eq!(
         store.inventory().cursor_item,
@@ -1801,10 +1806,10 @@ fn apply_local_container_click_slot_hashes_removed_only_component_patch() {
 #[test]
 fn apply_local_container_click_slot_hashes_integer_component_patches() {
     for (component_type_id, value) in [
-        (VANILLA_MAX_STACK_SIZE_COMPONENT_ID, 16),
-        (VANILLA_MAX_DAMAGE_COMPONENT_ID, 250),
-        (VANILLA_DAMAGE_COMPONENT_ID, 7),
-        (VANILLA_MAP_ID_COMPONENT_ID, 7),
+        (VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID, 16),
+        (VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID, 250),
+        (VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID, 7),
+        (VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID, 7),
     ] {
         let mut store = WorldStore::new();
         let patched_stack = item_stack_with_int_component_summary(42, 1, component_type_id, value);
@@ -1842,14 +1847,14 @@ fn apply_local_container_click_slot_hashes_multiple_integer_and_removed_componen
     let mut patched_stack = item_stack(42, 1);
     patched_stack.component_patch.added = 3;
     patched_stack.component_patch.added_type_ids = vec![
-        VANILLA_MAX_STACK_SIZE_COMPONENT_ID,
-        VANILLA_MAX_DAMAGE_COMPONENT_ID,
-        VANILLA_DAMAGE_COMPONENT_ID,
+        VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID,
     ];
     patched_stack.component_patch.max_stack_size = Some(16);
     patched_stack.component_patch.max_damage = Some(250);
     patched_stack.component_patch.damage = Some(7);
-    patched_stack.component_patch.removed_type_ids = vec![VANILLA_MAP_ID_COMPONENT_ID];
+    patched_stack.component_patch.removed_type_ids = vec![VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID];
     open_test_container(&mut store, 7);
     store.apply_container_set_content(ProtocolContainerSetContent {
         container_id: 7,
@@ -1875,11 +1880,20 @@ fn apply_local_container_click_slot_hashes_multiple_integer_and_removed_componen
                 count: 1,
                 components: ProtocolHashedComponentPatch {
                     added_components: BTreeMap::from([
-                        (VANILLA_MAX_STACK_SIZE_COMPONENT_ID, hash_ops_crc32c_int(16)),
-                        (VANILLA_MAX_DAMAGE_COMPONENT_ID, hash_ops_crc32c_int(250)),
-                        (VANILLA_DAMAGE_COMPONENT_ID, hash_ops_crc32c_int(7)),
+                        (
+                            VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
+                            hash_ops_crc32c_int(16)
+                        ),
+                        (
+                            VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID,
+                            hash_ops_crc32c_int(250)
+                        ),
+                        (
+                            VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID,
+                            hash_ops_crc32c_int(7)
+                        ),
                     ]),
-                    removed_components: BTreeSet::from([VANILLA_MAP_ID_COMPONENT_ID]),
+                    removed_components: BTreeSet::from([VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID]),
                 },
             })
         )])
@@ -1896,7 +1910,7 @@ fn apply_local_container_click_slot_rejects_incomplete_integer_component_patch()
     patched_stack
         .component_patch
         .added_type_ids
-        .push(VANILLA_DAMAGE_COMPONENT_ID);
+        .push(VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID);
     open_test_container(&mut store, 7);
     store.apply_container_set_content(ProtocolContainerSetContent {
         container_id: 7,
@@ -7057,7 +7071,7 @@ fn apply_local_cartography_table_map_id_with_removed_component_quick_move_routes
     map_stack
         .component_patch
         .removed_type_ids
-        .push(VANILLA_MAX_DAMAGE_COMPONENT_ID);
+        .push(VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID);
     items[CARTOGRAPHY_TABLE_PLAYER_MAIN_START as usize] = map_stack.clone();
     store.apply_container_set_content(ProtocolContainerSetContent {
         container_id: 7,
@@ -7083,7 +7097,7 @@ fn apply_local_cartography_table_map_id_with_removed_component_quick_move_routes
                     42,
                     1,
                     7,
-                    VANILLA_MAX_DAMAGE_COMPONENT_ID
+                    VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID
                 )
             ),
             (
@@ -7119,7 +7133,7 @@ fn cartography_table_map_id_unhashable_component_requires_server_authority() {
     map_stack
         .component_patch
         .added_type_ids
-        .push(VANILLA_USE_EFFECTS_COMPONENT_ID);
+        .push(VANILLA_DATA_COMPONENT_USE_EFFECTS_TYPE_ID);
     map_stack.component_patch.use_effects = Some(ProtocolUseEffectsSummary {
         can_sprint: true,
         interact_vibrations: true,
@@ -9108,7 +9122,7 @@ fn map_id_item_stack(item_id: i32, count: i32, map_id: i32) -> ProtocolItemStack
     item.component_patch.added = 1;
     item.component_patch
         .added_type_ids
-        .push(VANILLA_MAP_ID_COMPONENT_ID);
+        .push(VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID);
     item.component_patch.map_id = Some(map_id);
     item
 }
@@ -9123,10 +9137,12 @@ fn item_stack_with_int_component_summary(
     item.component_patch.added = 1;
     item.component_patch.added_type_ids = vec![component_type_id];
     match component_type_id {
-        VANILLA_MAX_STACK_SIZE_COMPONENT_ID => item.component_patch.max_stack_size = Some(value),
-        VANILLA_MAX_DAMAGE_COMPONENT_ID => item.component_patch.max_damage = Some(value),
-        VANILLA_DAMAGE_COMPONENT_ID => item.component_patch.damage = Some(value),
-        VANILLA_MAP_ID_COMPONENT_ID => item.component_patch.map_id = Some(value),
+        VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID => {
+            item.component_patch.max_stack_size = Some(value)
+        }
+        VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID => item.component_patch.max_damage = Some(value),
+        VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID => item.component_patch.damage = Some(value),
+        VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID => item.component_patch.map_id = Some(value),
         other => panic!("unsupported int component test id {other}"),
     }
     item
@@ -9198,7 +9214,7 @@ fn hashed_map_id_item_stack(item_id: i32, count: i32, map_id: i32) -> ProtocolHa
         count,
         components: ProtocolHashedComponentPatch {
             added_components: BTreeMap::from([(
-                VANILLA_MAP_ID_COMPONENT_ID,
+                VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID,
                 hash_ops_crc32c_int(map_id),
             )]),
             removed_components: BTreeSet::new(),
@@ -9217,7 +9233,7 @@ fn hashed_map_id_removed_component_item_stack(
         count,
         components: ProtocolHashedComponentPatch {
             added_components: BTreeMap::from([(
-                VANILLA_MAP_ID_COMPONENT_ID,
+                VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID,
                 hash_ops_crc32c_int(map_id),
             )]),
             removed_components: BTreeSet::from([component_type_id]),

@@ -15,6 +15,7 @@ use bbb_item_model::{
 use bbb_net::{NetCommand, NetEvent};
 use bbb_protocol::{
     codec::Decoder,
+    data_component_types::VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID,
     entity_types::{VANILLA_ENTITY_TYPE_CREEPER_ID, VANILLA_ENTITY_TYPE_ENDERMAN_ID},
     heightmap_types::{
         VANILLA_HEIGHTMAP_MOTION_BLOCKING_ID, VANILLA_HEIGHTMAP_MOTION_BLOCKING_NO_LEAVES_ID,
@@ -455,8 +456,6 @@ const ANVIL_COST_LABEL_RIGHT: i32 = 168;
 const ANVIL_COST_LABEL_Y: i32 = 69;
 const ANVIL_COST_BACKGROUND_Y: i32 = 67;
 const ANVIL_COST_BACKGROUND_HEIGHT: u32 = 12;
-const MAP_ID_DATA_COMPONENT_TYPE_ID: i32 =
-    bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID;
 const CARTOGRAPHY_TABLE_MAP_SLOT: i16 = 0;
 const CARTOGRAPHY_TABLE_ADDITIONAL_SLOT: i16 = 1;
 const CARTOGRAPHY_TABLE_ERROR_X: i32 = 35;
@@ -10657,7 +10656,7 @@ fn item_stack_map_id(item: &ItemStackSummary) -> Option<i32> {
         || item
             .component_patch
             .removed_type_ids
-            .contains(&MAP_ID_DATA_COMPONENT_TYPE_ID)
+            .contains(&VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID)
     {
         return None;
     }

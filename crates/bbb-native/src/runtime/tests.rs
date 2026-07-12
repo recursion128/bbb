@@ -16069,7 +16069,7 @@ fn map_stack(
     item.component_patch.map_id = Some(map_id);
     item.component_patch
         .added_type_ids
-        .push(MAP_ID_DATA_COMPONENT_TYPE_ID);
+        .push(VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID);
     if let Some(post_processing) = post_processing {
         item.component_patch.map_post_processing = Some(post_processing);
         item.component_patch.added_type_ids.push(48);

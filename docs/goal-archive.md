@@ -12638,3 +12638,9 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] native runtime 删除四个本地 heightmap type-id const alias，world chunk heightmap 改为窄
   re-export；所有消费者直接引用 protocol generated catalog 常量，client/server height debug
   选择顺序与 motion-blocking 更新语义不变。
+
+## 2026-07-12：Removed duplicate map-component ID aliases
+
+- [x] native cartography/item-frame 与 world item-frame bounds 直接消费 protocol generated `map_id`
+  component type constant，inventory 同时删除八项由子模块隐式消费的 module-local component ID 别名；map removal、
+  framed-map bounds 与测试 fixture 语义不变，并由反向源码测试防止旧别名恢复。

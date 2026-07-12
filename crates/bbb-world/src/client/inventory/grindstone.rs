@@ -208,7 +208,7 @@ fn item_stack_is_default_damageable(
         || stack
             .component_patch
             .removed_type_ids
-            .contains(&VANILLA_MAX_DAMAGE_COMPONENT_ID)
+            .contains(&VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID)
     {
         return false;
     }

@@ -116,7 +116,7 @@ pub(super) fn item_stack_has_piercing_weapon(
         || stack
             .component_patch
             .removed_type_ids
-            .contains(&VANILLA_PIERCING_WEAPON_COMPONENT_ID)
+            .contains(&VANILLA_DATA_COMPONENT_PIERCING_WEAPON_TYPE_ID)
     {
         return false;
     }
@@ -129,7 +129,7 @@ pub(super) fn item_stack_has_piercing_weapon(
         || stack
             .component_patch
             .added_type_ids
-            .contains(&VANILLA_PIERCING_WEAPON_COMPONENT_ID)
+            .contains(&VANILLA_DATA_COMPONENT_PIERCING_WEAPON_TYPE_ID)
 }
 
 pub(super) fn item_stack_has_map_id(stack: &ProtocolItemStackSummary) -> bool {
@@ -137,7 +137,7 @@ pub(super) fn item_stack_has_map_id(stack: &ProtocolItemStackSummary) -> bool {
         || stack
             .component_patch
             .removed_type_ids
-            .contains(&VANILLA_MAP_ID_COMPONENT_ID)
+            .contains(&VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID)
     {
         return false;
     }
@@ -146,7 +146,7 @@ pub(super) fn item_stack_has_map_id(stack: &ProtocolItemStackSummary) -> bool {
         || stack
             .component_patch
             .added_type_ids
-            .contains(&VANILLA_MAP_ID_COMPONENT_ID)
+            .contains(&VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID)
 }
 
 pub(super) fn item_stack_attack_range(
@@ -157,7 +157,7 @@ pub(super) fn item_stack_attack_range(
         || stack
             .component_patch
             .removed_type_ids
-            .contains(&VANILLA_ATTACK_RANGE_COMPONENT_ID)
+            .contains(&VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID)
     {
         return None;
     }
@@ -178,7 +178,7 @@ pub(super) fn item_stack_swing_duration(
         || stack
             .component_patch
             .removed_type_ids
-            .contains(&VANILLA_SWING_ANIMATION_COMPONENT_ID)
+            .contains(&VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID)
     {
         return ATTACK_SWING_DURATION;
     }
@@ -230,7 +230,7 @@ pub(super) fn item_stack_use_effects(
     if stack
         .component_patch
         .removed_type_ids
-        .contains(&VANILLA_USE_EFFECTS_COMPONENT_ID)
+        .contains(&VANILLA_DATA_COMPONENT_USE_EFFECTS_TYPE_ID)
     {
         return Some(ItemUseEffects::default());
     }
@@ -280,22 +280,22 @@ pub(super) fn hashed_component_patch_from_summary(
             return None;
         }
         let value = match *component_type_id {
-            VANILLA_MAX_STACK_SIZE_COMPONENT_ID => {
+            VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID => {
                 let value = patch.max_stack_size?;
                 expected.max_stack_size = Some(value);
                 value
             }
-            VANILLA_MAX_DAMAGE_COMPONENT_ID => {
+            VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID => {
                 let value = patch.max_damage?;
                 expected.max_damage = Some(value);
                 value
             }
-            VANILLA_DAMAGE_COMPONENT_ID => {
+            VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID => {
                 let value = patch.damage?;
                 expected.damage = Some(value);
                 value
             }
-            VANILLA_MAP_ID_COMPONENT_ID => {
+            VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID => {
                 let value = patch.map_id?;
                 expected.map_id = Some(value);
                 value
@@ -3419,7 +3419,7 @@ pub(super) fn item_stack_max_stack_size(
     if stack
         .component_patch
         .removed_type_ids
-        .contains(&VANILLA_MAX_STACK_SIZE_COMPONENT_ID)
+        .contains(&VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID)
     {
         return 1;
     }

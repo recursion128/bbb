@@ -1,4 +1,7 @@
-use bbb_protocol::packets::{EntityDataValue, EntityDataValueKind, ItemStackSummary};
+use bbb_protocol::{
+    data_component_types::VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID,
+    packets::{EntityDataValue, EntityDataValueKind, ItemStackSummary},
+};
 
 use crate::entities::{
     EntityVec3, ItemFrameFacing,
@@ -17,8 +20,6 @@ use super::{
 const ITEM_FRAME_DEPTH: f32 = 0.0625;
 const ITEM_FRAME_DEFAULT_SIZE: f32 = 0.75;
 const ITEM_FRAME_MAP_SIZE: f32 = 1.0;
-const MAP_ID_DATA_COMPONENT_TYPE_ID: i32 =
-    bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID;
 const PAINTING_DEPTH: f32 = 0.0625;
 const HANGING_WALL_OFFSET: f64 = 0.46875;
 
@@ -195,7 +196,7 @@ fn item_stack_map_id(item: &ItemStackSummary) -> Option<i32> {
     if item
         .component_patch
         .removed_type_ids
-        .contains(&MAP_ID_DATA_COMPONENT_TYPE_ID)
+        .contains(&VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID)
     {
         return None;
     }
@@ -206,7 +207,7 @@ fn item_stack_has_map_component(item: &ItemStackSummary) -> bool {
     if item
         .component_patch
         .removed_type_ids
-        .contains(&MAP_ID_DATA_COMPONENT_TYPE_ID)
+        .contains(&VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID)
     {
         return false;
     }
@@ -214,7 +215,7 @@ fn item_stack_has_map_component(item: &ItemStackSummary) -> bool {
         || item
             .component_patch
             .added_type_ids
-            .contains(&MAP_ID_DATA_COMPONENT_TYPE_ID)
+            .contains(&VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID)
 }
 
 fn painting_variant_size(data_values: &[EntityDataValue]) -> (f32, f32) {
@@ -320,7 +321,7 @@ mod tests {
     fn item(item_id: Option<i32>, count: i32, map: bool) -> ItemStackSummary {
         let mut component_patch = DataComponentPatchSummary::default();
         if map {
-            component_patch.added_type_ids = vec![MAP_ID_DATA_COMPONENT_TYPE_ID];
+            component_patch.added_type_ids = vec![VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID];
             component_patch.map_id = Some(7);
         }
         ItemStackSummary {
