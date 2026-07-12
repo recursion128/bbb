@@ -10044,29 +10044,53 @@
       "constant_name": "CLIENTBOUND_STOP_SOUND",
       "coverage": {
         "canonical_apply": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/client/audio.rs#apply_stop_sound",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleStopSoundEvent"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/client_audio/tests.rs#decodes_stop_sound_flags",
+            "crates/bbb-protocol/src/packets/client_audio/tests.rs#decodes_stop_sound_source_only_and_ignores_unknown_flag_bits",
+            "crates/bbb-protocol/src/packets/client_audio/tests.rs#decodes_stop_sound_name_with_default_namespace",
+            "crates/bbb-protocol/src/packets/client_audio/tests.rs#decodes_stop_all_sounds_packet",
+            "vanilla:net/minecraft/network/protocol/game/ClientboundStopSoundPacket.java#STREAM_CODEC"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "ownership": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-world/src/play_apply.rs#PlayClientbound::StopSound"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "runtime_side_effect": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#unknown-clientbound-packets-in-login-configuration-and-play",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-native/src/audio_runtime/resolver.rs#represents_stop_sound_commands",
+            "crates/bbb-audio/src/runtime.rs#stop_filter_matches_source_name_and_all",
+            "crates/bbb-audio/src/runtime.rs#stop_sound_only_stop_all_clears_delayed_positioned_sounds",
+            "vanilla:net/minecraft/client/sounds/SoundEngine.java#stop",
+            "vanilla:net/minecraft/client/sounds/SoundEngine.java#stopAll"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/client_audio/tests.rs#decodes_stop_sound_flags",
+            "crates/bbb-net/src/event_stream.rs#play_map_particle_and_audio_packets_emit_matching_events_without_responses",
+            "crates/bbb-net/src/probe/play.rs#probe_applies_audio_packets_to_world",
+            "crates/bbb-world/src/client/audio.rs#tracks_last_sound_events_and_counters",
+            "crates/bbb-native/src/runtime/events/tests/audio_and_death_sounds.rs#client_audio_events_emit_runtime_commands_for_applied_events",
+            "crates/bbb-audio/src/runtime.rs#stop_sound_only_stop_all_clears_delayed_positioned_sounds"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "clientbound",

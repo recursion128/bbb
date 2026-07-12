@@ -246,8 +246,7 @@ impl KiraAudioRuntime {
     }
 
     fn stop_sounds(&mut self, command: &StopSoundCommand) {
-        self.delayed_positioned
-            .retain(|sound| !delayed_positioned_sound_matches_stop(sound, command));
+        stop_delayed_positioned_sounds(&mut self.delayed_positioned, command);
         let mut retained = Vec::with_capacity(self.playing.len());
         for mut sound in self.playing.drain(..) {
             if sound_matches_stop(&sound, command) {
@@ -339,15 +338,13 @@ fn sound_matches_stop(sound: &KiraPlayingSound, command: &StopSoundCommand) -> b
     stop_filter_matches(&sound.event_id, &sound.category, command)
 }
 
-fn delayed_positioned_sound_matches_stop(
-    sound: &KiraDelayedPositionedSound,
+fn stop_delayed_positioned_sounds(
+    delayed: &mut Vec<KiraDelayedPositionedSound>,
     command: &StopSoundCommand,
-) -> bool {
-    stop_filter_matches(
-        &sound.command.sound.event_id,
-        &sound.command.category,
-        command,
-    )
+) {
+    if command.category.is_none() && command.name.is_none() {
+        delayed.clear();
+    }
 }
 
 fn delayed_positioned_sound_for_command(
@@ -657,7 +654,7 @@ mod tests {
     }
 
     #[test]
-    fn stop_sound_filters_delayed_positioned_sounds() {
+    fn stop_sound_only_stop_all_clears_delayed_positioned_sounds() {
         let mut delayed = vec![
             KiraDelayedPositionedSound {
                 command: PlayPositionedSoundCommand {
@@ -697,13 +694,18 @@ mod tests {
             name: None,
         };
 
-        delayed.retain(|sound| !delayed_positioned_sound_matches_stop(sound, &stop_blocks));
+        stop_delayed_positioned_sounds(&mut delayed, &stop_blocks);
 
-        assert_eq!(delayed.len(), 1);
-        assert_eq!(
-            delayed[0].command.sound.event_id,
-            "minecraft:entity.ghast.warn"
+        assert_eq!(delayed.len(), 2);
+
+        stop_delayed_positioned_sounds(
+            &mut delayed,
+            &StopSoundCommand {
+                category: None,
+                name: None,
+            },
         );
+        assert!(delayed.is_empty());
     }
 
     #[test]

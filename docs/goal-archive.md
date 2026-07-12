@@ -11502,3 +11502,8 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 
 - [x] reference/direct SoundEvent holder、SoundSource、三个 signed fixed-point 坐标、volume/pitch/seed wire 与 strict trailing 闭合。
 - [x] no-distance-delay、dynamic sound registry、fixed range、seed selection 与 spatial attenuation 均有 world/native/audio tests，五格闭合；StopSound 与设备诊断仍由各自 ledger 拥有。
+
+## 2026-07-12：play stop-sound packet coverage audit
+
+- [x] source/name/all 四组合、未知高位忽略、default namespace 与 strict trailing 闭合。
+- [x] 修正 delayed queue 范围：带 source/name 的 filtered stop 只停 active sound，只有 stop-all 清空 distance-delayed queue；与 SoundEngine.stop/stopAll 一致，五格闭合。

@@ -476,14 +476,16 @@ resolver by adding a value provider. No new selection machinery is required.
 
 Owner: `bbb-audio` + `bbb-native` + `bbb-pack` + `bbb-world`
 
-- Validate remaining synthesized/game-event sound mappings and StopSound semantics
-  against vanilla.
+- Validate remaining synthesized/game-event sound mappings against vanilla.
 - Clientbound SoundEntity holder/category/entity/volume/pitch/seed handling,
   missing or silent entity gates, fixed range, entity following, and removal stop
-  are covered; keep StopSound as a separate audit.
+  are covered.
 - Clientbound Sound holder/category/fixed-point position/volume/pitch/seed handling,
   no-distance-delay behavior, fixed range, registry resolution, seeded selection,
-  and spatial attenuation are covered; StopSound remains a separate audit.
+  and spatial attenuation are covered.
+- Clientbound StopSound covers source/name/all four filter combinations and unknown
+  flag bits. Filtered stops affect active sounds only; stop-all also clears queued
+  distance-delayed sounds, matching SoundEngine rather than over-stopping the queue.
 - Cover device/runtime diagnostics.
 - Keep unit tests independent of an audio device.
 

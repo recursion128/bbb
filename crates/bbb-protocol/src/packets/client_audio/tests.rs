@@ -152,7 +152,7 @@ fn decodes_stop_sound_flags() {
     payload.write_u8(3);
     payload.write_var_i32(1);
     payload.write_string("minecraft:music.menu");
-    let payload = payload.into_inner();
+    let mut payload = payload.into_inner();
 
     let packet = decode_play_clientbound(ids::play::CLIENTBOUND_STOP_SOUND, &payload).unwrap();
     assert_eq!(
@@ -168,6 +168,37 @@ fn decodes_stop_sound_flags() {
     assert_eq!(decoder.read_var_i32().unwrap(), 1);
     assert_eq!(decoder.read_string(32767).unwrap(), "minecraft:music.menu");
     assert!(decoder.is_empty());
+
+    payload.push(0);
+    let err = decode_play_clientbound(ids::play::CLIENTBOUND_STOP_SOUND, &payload).unwrap_err();
+    assert!(err
+        .to_string()
+        .contains("trailing bytes after stop sound packet"));
+}
+
+#[test]
+fn decodes_stop_sound_source_only_and_ignores_unknown_flag_bits() {
+    let mut payload = Encoder::new();
+    payload.write_u8(5);
+    payload.write_var_i32(2);
+
+    assert_eq!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_STOP_SOUND, &payload.into_inner()).unwrap(),
+        PlayClientbound::StopSound(StopSound {
+            source: Some(SoundSource::Records),
+            name: None,
+        })
+    );
+
+    let mut payload = Encoder::new();
+    payload.write_u8(4);
+    assert_eq!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_STOP_SOUND, &payload.into_inner()).unwrap(),
+        PlayClientbound::StopSound(StopSound {
+            source: None,
+            name: None,
+        })
+    );
 }
 
 #[test]

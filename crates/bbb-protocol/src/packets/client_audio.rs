@@ -89,7 +89,13 @@ pub(crate) fn decode_stop_sound(decoder: &mut Decoder<'_>) -> Result<StopSound> 
         None
     };
 
-    Ok(StopSound { source, name })
+    let packet = StopSound { source, name };
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after stop sound packet".to_string(),
+        ));
+    }
+    Ok(packet)
 }
 
 fn decode_sound_event_holder(decoder: &mut Decoder<'_>) -> Result<SoundEventHolder> {
