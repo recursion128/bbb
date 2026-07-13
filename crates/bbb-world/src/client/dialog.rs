@@ -13,7 +13,7 @@ mod input;
 pub use action::{DialogActionState, DialogCommandTemplateState};
 pub use body::{
     DialogBodyState, DialogDataComponentPatchEntryState, DialogDataComponentPatchState,
-    DialogItemStackTemplateState, DialogPlainMessageState,
+    DialogDataComponentValueState, DialogItemStackTemplateState, DialogPlainMessageState,
 };
 pub use input::{
     DialogInputControlState, DialogInputState, DialogNumberRangeState,

@@ -13673,3 +13673,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   patch 和未展开的正值 NBT 同时保留。
 - [x] default namespace、unknown/transient 拒绝、remove map payload，以及同一 component 的
   后写覆盖均有定向测试。110 种正值的 per-component persistent Codec 与 native screens 仍开放。
+
+## 2026-07-13：Decode primitive dialog item components
+
+- [x] 对照 `DataComponents`、`ExtraCodecs`、`NbtOps`、`Unit`、`Identifier` 与 `Rarity`，typed
+  投影 max-stack/max-damage/damage/repair-cost int、minimum-attack-charge/potion-duration-scale
+  float、glint bool、unbreakable/intangible-projectile/glider unit、item-model/tooltip-style/
+  note-block-sound Identifier 及 Rarity，共闭合 14 个 primitive persistent 注册项。
+- [x] Codec 数字 tag 转换、int/float range、Java `Float.compareTo` 的 negative-zero/NaN/∞ 边界、
+  bool、map-shaped unit、default namespace、Rarity 名称与复杂值继续 raw 均有定向测试；Component、
+  holder、list、compound-record persistent Codec 与 native screens 仍开放。
