@@ -771,7 +771,7 @@ fn encode_attribute_modifiers(
         .attribute_modifiers
         .iter()
         .map(|modifier| {
-            let attribute = vanilla_attribute_resource_id(modifier.attribute_id)?;
+            let attribute = vanilla_attribute_type(modifier.attribute_id)?.resource_id;
             let operation = attribute_modifier_operation_name(modifier.operation_id)?;
             let slot = vanilla_equipment_slot_group(modifier.slot_id)?.serialized_name;
             let mut fields = vec![
@@ -1387,7 +1387,7 @@ fn encode_suspicious_stew_effects(
         .map(|effect| {
             let mut fields = vec![format!(
                 "id: {}",
-                debug_snbt_string(vanilla_mob_effect_resource_id(effect.effect_id)?)
+                debug_snbt_string(vanilla_mob_effect_type(effect.effect_id)?.resource_id)
             )];
             if effect.duration != 160 {
                 fields.push(format!("duration: {}", effect.duration));

@@ -16,12 +16,8 @@ fn vanilla_mob_effect(effect_id: i32) -> Option<VanillaMobEffect> {
     })
 }
 
-pub fn vanilla_mob_effect_resource_id(effect_id: i32) -> Option<&'static str> {
-    vanilla_mob_effect(effect_id).map(|effect| effect.key)
-}
-
 pub(super) fn vanilla_mob_effect_key(effect_id: i32) -> Option<&'static str> {
-    vanilla_mob_effect_resource_id(effect_id)
+    vanilla_mob_effect(effect_id).map(|effect| effect.key)
 }
 
 pub(super) fn vanilla_mob_effect_category(effect_id: i32) -> Option<VanillaMobEffectCategory> {
@@ -41,12 +37,6 @@ mod tests {
 
     #[test]
     fn vanilla_mob_effect_attribute_modifiers_follow_26_1_mob_effects() {
-        assert_eq!(vanilla_mob_effect_resource_id(0), Some("minecraft:speed"));
-        assert_eq!(
-            vanilla_mob_effect_resource_id(39),
-            Some("minecraft:breath_of_the_nautilus")
-        );
-        assert_eq!(vanilla_mob_effect_resource_id(40), None);
         assert_eq!(
             vanilla_mob_effect_category(0),
             Some(VanillaMobEffectCategory::Beneficial)

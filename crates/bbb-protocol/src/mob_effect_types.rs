@@ -571,6 +571,7 @@ mod tests {
                     || production.contains("fn attribute_modifier(\n")
                     || production.contains("const BEACON_PRIMARY_EFFECT_ROWS")
                     || production.contains("const BEACON_SECONDARY_EFFECTS")
+                    || production.contains("fn vanilla_mob_effect_resource_id(")
                 {
                     violations.push(display.to_string());
                 }
@@ -583,7 +584,7 @@ mod tests {
         );
         assert!(
             violations.is_empty(),
-            "parallel mob-effect attribute modifier owners: {violations:?}"
+            "parallel mob-effect catalog owners or lookup bridges: {violations:?}"
         );
     }
 }

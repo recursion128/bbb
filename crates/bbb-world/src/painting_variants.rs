@@ -438,6 +438,7 @@ mod tests {
                 if source.contains("PAINTING_VARIANT_SIZES")
                     || source.contains("struct VanillaPaintingVariant")
                     || source.contains("const VANILLA_PAINTING_VARIANTS")
+                    || source.contains("fn vanilla_painting_variant_resource_id(")
                 {
                     violations.push(display.to_string());
                 }

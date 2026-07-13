@@ -13330,3 +13330,15 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   caller-projected charge duration；native HUD、first-person 与 owner-backed third-person bake
   paths 均从 `WorldStore` 投影同步 effect。world/item-model/native focused tests 与 workspace gate
   通过。
+
+## 2026-07-13：Remove item-model registry lookup bridges
+
+- [x] native component SNBT 投影不再经 item-model 读取 fixed registry identity：attribute 与
+  mob-effect holder id 直接查询 `bbb-protocol` generated catalog，painting variant 直接查询
+  `bbb-world` generated catalog；potion lookup 继续留在实际拥有 potion descriptor 的 item-model。
+- [x] item-model 删除三个仅委托 semantic owner 的公开
+  `vanilla_*_resource_id` compatibility API；内部 tooltip/predicate 仍消费 owner descriptor 的
+  description/sentiment/category/effect metadata，没有复制 lookup 或改变展示语义。
+- [x] gameplay-id/bootstrap generator 分别输出 attribute、mob-effect、painting-variant 的
+  production-source reverse guard，阻止这些 lookup bridge 回流；generator update/check、
+  protocol/item-model/native focused tests 与 workspace gate 通过。

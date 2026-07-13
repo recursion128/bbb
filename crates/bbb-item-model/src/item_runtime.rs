@@ -85,10 +85,8 @@ use profile_skin::{entity_player_skin_model, profile_default_player_skin, profil
 use crate::font::load_hud_font_atlas;
 
 mod attributes;
-pub use attributes::vanilla_attribute_resource_id;
 mod icon;
 mod mob_effects;
-pub use mob_effects::vanilla_mob_effect_resource_id;
 mod profiles;
 mod tables;
 mod tooltip;
@@ -99,10 +97,7 @@ pub use profiles::{NativeDynamicPlayerSkinDownload, NativeDynamicPlayerTextureDo
 use tables::*;
 #[cfg(test)]
 use tooltip::*;
-pub use tooltip::{
-    vanilla_painting_variant_resource_id, NativeItemMapTooltipData, NativeItemTooltipLine,
-    NativeItemTooltipOptions,
-};
+pub use tooltip::{NativeItemMapTooltipData, NativeItemTooltipLine, NativeItemTooltipOptions};
 
 const FIREWORK_ROCKET_ITEM_ID: &str = "minecraft:firework_rocket";
 

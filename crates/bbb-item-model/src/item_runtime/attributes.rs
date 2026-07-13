@@ -29,10 +29,6 @@ pub(super) fn vanilla_attribute(attribute_id: i32) -> Option<VanillaAttribute> {
     bbb_protocol::attribute_types::vanilla_attribute_type(attribute_id).map(project_attribute)
 }
 
-pub fn vanilla_attribute_resource_id(attribute_id: i32) -> Option<&'static str> {
-    Some(bbb_protocol::attribute_types::vanilla_attribute_type(attribute_id)?.resource_id)
-}
-
 pub(super) fn vanilla_attribute_for_key(key: &str) -> Option<VanillaAttribute> {
     bbb_protocol::attribute_types::vanilla_attribute_type_for_resource_id(key)
         .map(project_attribute)
@@ -52,16 +48,6 @@ mod tests {
             bbb_protocol::attribute_types::VANILLA_ATTRIBUTE_TYPES.len(),
             35
         );
-        assert_eq!(
-            vanilla_attribute_resource_id(2),
-            Some("minecraft:attack_damage")
-        );
-        assert_eq!(
-            vanilla_attribute_resource_id(34),
-            Some("minecraft:waypoint_receive_range")
-        );
-        assert_eq!(vanilla_attribute_resource_id(35), None);
-        assert_eq!(vanilla_attribute_resource_id(-1), None);
         assert_eq!(
             vanilla_attribute(2),
             Some(attribute(

@@ -7,6 +7,7 @@ use std::{
 use bbb_control::NetCounters;
 use bbb_net::NetCommand;
 use bbb_protocol::{
+    attribute_types::vanilla_attribute_type,
     entity_types::{
         vanilla_entity_resource_id_for_type_id, VANILLA_ENTITY_TYPE_ALLAY_ID,
         VANILLA_ENTITY_TYPE_ARMADILLO_ID, VANILLA_ENTITY_TYPE_ARMOR_STAND_ID,
@@ -63,6 +64,7 @@ use bbb_protocol::{
         VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
         VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID, VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID,
     },
+    mob_effect_types::vanilla_mob_effect_type,
     packets::{
         BlockEntityTagQuery, BlockPos as ProtocolBlockPos, ChangeGameModeCommand,
         ConsumeEffectSummary, Direction as ProtocolDirection, EntityDataEnumSerializer,
@@ -77,7 +79,7 @@ use bbb_protocol::{
     PROTOCOL_VERSION,
 };
 use bbb_world::{
-    vanilla_minecart_default_display_offset,
+    vanilla_minecart_default_display_offset, vanilla_painting_variant_resource_id,
     VANILLA_ABSTRACT_CHESTED_HORSE_CHEST_DATA_ID as ABSTRACT_CHESTED_HORSE_CHEST_DATA_ID,
     VANILLA_ABSTRACT_MINECART_CUSTOM_DISPLAY_BLOCK_DATA_ID as MINECART_CUSTOM_DISPLAY_BLOCK_DATA_ID,
     VANILLA_ABSTRACT_MINECART_DISPLAY_OFFSET_DATA_ID as MINECART_DISPLAY_OFFSET_DATA_ID,
@@ -329,11 +331,7 @@ use crate::entity_scene::{
 use crate::entity_scene::{PUFFERFISH_DEFAULT_PUFF_STATE, PUFFERFISH_PUFF_STATE_DATA_ID};
 use crate::entity_scene::{WITHER_SKULL_DANGEROUS_DATA_ID, WITHER_SKULL_DEFAULT_DANGEROUS};
 use crate::terrain_runtime::TerrainUploadState;
-use bbb_item_model::{
-    vanilla_attribute_resource_id, vanilla_mob_effect_resource_id,
-    vanilla_painting_variant_resource_id, vanilla_potion_resource_id, ItemModelKeybindContext,
-    NativeItemRuntime,
-};
+use bbb_item_model::{vanilla_potion_resource_id, ItemModelKeybindContext, NativeItemRuntime};
 use bbb_renderer::{
     BannerPatternKind, CatModelVariant, ChickenModelVariant, CowModelVariant, FrogModelVariant,
     PigModelVariant, VillagerModelType, WolfModelVariant, ZombieNautilusModelVariant,
@@ -5151,7 +5149,9 @@ fn debug_mob_effect_holder_set_snbt(
 
     let effects = effect_registry_ids
         .iter()
-        .map(|effect_id| vanilla_mob_effect_resource_id(*effect_id).map(debug_snbt_string))
+        .map(|effect_id| {
+            vanilla_mob_effect_type(*effect_id).map(|effect| debug_snbt_string(effect.resource_id))
+        })
         .collect::<Option<Vec<_>>>()?;
     match effects.as_slice() {
         [] => Some("[]".to_string()),
@@ -5163,7 +5163,7 @@ fn debug_mob_effect_holder_set_snbt(
 fn debug_mob_effect_instance_snbt(effect: &MobEffectInstanceSummary) -> Option<String> {
     let mut fields = vec![format!(
         "id: {}",
-        debug_snbt_string(vanilla_mob_effect_resource_id(effect.effect_id)?)
+        debug_snbt_string(vanilla_mob_effect_type(effect.effect_id)?.resource_id)
     )];
     fields.extend(debug_mob_effect_details_fields(
         effect.amplifier,

@@ -155,6 +155,10 @@ Owner: `scripts/` + each generated catalog's semantic crate
   resource-membership audit, and emit every new generated-catalog consumer guard
   or migrated generated-catalog consumer guard from that catalog's generator
   rather than hand-editing its checked-in output.
+  Generated-catalog consumers must import the semantic owner directly; remove
+  compatibility lookup functions whose only behavior is forwarding an
+  id/resource lookup across an unrelated crate boundary, and have the owner
+  generator reject those bridges from production sources.
   Generate a membership only when an exact tag, class, property, or registry
   source fact owns that semantic; do not substitute approximate tags.
   Terrain render layer is deliberately excluded from this catalog work because

@@ -575,7 +575,7 @@ def render_painting_variants(entries: list[PaintingVariantEntry]) -> str:
             "                let display = path.to_string_lossy();",
             "                if display.ends_with(\"/painting_variants.rs\") || display.ends_with(\"/tests.rs\") || display.contains(\"/tests/\") { continue; }",
             "                let source = fs::read_to_string(&path).unwrap();",
-            "                if source.contains(\"PAINTING_VARIANT_SIZES\") || source.contains(\"struct VanillaPaintingVariant\") || source.contains(\"const VANILLA_PAINTING_VARIANTS\") { violations.push(display.to_string()); }",
+            "                if source.contains(\"PAINTING_VARIANT_SIZES\") || source.contains(\"struct VanillaPaintingVariant\") || source.contains(\"const VANILLA_PAINTING_VARIANTS\") || source.contains(\"fn vanilla_painting_variant_resource_id(\") { violations.push(display.to_string()); }",
             "            }",
             "        }",
             "        let mut violations = Vec::new();",
