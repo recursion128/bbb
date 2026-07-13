@@ -387,8 +387,8 @@ client tick 推进语义，因此 canonical/runtime 保持 partial。
 RemoveEntities 的 int-id list wire、world cleanup 与 tests 已闭合；vanilla listener 的
 `removedPlayerVehicleId` correction recovery/debug-subscriber side effect 尚未建模，因此只保留
 runtime 格 partial。
-SetEntityLink 的 fixed i32 wire、ownership 与 tests 已闭合；当前 world apply 尚未用 vanilla
-`Leashable` capability 限制 source entity，因此 canonical/runtime 保持 partial。
+SetEntityLink 的 fixed i32 wire、ownership、generated class/interface `Leashable` capability gate 与
+delayed holder/clear tests 已闭合，五格全部 complete；非 Leashable source 不再获得 synthetic leash state。
 SetPassengers 的 VarInt array wire、canonical mount graph 与 tests 已闭合；首次本地 mount 的
 removed-vehicle recovery reset、boat yaw 对齐及 onboarding overlay/narration 尚未建模，因此只保留
 runtime 格 partial。

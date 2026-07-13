@@ -336,6 +336,44 @@ pub fn vanilla_entity_metadata_type_is_living(entity_type_id: i32) -> bool {
         .unwrap_or(false)
 }
 
+/// Returns whether the generated vanilla runtime class implements `Leashable`,
+/// directly or through its superclass/interface graph.
+///
+/// This is extracted Java type-relationship data only. Client leash packet
+/// application remains owned by the entity update path.
+pub fn vanilla_entity_metadata_type_is_leashable(entity_type_id: i32) -> bool {
+    const LEASHABLE: &str = "net.minecraft.world.entity.Leashable";
+    let Some(runtime_class) = VANILLA_ENTITY_TYPE_METADATA_26_1
+        .get(usize::try_from(entity_type_id).unwrap_or(usize::MAX))
+        .and_then(|entry| entry.runtime_class)
+    else {
+        return false;
+    };
+    vanilla_class_is_or_implements(runtime_class, LEASHABLE, 0)
+}
+
+fn vanilla_class_is_or_implements(java_class: &str, target: &str, depth: usize) -> bool {
+    if java_class == target {
+        return true;
+    }
+    if depth >= VANILLA_ENTITY_METADATA_CLASSES_26_1.len() {
+        return false;
+    }
+    let Some(class) = VANILLA_ENTITY_METADATA_CLASSES_26_1
+        .iter()
+        .find(|entry| entry.java_class == java_class)
+    else {
+        return false;
+    };
+    class
+        .interfaces
+        .iter()
+        .any(|interface| vanilla_class_is_or_implements(interface, target, depth + 1))
+        || class
+            .superclass
+            .is_some_and(|superclass| vanilla_class_is_or_implements(superclass, target, depth + 1))
+}
+
 /// Returns whether the generated vanilla runtime class inherits `Animal`.
 pub fn vanilla_entity_metadata_type_is_animal(entity_type_id: i32) -> bool {
     VANILLA_ENTITY_TYPE_METADATA_26_1
@@ -495,8 +533,9 @@ mod tests {
     };
     use bbb_protocol::entity_types::{
         VANILLA_ENTITY_TYPES, VANILLA_ENTITY_TYPE_ARMOR_STAND_ID, VANILLA_ENTITY_TYPE_AXOLOTL_ID,
-        VANILLA_ENTITY_TYPE_DOLPHIN_ID, VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID,
-        VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID, VANILLA_ENTITY_TYPE_MINECART_ID,
+        VANILLA_ENTITY_TYPE_CHICKEN_ID, VANILLA_ENTITY_TYPE_DOLPHIN_ID,
+        VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID, VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID,
+        VANILLA_ENTITY_TYPE_MINECART_ID, VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
         VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID,
         VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
     };
@@ -551,6 +590,24 @@ mod tests {
 
         assert_eq!(VANILLA_SLIME_SIZE_DATA_ID, 16);
         assert_eq!(VANILLA_SHULKER_ATTACH_FACE_DATA_ID, 16);
+    }
+
+    #[test]
+    fn generated_class_graph_resolves_leashable_capability() {
+        assert!(vanilla_entity_metadata_type_is_leashable(
+            VANILLA_ENTITY_TYPE_CHICKEN_ID
+        ));
+        assert!(vanilla_entity_metadata_type_is_leashable(
+            VANILLA_ENTITY_TYPE_OAK_BOAT_ID
+        ));
+        assert!(!vanilla_entity_metadata_type_is_leashable(
+            VANILLA_ENTITY_TYPE_MINECART_ID
+        ));
+        assert!(!vanilla_entity_metadata_type_is_leashable(
+            VANILLA_ENTITY_TYPE_PLAYER_ID
+        ));
+        assert!(!vanilla_entity_metadata_type_is_leashable(-1));
+        assert!(!vanilla_entity_metadata_type_is_leashable(157));
     }
 
     #[test]

@@ -12898,3 +12898,11 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   `GameRenderer.bobHurt` 的 death Z、hurt Y/Z/Y 顺序把 presentation transform 后乘到 projection，
   不污染拾取/排序使用的 canonical camera pose。`--damage-tilt-strength` 复刻 vanilla `0..1` option，
   默认 `1.0`；HurtAnimation packet coverage 五格闭合，不推导客户端权威伤害。
+
+## 2026-07-13：SetEntityLink Leashable capability gate
+
+- [x] world 通过 checked-in vanilla class catalog 的 superclass/interface 图判定 entity type 是否实现
+  `Leashable`，不维护独立 type-id 表；Mob 与 AbstractBoat 层级接受 delayed holder，Minecart、Player、
+  base Entity 子类拒绝 synthetic leash state。
+- [x] `apply_set_entity_link` 保留未知 destination delayed id、`dest=0` clear、holder removal cleanup 与既有
+  counters；unknown/non-Leashable source 都明确 ignored。SetEntityLink packet coverage 五格闭合。

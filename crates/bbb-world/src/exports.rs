@@ -4,7 +4,7 @@ pub use crate::entities::state::*;
 pub use crate::entities::VANILLA_EXPERIENCE_ORB_DEFAULT_VALUE;
 pub use crate::entities::{
     vanilla_entity_metadata_accessor_for_entity_type, vanilla_entity_metadata_field,
-    vanilla_entity_metadata_schema,
+    vanilla_entity_metadata_schema, vanilla_entity_metadata_type_is_leashable,
     vanilla_entity_metadata_unique_accessor_for_entity_type_and_serializer,
     vanilla_entity_type_is_abstract_piglin, vanilla_entity_type_is_boat,
     vanilla_entity_type_is_chest_boat, vanilla_entity_type_is_hurting_projectile,

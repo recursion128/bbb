@@ -7,7 +7,9 @@ use bbb_protocol::packets::{
 use crate::WorldStore;
 
 use super::movement::entity_vec3;
-use super::schema::vanilla_entity_metadata_type_is_living;
+use super::schema::{
+    vanilla_entity_metadata_type_is_leashable, vanilla_entity_metadata_type_is_living,
+};
 
 /// Vanilla `ClientboundAnimatePacket.SWING_MAIN_HAND` action id: the entity swings its main hand.
 const SWING_MAIN_HAND_ACTION: u8 = 0;
@@ -92,6 +94,14 @@ impl WorldStore {
 
     pub fn apply_set_entity_link(&mut self, packet: ProtocolSetEntityLink) -> bool {
         self.counters.entity_link_updates_received += 1;
+        if !self
+            .entities
+            .entity_type_id(packet.source_id)
+            .is_some_and(vanilla_entity_metadata_type_is_leashable)
+        {
+            self.counters.entity_link_updates_ignored += 1;
+            return false;
+        }
         let Some(()) = self.entities.with_leash_mut(packet.source_id, |leash| {
             leash.holder_id = if packet.dest_id == 0 {
                 None

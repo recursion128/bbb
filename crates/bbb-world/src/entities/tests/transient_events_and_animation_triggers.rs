@@ -1643,7 +1643,10 @@ fn probes_entity_status_from_world_store() {
 #[test]
 fn tracks_entity_link_updates() {
     let mut store = WorldStore::new();
-    store.apply_add_entity(protocol_add_entity(10));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        10,
+        VANILLA_ENTITY_TYPE_CHICKEN_ID,
+    ));
     store.apply_add_entity(protocol_add_entity(20));
 
     assert!(store.apply_set_entity_link(ProtocolSetEntityLink {
@@ -1685,9 +1688,19 @@ fn tracks_entity_link_updates() {
     assert_eq!(store.probe_entity(10).unwrap().leash_holder_id, None);
     assert_eq!(store.entities.leash(10).unwrap().holder_id, None);
 
-    assert_eq!(store.counters().entity_link_updates_received, 5);
+    store.apply_add_entity(protocol_add_entity_with_type(
+        30,
+        VANILLA_ENTITY_TYPE_MINECART_ID,
+    ));
+    assert!(!store.apply_set_entity_link(ProtocolSetEntityLink {
+        source_id: 30,
+        dest_id: 20,
+    }));
+    assert_eq!(store.probe_entity(30).unwrap().leash_holder_id, None);
+
+    assert_eq!(store.counters().entity_link_updates_received, 6);
     assert_eq!(store.counters().entity_link_updates_applied, 4);
-    assert_eq!(store.counters().entity_link_updates_ignored, 1);
+    assert_eq!(store.counters().entity_link_updates_ignored, 2);
 }
 
 #[test]

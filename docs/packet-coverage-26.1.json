@@ -11660,10 +11660,11 @@
         "canonical_apply": {
           "evidence": [
             "crates/bbb-world/src/entities/updates.rs#apply_set_entity_link",
+            "crates/bbb-world/src/entities/schema.rs#vanilla_entity_metadata_type_is_leashable",
             "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleEntityLinkPacket"
           ],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "decode": {
           "evidence": [
@@ -11683,14 +11684,16 @@
         "runtime_side_effect": {
           "evidence": [
             "crates/bbb-world/src/entities/updates.rs#apply_set_entity_link",
+            "crates/bbb-world/src/entities/schema.rs#vanilla_entity_metadata_type_is_leashable",
             "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleEntityLinkPacket"
           ],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [
             "crates/bbb-protocol/src/packets/entities/tests.rs#decodes_set_entity_link_packet",
+            "crates/bbb-world/src/entities/schema.rs#generated_class_graph_resolves_leashable_capability",
             "crates/bbb-world/src/entities/tests/transient_events_and_animation_triggers.rs#tracks_entity_link_updates",
             "crates/bbb-net/src/event_stream.rs#play_entity_state_packets_emit_matching_events_without_responses"
           ],
