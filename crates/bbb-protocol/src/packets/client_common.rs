@@ -1,6 +1,10 @@
 use serde::{Deserialize, Serialize};
 
-use crate::codec::{Decoder, ProtocolError, Result};
+use crate::{
+    codec::{Decoder, ProtocolError, Result},
+    nbt_summary::decode_nbt_summary_from_decoder,
+    NbtSummaryValue,
+};
 
 use super::read_resource_location;
 
@@ -27,7 +31,7 @@ pub struct ShowDialog {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DialogHolder {
     Reference { registry_id: i32 },
-    Direct { raw_dialog_payload: Vec<u8> },
+    Direct { dialog: NbtSummaryValue },
 }
 
 pub(crate) fn decode_custom_payload(decoder: &mut Decoder<'_>) -> Result<CustomPayload> {
@@ -61,11 +65,7 @@ pub(crate) fn decode_show_dialog(decoder: &mut Decoder<'_>) -> Result<ShowDialog
     let holder_id = decoder.read_var_i32()?;
     let dialog = if holder_id == 0 {
         DialogHolder::Direct {
-            raw_dialog_payload: decode_remaining_payload(
-                decoder,
-                MAX_DIALOG_PAYLOAD,
-                "direct dialog payload",
-            )?,
+            dialog: decode_direct_dialog(decoder, "direct dialog payload")?,
         }
     } else if holder_id > 0 {
         if !decoder.is_empty() {
@@ -88,13 +88,29 @@ pub(crate) fn decode_show_dialog(decoder: &mut Decoder<'_>) -> Result<ShowDialog
 pub(crate) fn decode_context_free_show_dialog(decoder: &mut Decoder<'_>) -> Result<ShowDialog> {
     Ok(ShowDialog {
         dialog: DialogHolder::Direct {
-            raw_dialog_payload: decode_remaining_payload(
-                decoder,
-                MAX_DIALOG_PAYLOAD,
-                "context-free dialog payload",
-            )?,
+            dialog: decode_direct_dialog(decoder, "context-free dialog payload")?,
         },
     })
+}
+
+fn decode_direct_dialog(decoder: &mut Decoder<'_>, what: &'static str) -> Result<NbtSummaryValue> {
+    let len = decoder.remaining_len();
+    if len > MAX_DIALOG_PAYLOAD {
+        return Err(ProtocolError::PacketTooLarge(len, MAX_DIALOG_PAYLOAD));
+    }
+    let dialog = decode_nbt_summary_from_decoder(decoder)?
+        .ok_or_else(|| ProtocolError::InvalidData(format!("{what} cannot be an end tag")))?;
+    if !matches!(dialog, NbtSummaryValue::Compound(_)) {
+        return Err(ProtocolError::InvalidData(format!(
+            "{what} root must be a compound tag"
+        )));
+    }
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(format!(
+            "trailing bytes after {what}"
+        )));
+    }
+    Ok(dialog)
 }
 
 fn decode_remaining_payload(

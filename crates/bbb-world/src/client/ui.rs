@@ -7,6 +7,7 @@ use bbb_protocol::{
         PongResponse as ProtocolPongResponse, RecipeDisplaySummary as ProtocolRecipeDisplaySummary,
         ShowDialog as ProtocolShowDialog,
     },
+    NbtSummaryValue,
 };
 use serde::{Deserialize, Serialize};
 
@@ -47,7 +48,8 @@ pub struct ClientUiState {
 pub struct DialogState {
     pub holder_kind: String,
     pub registry_id: Option<i32>,
-    pub raw_dialog_payload_len: usize,
+    #[serde(default)]
+    pub direct_dialog: Option<NbtSummaryValue>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -326,12 +328,12 @@ impl DialogState {
             DialogHolder::Reference { registry_id } => Self {
                 holder_kind: "reference".to_string(),
                 registry_id: Some(registry_id),
-                raw_dialog_payload_len: 0,
+                direct_dialog: None,
             },
-            DialogHolder::Direct { raw_dialog_payload } => Self {
+            DialogHolder::Direct { dialog } => Self {
                 holder_kind: "direct".to_string(),
                 registry_id: None,
-                raw_dialog_payload_len: raw_dialog_payload.len(),
+                direct_dialog: Some(dialog),
             },
         }
     }
@@ -380,6 +382,7 @@ mod tests {
         SetPlayerInventory as ProtocolSetPlayerInventory, Vec3d as ProtocolVec3d,
         WrittenBookContentSummary,
     };
+    use bbb_protocol::NbtSummaryEntry;
     use uuid::Uuid;
 
     #[test]
@@ -396,7 +399,10 @@ mod tests {
         store.apply_low_disk_space_warning();
         store.apply_show_dialog(ProtocolShowDialog {
             dialog: DialogHolder::Direct {
-                raw_dialog_payload: vec![0xaa, 0xbb, 0xcc],
+                dialog: NbtSummaryValue::Compound(vec![NbtSummaryEntry {
+                    name: "type".to_string(),
+                    value: NbtSummaryValue::String("minecraft:notice".to_string()),
+                }]),
             },
         });
 
@@ -406,7 +412,10 @@ mod tests {
             Some(&DialogState {
                 holder_kind: "direct".to_string(),
                 registry_id: None,
-                raw_dialog_payload_len: 3,
+                direct_dialog: Some(NbtSummaryValue::Compound(vec![NbtSummaryEntry {
+                    name: "type".to_string(),
+                    value: NbtSummaryValue::String("minecraft:notice".to_string()),
+                }])),
             })
         );
 
@@ -419,7 +428,7 @@ mod tests {
             Some(&DialogState {
                 holder_kind: "reference".to_string(),
                 registry_id: Some(11),
-                raw_dialog_payload_len: 0,
+                direct_dialog: None,
             })
         );
 
@@ -565,7 +574,7 @@ mod tests {
         let mut store = WorldStore::new();
         store.apply_show_dialog(ProtocolShowDialog {
             dialog: DialogHolder::Direct {
-                raw_dialog_payload: vec![1, 2, 3],
+                dialog: NbtSummaryValue::Compound(Vec::new()),
             },
         });
 

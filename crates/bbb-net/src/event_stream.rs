@@ -1922,7 +1922,7 @@ mod tests {
 
         let show_dialog = packets::ShowDialog {
             dialog: packets::DialogHolder::Direct {
-                raw_dialog_payload: vec![0xaa, 0xbb, 0xcc],
+                dialog: bbb_protocol::NbtSummaryValue::Compound(Vec::new()),
             },
         };
         assert_matching_event!(

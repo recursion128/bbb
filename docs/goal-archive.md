@@ -13579,3 +13579,20 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] compound tooltip 的 text/color/bold wire、raw tree 与 styled projection，以及 world
   apply state 均有定向测试；`CLIENTBOUND_COMMAND_SUGGESTIONS` canonical cell
   关闭，scroll/select/hover/narration list UI 继续由 runtime partial 唯一跟踪；workspace gate 通过。
+
+## 2026-07-13：Render interactive command suggestions
+
+- [x] native ChatScreen 按 vanilla `CommandSuggestions` 提交最多 10 行的滚动列表、排序、
+  selection suffix、上下/Tab/Shift+Tab 循环、Escape 先隐藏及鼠标 hover/scroll/click；rich
+  tooltip 与确定性的 selection narration payload 一并保留。
+- [x] renderer、pointer capture、IME/keyboard 与关闭后 recapture 路径均有状态/像素测试；仓库
+  尚无 narrator/TTS sink，因此只保留 narration payload，不虚构播放 owner；workspace gate 通过。
+
+## 2026-07-13：Retain bounded direct dialog NBT
+
+- [x] 对照 `Dialog.CONTEXT_FREE_STREAM_CODEC` 与 registry-friendly holder codec，configuration/play
+  的 direct holder 不再保留任意 raw bytes，而是通过共享 network-NBT owner 严格消费一个
+  Compound root；world canonical `DialogState` 原样保留结构化 NBT。
+- [x] non-compound、trailing、2 MiB packet cap 与 4096 compound-entry cap 均有 protocol tests；
+  referenced holder resolution、typed `Dialog` codec/screen、previous-screen 恢复和 custom click
+  仍作为同一 TODO 域保留。

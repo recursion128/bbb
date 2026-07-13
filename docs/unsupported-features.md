@@ -63,8 +63,8 @@ Owner: `bbb-protocol`
   current connection read-only, carry cookies/seen-player/insecure-chat transfer
   state, and reconnect with the Transfer intent instead of only recording the
   requested host and port.
-- Decode configuration/play dialog holders into typed `Dialog` data, render the
-  corresponding screens, restore the previous screen on clear, and encode
+- Decode the retained bounded direct-holder NBT and synchronized referenced holders
+  into typed `Dialog` data, render the corresponding screens, restore the previous screen on clear, and encode
   resource-id plus bounded optional-NBT custom click actions in the active state.
 - Decode block/chunk/entity/event debug subscription payloads through the synced
   `DEBUG_SUBSCRIPTION` registry codecs, retain typed values with vanilla game-time

@@ -2709,7 +2709,7 @@ mod tests {
         probe
             .handle_play_packet(PlayClientbound::ShowDialog(ShowDialog {
                 dialog: DialogHolder::Direct {
-                    raw_dialog_payload: vec![0xaa, 0xbb, 0xcc],
+                    dialog: bbb_protocol::NbtSummaryValue::Compound(Vec::new()),
                 },
             }))
             .await

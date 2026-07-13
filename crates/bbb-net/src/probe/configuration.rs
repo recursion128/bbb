@@ -436,7 +436,7 @@ mod tests {
             Some(&DialogState {
                 holder_kind: "reference".to_string(),
                 registry_id: Some(7),
-                raw_dialog_payload_len: 0,
+                direct_dialog: None,
             })
         );
         assert_eq!(

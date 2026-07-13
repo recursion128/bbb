@@ -318,7 +318,8 @@ configuration client-information 的 startup command owner、language bound、9 
 configuration finish 无 play duplicate 与无 ack 语义已闭合；仓库禁止的 in-game option UI
 不再作为 play packet 的虚构 command surface。
 dialog unit clear 的 wire/ownership/canonical projection 已闭合，但 previous-screen 恢复仍 partial；
-show-dialog 仍缺 `Dialog` semantic codec/screen，custom-click 仍缺 NBT encoder 与 command surface。
+show-dialog 的 direct/context-free holder 已按单一 bounded network-NBT tree 严格消费并保留 canonical
+结构，仍缺 referenced holder 解析与 `Dialog` semantic codec/screen；custom-click 仍缺 NBT encoder 与 command surface。
 configuration custom-payload 的 Brand/Discarded wire、bounded 自动 brand send、canonical server brand 与
 diagnostics 已闭合；Mojang telemetry callback 按无 external sender 的架构边界为 not-applicable。
 configuration registry-data/update-tags 的 wire、ownership、packet projection 与 tests 已审计；

@@ -1227,7 +1227,7 @@
         "tests": {
           "evidence": [
             "crates/bbb-protocol/src/packets/client_common/tests.rs#decodes_show_dialog_reference_holder",
-            "crates/bbb-protocol/src/packets/client_common/tests.rs#decodes_show_dialog_direct_holder_as_raw_payload",
+            "crates/bbb-protocol/src/packets/client_common/tests.rs#decodes_show_dialog_direct_holder_as_bounded_nbt",
             "crates/bbb-world/src/client/ui.rs#tracks_client_ui_warnings_and_dialogs",
             "crates/bbb-protocol/src/packet_coverage.rs#coverage_ledger_matches_every_packet_catalog_entry_in_order"
           ],
@@ -2214,6 +2214,7 @@
         "decode": {
           "evidence": [
             "crates/bbb-protocol/src/packets/client_common.rs#decode_context_free_show_dialog",
+            "crates/bbb-protocol/src/packets/tests.rs#decodes_configuration_common_packets",
             "vanilla:net/minecraft/network/protocol/common/ClientboundShowDialogPacket.java#CONTEXT_FREE_STREAM_CODEC"
           ],
           "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
@@ -6273,7 +6274,7 @@
         "tests": {
           "evidence": [
             "crates/bbb-protocol/src/packets/client_common/tests.rs#decodes_show_dialog_reference_holder",
-            "crates/bbb-protocol/src/packets/client_common/tests.rs#decodes_show_dialog_direct_holder_as_raw_payload",
+            "crates/bbb-protocol/src/packets/client_common/tests.rs#decodes_show_dialog_direct_holder_as_bounded_nbt",
             "crates/bbb-world/src/client/ui.rs#tracks_client_ui_warnings_and_dialogs",
             "crates/bbb-protocol/src/packet_coverage.rs#coverage_ledger_matches_every_packet_catalog_entry_in_order"
           ],
@@ -13856,7 +13857,11 @@
         "decode": {
           "evidence": [
             "crates/bbb-protocol/src/packets/client_common/tests.rs#decodes_show_dialog_reference_holder",
-            "crates/bbb-protocol/src/packets/client_common/tests.rs#decodes_show_dialog_direct_holder_as_raw_payload",
+            "crates/bbb-protocol/src/packets/client_common/tests.rs#decodes_show_dialog_direct_holder_as_bounded_nbt",
+            "crates/bbb-protocol/src/packets/client_common/tests.rs#rejects_show_dialog_direct_holder_with_non_compound_root",
+            "crates/bbb-protocol/src/packets/client_common/tests.rs#rejects_show_dialog_direct_holder_with_trailing_bytes",
+            "crates/bbb-protocol/src/packets/client_common/tests.rs#rejects_show_dialog_direct_holder_with_excessive_compound_entries",
+            "crates/bbb-protocol/src/packets/client_common/tests.rs#rejects_oversized_show_dialog_direct_holder_before_nbt_allocation",
             "vanilla:net/minecraft/network/protocol/common/ClientboundShowDialogPacket.java#STREAM_CODEC"
           ],
           "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",

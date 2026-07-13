@@ -541,7 +541,7 @@ fn client_common_waypoint_events_update_world_and_snapshot_counters() {
         Some(&bbb_world::DialogState {
             holder_kind: "reference".to_string(),
             registry_id: Some(11),
-            raw_dialog_payload_len: 0,
+            direct_dialog: None,
         })
     );
     let world_counters = world.counters();

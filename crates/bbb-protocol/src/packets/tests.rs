@@ -1,7 +1,7 @@
 use super::*;
 use crate::{
     codec::{offline_player_uuid, Decoder, Encoder, ProtocolError},
-    ids,
+    ids, NbtSummaryEntry, NbtSummaryValue,
 };
 use std::collections::{BTreeMap, BTreeSet};
 use uuid::Uuid;
@@ -3277,7 +3277,7 @@ fn decodes_configuration_common_packets() {
         .contains("trailing bytes after clear dialog packet"));
 
     let mut show_dialog_payload = Encoder::new();
-    show_dialog_payload.write_bytes(&[1, 2, 3, 4]);
+    show_dialog_payload.write_bytes(&nbt_compound_with_string("type", "minecraft:notice"));
     assert_eq!(
         decode_configuration_clientbound(
             ids::configuration::CLIENTBOUND_SHOW_DIALOG,
@@ -3286,7 +3286,10 @@ fn decodes_configuration_common_packets() {
         .unwrap(),
         ConfigurationClientbound::ShowDialog(ShowDialog {
             dialog: DialogHolder::Direct {
-                raw_dialog_payload: vec![1, 2, 3, 4],
+                dialog: NbtSummaryValue::Compound(vec![NbtSummaryEntry {
+                    name: "type".to_string(),
+                    value: NbtSummaryValue::String("minecraft:notice".to_string()),
+                }]),
             },
         })
     );
