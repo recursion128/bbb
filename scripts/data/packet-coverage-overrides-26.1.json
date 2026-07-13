@@ -19,7 +19,7 @@
       },
       "state_guard": {
         "evidence": [
-          "crates/bbb-net/src/event_stream.rs#play_player_position_currently_sends_loaded_after_first_sync_only",
+          "crates/bbb-net/src/event_stream.rs#play_player_position_defers_player_loaded_to_native_readiness",
           "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleMovePlayer"
         ],
         "status": "complete"
@@ -27,7 +27,7 @@
       "tests": {
         "evidence": [
           "crates/bbb-protocol/src/packets/movement.rs#decodes_player_position_strictly_and_encodes_ack_pair",
-          "crates/bbb-net/src/event_stream.rs#play_player_position_currently_sends_loaded_after_first_sync_only"
+          "crates/bbb-net/src/event_stream.rs#play_player_position_defers_player_loaded_to_native_readiness"
         ],
         "status": "complete"
       }
@@ -674,11 +674,12 @@
       },
       "command_surface": {
         "evidence": [
-          "crates/bbb-net/src/event_stream/play.rs#player_loaded_sent",
+          "crates/bbb-native/src/level_load_runtime.rs#tick",
+          "crates/bbb-net/src/types/commands.rs#PlayerLoaded",
+          "crates/bbb-net/src/driver/commands.rs#send_player_loaded",
           "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#notifyPlayerLoaded"
         ],
-        "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-        "status": "partial"
+        "status": "complete"
       },
       "encoder": {
         "evidence": [
@@ -689,19 +690,27 @@
       },
       "state_guard": {
         "evidence": [
-          "crates/bbb-net/src/event_stream.rs#play_player_position_currently_sends_loaded_after_first_sync_only",
+          "crates/bbb-world/src/level.rs#level_chunks_load_start_advances_active_level_load_tracker_once",
+          "crates/bbb-native/src/terrain_runtime.rs#player_section_ready_requires_an_uploaded_in_height_chunk",
+          "crates/bbb-native/src/level_load_runtime.rs#player_loaded_waits_for_server_and_player_section_then_sends_once",
+          "crates/bbb-native/src/level_load_runtime.rs#player_loaded_uses_vanilla_shortcuts_and_strict_timeout",
+          "crates/bbb-native/src/level_load_runtime.rs#production_checks_level_readiness_after_terrain_upload",
+          "crates/bbb-net/src/driver.rs#drive_connection_sends_player_loaded_only_in_play",
           "vanilla:net/minecraft/client/multiplayer/LevelLoadTracker.java#isLevelReady"
         ],
-        "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-        "status": "partial"
+        "status": "complete"
       },
       "tests": {
         "evidence": [
           "crates/bbb-protocol/src/packets/tests.rs#encodes_player_loaded",
+          "crates/bbb-net/src/event_stream.rs#play_player_position_defers_player_loaded_to_native_readiness",
+          "crates/bbb-net/src/driver.rs#drive_connection_sends_player_loaded_only_in_play",
+          "crates/bbb-native/src/level_load_runtime.rs#player_loaded_waits_for_server_and_player_section_then_sends_once",
+          "crates/bbb-native/src/level_load_runtime.rs#player_loaded_uses_vanilla_shortcuts_and_strict_timeout",
+          "crates/bbb-native/src/level_load_runtime.rs#production_checks_level_readiness_after_terrain_upload",
           "crates/bbb-net/src/probe/play.rs#probe_player_position_currently_sends_loaded_after_first_sync_only"
         ],
-        "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-        "status": "partial"
+        "status": "complete"
       }
     },
     "play/clientbound/CLIENTBOUND_ADD_ENTITY": {
@@ -2511,7 +2520,7 @@
       "tests": {
         "evidence": [
           "crates/bbb-protocol/src/packets/movement.rs#player_position_update_applies_relative_state",
-          "crates/bbb-net/src/event_stream.rs#play_player_position_currently_sends_loaded_after_first_sync_only",
+          "crates/bbb-net/src/event_stream.rs#play_player_position_defers_player_loaded_to_native_readiness",
           "crates/bbb-world/src/client/local_player.rs#local_player_position_does_not_move_mounted_player"
         ],
         "status": "complete"

@@ -1,4 +1,7 @@
-use std::time::{Duration, Instant};
+use std::{
+    collections::HashSet,
+    time::{Duration, Instant},
+};
 
 use bbb_renderer::terrain::{
     build_terrain_mesh_layers_with_atlas_and_camera, TerrainCardinalLighting, TerrainCell,
@@ -39,6 +42,7 @@ pub(crate) struct TerrainUploadState {
     reload_all_chunks_requested: bool,
     texture_animation_tick: u64,
     last_texture_animation_at: Option<Instant>,
+    compiled_and_visible_chunks: HashSet<(i32, i32)>,
 }
 
 impl TerrainUploadState {
@@ -48,6 +52,20 @@ impl TerrainUploadState {
 
     pub(crate) fn request_reload_all_chunks(&mut self) {
         self.reload_all_chunks_requested = true;
+    }
+
+    pub(crate) fn is_player_section_compiled_and_visible(&self, world: &WorldStore) -> bool {
+        let Some(pose) = world.local_player_pose() else {
+            return false;
+        };
+        let block_y = pose.position.y.floor() as i32;
+        if !world.dimension().contains_y(block_y) {
+            return false;
+        }
+        self.compiled_and_visible_chunks.contains(&(
+            (pose.position.x.floor() as i32).div_euclid(16),
+            (pose.position.z.floor() as i32).div_euclid(16),
+        ))
     }
 
     #[cfg(test)]
@@ -158,6 +176,10 @@ pub(crate) fn maybe_upload_decoded_terrain(
 
     snapshots.sort_by_key(|snapshot| chunk_distance_key(snapshot.pos, center));
     let cardinal_lighting = terrain_cardinal_lighting(world);
+    let compiled_and_visible_chunks = snapshots
+        .iter()
+        .map(|snapshot| (snapshot.pos.x, snapshot.pos.z))
+        .collect();
     let renderer_snapshots: Vec<_> = snapshots
         .into_iter()
         .map(|snapshot| {
@@ -186,6 +208,7 @@ pub(crate) fn maybe_upload_decoded_terrain(
     upload.light_updates_applied = world_counters.light_updates_applied;
     upload.biome_updates_applied = world_counters.biome_updates_applied;
     upload.uploaded_chunks = chunk_count;
+    upload.compiled_and_visible_chunks = compiled_and_visible_chunks;
     upload.reload_all_chunks_requested = false;
 }
 
@@ -205,6 +228,7 @@ fn synchronize_empty_terrain_upload(
     upload.observed_biome_updates_applied = world_counters.biome_updates_applied;
     upload.last_observed_change = None;
     upload.reload_all_chunks_requested = false;
+    upload.compiled_and_visible_chunks.clear();
     clear_renderer
 }
 
@@ -399,8 +423,8 @@ fn block_uses_fluid_water_overlay(block_name: Option<&str>) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bbb_protocol::packets::SetChunkCacheCenter;
-    use bbb_world::{ChunkColumn, ChunkState, LightData};
+    use bbb_protocol::packets::{SetChunkCacheCenter, Vec3d};
+    use bbb_world::{ChunkColumn, ChunkState, LightData, LocalPlayerPoseState, WorldDimension};
 
     #[test]
     fn renderer_fluid_preserves_world_fluid_state() {
@@ -569,6 +593,37 @@ mod tests {
         assert!(!upload.reload_all_chunks_requested);
 
         assert!(!synchronize_empty_terrain_upload(&mut upload, &counters));
+    }
+
+    #[test]
+    fn player_section_ready_requires_an_uploaded_in_height_chunk() {
+        let mut world = WorldStore::with_dimension(WorldDimension {
+            min_y: -64,
+            height: 384,
+        });
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: Vec3d {
+                x: -0.25,
+                y: 64.0,
+                z: 16.0,
+            },
+            ..LocalPlayerPoseState::default()
+        });
+        let mut upload = TerrainUploadState::default();
+
+        assert!(!upload.is_player_section_compiled_and_visible(&world));
+        upload.compiled_and_visible_chunks.insert((-1, 1));
+        assert!(upload.is_player_section_compiled_and_visible(&world));
+
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: Vec3d {
+                x: -0.25,
+                y: 400.0,
+                z: 16.0,
+            },
+            ..LocalPlayerPoseState::default()
+        });
+        assert!(!upload.is_player_section_compiled_and_visible(&world));
     }
 
     #[test]

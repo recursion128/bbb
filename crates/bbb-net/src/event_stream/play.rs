@@ -115,11 +115,6 @@ impl EventStreamContext {
                     false,
                 );
                 self.conn.send_packet(id, &payload).await?;
-                if !self.player_loaded_sent {
-                    let (id, payload) = packets::encode_play_player_loaded();
-                    self.conn.send_packet(id, &payload).await?;
-                    self.player_loaded_sent = true;
-                }
             }
             PlayClientbound::PlayerRotation(update) => {
                 self.player_position_state = update.apply_to_state(self.player_position_state);

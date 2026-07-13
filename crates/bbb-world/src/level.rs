@@ -219,6 +219,7 @@ pub enum WorldLevelLoadPhase {
     Idle,
     WaitingForServer,
     WaitingForPlayerChunk,
+    ClientLoaded,
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -226,6 +227,10 @@ pub struct WorldLevelLoadState {
     pub phase: WorldLevelLoadPhase,
     pub starts: usize,
     pub loading_packets_received: usize,
+    #[serde(default)]
+    pub loads_completed: usize,
+    #[serde(default)]
+    pub timeouts: usize,
 }
 
 impl Default for WorldWeatherState {
@@ -363,15 +368,18 @@ impl WorldStore {
                     "block.minecraft.spawn.not_valid",
                 );
             }
-            VANILLA_CLIENT_GAME_EVENT_LEVEL_CHUNKS_LOAD_START_ID => {
-                if self.level_load.phase != WorldLevelLoadPhase::Idle {
+            VANILLA_CLIENT_GAME_EVENT_LEVEL_CHUNKS_LOAD_START_ID => match self.level_load.phase {
+                WorldLevelLoadPhase::WaitingForServer => {
                     self.level_load.loading_packets_received =
                         self.level_load.loading_packets_received.saturating_add(1);
-                    if self.level_load.phase == WorldLevelLoadPhase::WaitingForServer {
-                        self.level_load.phase = WorldLevelLoadPhase::WaitingForPlayerChunk;
-                    }
+                    self.level_load.phase = WorldLevelLoadPhase::WaitingForPlayerChunk;
                 }
-            }
+                WorldLevelLoadPhase::WaitingForPlayerChunk => {
+                    self.level_load.loading_packets_received =
+                        self.level_load.loading_packets_received.saturating_add(1);
+                }
+                WorldLevelLoadPhase::Idle | WorldLevelLoadPhase::ClientLoaded => {}
+            },
             VANILLA_CLIENT_GAME_EVENT_START_RAINING_ID => {
                 self.weather.rain_level = 0.0;
                 self.weather.raining = false;
@@ -508,6 +516,18 @@ impl WorldStore {
 
     pub fn level_load(&self) -> &WorldLevelLoadState {
         &self.level_load
+    }
+
+    pub fn complete_client_level_load(&mut self, timed_out: bool) -> bool {
+        if self.level_load.phase != WorldLevelLoadPhase::WaitingForPlayerChunk {
+            return false;
+        }
+        self.level_load.phase = WorldLevelLoadPhase::ClientLoaded;
+        self.level_load.loads_completed = self.level_load.loads_completed.saturating_add(1);
+        if timed_out {
+            self.level_load.timeouts = self.level_load.timeouts.saturating_add(1);
+        }
+        true
     }
 
     pub fn client_level_generation(&self) -> u64 {
@@ -1871,6 +1891,14 @@ mod tests {
         );
         assert_eq!(store.level_load().loading_packets_received, 2);
 
+        assert!(store.complete_client_level_load(false));
+        assert_eq!(store.level_load().phase, WorldLevelLoadPhase::ClientLoaded);
+        assert_eq!(store.level_load().loads_completed, 1);
+        assert_eq!(store.level_load().timeouts, 0);
+        assert!(!store.complete_client_level_load(true));
+        store.apply_game_event(event);
+        assert_eq!(store.level_load().loading_packets_received, 2);
+
         store.apply_respawn(&respawn_packet(0));
         assert_eq!(
             store.level_load().phase,
@@ -1878,6 +1906,12 @@ mod tests {
         );
         assert_eq!(store.level_load().starts, 2);
         assert_eq!(store.level_load().loading_packets_received, 0);
+        assert!(!store.complete_client_level_load(true));
+
+        store.apply_game_event(event);
+        assert!(store.complete_client_level_load(true));
+        assert_eq!(store.level_load().loads_completed, 2);
+        assert_eq!(store.level_load().timeouts, 1);
     }
 
     fn respawn_state_with_local_player_data() -> WorldStore {

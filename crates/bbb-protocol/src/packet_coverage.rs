@@ -700,7 +700,7 @@ mod tests {
     }
 
     #[test]
-    fn play_movement_family_keeps_load_readiness_and_teleport_effects_open() {
+    fn play_movement_family_keeps_only_teleport_effects_open() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let packets = BTreeSet::from([
             "SERVERBOUND_ACCEPT_TELEPORTATION",
@@ -729,12 +729,7 @@ mod tests {
             .collect();
         assert_eq!(
             partial,
-            BTreeSet::from([
-                ("CLIENTBOUND_PLAYER_POSITION", "runtime_side_effect"),
-                ("SERVERBOUND_PLAYER_LOADED", "command_surface"),
-                ("SERVERBOUND_PLAYER_LOADED", "state_guard"),
-                ("SERVERBOUND_PLAYER_LOADED", "tests"),
-            ])
+            BTreeSet::from([("CLIENTBOUND_PLAYER_POSITION", "runtime_side_effect")])
         );
     }
 

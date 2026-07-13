@@ -94,14 +94,11 @@ Owner: `bbb-protocol`
 - Complete play Login session initialization beyond the current player-id and
   partial dimension/gameplay projection: apply the retained raw secure-chat
   declaration to effective profile-key validation and the insecure-server
-  warning; reset level-bound debug/chat/camera/player state; and enter the
-  vanilla level-load readiness lifecycle without introducing an
-  `IntegratedServer` owner.
+  warning, and reset the remaining level-bound debug/chat/camera/player state.
 - Complete play Respawn lifecycle from
   `ClientPacketListener.handleRespawn`: reconstruct the local player according
-  to both keep bits, reset music/debug-subscriber state, and re-enter
-  `LevelLoadTracker` readiness. The current world reset/keep-bit baseline is not
-  the full client lifecycle.
+  to both keep bits and reset music/debug-subscriber state. The current world
+  reset/keep-bit baseline is not the full client lifecycle.
 - Recompute vanilla fuel values and creative search-tree tag membership after
   play UpdateTags reloads, following `ClientPacketListener.handleUpdateTags`.
 - Complete StatsScreen presentation parity: add narration. General, Items and Mobs now leave
@@ -122,13 +119,9 @@ Owner: `bbb-protocol`
   accessor schema like `SynchedEntityData.assignValues`, and close the remaining
   family consumers through the entity matrix. The current flat summary merge is
   not proof of complete metadata behavior.
-- Replace the current first-`ClientboundPlayerPositionPacket` trigger for
-  `ServerboundPlayerLoadedPacket` with vanilla `LevelLoadTracker` readiness:
-  wait for server loading packets, then for the local-player section to be
-  compiled and visible (with the spectator/dead/out-of-height shortcuts and
-  30-second timeout), and send exactly once. Also make teleport acknowledgement
-  echo the unchanged mounted-player transform and advance the block-state
-  prediction teleport sequence as `ClientPacketListener.handleMovePlayer` does.
+- Make teleport acknowledgement echo the unchanged mounted-player transform and
+  advance the block-state prediction teleport sequence as
+  `ClientPacketListener.handleMovePlayer` does.
 - Then cover play, movement, inventory, chat, interaction and command suggestion
   end to end.
 - Preserve rich Components for command-suggestion tooltips and render vanilla's
@@ -696,12 +689,11 @@ back into a todo. Do not delete these.
 
 ## Screens and presentation
 
-- Complete client game-event types 4/5/13: render the typed invalid-respawn-block
-  client-system message already stored by type 0, open WinScreen and send PerformRespawn on completion, implement
-  demo intro/hints with chat+narration, and finish the level-load tracker's section-ready/30-second
-  timeout/500ms close-delay stages after type 13 advances it to WaitingForPlayerChunk. The
-  other ten fixed 26.1 event types have canonical/presentation owners; none of
-  these four require an IntegratedServer.
+- Complete client game-event types 4/5 presentation: render the typed
+  invalid-respawn-block client-system message already stored by type 0, open
+  WinScreen and send PerformRespawn on completion, and implement demo intro/hints
+  with chat+narration. The other fixed 26.1 event types have canonical/runtime
+  owners; neither remaining presentation branch requires an IntegratedServer.
 - Implement the in-world GameRules screen request/response lifecycle: apply only
   the first GameRuleValues response while that screen is active, resolve keys
   through the built-in game-rule catalog, typed-deserialize valid values, ignore

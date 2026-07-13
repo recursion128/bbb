@@ -136,6 +136,7 @@ impl VehicleMoveCommand {
 pub enum NetCommand {
     KeepAliveResponse(i64),
     ClientTickEnd,
+    PlayerLoaded,
     MovePlayer(PlayerMoveCommand),
     MoveVehicle(VehicleMoveCommand),
     PlayerAction(PlayerAction),

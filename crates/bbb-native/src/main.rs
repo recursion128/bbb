@@ -42,6 +42,7 @@ mod item_models;
 #[cfg(test)]
 mod item_registry_test_fixture;
 mod lectern_book_scene;
+mod level_load_runtime;
 mod map_textures;
 mod particle_registry;
 mod particle_runtime;
@@ -75,6 +76,7 @@ use input::{
     release_active_input, ClientInputState, DebugClipboard, DebugFeatureCountRequest,
     DebugFrustumRequest, DebugProfilingToggleRequest, PauseScreenLinkRequest,
 };
+use level_load_runtime::LevelLoadRuntime;
 use particle_runtime::{NativeParticleRuntime, ParticleEventSink};
 use runtime::{
     control_renderer_counters, publish_snapshot, pump_network_and_terrain, request_net_disconnect,
@@ -430,6 +432,7 @@ fn main() -> Result<()> {
     let screenshot_after_terrain = args.connect_server;
     let exit_after_screenshot = args.exit_after_screenshot;
     let mut terrain_upload = TerrainUploadState::default();
+    let mut level_load_runtime = LevelLoadRuntime::default();
     let mut client_animation_ticks = ClientAnimationTickState::default();
     let mut camera_fov_ticks = CameraFovTickState::default();
     let mut hud_debug_fps_sampler = HudDebugFpsSampler::default();
@@ -1078,6 +1081,7 @@ fn main() -> Result<()> {
                         &mut lightmap_ticks,
                         &mut level_event_sound_random,
                         &mut terrain_upload,
+                        &mut level_load_runtime,
                         &mut terrain_textures,
                         &mut entity_variant_textures,
                         item_runtime.as_ref(),
@@ -1249,6 +1253,7 @@ fn main() -> Result<()> {
                     &mut lightmap_ticks,
                     &mut level_event_sound_random,
                     &mut terrain_upload,
+                    &mut level_load_runtime,
                     &mut terrain_textures,
                     &mut entity_variant_textures,
                     item_runtime.as_ref(),

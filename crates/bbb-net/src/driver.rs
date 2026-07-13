@@ -25,7 +25,7 @@ pub(crate) use commands::{
     send_teleport_to_entity, send_use_item, send_use_item_on,
 };
 use commands::{
-    send_client_tick_end, send_keep_alive_response, send_player_move_command,
+    send_client_tick_end, send_keep_alive_response, send_player_loaded, send_player_move_command,
     send_vehicle_move_command,
 };
 
@@ -82,6 +82,9 @@ pub(crate) async fn read_packet_or_drive_connection(
                     }
                     Some(NetCommand::ClientTickEnd) => {
                         send_client_tick_end(conn).await?;
+                    }
+                    Some(NetCommand::PlayerLoaded) => {
+                        send_player_loaded(conn).await?;
                     }
                     Some(NetCommand::MovePlayer(command)) => {
                         send_player_move_command(conn, command, player_position_state).await?;
@@ -259,6 +262,7 @@ async fn read_packet_or_disconnect_command(
                         send_keep_alive_response(conn, state, id).await?;
                     }
                     Some(NetCommand::ClientTickEnd) => {}
+                    Some(NetCommand::PlayerLoaded) => {}
                     Some(NetCommand::MovePlayer(_)) => {}
                     Some(NetCommand::MoveVehicle(_)) => {}
                     Some(NetCommand::PlayerAction(_)) => {}
@@ -517,6 +521,54 @@ mod tests {
         let (mut conn, mut server) = raw_connection_pair_with_server().await;
         let (tx, mut commands) = mpsc::channel(2);
         tx.send(NetCommand::ClientTickEnd).await.unwrap();
+        tx.send(NetCommand::Disconnect).await.unwrap();
+        let mut player_position_state = PlayerPositionState::default();
+        let result = read_packet_or_drive_connection(
+            &mut conn,
+            ConnectionState::Configuration,
+            &mut commands,
+            &mut player_position_state,
+        )
+        .await
+        .unwrap();
+        assert!(matches!(result, ConnectionDrive::Disconnect));
+        assert!(timeout(Duration::from_millis(50), server.read_packet())
+            .await
+            .is_err());
+    }
+
+    #[tokio::test]
+    async fn drive_connection_sends_player_loaded_only_in_play() {
+        let (mut conn, mut server) = raw_connection_pair_with_server().await;
+        let (tx, mut commands) = mpsc::channel(2);
+        tx.send(NetCommand::PlayerLoaded).await.unwrap();
+        tx.send(NetCommand::Disconnect).await.unwrap();
+        let mut player_position_state = PlayerPositionState::default();
+
+        let drive_task = tokio::spawn(async move {
+            read_packet_or_drive_connection(
+                &mut conn,
+                ConnectionState::Play,
+                &mut commands,
+                &mut player_position_state,
+            )
+            .await
+        });
+
+        let (packet_id, payload) = timeout(Duration::from_secs(1), server.read_packet())
+            .await
+            .expect("player-loaded command should be sent")
+            .unwrap();
+        assert_eq!(packet_id, ids::play::SERVERBOUND_PLAYER_LOADED);
+        assert!(payload.is_empty());
+        assert!(matches!(
+            drive_task.await.unwrap().unwrap(),
+            ConnectionDrive::Disconnect
+        ));
+
+        let (mut conn, mut server) = raw_connection_pair_with_server().await;
+        let (tx, mut commands) = mpsc::channel(2);
+        tx.send(NetCommand::PlayerLoaded).await.unwrap();
         tx.send(NetCommand::Disconnect).await.unwrap();
         let mut player_position_state = PlayerPositionState::default();
         let result = read_packet_or_drive_connection(

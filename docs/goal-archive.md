@@ -13545,3 +13545,16 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   等状态忽略内部命令。离线 probe 没有 native tick owner，继续使用其 bounded 独立保活时钟。
 - [x] native FIFO 顺序、active-level gate、production source order、双 state driver 与 coverage
   反向测试闭合 command/state/tests cells；workspace gate 通过。
+
+## 2026-07-13：Gate PlayerLoaded on native level readiness
+
+- [x] 对照 `LevelLoadTracker` / `ClientPacketListener.tick`，Login/Respawn 按 client-level
+  generation 启动 `WaitingForServer`，仅由 type 13 loading packets 推进到
+  `WaitingForPlayerChunk`，完成后记录 `ClientLoaded` 并只排队一次 `PlayerLoaded`。
+- [x] native 持有 30 秒单调 deadline；terrain upload 记录已同步编译/上传、在当前 renderer
+  中可见的 chunk，普通存活玩家等待本地 section，spectator/dead/越界高度和严格 timeout
+  使用 vanilla shortcut。production 首 position 近似已删除；无 renderer 的 probe 保留 bounded
+  独立路径。
+- [x] world 阶段/计数、terrain section 投影、ready/shortcut/timeout/once、position defer、
+  Play-only driver 与 coverage 反向测试闭合 `ServerboundPlayerLoadedPacket` 三个 partial cells；
+  workspace gate 通过。

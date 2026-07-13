@@ -36,7 +36,6 @@ struct EventStreamContext {
     events: mpsc::Sender<NetEvent>,
     commands: mpsc::Receiver<NetCommand>,
     state: ConnectionState,
-    player_loaded_sent: bool,
     player_position_state: PlayerPositionState,
     chunk_batch_size: ChunkBatchSizeCalculator,
     server_cookies: BTreeMap<String, Vec<u8>>,
@@ -61,7 +60,6 @@ pub async fn run_offline_event_stream(
         events,
         commands,
         state: ConnectionState::Login,
-        player_loaded_sent: false,
         player_position_state: PlayerPositionState::default(),
         chunk_batch_size: ChunkBatchSizeCalculator::new(),
         server_cookies: BTreeMap::new(),
@@ -182,7 +180,6 @@ mod tests {
             events: events_tx,
             commands: commands_rx,
             state: ConnectionState::Login,
-            player_loaded_sent: false,
             player_position_state: PlayerPositionState::default(),
             chunk_batch_size: ChunkBatchSizeCalculator::new(),
             server_cookies: BTreeMap::new(),
@@ -308,7 +305,6 @@ mod tests {
             events: events_tx,
             commands: commands_rx,
             state: ConnectionState::Configuration,
-            player_loaded_sent: false,
             player_position_state: PlayerPositionState::default(),
             chunk_batch_size: ChunkBatchSizeCalculator::new(),
             server_cookies: BTreeMap::new(),
@@ -405,7 +401,6 @@ mod tests {
             events: events_tx,
             commands: commands_rx,
             state: ConnectionState::Configuration,
-            player_loaded_sent: false,
             player_position_state: PlayerPositionState::default(),
             chunk_batch_size: ChunkBatchSizeCalculator::new(),
             server_cookies: BTreeMap::new(),
@@ -448,7 +443,6 @@ mod tests {
             events: events_tx,
             commands: commands_rx,
             state: ConnectionState::Configuration,
-            player_loaded_sent: false,
             player_position_state: PlayerPositionState::default(),
             chunk_batch_size: ChunkBatchSizeCalculator::new(),
             server_cookies: BTreeMap::new(),
@@ -493,7 +487,6 @@ mod tests {
             events: events_tx,
             commands: commands_rx,
             state: ConnectionState::Configuration,
-            player_loaded_sent: false,
             player_position_state: PlayerPositionState::default(),
             chunk_batch_size: ChunkBatchSizeCalculator::new(),
             server_cookies: BTreeMap::new(),
@@ -543,7 +536,6 @@ mod tests {
             events: events_tx,
             commands: commands_rx,
             state: ConnectionState::Configuration,
-            player_loaded_sent: false,
             player_position_state: PlayerPositionState::default(),
             chunk_batch_size: ChunkBatchSizeCalculator::new(),
             server_cookies: BTreeMap::new(),
@@ -610,7 +602,6 @@ mod tests {
             events: events_tx,
             commands: commands_rx,
             state: ConnectionState::Configuration,
-            player_loaded_sent: false,
             player_position_state: PlayerPositionState::default(),
             chunk_batch_size: ChunkBatchSizeCalculator::new(),
             server_cookies: BTreeMap::new(),
@@ -677,7 +668,6 @@ mod tests {
             events: events_tx,
             commands: commands_rx,
             state: ConnectionState::Configuration,
-            player_loaded_sent: false,
             player_position_state: PlayerPositionState::default(),
             chunk_batch_size: ChunkBatchSizeCalculator::new(),
             server_cookies: BTreeMap::new(),
@@ -738,7 +728,6 @@ mod tests {
             events: events_tx,
             commands: commands_rx,
             state: ConnectionState::Configuration,
-            player_loaded_sent: false,
             player_position_state: PlayerPositionState::default(),
             chunk_batch_size: ChunkBatchSizeCalculator::new(),
             server_cookies: BTreeMap::new(),
@@ -782,7 +771,6 @@ mod tests {
             events: events_tx,
             commands: commands_rx,
             state: ConnectionState::Login,
-            player_loaded_sent: false,
             player_position_state: PlayerPositionState::default(),
             chunk_batch_size: ChunkBatchSizeCalculator::new(),
             server_cookies: BTreeMap::new(),
@@ -826,7 +814,6 @@ mod tests {
             events: events_tx,
             commands: commands_rx,
             state: ConnectionState::Play,
-            player_loaded_sent: false,
             player_position_state: PlayerPositionState::default(),
             chunk_batch_size: ChunkBatchSizeCalculator::new(),
             server_cookies: BTreeMap::new(),
@@ -875,7 +862,6 @@ mod tests {
             events: events_tx,
             commands: commands_rx,
             state: ConnectionState::Play,
-            player_loaded_sent: false,
             player_position_state: PlayerPositionState::default(),
             chunk_batch_size: ChunkBatchSizeCalculator::new(),
             server_cookies: BTreeMap::new(),
@@ -930,7 +916,6 @@ mod tests {
             events: events_tx,
             commands: commands_rx,
             state: ConnectionState::Play,
-            player_loaded_sent: false,
             player_position_state: PlayerPositionState::default(),
             chunk_batch_size: ChunkBatchSizeCalculator::new(),
             server_cookies: BTreeMap::new(),
@@ -1045,7 +1030,6 @@ mod tests {
             events: events_tx,
             commands: commands_rx,
             state: ConnectionState::Play,
-            player_loaded_sent: false,
             player_position_state: PlayerPositionState::default(),
             chunk_batch_size: ChunkBatchSizeCalculator::new(),
             server_cookies: BTreeMap::new(),
@@ -1192,7 +1176,6 @@ mod tests {
             events: events_tx,
             commands: commands_rx,
             state: ConnectionState::Play,
-            player_loaded_sent: false,
             player_position_state: PlayerPositionState::default(),
             chunk_batch_size: ChunkBatchSizeCalculator::new(),
             server_cookies: BTreeMap::new(),
@@ -1532,7 +1515,6 @@ mod tests {
             events: events_tx,
             commands: commands_rx,
             state: ConnectionState::Play,
-            player_loaded_sent: false,
             player_position_state: PlayerPositionState::default(),
             chunk_batch_size: ChunkBatchSizeCalculator::new(),
             server_cookies: BTreeMap::new(),
@@ -1599,7 +1581,6 @@ mod tests {
             events: events_tx,
             commands: commands_rx,
             state: ConnectionState::Play,
-            player_loaded_sent: false,
             player_position_state: PlayerPositionState::default(),
             chunk_batch_size: ChunkBatchSizeCalculator::new(),
             server_cookies: BTreeMap::new(),
@@ -1666,7 +1647,6 @@ mod tests {
             events: events_tx,
             commands: commands_rx,
             state: ConnectionState::Play,
-            player_loaded_sent: false,
             player_position_state: PlayerPositionState::default(),
             chunk_batch_size: ChunkBatchSizeCalculator::new(),
             server_cookies: BTreeMap::new(),
@@ -1876,7 +1856,6 @@ mod tests {
             events: events_tx,
             commands: commands_rx,
             state: ConnectionState::Play,
-            player_loaded_sent: false,
             player_position_state: PlayerPositionState::default(),
             chunk_batch_size: ChunkBatchSizeCalculator::new(),
             server_cookies: BTreeMap::new(),
@@ -2038,7 +2017,6 @@ mod tests {
             events: events_tx,
             commands: commands_rx,
             state: ConnectionState::Play,
-            player_loaded_sent: false,
             player_position_state: PlayerPositionState::default(),
             chunk_batch_size: ChunkBatchSizeCalculator::new(),
             server_cookies: BTreeMap::new(),
@@ -2149,7 +2127,6 @@ mod tests {
             events: events_tx,
             commands: commands_rx,
             state: ConnectionState::Play,
-            player_loaded_sent: false,
             player_position_state: PlayerPositionState::default(),
             chunk_batch_size: ChunkBatchSizeCalculator::new(),
             server_cookies: BTreeMap::new(),
@@ -2283,7 +2260,6 @@ mod tests {
             events: events_tx,
             commands: commands_rx,
             state: ConnectionState::Play,
-            player_loaded_sent: false,
             player_position_state: PlayerPositionState::default(),
             chunk_batch_size: ChunkBatchSizeCalculator::new(),
             server_cookies: BTreeMap::new(),
@@ -2462,7 +2438,6 @@ mod tests {
             events: events_tx,
             commands: commands_rx,
             state: ConnectionState::Play,
-            player_loaded_sent: false,
             player_position_state: PlayerPositionState::default(),
             chunk_batch_size: ChunkBatchSizeCalculator::new(),
             server_cookies: BTreeMap::new(),
@@ -2649,7 +2624,6 @@ mod tests {
             events: events_tx,
             commands: commands_rx,
             state: ConnectionState::Play,
-            player_loaded_sent: false,
             player_position_state: PlayerPositionState::default(),
             chunk_batch_size: ChunkBatchSizeCalculator::new(),
             server_cookies: BTreeMap::new(),
@@ -2805,7 +2779,6 @@ mod tests {
             events: events_tx,
             commands: commands_rx,
             state: ConnectionState::Play,
-            player_loaded_sent: false,
             player_position_state: PlayerPositionState::default(),
             chunk_batch_size: ChunkBatchSizeCalculator::new(),
             server_cookies: BTreeMap::new(),
@@ -2974,7 +2947,6 @@ mod tests {
             events: events_tx,
             commands: commands_rx,
             state: ConnectionState::Play,
-            player_loaded_sent: false,
             player_position_state: PlayerPositionState::default(),
             chunk_batch_size: ChunkBatchSizeCalculator::new(),
             server_cookies: BTreeMap::new(),
@@ -3184,7 +3156,6 @@ mod tests {
             events: events_tx,
             commands: commands_rx,
             state: ConnectionState::Play,
-            player_loaded_sent: false,
             player_position_state: PlayerPositionState::default(),
             chunk_batch_size: ChunkBatchSizeCalculator::new(),
             server_cookies: BTreeMap::new(),
@@ -3348,7 +3319,6 @@ mod tests {
             events: events_tx,
             commands: commands_rx,
             state: ConnectionState::Play,
-            player_loaded_sent: false,
             player_position_state: PlayerPositionState::default(),
             chunk_batch_size: ChunkBatchSizeCalculator::new(),
             server_cookies: BTreeMap::new(),
@@ -3525,7 +3495,6 @@ mod tests {
             events: events_tx,
             commands: commands_rx,
             state: ConnectionState::Play,
-            player_loaded_sent: false,
             player_position_state: PlayerPositionState::default(),
             chunk_batch_size: ChunkBatchSizeCalculator::new(),
             server_cookies: BTreeMap::new(),
@@ -3753,7 +3722,6 @@ mod tests {
             events: events_tx,
             commands: commands_rx,
             state: ConnectionState::Play,
-            player_loaded_sent: false,
             player_position_state: PlayerPositionState::default(),
             chunk_batch_size: ChunkBatchSizeCalculator::new(),
             server_cookies: BTreeMap::new(),
@@ -3797,7 +3765,6 @@ mod tests {
             events: events_tx,
             commands: commands_rx,
             state: ConnectionState::Play,
-            player_loaded_sent: false,
             player_position_state: PlayerPositionState::default(),
             chunk_batch_size: ChunkBatchSizeCalculator::new(),
             server_cookies: BTreeMap::new(),
@@ -3829,7 +3796,6 @@ mod tests {
             events: events_tx,
             commands: commands_rx,
             state: ConnectionState::Play,
-            player_loaded_sent: false,
             player_position_state: PlayerPositionState::default(),
             chunk_batch_size: ChunkBatchSizeCalculator::new(),
             server_cookies: BTreeMap::new(),
@@ -3856,7 +3822,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn play_player_position_currently_sends_loaded_after_first_sync_only() {
+    async fn play_player_position_defers_player_loaded_to_native_readiness() {
         let (client, mut server) = raw_connection_pair().await;
         let (events_tx, mut events_rx) = mpsc::channel(4);
         let (_commands_tx, commands_rx) = mpsc::channel(1);
@@ -3865,7 +3831,6 @@ mod tests {
             events: events_tx,
             commands: commands_rx,
             state: ConnectionState::Play,
-            player_loaded_sent: false,
             player_position_state: PlayerPositionState::default(),
             chunk_batch_size: ChunkBatchSizeCalculator::new(),
             server_cookies: BTreeMap::new(),
@@ -3915,13 +3880,12 @@ mod tests {
         assert_eq!(packet_id, ids::play::SERVERBOUND_MOVE_PLAYER_POS_ROT);
         assert_move_player_pos_rot_payload(&payload, 1.25, 64.5, -8.75, 90.0, -15.0, 0);
 
-        let (packet_id, payload) = timeout(Duration::from_secs(1), server.read_packet())
-            .await
-            .expect("current player-loaded approximation should fire after first position sync")
-            .unwrap();
-        assert_eq!(packet_id, ids::play::SERVERBOUND_PLAYER_LOADED);
-        assert!(payload.is_empty());
-        assert!(stream.player_loaded_sent);
+        assert!(
+            timeout(Duration::from_millis(50), server.read_packet())
+                .await
+                .is_err(),
+            "player position must not bypass native level-load readiness"
+        );
 
         let second_update = packets::PlayerPositionUpdate {
             id: 18,
@@ -3968,7 +3932,7 @@ mod tests {
             timeout(Duration::from_millis(50), server.read_packet())
                 .await
                 .is_err(),
-            "current player-loaded approximation should only fire once"
+            "subsequent player positions must not bypass native level-load readiness"
         );
     }
 
@@ -3982,7 +3946,6 @@ mod tests {
             events: events_tx,
             commands: commands_rx,
             state: ConnectionState::Play,
-            player_loaded_sent: true,
             player_position_state: PlayerPositionState {
                 y_rot: 30.0,
                 x_rot: 5.0,
@@ -4034,7 +3997,6 @@ mod tests {
             events: events_tx,
             commands: commands_rx,
             state: ConnectionState::Play,
-            player_loaded_sent: false,
             player_position_state: PlayerPositionState::default(),
             chunk_batch_size: ChunkBatchSizeCalculator::new(),
             server_cookies: BTreeMap::new(),
@@ -4117,7 +4079,6 @@ mod tests {
             events: events_tx,
             commands: commands_rx,
             state: ConnectionState::Play,
-            player_loaded_sent: false,
             player_position_state: PlayerPositionState::default(),
             chunk_batch_size: ChunkBatchSizeCalculator::new(),
             server_cookies: BTreeMap::new(),

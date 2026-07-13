@@ -141,6 +141,7 @@ use crate::{
         world_trim_material_keys,
     },
     lectern_book_scene::lectern_book_model_instances_from_world,
+    level_load_runtime::LevelLoadRuntime,
     particle_runtime::{
         ParticleEventSink, CRIT_PARTICLE_TYPE_ID, ENTITY_EFFECT_PARTICLE_TYPE_ID,
         SMOKE_PARTICLE_TYPE_ID,
@@ -2022,6 +2023,7 @@ pub(crate) fn pump_network_and_terrain(
     lightmap_ticks: &mut LightmapTickState,
     level_event_sound_random: &mut LevelEventSoundRandomState,
     terrain_upload: &mut TerrainUploadState,
+    level_load_runtime: &mut LevelLoadRuntime,
     terrain_textures: &mut TerrainTextureState,
     entity_variant_textures: &mut NativeEntityVariantTextureRuntime,
     item_runtime: Option<&NativeItemRuntime>,
@@ -2814,6 +2816,14 @@ pub(crate) fn pump_network_and_terrain(
         particle_events.maybe_upload_particle_atlas_animation(renderer);
     }
     maybe_upload_decoded_terrain(world, renderer, terrain_upload, terrain_textures);
+    let player_section_compiled_and_visible =
+        terrain_upload.is_player_section_compiled_and_visible(world);
+    level_load_runtime.tick(
+        now,
+        world,
+        net_commands,
+        player_section_compiled_and_visible,
+    );
     if let Some(audio_events) = audio_events.as_mut() {
         audio_events.tick_entity_sound_positions(audio_scene_command_from_world(world));
     }
