@@ -179,32 +179,16 @@ pub(super) fn consumable_use_duration_ticks(consumable: ConsumableSummary) -> i3
 
 pub(super) fn crossbow_charge_duration_ticks(
     item_id: &str,
-    component_patch: &DataComponentPatchSummary,
-    enchantment_keys: Option<&[String]>,
+    synchronized_duration_ticks: Option<i32>,
 ) -> Option<i32> {
     if item_id != CROSSBOW_ITEM_ID {
         return None;
     }
-    let quick_charge_level = enchantment_keys
-        .map(|keys| {
-            component_patch
-                .enchantments
-                .iter()
-                .filter(|enchantment| {
-                    usize::try_from(enchantment.holder_id)
-                        .ok()
-                        .and_then(|id| keys.get(id))
-                        .is_some_and(|key| key == QUICK_CHARGE_ENCHANTMENT_ID)
-                })
-                .map(|enchantment| enchantment.level.max(0))
-                .sum::<i32>()
-        })
-        .unwrap_or(0);
-    if quick_charge_level == 0 {
-        return Some(VANILLA_CROSSBOW_CHARGE_DURATION_TICKS);
-    }
-    let duration_seconds = (1.25 - 0.25 * quick_charge_level as f32).max(0.0);
-    Some((duration_seconds * 20.0).floor() as i32)
+    Some(
+        synchronized_duration_ticks
+            .unwrap_or(VANILLA_CROSSBOW_CHARGE_DURATION_TICKS)
+            .max(0),
+    )
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -1857,14 +1841,21 @@ impl NativeItemRuntime {
         stack: &ItemStackSummary,
         elapsed_ticks: u32,
     ) -> ItemModelUseContext {
-        self.item_model_use_context_for_stack_with_enchantment_keys(stack, elapsed_ticks, None)
+        self.item_model_use_context_for_stack_with_crossbow_charge_duration(
+            stack,
+            elapsed_ticks,
+            None,
+        )
     }
 
-    pub fn item_model_use_context_for_stack_with_enchantment_keys(
+    /// Builds the use context with a caller-projected synchronized
+    /// `minecraft:crossbow_charge_time` result. Callers without a world
+    /// registry may pass `None` for vanilla's 25-tick base duration.
+    pub fn item_model_use_context_for_stack_with_crossbow_charge_duration(
         &self,
         stack: &ItemStackSummary,
         elapsed_ticks: u32,
-        enchantment_keys: Option<&[String]>,
+        synchronized_crossbow_charge_duration_ticks: Option<i32>,
     ) -> ItemModelUseContext {
         let Some(item_id) = stack
             .item_id
@@ -1875,7 +1866,7 @@ impl NativeItemRuntime {
         ItemModelUseContext::active(
             elapsed_ticks,
             item_use_duration_ticks(item_id, &stack.component_patch),
-            crossbow_charge_duration_ticks(item_id, &stack.component_patch, enchantment_keys),
+            crossbow_charge_duration_ticks(item_id, synchronized_crossbow_charge_duration_ticks),
         )
     }
 

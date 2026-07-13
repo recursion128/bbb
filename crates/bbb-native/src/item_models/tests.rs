@@ -3067,6 +3067,7 @@ fn held_generated_item_main_hand_select_uses_owner_main_arm_context() {
     let item_runtime =
         NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
     let terrain_textures = TerrainTextureState::default();
+    let world = WorldStore::new();
     let stack = ItemStackSummary {
         item_id: Some(0),
         count: 1,
@@ -3083,6 +3084,7 @@ fn held_generated_item_main_hand_select_uses_owner_main_arm_context() {
         let mut flat_glint_translucent_meshes = Vec::new();
         bake_item_stack_at_transform(
             &stack,
+            &world,
             Mat4::IDENTITY,
             BlockModelDisplayContext::ThirdPersonRightHand,
             false,
@@ -3139,6 +3141,7 @@ fn held_generated_item_context_entity_type_select_uses_owner_kind() {
     let item_runtime =
         NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
     let terrain_textures = TerrainTextureState::default();
+    let world = WorldStore::new();
     let stack = ItemStackSummary {
         item_id: Some(0),
         count: 1,
@@ -3155,6 +3158,7 @@ fn held_generated_item_context_entity_type_select_uses_owner_kind() {
         let mut flat_glint_translucent_meshes = Vec::new();
         bake_item_stack_at_transform(
             &stack,
+            &world,
             Mat4::IDENTITY,
             BlockModelDisplayContext::ThirdPersonRightHand,
             false,

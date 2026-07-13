@@ -11685,10 +11685,10 @@ fn hud_item_icon_for_stack(
     let item_model_cooldown_progress =
         item_cooldown_percent_for_stack(world, Some(item_runtime), item, 0.0).unwrap_or(0.0);
     let use_context = if using_item {
-        item_runtime.item_model_use_context_for_stack_with_enchantment_keys(
+        item_runtime.item_model_use_context_for_stack_with_crossbow_charge_duration(
             item,
             world.local_player().interaction.using_item_ticks,
-            enchantment_keys.as_deref(),
+            Some(world.crossbow_charge_duration_ticks(&item.component_patch.enchantments)),
         )
     } else {
         bbb_item_model::ItemModelUseContext::inactive()

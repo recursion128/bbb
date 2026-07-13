@@ -318,6 +318,7 @@ pub(crate) fn first_person_item_models(
         }
         bake_item_stack_at_transform(
             stack,
+            world,
             attach,
             context,
             arm_left,

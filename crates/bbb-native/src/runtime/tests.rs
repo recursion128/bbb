@@ -8890,20 +8890,16 @@ fn hotbar_item_icons_project_local_use_ticks_into_use_duration_range_dispatch() 
 }
 
 #[test]
-fn hotbar_item_icons_apply_quick_charge_to_crossbow_pull_range_dispatch() {
-    let root = unique_runtime_temp_dir("hotbar-crossbow-quick-charge-range-dispatch");
+fn hotbar_item_icons_apply_synced_custom_crossbow_charge_time_effect() {
+    let root = unique_runtime_temp_dir("hotbar-crossbow-custom-charge-time-range-dispatch");
     write_runtime_crossbow_item_assets(&root);
     let item_runtime =
         NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
     let mut stack = item_stack(0, 1);
     stack.component_patch.enchantments = vec![bbb_protocol::packets::ItemEnchantmentSummary {
-        holder_id: 1,
+        holder_id: 0,
         level: 2,
     }];
-    let enchantment_keys = vec![
-        "minecraft:power".to_string(),
-        "minecraft:quick_charge".to_string(),
-    ];
     let default_uv = item_runtime
         .icon_for_stack_with_context_and_use_context(
             &stack,
@@ -8925,10 +8921,10 @@ fn hotbar_item_icons_apply_quick_charge_to_crossbow_pull_range_dispatch() {
             &stack,
             None,
             true,
-            item_runtime.item_model_use_context_for_stack_with_enchantment_keys(
+            item_runtime.item_model_use_context_for_stack_with_crossbow_charge_duration(
                 &stack,
                 10,
-                Some(&enchantment_keys),
+                Some(15),
             ),
             bbb_pack::BlockModelDisplayContext::Gui,
             0.0,
@@ -8943,7 +8939,14 @@ fn hotbar_item_icons_apply_quick_charge_to_crossbow_pull_range_dispatch() {
     assert_ne!(default_uv, expected_uv);
 
     let mut world = WorldStore::new();
-    record_enchantment_registry(&mut world);
+    world.record_registry_data(bbb_protocol::packets::RegistryData {
+        registry: "minecraft:enchantment".to_string(),
+        entries: vec![bbb_protocol::packets::RegistryDataEntry {
+            id: "example:patient_loading".to_string(),
+            raw_data: Some(crossbow_charge_time_enchantment_nbt(0.75)),
+        }],
+        raw_payload_len: 0,
+    });
     world.apply_set_player_inventory(bbb_protocol::packets::SetPlayerInventory {
         slot: 0,
         item: stack,
@@ -16576,23 +16579,6 @@ fn record_trim_material_registry(world: &mut WorldStore) {
     });
 }
 
-fn record_enchantment_registry(world: &mut WorldStore) {
-    world.record_registry_data(bbb_protocol::packets::RegistryData {
-        registry: "minecraft:enchantment".to_string(),
-        entries: vec![
-            bbb_protocol::packets::RegistryDataEntry {
-                id: "minecraft:power".to_string(),
-                raw_data: None,
-            },
-            bbb_protocol::packets::RegistryDataEntry {
-                id: "minecraft:quick_charge".to_string(),
-                raw_data: None,
-            },
-        ],
-        raw_payload_len: 0,
-    });
-}
-
 fn efficiency_enchantment_attribute_nbt() -> Vec<u8> {
     let mut out = vec![10];
     out.push(10);
@@ -16642,6 +16628,22 @@ fn efficiency_enchantment_attribute_nbt() -> Vec<u8> {
     out.push(0);
     out.push(0);
     out.push(0);
+    out
+}
+
+fn crossbow_charge_time_enchantment_nbt(seconds: f32) -> Vec<u8> {
+    let mut out = vec![10];
+    out.push(10);
+    write_enchantment_nbt_string(&mut out, "effects");
+    out.push(10);
+    write_enchantment_nbt_string(&mut out, "minecraft:crossbow_charge_time");
+    out.push(8);
+    write_enchantment_nbt_string(&mut out, "type");
+    write_enchantment_nbt_string(&mut out, "minecraft:set");
+    out.push(5);
+    write_enchantment_nbt_string(&mut out, "value");
+    out.extend(seconds.to_be_bytes());
+    out.extend([0, 0, 0]);
     out
 }
 

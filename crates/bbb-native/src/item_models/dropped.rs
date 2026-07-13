@@ -992,6 +992,7 @@ fn bake_held_hand(
     for hand in humanoid_hand_attach_transforms(instance, left_arm) {
         bake_item_stack_at_transform(
             &stack,
+            world,
             hand,
             context,
             left_arm,
@@ -1060,6 +1061,7 @@ fn bake_fox_held_item(
     let using_item = entity_hand_using_item(instance, false);
     bake_item_stack_at_transform(
         &stack,
+        world,
         transform,
         BlockModelDisplayContext::Ground,
         false,
@@ -1117,6 +1119,7 @@ fn bake_dolphin_carried_item(
     let using_item = entity_hand_using_item(instance, false);
     bake_item_stack_at_transform(
         &stack,
+        world,
         transform,
         BlockModelDisplayContext::Ground,
         false,
@@ -1174,6 +1177,7 @@ fn bake_witch_held_item(
     let using_item = entity_hand_using_item(instance, false);
     bake_item_stack_at_transform(
         &stack,
+        world,
         transform,
         BlockModelDisplayContext::Ground,
         false,
@@ -1236,6 +1240,7 @@ fn bake_copper_golem_held_items(
         let using_item = entity_hand_using_item(instance, left_hand);
         bake_item_stack_at_transform(
             &stack,
+            world,
             hand,
             context,
             left_hand,
@@ -1301,6 +1306,7 @@ fn bake_allay_held_items(
         let using_item = entity_hand_using_item(instance, left_hand);
         bake_item_stack_at_transform(
             &stack,
+            world,
             hand,
             context,
             left_hand,
@@ -1358,6 +1364,7 @@ fn bake_villager_crossed_arms_item(
     let using_item = entity_hand_using_item(instance, false);
     bake_item_stack_at_transform(
         &stack,
+        world,
         transform,
         BlockModelDisplayContext::Ground,
         false,
@@ -1415,6 +1422,7 @@ fn bake_panda_held_item(
     let using_item = entity_hand_using_item(instance, false);
     bake_item_stack_at_transform(
         &stack,
+        world,
         transform,
         BlockModelDisplayContext::Ground,
         false,
@@ -1481,6 +1489,7 @@ fn bake_custom_head_item(
     for transform in custom_head_item_transforms(instance) {
         bake_item_stack_at_transform(
             &stack,
+            world,
             transform,
             BlockModelDisplayContext::Head,
             false,
@@ -1597,6 +1606,7 @@ fn item_model_elapsed_ticks(ticks: f32) -> u32 {
 #[allow(clippy::too_many_arguments)]
 pub(super) fn bake_item_stack_at_transform(
     stack: &ItemStackSummary,
+    world: &WorldStore,
     attach: Mat4,
     context: BlockModelDisplayContext,
     left_hand: bool,
@@ -1652,10 +1662,10 @@ pub(super) fn bake_item_stack_at_transform(
 
     // Flat path.
     let use_context = if using_item {
-        item_runtime.item_model_use_context_for_stack_with_enchantment_keys(
+        item_runtime.item_model_use_context_for_stack_with_crossbow_charge_duration(
             stack,
             item_model_elapsed_ticks(using_item_ticks),
-            enchantment_keys,
+            Some(world.crossbow_charge_duration_ticks(&stack.component_patch.enchantments)),
         )
     } else {
         ItemModelUseContext::inactive()

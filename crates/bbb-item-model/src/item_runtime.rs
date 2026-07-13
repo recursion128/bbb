@@ -118,8 +118,6 @@ const TRIDENT_ITEM_ID: &str = "minecraft:trident";
 
 const ENDER_EYE_ITEM_ID: &str = "minecraft:ender_eye";
 
-const QUICK_CHARGE_ENCHANTMENT_ID: &str = "minecraft:quick_charge";
-
 const VANILLA_LONG_USE_DURATION_TICKS: i32 = 72_000;
 
 const VANILLA_BRUSH_USE_DURATION_TICKS: i32 = 200;

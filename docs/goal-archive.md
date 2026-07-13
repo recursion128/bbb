@@ -13315,3 +13315,18 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] native inventory tooltip 同时传递 session holder keys 与同步 definitions；已知 vanilla
   stub 或无 session registry 时才回退 generated identity/max-level，custom definition 优先。
   world/item-model/native focused tests 与 workspace gate 通过。
+
+## 2026-07-13：Apply synchronized crossbow charge-time effects
+
+- [x] `bbb-world::registries::enchantments` 从同步 `Enchantment.DIRECT_CODEC` 的 `effects`
+  map 解码 `minecraft:crossbow_charge_time`，实现确定性的 `add`、`all_of`、`multiply`、
+  `exponential`、`set` 与全部 `LevelBasedValue` 组合；多个附魔严格按 stack component 顺序
+  处理 1.25 秒，最终 clamp 非负并 `floor(seconds * 20)`。
+- [x] server-provided definition（包括 custom key 与 vanilla key replacement）优先；仅对没有
+  data 的 vanilla `quick_charge` entry 使用 world generated identity 的 `-0.25F`/level 回退。
+  `remove_binomial` 需要 holder entity 的 mutable `RandomSource`，当前明确 fail closed 并保留在
+  ledger，不伪造随机状态。
+- [x] item-model 删除按 `minecraft:quick_charge` resource name 扫描 stack 的特判，改为消费
+  caller-projected charge duration；native HUD、first-person 与 owner-backed third-person bake
+  paths 均从 `WorldStore` 投影同步 effect。world/item-model/native focused tests 与 workspace gate
+  通过。

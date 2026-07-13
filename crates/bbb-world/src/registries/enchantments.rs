@@ -86,6 +86,23 @@ enum LevelBasedValue {
     },
 }
 
+/// Deterministic variants of vanilla `EnchantmentValueEffect`.
+///
+/// `remove_binomial` consumes the holder entity's `RandomSource`; bbb does not
+/// yet mirror that per-entity random stream, so that variant is deliberately
+/// rejected instead of inventing a result.
+#[derive(Debug, Clone, PartialEq)]
+enum EnchantmentValueEffect {
+    Add(LevelBasedValue),
+    AllOf(Vec<Self>),
+    Multiply(LevelBasedValue),
+    Exponential {
+        base: LevelBasedValue,
+        exponent: LevelBasedValue,
+    },
+    Set(LevelBasedValue),
+}
+
 impl WorldStore {
     /// Decodes synchronized enchantment tooltip definitions in network holder order.
     /// Stub and malformed elements stay as `None`; consumers may then apply a
@@ -141,6 +158,33 @@ impl WorldStore {
             }
         }
         modifiers
+    }
+
+    /// Applies synchronized `minecraft:crossbow_charge_time` effects in stack
+    /// enchantment order and returns vanilla's floored tick duration.
+    ///
+    /// A stubbed vanilla quick-charge definition uses the generated identity
+    /// fallback. Server-provided data always wins, including custom
+    /// enchantments and replacements of the vanilla resource id. Malformed or
+    /// random-dependent effects fail closed and leave the duration unchanged.
+    pub fn crossbow_charge_duration_ticks(&self, enchantments: &[ItemEnchantmentSummary]) -> i32 {
+        let mut duration_seconds = 1.25_f32;
+        for enchantment in enchantments {
+            let Some(entry) =
+                self.registry_entry_by_holder_id(ENCHANTMENT_REGISTRY, enchantment.holder_id)
+            else {
+                continue;
+            };
+            let effect = match entry.raw_data() {
+                Some(raw_data) => decode_crossbow_charge_time_effect(raw_data).flatten(),
+                None if !entry.has_data => vanilla_crossbow_charge_time_effect(&entry.id),
+                None => None,
+            };
+            if let Some(effect) = effect {
+                duration_seconds = effect.process(enchantment.level, duration_seconds);
+            }
+        }
+        (duration_seconds.max(0.0) * 20.0).floor() as i32
     }
 }
 
@@ -214,6 +258,80 @@ impl LevelBasedValue {
                 .copied()
                 .unwrap_or_else(|| fallback.calculate(level)),
         }
+    }
+}
+
+impl EnchantmentValueEffect {
+    fn process(&self, level: i32, input: f32) -> f32 {
+        match self {
+            Self::Add(value) => input + value.calculate(level),
+            Self::AllOf(effects) => effects
+                .iter()
+                .fold(input, |value, effect| effect.process(level, value)),
+            Self::Multiply(factor) => input * factor.calculate(level),
+            Self::Exponential { base, exponent } => {
+                input
+                    * f64::from(base.calculate(level)).powf(f64::from(exponent.calculate(level)))
+                        as f32
+            }
+            Self::Set(value) => value.calculate(level),
+        }
+    }
+}
+
+fn decode_crossbow_charge_time_effect(raw_data: &[u8]) -> Option<Option<EnchantmentValueEffect>> {
+    let root = decode_nbt_root(raw_data).ok()??;
+    let NbtValue::Compound(fields) = root else {
+        return None;
+    };
+    let Some(effects) = find_nbt_entry(&fields, "effects") else {
+        return Some(None);
+    };
+    let effects = nbt_compound(Some(effects))?;
+    let Some(effect) = find_nbt_entry(effects, "minecraft:crossbow_charge_time") else {
+        return Some(None);
+    };
+    Some(Some(parse_enchantment_value_effect(effect)?))
+}
+
+fn vanilla_crossbow_charge_time_effect(resource_id: &str) -> Option<EnchantmentValueEffect> {
+    (VanillaEnchantmentIdentity::for_resource_id(resource_id)
+        == Some(VanillaEnchantmentIdentity::QuickCharge))
+    .then_some(EnchantmentValueEffect::Add(LevelBasedValue::Linear {
+        base: -0.25,
+        per_level_above_first: -0.25,
+    }))
+}
+
+fn parse_enchantment_value_effect(value: &NbtValue) -> Option<EnchantmentValueEffect> {
+    let fields = nbt_compound(Some(value))?;
+    let effect_type = nbt_string(find_nbt_entry(fields, "type"))?;
+    let effect_type = effect_type
+        .strip_prefix("minecraft:")
+        .unwrap_or(effect_type);
+    match effect_type {
+        "add" => Some(EnchantmentValueEffect::Add(parse_level_based_value(
+            find_nbt_entry(fields, "value")?,
+        )?)),
+        "all_of" => Some(EnchantmentValueEffect::AllOf(
+            nbt_list(find_nbt_entry(fields, "effects"))?
+                .iter()
+                .map(parse_enchantment_value_effect)
+                .collect::<Option<Vec<_>>>()?,
+        )),
+        "multiply" => Some(EnchantmentValueEffect::Multiply(parse_level_based_value(
+            find_nbt_entry(fields, "factor")?,
+        )?)),
+        "exponential" => Some(EnchantmentValueEffect::Exponential {
+            base: parse_level_based_value(find_nbt_entry(fields, "base")?)?,
+            exponent: parse_level_based_value(find_nbt_entry(fields, "exponent")?)?,
+        }),
+        "set" => Some(EnchantmentValueEffect::Set(parse_level_based_value(
+            find_nbt_entry(fields, "value")?,
+        )?)),
+        // Vanilla `RemoveBinomial` needs the holder's mutable RandomSource.
+        "remove_binomial" => None,
+        _ => None,
     }
 }
 
@@ -538,6 +656,111 @@ mod tests {
         );
     }
 
+    #[test]
+    fn crossbow_charge_time_applies_stub_fallback_and_custom_effects_in_stack_order() {
+        let mut world = WorldStore::new();
+        world.record_registry_data(RegistryData {
+            registry: ENCHANTMENT_REGISTRY.to_string(),
+            entries: vec![
+                RegistryDataEntry {
+                    id: "minecraft:quick_charge".to_string(),
+                    raw_data: None,
+                },
+                RegistryDataEntry {
+                    id: "example:patient_loading".to_string(),
+                    raw_data: Some(crossbow_effect_enchantment_nbt(compound_payload(vec![
+                        string_tag("type", "minecraft:all_of"),
+                        compound_list_tag(
+                            "effects",
+                            vec![
+                                compound_payload(vec![
+                                    string_tag("type", "minecraft:multiply"),
+                                    float_tag("factor", 2.0),
+                                ]),
+                                compound_payload(vec![
+                                    string_tag("type", "minecraft:add"),
+                                    compound_tag(
+                                        "value",
+                                        vec![
+                                            string_tag("type", "minecraft:linear"),
+                                            float_tag("base", 0.25),
+                                            float_tag("per_level_above_first", 0.25),
+                                        ],
+                                    ),
+                                ]),
+                            ],
+                        ),
+                    ]))),
+                },
+            ],
+            raw_payload_len: 0,
+        });
+        let quick_charge = ItemEnchantmentSummary {
+            holder_id: 0,
+            level: 2,
+        };
+        let custom = ItemEnchantmentSummary {
+            holder_id: 1,
+            level: 2,
+        };
+
+        assert_eq!(
+            world.crossbow_charge_duration_ticks(&[quick_charge.clone(), custom.clone()]),
+            40
+        );
+        assert_eq!(
+            world.crossbow_charge_duration_ticks(&[custom, quick_charge]),
+            50
+        );
+    }
+
+    #[test]
+    fn crossbow_charge_time_server_definition_overrides_vanilla_resource_fallback() {
+        let mut world = WorldStore::new();
+        world.record_registry_data(RegistryData {
+            registry: ENCHANTMENT_REGISTRY.to_string(),
+            entries: vec![RegistryDataEntry {
+                id: "minecraft:quick_charge".to_string(),
+                raw_data: Some(compound_payload(vec![compound_tag("effects", Vec::new())])),
+            }],
+            raw_payload_len: 0,
+        });
+
+        assert_eq!(
+            world.crossbow_charge_duration_ticks(&[ItemEnchantmentSummary {
+                holder_id: 0,
+                level: 3,
+            }]),
+            25
+        );
+    }
+
+    #[test]
+    fn deterministic_value_effects_cover_remaining_vanilla_variants() {
+        let effect = EnchantmentValueEffect::AllOf(vec![
+            EnchantmentValueEffect::Set(LevelBasedValue::Constant(0.5)),
+            EnchantmentValueEffect::Exponential {
+                base: LevelBasedValue::Constant(2.0),
+                exponent: LevelBasedValue::Constant(2.0),
+            },
+            EnchantmentValueEffect::Multiply(LevelBasedValue::Constant(0.5)),
+            EnchantmentValueEffect::Add(LevelBasedValue::Linear {
+                base: 0.25,
+                per_level_above_first: 0.25,
+            }),
+        ]);
+
+        assert_eq!(effect.process(2, 99.0), 1.5);
+        assert!(parse_enchantment_value_effect(&NbtValue::Compound(vec![
+            (
+                "type".to_string(),
+                NbtValue::String("minecraft:remove_binomial".to_string()),
+            ),
+            ("chance".to_string(), NbtValue::Float(0.5)),
+        ]))
+        .is_none());
+    }
+
     fn test_enchantment_nbt() -> Vec<u8> {
         let linear = compound_payload(vec![
             string_tag("type", "minecraft:linear"),
@@ -608,6 +831,16 @@ mod tests {
             string_tag("id", id),
             string_tag("operation", operation),
         ])
+    }
+
+    fn crossbow_effect_enchantment_nbt(effect_payload: Vec<u8>) -> Vec<u8> {
+        compound_payload(vec![compound_tag(
+            "effects",
+            vec![named_compound_payload(
+                "minecraft:crossbow_charge_time",
+                effect_payload,
+            )],
+        )])
     }
 
     fn compound_payload(entries: Vec<Vec<u8>>) -> Vec<u8> {

@@ -9055,16 +9055,16 @@ fn native_item_runtime_resolves_use_tick_range_dispatch_properties() {
             .layers[0]
             .uv
     };
-    let selected_with_enchantment_keys =
+    let selected_with_crossbow_charge_duration =
         |stack: &ItemStackSummary,
          using_item: bool,
          elapsed_ticks: u32,
-         enchantment_keys: &[String]| {
+         crossbow_charge_duration_ticks: i32| {
             let use_context = if using_item {
-                runtime.item_model_use_context_for_stack_with_enchantment_keys(
+                runtime.item_model_use_context_for_stack_with_crossbow_charge_duration(
                     stack,
                     elapsed_ticks,
-                    Some(enchantment_keys),
+                    Some(crossbow_charge_duration_ticks),
                 )
             } else {
                 ItemModelUseContext::inactive()
@@ -9098,10 +9098,6 @@ fn native_item_runtime_resolves_use_tick_range_dispatch_properties() {
     assert_eq!(selected(&crossbow, true, 0), uv("crossbow_pulling_0"));
     assert_eq!(selected(&crossbow, true, 15), uv("crossbow_pulling_1"));
     assert_eq!(selected(&crossbow, true, 25), uv("crossbow_pulling_2"));
-    let quick_charge_keys = vec![
-        "minecraft:power".to_string(),
-        "minecraft:quick_charge".to_string(),
-    ];
     let quick_charge_crossbow = ItemStackSummary {
         item_id: Some(1),
         count: 1,
@@ -9113,17 +9109,15 @@ fn native_item_runtime_resolves_use_tick_range_dispatch_properties() {
             ..DataComponentPatchSummary::default()
         },
     };
-    // Vanilla `CrossbowItem.getChargeDuration` starts at 1.25 seconds and
-    // `QUICK_CHARGE` adds `-0.25F` per level before `floor(seconds * 20)`.
-    // Level 2 therefore charges in 15 ticks, so elapsed 10 ticks crosses
-    // the 0.58 `crossbow/pull` threshold; without the registry-backed
-    // enchantment context, the same stack still uses the 25 tick default.
+    // The caller-projected synchronized effect result is 15 ticks, so elapsed
+    // 10 ticks crosses the 0.58 `crossbow/pull` threshold; without that world
+    // projection, the same stack still uses the 25 tick default.
     assert_eq!(
         selected(&quick_charge_crossbow, true, 10),
         uv("crossbow_pulling_0")
     );
     assert_eq!(
-        selected_with_enchantment_keys(&quick_charge_crossbow, true, 10, &quick_charge_keys),
+        selected_with_crossbow_charge_duration(&quick_charge_crossbow, true, 10, 15),
         uv("crossbow_pulling_1")
     );
     let charged_crossbow = ItemStackSummary {
