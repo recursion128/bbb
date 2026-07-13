@@ -10,6 +10,7 @@ sys.path.insert(0, str(SCRIPTS))
 
 from bootstrap_catalog_extractor import (  # noqa: E402
     BootstrapCatalogExtractionError,
+    CatVariantEntry,
     EnchantmentEntry,
     banner_pattern_entries,
     bootstrap_resource_key_entries,
@@ -22,12 +23,94 @@ from bootstrap_catalog_extractor import (  # noqa: E402
     potion_entries,
     static_register_entries,
     trim_material_entries,
+    cat_variant_entries,
     wolf_variant_entries,
 )
 from vanilla_java_source import parse_source  # noqa: E402
 
 
 class BootstrapCatalogExtractorTests(unittest.TestCase):
+    def test_cat_variant_assets_follow_bootstrap_literals_and_helper_payload(self) -> None:
+        source = parse_source(
+            "fixture/CatVariants.java",
+            b'''
+package fixture;
+class CatVariants {
+  static final ResourceKey<CatVariant> TABBY = createKey("tabby");
+  static final ResourceKey<CatVariant> ALL_BLACK = createKey("all_black");
+  static void registerForAnyConditions(BootstrapContext<CatVariant> context,
+      ResourceKey<CatVariant> name, String adultTexture, String babyTexture) {
+    register(context, name, adultTexture, babyTexture, SpawnPrioritySelectors.fallback(0));
+  }
+  static void register(BootstrapContext<CatVariant> context,
+      ResourceKey<CatVariant> name, String adultTexture, String babyTexture,
+      SpawnPrioritySelectors spawnConditions) {
+    context.register(name, new CatVariant(
+        new ClientAsset.ResourceTexture(Identifier.withDefaultNamespace(adultTexture)),
+        new ClientAsset.ResourceTexture(Identifier.withDefaultNamespace(babyTexture)),
+        spawnConditions));
+  }
+  static void bootstrap(BootstrapContext<CatVariant> context) {
+    registerForAnyConditions(
+        context, TABBY, "entity/cat/cat_tabby", "entity/cat/cat_tabby_baby");
+    register(
+        context, ALL_BLACK, "entity/cat/cat_all_black",
+        "entity/cat/cat_all_black_baby", selectors());
+  }
+}
+''',
+        )
+
+        self.assertEqual(
+            cat_variant_entries(source, expected_count=2),
+            [
+                CatVariantEntry(
+                    "TABBY",
+                    "minecraft:tabby",
+                    "minecraft:entity/cat/cat_tabby",
+                    "minecraft:entity/cat/cat_tabby_baby",
+                ),
+                CatVariantEntry(
+                    "ALL_BLACK",
+                    "minecraft:all_black",
+                    "minecraft:entity/cat/cat_all_black",
+                    "minecraft:entity/cat/cat_all_black_baby",
+                ),
+            ],
+        )
+
+    def test_cat_variant_assets_reject_changed_helper_payload(self) -> None:
+        source = parse_source(
+            "fixture/CatVariants.java",
+            b'''
+package fixture;
+class CatVariants {
+  static final ResourceKey<CatVariant> TABBY = createKey("tabby");
+  static void registerForAnyConditions(BootstrapContext<CatVariant> context,
+      ResourceKey<CatVariant> name, String adultTexture, String babyTexture) {
+    register(context, name, adultTexture, babyTexture, SpawnPrioritySelectors.fallback(0));
+  }
+  static void register(BootstrapContext<CatVariant> context,
+      ResourceKey<CatVariant> name, String adultTexture, String babyTexture,
+      SpawnPrioritySelectors spawnConditions) {
+    context.register(name, new CatVariant(
+        new ClientAsset.ResourceTexture(Identifier.withDefaultNamespace(adultTexture)),
+        new ClientAsset.ResourceTexture(Identifier.withDefaultNamespace(adultTexture)),
+        spawnConditions));
+  }
+  static void bootstrap(BootstrapContext<CatVariant> context) {
+    registerForAnyConditions(
+        context, TABBY, "entity/cat/cat_tabby", "entity/cat/cat_tabby_baby");
+  }
+}
+''',
+        )
+        with self.assertRaisesRegex(
+            BootstrapCatalogExtractionError,
+            "cat asset registration payload changed",
+        ):
+            cat_variant_entries(source, expected_count=1)
+
     def test_wolf_variant_assets_follow_bootstrap_file_names_and_helper_formula(self) -> None:
         source = parse_source(
             "fixture/WolfVariants.java",

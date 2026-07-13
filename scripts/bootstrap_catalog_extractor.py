@@ -35,6 +35,14 @@ class WolfVariantEntry:
 
 
 @dataclass(frozen=True)
+class CatVariantEntry:
+    constant_name: str
+    resource_id: str
+    adult_asset_id: str
+    baby_asset_id: str
+
+
+@dataclass(frozen=True)
 class BannerPatternEntry:
     constant_name: str
     resource_id: str
@@ -451,6 +459,157 @@ def wolf_variant_entries(
                     f"{prefix}_angry_baby",
                 ),
             )
+        )
+    return entries
+
+
+def cat_variant_entries(
+    source: JavaSource, expected_count: int = 11
+) -> list[CatVariantEntry]:
+    identities = bootstrap_resource_key_entries(
+        source,
+        "CatVariant",
+        {"createKey"},
+        expected_count,
+        registration_names={"register", "registerForAnyConditions"},
+    )
+    bootstrap = _bootstrap_method(source)
+    context_name = _bootstrap_context_name(source, bootstrap)
+    calls = [
+        call
+        for call in source.calls
+        if call.name in {"register", "registerForAnyConditions"}
+        and call.qualifier is None
+        and bootstrap.body is not None
+        and bootstrap.body.start_byte <= call.span.start_byte
+        and call.span.end_byte <= bootstrap.body.end_byte
+    ]
+    calls.sort(key=lambda call: (call.span.start_byte, call.span.end_byte))
+    assets: dict[str, tuple[str, str]] = {}
+    for call in calls:
+        expected_arity = 5 if call.name == "register" else 4
+        if (
+            len(call.arguments) != expected_arity
+            or call.arguments[0].canonical != context_name
+        ):
+            _fail(
+                source,
+                source.expression(call.node),
+                "cat bootstrap registration shape changed",
+            )
+        key = call.arguments[1]
+        if key.node.type != "identifier":
+            _fail(source, key, "cat bootstrap resource key is not an identifier")
+        assets[key.canonical] = (
+            f"minecraft:{_string(source, call.arguments[2])}",
+            f"minecraft:{_string(source, call.arguments[3])}",
+        )
+
+    helpers = [
+        method
+        for method in source.methods
+        if method.name == "register" and len(method.parameters) == 5
+    ]
+    if len(helpers) != 1 or helpers[0].body is None:
+        raise BootstrapCatalogExtractionError(
+            f"{source.relative_path}: expected one five-parameter cat asset register helper"
+        )
+    helper = helpers[0]
+    parameter_names = []
+    for parameter in helper.parameters:
+        name = parameter.node.child_by_field_name("name")
+        if name is None:
+            _fail(source, parameter, "cat asset helper parameter lacks a name")
+        parameter_names.append(source.text(name))
+    if parameter_names != [
+        "context",
+        "name",
+        "adultTexture",
+        "babyTexture",
+        "spawnConditions",
+    ]:
+        _fail(source, helper.parameters[0], "cat asset helper parameters changed")
+    registrations = [
+        call
+        for call in source.calls
+        if call.name == "register"
+        and call.qualifier is not None
+        and call.qualifier.canonical == "context"
+        and helper.body.start_byte <= call.span.start_byte
+        and call.span.end_byte <= helper.body.end_byte
+    ]
+    expected_registration = (
+        "context.register (name, new CatVariant (new ClientAsset.ResourceTexture "
+        "(Identifier.withDefaultNamespace (adultTexture)), new ClientAsset.ResourceTexture "
+        "(Identifier.withDefaultNamespace (babyTexture)), spawnConditions))"
+    )
+    if (
+        len(registrations) != 1
+        or source.expression(registrations[0].node).canonical != expected_registration
+    ):
+        expression = (
+            source.expression(registrations[0].node)
+            if registrations
+            else source.expression(helper.node)
+        )
+        _fail(source, expression, "cat asset registration payload changed")
+
+    wrappers = [
+        method
+        for method in source.methods
+        if method.name == "registerForAnyConditions" and len(method.parameters) == 4
+    ]
+    if len(wrappers) != 1 or wrappers[0].body is None:
+        raise BootstrapCatalogExtractionError(
+            f"{source.relative_path}: expected one cat fallback registration helper"
+        )
+    wrapper = wrappers[0]
+    wrapper_calls = [
+        call
+        for call in source.calls
+        if call.name == "register"
+        and call.qualifier is None
+        and wrapper.body.start_byte <= call.span.start_byte
+        and call.span.end_byte <= wrapper.body.end_byte
+    ]
+    expected_wrapper = (
+        "register (context, name, adultTexture, babyTexture, "
+        "SpawnPrioritySelectors.fallback (0))"
+    )
+    if (
+        len(wrapper_calls) != 1
+        or source.expression(wrapper_calls[0].node).canonical != expected_wrapper
+    ):
+        expression = (
+            source.expression(wrapper_calls[0].node)
+            if wrapper_calls
+            else source.expression(wrapper.node)
+        )
+        _fail(source, expression, "cat fallback registration payload changed")
+
+    entries = []
+    for identity in identities:
+        asset_pair = assets.get(identity.constant_name)
+        if asset_pair is None:
+            raise BootstrapCatalogExtractionError(
+                f"{source.relative_path}: cat variant {identity.constant_name} lacks assets"
+            )
+        entries.append(
+            CatVariantEntry(
+                identity.constant_name,
+                identity.resource_id,
+                asset_pair[0],
+                asset_pair[1],
+            )
+        )
+    all_assets = [
+        asset_id
+        for entry in entries
+        for asset_id in (entry.adult_asset_id, entry.baby_asset_id)
+    ]
+    if len(all_assets) != len(set(all_assets)):
+        raise BootstrapCatalogExtractionError(
+            f"{source.relative_path}: duplicate cat variant asset id"
         )
     return entries
 

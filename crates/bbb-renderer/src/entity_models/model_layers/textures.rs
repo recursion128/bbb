@@ -1,5 +1,6 @@
 use super::super::EntityModelTextureRef;
 pub(in crate::entity_models) use crate::entity_models::banner_patterns::*;
+use crate::entity_models::cat_variants::VANILLA_CAT_VARIANT_TEXTURE_REFS;
 use crate::entity_models::catalog::{
     ArrowModelTexture, AxolotlModelVariant, ChestModelHalf, ChestModelTexture, ConduitModelPart,
     CopperGolemWeathering, EntityArmorMaterial, EntityDefaultPlayerSkin, EntityDyeColor,
@@ -1737,28 +1738,28 @@ pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextur
     RABBIT_CAERBANNOG_BABY_TEXTURE_REF,
     RABBIT_TOAST_TEXTURE_REF,
     RABBIT_TOAST_BABY_TEXTURE_REF,
-    FELINE_CAT_TABBY_TEXTURE_REF,
-    FELINE_CAT_TABBY_BABY_TEXTURE_REF,
-    FELINE_CAT_BLACK_TEXTURE_REF,
-    FELINE_CAT_BLACK_BABY_TEXTURE_REF,
-    FELINE_CAT_RED_TEXTURE_REF,
-    FELINE_CAT_RED_BABY_TEXTURE_REF,
-    FELINE_CAT_SIAMESE_TEXTURE_REF,
-    FELINE_CAT_SIAMESE_BABY_TEXTURE_REF,
-    FELINE_CAT_BRITISH_SHORTHAIR_TEXTURE_REF,
-    FELINE_CAT_BRITISH_SHORTHAIR_BABY_TEXTURE_REF,
-    FELINE_CAT_CALICO_TEXTURE_REF,
-    FELINE_CAT_CALICO_BABY_TEXTURE_REF,
-    FELINE_CAT_PERSIAN_TEXTURE_REF,
-    FELINE_CAT_PERSIAN_BABY_TEXTURE_REF,
-    FELINE_CAT_RAGDOLL_TEXTURE_REF,
-    FELINE_CAT_RAGDOLL_BABY_TEXTURE_REF,
-    FELINE_CAT_WHITE_TEXTURE_REF,
-    FELINE_CAT_WHITE_BABY_TEXTURE_REF,
-    FELINE_CAT_JELLIE_TEXTURE_REF,
-    FELINE_CAT_JELLIE_BABY_TEXTURE_REF,
-    FELINE_CAT_ALL_BLACK_TEXTURE_REF,
-    FELINE_CAT_ALL_BLACK_BABY_TEXTURE_REF,
+    VANILLA_CAT_VARIANT_TEXTURE_REFS[0],
+    VANILLA_CAT_VARIANT_TEXTURE_REFS[1],
+    VANILLA_CAT_VARIANT_TEXTURE_REFS[2],
+    VANILLA_CAT_VARIANT_TEXTURE_REFS[3],
+    VANILLA_CAT_VARIANT_TEXTURE_REFS[4],
+    VANILLA_CAT_VARIANT_TEXTURE_REFS[5],
+    VANILLA_CAT_VARIANT_TEXTURE_REFS[6],
+    VANILLA_CAT_VARIANT_TEXTURE_REFS[7],
+    VANILLA_CAT_VARIANT_TEXTURE_REFS[8],
+    VANILLA_CAT_VARIANT_TEXTURE_REFS[9],
+    VANILLA_CAT_VARIANT_TEXTURE_REFS[10],
+    VANILLA_CAT_VARIANT_TEXTURE_REFS[11],
+    VANILLA_CAT_VARIANT_TEXTURE_REFS[12],
+    VANILLA_CAT_VARIANT_TEXTURE_REFS[13],
+    VANILLA_CAT_VARIANT_TEXTURE_REFS[14],
+    VANILLA_CAT_VARIANT_TEXTURE_REFS[15],
+    VANILLA_CAT_VARIANT_TEXTURE_REFS[16],
+    VANILLA_CAT_VARIANT_TEXTURE_REFS[17],
+    VANILLA_CAT_VARIANT_TEXTURE_REFS[18],
+    VANILLA_CAT_VARIANT_TEXTURE_REFS[19],
+    VANILLA_CAT_VARIANT_TEXTURE_REFS[20],
+    VANILLA_CAT_VARIANT_TEXTURE_REFS[21],
     FELINE_OCELOT_TEXTURE_REF,
     FELINE_OCELOT_BABY_TEXTURE_REF,
     FELINE_CAT_COLLAR_TEXTURE_REF,
@@ -4359,124 +4360,8 @@ pub(in crate::entity_models) const RABBIT_ENTITY_TEXTURE_REFS: [EntityModelTextu
 pub fn rabbit_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &RABBIT_ENTITY_TEXTURE_REFS
 }
-
-// The cat and ocelot share `AbstractFelineModel` (one UV layout per age), so the four refs differ only
-// in the image: the cat's default `cat_tabby` variant (`CatRenderState.DEFAULT_TEXTURE`) and the
-// ocelot, each with a 32×32 baby. The cat colour/breed variants need a further enum extension; only the
-// default `cat_tabby` is wired here.
-// The feline texture set: the eleven `CatVariant` breeds × {adult 64×32, baby 32×32}
-// (`cat_<breed>.png` / `cat_<breed>_baby.png`, the variant's `assetInfo(isBaby)`), plus the two
-// `ocelot` textures used by `OcelotRenderer`.
-pub(in crate::entity_models) const FELINE_CAT_TABBY_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/cat/cat_tabby.png",
-        size: [64, 32],
-    };
-pub(in crate::entity_models) const FELINE_CAT_TABBY_BABY_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/cat/cat_tabby_baby.png",
-        size: [32, 32],
-    };
-pub(in crate::entity_models) const FELINE_CAT_BLACK_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/cat/cat_black.png",
-        size: [64, 32],
-    };
-pub(in crate::entity_models) const FELINE_CAT_BLACK_BABY_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/cat/cat_black_baby.png",
-        size: [32, 32],
-    };
-pub(in crate::entity_models) const FELINE_CAT_RED_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/cat/cat_red.png",
-        size: [64, 32],
-    };
-pub(in crate::entity_models) const FELINE_CAT_RED_BABY_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/cat/cat_red_baby.png",
-        size: [32, 32],
-    };
-pub(in crate::entity_models) const FELINE_CAT_SIAMESE_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/cat/cat_siamese.png",
-        size: [64, 32],
-    };
-pub(in crate::entity_models) const FELINE_CAT_SIAMESE_BABY_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/cat/cat_siamese_baby.png",
-        size: [32, 32],
-    };
-pub(in crate::entity_models) const FELINE_CAT_BRITISH_SHORTHAIR_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/cat/cat_british_shorthair.png",
-        size: [64, 32],
-    };
-pub(in crate::entity_models) const FELINE_CAT_BRITISH_SHORTHAIR_BABY_TEXTURE_REF:
-    EntityModelTextureRef = EntityModelTextureRef {
-    path: "textures/entity/cat/cat_british_shorthair_baby.png",
-    size: [32, 32],
-};
-pub(in crate::entity_models) const FELINE_CAT_CALICO_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/cat/cat_calico.png",
-        size: [64, 32],
-    };
-pub(in crate::entity_models) const FELINE_CAT_CALICO_BABY_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/cat/cat_calico_baby.png",
-        size: [32, 32],
-    };
-pub(in crate::entity_models) const FELINE_CAT_PERSIAN_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/cat/cat_persian.png",
-        size: [64, 32],
-    };
-pub(in crate::entity_models) const FELINE_CAT_PERSIAN_BABY_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/cat/cat_persian_baby.png",
-        size: [32, 32],
-    };
-pub(in crate::entity_models) const FELINE_CAT_RAGDOLL_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/cat/cat_ragdoll.png",
-        size: [64, 32],
-    };
-pub(in crate::entity_models) const FELINE_CAT_RAGDOLL_BABY_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/cat/cat_ragdoll_baby.png",
-        size: [32, 32],
-    };
-pub(in crate::entity_models) const FELINE_CAT_WHITE_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/cat/cat_white.png",
-        size: [64, 32],
-    };
-pub(in crate::entity_models) const FELINE_CAT_WHITE_BABY_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/cat/cat_white_baby.png",
-        size: [32, 32],
-    };
-pub(in crate::entity_models) const FELINE_CAT_JELLIE_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/cat/cat_jellie.png",
-        size: [64, 32],
-    };
-pub(in crate::entity_models) const FELINE_CAT_JELLIE_BABY_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/cat/cat_jellie_baby.png",
-        size: [32, 32],
-    };
-pub(in crate::entity_models) const FELINE_CAT_ALL_BLACK_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/cat/cat_all_black.png",
-        size: [64, 32],
-    };
-pub(in crate::entity_models) const FELINE_CAT_ALL_BLACK_BABY_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/cat/cat_all_black_baby.png",
-        size: [32, 32],
-    };
+// The generated `CatVariants` catalog owns all eleven adult/baby built-in cat textures. Ocelot
+// and collar textures remain renderer-owned because they are not cat-variant registry payloads.
 pub(in crate::entity_models) const FELINE_OCELOT_TEXTURE_REF: EntityModelTextureRef =
     EntityModelTextureRef {
         path: "textures/entity/cat/ocelot.png",
@@ -4507,30 +4392,7 @@ pub(in crate::entity_models) fn feline_collar_texture_ref(baby: bool) -> EntityM
     }
 }
 fn feline_cat_texture_ref(variant: CatModelVariant, baby: bool) -> EntityModelTextureRef {
-    match (variant, baby) {
-        (CatModelVariant::Tabby, false) => FELINE_CAT_TABBY_TEXTURE_REF,
-        (CatModelVariant::Tabby, true) => FELINE_CAT_TABBY_BABY_TEXTURE_REF,
-        (CatModelVariant::Black, false) => FELINE_CAT_BLACK_TEXTURE_REF,
-        (CatModelVariant::Black, true) => FELINE_CAT_BLACK_BABY_TEXTURE_REF,
-        (CatModelVariant::Red, false) => FELINE_CAT_RED_TEXTURE_REF,
-        (CatModelVariant::Red, true) => FELINE_CAT_RED_BABY_TEXTURE_REF,
-        (CatModelVariant::Siamese, false) => FELINE_CAT_SIAMESE_TEXTURE_REF,
-        (CatModelVariant::Siamese, true) => FELINE_CAT_SIAMESE_BABY_TEXTURE_REF,
-        (CatModelVariant::BritishShorthair, false) => FELINE_CAT_BRITISH_SHORTHAIR_TEXTURE_REF,
-        (CatModelVariant::BritishShorthair, true) => FELINE_CAT_BRITISH_SHORTHAIR_BABY_TEXTURE_REF,
-        (CatModelVariant::Calico, false) => FELINE_CAT_CALICO_TEXTURE_REF,
-        (CatModelVariant::Calico, true) => FELINE_CAT_CALICO_BABY_TEXTURE_REF,
-        (CatModelVariant::Persian, false) => FELINE_CAT_PERSIAN_TEXTURE_REF,
-        (CatModelVariant::Persian, true) => FELINE_CAT_PERSIAN_BABY_TEXTURE_REF,
-        (CatModelVariant::Ragdoll, false) => FELINE_CAT_RAGDOLL_TEXTURE_REF,
-        (CatModelVariant::Ragdoll, true) => FELINE_CAT_RAGDOLL_BABY_TEXTURE_REF,
-        (CatModelVariant::White, false) => FELINE_CAT_WHITE_TEXTURE_REF,
-        (CatModelVariant::White, true) => FELINE_CAT_WHITE_BABY_TEXTURE_REF,
-        (CatModelVariant::Jellie, false) => FELINE_CAT_JELLIE_TEXTURE_REF,
-        (CatModelVariant::Jellie, true) => FELINE_CAT_JELLIE_BABY_TEXTURE_REF,
-        (CatModelVariant::AllBlack, false) => FELINE_CAT_ALL_BLACK_TEXTURE_REF,
-        (CatModelVariant::AllBlack, true) => FELINE_CAT_ALL_BLACK_BABY_TEXTURE_REF,
-    }
+    variant.builtin_texture_ref(baby)
 }
 pub(in crate::entity_models) fn feline_texture_ref(
     cat: bool,
@@ -4544,28 +4406,28 @@ pub(in crate::entity_models) fn feline_texture_ref(
     }
 }
 pub(in crate::entity_models) const FELINE_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 26] = [
-    FELINE_CAT_TABBY_TEXTURE_REF,
-    FELINE_CAT_TABBY_BABY_TEXTURE_REF,
-    FELINE_CAT_BLACK_TEXTURE_REF,
-    FELINE_CAT_BLACK_BABY_TEXTURE_REF,
-    FELINE_CAT_RED_TEXTURE_REF,
-    FELINE_CAT_RED_BABY_TEXTURE_REF,
-    FELINE_CAT_SIAMESE_TEXTURE_REF,
-    FELINE_CAT_SIAMESE_BABY_TEXTURE_REF,
-    FELINE_CAT_BRITISH_SHORTHAIR_TEXTURE_REF,
-    FELINE_CAT_BRITISH_SHORTHAIR_BABY_TEXTURE_REF,
-    FELINE_CAT_CALICO_TEXTURE_REF,
-    FELINE_CAT_CALICO_BABY_TEXTURE_REF,
-    FELINE_CAT_PERSIAN_TEXTURE_REF,
-    FELINE_CAT_PERSIAN_BABY_TEXTURE_REF,
-    FELINE_CAT_RAGDOLL_TEXTURE_REF,
-    FELINE_CAT_RAGDOLL_BABY_TEXTURE_REF,
-    FELINE_CAT_WHITE_TEXTURE_REF,
-    FELINE_CAT_WHITE_BABY_TEXTURE_REF,
-    FELINE_CAT_JELLIE_TEXTURE_REF,
-    FELINE_CAT_JELLIE_BABY_TEXTURE_REF,
-    FELINE_CAT_ALL_BLACK_TEXTURE_REF,
-    FELINE_CAT_ALL_BLACK_BABY_TEXTURE_REF,
+    VANILLA_CAT_VARIANT_TEXTURE_REFS[0],
+    VANILLA_CAT_VARIANT_TEXTURE_REFS[1],
+    VANILLA_CAT_VARIANT_TEXTURE_REFS[2],
+    VANILLA_CAT_VARIANT_TEXTURE_REFS[3],
+    VANILLA_CAT_VARIANT_TEXTURE_REFS[4],
+    VANILLA_CAT_VARIANT_TEXTURE_REFS[5],
+    VANILLA_CAT_VARIANT_TEXTURE_REFS[6],
+    VANILLA_CAT_VARIANT_TEXTURE_REFS[7],
+    VANILLA_CAT_VARIANT_TEXTURE_REFS[8],
+    VANILLA_CAT_VARIANT_TEXTURE_REFS[9],
+    VANILLA_CAT_VARIANT_TEXTURE_REFS[10],
+    VANILLA_CAT_VARIANT_TEXTURE_REFS[11],
+    VANILLA_CAT_VARIANT_TEXTURE_REFS[12],
+    VANILLA_CAT_VARIANT_TEXTURE_REFS[13],
+    VANILLA_CAT_VARIANT_TEXTURE_REFS[14],
+    VANILLA_CAT_VARIANT_TEXTURE_REFS[15],
+    VANILLA_CAT_VARIANT_TEXTURE_REFS[16],
+    VANILLA_CAT_VARIANT_TEXTURE_REFS[17],
+    VANILLA_CAT_VARIANT_TEXTURE_REFS[18],
+    VANILLA_CAT_VARIANT_TEXTURE_REFS[19],
+    VANILLA_CAT_VARIANT_TEXTURE_REFS[20],
+    VANILLA_CAT_VARIANT_TEXTURE_REFS[21],
     FELINE_OCELOT_TEXTURE_REF,
     FELINE_OCELOT_BABY_TEXTURE_REF,
     FELINE_CAT_COLLAR_TEXTURE_REF,

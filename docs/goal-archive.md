@@ -13416,3 +13416,16 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   built-in fallback，不冒充尚未完成的同步 `WolfVariant.NETWORK_CODEC` asset payload 解码。
   extractor 单测、generator update/check、32 项 renderer wolf tests、native entity-asset tests 与
   workspace gate 通过。
+
+## 2026-07-13：Generate built-in cat-variant presentation assets
+
+- [x] bootstrap Tree-sitter extractor 在既有 11 项 cat variant identity/order 基础上读取每项
+  adult/baby asset literal，严格区分 10 个 `registerForAnyConditions` 与 `ALL_BLACK` 的直接
+  `register`，并校验 fallback helper 透传和最终 `CatVariant` payload 的 asset 装配顺序。
+- [x] renderer generated catalog 统一拥有 22 个 built-in adult/baby 纹理路径，尺寸与本地官方
+  PNG 的 64×32/32×32 保持一致；删除 22 个手写常量与 22 分支选择，global/feline atlas 直接
+  按生成数组枚举。Ocelot 与 collar 不属于 cat-variant registry payload，继续由 renderer 拥有。
+- [x] session holder id 仍先按同步 registry 映射 resource id；本片只收敛 vanilla 26.1
+  built-in fallback，不冒充 `CatVariant.NETWORK_CODEC` 的同步 replacement asset 解码。
+  19 项 extractor tests、generator update/check、3 项 catalog tests、26 项 renderer feline tests、
+  native entity-asset tests 与 workspace gate 通过。
