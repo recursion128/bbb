@@ -3,7 +3,10 @@ use std::borrow::Cow;
 use bbb_protocol::item_component_value_types::{
     FireworkExplosionShapeSummary, ItemRaritySummary, SwingAnimationTypeSummary,
 };
-use bbb_protocol::packets::inventory::FireworkExplosionSummary;
+use bbb_protocol::packets::{
+    chunks::BlockPos,
+    inventory::{FireworkExplosionSummary, LodestoneTargetSummary},
+};
 use bbb_protocol::{
     builtin_enum_component_values::{
         builtin_enum_component_value_for_name, VANILLA_BUILTIN_ENUM_COMPONENTS,
@@ -18,7 +21,8 @@ use bbb_protocol::{
         VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID, VANILLA_DATA_COMPONENT_FOOD_TYPE_ID,
         VANILLA_DATA_COMPONENT_GLIDER_TYPE_ID,
         VANILLA_DATA_COMPONENT_INTANGIBLE_PROJECTILE_TYPE_ID,
-        VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID, VANILLA_DATA_COMPONENT_MAP_COLOR_TYPE_ID,
+        VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID,
+        VANILLA_DATA_COMPONENT_LODESTONE_TRACKER_TYPE_ID, VANILLA_DATA_COMPONENT_MAP_COLOR_TYPE_ID,
         VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID,
         VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
         VANILLA_DATA_COMPONENT_MINIMUM_ATTACK_CHARGE_TYPE_ID,
@@ -141,6 +145,11 @@ pub enum DialogDataComponentValueState {
         flight_duration: i32,
         explosions: Vec<FireworkExplosionSummary>,
     },
+    LodestoneTracker {
+        #[serde(default)]
+        target: Option<LodestoneTargetSummary>,
+        tracked: bool,
+    },
 }
 
 impl DialogDataComponentValueState {
@@ -244,6 +253,7 @@ pub(super) fn decode_supported_component_value(
             }
         }
         VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID => decode_fireworks(value, &what)?,
+        VANILLA_DATA_COMPONENT_LODESTONE_TRACKER_TYPE_ID => decode_lodestone_tracker(value, &what)?,
         _ => {
             return decode_string_enum_component_value(type_id, &what, value);
         }
@@ -630,6 +640,53 @@ fn decode_fireworks(
     Ok(DialogDataComponentValueState::Fireworks {
         flight_duration,
         explosions,
+    })
+}
+
+fn decode_lodestone_tracker(
+    value: &NbtSummaryValue,
+    what: &str,
+) -> Result<DialogDataComponentValueState, String> {
+    let entries = compound_entries(value, what)?;
+    let target = find_entry(entries, "target")
+        .map(|value| decode_lodestone_target(value, &format!("{what} field target")))
+        .transpose()?;
+    let tracked = optional_component_bool(entries, "tracked", true, what)?;
+    Ok(DialogDataComponentValueState::LodestoneTracker { target, tracked })
+}
+
+fn decode_lodestone_target(
+    value: &NbtSummaryValue,
+    what: &str,
+) -> Result<LodestoneTargetSummary, String> {
+    let entries = compound_entries(value, what)?;
+    let dimension = match find_entry(entries, "dimension") {
+        Some(NbtSummaryValue::String(raw)) => normalize_codec_identifier(raw)
+            .ok_or_else(|| format!("invalid {what} dimension resource id {raw}"))?,
+        Some(_) => return Err(format!("{what} field dimension is not a resource id")),
+        None => return Err(format!("{what} is missing field dimension")),
+    };
+    let pos_value =
+        find_entry(entries, "pos").ok_or_else(|| format!("{what} is missing field pos"))?;
+    let positions =
+        component_list(pos_value).map_err(|_| format!("{what} field pos is not an int stream"))?;
+    if positions.len() != 3 {
+        return Err(format!(
+            "{what} field pos has {} coordinates instead of 3",
+            positions.len()
+        ));
+    }
+    let mut decoded = [0i32; 3];
+    for (index, position) in positions.iter().enumerate() {
+        decoded[index] = component_i32(position, &format!("{what} field pos[{index}]"))?;
+    }
+    Ok(LodestoneTargetSummary {
+        dimension,
+        pos: BlockPos {
+            x: decoded[0],
+            y: decoded[1],
+            z: decoded[2],
+        },
     })
 }
 

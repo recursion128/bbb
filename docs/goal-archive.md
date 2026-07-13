@@ -13738,3 +13738,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] required/unknown shape、defaulted colors/fade/trail/twinkle、Byte/Int/LongArray list 输入、Java
   `byteValue` 低 8 位、ordered nested records、256 合法边界、257 拒绝及 wrong field/element shapes 均有
   定向测试；Component、holder、其余 list/compound-record persistent Codec 与 native screens 仍开放。
+
+## 2026-07-13：Decode lodestone tracker dialog item component
+
+- [x] 对照 `LodestoneTracker.CODEC`、`GlobalPos.CODEC`、`Level.RESOURCE_KEY_CODEC` 与 `BlockPos.CODEC`，
+  复用现有 `LodestoneTargetSummary`，typed 投影 optional target、normalized dimension resource key、
+  exact-three int-stream position 与 default-true tracked，共闭合 1 个 persistent 注册项。
+- [x] absent/default target、IntArray/ordinary numeric list、`Number.intValue`、bool byteValue、missing/wrong
+  target fields、invalid dimension、wrong coordinate count/type 与 invalid tracked 均有定向测试；Component、
+  holder、其余 list/compound-record persistent Codec 与 native screens 仍开放。

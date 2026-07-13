@@ -1195,6 +1195,169 @@ fn rejects_invalid_firework_component_records() {
     }
 }
 
+#[test]
+fn decodes_lodestone_tracker_global_position_and_defaults() {
+    assert_eq!(
+        decoded(
+            VANILLA_DATA_COMPONENT_LODESTONE_TRACKER_TYPE_ID,
+            "minecraft:lodestone_tracker",
+            &compound(Vec::new()),
+        )
+        .unwrap(),
+        Some(DialogDataComponentValueState::LodestoneTracker {
+            target: None,
+            tracked: true,
+        })
+    );
+    assert_eq!(
+        decoded(
+            VANILLA_DATA_COMPONENT_LODESTONE_TRACKER_TYPE_ID,
+            "minecraft:lodestone_tracker",
+            &compound(vec![
+                value_entry(
+                    "target",
+                    compound(vec![
+                        string_entry("dimension", "the_nether"),
+                        value_entry("pos", NbtSummaryValue::IntArray(vec![12, -64, 34])),
+                    ]),
+                ),
+                value_entry("tracked", NbtSummaryValue::Int(0)),
+            ]),
+        )
+        .unwrap(),
+        Some(DialogDataComponentValueState::LodestoneTracker {
+            target: Some(LodestoneTargetSummary {
+                dimension: "minecraft:the_nether".to_string(),
+                pos: BlockPos {
+                    x: 12,
+                    y: -64,
+                    z: 34,
+                },
+            }),
+            tracked: false,
+        })
+    );
+    assert_eq!(
+        decoded(
+            VANILLA_DATA_COMPONENT_LODESTONE_TRACKER_TYPE_ID,
+            "minecraft:lodestone_tracker",
+            &compound(vec![value_entry(
+                "target",
+                compound(vec![
+                    string_entry("dimension", "minecraft:overworld"),
+                    value_entry(
+                        "pos",
+                        NbtSummaryValue::List(vec![
+                            NbtSummaryValue::Long(0x1_0000_0001),
+                            NbtSummaryValue::Double(2.75f64.to_bits()),
+                            NbtSummaryValue::Byte(-3),
+                        ]),
+                    ),
+                ]),
+            )]),
+        )
+        .unwrap(),
+        Some(DialogDataComponentValueState::LodestoneTracker {
+            target: Some(LodestoneTargetSummary {
+                dimension: "minecraft:overworld".to_string(),
+                pos: BlockPos { x: 1, y: 2, z: -3 },
+            }),
+            tracked: true,
+        })
+    );
+}
+
+#[test]
+fn rejects_invalid_lodestone_tracker_global_positions() {
+    for (value, expected) in [
+        (NbtSummaryValue::List(Vec::new()), "is not a compound"),
+        (
+            compound(vec![value_entry("target", NbtSummaryValue::Int(1))]),
+            "field target is not a compound",
+        ),
+        (
+            compound(vec![value_entry("target", compound(Vec::new()))]),
+            "field target is missing field dimension",
+        ),
+        (
+            compound(vec![value_entry(
+                "target",
+                compound(vec![
+                    value_entry("dimension", NbtSummaryValue::Int(0)),
+                    value_entry("pos", NbtSummaryValue::IntArray(vec![0, 0, 0])),
+                ]),
+            )]),
+            "field dimension is not a resource id",
+        ),
+        (
+            compound(vec![value_entry(
+                "target",
+                compound(vec![
+                    string_entry("dimension", "Invalid"),
+                    value_entry("pos", NbtSummaryValue::IntArray(vec![0, 0, 0])),
+                ]),
+            )]),
+            "invalid dialog item component minecraft:lodestone_tracker field target dimension resource id Invalid",
+        ),
+        (
+            compound(vec![value_entry(
+                "target",
+                compound(vec![string_entry("dimension", "overworld")]),
+            )]),
+            "field target is missing field pos",
+        ),
+        (
+            compound(vec![value_entry(
+                "target",
+                compound(vec![
+                    string_entry("dimension", "overworld"),
+                    value_entry("pos", NbtSummaryValue::Int(0)),
+                ]),
+            )]),
+            "field pos is not an int stream",
+        ),
+        (
+            compound(vec![value_entry(
+                "target",
+                compound(vec![
+                    string_entry("dimension", "overworld"),
+                    value_entry("pos", NbtSummaryValue::IntArray(vec![0, 1])),
+                ]),
+            )]),
+            "field pos has 2 coordinates instead of 3",
+        ),
+        (
+            compound(vec![value_entry(
+                "target",
+                compound(vec![
+                    string_entry("dimension", "overworld"),
+                    value_entry(
+                        "pos",
+                        NbtSummaryValue::List(vec![
+                            NbtSummaryValue::Int(0),
+                            NbtSummaryValue::String("one".to_string()),
+                            NbtSummaryValue::Int(2),
+                        ]),
+                    ),
+                ]),
+            )]),
+            "field pos[1] is not numeric",
+        ),
+        (
+            compound(vec![string_entry("tracked", "true")]),
+            "field tracked is not a boolean",
+        ),
+    ] {
+        let error = decoded(
+            VANILLA_DATA_COMPONENT_LODESTONE_TRACKER_TYPE_ID,
+            "minecraft:lodestone_tracker",
+            &value,
+        )
+        .unwrap_err();
+        assert!(error.contains(expected), "unexpected error: {error}");
+    }
+}
+
 fn decoded(
     type_id: i32,
     resource_id: &str,
