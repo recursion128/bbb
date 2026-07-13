@@ -12,11 +12,13 @@ from bootstrap_catalog_extractor import (  # noqa: E402
     BootstrapCatalogExtractionError,
     CatVariantEntry,
     EnchantmentEntry,
+    FrogVariantEntry,
     banner_pattern_entries,
     bootstrap_resource_key_entries,
     decorated_pot_pattern_entries,
     enchantment_entries,
     enchantment_tooltip_order,
+    frog_variant_entries,
     identifier_constant_paths,
     map_decoration_entries,
     painting_variant_entries,
@@ -30,6 +32,90 @@ from vanilla_java_source import parse_source  # noqa: E402
 
 
 class BootstrapCatalogExtractorTests(unittest.TestCase):
+    def test_frog_variant_assets_follow_bootstrap_literals_and_helper_payload(self) -> None:
+        source = parse_source(
+            "fixture/FrogVariants.java",
+            b'''
+package fixture;
+class FrogVariants {
+  static final ResourceKey<FrogVariant> TEMPERATE = createKey(Temperature.TEMPERATE);
+  static final ResourceKey<FrogVariant> WARM = createKey(Temperature.WARM);
+  static void register(BootstrapContext<FrogVariant> context,
+      ResourceKey<FrogVariant> name, String assetId, TagKey<Biome> limitToBiome) {
+    HolderSet<Biome> biomes = context.lookup(Registries.BIOME).getOrThrow(limitToBiome);
+    register(context, name, assetId,
+        SpawnPrioritySelectors.single(new BiomeCheck(biomes), 1));
+  }
+  static void register(BootstrapContext<FrogVariant> context,
+      ResourceKey<FrogVariant> name, String assetId, SpawnPrioritySelectors selectors) {
+    context.register(name, new FrogVariant(
+        new ClientAsset.ResourceTexture(Identifier.withDefaultNamespace(assetId)), selectors));
+  }
+  static void bootstrap(BootstrapContext<FrogVariant> registry) {
+    register(registry, TEMPERATE, "entity/frog/frog_temperate", selectors());
+    register(registry, WARM, "entity/frog/frog_warm", tag());
+  }
+}
+''',
+        )
+
+        self.assertEqual(
+            frog_variant_entries(
+                source,
+                {
+                    "Temperature.TEMPERATE": "temperate",
+                    "Temperature.WARM": "warm",
+                },
+                expected_count=2,
+            ),
+            [
+                FrogVariantEntry(
+                    "TEMPERATE",
+                    "minecraft:temperate",
+                    "minecraft:entity/frog/frog_temperate",
+                ),
+                FrogVariantEntry(
+                    "WARM",
+                    "minecraft:warm",
+                    "minecraft:entity/frog/frog_warm",
+                ),
+            ],
+        )
+
+    def test_frog_variant_assets_reject_changed_helper_payload(self) -> None:
+        source = parse_source(
+            "fixture/FrogVariants.java",
+            b'''
+package fixture;
+class FrogVariants {
+  static final ResourceKey<FrogVariant> TEMPERATE = createKey(Temperature.TEMPERATE);
+  static void register(BootstrapContext<FrogVariant> context,
+      ResourceKey<FrogVariant> name, String assetId, TagKey<Biome> limitToBiome) {
+    HolderSet<Biome> biomes = context.lookup(Registries.BIOME).getOrThrow(limitToBiome);
+    register(context, name, assetId,
+        SpawnPrioritySelectors.single(new BiomeCheck(biomes), 1));
+  }
+  static void register(BootstrapContext<FrogVariant> context,
+      ResourceKey<FrogVariant> name, String assetId, SpawnPrioritySelectors selectors) {
+    context.register(name, new FrogVariant(
+        new ClientAsset.ResourceTexture(Identifier.withDefaultNamespace("wrong")), selectors));
+  }
+  static void bootstrap(BootstrapContext<FrogVariant> registry) {
+    register(registry, TEMPERATE, "entity/frog/frog_temperate", selectors());
+  }
+}
+''',
+        )
+        with self.assertRaisesRegex(
+            BootstrapCatalogExtractionError,
+            "frog asset registration payload changed",
+        ):
+            frog_variant_entries(
+                source,
+                {"Temperature.TEMPERATE": "temperate"},
+                expected_count=1,
+            )
+
     def test_cat_variant_assets_follow_bootstrap_literals_and_helper_payload(self) -> None:
         source = parse_source(
             "fixture/CatVariants.java",

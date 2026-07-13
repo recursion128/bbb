@@ -43,6 +43,13 @@ class CatVariantEntry:
 
 
 @dataclass(frozen=True)
+class FrogVariantEntry:
+    constant_name: str
+    resource_id: str
+    asset_id: str
+
+
+@dataclass(frozen=True)
 class BannerPatternEntry:
     constant_name: str
     resource_id: str
@@ -610,6 +617,128 @@ def cat_variant_entries(
     if len(all_assets) != len(set(all_assets)):
         raise BootstrapCatalogExtractionError(
             f"{source.relative_path}: duplicate cat variant asset id"
+        )
+    return entries
+
+
+def frog_variant_entries(
+    source: JavaSource,
+    referenced_paths: dict[str, str],
+    expected_count: int = 3,
+) -> list[FrogVariantEntry]:
+    identities = bootstrap_resource_key_entries(
+        source,
+        "FrogVariant",
+        {"createKey"},
+        expected_count,
+        referenced_paths=referenced_paths,
+    )
+    bootstrap = _bootstrap_method(source)
+    context_name = _bootstrap_context_name(source, bootstrap)
+    calls = [
+        call
+        for call in source.calls
+        if call.name == "register"
+        and call.qualifier is None
+        and bootstrap.body is not None
+        and bootstrap.body.start_byte <= call.span.start_byte
+        and call.span.end_byte <= bootstrap.body.end_byte
+    ]
+    calls.sort(key=lambda call: (call.span.start_byte, call.span.end_byte))
+    assets: dict[str, str] = {}
+    for call in calls:
+        if len(call.arguments) != 4 or call.arguments[0].canonical != context_name:
+            _fail(source, source.expression(call.node), "frog bootstrap registration changed")
+        key = call.arguments[1]
+        if key.node.type != "identifier":
+            _fail(source, key, "frog bootstrap resource key is not an identifier")
+        assets[key.canonical] = f"minecraft:{_string(source, call.arguments[2])}"
+
+    helpers = []
+    wrappers = []
+    for method in source.methods:
+        if method.name != "register" or len(method.parameters) != 4:
+            continue
+        last_type = method.parameters[3].node.child_by_field_name("type")
+        last_type_name = (
+            source.expression(last_type).canonical.replace(" ", "")
+            if last_type is not None
+            else ""
+        )
+        if last_type_name == "SpawnPrioritySelectors":
+            helpers.append(method)
+        elif last_type_name == "TagKey<Biome>":
+            wrappers.append(method)
+    if len(helpers) != 1 or helpers[0].body is None:
+        raise BootstrapCatalogExtractionError(
+            f"{source.relative_path}: expected one frog asset register helper"
+        )
+    helper = helpers[0]
+    registrations = [
+        call
+        for call in source.calls
+        if call.name == "register"
+        and call.qualifier is not None
+        and call.qualifier.canonical == "context"
+        and helper.body.start_byte <= call.span.start_byte
+        and call.span.end_byte <= helper.body.end_byte
+    ]
+    expected_registration = (
+        "context.register (name, new FrogVariant (new ClientAsset.ResourceTexture "
+        "(Identifier.withDefaultNamespace (assetId)), selectors))"
+    )
+    if (
+        len(registrations) != 1
+        or source.expression(registrations[0].node).canonical != expected_registration
+    ):
+        expression = (
+            source.expression(registrations[0].node)
+            if registrations
+            else source.expression(helper.node)
+        )
+        _fail(source, expression, "frog asset registration payload changed")
+
+    if len(wrappers) != 1 or wrappers[0].body is None:
+        raise BootstrapCatalogExtractionError(
+            f"{source.relative_path}: expected one frog biome registration helper"
+        )
+    wrapper = wrappers[0]
+    wrapper_calls = [
+        call
+        for call in source.calls
+        if call.name == "register"
+        and call.qualifier is None
+        and wrapper.body.start_byte <= call.span.start_byte
+        and call.span.end_byte <= wrapper.body.end_byte
+    ]
+    expected_wrapper = (
+        "register (context, name, assetId, SpawnPrioritySelectors.single "
+        "(new BiomeCheck (biomes), 1))"
+    )
+    if (
+        len(wrapper_calls) != 1
+        or source.expression(wrapper_calls[0].node).canonical != expected_wrapper
+    ):
+        expression = (
+            source.expression(wrapper_calls[0].node)
+            if wrapper_calls
+            else source.expression(wrapper.node)
+        )
+        _fail(source, expression, "frog biome registration payload changed")
+
+    entries = []
+    for identity in identities:
+        asset_id = assets.get(identity.constant_name)
+        if asset_id is None:
+            raise BootstrapCatalogExtractionError(
+                f"{source.relative_path}: frog variant {identity.constant_name} lacks an asset"
+            )
+        entries.append(
+            FrogVariantEntry(identity.constant_name, identity.resource_id, asset_id)
+        )
+    if len({entry.asset_id for entry in entries}) != len(entries):
+        raise BootstrapCatalogExtractionError(
+            f"{source.relative_path}: duplicate frog variant asset id"
         )
     return entries
 

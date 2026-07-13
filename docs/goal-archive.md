@@ -13429,3 +13429,15 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   built-in fallback，不冒充 `CatVariant.NETWORK_CODEC` 的同步 replacement asset 解码。
   19 项 extractor tests、generator update/check、3 项 catalog tests、26 项 renderer feline tests、
   native entity-asset tests 与 workspace gate 通过。
+
+## 2026-07-13：Generate built-in frog-variant presentation assets
+
+- [x] bootstrap Tree-sitter extractor 读取 `FrogVariants.bootstrap` 的 temperate/warm/cold asset
+  literals，交叉检查共享 temperature identity/order，并严格校验 biome overload 对 asset id 的
+  透传和最终 `FrogVariant` / `ClientAsset.ResourceTexture` payload 装配。
+- [x] renderer generated temperature-animal catalog 统一拥有 3 个 frog built-in 纹理路径，48×48
+  尺寸与三张本地官方 PNG 一致；renderer 删除路径常量和 variant match，仅保留指向生成数组的
+  stable aliases 供 focused tests 使用。Chicken/cow/pig 的 `ModelAndTexture` payload 留作独立切片。
+- [x] 本片不冒充 `FrogVariant.NETWORK_CODEC` 的 session replacement asset 解码；同步 holder id
+  仍先解析 resource identity。21 项 extractor tests、generator update/check、2 项 catalog tests、
+  15 项 renderer frog tests、native entity-asset tests 与 workspace gate 通过。

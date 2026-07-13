@@ -8,6 +8,7 @@ use crate::entity_models::catalog::{
     SignModelAttachment, SignModelWood, WolfArmorCrackiness,
 };
 use crate::entity_models::decorated_pot_patterns::*;
+use crate::entity_models::temperature_animal_variants::VANILLA_FROG_VARIANT_TEXTURE_REFS;
 use crate::entity_models::wolf_variants::VANILLA_WOLF_VARIANT_TEXTURE_REFS;
 use crate::entity_models::{CatModelVariant, DecoratedPotPattern, FrogModelVariant};
 
@@ -4766,32 +4767,18 @@ pub(in crate::entity_models) const WARDEN_ENTITY_TEXTURE_REFS: [EntityModelTextu
 pub fn warden_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WARDEN_ENTITY_TEXTURE_REFS
 }
-
-// The frog's three temperature textures (atlas 48×48). All share one `FrogModel` geometry/UV and
-// differ only by texture; `FrogRenderer.getTextureLocation` reads the variant's `assetInfo` path.
+// Stable aliases keep focused frog tests readable; generated `FrogVariants` presentation owns
+// the asset paths and atlas dimensions.
 pub(in crate::entity_models) const FROG_TEMPERATE_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/frog/frog_temperate.png",
-        size: [48, 48],
-    };
+    VANILLA_FROG_VARIANT_TEXTURE_REFS[0];
 pub(in crate::entity_models) const FROG_WARM_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/frog/frog_warm.png",
-        size: [48, 48],
-    };
+    VANILLA_FROG_VARIANT_TEXTURE_REFS[1];
 pub(in crate::entity_models) const FROG_COLD_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/frog/frog_cold.png",
-        size: [48, 48],
-    };
+    VANILLA_FROG_VARIANT_TEXTURE_REFS[2];
 pub(in crate::entity_models) fn frog_texture_ref(
     variant: FrogModelVariant,
 ) -> EntityModelTextureRef {
-    match variant {
-        FrogModelVariant::Temperate => FROG_TEMPERATE_TEXTURE_REF,
-        FrogModelVariant::Warm => FROG_WARM_TEXTURE_REF,
-        FrogModelVariant::Cold => FROG_COLD_TEXTURE_REF,
-    }
+    variant.builtin_texture_ref()
 }
 pub(in crate::entity_models) const FROG_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 3] = [
     FROG_TEMPERATE_TEXTURE_REF,
