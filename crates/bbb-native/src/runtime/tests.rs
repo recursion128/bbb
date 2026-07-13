@@ -16401,6 +16401,65 @@ fn local_prediction_consumes_the_runtime_client_tick_batch() {
 }
 
 #[test]
+fn client_tick_end_commands_follow_movement_and_require_active_level() {
+    let (tx, mut rx) = mpsc::channel(3);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    world.set_local_player_pose(LocalPlayerPoseState {
+        position: Vec3d {
+            x: 0.0,
+            y: 64.0,
+            z: 0.0,
+        },
+        ..LocalPlayerPoseState::default()
+    });
+    let mut counters = NetCounters::default();
+
+    advance_player_input_for_client_ticks(
+        &mut input,
+        &mut world,
+        &mut counters,
+        &commands,
+        Instant::now(),
+        1,
+    );
+    queue_client_tick_end_commands(&world, &commands, 2);
+
+    assert!(matches!(rx.try_recv().unwrap(), NetCommand::MovePlayer(_)));
+    assert_eq!(rx.try_recv().unwrap(), NetCommand::ClientTickEnd);
+    assert_eq!(rx.try_recv().unwrap(), NetCommand::ClientTickEnd);
+
+    world.clear_client_level();
+    queue_client_tick_end_commands(&world, &commands, 1);
+    assert!(matches!(
+        rx.try_recv(),
+        Err(mpsc::error::TryRecvError::Empty)
+    ));
+}
+
+#[test]
+fn client_tick_end_is_queued_after_native_tick_commands_and_particles() {
+    let source = include_str!("../runtime.rs");
+    let movement = source
+        .find("    advance_player_input_for_client_ticks(\n        input,")
+        .expect("pump should advance player movement");
+    let use_item = source
+        .find("    advance_using_item_at_partial_tick(\n        input,")
+        .expect("pump should advance use-item input");
+    let particles = source
+        .find("renderer.advance_particles_with_world_and_particle_contexts_and_sound_camera(")
+        .expect("pump should advance particles");
+    let tick_end = source
+        .find("    queue_client_tick_end_commands(world, net_commands, advanced_ticks);")
+        .expect("pump should queue native client tick-end commands");
+
+    assert!(movement < tick_end);
+    assert!(use_item < tick_end);
+    assert!(particles < tick_end);
+}
+
+#[test]
 fn publish_snapshot_includes_audio_runtime_counters() {
     let snapshot = bbb_control::shared_snapshot("test");
     let audio = AudioCounters {

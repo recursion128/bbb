@@ -122,11 +122,6 @@ Owner: `bbb-protocol`
   accessor schema like `SynchedEntityData.assignValues`, and close the remaining
   family consumers through the entity matrix. The current flat summary merge is
   not proof of complete metadata behavior.
-- Drive `ServerboundClientTickEndPacket` from the actual native client-tick end,
-  after that tick's player/vehicle movement has been queued, instead of an
-  independent Tokio interval whose first deadline fires immediately. The current
-  play-only 20 Hz sender keeps servers live but does not prove vanilla movement
-  grouping semantics from `handleClientTickEnd`.
 - Replace the current first-`ClientboundPlayerPositionPacket` trigger for
   `ServerboundPlayerLoadedPacket` with vanilla `LevelLoadTracker` readiness:
   wait for server loading packets, then for the local-player section to be

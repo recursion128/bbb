@@ -158,7 +158,6 @@ impl EventStreamContext {
         let (id, payload) = packets::encode_play_configuration_acknowledged();
         self.conn.send_packet(id, &payload).await?;
         self.state = ConnectionState::Configuration;
-        self.play_tick = None;
         self.seen_code_of_conduct = false;
         emit(&self.events, NetEvent::StateChanged { state: self.state }).await
     }

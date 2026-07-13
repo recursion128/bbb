@@ -34,6 +34,11 @@ pub(super) async fn send_keep_alive_response(
     Ok(())
 }
 
+pub(super) async fn send_client_tick_end(conn: &mut RawConnection) -> Result<()> {
+    let (packet_id, payload) = packets::encode_play_client_tick_end();
+    conn.send_packet(packet_id, &payload).await
+}
+
 pub(super) async fn send_player_move_command(
     conn: &mut RawConnection,
     command: PlayerMoveCommand,

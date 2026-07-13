@@ -3081,9 +3081,9 @@
         },
         "command_surface": {
           "evidence": [
-            "crates/bbb-net/src/connection.rs#play_tick_interval",
-            "crates/bbb-net/src/event_stream/configuration.rs#ConfigurationClientbound::Finish",
-            "crates/bbb-net/src/driver.rs#read_packet_or_drive_connection"
+            "crates/bbb-native/src/runtime.rs#queue_client_tick_end_commands",
+            "crates/bbb-net/src/types/commands.rs#ClientTickEnd",
+            "crates/bbb-net/src/driver/commands.rs#send_client_tick_end"
           ],
           "gap": null,
           "status": "complete"
@@ -3098,22 +3098,25 @@
         },
         "state_guard": {
           "evidence": [
-            "crates/bbb-net/src/driver.rs#read_packet_or_drive_connection",
-            "crates/bbb-net/src/probe.rs#read_packet_or_send_play_tick",
+            "crates/bbb-native/src/runtime/tests.rs#client_tick_end_commands_follow_movement_and_require_active_level",
+            "crates/bbb-native/src/runtime/tests.rs#client_tick_end_is_queued_after_native_tick_commands_and_particles",
+            "crates/bbb-net/src/driver.rs#drive_connection_sends_client_tick_end_only_in_play",
             "vanilla:net/minecraft/client/Minecraft.java#tick",
             "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#handleClientTickEnd"
           ],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [
             "crates/bbb-protocol/src/packets/tests.rs#decodes_chunk_batch_and_encodes_client_play_status_packets",
-            "crates/bbb-net/src/driver.rs#drive_connection_sends_client_tick_end_while_waiting_in_play",
+            "crates/bbb-net/src/driver.rs#drive_connection_sends_client_tick_end_only_in_play",
+            "crates/bbb-native/src/runtime/tests.rs#client_tick_end_commands_follow_movement_and_require_active_level",
+            "crates/bbb-native/src/runtime/tests.rs#client_tick_end_is_queued_after_native_tick_commands_and_particles",
             "crates/bbb-net/src/probe/play.rs#probe_start_configuration_acknowledges_and_resets_configuration_dedup_state"
           ],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "serverbound",

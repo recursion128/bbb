@@ -1973,6 +1973,24 @@ pub(crate) fn request_net_disconnect(
     }
 }
 
+fn queue_client_tick_end_commands(
+    world: &WorldStore,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    client_ticks: u32,
+) {
+    if world.local_player_id().is_none() {
+        return;
+    }
+    let Some(tx) = net_commands else {
+        return;
+    };
+    for _ in 0..client_ticks {
+        if tx.blocking_send(NetCommand::ClientTickEnd).is_err() {
+            break;
+        }
+    }
+}
+
 pub(crate) fn take_control_screenshot(requests: &SharedControlRequests) -> Option<PathBuf> {
     requests
         .lock()
@@ -2219,6 +2237,11 @@ pub(crate) fn pump_network_and_terrain(
     );
     let particle_sound_events = renderer.drain_particle_sound_events();
     emit_particle_sound_events(&mut audio_events, particle_sound_events);
+    // Vanilla `Minecraft.tick` sends `ServerboundClientTickEndPacket` only after
+    // the level and particle ticks (Minecraft.java:1842-1887). All movement,
+    // vehicle, destroy, and use commands produced by this client-tick batch are
+    // already ahead of these markers in the FIFO net-command channel.
+    queue_client_tick_end_commands(world, net_commands, advanced_ticks);
     // Vanilla handles gameplay keybinds during `Minecraft.tick`, then `GameRenderer.extractGui`
     // calls `Gui.extractRenderState`; HUD values therefore read after input and use-item updates.
     let local_player = world.local_player();

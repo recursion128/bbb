@@ -3,7 +3,6 @@ use bbb_protocol::packets::{self, ConfigurationClientbound};
 use bbb_world::code_of_conduct_text_hash;
 
 use crate::{
-    connection::play_tick_interval,
     event_stream::{deferred_keep_alive_event, emit, EventStreamContext},
     resource_pack::response_action_for_push,
     types::{ConnectionState, NetEvent},
@@ -20,7 +19,6 @@ impl EventStreamContext {
                 self.conn.send_packet(id, &payload).await?;
                 self.state = ConnectionState::Play;
                 emit(&self.events, NetEvent::StateChanged { state: self.state }).await?;
-                self.play_tick = Some(play_tick_interval());
             }
             ConfigurationClientbound::Disconnect { reason, .. } => {
                 bail!("configuration disconnected: {reason}");

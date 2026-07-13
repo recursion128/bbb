@@ -13535,3 +13535,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   因而跨 Finish handoff 的延迟响应不会复用旧 state id；login/status/handshake 不发送该命令。
 - [x] configuration/play event-stream、截止前/过期 native drain、双 state driver encode 与
   coverage 反向测试闭合两条 clientbound runtime cell；workspace gate 通过。
+
+## 2026-07-13：Drive ClientTickEnd from native client ticks
+
+- [x] 对照 `Minecraft.tick`，移除 production event stream 的独立 Tokio 20 Hz interval；native
+  在 level、玩家/载具/使用/破坏及 particle tick 之后，按本帧实际推进的 client tick 数提交
+  `ClientTickEnd`，无 active client level 时不排队。
+- [x] net driver 仅在 Play state 编码 unit `ServerboundClientTickEndPacket`；configuration/login
+  等状态忽略内部命令。离线 probe 没有 native tick owner，继续使用其 bounded 独立保活时钟。
+- [x] native FIFO 顺序、active-level gate、production source order、双 state driver 与 coverage
+  反向测试闭合 command/state/tests cells；workspace gate 通过。

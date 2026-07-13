@@ -24,7 +24,10 @@ pub(crate) use commands::{
     send_set_held_slot_command, send_sign_update, send_spectate_entity, send_swing_command,
     send_teleport_to_entity, send_use_item, send_use_item_on,
 };
-use commands::{send_keep_alive_response, send_player_move_command, send_vehicle_move_command};
+use commands::{
+    send_client_tick_end, send_keep_alive_response, send_player_move_command,
+    send_vehicle_move_command,
+};
 
 pub(crate) async fn read_packet_or_send_play_tick(
     conn: &mut RawConnection,
@@ -59,14 +62,12 @@ pub(crate) enum ConnectionDrive {
 pub(crate) async fn read_packet_or_drive_connection(
     conn: &mut RawConnection,
     state: ConnectionState,
-    play_tick: &mut Option<Interval>,
     commands: &mut mpsc::Receiver<NetCommand>,
     player_position_state: &mut PlayerPositionState,
 ) -> Result<ConnectionDrive> {
-    if !matches!(state, ConnectionState::Play) || play_tick.is_none() {
+    if !matches!(state, ConnectionState::Play) {
         return read_packet_or_disconnect_command(conn, state, commands).await;
     }
-    let tick = play_tick.as_mut().expect("play tick checked above");
 
     loop {
         tokio::select! {
@@ -74,14 +75,13 @@ pub(crate) async fn read_packet_or_drive_connection(
                 let (packet_id, payload) = packet?;
                 return Ok(ConnectionDrive::Packet(packet_id, payload));
             }
-            _ = tick.tick() => {
-                let (id, payload) = packets::encode_play_client_tick_end();
-                conn.send_packet(id, &payload).await?;
-            }
             command = commands.recv() => {
                 match command {
                     Some(NetCommand::KeepAliveResponse(id)) => {
                         send_keep_alive_response(conn, state, id).await?;
+                    }
+                    Some(NetCommand::ClientTickEnd) => {
+                        send_client_tick_end(conn).await?;
                     }
                     Some(NetCommand::MovePlayer(command)) => {
                         send_player_move_command(conn, command, player_position_state).await?;
@@ -258,6 +258,7 @@ async fn read_packet_or_disconnect_command(
                     Some(NetCommand::KeepAliveResponse(id)) => {
                         send_keep_alive_response(conn, state, id).await?;
                     }
+                    Some(NetCommand::ClientTickEnd) => {}
                     Some(NetCommand::MovePlayer(_)) => {}
                     Some(NetCommand::MoveVehicle(_)) => {}
                     Some(NetCommand::PlayerAction(_)) => {}
@@ -345,10 +346,7 @@ mod tests {
     };
     use bytes::BytesMut;
     use std::{collections::BTreeMap, time::Duration};
-    use tokio::{
-        sync::mpsc,
-        time::{interval_at, timeout, Instant as TokioInstant},
-    };
+    use tokio::{sync::mpsc, time::timeout};
     use uuid::Uuid;
 
     use crate::types::{PlayerMoveCommand, VehicleMoveCommand};
@@ -358,7 +356,6 @@ mod tests {
         let (mut conn, server) = raw_connection_pair().await;
         let (tx, mut commands) = mpsc::channel(1);
         drop(tx);
-        let mut play_tick = None;
         let mut player_position_state = PlayerPositionState::default();
 
         let result = timeout(
@@ -366,7 +363,6 @@ mod tests {
             read_packet_or_drive_connection(
                 &mut conn,
                 ConnectionState::Login,
-                &mut play_tick,
                 &mut commands,
                 &mut player_position_state,
             ),
@@ -384,7 +380,6 @@ mod tests {
         let (mut conn, server) = raw_connection_pair().await;
         let (tx, mut commands) = mpsc::channel(1);
         tx.send(NetCommand::Disconnect).await.unwrap();
-        let mut play_tick = None;
         let mut player_position_state = PlayerPositionState::default();
 
         let result = timeout(
@@ -392,7 +387,6 @@ mod tests {
             read_packet_or_drive_connection(
                 &mut conn,
                 ConnectionState::Configuration,
-                &mut play_tick,
                 &mut commands,
                 &mut player_position_state,
             ),
@@ -411,7 +405,6 @@ mod tests {
         let (tx, mut commands) = mpsc::channel(2);
         tx.send(NetCommand::AcceptCodeOfConduct).await.unwrap();
         tx.send(NetCommand::Disconnect).await.unwrap();
-        let mut play_tick = None;
         let mut player_position_state = PlayerPositionState::default();
 
         let result = timeout(
@@ -419,7 +412,6 @@ mod tests {
             read_packet_or_drive_connection(
                 &mut conn,
                 ConnectionState::Configuration,
-                &mut play_tick,
                 &mut commands,
                 &mut player_position_state,
             ),
@@ -443,12 +435,10 @@ mod tests {
             .unwrap();
         configuration_tx.send(NetCommand::Disconnect).await.unwrap();
         let configuration_drive = tokio::spawn(async move {
-            let mut play_tick = None;
             let mut player_position_state = PlayerPositionState::default();
             read_packet_or_drive_connection(
                 &mut configuration_conn,
                 ConnectionState::Configuration,
-                &mut play_tick,
                 &mut configuration_commands,
                 &mut player_position_state,
             )
@@ -474,12 +464,10 @@ mod tests {
             .unwrap();
         play_tx.send(NetCommand::Disconnect).await.unwrap();
         let play_drive = tokio::spawn(async move {
-            let mut play_tick = Some(dormant_play_tick());
             let mut player_position_state = PlayerPositionState::default();
             read_packet_or_drive_connection(
                 &mut play_conn,
                 ConnectionState::Play,
-                &mut play_tick,
                 &mut play_commands,
                 &mut player_position_state,
             )
@@ -498,17 +486,17 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn drive_connection_sends_client_tick_end_while_waiting_in_play() {
+    async fn drive_connection_sends_client_tick_end_only_in_play() {
         let (mut conn, mut server) = raw_connection_pair_with_server().await;
-        let (tx, mut commands) = mpsc::channel(1);
+        let (tx, mut commands) = mpsc::channel(2);
+        tx.send(NetCommand::ClientTickEnd).await.unwrap();
+        tx.send(NetCommand::Disconnect).await.unwrap();
 
         let drive_task = tokio::spawn(async move {
-            let mut play_tick = Some(interval_at(TokioInstant::now(), Duration::from_secs(60)));
             let mut player_position_state = PlayerPositionState::default();
             read_packet_or_drive_connection(
                 &mut conn,
                 ConnectionState::Play,
-                &mut play_tick,
                 &mut commands,
                 &mut player_position_state,
             )
@@ -520,12 +508,29 @@ mod tests {
         assert_eq!(packet_id, ids::play::SERVERBOUND_CLIENT_TICK_END);
         assert!(payload.is_empty());
 
-        tx.send(NetCommand::Disconnect).await.unwrap();
         let result = timeout(Duration::from_secs(1), drive_task)
             .await
             .expect("drive should not hang")
             .unwrap();
         assert!(matches!(result, ConnectionDrive::Disconnect));
+
+        let (mut conn, mut server) = raw_connection_pair_with_server().await;
+        let (tx, mut commands) = mpsc::channel(2);
+        tx.send(NetCommand::ClientTickEnd).await.unwrap();
+        tx.send(NetCommand::Disconnect).await.unwrap();
+        let mut player_position_state = PlayerPositionState::default();
+        let result = read_packet_or_drive_connection(
+            &mut conn,
+            ConnectionState::Configuration,
+            &mut commands,
+            &mut player_position_state,
+        )
+        .await
+        .unwrap();
+        assert!(matches!(result, ConnectionDrive::Disconnect));
+        assert!(timeout(Duration::from_millis(50), server.read_packet())
+            .await
+            .is_err());
     }
 
     #[tokio::test]
@@ -1531,13 +1536,11 @@ mod tests {
         commands: &mut mpsc::Receiver<NetCommand>,
         player_position_state: &mut PlayerPositionState,
     ) {
-        let mut play_tick = Some(dormant_play_tick());
         let result = timeout(
             Duration::from_secs(1),
             read_packet_or_drive_connection(
                 conn,
                 ConnectionState::Play,
-                &mut play_tick,
                 commands,
                 player_position_state,
             ),
@@ -1546,13 +1549,6 @@ mod tests {
         .expect("drive should not hang")
         .unwrap();
         assert!(matches!(result, ConnectionDrive::Disconnect));
-    }
-
-    fn dormant_play_tick() -> Interval {
-        interval_at(
-            TokioInstant::now() + Duration::from_secs(60),
-            Duration::from_secs(60),
-        )
     }
 
     async fn read_server_packet(conn: &mut RawConnection, label: &str) -> (i32, Vec<u8>) {
