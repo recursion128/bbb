@@ -13720,3 +13720,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] default namespace、recipe duplicate/order、transient hidden component、linked-set 去重、unknown catalog
   entry、`Number.longValue`、missing/wrong shapes 均有定向测试；CustomData 的 flattened SNBT alternative、
   Component、holder、其余 list/compound-record persistent Codec 与 native screens 仍开放。
+
+## 2026-07-13：Decode RGB/list dialog item components
+
+- [x] 对照 `ExtraCodecs.RGB_COLOR_CODEC`、`VECTOR3F`、`ARGB.colorFromFloat`、`DyedItemColor.CODEC` 与
+  `CustomModelData.CODEC`，typed 投影 int/vector RGB alternative 及 floats/flags/strings/colors 四类
+  defaulted list，共闭合 2 个 persistent 注册项。
+- [x] `Number.intValue`、exact-three vector、unrestricted float/NaN/out-of-range channel、
+  `floor(channel*255)` 后 8-bit mask、bool byteValue、empty defaults 与全部 wrong list/value shapes 均有
+  定向测试；Component、holder、其余 list/compound-record persistent Codec 与 native screens 仍开放。

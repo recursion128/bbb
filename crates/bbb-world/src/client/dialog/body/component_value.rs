@@ -6,7 +6,8 @@ use bbb_protocol::{
     data_component_types::{
         vanilla_data_component_type_for_resource_id, VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID,
         VANILLA_DATA_COMPONENT_BLOCK_STATE_TYPE_ID, VANILLA_DATA_COMPONENT_CONTAINER_LOOT_TYPE_ID,
-        VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_ENCHANTABLE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_CUSTOM_MODEL_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_DYED_COLOR_TYPE_ID, VANILLA_DATA_COMPONENT_ENCHANTABLE_TYPE_ID,
         VANILLA_DATA_COMPONENT_ENCHANTMENT_GLINT_OVERRIDE_TYPE_ID,
         VANILLA_DATA_COMPONENT_FOOD_TYPE_ID, VANILLA_DATA_COMPONENT_GLIDER_TYPE_ID,
         VANILLA_DATA_COMPONENT_INTANGIBLE_PROJECTILE_TYPE_ID,
@@ -117,6 +118,15 @@ pub enum DialogDataComponentValueState {
         loot_table: String,
         seed: i64,
     },
+    RgbColor {
+        value: i32,
+    },
+    CustomModelData {
+        floats_bits: Vec<u32>,
+        flags: Vec<bool>,
+        strings: Vec<String>,
+        colors: Vec<i32>,
+    },
 }
 
 impl DialogDataComponentValueState {
@@ -210,6 +220,10 @@ pub(super) fn decode_supported_component_value(
         VANILLA_DATA_COMPONENT_RECIPES_TYPE_ID => decode_recipes(value, &what)?,
         VANILLA_DATA_COMPONENT_TOOLTIP_DISPLAY_TYPE_ID => decode_tooltip_display(value, &what)?,
         VANILLA_DATA_COMPONENT_CONTAINER_LOOT_TYPE_ID => decode_container_loot(value, &what)?,
+        VANILLA_DATA_COMPONENT_DYED_COLOR_TYPE_ID => DialogDataComponentValueState::RgbColor {
+            value: decode_rgb_color(value, &what)?,
+        },
+        VANILLA_DATA_COMPONENT_CUSTOM_MODEL_DATA_TYPE_ID => decode_custom_model_data(value, &what)?,
         _ => {
             return decode_string_enum_component_value(type_id, &what, value);
         }
@@ -531,6 +545,89 @@ fn decode_container_loot(
         .transpose()?
         .unwrap_or(0);
     Ok(DialogDataComponentValueState::ContainerLoot { loot_table, seed })
+}
+
+fn decode_custom_model_data(
+    value: &NbtSummaryValue,
+    what: &str,
+) -> Result<DialogDataComponentValueState, String> {
+    let entries = compound_entries(value, what)?;
+    let floats_bits = optional_component_list(entries, "floats", what)?
+        .iter()
+        .enumerate()
+        .map(|(index, value)| component_f32_bits(value, &format!("{what} field floats[{index}]")))
+        .collect::<Result<Vec<_>, String>>()?;
+    let flags = optional_component_list(entries, "flags", what)?
+        .iter()
+        .enumerate()
+        .map(|(index, value)| component_bool(value, &format!("{what} field flags[{index}]")))
+        .collect::<Result<Vec<_>, String>>()?;
+    let strings = optional_component_list(entries, "strings", what)?
+        .iter()
+        .enumerate()
+        .map(|(index, value)| {
+            let NbtSummaryValue::String(value) = value else {
+                return Err(format!("{what} field strings[{index}] is not a string"));
+            };
+            Ok(value.clone())
+        })
+        .collect::<Result<Vec<_>, String>>()?;
+    let colors = optional_component_list(entries, "colors", what)?
+        .iter()
+        .enumerate()
+        .map(|(index, value)| decode_rgb_color(value, &format!("{what} field colors[{index}]")))
+        .collect::<Result<Vec<_>, String>>()?;
+    Ok(DialogDataComponentValueState::CustomModelData {
+        floats_bits,
+        flags,
+        strings,
+        colors,
+    })
+}
+
+fn decode_rgb_color(value: &NbtSummaryValue, what: &str) -> Result<i32, String> {
+    if matches!(
+        value,
+        NbtSummaryValue::Byte(_)
+            | NbtSummaryValue::Short(_)
+            | NbtSummaryValue::Int(_)
+            | NbtSummaryValue::Long(_)
+            | NbtSummaryValue::Float(_)
+            | NbtSummaryValue::Double(_)
+    ) {
+        return component_i32(value, what);
+    }
+    let NbtSummaryValue::List(channels) = value else {
+        return Err(format!("{what} is neither numeric nor a 3-float vector"));
+    };
+    if channels.len() != 3 {
+        return Err(format!(
+            "{what} vector has {} channels instead of 3",
+            channels.len()
+        ));
+    }
+    let mut decoded = [0i32; 3];
+    for (index, channel) in channels.iter().enumerate() {
+        let bits = component_f32_bits(channel, &format!("{what} vector[{index}]"))?;
+        decoded[index] = (f32::from_bits(bits) * 255.0).floor() as i32;
+    }
+    let color = 0xff00_0000u32
+        | ((decoded[0] as u32 & 0xff) << 16)
+        | ((decoded[1] as u32 & 0xff) << 8)
+        | (decoded[2] as u32 & 0xff);
+    Ok(color as i32)
+}
+
+fn optional_component_list<'a>(
+    entries: &'a [NbtSummaryEntry],
+    key: &str,
+    what: &str,
+) -> Result<&'a [NbtSummaryValue], String> {
+    match find_entry(entries, key) {
+        None => Ok(&[]),
+        Some(NbtSummaryValue::List(values)) => Ok(values),
+        Some(_) => Err(format!("{what} field {key} is not a list")),
+    }
 }
 
 fn required_component_i32(

@@ -808,6 +808,157 @@ fn rejects_invalid_resource_key_and_component_catalog_metadata() {
     }
 }
 
+#[test]
+fn decodes_rgb_alternatives_and_custom_model_data_lists() {
+    assert_eq!(
+        decoded(
+            VANILLA_DATA_COMPONENT_DYED_COLOR_TYPE_ID,
+            "minecraft:dyed_color",
+            &NbtSummaryValue::Long(0x1_0012_3456),
+        )
+        .unwrap(),
+        Some(DialogDataComponentValueState::RgbColor { value: 0x0012_3456 })
+    );
+    assert_eq!(
+        decoded(
+            VANILLA_DATA_COMPONENT_DYED_COLOR_TYPE_ID,
+            "minecraft:dyed_color",
+            &float_vector(&[0.5, 1.0, 0.25]),
+        )
+        .unwrap(),
+        Some(DialogDataComponentValueState::RgbColor {
+            value: 0xff7f_ff3fu32 as i32,
+        })
+    );
+
+    assert_eq!(
+        decoded(
+            VANILLA_DATA_COMPONENT_CUSTOM_MODEL_DATA_TYPE_ID,
+            "minecraft:custom_model_data",
+            &compound(Vec::new()),
+        )
+        .unwrap(),
+        Some(DialogDataComponentValueState::CustomModelData {
+            floats_bits: Vec::new(),
+            flags: Vec::new(),
+            strings: Vec::new(),
+            colors: Vec::new(),
+        })
+    );
+
+    let out_of_range_color = NbtSummaryValue::List(vec![
+        NbtSummaryValue::Float((-0.1f32).to_bits()),
+        NbtSummaryValue::Float(1.1f32.to_bits()),
+        NbtSummaryValue::Float(f32::NAN.to_bits()),
+    ]);
+    assert_eq!(
+        decoded(
+            VANILLA_DATA_COMPONENT_CUSTOM_MODEL_DATA_TYPE_ID,
+            "minecraft:custom_model_data",
+            &compound(vec![
+                value_entry(
+                    "floats",
+                    NbtSummaryValue::List(vec![
+                        NbtSummaryValue::Float(1.25f32.to_bits()),
+                        NbtSummaryValue::Float(f32::NAN.to_bits()),
+                    ]),
+                ),
+                value_entry(
+                    "flags",
+                    NbtSummaryValue::List(
+                        vec![NbtSummaryValue::Int(2), NbtSummaryValue::Int(256),]
+                    ),
+                ),
+                value_entry(
+                    "strings",
+                    NbtSummaryValue::List(vec![
+                        NbtSummaryValue::String("first".to_string()),
+                        NbtSummaryValue::String("second".to_string()),
+                    ]),
+                ),
+                value_entry(
+                    "colors",
+                    NbtSummaryValue::List(vec![
+                        float_vector(&[0.5, 1.0, 0.25]),
+                        out_of_range_color,
+                    ]),
+                ),
+            ]),
+        )
+        .unwrap(),
+        Some(DialogDataComponentValueState::CustomModelData {
+            floats_bits: vec![1.25f32.to_bits(), f32::NAN.to_bits()],
+            flags: vec![true, false],
+            strings: vec!["first".to_string(), "second".to_string()],
+            colors: vec![0xff7f_ff3fu32 as i32, 0xffe6_1800u32 as i32],
+        })
+    );
+}
+
+#[test]
+fn rejects_invalid_rgb_alternatives_and_custom_model_data_lists() {
+    for (type_id, resource_id, value, expected) in [
+        (
+            VANILLA_DATA_COMPONENT_DYED_COLOR_TYPE_ID,
+            "minecraft:dyed_color",
+            float_vector(&[0.0, 1.0]),
+            "vector has 2 channels instead of 3",
+        ),
+        (
+            VANILLA_DATA_COMPONENT_DYED_COLOR_TYPE_ID,
+            "minecraft:dyed_color",
+            NbtSummaryValue::List(vec![
+                NbtSummaryValue::Float(0.0f32.to_bits()),
+                NbtSummaryValue::String("green".to_string()),
+                NbtSummaryValue::Float(1.0f32.to_bits()),
+            ]),
+            "vector[1] is not numeric",
+        ),
+        (
+            VANILLA_DATA_COMPONENT_CUSTOM_MODEL_DATA_TYPE_ID,
+            "minecraft:custom_model_data",
+            NbtSummaryValue::List(Vec::new()),
+            "is not a compound",
+        ),
+        (
+            VANILLA_DATA_COMPONENT_CUSTOM_MODEL_DATA_TYPE_ID,
+            "minecraft:custom_model_data",
+            compound(vec![value_entry("floats", NbtSummaryValue::Int(1))]),
+            "field floats is not a list",
+        ),
+        (
+            VANILLA_DATA_COMPONENT_CUSTOM_MODEL_DATA_TYPE_ID,
+            "minecraft:custom_model_data",
+            compound(vec![value_entry(
+                "flags",
+                NbtSummaryValue::List(vec![NbtSummaryValue::String("true".to_string())]),
+            )]),
+            "field flags[0] is not a boolean",
+        ),
+        (
+            VANILLA_DATA_COMPONENT_CUSTOM_MODEL_DATA_TYPE_ID,
+            "minecraft:custom_model_data",
+            compound(vec![value_entry(
+                "strings",
+                NbtSummaryValue::List(vec![NbtSummaryValue::Int(1)]),
+            )]),
+            "field strings[0] is not a string",
+        ),
+        (
+            VANILLA_DATA_COMPONENT_CUSTOM_MODEL_DATA_TYPE_ID,
+            "minecraft:custom_model_data",
+            compound(vec![value_entry(
+                "colors",
+                NbtSummaryValue::List(vec![float_vector(&[0.0, 0.5, 1.0, 0.5])]),
+            )]),
+            "field colors[0] vector has 4 channels instead of 3",
+        ),
+    ] {
+        let error = decoded(type_id, resource_id, &value).unwrap_err();
+        assert!(error.contains(expected), "unexpected error: {error}");
+    }
+}
+
 fn decoded(
     type_id: i32,
     resource_id: &str,
@@ -829,4 +980,13 @@ fn value_entry(name: &str, value: NbtSummaryValue) -> NbtSummaryEntry {
 
 fn string_entry(name: &str, value: &str) -> NbtSummaryEntry {
     value_entry(name, NbtSummaryValue::String(value.to_string()))
+}
+
+fn float_vector(values: &[f32]) -> NbtSummaryValue {
+    NbtSummaryValue::List(
+        values
+            .iter()
+            .map(|value| NbtSummaryValue::Float(value.to_bits()))
+            .collect(),
+    )
 }
