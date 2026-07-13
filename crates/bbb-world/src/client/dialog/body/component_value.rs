@@ -16,7 +16,7 @@ use bbb_protocol::{
         VANILLA_DATA_COMPONENT_BEES_TYPE_ID, VANILLA_DATA_COMPONENT_BLOCK_ENTITY_DATA_TYPE_ID,
         VANILLA_DATA_COMPONENT_BLOCK_STATE_TYPE_ID,
         VANILLA_DATA_COMPONENT_BUCKET_ENTITY_DATA_TYPE_ID,
-        VANILLA_DATA_COMPONENT_CONTAINER_LOOT_TYPE_ID,
+        VANILLA_DATA_COMPONENT_CONTAINER_LOOT_TYPE_ID, VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID,
         VANILLA_DATA_COMPONENT_CUSTOM_MODEL_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID,
         VANILLA_DATA_COMPONENT_DEBUG_STICK_STATE_TYPE_ID,
         VANILLA_DATA_COMPONENT_DYED_COLOR_TYPE_ID, VANILLA_DATA_COMPONENT_ENCHANTABLE_TYPE_ID,
@@ -230,6 +230,9 @@ pub enum DialogDataComponentValueState {
     BlockEntityData {
         block_entity: DialogTypedBlockEntityDataState,
     },
+    CustomData {
+        data: NbtSummaryValue,
+    },
 }
 
 impl DialogDataComponentValueState {
@@ -359,6 +362,9 @@ pub(super) fn decode_supported_component_value(
                 block_entity: decode_builtin_block_entity_data(value, &what)?,
             }
         }
+        VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID => DialogDataComponentValueState::CustomData {
+            data: decode_custom_data(value, &what)?,
+        },
         _ => {
             if let Some(decoded) =
                 decode_holder_backed_component_value(type_id, value, registries, &what)

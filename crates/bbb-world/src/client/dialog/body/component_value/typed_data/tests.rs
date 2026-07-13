@@ -3,7 +3,7 @@ use bbb_protocol::{
     data_component_types::{
         VANILLA_DATA_COMPONENT_BLOCK_ENTITY_DATA_TYPE_ID,
         VANILLA_DATA_COMPONENT_BUCKET_ENTITY_DATA_TYPE_ID,
-        VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID,
+        VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID,
     },
     entity_types::vanilla_entity_type_for_resource_id,
     NbtSummaryEntry, NbtSummaryValue,
@@ -138,6 +138,39 @@ fn decodes_bucket_entity_data_as_unmodified_compound() {
     assert_eq!(
         decode_custom_data(&compound(Vec::new()), "bucket entity data").unwrap(),
         compound(Vec::new())
+    );
+}
+
+#[test]
+fn decodes_custom_data_as_unmodified_compound() {
+    let value = compound(vec![
+        string_entry("owner", "Alex"),
+        value_entry(
+            "nested",
+            compound(vec![value_entry("flag", NbtSummaryValue::Byte(1))]),
+        ),
+    ]);
+    assert_eq!(
+        decode_component(
+            VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID,
+            "minecraft:custom_data",
+            &value,
+            None,
+        ),
+        super::super::DialogDataComponentValueState::CustomData {
+            data: value.clone()
+        }
+    );
+    assert_eq!(
+        decode_component(
+            VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID,
+            "minecraft:custom_data",
+            &compound(Vec::new()),
+            None,
+        ),
+        super::super::DialogDataComponentValueState::CustomData {
+            data: compound(Vec::new())
+        }
     );
 }
 
