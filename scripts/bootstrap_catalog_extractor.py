@@ -63,6 +63,13 @@ class PotionEntry:
     effects: tuple[PotionEffectEntry, ...]
 
 
+@dataclass(frozen=True)
+class TrimMaterialEntry:
+    constant_name: str
+    resource_id: str
+    description_color: int
+
+
 def enchantment_tooltip_order(
     tag_resources: dict[str, tuple[str, bytes]],
     enchantments: list[EnchantmentEntry],
@@ -435,6 +442,79 @@ def potion_entries(
     if len({entry.resource_id for entry in entries}) != len(entries):
         raise BootstrapCatalogExtractionError(
             f"{source.relative_path}: duplicate potion resource id"
+        )
+    return entries
+
+
+def trim_material_entries(
+    source: JavaSource,
+    expected_count: int = 11,
+) -> list[TrimMaterialEntry]:
+    resources = _declared_resource_keys(source, "TrimMaterial", {"registryKey"})
+    method = _bootstrap_method(source)
+    context_name = _bootstrap_context_name(source, method)
+    calls = [
+        call
+        for call in source.calls
+        if call.name == "register"
+        and call.qualifier is None
+        and method.body.start_byte <= call.span.start_byte
+        and call.span.end_byte <= method.body.end_byte
+    ]
+    calls.sort(key=lambda call: (call.span.start_byte, call.span.end_byte))
+    entries: list[TrimMaterialEntry] = []
+    for call in calls:
+        if len(call.arguments) != 4 or call.arguments[0].canonical != context_name:
+            _fail(source, source.expression(call.node), "unsupported trim material register call")
+        key = call.arguments[1]
+        if key.node.type != "identifier" or key.canonical not in resources:
+            _fail(source, key, "trim material key is not a declared identifier")
+        style = call.arguments[2]
+        style_object = style.node.child_by_field_name("object")
+        _, style_arguments = _invocation(source, style, {"withColor"})
+        if (
+            style_object is None
+            or source.expression(style_object).canonical != "Style.EMPTY"
+            or len(style_arguments) != 1
+        ):
+            _fail(source, style, "trim material style must be Style.EMPTY.withColor(color)")
+        color = _decimal_integer(source, style_arguments[0])
+        if not 0 <= color <= 0xFF_FF_FF:
+            _fail(source, style_arguments[0], "trim material color is outside 24-bit RGB")
+        assets = call.arguments[3]
+        assets_object = assets.node.child_by_field_name("object")
+        assets_field = assets.node.child_by_field_name("field")
+        if (
+            assets.node.type != "field_access"
+            or assets_object is None
+            or assets_field is None
+            or source.expression(assets_object).canonical != "MaterialAssetGroup"
+            or source.text(assets_field) != key.canonical
+        ):
+            _fail(
+                source,
+                assets,
+                "trim material asset group must match the registered key",
+            )
+        entries.append(
+            TrimMaterialEntry(key.canonical, resources[key.canonical], color)
+        )
+    if len(entries) != expected_count:
+        raise BootstrapCatalogExtractionError(
+            f"{source.relative_path}: expected {expected_count} trim materials, "
+            f"extracted {len(entries)}"
+        )
+    constants = [entry.constant_name for entry in entries]
+    if len(constants) != len(set(constants)):
+        raise BootstrapCatalogExtractionError(
+            f"{source.relative_path}: duplicate trim material registration"
+        )
+    unknown = set(constants) - resources.keys()
+    missing = resources.keys() - set(constants)
+    if unknown or missing:
+        raise BootstrapCatalogExtractionError(
+            f"{source.relative_path}: trim material declaration/bootstrap mismatch: "
+            f"unknown={sorted(unknown)}, missing={sorted(missing)}"
         )
     return entries
 

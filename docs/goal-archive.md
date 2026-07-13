@@ -13072,3 +13072,16 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] item-model potion resource predicate/exact-match 与 tooltip base-effect 路径统一消费该
   descriptor；extractor fixtures、update/check、生成完整性/顺序/反向门禁及 tooltip semantic
   tests 锁定资源与 effect/duration/amplifier，不改变 custom-effect 或 tooltip 排序算法。
+
+## 2026-07-13：Generate trim material style catalog
+
+- [x] `bootstrap_catalog_extractor.py` 通过共享 Tree-sitter CST 严格提取
+  `TrimMaterials.bootstrap` 的 11 项 registration，逐项验证 declared key、bootstrap 顺序、
+  `Style.EMPTY.withColor(decimal)` 与同名 `MaterialAssetGroup`；十六进制/非常量颜色或错配 asset group
+  会在生成前失败。
+- [x] generated `VanillaTrimMaterial` descriptor 统一拥有 contiguous protocol id、resource id 与
+  description color；tooltip resource/color lookup 删除原先分散在 bootstrap 与 icon-model 的两张平行表，
+  公开 resource lookup 保持不变。
+- [x] extractor fixture、真实 update/check、完整性/顺序/边界测试与 production-source 反向扫描锁定唯一
+  owner；这只覆盖固定 vanilla 26.1 bootstrap 数据，服务端同步的 trim material/pattern named-holder
+  remapping 与 direct-holder SNBT projection 仍在差距台账中。

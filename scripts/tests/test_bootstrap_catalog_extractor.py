@@ -19,6 +19,7 @@ from bootstrap_catalog_extractor import (  # noqa: E402
     painting_variant_entries,
     potion_entries,
     static_register_entries,
+    trim_material_entries,
 )
 from vanilla_java_source import parse_source  # noqa: E402
 
@@ -144,6 +145,42 @@ public class Potions {
                 expected_count=1,
                 expected_effect_count=1,
             )
+
+    def test_trim_material_colors_follow_bootstrap_order(self) -> None:
+        source = parse_source(
+            "fixture/TrimMaterials.java",
+            b"""
+package fixture;
+class TrimMaterials {
+  static final ResourceKey<TrimMaterial> FIRST = registryKey("first");
+  static final ResourceKey<TrimMaterial> SECOND = registryKey("second");
+  static void bootstrap(BootstrapContext<TrimMaterial> context) {
+    register(context, SECOND, Style.EMPTY.withColor(0x12), MaterialAssetGroup.SECOND);
+    register(context, FIRST, Style.EMPTY.withColor(34), MaterialAssetGroup.FIRST);
+  }
+}
+""",
+        )
+        with self.assertRaisesRegex(
+            BootstrapCatalogExtractionError,
+            "expected a decimal integer literal",
+        ):
+            trim_material_entries(source, expected_count=2)
+
+        source = parse_source(
+            "fixture/TrimMaterials.java",
+            source.source.replace(b"0x12", b"18"),
+        )
+        self.assertEqual(
+            [
+                (entry.constant_name, entry.resource_id, entry.description_color)
+                for entry in trim_material_entries(source, expected_count=2)
+            ],
+            [
+                ("SECOND", "minecraft:second", 18),
+                ("FIRST", "minecraft:first", 34),
+            ],
+        )
 
     def test_missing_bootstrap_registration_fails_explicitly(self) -> None:
         source = parse_source(

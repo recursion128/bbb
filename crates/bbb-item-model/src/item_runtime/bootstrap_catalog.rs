@@ -3,20 +3,6 @@
 // Update: scripts/vanilla-source-tools.sh scripts/generate-bootstrap-catalog.py
 // Check: scripts/vanilla-source-tools.sh scripts/generate-bootstrap-catalog.py --check
 
-pub(super) const VANILLA_TRIM_MATERIAL_KEYS: &[&str] = &[
-    "minecraft:quartz",
-    "minecraft:iron",
-    "minecraft:netherite",
-    "minecraft:redstone",
-    "minecraft:copper",
-    "minecraft:gold",
-    "minecraft:emerald",
-    "minecraft:diamond",
-    "minecraft:lapis",
-    "minecraft:amethyst",
-    "minecraft:resin",
-];
-
 pub(super) const VANILLA_TRIM_PATTERN_KEYS: &[&str] = &[
     "minecraft:sentry",
     "minecraft:dune",
@@ -121,6 +107,63 @@ pub(super) const VANILLA_FROG_VARIANT_KEYS: &[&str] =
 
 pub(super) const VANILLA_ZOMBIE_NAUTILUS_VARIANT_KEYS: &[&str] =
     &["minecraft:temperate", "minecraft:warm"];
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) struct VanillaTrimMaterial {
+    pub(super) resource_id: &'static str,
+    pub(super) description_color: u32,
+}
+
+pub(super) const VANILLA_TRIM_MATERIALS: &[VanillaTrimMaterial] = &[
+    VanillaTrimMaterial {
+        resource_id: "minecraft:quartz",
+        description_color: 0xE3D4C4,
+    },
+    VanillaTrimMaterial {
+        resource_id: "minecraft:iron",
+        description_color: 0xECECEC,
+    },
+    VanillaTrimMaterial {
+        resource_id: "minecraft:netherite",
+        description_color: 0x625859,
+    },
+    VanillaTrimMaterial {
+        resource_id: "minecraft:redstone",
+        description_color: 0x971607,
+    },
+    VanillaTrimMaterial {
+        resource_id: "minecraft:copper",
+        description_color: 0xB4684D,
+    },
+    VanillaTrimMaterial {
+        resource_id: "minecraft:gold",
+        description_color: 0xDEB12D,
+    },
+    VanillaTrimMaterial {
+        resource_id: "minecraft:emerald",
+        description_color: 0x11A036,
+    },
+    VanillaTrimMaterial {
+        resource_id: "minecraft:diamond",
+        description_color: 0x6EECD2,
+    },
+    VanillaTrimMaterial {
+        resource_id: "minecraft:lapis",
+        description_color: 0x416E97,
+    },
+    VanillaTrimMaterial {
+        resource_id: "minecraft:amethyst",
+        description_color: 0x9A5CC6,
+    },
+    VanillaTrimMaterial {
+        resource_id: "minecraft:resin",
+        description_color: 0xFC7812,
+    },
+];
+
+pub(super) fn vanilla_trim_material(id: i32) -> Option<&'static VanillaTrimMaterial> {
+    VANILLA_TRIM_MATERIALS.get(usize::try_from(id).ok()?)
+}
 
 pub(super) const VANILLA_ENCHANTMENT_TOOLTIP_ORDER: &[&str] = &[
     "minecraft:binding_curse",
@@ -582,14 +625,13 @@ pub(super) const VANILLA_ENCHANTMENTS: &[VanillaEnchantment] = &[
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashSet;
+    use std::{collections::HashSet, fs, path::Path};
 
     use super::*;
 
     #[test]
     fn bootstrap_catalog_lengths_and_resource_ids_are_stable() {
         let catalogs: &[(&[&str], usize)] = &[
-            (VANILLA_TRIM_MATERIAL_KEYS, 11),
             (VANILLA_TRIM_PATTERN_KEYS, 18),
             (VANILLA_VILLAGER_TYPE_KEYS, 7),
             (VANILLA_WOLF_SOUND_VARIANT_KEYS, 7),
@@ -615,6 +657,12 @@ mod tests {
         assert_eq!(VANILLA_BANNER_PATTERNS.len(), 43);
         assert_eq!(VANILLA_ENCHANTMENTS.len(), 43);
         assert_eq!(VANILLA_ENCHANTMENT_TOOLTIP_ORDER.len(), 43);
+        assert_eq!(VANILLA_TRIM_MATERIALS.len(), 11);
+        let trim_material_resources: HashSet<_> = VANILLA_TRIM_MATERIALS
+            .iter()
+            .map(|entry| entry.resource_id)
+            .collect();
+        assert_eq!(trim_material_resources.len(), VANILLA_TRIM_MATERIALS.len());
         let banner_resources: HashSet<_> = VANILLA_BANNER_PATTERNS
             .iter()
             .map(|entry| entry.resource_id)
@@ -633,9 +681,19 @@ mod tests {
     #[test]
     fn bootstrap_catalog_preserves_vanilla_registration_order() {
         assert_eq!(
-            VANILLA_TRIM_MATERIAL_KEYS.first(),
-            Some(&"minecraft:quartz")
+            vanilla_trim_material(0).unwrap().resource_id,
+            "minecraft:quartz"
         );
+        assert_eq!(
+            vanilla_trim_material(1).unwrap().description_color,
+            0xECECEC
+        );
+        assert_eq!(
+            vanilla_trim_material(10).unwrap().resource_id,
+            "minecraft:resin"
+        );
+        assert_eq!(vanilla_trim_material(-1), None);
+        assert_eq!(vanilla_trim_material(11), None);
         assert_eq!(VANILLA_TRIM_PATTERN_KEYS.last(), Some(&"minecraft:bolt"));
         assert_eq!(VANILLA_VILLAGER_TYPE_KEYS.last(), Some(&"minecraft:taiga"));
         assert_eq!(
@@ -681,5 +739,43 @@ mod tests {
             Some("minecraft:warm")
         );
         assert_eq!(vanilla_chicken_variant_resource_id(3), None);
+    }
+
+    #[test]
+    fn production_sources_do_not_redeclare_trim_material_catalog_facts() {
+        fn visit(directory: &Path, violations: &mut Vec<String>) {
+            for entry in fs::read_dir(directory).unwrap() {
+                let path = entry.unwrap().path();
+                if path.is_dir() {
+                    visit(&path, violations);
+                    continue;
+                }
+                if path.extension().and_then(|value| value.to_str()) != Some("rs") {
+                    continue;
+                }
+                let display = path.to_string_lossy();
+                if display.ends_with("/bootstrap_catalog.rs")
+                    || display.ends_with("/tests.rs")
+                    || display.contains("/tests/")
+                {
+                    continue;
+                }
+                let source = fs::read_to_string(&path).unwrap();
+                if source.contains("const VANILLA_TRIM_MATERIAL_KEYS")
+                    || source.contains("const VANILLA_TRIM_MATERIAL_COLORS")
+                {
+                    violations.push(display.to_string());
+                }
+            }
+        }
+        let mut violations = Vec::new();
+        visit(
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("src").as_path(),
+            &mut violations,
+        );
+        assert!(
+            violations.is_empty(),
+            "parallel trim-material catalog owners: {violations:?}"
+        );
     }
 }

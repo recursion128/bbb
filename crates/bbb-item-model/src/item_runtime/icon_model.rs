@@ -40,10 +40,6 @@ use super::{
     ItemTextureState,
 };
 
-pub(super) const VANILLA_TRIM_MATERIAL_COLORS: &[u32] = &[
-    0xE3_D4_C4, 0xEC_EC_EC, 0x62_58_59, 0x97_16_07, 0xB4_68_4D, 0xDE_B1_2D, 0x11_A0_36, 0x6E_EC_D2,
-    0x41_6E_97, 0x9A_5C_C6, 0xFC_78_12,
-];
 pub fn vanilla_potion_resource_id(potion_id: i32) -> Option<&'static str> {
     vanilla_potion(potion_id).map(|potion| potion.resource_id)
 }

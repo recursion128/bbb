@@ -547,7 +547,8 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   charged-projectile/bundle/writable-book/written-book-exact-component-trees/
   lodestone/profile/banner-pattern-provider-tag/
   banner-pattern-layers/
-  trim-named-holders/
+  trim-named-holders (fixed vanilla material resource/color descriptor is generated;
+  server-synchronized material/pattern holder remapping remains)/
   instrument-named-holder/
   provides-trim-material-named-holder/
   jukebox-playable-named-holder/

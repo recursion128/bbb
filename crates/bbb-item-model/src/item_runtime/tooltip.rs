@@ -33,12 +33,13 @@ use bbb_world::{
 use super::attributes::{
     vanilla_attribute, vanilla_attribute_for_key, VanillaAttribute, VanillaAttributeSentiment,
 };
+#[cfg(test)]
+use super::bootstrap_catalog::VANILLA_TRIM_MATERIALS;
 use super::bootstrap_catalog::{
-    VANILLA_BANNER_PATTERNS, VANILLA_ENCHANTMENTS, VANILLA_ENCHANTMENT_TOOLTIP_ORDER,
-    VANILLA_INSTRUMENT_KEYS, VANILLA_TRIM_MATERIAL_KEYS, VANILLA_TRIM_PATTERN_KEYS,
+    vanilla_trim_material, VANILLA_BANNER_PATTERNS, VANILLA_ENCHANTMENTS,
+    VANILLA_ENCHANTMENT_TOOLTIP_ORDER, VANILLA_INSTRUMENT_KEYS, VANILLA_TRIM_PATTERN_KEYS,
 };
 use super::icon_model::effective_attribute_modifiers;
-use super::icon_model::VANILLA_TRIM_MATERIAL_COLORS;
 use super::mob_effects::{
     vanilla_mob_effect_attribute_modifiers, vanilla_mob_effect_category, vanilla_mob_effect_key,
     VanillaMobEffectCategory,
@@ -1197,9 +1198,12 @@ mod tests {
     }
 
     #[test]
-    fn vanilla_trim_keys_follow_26_1_bootstrap_order() {
+    fn vanilla_trim_catalog_follows_26_1_bootstrap_order() {
         assert_eq!(
-            VANILLA_TRIM_MATERIAL_KEYS,
+            VANILLA_TRIM_MATERIALS
+                .iter()
+                .map(|entry| entry.resource_id)
+                .collect::<Vec<_>>(),
             &[
                 "minecraft:quartz",
                 "minecraft:iron",
@@ -1215,7 +1219,10 @@ mod tests {
             ]
         );
         assert_eq!(
-            VANILLA_TRIM_MATERIAL_COLORS,
+            VANILLA_TRIM_MATERIALS
+                .iter()
+                .map(|entry| entry.description_color)
+                .collect::<Vec<_>>(),
             &[
                 0xE3_D4_C4, 0xEC_EC_EC, 0x62_58_59, 0x97_16_07, 0xB4_68_4D, 0xDE_B1_2D, 0x11_A0_36,
                 0x6E_EC_D2, 0x41_6E_97, 0x9A_5C_C6, 0xFC_78_12,
@@ -2257,15 +2264,11 @@ fn armor_trim_material_style(runs: &[StyledTextRun]) -> ComponentStyle {
 }
 
 pub fn vanilla_trim_material_resource_id(id: i32) -> Option<&'static str> {
-    usize::try_from(id)
-        .ok()
-        .and_then(|index| VANILLA_TRIM_MATERIAL_KEYS.get(index).copied())
+    vanilla_trim_material(id).map(|material| material.resource_id)
 }
 
 fn vanilla_trim_material_color(id: i32) -> Option<u32> {
-    usize::try_from(id)
-        .ok()
-        .and_then(|index| VANILLA_TRIM_MATERIAL_COLORS.get(index).copied())
+    vanilla_trim_material(id).map(|material| material.description_color)
 }
 
 pub fn vanilla_trim_pattern_resource_id(id: i32) -> Option<&'static str> {
