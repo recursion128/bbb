@@ -2,7 +2,10 @@ mod selection;
 
 use glam::Mat4;
 
-use super::{BannerPatternKind, DecoratedPotPattern, VillagerModelProfession, VillagerModelType};
+use super::{
+    BannerPatternKind, CatModelVariant, DecoratedPotPattern, VillagerModelProfession,
+    VillagerModelType,
+};
 
 pub(in crate::entity_models) use selection::{
     boat_texture_ref, camel_texture_ref, chicken_texture_ref, cow_texture_ref,
@@ -1473,24 +1476,6 @@ impl RabbitModelVariant {
             _ => Self::Brown,
         }
     }
-}
-
-/// Vanilla `CatVariant` (the synced `DATA_VARIANT_ID` `Holder<CatVariant>`): the eleven cat breeds,
-/// sharing one `CatModel` and differing by texture × age (`CatRenderer.getTextureLocation` reads
-/// `state.texture` from the variant's `assetInfo(isBaby)`). `BLACK` is the vanilla default.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum CatModelVariant {
-    Tabby,
-    Black,
-    Red,
-    Siamese,
-    BritishShorthair,
-    Calico,
-    Persian,
-    Ragdoll,
-    White,
-    Jellie,
-    AllBlack,
 }
 
 /// Which arrow image to bind: the plain `arrow.png`, the `arrow_tipped.png` (`TippableArrowRenderer`

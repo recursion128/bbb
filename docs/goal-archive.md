@@ -13140,3 +13140,16 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] 目录沿用已验证的 STATIC built-in registry authority，完整性/顺序/唯一性/边界测试、
   renderer/native focused tests、generator update/check 与 workspace gate 锁定 vanilla 26.1
   bootstrap 顺序。
+
+## 2026-07-13：Generate cat-variant identity catalog
+
+- [x] bootstrap generator 复用既有 Tree-sitter `CatVariants.java` extraction，生成 renderer
+  11 项 `CatModelVariant`、resource lookup 与固定 vanilla fallback ordinal；完整性/顺序/唯一性/
+  边界测试和跨 crate 反向扫描由同一模板生成。
+- [x] renderer 删除手写 enum，native entity scene 删除 11-arm resource mapping、固定 id helper
+  及对 item-model lookup 的依赖；dynamic path 仍严格执行 session holder id → checked resource id
+  → known renderer variant，unknown resource/id 保持 BLACK fallback。
+- [x] `cat_variant` 仍按 `RegistryDataLoader.SYNCHRONIZED_REGISTRIES` 的
+  `CatVariant.NETWORK_CODEC` authority 接受会话重排；本条不把 renderer 固定 vanilla texture 表
+  冒充 adult/baby client-asset payload codec。generator update/check、renderer/native focused tests
+  与 workspace gate 通过。

@@ -1,5 +1,6 @@
 mod banner_patterns;
 mod block_attachment;
+mod cat_variants;
 mod catalog;
 mod colored;
 mod decorated_pot_patterns;
@@ -23,6 +24,7 @@ pub use block_attachment::{
     minecart_tnt_display_block_transform, mooshroom_mushroom_block_transforms,
     primed_tnt_block_transform, snow_golem_head_block_transform,
 };
+pub use cat_variants::CatModelVariant;
 pub use catalog::*;
 pub(crate) use colored::sign_base_transformation;
 #[cfg(test)]

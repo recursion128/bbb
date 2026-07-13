@@ -293,11 +293,10 @@ use bbb_world::{
 };
 
 use bbb_item_model::{
-    default_player_skin_for_profile_id, vanilla_cat_variant_resource_id,
-    vanilla_chicken_variant_resource_id, vanilla_cow_variant_resource_id,
-    vanilla_frog_variant_resource_id, vanilla_pig_variant_resource_id,
-    vanilla_wolf_variant_resource_id, vanilla_zombie_nautilus_variant_resource_id,
-    NativeItemRuntime,
+    default_player_skin_for_profile_id, vanilla_chicken_variant_resource_id,
+    vanilla_cow_variant_resource_id, vanilla_frog_variant_resource_id,
+    vanilla_pig_variant_resource_id, vanilla_wolf_variant_resource_id,
+    vanilla_zombie_nautilus_variant_resource_id, NativeItemRuntime,
 };
 use bbb_protocol::entity_types::*;
 

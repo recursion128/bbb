@@ -166,7 +166,7 @@ pub(super) fn cat_model_variant(
             if let Some(registries) = registries {
                 cat_variant_from_registry_id(registries, id).unwrap_or(CatModelVariant::Black)
             } else {
-                cat_variant_from_vanilla_registry_id(id)
+                CatModelVariant::for_vanilla_registry_id(id).unwrap_or(CatModelVariant::Black)
             }
         })
         .unwrap_or(CatModelVariant::Black)
@@ -178,33 +178,7 @@ pub(super) fn cat_variant_from_registry_id(
 ) -> Option<CatModelVariant> {
     registries
         .resource_id_by_holder_id("minecraft:cat_variant", registry_id)
-        .and_then(cat_variant_from_entry_id)
-}
-
-pub(super) fn cat_variant_from_entry_id(id: &str) -> Option<CatModelVariant> {
-    match id {
-        "minecraft:tabby" => Some(CatModelVariant::Tabby),
-        "minecraft:black" => Some(CatModelVariant::Black),
-        "minecraft:red" => Some(CatModelVariant::Red),
-        "minecraft:siamese" => Some(CatModelVariant::Siamese),
-        "minecraft:british_shorthair" => Some(CatModelVariant::BritishShorthair),
-        "minecraft:calico" => Some(CatModelVariant::Calico),
-        "minecraft:persian" => Some(CatModelVariant::Persian),
-        "minecraft:ragdoll" => Some(CatModelVariant::Ragdoll),
-        "minecraft:white" => Some(CatModelVariant::White),
-        "minecraft:jellie" => Some(CatModelVariant::Jellie),
-        "minecraft:all_black" => Some(CatModelVariant::AllBlack),
-        _ => None,
-    }
-}
-
-// Vanilla `CatVariants.bootstrap` registers tabby/black/red/siamese/british_shorthair/calico/persian/
-// ragdoll/white/jellie/all_black in that order, so the static fallback ids (used before the dynamic
-// `cat_variant` registry arrives) are 0..=10. The vanilla default is BLACK.
-pub(super) fn cat_variant_from_vanilla_registry_id(registry_id: i32) -> CatModelVariant {
-    vanilla_cat_variant_resource_id(registry_id)
-        .and_then(cat_variant_from_entry_id)
-        .unwrap_or(CatModelVariant::Black)
+        .and_then(CatModelVariant::for_resource_id)
 }
 
 /// Vanilla `FoxRenderer` (an `AgeableMobRenderer`) picks `AdultFoxModel` for an adult and `BabyFoxModel`
