@@ -1664,28 +1664,28 @@ fn encode_named_variant(
             vanilla_villager_type_resource_id(patch.villager_variant_id?)?
         }
         component_id::VANILLA_DATA_COMPONENT_WOLF_VARIANT_TYPE_ID => {
-            vanilla_wolf_variant_resource_id(patch.wolf_variant_id?)?
+            WolfModelVariant::for_vanilla_registry_id(patch.wolf_variant_id?)?.resource_id()
         }
         component_id::VANILLA_DATA_COMPONENT_WOLF_SOUND_VARIANT_TYPE_ID => {
             WolfSoundVariantIdentity::for_vanilla_registry_id(patch.wolf_sound_variant_id?)?
                 .resource_id()
         }
         component_id::VANILLA_DATA_COMPONENT_PIG_VARIANT_TYPE_ID => {
-            pig_variant_resource_id(patch.pig_variant_id?)?
+            PigModelVariant::for_vanilla_registry_id(patch.pig_variant_id?)?.resource_id()
         }
         component_id::VANILLA_DATA_COMPONENT_PIG_SOUND_VARIANT_TYPE_ID => {
             PigSoundVariantIdentity::for_vanilla_registry_id(patch.pig_sound_variant_id?)?
                 .resource_id()
         }
         component_id::VANILLA_DATA_COMPONENT_COW_VARIANT_TYPE_ID => {
-            cow_variant_resource_id(patch.cow_variant_id?)?
+            CowModelVariant::for_vanilla_registry_id(patch.cow_variant_id?)?.resource_id()
         }
         component_id::VANILLA_DATA_COMPONENT_COW_SOUND_VARIANT_TYPE_ID => {
             CowSoundVariantIdentity::for_vanilla_registry_id(patch.cow_sound_variant_id?)?
                 .resource_id()
         }
         component_id::VANILLA_DATA_COMPONENT_CHICKEN_VARIANT_TYPE_ID => {
-            chicken_variant_resource_id(patch.chicken_variant_id?)?
+            ChickenModelVariant::for_vanilla_registry_id(patch.chicken_variant_id?)?.resource_id()
         }
         component_id::VANILLA_DATA_COMPONENT_CHICKEN_SOUND_VARIANT_TYPE_ID => {
             ChickenSoundVariantIdentity::for_vanilla_registry_id(patch.chicken_sound_variant_id?)?
@@ -1696,10 +1696,10 @@ fn encode_named_variant(
                 .resource_id()
         }
         component_id::VANILLA_DATA_COMPONENT_FROG_VARIANT_TYPE_ID => {
-            frog_variant_resource_id(patch.frog_variant_id?)?
+            FrogModelVariant::for_vanilla_registry_id(patch.frog_variant_id?)?.resource_id()
         }
         component_id::VANILLA_DATA_COMPONENT_CAT_VARIANT_TYPE_ID => {
-            cat_variant_resource_id(patch.cat_variant_id?)?
+            CatModelVariant::for_vanilla_registry_id(patch.cat_variant_id?)?.resource_id()
         }
         component_id::VANILLA_DATA_COMPONENT_CAT_SOUND_VARIANT_TYPE_ID => {
             CatSoundVariantIdentity::for_vanilla_registry_id(patch.cat_sound_variant_id?)?

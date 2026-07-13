@@ -28,9 +28,7 @@ use chrono::{
 use chrono_tz::{OffsetName, Tz};
 use serde_json::Value;
 
-use super::bootstrap_catalog::{
-    VANILLA_TRIM_PATTERN_KEYS, VANILLA_VILLAGER_TYPE_KEYS, VANILLA_WOLF_VARIANT_KEYS,
-};
+use super::bootstrap_catalog::{VANILLA_TRIM_PATTERN_KEYS, VANILLA_VILLAGER_TYPE_KEYS};
 use super::mob_effects::vanilla_mob_effect_key;
 use super::potion_catalog::vanilla_potion;
 use super::{
@@ -46,11 +44,6 @@ pub fn vanilla_potion_resource_id(potion_id: i32) -> Option<&'static str> {
 pub fn vanilla_villager_type_resource_id(id: i32) -> Option<&'static str> {
     let index = usize::try_from(id).ok()?;
     VANILLA_VILLAGER_TYPE_KEYS.get(index).copied()
-}
-
-pub fn vanilla_wolf_variant_resource_id(id: i32) -> Option<&'static str> {
-    let index = usize::try_from(id).ok()?;
-    VANILLA_WOLF_VARIANT_KEYS.get(index).copied()
 }
 
 const VANILLA_DEFAULT_MAX_STACK_SIZE: i32 = 64;
@@ -486,7 +479,7 @@ mod tests {
     }
 
     #[test]
-    fn villager_and_wolf_variants_follow_26_1_bootstrap_order() {
+    fn villager_types_follow_26_1_bootstrap_order() {
         assert_eq!(
             vanilla_villager_type_resource_id(0),
             Some("minecraft:desert")
@@ -497,13 +490,6 @@ mod tests {
         );
         assert_eq!(vanilla_villager_type_resource_id(7), None);
         assert_eq!(vanilla_villager_type_resource_id(-1), None);
-        assert_eq!(vanilla_wolf_variant_resource_id(0), Some("minecraft:pale"));
-        assert_eq!(
-            vanilla_wolf_variant_resource_id(8),
-            Some("minecraft:striped")
-        );
-        assert_eq!(vanilla_wolf_variant_resource_id(9), None);
-        assert_eq!(vanilla_wolf_variant_resource_id(-1), None);
     }
 
     #[test]

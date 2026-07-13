@@ -162,6 +162,10 @@ mod tests {
                     || source.contains("fn cow_variant_from_vanilla_registry_id(")
                     || source.contains("fn pig_variant_from_vanilla_registry_id(")
                     || source.contains("fn frog_variant_from_vanilla_registry_id(")
+                    || source.contains("fn vanilla_chicken_variant_resource_id(")
+                    || source.contains("fn vanilla_cow_variant_resource_id(")
+                    || source.contains("fn vanilla_pig_variant_resource_id(")
+                    || source.contains("fn vanilla_frog_variant_resource_id(")
                 {
                     violations.push(display.to_string());
                 }

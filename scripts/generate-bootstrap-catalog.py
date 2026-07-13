@@ -138,15 +138,6 @@ ZOMBIE_NAUTILUS_VARIANTS_SOURCE = Path(
     "net/minecraft/world/entity/animal/nautilus/ZombieNautilusVariants.java"
 )
 
-RESOURCE_LOOKUPS = (
-    ("vanilla_cat_variant_resource_id", "VANILLA_CAT_VARIANT_KEYS"),
-    ("vanilla_chicken_variant_resource_id", "VANILLA_CHICKEN_VARIANT_KEYS"),
-    ("vanilla_cow_variant_resource_id", "VANILLA_COW_VARIANT_KEYS"),
-    ("vanilla_pig_variant_resource_id", "VANILLA_PIG_VARIANT_KEYS"),
-    ("vanilla_frog_variant_resource_id", "VANILLA_FROG_VARIANT_KEYS"),
-)
-
-
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--source-root", type=Path, default=DEFAULT_SOURCE_ROOT)
@@ -390,16 +381,6 @@ def render_catalog(
             "",
         )
     )
-    for function_name, array_name in RESOURCE_LOOKUPS:
-        lines.extend(
-            (
-                f"pub fn {function_name}(id: i32) -> Option<&'static str> {{",
-                "    let index = usize::try_from(id).ok()?;",
-                f"    {array_name}.get(index).copied()",
-                "}",
-                "",
-            )
-        )
     lines.extend(
         (
             "#[derive(Debug, Clone, Copy, PartialEq, Eq)]",
@@ -501,7 +482,6 @@ def render_catalog(
             "        assert_eq!(vanilla_trim_material(11), None);",
             '        assert_eq!(VANILLA_TRIM_PATTERN_KEYS.last(), Some(&"minecraft:bolt"));',
             '        assert_eq!(VANILLA_VILLAGER_TYPE_KEYS.last(), Some(&"minecraft:taiga"));',
-            '        assert_eq!(VANILLA_WOLF_VARIANT_KEYS.last(), Some(&"minecraft:striped"));',
             '        assert_eq!(VANILLA_INSTRUMENT_KEYS.last(), Some(&"minecraft:dream_goat_horn"));',
             '        assert_eq!(VANILLA_BANNER_PATTERNS.get(31).unwrap().resource_id, "minecraft:gradient");',
             '        assert_eq!(VANILLA_BANNER_PATTERNS.get(34).unwrap().resource_id, "minecraft:curly_border");',
@@ -509,8 +489,6 @@ def render_catalog(
             '        assert_eq!(VANILLA_ENCHANTMENTS.get(13).unwrap().max_level, 5);',
             '        assert_eq!(VANILLA_ENCHANTMENT_TOOLTIP_ORDER.first(), Some(&"minecraft:binding_curse"));',
             '        assert_eq!(VANILLA_ENCHANTMENT_TOOLTIP_ORDER.last(), Some(&"minecraft:mending"));',
-            '        assert_eq!(vanilla_cat_variant_resource_id(10), Some("minecraft:all_black"));',
-            "        assert_eq!(vanilla_chicken_variant_resource_id(3), None);",
             "    }",
             "",
             "    #[test]",
@@ -1208,7 +1186,7 @@ def render_cat_variants(entries: list[BootstrapEntry]) -> str:
             "                let display = path.to_string_lossy();",
             "                if display.ends_with(\"/cat_variants.rs\") || display.ends_with(\"/tests.rs\") || display.contains(\"/tests/\") { continue; }",
             "                let source = fs::read_to_string(&path).unwrap();",
-            "                if source.contains(\"enum CatModelVariant\") || source.contains(\"fn cat_variant_from_entry_id(\") || source.contains(\"fn cat_variant_from_vanilla_registry_id(\") || source.contains(\"\\\"minecraft:tabby\\\" => Some(CatModelVariant::\") { violations.push(display.to_string()); }",
+            "                if source.contains(\"enum CatModelVariant\") || source.contains(\"fn cat_variant_from_entry_id(\") || source.contains(\"fn cat_variant_from_vanilla_registry_id(\") || source.contains(\"fn vanilla_cat_variant_resource_id(\") || source.contains(\"\\\"minecraft:tabby\\\" => Some(CatModelVariant::\") { violations.push(display.to_string()); }",
             "            }",
             "        }",
             "        let mut violations = Vec::new();",
@@ -1316,7 +1294,7 @@ def render_wolf_variants(entries: list[BootstrapEntry]) -> str:
             "                let display = path.to_string_lossy();",
             "                if display.ends_with(\"/wolf_variants.rs\") || display.ends_with(\"/tests.rs\") || display.contains(\"/tests/\") { continue; }",
             "                let source = fs::read_to_string(&path).unwrap();",
-            "                if source.contains(\"enum WolfModelVariant\") || source.contains(\"fn wolf_variant_from_entry_id(\") || source.contains(\"fn wolf_variant_from_vanilla_registry_id(\") || source.contains(\"\\\"minecraft:pale\\\" => Some(WolfModelVariant::\") { violations.push(display.to_string()); }",
+            "                if source.contains(\"enum WolfModelVariant\") || source.contains(\"fn wolf_variant_from_entry_id(\") || source.contains(\"fn wolf_variant_from_vanilla_registry_id(\") || source.contains(\"fn vanilla_wolf_variant_resource_id(\") || source.contains(\"\\\"minecraft:pale\\\" => Some(WolfModelVariant::\") { violations.push(display.to_string()); }",
             "            }",
             "        }",
             "        let mut violations = Vec::new();",
@@ -1446,7 +1424,7 @@ def render_temperature_animal_variants(
             "                let display = path.to_string_lossy();",
             "                if display.ends_with(\"/temperature_animal_variants.rs\") || display.ends_with(\"/tests.rs\") || display.contains(\"/tests/\") { continue; }",
             "                let source = fs::read_to_string(&path).unwrap();",
-            "                if source.contains(\"enum ChickenModelVariant\") || source.contains(\"enum CowModelVariant\") || source.contains(\"enum PigModelVariant\") || source.contains(\"enum FrogModelVariant\") || source.contains(\"fn chicken_variant_from_entry_id(\") || source.contains(\"fn cow_variant_from_entry_id(\") || source.contains(\"fn pig_variant_from_entry_id(\") || source.contains(\"fn frog_variant_from_entry_id(\") || source.contains(\"fn chicken_variant_from_vanilla_registry_id(\") || source.contains(\"fn cow_variant_from_vanilla_registry_id(\") || source.contains(\"fn pig_variant_from_vanilla_registry_id(\") || source.contains(\"fn frog_variant_from_vanilla_registry_id(\") { violations.push(display.to_string()); }",
+            "                if source.contains(\"enum ChickenModelVariant\") || source.contains(\"enum CowModelVariant\") || source.contains(\"enum PigModelVariant\") || source.contains(\"enum FrogModelVariant\") || source.contains(\"fn chicken_variant_from_entry_id(\") || source.contains(\"fn cow_variant_from_entry_id(\") || source.contains(\"fn pig_variant_from_entry_id(\") || source.contains(\"fn frog_variant_from_entry_id(\") || source.contains(\"fn chicken_variant_from_vanilla_registry_id(\") || source.contains(\"fn cow_variant_from_vanilla_registry_id(\") || source.contains(\"fn pig_variant_from_vanilla_registry_id(\") || source.contains(\"fn frog_variant_from_vanilla_registry_id(\") || source.contains(\"fn vanilla_chicken_variant_resource_id(\") || source.contains(\"fn vanilla_cow_variant_resource_id(\") || source.contains(\"fn vanilla_pig_variant_resource_id(\") || source.contains(\"fn vanilla_frog_variant_resource_id(\") { violations.push(display.to_string()); }",
             "            }",
             "        }",
             "        let mut violations = Vec::new();",
@@ -1899,7 +1877,13 @@ def generate(source_root: Path) -> tuple[str, str, str, str, str, str, str, str,
     catalogs = extract_catalogs(source_root)
     cat_variants = dict(catalogs)["VANILLA_CAT_VARIANT_KEYS"]
     wolf_variants = dict(catalogs)["VANILLA_WOLF_VARIANT_KEYS"]
-    world_sound_catalog_names = {
+    typed_entity_catalog_names = {
+        "VANILLA_CAT_VARIANT_KEYS",
+        "VANILLA_CHICKEN_VARIANT_KEYS",
+        "VANILLA_COW_VARIANT_KEYS",
+        "VANILLA_FROG_VARIANT_KEYS",
+        "VANILLA_PIG_VARIANT_KEYS",
+        "VANILLA_WOLF_VARIANT_KEYS",
         "VANILLA_CAT_SOUND_VARIANT_KEYS",
         "VANILLA_CHICKEN_SOUND_VARIANT_KEYS",
         "VANILLA_COW_SOUND_VARIANT_KEYS",
@@ -1910,7 +1894,7 @@ def generate(source_root: Path) -> tuple[str, str, str, str, str, str, str, str,
         catalog
         for catalog in catalogs
         if catalog[0] != "VANILLA_ZOMBIE_NAUTILUS_VARIANT_KEYS"
-        and catalog[0] not in world_sound_catalog_names
+        and catalog[0] not in typed_entity_catalog_names
     ]
     rendered = render_catalog(
         item_model_catalogs,

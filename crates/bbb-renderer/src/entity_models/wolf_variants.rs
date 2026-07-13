@@ -144,6 +144,7 @@ mod tests {
                 if source.contains("enum WolfModelVariant")
                     || source.contains("fn wolf_variant_from_entry_id(")
                     || source.contains("fn wolf_variant_from_vanilla_registry_id(")
+                    || source.contains("fn vanilla_wolf_variant_resource_id(")
                     || source.contains("\"minecraft:pale\" => Some(WolfModelVariant::")
                 {
                     violations.push(display.to_string());

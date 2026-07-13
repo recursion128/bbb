@@ -4768,6 +4768,15 @@ fn shift_f3_i_with_permission_copies_local_frog_save_nbt_to_clipboard() {
     let mut input = ClientInputState::new(true);
     let mut world = world_with_debug_player(false);
     grant_debug_recreate_nbt_permission(&mut world);
+    world.record_registry_entries(
+        "minecraft:frog_variant",
+        0,
+        vec![
+            RegistryPacketEntry::stub("minecraft:cold"),
+            RegistryPacketEntry::stub("minecraft:temperate"),
+            RegistryPacketEntry::stub("minecraft:warm"),
+        ],
+    );
     world.apply_add_entity(AddEntity {
         id: 67,
         uuid: Uuid::from_u128(67),
@@ -4806,7 +4815,7 @@ fn shift_f3_i_with_permission_copies_local_frog_save_nbt_to_clipboard() {
                 serializer_id: 27,
                 value: EntityDataValueKind::RegistryId {
                     serializer: EntityDataRegistryHolder::FrogVariant,
-                    id: 2,
+                    id: 0,
                 },
             },
         ],
@@ -5156,6 +5165,15 @@ fn shift_f3_i_with_permission_copies_local_pig_save_nbt_to_clipboard() {
     let mut world = world_with_debug_player(false);
     grant_debug_recreate_nbt_permission(&mut world);
     world.record_registry_entries(
+        "minecraft:pig_variant",
+        0,
+        vec![
+            RegistryPacketEntry::stub("minecraft:cold"),
+            RegistryPacketEntry::stub("minecraft:temperate"),
+            RegistryPacketEntry::stub("minecraft:warm"),
+        ],
+    );
+    world.record_registry_entries(
         "minecraft:pig_sound_variant",
         0,
         vec![
@@ -5202,7 +5220,7 @@ fn shift_f3_i_with_permission_copies_local_pig_save_nbt_to_clipboard() {
                 serializer_id: 28,
                 value: EntityDataValueKind::RegistryId {
                     serializer: EntityDataRegistryHolder::PigVariant,
-                    id: 2,
+                    id: 0,
                 },
             },
             ProtocolEntityDataValue {
@@ -5332,6 +5350,15 @@ fn shift_f3_i_with_permission_copies_local_chicken_save_nbt_to_clipboard() {
     let mut world = world_with_debug_player(false);
     grant_debug_recreate_nbt_permission(&mut world);
     world.record_registry_entries(
+        "minecraft:chicken_variant",
+        0,
+        vec![
+            RegistryPacketEntry::stub("minecraft:warm"),
+            RegistryPacketEntry::stub("minecraft:temperate"),
+            RegistryPacketEntry::stub("minecraft:cold"),
+        ],
+    );
+    world.record_registry_entries(
         "minecraft:chicken_sound_variant",
         0,
         vec![
@@ -5377,7 +5404,7 @@ fn shift_f3_i_with_permission_copies_local_chicken_save_nbt_to_clipboard() {
                 serializer_id: 30,
                 value: EntityDataValueKind::RegistryId {
                     serializer: EntityDataRegistryHolder::ChickenVariant,
-                    id: 1,
+                    id: 0,
                 },
             },
             ProtocolEntityDataValue {
@@ -5472,6 +5499,15 @@ fn shift_f3_i_with_permission_copies_local_cow_save_nbt_to_clipboard() {
     let mut world = world_with_debug_player(false);
     grant_debug_recreate_nbt_permission(&mut world);
     world.record_registry_entries(
+        "minecraft:cow_variant",
+        0,
+        vec![
+            RegistryPacketEntry::stub("minecraft:cold"),
+            RegistryPacketEntry::stub("minecraft:temperate"),
+            RegistryPacketEntry::stub("minecraft:warm"),
+        ],
+    );
+    world.record_registry_entries(
         "minecraft:cow_sound_variant",
         0,
         vec![
@@ -5517,7 +5553,7 @@ fn shift_f3_i_with_permission_copies_local_cow_save_nbt_to_clipboard() {
                 serializer_id: 23,
                 value: EntityDataValueKind::RegistryId {
                     serializer: EntityDataRegistryHolder::CowVariant,
-                    id: 2,
+                    id: 0,
                 },
             },
             ProtocolEntityDataValue {
@@ -6780,6 +6816,14 @@ fn shift_f3_i_with_permission_copies_local_cat_save_nbt_to_clipboard() {
     let mut world = world_with_debug_player(false);
     grant_debug_recreate_nbt_permission(&mut world);
     world.record_registry_entries(
+        "minecraft:cat_variant",
+        0,
+        vec![
+            RegistryPacketEntry::stub("minecraft:calico"),
+            RegistryPacketEntry::stub("minecraft:black"),
+        ],
+    );
+    world.record_registry_entries(
         "minecraft:cat_sound_variant",
         0,
         vec![
@@ -6825,7 +6869,7 @@ fn shift_f3_i_with_permission_copies_local_cat_save_nbt_to_clipboard() {
                 serializer_id: 21,
                 value: EntityDataValueKind::RegistryId {
                     serializer: EntityDataRegistryHolder::CatVariant,
-                    id: 5,
+                    id: 0,
                 },
             },
             ProtocolEntityDataValue {
@@ -6925,6 +6969,14 @@ fn shift_f3_i_with_permission_copies_local_wolf_save_nbt_to_clipboard() {
     let mut world = world_with_debug_player(false);
     grant_debug_recreate_nbt_permission(&mut world);
     world.record_registry_entries(
+        "minecraft:wolf_variant",
+        0,
+        vec![
+            RegistryPacketEntry::stub("minecraft:striped"),
+            RegistryPacketEntry::stub("minecraft:pale"),
+        ],
+    );
+    world.record_registry_entries(
         "minecraft:wolf_sound_variant",
         0,
         vec![
@@ -6980,7 +7032,7 @@ fn shift_f3_i_with_permission_copies_local_wolf_save_nbt_to_clipboard() {
                 serializer_id: 25,
                 value: EntityDataValueKind::RegistryId {
                     serializer: EntityDataRegistryHolder::WolfVariant,
-                    id: 8,
+                    id: 0,
                 },
             },
             ProtocolEntityDataValue {

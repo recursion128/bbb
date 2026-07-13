@@ -163,13 +163,6 @@ Owner: `scripts/` + each generated catalog's semantic crate
   shared Tree-sitter frontend and checked-in deterministic output; ordinary
   build/test must not read local vanilla sources. Migrate each newly identified
   legacy parser as its own semantic-owner slice.
-- Route native debug entity NBT and named item-component encoding for the
-  cat, wolf, chicken, cow, pig, and frog variant registries through their
-  existing generated typed APIs; debug holder ids must resolve through the
-  current synchronized registry order, while the no-RegistryAccess component
-  fallback uses vanilla bootstrap order. Remove the obsolete item-model public
-  resource lookup tables.
-
 ## Unknown clientbound packets in login, configuration, and play
 
 Owner: `bbb-protocol` + `bbb-net` + `bbb-native`

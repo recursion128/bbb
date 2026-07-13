@@ -154,6 +154,7 @@ mod tests {
                 if source.contains("enum CatModelVariant")
                     || source.contains("fn cat_variant_from_entry_id(")
                     || source.contains("fn cat_variant_from_vanilla_registry_id(")
+                    || source.contains("fn vanilla_cat_variant_resource_id(")
                     || source.contains("\"minecraft:tabby\" => Some(CatModelVariant::")
                 {
                     violations.push(display.to_string());

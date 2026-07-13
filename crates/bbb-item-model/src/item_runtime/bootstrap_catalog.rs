@@ -34,18 +34,6 @@ pub(super) const VANILLA_VILLAGER_TYPE_KEYS: &[&str] = &[
     "minecraft:taiga",
 ];
 
-pub(super) const VANILLA_WOLF_VARIANT_KEYS: &[&str] = &[
-    "minecraft:pale",
-    "minecraft:spotted",
-    "minecraft:snowy",
-    "minecraft:black",
-    "minecraft:ashen",
-    "minecraft:rusty",
-    "minecraft:woods",
-    "minecraft:chestnut",
-    "minecraft:striped",
-];
-
 pub(super) const VANILLA_INSTRUMENT_KEYS: &[&str] = &[
     "minecraft:ponder_goat_horn",
     "minecraft:sing_goat_horn",
@@ -56,32 +44,6 @@ pub(super) const VANILLA_INSTRUMENT_KEYS: &[&str] = &[
     "minecraft:yearn_goat_horn",
     "minecraft:dream_goat_horn",
 ];
-
-pub(super) const VANILLA_CAT_VARIANT_KEYS: &[&str] = &[
-    "minecraft:tabby",
-    "minecraft:black",
-    "minecraft:red",
-    "minecraft:siamese",
-    "minecraft:british_shorthair",
-    "minecraft:calico",
-    "minecraft:persian",
-    "minecraft:ragdoll",
-    "minecraft:white",
-    "minecraft:jellie",
-    "minecraft:all_black",
-];
-
-pub(super) const VANILLA_CHICKEN_VARIANT_KEYS: &[&str] =
-    &["minecraft:temperate", "minecraft:warm", "minecraft:cold"];
-
-pub(super) const VANILLA_COW_VARIANT_KEYS: &[&str] =
-    &["minecraft:temperate", "minecraft:warm", "minecraft:cold"];
-
-pub(super) const VANILLA_PIG_VARIANT_KEYS: &[&str] =
-    &["minecraft:temperate", "minecraft:warm", "minecraft:cold"];
-
-pub(super) const VANILLA_FROG_VARIANT_KEYS: &[&str] =
-    &["minecraft:temperate", "minecraft:warm", "minecraft:cold"];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) struct VanillaTrimMaterial {
@@ -185,31 +147,6 @@ pub(super) const VANILLA_ENCHANTMENT_TOOLTIP_ORDER: &[&str] = &[
     "minecraft:infinity",
     "minecraft:mending",
 ];
-
-pub fn vanilla_cat_variant_resource_id(id: i32) -> Option<&'static str> {
-    let index = usize::try_from(id).ok()?;
-    VANILLA_CAT_VARIANT_KEYS.get(index).copied()
-}
-
-pub fn vanilla_chicken_variant_resource_id(id: i32) -> Option<&'static str> {
-    let index = usize::try_from(id).ok()?;
-    VANILLA_CHICKEN_VARIANT_KEYS.get(index).copied()
-}
-
-pub fn vanilla_cow_variant_resource_id(id: i32) -> Option<&'static str> {
-    let index = usize::try_from(id).ok()?;
-    VANILLA_COW_VARIANT_KEYS.get(index).copied()
-}
-
-pub fn vanilla_pig_variant_resource_id(id: i32) -> Option<&'static str> {
-    let index = usize::try_from(id).ok()?;
-    VANILLA_PIG_VARIANT_KEYS.get(index).copied()
-}
-
-pub fn vanilla_frog_variant_resource_id(id: i32) -> Option<&'static str> {
-    let index = usize::try_from(id).ok()?;
-    VANILLA_FROG_VARIANT_KEYS.get(index).copied()
-}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) struct VanillaBannerPattern {
@@ -584,13 +521,7 @@ mod tests {
         let catalogs: &[(&[&str], usize)] = &[
             (VANILLA_TRIM_PATTERN_KEYS, 18),
             (VANILLA_VILLAGER_TYPE_KEYS, 7),
-            (VANILLA_WOLF_VARIANT_KEYS, 9),
             (VANILLA_INSTRUMENT_KEYS, 8),
-            (VANILLA_CAT_VARIANT_KEYS, 11),
-            (VANILLA_CHICKEN_VARIANT_KEYS, 3),
-            (VANILLA_COW_VARIANT_KEYS, 3),
-            (VANILLA_PIG_VARIANT_KEYS, 3),
-            (VANILLA_FROG_VARIANT_KEYS, 3),
         ];
         for (entries, expected_len) in catalogs {
             assert_eq!(entries.len(), *expected_len);
@@ -640,7 +571,6 @@ mod tests {
         assert_eq!(vanilla_trim_material(11), None);
         assert_eq!(VANILLA_TRIM_PATTERN_KEYS.last(), Some(&"minecraft:bolt"));
         assert_eq!(VANILLA_VILLAGER_TYPE_KEYS.last(), Some(&"minecraft:taiga"));
-        assert_eq!(VANILLA_WOLF_VARIANT_KEYS.last(), Some(&"minecraft:striped"));
         assert_eq!(
             VANILLA_INSTRUMENT_KEYS.last(),
             Some(&"minecraft:dream_goat_horn")
@@ -666,11 +596,6 @@ mod tests {
             VANILLA_ENCHANTMENT_TOOLTIP_ORDER.last(),
             Some(&"minecraft:mending")
         );
-        assert_eq!(
-            vanilla_cat_variant_resource_id(10),
-            Some("minecraft:all_black")
-        );
-        assert_eq!(vanilla_chicken_variant_resource_id(3), None);
     }
 
     #[test]

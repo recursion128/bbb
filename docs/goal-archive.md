@@ -13206,3 +13206,17 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   authority（cow/chicken 在同步列表使用 `DIRECT_CODEC`，其余使用 `NETWORK_CODEC`）；本片不冒充
   adult/baby SoundEvent holder element codec。generated 反向扫描、world/item-model/native focused
   tests、update/check 与 workspace gate 通过。
+
+## 2026-07-13：Route animal variant consumers through typed catalogs
+
+- [x] native debug entity NBT 的 cat/wolf/chicken/cow/pig/frog holder id 改为先解析当前
+  session synchronized registry 顺序，只有 registry 尚不存在时才使用既有 generated typed
+  bootstrap ordinal；六条重排 registry 的 Shift+F3+I 回归覆盖 resource identity。
+- [x] named item-component 的无 `RegistryAccess` 路径统一调用
+  `CatModelVariant`/`WolfModelVariant` 与四类 temperature model variant API，删除
+  `bbb-item-model` 六个公开 lookup 及其 checked-in 平行数组。
+- [x] bootstrap generator 自己生成三份 typed catalog 的旧消费者反向 guard，并停止向
+  item-model 输出这些目录。原版 `RegistryDataLoader.SYNCHRONIZED_REGISTRIES` 对六类 registry
+  均使用对应 `NETWORK_CODEC`；元素的 adult/baby/model/texture payload 仍由后续 typed
+  `RegistryAccess` slice 所有。generator update/check、renderer/item-model/native focused tests
+  与 workspace gate 通过。
