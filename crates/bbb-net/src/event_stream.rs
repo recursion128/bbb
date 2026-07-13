@@ -2484,10 +2484,14 @@ mod tests {
                 packets::CommandSuggestion {
                     text: "give".to_string(),
                     tooltip: Some("Run give".to_string()),
+                    tooltip_styled: None,
+                    tooltip_component: None,
                 },
                 packets::CommandSuggestion {
                     text: "gamemode".to_string(),
                     tooltip: None,
+                    tooltip_styled: None,
+                    tooltip_component: None,
                 },
             ],
         };

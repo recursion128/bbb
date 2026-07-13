@@ -497,10 +497,14 @@ mod tests {
                     CommandSuggestion {
                         text: "give".to_string(),
                         tooltip: Some("Run give".to_string()),
+                        tooltip_styled: None,
+                        tooltip_component: None,
                     },
                     CommandSuggestion {
                         text: "gamemode".to_string(),
                         tooltip: None,
+                        tooltip_styled: None,
+                        tooltip_component: None,
                     },
                 ],
             }))

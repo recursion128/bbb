@@ -16834,6 +16834,8 @@ fn command_entry_tab_applies_latest_suggestion_range() {
         suggestions: vec![CommandSuggestion {
             text: "give".to_string(),
             tooltip: Some("Run give".to_string()),
+            tooltip_styled: None,
+            tooltip_component: None,
         }],
     });
     handle_key_input(
@@ -16987,6 +16989,8 @@ fn command_entry_tab_ignores_stale_suggestion_response() {
         suggestions: vec![CommandSuggestion {
             text: "gamemode".to_string(),
             tooltip: None,
+            tooltip_styled: None,
+            tooltip_component: None,
         }],
     });
     handle_key_input(
@@ -17036,6 +17040,8 @@ fn command_entry_tab_ignores_invalid_suggestion_range() {
         suggestions: vec![CommandSuggestion {
             text: "gamemode".to_string(),
             tooltip: None,
+            tooltip_styled: None,
+            tooltip_component: None,
         }],
     });
     handle_key_input(

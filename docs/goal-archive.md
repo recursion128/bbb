@@ -13570,3 +13570,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   更新的 prediction 保持原有碰撞修正行为。
 - [x] world、native、online/probe ack 与 prediction rollback 定向测试闭合
   `CLIENTBOUND_PLAYER_POSITION` 最后一项 runtime side-effect partial cell；workspace gate 通过。
+
+## 2026-07-13：Preserve rich command-suggestion tooltips
+
+- [x] `ClientboundCommandSuggestionsPacket.Entry` 的 trusted optional Component 不再只压成
+  `String`：protocol 同时保存 bounded 原始 NBT tree、继承后的 `StyledTextRun` 与兼容 plain
+  文本，world canonical suggestion state 原样接管三种投影。
+- [x] compound tooltip 的 text/color/bold wire、raw tree 与 styled projection，以及 world
+  apply state 均有定向测试；`CLIENTBOUND_COMMAND_SUGGESTIONS` canonical cell
+  关闭，scroll/select/hover/narration list UI 继续由 runtime partial 唯一跟踪；workspace gate 通过。

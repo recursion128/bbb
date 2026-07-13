@@ -121,8 +121,8 @@ Owner: `bbb-protocol`
   not proof of complete metadata behavior.
 - Then cover play, movement, inventory, chat, interaction and command suggestion
   end to end.
-- Preserve rich Components for command-suggestion tooltips and render vanilla's
-  scrollable suggestion list, selection suffix, hover tooltip and narration.
+- Render vanilla's scrollable command-suggestion list, selection suffix, rich
+  hover tooltip and narration.
   Matching responses currently support safe first-result Tab replacement;
   stale/wrong transaction ids are ignored.
 - Build a registry-aware repo-native command dispatcher from the Commands tree,

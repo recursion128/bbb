@@ -993,10 +993,14 @@ fn command_suggestions_event_updates_world_and_world_counters() {
                 bbb_protocol::packets::CommandSuggestion {
                     text: "give".to_string(),
                     tooltip: Some("Run give".to_string()),
+                    tooltip_styled: None,
+                    tooltip_component: None,
                 },
                 bbb_protocol::packets::CommandSuggestion {
                     text: "gamemode".to_string(),
                     tooltip: None,
+                    tooltip_styled: None,
+                    tooltip_component: None,
                 },
             ],
         },

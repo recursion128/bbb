@@ -1278,11 +1278,12 @@
     "play/clientbound/CLIENTBOUND_COMMAND_SUGGESTIONS": {
       "canonical_apply": {
         "evidence": [
+          "crates/bbb-protocol/src/packets/command_suggestions.rs#decodes_command_suggestions_packet_wire_order",
           "crates/bbb-world/src/client/command_suggestions.rs#apply_command_suggestions",
+          "crates/bbb-world/src/client/command_suggestions.rs#command_suggestions_store_by_id_and_last_response",
           "vanilla:net/minecraft/client/multiplayer/ClientSuggestionProvider.java#completeCustomSuggestions"
         ],
-        "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-        "status": "partial"
+        "status": "complete"
       },
       "decode": {
         "evidence": [
@@ -1308,6 +1309,7 @@
       "tests": {
         "evidence": [
           "crates/bbb-protocol/src/packets/command_suggestions.rs#decodes_command_suggestions_packet_wire_order",
+          "crates/bbb-world/src/client/command_suggestions.rs#command_suggestions_store_by_id_and_last_response",
           "crates/bbb-world/src/client/command_suggestions.rs#command_suggestions_ignore_stale_and_clear_matching_pending_request",
           "crates/bbb-net/src/probe/play.rs#probe_applies_command_suggestion_packets_to_world",
           "crates/bbb-native/src/runtime/events/tests/session_protocol_events.rs#command_suggestions_event_updates_world_and_world_counters",

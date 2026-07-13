@@ -37,6 +37,10 @@ pub struct CommandSuggestionsResultState {
 pub struct CommandSuggestionState {
     pub text: String,
     pub tooltip: Option<String>,
+    #[serde(default)]
+    pub tooltip_styled: Option<Vec<bbb_protocol::StyledTextRun>>,
+    #[serde(default)]
+    pub tooltip_component: Option<bbb_protocol::NbtSummaryValue>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -63,6 +67,8 @@ impl From<ProtocolCommandSuggestions> for CommandSuggestionsResultState {
                 .map(|suggestion| CommandSuggestionState {
                     text: suggestion.text,
                     tooltip: suggestion.tooltip,
+                    tooltip_styled: suggestion.tooltip_styled,
+                    tooltip_component: suggestion.tooltip_component,
                 })
                 .collect(),
         }
@@ -183,6 +189,7 @@ mod tests {
     use bbb_protocol::packets::{
         CommandSuggestion, CommandSuggestions, CustomChatCompletions, CustomChatCompletionsAction,
     };
+    use bbb_protocol::{ComponentStyle, NbtSummaryValue, StyledTextRun};
 
     #[test]
     fn command_suggestion_requests_start_at_zero_increment_and_wrap() {
@@ -279,23 +286,53 @@ mod tests {
                 CommandSuggestion {
                     text: "give".to_string(),
                     tooltip: Some("Run give".to_string()),
+                    tooltip_styled: Some(vec![StyledTextRun {
+                        text: "Run give".to_string(),
+                        style: ComponentStyle {
+                            italic: Some(true),
+                            color: Some(0x55ff55),
+                            ..ComponentStyle::default()
+                        },
+                    }]),
+                    tooltip_component: Some(NbtSummaryValue::String("Run give".to_string())),
                 },
                 CommandSuggestion {
                     text: "gamemode".to_string(),
                     tooltip: None,
+                    tooltip_styled: None,
+                    tooltip_component: None,
                 },
             ],
         });
 
-        let result = store.command_suggestions_by_id(7).unwrap();
+        let result = store.command_suggestions_by_id(7).unwrap().clone();
         assert_eq!(result.start, 1);
         assert_eq!(result.length, 4);
         assert_eq!(result.suggestions.len(), 2);
         assert_eq!(result.suggestions[0].text, "give");
         assert_eq!(result.suggestions[0].tooltip.as_deref(), Some("Run give"));
-        assert_eq!(store.last_command_suggestions(), Some(result));
+        assert_eq!(
+            result.suggestions[0].tooltip_styled,
+            Some(vec![StyledTextRun {
+                text: "Run give".to_string(),
+                style: ComponentStyle {
+                    italic: Some(true),
+                    color: Some(0x55ff55),
+                    ..ComponentStyle::default()
+                },
+            }])
+        );
+        assert_eq!(
+            result.suggestions[0].tooltip_component,
+            Some(NbtSummaryValue::String("Run give".to_string()))
+        );
+        assert_eq!(store.last_command_suggestions(), Some(&result));
         assert_eq!(store.counters().command_suggestion_packets, 1);
         assert_eq!(store.counters().command_suggestion_entries_tracked, 2);
+
+        let restored: WorldStore = serde_json::from_value(serde_json::to_value(&store).unwrap())
+            .expect("rich command suggestions should survive world JSON round trip");
+        assert_eq!(restored.command_suggestions_by_id(7), Some(&result));
     }
 
     #[test]
@@ -309,6 +346,8 @@ mod tests {
             suggestions: vec![CommandSuggestion {
                 text: "first".to_string(),
                 tooltip: None,
+                tooltip_styled: None,
+                tooltip_component: None,
             }],
         });
         store.command_suggestions.pending_request_id = Some(7);
@@ -319,6 +358,8 @@ mod tests {
             suggestions: vec![CommandSuggestion {
                 text: "second".to_string(),
                 tooltip: None,
+                tooltip_styled: None,
+                tooltip_component: None,
             }],
         });
 
@@ -341,6 +382,8 @@ mod tests {
             suggestions: vec![CommandSuggestion {
                 text: "first".to_string(),
                 tooltip: None,
+                tooltip_styled: None,
+                tooltip_component: None,
             }],
         });
         store.command_suggestions.pending_request_id = Some(8);
@@ -352,10 +395,14 @@ mod tests {
                 CommandSuggestion {
                     text: "second".to_string(),
                     tooltip: None,
+                    tooltip_styled: None,
+                    tooltip_component: None,
                 },
                 CommandSuggestion {
                     text: "third".to_string(),
                     tooltip: None,
+                    tooltip_styled: None,
+                    tooltip_component: None,
                 },
             ],
         });
@@ -379,6 +426,8 @@ mod tests {
                 suggestions: vec![CommandSuggestion {
                     text: "stale".to_string(),
                     tooltip: None,
+                    tooltip_styled: None,
+                    tooltip_component: None,
                 }],
             })
             .is_none());
@@ -393,6 +442,8 @@ mod tests {
                 suggestions: vec![CommandSuggestion {
                     text: "give".to_string(),
                     tooltip: None,
+                    tooltip_styled: None,
+                    tooltip_component: None,
                 }],
             })
             .is_some());

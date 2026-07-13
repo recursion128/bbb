@@ -2,10 +2,12 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     codec::{Decoder, Encoder, ProtocolError, Result},
-    ids,
+    component::{
+        decode_styled_component_summary_with_nbt_from_decoder, styled_runs_summary_text,
+        StyledTextRun,
+    },
+    ids, NbtSummaryValue,
 };
-
-use super::decode_optional_component_summary_from_decoder;
 
 const MAX_COMMAND_SUGGESTIONS: usize = 8192;
 const MAX_COMMAND_SUGGESTION_INPUT_LENGTH: usize = 32_500;
@@ -22,6 +24,14 @@ pub struct CommandSuggestions {
 pub struct CommandSuggestion {
     pub text: String,
     pub tooltip: Option<String>,
+    /// Styled-run projection of `tooltip`; `tooltip` remains its compatible
+    /// plain-text concatenation.
+    #[serde(default)]
+    pub tooltip_styled: Option<Vec<StyledTextRun>>,
+    /// Lossless bounded NBT tree for the trusted tooltip Component. This keeps
+    /// semantic fields beyond the renderer's current styled-run projection.
+    #[serde(default)]
+    pub tooltip_component: Option<NbtSummaryValue>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -60,9 +70,19 @@ pub(super) fn decode_command_suggestions(decoder: &mut Decoder<'_>) -> Result<Co
 
     let mut suggestions = Vec::with_capacity(count);
     for _ in 0..count {
+        let text = decoder.read_string(32767)?;
+        let (tooltip_styled, tooltip_component) = if decoder.read_bool()? {
+            let (runs, component) = decode_styled_component_summary_with_nbt_from_decoder(decoder)?;
+            (Some(runs), component)
+        } else {
+            (None, None)
+        };
+        let tooltip = tooltip_styled.as_deref().map(styled_runs_summary_text);
         suggestions.push(CommandSuggestion {
-            text: decoder.read_string(32767)?,
-            tooltip: decode_optional_component_summary_from_decoder(decoder)?,
+            text,
+            tooltip,
+            tooltip_styled,
+            tooltip_component,
         });
     }
 
@@ -99,7 +119,7 @@ mod tests {
         payload.write_var_i32(2);
         payload.write_string("give");
         payload.write_bool(true);
-        payload.write_bytes(&nbt_string_root("Run give"));
+        payload.write_bytes(&nbt_styled_text_root("Run give", "red", true));
         payload.write_string("gamemode");
         payload.write_bool(false);
         let payload = payload.into_inner();
@@ -116,10 +136,34 @@ mod tests {
                     CommandSuggestion {
                         text: "give".to_string(),
                         tooltip: Some("Run give".to_string()),
+                        tooltip_styled: Some(vec![StyledTextRun {
+                            text: "Run give".to_string(),
+                            style: crate::ComponentStyle {
+                                bold: Some(true),
+                                color: Some(0xff5555),
+                                ..crate::ComponentStyle::default()
+                            },
+                        }]),
+                        tooltip_component: Some(crate::NbtSummaryValue::Compound(vec![
+                            crate::NbtSummaryEntry {
+                                name: "text".to_string(),
+                                value: crate::NbtSummaryValue::String("Run give".to_string()),
+                            },
+                            crate::NbtSummaryEntry {
+                                name: "color".to_string(),
+                                value: crate::NbtSummaryValue::String("red".to_string()),
+                            },
+                            crate::NbtSummaryEntry {
+                                name: "bold".to_string(),
+                                value: crate::NbtSummaryValue::Byte(1),
+                            },
+                        ])),
                     },
                     CommandSuggestion {
                         text: "gamemode".to_string(),
                         tooltip: None,
+                        tooltip_styled: None,
+                        tooltip_component: None,
                     },
                 ],
             })
@@ -185,10 +229,25 @@ mod tests {
         ));
     }
 
-    fn nbt_string_root(text: &str) -> Vec<u8> {
-        let mut payload = vec![8];
-        payload.extend_from_slice(&(text.len() as u16).to_be_bytes());
-        payload.extend_from_slice(text.as_bytes());
+    fn nbt_styled_text_root(text: &str, color: &str, bold: bool) -> Vec<u8> {
+        let mut payload = vec![10];
+        write_nbt_string_entry(&mut payload, "text", text);
+        write_nbt_string_entry(&mut payload, "color", color);
+        payload.push(1);
+        write_nbt_string(&mut payload, "bold");
+        payload.push(u8::from(bold));
+        payload.push(0);
         payload
+    }
+
+    fn write_nbt_string_entry(payload: &mut Vec<u8>, name: &str, value: &str) {
+        payload.push(8);
+        write_nbt_string(payload, name);
+        write_nbt_string(payload, value);
+    }
+
+    fn write_nbt_string(payload: &mut Vec<u8>, value: &str) {
+        payload.extend_from_slice(&(value.len() as u16).to_be_bytes());
+        payload.extend_from_slice(value.as_bytes());
     }
 }
