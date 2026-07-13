@@ -18,7 +18,11 @@ use super::client_features::{RecipeBookType, RecipeDisplayId};
 use super::client_state::Difficulty;
 use super::inventory::{DataComponentPatchSummary, ItemStackSummary};
 use super::player_info::{GameType, PlayerInfoChatSession};
-use super::{chunks, connection, normalize_resource_location, BlockPos, MessageSignature, Vec3d};
+use super::{
+    chunks,
+    client_common::{self, CustomClickAction},
+    connection, normalize_resource_location, BlockPos, MessageSignature, Vec3d,
+};
 
 const PLAYER_INPUT_FORWARD: u8 = 1;
 const PLAYER_INPUT_BACKWARD: u8 = 2;
@@ -521,6 +525,13 @@ pub fn encode_play_custom_payload(packet: &ServerboundCustomPayload) -> Result<(
         }
     }
     Ok((ids::play::SERVERBOUND_CUSTOM_PAYLOAD, out.into_inner()))
+}
+
+pub fn encode_play_custom_click_action(packet: &CustomClickAction) -> Result<(i32, Vec<u8>)> {
+    Ok((
+        ids::play::SERVERBOUND_CUSTOM_CLICK_ACTION,
+        client_common::encode_custom_click_action_payload(packet)?,
+    ))
 }
 
 pub fn encode_play_debug_subscription_request(tick_time: bool) -> (i32, Vec<u8>) {

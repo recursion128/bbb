@@ -13596,3 +13596,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] non-compound、trailing、2 MiB packet cap 与 4096 compound-entry cap 均有 protocol tests；
   referenced holder resolution、typed `Dialog` codec/screen、previous-screen 恢复和 custom click
   仍作为同一 TODO 域保留。
+
+## 2026-07-13：Encode bounded custom dialog actions
+
+- [x] 对照 `ServerboundCustomClickActionPacket.STREAM_CODEC`，共享 NBT owner 编码全部 network
+  Tag 类型、Java modified UTF-8 与同质 List，并在写入时执行 65,536-byte/16-level 边界；
+  absent payload 严格编码为 length=1 的 EndTag。
+- [x] resource id normalization、configuration/play packet id、Login 等状态不发送及双状态 driver
+  transport 均有测试；typed Dialog screen 尚未产生 action，因此 command surface/state guard/tests
+  继续保持 partial，不用维护命令冒充 UI 生命周期。

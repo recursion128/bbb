@@ -3,12 +3,13 @@ use bbb_protocol::packets::{
     self, AttackEntity, BlockEntityTagQuery, ChangeDifficultyCommand, ChangeGameModeCommand,
     ChatAcknowledgement, ChatCommand, ChatCommandSigned, ChatMessage, ChatSessionUpdate,
     ClientCommandAction, CommandSuggestionRequest, ContainerButtonClick, ContainerClick,
-    ContainerCloseRequest, ContainerSlotStateChanged, EditBook, EntityTagQuery, InteractEntity,
-    InteractionHand, LockDifficultyCommand, PaddleBoat, PickItemFromBlock, PickItemFromEntity,
-    PlaceRecipeCommand, PlayerAbilitiesCommand, PlayerAction, PlayerCommand, PlayerInput,
-    PlayerPositionState, RecipeBookChangeSettingsCommand, RecipeBookSeenRecipeCommand, RenameItem,
-    SeenAdvancements, SelectBundleItem, SelectTradeCommand, ServerboundCustomPayload, SetBeacon,
-    SetCreativeModeSlot, SignUpdate, SpectateEntity, TeleportToEntity, UseItem, UseItemOn,
+    ContainerCloseRequest, ContainerSlotStateChanged, CustomClickAction, EditBook, EntityTagQuery,
+    InteractEntity, InteractionHand, LockDifficultyCommand, PaddleBoat, PickItemFromBlock,
+    PickItemFromEntity, PlaceRecipeCommand, PlayerAbilitiesCommand, PlayerAction, PlayerCommand,
+    PlayerInput, PlayerPositionState, RecipeBookChangeSettingsCommand, RecipeBookSeenRecipeCommand,
+    RenameItem, SeenAdvancements, SelectBundleItem, SelectTradeCommand, ServerboundCustomPayload,
+    SetBeacon, SetCreativeModeSlot, SignUpdate, SpectateEntity, TeleportToEntity, UseItem,
+    UseItemOn,
 };
 
 use crate::{
@@ -112,6 +113,24 @@ pub(crate) async fn send_custom_payload(
 ) -> Result<()> {
     let (id, payload) = packets::encode_play_custom_payload(&packet)?;
     conn.send_packet(id, &payload).await
+}
+
+pub(crate) async fn send_custom_click_action(
+    conn: &mut RawConnection,
+    state: ConnectionState,
+    packet: CustomClickAction,
+) -> Result<()> {
+    let encoded = match state {
+        ConnectionState::Configuration => {
+            Some(packets::encode_configuration_custom_click_action(&packet)?)
+        }
+        ConnectionState::Play => Some(packets::encode_play_custom_click_action(&packet)?),
+        ConnectionState::Handshake | ConnectionState::Status | ConnectionState::Login => None,
+    };
+    if let Some((id, payload)) = encoded {
+        conn.send_packet(id, &payload).await?;
+    }
+    Ok(())
 }
 
 pub(crate) async fn send_debug_subscription_request(

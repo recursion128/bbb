@@ -465,6 +465,15 @@ pub fn encode_configuration_brand_custom_payload(brand: &str) -> Result<(i32, Ve
     ))
 }
 
+pub fn encode_configuration_custom_click_action(
+    packet: &client_common::CustomClickAction,
+) -> Result<(i32, Vec<u8>)> {
+    Ok((
+        ids::configuration::SERVERBOUND_CUSTOM_CLICK_ACTION,
+        client_common::encode_custom_click_action_payload(packet)?,
+    ))
+}
+
 pub(super) fn encode_client_information_payload(
     information: &ClientInformation,
 ) -> Result<Vec<u8>> {

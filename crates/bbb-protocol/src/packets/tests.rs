@@ -1,7 +1,9 @@
 use super::*;
 use crate::{
     codec::{offline_player_uuid, Decoder, Encoder, ProtocolError},
-    ids, NbtSummaryEntry, NbtSummaryValue,
+    ids,
+    nbt_summary::decode_nbt_summary_from_decoder,
+    NbtSummaryEntry, NbtSummaryValue,
 };
 use std::collections::{BTreeMap, BTreeSet};
 use uuid::Uuid;
@@ -2737,6 +2739,157 @@ fn encodes_play_brand_custom_payload() {
     assert_eq!(decoder.read_string(32767).unwrap(), "minecraft:brand");
     assert_eq!(decoder.read_string(32767).unwrap(), "bbb-native");
     assert!(decoder.is_empty());
+}
+
+#[test]
+fn encodes_custom_click_action_in_configuration_and_play() {
+    let action = CustomClickAction {
+        id: "dialog/submit".to_string(),
+        payload: Some(NbtSummaryValue::Compound(vec![
+            NbtSummaryEntry {
+                name: "byte".to_string(),
+                value: NbtSummaryValue::Byte(-7),
+            },
+            NbtSummaryEntry {
+                name: "short".to_string(),
+                value: NbtSummaryValue::Short(-300),
+            },
+            NbtSummaryEntry {
+                name: "int".to_string(),
+                value: NbtSummaryValue::Int(70_000),
+            },
+            NbtSummaryEntry {
+                name: "long".to_string(),
+                value: NbtSummaryValue::Long(-9_000_000_000),
+            },
+            NbtSummaryEntry {
+                name: "float".to_string(),
+                value: NbtSummaryValue::Float(1.25f32.to_bits()),
+            },
+            NbtSummaryEntry {
+                name: "double".to_string(),
+                value: NbtSummaryValue::Double((-2.5f64).to_bits()),
+            },
+            NbtSummaryEntry {
+                name: "bytes".to_string(),
+                value: NbtSummaryValue::ByteArray(vec![-1, 0, 1]),
+            },
+            NbtSummaryEntry {
+                name: "text".to_string(),
+                value: NbtSummaryValue::String("A\0😀".to_string()),
+            },
+            NbtSummaryEntry {
+                name: "values".to_string(),
+                value: NbtSummaryValue::List(vec![
+                    NbtSummaryValue::Int(3),
+                    NbtSummaryValue::Int(5),
+                ]),
+            },
+            NbtSummaryEntry {
+                name: "nested".to_string(),
+                value: NbtSummaryValue::Compound(vec![NbtSummaryEntry {
+                    name: "ok".to_string(),
+                    value: NbtSummaryValue::Byte(1),
+                }]),
+            },
+            NbtSummaryEntry {
+                name: "ints".to_string(),
+                value: NbtSummaryValue::IntArray(vec![-1, 0, 1]),
+            },
+            NbtSummaryEntry {
+                name: "longs".to_string(),
+                value: NbtSummaryValue::LongArray(vec![-1, 0, 1]),
+            },
+        ])),
+    };
+    let (configuration_id, configuration_payload) =
+        encode_configuration_custom_click_action(&action).unwrap();
+    let (play_id, play_payload) = encode_play_custom_click_action(&action).unwrap();
+
+    assert_eq!(
+        configuration_id,
+        ids::configuration::SERVERBOUND_CUSTOM_CLICK_ACTION
+    );
+    assert_eq!(play_id, ids::play::SERVERBOUND_CUSTOM_CLICK_ACTION);
+    assert_eq!(configuration_payload, play_payload);
+
+    let mut decoder = Decoder::new(&play_payload);
+    assert_eq!(
+        decoder.read_string(32_767).unwrap(),
+        "minecraft:dialog/submit"
+    );
+    let tag_len = decoder.read_len().unwrap();
+    let mut tag_decoder = Decoder::new(decoder.read_exact(tag_len, "custom click tag").unwrap());
+    assert_eq!(
+        decode_nbt_summary_from_decoder(&mut tag_decoder).unwrap(),
+        action.payload
+    );
+    assert!(tag_decoder.is_empty());
+    assert!(decoder.is_empty());
+}
+
+#[test]
+fn encodes_absent_custom_click_action_tag_as_length_prefixed_end_tag() {
+    let action = CustomClickAction {
+        id: "bbb:none".to_string(),
+        payload: None,
+    };
+    let (_, payload) = encode_play_custom_click_action(&action).unwrap();
+    let mut decoder = Decoder::new(&payload);
+    assert_eq!(decoder.read_string(32_767).unwrap(), "bbb:none");
+    assert_eq!(decoder.read_len().unwrap(), 1);
+    assert_eq!(decoder.read_u8().unwrap(), 0);
+    assert!(decoder.is_empty());
+}
+
+#[test]
+fn rejects_invalid_oversized_and_excessively_deep_custom_click_actions() {
+    let invalid_id = CustomClickAction {
+        id: "BBB:submit".to_string(),
+        payload: None,
+    };
+    assert!(encode_play_custom_click_action(&invalid_id).is_err());
+
+    let oversized = CustomClickAction {
+        id: "bbb:submit".to_string(),
+        payload: Some(NbtSummaryValue::ByteArray(vec![
+            0;
+            super::client_common::MAX_CUSTOM_CLICK_ACTION_TAG_BYTES
+        ])),
+    };
+    assert!(matches!(
+        encode_play_custom_click_action(&oversized),
+        Err(ProtocolError::PacketTooLarge(_, max))
+            if max == super::client_common::MAX_CUSTOM_CLICK_ACTION_TAG_BYTES
+    ));
+
+    let mut too_deep = NbtSummaryValue::Compound(Vec::new());
+    for _ in 0..super::client_common::MAX_CUSTOM_CLICK_ACTION_TAG_DEPTH {
+        too_deep = NbtSummaryValue::Compound(vec![NbtSummaryEntry {
+            name: "child".to_string(),
+            value: too_deep,
+        }]);
+    }
+    let too_deep = CustomClickAction {
+        id: "bbb:submit".to_string(),
+        payload: Some(too_deep),
+    };
+    assert!(encode_configuration_custom_click_action(&too_deep)
+        .unwrap_err()
+        .to_string()
+        .contains("network nbt exceeded max depth"));
+
+    let mixed_list = CustomClickAction {
+        id: "bbb:submit".to_string(),
+        payload: Some(NbtSummaryValue::List(vec![
+            NbtSummaryValue::Int(1),
+            NbtSummaryValue::String("two".to_string()),
+        ])),
+    };
+    assert!(encode_play_custom_click_action(&mixed_list)
+        .unwrap_err()
+        .to_string()
+        .contains("network nbt list element 1"));
 }
 
 #[test]

@@ -194,3 +194,198 @@ fn read_modified_utf8(decoder: &mut Decoder<'_>) -> Result<String> {
     String::from_utf16(&units)
         .map_err(|_| ProtocolError::InvalidData("invalid modified utf-8 string".to_string()))
 }
+
+pub(crate) fn encode_nbt_summary_bounded(
+    value: Option<&NbtSummaryValue>,
+    max_len: usize,
+    max_depth: usize,
+) -> Result<Vec<u8>> {
+    let mut encoder = BoundedNbtEncoder::new(max_len);
+    match value {
+        Some(value) => {
+            encoder.write_u8(nbt_tag_id(value))?;
+            encode_nbt_payload(&mut encoder, value, 0, max_depth)?;
+        }
+        None => encoder.write_u8(0)?,
+    }
+    Ok(encoder.into_inner())
+}
+
+fn encode_nbt_payload(
+    encoder: &mut BoundedNbtEncoder,
+    value: &NbtSummaryValue,
+    depth: usize,
+    max_depth: usize,
+) -> Result<()> {
+    match value {
+        NbtSummaryValue::Byte(value) => encoder.write_u8(*value as u8),
+        NbtSummaryValue::Short(value) => encoder.write_bytes(&value.to_be_bytes()),
+        NbtSummaryValue::Int(value) => encoder.write_bytes(&value.to_be_bytes()),
+        NbtSummaryValue::Long(value) => encoder.write_bytes(&value.to_be_bytes()),
+        NbtSummaryValue::Float(value) => encoder.write_bytes(&value.to_be_bytes()),
+        NbtSummaryValue::Double(value) => encoder.write_bytes(&value.to_be_bytes()),
+        NbtSummaryValue::ByteArray(values) => {
+            encode_nbt_collection_len(encoder, values.len())?;
+            for value in values {
+                encoder.write_u8(*value as u8)?;
+            }
+            Ok(())
+        }
+        NbtSummaryValue::String(value) => encode_modified_utf8(encoder, value),
+        NbtSummaryValue::List(values) => {
+            let nested_depth = enter_nbt_container(depth, max_depth)?;
+            let element_type = values.first().map_or(0, nbt_tag_id);
+            if let Some((index, value)) = values
+                .iter()
+                .enumerate()
+                .find(|(_, value)| nbt_tag_id(value) != element_type)
+            {
+                return Err(ProtocolError::InvalidData(format!(
+                    "network nbt list element {index} has tag id {}, expected {element_type}",
+                    nbt_tag_id(value)
+                )));
+            }
+            encoder.write_u8(element_type)?;
+            encode_nbt_collection_len(encoder, values.len())?;
+            for value in values {
+                encode_nbt_payload(encoder, value, nested_depth, max_depth)?;
+            }
+            Ok(())
+        }
+        NbtSummaryValue::Compound(entries) => {
+            let nested_depth = enter_nbt_container(depth, max_depth)?;
+            if entries.len() > MAX_NBT_COMPOUND_ENTRIES {
+                return Err(ProtocolError::PacketTooLarge(
+                    entries.len(),
+                    MAX_NBT_COMPOUND_ENTRIES,
+                ));
+            }
+            for entry in entries {
+                encoder.write_u8(nbt_tag_id(&entry.value))?;
+                encode_modified_utf8(encoder, &entry.name)?;
+                encode_nbt_payload(encoder, &entry.value, nested_depth, max_depth)?;
+            }
+            encoder.write_u8(0)
+        }
+        NbtSummaryValue::IntArray(values) => {
+            encode_nbt_collection_len(encoder, values.len())?;
+            for value in values {
+                encoder.write_bytes(&value.to_be_bytes())?;
+            }
+            Ok(())
+        }
+        NbtSummaryValue::LongArray(values) => {
+            encode_nbt_collection_len(encoder, values.len())?;
+            for value in values {
+                encoder.write_bytes(&value.to_be_bytes())?;
+            }
+            Ok(())
+        }
+    }
+}
+
+fn nbt_tag_id(value: &NbtSummaryValue) -> u8 {
+    match value {
+        NbtSummaryValue::Byte(_) => 1,
+        NbtSummaryValue::Short(_) => 2,
+        NbtSummaryValue::Int(_) => 3,
+        NbtSummaryValue::Long(_) => 4,
+        NbtSummaryValue::Float(_) => 5,
+        NbtSummaryValue::Double(_) => 6,
+        NbtSummaryValue::ByteArray(_) => 7,
+        NbtSummaryValue::String(_) => 8,
+        NbtSummaryValue::List(_) => 9,
+        NbtSummaryValue::Compound(_) => 10,
+        NbtSummaryValue::IntArray(_) => 11,
+        NbtSummaryValue::LongArray(_) => 12,
+    }
+}
+
+fn enter_nbt_container(depth: usize, max_depth: usize) -> Result<usize> {
+    if depth >= max_depth {
+        return Err(ProtocolError::InvalidData(format!(
+            "network nbt exceeded max depth {max_depth}"
+        )));
+    }
+    Ok(depth + 1)
+}
+
+fn encode_nbt_collection_len(encoder: &mut BoundedNbtEncoder, len: usize) -> Result<()> {
+    let len = i32::try_from(len).map_err(|_| {
+        ProtocolError::InvalidData("network nbt collection length exceeds i32".to_string())
+    })?;
+    encoder.write_bytes(&len.to_be_bytes())
+}
+
+fn encode_modified_utf8(encoder: &mut BoundedNbtEncoder, value: &str) -> Result<()> {
+    let encoded_len = value.encode_utf16().try_fold(0usize, |len, unit| {
+        len.checked_add(if unit == 0 {
+            2
+        } else if unit <= 0x7f {
+            1
+        } else if unit <= 0x7ff {
+            2
+        } else {
+            3
+        })
+    });
+    let encoded_len = encoded_len
+        .ok_or_else(|| ProtocolError::InvalidData("modified utf-8 length overflow".to_string()))?;
+    let encoded_len_u16 = u16::try_from(encoded_len).map_err(|_| ProtocolError::StringTooLong {
+        actual: encoded_len,
+        max: usize::from(u16::MAX),
+    })?;
+    encoder.write_bytes(&encoded_len_u16.to_be_bytes())?;
+    for unit in value.encode_utf16() {
+        if unit == 0 {
+            encoder.write_bytes(&[0xc0, 0x80])?;
+        } else if unit <= 0x7f {
+            encoder.write_u8(unit as u8)?;
+        } else if unit <= 0x7ff {
+            encoder.write_bytes(&[
+                (0xc0 | ((unit >> 6) & 0x1f)) as u8,
+                (0x80 | (unit & 0x3f)) as u8,
+            ])?;
+        } else {
+            encoder.write_bytes(&[
+                (0xe0 | ((unit >> 12) & 0x0f)) as u8,
+                (0x80 | ((unit >> 6) & 0x3f)) as u8,
+                (0x80 | (unit & 0x3f)) as u8,
+            ])?;
+        }
+    }
+    Ok(())
+}
+
+struct BoundedNbtEncoder {
+    bytes: Vec<u8>,
+    max_len: usize,
+}
+
+impl BoundedNbtEncoder {
+    fn new(max_len: usize) -> Self {
+        Self {
+            bytes: Vec::new(),
+            max_len,
+        }
+    }
+
+    fn write_u8(&mut self, value: u8) -> Result<()> {
+        self.write_bytes(&[value])
+    }
+
+    fn write_bytes(&mut self, bytes: &[u8]) -> Result<()> {
+        let next_len = self.bytes.len().checked_add(bytes.len()).ok_or_else(|| {
+            ProtocolError::InvalidData("network nbt encoded length overflow".to_string())
+        })?;
+        if next_len > self.max_len {
+            return Err(ProtocolError::PacketTooLarge(next_len, self.max_len));
+        }
+        self.bytes.extend_from_slice(bytes);
+        Ok(())
+    }
+
+    fn into_inner(self) -> Vec<u8> {
+        self.bytes
+    }
+}

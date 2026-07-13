@@ -548,7 +548,6 @@ mod tests {
             partial,
             BTreeSet::from([
                 ("SERVERBOUND_CUSTOM_CLICK_ACTION", "command_surface"),
-                ("SERVERBOUND_CUSTOM_CLICK_ACTION", "encoder"),
                 ("SERVERBOUND_CUSTOM_CLICK_ACTION", "state_guard"),
                 ("SERVERBOUND_CUSTOM_CLICK_ACTION", "tests"),
                 ("CLIENTBOUND_CLEAR_DIALOG", "runtime_side_effect"),
@@ -4383,7 +4382,13 @@ mod tests {
                 "{}",
                 entry.state
             );
-            for dimension in ["command_surface", "encoder", "state_guard", "tests"] {
+            assert_eq!(
+                entry.coverage["encoder"].status,
+                PacketCoverageStatus::Complete,
+                "{} encoder",
+                entry.state
+            );
+            for dimension in ["command_surface", "state_guard", "tests"] {
                 assert_eq!(
                     entry.coverage[dimension].status,
                     PacketCoverageStatus::Partial,

@@ -14,15 +14,16 @@ pub(crate) use commands::{
     send_change_difficulty, send_change_game_mode, send_chat_acknowledgement, send_chat_command,
     send_chat_command_signed, send_chat_message, send_chat_session_update, send_client_command,
     send_command_suggestion_request, send_container_button_click, send_container_click,
-    send_container_close, send_container_slot_state_changed, send_custom_payload,
-    send_debug_subscription_request, send_edit_book, send_entity_tag_query, send_interact_entity,
-    send_lock_difficulty, send_paddle_boat, send_pick_item_from_block, send_pick_item_from_entity,
-    send_ping_request, send_place_recipe, send_player_abilities_command, send_player_action,
-    send_player_command, send_player_input_command, send_recipe_book_change_settings,
-    send_recipe_book_seen_recipe, send_rename_item, send_seen_advancements,
-    send_select_bundle_item, send_select_trade, send_set_beacon, send_set_creative_mode_slot,
-    send_set_held_slot_command, send_sign_update, send_spectate_entity, send_swing_command,
-    send_teleport_to_entity, send_use_item, send_use_item_on,
+    send_container_close, send_container_slot_state_changed, send_custom_click_action,
+    send_custom_payload, send_debug_subscription_request, send_edit_book, send_entity_tag_query,
+    send_interact_entity, send_lock_difficulty, send_paddle_boat, send_pick_item_from_block,
+    send_pick_item_from_entity, send_ping_request, send_place_recipe,
+    send_player_abilities_command, send_player_action, send_player_command,
+    send_player_input_command, send_recipe_book_change_settings, send_recipe_book_seen_recipe,
+    send_rename_item, send_seen_advancements, send_select_bundle_item, send_select_trade,
+    send_set_beacon, send_set_creative_mode_slot, send_set_held_slot_command, send_sign_update,
+    send_spectate_entity, send_swing_command, send_teleport_to_entity, send_use_item,
+    send_use_item_on,
 };
 use commands::{
     send_client_tick_end, send_keep_alive_response, send_player_loaded, send_player_move_command,
@@ -121,6 +122,9 @@ pub(crate) async fn read_packet_or_drive_connection(
                     }
                     Some(NetCommand::CustomPayload(packet)) => {
                         send_custom_payload(conn, packet).await?;
+                    }
+                    Some(NetCommand::CustomClickAction(packet)) => {
+                        send_custom_click_action(conn, state, packet).await?;
                     }
                     Some(NetCommand::DebugSubscriptionRequest { tick_time }) => {
                         send_debug_subscription_request(conn, tick_time).await?;
@@ -275,6 +279,9 @@ async fn read_packet_or_disconnect_command(
                     Some(NetCommand::ChatMessage(_)) => {}
                     Some(NetCommand::ChatSessionUpdate(_)) => {}
                     Some(NetCommand::CustomPayload(_)) => {}
+                    Some(NetCommand::CustomClickAction(packet)) => {
+                        send_custom_click_action(conn, state, packet).await?;
+                    }
                     Some(NetCommand::DebugSubscriptionRequest { .. }) => {}
                     Some(NetCommand::AttackEntity(_)) => {}
                     Some(NetCommand::InteractEntity(_)) => {}
@@ -336,7 +343,7 @@ mod tests {
             AttackEntity, BlockEntityTagQuery, BlockHitResult, BlockPos, ChangeDifficultyCommand,
             ChangeGameModeCommand, ChatAcknowledgement, ChatCommand, ChatCommandSigned,
             ChatMessage, CommandSuggestionRequest, ContainerButtonClick, ContainerClick,
-            ContainerCloseRequest, ContainerInput, ContainerSlotStateChanged,
+            ContainerCloseRequest, ContainerInput, ContainerSlotStateChanged, CustomClickAction,
             DataComponentPatchSummary, Difficulty, Direction, EditBook, EntityTagQuery, GameType,
             HashedStack, InteractEntity, InteractionHand, ItemStackSummary, LockDifficultyCommand,
             PaddleBoat, PickItemFromBlock, PickItemFromEntity, PlaceRecipeCommand,
@@ -426,6 +433,74 @@ mod tests {
 
         assert!(matches!(result, ConnectionDrive::Disconnect));
         server.await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn drive_connection_sends_custom_click_action_in_configuration_and_play_only() {
+        for (state, expected_packet_id) in [
+            (
+                ConnectionState::Configuration,
+                ids::configuration::SERVERBOUND_CUSTOM_CLICK_ACTION,
+            ),
+            (
+                ConnectionState::Play,
+                ids::play::SERVERBOUND_CUSTOM_CLICK_ACTION,
+            ),
+        ] {
+            let (mut conn, mut server) = raw_connection_pair_with_server().await;
+            let (tx, mut commands) = mpsc::channel(2);
+            tx.send(NetCommand::CustomClickAction(CustomClickAction {
+                id: "bbb:submit".to_string(),
+                payload: None,
+            }))
+            .await
+            .unwrap();
+            tx.send(NetCommand::Disconnect).await.unwrap();
+            let drive = tokio::spawn(async move {
+                let mut player_position_state = PlayerPositionState::default();
+                read_packet_or_drive_connection(
+                    &mut conn,
+                    state,
+                    &mut commands,
+                    &mut player_position_state,
+                )
+                .await
+                .unwrap()
+            });
+
+            let (packet_id, payload) = read_server_packet(&mut server, "custom click action").await;
+            assert_eq!(packet_id, expected_packet_id);
+            let mut decoder = Decoder::new(&payload);
+            assert_eq!(decoder.read_string(32_767).unwrap(), "bbb:submit");
+            assert_eq!(decoder.read_len().unwrap(), 1);
+            assert_eq!(decoder.read_u8().unwrap(), 0);
+            assert!(decoder.is_empty());
+            assert!(matches!(drive.await.unwrap(), ConnectionDrive::Disconnect));
+        }
+
+        let (mut conn, mut server) = raw_connection_pair_with_server().await;
+        let (tx, mut commands) = mpsc::channel(2);
+        tx.send(NetCommand::CustomClickAction(CustomClickAction {
+            id: "bbb:submit".to_string(),
+            payload: None,
+        }))
+        .await
+        .unwrap();
+        tx.send(NetCommand::Disconnect).await.unwrap();
+        let mut player_position_state = PlayerPositionState::default();
+        assert!(matches!(
+            read_packet_or_drive_connection(
+                &mut conn,
+                ConnectionState::Login,
+                &mut commands,
+                &mut player_position_state,
+            )
+            .await
+            .unwrap(),
+            ConnectionDrive::Disconnect
+        ));
+        drop(conn);
+        assert!(server.read_packet().await.is_err());
     }
 
     #[tokio::test]

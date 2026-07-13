@@ -2,12 +2,13 @@ use bbb_protocol::packets::{
     self, AttackEntity, BlockEntityTagQuery, ChangeDifficultyCommand, ChangeGameModeCommand,
     ChatAcknowledgement, ChatCommand, ChatCommandSigned, ChatMessage, ChatSessionUpdate,
     ClientCommandAction, CommandSuggestionRequest, ContainerButtonClick, ContainerClick,
-    ContainerCloseRequest, ContainerSlotStateChanged, EditBook, EntityTagQuery, InteractEntity,
-    InteractionHand, LockDifficultyCommand, PaddleBoat, PickItemFromBlock, PickItemFromEntity,
-    PlaceRecipeCommand, PlayerAbilitiesCommand, PlayerAction, PlayerCommand, PlayerInput,
-    PlayerPositionState, RecipeBookChangeSettingsCommand, RecipeBookSeenRecipeCommand, RenameItem,
-    SeenAdvancements, SelectBundleItem, SelectTradeCommand, ServerboundCustomPayload, SetBeacon,
-    SetCreativeModeSlot, SignUpdate, SpectateEntity, TeleportToEntity, UseItem, UseItemOn, Vec3d,
+    ContainerCloseRequest, ContainerSlotStateChanged, CustomClickAction, EditBook, EntityTagQuery,
+    InteractEntity, InteractionHand, LockDifficultyCommand, PaddleBoat, PickItemFromBlock,
+    PickItemFromEntity, PlaceRecipeCommand, PlayerAbilitiesCommand, PlayerAction, PlayerCommand,
+    PlayerInput, PlayerPositionState, RecipeBookChangeSettingsCommand, RecipeBookSeenRecipeCommand,
+    RenameItem, SeenAdvancements, SelectBundleItem, SelectTradeCommand, ServerboundCustomPayload,
+    SetBeacon, SetCreativeModeSlot, SignUpdate, SpectateEntity, TeleportToEntity, UseItem,
+    UseItemOn, Vec3d,
 };
 use serde::{Deserialize, Serialize};
 
@@ -149,6 +150,7 @@ pub enum NetCommand {
     ChatMessage(ChatMessage),
     ChatSessionUpdate(ChatSessionUpdate),
     CustomPayload(ServerboundCustomPayload),
+    CustomClickAction(CustomClickAction),
     DebugSubscriptionRequest { tick_time: bool },
     AttackEntity(AttackEntity),
     InteractEntity(InteractEntity),

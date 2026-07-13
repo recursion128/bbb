@@ -64,8 +64,8 @@ Owner: `bbb-protocol`
   state, and reconnect with the Transfer intent instead of only recording the
   requested host and port.
 - Decode the retained bounded direct-holder NBT and synchronized referenced holders
-  into typed `Dialog` data, render the corresponding screens, restore the previous screen on clear, and encode
-  resource-id plus bounded optional-NBT custom click actions in the active state.
+  into typed `Dialog` data, render the corresponding screens, restore the previous screen on clear,
+  and route their custom-click controls through the active dialog state.
 - Decode block/chunk/entity/event debug subscription payloads through the synced
   `DEBUG_SUBSCRIPTION` registry codecs, retain typed values with vanilla game-time
   expiry/removal semantics, ignore entity updates whose target is absent, and feed
