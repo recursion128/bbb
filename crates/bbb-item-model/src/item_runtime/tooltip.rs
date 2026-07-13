@@ -22,15 +22,20 @@ use bbb_protocol::{
     },
     ComponentStyle, StyledTextRun,
 };
-use bbb_world::{EnchantmentAttributeModifier, RegistrySet};
+#[cfg(test)]
+use bbb_world::VANILLA_PAINTING_VARIANTS;
+use bbb_world::{
+    vanilla_painting_variant as world_painting_variant,
+    vanilla_painting_variant_resource_id as world_painting_variant_resource_id,
+    EnchantmentAttributeModifier, RegistrySet, VanillaPaintingVariant,
+};
 
 use super::attributes::{
     vanilla_attribute, vanilla_attribute_for_key, VanillaAttribute, VanillaAttributeSentiment,
 };
 use super::bootstrap_catalog::{
-    VanillaPaintingVariant, VANILLA_BANNER_PATTERNS, VANILLA_ENCHANTMENTS,
-    VANILLA_ENCHANTMENT_TOOLTIP_ORDER, VANILLA_INSTRUMENT_KEYS, VANILLA_PAINTING_VARIANTS,
-    VANILLA_TRIM_MATERIAL_KEYS, VANILLA_TRIM_PATTERN_KEYS,
+    VANILLA_BANNER_PATTERNS, VANILLA_ENCHANTMENTS, VANILLA_ENCHANTMENT_TOOLTIP_ORDER,
+    VANILLA_INSTRUMENT_KEYS, VANILLA_TRIM_MATERIAL_KEYS, VANILLA_TRIM_PATTERN_KEYS,
 };
 use super::icon_model::effective_attribute_modifiers;
 use super::icon_model::VANILLA_TRIM_MATERIAL_COLORS;
@@ -94,13 +99,15 @@ const SMITHING_TEMPLATE_NETHERITE_UPGRADE_INGREDIENTS_KEY: &str =
     "item.minecraft.smithing_template.netherite_upgrade.ingredients";
 #[cfg(test)]
 const fn painting_variant(
+    id: i32,
     key: &'static str,
     width: i32,
     height: i32,
     has_author: bool,
 ) -> VanillaPaintingVariant {
     VanillaPaintingVariant {
-        key,
+        id,
+        resource_id: key,
         width,
         height,
         has_author,
@@ -788,14 +795,14 @@ fn push_vanilla_painting_variant_tooltip_lines(
     variant: VanillaPaintingVariant,
     lines: &mut Vec<NativeItemTooltipLine>,
 ) {
-    if let Some(title_key) = painting_variant_translation_key(variant.key, "title") {
+    if let Some(title_key) = painting_variant_translation_key(variant.resource_id, "title") {
         lines.push(colored_component_tooltip_line(
             language.get_or_key(&title_key).to_string(),
             TOOLTIP_YELLOW_TEXT_COLOR,
         ));
     }
     if variant.has_author {
-        if let Some(author_key) = painting_variant_translation_key(variant.key, "author") {
+        if let Some(author_key) = painting_variant_translation_key(variant.resource_id, "author") {
             lines.push(colored_component_tooltip_line(
                 language.get_or_key(&author_key).to_string(),
                 TOOLTIP_GRAY_TEXT_COLOR,
@@ -893,14 +900,12 @@ fn push_operator_nbt_warning_tooltip_lines(
     }
 }
 
-fn vanilla_painting_variant(id: i32) -> Option<VanillaPaintingVariant> {
-    usize::try_from(id)
-        .ok()
-        .and_then(|index| VANILLA_PAINTING_VARIANTS.get(index).copied())
+pub fn vanilla_painting_variant_resource_id(id: i32) -> Option<&'static str> {
+    world_painting_variant_resource_id(id)
 }
 
-pub fn vanilla_painting_variant_resource_id(id: i32) -> Option<&'static str> {
-    vanilla_painting_variant(id).map(|variant| variant.key)
+fn vanilla_painting_variant(id: i32) -> Option<VanillaPaintingVariant> {
+    world_painting_variant(id).copied()
 }
 
 fn painting_variant_translation_key(key: &str, suffix: &str) -> Option<String> {
@@ -1220,19 +1225,19 @@ mod tests {
         assert_eq!(vanilla_painting_variant_resource_id(-1), None);
         assert_eq!(
             vanilla_painting_variant(0),
-            Some(painting_variant("minecraft:kebab", 1, 1, true))
+            Some(painting_variant(0, "minecraft:kebab", 1, 1, true))
         );
         assert_eq!(
             vanilla_painting_variant(10),
-            Some(painting_variant("minecraft:sunset", 2, 1, true))
+            Some(painting_variant(10, "minecraft:sunset", 2, 1, true))
         );
         assert_eq!(
             vanilla_painting_variant(19),
-            Some(painting_variant("minecraft:wither", 2, 2, false))
+            Some(painting_variant(19, "minecraft:wither", 2, 2, false))
         );
         assert_eq!(
             vanilla_painting_variant(50),
-            Some(painting_variant("minecraft:dennis", 3, 3, true))
+            Some(painting_variant(50, "minecraft:dennis", 3, 3, true))
         );
         assert_eq!(vanilla_painting_variant(51), None);
         assert_eq!(vanilla_painting_variant(-1), None);

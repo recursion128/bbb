@@ -352,6 +352,7 @@ pub use crate::entities::{
     VANILLA_ZOMBIE_DROWNED_CONVERSION_DATA_ID, VANILLA_ZOMBIE_SPECIAL_TYPE_DATA_ID,
 };
 pub use crate::maps::*;
+pub use crate::painting_variants::*;
 pub use crate::play_apply::{
     advance_dragon_fireball_explode_level_event_particle_randoms,
     advance_growth_level_event_particle_randoms, advance_potion_break_level_event_particle_randoms,

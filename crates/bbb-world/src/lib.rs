@@ -22,6 +22,7 @@ mod item_profiles;
 mod lectern_books;
 mod level;
 mod maps;
+mod painting_variants;
 mod play_apply;
 mod position;
 mod recipe_book;

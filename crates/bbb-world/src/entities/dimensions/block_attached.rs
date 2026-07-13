@@ -11,6 +11,7 @@ use crate::entities::{
     VANILLA_ITEM_FRAME_ROTATION_DATA_ID as ITEM_FRAME_DATA_ROTATION_ID,
     VANILLA_PAINTING_VARIANT_DATA_ID as PAINTING_DATA_VARIANT_ID,
 };
+use crate::painting_variants::vanilla_painting_variant;
 
 use super::{
     entity_data_direction, vanilla_direction_from_3d_data, EntityPickBoundsState, VanillaAxis,
@@ -229,7 +230,8 @@ fn painting_variant_size(data_values: &[EntityDataValue]) -> (f32, f32) {
                 }
                 variant
                     .registry_id
-                    .and_then(|id| PAINTING_VARIANT_SIZES.get(id as usize).copied())
+                    .and_then(vanilla_painting_variant)
+                    .and_then(|variant| positive_painting_size(variant.width, variant.height))
             }
             _ => None,
         })
@@ -249,61 +251,6 @@ fn horizontal_counter_clockwise(direction: VanillaDirection) -> Option<VanillaDi
         VanillaDirection::Down | VanillaDirection::Up => None,
     }
 }
-
-// IDs follow the PaintingVariants.java bootstrap registration order.
-const PAINTING_VARIANT_SIZES: &[(f32, f32)] = &[
-    (1.0, 1.0), // kebab
-    (1.0, 1.0), // aztec
-    (1.0, 1.0), // alban
-    (1.0, 1.0), // aztec2
-    (1.0, 1.0), // bomb
-    (1.0, 1.0), // plant
-    (1.0, 1.0), // wasteland
-    (2.0, 1.0), // pool
-    (2.0, 1.0), // courbet
-    (2.0, 1.0), // sea
-    (2.0, 1.0), // sunset
-    (2.0, 1.0), // creebet
-    (1.0, 2.0), // wanderer
-    (1.0, 2.0), // graham
-    (2.0, 2.0), // match
-    (2.0, 2.0), // bust
-    (2.0, 2.0), // stage
-    (2.0, 2.0), // void
-    (2.0, 2.0), // skull_and_roses
-    (2.0, 2.0), // wither
-    (4.0, 2.0), // fighters
-    (4.0, 4.0), // pointer
-    (4.0, 4.0), // pigscene
-    (4.0, 4.0), // burning_skull
-    (4.0, 3.0), // skeleton
-    (2.0, 2.0), // earth
-    (2.0, 2.0), // wind
-    (2.0, 2.0), // water
-    (2.0, 2.0), // fire
-    (4.0, 3.0), // donkey_kong
-    (2.0, 2.0), // baroque
-    (2.0, 2.0), // humble
-    (1.0, 1.0), // meditative
-    (1.0, 2.0), // prairie_ride
-    (4.0, 4.0), // unpacked
-    (3.0, 4.0), // backyard
-    (3.0, 3.0), // bouquet
-    (3.0, 3.0), // cavebird
-    (4.0, 2.0), // changing
-    (3.0, 3.0), // cotan
-    (3.0, 3.0), // endboss
-    (3.0, 3.0), // fern
-    (4.0, 2.0), // finding
-    (4.0, 2.0), // lowmist
-    (4.0, 4.0), // orb
-    (3.0, 3.0), // owlemons
-    (4.0, 2.0), // passage
-    (3.0, 4.0), // pond
-    (3.0, 3.0), // sunflowers
-    (3.0, 3.0), // tides
-    (3.0, 3.0), // dennis
-];
 
 #[cfg(test)]
 mod tests {

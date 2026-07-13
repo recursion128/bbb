@@ -943,8 +943,8 @@ back into a todo. Do not delete these.
   textured camera quads and renderer-specific lighting/tint/line behavior.
 - **Minecart spawner animated block-entity display content.** Classified as
   block-entity special renderer presentation.
-- **Painting custom geometry** and the exact entity-solid shader/cull split for
-  block/painting atlas consumers.
+- **Painting atlas-backed quad geometry** and the exact entity-solid shader/cull
+  split for block/painting atlas consumers.
 
 ## GPU and resources
 

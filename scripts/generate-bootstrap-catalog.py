@@ -31,6 +31,7 @@ DEFAULT_SOURCE_ROOT = Path.home() / "Work/mc-code/sources/26.1"
 DEFAULT_OUTPUT = (
     REPO_ROOT / "crates/bbb-item-model/src/item_runtime/bootstrap_catalog.rs"
 )
+DEFAULT_PAINTING_VARIANTS_OUTPUT = REPO_ROOT / "crates/bbb-world/src/painting_variants.rs"
 
 TRIM_MATERIALS_SOURCE = Path(
     "net/minecraft/world/item/equipment/trim/TrimMaterials.java"
@@ -114,6 +115,11 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--source-root", type=Path, default=DEFAULT_SOURCE_ROOT)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
+    parser.add_argument(
+        "--painting-variants-output",
+        type=Path,
+        default=DEFAULT_PAINTING_VARIANTS_OUTPUT,
+    )
     parser.add_argument("--check", action="store_true")
     return parser.parse_args()
 
@@ -136,7 +142,6 @@ def render_array(name: str, entries: list[BootstrapEntry]) -> list[str]:
 def render_catalog(
     catalogs: list[tuple[str, list[BootstrapEntry]]],
     banner_patterns: list[BannerPatternEntry],
-    painting_variants: list[PaintingVariantEntry],
     enchantments: list[EnchantmentEntry],
     tooltip_order: tuple[str, ...],
 ) -> str:
@@ -187,32 +192,6 @@ def render_catalog(
                 "    },",
             )
         )
-    lines.extend(
-        (
-            "];",
-            "",
-            "#[derive(Debug, Clone, Copy, PartialEq, Eq)]",
-            "pub(super) struct VanillaPaintingVariant {",
-            "    pub(super) key: &'static str,",
-            "    pub(super) width: i32,",
-            "    pub(super) height: i32,",
-            "    pub(super) has_author: bool,",
-            "}",
-            "",
-            "pub(super) const VANILLA_PAINTING_VARIANTS: &[VanillaPaintingVariant] = &[",
-        )
-    )
-    for entry in painting_variants:
-        lines.extend(
-            (
-                "    VanillaPaintingVariant {",
-                f"        key: {rust_string(entry.resource_id)},",
-                f"        width: {entry.width},",
-                f"        height: {entry.height},",
-                f"        has_author: {str(entry.has_author).lower()},",
-                "    },",
-            )
-        )
     lines.extend(("];", ""))
     lines.extend(
         (
@@ -260,7 +239,6 @@ def render_catalog(
             '            assert!(entries.iter().all(|entry| entry.starts_with("minecraft:")));',
             "        }",
             f"        assert_eq!(VANILLA_BANNER_PATTERNS.len(), {len(banner_patterns)});",
-            f"        assert_eq!(VANILLA_PAINTING_VARIANTS.len(), {len(painting_variants)});",
             f"        assert_eq!(VANILLA_ENCHANTMENTS.len(), {len(enchantments)});",
             f"        assert_eq!(VANILLA_ENCHANTMENT_TOOLTIP_ORDER.len(), {len(tooltip_order)});",
             "        let banner_resources: HashSet<_> = VANILLA_BANNER_PATTERNS",
@@ -268,11 +246,6 @@ def render_catalog(
             "            .map(|entry| entry.resource_id)",
             "            .collect();",
             "        assert_eq!(banner_resources.len(), VANILLA_BANNER_PATTERNS.len());",
-            "        let painting_resources: HashSet<_> = VANILLA_PAINTING_VARIANTS",
-            "            .iter()",
-            "            .map(|entry| entry.key)",
-            "            .collect();",
-            "        assert_eq!(painting_resources.len(), VANILLA_PAINTING_VARIANTS.len());",
             "        let enchantment_resources: HashSet<_> = VANILLA_ENCHANTMENTS",
             "            .iter()",
             "            .map(|entry| entry.resource_id)",
@@ -296,8 +269,6 @@ def render_catalog(
             '        assert_eq!(VANILLA_INSTRUMENT_KEYS.last(), Some(&"minecraft:dream_goat_horn"));',
             '        assert_eq!(VANILLA_BANNER_PATTERNS.get(31).unwrap().resource_id, "minecraft:gradient");',
             '        assert_eq!(VANILLA_BANNER_PATTERNS.get(34).unwrap().resource_id, "minecraft:curly_border");',
-            '        assert!(!VANILLA_PAINTING_VARIANTS.get(19).unwrap().has_author);',
-            '        assert_eq!((VANILLA_PAINTING_VARIANTS.get(50).unwrap().width, VANILLA_PAINTING_VARIANTS.get(50).unwrap().height), (3, 3));',
             '        assert_eq!(VANILLA_ENCHANTMENTS.get(13).unwrap().resource_id, "minecraft:sharpness");',
             '        assert_eq!(VANILLA_ENCHANTMENTS.get(13).unwrap().max_level, 5);',
             '        assert_eq!(VANILLA_ENCHANTMENT_TOOLTIP_ORDER.first(), Some(&"minecraft:binding_curse"));',
@@ -306,6 +277,102 @@ def render_catalog(
             '        assert_eq!(vanilla_pig_sound_variant_resource_id(1), Some("minecraft:big"));',
             '        assert_eq!(vanilla_zombie_nautilus_variant_resource_id(1), Some("minecraft:warm"));',
             "        assert_eq!(vanilla_chicken_variant_resource_id(3), None);",
+            "    }",
+            "}",
+            "",
+        )
+    )
+    return "\n".join(lines)
+
+
+def render_painting_variants(entries: list[PaintingVariantEntry]) -> str:
+    lines = [
+        "// @generated by scripts/generate-bootstrap-catalog.py; do not edit manually.",
+        "// Source: vanilla 26.1 PaintingVariants.java bootstrap order and properties.",
+        "// Update: scripts/vanilla-source-tools.sh scripts/generate-bootstrap-catalog.py",
+        "// Check: scripts/vanilla-source-tools.sh scripts/generate-bootstrap-catalog.py --check",
+        "",
+        "#[derive(Debug, Clone, Copy, PartialEq, Eq)]",
+        "pub struct VanillaPaintingVariant {",
+        "    pub id: i32,",
+        "    pub resource_id: &'static str,",
+        "    pub width: i32,",
+        "    pub height: i32,",
+        "    pub has_author: bool,",
+        "}",
+        "",
+        "pub const VANILLA_PAINTING_VARIANTS: &[VanillaPaintingVariant] = &[",
+    ]
+    for variant_id, entry in enumerate(entries):
+        lines.extend(
+            (
+                "    VanillaPaintingVariant {",
+                f"        id: {variant_id},",
+                f"        resource_id: {rust_string(entry.resource_id)},",
+                f"        width: {entry.width},",
+                f"        height: {entry.height},",
+                f"        has_author: {str(entry.has_author).lower()},",
+                "    },",
+            )
+        )
+    lines.extend(
+        (
+            "];",
+            "",
+            "pub fn vanilla_painting_variant(id: i32) -> Option<&'static VanillaPaintingVariant> {",
+            "    VANILLA_PAINTING_VARIANTS.get(usize::try_from(id).ok()?)",
+            "}",
+            "",
+            "pub fn vanilla_painting_variant_resource_id(id: i32) -> Option<&'static str> {",
+            "    vanilla_painting_variant(id).map(|variant| variant.resource_id)",
+            "}",
+            "",
+            "#[cfg(test)]",
+            "mod tests {",
+            "    use std::{collections::HashSet, fs, path::Path};",
+            "",
+            "    use super::*;",
+            "",
+            "    #[test]",
+            "    fn painting_variant_catalog_is_complete_contiguous_and_unique() {",
+            f"        assert_eq!(VANILLA_PAINTING_VARIANTS.len(), {len(entries)});",
+            "        let mut resources = HashSet::new();",
+            "        for (id, entry) in VANILLA_PAINTING_VARIANTS.iter().enumerate() {",
+            "            assert_eq!(entry.id, id as i32);",
+            "            assert!(entry.width > 0);",
+            "            assert!(entry.height > 0);",
+            "            assert!(resources.insert(entry.resource_id));",
+            "        }",
+            "    }",
+            "",
+            "    #[test]",
+            "    fn painting_variant_catalog_preserves_vanilla_order_and_properties() {",
+            "        assert_eq!(vanilla_painting_variant_resource_id(0), Some(\"minecraft:kebab\"));",
+            "        assert_eq!(vanilla_painting_variant_resource_id(50), Some(\"minecraft:dennis\"));",
+            "        assert_eq!(vanilla_painting_variant_resource_id(-1), None);",
+            "        assert_eq!(vanilla_painting_variant_resource_id(51), None);",
+            "        assert!(!vanilla_painting_variant(19).unwrap().has_author);",
+            "        let dennis = vanilla_painting_variant(50).unwrap();",
+            "        assert_eq!((dennis.width, dennis.height), (3, 3));",
+            "    }",
+            "",
+            "    #[test]",
+            "    fn production_sources_do_not_redeclare_painting_variant_catalog_facts() {",
+            "        fn visit(directory: &Path, violations: &mut Vec<String>) {",
+            "            for entry in fs::read_dir(directory).unwrap() {",
+            "                let path = entry.unwrap().path();",
+            "                if path.is_dir() { visit(&path, violations); continue; }",
+            "                if path.extension().and_then(|value| value.to_str()) != Some(\"rs\") { continue; }",
+            "                let display = path.to_string_lossy();",
+            "                if display.ends_with(\"/painting_variants.rs\") || display.ends_with(\"/tests.rs\") || display.contains(\"/tests/\") { continue; }",
+            "                let source = fs::read_to_string(&path).unwrap();",
+            "                let production = source.split(\"#[cfg(test)]\").next().unwrap_or(&source);",
+            "                if production.contains(\"PAINTING_VARIANT_SIZES\") || production.contains(\"struct VanillaPaintingVariant\") || production.contains(\"const VANILLA_PAINTING_VARIANTS\") { violations.push(display.to_string()); }",
+            "            }",
+            "        }",
+            "        let mut violations = Vec::new();",
+            "        visit(Path::new(env!(\"CARGO_MANIFEST_DIR\")).parent().unwrap(), &mut violations);",
+            "        assert!(violations.is_empty(), \"parallel painting-variant catalog owners: {violations:?}\");",
             "    }",
             "}",
             "",
@@ -483,7 +550,18 @@ def extract_catalogs(source_root: Path) -> list[tuple[str, list[BootstrapEntry]]
     ]
 
 
-def generate(source_root: Path) -> str:
+def format_rust(rendered: str) -> str:
+    formatted = subprocess.run(
+        ["rustfmt", "--edition", "2021", "--emit", "stdout"],
+        input=rendered,
+        text=True,
+        capture_output=True,
+        check=True,
+    )
+    return formatted.stdout
+
+
+def generate(source_root: Path) -> tuple[str, str]:
     banner_patterns = banner_pattern_entries(
         parse_java(source_root, BANNER_PATTERNS_SOURCE)
     )
@@ -497,18 +575,13 @@ def generate(source_root: Path) -> str:
     rendered = render_catalog(
         extract_catalogs(source_root),
         banner_patterns,
-        paintings,
         enchantments,
         tooltip_order,
     )
-    formatted = subprocess.run(
-        ["rustfmt", "--edition", "2021", "--emit", "stdout"],
-        input=rendered,
-        text=True,
-        capture_output=True,
-        check=True,
+    return (
+        format_rust(rendered),
+        format_rust(render_painting_variants(paintings)),
     )
-    return formatted.stdout
 
 
 def check_generated(path: Path, generated: str) -> bool:
@@ -528,11 +601,17 @@ def check_generated(path: Path, generated: str) -> bool:
 
 def main() -> int:
     args = parse_args()
-    generated = generate(args.source_root)
+    generated, generated_painting_variants = generate(args.source_root)
     if args.check:
-        return 0 if check_generated(args.output, generated) else 1
+        matches = check_generated(args.output, generated)
+        matches &= check_generated(
+            args.painting_variants_output, generated_painting_variants
+        )
+        return 0 if matches else 1
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(generated)
+    args.painting_variants_output.parent.mkdir(parents=True, exist_ok=True)
+    args.painting_variants_output.write_text(generated_painting_variants)
     return 0
 
 

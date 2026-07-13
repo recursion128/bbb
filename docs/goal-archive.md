@@ -13047,3 +13047,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] extractor fixture、真实 update/check、generated exact-order test、production `_TAB_CATEGORIES`
   反向扫描与 native crafting/furnace focused tests 通过；未改变 recipe wire、craftability 或 UI 呈现语义，
   RecipeToast/hover/tooltip/narration 仍开放。
+
+## 2026-07-13：Unify generated painting variant catalog
+
+- [x] `generate-bootstrap-catalog.py` 从同一 Tree-sitter `PaintingVariants.bootstrap` extraction
+  额外生成 `bbb-world::painting_variants`：51 项 id/resource/width/height/has-author descriptor、checked
+  lookup 与 update/check 入口；item-model bootstrap 生成物不再内嵌第二张表。
+- [x] world painting transform/pick bounds 删除 51 项尺寸副本并查询 generated descriptor；item-model
+  tooltip 与既有公开 `vanilla_painting_variant_resource_id` 改为消费/委托 world owner，crate 依赖方向未倒置。
+- [x] 完整性/顺序/属性测试与 generated 反向扫描禁止 `PAINTING_VARIANT_SIZES`、平行 struct/table 重新进入
+  生产代码；这只收敛固定 bootstrap 数据，不把 painting atlas quad、shader/cull 或自定义 session holder
+  语义误标完成。
