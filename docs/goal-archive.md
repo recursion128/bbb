@@ -13354,3 +13354,15 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   阻止该平行表回流。
 - [x] extractor 单测覆盖 builder 顺序，generator update/check、protocol reverse guard 与
   pack default-component focused tests、workspace gate 通过。
+
+## 2026-07-13：Generate packed map color tables
+
+- [x] 依据 vanilla `MapColor.java`，gameplay-id Tree-sitter extractor 机械提取 62 个
+  material color 的声明顺序、显式 id 与 24-bit RGB、`MATERIAL_COLORS` 的 64 项容量，
+  以及 nested `Brightness` enum 的四个 id/modifier；数量、连续 id、范围、容量或 CST
+  shape 漂移都会令维护生成失败。
+- [x] native `map_textures` 删除手写 RGB 与 brightness 数组，通过同语义模块内的
+  checked-in `generated_26_1.rs` 数据片段继续执行原有 packed-color 缩放算法；62/63
+  未注册 material id 明确生成 `NONE` 透明 fallback，未新增跨 crate 公开 API。
+- [x] generated reverse guard 阻止生产代码恢复平行 map-color 表；extractor、generator
+  update/check、native map-color focused tests 与 workspace gate 通过。

@@ -36,6 +36,7 @@ from gameplay_id_catalog_extractor import (  # noqa: E402
     heightmap_type_entries,
     interaction_hand_entries,
     item_component_value_type_entries,
+    map_color_entries,
     mob_effect_entries,
     objective_render_type_entries,
     player_info_action_entries,
@@ -58,6 +59,37 @@ from vanilla_java_source import parse_source  # noqa: E402
 
 
 class GameplayIdCatalogExtractorTests(unittest.TestCase):
+    def test_map_colors_extract_ids_rgb_and_brightness_from_cst(self) -> None:
+        source = parse_source(
+            "fixture/MapColor.java",
+            b"""package fixture;
+class MapColor {
+  private static final MapColor[] MATERIAL_COLORS = new MapColor[64];
+  static final MapColor NONE = new MapColor(0, 0);
+  static final MapColor GRASS = new MapColor(1, 8368696);
+  enum Brightness {
+    LOW(0, 180), HIGH(1, 255);
+    Brightness(int id, int modifier) {}
+  }
+}
+""",
+        )
+
+        colors, brightness, palette_size = map_color_entries(source, 2, 2, 64)
+
+        self.assertEqual(
+            [(entry.constant_name, entry.color_id, entry.rgb) for entry in colors],
+            [("NONE", 0, 0), ("GRASS", 1, 8368696)],
+        )
+        self.assertEqual(
+            [
+                (entry.constant_name, entry.brightness_id, entry.modifier)
+                for entry in brightness
+            ],
+            [("LOW", 0, 180), ("HIGH", 1, 255)],
+        )
+        self.assertEqual(palette_size, 64)
+
     def test_beacon_effect_tiers_extract_nested_list_membership_from_cst(self) -> None:
         source = parse_source(
             "fixture/BeaconBlockEntity.java",

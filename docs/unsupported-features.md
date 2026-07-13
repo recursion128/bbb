@@ -162,6 +162,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   Keep static data-component-map membership such as
   `DataComponents.COMMON_ITEM_COMPONENTS` in the generated component catalog;
   pack/item consumers must not reconstruct those type-id sets by hand.
+  Keep fixed presentation lookup domains such as `MapColor.MATERIAL_COLORS` and
+  its packed-id brightness modifiers in deterministic owner-generated data;
+  runtime texture code must only implement the scaling/application algorithm.
   Generate a membership only when an exact tag, class, property, or registry
   source fact owns that semantic; do not substitute approximate tags.
   Terrain render layer is deliberately excluded from this catalog work because

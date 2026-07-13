@@ -372,6 +372,20 @@ class TropicalFishCommonVariantEntry:
     pattern_color_id: int
 
 
+@dataclass(frozen=True)
+class MapColorEntry:
+    constant_name: str
+    color_id: int
+    rgb: int
+
+
+@dataclass(frozen=True)
+class MapBrightnessEntry:
+    constant_name: str
+    brightness_id: int
+    modifier: int
+
+
 def _fail(source: JavaSource, expression: JavaExpression, message: str) -> None:
     span = expression.span
     raise GameplayIdExtractionError(
@@ -707,6 +721,131 @@ def _enum_constants(source: JavaSource) -> list[tuple[str, tuple[JavaExpression,
             )
         )
     return result
+
+
+def map_color_entries(
+    source: JavaSource,
+    expected_color_count: int = 62,
+    expected_brightness_count: int = 4,
+    expected_palette_size: int = 64,
+) -> tuple[list[MapColorEntry], list[MapBrightnessEntry], int]:
+    owners = [
+        java_type
+        for java_type in source.types
+        if java_type.kind == "class" and java_type.simple_name == "MapColor"
+    ]
+    if len(owners) != 1:
+        raise GameplayIdExtractionError(
+            f"{source.relative_path}: expected one MapColor class, found {len(owners)}"
+        )
+    palette_fields = [
+        field for field in source.fields_for(owners[0]) if field.name == "MATERIAL_COLORS"
+    ]
+    if len(palette_fields) != 1 or palette_fields[0].initializer is None:
+        raise GameplayIdExtractionError(
+            f"{source.relative_path}: expected one initialized MATERIAL_COLORS field"
+        )
+    palette_size_nodes = [
+        node
+        for node in descendants(palette_fields[0].initializer.node)
+        if node.type in {"decimal_integer_literal", "hex_integer_literal"}
+    ]
+    if len(palette_size_nodes) != 1:
+        _fail(
+            source,
+            palette_fields[0].initializer,
+            "MATERIAL_COLORS must have one literal array size",
+        )
+    palette_size = _integer(source, source.expression(palette_size_nodes[0]))
+    if palette_size != expected_palette_size:
+        raise GameplayIdExtractionError(
+            f"expected map color palette size {expected_palette_size}, extracted {palette_size}"
+        )
+    colors = []
+    for field in source.fields_for(owners[0]):
+        if field.type_spelling.replace(" ", "") != "MapColor":
+            continue
+        if field.initializer is None:
+            _fail(
+                source,
+                JavaExpression("", field.span, field.node),
+                f"map color {field.name} lacks an initializer",
+            )
+        arguments = _object_arguments(source, field.initializer)
+        if len(arguments) != 2:
+            _fail(
+                source,
+                field.initializer,
+                f"map color {field.name} must have id and RGB arguments",
+            )
+        colors.append(
+            MapColorEntry(
+                field.name,
+                _integer(source, arguments[0]),
+                _integer(source, arguments[1]),
+            )
+        )
+    if len(colors) != expected_color_count:
+        raise GameplayIdExtractionError(
+            f"expected {expected_color_count} map colors, extracted {len(colors)}"
+        )
+    _validate(colors, "map color", "color_id")
+    if [entry.color_id for entry in colors] != list(range(expected_color_count)):
+        raise GameplayIdExtractionError("map color ids do not follow declaration order")
+    for entry in colors:
+        if not 0 <= entry.rgb <= 0xFFFFFF:
+            raise GameplayIdExtractionError(
+                f"map color {entry.constant_name} RGB is outside 24-bit range"
+            )
+
+    brightness_types = [
+        java_type
+        for java_type in source.types
+        if java_type.kind == "enum" and java_type.simple_name == "Brightness"
+    ]
+    if len(brightness_types) != 1:
+        raise GameplayIdExtractionError(
+            f"{source.relative_path}: expected one Brightness enum, found {len(brightness_types)}"
+        )
+    brightness = []
+    for node in type_body_members(brightness_types[0].body_node):
+        if node.type != "enum_constant":
+            continue
+        name = node.child_by_field_name("name")
+        arguments = node.child_by_field_name("arguments")
+        if name is None or arguments is None:
+            _fail(source, source.expression(node), "map brightness constant is incomplete")
+        values = tuple(source.expression(child) for child in arguments.named_children)
+        if len(values) != 2:
+            _fail(
+                source,
+                source.expression(node),
+                "map brightness must have id and modifier arguments",
+            )
+        brightness.append(
+            MapBrightnessEntry(
+                source.text(name),
+                _integer(source, values[0]),
+                _integer(source, values[1]),
+            )
+        )
+    if len(brightness) != expected_brightness_count:
+        raise GameplayIdExtractionError(
+            f"expected {expected_brightness_count} map brightness values, extracted {len(brightness)}"
+        )
+    _validate(brightness, "map brightness", "brightness_id")
+    if [entry.brightness_id for entry in brightness] != list(
+        range(expected_brightness_count)
+    ):
+        raise GameplayIdExtractionError("map brightness ids do not follow enum order")
+    for entry in brightness:
+        if not 0 <= entry.modifier <= 255:
+            raise GameplayIdExtractionError(
+                f"map brightness {entry.constant_name} modifier is outside byte range"
+            )
+    if colors[-1].color_id >= palette_size:
+        raise GameplayIdExtractionError("map color id exceeds MATERIAL_COLORS capacity")
+    return colors, brightness, palette_size
 
 
 def heightmap_type_entries(
