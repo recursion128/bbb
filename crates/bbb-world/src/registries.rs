@@ -2,6 +2,7 @@ mod biomes;
 mod block_states;
 mod enchantments;
 mod environment_attributes;
+mod instruments;
 mod state;
 mod store;
 
@@ -16,6 +17,7 @@ pub use environment_attributes::ClientEnvironmentAttributes;
 pub(crate) use environment_attributes::{
     decode_client_environment_attributes, EnvironmentAttributeProjectionError,
 };
+pub use instruments::VanillaInstrumentIdentity;
 pub use state::{
     RegistryContentState, RegistryEntrySource, RegistryPacket, RegistryPacketEntry, RegistrySet,
     RegistryTagState, ResolvedRegistryEntry, UnresolvedRegistryTagHolder,

@@ -13245,4 +13245,17 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   原版 `BannerPatterns.bootstrap` 确认固定 43 项 identity/translation 公式；banner pattern 仍属于
   `RegistryDataLoader.SYNCHRONIZED_REGISTRIES`，这里的 ordinal API 仅供缺少 session registry 的
   vanilla 26.1 回退，不冒充动态 holder remapping。generator update/check、render-types/item-model/
-  renderer/native focused tests与 workspace gate 通过。
+  renderer/native focused tests 与 workspace gate 通过。
+
+## 2026-07-13：Move instrument identity to the world registry owner
+
+- [x] bootstrap generator 将 `Instruments.java` 的 8 项 key/bootstrap 顺序生成到
+  `bbb-world::registries`，以 `VanillaInstrumentIdentity` 统一 resource id、fixed ordinal 与反向
+  lookup；item-model catch-all 不再输出 `VANILLA_INSTRUMENT_KEYS`。
+- [x] item tooltip 与 native named component SNBT 投影直接消费 world typed API，删除
+  item-model 公开 `vanilla_instrument_resource_id` bridge；完整性/顺序/唯一性/边界测试和跨 crates
+  反向扫描由 generator 同步生成。
+- [x] 原版 `RegistryDataLoader.SYNCHRONIZED_REGISTRIES` 对 instrument 使用
+  `Instrument.DIRECT_CODEC`；本片明确只提供缺少 RegistryAccess 时的 vanilla 26.1 identity 回退，
+  不冒充 sound event/use duration/range/Component payload 或 session remapping。generator
+  update/check、world/item-model/native focused tests 与 workspace gate 通过。

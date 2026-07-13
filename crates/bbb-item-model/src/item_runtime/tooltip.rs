@@ -28,7 +28,7 @@ use bbb_world::VANILLA_PAINTING_VARIANTS;
 use bbb_world::{
     vanilla_painting_variant as world_painting_variant,
     vanilla_painting_variant_resource_id as world_painting_variant_resource_id,
-    EnchantmentAttributeModifier, RegistrySet, VanillaPaintingVariant,
+    EnchantmentAttributeModifier, RegistrySet, VanillaInstrumentIdentity, VanillaPaintingVariant,
 };
 
 use super::attributes::{
@@ -38,7 +38,7 @@ use super::attributes::{
 use super::bootstrap_catalog::VANILLA_TRIM_MATERIALS;
 use super::bootstrap_catalog::{
     vanilla_trim_material, VANILLA_ENCHANTMENTS, VANILLA_ENCHANTMENT_TOOLTIP_ORDER,
-    VANILLA_INSTRUMENT_KEYS, VANILLA_TRIM_PATTERN_KEYS,
+    VANILLA_TRIM_PATTERN_KEYS,
 };
 use super::icon_model::effective_attribute_modifiers;
 use super::mob_effects::{
@@ -526,7 +526,8 @@ fn push_instrument_tooltip_lines(
 
     let Some(instrument_key) = component_patch
         .instrument_id
-        .and_then(vanilla_instrument_resource_id)
+        .and_then(VanillaInstrumentIdentity::for_vanilla_registry_id)
+        .map(VanillaInstrumentIdentity::resource_id)
     else {
         return;
     };
@@ -536,11 +537,6 @@ fn push_instrument_tooltip_lines(
             .to_string(),
         TOOLTIP_TEXT_GRAY,
     ));
-}
-
-pub fn vanilla_instrument_resource_id(registry_id: i32) -> Option<&'static str> {
-    let index = usize::try_from(registry_id).ok()?;
-    VANILLA_INSTRUMENT_KEYS.get(index).copied()
 }
 
 fn push_tropical_fish_tooltip_lines(
@@ -1041,7 +1037,11 @@ mod tests {
     #[test]
     fn vanilla_instrument_keys_follow_26_1_goat_horn_registry_order() {
         assert_eq!(
-            VANILLA_INSTRUMENT_KEYS,
+            (0..8)
+                .filter_map(VanillaInstrumentIdentity::for_vanilla_registry_id)
+                .map(VanillaInstrumentIdentity::resource_id)
+                .collect::<Vec<_>>()
+                .as_slice(),
             &[
                 "minecraft:ponder_goat_horn",
                 "minecraft:sing_goat_horn",
@@ -1054,15 +1054,17 @@ mod tests {
             ]
         );
         assert_eq!(
-            vanilla_instrument_resource_id(0),
+            VanillaInstrumentIdentity::for_vanilla_registry_id(0)
+                .map(VanillaInstrumentIdentity::resource_id),
             Some("minecraft:ponder_goat_horn")
         );
         assert_eq!(
-            vanilla_instrument_resource_id(7),
+            VanillaInstrumentIdentity::for_vanilla_registry_id(7)
+                .map(VanillaInstrumentIdentity::resource_id),
             Some("minecraft:dream_goat_horn")
         );
-        assert_eq!(vanilla_instrument_resource_id(8), None);
-        assert_eq!(vanilla_instrument_resource_id(-1), None);
+        assert_eq!(VanillaInstrumentIdentity::for_vanilla_registry_id(8), None);
+        assert_eq!(VanillaInstrumentIdentity::for_vanilla_registry_id(-1), None);
     }
 
     #[test]

@@ -163,6 +163,11 @@ Owner: `scripts/` + each generated catalog's semantic crate
   shared Tree-sitter frontend and checked-in deterministic output; ordinary
   build/test must not read local vanilla sources. Migrate each newly identified
   legacy parser as its own semantic-owner slice.
+- Move the generated 18-entry trim-pattern bootstrap identity catalog from the
+  item-model catch-all output to the `bbb-world` synchronized-registry owner.
+  Route item-model predicates/tooltips and native named-holder projection through
+  the shared typed identity, while retaining session remapping and direct
+  `TrimPattern` payload decoding as separate RegistryAccess work.
 
 ## Unknown clientbound packets in login, configuration, and play
 
@@ -551,7 +556,8 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   server-synchronized/direct-holder remapping and resource-pack texture resolution remain)/
   trim-named-holders (fixed vanilla material resource/color descriptor is generated;
   server-synchronized material/pattern holder remapping remains)/
-  instrument-named-holder/
+  instrument-named-holder (fixed vanilla identity/ordinal fallback is generated in the world
+  registry owner; session remapping/direct payload decoding remain)/
   provides-trim-material-named-holder/
   jukebox-playable-named-holder/
   painting-variant-named-holder/

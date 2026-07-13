@@ -1323,9 +1323,9 @@ fn encode_instrument(
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
     _item_runtime: Option<&NativeItemRuntime>,
 ) -> Option<String> {
-    Some(debug_snbt_string(vanilla_instrument_resource_id(
-        patch.instrument_id?,
-    )?))
+    Some(debug_snbt_string(
+        VanillaInstrumentIdentity::for_vanilla_registry_id(patch.instrument_id?)?.resource_id(),
+    ))
 }
 
 fn encode_provides_trim_material(
