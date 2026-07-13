@@ -338,7 +338,9 @@ FireworkExplosion/Fireworks 的 nested record、collection 与 256 上限共 2 �
 alternative、UUID/property-map 与 skin patch 也已 typed 投影；Repairable 的 registry-aware item
 homogeneous HolderSet（tag/compact/list/session 解析及 context-free 空列表边界）与
 ProvidesBannerPatterns 的动态 banner-pattern HolderSet、JukeboxPlayable 的单一动态 song holder 也已
-typed 投影；DamageResistant 的动态 damage-type tag/compact/list HolderSet 也已闭合；
+typed 投影；PaintingVariant 的 persistent RegistryFixedCodec 也已按 session 顺序投影单一 named holder，
+并拒绝仅属于 stream codec 的 direct compound；DamageResistant 的动态 damage-type tag/compact/list
+HolderSet 也已闭合；
 SuspiciousStewEffects 的 built-in mob-effect holder list、default/lenient duration，以及 PotDecorations
 的 built-in item holder 四面顺序/brick 空面/四项上限也已 typed 投影；其余 Component、holder、list 与
 compound record 等 persistent Codec 仍未展开；

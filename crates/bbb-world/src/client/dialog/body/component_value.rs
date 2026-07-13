@@ -173,6 +173,9 @@ pub enum DialogDataComponentValueState {
     JukeboxPlayable {
         song: DialogRegistryHolderReferenceState,
     },
+    PaintingVariant {
+        variant: DialogRegistryHolderReferenceState,
+    },
     DamageResistant {
         types: DialogRegistryHolderSetState,
     },

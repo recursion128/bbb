@@ -3,6 +3,7 @@ use bbb_protocol::data_component_types::{
     VANILLA_DATA_COMPONENT_DAMAGE_RESISTANT_TYPE_ID, VANILLA_DATA_COMPONENT_DYE_TYPE_ID,
     VANILLA_DATA_COMPONENT_FOX_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_ITEM_NAME_TYPE_ID,
     VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID, VANILLA_DATA_COMPONENT_LORE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_PAINTING_VARIANT_TYPE_ID,
     VANILLA_DATA_COMPONENT_POT_DECORATIONS_TYPE_ID,
     VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID,
     VANILLA_DATA_COMPONENT_SUSPICIOUS_STEW_EFFECTS_TYPE_ID,
@@ -1434,6 +1435,58 @@ fn decodes_jukebox_playable_from_session_registry() {
     )
     .unwrap_err()
     .contains("without registry context"));
+}
+
+#[test]
+fn decodes_painting_variant_named_holder_from_session_registry() {
+    let registry = "minecraft:painting_variant";
+    let mut registries = RegistrySet::default();
+    let mut contents = crate::RegistryContentState::new(registry);
+    contents.entries = vec![
+        crate::RegistryPacketEntry::stub("example:first"),
+        crate::RegistryPacketEntry::stub("minecraft:kebab"),
+    ];
+    registries.contents.insert(registry.to_string(), contents);
+
+    let decoded = decode_supported_component_value(
+        VANILLA_DATA_COMPONENT_PAINTING_VARIANT_TYPE_ID,
+        "minecraft:painting/variant",
+        &NbtSummaryValue::String("kebab".to_string()),
+        Some(&registries),
+    )
+    .unwrap();
+    let Some(DialogDataComponentValueState::PaintingVariant { variant }) = decoded else {
+        panic!("expected painting-variant component");
+    };
+    assert_eq!(variant.holder_id, 1);
+    assert_eq!(variant.resource_id, "minecraft:kebab");
+
+    for (value, registries, expected) in [
+        (
+            NbtSummaryValue::String("minecraft:kebab".to_string()),
+            None,
+            "without registry context",
+        ),
+        (
+            NbtSummaryValue::String("minecraft:missing".to_string()),
+            Some(&registries),
+            "missing minecraft:painting_variant resource",
+        ),
+        (
+            compound(vec![value_entry("width", NbtSummaryValue::Int(1))]),
+            Some(&registries),
+            "holder is not a resource id",
+        ),
+    ] {
+        let error = decode_supported_component_value(
+            VANILLA_DATA_COMPONENT_PAINTING_VARIANT_TYPE_ID,
+            "minecraft:painting/variant",
+            &value,
+            registries,
+        )
+        .unwrap_err();
+        assert!(error.contains(expected), "unexpected error: {error}");
+    }
 }
 
 #[test]
