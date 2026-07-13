@@ -927,7 +927,7 @@ mod tests {
     }
 
     #[test]
-    fn play_passengers_keeps_local_mount_presentation_open() {
+    fn play_passengers_keeps_first_mount_narration_open() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries

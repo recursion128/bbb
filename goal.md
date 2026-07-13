@@ -391,8 +391,9 @@ subscription-map 清理未建模，因此 runtime 格保持 partial。
 SetEntityLink 的 fixed i32 wire、ownership、generated class/interface `Leashable` capability gate 与
 delayed holder/clear tests 已闭合，五格全部 complete；非 Leashable source 不再获得 synthetic leash state。
 SetPassengers 的 VarInt array wire、canonical mount graph 与 tests 已闭合；首次本地 mount 的
-removed-vehicle recovery reset、boat yaw 对齐及 onboarding overlay/narration 尚未建模，因此只保留
-runtime 格 partial。
+removed-vehicle recovery reset、基于 packet 前 indirect vehicle chain 的 once guard、boat yaw 对齐及
+`mount.onboard` HUD overlay 已建模；尚无 narrator owner 播放同一 system narration，因此 runtime 格
+保持 partial。
 TakeItemEntity 的三 VarInt wire、pre-removal pickup sound/particle、ItemEntity shrink/remove 与
 ExperienceOrb 保留语义已有 world/native 端到端覆盖，五格全部闭合。
 HurtAnimation 的 VarInt + float wire、ownership 与 virtual `animateHurt` capability dispatch 已闭合：

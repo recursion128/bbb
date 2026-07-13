@@ -27,8 +27,11 @@ impl WorldStore {
         self.counters.entity_passenger_updates_received += 1;
         self.counters.entity_passenger_ids_received += packet.passenger_ids.len();
         let local_player_id = self.local_player_id;
+        // Vanilla asks `vehicle.hasIndirectPassenger(player)` before ejecting
+        // the old passenger tree. Preserve that pre-packet fact so repeated
+        // SetPassengers packets do not replay first-mount presentation.
         let local_player_was_on_packet_vehicle =
-            self.local_player_vehicle_id == Some(packet.vehicle_id);
+            self.local_player_vehicle_chain_contains(packet.vehicle_id);
         if !self.entities.contains(packet.vehicle_id) {
             self.counters.entity_passenger_updates_ignored += 1;
             return false;
@@ -57,6 +60,9 @@ impl WorldStore {
                 }
                 self.local_player_vehicle_id = Some(packet.vehicle_id);
                 self.removed_player_vehicle_id = None;
+                if !local_player_was_on_packet_vehicle {
+                    self.apply_first_local_mount_side_effects(packet.vehicle_id);
+                }
                 local_player_mounted_here = true;
             }
             match self.entities.mount(passenger_id) {
@@ -87,6 +93,28 @@ impl WorldStore {
         });
         self.counters.entity_passenger_updates_applied += 1;
         true
+    }
+
+    fn apply_first_local_mount_side_effects(&mut self, vehicle_id: i32) {
+        let Some(vehicle_entity_type_id) = self.entities.entity_type_id(vehicle_id) else {
+            return;
+        };
+        let Some(vehicle_transform) = self.entities.transform(vehicle_id) else {
+            return;
+        };
+        if is_vanilla_boat_type(vehicle_entity_type_id) {
+            if let Some(pose) = self.local_player.pose.as_mut() {
+                pose.y_rot = vehicle_transform.y_rot;
+            }
+            if let Some(local_player_id) = self.local_player_id {
+                self.entities
+                    .with_transform_mut(local_player_id, |transform| {
+                        transform.y_rot = vehicle_transform.y_rot;
+                        transform.y_head_rot = vehicle_transform.y_rot;
+                    });
+            }
+        }
+        self.set_mount_onboard_overlay();
     }
 
     pub fn apply_move_vehicle(&mut self, packet: ProtocolMoveVehicle) -> Option<VehicleMoveReport> {

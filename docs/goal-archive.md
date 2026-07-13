@@ -12925,3 +12925,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   onGround=false、horizontalCollision=false；offline probe 同步其 player position state。
 - [x] RemoveEntities runtime coverage 仅因尚无 `ClientDebugSubscriber` subscription UUID maps 与
   `dropEntity` 保持 partial，不再把已完成的 vehicle correction fallback 列作缺口。
+
+## 2026-07-13：first local mount presentation
+
+- [x] SetPassengers 在 eject 旧 passenger tree 前按完整 vehicle chain 保存 vanilla
+  `hasIndirectPassenger(LocalPlayer)` 条件；重复 packet 或 existing indirect chain 内重挂不会重放 first-mount
+  side effect，远端 passenger 也不会改变本地呈现。
+- [x] 首次本地挂载 boat/raft 时，LocalPlayer pose 与可用的 player entity body/head yaw 对齐 vehicle yaw；
+  所有首次本地 mount 复用 HUD action-bar owner 显示 60 tick `Press Left Shift to Dismount` overlay。
+- [x] narrator 播放仍保持开放；本切片没有用 chat、日志或 synthetic audio 冒充 vanilla
+  `saySystemNow`。

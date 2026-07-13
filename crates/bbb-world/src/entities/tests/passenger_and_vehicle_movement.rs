@@ -168,6 +168,141 @@ fn tracks_local_player_passenger_without_entity() {
 }
 
 #[test]
+fn first_local_boat_mount_aligns_yaw_and_shows_dismount_overlay_once() {
+    let mut store = WorldStore::new();
+    store.apply_login(&protocol_play_login(99));
+    store.set_local_player_pose(LocalPlayerPoseState {
+        y_rot: 12.0,
+        ..LocalPlayerPoseState::default()
+    });
+    store.apply_add_entity(ProtocolAddEntity {
+        y_rot: 75.0,
+        ..protocol_add_entity_with_type(10, VANILLA_ENTITY_TYPE_OAK_BOAT_ID)
+    });
+    store.apply_add_entity(ProtocolAddEntity {
+        y_rot: 12.0,
+        y_head_rot: -30.0,
+        ..protocol_add_entity_with_type(99, VANILLA_ENTITY_TYPE_PLAYER_ID)
+    });
+
+    assert!(store.apply_set_passengers(ProtocolSetPassengers {
+        vehicle_id: 10,
+        passenger_ids: vec![99],
+    }));
+    assert_eq!(store.local_player_pose().unwrap().y_rot, 75.0);
+    let local_player = store.probe_entity(99).unwrap();
+    assert_eq!(local_player.y_rot, 75.0);
+    assert_eq!(local_player.y_head_rot, 75.0);
+    assert_eq!(
+        store.action_bar(),
+        Some(&crate::ActionBarState {
+            content: "Press Left Shift to Dismount".to_string(),
+            display_ticks: 60,
+            animate_color: false,
+        })
+    );
+
+    store.advance_hud_text_ticks(50);
+    let mut pose = store.local_player_pose().unwrap();
+    pose.y_rot = -45.0;
+    store.set_local_player_pose(pose);
+    store
+        .entities
+        .with_transform_mut(99, |transform| transform.y_head_rot = -20.0);
+
+    assert!(store.apply_set_passengers(ProtocolSetPassengers {
+        vehicle_id: 10,
+        passenger_ids: vec![99],
+    }));
+    assert_eq!(store.local_player_pose().unwrap().y_rot, -45.0);
+    assert_eq!(store.probe_entity(99).unwrap().y_head_rot, -20.0);
+    assert_eq!(store.action_bar().unwrap().display_ticks, 10);
+}
+
+#[test]
+fn first_local_non_boat_mount_shows_overlay_without_changing_yaw() {
+    let mut store = WorldStore::new();
+    store.apply_login(&protocol_play_login(99));
+    store.set_local_player_pose(LocalPlayerPoseState {
+        y_rot: 12.0,
+        ..LocalPlayerPoseState::default()
+    });
+    store.apply_add_entity(ProtocolAddEntity {
+        y_rot: 75.0,
+        ..protocol_add_entity_with_type(10, VANILLA_ENTITY_TYPE_MINECART_ID)
+    });
+
+    assert!(store.apply_set_passengers(ProtocolSetPassengers {
+        vehicle_id: 10,
+        passenger_ids: vec![99],
+    }));
+    assert_eq!(store.local_player_pose().unwrap().y_rot, 12.0);
+    assert_eq!(
+        store.action_bar().unwrap().content,
+        "Press Left Shift to Dismount"
+    );
+}
+
+#[test]
+fn remote_boat_passenger_does_not_change_local_mount_presentation() {
+    let mut store = WorldStore::new();
+    store.apply_login(&protocol_play_login(99));
+    store.set_local_player_pose(LocalPlayerPoseState {
+        y_rot: 12.0,
+        ..LocalPlayerPoseState::default()
+    });
+    store.apply_add_entity(ProtocolAddEntity {
+        y_rot: 75.0,
+        ..protocol_add_entity_with_type(10, VANILLA_ENTITY_TYPE_OAK_BOAT_ID)
+    });
+    store.apply_add_entity(protocol_add_entity_with_type(
+        20,
+        VANILLA_ENTITY_TYPE_PLAYER_ID,
+    ));
+
+    assert!(store.apply_set_passengers(ProtocolSetPassengers {
+        vehicle_id: 10,
+        passenger_ids: vec![20],
+    }));
+    assert_eq!(store.local_player_pose().unwrap().y_rot, 12.0);
+    assert_eq!(store.action_bar(), None);
+}
+
+#[test]
+fn reparenting_within_existing_vehicle_chain_does_not_replay_first_mount() {
+    let mut store = WorldStore::new();
+    store.apply_login(&protocol_play_login(99));
+    store.set_local_player_pose(LocalPlayerPoseState {
+        y_rot: 12.0,
+        ..LocalPlayerPoseState::default()
+    });
+    store.apply_add_entity(ProtocolAddEntity {
+        y_rot: 75.0,
+        ..protocol_add_entity_with_type(10, VANILLA_ENTITY_TYPE_OAK_BOAT_ID)
+    });
+    store.apply_add_entity(protocol_add_entity_with_type(
+        20,
+        VANILLA_ENTITY_TYPE_CHICKEN_ID,
+    ));
+    assert!(store.apply_set_passengers(ProtocolSetPassengers {
+        vehicle_id: 20,
+        passenger_ids: vec![99],
+    }));
+    assert!(store.apply_set_passengers(ProtocolSetPassengers {
+        vehicle_id: 10,
+        passenger_ids: vec![20],
+    }));
+    store.advance_hud_text_ticks(50);
+
+    assert!(store.apply_set_passengers(ProtocolSetPassengers {
+        vehicle_id: 10,
+        passenger_ids: vec![99],
+    }));
+    assert_eq!(store.local_player_pose().unwrap().y_rot, 12.0);
+    assert_eq!(store.action_bar().unwrap().display_ticks, 10);
+}
+
+#[test]
 fn removed_player_vehicle_teleport_recovers_the_local_player() {
     let mut store = WorldStore::new();
     store.apply_login(&protocol_play_login(99));

@@ -2952,6 +2952,7 @@
       "runtime_side_effect": {
         "evidence": [
           "crates/bbb-world/src/entities/passengers.rs#apply_set_passengers",
+          "crates/bbb-world/src/client/hud.rs#set_mount_onboard_overlay",
           "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleSetEntityPassengersPacket"
         ],
         "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
@@ -2961,6 +2962,9 @@
         "evidence": [
           "crates/bbb-protocol/src/packets/entities/tests.rs#decodes_set_passengers_packet",
           "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#tracks_entity_passenger_updates",
+          "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#first_local_boat_mount_aligns_yaw_and_shows_dismount_overlay_once",
+          "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#reparenting_within_existing_vehicle_chain_does_not_replay_first_mount",
+          "crates/bbb-native/src/runtime/events/tests/session_hud_and_vehicle_events.rs#first_local_boat_mount_projects_yaw_and_dismount_overlay",
           "crates/bbb-net/src/event_stream.rs#play_entity_state_packets_emit_matching_events_without_responses"
         ],
         "status": "complete"

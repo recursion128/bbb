@@ -312,6 +312,14 @@ impl WorldStore {
         self.counters.boss_bars_tracked = self.client_hud.boss_bars.len();
     }
 
+    pub(crate) fn set_mount_onboard_overlay(&mut self) {
+        // Vanilla `ClientPacketListener.handleSetEntityPassengersPacket` builds
+        // `mount.onboard` with `Options.keyShift`. BBB currently has one fixed
+        // sneak binding (`Left Shift`), so keep the localized English projection
+        // beside the HUD owner until configurable key bindings/localization exist.
+        self.set_overlay_message("Press Left Shift to Dismount".to_string());
+    }
+
     fn set_overlay_message(&mut self, content: String) {
         self.client_hud.action_bar = Some(ActionBarState {
             content,

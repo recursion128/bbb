@@ -247,9 +247,10 @@ Movement:
   packets append pending steps and only the client tick advances the canonical
   transform. Do not replace active steps or snap the transform to the last step
   when the packet arrives.
-- Complete first-local-mount SetPassengers side effects: clear removed-vehicle
-  recovery state, align player body/head yaw when mounting a boat, and surface
-  vanilla's dismount-key overlay/narration once per new mount.
+- Add a narrator owner and speak the first-local-mount SetPassengers
+  `mount.onboard` message as vanilla system narration. Removed-vehicle recovery
+  reset, the pre-packet indirect-passenger once guard, boat body/head yaw
+  alignment, and the 60-tick dismount-key HUD overlay are already covered.
 - Complete ClientboundAnimate action 2 (`Player.stopSleepInBed(false, false)`):
   gate it on Player, clear the bed's local occupied state, resolve the safe
   stand-up position/yaw, move to that position, set standing pose, clear

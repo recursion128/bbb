@@ -1,6 +1,45 @@
 use super::*;
 
 #[test]
+fn first_local_boat_mount_projects_yaw_and_dismount_overlay() {
+    let (tx, mut rx) = mpsc::channel(3);
+    tx.try_send(NetEvent::Play(PlayClientbound::Login(protocol_play_login(
+        99,
+    ))))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::AddEntity(AddEntity {
+        y_rot: 75.0,
+        ..protocol_add_entity_with_type(10, VANILLA_ENTITY_TYPE_OAK_BOAT_ID)
+    })))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::SetPassengers(
+        SetPassengers {
+            vehicle_id: 10,
+            passenger_ids: vec![99],
+        },
+    )))
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    world.set_local_player_pose(LocalPlayerPoseState {
+        y_rot: 12.0,
+        ..LocalPlayerPoseState::default()
+    });
+    let mut counters = NetCounters::default();
+    assert_eq!(
+        drain_net_events(&mut rx, &mut world, &mut counters, &None),
+        3
+    );
+
+    assert_eq!(world.local_player_pose().unwrap().y_rot, 75.0);
+    assert_eq!(
+        world.action_bar().unwrap().content,
+        "Press Left Shift to Dismount"
+    );
+    assert_eq!(world.action_bar().unwrap().display_ticks, 60);
+}
+
+#[test]
 fn removed_player_vehicle_teleport_queues_forced_player_pos_rot() {
     let (tx, mut rx) = mpsc::channel(8);
     tx.try_send(NetEvent::Play(PlayClientbound::Login(protocol_play_login(
