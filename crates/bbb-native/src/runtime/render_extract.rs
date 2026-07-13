@@ -923,6 +923,7 @@ pub(crate) struct RendererFrame {
     pub(crate) sign_text_surfaces: Vec<SignTextSurface>,
     pub(crate) entity_model_instances: Vec<EntityModelInstance>,
     pub(crate) camera_pose: Option<CameraPose>,
+    pub(crate) camera_hurt_effect: Option<bbb_renderer::CameraHurtEffect>,
     pub(crate) camera_fov_degrees: f32,
     pub(crate) current_post_effect_id: Option<String>,
     pub(crate) shader_game_time_ticks: f64,
@@ -1029,6 +1030,7 @@ pub(crate) fn apply_renderer_frame(renderer: &mut Renderer, frame: RendererFrame
     );
     renderer.set_sign_text_surfaces(frame.sign_text_surfaces);
     renderer.set_entity_model_instances(frame.entity_model_instances);
+    renderer.set_camera_hurt_effect(frame.camera_hurt_effect);
     renderer.set_camera_fov_degrees(frame.camera_fov_degrees);
     renderer.set_camera_pose(frame.camera_pose);
     renderer.set_current_post_effect_id(frame.current_post_effect_id);

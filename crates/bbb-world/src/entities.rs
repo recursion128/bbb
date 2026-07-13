@@ -941,6 +941,19 @@ pub struct EntityCameraPoseState {
     pub eye_height: f32,
 }
 
+/// The living-camera inputs consumed by vanilla `GameRenderer.bobHurt`.
+///
+/// This is client-observable presentation state only: packet-driven hurt yaw,
+/// client-ticked hurt/death counters, and the generated LivingEntity capability.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct EntityCameraHurtState {
+    pub hurt_time: f32,
+    pub hurt_duration: f32,
+    pub hurt_dir: f32,
+    pub death_time: f32,
+    pub is_dead_or_dying: bool,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct EntityPickTargetState {
     pub entity_id: i32,
@@ -2778,6 +2791,14 @@ impl WorldStore {
 
     pub fn probe_entity_camera_pose(&self, id: i32) -> Option<EntityCameraPoseState> {
         self.entities.camera_pose_state(id)
+    }
+
+    pub fn probe_entity_camera_hurt_state(
+        &self,
+        id: i32,
+        partial_ticks: f32,
+    ) -> Option<EntityCameraHurtState> {
+        self.entities.camera_hurt_state(id, partial_ticks)
     }
 
     pub fn probe_entity_pick_bounds(&self, id: i32) -> Option<EntityPickBoundsState> {

@@ -396,8 +396,8 @@ TakeItemEntity 的三 VarInt wire、pre-removal pickup sound/particle、ItemEnti
 ExperienceOrb 保留语义已有 world/native 端到端覆盖，五格全部闭合。
 HurtAnimation 的 VarInt + float wire、ownership 与 virtual `animateHurt` capability dispatch 已闭合：
 base Entity no-op、LivingEntity 10-tick red overlay、boat/minecart hurt-dir/time/damage wobble 均有测试，
-canonical complete；Player hurtDir 尚未进入 active-camera `bobHurt` tilt，runtime 保持 partial，且不由此
-packet 推导权威伤害。
+active living camera 另按 Player-only hurtDir、client hurt/death tick 和可配置 tilt strength 执行
+`GameRenderer.bobHurt` projection-space rotation；五格全部闭合，且不由此 packet 推导权威伤害。
 Animate 的 VarInt + u8 wire、ownership、LivingEntity-gated 0/3 swing 与 presentation-only 4/5 crit
 emitter tests 已闭合；action 2 Player wake-up 的 bed occupancy/stand-up position/pose/sleepingPos 语义与
 Player type gate 尚未完成，因此 canonical/runtime 保持 partial，且 crit emitter 不被解释为权威攻击。

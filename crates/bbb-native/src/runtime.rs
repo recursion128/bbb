@@ -74,7 +74,7 @@ use crate::{
     bed_scene::bed_model_instances_from_world,
     bell_scene::bell_model_instances_from_world_at_partial_tick,
     biome_tint::biome_height_adjusted_temperature,
-    camera_pose::camera_pose_from_world,
+    camera_pose::{camera_hurt_effect_from_world, camera_pose_from_world},
     chest_scene::chest_model_instances_from_world_at_partial_tick,
     code_of_conduct::CodeOfConductAcceptance,
     conduit_scene::conduit_model_instances_from_world_at_partial_tick,
@@ -2045,6 +2045,7 @@ pub(crate) fn pump_network_and_terrain(
     client_framerate_limit: u32,
     client_vsync: bool,
     hide_lightning_flash: bool,
+    damage_tilt_strength: f32,
     hud_debug_profiler_chart: Option<HudDebugProfilerChart>,
 ) -> bool {
     let mut audio_events = audio_events;
@@ -2437,6 +2438,8 @@ pub(crate) fn pump_network_and_terrain(
     let enchantment_keys = world_enchantment_keys(world);
     let attribute_keys = world_attribute_keys(world);
     let camera_pose = camera_pose_from_world(world);
+    let camera_hurt_effect =
+        camera_hurt_effect_from_world(world, entity_partial_tick, damage_tilt_strength);
     let camera_fov_degrees = camera_fov_ticks.fov_degrees(entity_partial_tick);
     // Vanilla `GameRenderer.checkEntityPostEffect` stores this independently from the
     // post-chain active toggle. bbb is currently first-person-only, so the current camera
@@ -2790,6 +2793,7 @@ pub(crate) fn pump_network_and_terrain(
             sign_text_surfaces,
             entity_model_instances: entity_instances,
             camera_pose,
+            camera_hurt_effect,
             camera_fov_degrees,
             current_post_effect_id: current_post_effect_id.map(str::to_owned),
             shader_game_time_ticks,

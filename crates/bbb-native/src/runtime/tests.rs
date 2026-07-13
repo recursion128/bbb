@@ -142,6 +142,29 @@ fn camera_pose_uses_local_player_eye_height() {
 }
 
 #[test]
+fn camera_hurt_effect_follows_the_active_living_camera_entity() {
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    world.apply_add_entity(test_add_entity(42, VANILLA_26_1_PLAYER_ENTITY_TYPE_ID));
+    assert!(world.apply_hurt_animation(bbb_protocol::packets::HurtAnimation { id: 42, yaw: 45.0 }));
+
+    let local = camera_hurt_effect_from_world(&world, 0.5, 0.25).unwrap();
+    assert_eq!(local.hurt_time, 9.5);
+    assert_eq!(local.hurt_dir, 45.0);
+    assert_eq!(local.damage_tilt_strength, 0.25);
+
+    world.apply_add_entity(test_add_entity(100, VANILLA_ENTITY_TYPE_CHICKEN_ID));
+    assert!(world.apply_hurt_animation(bbb_protocol::packets::HurtAnimation { id: 100, yaw: 90.0 }));
+    assert!(world.apply_set_camera(bbb_protocol::packets::SetCamera { camera_id: 100 }));
+    let remote = camera_hurt_effect_from_world(&world, 0.25, 1.0).unwrap();
+    assert_eq!(remote.hurt_time, 9.75);
+    assert_eq!(remote.hurt_dir, 0.0);
+
+    world.apply_add_entity(test_add_entity(101, VANILLA_ENTITY_TYPE_ARROW_ID));
+    assert!(world.apply_set_camera(bbb_protocol::packets::SetCamera { camera_id: 101 }));
+    assert_eq!(camera_hurt_effect_from_world(&world, 0.25, 1.0), None);
+}
+
+#[test]
 fn particle_light_block_pos_uses_block_pos_containing_floor() {
     assert_eq!(
         particle_light_block_pos([1.99, 64.0, -0.01]),

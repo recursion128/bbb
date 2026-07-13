@@ -982,7 +982,7 @@ mod tests {
     }
 
     #[test]
-    fn play_hurt_animation_keeps_player_camera_tilt_open() {
+    fn play_hurt_animation_is_closed() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
@@ -991,14 +991,10 @@ mod tests {
                 entry.state == "play" && entry.constant_name == "CLIENTBOUND_HURT_ANIMATION"
             })
             .expect("hurt animation coverage row");
-        let partial: BTreeSet<_> = entry
+        assert!(entry
             .coverage
-            .iter()
-            .filter_map(|(dimension, cell)| {
-                (cell.status == PacketCoverageStatus::Partial).then_some(dimension.as_str())
-            })
-            .collect();
-        assert_eq!(partial, BTreeSet::from(["runtime_side_effect"]));
+            .values()
+            .all(|cell| cell.status == PacketCoverageStatus::Complete));
     }
 
     #[test]

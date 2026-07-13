@@ -269,6 +269,19 @@ pub struct CameraPose {
     pub eye_height: f32,
 }
 
+/// Vanilla `GameRenderer.bobHurt` inputs for the active living camera entity.
+/// The transform is presentation-only and is applied in projection space, so it
+/// does not alter the canonical camera pose used for picking or interpolation.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct CameraHurtEffect {
+    pub hurt_time: f32,
+    pub hurt_duration: f32,
+    pub hurt_dir: f32,
+    pub death_time: f32,
+    pub is_dead_or_dying: bool,
+    pub damage_tilt_strength: f32,
+}
+
 impl CameraPose {
     pub const STANDING_EYE_HEIGHT: f32 = 1.62;
 
@@ -491,7 +504,17 @@ impl CameraUniform {
         Self::from_pose_with_fov(pose, aspect, 70.0)
     }
 
+    #[cfg(test)]
     pub(crate) fn from_pose_with_fov(pose: CameraPose, aspect: f32, fov_degrees: f32) -> Self {
+        Self::from_pose_with_fov_and_hurt(pose, aspect, fov_degrees, None)
+    }
+
+    pub(crate) fn from_pose_with_fov_and_hurt(
+        pose: CameraPose,
+        aspect: f32,
+        fov_degrees: f32,
+        hurt: Option<CameraHurtEffect>,
+    ) -> Self {
         let eye = Vec3::from_array(pose.position) + Vec3::Y * pose.eye_height;
         let yaw = pose.y_rot.to_radians();
         let pitch = pose.x_rot.to_radians();
@@ -511,6 +534,10 @@ impl CameraUniform {
         };
         let projection =
             Mat4::perspective_rh(fov_degrees.to_radians(), aspect.max(0.1), 0.05, 2048.0);
+        // Vanilla `GameRenderer.renderLevel`: `projectionMatrix.mul(bobStack.last().pose())`.
+        // `bobHurt` is therefore camera-space presentation state on the projection side of
+        // the view matrix, not part of `CameraRenderState.viewRotationMatrix`.
+        let projection = projection * camera_hurt_transform(hurt);
         let view = Mat4::look_at_rh(eye, target, Vec3::Y);
 
         Self {
@@ -743,6 +770,41 @@ impl CameraUniform {
             viewport_size: [1.0, 1.0, 0.0, 0.0],
         }
     }
+}
+
+fn camera_hurt_transform(effect: Option<CameraHurtEffect>) -> Mat4 {
+    let Some(effect) = effect else {
+        return Mat4::IDENTITY;
+    };
+    let mut transform = Mat4::IDENTITY;
+    if effect.is_dead_or_dying && effect.death_time.is_finite() {
+        let duration = effect.death_time.clamp(0.0, 20.0);
+        let degrees = 40.0 - 8_000.0 / (duration + 200.0);
+        transform *= Mat4::from_rotation_z(degrees.to_radians());
+    }
+    if !effect.hurt_time.is_finite()
+        || effect.hurt_time < 0.0
+        || !effect.hurt_duration.is_finite()
+        || effect.hurt_duration <= 0.0
+    {
+        return transform;
+    }
+    let hurt = effect.hurt_time / effect.hurt_duration;
+    let hurt = (hurt * hurt * hurt * hurt * std::f32::consts::PI).sin();
+    let hurt_dir = if effect.hurt_dir.is_finite() {
+        effect.hurt_dir
+    } else {
+        0.0
+    };
+    let strength = if effect.damage_tilt_strength.is_finite() {
+        effect.damage_tilt_strength.clamp(0.0, 1.0)
+    } else {
+        1.0
+    };
+    transform *= Mat4::from_rotation_y((-hurt_dir).to_radians());
+    transform *= Mat4::from_rotation_z((-hurt * 14.0 * strength).to_radians());
+    transform *= Mat4::from_rotation_y(hurt_dir.to_radians());
+    transform
 }
 
 pub(crate) fn vanilla_glint_texture_offsets(elapsed_millis: f64, glint_speed: f64) -> [f32; 2] {
@@ -1122,6 +1184,67 @@ mod tests {
             [0.0, 0.0, 0.0, 1.0],
         );
         assert_mat4_close(uniform.view_proj(), expected.view_proj());
+    }
+
+    #[test]
+    fn camera_hurt_transform_matches_vanilla_bob_hurt_order() {
+        let effect = CameraHurtEffect {
+            hurt_time: 5.0,
+            hurt_duration: 10.0,
+            hurt_dir: 35.0,
+            death_time: 8.0,
+            is_dead_or_dying: true,
+            damage_tilt_strength: 0.5,
+        };
+        let death_degrees: f32 = 40.0 - 8_000.0 / 208.0;
+        let hurt = ((0.5_f32).powi(4) * std::f32::consts::PI).sin();
+        let expected = Mat4::from_rotation_z(death_degrees.to_radians())
+            * Mat4::from_rotation_y((-35.0_f32).to_radians())
+            * Mat4::from_rotation_z((-hurt * 14.0 * 0.5).to_radians())
+            * Mat4::from_rotation_y(35.0_f32.to_radians());
+        assert_mat4_close(camera_hurt_transform(Some(effect)), expected);
+    }
+
+    #[test]
+    fn camera_uniform_applies_hurt_after_projection_without_changing_view() {
+        let pose = CameraPose {
+            position: [1.0, 64.0, -2.0],
+            y_rot: 25.0,
+            x_rot: -10.0,
+            eye_height: CameraPose::STANDING_EYE_HEIGHT,
+        };
+        let base = CameraUniform::from_pose_with_fov(pose, 16.0 / 9.0, 70.0);
+        let effect = CameraHurtEffect {
+            hurt_time: 5.0,
+            hurt_duration: 10.0,
+            hurt_dir: 20.0,
+            death_time: 0.0,
+            is_dead_or_dying: false,
+            damage_tilt_strength: 1.0,
+        };
+        let hurt = CameraUniform::from_pose_with_fov_and_hurt(pose, 16.0 / 9.0, 70.0, Some(effect));
+        let transform = camera_hurt_transform(Some(effect));
+
+        assert_mat4_close(hurt.projection(), base.projection() * transform);
+        assert_mat4_close(
+            hurt.sky_model_view_transform(),
+            base.sky_model_view_transform(),
+        );
+        assert_mat4_close(
+            hurt.view_proj(),
+            base.projection() * transform * base.projection().inverse() * base.view_proj(),
+        );
+
+        let disabled = CameraUniform::from_pose_with_fov_and_hurt(
+            pose,
+            16.0 / 9.0,
+            70.0,
+            Some(CameraHurtEffect {
+                damage_tilt_strength: 0.0,
+                ..effect
+            }),
+        );
+        assert_mat4_close(disabled.projection(), base.projection());
     }
 
     #[test]

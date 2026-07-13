@@ -12889,3 +12889,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   animation。既有 held-item swing duration、local first-person arm 与 4/5 tracking emitter 行为不变。
 - [x] action 2 未用简单 pose overwrite 冒充完成：vanilla `stopSleepInBed(false,false)` 的床占用、起床点、
   位置/朝向、sleepingPos 与 sleepCounter 语义继续在 unsupported ledger 开放。
+
+## 2026-07-13：HurtAnimation active-camera damage tilt
+
+- [x] world 从 active camera 的 generated LivingEntity capability 投影 client-ticked hurt/death counter；
+  `ClientboundHurtAnimation` 的 yaw 只作为 Player `getHurtDir()`，其他 LivingEntity 保持 vanilla `0`。
+- [x] native 同时支持 LocalPlayer camera 与 `SetCamera` 远端 living entity；renderer 按
+  `GameRenderer.bobHurt` 的 death Z、hurt Y/Z/Y 顺序把 presentation transform 后乘到 projection，
+  不污染拾取/排序使用的 canonical camera pose。`--damage-tilt-strength` 复刻 vanilla `0..1` option，
+  默认 `1.0`；HurtAnimation packet coverage 五格闭合，不推导客户端权威伤害。

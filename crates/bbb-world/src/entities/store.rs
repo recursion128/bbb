@@ -55,14 +55,14 @@ use super::{
     is_vanilla_abstract_nautilus_type, is_vanilla_camel_type, is_vanilla_can_wear_horse_armor_type,
     is_vanilla_llama_type, is_vanilla_minecart_type, is_vanilla_vehicle_entity_type,
     vanilla_entity_type_is_squid, ArmorMaterialKind, EntityAttachmentFace, EntityAttributes,
-    EntityBlockModelState, EntityCameraPoseState, EntityClientAnimationState,
-    EntityClientAnimations, EntityDamage, EntityEquipment, EntityHurtingProjectile, EntityIdentity,
-    EntityLeash, EntityMetadata, EntityMinecartLerp, EntityMobEffects, EntityModelSourceState,
-    EntityMount, EntityProjectileLifecycle, EntityState, EntitySupportingBlock, EntityTransform,
-    EntityTransformState, EntityTransientEvents, EvokerFangsCritParticleState,
-    FallingBlockModelState, FireworkRocketExplosionParticleState, FireworkRocketItemState,
-    FireworkRocketTrailParticleState, FoxEatParticleState, ItemEntityStackState,
-    ItemFrameRenderState, LlamaBodyDecorColor, LocalPlayerAttackSwingState,
+    EntityBlockModelState, EntityCameraHurtState, EntityCameraPoseState,
+    EntityClientAnimationState, EntityClientAnimations, EntityDamage, EntityEquipment,
+    EntityHurtingProjectile, EntityIdentity, EntityLeash, EntityMetadata, EntityMinecartLerp,
+    EntityMobEffects, EntityModelSourceState, EntityMount, EntityProjectileLifecycle, EntityState,
+    EntitySupportingBlock, EntityTransform, EntityTransformState, EntityTransientEvents,
+    EvokerFangsCritParticleState, FallingBlockModelState, FireworkRocketExplosionParticleState,
+    FireworkRocketItemState, FireworkRocketTrailParticleState, FoxEatParticleState,
+    ItemEntityStackState, ItemFrameRenderState, LlamaBodyDecorColor, LocalPlayerAttackSwingState,
     MinecartDisplayBlockState, OminousItemSpawnerItemState, OminousItemSpawnerParticleState,
     RavagerRoarParticleState, RavagerStunParticleState, WolfArmorCrackiness,
     VANILLA_ENTITY_AIR_SUPPLY_DATA_ID, VANILLA_ENTITY_NO_GRAVITY_DATA_ID,
@@ -2513,6 +2513,41 @@ impl EntityStore {
             y_rot: transform.y_rot,
             x_rot: transform.x_rot,
             eye_height,
+        })
+    }
+
+    pub(crate) fn camera_hurt_state(
+        &self,
+        id: i32,
+        partial_ticks: f32,
+    ) -> Option<EntityCameraHurtState> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let identity = self.ecs.get::<&EntityIdentity>(entity).ok()?;
+        if !vanilla_entity_metadata_type_is_living(identity.entity_type_id) {
+            return None;
+        }
+        let client_animations = self.ecs.get::<&EntityClientAnimations>(entity).ok()?;
+        let (hurt_time, hurt_duration) = client_animations
+            .animations
+            .camera_hurt_time(partial_ticks)
+            .unwrap_or((-1.0, 10.0));
+        let death_time = client_animations.animations.death_time(partial_ticks);
+        let hurt_dir = if identity.entity_type_id == VANILLA_ENTITY_TYPE_PLAYER_ID {
+            self.ecs
+                .get::<&EntityTransientEvents>(entity)
+                .ok()
+                .and_then(|events| events.last_hurt_yaw)
+                .unwrap_or(0.0)
+        } else {
+            // `LivingEntity.getHurtDir()` is zero; only `Player` overrides it.
+            0.0
+        };
+        Some(EntityCameraHurtState {
+            hurt_time,
+            hurt_duration,
+            hurt_dir,
+            death_time,
+            is_dead_or_dying: death_time > 0.0,
         })
     }
 

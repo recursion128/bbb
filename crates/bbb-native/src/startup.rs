@@ -99,6 +99,12 @@ pub(crate) struct Args {
         value_parser = parse_client_gamma
     )]
     pub(crate) client_gamma: f32,
+    #[arg(
+        long = "damage-tilt-strength",
+        default_value_t = 1.0,
+        value_parser = parse_damage_tilt_strength
+    )]
+    pub(crate) damage_tilt_strength: f32,
     #[arg(long = "hide-lightning-flash")]
     pub(crate) hide_lightning_flash: bool,
     #[arg(long = "advanced-item-tooltips")]
@@ -289,6 +295,19 @@ fn parse_client_gamma(value: &str) -> std::result::Result<f32, String> {
         return Err("client gamma must be between 0.0 and 1.0".to_string());
     }
     Ok(gamma)
+}
+
+fn parse_damage_tilt_strength(value: &str) -> std::result::Result<f32, String> {
+    let strength = value
+        .parse::<f32>()
+        .map_err(|err| format!("damage tilt strength must be a number: {err}"))?;
+    if !strength.is_finite() {
+        return Err("damage tilt strength must be finite".to_string());
+    }
+    if !(0.0..=1.0).contains(&strength) {
+        return Err("damage tilt strength must be between 0.0 and 1.0".to_string());
+    }
+    Ok(strength)
 }
 
 fn parse_render_distance(value: &str) -> std::result::Result<u32, String> {
@@ -547,6 +566,26 @@ mod tests {
         assert!(err.to_string().contains("between 0.0 and 1.0"));
 
         let err = Args::try_parse_from(["bbb-native", "--client-gamma", "NaN"]).unwrap_err();
+        assert!(err.to_string().contains("must be finite"));
+    }
+
+    #[test]
+    fn args_accept_damage_tilt_strength_startup_option() {
+        let default_args = Args::try_parse_from(["bbb-native"]).unwrap();
+        assert_eq!(default_args.damage_tilt_strength, 1.0);
+
+        let args = Args::try_parse_from(["bbb-native", "--damage-tilt-strength", "0.25"]).unwrap();
+        assert_eq!(args.damage_tilt_strength, 0.25);
+    }
+
+    #[test]
+    fn args_reject_damage_tilt_strength_outside_unit_range() {
+        let err =
+            Args::try_parse_from(["bbb-native", "--damage-tilt-strength", "1.25"]).unwrap_err();
+        assert!(err.to_string().contains("between 0.0 and 1.0"));
+
+        let err =
+            Args::try_parse_from(["bbb-native", "--damage-tilt-strength", "NaN"]).unwrap_err();
         assert!(err.to_string().contains("must be finite"));
     }
 

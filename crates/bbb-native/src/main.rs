@@ -1082,6 +1082,7 @@ fn main() -> Result<()> {
                         args.client_framerate_limit,
                         args.client_vsync,
                         args.hide_lightning_flash,
+                        args.damage_tilt_strength,
                         debug_profiler.chart(),
                     ) {
                         target.exit();
@@ -1251,6 +1252,7 @@ fn main() -> Result<()> {
                     args.client_framerate_limit,
                     args.client_vsync,
                     args.hide_lightning_flash,
+                    args.damage_tilt_strength,
                     debug_profiler.chart(),
                 ) {
                     target.exit();

@@ -4999,6 +4999,18 @@ impl EntityClientAnimationState {
             || self.death.is_some_and(|state| state.death_time > 0)
     }
 
+    /// Vanilla `Camera.extractRenderState` hurt inputs for a living camera entity:
+    /// `hurtTime - cameraEntityPartialTicks` and the ten-tick duration installed by
+    /// `LivingEntity.animateHurt`. `None` means no hurt animation has been armed.
+    pub fn camera_hurt_time(&self, partial_tick: f32) -> Option<(f32, f32)> {
+        self.hurt.map(|state| {
+            (
+                state.hurt_time as f32 - partial_tick.clamp(0.0, 1.0),
+                HURT_ANIMATION_DURATION as f32,
+            )
+        })
+    }
+
     /// Vanilla `ArmorStandRenderState.wiggle`: `gameTime - lastHit + partialTick`.
     /// Values `>= ArmorStand.WOBBLE_TIME` render as rest.
     pub fn armor_stand_wiggle(&self, partial_tick: f32) -> f32 {

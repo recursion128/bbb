@@ -422,6 +422,40 @@ fn entity_model_sources_project_hurt_overlay_for_ten_ticks() {
 }
 
 #[test]
+fn living_camera_hurt_state_projects_packet_yaw_only_for_players() {
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        42,
+        VANILLA_ENTITY_TYPE_PLAYER_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        43,
+        VANILLA_ENTITY_TYPE_CHICKEN_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        44,
+        VANILLA_ENTITY_TYPE_ARROW_ID,
+    ));
+
+    assert!(store.apply_hurt_animation(ProtocolHurtAnimation { id: 42, yaw: 67.5 }));
+    assert!(store.apply_hurt_animation(ProtocolHurtAnimation { id: 43, yaw: 91.0 }));
+
+    let player = store.probe_entity_camera_hurt_state(42, 0.25).unwrap();
+    assert_eq!(player.hurt_time, 9.75);
+    assert_eq!(player.hurt_duration, 10.0);
+    assert_eq!(player.hurt_dir, 67.5);
+    assert!(!player.is_dead_or_dying);
+
+    let chicken = store.probe_entity_camera_hurt_state(43, 0.25).unwrap();
+    assert_eq!(chicken.hurt_time, 9.75);
+    assert_eq!(chicken.hurt_dir, 0.0);
+    assert_eq!(chicken.death_time, 0.0);
+
+    assert_eq!(store.probe_entity_camera_hurt_state(44, 0.25), None);
+    assert_eq!(store.probe_entity_camera_hurt_state(404, 0.25), None);
+}
+
+#[test]
 fn entity_model_sources_project_kinetic_hit_feedback_from_living_entity_event() {
     const KINETIC_HIT_EVENT_ID: i8 = 2;
 

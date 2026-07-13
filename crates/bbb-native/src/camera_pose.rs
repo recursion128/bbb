@@ -1,4 +1,4 @@
-use bbb_renderer::CameraPose;
+use bbb_renderer::{CameraHurtEffect, CameraPose};
 use bbb_world::{LocalPlayerPoseState, WorldStore};
 
 pub(crate) fn camera_pose_from_world(world: &WorldStore) -> Option<CameraPose> {
@@ -23,6 +23,28 @@ pub(crate) fn camera_pose_from_world(world: &WorldStore) -> Option<CameraPose> {
     world
         .local_player_pose()
         .map(camera_pose_from_local_player_pose)
+}
+
+pub(crate) fn camera_hurt_effect_from_world(
+    world: &WorldStore,
+    partial_ticks: f32,
+    damage_tilt_strength: f32,
+) -> Option<CameraHurtEffect> {
+    let camera = world.local_player().camera;
+    let camera_entity_id = if camera.follows_player {
+        world.local_player_id()?
+    } else {
+        camera.entity_id?
+    };
+    let state = world.probe_entity_camera_hurt_state(camera_entity_id, partial_ticks)?;
+    Some(CameraHurtEffect {
+        hurt_time: state.hurt_time,
+        hurt_duration: state.hurt_duration,
+        hurt_dir: state.hurt_dir,
+        death_time: state.death_time,
+        is_dead_or_dying: state.is_dead_or_dying,
+        damage_tilt_strength,
+    })
 }
 
 fn camera_pose_from_local_player_pose(player: LocalPlayerPoseState) -> CameraPose {

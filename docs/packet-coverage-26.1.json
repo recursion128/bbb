@@ -8538,18 +8538,26 @@
           "evidence": [
             "crates/bbb-world/src/entities/animations.rs#trigger_hurt",
             "crates/bbb-world/src/entities/animations.rs#trigger_vehicle_hurt",
+            "crates/bbb-world/src/entities/store.rs#camera_hurt_state",
+            "crates/bbb-native/src/camera_pose.rs#camera_hurt_effect_from_world",
+            "crates/bbb-renderer/src/camera.rs#camera_hurt_transform",
             "vanilla:net/minecraft/world/entity/vehicle/boat/AbstractBoat.java#animateHurt",
             "vanilla:net/minecraft/world/entity/vehicle/minecart/AbstractMinecart.java#animateHurt",
-            "vanilla:net/minecraft/world/entity/LivingEntity.java#animateHurt"
+            "vanilla:net/minecraft/world/entity/LivingEntity.java#animateHurt",
+            "vanilla:net/minecraft/client/Camera.java#extractRenderState",
+            "vanilla:net/minecraft/client/renderer/GameRenderer.java#bobHurt"
           ],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [
             "crates/bbb-protocol/src/packets/entities/tests.rs#decodes_entity_transient_event_packets",
             "crates/bbb-world/src/entities/tests/movement_combat_and_swing_projection.rs#entity_model_sources_project_hurt_overlay_for_ten_ticks",
+            "crates/bbb-world/src/entities/tests/movement_combat_and_swing_projection.rs#living_camera_hurt_state_projects_packet_yaw_only_for_players",
             "crates/bbb-world/src/entities/tests/vehicle_and_block_entity_projection.rs#hurt_animation_dispatches_to_boat_and_minecart_vehicle_wobble",
+            "crates/bbb-native/src/runtime/tests.rs#camera_hurt_effect_follows_the_active_living_camera_entity",
+            "crates/bbb-renderer/src/camera.rs#camera_hurt_transform_matches_vanilla_bob_hurt_order",
             "crates/bbb-net/src/probe/play.rs#probe_applies_entity_motion_and_transient_packets_to_world"
           ],
           "gap": null,

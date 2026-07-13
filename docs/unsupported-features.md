@@ -253,10 +253,6 @@ Movement:
 - Complete first-local-mount SetPassengers side effects: clear removed-vehicle
   recovery state, align player body/head yaw when mounting a boat, and surface
   vanilla's dismount-key overlay/narration once per new mount.
-- Apply Player `hurtDir` from HurtAnimation to the active living camera's
-  `GameRenderer.bobHurt` damage tilt, including the configured tilt strength.
-  This remains presentation-only and must not infer health loss or authoritative
-  damage from the packet.
 - Complete ClientboundAnimate action 2 (`Player.stopSleepInBed(false, false)`):
   gate it on Player, clear the bed's local occupied state, resolve the safe
   stand-up position/yaw, move to that position, set standing pose, clear
