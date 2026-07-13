@@ -19,7 +19,7 @@ use bbb_world::{
 use tokio::sync::mpsc;
 
 use crate::audio_runtime::AudioEventSink;
-use crate::input::queue_vehicle_move_command;
+use crate::input::{queue_container_close_request_command, queue_vehicle_move_command};
 use crate::particle_runtime::{
     vibration_entity_position_source_from_options, LevelEventDripstoneDripParticle,
     LevelEventGrowthParticleContext, LevelEventGrowthParticleMode, LevelEventGrowthParticleSupport,
@@ -292,6 +292,10 @@ impl PlayApplyEffects for NativePlayEffects<'_, '_, '_, '_, '_, '_> {
 
     fn chat_acknowledgement(&mut self, command: bbb_protocol::packets::ChatAcknowledgement) {
         queue_chat_acknowledgement(self.net_commands, self.counters, command);
+    }
+
+    fn container_close(&mut self, container_id: i32) {
+        queue_container_close_request_command(self.counters, self.net_commands, container_id);
     }
 
     fn vehicle_move_report(&mut self, report: bbb_world::VehicleMoveReport) {

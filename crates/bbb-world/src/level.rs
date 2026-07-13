@@ -305,11 +305,13 @@ impl WorldStore {
         self.start_client_level_load();
     }
 
-    pub fn apply_respawn(&mut self, respawn: &ProtocolRespawn) {
+    pub fn apply_respawn(&mut self, respawn: &ProtocolRespawn) -> Option<i32> {
         self.counters.respawns_received += 1;
+        let closed_server_container_id = self.close_container_for_respawn();
         self.reset_local_player_for_respawn(respawn.data_to_keep);
         self.apply_spawn_info(&respawn.common_spawn_info);
         self.start_client_level_load();
+        closed_server_container_id
     }
 
     pub fn apply_world_time(&mut self, time: ProtocolPlayTime) -> &WorldTimeState {
@@ -1053,11 +1055,11 @@ mod tests {
         BlockDestruction as ProtocolBlockDestruction, BlockEvent as ProtocolBlockEvent,
         BlockPos as ProtocolBlockPos, EntityDataValue as ProtocolEntityDataValue,
         EntityDataValueKind, GlobalPos as ProtocolGlobalPos, LevelEvent as ProtocolLevelEvent,
-        MobEffectFlags, PlayerExperience as ProtocolPlayerExperience,
-        PlayerHealth as ProtocolPlayerHealth, RegistryData, RegistryDataEntry,
-        SetCamera as ProtocolSetCamera, SetEntityData as ProtocolSetEntityData,
-        UpdateAttributes as ProtocolUpdateAttributes, UpdateMobEffect as ProtocolUpdateMobEffect,
-        Vec3d as ProtocolVec3d,
+        MobEffectFlags, OpenScreen as ProtocolOpenScreen,
+        PlayerExperience as ProtocolPlayerExperience, PlayerHealth as ProtocolPlayerHealth,
+        RegistryData, RegistryDataEntry, SetCamera as ProtocolSetCamera,
+        SetEntityData as ProtocolSetEntityData, UpdateAttributes as ProtocolUpdateAttributes,
+        UpdateMobEffect as ProtocolUpdateMobEffect, Vec3d as ProtocolVec3d,
     };
     use uuid::Uuid;
 
@@ -1186,22 +1188,32 @@ mod tests {
         store.chunks.push(stale_chunk());
         store.first_chunk = Some(ChunkPos { x: 1, z: -2 });
         store.apply_add_entity(protocol_add_entity(123));
-
-        store.apply_respawn(&ProtocolRespawn {
-            common_spawn_info: ProtocolSpawnInfo {
-                dimension_type_id: 1,
-                dimension: "minecraft:the_nether".to_string(),
-                seed: 12345,
-                game_type: 1,
-                previous_game_type: -1,
-                is_debug: false,
-                is_flat: false,
-                last_death_location: None,
-                portal_cooldown: 6,
-                sea_level: 32,
-            },
-            data_to_keep: 3,
+        store.apply_open_screen(ProtocolOpenScreen {
+            container_id: 7,
+            menu_type_id: 2,
+            title: "Chest".to_string(),
+            title_styled: Vec::new(),
         });
+
+        assert_eq!(
+            store.apply_respawn(&ProtocolRespawn {
+                common_spawn_info: ProtocolSpawnInfo {
+                    dimension_type_id: 1,
+                    dimension: "minecraft:the_nether".to_string(),
+                    seed: 12345,
+                    game_type: 1,
+                    previous_game_type: -1,
+                    is_debug: false,
+                    is_flat: false,
+                    last_death_location: None,
+                    portal_cooldown: 6,
+                    sea_level: 32,
+                },
+                data_to_keep: 3,
+            }),
+            Some(7)
+        );
+        assert_eq!(store.open_container_id(), None);
         assert_eq!(store.chunk_count(), 1);
         assert_eq!(store.first_chunk(), Some(ChunkPos { x: 1, z: -2 }));
         assert_eq!(store.entity_count(), 1);
@@ -1210,21 +1222,24 @@ mod tests {
         let available_levels = store.available_levels().clone();
         let server_enforces_secure_chat = store.server_enforces_secure_chat();
 
-        store.apply_respawn(&ProtocolRespawn {
-            common_spawn_info: ProtocolSpawnInfo {
-                dimension_type_id: 2,
-                dimension: "minecraft:the_end".to_string(),
-                seed: 98765,
-                game_type: 1,
-                previous_game_type: 1,
-                is_debug: false,
-                is_flat: false,
-                last_death_location: None,
-                portal_cooldown: 2,
-                sea_level: 63,
-            },
-            data_to_keep: 3,
-        });
+        assert_eq!(
+            store.apply_respawn(&ProtocolRespawn {
+                common_spawn_info: ProtocolSpawnInfo {
+                    dimension_type_id: 2,
+                    dimension: "minecraft:the_end".to_string(),
+                    seed: 98765,
+                    game_type: 1,
+                    previous_game_type: 1,
+                    is_debug: false,
+                    is_flat: false,
+                    last_death_location: None,
+                    portal_cooldown: 2,
+                    sea_level: 63,
+                },
+                data_to_keep: 3,
+            }),
+            None
+        );
 
         assert_eq!(
             store.dimension(),

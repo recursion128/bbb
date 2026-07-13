@@ -114,6 +114,7 @@ pub trait PlayApplyEffects {
     fn stop_sound(&mut self, _state: &StopSoundEventState) {}
     fn jukebox_level_event(&mut self, _state: &JukeboxLevelEventState) {}
     fn chat_acknowledgement(&mut self, _command: ChatAcknowledgement) {}
+    fn container_close(&mut self, _container_id: i32) {}
     fn vehicle_move_report(&mut self, _report: VehicleMoveReport) {}
     fn removed_player_vehicle_teleport(&mut self, _recovery: RemovedPlayerVehicleTeleportRecovery) {
     }
@@ -379,7 +380,9 @@ impl WorldStore {
                 self.apply_login(&login);
             }
             PlayClientbound::Respawn(respawn) => {
-                self.apply_respawn(&respawn);
+                if let Some(container_id) = self.apply_respawn(&respawn) {
+                    effects.container_close(container_id);
+                }
             }
             PlayClientbound::SetHealth(health) => {
                 self.apply_player_health(health);

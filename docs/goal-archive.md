@@ -12982,3 +12982,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   明确 false；Respawn 保留两项 session state，disconnect/clear 清除，world/native tests 锁定。
 - [x] 本切片没有把 raw flag 冒充 effective enforcement；profile-key capability、PlayerInfo validator、
   signed-chat 校验与 insecure-server toast 仍由 signed-chat/Login runtime TODO 维护。
+
+## 2026-07-13：Respawn active-container close
+
+- [x] `handleRespawn` 在重建 LocalPlayer 前关闭 active container：inventory owner 清除 open/local UI 与
+  quick-craft state、merchant counter，不清空 player slots/cursor/map；仅 server container 返回 id。
+- [x] shared `PlayApplyEffects` 把该 id 交给 online native runtime，通过现有 command surface 排队
+  `ServerboundContainerClosePacket`；offline probe 仍只做 deterministic canonical close。
+- [x] world tests 锁定首次返回 id/第二次 no-op，native event test 锁定 command id 与 counter；Respawn
+  的 camera/music/debug subscriber/LevelLoadTracker 等其余生命周期仍保持开放。

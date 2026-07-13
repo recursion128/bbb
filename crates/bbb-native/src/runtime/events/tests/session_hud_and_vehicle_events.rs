@@ -1003,6 +1003,7 @@ fn login_tracks_local_player_id_in_world() {
 #[test]
 fn respawn_event_resets_local_player_runtime_state() {
     let (tx, mut rx) = mpsc::channel(1);
+    let (command_tx, mut command_rx) = mpsc::channel(1);
     tx.try_send(NetEvent::Play(PlayClientbound::Respawn(Respawn {
         common_spawn_info: protocol_play_login(9).common_spawn_info,
         data_to_keep: 0,
@@ -1013,6 +1014,12 @@ fn respawn_event_resets_local_player_runtime_state() {
     world.apply_login(&protocol_play_login(9));
     world.apply_add_entity(protocol_add_entity(9));
     world.apply_add_entity(protocol_add_entity(55));
+    world.apply_open_screen(OpenScreen {
+        container_id: 7,
+        menu_type_id: 2,
+        title: "Chest".to_string(),
+        title_styled: Vec::new(),
+    });
     world.apply_player_health(bbb_protocol::packets::PlayerHealth {
         health: 4.0,
         food: 7,
@@ -1058,7 +1065,7 @@ fn respawn_event_resets_local_player_runtime_state() {
 
     let mut counters = NetCounters::default();
     assert_eq!(
-        drain_net_events(&mut rx, &mut world, &mut counters, &None),
+        drain_net_events(&mut rx, &mut world, &mut counters, &Some(command_tx)),
         1
     );
 
@@ -1079,6 +1086,12 @@ fn respawn_event_resets_local_player_runtime_state() {
     assert!(entity.data_values.is_empty());
     assert!(entity.mob_effects.is_empty());
     assert_eq!(world.counters().active_mob_effects_tracked, 0);
+    assert_eq!(world.open_container_id(), None);
+    match command_rx.try_recv().unwrap() {
+        NetCommand::ContainerClose(request) => assert_eq!(request.container_id, 7),
+        other => panic!("unexpected command: {other:?}"),
+    }
+    assert_eq!(counters.container_close_commands_queued, 1);
 }
 
 #[test]

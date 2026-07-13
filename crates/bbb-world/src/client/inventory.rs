@@ -811,6 +811,18 @@ impl InventoryState {
         }
     }
 
+    pub(crate) fn close_for_respawn(&mut self, counters: &mut WorldCounters) -> Option<i32> {
+        let server_container_id = self
+            .open_container
+            .as_ref()
+            .map(|container| container.container_id);
+        self.local_inventory_open = false;
+        self.open_container = None;
+        self.local_quick_craft.reset();
+        counters.merchant_offers_tracked = 0;
+        server_container_id
+    }
+
     pub(crate) fn open_local_inventory(&mut self, ui: &mut ClientUiState) -> bool {
         if self.open_container.is_some() {
             return false;
@@ -2076,6 +2088,10 @@ impl WorldStore {
     pub fn close_local_container(&mut self, container_id: i32) -> bool {
         self.inventory
             .close_local_container(&mut self.counters, container_id)
+    }
+
+    pub(crate) fn close_container_for_respawn(&mut self) -> Option<i32> {
+        self.inventory.close_for_respawn(&mut self.counters)
     }
 
     pub fn open_local_inventory(&mut self) -> bool {
