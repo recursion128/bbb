@@ -194,3 +194,48 @@ fn synchronized_registry_holder_set_uses_session_order_and_tags() {
         ["minecraft:flower", "example:first"]
     );
 }
+
+#[test]
+fn decodes_single_synchronized_registry_holder_reference() {
+    let registry = "minecraft:jukebox_song";
+    let mut registries = RegistrySet::default();
+    let mut contents = RegistryContentState::new(registry);
+    contents.entries = vec![
+        RegistryPacketEntry::stub("example:first"),
+        RegistryPacketEntry::stub("minecraft:cat"),
+    ];
+    registries.contents.insert(registry.to_string(), contents);
+
+    let song = decode_registry_holder_reference(
+        &NbtSummaryValue::String("minecraft:cat".to_string()),
+        registry,
+        Some(&registries),
+        "jukebox playable",
+    )
+    .unwrap();
+    assert_eq!(song.holder_id, 1);
+    assert_eq!(song.resource_id, "minecraft:cat");
+
+    for (value, registries, expected) in [
+        (
+            NbtSummaryValue::String("minecraft:cat".to_string()),
+            None,
+            "without registry context",
+        ),
+        (
+            NbtSummaryValue::String("example:missing".to_string()),
+            Some(&registries),
+            "missing minecraft:jukebox_song resource",
+        ),
+        (
+            NbtSummaryValue::List(Vec::new()),
+            Some(&registries),
+            "is not a resource id",
+        ),
+    ] {
+        let error =
+            decode_registry_holder_reference(&value, registry, registries, "jukebox playable")
+                .unwrap_err();
+        assert!(error.contains(expected), "unexpected error: {error}");
+    }
+}

@@ -18,6 +18,20 @@ pub struct DialogRegistryHolderSetState {
     pub entries: Vec<DialogRegistryHolderReferenceState>,
 }
 
+pub(super) fn decode_registry_holder_reference(
+    value: &NbtSummaryValue,
+    registry: &str,
+    registries: Option<&RegistrySet>,
+    what: &str,
+) -> Result<DialogRegistryHolderReferenceState, String> {
+    let registries = registries
+        .ok_or_else(|| format!("{what} holder cannot be decoded without registry context"))?;
+    let NbtSummaryValue::String(raw) = value else {
+        return Err(format!("{what} holder is not a resource id"));
+    };
+    decode_holder_reference(raw, registry, registries, what)
+}
+
 pub(super) fn decode_registry_holder_set(
     value: &NbtSummaryValue,
     registry: &str,

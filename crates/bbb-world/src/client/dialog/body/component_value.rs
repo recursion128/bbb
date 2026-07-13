@@ -21,7 +21,7 @@ use bbb_protocol::{
         VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID, VANILLA_DATA_COMPONENT_FOOD_TYPE_ID,
         VANILLA_DATA_COMPONENT_GLIDER_TYPE_ID,
         VANILLA_DATA_COMPONENT_INTANGIBLE_PROJECTILE_TYPE_ID,
-        VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID,
+        VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID, VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID,
         VANILLA_DATA_COMPONENT_LODESTONE_TRACKER_TYPE_ID, VANILLA_DATA_COMPONENT_MAP_COLOR_TYPE_ID,
         VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID,
         VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
@@ -52,7 +52,10 @@ use super::super::{compound_entries, find_entry};
 mod holder_set;
 mod profile;
 
-use holder_set::{decode_registry_holder_set, DialogRegistryHolderSetState};
+use holder_set::{
+    decode_registry_holder_reference, decode_registry_holder_set,
+    DialogRegistryHolderReferenceState, DialogRegistryHolderSetState,
+};
 use profile::decode_profile;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -168,6 +171,9 @@ pub enum DialogDataComponentValueState {
     ProvidesBannerPatterns {
         patterns: DialogRegistryHolderSetState,
     },
+    JukeboxPlayable {
+        song: DialogRegistryHolderReferenceState,
+    },
 }
 
 impl DialogDataComponentValueState {
@@ -282,6 +288,16 @@ pub(super) fn decode_supported_component_value(
                 patterns: decode_registry_holder_set(
                     value,
                     "minecraft:banner_pattern",
+                    registries,
+                    &what,
+                )?,
+            }
+        }
+        VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID => {
+            DialogDataComponentValueState::JukeboxPlayable {
+                song: decode_registry_holder_reference(
+                    value,
+                    "minecraft:jukebox_song",
                     registries,
                     &what,
                 )?,

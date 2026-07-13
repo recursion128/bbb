@@ -1398,6 +1398,40 @@ fn decodes_provides_banner_patterns_from_session_and_context_free_inputs() {
     assert!(patterns.entries.is_empty());
 }
 
+#[test]
+fn decodes_jukebox_playable_from_session_registry() {
+    let registry = "minecraft:jukebox_song";
+    let mut registries = RegistrySet::default();
+    let mut contents = crate::RegistryContentState::new(registry);
+    contents.entries = vec![
+        crate::RegistryPacketEntry::stub("example:first"),
+        crate::RegistryPacketEntry::stub("minecraft:cat"),
+    ];
+    registries.contents.insert(registry.to_string(), contents);
+
+    let decoded = decode_supported_component_value(
+        VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID,
+        "minecraft:jukebox_playable",
+        &NbtSummaryValue::String("minecraft:cat".to_string()),
+        Some(&registries),
+    )
+    .unwrap();
+    let Some(DialogDataComponentValueState::JukeboxPlayable { song }) = decoded else {
+        panic!("expected jukebox-playable component");
+    };
+    assert_eq!(song.holder_id, 1);
+    assert_eq!(song.resource_id, "minecraft:cat");
+
+    assert!(decode_supported_component_value(
+        VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID,
+        "minecraft:jukebox_playable",
+        &NbtSummaryValue::String("minecraft:cat".to_string()),
+        None,
+    )
+    .unwrap_err()
+    .contains("without registry context"));
+}
+
 fn decoded(
     type_id: i32,
     resource_id: &str,

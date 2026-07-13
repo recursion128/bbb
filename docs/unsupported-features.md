@@ -568,7 +568,6 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   instrument-named-holder (fixed vanilla identity/ordinal fallback is generated in the world
   registry owner; session remapping/direct payload decoding remain)/
   provides-trim-material-named-holder/
-  jukebox-playable-named-holder/
   painting-variant-named-holder/
   pot-decoration/
   container/block-state/villager-variant/wolf-variant/wolf-sound-variant/
