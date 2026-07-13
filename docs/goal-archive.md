@@ -13711,3 +13711,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] unrestricted saturation float、strictly-positive seconds、non-negative int/float、六项 attack-range
   default/range、positive enchantability、NBT 数字转换、missing field 与 invalid Identifier 均有定向测试；
   Component、holder、list、其余 compound-record persistent Codec 与 native screens 仍开放。
+
+## 2026-07-13：Decode resource-key dialog item metadata
+
+- [x] 对照 `Recipe.KEY_CODEC.listOf()`、`TooltipDisplay.CODEC` 与 `SeededContainerLoot.CODEC`，typed
+  投影 Recipes identifier list、TooltipDisplay hide flag/component catalog linked set，以及 ContainerLoot
+  loot-table ResourceKey/default seed，共闭合 3 个 persistent 注册项。
+- [x] default namespace、recipe duplicate/order、transient hidden component、linked-set 去重、unknown catalog
+  entry、`Number.longValue`、missing/wrong shapes 均有定向测试；CustomData 的 flattened SNBT alternative、
+  Component、holder、其余 list/compound-record persistent Codec 与 native screens 仍开放。

@@ -4,7 +4,8 @@ use bbb_protocol::{
         builtin_enum_component_value_for_name, VANILLA_BUILTIN_ENUM_COMPONENTS,
     },
     data_component_types::{
-        VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID, VANILLA_DATA_COMPONENT_BLOCK_STATE_TYPE_ID,
+        vanilla_data_component_type_for_resource_id, VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_BLOCK_STATE_TYPE_ID, VANILLA_DATA_COMPONENT_CONTAINER_LOOT_TYPE_ID,
         VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_ENCHANTABLE_TYPE_ID,
         VANILLA_DATA_COMPONENT_ENCHANTMENT_GLINT_OVERRIDE_TYPE_ID,
         VANILLA_DATA_COMPONENT_FOOD_TYPE_ID, VANILLA_DATA_COMPONENT_GLIDER_TYPE_ID,
@@ -16,8 +17,9 @@ use bbb_protocol::{
         VANILLA_DATA_COMPONENT_NOTE_BLOCK_SOUND_TYPE_ID,
         VANILLA_DATA_COMPONENT_OMINOUS_BOTTLE_AMPLIFIER_TYPE_ID,
         VANILLA_DATA_COMPONENT_POTION_DURATION_SCALE_TYPE_ID,
-        VANILLA_DATA_COMPONENT_RARITY_TYPE_ID, VANILLA_DATA_COMPONENT_REPAIR_COST_TYPE_ID,
-        VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID,
+        VANILLA_DATA_COMPONENT_RARITY_TYPE_ID, VANILLA_DATA_COMPONENT_RECIPES_TYPE_ID,
+        VANILLA_DATA_COMPONENT_REPAIR_COST_TYPE_ID, VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID,
+        VANILLA_DATA_COMPONENT_TOOLTIP_DISPLAY_TYPE_ID,
         VANILLA_DATA_COMPONENT_TOOLTIP_STYLE_TYPE_ID,
         VANILLA_DATA_COMPONENT_TROPICAL_FISH_PATTERN_TYPE_ID,
         VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID, VANILLA_DATA_COMPONENT_USE_COOLDOWN_TYPE_ID,
@@ -36,6 +38,12 @@ use super::super::{compound_entries, find_entry};
 pub struct DialogStringMapEntryState {
     pub key: String,
     pub value: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DialogDataComponentReferenceState {
+    pub type_id: i32,
+    pub resource_id: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -97,6 +105,17 @@ pub enum DialogDataComponentValueState {
     },
     Enchantable {
         value: i32,
+    },
+    Recipes {
+        resource_ids: Vec<String>,
+    },
+    TooltipDisplay {
+        hide_tooltip: bool,
+        hidden_components: Vec<DialogDataComponentReferenceState>,
+    },
+    ContainerLoot {
+        loot_table: String,
+        seed: i64,
     },
 }
 
@@ -188,6 +207,9 @@ pub(super) fn decode_supported_component_value(
         VANILLA_DATA_COMPONENT_WEAPON_TYPE_ID => decode_weapon(value, &what)?,
         VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID => decode_attack_range(value, &what)?,
         VANILLA_DATA_COMPONENT_ENCHANTABLE_TYPE_ID => decode_enchantable(value, &what)?,
+        VANILLA_DATA_COMPONENT_RECIPES_TYPE_ID => decode_recipes(value, &what)?,
+        VANILLA_DATA_COMPONENT_TOOLTIP_DISPLAY_TYPE_ID => decode_tooltip_display(value, &what)?,
+        VANILLA_DATA_COMPONENT_CONTAINER_LOOT_TYPE_ID => decode_container_loot(value, &what)?,
         _ => {
             return decode_string_enum_component_value(type_id, &what, value);
         }
@@ -428,6 +450,89 @@ fn decode_enchantable(
     Ok(DialogDataComponentValueState::Enchantable { value })
 }
 
+fn decode_recipes(
+    value: &NbtSummaryValue,
+    what: &str,
+) -> Result<DialogDataComponentValueState, String> {
+    let NbtSummaryValue::List(values) = value else {
+        return Err(format!("{what} is not a list"));
+    };
+    let resource_ids = values
+        .iter()
+        .enumerate()
+        .map(|(index, value)| {
+            let NbtSummaryValue::String(raw) = value else {
+                return Err(format!("{what}[{index}] is not a resource id"));
+            };
+            normalize_codec_identifier(raw)
+                .ok_or_else(|| format!("invalid {what}[{index}] resource id {raw}"))
+        })
+        .collect::<Result<Vec<_>, String>>()?;
+    Ok(DialogDataComponentValueState::Recipes { resource_ids })
+}
+
+fn decode_tooltip_display(
+    value: &NbtSummaryValue,
+    what: &str,
+) -> Result<DialogDataComponentValueState, String> {
+    let entries = compound_entries(value, what)?;
+    let hide_tooltip = optional_component_bool(entries, "hide_tooltip", false, what)?;
+    let hidden_components = match find_entry(entries, "hidden_components") {
+        None => Vec::new(),
+        Some(NbtSummaryValue::List(values)) => {
+            let mut decoded = Vec::new();
+            for (index, value) in values.iter().enumerate() {
+                let NbtSummaryValue::String(raw) = value else {
+                    return Err(format!(
+                        "{what} field hidden_components[{index}] is not a component resource id"
+                    ));
+                };
+                let resource_id = normalize_codec_identifier(raw).ok_or_else(|| {
+                    format!("invalid {what} field hidden_components[{index}] resource id {raw}")
+                })?;
+                let component_type = vanilla_data_component_type_for_resource_id(&resource_id)
+                    .ok_or_else(|| format!("unknown {what} hidden component {resource_id}"))?;
+                if decoded
+                    .iter()
+                    .any(|entry: &DialogDataComponentReferenceState| {
+                        entry.type_id == component_type.type_id
+                    })
+                {
+                    continue;
+                }
+                decoded.push(DialogDataComponentReferenceState {
+                    type_id: component_type.type_id,
+                    resource_id,
+                });
+            }
+            decoded
+        }
+        Some(_) => return Err(format!("{what} field hidden_components is not a list")),
+    };
+    Ok(DialogDataComponentValueState::TooltipDisplay {
+        hide_tooltip,
+        hidden_components,
+    })
+}
+
+fn decode_container_loot(
+    value: &NbtSummaryValue,
+    what: &str,
+) -> Result<DialogDataComponentValueState, String> {
+    let entries = compound_entries(value, what)?;
+    let loot_table = match find_entry(entries, "loot_table") {
+        Some(NbtSummaryValue::String(raw)) => normalize_codec_identifier(raw)
+            .ok_or_else(|| format!("invalid {what} loot table {raw}"))?,
+        Some(_) => return Err(format!("{what} field loot_table is not a resource id")),
+        None => return Err(format!("{what} is missing field loot_table")),
+    };
+    let seed = find_entry(entries, "seed")
+        .map(|value| component_i64(value, &format!("{what} field seed")))
+        .transpose()?
+        .unwrap_or(0);
+    Ok(DialogDataComponentValueState::ContainerLoot { loot_table, seed })
+}
+
 fn required_component_i32(
     entries: &[NbtSummaryEntry],
     key: &str,
@@ -493,6 +598,18 @@ fn component_i32(value: &NbtSummaryValue, what: &str) -> Result<i32, String> {
         NbtSummaryValue::Long(value) => Ok(*value as i32),
         NbtSummaryValue::Float(bits) => Ok(f32::from_bits(*bits) as i32),
         NbtSummaryValue::Double(bits) => Ok(f64::from_bits(*bits) as i32),
+        _ => Err(format!("{what} is not numeric")),
+    }
+}
+
+fn component_i64(value: &NbtSummaryValue, what: &str) -> Result<i64, String> {
+    match value {
+        NbtSummaryValue::Byte(value) => Ok(i64::from(*value)),
+        NbtSummaryValue::Short(value) => Ok(i64::from(*value)),
+        NbtSummaryValue::Int(value) => Ok(i64::from(*value)),
+        NbtSummaryValue::Long(value) => Ok(*value),
+        NbtSummaryValue::Float(bits) => Ok(f32::from_bits(*bits) as i64),
+        NbtSummaryValue::Double(bits) => Ok(f64::from_bits(*bits) as i64),
         _ => Err(format!("{what} is not numeric")),
     }
 }

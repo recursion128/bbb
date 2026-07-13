@@ -330,8 +330,9 @@ range、glint bool、三项 unit、三项 Identifier 与 Rarity 共 14 个 primi
 serialized name typed 投影；MapItemColor/MapId 与 0..=4 OminousBottleAmplifier scalar wrapper、
 UseEffects/SwingAnimation defaulted flat record 及 BlockItemStateProperties string map 共 6 个注册项也已
 typed 投影；Food/UseCooldown/Weapon/AttackRange/Enchantable 共 5 个 numeric item-behavior record 也已
-按 required/default/range typed 投影；Component、holder、list 与其余 compound record 等 persistent
-Codec 仍未展开；
+按 required/default/range typed 投影；Recipes identifier list、TooltipDisplay component catalog set 与
+ContainerLoot resource-key/seed 共 3 项 metadata Codec 也已闭合；其余 Component、holder、list 与
+compound record 等 persistent Codec 仍未展开；
 四类 input control 与九类 static/dynamic action 已按 codec typed 投影并同时保留 raw；DialogList 的 play
 tag/direct 同质 HolderSet、session reference、context-free inline-list
 边界、external title 与 default/validation 已 typed 投影，仍缺全部 screen；custom-click 的 resource-id +

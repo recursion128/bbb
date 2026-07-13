@@ -1,7 +1,7 @@
 use bbb_protocol::data_component_types::{
-    VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID, VANILLA_DATA_COMPONENT_DYE_TYPE_ID,
-    VANILLA_DATA_COMPONENT_FOX_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_ITEM_NAME_TYPE_ID,
-    VANILLA_DATA_COMPONENT_LORE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_CREATIVE_SLOT_LOCK_TYPE_ID, VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID,
+    VANILLA_DATA_COMPONENT_DYE_TYPE_ID, VANILLA_DATA_COMPONENT_FOX_VARIANT_TYPE_ID,
+    VANILLA_DATA_COMPONENT_ITEM_NAME_TYPE_ID, VANILLA_DATA_COMPONENT_LORE_TYPE_ID,
 };
 
 use super::*;
@@ -640,6 +640,167 @@ fn rejects_invalid_numeric_item_behavior_records() {
             "minecraft:enchantable",
             compound(vec![value_entry("value", NbtSummaryValue::Int(0))]),
             "field value 0 is outside 1..=",
+        ),
+    ] {
+        let error = decoded(type_id, resource_id, &value).unwrap_err();
+        assert!(error.contains(expected), "unexpected error: {error}");
+    }
+}
+
+#[test]
+fn decodes_resource_key_and_component_catalog_metadata() {
+    assert_eq!(
+        decoded(
+            VANILLA_DATA_COMPONENT_RECIPES_TYPE_ID,
+            "minecraft:recipes",
+            &NbtSummaryValue::List(vec![
+                NbtSummaryValue::String("stick".to_string()),
+                NbtSummaryValue::String(":custom".to_string()),
+                NbtSummaryValue::String("stick".to_string()),
+            ]),
+        )
+        .unwrap(),
+        Some(DialogDataComponentValueState::Recipes {
+            resource_ids: vec![
+                "minecraft:stick".to_string(),
+                "minecraft:custom".to_string(),
+                "minecraft:stick".to_string(),
+            ],
+        })
+    );
+
+    assert_eq!(
+        decoded(
+            VANILLA_DATA_COMPONENT_TOOLTIP_DISPLAY_TYPE_ID,
+            "minecraft:tooltip_display",
+            &compound(Vec::new()),
+        )
+        .unwrap(),
+        Some(DialogDataComponentValueState::TooltipDisplay {
+            hide_tooltip: false,
+            hidden_components: Vec::new(),
+        })
+    );
+    assert_eq!(
+        decoded(
+            VANILLA_DATA_COMPONENT_TOOLTIP_DISPLAY_TYPE_ID,
+            "minecraft:tooltip_display",
+            &compound(vec![
+                value_entry("hide_tooltip", NbtSummaryValue::Int(2)),
+                value_entry(
+                    "hidden_components",
+                    NbtSummaryValue::List(vec![
+                        NbtSummaryValue::String("custom_name".to_string()),
+                        NbtSummaryValue::String("creative_slot_lock".to_string()),
+                        NbtSummaryValue::String("minecraft:custom_name".to_string()),
+                    ]),
+                ),
+            ]),
+        )
+        .unwrap(),
+        Some(DialogDataComponentValueState::TooltipDisplay {
+            hide_tooltip: true,
+            hidden_components: vec![
+                DialogDataComponentReferenceState {
+                    type_id: VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID,
+                    resource_id: "minecraft:custom_name".to_string(),
+                },
+                DialogDataComponentReferenceState {
+                    type_id: VANILLA_DATA_COMPONENT_CREATIVE_SLOT_LOCK_TYPE_ID,
+                    resource_id: "minecraft:creative_slot_lock".to_string(),
+                },
+            ],
+        })
+    );
+
+    assert_eq!(
+        decoded(
+            VANILLA_DATA_COMPONENT_CONTAINER_LOOT_TYPE_ID,
+            "minecraft:container_loot",
+            &compound(vec![
+                string_entry("loot_table", "chests/simple_dungeon"),
+                value_entry("seed", NbtSummaryValue::Double(12.75f64.to_bits())),
+            ]),
+        )
+        .unwrap(),
+        Some(DialogDataComponentValueState::ContainerLoot {
+            loot_table: "minecraft:chests/simple_dungeon".to_string(),
+            seed: 12,
+        })
+    );
+    assert_eq!(
+        decoded(
+            VANILLA_DATA_COMPONENT_CONTAINER_LOOT_TYPE_ID,
+            "minecraft:container_loot",
+            &compound(vec![string_entry("loot_table", ":empty")]),
+        )
+        .unwrap(),
+        Some(DialogDataComponentValueState::ContainerLoot {
+            loot_table: "minecraft:empty".to_string(),
+            seed: 0,
+        })
+    );
+}
+
+#[test]
+fn rejects_invalid_resource_key_and_component_catalog_metadata() {
+    for (type_id, resource_id, value, expected) in [
+        (
+            VANILLA_DATA_COMPONENT_RECIPES_TYPE_ID,
+            "minecraft:recipes",
+            compound(Vec::new()),
+            "is not a list",
+        ),
+        (
+            VANILLA_DATA_COMPONENT_RECIPES_TYPE_ID,
+            "minecraft:recipes",
+            NbtSummaryValue::List(vec![NbtSummaryValue::Int(1)]),
+            "[0] is not a resource id",
+        ),
+        (
+            VANILLA_DATA_COMPONENT_RECIPES_TYPE_ID,
+            "minecraft:recipes",
+            NbtSummaryValue::List(vec![NbtSummaryValue::String("Invalid".to_string())]),
+            "invalid dialog item component minecraft:recipes[0] resource id Invalid",
+        ),
+        (
+            VANILLA_DATA_COMPONENT_TOOLTIP_DISPLAY_TYPE_ID,
+            "minecraft:tooltip_display",
+            compound(vec![value_entry(
+                "hidden_components",
+                NbtSummaryValue::String("custom_name".to_string()),
+            )]),
+            "field hidden_components is not a list",
+        ),
+        (
+            VANILLA_DATA_COMPONENT_TOOLTIP_DISPLAY_TYPE_ID,
+            "minecraft:tooltip_display",
+            compound(vec![value_entry(
+                "hidden_components",
+                NbtSummaryValue::List(vec![NbtSummaryValue::String("missing".to_string())]),
+            )]),
+            "unknown dialog item component minecraft:tooltip_display hidden component minecraft:missing",
+        ),
+        (
+            VANILLA_DATA_COMPONENT_CONTAINER_LOOT_TYPE_ID,
+            "minecraft:container_loot",
+            compound(Vec::new()),
+            "missing field loot_table",
+        ),
+        (
+            VANILLA_DATA_COMPONENT_CONTAINER_LOOT_TYPE_ID,
+            "minecraft:container_loot",
+            compound(vec![string_entry("loot_table", "Invalid")]),
+            "invalid dialog item component minecraft:container_loot loot table Invalid",
+        ),
+        (
+            VANILLA_DATA_COMPONENT_CONTAINER_LOOT_TYPE_ID,
+            "minecraft:container_loot",
+            compound(vec![
+                string_entry("loot_table", "chests/simple_dungeon"),
+                string_entry("seed", "twelve"),
+            ]),
+            "field seed is not numeric",
         ),
     ] {
         let error = decoded(type_id, resource_id, &value).unwrap_err();

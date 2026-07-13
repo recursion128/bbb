@@ -66,7 +66,8 @@ Owner: `bbb-protocol`
 - Complete typed `Dialog` data beyond the current five top-level variants and
   PlainMessage/Item body, input-control, action, and item component-patch key/removal
   plus 14 primitive, 17 StringRepresentable enum, 6 scalar-wrapper/flat-record/string-map,
-  and 5 numeric item-behavior record positive-value registrations:
+  5 numeric item-behavior record, and 3 resource-key/catalog metadata positive-value
+  registrations:
   decode the remaining Component, holder, list, and compound-record persistent value
   Codecs, render the corresponding screens, restore the previous screen on clear, and
   route custom-click controls through the active dialog state.
