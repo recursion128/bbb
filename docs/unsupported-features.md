@@ -696,12 +696,6 @@ back into a todo. Do not delete these.
   `ClientPacketListener.handleTestInstanceBlockStatus`. The world currently
   retains a plain-text diagnostic snapshot. Restart when the test-instance
   block edit screen has a native UI owner.
-- **Low-disk-space system toast.** On
-  `ClientboundLowDiskSpaceWarningPacket`, show/update the 10-second
-  `SystemToastId.LOW_DISK_SPACE` toast with vanilla's title and description.
-  The current client records the server warning but has no general toast
-  presentation surface. This is remote-server notification UI, not local disk
-  authority or an integrated-server owner.
 - **Server-data MOTD/icon parity.** Preserve the full trusted MOTD Component,
   validate optional icon bytes like `ServerData.validateIcon`, and update the
   persisted multiplayer server-list entry when that owner exists. The current

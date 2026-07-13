@@ -454,8 +454,9 @@ BundleDelimiter 的 empty wire、connection-owned atomic batch、wire-order disp
 4096 packet limit 已闭合；delimiter 不进入 canonical world state，online/probe 复用同一 assembler。
 play PongResponse 的 echoed i64 wire、F3+3 client-tick PingRequest、latency sampler、240-sample HUD
 projection 与 protocol/world/net/native tests 已全行闭合。
-LowDiskSpaceWarning 的 unit wire、canonical counter、ownership 与 apply tests 已闭合；vanilla 10 秒
-SystemToast presentation 尚未实现，runtime 保持 partial，且不由客户端推断本地磁盘状态。
+LowDiskSpaceWarning 的 unit wire、canonical counter、ownership、server-driven add/update、vanilla 标题/
+描述、nine-slice 布局、600ms 平方曲线滑入/滑出、10 秒展示与 ui.toast.in/out 已闭合；客户端不探测或
+推断本地磁盘状态，五格全部闭合。
 SelectAdvancementsTab 的 nullable resource id wire、known/unknown/null selection、canonical root state、
 native advancements screen consumer 与 protocol/world/net/native tests 已全行闭合。
 CustomChatCompletions 的 action/list wire、ADD/REMOVE/SET canonical state 与 apply tests 已闭合；native

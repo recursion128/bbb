@@ -12853,3 +12853,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   裁剪文字、flat icon 与 sprite，并对 3D block-item mesh 做同 viewport 几何裁剪。
 - [x] native/renderer 加载并 nine-slice 绘制 `widget/scroller_background` 与 `widget/scroller`，
   thumb height/y 和 drag scale 按 `AbstractScrollArea` 计算。StatsScreen narration 继续开放。
+
+## 2026-07-13：Low-disk-space SystemToast presentation
+
+- [x] `ClientboundLowDiskSpaceWarningPacket` 的 canonical server warning counter 现在驱动唯一
+  `LOW_DISK_SPACE` toast；重复告警按 `SystemToast.addOrUpdate` 延长同一实例，不引入本地磁盘探测、
+  IntegratedServer 或合成告警来源。
+- [x] native 按 `ToastManager.ToastInstance` 实现 600ms 平方曲线滑入/滑出、完整可见 10 秒和
+  `ui.toast.in/out` transition sound；renderer 使用 pack `toast/system` nine-slice、vanilla 文案位置、
+  字体测宽和右边缘 slide，packet coverage 五格闭合。这是该 packet 的窄 system-toast consumer，
+  不冒充其他 toast token/队列或 notification option 已实现。

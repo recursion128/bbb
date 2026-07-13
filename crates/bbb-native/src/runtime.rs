@@ -45,12 +45,12 @@ use bbb_renderer::{
     HudInventoryTextLabel, HudInventoryTooltip, HudInventoryTooltipLine, HudItemCountLabel,
     HudItemDurabilityBar, HudItemFoil, HudItemIcon, HudJumpBar, HudPauseScreen, HudPlayerHealth,
     HudSignEditorKind, HudSignEditorScreen, HudStatsItemRow, HudStatsRow, HudStatsScreen,
-    HudUvRect, HudVehicleHealth, LevelLighting, LightmapEnvironment, LightningBoltRenderState,
-    ParticleBlockFluidSurfaceSample, ParticleEntityTargetContext, ParticleFluidKind,
-    ParticleLocalPlayerScopeContext, ParticlePlayerMotionContext, ParticleSoundEvent,
-    ParticleSpawnBatch, ParticleSpawnCommand, Renderer, SelectionColoredBox, SelectionLine,
-    SelectionOutline, SignModelAttachment, SignModelWood, SkyEnvironment, SkyMoonPhase,
-    WeatherColumn, WeatherFrame, WeatherRenderState, DEFAULT_ARMOR_STAND_MODEL_POSE,
+    HudSystemToast, HudUvRect, HudVehicleHealth, LevelLighting, LightmapEnvironment,
+    LightningBoltRenderState, ParticleBlockFluidSurfaceSample, ParticleEntityTargetContext,
+    ParticleFluidKind, ParticleLocalPlayerScopeContext, ParticlePlayerMotionContext,
+    ParticleSoundEvent, ParticleSpawnBatch, ParticleSpawnCommand, Renderer, SelectionColoredBox,
+    SelectionLine, SelectionOutline, SignModelAttachment, SignModelWood, SkyEnvironment,
+    SkyMoonPhase, WeatherColumn, WeatherFrame, WeatherRenderState, DEFAULT_ARMOR_STAND_MODEL_POSE,
     ENTITY_FULL_BRIGHT_LIGHT_COORDS, HUD_HOTBAR_SLOTS, ITEM_MODEL_NO_OVERLAY,
     VANILLA_DEFAULT_CLOUD_COLOR, VANILLA_DEFAULT_CLOUD_HEIGHT,
     VANILLA_DEFAULT_LIGHTMAP_BLOCK_FACTOR, VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR,
@@ -60,11 +60,11 @@ use bbb_renderer::{
 use bbb_world::{
     java_string_hash_code, sign_wood_and_form_for_block_name, BlockPos, BookScreenState, ChunkPos,
     ContainerState, EvokerFangsCritParticleState, FireworkRocketTrailParticleState,
-    ItemEquipmentSlot, MerchantOfferState, MerchantOffersState, MobEffectState, MountArmorSlotKind,
-    MountInventoryKind, OminousItemSpawnerParticleState, PrimedTntSmokeParticleState,
-    RavagerStunParticleState, SignBlockForm, SoundEventState, SoundHolderState, TerrainFluidKind,
-    TerrainFluidState, TerrainLight, TerrainMaterialClass, WorldLevelInfo, WorldSkybox, WorldStore,
-    WorldWeatherState,
+    ItemEquipmentSlot, LocalSoundEventState, MerchantOfferState, MerchantOffersState,
+    MobEffectState, MountArmorSlotKind, MountInventoryKind, OminousItemSpawnerParticleState,
+    PrimedTntSmokeParticleState, RavagerStunParticleState, SignBlockForm, SoundEventState,
+    SoundHolderState, TerrainFluidKind, TerrainFluidState, TerrainLight, TerrainMaterialClass,
+    WorldLevelInfo, WorldSkybox, WorldStore, WorldWeatherState,
 };
 use tokio::sync::mpsc;
 
@@ -630,11 +630,103 @@ fn push_capped_hud_debug_sample<T>(samples: &mut Vec<T>, value: T, capacity: usi
 pub(crate) struct ClientAnimationTickState {
     last_entity_animation_at: Option<Instant>,
     entity_animation_tick_residual: f64,
+    low_disk_space_toast: LowDiskSpaceToastState,
 }
 
 impl ClientAnimationTickState {
     pub(crate) fn entity_partial_tick(&self) -> f32 {
         self.entity_animation_tick_residual.clamp(0.0, 1.0) as f32
+    }
+}
+
+#[derive(Debug, Default)]
+struct LowDiskSpaceToastState {
+    seen_warning_count: usize,
+    animation_started_at: Option<Instant>,
+    became_fully_visible_at: Option<Instant>,
+    last_changed_fully_visible_ms: u64,
+    visible_portion: f32,
+    showing: bool,
+    changed: bool,
+    finished: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct LowDiskSpaceToastFrame {
+    visible_portion: f32,
+    visibility_sound: Option<&'static str>,
+}
+
+impl LowDiskSpaceToastState {
+    fn update(&mut self, warning_count: usize, now: Instant) -> Option<LowDiskSpaceToastFrame> {
+        if warning_count < self.seen_warning_count {
+            *self = Self::default();
+        }
+        if warning_count > self.seen_warning_count {
+            if self.finished || self.animation_started_at.is_none() {
+                *self = Self {
+                    seen_warning_count: warning_count,
+                    changed: true,
+                    ..Self::default()
+                };
+            } else {
+                self.seen_warning_count = warning_count;
+                self.changed = true;
+            }
+        }
+        if self.seen_warning_count == 0 {
+            return None;
+        }
+        let showing_before_update = self.showing;
+        let animation_started_at = *self.animation_started_at.get_or_insert_with(|| {
+            self.showing = true;
+            now
+        });
+        if self.showing
+            && now.saturating_duration_since(animation_started_at) <= Duration::from_millis(600)
+        {
+            self.became_fully_visible_at = Some(now);
+        }
+        let became_fully_visible_at = self.became_fully_visible_at.unwrap_or(now);
+        let fully_visible_for_ms = now
+            .saturating_duration_since(became_fully_visible_at)
+            .as_millis()
+            .min(u128::from(u64::MAX)) as u64;
+        let progress = (now
+            .saturating_duration_since(animation_started_at)
+            .as_secs_f32()
+            / 0.6)
+            .clamp(0.0, 1.0)
+            .powi(2);
+        self.visible_portion = if self.showing {
+            progress
+        } else {
+            1.0 - progress
+        };
+        if self.changed {
+            self.last_changed_fully_visible_ms = fully_visible_for_ms;
+            self.changed = false;
+        }
+        let wanted_showing =
+            fully_visible_for_ms.saturating_sub(self.last_changed_fully_visible_ms) < 10_000;
+        if wanted_showing != self.showing {
+            let reverse_ms = ((1.0 - self.visible_portion) * 600.0) as u64;
+            self.animation_started_at = Some(now - Duration::from_millis(reverse_ms));
+            self.showing = wanted_showing;
+        }
+        self.finished = !self.showing
+            && now.saturating_duration_since(
+                self.animation_started_at
+                    .expect("toast animation start is initialized"),
+            ) > Duration::from_millis(600);
+        (!self.finished).then_some(LowDiskSpaceToastFrame {
+            visible_portion: self.visible_portion.clamp(0.0, 1.0),
+            visibility_sound: (showing_before_update != self.showing).then_some(if self.showing {
+                "minecraft:ui.toast.in"
+            } else {
+                "minecraft:ui.toast.out"
+            }),
+        })
     }
 }
 
@@ -2273,6 +2365,17 @@ pub(crate) fn pump_network_and_terrain(
             surface_size,
         )
     };
+    let (hud_system_toast, hud_system_toast_sound) = hud_low_disk_space_toast(
+        &mut client_animation_ticks.low_disk_space_toast,
+        world,
+        item_runtime,
+        now,
+    );
+    if let (Some(audio_events), Some(sound)) =
+        (audio_events.as_deref_mut(), hud_system_toast_sound.as_ref())
+    {
+        audio_events.play_local_sound(sound);
+    }
     let hud_sign_editor_screen = if hud_debug_options_screen.is_some()
         || hud_pause_screen.is_some()
         || hud_stats_screen.is_some()
@@ -2624,6 +2727,7 @@ pub(crate) fn pump_network_and_terrain(
             hud_sign_editor_screen,
             hud_pause_screen,
             hud_stats_screen,
+            hud_system_toast,
             hud_debug_options_screen,
             hud_action_bar_text,
             hud_title_text,
@@ -3445,6 +3549,40 @@ fn localized_gui_text(
         .filter(|text| *text != translation_key)
         .unwrap_or(fallback)
         .to_string()
+}
+
+fn hud_low_disk_space_toast(
+    state: &mut LowDiskSpaceToastState,
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    now: Instant,
+) -> (Option<HudSystemToast>, Option<LocalSoundEventState>) {
+    let Some(frame) = state.update(world.low_disk_space_warning_count(), now) else {
+        return (None, None);
+    };
+    (
+        Some(HudSystemToast {
+            title: localized_gui_text(item_runtime, "chunk.toast.lowDiskSpace", "Low disk space!"),
+            message: localized_gui_text(
+                item_runtime,
+                "chunk.toast.lowDiskSpace.description",
+                "Might not be able to save the world.",
+            ),
+            visible_portion: frame.visible_portion,
+        }),
+        frame.visibility_sound.map(|location| LocalSoundEventState {
+            sound: SoundHolderState {
+                kind: "direct".to_string(),
+                registry_id: None,
+                location: Some(location.to_string()),
+                fixed_range: None,
+            },
+            source: "master".to_string(),
+            volume: 1.0,
+            pitch: 1.0,
+            seed: 0,
+        }),
+    )
 }
 
 fn localized_gui_text_with_args(

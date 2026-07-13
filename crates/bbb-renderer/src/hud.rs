@@ -308,6 +308,15 @@ pub struct HudStatsScreen {
     pub done_hovered: bool,
 }
 
+/// One visible vanilla system toast. Native owns token/update timing; the renderer owns selected
+/// font measurement, nine-slice layout and the right-edge slide transform.
+#[derive(Debug, Clone, PartialEq)]
+pub struct HudSystemToast {
+    pub title: String,
+    pub message: String,
+    pub visible_portion: f32,
+}
+
 /// Vanilla `DebugOptionsScreen` render-state shell: the searchable option list
 /// in vanilla category/path order, three status buttons per entry, and the
 /// default/performance/done footer buttons. The renderer derives layout from
@@ -2052,6 +2061,20 @@ impl Renderer {
         Ok(())
     }
 
+    pub fn upload_hud_system_toast_background(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+        scaling: HudNineSliceScaling,
+    ) -> Result<()> {
+        self.hud_system_toast_background = Some(HudNineSliceSprite {
+            gpu: self.upload_hud_sprite(width, height, rgba)?,
+            scaling,
+        });
+        Ok(())
+    }
+
     pub fn upload_hud_debug_game_mode_switcher_background(
         &mut self,
         width: u32,
@@ -3588,6 +3611,10 @@ impl Renderer {
         self.hud_stats_screen = screen.and_then(sanitize_hud_stats_screen);
     }
 
+    pub fn set_hud_system_toast(&mut self, toast: Option<HudSystemToast>) {
+        self.hud_system_toast = toast.and_then(sanitize_hud_system_toast);
+    }
+
     pub fn set_hud_debug_options_screen(&mut self, screen: Option<HudDebugOptionsScreen>) {
         self.hud_debug_options_screen = screen.and_then(sanitize_hud_debug_options_screen);
     }
@@ -4722,6 +4749,21 @@ impl Renderer {
                     surface_size,
                 );
             }
+        }
+
+        if let Some(toast) = &self.hud_system_toast {
+            push_hud_system_toast(
+                &mut vertices,
+                &mut post_gui_item_commands,
+                &self.hud_white_pixel,
+                self.hud_system_toast_background.as_ref(),
+                self.hud_font_atlas.as_ref(),
+                &self.hud_font_glyphs,
+                &self.hud_obfuscated_glyph_pool,
+                self.counters.frame_index,
+                surface_size,
+                toast,
+            );
         }
 
         if let Some(overlay) = &self.hud_code_of_conduct_overlay {
@@ -6313,6 +6355,90 @@ fn hud_pause_background_vertices(surface_size: PhysicalSize<u32>) -> [HudVertex;
     vertices[4].tint = HUD_PAUSE_BACKGROUND_BOTTOM_TINT;
     vertices[5].tint = HUD_PAUSE_BACKGROUND_BOTTOM_TINT;
     vertices
+}
+
+#[allow(clippy::too_many_arguments)]
+fn push_hud_system_toast<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    white_pixel: &'a HudSpriteGpu,
+    background: Option<&'a HudNineSliceSprite>,
+    font_atlas: Option<&'a HudSpriteGpu>,
+    glyphs: &HudFontGlyphMap,
+    obfuscated_pool: &HudObfuscatedGlyphPool,
+    frame_index: u64,
+    surface_size: PhysicalSize<u32>,
+    toast: &HudSystemToast,
+) {
+    let Some(font_atlas) = font_atlas else {
+        return;
+    };
+    let (rect, x, _, _) = hud_system_toast_layout(surface_size, toast, glyphs);
+    if let Some(background) = background {
+        for segment in nine_slice_segments(rect, background.scaling) {
+            push_hud_draw_with_uv_and_tint(
+                vertices,
+                commands,
+                &background.gpu,
+                surface_size,
+                segment.rect,
+                segment.uv,
+                HUD_TINT_WHITE,
+            );
+        }
+    } else {
+        push_hud_draw_with_uv_and_tint(
+            vertices,
+            commands,
+            white_pixel,
+            surface_size,
+            rect,
+            HudUvRect {
+                min: [0.0, 0.0],
+                max: [1.0, 1.0],
+            },
+            [0.15, 0.15, 0.15, 0.95],
+        );
+    }
+    for (text, y, tint) in [
+        (toast.title.as_str(), 7.0, hud_argb_to_tint(0xFFFFFF00)),
+        (toast.message.as_str(), 18.0, HUD_TINT_WHITE),
+    ] {
+        let runs = [HudStyledTextRun::plain(text)];
+        let geometry = hud_styled_text_pass_geometry(
+            &runs,
+            glyphs,
+            obfuscated_pool,
+            frame_index,
+            (x + 18.0, y),
+            0.0,
+            false,
+            tint,
+            None,
+            1.0,
+        );
+        push_hud_styled_text_pass(
+            vertices,
+            commands,
+            white_pixel,
+            font_atlas,
+            surface_size,
+            &geometry,
+        );
+    }
+}
+
+fn hud_system_toast_layout(
+    surface_size: PhysicalSize<u32>,
+    toast: &HudSystemToast,
+    glyphs: &HudFontGlyphMap,
+) -> (HudRect, f32, u32, u32) {
+    let text_width = hud_plain_text_width(&toast.title, glyphs)
+        .max(hud_plain_text_width(&toast.message, glyphs));
+    let width = 160u32.max(text_width.saturating_add(30));
+    let height = 32;
+    let x = surface_size.width as f32 - width as f32 * toast.visible_portion;
+    (absolute_hud_rect(x, 0.0, width, height), x, width, height)
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -11844,6 +11970,19 @@ fn sanitize_hud_stats_screen(screen: HudStatsScreen) -> Option<HudStatsScreen> {
     })
 }
 
+fn sanitize_hud_system_toast(toast: HudSystemToast) -> Option<HudSystemToast> {
+    if !toast.visible_portion.is_finite() {
+        return None;
+    }
+    let title = sanitize_hud_text_line(toast.title)?;
+    let message = sanitize_hud_text_line(toast.message)?;
+    (!title.is_empty() && !message.is_empty()).then_some(HudSystemToast {
+        title,
+        message,
+        visible_portion: toast.visible_portion.clamp(0.0, 1.0),
+    })
+}
+
 fn sanitize_hud_debug_options_screen(
     screen: HudDebugOptionsScreen,
 ) -> Option<HudDebugOptionsScreen> {
@@ -12240,6 +12379,71 @@ mod tests {
                 }
             ]
         ));
+    }
+
+    #[test]
+    fn system_toast_sanitizes_text_and_visible_portion() {
+        let toast = sanitize_hud_system_toast(HudSystemToast {
+            title: "Low\ndisk".to_string(),
+            message: "Might not\tsave".to_string(),
+            visible_portion: 2.0,
+        })
+        .unwrap();
+        assert_eq!(toast.title, "Lowdisk");
+        assert_eq!(toast.message, "Might notsave");
+        assert_eq!(toast.visible_portion, 1.0);
+        assert!(sanitize_hud_system_toast(HudSystemToast {
+            title: "Low disk".to_string(),
+            message: "Warning".to_string(),
+            visible_portion: f32::NAN,
+        })
+        .is_none());
+    }
+
+    #[test]
+    fn system_toast_uses_vanilla_width_height_and_right_edge_slide() {
+        let toast = HudSystemToast {
+            title: "Low disk space!".to_string(),
+            message: "Might not be able to save the world.".to_string(),
+            visible_portion: 1.0,
+        };
+        let (_, x, width, height) =
+            hud_system_toast_layout(PhysicalSize::new(320, 240), &toast, &HudFontGlyphMap::new());
+        assert_eq!(width, 160);
+        assert_eq!(height, 32);
+        assert_eq!(x, 160.0);
+
+        let (_, hidden_x, _, _) = hud_system_toast_layout(
+            PhysicalSize::new(320, 240),
+            &HudSystemToast {
+                visible_portion: 0.0,
+                ..toast
+            },
+            &HudFontGlyphMap::new(),
+        );
+        assert_eq!(hidden_x, 320.0);
+
+        let mut glyphs = HudFontGlyphMap::new();
+        glyphs.insert_first_wins(
+            'a',
+            HudAsciiGlyph {
+                advance: 6,
+                width: 5,
+                height: 8,
+                ..HudAsciiGlyph::default()
+            },
+        );
+        let (_, wide_x, wide_width, _) = hud_system_toast_layout(
+            PhysicalSize::new(320, 240),
+            &HudSystemToast {
+                title: "a".to_string(),
+                message: "a".repeat(30),
+                visible_portion: 1.0,
+            },
+            &glyphs,
+        );
+        assert_eq!(wide_width, 210);
+        assert_eq!(wide_x, 110.0);
     }
 
     #[test]

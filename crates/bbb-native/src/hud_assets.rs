@@ -56,6 +56,14 @@ fn try_load_hud_textures(renderer: &mut bbb_renderer::Renderer, roots: &PackRoot
         &tooltip_frame.rgba,
         tooltip_frame_scaling,
     )?;
+    let system_toast = hud_sprite(&sprites, "toast/system")?;
+    let system_toast_scaling = hud_nine_slice_scaling(system_toast)?;
+    renderer.upload_hud_system_toast_background(
+        system_toast.width,
+        system_toast.height,
+        &system_toast.rgba,
+        system_toast_scaling,
+    )?;
     let generic_container = gui_texture(
         roots,
         "textures/gui/container/generic_54.png",
@@ -1286,7 +1294,7 @@ fn hud_sprite<'a>(
 }
 
 /// Extracts a HUD sprite's nine-slice scaling from its `gui.scaling` mcmeta, failing loudly if the
-/// sprite is not declared `nine_slice` (the tooltip background/frame sprites always are).
+/// sprite is not declared `nine_slice` (the tooltip and system-toast sprites used here are).
 fn hud_nine_slice_scaling(sprite: &SpriteImage) -> Result<HudNineSliceScaling> {
     match sprite.gui_metadata.scaling {
         SpriteGuiScaling::NineSlice {
@@ -1378,6 +1386,14 @@ mod tests {
         assert!(err
             .to_string()
             .contains("minecraft:gui/sprites/hud/crosshair"));
+
+        let toast =
+            SpriteImage::new("minecraft:toast/system", 160, 64, vec![255; 160 * 64 * 4]).unwrap();
+        sprites.insert(toast.id.clone(), toast);
+        assert_eq!(
+            hud_sprite(&sprites, "toast/system").unwrap().id,
+            "minecraft:toast/system"
+        );
     }
 
     #[test]

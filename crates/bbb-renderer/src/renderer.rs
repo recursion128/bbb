@@ -492,6 +492,8 @@ pub struct Renderer {
     pub(super) hud_stats_sprites: [Option<HudSpriteGpu>; HudStatsSprite::COUNT],
     pub(super) hud_stats_scrollbar_sprites:
         [Option<HudNineSliceSprite>; HudStatsScrollbarSprite::COUNT],
+    pub(super) hud_system_toast_background: Option<HudNineSliceSprite>,
+    pub(super) hud_system_toast: Option<crate::hud::HudSystemToast>,
     pub(super) hud_debug_game_mode_switcher_background: Option<HudSpriteGpu>,
     pub(super) hud_debug_game_mode_switcher_slot: Option<HudSpriteGpu>,
     pub(super) hud_debug_game_mode_switcher_selection: Option<HudSpriteGpu>,
@@ -1594,6 +1596,8 @@ impl Renderer {
             hud_widget_button_highlighted: None,
             hud_stats_sprites: std::array::from_fn(|_| None),
             hud_stats_scrollbar_sprites: std::array::from_fn(|_| None),
+            hud_system_toast_background: None,
+            hud_system_toast: None,
             hud_debug_game_mode_switcher_background: None,
             hud_debug_game_mode_switcher_slot: None,
             hud_debug_game_mode_switcher_selection: None,

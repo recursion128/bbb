@@ -1160,11 +1160,12 @@
       },
       "runtime_side_effect": {
         "evidence": [
-          "crates/bbb-world/src/client/ui.rs#low_disk_space_warning_count",
+          "crates/bbb-native/src/runtime.rs#hud_low_disk_space_toast",
+          "crates/bbb-native/src/runtime/tests.rs#low_disk_space_toast_uses_ten_second_visible_window_and_square_slides",
+          "crates/bbb-renderer/src/hud.rs#push_hud_system_toast",
           "vanilla:net/minecraft/client/gui/components/toasts/SystemToast.java#onLowDiskSpace"
         ],
-        "gap": "docs/unsupported-features.md#screens-and-presentation",
-        "status": "partial"
+        "status": "complete"
       },
       "tests": {
         "evidence": [
@@ -1172,7 +1173,9 @@
           "crates/bbb-protocol/src/packets/client_ui/tests.rs#rejects_trailing_low_disk_space_warning_payload",
           "crates/bbb-world/src/client/ui.rs#tracks_client_ui_warnings_and_dialogs",
           "crates/bbb-net/src/probe/play.rs#probe_applies_client_ui_packets_to_world",
-          "crates/bbb-native/src/runtime/events/tests/session_protocol_events.rs#client_ui_events_update_world_and_world_counters"
+          "crates/bbb-native/src/runtime/events/tests/session_protocol_events.rs#client_ui_events_update_world_and_world_counters",
+          "crates/bbb-native/src/runtime/tests.rs#low_disk_space_warning_projects_one_server_driven_system_toast",
+          "crates/bbb-renderer/src/hud.rs#system_toast_uses_vanilla_width_height_and_right_edge_slide"
         ],
         "status": "complete"
       }

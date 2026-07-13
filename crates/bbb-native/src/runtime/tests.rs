@@ -7783,6 +7783,117 @@ fn hud_stats_screen_clamps_pixel_scroll_to_projected_content() {
 }
 
 #[test]
+fn low_disk_space_toast_uses_ten_second_visible_window_and_square_slides() {
+    let start = std::time::Instant::now();
+    let mut state = LowDiskSpaceToastState::default();
+    assert_eq!(state.update(0, start), None);
+    assert_eq!(
+        state.update(1, start),
+        Some(LowDiskSpaceToastFrame {
+            visible_portion: 0.0,
+            visibility_sound: Some("minecraft:ui.toast.in"),
+        })
+    );
+    assert_eq!(
+        state
+            .update(1, start + Duration::from_millis(300))
+            .map(|frame| frame.visible_portion),
+        Some(0.25)
+    );
+    assert_eq!(
+        state
+            .update(1, start + Duration::from_millis(600))
+            .map(|frame| frame.visible_portion),
+        Some(1.0)
+    );
+    assert_eq!(
+        state
+            .update(1, start + Duration::from_millis(10_599))
+            .map(|frame| frame.visible_portion),
+        Some(1.0)
+    );
+    assert_eq!(
+        state.update(1, start + Duration::from_millis(10_600)),
+        Some(LowDiskSpaceToastFrame {
+            visible_portion: 1.0,
+            visibility_sound: Some("minecraft:ui.toast.out"),
+        })
+    );
+    assert_eq!(
+        state
+            .update(1, start + Duration::from_millis(10_900))
+            .map(|frame| frame.visible_portion),
+        Some(0.75)
+    );
+    assert_eq!(state.update(1, start + Duration::from_millis(11_201)), None);
+
+    assert_eq!(
+        state.update(2, start + Duration::from_millis(12_000)),
+        Some(LowDiskSpaceToastFrame {
+            visible_portion: 0.0,
+            visibility_sound: Some("minecraft:ui.toast.in"),
+        })
+    );
+}
+
+#[test]
+fn low_disk_space_warning_projects_one_server_driven_system_toast() {
+    let start = std::time::Instant::now();
+    let mut world = WorldStore::new();
+    let mut state = LowDiskSpaceToastState::default();
+
+    assert_eq!(
+        hud_low_disk_space_toast(&mut state, &world, None, start),
+        (None, None)
+    );
+
+    world.apply_low_disk_space_warning();
+    let (toast, sound) = hud_low_disk_space_toast(&mut state, &world, None, start);
+    assert_eq!(
+        toast,
+        Some(HudSystemToast {
+            title: "Low disk space!".to_string(),
+            message: "Might not be able to save the world.".to_string(),
+            visible_portion: 0.0,
+        })
+    );
+    assert_eq!(
+        sound.and_then(|sound| sound.sound.location),
+        Some("minecraft:ui.toast.in".to_string())
+    );
+    assert_eq!(
+        hud_low_disk_space_toast(&mut state, &world, None, start + Duration::from_millis(600),)
+            .0
+            .map(|toast| toast.visible_portion),
+        Some(1.0)
+    );
+
+    world.apply_low_disk_space_warning();
+    assert_eq!(
+        hud_low_disk_space_toast(
+            &mut state,
+            &world,
+            None,
+            start + Duration::from_millis(10_500),
+        )
+        .0
+        .map(|toast| toast.visible_portion),
+        Some(1.0)
+    );
+    assert_eq!(
+        hud_low_disk_space_toast(
+            &mut state,
+            &world,
+            None,
+            start + Duration::from_millis(20_499),
+        )
+        .0
+        .map(|toast| toast.visible_portion),
+        Some(1.0)
+    );
+}
+
+#[test]
 fn vanilla_stat_formatters_preserve_thresholds_and_grouping() {
     assert_eq!(format_vanilla_stat_value("DEFAULT", 1_234_567), "1,234,567");
     assert_eq!(format_vanilla_stat_value("DIVIDE_BY_TEN", 123), "12.30");
