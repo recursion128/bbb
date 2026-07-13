@@ -3189,7 +3189,7 @@ fn hud_pause_screen(
 }
 
 fn hud_stats_screen(
-    input: &ClientInputState,
+    input: &mut ClientInputState,
     world: &WorldStore,
     item_runtime: Option<&NativeItemRuntime>,
     terrain_textures: &TerrainTextureState,
@@ -3289,6 +3289,9 @@ fn hud_stats_screen(
             2 if !is_loading && mobs_tab_enabled => 2,
             _ => 0,
         };
+        if active_tab != input.stats_screen_tab() {
+            input.reset_stats_screen_scroll();
+        }
         let row_height = match active_tab {
             1 => 22,
             2 => 36,
@@ -3299,31 +3302,43 @@ fn hud_stats_screen(
             0 => general_rows,
             _ => Vec::new(),
         };
-        let visible_rows = stats_screen_visible_rows(surface_size, row_height, active_tab == 1);
         let total_rows = if active_tab == 1 {
             item_rows.len()
         } else {
             rows.len()
         };
-        let scroll_row = input
-            .stats_screen_scroll_row()
-            .min(total_rows.saturating_sub(visible_rows));
-        let rows = if is_loading || active_tab == 1 {
-            Vec::new()
+        let viewport_height = stats_screen_viewport_height(surface_size, row_height);
+        let content_entries = if is_loading {
+            0
         } else {
-            rows.into_iter()
-                .skip(scroll_row)
-                .take(visible_rows)
-                .collect()
+            total_rows.saturating_add(usize::from(active_tab == 1))
         };
-        item_rows = if active_tab == 1 {
-            item_rows
-                .into_iter()
-                .skip(scroll_row)
-                .take(visible_rows)
-                .collect()
+        let content_height = if content_entries == 0 {
+            0
         } else {
-            Vec::new()
+            i32::try_from(content_entries)
+                .unwrap_or(i32::MAX / row_height)
+                .saturating_mul(row_height)
+                .saturating_add(4)
+        };
+        let max_scroll_amount = content_height.saturating_sub(viewport_height).max(0);
+        let scroller_height =
+            stats_screen_scroller_height(viewport_height, content_height, max_scroll_amount);
+        input.sync_stats_screen_scroll_metrics(max_scroll_amount, scroller_height);
+        let scroll_amount = input.stats_screen_scroll_amount() as i32;
+        let scroll_row =
+            stats_screen_first_data_row(active_tab, scroll_amount, row_height).min(total_rows);
+        let first_row_offset =
+            stats_screen_first_data_row_offset(active_tab, scroll_row, scroll_amount, row_height);
+        let visible_rows = if is_loading {
+            0
+        } else {
+            stats_screen_projected_row_count(
+                total_rows.saturating_sub(scroll_row),
+                viewport_height,
+                first_row_offset,
+                row_height,
+            )
         };
         let (item_sort_column, item_sort_order) = input.stats_screen_item_sort();
         let item_column_labels = [
@@ -3343,6 +3358,23 @@ fn hud_stats_screen(
                 .or_else(|| item_hovered_column.map(|column| item_column_labels[column].clone()))
         } else {
             None
+        };
+        let rows = if is_loading || active_tab == 1 {
+            Vec::new()
+        } else {
+            rows.into_iter()
+                .skip(scroll_row)
+                .take(visible_rows)
+                .collect()
+        };
+        item_rows = if active_tab == 1 {
+            item_rows
+                .into_iter()
+                .skip(scroll_row)
+                .take(visible_rows)
+                .collect()
+        } else {
+            Vec::new()
         };
         let tooltip_text = item_tooltip_text.or_else(|| {
             (!is_loading)
@@ -3388,6 +3420,9 @@ fn hud_stats_screen(
             item_sort_order,
             item_hovered_column,
             scroll_row,
+            scroll_amount,
+            max_scroll_amount,
+            scroller_height,
             total_rows,
             visible_rows,
             row_height,
@@ -3595,19 +3630,74 @@ fn stats_item_rows(
     rows.into_iter().map(|candidate| candidate.row).collect()
 }
 
-fn stats_screen_visible_rows(
+fn stats_screen_viewport_height(
     surface_size: winit::dpi::PhysicalSize<u32>,
     row_height: i32,
-    has_header: bool,
-) -> usize {
+) -> i32 {
     const LIST_TOP: i32 = 46;
     const FOOTER_HEIGHT: i32 = 33;
     let height = i32::try_from(surface_size.height).unwrap_or(i32::MAX);
-    let header_height = i32::from(has_header) * 22;
-    usize::try_from(
-        (height - FOOTER_HEIGHT - LIST_TOP - header_height).max(row_height) / row_height,
-    )
-    .unwrap_or(1)
+    (height - FOOTER_HEIGHT - LIST_TOP).max(row_height)
+}
+
+fn stats_screen_scroller_height(
+    viewport_height: i32,
+    content_height: i32,
+    max_scroll_amount: i32,
+) -> i32 {
+    if max_scroll_amount == 0 || content_height <= 0 {
+        return 0;
+    }
+    viewport_height
+        .saturating_mul(viewport_height)
+        .checked_div(content_height)
+        .unwrap_or(viewport_height)
+        .clamp(32, (viewport_height - 8).max(32))
+}
+
+fn stats_screen_first_data_row(active_tab: usize, scroll_amount: i32, row_height: i32) -> usize {
+    let entry =
+        usize::try_from(scroll_amount.saturating_sub(2).max(0) / row_height).unwrap_or_default();
+    if active_tab == 1 {
+        entry.saturating_sub(1)
+    } else {
+        entry
+    }
+}
+
+fn stats_screen_first_data_row_offset(
+    active_tab: usize,
+    scroll_row: usize,
+    scroll_amount: i32,
+    row_height: i32,
+) -> i32 {
+    let header_height = i32::from(active_tab == 1) * row_height;
+    2i32.saturating_add(header_height)
+        .saturating_add(
+            i32::try_from(scroll_row)
+                .unwrap_or(i32::MAX / row_height)
+                .saturating_mul(row_height),
+        )
+        .saturating_sub(scroll_amount)
+}
+
+fn stats_screen_projected_row_count(
+    remaining_rows: usize,
+    viewport_height: i32,
+    first_row_offset: i32,
+    row_height: i32,
+) -> usize {
+    if remaining_rows == 0 || first_row_offset >= viewport_height {
+        return 0;
+    }
+    let visible_height = viewport_height.saturating_sub(first_row_offset);
+    let count = visible_height
+        .saturating_add(row_height - 1)
+        .checked_div(row_height)
+        .unwrap_or_default();
+    usize::try_from(count)
+        .unwrap_or(remaining_rows)
+        .min(remaining_rows)
 }
 
 fn format_vanilla_stat_value(formatter: &str, value: i32) -> String {

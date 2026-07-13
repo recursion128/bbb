@@ -485,7 +485,11 @@ fn main() -> Result<()> {
                     if input.handle_debug_pause_screen_cursor_moved(cursor_position) {
                         return;
                     }
-                    if input.handle_stats_screen_cursor_moved(&world, cursor_position) {
+                    if input.handle_stats_screen_cursor_moved(
+                        &world,
+                        cursor_position,
+                        window.inner_size(),
+                    ) {
                         return;
                     }
                     if world.advancements_screen_is_open() {

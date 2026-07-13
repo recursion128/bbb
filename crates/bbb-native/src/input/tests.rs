@@ -20082,9 +20082,11 @@ fn stats_screen_done_button_closes_stats_screen() {
     let surface = PhysicalSize::new(320, 240);
     assert!(world.open_stats_screen());
 
-    assert!(
-        input.handle_stats_screen_cursor_moved(&world, Some(PhysicalPosition::new(70.0, 223.0)))
-    );
+    assert!(input.handle_stats_screen_cursor_moved(
+        &world,
+        Some(PhysicalPosition::new(70.0, 223.0)),
+        surface,
+    ));
     assert_eq!(input.stats_screen_cursor_position(), Some((70, 223)));
     assert!(input.handle_stats_screen_mouse_input(
         &mut counters,
@@ -20101,20 +20103,90 @@ fn stats_screen_done_button_closes_stats_screen() {
 }
 
 #[test]
-fn stats_screen_mouse_wheel_scrolls_general_rows_and_resets_on_close() {
+fn stats_screen_wheel_uses_half_row_pixels_and_resets_on_close() {
     let mut input = ClientInputState::new(true);
     let mut counters = NetCounters::default();
     let mut world = WorldStore::new();
     assert!(world.open_stats_screen());
+    input.sync_stats_screen_scroll_metrics(100, 32);
 
     assert!(input.handle_stats_screen_mouse_wheel(&world, MouseScrollDelta::LineDelta(0.0, -3.0),));
-    assert_eq!(input.stats_screen_scroll_row(), 3);
+    assert_eq!(input.stats_screen_scroll_amount(), 21.0);
+    assert!(input.handle_stats_screen_mouse_wheel(
+        &world,
+        MouseScrollDelta::PixelDelta(PhysicalPosition::new(0.0, -2.5)),
+    ));
+    assert_eq!(input.stats_screen_scroll_amount(), 23.5);
     assert!(input.handle_stats_screen_mouse_wheel(&world, MouseScrollDelta::LineDelta(0.0, 1.0),));
-    assert_eq!(input.stats_screen_scroll_row(), 2);
+    assert_eq!(input.stats_screen_scroll_amount(), 16.5);
+
+    input.sync_stats_screen_scroll_metrics(10, 32);
+    assert_eq!(input.stats_screen_scroll_amount(), 10.0);
+    assert!(input.handle_stats_screen_mouse_wheel(&world, MouseScrollDelta::LineDelta(0.0, 10.0),));
+    assert_eq!(input.stats_screen_scroll_amount(), 0.0);
 
     close_stats_screen(&mut input, &mut counters, &mut world, &None);
-    assert_eq!(input.stats_screen_scroll_row(), 0);
+    assert_eq!(input.stats_screen_scroll_amount(), 0.0);
     assert!(!input.handle_stats_screen_mouse_wheel(&world, MouseScrollDelta::LineDelta(0.0, -1.0),));
+}
+
+#[test]
+fn stats_screen_scrollbar_drag_tracks_pixel_scroll_bounds() {
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+    let surface = PhysicalSize::new(320, 240);
+    assert!(world.open_stats_screen());
+    input.sync_stats_screen_scroll_metrics(140, 80);
+    assert!(input.handle_stats_screen_cursor_moved(
+        &world,
+        Some(PhysicalPosition::new(308.0, 60.0)),
+        surface,
+    ));
+    assert!(input.handle_stats_screen_mouse_input(
+        &mut counters,
+        &mut world,
+        &None,
+        MouseButton::Left,
+        ElementState::Pressed,
+        Some(PhysicalPosition::new(308.0, 60.0)),
+        surface,
+    ));
+
+    assert!(input.handle_stats_screen_cursor_moved(
+        &world,
+        Some(PhysicalPosition::new(308.0, 70.0)),
+        surface,
+    ));
+    assert!((input.stats_screen_scroll_amount() - 17.283_950_617).abs() < 1e-6);
+    assert!(input.handle_stats_screen_cursor_moved(
+        &world,
+        Some(PhysicalPosition::new(308.0, 20.0)),
+        surface,
+    ));
+    assert_eq!(input.stats_screen_scroll_amount(), 0.0);
+    assert!(input.handle_stats_screen_cursor_moved(
+        &world,
+        Some(PhysicalPosition::new(308.0, 220.0)),
+        surface,
+    ));
+    assert_eq!(input.stats_screen_scroll_amount(), 140.0);
+
+    assert!(input.handle_stats_screen_mouse_input(
+        &mut counters,
+        &mut world,
+        &None,
+        MouseButton::Left,
+        ElementState::Released,
+        Some(PhysicalPosition::new(308.0, 220.0)),
+        surface,
+    ));
+    assert!(input.handle_stats_screen_cursor_moved(
+        &world,
+        Some(PhysicalPosition::new(308.0, 100.0)),
+        surface,
+    ));
+    assert_eq!(input.stats_screen_scroll_amount(), 140.0);
 }
 
 #[test]
@@ -20138,20 +20210,28 @@ fn stats_screen_tab_hitboxes_match_renderer_column_widths() {
     );
     assert_eq!(stats_screen_tab_at_position(Some((20, 42)), surface), None);
     assert_eq!(
-        stats_screen_item_column_at_position(Some((77, 47)), surface),
+        stats_screen_item_column_at_position(Some((77, 49)), surface, 0),
         Some(0)
     );
     assert_eq!(
-        stats_screen_item_column_at_position(Some((94, 64)), surface),
+        stats_screen_item_column_at_position(Some((94, 66)), surface, 0),
         Some(0)
     );
     assert_eq!(
-        stats_screen_item_column_at_position(Some((95, 50)), surface),
+        stats_screen_item_column_at_position(Some((95, 50)), surface, 0),
         None
     );
     assert_eq!(
-        stats_screen_item_column_at_position(Some((157, 50)), surface),
+        stats_screen_item_column_at_position(Some((157, 50)), surface, 0),
         Some(2)
+    );
+    assert_eq!(
+        stats_screen_item_column_at_position(Some((157, 50)), surface, 10),
+        Some(2)
+    );
+    assert_eq!(
+        stats_screen_item_column_at_position(Some((157, 50)), surface, 22),
+        None
     );
 }
 

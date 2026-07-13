@@ -488,6 +488,8 @@ const STATS_SCREEN_TAB_Y: i32 = 22;
 const STATS_SCREEN_TAB_HEIGHT: i32 = 20;
 const STATS_SCREEN_LIST_WIDTH: i32 = 280;
 const STATS_SCREEN_LIST_TOP: i32 = 46;
+const STATS_SCREEN_LIST_ENTRY_PADDING: i32 = 2;
+const STATS_SCREEN_SCROLLBAR_WIDTH: i32 = 6;
 const STATS_SCREEN_ITEM_COLUMN_FIRST_X: i32 = 57;
 const STATS_SCREEN_ITEM_COLUMN_STRIDE: i32 = 40;
 const STATS_SCREEN_ITEM_COLUMN_BUTTON_SIZE: i32 = 18;
@@ -726,7 +728,10 @@ pub(crate) struct ClientInputState {
     advancement_mouse_left_down: bool,
     advancement_is_scrolling: bool,
     stats_screen_cursor_position: Option<(i32, i32)>,
-    stats_screen_scroll_row: usize,
+    stats_screen_scroll_amount: f64,
+    stats_screen_max_scroll_amount: f64,
+    stats_screen_scroller_height: i32,
+    stats_screen_scrolling: bool,
     stats_screen_tab: usize,
     stats_screen_item_sort_column: Option<usize>,
     stats_screen_item_sort_order: i8,
@@ -1908,8 +1913,28 @@ impl ClientInputState {
         self.stats_screen_cursor_position
     }
 
-    pub(crate) fn stats_screen_scroll_row(&self) -> usize {
-        self.stats_screen_scroll_row
+    pub(crate) fn stats_screen_scroll_amount(&self) -> f64 {
+        self.stats_screen_scroll_amount
+    }
+
+    pub(crate) fn sync_stats_screen_scroll_metrics(
+        &mut self,
+        max_scroll_amount: i32,
+        scroller_height: i32,
+    ) {
+        self.stats_screen_max_scroll_amount = f64::from(max_scroll_amount.max(0));
+        self.stats_screen_scroller_height = scroller_height.max(0);
+        self.stats_screen_scroll_amount = self
+            .stats_screen_scroll_amount
+            .clamp(0.0, self.stats_screen_max_scroll_amount);
+        if self.stats_screen_max_scroll_amount == 0.0 {
+            self.stats_screen_scrolling = false;
+        }
+    }
+
+    pub(crate) fn reset_stats_screen_scroll(&mut self) {
+        self.stats_screen_scroll_amount = 0.0;
+        self.stats_screen_scrolling = false;
     }
 
     pub(crate) fn stats_screen_tab(&self) -> usize {
@@ -1936,6 +1961,7 @@ impl ClientInputState {
                 stats_screen_item_column_at_position(
                     self.stats_screen_cursor_position,
                     surface_size,
+                    self.stats_screen_scroll_amount as i32,
                 )
             })
             .flatten()
@@ -1958,16 +1984,22 @@ impl ClientInputState {
         let (mouse_x, mouse_y) = self.stats_screen_cursor_position?;
         let width = i32::try_from(surface_size.width).unwrap_or(i32::MAX);
         let list_x = width / 2 - STATS_SCREEN_LIST_WIDTH / 2;
-        let rows_y = STATS_SCREEN_LIST_TOP + 22;
+        let list_bottom = i32::try_from(surface_size.height)
+            .unwrap_or(i32::MAX)
+            .saturating_sub(STATS_SCREEN_FOOTER_HEIGHT);
         if !(list_x..list_x + STATS_SCREEN_ITEM_COLUMN_BUTTON_SIZE).contains(&mouse_x)
-            || mouse_y < rows_y
+            || !(STATS_SCREEN_LIST_TOP..list_bottom).contains(&mouse_y)
         {
             return None;
         }
-        let relative_y = mouse_y - rows_y;
-        let row = relative_y / 22;
-        (relative_y % 22 < STATS_SCREEN_ITEM_COLUMN_BUTTON_SIZE)
-            .then(|| usize::try_from(row).ok())
+        let content_y = mouse_y - STATS_SCREEN_LIST_TOP - STATS_SCREEN_LIST_ENTRY_PADDING
+            + self.stats_screen_scroll_amount as i32;
+        if content_y < 0 {
+            return None;
+        }
+        let entry = content_y / 22;
+        (entry > 0 && content_y % 22 < STATS_SCREEN_ITEM_COLUMN_BUTTON_SIZE)
+            .then(|| usize::try_from(entry - 1).ok())
             .flatten()
     }
 
@@ -1979,23 +2011,13 @@ impl ClientInputState {
         if !world.stats_screen_is_open() {
             return false;
         }
-        let delta_rows = match delta {
-            MouseScrollDelta::LineDelta(_, y) => y.round() as i32,
-            MouseScrollDelta::PixelDelta(position) => {
-                (position.y / f64::from(STATS_SCREEN_ROW_HEIGHT))
-                    .round()
-                    .clamp(f64::from(i32::MIN), f64::from(i32::MAX)) as i32
-            }
+        let row_height = stats_screen_row_height(self.stats_screen_tab);
+        let delta_pixels = match delta {
+            MouseScrollDelta::LineDelta(_, y) => f64::from(y) * f64::from((row_height / 2).max(1)),
+            MouseScrollDelta::PixelDelta(position) => position.y,
         };
-        if delta_rows < 0 {
-            self.stats_screen_scroll_row = self
-                .stats_screen_scroll_row
-                .saturating_add(delta_rows.unsigned_abs() as usize);
-        } else if delta_rows > 0 {
-            self.stats_screen_scroll_row = self
-                .stats_screen_scroll_row
-                .saturating_sub(delta_rows as usize);
-        }
+        self.stats_screen_scroll_amount = (self.stats_screen_scroll_amount - delta_pixels)
+            .clamp(0.0, self.stats_screen_max_scroll_amount);
         true
     }
 
@@ -2003,11 +2025,34 @@ impl ClientInputState {
         &mut self,
         world: &WorldStore,
         cursor_position: Option<PhysicalPosition<f64>>,
+        surface_size: PhysicalSize<u32>,
     ) -> bool {
         if !world.stats_screen_is_open() {
             return false;
         }
+        let previous = self.stats_screen_cursor_position;
         self.stats_screen_cursor_position = cursor_position.and_then(physical_position_floor_i32);
+        if self.stats_screen_scrolling {
+            let Some((_, mouse_y)) = self.stats_screen_cursor_position else {
+                return true;
+            };
+            let list_bottom = i32::try_from(surface_size.height)
+                .unwrap_or(i32::MAX)
+                .saturating_sub(STATS_SCREEN_FOOTER_HEIGHT);
+            if mouse_y < STATS_SCREEN_LIST_TOP {
+                self.stats_screen_scroll_amount = 0.0;
+            } else if mouse_y > list_bottom {
+                self.stats_screen_scroll_amount = self.stats_screen_max_scroll_amount;
+            } else if let Some((_, previous_y)) = previous {
+                let viewport_height = (list_bottom - STATS_SCREEN_LIST_TOP).max(1);
+                let thumb_travel = (viewport_height - self.stats_screen_scroller_height).max(1);
+                let drag_scale =
+                    (self.stats_screen_max_scroll_amount / f64::from(thumb_travel)).max(1.0);
+                self.stats_screen_scroll_amount = (self.stats_screen_scroll_amount
+                    + f64::from(mouse_y - previous_y) * drag_scale)
+                    .clamp(0.0, self.stats_screen_max_scroll_amount);
+            }
+        }
         true
     }
 
@@ -2025,12 +2070,22 @@ impl ClientInputState {
             return false;
         }
         self.stats_screen_cursor_position = cursor_position.and_then(physical_position_floor_i32);
+        if matches!((button, state), (MouseButton::Left, ElementState::Released)) {
+            self.stats_screen_scrolling = false;
+        }
         if matches!((button, state), (MouseButton::Left, ElementState::Pressed)) {
+            if self.stats_screen_max_scroll_amount > 0.0
+                && stats_screen_scrollbar_contains(self.stats_screen_cursor_position, surface_size)
+            {
+                self.stats_screen_scrolling = true;
+                return true;
+            }
             let item_column = (self.stats_screen_tab == 1 && !world.stats_screen_is_loading())
                 .then(|| {
                     stats_screen_item_column_at_position(
                         self.stats_screen_cursor_position,
                         surface_size,
+                        self.stats_screen_scroll_amount as i32,
                     )
                 })
                 .flatten();
@@ -2053,13 +2108,13 @@ impl ClientInputState {
                         self.stats_screen_item_effective_sort = Some((column, -1));
                     }
                 }
-                self.stats_screen_scroll_row = 0;
+                self.stats_screen_scroll_amount = 0.0;
             } else if let Some(tab) =
                 stats_screen_tab_at_position(self.stats_screen_cursor_position, surface_size)
             {
                 if stats_screen_tab_is_enabled(tab, world) {
                     self.stats_screen_tab = tab;
-                    self.stats_screen_scroll_row = 0;
+                    self.stats_screen_scroll_amount = 0.0;
                 }
             } else if stats_screen_done_button_contains(
                 self.stats_screen_cursor_position,
@@ -3574,11 +3629,19 @@ fn stats_screen_tab_at_position(
 fn stats_screen_item_column_at_position(
     cursor_position: Option<(i32, i32)>,
     surface_size: PhysicalSize<u32>,
+    scroll_amount: i32,
 ) -> Option<usize> {
     let (mouse_x, mouse_y) = cursor_position?;
-    if !(STATS_SCREEN_LIST_TOP + 1
-        ..STATS_SCREEN_LIST_TOP + 1 + STATS_SCREEN_ITEM_COLUMN_BUTTON_SIZE)
-        .contains(&mouse_y)
+    let list_bottom = i32::try_from(surface_size.height)
+        .unwrap_or(i32::MAX)
+        .saturating_sub(STATS_SCREEN_FOOTER_HEIGHT);
+    if !(STATS_SCREEN_LIST_TOP..list_bottom).contains(&mouse_y)
+        || !(STATS_SCREEN_LIST_TOP + STATS_SCREEN_LIST_ENTRY_PADDING + 1
+            ..STATS_SCREEN_LIST_TOP
+                + STATS_SCREEN_LIST_ENTRY_PADDING
+                + 1
+                + STATS_SCREEN_ITEM_COLUMN_BUTTON_SIZE)
+            .contains(&(mouse_y.saturating_add(scroll_amount)))
     {
         return None;
     }
@@ -3590,6 +3653,29 @@ fn stats_screen_item_column_at_position(
             + i32::try_from(*column).unwrap_or(i32::MAX) * STATS_SCREEN_ITEM_COLUMN_STRIDE;
         (x..x + STATS_SCREEN_ITEM_COLUMN_BUTTON_SIZE).contains(&mouse_x)
     })
+}
+
+fn stats_screen_row_height(tab: usize) -> i32 {
+    match tab {
+        1 => 22,
+        2 => 36,
+        _ => STATS_SCREEN_ROW_HEIGHT,
+    }
+}
+
+fn stats_screen_scrollbar_contains(
+    cursor_position: Option<(i32, i32)>,
+    surface_size: PhysicalSize<u32>,
+) -> bool {
+    let Some((mouse_x, mouse_y)) = cursor_position else {
+        return false;
+    };
+    let width = i32::try_from(surface_size.width).unwrap_or(i32::MAX);
+    let height = i32::try_from(surface_size.height).unwrap_or(i32::MAX);
+    let x = width / 2 + STATS_SCREEN_LIST_WIDTH / 2 + STATS_SCREEN_SCROLLBAR_WIDTH + 2;
+    (x..=x + STATS_SCREEN_SCROLLBAR_WIDTH).contains(&mouse_x)
+        && (STATS_SCREEN_LIST_TOP..height.saturating_sub(STATS_SCREEN_FOOTER_HEIGHT))
+            .contains(&mouse_y)
 }
 
 fn debug_options_scroll_delta_rows(delta: MouseScrollDelta) -> i32 {
@@ -7369,7 +7455,8 @@ fn handle_stats_screen_key(
             });
             if let Some(tab) = requested.filter(|tab| stats_screen_tab_is_enabled(*tab, world)) {
                 input.stats_screen_tab = tab;
-                input.stats_screen_scroll_row = 0;
+                input.stats_screen_scroll_amount = 0.0;
+                input.stats_screen_scrolling = false;
             }
         }
     }
@@ -7468,7 +7555,10 @@ fn open_stats_screen(
     if world.open_stats_screen() {
         release_active_input(input, world, counters, net_commands);
         input.stats_screen_cursor_position = None;
-        input.stats_screen_scroll_row = 0;
+        input.stats_screen_scroll_amount = 0.0;
+        input.stats_screen_max_scroll_amount = 0.0;
+        input.stats_screen_scroller_height = 0;
+        input.stats_screen_scrolling = false;
         input.stats_screen_tab = 0;
         input.stats_screen_item_sort_column = None;
         input.stats_screen_item_sort_order = 0;
@@ -7486,7 +7576,10 @@ fn close_stats_screen(
     if world.close_stats_screen() {
         release_active_input(input, world, counters, net_commands);
         input.stats_screen_cursor_position = None;
-        input.stats_screen_scroll_row = 0;
+        input.stats_screen_scroll_amount = 0.0;
+        input.stats_screen_max_scroll_amount = 0.0;
+        input.stats_screen_scroller_height = 0;
+        input.stats_screen_scrolling = false;
         input.stats_screen_tab = 0;
         input.stats_screen_item_sort_column = None;
         input.stats_screen_item_sort_order = 0;

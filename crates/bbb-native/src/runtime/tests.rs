@@ -7410,7 +7410,7 @@ fn hud_stats_screen_waits_for_response_then_projects_general_item_and_mob_rows()
 
     let terrain_textures = TerrainTextureState::default();
     assert!(hud_stats_screen(
-        &input,
+        &mut input,
         &world,
         Some(&item_runtime),
         &terrain_textures,
@@ -7422,11 +7422,12 @@ fn hud_stats_screen_waits_for_response_then_projects_general_item_and_mob_rows()
     assert!(world.open_stats_screen());
     assert!(input.handle_stats_screen_cursor_moved(
         &world,
-        Some(winit::dpi::PhysicalPosition::new(70.0, 223.0))
+        Some(winit::dpi::PhysicalPosition::new(70.0, 223.0)),
+        surface,
     ));
 
     let screen = hud_stats_screen(
-        &input,
+        &mut input,
         &world,
         Some(&item_runtime),
         &terrain_textures,
@@ -7439,6 +7440,9 @@ fn hud_stats_screen_waits_for_response_then_projects_general_item_and_mob_rows()
     assert_eq!(screen.loading_text, "Downloading statistics...");
     assert!(screen.is_loading);
     assert!(screen.rows.is_empty());
+    assert_eq!(screen.scroll_amount, 0);
+    assert_eq!(screen.max_scroll_amount, 0);
+    assert_eq!(screen.visible_rows, 0);
     assert!(screen.done_hovered);
 
     world.apply_award_stats(AwardStats {
@@ -7484,7 +7488,7 @@ fn hud_stats_screen_waits_for_response_then_projects_general_item_and_mob_rows()
         ],
     });
     let screen = hud_stats_screen(
-        &input,
+        &mut input,
         &world,
         Some(&item_runtime),
         &terrain_textures,
@@ -7495,7 +7499,7 @@ fn hud_stats_screen_waits_for_response_then_projects_general_item_and_mob_rows()
     .expect("stats screen");
     assert!(!screen.is_loading);
     assert_eq!(screen.total_rows, 77);
-    assert_eq!(screen.visible_rows, 80);
+    assert_eq!(screen.visible_rows, 77);
     assert!(screen
         .rows
         .iter()
@@ -7512,7 +7516,7 @@ fn hud_stats_screen_waits_for_response_then_projects_general_item_and_mob_rows()
         surface,
     ));
     let item_screen = hud_stats_screen(
-        &input,
+        &mut input,
         &world,
         Some(&item_runtime),
         &terrain_textures,
@@ -7539,10 +7543,11 @@ fn hud_stats_screen_waits_for_response_then_projects_general_item_and_mob_rows()
     }));
     assert!(input.handle_stats_screen_cursor_moved(
         &world,
-        Some(winit::dpi::PhysicalPosition::new(25.0, 72.0))
+        Some(winit::dpi::PhysicalPosition::new(25.0, 72.0)),
+        surface,
     ));
     let hovered_item_screen = hud_stats_screen(
-        &input,
+        &mut input,
         &world,
         Some(&item_runtime),
         &terrain_textures,
@@ -7569,7 +7574,7 @@ fn hud_stats_screen_waits_for_response_then_projects_general_item_and_mob_rows()
         surface,
     ));
     let item_screen = hud_stats_screen(
-        &input,
+        &mut input,
         &world,
         Some(&item_runtime),
         &terrain_textures,
@@ -7599,7 +7604,7 @@ fn hud_stats_screen_waits_for_response_then_projects_general_item_and_mob_rows()
         surface,
     ));
     let item_screen = hud_stats_screen(
-        &input,
+        &mut input,
         &world,
         Some(&item_runtime),
         &terrain_textures,
@@ -7621,7 +7626,7 @@ fn hud_stats_screen_waits_for_response_then_projects_general_item_and_mob_rows()
         surface,
     ));
     let item_screen = hud_stats_screen(
-        &input,
+        &mut input,
         &world,
         Some(&item_runtime),
         &terrain_textures,
@@ -7644,7 +7649,7 @@ fn hud_stats_screen_waits_for_response_then_projects_general_item_and_mob_rows()
         surface,
     ));
     let screen = hud_stats_screen(
-        &input,
+        &mut input,
         &world,
         Some(&item_runtime),
         &terrain_textures,
@@ -7674,11 +7679,12 @@ fn hud_stats_screen_reports_empty_tab_tooltip_after_response() {
     world.apply_award_stats(AwardStats { stats: Vec::new() });
     assert!(input.handle_stats_screen_cursor_moved(
         &world,
-        Some(winit::dpi::PhysicalPosition::new(160.0, 30.0))
+        Some(winit::dpi::PhysicalPosition::new(160.0, 30.0)),
+        surface,
     ));
 
     let screen = hud_stats_screen(
-        &input,
+        &mut input,
         &world,
         None,
         &TerrainTextureState::default(),
@@ -7693,6 +7699,87 @@ fn hud_stats_screen_reports_empty_tab_tooltip_after_response() {
         screen.tooltip.as_ref().map(|tooltip| tooltip.text.as_str()),
         Some("No statistics found")
     );
+}
+
+#[test]
+fn stats_screen_pixel_projection_scrolls_item_header_as_first_entry() {
+    let surface = winit::dpi::PhysicalSize::new(320, 240);
+    assert_eq!(stats_screen_viewport_height(surface, 14), 161);
+    assert_eq!(stats_screen_scroller_height(161, 280, 119), 92);
+
+    assert_eq!(stats_screen_first_data_row(0, 7, 14), 0);
+    assert_eq!(stats_screen_first_data_row_offset(0, 0, 7, 14), -5);
+    assert_eq!(stats_screen_projected_row_count(20, 161, -5, 14), 12);
+
+    assert_eq!(stats_screen_first_data_row(1, 11, 22), 0);
+    assert_eq!(stats_screen_first_data_row_offset(1, 0, 11, 22), 13);
+    assert_eq!(stats_screen_first_data_row(1, 30, 22), 0);
+    assert_eq!(stats_screen_first_data_row_offset(1, 0, 30, 22), -6);
+    assert_eq!(stats_screen_first_data_row(1, 44, 22), 0);
+    assert_eq!(stats_screen_first_data_row_offset(1, 0, 44, 22), -20);
+    assert_eq!(stats_screen_first_data_row(1, 46, 22), 1);
+    assert_eq!(stats_screen_first_data_row_offset(1, 1, 46, 22), 0);
+}
+
+#[test]
+fn hud_stats_screen_clamps_pixel_scroll_to_projected_content() {
+    let mut input = ClientInputState::new(true);
+    let mut world = WorldStore::new();
+    let surface = winit::dpi::PhysicalSize::new(320, 240);
+    assert!(world.open_stats_screen());
+    world.apply_award_stats(AwardStats { stats: Vec::new() });
+
+    let screen = hud_stats_screen(
+        &mut input,
+        &world,
+        None,
+        &TerrainTextureState::default(),
+        ItemModelKeybindContext::default(),
+        0.0,
+        surface,
+    )
+    .unwrap();
+    assert_eq!(screen.total_rows, 77);
+    assert_eq!(screen.max_scroll_amount, 921);
+    assert_eq!(screen.scroller_height, 32);
+
+    assert!(input.handle_stats_screen_mouse_wheel(
+        &world,
+        winit::event::MouseScrollDelta::LineDelta(0.0, -1.0),
+    ));
+    let screen = hud_stats_screen(
+        &mut input,
+        &world,
+        None,
+        &TerrainTextureState::default(),
+        ItemModelKeybindContext::default(),
+        0.0,
+        surface,
+    )
+    .unwrap();
+    assert_eq!(screen.scroll_amount, 7);
+    assert_eq!(screen.scroll_row, 0);
+    assert_eq!(screen.visible_rows, 12);
+
+    assert!(input.handle_stats_screen_mouse_wheel(
+        &world,
+        winit::event::MouseScrollDelta::PixelDelta(winit::dpi::PhysicalPosition::new(
+            0.0, -10_000.0,
+        )),
+    ));
+    let screen = hud_stats_screen(
+        &mut input,
+        &world,
+        None,
+        &TerrainTextureState::default(),
+        ItemModelKeybindContext::default(),
+        0.0,
+        surface,
+    )
+    .unwrap();
+    assert_eq!(screen.scroll_amount, 921);
+    assert_eq!(screen.scroll_row, 65);
+    assert_eq!(screen.rows.len(), 12);
 }
 
 #[test]

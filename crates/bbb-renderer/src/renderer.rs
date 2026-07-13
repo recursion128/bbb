@@ -62,7 +62,7 @@ use crate::{
         create_hud_sprite_gpu, HudAdvancementBackgroundTexture, HudAdvancementHoverBoxSprite,
         HudAdvancementTabSprite, HudAdvancementWidgetFrameSprite, HudDigitGlyph, HudFontGlyphMap,
         HudInventoryScreen, HudItemIcon, HudNineSliceSprite, HudObfuscatedGlyphPool, HudSpriteGpu,
-        HudStatsSprite, HUD_HOTBAR_SLOTS,
+        HudStatsScrollbarSprite, HudStatsSprite, HUD_HOTBAR_SLOTS,
     },
     item_entities::{create_item_entity_pipeline, ItemEntityAtlasGpu, ItemEntityBillboard},
     item_models::{
@@ -490,6 +490,8 @@ pub struct Renderer {
     pub(super) hud_widget_button_disabled: Option<HudSpriteGpu>,
     pub(super) hud_widget_button_highlighted: Option<HudSpriteGpu>,
     pub(super) hud_stats_sprites: [Option<HudSpriteGpu>; HudStatsSprite::COUNT],
+    pub(super) hud_stats_scrollbar_sprites:
+        [Option<HudNineSliceSprite>; HudStatsScrollbarSprite::COUNT],
     pub(super) hud_debug_game_mode_switcher_background: Option<HudSpriteGpu>,
     pub(super) hud_debug_game_mode_switcher_slot: Option<HudSpriteGpu>,
     pub(super) hud_debug_game_mode_switcher_selection: Option<HudSpriteGpu>,
@@ -1591,6 +1593,7 @@ impl Renderer {
             hud_widget_button_disabled: None,
             hud_widget_button_highlighted: None,
             hud_stats_sprites: std::array::from_fn(|_| None),
+            hud_stats_scrollbar_sprites: std::array::from_fn(|_| None),
             hud_debug_game_mode_switcher_background: None,
             hud_debug_game_mode_switcher_slot: None,
             hud_debug_game_mode_switcher_selection: None,

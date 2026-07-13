@@ -32,10 +32,11 @@ use self::layout::{
     hud_rect_bounds, hud_rect_intersection_uv_span, hud_styled_quad_vertices,
     hud_subtitle_text_origin, hud_title_text_origin, hud_vehicle_heart_fill,
     hud_vehicle_max_hearts, inventory_background_hud_rect, inventory_slot_highlight_hud_rect,
-    inventory_slot_item_hud_rect, vehicle_heart_hud_rect, HudAirBubbleIcon, HudIconFill, HudRect,
-    HudTooltipSpriteLayer, HUD_AIR_BUBBLES_PER_ROW, HUD_ARMOR_ICONS_PER_ROW, HUD_BOSS_BAR_WIDTH,
-    HUD_FOOD_ICONS_PER_ROW, HUD_INVENTORY_ITEM_SIZE, HUD_SINGLE_HEALTH_ROW_HEIGHT,
-    HUD_SUBTITLE_TEXT_SCALE, HUD_TITLE_TEXT_SCALE, HUD_VEHICLE_HEARTS_PER_ROW,
+    inventory_slot_item_hud_rect, nine_slice_segments, vehicle_heart_hud_rect, HudAirBubbleIcon,
+    HudIconFill, HudRect, HudTooltipSpriteLayer, HUD_AIR_BUBBLES_PER_ROW, HUD_ARMOR_ICONS_PER_ROW,
+    HUD_BOSS_BAR_WIDTH, HUD_FOOD_ICONS_PER_ROW, HUD_INVENTORY_ITEM_SIZE,
+    HUD_SINGLE_HEALTH_ROW_HEIGHT, HUD_SUBTITLE_TEXT_SCALE, HUD_TITLE_TEXT_SCALE,
+    HUD_VEHICLE_HEARTS_PER_ROW,
 };
 
 pub use bbb_render_types::{
@@ -186,6 +187,28 @@ pub enum HudStatsSprite {
     ItemDropped,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HudStatsScrollbarSprite {
+    Scroller,
+    Background,
+}
+
+impl HudStatsScrollbarSprite {
+    pub(crate) const COUNT: usize = 2;
+    pub const ALL: [Self; Self::COUNT] = [Self::Scroller, Self::Background];
+
+    pub(crate) const fn as_index(self) -> usize {
+        self as usize
+    }
+
+    pub fn sprite_path(self) -> &'static str {
+        match self {
+            Self::Scroller => "widget/scroller",
+            Self::Background => "widget/scroller_background",
+        }
+    }
+}
+
 impl HudStatsSprite {
     pub(crate) const COUNT: usize = 10;
 
@@ -270,7 +293,14 @@ pub struct HudStatsScreen {
     pub item_sort_column: Option<usize>,
     pub item_sort_order: i8,
     pub item_hovered_column: Option<usize>,
+    /// First projected data-row index (the Items header is a separate scrollable entry).
     pub scroll_row: usize,
+    /// Integer-pixel list scroll after vanilla's `(int) scrollAmount` truncation.
+    pub scroll_amount: i32,
+    /// Maximum integer-pixel scroll for the current content and viewport.
+    pub max_scroll_amount: i32,
+    /// Vanilla scrollbar thumb height, or zero when the list is not scrollable.
+    pub scroller_height: i32,
     pub total_rows: usize,
     pub visible_rows: usize,
     pub row_height: i32,
@@ -779,6 +809,7 @@ const HUD_STATS_TAB_Y: i32 = 22;
 const HUD_STATS_TAB_HEIGHT: i32 = 20;
 const HUD_STATS_LIST_WIDTH: i32 = 280;
 const HUD_STATS_LIST_TOP: i32 = 46;
+const HUD_STATS_LIST_ENTRY_PADDING: i32 = 2;
 const HUD_DEBUG_CROSSHAIR_SCALE: f32 = 0.01;
 const HUD_DEBUG_CROSSHAIR_FOV_DEGREES: f32 = 70.0;
 const HUD_DEBUG_CROSSHAIR_OUTLINE_WIDTH: f32 = 4.0;
@@ -1569,6 +1600,12 @@ pub struct HudInventoryScreen {
 }
 
 pub(super) enum HudDrawCommand<'a> {
+    Scissor {
+        x: u32,
+        y: u32,
+        width: u32,
+        height: u32,
+    },
     Sprite {
         sprite: &'a HudSpriteGpu,
         start: u32,
@@ -1997,6 +2034,21 @@ impl Renderer {
     ) -> Result<()> {
         self.hud_stats_sprites[sprite.as_index()] =
             Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_stats_scrollbar_sprite(
+        &mut self,
+        sprite: HudStatsScrollbarSprite,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+        scaling: HudNineSliceScaling,
+    ) -> Result<()> {
+        self.hud_stats_scrollbar_sprites[sprite.as_index()] = Some(HudNineSliceSprite {
+            gpu: self.upload_hud_sprite(width, height, rgba)?,
+            scaling,
+        });
         Ok(())
     }
 
@@ -3700,8 +3752,12 @@ impl Renderer {
             if screen.active_tab == 1 {
                 for (row, item) in screen.item_rows.iter().enumerate() {
                     if let Some(model) = &item.block_model {
-                        let rect = hud_stats_item_icon_rect(surface_size, row);
-                        append_model(model, gui_item_slot_placement(rect), None);
+                        let rect = hud_stats_item_icon_rect(surface_size, screen, row);
+                        append_model(
+                            model,
+                            gui_item_slot_placement(rect),
+                            Some(hud_stats_list_scissor_rect(surface_size)),
+                        );
                     }
                 }
             }
@@ -4579,6 +4635,7 @@ impl Renderer {
                 self.hud_digit_atlas.as_ref(),
                 &self.hud_digit_glyphs,
                 &self.hud_stats_sprites,
+                &self.hud_stats_scrollbar_sprites,
                 self.hud_tooltip_background.as_ref(),
                 self.hud_tooltip_frame.as_ref(),
                 self.hud_font_atlas.as_ref(),
@@ -6267,6 +6324,7 @@ fn push_hud_stats_screen<'a>(
     digit_atlas: Option<&'a HudSpriteGpu>,
     digit_glyphs: &[HudDigitGlyph; 10],
     stats_sprites: &'a [Option<HudSpriteGpu>; HudStatsSprite::COUNT],
+    scrollbar_sprites: &'a [Option<HudNineSliceSprite>; HudStatsScrollbarSprite::COUNT],
     tooltip_background: Option<&'a HudNineSliceSprite>,
     tooltip_frame: Option<&'a HudNineSliceSprite>,
     font_atlas: Option<&'a HudSpriteGpu>,
@@ -6354,7 +6412,8 @@ fn push_hud_stats_screen<'a>(
             HUD_TINT_WHITE,
         );
     } else if screen.active_tab == 1 {
-        let header_y = HUD_STATS_LIST_TOP + 1;
+        push_hud_stats_list_scissor(commands, surface_size);
+        let header_y = HUD_STATS_LIST_TOP + HUD_STATS_LIST_ENTRY_PADDING + 1 - screen.scroll_amount;
         for column in 0..6 {
             let x = list_x + 57 + i32::try_from(column).unwrap_or(i32::MAX) * 40;
             let hovered = screen.item_hovered_column == Some(column);
@@ -6417,8 +6476,12 @@ fn push_hud_stats_screen<'a>(
         }
         for (index, row) in screen.item_rows.iter().enumerate() {
             let y = HUD_STATS_LIST_TOP
+                + HUD_STATS_LIST_ENTRY_PADDING
                 + 22
-                + i32::try_from(index).unwrap_or(i32::MAX) * screen.row_height;
+                + i32::try_from(screen.scroll_row.saturating_add(index))
+                    .unwrap_or(i32::MAX / screen.row_height)
+                    * screen.row_height
+                - screen.scroll_amount;
             if let Some(slot) = stats_sprites[HudStatsSprite::Slot.as_index()].as_ref() {
                 push_hud_draw(
                     vertices,
@@ -6449,7 +6512,7 @@ fn push_hud_stats_screen<'a>(
                     digit_atlas,
                     digit_glyphs,
                     surface_size,
-                    hud_stats_item_icon_rect(surface_size, index),
+                    hud_stats_item_icon_rect(surface_size, screen, index),
                     icon,
                     row.block_model.is_none(),
                     false,
@@ -6479,10 +6542,24 @@ fn push_hud_stats_screen<'a>(
                 );
             }
         }
+        push_hud_stats_list_scissor_reset(commands, surface_size);
+        push_hud_stats_scrollbar(
+            vertices,
+            commands,
+            white_pixel,
+            scrollbar_sprites,
+            surface_size,
+            screen,
+        );
     } else {
+        push_hud_stats_list_scissor(commands, surface_size);
         for (index, row) in screen.rows.iter().enumerate() {
-            let y =
-                HUD_STATS_LIST_TOP + i32::try_from(index).unwrap_or(i32::MAX) * screen.row_height;
+            let y = HUD_STATS_LIST_TOP
+                + HUD_STATS_LIST_ENTRY_PADDING
+                + i32::try_from(screen.scroll_row.saturating_add(index))
+                    .unwrap_or(i32::MAX / screen.row_height)
+                    * screen.row_height
+                - screen.scroll_amount;
             let tint = if (screen.scroll_row + index) % 2 == 0 {
                 HUD_TINT_WHITE
             } else {
@@ -6536,6 +6613,15 @@ fn push_hud_stats_screen<'a>(
                 );
             }
         }
+        push_hud_stats_list_scissor_reset(commands, surface_size);
+        push_hud_stats_scrollbar(
+            vertices,
+            commands,
+            white_pixel,
+            scrollbar_sprites,
+            surface_size,
+            screen,
+        );
     }
     push_hud_pause_button(
         vertices,
@@ -7613,11 +7699,149 @@ fn hud_stats_done_button_rect(surface_size: PhysicalSize<u32>) -> (i32, i32, i32
     )
 }
 
-fn hud_stats_item_icon_rect(surface_size: PhysicalSize<u32>, row: usize) -> HudRect {
+fn hud_stats_item_icon_rect(
+    surface_size: PhysicalSize<u32>,
+    screen: &HudStatsScreen,
+    row: usize,
+) -> HudRect {
     let width = i32::try_from(surface_size.width).unwrap_or(i32::MAX);
     let list_x = width / 2 - HUD_STATS_LIST_WIDTH / 2;
-    let y = HUD_STATS_LIST_TOP + 22 + i32::try_from(row).unwrap_or(i32::MAX) * 22;
+    let absolute_row = screen.scroll_row.saturating_add(row);
+    let y = HUD_STATS_LIST_TOP
+        + HUD_STATS_LIST_ENTRY_PADDING
+        + 22
+        + i32::try_from(absolute_row).unwrap_or(i32::MAX / 22) * 22
+        - screen.scroll_amount;
     absolute_hud_rect((list_x + 1) as f32, (y + 2) as f32, 16, 16)
+}
+
+fn hud_stats_list_scissor_rect(surface_size: PhysicalSize<u32>) -> HudRect {
+    let top = u32::try_from(HUD_STATS_LIST_TOP).unwrap_or_default();
+    let footer = u32::try_from(HUD_STATS_FOOTER_HEIGHT).unwrap_or_default();
+    absolute_hud_rect(
+        0.0,
+        top as f32,
+        surface_size.width.max(1),
+        surface_size
+            .height
+            .saturating_sub(top.saturating_add(footer)),
+    )
+}
+
+fn push_hud_stats_list_scissor(
+    commands: &mut Vec<HudDrawCommand<'_>>,
+    surface_size: PhysicalSize<u32>,
+) {
+    let y = u32::try_from(HUD_STATS_LIST_TOP).unwrap_or_default();
+    let footer = u32::try_from(HUD_STATS_FOOTER_HEIGHT).unwrap_or_default();
+    let height = surface_size.height.saturating_sub(y.saturating_add(footer));
+    if height > 0 {
+        commands.push(HudDrawCommand::Scissor {
+            x: 0,
+            y,
+            width: surface_size.width.max(1),
+            height,
+        });
+    }
+}
+
+fn push_hud_stats_list_scissor_reset(
+    commands: &mut Vec<HudDrawCommand<'_>>,
+    surface_size: PhysicalSize<u32>,
+) {
+    commands.push(HudDrawCommand::Scissor {
+        x: 0,
+        y: 0,
+        width: surface_size.width.max(1),
+        height: surface_size.height.max(1),
+    });
+}
+
+fn push_hud_stats_scrollbar<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    white_pixel: &'a HudSpriteGpu,
+    sprites: &'a [Option<HudNineSliceSprite>; HudStatsScrollbarSprite::COUNT],
+    surface_size: PhysicalSize<u32>,
+    screen: &HudStatsScreen,
+) {
+    let Some((background, thumb)) = hud_stats_scrollbar_rects(surface_size, screen) else {
+        return;
+    };
+    for (kind, rect, fallback_tint) in [
+        (
+            HudStatsScrollbarSprite::Background,
+            background,
+            [0.0, 0.0, 0.0, 0.45],
+        ),
+        (
+            HudStatsScrollbarSprite::Scroller,
+            thumb,
+            [0.55, 0.55, 0.55, 0.92],
+        ),
+    ] {
+        if let Some(sprite) = sprites[kind.as_index()].as_ref() {
+            for segment in nine_slice_segments(rect, sprite.scaling) {
+                push_hud_draw_with_uv_and_tint(
+                    vertices,
+                    commands,
+                    &sprite.gpu,
+                    surface_size,
+                    segment.rect,
+                    segment.uv,
+                    HUD_TINT_WHITE,
+                );
+            }
+        } else {
+            push_hud_draw_with_uv_and_tint(
+                vertices,
+                commands,
+                white_pixel,
+                surface_size,
+                rect,
+                HudUvRect {
+                    min: [0.0, 0.0],
+                    max: [1.0, 1.0],
+                },
+                fallback_tint,
+            );
+        }
+    }
+}
+
+fn hud_stats_scrollbar_rects(
+    surface_size: PhysicalSize<u32>,
+    screen: &HudStatsScreen,
+) -> Option<(HudRect, HudRect)> {
+    if screen.max_scroll_amount <= 0 || screen.scroller_height <= 0 {
+        return None;
+    }
+    let width = i32::try_from(surface_size.width).unwrap_or(i32::MAX);
+    let height = i32::try_from(surface_size.height).unwrap_or(i32::MAX);
+    let viewport_height = height
+        .saturating_sub(HUD_STATS_LIST_TOP + HUD_STATS_FOOTER_HEIGHT)
+        .max(1);
+    let x = width / 2 + HUD_STATS_LIST_WIDTH / 2 + 8;
+    let scroller_height = screen
+        .scroller_height
+        .clamp(1, (viewport_height - 8).max(1));
+    let thumb_travel = (viewport_height - scroller_height).max(0);
+    let thumb_y = HUD_STATS_LIST_TOP
+        + screen.scroll_amount.saturating_mul(thumb_travel) / screen.max_scroll_amount;
+    Some((
+        absolute_hud_rect(
+            x as f32,
+            HUD_STATS_LIST_TOP as f32,
+            6,
+            u32::try_from(viewport_height).unwrap_or(1),
+        ),
+        absolute_hud_rect(
+            x as f32,
+            thumb_y as f32,
+            6,
+            u32::try_from(scroller_height).unwrap_or(1),
+        ),
+    ))
 }
 
 fn hud_sign_editor_standing_preview_rect(surface_size: PhysicalSize<u32>) -> HudRect {
@@ -11555,6 +11779,13 @@ fn sanitize_hud_stats_screen(screen: HudStatsScreen) -> Option<HudStatsScreen> {
     let item_no_value = sanitize_hud_text_line(screen.item_no_value)?;
     let tooltip = screen.tooltip.and_then(sanitize_hud_debug_options_tooltip);
     let visible_rows = screen.visible_rows.min(64);
+    let max_scroll_amount = screen.max_scroll_amount.clamp(0, 1_000_000);
+    let scroll_amount = screen.scroll_amount.clamp(0, max_scroll_amount);
+    let scroller_height = if max_scroll_amount > 0 {
+        screen.scroller_height.clamp(1, 4096)
+    } else {
+        0
+    };
     let rows = screen
         .rows
         .into_iter()
@@ -11601,9 +11832,10 @@ fn sanitize_hud_stats_screen(screen: HudStatsScreen) -> Option<HudStatsScreen> {
         item_sort_column: screen.item_sort_column.filter(|column| *column < 6),
         item_sort_order: screen.item_sort_order.clamp(-1, 1),
         item_hovered_column: screen.item_hovered_column.filter(|column| *column < 6),
-        scroll_row: screen
-            .scroll_row
-            .min(screen.total_rows.saturating_sub(visible_rows)),
+        scroll_row: screen.scroll_row.min(screen.total_rows),
+        scroll_amount,
+        max_scroll_amount,
+        scroller_height,
         total_rows: screen.total_rows,
         visible_rows,
         row_height: screen.row_height.clamp(9, 64),
@@ -11946,6 +12178,68 @@ mod tests {
         );
         assert_eq!(hud_stats_sort_sprite(-1), HudStatsSprite::SortDown);
         assert_eq!(hud_stats_sort_sprite(1), HudStatsSprite::SortUp);
+        assert_eq!(
+            HudStatsScrollbarSprite::ALL.map(HudStatsScrollbarSprite::sprite_path),
+            ["widget/scroller", "widget/scroller_background"]
+        );
+    }
+
+    #[test]
+    fn stats_screen_scrollbar_and_scissor_match_vanilla_geometry() {
+        let screen = HudStatsScreen {
+            title: "Stats".to_string(),
+            loading_text: "Loading".to_string(),
+            is_loading: false,
+            general_tab: "General".to_string(),
+            items_tab: "Items".to_string(),
+            mobs_tab: "Mobs".to_string(),
+            active_tab: 0,
+            items_tab_enabled: false,
+            mobs_tab_enabled: false,
+            rows: Vec::new(),
+            item_rows: Vec::new(),
+            item_column_labels: std::array::from_fn(|index| format!("Column {index}")),
+            item_no_value: "-".to_string(),
+            item_sort_column: None,
+            item_sort_order: 0,
+            item_hovered_column: None,
+            scroll_row: 0,
+            scroll_amount: 70,
+            max_scroll_amount: 140,
+            scroller_height: 80,
+            total_rows: 20,
+            visible_rows: 12,
+            row_height: 14,
+            tooltip: None,
+            done_hovered: false,
+        };
+        assert_eq!(
+            hud_stats_scrollbar_rects(PhysicalSize::new(320, 240), &screen),
+            Some((
+                absolute_hud_rect(308.0, 46.0, 6, 161),
+                absolute_hud_rect(308.0, 86.0, 6, 80),
+            ))
+        );
+        let mut commands = Vec::new();
+        push_hud_stats_list_scissor(&mut commands, PhysicalSize::new(320, 240));
+        push_hud_stats_list_scissor_reset(&mut commands, PhysicalSize::new(320, 240));
+        assert!(matches!(
+            commands.as_slice(),
+            [
+                HudDrawCommand::Scissor {
+                    x: 0,
+                    y: 46,
+                    width: 320,
+                    height: 161,
+                },
+                HudDrawCommand::Scissor {
+                    x: 0,
+                    y: 0,
+                    width: 320,
+                    height: 240,
+                }
+            ]
+        ));
     }
 
     #[test]
@@ -13161,6 +13455,9 @@ mod tests {
             item_sort_order: 0,
             item_hovered_column: None,
             scroll_row: 0,
+            scroll_amount: 0,
+            max_scroll_amount: 0,
+            scroller_height: 0,
             total_rows: 1,
             visible_rows: 6,
             row_height: 22,
@@ -16183,6 +16480,9 @@ mod tests {
             item_sort_order: 0,
             item_hovered_column: None,
             scroll_row: 3,
+            scroll_amount: 999,
+            max_scroll_amount: 100,
+            scroller_height: 5_000,
             total_rows: 12,
             visible_rows: 1,
             row_height: 14,
@@ -16199,6 +16499,9 @@ mod tests {
         assert_eq!(screen.general_tab, "General");
         assert_eq!(screen.rows[0].label, "Walkone cm");
         assert_eq!(screen.rows[0].value, "1.00 m");
+        assert_eq!(screen.scroll_amount, 100);
+        assert_eq!(screen.max_scroll_amount, 100);
+        assert_eq!(screen.scroller_height, 4_096);
         assert_eq!(
             screen.tooltip.as_ref().map(|tooltip| tooltip.text.as_str()),
             Some("Crafted")
@@ -16223,6 +16526,9 @@ mod tests {
             item_sort_order: 0,
             item_hovered_column: None,
             scroll_row: 0,
+            scroll_amount: 0,
+            max_scroll_amount: 0,
+            scroller_height: 0,
             total_rows: 0,
             visible_rows: 0,
             row_height: 14,

@@ -5,7 +5,7 @@ use bbb_pack::{PackRoots, ResourceLocation, SpriteGuiScaling, SpriteImage};
 use bbb_renderer::{
     HudAdvancementBackgroundTexture, HudAdvancementHoverBoxSprite, HudAdvancementTabSprite,
     HudAdvancementWidgetFrameSprite, HudBossBarColor, HudBossBarOverlay, HudHeartKind,
-    HudNineSliceScaling, HudStatsSprite, SignModelWood,
+    HudNineSliceScaling, HudStatsScrollbarSprite, HudStatsSprite, SignModelWood,
 };
 
 use bbb_item_model::font::{
@@ -190,6 +190,17 @@ fn try_load_hud_textures(renderer: &mut bbb_renderer::Renderer, roots: &PackRoot
             sprite.width,
             sprite.height,
             &sprite.rgba,
+        )?;
+    }
+    for scrollbar_sprite in HudStatsScrollbarSprite::ALL {
+        let sprite = hud_sprite(&sprites, scrollbar_sprite.sprite_path())?;
+        let scaling = hud_nine_slice_scaling(sprite)?;
+        renderer.upload_hud_stats_scrollbar_sprite(
+            scrollbar_sprite,
+            sprite.width,
+            sprite.height,
+            &sprite.rgba,
+            scaling,
         )?;
     }
     let game_mode_switcher = gui_texture(
@@ -1387,6 +1398,21 @@ mod tests {
             let image = hud_sprite(&sprites, sprite.sprite_path()).unwrap();
             assert_eq!(image.id, format!("minecraft:{}", sprite.sprite_path()));
             assert_eq!((image.width, image.height), (18, 18));
+        }
+        for sprite in HudStatsScrollbarSprite::ALL {
+            let image = SpriteImage::new(
+                format!("minecraft:{}", sprite.sprite_path()),
+                6,
+                32,
+                vec![255; 6 * 32 * 4],
+            )
+            .unwrap();
+            sprites.insert(image.id.clone(), image);
+        }
+        for sprite in HudStatsScrollbarSprite::ALL {
+            let image = hud_sprite(&sprites, sprite.sprite_path()).unwrap();
+            assert_eq!(image.id, format!("minecraft:{}", sprite.sprite_path()));
+            assert_eq!((image.width, image.height), (6, 32));
         }
     }
 

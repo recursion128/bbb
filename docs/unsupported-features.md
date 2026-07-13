@@ -105,14 +105,15 @@ Owner: `bbb-protocol`
   the full client lifecycle.
 - Recompute vanilla fuel values and creative search-tree tag membership after
   play UpdateTags reloads, following `ClientPacketListener.handleUpdateTags`.
-- Complete StatsScreen presentation parity: add pixel-precise list scrolling and
-  narration. General, Items and Mobs now leave
+- Complete StatsScreen presentation parity: add narration. General, Items and Mobs now leave
   loading only after the requested AwardStats response and use selected-pack language.
   Item/header/empty-tab tooltips and vanilla Ctrl+digit/Ctrl+Tab navigation are wired;
   Items mechanically maps block stats through checked-in `Block.asItem` evidence, renders
   flat/3D item icons and vanilla header/slot/sort sprites, preserves six-column no-value
-  semantics and the descending/ascending/clear sort cycle. Canonical state retains
-  unresolved identities without guessing.
+  semantics and the descending/ascending/clear sort cycle. All three lists use vanilla
+  half-row/pixel wheel amounts, content clamping, draggable nine-slice scrollbar and viewport
+  scissor; the Items header scrolls as its first entry. Canonical state retains unresolved
+  identities without guessing.
 - Resolve UpdateAttributes holder ids through that session RegistryAccess and
   validate each snapshot against the target living entity's actual AttributeMap
   instance set; do not accept arbitrary fixed-id attributes on every living type.

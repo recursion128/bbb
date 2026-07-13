@@ -12842,4 +12842,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   hover/sort dispatch 由 focused tests 锁定。
 - [x] Items header 按 vanilla 使用 header→hovered slot 背景、column glyph 和左侧 sort arrow，
   item row 使用同一 slot sprite；pack sprite 不可用时保留确定性 fallback。pixel-precise scroll
-  与 narration 继续开放。
+  当时仍开放并由下节闭合；narration 继续开放。
+
+## 2026-07-13：StatsScreen pixel scrolling
+
+- [x] StatsScreen input 由整行 index 改为 vanilla `double scrollAmount`：line wheel 每步移动
+  `rowHeight / 2`，pixel wheel 保留精细 delta，runtime 按实际 content/viewport 每帧 clamp；
+  General/Items/Mobs 的 14/22/36px entry height 分别生效。
+- [x] Items header 作为第一个 scrollable entry 与 rows 同步移动；renderer 以 HUD scissor command
+  裁剪文字、flat icon 与 sprite，并对 3D block-item mesh 做同 viewport 几何裁剪。
+- [x] native/renderer 加载并 nine-slice 绘制 `widget/scroller_background` 与 `widget/scroller`，
+  thumb height/y 和 drag scale 按 `AbstractScrollArea` 计算。StatsScreen narration 继续开放。

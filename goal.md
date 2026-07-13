@@ -443,7 +443,8 @@ AwardStats 的 bounded map wire、generated StatType/custom-stat catalog、sessi
 ownership 与 tests 已闭合；StatsScreen 已按 response 退出 loading 并投影 General 页的本地化标签、
 vanilla formatter、排序和滚动、Mobs 页的 killed/killed-by 列表，以及 Items 页的 block→item 合并、
 六列排序/no-value 与 item/block icon；item/column/empty-tab tooltip、Ctrl+数字/Ctrl+Tab 键盘切页及
-原版 header/slot/sort sprites 已闭合，pixel scroll 与 narration 仍开放，canonical complete、runtime partial。
+原版 header/slot/sort sprites、half-row/pixel wheel、scrollbar drag、viewport scissor 已闭合，
+narration 仍开放，canonical complete、runtime partial。
 TabList 的双 Component wire、empty→null、ownership、player-list/header/footer overlay 与 tests 已闭合；
 rich Component canonical state 尚未保留，canonical 保持 partial，runtime 已 complete。
 ServerData 的 trusted MOTD Component + optional icon wire、缺省 icon 保留旧值、ownership 与 apply tests

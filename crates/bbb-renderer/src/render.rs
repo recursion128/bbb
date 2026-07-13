@@ -2624,6 +2624,14 @@ impl Renderer {
         let mut pipeline_switches = 0;
         for command in commands {
             match command {
+                crate::hud::HudDrawCommand::Scissor {
+                    x,
+                    y,
+                    width,
+                    height,
+                } => {
+                    pass.set_scissor_rect(*x, *y, *width, *height);
+                }
                 crate::hud::HudDrawCommand::Sprite { sprite, start, end } => {
                     if active_pipeline != Some(HudActivePipeline::Sprite) {
                         pass.set_pipeline(&self.hud_pipeline);
