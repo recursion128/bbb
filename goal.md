@@ -346,8 +346,9 @@ RegistryFixedCodec，也已按 session 顺序投影单一 named holder，并对�
 variant 共 12 个同步 RegistryFixedCodec 组件也已通过单一表驱动 surface 按 session 顺序投影；
 DamageResistant 的动态 damage-type tag/compact/list HolderSet 也已闭合；
 SuspiciousStewEffects 的 built-in mob-effect holder list、default/lenient duration，以及 PotDecorations
-的 built-in item holder 四面顺序/brick 空面/四项上限也已 typed 投影；其余 Component、holder、list 与
-compound record 等 persistent Codec 仍未展开；
+的 built-in item holder 四面顺序/brick 空面/四项上限也已 typed 投影；Bees 的 occupant list、built-in
+EntityType TypedEntityData id 剥离/余下 NBT 与两个 required tick 字段也已闭合；其余 Component、holder、
+list 与 compound record 等 persistent Codec 仍未展开；
 四类 input control 与九类 static/dynamic action 已按 codec typed 投影并同时保留 raw；DialogList 的 play
 tag/direct 同质 HolderSet、session reference、context-free inline-list
 边界、external title 与 default/validation 已 typed 投影，仍缺全部 screen；custom-click 的 resource-id +

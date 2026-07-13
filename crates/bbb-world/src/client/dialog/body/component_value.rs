@@ -13,7 +13,8 @@ use bbb_protocol::{
     },
     data_component_types::{
         vanilla_data_component_type_for_resource_id, VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID,
-        VANILLA_DATA_COMPONENT_BLOCK_STATE_TYPE_ID, VANILLA_DATA_COMPONENT_CONTAINER_LOOT_TYPE_ID,
+        VANILLA_DATA_COMPONENT_BEES_TYPE_ID, VANILLA_DATA_COMPONENT_BLOCK_STATE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_CONTAINER_LOOT_TYPE_ID,
         VANILLA_DATA_COMPONENT_CUSTOM_MODEL_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID,
         VANILLA_DATA_COMPONENT_DYED_COLOR_TYPE_ID, VANILLA_DATA_COMPONENT_ENCHANTABLE_TYPE_ID,
         VANILLA_DATA_COMPONENT_ENCHANTMENT_GLINT_OVERRIDE_TYPE_ID,
@@ -47,9 +48,11 @@ use crate::{registries::normalize_codec_identifier, RegistrySet};
 
 use super::super::{compound_entries, find_entry};
 
+mod bees;
 mod holder_set;
 mod profile;
 
+use bees::{decode_bees, DialogBeeOccupantState};
 use holder_set::{
     decode_holder_backed_component_value, DialogBannerPatternLayerState, DialogPotDecorationsState,
     DialogRegistryHolderReferenceState, DialogRegistryHolderSetState,
@@ -202,6 +205,9 @@ pub enum DialogDataComponentValueState {
     PotDecorations {
         decorations: DialogPotDecorationsState,
     },
+    Bees {
+        occupants: Vec<DialogBeeOccupantState>,
+    },
 }
 
 impl DialogDataComponentValueState {
@@ -309,6 +315,9 @@ pub(super) fn decode_supported_component_value(
         VANILLA_DATA_COMPONENT_LODESTONE_TRACKER_TYPE_ID => decode_lodestone_tracker(value, &what)?,
         VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID => DialogDataComponentValueState::Profile {
             profile: decode_profile(value, &what)?,
+        },
+        VANILLA_DATA_COMPONENT_BEES_TYPE_ID => DialogDataComponentValueState::Bees {
+            occupants: decode_bees(value, &what)?,
         },
         _ => {
             if let Some(decoded) =
