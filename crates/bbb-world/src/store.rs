@@ -33,6 +33,10 @@ pub struct WorldStore {
     pub(crate) ticking: crate::WorldTickingState,
     #[serde(default)]
     pub(crate) level_load: WorldLevelLoadState,
+    /// Monotonic client-level identity used to reject level-bound async
+    /// responses after Login, Respawn, or disconnect transitions.
+    #[serde(default)]
+    pub(crate) client_level_generation: u64,
     /// Session level membership from ClientboundLoginPacket. Vanilla exposes
     /// set membership to client suggestions; its shuffled iteration order is
     /// deliberately not canonical state.

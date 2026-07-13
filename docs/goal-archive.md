@@ -13000,3 +13000,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] reset 在 entity-data/attribute keep-bit 分支前无条件执行；keep-none、keep-all world tests 与 native
   event test 均断言 default camera，因此从 stale Respawn TODO 删除 camera。music/debug subscriber/
   LevelLoadTracker 等仍开放。
+
+## 2026-07-13：F3+I client-level generation gate
+
+- [x] WorldStore 在 Login、每次 Respawn 与 clear/disconnect 推进 monotonic client-level generation，并清除
+  上一 level 的 TagQuery response；generation 使用 `serde(default)` 保持旧 snapshot 兼容。
+- [x] F3+I pending query 绑定 generation：production pump 在发送前丢弃旧 request，已发送请求的 response
+  即使 transaction、entity id 与 UUID 全部在新 level 复用，也会在 clipboard 前拒绝并清 pending。
+- [x] focused regression 同时覆盖 unsent 与 matching-response 两条竞态；这不代表 synced
+  `DEBUG_SUBSCRIPTION` registry codec/map/renderer 已实现，其 TODO 继续开放。

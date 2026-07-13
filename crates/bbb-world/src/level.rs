@@ -279,6 +279,7 @@ impl WorldStore {
 
     pub fn apply_login(&mut self, login: &ProtocolPlayLogin) {
         self.counters.play_logins_received += 1;
+        self.advance_client_level_generation();
         self.available_levels = login.levels.iter().cloned().collect();
         self.server_enforces_secure_chat = Some(login.enforces_secure_chat);
         // Vanilla constructs the new ClientChunkCache and ClientLevel from these
@@ -307,6 +308,7 @@ impl WorldStore {
 
     pub fn apply_respawn(&mut self, respawn: &ProtocolRespawn) -> Option<i32> {
         self.counters.respawns_received += 1;
+        self.advance_client_level_generation();
         let closed_server_container_id = self.close_container_for_respawn();
         self.reset_local_player_for_respawn(respawn.data_to_keep);
         self.apply_spawn_info(&respawn.common_spawn_info);
@@ -482,6 +484,7 @@ impl WorldStore {
     }
 
     pub fn clear_client_level(&mut self) {
+        self.advance_client_level_generation();
         self.dimension = WorldDimension::default();
         self.level = None;
         self.gameplay = WorldGameplayState::default();
@@ -507,6 +510,10 @@ impl WorldStore {
         &self.level_load
     }
 
+    pub fn client_level_generation(&self) -> u64 {
+        self.client_level_generation
+    }
+
     pub fn available_levels(&self) -> &BTreeSet<String> {
         &self.available_levels
     }
@@ -519,6 +526,11 @@ impl WorldStore {
         self.level_load.phase = WorldLevelLoadPhase::WaitingForServer;
         self.level_load.starts = self.level_load.starts.saturating_add(1);
         self.level_load.loading_packets_received = 0;
+    }
+
+    fn advance_client_level_generation(&mut self) {
+        self.client_level_generation = self.client_level_generation.saturating_add(1);
+        self.debug_query = crate::ClientDebugQueryState::default();
     }
 
     fn apply_spawn_info(&mut self, spawn_info: &ProtocolSpawnInfo) {
@@ -1120,6 +1132,7 @@ mod tests {
         assert_eq!(store.counters().chunk_cache_radius_updates_received, 0);
         assert_eq!(store.counters().simulation_distance_packets, 0);
         assert_eq!(store.counters().play_logins_received, 1);
+        assert_eq!(store.client_level_generation(), 1);
         assert_eq!(
             store.available_levels(),
             &BTreeSet::from([
@@ -1219,6 +1232,7 @@ mod tests {
         assert_eq!(store.entity_count(), 1);
         assert_eq!(store.level_info().unwrap().biome_zoom_seed, 12345);
         assert_eq!(store.local_player().portal_cooldown, 6);
+        assert_eq!(store.client_level_generation(), 1);
         let available_levels = store.available_levels().clone();
         let server_enforces_secure_chat = store.server_enforces_secure_chat();
 
@@ -1256,6 +1270,7 @@ mod tests {
         let level = store.level_info().unwrap();
         assert_eq!(level.biome_zoom_seed, 98765);
         assert_eq!(store.local_player().portal_cooldown, 2);
+        assert_eq!(store.client_level_generation(), 2);
         assert_eq!(store.available_levels(), &available_levels);
         assert_eq!(
             store.server_enforces_secure_chat(),
@@ -1424,6 +1439,7 @@ mod tests {
         store.clear_client_level();
 
         assert_eq!(store.dimension(), WorldDimension::default());
+        assert_eq!(store.client_level_generation(), 1);
         assert!(store.level_info().is_none());
         assert!(store.available_levels().is_empty());
         assert_eq!(store.server_enforces_secure_chat(), None);

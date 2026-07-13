@@ -477,7 +477,8 @@ transition/ack 与 online/probe/native tests 已全行闭合；bundle 内 termin
 play Transfer 的 shared host/port wire、strict payload consumption、world projection 与 online/probe/native
 tests 已闭合；断开、closing-window late packet、transfer-state carry 与 Transfer-intent reconnect 保持 runtime partial。
 play TagQuery 的 transaction + nullable CompoundTag wire、bounded/strict NBT validation、world apply 与 F3+I
-matching/null/stale callback tests 已全行闭合；persistent entity Codec/SNBT 仍由各语义 owner 单独实现。
+matching/null/stale callback tests 已全行闭合；Login/Respawn/clear 推进 client-level generation 并清旧 response，
+跨 level 的未发送 request 与 matching response 均在 clipboard 前拒绝；persistent entity Codec/SNBT 仍由各语义 owner 单独实现。
 play TestInstanceBlockStatus 的 Component + optional Vec3i wire、strict decode、world ownership 与 tests 已闭合；
 rich status preservation 与 active TestInstanceBlockEditScreen update 未实现，canonical/runtime 保持 partial。
 play CustomReportDetails 的 bounded map wire、strict config/play decode、replace semantics 与 shared apply tests 已闭合；
@@ -570,7 +571,7 @@ play SectionBlocksUpdate 的 packed SectionPos/state/relative-pos wire、4096 �
 play SetBorder Center/LerpSize/Size/WarningDelay/WarningDistance 的 wire、strict trailing、canonical field mutation、tick/partial-tick interpolation、forcefield/input consumers 与 ownership 已审计；`Gui.extractVignette` warning-distance/lerp-speed 层尚未实现，五包 runtime/tests 保持 partial。
 play SetEntityData 的 entity id、255-terminated accessor list、43 serializer dispatch、255 项上限、strict trailing、known/unknown entity apply gate 与 ownership 已审计；rich Component/ItemStack、registry holder resolution、generated accessor serializer validation 和剩余 family consumers 尚未闭合，仅 ownership 为 complete。
 play serverbound Attack 的独立 VarInt entity-id wire、mouse/command/driver surface、range/spectator/using-item/piercing 分流与无专用 ack 语义已审计；hands-busy/feature/item/miss-time/carried-item/local presentation/attack-strength parity 未闭合，state_guard/tests 保持 partial。
-play serverbound BlockEntityTagQuery/EntityTagQuery 的 transaction+target wire、F3+I request/permission gate、driver send、匹配 response 消费、wrong/null/disappeared 拒绝与 server-NBT clipboard 权威边界已闭合。
+play serverbound BlockEntityTagQuery/EntityTagQuery 的 transaction+target wire、F3+I request/permission gate、driver send、匹配 response 消费、wrong/null/disappeared/跨 client-level generation 拒绝与 server-NBT clipboard 权威边界已闭合。
 
 完成标准：全部 vanilla 26.1 catalog entry 都有矩阵行；所有目标客户端适用项为
 `complete`，其余只有带 vanilla 依据的 `not-applicable` 或带重启判据的窄 `deferred`；

@@ -702,7 +702,9 @@ fn main() -> Result<()> {
                             );
                         }
                         let recreate_server_query_requests =
-                            input.take_debug_recreate_server_query_requests();
+                            input.take_debug_recreate_server_query_requests_for_level(
+                                world.client_level_generation(),
+                            );
                         let recreate_server_query_request_count =
                             recreate_server_query_requests.len();
                         for request in recreate_server_query_requests {

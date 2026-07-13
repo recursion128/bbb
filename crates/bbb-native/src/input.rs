@@ -887,6 +887,7 @@ enum DebugRecreateTarget {
 #[derive(Debug, Clone, PartialEq)]
 struct PendingDebugRecreateServerQuery {
     transaction_id: i32,
+    client_level_generation: u64,
     target: PendingDebugRecreateServerQueryTarget,
 }
 
@@ -2200,6 +2201,22 @@ impl ClientInputState {
         std::mem::take(&mut self.debug_recreate_server_query_requests)
     }
 
+    pub(crate) fn take_debug_recreate_server_query_requests_for_level(
+        &mut self,
+        client_level_generation: u64,
+    ) -> Vec<DebugRecreateServerQueryRequest> {
+        if self
+            .pending_debug_recreate_server_query
+            .as_ref()
+            .is_some_and(|pending| pending.client_level_generation != client_level_generation)
+        {
+            self.pending_debug_recreate_server_query = None;
+            self.debug_recreate_server_query_requests.clear();
+            return Vec::new();
+        }
+        self.take_debug_recreate_server_query_requests()
+    }
+
     pub(crate) fn consume_debug_recreate_server_query_response(
         &mut self,
         world: &mut WorldStore,
@@ -2208,6 +2225,14 @@ impl ClientInputState {
         let Some(pending) = self.pending_debug_recreate_server_query.clone() else {
             return false;
         };
+        if pending.client_level_generation != world.client_level_generation() {
+            self.pending_debug_recreate_server_query = None;
+            push_debug_feedback_chat_message(
+                Some(world),
+                "Debug recreate level changed before server response",
+            );
+            return true;
+        }
         let Some(response) = world.last_tag_query().cloned() else {
             return false;
         };
@@ -3995,6 +4020,7 @@ fn pending_debug_recreate_server_query(
     };
     Some(PendingDebugRecreateServerQuery {
         transaction_id,
+        client_level_generation: world.client_level_generation(),
         target,
     })
 }
