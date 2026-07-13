@@ -77,6 +77,13 @@ impl BlockStateRegistry {
         i32::try_from(index).ok()
     }
 
+    pub fn block_has_property(&self, name: &str, property: &str) -> bool {
+        self.states
+            .iter()
+            .flatten()
+            .any(|state| state.name == name && state.properties.contains_key(property))
+    }
+
     pub fn block_registry_len(&self) -> usize {
         self.block_registry_names.len()
     }

@@ -36,6 +36,11 @@ fn loads_vanilla_block_state_registry() {
 
 #[test]
 fn vanilla_block_state_queries_use_the_embedded_report() {
+    let blocks = crate::BlockStateRegistry::vanilla_26_1();
+    assert!(blocks.block_has_property("minecraft:oak_log", "axis"));
+    assert!(blocks.block_has_property("minecraft:lever", "powered"));
+    assert!(!blocks.block_has_property("minecraft:stone", "axis"));
+    assert!(!blocks.block_has_property("minecraft:missing", "axis"));
     assert_eq!(crate::vanilla_air_block_state_id(), 0);
     assert_eq!(
         crate::vanilla_block_state_id(
