@@ -170,10 +170,10 @@ Owner: `scripts/` + each generated catalog's semantic crate
   source-generated rather than becoming renderer tuple tables. Built-in
   chicken/cow/pig model type + adult/baby assets, zombie-nautilus model type +
   texture, frog assets, cat adult/baby, and wolf wild/tame/angry × adult/baby
-  fallback assets must come from their bootstrap literals/formula; farm-animal
-  and zombie-nautilus texture dimensions must come from the referenced official
-  PNGs. Synchronized replacement payloads still belong to typed session
-  `RegistryAccess`, not fixed ordinal lookup.
+  fallback assets must come from their bootstrap literals/formula; every listed
+  built-in variant texture dimension must come from the referenced official PNG.
+  Synchronized replacement payloads still belong to typed session `RegistryAccess`,
+  not fixed ordinal lookup.
   Keep enum-keyed debug presentation mappings in their generated semantic
   descriptors; native debug extraction must not rebuild ordinal-indexed color
   arrays. Keep fixed menu geometry shared by input hit testing and HUD extraction

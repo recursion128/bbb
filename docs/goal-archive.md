@@ -13467,3 +13467,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] 本片保留 `NETWORK_CODEC` session replacement model/asset 为 typed RegistryAccess 缺口，
   不把 built-in fallback 冒充动态 registry 解码。25 项 extractor tests、generator update/check、
   2 项 catalog tests、21 项 renderer nautilus tests、native entity-asset tests 与 workspace gate 通过。
+
+## 2026-07-13：Generate remaining built-in animal variant texture dimensions
+
+- [x] bootstrap generator 复用统一 PNG IHDR reader，从 cat 22 张 adult/baby、wolf 54 张
+  wild/tame/angry × adult/baby 与 frog 3 张官方资源生成 atlas 尺寸，删除按年龄或状态手写
+  `64×32`、`32×32`、`48×48` 的 generator 分支。
+- [x] generator 单测注入非标准尺寸，锁定 cat/wolf/frog 输出必须消费调用方提供的 PNG
+  dimensions；27 项 Python generator/extractor tests、generator update/check、10 项 renderer
+  variant-catalog tests 与 workspace gate 通过。
