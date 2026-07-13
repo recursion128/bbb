@@ -13,13 +13,15 @@ use bbb_protocol::{
     },
     data_component_types::{
         vanilla_data_component_type_for_resource_id, VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID,
-        VANILLA_DATA_COMPONENT_BEES_TYPE_ID, VANILLA_DATA_COMPONENT_BLOCK_STATE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_BEES_TYPE_ID, VANILLA_DATA_COMPONENT_BLOCK_ENTITY_DATA_TYPE_ID,
+        VANILLA_DATA_COMPONENT_BLOCK_STATE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_BUCKET_ENTITY_DATA_TYPE_ID,
         VANILLA_DATA_COMPONENT_CONTAINER_LOOT_TYPE_ID,
         VANILLA_DATA_COMPONENT_CUSTOM_MODEL_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID,
         VANILLA_DATA_COMPONENT_DEBUG_STICK_STATE_TYPE_ID,
         VANILLA_DATA_COMPONENT_DYED_COLOR_TYPE_ID, VANILLA_DATA_COMPONENT_ENCHANTABLE_TYPE_ID,
         VANILLA_DATA_COMPONENT_ENCHANTMENT_GLINT_OVERRIDE_TYPE_ID,
-        VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID,
+        VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID,
         VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID, VANILLA_DATA_COMPONENT_FOOD_TYPE_ID,
         VANILLA_DATA_COMPONENT_GLIDER_TYPE_ID,
         VANILLA_DATA_COMPONENT_INTANGIBLE_PROJECTILE_TYPE_ID,
@@ -53,6 +55,7 @@ mod bees;
 mod debug_stick;
 mod holder_set;
 mod profile;
+mod typed_data;
 
 use bees::{decode_bees, DialogBeeOccupantState};
 use debug_stick::{decode_debug_stick_state, DialogDebugStickPropertyState};
@@ -62,6 +65,10 @@ use holder_set::{
     DialogSuspiciousStewEffectState,
 };
 use profile::decode_profile;
+use typed_data::{
+    decode_builtin_block_entity_data, decode_builtin_entity_data, decode_custom_data,
+    DialogTypedBlockEntityDataState, DialogTypedEntityDataState,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DialogStringMapEntryState {
@@ -214,6 +221,15 @@ pub enum DialogDataComponentValueState {
     DebugStickState {
         properties: Vec<DialogDebugStickPropertyState>,
     },
+    EntityData {
+        entity: DialogTypedEntityDataState,
+    },
+    BucketEntityData {
+        data: NbtSummaryValue,
+    },
+    BlockEntityData {
+        block_entity: DialogTypedBlockEntityDataState,
+    },
 }
 
 impl DialogDataComponentValueState {
@@ -328,6 +344,19 @@ pub(super) fn decode_supported_component_value(
         VANILLA_DATA_COMPONENT_DEBUG_STICK_STATE_TYPE_ID => {
             DialogDataComponentValueState::DebugStickState {
                 properties: decode_debug_stick_state(value, &what)?,
+            }
+        }
+        VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID => DialogDataComponentValueState::EntityData {
+            entity: decode_builtin_entity_data(value, &what)?,
+        },
+        VANILLA_DATA_COMPONENT_BUCKET_ENTITY_DATA_TYPE_ID => {
+            DialogDataComponentValueState::BucketEntityData {
+                data: decode_custom_data(value, &what)?,
+            }
+        }
+        VANILLA_DATA_COMPONENT_BLOCK_ENTITY_DATA_TYPE_ID => {
+            DialogDataComponentValueState::BlockEntityData {
+                block_entity: decode_builtin_block_entity_data(value, &what)?,
             }
         }
         _ => {

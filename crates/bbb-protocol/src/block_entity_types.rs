@@ -362,6 +362,24 @@ pub fn vanilla_block_entity_type(type_id: i32) -> Option<&'static BlockEntityTyp
     VANILLA_BLOCK_ENTITY_TYPES.get(usize::try_from(type_id).ok()?)
 }
 
+pub fn vanilla_block_entity_type_for_resource_id(
+    resource_id: &str,
+) -> Option<&'static BlockEntityTypeCatalogEntry> {
+    let path = resource_id
+        .strip_prefix("minecraft:")
+        .unwrap_or(resource_id);
+    if path.is_empty() || path.contains(':') {
+        return None;
+    }
+    VANILLA_BLOCK_ENTITY_TYPES
+        .iter()
+        .find(|entry| entry.resource_id.strip_prefix("minecraft:") == Some(path))
+}
+
+pub fn vanilla_block_entity_type_id_for_resource_id(resource_id: &str) -> Option<i32> {
+    Some(vanilla_block_entity_type_for_resource_id(resource_id)?.id)
+}
+
 pub fn vanilla_block_entity_resource_id_for_type_id(type_id: i32) -> Option<&'static str> {
     Some(vanilla_block_entity_type(type_id)?.resource_id)
 }
@@ -439,6 +457,18 @@ mod tests {
             Some("minecraft:vault")
         );
         assert_eq!(VANILLA_BLOCK_ENTITY_TYPE_VAULT_ID, 45);
+        assert_eq!(
+            vanilla_block_entity_type_id_for_resource_id("minecraft:mob_spawner"),
+            Some(VANILLA_BLOCK_ENTITY_TYPE_MOB_SPAWNER_ID)
+        );
+        assert_eq!(
+            vanilla_block_entity_type_id_for_resource_id("vault"),
+            Some(VANILLA_BLOCK_ENTITY_TYPE_VAULT_ID)
+        );
+        assert_eq!(
+            vanilla_block_entity_type_id_for_resource_id("example:vault"),
+            None
+        );
         assert_eq!(
             vanilla_block_entity_resource_id_for_type_id(48),
             Some("minecraft:copper_golem_statue")

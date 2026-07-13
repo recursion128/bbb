@@ -87,7 +87,7 @@ fn rejects_malformed_bee_occupants() {
         ),
         (
             occupant(NbtSummaryValue::String("bee".to_string())),
-            "entity_data is not a compound",
+            "entity_data flattened SNBT string",
         ),
         (
             occupant(compound(Vec::new())),

@@ -1,0 +1,242 @@
+use bbb_protocol::{
+    block_entity_types::vanilla_block_entity_type_for_resource_id,
+    data_component_types::{
+        VANILLA_DATA_COMPONENT_BLOCK_ENTITY_DATA_TYPE_ID,
+        VANILLA_DATA_COMPONENT_BUCKET_ENTITY_DATA_TYPE_ID,
+        VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID,
+    },
+    entity_types::vanilla_entity_type_for_resource_id,
+    NbtSummaryEntry, NbtSummaryValue,
+};
+
+use super::*;
+use crate::{RegistryContentState, RegistryPacketEntry, RegistrySet};
+
+#[test]
+fn decodes_builtin_typed_entity_data_and_strips_id() {
+    let value = compound(vec![
+        string_entry("id", "zombie"),
+        value_entry("Health", NbtSummaryValue::Float(12.0f32.to_bits())),
+    ]);
+    let decoded = decode_component(
+        VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID,
+        "minecraft:entity_data",
+        &value,
+        None,
+    );
+    let super::super::DialogDataComponentValueState::EntityData { entity } = decoded else {
+        panic!("expected entity-data component");
+    };
+    assert_eq!(entity.entity_type.resource_id, "minecraft:zombie");
+    assert_eq!(
+        entity.entity_type.holder_id,
+        vanilla_entity_type_for_resource_id("minecraft:zombie")
+            .unwrap()
+            .id
+    );
+    assert_compound_names(&entity.data, &["Health"]);
+
+    let mut registries = RegistrySet::default();
+    let mut contents = RegistryContentState::new("minecraft:entity_type");
+    contents.entries = vec![
+        RegistryPacketEntry::stub("example:fake"),
+        RegistryPacketEntry::stub("minecraft:zombie"),
+    ];
+    registries
+        .contents
+        .insert("minecraft:entity_type".to_string(), contents);
+    let session_ignored = decode_component(
+        VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID,
+        "minecraft:entity_data",
+        &value,
+        Some(&registries),
+    );
+    assert!(matches!(
+        session_ignored,
+        super::super::DialogDataComponentValueState::EntityData { entity }
+            if entity.entity_type.holder_id
+                == vanilla_entity_type_for_resource_id("minecraft:zombie").unwrap().id
+    ));
+}
+
+#[test]
+fn decodes_builtin_typed_block_entity_data_and_strips_id() {
+    let value = compound(vec![
+        string_entry("id", "minecraft:mob_spawner"),
+        value_entry("SpawnCount", NbtSummaryValue::Short(4)),
+        value_entry(
+            "SpawnData",
+            compound(vec![value_entry(
+                "entity",
+                compound(vec![string_entry("id", "minecraft:pig")]),
+            )]),
+        ),
+    ]);
+    let decoded = decode_component(
+        VANILLA_DATA_COMPONENT_BLOCK_ENTITY_DATA_TYPE_ID,
+        "minecraft:block_entity_data",
+        &value,
+        None,
+    );
+    let super::super::DialogDataComponentValueState::BlockEntityData { block_entity } = decoded
+    else {
+        panic!("expected block-entity-data component");
+    };
+    assert_eq!(
+        block_entity.block_entity_type.resource_id,
+        "minecraft:mob_spawner"
+    );
+    assert_eq!(
+        block_entity.block_entity_type.holder_id,
+        vanilla_block_entity_type_for_resource_id("minecraft:mob_spawner")
+            .unwrap()
+            .id
+    );
+    assert_compound_names(&block_entity.data, &["SpawnCount", "SpawnData"]);
+
+    let mut registries = RegistrySet::default();
+    let mut contents = RegistryContentState::new("minecraft:block_entity_type");
+    contents.entries = vec![
+        RegistryPacketEntry::stub("example:fake"),
+        RegistryPacketEntry::stub("minecraft:mob_spawner"),
+    ];
+    registries
+        .contents
+        .insert("minecraft:block_entity_type".to_string(), contents);
+    let session_ignored = decode_component(
+        VANILLA_DATA_COMPONENT_BLOCK_ENTITY_DATA_TYPE_ID,
+        "minecraft:block_entity_data",
+        &value,
+        Some(&registries),
+    );
+    assert!(matches!(
+        session_ignored,
+        super::super::DialogDataComponentValueState::BlockEntityData { block_entity }
+            if block_entity.block_entity_type.holder_id
+                == vanilla_block_entity_type_for_resource_id("minecraft:mob_spawner").unwrap().id
+    ));
+}
+
+#[test]
+fn decodes_bucket_entity_data_as_unmodified_compound() {
+    let value = compound(vec![
+        value_entry("Health", NbtSummaryValue::Float(3.5f32.to_bits())),
+        value_entry("Variant", NbtSummaryValue::Int(2)),
+    ]);
+    let decoded = decode_component(
+        VANILLA_DATA_COMPONENT_BUCKET_ENTITY_DATA_TYPE_ID,
+        "minecraft:bucket_entity_data",
+        &value,
+        None,
+    );
+    assert_eq!(
+        decoded,
+        super::super::DialogDataComponentValueState::BucketEntityData {
+            data: value.clone()
+        }
+    );
+    assert_eq!(
+        decode_custom_data(&compound(Vec::new()), "bucket entity data").unwrap(),
+        compound(Vec::new())
+    );
+}
+
+#[test]
+fn rejects_malformed_or_unknown_typed_entity_data() {
+    for (decode, value, expected) in [
+        (
+            decode_builtin_entity_data as fn(&NbtSummaryValue, &str) -> _,
+            NbtSummaryValue::List(Vec::new()),
+            "is not a compound",
+        ),
+        (
+            decode_builtin_entity_data,
+            compound(Vec::new()),
+            "missing field id",
+        ),
+        (
+            decode_builtin_entity_data,
+            compound(vec![value_entry("id", NbtSummaryValue::Int(0))]),
+            "id is not a resource id",
+        ),
+        (
+            decode_builtin_entity_data,
+            compound(vec![string_entry("id", "Bad Namespace:zombie")]),
+            "invalid",
+        ),
+        (
+            decode_builtin_entity_data,
+            compound(vec![string_entry("id", "minecraft:missing")]),
+            "missing minecraft:entity_type resource",
+        ),
+    ] {
+        let error = decode(&value, "entity data").unwrap_err();
+        assert!(error.contains(expected), "unexpected error: {error}");
+    }
+
+    let error = decode_builtin_block_entity_data(
+        &compound(vec![string_entry("id", "minecraft:missing")]),
+        "block entity data",
+    )
+    .unwrap_err();
+    assert!(error.contains("missing minecraft:block_entity_type resource"));
+    assert!(
+        decode_custom_data(&NbtSummaryValue::List(Vec::new()), "bucket entity data")
+            .unwrap_err()
+            .contains("is not a compound")
+    );
+    let flattened = NbtSummaryValue::String("{id:'minecraft:pig'}".to_string());
+    assert!(decode_builtin_entity_data(&flattened, "entity data")
+        .unwrap_err()
+        .contains("flattened SNBT string"));
+    assert!(
+        decode_builtin_block_entity_data(&flattened, "block entity data")
+            .unwrap_err()
+            .contains("flattened SNBT string")
+    );
+    assert!(decode_custom_data(
+        &NbtSummaryValue::String("{Health:3.5f}".to_string()),
+        "bucket entity data"
+    )
+    .unwrap_err()
+    .contains("flattened SNBT string"));
+}
+
+fn decode_component(
+    type_id: i32,
+    resource_id: &str,
+    value: &NbtSummaryValue,
+    registries: Option<&RegistrySet>,
+) -> super::super::DialogDataComponentValueState {
+    super::super::decode_supported_component_value(type_id, resource_id, value, registries)
+        .unwrap()
+        .unwrap()
+}
+
+fn assert_compound_names(value: &NbtSummaryValue, expected: &[&str]) {
+    let NbtSummaryValue::Compound(entries) = value else {
+        panic!("expected compound");
+    };
+    assert_eq!(
+        entries
+            .iter()
+            .map(|entry| entry.name.as_str())
+            .collect::<Vec<_>>(),
+        expected
+    );
+}
+
+fn compound(entries: Vec<NbtSummaryEntry>) -> NbtSummaryValue {
+    NbtSummaryValue::Compound(entries)
+}
+
+fn value_entry(name: &str, value: NbtSummaryValue) -> NbtSummaryEntry {
+    NbtSummaryEntry {
+        name: name.to_string(),
+        value,
+    }
+}
+
+fn string_entry(name: &str, value: &str) -> NbtSummaryEntry {
+    value_entry(name, NbtSummaryValue::String(value.to_string()))
+}
