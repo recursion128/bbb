@@ -17,6 +17,7 @@ from bootstrap_catalog_extractor import (  # noqa: E402
     enchantment_entries,
     enchantment_tooltip_order,
     identifier_constant_paths,
+    map_decoration_entries,
     painting_variant_entries,
     potion_entries,
     static_register_entries,
@@ -26,6 +27,41 @@ from vanilla_java_source import parse_source  # noqa: E402
 
 
 class BootstrapCatalogExtractorTests(unittest.TestCase):
+    def test_map_decorations_preserve_registration_projection_order(self) -> None:
+        source = parse_source(
+            "fixture/MapDecorationTypes.java",
+            b"""package fixture;
+public class MapDecorationTypes {
+  static final Holder<MapDecorationType> PLAYER = register("player", "player", false, true);
+  static final Holder<MapDecorationType> MANSION = register(
+      "mansion", "woodland_mansion", true, 5393476, false, true);
+}
+""",
+        )
+
+        entries = map_decoration_entries(source, 2)
+
+        self.assertEqual(
+            [
+                (
+                    entry.constant_name,
+                    entry.resource_id,
+                    entry.asset_id,
+                    entry.show_on_item_frame,
+                )
+                for entry in entries
+            ],
+            [
+                ("PLAYER", "minecraft:player", "minecraft:player", False),
+                (
+                    "MANSION",
+                    "minecraft:mansion",
+                    "minecraft:woodland_mansion",
+                    True,
+                ),
+            ],
+        )
+
     def test_bootstrap_order_is_cross_checked_against_resource_key_fields(self) -> None:
         source = parse_source(
             "fixture/Variants.java",

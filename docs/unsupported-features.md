@@ -165,6 +165,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   Keep fixed presentation lookup domains such as `MapColor.MATERIAL_COLORS` and
   its packed-id brightness modifiers in deterministic owner-generated data;
   runtime texture code must only implement the scaling/application algorithm.
+  Built-in holder registries with client presentation payloads, including map
+  decoration registry key/asset/show-on-frame projection, must likewise stay
+  source-generated rather than becoming renderer tuple tables.
   Generate a membership only when an exact tag, class, property, or registry
   source fact owns that semantic; do not substitute approximate tags.
   Terrain render layer is deliberately excluded from this catalog work because

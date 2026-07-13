@@ -80,6 +80,14 @@ class DecoratedPotPatternEntry:
     asset_id: str
 
 
+@dataclass(frozen=True)
+class MapDecorationEntry:
+    constant_name: str
+    resource_id: str
+    asset_id: str
+    show_on_item_frame: bool
+
+
 def enchantment_tooltip_order(
     tag_resources: dict[str, tuple[str, bytes]],
     enchantments: list[EnchantmentEntry],
@@ -124,6 +132,14 @@ def _string(source: JavaSource, expression: JavaExpression) -> str:
     if not isinstance(value, str) or not value:
         _fail(source, expression, "resource path is empty or non-string")
     return value
+
+
+def _boolean(source: JavaSource, expression: JavaExpression) -> bool:
+    if expression.canonical == "true":
+        return True
+    if expression.canonical == "false":
+        return False
+    _fail(source, expression, "expected a boolean literal")
 
 
 def _invocation(
@@ -338,6 +354,53 @@ def static_register_entries(
         raise BootstrapCatalogExtractionError(f"{source.relative_path}: duplicate constant")
     if len({entry.resource_id for entry in entries}) != len(entries):
         raise BootstrapCatalogExtractionError(f"{source.relative_path}: duplicate resource id")
+    return entries
+
+
+def map_decoration_entries(
+    source: JavaSource, expected_count: int = 35
+) -> list[MapDecorationEntry]:
+    fields = [
+        field
+        for field in source.fields
+        if field.type_spelling.replace(" ", "").startswith(
+            "Holder<MapDecorationType>"
+        )
+    ]
+    entries = []
+    for field in fields:
+        if field.initializer is None:
+            _fail(
+                source,
+                JavaExpression("", field.span, field.node),
+                f"map decoration {field.name} lacks an initializer",
+            )
+        _, arguments = _invocation(source, field.initializer, {"register"})
+        if len(arguments) not in {4, 6}:
+            _fail(
+                source,
+                field.initializer,
+                f"map decoration {field.name} has unsupported register arity",
+            )
+        entries.append(
+            MapDecorationEntry(
+                field.name,
+                f"minecraft:{_string(source, arguments[0])}",
+                f"minecraft:{_string(source, arguments[1])}",
+                _boolean(source, arguments[2]),
+            )
+        )
+    if len(entries) != expected_count:
+        raise BootstrapCatalogExtractionError(
+            f"{source.relative_path}: expected {expected_count} map decorations, "
+            f"extracted {len(entries)}"
+        )
+    for attribute in ("constant_name", "resource_id"):
+        values = [getattr(entry, attribute) for entry in entries]
+        if len(values) != len(set(values)):
+            raise BootstrapCatalogExtractionError(
+                f"{source.relative_path}: duplicate map decoration {attribute}"
+            )
     return entries
 
 

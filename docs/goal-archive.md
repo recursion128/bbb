@@ -13366,3 +13366,15 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   未注册 material id 明确生成 `NONE` 透明 fallback，未新增跨 crate 公开 API。
 - [x] generated reverse guard 阻止生产代码恢复平行 map-color 表；extractor、generator
   update/check、native map-color focused tests 与 workspace gate 通过。
+
+## 2026-07-13：Generate map decoration presentation catalog
+
+- [x] 依据 vanilla `MapDecorationTypes.java` 的 35 个 static `register` 字段，bootstrap
+  Tree-sitter extractor 机械保留声明/holder-id 顺序、registry resource id、asset id 与
+  `showOnItemFrame`；4/6 参数 overload、字面量类型、数量及 identity 唯一性均严格验证。
+- [x] renderer `item_models::map` 删除手写 `(id, sprite, bool)` tuple 表，通过同语义模块
+  内的 checked-in `generated_26_1.rs` catalog 按连续 id 查询；公开 projection 现同时
+  暴露 registry resource id，明确区分 `minecraft:mansion` key 与
+  `minecraft:woodland_mansion` asset。
+- [x] generated reverse guard 阻止生产代码恢复平行 decoration 表；extractor、generator
+  update/check、renderer map-decoration focused tests 与 workspace gate 通过。

@@ -98,6 +98,7 @@ pub struct FirstPersonMapBackgroundSubmission {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ItemFrameMapDecorationType {
     pub type_id: i32,
+    pub resource_id: &'static str,
     pub sprite_id: &'static str,
     pub render_on_frame: bool,
 }
@@ -308,56 +309,12 @@ pub(crate) struct ItemFrameMapTextFontAtlasGpu {
     pub(crate) bind_group: wgpu::BindGroup,
 }
 
-const ITEM_FRAME_MAP_DECORATION_TYPES: &[(i32, &str, bool)] = &[
-    (0, "minecraft:player", false),
-    (1, "minecraft:frame", true),
-    (2, "minecraft:red_marker", false),
-    (3, "minecraft:blue_marker", false),
-    (4, "minecraft:target_x", true),
-    (5, "minecraft:target_point", true),
-    (6, "minecraft:player_off_map", false),
-    (7, "minecraft:player_off_limits", false),
-    (8, "minecraft:woodland_mansion", true),
-    (9, "minecraft:ocean_monument", true),
-    (10, "minecraft:white_banner", true),
-    (11, "minecraft:orange_banner", true),
-    (12, "minecraft:magenta_banner", true),
-    (13, "minecraft:light_blue_banner", true),
-    (14, "minecraft:yellow_banner", true),
-    (15, "minecraft:lime_banner", true),
-    (16, "minecraft:pink_banner", true),
-    (17, "minecraft:gray_banner", true),
-    (18, "minecraft:light_gray_banner", true),
-    (19, "minecraft:cyan_banner", true),
-    (20, "minecraft:purple_banner", true),
-    (21, "minecraft:blue_banner", true),
-    (22, "minecraft:brown_banner", true),
-    (23, "minecraft:green_banner", true),
-    (24, "minecraft:red_banner", true),
-    (25, "minecraft:black_banner", true),
-    (26, "minecraft:red_x", true),
-    (27, "minecraft:desert_village", true),
-    (28, "minecraft:plains_village", true),
-    (29, "minecraft:savanna_village", true),
-    (30, "minecraft:snowy_village", true),
-    (31, "minecraft:taiga_village", true),
-    (32, "minecraft:jungle_temple", true),
-    (33, "minecraft:swamp_hut", true),
-    (34, "minecraft:trial_chambers", true),
-];
+include!("map/generated_26_1.rs");
 
 pub fn item_frame_map_decoration_type(type_id: i32) -> Option<ItemFrameMapDecorationType> {
     ITEM_FRAME_MAP_DECORATION_TYPES
-        .iter()
+        .get(usize::try_from(type_id).ok()?)
         .copied()
-        .find(|(candidate, _, _)| *candidate == type_id)
-        .map(
-            |(type_id, sprite_id, render_on_frame)| ItemFrameMapDecorationType {
-                type_id,
-                sprite_id,
-                render_on_frame,
-            },
-        )
 }
 
 /// Bakes vanilla `MapRenderer.render`'s base map surface submit:
@@ -1735,6 +1692,7 @@ mod tests {
             item_frame_map_decoration_type(0),
             Some(ItemFrameMapDecorationType {
                 type_id: 0,
+                resource_id: "minecraft:player",
                 sprite_id: "minecraft:player",
                 render_on_frame: false,
             })
@@ -1743,7 +1701,17 @@ mod tests {
             item_frame_map_decoration_type(1),
             Some(ItemFrameMapDecorationType {
                 type_id: 1,
+                resource_id: "minecraft:frame",
                 sprite_id: "minecraft:frame",
+                render_on_frame: true,
+            })
+        );
+        assert_eq!(
+            item_frame_map_decoration_type(8),
+            Some(ItemFrameMapDecorationType {
+                type_id: 8,
+                resource_id: "minecraft:mansion",
+                sprite_id: "minecraft:woodland_mansion",
                 render_on_frame: true,
             })
         );
@@ -1757,6 +1725,7 @@ mod tests {
             item_frame_map_decoration_type(34),
             Some(ItemFrameMapDecorationType {
                 type_id: 34,
+                resource_id: "minecraft:trial_chambers",
                 sprite_id: "minecraft:trial_chambers",
                 render_on_frame: true,
             })
