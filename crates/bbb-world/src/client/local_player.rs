@@ -41,6 +41,10 @@ pub struct LocalPlayerState {
     pub default_spawn: Option<DefaultSpawnState>,
     #[serde(default)]
     pub simulation_distance: Option<i32>,
+    /// Server-synchronized `Entity.portalCooldown` for the multiplayer
+    /// LocalPlayer. This is client tick state, not portal/world authority.
+    #[serde(default)]
+    pub portal_cooldown: i32,
     #[serde(default)]
     pub camera: CameraState,
     #[serde(default)]
@@ -61,6 +65,7 @@ impl Default for LocalPlayerState {
             permission_level: LocalPlayerPermissionLevel::default(),
             default_spawn: None,
             simulation_distance: None,
+            portal_cooldown: 0,
             camera: CameraState::default(),
             pose: None,
             last_look_at: None,

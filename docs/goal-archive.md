@@ -11725,7 +11725,9 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 ## 2026-07-12：play respawn packet coverage audit
 
 - [x] CommonPlayerSpawnInfo/dataToKeep wire、strict trailing、dimension-change level clear、entity-data/attribute keep bits、local runtime reset、ownership 与跨 crate tests 已审计。
-- [x] seed/portal cooldown canonical、LocalPlayer/map/container/camera/music/debug-subscriber/LevelLoadTracker 完整生命周期保持开放；没有把 reset baseline 外推为完整 respawn。
+- [x] 该审计当时将 seed/portal cooldown 与 LocalPlayer/map/container/camera/music/debug-subscriber/
+  LevelLoadTracker 生命周期留给后续独立切片，没有把 reset baseline 外推为完整 respawn；seed/portal
+  的后续闭合见 2026-07-13 对应小节。
 
 ## 2026-07-12：play section blocks update packet coverage audit
 
@@ -12961,4 +12963,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   `ChunkViewState`/`LocalPlayerState` owner；后续 SetChunkCacheRadius/SetSimulationDistance 继续覆盖，
   Login 初始化不伪增两个增量 packet counter。
 - [x] 新 ClientLevel 初始化会清除旧 chunk center，world/native tests 锁定初值，entity death-distance
-  test 直接消费 Login distance；initial levels/secure-chat/seed/portal cooldown 与其余 lifecycle 仍开放。
+  test 直接消费 Login distance；initial levels/secure-chat 与其余 lifecycle 仍开放。
+
+## 2026-07-13：spawn seed 与 portal cooldown client state
+
+- [x] CommonPlayerSpawnInfo `seed` 以 `WorldLevelInfo.biome_zoom_seed` 保存，名称与注释明确它只对应
+  vanilla `ClientLevel` 构造时交给 `BiomeManager` 的 client seed，不宣称客户端拥有 server world seed。
+- [x] Login/Respawn 的 portal cooldown 写入 LocalPlayer canonical state；client running tick 在没有首个
+  time packet 时也按 `Entity.processPortalCooldown` 递减至零，不由此实现或猜测 portal world transition。
+- [x] world Login/Respawn/tick 与 native event-drain tests 锁定覆盖和替换语义；Respawn 的其余 player/
+  container/camera/music/debug/level-load 生命周期仍保持开放。

@@ -962,11 +962,14 @@ fn minecart_along_track_ignored_counters_update_world_counters() {
 #[test]
 fn login_tracks_local_player_id_in_world() {
     let (tx, mut rx) = mpsc::channel(2);
-    let respawn_info = protocol_play_login(9).common_spawn_info;
-    tx.try_send(NetEvent::Play(PlayClientbound::Login(protocol_play_login(
-        9,
-    ))))
-    .unwrap();
+    let mut login = protocol_play_login(9);
+    login.common_spawn_info.seed = 12345;
+    login.common_spawn_info.portal_cooldown = 7;
+    let mut respawn_info = login.common_spawn_info.clone();
+    respawn_info.seed = 98765;
+    respawn_info.portal_cooldown = 3;
+    tx.try_send(NetEvent::Play(PlayClientbound::Login(login)))
+        .unwrap();
     tx.try_send(NetEvent::Play(PlayClientbound::Respawn(Respawn {
         common_spawn_info: respawn_info,
         data_to_keep: 0,
@@ -984,6 +987,8 @@ fn login_tracks_local_player_id_in_world() {
     assert_eq!(world.chunk_cache_center(), None);
     assert_eq!(world.chunk_cache_radius(), Some(8));
     assert_eq!(world.local_player().simulation_distance, Some(6));
+    assert_eq!(world.local_player().portal_cooldown, 3);
+    assert_eq!(world.level_info().unwrap().biome_zoom_seed, 98765);
     assert_eq!(world.counters().chunk_cache_radius_updates_received, 0);
     assert_eq!(world.counters().simulation_distance_packets, 0);
     assert_eq!(world.counters().play_logins_received, 1);

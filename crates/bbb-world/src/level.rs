@@ -60,6 +60,10 @@ pub struct WorldLevelInfo {
     pub dimension: String,
     pub dimension_type_id: i32,
     pub dimension_type_name: Option<String>,
+    /// Vanilla passes the CommonPlayerSpawnInfo seed only to ClientLevel's
+    /// BiomeManager. It is not client authority over server world generation.
+    #[serde(default)]
+    pub biome_zoom_seed: i64,
     #[serde(default)]
     pub default_clock_resource_id: Option<String>,
     #[serde(default = "world_level_has_sky_light_default")]
@@ -425,6 +429,14 @@ impl WorldStore {
             return;
         }
 
+        if self.local_player.portal_cooldown > 0 {
+            let ticks = i32::try_from(ticks).unwrap_or(i32::MAX);
+            self.local_player.portal_cooldown = self
+                .local_player
+                .portal_cooldown
+                .saturating_sub(ticks)
+                .max(0);
+        }
         self.advance_recipe_book_tab_animation(ticks);
 
         let default_clock_id = self.current_default_clock_id();
@@ -578,6 +590,7 @@ impl WorldStore {
             dimension: spawn_info.dimension.clone(),
             dimension_type_id: spawn_info.dimension_type_id,
             dimension_type_name,
+            biome_zoom_seed: spawn_info.seed,
             default_clock_resource_id,
             has_sky_light,
             has_ceiling,
@@ -593,6 +606,7 @@ impl WorldStore {
             is_debug: spawn_info.is_debug,
             is_flat: spawn_info.is_flat,
         });
+        self.local_player.portal_cooldown = spawn_info.portal_cooldown;
         self.refresh_day_time_from_default_clock();
         self.set_game_type_from_spawn_info(
             i32::from(spawn_info.game_type),
@@ -1069,7 +1083,7 @@ mod tests {
                     dimension: "minecraft:overworld".to_string(),
                     pos: ProtocolBlockPos { x: 8, y: 64, z: -3 },
                 }),
-                portal_cooldown: 0,
+                portal_cooldown: 7,
                 sea_level: 32,
             },
             enforces_secure_chat: true,
@@ -1089,6 +1103,7 @@ mod tests {
         assert_eq!(store.counters().chunk_cache_radius_updates_received, 0);
         assert_eq!(store.counters().simulation_distance_packets, 0);
         assert_eq!(store.counters().play_logins_received, 1);
+        assert_eq!(store.local_player().portal_cooldown, 7);
         for x in [11, 12] {
             let mut chunk = stale_chunk();
             chunk.pos = ChunkPos { x, z: 0 };
@@ -1100,6 +1115,7 @@ mod tests {
         });
         assert_eq!(store.chunk_positions(), vec![ChunkPos { x: 11, z: 0 }]);
         let level = store.level_info().unwrap();
+        assert_eq!(level.biome_zoom_seed, 12345);
         assert_eq!(level.dimension, "minecraft:the_nether");
         assert_eq!(level.dimension_type_id, 1);
         assert_eq!(
@@ -1129,6 +1145,8 @@ mod tests {
             }
         );
         assert!(store.local_player_has_reduced_debug_info());
+        store.advance_client_time(3);
+        assert_eq!(store.local_player().portal_cooldown, 4);
     }
 
     #[test]
@@ -1151,7 +1169,7 @@ mod tests {
                 is_debug: false,
                 is_flat: false,
                 last_death_location: None,
-                portal_cooldown: 0,
+                portal_cooldown: 6,
                 sea_level: 32,
             },
             data_to_keep: 3,
@@ -1159,6 +1177,8 @@ mod tests {
         assert_eq!(store.chunk_count(), 1);
         assert_eq!(store.first_chunk(), Some(ChunkPos { x: 1, z: -2 }));
         assert_eq!(store.entity_count(), 1);
+        assert_eq!(store.level_info().unwrap().biome_zoom_seed, 12345);
+        assert_eq!(store.local_player().portal_cooldown, 6);
 
         store.apply_respawn(&ProtocolRespawn {
             common_spawn_info: ProtocolSpawnInfo {
@@ -1170,7 +1190,7 @@ mod tests {
                 is_debug: false,
                 is_flat: false,
                 last_death_location: None,
-                portal_cooldown: 0,
+                portal_cooldown: 2,
                 sea_level: 63,
             },
             data_to_keep: 3,
@@ -1189,6 +1209,8 @@ mod tests {
         assert_eq!(store.counters().entities_tracked, 0);
         assert_eq!(store.counters().respawns_received, 2);
         let level = store.level_info().unwrap();
+        assert_eq!(level.biome_zoom_seed, 98765);
+        assert_eq!(store.local_player().portal_cooldown, 2);
         assert_eq!(level.dimension, "minecraft:the_end");
         assert_eq!(level.dimension_type_id, 2);
         assert_eq!(
@@ -1279,6 +1301,7 @@ mod tests {
             dimension: "minecraft:the_nether".to_string(),
             dimension_type_id: 1,
             dimension_type_name: Some("minecraft:the_nether".to_string()),
+            biome_zoom_seed: 0,
             default_clock_resource_id: None,
             has_sky_light: false,
             has_ceiling: true,
