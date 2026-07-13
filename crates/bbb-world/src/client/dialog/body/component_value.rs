@@ -32,6 +32,7 @@ use bbb_protocol::{
         VANILLA_DATA_COMPONENT_MINIMUM_ATTACK_CHARGE_TYPE_ID,
         VANILLA_DATA_COMPONENT_NOTE_BLOCK_SOUND_TYPE_ID,
         VANILLA_DATA_COMPONENT_OMINOUS_BOTTLE_AMPLIFIER_TYPE_ID,
+        VANILLA_DATA_COMPONENT_PIERCING_WEAPON_TYPE_ID,
         VANILLA_DATA_COMPONENT_POTION_DURATION_SCALE_TYPE_ID,
         VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID, VANILLA_DATA_COMPONENT_RARITY_TYPE_ID,
         VANILLA_DATA_COMPONENT_RECIPES_TYPE_ID, VANILLA_DATA_COMPONENT_REPAIR_COST_TYPE_ID,
@@ -68,7 +69,10 @@ use holder_set::{
 };
 use map_decorations::{decode_map_decorations, DialogMapDecorationState};
 use profile::decode_profile;
-use sound_event::{decode_sound_event_holder, DialogSoundEventHolderState};
+use sound_event::{
+    decode_piercing_weapon, decode_sound_event_holder, DialogPiercingWeaponState,
+    DialogSoundEventHolderState,
+};
 use typed_data::{
     decode_builtin_block_entity_data, decode_builtin_entity_data, decode_custom_data,
     DialogTypedBlockEntityDataState, DialogTypedEntityDataState,
@@ -243,6 +247,9 @@ pub enum DialogDataComponentValueState {
     BreakSound {
         sound: DialogSoundEventHolderState,
     },
+    PiercingWeapon {
+        weapon: DialogPiercingWeaponState,
+    },
 }
 
 impl DialogDataComponentValueState {
@@ -383,6 +390,11 @@ pub(super) fn decode_supported_component_value(
         VANILLA_DATA_COMPONENT_BREAK_SOUND_TYPE_ID => DialogDataComponentValueState::BreakSound {
             sound: decode_sound_event_holder(value, &what)?,
         },
+        VANILLA_DATA_COMPONENT_PIERCING_WEAPON_TYPE_ID => {
+            DialogDataComponentValueState::PiercingWeapon {
+                weapon: decode_piercing_weapon(value, &what)?,
+            }
+        }
         _ => {
             if let Some(decoded) =
                 decode_holder_backed_component_value(type_id, value, registries, &what)

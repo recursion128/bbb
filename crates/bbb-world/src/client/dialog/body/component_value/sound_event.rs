@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::registries::normalize_codec_identifier;
 
-use super::component_f32_bits;
+use super::{component_f32_bits, optional_component_bool};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "holder_kind", rename_all = "snake_case")]
@@ -19,6 +19,41 @@ pub enum DialogSoundEventHolderState {
         #[serde(default)]
         fixed_range_bits: Option<u32>,
     },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DialogPiercingWeaponState {
+    pub deals_knockback: bool,
+    pub dismounts: bool,
+    #[serde(default)]
+    pub sound: Option<DialogSoundEventHolderState>,
+    #[serde(default)]
+    pub hit_sound: Option<DialogSoundEventHolderState>,
+}
+
+pub(super) fn decode_piercing_weapon(
+    value: &NbtSummaryValue,
+    what: &str,
+) -> Result<DialogPiercingWeaponState, String> {
+    let NbtSummaryValue::Compound(entries) = value else {
+        return Err(format!("{what} is not a compound"));
+    };
+    Ok(DialogPiercingWeaponState {
+        deals_knockback: optional_component_bool(entries, "deals_knockback", true, what)?,
+        dismounts: optional_component_bool(entries, "dismounts", false, what)?,
+        sound: entries
+            .iter()
+            .find(|entry| entry.name == "sound")
+            .map(|entry| decode_sound_event_holder(&entry.value, &format!("{what} field sound")))
+            .transpose()?,
+        hit_sound: entries
+            .iter()
+            .find(|entry| entry.name == "hit_sound")
+            .map(|entry| {
+                decode_sound_event_holder(&entry.value, &format!("{what} field hit_sound"))
+            })
+            .transpose()?,
+    })
 }
 
 pub(super) fn decode_sound_event_holder(
@@ -77,7 +112,10 @@ fn decode_direct_sound_event(
 #[cfg(test)]
 mod tests {
     use bbb_protocol::{
-        data_component_types::VANILLA_DATA_COMPONENT_BREAK_SOUND_TYPE_ID,
+        data_component_types::{
+            VANILLA_DATA_COMPONENT_BREAK_SOUND_TYPE_ID,
+            VANILLA_DATA_COMPONENT_PIERCING_WEAPON_TYPE_ID,
+        },
         sound_event_types::vanilla_sound_event_registry_id,
     };
 
@@ -173,6 +211,97 @@ mod tests {
             ),
         ] {
             let error = decode_sound_event_holder(&value, "break sound").unwrap_err();
+            assert!(error.contains(expected), "unexpected error: {error}");
+        }
+    }
+
+    #[test]
+    fn decodes_piercing_weapon_defaults_and_sound_holders() {
+        let defaults = decode_supported_component_value(
+            VANILLA_DATA_COMPONENT_PIERCING_WEAPON_TYPE_ID,
+            "minecraft:piercing_weapon",
+            &compound([]),
+            None,
+        )
+        .unwrap();
+        assert!(matches!(
+            defaults,
+            Some(DialogDataComponentValueState::PiercingWeapon {
+                weapon: DialogPiercingWeaponState {
+                    deals_knockback: true,
+                    dismounts: false,
+                    sound: None,
+                    hit_sound: None,
+                },
+            })
+        ));
+
+        let decoded = decode_supported_component_value(
+            VANILLA_DATA_COMPONENT_PIERCING_WEAPON_TYPE_ID,
+            "minecraft:piercing_weapon",
+            &compound([
+                ("deals_knockback", NbtSummaryValue::Byte(0)),
+                ("dismounts", NbtSummaryValue::Int(1)),
+                (
+                    "sound",
+                    NbtSummaryValue::String("entity.item.break".to_string()),
+                ),
+                (
+                    "hit_sound",
+                    compound([
+                        (
+                            "sound_id",
+                            NbtSummaryValue::String("example:spear_hit".to_string()),
+                        ),
+                        ("range", NbtSummaryValue::Float(24.0f32.to_bits())),
+                    ]),
+                ),
+            ]),
+            None,
+        )
+        .unwrap();
+        assert!(matches!(
+            decoded,
+            Some(DialogDataComponentValueState::PiercingWeapon {
+                weapon: DialogPiercingWeaponState {
+                    deals_knockback: false,
+                    dismounts: true,
+                    sound: Some(DialogSoundEventHolderState::Named { resource_id, .. }),
+                    hit_sound: Some(DialogSoundEventHolderState::Direct {
+                        sound_id,
+                        fixed_range_bits: Some(bits),
+                    }),
+                },
+            }) if resource_id == "minecraft:entity.item.break"
+                && sound_id == "example:spear_hit"
+                && f32::from_bits(bits) == 24.0
+        ));
+    }
+
+    #[test]
+    fn rejects_malformed_piercing_weapon_records() {
+        for (value, expected) in [
+            (NbtSummaryValue::List(Vec::new()), "is not a compound"),
+            (
+                compound([(
+                    "deals_knockback",
+                    NbtSummaryValue::String("true".to_string()),
+                )]),
+                "deals_knockback is not a boolean",
+            ),
+            (
+                compound([("sound", NbtSummaryValue::Int(0))]),
+                "holder is neither a resource id",
+            ),
+            (
+                compound([(
+                    "hit_sound",
+                    NbtSummaryValue::String("minecraft:missing".to_string()),
+                )]),
+                "missing minecraft:sound_event resource",
+            ),
+        ] {
+            let error = decode_piercing_weapon(&value, "piercing weapon").unwrap_err();
             assert!(error.contains(expected), "unexpected error: {error}");
         }
     }

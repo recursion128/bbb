@@ -13767,3 +13767,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   named holder 和 direct `sound_id`/lenient optional `range`，明确不接受 session remap；unknown named、
   invalid identifier、wrong root/field shape 与 lenient range 均有定向测试，其余 persistent Codec 与
   native screens 仍开放。
+
+## 2026-07-13：Decode piercing-weapon dialog item component
+
+- [x] 对照 `PiercingWeapon.CODEC`，复用共享 `SoundEvent.CODEC` persistent holder parser，typed 投影
+  default-true `deals_knockback`、default-false `dismounts` 与 optional `sound`/`hit_sound` named/direct
+  holder，不引入第二份声音目录。
+- [x] 空 compound 默认值、NBT bool 数字转换、named/direct holder、direct range、wrong root/bool/holder
+  与 unknown built-in sound 均有定向测试；KineticWeapon/BlocksAttacks 等其余 sound-backed record 与
+  native screens 仍开放。
