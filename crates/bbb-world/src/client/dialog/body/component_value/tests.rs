@@ -1,7 +1,9 @@
 use bbb_protocol::data_component_types::{
     VANILLA_DATA_COMPONENT_CREATIVE_SLOT_LOCK_TYPE_ID, VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID,
-    VANILLA_DATA_COMPONENT_DYE_TYPE_ID, VANILLA_DATA_COMPONENT_FOX_VARIANT_TYPE_ID,
-    VANILLA_DATA_COMPONENT_ITEM_NAME_TYPE_ID, VANILLA_DATA_COMPONENT_LORE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_DAMAGE_RESISTANT_TYPE_ID, VANILLA_DATA_COMPONENT_DYE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_FOX_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_ITEM_NAME_TYPE_ID,
+    VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID, VANILLA_DATA_COMPONENT_LORE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID,
 };
 
 use super::*;
@@ -1430,6 +1432,64 @@ fn decodes_jukebox_playable_from_session_registry() {
     )
     .unwrap_err()
     .contains("without registry context"));
+}
+
+#[test]
+fn decodes_damage_resistant_holder_set_from_session_and_context_free_inputs() {
+    let registry = "minecraft:damage_type";
+    let mut registries = RegistrySet::default();
+    let mut contents = crate::RegistryContentState::new(registry);
+    contents.entries = vec![
+        crate::RegistryPacketEntry::stub("minecraft:in_fire"),
+        crate::RegistryPacketEntry::stub("minecraft:explosion"),
+    ];
+    registries.contents.insert(registry.to_string(), contents);
+    registries.tags.insert(
+        registry.to_string(),
+        crate::RegistryTagState {
+            registry: registry.to_string(),
+            tags: std::collections::BTreeMap::from([("minecraft:is_fire".to_string(), vec![0])]),
+        },
+    );
+
+    let decoded = decode_supported_component_value(
+        VANILLA_DATA_COMPONENT_DAMAGE_RESISTANT_TYPE_ID,
+        "minecraft:damage_resistant",
+        &compound(vec![string_entry("types", "#minecraft:is_fire")]),
+        Some(&registries),
+    )
+    .unwrap();
+    let Some(DialogDataComponentValueState::DamageResistant { types }) = decoded else {
+        panic!("expected damage-resistant component");
+    };
+    assert_eq!(types.holder_set_kind, "named");
+    assert_eq!(types.tag.as_deref(), Some("minecraft:is_fire"));
+    assert_eq!(types.entries[0].resource_id, "minecraft:in_fire");
+
+    let context_free = decode_supported_component_value(
+        VANILLA_DATA_COMPONENT_DAMAGE_RESISTANT_TYPE_ID,
+        "minecraft:damage_resistant",
+        &compound(vec![value_entry(
+            "types",
+            NbtSummaryValue::List(Vec::new()),
+        )]),
+        None,
+    )
+    .unwrap();
+    assert!(matches!(
+        context_free,
+        Some(DialogDataComponentValueState::DamageResistant { types })
+            if types.entries.is_empty()
+    ));
+
+    assert!(decode_supported_component_value(
+        VANILLA_DATA_COMPONENT_DAMAGE_RESISTANT_TYPE_ID,
+        "minecraft:damage_resistant",
+        &compound(Vec::new()),
+        Some(&registries),
+    )
+    .unwrap_err()
+    .contains("missing field types"));
 }
 
 fn decoded(

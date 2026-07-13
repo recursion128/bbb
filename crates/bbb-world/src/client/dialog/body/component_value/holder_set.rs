@@ -1,7 +1,17 @@
-use bbb_protocol::NbtSummaryValue;
+use bbb_protocol::{
+    data_component_types::{
+        VANILLA_DATA_COMPONENT_DAMAGE_RESISTANT_TYPE_ID,
+        VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID,
+        VANILLA_DATA_COMPONENT_REPAIRABLE_TYPE_ID,
+    },
+    NbtSummaryValue,
+};
 use serde::{Deserialize, Serialize};
 
 use crate::{registries::normalize_codec_identifier, RegistrySet};
+
+use super::DialogDataComponentValueState;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DialogRegistryHolderReferenceState {
@@ -18,6 +28,39 @@ pub struct DialogRegistryHolderSetState {
     pub entries: Vec<DialogRegistryHolderReferenceState>,
 }
 
+pub(super) fn decode_holder_backed_component_value(
+    type_id: i32,
+    value: &NbtSummaryValue,
+    registries: Option<&RegistrySet>,
+    what: &str,
+) -> Option<Result<DialogDataComponentValueState, String>> {
+    match type_id {
+        VANILLA_DATA_COMPONENT_REPAIRABLE_TYPE_ID => Some(
+            decode_registry_holder_set_field(value, "items", "minecraft:item", registries, what)
+                .map(|items| DialogDataComponentValueState::Repairable { items }),
+        ),
+        VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID => Some(
+            decode_registry_holder_set(value, "minecraft:banner_pattern", registries, what)
+                .map(|patterns| DialogDataComponentValueState::ProvidesBannerPatterns { patterns }),
+        ),
+        VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID => Some(
+            decode_registry_holder_reference(value, "minecraft:jukebox_song", registries, what)
+                .map(|song| DialogDataComponentValueState::JukeboxPlayable { song }),
+        ),
+        VANILLA_DATA_COMPONENT_DAMAGE_RESISTANT_TYPE_ID => Some(
+            decode_registry_holder_set_field(
+                value,
+                "types",
+                "minecraft:damage_type",
+                registries,
+                what,
+            )
+            .map(|types| DialogDataComponentValueState::DamageResistant { types }),
+        ),
+        _ => None,
+    }
+}
+
 pub(super) fn decode_registry_holder_reference(
     value: &NbtSummaryValue,
     registry: &str,
@@ -30,6 +73,24 @@ pub(super) fn decode_registry_holder_reference(
         return Err(format!("{what} holder is not a resource id"));
     };
     decode_holder_reference(raw, registry, registries, what)
+}
+
+pub(super) fn decode_registry_holder_set_field(
+    value: &NbtSummaryValue,
+    field: &str,
+    registry: &str,
+    registries: Option<&RegistrySet>,
+    what: &str,
+) -> Result<DialogRegistryHolderSetState, String> {
+    let NbtSummaryValue::Compound(entries) = value else {
+        return Err(format!("{what} is not a compound"));
+    };
+    let field_value = entries
+        .iter()
+        .find(|entry| entry.name == field)
+        .map(|entry| &entry.value)
+        .ok_or_else(|| format!("{what} is missing field {field}"))?;
+    decode_registry_holder_set(field_value, registry, registries, what)
 }
 
 pub(super) fn decode_registry_holder_set(

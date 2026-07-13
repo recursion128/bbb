@@ -21,7 +21,7 @@ use bbb_protocol::{
         VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID, VANILLA_DATA_COMPONENT_FOOD_TYPE_ID,
         VANILLA_DATA_COMPONENT_GLIDER_TYPE_ID,
         VANILLA_DATA_COMPONENT_INTANGIBLE_PROJECTILE_TYPE_ID,
-        VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID, VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID,
         VANILLA_DATA_COMPONENT_LODESTONE_TRACKER_TYPE_ID, VANILLA_DATA_COMPONENT_MAP_COLOR_TYPE_ID,
         VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID,
         VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
@@ -29,10 +29,8 @@ use bbb_protocol::{
         VANILLA_DATA_COMPONENT_NOTE_BLOCK_SOUND_TYPE_ID,
         VANILLA_DATA_COMPONENT_OMINOUS_BOTTLE_AMPLIFIER_TYPE_ID,
         VANILLA_DATA_COMPONENT_POTION_DURATION_SCALE_TYPE_ID,
-        VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID,
-        VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID,
-        VANILLA_DATA_COMPONENT_RARITY_TYPE_ID, VANILLA_DATA_COMPONENT_RECIPES_TYPE_ID,
-        VANILLA_DATA_COMPONENT_REPAIRABLE_TYPE_ID, VANILLA_DATA_COMPONENT_REPAIR_COST_TYPE_ID,
+        VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID, VANILLA_DATA_COMPONENT_RARITY_TYPE_ID,
+        VANILLA_DATA_COMPONENT_RECIPES_TYPE_ID, VANILLA_DATA_COMPONENT_REPAIR_COST_TYPE_ID,
         VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID,
         VANILLA_DATA_COMPONENT_TOOLTIP_DISPLAY_TYPE_ID,
         VANILLA_DATA_COMPONENT_TOOLTIP_STYLE_TYPE_ID,
@@ -53,8 +51,8 @@ mod holder_set;
 mod profile;
 
 use holder_set::{
-    decode_registry_holder_reference, decode_registry_holder_set,
-    DialogRegistryHolderReferenceState, DialogRegistryHolderSetState,
+    decode_holder_backed_component_value, DialogRegistryHolderReferenceState,
+    DialogRegistryHolderSetState,
 };
 use profile::decode_profile;
 
@@ -174,6 +172,9 @@ pub enum DialogDataComponentValueState {
     JukeboxPlayable {
         song: DialogRegistryHolderReferenceState,
     },
+    DamageResistant {
+        types: DialogRegistryHolderSetState,
+    },
 }
 
 impl DialogDataComponentValueState {
@@ -282,45 +283,16 @@ pub(super) fn decode_supported_component_value(
         VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID => DialogDataComponentValueState::Profile {
             profile: decode_profile(value, &what)?,
         },
-        VANILLA_DATA_COMPONENT_REPAIRABLE_TYPE_ID => decode_repairable(value, registries, &what)?,
-        VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID => {
-            DialogDataComponentValueState::ProvidesBannerPatterns {
-                patterns: decode_registry_holder_set(
-                    value,
-                    "minecraft:banner_pattern",
-                    registries,
-                    &what,
-                )?,
-            }
-        }
-        VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID => {
-            DialogDataComponentValueState::JukeboxPlayable {
-                song: decode_registry_holder_reference(
-                    value,
-                    "minecraft:jukebox_song",
-                    registries,
-                    &what,
-                )?,
-            }
-        }
         _ => {
+            if let Some(decoded) =
+                decode_holder_backed_component_value(type_id, value, registries, &what)
+            {
+                return decoded.map(Some);
+            }
             return decode_string_enum_component_value(type_id, &what, value);
         }
     };
     Ok(Some(decoded))
-}
-
-fn decode_repairable(
-    value: &NbtSummaryValue,
-    registries: Option<&RegistrySet>,
-    what: &str,
-) -> Result<DialogDataComponentValueState, String> {
-    let entries = compound_entries(value, what)?;
-    let items =
-        find_entry(entries, "items").ok_or_else(|| format!("{what} is missing field items"))?;
-    Ok(DialogDataComponentValueState::Repairable {
-        items: decode_registry_holder_set(items, "minecraft:item", registries, what)?,
-    })
 }
 
 fn decode_string_enum_component_value(
