@@ -1523,6 +1523,7 @@ fn advance_particle_utils_spawn_particles_randoms(
 mod tests {
     use super::*;
     use crate::LocalPlayerPoseState;
+    use bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_COW_SOUND_VARIANT_ID;
     use bbb_protocol::entity_types::{
         VANILLA_ENTITY_TYPE_ALLAY_ID, VANILLA_ENTITY_TYPE_ARMADILLO_ID,
         VANILLA_ENTITY_TYPE_ARMOR_STAND_ID, VANILLA_ENTITY_TYPE_ARROW_ID,
@@ -1540,11 +1541,11 @@ mod tests {
     };
 
     use bbb_protocol::packets::{
-        AddEntity, BlockPos as ProtocolBlockPos, EntityAnimation, EntityDataValue,
-        EntityDataValueKind, EntityEvent, EntityPositionSync, EquipmentSlot, EquipmentSlotUpdate,
-        GameEvent, ItemStackSummary, LevelEvent, PlayTime, PlayerHealth, RemoveEntities,
-        SetEntityData, SetEquipment, SetPassengers, SoundEvent, SoundEventHolder, SoundSource,
-        TakeItemEntity, TeleportEntity, Vec3d,
+        AddEntity, BlockPos as ProtocolBlockPos, EntityAnimation, EntityDataRegistryHolder,
+        EntityDataValue, EntityDataValueKind, EntityEvent, EntityPositionSync, EquipmentSlot,
+        EquipmentSlotUpdate, GameEvent, ItemStackSummary, LevelEvent, PlayTime, PlayerHealth,
+        RemoveEntities, SetEntityData, SetEquipment, SetPassengers, SoundEvent, SoundEventHolder,
+        SoundSource, TakeItemEntity, TeleportEntity, Vec3d,
     };
     use uuid::Uuid;
 
@@ -1754,6 +1755,40 @@ mod tests {
             serializer_id: 8,
             value: EntityDataValueKind::Boolean(value),
         }
+    }
+
+    fn cow_sound_variant_nbt() -> Vec<u8> {
+        let mut out = vec![10];
+        for field in ["ambient_sound", "hurt_sound", "death_sound", "step_sound"] {
+            if field == "death_sound" {
+                begin_test_nbt_compound(&mut out, field);
+                write_test_nbt_string(&mut out, "sound_id", "example:entity.cow.death");
+                out.push(5);
+                write_test_nbt_utf(&mut out, "range");
+                out.extend_from_slice(&20.0_f32.to_be_bytes());
+                out.push(0);
+            } else {
+                write_test_nbt_string(&mut out, field, "minecraft:entity.cow.ambient");
+            }
+        }
+        out.push(0);
+        out
+    }
+
+    fn begin_test_nbt_compound(out: &mut Vec<u8>, name: &str) {
+        out.push(10);
+        write_test_nbt_utf(out, name);
+    }
+
+    fn write_test_nbt_string(out: &mut Vec<u8>, name: &str, value: &str) {
+        out.push(8);
+        write_test_nbt_utf(out, name);
+        write_test_nbt_utf(out, value);
+    }
+
+    fn write_test_nbt_utf(out: &mut Vec<u8>, value: &str) {
+        out.extend_from_slice(&(value.len() as u16).to_be_bytes());
+        out.extend_from_slice(value.as_bytes());
     }
 
     fn vec3(x: f64, y: f64, z: f64) -> Vec3d {
@@ -2776,6 +2811,14 @@ mod tests {
     #[test]
     fn armor_stand_and_cow_death_events_forward_randomized_positioned_sounds() {
         let mut store = WorldStore::new();
+        store.record_registry_entries(
+            crate::registries::COW_SOUND_VARIANT_REGISTRY,
+            0,
+            vec![crate::RegistryPacketEntry::with_raw_data(
+                "example:custom",
+                cow_sound_variant_nbt(),
+            )],
+        );
         let mut random = LevelEventSoundRandomState::with_seed(0);
         let mut expected_random = LevelEventSoundRandomState::with_seed(0);
         let expected_pitch =
@@ -2827,6 +2870,17 @@ mod tests {
                     z: -3.0,
                 },
             )),
+            PlayClientbound::SetEntityData(SetEntityData {
+                id: 86,
+                values: vec![EntityDataValue {
+                    data_id: crate::entities::VANILLA_COW_SOUND_VARIANT_DATA_ID,
+                    serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_COW_SOUND_VARIANT_ID,
+                    value: EntityDataValueKind::RegistryId {
+                        serializer: EntityDataRegistryHolder::CowSoundVariant,
+                        id: 0,
+                    },
+                }],
+            }),
             PlayClientbound::EntityEvent(EntityEvent {
                 entity_id: 86,
                 event_id: LIVING_ENTITY_DEATH_EVENT_ID,
@@ -2862,8 +2916,9 @@ mod tests {
         let cow_sound = &effects.positioned_sounds[1];
         assert_eq!(
             cow_sound.sound.location.as_deref(),
-            Some("minecraft:entity.cow.death")
+            Some("example:entity.cow.death")
         );
+        assert_eq!(cow_sound.sound.fixed_range, Some(20.0));
         assert_eq!(cow_sound.source, "neutral");
         assert_eq!(
             cow_sound.position,

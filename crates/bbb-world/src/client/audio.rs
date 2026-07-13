@@ -26,6 +26,10 @@ use crate::entities::{
     VANILLA_PIG_DEFAULT_SOUND_VARIANT_RESOURCE_ID, VANILLA_PIG_SOUND_VARIANT_DATA_ID,
     VANILLA_WOLF_DEFAULT_SOUND_VARIANT_RESOURCE_ID, VANILLA_WOLF_SOUND_VARIANT_DATA_ID,
 };
+use crate::registries::{
+    RegistrySoundEvent, CAT_SOUND_VARIANT_REGISTRY, CHICKEN_SOUND_VARIANT_REGISTRY,
+    COW_SOUND_VARIANT_REGISTRY, PIG_SOUND_VARIANT_REGISTRY, WOLF_SOUND_VARIANT_REGISTRY,
+};
 use crate::{block_name_is_air, WorldStore};
 
 const JUKEBOX_PLAY_LEVEL_EVENT: i32 = 1010;
@@ -58,11 +62,6 @@ const STRAY_DEATH_SOUND_EVENT: &str = "minecraft:entity.stray.death";
 const BOGGED_DEATH_SOUND_EVENT: &str = "minecraft:entity.bogged.death";
 const ITEM_PICKUP_SOUND_EVENT: &str = "minecraft:entity.item.pickup";
 const EXPERIENCE_ORB_PICKUP_SOUND_EVENT: &str = "minecraft:entity.experience_orb.pickup";
-const CAT_SOUND_VARIANT_REGISTRY: &str = "minecraft:cat_sound_variant";
-const CHICKEN_SOUND_VARIANT_REGISTRY: &str = "minecraft:chicken_sound_variant";
-const COW_SOUND_VARIANT_REGISTRY: &str = "minecraft:cow_sound_variant";
-const PIG_SOUND_VARIANT_REGISTRY: &str = "minecraft:pig_sound_variant";
-const WOLF_SOUND_VARIANT_REGISTRY: &str = "minecraft:wolf_sound_variant";
 const GLOBAL_LEVEL_EVENT_SOUND_DISTANCE: f64 = 2.0;
 const VANILLA_VEC3_NORMALIZE_EPSILON: f64 = 1.0e-5;
 const SCULK_SHRIEKER_TOP_Y: f64 = 0.5;
@@ -523,19 +522,29 @@ impl WorldStore {
     ) -> Option<SoundEventState> {
         let transform = self.entities.transform_state(entity_id)?;
         let (sound, volume) = match transform.entity_type_id {
-            VANILLA_ENTITY_TYPE_ARMOR_STAND_ID => (ARMOR_STAND_BREAK_SOUND_EVENT, 1.0),
-            VANILLA_ENTITY_TYPE_ZOMBIE_ID => (ZOMBIE_DEATH_SOUND_EVENT, 1.0),
-            VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID => (ZOMBIE_VILLAGER_DEATH_SOUND_EVENT, 1.0),
-            VANILLA_ENTITY_TYPE_RAVAGER_ID => (RAVAGER_DEATH_SOUND_EVENT, 1.0),
-            VANILLA_ENTITY_TYPE_IRON_GOLEM_ID => (IRON_GOLEM_DEATH_SOUND_EVENT, 1.0),
-            VANILLA_ENTITY_TYPE_VILLAGER_ID => (VILLAGER_DEATH_SOUND_EVENT, 1.0),
-            VANILLA_ENTITY_TYPE_WITCH_ID => (WITCH_DEATH_SOUND_EVENT, 1.0),
-            VANILLA_ENTITY_TYPE_SKELETON_ID => (SKELETON_DEATH_SOUND_EVENT, 1.0),
-            VANILLA_ENTITY_TYPE_STRAY_ID => (STRAY_DEATH_SOUND_EVENT, 1.0),
-            VANILLA_ENTITY_TYPE_BOGGED_ID => (BOGGED_DEATH_SOUND_EVENT, 1.0),
+            VANILLA_ENTITY_TYPE_ARMOR_STAND_ID => {
+                (direct_sound_holder(ARMOR_STAND_BREAK_SOUND_EVENT), 1.0)
+            }
+            VANILLA_ENTITY_TYPE_ZOMBIE_ID => (direct_sound_holder(ZOMBIE_DEATH_SOUND_EVENT), 1.0),
+            VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID => {
+                (direct_sound_holder(ZOMBIE_VILLAGER_DEATH_SOUND_EVENT), 1.0)
+            }
+            VANILLA_ENTITY_TYPE_RAVAGER_ID => (direct_sound_holder(RAVAGER_DEATH_SOUND_EVENT), 1.0),
+            VANILLA_ENTITY_TYPE_IRON_GOLEM_ID => {
+                (direct_sound_holder(IRON_GOLEM_DEATH_SOUND_EVENT), 1.0)
+            }
+            VANILLA_ENTITY_TYPE_VILLAGER_ID => {
+                (direct_sound_holder(VILLAGER_DEATH_SOUND_EVENT), 1.0)
+            }
+            VANILLA_ENTITY_TYPE_WITCH_ID => (direct_sound_holder(WITCH_DEATH_SOUND_EVENT), 1.0),
+            VANILLA_ENTITY_TYPE_SKELETON_ID => {
+                (direct_sound_holder(SKELETON_DEATH_SOUND_EVENT), 1.0)
+            }
+            VANILLA_ENTITY_TYPE_STRAY_ID => (direct_sound_holder(STRAY_DEATH_SOUND_EVENT), 1.0),
+            VANILLA_ENTITY_TYPE_BOGGED_ID => (direct_sound_holder(BOGGED_DEATH_SOUND_EVENT), 1.0),
             VANILLA_ENTITY_TYPE_CAT_ID => {
                 let baby = self.entities.is_baby(entity_id)?;
-                let variant = self.builtin_sound_variant_identity(
+                let sound = self.sound_variant_death_sound(
                     entity_id,
                     CAT_SOUND_VARIANT_REGISTRY,
                     VANILLA_CAT_SOUND_VARIANT_DATA_ID,
@@ -543,12 +552,14 @@ impl WorldStore {
                     VANILLA_CAT_DEFAULT_SOUND_VARIANT_RESOURCE_ID,
                     CatSoundVariantIdentity::for_vanilla_registry_id,
                     CatSoundVariantIdentity::for_resource_id,
+                    CatSoundVariantIdentity::builtin_death_sound_event,
+                    baby,
                 )?;
-                (variant.builtin_death_sound_event(baby), 1.0)
+                (sound, 1.0)
             }
             VANILLA_ENTITY_TYPE_CHICKEN_ID => {
                 let baby = self.entities.is_baby(entity_id)?;
-                let variant = self.builtin_sound_variant_identity(
+                let sound = self.sound_variant_death_sound(
                     entity_id,
                     CHICKEN_SOUND_VARIANT_REGISTRY,
                     VANILLA_CHICKEN_SOUND_VARIANT_DATA_ID,
@@ -556,12 +567,14 @@ impl WorldStore {
                     VANILLA_CHICKEN_DEFAULT_SOUND_VARIANT_RESOURCE_ID,
                     ChickenSoundVariantIdentity::for_vanilla_registry_id,
                     ChickenSoundVariantIdentity::for_resource_id,
+                    ChickenSoundVariantIdentity::builtin_death_sound_event,
+                    baby,
                 )?;
-                (variant.builtin_death_sound_event(baby), 1.0)
+                (sound, 1.0)
             }
             VANILLA_ENTITY_TYPE_COW_ID => {
                 let baby = self.entities.is_baby(entity_id)?;
-                let variant = self.builtin_sound_variant_identity(
+                let sound = self.sound_variant_death_sound(
                     entity_id,
                     COW_SOUND_VARIANT_REGISTRY,
                     VANILLA_COW_SOUND_VARIANT_DATA_ID,
@@ -569,12 +582,14 @@ impl WorldStore {
                     VANILLA_COW_DEFAULT_SOUND_VARIANT_RESOURCE_ID,
                     CowSoundVariantIdentity::for_vanilla_registry_id,
                     CowSoundVariantIdentity::for_resource_id,
+                    CowSoundVariantIdentity::builtin_death_sound_event,
+                    baby,
                 )?;
-                (variant.builtin_death_sound_event(baby), 0.4)
+                (sound, 0.4)
             }
             VANILLA_ENTITY_TYPE_PIG_ID => {
                 let baby = self.entities.is_baby(entity_id)?;
-                let variant = self.builtin_sound_variant_identity(
+                let sound = self.sound_variant_death_sound(
                     entity_id,
                     PIG_SOUND_VARIANT_REGISTRY,
                     VANILLA_PIG_SOUND_VARIANT_DATA_ID,
@@ -582,12 +597,14 @@ impl WorldStore {
                     VANILLA_PIG_DEFAULT_SOUND_VARIANT_RESOURCE_ID,
                     PigSoundVariantIdentity::for_vanilla_registry_id,
                     PigSoundVariantIdentity::for_resource_id,
+                    PigSoundVariantIdentity::builtin_death_sound_event,
+                    baby,
                 )?;
-                (variant.builtin_death_sound_event(baby), 1.0)
+                (sound, 1.0)
             }
             VANILLA_ENTITY_TYPE_WOLF_ID => {
                 let baby = self.entities.is_baby(entity_id)?;
-                let variant = self.builtin_sound_variant_identity(
+                let sound = self.sound_variant_death_sound(
                     entity_id,
                     WOLF_SOUND_VARIANT_REGISTRY,
                     VANILLA_WOLF_SOUND_VARIANT_DATA_ID,
@@ -595,8 +612,10 @@ impl WorldStore {
                     VANILLA_WOLF_DEFAULT_SOUND_VARIANT_RESOURCE_ID,
                     WolfSoundVariantIdentity::for_vanilla_registry_id,
                     WolfSoundVariantIdentity::for_resource_id,
+                    WolfSoundVariantIdentity::builtin_death_sound_event,
+                    baby,
                 )?;
-                (variant.builtin_death_sound_event(baby), 0.4)
+                (sound, 0.4)
             }
             _ => return None,
         };
@@ -605,7 +624,7 @@ impl WorldStore {
         }
         let source = vanilla_entity_sound_source(transform.entity_type_id);
         let state = SoundEventState {
-            sound: direct_sound_holder(sound),
+            sound,
             source: source.as_str().to_string(),
             position: ProtocolVec3d {
                 x: transform.position.x,
@@ -620,7 +639,8 @@ impl WorldStore {
         Some(self.record_positioned_sound(state))
     }
 
-    fn builtin_sound_variant_identity<T: Copy>(
+    #[allow(clippy::too_many_arguments)]
+    fn sound_variant_death_sound<T: Copy>(
         &self,
         entity_id: i32,
         registry: &str,
@@ -629,19 +649,36 @@ impl WorldStore {
         default_resource_id: &str,
         for_vanilla_registry_id: fn(i32) -> Option<T>,
         for_resource_id: fn(&str) -> Option<T>,
-    ) -> Option<T> {
-        // The synchronized element contains a full SoundSet. Until its NETWORK_CODEC
-        // payload is typed, the server registry must suppress this built-in-only fallback.
-        if self.registry_content(registry).is_some() {
-            return None;
-        }
-        match self
+        builtin_death_sound_event: fn(T, bool) -> &'static str,
+        baby: bool,
+    ) -> Option<SoundHolderState> {
+        let metadata_registry_id = self
             .entities
-            .metadata_registry_id_for_entity(entity_id, data_id, serializer)?
-        {
+            .metadata_registry_id_for_entity(entity_id, data_id, serializer)?;
+        if self.registry_content(registry).is_some() {
+            let holder_id = metadata_registry_id.or_else(|| {
+                self.registry_holder_id_by_resource_id(registry, default_resource_id)
+            })?;
+            let entry = self.registry_entry_by_holder_id(registry, holder_id)?;
+            if entry.has_data {
+                let sound = self
+                    .synchronized_sound_variant_death_sound(registry, holder_id, baby)
+                    .ok()??;
+                return Some(registry_sound_holder(sound));
+            }
+            let identity = for_resource_id(&entry.id)?;
+            return Some(direct_sound_holder(builtin_death_sound_event(
+                identity, baby,
+            )));
+        }
+
+        let identity = match metadata_registry_id {
             Some(registry_id) => for_vanilla_registry_id(registry_id),
             None => for_resource_id(default_resource_id),
-        }
+        }?;
+        Some(direct_sound_holder(builtin_death_sound_event(
+            identity, baby,
+        )))
     }
 
     pub fn take_item_entity_pickup_sound_with_random(
@@ -1586,6 +1623,21 @@ fn direct_sound_holder(sound: &str) -> SoundHolderState {
     }
 }
 
+fn registry_sound_holder(sound: RegistrySoundEvent) -> SoundHolderState {
+    match sound {
+        RegistrySoundEvent::Named { resource_id } => direct_sound_holder(&resource_id),
+        RegistrySoundEvent::Direct {
+            location,
+            fixed_range,
+        } => SoundHolderState {
+            kind: "direct".to_string(),
+            registry_id: None,
+            location: Some(location),
+            fixed_range,
+        },
+    }
+}
+
 fn game_event_param_floor(param: f32) -> Option<i32> {
     param.is_finite().then_some(param.floor() as i32)
 }
@@ -1912,32 +1964,102 @@ mod tests {
     }
 
     #[test]
-    fn synchronized_sound_variant_registry_does_not_use_builtin_payload_fallback() {
+    fn synchronized_sound_variant_registry_uses_server_order_and_typed_payload() {
         let mut store = WorldStore::new();
-        store.apply_add_entity(protocol_add_entity_of_type(
-            2_000,
-            VANILLA_ENTITY_TYPE_CAT_ID,
-        ));
-        assert!(store.apply_set_entity_data(SetEntityData {
-            id: 2_000,
-            values: vec![EntityDataValue {
-                data_id: VANILLA_CAT_SOUND_VARIANT_DATA_ID,
-                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_CAT_SOUND_VARIANT_ID,
-                value: EntityDataValueKind::RegistryId {
-                    serializer: EntityDataRegistryHolder::CatSoundVariant,
-                    id: 1,
-                },
-            }],
-        }));
         store.record_registry_entries(
             CAT_SOUND_VARIANT_REGISTRY,
             0,
-            vec![crate::RegistryPacketEntry::stub("minecraft:royal")],
+            vec![
+                crate::RegistryPacketEntry::with_raw_data(
+                    "example:custom",
+                    cat_sound_variant_nbt(),
+                ),
+                crate::RegistryPacketEntry::stub("minecraft:classic"),
+            ],
+        );
+        for (id, baby) in [(2_000, false), (2_001, true)] {
+            store.apply_add_entity(protocol_add_entity_of_type(id, VANILLA_ENTITY_TYPE_CAT_ID));
+            let mut values = vec![cat_sound_variant_entity_data(0)];
+            if baby {
+                values.push(EntityDataValue {
+                    data_id: crate::entities::VANILLA_AGEABLE_MOB_BABY_DATA_ID,
+                    serializer_id: 8,
+                    value: EntityDataValueKind::Boolean(true),
+                });
+            }
+            assert!(store.apply_set_entity_data(SetEntityData { id, values }));
+            let sound = store.living_death_sound_for_entity(id, || 0.5).unwrap();
+            assert_eq!(
+                sound.sound.location.as_deref(),
+                Some(if baby {
+                    "example:entity.cat.baby_death"
+                } else {
+                    "example:entity.cat.adult_death"
+                })
+            );
+            assert_eq!(sound.sound.fixed_range, baby.then_some(24.0));
+        }
+    }
+
+    #[test]
+    fn synchronized_sound_variant_stubs_use_resource_fallback_in_server_order() {
+        let mut store = WorldStore::new();
+        store.record_registry_entries(
+            CAT_SOUND_VARIANT_REGISTRY,
+            0,
+            vec![
+                crate::RegistryPacketEntry::stub("minecraft:royal"),
+                crate::RegistryPacketEntry::stub("minecraft:classic"),
+            ],
+        );
+        store.apply_add_entity(protocol_add_entity_of_type(
+            2_010,
+            VANILLA_ENTITY_TYPE_CAT_ID,
+        ));
+        assert!(store.apply_set_entity_data(SetEntityData {
+            id: 2_010,
+            values: vec![cat_sound_variant_entity_data(0)],
+        }));
+        let royal = store.living_death_sound_for_entity(2_010, || 0.5).unwrap();
+        assert_eq!(
+            royal.sound.location.as_deref(),
+            Some("minecraft:entity.cat_royal.death")
         );
 
+        store.apply_add_entity(protocol_add_entity_of_type(
+            2_011,
+            VANILLA_ENTITY_TYPE_CAT_ID,
+        ));
+        let default = store.living_death_sound_for_entity(2_011, || 0.5).unwrap();
+        assert_eq!(
+            default.sound.location.as_deref(),
+            Some("minecraft:entity.cat.death")
+        );
+    }
+
+    #[test]
+    fn malformed_synchronized_sound_variant_payload_fails_closed() {
+        let mut store = WorldStore::new();
+        store.record_registry_entries(
+            CAT_SOUND_VARIANT_REGISTRY,
+            0,
+            vec![crate::RegistryPacketEntry::with_raw_data(
+                "example:malformed",
+                vec![10, 0],
+            )],
+        );
+        store.apply_add_entity(protocol_add_entity_of_type(
+            2_020,
+            VANILLA_ENTITY_TYPE_CAT_ID,
+        ));
+        assert!(store.apply_set_entity_data(SetEntityData {
+            id: 2_020,
+            values: vec![cat_sound_variant_entity_data(0)],
+        }));
+
         assert!(store
-            .living_death_sound_for_entity(2_000, || {
-                panic!("unknown synchronized SoundSet payload must not sample pitch")
+            .living_death_sound_for_entity(2_020, || {
+                panic!("malformed synchronized SoundSet must not sample pitch")
             })
             .is_none());
     }
@@ -2667,6 +2789,77 @@ mod tests {
             y_head_rot: 0.0,
             data: 0,
         }
+    }
+
+    fn cat_sound_variant_entity_data(registry_id: i32) -> EntityDataValue {
+        EntityDataValue {
+            data_id: VANILLA_CAT_SOUND_VARIANT_DATA_ID,
+            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_CAT_SOUND_VARIANT_ID,
+            value: EntityDataValueKind::RegistryId {
+                serializer: EntityDataRegistryHolder::CatSoundVariant,
+                id: registry_id,
+            },
+        }
+    }
+
+    fn cat_sound_variant_nbt() -> Vec<u8> {
+        let fields = [
+            "ambient_sound",
+            "stray_ambient_sound",
+            "hiss_sound",
+            "hurt_sound",
+            "death_sound",
+            "eat_sound",
+            "beg_for_food_sound",
+            "purr_sound",
+            "purreow_sound",
+        ];
+        let mut out = vec![10];
+        begin_test_nbt_compound(&mut out, "adult_sounds");
+        for field in fields {
+            write_test_nbt_string(
+                &mut out,
+                field,
+                if field == "death_sound" {
+                    "example:entity.cat.adult_death"
+                } else {
+                    "minecraft:entity.cat.ambient"
+                },
+            );
+        }
+        out.push(0);
+        begin_test_nbt_compound(&mut out, "baby_sounds");
+        for field in fields {
+            if field == "death_sound" {
+                begin_test_nbt_compound(&mut out, field);
+                write_test_nbt_string(&mut out, "sound_id", "example:entity.cat.baby_death");
+                out.push(5);
+                write_test_nbt_utf(&mut out, "range");
+                out.extend_from_slice(&24.0_f32.to_be_bytes());
+                out.push(0);
+            } else {
+                write_test_nbt_string(&mut out, field, "minecraft:entity.baby_cat.ambient");
+            }
+        }
+        out.push(0);
+        out.push(0);
+        out
+    }
+
+    fn begin_test_nbt_compound(out: &mut Vec<u8>, name: &str) {
+        out.push(10);
+        write_test_nbt_utf(out, name);
+    }
+
+    fn write_test_nbt_string(out: &mut Vec<u8>, name: &str, value: &str) {
+        out.push(8);
+        write_test_nbt_utf(out, name);
+        write_test_nbt_utf(out, value);
+    }
+
+    fn write_test_nbt_utf(out: &mut Vec<u8>, value: &str) {
+        out.extend_from_slice(&(value.len() as u16).to_be_bytes());
+        out.extend_from_slice(value.as_bytes());
     }
 
     fn assert_close(actual: f32, expected: f32) {

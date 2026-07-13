@@ -3,6 +3,7 @@ mod block_states;
 mod enchantments;
 mod environment_attributes;
 mod instruments;
+mod sound_variants;
 mod state;
 mod store;
 mod trim_materials;
@@ -23,6 +24,10 @@ pub(crate) use environment_attributes::{
     decode_client_environment_attributes, EnvironmentAttributeProjectionError,
 };
 pub use instruments::VanillaInstrumentIdentity;
+pub(crate) use sound_variants::{
+    RegistrySoundEvent, CAT_SOUND_VARIANT_REGISTRY, CHICKEN_SOUND_VARIANT_REGISTRY,
+    COW_SOUND_VARIANT_REGISTRY, PIG_SOUND_VARIANT_REGISTRY, WOLF_SOUND_VARIANT_REGISTRY,
+};
 pub use state::{
     RegistryContentState, RegistryEntrySource, RegistryPacket, RegistryPacketEntry, RegistrySet,
     RegistryTagState, ResolvedRegistryEntry, UnresolvedRegistryTagHolder,

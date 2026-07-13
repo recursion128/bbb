@@ -13499,3 +13499,17 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   typed payload 会 fail closed，不把 resource identity 冒充 payload。154 项 scripts Python
   tests、generator update/check、4 项 sound-variant world tests、6 项 death-event tests 与
   workspace gate 通过。
+
+## 2026-07-13：Decode synchronized animal sound-variant death sounds
+
+- [x] 新的 world sound-variant registry owner 按 26.1 `NETWORK_CODEC` 校验 cat 的 9、
+  chicken/cow 的 4、pig 的 5、wolf 的 7 个必需 SoundEvent holder；四个 age-aware family
+  同时校验 `adult_sounds` / `baby_sounds`，cow 保持扁平结构，named 与 direct
+  `sound_id`/optional `range` 均形成 typed projection。
+- [x] event-3 audio 先按 session holder id/default resource 查询同步 registry：raw data
+  使用 typed payload，known-pack stub 才按该 entry 的 resource identity 使用 generated
+  built-in payload；registry 缺失时保留 vanilla-order fallback，malformed/custom missing
+  entry 均 fail closed。
+- [x] custom cat adult/baby、direct fixed range、server reorder、stub reorder/default resource、
+  malformed payload 及 custom cow event-3 forwarding 均有覆盖；9 项 sound-variant focused
+  tests、6 项 death-event tests、generator check 与 workspace gate 通过。

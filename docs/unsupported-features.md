@@ -83,8 +83,11 @@ Owner: `bbb-protocol`
   static tags and data-component initializers, and freeze typed lookup state.
   Raw NBT summaries, the narrow validated dimension shape/lighting projection,
   individual checked tag queries, and a few derived audio registries are not
-  that runtime. Dimension-type direct visual environment attributes now drive
-  custom fog/sky/water-fog colors and distances plus lightmap tint/factor
+  that runtime. The five animal sound-variant registries now validate their full
+  required SoundEvent-holder shape and expose a typed adult/baby death-sound
+  projection in server holder order; remaining variant presentation and non-death
+  sound consumers are still open. Dimension-type direct visual environment
+  attributes now drive custom fog/sky/water-fog colors and distances plus lightmap tint/factor
   without classifying an unknown resource as a vanilla dimension. Remaining
   work includes environment-attribute modifier compounds, syncable audio/gameplay
   attributes, timeline/clock holders and their layer ordering; typed `skybox`,
@@ -642,9 +645,10 @@ Owner: `bbb-audio` + `bbb-native` + `bbb-pack` + `bbb-world`
 
 - Validate remaining synthesized/game-event sound mappings against vanilla.
 - Living-entity event 3 consumes the generated built-in cat/chicken/cow/pig/wolf
-  sound-variant adult/baby death sounds, including cow/wolf volume 0.4. If the
-  server synchronized the corresponding registry, the still-untyped `SoundSet`
-  payload fails closed instead of reusing the built-in ordinal fallback.
+  sound-variant adult/baby death sounds, including cow/wolf volume 0.4. Synchronized
+  registries use their actual holder order and typed named/direct death holder,
+  including direct fixed range; known-pack stubs use the generated built-in payload
+  by resource identity, while malformed data fails closed.
 - Clientbound SoundEntity holder/category/entity/volume/pitch/seed handling,
   missing or silent entity gates, fixed range, entity following, and removal stop
   are covered.
