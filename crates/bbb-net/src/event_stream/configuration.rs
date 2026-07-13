@@ -4,7 +4,7 @@ use bbb_world::code_of_conduct_text_hash;
 
 use crate::{
     connection::play_tick_interval,
-    event_stream::{emit, EventStreamContext},
+    event_stream::{deferred_keep_alive_event, emit, EventStreamContext},
     resource_pack::response_action_for_push,
     types::{ConnectionState, NetEvent},
 };
@@ -29,8 +29,7 @@ impl EventStreamContext {
                 emit(&self.events, NetEvent::CustomPayload(update)).await?;
             }
             ConfigurationClientbound::KeepAlive { id } => {
-                let (id, payload) = packets::encode_configuration_keep_alive(id);
-                self.conn.send_packet(id, &payload).await?;
+                emit(&self.events, deferred_keep_alive_event(id)).await?;
             }
             ConfigurationClientbound::Ping { id } => {
                 let (id, payload) = packets::encode_configuration_pong(id);

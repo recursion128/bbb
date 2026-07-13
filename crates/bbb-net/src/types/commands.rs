@@ -134,6 +134,7 @@ impl VehicleMoveCommand {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum NetCommand {
+    KeepAliveResponse(i64),
     MovePlayer(PlayerMoveCommand),
     MoveVehicle(VehicleMoveCommand),
     PlayerAction(PlayerAction),

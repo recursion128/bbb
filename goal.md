@@ -302,11 +302,8 @@ encoder 也已闭合；在线 session
 authentication、RSA/AES secret/challenge 生成、cipher install 与初始 hello 的完整响应状态仍为
 `partial`。
 下一步继续 configuration 的 state/framing 与 handoff，不能由 offline login 成功路径外推
-在线认证或 configuration family 的完成状态。configuration 的 disconnect、ping/pong、
-Finish → Play 核心控制与 cookie request/store/response 路径已闭合；keepalive wire/response
-已闭合但 render-frozen defer/expiry 仍为具体 runtime partial；dialog 等
-其余 configuration packet 仍须按各自语义 owner 逐格
-审计。resource-pack 的 wire/ownership/canonical projection 已审计，但下载、hash 校验、reload、
+在线认证或 configuration family 的完成状态。dialog 等其余 configuration packet 仍须按各自
+语义 owner 逐格审计。resource-pack 的 wire/ownership/canonical projection 已审计，但下载、hash 校验、reload、
 required-pack 生命周期和运行时 pop 仍为具体 `partial`，不能把 Declined fallback 当作完成。
 known-packs offer 的 decode/ownership/canonical 路径与最多 64 项的通用 response encoder 已闭合，
 但 bbb 尚无本地 `KnownPacksManager`/server-data resource manager 等价物；production 继续安全发送
@@ -344,14 +341,6 @@ dimension-type `has_ceiling` 与 `has_skylight` 已按 vanilla `canHaveWeather` 
 item/block/entity-type built-in registry 已接入带来源的双向 fallback；仅在当前 session
 没有该 registry contents 时使用 checked-in 26.1 catalog，一旦存在 server contents 就只按其
 wire order 解析，item tag 与 F3 block/entity identity/tag consumer 也复用同一规则；完整
-chicken/cow/pig variant 的 NETWORK_CODEC presentation 已严格投影 model、adult/baby asset id
-及派生 texture path，custom 前插/重排按 server holder order 查询，stub 与 malformed payload
-安全省略；bbb-pack 已按 namespace、pack precedence 与 filter 解析任意 ResourceTexture asset id
-并保留完整 PNG 尺寸/RGBA，renderer 已提供通用 dynamic entity texture handle/image 并复用
-可变尺寸 profile texture atlas，未上传 handle 回退静态纹理；native 已在 network drain 后按
-当前 holder order 去重调度 adult/baby 资源上传，以显式 pending/ready/failed cache 只发布已成功
-上传的 handle，并在实体提取时按年龄把 registry model 与 dynamic texture 原子切换，缺失、失败、
-stub、malformed 与离线路径整套回退内置展示而不画 stale texture；完整
 `RegistryAccess`/typed codec/holder tags/component initializer 仍是明确 canonical/runtime partial。每轮 configuration registry
 collection 已 staging，并在 Finish 原子替换或按 vanilla tag-only 路径保留原 contents。
 
@@ -362,8 +351,6 @@ command、resource/custom payload 等 family 分别关闭，并由 playable 或 
 场景决定下一个可执行 family。
 play chunk-batch Start/Finished → adaptive Received feedback 已按 vanilla timing calculator 闭合，
 包括 strict unit/VarInt payload consumption；它不代表 chunk data decode/apply 已完成。
-play ping/pong 的 fixed-width wire 与即时 response 已闭合；keepalive 同样完成 wire/response，
-但 configuration/play 共用的 render-frozen defer/one-minute expiry 仍保持 runtime partial。
 play 初始 position handoff 已闭合严格 position decode、canonical correction、teleport id ack、
 `PosRot` 回声编码及通用 movement variant/reminder；`PlayerLoaded` unit encoder 与 server no-ack
 也已审计。仍须将当前“首个 position 后发送”的近似替换为独立 `LevelLoadTracker` readiness，

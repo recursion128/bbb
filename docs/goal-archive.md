@@ -13513,3 +13513,25 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] custom cat adult/baby、direct fixed range、server reorder、stub reorder/default resource、
   malformed payload 及 custom cow event-3 forwarding 均有覆盖；9 项 sound-variant focused
   tests、6 项 death-event tests、generator check 与 workspace gate 通过。
+
+## 2026-07-13：Render synchronized farm-animal variants
+
+- [x] world 的 chicken/cow/pig `NETWORK_CODEC` presentation 按 server holder order 驱动
+  registry model 与成年/幼崽 asset；namespaced resource texture 经 pack precedence/filter
+  解码完整 PNG dimensions/RGBA。
+- [x] native 在 network drain 后去重加载并上传 variant texture，以 pending/ready/failed cache
+  只发布成功 handle；实体提取按年龄原子切换 model/texture，缺失、失败、stub、malformed 与
+  offline 路径保持完整 built-in fallback，不复用 stale texture。
+- [x] renderer 的通用 dynamic entity texture boundary 复用可变尺寸 atlas；world raw NBT →
+  pack PNG → native uploader、跨帧去重、部分失败及 model/texture 原子选择均有语义测试，
+  workspace gate 通过。
+
+## 2026-07-13：Defer configuration/play keepalive responses
+
+- [x] 对照 `ClientCommonPacketListenerImpl.handleKeepAlive` / `sendDeferredPackets`，把
+  configuration/play KeepAlive 从网络线程即时回复改为带一分钟截止时间的连接事件；native
+  事件循环恢复处理时提交内部响应，超过截止时间仍未处理则丢弃。Ping/Pong 保持即时路径。
+- [x] 网络驱动按响应时的当前 ConnectionState 选择 configuration/play serverbound packet id，
+  因而跨 Finish handoff 的延迟响应不会复用旧 state id；login/status/handshake 不发送该命令。
+- [x] configuration/play event-stream、截止前/过期 native drain、双 state driver encode 与
+  coverage 反向测试闭合两条 clientbound runtime cell；workspace gate 通过。

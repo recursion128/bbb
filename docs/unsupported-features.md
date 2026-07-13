@@ -81,14 +81,9 @@ Owner: `bbb-protocol`
   frozen lookup, extend the source-aware built-in fallback beyond the current
   item/block/entity-type catalogs where a consumer requires it, apply pending
   static tags and data-component initializers, and freeze typed lookup state.
-  Raw NBT summaries, the narrow validated dimension shape/lighting projection,
-  individual checked tag queries, and a few derived audio registries are not
-  that runtime. The five animal sound-variant registries now validate their full
-  required SoundEvent-holder shape and expose a typed adult/baby death-sound
-  projection in server holder order. Chicken/cow/pig variants likewise decode
-  their complete network presentation (`model`, `asset_id`, and `baby_asset_id`),
-  derive namespaced texture paths, and expose malformed/stub-safe lookup in server
-  holder order; renderer consumption and non-death sound consumers are still open.
+  Raw NBT summaries, narrow typed projections, individual checked tag queries,
+  and derived audio/variant registries are not that runtime. Complete the
+  non-death consumers of synchronized animal sound-variant payloads.
   Dimension-type direct visual environment
   attributes now drive custom fog/sky/water-fog colors and distances plus lightmap tint/factor
   without classifying an unknown resource as a vanilla dimension. Remaining
@@ -127,9 +122,6 @@ Owner: `bbb-protocol`
   accessor schema like `SynchedEntityData.assignValues`, and close the remaining
   family consumers through the entity matrix. The current flat summary merge is
   not proof of complete metadata behavior.
-- Defer configuration/play keepalive responses while client event polling is
-  render-frozen, with vanilla's one-minute expiry, instead of always replying
-  immediately. Ping/pong remains immediate and is already separate.
 - Drive `ServerboundClientTickEndPacket` from the actual native client-tick end,
   after that tick's player/vehicle movement has been queued, instead of an
   independent Tokio interval whose first deadline fires immediately. The current
@@ -690,19 +682,6 @@ Owner: `bbb-pack` + `bbb-native` + `bbb-renderer`
   Profileless player heads use the vanilla default player skin fallback.
 - Compose resource-pack overrides, custom models, and datapack registry assets
   dynamically.
-- Present custom/datapack `minecraft:chicken_variant` / `minecraft:pig_variant`
-  / `minecraft:cow_variant` variant assets. World now owns their strict
-  `NETWORK_CODEC` presentation and server holder-order lookup. `bbb-pack` now
-  resolves arbitrary namespaced `ClientAsset.ResourceTexture` ids through pack
-  precedence and decodes their full PNG dimensions/RGBA. `bbb-renderer` now
-  exposes a generic dynamic entity-texture handle/image boundary, reuses the
-  variable-size cape/elytra atlas for non-player submissions, and falls back to
-  the static texture until that handle is uploaded. Native now scans the active
-  holder order after network drain, deduplicates adult/baby pack loads, records
-  pending/ready/failed upload state, and publishes only ready handles. Entity
-  extraction selects the age-specific asset and switches its registry model and
-  texture atomically; unavailable, failed, stub, malformed, and offline paths
-  retain the complete built-in presentation.
 - Give failed, pending, and ready states an explicit fallback. Never draw a
   stale texture.
 

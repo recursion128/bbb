@@ -4,7 +4,7 @@ use tokio::sync::oneshot;
 
 use crate::{
     driver::send_chat_acknowledgement,
-    event_stream::{emit, EventStreamContext},
+    event_stream::{deferred_keep_alive_event, emit, EventStreamContext},
     resource_pack::response_action_for_push,
     types::{ConnectionState, NetEvent},
 };
@@ -14,8 +14,7 @@ impl EventStreamContext {
         match packet {
             PlayClientbound::BundleDelimiter => {}
             PlayClientbound::KeepAlive { id } => {
-                let (id, payload) = packets::encode_play_keep_alive(id);
-                self.conn.send_packet(id, &payload).await?;
+                emit(&self.events, deferred_keep_alive_event(id)).await?;
             }
             PlayClientbound::Ping { id } => {
                 let (id, payload) = packets::encode_play_pong(id);

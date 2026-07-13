@@ -1,4 +1,53 @@
 use super::*;
+use std::time::{Duration, Instant};
+
+#[test]
+fn keep_alive_event_queues_response_before_expiry() {
+    let (event_tx, mut event_rx) = mpsc::channel(1);
+    event_tx
+        .try_send(NetEvent::KeepAlive {
+            id: 0x1122_3344_5566_7788,
+            expires_at: Instant::now() + Duration::from_secs(60),
+        })
+        .unwrap();
+    let (command_tx, mut command_rx) = mpsc::channel(1);
+    let net_commands = Some(command_tx);
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+
+    assert_eq!(
+        drain_net_events(&mut event_rx, &mut world, &mut counters, &net_commands,),
+        1
+    );
+    assert_eq!(
+        command_rx.try_recv().unwrap(),
+        NetCommand::KeepAliveResponse(0x1122_3344_5566_7788)
+    );
+}
+
+#[test]
+fn expired_keep_alive_event_drops_response() {
+    let (event_tx, mut event_rx) = mpsc::channel(1);
+    event_tx
+        .try_send(NetEvent::KeepAlive {
+            id: 17,
+            expires_at: Instant::now() - Duration::from_millis(1),
+        })
+        .unwrap();
+    let (command_tx, mut command_rx) = mpsc::channel(1);
+    let net_commands = Some(command_tx);
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+
+    assert_eq!(
+        drain_net_events(&mut event_rx, &mut world, &mut counters, &net_commands,),
+        1
+    );
+    assert!(matches!(
+        command_rx.try_recv(),
+        Err(mpsc::error::TryRecvError::Empty)
+    ));
+}
 
 #[test]
 fn transfer_event_updates_world_and_world_counters() {

@@ -273,7 +273,7 @@ mod tests {
     }
 
     #[test]
-    fn configuration_core_control_keeps_frozen_keepalive_deferral_open() {
+    fn configuration_core_control_is_closed() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let core = BTreeSet::from([
             "SERVERBOUND_FINISH_CONFIGURATION",
@@ -301,10 +301,7 @@ mod tests {
                 })
             })
             .collect();
-        assert_eq!(
-            partial,
-            BTreeSet::from([("CLIENTBOUND_KEEP_ALIVE", "runtime_side_effect")])
-        );
+        assert!(partial.is_empty());
     }
 
     #[test]
@@ -676,7 +673,7 @@ mod tests {
     }
 
     #[test]
-    fn play_common_ping_is_closed_and_keepalive_deferral_stays_open() {
+    fn play_common_keepalive_and_ping_are_closed() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let packets = BTreeSet::from([
             "SERVERBOUND_KEEP_ALIVE",
@@ -699,10 +696,7 @@ mod tests {
                 })
             })
             .collect();
-        assert_eq!(
-            partial,
-            BTreeSet::from([("CLIENTBOUND_KEEP_ALIVE", "runtime_side_effect")])
-        );
+        assert!(partial.is_empty());
     }
 
     #[test]

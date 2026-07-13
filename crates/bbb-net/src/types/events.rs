@@ -3,6 +3,7 @@ use bbb_protocol::packets::{
     ResourcePackPush, ResourcePackResponseAction, ServerLinks, ShowDialog, Transfer,
     UpdateEnabledFeatures, UpdateTags,
 };
+use std::time::Instant;
 use tokio::sync::oneshot;
 
 use super::ConnectionState;
@@ -13,7 +14,7 @@ use super::ConnectionState;
 /// through `WorldStore::apply_play_packet`; dedicated variants exist only for
 /// connection lifecycle, login/configuration-state packets, and events whose
 /// payload is derived from connection state (cookies, resource-pack
-/// responses).
+/// responses, deferred keepalive replies).
 #[derive(Debug)]
 pub enum NetEvent {
     Connected,
@@ -29,6 +30,10 @@ pub enum NetEvent {
     },
     CompressionSet {
         threshold: i32,
+    },
+    KeepAlive {
+        id: i64,
+        expires_at: Instant,
     },
     PacketSeen {
         state: ConnectionState,

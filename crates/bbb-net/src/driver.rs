@@ -24,7 +24,7 @@ pub(crate) use commands::{
     send_set_held_slot_command, send_sign_update, send_spectate_entity, send_swing_command,
     send_teleport_to_entity, send_use_item, send_use_item_on,
 };
-use commands::{send_player_move_command, send_vehicle_move_command};
+use commands::{send_keep_alive_response, send_player_move_command, send_vehicle_move_command};
 
 pub(crate) async fn read_packet_or_send_play_tick(
     conn: &mut RawConnection,
@@ -80,6 +80,9 @@ pub(crate) async fn read_packet_or_drive_connection(
             }
             command = commands.recv() => {
                 match command {
+                    Some(NetCommand::KeepAliveResponse(id)) => {
+                        send_keep_alive_response(conn, state, id).await?;
+                    }
                     Some(NetCommand::MovePlayer(command)) => {
                         send_player_move_command(conn, command, player_position_state).await?;
                     }
@@ -252,6 +255,9 @@ async fn read_packet_or_disconnect_command(
             }
             command = commands.recv() => {
                 match command {
+                    Some(NetCommand::KeepAliveResponse(id)) => {
+                        send_keep_alive_response(conn, state, id).await?;
+                    }
                     Some(NetCommand::MovePlayer(_)) => {}
                     Some(NetCommand::MoveVehicle(_)) => {}
                     Some(NetCommand::PlayerAction(_)) => {}
@@ -424,6 +430,71 @@ mod tests {
 
         assert!(matches!(result, ConnectionDrive::Disconnect));
         server.await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn drive_connection_encodes_deferred_keep_alive_for_current_state() {
+        let (mut configuration_conn, mut configuration_server) =
+            raw_connection_pair_with_server().await;
+        let (configuration_tx, mut configuration_commands) = mpsc::channel(2);
+        configuration_tx
+            .send(NetCommand::KeepAliveResponse(-123_456_789))
+            .await
+            .unwrap();
+        configuration_tx.send(NetCommand::Disconnect).await.unwrap();
+        let configuration_drive = tokio::spawn(async move {
+            let mut play_tick = None;
+            let mut player_position_state = PlayerPositionState::default();
+            read_packet_or_drive_connection(
+                &mut configuration_conn,
+                ConnectionState::Configuration,
+                &mut play_tick,
+                &mut configuration_commands,
+                &mut player_position_state,
+            )
+            .await
+            .unwrap()
+        });
+        let (packet_id, payload) =
+            read_server_packet(&mut configuration_server, "configuration keepalive").await;
+        assert_eq!(packet_id, ids::configuration::SERVERBOUND_KEEP_ALIVE);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_i64().unwrap(), -123_456_789);
+        assert!(decoder.is_empty());
+        assert!(matches!(
+            configuration_drive.await.unwrap(),
+            ConnectionDrive::Disconnect
+        ));
+
+        let (mut play_conn, mut play_server) = raw_connection_pair_with_server().await;
+        let (play_tx, mut play_commands) = mpsc::channel(2);
+        play_tx
+            .send(NetCommand::KeepAliveResponse(0x1122_3344_5566_7788))
+            .await
+            .unwrap();
+        play_tx.send(NetCommand::Disconnect).await.unwrap();
+        let play_drive = tokio::spawn(async move {
+            let mut play_tick = Some(dormant_play_tick());
+            let mut player_position_state = PlayerPositionState::default();
+            read_packet_or_drive_connection(
+                &mut play_conn,
+                ConnectionState::Play,
+                &mut play_tick,
+                &mut play_commands,
+                &mut player_position_state,
+            )
+            .await
+            .unwrap()
+        });
+        let (packet_id, payload) = read_server_packet(&mut play_server, "play keepalive").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_KEEP_ALIVE);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_i64().unwrap(), 0x1122_3344_5566_7788);
+        assert!(decoder.is_empty());
+        assert!(matches!(
+            play_drive.await.unwrap(),
+            ConnectionDrive::Disconnect
+        ));
     }
 
     #[tokio::test]
