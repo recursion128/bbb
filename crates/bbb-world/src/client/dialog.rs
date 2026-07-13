@@ -32,6 +32,20 @@ pub enum DialogDataState {
         yes: DialogButtonState,
         no: DialogButtonState,
     },
+    MultiAction {
+        common: CommonDialogDataState,
+        actions: Vec<DialogButtonState>,
+        #[serde(default)]
+        exit_action: Option<DialogButtonState>,
+        columns: i32,
+    },
+    ServerLinks {
+        common: CommonDialogDataState,
+        #[serde(default)]
+        exit_action: Option<DialogButtonState>,
+        columns: i32,
+        button_width: i32,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -140,6 +154,33 @@ pub(super) fn decode_dialog_data(dialog: &NbtSummaryValue) -> Result<DialogDataS
                 "confirmation no button",
             )?,
         }),
+        "multi_action" | "minecraft:multi_action" => Ok(DialogDataState::MultiAction {
+            common,
+            actions: decode_non_empty_button_list(
+                required_entry(entries, "actions", "multi-action dialog")?,
+                "multi-action actions",
+            )?,
+            exit_action: find_entry(entries, "exit_action")
+                .map(|value| decode_button(value, "multi-action exit button"))
+                .transpose()?,
+            columns: optional_positive_i32(entries, "columns", 2, "multi-action dialog")?,
+        }),
+        "server_links" | "minecraft:server_links" => {
+            let button_width = optional_i32(entries, "button_width", 150, "server-links dialog")?;
+            if !(1..=1024).contains(&button_width) {
+                return Err(format!(
+                    "server-links dialog button_width {button_width} is outside 1..=1024"
+                ));
+            }
+            Ok(DialogDataState::ServerLinks {
+                common,
+                exit_action: find_entry(entries, "exit_action")
+                    .map(|value| decode_button(value, "server-links exit button"))
+                    .transpose()?,
+                columns: optional_positive_i32(entries, "columns", 2, "server-links dialog")?,
+                button_width,
+            })
+        }
         other => Err(format!("unsupported dialog type {other}")),
     }
 }
@@ -203,6 +244,23 @@ fn decode_button(value: &NbtSummaryValue, what: &str) -> Result<DialogButtonStat
     })
 }
 
+fn decode_non_empty_button_list(
+    value: &NbtSummaryValue,
+    what: &str,
+) -> Result<Vec<DialogButtonState>, String> {
+    let NbtSummaryValue::List(values) = value else {
+        return Err(format!("{what} is not a list"));
+    };
+    if values.is_empty() {
+        return Err(format!("{what} must not be empty"));
+    }
+    values
+        .iter()
+        .enumerate()
+        .map(|(index, value)| decode_button(value, &format!("{what}[{index}]")))
+        .collect()
+}
+
 fn default_notice_action() -> DialogButtonState {
     DialogButtonState {
         label: decode_component(&translated_component("gui.ok"), "default notice label")
@@ -255,6 +313,19 @@ fn optional_i32(
         Some(NbtSummaryValue::Int(value)) => Ok(*value),
         Some(_) => Err(format!("{what} field {key} is not an integer")),
     }
+}
+
+fn optional_positive_i32(
+    entries: &[NbtSummaryEntry],
+    key: &str,
+    default: i32,
+    what: &str,
+) -> Result<i32, String> {
+    let value = optional_i32(entries, key, default, what)?;
+    if value <= 0 {
+        return Err(format!("{what} field {key} must be positive"));
+    }
+    Ok(value)
 }
 
 fn optional_list(
@@ -434,6 +505,86 @@ mod tests {
             .contains("outside 1..=1024"));
     }
 
+    #[test]
+    fn decodes_multi_action_buttons_exit_and_columns() {
+        let data = decode_dialog_data(&compound(vec![
+            string_entry("type", "minecraft:multi_action"),
+            value_entry("title", NbtSummaryValue::String("Choose".to_string())),
+            value_entry(
+                "actions",
+                NbtSummaryValue::List(vec![button("First", None), button("Second", Some(180))]),
+            ),
+            value_entry("exit_action", button("Back", Some(200))),
+            value_entry("columns", NbtSummaryValue::Int(3)),
+        ]))
+        .unwrap();
+
+        let DialogDataState::MultiAction {
+            common,
+            actions,
+            exit_action,
+            columns,
+        } = data
+        else {
+            panic!("expected multi-action dialog");
+        };
+        assert_eq!(common.title.text, "Choose");
+        assert_eq!(actions.len(), 2);
+        assert_eq!(actions[0].width, 150);
+        assert_eq!(actions[1].width, 180);
+        assert_eq!(exit_action.unwrap().label.text, "Back");
+        assert_eq!(columns, 3);
+    }
+
+    #[test]
+    fn decodes_server_links_defaults_and_validates_list_dialog_ranges() {
+        let data = decode_dialog_data(&compound(vec![
+            string_entry("type", "minecraft:server_links"),
+            value_entry("title", NbtSummaryValue::String("Links".to_string())),
+        ]))
+        .unwrap();
+        let DialogDataState::ServerLinks {
+            common,
+            exit_action,
+            columns,
+            button_width,
+        } = data
+        else {
+            panic!("expected server-links dialog");
+        };
+        assert_eq!(common.title.text, "Links");
+        assert_eq!(exit_action, None);
+        assert_eq!(columns, 2);
+        assert_eq!(button_width, 150);
+
+        let empty_actions = compound(vec![
+            string_entry("type", "minecraft:multi_action"),
+            value_entry("title", NbtSummaryValue::String("Empty".to_string())),
+            value_entry("actions", NbtSummaryValue::List(Vec::new())),
+        ]);
+        assert!(decode_dialog_data(&empty_actions)
+            .unwrap_err()
+            .contains("must not be empty"));
+
+        let invalid_columns = compound(vec![
+            string_entry("type", "minecraft:server_links"),
+            value_entry("title", NbtSummaryValue::String("Links".to_string())),
+            value_entry("columns", NbtSummaryValue::Int(0)),
+        ]);
+        assert!(decode_dialog_data(&invalid_columns)
+            .unwrap_err()
+            .contains("columns must be positive"));
+
+        let invalid_width = compound(vec![
+            string_entry("type", "minecraft:server_links"),
+            value_entry("title", NbtSummaryValue::String("Links".to_string())),
+            value_entry("button_width", NbtSummaryValue::Int(1025)),
+        ]);
+        assert!(decode_dialog_data(&invalid_width)
+            .unwrap_err()
+            .contains("button_width 1025"));
+    }
+
     fn compound(entries: Vec<NbtSummaryEntry>) -> NbtSummaryValue {
         NbtSummaryValue::Compound(entries)
     }
@@ -447,5 +598,16 @@ mod tests {
 
     fn string_entry(name: &str, value: &str) -> NbtSummaryEntry {
         value_entry(name, NbtSummaryValue::String(value.to_string()))
+    }
+
+    fn button(label: &str, width: Option<i32>) -> NbtSummaryValue {
+        let mut entries = vec![value_entry(
+            "label",
+            NbtSummaryValue::String(label.to_string()),
+        )];
+        if let Some(width) = width {
+            entries.push(value_entry("width", NbtSummaryValue::Int(width)));
+        }
+        compound(entries)
     }
 }

@@ -13622,3 +13622,11 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] Notice 默认 `gui.ok`/150、Confirmation 必需双按钮、pause/after-action 组合和 1..=1024
   width 有定向测试；语义失败保留原始 NBT 与显式 error。其余三类 Dialog、typed body/input/action
   和 native screen stack 继续保持 partial。
+
+## 2026-07-13：Decode button-list dialog semantics
+
+- [x] 对照 `MultiActionDialog` 与 `ServerLinksDialog` Codec，typed 投影 non-empty actions、
+  optional exit action、positive columns，以及 server-links 1..=1024 button width；默认 columns=2、
+  button width=150 与按钮 width=150 保持 vanilla 值。
+- [x] 双 action、自定义 exit/columns、默认 server-links、空 actions、非正 columns 与越界 width
+  均有定向测试。DialogList registry-aware HolderSet、typed body/input/action 与 native screens 仍开放。
