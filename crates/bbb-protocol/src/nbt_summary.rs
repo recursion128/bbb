@@ -40,6 +40,17 @@ pub(crate) fn decode_nbt_summary_from_decoder(
     read_nbt_payload(decoder, tag_id, 0).map(Some)
 }
 
+pub fn decode_nbt_summary(bytes: &[u8]) -> Result<Option<NbtSummaryValue>> {
+    let mut decoder = Decoder::new(bytes);
+    let value = decode_nbt_summary_from_decoder(&mut decoder)?;
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after network nbt root".to_string(),
+        ));
+    }
+    Ok(value)
+}
+
 fn read_nbt_payload(
     decoder: &mut Decoder<'_>,
     tag_id: u8,
@@ -387,5 +398,33 @@ impl BoundedNbtEncoder {
 
     fn into_inner(self) -> Vec<u8> {
         self.bytes
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn public_nbt_summary_decoder_requires_one_complete_root() {
+        assert_eq!(
+            decode_nbt_summary(&[10, 0]).unwrap(),
+            Some(NbtSummaryValue::Compound(Vec::new()))
+        );
+        assert!(decode_nbt_summary(&[10, 0, 0])
+            .unwrap_err()
+            .to_string()
+            .contains("trailing bytes after network nbt root"));
+    }
+
+    #[test]
+    fn public_nbt_summary_decoder_rejects_oversized_arrays_before_body_read() {
+        let mut bytes = vec![7];
+        bytes.extend_from_slice(&((MAX_NBT_ARRAY_ITEMS + 1) as i32).to_be_bytes());
+        assert!(matches!(
+            decode_nbt_summary(&bytes),
+            Err(ProtocolError::PacketTooLarge(actual, max))
+                if actual == MAX_NBT_ARRAY_ITEMS + 1 && max == MAX_NBT_ARRAY_ITEMS
+        ));
     }
 }

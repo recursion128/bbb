@@ -541,7 +541,9 @@ fn client_common_waypoint_events_update_world_and_snapshot_counters() {
         Some(&bbb_world::DialogState {
             holder_kind: "reference".to_string(),
             registry_id: Some(11),
-            direct_dialog: None,
+            resource_id: None,
+            dialog: None,
+            resolution_error: Some("missing minecraft:dialog holder 11".to_string()),
         })
     );
     let world_counters = world.counters();

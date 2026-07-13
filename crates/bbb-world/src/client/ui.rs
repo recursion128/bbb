@@ -1,5 +1,6 @@
 use bbb_protocol::{
     data_component_types::VANILLA_DATA_COMPONENT_WRITABLE_BOOK_CONTENT_TYPE_ID,
+    decode_nbt_summary,
     packets::{
         DialogHolder, InteractionHand, ItemStackSummary as ProtocolItemStackSummary,
         MountScreenOpen as ProtocolMountScreenOpen, OpenBook as ProtocolOpenBook,
@@ -49,8 +50,14 @@ pub struct DialogState {
     pub holder_kind: String,
     pub registry_id: Option<i32>,
     #[serde(default)]
-    pub direct_dialog: Option<NbtSummaryValue>,
+    pub resource_id: Option<String>,
+    #[serde(default, alias = "direct_dialog")]
+    pub dialog: Option<NbtSummaryValue>,
+    #[serde(default)]
+    pub resolution_error: Option<String>,
 }
+
+const DIALOG_REGISTRY: &str = "minecraft:dialog";
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CodeOfConductState {
@@ -116,7 +123,7 @@ impl WorldStore {
         self.client_ui.current_book = None;
         self.client_ui.current_advancements_screen = false;
         self.client_ui.current_stats_screen = false;
-        self.client_ui.current_dialog = Some(DialogState::from_packet(packet));
+        self.client_ui.current_dialog = Some(self.dialog_state_from_packet(packet));
     }
 
     pub fn apply_code_of_conduct(&mut self, text: String) {
@@ -320,21 +327,74 @@ impl WorldStore {
     fn open_book_pages_from_hand(&self, hand: InteractionHand) -> Option<Vec<String>> {
         self.local_item_in_hand(hand).and_then(book_pages_from_item)
     }
+
+    fn dialog_state_from_packet(&self, packet: ProtocolShowDialog) -> DialogState {
+        match packet.dialog {
+            DialogHolder::Reference { registry_id } => {
+                let Some(entry) = self.registry_entry_by_holder_id(DIALOG_REGISTRY, registry_id)
+                else {
+                    return DialogState::unresolved_reference(
+                        registry_id,
+                        None,
+                        format!("missing {DIALOG_REGISTRY} holder {registry_id}"),
+                    );
+                };
+                let resource_id = entry.id.clone();
+                let Some(raw_data) = entry.raw_data() else {
+                    return DialogState::unresolved_reference(
+                        registry_id,
+                        Some(resource_id.clone()),
+                        format!("dialog registry entry {resource_id} has no synchronized payload"),
+                    );
+                };
+                match decode_nbt_summary(raw_data) {
+                    Ok(Some(dialog @ NbtSummaryValue::Compound(_))) => DialogState {
+                        holder_kind: "reference".to_string(),
+                        registry_id: Some(registry_id),
+                        resource_id: Some(resource_id),
+                        dialog: Some(dialog),
+                        resolution_error: None,
+                    },
+                    Ok(Some(_)) => DialogState::unresolved_reference(
+                        registry_id,
+                        Some(resource_id.clone()),
+                        format!("dialog registry entry {resource_id} root is not a compound tag"),
+                    ),
+                    Ok(None) => DialogState::unresolved_reference(
+                        registry_id,
+                        Some(resource_id.clone()),
+                        format!("dialog registry entry {resource_id} is an end tag"),
+                    ),
+                    Err(error) => DialogState::unresolved_reference(
+                        registry_id,
+                        Some(resource_id.clone()),
+                        format!("invalid dialog registry entry {resource_id}: {error}"),
+                    ),
+                }
+            }
+            DialogHolder::Direct { dialog } => DialogState {
+                holder_kind: "direct".to_string(),
+                registry_id: None,
+                resource_id: None,
+                dialog: Some(dialog),
+                resolution_error: None,
+            },
+        }
+    }
 }
 
 impl DialogState {
-    fn from_packet(packet: ProtocolShowDialog) -> Self {
-        match packet.dialog {
-            DialogHolder::Reference { registry_id } => Self {
-                holder_kind: "reference".to_string(),
-                registry_id: Some(registry_id),
-                direct_dialog: None,
-            },
-            DialogHolder::Direct { dialog } => Self {
-                holder_kind: "direct".to_string(),
-                registry_id: None,
-                direct_dialog: Some(dialog),
-            },
+    fn unresolved_reference(
+        registry_id: i32,
+        resource_id: Option<String>,
+        resolution_error: String,
+    ) -> Self {
+        Self {
+            holder_kind: "reference".to_string(),
+            registry_id: Some(registry_id),
+            resource_id,
+            dialog: None,
+            resolution_error: Some(resolution_error),
         }
     }
 }
@@ -412,23 +472,38 @@ mod tests {
             Some(&DialogState {
                 holder_kind: "direct".to_string(),
                 registry_id: None,
-                direct_dialog: Some(NbtSummaryValue::Compound(vec![NbtSummaryEntry {
+                resource_id: None,
+                dialog: Some(NbtSummaryValue::Compound(vec![NbtSummaryEntry {
                     name: "type".to_string(),
                     value: NbtSummaryValue::String("minecraft:notice".to_string()),
                 }])),
+                resolution_error: None,
             })
         );
 
+        store.record_registry_entries(
+            DIALOG_REGISTRY,
+            0,
+            vec![crate::RegistryPacketEntry::with_raw_data(
+                "example:notice",
+                dialog_nbt("minecraft:notice"),
+            )],
+        );
         store.apply_show_dialog(ProtocolShowDialog {
-            dialog: DialogHolder::Reference { registry_id: 11 },
+            dialog: DialogHolder::Reference { registry_id: 0 },
         });
 
         assert_eq!(
             store.current_dialog(),
             Some(&DialogState {
                 holder_kind: "reference".to_string(),
-                registry_id: Some(11),
-                direct_dialog: None,
+                registry_id: Some(0),
+                resource_id: Some("example:notice".to_string()),
+                dialog: Some(NbtSummaryValue::Compound(vec![NbtSummaryEntry {
+                    name: "type".to_string(),
+                    value: NbtSummaryValue::String("minecraft:notice".to_string()),
+                }])),
+                resolution_error: None,
             })
         );
 
@@ -439,6 +514,77 @@ mod tests {
         assert_eq!(counters.low_disk_space_warnings, 1);
         assert_eq!(counters.show_dialog_packets, 2);
         assert_eq!(counters.clear_dialog_packets, 1);
+    }
+
+    #[test]
+    fn referenced_dialogs_use_session_holder_order_and_retain_resolution_errors() {
+        let mut store = WorldStore::new();
+        store.record_registry_entries(
+            DIALOG_REGISTRY,
+            0,
+            vec![
+                crate::RegistryPacketEntry::stub("example:stub"),
+                crate::RegistryPacketEntry::with_raw_data(
+                    "example:custom",
+                    dialog_nbt("minecraft:confirmation"),
+                ),
+                crate::RegistryPacketEntry::with_raw_data("example:malformed", vec![10, 0, 0]),
+            ],
+        );
+
+        store.apply_show_dialog(ProtocolShowDialog {
+            dialog: DialogHolder::Reference { registry_id: 1 },
+        });
+        let resolved = store.current_dialog().unwrap();
+        assert_eq!(resolved.resource_id.as_deref(), Some("example:custom"));
+        assert!(matches!(
+            resolved.dialog,
+            Some(NbtSummaryValue::Compound(_))
+        ));
+        assert_eq!(resolved.resolution_error, None);
+
+        store.apply_show_dialog(ProtocolShowDialog {
+            dialog: DialogHolder::Reference { registry_id: 0 },
+        });
+        let stub = store.current_dialog().unwrap();
+        assert_eq!(stub.resource_id.as_deref(), Some("example:stub"));
+        assert_eq!(stub.dialog, None);
+        assert!(stub
+            .resolution_error
+            .as_deref()
+            .unwrap()
+            .contains("has no synchronized payload"));
+
+        store.apply_show_dialog(ProtocolShowDialog {
+            dialog: DialogHolder::Reference { registry_id: 2 },
+        });
+        let malformed = store.current_dialog().unwrap();
+        assert_eq!(malformed.resource_id.as_deref(), Some("example:malformed"));
+        assert_eq!(malformed.dialog, None);
+        assert!(malformed
+            .resolution_error
+            .as_deref()
+            .unwrap()
+            .contains("trailing bytes after network nbt root"));
+
+        store.apply_show_dialog(ProtocolShowDialog {
+            dialog: DialogHolder::Reference { registry_id: 99 },
+        });
+        let missing = store.current_dialog().unwrap();
+        assert_eq!(missing.resource_id, None);
+        assert_eq!(missing.dialog, None);
+        assert_eq!(
+            missing.resolution_error.as_deref(),
+            Some("missing minecraft:dialog holder 99")
+        );
+    }
+
+    fn dialog_nbt(dialog_type: &str) -> Vec<u8> {
+        let mut bytes = vec![10, 8, 0, 4, b't', b'y', b'p', b'e'];
+        bytes.extend_from_slice(&(dialog_type.len() as u16).to_be_bytes());
+        bytes.extend_from_slice(dialog_type.as_bytes());
+        bytes.push(0);
+        bytes
     }
 
     #[test]

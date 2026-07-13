@@ -13605,3 +13605,11 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] resource id normalization、configuration/play packet id、Login 等状态不发送及双状态 driver
   transport 均有测试；typed Dialog screen 尚未产生 action，因此 command surface/state guard/tests
   继续保持 partial，不用维护命令冒充 UI 生命周期。
+
+## 2026-07-13：Resolve synchronized dialog holders
+
+- [x] 对照 `ByteBufCodecs.holder(Registries.DIALOG, ...)`，play reference holder 通过当前 session
+  `minecraft:dialog` wire order 解析 resource id 与 synchronized NBT；direct/reference 统一保存
+  canonical tree，不以 vanilla bootstrap 下标解释服务器自定义重排。
+- [x] 共享 NBT summary API 严格消费单一 root；custom reorder、stub、missing、malformed 与 trailing
+  均有定向测试和明确诊断。typed `Dialog` codec、screen stack 与 custom-click UI surface 仍保持 partial。

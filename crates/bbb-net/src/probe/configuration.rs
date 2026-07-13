@@ -130,6 +130,7 @@ mod tests {
             ServerLinks, ShowDialog, StoreCookie, TagNetworkPayload, Transfer,
             UpdateEnabledFeatures, UpdateTags,
         },
+        NbtSummaryValue,
     };
     use bbb_world::{
         code_of_conduct_text_hash, ChunkPos, DialogState, RegistryPacketEntry, TransferTargetState,
@@ -301,7 +302,9 @@ mod tests {
             .unwrap();
         probe
             .handle_configuration_packet(ConfigurationClientbound::ShowDialog(ShowDialog {
-                dialog: DialogHolder::Reference { registry_id: 7 },
+                dialog: DialogHolder::Direct {
+                    dialog: NbtSummaryValue::Compound(Vec::new()),
+                },
             }))
             .await
             .unwrap();
@@ -434,9 +437,11 @@ mod tests {
         assert_eq!(
             probe.world.current_dialog(),
             Some(&DialogState {
-                holder_kind: "reference".to_string(),
-                registry_id: Some(7),
-                direct_dialog: None,
+                holder_kind: "direct".to_string(),
+                registry_id: None,
+                resource_id: None,
+                dialog: Some(NbtSummaryValue::Compound(Vec::new())),
+                resolution_error: None,
             })
         );
         assert_eq!(
