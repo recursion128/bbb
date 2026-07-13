@@ -13441,3 +13441,16 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] 本片不冒充 `FrogVariant.NETWORK_CODEC` 的 session replacement asset 解码；同步 holder id
   仍先解析 resource identity。21 项 extractor tests、generator update/check、2 项 catalog tests、
   15 项 renderer frog tests、native entity-asset tests 与 workspace gate 通过。
+
+## 2026-07-13：Generate built-in farm-animal variant presentation assets
+
+- [x] 共享 Tree-sitter extractor 严格读取 `ChickenVariants` / `CowVariants` / `PigVariants`
+  bootstrap 的 `ModelType`、adult/baby texture literals，校验两个 register overload 的参数、
+  biome selector 转发、asset path 公式和最终 `ModelAndTexture` + baby `ResourceTexture` payload。
+- [x] generated temperature-animal catalog 统一拥有 3 family × 3 variant 的 model type、stable
+  model key、adult/baby texture path，并从对应本地官方 PNG IHDR 生成尺寸；renderer 的模型层、
+  texture 选择和 atlas stable aliases 均消费该目录，不再按 temperature variant 重建平行表。
+- [x] 本片不冒充三个 variant `NETWORK_CODEC` 的 session replacement model/asset 解码；custom
+  datapack presentation 仍由 Resource/RegistryAccess 队列拥有。23 项 extractor tests、generator
+  update/check、2 项 catalog tests、14 项 chicken、45 项 pig、21 项 cow renderer tests、native
+  entity-asset tests 与 workspace gate 通过。

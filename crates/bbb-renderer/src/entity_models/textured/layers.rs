@@ -1,5 +1,8 @@
 #[cfg(test)]
 use super::super::catalog::player_texture_ref;
+use super::super::temperature_animal_variants::{
+    ChickenVariantModelType, CowVariantModelType, PigVariantModelType,
+};
 use super::super::{
     banner_pattern_texture_ref,
     catalog::{
@@ -2837,29 +2840,29 @@ fn player_model_layer(slim: bool) -> &'static str {
 }
 
 fn chicken_model_layer(variant: ChickenModelVariant, baby: bool) -> &'static str {
-    match (variant, baby) {
+    match (variant.builtin_model_type(), baby) {
         (_, true) => MODEL_LAYER_CHICKEN_BABY,
-        (ChickenModelVariant::Cold, false) => MODEL_LAYER_COLD_CHICKEN,
-        (_, false) => MODEL_LAYER_CHICKEN,
+        (ChickenVariantModelType::Cold, false) => MODEL_LAYER_COLD_CHICKEN,
+        (ChickenVariantModelType::Normal, false) => MODEL_LAYER_CHICKEN,
     }
 }
 
 fn pig_model_layer(variant: PigModelVariant, baby: bool) -> &'static str {
-    match (variant, baby) {
+    match (variant.builtin_model_type(), baby) {
         (_, true) => MODEL_LAYER_PIG_BABY,
-        (PigModelVariant::Cold, false) => MODEL_LAYER_COLD_PIG,
-        (_, false) => MODEL_LAYER_PIG,
+        (PigVariantModelType::Cold, false) => MODEL_LAYER_COLD_PIG,
+        (PigVariantModelType::Normal, false) => MODEL_LAYER_PIG,
     }
 }
 
 fn cow_model_layer(variant: CowModelVariant, baby: bool) -> &'static str {
-    match (variant, baby) {
-        (CowModelVariant::Temperate, false) => MODEL_LAYER_COW,
-        (CowModelVariant::Temperate, true) => MODEL_LAYER_COW_BABY,
-        (CowModelVariant::Warm, false) => MODEL_LAYER_WARM_COW,
-        (CowModelVariant::Warm, true) => MODEL_LAYER_WARM_COW_BABY,
-        (CowModelVariant::Cold, false) => MODEL_LAYER_COLD_COW,
-        (CowModelVariant::Cold, true) => MODEL_LAYER_COLD_COW_BABY,
+    match (variant.builtin_model_type(), baby) {
+        (CowVariantModelType::Normal, false) => MODEL_LAYER_COW,
+        (CowVariantModelType::Normal, true) => MODEL_LAYER_COW_BABY,
+        (CowVariantModelType::Warm, false) => MODEL_LAYER_WARM_COW,
+        (CowVariantModelType::Warm, true) => MODEL_LAYER_WARM_COW_BABY,
+        (CowVariantModelType::Cold, false) => MODEL_LAYER_COLD_COW,
+        (CowVariantModelType::Cold, true) => MODEL_LAYER_COLD_COW_BABY,
     }
 }
 

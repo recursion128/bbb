@@ -1,6 +1,7 @@
 use super::{apply_head_look, apply_quadruped_leg_swing, PartPose, PART_POSE_ZERO};
 use crate::entity_models::instances::EntityModelInstance;
 use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
+use crate::entity_models::temperature_animal_variants::CowVariantModelType;
 use crate::entity_models::CowModelVariant;
 
 pub(in crate::entity_models) const COW_BROWN: [f32; 4] = [0.38, 0.25, 0.18, 1.0];
@@ -377,12 +378,12 @@ fn cow_tree(variant: CowModelVariant, baby: bool) -> ModelPart {
         ];
         return ModelPart::new(PART_POSE_ZERO, Vec::new(), children);
     }
-    let (head, body) = match variant {
-        CowModelVariant::Warm => (
+    let (head, body) = match variant.builtin_model_type() {
+        CowVariantModelType::Warm => (
             ModelPart::leaf(ADULT_HEAD_POSE, WARM_COW_HEAD.to_vec()),
             leg_body(&ADULT_COW_BODY),
         ),
-        CowModelVariant::Cold => (
+        CowVariantModelType::Cold => (
             ModelPart::new(
                 ADULT_HEAD_POSE,
                 COLD_COW_HEAD.to_vec(),
@@ -399,7 +400,7 @@ fn cow_tree(variant: CowModelVariant, baby: bool) -> ModelPart {
             ),
             leg_body(&COLD_COW_BODY),
         ),
-        CowModelVariant::Temperate => (
+        CowVariantModelType::Normal => (
             ModelPart::leaf(ADULT_HEAD_POSE, ADULT_COW_HEAD.to_vec()),
             leg_body(&ADULT_COW_BODY),
         ),

@@ -12,12 +12,14 @@ from bootstrap_catalog_extractor import (  # noqa: E402
     BootstrapCatalogExtractionError,
     CatVariantEntry,
     EnchantmentEntry,
+    FarmAnimalVariantEntry,
     FrogVariantEntry,
     banner_pattern_entries,
     bootstrap_resource_key_entries,
     decorated_pot_pattern_entries,
     enchantment_entries,
     enchantment_tooltip_order,
+    farm_animal_variant_entries,
     frog_variant_entries,
     identifier_constant_paths,
     map_decoration_entries,
@@ -32,6 +34,112 @@ from vanilla_java_source import parse_source  # noqa: E402
 
 
 class BootstrapCatalogExtractorTests(unittest.TestCase):
+    def test_farm_animal_variant_assets_follow_model_and_texture_payload(self) -> None:
+        source = parse_source(
+            "fixture/ChickenVariants.java",
+            b'''
+package fixture;
+class ChickenVariants {
+  static final ResourceKey<ChickenVariant> TEMPERATE = createKey(Temperature.TEMPERATE);
+  static final ResourceKey<ChickenVariant> COLD = createKey(Temperature.COLD);
+  static void register(BootstrapContext<ChickenVariant> context,
+      ResourceKey<ChickenVariant> name, ChickenVariant.ModelType modelType,
+      String textureName, String babyTextureName, TagKey<Biome> spawnBiome) {
+    HolderSet<Biome> biomes = context.lookup(Registries.BIOME).getOrThrow(spawnBiome);
+    register(context, name, modelType, textureName, babyTextureName,
+        SpawnPrioritySelectors.single(new BiomeCheck(biomes), 1));
+  }
+  static void register(BootstrapContext<ChickenVariant> context,
+      ResourceKey<ChickenVariant> name, ChickenVariant.ModelType modelType,
+      String textureName, String babyTextureName, SpawnPrioritySelectors selectors) {
+    Identifier textureId = Identifier.withDefaultNamespace("entity/chicken/" + textureName);
+    Identifier babyTextureId = Identifier.withDefaultNamespace(
+        "entity/chicken/" + babyTextureName);
+    context.register(name, new ChickenVariant(
+        new ModelAndTexture<>(modelType, textureId),
+        new ClientAsset.ResourceTexture(babyTextureId), selectors));
+  }
+  static void bootstrap(BootstrapContext<ChickenVariant> context) {
+    register(context, TEMPERATE, ChickenVariant.ModelType.NORMAL,
+        "chicken_temperate", "chicken_temperate_baby", selectors());
+    register(context, COLD, ChickenVariant.ModelType.COLD,
+        "chicken_cold", "chicken_cold_baby", tag());
+  }
+}
+''',
+        )
+
+        self.assertEqual(
+            farm_animal_variant_entries(
+                source,
+                {
+                    "Temperature.TEMPERATE": "temperate",
+                    "Temperature.COLD": "cold",
+                },
+                "ChickenVariant",
+                "chicken",
+                expected_count=2,
+            ),
+            [
+                FarmAnimalVariantEntry(
+                    "TEMPERATE",
+                    "minecraft:temperate",
+                    "NORMAL",
+                    "minecraft:entity/chicken/chicken_temperate",
+                    "minecraft:entity/chicken/chicken_temperate_baby",
+                ),
+                FarmAnimalVariantEntry(
+                    "COLD",
+                    "minecraft:cold",
+                    "COLD",
+                    "minecraft:entity/chicken/chicken_cold",
+                    "minecraft:entity/chicken/chicken_cold_baby",
+                ),
+            ],
+        )
+
+    def test_farm_animal_variant_assets_reject_changed_path_formula(self) -> None:
+        source = parse_source(
+            "fixture/PigVariants.java",
+            b'''
+package fixture;
+class PigVariants {
+  static final ResourceKey<PigVariant> TEMPERATE = createKey(Temperature.TEMPERATE);
+  static void register(BootstrapContext<PigVariant> context,
+      ResourceKey<PigVariant> name, PigVariant.ModelType modelType,
+      String textureName, String babyTextureName, TagKey<Biome> spawnBiome) {
+    HolderSet<Biome> biomes = context.lookup(Registries.BIOME).getOrThrow(spawnBiome);
+    register(context, name, modelType, textureName, babyTextureName,
+        SpawnPrioritySelectors.single(new BiomeCheck(biomes), 1));
+  }
+  static void register(BootstrapContext<PigVariant> context,
+      ResourceKey<PigVariant> name, PigVariant.ModelType modelType,
+      String textureName, String babyTextureName, SpawnPrioritySelectors selectors) {
+    Identifier textureId = Identifier.withDefaultNamespace("entity/wrong/" + textureName);
+    Identifier babyTextureId = Identifier.withDefaultNamespace("entity/pig/" + babyTextureName);
+    context.register(name, new PigVariant(
+        new ModelAndTexture<>(modelType, textureId),
+        new ClientAsset.ResourceTexture(babyTextureId), selectors));
+  }
+  static void bootstrap(BootstrapContext<PigVariant> context) {
+    register(context, TEMPERATE, PigVariant.ModelType.NORMAL,
+        "pig_temperate", "pig_temperate_baby", selectors());
+  }
+}
+''',
+        )
+        with self.assertRaisesRegex(
+            BootstrapCatalogExtractionError,
+            "farm-animal asset formula for textureId changed",
+        ):
+            farm_animal_variant_entries(
+                source,
+                {"Temperature.TEMPERATE": "temperate"},
+                "PigVariant",
+                "pig",
+                expected_count=1,
+            )
+
     def test_frog_variant_assets_follow_bootstrap_literals_and_helper_payload(self) -> None:
         source = parse_source(
             "fixture/FrogVariants.java",

@@ -3,6 +3,7 @@ use super::{
 };
 use crate::entity_models::instances::EntityModelInstance;
 use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
+use crate::entity_models::temperature_animal_variants::PigVariantModelType;
 use crate::entity_models::PigModelVariant;
 
 pub(in crate::entity_models) const MODEL_LAYER_PIG: &str = "minecraft:pig#main";
@@ -236,9 +237,9 @@ fn pig_tree(variant: PigModelVariant, baby: bool) -> ModelPart {
         ];
         return ModelPart::new(PART_POSE_ZERO, Vec::new(), children);
     }
-    let body_cubes: &[ModelCube] = match variant {
-        PigModelVariant::Cold => &COLD_PIG_BODY,
-        _ => &ADULT_PIG_BODY,
+    let body_cubes: &[ModelCube] = match variant.builtin_model_type() {
+        PigVariantModelType::Cold => &COLD_PIG_BODY,
+        PigVariantModelType::Normal => &ADULT_PIG_BODY,
     };
     let mut children = vec![
         (

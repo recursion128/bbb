@@ -786,78 +786,36 @@ fn skull_block_texture_ref(skull: EntityCustomHeadSkull) -> EntityModelTextureRe
 }
 
 fn chicken_model_key(variant: ChickenModelVariant, baby: bool) -> &'static str {
-    match (variant, baby) {
-        (ChickenModelVariant::Temperate, false) => "chicken_temperate",
-        (ChickenModelVariant::Temperate, true) => "chicken_temperate_baby",
-        (ChickenModelVariant::Warm, false) => "chicken_warm",
-        (ChickenModelVariant::Warm, true) => "chicken_warm_baby",
-        (ChickenModelVariant::Cold, false) => "chicken_cold",
-        (ChickenModelVariant::Cold, true) => "chicken_cold_baby",
-    }
+    variant.builtin_model_key(baby)
 }
 
 pub(in crate::entity_models) fn chicken_texture_ref(
     variant: ChickenModelVariant,
     baby: bool,
 ) -> EntityModelTextureRef {
-    match (variant, baby) {
-        (ChickenModelVariant::Temperate, false) => CHICKEN_TEMPERATE_TEXTURE_REF,
-        (ChickenModelVariant::Temperate, true) => CHICKEN_TEMPERATE_BABY_TEXTURE_REF,
-        (ChickenModelVariant::Warm, false) => CHICKEN_WARM_TEXTURE_REF,
-        (ChickenModelVariant::Warm, true) => CHICKEN_WARM_BABY_TEXTURE_REF,
-        (ChickenModelVariant::Cold, false) => CHICKEN_COLD_TEXTURE_REF,
-        (ChickenModelVariant::Cold, true) => CHICKEN_COLD_BABY_TEXTURE_REF,
-    }
+    variant.builtin_texture_ref(baby)
 }
 
 fn pig_model_key(variant: PigModelVariant, baby: bool) -> &'static str {
-    match (variant, baby) {
-        (PigModelVariant::Temperate, false) => "pig_temperate",
-        (PigModelVariant::Temperate, true) => "pig_temperate_baby",
-        (PigModelVariant::Warm, false) => "pig_warm",
-        (PigModelVariant::Warm, true) => "pig_warm_baby",
-        (PigModelVariant::Cold, false) => "pig_cold",
-        (PigModelVariant::Cold, true) => "pig_cold_baby",
-    }
+    variant.builtin_model_key(baby)
 }
 
 pub(in crate::entity_models) fn pig_texture_ref(
     variant: PigModelVariant,
     baby: bool,
 ) -> EntityModelTextureRef {
-    match (variant, baby) {
-        (PigModelVariant::Temperate, false) => PIG_TEMPERATE_TEXTURE_REF,
-        (PigModelVariant::Temperate, true) => PIG_TEMPERATE_BABY_TEXTURE_REF,
-        (PigModelVariant::Warm, false) => PIG_WARM_TEXTURE_REF,
-        (PigModelVariant::Warm, true) => PIG_WARM_BABY_TEXTURE_REF,
-        (PigModelVariant::Cold, false) => PIG_COLD_TEXTURE_REF,
-        (PigModelVariant::Cold, true) => PIG_COLD_BABY_TEXTURE_REF,
-    }
+    variant.builtin_texture_ref(baby)
 }
 
 fn cow_model_key(variant: CowModelVariant, baby: bool) -> &'static str {
-    match (variant, baby) {
-        (CowModelVariant::Temperate, false) => "cow_temperate",
-        (CowModelVariant::Temperate, true) => "cow_temperate_baby",
-        (CowModelVariant::Warm, false) => "cow_warm",
-        (CowModelVariant::Warm, true) => "cow_warm_baby",
-        (CowModelVariant::Cold, false) => "cow_cold",
-        (CowModelVariant::Cold, true) => "cow_cold_baby",
-    }
+    variant.builtin_model_key(baby)
 }
 
 pub(in crate::entity_models) fn cow_texture_ref(
     variant: CowModelVariant,
     baby: bool,
 ) -> EntityModelTextureRef {
-    match (variant, baby) {
-        (CowModelVariant::Temperate, false) => COW_TEMPERATE_TEXTURE_REF,
-        (CowModelVariant::Temperate, true) => COW_TEMPERATE_BABY_TEXTURE_REF,
-        (CowModelVariant::Warm, false) => COW_WARM_TEXTURE_REF,
-        (CowModelVariant::Warm, true) => COW_WARM_BABY_TEXTURE_REF,
-        (CowModelVariant::Cold, false) => COW_COLD_TEXTURE_REF,
-        (CowModelVariant::Cold, true) => COW_COLD_BABY_TEXTURE_REF,
-    }
+    variant.builtin_texture_ref(baby)
 }
 
 pub(in crate::entity_models) fn villager_type_texture_ref(

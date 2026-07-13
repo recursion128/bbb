@@ -50,6 +50,15 @@ class FrogVariantEntry:
 
 
 @dataclass(frozen=True)
+class FarmAnimalVariantEntry:
+    constant_name: str
+    resource_id: str
+    model_type: str
+    adult_asset_id: str
+    baby_asset_id: str
+
+
+@dataclass(frozen=True)
 class BannerPatternEntry:
     constant_name: str
     resource_id: str
@@ -617,6 +626,224 @@ def cat_variant_entries(
     if len(all_assets) != len(set(all_assets)):
         raise BootstrapCatalogExtractionError(
             f"{source.relative_path}: duplicate cat variant asset id"
+        )
+    return entries
+
+
+def farm_animal_variant_entries(
+    source: JavaSource,
+    referenced_paths: dict[str, str],
+    variant_type: str,
+    asset_directory: str,
+    expected_count: int = 3,
+) -> list[FarmAnimalVariantEntry]:
+    identities = bootstrap_resource_key_entries(
+        source,
+        variant_type,
+        {"createKey"},
+        expected_count,
+        referenced_paths=referenced_paths,
+    )
+    bootstrap = _bootstrap_method(source)
+    context_name = _bootstrap_context_name(source, bootstrap)
+    calls = [
+        call
+        for call in source.calls
+        if call.name == "register"
+        and call.qualifier is None
+        and bootstrap.body is not None
+        and bootstrap.body.start_byte <= call.span.start_byte
+        and call.span.end_byte <= bootstrap.body.end_byte
+    ]
+    calls.sort(key=lambda call: (call.span.start_byte, call.span.end_byte))
+    if len(calls) != expected_count:
+        raise BootstrapCatalogExtractionError(
+            f"{source.relative_path}: expected {expected_count} farm-animal "
+            f"bootstrap registrations, found {len(calls)}"
+        )
+
+    facts: dict[str, tuple[str, str, str]] = {}
+    model_prefix = f"{variant_type}.ModelType."
+    for call in calls:
+        if len(call.arguments) != 6 or call.arguments[0].canonical != context_name:
+            _fail(
+                source,
+                source.expression(call.node),
+                "farm-animal bootstrap registration shape changed",
+            )
+        key = call.arguments[1]
+        if key.node.type != "identifier":
+            _fail(source, key, "farm-animal bootstrap resource key is not an identifier")
+        if key.canonical in facts:
+            _fail(source, key, "duplicate farm-animal bootstrap resource key")
+        model_expression = call.arguments[2]
+        if not model_expression.canonical.startswith(model_prefix):
+            _fail(source, model_expression, "farm-animal model type expression changed")
+        model_type = model_expression.canonical.removeprefix(model_prefix)
+        if not model_type.isidentifier() or model_type.upper() != model_type:
+            _fail(source, model_expression, "farm-animal model type is not an enum constant")
+        adult_name = _string(source, call.arguments[3])
+        baby_name = _string(source, call.arguments[4])
+        facts[key.canonical] = (
+            model_type,
+            f"minecraft:entity/{asset_directory}/{adult_name}",
+            f"minecraft:entity/{asset_directory}/{baby_name}",
+        )
+
+    helpers = []
+    wrappers = []
+    for method in source.methods:
+        if method.name != "register" or len(method.parameters) != 6:
+            continue
+        last_type = method.parameters[5].node.child_by_field_name("type")
+        last_type_name = (
+            source.expression(last_type).canonical.replace(" ", "")
+            if last_type is not None
+            else ""
+        )
+        if last_type_name == "SpawnPrioritySelectors":
+            helpers.append(method)
+        elif last_type_name == "TagKey<Biome>":
+            wrappers.append(method)
+    if len(helpers) != 1 or helpers[0].body is None:
+        raise BootstrapCatalogExtractionError(
+            f"{source.relative_path}: expected one farm-animal asset register helper"
+        )
+    helper = helpers[0]
+    helper_parameter_names = []
+    for parameter in helper.parameters:
+        name = parameter.node.child_by_field_name("name")
+        if name is None:
+            _fail(source, parameter, "farm-animal asset helper parameter lacks a name")
+        helper_parameter_names.append(source.text(name))
+    if helper_parameter_names != [
+        "context",
+        "name",
+        "modelType",
+        "textureName",
+        "babyTextureName",
+        "selectors",
+    ]:
+        _fail(source, helper.parameters[0], "farm-animal asset helper parameters changed")
+
+    initializers: dict[str, JavaExpression] = {}
+    for node in descendants(helper.node):
+        if node.type != "variable_declarator":
+            continue
+        name = node.child_by_field_name("name")
+        value = node.child_by_field_name("value")
+        if name is None or value is None:
+            _fail(source, source.expression(node), "farm-animal asset local changed")
+        initializers[source.text(name)] = source.expression(value)
+    expected_initializers = {
+        "textureId": (
+            f'Identifier.withDefaultNamespace ("entity/{asset_directory}/" + textureName)'
+        ),
+        "babyTextureId": (
+            f'Identifier.withDefaultNamespace ("entity/{asset_directory}/" + babyTextureName)'
+        ),
+    }
+    if set(initializers) != set(expected_initializers):
+        raise BootstrapCatalogExtractionError(
+            f"{source.relative_path}: farm-animal asset helper locals changed: "
+            f"expected={sorted(expected_initializers)}, actual={sorted(initializers)}"
+        )
+    for name, expected in expected_initializers.items():
+        if initializers[name].canonical != expected:
+            _fail(source, initializers[name], f"farm-animal asset formula for {name} changed")
+
+    registrations = [
+        call
+        for call in source.calls
+        if call.name == "register"
+        and call.qualifier is not None
+        and call.qualifier.canonical == "context"
+        and helper.body.start_byte <= call.span.start_byte
+        and call.span.end_byte <= helper.body.end_byte
+    ]
+    expected_registration = (
+        f"context.register (name, new {variant_type} (new ModelAndTexture <> "
+        "(modelType, textureId), new ClientAsset.ResourceTexture (babyTextureId), selectors))"
+    )
+    if (
+        len(registrations) != 1
+        or source.expression(registrations[0].node).canonical != expected_registration
+    ):
+        expression = (
+            source.expression(registrations[0].node)
+            if registrations
+            else source.expression(helper.node)
+        )
+        _fail(source, expression, "farm-animal asset registration payload changed")
+
+    if len(wrappers) != 1 or wrappers[0].body is None:
+        raise BootstrapCatalogExtractionError(
+            f"{source.relative_path}: expected one farm-animal biome register helper"
+        )
+    wrapper = wrappers[0]
+    wrapper_parameter_names = []
+    for parameter in wrapper.parameters:
+        name = parameter.node.child_by_field_name("name")
+        if name is None:
+            _fail(source, parameter, "farm-animal biome helper parameter lacks a name")
+        wrapper_parameter_names.append(source.text(name))
+    if wrapper_parameter_names != [
+        "context",
+        "name",
+        "modelType",
+        "textureName",
+        "babyTextureName",
+        "spawnBiome",
+    ]:
+        _fail(source, wrapper.parameters[0], "farm-animal biome helper parameters changed")
+    wrapper_calls = [
+        call
+        for call in source.calls
+        if call.name == "register"
+        and call.qualifier is None
+        and wrapper.body.start_byte <= call.span.start_byte
+        and call.span.end_byte <= wrapper.body.end_byte
+    ]
+    expected_wrapper = (
+        "register (context, name, modelType, textureName, babyTextureName, "
+        "SpawnPrioritySelectors.single (new BiomeCheck (biomes), 1))"
+    )
+    if (
+        len(wrapper_calls) != 1
+        or source.expression(wrapper_calls[0].node).canonical != expected_wrapper
+    ):
+        expression = (
+            source.expression(wrapper_calls[0].node)
+            if wrapper_calls
+            else source.expression(wrapper.node)
+        )
+        _fail(source, expression, "farm-animal biome registration payload changed")
+
+    entries = []
+    for identity in identities:
+        presentation = facts.get(identity.constant_name)
+        if presentation is None:
+            raise BootstrapCatalogExtractionError(
+                f"{source.relative_path}: farm-animal variant "
+                f"{identity.constant_name} lacks presentation assets"
+            )
+        entries.append(
+            FarmAnimalVariantEntry(
+                identity.constant_name,
+                identity.resource_id,
+                presentation[0],
+                presentation[1],
+                presentation[2],
+            )
+        )
+    all_assets = [
+        asset_id
+        for entry in entries
+        for asset_id in (entry.adult_asset_id, entry.baby_asset_id)
+    ]
+    if len(all_assets) != len(set(all_assets)):
+        raise BootstrapCatalogExtractionError(
+            f"{source.relative_path}: duplicate farm-animal variant asset id"
         )
     return entries
 

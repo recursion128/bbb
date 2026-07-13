@@ -8,7 +8,10 @@ use crate::entity_models::catalog::{
     SignModelAttachment, SignModelWood, WolfArmorCrackiness,
 };
 use crate::entity_models::decorated_pot_patterns::*;
-use crate::entity_models::temperature_animal_variants::VANILLA_FROG_VARIANT_TEXTURE_REFS;
+use crate::entity_models::temperature_animal_variants::{
+    VANILLA_CHICKEN_VARIANT_TEXTURE_REFS, VANILLA_COW_VARIANT_TEXTURE_REFS,
+    VANILLA_FROG_VARIANT_TEXTURE_REFS, VANILLA_PIG_VARIANT_TEXTURE_REFS,
+};
 use crate::entity_models::wolf_variants::VANILLA_WOLF_VARIANT_TEXTURE_REFS;
 use crate::entity_models::{CatModelVariant, DecoratedPotPattern, FrogModelVariant};
 
@@ -930,90 +933,37 @@ pub fn villager_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &VILLAGER_ENTITY_TEXTURE_REFS
 }
 
+// Stable aliases keep focused renderer tests readable; the generated bootstrap catalog owns the
+// model/texture presentation facts and official PNG dimensions.
 pub(in crate::entity_models) const CHICKEN_TEMPERATE_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/chicken/chicken_temperate.png",
-        size: [64, 32],
-    };
-
+    VANILLA_CHICKEN_VARIANT_TEXTURE_REFS[0];
 pub(in crate::entity_models) const CHICKEN_TEMPERATE_BABY_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/chicken/chicken_temperate_baby.png",
-        size: [16, 16],
-    };
-
+    VANILLA_CHICKEN_VARIANT_TEXTURE_REFS[1];
 pub(in crate::entity_models) const CHICKEN_WARM_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/chicken/chicken_warm.png",
-        size: [64, 32],
-    };
-
+    VANILLA_CHICKEN_VARIANT_TEXTURE_REFS[2];
 pub(in crate::entity_models) const CHICKEN_WARM_BABY_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/chicken/chicken_warm_baby.png",
-        size: [16, 16],
-    };
-
+    VANILLA_CHICKEN_VARIANT_TEXTURE_REFS[3];
 pub(in crate::entity_models) const CHICKEN_COLD_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/chicken/chicken_cold.png",
-        size: [64, 32],
-    };
-
+    VANILLA_CHICKEN_VARIANT_TEXTURE_REFS[4];
 pub(in crate::entity_models) const CHICKEN_COLD_BABY_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/chicken/chicken_cold_baby.png",
-        size: [16, 16],
-    };
-
-pub(in crate::entity_models) const CHICKEN_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 6] = [
-    CHICKEN_TEMPERATE_TEXTURE_REF,
-    CHICKEN_TEMPERATE_BABY_TEXTURE_REF,
-    CHICKEN_WARM_TEXTURE_REF,
-    CHICKEN_WARM_BABY_TEXTURE_REF,
-    CHICKEN_COLD_TEXTURE_REF,
-    CHICKEN_COLD_BABY_TEXTURE_REF,
-];
+    VANILLA_CHICKEN_VARIANT_TEXTURE_REFS[5];
 
 pub fn chicken_entity_texture_refs() -> &'static [EntityModelTextureRef] {
-    &CHICKEN_ENTITY_TEXTURE_REFS
+    &VANILLA_CHICKEN_VARIANT_TEXTURE_REFS
 }
 
 pub(in crate::entity_models) const PIG_TEMPERATE_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/pig/pig_temperate.png",
-        size: [64, 64],
-    };
-
+    VANILLA_PIG_VARIANT_TEXTURE_REFS[0];
 pub(in crate::entity_models) const PIG_TEMPERATE_BABY_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/pig/pig_temperate_baby.png",
-        size: [32, 32],
-    };
-
+    VANILLA_PIG_VARIANT_TEXTURE_REFS[1];
 pub(in crate::entity_models) const PIG_WARM_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/pig/pig_warm.png",
-        size: [64, 64],
-    };
-
+    VANILLA_PIG_VARIANT_TEXTURE_REFS[2];
 pub(in crate::entity_models) const PIG_WARM_BABY_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/pig/pig_warm_baby.png",
-        size: [32, 32],
-    };
-
+    VANILLA_PIG_VARIANT_TEXTURE_REFS[3];
 pub(in crate::entity_models) const PIG_COLD_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/pig/pig_cold.png",
-        size: [64, 64],
-    };
-
+    VANILLA_PIG_VARIANT_TEXTURE_REFS[4];
 pub(in crate::entity_models) const PIG_COLD_BABY_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/pig/pig_cold_baby.png",
-        size: [32, 32],
-    };
+    VANILLA_PIG_VARIANT_TEXTURE_REFS[5];
 
 pub(in crate::entity_models) const PIG_SADDLE_TEXTURE_REF: EntityModelTextureRef =
     EntityModelTextureRef {
@@ -1021,66 +971,25 @@ pub(in crate::entity_models) const PIG_SADDLE_TEXTURE_REF: EntityModelTextureRef
         size: [64, 64],
     };
 
-pub(in crate::entity_models) const PIG_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 6] = [
-    PIG_TEMPERATE_TEXTURE_REF,
-    PIG_TEMPERATE_BABY_TEXTURE_REF,
-    PIG_WARM_TEXTURE_REF,
-    PIG_WARM_BABY_TEXTURE_REF,
-    PIG_COLD_TEXTURE_REF,
-    PIG_COLD_BABY_TEXTURE_REF,
-];
-
 pub fn pig_entity_texture_refs() -> &'static [EntityModelTextureRef] {
-    &PIG_ENTITY_TEXTURE_REFS
+    &VANILLA_PIG_VARIANT_TEXTURE_REFS
 }
 
 pub(in crate::entity_models) const COW_TEMPERATE_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/cow/cow_temperate.png",
-        size: [64, 64],
-    };
-
+    VANILLA_COW_VARIANT_TEXTURE_REFS[0];
 pub(in crate::entity_models) const COW_TEMPERATE_BABY_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/cow/cow_temperate_baby.png",
-        size: [64, 64],
-    };
-
+    VANILLA_COW_VARIANT_TEXTURE_REFS[1];
 pub(in crate::entity_models) const COW_WARM_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/cow/cow_warm.png",
-        size: [64, 64],
-    };
-
+    VANILLA_COW_VARIANT_TEXTURE_REFS[2];
 pub(in crate::entity_models) const COW_WARM_BABY_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/cow/cow_warm_baby.png",
-        size: [64, 64],
-    };
-
+    VANILLA_COW_VARIANT_TEXTURE_REFS[3];
 pub(in crate::entity_models) const COW_COLD_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/cow/cow_cold.png",
-        size: [64, 64],
-    };
-
+    VANILLA_COW_VARIANT_TEXTURE_REFS[4];
 pub(in crate::entity_models) const COW_COLD_BABY_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/cow/cow_cold_baby.png",
-        size: [64, 64],
-    };
-
-pub(in crate::entity_models) const COW_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 6] = [
-    COW_TEMPERATE_TEXTURE_REF,
-    COW_TEMPERATE_BABY_TEXTURE_REF,
-    COW_WARM_TEXTURE_REF,
-    COW_WARM_BABY_TEXTURE_REF,
-    COW_COLD_TEXTURE_REF,
-    COW_COLD_BABY_TEXTURE_REF,
-];
+    VANILLA_COW_VARIANT_TEXTURE_REFS[5];
 
 pub fn cow_entity_texture_refs() -> &'static [EntityModelTextureRef] {
-    &COW_ENTITY_TEXTURE_REFS
+    &VANILLA_COW_VARIANT_TEXTURE_REFS
 }
 
 pub(in crate::entity_models) const BOAT_ACACIA_TEXTURE_REF: EntityModelTextureRef =

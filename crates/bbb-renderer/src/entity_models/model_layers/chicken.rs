@@ -4,6 +4,7 @@ use super::{
 };
 use crate::entity_models::instances::EntityModelInstance;
 use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
+use crate::entity_models::temperature_animal_variants::ChickenVariantModelType;
 use crate::entity_models::ChickenModelVariant;
 
 use std::f32::consts::FRAC_PI_2;
@@ -321,12 +322,14 @@ fn baby_chicken_tree() -> ModelPart {
 /// Builds the unified chicken tree for `variant`/`baby`, mirroring the vanilla layer choice (cold
 /// chickens carry their fluff layer; babies use the squat headless layout).
 fn chicken_tree(variant: ChickenModelVariant, baby: bool) -> ModelPart {
-    match (variant, baby) {
+    match (variant.builtin_model_type(), baby) {
         (_, true) => baby_chicken_tree(),
-        (ChickenModelVariant::Cold, false) => {
+        (ChickenVariantModelType::Cold, false) => {
             adult_chicken_tree(COLD_CHICKEN_HEAD.to_vec(), COLD_CHICKEN_BODY.to_vec())
         }
-        (_, false) => adult_chicken_tree(ADULT_CHICKEN_HEAD.to_vec(), ADULT_CHICKEN_BODY.to_vec()),
+        (ChickenVariantModelType::Normal, false) => {
+            adult_chicken_tree(ADULT_CHICKEN_HEAD.to_vec(), ADULT_CHICKEN_BODY.to_vec())
+        }
     }
 }
 
