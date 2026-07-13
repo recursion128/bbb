@@ -2,10 +2,12 @@ use bbb_protocol::{
     data_component_types::{
         VANILLA_DATA_COMPONENT_DAMAGE_RESISTANT_TYPE_ID,
         VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_POT_DECORATIONS_TYPE_ID,
         VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID,
         VANILLA_DATA_COMPONENT_REPAIRABLE_TYPE_ID,
         VANILLA_DATA_COMPONENT_SUSPICIOUS_STEW_EFFECTS_TYPE_ID,
     },
+    item_types::vanilla_item_type_for_resource_id,
     mob_effect_types::vanilla_mob_effect_type_for_resource_id,
     NbtSummaryValue,
 };
@@ -34,6 +36,18 @@ pub struct DialogRegistryHolderSetState {
 pub struct DialogSuspiciousStewEffectState {
     pub effect: DialogRegistryHolderReferenceState,
     pub duration: i32,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DialogPotDecorationsState {
+    #[serde(default)]
+    pub back: Option<DialogRegistryHolderReferenceState>,
+    #[serde(default)]
+    pub left: Option<DialogRegistryHolderReferenceState>,
+    #[serde(default)]
+    pub right: Option<DialogRegistryHolderReferenceState>,
+    #[serde(default)]
+    pub front: Option<DialogRegistryHolderReferenceState>,
 }
 
 pub(super) fn decode_holder_backed_component_value(
@@ -69,8 +83,61 @@ pub(super) fn decode_holder_backed_component_value(
             decode_suspicious_stew_effects(value, what)
                 .map(|effects| DialogDataComponentValueState::SuspiciousStewEffects { effects }),
         ),
+        VANILLA_DATA_COMPONENT_POT_DECORATIONS_TYPE_ID => Some(
+            decode_pot_decorations(value, what)
+                .map(|decorations| DialogDataComponentValueState::PotDecorations { decorations }),
+        ),
         _ => None,
     }
+}
+
+fn decode_pot_decorations(
+    value: &NbtSummaryValue,
+    what: &str,
+) -> Result<DialogPotDecorationsState, String> {
+    const SIDE_COUNT: usize = 4;
+
+    let NbtSummaryValue::List(values) = value else {
+        return Err(format!("{what} is not a list"));
+    };
+    if values.len() > SIDE_COUNT {
+        return Err(format!(
+            "{what} has {} decorations, maximum is {SIDE_COUNT}",
+            values.len()
+        ));
+    }
+    let mut decorations = values
+        .iter()
+        .enumerate()
+        .map(|(index, value)| {
+            decode_builtin_item_holder_reference(value, &format!("{what}[{index}]"))
+                .map(|item| (item.resource_id != "minecraft:brick").then_some(item))
+        })
+        .collect::<Result<Vec<_>, String>>()?
+        .into_iter();
+    Ok(DialogPotDecorationsState {
+        back: decorations.next().flatten(),
+        left: decorations.next().flatten(),
+        right: decorations.next().flatten(),
+        front: decorations.next().flatten(),
+    })
+}
+
+fn decode_builtin_item_holder_reference(
+    value: &NbtSummaryValue,
+    what: &str,
+) -> Result<DialogRegistryHolderReferenceState, String> {
+    let NbtSummaryValue::String(raw) = value else {
+        return Err(format!("{what} holder is not a resource id"));
+    };
+    let resource_id = normalize_codec_identifier(raw)
+        .ok_or_else(|| format!("invalid {what} holder resource id {raw}"))?;
+    let item = vanilla_item_type_for_resource_id(&resource_id)
+        .ok_or_else(|| format!("missing minecraft:item resource {resource_id} for {what}"))?;
+    Ok(DialogRegistryHolderReferenceState {
+        holder_id: item.id,
+        resource_id: item.resource_id.to_string(),
+    })
 }
 
 fn decode_suspicious_stew_effects(

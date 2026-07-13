@@ -3,6 +3,7 @@ use bbb_protocol::data_component_types::{
     VANILLA_DATA_COMPONENT_DAMAGE_RESISTANT_TYPE_ID, VANILLA_DATA_COMPONENT_DYE_TYPE_ID,
     VANILLA_DATA_COMPONENT_FOX_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_ITEM_NAME_TYPE_ID,
     VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID, VANILLA_DATA_COMPONENT_LORE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_POT_DECORATIONS_TYPE_ID,
     VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID,
     VANILLA_DATA_COMPONENT_SUSPICIOUS_STEW_EFFECTS_TYPE_ID,
 };
@@ -1568,6 +1569,106 @@ fn decodes_suspicious_stew_effects_with_builtin_holders_and_lenient_duration() {
         let error = decode_supported_component_value(
             VANILLA_DATA_COMPONENT_SUSPICIOUS_STEW_EFFECTS_TYPE_ID,
             "minecraft:suspicious_stew_effects",
+            &value,
+            None,
+        )
+        .unwrap_err();
+        assert!(error.contains(expected), "unexpected error: {error}");
+    }
+}
+
+#[test]
+fn decodes_pot_decorations_with_builtin_item_holders_and_empty_sides() {
+    let value = NbtSummaryValue::List(vec![
+        NbtSummaryValue::String("brick".to_string()),
+        NbtSummaryValue::String("minecraft:angler_pottery_sherd".to_string()),
+        NbtSummaryValue::String("bow".to_string()),
+    ]);
+    let decoded = decode_supported_component_value(
+        VANILLA_DATA_COMPONENT_POT_DECORATIONS_TYPE_ID,
+        "minecraft:pot_decorations",
+        &value,
+        None,
+    )
+    .unwrap();
+    let Some(DialogDataComponentValueState::PotDecorations { decorations }) = decoded else {
+        panic!("expected pot-decorations component");
+    };
+    assert!(decorations.back.is_none());
+    let left = decorations.left.as_ref().unwrap();
+    assert_eq!(left.resource_id, "minecraft:angler_pottery_sherd");
+    assert_eq!(
+        left.holder_id,
+        bbb_protocol::item_types::vanilla_item_type_for_resource_id(
+            "minecraft:angler_pottery_sherd"
+        )
+        .unwrap()
+        .id
+    );
+    assert_eq!(
+        decorations.right.as_ref().unwrap().resource_id,
+        "minecraft:bow"
+    );
+    assert!(decorations.front.is_none());
+
+    let mut registries = RegistrySet::default();
+    let mut contents = crate::RegistryContentState::new("minecraft:item");
+    contents.entries = vec![
+        crate::RegistryPacketEntry::stub("example:fake"),
+        crate::RegistryPacketEntry::stub("minecraft:angler_pottery_sherd"),
+    ];
+    registries
+        .contents
+        .insert("minecraft:item".to_string(), contents);
+    let overridden = decode_supported_component_value(
+        VANILLA_DATA_COMPONENT_POT_DECORATIONS_TYPE_ID,
+        "minecraft:pot_decorations",
+        &value,
+        Some(&registries),
+    )
+    .unwrap();
+    assert!(matches!(
+        overridden,
+        Some(DialogDataComponentValueState::PotDecorations { decorations })
+            if decorations.left.as_ref().unwrap().holder_id == left.holder_id
+    ));
+
+    let empty = decode_supported_component_value(
+        VANILLA_DATA_COMPONENT_POT_DECORATIONS_TYPE_ID,
+        "minecraft:pot_decorations",
+        &NbtSummaryValue::List(Vec::new()),
+        None,
+    )
+    .unwrap();
+    assert!(matches!(
+        empty,
+        Some(DialogDataComponentValueState::PotDecorations { decorations })
+            if decorations.back.is_none()
+                && decorations.left.is_none()
+                && decorations.right.is_none()
+                && decorations.front.is_none()
+    ));
+
+    for (value, expected) in [
+        (compound(Vec::new()), "is not a list"),
+        (
+            NbtSummaryValue::List(vec![NbtSummaryValue::Int(1)]),
+            "holder is not a resource id",
+        ),
+        (
+            NbtSummaryValue::List(vec![NbtSummaryValue::String(
+                "minecraft:missing".to_string(),
+            )]),
+            "missing minecraft:item resource",
+        ),
+        (
+            NbtSummaryValue::List(vec![NbtSummaryValue::String("brick".to_string()); 5]),
+            "maximum is 4",
+        ),
+    ] {
+        let error = decode_supported_component_value(
+            VANILLA_DATA_COMPONENT_POT_DECORATIONS_TYPE_ID,
+            "minecraft:pot_decorations",
             &value,
             None,
         )

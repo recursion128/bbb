@@ -51,8 +51,9 @@ mod holder_set;
 mod profile;
 
 use holder_set::{
-    decode_holder_backed_component_value, DialogRegistryHolderReferenceState,
-    DialogRegistryHolderSetState, DialogSuspiciousStewEffectState,
+    decode_holder_backed_component_value, DialogPotDecorationsState,
+    DialogRegistryHolderReferenceState, DialogRegistryHolderSetState,
+    DialogSuspiciousStewEffectState,
 };
 use profile::decode_profile;
 
@@ -177,6 +178,9 @@ pub enum DialogDataComponentValueState {
     },
     SuspiciousStewEffects {
         effects: Vec<DialogSuspiciousStewEffectState>,
+    },
+    PotDecorations {
+        decorations: DialogPotDecorationsState,
     },
 }
 

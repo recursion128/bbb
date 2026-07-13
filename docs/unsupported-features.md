@@ -569,7 +569,6 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   registry owner; session remapping/direct payload decoding remain)/
   provides-trim-material-named-holder/
   painting-variant-named-holder/
-  pot-decoration/
   container/block-state/villager-variant/wolf-variant/wolf-sound-variant/
   pig-variant/pig-sound-variant/cow-variant/cow-sound-variant/
   chicken-variant/chicken-sound-variant/zombie-nautilus-variant/frog-variant/
