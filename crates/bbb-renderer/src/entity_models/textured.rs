@@ -12,8 +12,6 @@ use super::held_item::{custom_head_skull_transform, custom_head_skull_transform_
 use super::model::{EntityModel, ModelPart};
 #[cfg(test)]
 use super::model_layers::PLAYER_WIDE_STEVE_TEXTURE_REF;
-#[cfg(test)]
-use super::PigModelVariant;
 use super::{
     catalog::{
         ArrowModelTexture, CamelModelFamily, DonkeyModelFamily, EndGatewayBeamRenderState,
@@ -1002,7 +1000,6 @@ impl EntityModelSubmissionEmit {
         self
     }
 
-    #[cfg(test)]
     fn with_dynamic_texture(mut self, texture: EntityDynamicTexture) -> Self {
         self.dynamic_texture = Some(texture);
         self
@@ -1486,53 +1483,6 @@ pub(super) fn dynamic_player_texture_test_meshes(
         atlas,
         dynamic_player_texture_atlas,
     );
-    meshes
-}
-
-#[cfg(test)]
-pub(super) fn dynamic_entity_texture_test_meshes(
-    render_type: EntityModelLayerRenderType,
-    dynamic_texture: EntityDynamicTexture,
-    atlas: &EntityModelTextureAtlasLayout,
-    dynamic_texture_atlas: Option<&EntityDynamicPlayerTextureAtlasLayout>,
-) -> EntityModelTexturedMeshes {
-    let mut meshes = EntityModelTexturedMeshes::new(None);
-    let model = PigModel::new(PigModelVariant::Temperate, false);
-    let submit = EntityModelSubmissionEmit::new(
-        render_type,
-        PigModelVariant::Temperate.builtin_texture_ref(false),
-        [0.25, 0.5, 0.75, 1.0],
-        Mat4::IDENTITY,
-        0,
-        0,
-    )
-    .with_dynamic_texture(dynamic_texture);
-    if let Some(entry) = dynamic_texture_atlas_entry(dynamic_texture_atlas, dynamic_texture) {
-        render_textured_dynamic_player_texture_submission(
-            &mut meshes,
-            submit,
-            entry,
-            |mesh, entry| {
-                model.root().render_textured(
-                    mesh,
-                    submit.transform,
-                    submit.texture,
-                    entry.uv,
-                    submit.tint,
-                );
-            },
-        );
-    } else {
-        render_textured_submission(&mut meshes, submit, atlas, |mesh, entry| {
-            model.root().render_textured(
-                mesh,
-                submit.transform,
-                submit.texture,
-                entry.uv,
-                submit.tint,
-            );
-        });
-    }
     meshes
 }
 
@@ -2440,6 +2390,79 @@ pub(in crate::entity_models) fn render_textured_layers<M: EntityModel>(
             // `All` (and the player-parts case, whose subset is pre-applied to the tree) render whole.
             _ => render_textured_root_pass(meshes, model.root(), transform, pass, atlas),
         }
+    }
+}
+
+/// Renders a prepared model through the shared variable-size entity-texture atlas. The static pass
+/// texture remains the explicit fallback when the handle is not present in the current atlas.
+pub(in crate::entity_models) fn render_textured_layers_with_dynamic_texture<M: EntityModel>(
+    meshes: &mut EntityModelTexturedMeshes,
+    model: &M,
+    transform: Mat4,
+    passes: impl IntoIterator<Item = EntityModelLayerPass>,
+    dynamic_texture: EntityDynamicTexture,
+    atlas: &EntityModelTextureAtlasLayout,
+    dynamic_texture_atlas: Option<&EntityDynamicPlayerTextureAtlasLayout>,
+) {
+    for pass in passes {
+        if pass.tint[3] <= 1.0e-5
+            && pass.render_type != EntityModelLayerRenderType::EntityCutoutDissolve
+        {
+            continue;
+        }
+        if layer_pass_hidden_by_invisible(meshes, pass) {
+            continue;
+        }
+        let submit = textured_layer_submission(meshes, pass, transform)
+            .with_dynamic_texture(dynamic_texture);
+        if let Some(entry) = dynamic_texture_atlas_entry(dynamic_texture_atlas, dynamic_texture) {
+            render_textured_dynamic_player_texture_submission(
+                meshes,
+                submit,
+                entry,
+                |mesh, entry| match pass.visibility {
+                    layers::EntityModelLayerVisibility::RetainedParts(parts) => {
+                        model.root().render_textured_retained(
+                            mesh,
+                            submit.transform,
+                            submit.texture,
+                            entry.uv,
+                            submit.tint,
+                            "",
+                            parts,
+                        );
+                    }
+                    _ => model.root().render_textured(
+                        mesh,
+                        submit.transform,
+                        submit.texture,
+                        entry.uv,
+                        submit.tint,
+                    ),
+                },
+            );
+            continue;
+        }
+        render_textured_submission(meshes, submit, atlas, |mesh, entry| match pass.visibility {
+            layers::EntityModelLayerVisibility::RetainedParts(parts) => {
+                model.root().render_textured_retained(
+                    mesh,
+                    submit.transform,
+                    submit.texture,
+                    entry.uv,
+                    submit.tint,
+                    "",
+                    parts,
+                );
+            }
+            _ => model.root().render_textured(
+                mesh,
+                submit.transform,
+                submit.texture,
+                entry.uv,
+                submit.tint,
+            ),
+        });
     }
 }
 
@@ -4072,7 +4095,6 @@ fn dynamic_player_texture_atlas_entry(
         .find(|entry| entry.handle == texture.handle)
 }
 
-#[cfg(test)]
 fn dynamic_texture_atlas_entry(
     atlas: Option<&EntityDynamicPlayerTextureAtlasLayout>,
     texture: EntityDynamicTexture,

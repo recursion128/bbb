@@ -33,6 +33,7 @@ mod enchanting_table_book_scene;
 mod end_portal_scene;
 mod entity_assets;
 mod entity_scene;
+mod entity_variant_textures;
 mod hud_assets;
 mod input;
 mod item_entities;
@@ -62,6 +63,7 @@ use code_of_conduct_overlay::CodeOfConductOverlayState;
 use debug_entries::DebugScreenEntryList;
 use debug_profiler::{DebugProfiler, DebugProfilerSectionSample};
 use entity_assets::load_entity_model_textures;
+use entity_variant_textures::NativeEntityVariantTextureRuntime;
 use hud_assets::load_hud_textures;
 use input::{
     handle_advancements_screen_cursor_moved, handle_advancements_screen_mouse_input,
@@ -423,6 +425,7 @@ fn main() -> Result<()> {
             }
         }
     }
+    let mut entity_variant_textures = NativeEntityVariantTextureRuntime::new(pack_roots.clone());
     let mut screenshot = args.screenshot;
     let screenshot_after_terrain = args.connect_server;
     let exit_after_screenshot = args.exit_after_screenshot;
@@ -1076,6 +1079,7 @@ fn main() -> Result<()> {
                         &mut level_event_sound_random,
                         &mut terrain_upload,
                         &mut terrain_textures,
+                        &mut entity_variant_textures,
                         item_runtime.as_ref(),
                         &snapshot,
                         &control_requests,
@@ -1246,6 +1250,7 @@ fn main() -> Result<()> {
                     &mut level_event_sound_random,
                     &mut terrain_upload,
                     &mut terrain_textures,
+                    &mut entity_variant_textures,
                     item_runtime.as_ref(),
                     &snapshot,
                     &control_requests,

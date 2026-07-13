@@ -90,10 +90,11 @@ use crate::{
     end_portal_scene::end_portal_model_instances_from_world_at_partial_tick,
     entity_scene::{
         armor_material, entity_model_instance_from_world_entity_at_partial_tick,
-        entity_model_instances_from_world_at_partial_tick,
+        entity_model_instances_from_world_with_variant_textures_at_partial_tick,
         entity_scene_outline_from_world_at_partial_tick,
         entity_scene_outline_from_world_at_partial_tick_with_server_details,
     },
+    entity_variant_textures::NativeEntityVariantTextureRuntime,
     input::{
         advance_destroying_block_at_partial_tick, advance_player_input_for_client_ticks,
         advance_using_item_at_partial_tick, inventory_screen_layout_for_surface,
@@ -2004,6 +2005,7 @@ pub(crate) fn pump_network_and_terrain(
     level_event_sound_random: &mut LevelEventSoundRandomState,
     terrain_upload: &mut TerrainUploadState,
     terrain_textures: &mut TerrainTextureState,
+    entity_variant_textures: &mut NativeEntityVariantTextureRuntime,
     item_runtime: Option<&NativeItemRuntime>,
     snapshot: &SharedSnapshot,
     control_requests: &SharedControlRequests,
@@ -2039,6 +2041,7 @@ pub(crate) fn pump_network_and_terrain(
             level_event_sound_random,
         );
     }
+    entity_variant_textures.synchronize(world, renderer);
     if terrain_textures.synchronize_biome_registry(world) {
         terrain_upload.request_reload_all_chunks();
         if let Some(particle_events) = particle_events.as_mut() {
@@ -2477,7 +2480,12 @@ pub(crate) fn pump_network_and_terrain(
     // Held items render as 3D models at each player's hand, on top of the dropped-item models (sharing
     // the two atlas draws).
     let mut entity_instances =
-        entity_model_instances_from_world_at_partial_tick(world, item_runtime, entity_partial_tick);
+        entity_model_instances_from_world_with_variant_textures_at_partial_tick(
+            world,
+            item_runtime,
+            entity_variant_textures,
+            entity_partial_tick,
+        );
     let held_item_models =
         held_item_models(&entity_instances, world, item_runtime, terrain_textures);
     // Chest block-entity models join the same single entity-model submission

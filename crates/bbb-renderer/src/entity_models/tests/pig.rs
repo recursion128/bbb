@@ -15,10 +15,18 @@ fn generic_dynamic_entity_texture_uses_shared_atlas_and_static_fallback() {
     .unwrap()
     .0;
 
-    let ready = dynamic_entity_texture_test_meshes(
-        EntityModelLayerRenderType::EntityCutout,
-        texture,
+    let instance = EntityModelInstance::pig(
+        8_001,
+        [0.0, 0.0, 0.0],
+        0.0,
+        PigModelVariant::Temperate,
+        false,
+    )
+    .with_dynamic_texture(Some(texture));
+    let ready = entity_model_textured_meshes_with_dynamic_textures(
+        &[instance],
         &static_atlas,
+        None,
         Some(&dynamic_atlas),
     );
     assert_eq!(ready.submissions.len(), 1);
@@ -27,12 +35,8 @@ fn generic_dynamic_entity_texture_uses_shared_atlas_and_static_fallback() {
     assert!(ready.cutout.vertices.is_empty());
     assert!(!ready.dynamic_player_texture_cutout.vertices.is_empty());
 
-    let pending = dynamic_entity_texture_test_meshes(
-        EntityModelLayerRenderType::EntityCutout,
-        texture,
-        &static_atlas,
-        None,
-    );
+    let pending =
+        entity_model_textured_meshes_with_dynamic_textures(&[instance], &static_atlas, None, None);
     assert_eq!(pending.submissions[0].dynamic_texture, Some(texture));
     assert!(!pending.cutout.vertices.is_empty());
     assert!(pending.dynamic_player_texture_cutout.vertices.is_empty());

@@ -697,8 +697,12 @@ Owner: `bbb-pack` + `bbb-native` + `bbb-renderer`
   precedence and decodes their full PNG dimensions/RGBA. `bbb-renderer` now
   exposes a generic dynamic entity-texture handle/image boundary, reuses the
   variable-size cape/elytra atlas for non-player submissions, and falls back to
-  the static texture until that handle is uploaded; native cache state, variant
-  selection, and upload scheduling remain open.
+  the static texture until that handle is uploaded. Native now scans the active
+  holder order after network drain, deduplicates adult/baby pack loads, records
+  pending/ready/failed upload state, and publishes only ready handles. Entity
+  extraction selects the age-specific asset and switches its registry model and
+  texture atomically; unavailable, failed, stub, malformed, and offline paths
+  retain the complete built-in presentation.
 - Give failed, pending, and ready states an explicit fallback. Never draw a
   stale texture.
 

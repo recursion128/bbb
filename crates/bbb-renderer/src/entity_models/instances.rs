@@ -1520,6 +1520,10 @@ pub struct EntityModelInstance {
     pub entity_id: i32,
     pub kind: EntityModelKind,
     pub position: [f32; 3],
+    /// Optional runtime texture for the model's base pass. Native only publishes this after the
+    /// corresponding image has been uploaded, so geometry and custom texture selection switch as
+    /// one render-frame value.
+    pub dynamic_texture: Option<EntityDynamicTexture>,
     /// Per-frame render-state projection (body rotation + animation poses)
     /// consumed by the renderer entity pass.
     pub render_state: EntityRenderState,
@@ -1531,8 +1535,14 @@ impl EntityModelInstance {
             entity_id,
             kind,
             position,
+            dynamic_texture: None,
             render_state: EntityRenderState::resting(y_rot),
         }
+    }
+
+    pub fn with_dynamic_texture(mut self, dynamic_texture: Option<EntityDynamicTexture>) -> Self {
+        self.dynamic_texture = dynamic_texture;
+        self
     }
 
     /// Sets the head-look projection (vanilla `LivingEntityRenderState.yRot` /

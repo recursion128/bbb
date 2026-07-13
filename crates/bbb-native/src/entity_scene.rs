@@ -17,18 +17,18 @@ use bbb_renderer::{
     CatModelVariant, ChickenModelVariant, CopperGolemWeathering, CowModelVariant,
     DonkeyModelFamily, EndCrystalBeamRenderState, EnderDragonBeamRenderState, EntityArmorMaterial,
     EntityAttachmentFace, EntityCustomHeadSkull, EntityDefaultPlayerSkin, EntityDyeColor,
-    EntityDynamicPlayerTexture, EntityDynamicPlayerTextureKind, EntityEquipmentLayerTexture,
-    EntityModelInstance, EntityModelKind, EntityPlayerSkin, FoxModelVariant, FrogModelVariant,
-    GuardianBeamRenderState, HoglinModelFamily, HorseColorVariant, HorseMarkings,
-    IllagerModelFamily, IronGolemCrackiness, LlamaModelFamily, LlamaVariant, MooshroomVariant,
-    PandaModelVariant, ParrotModelVariant, PigModelVariant, PiglinModelFamily,
-    PlayerModelPartVisibility, RabbitModelVariant, SalmonModelSize, SelectionBox,
-    SelectionColoredBox, SelectionLine, SelectionOutline, SelectionPoint, SelectionTextLabel,
-    SheepHeadEatPose, SheepWoolColor, SkeletonModelFamily, SleepingPose, SpearKineticWeapon,
-    TropicalFishModelShape, TropicalFishPattern, UndeadHorseModelFamily, VillagerModelData,
-    VillagerModelProfession, VillagerModelType, WolfArmorCrackiness, WolfModelVariant,
-    ZombieNautilusModelVariant, ZombieVariantModelFamily, DEFAULT_ARMOR_STAND_MODEL_POSE,
-    ENTITY_DEFAULT_OUTLINE_COLOR,
+    EntityDynamicPlayerTexture, EntityDynamicPlayerTextureKind, EntityDynamicTexture,
+    EntityEquipmentLayerTexture, EntityModelInstance, EntityModelKind, EntityPlayerSkin,
+    FoxModelVariant, FrogModelVariant, GuardianBeamRenderState, HoglinModelFamily,
+    HorseColorVariant, HorseMarkings, IllagerModelFamily, IronGolemCrackiness, LlamaModelFamily,
+    LlamaVariant, MooshroomVariant, PandaModelVariant, ParrotModelVariant, PigModelVariant,
+    PiglinModelFamily, PlayerModelPartVisibility, RabbitModelVariant, SalmonModelSize,
+    SelectionBox, SelectionColoredBox, SelectionLine, SelectionOutline, SelectionPoint,
+    SelectionTextLabel, SheepHeadEatPose, SheepWoolColor, SkeletonModelFamily, SleepingPose,
+    SpearKineticWeapon, TropicalFishModelShape, TropicalFishPattern, UndeadHorseModelFamily,
+    VillagerModelData, VillagerModelProfession, VillagerModelType, WolfArmorCrackiness,
+    WolfModelVariant, ZombieNautilusModelVariant, ZombieVariantModelFamily,
+    DEFAULT_ARMOR_STAND_MODEL_POSE, ENTITY_DEFAULT_OUTLINE_COLOR,
 };
 #[cfg(test)]
 use bbb_renderer::{EntityDynamicPlayerSkinStatus, EntityPlayerSkinModel};
@@ -41,8 +41,8 @@ use bbb_world::{
     EndCrystalBeamSource as WorldEndCrystalBeamSource,
     EnderDragonBeamSource as WorldEnderDragonBeamSource,
     EntityAttachmentFace as WorldEntityAttachmentFace, EntityModelSourceState,
-    EntityPickTargetState, GuardianBeamSource as WorldGuardianBeamSource,
-    LlamaBodyDecorColor as WorldLlamaBodyDecorColor,
+    EntityPickTargetState, FarmAnimalVariantModel, FarmAnimalVariantPresentation,
+    GuardianBeamSource as WorldGuardianBeamSource, LlamaBodyDecorColor as WorldLlamaBodyDecorColor,
     WolfArmorCrackiness as WorldWolfArmorCrackiness, WorldStore,
     VANILLA_AGEABLE_MOB_BABY_DATA_ID as AGEABLE_MOB_BABY_DATA_ID,
     VANILLA_AGEABLE_MOB_DEFAULT_BABY as AGEABLE_MOB_DEFAULT_BABY,
@@ -73,6 +73,23 @@ use bbb_world::{
     VANILLA_SLIME_SIZE_DATA_ID as SLIME_SIZE_DATA_ID,
     VANILLA_TRIDENT_DEFAULT_FOIL as TRIDENT_DEFAULT_FOIL,
     VANILLA_TRIDENT_FOIL_DATA_ID as TRIDENT_FOIL_DATA_ID,
+};
+use bbb_world::{
+    CHICKEN_VARIANT_REGISTRY,
+    VANILLA_CHICKEN_DEFAULT_VARIANT_RESOURCE_ID as CHICKEN_DEFAULT_VARIANT_RESOURCE_ID,
+    VANILLA_CHICKEN_VARIANT_DATA_ID as CHICKEN_VARIANT_DATA_ID,
+};
+use bbb_world::{
+    COW_VARIANT_REGISTRY,
+    VANILLA_COW_DEFAULT_VARIANT_RESOURCE_ID as COW_DEFAULT_VARIANT_RESOURCE_ID,
+    VANILLA_COW_VARIANT_DATA_ID as COW_VARIANT_DATA_ID,
+    VANILLA_MUSHROOM_COW_DEFAULT_TYPE as MUSHROOM_COW_DEFAULT_TYPE,
+    VANILLA_MUSHROOM_COW_TYPE_DATA_ID as MUSHROOM_COW_TYPE_DATA_ID,
+};
+use bbb_world::{
+    PIG_VARIANT_REGISTRY,
+    VANILLA_PIG_DEFAULT_VARIANT_RESOURCE_ID as PIG_DEFAULT_VARIANT_RESOURCE_ID,
+    VANILLA_PIG_VARIANT_DATA_ID as PIG_VARIANT_DATA_ID,
 };
 use bbb_world::{
     VANILLA_ABSTRACT_CHESTED_HORSE_CHEST_DATA_ID as ABSTRACT_CHESTED_HORSE_CHEST_DATA_ID,
@@ -123,18 +140,8 @@ use bbb_world::{
     VANILLA_CAT_VARIANT_DATA_ID as CAT_VARIANT_DATA_ID,
 };
 use bbb_world::{
-    VANILLA_CHICKEN_DEFAULT_VARIANT_RESOURCE_ID as CHICKEN_DEFAULT_VARIANT_RESOURCE_ID,
-    VANILLA_CHICKEN_VARIANT_DATA_ID as CHICKEN_VARIANT_DATA_ID,
-};
-use bbb_world::{
     VANILLA_COPPER_GOLEM_DEFAULT_WEATHER_STATE as COPPER_GOLEM_DEFAULT_WEATHER_STATE,
     VANILLA_COPPER_GOLEM_WEATHER_STATE_DATA_ID as COPPER_GOLEM_WEATHER_STATE_DATA_ID,
-};
-use bbb_world::{
-    VANILLA_COW_DEFAULT_VARIANT_RESOURCE_ID as COW_DEFAULT_VARIANT_RESOURCE_ID,
-    VANILLA_COW_VARIANT_DATA_ID as COW_VARIANT_DATA_ID,
-    VANILLA_MUSHROOM_COW_DEFAULT_TYPE as MUSHROOM_COW_DEFAULT_TYPE,
-    VANILLA_MUSHROOM_COW_TYPE_DATA_ID as MUSHROOM_COW_TYPE_DATA_ID,
 };
 use bbb_world::{
     VANILLA_CREAKING_ACTIVE_DATA_ID as CREAKING_IS_ACTIVE_DATA_ID,
@@ -198,10 +205,6 @@ use bbb_world::{
 pub(crate) use bbb_world::{
     VANILLA_PHANTOM_DEFAULT_SIZE as PHANTOM_DEFAULT_SIZE,
     VANILLA_PHANTOM_SIZE_DATA_ID as PHANTOM_SIZE_DATA_ID,
-};
-use bbb_world::{
-    VANILLA_PIG_DEFAULT_VARIANT_RESOURCE_ID as PIG_DEFAULT_VARIANT_RESOURCE_ID,
-    VANILLA_PIG_VARIANT_DATA_ID as PIG_VARIANT_DATA_ID,
 };
 use bbb_world::{
     VANILLA_PILLAGER_CHARGING_CROSSBOW_DATA_ID as PILLAGER_IS_CHARGING_CROSSBOW_DATA_ID,
@@ -296,13 +299,54 @@ use bbb_world::{
 use bbb_item_model::{default_player_skin_for_profile_id, NativeItemRuntime};
 use bbb_protocol::entity_types::*;
 
+use crate::entity_variant_textures::NativeEntityVariantTextureRuntime;
+
 trait EntityVariantRegistryLookup {
     fn resource_id_by_holder_id(&self, registry: &str, holder_id: i32) -> Option<&str>;
+
+    fn farm_animal_variant_presentation(
+        &self,
+        _registry: &str,
+        _holder_id: i32,
+    ) -> Option<FarmAnimalVariantPresentation> {
+        None
+    }
+
+    fn ready_texture(&self, _asset_id: &str) -> Option<EntityDynamicTexture> {
+        None
+    }
 }
 
 impl EntityVariantRegistryLookup for WorldStore {
     fn resource_id_by_holder_id(&self, registry: &str, holder_id: i32) -> Option<&str> {
         self.registry_resource_id_by_holder_id(registry, holder_id)
+    }
+}
+
+struct EntityVariantRenderContext<'a> {
+    world: &'a WorldStore,
+    textures: &'a NativeEntityVariantTextureRuntime,
+}
+
+impl EntityVariantRegistryLookup for EntityVariantRenderContext<'_> {
+    fn resource_id_by_holder_id(&self, registry: &str, holder_id: i32) -> Option<&str> {
+        self.world
+            .registry_resource_id_by_holder_id(registry, holder_id)
+    }
+
+    fn farm_animal_variant_presentation(
+        &self,
+        registry: &str,
+        holder_id: i32,
+    ) -> Option<FarmAnimalVariantPresentation> {
+        self.world
+            .synchronized_farm_animal_variant_presentation(registry, holder_id)
+            .ok()
+            .flatten()
+    }
+
+    fn ready_texture(&self, asset_id: &str) -> Option<EntityDynamicTexture> {
+        self.textures.ready_texture(asset_id)
     }
 }
 
@@ -427,10 +471,40 @@ pub(crate) fn entity_scene_outline_from_world_at_partial_tick_with_server_detail
     )
 }
 
+#[cfg(test)]
 pub(crate) fn entity_model_instances_from_world_at_partial_tick(
     world: &WorldStore,
     item_runtime: Option<&NativeItemRuntime>,
     entity_partial_tick: f32,
+) -> Vec<EntityModelInstance> {
+    entity_model_instances_from_world_with_registry_at_partial_tick(
+        world,
+        item_runtime,
+        entity_partial_tick,
+        Some(world),
+    )
+}
+
+pub(crate) fn entity_model_instances_from_world_with_variant_textures_at_partial_tick(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    textures: &NativeEntityVariantTextureRuntime,
+    entity_partial_tick: f32,
+) -> Vec<EntityModelInstance> {
+    let context = EntityVariantRenderContext { world, textures };
+    entity_model_instances_from_world_with_registry_at_partial_tick(
+        world,
+        item_runtime,
+        entity_partial_tick,
+        Some(&context),
+    )
+}
+
+fn entity_model_instances_from_world_with_registry_at_partial_tick(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    entity_partial_tick: f32,
+    variant_registries: Option<&dyn EntityVariantRegistryLookup>,
 ) -> Vec<EntityModelInstance> {
     let entity_partial_tick = entity_partial_tick.clamp(0.0, 1.0);
     let local_player_id = world.local_player_id();
@@ -449,7 +523,7 @@ pub(crate) fn entity_model_instances_from_world_at_partial_tick(
                 item_runtime,
                 game_time,
                 entity_partial_tick,
-                Some(world),
+                variant_registries,
             )
         })
         .collect()

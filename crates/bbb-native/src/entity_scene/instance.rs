@@ -15,6 +15,12 @@ pub(super) fn entity_model_instance(
         game_time,
         variant_registries,
     );
+    let dynamic_texture = apply_ready_farm_animal_variant_presentation(
+        &mut kind,
+        source.entity_type_id,
+        &source.data_values,
+        variant_registries,
+    );
     // Vanilla `Armadillo.shouldHideInShell()` = `getState().shouldHideInShell(inStateTicks)`: the
     // shell-ball swap is gated on the client `inStateTicks`, which `entity_model_kind` (data-only)
     // cannot see, so it falls back to the steady SCARED hide. Override it with the world-projected
@@ -500,6 +506,7 @@ pub(super) fn entity_model_instance(
             ],
             body_rot,
         )
+        .with_dynamic_texture(dynamic_texture)
         .with_head_eat(head_eat)
         .with_head_look(net_head_yaw, head_pitch)
         .with_trident_foil(thrown_trident_foil(

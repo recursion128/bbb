@@ -348,8 +348,10 @@ chicken/cow/pig variant 的 NETWORK_CODEC presentation 已严格投影 model、a
 及派生 texture path，custom 前插/重排按 server holder order 查询，stub 与 malformed payload
 安全省略；bbb-pack 已按 namespace、pack precedence 与 filter 解析任意 ResourceTexture asset id
 并保留完整 PNG 尺寸/RGBA，renderer 已提供通用 dynamic entity texture handle/image 并复用
-可变尺寸 profile texture atlas，未上传 handle 回退静态纹理；native cache、variant selection
-与 upload scheduling 仍开放；完整
+可变尺寸 profile texture atlas，未上传 handle 回退静态纹理；native 已在 network drain 后按
+当前 holder order 去重调度 adult/baby 资源上传，以显式 pending/ready/failed cache 只发布已成功
+上传的 handle，并在实体提取时按年龄把 registry model 与 dynamic texture 原子切换，缺失、失败、
+stub、malformed 与离线路径整套回退内置展示而不画 stale texture；完整
 `RegistryAccess`/typed codec/holder tags/component initializer 仍是明确 canonical/runtime partial。每轮 configuration registry
 collection 已 staging，并在 Finish 原子替换或按 vanilla tag-only 路径保留原 contents。
 

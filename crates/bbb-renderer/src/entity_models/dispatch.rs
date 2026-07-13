@@ -110,7 +110,8 @@ use super::textured::{
     render_player_extra_ears_layer, render_player_parrot_on_shoulder_layer,
     render_player_spin_attack_effect_layer, render_player_textured_layers,
     render_skeleton_clothing_layer, render_skull_block_model, render_strider_saddle_layer,
-    render_textured_layers, render_trident_foil_submission, render_undead_horse_textured_layers,
+    render_textured_layers, render_textured_layers_with_dynamic_texture,
+    render_trident_foil_submission, render_undead_horse_textured_layers,
     render_villager_profession_layers, render_wings_layer, render_wither_energy_swirl,
     render_wolf_body_armor_layer, render_worn_humanoid_armor, salmon_textured_layer_passes,
     sheep_textured_layer_passes, shulker_box_textured_layer_passes,
@@ -594,6 +595,18 @@ impl EntityModelSink for TexturedSink<'_> {
         passes: &[EntityModelLayerPass],
     ) {
         model.prepare(instance);
+        if let Some(dynamic_texture) = instance.dynamic_texture {
+            render_textured_layers_with_dynamic_texture(
+                self.meshes,
+                &model,
+                transform,
+                passes.iter().cloned(),
+                dynamic_texture,
+                self.atlas,
+                self.dynamic_player_texture_atlas,
+            );
+            return;
+        }
         render_textured_layers(
             self.meshes,
             &model,

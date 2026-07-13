@@ -4385,7 +4385,7 @@ fn renderer_frame_item_and_entity_projections_extract_after_tick_advances() {
         .find("let item_entity_billboards = item_entity_billboards_from_world(")
         .expect("pump should extract item entity billboards");
     let entity_instances = source
-        .find("let mut entity_instances =\n        entity_model_instances_from_world_at_partial_tick(")
+        .find("let mut entity_instances =\n        entity_model_instances_from_world_with_variant_textures_at_partial_tick(")
         .expect("pump should extract entity model instances");
     let held_models = source
         .find("let held_item_models =")

@@ -301,6 +301,106 @@ pub(super) fn cow_model_kind(
     }
 }
 
+/// Applies a synchronized farm-animal presentation only when its selected adult/baby texture is
+/// already resident. Until then `kind` retains the holder-identity built-in fallback, keeping the
+/// geometry and texture switch atomic.
+pub(super) fn apply_ready_farm_animal_variant_presentation(
+    kind: &mut EntityModelKind,
+    entity_type_id: i32,
+    values: &[bbb_protocol::packets::EntityDataValue],
+    registries: Option<&dyn EntityVariantRegistryLookup>,
+) -> Option<EntityDynamicTexture> {
+    let registries = registries?;
+    let (registry, holder_id, baby) = match kind {
+        EntityModelKind::Chicken { baby, .. }
+            if entity_type_id == VANILLA_ENTITY_TYPE_CHICKEN_ID =>
+        {
+            (
+                CHICKEN_VARIANT_REGISTRY,
+                farm_animal_variant_holder_id(
+                    values,
+                    CHICKEN_VARIANT_DATA_ID,
+                    EntityDataRegistryHolder::ChickenVariant,
+                )?,
+                *baby,
+            )
+        }
+        EntityModelKind::Cow { baby, .. } if entity_type_id == VANILLA_ENTITY_TYPE_COW_ID => (
+            COW_VARIANT_REGISTRY,
+            farm_animal_variant_holder_id(
+                values,
+                COW_VARIANT_DATA_ID,
+                EntityDataRegistryHolder::CowVariant,
+            )?,
+            *baby,
+        ),
+        EntityModelKind::Pig { baby, .. } if entity_type_id == VANILLA_ENTITY_TYPE_PIG_ID => (
+            PIG_VARIANT_REGISTRY,
+            farm_animal_variant_holder_id(
+                values,
+                PIG_VARIANT_DATA_ID,
+                EntityDataRegistryHolder::PigVariant,
+            )?,
+            *baby,
+        ),
+        _ => return None,
+    };
+    let presentation = registries.farm_animal_variant_presentation(registry, holder_id)?;
+    let asset_id = if baby {
+        &presentation.baby_asset_id
+    } else {
+        &presentation.adult_asset_id
+    };
+    let texture = registries.ready_texture(asset_id)?;
+
+    match (kind, presentation.model) {
+        (EntityModelKind::Chicken { variant, .. }, FarmAnimalVariantModel::Normal) => {
+            *variant = ChickenModelVariant::Temperate;
+        }
+        (EntityModelKind::Chicken { variant, .. }, FarmAnimalVariantModel::Cold) => {
+            *variant = ChickenModelVariant::Cold;
+        }
+        (EntityModelKind::Cow { variant, .. }, FarmAnimalVariantModel::Normal) => {
+            *variant = CowModelVariant::Temperate;
+        }
+        (EntityModelKind::Cow { variant, .. }, FarmAnimalVariantModel::Warm) => {
+            *variant = CowModelVariant::Warm;
+        }
+        (EntityModelKind::Cow { variant, .. }, FarmAnimalVariantModel::Cold) => {
+            *variant = CowModelVariant::Cold;
+        }
+        (EntityModelKind::Pig { variant, .. }, FarmAnimalVariantModel::Normal) => {
+            *variant = PigModelVariant::Temperate;
+        }
+        (EntityModelKind::Pig { variant, .. }, FarmAnimalVariantModel::Cold) => {
+            *variant = PigModelVariant::Cold;
+        }
+        // Strict world projection rejects `warm` for chicken/pig. Fail closed if another lookup
+        // implementation violates that family constraint.
+        _ => return None,
+    }
+    Some(texture)
+}
+
+fn farm_animal_variant_holder_id(
+    values: &[bbb_protocol::packets::EntityDataValue],
+    data_id: u8,
+    expected_serializer: EntityDataRegistryHolder,
+) -> Option<i32> {
+    values
+        .iter()
+        .rev()
+        .find(|value| value.data_id == data_id)
+        .and_then(|value| match &value.value {
+            EntityDataValueKind::RegistryId { serializer, id }
+                if *serializer == expected_serializer =>
+            {
+                Some(*id)
+            }
+            _ => None,
+        })
+}
+
 /// Vanilla `MushroomCowRenderer` (an `AgeableMobRenderer`) renders the mooshroom with the shared
 /// `CowModel` / `BabyCowModel` body (`ModelLayers.MOOSHROOM` bakes to the temperate `cowBodyLayer`,
 /// `MOOSHROOM_BABY` to `BabyCowModel.createBodyLayer()`), so it maps to the dedicated

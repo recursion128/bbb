@@ -5644,6 +5644,110 @@ fn entity_model_instances_project_pig_variants_from_world_registry_order() {
     );
 }
 
+struct ReadyFarmAnimalPresentationLookup {
+    registry_resource_id: &'static str,
+    presentation: FarmAnimalVariantPresentation,
+    ready_asset_id: &'static str,
+    texture: EntityDynamicTexture,
+}
+
+impl EntityVariantRegistryLookup for ReadyFarmAnimalPresentationLookup {
+    fn resource_id_by_holder_id(&self, _registry: &str, _holder_id: i32) -> Option<&str> {
+        Some(self.registry_resource_id)
+    }
+
+    fn farm_animal_variant_presentation(
+        &self,
+        _registry: &str,
+        _holder_id: i32,
+    ) -> Option<FarmAnimalVariantPresentation> {
+        Some(self.presentation.clone())
+    }
+
+    fn ready_texture(&self, asset_id: &str) -> Option<EntityDynamicTexture> {
+        (asset_id == self.ready_asset_id).then_some(self.texture)
+    }
+}
+
+#[test]
+fn ready_farm_animal_presentation_switches_model_and_age_texture_atomically() {
+    let texture = EntityDynamicTexture { handle: 42_4242 };
+    let mut lookup = ReadyFarmAnimalPresentationLookup {
+        registry_resource_id: "example:highland",
+        presentation: FarmAnimalVariantPresentation {
+            model: FarmAnimalVariantModel::Cold,
+            adult_asset_id: "example:entity/cow/highland".to_string(),
+            adult_texture_path: "example:textures/entity/cow/highland.png".to_string(),
+            baby_asset_id: "example:entity/cow/highland_baby".to_string(),
+            baby_texture_path: "example:textures/entity/cow/highland_baby.png".to_string(),
+        },
+        ready_asset_id: "example:entity/cow/highland",
+        texture,
+    };
+    let values = [protocol_cow_variant_data(0)];
+    let mut adult_kind = EntityModelKind::Cow {
+        variant: CowModelVariant::Temperate,
+        baby: false,
+    };
+    assert_eq!(
+        apply_ready_farm_animal_variant_presentation(
+            &mut adult_kind,
+            VANILLA_ENTITY_TYPE_COW_ID,
+            &values,
+            Some(&lookup),
+        ),
+        Some(texture)
+    );
+    assert_eq!(
+        adult_kind,
+        EntityModelKind::Cow {
+            variant: CowModelVariant::Cold,
+            baby: false,
+        }
+    );
+
+    let mut baby_kind = EntityModelKind::Cow {
+        variant: CowModelVariant::Warm,
+        baby: true,
+    };
+    assert_eq!(
+        apply_ready_farm_animal_variant_presentation(
+            &mut baby_kind,
+            VANILLA_ENTITY_TYPE_COW_ID,
+            &values,
+            Some(&lookup),
+        ),
+        None,
+        "an adult upload must not expose the baby presentation"
+    );
+    assert_eq!(
+        baby_kind,
+        EntityModelKind::Cow {
+            variant: CowModelVariant::Warm,
+            baby: true,
+        },
+        "unready presentation must retain the complete built-in fallback"
+    );
+
+    lookup.ready_asset_id = "example:entity/cow/highland_baby";
+    assert_eq!(
+        apply_ready_farm_animal_variant_presentation(
+            &mut baby_kind,
+            VANILLA_ENTITY_TYPE_COW_ID,
+            &values,
+            Some(&lookup),
+        ),
+        Some(texture)
+    );
+    assert_eq!(
+        baby_kind,
+        EntityModelKind::Cow {
+            variant: CowModelVariant::Cold,
+            baby: true,
+        }
+    );
+}
+
 #[test]
 fn entity_model_instances_project_pig_saddle_render_state() {
     const SADDLE_ITEM_ID: i32 = 740;
