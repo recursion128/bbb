@@ -334,8 +334,9 @@ typed 投影；Food/UseCooldown/Weapon/AttackRange/Enchantable 共 5 个 numeric
 ContainerLoot resource-key/seed 共 3 项 metadata Codec 也已闭合；共享 RGB_COLOR int/VECTOR3F
 alternative 的 DyedItemColor 与 CustomModelData 四类 defaulted list 共 2 项也已 typed 投影；
 FireworkExplosion/Fireworks 的 nested record、collection 与 256 上限共 2 项也已闭合；LodestoneTracker
-的 optional GlobalPos/resource-key/exact-three int stream 也已闭合；其余 Component、holder、list 与
-compound record 等 persistent Codec 仍未展开；
+的 optional GlobalPos/resource-key/exact-three int stream 也已闭合；ResolvableProfile 的 FULL/player-name
+alternative、UUID/property-map 与 skin patch 也已 typed 投影；其余 Component、holder、list 与 compound
+record 等 persistent Codec 仍未展开；
 四类 input control 与九类 static/dynamic action 已按 codec typed 投影并同时保留 raw；DialogList 的 play
 tag/direct 同质 HolderSet、session reference、context-free inline-list
 边界、external title 与 default/validation 已 typed 投影，仍缺全部 screen；custom-click 的 resource-id +

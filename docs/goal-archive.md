@@ -13747,3 +13747,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] absent/default target、IntArray/ordinary numeric list、`Number.intValue`、bool byteValue、missing/wrong
   target fields、invalid dimension、wrong coordinate count/type 与 invalid tracked 均有定向测试；Component、
   holder、其余 list/compound-record persistent Codec 与 native screens 仍开放。
+
+## 2026-07-13：Decode profile dialog item component
+
+- [x] 新建 `client/dialog/body/component_value/profile.rs` semantic owner；对照
+  `ResolvableProfile.CODEC`、`ExtraCodecs.STORED_GAME_PROFILE/PROPERTY_MAP/PLAYER_NAME`、
+  `UUIDUtil.CODEC` 与 `PlayerSkin.Patch.MAP_CODEC`，复用现有 profile summaries，闭合 1 个 persistent 注册项。
+- [x] FULL/player-name 与 GameProfile/Partial alternatives、UUID int stream、compound/list property maps、
+  distinct-name/list 16 边界、field UTF-16 bounds、derived texture property、resource texture path 与 strict
+  slim/wide model 均有定向测试；Component、holder、其余 list/compound-record Codec 与 screens 仍开放。
