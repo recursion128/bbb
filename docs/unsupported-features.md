@@ -68,7 +68,7 @@ Owner: `bbb-protocol`
   plus 14 primitive, 17 StringRepresentable enum, 6 scalar-wrapper/flat-record/string-map,
   5 numeric item-behavior record, and 3 resource-key/catalog metadata positive-value
   registrations, plus 2 RGB-alternative/list, 2 firework-record, and 1 global-position
-  registration, plus 1 profile-alternative registration:
+  registration, plus 1 profile-alternative and 1 sound-holder registration:
   decode the remaining Component, holder, list, and compound-record persistent value
   Codecs, render the corresponding screens, restore the previous screen on clear, and
   route custom-click controls through the active dialog state.
@@ -545,8 +545,8 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   equippable (slot/sound/asset/entity-holder/default flags)/
   blocks-attacks (damage-reduction/item-damage/damage-type-holder/sound)/
   attribute-modifiers-named-holder-default-hidden-display/
-  simple-resource (including tooltip-style/note-block-sound and vanilla/direct
-  break-sound)/exact-component-tree (custom-name/item-name/lore)/
+  simple-resource (including tooltip-style/note-block-sound)/
+  exact-component-tree (custom-name/item-name/lore)/
   food/consumable/death-protection/potion-contents/
   weapon/
   tool-block-holder-rules/

@@ -14,7 +14,7 @@ use bbb_protocol::{
     data_component_types::{
         vanilla_data_component_type_for_resource_id, VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID,
         VANILLA_DATA_COMPONENT_BEES_TYPE_ID, VANILLA_DATA_COMPONENT_BLOCK_ENTITY_DATA_TYPE_ID,
-        VANILLA_DATA_COMPONENT_BLOCK_STATE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_BLOCK_STATE_TYPE_ID, VANILLA_DATA_COMPONENT_BREAK_SOUND_TYPE_ID,
         VANILLA_DATA_COMPONENT_BUCKET_ENTITY_DATA_TYPE_ID,
         VANILLA_DATA_COMPONENT_CONTAINER_LOOT_TYPE_ID, VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID,
         VANILLA_DATA_COMPONENT_CUSTOM_MODEL_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID,
@@ -56,6 +56,7 @@ mod debug_stick;
 mod holder_set;
 mod map_decorations;
 mod profile;
+mod sound_event;
 mod typed_data;
 
 use bees::{decode_bees, DialogBeeOccupantState};
@@ -67,6 +68,7 @@ use holder_set::{
 };
 use map_decorations::{decode_map_decorations, DialogMapDecorationState};
 use profile::decode_profile;
+use sound_event::{decode_sound_event_holder, DialogSoundEventHolderState};
 use typed_data::{
     decode_builtin_block_entity_data, decode_builtin_entity_data, decode_custom_data,
     DialogTypedBlockEntityDataState, DialogTypedEntityDataState,
@@ -238,6 +240,9 @@ pub enum DialogDataComponentValueState {
     MapDecorations {
         decorations: Vec<DialogMapDecorationState>,
     },
+    BreakSound {
+        sound: DialogSoundEventHolderState,
+    },
 }
 
 impl DialogDataComponentValueState {
@@ -375,6 +380,9 @@ pub(super) fn decode_supported_component_value(
                 decorations: decode_map_decorations(value, &what)?,
             }
         }
+        VANILLA_DATA_COMPONENT_BREAK_SOUND_TYPE_ID => DialogDataComponentValueState::BreakSound {
+            sound: decode_sound_event_holder(value, &what)?,
+        },
         _ => {
             if let Some(decoded) =
                 decode_holder_backed_component_value(type_id, value, registries, &what)

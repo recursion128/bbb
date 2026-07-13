@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import difflib
+import json
 import sys
 from pathlib import Path
 
@@ -14,7 +15,7 @@ from vanilla_java_source import parse_source
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_SOURCE_ROOT = Path.home() / "Work/mc-code/sources/26.1"
-DEFAULT_OUTPUT = REPO_ROOT / "crates/bbb-pack/data/sound_events_26_1.txt"
+DEFAULT_OUTPUT = REPO_ROOT / "crates/bbb-protocol/src/sound_event_types.rs"
 SOUND_EVENTS_SOURCE = Path("net/minecraft/sounds/SoundEvents.java")
 VARIANT_SOURCES = {
     "cat": Path("net/minecraft/world/entity/animal/feline/CatSoundVariants.java"),
@@ -43,7 +44,77 @@ def generate(source_root: Path) -> str:
         family: parse_java(source_root, relative_path)
         for family, relative_path in VARIANT_SOURCES.items()
     }
-    return "\n".join(sound_event_resource_ids(source, variants)) + "\n"
+    resource_ids = sound_event_resource_ids(source, variants)
+    lines = [
+        "// Generated from vanilla 26.1 `SoundEvents.java` static initialization order.",
+        "// Update/check with `scripts/generate-sound-event-catalog.py` through",
+        "// `scripts/vanilla-source-tools.sh`; ordinary builds consume only this snapshot.",
+        "",
+        "pub const VANILLA_SOUND_EVENT_RESOURCE_IDS: &[&str] = &[",
+    ]
+    lines.extend(f"    {json.dumps(resource_id)}," for resource_id in resource_ids)
+    lines.extend(
+        [
+            "];",
+            "",
+            "pub fn vanilla_sound_event_resource_id(registry_id: i32) -> Option<&'static str> {",
+            "    VANILLA_SOUND_EVENT_RESOURCE_IDS",
+            "        .get(usize::try_from(registry_id).ok()?)",
+            "        .copied()",
+            "}",
+            "",
+            "pub fn vanilla_sound_event_registry_id(resource_id: &str) -> Option<i32> {",
+            "    VANILLA_SOUND_EVENT_RESOURCE_IDS",
+            "        .iter()",
+            "        .position(|candidate| *candidate == resource_id)",
+            "        .and_then(|index| i32::try_from(index).ok())",
+            "}",
+            "",
+            "#[cfg(test)]",
+            "mod tests {",
+            "    use std::collections::HashSet;",
+            "",
+            "    use super::*;",
+            "",
+            "    #[test]",
+            "    fn sound_event_catalog_is_complete_ordered_and_unique() {",
+            "        assert_eq!(VANILLA_SOUND_EVENT_RESOURCE_IDS.len(), 1902);",
+            "        assert_eq!(",
+            "            vanilla_sound_event_resource_id(0),",
+            "            Some(\"minecraft:entity.allay.ambient_with_item\")",
+            "        );",
+            "        assert_eq!(",
+            "            vanilla_sound_event_resource_id(1901),",
+            "            Some(\"minecraft:item.nautilus_saddle_equip\")",
+            "        );",
+            "        assert_eq!(vanilla_sound_event_resource_id(1902), None);",
+            "        assert_eq!(vanilla_sound_event_resource_id(-1), None);",
+            "        assert_eq!(",
+            "            VANILLA_SOUND_EVENT_RESOURCE_IDS",
+            "                .iter()",
+            "                .copied()",
+            "                .collect::<HashSet<_>>()",
+            "                .len(),",
+            "            VANILLA_SOUND_EVENT_RESOURCE_IDS.len()",
+            "        );",
+            "    }",
+            "",
+            "    #[test]",
+            "    fn sound_event_catalog_supports_reverse_registry_lookup() {",
+            "        for (registry_id, resource_id) in",
+            "            VANILLA_SOUND_EVENT_RESOURCE_IDS.iter().copied().enumerate()",
+            "        {",
+            "            assert_eq!(",
+            "                vanilla_sound_event_registry_id(resource_id),",
+            "                Some(registry_id as i32)",
+            "            );",
+            "        }",
+            "        assert_eq!(vanilla_sound_event_registry_id(\"minecraft:missing\"), None);",
+            "    }",
+            "}",
+        ]
+    )
+    return "\n".join(lines) + "\n"
 
 
 def check_generated(path: Path, generated: str) -> bool:

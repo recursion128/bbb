@@ -352,9 +352,11 @@ built-in block dispatched map、block property validation 与空 map 也已 type
 ENTITY_DATA/BLOCK_ENTITY_DATA 的 built-in type + id 剥离 compound 分支与 BUCKET_ENTITY_DATA 的
 compound 分支已 typed 投影，CUSTOM_DATA 也复用相同 canonical compound 投影；四者的 TagParser
 flattened-SNBT string alternative 仍未实现；MAP_DECORATIONS 的 ordered string map、共享 built-in
-map-decoration holder 与 required double/double/float record 也已 typed 投影；其余 Component、holder、
-list 与 compound record 等 persistent Codec 仍未展开；VILLAGER_VARIANT 的 shared built-in
-RegistryFixedCodec holder 也已 typed 投影且不接受 session remap；
+map-decoration holder 与 required double/double/float record 也已 typed 投影；VILLAGER_VARIANT 的
+shared built-in RegistryFixedCodec holder 也已 typed 投影且不接受 session remap；BREAK_SOUND 的
+shared 1902 项 built-in sound-event catalog、named RegistryFileCodec holder，以及 direct
+sound_id/lenient optional range 也已 typed 投影；其余 Component、holder、list 与 compound record 等
+persistent Codec 仍未展开；
 四类 input control 与九类 static/dynamic action 已按 codec typed 投影并同时保留 raw；DialogList 的 play
 tag/direct 同质 HolderSet、session reference、context-free inline-list
 边界、external title 与 default/validation 已 typed 投影，仍缺全部 screen；custom-click 的 resource-id +

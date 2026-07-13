@@ -56,6 +56,7 @@ pub mod resource_pack_response_actions;
 pub mod scoreboard_display_slots;
 pub mod scoreboard_methods;
 pub mod scoreboard_team_options;
+pub mod sound_event_types;
 pub mod sound_sources;
 pub mod stat_types;
 pub mod tropical_fish_patterns;

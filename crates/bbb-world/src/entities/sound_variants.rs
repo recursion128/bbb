@@ -478,6 +478,7 @@ mod tests {
                 }
                 let display = path.to_string_lossy();
                 if display.ends_with("/sound_variants.rs")
+                    || display.ends_with("/sound_event_types.rs")
                     || display.ends_with("/tests.rs")
                     || display.contains("/tests/")
                 {

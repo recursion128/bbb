@@ -13756,3 +13756,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] FULL/player-name 与 GameProfile/Partial alternatives、UUID int stream、compound/list property maps、
   distinct-name/list 16 边界、field UTF-16 bounds、derived texture property、resource texture path 与 strict
   slim/wide model 均有定向测试；Component、holder、其余 list/compound-record Codec 与 screens 仍开放。
+
+## 2026-07-13：Decode break-sound dialog item component
+
+- [x] 将 `SoundEvents.java` 静态初始化顺序生成的 1902 项声音目录从 `bbb-pack` 私有数据迁入
+  `bbb-protocol::sound_event_types` 共享 catalog，并保留 `SoundEventRegistry` 既有 API；顺序、唯一性、
+  正反向查询与 pack 兼容行为均有定向测试。
+- [x] 新建 `client/dialog/body/component_value/sound_event.rs` semantic owner；对照
+  `SoundEvent.CODEC/DIRECT_CODEC` 与 `RegistryDataLoader.SYNCHRONIZED_REGISTRIES`，typed 投影固定 built-in
+  named holder 和 direct `sound_id`/lenient optional `range`，明确不接受 session remap；unknown named、
+  invalid identifier、wrong root/field shape 与 lenient range 均有定向测试，其余 persistent Codec 与
+  native screens 仍开放。

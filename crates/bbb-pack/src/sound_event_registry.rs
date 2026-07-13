@@ -1,9 +1,5 @@
+use bbb_protocol::sound_event_types::VANILLA_SOUND_EVENT_RESOURCE_IDS;
 use serde::{Deserialize, Serialize};
-
-// Generated from vanilla 26.1 `SoundEvents.java` static initialization order.
-// Update/check with `scripts/generate-sound-event-catalog.py` through
-// `scripts/vanilla-source-tools.sh`; ordinary builds consume only this snapshot.
-const VANILLA_26_1_SOUND_EVENTS: &str = include_str!("../data/sound_events_26_1.txt");
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SoundEventRegistry {
@@ -12,11 +8,7 @@ pub struct SoundEventRegistry {
 
 impl SoundEventRegistry {
     pub fn vanilla_26_1() -> Self {
-        Self::from_ids(
-            VANILLA_26_1_SOUND_EVENTS
-                .lines()
-                .filter(|line| !line.is_empty()),
-        )
+        Self::from_ids(VANILLA_SOUND_EVENT_RESOURCE_IDS.iter().copied())
     }
 
     pub fn from_ids(ids: impl IntoIterator<Item = impl Into<String>>) -> Self {
