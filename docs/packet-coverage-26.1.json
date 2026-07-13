@@ -7528,17 +7528,21 @@
         "runtime_side_effect": {
           "evidence": [
             "crates/bbb-world/src/client/command_suggestions.rs#custom_chat_completions",
-            "crates/bbb-native/src/input.rs#latest_command_suggestion_text"
+            "crates/bbb-native/src/input.rs#latest_custom_chat_completion_text",
+            "vanilla:net/minecraft/client/gui/components/CommandSuggestions.java#updateCommandInfo",
+            "vanilla:net/minecraft/client/multiplayer/ClientSuggestionProvider.java#getCustomTabSuggestions"
           ],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [
             "crates/bbb-protocol/src/packets/client_features/tests.rs#decodes_custom_chat_completions_packet_wire_order",
             "crates/bbb-world/src/client/command_suggestions.rs#custom_chat_completions_apply_set_add_and_remove_as_suggestions_set",
             "crates/bbb-net/src/probe/play.rs#probe_applies_command_suggestion_packets_to_world",
-            "crates/bbb-native/src/runtime/events/tests/session_protocol_events.rs#client_feature_events_update_world_and_world_counters"
+            "crates/bbb-native/src/runtime/events/tests/session_protocol_events.rs#client_feature_events_update_world_and_world_counters",
+            "crates/bbb-native/src/input/tests.rs#chat_entry_tab_applies_server_custom_completion_without_command_request",
+            "crates/bbb-native/src/input/tests.rs#custom_chat_completion_candidates_merge_online_names_and_match_vanilla_boundaries"
           ],
           "gap": null,
           "status": "complete"

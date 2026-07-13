@@ -1,5 +1,5 @@
 use std::{
-    collections::{BTreeMap, HashSet},
+    collections::{BTreeMap, BTreeSet, HashSet},
     path::PathBuf,
     time::{Duration, Instant},
 };
@@ -8373,7 +8373,7 @@ fn handle_chat_entry_key(
         }
         KeyCode::Escape => input.chat_entry = None,
         KeyCode::Tab => {
-            apply_latest_command_suggestion(input, world);
+            apply_latest_chat_suggestion(input, world);
         }
         KeyCode::KeyA if input.control_down() && !input.shift_down() => {
             if let Some(entry) = &mut input.chat_entry {
@@ -8462,18 +8462,36 @@ fn handle_chat_entry_key(
     }
 }
 
-fn apply_latest_command_suggestion(input: &mut ClientInputState, world: &WorldStore) {
-    let Some(current_text) = input.chat_entry.as_ref().map(|entry| entry.text.as_str()) else {
+fn apply_latest_chat_suggestion(input: &mut ClientInputState, world: &WorldStore) {
+    let Some(entry) = input.chat_entry.as_ref() else {
         return;
     };
-    let Some(updated_text) = latest_command_suggestion_text(world, current_text) else {
+    let Some((updated_text, updated_cursor)) =
+        latest_chat_suggestion_text(world, &entry.text, entry.cursor)
+    else {
         return;
     };
+    let is_command = entry.text.starts_with('/');
     if let Some(entry) = &mut input.chat_entry {
         entry.text = updated_text;
-        set_chat_entry_cursor(entry, text_edit::char_len(&entry.text));
-        entry.last_suggestion_request_text = Some(entry.text.clone());
+        set_chat_entry_cursor(entry, updated_cursor);
+        if is_command {
+            entry.last_suggestion_request_text = Some(entry.text.clone());
+        }
     }
+}
+
+fn latest_chat_suggestion_text(
+    world: &WorldStore,
+    current_text: &str,
+    cursor: usize,
+) -> Option<(String, usize)> {
+    if current_text.starts_with('/') {
+        let updated = latest_command_suggestion_text(world, current_text)?;
+        let cursor = text_edit::char_len(&updated);
+        return Some((updated, cursor));
+    }
+    latest_custom_chat_completion_text(world, current_text, cursor)
 }
 
 fn latest_command_suggestion_text(world: &WorldStore, current_text: &str) -> Option<String> {
@@ -8491,6 +8509,66 @@ fn latest_command_suggestion_text(world: &WorldStore, current_text: &str) -> Opt
     }
     let suggestion = result.suggestions.first()?;
     apply_command_suggestion_text(current_text, result.start, result.length, &suggestion.text)
+}
+
+fn latest_custom_chat_completion_text(
+    world: &WorldStore,
+    current_text: &str,
+    cursor: usize,
+) -> Option<(String, usize)> {
+    if current_text.trim().is_empty() {
+        return None;
+    }
+    let cursor_byte =
+        text_edit::byte_index(current_text, cursor.min(text_edit::char_len(current_text)));
+    let partial = &current_text[..cursor_byte];
+    let last_word_start = partial
+        .char_indices()
+        .filter_map(|(index, ch)| ch.is_whitespace().then_some(index + ch.len_utf8()))
+        .last()
+        .unwrap_or(0);
+    let lower_prefix = partial[last_word_start..].to_lowercase();
+
+    let mut candidates: BTreeSet<&str> = world
+        .player_info()
+        .entries
+        .values()
+        .map(|entry| entry.profile.name.as_str())
+        .collect();
+    candidates.extend(world.custom_chat_completions().iter().map(String::as_str));
+    let suggestion = candidates
+        .into_iter()
+        .filter(|candidate| matches_suggestion_substring(&lower_prefix, &candidate.to_lowercase()))
+        .min_by(|left, right| {
+            (!is_direct_chat_suggestion(left, &lower_prefix))
+                .cmp(&(!is_direct_chat_suggestion(right, &lower_prefix)))
+                .then_with(|| left.to_lowercase().cmp(&right.to_lowercase()))
+                .then_with(|| left.cmp(right))
+        })?;
+
+    let mut updated = String::with_capacity(
+        current_text.len() - (cursor_byte - last_word_start) + suggestion.len(),
+    );
+    updated.push_str(&current_text[..last_word_start]);
+    updated.push_str(suggestion);
+    updated.push_str(&current_text[cursor_byte..]);
+    let updated_cursor = text_edit::char_len(&current_text[..last_word_start])
+        .saturating_add(text_edit::char_len(suggestion));
+    Some((updated, updated_cursor))
+}
+
+fn is_direct_chat_suggestion(candidate: &str, lower_prefix: &str) -> bool {
+    candidate.starts_with(lower_prefix)
+        || candidate
+            .strip_prefix("minecraft:")
+            .is_some_and(|path| path.starts_with(lower_prefix))
+}
+
+fn matches_suggestion_substring(pattern: &str, input: &str) -> bool {
+    input.starts_with(pattern)
+        || input.char_indices().any(|(index, ch)| {
+            matches!(ch, '.' | '_' | '/') && input[index + ch.len_utf8()..].starts_with(pattern)
+        })
 }
 
 fn apply_command_suggestion_text(

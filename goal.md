@@ -459,8 +459,8 @@ LowDiskSpaceWarning 的 unit wire、canonical counter、ownership、server-drive
 推断本地磁盘状态，五格全部闭合。
 SelectAdvancementsTab 的 nullable resource id wire、known/unknown/null selection、canonical root state、
 native advancements screen consumer 与 protocol/world/net/native tests 已全行闭合。
-CustomChatCompletions 的 action/list wire、ADD/REMOVE/SET canonical state 与 apply tests 已闭合；native
-chat suggestion candidate consumer 尚未合并该集合，runtime 保持 partial。
+CustomChatCompletions 的 action/list wire、ADD/REMOVE/SET canonical state、online-player union、普通聊天
+last-word/`._/` candidate matching 与 Tab replacement 已闭合；不误发 command suggestion request，五格全部闭合。
 CommandSuggestions 的 id/range/list/optional tooltip wire、pending-id gate、first-result Tab replacement 与
 tests 已闭合；rich tooltip Component 与 scroll/select/hover/narration list UI 未完成，canonical/runtime partial。
 play CookieRequest 的 resource id wire、shared session cookie lookup、hit payload/miss null response、ownership

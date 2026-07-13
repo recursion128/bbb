@@ -1511,7 +1511,7 @@ mod tests {
     }
 
     #[test]
-    fn play_custom_chat_completions_keeps_chat_suggestion_consumer_open() {
+    fn play_custom_chat_completions_is_closed() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
@@ -1521,14 +1521,10 @@ mod tests {
                     && entry.constant_name == "CLIENTBOUND_CUSTOM_CHAT_COMPLETIONS"
             })
             .expect("custom chat completions coverage row");
-        let partial: BTreeSet<_> = entry
+        assert!(entry
             .coverage
-            .iter()
-            .filter_map(|(dimension, cell)| {
-                (cell.status == PacketCoverageStatus::Partial).then_some(dimension.as_str())
-            })
-            .collect();
-        assert_eq!(partial, BTreeSet::from(["runtime_side_effect"]));
+            .values()
+            .all(|cell| cell.status == PacketCoverageStatus::Complete));
     }
 
     #[test]

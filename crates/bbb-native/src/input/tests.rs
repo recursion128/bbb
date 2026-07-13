@@ -68,16 +68,17 @@ use bbb_protocol::packets::{
     BlockUpdate as ProtocolBlockUpdate, ChatCommand, CommandArgumentParser, CommandNode,
     CommandNodeType, CommandSuggestion, CommandSuggestionRequest, CommandSuggestions, Commands,
     CommonPlayerSpawnInfo, ContainerClick, ContainerCloseRequest, ContainerInput,
-    ContainerSetContent as ProtocolContainerSetContent, DataComponentPatchSummary, DeleteChat,
-    DialogHolder, EntityDataEnumSerializer, EntityDataRegistryHolder,
-    EntityDataValue as ProtocolEntityDataValue, EntityDataValueKind,
-    EntityEvent as ProtocolEntityEvent, EntityTagQuery, EquipmentSlot, EquipmentSlotUpdate,
-    FilterMask, FilterMaskKind, FireworkExplosionShapeSummary, FireworkExplosionSummary,
-    GameEvent as ProtocolGameEvent, HashedComponentPatch, HashedItemStack, HashedStack,
-    ItemRaritySummary, ItemStackSummary as ProtocolItemStackSummary, LastSeenMessagesUpdate,
-    MessageSignature, NbtSummaryEntry, OpenBook, OpenScreen as ProtocolOpenScreen, OpenSignEditor,
-    PackedMessageSignature, PaddleBoat, PlayLogin, PlayerAbilities, PlayerAbilitiesCommand,
-    PlayerAction, PlayerChat, PlayerCommand, PlayerHealth,
+    ContainerSetContent as ProtocolContainerSetContent, CustomChatCompletions,
+    CustomChatCompletionsAction, DataComponentPatchSummary, DeleteChat, DialogHolder,
+    EntityDataEnumSerializer, EntityDataRegistryHolder, EntityDataValue as ProtocolEntityDataValue,
+    EntityDataValueKind, EntityEvent as ProtocolEntityEvent, EntityTagQuery, EquipmentSlot,
+    EquipmentSlotUpdate, FilterMask, FilterMaskKind, FireworkExplosionShapeSummary,
+    FireworkExplosionSummary, GameEvent as ProtocolGameEvent, GameProfile, HashedComponentPatch,
+    HashedItemStack, HashedStack, ItemRaritySummary, ItemStackSummary as ProtocolItemStackSummary,
+    LastSeenMessagesUpdate, MessageSignature, NbtSummaryEntry, OpenBook,
+    OpenScreen as ProtocolOpenScreen, OpenSignEditor, PackedMessageSignature, PaddleBoat,
+    PlayLogin, PlayerAbilities, PlayerAbilitiesCommand, PlayerAction, PlayerChat, PlayerCommand,
+    PlayerHealth, PlayerInfoAction, PlayerInfoEntry, PlayerInfoUpdate,
     ProjectilePower as ProtocolProjectilePower, RemoveEntities as ProtocolRemoveEntities,
     RenameItem, SeenAdvancements, SelectBundleItem, SetCursorItem as ProtocolSetCursorItem,
     SetEntityData as ProtocolSetEntityData, SetEntityLink, SetEquipment, SetPassengers,
@@ -16668,6 +16669,95 @@ fn command_entry_tab_applies_latest_suggestion_range() {
             command: "give".to_string(),
         })
     );
+}
+
+#[test]
+fn chat_entry_tab_applies_server_custom_completion_without_command_request() {
+    let (tx, mut rx) = mpsc::channel(1);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+    world.apply_custom_chat_completions(CustomChatCompletions {
+        action: CustomChatCompletionsAction::Set,
+        entries: vec!["helper".to_string(), "hello".to_string()],
+    });
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::KeyT),
+        ElementState::Pressed,
+    );
+    handle_text_input(&mut input, &mut counters, &mut world, &commands, "t");
+    handle_text_input(&mut input, &mut counters, &mut world, &commands, "say hel");
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Tab),
+        ElementState::Pressed,
+    );
+
+    let entry = input.chat_entry.as_ref().unwrap();
+    assert_eq!(entry.text, "say hello");
+    assert_eq!(entry.cursor, 9);
+    assert_eq!(entry.last_suggestion_request_text, None);
+    assert_eq!(counters.command_suggestion_commands_queued, 0);
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
+fn custom_chat_completion_candidates_merge_online_names_and_match_vanilla_boundaries() {
+    let mut world = WorldStore::new();
+    let profile_id = Uuid::from_u128(0x12345678123456781234567812345678);
+    world.apply_player_info_update(PlayerInfoUpdate {
+        actions: vec![PlayerInfoAction::AddPlayer],
+        entries: vec![PlayerInfoEntry {
+            profile_id,
+            profile: Some(GameProfile {
+                uuid: profile_id,
+                name: "Alex".to_string(),
+                properties: Vec::new(),
+            }),
+            listed: false,
+            latency: 0,
+            game_mode: Default::default(),
+            display_name: None,
+            show_hat: true,
+            list_order: 0,
+            chat_session: None,
+        }],
+    });
+    world.apply_custom_chat_completions(CustomChatCompletions {
+        action: CustomChatCompletionsAction::Set,
+        entries: vec![
+            "Alice".to_string(),
+            "minecraft:hello_world".to_string(),
+            "worldwide".to_string(),
+        ],
+    });
+
+    assert_eq!(
+        latest_custom_chat_completion_text(&world, "tell ali later", 8),
+        Some(("tell Alice later".to_string(), 10))
+    );
+    assert_eq!(
+        latest_custom_chat_completion_text(&world, "tell ALE", 8),
+        Some(("tell Alex".to_string(), 9))
+    );
+    assert_eq!(
+        latest_custom_chat_completion_text(&world, "say world", 9),
+        Some(("say worldwide".to_string(), 13))
+    );
+    assert!(matches_suggestion_substring(
+        "world",
+        "minecraft:hello_world"
+    ));
+    assert_eq!(latest_custom_chat_completion_text(&world, "   ", 3), None);
 }
 
 #[test]

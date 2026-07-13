@@ -12863,3 +12863,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   `ui.toast.in/out` transition sound；renderer 使用 pack `toast/system` nine-slice、vanilla 文案位置、
   字体测宽和右边缘 slide，packet coverage 五格闭合。这是该 packet 的窄 system-toast consumer，
   不冒充其他 toast token/队列或 notification option 已实现。
+
+## 2026-07-13：Custom chat completion consumer
+
+- [x] native 普通聊天 Tab 路径按 `ClientSuggestionProvider.getCustomTabSuggestions` 合并全部 online
+  player profile name 与服务器 ADD/REMOVE/SET custom completion set；非空非 slash 输入按光标前最后一词、
+  大小写不敏感和 `._/` 分隔边界筛选，并保留光标后的原文本。
+- [x] 本地 custom candidate 不创建 serverbound command-suggestion transaction，slash-command 的 pending-id/
+  response-range 行为不变；CustomChatCompletions packet coverage 五格闭合。完整 suggestion list、rich
+  tooltip、scroll/hover/narration 仍由独立 CommandSuggestions todo 开放。
