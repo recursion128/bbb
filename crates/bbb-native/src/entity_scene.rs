@@ -27,7 +27,8 @@ use bbb_renderer::{
     SheepHeadEatPose, SheepWoolColor, SkeletonModelFamily, SleepingPose, SpearKineticWeapon,
     TropicalFishModelShape, TropicalFishPattern, UndeadHorseModelFamily, VillagerModelData,
     VillagerModelProfession, VillagerModelType, WolfArmorCrackiness, WolfModelVariant,
-    ZombieVariantModelFamily, DEFAULT_ARMOR_STAND_MODEL_POSE, ENTITY_DEFAULT_OUTLINE_COLOR,
+    ZombieNautilusModelVariant, ZombieVariantModelFamily, DEFAULT_ARMOR_STAND_MODEL_POSE,
+    ENTITY_DEFAULT_OUTLINE_COLOR,
 };
 #[cfg(test)]
 use bbb_renderer::{EntityDynamicPlayerSkinStatus, EntityPlayerSkinModel};
@@ -292,10 +293,7 @@ use bbb_world::{
     VANILLA_ZOMBIE_DROWNED_CONVERSION_DATA_ID as ZOMBIE_DROWNED_CONVERSION_DATA_ID,
 };
 
-use bbb_item_model::{
-    default_player_skin_for_profile_id, vanilla_zombie_nautilus_variant_resource_id,
-    NativeItemRuntime,
-};
+use bbb_item_model::{default_player_skin_for_profile_id, NativeItemRuntime};
 use bbb_protocol::entity_types::*;
 
 trait EntityVariantRegistryLookup {

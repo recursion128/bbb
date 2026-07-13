@@ -13180,3 +13180,16 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] 四个 registry 继续按各自 `NETWORK_CODEC` 接受会话重排和 typed model/asset payload；
   本条只统一已知 vanilla identity，不合并运行时 registry 或冒充 payload codec。generated
   完整性/顺序/反向扫描、renderer/native focused tests、update/check 与 workspace gate 通过。
+
+## 2026-07-13：Generate zombie-nautilus variant identity catalog
+
+- [x] bootstrap generator 复用既有 Tree-sitter `ZombieNautilusVariants.java` extraction，生成
+  renderer 两项 `ZombieNautilusModelVariant`、resource lookup 与固定 vanilla fallback ordinal；
+  完整性/顺序/唯一性/边界测试和跨 crate 反向扫描由同一模板生成。
+- [x] renderer `EntityModelKind` 以 typed variant 替代匿名 `coral` bool，native entity scene
+  删除 resource-to-bool match 并按 session holder order 解析；调试实体 NBT 也优先使用会话顺序，
+  component patch 改用 generated API，item-model 的旧公开 lookup 与平行 checked-in array 删除。
+- [x] `zombie_nautilus_variant` 继续按 `RegistryDataLoader.SYNCHRONIZED_REGISTRIES` 的
+  `ZombieNautilusVariant.NETWORK_CODEC` 接受会话重排；本条只统一已知 vanilla identity，元素的
+  `modelAndTexture(model, texture)` 仍归 typed `RegistryAccess` codec TODO。generator
+  update/check、renderer/native focused tests 与 workspace gate 通过。

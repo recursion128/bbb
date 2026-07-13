@@ -5,7 +5,7 @@ use glam::Mat4;
 use super::{
     BannerPatternKind, CatModelVariant, ChickenModelVariant, CowModelVariant, DecoratedPotPattern,
     FrogModelVariant, PigModelVariant, VillagerModelProfession, VillagerModelType,
-    WolfModelVariant,
+    WolfModelVariant, ZombieNautilusModelVariant,
 };
 
 pub(in crate::entity_models) use selection::{
@@ -566,13 +566,14 @@ pub enum EntityModelKind {
         baby: bool,
     },
     /// `ZombieNautilusRenderer` (a plain `MobRenderer`, never a baby), selected by the synced
-    /// `ZombieNautilusVariant` holder. `coral = false` (the `NORMAL`/`TEMPERATE` default) reuses the
-    /// living adult `NautilusModel` body textured by `zombie_nautilus.png`; `coral = true` (the `WARM`
-    /// variant) renders the `ZombieNautilusCoralModel` (the same body plus the `corals` subtree) over
-    /// `zombie_nautilus_coral.png`. The adult saddle equipment layer is driven through render state;
-    /// the body armor equipment layer stays deferred.
+    /// `ZombieNautilusVariant` holder. The known vanilla `TEMPERATE` identity reuses the living adult
+    /// `NautilusModel` body textured by `zombie_nautilus.png`; `WARM` renders the
+    /// `ZombieNautilusCoralModel` (the same body plus the `corals` subtree) over
+    /// `zombie_nautilus_coral.png`. The synchronized registry element separately owns the authoritative
+    /// model and texture payload. The adult saddle equipment layer is driven through render state; the
+    /// body armor equipment layer stays deferred.
     ZombieNautilus {
-        coral: bool,
+        variant: ZombieNautilusModelVariant,
     },
     /// `AdultRabbitModel` / `BabyRabbitModel` at their `createBodyLayer` rest pose (`baby` selects the
     /// baby body layout — a deeper `_r1`-nested hierarchy whose head is `body`'s third child),

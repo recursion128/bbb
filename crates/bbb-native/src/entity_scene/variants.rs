@@ -213,19 +213,23 @@ pub(super) fn nautilus_model_kind(
 /// render state; the body armor equipment layer defers.
 pub(super) fn zombie_nautilus_model_kind(
     values: &[bbb_protocol::packets::EntityDataValue],
+    registries: Option<&dyn EntityVariantRegistryLookup>,
 ) -> EntityModelKind {
     EntityModelKind::ZombieNautilus {
-        coral: zombie_nautilus_coral(values),
+        variant: zombie_nautilus_model_variant(values, registries),
     }
 }
 
 /// Vanilla `ZombieNautilus.DATA_VARIANT_ID` (21, a `Holder<ZombieNautilusVariant>`): TamableAnimal adds
-/// flags(18) + owner(19) and AbstractNautilus adds DASH(20), so the variant lands at index 21. Only two
-/// variants exist — `ZombieNautilusVariants.bootstrap` registers TEMPERATE (id 0, `NORMAL` model) then
-/// WARM (id 1, coral model) — so registry id ≥ 1 selects the `WARM` coral model. Resolved by the static
-/// bootstrap order; the dynamic-registry reorder path defers (a 2-element vanilla registry is in
-/// practice never reordered).
-pub(super) fn zombie_nautilus_coral(values: &[bbb_protocol::packets::EntityDataValue]) -> bool {
+/// flags(18) + owner(19) and AbstractNautilus adds DASH(20), so the variant lands at index 21.
+/// `ZombieNautilusVariants.bootstrap` registers TEMPERATE then WARM. Resolve the holder through the
+/// synchronized session registry when available, because even a two-entry registry can be reordered;
+/// fall back to the generated vanilla order only when there is no session registry. The registry
+/// element's `modelAndTexture` payload remains a separate RegistryAccess codec concern.
+pub(super) fn zombie_nautilus_model_variant(
+    values: &[bbb_protocol::packets::EntityDataValue],
+    registries: Option<&dyn EntityVariantRegistryLookup>,
+) -> ZombieNautilusModelVariant {
     values
         .iter()
         .rev()
@@ -238,24 +242,29 @@ pub(super) fn zombie_nautilus_coral(values: &[bbb_protocol::packets::EntityDataV
             _ => None,
         })
         .map(|id| {
-            vanilla_zombie_nautilus_variant_resource_id(id)
-                .and_then(zombie_nautilus_variant_is_coral)
-                .unwrap_or_else(zombie_nautilus_default_is_coral)
+            if let Some(registries) = registries {
+                zombie_nautilus_variant_from_registry_id(registries, id)
+                    .unwrap_or_else(zombie_nautilus_default_model_variant)
+            } else {
+                ZombieNautilusModelVariant::for_vanilla_registry_id(id)
+                    .unwrap_or_else(zombie_nautilus_default_model_variant)
+            }
         })
-        .unwrap_or_else(zombie_nautilus_default_is_coral)
+        .unwrap_or_else(zombie_nautilus_default_model_variant)
 }
 
-fn zombie_nautilus_default_is_coral() -> bool {
-    zombie_nautilus_variant_is_coral(ZOMBIE_NAUTILUS_DEFAULT_VARIANT_RESOURCE_ID)
+fn zombie_nautilus_default_model_variant() -> ZombieNautilusModelVariant {
+    ZombieNautilusModelVariant::for_resource_id(ZOMBIE_NAUTILUS_DEFAULT_VARIANT_RESOURCE_ID)
         .expect("generated vanilla zombie nautilus default variant must map to a model")
 }
 
-fn zombie_nautilus_variant_is_coral(resource_id: &str) -> Option<bool> {
-    match resource_id {
-        "minecraft:temperate" => Some(false),
-        "minecraft:warm" => Some(true),
-        _ => None,
-    }
+pub(super) fn zombie_nautilus_variant_from_registry_id(
+    registries: &dyn EntityVariantRegistryLookup,
+    registry_id: i32,
+) -> Option<ZombieNautilusModelVariant> {
+    registries
+        .resource_id_by_holder_id("minecraft:zombie_nautilus_variant", registry_id)
+        .and_then(ZombieNautilusModelVariant::for_resource_id)
 }
 
 pub(super) fn boat(family: BoatModelFamily, chest: bool) -> EntityModelKind {

@@ -21,7 +21,7 @@ use super::super::{
     },
     model_layers::*,
     CatModelVariant, ChickenModelVariant, CowModelVariant, DecoratedPotPattern, FrogModelVariant,
-    PigModelVariant, WolfModelVariant,
+    PigModelVariant, WolfModelVariant, ZombieNautilusModelVariant,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -1581,7 +1581,7 @@ pub(in crate::entity_models) fn nautilus_textured_layer_passes(
 }
 
 pub(in crate::entity_models) fn zombie_nautilus_textured_layer_passes(
-    coral: bool,
+    variant: ZombieNautilusModelVariant,
 ) -> Vec<EntityModelLayerPass> {
     // Vanilla `ZombieNautilusRenderer`: the `NORMAL` variant textures the shared adult `NautilusModel`
     // body with `zombie_nautilus.png`; the `WARM` variant textures the `ZombieNautilusCoralModel` with
@@ -1589,12 +1589,12 @@ pub(in crate::entity_models) fn zombie_nautilus_textured_layer_passes(
     vec![EntityModelLayerPass {
         kind: EntityModelLayerKind::ZombieNautilusBase,
         render_type: EntityModelLayerRenderType::EntityCutout,
-        model_layer: if coral {
+        model_layer: if matches!(variant, ZombieNautilusModelVariant::Warm) {
             MODEL_LAYER_ZOMBIE_NAUTILUS_CORAL
         } else {
             MODEL_LAYER_ZOMBIE_NAUTILUS
         },
-        texture: if coral {
+        texture: if matches!(variant, ZombieNautilusModelVariant::Warm) {
             ZOMBIE_NAUTILUS_CORAL_TEXTURE_REF
         } else {
             ZOMBIE_NAUTILUS_TEXTURE_REF

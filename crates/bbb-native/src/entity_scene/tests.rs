@@ -10308,9 +10308,9 @@ fn entity_model_kind_uses_exact_models_for_horses() {
     // The nautilus (adult and baby) renders through its dedicated `NautilusModel`
     // (`createBodyMesh` / `createBabyBodyLayer`). The zombie nautilus maps to the dedicated
     // `ZombieNautilus` kind, selected by the synced `ZombieNautilusVariant` holder: the default
-    // TEMPERATE → `coral: false` (the `NautilusModel` body + `zombie_nautilus.png`), WARM (registry
-    // id ≥ 1) → `coral: true` (the `ZombieNautilusCoralModel` + `zombie_nautilus_coral.png`). It is a
-    // plain `MobRenderer`, so always adult.
+    // TEMPERATE → the `NautilusModel` body + `zombie_nautilus.png`; WARM → the
+    // `ZombieNautilusCoralModel` + `zombie_nautilus_coral.png`. It is a plain `MobRenderer`, so
+    // always adult.
     assert_eq!(
         entity_model_kind(VANILLA_ENTITY_TYPE_NAUTILUS_ID, &[]),
         EntityModelKind::Nautilus { baby: false }
@@ -10325,14 +10325,18 @@ fn entity_model_kind_uses_exact_models_for_horses() {
     // No variant data → the TEMPERATE default (no corals).
     assert_eq!(
         entity_model_kind(VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID, &[]),
-        EntityModelKind::ZombieNautilus { coral: false }
+        EntityModelKind::ZombieNautilus {
+            variant: ZombieNautilusModelVariant::Temperate
+        }
     );
     assert_eq!(
         entity_model_kind(
             VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
             &[protocol_zombie_nautilus_variant_data(0)]
         ),
-        EntityModelKind::ZombieNautilus { coral: false }
+        EntityModelKind::ZombieNautilus {
+            variant: ZombieNautilusModelVariant::Temperate
+        }
     );
     // WARM (registry id 1) → the coral model.
     assert_eq!(
@@ -10340,7 +10344,9 @@ fn entity_model_kind_uses_exact_models_for_horses() {
             VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
             &[protocol_zombie_nautilus_variant_data(1)]
         ),
-        EntityModelKind::ZombieNautilus { coral: true }
+        EntityModelKind::ZombieNautilus {
+            variant: ZombieNautilusModelVariant::Warm
+        }
     );
     // The zombie nautilus is never a baby, so the baby flag in its metadata is ignored.
     assert_eq!(
@@ -10348,7 +10354,43 @@ fn entity_model_kind_uses_exact_models_for_horses() {
             VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
             &[protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true)]
         ),
-        EntityModelKind::ZombieNautilus { coral: false }
+        EntityModelKind::ZombieNautilus {
+            variant: ZombieNautilusModelVariant::Temperate
+        }
+    );
+}
+
+#[test]
+fn entity_model_kind_projects_zombie_nautilus_variant_from_registry_and_fallback() {
+    let mut world = WorldStore::new();
+    world.record_registry_entries(
+        "minecraft:zombie_nautilus_variant",
+        0,
+        vec![
+            RegistryPacketEntry::stub("minecraft:warm"),
+            RegistryPacketEntry::stub("minecraft:temperate"),
+        ],
+    );
+
+    assert_eq!(
+        entity_model_kind_with_registries(
+            VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
+            &[protocol_zombie_nautilus_variant_data(0)],
+            Some(&world),
+        ),
+        EntityModelKind::ZombieNautilus {
+            variant: ZombieNautilusModelVariant::Warm
+        }
+    );
+    assert_eq!(
+        entity_model_kind_with_registries(
+            VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
+            &[protocol_zombie_nautilus_variant_data(99)],
+            Some(&world),
+        ),
+        EntityModelKind::ZombieNautilus {
+            variant: ZombieNautilusModelVariant::Temperate
+        }
     );
 }
 

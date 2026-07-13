@@ -78,7 +78,7 @@ pub use bootstrap_catalog::{
     vanilla_chicken_sound_variant_resource_id, vanilla_chicken_variant_resource_id,
     vanilla_cow_sound_variant_resource_id, vanilla_cow_variant_resource_id,
     vanilla_frog_variant_resource_id, vanilla_pig_sound_variant_resource_id,
-    vanilla_pig_variant_resource_id, vanilla_zombie_nautilus_variant_resource_id,
+    vanilla_pig_variant_resource_id,
 };
 
 use icon_model::{

@@ -126,7 +126,7 @@ use super::textured::{
     zombie_villager_textured_layer_passes, EntityModelLayerKind, EntityModelLayerPass,
     EntityModelLayerRenderType, EntityModelLayerVisibility, EntityModelTexturedMeshes,
 };
-use super::{CowModelVariant, PigModelVariant, WolfModelVariant};
+use super::{CowModelVariant, PigModelVariant, WolfModelVariant, ZombieNautilusModelVariant};
 
 fn strider_base_layer_pass(baby: bool, cold: bool) -> EntityModelLayerPass {
     EntityModelLayerPass {
@@ -286,16 +286,20 @@ pub(in crate::entity_models) trait EntityModelSink {
         );
     }
 
-    fn zombie_nautilus_model(&mut self, coral: bool, instance: &EntityModelInstance) {
+    fn zombie_nautilus_model(
+        &mut self,
+        variant: ZombieNautilusModelVariant,
+        instance: &EntityModelInstance,
+    ) {
         self.model(
-            if coral {
+            if matches!(variant, ZombieNautilusModelVariant::Warm) {
                 NautilusModel::new_coral()
             } else {
                 NautilusModel::new(false)
             },
             entity_model_root_transform(*instance),
             instance,
-            &zombie_nautilus_textured_layer_passes(coral),
+            &zombie_nautilus_textured_layer_passes(variant),
         );
     }
 
@@ -730,16 +734,20 @@ impl EntityModelSink for TexturedSink<'_> {
         render_nautilus_saddle_layer(self.meshes, *instance, self.atlas);
     }
 
-    fn zombie_nautilus_model(&mut self, coral: bool, instance: &EntityModelInstance) {
+    fn zombie_nautilus_model(
+        &mut self,
+        variant: ZombieNautilusModelVariant,
+        instance: &EntityModelInstance,
+    ) {
         self.model(
-            if coral {
+            if matches!(variant, ZombieNautilusModelVariant::Warm) {
                 NautilusModel::new_coral()
             } else {
                 NautilusModel::new(false)
             },
             entity_model_root_transform(*instance),
             instance,
-            &zombie_nautilus_textured_layer_passes(coral),
+            &zombie_nautilus_textured_layer_passes(variant),
         );
         render_nautilus_body_armor_layer(self.meshes, *instance, self.atlas);
         render_nautilus_saddle_layer(self.meshes, *instance, self.atlas);
@@ -1838,7 +1846,9 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
             &panda_textured_layer_passes(variant, baby),
         ),
         EntityModelKind::Nautilus { baby } => sink.nautilus_model(baby, instance),
-        EntityModelKind::ZombieNautilus { coral } => sink.zombie_nautilus_model(coral, instance),
+        EntityModelKind::ZombieNautilus { variant } => {
+            sink.zombie_nautilus_model(variant, instance)
+        }
         EntityModelKind::Rabbit {
             baby,
             variant,

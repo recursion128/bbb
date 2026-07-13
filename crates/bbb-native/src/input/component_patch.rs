@@ -1688,7 +1688,8 @@ fn encode_named_variant(
             chicken_sound_variant_resource_id(patch.chicken_sound_variant_id?)?
         }
         component_id::VANILLA_DATA_COMPONENT_ZOMBIE_NAUTILUS_VARIANT_TYPE_ID => {
-            zombie_nautilus_variant_resource_id(patch.zombie_nautilus_variant_id?)?
+            ZombieNautilusModelVariant::for_vanilla_registry_id(patch.zombie_nautilus_variant_id?)?
+                .resource_id()
         }
         component_id::VANILLA_DATA_COMPONENT_FROG_VARIANT_TYPE_ID => {
             frog_variant_resource_id(patch.frog_variant_id?)?

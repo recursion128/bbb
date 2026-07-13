@@ -105,9 +105,6 @@ pub(super) const VANILLA_PIG_SOUND_VARIANT_KEYS: &[&str] =
 pub(super) const VANILLA_FROG_VARIANT_KEYS: &[&str] =
     &["minecraft:temperate", "minecraft:warm", "minecraft:cold"];
 
-pub(super) const VANILLA_ZOMBIE_NAUTILUS_VARIANT_KEYS: &[&str] =
-    &["minecraft:temperate", "minecraft:warm"];
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) struct VanillaTrimMaterial {
     pub(super) resource_id: &'static str,
@@ -254,11 +251,6 @@ pub fn vanilla_pig_sound_variant_resource_id(id: i32) -> Option<&'static str> {
 pub fn vanilla_frog_variant_resource_id(id: i32) -> Option<&'static str> {
     let index = usize::try_from(id).ok()?;
     VANILLA_FROG_VARIANT_KEYS.get(index).copied()
-}
-
-pub fn vanilla_zombie_nautilus_variant_resource_id(id: i32) -> Option<&'static str> {
-    let index = usize::try_from(id).ok()?;
-    VANILLA_ZOMBIE_NAUTILUS_VARIANT_KEYS.get(index).copied()
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -646,7 +638,6 @@ mod tests {
             (VANILLA_PIG_VARIANT_KEYS, 3),
             (VANILLA_PIG_SOUND_VARIANT_KEYS, 3),
             (VANILLA_FROG_VARIANT_KEYS, 3),
-            (VANILLA_ZOMBIE_NAUTILUS_VARIANT_KEYS, 2),
         ];
         for (entries, expected_len) in catalogs {
             assert_eq!(entries.len(), *expected_len);
@@ -733,10 +724,6 @@ mod tests {
         assert_eq!(
             vanilla_pig_sound_variant_resource_id(1),
             Some("minecraft:big")
-        );
-        assert_eq!(
-            vanilla_zombie_nautilus_variant_resource_id(1),
-            Some("minecraft:warm")
         );
         assert_eq!(vanilla_chicken_variant_resource_id(3), None);
     }

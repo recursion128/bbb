@@ -151,7 +151,9 @@ pub(super) fn entity_model_kind_with_time_and_registries(
         }
         VANILLA_ENTITY_TYPE_GOAT_ID => goat_model_kind(data_values),
         VANILLA_ENTITY_TYPE_NAUTILUS_ID => nautilus_model_kind(data_values),
-        VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID => zombie_nautilus_model_kind(data_values),
+        VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID => {
+            zombie_nautilus_model_kind(data_values, variant_registries)
+        }
         VANILLA_ENTITY_TYPE_WOLF_ID => wolf_model_kind(data_values, game_time, variant_registries),
         VANILLA_ENTITY_TYPE_FOX_ID => fox_model_kind(data_values),
         VANILLA_ENTITY_TYPE_CAT_ID => feline_model_kind(data_values, true, variant_registries),

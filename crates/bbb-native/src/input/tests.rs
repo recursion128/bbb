@@ -94,7 +94,7 @@ use bbb_protocol::{
 use bbb_world::{
     BlockEntityRecord, BlockPos, BlockStateRegistry, ChatMessageKind, ChunkColumn, ChunkPos,
     ChunkSection, ChunkState, ItemEquipmentSlot, LightData, LocalPlayerPoseState, PaletteDomain,
-    PaletteKind, PalettedContainerData, SignBlockEntityTextState, WorldStore,
+    PaletteKind, PalettedContainerData, RegistryPacketEntry, SignBlockEntityTextState, WorldStore,
     VANILLA_EXPERIENCE_ORB_VALUE_DATA_ID,
 };
 use std::{
@@ -4547,6 +4547,14 @@ fn shift_f3_i_with_permission_copies_local_zombie_nautilus_save_nbt_to_clipboard
     let mut input = ClientInputState::new(true);
     let mut world = world_with_debug_player(false);
     grant_debug_recreate_nbt_permission(&mut world);
+    world.record_registry_entries(
+        "minecraft:zombie_nautilus_variant",
+        0,
+        vec![
+            RegistryPacketEntry::stub("minecraft:warm"),
+            RegistryPacketEntry::stub("minecraft:temperate"),
+        ],
+    );
     world.apply_add_entity(AddEntity {
         id: 89,
         uuid: Uuid::from_u128(89),
@@ -4585,7 +4593,7 @@ fn shift_f3_i_with_permission_copies_local_zombie_nautilus_save_nbt_to_clipboard
                 serializer_id: 32,
                 value: EntityDataValueKind::RegistryId {
                     serializer: EntityDataRegistryHolder::ZombieNautilusVariant,
-                    id: 1,
+                    id: 0,
                 },
             },
         ],

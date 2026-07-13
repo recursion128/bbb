@@ -476,7 +476,9 @@ fn nautilus_saddle_layer_renders_for_adult_living_and_zombie_only() {
 
     let zombie = EntityModelInstance::new(
         922,
-        EntityModelKind::ZombieNautilus { coral: false },
+        EntityModelKind::ZombieNautilus {
+            variant: ZombieNautilusModelVariant::Temperate,
+        },
         [0.0, 64.0, 0.0],
         0.0,
     );
@@ -494,7 +496,9 @@ fn nautilus_saddle_layer_renders_for_adult_living_and_zombie_only() {
 
     let warm = EntityModelInstance::new(
         923,
-        EntityModelKind::ZombieNautilus { coral: true },
+        EntityModelKind::ZombieNautilus {
+            variant: ZombieNautilusModelVariant::Warm,
+        },
         [0.0, 64.0, 0.0],
         0.0,
     );
@@ -724,7 +728,9 @@ fn nautilus_body_armor_layer_renders_for_adult_living_and_zombie_only() {
 
     let zombie = EntityModelInstance::new(
         932,
-        EntityModelKind::ZombieNautilus { coral: false },
+        EntityModelKind::ZombieNautilus {
+            variant: ZombieNautilusModelVariant::Temperate,
+        },
         [0.0, 64.0, 0.0],
         0.0,
     );
@@ -743,7 +749,9 @@ fn nautilus_body_armor_layer_renders_for_adult_living_and_zombie_only() {
 
     let warm = EntityModelInstance::new(
         933,
-        EntityModelKind::ZombieNautilus { coral: true },
+        EntityModelKind::ZombieNautilus {
+            variant: ZombieNautilusModelVariant::Warm,
+        },
         [0.0, 64.0, 0.0],
         0.0,
     );
@@ -835,14 +843,20 @@ fn zombie_nautilus_uses_its_own_texture_over_the_shared_adult_body() {
     // (`ModelLayers.ZOMBIE_NAUTILUS` bakes to `NautilusModel.createBodyLayer()`) textured by
     // `zombie_nautilus.png` — same geometry as the living adult nautilus, only the texture differs.
     assert_eq!(
-        EntityModelKind::ZombieNautilus { coral: false }.model_key(),
+        EntityModelKind::ZombieNautilus {
+            variant: ZombieNautilusModelVariant::Temperate
+        }
+        .model_key(),
         "zombie_nautilus"
     );
     assert_eq!(
-        EntityModelKind::ZombieNautilus { coral: false }.vanilla_texture_ref(),
+        EntityModelKind::ZombieNautilus {
+            variant: ZombieNautilusModelVariant::Temperate
+        }
+        .vanilla_texture_ref(),
         Some(ZOMBIE_NAUTILUS_TEXTURE_REF)
     );
-    let passes = zombie_nautilus_textured_layer_passes(false);
+    let passes = zombie_nautilus_textured_layer_passes(ZombieNautilusModelVariant::Temperate);
     assert_eq!(passes.len(), 1);
     assert_eq!(passes[0].kind, EntityModelLayerKind::ZombieNautilusBase);
     assert_eq!(passes[0].model_layer, MODEL_LAYER_ZOMBIE_NAUTILUS);
@@ -870,7 +884,9 @@ fn zombie_nautilus_uses_its_own_texture_over_the_shared_adult_body() {
     let living_instance = EntityModelInstance::nautilus(900, [0.0, 64.0, 0.0], 0.0, false);
     let zombie_instance = EntityModelInstance::new(
         901,
-        EntityModelKind::ZombieNautilus { coral: false },
+        EntityModelKind::ZombieNautilus {
+            variant: ZombieNautilusModelVariant::Temperate,
+        },
         [0.0, 64.0, 0.0],
         0.0,
     );
@@ -906,16 +922,22 @@ fn zombie_nautilus_warm_variant_adds_the_coral_cluster() {
     // Vanilla `ZombieNautilusRenderer` `WARM` variant: the `ZombieNautilusCoralModel` — the adult body
     // PLUS the `corals` subtree — over `zombie_nautilus_coral.png`. The corals are eight textured-only
     // cross-plane cubes (yellow ×2, pink + pink_second, blue ×2, red ×2), so the WARM mesh carries
-    // exactly 8×6 = 48 more faces than the plain (`coral: false`) zombie nautilus body.
+    // exactly 8×6 = 48 more faces than the plain (`Temperate`) zombie nautilus body.
     assert_eq!(
-        EntityModelKind::ZombieNautilus { coral: true }.model_key(),
+        EntityModelKind::ZombieNautilus {
+            variant: ZombieNautilusModelVariant::Warm
+        }
+        .model_key(),
         "zombie_nautilus_coral"
     );
     assert_eq!(
-        EntityModelKind::ZombieNautilus { coral: true }.vanilla_texture_ref(),
+        EntityModelKind::ZombieNautilus {
+            variant: ZombieNautilusModelVariant::Warm
+        }
+        .vanilla_texture_ref(),
         Some(ZOMBIE_NAUTILUS_CORAL_TEXTURE_REF)
     );
-    let coral_pass = zombie_nautilus_textured_layer_passes(true)[0];
+    let coral_pass = zombie_nautilus_textured_layer_passes(ZombieNautilusModelVariant::Warm)[0];
     assert_eq!(coral_pass.kind, EntityModelLayerKind::ZombieNautilusBase);
     assert_eq!(coral_pass.model_layer, MODEL_LAYER_ZOMBIE_NAUTILUS_CORAL);
     assert_eq!(coral_pass.texture, ZOMBIE_NAUTILUS_CORAL_TEXTURE_REF);
@@ -938,13 +960,17 @@ fn zombie_nautilus_warm_variant_adds_the_coral_cluster() {
 
     let plain_instance = EntityModelInstance::new(
         902,
-        EntityModelKind::ZombieNautilus { coral: false },
+        EntityModelKind::ZombieNautilus {
+            variant: ZombieNautilusModelVariant::Temperate,
+        },
         [0.0, 64.0, 0.0],
         0.0,
     );
     let warm_instance = EntityModelInstance::new(
         903,
-        EntityModelKind::ZombieNautilus { coral: true },
+        EntityModelKind::ZombieNautilus {
+            variant: ZombieNautilusModelVariant::Warm,
+        },
         [0.0, 64.0, 0.0],
         0.0,
     );
@@ -973,7 +999,9 @@ fn assert_nautilus_submissions_match_vanilla(
     assert_nautilus_folded_meshes_are_cutout_only(meshes);
     let base_passes = match instance.kind {
         EntityModelKind::Nautilus { baby } => nautilus_textured_layer_passes(baby),
-        EntityModelKind::ZombieNautilus { coral } => zombie_nautilus_textured_layer_passes(coral),
+        EntityModelKind::ZombieNautilus { variant } => {
+            zombie_nautilus_textured_layer_passes(variant)
+        }
         _ => panic!("expected nautilus instance"),
     };
     let mut expected = Vec::new();
