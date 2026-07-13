@@ -170,6 +170,86 @@ pub struct HudStatsItemRow {
     pub block_model: Option<HudBlockItemModel>,
 }
 
+/// Vanilla `StatsScreen` GUI-atlas sprites. Keeping the asset identity in one typed registry lets
+/// pack loading and draw dispatch share the same fixed 26.1 catalog without stringly-typed slots.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HudStatsSprite {
+    Slot,
+    Header,
+    SortUp,
+    SortDown,
+    BlockMined,
+    ItemBroken,
+    ItemCrafted,
+    ItemUsed,
+    ItemPickedUp,
+    ItemDropped,
+}
+
+impl HudStatsSprite {
+    pub(crate) const COUNT: usize = 10;
+
+    pub const ALL: [Self; Self::COUNT] = [
+        Self::Slot,
+        Self::Header,
+        Self::SortUp,
+        Self::SortDown,
+        Self::BlockMined,
+        Self::ItemBroken,
+        Self::ItemCrafted,
+        Self::ItemUsed,
+        Self::ItemPickedUp,
+        Self::ItemDropped,
+    ];
+
+    pub(crate) const fn as_index(self) -> usize {
+        self as usize
+    }
+
+    pub fn sprite_path(self) -> &'static str {
+        match self {
+            Self::Slot => "container/slot",
+            Self::Header => "statistics/header",
+            Self::SortUp => "statistics/sort_up",
+            Self::SortDown => "statistics/sort_down",
+            Self::BlockMined => "statistics/block_mined",
+            Self::ItemBroken => "statistics/item_broken",
+            Self::ItemCrafted => "statistics/item_crafted",
+            Self::ItemUsed => "statistics/item_used",
+            Self::ItemPickedUp => "statistics/item_picked_up",
+            Self::ItemDropped => "statistics/item_dropped",
+        }
+    }
+
+    const fn column(column: usize) -> Option<Self> {
+        match column {
+            0 => Some(Self::BlockMined),
+            1 => Some(Self::ItemBroken),
+            2 => Some(Self::ItemCrafted),
+            3 => Some(Self::ItemUsed),
+            4 => Some(Self::ItemPickedUp),
+            5 => Some(Self::ItemDropped),
+            _ => None,
+        }
+    }
+}
+
+const fn hud_stats_header_background_sprite(hovered: bool) -> HudStatsSprite {
+    if hovered {
+        HudStatsSprite::Slot
+    } else {
+        HudStatsSprite::Header
+    }
+}
+
+const fn hud_stats_sort_sprite(sort_order: i8) -> HudStatsSprite {
+    if sort_order < 0 {
+        HudStatsSprite::SortDown
+    } else {
+        HudStatsSprite::SortUp
+    }
+}
+
 /// Vanilla `StatsScreen` projection. Lists become visible only after the requested AwardStats
 /// response; each empty tab remains disabled like vanilla.
 #[derive(Debug, Clone, PartialEq)]
@@ -1905,6 +1985,18 @@ impl Renderer {
         rgba: &[u8],
     ) -> Result<()> {
         self.hud_widget_button_highlighted = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_stats_sprite(
+        &mut self,
+        sprite: HudStatsSprite,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_stats_sprites[sprite.as_index()] =
+            Some(self.upload_hud_sprite(width, height, rgba)?);
         Ok(())
     }
 
@@ -4486,6 +4578,7 @@ impl Renderer {
                 self.hud_item_atlas.as_ref(),
                 self.hud_digit_atlas.as_ref(),
                 &self.hud_digit_glyphs,
+                &self.hud_stats_sprites,
                 self.hud_tooltip_background.as_ref(),
                 self.hud_tooltip_frame.as_ref(),
                 self.hud_font_atlas.as_ref(),
@@ -6173,6 +6266,7 @@ fn push_hud_stats_screen<'a>(
     item_atlas: Option<&'a HudSpriteGpu>,
     digit_atlas: Option<&'a HudSpriteGpu>,
     digit_glyphs: &[HudDigitGlyph; 10],
+    stats_sprites: &'a [Option<HudSpriteGpu>; HudStatsSprite::COUNT],
     tooltip_background: Option<&'a HudNineSliceSprite>,
     tooltip_frame: Option<&'a HudNineSliceSprite>,
     font_atlas: Option<&'a HudSpriteGpu>,
@@ -6263,27 +6357,23 @@ fn push_hud_stats_screen<'a>(
         let header_y = HUD_STATS_LIST_TOP + 1;
         for column in 0..6 {
             let x = list_x + 57 + i32::try_from(column).unwrap_or(i32::MAX) * 40;
-            let abbreviation = screen.item_column_labels[column]
-                .chars()
-                .next()
-                .map(|ch| ch.to_string())
-                .unwrap_or_else(|| "?".to_string());
-            push_hud_pause_button(
-                vertices,
-                commands,
-                white_pixel,
-                font_atlas,
-                glyphs,
-                obfuscated_pool,
-                frame_index,
-                surface_size,
-                (x, header_y, 18, 18),
-                &abbreviation,
-                screen.item_hovered_column == Some(column),
-                true,
-            );
-            if screen.item_sort_column == Some(column) {
-                push_hud_debug_options_text(
+            let hovered = screen.item_hovered_column == Some(column);
+            let background = hud_stats_header_background_sprite(hovered);
+            let column_sprite = HudStatsSprite::column(column)
+                .and_then(|sprite| stats_sprites[sprite.as_index()].as_ref());
+            if let (Some(background), Some(column_sprite)) =
+                (stats_sprites[background.as_index()].as_ref(), column_sprite)
+            {
+                let rect = absolute_hud_rect(x as f32, header_y as f32, 18, 18);
+                push_hud_draw(vertices, commands, background, surface_size, rect);
+                push_hud_draw(vertices, commands, column_sprite, surface_size, rect);
+            } else {
+                let abbreviation = screen.item_column_labels[column]
+                    .chars()
+                    .next()
+                    .map(|ch| ch.to_string())
+                    .unwrap_or_else(|| "?".to_string());
+                push_hud_pause_button(
                     vertices,
                     commands,
                     white_pixel,
@@ -6292,27 +6382,64 @@ fn push_hud_stats_screen<'a>(
                     obfuscated_pool,
                     frame_index,
                     surface_size,
-                    if screen.item_sort_order < 0 { "v" } else { "^" },
-                    ((x - 7) as f32, (header_y + 5) as f32),
-                    HUD_TINT_WHITE,
+                    (x, header_y, 18, 18),
+                    &abbreviation,
+                    hovered,
+                    true,
                 );
+            }
+            if screen.item_sort_column == Some(column) {
+                let sort_sprite = hud_stats_sort_sprite(screen.item_sort_order);
+                if let Some(sort_sprite) = stats_sprites[sort_sprite.as_index()].as_ref() {
+                    push_hud_draw(
+                        vertices,
+                        commands,
+                        sort_sprite,
+                        surface_size,
+                        absolute_hud_rect((x - 18) as f32, header_y as f32, 18, 18),
+                    );
+                } else {
+                    push_hud_debug_options_text(
+                        vertices,
+                        commands,
+                        white_pixel,
+                        font_atlas,
+                        glyphs,
+                        obfuscated_pool,
+                        frame_index,
+                        surface_size,
+                        if screen.item_sort_order < 0 { "v" } else { "^" },
+                        ((x - 7) as f32, (header_y + 5) as f32),
+                        HUD_TINT_WHITE,
+                    );
+                }
             }
         }
         for (index, row) in screen.item_rows.iter().enumerate() {
             let y = HUD_STATS_LIST_TOP
                 + 22
                 + i32::try_from(index).unwrap_or(i32::MAX) * screen.row_height;
-            push_hud_debug_tinted_rect(
-                vertices,
-                commands,
-                white_pixel,
-                surface_size,
-                list_x,
-                y + 1,
-                18,
-                18,
-                [0.12, 0.12, 0.12, 0.9],
-            );
+            if let Some(slot) = stats_sprites[HudStatsSprite::Slot.as_index()].as_ref() {
+                push_hud_draw(
+                    vertices,
+                    commands,
+                    slot,
+                    surface_size,
+                    absolute_hud_rect(list_x as f32, (y + 1) as f32, 18, 18),
+                );
+            } else {
+                push_hud_debug_tinted_rect(
+                    vertices,
+                    commands,
+                    white_pixel,
+                    surface_size,
+                    list_x,
+                    y + 1,
+                    18,
+                    18,
+                    [0.12, 0.12, 0.12, 0.9],
+                );
+            }
             if let (Some(item_atlas), Some(icon)) = (item_atlas, &row.icon) {
                 push_hud_item_icon(
                     vertices,
@@ -11776,6 +11903,49 @@ mod tests {
         for (actual, expected) in actual.into_iter().zip(expected) {
             assert!((actual - expected).abs() < 1e-6);
         }
+    }
+
+    #[test]
+    fn stats_screen_sprite_catalog_and_states_match_vanilla() {
+        assert_eq!(
+            HudStatsSprite::ALL.map(HudStatsSprite::sprite_path),
+            [
+                "container/slot",
+                "statistics/header",
+                "statistics/sort_up",
+                "statistics/sort_down",
+                "statistics/block_mined",
+                "statistics/item_broken",
+                "statistics/item_crafted",
+                "statistics/item_used",
+                "statistics/item_picked_up",
+                "statistics/item_dropped",
+            ]
+        );
+        assert_eq!(
+            (0..6)
+                .map(|column| HudStatsSprite::column(column).expect("column"))
+                .collect::<Vec<_>>(),
+            vec![
+                HudStatsSprite::BlockMined,
+                HudStatsSprite::ItemBroken,
+                HudStatsSprite::ItemCrafted,
+                HudStatsSprite::ItemUsed,
+                HudStatsSprite::ItemPickedUp,
+                HudStatsSprite::ItemDropped,
+            ]
+        );
+        assert_eq!(HudStatsSprite::column(6), None);
+        assert_eq!(
+            hud_stats_header_background_sprite(false),
+            HudStatsSprite::Header
+        );
+        assert_eq!(
+            hud_stats_header_background_sprite(true),
+            HudStatsSprite::Slot
+        );
+        assert_eq!(hud_stats_sort_sprite(-1), HudStatsSprite::SortDown);
+        assert_eq!(hud_stats_sort_sprite(1), HudStatsSprite::SortUp);
     }
 
     #[test]

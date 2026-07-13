@@ -5,7 +5,7 @@ use bbb_pack::{PackRoots, ResourceLocation, SpriteGuiScaling, SpriteImage};
 use bbb_renderer::{
     HudAdvancementBackgroundTexture, HudAdvancementHoverBoxSprite, HudAdvancementTabSprite,
     HudAdvancementWidgetFrameSprite, HudBossBarColor, HudBossBarOverlay, HudHeartKind,
-    HudNineSliceScaling, SignModelWood,
+    HudNineSliceScaling, HudStatsSprite, SignModelWood,
 };
 
 use bbb_item_model::font::{
@@ -183,6 +183,15 @@ fn try_load_hud_textures(renderer: &mut bbb_renderer::Renderer, roots: &PackRoot
         widget_button_highlighted.height,
         &widget_button_highlighted.rgba,
     )?;
+    for stats_sprite in HudStatsSprite::ALL {
+        let sprite = hud_sprite(&sprites, stats_sprite.sprite_path())?;
+        renderer.upload_hud_stats_sprite(
+            stats_sprite,
+            sprite.width,
+            sprite.height,
+            &sprite.rgba,
+        )?;
+    }
     let game_mode_switcher = gui_texture(
         roots,
         "textures/gui/container/gamemode_switcher.png",
@@ -1358,6 +1367,27 @@ mod tests {
         assert!(err
             .to_string()
             .contains("minecraft:gui/sprites/hud/crosshair"));
+    }
+
+    #[test]
+    fn stats_sprite_catalog_resolves_through_gui_atlas_ids() {
+        let mut sprites = HashMap::new();
+        for sprite in HudStatsSprite::ALL {
+            let image = SpriteImage::new(
+                format!("minecraft:{}", sprite.sprite_path()),
+                18,
+                18,
+                vec![255; 18 * 18 * 4],
+            )
+            .unwrap();
+            sprites.insert(image.id.clone(), image);
+        }
+
+        for sprite in HudStatsSprite::ALL {
+            let image = hud_sprite(&sprites, sprite.sprite_path()).unwrap();
+            assert_eq!(image.id, format!("minecraft:{}", sprite.sprite_path()));
+            assert_eq!((image.width, image.height), (18, 18));
+        }
     }
 
     #[test]

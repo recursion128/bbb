@@ -12832,4 +12832,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   Ctrl+Shift+Tab 循环并跳过 empty/disabled tab；切页重置本地 scroll row，loading 期间仅 General active。
 - [x] cursor projection 区分 item icon、六列 header 与 disabled Items/Mobs tab；item selected-pack 名称、
   column display name 和 localized `gui.stats.none_found` 复用统一 tooltip background/frame renderer。
-  statistics 专用 header/sort sprite、pixel-precise scroll 与 narration 继续开放。
+  statistics 专用 header/sort sprite 当时仍开放并由下节闭合；pixel-precise scroll 与 narration
+  继续开放。
+
+## 2026-07-13：StatsScreen item statistics sprites
+
+- [x] renderer/native asset boundary 以定长 `HudStatsSprite` catalog 统一加载 vanilla 26.1 的
+  `container/slot`、`statistics/header`、六个 column glyph 及 sort up/down GUI sprites；路径和
+  hover/sort dispatch 由 focused tests 锁定。
+- [x] Items header 按 vanilla 使用 header→hovered slot 背景、column glyph 和左侧 sort arrow，
+  item row 使用同一 slot sprite；pack sprite 不可用时保留确定性 fallback。pixel-precise scroll
+  与 narration 继续开放。
