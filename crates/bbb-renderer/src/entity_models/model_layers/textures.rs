@@ -13,6 +13,7 @@ use crate::entity_models::temperature_animal_variants::{
     VANILLA_FROG_VARIANT_TEXTURE_REFS, VANILLA_PIG_VARIANT_TEXTURE_REFS,
 };
 use crate::entity_models::wolf_variants::VANILLA_WOLF_VARIANT_TEXTURE_REFS;
+use crate::entity_models::zombie_nautilus_variants::VANILLA_ZOMBIE_NAUTILUS_VARIANT_TEXTURE_REFS;
 use crate::entity_models::{CatModelVariant, DecoratedPotPattern, FrogModelVariant};
 
 mod equine;
@@ -3846,21 +3847,12 @@ pub(in crate::entity_models) fn nautilus_body_armor_texture_ref(
     })
 }
 
-// Vanilla `ZombieNautilusRenderer` `NORMAL`/`TEMPERATE` variant texture (`ZombieNautilusVariants`
-// bootstrap, the `DEFAULT`), drawn over the shared adult `NautilusModel`.
+// Stable aliases keep focused nautilus tests readable; the generated bootstrap catalog owns the
+// built-in model/texture presentation facts and official PNG dimensions.
 pub(in crate::entity_models) const ZOMBIE_NAUTILUS_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/nautilus/zombie_nautilus.png",
-        size: [128, 128],
-    };
-
-// Vanilla `ZombieNautilusRenderer` `WARM` coral variant texture (`ZombieNautilusVariants` bootstrap),
-// drawn over the `ZombieNautilusCoralModel` (the adult body plus the `corals` subtree).
+    VANILLA_ZOMBIE_NAUTILUS_VARIANT_TEXTURE_REFS[0];
 pub(in crate::entity_models) const ZOMBIE_NAUTILUS_CORAL_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/nautilus/zombie_nautilus_coral.png",
-        size: [128, 128],
-    };
+    VANILLA_ZOMBIE_NAUTILUS_VARIANT_TEXTURE_REFS[1];
 
 // The seven panda genes × age (`PandaRenderer.TEXTURES` / `BABY_TEXTURES`); all share the 64×64
 // atlas. Note the inconsistent vanilla baby filenames (`panda_baby.png` but `lazy_panda_baby.png`).

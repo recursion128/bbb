@@ -13454,3 +13454,16 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   datapack presentation 仍由 Resource/RegistryAccess 队列拥有。23 项 extractor tests、generator
   update/check、2 项 catalog tests、14 项 chicken、45 项 pig、21 项 cow renderer tests、native
   entity-asset tests 与 workspace gate 通过。
+
+## 2026-07-13：Generate built-in zombie-nautilus variant presentation assets
+
+- [x] 通用 `ModelAndTexture` Tree-sitter extractor 读取 `ZombieNautilusVariants.bootstrap` 的
+  NORMAL/WARM model type 与 texture literal，严格校验 biome overload、asset path 公式及最终
+  `ZombieNautilusVariant(new ModelAndTexture(...), selectors)` payload。
+- [x] generated zombie-nautilus catalog 同时拥有 identity/order、model type、stable model key、
+  texture path，并从两张本地官方 PNG IHDR 生成 128×128 尺寸；catalog selection、实际 coral
+  模型、ModelLayer、texture 与 atlas aliases 全部消费生成目录，不再直接按 temperature identity
+  重建 presentation。
+- [x] 本片保留 `NETWORK_CODEC` session replacement model/asset 为 typed RegistryAccess 缺口，
+  不把 built-in fallback 冒充动态 registry 解码。25 项 extractor tests、generator update/check、
+  2 项 catalog tests、21 项 renderer nautilus tests、native entity-asset tests 与 workspace gate 通过。

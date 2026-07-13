@@ -59,6 +59,14 @@ class FarmAnimalVariantEntry:
 
 
 @dataclass(frozen=True)
+class ModelAndTextureVariantEntry:
+    constant_name: str
+    resource_id: str
+    model_type: str
+    asset_id: str
+
+
+@dataclass(frozen=True)
 class BannerPatternEntry:
     constant_name: str
     resource_id: str
@@ -844,6 +852,220 @@ def farm_animal_variant_entries(
     if len(all_assets) != len(set(all_assets)):
         raise BootstrapCatalogExtractionError(
             f"{source.relative_path}: duplicate farm-animal variant asset id"
+        )
+    return entries
+
+
+def model_and_texture_variant_entries(
+    source: JavaSource,
+    referenced_paths: dict[str, str],
+    variant_type: str,
+    asset_directory: str,
+    expected_count: int,
+) -> list[ModelAndTextureVariantEntry]:
+    identities = bootstrap_resource_key_entries(
+        source,
+        variant_type,
+        {"createKey"},
+        expected_count,
+        referenced_paths=referenced_paths,
+    )
+    bootstrap = _bootstrap_method(source)
+    context_name = _bootstrap_context_name(source, bootstrap)
+    calls = [
+        call
+        for call in source.calls
+        if call.name == "register"
+        and call.qualifier is None
+        and bootstrap.body is not None
+        and bootstrap.body.start_byte <= call.span.start_byte
+        and call.span.end_byte <= bootstrap.body.end_byte
+    ]
+    calls.sort(key=lambda call: (call.span.start_byte, call.span.end_byte))
+    if len(calls) != expected_count:
+        raise BootstrapCatalogExtractionError(
+            f"{source.relative_path}: expected {expected_count} model-and-texture "
+            f"bootstrap registrations, found {len(calls)}"
+        )
+
+    facts: dict[str, tuple[str, str]] = {}
+    model_prefix = f"{variant_type}.ModelType."
+    for call in calls:
+        if len(call.arguments) != 5 or call.arguments[0].canonical != context_name:
+            _fail(
+                source,
+                source.expression(call.node),
+                "model-and-texture bootstrap registration shape changed",
+            )
+        key = call.arguments[1]
+        if key.node.type != "identifier":
+            _fail(
+                source,
+                key,
+                "model-and-texture bootstrap resource key is not an identifier",
+            )
+        if key.canonical in facts:
+            _fail(source, key, "duplicate model-and-texture bootstrap resource key")
+        model_expression = call.arguments[2]
+        if not model_expression.canonical.startswith(model_prefix):
+            _fail(source, model_expression, "model-and-texture model type expression changed")
+        model_type = model_expression.canonical.removeprefix(model_prefix)
+        if not model_type.isidentifier() or model_type.upper() != model_type:
+            _fail(source, model_expression, "model-and-texture model type is not an enum constant")
+        texture_name = _string(source, call.arguments[3])
+        facts[key.canonical] = (
+            model_type,
+            f"minecraft:entity/{asset_directory}/{texture_name}",
+        )
+
+    helpers = []
+    wrappers = []
+    for method in source.methods:
+        if method.name != "register" or len(method.parameters) != 5:
+            continue
+        last_type = method.parameters[4].node.child_by_field_name("type")
+        last_type_name = (
+            source.expression(last_type).canonical.replace(" ", "")
+            if last_type is not None
+            else ""
+        )
+        if last_type_name == "SpawnPrioritySelectors":
+            helpers.append(method)
+        elif last_type_name == "TagKey<Biome>":
+            wrappers.append(method)
+    if len(helpers) != 1 or helpers[0].body is None:
+        raise BootstrapCatalogExtractionError(
+            f"{source.relative_path}: expected one model-and-texture asset register helper"
+        )
+    helper = helpers[0]
+    helper_parameter_names = []
+    for parameter in helper.parameters:
+        name = parameter.node.child_by_field_name("name")
+        if name is None:
+            _fail(source, parameter, "model-and-texture helper parameter lacks a name")
+        helper_parameter_names.append(source.text(name))
+    if helper_parameter_names != [
+        "context",
+        "name",
+        "modelType",
+        "textureName",
+        "selectors",
+    ]:
+        _fail(source, helper.parameters[0], "model-and-texture helper parameters changed")
+
+    initializers: dict[str, JavaExpression] = {}
+    for node in descendants(helper.node):
+        if node.type != "variable_declarator":
+            continue
+        name = node.child_by_field_name("name")
+        value = node.child_by_field_name("value")
+        if name is None or value is None:
+            _fail(source, source.expression(node), "model-and-texture asset local changed")
+        initializers[source.text(name)] = source.expression(value)
+    expected_initializer = (
+        f'Identifier.withDefaultNamespace ("entity/{asset_directory}/" + textureName)'
+    )
+    if set(initializers) != {"textureId"}:
+        raise BootstrapCatalogExtractionError(
+            f"{source.relative_path}: model-and-texture asset helper locals changed: "
+            f"expected=['textureId'], actual={sorted(initializers)}"
+        )
+    if initializers["textureId"].canonical != expected_initializer:
+        _fail(
+            source,
+            initializers["textureId"],
+            "model-and-texture asset formula for textureId changed",
+        )
+
+    registrations = [
+        call
+        for call in source.calls
+        if call.name == "register"
+        and call.qualifier is not None
+        and call.qualifier.canonical == "context"
+        and helper.body.start_byte <= call.span.start_byte
+        and call.span.end_byte <= helper.body.end_byte
+    ]
+    expected_registration = (
+        f"context.register (name, new {variant_type} (new ModelAndTexture <> "
+        "(modelType, textureId), selectors))"
+    )
+    if (
+        len(registrations) != 1
+        or source.expression(registrations[0].node).canonical != expected_registration
+    ):
+        expression = (
+            source.expression(registrations[0].node)
+            if registrations
+            else source.expression(helper.node)
+        )
+        _fail(source, expression, "model-and-texture registration payload changed")
+
+    if len(wrappers) != 1 or wrappers[0].body is None:
+        raise BootstrapCatalogExtractionError(
+            f"{source.relative_path}: expected one model-and-texture biome register helper"
+        )
+    wrapper = wrappers[0]
+    wrapper_parameter_names = []
+    for parameter in wrapper.parameters:
+        name = parameter.node.child_by_field_name("name")
+        if name is None:
+            _fail(source, parameter, "model-and-texture biome parameter lacks a name")
+        wrapper_parameter_names.append(source.text(name))
+    if wrapper_parameter_names != [
+        "context",
+        "name",
+        "modelType",
+        "textureName",
+        "spawnBiome",
+    ]:
+        _fail(
+            source,
+            wrapper.parameters[0],
+            "model-and-texture biome helper parameters changed",
+        )
+    wrapper_calls = [
+        call
+        for call in source.calls
+        if call.name == "register"
+        and call.qualifier is None
+        and wrapper.body.start_byte <= call.span.start_byte
+        and call.span.end_byte <= wrapper.body.end_byte
+    ]
+    expected_wrapper = (
+        "register (context, name, modelType, textureName, "
+        "SpawnPrioritySelectors.single (new BiomeCheck (biomes), 1))"
+    )
+    if (
+        len(wrapper_calls) != 1
+        or source.expression(wrapper_calls[0].node).canonical != expected_wrapper
+    ):
+        expression = (
+            source.expression(wrapper_calls[0].node)
+            if wrapper_calls
+            else source.expression(wrapper.node)
+        )
+        _fail(source, expression, "model-and-texture biome registration payload changed")
+
+    entries = []
+    for identity in identities:
+        presentation = facts.get(identity.constant_name)
+        if presentation is None:
+            raise BootstrapCatalogExtractionError(
+                f"{source.relative_path}: model-and-texture variant "
+                f"{identity.constant_name} lacks presentation assets"
+            )
+        entries.append(
+            ModelAndTextureVariantEntry(
+                identity.constant_name,
+                identity.resource_id,
+                presentation[0],
+                presentation[1],
+            )
+        )
+    if len({entry.asset_id for entry in entries}) != len(entries):
+        raise BootstrapCatalogExtractionError(
+            f"{source.relative_path}: duplicate model-and-texture variant asset id"
         )
     return entries
 

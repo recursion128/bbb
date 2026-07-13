@@ -14,6 +14,7 @@ from bootstrap_catalog_extractor import (  # noqa: E402
     EnchantmentEntry,
     FarmAnimalVariantEntry,
     FrogVariantEntry,
+    ModelAndTextureVariantEntry,
     banner_pattern_entries,
     bootstrap_resource_key_entries,
     decorated_pot_pattern_entries,
@@ -23,6 +24,7 @@ from bootstrap_catalog_extractor import (  # noqa: E402
     frog_variant_entries,
     identifier_constant_paths,
     map_decoration_entries,
+    model_and_texture_variant_entries,
     painting_variant_entries,
     potion_entries,
     static_register_entries,
@@ -34,6 +36,104 @@ from vanilla_java_source import parse_source  # noqa: E402
 
 
 class BootstrapCatalogExtractorTests(unittest.TestCase):
+    def test_model_and_texture_variant_assets_follow_bootstrap_payload(self) -> None:
+        source = parse_source(
+            "fixture/ZombieNautilusVariants.java",
+            b'''
+package fixture;
+class ZombieNautilusVariants {
+  static final ResourceKey<ZombieNautilusVariant> TEMPERATE = createKey(Temperature.TEMPERATE);
+  static final ResourceKey<ZombieNautilusVariant> WARM = createKey(Temperature.WARM);
+  static void register(BootstrapContext<ZombieNautilusVariant> context,
+      ResourceKey<ZombieNautilusVariant> name, ZombieNautilusVariant.ModelType modelType,
+      String textureName, TagKey<Biome> spawnBiome) {
+    HolderSet<Biome> biomes = context.lookup(Registries.BIOME).getOrThrow(spawnBiome);
+    register(context, name, modelType, textureName,
+        SpawnPrioritySelectors.single(new BiomeCheck(biomes), 1));
+  }
+  static void register(BootstrapContext<ZombieNautilusVariant> context,
+      ResourceKey<ZombieNautilusVariant> name, ZombieNautilusVariant.ModelType modelType,
+      String textureName, SpawnPrioritySelectors selectors) {
+    Identifier textureId = Identifier.withDefaultNamespace("entity/nautilus/" + textureName);
+    context.register(name, new ZombieNautilusVariant(
+        new ModelAndTexture<>(modelType, textureId), selectors));
+  }
+  static void bootstrap(BootstrapContext<ZombieNautilusVariant> context) {
+    register(context, TEMPERATE, ZombieNautilusVariant.ModelType.NORMAL,
+        "zombie_nautilus", selectors());
+    register(context, WARM, ZombieNautilusVariant.ModelType.WARM,
+        "zombie_nautilus_coral", tag());
+  }
+}
+''',
+        )
+
+        self.assertEqual(
+            model_and_texture_variant_entries(
+                source,
+                {
+                    "Temperature.TEMPERATE": "temperate",
+                    "Temperature.WARM": "warm",
+                },
+                "ZombieNautilusVariant",
+                "nautilus",
+                expected_count=2,
+            ),
+            [
+                ModelAndTextureVariantEntry(
+                    "TEMPERATE",
+                    "minecraft:temperate",
+                    "NORMAL",
+                    "minecraft:entity/nautilus/zombie_nautilus",
+                ),
+                ModelAndTextureVariantEntry(
+                    "WARM",
+                    "minecraft:warm",
+                    "WARM",
+                    "minecraft:entity/nautilus/zombie_nautilus_coral",
+                ),
+            ],
+        )
+
+    def test_model_and_texture_variant_assets_reject_changed_payload(self) -> None:
+        source = parse_source(
+            "fixture/ZombieNautilusVariants.java",
+            b'''
+package fixture;
+class ZombieNautilusVariants {
+  static final ResourceKey<ZombieNautilusVariant> TEMPERATE = createKey(Temperature.TEMPERATE);
+  static void register(BootstrapContext<ZombieNautilusVariant> context,
+      ResourceKey<ZombieNautilusVariant> name, ZombieNautilusVariant.ModelType modelType,
+      String textureName, TagKey<Biome> spawnBiome) {
+    HolderSet<Biome> biomes = context.lookup(Registries.BIOME).getOrThrow(spawnBiome);
+    register(context, name, modelType, textureName,
+        SpawnPrioritySelectors.single(new BiomeCheck(biomes), 1));
+  }
+  static void register(BootstrapContext<ZombieNautilusVariant> context,
+      ResourceKey<ZombieNautilusVariant> name, ZombieNautilusVariant.ModelType modelType,
+      String textureName, SpawnPrioritySelectors selectors) {
+    Identifier textureId = Identifier.withDefaultNamespace("entity/nautilus/" + textureName);
+    context.register(name, new ZombieNautilusVariant(modelType, textureId, selectors));
+  }
+  static void bootstrap(BootstrapContext<ZombieNautilusVariant> context) {
+    register(context, TEMPERATE, ZombieNautilusVariant.ModelType.NORMAL,
+        "zombie_nautilus", selectors());
+  }
+}
+''',
+        )
+        with self.assertRaisesRegex(
+            BootstrapCatalogExtractionError,
+            "model-and-texture registration payload changed",
+        ):
+            model_and_texture_variant_entries(
+                source,
+                {"Temperature.TEMPERATE": "temperate"},
+                "ZombieNautilusVariant",
+                "nautilus",
+                expected_count=1,
+            )
+
     def test_farm_animal_variant_assets_follow_model_and_texture_payload(self) -> None:
         source = parse_source(
             "fixture/ChickenVariants.java",

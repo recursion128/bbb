@@ -126,6 +126,7 @@ use super::textured::{
     zombie_villager_textured_layer_passes, EntityModelLayerKind, EntityModelLayerPass,
     EntityModelLayerRenderType, EntityModelLayerVisibility, EntityModelTexturedMeshes,
 };
+use super::zombie_nautilus_variants::ZombieNautilusVariantModelType;
 use super::{CowModelVariant, PigModelVariant, WolfModelVariant, ZombieNautilusModelVariant};
 
 fn strider_base_layer_pass(baby: bool, cold: bool) -> EntityModelLayerPass {
@@ -292,10 +293,9 @@ pub(in crate::entity_models) trait EntityModelSink {
         instance: &EntityModelInstance,
     ) {
         self.model(
-            if matches!(variant, ZombieNautilusModelVariant::Warm) {
-                NautilusModel::new_coral()
-            } else {
-                NautilusModel::new(false)
+            match variant.builtin_model_type() {
+                ZombieNautilusVariantModelType::Normal => NautilusModel::new(false),
+                ZombieNautilusVariantModelType::Warm => NautilusModel::new_coral(),
             },
             entity_model_root_transform(*instance),
             instance,
@@ -740,10 +740,9 @@ impl EntityModelSink for TexturedSink<'_> {
         instance: &EntityModelInstance,
     ) {
         self.model(
-            if matches!(variant, ZombieNautilusModelVariant::Warm) {
-                NautilusModel::new_coral()
-            } else {
-                NautilusModel::new(false)
+            match variant.builtin_model_type() {
+                ZombieNautilusVariantModelType::Normal => NautilusModel::new(false),
+                ZombieNautilusVariantModelType::Warm => NautilusModel::new_coral(),
             },
             entity_model_root_transform(*instance),
             instance,

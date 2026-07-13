@@ -3,6 +3,7 @@ use super::super::catalog::player_texture_ref;
 use super::super::temperature_animal_variants::{
     ChickenVariantModelType, CowVariantModelType, PigVariantModelType,
 };
+use super::super::zombie_nautilus_variants::ZombieNautilusVariantModelType;
 use super::super::{
     banner_pattern_texture_ref,
     catalog::{
@@ -1590,19 +1591,15 @@ pub(in crate::entity_models) fn zombie_nautilus_textured_layer_passes(
     // Vanilla `ZombieNautilusRenderer`: the `NORMAL` variant textures the shared adult `NautilusModel`
     // body with `zombie_nautilus.png`; the `WARM` variant textures the `ZombieNautilusCoralModel` with
     // `zombie_nautilus_coral.png`.
+    let model_layer = match variant.builtin_model_type() {
+        ZombieNautilusVariantModelType::Normal => MODEL_LAYER_ZOMBIE_NAUTILUS,
+        ZombieNautilusVariantModelType::Warm => MODEL_LAYER_ZOMBIE_NAUTILUS_CORAL,
+    };
     vec![EntityModelLayerPass {
         kind: EntityModelLayerKind::ZombieNautilusBase,
         render_type: EntityModelLayerRenderType::EntityCutout,
-        model_layer: if matches!(variant, ZombieNautilusModelVariant::Warm) {
-            MODEL_LAYER_ZOMBIE_NAUTILUS_CORAL
-        } else {
-            MODEL_LAYER_ZOMBIE_NAUTILUS
-        },
-        texture: if matches!(variant, ZombieNautilusModelVariant::Warm) {
-            ZOMBIE_NAUTILUS_CORAL_TEXTURE_REF
-        } else {
-            ZOMBIE_NAUTILUS_TEXTURE_REF
-        },
+        model_layer,
+        texture: variant.builtin_texture_ref(),
         visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
         order: 0,
