@@ -6,9 +6,11 @@ use serde::{Deserialize, Serialize};
 
 use crate::{registries::normalize_codec_identifier, RegistrySet};
 
+mod action;
 mod body;
 mod input;
 
+pub use action::{DialogActionState, DialogCommandTemplateState};
 pub use body::{DialogBodyState, DialogItemStackTemplateState, DialogPlainMessageState};
 pub use input::{
     DialogInputControlState, DialogInputState, DialogNumberRangeState,
@@ -117,6 +119,8 @@ pub struct DialogButtonState {
     pub width: i32,
     #[serde(default)]
     pub action: Option<NbtSummaryValue>,
+    #[serde(default)]
+    pub action_data: Option<DialogActionState>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -174,7 +178,23 @@ impl DialogState {
         dialog: NbtSummaryValue,
         registries: Option<&RegistrySet>,
     ) -> Self {
-        let (data, semantic_error) = match decode_dialog_data(&dialog, registries) {
+        Self::resolved_at_depth(holder_kind, registry_id, resource_id, dialog, registries, 0)
+    }
+
+    fn resolved_at_depth(
+        holder_kind: &str,
+        registry_id: Option<i32>,
+        resource_id: Option<String>,
+        dialog: NbtSummaryValue,
+        registries: Option<&RegistrySet>,
+        depth: usize,
+    ) -> Self {
+        let decoded = if depth == 0 {
+            decode_dialog_data(&dialog, registries)
+        } else {
+            decode_dialog_data_inner(&dialog, registries, depth)
+        };
+        let (data, semantic_error) = match decoded {
             Ok(data) => (Some(data), None),
             Err(error) => (None, Some(error)),
         };
@@ -214,7 +234,7 @@ fn decode_dialog_data_inner(
         "notice" | "minecraft:notice" => Ok(DialogDataState::Notice {
             common,
             action: match find_entry(entries, "action") {
-                Some(action) => decode_button(action, "notice action")?,
+                Some(action) => decode_button(action, "notice action", registries, depth)?,
                 None => default_notice_action(),
             },
         }),
@@ -223,10 +243,14 @@ fn decode_dialog_data_inner(
             yes: decode_button(
                 required_entry(entries, "yes", "confirmation dialog")?,
                 "confirmation yes button",
+                registries,
+                depth,
             )?,
             no: decode_button(
                 required_entry(entries, "no", "confirmation dialog")?,
                 "confirmation no button",
+                registries,
+                depth,
             )?,
         }),
         "multi_action" | "minecraft:multi_action" => Ok(DialogDataState::MultiAction {
@@ -234,9 +258,11 @@ fn decode_dialog_data_inner(
             actions: decode_non_empty_button_list(
                 required_entry(entries, "actions", "multi-action dialog")?,
                 "multi-action actions",
+                registries,
+                depth,
             )?,
             exit_action: find_entry(entries, "exit_action")
-                .map(|value| decode_button(value, "multi-action exit button"))
+                .map(|value| decode_button(value, "multi-action exit button", registries, depth))
                 .transpose()?,
             columns: optional_positive_i32(entries, "columns", 2, "multi-action dialog")?,
         }),
@@ -250,7 +276,9 @@ fn decode_dialog_data_inner(
             Ok(DialogDataState::ServerLinks {
                 common,
                 exit_action: find_entry(entries, "exit_action")
-                    .map(|value| decode_button(value, "server-links exit button"))
+                    .map(|value| {
+                        decode_button(value, "server-links exit button", registries, depth)
+                    })
                     .transpose()?,
                 columns: optional_positive_i32(entries, "columns", 2, "server-links dialog")?,
                 button_width,
@@ -271,7 +299,7 @@ fn decode_dialog_data_inner(
                     depth,
                 )?,
                 exit_action: find_entry(entries, "exit_action")
-                    .map(|value| decode_button(value, "dialog-list exit button"))
+                    .map(|value| decode_button(value, "dialog-list exit button", registries, depth))
                     .transpose()?,
                 columns: optional_positive_i32(entries, "columns", 2, "dialog-list dialog")?,
                 button_width,
@@ -488,7 +516,12 @@ fn decode_common_dialog_data(entries: &[NbtSummaryEntry]) -> Result<CommonDialog
     })
 }
 
-fn decode_button(value: &NbtSummaryValue, what: &str) -> Result<DialogButtonState, String> {
+fn decode_button(
+    value: &NbtSummaryValue,
+    what: &str,
+    registries: Option<&RegistrySet>,
+    depth: usize,
+) -> Result<DialogButtonState, String> {
     let entries = compound_entries(value, what)?;
     let label = decode_component(required_entry(entries, "label", what)?, "button label")?;
     let tooltip = find_entry(entries, "tooltip")
@@ -499,20 +532,24 @@ fn decode_button(value: &NbtSummaryValue, what: &str) -> Result<DialogButtonStat
         return Err(format!("{what} width {width} is outside 1..=1024"));
     }
     let action = find_entry(entries, "action").cloned();
-    if let Some(action) = &action {
-        compound_entries(action, "button action")?;
-    }
+    let action_data = action
+        .as_ref()
+        .map(|action| action::decode_dialog_action(action, registries, depth + 1))
+        .transpose()?;
     Ok(DialogButtonState {
         label,
         tooltip,
         width,
         action,
+        action_data,
     })
 }
 
 fn decode_non_empty_button_list(
     value: &NbtSummaryValue,
     what: &str,
+    registries: Option<&RegistrySet>,
+    depth: usize,
 ) -> Result<Vec<DialogButtonState>, String> {
     let NbtSummaryValue::List(values) = value else {
         return Err(format!("{what} is not a list"));
@@ -523,7 +560,7 @@ fn decode_non_empty_button_list(
     values
         .iter()
         .enumerate()
-        .map(|(index, value)| decode_button(value, &format!("{what}[{index}]")))
+        .map(|(index, value)| decode_button(value, &format!("{what}[{index}]"), registries, depth))
         .collect()
 }
 
@@ -534,6 +571,7 @@ fn default_notice_action() -> DialogButtonState {
         tooltip: None,
         width: 150,
         action: None,
+        action_data: None,
     }
 }
 
@@ -773,8 +811,16 @@ mod tests {
         );
         assert_eq!(yes.width, 200);
         assert_eq!(yes.action, Some(yes_action));
+        assert!(matches!(
+            yes.action_data,
+            Some(DialogActionState::DynamicCustom {
+                ref id,
+                additions: None,
+            }) if id == "example:confirm"
+        ));
         assert_eq!(no.label.text, "No");
         assert_eq!(no.width, 150);
+        assert_eq!(no.action_data, None);
     }
 
     #[test]

@@ -322,8 +322,8 @@ show-dialog 的 direct/context-free holder 已按单一 bounded network-NBT tree
 结构；play referenced holder 已按当前 session `minecraft:dialog` wire order 解析为 resource id 与同一
 canonical NBT，stub/missing/malformed 不猜测 bootstrap 下标；`CommonDialogData` 的 scalar/text、
 Notice/Confirmation/MultiAction/ServerLinks 按钮/default/validation 已 typed 投影；body raw 之外已投影
-PlainMessage/Item envelope、item id/count、description/default/range，component patch 与 action
-仍无损保留 raw；四类 input control 已按 codec typed 投影并同时保留 raw；DialogList 的 play
+PlainMessage/Item envelope、item id/count、description/default/range，component patch 仍无损保留 raw；
+四类 input control 与九类 static/dynamic action 已按 codec typed 投影并同时保留 raw；DialogList 的 play
 tag/direct 同质 HolderSet、session reference、context-free inline-list
 边界、external title 与 default/validation 已 typed 投影，仍缺全部 screen；custom-click 的 resource-id +
 length-prefixed optional-NBT encoder 与 configuration/play transport 已闭合，仍缺 active-screen command surface/state guard。
@@ -541,7 +541,7 @@ play Waypoint 的 operation WRAP、identifier/icon/data framing、strict trailin
 play ClearDialog 的 unit payload、strict trailing、canonical clear ownership 与 tests 已闭合；剩余 previous/warning screen-stack restoration 保持 runtime partial。
 play ShowDialog 的 reference/direct holder framing、bounded NBT preservation、session registry holder
 resolution、五种 top-level Dialog semantic baseline、ownership 与 tests 已闭合；剩余完整
-item component patch/action、canonical screen data/runtime screen stack 保持 partial。
+item component patch、canonical screen data/runtime screen stack 保持 partial。
 play AddEntity 的 id/uuid/type/position/LP velocity/rotation/data framing、strict trailing、basic world ownership 与 tests 已闭合；剩余 session registry validation、entity factory/player-info gate 与全类型 runtime 初始化保持 decode/canonical/runtime partial。
 play BlockChangedAck 的 sequence framing、strict trailing、prediction reconciliation/player correction ownership 与 tests 已闭合，五维 complete。
 play BlockDestruction 的 id/position/progress framing、strict trailing、progress replace/remove/expiry ownership 与 tests 已闭合；剩余 full model-shaped crack decal parity 保持 runtime partial。

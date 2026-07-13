@@ -13656,3 +13656,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] 倒序 range、initial 范围、positive finite step、non-empty/唯一 initial option、1..=1024 width、
   positive max length/lines、1..=512 multiline height 与 Java UTF-16 初始文本长度均有定向测试。
   item component patch、typed action 与 native screens 仍开放。
+
+## 2026-07-13：Decode dialog action semantics
+
+- [x] 新建 `client/dialog/action.rs` semantic owner；对照 `ActionTypes`、`StaticAction`、
+  `CommandTemplate`、`CustomAll`、`ParsedTemplate` 与 `ClickEvent` Codec，typed 投影七类
+  server-allowed static action 与两类 dynamic action，同时保留按钮 raw action。
+- [x] URL scheme/URI、CHAT_STRING、positive page、resource id、任意 static custom payload、
+  compound dynamic additions、模板 segments/variables、禁用 open-file，以及 registry-aware/context-free
+  show-dialog holder 和 64 层递归边界均有定向测试。item component patch 与 native screens 仍开放。
