@@ -13729,3 +13729,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] `Number.intValue`、exact-three vector、unrestricted float/NaN/out-of-range channel、
   `floor(channel*255)` 后 8-bit mask、bool byteValue、empty defaults 与全部 wrong list/value shapes 均有
   定向测试；Component、holder、其余 list/compound-record persistent Codec 与 native screens 仍开放。
+
+## 2026-07-13：Decode firework dialog item components
+
+- [x] 对照 `FireworkExplosion.CODEC`、`Fireworks.CODEC`、`ExtraCodecs.UNSIGNED_BYTE` 与 `NbtOps`
+  CollectionTag 语义，复用生成 shape catalog 和现有 `FireworkExplosionSummary`，typed 投影 standalone/nested
+  explosion record 与 flight duration，共闭合 2 个 persistent 注册项。
+- [x] required/unknown shape、defaulted colors/fade/trail/twinkle、Byte/Int/LongArray list 输入、Java
+  `byteValue` 低 8 位、ordered nested records、256 合法边界、257 拒绝及 wrong field/element shapes 均有
+  定向测试；Component、holder、其余 list/compound-record persistent Codec 与 native screens 仍开放。

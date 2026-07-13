@@ -1,4 +1,9 @@
-use bbb_protocol::item_component_value_types::{ItemRaritySummary, SwingAnimationTypeSummary};
+use std::borrow::Cow;
+
+use bbb_protocol::item_component_value_types::{
+    FireworkExplosionShapeSummary, ItemRaritySummary, SwingAnimationTypeSummary,
+};
+use bbb_protocol::packets::inventory::FireworkExplosionSummary;
 use bbb_protocol::{
     builtin_enum_component_values::{
         builtin_enum_component_value_for_name, VANILLA_BUILTIN_ENUM_COMPONENTS,
@@ -9,7 +14,9 @@ use bbb_protocol::{
         VANILLA_DATA_COMPONENT_CUSTOM_MODEL_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID,
         VANILLA_DATA_COMPONENT_DYED_COLOR_TYPE_ID, VANILLA_DATA_COMPONENT_ENCHANTABLE_TYPE_ID,
         VANILLA_DATA_COMPONENT_ENCHANTMENT_GLINT_OVERRIDE_TYPE_ID,
-        VANILLA_DATA_COMPONENT_FOOD_TYPE_ID, VANILLA_DATA_COMPONENT_GLIDER_TYPE_ID,
+        VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID,
+        VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID, VANILLA_DATA_COMPONENT_FOOD_TYPE_ID,
+        VANILLA_DATA_COMPONENT_GLIDER_TYPE_ID,
         VANILLA_DATA_COMPONENT_INTANGIBLE_PROJECTILE_TYPE_ID,
         VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID, VANILLA_DATA_COMPONENT_MAP_COLOR_TYPE_ID,
         VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID,
@@ -127,6 +134,13 @@ pub enum DialogDataComponentValueState {
         strings: Vec<String>,
         colors: Vec<i32>,
     },
+    FireworkExplosion {
+        explosion: FireworkExplosionSummary,
+    },
+    Fireworks {
+        flight_duration: i32,
+        explosions: Vec<FireworkExplosionSummary>,
+    },
 }
 
 impl DialogDataComponentValueState {
@@ -224,6 +238,12 @@ pub(super) fn decode_supported_component_value(
             value: decode_rgb_color(value, &what)?,
         },
         VANILLA_DATA_COMPONENT_CUSTOM_MODEL_DATA_TYPE_ID => decode_custom_model_data(value, &what)?,
+        VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID => {
+            DialogDataComponentValueState::FireworkExplosion {
+                explosion: decode_firework_explosion(value, &what)?,
+            }
+        }
+        VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID => decode_fireworks(value, &what)?,
         _ => {
             return decode_string_enum_component_value(type_id, &what, value);
         }
@@ -585,6 +605,72 @@ fn decode_custom_model_data(
     })
 }
 
+fn decode_fireworks(
+    value: &NbtSummaryValue,
+    what: &str,
+) -> Result<DialogDataComponentValueState, String> {
+    let entries = compound_entries(value, what)?;
+    let flight_duration = find_entry(entries, "flight_duration").map_or(Ok(0), |value| {
+        component_unsigned_byte(value, &format!("{what} field flight_duration"))
+    })?;
+    let values = optional_component_list(entries, "explosions", what)?;
+    if values.len() > 256 {
+        return Err(format!(
+            "{what} field explosions has {} entries, maximum is 256",
+            values.len()
+        ));
+    }
+    let explosions = values
+        .iter()
+        .enumerate()
+        .map(|(index, value)| {
+            decode_firework_explosion(value, &format!("{what} field explosions[{index}]"))
+        })
+        .collect::<Result<Vec<_>, String>>()?;
+    Ok(DialogDataComponentValueState::Fireworks {
+        flight_duration,
+        explosions,
+    })
+}
+
+fn decode_firework_explosion(
+    value: &NbtSummaryValue,
+    what: &str,
+) -> Result<FireworkExplosionSummary, String> {
+    let entries = compound_entries(value, what)?;
+    let shape = match find_entry(entries, "shape") {
+        Some(NbtSummaryValue::String(name)) => {
+            FireworkExplosionShapeSummary::from_serialized_name(name)
+                .ok_or_else(|| format!("unknown {what} shape {name}"))?
+        }
+        Some(_) => return Err(format!("{what} field shape is not an enum name")),
+        None => return Err(format!("{what} is missing field shape")),
+    };
+    let colors = decode_optional_component_i32_list(entries, "colors", what)?;
+    let fade_colors = decode_optional_component_i32_list(entries, "fade_colors", what)?;
+    let has_trail = optional_component_bool(entries, "has_trail", false, what)?;
+    let has_twinkle = optional_component_bool(entries, "has_twinkle", false, what)?;
+    Ok(FireworkExplosionSummary {
+        shape,
+        colors,
+        fade_colors,
+        has_trail,
+        has_twinkle,
+    })
+}
+
+fn decode_optional_component_i32_list(
+    entries: &[NbtSummaryEntry],
+    key: &str,
+    what: &str,
+) -> Result<Vec<i32>, String> {
+    optional_component_list(entries, key, what)?
+        .iter()
+        .enumerate()
+        .map(|(index, value)| component_i32(value, &format!("{what} field {key}[{index}]")))
+        .collect()
+}
+
 fn decode_rgb_color(value: &NbtSummaryValue, what: &str) -> Result<i32, String> {
     if matches!(
         value,
@@ -597,9 +683,8 @@ fn decode_rgb_color(value: &NbtSummaryValue, what: &str) -> Result<i32, String> 
     ) {
         return component_i32(value, what);
     }
-    let NbtSummaryValue::List(channels) = value else {
-        return Err(format!("{what} is neither numeric nor a 3-float vector"));
-    };
+    let channels = component_list(value)
+        .map_err(|_| format!("{what} is neither numeric nor a 3-float vector"))?;
     if channels.len() != 3 {
         return Err(format!(
             "{what} vector has {} channels instead of 3",
@@ -622,11 +707,28 @@ fn optional_component_list<'a>(
     entries: &'a [NbtSummaryEntry],
     key: &str,
     what: &str,
-) -> Result<&'a [NbtSummaryValue], String> {
+) -> Result<Cow<'a, [NbtSummaryValue]>, String> {
     match find_entry(entries, key) {
-        None => Ok(&[]),
-        Some(NbtSummaryValue::List(values)) => Ok(values),
-        Some(_) => Err(format!("{what} field {key} is not a list")),
+        None => Ok(Cow::Borrowed(&[])),
+        Some(value) => {
+            component_list(value).map_err(|_| format!("{what} field {key} is not a list"))
+        }
+    }
+}
+
+fn component_list(value: &NbtSummaryValue) -> Result<Cow<'_, [NbtSummaryValue]>, ()> {
+    match value {
+        NbtSummaryValue::List(values) => Ok(Cow::Borrowed(values)),
+        NbtSummaryValue::ByteArray(values) => Ok(Cow::Owned(
+            values.iter().copied().map(NbtSummaryValue::Byte).collect(),
+        )),
+        NbtSummaryValue::IntArray(values) => Ok(Cow::Owned(
+            values.iter().copied().map(NbtSummaryValue::Int).collect(),
+        )),
+        NbtSummaryValue::LongArray(values) => Ok(Cow::Owned(
+            values.iter().copied().map(NbtSummaryValue::Long).collect(),
+        )),
+        _ => Err(()),
     }
 }
 
@@ -735,6 +837,10 @@ fn component_bool(value: &NbtSummaryValue, what: &str) -> Result<bool, String> {
         _ => return Err(format!("{what} is not a boolean")),
     };
     Ok(value != 0)
+}
+
+fn component_unsigned_byte(value: &NbtSummaryValue, what: &str) -> Result<i32, String> {
+    Ok(i32::from(component_i32(value, what)? as u8))
 }
 
 fn validate_i32_range(value: i32, min: i32, max: i32, what: &str) -> Result<(), String> {

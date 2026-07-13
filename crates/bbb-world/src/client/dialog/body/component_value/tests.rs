@@ -830,6 +830,17 @@ fn decodes_rgb_alternatives_and_custom_model_data_lists() {
             value: 0xff7f_ff3fu32 as i32,
         })
     );
+    assert_eq!(
+        decoded(
+            VANILLA_DATA_COMPONENT_DYED_COLOR_TYPE_ID,
+            "minecraft:dyed_color",
+            &NbtSummaryValue::IntArray(vec![0, 1, 0]),
+        )
+        .unwrap(),
+        Some(DialogDataComponentValueState::RgbColor {
+            value: 0xff00_ff00u32 as i32,
+        })
+    );
 
     assert_eq!(
         decoded(
@@ -891,6 +902,24 @@ fn decodes_rgb_alternatives_and_custom_model_data_lists() {
             flags: vec![true, false],
             strings: vec!["first".to_string(), "second".to_string()],
             colors: vec![0xff7f_ff3fu32 as i32, 0xffe6_1800u32 as i32],
+        })
+    );
+    assert_eq!(
+        decoded(
+            VANILLA_DATA_COMPONENT_CUSTOM_MODEL_DATA_TYPE_ID,
+            "minecraft:custom_model_data",
+            &compound(vec![
+                value_entry("floats", NbtSummaryValue::IntArray(vec![1, -2])),
+                value_entry("flags", NbtSummaryValue::ByteArray(vec![0, 2])),
+                value_entry("colors", NbtSummaryValue::LongArray(vec![0x11_22_33])),
+            ]),
+        )
+        .unwrap(),
+        Some(DialogDataComponentValueState::CustomModelData {
+            floats_bits: vec![1.0f32.to_bits(), (-2.0f32).to_bits()],
+            flags: vec![false, true],
+            strings: Vec::new(),
+            colors: vec![0x11_22_33],
         })
     );
 }
@@ -959,6 +988,213 @@ fn rejects_invalid_rgb_alternatives_and_custom_model_data_lists() {
     }
 }
 
+#[test]
+fn decodes_firework_component_records_and_collection_tags() {
+    assert_eq!(
+        decoded(
+            VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID,
+            "minecraft:firework_explosion",
+            &firework_explosion("star"),
+        )
+        .unwrap(),
+        Some(DialogDataComponentValueState::FireworkExplosion {
+            explosion: FireworkExplosionSummary {
+                shape: FireworkExplosionShapeSummary::Star,
+                colors: Vec::new(),
+                fade_colors: Vec::new(),
+                has_trail: false,
+                has_twinkle: false,
+            },
+        })
+    );
+
+    let detailed = compound(vec![
+        string_entry("shape", "creeper"),
+        value_entry("colors", NbtSummaryValue::IntArray(vec![0x11_22_33, -1])),
+        value_entry(
+            "fade_colors",
+            NbtSummaryValue::LongArray(vec![0x1_0044_5566]),
+        ),
+        value_entry("has_trail", NbtSummaryValue::Int(2)),
+        value_entry("has_twinkle", NbtSummaryValue::Int(256)),
+    ]);
+    assert_eq!(
+        decoded(
+            VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID,
+            "minecraft:firework_explosion",
+            &detailed,
+        )
+        .unwrap(),
+        Some(DialogDataComponentValueState::FireworkExplosion {
+            explosion: FireworkExplosionSummary {
+                shape: FireworkExplosionShapeSummary::Creeper,
+                colors: vec![0x11_22_33, -1],
+                fade_colors: vec![0x44_55_66],
+                has_trail: true,
+                has_twinkle: false,
+            },
+        })
+    );
+
+    assert_eq!(
+        decoded(
+            VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID,
+            "minecraft:fireworks",
+            &compound(Vec::new()),
+        )
+        .unwrap(),
+        Some(DialogDataComponentValueState::Fireworks {
+            flight_duration: 0,
+            explosions: Vec::new(),
+        })
+    );
+    assert_eq!(
+        decoded(
+            VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID,
+            "minecraft:fireworks",
+            &compound(vec![value_entry(
+                "flight_duration",
+                NbtSummaryValue::Int(256),
+            )]),
+        )
+        .unwrap(),
+        Some(DialogDataComponentValueState::Fireworks {
+            flight_duration: 0,
+            explosions: Vec::new(),
+        })
+    );
+    assert_eq!(
+        decoded(
+            VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID,
+            "minecraft:fireworks",
+            &compound(vec![
+                value_entry("flight_duration", NbtSummaryValue::Int(-1)),
+                value_entry(
+                    "explosions",
+                    NbtSummaryValue::List(vec![detailed, firework_explosion("burst")]),
+                ),
+            ]),
+        )
+        .unwrap(),
+        Some(DialogDataComponentValueState::Fireworks {
+            flight_duration: 255,
+            explosions: vec![
+                FireworkExplosionSummary {
+                    shape: FireworkExplosionShapeSummary::Creeper,
+                    colors: vec![0x11_22_33, -1],
+                    fade_colors: vec![0x44_55_66],
+                    has_trail: true,
+                    has_twinkle: false,
+                },
+                FireworkExplosionSummary {
+                    shape: FireworkExplosionShapeSummary::Burst,
+                    colors: Vec::new(),
+                    fade_colors: Vec::new(),
+                    has_trail: false,
+                    has_twinkle: false,
+                },
+            ],
+        })
+    );
+
+    let maximum = NbtSummaryValue::List(vec![firework_explosion("small_ball"); 256]);
+    let decoded = decoded(
+        VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID,
+        "minecraft:fireworks",
+        &compound(vec![value_entry("explosions", maximum)]),
+    )
+    .unwrap()
+    .unwrap();
+    let DialogDataComponentValueState::Fireworks { explosions, .. } = decoded else {
+        panic!("unexpected decoded component {decoded:?}");
+    };
+    assert_eq!(explosions.len(), 256);
+}
+
+#[test]
+fn rejects_invalid_firework_component_records() {
+    for (type_id, resource_id, value, expected) in [
+        (
+            VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID,
+            "minecraft:firework_explosion",
+            NbtSummaryValue::List(Vec::new()),
+            "is not a compound",
+        ),
+        (
+            VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID,
+            "minecraft:firework_explosion",
+            compound(Vec::new()),
+            "is missing field shape",
+        ),
+        (
+            VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID,
+            "minecraft:firework_explosion",
+            compound(vec![string_entry("shape", "sphere")]),
+            "unknown dialog item component minecraft:firework_explosion shape sphere",
+        ),
+        (
+            VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID,
+            "minecraft:firework_explosion",
+            compound(vec![value_entry("shape", NbtSummaryValue::Int(2))]),
+            "field shape is not an enum name",
+        ),
+        (
+            VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID,
+            "minecraft:firework_explosion",
+            compound(vec![
+                string_entry("shape", "star"),
+                value_entry("colors", NbtSummaryValue::String("red".to_string())),
+            ]),
+            "field colors is not a list",
+        ),
+        (
+            VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID,
+            "minecraft:firework_explosion",
+            compound(vec![
+                string_entry("shape", "star"),
+                value_entry(
+                    "fade_colors",
+                    NbtSummaryValue::List(vec![NbtSummaryValue::String("blue".to_string())]),
+                ),
+            ]),
+            "field fade_colors[0] is not numeric",
+        ),
+        (
+            VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID,
+            "minecraft:fireworks",
+            compound(vec![string_entry("flight_duration", "one")]),
+            "field flight_duration is not numeric",
+        ),
+        (
+            VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID,
+            "minecraft:fireworks",
+            compound(vec![value_entry("explosions", NbtSummaryValue::Int(1))]),
+            "field explosions is not a list",
+        ),
+        (
+            VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID,
+            "minecraft:fireworks",
+            compound(vec![value_entry(
+                "explosions",
+                NbtSummaryValue::List(vec![NbtSummaryValue::Int(1)]),
+            )]),
+            "field explosions[0] is not a compound",
+        ),
+        (
+            VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID,
+            "minecraft:fireworks",
+            compound(vec![value_entry(
+                "explosions",
+                NbtSummaryValue::List(vec![firework_explosion("small_ball"); 257]),
+            )]),
+            "field explosions has 257 entries, maximum is 256",
+        ),
+    ] {
+        let error = decoded(type_id, resource_id, &value).unwrap_err();
+        assert!(error.contains(expected), "unexpected error: {error}");
+    }
+}
+
 fn decoded(
     type_id: i32,
     resource_id: &str,
@@ -989,4 +1225,8 @@ fn float_vector(values: &[f32]) -> NbtSummaryValue {
             .map(|value| NbtSummaryValue::Float(value.to_bits()))
             .collect(),
     )
+}
+
+fn firework_explosion(shape: &str) -> NbtSummaryValue {
+    compound(vec![string_entry("shape", shape)])
 }
