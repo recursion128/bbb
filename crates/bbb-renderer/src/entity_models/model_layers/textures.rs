@@ -3,11 +3,11 @@ pub(in crate::entity_models) use crate::entity_models::banner_patterns::*;
 use crate::entity_models::catalog::{
     ArrowModelTexture, AxolotlModelVariant, ChestModelHalf, ChestModelTexture, ConduitModelPart,
     CopperGolemWeathering, EntityArmorMaterial, EntityDefaultPlayerSkin, EntityDyeColor,
-    FoxModelVariant, FrogModelVariant, PandaModelVariant, ParrotModelVariant, RabbitModelVariant,
+    FoxModelVariant, PandaModelVariant, ParrotModelVariant, RabbitModelVariant,
     SignModelAttachment, SignModelWood, WolfArmorCrackiness,
 };
 use crate::entity_models::decorated_pot_patterns::*;
-use crate::entity_models::{CatModelVariant, DecoratedPotPattern};
+use crate::entity_models::{CatModelVariant, DecoratedPotPattern, FrogModelVariant};
 
 mod equine;
 

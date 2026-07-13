@@ -1,9 +1,9 @@
 use super::{
     apply_head_look, apply_quadruped_leg_swing, PartPose, PART_POSE_ZERO, PIG_COLD_FUR, PIG_PINK,
 };
-use crate::entity_models::catalog::PigModelVariant;
 use crate::entity_models::instances::EntityModelInstance;
 use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
+use crate::entity_models::PigModelVariant;
 
 pub(in crate::entity_models) const MODEL_LAYER_PIG: &str = "minecraft:pig#main";
 pub(in crate::entity_models) const MODEL_LAYER_PIG_BABY: &str = "minecraft:pig_baby#main";

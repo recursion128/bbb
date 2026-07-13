@@ -1190,14 +1190,15 @@ pub(super) fn chicken_model_variant(
                 chicken_variant_from_registry_id(registries, id)
                     .unwrap_or_else(chicken_default_model_variant)
             } else {
-                chicken_variant_from_vanilla_registry_id(id)
+                ChickenModelVariant::for_vanilla_registry_id(id)
+                    .unwrap_or_else(chicken_default_model_variant)
             }
         })
         .unwrap_or_else(chicken_default_model_variant)
 }
 
 fn chicken_default_model_variant() -> ChickenModelVariant {
-    chicken_variant_from_entry_id(CHICKEN_DEFAULT_VARIANT_RESOURCE_ID)
+    ChickenModelVariant::for_resource_id(CHICKEN_DEFAULT_VARIANT_RESOURCE_ID)
         .expect("generated vanilla chicken default variant must map to a model")
 }
 
@@ -1207,22 +1208,7 @@ pub(super) fn chicken_variant_from_registry_id(
 ) -> Option<ChickenModelVariant> {
     registries
         .resource_id_by_holder_id("minecraft:chicken_variant", registry_id)
-        .and_then(chicken_variant_from_entry_id)
-}
-
-pub(super) fn chicken_variant_from_entry_id(id: &str) -> Option<ChickenModelVariant> {
-    match id {
-        "minecraft:temperate" => Some(ChickenModelVariant::Temperate),
-        "minecraft:warm" => Some(ChickenModelVariant::Warm),
-        "minecraft:cold" => Some(ChickenModelVariant::Cold),
-        _ => None,
-    }
-}
-
-pub(super) fn chicken_variant_from_vanilla_registry_id(registry_id: i32) -> ChickenModelVariant {
-    vanilla_chicken_variant_resource_id(registry_id)
-        .and_then(chicken_variant_from_entry_id)
-        .unwrap_or_else(chicken_default_model_variant)
+        .and_then(ChickenModelVariant::for_resource_id)
 }
 
 pub(super) fn frog_model_kind(
@@ -1254,14 +1240,15 @@ pub(super) fn frog_model_variant(
                 frog_variant_from_registry_id(registries, id)
                     .unwrap_or_else(frog_default_model_variant)
             } else {
-                frog_variant_from_vanilla_registry_id(id)
+                FrogModelVariant::for_vanilla_registry_id(id)
+                    .unwrap_or_else(frog_default_model_variant)
             }
         })
         .unwrap_or_else(frog_default_model_variant)
 }
 
 fn frog_default_model_variant() -> FrogModelVariant {
-    frog_variant_from_entry_id(FROG_DEFAULT_VARIANT_RESOURCE_ID)
+    FrogModelVariant::for_resource_id(FROG_DEFAULT_VARIANT_RESOURCE_ID)
         .expect("generated vanilla frog default variant must map to a model")
 }
 
@@ -1271,24 +1258,7 @@ pub(super) fn frog_variant_from_registry_id(
 ) -> Option<FrogModelVariant> {
     registries
         .resource_id_by_holder_id("minecraft:frog_variant", registry_id)
-        .and_then(frog_variant_from_entry_id)
-}
-
-pub(super) fn frog_variant_from_entry_id(id: &str) -> Option<FrogModelVariant> {
-    match id {
-        "minecraft:temperate" => Some(FrogModelVariant::Temperate),
-        "minecraft:warm" => Some(FrogModelVariant::Warm),
-        "minecraft:cold" => Some(FrogModelVariant::Cold),
-        _ => None,
-    }
-}
-
-// Vanilla `FrogVariants.bootstrap` registers TEMPERATE, WARM, COLD in that order, so the static
-// fallback ids (used before the dynamic `frog_variant` registry arrives) are 0/1/2.
-pub(super) fn frog_variant_from_vanilla_registry_id(registry_id: i32) -> FrogModelVariant {
-    vanilla_frog_variant_resource_id(registry_id)
-        .and_then(frog_variant_from_entry_id)
-        .unwrap_or_else(frog_default_model_variant)
+        .and_then(FrogModelVariant::for_resource_id)
 }
 
 pub(super) fn pig_model_variant(
@@ -1311,14 +1281,15 @@ pub(super) fn pig_model_variant(
                 pig_variant_from_registry_id(registries, id)
                     .unwrap_or_else(pig_default_model_variant)
             } else {
-                pig_variant_from_vanilla_registry_id(id)
+                PigModelVariant::for_vanilla_registry_id(id)
+                    .unwrap_or_else(pig_default_model_variant)
             }
         })
         .unwrap_or_else(pig_default_model_variant)
 }
 
 fn pig_default_model_variant() -> PigModelVariant {
-    pig_variant_from_entry_id(PIG_DEFAULT_VARIANT_RESOURCE_ID)
+    PigModelVariant::for_resource_id(PIG_DEFAULT_VARIANT_RESOURCE_ID)
         .expect("generated vanilla pig default variant must map to a model")
 }
 
@@ -1328,22 +1299,7 @@ pub(super) fn pig_variant_from_registry_id(
 ) -> Option<PigModelVariant> {
     registries
         .resource_id_by_holder_id("minecraft:pig_variant", registry_id)
-        .and_then(pig_variant_from_entry_id)
-}
-
-pub(super) fn pig_variant_from_entry_id(id: &str) -> Option<PigModelVariant> {
-    match id {
-        "minecraft:temperate" => Some(PigModelVariant::Temperate),
-        "minecraft:warm" => Some(PigModelVariant::Warm),
-        "minecraft:cold" => Some(PigModelVariant::Cold),
-        _ => None,
-    }
-}
-
-pub(super) fn pig_variant_from_vanilla_registry_id(registry_id: i32) -> PigModelVariant {
-    vanilla_pig_variant_resource_id(registry_id)
-        .and_then(pig_variant_from_entry_id)
-        .unwrap_or_else(pig_default_model_variant)
+        .and_then(PigModelVariant::for_resource_id)
 }
 
 pub(super) fn cow_model_variant(
@@ -1366,14 +1322,15 @@ pub(super) fn cow_model_variant(
                 cow_variant_from_registry_id(registries, id)
                     .unwrap_or_else(cow_default_model_variant)
             } else {
-                cow_variant_from_vanilla_registry_id(id)
+                CowModelVariant::for_vanilla_registry_id(id)
+                    .unwrap_or_else(cow_default_model_variant)
             }
         })
         .unwrap_or_else(cow_default_model_variant)
 }
 
 fn cow_default_model_variant() -> CowModelVariant {
-    cow_variant_from_entry_id(COW_DEFAULT_VARIANT_RESOURCE_ID)
+    CowModelVariant::for_resource_id(COW_DEFAULT_VARIANT_RESOURCE_ID)
         .expect("generated vanilla cow default variant must map to a model")
 }
 
@@ -1383,22 +1340,7 @@ pub(super) fn cow_variant_from_registry_id(
 ) -> Option<CowModelVariant> {
     registries
         .resource_id_by_holder_id("minecraft:cow_variant", registry_id)
-        .and_then(cow_variant_from_entry_id)
-}
-
-pub(super) fn cow_variant_from_entry_id(id: &str) -> Option<CowModelVariant> {
-    match id {
-        "minecraft:temperate" => Some(CowModelVariant::Temperate),
-        "minecraft:warm" => Some(CowModelVariant::Warm),
-        "minecraft:cold" => Some(CowModelVariant::Cold),
-        _ => None,
-    }
-}
-
-pub(super) fn cow_variant_from_vanilla_registry_id(registry_id: i32) -> CowModelVariant {
-    vanilla_cow_variant_resource_id(registry_id)
-        .and_then(cow_variant_from_entry_id)
-        .unwrap_or_else(cow_default_model_variant)
+        .and_then(CowModelVariant::for_resource_id)
 }
 
 pub(super) fn chested_horse_has_chest(values: &[bbb_protocol::packets::EntityDataValue]) -> bool {

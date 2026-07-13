@@ -9,6 +9,7 @@ use super::super::geometry::*;
 use super::super::instances::EntityModelInstance;
 use super::super::model::EntityModel;
 use super::super::model_layers::*;
+use super::super::PigModelVariant;
 use super::selection::{humanoid_model_color, quadruped_model_color};
 use super::transforms::{
     drowned_model_root_transform, entity_model_root_transform,

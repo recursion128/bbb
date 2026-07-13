@@ -2,9 +2,9 @@ use super::{
     humanoid_leg_swing_pose, limb_swing_at_rest, PartPose, CHICKEN_BEAK, CHICKEN_LEG, CHICKEN_RED,
     CHICKEN_WHITE, CHICKEN_WING, PART_POSE_ZERO,
 };
-use crate::entity_models::catalog::ChickenModelVariant;
 use crate::entity_models::instances::EntityModelInstance;
 use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
+use crate::entity_models::ChickenModelVariant;
 
 use std::f32::consts::FRAC_PI_2;
 

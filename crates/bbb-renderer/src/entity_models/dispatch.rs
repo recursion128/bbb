@@ -15,11 +15,11 @@
 use glam::{Mat4, Vec3};
 
 use super::catalog::{
-    BoatModelFamily, CamelModelFamily, CowModelVariant, DonkeyModelFamily, EntityCustomHeadSkull,
-    EntityDyeColor, EntityDynamicPlayerSkinAtlasLayout, EntityDynamicPlayerTextureAtlasLayout,
-    EntityModelKind, EntityModelTextureAtlasLayout, EntityPlayerSkin, HorseColorVariant,
-    HorseMarkings, IllagerModelFamily, LlamaModelFamily, LlamaVariant, PigModelVariant,
-    PiglinModelFamily, PlayerModelPartVisibility, SkeletonModelFamily, UndeadHorseModelFamily,
+    BoatModelFamily, CamelModelFamily, DonkeyModelFamily, EntityCustomHeadSkull, EntityDyeColor,
+    EntityDynamicPlayerSkinAtlasLayout, EntityDynamicPlayerTextureAtlasLayout, EntityModelKind,
+    EntityModelTextureAtlasLayout, EntityPlayerSkin, HorseColorVariant, HorseMarkings,
+    IllagerModelFamily, LlamaModelFamily, LlamaVariant, PiglinModelFamily,
+    PlayerModelPartVisibility, SkeletonModelFamily, UndeadHorseModelFamily,
     ZombieVariantModelFamily,
 };
 use super::colored::{
@@ -126,7 +126,7 @@ use super::textured::{
     zombie_villager_textured_layer_passes, EntityModelLayerKind, EntityModelLayerPass,
     EntityModelLayerRenderType, EntityModelLayerVisibility, EntityModelTexturedMeshes,
 };
-use super::WolfModelVariant;
+use super::{CowModelVariant, PigModelVariant, WolfModelVariant};
 
 fn strider_base_layer_pass(baby: bool, cold: bool) -> EntityModelLayerPass {
     EntityModelLayerPass {

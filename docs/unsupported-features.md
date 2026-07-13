@@ -163,10 +163,10 @@ Owner: `scripts/` + each generated catalog's semantic crate
   shared Tree-sitter frontend and checked-in deterministic output; ordinary
   build/test must not read local vanilla sources. Migrate each newly identified
   legacy parser as its own semantic-owner slice.
-- Consolidate the remaining known animal-variant identity catalogs for chicken,
-  cow, pig, frog, and zombie nautilus into generated renderer APIs;
-  preserve synchronized-registry holder reordering and leave typed element asset
-  payloads with the `RegistryAccess` codec owner above.
+- Consolidate the remaining known zombie-nautilus variant identity catalog into
+  a generated renderer API; preserve synchronized-registry holder reordering and
+  leave the typed element model payload with the `RegistryAccess` codec owner
+  above.
 
 ## Unknown clientbound packets in login, configuration, and play
 

@@ -13166,3 +13166,17 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   `WolfVariant.NETWORK_CODEC` authority 接受会话重排；本条保留 renderer 固定 vanilla texture
   presentation owner，不冒充 adult/baby wild/tame/angry asset payload codec。generator
   update/check、renderer/native focused tests 与 workspace gate 通过。
+
+## 2026-07-13：Generate temperature animal-variant identity catalogs
+
+- [x] bootstrap generator 交叉验证 `ChickenVariants`、`CowVariants`、`PigVariants`、
+  `FrogVariants` 四份 Tree-sitter extraction 的 `TEMPERATE/WARM/COLD` 常量、resource id 与
+  bootstrap 顺序完全一致，再由一个 generated macro 产出四个独立 typed enum/resource/fixed
+  ordinal API；普通 build 仍只消费 checked-in 生成物。
+- [x] renderer 删除四个手写 enum 并迁移 model/dispatch/layer 内部 import；native entity scene
+  删除四组 resource match、固定 id helper 及 item-model lookup 依赖，四条 dynamic path 仍各自
+  执行 session holder id → checked resource id → typed renderer variant，unknown 均回退各自的
+  TEMPERATE default。
+- [x] 四个 registry 继续按各自 `NETWORK_CODEC` 接受会话重排和 typed model/asset payload；
+  本条只统一已知 vanilla identity，不合并运行时 registry 或冒充 payload codec。generated
+  完整性/顺序/反向扫描、renderer/native focused tests、update/check 与 workspace gate 通过。

@@ -1,7 +1,7 @@
 use super::{apply_head_look, apply_quadruped_leg_swing, PartPose, PART_POSE_ZERO};
-use crate::entity_models::catalog::CowModelVariant;
 use crate::entity_models::instances::EntityModelInstance;
 use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
+use crate::entity_models::CowModelVariant;
 
 pub(in crate::entity_models) const COW_BROWN: [f32; 4] = [0.38, 0.25, 0.18, 1.0];
 pub(in crate::entity_models) const COW_COLD_FUR: [f32; 4] = [0.70, 0.66, 0.58, 1.0];

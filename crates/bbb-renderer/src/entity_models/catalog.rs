@@ -3,8 +3,9 @@ mod selection;
 use glam::Mat4;
 
 use super::{
-    BannerPatternKind, CatModelVariant, DecoratedPotPattern, VillagerModelProfession,
-    VillagerModelType, WolfModelVariant,
+    BannerPatternKind, CatModelVariant, ChickenModelVariant, CowModelVariant, DecoratedPotPattern,
+    FrogModelVariant, PigModelVariant, VillagerModelProfession, VillagerModelType,
+    WolfModelVariant,
 };
 
 pub(in crate::entity_models) use selection::{
@@ -1342,13 +1343,6 @@ impl MooshroomVariant {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ChickenModelVariant {
-    Temperate,
-    Warm,
-    Cold,
-}
-
 /// Vanilla `Parrot.Variant` (the synced `DATA_VARIANT_ID` int): the five parrot colours, sharing one
 /// `ParrotModel` and differing only by texture (`ParrotRenderer.getVariantTexture`). `RED_BLUE` is the
 /// vanilla `DEFAULT`.
@@ -1373,16 +1367,6 @@ impl ParrotModelVariant {
             _ => Self::RedBlue,
         }
     }
-}
-
-/// Vanilla `FrogVariant` (the synced `DATA_VARIANT_ID` `Holder<FrogVariant>`): the three temperature
-/// frogs, sharing one `FrogModel` and differing only by texture (`FrogRenderer.getTextureLocation`
-/// reads `state.texture` from the variant's `assetInfo`). `TEMPERATE` is the vanilla default.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum FrogModelVariant {
-    Temperate,
-    Warm,
-    Cold,
 }
 
 /// Vanilla `Fox.Variant` (the synced `DATA_TYPE_ID` int): the two fox colours, sharing one
@@ -1631,20 +1615,6 @@ impl PandaModelVariant {
             main
         }
     }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum PigModelVariant {
-    Temperate,
-    Warm,
-    Cold,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum CowModelVariant {
-    Temperate,
-    Warm,
-    Cold,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

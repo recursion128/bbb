@@ -13,6 +13,7 @@ mod instances;
 mod keyframe;
 mod model;
 mod model_layers;
+mod temperature_animal_variants;
 mod textured;
 mod villager_professions;
 mod villager_types;
@@ -127,6 +128,9 @@ pub use model_layers::{
     witch_entity_texture_refs, wither_entity_texture_refs, wither_skull_entity_texture_refs,
     wolf_entity_texture_refs, zombie_entity_texture_refs, zombie_villager_entity_texture_refs,
     SheepHeadEatPose,
+};
+pub use temperature_animal_variants::{
+    ChickenModelVariant, CowModelVariant, FrogModelVariant, PigModelVariant,
 };
 #[cfg(test)]
 use textured::{
