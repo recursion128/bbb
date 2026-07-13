@@ -34,16 +34,6 @@ pub(super) const VANILLA_VILLAGER_TYPE_KEYS: &[&str] = &[
     "minecraft:taiga",
 ];
 
-pub(super) const VANILLA_WOLF_SOUND_VARIANT_KEYS: &[&str] = &[
-    "minecraft:classic",
-    "minecraft:puglin",
-    "minecraft:sad",
-    "minecraft:angry",
-    "minecraft:grumpy",
-    "minecraft:big",
-    "minecraft:cute",
-];
-
 pub(super) const VANILLA_WOLF_VARIANT_KEYS: &[&str] = &[
     "minecraft:pale",
     "minecraft:spotted",
@@ -81,26 +71,14 @@ pub(super) const VANILLA_CAT_VARIANT_KEYS: &[&str] = &[
     "minecraft:all_black",
 ];
 
-pub(super) const VANILLA_CAT_SOUND_VARIANT_KEYS: &[&str] =
-    &["minecraft:classic", "minecraft:royal"];
-
 pub(super) const VANILLA_CHICKEN_VARIANT_KEYS: &[&str] =
     &["minecraft:temperate", "minecraft:warm", "minecraft:cold"];
-
-pub(super) const VANILLA_CHICKEN_SOUND_VARIANT_KEYS: &[&str] =
-    &["minecraft:classic", "minecraft:picky"];
 
 pub(super) const VANILLA_COW_VARIANT_KEYS: &[&str] =
     &["minecraft:temperate", "minecraft:warm", "minecraft:cold"];
 
-pub(super) const VANILLA_COW_SOUND_VARIANT_KEYS: &[&str] =
-    &["minecraft:classic", "minecraft:moody"];
-
 pub(super) const VANILLA_PIG_VARIANT_KEYS: &[&str] =
     &["minecraft:temperate", "minecraft:warm", "minecraft:cold"];
-
-pub(super) const VANILLA_PIG_SOUND_VARIANT_KEYS: &[&str] =
-    &["minecraft:classic", "minecraft:big", "minecraft:mini"];
 
 pub(super) const VANILLA_FROG_VARIANT_KEYS: &[&str] =
     &["minecraft:temperate", "minecraft:warm", "minecraft:cold"];
@@ -213,19 +191,9 @@ pub fn vanilla_cat_variant_resource_id(id: i32) -> Option<&'static str> {
     VANILLA_CAT_VARIANT_KEYS.get(index).copied()
 }
 
-pub fn vanilla_cat_sound_variant_resource_id(id: i32) -> Option<&'static str> {
-    let index = usize::try_from(id).ok()?;
-    VANILLA_CAT_SOUND_VARIANT_KEYS.get(index).copied()
-}
-
 pub fn vanilla_chicken_variant_resource_id(id: i32) -> Option<&'static str> {
     let index = usize::try_from(id).ok()?;
     VANILLA_CHICKEN_VARIANT_KEYS.get(index).copied()
-}
-
-pub fn vanilla_chicken_sound_variant_resource_id(id: i32) -> Option<&'static str> {
-    let index = usize::try_from(id).ok()?;
-    VANILLA_CHICKEN_SOUND_VARIANT_KEYS.get(index).copied()
 }
 
 pub fn vanilla_cow_variant_resource_id(id: i32) -> Option<&'static str> {
@@ -233,19 +201,9 @@ pub fn vanilla_cow_variant_resource_id(id: i32) -> Option<&'static str> {
     VANILLA_COW_VARIANT_KEYS.get(index).copied()
 }
 
-pub fn vanilla_cow_sound_variant_resource_id(id: i32) -> Option<&'static str> {
-    let index = usize::try_from(id).ok()?;
-    VANILLA_COW_SOUND_VARIANT_KEYS.get(index).copied()
-}
-
 pub fn vanilla_pig_variant_resource_id(id: i32) -> Option<&'static str> {
     let index = usize::try_from(id).ok()?;
     VANILLA_PIG_VARIANT_KEYS.get(index).copied()
-}
-
-pub fn vanilla_pig_sound_variant_resource_id(id: i32) -> Option<&'static str> {
-    let index = usize::try_from(id).ok()?;
-    VANILLA_PIG_SOUND_VARIANT_KEYS.get(index).copied()
 }
 
 pub fn vanilla_frog_variant_resource_id(id: i32) -> Option<&'static str> {
@@ -626,17 +584,12 @@ mod tests {
         let catalogs: &[(&[&str], usize)] = &[
             (VANILLA_TRIM_PATTERN_KEYS, 18),
             (VANILLA_VILLAGER_TYPE_KEYS, 7),
-            (VANILLA_WOLF_SOUND_VARIANT_KEYS, 7),
             (VANILLA_WOLF_VARIANT_KEYS, 9),
             (VANILLA_INSTRUMENT_KEYS, 8),
             (VANILLA_CAT_VARIANT_KEYS, 11),
-            (VANILLA_CAT_SOUND_VARIANT_KEYS, 2),
             (VANILLA_CHICKEN_VARIANT_KEYS, 3),
-            (VANILLA_CHICKEN_SOUND_VARIANT_KEYS, 2),
             (VANILLA_COW_VARIANT_KEYS, 3),
-            (VANILLA_COW_SOUND_VARIANT_KEYS, 2),
             (VANILLA_PIG_VARIANT_KEYS, 3),
-            (VANILLA_PIG_SOUND_VARIANT_KEYS, 3),
             (VANILLA_FROG_VARIANT_KEYS, 3),
         ];
         for (entries, expected_len) in catalogs {
@@ -687,10 +640,6 @@ mod tests {
         assert_eq!(vanilla_trim_material(11), None);
         assert_eq!(VANILLA_TRIM_PATTERN_KEYS.last(), Some(&"minecraft:bolt"));
         assert_eq!(VANILLA_VILLAGER_TYPE_KEYS.last(), Some(&"minecraft:taiga"));
-        assert_eq!(
-            VANILLA_WOLF_SOUND_VARIANT_KEYS.get(1),
-            Some(&"minecraft:puglin")
-        );
         assert_eq!(VANILLA_WOLF_VARIANT_KEYS.last(), Some(&"minecraft:striped"));
         assert_eq!(
             VANILLA_INSTRUMENT_KEYS.last(),
@@ -720,10 +669,6 @@ mod tests {
         assert_eq!(
             vanilla_cat_variant_resource_id(10),
             Some("minecraft:all_black")
-        );
-        assert_eq!(
-            vanilla_pig_sound_variant_resource_id(1),
-            Some("minecraft:big")
         );
         assert_eq!(vanilla_chicken_variant_resource_id(3), None);
     }

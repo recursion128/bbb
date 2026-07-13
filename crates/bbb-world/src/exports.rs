@@ -75,6 +75,10 @@ pub use crate::entities::{
     VANILLA_FURNACE_MINECART_FUEL_DATA_ID, VANILLA_HOPPER_MINECART_DEFAULT_DISPLAY_OFFSET,
 };
 pub use crate::entities::{
+    CatSoundVariantIdentity, ChickenSoundVariantIdentity, CowSoundVariantIdentity,
+    PigSoundVariantIdentity, WolfSoundVariantIdentity,
+};
+pub use crate::entities::{
     VANILLA_ABSTRACT_ARROW_DEFAULT_FLAGS, VANILLA_ABSTRACT_ARROW_DEFAULT_IN_GROUND,
     VANILLA_ABSTRACT_ARROW_DEFAULT_PIERCE_LEVEL, VANILLA_ABSTRACT_ARROW_FLAGS_DATA_ID,
     VANILLA_ABSTRACT_ARROW_FLAG_CRIT, VANILLA_ABSTRACT_ARROW_FLAG_NO_PHYSICS,

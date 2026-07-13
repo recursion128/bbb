@@ -13193,3 +13193,16 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   `ZombieNautilusVariant.NETWORK_CODEC` 接受会话重排；本条只统一已知 vanilla identity，元素的
   `modelAndTexture(model, texture)` 仍归 typed `RegistryAccess` codec TODO。generator
   update/check、renderer/native focused tests 与 workspace gate 通过。
+
+## 2026-07-13：Generate animal sound-variant identity catalogs
+
+- [x] bootstrap generator 复用五份 Tree-sitter `*SoundVariants.java` extraction，在
+  `bbb-world::entities` 生成 cat/chicken/cow/pig/wolf 五个独立 typed identity API，严格保留
+  各自 bootstrap 顺序（包括 pig 的 `CLASSIC/BIG/MINI`）并生成完整性/唯一性/边界测试。
+- [x] native debug entity NBT 的五条 sound holder 路径改为 session registry id → checked
+  resource id，缺少会话 registry 时才走 generated vanilla ordinal；named item-component fallback
+  也消费 typed API。item-model 删除五组错位的公开 lookup、checked-in array 和 wolf 专用 helper。
+- [x] 五个 registry 继续遵循 `RegistryDataLoader.SYNCHRONIZED_REGISTRIES` 的实际 codec
+  authority（cow/chicken 在同步列表使用 `DIRECT_CODEC`，其余使用 `NETWORK_CODEC`）；本片不冒充
+  adult/baby SoundEvent holder element codec。generated 反向扫描、world/item-model/native focused
+  tests、update/check 与 workspace gate 通过。

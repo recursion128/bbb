@@ -25,6 +25,7 @@ mod movement;
 mod passengers;
 mod projectiles;
 mod schema;
+mod sound_variants;
 pub(crate) mod state;
 mod status;
 mod store;
@@ -386,6 +387,10 @@ pub use schema::{
     VANILLA_ZOMBIE_BABY_DATA_ID, VANILLA_ZOMBIE_DEFAULT_BABY,
     VANILLA_ZOMBIE_DEFAULT_DROWNED_CONVERSION, VANILLA_ZOMBIE_DEFAULT_SPECIAL_TYPE,
     VANILLA_ZOMBIE_DROWNED_CONVERSION_DATA_ID, VANILLA_ZOMBIE_SPECIAL_TYPE_DATA_ID,
+};
+pub use sound_variants::{
+    CatSoundVariantIdentity, ChickenSoundVariantIdentity, CowSoundVariantIdentity,
+    PigSoundVariantIdentity, WolfSoundVariantIdentity,
 };
 use status::{EntityDamageEventState, MobEffectState};
 pub(crate) use store::EntityStore;

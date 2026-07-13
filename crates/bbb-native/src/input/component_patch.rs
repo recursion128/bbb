@@ -1667,25 +1667,29 @@ fn encode_named_variant(
             vanilla_wolf_variant_resource_id(patch.wolf_variant_id?)?
         }
         component_id::VANILLA_DATA_COMPONENT_WOLF_SOUND_VARIANT_TYPE_ID => {
-            vanilla_wolf_sound_variant_resource_id(patch.wolf_sound_variant_id?)?
+            WolfSoundVariantIdentity::for_vanilla_registry_id(patch.wolf_sound_variant_id?)?
+                .resource_id()
         }
         component_id::VANILLA_DATA_COMPONENT_PIG_VARIANT_TYPE_ID => {
             pig_variant_resource_id(patch.pig_variant_id?)?
         }
         component_id::VANILLA_DATA_COMPONENT_PIG_SOUND_VARIANT_TYPE_ID => {
-            pig_sound_variant_resource_id(patch.pig_sound_variant_id?)?
+            PigSoundVariantIdentity::for_vanilla_registry_id(patch.pig_sound_variant_id?)?
+                .resource_id()
         }
         component_id::VANILLA_DATA_COMPONENT_COW_VARIANT_TYPE_ID => {
             cow_variant_resource_id(patch.cow_variant_id?)?
         }
         component_id::VANILLA_DATA_COMPONENT_COW_SOUND_VARIANT_TYPE_ID => {
-            cow_sound_variant_resource_id(patch.cow_sound_variant_id?)?
+            CowSoundVariantIdentity::for_vanilla_registry_id(patch.cow_sound_variant_id?)?
+                .resource_id()
         }
         component_id::VANILLA_DATA_COMPONENT_CHICKEN_VARIANT_TYPE_ID => {
             chicken_variant_resource_id(patch.chicken_variant_id?)?
         }
         component_id::VANILLA_DATA_COMPONENT_CHICKEN_SOUND_VARIANT_TYPE_ID => {
-            chicken_sound_variant_resource_id(patch.chicken_sound_variant_id?)?
+            ChickenSoundVariantIdentity::for_vanilla_registry_id(patch.chicken_sound_variant_id?)?
+                .resource_id()
         }
         component_id::VANILLA_DATA_COMPONENT_ZOMBIE_NAUTILUS_VARIANT_TYPE_ID => {
             ZombieNautilusModelVariant::for_vanilla_registry_id(patch.zombie_nautilus_variant_id?)?
@@ -1698,7 +1702,8 @@ fn encode_named_variant(
             cat_variant_resource_id(patch.cat_variant_id?)?
         }
         component_id::VANILLA_DATA_COMPONENT_CAT_SOUND_VARIANT_TYPE_ID => {
-            cat_sound_variant_resource_id(patch.cat_sound_variant_id?)?
+            CatSoundVariantIdentity::for_vanilla_registry_id(patch.cat_sound_variant_id?)?
+                .resource_id()
         }
         _ => return None,
     };

@@ -331,21 +331,21 @@ use crate::entity_scene::{WITHER_SKULL_DANGEROUS_DATA_ID, WITHER_SKULL_DEFAULT_D
 use crate::terrain_runtime::TerrainUploadState;
 use bbb_item_model::{
     vanilla_attribute_resource_id, vanilla_banner_pattern_resource_id,
-    vanilla_cat_sound_variant_resource_id as cat_sound_variant_resource_id,
     vanilla_cat_variant_resource_id as cat_variant_resource_id,
-    vanilla_chicken_sound_variant_resource_id as chicken_sound_variant_resource_id,
     vanilla_chicken_variant_resource_id as chicken_variant_resource_id,
-    vanilla_cow_sound_variant_resource_id as cow_sound_variant_resource_id,
     vanilla_cow_variant_resource_id as cow_variant_resource_id, vanilla_enchantment_resource_id,
     vanilla_frog_variant_resource_id as frog_variant_resource_id, vanilla_instrument_resource_id,
     vanilla_mob_effect_resource_id, vanilla_painting_variant_resource_id,
-    vanilla_pig_sound_variant_resource_id as pig_sound_variant_resource_id,
     vanilla_pig_variant_resource_id as pig_variant_resource_id, vanilla_potion_resource_id,
     vanilla_trim_material_resource_id, vanilla_trim_pattern_resource_id,
-    vanilla_villager_type_resource_id, vanilla_wolf_sound_variant_resource_id,
-    vanilla_wolf_variant_resource_id, ItemModelKeybindContext, NativeItemRuntime,
+    vanilla_villager_type_resource_id, vanilla_wolf_variant_resource_id, ItemModelKeybindContext,
+    NativeItemRuntime,
 };
 use bbb_renderer::ZombieNautilusModelVariant;
+use bbb_world::{
+    CatSoundVariantIdentity, ChickenSoundVariantIdentity, CowSoundVariantIdentity,
+    PigSoundVariantIdentity, WolfSoundVariantIdentity,
+};
 use bbb_world::{
     VANILLA_ABSTRACT_FISH_DEFAULT_FROM_BUCKET as ABSTRACT_FISH_DEFAULT_FROM_BUCKET,
     VANILLA_ABSTRACT_FISH_FROM_BUCKET_DATA_ID as ABSTRACT_FISH_FROM_BUCKET_DATA_ID,
@@ -4221,13 +4221,13 @@ fn debug_push_entity_additional_save_data(
             debug_push_ageable_mob_additional_save_data(entity, fields);
             debug_push_animal_additional_save_data(fields);
             debug_push_tamable_animal_additional_save_data(entity, fields);
-            debug_push_cat_additional_save_data(entity, fields);
+            debug_push_cat_additional_save_data(world, entity, fields);
         }
         VANILLA_ENTITY_TYPE_CHICKEN_ID => {
             debug_push_mob_additional_save_data(world, entity, fields);
             debug_push_ageable_mob_additional_save_data(entity, fields);
             debug_push_animal_additional_save_data(fields);
-            debug_push_chicken_additional_save_data(entity, fields);
+            debug_push_chicken_additional_save_data(world, entity, fields);
         }
         VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID => {
             debug_push_mob_additional_save_data(world, entity, fields);
@@ -4269,7 +4269,7 @@ fn debug_push_entity_additional_save_data(
             debug_push_mob_additional_save_data(world, entity, fields);
             debug_push_ageable_mob_additional_save_data(entity, fields);
             debug_push_animal_additional_save_data(fields);
-            debug_push_cow_additional_save_data(entity, fields);
+            debug_push_cow_additional_save_data(world, entity, fields);
         }
         VANILLA_ENTITY_TYPE_MOOSHROOM_ID => {
             debug_push_mob_additional_save_data(world, entity, fields);
@@ -4511,7 +4511,7 @@ fn debug_push_entity_additional_save_data(
             debug_push_mob_additional_save_data(world, entity, fields);
             debug_push_ageable_mob_additional_save_data(entity, fields);
             debug_push_animal_additional_save_data(fields);
-            debug_push_pig_additional_save_data(entity, fields);
+            debug_push_pig_additional_save_data(world, entity, fields);
         }
         VANILLA_ENTITY_TYPE_PIGLIN_ID => {
             debug_push_mob_additional_save_data(world, entity, fields);
@@ -4612,7 +4612,7 @@ fn debug_push_entity_additional_save_data(
             debug_push_ageable_mob_additional_save_data(entity, fields);
             debug_push_animal_additional_save_data(fields);
             debug_push_tamable_animal_additional_save_data(entity, fields);
-            debug_push_wolf_additional_save_data(entity, fields);
+            debug_push_wolf_additional_save_data(world, entity, fields);
         }
         VANILLA_ENTITY_TYPE_WITHER_ID => {
             debug_push_mob_additional_save_data(world, entity, fields);
@@ -6249,7 +6249,24 @@ fn debug_push_tamable_animal_additional_save_data(entity: &EntityState, fields: 
     ));
 }
 
-fn debug_push_cat_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
+fn debug_registry_resource_id<'a>(
+    world: &'a WorldStore,
+    registry: &str,
+    id: i32,
+    vanilla_resource_id: impl FnOnce(i32) -> Option<&'static str>,
+) -> Option<&'a str> {
+    if world.registry_content(registry).is_some() {
+        world.registry_resource_id_by_holder_id(registry, id)
+    } else {
+        vanilla_resource_id(id)
+    }
+}
+
+fn debug_push_cat_additional_save_data(
+    world: &WorldStore,
+    entity: &EntityState,
+    fields: &mut Vec<String>,
+) {
     let variant = debug_entity_data_registry_id_present(
         entity,
         CAT_VARIANT_DATA_ID,
@@ -6262,7 +6279,12 @@ fn debug_push_cat_additional_save_data(entity: &EntityState, fields: &mut Vec<St
         CAT_SOUND_VARIANT_DATA_ID,
         EntityDataRegistryHolder::CatSoundVariant,
     )
-    .and_then(cat_sound_variant_resource_id)
+    .and_then(|id| {
+        debug_registry_resource_id(world, "minecraft:cat_sound_variant", id, |id| {
+            CatSoundVariantIdentity::for_vanilla_registry_id(id)
+                .map(CatSoundVariantIdentity::resource_id)
+        })
+    })
     .unwrap_or(CAT_DEFAULT_SOUND_VARIANT_RESOURCE_ID);
     let collar_color = debug_entity_data_int_present(entity, CAT_COLLAR_COLOR_DATA_ID)
         .map(debug_dye_color_legacy_save_id)
@@ -6312,7 +6334,11 @@ fn debug_fox_variant_name(variant: i32) -> &'static str {
     }
 }
 
-fn debug_push_wolf_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
+fn debug_push_wolf_additional_save_data(
+    world: &WorldStore,
+    entity: &EntityState,
+    fields: &mut Vec<String>,
+) {
     let collar_color = debug_entity_data_int_present(entity, WOLF_COLLAR_COLOR_DATA_ID)
         .map(debug_dye_color_legacy_save_id)
         .unwrap_or(WOLF_DEFAULT_COLLAR_COLOR_ID);
@@ -6330,7 +6356,12 @@ fn debug_push_wolf_additional_save_data(entity: &EntityState, fields: &mut Vec<S
         WOLF_SOUND_VARIANT_DATA_ID,
         EntityDataRegistryHolder::WolfSoundVariant,
     )
-    .and_then(vanilla_wolf_sound_variant_resource_id)
+    .and_then(|id| {
+        debug_registry_resource_id(world, "minecraft:wolf_sound_variant", id, |id| {
+            WolfSoundVariantIdentity::for_vanilla_registry_id(id)
+                .map(WolfSoundVariantIdentity::resource_id)
+        })
+    })
     .unwrap_or(WOLF_DEFAULT_SOUND_VARIANT_RESOURCE_ID);
     fields.push(format!("CollarColor: {collar_color}b"));
     fields.push(format!("variant: {}", debug_snbt_string(variant)));
@@ -6352,12 +6383,10 @@ fn debug_push_zombie_nautilus_additional_save_data(
         EntityDataRegistryHolder::ZombieNautilusVariant,
     )
     .and_then(|id| {
-        world
-            .registry_resource_id_by_holder_id("minecraft:zombie_nautilus_variant", id)
-            .or_else(|| {
-                ZombieNautilusModelVariant::for_vanilla_registry_id(id)
-                    .map(ZombieNautilusModelVariant::resource_id)
-            })
+        debug_registry_resource_id(world, "minecraft:zombie_nautilus_variant", id, |id| {
+            ZombieNautilusModelVariant::for_vanilla_registry_id(id)
+                .map(ZombieNautilusModelVariant::resource_id)
+        })
     })
     .unwrap_or(ZOMBIE_NAUTILUS_DEFAULT_VARIANT_RESOURCE_ID);
     fields.push(format!("variant: {}", debug_snbt_string(variant)));
@@ -6443,7 +6472,11 @@ fn debug_push_abstract_fish_additional_save_data(entity: &EntityState, fields: &
     fields.push(format!("FromBucket: {}", debug_snbt_bool(from_bucket)));
 }
 
-fn debug_push_chicken_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
+fn debug_push_chicken_additional_save_data(
+    world: &WorldStore,
+    entity: &EntityState,
+    fields: &mut Vec<String>,
+) {
     let variant = debug_entity_data_registry_id_present(
         entity,
         CHICKEN_VARIANT_DATA_ID,
@@ -6456,7 +6489,12 @@ fn debug_push_chicken_additional_save_data(entity: &EntityState, fields: &mut Ve
         CHICKEN_SOUND_VARIANT_DATA_ID,
         EntityDataRegistryHolder::ChickenSoundVariant,
     )
-    .and_then(chicken_sound_variant_resource_id)
+    .and_then(|id| {
+        debug_registry_resource_id(world, "minecraft:chicken_sound_variant", id, |id| {
+            ChickenSoundVariantIdentity::for_vanilla_registry_id(id)
+                .map(ChickenSoundVariantIdentity::resource_id)
+        })
+    })
     .unwrap_or(CHICKEN_DEFAULT_SOUND_VARIANT_RESOURCE_ID);
     fields.push(format!("variant: {}", debug_snbt_string(variant)));
     fields.push(format!(
@@ -6465,7 +6503,11 @@ fn debug_push_chicken_additional_save_data(entity: &EntityState, fields: &mut Ve
     ));
 }
 
-fn debug_push_cow_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
+fn debug_push_cow_additional_save_data(
+    world: &WorldStore,
+    entity: &EntityState,
+    fields: &mut Vec<String>,
+) {
     let variant = debug_entity_data_registry_id_present(
         entity,
         COW_VARIANT_DATA_ID,
@@ -6478,7 +6520,12 @@ fn debug_push_cow_additional_save_data(entity: &EntityState, fields: &mut Vec<St
         COW_SOUND_VARIANT_DATA_ID,
         EntityDataRegistryHolder::CowSoundVariant,
     )
-    .and_then(cow_sound_variant_resource_id)
+    .and_then(|id| {
+        debug_registry_resource_id(world, "minecraft:cow_sound_variant", id, |id| {
+            CowSoundVariantIdentity::for_vanilla_registry_id(id)
+                .map(CowSoundVariantIdentity::resource_id)
+        })
+    })
     .unwrap_or(COW_DEFAULT_SOUND_VARIANT_RESOURCE_ID);
     fields.push(format!("variant: {}", debug_snbt_string(variant)));
     fields.push(format!(
@@ -6764,7 +6811,11 @@ fn debug_push_phantom_additional_save_data(entity: &EntityState, fields: &mut Ve
     fields.push(format!("size: {size}"));
 }
 
-fn debug_push_pig_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
+fn debug_push_pig_additional_save_data(
+    world: &WorldStore,
+    entity: &EntityState,
+    fields: &mut Vec<String>,
+) {
     let variant = debug_entity_data_registry_id_present(
         entity,
         PIG_VARIANT_DATA_ID,
@@ -6777,7 +6828,12 @@ fn debug_push_pig_additional_save_data(entity: &EntityState, fields: &mut Vec<St
         PIG_SOUND_VARIANT_DATA_ID,
         EntityDataRegistryHolder::PigSoundVariant,
     )
-    .and_then(pig_sound_variant_resource_id)
+    .and_then(|id| {
+        debug_registry_resource_id(world, "minecraft:pig_sound_variant", id, |id| {
+            PigSoundVariantIdentity::for_vanilla_registry_id(id)
+                .map(PigSoundVariantIdentity::resource_id)
+        })
+    })
     .unwrap_or(PIG_DEFAULT_SOUND_VARIANT_RESOURCE_ID);
     fields.push(format!("variant: {}", debug_snbt_string(variant)));
     fields.push(format!(

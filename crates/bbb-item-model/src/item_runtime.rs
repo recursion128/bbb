@@ -74,10 +74,8 @@ mod potion_catalog;
 mod profile_skin;
 
 pub use bootstrap_catalog::{
-    vanilla_cat_sound_variant_resource_id, vanilla_cat_variant_resource_id,
-    vanilla_chicken_sound_variant_resource_id, vanilla_chicken_variant_resource_id,
-    vanilla_cow_sound_variant_resource_id, vanilla_cow_variant_resource_id,
-    vanilla_frog_variant_resource_id, vanilla_pig_sound_variant_resource_id,
+    vanilla_cat_variant_resource_id, vanilla_chicken_variant_resource_id,
+    vanilla_cow_variant_resource_id, vanilla_frog_variant_resource_id,
     vanilla_pig_variant_resource_id,
 };
 
@@ -87,8 +85,7 @@ use icon_model::{
     ItemIconModel, ItemIconModelRef, TimeSource,
 };
 pub use icon_model::{
-    vanilla_potion_resource_id, vanilla_villager_type_resource_id,
-    vanilla_wolf_sound_variant_resource_id, vanilla_wolf_variant_resource_id,
+    vanilla_potion_resource_id, vanilla_villager_type_resource_id, vanilla_wolf_variant_resource_id,
 };
 pub use profile_skin::default_player_skin_for_profile_id;
 use profile_skin::ProfileSkinCache;
