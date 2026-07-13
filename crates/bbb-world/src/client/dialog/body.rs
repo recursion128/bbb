@@ -6,7 +6,7 @@ use bbb_protocol::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::registries::normalize_codec_identifier;
+use crate::{registries::normalize_codec_identifier, RegistrySet};
 
 use super::{
     compound_entries, decode_component, find_entry, optional_bool, optional_i32, required_entry,
@@ -69,15 +69,20 @@ pub struct DialogDataComponentPatchEntryState {
 
 pub(super) fn decode_dialog_bodies(
     values: &[NbtSummaryValue],
+    registries: Option<&RegistrySet>,
 ) -> Result<Vec<DialogBodyState>, String> {
     values
         .iter()
         .enumerate()
-        .map(|(index, value)| decode_dialog_body(value, index))
+        .map(|(index, value)| decode_dialog_body(value, index, registries))
         .collect()
 }
 
-fn decode_dialog_body(value: &NbtSummaryValue, index: usize) -> Result<DialogBodyState, String> {
+fn decode_dialog_body(
+    value: &NbtSummaryValue,
+    index: usize,
+    registries: Option<&RegistrySet>,
+) -> Result<DialogBodyState, String> {
     let what = format!("dialog body[{index}]");
     let entries = compound_entries(value, &what)?;
     match required_string(entries, "type", &what)? {
@@ -90,7 +95,10 @@ fn decode_dialog_body(value: &NbtSummaryValue, index: usize) -> Result<DialogBod
             let height = optional_i32(entries, "height", 16, "item dialog body")?;
             validate_range(height, 1, 256, "item dialog body height")?;
             Ok(DialogBodyState::Item {
-                item: decode_item_stack_template(required_entry(entries, "item", &what)?)?,
+                item: decode_item_stack_template(
+                    required_entry(entries, "item", &what)?,
+                    registries,
+                )?,
                 description: find_entry(entries, "description")
                     .map(decode_plain_message)
                     .transpose()?,
@@ -133,6 +141,7 @@ fn decode_plain_message_map(
 
 fn decode_item_stack_template(
     value: &NbtSummaryValue,
+    registries: Option<&RegistrySet>,
 ) -> Result<DialogItemStackTemplateState, String> {
     match value {
         NbtSummaryValue::String(resource_id) => Ok(DialogItemStackTemplateState {
@@ -151,7 +160,10 @@ fn decode_item_stack_template(
             validate_range(count, 1, 99, "dialog item stack template count")?;
             let (components, component_data) = find_entry(entries, "components")
                 .map(|components| {
-                    Ok::<_, String>((components.clone(), decode_data_component_patch(components)?))
+                    Ok::<_, String>((
+                        components.clone(),
+                        decode_data_component_patch(components, registries)?,
+                    ))
                 })
                 .transpose()?
                 .map_or((None, None), |(components, component_data)| {
@@ -170,6 +182,7 @@ fn decode_item_stack_template(
 
 fn decode_data_component_patch(
     value: &NbtSummaryValue,
+    registries: Option<&RegistrySet>,
 ) -> Result<DialogDataComponentPatchState, String> {
     let entries = compound_entries(value, "dialog item stack template components")?;
     let mut decoded_entries: Vec<DialogDataComponentPatchEntryState> = Vec::new();
@@ -198,7 +211,12 @@ fn decode_data_component_patch(
         let value_data = if removed {
             None
         } else {
-            decode_supported_component_value(component_type.type_id, &resource_id, &entry.value)?
+            decode_supported_component_value(
+                component_type.type_id,
+                &resource_id,
+                &entry.value,
+                registries,
+            )?
         };
         let decoded = DialogDataComponentPatchEntryState {
             type_id: component_type.type_id,
@@ -248,6 +266,16 @@ fn validate_range(value: i32, min: i32, max: i32, what: &str) -> Result<(), Stri
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn decode_dialog_bodies(values: &[NbtSummaryValue]) -> Result<Vec<DialogBodyState>, String> {
+        super::decode_dialog_bodies(values, Some(&RegistrySet::default()))
+    }
+
+    fn decode_data_component_patch(
+        value: &NbtSummaryValue,
+    ) -> Result<DialogDataComponentPatchState, String> {
+        super::decode_data_component_patch(value, Some(&RegistrySet::default()))
+    }
 
     #[test]
     fn decodes_plain_message_contents_and_width() {

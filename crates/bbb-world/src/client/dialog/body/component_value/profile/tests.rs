@@ -3,6 +3,8 @@ use bbb_protocol::packets::inventory::{
     ProfileSkinTextureSummary, ProfileTextureSummary, ProfileTexturesSummary,
 };
 
+use crate::RegistrySet;
+
 use super::*;
 
 const SLIM_TEXTURES_PROPERTY: &str = "eyJ0aW1lc3RhbXAiOjEsInByb2ZpbGVJZCI6IjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzg5YWJjZGVmIiwicHJvZmlsZU5hbWUiOiJBbGV4IiwidGV4dHVyZXMiOnsiU0tJTiI6eyJ1cmwiOiJodHRwczovL3RleHR1cmVzLm1pbmVjcmFmdC5uZXQvdGV4dHVyZS9za2luaGFzaCIsIm1ldGFkYXRhIjp7Im1vZGVsIjoic2xpbSJ9fSwiQ0FQRSI6eyJ1cmwiOiJodHRwczovL3RleHR1cmVzLm1pbmVjcmFmdC5uZXQvdGV4dHVyZS9jYXBlaGFzaCJ9LCJFTFlUUkEiOnsidXJsIjoiaHR0cHM6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvZWx5dHJhaGFzaCJ9fX0=";
@@ -30,6 +32,7 @@ fn decodes_string_partial_and_full_profile_records() {
             VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID,
             "minecraft:profile",
             &NbtSummaryValue::String("Player_1".to_string()),
+            Some(&RegistrySet::default()),
         )
         .unwrap(),
         Some(super::super::DialogDataComponentValueState::Profile { profile: partial })

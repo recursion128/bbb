@@ -232,7 +232,7 @@ fn decode_dialog_data_inner(
     }
     let entries = compound_entries(dialog, "dialog root")?;
     let dialog_type = required_string(entries, "type", "dialog")?;
-    let common = decode_common_dialog_data(entries)?;
+    let common = decode_common_dialog_data(entries, registries)?;
     match dialog_type {
         "notice" | "minecraft:notice" => Ok(DialogDataState::Notice {
             common,
@@ -454,7 +454,8 @@ fn decode_referenced_dialog_entry(
             ))
         }
     };
-    let common = decode_common_dialog_data(compound_entries(&dialog, "dialog root")?)?;
+    let common =
+        decode_common_dialog_data(compound_entries(&dialog, "dialog root")?, Some(registries))?;
     Ok(DialogListEntryState {
         holder_kind: "reference".to_string(),
         registry_id: Some(holder_id),
@@ -478,7 +479,10 @@ fn dialog_external_title(data: &DialogDataState) -> DialogTextState {
         .unwrap_or_else(|| common.title.clone())
 }
 
-fn decode_common_dialog_data(entries: &[NbtSummaryEntry]) -> Result<CommonDialogDataState, String> {
+fn decode_common_dialog_data(
+    entries: &[NbtSummaryEntry],
+    registries: Option<&RegistrySet>,
+) -> Result<CommonDialogDataState, String> {
     let title = decode_component(
         required_entry(entries, "title", "common dialog data")?,
         "dialog title",
@@ -504,7 +508,7 @@ fn decode_common_dialog_data(entries: &[NbtSummaryEntry]) -> Result<CommonDialog
         Some(value) => vec![value.clone()],
     };
     let inputs = optional_list(entries, "inputs", "dialog inputs")?;
-    let body_data = body::decode_dialog_bodies(&body)?;
+    let body_data = body::decode_dialog_bodies(&body, registries)?;
     let input_data = input::decode_dialog_inputs(&inputs)?;
     Ok(CommonDialogDataState {
         title,
@@ -772,6 +776,59 @@ mod tests {
             common.input_data[0].control,
             DialogInputControlState::Boolean { initial: true, .. }
         ));
+    }
+
+    #[test]
+    fn projects_repairable_item_component_with_dialog_registry_context() {
+        let dialog = compound(vec![
+            string_entry("type", "minecraft:notice"),
+            value_entry("title", NbtSummaryValue::String("Repair".to_string())),
+            value_entry(
+                "body",
+                compound(vec![
+                    string_entry("type", "minecraft:item"),
+                    value_entry(
+                        "item",
+                        compound(vec![
+                            string_entry("id", "stone"),
+                            value_entry(
+                                "components",
+                                compound(vec![value_entry(
+                                    "repairable",
+                                    compound(vec![string_entry("items", "diamond")]),
+                                )]),
+                            ),
+                        ]),
+                    ),
+                ]),
+            ),
+        ]);
+
+        let data = decode_test_dialog(&dialog).unwrap();
+        let DialogDataState::Notice { common, .. } = data else {
+            panic!("expected notice dialog");
+        };
+        let [DialogBodyState::Item { item, .. }] = common.body_data.as_slice() else {
+            panic!("expected item dialog body");
+        };
+        let [DialogDataComponentPatchEntryState {
+            value_data: Some(DialogDataComponentValueState::Repairable { items }),
+            ..
+        }] = item.component_data.as_ref().unwrap().entries.as_slice()
+        else {
+            panic!("expected typed repairable component");
+        };
+        assert_eq!(items.holder_set_kind, "direct");
+        assert_eq!(items.entries.len(), 1);
+        assert_eq!(items.entries[0].resource_id, "minecraft:diamond");
+
+        let context_free = DialogState::context_free(dialog.clone());
+        assert_eq!(context_free.dialog, Some(dialog));
+        assert!(context_free
+            .semantic_error
+            .as_deref()
+            .unwrap()
+            .contains("without registry context"));
     }
 
     #[test]

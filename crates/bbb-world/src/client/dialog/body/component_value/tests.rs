@@ -1363,7 +1363,7 @@ fn decoded(
     resource_id: &str,
     value: &NbtSummaryValue,
 ) -> Result<Option<DialogDataComponentValueState>, String> {
-    decode_supported_component_value(type_id, resource_id, value)
+    decode_supported_component_value(type_id, resource_id, value, Some(&RegistrySet::default()))
 }
 
 fn compound(entries: Vec<NbtSummaryEntry>) -> NbtSummaryValue {

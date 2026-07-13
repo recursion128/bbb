@@ -30,8 +30,8 @@ use bbb_protocol::{
         VANILLA_DATA_COMPONENT_OMINOUS_BOTTLE_AMPLIFIER_TYPE_ID,
         VANILLA_DATA_COMPONENT_POTION_DURATION_SCALE_TYPE_ID,
         VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID, VANILLA_DATA_COMPONENT_RARITY_TYPE_ID,
-        VANILLA_DATA_COMPONENT_RECIPES_TYPE_ID, VANILLA_DATA_COMPONENT_REPAIR_COST_TYPE_ID,
-        VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID,
+        VANILLA_DATA_COMPONENT_RECIPES_TYPE_ID, VANILLA_DATA_COMPONENT_REPAIRABLE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_REPAIR_COST_TYPE_ID, VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID,
         VANILLA_DATA_COMPONENT_TOOLTIP_DISPLAY_TYPE_ID,
         VANILLA_DATA_COMPONENT_TOOLTIP_STYLE_TYPE_ID,
         VANILLA_DATA_COMPONENT_TROPICAL_FISH_PATTERN_TYPE_ID,
@@ -43,12 +43,14 @@ use bbb_protocol::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::registries::normalize_codec_identifier;
+use crate::{registries::normalize_codec_identifier, RegistrySet};
 
 use super::super::{compound_entries, find_entry};
 
+mod holder_set;
 mod profile;
 
+use holder_set::{decode_registry_holder_set, DialogRegistryHolderSetState};
 use profile::decode_profile;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -158,6 +160,9 @@ pub enum DialogDataComponentValueState {
     Profile {
         profile: ResolvableProfileSummary,
     },
+    Repairable {
+        items: DialogRegistryHolderSetState,
+    },
 }
 
 impl DialogDataComponentValueState {
@@ -173,6 +178,7 @@ pub(super) fn decode_supported_component_value(
     type_id: i32,
     resource_id: &str,
     value: &NbtSummaryValue,
+    registries: Option<&RegistrySet>,
 ) -> Result<Option<DialogDataComponentValueState>, String> {
     let what = format!("dialog item component {resource_id}");
     let decoded = match type_id {
@@ -265,11 +271,25 @@ pub(super) fn decode_supported_component_value(
         VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID => DialogDataComponentValueState::Profile {
             profile: decode_profile(value, &what)?,
         },
+        VANILLA_DATA_COMPONENT_REPAIRABLE_TYPE_ID => decode_repairable(value, registries, &what)?,
         _ => {
             return decode_string_enum_component_value(type_id, &what, value);
         }
     };
     Ok(Some(decoded))
+}
+
+fn decode_repairable(
+    value: &NbtSummaryValue,
+    registries: Option<&RegistrySet>,
+    what: &str,
+) -> Result<DialogDataComponentValueState, String> {
+    let entries = compound_entries(value, what)?;
+    let items =
+        find_entry(entries, "items").ok_or_else(|| format!("{what} is missing field items"))?;
+    Ok(DialogDataComponentValueState::Repairable {
+        items: decode_registry_holder_set(items, "minecraft:item", registries, what)?,
+    })
 }
 
 fn decode_string_enum_component_value(

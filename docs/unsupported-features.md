@@ -553,7 +553,7 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   damage-type-named-holder (fixed vanilla bootstrap catalog is generated;
   dynamic-registry remapping remains)/
   piercing-weapon/kinetic-weapon/
-  repairable/use-effects/use-remainder/
+  use-effects/use-remainder/
   use-cooldown/tooltip-display/attack-range/
   swing-animation/resource/color (including dye/base-color)/map/ominous/firework/custom-model-data/
   codec-backed-NBT (map-decorations/debug-stick/entity-data/bucket-data/block-entity-data/
