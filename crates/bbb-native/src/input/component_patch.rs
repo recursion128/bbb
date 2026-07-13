@@ -1336,9 +1336,10 @@ fn encode_provides_trim_material(
     if patch.provides_trim_material_direct.is_some() {
         return None;
     }
-    Some(debug_snbt_string(vanilla_trim_material_resource_id(
-        patch.provides_trim_material_id?,
-    )?))
+    Some(debug_snbt_string(
+        VanillaTrimMaterialIdentity::for_vanilla_registry_id(patch.provides_trim_material_id?)?
+            .resource_id(),
+    ))
 }
 
 fn encode_charged_projectiles(
@@ -1479,7 +1480,9 @@ fn encode_armor_trim(
     if patch.armor_trim_material_direct.is_some() || patch.armor_trim_pattern_direct.is_some() {
         return None;
     }
-    let material = vanilla_trim_material_resource_id(patch.armor_trim_material_id?)?;
+    let material =
+        VanillaTrimMaterialIdentity::for_vanilla_registry_id(patch.armor_trim_material_id?)?
+            .resource_id();
     let pattern =
         VanillaTrimPatternIdentity::for_vanilla_registry_id(patch.armor_trim_pattern_id?)?
             .resource_id();

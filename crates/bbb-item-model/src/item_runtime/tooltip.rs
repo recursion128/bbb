@@ -29,17 +29,13 @@ use bbb_world::{
     vanilla_painting_variant as world_painting_variant,
     vanilla_painting_variant_resource_id as world_painting_variant_resource_id,
     EnchantmentAttributeModifier, RegistrySet, VanillaInstrumentIdentity, VanillaPaintingVariant,
-    VanillaTrimPatternIdentity,
+    VanillaTrimMaterialIdentity, VanillaTrimPatternIdentity,
 };
 
 use super::attributes::{
     vanilla_attribute, vanilla_attribute_for_key, VanillaAttribute, VanillaAttributeSentiment,
 };
-#[cfg(test)]
-use super::bootstrap_catalog::VANILLA_TRIM_MATERIALS;
-use super::bootstrap_catalog::{
-    vanilla_trim_material, VANILLA_ENCHANTMENTS, VANILLA_ENCHANTMENT_TOOLTIP_ORDER,
-};
+use super::bootstrap_catalog::{VANILLA_ENCHANTMENTS, VANILLA_ENCHANTMENT_TOOLTIP_ORDER};
 use super::icon_model::effective_attribute_modifiers;
 use super::mob_effects::{
     vanilla_mob_effect_attribute_modifiers, vanilla_mob_effect_category, vanilla_mob_effect_key,
@@ -1197,9 +1193,9 @@ mod tests {
     #[test]
     fn vanilla_trim_catalog_follows_26_1_bootstrap_order() {
         assert_eq!(
-            VANILLA_TRIM_MATERIALS
-                .iter()
-                .map(|entry| entry.resource_id)
+            (0..11)
+                .filter_map(VanillaTrimMaterialIdentity::for_vanilla_registry_id)
+                .map(VanillaTrimMaterialIdentity::resource_id)
                 .collect::<Vec<_>>(),
             &[
                 "minecraft:quartz",
@@ -1216,9 +1212,9 @@ mod tests {
             ]
         );
         assert_eq!(
-            VANILLA_TRIM_MATERIALS
-                .iter()
-                .map(|entry| entry.description_color)
+            (0..11)
+                .filter_map(VanillaTrimMaterialIdentity::for_vanilla_registry_id)
+                .map(VanillaTrimMaterialIdentity::description_color)
                 .collect::<Vec<_>>(),
             &[
                 0xE3_D4_C4, 0xEC_EC_EC, 0x62_58_59, 0x97_16_07, 0xB4_68_4D, 0xDE_B1_2D, 0x11_A0_36,
@@ -1252,16 +1248,29 @@ mod tests {
                 "minecraft:bolt",
             ]
         );
-        assert_eq!(vanilla_trim_material_resource_id(1), Some("minecraft:iron"));
         assert_eq!(
-            vanilla_trim_material_resource_id(10),
+            VanillaTrimMaterialIdentity::for_vanilla_registry_id(1)
+                .map(VanillaTrimMaterialIdentity::resource_id),
+            Some("minecraft:iron")
+        );
+        assert_eq!(
+            VanillaTrimMaterialIdentity::for_vanilla_registry_id(10)
+                .map(VanillaTrimMaterialIdentity::resource_id),
             Some("minecraft:resin")
         );
-        assert_eq!(vanilla_trim_material_resource_id(11), None);
-        assert_eq!(vanilla_trim_material_resource_id(-1), None);
-        assert_eq!(vanilla_trim_material_color(1), Some(0xEC_EC_EC));
-        assert_eq!(vanilla_trim_material_color(11), None);
-        assert_eq!(vanilla_trim_material_color(-1), None);
+        assert_eq!(
+            VanillaTrimMaterialIdentity::for_vanilla_registry_id(11),
+            None
+        );
+        assert_eq!(
+            VanillaTrimMaterialIdentity::for_vanilla_registry_id(-1),
+            None
+        );
+        assert_eq!(
+            VanillaTrimMaterialIdentity::for_vanilla_registry_id(1)
+                .map(VanillaTrimMaterialIdentity::description_color),
+            Some(0xEC_EC_EC)
+        );
         assert_eq!(
             VanillaTrimPatternIdentity::for_vanilla_registry_id(0)
                 .map(VanillaTrimPatternIdentity::resource_id),
@@ -2206,13 +2215,13 @@ fn armor_trim_material_tooltip(
         let style = armor_trim_material_style(&description.runs);
         return Some(ArmorTrimMaterialTooltip { description, style });
     }
-    let material_id = material_id?;
-    let key = vanilla_trim_material_resource_id(material_id)?;
+    let material = VanillaTrimMaterialIdentity::for_vanilla_registry_id(material_id?)?;
+    let key = material.resource_id();
     let text = language
         .get_or_key(&description_key("trim_material", key))
         .to_string();
     let style = ComponentStyle {
-        color: vanilla_trim_material_color(material_id),
+        color: Some(material.description_color()),
         ..ComponentStyle::default()
     };
     Some(ArmorTrimMaterialTooltip {
@@ -2273,14 +2282,6 @@ fn armor_trim_material_style(runs: &[StyledTextRun]) -> ComponentStyle {
         .find(|run| !run.text.is_empty())
         .map(|run| run.style.clone())
         .unwrap_or_default()
-}
-
-pub fn vanilla_trim_material_resource_id(id: i32) -> Option<&'static str> {
-    vanilla_trim_material(id).map(|material| material.resource_id)
-}
-
-fn vanilla_trim_material_color(id: i32) -> Option<u32> {
-    vanilla_trim_material(id).map(|material| material.description_color)
 }
 
 fn armor_trim_description_line(

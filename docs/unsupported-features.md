@@ -163,11 +163,11 @@ Owner: `scripts/` + each generated catalog's semantic crate
   shared Tree-sitter frontend and checked-in deterministic output; ordinary
   build/test must not read local vanilla sources. Migrate each newly identified
   legacy parser as its own semantic-owner slice.
-- Move the generated 11-entry trim-material resource/color descriptor from the
-  item-model catch-all output to the `bbb-world` synchronized-registry owner.
-  Route item-model tooltips and native named-holder projection through that
-  shared typed descriptor, while retaining session remapping and direct
-  `TrimMaterial` payload decoding as separate RegistryAccess work.
+- Move the generated 43-entry enchantment identity/max-level catalog and
+  tooltip ordering from the item-model catch-all output to the existing
+  `bbb-world::registries::enchantments` owner. Route item-model tooltips and
+  native named-holder projection through the shared catalog without bypassing
+  synchronized registry definitions; keep custom effect parsing as its own gap.
 
 ## Unknown clientbound packets in login, configuration, and play
 

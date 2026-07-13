@@ -5,6 +5,7 @@ mod environment_attributes;
 mod instruments;
 mod state;
 mod store;
+mod trim_materials;
 mod trim_patterns;
 
 pub use biomes::{
@@ -23,6 +24,7 @@ pub use state::{
     RegistryContentState, RegistryEntrySource, RegistryPacket, RegistryPacketEntry, RegistrySet,
     RegistryTagState, ResolvedRegistryEntry, UnresolvedRegistryTagHolder,
 };
+pub use trim_materials::VanillaTrimMaterialIdentity;
 pub use trim_patterns::VanillaTrimPatternIdentity;
 
 #[cfg(test)]

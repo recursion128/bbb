@@ -102,8 +102,7 @@ use tables::*;
 use tooltip::*;
 pub use tooltip::{
     vanilla_enchantment_resource_id, vanilla_painting_variant_resource_id,
-    vanilla_trim_material_resource_id, NativeItemMapTooltipData, NativeItemTooltipLine,
-    NativeItemTooltipOptions,
+    NativeItemMapTooltipData, NativeItemTooltipLine, NativeItemTooltipOptions,
 };
 
 const FIREWORK_ROCKET_ITEM_ID: &str = "minecraft:firework_rocket";

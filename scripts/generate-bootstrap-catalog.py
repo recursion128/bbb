@@ -73,6 +73,7 @@ DEFAULT_ANIMAL_SOUND_VARIANTS_OUTPUT = (
 )
 DEFAULT_INSTRUMENTS_OUTPUT = REPO_ROOT / "crates/bbb-world/src/registries/instruments.rs"
 DEFAULT_TRIM_PATTERNS_OUTPUT = REPO_ROOT / "crates/bbb-world/src/registries/trim_patterns.rs"
+DEFAULT_TRIM_MATERIALS_OUTPUT = REPO_ROOT / "crates/bbb-world/src/registries/trim_materials.rs"
 
 TRIM_MATERIALS_SOURCE = Path(
     "net/minecraft/world/item/equipment/trim/TrimMaterials.java"
@@ -217,6 +218,11 @@ def parse_args() -> argparse.Namespace:
         type=Path,
         default=DEFAULT_TRIM_PATTERNS_OUTPUT,
     )
+    parser.add_argument(
+        "--trim-materials-output",
+        type=Path,
+        default=DEFAULT_TRIM_MATERIALS_OUTPUT,
+    )
     parser.add_argument("--check", action="store_true")
     return parser.parse_args()
 
@@ -353,7 +359,6 @@ def render_potion_catalog(entries: list[PotionEntry]) -> str:
 
 def render_catalog(
     catalogs: list[tuple[str, list[BootstrapEntry]]],
-    trim_materials: list[TrimMaterialEntry],
     enchantments: list[EnchantmentEntry],
     tooltip_order: tuple[str, ...],
 ) -> str:
@@ -368,32 +373,6 @@ def render_catalog(
         lines.extend(render_array(name, entries))
     lines.extend(
         (
-            "#[derive(Debug, Clone, Copy, PartialEq, Eq)]",
-            "pub(super) struct VanillaTrimMaterial {",
-            "    pub(super) resource_id: &'static str,",
-            "    pub(super) description_color: u32,",
-            "}",
-            "",
-            "pub(super) const VANILLA_TRIM_MATERIALS: &[VanillaTrimMaterial] = &[",
-        )
-    )
-    for entry in trim_materials:
-        lines.extend(
-            (
-                "    VanillaTrimMaterial {",
-                f"        resource_id: {rust_string(entry.resource_id)},",
-                f"        description_color: 0x{entry.description_color:06X},",
-                "    },",
-            )
-        )
-    lines.extend(
-        (
-            "];",
-            "",
-            "pub(super) fn vanilla_trim_material(id: i32) -> Option<&'static VanillaTrimMaterial> {",
-            "    VANILLA_TRIM_MATERIALS.get(usize::try_from(id).ok()?)",
-            "}",
-            "",
             "pub(super) const VANILLA_ENCHANTMENT_TOOLTIP_ORDER: &[&str] = &[",
             *(f"    {rust_string(resource_id)}," for resource_id in tooltip_order),
             "];",
@@ -425,7 +404,7 @@ def render_catalog(
         (
             "#[cfg(test)]",
             "mod tests {",
-            "    use std::{collections::HashSet, fs, path::Path};",
+            "    use std::collections::HashSet;",
             "",
             "    use super::*;",
             "",
@@ -447,12 +426,6 @@ def render_catalog(
             "        }",
             f"        assert_eq!(VANILLA_ENCHANTMENTS.len(), {len(enchantments)});",
             f"        assert_eq!(VANILLA_ENCHANTMENT_TOOLTIP_ORDER.len(), {len(tooltip_order)});",
-            f"        assert_eq!(VANILLA_TRIM_MATERIALS.len(), {len(trim_materials)});",
-            "        let trim_material_resources: HashSet<_> = VANILLA_TRIM_MATERIALS",
-            "            .iter()",
-            "            .map(|entry| entry.resource_id)",
-            "            .collect();",
-            "        assert_eq!(trim_material_resources.len(), VANILLA_TRIM_MATERIALS.len());",
             "        let enchantment_resources: HashSet<_> = VANILLA_ENCHANTMENTS",
             "            .iter()",
             "            .map(|entry| entry.resource_id)",
@@ -467,33 +440,10 @@ def render_catalog(
             "",
             "    #[test]",
             "    fn bootstrap_catalog_preserves_vanilla_registration_order() {",
-            '        assert_eq!(vanilla_trim_material(0).unwrap().resource_id, "minecraft:quartz");',
-            "        assert_eq!(vanilla_trim_material(1).unwrap().description_color, 0xECECEC);",
-            '        assert_eq!(vanilla_trim_material(10).unwrap().resource_id, "minecraft:resin");',
-            "        assert_eq!(vanilla_trim_material(-1), None);",
-            "        assert_eq!(vanilla_trim_material(11), None);",
             '        assert_eq!(VANILLA_ENCHANTMENTS.get(13).unwrap().resource_id, "minecraft:sharpness");',
             '        assert_eq!(VANILLA_ENCHANTMENTS.get(13).unwrap().max_level, 5);',
             '        assert_eq!(VANILLA_ENCHANTMENT_TOOLTIP_ORDER.first(), Some(&"minecraft:binding_curse"));',
             '        assert_eq!(VANILLA_ENCHANTMENT_TOOLTIP_ORDER.last(), Some(&"minecraft:mending"));',
-            "    }",
-            "",
-            "    #[test]",
-            "    fn production_sources_do_not_redeclare_trim_material_catalog_facts() {",
-            "        fn visit(directory: &Path, violations: &mut Vec<String>) {",
-            "            for entry in fs::read_dir(directory).unwrap() {",
-            "                let path = entry.unwrap().path();",
-            "                if path.is_dir() { visit(&path, violations); continue; }",
-            "                if path.extension().and_then(|value| value.to_str()) != Some(\"rs\") { continue; }",
-            "                let display = path.to_string_lossy();",
-            "                if display.ends_with(\"/bootstrap_catalog.rs\") || display.ends_with(\"/tests.rs\") || display.contains(\"/tests/\") { continue; }",
-            "                let source = fs::read_to_string(&path).unwrap();",
-            "                if source.contains(\"const VANILLA_TRIM_MATERIAL_KEYS\") || source.contains(\"const VANILLA_TRIM_MATERIAL_COLORS\") { violations.push(display.to_string()); }",
-            "            }",
-            "        }",
-            "        let mut violations = Vec::new();",
-            "        visit(Path::new(env!(\"CARGO_MANIFEST_DIR\")).join(\"src\").as_path(), &mut violations);",
-            "        assert!(violations.is_empty(), \"parallel trim-material catalog owners: {violations:?}\");",
             "    }",
             "}",
             "",
@@ -1960,6 +1910,130 @@ def render_trim_patterns(entries: list[BootstrapEntry]) -> str:
     return "\n".join(lines)
 
 
+def render_trim_materials(entries: list[TrimMaterialEntry]) -> str:
+    lines = [
+        "// @generated by scripts/generate-bootstrap-catalog.py; do not edit manually.",
+        "// Source: vanilla 26.1 TrimMaterials.java bootstrap order and description colors.",
+        "// Update: scripts/vanilla-source-tools.sh scripts/generate-bootstrap-catalog.py",
+        "// Check: scripts/vanilla-source-tools.sh scripts/generate-bootstrap-catalog.py --check",
+        "",
+        "/// One known vanilla 26.1 armor-trim material identity.",
+        "///",
+        "/// Session holder ids must be resolved through the synchronized trim-material registry",
+        "/// before this fixed-order fallback; registry elements separately own assets and description.",
+        "#[derive(Debug, Clone, Copy, PartialEq, Eq)]",
+        "#[repr(u8)]",
+        "pub enum VanillaTrimMaterialIdentity {",
+        *(f"    {rust_variant(entry.constant_name)}," for entry in entries),
+        "}",
+        "",
+        "#[derive(Debug, Clone, Copy, PartialEq, Eq)]",
+        "struct VanillaTrimMaterialDescriptor {",
+        "    material: VanillaTrimMaterialIdentity,",
+        "    resource_id: &'static str,",
+        "    description_color: u32,",
+        "}",
+        "",
+        "const VANILLA_TRIM_MATERIAL_DESCRIPTORS: &[VanillaTrimMaterialDescriptor] = &[",
+    ]
+    for entry in entries:
+        lines.extend(
+            (
+                "    VanillaTrimMaterialDescriptor {",
+                f"        material: VanillaTrimMaterialIdentity::{rust_variant(entry.constant_name)},",
+                f"        resource_id: {rust_string(entry.resource_id)},",
+                f"        description_color: 0x{entry.description_color:06X},",
+                "    },",
+            )
+        )
+    lines.extend(
+        (
+            "];",
+            "",
+            "impl VanillaTrimMaterialIdentity {",
+            "    pub fn for_resource_id(resource_id: &str) -> Option<Self> {",
+            "        VANILLA_TRIM_MATERIAL_DESCRIPTORS",
+            "            .iter()",
+            "            .find(|entry| entry.resource_id == resource_id)",
+            "            .map(|entry| entry.material)",
+            "    }",
+            "",
+            "    /// Resolves the vanilla 26.1 bootstrap ordinal used when no session registry is available.",
+            "    pub fn for_vanilla_registry_id(registry_id: i32) -> Option<Self> {",
+            "        VANILLA_TRIM_MATERIAL_DESCRIPTORS",
+            "            .get(usize::try_from(registry_id).ok()?)",
+            "            .map(|entry| entry.material)",
+            "    }",
+            "",
+            "    pub const fn vanilla_registry_index(self) -> usize {",
+            "        self as usize",
+            "    }",
+            "",
+            "    pub fn resource_id(self) -> &'static str {",
+            "        VANILLA_TRIM_MATERIAL_DESCRIPTORS[self.vanilla_registry_index()].resource_id",
+            "    }",
+            "",
+            "    pub fn description_color(self) -> u32 {",
+            "        VANILLA_TRIM_MATERIAL_DESCRIPTORS[self.vanilla_registry_index()]",
+            "            .description_color",
+            "    }",
+            "}",
+            "",
+            "#[cfg(test)]",
+            "mod tests {",
+            "    use std::{collections::HashSet, fs, path::Path};",
+            "",
+            "    use super::*;",
+            "",
+            "    #[test]",
+            "    fn trim_material_catalog_is_complete_ordered_and_unique() {",
+            f"        assert_eq!(VANILLA_TRIM_MATERIAL_DESCRIPTORS.len(), {len(entries)});",
+            "        let mut resources = HashSet::new();",
+            "        for (index, entry) in VANILLA_TRIM_MATERIAL_DESCRIPTORS.iter().enumerate() {",
+            "            assert_eq!(entry.material.vanilla_registry_index(), index);",
+            "            assert!(resources.insert(entry.resource_id));",
+            "            assert!(entry.resource_id.starts_with(\"minecraft:\"));",
+            "            assert!(entry.description_color <= 0xFF_FF_FF);",
+            "        }",
+            "    }",
+            "",
+            "    #[test]",
+            "    fn trim_material_catalog_preserves_vanilla_mappings() {",
+            '        assert_eq!(VanillaTrimMaterialIdentity::for_vanilla_registry_id(0), Some(VanillaTrimMaterialIdentity::Quartz));',
+            '        assert_eq!(VanillaTrimMaterialIdentity::for_vanilla_registry_id(10), Some(VanillaTrimMaterialIdentity::Resin));',
+            '        assert_eq!(VanillaTrimMaterialIdentity::for_vanilla_registry_id(-1), None);',
+            '        assert_eq!(VanillaTrimMaterialIdentity::for_vanilla_registry_id(11), None);',
+            '        assert_eq!(VanillaTrimMaterialIdentity::for_resource_id("minecraft:iron"), Some(VanillaTrimMaterialIdentity::Iron));',
+            '        assert_eq!(VanillaTrimMaterialIdentity::for_resource_id("example:custom_trim"), None);',
+            '        assert_eq!(VanillaTrimMaterialIdentity::Iron.resource_id(), "minecraft:iron");',
+            '        assert_eq!(VanillaTrimMaterialIdentity::Iron.description_color(), 0xEC_EC_EC);',
+            '        assert_eq!(VanillaTrimMaterialIdentity::Resin.description_color(), 0xFC_78_12);',
+            "    }",
+            "",
+            "    #[test]",
+            "    fn production_sources_do_not_redeclare_trim_material_catalog_facts() {",
+            "        fn visit(directory: &Path, violations: &mut Vec<String>) {",
+            "            for entry in fs::read_dir(directory).unwrap() {",
+            "                let path = entry.unwrap().path();",
+            "                if path.is_dir() { visit(&path, violations); continue; }",
+            "                if path.extension().and_then(|value| value.to_str()) != Some(\"rs\") { continue; }",
+            "                let display = path.to_string_lossy();",
+            "                if display.ends_with(\"/trim_materials.rs\") || display.ends_with(\"/tests.rs\") || display.contains(\"/tests/\") { continue; }",
+            "                let source = fs::read_to_string(&path).unwrap();",
+            "                if source.contains(\"enum VanillaTrimMaterialIdentity\") || source.contains(\"struct VanillaTrimMaterial {\") || source.contains(\"const VANILLA_TRIM_MATERIALS\") || source.contains(\"fn vanilla_trim_material_resource_id(\") { violations.push(display.to_string()); }",
+            "            }",
+            "        }",
+            "        let mut violations = Vec::new();",
+            "        visit(Path::new(env!(\"CARGO_MANIFEST_DIR\")).parent().unwrap(), &mut violations);",
+            "        assert!(violations.is_empty(), \"parallel trim-material catalog owners: {violations:?}\");",
+            "    }",
+            "}",
+            "",
+        )
+    )
+    return "\n".join(lines)
+
+
 def extract_catalogs(source_root: Path) -> list[tuple[str, list[BootstrapEntry]]]:
     temperature_paths = {
         f"TemperatureVariants.{name}": path
@@ -2125,7 +2199,7 @@ def format_rust(rendered: str) -> str:
 
 def generate(
     source_root: Path,
-) -> tuple[str, str, str, str, str, str, str, str, str, str, str, str, str, str, str]:
+) -> tuple[str, str, str, str, str, str, str, str, str, str, str, str, str, str, str, str]:
     trim_materials = trim_material_entries(
         parse_java(source_root, TRIM_MATERIALS_SOURCE)
     )
@@ -2189,7 +2263,6 @@ def generate(
     ]
     rendered = render_catalog(
         item_model_catalogs,
-        trim_materials,
         enchantments,
         tooltip_order,
     )
@@ -2209,6 +2282,7 @@ def generate(
         format_rust(render_animal_sound_variants(catalogs)),
         format_rust(render_instruments(instruments)),
         format_rust(render_trim_patterns(trim_patterns)),
+        format_rust(render_trim_materials(trim_materials)),
     )
 
 
@@ -2245,6 +2319,7 @@ def main() -> int:
         generated_animal_sound_variants,
         generated_instruments,
         generated_trim_patterns,
+        generated_trim_materials,
     ) = generate(args.source_root)
     if args.check:
         matches = check_generated(args.output, generated)
@@ -2300,6 +2375,10 @@ def main() -> int:
             args.trim_patterns_output,
             generated_trim_patterns,
         )
+        matches &= check_generated(
+            args.trim_materials_output,
+            generated_trim_materials,
+        )
         return 0 if matches else 1
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(generated)
@@ -2335,6 +2414,8 @@ def main() -> int:
     args.instruments_output.write_text(generated_instruments)
     args.trim_patterns_output.parent.mkdir(parents=True, exist_ok=True)
     args.trim_patterns_output.write_text(generated_trim_patterns)
+    args.trim_materials_output.parent.mkdir(parents=True, exist_ok=True)
+    args.trim_materials_output.write_text(generated_trim_materials)
     return 0
 
 

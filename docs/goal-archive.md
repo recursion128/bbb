@@ -13273,3 +13273,18 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   `TrimPattern.DIRECT_CODEC`；本片只提供缺少 RegistryAccess 时的 vanilla 26.1 identity 回退，
   不冒充 asset id/description/decal payload 或 session remapping。generator update/check、
   world/item-model/native focused tests 与 workspace gate 通过。
+
+## 2026-07-13：Move trim-material descriptor to the world registry owner
+
+- [x] bootstrap generator 将 `TrimMaterials.java` 的 11 项 key/bootstrap 顺序、resource id 与
+  24-bit description color 生成到 `bbb-world::registries`，以
+  `VanillaTrimMaterialIdentity` 统一 fixed ordinal/resource/color；item-model catch-all 删除旧
+  `VanillaTrimMaterial` descriptor、array 与 lookup。
+- [x] item tooltip 的翻译 key 与 material style、native `provides_trim_material` 和 armor trim
+  named-holder SNBT 投影直接消费 world typed API，item-model 不再公开 trim-material resource
+  bridge；generated 完整性/顺序/唯一性/边界测试和跨 crates 反向扫描通过。
+- [x] 原版 `TrimMaterials.bootstrap` 的 `Style.EMPTY.withColor(decimal)` 与同名
+  `MaterialAssetGroup` 约束继续由 Tree-sitter extractor 精确验证；
+  `RegistryDataLoader.SYNCHRONIZED_REGISTRIES` 使用 `TrimMaterial.DIRECT_CODEC`，本片不冒充动态
+  assets/Component payload 或 session remapping。generator update/check、world/item-model/native
+  focused tests 与 workspace gate 通过。
