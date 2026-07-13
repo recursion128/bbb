@@ -71,7 +71,7 @@ impl VillagerModelType {
         VANILLA_VILLAGER_TYPES[self as usize].resource_id
     }
 
-    pub(in crate::entity_models) const fn texture_index(self) -> usize {
+    pub const fn vanilla_registry_index(self) -> usize {
         self as usize
     }
 }
@@ -89,7 +89,7 @@ mod tests {
         for (registry_id, entry) in VANILLA_VILLAGER_TYPES.iter().enumerate() {
             assert_eq!(entry.villager_type as usize, registry_id);
             assert!(resources.insert(entry.resource_id));
-            assert_eq!(entry.villager_type.texture_index(), registry_id);
+            assert_eq!(entry.villager_type.vanilla_registry_index(), registry_id);
         }
     }
 
@@ -126,7 +126,7 @@ mod tests {
                     continue;
                 }
                 let display = path.to_string_lossy();
-                if display.ends_with("/villager_types.rs")
+                if display.ends_with("/villager_model_types.rs")
                     || display.ends_with("/tests.rs")
                     || display.contains("/tests/")
                 {
@@ -137,6 +137,8 @@ mod tests {
                     || source.contains("fn villager_type_from_entry_id(")
                     || source.contains("fn villager_type_from_vanilla_registry_id(")
                     || source.contains("fn villager_type_index(")
+                    || source.contains("fn vanilla_villager_type_resource_id(")
+                    || source.contains("const VANILLA_VILLAGER_TYPE_KEYS")
                     || source.contains("\"minecraft:desert\" => Some(VillagerModelType::")
                 {
                     violations.push(display.to_string());

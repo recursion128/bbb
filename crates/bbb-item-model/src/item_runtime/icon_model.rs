@@ -22,13 +22,14 @@ use bbb_protocol::packets::{
     NbtSummaryValue, SoundEventSummary, TrimMaterialSummary, TrimPatternSummary,
     WrittenBookContentSummary,
 };
+use bbb_render_types::VillagerModelType;
 use chrono::{
     Datelike, Duration, FixedOffset, Local, NaiveDate, Offset, TimeZone, Timelike, Utc, Weekday,
 };
 use chrono_tz::{OffsetName, Tz};
 use serde_json::Value;
 
-use super::bootstrap_catalog::{VANILLA_TRIM_PATTERN_KEYS, VANILLA_VILLAGER_TYPE_KEYS};
+use super::bootstrap_catalog::VANILLA_TRIM_PATTERN_KEYS;
 use super::mob_effects::vanilla_mob_effect_key;
 use super::potion_catalog::vanilla_potion;
 use super::{
@@ -39,11 +40,6 @@ use super::{
 
 pub fn vanilla_potion_resource_id(potion_id: i32) -> Option<&'static str> {
     vanilla_potion(potion_id).map(|potion| potion.resource_id)
-}
-
-pub fn vanilla_villager_type_resource_id(id: i32) -> Option<&'static str> {
-    let index = usize::try_from(id).ok()?;
-    VANILLA_VILLAGER_TYPE_KEYS.get(index).copied()
 }
 
 const VANILLA_DEFAULT_MAX_STACK_SIZE: i32 = 64;
@@ -476,20 +472,6 @@ mod tests {
         assert_eq!(vanilla_potion_resource_id(45), Some("minecraft:infested"));
         assert_eq!(vanilla_potion_resource_id(46), None);
         assert_eq!(vanilla_potion_resource_id(-1), None);
-    }
-
-    #[test]
-    fn villager_types_follow_26_1_bootstrap_order() {
-        assert_eq!(
-            vanilla_villager_type_resource_id(0),
-            Some("minecraft:desert")
-        );
-        assert_eq!(
-            vanilla_villager_type_resource_id(6),
-            Some("minecraft:taiga")
-        );
-        assert_eq!(vanilla_villager_type_resource_id(7), None);
-        assert_eq!(vanilla_villager_type_resource_id(-1), None);
     }
 
     #[test]
@@ -6413,7 +6395,9 @@ fn item_stack_matches_villager_variant_value(
     let Some(variant_id) = component_patch.villager_variant_id else {
         return false;
     };
-    let Some(variant_key) = vanilla_villager_type_resource_id(variant_id) else {
+    let Some(variant_key) =
+        VillagerModelType::for_vanilla_registry_id(variant_id).map(VillagerModelType::resource_id)
+    else {
         return false;
     };
     registry_key_holder_set_matches(Some(value), variant_key, villager_type_tags)
@@ -6434,7 +6418,8 @@ fn villager_variant_exact_match(
     }
     component_patch
         .villager_variant_id
-        .and_then(vanilla_villager_type_resource_id)
+        .and_then(VillagerModelType::for_vanilla_registry_id)
+        .map(VillagerModelType::resource_id)
         .is_some_and(|actual| actual == expected)
 }
 

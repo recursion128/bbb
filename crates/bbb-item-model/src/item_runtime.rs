@@ -73,12 +73,12 @@ mod item_membership_catalog;
 mod potion_catalog;
 mod profile_skin;
 
+pub use icon_model::vanilla_potion_resource_id;
 use icon_model::{
     contains_runtime_condition, default_item_name_translation_key,
     item_icon_model_ref_for_definition, CompassTarget, CrossbowChargeType, IconResolveContext,
     ItemIconModel, ItemIconModelRef, TimeSource,
 };
-pub use icon_model::{vanilla_potion_resource_id, vanilla_villager_type_resource_id};
 pub use profile_skin::default_player_skin_for_profile_id;
 use profile_skin::ProfileSkinCache;
 use profile_skin::{entity_player_skin_model, profile_default_player_skin, profile_texture_handle};

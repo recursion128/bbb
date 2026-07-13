@@ -163,6 +163,11 @@ Owner: `scripts/` + each generated catalog's semantic crate
   shared Tree-sitter frontend and checked-in deterministic output; ordinary
   build/test must not read local vanilla sources. Migrate each newly identified
   legacy parser as its own semantic-owner slice.
+- Move the generated 43-entry banner-pattern resource-id and translation-key
+  catalog to a pure shared owner consumed by both item-model tooltips and the
+  renderer presentation catalog. Keep renderer-only texture refs in
+  `bbb-renderer`, and remove the duplicate item-model bootstrap output.
+
 ## Unknown clientbound packets in login, configuration, and play
 
 Owner: `bbb-protocol` + `bbb-net` + `bbb-native`

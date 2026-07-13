@@ -13220,3 +13220,15 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   均使用对应 `NETWORK_CODEC`；元素的 adult/baby/model/texture payload 仍由后续 typed
   `RegistryAccess` slice 所有。generator update/check、renderer/item-model/native focused tests
   与 workspace gate 通过。
+
+## 2026-07-13：Share the villager-type identity catalog
+
+- [x] 将 generator 生成的 7 项 `VillagerModelType` 从 renderer 私有模块下沉到
+  `bbb-render-types` 纯值边界；`bbb-renderer` 保留原根级 re-export，模型 texture index 与
+  hat presentation 继续由 renderer 自己解释。
+- [x] item-model 的 villager variant predicate/select 与 native named component 直接消费同一
+  typed API，删除 item-model 平行 `VANILLA_VILLAGER_TYPE_KEYS`、公开 lookup 与测试副本。
+- [x] generator 输出的跨 crates 反向扫描锁定 enum/resource lookup 唯一 owner。原版
+  `VillagerType.bootstrap` 固定 desert/jungle/plains/savanna/snow/swamp/taiga 顺序，并只注册在
+  `BuiltInRegistries`，不属于 `RegistryDataLoader` 同步 registry。generator update/check、
+  render-types/item-model/renderer/native focused tests 与 workspace gate 通过。

@@ -1661,7 +1661,7 @@ fn encode_named_variant(
 ) -> Option<String> {
     let resource_id = match type_id {
         component_id::VANILLA_DATA_COMPONENT_VILLAGER_VARIANT_TYPE_ID => {
-            vanilla_villager_type_resource_id(patch.villager_variant_id?)?
+            VillagerModelType::for_vanilla_registry_id(patch.villager_variant_id?)?.resource_id()
         }
         component_id::VANILLA_DATA_COMPONENT_WOLF_VARIANT_TYPE_ID => {
             WolfModelVariant::for_vanilla_registry_id(patch.wolf_variant_id?)?.resource_id()

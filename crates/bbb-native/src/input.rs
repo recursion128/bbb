@@ -334,12 +334,11 @@ use bbb_item_model::{
     vanilla_enchantment_resource_id, vanilla_instrument_resource_id,
     vanilla_mob_effect_resource_id, vanilla_painting_variant_resource_id,
     vanilla_potion_resource_id, vanilla_trim_material_resource_id,
-    vanilla_trim_pattern_resource_id, vanilla_villager_type_resource_id, ItemModelKeybindContext,
-    NativeItemRuntime,
+    vanilla_trim_pattern_resource_id, ItemModelKeybindContext, NativeItemRuntime,
 };
 use bbb_renderer::{
     CatModelVariant, ChickenModelVariant, CowModelVariant, FrogModelVariant, PigModelVariant,
-    WolfModelVariant, ZombieNautilusModelVariant,
+    VillagerModelType, WolfModelVariant, ZombieNautilusModelVariant,
 };
 use bbb_world::{
     CatSoundVariantIdentity, ChickenSoundVariantIdentity, CowSoundVariantIdentity,

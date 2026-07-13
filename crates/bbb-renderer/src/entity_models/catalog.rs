@@ -792,15 +792,17 @@ impl VillagerModelData {
     }
 }
 
-impl VillagerModelType {
-    pub const fn hat(self) -> VillagerModelHat {
-        match self {
-            // Vanilla villager type mcmeta declares `hat: full` only for desert and snow.
-            Self::Desert | Self::Snow => VillagerModelHat::Full,
-            Self::Jungle | Self::Plains | Self::Savanna | Self::Swamp | Self::Taiga => {
-                VillagerModelHat::None
-            }
-        }
+pub(in crate::entity_models) const fn villager_type_hat(
+    villager_type: VillagerModelType,
+) -> VillagerModelHat {
+    match villager_type {
+        // Vanilla villager type mcmeta declares `hat: full` only for desert and snow.
+        VillagerModelType::Desert | VillagerModelType::Snow => VillagerModelHat::Full,
+        VillagerModelType::Jungle
+        | VillagerModelType::Plains
+        | VillagerModelType::Savanna
+        | VillagerModelType::Swamp
+        | VillagerModelType::Taiga => VillagerModelHat::None,
     }
 }
 

@@ -5,8 +5,8 @@ use super::super::{
         boat_texture_ref, camel_texture_ref, chicken_texture_ref, cow_texture_ref,
         horse_coat_texture_ref, horse_markings_texture_ref, llama_texture_ref,
         mooshroom_texture_ref, pig_texture_ref, sheep_wool_render_color, squid_texture_ref,
-        villager_level_texture_ref, villager_profession_texture_ref, villager_type_texture_ref,
-        wolf_texture_ref, zombie_villager_level_texture_ref,
+        villager_level_texture_ref, villager_profession_texture_ref, villager_type_hat,
+        villager_type_texture_ref, wolf_texture_ref, zombie_villager_level_texture_ref,
         zombie_villager_profession_texture_ref, zombie_villager_type_texture_ref,
         ArrowModelTexture, AxolotlModelVariant, BannerPatternLayer, BedModelPart, BoatModelFamily,
         CamelModelFamily, ChestModelHalf, ChestModelTexture, ConduitModelPart,
@@ -2425,7 +2425,7 @@ pub(in crate::entity_models) fn villager_type_hat_visible(
     let type_hat = if zombie {
         VillagerModelHat::None
     } else {
-        data.villager_type.hat()
+        villager_type_hat(data.villager_type)
     };
     let profession_hat = data.profession.hat();
     profession_hat == VillagerModelHat::None

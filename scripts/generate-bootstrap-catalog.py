@@ -51,7 +51,7 @@ DEFAULT_VILLAGER_PROFESSIONS_OUTPUT = (
     REPO_ROOT / "crates/bbb-renderer/src/entity_models/villager_professions.rs"
 )
 DEFAULT_VILLAGER_TYPES_OUTPUT = (
-    REPO_ROOT / "crates/bbb-renderer/src/entity_models/villager_types.rs"
+    REPO_ROOT / "crates/bbb-render-types/src/villager_model_types.rs"
 )
 DEFAULT_CAT_VARIANTS_OUTPUT = (
     REPO_ROOT / "crates/bbb-renderer/src/entity_models/cat_variants.rs"
@@ -481,7 +481,6 @@ def render_catalog(
             "        assert_eq!(vanilla_trim_material(-1), None);",
             "        assert_eq!(vanilla_trim_material(11), None);",
             '        assert_eq!(VANILLA_TRIM_PATTERN_KEYS.last(), Some(&"minecraft:bolt"));',
-            '        assert_eq!(VANILLA_VILLAGER_TYPE_KEYS.last(), Some(&"minecraft:taiga"));',
             '        assert_eq!(VANILLA_INSTRUMENT_KEYS.last(), Some(&"minecraft:dream_goat_horn"));',
             '        assert_eq!(VANILLA_BANNER_PATTERNS.get(31).unwrap().resource_id, "minecraft:gradient");',
             '        assert_eq!(VANILLA_BANNER_PATTERNS.get(34).unwrap().resource_id, "minecraft:curly_border");',
@@ -1035,7 +1034,7 @@ def render_villager_types(entries: list[BootstrapEntry]) -> str:
             "        VANILLA_VILLAGER_TYPES[self as usize].resource_id",
             "    }",
             "",
-            "    pub(in crate::entity_models) const fn texture_index(self) -> usize {",
+            "    pub const fn vanilla_registry_index(self) -> usize {",
             "        self as usize",
             "    }",
             "}",
@@ -1053,7 +1052,7 @@ def render_villager_types(entries: list[BootstrapEntry]) -> str:
             "        for (registry_id, entry) in VANILLA_VILLAGER_TYPES.iter().enumerate() {",
             "            assert_eq!(entry.villager_type as usize, registry_id);",
             "            assert!(resources.insert(entry.resource_id));",
-            "            assert_eq!(entry.villager_type.texture_index(), registry_id);",
+            "            assert_eq!(entry.villager_type.vanilla_registry_index(), registry_id);",
             "        }",
             "    }",
             "",
@@ -1076,9 +1075,9 @@ def render_villager_types(entries: list[BootstrapEntry]) -> str:
             "                if path.is_dir() { visit(&path, violations); continue; }",
             "                if path.extension().and_then(|value| value.to_str()) != Some(\"rs\") { continue; }",
             "                let display = path.to_string_lossy();",
-            "                if display.ends_with(\"/villager_types.rs\") || display.ends_with(\"/tests.rs\") || display.contains(\"/tests/\") { continue; }",
+            "                if display.ends_with(\"/villager_model_types.rs\") || display.ends_with(\"/tests.rs\") || display.contains(\"/tests/\") { continue; }",
             "                let source = fs::read_to_string(&path).unwrap();",
-            "                if source.contains(\"enum VillagerModelType\") || source.contains(\"fn villager_type_from_entry_id(\") || source.contains(\"fn villager_type_from_vanilla_registry_id(\") || source.contains(\"fn villager_type_index(\") || source.contains(\"\\\"minecraft:desert\\\" => Some(VillagerModelType::\") { violations.push(display.to_string()); }",
+            "                if source.contains(\"enum VillagerModelType\") || source.contains(\"fn villager_type_from_entry_id(\") || source.contains(\"fn villager_type_from_vanilla_registry_id(\") || source.contains(\"fn villager_type_index(\") || source.contains(\"fn vanilla_villager_type_resource_id(\") || source.contains(\"const VANILLA_VILLAGER_TYPE_KEYS\") || source.contains(\"\\\"minecraft:desert\\\" => Some(VillagerModelType::\") { violations.push(display.to_string()); }",
             "            }",
             "        }",
             "        let mut violations = Vec::new();",
@@ -1878,6 +1877,7 @@ def generate(source_root: Path) -> tuple[str, str, str, str, str, str, str, str,
     cat_variants = dict(catalogs)["VANILLA_CAT_VARIANT_KEYS"]
     wolf_variants = dict(catalogs)["VANILLA_WOLF_VARIANT_KEYS"]
     typed_entity_catalog_names = {
+        "VANILLA_VILLAGER_TYPE_KEYS",
         "VANILLA_CAT_VARIANT_KEYS",
         "VANILLA_CHICKEN_VARIANT_KEYS",
         "VANILLA_COW_VARIANT_KEYS",

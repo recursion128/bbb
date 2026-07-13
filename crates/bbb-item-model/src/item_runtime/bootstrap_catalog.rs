@@ -24,16 +24,6 @@ pub(super) const VANILLA_TRIM_PATTERN_KEYS: &[&str] = &[
     "minecraft:bolt",
 ];
 
-pub(super) const VANILLA_VILLAGER_TYPE_KEYS: &[&str] = &[
-    "minecraft:desert",
-    "minecraft:jungle",
-    "minecraft:plains",
-    "minecraft:savanna",
-    "minecraft:snow",
-    "minecraft:swamp",
-    "minecraft:taiga",
-];
-
 pub(super) const VANILLA_INSTRUMENT_KEYS: &[&str] = &[
     "minecraft:ponder_goat_horn",
     "minecraft:sing_goat_horn",
@@ -520,7 +510,6 @@ mod tests {
     fn bootstrap_catalog_lengths_and_resource_ids_are_stable() {
         let catalogs: &[(&[&str], usize)] = &[
             (VANILLA_TRIM_PATTERN_KEYS, 18),
-            (VANILLA_VILLAGER_TYPE_KEYS, 7),
             (VANILLA_INSTRUMENT_KEYS, 8),
         ];
         for (entries, expected_len) in catalogs {
@@ -570,7 +559,6 @@ mod tests {
         assert_eq!(vanilla_trim_material(-1), None);
         assert_eq!(vanilla_trim_material(11), None);
         assert_eq!(VANILLA_TRIM_PATTERN_KEYS.last(), Some(&"minecraft:bolt"));
-        assert_eq!(VANILLA_VILLAGER_TYPE_KEYS.last(), Some(&"minecraft:taiga"));
         assert_eq!(
             VANILLA_INSTRUMENT_KEYS.last(),
             Some(&"minecraft:dream_goat_horn")

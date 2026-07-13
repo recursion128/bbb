@@ -8,6 +8,7 @@ mod map_backgrounds;
 mod map_decorations;
 pub mod player_skin;
 mod sprites;
+mod villager_model_types;
 
 pub use entity_textures::{
     EntityCustomHeadSkull, EntityDefaultPlayerSkin, EntityDynamicPlayerSkin,
@@ -26,3 +27,4 @@ pub use player_skin::{
     DynamicPlayerTextureImage,
 };
 pub use sprites::{ItemSpriteRect, SpriteAlphaMask};
+pub use villager_model_types::VillagerModelType;

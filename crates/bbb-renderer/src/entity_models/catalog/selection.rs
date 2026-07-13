@@ -869,7 +869,7 @@ pub(in crate::entity_models) fn villager_type_texture_ref(
     } else {
         &VILLAGER_TYPE_TEXTURE_REFS
     };
-    refs[villager_type.texture_index()]
+    refs[villager_type.vanilla_registry_index()]
 }
 
 pub(in crate::entity_models) fn zombie_villager_type_texture_ref(
@@ -881,7 +881,7 @@ pub(in crate::entity_models) fn zombie_villager_type_texture_ref(
     } else {
         &ZOMBIE_VILLAGER_TYPE_TEXTURE_REFS
     };
-    refs[villager_type.texture_index()]
+    refs[villager_type.vanilla_registry_index()]
 }
 
 pub(in crate::entity_models) fn villager_profession_texture_ref(
