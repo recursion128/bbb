@@ -56,6 +56,7 @@ impl WorldStore {
                     }
                 }
                 self.local_player_vehicle_id = Some(packet.vehicle_id);
+                self.removed_player_vehicle_id = None;
                 local_player_mounted_here = true;
             }
             match self.entities.mount(passenger_id) {
@@ -309,6 +310,26 @@ impl WorldStore {
             root_vehicle_id = parent_vehicle_id;
         }
         None
+    }
+
+    pub(crate) fn local_player_vehicle_chain_contains(&self, entity_id: i32) -> bool {
+        let Some(mut vehicle_id) = self.local_player_vehicle_id else {
+            return false;
+        };
+        for _ in 0..=self.entities.len() {
+            if vehicle_id == entity_id {
+                return true;
+            }
+            let Some(parent) = self
+                .entities
+                .mount(vehicle_id)
+                .and_then(|mount| mount.vehicle_id)
+            else {
+                return false;
+            };
+            vehicle_id = parent;
+        }
+        false
     }
 
     fn local_player_first_passenger_root_vehicle_id(&self) -> Option<i32> {

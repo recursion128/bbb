@@ -1,6 +1,6 @@
 use bbb_control::NetCounters;
 use bbb_item_model::NativeItemRuntime;
-use bbb_net::{ConnectionState, NetCommand, NetEvent};
+use bbb_net::{ConnectionState, NetCommand, NetEvent, PlayerMoveCommand};
 use bbb_pack::{JukeboxSongRegistry, SoundEventRegistry};
 use bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_VAULT_ID;
 use bbb_protocol::packets::{
@@ -296,6 +296,29 @@ impl PlayApplyEffects for NativePlayEffects<'_, '_, '_, '_, '_, '_> {
 
     fn vehicle_move_report(&mut self, report: bbb_world::VehicleMoveReport) {
         queue_vehicle_move_command(self.counters, self.net_commands, report);
+    }
+
+    fn removed_player_vehicle_teleport(
+        &mut self,
+        recovery: bbb_world::RemovedPlayerVehicleTeleportRecovery,
+    ) {
+        let Some(tx) = self.net_commands else {
+            return;
+        };
+        let pose = recovery.player_pose;
+        if tx
+            .try_send(NetCommand::MovePlayer(PlayerMoveCommand {
+                state: pose.position_state(),
+                on_ground: false,
+                horizontal_collision: false,
+                force_position: true,
+                force_pos_rot: true,
+                force_rotation_only: false,
+            }))
+            .is_ok()
+        {
+            self.counters.player_move_commands_queued += 1;
+        }
     }
 
     fn level_particles(

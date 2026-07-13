@@ -238,8 +238,11 @@ Movement:
   resolve every entity-specific local-authority controller before deciding
   whether a packet only advances the `VecDeltaCodec` base.
 - Complete `EntityPositionSync`/`TeleportEntity` ticking and distance-based
-  interpolation, indirect-passenger reposition/old-pose reset, removed-player-
-  vehicle teleport fallback, and locally-authoritative vehicle echo.
+  interpolation, indirect-passenger reposition/old-pose reset, and locally-
+  authoritative vehicle echo.
+- Implement `ClientDebugSubscriber`'s subscription value maps and remove an
+  entity UUID from every active entity-value map on RemoveEntities. The current
+  single last-debug-value diagnostic is not an equivalent substitute.
 - Preserve `NewMinecartBehavior`'s pending/current lerp-step queues: along-track
   packets append pending steps and only the client tick advances the canonical
   transform. Do not replace active steps or snap the transform to the last step

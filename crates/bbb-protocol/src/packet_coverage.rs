@@ -891,7 +891,7 @@ mod tests {
     }
 
     #[test]
-    fn play_remove_entities_keeps_removed_vehicle_recovery_open() {
+    fn play_remove_entities_keeps_debug_subscriber_drop_open() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries

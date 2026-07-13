@@ -1,6 +1,8 @@
 use anyhow::{bail, Result};
 use bbb_protocol::packets::{self, ChatAcknowledgement, PlayClientbound};
-use bbb_world::{ChunkPos, PlayApplyEffects, VehicleMoveReport};
+use bbb_world::{
+    ChunkPos, PlayApplyEffects, RemovedPlayerVehicleTeleportRecovery, VehicleMoveReport,
+};
 
 use crate::{probe::ProbeContext, resource_pack::response_action_for_push, types::ConnectionState};
 
@@ -10,6 +12,7 @@ use crate::{probe::ProbeContext, resource_pack::response_action_for_push, types:
 struct ProbePlayEffects {
     chat_acknowledgement: Option<ChatAcknowledgement>,
     vehicle_move_report: Option<VehicleMoveReport>,
+    removed_vehicle_teleport: Option<RemovedPlayerVehicleTeleportRecovery>,
     inserted_chunk_pos: Option<ChunkPos>,
 }
 
@@ -20,6 +23,10 @@ impl PlayApplyEffects for ProbePlayEffects {
 
     fn vehicle_move_report(&mut self, report: VehicleMoveReport) {
         self.vehicle_move_report = Some(report);
+    }
+
+    fn removed_player_vehicle_teleport(&mut self, recovery: RemovedPlayerVehicleTeleportRecovery) {
+        self.removed_vehicle_teleport = Some(recovery);
     }
 
     fn chunk_inserted(&mut self, pos: ChunkPos) {
@@ -50,6 +57,20 @@ impl ProbeContext {
                 report.x_rot,
                 report.on_ground,
             );
+            self.conn.send_packet(id, &payload).await?;
+        }
+        if let Some(recovery) = effects.removed_vehicle_teleport.take() {
+            let pose = recovery.player_pose;
+            let (id, payload) = packets::encode_play_move_player_pos_rot(
+                pose.position.x,
+                pose.position.y,
+                pose.position.z,
+                pose.y_rot,
+                pose.x_rot,
+                false,
+                false,
+            );
+            self.player_position_state = pose.position_state();
             self.conn.send_packet(id, &payload).await?;
         }
 

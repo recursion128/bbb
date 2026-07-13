@@ -727,6 +727,12 @@ pub struct EntityTransformState {
     pub on_ground: Option<bool>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct RemovedPlayerVehicleTeleportRecovery {
+    pub removed_vehicle_id: i32,
+    pub player_pose: crate::LocalPlayerPoseState,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct TakeItemEntityPickupParticleState {
     pub item_entity_id: i32,
@@ -2307,6 +2313,9 @@ impl EntityTransformState {
 impl WorldStore {
     pub fn apply_add_entity(&mut self, packet: ProtocolAddEntity) {
         self.counters.entities_received += 1;
+        if self.removed_player_vehicle_id == Some(packet.id) {
+            self.removed_player_vehicle_id = None;
+        }
         let packet_position = entity_vec3(packet.position);
         let identity = crate::entities::components::EntityIdentity {
             id: packet.id,
@@ -2388,6 +2397,14 @@ impl WorldStore {
     }
 
     fn remove_entities_by_ids(&mut self, removed_ids: &[i32]) -> usize {
+        if let Some(removed_vehicle_id) = removed_ids
+            .iter()
+            .copied()
+            .find(|id| self.local_player_vehicle_chain_contains(*id))
+        {
+            self.removed_player_vehicle_id = Some(removed_vehicle_id);
+            self.local_player_vehicle_id = None;
+        }
         let removed = self.entities.remove_ids(removed_ids);
         if self
             .local_player_vehicle_id
@@ -3433,6 +3450,10 @@ impl WorldStore {
 
     pub fn local_player_vehicle_id(&self) -> Option<i32> {
         self.local_player_vehicle_id
+    }
+
+    pub fn removed_player_vehicle_id(&self) -> Option<i32> {
+        self.removed_player_vehicle_id
     }
 
     /// Vanilla `Gui.getPlayerVehicleWithHealth` + the `extractVehicleHealth` /

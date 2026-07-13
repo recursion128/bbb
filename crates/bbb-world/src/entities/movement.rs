@@ -131,7 +131,55 @@ impl WorldStore {
     }
 
     pub fn apply_teleport_entity(&mut self, packet: ProtocolTeleportEntity) -> bool {
+        self.apply_teleport_entity_with_recovery(packet).0
+    }
+
+    pub(crate) fn apply_teleport_entity_with_recovery(
+        &mut self,
+        packet: ProtocolTeleportEntity,
+    ) -> (bool, Option<super::RemovedPlayerVehicleTeleportRecovery>) {
         self.counters.entity_teleports_received += 1;
+        if !self.entities.contains(packet.id)
+            && self.removed_player_vehicle_id == Some(packet.id)
+            && self.local_player_id.is_some()
+        {
+            let Some(mut pose) = self.local_player.pose else {
+                self.counters.entity_teleports_ignored += 1;
+                return (false, None);
+            };
+            let absolute = entity_absolute_move_rotation(
+                entity_vec3(pose.position),
+                entity_vec3(pose.delta_movement),
+                pose.y_rot,
+                pose.x_rot,
+                packet.position,
+                packet.delta_movement,
+                packet.y_rot,
+                packet.x_rot,
+                packet.relatives_mask,
+            );
+            pose.position = ProtocolVec3d {
+                x: absolute.position.x,
+                y: absolute.position.y,
+                z: absolute.position.z,
+            };
+            pose.delta_movement = ProtocolVec3d {
+                x: absolute.delta_movement.x,
+                y: absolute.delta_movement.y,
+                z: absolute.delta_movement.z,
+            };
+            pose.y_rot = absolute.y_rot;
+            pose.x_rot = absolute.x_rot;
+            self.local_player.pose = Some(pose);
+            self.counters.entity_teleports_applied += 1;
+            return (
+                true,
+                Some(super::RemovedPlayerVehicleTeleportRecovery {
+                    removed_vehicle_id: packet.id,
+                    player_pose: pose,
+                }),
+            );
+        }
         let Some(()) = self.entities.with_transform_mut(packet.id, |transform| {
             let absolute = entity_absolute_move_rotation(
                 transform.position,
@@ -151,11 +199,11 @@ impl WorldStore {
             transform.on_ground = Some(packet.on_ground);
         }) else {
             self.counters.entity_teleports_ignored += 1;
-            return false;
+            return (false, None);
         };
         self.update_entity_supporting_block_from_packet(packet.id, packet.on_ground);
         self.counters.entity_teleports_applied += 1;
-        true
+        (true, None)
     }
 }
 

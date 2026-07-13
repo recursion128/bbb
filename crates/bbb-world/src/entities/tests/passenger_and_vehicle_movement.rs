@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use crate::ItemEquipmentSlot;
+use crate::{ItemEquipmentSlot, LocalPlayerPoseState};
 
 use super::*;
 
@@ -165,6 +165,71 @@ fn tracks_local_player_passenger_without_entity() {
         store.probe_entity(10).unwrap().passengers,
         Vec::<i32>::new()
     );
+}
+
+#[test]
+fn removed_player_vehicle_teleport_recovers_the_local_player() {
+    let mut store = WorldStore::new();
+    store.apply_login(&protocol_play_login(99));
+    store.set_local_player_pose(LocalPlayerPoseState {
+        position: ProtocolVec3d {
+            x: 1.0,
+            y: 64.0,
+            z: 2.0,
+        },
+        delta_movement: ProtocolVec3d {
+            x: 0.1,
+            y: 0.0,
+            z: 0.2,
+        },
+        y_rot: 10.0,
+        x_rot: 5.0,
+        ..LocalPlayerPoseState::default()
+    });
+    store.apply_add_entity(protocol_add_entity(10));
+    assert!(store.apply_set_passengers(ProtocolSetPassengers {
+        vehicle_id: 10,
+        passenger_ids: vec![99],
+    }));
+
+    assert_eq!(
+        store.apply_remove_entities(ProtocolRemoveEntities {
+            entity_ids: vec![10],
+        }),
+        1
+    );
+    assert_eq!(store.local_player_vehicle_id(), None);
+    assert_eq!(store.removed_player_vehicle_id(), Some(10));
+
+    let (applied, recovery) = store.apply_teleport_entity_with_recovery(ProtocolTeleportEntity {
+        id: 10,
+        position: ProtocolVec3d {
+            x: 8.0,
+            y: 70.0,
+            z: -4.0,
+        },
+        delta_movement: ProtocolVec3d {
+            x: 0.0,
+            y: 0.5,
+            z: 0.0,
+        },
+        y_rot: 90.0,
+        x_rot: -15.0,
+        relatives_mask: 0,
+        on_ground: true,
+    });
+    assert!(applied);
+    let recovery = recovery.unwrap();
+    assert_eq!(recovery.removed_vehicle_id, 10);
+    assert_eq!(recovery.player_pose.position.x, 8.0);
+    assert_eq!(recovery.player_pose.position.y, 70.0);
+    assert_eq!(recovery.player_pose.position.z, -4.0);
+    assert_eq!(recovery.player_pose.y_rot, 90.0);
+    assert_eq!(recovery.player_pose.x_rot, -15.0);
+    assert_eq!(store.removed_player_vehicle_id(), Some(10));
+
+    store.apply_add_entity(protocol_add_entity(10));
+    assert_eq!(store.removed_player_vehicle_id(), None);
 }
 
 #[test]

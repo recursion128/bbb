@@ -19,11 +19,24 @@ pub struct PlayerMoveCommand {
     #[serde(default)]
     pub force_position: bool,
     #[serde(default)]
+    pub force_pos_rot: bool,
+    #[serde(default)]
     pub force_rotation_only: bool,
 }
 
 impl PlayerMoveCommand {
     pub(crate) fn encode_packet_from(self, previous: PlayerPositionState) -> (i32, Vec<u8>) {
+        if self.force_pos_rot {
+            return packets::encode_play_move_player_pos_rot(
+                self.state.position.x,
+                self.state.position.y,
+                self.state.position.z,
+                self.state.y_rot,
+                self.state.x_rot,
+                self.on_ground,
+                self.horizontal_collision,
+            );
+        }
         if self.force_rotation_only {
             return packets::encode_play_move_player_rot(
                 self.state.y_rot,
@@ -72,6 +85,12 @@ impl PlayerMoveCommand {
     ) -> PlayerPositionState {
         let mut next = previous;
         next.delta_movement = self.state.delta_movement;
+        if self.force_pos_rot {
+            next.position = self.state.position;
+            next.y_rot = self.state.y_rot;
+            next.x_rot = self.state.x_rot;
+            return next;
+        }
         if self.force_rotation_only {
             next.y_rot = self.state.y_rot;
             next.x_rot = self.state.x_rot;

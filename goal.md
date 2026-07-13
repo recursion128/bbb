@@ -385,8 +385,9 @@ MoveMinecartAlongTrack 的 step-list wire、ownership 与现有 protocol/world/n
 但当前 apply 会立即写入最后一步并替换 active steps，尚未复刻 vanilla pending/current queue 与
 client tick 推进语义，因此 canonical/runtime 保持 partial。
 RemoveEntities 的 int-id list wire、world cleanup 与 tests 已闭合；vanilla listener 的
-`removedPlayerVehicleId` correction recovery/debug-subscriber side effect 尚未建模，因此只保留
-runtime 格 partial。
+`removedPlayerVehicleId` 已覆盖 vehicle-chain capture、AddEntity/SetPassengers clear、missing-id
+TeleportEntity LocalPlayer apply 与强制 PosRot 回执；只剩 `ClientDebugSubscriber.dropEntity` 的按 UUID
+subscription-map 清理未建模，因此 runtime 格保持 partial。
 SetEntityLink 的 fixed i32 wire、ownership、generated class/interface `Leashable` capability gate 与
 delayed holder/clear tests 已闭合，五格全部 complete；非 Leashable source 不再获得 synthetic leash state。
 SetPassengers 的 VarInt array wire、canonical mount graph 与 tests 已闭合；首次本地 mount 的

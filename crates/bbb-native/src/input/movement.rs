@@ -284,6 +284,7 @@ fn maybe_queue_passenger_rotation_command(
         on_ground: pose.on_ground,
         horizontal_collision: pose.horizontal_collision,
         force_position: false,
+        force_pos_rot: false,
         force_rotation_only: true,
     });
     if tx.try_send(command).is_ok() {
@@ -371,6 +372,7 @@ fn maybe_queue_player_move_command(
         on_ground: pose.on_ground,
         horizontal_collision: pose.horizontal_collision,
         force_position,
+        force_pos_rot: false,
         force_rotation_only: false,
     });
     if tx.try_send(command).is_ok() {

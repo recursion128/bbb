@@ -10443,6 +10443,8 @@
         "runtime_side_effect": {
           "evidence": [
             "crates/bbb-world/src/entities.rs#remove_entities_by_ids",
+            "crates/bbb-world/src/entities/movement.rs#apply_teleport_entity_with_recovery",
+            "crates/bbb-native/src/runtime/events/dispatcher.rs#removed_player_vehicle_teleport",
             "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleRemoveEntities"
           ],
           "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
@@ -10452,6 +10454,9 @@
           "evidence": [
             "crates/bbb-protocol/src/packets/entities/tests.rs#decodes_entity_lifecycle_packets",
             "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#tracks_entity_lifecycle_and_absolute_state_updates",
+            "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#removed_player_vehicle_teleport_recovers_the_local_player",
+            "crates/bbb-world/src/play_apply.rs#removed_vehicle_teleport_routes_recovery_effect",
+            "crates/bbb-native/src/runtime/events/tests/session_hud_and_vehicle_events.rs#removed_player_vehicle_teleport_queues_forced_player_pos_rot",
             "crates/bbb-net/src/event_stream.rs#play_entity_state_packets_emit_matching_events_without_responses"
           ],
           "gap": null,

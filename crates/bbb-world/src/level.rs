@@ -273,6 +273,7 @@ impl WorldStore {
 
     pub fn apply_login(&mut self, login: &ProtocolPlayLogin) {
         self.counters.play_logins_received += 1;
+        self.removed_player_vehicle_id = None;
         if let Some(local_player_id) = self.local_player_id {
             self.clear_local_player_mount(local_player_id);
         } else {
@@ -469,6 +470,7 @@ impl WorldStore {
         self.local_player = crate::LocalPlayerState::default();
         self.local_player_id = None;
         self.local_player_vehicle_id = None;
+        self.removed_player_vehicle_id = None;
         self.last_projectile_power = None;
         self.clear_level_bound_state();
     }
@@ -623,6 +625,7 @@ impl WorldStore {
                 ..pose
             }
         });
+        self.removed_player_vehicle_id = None;
 
         let Some(local_player_id) = self.local_player_id else {
             self.local_player_vehicle_id = None;

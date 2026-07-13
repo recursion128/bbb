@@ -22,9 +22,10 @@ use crate::{
     FoxEatParticleState, HoneyBlockParticleState, JukeboxLevelEventState,
     LevelEventSoundRandomState, LivingEntityDrownParticleState, LivingEntityPoofParticleState,
     LivingEntityPortalParticleState, LocalSoundEventState, RavagerRoarParticleState,
-    SnowballHitParticleState, SoundEntityEventState, SoundEventState, StopSoundEventState,
-    TakeItemEntityPickupParticleState, ThrownEggHitParticleState, VehicleMoveReport,
-    VillagerParticleKind, VillagerParticleState, WitchMagicParticleState, WorldStore,
+    RemovedPlayerVehicleTeleportRecovery, SnowballHitParticleState, SoundEntityEventState,
+    SoundEventState, StopSoundEventState, TakeItemEntityPickupParticleState,
+    ThrownEggHitParticleState, VehicleMoveReport, VillagerParticleKind, VillagerParticleState,
+    WitchMagicParticleState, WorldStore,
 };
 
 const COBWEB_PLACE_LEVEL_EVENT: i32 = 3018;
@@ -114,6 +115,8 @@ pub trait PlayApplyEffects {
     fn jukebox_level_event(&mut self, _state: &JukeboxLevelEventState) {}
     fn chat_acknowledgement(&mut self, _command: ChatAcknowledgement) {}
     fn vehicle_move_report(&mut self, _report: VehicleMoveReport) {}
+    fn removed_player_vehicle_teleport(&mut self, _recovery: RemovedPlayerVehicleTeleportRecovery) {
+    }
     fn chunk_inserted(&mut self, _pos: ChunkPos) {}
     fn level_particles(
         &mut self,
@@ -645,7 +648,10 @@ impl WorldStore {
                 self.apply_set_entity_data(update);
             }
             PlayClientbound::TeleportEntity(update) => {
-                self.apply_teleport_entity(update);
+                let (_, recovery) = self.apply_teleport_entity_with_recovery(update);
+                if let Some(recovery) = recovery {
+                    effects.removed_player_vehicle_teleport(recovery);
+                }
             }
             PlayClientbound::PlayerAbilities(update) => {
                 self.apply_player_abilities(update);
@@ -1533,8 +1539,9 @@ mod tests {
     use bbb_protocol::packets::{
         AddEntity, BlockPos as ProtocolBlockPos, EntityAnimation, EntityDataValue,
         EntityDataValueKind, EntityEvent, EntityPositionSync, EquipmentSlot, EquipmentSlotUpdate,
-        GameEvent, ItemStackSummary, LevelEvent, PlayTime, PlayerHealth, SetEntityData,
-        SetEquipment, SoundEvent, SoundEventHolder, SoundSource, TakeItemEntity, Vec3d,
+        GameEvent, ItemStackSummary, LevelEvent, PlayTime, PlayerHealth, RemoveEntities,
+        SetEntityData, SetEquipment, SetPassengers, SoundEvent, SoundEventHolder, SoundSource,
+        TakeItemEntity, TeleportEntity, Vec3d,
     };
     use uuid::Uuid;
 
@@ -1572,11 +1579,19 @@ mod tests {
         thrown_egg_hit_particles: Vec<ThrownEggHitParticleState>,
         honey_block_particles: Vec<HoneyBlockParticleState>,
         tracking_emitters: Vec<(i32, EntityTrackingEmitterParticleKind, u32)>,
+        removed_vehicle_teleports: Vec<RemovedPlayerVehicleTeleportRecovery>,
     }
 
     impl PlayApplyEffects for RecordingEffects {
         fn positioned_sound(&mut self, state: &SoundEventState) {
             self.positioned_sounds.push(state.clone());
+        }
+
+        fn removed_player_vehicle_teleport(
+            &mut self,
+            recovery: RemovedPlayerVehicleTeleportRecovery,
+        ) {
+            self.removed_vehicle_teleports.push(recovery);
         }
 
         fn elder_guardian_effect_particles(&mut self, _world: &WorldStore, position: Vec3d) {
@@ -1806,6 +1821,48 @@ mod tests {
         );
         assert!(leftover.is_none());
         effects
+    }
+
+    #[test]
+    fn removed_vehicle_teleport_routes_recovery_effect() {
+        let mut store = WorldStore::new();
+        store.local_player_id = Some(7);
+        store.set_local_player_pose(LocalPlayerPoseState::default());
+        store.apply_add_entity(add_entity(
+            10,
+            VANILLA_ENTITY_TYPE_HORSE_ID,
+            vec3(0.0, 64.0, 0.0),
+        ));
+        assert!(store.apply_set_passengers(SetPassengers {
+            vehicle_id: 10,
+            passenger_ids: vec![7],
+        }));
+        store.apply_remove_entities(RemoveEntities {
+            entity_ids: vec![10],
+        });
+
+        let mut random = LevelEventSoundRandomState::with_seed(0);
+        let mut effects = RecordingEffects::default();
+        assert!(store
+            .apply_play_packet(
+                PlayClientbound::TeleportEntity(TeleportEntity {
+                    id: 10,
+                    position: vec3(4.0, 70.0, -2.0),
+                    delta_movement: Vec3d::default(),
+                    y_rot: 80.0,
+                    x_rot: -10.0,
+                    relatives_mask: 0,
+                    on_ground: true,
+                }),
+                &mut random,
+                &mut effects,
+            )
+            .is_none());
+        assert_eq!(effects.removed_vehicle_teleports.len(), 1);
+        assert_eq!(
+            effects.removed_vehicle_teleports[0].player_pose.position.x,
+            4.0
+        );
     }
 
     #[test]

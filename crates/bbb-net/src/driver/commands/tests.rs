@@ -64,6 +64,7 @@ fn player_move_command_encodes_pos_rot_packet() {
         on_ground: true,
         horizontal_collision: true,
         force_position: false,
+        force_pos_rot: false,
         force_rotation_only: false,
     };
 
@@ -104,6 +105,7 @@ fn player_move_command_selects_vanilla_move_player_variant_from_previous_state()
         on_ground: true,
         horizontal_collision: false,
         force_position: false,
+        force_pos_rot: false,
         force_rotation_only: false,
     }
     .encode_packet_from(previous);
@@ -119,6 +121,7 @@ fn player_move_command_selects_vanilla_move_player_variant_from_previous_state()
         on_ground: false,
         horizontal_collision: true,
         force_position: false,
+        force_pos_rot: false,
         force_rotation_only: false,
     }
     .encode_packet_from(previous);
@@ -137,6 +140,7 @@ fn player_move_command_selects_vanilla_move_player_variant_from_previous_state()
         on_ground: true,
         horizontal_collision: true,
         force_position: false,
+        force_pos_rot: false,
         force_rotation_only: false,
     }
     .encode_packet_from(previous);
@@ -148,6 +152,7 @@ fn player_move_command_selects_vanilla_move_player_variant_from_previous_state()
         on_ground: false,
         horizontal_collision: true,
         force_position: false,
+        force_pos_rot: false,
         force_rotation_only: false,
     }
     .encode_packet_from(previous);
@@ -159,6 +164,7 @@ fn player_move_command_selects_vanilla_move_player_variant_from_previous_state()
         on_ground: false,
         horizontal_collision: true,
         force_position: true,
+        force_pos_rot: false,
         force_rotation_only: false,
     }
     .encode_packet_from(previous);
@@ -169,6 +175,18 @@ fn player_move_command_selects_vanilla_move_player_variant_from_previous_state()
     assert_eq!(decoder.read_f64().unwrap(), previous.position.z);
     assert_eq!(decoder.read_u8().unwrap(), 0b10);
     assert!(decoder.is_empty());
+
+    let (packet_id, payload) = PlayerMoveCommand {
+        state: previous,
+        on_ground: false,
+        horizontal_collision: false,
+        force_position: true,
+        force_pos_rot: true,
+        force_rotation_only: false,
+    }
+    .encode_packet_from(previous);
+    assert_eq!(packet_id, ids::play::SERVERBOUND_MOVE_PLAYER_POS_ROT);
+    assert_eq!(payload.len(), 33);
 
     let (packet_id, payload) = PlayerMoveCommand {
         state: PlayerPositionState {
@@ -184,6 +202,7 @@ fn player_move_command_selects_vanilla_move_player_variant_from_previous_state()
         on_ground: true,
         horizontal_collision: false,
         force_position: false,
+        force_pos_rot: false,
         force_rotation_only: true,
     }
     .encode_packet_from(previous);
@@ -246,6 +265,7 @@ async fn send_player_move_command_selects_variant_and_updates_position_state() {
             on_ground: true,
             horizontal_collision: false,
             force_position: false,
+            force_pos_rot: false,
             force_rotation_only: false,
         },
         &mut player_position_state,
@@ -313,6 +333,7 @@ async fn send_player_move_command_force_rotation_only_keeps_previous_position_st
             on_ground: false,
             horizontal_collision: true,
             force_position: false,
+            force_pos_rot: false,
             force_rotation_only: true,
         },
         &mut player_position_state,

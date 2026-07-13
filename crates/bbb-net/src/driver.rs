@@ -480,6 +480,7 @@ mod tests {
             on_ground: true,
             horizontal_collision: false,
             force_position: false,
+            force_pos_rot: false,
             force_rotation_only: false,
         }))
         .await

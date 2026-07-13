@@ -12915,3 +12915,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] pending head lerp 归属既有 client-animation component，不扩张公共 flat EntityState；测试锁定
   三 tick progression、±180° wrapping、非 living immediate 和 unknown-id counters。RotateHead packet
   coverage 五格闭合。
+
+## 2026-07-13：removed player vehicle teleport recovery
+
+- [x] RemoveEntities 在删除本地玩家 vehicle chain 成员前保存 vanilla `removedPlayerVehicleId`，并在
+  同 id AddEntity 或新的 SetPassengers 本地挂载时清除；login/respawn/level clear 也不会泄漏旧 session id。
+- [x] 后续缺失实体的 matching TeleportEntity 通过同一 relative position/rotation/delta 计算更新
+  LocalPlayer，并由 shared play effect 在 native 发送强制 `ServerboundMovePlayer.PosRot`，固定
+  onGround=false、horizontalCollision=false；offline probe 同步其 player position state。
+- [x] RemoveEntities runtime coverage 仅因尚无 `ClientDebugSubscriber` subscription UUID maps 与
+  `dropEntity` 保持 partial，不再把已完成的 vehicle correction fallback 列作缺口。

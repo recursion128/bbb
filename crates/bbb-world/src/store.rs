@@ -123,6 +123,8 @@ pub struct WorldStore {
     #[serde(default)]
     pub(crate) local_player_vehicle_id: Option<i32>,
     #[serde(default)]
+    pub(crate) removed_player_vehicle_id: Option<i32>,
+    #[serde(default)]
     pub(crate) last_projectile_power: Option<ProjectilePowerUpdateState>,
     pub(crate) inventory: InventoryState,
     /// Vanilla item/block default profiles synced from the asset registry at
