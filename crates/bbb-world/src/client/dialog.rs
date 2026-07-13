@@ -11,7 +11,10 @@ mod body;
 mod input;
 
 pub use action::{DialogActionState, DialogCommandTemplateState};
-pub use body::{DialogBodyState, DialogItemStackTemplateState, DialogPlainMessageState};
+pub use body::{
+    DialogBodyState, DialogDataComponentPatchEntryState, DialogDataComponentPatchState,
+    DialogItemStackTemplateState, DialogPlainMessageState,
+};
 pub use input::{
     DialogInputControlState, DialogInputState, DialogNumberRangeState,
     DialogSingleOptionEntryState, DialogTextMultilineState,

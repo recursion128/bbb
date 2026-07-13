@@ -1,4 +1,5 @@
 use bbb_protocol::{
+    data_component_types::vanilla_data_component_type_for_resource_id,
     item_types::vanilla_item_type_for_resource_id, NbtSummaryEntry, NbtSummaryValue,
 };
 use serde::{Deserialize, Serialize};
@@ -39,6 +40,22 @@ pub struct DialogItemStackTemplateState {
     pub count: i32,
     #[serde(default)]
     pub components: Option<NbtSummaryValue>,
+    #[serde(default)]
+    pub component_data: Option<DialogDataComponentPatchState>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DialogDataComponentPatchState {
+    pub entries: Vec<DialogDataComponentPatchEntryState>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DialogDataComponentPatchEntryState {
+    pub type_id: i32,
+    pub resource_id: String,
+    pub removed: bool,
+    #[serde(default)]
+    pub value: Option<NbtSummaryValue>,
 }
 
 pub(super) fn decode_dialog_bodies(
@@ -113,6 +130,7 @@ fn decode_item_stack_template(
             resource_id: decode_item_resource_id(resource_id)?,
             count: 1,
             components: None,
+            component_data: None,
         }),
         NbtSummaryValue::Compound(entries) => {
             let resource_id = decode_item_resource_id(required_string(
@@ -122,20 +140,76 @@ fn decode_item_stack_template(
             )?)?;
             let count = optional_i32(entries, "count", 1, "dialog item stack template")?;
             validate_range(count, 1, 99, "dialog item stack template count")?;
-            let components = find_entry(entries, "components")
+            let (components, component_data) = find_entry(entries, "components")
                 .map(|components| {
-                    compound_entries(components, "dialog item stack template components")?;
-                    Ok::<_, String>(components.clone())
+                    Ok::<_, String>((components.clone(), decode_data_component_patch(components)?))
                 })
-                .transpose()?;
+                .transpose()?
+                .map_or((None, None), |(components, component_data)| {
+                    (Some(components), Some(component_data))
+                });
             Ok(DialogItemStackTemplateState {
                 resource_id,
                 count,
                 components,
+                component_data,
             })
         }
         _ => Err("dialog item stack template is neither an item id nor a compound".to_string()),
     }
+}
+
+fn decode_data_component_patch(
+    value: &NbtSummaryValue,
+) -> Result<DialogDataComponentPatchState, String> {
+    let entries = compound_entries(value, "dialog item stack template components")?;
+    let mut decoded_entries: Vec<DialogDataComponentPatchEntryState> = Vec::new();
+    for entry in entries {
+        let (removed, raw_resource_id) = entry
+            .name
+            .strip_prefix('!')
+            .map_or((false, entry.name.as_str()), |resource_id| {
+                (true, resource_id)
+            });
+        let resource_id = normalize_codec_identifier(raw_resource_id).ok_or_else(|| {
+            format!("invalid dialog item component resource id {raw_resource_id}")
+        })?;
+        let component_type = vanilla_data_component_type_for_resource_id(&resource_id)
+            .ok_or_else(|| format!("unknown dialog item component {resource_id}"))?;
+        if !component_type.persistent {
+            return Err(format!(
+                "dialog item component {resource_id} is not persistent"
+            ));
+        }
+        if removed && !matches!(entry.value, NbtSummaryValue::Compound(_)) {
+            return Err(format!(
+                "removed dialog item component {resource_id} payload is not a compound"
+            ));
+        }
+        let decoded = DialogDataComponentPatchEntryState {
+            type_id: component_type.type_id,
+            resource_id,
+            removed,
+            value: (!removed).then(|| entry.value.clone()),
+        };
+        if let Some(existing) = decoded_entries
+            .iter_mut()
+            .find(|existing| existing.type_id == decoded.type_id)
+        {
+            if existing.removed == decoded.removed {
+                return Err(format!(
+                    "duplicate dialog item component patch key {}",
+                    decoded.resource_id
+                ));
+            }
+            *existing = decoded;
+        } else {
+            decoded_entries.push(decoded);
+        }
+    }
+    Ok(DialogDataComponentPatchState {
+        entries: decoded_entries,
+    })
 }
 
 fn decode_item_resource_id(raw: &str) -> Result<String, String> {
@@ -219,6 +293,7 @@ mod tests {
         assert_eq!(item.resource_id, "minecraft:diamond");
         assert_eq!(item.count, 1);
         assert_eq!(item.components, None);
+        assert_eq!(item.component_data, None);
         assert_eq!(description.as_ref().unwrap().contents.text, "A diamond");
         assert_eq!(description.as_ref().unwrap().width, 200);
         assert!(!show_decorations);
@@ -266,6 +341,17 @@ mod tests {
         assert_eq!(item.resource_id, "minecraft:stone");
         assert_eq!(item.count, 2);
         assert_eq!(item.components, Some(components));
+        assert_eq!(
+            item.component_data,
+            Some(DialogDataComponentPatchState {
+                entries: vec![DialogDataComponentPatchEntryState {
+                    type_id: 6,
+                    resource_id: "minecraft:custom_name".to_string(),
+                    removed: false,
+                    value: Some(NbtSummaryValue::String("Named".to_string())),
+                }],
+            })
+        );
         assert_eq!(description.as_ref().unwrap().width, 250);
         assert!(show_decorations);
         assert!(show_tooltip);
@@ -295,6 +381,109 @@ mod tests {
             ])])
             .is_err());
         }
+    }
+
+    #[test]
+    fn decodes_component_patch_removals_and_applies_last_entry() {
+        let components = compound(vec![
+            value_entry("custom_name", NbtSummaryValue::String("First".to_string())),
+            value_entry("!minecraft:custom_name", compound(Vec::new())),
+            value_entry("minecraft:repair_cost", NbtSummaryValue::Int(3)),
+        ]);
+        let bodies = decode_dialog_bodies(&[compound(vec![
+            string_entry("type", "item"),
+            value_entry(
+                "item",
+                compound(vec![
+                    string_entry("id", "stone"),
+                    value_entry("components", components.clone()),
+                ]),
+            ),
+        ])])
+        .unwrap();
+        let DialogBodyState::Item { item, .. } = &bodies[0] else {
+            panic!("expected item body");
+        };
+
+        assert_eq!(item.components, Some(components));
+        assert_eq!(item.component_data.as_ref().unwrap().entries.len(), 2);
+        assert_eq!(
+            item.component_data.as_ref().unwrap().entries[0],
+            DialogDataComponentPatchEntryState {
+                type_id: 6,
+                resource_id: "minecraft:custom_name".to_string(),
+                removed: true,
+                value: None,
+            }
+        );
+        assert_eq!(
+            item.component_data.as_ref().unwrap().entries[1],
+            DialogDataComponentPatchEntryState {
+                type_id: 19,
+                resource_id: "minecraft:repair_cost".to_string(),
+                removed: false,
+                value: Some(NbtSummaryValue::Int(3)),
+            }
+        );
+    }
+
+    #[test]
+    fn rejects_unknown_transient_and_malformed_component_patch_entries() {
+        for (name, value, expected) in [
+            (
+                "minecraft:missing",
+                compound(Vec::new()),
+                "unknown dialog item component",
+            ),
+            (
+                "minecraft:creative_slot_lock",
+                compound(Vec::new()),
+                "is not persistent",
+            ),
+            (
+                "!minecraft:custom_name",
+                NbtSummaryValue::String("not a map".to_string()),
+                "payload is not a compound",
+            ),
+        ] {
+            let error = decode_dialog_bodies(&[compound(vec![
+                string_entry("type", "item"),
+                value_entry(
+                    "item",
+                    compound(vec![
+                        string_entry("id", "stone"),
+                        value_entry("components", compound(vec![value_entry(name, value)])),
+                    ]),
+                ),
+            ])])
+            .unwrap_err();
+            assert!(error.contains(expected), "unexpected error: {error}");
+        }
+
+        let error = decode_dialog_bodies(&[compound(vec![
+            string_entry("type", "item"),
+            value_entry(
+                "item",
+                compound(vec![
+                    string_entry("id", "stone"),
+                    value_entry(
+                        "components",
+                        compound(vec![
+                            value_entry(
+                                "custom_name",
+                                NbtSummaryValue::String("First".to_string()),
+                            ),
+                            value_entry(
+                                "minecraft:custom_name",
+                                NbtSummaryValue::String("Second".to_string()),
+                            ),
+                        ]),
+                    ),
+                ]),
+            ),
+        ])])
+        .unwrap_err();
+        assert!(error.contains("duplicate dialog item component patch key"));
     }
 
     fn compound(entries: Vec<NbtSummaryEntry>) -> NbtSummaryValue {

@@ -892,6 +892,14 @@ pub fn vanilla_data_component_type(type_id: i32) -> Option<&'static DataComponen
     VANILLA_DATA_COMPONENT_TYPES.get(usize::try_from(type_id).ok()?)
 }
 
+pub fn vanilla_data_component_type_for_resource_id(
+    resource_id: &str,
+) -> Option<&'static DataComponentTypeCatalogEntry> {
+    VANILLA_DATA_COMPONENT_TYPES
+        .iter()
+        .find(|entry| entry.resource_id == resource_id)
+}
+
 pub fn vanilla_data_component_resource_id_for_type_id(type_id: i32) -> Option<&'static str> {
     Some(vanilla_data_component_type(type_id)?.resource_id)
 }
@@ -934,6 +942,15 @@ mod tests {
                 .map(|entry| entry.type_id)
                 .collect::<Vec<_>>(),
             vec![20, 41, 48]
+        );
+        assert_eq!(
+            vanilla_data_component_type_for_resource_id("minecraft:custom_name")
+                .map(|entry| entry.type_id),
+            Some(VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID)
+        );
+        assert_eq!(
+            vanilla_data_component_type_for_resource_id("minecraft:missing"),
+            None
         );
         assert_eq!(VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID, 37);
         assert_eq!(VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID, 46);

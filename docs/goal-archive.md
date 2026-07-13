@@ -13665,3 +13665,11 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] URL scheme/URI、CHAT_STRING、positive page、resource id、任意 static custom payload、
   compound dynamic additions、模板 segments/variables、禁用 open-file，以及 registry-aware/context-free
   show-dialog holder 和 64 层递归边界均有定向测试。item component patch 与 native screens 仍开放。
+
+## 2026-07-13：Project dialog item component patches
+
+- [x] 对照 `ItemStackTemplate`、`DataComponentPatch` 与 `DataComponents`，由生成的 110 项
+  component catalog 反查并投影 stable type id/resource id、set/remove 与 persistent gate；原始
+  patch 和未展开的正值 NBT 同时保留。
+- [x] default namespace、unknown/transient 拒绝、remove map payload，以及同一 component 的
+  后写覆盖均有定向测试。110 种正值的 per-component persistent Codec 与 native screens 仍开放。

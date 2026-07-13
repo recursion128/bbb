@@ -64,9 +64,10 @@ Owner: `bbb-protocol`
   state, and reconnect with the Transfer intent instead of only recording the
   requested host and port.
 - Complete typed `Dialog` data beyond the current five top-level variants and
-  PlainMessage/Item body, input-control, and action baseline: decode item-template
-  component patches, render the corresponding screens, restore the previous screen on
-  clear, and route custom-click controls through the active dialog state.
+  PlainMessage/Item body, input-control, action, and item component-patch key/removal
+  baseline: decode each persistent component's positive value Codec, render the
+  corresponding screens, restore the previous screen on clear, and route custom-click
+  controls through the active dialog state.
 - Decode block/chunk/entity/event debug subscription payloads through the synced
   `DEBUG_SUBSCRIPTION` registry codecs, retain typed values with vanilla game-time
   expiry/removal semantics, ignore entity updates whose target is absent, and feed
