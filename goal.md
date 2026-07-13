@@ -327,7 +327,9 @@ catalog 投影 stable type/resource identity、set/remove、persistent gate 与�
 max-stack/max-damage/damage/repair-cost int range、minimum-attack-charge/potion-duration-scale float
 range、glint bool、三项 unit、三项 Identifier 与 Rarity 共 14 个 primitive 注册项已 typed 投影；
 16 项生成 built-in enum 与 tropical-fish pattern 共 17 个 StringRepresentable 注册项也已按严格
-serialized name typed 投影；Component、holder、list 与 compound record 等其余 persistent Codec 仍未展开；
+serialized name typed 投影；MapItemColor/MapId 与 0..=4 OminousBottleAmplifier scalar wrapper、
+UseEffects/SwingAnimation defaulted flat record 及 BlockItemStateProperties string map 共 6 个注册项也已
+typed 投影；Component、holder、list 与其余 compound record 等 persistent Codec 仍未展开；
 四类 input control 与九类 static/dynamic action 已按 codec typed 投影并同时保留 raw；DialogList 的 play
 tag/direct 同质 HolderSet、session reference、context-free inline-list
 边界、external title 与 default/validation 已 typed 投影，仍缺全部 screen；custom-click 的 resource-id +
@@ -546,8 +548,8 @@ play Waypoint 的 operation WRAP、identifier/icon/data framing、strict trailin
 play ClearDialog 的 unit payload、strict trailing、canonical clear ownership 与 tests 已闭合；剩余 previous/warning screen-stack restoration 保持 runtime partial。
 play ShowDialog 的 reference/direct holder framing、bounded NBT preservation、session registry holder
 resolution、五种 top-level Dialog semantic baseline、ownership 与 tests 已闭合；剩余完整
-Component/holder/list/compound-record item component patch 正值 Codec、canonical screen data/runtime
-screen stack 保持 partial。
+Component/holder/list/其余 compound-record item component patch 正值 Codec、canonical screen
+data/runtime screen stack 保持 partial。
 play AddEntity 的 id/uuid/type/position/LP velocity/rotation/data framing、strict trailing、basic world ownership 与 tests 已闭合；剩余 session registry validation、entity factory/player-info gate 与全类型 runtime 初始化保持 decode/canonical/runtime partial。
 play BlockChangedAck 的 sequence framing、strict trailing、prediction reconciliation/player correction ownership 与 tests 已闭合，五维 complete。
 play BlockDestruction 的 id/position/progress framing、strict trailing、progress replace/remove/expiry ownership 与 tests 已闭合；剩余 full model-shaped crack decal parity 保持 runtime partial。

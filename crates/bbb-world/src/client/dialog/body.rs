@@ -1,26 +1,8 @@
+#[cfg(test)]
 use bbb_protocol::item_component_value_types::ItemRaritySummary;
 use bbb_protocol::{
-    builtin_enum_component_values::{
-        builtin_enum_component_value_for_name, VANILLA_BUILTIN_ENUM_COMPONENTS,
-    },
-    data_component_types::{
-        vanilla_data_component_type_for_resource_id, VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID,
-        VANILLA_DATA_COMPONENT_ENCHANTMENT_GLINT_OVERRIDE_TYPE_ID,
-        VANILLA_DATA_COMPONENT_GLIDER_TYPE_ID,
-        VANILLA_DATA_COMPONENT_INTANGIBLE_PROJECTILE_TYPE_ID,
-        VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID,
-        VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
-        VANILLA_DATA_COMPONENT_MINIMUM_ATTACK_CHARGE_TYPE_ID,
-        VANILLA_DATA_COMPONENT_NOTE_BLOCK_SOUND_TYPE_ID,
-        VANILLA_DATA_COMPONENT_POTION_DURATION_SCALE_TYPE_ID,
-        VANILLA_DATA_COMPONENT_RARITY_TYPE_ID, VANILLA_DATA_COMPONENT_REPAIR_COST_TYPE_ID,
-        VANILLA_DATA_COMPONENT_TOOLTIP_STYLE_TYPE_ID,
-        VANILLA_DATA_COMPONENT_TROPICAL_FISH_PATTERN_TYPE_ID,
-        VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID,
-    },
-    item_types::vanilla_item_type_for_resource_id,
-    tropical_fish_patterns::vanilla_tropical_fish_pattern_for_name,
-    NbtSummaryEntry, NbtSummaryValue,
+    data_component_types::vanilla_data_component_type_for_resource_id,
+    item_types::vanilla_item_type_for_resource_id, NbtSummaryEntry, NbtSummaryValue,
 };
 use serde::{Deserialize, Serialize};
 
@@ -30,6 +12,11 @@ use super::{
     compound_entries, decode_component, find_entry, optional_bool, optional_i32, required_entry,
     required_string, DialogTextState,
 };
+
+mod component_value;
+
+use component_value::decode_supported_component_value;
+pub use component_value::DialogDataComponentValueState;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
@@ -78,40 +65,6 @@ pub struct DialogDataComponentPatchEntryState {
     pub value: Option<NbtSummaryValue>,
     #[serde(default)]
     pub value_data: Option<DialogDataComponentValueState>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(tag = "codec", rename_all = "snake_case")]
-pub enum DialogDataComponentValueState {
-    Integer {
-        value: i32,
-    },
-    Float {
-        bits: u32,
-    },
-    Boolean {
-        value: bool,
-    },
-    Unit,
-    ResourceId {
-        resource_id: String,
-    },
-    Rarity {
-        value: ItemRaritySummary,
-    },
-    StringEnum {
-        value_id: i32,
-        serialized_name: String,
-    },
-}
-
-impl DialogDataComponentValueState {
-    pub fn float_value(&self) -> Option<f32> {
-        match self {
-            Self::Float { bits } => Some(f32::from_bits(*bits)),
-            _ => None,
-        }
-    }
 }
 
 pub(super) fn decode_dialog_bodies(
@@ -272,150 +225,6 @@ fn decode_data_component_patch(
     Ok(DialogDataComponentPatchState {
         entries: decoded_entries,
     })
-}
-
-fn decode_supported_component_value(
-    type_id: i32,
-    resource_id: &str,
-    value: &NbtSummaryValue,
-) -> Result<Option<DialogDataComponentValueState>, String> {
-    let what = format!("dialog item component {resource_id}");
-    let decoded = match type_id {
-        VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID => {
-            let value = component_i32(value, &what)?;
-            validate_range(value, 1, 99, &what)?;
-            DialogDataComponentValueState::Integer { value }
-        }
-        VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID => {
-            let value = component_i32(value, &what)?;
-            validate_range(value, 1, i32::MAX, &what)?;
-            DialogDataComponentValueState::Integer { value }
-        }
-        VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID | VANILLA_DATA_COMPONENT_REPAIR_COST_TYPE_ID => {
-            let value = component_i32(value, &what)?;
-            validate_range(value, 0, i32::MAX, &what)?;
-            DialogDataComponentValueState::Integer { value }
-        }
-        VANILLA_DATA_COMPONENT_MINIMUM_ATTACK_CHARGE_TYPE_ID => {
-            let bits = component_f32_bits(value, &what)?;
-            validate_component_float(bits, 0.0, 1.0, &what)?;
-            DialogDataComponentValueState::Float { bits }
-        }
-        VANILLA_DATA_COMPONENT_POTION_DURATION_SCALE_TYPE_ID => {
-            let bits = component_f32_bits(value, &what)?;
-            validate_component_float(bits, 0.0, f32::MAX, &what)?;
-            DialogDataComponentValueState::Float { bits }
-        }
-        VANILLA_DATA_COMPONENT_ENCHANTMENT_GLINT_OVERRIDE_TYPE_ID => {
-            DialogDataComponentValueState::Boolean {
-                value: component_bool(value, &what)?,
-            }
-        }
-        VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID
-        | VANILLA_DATA_COMPONENT_INTANGIBLE_PROJECTILE_TYPE_ID
-        | VANILLA_DATA_COMPONENT_GLIDER_TYPE_ID => {
-            compound_entries(value, &what)?;
-            DialogDataComponentValueState::Unit
-        }
-        VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID
-        | VANILLA_DATA_COMPONENT_TOOLTIP_STYLE_TYPE_ID
-        | VANILLA_DATA_COMPONENT_NOTE_BLOCK_SOUND_TYPE_ID => {
-            let NbtSummaryValue::String(raw) = value else {
-                return Err(format!("{what} is not a resource id"));
-            };
-            let resource_id = normalize_codec_identifier(raw)
-                .ok_or_else(|| format!("invalid {what} resource id {raw}"))?;
-            DialogDataComponentValueState::ResourceId { resource_id }
-        }
-        VANILLA_DATA_COMPONENT_RARITY_TYPE_ID => {
-            let NbtSummaryValue::String(raw) = value else {
-                return Err(format!("{what} is not a rarity name"));
-            };
-            let value = ItemRaritySummary::from_serialized_name(raw)
-                .ok_or_else(|| format!("unknown {what} rarity {raw}"))?;
-            DialogDataComponentValueState::Rarity { value }
-        }
-        _ => {
-            return decode_string_enum_component_value(type_id, &what, value);
-        }
-    };
-    Ok(Some(decoded))
-}
-
-fn decode_string_enum_component_value(
-    type_id: i32,
-    what: &str,
-    value: &NbtSummaryValue,
-) -> Result<Option<DialogDataComponentValueState>, String> {
-    let is_builtin_enum = VANILLA_BUILTIN_ENUM_COMPONENTS
-        .iter()
-        .any(|entry| entry.type_id == type_id);
-    if !is_builtin_enum && type_id != VANILLA_DATA_COMPONENT_TROPICAL_FISH_PATTERN_TYPE_ID {
-        return Ok(None);
-    }
-    let NbtSummaryValue::String(serialized_name) = value else {
-        return Err(format!("{what} is not an enum name"));
-    };
-    let value_id = if type_id == VANILLA_DATA_COMPONENT_TROPICAL_FISH_PATTERN_TYPE_ID {
-        vanilla_tropical_fish_pattern_for_name(serialized_name)
-            .map(|entry| entry.packed_id)
-            .ok_or_else(|| format!("unknown {what} enum value {serialized_name}"))?
-    } else {
-        builtin_enum_component_value_for_name(type_id, serialized_name)
-            .map(|entry| entry.id)
-            .ok_or_else(|| format!("unknown {what} enum value {serialized_name}"))?
-    };
-    Ok(Some(DialogDataComponentValueState::StringEnum {
-        value_id,
-        serialized_name: serialized_name.clone(),
-    }))
-}
-
-fn component_i32(value: &NbtSummaryValue, what: &str) -> Result<i32, String> {
-    match value {
-        NbtSummaryValue::Byte(value) => Ok(i32::from(*value)),
-        NbtSummaryValue::Short(value) => Ok(i32::from(*value)),
-        NbtSummaryValue::Int(value) => Ok(*value),
-        NbtSummaryValue::Long(value) => Ok(*value as i32),
-        NbtSummaryValue::Float(bits) => Ok(f32::from_bits(*bits) as i32),
-        NbtSummaryValue::Double(bits) => Ok(f64::from_bits(*bits) as i32),
-        _ => Err(format!("{what} is not numeric")),
-    }
-}
-
-fn component_f32_bits(value: &NbtSummaryValue, what: &str) -> Result<u32, String> {
-    let value = match value {
-        NbtSummaryValue::Byte(value) => f32::from(*value),
-        NbtSummaryValue::Short(value) => f32::from(*value),
-        NbtSummaryValue::Int(value) => *value as f32,
-        NbtSummaryValue::Long(value) => *value as f32,
-        NbtSummaryValue::Float(bits) => return Ok(*bits),
-        NbtSummaryValue::Double(bits) => f64::from_bits(*bits) as f32,
-        _ => return Err(format!("{what} is not numeric")),
-    };
-    Ok(value.to_bits())
-}
-
-fn component_bool(value: &NbtSummaryValue, what: &str) -> Result<bool, String> {
-    let value = match value {
-        NbtSummaryValue::Byte(value) => *value,
-        NbtSummaryValue::Short(value) => *value as i8,
-        NbtSummaryValue::Int(value) => *value as i8,
-        NbtSummaryValue::Long(value) => *value as i8,
-        NbtSummaryValue::Float(bits) => f32::from_bits(*bits) as i32 as i8,
-        NbtSummaryValue::Double(bits) => f64::from_bits(*bits) as i32 as i8,
-        _ => return Err(format!("{what} is not a boolean")),
-    };
-    Ok(value != 0)
-}
-
-fn validate_component_float(bits: u32, min: f32, max: f32, what: &str) -> Result<(), String> {
-    let value = f32::from_bits(bits);
-    let negative_zero_below_min = min == 0.0 && bits == (-0.0f32).to_bits();
-    if value.is_nan() || negative_zero_below_min || value < min || value > max {
-        return Err(format!("{what} {value} is outside {min}..={max}"));
-    }
-    Ok(())
 }
 
 fn decode_item_resource_id(raw: &str) -> Result<String, String> {

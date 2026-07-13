@@ -13692,3 +13692,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] 全 17 注册项的名称/value id、rabbit evil sparse id、tropical-fish packed id、unknown 名称与
   non-string 拒绝均有定向测试；Component、holder、list、compound-record persistent Codec 与 native
   screens 仍开放。
+
+## 2026-07-13：Decode scalar-wrapper dialog item components
+
+- [x] 新建 `client/dialog/body/component_value.rs` semantic owner；对照 `MapItemColor`、`MapId`、
+  `OminousBottleAmplifier`、`UseEffects`、`SwingAnimation` 与 `BlockItemStateProperties` Codec，typed
+  投影两个 unrestricted int wrapper、0..=4 amplifier、两类 defaulted flat record 与 string map，
+  共闭合 6 个 persistent 注册项。
+- [x] NBT `Number.intValue`/`byteValue`、float range、record defaults、positive duration、严格
+  SwingAnimationType 名称、compound shape 与 string map value 均有定向测试；Component、holder、list、
+  其余 compound-record persistent Codec 与 native screens 仍开放。
