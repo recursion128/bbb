@@ -13035,3 +13035,15 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   tier/order/membership owner；native 点击命中与 HUD 绘制删除两份平行 primary/secondary 表并共同消费该 API。
 - [x] generator fixture、真实 update/check、顺序测试与 generated 反向扫描锁定来源，生产代码重新声明旧
   Beacon effect rows 会令测试失败；未改变 Beacon wire、menu state 或屏幕呈现行为。
+
+## 2026-07-13：Generate recipe-book search category membership
+
+- [x] gameplay-id extractor 通过共享 Tree-sitter CST 从 `SearchRecipeBookCategory` 四个 enum
+  constant 提取 `RecipeBookCategories` 引用，并与同批 13 项 category catalog 和四项 `RecipeBookType`
+  declaration order 双向验证。
+- [x] generated `vanilla_recipe_book_search_category_ids(RecipeBookType)` 成为 search-tab
+  membership/order 唯一 owner；native crafting/furnace/blast-furnace/smoker filtering 删除 14 组手写
+  search/singleton category arrays，普通 tab 从同一 generated group 取单项 slice。
+- [x] extractor fixture、真实 update/check、generated exact-order test、production `_TAB_CATEGORIES`
+  反向扫描与 native crafting/furnace focused tests 通过；未改变 recipe wire、craftability 或 UI 呈现语义，
+  RecipeToast/hover/tooltip/narration 仍开放。

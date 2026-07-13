@@ -300,7 +300,9 @@ Inventory:
 - Implement the rich-tooltip `space` font provider, the remaining text styles,
   italic/complex component styles, and component-specific detail lines from
   `font/default.json`.
-- Implement recipe book and creative inventory variants.
+- Implement the remaining recipe-book presentation variants (including
+  RecipeToast, hover/tooltips, focus, and narration) and creative inventory
+  variants.
 - When a highlighted recipe first becomes visible in a native recipe button,
   remove its local highlight and send `RecipeBookSeenRecipe` exactly once like
   vanilla `RecipeButton.init`/`RecipeBookComponent.recipeShown`. The generic

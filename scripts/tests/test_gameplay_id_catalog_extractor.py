@@ -1068,8 +1068,24 @@ public class RecipeBookCategories {
 }
 """,
         )
-        book_entries, display_entries, category_entries = recipe_wire_type_entries(
-            books, displays, categories
+        search_categories = parse_source(
+            "fixture/SearchRecipeBookCategory.java",
+            b"""
+package fixture;
+public enum SearchRecipeBookCategory {
+  CRAFTING(RecipeBookCategories.CRAFTING_EQUIPMENT,
+      RecipeBookCategories.CRAFTING_BUILDING_BLOCKS,
+      RecipeBookCategories.CRAFTING_MISC, RecipeBookCategories.CRAFTING_REDSTONE),
+  FURNACE(RecipeBookCategories.FURNACE_FOOD, RecipeBookCategories.FURNACE_BLOCKS,
+      RecipeBookCategories.FURNACE_MISC),
+  BLAST_FURNACE(RecipeBookCategories.BLAST_FURNACE_BLOCKS,
+      RecipeBookCategories.BLAST_FURNACE_MISC),
+  SMOKER(RecipeBookCategories.SMOKER_FOOD);
+}
+""",
+        )
+        book_entries, display_entries, category_entries, search_entries = (
+            recipe_wire_type_entries(books, displays, categories, search_categories)
         )
         self.assertEqual(
             [(entry.constant_name, entry.ordinal) for entry in book_entries],
@@ -1086,6 +1102,29 @@ public class RecipeBookCategories {
                 ("FURNACE", 2, "minecraft:furnace"),
                 ("STONECUTTER", 3, "minecraft:stonecutter"),
                 ("SMITHING", 4, "minecraft:smithing"),
+            ],
+        )
+        self.assertEqual(
+            [
+                (entry.constant_name, entry.included_category_constants)
+                for entry in search_entries
+            ],
+            [
+                (
+                    "CRAFTING",
+                    (
+                        "CRAFTING_EQUIPMENT",
+                        "CRAFTING_BUILDING_BLOCKS",
+                        "CRAFTING_MISC",
+                        "CRAFTING_REDSTONE",
+                    ),
+                ),
+                ("FURNACE", ("FURNACE_FOOD", "FURNACE_BLOCKS", "FURNACE_MISC")),
+                (
+                    "BLAST_FURNACE",
+                    ("BLAST_FURNACE_BLOCKS", "BLAST_FURNACE_MISC"),
+                ),
+                ("SMOKER", ("SMOKER_FOOD",)),
             ],
         )
         self.assertEqual(

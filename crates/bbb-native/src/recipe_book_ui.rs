@@ -6,16 +6,7 @@ use bbb_protocol::packets::{
     CraftingRecipeDisplaySummary, DataComponentPatchSummary, IngredientSummary, ItemStackSummary,
     RecipeDisplayEntry, RecipeDisplaySummary, SlotDisplaySummary,
 };
-use bbb_protocol::recipe_wire_types::{
-    VANILLA_RECIPE_BOOK_CATEGORY_BLAST_FURNACE_BLOCKS_ID,
-    VANILLA_RECIPE_BOOK_CATEGORY_BLAST_FURNACE_MISC_ID,
-    VANILLA_RECIPE_BOOK_CATEGORY_CRAFTING_BUILDING_BLOCKS_ID,
-    VANILLA_RECIPE_BOOK_CATEGORY_CRAFTING_EQUIPMENT_ID,
-    VANILLA_RECIPE_BOOK_CATEGORY_CRAFTING_MISC_ID,
-    VANILLA_RECIPE_BOOK_CATEGORY_CRAFTING_REDSTONE_ID,
-    VANILLA_RECIPE_BOOK_CATEGORY_FURNACE_BLOCKS_ID, VANILLA_RECIPE_BOOK_CATEGORY_FURNACE_FOOD_ID,
-    VANILLA_RECIPE_BOOK_CATEGORY_FURNACE_MISC_ID, VANILLA_RECIPE_BOOK_CATEGORY_SMOKER_FOOD_ID,
-};
+use bbb_protocol::recipe_wire_types::{vanilla_recipe_book_search_category_ids, RecipeBookType};
 use bbb_world::WorldStore;
 
 pub(crate) const RECIPE_BOOK_ITEMS_PER_PAGE: usize = 20;
@@ -28,39 +19,6 @@ pub(crate) const RECIPE_BOOK_OVERLAY_ITEM_SCALE: f32 = 0.375;
 
 const RECIPE_BOOK_OVERLAY_GRID_ITEM_OFFSET: i32 = 2;
 const RECIPE_BOOK_OVERLAY_GRID_ITEM_STRIDE: i32 = 7;
-
-const CRAFTING_SEARCH_TAB_CATEGORIES: [i32; 4] = [
-    VANILLA_RECIPE_BOOK_CATEGORY_CRAFTING_EQUIPMENT_ID,
-    VANILLA_RECIPE_BOOK_CATEGORY_CRAFTING_BUILDING_BLOCKS_ID,
-    VANILLA_RECIPE_BOOK_CATEGORY_CRAFTING_MISC_ID,
-    VANILLA_RECIPE_BOOK_CATEGORY_CRAFTING_REDSTONE_ID,
-];
-const CRAFTING_EQUIPMENT_TAB_CATEGORIES: [i32; 1] =
-    [VANILLA_RECIPE_BOOK_CATEGORY_CRAFTING_EQUIPMENT_ID];
-const CRAFTING_BUILDING_BLOCKS_TAB_CATEGORIES: [i32; 1] =
-    [VANILLA_RECIPE_BOOK_CATEGORY_CRAFTING_BUILDING_BLOCKS_ID];
-const CRAFTING_MISC_TAB_CATEGORIES: [i32; 1] = [VANILLA_RECIPE_BOOK_CATEGORY_CRAFTING_MISC_ID];
-const CRAFTING_REDSTONE_TAB_CATEGORIES: [i32; 1] =
-    [VANILLA_RECIPE_BOOK_CATEGORY_CRAFTING_REDSTONE_ID];
-
-const FURNACE_SEARCH_TAB_CATEGORIES: [i32; 3] = [
-    VANILLA_RECIPE_BOOK_CATEGORY_FURNACE_FOOD_ID,
-    VANILLA_RECIPE_BOOK_CATEGORY_FURNACE_BLOCKS_ID,
-    VANILLA_RECIPE_BOOK_CATEGORY_FURNACE_MISC_ID,
-];
-const FURNACE_FOOD_TAB_CATEGORIES: [i32; 1] = [VANILLA_RECIPE_BOOK_CATEGORY_FURNACE_FOOD_ID];
-const FURNACE_BLOCKS_TAB_CATEGORIES: [i32; 1] = [VANILLA_RECIPE_BOOK_CATEGORY_FURNACE_BLOCKS_ID];
-const FURNACE_MISC_TAB_CATEGORIES: [i32; 1] = [VANILLA_RECIPE_BOOK_CATEGORY_FURNACE_MISC_ID];
-const BLAST_FURNACE_SEARCH_TAB_CATEGORIES: [i32; 2] = [
-    VANILLA_RECIPE_BOOK_CATEGORY_BLAST_FURNACE_BLOCKS_ID,
-    VANILLA_RECIPE_BOOK_CATEGORY_BLAST_FURNACE_MISC_ID,
-];
-const BLAST_FURNACE_BLOCKS_TAB_CATEGORIES: [i32; 1] =
-    [VANILLA_RECIPE_BOOK_CATEGORY_BLAST_FURNACE_BLOCKS_ID];
-const BLAST_FURNACE_MISC_TAB_CATEGORIES: [i32; 1] =
-    [VANILLA_RECIPE_BOOK_CATEGORY_BLAST_FURNACE_MISC_ID];
-const SMOKER_SEARCH_TAB_CATEGORIES: [i32; 1] = [VANILLA_RECIPE_BOOK_CATEGORY_SMOKER_FOOD_ID];
-const SMOKER_FOOD_TAB_CATEGORIES: [i32; 1] = [VANILLA_RECIPE_BOOK_CATEGORY_SMOKER_FOOD_ID];
 
 const PLAYER_INVENTORY_SLOT_START: i32 = 0;
 const PLAYER_INVENTORY_SLOT_END: i32 = 36;
@@ -960,32 +918,32 @@ fn push_furnace_category_collections<'a>(
 }
 
 fn crafting_tab_categories(selected_tab_index: usize) -> Option<&'static [i32]> {
-    match selected_tab_index {
-        0 => Some(&CRAFTING_SEARCH_TAB_CATEGORIES),
-        1 => Some(&CRAFTING_EQUIPMENT_TAB_CATEGORIES),
-        2 => Some(&CRAFTING_BUILDING_BLOCKS_TAB_CATEGORIES),
-        3 => Some(&CRAFTING_MISC_TAB_CATEGORIES),
-        4 => Some(&CRAFTING_REDSTONE_TAB_CATEGORIES),
-        _ => None,
-    }
+    recipe_book_tab_categories(RecipeBookType::Crafting, selected_tab_index)
 }
 
 fn furnace_tab_categories(
     family: RecipeBookFurnaceFamily,
     selected_tab_index: usize,
 ) -> Option<&'static [i32]> {
-    match (family, selected_tab_index) {
-        (RecipeBookFurnaceFamily::Furnace, 0) => Some(&FURNACE_SEARCH_TAB_CATEGORIES),
-        (RecipeBookFurnaceFamily::Furnace, 1) => Some(&FURNACE_FOOD_TAB_CATEGORIES),
-        (RecipeBookFurnaceFamily::Furnace, 2) => Some(&FURNACE_BLOCKS_TAB_CATEGORIES),
-        (RecipeBookFurnaceFamily::Furnace, 3) => Some(&FURNACE_MISC_TAB_CATEGORIES),
-        (RecipeBookFurnaceFamily::BlastFurnace, 0) => Some(&BLAST_FURNACE_SEARCH_TAB_CATEGORIES),
-        (RecipeBookFurnaceFamily::BlastFurnace, 1) => Some(&BLAST_FURNACE_BLOCKS_TAB_CATEGORIES),
-        (RecipeBookFurnaceFamily::BlastFurnace, 2) => Some(&BLAST_FURNACE_MISC_TAB_CATEGORIES),
-        (RecipeBookFurnaceFamily::Smoker, 0) => Some(&SMOKER_SEARCH_TAB_CATEGORIES),
-        (RecipeBookFurnaceFamily::Smoker, 1) => Some(&SMOKER_FOOD_TAB_CATEGORIES),
-        _ => None,
+    let book_type = match family {
+        RecipeBookFurnaceFamily::Furnace => RecipeBookType::Furnace,
+        RecipeBookFurnaceFamily::BlastFurnace => RecipeBookType::BlastFurnace,
+        RecipeBookFurnaceFamily::Smoker => RecipeBookType::Smoker,
+    };
+    recipe_book_tab_categories(book_type, selected_tab_index)
+}
+
+fn recipe_book_tab_categories(
+    book_type: RecipeBookType,
+    selected_tab_index: usize,
+) -> Option<&'static [i32]> {
+    let search_categories = vanilla_recipe_book_search_category_ids(book_type);
+    if selected_tab_index == 0 {
+        return Some(search_categories);
     }
+    search_categories
+        .get(selected_tab_index - 1)
+        .map(std::slice::from_ref)
 }
 
 fn crafting_recipe_fits_grid(entry: &RecipeDisplayEntry, grid: RecipeBookCraftingGrid) -> bool {

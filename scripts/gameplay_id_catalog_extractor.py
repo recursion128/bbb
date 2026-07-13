@@ -310,6 +310,12 @@ class RecipeBookCategoryEntry:
 
 
 @dataclass(frozen=True)
+class RecipeBookSearchCategoryEntry:
+    constant_name: str
+    included_category_constants: tuple[str, ...]
+
+
+@dataclass(frozen=True)
 class RecipeDisplayTypeEntry:
     constant_name: str
     type_id: int
@@ -1656,10 +1662,12 @@ def recipe_wire_type_entries(
     book_type_source: JavaSource,
     display_types_source: JavaSource,
     category_source: JavaSource,
+    search_category_source: JavaSource,
 ) -> tuple[
     list[RecipeBookTypeEntry],
     list[RecipeDisplayTypeEntry],
     list[RecipeBookCategoryEntry],
+    list[RecipeBookSearchCategoryEntry],
 ]:
     book_names = ["CRAFTING", "FURNACE", "BLAST_FURNACE", "SMOKER"]
     books = []
@@ -1773,7 +1781,60 @@ def recipe_wire_type_entries(
         )
     _validate(categories, "recipe book category", "category_id")
     _validate(categories, "recipe book category", "resource_id")
-    return books, displays, categories
+
+    known_categories = {entry.constant_name for entry in categories}
+    search_categories = []
+    for name, arguments in _enum_constants(search_category_source):
+        included = []
+        for argument in arguments:
+            node = argument.node
+            object_node = node.child_by_field_name("object")
+            field_node = node.child_by_field_name("field")
+            if (
+                node.type != "field_access"
+                or object_node is None
+                or field_node is None
+                or search_category_source.expression(object_node).canonical
+                != "RecipeBookCategories"
+            ):
+                _fail(
+                    search_category_source,
+                    argument,
+                    "search recipe book category must reference RecipeBookCategories",
+                )
+            category_name = search_category_source.text(field_node)
+            if category_name not in known_categories:
+                _fail(
+                    search_category_source,
+                    argument,
+                    f"unknown search recipe book category {category_name}",
+                )
+            included.append(category_name)
+        if not included or len(included) != len(set(included)):
+            expression = arguments[0] if arguments else search_category_source.expression(
+                search_category_source.types[0].node
+            )
+            _fail(
+                search_category_source,
+                expression,
+                f"search recipe book category {name} must contain unique categories",
+            )
+        search_categories.append(RecipeBookSearchCategoryEntry(name, tuple(included)))
+    if [entry.constant_name for entry in search_categories] != book_names:
+        raise GameplayIdExtractionError(
+            "search recipe book categories differ from recipe book type order"
+        )
+    if [len(entry.included_category_constants) for entry in search_categories] != [
+        4,
+        3,
+        2,
+        1,
+    ]:
+        raise GameplayIdExtractionError(
+            "search recipe book category membership counts differ from vanilla"
+        )
+    _validate(search_categories, "search recipe book category")
+    return books, displays, categories, search_categories
 
 
 def item_component_value_type_entries(
