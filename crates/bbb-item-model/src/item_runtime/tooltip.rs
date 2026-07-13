@@ -28,9 +28,9 @@ use bbb_world::VANILLA_PAINTING_VARIANTS;
 use bbb_world::{
     vanilla_painting_variant as world_painting_variant,
     vanilla_painting_variant_resource_id as world_painting_variant_resource_id,
-    EnchantmentAttributeModifier, RegistrySet, VanillaEnchantmentIdentity,
-    VanillaInstrumentIdentity, VanillaPaintingVariant, VanillaTrimMaterialIdentity,
-    VanillaTrimPatternIdentity, VANILLA_ENCHANTMENT_TOOLTIP_ORDER,
+    EnchantmentAttributeModifier, EnchantmentTooltipDefinition, RegistrySet,
+    VanillaEnchantmentIdentity, VanillaInstrumentIdentity, VanillaPaintingVariant,
+    VanillaTrimMaterialIdentity, VanillaTrimPatternIdentity, VANILLA_ENCHANTMENT_TOOLTIP_ORDER,
 };
 
 use super::attributes::{
@@ -161,6 +161,7 @@ pub struct NativeItemTooltipOptions<'a> {
     pub peaceful: bool,
     pub map_data: Option<NativeItemMapTooltipData>,
     pub enchantment_keys: Option<&'a [String]>,
+    pub enchantment_definitions: Option<&'a [Option<EnchantmentTooltipDefinition>]>,
     pub enchantment_attribute_modifiers: Option<&'a [EnchantmentAttributeModifier]>,
     pub attribute_keys: Option<&'a [String]>,
     pub player_base_attack_damage: Option<f64>,
@@ -1419,6 +1420,66 @@ mod tests {
         assert!(enchantment_is_curse("minecraft:binding_curse", None));
         assert!(!enchantment_is_curse("minecraft:sharpness", None));
     }
+
+    #[test]
+    fn synced_enchantment_definition_controls_description_style_and_level_suffix() {
+        let language = LanguageCatalog::from_json_bytes(
+            br#"{
+                "enchantment.example.custom": "Localized Custom",
+                "enchantment.level.1": "I"
+            }"#,
+        )
+        .unwrap();
+        let enchantments = [ItemEnchantmentSummary {
+            holder_id: 0,
+            level: 1,
+        }];
+        let keys = ["example:custom".to_string()];
+        let mut definitions = [Some(EnchantmentTooltipDefinition {
+            description: "enchantment.example.custom".to_string(),
+            description_styled: vec![StyledTextRun {
+                text: "enchantment.example.custom".to_string(),
+                style: ComponentStyle {
+                    color: Some(0x12_34_56),
+                    ..ComponentStyle::default()
+                },
+            }],
+            description_translation_key: Some("enchantment.example.custom".to_string()),
+            description_translation_fallback: None,
+            max_level: 3,
+        })];
+        let mut lines = Vec::new();
+
+        push_enchantments_tooltip_lines(
+            &language,
+            &enchantments,
+            Some(&keys),
+            Some(&definitions),
+            None,
+            None,
+            &mut lines,
+        );
+        assert_eq!(lines.len(), 1);
+        assert_eq!(lines[0].text, "Localized Custom I");
+        assert_eq!(lines[0].tint, TOOLTIP_TEXT_GRAY);
+        assert!(lines[0]
+            .runs
+            .iter()
+            .all(|run| run.color == Some(0x12_34_56)));
+
+        definitions[0].as_mut().unwrap().max_level = 1;
+        lines.clear();
+        push_enchantments_tooltip_lines(
+            &language,
+            &enchantments,
+            Some(&keys),
+            Some(&definitions),
+            None,
+            None,
+            &mut lines,
+        );
+        assert_eq!(lines[0].text, "Localized Custom");
+    }
 }
 
 fn push_container_loot_tooltip_lines(
@@ -2316,6 +2377,7 @@ fn push_enchantments_tooltip_lines(
     language: &LanguageCatalog,
     enchantments: &[ItemEnchantmentSummary],
     enchantment_keys: Option<&[String]>,
+    enchantment_definitions: Option<&[Option<EnchantmentTooltipDefinition>]>,
     tooltip_order: Option<&[String]>,
     enchantment_tags: Option<&TagCatalog>,
     lines: &mut Vec<NativeItemTooltipLine>,
@@ -2328,8 +2390,17 @@ fn push_enchantments_tooltip_lines(
         .iter()
         .enumerate()
         .filter_map(|(index, enchantment)| {
-            enchantment_key_for_holder(enchantment.holder_id, enchantment_keys)
-                .map(|key| (index, enchantment, key))
+            enchantment_key_for_holder(enchantment.holder_id, enchantment_keys).map(|key| {
+                (
+                    index,
+                    enchantment,
+                    key,
+                    enchantment_definition_for_holder(
+                        enchantment.holder_id,
+                        enchantment_definitions,
+                    ),
+                )
+            })
         })
         .collect::<Vec<_>>();
     let mut emitted = vec![false; enchantments.len()];
@@ -2357,12 +2428,13 @@ fn push_enchantments_tooltip_lines(
         }
     }
 
-    for (index, enchantment, key) in resolved {
+    for (index, enchantment, key, definition) in resolved {
         if !emitted[index] {
             push_enchantment_tooltip_line(
                 language,
                 key,
                 enchantment.level,
+                definition,
                 enchantment_tags,
                 lines,
             );
@@ -2372,18 +2444,24 @@ fn push_enchantments_tooltip_lines(
 
 fn push_matching_ordered_enchantments(
     language: &LanguageCatalog,
-    resolved: &[(usize, &ItemEnchantmentSummary, &str)],
+    resolved: &[(
+        usize,
+        &ItemEnchantmentSummary,
+        &str,
+        Option<&EnchantmentTooltipDefinition>,
+    )],
     emitted: &mut [bool],
     order_key: &str,
     enchantment_tags: Option<&TagCatalog>,
     lines: &mut Vec<NativeItemTooltipLine>,
 ) {
-    for (index, enchantment, key) in resolved {
+    for (index, enchantment, key, definition) in resolved {
         if !emitted[*index] && *key == order_key && enchantment.level > 0 {
             push_enchantment_tooltip_line(
                 language,
                 key,
                 enchantment.level,
+                *definition,
                 enchantment_tags,
                 lines,
             );
@@ -2396,32 +2474,91 @@ fn push_enchantment_tooltip_line(
     language: &LanguageCatalog,
     enchantment_key: &str,
     level: i32,
+    definition: Option<&EnchantmentTooltipDefinition>,
     enchantment_tags: Option<&TagCatalog>,
     lines: &mut Vec<NativeItemTooltipLine>,
 ) {
-    let text = enchantment_tooltip_text(language, enchantment_key, level);
     let tint = if enchantment_is_curse(enchantment_key, enchantment_tags) {
         TOOLTIP_TEXT_RED
     } else {
         TOOLTIP_TEXT_GRAY
     };
-    lines.push(NativeItemTooltipLine::plain(text, tint));
+    let base = ComponentStyle {
+        color: tooltip_text_color_for_tint(tint),
+        ..ComponentStyle::default()
+    };
+    let (mut text, mut component_runs) =
+        enchantment_description(language, enchantment_key, definition);
+    let max_level = definition
+        .map(|definition| definition.max_level)
+        .or_else(|| vanilla_enchantment_max_level(enchantment_key))
+        .unwrap_or(1);
+    if level != 1 || max_level != 1 {
+        let appended_style = component_runs
+            .first()
+            .map(|run| run.style.clone())
+            .unwrap_or_default();
+        let level_text = language
+            .get_or_key(&format!("enchantment.level.{level}"))
+            .to_string();
+        text.push(' ');
+        text.push_str(&level_text);
+        component_runs.push(StyledTextRun {
+            text: " ".to_string(),
+            style: appended_style.clone(),
+        });
+        component_runs.push(StyledTextRun {
+            text: level_text,
+            style: appended_style,
+        });
+    }
+    let runs = hud_runs_from_component(&component_runs, &text, &base);
+    lines.push(NativeItemTooltipLine { text, tint, runs });
 }
 
-fn enchantment_tooltip_text(
+fn enchantment_description(
     language: &LanguageCatalog,
     enchantment_key: &str,
-    level: i32,
-) -> String {
-    let mut text = language
-        .get_or_key(&description_key("enchantment", enchantment_key))
-        .to_string();
-    let max_level = vanilla_enchantment_max_level(enchantment_key).unwrap_or(1);
-    if level != 1 || max_level != 1 {
-        text.push(' ');
-        text.push_str(language.get_or_key(&format!("enchantment.level.{level}")));
+    definition: Option<&EnchantmentTooltipDefinition>,
+) -> (String, Vec<StyledTextRun>) {
+    let Some(definition) = definition else {
+        let text = language
+            .get_or_key(&description_key("enchantment", enchantment_key))
+            .to_string();
+        return (
+            text.clone(),
+            vec![StyledTextRun {
+                text,
+                style: ComponentStyle::default(),
+            }],
+        );
+    };
+    let mut text = definition.description.clone();
+    let mut runs = definition.description_styled.clone();
+    if let Some(translation_key) = definition.description_translation_key.as_deref() {
+        let localized = language
+            .get(translation_key)
+            .or(definition.description_translation_fallback.as_deref())
+            .unwrap_or(translation_key);
+        let encoded_text = definition
+            .description_translation_fallback
+            .as_deref()
+            .filter(|fallback| text.contains(fallback))
+            .unwrap_or(translation_key);
+        if let Some(run) = runs.iter_mut().find(|run| run.text == encoded_text) {
+            run.text = localized.to_string();
+            text = runs.iter().map(|run| run.text.as_str()).collect();
+        } else if text.contains(encoded_text) {
+            text = text.replacen(encoded_text, localized, 1);
+        }
     }
-    text
+    if runs.is_empty() {
+        runs.push(StyledTextRun {
+            text: text.clone(),
+            style: ComponentStyle::default(),
+        });
+    }
+    (text, runs)
 }
 
 fn enchantment_key_for_holder<'a>(
@@ -2434,6 +2571,13 @@ fn enchantment_key_for_holder<'a>(
     }
     VanillaEnchantmentIdentity::for_vanilla_registry_id(holder_id)
         .map(VanillaEnchantmentIdentity::resource_id)
+}
+
+fn enchantment_definition_for_holder(
+    holder_id: i32,
+    definitions: Option<&[Option<EnchantmentTooltipDefinition>]>,
+) -> Option<&EnchantmentTooltipDefinition> {
+    definitions?.get(usize::try_from(holder_id).ok()?)?.as_ref()
 }
 
 fn vanilla_enchantment_max_level(enchantment_key: &str) -> Option<i32> {
@@ -2856,6 +3000,7 @@ impl NativeItemRuntime {
                 &self.language,
                 &component_patch.stored_enchantments,
                 options.enchantment_keys,
+                options.enchantment_definitions,
                 tooltip_order,
                 enchantment_tags,
                 lines,
@@ -2866,6 +3011,7 @@ impl NativeItemRuntime {
                 &self.language,
                 &component_patch.enchantments,
                 options.enchantment_keys,
+                options.enchantment_definitions,
                 tooltip_order,
                 enchantment_tags,
                 lines,

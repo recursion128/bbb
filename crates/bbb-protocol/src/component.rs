@@ -99,6 +99,15 @@ pub fn styled_runs_summary_text(runs: &[StyledTextRun]) -> String {
     }
 }
 
+/// Flattens an already-decoded network-NBT Component value into inherited
+/// styled runs. Registry codecs decode their enclosing compound separately,
+/// so this is the value-level companion to [`decode_styled_component_summary`].
+pub fn styled_component_runs_from_nbt_value(value: &NbtSummaryValue) -> Vec<StyledTextRun> {
+    let mut runs = RunCollector::default();
+    append_component_runs(value, &ComponentStyle::default(), &mut runs);
+    runs.runs
+}
+
 pub(crate) fn decode_component_summary_from_decoder(decoder: &mut Decoder<'_>) -> Result<String> {
     let runs = decode_styled_component_summary_from_decoder(decoder)?;
     Ok(styled_runs_summary_text(&runs))

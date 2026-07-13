@@ -96,6 +96,19 @@ fn tooltip_plain_line(text: &str, tint: [f32; 4]) -> HudInventoryTooltipLine {
     }
 }
 
+fn tooltip_enchantment_line(description: &str, level: &str, color: u32) -> HudInventoryTooltipLine {
+    let run = |text: &str| bbb_renderer::HudStyledTextRun {
+        text: text.to_string(),
+        style: bbb_renderer::HudTextStyle::default(),
+        color: Some(color),
+    };
+    HudInventoryTooltipLine {
+        text: format!("{description} {level}"),
+        tint: TOOLTIP_TEST_GRAY,
+        runs: vec![run(description), run(" "), run(level)],
+    }
+}
+
 fn tooltip_operator_warning_line(text: &str, bold: bool) -> HudInventoryTooltipLine {
     HudInventoryTooltipLine {
         text: text.to_string(),
@@ -10270,7 +10283,7 @@ fn hud_inventory_tooltip_uses_local_player_base_attributes_for_default_weapon() 
 }
 
 #[test]
-fn hud_inventory_tooltip_applies_synced_enchantment_attribute_effects() {
+fn hud_inventory_tooltip_applies_synced_enchantment_definition_and_attribute_effects() {
     let root = unique_runtime_temp_dir("inventory-enchantment-attribute-tooltip");
     write_runtime_tooltip_item_assets(&root);
     let item_runtime =
@@ -10279,7 +10292,7 @@ fn hud_inventory_tooltip_applies_synced_enchantment_attribute_effects() {
     world.record_registry_data(bbb_protocol::packets::RegistryData {
         registry: "minecraft:enchantment".to_string(),
         entries: vec![bbb_protocol::packets::RegistryDataEntry {
-            id: "minecraft:efficiency".to_string(),
+            id: "example:efficiency".to_string(),
             raw_data: Some(efficiency_enchantment_attribute_nbt()),
         }],
         raw_payload_len: 0,
@@ -10287,7 +10300,7 @@ fn hud_inventory_tooltip_applies_synced_enchantment_attribute_effects() {
     let mut stack = item_stack(0, 1);
     stack.component_patch.enchantments = vec![bbb_protocol::packets::ItemEnchantmentSummary {
         holder_id: 0,
-        level: 3,
+        level: 1,
     }];
     world.apply_set_player_inventory(bbb_protocol::packets::SetPlayerInventory {
         slot: 0,
@@ -10304,10 +10317,10 @@ fn hud_inventory_tooltip_applies_synced_enchantment_attribute_effects() {
             y: 142,
             lines: vec![
                 tooltip_name_line("Test Combo", TOOLTIP_TEST_AQUA, 0x55_FF_FF, false),
-                tooltip_plain_line("Efficiency III", TOOLTIP_TEST_GRAY),
+                tooltip_enchantment_line("Synced Efficiency", "I", 0x12_34_56),
                 tooltip_plain_line("", TOOLTIP_TEST_WHITE),
                 tooltip_plain_line("When in Main Hand:", TOOLTIP_TEST_GRAY),
-                tooltip_plain_line("+10 Mining Efficiency", TOOLTIP_TEST_BLUE),
+                tooltip_plain_line("+2 Mining Efficiency", TOOLTIP_TEST_BLUE),
             ],
         })
     );
@@ -16582,6 +16595,20 @@ fn record_enchantment_registry(world: &mut WorldStore) {
 
 fn efficiency_enchantment_attribute_nbt() -> Vec<u8> {
     let mut out = vec![10];
+    out.push(10);
+    write_enchantment_nbt_string(&mut out, "description");
+    for (name, value) in [
+        ("translate", "enchantment.example.synced_efficiency"),
+        ("color", "#123456"),
+    ] {
+        out.push(8);
+        write_enchantment_nbt_string(&mut out, name);
+        write_enchantment_nbt_string(&mut out, value);
+    }
+    out.push(0);
+    out.push(3);
+    write_enchantment_nbt_string(&mut out, "max_level");
+    out.extend(3i32.to_be_bytes());
     out.push(9);
     write_enchantment_nbt_string(&mut out, "slots");
     out.push(8);
@@ -17261,6 +17288,8 @@ fn write_runtime_tooltip_item_assets(root: &Path) {
             "item.durability": "Durability: %s / %s",
             "item.components": "%s component(s)",
             "enchantment.minecraft.efficiency": "Efficiency",
+            "enchantment.example.synced_efficiency": "Synced Efficiency",
+            "enchantment.level.1": "I",
             "enchantment.level.3": "III",
             "attribute.modifier.plus.0": "+%s %s",
             "attribute.modifier.equals.0": "%s %s",

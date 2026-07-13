@@ -1,7 +1,8 @@
 use bbb_protocol::{
     attribute_modifier_types::attribute_modifier_operation_id,
     equipment_slots::vanilla_equipment_slot_group_for_serialized_name,
-    packets::ItemEnchantmentSummary,
+    packets::ItemEnchantmentSummary, styled_component_runs_from_nbt_value,
+    styled_runs_summary_text, NbtSummaryEntry, NbtSummaryValue, StyledTextRun,
 };
 
 use crate::{
@@ -26,6 +27,20 @@ pub struct EnchantmentAttributeModifier {
     pub amount: f64,
     pub operation_id: i32,
     pub slot: String,
+}
+
+/// Tooltip-relevant fields decoded from one synchronized enchantment element.
+///
+/// The holder-order resource identity remains in [`RegistrySet`]. This value
+/// only carries the dynamic definition data that cannot be inferred from the
+/// resource id, while a missing entry lets consumers use their vanilla fallback.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EnchantmentTooltipDefinition {
+    pub description: String,
+    pub description_styled: Vec<StyledTextRun>,
+    pub description_translation_key: Option<String>,
+    pub description_translation_fallback: Option<String>,
+    pub max_level: i32,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -72,6 +87,25 @@ enum LevelBasedValue {
 }
 
 impl WorldStore {
+    /// Decodes synchronized enchantment tooltip definitions in network holder order.
+    /// Stub and malformed elements stay as `None`; consumers may then apply a
+    /// known-vanilla fallback without inventing definitions for custom keys.
+    pub fn enchantment_tooltip_definitions_in_holder_order(
+        &self,
+    ) -> Option<Vec<Option<EnchantmentTooltipDefinition>>> {
+        Some(
+            self.registry_content(ENCHANTMENT_REGISTRY)?
+                .entries
+                .iter()
+                .map(|entry| {
+                    entry
+                        .raw_data()
+                        .and_then(decode_enchantment_tooltip_definition)
+                })
+                .collect(),
+        )
+    }
+
     /// Resolves vanilla `EnchantmentHelper.forEachModifier` for the stack's
     /// synced enchantment holder ids and levels. Malformed or stub registry
     /// entries contribute no modifiers, matching the existing fail-closed
@@ -108,6 +142,34 @@ impl WorldStore {
         }
         modifiers
     }
+}
+
+fn decode_enchantment_tooltip_definition(raw_data: &[u8]) -> Option<EnchantmentTooltipDefinition> {
+    let root = decode_nbt_root(raw_data).ok()??;
+    let NbtValue::Compound(fields) = root else {
+        return None;
+    };
+    let description = find_nbt_entry(&fields, "description")?;
+    let description_fields = nbt_compound(Some(description));
+    let description_translation_key = description_fields
+        .and_then(|fields| nbt_string(find_nbt_entry(fields, "translate")))
+        .map(str::to_string);
+    let description_translation_fallback = description_fields
+        .and_then(|fields| nbt_string(find_nbt_entry(fields, "fallback")))
+        .map(str::to_string);
+    let description_styled = styled_component_runs_from_nbt_value(&nbt_summary_value(description)?);
+    let description = styled_runs_summary_text(&description_styled);
+    let max_level = nbt_i32(find_nbt_entry(&fields, "max_level")?)?;
+    if !(1..=255).contains(&max_level) {
+        return None;
+    }
+    Some(EnchantmentTooltipDefinition {
+        description,
+        description_styled,
+        description_translation_key,
+        description_translation_fallback,
+        max_level,
+    })
 }
 
 impl LevelBasedValue {
@@ -282,9 +344,53 @@ fn nbt_f32(value: &NbtValue) -> Option<f32> {
     }
 }
 
+fn nbt_i32(value: &NbtValue) -> Option<i32> {
+    match value {
+        NbtValue::Byte(value) => Some(i32::from(*value)),
+        NbtValue::Short(value) => Some(i32::from(*value)),
+        NbtValue::Int(value) => Some(*value),
+        NbtValue::Long(value) => i32::try_from(*value).ok(),
+        _ => None,
+    }
+}
+
+fn nbt_summary_value(value: &NbtValue) -> Option<NbtSummaryValue> {
+    Some(match value {
+        NbtValue::Byte(value) => NbtSummaryValue::Byte(*value),
+        NbtValue::Short(value) => NbtSummaryValue::Short(*value),
+        NbtValue::Int(value) => NbtSummaryValue::Int(*value),
+        NbtValue::Long(value) => NbtSummaryValue::Long(*value),
+        NbtValue::Float(value) => NbtSummaryValue::Float(value.to_bits()),
+        NbtValue::Double(value) => NbtSummaryValue::Double(value.to_bits()),
+        NbtValue::String(value) => NbtSummaryValue::String(value.clone()),
+        NbtValue::List(values) => NbtSummaryValue::List(
+            values
+                .iter()
+                .map(nbt_summary_value)
+                .collect::<Option<Vec<_>>>()?,
+        ),
+        NbtValue::Compound(entries) => NbtSummaryValue::Compound(
+            entries
+                .iter()
+                .map(|(name, value)| {
+                    Some(NbtSummaryEntry {
+                        name: name.clone(),
+                        value: nbt_summary_value(value)?,
+                    })
+                })
+                .collect::<Option<Vec<_>>>()?,
+        ),
+        NbtValue::IntArray(values) => NbtSummaryValue::IntArray(values.clone()),
+        NbtValue::Other => return None,
+    })
+}
+
 #[cfg(test)]
 mod tests {
-    use bbb_protocol::packets::{RegistryData, RegistryDataEntry};
+    use bbb_protocol::{
+        packets::{RegistryData, RegistryDataEntry},
+        ComponentStyle,
+    };
 
     use super::*;
 
@@ -333,6 +439,47 @@ mod tests {
                     slot: "mainhand".to_string(),
                 },
             ]
+        );
+    }
+
+    #[test]
+    fn decodes_synced_enchantment_tooltip_definitions_in_holder_order() {
+        let mut world = WorldStore::new();
+        world.record_registry_data(RegistryData {
+            registry: ENCHANTMENT_REGISTRY.to_string(),
+            entries: vec![
+                RegistryDataEntry {
+                    id: "minecraft:stub".to_string(),
+                    raw_data: None,
+                },
+                RegistryDataEntry {
+                    id: "example:dual_effect".to_string(),
+                    raw_data: Some(test_enchantment_nbt()),
+                },
+            ],
+            raw_payload_len: 0,
+        });
+
+        let definitions = world
+            .enchantment_tooltip_definitions_in_holder_order()
+            .unwrap();
+        assert_eq!(definitions.len(), 2);
+        assert_eq!(definitions[0], None);
+        assert_eq!(
+            definitions[1],
+            Some(EnchantmentTooltipDefinition {
+                description: "enchantment.example.dual_effect".to_string(),
+                description_styled: vec![StyledTextRun {
+                    text: "enchantment.example.dual_effect".to_string(),
+                    style: ComponentStyle {
+                        color: Some(0x12_34_56),
+                        ..ComponentStyle::default()
+                    },
+                }],
+                description_translation_key: Some("enchantment.example.dual_effect".to_string()),
+                description_translation_fallback: None,
+                max_level: 7,
+            })
         );
     }
 
@@ -433,6 +580,14 @@ mod tests {
             ),
         ];
         compound_payload(vec![
+            compound_tag(
+                "description",
+                vec![
+                    string_tag("translate", "enchantment.example.dual_effect"),
+                    string_tag("color", "#123456"),
+                ],
+            ),
+            int_tag("max_level", 7),
             string_list_tag("slots", &["mainhand", "mainhand"]),
             compound_tag(
                 "effects",
@@ -506,6 +661,13 @@ mod tests {
 
     fn float_tag(name: &str, value: f32) -> Vec<u8> {
         let mut out = vec![5];
+        write_nbt_string(&mut out, name);
+        out.extend(value.to_be_bytes());
+        out
+    }
+
+    fn int_tag(name: &str, value: i32) -> Vec<u8> {
+        let mut out = vec![3];
         write_nbt_string(&mut out, name);
         out.extend(value.to_be_bytes());
         out

@@ -604,10 +604,6 @@ resolver by adding a value provider. No new selection machinery is required.
   consumers that render component-bearing generated stacks where vanilla
   resolves registry-backed item-model properties. No-registry consumers still
   fall back.
-- Decode synchronized enchantment description and `max_level` into the world
-  registry projection, then thread that definition into item tooltips so custom
-  definitions follow `Enchantment.getFullname`; retain the generated vanilla
-  catalog only as the no-session-registry fallback.
 - Parse custom enchantment effects, generalizing the registry/effect projection
   beyond `minecraft:quick_charge` and the direct/tag-key enchantment predicates.
 

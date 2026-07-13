@@ -2,9 +2,11 @@ mod component;
 mod nbt_summary;
 
 pub use component::{
-    decode_sign_block_entity_nbt, decode_styled_component_summary, styled_runs_summary_text,
-    ComponentClickEvent, ComponentStyle, SignBlockEntityNbt, SignTextNbt, StyledTextRun,
+    decode_sign_block_entity_nbt, decode_styled_component_summary,
+    styled_component_runs_from_nbt_value, styled_runs_summary_text, ComponentClickEvent,
+    ComponentStyle, SignBlockEntityNbt, SignTextNbt, StyledTextRun,
 };
+pub use nbt_summary::{NbtSummaryEntry, NbtSummaryValue};
 
 pub mod advancement_frame_types;
 pub mod attribute_modifier_types;

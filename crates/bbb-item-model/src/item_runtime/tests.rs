@@ -54,6 +54,19 @@ fn colored_tooltip_line(text: &str, tint: [f32; 4], color: u32) -> NativeItemToo
     }
 }
 
+fn enchantment_tooltip_line(description: &str, level: &str) -> NativeItemTooltipLine {
+    let run = |text: &str| HudStyledTextRun {
+        text: text.to_string(),
+        style: HudTextStyle::default(),
+        color: Some(0xAA_AA_AA),
+    };
+    NativeItemTooltipLine {
+        text: format!("{description} {level}"),
+        tint: TOOLTIP_TEXT_GRAY,
+        runs: vec![run(description), run(" "), run(level)],
+    }
+}
+
 fn trim_tooltip_line(text: &str, description_run: HudStyledTextRun) -> NativeItemTooltipLine {
     NativeItemTooltipLine {
         text: format!(" {text}"),
@@ -969,7 +982,7 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
         ),
         Some(vec![
             name_line("Test Combo", TOOLTIP_TEXT_AQUA, 0x55_FF_FF, false),
-            tooltip_line("Efficiency III", TOOLTIP_TEXT_GRAY),
+            enchantment_tooltip_line("Efficiency", "III"),
             tooltip_line("", TOOLTIP_TEXT_WHITE),
             tooltip_line("When in Main Hand:", TOOLTIP_TEXT_GRAY),
             tooltip_line("+10 Mining Efficiency", TOOLTIP_TEXT_BLUE),
@@ -991,7 +1004,7 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
         ),
         Some(vec![
             name_line("Test Combo", TOOLTIP_TEXT_AQUA, 0x55_FF_FF, false),
-            tooltip_line("Efficiency III", TOOLTIP_TEXT_GRAY),
+            enchantment_tooltip_line("Efficiency", "III"),
         ])
     );
     for component_patch in [
@@ -1968,10 +1981,10 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
         ),
         Some(vec![
             name_line("Test Combo", TOOLTIP_TEXT_AQUA, 0x55_FF_FF, false),
-            tooltip_line("Mending", TOOLTIP_TEXT_GRAY),
-            tooltip_line("Curse of Binding", TOOLTIP_TEXT_RED),
-            tooltip_line("Sharpness I", TOOLTIP_TEXT_GRAY),
-            tooltip_line("Custom Glow II", TOOLTIP_TEXT_GRAY),
+            colored_tooltip_line("Mending", TOOLTIP_TEXT_GRAY, 0xAA_AA_AA),
+            colored_tooltip_line("Curse of Binding", TOOLTIP_TEXT_RED, 0xFF_55_55),
+            enchantment_tooltip_line("Sharpness", "I"),
+            enchantment_tooltip_line("Custom Glow", "II"),
             lore_line("After enchantments"),
         ])
     );
@@ -2344,7 +2357,7 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
         }),
         Some(vec![
             name_line("Enchanted Item", TOOLTIP_TEXT_AQUA, 0x55_FF_FF, false),
-            tooltip_line("Thorns I", TOOLTIP_TEXT_GRAY),
+            enchantment_tooltip_line("Thorns", "I"),
         ])
     );
     assert_eq!(
@@ -2368,7 +2381,7 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
                 0xFF_55_FF,
                 false,
             ),
-            tooltip_line("Thorns I", TOOLTIP_TEXT_GRAY),
+            enchantment_tooltip_line("Thorns", "I"),
         ])
     );
     // Styled component runs flow through: the custom name keeps its own keys

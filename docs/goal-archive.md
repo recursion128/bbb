@@ -13302,3 +13302,16 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   `Enchantment.getFullname` 的 level 后缀条件由 fixed vanilla max-level fallback 保持；同步
   definition 的 description/max-level 与剩余自定义 effects 仍作为明确 ledger gap。generator
   update/check、world/item-model/native focused tests 与 workspace gate 通过。
+
+## 2026-07-13：Project synchronized enchantment tooltip definitions
+
+- [x] `bbb-world::registries::enchantments` 从 `Enchantment.DIRECT_CODEC` 的 network NBT
+  按 holder order 解码 description Component styled-run summary、translation/fallback key 与
+  1..=255 `max_level`；stub/malformed entry 保留 `None`，不为自定义 key 猜测 definition。
+- [x] protocol 暴露 already-decoded NBT Component 的共享 styled-run flattening 入口；item
+  tooltip 对同步 translation key 使用当前 language catalog，按 `ComponentUtils.mergeStyles`
+  顺序合并 description 自有样式与 curse/gray fallback，并严格复现
+  `level != 1 || maxLevel != 1` 的等级后缀条件。
+- [x] native inventory tooltip 同时传递 session holder keys 与同步 definitions；已知 vanilla
+  stub 或无 session registry 时才回退 generated identity/max-level，custom definition 优先。
+  world/item-model/native focused tests 与 workspace gate 通过。
