@@ -613,7 +613,9 @@ fn encode_enchantments(
             let level = (1..=255)
                 .contains(&enchantment.level)
                 .then_some(enchantment.level)?;
-            let resource_id = vanilla_enchantment_resource_id(enchantment.holder_id)?;
+            let resource_id =
+                VanillaEnchantmentIdentity::for_vanilla_registry_id(enchantment.holder_id)?
+                    .resource_id();
             Some(format!("{}: {level}", debug_snbt_string(resource_id)))
         })
         .collect::<Option<Vec<_>>>()?;

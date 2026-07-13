@@ -67,7 +67,6 @@ use crate::{
     },
 };
 
-mod bootstrap_catalog;
 mod icon_model;
 mod item_membership_catalog;
 mod potion_catalog;
@@ -101,8 +100,8 @@ use tables::*;
 #[cfg(test)]
 use tooltip::*;
 pub use tooltip::{
-    vanilla_enchantment_resource_id, vanilla_painting_variant_resource_id,
-    NativeItemMapTooltipData, NativeItemTooltipLine, NativeItemTooltipOptions,
+    vanilla_painting_variant_resource_id, NativeItemMapTooltipData, NativeItemTooltipLine,
+    NativeItemTooltipOptions,
 };
 
 const FIREWORK_ROCKET_ITEM_ID: &str = "minecraft:firework_rocket";

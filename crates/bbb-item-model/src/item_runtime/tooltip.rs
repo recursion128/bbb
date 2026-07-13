@@ -28,14 +28,14 @@ use bbb_world::VANILLA_PAINTING_VARIANTS;
 use bbb_world::{
     vanilla_painting_variant as world_painting_variant,
     vanilla_painting_variant_resource_id as world_painting_variant_resource_id,
-    EnchantmentAttributeModifier, RegistrySet, VanillaInstrumentIdentity, VanillaPaintingVariant,
-    VanillaTrimMaterialIdentity, VanillaTrimPatternIdentity,
+    EnchantmentAttributeModifier, RegistrySet, VanillaEnchantmentIdentity,
+    VanillaInstrumentIdentity, VanillaPaintingVariant, VanillaTrimMaterialIdentity,
+    VanillaTrimPatternIdentity, VANILLA_ENCHANTMENT_TOOLTIP_ORDER,
 };
 
 use super::attributes::{
     vanilla_attribute, vanilla_attribute_for_key, VanillaAttribute, VanillaAttributeSentiment,
 };
-use super::bootstrap_catalog::{VANILLA_ENCHANTMENTS, VANILLA_ENCHANTMENT_TOOLTIP_ORDER};
 use super::icon_model::effective_attribute_modifiers;
 use super::mob_effects::{
     vanilla_mob_effect_attribute_modifiers, vanilla_mob_effect_category, vanilla_mob_effect_key,
@@ -1340,9 +1340,12 @@ mod tests {
     #[test]
     fn vanilla_enchantment_tables_follow_26_1_registry_and_tooltip_order() {
         assert_eq!(
-            VANILLA_ENCHANTMENTS
-                .iter()
-                .map(|entry| (entry.resource_id, entry.max_level))
+            (0..43)
+                .map(|registry_id| {
+                    let enchantment =
+                        VanillaEnchantmentIdentity::for_vanilla_registry_id(registry_id).unwrap();
+                    (enchantment.resource_id(), enchantment.max_level())
+                })
                 .collect::<Vec<_>>()
                 .as_slice(),
             &[
@@ -1397,11 +1400,18 @@ mod tests {
             Some("minecraft:sharpness")
         );
         assert_eq!(
-            vanilla_enchantment_resource_id(42),
+            VanillaEnchantmentIdentity::for_vanilla_registry_id(42)
+                .map(VanillaEnchantmentIdentity::resource_id),
             Some("minecraft:vanishing_curse")
         );
-        assert_eq!(vanilla_enchantment_resource_id(43), None);
-        assert_eq!(vanilla_enchantment_resource_id(-1), None);
+        assert_eq!(
+            VanillaEnchantmentIdentity::for_vanilla_registry_id(43),
+            None
+        );
+        assert_eq!(
+            VanillaEnchantmentIdentity::for_vanilla_registry_id(-1),
+            None
+        );
         assert_eq!(
             vanilla_enchantment_max_level("minecraft:sharpness"),
             Some(5)
@@ -2418,23 +2428,17 @@ fn enchantment_key_for_holder<'a>(
     holder_id: i32,
     enchantment_keys: Option<&'a [String]>,
 ) -> Option<&'a str> {
-    let index = usize::try_from(holder_id).ok()?;
     if let Some(enchantment_keys) = enchantment_keys {
+        let index = usize::try_from(holder_id).ok()?;
         return enchantment_keys.get(index).map(String::as_str);
     }
-    vanilla_enchantment_resource_id(holder_id)
-}
-
-pub fn vanilla_enchantment_resource_id(holder_id: i32) -> Option<&'static str> {
-    let index = usize::try_from(holder_id).ok()?;
-    Some(VANILLA_ENCHANTMENTS.get(index)?.resource_id)
+    VanillaEnchantmentIdentity::for_vanilla_registry_id(holder_id)
+        .map(VanillaEnchantmentIdentity::resource_id)
 }
 
 fn vanilla_enchantment_max_level(enchantment_key: &str) -> Option<i32> {
-    VANILLA_ENCHANTMENTS
-        .iter()
-        .find(|entry| entry.resource_id == enchantment_key)
-        .map(|entry| entry.max_level)
+    VanillaEnchantmentIdentity::for_resource_id(enchantment_key)
+        .map(VanillaEnchantmentIdentity::max_level)
 }
 
 fn enchantment_is_curse(enchantment_key: &str, enchantment_tags: Option<&TagCatalog>) -> bool {

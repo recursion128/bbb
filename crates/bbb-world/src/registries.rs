@@ -14,7 +14,9 @@ pub use biomes::{
 pub use block_states::{
     vanilla_air_block_state_id, vanilla_block_state_id, BlockStateInfo, BlockStateRegistry,
 };
-pub use enchantments::EnchantmentAttributeModifier;
+pub use enchantments::{
+    EnchantmentAttributeModifier, VanillaEnchantmentIdentity, VANILLA_ENCHANTMENT_TOOLTIP_ORDER,
+};
 pub use environment_attributes::ClientEnvironmentAttributes;
 pub(crate) use environment_attributes::{
     decode_client_environment_attributes, EnvironmentAttributeProjectionError,

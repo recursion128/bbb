@@ -163,12 +163,6 @@ Owner: `scripts/` + each generated catalog's semantic crate
   shared Tree-sitter frontend and checked-in deterministic output; ordinary
   build/test must not read local vanilla sources. Migrate each newly identified
   legacy parser as its own semantic-owner slice.
-- Move the generated 43-entry enchantment identity/max-level catalog and
-  tooltip ordering from the item-model catch-all output to the existing
-  `bbb-world::registries::enchantments` owner. Route item-model tooltips and
-  native named-holder projection through the shared catalog without bypassing
-  synchronized registry definitions; keep custom effect parsing as its own gap.
-
 ## Unknown clientbound packets in login, configuration, and play
 
 Owner: `bbb-protocol` + `bbb-net` + `bbb-native`
@@ -610,6 +604,10 @@ resolver by adding a value provider. No new selection machinery is required.
   consumers that render component-bearing generated stacks where vanilla
   resolves registry-backed item-model properties. No-registry consumers still
   fall back.
+- Decode synchronized enchantment description and `max_level` into the world
+  registry projection, then thread that definition into item tooltips so custom
+  definitions follow `Enchantment.getFullname`; retain the generated vanilla
+  catalog only as the no-session-registry fallback.
 - Parse custom enchantment effects, generalizing the registry/effect projection
   beyond `minecraft:quick_charge` and the direct/tag-key enchantment predicates.
 

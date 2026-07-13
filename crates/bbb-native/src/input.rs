@@ -330,7 +330,7 @@ use crate::entity_scene::{PUFFERFISH_DEFAULT_PUFF_STATE, PUFFERFISH_PUFF_STATE_D
 use crate::entity_scene::{WITHER_SKULL_DANGEROUS_DATA_ID, WITHER_SKULL_DEFAULT_DANGEROUS};
 use crate::terrain_runtime::TerrainUploadState;
 use bbb_item_model::{
-    vanilla_attribute_resource_id, vanilla_enchantment_resource_id, vanilla_mob_effect_resource_id,
+    vanilla_attribute_resource_id, vanilla_mob_effect_resource_id,
     vanilla_painting_variant_resource_id, vanilla_potion_resource_id, ItemModelKeybindContext,
     NativeItemRuntime,
 };
@@ -340,8 +340,8 @@ use bbb_renderer::{
 };
 use bbb_world::{
     CatSoundVariantIdentity, ChickenSoundVariantIdentity, CowSoundVariantIdentity,
-    PigSoundVariantIdentity, VanillaInstrumentIdentity, VanillaTrimMaterialIdentity,
-    VanillaTrimPatternIdentity, WolfSoundVariantIdentity,
+    PigSoundVariantIdentity, VanillaEnchantmentIdentity, VanillaInstrumentIdentity,
+    VanillaTrimMaterialIdentity, VanillaTrimPatternIdentity, WolfSoundVariantIdentity,
 };
 use bbb_world::{
     VANILLA_ABSTRACT_FISH_DEFAULT_FROM_BUCKET as ABSTRACT_FISH_DEFAULT_FROM_BUCKET,

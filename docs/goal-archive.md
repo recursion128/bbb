@@ -13288,3 +13288,17 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   `RegistryDataLoader.SYNCHRONIZED_REGISTRIES` 使用 `TrimMaterial.DIRECT_CODEC`，本片不冒充动态
   assets/Component payload 或 session remapping。generator update/check、world/item-model/native
   focused tests 与 workspace gate 通过。
+
+## 2026-07-13：Move enchantment catalog to the world registry owner
+
+- [x] bootstrap generator 将 `Enchantments.java` 的 43 项 bootstrap 顺序、resource id、
+  `max_level` 与 vanilla `tooltip_order` tag 生成到既有
+  `bbb-world::registries::enchantments` owner，以 `VanillaEnchantmentIdentity` 统一 fixed
+  ordinal/resource/max-level；item-model 最后的通用 `bootstrap_catalog.rs` catch-all 已删除。
+- [x] item tooltip 继续优先消费 session registry holder keys 与 resource-pack
+  `minecraft:tooltip_order` tag，仅在二者缺失时使用 world vanilla fallback；native named
+  enchantment SNBT 投影直接消费同一 typed identity，item-model 不再公开 resource helper。
+- [x] 原版 `RegistryDataLoader.SYNCHRONIZED_REGISTRIES` 使用 `Enchantment.DIRECT_CODEC`，
+  `Enchantment.getFullname` 的 level 后缀条件由 fixed vanilla max-level fallback 保持；同步
+  definition 的 description/max-level 与剩余自定义 effects 仍作为明确 ledger gap。generator
+  update/check、world/item-model/native focused tests 与 workspace gate 通过。

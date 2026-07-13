@@ -366,7 +366,8 @@ pub use crate::play_apply::{
 pub use crate::recipe_book::*;
 pub use crate::recipes::*;
 pub use crate::registries::{
-    VanillaInstrumentIdentity, VanillaTrimMaterialIdentity, VanillaTrimPatternIdentity,
+    VanillaEnchantmentIdentity, VanillaInstrumentIdentity, VanillaTrimMaterialIdentity,
+    VanillaTrimPatternIdentity, VANILLA_ENCHANTMENT_TOOLTIP_ORDER,
 };
 pub use crate::terrain_state::*;
 pub use crate::world_state::*;

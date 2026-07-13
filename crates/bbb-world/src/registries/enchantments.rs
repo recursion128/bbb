@@ -9,6 +9,10 @@ use crate::{
     WorldStore,
 };
 
+mod generated_26_1;
+
+pub use generated_26_1::{VanillaEnchantmentIdentity, VANILLA_ENCHANTMENT_TOOLTIP_ORDER};
+
 const ENCHANTMENT_REGISTRY: &str = "minecraft:enchantment";
 /// A concrete attribute modifier contributed by one enchanted stack entry.
 ///
