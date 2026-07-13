@@ -86,8 +86,8 @@ use crate::entities::animations::{
     camel_is_dashing, cat_is_lying, cat_relax_state_one, copper_golem_is_dropping_item,
     copper_golem_is_dropping_no_item, copper_golem_is_getting_item,
     copper_golem_is_getting_no_item, copper_golem_is_idle, creaking_can_move,
-    creaking_is_tearing_down, entity_animation_uses_in_water, entity_is_fall_flying,
-    guardian_attack_duration, guardian_attack_target_id, guardian_is_moving,
+    creaking_is_tearing_down, entity_animation_uses_in_water, entity_chunk_coordinate,
+    entity_is_fall_flying, guardian_attack_duration, guardian_attack_target_id, guardian_is_moving,
     is_guardian_entity_type, piglin_is_charging_crossbow, pillager_is_charging_crossbow,
     player_is_using_item, warden_heartbeat_delay, wither_side_head_target_ids,
     wither_side_head_target_rotation, wolf_is_interested, EntityClientTickParticleTriggers,
@@ -142,6 +142,23 @@ use crate::entities::schema::{
 use crate::registries::RegistrySet;
 use crate::ItemEquipmentSlot;
 use bbb_protocol::entity_types::*;
+
+fn within_death_tick_distance(
+    position: super::EntityVec3,
+    player_chunk: Option<(i32, i32)>,
+    simulation_distance: Option<i32>,
+) -> bool {
+    let (Some((player_chunk_x, player_chunk_z)), Some(simulation_distance)) =
+        (player_chunk, simulation_distance)
+    else {
+        return true;
+    };
+    let entity_chunk_x = entity_chunk_coordinate(position.x);
+    let entity_chunk_z = entity_chunk_coordinate(position.z);
+    let x_distance = (i64::from(entity_chunk_x) - i64::from(player_chunk_x)).abs();
+    let z_distance = (i64::from(entity_chunk_z) - i64::from(player_chunk_z)).abs();
+    x_distance.max(z_distance) <= i64::from(simulation_distance)
+}
 
 /// Vanilla `Entity.getTicksRequiredToFreeze()`: the powder-snow freeze threshold
 /// at which `isFullyFrozen()` becomes true and the body starts shaking.
@@ -3437,6 +3454,8 @@ impl EntityStore {
         ticks: u32,
         in_water_by_id: &HashMap<i32, bool>,
         minecart_improvements_enabled: bool,
+        death_tick_player_chunk: Option<(i32, i32)>,
+        death_tick_simulation_distance: Option<i32>,
     ) {
         let wither_head_targets_by_id = self.wither_head_targets_by_id();
         for _ in 0..ticks {
@@ -3463,6 +3482,11 @@ impl EntityStore {
                 // swing on `!isPassenger()` and scales the position by `3` for a
                 // baby (`updateWalkAnimation`).
                 let is_passenger = mount.vehicle_id.is_some();
+                let should_tick_death = within_death_tick_distance(
+                    transform.position,
+                    death_tick_player_chunk,
+                    death_tick_simulation_distance,
+                );
                 let is_baby = vanilla_is_baby(identity.entity_type_id, &metadata.data_values);
                 let is_fall_flying = entity_is_fall_flying(&metadata.data_values);
                 let is_crouching =
@@ -3514,6 +3538,7 @@ impl EntityStore {
                     identity.entity_type_id,
                     identity.id,
                     *transform,
+                    should_tick_death,
                     is_passenger,
                     is_baby,
                     is_fall_flying,

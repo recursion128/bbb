@@ -889,13 +889,6 @@ back into a todo. Do not delete these.
   owner, and add a reverse coverage test. Existing focused mappings are not proof
   that every subclass event is covered; server-authoritative effects stay out of
   this client-only matrix.
-- **Simulation-distance death-tick gate.** `ClientLevel.shouldTickDeath` only
-  advances a dying LivingEntity's death timer when its chunk's chessboard
-  distance from the local player's chunk is at most the server simulation
-  distance. bbb stores and displays the synchronized distance, but currently
-  advances every tracked death animation. Restart by threading the local-player
-  chunk and synchronized distance into the death-timer branch only; do not gate
-  unrelated client animation or remote interpolation ticks.
 - **Baby `ageScale`** — the `0.5` proportions applied in model `setupAnim`,
   distinct from the projected `SCALE`-attribute `scale`.
 - **Armor trims and the remaining mob-specific armor models.**

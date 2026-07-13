@@ -64,6 +64,81 @@ fn entity_model_sources_project_death_animation_counter() {
 }
 
 #[test]
+fn simulation_distance_only_gates_living_death_ticks_by_chunk_distance() {
+    const VANILLA_ENTITY_HEALTH_DATA_ID: u8 = 9;
+    const FLOAT_SERIALIZER_ID: i32 = 3;
+
+    let mut store = WorldStore::new();
+    store.set_local_player_pose(crate::LocalPlayerPoseState {
+        position: ProtocolVec3d {
+            x: 15.9,
+            y: 64.0,
+            z: 15.9,
+        },
+        ..crate::LocalPlayerPoseState::default()
+    });
+    store.apply_simulation_distance(bbb_protocol::packets::SetSimulationDistance { distance: 2 });
+    for (id, position) in [
+        (62, [47.9, 64.0, -16.0]),
+        (63, [48.0, 64.0, 0.0]),
+        (64, [-0.01, 64.0, -16.01]),
+    ] {
+        store.apply_add_entity(ProtocolAddEntity {
+            position: ProtocolVec3d {
+                x: position[0],
+                y: position[1],
+                z: position[2],
+            },
+            ..protocol_add_entity_with_type(id, VANILLA_ENTITY_TYPE_CHICKEN_ID)
+        });
+        assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+            id,
+            values: vec![ProtocolEntityDataValue {
+                data_id: VANILLA_ENTITY_HEALTH_DATA_ID,
+                serializer_id: FLOAT_SERIALIZER_ID,
+                value: EntityDataValueKind::Float(0.0),
+            }],
+        }));
+    }
+    assert!(store.apply_hurt_animation(ProtocolHurtAnimation { id: 63, yaw: 0.0 }));
+
+    let source = |store: &WorldStore, id: i32| {
+        store
+            .entity_model_sources_at_partial_tick(0.0)
+            .into_iter()
+            .find(|source| source.entity_id == id)
+            .unwrap()
+    };
+
+    store.advance_entity_client_animations(1);
+    assert_eq!(source(&store, 62).death_time, 1.0);
+    assert_eq!(source(&store, 64).death_time, 1.0);
+    assert_eq!(source(&store, 63).death_time, 0.0);
+    assert_eq!(source(&store, 63).age_ticks, 1);
+    assert_eq!(
+        store
+            .probe_entity_camera_hurt_state(63, 0.0)
+            .unwrap()
+            .hurt_time,
+        9.0
+    );
+
+    let mut player_pose = store.local_player_pose().unwrap();
+    player_pose.position.x = 48.0;
+    player_pose.position.z = 0.0;
+    store.set_local_player_pose(player_pose);
+    store.advance_entity_client_animations(1);
+    assert_eq!(source(&store, 62).death_time, 2.0);
+    assert_eq!(source(&store, 63).death_time, 1.0);
+    assert_eq!(source(&store, 64).death_time, 1.0);
+
+    store.apply_simulation_distance(bbb_protocol::packets::SetSimulationDistance { distance: 0 });
+    store.advance_entity_client_animations(1);
+    assert_eq!(source(&store, 62).death_time, 2.0);
+    assert_eq!(source(&store, 63).death_time, 2.0);
+}
+
+#[test]
 fn entity_model_sources_project_ender_dragon_death_time() {
     const VANILLA_ENTITY_HEALTH_DATA_ID: u8 = 9;
     const FLOAT_SERIALIZER_ID: i32 = 3;

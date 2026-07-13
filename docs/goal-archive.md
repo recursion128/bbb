@@ -12945,3 +12945,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   yaw/pitch；disabled feature 明确拒绝该 NewMinecartBehavior-only packet。
 - [x] renderer partial-tick、passenger offset、native event drain 与 offline probe tests 均改为先观察
   pending、再由 client tick 推进；packet coverage 五格闭合。本切片没有实现 server rail physics。
+
+## 2026-07-13：simulation-distance death-tick gate
+
+- [x] SetSimulationDistance 不再只用于 debug HUD；entity client-animation tick 从 LocalPlayer pose 与
+  同步 distance 计算 chunk chessboard range，复刻 `ClientLevel.shouldTickDeath`。
+- [x] gate 只控制 dying LivingEntity 的 generic death counter；范围外实体的 age、hurt 和其它 client
+  presentation tick 继续，LocalPlayer 跨 chunk 后可恢复推进，负坐标使用 floor + Euclidean chunk division。
+- [x] world 边界/恢复/zero-distance tests 与 native event-drain test 闭合 runtime coverage；尚未投影的
+  Login 初始 simulation distance 仍留在 Login lifecycle gap，不由本 packet slice 虚报完成。

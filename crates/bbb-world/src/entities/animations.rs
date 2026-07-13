@@ -5329,6 +5329,10 @@ impl EntityClientAnimationState {
         entity_type_id: i32,
         entity_id: i32,
         transform: EntityTransform,
+        // Vanilla `ClientLevel.shouldTickDeath`: only this LivingEntity death
+        // counter is simulation-distance gated. Other client animation/tick
+        // state remains active for tracked entities.
+        should_tick_death: bool,
         is_passenger: bool,
         is_baby: bool,
         is_fall_flying: bool,
@@ -5440,8 +5444,10 @@ impl EntityClientAnimationState {
         // Vanilla `LivingEntity.tickDeath`: `deathTime++` each tick while dying.
         // The death state is only present for a dying living entity (set from the
         // synced health), so this also runs outside the per-type match.
-        if let Some(death) = self.death.as_mut() {
-            death.death_time = (death.death_time + 1).min(DEATH_ANIMATION_MAX_TICKS);
+        if should_tick_death {
+            if let Some(death) = self.death.as_mut() {
+                death.death_time = (death.death_time + 1).min(DEATH_ANIMATION_MAX_TICKS);
+            }
         }
         if entity_type_id == VANILLA_ENTITY_TYPE_ARMOR_STAND_ID {
             if let Some(wiggle) = self.armor_stand_wiggle.as_mut() {
@@ -6126,15 +6132,28 @@ impl WorldStore {
             .collect();
         self.entities
             .advance_projectile_lifecycles(ticks, &spectator_player_uuids);
+        let death_tick_player_chunk = self.local_player.pose.map(|pose| {
+            (
+                entity_chunk_coordinate(pose.position.x),
+                entity_chunk_coordinate(pose.position.z),
+            )
+        });
+        let death_tick_simulation_distance = self.local_player.simulation_distance;
         let minecart_improvements_enabled =
             self.is_feature_enabled("minecraft:minecart_improvements");
         self.entities.advance_client_animations(
             ticks,
             &in_water_by_id,
             minecart_improvements_enabled,
+            death_tick_player_chunk,
+            death_tick_simulation_distance,
         );
         self.counters.minecart_lerp_steps_tracked = self.entities.total_minecart_lerp_steps();
     }
+}
+
+pub(super) fn entity_chunk_coordinate(position: f64) -> i32 {
+    (position.floor() as i32).div_euclid(16)
 }
 
 pub(crate) fn boat_paddle_states(

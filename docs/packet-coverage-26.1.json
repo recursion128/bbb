@@ -12272,17 +12272,21 @@
         "runtime_side_effect": {
           "evidence": [
             "crates/bbb-native/src/runtime.rs#hud_debug_entity_render_stats_line",
+            "crates/bbb-world/src/entities/animations.rs#advance_entity_client_animations",
+            "crates/bbb-world/src/entities/store.rs#within_death_tick_distance",
             "vanilla:net/minecraft/client/multiplayer/ClientLevel.java#shouldTickDeath"
           ],
-          "gap": "docs/unsupported-features.md#entity-models-and-animation",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [
             "crates/bbb-protocol/src/packets/client_state/tests.rs#decodes_player_abilities_spawn_distance_and_system_chat",
             "crates/bbb-world/src/client/local_player.rs#local_player_packets_update_canonical_state",
+            "crates/bbb-world/src/entities/tests/combat_state_and_mob_flag_projection.rs#simulation_distance_only_gates_living_death_ticks_by_chunk_distance",
             "crates/bbb-net/src/probe/play.rs#probe_applies_local_player_status_packets_to_world",
-            "crates/bbb-native/src/runtime/events/client_state/tests.rs#player_abilities_spawn_distance_and_chat_update_world_counters"
+            "crates/bbb-native/src/runtime/events/client_state/tests.rs#player_abilities_spawn_distance_and_chat_update_world_counters",
+            "crates/bbb-native/src/runtime/events/tests/session_hud_and_vehicle_events.rs#simulation_distance_event_gates_only_remote_death_ticks"
           ],
           "gap": null,
           "status": "complete"

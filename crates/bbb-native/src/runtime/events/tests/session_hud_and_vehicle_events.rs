@@ -1,6 +1,64 @@
 use super::*;
 
 #[test]
+fn simulation_distance_event_gates_only_remote_death_ticks() {
+    const LIVING_HEALTH_DATA_ID: u8 = 9;
+
+    let (tx, mut rx) = mpsc::channel(1);
+    tx.try_send(NetEvent::Play(PlayClientbound::SetSimulationDistance(
+        bbb_protocol::packets::SetSimulationDistance { distance: 1 },
+    )))
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    world.set_local_player_pose(LocalPlayerPoseState {
+        position: ProtocolVec3d {
+            x: 0.0,
+            y: 64.0,
+            z: 0.0,
+        },
+        ..LocalPlayerPoseState::default()
+    });
+    for (id, x) in [(10, 31.9), (11, 32.0)] {
+        world.apply_add_entity(AddEntity {
+            position: ProtocolVec3d { x, y: 64.0, z: 0.0 },
+            ..protocol_add_entity_with_type(id, VANILLA_ENTITY_TYPE_CHICKEN_ID)
+        });
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id,
+            values: vec![EntityDataValue {
+                data_id: LIVING_HEALTH_DATA_ID,
+                serializer_id: 3,
+                value: EntityDataValueKind::Float(0.0),
+            }],
+        }));
+    }
+
+    let mut counters = NetCounters::default();
+    assert_eq!(
+        drain_net_events(&mut rx, &mut world, &mut counters, &None),
+        1
+    );
+    world.advance_entity_client_animations(1);
+
+    assert_eq!(
+        world
+            .probe_entity_camera_hurt_state(10, 0.0)
+            .unwrap()
+            .death_time,
+        1.0
+    );
+    assert_eq!(
+        world
+            .probe_entity_camera_hurt_state(11, 0.0)
+            .unwrap()
+            .death_time,
+        0.0
+    );
+    assert_eq!(world.counters().simulation_distance_packets, 1);
+}
+
+#[test]
 fn first_local_boat_mount_projects_yaw_and_dismount_overlay() {
     let (tx, mut rx) = mpsc::channel(3);
     tx.try_send(NetEvent::Play(PlayClientbound::Login(protocol_play_login(
