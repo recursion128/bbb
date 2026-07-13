@@ -346,7 +346,8 @@ item/block/entity-type built-in registry 已接入带来源的双向 fallback；
 wire order 解析，item tag 与 F3 block/entity identity/tag consumer 也复用同一规则；完整
 chicken/cow/pig variant 的 NETWORK_CODEC presentation 已严格投影 model、adult/baby asset id
 及派生 texture path，custom 前插/重排按 server holder order 查询，stub 与 malformed payload
-安全省略；pack 动态资源解析、尺寸发现、atlas 上传与 renderer 消费仍开放；完整
+安全省略；bbb-pack 已按 namespace、pack precedence 与 filter 解析任意 ResourceTexture asset id
+并保留完整 PNG 尺寸/RGBA，native cache 状态、atlas 上传与 renderer 消费仍开放；完整
 `RegistryAccess`/typed codec/holder tags/component initializer 仍是明确 canonical/runtime partial。每轮 configuration registry
 collection 已 staging，并在 Finish 原子替换或按 vanilla tag-only 路径保留原 contents。
 

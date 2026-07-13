@@ -20,6 +20,7 @@ mod metadata;
 mod mipmap;
 mod particle_definitions;
 mod particle_sprites;
+mod resource_textures;
 mod resources;
 mod roots;
 mod sound_event_registry;
