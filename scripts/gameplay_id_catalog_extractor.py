@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import ast
 import json
+import math
 import struct
 from dataclasses import dataclass
 
@@ -105,6 +106,12 @@ class HeightmapTypeEntry:
     type_id: int
     serialization_key: str
     usage: str
+
+
+@dataclass(frozen=True)
+class HeightmapDebugColorEntry:
+    constant_name: str
+    color_rgba: tuple[int, int, int, int]
 
 
 @dataclass(frozen=True)
@@ -888,6 +895,103 @@ def heightmap_type_entries(
     _validate(entries, "heightmap type", "serialization_key")
     if [entry.type_id for entry in entries] != list(range(expected_count)):
         raise GameplayIdExtractionError("heightmap type ids are not contiguous declaration order")
+    return entries
+
+
+def _java_float_color_channel(source: JavaSource, expression: JavaExpression) -> int:
+    if expression.node.type != "decimal_floating_point_literal":
+        _fail(source, expression, "heightmap debug color channel must be a float literal")
+    literal = source.text(expression.node).replace("_", "")
+    if not literal.endswith(("F", "f")):
+        _fail(source, expression, "heightmap debug color channel must use float precision")
+    try:
+        value = float(literal[:-1])
+    except ValueError:
+        _fail(source, expression, "invalid heightmap debug color float literal")
+    value = struct.unpack("!f", struct.pack("!f", value))[0]
+    if not 0.0 <= value <= 1.0:
+        _fail(source, expression, "heightmap debug color channel is outside 0..1")
+    scaled = struct.unpack("!f", struct.pack("!f", value * 255.0))[0]
+    return math.floor(scaled)
+
+
+def heightmap_debug_color_entries(
+    source: JavaSource, expected_count: int = 6
+) -> list[HeightmapDebugColorEntry]:
+    methods = [method for method in source.methods if method.name == "getColor"]
+    if len(methods) != 1 or len(methods[0].parameters) != 1:
+        raise GameplayIdExtractionError(
+            f"{source.relative_path}: expected one single-parameter getColor method"
+        )
+    returns = [
+        node for node in descendants(methods[0].node) if node.type == "return_statement"
+    ]
+    if (
+        len(returns) != 1
+        or len(returns[0].named_children) != 1
+        or returns[0].named_children[0].type != "switch_expression"
+    ):
+        expression = source.expression(returns[0] if returns else methods[0].node)
+        _fail(source, expression, "heightmap getColor must directly return one switch")
+    switch = returns[0].named_children[0]
+    if (
+        len(switch.named_children) != 2
+        or source.expression(switch.named_children[0]).canonical != "(type)"
+        or switch.named_children[1].type != "switch_block"
+    ):
+        _fail(source, source.expression(switch), "heightmap color switch shape changed")
+
+    entries = []
+    for rule in switch.named_children[1].named_children:
+        if rule.type != "switch_rule":
+            _fail(
+                source,
+                source.expression(rule),
+                "heightmap color switch must contain only rules",
+            )
+        labels = [child for child in rule.named_children if child.type == "switch_label"]
+        creations = [
+            node for node in descendants(rule) if node.type == "object_creation_expression"
+        ]
+        if len(labels) != 1 or len(labels[0].named_children) != 1:
+            _fail(
+                source,
+                source.expression(rule),
+                "heightmap color rule must have one case label",
+            )
+        label = labels[0].named_children[0]
+        if label.type != "identifier" or len(creations) != 1:
+            _fail(
+                source,
+                source.expression(rule),
+                "heightmap color rule must create one Vector3f",
+            )
+        creation = creations[0]
+        type_node = creation.child_by_field_name("type")
+        arguments = creation.child_by_field_name("arguments")
+        if (
+            type_node is None
+            or source.expression(type_node).canonical != "Vector3f"
+            or arguments is None
+            or len(arguments.named_children) != 3
+        ):
+            _fail(
+                source,
+                source.expression(creation),
+                "heightmap color must be a three-channel Vector3f",
+            )
+        channels = tuple(
+            _java_float_color_channel(source, source.expression(argument))
+            for argument in arguments.named_children
+        )
+        entries.append(
+            HeightmapDebugColorEntry(source.text(label), (*channels, 255))
+        )
+    if len(entries) != expected_count:
+        raise GameplayIdExtractionError(
+            f"expected {expected_count} heightmap debug colors, extracted {len(entries)}"
+        )
+    _validate(entries, "heightmap debug color")
     return entries
 
 

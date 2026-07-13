@@ -18,8 +18,9 @@ use bbb_protocol::{
     data_component_types::VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID,
     entity_types::{VANILLA_ENTITY_TYPE_CREEPER_ID, VANILLA_ENTITY_TYPE_ENDERMAN_ID},
     heightmap_types::{
-        VANILLA_HEIGHTMAP_MOTION_BLOCKING_ID, VANILLA_HEIGHTMAP_MOTION_BLOCKING_NO_LEAVES_ID,
-        VANILLA_HEIGHTMAP_OCEAN_FLOOR_ID, VANILLA_HEIGHTMAP_WORLD_SURFACE_ID,
+        vanilla_heightmap_type, VANILLA_HEIGHTMAP_MOTION_BLOCKING_ID,
+        VANILLA_HEIGHTMAP_MOTION_BLOCKING_NO_LEAVES_ID, VANILLA_HEIGHTMAP_OCEAN_FLOOR_ID,
+        VANILLA_HEIGHTMAP_WORLD_SURFACE_ID,
     },
     packets::{
         AdvancementFrameType, GameType, ItemCostSummary, ItemStackSummary,
@@ -583,14 +584,6 @@ const DEBUG_HEIGHTMAP_BOX_HEIGHT: f32 = 3.0 / 32.0;
 const DEBUG_WATER_SCAN_RADIUS: i32 = 10;
 const DEBUG_WATER_BOX_INSET: f32 = 0.01;
 const DEBUG_WATER_BOX_COLOR: [u8; 4] = [0, 255, 0, 38];
-const DEBUG_HEIGHTMAP_COLORS: [[u8; 4]; 6] = [
-    [255, 255, 0, 255],
-    [0, 178, 0, 255],
-    [255, 0, 255, 255],
-    [0, 0, 127, 255],
-    [0, 76, 76, 255],
-    [0, 127, 127, 255],
-];
 
 fn push_capped_hud_debug_sample<T>(samples: &mut Vec<T>, value: T, capacity: usize) {
     samples.push(value);
@@ -4783,10 +4776,8 @@ fn debug_heightmap_boxes(
             let chunk_min_x = chunk_pos.x.saturating_mul(16);
             let chunk_min_z = chunk_pos.z.saturating_mul(16);
             for kind_id in sampler.effective_kind_ids() {
-                let Some(color) = usize::try_from(kind_id)
-                    .ok()
-                    .and_then(|index| DEBUG_HEIGHTMAP_COLORS.get(index))
-                    .copied()
+                let Some(color) = vanilla_heightmap_type(kind_id)
+                    .map(|heightmap_type| heightmap_type.debug_color_rgba)
                 else {
                     continue;
                 };

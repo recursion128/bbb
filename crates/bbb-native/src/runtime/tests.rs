@@ -3488,17 +3488,6 @@ fn debug_chunk_border_outline_follows_f3_g_chunk_border_toggle() {
 
 #[test]
 fn debug_heightmap_boxes_follow_custom_entry_and_vanilla_order() {
-    assert_eq!(
-        DEBUG_HEIGHTMAP_COLORS,
-        [
-            [255, 255, 0, 255],
-            [0, 178, 0, 255],
-            [255, 0, 255, 255],
-            [0, 0, 127, 255],
-            [0, 76, 76, 255],
-            [0, 127, 127, 255],
-        ]
-    );
     let mut world = world_with_dimension(0, "minecraft:overworld");
     let min_y = world.dimension().min_y as f32;
     let mut chunk = empty_lightmap_test_chunk(world.dimension());

@@ -33,6 +33,7 @@ from gameplay_id_catalog_extractor import (  # noqa: E402
     game_type_entries,
     game_type_not_set_id,
     filter_mask_type_entries,
+    heightmap_debug_color_entries,
     heightmap_type_entries,
     interaction_hand_entries,
     item_component_value_type_entries,
@@ -308,6 +309,49 @@ public class Heightmap {
             [(entry.type_id, entry.serialization_key, entry.usage) for entry in entries],
             [(0, "WORLD_SURFACE_WG", "WORLDGEN"), (1, "MOTION_BLOCKING", "CLIENT")],
         )
+
+    def test_heightmap_debug_colors_extract_exhaustive_float_switch(self) -> None:
+        source = parse_source(
+            "fixture/HeightMapRenderer.java",
+            b"""
+package fixture;
+class HeightMapRenderer {
+  private Vector3f getColor(final Heightmap.Types type) {
+    return switch (type) {
+      case WORLD_SURFACE_WG -> new Vector3f(1.0F, 1.0F, 0.0F);
+      case WORLD_SURFACE -> new Vector3f(0.0F, 0.7F, 0.0F);
+    };
+  }
+}
+""",
+        )
+        entries = heightmap_debug_color_entries(source, 2)
+        self.assertEqual(
+            [(entry.constant_name, entry.color_rgba) for entry in entries],
+            [
+                ("WORLD_SURFACE_WG", (255, 255, 0, 255)),
+                ("WORLD_SURFACE", (0, 178, 0, 255)),
+            ],
+        )
+
+    def test_heightmap_debug_colors_reject_non_float_vector_channels(self) -> None:
+        source = parse_source(
+            "fixture/HeightMapRenderer.java",
+            b"""
+package fixture;
+class HeightMapRenderer {
+  private Vector3f getColor(final Heightmap.Types type) {
+    return switch (type) {
+      case WORLD_SURFACE -> new Vector3f(0, 0.7F, 0.0F);
+    };
+  }
+}
+""",
+        )
+        with self.assertRaisesRegex(
+            GameplayIdExtractionError, "must be a float literal"
+        ):
+            heightmap_debug_color_entries(source, 1)
 
     def test_game_types_preserve_explicit_ids_names_and_nullable_sentinel(self) -> None:
         source = parse_source(

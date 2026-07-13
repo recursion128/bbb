@@ -13389,3 +13389,15 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   也不误推导为 `54-15`。Loom 的 4x4/14px grid 与 click/drag/sprite scroller 坐标同样锁定。
 - [x] layout focused tests、既有 150 项 inventory input tests 与 `goal.md` workspace gate 通过；
   renderer/input 算法保持手写，仅 vanilla 固定布局事实共享，不新增配置 UI 或跨 crate API。
+
+## 2026-07-13：Generate heightmap debug presentation colors
+
+- [x] gameplay-id Tree-sitter extractor 现在同时读取 `Heightmap.Types` 的 6 项 id/order 与
+  `HeightMapRenderer.getColor` 穷尽式 switch，严格要求单 case、三通道 `Vector3f` float
+  字面量，并按 `ARGB.as8BitChannel` 的 float32 乘法后 floor 生成 RGBA。
+- [x] `bbb-protocol::heightmap_types` descriptor 统一拥有 type identity 与 debug color；native
+  `debug_heightmap_boxes` 删除 ordinal-indexed `DEBUG_HEIGHTMAP_COLORS` 数组，按 kind id 查询
+  semantic owner，未知 id 继续 fail closed，不改变 box 几何、顺序或 gate。
+- [x] generator-emitted reverse guard 阻止生产代码恢复旧 debug-color 表；extractor 单测、
+  generator update/check、protocol catalog/reverse tests、native heightmap focused tests 与
+  workspace gate 通过。
