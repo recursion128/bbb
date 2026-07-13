@@ -1,4 +1,5 @@
 use bbb_protocol::data_component_types::{
+    VANILLA_DATA_COMPONENT_BANNER_PATTERNS_TYPE_ID,
     VANILLA_DATA_COMPONENT_CAT_SOUND_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_CAT_VARIANT_TYPE_ID,
     VANILLA_DATA_COMPONENT_CHICKEN_SOUND_VARIANT_TYPE_ID,
     VANILLA_DATA_COMPONENT_CHICKEN_VARIANT_TYPE_ID,
@@ -1410,6 +1411,108 @@ fn decodes_provides_banner_patterns_from_session_and_context_free_inputs() {
         panic!("expected context-free provides-banner-patterns component");
     };
     assert!(patterns.entries.is_empty());
+}
+
+#[test]
+fn decodes_banner_pattern_layers_with_named_holders_and_dye_colors() {
+    let registry = "minecraft:banner_pattern";
+    let mut registries = RegistrySet::default();
+    let mut contents = crate::RegistryContentState::new(registry);
+    contents.entries = vec![
+        crate::RegistryPacketEntry::stub("example:first"),
+        crate::RegistryPacketEntry::stub("minecraft:flower"),
+    ];
+    registries.contents.insert(registry.to_string(), contents);
+    let value = NbtSummaryValue::List(vec![
+        compound(vec![
+            string_entry("pattern", "minecraft:flower"),
+            string_entry("color", "red"),
+        ]),
+        compound(vec![
+            string_entry("pattern", "example:first"),
+            string_entry("color", "light_blue"),
+        ]),
+    ]);
+    let decoded = decode_supported_component_value(
+        VANILLA_DATA_COMPONENT_BANNER_PATTERNS_TYPE_ID,
+        "minecraft:banner_patterns",
+        &value,
+        Some(&registries),
+    )
+    .unwrap();
+    let Some(DialogDataComponentValueState::BannerPatterns { layers }) = decoded else {
+        panic!("expected banner-patterns component");
+    };
+    assert_eq!(layers.len(), 2);
+    assert_eq!(layers[0].pattern.holder_id, 1);
+    assert_eq!(layers[0].pattern.resource_id, "minecraft:flower");
+    assert_eq!(layers[0].color_id, 14);
+    assert_eq!(layers[0].color, "red");
+    assert_eq!(layers[1].pattern.holder_id, 0);
+    assert_eq!(layers[1].color_id, 3);
+
+    let context_free = decode_supported_component_value(
+        VANILLA_DATA_COMPONENT_BANNER_PATTERNS_TYPE_ID,
+        "minecraft:banner_patterns",
+        &NbtSummaryValue::List(Vec::new()),
+        None,
+    )
+    .unwrap();
+    assert!(matches!(
+        context_free,
+        Some(DialogDataComponentValueState::BannerPatterns { layers }) if layers.is_empty()
+    ));
+
+    for (value, context, expected) in [
+        (compound(Vec::new()), Some(&registries), "is not a list"),
+        (
+            NbtSummaryValue::List(vec![NbtSummaryValue::String("flower".to_string())]),
+            Some(&registries),
+            "[0] is not a compound",
+        ),
+        (
+            NbtSummaryValue::List(vec![compound(vec![string_entry("color", "red")])]),
+            Some(&registries),
+            "missing field pattern",
+        ),
+        (
+            NbtSummaryValue::List(vec![compound(vec![string_entry(
+                "pattern",
+                "minecraft:flower",
+            )])]),
+            Some(&registries),
+            "missing field color",
+        ),
+        (
+            NbtSummaryValue::List(vec![compound(vec![
+                string_entry("pattern", "minecraft:flower"),
+                string_entry("color", "chartreuse"),
+            ])]),
+            Some(&registries),
+            "invalid",
+        ),
+        (
+            NbtSummaryValue::List(vec![compound(vec![
+                value_entry(
+                    "pattern",
+                    compound(vec![string_entry("asset_id", "example:flower")]),
+                ),
+                string_entry("color", "red"),
+            ])]),
+            Some(&registries),
+            "field pattern holder is not a resource id",
+        ),
+        (value, None, "without registry context"),
+    ] {
+        let error = decode_supported_component_value(
+            VANILLA_DATA_COMPONENT_BANNER_PATTERNS_TYPE_ID,
+            "minecraft:banner_patterns",
+            &value,
+            context,
+        )
+        .unwrap_err();
+        assert!(error.contains(expected), "unexpected error: {error}");
+    }
 }
 
 #[test]

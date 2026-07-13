@@ -338,9 +338,10 @@ FireworkExplosion/Fireworks 的 nested record、collection 与 256 上限共 2 �
 alternative、UUID/property-map 与 skin patch 也已 typed 投影；Repairable 的 registry-aware item
 homogeneous HolderSet（tag/compact/list/session 解析及 context-free 空列表边界）与
 ProvidesBannerPatterns 的动态 banner-pattern HolderSet、JukeboxPlayable 的单一动态 song holder 也已
-typed 投影；Instrument 与 ProvidesTrimMaterial 的 RegistryFileCodec named 分支，以及 PaintingVariant 的
-persistent RegistryFixedCodec，也已按 session 顺序投影单一 named holder，并对尚未展开的 direct compound
-保留明确失败；ArmorTrim 的 required material/pattern RegistryFileCodec pair 也已按两个 session registry
+typed 投影；BannerPatternLayers 的 named pattern list、DyeColor 与 context-free 空列表也已闭合；Instrument
+与 ProvidesTrimMaterial 的 RegistryFileCodec named 分支，以及 PaintingVariant 的 persistent
+RegistryFixedCodec，也已按 session 顺序投影单一 named holder，并对尚未展开的 direct compound 保留明确
+失败；ArmorTrim 的 required material/pattern RegistryFileCodec pair 也已按两个 session registry
 顺序投影 named holder；wolf/pig/cow/chicken/cat 的 variant/sound-variant，加 zombie-nautilus/frog
 variant 共 12 个同步 RegistryFixedCodec 组件也已通过单一表驱动 surface 按 session 顺序投影；
 DamageResistant 的动态 damage-type tag/compact/list HolderSet 也已闭合；

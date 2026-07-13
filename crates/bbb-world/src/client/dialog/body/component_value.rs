@@ -51,7 +51,7 @@ mod holder_set;
 mod profile;
 
 use holder_set::{
-    decode_holder_backed_component_value, DialogPotDecorationsState,
+    decode_holder_backed_component_value, DialogBannerPatternLayerState, DialogPotDecorationsState,
     DialogRegistryHolderReferenceState, DialogRegistryHolderSetState,
     DialogSuspiciousStewEffectState,
 };
@@ -169,6 +169,9 @@ pub enum DialogDataComponentValueState {
     },
     ProvidesBannerPatterns {
         patterns: DialogRegistryHolderSetState,
+    },
+    BannerPatterns {
+        layers: Vec<DialogBannerPatternLayerState>,
     },
     JukeboxPlayable {
         song: DialogRegistryHolderReferenceState,

@@ -1,5 +1,7 @@
 use bbb_protocol::{
+    builtin_enum_component_values::builtin_enum_component_value_for_name,
     data_component_types::{
+        VANILLA_DATA_COMPONENT_BANNER_PATTERNS_TYPE_ID, VANILLA_DATA_COMPONENT_BASE_COLOR_TYPE_ID,
         VANILLA_DATA_COMPONENT_CAT_SOUND_VARIANT_TYPE_ID,
         VANILLA_DATA_COMPONENT_CAT_VARIANT_TYPE_ID,
         VANILLA_DATA_COMPONENT_CHICKEN_SOUND_VARIANT_TYPE_ID,
@@ -63,6 +65,13 @@ pub struct DialogPotDecorationsState {
     pub front: Option<DialogRegistryHolderReferenceState>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DialogBannerPatternLayerState {
+    pub pattern: DialogRegistryHolderReferenceState,
+    pub color_id: i32,
+    pub color: String,
+}
+
 pub(super) fn decode_holder_backed_component_value(
     type_id: i32,
     value: &NbtSummaryValue,
@@ -87,6 +96,10 @@ pub(super) fn decode_holder_backed_component_value(
         VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID => Some(
             decode_registry_holder_set(value, "minecraft:banner_pattern", registries, what)
                 .map(|patterns| DialogDataComponentValueState::ProvidesBannerPatterns { patterns }),
+        ),
+        VANILLA_DATA_COMPONENT_BANNER_PATTERNS_TYPE_ID => Some(
+            decode_banner_pattern_layers(value, registries, what)
+                .map(|layers| DialogDataComponentValueState::BannerPatterns { layers }),
         ),
         VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID => Some(
             decode_registry_holder_reference(value, "minecraft:jukebox_song", registries, what)
@@ -129,6 +142,51 @@ pub(super) fn decode_holder_backed_component_value(
         ),
         _ => None,
     }
+}
+
+fn decode_banner_pattern_layers(
+    value: &NbtSummaryValue,
+    registries: Option<&RegistrySet>,
+    what: &str,
+) -> Result<Vec<DialogBannerPatternLayerState>, String> {
+    let NbtSummaryValue::List(values) = value else {
+        return Err(format!("{what} is not a list"));
+    };
+    values
+        .iter()
+        .enumerate()
+        .map(|(index, value)| {
+            let entry_what = format!("{what}[{index}]");
+            let NbtSummaryValue::Compound(entries) = value else {
+                return Err(format!("{entry_what} is not a compound"));
+            };
+            let pattern = decode_registry_holder_reference_field(
+                value,
+                "pattern",
+                "minecraft:banner_pattern",
+                registries,
+                &entry_what,
+            )?;
+            let color_value = entries
+                .iter()
+                .find(|entry| entry.name == "color")
+                .map(|entry| &entry.value)
+                .ok_or_else(|| format!("{entry_what} is missing field color"))?;
+            let NbtSummaryValue::String(color) = color_value else {
+                return Err(format!("{entry_what} field color is not a string"));
+            };
+            let color_entry = builtin_enum_component_value_for_name(
+                VANILLA_DATA_COMPONENT_BASE_COLOR_TYPE_ID,
+                color,
+            )
+            .ok_or_else(|| format!("invalid {entry_what} field color {color}"))?;
+            Ok(DialogBannerPatternLayerState {
+                pattern,
+                color_id: color_entry.id,
+                color: color_entry.serialized_name.to_string(),
+            })
+        })
+        .collect()
 }
 
 fn synchronized_registry_variant_component(type_id: i32) -> Option<&'static str> {

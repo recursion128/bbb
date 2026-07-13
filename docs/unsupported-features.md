@@ -560,9 +560,7 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   recipes/lock/container-loot)/bees/
   charged-projectile/bundle/writable-book/written-book-exact-component-trees/
   lodestone/profile/
-  banner-pattern-layers (fixed vanilla identity/translation and resource/asset presentation
-  catalogs are generated with shared identity ownership;
-  server-synchronized/direct-holder remapping and resource-pack texture resolution remain)/
+  banner-pattern-layers direct-holder payload decoding and resource-pack texture resolution/
   container/block-state/villager-variant/
   built-in animal/color enum (wolf/cat collars, fox,
   salmon, parrot, mooshroom, rabbit, horse, llama, axolotl, sheep, shulker,
