@@ -99,7 +99,7 @@ Owner: `bbb-protocol`
 - Complete play Respawn lifecycle from
   `ClientPacketListener.handleRespawn`: reconstruct the local player according
   to both keep bits, preserve map data across dimension replacement, reset
-  camera/music/debug-subscriber state, and re-enter
+  music/debug-subscriber state, and re-enter
   `LevelLoadTracker` readiness. The current world reset/keep-bit baseline is not
   the full client lifecycle.
 - Recompute vanilla fuel values and creative search-tree tag membership after

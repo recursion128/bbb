@@ -12990,4 +12990,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] shared `PlayApplyEffects` 把该 id 交给 online native runtime，通过现有 command surface 排队
   `ServerboundContainerClosePacket`；offline probe 仍只做 deterministic canonical close。
 - [x] world tests 锁定首次返回 id/第二次 no-op，native event test 锁定 command id 与 counter；Respawn
-  的 camera/music/debug subscriber/LevelLoadTracker 等其余生命周期仍保持开放。
+  的 music/debug subscriber/LevelLoadTracker 等其余生命周期仍保持开放。
+
+## 2026-07-13：Respawn camera lifecycle audit
+
+- [x] vanilla `handleRespawn` 先清 camera entity、重建 LocalPlayer 后再设为新 player；bbb 的
+  `CameraState::default` 等价为 `follows_player=true/entity_known=true`，camera pose/input consumers 会解析到
+  当前 canonical LocalPlayer pose。
+- [x] reset 在 entity-data/attribute keep-bit 分支前无条件执行；keep-none、keep-all world tests 与 native
+  event test 均断言 default camera，因此从 stale Respawn TODO 删除 camera。music/debug subscriber/
+  LevelLoadTracker 等仍开放。
