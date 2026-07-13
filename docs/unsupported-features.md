@@ -107,12 +107,13 @@ Owner: `bbb-protocol`
   play UpdateTags reloads, following `ClientPacketListener.handleUpdateTags`.
 - Complete StatsScreen presentation parity: use the vanilla item-column header,
   slot and sort-arrow sprites instead of the current deterministic button fallback;
-  add item hover and empty-tab tooltips, keyboard tab navigation, pixel-precise list
-  scrolling and narration. General, Items and Mobs now leave loading only after the
-  requested AwardStats response and use selected-pack language. Items mechanically
-  maps block stats through checked-in `Block.asItem` evidence, renders flat/3D item
-  icons, preserves six-column no-value semantics and the descending/ascending/clear
-  sort cycle. Canonical state retains unresolved identities without guessing.
+  add pixel-precise list scrolling and narration. General, Items and Mobs now leave
+  loading only after the requested AwardStats response and use selected-pack language.
+  Item/header/empty-tab tooltips and vanilla Ctrl+digit/Ctrl+Tab navigation are wired;
+  Items mechanically maps block stats through checked-in `Block.asItem` evidence,
+  renders flat/3D item icons, preserves six-column no-value semantics and the
+  descending/ascending/clear sort cycle. Canonical state retains unresolved identities
+  without guessing.
 - Resolve UpdateAttributes holder ids through that session RegistryAccess and
   validate each snapshot against the target living entity's actual AttributeMap
   instance set; do not accept arbitrary fixed-id attributes on every living type.

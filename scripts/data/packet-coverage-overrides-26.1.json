@@ -4007,6 +4007,8 @@
           "crates/bbb-native/src/runtime/tests.rs#vanilla_stat_formatters_preserve_thresholds_and_grouping",
           "crates/bbb-native/src/input/tests.rs#stats_screen_mouse_wheel_scrolls_general_rows_and_resets_on_close",
           "crates/bbb-native/src/input/tests.rs#stats_screen_tab_hitboxes_match_renderer_column_widths",
+          "crates/bbb-native/src/input/tests.rs#stats_screen_control_tab_and_digits_skip_disabled_tabs",
+          "crates/bbb-native/src/runtime/tests.rs#hud_stats_screen_reports_empty_tab_tooltip_after_response",
           "crates/bbb-pack/src/item_registry.rs#checked_in_item_catalog_matches_generated_protocol_catalog",
           "crates/bbb-renderer/src/hud.rs#stats_screen_block_item_mesh_includes_visible_item_rows",
           "crates/bbb-net/src/probe/play.rs#probe_applies_award_stats_to_world",

@@ -1941,6 +1941,36 @@ impl ClientInputState {
             .flatten()
     }
 
+    pub(crate) fn stats_screen_hovered_tab(
+        &self,
+        surface_size: PhysicalSize<u32>,
+    ) -> Option<usize> {
+        stats_screen_tab_at_position(self.stats_screen_cursor_position, surface_size)
+    }
+
+    pub(crate) fn stats_screen_hovered_item_row(
+        &self,
+        surface_size: PhysicalSize<u32>,
+    ) -> Option<usize> {
+        if self.stats_screen_tab != 1 {
+            return None;
+        }
+        let (mouse_x, mouse_y) = self.stats_screen_cursor_position?;
+        let width = i32::try_from(surface_size.width).unwrap_or(i32::MAX);
+        let list_x = width / 2 - STATS_SCREEN_LIST_WIDTH / 2;
+        let rows_y = STATS_SCREEN_LIST_TOP + 22;
+        if !(list_x..list_x + STATS_SCREEN_ITEM_COLUMN_BUTTON_SIZE).contains(&mouse_x)
+            || mouse_y < rows_y
+        {
+            return None;
+        }
+        let relative_y = mouse_y - rows_y;
+        let row = relative_y / 22;
+        (relative_y % 22 < STATS_SCREEN_ITEM_COLUMN_BUTTON_SIZE)
+            .then(|| usize::try_from(row).ok())
+            .flatten()
+    }
+
     pub(crate) fn handle_stats_screen_mouse_wheel(
         &mut self,
         world: &WorldStore,
@@ -2027,24 +2057,7 @@ impl ClientInputState {
             } else if let Some(tab) =
                 stats_screen_tab_at_position(self.stats_screen_cursor_position, surface_size)
             {
-                let enabled = tab == 0
-                    || (tab == 1
-                        && !world.stats_screen_is_loading()
-                        && [
-                            "minecraft:mined",
-                            "minecraft:broken",
-                            "minecraft:crafted",
-                            "minecraft:used",
-                            "minecraft:picked_up",
-                            "minecraft:dropped",
-                        ]
-                        .into_iter()
-                        .any(|stat_type| world.has_positive_stats_for_type(stat_type)))
-                    || (tab == 2
-                        && !world.stats_screen_is_loading()
-                        && (world.has_positive_stats_for_type("minecraft:killed")
-                            || world.has_positive_stats_for_type("minecraft:killed_by")));
-                if enabled {
+                if stats_screen_tab_is_enabled(tab, world) {
                     self.stats_screen_tab = tab;
                     self.stats_screen_scroll_row = 0;
                 }
@@ -7343,10 +7356,89 @@ fn handle_stats_screen_key(
     if !world.stats_screen_is_open() {
         return false;
     }
-    if pressed && matches!(code, KeyCode::Escape) {
-        close_stats_screen(input, counters, world, net_commands);
+    if pressed {
+        if matches!(code, KeyCode::Escape) {
+            close_stats_screen(input, counters, world, net_commands);
+        } else if input.control_down() {
+            let requested = stats_screen_digit_tab(code).or_else(|| match code {
+                KeyCode::Tab => {
+                    let direction = if input.shift_down() { -1 } else { 1 };
+                    next_enabled_stats_screen_tab(input.stats_screen_tab, direction, world)
+                }
+                _ => None,
+            });
+            if let Some(tab) = requested.filter(|tab| stats_screen_tab_is_enabled(*tab, world)) {
+                input.stats_screen_tab = tab;
+                input.stats_screen_scroll_row = 0;
+            }
+        }
     }
     true
+}
+
+fn stats_screen_digit_tab(code: KeyCode) -> Option<usize> {
+    match code {
+        KeyCode::Digit1 | KeyCode::Numpad1 => Some(0),
+        KeyCode::Digit2 | KeyCode::Numpad2 => Some(1),
+        KeyCode::Digit0
+        | KeyCode::Digit3
+        | KeyCode::Digit4
+        | KeyCode::Digit5
+        | KeyCode::Digit6
+        | KeyCode::Digit7
+        | KeyCode::Digit8
+        | KeyCode::Digit9
+        | KeyCode::Numpad0
+        | KeyCode::Numpad3
+        | KeyCode::Numpad4
+        | KeyCode::Numpad5
+        | KeyCode::Numpad6
+        | KeyCode::Numpad7
+        | KeyCode::Numpad8
+        | KeyCode::Numpad9 => Some(2),
+        _ => None,
+    }
+}
+
+fn stats_screen_tab_is_enabled(tab: usize, world: &WorldStore) -> bool {
+    if tab == 0 {
+        return true;
+    }
+    if world.stats_screen_is_loading() {
+        return false;
+    }
+    match tab {
+        1 => [
+            "minecraft:mined",
+            "minecraft:broken",
+            "minecraft:crafted",
+            "minecraft:used",
+            "minecraft:picked_up",
+            "minecraft:dropped",
+        ]
+        .into_iter()
+        .any(|stat_type| world.has_positive_stats_for_type(stat_type)),
+        2 => {
+            world.has_positive_stats_for_type("minecraft:killed")
+                || world.has_positive_stats_for_type("minecraft:killed_by")
+        }
+        _ => false,
+    }
+}
+
+fn next_enabled_stats_screen_tab(
+    current: usize,
+    direction: i32,
+    world: &WorldStore,
+) -> Option<usize> {
+    let mut next = current;
+    for _ in 0..3 {
+        next = usize::try_from((next as i32 + direction).rem_euclid(3)).ok()?;
+        if stats_screen_tab_is_enabled(next, world) {
+            return Some(next);
+        }
+    }
+    None
 }
 
 fn open_advancements_screen(

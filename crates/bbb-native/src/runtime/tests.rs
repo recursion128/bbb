@@ -7537,6 +7537,27 @@ fn hud_stats_screen_waits_for_response_then_projects_general_item_and_mob_rows()
             && row.values[1].as_deref() == Some("0")
             && row.icon.is_some()
     }));
+    assert!(input.handle_stats_screen_cursor_moved(
+        &world,
+        Some(winit::dpi::PhysicalPosition::new(25.0, 72.0))
+    ));
+    let hovered_item_screen = hud_stats_screen(
+        &input,
+        &world,
+        Some(&item_runtime),
+        &terrain_textures,
+        ItemModelKeybindContext::default(),
+        0.0,
+        surface,
+    )
+    .unwrap();
+    assert_eq!(
+        hovered_item_screen
+            .tooltip
+            .as_ref()
+            .map(|tooltip| tooltip.text.as_str()),
+        Some(hovered_item_screen.item_rows[0].label.as_str())
+    );
 
     assert!(input.handle_stats_screen_mouse_input(
         &mut counters,
@@ -7560,6 +7581,13 @@ fn hud_stats_screen_waits_for_response_then_projects_general_item_and_mob_rows()
     assert_eq!(item_screen.item_sort_column, Some(2));
     assert_eq!(item_screen.item_sort_order, -1);
     assert_eq!(item_screen.item_rows[0].resource_id, "minecraft:snowball");
+    assert_eq!(
+        item_screen
+            .tooltip
+            .as_ref()
+            .map(|tooltip| tooltip.text.as_str()),
+        Some("Crafted")
+    );
 
     assert!(input.handle_stats_screen_mouse_input(
         &mut counters,
@@ -7634,6 +7662,36 @@ fn hud_stats_screen_waits_for_response_then_projects_general_item_and_mob_rows()
     assert_eq!(
         screen.rows[0].secondary_value.as_deref(),
         Some("minecraft:zombie killed you 1 time(s)")
+    );
+}
+
+#[test]
+fn hud_stats_screen_reports_empty_tab_tooltip_after_response() {
+    let mut input = ClientInputState::new(true);
+    let mut world = WorldStore::new();
+    let surface = winit::dpi::PhysicalSize::new(320, 240);
+    assert!(world.open_stats_screen());
+    world.apply_award_stats(AwardStats { stats: Vec::new() });
+    assert!(input.handle_stats_screen_cursor_moved(
+        &world,
+        Some(winit::dpi::PhysicalPosition::new(160.0, 30.0))
+    ));
+
+    let screen = hud_stats_screen(
+        &input,
+        &world,
+        None,
+        &TerrainTextureState::default(),
+        ItemModelKeybindContext::default(),
+        0.0,
+        surface,
+    )
+    .unwrap();
+
+    assert!(!screen.items_tab_enabled);
+    assert_eq!(
+        screen.tooltip.as_ref().map(|tooltip| tooltip.text.as_str()),
+        Some("No statistics found")
     );
 }
 

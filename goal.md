@@ -442,8 +442,8 @@ SetChunkCacheCenter/Radius 的 VarInt wire、canonical view state、vanilla stor
 AwardStats 的 bounded map wire、generated StatType/custom-stat catalog、session holder identity、
 ownership 与 tests 已闭合；StatsScreen 已按 response 退出 loading 并投影 General 页的本地化标签、
 vanilla formatter、排序和滚动、Mobs 页的 killed/killed-by 列表，以及 Items 页的 block→item 合并、
-六列排序/no-value 与 item/block icon；原版 header sprites、tooltip/keyboard/narration 辅助交互仍开放，
-canonical complete、runtime partial。
+六列排序/no-value 与 item/block icon；item/column/empty-tab tooltip 和 Ctrl+数字/Ctrl+Tab 键盘切页
+已闭合，原版 header sprites、pixel scroll 与 narration 仍开放，canonical complete、runtime partial。
 TabList 的双 Component wire、empty→null、ownership、player-list/header/footer overlay 与 tests 已闭合；
 rich Component canonical state 尚未保留，canonical 保持 partial，runtime 已 complete。
 ServerData 的 trusted MOTD Component + optional icon wire、缺省 icon 保留旧值、ownership 与 apply tests

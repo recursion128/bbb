@@ -60,6 +60,7 @@ use bbb_protocol::entity_types::{
     VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID, VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID,
 };
 use bbb_protocol::item_types::VANILLA_ITEM_ELYTRA_ID;
+use bbb_protocol::packets::AwardStats;
 use bbb_protocol::packets::BlockEntityData;
 use bbb_protocol::packets::{
     AddEntity, AdvancementDisplaySummary, AdvancementFrameType, AdvancementIconSummary,
@@ -81,7 +82,7 @@ use bbb_protocol::packets::{
     RenameItem, SeenAdvancements, SelectBundleItem, SetCursorItem as ProtocolSetCursorItem,
     SetEntityData as ProtocolSetEntityData, SetEntityLink, SetEquipment, SetPassengers,
     SetPlayerInventory as ProtocolSetPlayerInventory, ShowDialog as ProtocolShowDialog, SignUpdate,
-    SignedMessageBody, TagQuery, UpdateAdvancements, Vec3d as ProtocolVec3d,
+    SignedMessageBody, StatUpdate, TagQuery, UpdateAdvancements, Vec3d as ProtocolVec3d,
     WrittenBookContentSummary,
 };
 use bbb_protocol::packets::{ChatTypeBound, ChatTypeHolder};
@@ -20152,6 +20153,120 @@ fn stats_screen_tab_hitboxes_match_renderer_column_widths() {
         stats_screen_item_column_at_position(Some((157, 50)), surface),
         Some(2)
     );
+}
+
+#[test]
+fn stats_screen_control_tab_and_digits_skip_disabled_tabs() {
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+    assert!(world.open_stats_screen());
+    world.apply_award_stats(AwardStats {
+        stats: vec![
+            StatUpdate {
+                stat_type_id: 1,
+                value_id: bbb_protocol::item_types::vanilla_item_type_for_resource_id(
+                    "minecraft:apple",
+                )
+                .unwrap()
+                .id,
+                amount: 1,
+            },
+            StatUpdate {
+                stat_type_id: 6,
+                value_id: VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+                amount: 1,
+            },
+        ],
+    });
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &None,
+        PhysicalKey::Code(KeyCode::ControlLeft),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &None,
+        PhysicalKey::Code(KeyCode::Digit2),
+        ElementState::Pressed,
+    );
+    assert_eq!(input.stats_screen_tab(), 1);
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &None,
+        PhysicalKey::Code(KeyCode::Tab),
+        ElementState::Pressed,
+    );
+    assert_eq!(input.stats_screen_tab(), 2);
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &None,
+        PhysicalKey::Code(KeyCode::Numpad1),
+        ElementState::Pressed,
+    );
+    assert_eq!(input.stats_screen_tab(), 0);
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &None,
+        PhysicalKey::Code(KeyCode::Digit9),
+        ElementState::Pressed,
+    );
+    assert_eq!(input.stats_screen_tab(), 2);
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &None,
+        PhysicalKey::Code(KeyCode::ShiftLeft),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &None,
+        PhysicalKey::Code(KeyCode::Tab),
+        ElementState::Pressed,
+    );
+    assert_eq!(input.stats_screen_tab(), 1);
+
+    let mut empty_world = WorldStore::new();
+    assert!(empty_world.open_stats_screen());
+    empty_world.apply_award_stats(AwardStats { stats: Vec::new() });
+    input.stats_screen_tab = 0;
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut empty_world,
+        &None,
+        PhysicalKey::Code(KeyCode::Digit3),
+        ElementState::Pressed,
+    );
+    assert_eq!(input.stats_screen_tab(), 0);
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut empty_world,
+        &None,
+        PhysicalKey::Code(KeyCode::Tab),
+        ElementState::Pressed,
+    );
+    assert_eq!(input.stats_screen_tab(), 0);
 }
 
 #[test]

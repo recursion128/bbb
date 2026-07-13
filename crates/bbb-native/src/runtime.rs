@@ -3326,6 +3326,46 @@ fn hud_stats_screen(
             Vec::new()
         };
         let (item_sort_column, item_sort_order) = input.stats_screen_item_sort();
+        let item_column_labels = [
+            localized_gui_text(item_runtime, "stat_type.minecraft.mined", "Mined"),
+            localized_gui_text(item_runtime, "stat_type.minecraft.broken", "Broken"),
+            localized_gui_text(item_runtime, "stat_type.minecraft.crafted", "Crafted"),
+            localized_gui_text(item_runtime, "stat_type.minecraft.used", "Used"),
+            localized_gui_text(item_runtime, "stat_type.minecraft.picked_up", "Picked Up"),
+            localized_gui_text(item_runtime, "stat_type.minecraft.dropped", "Dropped"),
+        ];
+        let item_hovered_column = input.stats_screen_item_hovered_column(surface_size);
+        let item_tooltip_text = if active_tab == 1 {
+            input
+                .stats_screen_hovered_item_row(surface_size)
+                .and_then(|row| item_rows.get(row))
+                .map(|row| row.label.clone())
+                .or_else(|| item_hovered_column.map(|column| item_column_labels[column].clone()))
+        } else {
+            None
+        };
+        let tooltip_text = item_tooltip_text.or_else(|| {
+            (!is_loading)
+                .then(|| match input.stats_screen_hovered_tab(surface_size) {
+                    Some(1) if !items_tab_enabled => Some(localized_gui_text(
+                        item_runtime,
+                        "gui.stats.none_found",
+                        "No statistics found",
+                    )),
+                    Some(2) if !mobs_tab_enabled => Some(localized_gui_text(
+                        item_runtime,
+                        "gui.stats.none_found",
+                        "No statistics found",
+                    )),
+                    _ => None,
+                })
+                .flatten()
+        });
+        let tooltip = tooltip_text.and_then(|text| {
+            input
+                .stats_screen_cursor_position()
+                .map(|(x, y)| HudDebugOptionsTooltip { text, x, y })
+        });
         HudStatsScreen {
             title: localized_gui_text(item_runtime, "gui.stats", "Stats"),
             loading_text: localized_gui_text(
@@ -3342,22 +3382,16 @@ fn hud_stats_screen(
             mobs_tab_enabled: mobs_tab_enabled && !is_loading,
             rows,
             item_rows,
-            item_column_labels: [
-                localized_gui_text(item_runtime, "stat_type.minecraft.mined", "Mined"),
-                localized_gui_text(item_runtime, "stat_type.minecraft.broken", "Broken"),
-                localized_gui_text(item_runtime, "stat_type.minecraft.crafted", "Crafted"),
-                localized_gui_text(item_runtime, "stat_type.minecraft.used", "Used"),
-                localized_gui_text(item_runtime, "stat_type.minecraft.picked_up", "Picked Up"),
-                localized_gui_text(item_runtime, "stat_type.minecraft.dropped", "Dropped"),
-            ],
+            item_column_labels,
             item_no_value: localized_gui_text(item_runtime, "stats.none", "-"),
             item_sort_column,
             item_sort_order,
-            item_hovered_column: input.stats_screen_item_hovered_column(surface_size),
+            item_hovered_column,
             scroll_row,
             total_rows,
             visible_rows,
             row_height,
+            tooltip,
             done_hovered: stats_screen_done_button_contains(
                 input.stats_screen_cursor_position(),
                 surface_size,

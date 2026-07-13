@@ -12825,3 +12825,11 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] native item runtime 提供 selected-pack item name、block-item mapping 和 icon/model projection；
   renderer 输出 18px slot、六列值、flat item icon，并把 block item 送入既有 3D GUI mesh pass。
   原版 statistics header/sort sprites、tooltips、keyboard navigation、pixel scroll 与 narration 继续开放。
+
+## 2026-07-13：StatsScreen tab navigation and tooltips
+
+- [x] native 对齐 `TabNavigationBar.keyPressed`：Ctrl+1/2/3 选择 active tab，Ctrl+Tab 与
+  Ctrl+Shift+Tab 循环并跳过 empty/disabled tab；切页重置本地 scroll row，loading 期间仅 General active。
+- [x] cursor projection 区分 item icon、六列 header 与 disabled Items/Mobs tab；item selected-pack 名称、
+  column display name 和 localized `gui.stats.none_found` 复用统一 tooltip background/frame renderer。
+  statistics 专用 header/sort sprite、pixel-precise scroll 与 narration 继续开放。

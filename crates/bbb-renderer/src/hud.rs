@@ -194,6 +194,7 @@ pub struct HudStatsScreen {
     pub total_rows: usize,
     pub visible_rows: usize,
     pub row_height: i32,
+    pub tooltip: Option<HudDebugOptionsTooltip>,
     pub done_hovered: bool,
 }
 
@@ -4485,6 +4486,8 @@ impl Renderer {
                 self.hud_item_atlas.as_ref(),
                 self.hud_digit_atlas.as_ref(),
                 &self.hud_digit_glyphs,
+                self.hud_tooltip_background.as_ref(),
+                self.hud_tooltip_frame.as_ref(),
                 self.hud_font_atlas.as_ref(),
                 &self.hud_font_glyphs,
                 &self.hud_obfuscated_glyph_pool,
@@ -6170,6 +6173,8 @@ fn push_hud_stats_screen<'a>(
     item_atlas: Option<&'a HudSpriteGpu>,
     digit_atlas: Option<&'a HudSpriteGpu>,
     digit_glyphs: &[HudDigitGlyph; 10],
+    tooltip_background: Option<&'a HudNineSliceSprite>,
+    tooltip_frame: Option<&'a HudNineSliceSprite>,
     font_atlas: Option<&'a HudSpriteGpu>,
     glyphs: &HudFontGlyphMap,
     obfuscated_pool: &HudObfuscatedGlyphPool,
@@ -6418,6 +6423,19 @@ fn push_hud_stats_screen<'a>(
         "Done",
         screen.done_hovered,
         true,
+    );
+    push_hud_debug_options_tooltip(
+        vertices,
+        commands,
+        white_pixel,
+        tooltip_background,
+        tooltip_frame,
+        font_atlas,
+        glyphs,
+        obfuscated_pool,
+        frame_index,
+        surface_size,
+        screen.tooltip.as_ref(),
     );
 }
 
@@ -11408,6 +11426,7 @@ fn sanitize_hud_stats_screen(screen: HudStatsScreen) -> Option<HudStatsScreen> {
         .try_into()
         .ok()?;
     let item_no_value = sanitize_hud_text_line(screen.item_no_value)?;
+    let tooltip = screen.tooltip.and_then(sanitize_hud_debug_options_tooltip);
     let visible_rows = screen.visible_rows.min(64);
     let rows = screen
         .rows
@@ -11461,6 +11480,7 @@ fn sanitize_hud_stats_screen(screen: HudStatsScreen) -> Option<HudStatsScreen> {
         total_rows: screen.total_rows,
         visible_rows,
         row_height: screen.row_height.clamp(9, 64),
+        tooltip,
         done_hovered: screen.done_hovered,
     })
 }
@@ -12974,6 +12994,7 @@ mod tests {
             total_rows: 1,
             visible_rows: 6,
             row_height: 22,
+            tooltip: None,
             done_hovered: false,
         }));
 
@@ -15995,6 +16016,11 @@ mod tests {
             total_rows: 12,
             visible_rows: 1,
             row_height: 14,
+            tooltip: Some(HudDebugOptionsTooltip {
+                text: "Craft\ned".to_string(),
+                x: 12,
+                y: 34,
+            }),
             done_hovered: true,
         })
         .expect("stats screen");
@@ -16003,6 +16029,10 @@ mod tests {
         assert_eq!(screen.general_tab, "General");
         assert_eq!(screen.rows[0].label, "Walkone cm");
         assert_eq!(screen.rows[0].value, "1.00 m");
+        assert_eq!(
+            screen.tooltip.as_ref().map(|tooltip| tooltip.text.as_str()),
+            Some("Crafted")
+        );
         assert!(screen.done_hovered);
 
         assert!(sanitize_hud_stats_screen(HudStatsScreen {
@@ -16026,6 +16056,7 @@ mod tests {
             total_rows: 0,
             visible_rows: 0,
             row_height: 14,
+            tooltip: None,
             done_hovered: false,
         })
         .is_none());
