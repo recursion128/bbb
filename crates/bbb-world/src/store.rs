@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use serde::{Deserialize, Serialize};
 
@@ -33,6 +33,15 @@ pub struct WorldStore {
     pub(crate) ticking: crate::WorldTickingState,
     #[serde(default)]
     pub(crate) level_load: WorldLevelLoadState,
+    /// Session level membership from ClientboundLoginPacket. Vanilla exposes
+    /// set membership to client suggestions; its shuffled iteration order is
+    /// deliberately not canonical state.
+    #[serde(default)]
+    pub(crate) available_levels: BTreeSet<String>,
+    /// Raw server declaration from ClientboundLoginPacket. Effective secure
+    /// chat additionally depends on profile-key validation support.
+    #[serde(default)]
+    pub(crate) server_enforces_secure_chat: Option<bool>,
     pub(crate) registries: RegistrySet,
     pub(crate) chunks: Vec<ChunkColumn>,
     #[serde(default)]

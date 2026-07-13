@@ -1,3 +1,5 @@
+use std::collections::BTreeSet;
+
 use bbb_protocol::game_event_types::{
     VANILLA_CLIENT_GAME_EVENT_CHANGE_GAME_MODE_ID, VANILLA_CLIENT_GAME_EVENT_IMMEDIATE_RESPAWN_ID,
     VANILLA_CLIENT_GAME_EVENT_LEVEL_CHUNKS_LOAD_START_ID,
@@ -277,6 +279,8 @@ impl WorldStore {
 
     pub fn apply_login(&mut self, login: &ProtocolPlayLogin) {
         self.counters.play_logins_received += 1;
+        self.available_levels = login.levels.iter().cloned().collect();
+        self.server_enforces_secure_chat = Some(login.enforces_secure_chat);
         // Vanilla constructs the new ClientChunkCache and ClientLevel from these
         // login fields before later SetChunkCacheRadius/SetSimulationDistance
         // packets may replace them.
@@ -485,6 +489,8 @@ impl WorldStore {
         self.sky_flash_time = 0;
         self.ticking = crate::WorldTickingState::default();
         self.level_load = WorldLevelLoadState::default();
+        self.available_levels.clear();
+        self.server_enforces_secure_chat = None;
         self.chunk_view = crate::ChunkViewState::default();
         self.last_block_changed_ack = None;
         self.local_player = crate::LocalPlayerState::default();
@@ -497,6 +503,14 @@ impl WorldStore {
 
     pub fn level_load(&self) -> &WorldLevelLoadState {
         &self.level_load
+    }
+
+    pub fn available_levels(&self) -> &BTreeSet<String> {
+        &self.available_levels
+    }
+
+    pub fn server_enforces_secure_chat(&self) -> Option<bool> {
+        self.server_enforces_secure_chat
     }
 
     fn start_client_level_load(&mut self) {
@@ -1064,6 +1078,7 @@ mod tests {
                 "minecraft:overworld".to_string(),
                 "minecraft:the_nether".to_string(),
                 "minecraft:the_end".to_string(),
+                "minecraft:overworld".to_string(),
             ],
             max_players: 20,
             chunk_radius: 8,
@@ -1103,6 +1118,15 @@ mod tests {
         assert_eq!(store.counters().chunk_cache_radius_updates_received, 0);
         assert_eq!(store.counters().simulation_distance_packets, 0);
         assert_eq!(store.counters().play_logins_received, 1);
+        assert_eq!(
+            store.available_levels(),
+            &BTreeSet::from([
+                "minecraft:overworld".to_string(),
+                "minecraft:the_nether".to_string(),
+                "minecraft:the_end".to_string(),
+            ])
+        );
+        assert_eq!(store.server_enforces_secure_chat(), Some(true));
         assert_eq!(store.local_player().portal_cooldown, 7);
         for x in [11, 12] {
             let mut chunk = stale_chunk();
@@ -1155,6 +1179,10 @@ mod tests {
             min_y: 0,
             height: 256,
         });
+        store
+            .available_levels
+            .insert("minecraft:overworld".to_string());
+        store.server_enforces_secure_chat = Some(true);
         store.chunks.push(stale_chunk());
         store.first_chunk = Some(ChunkPos { x: 1, z: -2 });
         store.apply_add_entity(protocol_add_entity(123));
@@ -1179,6 +1207,8 @@ mod tests {
         assert_eq!(store.entity_count(), 1);
         assert_eq!(store.level_info().unwrap().biome_zoom_seed, 12345);
         assert_eq!(store.local_player().portal_cooldown, 6);
+        let available_levels = store.available_levels().clone();
+        let server_enforces_secure_chat = store.server_enforces_secure_chat();
 
         store.apply_respawn(&ProtocolRespawn {
             common_spawn_info: ProtocolSpawnInfo {
@@ -1211,6 +1241,11 @@ mod tests {
         let level = store.level_info().unwrap();
         assert_eq!(level.biome_zoom_seed, 98765);
         assert_eq!(store.local_player().portal_cooldown, 2);
+        assert_eq!(store.available_levels(), &available_levels);
+        assert_eq!(
+            store.server_enforces_secure_chat(),
+            server_enforces_secure_chat
+        );
         assert_eq!(level.dimension, "minecraft:the_end");
         assert_eq!(level.dimension_type_id, 2);
         assert_eq!(
@@ -1314,6 +1349,10 @@ mod tests {
             is_debug: false,
             is_flat: false,
         });
+        store
+            .available_levels
+            .insert("minecraft:the_nether".to_string());
+        store.server_enforces_secure_chat = Some(true);
         store.chunks.push(stale_chunk());
         store.first_chunk = Some(ChunkPos { x: 1, z: -2 });
         store.apply_add_entity(protocol_add_entity(123));
@@ -1371,6 +1410,8 @@ mod tests {
 
         assert_eq!(store.dimension(), WorldDimension::default());
         assert!(store.level_info().is_none());
+        assert!(store.available_levels().is_empty());
+        assert_eq!(store.server_enforces_secure_chat(), None);
         assert_eq!(store.chunk_count(), 0);
         assert_eq!(store.first_chunk(), None);
         assert_eq!(store.entity_count(), 0);

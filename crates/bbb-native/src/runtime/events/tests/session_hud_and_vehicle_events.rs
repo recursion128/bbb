@@ -989,6 +989,11 @@ fn login_tracks_local_player_id_in_world() {
     assert_eq!(world.local_player().simulation_distance, Some(6));
     assert_eq!(world.local_player().portal_cooldown, 3);
     assert_eq!(world.level_info().unwrap().biome_zoom_seed, 98765);
+    assert_eq!(
+        world.available_levels(),
+        &std::collections::BTreeSet::from(["minecraft:overworld".to_string()])
+    );
+    assert_eq!(world.server_enforces_secure_chat(), Some(false));
     assert_eq!(world.counters().chunk_cache_radius_updates_received, 0);
     assert_eq!(world.counters().simulation_distance_packets, 0);
     assert_eq!(world.counters().play_logins_received, 1);

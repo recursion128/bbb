@@ -12973,3 +12973,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   time packet 时也按 `Entity.processPortalCooldown` 递减至零，不由此实现或猜测 portal world transition。
 - [x] world Login/Respawn/tick 与 native event-drain tests 锁定覆盖和替换语义；Respawn 的其余 player/
   container/camera/music/debug/level-load 生命周期仍保持开放。
+
+## 2026-07-13：Login level membership 与 secure-chat declaration
+
+- [x] Login `levels` 以确定性 `BTreeSet` 保存 membership 并去重；vanilla 为避免依赖顺序而主动
+  shuffle 后再存 LinkedHashSet，因此 bbb 不把任意 iteration order 变成 canonical state。
+- [x] Login 的 `enforcesSecureChat` 以 `Option<bool>` 保存 raw server declaration，区分尚未 Login 与
+  明确 false；Respawn 保留两项 session state，disconnect/clear 清除，world/native tests 锁定。
+- [x] 本切片没有把 raw flag 冒充 effective enforcement；profile-key capability、PlayerInfo validator、
+  signed-chat 校验与 insecure-server toast 仍由 signed-chat/Login runtime TODO 维护。
