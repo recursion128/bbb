@@ -257,9 +257,10 @@ Movement:
   `GameRenderer.bobHurt` damage tilt, including the configured tilt strength.
   This remains presentation-only and must not infer health loss or authoritative
   damage from the packet.
-- Complete ClientboundAnimate action 2 (`Player.stopSleepInBed(false, false)`)
-  and gate actions 0/3 on `LivingEntity` plus action 2 on `Player`; keep 4/5 as
-  presentation-only crit tracking emitters, not authoritative attacks.
+- Complete ClientboundAnimate action 2 (`Player.stopSleepInBed(false, false)`):
+  gate it on Player, clear the bed's local occupied state, resolve the safe
+  stand-up position/yaw, move to that position, set standing pose, clear
+  sleepingPos, and preserve `sleepCounter = 100` semantics.
 - Resolve DamageEvent's DamageType holder through session RegistryAccess and
   complete only vanilla client presentation state: LivingEntity gate, walk
   animation speed, invulnerability/hurt timers, hurt sound, and last-source

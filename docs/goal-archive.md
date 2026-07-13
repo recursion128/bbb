@@ -12881,3 +12881,11 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] LivingEntity 继续驱动 10-tick red overlay；boat/minecart 复用唯一 VehicleEntity damage state，
   按 vanilla 翻转 hurtDir、重置 hurtTime=10、damage×11，renderer 的既有 wobble consumer 直接读取。
   canonical coverage 闭合；Player hurtDir 的 active-camera damage tilt 仍明确开放，runtime 不误标完成。
+
+## 2026-07-13：Animate swing capability gate
+
+- [x] ClientboundAnimate action 0/3 现在只对 generated class catalog 判定为 LivingEntity 的目标启动
+  main/off-hand swing；base Entity 子类仍保留可观察 packet diagnostic，但不再获得 synthetic melee
+  animation。既有 held-item swing duration、local first-person arm 与 4/5 tracking emitter 行为不变。
+- [x] action 2 未用简单 pose overwrite 冒充完成：vanilla `stopSleepInBed(false,false)` 的床占用、起床点、
+  位置/朝向、sleepingPos 与 sleepCounter 语义继续在 unsupported ledger 开放。

@@ -398,9 +398,9 @@ HurtAnimation 的 VarInt + float wire、ownership 与 virtual `animateHurt` capa
 base Entity no-op、LivingEntity 10-tick red overlay、boat/minecart hurt-dir/time/damage wobble 均有测试，
 canonical complete；Player hurtDir 尚未进入 active-camera `bobHurt` tilt，runtime 保持 partial，且不由此
 packet 推导权威伤害。
-Animate 的 VarInt + u8 wire、ownership、0/3 swing 与 4/5 crit emitter tests 已闭合；action 2
-Player wake-up 及 0/3/2 的 LivingEntity/Player type gates 尚未完成，因此 canonical/runtime
-保持 partial，且 crit emitter 不被解释为权威攻击。
+Animate 的 VarInt + u8 wire、ownership、LivingEntity-gated 0/3 swing 与 presentation-only 4/5 crit
+emitter tests 已闭合；action 2 Player wake-up 的 bed occupancy/stand-up position/pose/sleepingPos 语义与
+Player type gate 尚未完成，因此 canonical/runtime 保持 partial，且 crit emitter 不被解释为权威攻击。
 SetEquipment 的 continuation-slot wire、LivingEntity ownership gate 与 protocol/world/native tests
 已闭合；剩余 ItemStack added-value component 语义尚未全部投影，因此 canonical/runtime 保持
 partial，不能用 type presence 冒充完整装备值。

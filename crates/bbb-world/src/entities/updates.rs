@@ -7,6 +7,7 @@ use bbb_protocol::packets::{
 use crate::WorldStore;
 
 use super::movement::entity_vec3;
+use super::schema::vanilla_entity_metadata_type_is_living;
 
 /// Vanilla `ClientboundAnimatePacket.SWING_MAIN_HAND` action id: the entity swings its main hand.
 const SWING_MAIN_HAND_ACTION: u8 = 0;
@@ -28,11 +29,17 @@ impl WorldStore {
         // Vanilla `ClientboundAnimatePacket`: action `0` swings the main hand, `3` the off hand
         // (`ClientPacketListener.handleAnimate` → `LivingEntity.swing`). Both arm the melee swing.
         if packet.action == SWING_MAIN_HAND_ACTION || packet.action == SWING_OFF_HAND_ACTION {
-            let off_hand = packet.action == SWING_OFF_HAND_ACTION;
-            let duration = self.entity_held_item_swing_duration(packet.id, off_hand);
-            let _ = self
+            if self
                 .entities
-                .trigger_client_animation_swing(packet.id, off_hand, duration);
+                .entity_type_id(packet.id)
+                .is_some_and(vanilla_entity_metadata_type_is_living)
+            {
+                let off_hand = packet.action == SWING_OFF_HAND_ACTION;
+                let duration = self.entity_held_item_swing_duration(packet.id, off_hand);
+                let _ = self
+                    .entities
+                    .trigger_client_animation_swing(packet.id, off_hand, duration);
+            }
         }
         self.counters.entity_animation_updates_applied += 1;
         true

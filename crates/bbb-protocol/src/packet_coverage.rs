@@ -1002,7 +1002,7 @@ mod tests {
     }
 
     #[test]
-    fn play_animate_keeps_wake_up_and_type_gates_open() {
+    fn play_animate_keeps_player_wake_up_open() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries

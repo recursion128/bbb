@@ -526,6 +526,23 @@ fn entity_model_sources_project_attack_swing_ramp() {
     assert!(store.apply_entity_animation(ProtocolEntityAnimation { id: 50, action: 3 }));
     store.advance_entity_client_animations(2);
     assert!(attack(&store, 1.0).1, "off-hand swing flags the left arm");
+
+    store.apply_add_entity(protocol_add_entity_with_type(
+        49,
+        VANILLA_ENTITY_TYPE_ARROW_ID,
+    ));
+    assert!(store.apply_entity_animation(ProtocolEntityAnimation { id: 49, action: 0 }));
+    store.advance_entity_client_animations(2);
+    let arrow = store
+        .entity_model_sources_at_partial_tick(1.0)
+        .into_iter()
+        .find(|source| source.entity_id == 49)
+        .unwrap();
+    assert_eq!(arrow.attack_anim, 0.0);
+    assert_eq!(
+        store.probe_entity(49).unwrap().last_animation_action,
+        Some(0)
+    );
 }
 
 #[test]
