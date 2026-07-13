@@ -546,7 +546,8 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   recipes/lock/container-loot)/bees/
   charged-projectile/bundle/writable-book/written-book-exact-component-trees/
   lodestone/profile/banner-pattern-provider-tag/
-  banner-pattern-layers/
+  banner-pattern-layers (fixed vanilla resource/asset presentation catalog is generated;
+  server-synchronized/direct-holder remapping and resource-pack texture resolution remain)/
   trim-named-holders (fixed vanilla material resource/color descriptor is generated;
   server-synchronized material/pattern holder remapping remains)/
   instrument-named-holder/

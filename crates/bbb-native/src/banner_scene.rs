@@ -91,7 +91,7 @@ fn banner_dye_color(color: WorldBannerDyeColorKind) -> EntityDyeColor {
 fn banner_pattern_layers(layers: &[BannerPatternLayerState]) -> [Option<BannerPatternLayer>; 16] {
     let mut out = [None; 16];
     for (index, layer) in layers.iter().enumerate() {
-        let Some(pattern) = banner_pattern_kind(&layer.pattern) else {
+        let Some(pattern) = BannerPatternKind::for_resource_id(&layer.pattern) else {
             return [None; 16];
         };
         let Some(color) = banner_layer_dye_color(&layer.color) else {
@@ -124,60 +124,6 @@ fn banner_layer_dye_color(name: &str) -> Option<EntityDyeColor> {
         "green" => Some(EntityDyeColor::Green),
         "red" => Some(EntityDyeColor::Red),
         "black" => Some(EntityDyeColor::Black),
-        _ => None,
-    }
-}
-
-/// Vanilla `BannerPatterns.bootstrap` (`BannerPatterns.java:60-105`),
-/// transcribed as a constant table: the forty-three registered pattern ids
-/// (every vanilla entry's `asset_id` equals its registry id,
-/// `BannerPatterns.register`). An unknown id returns `None` (vanilla's
-/// registry holder lookup fails the whole `patterns` codec).
-fn banner_pattern_kind(pattern_id: &str) -> Option<BannerPatternKind> {
-    match pattern_id {
-        "minecraft:base" => Some(BannerPatternKind::Base),
-        "minecraft:square_bottom_left" => Some(BannerPatternKind::SquareBottomLeft),
-        "minecraft:square_bottom_right" => Some(BannerPatternKind::SquareBottomRight),
-        "minecraft:square_top_left" => Some(BannerPatternKind::SquareTopLeft),
-        "minecraft:square_top_right" => Some(BannerPatternKind::SquareTopRight),
-        "minecraft:stripe_bottom" => Some(BannerPatternKind::StripeBottom),
-        "minecraft:stripe_top" => Some(BannerPatternKind::StripeTop),
-        "minecraft:stripe_left" => Some(BannerPatternKind::StripeLeft),
-        "minecraft:stripe_right" => Some(BannerPatternKind::StripeRight),
-        "minecraft:stripe_center" => Some(BannerPatternKind::StripeCenter),
-        "minecraft:stripe_middle" => Some(BannerPatternKind::StripeMiddle),
-        "minecraft:stripe_downright" => Some(BannerPatternKind::StripeDownright),
-        "minecraft:stripe_downleft" => Some(BannerPatternKind::StripeDownleft),
-        "minecraft:small_stripes" => Some(BannerPatternKind::SmallStripes),
-        "minecraft:cross" => Some(BannerPatternKind::Cross),
-        "minecraft:straight_cross" => Some(BannerPatternKind::StraightCross),
-        "minecraft:triangle_bottom" => Some(BannerPatternKind::TriangleBottom),
-        "minecraft:triangle_top" => Some(BannerPatternKind::TriangleTop),
-        "minecraft:triangles_bottom" => Some(BannerPatternKind::TrianglesBottom),
-        "minecraft:triangles_top" => Some(BannerPatternKind::TrianglesTop),
-        "minecraft:diagonal_left" => Some(BannerPatternKind::DiagonalLeft),
-        "minecraft:diagonal_up_right" => Some(BannerPatternKind::DiagonalUpRight),
-        "minecraft:diagonal_up_left" => Some(BannerPatternKind::DiagonalUpLeft),
-        "minecraft:diagonal_right" => Some(BannerPatternKind::DiagonalRight),
-        "minecraft:circle" => Some(BannerPatternKind::Circle),
-        "minecraft:rhombus" => Some(BannerPatternKind::Rhombus),
-        "minecraft:half_vertical" => Some(BannerPatternKind::HalfVertical),
-        "minecraft:half_horizontal" => Some(BannerPatternKind::HalfHorizontal),
-        "minecraft:half_vertical_right" => Some(BannerPatternKind::HalfVerticalRight),
-        "minecraft:half_horizontal_bottom" => Some(BannerPatternKind::HalfHorizontalBottom),
-        "minecraft:border" => Some(BannerPatternKind::Border),
-        "minecraft:curly_border" => Some(BannerPatternKind::CurlyBorder),
-        "minecraft:gradient" => Some(BannerPatternKind::Gradient),
-        "minecraft:gradient_up" => Some(BannerPatternKind::GradientUp),
-        "minecraft:bricks" => Some(BannerPatternKind::Bricks),
-        "minecraft:globe" => Some(BannerPatternKind::Globe),
-        "minecraft:creeper" => Some(BannerPatternKind::Creeper),
-        "minecraft:skull" => Some(BannerPatternKind::Skull),
-        "minecraft:flower" => Some(BannerPatternKind::Flower),
-        "minecraft:mojang" => Some(BannerPatternKind::Mojang),
-        "minecraft:piglin" => Some(BannerPatternKind::Piglin),
-        "minecraft:flow" => Some(BannerPatternKind::Flow),
-        "minecraft:guster" => Some(BannerPatternKind::Guster),
         _ => None,
     }
 }
@@ -485,11 +431,14 @@ mod tests {
         assert_eq!(patterns.len(), 43);
         for name in patterns {
             assert!(
-                banner_pattern_kind(&format!("minecraft:{name}")).is_some(),
+                BannerPatternKind::for_resource_id(&format!("minecraft:{name}")).is_some(),
                 "pattern {name}"
             );
         }
-        assert_eq!(banner_pattern_kind("minecraft:ominous"), None);
+        assert_eq!(
+            BannerPatternKind::for_resource_id("minecraft:ominous"),
+            None
+        );
     }
 
     #[test]

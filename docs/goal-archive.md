@@ -13099,3 +13099,17 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] extractor fixture、真实 update/check、完整性/唯一性/边界测试、renderer/native focused tests
   与跨 crate 反向扫描通过；`decorated_pot_pattern` 是 fixed built-in registry，不新增不存在的
   server/datapack remapping surface。
+
+## 2026-07-13：Generate banner-pattern presentation catalog
+
+- [x] `bootstrap_catalog_extractor.py` 在既有 43 项 `BannerPatterns` ResourceKey/bootstrap
+  extraction 上额外精确验证 `BannerPattern(key.identifier(), translationKey)` 的 asset-id
+  公式；错误 asset expression 会带 source span 在生成前失败，Java 常量名与资源名的 alias
+  （如 `DIAGONAL_RIGHT -> diagonal_up_right`）按实际资源保持。
+- [x] 新的 renderer `banner_patterns` 语义模块生成 43 个 enum variant、resource lookup、
+  64×64 texture refs 与 descriptor；native block-entity projection、renderer atlas 和 pattern
+  layer submission 共同消费该 owner，删除原 enum、43-arm resource match、43 份 texture path
+  与 43-arm texture match。
+- [x] extractor fixture、真实 update/check、完整性/顺序/唯一性/边界测试、renderer/native
+  focused tests 与跨 crate 反向扫描通过；这只统一固定 vanilla presentation 数据，服务端同步/
+  direct holder remapping 和资源包纹理解析仍在差距台账中。

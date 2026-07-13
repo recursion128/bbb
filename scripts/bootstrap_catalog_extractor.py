@@ -30,6 +30,7 @@ class BootstrapEntry:
 class BannerPatternEntry:
     constant_name: str
     resource_id: str
+    asset_id: str
     translation_key: str
 
 
@@ -774,6 +775,14 @@ def banner_pattern_entries(
             source.expression(constructors[0]),
             "BannerPattern constructor must have two arguments",
         )
+    asset = source.expression(arguments.named_children[0])
+    expected_asset = "key.identifier ()"
+    if asset.canonical != expected_asset:
+        _fail(
+            source,
+            asset,
+            f"unsupported banner asset expression {asset.canonical}",
+        )
     translation = source.expression(arguments.named_children[1])
     expected = '"block.minecraft.banner." + key.identifier ().toShortLanguageKey ()'
     if translation.canonical != expected:
@@ -785,6 +794,7 @@ def banner_pattern_entries(
     return [
         BannerPatternEntry(
             entry.constant_name,
+            entry.resource_id,
             entry.resource_id,
             "block.minecraft.banner."
             + entry.resource_id.removeprefix("minecraft:"),

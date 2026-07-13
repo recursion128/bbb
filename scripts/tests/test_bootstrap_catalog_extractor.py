@@ -308,7 +308,32 @@ class Banners {
 """,
         )
         entry = banner_pattern_entries(source, 1)[0]
+        self.assertEqual(entry.asset_id, "minecraft:base")
         self.assertEqual(entry.translation_key, "block.minecraft.banner.base")
+
+    def test_banner_asset_formula_is_validated_before_derivation(self) -> None:
+        source = parse_source(
+            "fixture/Banners.java",
+            b"""
+package fixture;
+class Banners {
+  static final ResourceKey<BannerPattern> BASE = create("base");
+  static void bootstrap(BootstrapContext<BannerPattern> context) {
+    register(context, BASE);
+  }
+  static void register(BootstrapContext<BannerPattern> context,
+                       ResourceKey<BannerPattern> key) {
+    context.register(key, new BannerPattern(
+        Identifier.withDefaultNamespace("wrong"),
+        "block.minecraft.banner." + key.identifier().toShortLanguageKey()));
+  }
+}
+""",
+        )
+        with self.assertRaisesRegex(
+            BootstrapCatalogExtractionError, "unsupported banner asset expression"
+        ):
+            banner_pattern_entries(source, 1)
 
     def test_enchantment_order_and_max_level_come_from_definition_calls(self) -> None:
         source = parse_source(

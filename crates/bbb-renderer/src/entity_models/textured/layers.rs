@@ -1976,7 +1976,7 @@ pub(in crate::entity_models) fn banner_textured_layer_passes(
             kind: EntityModelLayerKind::BannerPattern,
             render_type: EntityModelLayerRenderType::EntityTranslucent,
             model_layer: flag_layer,
-            texture: banner_pattern_texture_ref(layer.pattern),
+            texture: layer.pattern.texture_ref(),
             visibility: EntityModelLayerVisibility::RetainedParts(BANNER_FLAG_PARTS),
             tint: layer.color.texture_diffuse_color(),
             order: 0,

@@ -2,7 +2,7 @@ mod selection;
 
 use glam::Mat4;
 
-use super::DecoratedPotPattern;
+use super::{BannerPatternKind, DecoratedPotPattern};
 
 pub(in crate::entity_models) use selection::{
     boat_texture_ref, camel_texture_ref, chicken_texture_ref, cow_texture_ref,
@@ -1621,58 +1621,6 @@ pub enum BellShakeDirection {
     South,
     East,
     West,
-}
-
-/// Vanilla `BannerPatterns` registry entries: the forty-three pattern registrations, each an
-/// `entity/banner/<pattern>` sprite (`BannerPatterns.bootstrap`, `BannerPatterns.java:60-105`;
-/// every vanilla entry's `asset_id` equals its registry id, `BannerPatterns.register`). `Base`
-/// is the same full-flag `entity/banner/base` sheet the base-color pass binds — a legal explicit
-/// layer too (e.g. `/give` pattern stacks).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum BannerPatternKind {
-    Base,
-    SquareBottomLeft,
-    SquareBottomRight,
-    SquareTopLeft,
-    SquareTopRight,
-    StripeBottom,
-    StripeTop,
-    StripeLeft,
-    StripeRight,
-    StripeCenter,
-    StripeMiddle,
-    StripeDownright,
-    StripeDownleft,
-    SmallStripes,
-    Cross,
-    StraightCross,
-    TriangleBottom,
-    TriangleTop,
-    TrianglesBottom,
-    TrianglesTop,
-    DiagonalLeft,
-    DiagonalUpRight,
-    DiagonalUpLeft,
-    DiagonalRight,
-    Circle,
-    Rhombus,
-    HalfVertical,
-    HalfHorizontal,
-    HalfVerticalRight,
-    HalfHorizontalBottom,
-    Border,
-    CurlyBorder,
-    Gradient,
-    GradientUp,
-    Bricks,
-    Globe,
-    Creeper,
-    Skull,
-    Flower,
-    Mojang,
-    Piglin,
-    Flow,
-    Guster,
 }
 
 /// One banner pattern layer — vanilla `BannerPatternLayers.Layer`: the pattern sprite plus the

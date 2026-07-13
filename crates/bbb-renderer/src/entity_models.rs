@@ -1,3 +1,4 @@
+mod banner_patterns;
 mod block_attachment;
 mod catalog;
 mod colored;
@@ -13,6 +14,7 @@ mod model;
 mod model_layers;
 mod textured;
 
+pub use banner_patterns::BannerPatternKind;
 pub use block_attachment::{
     copper_golem_antenna_block_transform, enderman_carried_block_transform,
     falling_block_transform, iron_golem_flower_block_transform, minecart_display_block_transform,

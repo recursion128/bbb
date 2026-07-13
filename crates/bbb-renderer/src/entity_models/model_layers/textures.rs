@@ -1,10 +1,10 @@
 use super::super::EntityModelTextureRef;
+pub(in crate::entity_models) use crate::entity_models::banner_patterns::*;
 use crate::entity_models::catalog::{
-    ArrowModelTexture, AxolotlModelVariant, BannerPatternKind, CatModelVariant, ChestModelHalf,
-    ChestModelTexture, ConduitModelPart, CopperGolemWeathering, EntityArmorMaterial,
-    EntityDefaultPlayerSkin, EntityDyeColor, FoxModelVariant, FrogModelVariant, PandaModelVariant,
-    ParrotModelVariant, RabbitModelVariant, SignModelAttachment, SignModelWood,
-    WolfArmorCrackiness,
+    ArrowModelTexture, AxolotlModelVariant, CatModelVariant, ChestModelHalf, ChestModelTexture,
+    ConduitModelPart, CopperGolemWeathering, EntityArmorMaterial, EntityDefaultPlayerSkin,
+    EntityDyeColor, FoxModelVariant, FrogModelVariant, PandaModelVariant, ParrotModelVariant,
+    RabbitModelVariant, SignModelAttachment, SignModelWood, WolfArmorCrackiness,
 };
 use crate::entity_models::decorated_pot_patterns::*;
 use crate::entity_models::DecoratedPotPattern;
@@ -3745,113 +3745,13 @@ pub(in crate::entity_models) fn decorated_pot_side_texture_ref(
     })
 }
 
-/// A 64×64 `entity/banner/<name>` sprite (`Sheets.BANNER_MAPPER`): the untinted frame/flag base
-/// sheet and the tinted pattern sheets, all sized like the `BannerModel`/`BannerFlagModel` 64×64
-/// atlas.
-const fn banner_sheet_texture_ref(path: &'static str) -> EntityModelTextureRef {
-    EntityModelTextureRef {
-        path,
-        size: [64, 64],
-    }
-}
-
 /// Vanilla `Sheets.BANNER_BASE` (`BANNER_MAPPER.defaultNamespaceApply("banner_base")`) — the
 /// untinted pole/bar/flag sheet both `BannerModel` and `BannerFlagModel` bind.
 pub(in crate::entity_models) const BANNER_BASE_TEXTURE_REF: EntityModelTextureRef =
-    banner_sheet_texture_ref("textures/entity/banner/banner_base.png");
-/// Vanilla `Sheets.BANNER_PATTERN_BASE` (`BANNER_MAPPER.defaultNamespaceApply("base")`) — the
-/// full-flag mask `BannerRenderer.submitPatterns` tints with the banner's base color first.
-pub(in crate::entity_models) const BANNER_PATTERN_BASE_TEXTURE_REF: EntityModelTextureRef =
-    banner_sheet_texture_ref("textures/entity/banner/base.png");
-
-// Vanilla `Sheets.getBannerSprite` — one `entity/banner/<pattern>` sprite per registered
-// `BannerPattern` (`BannerPatterns.bootstrap`, `BannerPatterns.java:60-105`: every vanilla
-// entry's `asset_id` equals its registry id).
-pub(in crate::entity_models) const BANNER_SQUARE_BOTTOM_LEFT_TEXTURE_REF: EntityModelTextureRef =
-    banner_sheet_texture_ref("textures/entity/banner/square_bottom_left.png");
-pub(in crate::entity_models) const BANNER_SQUARE_BOTTOM_RIGHT_TEXTURE_REF: EntityModelTextureRef =
-    banner_sheet_texture_ref("textures/entity/banner/square_bottom_right.png");
-pub(in crate::entity_models) const BANNER_SQUARE_TOP_LEFT_TEXTURE_REF: EntityModelTextureRef =
-    banner_sheet_texture_ref("textures/entity/banner/square_top_left.png");
-pub(in crate::entity_models) const BANNER_SQUARE_TOP_RIGHT_TEXTURE_REF: EntityModelTextureRef =
-    banner_sheet_texture_ref("textures/entity/banner/square_top_right.png");
-pub(in crate::entity_models) const BANNER_STRIPE_BOTTOM_TEXTURE_REF: EntityModelTextureRef =
-    banner_sheet_texture_ref("textures/entity/banner/stripe_bottom.png");
-pub(in crate::entity_models) const BANNER_STRIPE_TOP_TEXTURE_REF: EntityModelTextureRef =
-    banner_sheet_texture_ref("textures/entity/banner/stripe_top.png");
-pub(in crate::entity_models) const BANNER_STRIPE_LEFT_TEXTURE_REF: EntityModelTextureRef =
-    banner_sheet_texture_ref("textures/entity/banner/stripe_left.png");
-pub(in crate::entity_models) const BANNER_STRIPE_RIGHT_TEXTURE_REF: EntityModelTextureRef =
-    banner_sheet_texture_ref("textures/entity/banner/stripe_right.png");
-pub(in crate::entity_models) const BANNER_STRIPE_CENTER_TEXTURE_REF: EntityModelTextureRef =
-    banner_sheet_texture_ref("textures/entity/banner/stripe_center.png");
-pub(in crate::entity_models) const BANNER_STRIPE_MIDDLE_TEXTURE_REF: EntityModelTextureRef =
-    banner_sheet_texture_ref("textures/entity/banner/stripe_middle.png");
-pub(in crate::entity_models) const BANNER_STRIPE_DOWNRIGHT_TEXTURE_REF: EntityModelTextureRef =
-    banner_sheet_texture_ref("textures/entity/banner/stripe_downright.png");
-pub(in crate::entity_models) const BANNER_STRIPE_DOWNLEFT_TEXTURE_REF: EntityModelTextureRef =
-    banner_sheet_texture_ref("textures/entity/banner/stripe_downleft.png");
-pub(in crate::entity_models) const BANNER_SMALL_STRIPES_TEXTURE_REF: EntityModelTextureRef =
-    banner_sheet_texture_ref("textures/entity/banner/small_stripes.png");
-pub(in crate::entity_models) const BANNER_CROSS_TEXTURE_REF: EntityModelTextureRef =
-    banner_sheet_texture_ref("textures/entity/banner/cross.png");
-pub(in crate::entity_models) const BANNER_STRAIGHT_CROSS_TEXTURE_REF: EntityModelTextureRef =
-    banner_sheet_texture_ref("textures/entity/banner/straight_cross.png");
-pub(in crate::entity_models) const BANNER_TRIANGLE_BOTTOM_TEXTURE_REF: EntityModelTextureRef =
-    banner_sheet_texture_ref("textures/entity/banner/triangle_bottom.png");
-pub(in crate::entity_models) const BANNER_TRIANGLE_TOP_TEXTURE_REF: EntityModelTextureRef =
-    banner_sheet_texture_ref("textures/entity/banner/triangle_top.png");
-pub(in crate::entity_models) const BANNER_TRIANGLES_BOTTOM_TEXTURE_REF: EntityModelTextureRef =
-    banner_sheet_texture_ref("textures/entity/banner/triangles_bottom.png");
-pub(in crate::entity_models) const BANNER_TRIANGLES_TOP_TEXTURE_REF: EntityModelTextureRef =
-    banner_sheet_texture_ref("textures/entity/banner/triangles_top.png");
-pub(in crate::entity_models) const BANNER_DIAGONAL_LEFT_TEXTURE_REF: EntityModelTextureRef =
-    banner_sheet_texture_ref("textures/entity/banner/diagonal_left.png");
-pub(in crate::entity_models) const BANNER_DIAGONAL_UP_RIGHT_TEXTURE_REF: EntityModelTextureRef =
-    banner_sheet_texture_ref("textures/entity/banner/diagonal_up_right.png");
-pub(in crate::entity_models) const BANNER_DIAGONAL_UP_LEFT_TEXTURE_REF: EntityModelTextureRef =
-    banner_sheet_texture_ref("textures/entity/banner/diagonal_up_left.png");
-pub(in crate::entity_models) const BANNER_DIAGONAL_RIGHT_TEXTURE_REF: EntityModelTextureRef =
-    banner_sheet_texture_ref("textures/entity/banner/diagonal_right.png");
-pub(in crate::entity_models) const BANNER_CIRCLE_TEXTURE_REF: EntityModelTextureRef =
-    banner_sheet_texture_ref("textures/entity/banner/circle.png");
-pub(in crate::entity_models) const BANNER_RHOMBUS_TEXTURE_REF: EntityModelTextureRef =
-    banner_sheet_texture_ref("textures/entity/banner/rhombus.png");
-pub(in crate::entity_models) const BANNER_HALF_VERTICAL_TEXTURE_REF: EntityModelTextureRef =
-    banner_sheet_texture_ref("textures/entity/banner/half_vertical.png");
-pub(in crate::entity_models) const BANNER_HALF_HORIZONTAL_TEXTURE_REF: EntityModelTextureRef =
-    banner_sheet_texture_ref("textures/entity/banner/half_horizontal.png");
-pub(in crate::entity_models) const BANNER_HALF_VERTICAL_RIGHT_TEXTURE_REF: EntityModelTextureRef =
-    banner_sheet_texture_ref("textures/entity/banner/half_vertical_right.png");
-pub(in crate::entity_models) const BANNER_HALF_HORIZONTAL_BOTTOM_TEXTURE_REF:
-    EntityModelTextureRef =
-    banner_sheet_texture_ref("textures/entity/banner/half_horizontal_bottom.png");
-pub(in crate::entity_models) const BANNER_BORDER_TEXTURE_REF: EntityModelTextureRef =
-    banner_sheet_texture_ref("textures/entity/banner/border.png");
-pub(in crate::entity_models) const BANNER_CURLY_BORDER_TEXTURE_REF: EntityModelTextureRef =
-    banner_sheet_texture_ref("textures/entity/banner/curly_border.png");
-pub(in crate::entity_models) const BANNER_GRADIENT_TEXTURE_REF: EntityModelTextureRef =
-    banner_sheet_texture_ref("textures/entity/banner/gradient.png");
-pub(in crate::entity_models) const BANNER_GRADIENT_UP_TEXTURE_REF: EntityModelTextureRef =
-    banner_sheet_texture_ref("textures/entity/banner/gradient_up.png");
-pub(in crate::entity_models) const BANNER_BRICKS_TEXTURE_REF: EntityModelTextureRef =
-    banner_sheet_texture_ref("textures/entity/banner/bricks.png");
-pub(in crate::entity_models) const BANNER_GLOBE_TEXTURE_REF: EntityModelTextureRef =
-    banner_sheet_texture_ref("textures/entity/banner/globe.png");
-pub(in crate::entity_models) const BANNER_CREEPER_TEXTURE_REF: EntityModelTextureRef =
-    banner_sheet_texture_ref("textures/entity/banner/creeper.png");
-pub(in crate::entity_models) const BANNER_SKULL_TEXTURE_REF: EntityModelTextureRef =
-    banner_sheet_texture_ref("textures/entity/banner/skull.png");
-pub(in crate::entity_models) const BANNER_FLOWER_TEXTURE_REF: EntityModelTextureRef =
-    banner_sheet_texture_ref("textures/entity/banner/flower.png");
-pub(in crate::entity_models) const BANNER_MOJANG_TEXTURE_REF: EntityModelTextureRef =
-    banner_sheet_texture_ref("textures/entity/banner/mojang.png");
-pub(in crate::entity_models) const BANNER_PIGLIN_TEXTURE_REF: EntityModelTextureRef =
-    banner_sheet_texture_ref("textures/entity/banner/piglin.png");
-pub(in crate::entity_models) const BANNER_FLOW_TEXTURE_REF: EntityModelTextureRef =
-    banner_sheet_texture_ref("textures/entity/banner/flow.png");
-pub(in crate::entity_models) const BANNER_GUSTER_TEXTURE_REF: EntityModelTextureRef =
-    banner_sheet_texture_ref("textures/entity/banner/guster.png");
+    EntityModelTextureRef {
+        path: "textures/entity/banner/banner_base.png",
+        size: [64, 64],
+    };
 
 pub(in crate::entity_models) const BANNER_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 44] = [
     BANNER_BASE_TEXTURE_REF,
@@ -3902,59 +3802,6 @@ pub(in crate::entity_models) const BANNER_ENTITY_TEXTURE_REFS: [EntityModelTextu
 
 pub fn banner_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &BANNER_ENTITY_TEXTURE_REFS
-}
-
-/// Vanilla `Sheets.getBannerSprite(layer.pattern())` — the pattern layer's sheet
-/// (`BannerRenderer.submitPatterns`; the `base` pattern is [`BANNER_PATTERN_BASE_TEXTURE_REF`],
-/// bound by the base-color pass).
-pub(in crate::entity_models) fn banner_pattern_texture_ref(
-    pattern: BannerPatternKind,
-) -> EntityModelTextureRef {
-    match pattern {
-        BannerPatternKind::Base => BANNER_PATTERN_BASE_TEXTURE_REF,
-        BannerPatternKind::SquareBottomLeft => BANNER_SQUARE_BOTTOM_LEFT_TEXTURE_REF,
-        BannerPatternKind::SquareBottomRight => BANNER_SQUARE_BOTTOM_RIGHT_TEXTURE_REF,
-        BannerPatternKind::SquareTopLeft => BANNER_SQUARE_TOP_LEFT_TEXTURE_REF,
-        BannerPatternKind::SquareTopRight => BANNER_SQUARE_TOP_RIGHT_TEXTURE_REF,
-        BannerPatternKind::StripeBottom => BANNER_STRIPE_BOTTOM_TEXTURE_REF,
-        BannerPatternKind::StripeTop => BANNER_STRIPE_TOP_TEXTURE_REF,
-        BannerPatternKind::StripeLeft => BANNER_STRIPE_LEFT_TEXTURE_REF,
-        BannerPatternKind::StripeRight => BANNER_STRIPE_RIGHT_TEXTURE_REF,
-        BannerPatternKind::StripeCenter => BANNER_STRIPE_CENTER_TEXTURE_REF,
-        BannerPatternKind::StripeMiddle => BANNER_STRIPE_MIDDLE_TEXTURE_REF,
-        BannerPatternKind::StripeDownright => BANNER_STRIPE_DOWNRIGHT_TEXTURE_REF,
-        BannerPatternKind::StripeDownleft => BANNER_STRIPE_DOWNLEFT_TEXTURE_REF,
-        BannerPatternKind::SmallStripes => BANNER_SMALL_STRIPES_TEXTURE_REF,
-        BannerPatternKind::Cross => BANNER_CROSS_TEXTURE_REF,
-        BannerPatternKind::StraightCross => BANNER_STRAIGHT_CROSS_TEXTURE_REF,
-        BannerPatternKind::TriangleBottom => BANNER_TRIANGLE_BOTTOM_TEXTURE_REF,
-        BannerPatternKind::TriangleTop => BANNER_TRIANGLE_TOP_TEXTURE_REF,
-        BannerPatternKind::TrianglesBottom => BANNER_TRIANGLES_BOTTOM_TEXTURE_REF,
-        BannerPatternKind::TrianglesTop => BANNER_TRIANGLES_TOP_TEXTURE_REF,
-        BannerPatternKind::DiagonalLeft => BANNER_DIAGONAL_LEFT_TEXTURE_REF,
-        BannerPatternKind::DiagonalUpRight => BANNER_DIAGONAL_UP_RIGHT_TEXTURE_REF,
-        BannerPatternKind::DiagonalUpLeft => BANNER_DIAGONAL_UP_LEFT_TEXTURE_REF,
-        BannerPatternKind::DiagonalRight => BANNER_DIAGONAL_RIGHT_TEXTURE_REF,
-        BannerPatternKind::Circle => BANNER_CIRCLE_TEXTURE_REF,
-        BannerPatternKind::Rhombus => BANNER_RHOMBUS_TEXTURE_REF,
-        BannerPatternKind::HalfVertical => BANNER_HALF_VERTICAL_TEXTURE_REF,
-        BannerPatternKind::HalfHorizontal => BANNER_HALF_HORIZONTAL_TEXTURE_REF,
-        BannerPatternKind::HalfVerticalRight => BANNER_HALF_VERTICAL_RIGHT_TEXTURE_REF,
-        BannerPatternKind::HalfHorizontalBottom => BANNER_HALF_HORIZONTAL_BOTTOM_TEXTURE_REF,
-        BannerPatternKind::Border => BANNER_BORDER_TEXTURE_REF,
-        BannerPatternKind::CurlyBorder => BANNER_CURLY_BORDER_TEXTURE_REF,
-        BannerPatternKind::Gradient => BANNER_GRADIENT_TEXTURE_REF,
-        BannerPatternKind::GradientUp => BANNER_GRADIENT_UP_TEXTURE_REF,
-        BannerPatternKind::Bricks => BANNER_BRICKS_TEXTURE_REF,
-        BannerPatternKind::Globe => BANNER_GLOBE_TEXTURE_REF,
-        BannerPatternKind::Creeper => BANNER_CREEPER_TEXTURE_REF,
-        BannerPatternKind::Skull => BANNER_SKULL_TEXTURE_REF,
-        BannerPatternKind::Flower => BANNER_FLOWER_TEXTURE_REF,
-        BannerPatternKind::Mojang => BANNER_MOJANG_TEXTURE_REF,
-        BannerPatternKind::Piglin => BANNER_PIGLIN_TEXTURE_REF,
-        BannerPatternKind::Flow => BANNER_FLOW_TEXTURE_REF,
-        BannerPatternKind::Guster => BANNER_GUSTER_TEXTURE_REF,
-    }
 }
 
 pub(in crate::entity_models) const LEASH_KNOT_TEXTURE_REF: EntityModelTextureRef =
