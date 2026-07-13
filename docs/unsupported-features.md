@@ -556,8 +556,8 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   use-effects/use-remainder/
   use-cooldown/tooltip-display/attack-range/
   swing-animation/resource/color (including dye/base-color)/map/ominous/firework/custom-model-data/
-  codec-backed-NBT (map-decorations/flattened-SNBT alternatives for custom-data,
-  entity-data, bucket-data, and block-entity-data/lock)/
+  codec-backed-NBT (flattened-SNBT alternatives for custom-data, entity-data,
+  bucket-data, and block-entity-data/lock)/
   charged-projectile/bundle/writable-book/written-book-exact-component-trees/
   lodestone/profile/
   banner-pattern-layers direct-holder payload decoding and resource-pack texture resolution/

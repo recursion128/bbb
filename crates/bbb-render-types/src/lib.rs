@@ -24,7 +24,10 @@ pub use hud_glyphs::{
     HUD_FONT_BASELINE, HUD_FONT_BOLD_EXTRA_THICKNESS, HUD_FONT_BOLD_OFFSET, HUD_FONT_SHADOW_OFFSET,
 };
 pub use map_backgrounds::{FirstPersonMapBackgroundKind, FirstPersonMapBackgroundTexture};
-pub use map_decorations::ItemFrameMapDecorationTexture;
+pub use map_decorations::{
+    vanilla_map_decoration_type, vanilla_map_decoration_type_for_resource_id,
+    ItemFrameMapDecorationTexture, VanillaMapDecorationType,
+};
 pub use player_skin::{
     decode_dynamic_player_skin_png, decode_dynamic_player_texture_png, DynamicEntityTextureImage,
     DynamicPlayerSkinImage, DynamicPlayerTextureImage,

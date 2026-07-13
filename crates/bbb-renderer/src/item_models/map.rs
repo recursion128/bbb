@@ -8,8 +8,10 @@ use crate::{HudAsciiGlyph, HudFontGlyphMap, Renderer};
 
 use super::{ItemModelMesh, ItemModelVertex};
 
+use bbb_render_types::vanilla_map_decoration_type;
 pub use bbb_render_types::{
     FirstPersonMapBackgroundKind, FirstPersonMapBackgroundTexture, ItemFrameMapDecorationTexture,
+    VanillaMapDecorationType as ItemFrameMapDecorationType,
 };
 
 const ITEM_FRAME_MAP_SIZE: u32 = 128;
@@ -90,17 +92,6 @@ pub struct FirstPersonMapBackgroundSubmission {
     pub light: [f32; 2],
     pub order: u32,
     pub submit_sequence: u32,
-}
-
-/// Vanilla `MapDecorationTypes` entry projected from the registry id carried by
-/// `ClientboundMapItemDataPacket`. The order mirrors the static registrations in
-/// `MapDecorationTypes.java`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct ItemFrameMapDecorationType {
-    pub type_id: i32,
-    pub resource_id: &'static str,
-    pub sprite_id: &'static str,
-    pub render_on_frame: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -309,12 +300,8 @@ pub(crate) struct ItemFrameMapTextFontAtlasGpu {
     pub(crate) bind_group: wgpu::BindGroup,
 }
 
-include!("map/generated_26_1.rs");
-
 pub fn item_frame_map_decoration_type(type_id: i32) -> Option<ItemFrameMapDecorationType> {
-    ITEM_FRAME_MAP_DECORATION_TYPES
-        .get(usize::try_from(type_id).ok()?)
-        .copied()
+    vanilla_map_decoration_type(type_id)
 }
 
 /// Bakes vanilla `MapRenderer.render`'s base map surface submit:

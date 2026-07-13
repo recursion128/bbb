@@ -3,212 +3,212 @@
 // Update: scripts/vanilla-source-tools.sh scripts/generate-bootstrap-catalog.py
 // Check: scripts/vanilla-source-tools.sh scripts/generate-bootstrap-catalog.py --check
 
-const ITEM_FRAME_MAP_DECORATION_TYPES: &[ItemFrameMapDecorationType] = &[
-    ItemFrameMapDecorationType {
+const VANILLA_MAP_DECORATION_TYPES: &[VanillaMapDecorationType] = &[
+    VanillaMapDecorationType {
         type_id: 0,
         resource_id: "minecraft:player",
         sprite_id: "minecraft:player",
         render_on_frame: false,
     },
-    ItemFrameMapDecorationType {
+    VanillaMapDecorationType {
         type_id: 1,
         resource_id: "minecraft:frame",
         sprite_id: "minecraft:frame",
         render_on_frame: true,
     },
-    ItemFrameMapDecorationType {
+    VanillaMapDecorationType {
         type_id: 2,
         resource_id: "minecraft:red_marker",
         sprite_id: "minecraft:red_marker",
         render_on_frame: false,
     },
-    ItemFrameMapDecorationType {
+    VanillaMapDecorationType {
         type_id: 3,
         resource_id: "minecraft:blue_marker",
         sprite_id: "minecraft:blue_marker",
         render_on_frame: false,
     },
-    ItemFrameMapDecorationType {
+    VanillaMapDecorationType {
         type_id: 4,
         resource_id: "minecraft:target_x",
         sprite_id: "minecraft:target_x",
         render_on_frame: true,
     },
-    ItemFrameMapDecorationType {
+    VanillaMapDecorationType {
         type_id: 5,
         resource_id: "minecraft:target_point",
         sprite_id: "minecraft:target_point",
         render_on_frame: true,
     },
-    ItemFrameMapDecorationType {
+    VanillaMapDecorationType {
         type_id: 6,
         resource_id: "minecraft:player_off_map",
         sprite_id: "minecraft:player_off_map",
         render_on_frame: false,
     },
-    ItemFrameMapDecorationType {
+    VanillaMapDecorationType {
         type_id: 7,
         resource_id: "minecraft:player_off_limits",
         sprite_id: "minecraft:player_off_limits",
         render_on_frame: false,
     },
-    ItemFrameMapDecorationType {
+    VanillaMapDecorationType {
         type_id: 8,
         resource_id: "minecraft:mansion",
         sprite_id: "minecraft:woodland_mansion",
         render_on_frame: true,
     },
-    ItemFrameMapDecorationType {
+    VanillaMapDecorationType {
         type_id: 9,
         resource_id: "minecraft:monument",
         sprite_id: "minecraft:ocean_monument",
         render_on_frame: true,
     },
-    ItemFrameMapDecorationType {
+    VanillaMapDecorationType {
         type_id: 10,
         resource_id: "minecraft:banner_white",
         sprite_id: "minecraft:white_banner",
         render_on_frame: true,
     },
-    ItemFrameMapDecorationType {
+    VanillaMapDecorationType {
         type_id: 11,
         resource_id: "minecraft:banner_orange",
         sprite_id: "minecraft:orange_banner",
         render_on_frame: true,
     },
-    ItemFrameMapDecorationType {
+    VanillaMapDecorationType {
         type_id: 12,
         resource_id: "minecraft:banner_magenta",
         sprite_id: "minecraft:magenta_banner",
         render_on_frame: true,
     },
-    ItemFrameMapDecorationType {
+    VanillaMapDecorationType {
         type_id: 13,
         resource_id: "minecraft:banner_light_blue",
         sprite_id: "minecraft:light_blue_banner",
         render_on_frame: true,
     },
-    ItemFrameMapDecorationType {
+    VanillaMapDecorationType {
         type_id: 14,
         resource_id: "minecraft:banner_yellow",
         sprite_id: "minecraft:yellow_banner",
         render_on_frame: true,
     },
-    ItemFrameMapDecorationType {
+    VanillaMapDecorationType {
         type_id: 15,
         resource_id: "minecraft:banner_lime",
         sprite_id: "minecraft:lime_banner",
         render_on_frame: true,
     },
-    ItemFrameMapDecorationType {
+    VanillaMapDecorationType {
         type_id: 16,
         resource_id: "minecraft:banner_pink",
         sprite_id: "minecraft:pink_banner",
         render_on_frame: true,
     },
-    ItemFrameMapDecorationType {
+    VanillaMapDecorationType {
         type_id: 17,
         resource_id: "minecraft:banner_gray",
         sprite_id: "minecraft:gray_banner",
         render_on_frame: true,
     },
-    ItemFrameMapDecorationType {
+    VanillaMapDecorationType {
         type_id: 18,
         resource_id: "minecraft:banner_light_gray",
         sprite_id: "minecraft:light_gray_banner",
         render_on_frame: true,
     },
-    ItemFrameMapDecorationType {
+    VanillaMapDecorationType {
         type_id: 19,
         resource_id: "minecraft:banner_cyan",
         sprite_id: "minecraft:cyan_banner",
         render_on_frame: true,
     },
-    ItemFrameMapDecorationType {
+    VanillaMapDecorationType {
         type_id: 20,
         resource_id: "minecraft:banner_purple",
         sprite_id: "minecraft:purple_banner",
         render_on_frame: true,
     },
-    ItemFrameMapDecorationType {
+    VanillaMapDecorationType {
         type_id: 21,
         resource_id: "minecraft:banner_blue",
         sprite_id: "minecraft:blue_banner",
         render_on_frame: true,
     },
-    ItemFrameMapDecorationType {
+    VanillaMapDecorationType {
         type_id: 22,
         resource_id: "minecraft:banner_brown",
         sprite_id: "minecraft:brown_banner",
         render_on_frame: true,
     },
-    ItemFrameMapDecorationType {
+    VanillaMapDecorationType {
         type_id: 23,
         resource_id: "minecraft:banner_green",
         sprite_id: "minecraft:green_banner",
         render_on_frame: true,
     },
-    ItemFrameMapDecorationType {
+    VanillaMapDecorationType {
         type_id: 24,
         resource_id: "minecraft:banner_red",
         sprite_id: "minecraft:red_banner",
         render_on_frame: true,
     },
-    ItemFrameMapDecorationType {
+    VanillaMapDecorationType {
         type_id: 25,
         resource_id: "minecraft:banner_black",
         sprite_id: "minecraft:black_banner",
         render_on_frame: true,
     },
-    ItemFrameMapDecorationType {
+    VanillaMapDecorationType {
         type_id: 26,
         resource_id: "minecraft:red_x",
         sprite_id: "minecraft:red_x",
         render_on_frame: true,
     },
-    ItemFrameMapDecorationType {
+    VanillaMapDecorationType {
         type_id: 27,
         resource_id: "minecraft:village_desert",
         sprite_id: "minecraft:desert_village",
         render_on_frame: true,
     },
-    ItemFrameMapDecorationType {
+    VanillaMapDecorationType {
         type_id: 28,
         resource_id: "minecraft:village_plains",
         sprite_id: "minecraft:plains_village",
         render_on_frame: true,
     },
-    ItemFrameMapDecorationType {
+    VanillaMapDecorationType {
         type_id: 29,
         resource_id: "minecraft:village_savanna",
         sprite_id: "minecraft:savanna_village",
         render_on_frame: true,
     },
-    ItemFrameMapDecorationType {
+    VanillaMapDecorationType {
         type_id: 30,
         resource_id: "minecraft:village_snowy",
         sprite_id: "minecraft:snowy_village",
         render_on_frame: true,
     },
-    ItemFrameMapDecorationType {
+    VanillaMapDecorationType {
         type_id: 31,
         resource_id: "minecraft:village_taiga",
         sprite_id: "minecraft:taiga_village",
         render_on_frame: true,
     },
-    ItemFrameMapDecorationType {
+    VanillaMapDecorationType {
         type_id: 32,
         resource_id: "minecraft:jungle_temple",
         sprite_id: "minecraft:jungle_temple",
         render_on_frame: true,
     },
-    ItemFrameMapDecorationType {
+    VanillaMapDecorationType {
         type_id: 33,
         resource_id: "minecraft:swamp_hut",
         sprite_id: "minecraft:swamp_hut",
         render_on_frame: true,
     },
-    ItemFrameMapDecorationType {
+    VanillaMapDecorationType {
         type_id: 34,
         resource_id: "minecraft:trial_chambers",
         sprite_id: "minecraft:trial_chambers",
@@ -224,9 +224,9 @@ mod generated_26_1_tests {
 
     #[test]
     fn generated_map_decorations_are_contiguous_and_unique() {
-        assert_eq!(ITEM_FRAME_MAP_DECORATION_TYPES.len(), 35);
+        assert_eq!(VANILLA_MAP_DECORATION_TYPES.len(), 35);
         let mut resources = HashSet::new();
-        for (type_id, entry) in ITEM_FRAME_MAP_DECORATION_TYPES.iter().enumerate() {
+        for (type_id, entry) in VANILLA_MAP_DECORATION_TYPES.iter().enumerate() {
             assert_eq!(entry.type_id, type_id as i32);
             assert!(resources.insert(entry.resource_id));
         }
@@ -245,7 +245,7 @@ mod generated_26_1_tests {
                     continue;
                 }
                 let display = path.to_string_lossy();
-                if display.ends_with("/item_models/map/generated_26_1.rs")
+                if display.ends_with("/map_decorations/generated_26_1.rs")
                     || display.ends_with("/tests.rs")
                     || display.contains("/tests/")
                 {
@@ -253,7 +253,7 @@ mod generated_26_1_tests {
                 }
                 let source = fs::read_to_string(&path).unwrap();
                 let production = source.split("#[cfg(test)]").next().unwrap_or(&source);
-                if production.contains("const ITEM_FRAME_MAP_DECORATION_TYPES") {
+                if production.contains("const VANILLA_MAP_DECORATION_TYPES") {
                     violations.push(display.to_string());
                 }
             }

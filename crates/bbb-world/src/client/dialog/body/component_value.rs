@@ -27,8 +27,8 @@ use bbb_protocol::{
         VANILLA_DATA_COMPONENT_INTANGIBLE_PROJECTILE_TYPE_ID,
         VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID,
         VANILLA_DATA_COMPONENT_LODESTONE_TRACKER_TYPE_ID, VANILLA_DATA_COMPONENT_MAP_COLOR_TYPE_ID,
-        VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID,
-        VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_MAP_DECORATIONS_TYPE_ID, VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID,
+        VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
         VANILLA_DATA_COMPONENT_MINIMUM_ATTACK_CHARGE_TYPE_ID,
         VANILLA_DATA_COMPONENT_NOTE_BLOCK_SOUND_TYPE_ID,
         VANILLA_DATA_COMPONENT_OMINOUS_BOTTLE_AMPLIFIER_TYPE_ID,
@@ -54,6 +54,7 @@ use super::super::{compound_entries, find_entry};
 mod bees;
 mod debug_stick;
 mod holder_set;
+mod map_decorations;
 mod profile;
 mod typed_data;
 
@@ -64,6 +65,7 @@ use holder_set::{
     DialogRegistryHolderReferenceState, DialogRegistryHolderSetState,
     DialogSuspiciousStewEffectState,
 };
+use map_decorations::{decode_map_decorations, DialogMapDecorationState};
 use profile::decode_profile;
 use typed_data::{
     decode_builtin_block_entity_data, decode_builtin_entity_data, decode_custom_data,
@@ -233,6 +235,9 @@ pub enum DialogDataComponentValueState {
     CustomData {
         data: NbtSummaryValue,
     },
+    MapDecorations {
+        decorations: Vec<DialogMapDecorationState>,
+    },
 }
 
 impl DialogDataComponentValueState {
@@ -365,6 +370,11 @@ pub(super) fn decode_supported_component_value(
         VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID => DialogDataComponentValueState::CustomData {
             data: decode_custom_data(value, &what)?,
         },
+        VANILLA_DATA_COMPONENT_MAP_DECORATIONS_TYPE_ID => {
+            DialogDataComponentValueState::MapDecorations {
+                decorations: decode_map_decorations(value, &what)?,
+            }
+        }
         _ => {
             if let Some(decoded) =
                 decode_holder_backed_component_value(type_id, value, registries, &what)

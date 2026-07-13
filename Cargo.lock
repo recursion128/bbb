@@ -383,6 +383,7 @@ name = "bbb-world"
 version = "0.1.0"
 dependencies = [
  "bbb-protocol",
+ "bbb-render-types",
  "criterion",
  "hecs",
  "serde",

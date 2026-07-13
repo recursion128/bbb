@@ -92,7 +92,7 @@ DEFAULT_INSTRUMENTS_OUTPUT = REPO_ROOT / "crates/bbb-world/src/registries/instru
 DEFAULT_TRIM_PATTERNS_OUTPUT = REPO_ROOT / "crates/bbb-world/src/registries/trim_patterns.rs"
 DEFAULT_TRIM_MATERIALS_OUTPUT = REPO_ROOT / "crates/bbb-world/src/registries/trim_materials.rs"
 DEFAULT_MAP_DECORATIONS_OUTPUT = (
-    REPO_ROOT / "crates/bbb-renderer/src/item_models/map/generated_26_1.rs"
+    REPO_ROOT / "crates/bbb-render-types/src/map_decorations/generated_26_1.rs"
 )
 
 TRIM_MATERIALS_SOURCE = Path(
@@ -361,11 +361,11 @@ def render_map_decorations(entries: list[MapDecorationEntry]) -> str:
         "// Update: scripts/vanilla-source-tools.sh scripts/generate-bootstrap-catalog.py",
         "// Check: scripts/vanilla-source-tools.sh scripts/generate-bootstrap-catalog.py --check",
         "",
-        "const ITEM_FRAME_MAP_DECORATION_TYPES: &[ItemFrameMapDecorationType] = &[",
+        "const VANILLA_MAP_DECORATION_TYPES: &[VanillaMapDecorationType] = &[",
     ]
     for type_id, entry in enumerate(entries):
         lines.extend((
-            "    ItemFrameMapDecorationType {",
+            "    VanillaMapDecorationType {",
             f"        type_id: {type_id},",
             f"        resource_id: {rust_string(entry.resource_id)},",
             f"        sprite_id: {rust_string(entry.asset_id)},",
@@ -383,9 +383,9 @@ def render_map_decorations(entries: list[MapDecorationEntry]) -> str:
         "",
         "    #[test]",
         "    fn generated_map_decorations_are_contiguous_and_unique() {",
-        f"        assert_eq!(ITEM_FRAME_MAP_DECORATION_TYPES.len(), {len(entries)});",
+        f"        assert_eq!(VANILLA_MAP_DECORATION_TYPES.len(), {len(entries)});",
         "        let mut resources = HashSet::new();",
-        "        for (type_id, entry) in ITEM_FRAME_MAP_DECORATION_TYPES.iter().enumerate() {",
+        "        for (type_id, entry) in VANILLA_MAP_DECORATION_TYPES.iter().enumerate() {",
         "            assert_eq!(entry.type_id, type_id as i32);",
         "            assert!(resources.insert(entry.resource_id));",
         "        }",
@@ -399,10 +399,10 @@ def render_map_decorations(entries: list[MapDecorationEntry]) -> str:
         "                if path.is_dir() { visit(&path, violations); continue; }",
         "                if path.extension().and_then(|value| value.to_str()) != Some(\"rs\") { continue; }",
         "                let display = path.to_string_lossy();",
-        "                if display.ends_with(\"/item_models/map/generated_26_1.rs\") || display.ends_with(\"/tests.rs\") || display.contains(\"/tests/\") { continue; }",
+        "                if display.ends_with(\"/map_decorations/generated_26_1.rs\") || display.ends_with(\"/tests.rs\") || display.contains(\"/tests/\") { continue; }",
         "                let source = fs::read_to_string(&path).unwrap();",
         "                let production = source.split(\"#[cfg(test)]\").next().unwrap_or(&source);",
-        "                if production.contains(\"const ITEM_FRAME_MAP_DECORATION_TYPES\") { violations.push(display.to_string()); }",
+        "                if production.contains(\"const VANILLA_MAP_DECORATION_TYPES\") { violations.push(display.to_string()); }",
         "            }",
         "        }",
         "        let mut violations = Vec::new();",

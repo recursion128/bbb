@@ -213,7 +213,8 @@ Owns value-aware item-model resolution.
 Owns pure value types shared between the renderer and native projection code:
 player skin/texture PNG decode (vanilla `SkinTextureDownloader` semantics),
 entity skin/equipment texture refs, sprite alpha masks and atlas rects, HUD
-glyph metrics, and item-frame map decoration textures.
+glyph metrics, item-frame map decoration textures, and the shared vanilla map
+decoration identity/render-metadata catalog.
 
 - Leaf crate: no internal dependencies; `bbb-renderer` re-exports everything at
   its pre-existing paths.

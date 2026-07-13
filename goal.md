@@ -351,8 +351,9 @@ EntityType TypedEntityData id 剥离/余下 NBT 与两个 required tick 字段�
 built-in block dispatched map、block property validation 与空 map 也已 typed 投影；
 ENTITY_DATA/BLOCK_ENTITY_DATA 的 built-in type + id 剥离 compound 分支与 BUCKET_ENTITY_DATA 的
 compound 分支已 typed 投影，CUSTOM_DATA 也复用相同 canonical compound 投影；四者的 TagParser
-flattened-SNBT string alternative 仍未实现；其余 Component、holder、list 与 compound record 等
-persistent Codec 仍未展开；
+flattened-SNBT string alternative 仍未实现；MAP_DECORATIONS 的 ordered string map、共享 built-in
+map-decoration holder 与 required double/double/float record 也已 typed 投影；其余 Component、holder、
+list 与 compound record 等 persistent Codec 仍未展开；
 四类 input control 与九类 static/dynamic action 已按 codec typed 投影并同时保留 raw；DialogList 的 play
 tag/direct 同质 HolderSet、session reference、context-free inline-list
 边界、external title 与 default/validation 已 typed 投影，仍缺全部 screen；custom-click 的 resource-id +
