@@ -1358,6 +1358,46 @@ fn rejects_invalid_lodestone_tracker_global_positions() {
     }
 }
 
+#[test]
+fn decodes_provides_banner_patterns_from_session_and_context_free_inputs() {
+    let registry = "minecraft:banner_pattern";
+    let mut registries = RegistrySet::default();
+    let mut contents = crate::RegistryContentState::new(registry);
+    contents.entries = vec![
+        crate::RegistryPacketEntry::stub("example:first"),
+        crate::RegistryPacketEntry::stub("minecraft:flower"),
+    ];
+    registries.contents.insert(registry.to_string(), contents);
+
+    let decoded = decode_supported_component_value(
+        VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID,
+        "minecraft:provides_banner_patterns",
+        &NbtSummaryValue::String("minecraft:flower".to_string()),
+        Some(&registries),
+    )
+    .unwrap();
+    let Some(DialogDataComponentValueState::ProvidesBannerPatterns { patterns }) = decoded else {
+        panic!("expected provides-banner-patterns component");
+    };
+    assert_eq!(patterns.holder_set_kind, "direct");
+    assert_eq!(patterns.entries.len(), 1);
+    assert_eq!(patterns.entries[0].holder_id, 1);
+    assert_eq!(patterns.entries[0].resource_id, "minecraft:flower");
+
+    let context_free = decode_supported_component_value(
+        VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID,
+        "minecraft:provides_banner_patterns",
+        &NbtSummaryValue::List(Vec::new()),
+        None,
+    )
+    .unwrap();
+    let Some(DialogDataComponentValueState::ProvidesBannerPatterns { patterns }) = context_free
+    else {
+        panic!("expected context-free provides-banner-patterns component");
+    };
+    assert!(patterns.entries.is_empty());
+}
+
 fn decoded(
     type_id: i32,
     resource_id: &str,

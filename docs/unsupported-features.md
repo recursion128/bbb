@@ -559,7 +559,7 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   codec-backed-NBT (map-decorations/debug-stick/entity-data/bucket-data/block-entity-data/
   recipes/lock/container-loot)/bees/
   charged-projectile/bundle/writable-book/written-book-exact-component-trees/
-  lodestone/profile/banner-pattern-provider-tag/
+  lodestone/profile/
   banner-pattern-layers (fixed vanilla identity/translation and resource/asset presentation
   catalogs are generated with shared identity ownership;
   server-synchronized/direct-holder remapping and resource-pack texture resolution remain)/

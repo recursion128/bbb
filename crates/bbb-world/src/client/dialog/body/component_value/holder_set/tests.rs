@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use crate::{RegistrySet, RegistryTagState};
+use crate::{RegistryContentState, RegistryPacketEntry, RegistrySet, RegistryTagState};
 
 use super::*;
 
@@ -144,4 +144,53 @@ fn context_free_holder_set_accepts_only_the_empty_direct_list() {
                 .contains("without registry context")
         );
     }
+}
+
+#[test]
+fn synchronized_registry_holder_set_uses_session_order_and_tags() {
+    let registry = "minecraft:banner_pattern";
+    let mut registries = RegistrySet::default();
+    let mut contents = RegistryContentState::new(registry);
+    contents.entries = vec![
+        RegistryPacketEntry::stub("example:first"),
+        RegistryPacketEntry::stub("minecraft:flower"),
+    ];
+    registries.contents.insert(registry.to_string(), contents);
+    registries.tags.insert(
+        registry.to_string(),
+        RegistryTagState {
+            registry: registry.to_string(),
+            tags: BTreeMap::from([("example:reversed".to_string(), vec![1, 0])]),
+        },
+    );
+
+    let direct = decode_registry_holder_set(
+        &NbtSummaryValue::List(vec![
+            NbtSummaryValue::String("minecraft:flower".to_string()),
+            NbtSummaryValue::String("example:first".to_string()),
+        ]),
+        registry,
+        Some(&registries),
+        "banner patterns",
+    )
+    .unwrap();
+    assert_eq!(direct.entries[0].holder_id, 1);
+    assert_eq!(direct.entries[1].holder_id, 0);
+
+    let named = decode_registry_holder_set(
+        &NbtSummaryValue::String("#example:reversed".to_string()),
+        registry,
+        Some(&registries),
+        "banner patterns",
+    )
+    .unwrap();
+    assert_eq!(named.holder_set_kind, "named");
+    assert_eq!(
+        named
+            .entries
+            .iter()
+            .map(|entry| entry.resource_id.as_str())
+            .collect::<Vec<_>>(),
+        ["minecraft:flower", "example:first"]
+    );
 }

@@ -29,9 +29,11 @@ use bbb_protocol::{
         VANILLA_DATA_COMPONENT_NOTE_BLOCK_SOUND_TYPE_ID,
         VANILLA_DATA_COMPONENT_OMINOUS_BOTTLE_AMPLIFIER_TYPE_ID,
         VANILLA_DATA_COMPONENT_POTION_DURATION_SCALE_TYPE_ID,
-        VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID, VANILLA_DATA_COMPONENT_RARITY_TYPE_ID,
-        VANILLA_DATA_COMPONENT_RECIPES_TYPE_ID, VANILLA_DATA_COMPONENT_REPAIRABLE_TYPE_ID,
-        VANILLA_DATA_COMPONENT_REPAIR_COST_TYPE_ID, VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID,
+        VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID,
+        VANILLA_DATA_COMPONENT_RARITY_TYPE_ID, VANILLA_DATA_COMPONENT_RECIPES_TYPE_ID,
+        VANILLA_DATA_COMPONENT_REPAIRABLE_TYPE_ID, VANILLA_DATA_COMPONENT_REPAIR_COST_TYPE_ID,
+        VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID,
         VANILLA_DATA_COMPONENT_TOOLTIP_DISPLAY_TYPE_ID,
         VANILLA_DATA_COMPONENT_TOOLTIP_STYLE_TYPE_ID,
         VANILLA_DATA_COMPONENT_TROPICAL_FISH_PATTERN_TYPE_ID,
@@ -163,6 +165,9 @@ pub enum DialogDataComponentValueState {
     Repairable {
         items: DialogRegistryHolderSetState,
     },
+    ProvidesBannerPatterns {
+        patterns: DialogRegistryHolderSetState,
+    },
 }
 
 impl DialogDataComponentValueState {
@@ -272,6 +277,16 @@ pub(super) fn decode_supported_component_value(
             profile: decode_profile(value, &what)?,
         },
         VANILLA_DATA_COMPONENT_REPAIRABLE_TYPE_ID => decode_repairable(value, registries, &what)?,
+        VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID => {
+            DialogDataComponentValueState::ProvidesBannerPatterns {
+                patterns: decode_registry_holder_set(
+                    value,
+                    "minecraft:banner_pattern",
+                    registries,
+                    &what,
+                )?,
+            }
+        }
         _ => {
             return decode_string_enum_component_value(type_id, &what, value);
         }
