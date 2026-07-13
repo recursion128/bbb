@@ -403,6 +403,22 @@ fn entity_model_sources_project_hurt_overlay_for_ten_ticks() {
         source_position: None,
     }));
     assert!(red_overlay(&store));
+
+    store.apply_add_entity(protocol_add_entity_with_type(
+        41,
+        VANILLA_ENTITY_TYPE_ARROW_ID,
+    ));
+    assert!(!store.apply_hurt_animation(ProtocolHurtAnimation { id: 41, yaw: 90.0 }));
+    let base_entity = store.probe_entity(41).unwrap();
+    assert_eq!(base_entity.last_hurt_yaw, None);
+    assert!(
+        !store
+            .entity_model_sources_at_partial_tick(0.0)
+            .into_iter()
+            .find(|source| source.entity_id == 41)
+            .unwrap()
+            .has_red_overlay
+    );
 }
 
 #[test]

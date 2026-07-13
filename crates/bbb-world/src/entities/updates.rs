@@ -64,6 +64,14 @@ impl WorldStore {
 
     pub fn apply_hurt_animation(&mut self, packet: ProtocolHurtAnimation) -> bool {
         self.counters.entity_hurt_animations_received += 1;
+        if self
+            .entities
+            .apply_client_animation_hurt(packet.id)
+            .is_none()
+        {
+            self.counters.entity_hurt_animations_ignored += 1;
+            return false;
+        }
         let Some(()) = self
             .entities
             .with_transient_events_mut(packet.id, |events| events.last_hurt_yaw = Some(packet.yaw))
@@ -71,9 +79,6 @@ impl WorldStore {
             self.counters.entity_hurt_animations_ignored += 1;
             return false;
         };
-        // Vanilla `LivingEntity.animateHurt`: a hurt animation also drives the
-        // hurtTime countdown behind the red damage overlay.
-        let _ = self.entities.trigger_client_animation_hurt(packet.id);
         self.counters.entity_hurt_animations_applied += 1;
         true
     }

@@ -982,7 +982,7 @@ mod tests {
     }
 
     #[test]
-    fn play_hurt_animation_keeps_living_entity_gate_open() {
+    fn play_hurt_animation_keeps_player_camera_tilt_open() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
@@ -998,10 +998,7 @@ mod tests {
                 (cell.status == PacketCoverageStatus::Partial).then_some(dimension.as_str())
             })
             .collect();
-        assert_eq!(
-            partial,
-            BTreeSet::from(["canonical_apply", "runtime_side_effect"])
-        );
+        assert_eq!(partial, BTreeSet::from(["runtime_side_effect"]));
     }
 
     #[test]

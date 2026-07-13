@@ -8513,10 +8513,11 @@
         "canonical_apply": {
           "evidence": [
             "crates/bbb-world/src/entities/updates.rs#apply_hurt_animation",
+            "crates/bbb-world/src/entities/store.rs#apply_client_animation_hurt",
             "vanilla:net/minecraft/world/entity/Entity.java#animateHurt"
           ],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "decode": {
           "evidence": [
@@ -8536,6 +8537,9 @@
         "runtime_side_effect": {
           "evidence": [
             "crates/bbb-world/src/entities/animations.rs#trigger_hurt",
+            "crates/bbb-world/src/entities/animations.rs#trigger_vehicle_hurt",
+            "vanilla:net/minecraft/world/entity/vehicle/boat/AbstractBoat.java#animateHurt",
+            "vanilla:net/minecraft/world/entity/vehicle/minecart/AbstractMinecart.java#animateHurt",
             "vanilla:net/minecraft/world/entity/LivingEntity.java#animateHurt"
           ],
           "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
@@ -8545,6 +8549,7 @@
           "evidence": [
             "crates/bbb-protocol/src/packets/entities/tests.rs#decodes_entity_transient_event_packets",
             "crates/bbb-world/src/entities/tests/movement_combat_and_swing_projection.rs#entity_model_sources_project_hurt_overlay_for_ten_ticks",
+            "crates/bbb-world/src/entities/tests/vehicle_and_block_entity_projection.rs#hurt_animation_dispatches_to_boat_and_minecart_vehicle_wobble",
             "crates/bbb-net/src/probe/play.rs#probe_applies_entity_motion_and_transient_packets_to_world"
           ],
           "gap": null,

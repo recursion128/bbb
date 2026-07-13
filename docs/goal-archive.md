@@ -12872,3 +12872,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] 本地 custom candidate 不创建 serverbound command-suggestion transaction，slash-command 的 pending-id/
   response-range 行为不变；CustomChatCompletions packet coverage 五格闭合。完整 suggestion list、rich
   tooltip、scroll/hover/narration 仍由独立 CommandSuggestions todo 开放。
+
+## 2026-07-13：HurtAnimation virtual capability dispatch
+
+- [x] 修正早期 audit 的过窄结论：vanilla base `Entity.animateHurt` 是 no-op，但除 `LivingEntity` 外，
+  `AbstractBoat` 与 `AbstractMinecart` 也覆盖该虚方法。world 现在按 generated living class fact 和既有
+  boat/minecart family 分发，非 capability entity 不再获得 synthetic hurt state。
+- [x] LivingEntity 继续驱动 10-tick red overlay；boat/minecart 复用唯一 VehicleEntity damage state，
+  按 vanilla 翻转 hurtDir、重置 hurtTime=10、damage×11，renderer 的既有 wobble consumer 直接读取。
+  canonical coverage 闭合；Player hurtDir 的 active-camera damage tilt 仍明确开放，runtime 不误标完成。

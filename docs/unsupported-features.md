@@ -253,9 +253,10 @@ Movement:
 - Complete first-local-mount SetPassengers side effects: clear removed-vehicle
   recovery state, align player body/head yaw when mounting a boat, and surface
   vanilla's dismount-key overlay/narration once per new mount.
-- Gate HurtAnimation's ten-tick red-overlay state on vanilla `LivingEntity`;
-  base `Entity.animateHurt` is a no-op, and the client must not infer or apply
-  authoritative damage from this presentation packet.
+- Apply Player `hurtDir` from HurtAnimation to the active living camera's
+  `GameRenderer.bobHurt` damage tilt, including the configured tilt strength.
+  This remains presentation-only and must not infer health loss or authoritative
+  damage from the packet.
 - Complete ClientboundAnimate action 2 (`Player.stopSleepInBed(false, false)`)
   and gate actions 0/3 on `LivingEntity` plus action 2 on `Player`; keep 4/5 as
   presentation-only crit tracking emitters, not authoritative attacks.

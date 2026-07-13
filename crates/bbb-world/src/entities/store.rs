@@ -53,12 +53,12 @@ use super::schema::{
 
 use super::{
     is_vanilla_abstract_nautilus_type, is_vanilla_camel_type, is_vanilla_can_wear_horse_armor_type,
-    is_vanilla_llama_type, is_vanilla_minecart_type, vanilla_entity_type_is_squid,
-    ArmorMaterialKind, EntityAttachmentFace, EntityAttributes, EntityBlockModelState,
-    EntityCameraPoseState, EntityClientAnimationState, EntityClientAnimations, EntityDamage,
-    EntityEquipment, EntityHurtingProjectile, EntityIdentity, EntityLeash, EntityMetadata,
-    EntityMinecartLerp, EntityMobEffects, EntityModelSourceState, EntityMount,
-    EntityProjectileLifecycle, EntityState, EntitySupportingBlock, EntityTransform,
+    is_vanilla_llama_type, is_vanilla_minecart_type, is_vanilla_vehicle_entity_type,
+    vanilla_entity_type_is_squid, ArmorMaterialKind, EntityAttachmentFace, EntityAttributes,
+    EntityBlockModelState, EntityCameraPoseState, EntityClientAnimationState,
+    EntityClientAnimations, EntityDamage, EntityEquipment, EntityHurtingProjectile, EntityIdentity,
+    EntityLeash, EntityMetadata, EntityMinecartLerp, EntityMobEffects, EntityModelSourceState,
+    EntityMount, EntityProjectileLifecycle, EntityState, EntitySupportingBlock, EntityTransform,
     EntityTransformState, EntityTransientEvents, EvokerFangsCritParticleState,
     FallingBlockModelState, FireworkRocketExplosionParticleState, FireworkRocketItemState,
     FireworkRocketTrailParticleState, FoxEatParticleState, ItemEntityStackState,
@@ -112,7 +112,7 @@ use crate::entities::projectiles::{
     entity_hurting_projectile_from_state, entity_projectile_lifecycle_from_state,
 };
 use crate::entities::schema::{
-    vanilla_entity_metadata_type_is_item_frame,
+    vanilla_entity_metadata_type_is_item_frame, vanilla_entity_metadata_type_is_living,
     vanilla_entity_metadata_unique_accessor_for_entity_type_and_serializer,
     VANILLA_ABSTRACT_VILLAGER_DEFAULT_UNHAPPY_COUNTER,
     VANILLA_ABSTRACT_VILLAGER_UNHAPPY_COUNTER_DATA_ID, VANILLA_AVATAR_DEFAULT_MODEL_CUSTOMIZATION,
@@ -3254,6 +3254,21 @@ impl EntityStore {
             .animations
             .handle_entity_event(entity_type_id, id, event_id);
         Some(())
+    }
+
+    pub(crate) fn apply_client_animation_hurt(&mut self, id: i32) -> Option<()> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let entity_type_id = self.ecs.get::<&EntityIdentity>(entity).ok()?.entity_type_id;
+        let mut animations = self.ecs.get::<&mut EntityClientAnimations>(entity).ok()?;
+        if vanilla_entity_metadata_type_is_living(entity_type_id) {
+            animations.animations.trigger_hurt();
+            Some(())
+        } else if is_vanilla_vehicle_entity_type(entity_type_id) {
+            animations.animations.trigger_vehicle_hurt();
+            Some(())
+        } else {
+            None
+        }
     }
 
     pub(crate) fn trigger_client_animation_hurt(&mut self, id: i32) -> Option<()> {

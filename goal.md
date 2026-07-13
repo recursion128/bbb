@@ -394,8 +394,9 @@ removed-vehicle recovery reset、boat yaw 对齐及 onboarding overlay/narration
 runtime 格 partial。
 TakeItemEntity 的三 VarInt wire、pre-removal pickup sound/particle、ItemEntity shrink/remove 与
 ExperienceOrb 保留语义已有 world/native 端到端覆盖，五格全部闭合。
-HurtAnimation 的 VarInt + float wire、ownership 与 10-tick red-overlay tests 已闭合；当前尚未按
-vanilla `LivingEntity` gate 排除 base Entity no-op，因此 canonical/runtime 保持 partial，且不由此
+HurtAnimation 的 VarInt + float wire、ownership 与 virtual `animateHurt` capability dispatch 已闭合：
+base Entity no-op、LivingEntity 10-tick red overlay、boat/minecart hurt-dir/time/damage wobble 均有测试，
+canonical complete；Player hurtDir 尚未进入 active-camera `bobHurt` tilt，runtime 保持 partial，且不由此
 packet 推导权威伤害。
 Animate 的 VarInt + u8 wire、ownership、0/3 swing 与 4/5 crit emitter tests 已闭合；action 2
 Player wake-up 及 0/3/2 的 LivingEntity/Player type gates 尚未完成，因此 canonical/runtime

@@ -256,6 +256,40 @@ fn entity_model_sources_project_minecart_damage_roll_from_vehicle_metadata() {
 }
 
 #[test]
+fn hurt_animation_dispatches_to_boat_and_minecart_vehicle_wobble() {
+    const VEHICLE_HURT_TIME_DATA_ID: u8 = 8;
+    const VEHICLE_HURT_DIR_DATA_ID: u8 = 9;
+    const VEHICLE_DAMAGE_DATA_ID: u8 = 10;
+
+    let mut store = WorldStore::new();
+    for (id, entity_type_id) in [
+        (23, VANILLA_ENTITY_TYPE_OAK_BOAT_ID),
+        (24, VANILLA_ENTITY_TYPE_MINECART_ID),
+    ] {
+        store.apply_add_entity(protocol_add_entity_with_type(id, entity_type_id));
+        assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+            id,
+            values: vec![
+                protocol_int_data(VEHICLE_HURT_TIME_DATA_ID, 2),
+                protocol_int_data(VEHICLE_HURT_DIR_DATA_ID, 1),
+                protocol_float_data(VEHICLE_DAMAGE_DATA_ID, 2.0),
+            ],
+        }));
+        assert!(store.apply_hurt_animation(ProtocolHurtAnimation { id, yaw: 45.0 }));
+
+        let source = store
+            .entity_model_sources_at_partial_tick(0.0)
+            .into_iter()
+            .find(|source| source.entity_id == id)
+            .unwrap();
+        assert_eq!(source.boat_hurt_time, 10.0);
+        assert_eq!(source.boat_hurt_dir, -1);
+        assert_eq!(source.boat_damage_time, 22.0);
+        assert!(!source.has_red_overlay);
+    }
+}
+
+#[test]
 fn entity_model_sources_project_tnt_minecart_fuse_from_prime_event() {
     let fuse = |store: &WorldStore, entity_id: i32, partial_tick: f32| -> f32 {
         store

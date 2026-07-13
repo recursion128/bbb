@@ -541,6 +541,12 @@ impl BoatDamageAnimationState {
         }
     }
 
+    fn animate_hurt(&mut self) {
+        self.hurt_dir = -self.hurt_dir;
+        self.hurt_time = HURT_ANIMATION_DURATION;
+        self.damage *= 11.0;
+    }
+
     fn render_state(self, partial_tick: f32) -> (f32, i32, f32) {
         (
             self.hurt_time as f32 - partial_tick,
@@ -551,6 +557,12 @@ impl BoatDamageAnimationState {
 
     fn is_settled(self) -> bool {
         self.hurt_time <= 0 && self.damage <= 0.0
+    }
+}
+
+impl Default for BoatDamageAnimationState {
+    fn default() -> Self {
+        Self::from_metadata(&[])
     }
 }
 
@@ -4970,6 +4982,14 @@ impl EntityClientAnimationState {
         self.hurt = Some(HurtAnimationState {
             hurt_time: HURT_ANIMATION_DURATION,
         });
+    }
+
+    /// Vanilla `AbstractBoat.animateHurt` / `AbstractMinecart.animateHurt`: flip the shared
+    /// `VehicleEntity.hurtDir`, reset `hurtTime` to ten ticks, and multiply damage by eleven.
+    pub(crate) fn trigger_vehicle_hurt(&mut self) {
+        self.boat_damage
+            .get_or_insert_with(BoatDamageAnimationState::default)
+            .animate_hurt();
     }
 
     /// Vanilla `LivingEntityRenderer.extractRenderState`:
