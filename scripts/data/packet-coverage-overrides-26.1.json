@@ -19,7 +19,7 @@
       },
       "state_guard": {
         "evidence": [
-          "crates/bbb-net/src/event_stream.rs#play_player_position_defers_player_loaded_to_native_readiness",
+          "crates/bbb-net/src/event_stream.rs#play_player_position_waits_for_canonical_ack_and_defers_player_loaded",
           "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleMovePlayer"
         ],
         "status": "complete"
@@ -27,7 +27,7 @@
       "tests": {
         "evidence": [
           "crates/bbb-protocol/src/packets/movement.rs#decodes_player_position_strictly_and_encodes_ack_pair",
-          "crates/bbb-net/src/event_stream.rs#play_player_position_defers_player_loaded_to_native_readiness"
+          "crates/bbb-net/src/event_stream.rs#play_player_position_waits_for_canonical_ack_and_defers_player_loaded"
         ],
         "status": "complete"
       }
@@ -703,7 +703,7 @@
       "tests": {
         "evidence": [
           "crates/bbb-protocol/src/packets/tests.rs#encodes_player_loaded",
-          "crates/bbb-net/src/event_stream.rs#play_player_position_defers_player_loaded_to_native_readiness",
+          "crates/bbb-net/src/event_stream.rs#play_player_position_waits_for_canonical_ack_and_defers_player_loaded",
           "crates/bbb-net/src/driver.rs#drive_connection_sends_player_loaded_only_in_play",
           "crates/bbb-native/src/level_load_runtime.rs#player_loaded_waits_for_server_and_player_section_then_sends_once",
           "crates/bbb-native/src/level_load_runtime.rs#player_loaded_uses_vanilla_shortcuts_and_strict_timeout",
@@ -2512,16 +2512,21 @@
       "runtime_side_effect": {
         "evidence": [
           "crates/bbb-net/src/event_stream/play.rs#PlayClientbound::PlayerPosition",
+          "crates/bbb-native/src/runtime/events/dispatcher.rs#NetEvent::PlayerPosition",
+          "crates/bbb-native/src/runtime/events/tests/session_hud_and_vehicle_events.rs#mounted_player_position_event_acknowledges_unchanged_canonical_pose",
+          "crates/bbb-world/src/chunks/tests.rs#teleport_prevents_older_prediction_rejection_from_moving_player_back",
           "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleMovePlayer"
         ],
-        "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-        "status": "partial"
+        "status": "complete"
       },
       "tests": {
         "evidence": [
           "crates/bbb-protocol/src/packets/movement.rs#player_position_update_applies_relative_state",
-          "crates/bbb-net/src/event_stream.rs#play_player_position_defers_player_loaded_to_native_readiness",
-          "crates/bbb-world/src/client/local_player.rs#local_player_position_does_not_move_mounted_player"
+          "crates/bbb-net/src/event_stream.rs#play_player_position_waits_for_canonical_ack_and_defers_player_loaded",
+          "crates/bbb-net/src/probe/play.rs#probe_player_position_echoes_unchanged_mounted_pose",
+          "crates/bbb-native/src/runtime/events/tests/session_hud_and_vehicle_events.rs#mounted_player_position_event_acknowledges_unchanged_canonical_pose",
+          "crates/bbb-world/src/client/local_player.rs#local_player_position_does_not_move_mounted_player",
+          "crates/bbb-world/src/chunks/tests.rs#teleport_prevents_older_prediction_rejection_from_moving_player_back"
         ],
         "status": "complete"
       }

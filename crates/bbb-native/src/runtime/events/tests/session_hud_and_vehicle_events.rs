@@ -1097,8 +1097,9 @@ fn respawn_event_resets_local_player_runtime_state() {
 #[test]
 fn player_position_and_rotation_events_update_world_pose() {
     let (tx, mut rx) = mpsc::channel(2);
-    tx.try_send(NetEvent::Play(PlayClientbound::PlayerPosition(
-        PlayerPositionUpdate {
+    let (ack_tx, mut ack_rx) = tokio::sync::oneshot::channel();
+    tx.try_send(NetEvent::PlayerPosition {
+        update: PlayerPositionUpdate {
             id: 23,
             position: ProtocolVec3d {
                 x: 10.0,
@@ -1114,7 +1115,8 @@ fn player_position_and_rotation_events_update_world_pose() {
             x_rot: 15.0,
             relatives_mask: 0,
         },
-    )))
+        acknowledged_state: ack_tx,
+    })
     .unwrap();
     tx.try_send(NetEvent::Play(PlayClientbound::PlayerRotation(
         PlayerRotationUpdate {
@@ -1154,10 +1156,91 @@ fn player_position_and_rotation_events_update_world_pose() {
     assert_eq!(pose.y_rot, 100.0);
     assert_eq!(pose.x_rot, -5.0);
     assert_eq!(pose.last_teleport_id, 23);
+    assert_eq!(
+        ack_rx.try_recv().unwrap(),
+        Some(
+            LocalPlayerPoseState {
+                y_rot: 90.0,
+                x_rot: 15.0,
+                ..pose
+            }
+            .position_state()
+        )
+    );
 
     let world_counters = world.counters();
     assert_eq!(world_counters.player_position_packets, 1);
     assert_eq!(world_counters.player_rotation_packets, 1);
+}
+
+#[test]
+fn mounted_player_position_event_acknowledges_unchanged_canonical_pose() {
+    let mut world = WorldStore::new();
+    world.apply_login(&protocol_play_login(9));
+    world.apply_add_entity(protocol_add_entity_with_type(
+        10,
+        VANILLA_ENTITY_TYPE_CHICKEN_ID,
+    ));
+    assert!(world.apply_set_passengers(SetPassengers {
+        vehicle_id: 10,
+        passenger_ids: vec![9],
+    }));
+    let initial_pose = LocalPlayerPoseState {
+        position: ProtocolVec3d {
+            x: 1.0,
+            y: 65.0,
+            z: -2.0,
+        },
+        delta_movement: ProtocolVec3d {
+            x: 0.1,
+            y: 0.0,
+            z: -0.2,
+        },
+        y_rot: 25.0,
+        x_rot: -10.0,
+        last_teleport_id: 3,
+        ..LocalPlayerPoseState::default()
+    };
+    world.set_local_player_pose(initial_pose);
+    world.set_local_prediction_sequence(12);
+
+    let (tx, mut rx) = mpsc::channel(1);
+    let (ack_tx, mut ack_rx) = tokio::sync::oneshot::channel();
+    tx.try_send(NetEvent::PlayerPosition {
+        update: PlayerPositionUpdate {
+            id: 24,
+            position: ProtocolVec3d {
+                x: 100.0,
+                y: 90.0,
+                z: 50.0,
+            },
+            delta_movement: ProtocolVec3d::default(),
+            y_rot: 180.0,
+            x_rot: 45.0,
+            relatives_mask: 0,
+        },
+        acknowledged_state: ack_tx,
+    })
+    .unwrap();
+    let mut counters = NetCounters::default();
+
+    assert_eq!(
+        drain_net_events(&mut rx, &mut world, &mut counters, &None),
+        1
+    );
+
+    assert_eq!(world.local_player_pose(), Some(initial_pose));
+    assert_eq!(
+        ack_rx.try_recv().unwrap(),
+        Some(initial_pose.position_state())
+    );
+    assert_eq!(
+        world
+            .local_player()
+            .interaction
+            .last_teleport_prediction_sequence,
+        Some(12)
+    );
 }
 
 #[test]

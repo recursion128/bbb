@@ -119,9 +119,6 @@ Owner: `bbb-protocol`
   accessor schema like `SynchedEntityData.assignValues`, and close the remaining
   family consumers through the entity matrix. The current flat summary merge is
   not proof of complete metadata behavior.
-- Make teleport acknowledgement echo the unchanged mounted-player transform and
-  advance the block-state prediction teleport sequence as
-  `ClientPacketListener.handleMovePlayer` does.
 - Then cover play, movement, inventory, chat, interaction and command suggestion
   end to end.
 - Preserve rich Components for command-suggestion tooltips and render vanilla's

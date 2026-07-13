@@ -745,7 +745,17 @@ impl WorldStore {
                 continue;
             }
             if self.set_block_state_id(prediction.pos, prediction.server_block_state_id) {
-                self.snap_local_player_to_prediction_position_if_colliding(*prediction);
+                let can_move_player = match self
+                    .local_player
+                    .interaction
+                    .last_teleport_prediction_sequence
+                {
+                    Some(last_teleport) => last_teleport < prediction.sequence,
+                    None => true,
+                };
+                if can_move_player {
+                    self.snap_local_player_to_prediction_position_if_colliding(*prediction);
+                }
                 continue;
             } else {
                 self.counters.local_block_predictions_failed += 1;

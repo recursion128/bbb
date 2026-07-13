@@ -16,7 +16,9 @@ use bbb_protocol::packets::{
     BlockUpdate as ProtocolBlockUpdate, ChunkBiomeData as ProtocolChunkBiomeData,
     ChunkHeightmapData, ChunkPos as ProtocolChunkPos, ChunksBiomes as ProtocolChunksBiomes,
     LevelChunkBlockEntity, LevelChunkData, LevelChunkWithLight, LightUpdate as ProtocolLightUpdate,
-    LightUpdateData as ProtocolLightUpdateData, SectionBlocksUpdate as ProtocolSectionBlocksUpdate,
+    LightUpdateData as ProtocolLightUpdateData,
+    PlayerPositionUpdate as ProtocolPlayerPositionUpdate,
+    SectionBlocksUpdate as ProtocolSectionBlocksUpdate,
     SetChunkCacheCenter as ProtocolSetChunkCacheCenter,
     SetChunkCacheRadius as ProtocolSetChunkCacheRadius, Vec3d as ProtocolVec3d,
 };
@@ -898,6 +900,72 @@ fn local_destroy_prediction_rejected_ack_snaps_colliding_player_to_prediction_po
     assert_eq!(
         store.local_player_pose().unwrap().position,
         predicted_position
+    );
+}
+
+#[test]
+fn teleport_prevents_older_prediction_rejection_from_moving_player_back() {
+    let mut store = WorldStore::with_dimension(WorldDimension {
+        min_y: 0,
+        height: 16,
+    });
+    store
+        .insert_level_chunk_with_light(synthetic_local_palette_chunk_packet())
+        .unwrap();
+    let pos = BlockPos {
+        x: 34,
+        y: 1,
+        z: -45,
+    };
+    let pre_teleport_position = ProtocolVec3d {
+        x: 34.5,
+        y: 2.0,
+        z: -44.5,
+    };
+    store.set_local_player_pose(LocalPlayerPoseState {
+        position: pre_teleport_position,
+        ..LocalPlayerPoseState::default()
+    });
+    store.set_local_prediction_sequence(7);
+    assert!(store.predict_local_destroy_block(pos, 7));
+
+    let teleported_position = ProtocolVec3d {
+        x: 34.5,
+        y: 1.2,
+        z: -44.5,
+    };
+    store.apply_player_position(ProtocolPlayerPositionUpdate {
+        id: 23,
+        position: teleported_position,
+        delta_movement: ProtocolVec3d::default(),
+        y_rot: 0.0,
+        x_rot: 0.0,
+        relatives_mask: 0,
+    });
+    store.apply_block_changed_ack(ProtocolBlockChangedAck { sequence: 7 });
+
+    assert_eq!(store.probe_block(pos).unwrap().block_state_id, 9);
+    assert_eq!(
+        store.local_player_pose().unwrap().position,
+        teleported_position
+    );
+
+    assert_eq!(store.next_local_prediction_sequence(), 8);
+    store.set_local_player_pose(LocalPlayerPoseState {
+        position: pre_teleport_position,
+        ..LocalPlayerPoseState::default()
+    });
+    assert!(store.predict_local_destroy_block(pos, 8));
+    store.set_local_player_pose(LocalPlayerPoseState {
+        position: teleported_position,
+        ..LocalPlayerPoseState::default()
+    });
+    store.apply_block_changed_ack(ProtocolBlockChangedAck { sequence: 8 });
+
+    assert_eq!(store.probe_block(pos).unwrap().block_state_id, 9);
+    assert_eq!(
+        store.local_player_pose().unwrap().position,
+        pre_teleport_position
     );
 }
 

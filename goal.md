@@ -355,8 +355,10 @@ play 初始 position handoff 已闭合严格 position decode、canonical correct
 `PosRot` 回声编码及通用 movement variant/reminder；`PlayerLoaded` unit encoder 与 server no-ack
 也已审计。`PlayerLoaded` 已改由 Login/Respawn generation-scoped `LevelLoadTracker` 驱动：等待
 type 13 loading packets，再等待本地玩家 section 编译/可见，覆盖 spectator/dead/越界高度 shortcut
-与严格 30 秒 timeout，并仅发送一次；production 不再由首个 position 触发。仍须补齐 mounted-player
-回声与 block prediction `onTeleport` side effect，因此 clientbound position runtime 格保持 partial。
+与严格 30 秒 timeout，并仅发送一次；production 不再由首个 position 触发。mounted-player 回声
+现已从无 world 状态的网络即时路径移到 native canonical apply 之后，乘客回声保持自身
+transform；同一 apply 记录 block prediction teleport sequence，旧预测回滚不再把玩家拉回。
+`CLIENTBOUND_PLAYER_POSITION` 五格现已全部闭合。
 四种 serverbound `MovePlayer` 变体与 clientbound rotation correction 已逐格闭合；非乘客
 movement 现在只在 local player 是 controlled camera 时上报，观察远端实体不会再向服务器发送
 玩家位移。rotation packet 严格消费 payload，并按 relative flags 更新 canonical pose 后立即回发

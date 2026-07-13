@@ -1,7 +1,8 @@
 use bbb_protocol::packets::{
-    CustomPayload, CustomReportDetails, KnownPack, PlayClientbound, RegistryData, ResourcePackPop,
-    ResourcePackPush, ResourcePackResponseAction, ServerLinks, ShowDialog, Transfer,
-    UpdateEnabledFeatures, UpdateTags,
+    CustomPayload, CustomReportDetails, KnownPack, PlayClientbound, PlayerPositionState,
+    PlayerPositionUpdate, RegistryData, ResourcePackPop, ResourcePackPush,
+    ResourcePackResponseAction, ServerLinks, ShowDialog, Transfer, UpdateEnabledFeatures,
+    UpdateTags,
 };
 use std::time::Instant;
 use tokio::sync::oneshot;
@@ -13,8 +14,7 @@ use super::ConnectionState;
 /// Clientbound play packets travel as [`NetEvent::Play`] and are applied
 /// through `WorldStore::apply_play_packet`; dedicated variants exist only for
 /// connection lifecycle, login/configuration-state packets, and events whose
-/// payload is derived from connection state (cookies, resource-pack
-/// responses, deferred keepalive replies).
+/// response or payload requires connection or canonical world state.
 #[derive(Debug)]
 pub enum NetEvent {
     Connected,
@@ -27,6 +27,12 @@ pub enum NetEvent {
     StartConfiguration {
         pending_chat_acknowledgement:
             oneshot::Sender<Option<bbb_protocol::packets::ChatAcknowledgement>>,
+    },
+    /// A position correction that must be canonically applied before the
+    /// connection can echo the resulting player transform to the server.
+    PlayerPosition {
+        update: PlayerPositionUpdate,
+        acknowledged_state: oneshot::Sender<Option<PlayerPositionState>>,
     },
     CompressionSet {
         threshold: i32,

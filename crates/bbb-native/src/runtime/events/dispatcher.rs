@@ -147,6 +147,26 @@ pub(in crate::runtime) fn drain_net_events_with_sinks_and_debug(
             NetEvent::KeepAlive { id, expires_at } => {
                 queue_keep_alive_response(net_commands, id, expires_at);
             }
+            NetEvent::PlayerPosition {
+                update,
+                acknowledged_state,
+            } => {
+                let mut effects = NativePlayEffects {
+                    counters,
+                    net_commands,
+                    audio_events: &mut audio_events,
+                    particle_events: &mut particle_events,
+                    particle_renderer: &mut particle_renderer,
+                    item_runtime,
+                };
+                let _ = world.apply_play_packet(
+                    bbb_protocol::packets::PlayClientbound::PlayerPosition(update),
+                    level_event_sound_random,
+                    &mut effects,
+                );
+                let state = world.local_player_pose().map(|pose| pose.position_state());
+                let _ = acknowledged_state.send(state);
+            }
             NetEvent::Play(packet) => {
                 let mut effects = NativePlayEffects {
                     counters,
@@ -156,8 +176,9 @@ pub(in crate::runtime) fn drain_net_events_with_sinks_and_debug(
                     particle_renderer: &mut particle_renderer,
                     item_runtime,
                 };
-                // Connection-owned leftovers (movement responses, resource
-                // pack replies) are already handled by the event stream.
+                // Other connection-owned leftovers (rotation/movement
+                // responses and resource-pack replies) are already handled by
+                // the event stream.
                 let _ = world.apply_play_packet(packet, level_event_sound_random, &mut effects);
             }
             NetEvent::StartConfiguration {

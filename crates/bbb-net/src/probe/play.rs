@@ -135,7 +135,13 @@ impl ProbeContext {
                 self.world.apply_resource_pack_response(pack_id, action);
             }
             PlayClientbound::PlayerPosition(update) => {
-                self.player_position_state = update.apply_to_state(self.player_position_state);
+                self.player_position_state = self
+                    .world
+                    .local_player_pose()
+                    .map(|pose| pose.position_state())
+                    .ok_or_else(|| {
+                        anyhow::anyhow!("canonical player pose missing after position correction")
+                    })?;
                 let (id, payload) = packets::encode_play_accept_teleportation(update.id);
                 self.conn.send_packet(id, &payload).await?;
                 let (id, payload) = packets::encode_play_move_player_pos_rot(
@@ -4097,6 +4103,85 @@ mod tests {
         assert_eq!(pose.y_rot, 100.0);
         assert_eq!(pose.x_rot, -5.0);
         assert_eq!(pose.last_teleport_id, 23);
+    }
+
+    #[tokio::test]
+    async fn probe_player_position_echoes_unchanged_mounted_pose() {
+        let (client, mut server) = raw_connection_pair().await;
+        let mut probe = ProbeContext::new(client);
+        probe
+            .handle_play_packet(PlayClientbound::Login(protocol_play_login(99)))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::AddEntity(protocol_add_entity(10)))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::SetPassengers(SetPassengers {
+                vehicle_id: 10,
+                passenger_ids: vec![99],
+            }))
+            .await
+            .unwrap();
+        let initial_pose = LocalPlayerPoseState {
+            position: ProtocolVec3d {
+                x: 3.0,
+                y: 66.0,
+                z: -4.0,
+            },
+            delta_movement: ProtocolVec3d {
+                x: 0.1,
+                y: 0.0,
+                z: -0.2,
+            },
+            y_rot: 25.0,
+            x_rot: -10.0,
+            last_teleport_id: 2,
+            ..LocalPlayerPoseState::default()
+        };
+        probe.world.set_local_player_pose(initial_pose);
+
+        probe
+            .handle_play_packet(PlayClientbound::PlayerPosition(PlayerPositionUpdate {
+                id: 17,
+                position: ProtocolVec3d {
+                    x: 100.0,
+                    y: 80.0,
+                    z: 50.0,
+                },
+                delta_movement: ProtocolVec3d::default(),
+                y_rot: 180.0,
+                x_rot: 45.0,
+                relatives_mask: 0,
+            }))
+            .await
+            .unwrap();
+
+        let (packet_id, payload) = timeout(Duration::from_secs(1), server.read_packet())
+            .await
+            .expect("teleport ack should be sent")
+            .unwrap();
+        assert_eq!(packet_id, ids::play::SERVERBOUND_ACCEPT_TELEPORTATION);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_var_i32().unwrap(), 17);
+        assert!(decoder.is_empty());
+
+        let (packet_id, payload) = timeout(Duration::from_secs(1), server.read_packet())
+            .await
+            .expect("mounted player pose should be echoed")
+            .unwrap();
+        assert_eq!(packet_id, ids::play::SERVERBOUND_MOVE_PLAYER_POS_ROT);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_f64().unwrap(), initial_pose.position.x);
+        assert_eq!(decoder.read_f64().unwrap(), initial_pose.position.y);
+        assert_eq!(decoder.read_f64().unwrap(), initial_pose.position.z);
+        assert_eq!(decoder.read_f32().unwrap(), initial_pose.y_rot);
+        assert_eq!(decoder.read_f32().unwrap(), initial_pose.x_rot);
+        assert_eq!(decoder.read_u8().unwrap(), 0);
+        assert!(decoder.is_empty());
+        assert_eq!(probe.world.local_player_pose(), Some(initial_pose));
+        assert_eq!(probe.player_position_state, initial_pose.position_state());
     }
 
     #[tokio::test]

@@ -97,12 +97,19 @@ impl EventStreamContext {
                 .await?;
             }
             PlayClientbound::PlayerPosition(update) => {
-                self.player_position_state = update.apply_to_state(self.player_position_state);
+                let (ack_tx, ack_rx) = oneshot::channel();
                 emit(
                     &self.events,
-                    NetEvent::Play(PlayClientbound::PlayerPosition(update)),
+                    NetEvent::PlayerPosition {
+                        update,
+                        acknowledged_state: ack_tx,
+                    },
                 )
                 .await?;
+                self.player_position_state = ack_rx
+                    .await
+                    .context("canonical player-position acknowledgement dropped")?
+                    .context("canonical player pose missing after position correction")?;
                 let (id, payload) = packets::encode_play_accept_teleportation(update.id);
                 self.conn.send_packet(id, &payload).await?;
                 let (id, payload) = packets::encode_play_move_player_pos_rot(

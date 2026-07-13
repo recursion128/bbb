@@ -3822,7 +3822,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn play_player_position_defers_player_loaded_to_native_readiness() {
+    async fn play_player_position_waits_for_canonical_ack_and_defers_player_loaded() {
         let (client, mut server) = raw_connection_pair().await;
         let (events_tx, mut events_rx) = mpsc::channel(4);
         let (_commands_tx, commands_rx) = mpsc::channel(1);
@@ -3851,18 +3851,37 @@ mod tests {
             relatives_mask: 0,
         };
 
-        stream
-            .handle_play_packet(PlayClientbound::PlayerPosition(first_update))
-            .await
-            .unwrap();
-
-        let event = timeout(Duration::from_secs(1), events_rx.recv())
-            .await
-            .expect("player position event should be emitted")
-            .unwrap();
-        assert!(
-            matches!(event, NetEvent::Play(PlayClientbound::PlayerPosition(update)) if update == first_update)
-        );
+        let first_acknowledged_state = PlayerPositionState {
+            position: packets::Vec3d {
+                x: 40.0,
+                y: 80.0,
+                z: 12.0,
+            },
+            delta_movement: packets::Vec3d::default(),
+            y_rot: 30.0,
+            x_rot: 10.0,
+        };
+        let handle = stream.handle_play_packet(PlayClientbound::PlayerPosition(first_update));
+        let respond = async {
+            let event = timeout(Duration::from_secs(1), events_rx.recv())
+                .await
+                .expect("player position event should be emitted")
+                .unwrap();
+            match event {
+                NetEvent::PlayerPosition {
+                    update,
+                    acknowledged_state,
+                } => {
+                    assert_eq!(update, first_update);
+                    acknowledged_state
+                        .send(Some(first_acknowledged_state))
+                        .unwrap();
+                }
+                other => panic!("unexpected event: {other:?}"),
+            }
+        };
+        let (result, ()) = tokio::join!(handle, respond);
+        result.unwrap();
 
         let (packet_id, payload) = timeout(Duration::from_secs(1), server.read_packet())
             .await
@@ -3878,7 +3897,7 @@ mod tests {
             .expect("move player pos/rot ack should be sent")
             .unwrap();
         assert_eq!(packet_id, ids::play::SERVERBOUND_MOVE_PLAYER_POS_ROT);
-        assert_move_player_pos_rot_payload(&payload, 1.25, 64.5, -8.75, 90.0, -15.0, 0);
+        assert_move_player_pos_rot_payload(&payload, 40.0, 80.0, 12.0, 30.0, 10.0, 0);
 
         assert!(
             timeout(Duration::from_millis(50), server.read_packet())
@@ -3900,18 +3919,37 @@ mod tests {
             relatives_mask: 0,
         };
 
-        stream
-            .handle_play_packet(PlayClientbound::PlayerPosition(second_update))
-            .await
-            .unwrap();
-
-        let event = timeout(Duration::from_secs(1), events_rx.recv())
-            .await
-            .expect("second player position event should be emitted")
-            .unwrap();
-        assert!(
-            matches!(event, NetEvent::Play(PlayClientbound::PlayerPosition(update)) if update == second_update)
-        );
+        let second_acknowledged_state = PlayerPositionState {
+            position: packets::Vec3d {
+                x: -2.0,
+                y: 75.0,
+                z: 6.5,
+            },
+            delta_movement: packets::Vec3d::default(),
+            y_rot: -45.0,
+            x_rot: 20.0,
+        };
+        let handle = stream.handle_play_packet(PlayClientbound::PlayerPosition(second_update));
+        let respond = async {
+            let event = timeout(Duration::from_secs(1), events_rx.recv())
+                .await
+                .expect("second player position event should be emitted")
+                .unwrap();
+            match event {
+                NetEvent::PlayerPosition {
+                    update,
+                    acknowledged_state,
+                } => {
+                    assert_eq!(update, second_update);
+                    acknowledged_state
+                        .send(Some(second_acknowledged_state))
+                        .unwrap();
+                }
+                other => panic!("unexpected event: {other:?}"),
+            }
+        };
+        let (result, ()) = tokio::join!(handle, respond);
+        result.unwrap();
 
         let (packet_id, payload) = timeout(Duration::from_secs(1), server.read_packet())
             .await
@@ -3927,7 +3965,7 @@ mod tests {
             .expect("second move player pos/rot ack should be sent")
             .unwrap();
         assert_eq!(packet_id, ids::play::SERVERBOUND_MOVE_PLAYER_POS_ROT);
-        assert_move_player_pos_rot_payload(&payload, 2.0, 70.0, -9.0, 100.0, 5.0, 0);
+        assert_move_player_pos_rot_payload(&payload, -2.0, 75.0, 6.5, -45.0, 20.0, 0);
         assert!(
             timeout(Duration::from_millis(50), server.read_packet())
                 .await

@@ -13558,3 +13558,15 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] world 阶段/计数、terrain section 投影、ready/shortcut/timeout/once、position defer、
   Play-only driver 与 coverage 反向测试闭合 `ServerboundPlayerLoadedPacket` 三个 partial cells；
   workspace gate 通过。
+
+## 2026-07-13：Close player-position teleport side effects
+
+- [x] 对照 `ClientPacketListener.handleMovePlayer` 与 `BlockStatePredictionHandler.onTeleport`，
+  online event stream 等待 native/world canonical apply 后再顺序发送 teleport id ack 与
+  `PosRot(false,false)`；mounted player 忽略 server correction 并回声未改变的自身 transform，
+  离线 probe 复用同一 world 结果。
+- [x] world 在每次 player-position teleport 记录当前 block prediction sequence；旧于或等于
+  teleport 的 rejected prediction 仍恢复服务端方块，但不再把玩家拉回 teleport 前位置，
+  更新的 prediction 保持原有碰撞修正行为。
+- [x] world、native、online/probe ack 与 prediction rollback 定向测试闭合
+  `CLIENTBOUND_PLAYER_POSITION` 最后一项 runtime side-effect partial cell；workspace gate 通过。

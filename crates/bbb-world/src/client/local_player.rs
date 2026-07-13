@@ -149,6 +149,11 @@ pub struct LocalPlayerInteractionState {
     pub using_item_ticks: u32,
     #[serde(default)]
     pub prediction_sequence: i32,
+    /// Prediction sequence current when the last player-position teleport was
+    /// applied. Predictions at or before this sequence may still reconcile
+    /// blocks, but must not move the player back across the teleport.
+    #[serde(default)]
+    pub last_teleport_prediction_sequence: Option<i32>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -424,19 +429,25 @@ impl WorldStore {
         packet: ProtocolPlayerPositionUpdate,
     ) -> Option<LocalPlayerPoseState> {
         self.counters.player_position_packets += 1;
-        if self.local_player_vehicle_id.is_some() {
-            return None;
-        }
-        let current_pose = self.local_player.pose.unwrap_or_default();
-        let current = current_pose.position_state();
-        let state = packet.apply_to_state(current);
-        let pose = LocalPlayerPoseState {
-            sneaking: current_pose.sneaking,
-            swimming: current_pose.swimming,
-            ..LocalPlayerPoseState::from_position_state(state, packet.id)
+        let applied_pose = if self.local_player_vehicle_id.is_some() {
+            None
+        } else {
+            let current_pose = self.local_player.pose.unwrap_or_default();
+            let current = current_pose.position_state();
+            let state = packet.apply_to_state(current);
+            let pose = LocalPlayerPoseState {
+                sneaking: current_pose.sneaking,
+                swimming: current_pose.swimming,
+                ..LocalPlayerPoseState::from_position_state(state, packet.id)
+            };
+            self.local_player.pose = Some(pose);
+            Some(pose)
         };
-        self.local_player.pose = Some(pose);
-        Some(pose)
+        self.local_player
+            .interaction
+            .last_teleport_prediction_sequence =
+            Some(self.local_player.interaction.prediction_sequence);
+        applied_pose
     }
 
     pub fn apply_player_rotation(
@@ -1271,6 +1282,7 @@ mod tests {
                 using_item_hand: Some(InteractionHand::MainHand),
                 using_item_ticks: 0,
                 prediction_sequence: 1,
+                last_teleport_prediction_sequence: None,
             }
         );
     }
@@ -1428,6 +1440,13 @@ mod tests {
             None
         );
         assert_eq!(store.local_player_pose(), Some(initial_pose));
+        assert_eq!(
+            store
+                .local_player()
+                .interaction
+                .last_teleport_prediction_sequence,
+            Some(0)
+        );
         assert_eq!(store.counters().player_position_packets, 1);
     }
 
