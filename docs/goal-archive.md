@@ -13683,3 +13683,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] Codec 数字 tag 转换、int/float range、Java `Float.compareTo` 的 negative-zero/NaN/∞ 边界、
   bool、map-shaped unit、default namespace、Rarity 名称与复杂值继续 raw 均有定向测试；Component、
   holder、list、compound-record persistent Codec 与 native screens 仍开放。
+
+## 2026-07-13：Decode dialog item enum components
+
+- [x] 扩展生成 gameplay catalog 的 serialized-name 反查；对照 `DataComponents` 与各
+  `StringRepresentable` Codec，typed 投影 8 个 DyeColor component、8 个 built-in entity variant
+  component 与 tropical-fish pattern，共闭合 17 个 enum persistent 注册项，未复制名称表。
+- [x] 全 17 注册项的名称/value id、rabbit evil sparse id、tropical-fish packed id、unknown 名称与
+  non-string 拒绝均有定向测试；Component、holder、list、compound-record persistent Codec 与 native
+  screens 仍开放。

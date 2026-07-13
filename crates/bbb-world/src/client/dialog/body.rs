@@ -1,5 +1,8 @@
 use bbb_protocol::item_component_value_types::ItemRaritySummary;
 use bbb_protocol::{
+    builtin_enum_component_values::{
+        builtin_enum_component_value_for_name, VANILLA_BUILTIN_ENUM_COMPONENTS,
+    },
     data_component_types::{
         vanilla_data_component_type_for_resource_id, VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID,
         VANILLA_DATA_COMPONENT_ENCHANTMENT_GLINT_OVERRIDE_TYPE_ID,
@@ -11,9 +14,12 @@ use bbb_protocol::{
         VANILLA_DATA_COMPONENT_NOTE_BLOCK_SOUND_TYPE_ID,
         VANILLA_DATA_COMPONENT_POTION_DURATION_SCALE_TYPE_ID,
         VANILLA_DATA_COMPONENT_RARITY_TYPE_ID, VANILLA_DATA_COMPONENT_REPAIR_COST_TYPE_ID,
-        VANILLA_DATA_COMPONENT_TOOLTIP_STYLE_TYPE_ID, VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_TOOLTIP_STYLE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_TROPICAL_FISH_PATTERN_TYPE_ID,
+        VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID,
     },
     item_types::vanilla_item_type_for_resource_id,
+    tropical_fish_patterns::vanilla_tropical_fish_pattern_for_name,
     NbtSummaryEntry, NbtSummaryValue,
 };
 use serde::{Deserialize, Serialize};
@@ -77,12 +83,26 @@ pub struct DialogDataComponentPatchEntryState {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "codec", rename_all = "snake_case")]
 pub enum DialogDataComponentValueState {
-    Integer { value: i32 },
-    Float { bits: u32 },
-    Boolean { value: bool },
+    Integer {
+        value: i32,
+    },
+    Float {
+        bits: u32,
+    },
+    Boolean {
+        value: bool,
+    },
     Unit,
-    ResourceId { resource_id: String },
-    Rarity { value: ItemRaritySummary },
+    ResourceId {
+        resource_id: String,
+    },
+    Rarity {
+        value: ItemRaritySummary,
+    },
+    StringEnum {
+        value_id: i32,
+        serialized_name: String,
+    },
 }
 
 impl DialogDataComponentValueState {
@@ -225,7 +245,7 @@ fn decode_data_component_patch(
         let value_data = if removed {
             None
         } else {
-            decode_primitive_component_value(component_type.type_id, &resource_id, &entry.value)?
+            decode_supported_component_value(component_type.type_id, &resource_id, &entry.value)?
         };
         let decoded = DialogDataComponentPatchEntryState {
             type_id: component_type.type_id,
@@ -254,7 +274,7 @@ fn decode_data_component_patch(
     })
 }
 
-fn decode_primitive_component_value(
+fn decode_supported_component_value(
     type_id: i32,
     resource_id: &str,
     value: &NbtSummaryValue,
@@ -315,9 +335,40 @@ fn decode_primitive_component_value(
                 .ok_or_else(|| format!("unknown {what} rarity {raw}"))?;
             DialogDataComponentValueState::Rarity { value }
         }
-        _ => return Ok(None),
+        _ => {
+            return decode_string_enum_component_value(type_id, &what, value);
+        }
     };
     Ok(Some(decoded))
+}
+
+fn decode_string_enum_component_value(
+    type_id: i32,
+    what: &str,
+    value: &NbtSummaryValue,
+) -> Result<Option<DialogDataComponentValueState>, String> {
+    let is_builtin_enum = VANILLA_BUILTIN_ENUM_COMPONENTS
+        .iter()
+        .any(|entry| entry.type_id == type_id);
+    if !is_builtin_enum && type_id != VANILLA_DATA_COMPONENT_TROPICAL_FISH_PATTERN_TYPE_ID {
+        return Ok(None);
+    }
+    let NbtSummaryValue::String(serialized_name) = value else {
+        return Err(format!("{what} is not an enum name"));
+    };
+    let value_id = if type_id == VANILLA_DATA_COMPONENT_TROPICAL_FISH_PATTERN_TYPE_ID {
+        vanilla_tropical_fish_pattern_for_name(serialized_name)
+            .map(|entry| entry.packed_id)
+            .ok_or_else(|| format!("unknown {what} enum value {serialized_name}"))?
+    } else {
+        builtin_enum_component_value_for_name(type_id, serialized_name)
+            .map(|entry| entry.id)
+            .ok_or_else(|| format!("unknown {what} enum value {serialized_name}"))?
+    };
+    Ok(Some(DialogDataComponentValueState::StringEnum {
+        value_id,
+        serialized_name: serialized_name.clone(),
+    }))
 }
 
 fn component_i32(value: &NbtSummaryValue, what: &str) -> Result<i32, String> {
@@ -799,6 +850,74 @@ mod tests {
                 "rarity",
                 NbtSummaryValue::String("legendary".to_string()),
                 "unknown dialog item component",
+            ),
+        ] {
+            let error =
+                decode_data_component_patch(&compound(vec![value_entry(name, value)])).unwrap_err();
+            assert!(error.contains(expected), "unexpected error: {error}");
+        }
+    }
+
+    #[test]
+    fn decodes_all_string_enum_component_value_codecs() {
+        let expected = [
+            ("dye", "red", 14),
+            ("base_color", "blue", 11),
+            ("wolf/collar", "lime", 5),
+            ("fox/variant", "snow", 1),
+            ("salmon/size", "large", 2),
+            ("parrot/variant", "gray", 4),
+            ("tropical_fish/pattern", "spotty", 1280),
+            ("tropical_fish/base_color", "cyan", 9),
+            ("tropical_fish/pattern_color", "purple", 10),
+            ("mooshroom/variant", "brown", 1),
+            ("rabbit/variant", "evil", 99),
+            ("horse/variant", "dark_brown", 6),
+            ("llama/variant", "gray", 3),
+            ("axolotl/variant", "blue", 4),
+            ("cat/collar", "orange", 1),
+            ("sheep/color", "white", 0),
+            ("shulker/color", "black", 15),
+        ];
+        let patch = decode_data_component_patch(&compound(
+            expected
+                .iter()
+                .map(|(component, value, _)| {
+                    value_entry(component, NbtSummaryValue::String((*value).to_string()))
+                })
+                .collect(),
+        ))
+        .unwrap();
+
+        assert_eq!(patch.entries.len(), expected.len());
+        for ((_, serialized_name, value_id), entry) in expected.iter().zip(&patch.entries) {
+            assert_eq!(
+                entry.value_data,
+                Some(DialogDataComponentValueState::StringEnum {
+                    value_id: *value_id,
+                    serialized_name: (*serialized_name).to_string(),
+                })
+            );
+        }
+    }
+
+    #[test]
+    fn rejects_invalid_string_enum_component_value_codecs() {
+        for (name, value, expected) in [
+            (
+                "dye",
+                NbtSummaryValue::String("scarlet".to_string()),
+                "unknown dialog item component minecraft:dye enum value scarlet",
+            ),
+            (
+                "fox/variant",
+                NbtSummaryValue::Int(1),
+                "is not an enum name",
+            ),
+            (
+                "tropical_fish/pattern",
+                NbtSummaryValue::String("missing".to_string()),
+                "unknown dialog item component minecraft:tropical_fish/pattern enum value missing",
             ),
         ] {
             let error =

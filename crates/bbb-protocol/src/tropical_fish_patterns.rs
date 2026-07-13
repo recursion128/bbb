@@ -239,6 +239,14 @@ pub fn vanilla_tropical_fish_pattern(packed_id: i32) -> &'static TropicalFishPat
         .unwrap_or(&VANILLA_TROPICAL_FISH_PATTERNS[0])
 }
 
+pub fn vanilla_tropical_fish_pattern_for_name(
+    name: &str,
+) -> Option<&'static TropicalFishPatternDescriptor> {
+    VANILLA_TROPICAL_FISH_PATTERNS
+        .iter()
+        .find(|entry| entry.serialized_name == name)
+}
+
 #[cfg(test)]
 mod tests {
     use std::{collections::HashSet, fs, path::Path};
@@ -261,6 +269,11 @@ mod tests {
         assert_eq!(vanilla_tropical_fish_pattern(9999).constant_name, "KOB");
         assert_eq!(vanilla_tropical_fish_pattern(1281).base_id, 1);
         assert_eq!(vanilla_tropical_fish_pattern(1281).pattern_index, 5);
+        assert_eq!(
+            vanilla_tropical_fish_pattern_for_name("spotty").map(|entry| entry.packed_id),
+            Some(1280)
+        );
+        assert_eq!(vanilla_tropical_fish_pattern_for_name("missing"), None);
         assert_eq!(VANILLA_TROPICAL_FISH_COMMON_VARIANTS.len(), 22);
         assert_eq!(
             VANILLA_TROPICAL_FISH_COMMON_VARIANTS[0],

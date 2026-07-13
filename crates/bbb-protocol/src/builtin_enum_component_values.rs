@@ -540,6 +540,17 @@ pub fn builtin_enum_component_value_name(type_id: i32, id: i32) -> Option<&'stat
     Some(descriptor(type_id)?.value_type.value_name(id))
 }
 
+pub fn builtin_enum_component_value_for_name(
+    type_id: i32,
+    name: &str,
+) -> Option<&'static BuiltinEnumValueEntry> {
+    descriptor(type_id)?
+        .value_type
+        .values
+        .iter()
+        .find(|entry| entry.serialized_name == name)
+}
+
 pub fn vanilla_dye_color_name(id: i32) -> &'static str {
     VANILLA_DYE_COLOR_VALUE_TYPE.value_name(id)
 }
@@ -619,6 +630,21 @@ mod tests {
                 99
             ),
             Some(99)
+        );
+        assert_eq!(
+            builtin_enum_component_value_for_name(
+                VANILLA_DATA_COMPONENT_RABBIT_VARIANT_TYPE_ID,
+                "evil"
+            )
+            .map(|entry| entry.id),
+            Some(99)
+        );
+        assert_eq!(
+            builtin_enum_component_value_for_name(
+                VANILLA_DATA_COMPONENT_RABBIT_VARIANT_TYPE_ID,
+                "killer"
+            ),
+            None
         );
         assert_eq!(normalize_builtin_enum_component_value_id(-1, 0), None);
     }

@@ -65,10 +65,10 @@ Owner: `bbb-protocol`
   requested host and port.
 - Complete typed `Dialog` data beyond the current five top-level variants and
   PlainMessage/Item body, input-control, action, and item component-patch key/removal
-  plus 14 primitive positive-value registrations: decode the remaining Component,
-  holder, list, and compound-record persistent value Codecs, render the corresponding
-  screens, restore the previous screen on clear, and route custom-click controls through
-  the active dialog state.
+  plus 14 primitive and 17 StringRepresentable enum positive-value registrations:
+  decode the remaining Component, holder, list, and compound-record persistent value
+  Codecs, render the corresponding screens, restore the previous screen on clear, and
+  route custom-click controls through the active dialog state.
 - Decode block/chunk/entity/event debug subscription payloads through the synced
   `DEBUG_SUBSCRIPTION` registry codecs, retain typed values with vanilla game-time
   expiry/removal semantics, ignore entity updates whose target is absent, and feed
