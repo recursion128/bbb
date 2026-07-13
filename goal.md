@@ -320,7 +320,9 @@ configuration finish 无 play duplicate 与无 ack 语义已闭合；仓库禁�
 dialog unit clear 的 wire/ownership/canonical projection 已闭合，但 previous-screen 恢复仍 partial；
 show-dialog 的 direct/context-free holder 已按单一 bounded network-NBT tree 严格消费并保留 canonical
 结构；play referenced holder 已按当前 session `minecraft:dialog` wire order 解析为 resource id 与同一
-canonical NBT，stub/missing/malformed 不猜测 bootstrap 下标；仍缺 `Dialog` semantic codec/screen；custom-click 的 resource-id +
+canonical NBT，stub/missing/malformed 不猜测 bootstrap 下标；`CommonDialogData` 的 scalar/text、
+Notice/Confirmation 按钮/default/validation 已 typed 投影，body/input/action 仍无损保留 raw；仍缺其余
+三种 `Dialog` semantic codec 与全部 screen；custom-click 的 resource-id +
 length-prefixed optional-NBT encoder 与 configuration/play transport 已闭合，仍缺 active-screen command surface/state guard。
 configuration custom-payload 的 Brand/Discarded wire、bounded 自动 brand send、canonical server brand 与
 diagnostics 已闭合；Mojang telemetry callback 按无 external sender 的架构边界为 not-applicable。
@@ -535,7 +537,8 @@ play UpdateTags 的 registry/tag/value framing、strict trailing、per-registry 
 play Waypoint 的 operation WRAP、identifier/icon/data framing、strict trailing、manager apply ownership 与 tests 已闭合；剩余 locator contextual-bar presentation 保持 runtime partial。
 play ClearDialog 的 unit payload、strict trailing、canonical clear ownership 与 tests 已闭合；剩余 previous/warning screen-stack restoration 保持 runtime partial。
 play ShowDialog 的 reference/direct holder framing、bounded NBT preservation、session registry holder
-resolution、ownership 与 tests 已闭合；剩余 typed Dialog decode/canonical screen data/runtime screen stack 保持 partial。
+resolution、Notice/Confirmation common/button semantic baseline、ownership 与 tests 已闭合；剩余完整
+body/input/action、DialogList/MultiAction/ServerLinks、canonical screen data/runtime screen stack 保持 partial。
 play AddEntity 的 id/uuid/type/position/LP velocity/rotation/data framing、strict trailing、basic world ownership 与 tests 已闭合；剩余 session registry validation、entity factory/player-info gate 与全类型 runtime 初始化保持 decode/canonical/runtime partial。
 play BlockChangedAck 的 sequence framing、strict trailing、prediction reconciliation/player correction ownership 与 tests 已闭合，五维 complete。
 play BlockDestruction 的 id/position/progress framing、strict trailing、progress replace/remove/expiry ownership 与 tests 已闭合；剩余 full model-shaped crack decal parity 保持 runtime partial。

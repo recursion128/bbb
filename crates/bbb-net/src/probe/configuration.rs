@@ -442,6 +442,8 @@ mod tests {
                 resource_id: None,
                 dialog: Some(NbtSummaryValue::Compound(Vec::new())),
                 resolution_error: None,
+                data: None,
+                semantic_error: Some("dialog is missing field type".to_string()),
             })
         );
         assert_eq!(

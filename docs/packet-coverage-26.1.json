@@ -2212,8 +2212,11 @@
       "coverage": {
         "canonical_apply": {
           "evidence": [
+            "crates/bbb-world/src/client/dialog.rs#decode_dialog_data",
             "crates/bbb-world/src/client/ui.rs#dialog_state_from_packet",
-            "crates/bbb-world/src/client/ui.rs#tracks_client_ui_warnings_and_dialogs"
+            "crates/bbb-world/src/client/ui.rs#tracks_client_ui_warnings_and_dialogs",
+            "crates/bbb-world/src/client/dialog.rs#decodes_notice_defaults_and_common_dialog_fields",
+            "crates/bbb-world/src/client/dialog.rs#decodes_confirmation_buttons_tooltip_width_and_raw_action"
           ],
           "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
           "status": "partial"
@@ -13861,6 +13864,8 @@
       "coverage": {
         "canonical_apply": {
           "evidence": [
+            "crates/bbb-world/src/client/dialog.rs#DialogState",
+            "crates/bbb-world/src/client/dialog.rs#decode_dialog_data",
             "crates/bbb-world/src/client/ui.rs#dialog_state_from_packet",
             "crates/bbb-world/src/client/ui.rs#tracks_client_ui_warnings_and_dialogs",
             "crates/bbb-world/src/client/ui.rs#referenced_dialogs_use_session_holder_order_and_retain_resolution_errors"
@@ -13902,6 +13907,9 @@
             "crates/bbb-protocol/src/nbt_summary.rs#public_nbt_summary_decoder_requires_one_complete_root",
             "crates/bbb-net/src/event_stream.rs#play_hud_and_ui_packets_emit_matching_events_without_responses",
             "crates/bbb-net/src/probe/play.rs#probe_applies_client_ui_packets_to_world",
+            "crates/bbb-world/src/client/dialog.rs#decodes_notice_defaults_and_common_dialog_fields",
+            "crates/bbb-world/src/client/dialog.rs#decodes_confirmation_buttons_tooltip_width_and_raw_action",
+            "crates/bbb-world/src/client/dialog.rs#rejects_invalid_simple_dialog_semantics_without_dropping_raw_nbt",
             "crates/bbb-world/src/client/ui.rs#tracks_client_ui_warnings_and_dialogs",
             "crates/bbb-world/src/client/ui.rs#referenced_dialogs_use_session_holder_order_and_retain_resolution_errors",
             "crates/bbb-native/src/runtime/tests.rs#server_dialog_open_releases_held_movement"

@@ -544,6 +544,8 @@ fn client_common_waypoint_events_update_world_and_snapshot_counters() {
             resource_id: None,
             dialog: None,
             resolution_error: Some("missing minecraft:dialog holder 11".to_string()),
+            data: None,
+            semantic_error: None,
         })
     );
     let world_counters = world.counters();

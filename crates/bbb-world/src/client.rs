@@ -4,6 +4,7 @@ mod combat;
 mod command_suggestions;
 mod debug_game;
 mod debug_query;
+mod dialog;
 mod effects;
 mod features;
 mod hud;

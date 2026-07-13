@@ -13,6 +13,7 @@ use bbb_protocol::{
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    client::dialog::DialogState,
     entities::{is_vanilla_abstract_horse_type, is_vanilla_abstract_nautilus_type},
     protocol_block_pos, BlockPos, WorldStore,
 };
@@ -43,18 +44,6 @@ pub struct ClientUiState {
     pub last_ghost_recipe: Option<GhostRecipeState>,
     #[serde(default)]
     pub last_pong_response: Option<PongResponseState>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct DialogState {
-    pub holder_kind: String,
-    pub registry_id: Option<i32>,
-    #[serde(default)]
-    pub resource_id: Option<String>,
-    #[serde(default, alias = "direct_dialog")]
-    pub dialog: Option<NbtSummaryValue>,
-    #[serde(default)]
-    pub resolution_error: Option<String>,
 }
 
 const DIALOG_REGISTRY: &str = "minecraft:dialog";
@@ -348,13 +337,9 @@ impl WorldStore {
                     );
                 };
                 match decode_nbt_summary(raw_data) {
-                    Ok(Some(dialog @ NbtSummaryValue::Compound(_))) => DialogState {
-                        holder_kind: "reference".to_string(),
-                        registry_id: Some(registry_id),
-                        resource_id: Some(resource_id),
-                        dialog: Some(dialog),
-                        resolution_error: None,
-                    },
+                    Ok(Some(dialog @ NbtSummaryValue::Compound(_))) => {
+                        DialogState::reference(registry_id, resource_id, dialog)
+                    }
                     Ok(Some(_)) => DialogState::unresolved_reference(
                         registry_id,
                         Some(resource_id.clone()),
@@ -372,29 +357,7 @@ impl WorldStore {
                     ),
                 }
             }
-            DialogHolder::Direct { dialog } => DialogState {
-                holder_kind: "direct".to_string(),
-                registry_id: None,
-                resource_id: None,
-                dialog: Some(dialog),
-                resolution_error: None,
-            },
-        }
-    }
-}
-
-impl DialogState {
-    fn unresolved_reference(
-        registry_id: i32,
-        resource_id: Option<String>,
-        resolution_error: String,
-    ) -> Self {
-        Self {
-            holder_kind: "reference".to_string(),
-            registry_id: Some(registry_id),
-            resource_id,
-            dialog: None,
-            resolution_error: Some(resolution_error),
+            DialogHolder::Direct { dialog } => DialogState::direct(dialog),
         }
     }
 }
@@ -459,27 +422,30 @@ mod tests {
         store.apply_low_disk_space_warning();
         store.apply_show_dialog(ProtocolShowDialog {
             dialog: DialogHolder::Direct {
-                dialog: NbtSummaryValue::Compound(vec![NbtSummaryEntry {
-                    name: "type".to_string(),
-                    value: NbtSummaryValue::String("minecraft:notice".to_string()),
-                }]),
+                dialog: NbtSummaryValue::Compound(vec![
+                    NbtSummaryEntry {
+                        name: "type".to_string(),
+                        value: NbtSummaryValue::String("minecraft:notice".to_string()),
+                    },
+                    NbtSummaryEntry {
+                        name: "title".to_string(),
+                        value: NbtSummaryValue::String("Title".to_string()),
+                    },
+                ]),
             },
         });
 
         assert_eq!(store.low_disk_space_warning_count(), 1);
-        assert_eq!(
-            store.current_dialog(),
-            Some(&DialogState {
-                holder_kind: "direct".to_string(),
-                registry_id: None,
-                resource_id: None,
-                dialog: Some(NbtSummaryValue::Compound(vec![NbtSummaryEntry {
-                    name: "type".to_string(),
-                    value: NbtSummaryValue::String("minecraft:notice".to_string()),
-                }])),
-                resolution_error: None,
-            })
-        );
+        let direct = store.current_dialog().unwrap();
+        assert_eq!(direct.holder_kind, "direct");
+        assert_eq!(direct.registry_id, None);
+        assert!(matches!(direct.dialog, Some(NbtSummaryValue::Compound(_))));
+        assert_eq!(direct.resolution_error, None);
+        assert!(matches!(
+            direct.data,
+            Some(crate::DialogDataState::Notice { .. })
+        ));
+        assert_eq!(direct.semantic_error, None);
 
         store.record_registry_entries(
             DIALOG_REGISTRY,
@@ -493,19 +459,20 @@ mod tests {
             dialog: DialogHolder::Reference { registry_id: 0 },
         });
 
-        assert_eq!(
-            store.current_dialog(),
-            Some(&DialogState {
-                holder_kind: "reference".to_string(),
-                registry_id: Some(0),
-                resource_id: Some("example:notice".to_string()),
-                dialog: Some(NbtSummaryValue::Compound(vec![NbtSummaryEntry {
-                    name: "type".to_string(),
-                    value: NbtSummaryValue::String("minecraft:notice".to_string()),
-                }])),
-                resolution_error: None,
-            })
-        );
+        let referenced = store.current_dialog().unwrap();
+        assert_eq!(referenced.holder_kind, "reference");
+        assert_eq!(referenced.registry_id, Some(0));
+        assert_eq!(referenced.resource_id.as_deref(), Some("example:notice"));
+        assert!(matches!(
+            referenced.dialog,
+            Some(NbtSummaryValue::Compound(_))
+        ));
+        assert_eq!(referenced.resolution_error, None);
+        assert!(matches!(
+            referenced.data,
+            Some(crate::DialogDataState::Notice { .. })
+        ));
+        assert_eq!(referenced.semantic_error, None);
 
         store.apply_clear_dialog();
 
@@ -526,7 +493,7 @@ mod tests {
                 crate::RegistryPacketEntry::stub("example:stub"),
                 crate::RegistryPacketEntry::with_raw_data(
                     "example:custom",
-                    dialog_nbt("minecraft:confirmation"),
+                    dialog_nbt("minecraft:notice"),
                 ),
                 crate::RegistryPacketEntry::with_raw_data("example:malformed", vec![10, 0, 0]),
             ],
@@ -542,6 +509,11 @@ mod tests {
             Some(NbtSummaryValue::Compound(_))
         ));
         assert_eq!(resolved.resolution_error, None);
+        assert!(matches!(
+            resolved.data,
+            Some(crate::DialogDataState::Notice { .. })
+        ));
+        assert_eq!(resolved.semantic_error, None);
 
         store.apply_show_dialog(ProtocolShowDialog {
             dialog: DialogHolder::Reference { registry_id: 0 },
@@ -583,6 +555,8 @@ mod tests {
         let mut bytes = vec![10, 8, 0, 4, b't', b'y', b'p', b'e'];
         bytes.extend_from_slice(&(dialog_type.len() as u16).to_be_bytes());
         bytes.extend_from_slice(dialog_type.as_bytes());
+        bytes.extend_from_slice(&[8, 0, 5, b't', b'i', b't', b'l', b'e', 0, 5]);
+        bytes.extend_from_slice(b"Title");
         bytes.push(0);
         bytes
     }

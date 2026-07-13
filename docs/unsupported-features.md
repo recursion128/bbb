@@ -63,9 +63,10 @@ Owner: `bbb-protocol`
   current connection read-only, carry cookies/seen-player/insecure-chat transfer
   state, and reconnect with the Transfer intent instead of only recording the
   requested host and port.
-- Decode the unified bounded direct/resolved-reference NBT into typed `Dialog` data,
-  render the corresponding screens, restore the previous screen on clear,
-  and route their custom-click controls through the active dialog state.
+- Complete typed `Dialog` data beyond the current common scalar/text fields and
+  Notice/Confirmation button baseline: decode body, input and action variants plus
+  DialogList/MultiAction/ServerLinks, render the corresponding screens, restore the
+  previous screen on clear, and route custom-click controls through the active dialog state.
 - Decode block/chunk/entity/event debug subscription payloads through the synced
   `DEBUG_SUBSCRIPTION` registry codecs, retain typed values with vanilla game-time
   expiry/removal semantics, ignore entity updates whose target is absent, and feed

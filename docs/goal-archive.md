@@ -13613,3 +13613,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   canonical tree，不以 vanilla bootstrap 下标解释服务器自定义重排。
 - [x] 共享 NBT summary API 严格消费单一 root；custom reorder、stub、missing、malformed 与 trailing
   均有定向测试和明确诊断。typed `Dialog` codec、screen stack 与 custom-click UI surface 仍保持 partial。
+
+## 2026-07-13：Decode simple dialog semantics
+
+- [x] 新建 client dialog semantic owner；对照 `CommonDialogData`、`NoticeDialog`、
+  `ConfirmationDialog`、`CommonButtonData` 与 `ActionButton` Codec，投影 title/external title、
+  escape/pause/after-action、compact body/raw inputs，以及按钮 label/tooltip/width/raw action。
+- [x] Notice 默认 `gui.ok`/150、Confirmation 必需双按钮、pause/after-action 组合和 1..=1024
+  width 有定向测试；语义失败保留原始 NBT 与显式 error。其余三类 Dialog、typed body/input/action
+  和 native screen stack 继续保持 partial。

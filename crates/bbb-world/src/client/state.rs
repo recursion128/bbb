@@ -21,6 +21,9 @@ pub use crate::client::debug_game::{
     GameTestHighlightPosState, TestInstanceBlockStatusState,
 };
 pub use crate::client::debug_query::{ClientDebugQueryState, TagQueryResponseState};
+pub use crate::client::dialog::{
+    CommonDialogDataState, DialogButtonState, DialogDataState, DialogState, DialogTextState,
+};
 pub use crate::client::effects::{
     ClientEffectsState, ExplosionEventState, LevelParticlesEventState,
 };
@@ -63,8 +66,8 @@ pub use crate::client::stats::{
 };
 pub use crate::client::ui::{
     code_of_conduct_text_hash, java_string_hash_code, BookScreenState, ClientUiState,
-    CodeOfConductState, DialogState, GhostRecipeState, MountScreenState, OpenBookState,
-    OpenSignEditorState, PongResponseState,
+    CodeOfConductState, GhostRecipeState, MountScreenState, OpenBookState, OpenSignEditorState,
+    PongResponseState,
 };
 pub use crate::client::waypoints::{
     ClientWaypointsState, WaypointDataState, WaypointEventState, WaypointState, WaypointVec3iState,
