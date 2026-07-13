@@ -220,19 +220,6 @@ impl Default for ItemUseAnimation {
 
 use bbb_protocol::data_component_types as component_id;
 
-const COMMON_ITEM_COMPONENT_TYPE_IDS: &[i32] = &[
-    component_id::VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
-    component_id::VANILLA_DATA_COMPONENT_LORE_TYPE_ID,
-    component_id::VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID,
-    component_id::VANILLA_DATA_COMPONENT_REPAIR_COST_TYPE_ID,
-    component_id::VANILLA_DATA_COMPONENT_USE_EFFECTS_TYPE_ID,
-    component_id::VANILLA_DATA_COMPONENT_ATTRIBUTE_MODIFIERS_TYPE_ID,
-    component_id::VANILLA_DATA_COMPONENT_RARITY_TYPE_ID,
-    component_id::VANILLA_DATA_COMPONENT_BREAK_SOUND_TYPE_ID,
-    component_id::VANILLA_DATA_COMPONENT_TOOLTIP_DISPLAY_TYPE_ID,
-    component_id::VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID,
-];
-
 const GENERATED_ITEM_DECLARATIONS: &str =
     include_str!("../data/item_registry_declarations_26_1.json");
 const ITEM_REGISTRY_CATALOG_OVERRIDE_PATH: &str = ".bbb/item_registry_catalog.json";
@@ -936,7 +923,7 @@ fn durability_for_declaration(expression: &GeneratedJavaExpression) -> Result<Op
 fn default_component_type_ids_for_declaration(
     expression: &GeneratedJavaExpression,
 ) -> Result<BTreeSet<i32>> {
-    let mut type_ids = COMMON_ITEM_COMPONENT_TYPE_IDS
+    let mut type_ids = component_id::VANILLA_COMMON_ITEM_COMPONENT_TYPE_IDS
         .iter()
         .copied()
         .collect::<BTreeSet<_>>();

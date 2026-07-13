@@ -13342,3 +13342,15 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] gameplay-id/bootstrap generator 分别输出 attribute、mob-effect、painting-variant 的
   production-source reverse guard，阻止这些 lookup bridge 回流；generator update/check、
   protocol/item-model/native focused tests 与 workspace gate 通过。
+
+## 2026-07-13：Generate common item component membership
+
+- [x] 依据 vanilla `DataComponents.COMMON_ITEM_COMPONENTS` 的 builder `set` 顺序，
+  core-registry Tree-sitter extractor 现在机械提取 10 个默认 item component 常量，并由
+  `bbb-protocol::data_component_types` 生成对应 type-id slice；未知常量、重复项、非直接
+  component 常量、非 root `build` 或数量漂移都会令维护生成失败。
+- [x] `bbb-pack` item registry 删除手写 `COMMON_ITEM_COMPONENT_TYPE_IDS`，默认 component
+  投影直接消费 protocol semantic owner 的生成 slice；generated production-source guard
+  阻止该平行表回流。
+- [x] extractor 单测覆盖 builder 顺序，generator update/check、protocol reverse guard 与
+  pack default-component focused tests、workspace gate 通过。

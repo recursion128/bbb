@@ -11,6 +11,7 @@ sys.path.insert(0, str(SCRIPTS))
 from core_registry_catalog_extractor import (  # noqa: E402
     CoreRegistryExtractionError,
     block_entity_type_entries,
+    common_item_component_constant_names,
     damage_type_entries,
     data_component_predicate_type_entries,
     data_component_type_entries,
@@ -157,6 +158,10 @@ public class DataComponents {
       "one", builder -> builder.persistent(One.CODEC));
   public static final DataComponentType<Two> TWO = register(
       "two", builder -> builder.networkSynchronized(Two.CODEC));
+  public static final DataComponentMap COMMON_ITEM_COMPONENTS = DataComponentMap.builder()
+      .set(TWO, Two.DEFAULT)
+      .set(ONE, One.DEFAULT)
+      .build();
 }
 """,
         )
@@ -187,6 +192,10 @@ public class ParticleTypes {
         self.assertEqual(
             [entry.persistent for entry in data_component_type_entries(component_source, 2)],
             [True, False],
+        )
+        self.assertEqual(
+            common_item_component_constant_names(component_source, 2),
+            ["TWO", "ONE"],
         )
         self.assertEqual(
             [entry.override_limiter for entry in particle_type_entries(particle_source, 2)],

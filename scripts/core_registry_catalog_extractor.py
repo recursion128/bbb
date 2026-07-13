@@ -403,6 +403,70 @@ def data_component_type_entries(
     return entries
 
 
+def common_item_component_constant_names(
+    source: JavaSource, expected_count: int = 10
+) -> list[str]:
+    fields = [field for field in source.fields if field.name == "COMMON_ITEM_COMPONENTS"]
+    if len(fields) != 1:
+        raise CoreRegistryExtractionError(
+            f"{source.relative_path}: expected one COMMON_ITEM_COMPONENTS field, found {len(fields)}"
+        )
+    field = fields[0]
+    initializer = field.initializer
+    if initializer is None:
+        _fail(
+            source,
+            JavaExpression("", field.span, field.node),
+            "COMMON_ITEM_COMPONENTS lacks an initializer",
+        )
+    build_calls = [
+        call
+        for call in _calls_in_expression(source, initializer, "build")
+        if call.span == initializer.span
+    ]
+    if len(build_calls) != 1:
+        _fail(
+            source,
+            initializer,
+            "COMMON_ITEM_COMPONENTS is not terminated by the root builder build call",
+        )
+    set_calls = _calls_in_expression(source, initializer, "set")
+    set_calls.sort(key=lambda call: (call.span.start_byte, call.span.end_byte))
+    members: list[str] = []
+    for call in set_calls:
+        if len(call.arguments) != 2:
+            _fail(
+                source,
+                source.expression(call.node),
+                f"COMMON_ITEM_COMPONENTS set has {len(call.arguments)} arguments",
+            )
+        component = call.arguments[0]
+        if component.node.type != "identifier":
+            _fail(
+                source,
+                component,
+                "COMMON_ITEM_COMPONENTS member is not a data component constant",
+            )
+        members.append(component.canonical)
+    if len(members) != expected_count:
+        raise CoreRegistryExtractionError(
+            f"expected {expected_count} common item components, extracted {len(members)}"
+        )
+    if len(members) != len(set(members)):
+        _fail(source, initializer, "COMMON_ITEM_COMPONENTS contains duplicate constants")
+    known_components = {
+        field.name for field in _fields_with_type(source, ("DataComponentType<",))
+    }
+    unknown = set(members) - known_components
+    if unknown:
+        _fail(
+            source,
+            initializer,
+            f"COMMON_ITEM_COMPONENTS references unknown component constants: {sorted(unknown)}",
+        )
+    return members
+
+
 def particle_type_entries(
     source: JavaSource, expected_count: int = 117
 ) -> list[ParticleTypeEntry]:

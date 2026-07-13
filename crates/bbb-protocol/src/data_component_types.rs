@@ -127,6 +127,19 @@ pub const VANILLA_DATA_COMPONENT_CAT_COLLAR_TYPE_ID: i32 = 107;
 pub const VANILLA_DATA_COMPONENT_SHEEP_COLOR_TYPE_ID: i32 = 108;
 pub const VANILLA_DATA_COMPONENT_SHULKER_COLOR_TYPE_ID: i32 = 109;
 
+pub const VANILLA_COMMON_ITEM_COMPONENT_TYPE_IDS: &[i32] = &[
+    VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_LORE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID,
+    VANILLA_DATA_COMPONENT_REPAIR_COST_TYPE_ID,
+    VANILLA_DATA_COMPONENT_USE_EFFECTS_TYPE_ID,
+    VANILLA_DATA_COMPONENT_ATTRIBUTE_MODIFIERS_TYPE_ID,
+    VANILLA_DATA_COMPONENT_RARITY_TYPE_ID,
+    VANILLA_DATA_COMPONENT_BREAK_SOUND_TYPE_ID,
+    VANILLA_DATA_COMPONENT_TOOLTIP_DISPLAY_TYPE_ID,
+    VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID,
+];
+
 pub const VANILLA_DATA_COMPONENT_TYPES: &[DataComponentTypeCatalogEntry] = &[
     DataComponentTypeCatalogEntry {
         type_id: 0,
@@ -927,6 +940,26 @@ mod tests {
     }
 
     #[test]
+    fn common_item_components_follow_vanilla_builder_order() {
+        assert_eq!(VANILLA_COMMON_ITEM_COMPONENT_TYPE_IDS.len(), 10);
+        assert_eq!(
+            VANILLA_COMMON_ITEM_COMPONENT_TYPE_IDS,
+            &[
+                VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
+                VANILLA_DATA_COMPONENT_LORE_TYPE_ID,
+                VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID,
+                VANILLA_DATA_COMPONENT_REPAIR_COST_TYPE_ID,
+                VANILLA_DATA_COMPONENT_USE_EFFECTS_TYPE_ID,
+                VANILLA_DATA_COMPONENT_ATTRIBUTE_MODIFIERS_TYPE_ID,
+                VANILLA_DATA_COMPONENT_RARITY_TYPE_ID,
+                VANILLA_DATA_COMPONENT_BREAK_SOUND_TYPE_ID,
+                VANILLA_DATA_COMPONENT_TOOLTIP_DISPLAY_TYPE_ID,
+                VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID
+            ]
+        );
+    }
+
+    #[test]
     fn production_sources_do_not_handwrite_data_component_ids() {
         fn visit(directory: &Path, violations: &mut Vec<String>) {
             for entry in fs::read_dir(directory).unwrap() {
@@ -948,6 +981,12 @@ mod tests {
                     continue;
                 }
                 let source = fs::read_to_string(&path).unwrap();
+                if source.contains("const COMMON_ITEM_COMPONENT_TYPE_IDS") {
+                    violations.push(format!(
+                        "{}: handwritten common item component catalog",
+                        display
+                    ));
+                }
                 if display.ends_with("/input/component_patch.rs") {
                     for (offset, _) in source.match_indices("encoder(") {
                         let value = source[offset + "encoder(".len()..].trim_start();
