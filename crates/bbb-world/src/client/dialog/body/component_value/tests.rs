@@ -7,7 +7,7 @@ use bbb_protocol::data_component_types::{
     VANILLA_DATA_COMPONENT_POT_DECORATIONS_TYPE_ID,
     VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID,
     VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID,
-    VANILLA_DATA_COMPONENT_SUSPICIOUS_STEW_EFFECTS_TYPE_ID,
+    VANILLA_DATA_COMPONENT_SUSPICIOUS_STEW_EFFECTS_TYPE_ID, VANILLA_DATA_COMPONENT_TRIM_TYPE_ID,
 };
 
 use super::*;
@@ -1505,6 +1505,82 @@ fn decodes_instrument_and_provides_trim_material_named_holders() {
     ] {
         let error =
             decode_supported_component_value(type_id, resource_id, &value, context).unwrap_err();
+        assert!(error.contains(expected), "unexpected error: {error}");
+    }
+}
+
+#[test]
+fn decodes_trim_named_holder_pair_from_session_registries() {
+    let mut registries = RegistrySet::default();
+    for (registry, resource) in [
+        ("minecraft:trim_material", "minecraft:quartz"),
+        ("minecraft:trim_pattern", "minecraft:coast"),
+    ] {
+        let mut contents = crate::RegistryContentState::new(registry);
+        contents.entries = vec![
+            crate::RegistryPacketEntry::stub("example:first"),
+            crate::RegistryPacketEntry::stub(resource),
+        ];
+        registries.contents.insert(registry.to_string(), contents);
+    }
+    let value = compound(vec![
+        string_entry("material", "quartz"),
+        string_entry("pattern", "minecraft:coast"),
+    ]);
+    let decoded = decode_supported_component_value(
+        VANILLA_DATA_COMPONENT_TRIM_TYPE_ID,
+        "minecraft:trim",
+        &value,
+        Some(&registries),
+    )
+    .unwrap();
+    let Some(DialogDataComponentValueState::Trim { material, pattern }) = decoded else {
+        panic!("expected trim component");
+    };
+    assert_eq!(material.holder_id, 1);
+    assert_eq!(material.resource_id, "minecraft:quartz");
+    assert_eq!(pattern.holder_id, 1);
+    assert_eq!(pattern.resource_id, "minecraft:coast");
+
+    for (value, context, expected) in [
+        (value.clone(), None, "without registry context"),
+        (
+            compound(vec![string_entry("pattern", "minecraft:coast")]),
+            Some(&registries),
+            "missing field material",
+        ),
+        (
+            compound(vec![string_entry("material", "minecraft:quartz")]),
+            Some(&registries),
+            "missing field pattern",
+        ),
+        (
+            compound(vec![
+                value_entry(
+                    "material",
+                    compound(vec![string_entry("asset_name", "quartz")]),
+                ),
+                string_entry("pattern", "minecraft:coast"),
+            ]),
+            Some(&registries),
+            "field material holder is not a resource id",
+        ),
+        (
+            compound(vec![
+                string_entry("material", "minecraft:quartz"),
+                string_entry("pattern", "minecraft:missing"),
+            ]),
+            Some(&registries),
+            "missing minecraft:trim_pattern resource",
+        ),
+    ] {
+        let error = decode_supported_component_value(
+            VANILLA_DATA_COMPONENT_TRIM_TYPE_ID,
+            "minecraft:trim",
+            &value,
+            context,
+        )
+        .unwrap_err();
         assert!(error.contains(expected), "unexpected error: {error}");
     }
 }

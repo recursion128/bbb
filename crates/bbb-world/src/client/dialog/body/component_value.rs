@@ -179,6 +179,10 @@ pub enum DialogDataComponentValueState {
     ProvidesTrimMaterial {
         material: DialogRegistryHolderReferenceState,
     },
+    Trim {
+        material: DialogRegistryHolderReferenceState,
+        pattern: DialogRegistryHolderReferenceState,
+    },
     PaintingVariant {
         variant: DialogRegistryHolderReferenceState,
     },

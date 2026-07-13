@@ -563,8 +563,6 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   banner-pattern-layers (fixed vanilla identity/translation and resource/asset presentation
   catalogs are generated with shared identity ownership;
   server-synchronized/direct-holder remapping and resource-pack texture resolution remain)/
-  trim-named-holders (fixed vanilla material resource/color and shared pattern identity
-  catalogs are generated; server-synchronized holder remapping/direct payloads remain)/
   container/block-state/villager-variant/wolf-variant/wolf-sound-variant/
   pig-variant/pig-sound-variant/cow-variant/cow-sound-variant/
   chicken-variant/chicken-sound-variant/zombie-nautilus-variant/frog-variant/

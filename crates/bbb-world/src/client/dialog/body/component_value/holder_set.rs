@@ -8,6 +8,7 @@ use bbb_protocol::{
         VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID,
         VANILLA_DATA_COMPONENT_REPAIRABLE_TYPE_ID,
         VANILLA_DATA_COMPONENT_SUSPICIOUS_STEW_EFFECTS_TYPE_ID,
+        VANILLA_DATA_COMPONENT_TRIM_TYPE_ID,
     },
     item_types::vanilla_item_type_for_resource_id,
     mob_effect_types::vanilla_mob_effect_type_for_resource_id,
@@ -79,6 +80,11 @@ pub(super) fn decode_holder_backed_component_value(
             decode_registry_holder_reference(value, "minecraft:trim_material", registries, what)
                 .map(|material| DialogDataComponentValueState::ProvidesTrimMaterial { material }),
         ),
+        VANILLA_DATA_COMPONENT_TRIM_TYPE_ID => Some(
+            decode_armor_trim(value, registries, what).map(|(material, pattern)| {
+                DialogDataComponentValueState::Trim { material, pattern }
+            }),
+        ),
         VANILLA_DATA_COMPONENT_PAINTING_VARIANT_TYPE_ID => Some(
             decode_registry_holder_reference(value, "minecraft:painting_variant", registries, what)
                 .map(|variant| DialogDataComponentValueState::PaintingVariant { variant }),
@@ -103,6 +109,34 @@ pub(super) fn decode_holder_backed_component_value(
         ),
         _ => None,
     }
+}
+
+fn decode_armor_trim(
+    value: &NbtSummaryValue,
+    registries: Option<&RegistrySet>,
+    what: &str,
+) -> Result<
+    (
+        DialogRegistryHolderReferenceState,
+        DialogRegistryHolderReferenceState,
+    ),
+    String,
+> {
+    let material = decode_registry_holder_reference_field(
+        value,
+        "material",
+        "minecraft:trim_material",
+        registries,
+        what,
+    )?;
+    let pattern = decode_registry_holder_reference_field(
+        value,
+        "pattern",
+        "minecraft:trim_pattern",
+        registries,
+        what,
+    )?;
+    Ok((material, pattern))
 }
 
 fn decode_pot_decorations(
@@ -222,6 +256,29 @@ pub(super) fn decode_registry_holder_reference(
         return Err(format!("{what} holder is not a resource id"));
     };
     decode_holder_reference(raw, registry, registries, what)
+}
+
+fn decode_registry_holder_reference_field(
+    value: &NbtSummaryValue,
+    field: &str,
+    registry: &str,
+    registries: Option<&RegistrySet>,
+    what: &str,
+) -> Result<DialogRegistryHolderReferenceState, String> {
+    let NbtSummaryValue::Compound(entries) = value else {
+        return Err(format!("{what} is not a compound"));
+    };
+    let field_value = entries
+        .iter()
+        .find(|entry| entry.name == field)
+        .map(|entry| &entry.value)
+        .ok_or_else(|| format!("{what} is missing field {field}"))?;
+    decode_registry_holder_reference(
+        field_value,
+        registry,
+        registries,
+        &format!("{what} field {field}"),
+    )
 }
 
 pub(super) fn decode_registry_holder_set_field(
