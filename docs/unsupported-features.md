@@ -85,8 +85,11 @@ Owner: `bbb-protocol`
   individual checked tag queries, and a few derived audio registries are not
   that runtime. The five animal sound-variant registries now validate their full
   required SoundEvent-holder shape and expose a typed adult/baby death-sound
-  projection in server holder order; remaining variant presentation and non-death
-  sound consumers are still open. Dimension-type direct visual environment
+  projection in server holder order. Chicken/cow/pig variants likewise decode
+  their complete network presentation (`model`, `asset_id`, and `baby_asset_id`),
+  derive namespaced texture paths, and expose malformed/stub-safe lookup in server
+  holder order; renderer consumption and non-death sound consumers are still open.
+  Dimension-type direct visual environment
   attributes now drive custom fog/sky/water-fog colors and distances plus lightmap tint/factor
   without classifying an unknown resource as a vanilla dimension. Remaining
   work includes environment-attribute modifier compounds, syncable audio/gameplay
@@ -688,7 +691,9 @@ Owner: `bbb-pack` + `bbb-native` + `bbb-renderer`
 - Compose resource-pack overrides, custom models, and datapack registry assets
   dynamically.
 - Present custom/datapack `minecraft:chicken_variant` / `minecraft:pig_variant`
-  / `minecraft:cow_variant` variant assets.
+  / `minecraft:cow_variant` variant assets. World now owns their strict
+  `NETWORK_CODEC` presentation and server holder-order lookup; pack resolution,
+  runtime texture dimensions/atlas upload, and renderer selection remain open.
 - Give failed, pending, and ready states an explicit fallback. Never draw a
   stale texture.
 

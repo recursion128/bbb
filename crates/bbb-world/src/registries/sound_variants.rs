@@ -3,6 +3,8 @@ use crate::{
     WorldStore,
 };
 
+use super::normalize_codec_identifier;
+
 pub(crate) const CAT_SOUND_VARIANT_REGISTRY: &str = "minecraft:cat_sound_variant";
 pub(crate) const CHICKEN_SOUND_VARIANT_REGISTRY: &str = "minecraft:chicken_sound_variant";
 pub(crate) const COW_SOUND_VARIANT_REGISTRY: &str = "minecraft:cow_sound_variant";
@@ -136,13 +138,13 @@ fn decode_sound_event_holder(
 ) -> Result<RegistrySoundEvent, SoundVariantProjectionError> {
     match value {
         NbtValue::String(resource_id) => Ok(RegistrySoundEvent::Named {
-            resource_id: normalize_identifier(resource_id)
+            resource_id: normalize_codec_identifier(resource_id)
                 .ok_or_else(|| error(field, "invalid sound event identifier"))?,
         }),
         NbtValue::Compound(fields) => {
             let sound_id_field = field_path(field, "sound_id");
             let sound_id = match find_nbt_entry(fields, "sound_id") {
-                Some(NbtValue::String(sound_id)) => normalize_identifier(sound_id)
+                Some(NbtValue::String(sound_id)) => normalize_codec_identifier(sound_id)
                     .ok_or_else(|| error(&sound_id_field, "invalid sound event identifier"))?,
                 Some(_) => return Err(error(sound_id_field, "expected string")),
                 None => return Err(error(sound_id_field, "missing required field")),
@@ -185,27 +187,6 @@ fn nbt_float(value: &NbtValue) -> Option<f32> {
         NbtValue::Double(value) => Some(*value as f32),
         _ => None,
     }
-}
-
-fn normalize_identifier(raw: &str) -> Option<String> {
-    let (namespace, path) = match raw.find(':') {
-        Some(0) => ("minecraft", &raw[1..]),
-        Some(separator) => (&raw[..separator], &raw[separator + 1..]),
-        None => ("minecraft", raw),
-    };
-    let valid_namespace = namespace != ".."
-        && namespace.chars().all(|ch| {
-            ch == '_' || ch == '-' || ch == '.' || ch.is_ascii_lowercase() || ch.is_ascii_digit()
-        });
-    let valid_path = path.chars().all(|ch| {
-        ch == '_'
-            || ch == '-'
-            || ch == '/'
-            || ch == '.'
-            || ch.is_ascii_lowercase()
-            || ch.is_ascii_digit()
-    });
-    (valid_namespace && valid_path).then(|| format!("{namespace}:{path}"))
 }
 
 fn field_path(prefix: &str, field: &str) -> String {

@@ -1,3 +1,4 @@
+mod animal_variants;
 mod biomes;
 mod block_states;
 mod enchantments;
@@ -9,6 +10,10 @@ mod store;
 mod trim_materials;
 mod trim_patterns;
 
+pub use animal_variants::{
+    FarmAnimalVariantModel, FarmAnimalVariantPresentation, FarmAnimalVariantProjectionError,
+    CHICKEN_VARIANT_REGISTRY, COW_VARIANT_REGISTRY, PIG_VARIANT_REGISTRY,
+};
 pub use biomes::{
     BiomeClientProjection, BiomeGrassColorModifier, BiomeProjectionError, BiomeTemperatureModifier,
 };
@@ -34,6 +39,27 @@ pub use state::{
 };
 pub use trim_materials::VanillaTrimMaterialIdentity;
 pub use trim_patterns::VanillaTrimPatternIdentity;
+
+fn normalize_codec_identifier(raw: &str) -> Option<String> {
+    let (namespace, path) = match raw.find(':') {
+        Some(0) => ("minecraft", &raw[1..]),
+        Some(separator) => (&raw[..separator], &raw[separator + 1..]),
+        None => ("minecraft", raw),
+    };
+    let valid_namespace = namespace != ".."
+        && namespace.chars().all(|ch| {
+            ch == '_' || ch == '-' || ch == '.' || ch.is_ascii_lowercase() || ch.is_ascii_digit()
+        });
+    let valid_path = path.chars().all(|ch| {
+        ch == '_'
+            || ch == '-'
+            || ch == '/'
+            || ch == '.'
+            || ch.is_ascii_lowercase()
+            || ch.is_ascii_digit()
+    });
+    (valid_namespace && valid_path).then(|| format!("{namespace}:{path}"))
+}
 
 #[cfg(test)]
 mod tests;
