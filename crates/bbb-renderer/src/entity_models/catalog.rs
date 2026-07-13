@@ -2,6 +2,8 @@ mod selection;
 
 use glam::Mat4;
 
+use super::DecoratedPotPattern;
+
 pub(in crate::entity_models) use selection::{
     boat_texture_ref, camel_texture_ref, chicken_texture_ref, cow_texture_ref,
     horse_coat_texture_ref, horse_markings_texture_ref, llama_texture_ref, mooshroom_texture_ref,
@@ -1619,37 +1621,6 @@ pub enum BellShakeDirection {
     South,
     East,
     West,
-}
-
-/// Vanilla `DecoratedPotPatterns` registry entries minus `BLANK` (whose sprite is the plain
-/// `decorated_pot_side` this enum's `None` case already renders): the twenty-three sherd patterns,
-/// each an `entity/decorated_pot/<pattern>_pottery_pattern` sprite
-/// (`DecoratedPotPatterns.bootstrap`, `DecoratedPotPatterns.java:72-97`).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum DecoratedPotPattern {
-    Angler,
-    Archer,
-    ArmsUp,
-    Blade,
-    Brewer,
-    Burn,
-    Danger,
-    Explorer,
-    Flow,
-    Friend,
-    Guster,
-    Heart,
-    Heartbreak,
-    Howl,
-    Miner,
-    Mourner,
-    Plenty,
-    Prize,
-    Scrape,
-    Sheaf,
-    Shelter,
-    Skull,
-    Snort,
 }
 
 /// Vanilla `BannerPatterns` registry entries: the forty-three pattern registrations, each an

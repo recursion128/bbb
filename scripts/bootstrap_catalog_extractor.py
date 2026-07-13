@@ -70,6 +70,15 @@ class TrimMaterialEntry:
     description_color: int
 
 
+@dataclass(frozen=True)
+class DecoratedPotPatternEntry:
+    constant_name: str
+    resource_id: str
+    item_constant_name: str
+    item_resource_id: str
+    asset_id: str
+
+
 def enchantment_tooltip_order(
     tag_resources: dict[str, tuple[str, bytes]],
     enchantments: list[EnchantmentEntry],
@@ -515,6 +524,164 @@ def trim_material_entries(
         raise BootstrapCatalogExtractionError(
             f"{source.relative_path}: trim material declaration/bootstrap mismatch: "
             f"unknown={sorted(unknown)}, missing={sorted(missing)}"
+        )
+    return entries
+
+
+def decorated_pot_pattern_entries(
+    source: JavaSource,
+    items_source: JavaSource,
+    expected_count: int = 24,
+) -> list[DecoratedPotPatternEntry]:
+    resources = _declared_resource_keys(
+        source,
+        "DecoratedPotPattern",
+        {"create"},
+    )
+    pattern_types = [
+        java_type
+        for java_type in source.types
+        if java_type.simple_name == "DecoratedPotPatterns"
+    ]
+    if len(pattern_types) != 1:
+        raise BootstrapCatalogExtractionError(
+            f"{source.relative_path}: expected one DecoratedPotPatterns type"
+        )
+    map_fields = [
+        field
+        for field in source.fields_for(pattern_types[0])
+        if field.name == "ITEM_TO_POT_TEXTURE"
+    ]
+    if len(map_fields) != 1 or map_fields[0].initializer is None:
+        raise BootstrapCatalogExtractionError(
+            f"{source.relative_path}: expected one initialized ITEM_TO_POT_TEXTURE field"
+        )
+    map_initializer = map_fields[0].initializer
+    map_object = map_initializer.node.child_by_field_name("object")
+    _, map_arguments = _invocation(source, map_initializer, {"ofEntries"})
+    if map_object is None or source.expression(map_object).canonical != "Map":
+        _fail(source, map_initializer, "pattern item table must use Map.ofEntries")
+
+    item_types = [
+        java_type
+        for java_type in items_source.types
+        if java_type.simple_name == "Items"
+    ]
+    if len(item_types) != 1:
+        raise BootstrapCatalogExtractionError(
+            f"{items_source.relative_path}: expected one Items type"
+        )
+    item_by_pattern: dict[str, tuple[str, str]] = {}
+    for argument in map_arguments:
+        entry_object = argument.node.child_by_field_name("object")
+        _, entry_arguments = _invocation(source, argument, {"entry"})
+        if (
+            entry_object is None
+            or source.expression(entry_object).canonical != "Map"
+            or len(entry_arguments) != 2
+        ):
+            _fail(source, argument, "pattern item mapping must use Map.entry(item, key)")
+        item, key = entry_arguments
+        item_object = item.node.child_by_field_name("object")
+        item_field = item.node.child_by_field_name("field")
+        if (
+            item.node.type != "field_access"
+            or item_object is None
+            or item_field is None
+            or source.expression(item_object).canonical != "Items"
+        ):
+            _fail(source, item, "pattern item is not an Items constant")
+        if key.node.type != "identifier" or key.canonical not in resources:
+            _fail(source, key, "pattern key is not a declared identifier")
+        item_constant = source.text(item_field)
+        item_fields = [
+            field
+            for field in items_source.fields_for(item_types[0])
+            if field.name == item_constant
+        ]
+        if len(item_fields) != 1 or item_fields[0].initializer is None:
+            _fail(source, item, f"could not resolve Items.{item_constant}")
+        _, item_arguments = _invocation(
+            items_source,
+            item_fields[0].initializer,
+            {"registerItem"},
+        )
+        if not item_arguments:
+            _fail(
+                items_source,
+                item_fields[0].initializer,
+                f"Items.{item_constant} lacks a resource path",
+            )
+        item_resource = f"minecraft:{_string(items_source, item_arguments[0])}"
+        if key.canonical in item_by_pattern:
+            _fail(source, key, f"duplicate item mapping for {key.canonical}")
+        item_by_pattern[key.canonical] = (item_constant, item_resource)
+
+    method = _bootstrap_method(source)
+    context_name = _bootstrap_context_name(source, method)
+    calls = [
+        call
+        for call in source.calls
+        if call.name == "register"
+        and call.qualifier is None
+        and method.body.start_byte <= call.span.start_byte
+        and call.span.end_byte <= method.body.end_byte
+    ]
+    calls.sort(key=lambda call: (call.span.start_byte, call.span.end_byte))
+    entries: list[DecoratedPotPatternEntry] = []
+    for call in calls:
+        if len(call.arguments) != 3 or call.arguments[0].canonical != context_name:
+            _fail(source, source.expression(call.node), "unsupported pattern register call")
+        key, asset = call.arguments[1:]
+        if key.node.type != "identifier" or key.canonical not in resources:
+            _fail(source, key, "bootstrap pattern key is not a declared identifier")
+        item = item_by_pattern.get(key.canonical)
+        if item is None:
+            _fail(source, key, "bootstrap pattern key has no item mapping")
+        entries.append(
+            DecoratedPotPatternEntry(
+                key.canonical,
+                resources[key.canonical],
+                item[0],
+                item[1],
+                f"minecraft:{_string(source, asset)}",
+            )
+        )
+
+    if len(entries) != expected_count:
+        raise BootstrapCatalogExtractionError(
+            f"{source.relative_path}: expected {expected_count} decorated pot patterns, "
+            f"extracted {len(entries)}"
+        )
+    constants = [entry.constant_name for entry in entries]
+    if len(constants) != len(set(constants)):
+        raise BootstrapCatalogExtractionError(
+            f"{source.relative_path}: duplicate decorated pot pattern registration"
+        )
+    declared = set(resources)
+    registered = set(constants)
+    mapped = set(item_by_pattern)
+    if registered != declared or mapped != declared:
+        raise BootstrapCatalogExtractionError(
+            f"{source.relative_path}: decorated pot pattern declaration/map/bootstrap mismatch: "
+            f"bootstrap_missing={sorted(declared - registered)}, "
+            f"map_missing={sorted(declared - mapped)}, "
+            f"unknown={sorted((registered | mapped) - declared)}"
+        )
+    for attribute in ("resource_id", "item_resource_id", "asset_id"):
+        values = [getattr(entry, attribute) for entry in entries]
+        if len(values) != len(set(values)):
+            raise BootstrapCatalogExtractionError(
+                f"{source.relative_path}: duplicate decorated pot pattern {attribute}"
+            )
+    blanks = [entry for entry in entries if entry.constant_name == "BLANK"]
+    if len(blanks) != 1 or (
+        blanks[0].resource_id,
+        blanks[0].item_resource_id,
+        blanks[0].asset_id,
+    ) != ("minecraft:blank", "minecraft:brick", "minecraft:decorated_pot_side"):
+        raise BootstrapCatalogExtractionError(
+            f"{source.relative_path}: BLANK must map brick to decorated_pot_side"
         )
     return entries
 

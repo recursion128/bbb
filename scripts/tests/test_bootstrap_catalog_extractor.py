@@ -13,6 +13,7 @@ from bootstrap_catalog_extractor import (  # noqa: E402
     EnchantmentEntry,
     banner_pattern_entries,
     bootstrap_resource_key_entries,
+    decorated_pot_pattern_entries,
     enchantment_entries,
     enchantment_tooltip_order,
     identifier_constant_paths,
@@ -179,6 +180,68 @@ class TrimMaterials {
             [
                 ("SECOND", "minecraft:second", 18),
                 ("FIRST", "minecraft:first", 34),
+            ],
+        )
+
+    def test_decorated_pot_patterns_join_items_map_and_bootstrap(self) -> None:
+        patterns = parse_source(
+            "fixture/DecoratedPotPatterns.java",
+            b"""
+package fixture;
+class DecoratedPotPatterns {
+  static final ResourceKey<DecoratedPotPattern> BLANK = create("blank");
+  static final ResourceKey<DecoratedPotPattern> ANGLER = create("angler");
+  static final Map<Item, ResourceKey<DecoratedPotPattern>> ITEM_TO_POT_TEXTURE = Map.ofEntries(
+      Map.entry(Items.BRICK, BLANK),
+      Map.entry(Items.ANGLER_POTTERY_SHERD, ANGLER));
+  static DecoratedPotPattern bootstrap(Registry<DecoratedPotPattern> registry) {
+    register(registry, ANGLER, "angler_pottery_pattern");
+    return register(registry, BLANK, "decorated_pot_side");
+  }
+}
+""",
+        )
+        items = parse_source(
+            "fixture/Items.java",
+            b"""
+package fixture;
+class Items {
+  static final Item BRICK = registerItem("brick");
+  static final Item ANGLER_POTTERY_SHERD = registerItem(
+      "angler_pottery_sherd", new Item.Properties());
+}
+""",
+        )
+        self.assertEqual(
+            [
+                (
+                    entry.constant_name,
+                    entry.resource_id,
+                    entry.item_constant_name,
+                    entry.item_resource_id,
+                    entry.asset_id,
+                )
+                for entry in decorated_pot_pattern_entries(
+                    patterns,
+                    items,
+                    expected_count=2,
+                )
+            ],
+            [
+                (
+                    "ANGLER",
+                    "minecraft:angler",
+                    "ANGLER_POTTERY_SHERD",
+                    "minecraft:angler_pottery_sherd",
+                    "minecraft:angler_pottery_pattern",
+                ),
+                (
+                    "BLANK",
+                    "minecraft:blank",
+                    "BRICK",
+                    "minecraft:brick",
+                    "minecraft:decorated_pot_side",
+                ),
             ],
         )
 

@@ -7,8 +7,8 @@
 //! light coords sampled at the block position. bbb has no separate BER
 //! dispatch; pot instances ride the existing single entity-model submission
 //! stream as `EntityModelKind::DecoratedPot`, like the chest and the bell.
-//! The sherd item -> pattern mapping happens here, mirroring
-//! `DecoratedPotPatterns.getPatternFromItem`.
+//! The sherd item -> pattern mapping comes from the generated renderer catalog,
+//! extracted from `DecoratedPotPatterns.getPatternFromItem`'s source table.
 
 use bbb_renderer::{DecoratedPotPattern, DecoratedPotWobble, EntityModelInstance};
 use bbb_world::{
@@ -50,19 +50,19 @@ fn decorated_pot_model_instance(
         source
             .back
             .as_deref()
-            .and_then(decorated_pot_pattern_for_sherd_item),
+            .and_then(DecoratedPotPattern::for_sherd_item_resource_id),
         source
             .left
             .as_deref()
-            .and_then(decorated_pot_pattern_for_sherd_item),
+            .and_then(DecoratedPotPattern::for_sherd_item_resource_id),
         source
             .right
             .as_deref()
-            .and_then(decorated_pot_pattern_for_sherd_item),
+            .and_then(DecoratedPotPattern::for_sherd_item_resource_id),
         source
             .front
             .as_deref()
-            .and_then(decorated_pot_pattern_for_sherd_item),
+            .and_then(DecoratedPotPattern::for_sherd_item_resource_id),
     );
     if let Some(wobble) = source.wobble {
         instance = instance.with_decorated_pot_wobble(Some(DecoratedPotWobble {
@@ -81,46 +81,6 @@ fn decorated_pot_model_instance(
 /// (SOUTH 180°, WEST 90°, NORTH 0°, EAST -90°).
 fn decorated_pot_facing_y_rot(facing: WorldDecoratedPotFacing) -> f32 {
     180.0 - facing.to_y_rot()
-}
-
-/// Vanilla `DecoratedPotPatterns.getPatternFromItem`
-/// (`DecoratedPotPatterns.java:37-66`), transcribed as a constant table: each
-/// of the twenty-three `minecraft:<name>_pottery_sherd` items maps to the
-/// `<name>` pattern (the registry's asset ids all follow
-/// `<name>_pottery_pattern`, `DecoratedPotPatterns.bootstrap`,
-/// `java:72-97`). `Items.BRICK` maps to `BLANK`, whose asset is the plain
-/// `decorated_pot_side` — the same sprite the renderer's `None` fallback
-/// binds — and the world projection already folds bricks to `None`, so this
-/// table only carries the real sherds. An unknown item returns `None`
-/// (vanilla returns `null` and `DecoratedPotRenderer.getSideSprite` falls
-/// back to `DECORATED_POT_SIDE`).
-fn decorated_pot_pattern_for_sherd_item(item_id: &str) -> Option<DecoratedPotPattern> {
-    match item_id {
-        "minecraft:angler_pottery_sherd" => Some(DecoratedPotPattern::Angler),
-        "minecraft:archer_pottery_sherd" => Some(DecoratedPotPattern::Archer),
-        "minecraft:arms_up_pottery_sherd" => Some(DecoratedPotPattern::ArmsUp),
-        "minecraft:blade_pottery_sherd" => Some(DecoratedPotPattern::Blade),
-        "minecraft:brewer_pottery_sherd" => Some(DecoratedPotPattern::Brewer),
-        "minecraft:burn_pottery_sherd" => Some(DecoratedPotPattern::Burn),
-        "minecraft:danger_pottery_sherd" => Some(DecoratedPotPattern::Danger),
-        "minecraft:explorer_pottery_sherd" => Some(DecoratedPotPattern::Explorer),
-        "minecraft:flow_pottery_sherd" => Some(DecoratedPotPattern::Flow),
-        "minecraft:friend_pottery_sherd" => Some(DecoratedPotPattern::Friend),
-        "minecraft:guster_pottery_sherd" => Some(DecoratedPotPattern::Guster),
-        "minecraft:heart_pottery_sherd" => Some(DecoratedPotPattern::Heart),
-        "minecraft:heartbreak_pottery_sherd" => Some(DecoratedPotPattern::Heartbreak),
-        "minecraft:howl_pottery_sherd" => Some(DecoratedPotPattern::Howl),
-        "minecraft:miner_pottery_sherd" => Some(DecoratedPotPattern::Miner),
-        "minecraft:mourner_pottery_sherd" => Some(DecoratedPotPattern::Mourner),
-        "minecraft:plenty_pottery_sherd" => Some(DecoratedPotPattern::Plenty),
-        "minecraft:prize_pottery_sherd" => Some(DecoratedPotPattern::Prize),
-        "minecraft:scrape_pottery_sherd" => Some(DecoratedPotPattern::Scrape),
-        "minecraft:sheaf_pottery_sherd" => Some(DecoratedPotPattern::Sheaf),
-        "minecraft:shelter_pottery_sherd" => Some(DecoratedPotPattern::Shelter),
-        "minecraft:skull_pottery_sherd" => Some(DecoratedPotPattern::Skull),
-        "minecraft:snort_pottery_sherd" => Some(DecoratedPotPattern::Snort),
-        _ => None,
-    }
 }
 
 /// Vanilla `LightCoordsUtil.pack(block, sky)` (`block << 4 | sky << 20`) over
@@ -338,51 +298,21 @@ mod tests {
     }
 
     #[test]
-    fn sherd_item_pattern_table_matches_vanilla_registrations() {
-        // DecoratedPotPatterns.java:37-62: every entry maps
-        // `minecraft:<name>_pottery_sherd` -> the `<name>` pattern. The table
-        // is self-consistent with the vanilla naming rule, so a typo in
-        // either column would break the reconstruction below.
-        let sherds = [
-            ("angler", DecoratedPotPattern::Angler),
-            ("archer", DecoratedPotPattern::Archer),
-            ("arms_up", DecoratedPotPattern::ArmsUp),
-            ("blade", DecoratedPotPattern::Blade),
-            ("brewer", DecoratedPotPattern::Brewer),
-            ("burn", DecoratedPotPattern::Burn),
-            ("danger", DecoratedPotPattern::Danger),
-            ("explorer", DecoratedPotPattern::Explorer),
-            ("flow", DecoratedPotPattern::Flow),
-            ("friend", DecoratedPotPattern::Friend),
-            ("guster", DecoratedPotPattern::Guster),
-            ("heart", DecoratedPotPattern::Heart),
-            ("heartbreak", DecoratedPotPattern::Heartbreak),
-            ("howl", DecoratedPotPattern::Howl),
-            ("miner", DecoratedPotPattern::Miner),
-            ("mourner", DecoratedPotPattern::Mourner),
-            ("plenty", DecoratedPotPattern::Plenty),
-            ("prize", DecoratedPotPattern::Prize),
-            ("scrape", DecoratedPotPattern::Scrape),
-            ("sheaf", DecoratedPotPattern::Sheaf),
-            ("shelter", DecoratedPotPattern::Shelter),
-            ("skull", DecoratedPotPattern::Skull),
-            ("snort", DecoratedPotPattern::Snort),
-        ];
-        for (name, pattern) in sherds {
-            assert_eq!(
-                decorated_pot_pattern_for_sherd_item(&format!("minecraft:{name}_pottery_sherd")),
-                Some(pattern),
-                "sherd {name}"
-            );
-        }
-        // Bricks are folded to an empty face world-side; unknown items have
-        // no registered pattern.
+    fn sherd_item_pattern_lookup_uses_generated_vanilla_catalog() {
         assert_eq!(
-            decorated_pot_pattern_for_sherd_item("minecraft:brick"),
+            DecoratedPotPattern::for_sherd_item_resource_id("minecraft:angler_pottery_sherd"),
+            Some(DecoratedPotPattern::Angler)
+        );
+        assert_eq!(
+            DecoratedPotPattern::for_sherd_item_resource_id("minecraft:snort_pottery_sherd"),
+            Some(DecoratedPotPattern::Snort)
+        );
+        assert_eq!(
+            DecoratedPotPattern::for_sherd_item_resource_id("minecraft:brick"),
             None
         );
         assert_eq!(
-            decorated_pot_pattern_for_sherd_item("minecraft:diamond"),
+            DecoratedPotPattern::for_sherd_item_resource_id("minecraft:diamond"),
             None
         );
     }

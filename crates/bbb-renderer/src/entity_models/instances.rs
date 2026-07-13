@@ -1,6 +1,6 @@
 use super::catalog::*;
 use super::model_layers::{ELYTRA_DEFAULT_X_ROT, ELYTRA_DEFAULT_Y_ROT, ELYTRA_DEFAULT_Z_ROT};
-use super::SheepHeadEatPose;
+use super::{DecoratedPotPattern, SheepHeadEatPose};
 
 /// Vanilla `LightCoordsUtil.FULL_BRIGHT` (`block 15 | sky 15`): the
 /// `EntityRenderState`/`LivingEntityRenderState.lightCoords` default used until

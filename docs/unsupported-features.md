@@ -1155,6 +1155,12 @@ vanilla evidence. Deleting one of these re-opens work already decided against.
   `RegistryDataLoader.WORLDGEN_REGISTRIES` and `SYNCHRONIZED_REGISTRIES`.
   Potion holder ids and their base effect lists therefore come from the fixed
   client built-in registry rather than a server-remappable registry payload.
+- **Custom/datapack decorated-pot pattern definitions.** Vanilla 26.1 registers
+  `minecraft:decorated_pot_pattern` through `BuiltInRegistries.registerSimple`
+  with `DecoratedPotPatterns::bootstrap`, and the registry is absent from both
+  `RegistryDataLoader.WORLDGEN_REGISTRIES` and `SYNCHRONIZED_REGISTRIES`.
+  Item-to-pattern identity and pattern asset ids therefore come from the fixed
+  client built-in registry rather than a server-remappable registry payload.
 - **Custom/datapack menu-type definitions.** Vanilla 26.1 registers
   `minecraft:menu` through `BuiltInRegistries.registerSimple`, and the registry
   is absent from both `RegistryDataLoader.WORLDGEN_REGISTRIES` and

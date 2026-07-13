@@ -1,6 +1,7 @@
 mod block_attachment;
 mod catalog;
 mod colored;
+mod decorated_pot_patterns;
 mod dispatch;
 mod geometry;
 mod gpu;
@@ -39,6 +40,7 @@ use colored::{
     mesh_transformer_scaled_model_root_transform, player_model_root_transform,
     wither_skeleton_model_root_transform, HUSK_SCALE,
 };
+pub use decorated_pot_patterns::DecoratedPotPattern;
 use geometry::*;
 #[cfg(test)]
 use glam::{Mat4, Vec3};

@@ -13085,3 +13085,17 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] extractor fixture、真实 update/check、完整性/顺序/边界测试与 production-source 反向扫描锁定唯一
   owner；这只覆盖固定 vanilla 26.1 bootstrap 数据，服务端同步的 trim material/pattern named-holder
   remapping 与 direct-holder SNBT projection 仍在差距台账中。
+
+## 2026-07-13：Generate decorated-pot pattern catalog
+
+- [x] `bootstrap_catalog_extractor.py` 通过共享 Tree-sitter CST 联结
+  `DecoratedPotPatterns` 的 24 个 declared key、`ITEM_TO_POT_TEXTURE` 的 24 个 `Items` 常量、
+  对应 `Items.registerItem` resource 与 bootstrap asset id；声明/map/bootstrap 缺项、重复项或
+  `BLANK != brick/decorated_pot_side` 会在生成前失败。
+- [x] 新的 renderer `decorated_pot_patterns` 语义模块生成 23 个非 blank enum variant、
+  sherd-item lookup、resource identity 与 16×16 texture refs；native block-entity projection、renderer
+  side texture selection 与全局 atlas 列表共同消费该 owner，删除原 enum、23-arm item match、
+  23-arm texture match 和 23 份手写 texture path。
+- [x] extractor fixture、真实 update/check、完整性/唯一性/边界测试、renderer/native focused tests
+  与跨 crate 反向扫描通过；`decorated_pot_pattern` 是 fixed built-in registry，不新增不存在的
+  server/datapack remapping surface。
