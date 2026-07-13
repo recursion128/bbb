@@ -139,187 +139,6 @@ pub(super) const VANILLA_ENCHANTMENT_TOOLTIP_ORDER: &[&str] = &[
 ];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) struct VanillaBannerPattern {
-    pub(super) resource_id: &'static str,
-    pub(super) translation_key: &'static str,
-}
-
-pub(super) const VANILLA_BANNER_PATTERNS: &[VanillaBannerPattern] = &[
-    VanillaBannerPattern {
-        resource_id: "minecraft:base",
-        translation_key: "block.minecraft.banner.base",
-    },
-    VanillaBannerPattern {
-        resource_id: "minecraft:square_bottom_left",
-        translation_key: "block.minecraft.banner.square_bottom_left",
-    },
-    VanillaBannerPattern {
-        resource_id: "minecraft:square_bottom_right",
-        translation_key: "block.minecraft.banner.square_bottom_right",
-    },
-    VanillaBannerPattern {
-        resource_id: "minecraft:square_top_left",
-        translation_key: "block.minecraft.banner.square_top_left",
-    },
-    VanillaBannerPattern {
-        resource_id: "minecraft:square_top_right",
-        translation_key: "block.minecraft.banner.square_top_right",
-    },
-    VanillaBannerPattern {
-        resource_id: "minecraft:stripe_bottom",
-        translation_key: "block.minecraft.banner.stripe_bottom",
-    },
-    VanillaBannerPattern {
-        resource_id: "minecraft:stripe_top",
-        translation_key: "block.minecraft.banner.stripe_top",
-    },
-    VanillaBannerPattern {
-        resource_id: "minecraft:stripe_left",
-        translation_key: "block.minecraft.banner.stripe_left",
-    },
-    VanillaBannerPattern {
-        resource_id: "minecraft:stripe_right",
-        translation_key: "block.minecraft.banner.stripe_right",
-    },
-    VanillaBannerPattern {
-        resource_id: "minecraft:stripe_center",
-        translation_key: "block.minecraft.banner.stripe_center",
-    },
-    VanillaBannerPattern {
-        resource_id: "minecraft:stripe_middle",
-        translation_key: "block.minecraft.banner.stripe_middle",
-    },
-    VanillaBannerPattern {
-        resource_id: "minecraft:stripe_downright",
-        translation_key: "block.minecraft.banner.stripe_downright",
-    },
-    VanillaBannerPattern {
-        resource_id: "minecraft:stripe_downleft",
-        translation_key: "block.minecraft.banner.stripe_downleft",
-    },
-    VanillaBannerPattern {
-        resource_id: "minecraft:small_stripes",
-        translation_key: "block.minecraft.banner.small_stripes",
-    },
-    VanillaBannerPattern {
-        resource_id: "minecraft:cross",
-        translation_key: "block.minecraft.banner.cross",
-    },
-    VanillaBannerPattern {
-        resource_id: "minecraft:straight_cross",
-        translation_key: "block.minecraft.banner.straight_cross",
-    },
-    VanillaBannerPattern {
-        resource_id: "minecraft:triangle_bottom",
-        translation_key: "block.minecraft.banner.triangle_bottom",
-    },
-    VanillaBannerPattern {
-        resource_id: "minecraft:triangle_top",
-        translation_key: "block.minecraft.banner.triangle_top",
-    },
-    VanillaBannerPattern {
-        resource_id: "minecraft:triangles_bottom",
-        translation_key: "block.minecraft.banner.triangles_bottom",
-    },
-    VanillaBannerPattern {
-        resource_id: "minecraft:triangles_top",
-        translation_key: "block.minecraft.banner.triangles_top",
-    },
-    VanillaBannerPattern {
-        resource_id: "minecraft:diagonal_left",
-        translation_key: "block.minecraft.banner.diagonal_left",
-    },
-    VanillaBannerPattern {
-        resource_id: "minecraft:diagonal_up_right",
-        translation_key: "block.minecraft.banner.diagonal_up_right",
-    },
-    VanillaBannerPattern {
-        resource_id: "minecraft:diagonal_up_left",
-        translation_key: "block.minecraft.banner.diagonal_up_left",
-    },
-    VanillaBannerPattern {
-        resource_id: "minecraft:diagonal_right",
-        translation_key: "block.minecraft.banner.diagonal_right",
-    },
-    VanillaBannerPattern {
-        resource_id: "minecraft:circle",
-        translation_key: "block.minecraft.banner.circle",
-    },
-    VanillaBannerPattern {
-        resource_id: "minecraft:rhombus",
-        translation_key: "block.minecraft.banner.rhombus",
-    },
-    VanillaBannerPattern {
-        resource_id: "minecraft:half_vertical",
-        translation_key: "block.minecraft.banner.half_vertical",
-    },
-    VanillaBannerPattern {
-        resource_id: "minecraft:half_horizontal",
-        translation_key: "block.minecraft.banner.half_horizontal",
-    },
-    VanillaBannerPattern {
-        resource_id: "minecraft:half_vertical_right",
-        translation_key: "block.minecraft.banner.half_vertical_right",
-    },
-    VanillaBannerPattern {
-        resource_id: "minecraft:half_horizontal_bottom",
-        translation_key: "block.minecraft.banner.half_horizontal_bottom",
-    },
-    VanillaBannerPattern {
-        resource_id: "minecraft:border",
-        translation_key: "block.minecraft.banner.border",
-    },
-    VanillaBannerPattern {
-        resource_id: "minecraft:gradient",
-        translation_key: "block.minecraft.banner.gradient",
-    },
-    VanillaBannerPattern {
-        resource_id: "minecraft:gradient_up",
-        translation_key: "block.minecraft.banner.gradient_up",
-    },
-    VanillaBannerPattern {
-        resource_id: "minecraft:bricks",
-        translation_key: "block.minecraft.banner.bricks",
-    },
-    VanillaBannerPattern {
-        resource_id: "minecraft:curly_border",
-        translation_key: "block.minecraft.banner.curly_border",
-    },
-    VanillaBannerPattern {
-        resource_id: "minecraft:globe",
-        translation_key: "block.minecraft.banner.globe",
-    },
-    VanillaBannerPattern {
-        resource_id: "minecraft:creeper",
-        translation_key: "block.minecraft.banner.creeper",
-    },
-    VanillaBannerPattern {
-        resource_id: "minecraft:skull",
-        translation_key: "block.minecraft.banner.skull",
-    },
-    VanillaBannerPattern {
-        resource_id: "minecraft:flower",
-        translation_key: "block.minecraft.banner.flower",
-    },
-    VanillaBannerPattern {
-        resource_id: "minecraft:mojang",
-        translation_key: "block.minecraft.banner.mojang",
-    },
-    VanillaBannerPattern {
-        resource_id: "minecraft:piglin",
-        translation_key: "block.minecraft.banner.piglin",
-    },
-    VanillaBannerPattern {
-        resource_id: "minecraft:flow",
-        translation_key: "block.minecraft.banner.flow",
-    },
-    VanillaBannerPattern {
-        resource_id: "minecraft:guster",
-        translation_key: "block.minecraft.banner.guster",
-    },
-];
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) struct VanillaEnchantment {
     pub(super) resource_id: &'static str,
     pub(super) max_level: i32,
@@ -518,7 +337,6 @@ mod tests {
             assert_eq!(resources.len(), entries.len());
             assert!(entries.iter().all(|entry| entry.starts_with("minecraft:")));
         }
-        assert_eq!(VANILLA_BANNER_PATTERNS.len(), 43);
         assert_eq!(VANILLA_ENCHANTMENTS.len(), 43);
         assert_eq!(VANILLA_ENCHANTMENT_TOOLTIP_ORDER.len(), 43);
         assert_eq!(VANILLA_TRIM_MATERIALS.len(), 11);
@@ -527,11 +345,6 @@ mod tests {
             .map(|entry| entry.resource_id)
             .collect();
         assert_eq!(trim_material_resources.len(), VANILLA_TRIM_MATERIALS.len());
-        let banner_resources: HashSet<_> = VANILLA_BANNER_PATTERNS
-            .iter()
-            .map(|entry| entry.resource_id)
-            .collect();
-        assert_eq!(banner_resources.len(), VANILLA_BANNER_PATTERNS.len());
         let enchantment_resources: HashSet<_> = VANILLA_ENCHANTMENTS
             .iter()
             .map(|entry| entry.resource_id)
@@ -562,14 +375,6 @@ mod tests {
         assert_eq!(
             VANILLA_INSTRUMENT_KEYS.last(),
             Some(&"minecraft:dream_goat_horn")
-        );
-        assert_eq!(
-            VANILLA_BANNER_PATTERNS.get(31).unwrap().resource_id,
-            "minecraft:gradient"
-        );
-        assert_eq!(
-            VANILLA_BANNER_PATTERNS.get(34).unwrap().resource_id,
-            "minecraft:curly_border"
         );
         assert_eq!(
             VANILLA_ENCHANTMENTS.get(13).unwrap().resource_id,

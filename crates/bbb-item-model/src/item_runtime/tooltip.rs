@@ -22,6 +22,7 @@ use bbb_protocol::{
     },
     ComponentStyle, StyledTextRun,
 };
+use bbb_render_types::BannerPatternKind;
 #[cfg(test)]
 use bbb_world::VANILLA_PAINTING_VARIANTS;
 use bbb_world::{
@@ -36,8 +37,8 @@ use super::attributes::{
 #[cfg(test)]
 use super::bootstrap_catalog::VANILLA_TRIM_MATERIALS;
 use super::bootstrap_catalog::{
-    vanilla_trim_material, VANILLA_BANNER_PATTERNS, VANILLA_ENCHANTMENTS,
-    VANILLA_ENCHANTMENT_TOOLTIP_ORDER, VANILLA_INSTRUMENT_KEYS, VANILLA_TRIM_PATTERN_KEYS,
+    vanilla_trim_material, VANILLA_ENCHANTMENTS, VANILLA_ENCHANTMENT_TOOLTIP_ORDER,
+    VANILLA_INSTRUMENT_KEYS, VANILLA_TRIM_PATTERN_KEYS,
 };
 use super::icon_model::effective_attribute_modifiers;
 use super::mob_effects::{
@@ -620,13 +621,7 @@ fn push_banner_pattern_tooltip_lines(
 }
 
 fn vanilla_banner_pattern_translation_key(registry_id: i32) -> Option<&'static str> {
-    let index = usize::try_from(registry_id).ok()?;
-    Some(VANILLA_BANNER_PATTERNS.get(index)?.translation_key)
-}
-
-pub fn vanilla_banner_pattern_resource_id(registry_id: i32) -> Option<String> {
-    let index = usize::try_from(registry_id).ok()?;
-    Some(VANILLA_BANNER_PATTERNS.get(index)?.resource_id.to_string())
+    BannerPatternKind::for_vanilla_registry_id(registry_id).map(BannerPatternKind::translation_key)
 }
 
 fn italic_gray_tooltip_line(text: String) -> NativeItemTooltipLine {
@@ -1088,9 +1083,9 @@ mod tests {
     #[test]
     fn vanilla_banner_pattern_translation_keys_follow_26_1_bootstrap_order() {
         assert_eq!(
-            VANILLA_BANNER_PATTERNS
-                .iter()
-                .map(|entry| entry.translation_key)
+            (0..43)
+                .filter_map(BannerPatternKind::for_vanilla_registry_id)
+                .map(BannerPatternKind::translation_key)
                 .collect::<Vec<_>>()
                 .as_slice(),
             &[
@@ -1150,10 +1145,10 @@ mod tests {
         assert_eq!(vanilla_banner_pattern_translation_key(43), None);
         assert_eq!(vanilla_banner_pattern_translation_key(-1), None);
         assert_eq!(
-            vanilla_banner_pattern_resource_id(5).as_deref(),
+            BannerPatternKind::for_vanilla_registry_id(5).map(BannerPatternKind::resource_id),
             Some("minecraft:stripe_bottom")
         );
-        assert_eq!(vanilla_banner_pattern_resource_id(43), None);
+        assert_eq!(BannerPatternKind::for_vanilla_registry_id(43), None);
     }
 
     #[test]

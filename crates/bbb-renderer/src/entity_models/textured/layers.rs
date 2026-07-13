@@ -1,6 +1,7 @@
 #[cfg(test)]
 use super::super::catalog::player_texture_ref;
 use super::super::{
+    banner_pattern_texture_ref,
     catalog::{
         boat_texture_ref, camel_texture_ref, chicken_texture_ref, cow_texture_ref,
         horse_coat_texture_ref, horse_markings_texture_ref, llama_texture_ref,
@@ -1976,7 +1977,7 @@ pub(in crate::entity_models) fn banner_textured_layer_passes(
             kind: EntityModelLayerKind::BannerPattern,
             render_type: EntityModelLayerRenderType::EntityTranslucent,
             model_layer: flag_layer,
-            texture: layer.pattern.texture_ref(),
+            texture: banner_pattern_texture_ref(layer.pattern),
             visibility: EntityModelLayerVisibility::RetainedParts(BANNER_FLAG_PARTS),
             tint: layer.color.texture_diffuse_color(),
             order: 0,

@@ -1575,7 +1575,9 @@ fn encode_banner_patterns(
         .iter()
         .map(|layer| {
             let pattern = if let Some(registry_id) = layer.registry_id {
-                debug_snbt_string(&vanilla_banner_pattern_resource_id(registry_id)?)
+                debug_snbt_string(
+                    BannerPatternKind::for_vanilla_registry_id(registry_id)?.resource_id(),
+                )
             } else {
                 format!(
                     "{{asset_id: {}, translation_key: {}}}",

@@ -19,6 +19,7 @@ mod villager_professions;
 mod wolf_variants;
 mod zombie_nautilus_variants;
 
+pub(in crate::entity_models) use banner_patterns::banner_pattern_texture_ref;
 pub use banner_patterns::BannerPatternKind;
 pub use bbb_render_types::VillagerModelType;
 pub use block_attachment::{

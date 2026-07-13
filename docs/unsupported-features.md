@@ -163,10 +163,6 @@ Owner: `scripts/` + each generated catalog's semantic crate
   shared Tree-sitter frontend and checked-in deterministic output; ordinary
   build/test must not read local vanilla sources. Migrate each newly identified
   legacy parser as its own semantic-owner slice.
-- Move the generated 43-entry banner-pattern resource-id and translation-key
-  catalog to a pure shared owner consumed by both item-model tooltips and the
-  renderer presentation catalog. Keep renderer-only texture refs in
-  `bbb-renderer`, and remove the duplicate item-model bootstrap output.
 
 ## Unknown clientbound packets in login, configuration, and play
 
@@ -550,7 +546,8 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   recipes/lock/container-loot)/bees/
   charged-projectile/bundle/writable-book/written-book-exact-component-trees/
   lodestone/profile/banner-pattern-provider-tag/
-  banner-pattern-layers (fixed vanilla resource/asset presentation catalog is generated;
+  banner-pattern-layers (fixed vanilla identity/translation and resource/asset presentation
+  catalogs are generated with shared identity ownership;
   server-synchronized/direct-holder remapping and resource-pack texture resolution remain)/
   trim-named-holders (fixed vanilla material resource/color descriptor is generated;
   server-synchronized material/pattern holder remapping remains)/

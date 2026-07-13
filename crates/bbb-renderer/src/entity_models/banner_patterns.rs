@@ -4,60 +4,11 @@
 // Check: scripts/vanilla-source-tools.sh scripts/generate-bootstrap-catalog.py --check
 
 use super::catalog::EntityModelTextureRef;
+pub use bbb_render_types::BannerPatternKind;
 
 /// Fixed vanilla 26.1 banner-pattern presentation catalog.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(u8)]
-pub enum BannerPatternKind {
-    Base,
-    SquareBottomLeft,
-    SquareBottomRight,
-    SquareTopLeft,
-    SquareTopRight,
-    StripeBottom,
-    StripeTop,
-    StripeLeft,
-    StripeRight,
-    StripeCenter,
-    StripeMiddle,
-    StripeDownright,
-    StripeDownleft,
-    SmallStripes,
-    Cross,
-    StraightCross,
-    TriangleBottom,
-    TriangleTop,
-    TrianglesBottom,
-    TrianglesTop,
-    DiagonalLeft,
-    DiagonalUpRight,
-    DiagonalUpLeft,
-    DiagonalRight,
-    Circle,
-    Rhombus,
-    HalfVertical,
-    HalfHorizontal,
-    HalfVerticalRight,
-    HalfHorizontalBottom,
-    Border,
-    Gradient,
-    GradientUp,
-    Bricks,
-    CurlyBorder,
-    Globe,
-    Creeper,
-    Skull,
-    Flower,
-    Mojang,
-    Piglin,
-    Flow,
-    Guster,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct VanillaBannerPatternPresentation {
-    pattern: BannerPatternKind,
-    resource_id: &'static str,
     texture_ref: EntityModelTextureRef,
 }
 
@@ -279,237 +230,140 @@ pub(in crate::entity_models) const BANNER_GUSTER_TEXTURE_REF: EntityModelTexture
 
 const VANILLA_BANNER_PATTERN_PRESENTATIONS: &[VanillaBannerPatternPresentation] = &[
     VanillaBannerPatternPresentation {
-        pattern: BannerPatternKind::Base,
-        resource_id: "minecraft:base",
         texture_ref: BANNER_PATTERN_BASE_TEXTURE_REF,
     },
     VanillaBannerPatternPresentation {
-        pattern: BannerPatternKind::SquareBottomLeft,
-        resource_id: "minecraft:square_bottom_left",
         texture_ref: BANNER_SQUARE_BOTTOM_LEFT_TEXTURE_REF,
     },
     VanillaBannerPatternPresentation {
-        pattern: BannerPatternKind::SquareBottomRight,
-        resource_id: "minecraft:square_bottom_right",
         texture_ref: BANNER_SQUARE_BOTTOM_RIGHT_TEXTURE_REF,
     },
     VanillaBannerPatternPresentation {
-        pattern: BannerPatternKind::SquareTopLeft,
-        resource_id: "minecraft:square_top_left",
         texture_ref: BANNER_SQUARE_TOP_LEFT_TEXTURE_REF,
     },
     VanillaBannerPatternPresentation {
-        pattern: BannerPatternKind::SquareTopRight,
-        resource_id: "minecraft:square_top_right",
         texture_ref: BANNER_SQUARE_TOP_RIGHT_TEXTURE_REF,
     },
     VanillaBannerPatternPresentation {
-        pattern: BannerPatternKind::StripeBottom,
-        resource_id: "minecraft:stripe_bottom",
         texture_ref: BANNER_STRIPE_BOTTOM_TEXTURE_REF,
     },
     VanillaBannerPatternPresentation {
-        pattern: BannerPatternKind::StripeTop,
-        resource_id: "minecraft:stripe_top",
         texture_ref: BANNER_STRIPE_TOP_TEXTURE_REF,
     },
     VanillaBannerPatternPresentation {
-        pattern: BannerPatternKind::StripeLeft,
-        resource_id: "minecraft:stripe_left",
         texture_ref: BANNER_STRIPE_LEFT_TEXTURE_REF,
     },
     VanillaBannerPatternPresentation {
-        pattern: BannerPatternKind::StripeRight,
-        resource_id: "minecraft:stripe_right",
         texture_ref: BANNER_STRIPE_RIGHT_TEXTURE_REF,
     },
     VanillaBannerPatternPresentation {
-        pattern: BannerPatternKind::StripeCenter,
-        resource_id: "minecraft:stripe_center",
         texture_ref: BANNER_STRIPE_CENTER_TEXTURE_REF,
     },
     VanillaBannerPatternPresentation {
-        pattern: BannerPatternKind::StripeMiddle,
-        resource_id: "minecraft:stripe_middle",
         texture_ref: BANNER_STRIPE_MIDDLE_TEXTURE_REF,
     },
     VanillaBannerPatternPresentation {
-        pattern: BannerPatternKind::StripeDownright,
-        resource_id: "minecraft:stripe_downright",
         texture_ref: BANNER_STRIPE_DOWNRIGHT_TEXTURE_REF,
     },
     VanillaBannerPatternPresentation {
-        pattern: BannerPatternKind::StripeDownleft,
-        resource_id: "minecraft:stripe_downleft",
         texture_ref: BANNER_STRIPE_DOWNLEFT_TEXTURE_REF,
     },
     VanillaBannerPatternPresentation {
-        pattern: BannerPatternKind::SmallStripes,
-        resource_id: "minecraft:small_stripes",
         texture_ref: BANNER_SMALL_STRIPES_TEXTURE_REF,
     },
     VanillaBannerPatternPresentation {
-        pattern: BannerPatternKind::Cross,
-        resource_id: "minecraft:cross",
         texture_ref: BANNER_CROSS_TEXTURE_REF,
     },
     VanillaBannerPatternPresentation {
-        pattern: BannerPatternKind::StraightCross,
-        resource_id: "minecraft:straight_cross",
         texture_ref: BANNER_STRAIGHT_CROSS_TEXTURE_REF,
     },
     VanillaBannerPatternPresentation {
-        pattern: BannerPatternKind::TriangleBottom,
-        resource_id: "minecraft:triangle_bottom",
         texture_ref: BANNER_TRIANGLE_BOTTOM_TEXTURE_REF,
     },
     VanillaBannerPatternPresentation {
-        pattern: BannerPatternKind::TriangleTop,
-        resource_id: "minecraft:triangle_top",
         texture_ref: BANNER_TRIANGLE_TOP_TEXTURE_REF,
     },
     VanillaBannerPatternPresentation {
-        pattern: BannerPatternKind::TrianglesBottom,
-        resource_id: "minecraft:triangles_bottom",
         texture_ref: BANNER_TRIANGLES_BOTTOM_TEXTURE_REF,
     },
     VanillaBannerPatternPresentation {
-        pattern: BannerPatternKind::TrianglesTop,
-        resource_id: "minecraft:triangles_top",
         texture_ref: BANNER_TRIANGLES_TOP_TEXTURE_REF,
     },
     VanillaBannerPatternPresentation {
-        pattern: BannerPatternKind::DiagonalLeft,
-        resource_id: "minecraft:diagonal_left",
         texture_ref: BANNER_DIAGONAL_LEFT_TEXTURE_REF,
     },
     VanillaBannerPatternPresentation {
-        pattern: BannerPatternKind::DiagonalUpRight,
-        resource_id: "minecraft:diagonal_up_right",
         texture_ref: BANNER_DIAGONAL_UP_RIGHT_TEXTURE_REF,
     },
     VanillaBannerPatternPresentation {
-        pattern: BannerPatternKind::DiagonalUpLeft,
-        resource_id: "minecraft:diagonal_up_left",
         texture_ref: BANNER_DIAGONAL_UP_LEFT_TEXTURE_REF,
     },
     VanillaBannerPatternPresentation {
-        pattern: BannerPatternKind::DiagonalRight,
-        resource_id: "minecraft:diagonal_right",
         texture_ref: BANNER_DIAGONAL_RIGHT_TEXTURE_REF,
     },
     VanillaBannerPatternPresentation {
-        pattern: BannerPatternKind::Circle,
-        resource_id: "minecraft:circle",
         texture_ref: BANNER_CIRCLE_TEXTURE_REF,
     },
     VanillaBannerPatternPresentation {
-        pattern: BannerPatternKind::Rhombus,
-        resource_id: "minecraft:rhombus",
         texture_ref: BANNER_RHOMBUS_TEXTURE_REF,
     },
     VanillaBannerPatternPresentation {
-        pattern: BannerPatternKind::HalfVertical,
-        resource_id: "minecraft:half_vertical",
         texture_ref: BANNER_HALF_VERTICAL_TEXTURE_REF,
     },
     VanillaBannerPatternPresentation {
-        pattern: BannerPatternKind::HalfHorizontal,
-        resource_id: "minecraft:half_horizontal",
         texture_ref: BANNER_HALF_HORIZONTAL_TEXTURE_REF,
     },
     VanillaBannerPatternPresentation {
-        pattern: BannerPatternKind::HalfVerticalRight,
-        resource_id: "minecraft:half_vertical_right",
         texture_ref: BANNER_HALF_VERTICAL_RIGHT_TEXTURE_REF,
     },
     VanillaBannerPatternPresentation {
-        pattern: BannerPatternKind::HalfHorizontalBottom,
-        resource_id: "minecraft:half_horizontal_bottom",
         texture_ref: BANNER_HALF_HORIZONTAL_BOTTOM_TEXTURE_REF,
     },
     VanillaBannerPatternPresentation {
-        pattern: BannerPatternKind::Border,
-        resource_id: "minecraft:border",
         texture_ref: BANNER_BORDER_TEXTURE_REF,
     },
     VanillaBannerPatternPresentation {
-        pattern: BannerPatternKind::Gradient,
-        resource_id: "minecraft:gradient",
         texture_ref: BANNER_GRADIENT_TEXTURE_REF,
     },
     VanillaBannerPatternPresentation {
-        pattern: BannerPatternKind::GradientUp,
-        resource_id: "minecraft:gradient_up",
         texture_ref: BANNER_GRADIENT_UP_TEXTURE_REF,
     },
     VanillaBannerPatternPresentation {
-        pattern: BannerPatternKind::Bricks,
-        resource_id: "minecraft:bricks",
         texture_ref: BANNER_BRICKS_TEXTURE_REF,
     },
     VanillaBannerPatternPresentation {
-        pattern: BannerPatternKind::CurlyBorder,
-        resource_id: "minecraft:curly_border",
         texture_ref: BANNER_CURLY_BORDER_TEXTURE_REF,
     },
     VanillaBannerPatternPresentation {
-        pattern: BannerPatternKind::Globe,
-        resource_id: "minecraft:globe",
         texture_ref: BANNER_GLOBE_TEXTURE_REF,
     },
     VanillaBannerPatternPresentation {
-        pattern: BannerPatternKind::Creeper,
-        resource_id: "minecraft:creeper",
         texture_ref: BANNER_CREEPER_TEXTURE_REF,
     },
     VanillaBannerPatternPresentation {
-        pattern: BannerPatternKind::Skull,
-        resource_id: "minecraft:skull",
         texture_ref: BANNER_SKULL_TEXTURE_REF,
     },
     VanillaBannerPatternPresentation {
-        pattern: BannerPatternKind::Flower,
-        resource_id: "minecraft:flower",
         texture_ref: BANNER_FLOWER_TEXTURE_REF,
     },
     VanillaBannerPatternPresentation {
-        pattern: BannerPatternKind::Mojang,
-        resource_id: "minecraft:mojang",
         texture_ref: BANNER_MOJANG_TEXTURE_REF,
     },
     VanillaBannerPatternPresentation {
-        pattern: BannerPatternKind::Piglin,
-        resource_id: "minecraft:piglin",
         texture_ref: BANNER_PIGLIN_TEXTURE_REF,
     },
     VanillaBannerPatternPresentation {
-        pattern: BannerPatternKind::Flow,
-        resource_id: "minecraft:flow",
         texture_ref: BANNER_FLOW_TEXTURE_REF,
     },
     VanillaBannerPatternPresentation {
-        pattern: BannerPatternKind::Guster,
-        resource_id: "minecraft:guster",
         texture_ref: BANNER_GUSTER_TEXTURE_REF,
     },
 ];
 
-impl BannerPatternKind {
-    pub fn for_resource_id(resource_id: &str) -> Option<Self> {
-        VANILLA_BANNER_PATTERN_PRESENTATIONS
-            .iter()
-            .find(|entry| entry.resource_id == resource_id)
-            .map(|entry| entry.pattern)
-    }
-
-    pub fn resource_id(self) -> &'static str {
-        VANILLA_BANNER_PATTERN_PRESENTATIONS[self as usize].resource_id
-    }
-
-    pub(in crate::entity_models) fn texture_ref(self) -> EntityModelTextureRef {
-        VANILLA_BANNER_PATTERN_PRESENTATIONS[self as usize].texture_ref
-    }
+pub(in crate::entity_models) fn banner_pattern_texture_ref(
+    pattern: BannerPatternKind,
+) -> EntityModelTextureRef {
+    VANILLA_BANNER_PATTERN_PRESENTATIONS[pattern.vanilla_registry_index()].texture_ref
 }
 
 #[cfg(test)]
@@ -521,33 +375,17 @@ mod tests {
     #[test]
     fn banner_pattern_catalog_is_complete_ordered_and_unique() {
         assert_eq!(VANILLA_BANNER_PATTERN_PRESENTATIONS.len(), 43);
-        let mut resources = HashSet::new();
         let mut textures = HashSet::new();
-        for (index, entry) in VANILLA_BANNER_PATTERN_PRESENTATIONS.iter().enumerate() {
-            assert_eq!(entry.pattern as usize, index);
-            assert!(resources.insert(entry.resource_id));
+        for entry in VANILLA_BANNER_PATTERN_PRESENTATIONS {
             assert!(textures.insert(entry.texture_ref.path));
             assert_eq!(entry.texture_ref.size, [64, 64]);
         }
     }
 
     #[test]
-    fn banner_pattern_catalog_preserves_resource_and_asset_mappings() {
+    fn banner_pattern_catalog_preserves_asset_mappings() {
         assert_eq!(
-            BannerPatternKind::for_resource_id("minecraft:base"),
-            Some(BannerPatternKind::Base)
-        );
-        assert_eq!(
-            BannerPatternKind::for_resource_id("minecraft:diagonal_up_right"),
-            Some(BannerPatternKind::DiagonalUpRight)
-        );
-        assert_eq!(
-            BannerPatternKind::for_resource_id("minecraft:ominous"),
-            None
-        );
-        assert_eq!(BannerPatternKind::Guster.resource_id(), "minecraft:guster");
-        assert_eq!(
-            BannerPatternKind::SmallStripes.texture_ref().path,
+            banner_pattern_texture_ref(BannerPatternKind::SmallStripes).path,
             "textures/entity/banner/small_stripes.png"
         );
     }
@@ -572,9 +410,7 @@ mod tests {
                     continue;
                 }
                 let source = fs::read_to_string(&path).unwrap();
-                if source.contains("enum BannerPatternKind")
-                    || source.contains("fn banner_pattern_kind(")
-                    || source.contains("fn banner_pattern_texture_ref(")
+                if source.contains("fn banner_pattern_texture_ref(")
                     || source.contains("const BANNER_PATTERN_BASE_TEXTURE_REF")
                 {
                     violations.push(display.to_string());

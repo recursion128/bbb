@@ -13232,3 +13232,17 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   `VillagerType.bootstrap` 固定 desert/jungle/plains/savanna/snow/swamp/taiga 顺序，并只注册在
   `BuiltInRegistries`，不属于 `RegistryDataLoader` 同步 registry。generator update/check、
   render-types/item-model/renderer/native focused tests 与 workspace gate 通过。
+
+## 2026-07-13：Share the banner-pattern identity catalog
+
+- [x] 将 generator 生成的 43 项 `BannerPatternKind`、resource id、translation key 与 vanilla
+  bootstrap ordinal 下沉到 `bbb-render-types` 纯值边界；`bbb-renderer` 保留根级 re-export，并只
+  生成 64×64 banner texture presentation 映射。
+- [x] item-model tooltip 与 native component SNBT 投影直接消费共享 typed API，删除 item-model
+  `VanillaBannerPattern`/`VANILLA_BANNER_PATTERNS` 平行输出和公开 resource helper；renderer 也不再
+  重复保存 resource id。
+- [x] generator 同时生成 identity 与 presentation 两类反向扫描、完整性/顺序/唯一性/边界测试。
+  原版 `BannerPatterns.bootstrap` 确认固定 43 项 identity/translation 公式；banner pattern 仍属于
+  `RegistryDataLoader.SYNCHRONIZED_REGISTRIES`，这里的 ordinal API 仅供缺少 session registry 的
+  vanilla 26.1 回退，不冒充动态 holder remapping。generator update/check、render-types/item-model/
+  renderer/native focused tests与 workspace gate 通过。
