@@ -13016,3 +13016,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   `clear_level_bound_state` 同样不清 maps，map canonical owner 已具备等价保留语义。
 - [x] 新 regression 在 Respawn 前创建 map，跨 dimension 后锁定同 id/scale/locked 内容与 tracked counter；
   从 stale Respawn TODO 删除 map preservation，LocalPlayer/music/debug subscriber/LevelLoadTracker 仍开放。
+
+## 2026-07-13：ForgetLevelChunk last-terrain clear
+
+- [x] 修复 `maybe_upload_decoded_terrain` 的 empty-world early return：若此前上传过 chunk，调用 renderer
+  empty `TerrainMeshLayers` 一次性清除 opaque/cutout/translucent GPU terrain。
+- [x] empty transition 同步 decoded/block/light/biome observed+uploaded counters、清 debounce/reload flag，避免
+  每帧重复 clear；unit test 锁定第一次 clear、第二次 no-op 与 current snapshot。
+- [x] canonical chunk removal 已连同其 light payload 删除；未来 queued-light 与 typed debug-subscription owner
+  的 per-chunk cleanup 仍保留在 terrain TODO，packet runtime/tests 继续 partial。

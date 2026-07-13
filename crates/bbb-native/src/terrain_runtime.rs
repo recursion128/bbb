@@ -3,7 +3,7 @@ use std::time::{Duration, Instant};
 use bbb_renderer::terrain::{
     build_terrain_mesh_layers_with_atlas_and_camera, TerrainCardinalLighting, TerrainCell,
     TerrainChunkSnapshot, TerrainFluid, TerrainFluidKind, TerrainLight, TerrainMaterialClass,
-    TerrainSkipRendering, TerrainTint,
+    TerrainMeshLayers, TerrainSkipRendering, TerrainTint,
 };
 use bbb_world::{
     block_name_is_half_transparent, block_name_is_leaves, ChunkPos, WorldCardinalLighting,
@@ -114,7 +114,9 @@ pub(crate) fn maybe_upload_decoded_terrain(
     let chunk_count = world.chunk_count();
     let reload_all_chunks_requested = upload.reload_all_chunks_requested;
     if chunk_count == 0 {
-        upload.reload_all_chunks_requested = false;
+        if synchronize_empty_terrain_upload(upload, &world_counters) {
+            renderer.upload_terrain_mesh_layers(TerrainMeshLayers::default());
+        }
         return;
     }
     if terrain_upload_is_current(upload, &world_counters, chunk_count) {
@@ -185,6 +187,25 @@ pub(crate) fn maybe_upload_decoded_terrain(
     upload.biome_updates_applied = world_counters.biome_updates_applied;
     upload.uploaded_chunks = chunk_count;
     upload.reload_all_chunks_requested = false;
+}
+
+fn synchronize_empty_terrain_upload(
+    upload: &mut TerrainUploadState,
+    world_counters: &WorldCounters,
+) -> bool {
+    let clear_renderer = upload.uploaded_chunks > 0;
+    upload.decoded_chunks = world_counters.chunks_decoded;
+    upload.block_updates_applied = world_counters.block_updates_applied;
+    upload.light_updates_applied = world_counters.light_updates_applied;
+    upload.biome_updates_applied = world_counters.biome_updates_applied;
+    upload.uploaded_chunks = 0;
+    upload.observed_decoded_chunks = world_counters.chunks_decoded;
+    upload.observed_block_updates_applied = world_counters.block_updates_applied;
+    upload.observed_light_updates_applied = world_counters.light_updates_applied;
+    upload.observed_biome_updates_applied = world_counters.biome_updates_applied;
+    upload.last_observed_change = None;
+    upload.reload_all_chunks_requested = false;
+    clear_renderer
 }
 
 fn terrain_upload_is_current(
@@ -520,6 +541,34 @@ mod tests {
         upload.request_reload_all_chunks();
 
         assert!(!terrain_upload_is_current(&upload, &counters, 4));
+    }
+
+    #[test]
+    fn empty_world_transition_clears_uploaded_terrain_once_and_syncs_counters() {
+        let counters = WorldCounters {
+            chunks_decoded: 7,
+            block_updates_applied: 2,
+            light_updates_applied: 3,
+            biome_updates_applied: 5,
+            ..Default::default()
+        };
+        let mut upload = TerrainUploadState {
+            uploaded_chunks: 1,
+            reload_all_chunks_requested: true,
+            last_observed_change: Some(Instant::now()),
+            ..Default::default()
+        };
+
+        assert!(synchronize_empty_terrain_upload(&mut upload, &counters));
+        assert!(terrain_upload_is_current(&upload, &counters, 0));
+        assert_eq!(upload.observed_decoded_chunks, 7);
+        assert_eq!(upload.observed_block_updates_applied, 2);
+        assert_eq!(upload.observed_light_updates_applied, 3);
+        assert_eq!(upload.observed_biome_updates_applied, 5);
+        assert_eq!(upload.last_observed_change, None);
+        assert!(!upload.reload_all_chunks_requested);
+
+        assert!(!synchronize_empty_terrain_upload(&mut upload, &counters));
     }
 
     #[test]

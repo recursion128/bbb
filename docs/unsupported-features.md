@@ -843,11 +843,11 @@ back into a todo. Do not delete these.
   net-event drain and uses a coarse terrain-upload counter. Vanilla queues them
   through `ClientLevel.queueLightUpdate`, consumes a bounded amount per frame,
   and calls `setSectionDirtyWithNeighbors` for changed standalone light sections.
-- **ForgetLevelChunk runtime cache cleanup.** On unload, clear the renderer even
-  when the last canonical chunk disappears, remove queued sky/block light for
-  every section, and drop typed debug-subscription values for that chunk. World
-  chunk-column removal is covered; add runtime tests that stale terrain, light and
-  debug presentation cannot survive the packet.
+- **ForgetLevelChunk runtime cache cleanup.** When the queued-light and typed
+  debug-subscription owners land, remove their values for every unloaded chunk
+  section. Canonical chunk/light data and last-chunk GPU terrain are already
+  removed; add reverse tests with those future owners so stale light/debug
+  presentation cannot survive the packet.
 - Decode synchronized biome environment-attribute modifier compounds and the
   remaining positional visual fields beyond current fog/sky/water-fog colors
   and water-fog end distance; then match vanilla's 3x3 neighboring-section

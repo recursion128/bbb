@@ -8271,6 +8271,7 @@
         "runtime_side_effect": {
           "evidence": [
             "crates/bbb-native/src/terrain_runtime.rs#maybe_upload_decoded_terrain",
+            "crates/bbb-native/src/terrain_runtime.rs#synchronize_empty_terrain_upload",
             "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleForgetLevelChunk"
           ],
           "gap": "docs/unsupported-features.md#block-entities-and-terrain",
@@ -8283,7 +8284,8 @@
             "crates/bbb-net/src/probe/play.rs#probe_applies_chunk_view_and_block_updates_to_world",
             "crates/bbb-world/src/chunks/tests.rs#forgets_loaded_chunk",
             "crates/bbb-world/src/chunks/tests.rs#forget_missing_chunk_is_counted_but_not_applied",
-            "crates/bbb-native/src/runtime/events/tests/world_state_lifecycle.rs#terrain_chunk_events_update_world_counters"
+            "crates/bbb-native/src/runtime/events/tests/world_state_lifecycle.rs#terrain_chunk_events_update_world_counters",
+            "crates/bbb-native/src/terrain_runtime.rs#empty_world_transition_clears_uploaded_terrain_once_and_syncs_counters"
           ],
           "gap": "docs/unsupported-features.md#block-entities-and-terrain",
           "status": "partial"
