@@ -69,6 +69,9 @@ fn simulation_distance_only_gates_living_death_ticks_by_chunk_distance() {
     const FLOAT_SERIALIZER_ID: i32 = 3;
 
     let mut store = WorldStore::new();
+    let mut login = protocol_play_login(99);
+    login.simulation_distance = 2;
+    store.apply_login(&login);
     store.set_local_player_pose(crate::LocalPlayerPoseState {
         position: ProtocolVec3d {
             x: 15.9,
@@ -77,7 +80,6 @@ fn simulation_distance_only_gates_living_death_ticks_by_chunk_distance() {
         },
         ..crate::LocalPlayerPoseState::default()
     });
-    store.apply_simulation_distance(bbb_protocol::packets::SetSimulationDistance { distance: 2 });
     for (id, position) in [
         (62, [47.9, 64.0, -16.0]),
         (63, [48.0, 64.0, 0.0]),

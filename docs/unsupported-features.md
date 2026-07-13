@@ -91,9 +91,9 @@ Owner: `bbb-protocol`
   direct `ambient_light`, and `has_skylight`/`has_ceiling` weather gating are
   complete.
 - Complete play Login session initialization beyond the current player-id and
-  partial dimension/gameplay projection: retain the initial level set, chunk
-  radius, simulation distance, secure-chat enforcement, seed and portal
-  cooldown; reset level-bound debug/chat/camera/player state; and enter the
+  partial dimension/gameplay projection: retain the initial level set,
+  secure-chat enforcement, seed and portal cooldown; reset level-bound
+  debug/chat/camera/player state; and enter the
   vanilla level-load readiness lifecycle without introducing an
   `IntegratedServer` owner.
 - Complete play Respawn lifecycle from

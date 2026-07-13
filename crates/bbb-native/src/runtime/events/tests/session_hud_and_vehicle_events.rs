@@ -981,6 +981,11 @@ fn login_tracks_local_player_id_in_world() {
         2
     );
     assert_eq!(world.local_player_id(), Some(9));
+    assert_eq!(world.chunk_cache_center(), None);
+    assert_eq!(world.chunk_cache_radius(), Some(8));
+    assert_eq!(world.local_player().simulation_distance, Some(6));
+    assert_eq!(world.counters().chunk_cache_radius_updates_received, 0);
+    assert_eq!(world.counters().simulation_distance_packets, 0);
     assert_eq!(world.counters().play_logins_received, 1);
     assert_eq!(world.counters().respawns_received, 1);
 }

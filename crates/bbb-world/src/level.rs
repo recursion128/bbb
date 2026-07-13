@@ -273,6 +273,14 @@ impl WorldStore {
 
     pub fn apply_login(&mut self, login: &ProtocolPlayLogin) {
         self.counters.play_logins_received += 1;
+        // Vanilla constructs the new ClientChunkCache and ClientLevel from these
+        // login fields before later SetChunkCacheRadius/SetSimulationDistance
+        // packets may replace them.
+        self.chunk_view = crate::ChunkViewState {
+            center: None,
+            radius: Some(login.chunk_radius),
+        };
+        self.local_player.simulation_distance = Some(login.simulation_distance);
         self.removed_player_vehicle_id = None;
         if let Some(local_player_id) = self.local_player_id {
             self.clear_local_player_mount(local_player_id);
@@ -1075,7 +1083,22 @@ mod tests {
             }
         );
         assert_eq!(store.chunk_count(), 0);
+        assert_eq!(store.chunk_cache_center(), None);
+        assert_eq!(store.chunk_cache_radius(), Some(8));
+        assert_eq!(store.local_player().simulation_distance, Some(6));
+        assert_eq!(store.counters().chunk_cache_radius_updates_received, 0);
+        assert_eq!(store.counters().simulation_distance_packets, 0);
         assert_eq!(store.counters().play_logins_received, 1);
+        for x in [11, 12] {
+            let mut chunk = stale_chunk();
+            chunk.pos = ChunkPos { x, z: 0 };
+            store.chunks.push(chunk);
+        }
+        store.apply_set_chunk_cache_center(bbb_protocol::packets::SetChunkCacheCenter {
+            chunk_x: 0,
+            chunk_z: 0,
+        });
+        assert_eq!(store.chunk_positions(), vec![ChunkPos { x: 11, z: 0 }]);
         let level = store.level_info().unwrap();
         assert_eq!(level.dimension, "minecraft:the_nether");
         assert_eq!(level.dimension_type_id, 1);

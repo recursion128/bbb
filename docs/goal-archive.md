@@ -12952,5 +12952,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   同步 distance 计算 chunk chessboard range，复刻 `ClientLevel.shouldTickDeath`。
 - [x] gate 只控制 dying LivingEntity 的 generic death counter；范围外实体的 age、hurt 和其它 client
   presentation tick 继续，LocalPlayer 跨 chunk 后可恢复推进，负坐标使用 floor + Euclidean chunk division。
-- [x] world 边界/恢复/zero-distance tests 与 native event-drain test 闭合 runtime coverage；尚未投影的
-  Login 初始 simulation distance 仍留在 Login lifecycle gap，不由本 packet slice 虚报完成。
+- [x] world 边界/恢复/zero-distance tests 与 native event-drain test 闭合 runtime coverage；该 packet
+  slice 没有把 Login 初始字段外推为完成，后续独立初始化切片见下节。
+
+## 2026-07-13：Login initial radius projection
+
+- [x] `ClientboundLoginPacket` 的初始 chunk radius 与 simulation distance 直接初始化现有
+  `ChunkViewState`/`LocalPlayerState` owner；后续 SetChunkCacheRadius/SetSimulationDistance 继续覆盖，
+  Login 初始化不伪增两个增量 packet counter。
+- [x] 新 ClientLevel 初始化会清除旧 chunk center，world/native tests 锁定初值，entity death-distance
+  test 直接消费 Login distance；initial levels/secure-chat/seed/portal cooldown 与其余 lifecycle 仍开放。
