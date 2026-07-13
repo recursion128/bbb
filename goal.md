@@ -244,7 +244,7 @@ entity metadata extractor 是统一 Tree-sitter Java extraction foundation 的�
    membership：必须由 baked material/sprite 的实际 transparency 动态决定，缺失贴图使用
    明确的 opaque missing-sprite fallback，不能按 block 名或旧 render-type 表猜测。
 2. **跨 crate 去重与反向门禁**：审计 protocol/world/native/item-model/renderer 中
-   重复 registry/ordinal 表和生产代码裸 id；消费者改用 typed catalog API，并增加
+   重复 registry/ordinal/UI 静态 membership 表和生产代码裸 id；消费者改用 typed catalog API，并增加
    机械扫描或结构测试，阻止已收敛语义重新出现第二事实源。测试 fixture 可保留
    局部数字，但须标明 wire 样本，不得被生产逻辑引用。反向门禁若位于 generated
    catalog 中，必须由同一 generator 模板输出，禁止手改生成物造成 update/check 漂移。

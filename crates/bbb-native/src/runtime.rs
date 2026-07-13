@@ -162,11 +162,12 @@ use bbb_protocol::attribute_types::{
 use bbb_protocol::entity_types::*;
 use bbb_protocol::menu_types::VANILLA_MENU_TYPE_LOOM_ID;
 use bbb_protocol::mob_effect_types::{
-    VANILLA_MOB_EFFECT_CONDUIT_POWER_ID, VANILLA_MOB_EFFECT_DARKNESS_ID,
-    VANILLA_MOB_EFFECT_HASTE_ID, VANILLA_MOB_EFFECT_HUNGER_ID, VANILLA_MOB_EFFECT_JUMP_BOOST_ID,
-    VANILLA_MOB_EFFECT_NIGHT_VISION_ID, VANILLA_MOB_EFFECT_POISON_ID,
-    VANILLA_MOB_EFFECT_REGENERATION_ID, VANILLA_MOB_EFFECT_RESISTANCE_ID,
-    VANILLA_MOB_EFFECT_SPEED_ID, VANILLA_MOB_EFFECT_STRENGTH_ID, VANILLA_MOB_EFFECT_WITHER_ID,
+    VANILLA_BEACON_EFFECT_TIERS, VANILLA_MOB_EFFECT_CONDUIT_POWER_ID,
+    VANILLA_MOB_EFFECT_DARKNESS_ID, VANILLA_MOB_EFFECT_HASTE_ID, VANILLA_MOB_EFFECT_HUNGER_ID,
+    VANILLA_MOB_EFFECT_JUMP_BOOST_ID, VANILLA_MOB_EFFECT_NIGHT_VISION_ID,
+    VANILLA_MOB_EFFECT_POISON_ID, VANILLA_MOB_EFFECT_REGENERATION_ID,
+    VANILLA_MOB_EFFECT_RESISTANCE_ID, VANILLA_MOB_EFFECT_SPEED_ID, VANILLA_MOB_EFFECT_STRENGTH_ID,
+    VANILLA_MOB_EFFECT_WITHER_ID,
 };
 
 mod control_requests;
@@ -330,15 +331,6 @@ const BEACON_PRIMARY_EFFECT_Y: i32 = 22;
 const BEACON_PRIMARY_EFFECT_ROW_SPACING: i32 = 25;
 const BEACON_SECONDARY_EFFECT_CENTER_X: i32 = 167;
 const BEACON_SECONDARY_EFFECT_Y: i32 = 47;
-const BEACON_PRIMARY_EFFECT_ROWS: [&[i32]; 3] = [
-    &[VANILLA_MOB_EFFECT_SPEED_ID, VANILLA_MOB_EFFECT_HASTE_ID],
-    &[
-        VANILLA_MOB_EFFECT_RESISTANCE_ID,
-        VANILLA_MOB_EFFECT_JUMP_BOOST_ID,
-    ],
-    &[VANILLA_MOB_EFFECT_STRENGTH_ID],
-];
-const BEACON_SECONDARY_EFFECTS: &[i32] = &[VANILLA_MOB_EFFECT_REGENERATION_ID];
 const VANILLA_OVERWORLD_DAY_PERIOD_TICKS: i64 = 24_000;
 const BEACON_CONFIRM_BUTTON_X: i32 = 164;
 const BEACON_CANCEL_BUTTON_X: i32 = 190;
@@ -10873,7 +10865,7 @@ fn push_beacon_effect_button_layers(
 
 fn beacon_effect_buttons(primary_effect: Option<i32>) -> Vec<BeaconEffectButton> {
     let mut buttons = Vec::with_capacity(7);
-    for (tier, effects) in BEACON_PRIMARY_EFFECT_ROWS.iter().enumerate() {
+    for (tier, effects) in VANILLA_BEACON_EFFECT_TIERS[..3].iter().enumerate() {
         let total_width = effects.len() as i32 * BEACON_EFFECT_BUTTON_SIZE as i32
             + (effects.len() as i32 - 1) * 2;
         for (column, effect_id) in effects.iter().enumerate() {
@@ -10890,9 +10882,10 @@ fn beacon_effect_buttons(primary_effect: Option<i32>) -> Vec<BeaconEffectButton>
         }
     }
 
-    let count = BEACON_SECONDARY_EFFECTS.len() as i32 + 1;
+    let secondary_effects = VANILLA_BEACON_EFFECT_TIERS[3];
+    let count = secondary_effects.len() as i32 + 1;
     let total_width = count * BEACON_EFFECT_BUTTON_SIZE as i32 + (count - 1) * 2;
-    for (column, effect_id) in BEACON_SECONDARY_EFFECTS.iter().enumerate() {
+    for (column, effect_id) in secondary_effects.iter().enumerate() {
         buttons.push(BeaconEffectButton {
             primary: false,
             tier: 3,
@@ -10909,7 +10902,7 @@ fn beacon_effect_buttons(primary_effect: Option<i32>) -> Vec<BeaconEffectButton>
             tier: 3,
             effect_id,
             x: BEACON_SECONDARY_EFFECT_CENTER_X
-                + i32::try_from(BEACON_SECONDARY_EFFECTS.len()).unwrap_or_default()
+                + i32::try_from(secondary_effects.len()).unwrap_or_default()
                     * BEACON_EFFECT_BUTTON_SPACING
                 - total_width / 2,
             y: BEACON_SECONDARY_EFFECT_Y,

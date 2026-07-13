@@ -47,6 +47,12 @@ class MobEffectAttributeModifierEntry:
 
 
 @dataclass(frozen=True)
+class BeaconEffectReference:
+    constant_name: str
+    expression: JavaExpression
+
+
+@dataclass(frozen=True)
 class MenuTypeEntry:
     constant_name: str
     resource_id: str
@@ -583,6 +589,73 @@ def mob_effect_entries(
             f"expected {expected_modifier_count} mob effect attribute modifiers"
         )
     return entries
+
+
+def beacon_effect_tiers(
+    source: JavaSource,
+    expected_tier_count: int = 4,
+    expected_effect_count: int = 6,
+) -> list[tuple[BeaconEffectReference, ...]]:
+    fields = [field for field in source.fields if field.name == "BEACON_EFFECTS"]
+    if len(fields) != 1 or fields[0].initializer is None:
+        raise GameplayIdExtractionError(
+            f"{source.relative_path}: expected one initialized BEACON_EFFECTS field"
+        )
+    initializer = fields[0].initializer
+
+    def list_arguments(expression: JavaExpression) -> tuple[JavaExpression, ...]:
+        node = expression.node
+        name = node.child_by_field_name("name")
+        arguments = node.child_by_field_name("arguments")
+        object_node = node.child_by_field_name("object")
+        if (
+            node.type != "method_invocation"
+            or name is None
+            or source.text(name) != "of"
+            or arguments is None
+            or object_node is None
+            or source.expression(object_node).canonical != "List"
+        ):
+            _fail(source, expression, "beacon effect tiers must use List.of")
+        return tuple(source.expression(node) for node in arguments.named_children)
+
+    tiers: list[tuple[BeaconEffectReference, ...]] = []
+    for tier_expression in list_arguments(initializer):
+        references = []
+        for effect_expression in list_arguments(tier_expression):
+            node = effect_expression.node
+            object_node = node.child_by_field_name("object")
+            field_node = node.child_by_field_name("field")
+            if (
+                node.type != "field_access"
+                or object_node is None
+                or field_node is None
+                or source.expression(object_node).canonical != "MobEffects"
+            ):
+                _fail(
+                    source,
+                    effect_expression,
+                    "beacon effect must reference a MobEffects constant",
+                )
+            references.append(
+                BeaconEffectReference(source.text(field_node), effect_expression)
+            )
+        tiers.append(tuple(references))
+
+    if len(tiers) != expected_tier_count:
+        _fail(
+            source,
+            initializer,
+            f"expected {expected_tier_count} beacon effect tiers, extracted {len(tiers)}",
+        )
+    effect_count = sum(len(tier) for tier in tiers)
+    if effect_count != expected_effect_count:
+        _fail(
+            source,
+            initializer,
+            f"expected {expected_effect_count} beacon effects, extracted {effect_count}",
+        )
+    return tiers
 
 
 def menu_type_entries(source: JavaSource, expected_count: int = 25) -> list[MenuTypeEntry]:

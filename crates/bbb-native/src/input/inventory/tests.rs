@@ -1,6 +1,9 @@
 use super::*;
 use std::collections::{BTreeMap, BTreeSet};
 
+use bbb_protocol::mob_effect_types::{
+    VANILLA_MOB_EFFECT_REGENERATION_ID, VANILLA_MOB_EFFECT_SPEED_ID, VANILLA_MOB_EFFECT_STRENGTH_ID,
+};
 use bbb_protocol::packets::{
     AddEntity, ContainerButtonClick, ContainerClick, ContainerCloseRequest, ContainerSetContent,
     ContainerSetData, ContainerSlotStateChanged, EntityDataValue, EntityDataValueKind,

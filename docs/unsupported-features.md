@@ -776,8 +776,8 @@ back into a todo. Do not delete these.
 - SetPlayerTeam preserves add/change/remove/join/leave membership semantics, including
   moving a player out of the previous team. Unknown method bytes still differ from
   vanilla's handler no-op, and rich team Components remain plain-text projections.
-- `BeaconMenu`: confirm/cancel hover state, effect highlighted hover state,
-  labels/tooltips.
+- `BeaconMenu`: render confirm/cancel hover state, selected-effect highlight and
+  hover state, labels, and tooltips.
 - `EnchantmentMenu`: animated book model, enchanting glyph text and its
   disabled/highlight coloring, hover tooltips.
 - `CartographyTableMenu`: live map pixels and decorations in the preview area,

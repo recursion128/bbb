@@ -13025,3 +13025,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   每帧重复 clear；unit test 锁定第一次 clear、第二次 no-op 与 current snapshot。
 - [x] canonical chunk removal 已连同其 light payload 删除；未来 queued-light 与 typed debug-subscription owner
   的 per-chunk cleanup 仍保留在 terrain TODO，packet runtime/tests 继续 partial。
+
+## 2026-07-13：Generate Beacon effect tier membership
+
+- [x] gameplay-id extractor 通过共享 Tree-sitter CST 从
+  `BeaconBlockEntity.BEACON_EFFECTS` 提取四层、六项 `MobEffects` 引用，并逐项解析到同批 generated
+  mob-effect catalog；注释/字符串伪调用不参与提取，错误结构带 source span 失败。
+- [x] `bbb-protocol::mob_effect_types::VANILLA_BEACON_EFFECT_TIERS` 成为唯一 checked-in
+  tier/order/membership owner；native 点击命中与 HUD 绘制删除两份平行 primary/secondary 表并共同消费该 API。
+- [x] generator fixture、真实 update/check、顺序测试与 generated 反向扫描锁定来源，生产代码重新声明旧
+  Beacon effect rows 会令测试失败；未改变 Beacon wire、menu state 或屏幕呈现行为。

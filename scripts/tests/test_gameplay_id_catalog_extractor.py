@@ -52,11 +52,60 @@ from gameplay_id_catalog_extractor import (  # noqa: E402
     scoreboard_team_option_entries,
     waypoint_wire_type_entries,
     world_clock_entries,
+    beacon_effect_tiers,
 )
 from vanilla_java_source import parse_source  # noqa: E402
 
 
 class GameplayIdCatalogExtractorTests(unittest.TestCase):
+    def test_beacon_effect_tiers_extract_nested_list_membership_from_cst(self) -> None:
+        source = parse_source(
+            "fixture/BeaconBlockEntity.java",
+            b"""package fixture;
+class BeaconBlockEntity {
+  static final String FAKE = "List.of(MobEffects.FAKE)";
+  static final List<List<Holder<MobEffect>>> BEACON_EFFECTS = List.of(
+      List.of(MobEffects.SPEED, MobEffects.HASTE),
+      List.of(MobEffects.RESISTANCE, MobEffects.JUMP_BOOST),
+      List.of(MobEffects.STRENGTH),
+      List.of(MobEffects.REGENERATION));
+}
+""",
+        )
+
+        tiers = beacon_effect_tiers(source)
+
+        self.assertEqual(
+            [[reference.constant_name for reference in tier] for tier in tiers],
+            [
+                ["SPEED", "HASTE"],
+                ["RESISTANCE", "JUMP_BOOST"],
+                ["STRENGTH"],
+                ["REGENERATION"],
+            ],
+        )
+        self.assertEqual(tiers[0][0].expression.span.relative_path, source.relative_path)
+
+    def test_beacon_effect_tiers_reject_non_mob_effect_reference_with_span(self) -> None:
+        source = parse_source(
+            "fixture/BadBeaconBlockEntity.java",
+            b"""package fixture;
+class BadBeaconBlockEntity {
+  static final List<List<Holder<MobEffect>>> BEACON_EFFECTS = List.of(
+      List.of(OtherEffects.SPEED, MobEffects.HASTE),
+      List.of(MobEffects.RESISTANCE, MobEffects.JUMP_BOOST),
+      List.of(MobEffects.STRENGTH),
+      List.of(MobEffects.REGENERATION));
+}
+""",
+        )
+
+        with self.assertRaisesRegex(
+            GameplayIdExtractionError,
+            r"fixture/BadBeaconBlockEntity\.java:4:15: beacon effect must reference",
+        ):
+            beacon_effect_tiers(source)
+
     def test_stat_catalogs_extract_dispatch_registries_and_custom_formatters(self) -> None:
         source = parse_source(
             "fixture/Stats.java",
