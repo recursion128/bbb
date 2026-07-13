@@ -13702,3 +13702,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] NBT `Number.intValue`/`byteValue`、float range、record defaults、positive duration、严格
   SwingAnimationType 名称、compound shape 与 string map value 均有定向测试；Component、holder、list、
   其余 compound-record persistent Codec 与 native screens 仍开放。
+
+## 2026-07-13：Decode numeric item-behavior dialog components
+
+- [x] 将 component value 定向测试机械抽至 `client/dialog/body/component_value/tests.rs`；对照
+  `FoodProperties`、`UseCooldown`、`Weapon`、`AttackRange` 与 `Enchantable` Codec，typed 投影 5 个
+  required/default numeric record 及 optional Identifier/bool 字段。
+- [x] unrestricted saturation float、strictly-positive seconds、non-negative int/float、六项 attack-range
+  default/range、positive enchantability、NBT 数字转换、missing field 与 invalid Identifier 均有定向测试；
+  Component、holder、list、其余 compound-record persistent Codec 与 native screens 仍开放。
