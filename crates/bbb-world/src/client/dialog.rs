@@ -7,8 +7,13 @@ use serde::{Deserialize, Serialize};
 use crate::{registries::normalize_codec_identifier, RegistrySet};
 
 mod body;
+mod input;
 
 pub use body::{DialogBodyState, DialogItemStackTemplateState, DialogPlainMessageState};
+pub use input::{
+    DialogInputControlState, DialogInputState, DialogNumberRangeState,
+    DialogSingleOptionEntryState, DialogTextMultilineState,
+};
 
 const MAX_DIALOG_SEMANTIC_DEPTH: usize = 64;
 const DIALOG_REGISTRY: &str = "minecraft:dialog";
@@ -100,6 +105,8 @@ pub struct CommonDialogDataState {
     pub body_data: Vec<DialogBodyState>,
     #[serde(default)]
     pub inputs: Vec<NbtSummaryValue>,
+    #[serde(default)]
+    pub input_data: Vec<DialogInputState>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -467,6 +474,7 @@ fn decode_common_dialog_data(entries: &[NbtSummaryEntry]) -> Result<CommonDialog
     };
     let inputs = optional_list(entries, "inputs", "dialog inputs")?;
     let body_data = body::decode_dialog_bodies(&body)?;
+    let input_data = input::decode_dialog_inputs(&inputs)?;
     Ok(CommonDialogDataState {
         title,
         external_title,
@@ -476,6 +484,7 @@ fn decode_common_dialog_data(entries: &[NbtSummaryEntry]) -> Result<CommonDialog
         body,
         body_data,
         inputs,
+        input_data,
     })
 }
 
@@ -691,9 +700,37 @@ mod tests {
             [DialogBodyState::PlainMessage { message }] if message.contents.text == "Compact body" && message.width == 200
         ));
         assert!(common.inputs.is_empty());
+        assert!(common.input_data.is_empty());
         assert_eq!(action.label.text, "gui.ok");
         assert_eq!(action.width, 150);
         assert_eq!(action.action, None);
+    }
+
+    #[test]
+    fn projects_common_dialog_inputs_while_retaining_raw_values() {
+        let raw_input = compound(vec![
+            string_entry("key", "confirmed"),
+            string_entry("type", "minecraft:boolean"),
+            value_entry("label", NbtSummaryValue::String("Confirmed".to_string())),
+            value_entry("initial", NbtSummaryValue::Byte(1)),
+        ]);
+        let data = decode_test_dialog(&compound(vec![
+            string_entry("type", "minecraft:notice"),
+            value_entry("title", NbtSummaryValue::String("Input".to_string())),
+            value_entry("inputs", NbtSummaryValue::List(vec![raw_input.clone()])),
+        ]))
+        .unwrap();
+
+        let DialogDataState::Notice { common, .. } = data else {
+            panic!("expected notice dialog");
+        };
+        assert_eq!(common.inputs, vec![raw_input]);
+        assert_eq!(common.input_data.len(), 1);
+        assert_eq!(common.input_data[0].key, "confirmed");
+        assert!(matches!(
+            common.input_data[0].control,
+            DialogInputControlState::Boolean { initial: true, .. }
+        ));
     }
 
     #[test]

@@ -13647,3 +13647,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   decoration/tooltip flags，以及 message/item width/height defaults 和范围。
 - [x] scalar/compound item template、default namespace、raw component patch、air/unknown item、count 与尺寸
   边界均有定向测试。异构 component patch 值、input/action variants 与 native screens 仍开放。
+
+## 2026-07-13：Decode dialog input semantics
+
+- [x] 新建 `client/dialog/input.rs` semantic owner；对照 `Input`、`InputControlTypes`、
+  `BooleanInput`、`NumberRangeInput`、`SingleOptionInput`、`TextInput` 与 `ParsedTemplate` Codec，
+  typed 投影四类 control、变量 key、label/default、range/options 及 multiline 配置，同时保留 raw inputs。
+- [x] 倒序 range、initial 范围、positive finite step、non-empty/唯一 initial option、1..=1024 width、
+  positive max length/lines、1..=512 multiline height 与 Java UTF-16 初始文本长度均有定向测试。
+  item component patch、typed action 与 native screens 仍开放。

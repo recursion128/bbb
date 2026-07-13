@@ -2222,7 +2222,9 @@
             "crates/bbb-world/src/client/dialog.rs#decodes_context_free_dialog_list_requires_inline_list",
             "crates/bbb-world/src/client/dialog/body.rs#decodes_plain_message_contents_and_width",
             "crates/bbb-world/src/client/dialog/body.rs#decodes_item_body_template_description_defaults_and_flags",
-            "crates/bbb-world/src/client/dialog/body.rs#decodes_compound_item_template_and_rejects_codec_ranges"
+            "crates/bbb-world/src/client/dialog/body.rs#decodes_compound_item_template_and_rejects_codec_ranges",
+            "crates/bbb-world/src/client/dialog/input.rs#DialogInputState",
+            "crates/bbb-world/src/client/dialog.rs#projects_common_dialog_inputs_while_retaining_raw_values"
           ],
           "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
           "status": "partial"
@@ -2258,6 +2260,11 @@
             "crates/bbb-world/src/client/dialog/body.rs#decodes_plain_message_contents_and_width",
             "crates/bbb-world/src/client/dialog/body.rs#decodes_item_body_template_description_defaults_and_flags",
             "crates/bbb-world/src/client/dialog/body.rs#decodes_compound_item_template_and_rejects_codec_ranges",
+            "crates/bbb-world/src/client/dialog/input.rs#decodes_boolean_and_number_range_inputs_with_defaults",
+            "crates/bbb-world/src/client/dialog/input.rs#validates_number_range_initial_step_and_width",
+            "crates/bbb-world/src/client/dialog/input.rs#decodes_single_option_alternatives_and_validates_initials",
+            "crates/bbb-world/src/client/dialog/input.rs#decodes_text_multiline_and_validates_utf16_length_and_keys",
+            "crates/bbb-world/src/client/dialog.rs#projects_common_dialog_inputs_while_retaining_raw_values",
             "crates/bbb-world/src/client/ui.rs#tracks_client_ui_warnings_and_dialogs",
             "crates/bbb-net/src/probe/configuration.rs#probe_applies_configuration_packets_to_world"
           ],
@@ -13877,6 +13884,7 @@
           "evidence": [
             "crates/bbb-world/src/client/dialog.rs#DialogState",
             "crates/bbb-world/src/client/dialog.rs#decode_dialog_data",
+            "crates/bbb-world/src/client/dialog/input.rs#DialogInputState",
             "crates/bbb-world/src/client/ui.rs#dialog_state_from_packet",
             "crates/bbb-world/src/client/ui.rs#tracks_client_ui_warnings_and_dialogs",
             "crates/bbb-world/src/client/ui.rs#referenced_dialogs_use_session_holder_order_and_retain_resolution_errors"
@@ -13927,6 +13935,11 @@
             "crates/bbb-world/src/client/dialog/body.rs#decodes_plain_message_contents_and_width",
             "crates/bbb-world/src/client/dialog/body.rs#decodes_item_body_template_description_defaults_and_flags",
             "crates/bbb-world/src/client/dialog/body.rs#decodes_compound_item_template_and_rejects_codec_ranges",
+            "crates/bbb-world/src/client/dialog/input.rs#decodes_boolean_and_number_range_inputs_with_defaults",
+            "crates/bbb-world/src/client/dialog/input.rs#validates_number_range_initial_step_and_width",
+            "crates/bbb-world/src/client/dialog/input.rs#decodes_single_option_alternatives_and_validates_initials",
+            "crates/bbb-world/src/client/dialog/input.rs#decodes_text_multiline_and_validates_utf16_length_and_keys",
+            "crates/bbb-world/src/client/dialog.rs#projects_common_dialog_inputs_while_retaining_raw_values",
             "crates/bbb-world/src/client/dialog.rs#rejects_invalid_simple_dialog_semantics_without_dropping_raw_nbt",
             "crates/bbb-world/src/client/ui.rs#tracks_client_ui_warnings_and_dialogs",
             "crates/bbb-world/src/client/ui.rs#referenced_dialogs_use_session_holder_order_and_retain_resolution_errors",
