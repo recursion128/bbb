@@ -863,7 +863,7 @@ pub(in crate::entity_models) fn villager_type_texture_ref(
     } else {
         &VILLAGER_TYPE_TEXTURE_REFS
     };
-    refs[villager_type_index(villager_type)]
+    refs[villager_type.texture_index()]
 }
 
 pub(in crate::entity_models) fn zombie_villager_type_texture_ref(
@@ -875,7 +875,7 @@ pub(in crate::entity_models) fn zombie_villager_type_texture_ref(
     } else {
         &ZOMBIE_VILLAGER_TYPE_TEXTURE_REFS
     };
-    refs[villager_type_index(villager_type)]
+    refs[villager_type.texture_index()]
 }
 
 pub(in crate::entity_models) fn villager_profession_texture_ref(
@@ -902,18 +902,6 @@ pub(in crate::entity_models) fn zombie_villager_level_texture_ref(
     level: i32,
 ) -> EntityModelTextureRef {
     ZOMBIE_VILLAGER_LEVEL_TEXTURE_REFS[villager_level_index(level)]
-}
-
-fn villager_type_index(villager_type: VillagerModelType) -> usize {
-    match villager_type {
-        VillagerModelType::Desert => 0,
-        VillagerModelType::Jungle => 1,
-        VillagerModelType::Plains => 2,
-        VillagerModelType::Savanna => 3,
-        VillagerModelType::Snow => 4,
-        VillagerModelType::Swamp => 5,
-        VillagerModelType::Taiga => 6,
-    }
 }
 
 fn villager_level_index(level: i32) -> usize {

@@ -14,6 +14,7 @@ mod model;
 mod model_layers;
 mod textured;
 mod villager_professions;
+mod villager_types;
 
 pub use banner_patterns::BannerPatternKind;
 pub use block_attachment::{
@@ -184,6 +185,7 @@ pub(crate) use textured::{
     ExperienceOrbPickupParticleRenderInstance, ProjectilePickupParticleRenderInstance,
 };
 pub use villager_professions::VillagerModelProfession;
+pub use villager_types::VillagerModelType;
 
 #[cfg(test)]
 mod tests;

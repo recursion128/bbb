@@ -36,26 +36,7 @@ pub(super) fn resolve_villager_type(
     registry_id: i32,
     _registries: Option<&dyn EntityVariantRegistryLookup>,
 ) -> VillagerModelType {
-    villager_type_from_vanilla_registry_id(registry_id)
-}
-
-pub(super) fn villager_type_from_entry_id(id: &str) -> Option<VillagerModelType> {
-    match id {
-        "minecraft:desert" => Some(VillagerModelType::Desert),
-        "minecraft:jungle" => Some(VillagerModelType::Jungle),
-        "minecraft:plains" => Some(VillagerModelType::Plains),
-        "minecraft:savanna" => Some(VillagerModelType::Savanna),
-        "minecraft:snow" => Some(VillagerModelType::Snow),
-        "minecraft:swamp" => Some(VillagerModelType::Swamp),
-        "minecraft:taiga" => Some(VillagerModelType::Taiga),
-        _ => None,
-    }
-}
-
-pub(super) fn villager_type_from_vanilla_registry_id(registry_id: i32) -> VillagerModelType {
-    vanilla_villager_type_resource_id(registry_id)
-        .and_then(villager_type_from_entry_id)
-        .unwrap_or(VillagerModelType::Plains)
+    VillagerModelType::for_vanilla_registry_id(registry_id).unwrap_or(VillagerModelType::Plains)
 }
 
 pub(super) fn resolve_villager_profession(

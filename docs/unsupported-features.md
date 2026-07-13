@@ -1162,7 +1162,9 @@ vanilla evidence. Deleting one of these re-opens work already decided against.
   appears in `RegistryDataLoader.WORLDGEN_REGISTRIES` or
   `SYNCHRONIZED_REGISTRIES`. Their `VillagerData.STREAM_CODEC` holders resolve
   through the connection's static registry layer, whose ids/order come from
-  the local built-in catalogs rather than configuration `RegistryData`.
+  the local built-in catalogs rather than configuration `RegistryData`. The
+  fixed 7-entry type and 15-entry profession identity/ordinal catalogs are
+  generated directly from those vanilla bootstrap registrations.
 - **Custom/datapack decorated-pot pattern definitions.** Vanilla 26.1 registers
   `minecraft:decorated_pot_pattern` through `BuiltInRegistries.registerSimple`
   with `DecoratedPotPatterns::bootstrap`, and the registry is absent from both

@@ -2,7 +2,7 @@ mod selection;
 
 use glam::Mat4;
 
-use super::{BannerPatternKind, DecoratedPotPattern, VillagerModelProfession};
+use super::{BannerPatternKind, DecoratedPotPattern, VillagerModelProfession, VillagerModelType};
 
 pub(in crate::entity_models) use selection::{
     boat_texture_ref, camel_texture_ref, chicken_texture_ref, cow_texture_ref,
@@ -751,17 +751,6 @@ pub enum ZombieVariantModelFamily {
     Husk,
     Drowned,
     ZombieVillager,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum VillagerModelType {
-    Desert,
-    Jungle,
-    Plains,
-    Savanna,
-    Snow,
-    Swamp,
-    Taiga,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

@@ -13127,3 +13127,16 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   `villager_type`/`villager_profession` 顺序：两者均是 STATIC built-in defaulted registry，
   不由 configuration `RegistryData` 同步；focused regression 锁定固定 ordinal，完整 generator
   update/check 与 workspace gate 通过。
+
+## 2026-07-13：Generate villager-type registry catalog
+
+- [x] bootstrap generator 通过共享 Tree-sitter frontend 从 `VillagerType.java` 的 7 个
+  ResourceKey 与 `bootstrap` register 顺序生成 renderer `VillagerModelType`、resource/ordinal
+  lookup 和连续 overlay texture index；资源包 texture path 与 type hat metadata 继续由 renderer
+  既有资源 owner 管理。
+- [x] native entity scene 删除 7-arm resource mapping、registry-id bridge 及对 item-model lookup
+  的依赖，renderer 删除手写 enum 与 7-arm texture-index match；generated 反向扫描阻止平行
+  type catalog 返回，unknown id 仍回退 plains。
+- [x] 目录沿用已验证的 STATIC built-in registry authority，完整性/顺序/唯一性/边界测试、
+  renderer/native focused tests、generator update/check 与 workspace gate 锁定 vanilla 26.1
+  bootstrap 顺序。
