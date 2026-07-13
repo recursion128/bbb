@@ -13401,3 +13401,18 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] generator-emitted reverse guard 阻止生产代码恢复旧 debug-color 表；extractor 单测、
   generator update/check、protocol catalog/reverse tests、native heightmap focused tests 与
   workspace gate 通过。
+
+## 2026-07-13：Generate built-in wolf-variant presentation assets
+
+- [x] bootstrap Tree-sitter extractor 在既有 9 项 wolf variant identity/order 基础上读取每个
+  `WolfVariants.bootstrap` 注册项的 `fileName`，并严格校验最终 register helper 的六条
+  `Identifier.withDefaultNamespace` 公式及 adult/baby `AssetInfo` 装配；helper shape、后缀或
+  payload 顺序漂移都会令维护生成失败。
+- [x] renderer generated catalog 统一拥有 54 个 wild/tame/angry × adult/baby 内置纹理路径；
+  64×32/32×32 尺寸继续与本地官方 PNG 资源一致。texture selection 删除 9 分支数组，global
+  atlas 删除 54 个手写纹理常量，只枚举生成数组。少量 pale aliases 仅保留 focused model tests
+  的可读性，不再声明路径。
+- [x] session holder id 仍先按同步 registry 映射到 resource id；本片只收敛 vanilla 26.1
+  built-in fallback，不冒充尚未完成的同步 `WolfVariant.NETWORK_CODEC` asset payload 解码。
+  extractor 单测、generator update/check、32 项 renderer wolf tests、native entity-asset tests 与
+  workspace gate 通过。

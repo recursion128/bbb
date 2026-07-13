@@ -1168,91 +1168,9 @@ pub(in crate::entity_models) fn wolf_texture_ref(
     angry: bool,
     variant: WolfModelVariant,
 ) -> EntityModelTextureRef {
-    // Each variant's `[wild, tame, angry, baby_wild, baby_tame, baby_angry]` face set, matching the
-    // vanilla `WolfVariant.AssetInfo` adult/baby pair (`WolfVariants.register`).
-    let set = match variant {
-        WolfModelVariant::Pale => [
-            WOLF_TEXTURE_REF,
-            WOLF_TAME_TEXTURE_REF,
-            WOLF_ANGRY_TEXTURE_REF,
-            WOLF_BABY_TEXTURE_REF,
-            WOLF_TAME_BABY_TEXTURE_REF,
-            WOLF_ANGRY_BABY_TEXTURE_REF,
-        ],
-        WolfModelVariant::Spotted => [
-            WOLF_SPOTTED_TEXTURE_REF,
-            WOLF_SPOTTED_TAME_TEXTURE_REF,
-            WOLF_SPOTTED_ANGRY_TEXTURE_REF,
-            WOLF_SPOTTED_BABY_TEXTURE_REF,
-            WOLF_SPOTTED_TAME_BABY_TEXTURE_REF,
-            WOLF_SPOTTED_ANGRY_BABY_TEXTURE_REF,
-        ],
-        WolfModelVariant::Snowy => [
-            WOLF_SNOWY_TEXTURE_REF,
-            WOLF_SNOWY_TAME_TEXTURE_REF,
-            WOLF_SNOWY_ANGRY_TEXTURE_REF,
-            WOLF_SNOWY_BABY_TEXTURE_REF,
-            WOLF_SNOWY_TAME_BABY_TEXTURE_REF,
-            WOLF_SNOWY_ANGRY_BABY_TEXTURE_REF,
-        ],
-        WolfModelVariant::Black => [
-            WOLF_BLACK_TEXTURE_REF,
-            WOLF_BLACK_TAME_TEXTURE_REF,
-            WOLF_BLACK_ANGRY_TEXTURE_REF,
-            WOLF_BLACK_BABY_TEXTURE_REF,
-            WOLF_BLACK_TAME_BABY_TEXTURE_REF,
-            WOLF_BLACK_ANGRY_BABY_TEXTURE_REF,
-        ],
-        WolfModelVariant::Ashen => [
-            WOLF_ASHEN_TEXTURE_REF,
-            WOLF_ASHEN_TAME_TEXTURE_REF,
-            WOLF_ASHEN_ANGRY_TEXTURE_REF,
-            WOLF_ASHEN_BABY_TEXTURE_REF,
-            WOLF_ASHEN_TAME_BABY_TEXTURE_REF,
-            WOLF_ASHEN_ANGRY_BABY_TEXTURE_REF,
-        ],
-        WolfModelVariant::Rusty => [
-            WOLF_RUSTY_TEXTURE_REF,
-            WOLF_RUSTY_TAME_TEXTURE_REF,
-            WOLF_RUSTY_ANGRY_TEXTURE_REF,
-            WOLF_RUSTY_BABY_TEXTURE_REF,
-            WOLF_RUSTY_TAME_BABY_TEXTURE_REF,
-            WOLF_RUSTY_ANGRY_BABY_TEXTURE_REF,
-        ],
-        WolfModelVariant::Woods => [
-            WOLF_WOODS_TEXTURE_REF,
-            WOLF_WOODS_TAME_TEXTURE_REF,
-            WOLF_WOODS_ANGRY_TEXTURE_REF,
-            WOLF_WOODS_BABY_TEXTURE_REF,
-            WOLF_WOODS_TAME_BABY_TEXTURE_REF,
-            WOLF_WOODS_ANGRY_BABY_TEXTURE_REF,
-        ],
-        WolfModelVariant::Chestnut => [
-            WOLF_CHESTNUT_TEXTURE_REF,
-            WOLF_CHESTNUT_TAME_TEXTURE_REF,
-            WOLF_CHESTNUT_ANGRY_TEXTURE_REF,
-            WOLF_CHESTNUT_BABY_TEXTURE_REF,
-            WOLF_CHESTNUT_TAME_BABY_TEXTURE_REF,
-            WOLF_CHESTNUT_ANGRY_BABY_TEXTURE_REF,
-        ],
-        WolfModelVariant::Striped => [
-            WOLF_STRIPED_TEXTURE_REF,
-            WOLF_STRIPED_TAME_TEXTURE_REF,
-            WOLF_STRIPED_ANGRY_TEXTURE_REF,
-            WOLF_STRIPED_BABY_TEXTURE_REF,
-            WOLF_STRIPED_TAME_BABY_TEXTURE_REF,
-            WOLF_STRIPED_ANGRY_BABY_TEXTURE_REF,
-        ],
-    };
-    // Vanilla `Wolf.getTexture`: pick adult/baby info, then tame → angry → wild.
-    match (baby, tame, angry) {
-        (false, true, _) => set[1],
-        (false, false, true) => set[2],
-        (false, false, false) => set[0],
-        (true, true, _) => set[4],
-        (true, false, true) => set[5],
-        (true, false, false) => set[3],
-    }
+    // Vanilla `Wolf.getTexture`: pick adult/baby info, then tame → angry → wild. Built-in
+    // fallback paths come from the source-generated `WolfVariants.register` catalog.
+    variant.builtin_texture_ref(baby, tame, angry)
 }
 
 #[cfg(test)]

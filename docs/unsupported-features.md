@@ -167,7 +167,10 @@ Owner: `scripts/` + each generated catalog's semantic crate
   runtime texture code must only implement the scaling/application algorithm.
   Built-in holder registries with client presentation payloads, including map
   decoration registry key/asset/show-on-frame projection, must likewise stay
-  source-generated rather than becoming renderer tuple tables.
+  source-generated rather than becoming renderer tuple tables. Built-in wolf
+  variant fallback wild/tame/angry × adult/baby assets must come from the
+  bootstrap `fileName` formula; synchronized replacement payloads still belong
+  to typed session `RegistryAccess`, not fixed ordinal lookup.
   Keep enum-keyed debug presentation mappings in their generated semantic
   descriptors; native debug extraction must not rebuild ordinal-indexed color
   arrays. Keep fixed menu geometry shared by input hit testing and HUD extraction

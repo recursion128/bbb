@@ -27,6 +27,14 @@ class BootstrapEntry:
 
 
 @dataclass(frozen=True)
+class WolfVariantEntry:
+    constant_name: str
+    resource_id: str
+    file_name: str
+    asset_ids: tuple[str, str, str, str, str, str]
+
+
+@dataclass(frozen=True)
 class BannerPatternEntry:
     constant_name: str
     resource_id: str
@@ -305,6 +313,144 @@ def bootstrap_resource_key_entries(
     if len({entry.resource_id for entry in entries}) != len(entries):
         raise BootstrapCatalogExtractionError(
             f"{source.relative_path}: duplicate {value_type} resource id"
+        )
+    return entries
+
+
+def wolf_variant_entries(
+    source: JavaSource, expected_count: int = 9
+) -> list[WolfVariantEntry]:
+    identities = bootstrap_resource_key_entries(
+        source,
+        "WolfVariant",
+        {"createKey"},
+        expected_count,
+    )
+    method = _bootstrap_method(source)
+    context_name = _bootstrap_context_name(source, method)
+    calls = [
+        call
+        for call in source.calls
+        if call.name == "register"
+        and call.qualifier is None
+        and method.body is not None
+        and method.body.start_byte <= call.span.start_byte
+        and call.span.end_byte <= method.body.end_byte
+    ]
+    calls.sort(key=lambda call: (call.span.start_byte, call.span.end_byte))
+    file_names: dict[str, str] = {}
+    for call in calls:
+        if len(call.arguments) != 4 or call.arguments[0].canonical != context_name:
+            _fail(
+                source,
+                source.expression(call.node),
+                "wolf bootstrap register call must have context, key, file name, and selectors",
+            )
+        key = call.arguments[1]
+        if key.node.type != "identifier":
+            _fail(source, key, "wolf bootstrap resource key is not an identifier")
+        file_names[key.canonical] = _string(source, call.arguments[2])
+
+    helpers = []
+    for candidate in source.methods:
+        if candidate.name != "register" or len(candidate.parameters) != 4:
+            continue
+        last_type = candidate.parameters[3].node.child_by_field_name("type")
+        if (
+            last_type is not None
+            and source.expression(last_type).canonical.replace(" ", "")
+            == "SpawnPrioritySelectors"
+        ):
+            helpers.append(candidate)
+    if len(helpers) != 1 or helpers[0].body is None:
+        raise BootstrapCatalogExtractionError(
+            f"{source.relative_path}: expected one four-parameter wolf asset register helper"
+        )
+    helper = helpers[0]
+    parameter_names = []
+    for parameter in helper.parameters:
+        name = parameter.node.child_by_field_name("name")
+        if name is None:
+            _fail(source, parameter, "wolf asset helper parameter lacks a name")
+        parameter_names.append(source.text(name))
+    if parameter_names != ["context", "name", "fileName", "selectors"]:
+        _fail(source, helper.parameters[0], "wolf asset helper parameters changed")
+
+    expected_initializers = {
+        "wildTexture": 'Identifier.withDefaultNamespace ("entity/wolf/" + fileName)',
+        "tameTexture": 'Identifier.withDefaultNamespace ("entity/wolf/" + fileName + "_tame")',
+        "angryTexture": 'Identifier.withDefaultNamespace ("entity/wolf/" + fileName + "_angry")',
+        "babyTexture": 'Identifier.withDefaultNamespace ("entity/wolf/" + fileName + "_baby")',
+        "tameBabyTexture": 'Identifier.withDefaultNamespace ("entity/wolf/" + fileName + "_tame_baby")',
+        "angryBabyTexture": 'Identifier.withDefaultNamespace ("entity/wolf/" + fileName + "_angry_baby")',
+    }
+    initializers: dict[str, JavaExpression] = {}
+    for node in descendants(helper.node):
+        if node.type != "variable_declarator":
+            continue
+        name = node.child_by_field_name("name")
+        value = node.child_by_field_name("value")
+        if name is None or value is None:
+            _fail(source, source.expression(node), "wolf asset local lacks name or initializer")
+        initializers[source.text(name)] = source.expression(value)
+    if set(initializers) != set(expected_initializers):
+        raise BootstrapCatalogExtractionError(
+            f"{source.relative_path}: wolf asset helper locals changed: "
+            f"expected={sorted(expected_initializers)}, actual={sorted(initializers)}"
+        )
+    for name, expected in expected_initializers.items():
+        if initializers[name].canonical != expected:
+            _fail(source, initializers[name], f"wolf asset formula for {name} changed")
+
+    registrations = [
+        call
+        for call in source.calls
+        if call.name == "register"
+        and call.qualifier is not None
+        and call.qualifier.canonical == "context"
+        and helper.body.start_byte <= call.span.start_byte
+        and call.span.end_byte <= helper.body.end_byte
+    ]
+    expected_registration = (
+        "context.register (name, new WolfVariant (new WolfVariant.AssetInfo "
+        "(new ClientAsset.ResourceTexture (wildTexture), new ClientAsset.ResourceTexture "
+        "(tameTexture), new ClientAsset.ResourceTexture (angryTexture)), new WolfVariant.AssetInfo "
+        "(new ClientAsset.ResourceTexture (babyTexture), new ClientAsset.ResourceTexture "
+        "(tameBabyTexture), new ClientAsset.ResourceTexture (angryBabyTexture)), selectors))"
+    )
+    if (
+        len(registrations) != 1
+        or source.expression(registrations[0].node).canonical != expected_registration
+    ):
+        expression = (
+            source.expression(registrations[0].node)
+            if registrations
+            else source.expression(helper.node)
+        )
+        _fail(source, expression, "wolf asset registration payload changed")
+
+    entries = []
+    for identity in identities:
+        file_name = file_names.get(identity.constant_name)
+        if file_name is None:
+            raise BootstrapCatalogExtractionError(
+                f"{source.relative_path}: wolf variant {identity.constant_name} lacks a file name"
+            )
+        prefix = f"minecraft:entity/wolf/{file_name}"
+        entries.append(
+            WolfVariantEntry(
+                identity.constant_name,
+                identity.resource_id,
+                file_name,
+                (
+                    prefix,
+                    f"{prefix}_tame",
+                    f"{prefix}_angry",
+                    f"{prefix}_baby",
+                    f"{prefix}_tame_baby",
+                    f"{prefix}_angry_baby",
+                ),
+            )
         )
     return entries
 

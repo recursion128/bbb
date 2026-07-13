@@ -22,11 +22,124 @@ from bootstrap_catalog_extractor import (  # noqa: E402
     potion_entries,
     static_register_entries,
     trim_material_entries,
+    wolf_variant_entries,
 )
 from vanilla_java_source import parse_source  # noqa: E402
 
 
 class BootstrapCatalogExtractorTests(unittest.TestCase):
+    def test_wolf_variant_assets_follow_bootstrap_file_names_and_helper_formula(self) -> None:
+        source = parse_source(
+            "fixture/WolfVariants.java",
+            b'''
+package fixture;
+class WolfVariants {
+  static final ResourceKey<WolfVariant> PALE = createKey("pale");
+  static final ResourceKey<WolfVariant> SPOTTED = createKey("spotted");
+  static void register(BootstrapContext<WolfVariant> context,
+                       ResourceKey<WolfVariant> name, String fileName,
+                       SpawnPrioritySelectors selectors) {
+    Identifier wildTexture = Identifier.withDefaultNamespace("entity/wolf/" + fileName);
+    Identifier tameTexture = Identifier.withDefaultNamespace("entity/wolf/" + fileName + "_tame");
+    Identifier angryTexture = Identifier.withDefaultNamespace("entity/wolf/" + fileName + "_angry");
+    Identifier babyTexture = Identifier.withDefaultNamespace("entity/wolf/" + fileName + "_baby");
+    Identifier tameBabyTexture = Identifier.withDefaultNamespace("entity/wolf/" + fileName + "_tame_baby");
+    Identifier angryBabyTexture = Identifier.withDefaultNamespace("entity/wolf/" + fileName + "_angry_baby");
+    context.register(name, new WolfVariant(
+        new WolfVariant.AssetInfo(
+            new ClientAsset.ResourceTexture(wildTexture),
+            new ClientAsset.ResourceTexture(tameTexture),
+            new ClientAsset.ResourceTexture(angryTexture)),
+        new WolfVariant.AssetInfo(
+            new ClientAsset.ResourceTexture(babyTexture),
+            new ClientAsset.ResourceTexture(tameBabyTexture),
+            new ClientAsset.ResourceTexture(angryBabyTexture)),
+        selectors));
+  }
+  static void bootstrap(BootstrapContext<WolfVariant> context) {
+    register(context, SPOTTED, "wolf_spotted", selectors());
+    register(context, PALE, "wolf", selectors());
+  }
+}
+''',
+        )
+
+        entries = wolf_variant_entries(source, expected_count=2)
+
+        self.assertEqual(
+            [
+                (entry.constant_name, entry.resource_id, entry.file_name, entry.asset_ids)
+                for entry in entries
+            ],
+            [
+                (
+                    "SPOTTED",
+                    "minecraft:spotted",
+                    "wolf_spotted",
+                    (
+                        "minecraft:entity/wolf/wolf_spotted",
+                        "minecraft:entity/wolf/wolf_spotted_tame",
+                        "minecraft:entity/wolf/wolf_spotted_angry",
+                        "minecraft:entity/wolf/wolf_spotted_baby",
+                        "minecraft:entity/wolf/wolf_spotted_tame_baby",
+                        "minecraft:entity/wolf/wolf_spotted_angry_baby",
+                    ),
+                ),
+                (
+                    "PALE",
+                    "minecraft:pale",
+                    "wolf",
+                    (
+                        "minecraft:entity/wolf/wolf",
+                        "minecraft:entity/wolf/wolf_tame",
+                        "minecraft:entity/wolf/wolf_angry",
+                        "minecraft:entity/wolf/wolf_baby",
+                        "minecraft:entity/wolf/wolf_tame_baby",
+                        "minecraft:entity/wolf/wolf_angry_baby",
+                    ),
+                ),
+            ],
+        )
+
+    def test_wolf_variant_assets_reject_changed_helper_formula(self) -> None:
+        source = parse_source(
+            "fixture/WolfVariants.java",
+            b'''
+package fixture;
+class WolfVariants {
+  static final ResourceKey<WolfVariant> PALE = createKey("pale");
+  static void register(BootstrapContext<WolfVariant> context,
+                       ResourceKey<WolfVariant> name, String fileName,
+                       SpawnPrioritySelectors selectors) {
+    Identifier wildTexture = Identifier.withDefaultNamespace("entity/wolf/" + fileName);
+    Identifier tameTexture = Identifier.withDefaultNamespace("entity/wolf/" + fileName + "_friendly");
+    Identifier angryTexture = Identifier.withDefaultNamespace("entity/wolf/" + fileName + "_angry");
+    Identifier babyTexture = Identifier.withDefaultNamespace("entity/wolf/" + fileName + "_baby");
+    Identifier tameBabyTexture = Identifier.withDefaultNamespace("entity/wolf/" + fileName + "_tame_baby");
+    Identifier angryBabyTexture = Identifier.withDefaultNamespace("entity/wolf/" + fileName + "_angry_baby");
+    context.register(name, new WolfVariant(
+        new WolfVariant.AssetInfo(
+            new ClientAsset.ResourceTexture(wildTexture),
+            new ClientAsset.ResourceTexture(tameTexture),
+            new ClientAsset.ResourceTexture(angryTexture)),
+        new WolfVariant.AssetInfo(
+            new ClientAsset.ResourceTexture(babyTexture),
+            new ClientAsset.ResourceTexture(tameBabyTexture),
+            new ClientAsset.ResourceTexture(angryBabyTexture)),
+        selectors));
+  }
+  static void bootstrap(BootstrapContext<WolfVariant> context) {
+    register(context, PALE, "wolf", selectors());
+  }
+}
+''',
+        )
+        with self.assertRaisesRegex(
+            BootstrapCatalogExtractionError,
+            "wolf asset formula for tameTexture changed",
+        ):
+            wolf_variant_entries(source, expected_count=1)
+
     def test_map_decorations_preserve_registration_projection_order(self) -> None:
         source = parse_source(
             "fixture/MapDecorationTypes.java",

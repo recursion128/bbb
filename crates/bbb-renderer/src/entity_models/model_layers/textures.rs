@@ -7,6 +7,7 @@ use crate::entity_models::catalog::{
     SignModelAttachment, SignModelWood, WolfArmorCrackiness,
 };
 use crate::entity_models::decorated_pot_patterns::*;
+use crate::entity_models::wolf_variants::VANILLA_WOLF_VARIANT_TEXTURE_REFS;
 use crate::entity_models::{CatModelVariant, DecoratedPotPattern, FrogModelVariant};
 
 mod equine;
@@ -1208,286 +1209,20 @@ pub fn boat_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &BOAT_ENTITY_TEXTURE_REFS
 }
 
+// These stable pale aliases keep focused model tests readable; the paths and dimensions are
+// owned by the generated vanilla wolf-variant presentation catalog.
 pub(in crate::entity_models) const WOLF_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/wolf/wolf.png",
-        size: [64, 32],
-    };
-
+    VANILLA_WOLF_VARIANT_TEXTURE_REFS[0];
 pub(in crate::entity_models) const WOLF_TAME_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/wolf/wolf_tame.png",
-        size: [64, 32],
-    };
-
+    VANILLA_WOLF_VARIANT_TEXTURE_REFS[1];
 pub(in crate::entity_models) const WOLF_ANGRY_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/wolf/wolf_angry.png",
-        size: [64, 32],
-    };
-
+    VANILLA_WOLF_VARIANT_TEXTURE_REFS[2];
 pub(in crate::entity_models) const WOLF_BABY_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/wolf/wolf_baby.png",
-        size: [32, 32],
-    };
-
+    VANILLA_WOLF_VARIANT_TEXTURE_REFS[3];
 pub(in crate::entity_models) const WOLF_TAME_BABY_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/wolf/wolf_tame_baby.png",
-        size: [32, 32],
-    };
-
+    VANILLA_WOLF_VARIANT_TEXTURE_REFS[4];
 pub(in crate::entity_models) const WOLF_ANGRY_BABY_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/wolf/wolf_angry_baby.png",
-        size: [32, 32],
-    };
-
-// Vanilla `WolfVariants` biome variant faces (the eight non-`pale` registered variants). Each
-// `<prefix>[_tame|_angry][_baby].png` follows the same wild/tame/angry × adult/baby selection as the
-// default `wolf` set (adults 64×32, babies 32×32). `WolfRenderer` swaps the whole base texture by
-// the synced `Wolf.DATA_VARIANT_ID` registry holder — see `wolf_texture_ref`.
-pub(in crate::entity_models) const WOLF_SPOTTED_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/wolf/wolf_spotted.png",
-        size: [64, 32],
-    };
-pub(in crate::entity_models) const WOLF_SPOTTED_TAME_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/wolf/wolf_spotted_tame.png",
-        size: [64, 32],
-    };
-pub(in crate::entity_models) const WOLF_SPOTTED_ANGRY_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/wolf/wolf_spotted_angry.png",
-        size: [64, 32],
-    };
-pub(in crate::entity_models) const WOLF_SPOTTED_BABY_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/wolf/wolf_spotted_baby.png",
-        size: [32, 32],
-    };
-pub(in crate::entity_models) const WOLF_SPOTTED_TAME_BABY_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/wolf/wolf_spotted_tame_baby.png",
-        size: [32, 32],
-    };
-pub(in crate::entity_models) const WOLF_SPOTTED_ANGRY_BABY_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/wolf/wolf_spotted_angry_baby.png",
-        size: [32, 32],
-    };
-pub(in crate::entity_models) const WOLF_SNOWY_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/wolf/wolf_snowy.png",
-        size: [64, 32],
-    };
-pub(in crate::entity_models) const WOLF_SNOWY_TAME_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/wolf/wolf_snowy_tame.png",
-        size: [64, 32],
-    };
-pub(in crate::entity_models) const WOLF_SNOWY_ANGRY_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/wolf/wolf_snowy_angry.png",
-        size: [64, 32],
-    };
-pub(in crate::entity_models) const WOLF_SNOWY_BABY_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/wolf/wolf_snowy_baby.png",
-        size: [32, 32],
-    };
-pub(in crate::entity_models) const WOLF_SNOWY_TAME_BABY_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/wolf/wolf_snowy_tame_baby.png",
-        size: [32, 32],
-    };
-pub(in crate::entity_models) const WOLF_SNOWY_ANGRY_BABY_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/wolf/wolf_snowy_angry_baby.png",
-        size: [32, 32],
-    };
-pub(in crate::entity_models) const WOLF_BLACK_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/wolf/wolf_black.png",
-        size: [64, 32],
-    };
-pub(in crate::entity_models) const WOLF_BLACK_TAME_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/wolf/wolf_black_tame.png",
-        size: [64, 32],
-    };
-pub(in crate::entity_models) const WOLF_BLACK_ANGRY_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/wolf/wolf_black_angry.png",
-        size: [64, 32],
-    };
-pub(in crate::entity_models) const WOLF_BLACK_BABY_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/wolf/wolf_black_baby.png",
-        size: [32, 32],
-    };
-pub(in crate::entity_models) const WOLF_BLACK_TAME_BABY_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/wolf/wolf_black_tame_baby.png",
-        size: [32, 32],
-    };
-pub(in crate::entity_models) const WOLF_BLACK_ANGRY_BABY_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/wolf/wolf_black_angry_baby.png",
-        size: [32, 32],
-    };
-pub(in crate::entity_models) const WOLF_ASHEN_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/wolf/wolf_ashen.png",
-        size: [64, 32],
-    };
-pub(in crate::entity_models) const WOLF_ASHEN_TAME_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/wolf/wolf_ashen_tame.png",
-        size: [64, 32],
-    };
-pub(in crate::entity_models) const WOLF_ASHEN_ANGRY_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/wolf/wolf_ashen_angry.png",
-        size: [64, 32],
-    };
-pub(in crate::entity_models) const WOLF_ASHEN_BABY_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/wolf/wolf_ashen_baby.png",
-        size: [32, 32],
-    };
-pub(in crate::entity_models) const WOLF_ASHEN_TAME_BABY_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/wolf/wolf_ashen_tame_baby.png",
-        size: [32, 32],
-    };
-pub(in crate::entity_models) const WOLF_ASHEN_ANGRY_BABY_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/wolf/wolf_ashen_angry_baby.png",
-        size: [32, 32],
-    };
-pub(in crate::entity_models) const WOLF_RUSTY_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/wolf/wolf_rusty.png",
-        size: [64, 32],
-    };
-pub(in crate::entity_models) const WOLF_RUSTY_TAME_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/wolf/wolf_rusty_tame.png",
-        size: [64, 32],
-    };
-pub(in crate::entity_models) const WOLF_RUSTY_ANGRY_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/wolf/wolf_rusty_angry.png",
-        size: [64, 32],
-    };
-pub(in crate::entity_models) const WOLF_RUSTY_BABY_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/wolf/wolf_rusty_baby.png",
-        size: [32, 32],
-    };
-pub(in crate::entity_models) const WOLF_RUSTY_TAME_BABY_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/wolf/wolf_rusty_tame_baby.png",
-        size: [32, 32],
-    };
-pub(in crate::entity_models) const WOLF_RUSTY_ANGRY_BABY_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/wolf/wolf_rusty_angry_baby.png",
-        size: [32, 32],
-    };
-pub(in crate::entity_models) const WOLF_WOODS_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/wolf/wolf_woods.png",
-        size: [64, 32],
-    };
-pub(in crate::entity_models) const WOLF_WOODS_TAME_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/wolf/wolf_woods_tame.png",
-        size: [64, 32],
-    };
-pub(in crate::entity_models) const WOLF_WOODS_ANGRY_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/wolf/wolf_woods_angry.png",
-        size: [64, 32],
-    };
-pub(in crate::entity_models) const WOLF_WOODS_BABY_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/wolf/wolf_woods_baby.png",
-        size: [32, 32],
-    };
-pub(in crate::entity_models) const WOLF_WOODS_TAME_BABY_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/wolf/wolf_woods_tame_baby.png",
-        size: [32, 32],
-    };
-pub(in crate::entity_models) const WOLF_WOODS_ANGRY_BABY_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/wolf/wolf_woods_angry_baby.png",
-        size: [32, 32],
-    };
-pub(in crate::entity_models) const WOLF_CHESTNUT_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/wolf/wolf_chestnut.png",
-        size: [64, 32],
-    };
-pub(in crate::entity_models) const WOLF_CHESTNUT_TAME_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/wolf/wolf_chestnut_tame.png",
-        size: [64, 32],
-    };
-pub(in crate::entity_models) const WOLF_CHESTNUT_ANGRY_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/wolf/wolf_chestnut_angry.png",
-        size: [64, 32],
-    };
-pub(in crate::entity_models) const WOLF_CHESTNUT_BABY_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/wolf/wolf_chestnut_baby.png",
-        size: [32, 32],
-    };
-pub(in crate::entity_models) const WOLF_CHESTNUT_TAME_BABY_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/wolf/wolf_chestnut_tame_baby.png",
-        size: [32, 32],
-    };
-pub(in crate::entity_models) const WOLF_CHESTNUT_ANGRY_BABY_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/wolf/wolf_chestnut_angry_baby.png",
-        size: [32, 32],
-    };
-pub(in crate::entity_models) const WOLF_STRIPED_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/wolf/wolf_striped.png",
-        size: [64, 32],
-    };
-pub(in crate::entity_models) const WOLF_STRIPED_TAME_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/wolf/wolf_striped_tame.png",
-        size: [64, 32],
-    };
-pub(in crate::entity_models) const WOLF_STRIPED_ANGRY_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/wolf/wolf_striped_angry.png",
-        size: [64, 32],
-    };
-pub(in crate::entity_models) const WOLF_STRIPED_BABY_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/wolf/wolf_striped_baby.png",
-        size: [32, 32],
-    };
-pub(in crate::entity_models) const WOLF_STRIPED_TAME_BABY_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/wolf/wolf_striped_tame_baby.png",
-        size: [32, 32],
-    };
-pub(in crate::entity_models) const WOLF_STRIPED_ANGRY_BABY_TEXTURE_REF: EntityModelTextureRef =
-    EntityModelTextureRef {
-        path: "textures/entity/wolf/wolf_striped_angry_baby.png",
-        size: [32, 32],
-    };
+    VANILLA_WOLF_VARIANT_TEXTURE_REFS[5];
 
 pub(in crate::entity_models) const WOLF_COLLAR_TEXTURE_REF: EntityModelTextureRef =
     EntityModelTextureRef {
@@ -1613,60 +1348,60 @@ pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextur
     SHEEP_WOOL_UNDERCOAT_TEXTURE_REF,
     SHEEP_WOOL_TEXTURE_REF,
     SHEEP_WOOL_BABY_TEXTURE_REF,
-    WOLF_TEXTURE_REF,
-    WOLF_TAME_TEXTURE_REF,
-    WOLF_ANGRY_TEXTURE_REF,
-    WOLF_BABY_TEXTURE_REF,
-    WOLF_TAME_BABY_TEXTURE_REF,
-    WOLF_ANGRY_BABY_TEXTURE_REF,
-    WOLF_SPOTTED_TEXTURE_REF,
-    WOLF_SPOTTED_TAME_TEXTURE_REF,
-    WOLF_SPOTTED_ANGRY_TEXTURE_REF,
-    WOLF_SPOTTED_BABY_TEXTURE_REF,
-    WOLF_SPOTTED_TAME_BABY_TEXTURE_REF,
-    WOLF_SPOTTED_ANGRY_BABY_TEXTURE_REF,
-    WOLF_SNOWY_TEXTURE_REF,
-    WOLF_SNOWY_TAME_TEXTURE_REF,
-    WOLF_SNOWY_ANGRY_TEXTURE_REF,
-    WOLF_SNOWY_BABY_TEXTURE_REF,
-    WOLF_SNOWY_TAME_BABY_TEXTURE_REF,
-    WOLF_SNOWY_ANGRY_BABY_TEXTURE_REF,
-    WOLF_BLACK_TEXTURE_REF,
-    WOLF_BLACK_TAME_TEXTURE_REF,
-    WOLF_BLACK_ANGRY_TEXTURE_REF,
-    WOLF_BLACK_BABY_TEXTURE_REF,
-    WOLF_BLACK_TAME_BABY_TEXTURE_REF,
-    WOLF_BLACK_ANGRY_BABY_TEXTURE_REF,
-    WOLF_ASHEN_TEXTURE_REF,
-    WOLF_ASHEN_TAME_TEXTURE_REF,
-    WOLF_ASHEN_ANGRY_TEXTURE_REF,
-    WOLF_ASHEN_BABY_TEXTURE_REF,
-    WOLF_ASHEN_TAME_BABY_TEXTURE_REF,
-    WOLF_ASHEN_ANGRY_BABY_TEXTURE_REF,
-    WOLF_RUSTY_TEXTURE_REF,
-    WOLF_RUSTY_TAME_TEXTURE_REF,
-    WOLF_RUSTY_ANGRY_TEXTURE_REF,
-    WOLF_RUSTY_BABY_TEXTURE_REF,
-    WOLF_RUSTY_TAME_BABY_TEXTURE_REF,
-    WOLF_RUSTY_ANGRY_BABY_TEXTURE_REF,
-    WOLF_WOODS_TEXTURE_REF,
-    WOLF_WOODS_TAME_TEXTURE_REF,
-    WOLF_WOODS_ANGRY_TEXTURE_REF,
-    WOLF_WOODS_BABY_TEXTURE_REF,
-    WOLF_WOODS_TAME_BABY_TEXTURE_REF,
-    WOLF_WOODS_ANGRY_BABY_TEXTURE_REF,
-    WOLF_CHESTNUT_TEXTURE_REF,
-    WOLF_CHESTNUT_TAME_TEXTURE_REF,
-    WOLF_CHESTNUT_ANGRY_TEXTURE_REF,
-    WOLF_CHESTNUT_BABY_TEXTURE_REF,
-    WOLF_CHESTNUT_TAME_BABY_TEXTURE_REF,
-    WOLF_CHESTNUT_ANGRY_BABY_TEXTURE_REF,
-    WOLF_STRIPED_TEXTURE_REF,
-    WOLF_STRIPED_TAME_TEXTURE_REF,
-    WOLF_STRIPED_ANGRY_TEXTURE_REF,
-    WOLF_STRIPED_BABY_TEXTURE_REF,
-    WOLF_STRIPED_TAME_BABY_TEXTURE_REF,
-    WOLF_STRIPED_ANGRY_BABY_TEXTURE_REF,
+    VANILLA_WOLF_VARIANT_TEXTURE_REFS[0],
+    VANILLA_WOLF_VARIANT_TEXTURE_REFS[1],
+    VANILLA_WOLF_VARIANT_TEXTURE_REFS[2],
+    VANILLA_WOLF_VARIANT_TEXTURE_REFS[3],
+    VANILLA_WOLF_VARIANT_TEXTURE_REFS[4],
+    VANILLA_WOLF_VARIANT_TEXTURE_REFS[5],
+    VANILLA_WOLF_VARIANT_TEXTURE_REFS[6],
+    VANILLA_WOLF_VARIANT_TEXTURE_REFS[7],
+    VANILLA_WOLF_VARIANT_TEXTURE_REFS[8],
+    VANILLA_WOLF_VARIANT_TEXTURE_REFS[9],
+    VANILLA_WOLF_VARIANT_TEXTURE_REFS[10],
+    VANILLA_WOLF_VARIANT_TEXTURE_REFS[11],
+    VANILLA_WOLF_VARIANT_TEXTURE_REFS[12],
+    VANILLA_WOLF_VARIANT_TEXTURE_REFS[13],
+    VANILLA_WOLF_VARIANT_TEXTURE_REFS[14],
+    VANILLA_WOLF_VARIANT_TEXTURE_REFS[15],
+    VANILLA_WOLF_VARIANT_TEXTURE_REFS[16],
+    VANILLA_WOLF_VARIANT_TEXTURE_REFS[17],
+    VANILLA_WOLF_VARIANT_TEXTURE_REFS[18],
+    VANILLA_WOLF_VARIANT_TEXTURE_REFS[19],
+    VANILLA_WOLF_VARIANT_TEXTURE_REFS[20],
+    VANILLA_WOLF_VARIANT_TEXTURE_REFS[21],
+    VANILLA_WOLF_VARIANT_TEXTURE_REFS[22],
+    VANILLA_WOLF_VARIANT_TEXTURE_REFS[23],
+    VANILLA_WOLF_VARIANT_TEXTURE_REFS[24],
+    VANILLA_WOLF_VARIANT_TEXTURE_REFS[25],
+    VANILLA_WOLF_VARIANT_TEXTURE_REFS[26],
+    VANILLA_WOLF_VARIANT_TEXTURE_REFS[27],
+    VANILLA_WOLF_VARIANT_TEXTURE_REFS[28],
+    VANILLA_WOLF_VARIANT_TEXTURE_REFS[29],
+    VANILLA_WOLF_VARIANT_TEXTURE_REFS[30],
+    VANILLA_WOLF_VARIANT_TEXTURE_REFS[31],
+    VANILLA_WOLF_VARIANT_TEXTURE_REFS[32],
+    VANILLA_WOLF_VARIANT_TEXTURE_REFS[33],
+    VANILLA_WOLF_VARIANT_TEXTURE_REFS[34],
+    VANILLA_WOLF_VARIANT_TEXTURE_REFS[35],
+    VANILLA_WOLF_VARIANT_TEXTURE_REFS[36],
+    VANILLA_WOLF_VARIANT_TEXTURE_REFS[37],
+    VANILLA_WOLF_VARIANT_TEXTURE_REFS[38],
+    VANILLA_WOLF_VARIANT_TEXTURE_REFS[39],
+    VANILLA_WOLF_VARIANT_TEXTURE_REFS[40],
+    VANILLA_WOLF_VARIANT_TEXTURE_REFS[41],
+    VANILLA_WOLF_VARIANT_TEXTURE_REFS[42],
+    VANILLA_WOLF_VARIANT_TEXTURE_REFS[43],
+    VANILLA_WOLF_VARIANT_TEXTURE_REFS[44],
+    VANILLA_WOLF_VARIANT_TEXTURE_REFS[45],
+    VANILLA_WOLF_VARIANT_TEXTURE_REFS[46],
+    VANILLA_WOLF_VARIANT_TEXTURE_REFS[47],
+    VANILLA_WOLF_VARIANT_TEXTURE_REFS[48],
+    VANILLA_WOLF_VARIANT_TEXTURE_REFS[49],
+    VANILLA_WOLF_VARIANT_TEXTURE_REFS[50],
+    VANILLA_WOLF_VARIANT_TEXTURE_REFS[51],
+    VANILLA_WOLF_VARIANT_TEXTURE_REFS[52],
+    VANILLA_WOLF_VARIANT_TEXTURE_REFS[53],
     WOLF_COLLAR_TEXTURE_REF,
     WOLF_BABY_COLLAR_TEXTURE_REF,
     WOLF_BODY_ARMADILLO_SCUTE_TEXTURE_REF,
