@@ -13,6 +13,7 @@ mod keyframe;
 mod model;
 mod model_layers;
 mod textured;
+mod villager_professions;
 
 pub use banner_patterns::BannerPatternKind;
 pub use block_attachment::{
@@ -182,6 +183,7 @@ pub(crate) use textured::{
     EntityModelTexturedDrawRange, EntityModelTranslucentDrawRange,
     ExperienceOrbPickupParticleRenderInstance, ProjectilePickupParticleRenderInstance,
 };
+pub use villager_professions::VillagerModelProfession;
 
 #[cfg(test)]
 mod tests;

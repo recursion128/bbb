@@ -4661,7 +4661,7 @@
           "crates/bbb-native/src/entity_scene/tests.rs#entity_model_instances_project_cat_variants_from_world_registry_order",
           "crates/bbb-native/src/entity_scene/tests.rs#entity_model_kind_projects_wolf_variant_from_registry_and_fallback",
           "crates/bbb-native/src/entity_scene/tests.rs#entity_model_kind_maps_frog_to_real_model",
-          "crates/bbb-native/src/entity_scene/tests.rs#villager_model_data_prefers_dynamic_registry_order",
+          "crates/bbb-native/src/entity_scene/tests.rs#villager_model_data_uses_fixed_built_in_registry_order",
           "crates/bbb-native/src/runtime/events/tests/session_protocol_events.rs#registry_data_event_updates_world_state_and_counters"
         ],
         "status": "complete"

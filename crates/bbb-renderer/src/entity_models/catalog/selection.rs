@@ -881,14 +881,16 @@ pub(in crate::entity_models) fn zombie_villager_type_texture_ref(
 pub(in crate::entity_models) fn villager_profession_texture_ref(
     profession: VillagerModelProfession,
 ) -> Option<EntityModelTextureRef> {
-    villager_profession_texture_index(profession)
+    profession
+        .texture_index()
         .map(|index| VILLAGER_PROFESSION_TEXTURE_REFS[index])
 }
 
 pub(in crate::entity_models) fn zombie_villager_profession_texture_ref(
     profession: VillagerModelProfession,
 ) -> Option<EntityModelTextureRef> {
-    villager_profession_texture_index(profession)
+    profession
+        .texture_index()
         .map(|index| ZOMBIE_VILLAGER_PROFESSION_TEXTURE_REFS[index])
 }
 
@@ -912,26 +914,6 @@ fn villager_type_index(villager_type: VillagerModelType) -> usize {
         VillagerModelType::Swamp => 5,
         VillagerModelType::Taiga => 6,
     }
-}
-
-fn villager_profession_texture_index(profession: VillagerModelProfession) -> Option<usize> {
-    Some(match profession {
-        VillagerModelProfession::None => return None,
-        VillagerModelProfession::Armorer => 0,
-        VillagerModelProfession::Butcher => 1,
-        VillagerModelProfession::Cartographer => 2,
-        VillagerModelProfession::Cleric => 3,
-        VillagerModelProfession::Farmer => 4,
-        VillagerModelProfession::Fisherman => 5,
-        VillagerModelProfession::Fletcher => 6,
-        VillagerModelProfession::Leatherworker => 7,
-        VillagerModelProfession::Librarian => 8,
-        VillagerModelProfession::Mason => 9,
-        VillagerModelProfession::Nitwit => 10,
-        VillagerModelProfession::Shepherd => 11,
-        VillagerModelProfession::Toolsmith => 12,
-        VillagerModelProfession::Weaponsmith => 13,
-    })
 }
 
 fn villager_level_index(level: i32) -> usize {

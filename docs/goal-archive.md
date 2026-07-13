@@ -13113,3 +13113,17 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] extractor fixture、真实 update/check、完整性/顺序/唯一性/边界测试、renderer/native
   focused tests 与跨 crate 反向扫描通过；这只统一固定 vanilla presentation 数据，服务端同步/
   direct holder remapping 和资源包纹理解析仍在差距台账中。
+
+## 2026-07-13：Generate villager-profession registry catalog
+
+- [x] bootstrap generator 通过共享 Tree-sitter frontend 从
+  `VillagerProfession.java` 的 15 个 ResourceKey 与 `bootstrap` register 顺序生成 renderer
+  `VillagerModelProfession`、resource/ordinal lookup 和 `None` 后连续 14 项的 overlay texture
+  index；保留资源包可覆盖的 hat metadata 与既有 texture path owner。
+- [x] native 删除 resource-id 与 registry-id 两张 15-arm profession 表，renderer 删除 enum
+  与 15-arm texture-index 表；generated 反向扫描阻止这些平行 owner 返回，公开 variant 与
+  unknown-id fallback 保持兼容。
+- [x] 同域 authority audit 修复 online `WorldStore` 路径错误接受伪造 session
+  `villager_type`/`villager_profession` 顺序：两者均是 STATIC built-in defaulted registry，
+  不由 configuration `RegistryData` 同步；focused regression 锁定固定 ordinal，完整 generator
+  update/check 与 workspace gate 通过。

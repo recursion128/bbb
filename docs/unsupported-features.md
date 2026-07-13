@@ -1156,6 +1156,13 @@ vanilla evidence. Deleting one of these re-opens work already decided against.
   `RegistryDataLoader.WORLDGEN_REGISTRIES` and `SYNCHRONIZED_REGISTRIES`.
   Potion holder ids and their base effect lists therefore come from the fixed
   client built-in registry rather than a server-remappable registry payload.
+- **Custom/datapack villager-type and villager-profession definitions.**
+  Vanilla 26.1 registers both defaulted registries in `BuiltInRegistries`
+  through `VillagerType::bootstrap` / `VillagerProfession::bootstrap`; neither
+  appears in `RegistryDataLoader.WORLDGEN_REGISTRIES` or
+  `SYNCHRONIZED_REGISTRIES`. Their `VillagerData.STREAM_CODEC` holders resolve
+  through the connection's static registry layer, whose ids/order come from
+  the local built-in catalogs rather than configuration `RegistryData`.
 - **Custom/datapack decorated-pot pattern definitions.** Vanilla 26.1 registers
   `minecraft:decorated_pot_pattern` through `BuiltInRegistries.registerSimple`
   with `DecoratedPotPatterns::bootstrap`, and the registry is absent from both

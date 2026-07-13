@@ -9063,7 +9063,7 @@ fn villager_model_data_reads_vanilla_serializer_and_static_fallback_order() {
 }
 
 #[test]
-fn villager_model_data_prefers_dynamic_registry_order() {
+fn villager_model_data_uses_fixed_built_in_registry_order() {
     let mut world = WorldStore::new();
     world.record_registry_entries(
         "minecraft:villager_type",
@@ -9087,11 +9087,8 @@ fn villager_model_data_prefers_dynamic_registry_order() {
             &[protocol_villager_data(VILLAGER_DATA_DATA_ID, 1, 0, 5)],
             Some(&world),
         ),
-        VillagerModelData::new(
-            VillagerModelType::Desert,
-            VillagerModelProfession::Librarian,
-            5,
-        )
+        VillagerModelData::new(VillagerModelType::Jungle, VillagerModelProfession::None, 5,),
+        "static villager registries are not remapped by configuration RegistryData"
     );
     assert_eq!(
         villager_model_data(

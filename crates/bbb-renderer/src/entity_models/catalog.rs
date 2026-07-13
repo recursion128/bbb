@@ -2,7 +2,7 @@ mod selection;
 
 use glam::Mat4;
 
-use super::{BannerPatternKind, DecoratedPotPattern};
+use super::{BannerPatternKind, DecoratedPotPattern, VillagerModelProfession};
 
 pub(in crate::entity_models) use selection::{
     boat_texture_ref, camel_texture_ref, chicken_texture_ref, cow_texture_ref,
@@ -762,25 +762,6 @@ pub enum VillagerModelType {
     Snow,
     Swamp,
     Taiga,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum VillagerModelProfession {
-    None,
-    Armorer,
-    Butcher,
-    Cartographer,
-    Cleric,
-    Farmer,
-    Fisherman,
-    Fletcher,
-    Leatherworker,
-    Librarian,
-    Mason,
-    Nitwit,
-    Shepherd,
-    Toolsmith,
-    Weaponsmith,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

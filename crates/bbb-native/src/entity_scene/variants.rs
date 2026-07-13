@@ -34,22 +34,9 @@ pub(super) fn villager_model_data(
 
 pub(super) fn resolve_villager_type(
     registry_id: i32,
-    registries: Option<&dyn EntityVariantRegistryLookup>,
+    _registries: Option<&dyn EntityVariantRegistryLookup>,
 ) -> VillagerModelType {
-    if let Some(registries) = registries {
-        villager_type_from_registry_id(registries, registry_id).unwrap_or(VillagerModelType::Plains)
-    } else {
-        villager_type_from_vanilla_registry_id(registry_id)
-    }
-}
-
-pub(super) fn villager_type_from_registry_id(
-    registries: &dyn EntityVariantRegistryLookup,
-    registry_id: i32,
-) -> Option<VillagerModelType> {
-    registries
-        .resource_id_by_holder_id("minecraft:villager_type", registry_id)
-        .and_then(villager_type_from_entry_id)
+    villager_type_from_vanilla_registry_id(registry_id)
 }
 
 pub(super) fn villager_type_from_entry_id(id: &str) -> Option<VillagerModelType> {
@@ -73,67 +60,10 @@ pub(super) fn villager_type_from_vanilla_registry_id(registry_id: i32) -> Villag
 
 pub(super) fn resolve_villager_profession(
     registry_id: i32,
-    registries: Option<&dyn EntityVariantRegistryLookup>,
+    _registries: Option<&dyn EntityVariantRegistryLookup>,
 ) -> VillagerModelProfession {
-    if let Some(registries) = registries {
-        villager_profession_from_registry_id(registries, registry_id)
-            .unwrap_or(VillagerModelProfession::None)
-    } else {
-        villager_profession_from_vanilla_registry_id(registry_id)
-    }
-}
-
-pub(super) fn villager_profession_from_registry_id(
-    registries: &dyn EntityVariantRegistryLookup,
-    registry_id: i32,
-) -> Option<VillagerModelProfession> {
-    registries
-        .resource_id_by_holder_id("minecraft:villager_profession", registry_id)
-        .and_then(villager_profession_from_entry_id)
-}
-
-pub(super) fn villager_profession_from_entry_id(id: &str) -> Option<VillagerModelProfession> {
-    match id {
-        "minecraft:none" => Some(VillagerModelProfession::None),
-        "minecraft:armorer" => Some(VillagerModelProfession::Armorer),
-        "minecraft:butcher" => Some(VillagerModelProfession::Butcher),
-        "minecraft:cartographer" => Some(VillagerModelProfession::Cartographer),
-        "minecraft:cleric" => Some(VillagerModelProfession::Cleric),
-        "minecraft:farmer" => Some(VillagerModelProfession::Farmer),
-        "minecraft:fisherman" => Some(VillagerModelProfession::Fisherman),
-        "minecraft:fletcher" => Some(VillagerModelProfession::Fletcher),
-        "minecraft:leatherworker" => Some(VillagerModelProfession::Leatherworker),
-        "minecraft:librarian" => Some(VillagerModelProfession::Librarian),
-        "minecraft:mason" => Some(VillagerModelProfession::Mason),
-        "minecraft:nitwit" => Some(VillagerModelProfession::Nitwit),
-        "minecraft:shepherd" => Some(VillagerModelProfession::Shepherd),
-        "minecraft:toolsmith" => Some(VillagerModelProfession::Toolsmith),
-        "minecraft:weaponsmith" => Some(VillagerModelProfession::Weaponsmith),
-        _ => None,
-    }
-}
-
-pub(super) fn villager_profession_from_vanilla_registry_id(
-    registry_id: i32,
-) -> VillagerModelProfession {
-    match registry_id {
-        0 => VillagerModelProfession::None,
-        1 => VillagerModelProfession::Armorer,
-        2 => VillagerModelProfession::Butcher,
-        3 => VillagerModelProfession::Cartographer,
-        4 => VillagerModelProfession::Cleric,
-        5 => VillagerModelProfession::Farmer,
-        6 => VillagerModelProfession::Fisherman,
-        7 => VillagerModelProfession::Fletcher,
-        8 => VillagerModelProfession::Leatherworker,
-        9 => VillagerModelProfession::Librarian,
-        10 => VillagerModelProfession::Mason,
-        11 => VillagerModelProfession::Nitwit,
-        12 => VillagerModelProfession::Shepherd,
-        13 => VillagerModelProfession::Toolsmith,
-        14 => VillagerModelProfession::Weaponsmith,
-        _ => VillagerModelProfession::None,
-    }
+    VillagerModelProfession::for_vanilla_registry_id(registry_id)
+        .unwrap_or(VillagerModelProfession::None)
 }
 
 /// Vanilla `RabbitRenderer` picks `AdultRabbitModel` for an adult and `BabyRabbitModel` for a baby; both
