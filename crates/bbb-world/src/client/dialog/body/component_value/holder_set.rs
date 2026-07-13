@@ -1,10 +1,11 @@
 use bbb_protocol::{
     data_component_types::{
-        VANILLA_DATA_COMPONENT_DAMAGE_RESISTANT_TYPE_ID,
+        VANILLA_DATA_COMPONENT_DAMAGE_RESISTANT_TYPE_ID, VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID,
         VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID,
         VANILLA_DATA_COMPONENT_PAINTING_VARIANT_TYPE_ID,
         VANILLA_DATA_COMPONENT_POT_DECORATIONS_TYPE_ID,
         VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID,
+        VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID,
         VANILLA_DATA_COMPONENT_REPAIRABLE_TYPE_ID,
         VANILLA_DATA_COMPONENT_SUSPICIOUS_STEW_EFFECTS_TYPE_ID,
     },
@@ -69,6 +70,14 @@ pub(super) fn decode_holder_backed_component_value(
         VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID => Some(
             decode_registry_holder_reference(value, "minecraft:jukebox_song", registries, what)
                 .map(|song| DialogDataComponentValueState::JukeboxPlayable { song }),
+        ),
+        VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID => Some(
+            decode_registry_holder_reference(value, "minecraft:instrument", registries, what)
+                .map(|instrument| DialogDataComponentValueState::Instrument { instrument }),
+        ),
+        VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID => Some(
+            decode_registry_holder_reference(value, "minecraft:trim_material", registries, what)
+                .map(|material| DialogDataComponentValueState::ProvidesTrimMaterial { material }),
         ),
         VANILLA_DATA_COMPONENT_PAINTING_VARIANT_TYPE_ID => Some(
             decode_registry_holder_reference(value, "minecraft:painting_variant", registries, what)

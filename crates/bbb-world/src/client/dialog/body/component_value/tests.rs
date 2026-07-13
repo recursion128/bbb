@@ -1,11 +1,12 @@
 use bbb_protocol::data_component_types::{
     VANILLA_DATA_COMPONENT_CREATIVE_SLOT_LOCK_TYPE_ID, VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID,
     VANILLA_DATA_COMPONENT_DAMAGE_RESISTANT_TYPE_ID, VANILLA_DATA_COMPONENT_DYE_TYPE_ID,
-    VANILLA_DATA_COMPONENT_FOX_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_ITEM_NAME_TYPE_ID,
-    VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID, VANILLA_DATA_COMPONENT_LORE_TYPE_ID,
-    VANILLA_DATA_COMPONENT_PAINTING_VARIANT_TYPE_ID,
+    VANILLA_DATA_COMPONENT_FOX_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID,
+    VANILLA_DATA_COMPONENT_ITEM_NAME_TYPE_ID, VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_LORE_TYPE_ID, VANILLA_DATA_COMPONENT_PAINTING_VARIANT_TYPE_ID,
     VANILLA_DATA_COMPONENT_POT_DECORATIONS_TYPE_ID,
     VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID,
+    VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID,
     VANILLA_DATA_COMPONENT_SUSPICIOUS_STEW_EFFECTS_TYPE_ID,
 };
 
@@ -1435,6 +1436,77 @@ fn decodes_jukebox_playable_from_session_registry() {
     )
     .unwrap_err()
     .contains("without registry context"));
+}
+
+#[test]
+fn decodes_instrument_and_provides_trim_material_named_holders() {
+    let mut registries = RegistrySet::default();
+    for (registry, resource) in [
+        ("minecraft:instrument", "minecraft:ponder_goat_horn"),
+        ("minecraft:trim_material", "minecraft:quartz"),
+    ] {
+        let mut contents = crate::RegistryContentState::new(registry);
+        contents.entries = vec![
+            crate::RegistryPacketEntry::stub("example:first"),
+            crate::RegistryPacketEntry::stub(resource),
+        ];
+        registries.contents.insert(registry.to_string(), contents);
+    }
+
+    let instrument = decode_supported_component_value(
+        VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID,
+        "minecraft:instrument",
+        &NbtSummaryValue::String("ponder_goat_horn".to_string()),
+        Some(&registries),
+    )
+    .unwrap();
+    assert!(matches!(
+        instrument,
+        Some(DialogDataComponentValueState::Instrument { instrument })
+            if instrument.holder_id == 1
+                && instrument.resource_id == "minecraft:ponder_goat_horn"
+    ));
+
+    let material = decode_supported_component_value(
+        VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID,
+        "minecraft:provides_trim_material",
+        &NbtSummaryValue::String("minecraft:quartz".to_string()),
+        Some(&registries),
+    )
+    .unwrap();
+    assert!(matches!(
+        material,
+        Some(DialogDataComponentValueState::ProvidesTrimMaterial { material })
+            if material.holder_id == 1 && material.resource_id == "minecraft:quartz"
+    ));
+
+    for (type_id, resource_id, value, context, expected) in [
+        (
+            VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID,
+            "minecraft:instrument",
+            NbtSummaryValue::String("minecraft:ponder_goat_horn".to_string()),
+            None,
+            "without registry context",
+        ),
+        (
+            VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID,
+            "minecraft:instrument",
+            NbtSummaryValue::String("minecraft:missing".to_string()),
+            Some(&registries),
+            "missing minecraft:instrument resource",
+        ),
+        (
+            VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID,
+            "minecraft:provides_trim_material",
+            compound(vec![string_entry("asset_name", "quartz")]),
+            Some(&registries),
+            "holder is not a resource id",
+        ),
+    ] {
+        let error =
+            decode_supported_component_value(type_id, resource_id, &value, context).unwrap_err();
+        assert!(error.contains(expected), "unexpected error: {error}");
+    }
 }
 
 #[test]

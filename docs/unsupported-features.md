@@ -565,9 +565,6 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   server-synchronized/direct-holder remapping and resource-pack texture resolution remain)/
   trim-named-holders (fixed vanilla material resource/color and shared pattern identity
   catalogs are generated; server-synchronized holder remapping/direct payloads remain)/
-  instrument-named-holder (fixed vanilla identity/ordinal fallback is generated in the world
-  registry owner; session remapping/direct payload decoding remain)/
-  provides-trim-material-named-holder/
   container/block-state/villager-variant/wolf-variant/wolf-sound-variant/
   pig-variant/pig-sound-variant/cow-variant/cow-sound-variant/
   chicken-variant/chicken-sound-variant/zombie-nautilus-variant/frog-variant/
