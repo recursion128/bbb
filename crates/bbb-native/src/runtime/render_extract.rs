@@ -9,13 +9,13 @@ use bbb_renderer::{
     BlockDestroyOverlay, DebugFilledBox, DebugFilledRect, DebugLine, DebugTextBillboard,
     EntityModelInstance, FirstPersonMapBackgroundSurface, FirstPersonMapBackgroundTexture,
     FirstPersonPlayerArm, HudActionBarText, HudAirSupply, HudBlockItemModel, HudBossBar,
-    HudBossBarColor, HudBossBarOverlay, HudDebugOptionsScreen, HudDebugOverlay, HudFoodEffect,
-    HudInventoryScreen, HudJumpBar, HudPauseScreen, HudPlayerHealth, HudPlayerList,
-    HudPlayerListEntry, HudSignEditorScreen, HudStatsScreen, HudStyledTextRun, HudSystemToast,
-    HudTextStyle, HudTitleText, HudVehicleHealth, ItemEntityBillboard,
-    ItemFrameMapDecorationSurface, ItemFrameMapDecorationTexture, ItemFrameMapSurface,
-    ItemFrameMapTextSurface, ItemFrameMapTexture, ItemModelMesh, Renderer, SelectionOutline,
-    SignTextSurface, WorldBorderRenderState,
+    HudBossBarColor, HudBossBarOverlay, HudCommandSuggestions, HudDebugOptionsScreen,
+    HudDebugOverlay, HudFoodEffect, HudInventoryScreen, HudJumpBar, HudPauseScreen,
+    HudPlayerHealth, HudPlayerList, HudPlayerListEntry, HudSignEditorScreen, HudStatsScreen,
+    HudStyledTextRun, HudSystemToast, HudTextStyle, HudTitleText, HudVehicleHealth,
+    ItemEntityBillboard, ItemFrameMapDecorationSurface, ItemFrameMapDecorationTexture,
+    ItemFrameMapSurface, ItemFrameMapTextSurface, ItemFrameMapTexture, ItemModelMesh, Renderer,
+    SelectionOutline, SignTextSurface, WorldBorderRenderState,
 };
 
 use super::*;
@@ -885,6 +885,7 @@ pub(crate) struct RendererFrame {
     pub(crate) hud_action_bar_text: Option<HudActionBarText>,
     pub(crate) hud_title_text: Option<HudTitleText>,
     pub(crate) hud_player_list: Option<HudPlayerList>,
+    pub(crate) hud_command_suggestions: Option<HudCommandSuggestions>,
     pub(crate) hud_debug_overlay: Option<HudDebugOverlay>,
     pub(crate) hud_boss_bars: Vec<HudBossBar>,
     pub(crate) item_entity_billboards: Vec<ItemEntityBillboard>,
@@ -968,6 +969,7 @@ pub(crate) fn apply_renderer_frame(renderer: &mut Renderer, frame: RendererFrame
     renderer.set_hud_debug_options_screen(frame.hud_debug_options_screen);
     renderer.set_hud_action_bar_text(frame.hud_action_bar_text);
     renderer.set_hud_title_text(frame.hud_title_text);
+    renderer.set_hud_command_suggestions(frame.hud_command_suggestions);
     renderer.set_hud_player_list(frame.hud_player_list);
     renderer.set_hud_debug_overlay(frame.hud_debug_overlay);
     renderer.set_hud_boss_bars(frame.hud_boss_bars);

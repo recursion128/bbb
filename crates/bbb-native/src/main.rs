@@ -491,6 +491,9 @@ fn main() -> Result<()> {
                     if input.handle_debug_pause_screen_cursor_moved(cursor_position) {
                         return;
                     }
+                    if input.handle_command_suggestion_cursor_moved(&world, cursor_position) {
+                        return;
+                    }
                     if input.handle_stats_screen_cursor_moved(
                         &world,
                         cursor_position,
@@ -752,6 +755,7 @@ fn main() -> Result<()> {
                     let stats_open = world.stats_screen_is_open();
                     let debug_options_open = input.debug_options_screen_is_open();
                     let pause_open = input.debug_pause_screen_is_open();
+                    let command_entry_open = input.command_entry_is_active();
                     if dialog_open {
                         set_cursor_capture(&window, &mut cursor_captured, false);
                         return;
@@ -781,6 +785,7 @@ fn main() -> Result<()> {
                         || stats_open
                         || debug_options_open
                         || pause_open
+                        || command_entry_open
                     {
                         set_cursor_capture(&window, &mut cursor_captured, false);
                     }
@@ -792,6 +797,7 @@ fn main() -> Result<()> {
                         && !stats_open
                         && !debug_options_open
                         && !pause_open
+                        && !command_entry_open
                         && !ordinary_pause_escape
                     {
                         return;
@@ -806,6 +812,12 @@ fn main() -> Result<()> {
                         event.state,
                         window.inner_size(),
                     );
+                    if command_entry_open
+                        && !input.command_entry_is_active()
+                        && !runtime_wants_cursor(&input, &world)
+                    {
+                        set_cursor_capture(&window, &mut cursor_captured, true);
+                    }
                 }
                 WindowEvent::Ime(Ime::Commit(text)) => {
                     if code_of_conduct_overlay.is_visible(&world) {
@@ -817,6 +829,7 @@ fn main() -> Result<()> {
                     let book_open = world.current_book().is_some();
                     let advancements_open = world.advancements_screen_is_open();
                     let stats_open = world.stats_screen_is_open();
+                    let command_entry_open = input.command_entry_is_active();
                     if input.debug_options_screen_is_open() {
                         set_cursor_capture(&window, &mut cursor_captured, false);
                         input.handle_debug_options_screen_text_input(&text);
@@ -830,10 +843,14 @@ fn main() -> Result<()> {
                         set_cursor_capture(&window, &mut cursor_captured, false);
                         return;
                     }
-                    if sign_editor_open || container_open {
+                    if sign_editor_open || container_open || command_entry_open {
                         set_cursor_capture(&window, &mut cursor_captured, false);
                     }
-                    if !cursor_captured && !sign_editor_open && !container_open {
+                    if !cursor_captured
+                        && !sign_editor_open
+                        && !container_open
+                        && !command_entry_open
+                    {
                         return;
                     }
                     handle_text_input_with_item_runtime(
@@ -916,6 +933,16 @@ fn main() -> Result<()> {
                         }
                         return;
                     }
+                    if input.command_entry_is_active() {
+                        set_cursor_capture(&window, &mut cursor_captured, false);
+                        input.handle_command_suggestion_mouse_input(
+                            &world,
+                            button,
+                            state,
+                            cursor_position,
+                        );
+                        return;
+                    }
                     if input.sign_editor_is_active_or_pending(&world) {
                         set_cursor_capture(&window, &mut cursor_captured, false);
                         return;
@@ -991,6 +1018,11 @@ fn main() -> Result<()> {
                         input.handle_debug_options_screen_mouse_wheel(delta, window.inner_size());
                         return;
                     }
+                    if input.command_entry_is_active() {
+                        set_cursor_capture(&window, &mut cursor_captured, false);
+                        input.handle_command_suggestion_mouse_wheel(delta);
+                        return;
+                    }
                     if input.sign_editor_is_active_or_pending(&world) {
                         set_cursor_capture(&window, &mut cursor_captured, false);
                         return;
@@ -1049,6 +1081,8 @@ fn main() -> Result<()> {
                             &mut net_counters,
                             &net_commands,
                         );
+                    } else if input.command_entry_is_active() {
+                        set_cursor_capture(&window, &mut cursor_captured, false);
                     }
                     if let Some(items) = item_runtime.as_ref() {
                         items.drain_profile_resolution_results();
@@ -1118,6 +1152,8 @@ fn main() -> Result<()> {
                             &mut net_counters,
                             &net_commands,
                         );
+                    } else if input.command_entry_is_active() {
+                        set_cursor_capture(&window, &mut cursor_captured, false);
                     }
 
                     let terrain_ready_for_screenshot =
@@ -1192,6 +1228,7 @@ fn main() -> Result<()> {
             } => {
                 if code_of_conduct_overlay.is_visible(&world)
                     || runtime_wants_cursor(&input, &world)
+                    || input.command_entry_is_active()
                 {
                     set_cursor_capture(&window, &mut cursor_captured, false);
                     return;
@@ -1222,6 +1259,8 @@ fn main() -> Result<()> {
                 {
                     set_cursor_capture(&window, &mut cursor_captured, false);
                     release_active_input(&mut input, &mut world, &mut net_counters, &net_commands);
+                } else if input.command_entry_is_active() {
+                    set_cursor_capture(&window, &mut cursor_captured, false);
                 }
                 if let Some(items) = item_runtime.as_ref() {
                     items.drain_profile_resolution_results();
@@ -1284,6 +1323,8 @@ fn main() -> Result<()> {
                 {
                     set_cursor_capture(&window, &mut cursor_captured, false);
                     release_active_input(&mut input, &mut world, &mut net_counters, &net_commands);
+                } else if input.command_entry_is_active() {
+                    set_cursor_capture(&window, &mut cursor_captured, false);
                 }
                 if frame_interval.is_none() || Instant::now() >= next_redraw_at {
                     window.request_redraw();

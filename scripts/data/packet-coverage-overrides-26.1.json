@@ -1301,6 +1301,9 @@
       "runtime_side_effect": {
         "evidence": [
           "crates/bbb-native/src/input.rs#latest_command_suggestion_text",
+          "crates/bbb-native/src/input.rs#chat_suggestion_hud_state",
+          "crates/bbb-native/src/input.rs#handle_command_suggestion_mouse_input",
+          "crates/bbb-renderer/src/hud.rs#push_hud_command_suggestions",
           "vanilla:net/minecraft/client/gui/components/CommandSuggestions.java#SuggestionsList"
         ],
         "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
@@ -1314,6 +1317,9 @@
           "crates/bbb-net/src/probe/play.rs#probe_applies_command_suggestion_packets_to_world",
           "crates/bbb-native/src/runtime/events/tests/session_protocol_events.rs#command_suggestions_event_updates_world_and_world_counters",
           "crates/bbb-native/src/input/tests.rs#command_entry_tab_applies_latest_suggestion_range",
+          "crates/bbb-native/src/input/tests.rs#command_suggestion_list_cycles_applies_suffix_and_preserves_narration_state",
+          "crates/bbb-native/src/input/tests.rs#command_suggestion_list_limits_rows_scrolls_clicks_and_shows_rich_tooltip",
+          "crates/bbb-renderer/src/hud.rs#command_suggestions_offscreen_frame_draws_input_list_and_scroll_markers",
           "crates/bbb-native/src/input/tests.rs#command_entry_tab_ignores_stale_suggestion_response"
         ],
         "status": "complete"

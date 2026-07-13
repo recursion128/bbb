@@ -466,7 +466,9 @@ CustomChatCompletions 的 action/list wire、ADD/REMOVE/SET canonical state、on
 last-word/`._/` candidate matching 与 Tab replacement 已闭合；不误发 command suggestion request，五格全部闭合。
 CommandSuggestions 的 id/range/list/optional tooltip wire、pending-id gate、first-result Tab replacement 与
 tests 已闭合；tooltip 现在保留 bounded 原始 Component NBT tree、plain 兼容文本与 styled runs，
-canonical complete。scroll/select/hover/narration list UI 未完成，runtime 保持 partial。
+canonical complete。native ChatScreen 现提交 vanilla 10 行 scroll list、selection suffix、上下/Tab/Shift+Tab
+循环、Escape 先隐藏、鼠标 hover/scroll/click，以及 rich tooltip；selection narration payload 也按当前项/
+总数/text/tooltip 确定性保留。仓库尚无 narrator owner/TTS sink 来本地化并播放该 system narration，runtime 保持 partial。
 play CookieRequest 的 resource id wire、shared session cookie lookup、hit payload/miss null response、ownership
 与 protocol/world/net/native tests 已全行闭合；StoreCookie 的 5120-byte 上限继续约束可回传数据。
 play StoreCookie 的 resource id + bounded payload wire、normal-play upsert 与 tests 已闭合；transfer close

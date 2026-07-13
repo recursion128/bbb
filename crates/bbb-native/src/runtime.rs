@@ -33,25 +33,26 @@ use bbb_renderer::{
     CloudFrame, DebugCuboidFace, DebugFilledBox, DebugFilledRect, DebugLine, DebugTextBillboard,
     EntityModelInstance, FogEnvironment, GuiItemLightingEntry, HudAdvancementBackgroundTexture,
     HudAdvancementHoverBoxSprite, HudAdvancementLineTexture, HudAdvancementTabSprite,
-    HudAdvancementWidgetFrameSprite, HudAirSupply, HudBlockItemModel, HudDebugCrosshair,
-    HudDebugFrameTimeChart, HudDebugGameModeSwitcher, HudDebugGameModeSwitcherSlot,
-    HudDebugNetworkCharts, HudDebugOptionsEntryStatus, HudDebugOptionsRow, HudDebugOptionsScreen,
-    HudDebugOptionsTooltip, HudDebugOverlay, HudDebugProfilerChart, HudDebugTpsChart,
-    HudDebugTpsSample, HudEntityPreview, HudEntityPreviewItemDisplayContext,
-    HudEntityPreviewItemLayer, HudEntityPreviewItemSlot, HudEntityPreviewRect, HudFoodEffect,
-    HudGameModeSwitcherMode, HudHeartKind, HudIconLayer, HudInventoryBackgroundLayer,
-    HudInventoryBackgroundTexture, HudInventoryFillLayer, HudInventoryFillStage,
-    HudInventoryGhostItem, HudInventoryItem, HudInventoryItemScissor, HudInventoryScreen,
-    HudInventorySlot, HudInventoryTextBackground, HudInventoryTextInputDecoration,
-    HudInventoryTextLabel, HudInventoryTooltip, HudInventoryTooltipLine, HudItemCountLabel,
-    HudItemDurabilityBar, HudItemFoil, HudItemIcon, HudJumpBar, HudPauseScreen, HudPlayerHealth,
-    HudSignEditorKind, HudSignEditorScreen, HudStatsItemRow, HudStatsRow, HudStatsScreen,
-    HudSystemToast, HudUvRect, HudVehicleHealth, LevelLighting, LightmapEnvironment,
-    LightningBoltRenderState, ParticleBlockFluidSurfaceSample, ParticleEntityTargetContext,
-    ParticleFluidKind, ParticleLocalPlayerScopeContext, ParticlePlayerMotionContext,
-    ParticleSoundEvent, ParticleSpawnBatch, ParticleSpawnCommand, Renderer, SelectionColoredBox,
-    SelectionLine, SelectionOutline, SignModelAttachment, SignModelWood, SkyEnvironment,
-    SkyMoonPhase, WeatherColumn, WeatherFrame, WeatherRenderState, DEFAULT_ARMOR_STAND_MODEL_POSE,
+    HudAdvancementWidgetFrameSprite, HudAirSupply, HudBlockItemModel, HudCommandSuggestionEntry,
+    HudCommandSuggestionTooltip, HudCommandSuggestions, HudDebugCrosshair, HudDebugFrameTimeChart,
+    HudDebugGameModeSwitcher, HudDebugGameModeSwitcherSlot, HudDebugNetworkCharts,
+    HudDebugOptionsEntryStatus, HudDebugOptionsRow, HudDebugOptionsScreen, HudDebugOptionsTooltip,
+    HudDebugOverlay, HudDebugProfilerChart, HudDebugTpsChart, HudDebugTpsSample, HudEntityPreview,
+    HudEntityPreviewItemDisplayContext, HudEntityPreviewItemLayer, HudEntityPreviewItemSlot,
+    HudEntityPreviewRect, HudFoodEffect, HudGameModeSwitcherMode, HudHeartKind, HudIconLayer,
+    HudInventoryBackgroundLayer, HudInventoryBackgroundTexture, HudInventoryFillLayer,
+    HudInventoryFillStage, HudInventoryGhostItem, HudInventoryItem, HudInventoryItemScissor,
+    HudInventoryScreen, HudInventorySlot, HudInventoryTextBackground,
+    HudInventoryTextInputDecoration, HudInventoryTextLabel, HudInventoryTooltip,
+    HudInventoryTooltipLine, HudItemCountLabel, HudItemDurabilityBar, HudItemFoil, HudItemIcon,
+    HudJumpBar, HudPauseScreen, HudPlayerHealth, HudSignEditorKind, HudSignEditorScreen,
+    HudStatsItemRow, HudStatsRow, HudStatsScreen, HudStyledTextRun, HudSystemToast, HudTextStyle,
+    HudUvRect, HudVehicleHealth, LevelLighting, LightmapEnvironment, LightningBoltRenderState,
+    ParticleBlockFluidSurfaceSample, ParticleEntityTargetContext, ParticleFluidKind,
+    ParticleLocalPlayerScopeContext, ParticlePlayerMotionContext, ParticleSoundEvent,
+    ParticleSpawnBatch, ParticleSpawnCommand, Renderer, SelectionColoredBox, SelectionLine,
+    SelectionOutline, SignModelAttachment, SignModelWood, SkyEnvironment, SkyMoonPhase,
+    WeatherColumn, WeatherFrame, WeatherRenderState, DEFAULT_ARMOR_STAND_MODEL_POSE,
     ENTITY_FULL_BRIGHT_LIGHT_COORDS, HUD_HOTBAR_SLOTS, ITEM_MODEL_NO_OVERLAY,
     VANILLA_DEFAULT_CLOUD_COLOR, VANILLA_DEFAULT_CLOUD_HEIGHT,
     VANILLA_DEFAULT_LIGHTMAP_BLOCK_FACTOR, VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR,
@@ -2343,6 +2344,11 @@ pub(crate) fn pump_network_and_terrain(
     let advancement_hover_fade =
         advancement_hover_fade_for_hud(input, world, advancement_scroll_delta, surface_size);
     let hud_debug_options_screen = hud_debug_options_screen(input, world, surface_size);
+    let hud_command_suggestions = if hud_debug_options_screen.is_none() {
+        hud_command_suggestions(input, world, renderer, surface_size)
+    } else {
+        None
+    };
     let hud_pause_screen = if hud_debug_options_screen.is_some() {
         None
     } else {
@@ -2735,6 +2741,7 @@ pub(crate) fn pump_network_and_terrain(
             hud_action_bar_text,
             hud_title_text,
             hud_player_list,
+            hud_command_suggestions,
             hud_debug_overlay,
             hud_boss_bars,
             item_entity_billboards,
@@ -3967,6 +3974,56 @@ fn hud_debug_options_screen(
         performance_profile_active: state.performance_profile_active,
         performance_profile_hovered: state.performance_profile_hovered,
         done_hovered: state.done_hovered,
+    })
+}
+
+fn hud_command_suggestions(
+    input: &mut ClientInputState,
+    world: &WorldStore,
+    renderer: &Renderer,
+    surface_size: winit::dpi::PhysicalSize<u32>,
+) -> Option<HudCommandSuggestions> {
+    let state = input.command_suggestion_hud_state(world, renderer, surface_size)?;
+    let tooltip = state.tooltip.map(|tooltip| HudCommandSuggestionTooltip {
+        runs: tooltip
+            .runs
+            .into_iter()
+            .map(|run| HudStyledTextRun {
+                text: run.text,
+                style: HudTextStyle {
+                    bold: run.style.bold == Some(true),
+                    italic: run.style.italic == Some(true),
+                    underlined: run.style.underlined == Some(true),
+                    strikethrough: run.style.strikethrough == Some(true),
+                    obfuscated: run.style.obfuscated == Some(true),
+                },
+                color: run.style.color,
+            })
+            .collect(),
+        x: tooltip.x,
+        y: tooltip.y,
+    });
+    Some(HudCommandSuggestions {
+        input_text: state.input_text,
+        cursor: state.cursor,
+        selection: state.selection,
+        cursor_visible: (wall_clock_millis() / 300) % 2 == 0,
+        suffix: state.suffix,
+        list_x: state.rect.x,
+        list_y: state.rect.y,
+        list_width: state.rect.width,
+        list_height: state.rect.height,
+        entries: state
+            .entries
+            .into_iter()
+            .map(|entry| HudCommandSuggestionEntry {
+                text: entry.text,
+                selected: entry.selected,
+            })
+            .collect(),
+        has_previous: state.has_previous,
+        has_next: state.has_next,
+        tooltip,
     })
 }
 

@@ -296,6 +296,16 @@ impl DebugOptionsSearchTextMeasurer for VariableDebugOptionsSearchTextMeasurer {
     }
 }
 
+struct FixedCommandSuggestionTextMeasurer;
+
+impl CommandSuggestionTextMeasurer for FixedCommandSuggestionTextMeasurer {
+    fn command_suggestion_text_width(&self, text: &str) -> u32 {
+        u32::try_from(text.chars().count())
+            .unwrap_or(u32::MAX)
+            .saturating_mul(6)
+    }
+}
+
 fn variable_debug_options_search_cursor_for_text_offset(search_text: &str, offset: i32) -> usize {
     let mut width = 0;
     let mut cursor = 0;
@@ -16881,6 +16891,299 @@ fn command_entry_tab_applies_latest_suggestion_range() {
             command: "give".to_string(),
         })
     );
+}
+
+#[test]
+fn command_suggestion_list_cycles_applies_suffix_and_preserves_narration_state() {
+    let (tx, mut rx) = mpsc::channel(2);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+
+    handle_text_input(&mut input, &mut counters, &mut world, &commands, "/ga");
+    world.apply_command_suggestions(CommandSuggestions {
+        id: 0,
+        start: 1,
+        length: 2,
+        suggestions: vec![
+            CommandSuggestion {
+                text: "gamemode".to_string(),
+                tooltip: None,
+                tooltip_styled: None,
+                tooltip_component: None,
+            },
+            CommandSuggestion {
+                text: "gamerule".to_string(),
+                tooltip: Some("Change a game rule".to_string()),
+                tooltip_styled: Some(vec![StyledTextRun {
+                    text: "Change a game rule".to_string(),
+                    style: ComponentStyle {
+                        bold: Some(true),
+                        color: Some(0x55_AA_FF),
+                        ..Default::default()
+                    },
+                }]),
+                tooltip_component: None,
+            },
+            CommandSuggestion {
+                text: "give".to_string(),
+                tooltip: None,
+                tooltip_styled: None,
+                tooltip_component: None,
+            },
+        ],
+    });
+
+    let hud = input
+        .command_suggestion_hud_state(
+            &world,
+            &FixedCommandSuggestionTextMeasurer,
+            PhysicalSize::new(320, 240),
+        )
+        .expect("open command entry");
+    assert_eq!(hud.suffix.as_deref(), Some("memode"));
+    assert_eq!(hud.entries.len(), 3);
+    assert!(hud.entries[0].selected);
+    assert_eq!(input.command_suggestion_narration(), None);
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::ArrowDown),
+        ElementState::Pressed,
+    );
+    assert_eq!(
+        input.command_suggestion_narration(),
+        Some(&CommandSuggestionNarrationState {
+            position: 2,
+            total: 3,
+            text: "gamerule".to_string(),
+            tooltip: Some("Change a game rule".to_string()),
+        })
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Tab),
+        ElementState::Pressed,
+    );
+    assert_eq!(input.chat_entry.as_ref().unwrap().text, "/gamerule");
+    assert_eq!(input.chat_entry.as_ref().unwrap().cursor, 9);
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Tab),
+        ElementState::Pressed,
+    );
+    assert_eq!(input.chat_entry.as_ref().unwrap().text, "/give");
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::ShiftLeft),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Tab),
+        ElementState::Pressed,
+    );
+    assert_eq!(input.chat_entry.as_ref().unwrap().text, "/gamerule");
+    assert_eq!(counters.command_suggestion_commands_queued, 1);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::CommandSuggestionRequest(CommandSuggestionRequest {
+            id: 0,
+            command: "/ga".to_string(),
+        })
+    );
+}
+
+#[test]
+fn command_suggestion_list_limits_rows_scrolls_clicks_and_shows_rich_tooltip() {
+    let commands = None;
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+    handle_text_input(&mut input, &mut counters, &mut world, &commands, "/c");
+    world.apply_command_suggestions(CommandSuggestions {
+        id: 0,
+        start: 1,
+        length: 1,
+        suggestions: (0..12)
+            .map(|index| CommandSuggestion {
+                text: format!("cmd{index:02}"),
+                tooltip: (index == 2).then(|| "Rich help".to_string()),
+                tooltip_styled: (index == 2).then(|| {
+                    vec![StyledTextRun {
+                        text: "Rich help".to_string(),
+                        style: ComponentStyle {
+                            italic: Some(true),
+                            underlined: Some(true),
+                            color: Some(0x12_34_56),
+                            ..Default::default()
+                        },
+                    }]
+                }),
+                tooltip_component: None,
+            })
+            .collect(),
+    });
+    let surface = PhysicalSize::new(320, 240);
+    let hud = input
+        .command_suggestion_hud_state(&world, &FixedCommandSuggestionTextMeasurer, surface)
+        .expect("open command entry");
+    assert_eq!(hud.rect.x, 9);
+    assert_eq!(hud.rect.y, 105);
+    assert_eq!(hud.rect.width, 31);
+    assert_eq!(hud.rect.height, 120);
+    assert_eq!(hud.entries.len(), 10);
+    assert!(!hud.has_previous);
+    assert!(hud.has_next);
+
+    assert!(input
+        .handle_command_suggestion_cursor_moved(&world, Some(PhysicalPosition::new(11.0, 131.0)),));
+    let hovered = input
+        .command_suggestion_hud_state(&world, &FixedCommandSuggestionTextMeasurer, surface)
+        .unwrap();
+    let tooltip = hovered.tooltip.expect("selected rich tooltip");
+    assert_eq!(tooltip.text, "Rich help");
+    assert_eq!(tooltip.runs[0].style.italic, Some(true));
+    assert_eq!(tooltip.runs[0].style.underlined, Some(true));
+    assert_eq!(tooltip.runs[0].style.color, Some(0x12_34_56));
+    assert_eq!(
+        input.command_suggestion_narration(),
+        Some(&CommandSuggestionNarrationState {
+            position: 3,
+            total: 12,
+            text: "cmd02".to_string(),
+            tooltip: Some("Rich help".to_string()),
+        })
+    );
+
+    assert!(input.handle_command_suggestion_mouse_wheel(MouseScrollDelta::LineDelta(0.0, -1.0)));
+    let scrolled = input
+        .command_suggestion_hud_state(&world, &FixedCommandSuggestionTextMeasurer, surface)
+        .unwrap();
+    assert!(scrolled.has_previous);
+    assert!(scrolled.has_next);
+    assert_eq!(scrolled.entries[0].text, "cmd01");
+
+    assert!(input.handle_command_suggestion_mouse_input(
+        &world,
+        MouseButton::Left,
+        ElementState::Pressed,
+        Some(PhysicalPosition::new(11.0, 155.0)),
+    ));
+    assert_eq!(input.chat_entry.as_ref().unwrap().text, "/cmd05");
+    assert_eq!(input.chat_entry.as_ref().unwrap().cursor, 6);
+}
+
+#[test]
+fn command_suggestion_escape_hides_list_before_closing_command_entry() {
+    let commands = None;
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+    handle_text_input(&mut input, &mut counters, &mut world, &commands, "/se");
+    world.apply_command_suggestions(CommandSuggestions {
+        id: 0,
+        start: 1,
+        length: 2,
+        suggestions: vec![CommandSuggestion {
+            text: "seed".to_string(),
+            tooltip: None,
+            tooltip_styled: None,
+            tooltip_component: None,
+        }],
+    });
+    input.command_suggestion_hud_state(
+        &world,
+        &FixedCommandSuggestionTextMeasurer,
+        PhysicalSize::new(320, 240),
+    );
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Escape),
+        ElementState::Pressed,
+    );
+    assert!(input.command_entry_is_active());
+    assert!(input
+        .command_suggestion_hud_state(
+            &world,
+            &FixedCommandSuggestionTextMeasurer,
+            PhysicalSize::new(320, 240),
+        )
+        .unwrap()
+        .entries
+        .is_empty());
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Tab),
+        ElementState::Pressed,
+    );
+    assert_eq!(input.chat_entry.as_ref().unwrap().text, "/se");
+    assert_eq!(
+        input.command_suggestion_narration(),
+        Some(&CommandSuggestionNarrationState {
+            position: 1,
+            total: 1,
+            text: "seed".to_string(),
+            tooltip: None,
+        })
+    );
+    assert_eq!(
+        input
+            .command_suggestion_hud_state(
+                &world,
+                &FixedCommandSuggestionTextMeasurer,
+                PhysicalSize::new(320, 240),
+            )
+            .unwrap()
+            .entries
+            .len(),
+        1
+    );
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Escape),
+        ElementState::Pressed,
+    );
+    assert!(input.command_entry_is_active());
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Escape),
+        ElementState::Pressed,
+    );
+    assert!(!input.command_entry_is_active());
 }
 
 #[test]

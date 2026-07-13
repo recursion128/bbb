@@ -801,7 +801,106 @@ struct ChatEntryState {
     cursor: usize,
     selection: usize,
     last_suggestion_request_text: Option<String>,
+    suggestion_list: Option<ChatSuggestionListState>,
+    hidden_suggestion_id: Option<i32>,
+    suggestion_narration: Option<CommandSuggestionNarrationState>,
+    mouse_position: Option<(i32, i32)>,
     suppress_open_key_commit: bool,
+}
+
+const COMMAND_SUGGESTION_LINE_HEIGHT: i32 = 12;
+const COMMAND_SUGGESTION_LINE_LIMIT: usize = 10;
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct ChatSuggestionListState {
+    result_id: i32,
+    original_contents: String,
+    sorted_indices: Vec<usize>,
+    current: usize,
+    offset: usize,
+    tab_cycles: bool,
+    rect: Option<CommandSuggestionRect>,
+}
+
+/// Language-neutral payload for vanilla's translatable suggestion narration.
+/// A future narrator owner can localize `narration.suggestion*` without the
+/// input owner pretending that an English string was spoken.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct CommandSuggestionNarrationState {
+    pub(crate) position: usize,
+    pub(crate) total: usize,
+    pub(crate) text: String,
+    pub(crate) tooltip: Option<String>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct CommandSuggestionRect {
+    pub(crate) x: i32,
+    pub(crate) y: i32,
+    pub(crate) width: u32,
+    pub(crate) height: u32,
+}
+
+impl CommandSuggestionRect {
+    fn contains(self, x: i32, y: i32) -> bool {
+        let right = self.x.saturating_add_unsigned(self.width);
+        let bottom = self.y.saturating_add_unsigned(self.height);
+        x >= self.x && x <= right && y >= self.y && y <= bottom
+    }
+
+    fn hovered_line(self, x: i32, y: i32) -> Option<usize> {
+        let right = self.x.saturating_add_unsigned(self.width);
+        if x <= self.x || x >= right {
+            return None;
+        }
+        let lines = usize::try_from(self.height / COMMAND_SUGGESTION_LINE_HEIGHT as u32).ok()?;
+        (0..lines).find(|line| {
+            let top = self.y.saturating_add(
+                i32::try_from(*line)
+                    .unwrap_or(i32::MAX)
+                    .saturating_mul(COMMAND_SUGGESTION_LINE_HEIGHT),
+            );
+            y > top && y < top.saturating_add(COMMAND_SUGGESTION_LINE_HEIGHT)
+        })
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct CommandSuggestionHudEntry {
+    pub(crate) text: String,
+    pub(crate) selected: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct CommandSuggestionHudTooltip {
+    pub(crate) text: String,
+    pub(crate) runs: Vec<StyledTextRun>,
+    pub(crate) x: i32,
+    pub(crate) y: i32,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct CommandSuggestionHudState {
+    pub(crate) input_text: String,
+    pub(crate) cursor: usize,
+    pub(crate) selection: usize,
+    pub(crate) suffix: Option<String>,
+    pub(crate) rect: CommandSuggestionRect,
+    pub(crate) entries: Vec<CommandSuggestionHudEntry>,
+    pub(crate) has_previous: bool,
+    pub(crate) has_next: bool,
+    pub(crate) tooltip: Option<CommandSuggestionHudTooltip>,
+    pub(crate) narration: Option<CommandSuggestionNarrationState>,
+}
+
+pub(crate) trait CommandSuggestionTextMeasurer {
+    fn command_suggestion_text_width(&self, text: &str) -> u32;
+}
+
+impl CommandSuggestionTextMeasurer for bbb_renderer::Renderer {
+    fn command_suggestion_text_width(&self, text: &str) -> u32 {
+        self.hud_plain_text_width(text)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1080,6 +1179,119 @@ impl ClientInputState {
 
     pub(crate) fn command_entry_is_active(&self) -> bool {
         self.chat_entry_is_active()
+    }
+
+    pub(crate) fn command_suggestion_hud_state(
+        &mut self,
+        world: &WorldStore,
+        measurer: &impl CommandSuggestionTextMeasurer,
+        surface_size: PhysicalSize<u32>,
+    ) -> Option<CommandSuggestionHudState> {
+        let entry = self.chat_entry.as_mut()?;
+        sync_chat_suggestion_list(entry, world);
+        update_chat_suggestion_list_rect(entry, world, measurer, surface_size);
+        Some(chat_suggestion_hud_state(entry, world))
+    }
+
+    pub(crate) fn handle_command_suggestion_cursor_moved(
+        &mut self,
+        world: &WorldStore,
+        cursor_position: Option<PhysicalPosition<f64>>,
+    ) -> bool {
+        let Some(entry) = self.chat_entry.as_mut() else {
+            return false;
+        };
+        let previous = entry.mouse_position;
+        entry.mouse_position = cursor_position.and_then(physical_position_floor_i32);
+        if previous == entry.mouse_position {
+            return true;
+        }
+        let Some((mouse_x, mouse_y)) = entry.mouse_position else {
+            return true;
+        };
+        let Some(list) = entry.suggestion_list.as_ref() else {
+            return true;
+        };
+        let Some(line) = list
+            .rect
+            .and_then(|rect| rect.hovered_line(mouse_x, mouse_y))
+        else {
+            return true;
+        };
+        let selected = list.offset.saturating_add(line);
+        select_chat_suggestion(entry, world, selected, true);
+        true
+    }
+
+    pub(crate) fn handle_command_suggestion_mouse_input(
+        &mut self,
+        world: &WorldStore,
+        button: MouseButton,
+        state: ElementState,
+        cursor_position: Option<PhysicalPosition<f64>>,
+    ) -> bool {
+        let Some(entry) = self.chat_entry.as_mut() else {
+            return false;
+        };
+        entry.mouse_position = cursor_position.and_then(physical_position_floor_i32);
+        if !matches!((button, state), (MouseButton::Left, ElementState::Pressed)) {
+            return true;
+        }
+        let Some((mouse_x, mouse_y)) = entry.mouse_position else {
+            return true;
+        };
+        let Some(list) = entry.suggestion_list.as_ref() else {
+            return true;
+        };
+        let Some(rect) = list.rect.filter(|rect| rect.contains(mouse_x, mouse_y)) else {
+            return true;
+        };
+        let line = usize::try_from((mouse_y - rect.y) / COMMAND_SUGGESTION_LINE_HEIGHT)
+            .unwrap_or_default();
+        let selected = list.offset.saturating_add(line);
+        if selected >= list.sorted_indices.len() {
+            return true;
+        }
+        select_chat_suggestion(entry, world, selected, true);
+        use_selected_chat_suggestion(entry, world);
+        true
+    }
+
+    pub(crate) fn handle_command_suggestion_mouse_wheel(
+        &mut self,
+        delta: MouseScrollDelta,
+    ) -> bool {
+        let Some(entry) = self.chat_entry.as_mut() else {
+            return false;
+        };
+        let Some((mouse_x, mouse_y)) = entry.mouse_position else {
+            return true;
+        };
+        let Some(list) = entry.suggestion_list.as_mut() else {
+            return true;
+        };
+        let Some(_rect) = list.rect.filter(|rect| rect.contains(mouse_x, mouse_y)) else {
+            return true;
+        };
+        let scroll = match delta {
+            MouseScrollDelta::LineDelta(_, y) => f64::from(y),
+            MouseScrollDelta::PixelDelta(position) => position.y,
+        }
+        .clamp(-1.0, 1.0);
+        let max_offset = list
+            .sorted_indices
+            .len()
+            .saturating_sub(COMMAND_SUGGESTION_LINE_LIMIT);
+        list.offset =
+            ((list.offset as f64 - scroll) as isize).clamp(0, max_offset as isize) as usize;
+        true
+    }
+
+    #[cfg(test)]
+    pub(crate) fn command_suggestion_narration(&self) -> Option<&CommandSuggestionNarrationState> {
+        self.chat_entry
+            .as_ref()
+            .and_then(|entry| entry.suggestion_narration.as_ref())
     }
 
     pub(crate) fn sign_editor_is_active_or_pending(&self, world: &WorldStore) -> bool {
@@ -8478,6 +8690,10 @@ fn open_chat_entry(
         cursor: 0,
         selection: 0,
         last_suggestion_request_text: None,
+        suggestion_list: None,
+        hidden_suggestion_id: None,
+        suggestion_narration: None,
+        mouse_position: None,
         suppress_open_key_commit,
     });
 }
@@ -8494,17 +8710,72 @@ fn handle_chat_entry_key(
         return;
     }
 
+    if let Some(entry) = input.chat_entry.as_mut() {
+        sync_chat_suggestion_list(entry, world);
+    }
+
     match code {
         KeyCode::Enter | KeyCode::NumpadEnter => {
             submit_chat_entry(input, counters, world, net_commands)
         }
-        KeyCode::Escape => input.chat_entry = None,
+        KeyCode::Escape => {
+            let hidden = input.chat_entry.as_mut().and_then(|entry| {
+                let list = entry.suggestion_list.take()?;
+                entry.hidden_suggestion_id = Some(list.result_id);
+                entry.suggestion_narration = None;
+                Some(())
+            });
+            if hidden.is_none() {
+                input.chat_entry = None;
+            }
+        }
         KeyCode::Tab => {
-            apply_latest_chat_suggestion(input, world);
+            let shift_down = input.shift_down();
+            let revealed_list = input
+                .chat_entry
+                .as_mut()
+                .is_some_and(|entry| show_hidden_chat_suggestion_list(entry, world));
+            if revealed_list {
+                return;
+            }
+            let used_list = input.chat_entry.as_mut().is_some_and(|entry| {
+                let Some(tab_cycles) = entry.suggestion_list.as_ref().map(|list| list.tab_cycles)
+                else {
+                    return false;
+                };
+                if tab_cycles {
+                    cycle_chat_suggestion(entry, world, if shift_down { -1 } else { 1 });
+                }
+                use_selected_chat_suggestion(entry, world);
+                true
+            });
+            if !used_list {
+                apply_latest_chat_suggestion(input, world);
+            }
         }
         KeyCode::KeyA if input.control_down() && !input.shift_down() => {
             if let Some(entry) = &mut input.chat_entry {
                 select_chat_entry_text(entry);
+            }
+        }
+        KeyCode::ArrowUp => {
+            if let Some(entry) = input.chat_entry.as_mut() {
+                if entry.suggestion_list.is_some() {
+                    cycle_chat_suggestion(entry, world, -1);
+                    if let Some(list) = entry.suggestion_list.as_mut() {
+                        list.tab_cycles = false;
+                    }
+                }
+            }
+        }
+        KeyCode::ArrowDown => {
+            if let Some(entry) = input.chat_entry.as_mut() {
+                if entry.suggestion_list.is_some() {
+                    cycle_chat_suggestion(entry, world, 1);
+                    if let Some(list) = entry.suggestion_list.as_mut() {
+                        list.tab_cycles = false;
+                    }
+                }
             }
         }
         KeyCode::ArrowLeft => {
@@ -8605,6 +8876,345 @@ fn apply_latest_chat_suggestion(input: &mut ClientInputState, world: &WorldStore
         if is_command {
             entry.last_suggestion_request_text = Some(entry.text.clone());
         }
+    }
+}
+
+fn sync_chat_suggestion_list(entry: &mut ChatEntryState, world: &WorldStore) {
+    if entry.suggestion_list.is_some() {
+        return;
+    }
+    let suggestions = world.command_suggestions();
+    let request = match suggestions.last_request.as_ref() {
+        Some(request) if request.command == entry.text => request,
+        _ => return,
+    };
+    let result = match suggestions
+        .last_id
+        .and_then(|id| suggestions.by_id.get(&id))
+    {
+        Some(result)
+            if result.id == request.id
+                && entry.hidden_suggestion_id != Some(result.id)
+                && !result.suggestions.is_empty() =>
+        {
+            result
+        }
+        _ => return,
+    };
+
+    let cursor_byte = text_edit::byte_index(
+        &entry.text,
+        entry.cursor.min(text_edit::char_len(&entry.text)),
+    );
+    let partial = &entry.text[..cursor_byte];
+    let last_word_start = partial
+        .char_indices()
+        .filter_map(|(index, ch)| ch.is_whitespace().then_some(index + ch.len_utf8()))
+        .last()
+        .unwrap_or(0);
+    let last_word = partial[last_word_start..].to_lowercase();
+    let (direct, partial): (Vec<_>, Vec<_>) = (0..result.suggestions.len()).partition(|index| {
+        let text = result.suggestions[*index].text.as_str();
+        text.starts_with(&last_word)
+            || text
+                .strip_prefix("minecraft:")
+                .is_some_and(|path| path.starts_with(&last_word))
+    });
+    let sorted_indices = direct.into_iter().chain(partial).collect();
+    entry.suggestion_list = Some(ChatSuggestionListState {
+        result_id: result.id,
+        original_contents: entry.text.clone(),
+        sorted_indices,
+        current: 0,
+        offset: 0,
+        tab_cycles: false,
+        rect: None,
+    });
+}
+
+fn show_hidden_chat_suggestion_list(entry: &mut ChatEntryState, world: &WorldStore) -> bool {
+    let Some(hidden_id) = entry.hidden_suggestion_id.take() else {
+        return false;
+    };
+    sync_chat_suggestion_list(entry, world);
+    let shown = entry
+        .suggestion_list
+        .as_ref()
+        .is_some_and(|list| list.result_id == hidden_id);
+    if shown {
+        update_chat_suggestion_narration(entry, world);
+    } else {
+        entry.hidden_suggestion_id = Some(hidden_id);
+    }
+    shown
+}
+
+fn cycle_chat_suggestion(entry: &mut ChatEntryState, world: &WorldStore, direction: i32) {
+    let Some(list) = entry.suggestion_list.as_ref() else {
+        return;
+    };
+    let len = list.sorted_indices.len();
+    if len == 0 {
+        return;
+    }
+    let current = if direction < 0 {
+        list.current.checked_sub(1).unwrap_or(len - 1)
+    } else {
+        (list.current + 1) % len
+    };
+    select_chat_suggestion(entry, world, current, true);
+}
+
+fn select_chat_suggestion(
+    entry: &mut ChatEntryState,
+    world: &WorldStore,
+    index: usize,
+    narrate: bool,
+) {
+    let Some(list) = entry.suggestion_list.as_mut() else {
+        return;
+    };
+    let len = list.sorted_indices.len();
+    if len == 0 {
+        return;
+    }
+    let current = index % len;
+    let changed = list.current != current;
+    list.current = current;
+    let last_visible = list
+        .offset
+        .saturating_add(COMMAND_SUGGESTION_LINE_LIMIT.saturating_sub(1));
+    if current < list.offset {
+        list.offset = current.min(len.saturating_sub(COMMAND_SUGGESTION_LINE_LIMIT));
+    } else if current > last_visible {
+        list.offset = current
+            .saturating_add(1)
+            .saturating_sub(COMMAND_SUGGESTION_LINE_LIMIT)
+            .min(len.saturating_sub(COMMAND_SUGGESTION_LINE_LIMIT));
+    }
+    if !narrate || !changed {
+        return;
+    }
+    update_chat_suggestion_narration(entry, world);
+}
+
+fn update_chat_suggestion_narration(entry: &mut ChatEntryState, world: &WorldStore) {
+    let Some(list) = entry.suggestion_list.as_ref() else {
+        return;
+    };
+    let len = list.sorted_indices.len();
+    let current = list.current;
+    let Some(suggestion) = world
+        .command_suggestions_by_id(list.result_id)
+        .and_then(|result| {
+            list.sorted_indices
+                .get(current)
+                .and_then(|index| result.suggestions.get(*index))
+        })
+    else {
+        return;
+    };
+    entry.suggestion_narration = Some(CommandSuggestionNarrationState {
+        position: current + 1,
+        total: len,
+        text: suggestion.text.clone(),
+        tooltip: suggestion.tooltip.clone(),
+    });
+}
+
+fn use_selected_chat_suggestion(entry: &mut ChatEntryState, world: &WorldStore) {
+    let Some(list) = entry.suggestion_list.as_ref() else {
+        return;
+    };
+    let Some(result) = world.command_suggestions_by_id(list.result_id) else {
+        return;
+    };
+    let Some(suggestion) = list
+        .sorted_indices
+        .get(list.current)
+        .and_then(|index| result.suggestions.get(*index))
+    else {
+        return;
+    };
+    let start = match usize::try_from(result.start) {
+        Ok(start) => start,
+        Err(_) => return,
+    };
+    let Some(updated) = apply_command_suggestion_text(
+        &list.original_contents,
+        result.start,
+        result.length,
+        &suggestion.text,
+    ) else {
+        return;
+    };
+    let Some(prefix) = list.original_contents.get(..start) else {
+        return;
+    };
+    let cursor = text_edit::char_len(prefix).saturating_add(text_edit::char_len(&suggestion.text));
+    entry.text = updated;
+    set_chat_entry_cursor(entry, cursor);
+    entry.last_suggestion_request_text = Some(entry.text.clone());
+    if let Some(list) = entry.suggestion_list.as_mut() {
+        list.tab_cycles = true;
+    }
+}
+
+fn update_chat_suggestion_list_rect(
+    entry: &mut ChatEntryState,
+    world: &WorldStore,
+    measurer: &impl CommandSuggestionTextMeasurer,
+    surface_size: PhysicalSize<u32>,
+) {
+    let Some(list) = entry.suggestion_list.as_mut() else {
+        return;
+    };
+    let Some(result) = world.command_suggestions_by_id(list.result_id) else {
+        list.rect = None;
+        return;
+    };
+    let max_width = list
+        .sorted_indices
+        .iter()
+        .filter_map(|index| result.suggestions.get(*index))
+        .map(|suggestion| measurer.command_suggestion_text_width(&suggestion.text))
+        .max()
+        .unwrap_or_default();
+    let start = usize::try_from(result.start).unwrap_or_default();
+    let prefix_width = list
+        .original_contents
+        .get(..start)
+        .map(|prefix| measurer.command_suggestion_text_width(prefix))
+        .unwrap_or_default();
+    let max_x = i32::try_from(surface_size.width.saturating_sub(max_width)).unwrap_or(i32::MAX);
+    // ChatScreen's unbordered edit box starts at x=4. Vanilla first clamps
+    // getScreenX(start), then SuggestionsList shifts that anchor one pixel
+    // left (including at the right edge).
+    let x = (4i32.saturating_add_unsigned(prefix_width))
+        .clamp(0, max_x)
+        .saturating_sub(1);
+    let visible = list.sorted_indices.len().min(COMMAND_SUGGESTION_LINE_LIMIT);
+    let height = u32::try_from(visible)
+        .unwrap_or_default()
+        .saturating_mul(COMMAND_SUGGESTION_LINE_HEIGHT as u32);
+    let y = i32::try_from(surface_size.height)
+        .unwrap_or(i32::MAX)
+        .saturating_sub(15)
+        .saturating_sub_unsigned(height);
+    list.rect = Some(CommandSuggestionRect {
+        x,
+        y,
+        width: max_width.saturating_add(1),
+        height,
+    });
+}
+
+fn chat_suggestion_hud_state(
+    entry: &ChatEntryState,
+    world: &WorldStore,
+) -> CommandSuggestionHudState {
+    let empty_rect = CommandSuggestionRect {
+        x: 0,
+        y: 0,
+        width: 0,
+        height: 0,
+    };
+    let Some(list) = entry.suggestion_list.as_ref() else {
+        return CommandSuggestionHudState {
+            input_text: entry.text.clone(),
+            cursor: entry.cursor,
+            selection: entry.selection,
+            suffix: None,
+            rect: empty_rect,
+            entries: Vec::new(),
+            has_previous: false,
+            has_next: false,
+            tooltip: None,
+            narration: entry.suggestion_narration.clone(),
+        };
+    };
+    let Some(result) = world.command_suggestions_by_id(list.result_id) else {
+        return CommandSuggestionHudState {
+            input_text: entry.text.clone(),
+            cursor: entry.cursor,
+            selection: entry.selection,
+            suffix: None,
+            rect: empty_rect,
+            entries: Vec::new(),
+            has_previous: false,
+            has_next: false,
+            tooltip: None,
+            narration: entry.suggestion_narration.clone(),
+        };
+    };
+    let visible_end = list
+        .offset
+        .saturating_add(COMMAND_SUGGESTION_LINE_LIMIT)
+        .min(list.sorted_indices.len());
+    let entries = list.sorted_indices[list.offset..visible_end]
+        .iter()
+        .enumerate()
+        .filter_map(|(visible, index)| {
+            result
+                .suggestions
+                .get(*index)
+                .map(|suggestion| CommandSuggestionHudEntry {
+                    text: suggestion.text.clone(),
+                    selected: list.offset + visible == list.current,
+                })
+        })
+        .collect();
+    let selected = list
+        .sorted_indices
+        .get(list.current)
+        .and_then(|index| result.suggestions.get(*index));
+    let suffix = selected
+        .and_then(|suggestion| {
+            apply_command_suggestion_text(
+                &list.original_contents,
+                result.start,
+                result.length,
+                &suggestion.text,
+            )
+        })
+        .and_then(|suggested| suggested.strip_prefix(&entry.text).map(str::to_string));
+    let hovered = entry
+        .mouse_position
+        .zip(list.rect)
+        .is_some_and(|((x, y), rect)| rect.hovered_line(x, y).is_some());
+    let tooltip = if hovered {
+        selected
+            .and_then(|suggestion| {
+                suggestion.tooltip.clone().map(|text| {
+                    let runs = suggestion.tooltip_styled.clone().unwrap_or_else(|| {
+                        vec![StyledTextRun {
+                            text: text.clone(),
+                            style: ComponentStyle::default(),
+                        }]
+                    });
+                    (text, runs)
+                })
+            })
+            .and_then(|(text, runs)| {
+                entry
+                    .mouse_position
+                    .map(|(x, y)| CommandSuggestionHudTooltip { text, runs, x, y })
+            })
+    } else {
+        None
+    };
+
+    CommandSuggestionHudState {
+        input_text: entry.text.clone(),
+        cursor: entry.cursor,
+        selection: entry.selection,
+        suffix,
+        rect: list.rect.unwrap_or(empty_rect),
+        entries,
+        has_previous: list.offset > 0,
+        has_next: visible_end < list.sorted_indices.len(),
+        tooltip,
+        narration: entry.suggestion_narration.clone(),
     }
 }
 
@@ -8738,6 +9348,9 @@ fn update_chat_entry_after_text_change(
     if entry.text == before {
         return;
     }
+    entry.suggestion_list = None;
+    entry.hidden_suggestion_id = None;
+    entry.suggestion_narration = None;
     if entry.text.starts_with('/') {
         maybe_queue_command_suggestion_request(input, counters, world, net_commands);
     }

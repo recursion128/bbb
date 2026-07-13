@@ -121,10 +121,10 @@ Owner: `bbb-protocol`
   not proof of complete metadata behavior.
 - Then cover play, movement, inventory, chat, interaction and command suggestion
   end to end.
-- Render vanilla's scrollable command-suggestion list, selection suffix, rich
-  hover tooltip and narration.
-  Matching responses currently support safe first-result Tab replacement;
-  stale/wrong transaction ids are ignored.
+- Add a narrator owner/TTS sink and localize/speak the retained
+  command-suggestion selection payload (current/total/text/tooltip), including
+  immediate narration when Tab shows a previously hidden list. Do not treat
+  the deterministic input state as audio output.
 - Build a registry-aware repo-native command dispatcher from the Commands tree,
   matching `CommandBuildContext.simple` argument construction, local parsing,
   validation, redirects and completion rather than retaining only structural

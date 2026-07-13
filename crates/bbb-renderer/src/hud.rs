@@ -116,6 +116,39 @@ pub struct HudPlayerListEntry {
     pub spectator: bool,
 }
 
+/// One frame of the unbordered ChatScreen edit box and its Brigadier
+/// completion popup. Coordinates are absolute GUI pixels, matching vanilla's
+/// `CommandSuggestions.SuggestionsList` extraction.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct HudCommandSuggestions {
+    pub input_text: String,
+    pub cursor: usize,
+    pub selection: usize,
+    pub cursor_visible: bool,
+    pub suffix: Option<String>,
+    pub list_x: i32,
+    pub list_y: i32,
+    pub list_width: u32,
+    pub list_height: u32,
+    pub entries: Vec<HudCommandSuggestionEntry>,
+    pub has_previous: bool,
+    pub has_next: bool,
+    pub tooltip: Option<HudCommandSuggestionTooltip>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct HudCommandSuggestionEntry {
+    pub text: String,
+    pub selected: bool,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct HudCommandSuggestionTooltip {
+    pub runs: Vec<HudStyledTextRun>,
+    pub x: i32,
+    pub y: i32,
+}
+
 /// One frame's F3 debug overlay text columns. Vanilla `DebugScreenOverlay`
 /// resolves enabled entries into left/right line lists, then draws each
 /// non-empty line with a translucent black backdrop at 2px margins and 9px
@@ -751,6 +784,14 @@ pub struct HudBossBar {
 
 const HUD_TINT_WHITE: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
 const HUD_TEXT_SHADOW_TINT: [f32; 4] = [0.25, 0.25, 0.25, 1.0];
+const HUD_COMMAND_INPUT_TINT: [f32; 4] = [224.0 / 255.0, 224.0 / 255.0, 224.0 / 255.0, 1.0];
+const HUD_COMMAND_SUFFIX_TINT: [f32; 4] = [128.0 / 255.0, 128.0 / 255.0, 128.0 / 255.0, 1.0];
+const HUD_COMMAND_UNSELECTED_TINT: [f32; 4] = [170.0 / 255.0, 170.0 / 255.0, 170.0 / 255.0, 1.0];
+const HUD_COMMAND_SELECTED_TINT: [f32; 4] = [1.0, 1.0, 0.0, 1.0];
+const HUD_COMMAND_INPUT_BACKGROUND_TINT: [f32; 4] = [0.0, 0.0, 0.0, 128.0 / 255.0];
+const HUD_COMMAND_LIST_BACKGROUND_TINT: [f32; 4] = [0.0, 0.0, 0.0, 208.0 / 255.0];
+const HUD_COMMAND_SELECTION_TINT: [f32; 4] = [0.0, 0.0, 1.0, 1.0];
+const HUD_COMMAND_LINE_HEIGHT: i32 = 12;
 const HUD_DEBUG_OVERLAY_TEXT_TINT: [f32; 4] = [224.0 / 255.0, 224.0 / 255.0, 224.0 / 255.0, 1.0];
 const HUD_DEBUG_OVERLAY_BACKGROUND_TINT: [f32; 4] =
     [80.0 / 255.0, 80.0 / 255.0, 80.0 / 255.0, 144.0 / 255.0];
@@ -1720,6 +1761,13 @@ impl Renderer {
 
     pub fn hud_plain_text_cursor_for_width(&self, text: &str, width: u32) -> Option<usize> {
         hud_plain_text_cursor_for_width(text, width, &self.hud_font_glyphs)
+    }
+
+    /// Measures one unstyled HUD line with the active vanilla font atlas.
+    /// Native screen extraction uses the same advances as draw-time layout so
+    /// suggestion-list anchoring cannot drift from the rendered text.
+    pub fn hud_plain_text_width(&self, text: &str) -> u32 {
+        hud_plain_text_width(text, &self.hud_font_glyphs)
     }
 
     pub fn hud_plain_text_cursor_for_width_from(
@@ -3633,6 +3681,10 @@ impl Renderer {
         });
     }
 
+    pub fn set_hud_command_suggestions(&mut self, suggestions: Option<HudCommandSuggestions>) {
+        self.hud_command_suggestions = suggestions.map(sanitize_hud_command_suggestions);
+    }
+
     pub fn set_hud_debug_overlay(&mut self, overlay: Option<HudDebugOverlay>) {
         self.hud_debug_overlay = overlay.and_then(sanitize_hud_debug_overlay);
     }
@@ -4298,6 +4350,25 @@ impl Renderer {
                     player_list,
                 );
             }
+        }
+
+        // ChatScreen extracts its edit box and completion popup after the
+        // in-world GUI, so keep this native screen surface above action/title
+        // overlays and the player list as well.
+        if let Some(suggestions) = &self.hud_command_suggestions {
+            push_hud_command_suggestions(
+                &mut vertices,
+                &mut commands,
+                &self.hud_white_pixel,
+                self.hud_tooltip_background.as_ref(),
+                self.hud_tooltip_frame.as_ref(),
+                self.hud_font_atlas.as_ref(),
+                &self.hud_font_glyphs,
+                &self.hud_obfuscated_glyph_pool,
+                self.counters.frame_index,
+                surface_size,
+                suggestions,
+            );
         }
 
         if let Some(screen) = &self.hud_inventory_screen {
@@ -8179,6 +8250,306 @@ fn push_hud_plain_text<'a>(
 
 fn hud_plain_text_width(text: &str, glyphs: &HudFontGlyphMap) -> u32 {
     hud_font_runs_width(&[HudStyledTextRun::plain(text.to_string())], glyphs).unwrap_or_default()
+}
+
+#[allow(clippy::too_many_arguments)]
+fn push_hud_command_suggestions<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    white_pixel: &'a HudSpriteGpu,
+    tooltip_background: Option<&'a HudNineSliceSprite>,
+    tooltip_frame: Option<&'a HudNineSliceSprite>,
+    font_atlas: Option<&'a HudSpriteGpu>,
+    glyphs: &HudFontGlyphMap,
+    obfuscated_pool: &HudObfuscatedGlyphPool,
+    obfuscated_seed: u64,
+    surface_size: PhysicalSize<u32>,
+    state: &HudCommandSuggestions,
+) {
+    let Some(font_atlas) = font_atlas else {
+        return;
+    };
+    let surface_height = i32::try_from(surface_size.height).unwrap_or(i32::MAX);
+    let input_width = surface_size.width.saturating_sub(4);
+    push_hud_draw_with_uv_and_tint(
+        vertices,
+        commands,
+        white_pixel,
+        surface_size,
+        absolute_hud_rect(
+            2.0,
+            surface_height.saturating_sub(14) as f32,
+            surface_size.width.saturating_sub(4),
+            12,
+        ),
+        HudUvRect {
+            min: [0.0, 0.0],
+            max: [1.0, 1.0],
+        },
+        HUD_COMMAND_INPUT_BACKGROUND_TINT,
+    );
+
+    let label = HudInventoryTextLabel {
+        x: 0,
+        y: 0,
+        width: input_width,
+        text: state.input_text.clone(),
+        tint: HUD_COMMAND_INPUT_TINT,
+        background: None,
+        input: Some(HudInventoryTextInputDecoration {
+            cursor: state.cursor,
+            selection: state.selection,
+            scroll_to: state.cursor,
+            max_length: 256,
+            cursor_visible: state.cursor_visible,
+            cursor_tint: HUD_COMMAND_INPUT_TINT,
+            selection_tint: HUD_COMMAND_SELECTION_TINT,
+        }),
+        shadow: true,
+        runs: Vec::new(),
+    };
+    let input = label.input.expect("command input decoration");
+    let layout = hud_inventory_text_input_layout(&label, input, glyphs);
+    let input_origin = (4.0, surface_height.saturating_sub(12) as f32);
+    push_hud_inventory_text_input_label(
+        vertices,
+        commands,
+        white_pixel,
+        font_atlas,
+        glyphs,
+        obfuscated_pool,
+        obfuscated_seed,
+        surface_size,
+        &label,
+        input,
+        input_origin,
+    );
+    if let Some(suffix) = state.suffix.as_deref() {
+        push_hud_plain_text(
+            vertices,
+            commands,
+            white_pixel,
+            font_atlas,
+            glyphs,
+            obfuscated_pool,
+            obfuscated_seed,
+            surface_size,
+            suffix,
+            (
+                input_origin.0 + (layout.cursor_x - 1.0).max(0.0),
+                input_origin.1,
+            ),
+            HUD_COMMAND_SUFFIX_TINT,
+            1.0,
+            true,
+        );
+    }
+
+    if !state.entries.is_empty() && state.list_width > 0 && state.list_height > 0 {
+        let list_rect = absolute_hud_rect(
+            state.list_x as f32,
+            state.list_y as f32,
+            state.list_width,
+            state.list_height,
+        );
+        push_hud_draw_with_uv_and_tint(
+            vertices,
+            commands,
+            white_pixel,
+            surface_size,
+            list_rect,
+            HudUvRect {
+                min: [0.0, 0.0],
+                max: [1.0, 1.0],
+            },
+            HUD_COMMAND_LIST_BACKGROUND_TINT,
+        );
+        for (index, entry) in state.entries.iter().enumerate() {
+            let y = state.list_y.saturating_add(
+                i32::try_from(index)
+                    .unwrap_or(i32::MAX)
+                    .saturating_mul(HUD_COMMAND_LINE_HEIGHT),
+            );
+            push_hud_plain_text(
+                vertices,
+                commands,
+                white_pixel,
+                font_atlas,
+                glyphs,
+                obfuscated_pool,
+                obfuscated_seed,
+                surface_size,
+                &entry.text,
+                (
+                    state.list_x.saturating_add(1) as f32,
+                    y.saturating_add(2) as f32,
+                ),
+                if entry.selected {
+                    HUD_COMMAND_SELECTED_TINT
+                } else {
+                    HUD_COMMAND_UNSELECTED_TINT
+                },
+                1.0,
+                true,
+            );
+        }
+        if state.has_previous || state.has_next {
+            let top = state.list_y.saturating_sub(1);
+            let bottom = state.list_y.saturating_add_unsigned(state.list_height);
+            for y in [top, bottom] {
+                push_hud_draw_with_uv_and_tint(
+                    vertices,
+                    commands,
+                    white_pixel,
+                    surface_size,
+                    absolute_hud_rect(state.list_x as f32, y as f32, state.list_width, 1),
+                    HudUvRect {
+                        min: [0.0, 0.0],
+                        max: [1.0, 1.0],
+                    },
+                    HUD_COMMAND_LIST_BACKGROUND_TINT,
+                );
+            }
+            for offset in (0..state.list_width).step_by(2) {
+                for y in state
+                    .has_previous
+                    .then_some(top)
+                    .into_iter()
+                    .chain(state.has_next.then_some(bottom))
+                {
+                    push_hud_draw_with_uv_and_tint(
+                        vertices,
+                        commands,
+                        white_pixel,
+                        surface_size,
+                        absolute_hud_rect(
+                            state.list_x.saturating_add_unsigned(offset) as f32,
+                            y as f32,
+                            1,
+                            1,
+                        ),
+                        HudUvRect {
+                            min: [0.0, 0.0],
+                            max: [1.0, 1.0],
+                        },
+                        HUD_TINT_WHITE,
+                    );
+                }
+            }
+        }
+    }
+
+    if let Some(tooltip) = &state.tooltip {
+        push_hud_command_suggestion_tooltip(
+            vertices,
+            commands,
+            white_pixel,
+            tooltip_background,
+            tooltip_frame,
+            font_atlas,
+            glyphs,
+            obfuscated_pool,
+            obfuscated_seed,
+            surface_size,
+            tooltip,
+        );
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn push_hud_command_suggestion_tooltip<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    white_pixel: &'a HudSpriteGpu,
+    tooltip_background: Option<&'a HudNineSliceSprite>,
+    tooltip_frame: Option<&'a HudNineSliceSprite>,
+    font_atlas: &'a HudSpriteGpu,
+    glyphs: &HudFontGlyphMap,
+    obfuscated_pool: &HudObfuscatedGlyphPool,
+    obfuscated_seed: u64,
+    surface_size: PhysicalSize<u32>,
+    tooltip: &HudCommandSuggestionTooltip,
+) {
+    let Some(text_width) = hud_font_runs_width(&tooltip.runs, glyphs) else {
+        return;
+    };
+    let text_height = hud_inventory_tooltip_text_height(1).expect("one tooltip line has height");
+    let background_rect = hud_inventory_tooltip_background_hud_rect(
+        surface_size,
+        surface_size.width,
+        surface_size.height,
+        tooltip.x,
+        tooltip.y,
+        text_width,
+        text_height,
+    );
+    match (tooltip_background, tooltip_frame) {
+        (Some(background), Some(frame)) => {
+            for segment in hud_inventory_tooltip_sprite_segments(
+                background_rect,
+                background.scaling,
+                frame.scaling,
+            ) {
+                let sprite = match segment.layer {
+                    HudTooltipSpriteLayer::Background => &background.gpu,
+                    HudTooltipSpriteLayer::Frame => &frame.gpu,
+                };
+                push_hud_draw_with_uv_and_tint(
+                    vertices,
+                    commands,
+                    sprite,
+                    surface_size,
+                    segment.rect,
+                    segment.uv,
+                    HUD_TINT_WHITE,
+                );
+            }
+        }
+        _ => push_hud_draw_with_uv_and_tint(
+            vertices,
+            commands,
+            white_pixel,
+            surface_size,
+            background_rect,
+            HudUvRect {
+                min: [0.0, 0.0],
+                max: [1.0, 1.0],
+            },
+            HUD_TOOLTIP_BACKGROUND_TINT,
+        ),
+    }
+    let origin = hud_inventory_tooltip_line_origin(
+        surface_size,
+        surface_size.width,
+        surface_size.height,
+        tooltip.x,
+        tooltip.y,
+        text_width,
+        text_height,
+        0,
+    );
+    for (shadow_offset, is_shadow) in [(1.0, true), (0.0, false)] {
+        let geometry = hud_styled_text_pass_geometry(
+            &tooltip.runs,
+            glyphs,
+            obfuscated_pool,
+            obfuscated_seed,
+            origin,
+            shadow_offset,
+            is_shadow,
+            HUD_TINT_WHITE,
+            None,
+            1.0,
+        );
+        push_hud_styled_text_pass(
+            vertices,
+            commands,
+            white_pixel,
+            font_atlas,
+            surface_size,
+            &geometry,
+        );
+    }
 }
 
 fn hud_prefix_by_chars(text: &str, char_count: usize) -> String {
@@ -12175,6 +12546,44 @@ fn sanitize_hud_text_preserving_empty_utf16(line: String, limit: usize) -> Strin
     sanitized
 }
 
+fn sanitize_hud_command_suggestions(mut state: HudCommandSuggestions) -> HudCommandSuggestions {
+    state.input_text = sanitize_hud_text_preserving_empty_utf16(state.input_text, 256);
+    let text_len = state.input_text.chars().count();
+    state.cursor = state.cursor.min(text_len);
+    state.selection = state.selection.min(text_len);
+    state.suffix = state
+        .suffix
+        .map(|suffix| sanitize_hud_text_preserving_empty(suffix, 256))
+        .filter(|suffix| !suffix.is_empty());
+    state.list_width = state.list_width.min(4096);
+    state.list_height = state.list_height.min(120);
+    state.entries = state
+        .entries
+        .into_iter()
+        .take(10)
+        .filter_map(|entry| {
+            sanitize_hud_text_line(entry.text).map(|text| HudCommandSuggestionEntry {
+                text,
+                selected: entry.selected,
+            })
+        })
+        .collect();
+    state.tooltip = state.tooltip.and_then(|tooltip| {
+        let fallback = tooltip
+            .runs
+            .iter()
+            .map(|run| run.text.as_str())
+            .collect::<String>();
+        let fallback = sanitize_hud_text_line(fallback)?;
+        Some(HudCommandSuggestionTooltip {
+            runs: sanitize_hud_styled_runs(tooltip.runs, &fallback),
+            x: tooltip.x,
+            y: tooltip.y,
+        })
+    });
+    state
+}
+
 /// Sanitizes a line's styled runs under the same rules as
 /// [`sanitize_hud_text_line`] (control characters stripped, 256-char budget
 /// across the line) and clamps run colours to `0xRRGGBB`. Empty run lists —
@@ -13485,6 +13894,134 @@ mod tests {
             outside[2] > 128 && outside[0] < 128 && outside[1] < 128,
             "outside switcher should stay blue clear color, got {outside:?}"
         );
+    }
+
+    #[test]
+    fn command_suggestions_sanitize_row_budget_and_rich_tooltip() {
+        let state = sanitize_hud_command_suggestions(HudCommandSuggestions {
+            input_text: format!("{}\n", "x".repeat(300)),
+            cursor: usize::MAX,
+            selection: usize::MAX,
+            suffix: Some("\nnext".to_string()),
+            list_width: u32::MAX,
+            list_height: u32::MAX,
+            entries: (0..12)
+                .map(|index| HudCommandSuggestionEntry {
+                    text: format!("entry{index}"),
+                    selected: index == 11,
+                })
+                .collect(),
+            tooltip: Some(HudCommandSuggestionTooltip {
+                runs: vec![HudStyledTextRun {
+                    text: "Rich\nhelp".to_string(),
+                    style: HudTextStyle {
+                        bold: true,
+                        underlined: true,
+                        ..Default::default()
+                    },
+                    color: Some(0xFF_12_34_56),
+                }],
+                x: 12,
+                y: 34,
+            }),
+            ..Default::default()
+        });
+
+        assert_eq!(state.input_text.chars().count(), 256);
+        assert_eq!(state.cursor, 256);
+        assert_eq!(state.selection, 256);
+        assert_eq!(state.suffix.as_deref(), Some("next"));
+        assert_eq!(state.list_width, 4096);
+        assert_eq!(state.list_height, 120);
+        assert_eq!(state.entries.len(), 10);
+        let tooltip = state.tooltip.expect("valid tooltip");
+        assert_eq!(tooltip.runs[0].text, "Richhelp");
+        assert!(tooltip.runs[0].style.bold);
+        assert!(tooltip.runs[0].style.underlined);
+        assert_eq!(tooltip.runs[0].color, Some(0x12_34_56));
+    }
+
+    #[test]
+    fn command_suggestions_offscreen_frame_draws_input_list_and_scroll_markers() {
+        use crate::camera::ClearColor;
+
+        const WIDTH: u32 = 320;
+        const HEIGHT: u32 = 240;
+        let Some(mut renderer) = Renderer::new_offscreen(WIDTH, HEIGHT) else {
+            return;
+        };
+        renderer.set_clear_color(ClearColor {
+            r: 0.0,
+            g: 0.0,
+            b: 1.0,
+            a: 1.0,
+        });
+        renderer.update_camera();
+        let glyph = HudAsciiGlyph {
+            uv: HudUvRect {
+                min: [0.0, 0.0],
+                max: [1.0, 1.0],
+            },
+            width: 1,
+            height: 1,
+            advance: 6,
+            ascent: HUD_FONT_BASELINE,
+        };
+        let mut glyphs = HudFontGlyphMap::new();
+        for ch in "?/seedcmd01next".chars() {
+            glyphs.insert_first_wins(ch, glyph);
+        }
+        renderer
+            .upload_hud_font_atlas(1, 1, &[255, 255, 255, 255], glyphs)
+            .expect("test font atlas");
+        renderer.set_hud_command_suggestions(Some(HudCommandSuggestions {
+            input_text: "/se".to_string(),
+            cursor: 3,
+            selection: 3,
+            cursor_visible: true,
+            suffix: Some("ed".to_string()),
+            list_x: 10,
+            list_y: 50,
+            list_width: 60,
+            list_height: 24,
+            entries: vec![
+                HudCommandSuggestionEntry {
+                    text: "seed".to_string(),
+                    selected: true,
+                },
+                HudCommandSuggestionEntry {
+                    text: "cmd01".to_string(),
+                    selected: false,
+                },
+            ],
+            has_previous: true,
+            has_next: true,
+            tooltip: None,
+        }));
+
+        let pixels = renderer
+            .render_offscreen_frame()
+            .expect("command suggestion frame");
+        let outside = pixels.pixel(5, 45);
+        assert!(outside[2] > 128 && outside[0] < 32 && outside[1] < 32);
+        let list_background = pixels.pixel(65, 60);
+        assert!(
+            list_background[2] < 160,
+            "list background should darken the blue frame, got {list_background:?}"
+        );
+        let input_background = pixels.pixel(300, 232);
+        assert!(
+            input_background[2] > 160 && input_background[2] < 220,
+            "input background should half-darken the blue frame, got {input_background:?}"
+        );
+        let previous_marker = pixels.pixel(10, 49);
+        let next_marker = pixels.pixel(10, 74);
+        for marker in [previous_marker, next_marker] {
+            assert!(
+                marker[0] > 200 && marker[1] > 200 && marker[2] > 200,
+                "scroll marker should be white, got {marker:?}"
+            );
+        }
     }
 
     #[test]
