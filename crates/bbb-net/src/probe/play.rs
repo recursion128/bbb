@@ -2100,16 +2100,18 @@ mod tests {
             .await
             .unwrap();
 
-        let report = probe.finish(6, ChunkPos { x: 0, z: 0 });
+        let mut report = probe.finish(6, ChunkPos { x: 0, z: 0 });
         let entity = report.world.probe_entity(123).unwrap();
 
         assert_eq!(entity.delta_movement.x, 0.1);
         assert_eq!(entity.delta_movement.y, 0.0);
         assert_eq!(entity.delta_movement.z, -0.1);
-        assert_eq!(entity.y_head_rot, 90.0);
+        assert_eq!(entity.y_head_rot, 30.0);
         assert_eq!(entity.last_animation_action, Some(3));
         assert_eq!(entity.last_event_id, Some(35));
         assert_eq!(entity.last_hurt_yaw, Some(45.5));
+        report.world.advance_entity_client_animations(3);
+        assert_eq!(report.world.probe_entity(123).unwrap().y_head_rot, 90.0);
 
         assert_eq!(report.world_counters.entities_received, 1);
         assert_eq!(report.world_counters.entities_tracked, 1);

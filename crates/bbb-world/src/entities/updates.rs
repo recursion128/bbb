@@ -130,9 +130,7 @@ impl WorldStore {
 
     pub fn apply_rotate_head(&mut self, packet: ProtocolRotateHead) -> bool {
         self.counters.entity_head_rotations_received += 1;
-        let Some(()) = self.entities.with_transform_mut(packet.id, |transform| {
-            transform.y_head_rot = packet.y_head_rot;
-        }) else {
+        let Some(()) = self.entities.lerp_head_to(packet.id, packet.y_head_rot, 3) else {
             self.counters.entity_head_rotations_ignored += 1;
             return false;
         };

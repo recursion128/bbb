@@ -69,7 +69,7 @@ fn tracks_entity_lifecycle_and_absolute_state_updates() {
     );
     assert_eq!(entity.y_rot, 180.0);
     assert_eq!(entity.x_rot, 30.0);
-    assert_eq!(entity.y_head_rot, 90.0);
+    assert_eq!(entity.y_head_rot, 30.0);
     assert_eq!(entity.on_ground, Some(true));
 
     assert!(store.apply_entity_move(ProtocolEntityMove {
@@ -409,6 +409,44 @@ fn tracks_entity_lifecycle_and_absolute_state_updates() {
     assert_eq!(store.counters().entities_removed, 1);
     assert_eq!(store.counters().entity_removes_ignored, 1);
     assert_eq!(store.counters().entities_tracked, 0);
+}
+
+#[test]
+fn rotate_head_lerps_living_entities_over_three_client_ticks() {
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        200,
+        VANILLA_ENTITY_TYPE_CHICKEN_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        201,
+        VANILLA_ENTITY_TYPE_ARROW_ID,
+    ));
+
+    assert!(store.apply_rotate_head(ProtocolRotateHead {
+        id: 200,
+        y_head_rot: 90.0,
+    }));
+    assert_eq!(store.probe_entity(200).unwrap().y_head_rot, 30.0);
+    store.advance_entity_client_animations(1);
+    assert_eq!(store.probe_entity(200).unwrap().y_head_rot, 50.0);
+    store.advance_entity_client_animations(1);
+    assert_eq!(store.probe_entity(200).unwrap().y_head_rot, 70.0);
+    store.advance_entity_client_animations(1);
+    assert_eq!(store.probe_entity(200).unwrap().y_head_rot, 90.0);
+
+    assert!(store.apply_rotate_head(ProtocolRotateHead {
+        id: 200,
+        y_head_rot: -150.0,
+    }));
+    store.advance_entity_client_animations(1);
+    assert_eq!(store.probe_entity(200).unwrap().y_head_rot, 130.0);
+
+    assert!(store.apply_rotate_head(ProtocolRotateHead {
+        id: 201,
+        y_head_rot: 90.0,
+    }));
+    assert_eq!(store.probe_entity(201).unwrap().y_head_rot, 90.0);
 }
 
 #[test]

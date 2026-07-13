@@ -447,6 +447,8 @@ pub struct EntityClientAnimationState {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub hurt: Option<HurtAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub head_rotation_lerp: Option<HeadRotationLerpState>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub kinetic_hit_feedback: Option<KineticHitFeedbackAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub armor_stand_wiggle: Option<ArmorStandWiggleAnimationState>,
@@ -751,6 +753,14 @@ pub struct CreeperSwellAnimationState {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct HurtAnimationState {
     pub hurt_time: i32,
+}
+
+/// Vanilla `LivingEntity.lerpYHeadRot` plus `lerpHeadSteps`, armed by
+/// `ClientboundRotateHeadPacket` and advanced once per client tick.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct HeadRotationLerpState {
+    pub target_y_head_rot: f32,
+    pub steps_remaining: i32,
 }
 
 /// Canonical client-side kinetic hit feedback timer, mirroring vanilla
@@ -4990,6 +5000,25 @@ impl EntityClientAnimationState {
         self.boat_damage
             .get_or_insert_with(BoatDamageAnimationState::default)
             .animate_hurt();
+    }
+
+    pub(crate) fn start_head_rotation_lerp(&mut self, target_y_head_rot: f32, steps: i32) {
+        self.head_rotation_lerp = Some(HeadRotationLerpState {
+            target_y_head_rot,
+            steps_remaining: steps.max(1),
+        });
+    }
+
+    pub(crate) fn advance_head_rotation_lerp(&mut self, y_head_rot: &mut f32) {
+        let Some(lerp) = self.head_rotation_lerp.as_mut() else {
+            return;
+        };
+        *y_head_rot +=
+            wrap_degrees(lerp.target_y_head_rot - *y_head_rot) / lerp.steps_remaining as f32;
+        lerp.steps_remaining -= 1;
+        if lerp.steps_remaining <= 0 {
+            self.head_rotation_lerp = None;
+        }
     }
 
     /// Vanilla `LivingEntityRenderer.extractRenderState`:

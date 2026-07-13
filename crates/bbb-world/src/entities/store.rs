@@ -3306,6 +3306,26 @@ impl EntityStore {
         }
     }
 
+    pub(crate) fn lerp_head_to(
+        &mut self,
+        id: i32,
+        target_y_head_rot: f32,
+        steps: i32,
+    ) -> Option<()> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let entity_type_id = self.ecs.get::<&EntityIdentity>(entity).ok()?.entity_type_id;
+        if vanilla_entity_metadata_type_is_living(entity_type_id) {
+            let mut animations = self.ecs.get::<&mut EntityClientAnimations>(entity).ok()?;
+            animations
+                .animations
+                .start_head_rotation_lerp(target_y_head_rot, steps);
+        } else {
+            let mut transform = self.ecs.get::<&mut EntityTransform>(entity).ok()?;
+            transform.y_head_rot = target_y_head_rot;
+        }
+        Some(())
+    }
+
     pub(crate) fn trigger_client_animation_hurt(&mut self, id: i32) -> Option<()> {
         let entity = self.by_protocol_id.get(&id).copied()?;
         let mut animations = self.ecs.get::<&mut EntityClientAnimations>(entity).ok()?;
@@ -3418,6 +3438,14 @@ impl EntityStore {
     ) {
         let wither_head_targets_by_id = self.wither_head_targets_by_id();
         for _ in 0..ticks {
+            for (_, (transform, animations)) in self
+                .ecs
+                .query_mut::<(&mut EntityTransform, &mut EntityClientAnimations)>()
+            {
+                animations
+                    .animations
+                    .advance_head_rotation_lerp(&mut transform.y_head_rot);
+            }
             for (_, (identity, transform, mount, metadata, attributes, equipment, animations)) in
                 self.ecs.query_mut::<(
                     &EntityIdentity,

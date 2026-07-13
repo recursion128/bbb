@@ -240,9 +240,6 @@ Movement:
 - Complete `EntityPositionSync`/`TeleportEntity` ticking and distance-based
   interpolation, indirect-passenger reposition/old-pose reset, removed-player-
   vehicle teleport fallback, and locally-authoritative vehicle echo.
-- Preserve `LivingEntity.lerpHeadTo(..., 3)` target/step state for RotateHead
-  instead of snapping every entity's head yaw immediately; non-living Entity
-  keeps the immediate-set behavior.
 - Preserve `NewMinecartBehavior`'s pending/current lerp-step queues: along-track
   packets append pending steps and only the client tick advances the canonical
   transform. Do not replace active steps or snap the transform to the last step

@@ -379,8 +379,8 @@ absolute EntityPositionSync/TeleportEntity 也已完成严格 wire/ownership/tes
 player vehicle fallback、indirect rider reposition 与 authoritative vehicle echo 仍开放，因此两行
 canonical/runtime 格保持 partial。
 SetEntityMotion 的 LP Vec3 wire 与 vanilla immediate `lerpMotion` apply 已全行闭合；RotateHead 的
-packed yaw wire/ownership/tests 已闭合，但 LivingEntity 3-step head lerp 尚未建模，因此其
-canonical/runtime 保持 partial，不能用最终 yaw 直写冒充插值。
+packed yaw wire/ownership、LivingEntity target + 3-step shortest-angle client tick lerp、base Entity
+immediate set 与 tests 也已五格闭合。
 MoveMinecartAlongTrack 的 step-list wire、ownership 与现有 protocol/world/native tests 已闭合；
 但当前 apply 会立即写入最后一步并替换 active steps，尚未复刻 vanilla pending/current queue 与
 client tick 推进语义，因此 canonical/runtime 保持 partial。

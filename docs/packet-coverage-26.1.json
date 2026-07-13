@@ -10747,10 +10747,11 @@
         "canonical_apply": {
           "evidence": [
             "crates/bbb-world/src/entities/updates.rs#apply_rotate_head",
+            "crates/bbb-world/src/entities/store.rs#lerp_head_to",
             "vanilla:net/minecraft/world/entity/LivingEntity.java#lerpHeadTo"
           ],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "decode": {
           "evidence": [
@@ -10770,15 +10771,17 @@
         "runtime_side_effect": {
           "evidence": [
             "crates/bbb-world/src/entities/updates.rs#apply_rotate_head",
+            "crates/bbb-world/src/entities/animations.rs#advance_head_rotation_lerp",
             "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleRotateMob"
           ],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [
             "crates/bbb-protocol/src/packets/entities/tests.rs#decodes_entity_motion_and_head_rotation_strictly",
-            "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#tracks_entity_lifecycle_and_absolute_state_updates"
+            "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#tracks_entity_lifecycle_and_absolute_state_updates",
+            "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#rotate_head_lerps_living_entities_over_three_client_ticks"
           ],
           "gap": null,
           "status": "complete"

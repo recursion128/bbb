@@ -12906,3 +12906,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   base Entity 子类拒绝 synthetic leash state。
 - [x] `apply_set_entity_link` 保留未知 destination delayed id、`dest=0` clear、holder removal cleanup 与既有
   counters；unknown/non-Leashable source 都明确 ignored。SetEntityLink packet coverage 五格闭合。
+
+## 2026-07-13：RotateHead LivingEntity client lerp
+
+- [x] `ClientboundRotateHead` 通过 generated LivingEntity capability 分发：LivingEntity 保存 target 与
+  三步 countdown，每个 client tick 按 `rotLerp(1 / steps)` 和 shortest-angle 推进；base Entity 子类仍
+  按 vanilla `Entity.lerpHeadTo` 立即写入。
+- [x] pending head lerp 归属既有 client-animation component，不扩张公共 flat EntityState；测试锁定
+  三 tick progression、±180° wrapping、非 living immediate 和 unknown-id counters。RotateHead packet
+  coverage 五格闭合。
