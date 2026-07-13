@@ -35,7 +35,47 @@ class BootstrapCatalogGeneratorTests(unittest.TestCase):
                 (37, 19),
             )
 
+            texture.write_bytes(
+                b"\x89PNG\r\n\x1a\n"
+                + b"\x00\x00\x00\x0dIHDR"
+                + (0).to_bytes(4, "big")
+                + (19).to_bytes(4, "big")
+            )
+            with self.assertRaisesRegex(ValueError, "zero-sized PNG texture"):
+                GENERATOR.vanilla_texture_dimensions(root, "minecraft:entity/test")
+
+    def test_entity_texture_asset_id_qualifies_bootstrap_asset(self) -> None:
+        self.assertEqual(
+            GENERATOR.entity_texture_asset_id("minecraft:angler", "decorated_pot"),
+            "minecraft:entity/decorated_pot/angler",
+        )
+        with self.assertRaisesRegex(ValueError, "one minecraft path segment"):
+            GENERATOR.entity_texture_asset_id("example:angler", "decorated_pot")
+
     def test_variant_renderers_use_supplied_texture_dimensions(self) -> None:
+        pot = GENERATOR.DecoratedPotPatternEntry(
+            "ANGLER",
+            "minecraft:angler",
+            "ANGLER_POTTERY_SHERD",
+            "minecraft:angler_pottery_sherd",
+            "minecraft:angler_pottery_pattern",
+        )
+        rendered_pot = GENERATOR.render_decorated_pot_patterns(
+            [pot], {pot.asset_id: (17, 19)}
+        )
+        self.assertIn("size: [17, 19]", rendered_pot)
+
+        banner = GENERATOR.BannerPatternEntry(
+            "BASE",
+            "minecraft:base",
+            "minecraft:base",
+            "block.minecraft.banner.base",
+        )
+        rendered_banner = GENERATOR.render_banner_patterns(
+            [banner], {banner.asset_id: (67, 69)}
+        )
+        self.assertIn("size: [67, 69]", rendered_banner)
+
         cat = GENERATOR.CatVariantEntry(
             "TABBY",
             "minecraft:tabby",

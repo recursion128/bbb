@@ -13476,3 +13476,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] generator 单测注入非标准尺寸，锁定 cat/wolf/frog 输出必须消费调用方提供的 PNG
   dimensions；27 项 Python generator/extractor tests、generator update/check、10 项 renderer
   variant-catalog tests 与 workspace gate 通过。
+
+## 2026-07-13：Generate pattern presentation texture dimensions
+
+- [x] bootstrap generator 将 23 张 decorated-pot pattern 与 43 张 banner pattern 的
+  `EntityModelTextureRef` 尺寸改为读取对应官方 PNG IHDR，删除最后两处 renderer
+  presentation 尺寸字面量；统一 asset qualifier 严格限制 `minecraft` 单段 bootstrap asset，
+  PNG reader 同时拒绝零尺寸 header。
+- [x] generator 单测以非标准 pot/banner 尺寸验证输出不再固定为 `16×16`/`64×64`；
+  151 项 scripts Python tests、generator update/check、6 项 renderer pattern catalog tests
+  与 workspace gate 通过。
