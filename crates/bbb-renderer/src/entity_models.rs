@@ -177,8 +177,9 @@ use textured::{
 };
 #[cfg(test)]
 use textured::{
-    dynamic_player_texture_test_meshes, elder_guardian_particle_textured_meshes,
-    entity_model_textured_meshes, entity_model_textured_meshes_with_dynamic_skins,
+    dynamic_entity_texture_test_meshes, dynamic_player_texture_test_meshes,
+    elder_guardian_particle_textured_meshes, entity_model_textured_meshes,
+    entity_model_textured_meshes_with_dynamic_skins,
     entity_model_textured_meshes_with_dynamic_textures,
     experience_orb_pickup_particle_textured_mesh, projectile_pickup_particle_textured_meshes,
     EntityModelTexturedMeshes,

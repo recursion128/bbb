@@ -1,6 +1,42 @@
 use super::*;
 
 use crate::entity_models::model::ModelCube;
+use crate::DynamicEntityTextureImage;
+
+#[test]
+fn generic_dynamic_entity_texture_uses_shared_atlas_and_static_fallback() {
+    let (static_atlas, _) = build_entity_model_texture_atlas(&pig_texture_images()).unwrap();
+    let texture = EntityDynamicTexture { handle: 8_001 };
+    let dynamic_atlas = build_dynamic_player_texture_atlas(&[DynamicEntityTextureImage {
+        handle: texture.handle,
+        size: [7, 5],
+        rgba: vec![0x7f; 7 * 5 * 4],
+    }])
+    .unwrap()
+    .0;
+
+    let ready = dynamic_entity_texture_test_meshes(
+        EntityModelLayerRenderType::EntityCutout,
+        texture,
+        &static_atlas,
+        Some(&dynamic_atlas),
+    );
+    assert_eq!(ready.submissions.len(), 1);
+    assert_eq!(ready.submissions[0].dynamic_texture, Some(texture));
+    assert_eq!(ready.submissions[0].dynamic_player_texture, None);
+    assert!(ready.cutout.vertices.is_empty());
+    assert!(!ready.dynamic_player_texture_cutout.vertices.is_empty());
+
+    let pending = dynamic_entity_texture_test_meshes(
+        EntityModelLayerRenderType::EntityCutout,
+        texture,
+        &static_atlas,
+        None,
+    );
+    assert_eq!(pending.submissions[0].dynamic_texture, Some(texture));
+    assert!(!pending.cutout.vertices.is_empty());
+    assert!(pending.dynamic_player_texture_cutout.vertices.is_empty());
+}
 
 #[test]
 fn pig_adult_model_parts_match_vanilla_26_1_body_layer() {

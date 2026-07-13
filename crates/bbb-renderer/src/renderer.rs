@@ -87,7 +87,7 @@ use crate::{
         create_particle_pipeline, ParticleAtlasGpu, ParticlePipelineKind, ParticleRuntimeState,
         ParticleUvRect,
     },
-    player_skin::{DynamicPlayerSkinImage, DynamicPlayerTextureImage},
+    player_skin::{DynamicEntityTextureImage, DynamicPlayerSkinImage},
     selection::{
         create_chunk_border_always_on_top_pipeline, create_selection_outline_gpu,
         create_selection_pipeline, create_translucent_debug_line_pipeline, sanitize_debug_lines,
@@ -392,7 +392,7 @@ pub struct Renderer {
     pub(super) entity_dynamic_player_skin_atlas: Option<EntityDynamicPlayerSkinAtlasGpu>,
     pub(super) entity_dynamic_player_skin_images: Vec<DynamicPlayerSkinImage>,
     pub(super) entity_dynamic_player_texture_atlas: Option<EntityDynamicPlayerTextureAtlasGpu>,
-    pub(super) entity_dynamic_player_texture_images: Vec<DynamicPlayerTextureImage>,
+    pub(super) entity_dynamic_player_texture_images: Vec<DynamicEntityTextureImage>,
     pub(super) entity_model_instances: Vec<crate::EntityModelInstance>,
     pub(super) first_person_player_arms: Vec<FirstPersonPlayerArm>,
     pub(super) particle_atlas: Option<ParticleAtlasGpu>,

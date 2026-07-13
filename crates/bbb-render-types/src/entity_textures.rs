@@ -39,6 +39,20 @@ pub struct EntityDynamicPlayerTexture {
     pub kind: EntityDynamicPlayerTextureKind,
 }
 
+impl EntityDynamicPlayerTexture {
+    pub const fn dynamic_texture(self) -> EntityDynamicTexture {
+        EntityDynamicTexture {
+            handle: self.handle,
+        }
+    }
+}
+
+/// A renderer-owned variable-size entity texture addressed independently from static pack atlases.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct EntityDynamicTexture {
+    pub handle: u64,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EntityDynamicPlayerTextureKind {
     Cape,

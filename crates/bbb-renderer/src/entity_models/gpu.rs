@@ -9,7 +9,7 @@ use crate::{
     frame_buffers::FrameDataBuffer,
     gpu::DEPTH_FORMAT,
     pipeline_builder::{depth_stencil_state, RenderPipelineBuilder},
-    player_skin::{DynamicPlayerSkinImage, DynamicPlayerTextureImage},
+    player_skin::{DynamicEntityTextureImage, DynamicPlayerSkinImage, DynamicPlayerTextureImage},
     Renderer,
 };
 
@@ -2303,6 +2303,14 @@ impl Renderer {
     pub fn upload_dynamic_player_texture(
         &mut self,
         image: DynamicPlayerTextureImage,
+    ) -> Result<()> {
+        self.upload_dynamic_entity_texture(image)
+    }
+
+    /// Uploads or replaces one variable-size entity texture in the shared runtime atlas.
+    pub fn upload_dynamic_entity_texture(
+        &mut self,
+        image: DynamicEntityTextureImage,
     ) -> Result<()> {
         validate_dynamic_player_texture_image(&image)?;
         match self

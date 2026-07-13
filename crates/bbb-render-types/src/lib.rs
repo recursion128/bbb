@@ -15,7 +15,8 @@ pub use banner_pattern_types::BannerPatternKind;
 pub use entity_textures::{
     EntityCustomHeadSkull, EntityDefaultPlayerSkin, EntityDynamicPlayerSkin,
     EntityDynamicPlayerSkinStatus, EntityDynamicPlayerTexture, EntityDynamicPlayerTextureKind,
-    EntityEquipmentLayerTexture, EntityModelTextureRef, EntityPlayerSkin, EntityPlayerSkinModel,
+    EntityDynamicTexture, EntityEquipmentLayerTexture, EntityModelTextureRef, EntityPlayerSkin,
+    EntityPlayerSkinModel,
 };
 pub use hud_glyphs::{
     HudAsciiGlyph, HudDigitGlyph, HudEffectKind, HudEffectRect, HudFontGlyphMap, HudGlyphQuad,
@@ -25,8 +26,8 @@ pub use hud_glyphs::{
 pub use map_backgrounds::{FirstPersonMapBackgroundKind, FirstPersonMapBackgroundTexture};
 pub use map_decorations::ItemFrameMapDecorationTexture;
 pub use player_skin::{
-    decode_dynamic_player_skin_png, decode_dynamic_player_texture_png, DynamicPlayerSkinImage,
-    DynamicPlayerTextureImage,
+    decode_dynamic_player_skin_png, decode_dynamic_player_texture_png, DynamicEntityTextureImage,
+    DynamicPlayerSkinImage, DynamicPlayerTextureImage,
 };
 pub use sprites::{ItemSpriteRect, SpriteAlphaMask};
 pub use villager_model_types::VillagerModelType;

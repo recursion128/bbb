@@ -12,13 +12,15 @@ use super::held_item::{custom_head_skull_transform, custom_head_skull_transform_
 use super::model::{EntityModel, ModelPart};
 #[cfg(test)]
 use super::model_layers::PLAYER_WIDE_STEVE_TEXTURE_REF;
+#[cfg(test)]
+use super::PigModelVariant;
 use super::{
     catalog::{
         ArrowModelTexture, CamelModelFamily, DonkeyModelFamily, EndGatewayBeamRenderState,
         EndPortalModelFace, EndPortalModelKind, EntityArmorMaterial, EntityCustomHeadSkull,
         EntityDynamicPlayerSkin, EntityDynamicPlayerSkinAtlasEntry,
         EntityDynamicPlayerSkinAtlasLayout, EntityDynamicPlayerSkinStatus,
-        EntityDynamicPlayerTexture, EntityDynamicPlayerTextureAtlasLayout,
+        EntityDynamicPlayerTexture, EntityDynamicPlayerTextureAtlasLayout, EntityDynamicTexture,
         EntityEquipmentLayerTexture, EntityModelKind, EntityModelTextureAtlasEntry,
         EntityModelTextureAtlasLayout, EntityModelTextureRef, EntityModelUvRect, EntityPlayerSkin,
         FirstPersonPlayerArm, HorseColorVariant, HorseMarkings, LlamaModelFamily,
@@ -169,6 +171,7 @@ pub(super) struct EntityModelRenderSubmission {
     pub(super) dissolve_texture: Option<EntityModelTextureRef>,
     pub(super) dynamic_player_skin: Option<EntityDynamicPlayerSkin>,
     pub(super) dynamic_player_texture: Option<EntityDynamicPlayerTexture>,
+    pub(super) dynamic_texture: Option<EntityDynamicTexture>,
     pub(super) tint: [f32; 4],
     pub(super) transform: Mat4,
     pub(super) light: [f32; 2],
@@ -952,6 +955,7 @@ struct EntityModelSubmissionEmit {
     dissolve_texture: Option<EntityModelTextureRef>,
     dynamic_player_skin: Option<EntityDynamicPlayerSkin>,
     dynamic_player_texture: Option<EntityDynamicPlayerTexture>,
+    dynamic_texture: Option<EntityDynamicTexture>,
     tint: [f32; 4],
     transform: Mat4,
     light: Option<[f32; 2]>,
@@ -976,6 +980,7 @@ impl EntityModelSubmissionEmit {
             dissolve_texture: None,
             dynamic_player_skin: None,
             dynamic_player_texture: None,
+            dynamic_texture: None,
             tint,
             transform,
             light: None,
@@ -993,6 +998,13 @@ impl EntityModelSubmissionEmit {
 
     fn with_dynamic_player_texture(mut self, texture: EntityDynamicPlayerTexture) -> Self {
         self.dynamic_player_texture = Some(texture);
+        self.dynamic_texture = Some(texture.dynamic_texture());
+        self
+    }
+
+    #[cfg(test)]
+    fn with_dynamic_texture(mut self, texture: EntityDynamicTexture) -> Self {
+        self.dynamic_texture = Some(texture);
         self
     }
 
@@ -1020,6 +1032,7 @@ impl From<EntityModelSubmissionEmit> for EntityModelRenderSubmission {
             dissolve_texture: submit.dissolve_texture,
             dynamic_player_skin: submit.dynamic_player_skin,
             dynamic_player_texture: submit.dynamic_player_texture,
+            dynamic_texture: submit.dynamic_texture,
             tint: submit.tint,
             transform: submit.transform,
             light: submit.light.unwrap_or(ENTITY_VERTEX_FULL_BRIGHT_LIGHT),
@@ -1473,6 +1486,53 @@ pub(super) fn dynamic_player_texture_test_meshes(
         atlas,
         dynamic_player_texture_atlas,
     );
+    meshes
+}
+
+#[cfg(test)]
+pub(super) fn dynamic_entity_texture_test_meshes(
+    render_type: EntityModelLayerRenderType,
+    dynamic_texture: EntityDynamicTexture,
+    atlas: &EntityModelTextureAtlasLayout,
+    dynamic_texture_atlas: Option<&EntityDynamicPlayerTextureAtlasLayout>,
+) -> EntityModelTexturedMeshes {
+    let mut meshes = EntityModelTexturedMeshes::new(None);
+    let model = PigModel::new(PigModelVariant::Temperate, false);
+    let submit = EntityModelSubmissionEmit::new(
+        render_type,
+        PigModelVariant::Temperate.builtin_texture_ref(false),
+        [0.25, 0.5, 0.75, 1.0],
+        Mat4::IDENTITY,
+        0,
+        0,
+    )
+    .with_dynamic_texture(dynamic_texture);
+    if let Some(entry) = dynamic_texture_atlas_entry(dynamic_texture_atlas, dynamic_texture) {
+        render_textured_dynamic_player_texture_submission(
+            &mut meshes,
+            submit,
+            entry,
+            |mesh, entry| {
+                model.root().render_textured(
+                    mesh,
+                    submit.transform,
+                    submit.texture,
+                    entry.uv,
+                    submit.tint,
+                );
+            },
+        );
+    } else {
+        render_textured_submission(&mut meshes, submit, atlas, |mesh, entry| {
+            model.root().render_textured(
+                mesh,
+                submit.transform,
+                submit.texture,
+                entry.uv,
+                submit.tint,
+            );
+        });
+    }
     meshes
 }
 
@@ -4004,6 +4064,18 @@ fn dynamic_player_skin_atlas_entry(
 fn dynamic_player_texture_atlas_entry(
     atlas: Option<&EntityDynamicPlayerTextureAtlasLayout>,
     texture: EntityDynamicPlayerTexture,
+) -> Option<EntityDynamicPlayerTextureAtlasEntry> {
+    atlas?
+        .entries
+        .iter()
+        .copied()
+        .find(|entry| entry.handle == texture.handle)
+}
+
+#[cfg(test)]
+fn dynamic_texture_atlas_entry(
+    atlas: Option<&EntityDynamicPlayerTextureAtlasLayout>,
+    texture: EntityDynamicTexture,
 ) -> Option<EntityDynamicPlayerTextureAtlasEntry> {
     atlas?
         .entries

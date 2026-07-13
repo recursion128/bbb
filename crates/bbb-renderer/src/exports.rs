@@ -54,10 +54,10 @@ pub use crate::entity_models::{
     EndPortalModelKind, EnderDragonBeamRenderState, EntityArmorMaterial, EntityAttachmentFace,
     EntityCustomHeadSkull, EntityDefaultPlayerSkin, EntityDyeColor, EntityDynamicPlayerSkin,
     EntityDynamicPlayerSkinStatus, EntityDynamicPlayerTexture, EntityDynamicPlayerTextureKind,
-    EntityEquipmentLayerTexture, EntityModelBounds, EntityModelInstance, EntityModelKind,
-    EntityModelTextureImage, EntityModelTextureRef, EntityPlayerSkin, EntityPlayerSkinModel,
-    EntityRenderState, FirstPersonPlayerArm, FoxModelVariant, FrogModelVariant,
-    GuardianBeamRenderState, HoglinModelFamily, HorseColorVariant, HorseMarkings,
+    EntityDynamicTexture, EntityEquipmentLayerTexture, EntityModelBounds, EntityModelInstance,
+    EntityModelKind, EntityModelTextureImage, EntityModelTextureRef, EntityPlayerSkin,
+    EntityPlayerSkinModel, EntityRenderState, FirstPersonPlayerArm, FoxModelVariant,
+    FrogModelVariant, GuardianBeamRenderState, HoglinModelFamily, HorseColorVariant, HorseMarkings,
     HumanoidModelFamily, IllagerModelFamily, IronGolemCrackiness, LlamaModelFamily, LlamaVariant,
     MooshroomVariant, PandaModelVariant, ParrotModelVariant, PigModelVariant, PiglinModelFamily,
     PlayerModelPartVisibility, QuadrupedModelFamily, RabbitModelVariant, SalmonModelSize,
@@ -135,8 +135,8 @@ pub use crate::particles::{
     ParticleSoundEvent, ParticleSpawnBatch, ParticleSpawnCommand, ParticleSpriteUv, ParticleUvRect,
 };
 pub use crate::player_skin::{
-    decode_dynamic_player_skin_png, decode_dynamic_player_texture_png, DynamicPlayerSkinImage,
-    DynamicPlayerTextureImage,
+    decode_dynamic_player_skin_png, decode_dynamic_player_texture_png, DynamicEntityTextureImage,
+    DynamicPlayerSkinImage, DynamicPlayerTextureImage,
 };
 pub use crate::renderer::Renderer;
 pub use crate::selection::{

@@ -694,8 +694,11 @@ Owner: `bbb-pack` + `bbb-native` + `bbb-renderer`
   / `minecraft:cow_variant` variant assets. World now owns their strict
   `NETWORK_CODEC` presentation and server holder-order lookup. `bbb-pack` now
   resolves arbitrary namespaced `ClientAsset.ResourceTexture` ids through pack
-  precedence and decodes their full PNG dimensions/RGBA; native cache state,
-  runtime atlas upload, and renderer selection remain open.
+  precedence and decodes their full PNG dimensions/RGBA. `bbb-renderer` now
+  exposes a generic dynamic entity-texture handle/image boundary, reuses the
+  variable-size cape/elytra atlas for non-player submissions, and falls back to
+  the static texture until that handle is uploaded; native cache state, variant
+  selection, and upload scheduling remain open.
 - Give failed, pending, and ready states an explicit fallback. Never draw a
   stale texture.
 

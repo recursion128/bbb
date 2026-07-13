@@ -18,16 +18,19 @@ impl DynamicPlayerSkinImage {
     pub const SIZE: [u32; 2] = [SKIN_WIDTH, SKIN_HEIGHT];
 }
 
-/// A downloaded non-skin player-profile texture, such as a cape or elytra texture.
+/// A variable-size entity texture decoded or loaded for runtime atlas upload.
 ///
-/// Unlike body skins, vanilla 26.1 registers cape/elytra textures without legacy skin repair, so this
-/// type preserves the decoded PNG dimensions and RGBA pixels unchanged.
+/// This preserves the decoded dimensions and RGBA pixels unchanged. Player cape/elytra downloads
+/// and pack-backed registry variant assets share this renderer boundary.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct DynamicPlayerTextureImage {
+pub struct DynamicEntityTextureImage {
     pub handle: u64,
     pub size: [u32; 2],
     pub rgba: Vec<u8>,
 }
+
+/// Backward-compatible name for downloaded cape/elytra images.
+pub type DynamicPlayerTextureImage = DynamicEntityTextureImage;
 
 /// Decode and process a downloaded player skin PNG.
 ///
@@ -75,7 +78,7 @@ pub fn decode_dynamic_player_texture_png(
             height
         );
     }
-    Ok(DynamicPlayerTextureImage {
+    Ok(DynamicEntityTextureImage {
         handle,
         size: [width, height],
         rgba,
