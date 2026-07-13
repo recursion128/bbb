@@ -1,5 +1,8 @@
 use std::{collections::BTreeMap, sync::Arc};
 
+use bbb_protocol::mob_effect_types::{
+    vanilla_mob_effect_type, vanilla_mob_effect_type_for_resource_id,
+};
 use bbb_protocol::packets::RegistryDataEntry as ProtocolRegistryDataEntry;
 use bbb_protocol::stat_types::{
     vanilla_custom_stat_by_id, vanilla_custom_stat_by_resource_id, vanilla_stat_type_by_id,
@@ -262,6 +265,7 @@ impl RegistrySet {
             "minecraft:item" => Some(vanilla_item_type(holder_id)?.resource_id),
             "minecraft:block" => self.block_states.block_name_by_registry_id(holder_id),
             "minecraft:entity_type" => Some(vanilla_entity_type(holder_id)?.resource_id),
+            "minecraft:mob_effect" => Some(vanilla_mob_effect_type(holder_id)?.resource_id),
             "minecraft:world_clock" => Some(vanilla_world_clock_type_by_id(holder_id)?.resource_id),
             "minecraft:stat_type" => Some(vanilla_stat_type_by_id(holder_id)?.resource_id),
             "minecraft:custom_stat" => Some(vanilla_custom_stat_by_id(holder_id)?.resource_id),
@@ -281,6 +285,9 @@ impl RegistrySet {
             "minecraft:entity_type" => Some(
                 bbb_protocol::entity_types::vanilla_entity_type_for_resource_id(resource_id)?.id,
             ),
+            "minecraft:mob_effect" => {
+                Some(vanilla_mob_effect_type_for_resource_id(resource_id)?.id)
+            }
             "minecraft:world_clock" => {
                 Some(vanilla_world_clock_type_by_resource_id(resource_id)?.id)
             }

@@ -4,7 +4,9 @@ use bbb_protocol::{
         VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID,
         VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID,
         VANILLA_DATA_COMPONENT_REPAIRABLE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_SUSPICIOUS_STEW_EFFECTS_TYPE_ID,
     },
+    mob_effect_types::vanilla_mob_effect_type_for_resource_id,
     NbtSummaryValue,
 };
 use serde::{Deserialize, Serialize};
@@ -26,6 +28,12 @@ pub struct DialogRegistryHolderSetState {
     pub tag: Option<String>,
     #[serde(default)]
     pub entries: Vec<DialogRegistryHolderReferenceState>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DialogSuspiciousStewEffectState {
+    pub effect: DialogRegistryHolderReferenceState,
+    pub duration: i32,
 }
 
 pub(super) fn decode_holder_backed_component_value(
@@ -57,8 +65,68 @@ pub(super) fn decode_holder_backed_component_value(
             )
             .map(|types| DialogDataComponentValueState::DamageResistant { types }),
         ),
+        VANILLA_DATA_COMPONENT_SUSPICIOUS_STEW_EFFECTS_TYPE_ID => Some(
+            decode_suspicious_stew_effects(value, what)
+                .map(|effects| DialogDataComponentValueState::SuspiciousStewEffects { effects }),
+        ),
         _ => None,
     }
+}
+
+fn decode_suspicious_stew_effects(
+    value: &NbtSummaryValue,
+    what: &str,
+) -> Result<Vec<DialogSuspiciousStewEffectState>, String> {
+    let NbtSummaryValue::List(values) = value else {
+        return Err(format!("{what} is not a list"));
+    };
+    values
+        .iter()
+        .enumerate()
+        .map(|(index, value)| {
+            let entry_what = format!("{what}[{index}]");
+            let NbtSummaryValue::Compound(entries) = value else {
+                return Err(format!("{entry_what} is not a compound"));
+            };
+            let id = entries
+                .iter()
+                .find(|entry| entry.name == "id")
+                .map(|entry| &entry.value)
+                .ok_or_else(|| format!("{entry_what} is missing field id"))?;
+            let duration = entries
+                .iter()
+                .find(|entry| entry.name == "duration")
+                .map(|entry| {
+                    super::component_i32(&entry.value, &format!("{entry_what} field duration"))
+                        .unwrap_or(160)
+                })
+                .unwrap_or(160);
+            Ok(DialogSuspiciousStewEffectState {
+                effect: decode_builtin_mob_effect_holder_reference(
+                    id,
+                    &format!("{entry_what} field id"),
+                )?,
+                duration,
+            })
+        })
+        .collect()
+}
+
+fn decode_builtin_mob_effect_holder_reference(
+    value: &NbtSummaryValue,
+    what: &str,
+) -> Result<DialogRegistryHolderReferenceState, String> {
+    let NbtSummaryValue::String(raw) = value else {
+        return Err(format!("{what} holder is not a resource id"));
+    };
+    let resource_id = normalize_codec_identifier(raw)
+        .ok_or_else(|| format!("invalid {what} holder resource id {raw}"))?;
+    let effect = vanilla_mob_effect_type_for_resource_id(&resource_id)
+        .ok_or_else(|| format!("missing minecraft:mob_effect resource {resource_id} for {what}"))?;
+    Ok(DialogRegistryHolderReferenceState {
+        holder_id: effect.id,
+        resource_id: effect.resource_id.to_string(),
+    })
 }
 
 pub(super) fn decode_registry_holder_reference(

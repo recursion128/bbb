@@ -224,6 +224,7 @@ fn registry_lookup_uses_static_fallback_only_without_server_contents() {
     let mut store = WorldStore::new();
     let snowball_id = bbb_protocol::item_types::VANILLA_ITEM_SNOWBALL_ID;
     let zombie_id = bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_ZOMBIE_ID;
+    let poison_id = bbb_protocol::mob_effect_types::VANILLA_MOB_EFFECT_POISON_ID;
 
     assert_eq!(
         store.resolved_registry_entry_by_holder_id("minecraft:item", snowball_id),
@@ -252,6 +253,18 @@ fn registry_lookup_uses_static_fallback_only_without_server_contents() {
     assert_eq!(
         store.resolved_registry_entry_by_resource_id("minecraft:item", "minecraft:snowball"),
         store.resolved_registry_entry_by_holder_id("minecraft:item", snowball_id)
+    );
+    assert_eq!(
+        store.resolved_registry_entry_by_holder_id("minecraft:mob_effect", poison_id),
+        Some(crate::ResolvedRegistryEntry {
+            holder_id: poison_id,
+            resource_id: "minecraft:poison",
+            source: RegistryEntrySource::VanillaFallback,
+        })
+    );
+    assert_eq!(
+        store.resolved_registry_entry_by_resource_id("minecraft:mob_effect", "minecraft:poison"),
+        store.resolved_registry_entry_by_holder_id("minecraft:mob_effect", poison_id)
     );
     assert!(store
         .resolved_registry_entry_by_resource_id("minecraft:item", "snowball")

@@ -4,6 +4,7 @@ use bbb_protocol::data_component_types::{
     VANILLA_DATA_COMPONENT_FOX_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_ITEM_NAME_TYPE_ID,
     VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID, VANILLA_DATA_COMPONENT_LORE_TYPE_ID,
     VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID,
+    VANILLA_DATA_COMPONENT_SUSPICIOUS_STEW_EFFECTS_TYPE_ID,
 };
 
 use super::*;
@@ -1490,6 +1491,89 @@ fn decodes_damage_resistant_holder_set_from_session_and_context_free_inputs() {
     )
     .unwrap_err()
     .contains("missing field types"));
+}
+
+#[test]
+fn decodes_suspicious_stew_effects_with_builtin_holders_and_lenient_duration() {
+    let value = NbtSummaryValue::List(vec![
+        compound(vec![string_entry("id", "speed")]),
+        compound(vec![
+            string_entry("id", "minecraft:poison"),
+            value_entry("duration", NbtSummaryValue::Short(-20)),
+        ]),
+        compound(vec![
+            string_entry("id", "haste"),
+            string_entry("duration", "invalid"),
+        ]),
+    ]);
+    let decoded = decode_supported_component_value(
+        VANILLA_DATA_COMPONENT_SUSPICIOUS_STEW_EFFECTS_TYPE_ID,
+        "minecraft:suspicious_stew_effects",
+        &value,
+        None,
+    )
+    .unwrap();
+    let Some(DialogDataComponentValueState::SuspiciousStewEffects { effects }) = decoded else {
+        panic!("expected suspicious-stew-effects component");
+    };
+    assert_eq!(effects.len(), 3);
+    assert_eq!(effects[0].effect.holder_id, 0);
+    assert_eq!(effects[0].effect.resource_id, "minecraft:speed");
+    assert_eq!(effects[0].duration, 160);
+    assert_eq!(effects[1].effect.holder_id, 18);
+    assert_eq!(effects[1].duration, -20);
+    assert_eq!(effects[2].effect.holder_id, 2);
+    assert_eq!(effects[2].duration, 160);
+
+    let mut registries = RegistrySet::default();
+    let mut contents = crate::RegistryContentState::new("minecraft:mob_effect");
+    contents.entries = vec![
+        crate::RegistryPacketEntry::stub("example:fake"),
+        crate::RegistryPacketEntry::stub("minecraft:speed"),
+    ];
+    registries
+        .contents
+        .insert("minecraft:mob_effect".to_string(), contents);
+    let overridden = decode_supported_component_value(
+        VANILLA_DATA_COMPONENT_SUSPICIOUS_STEW_EFFECTS_TYPE_ID,
+        "minecraft:suspicious_stew_effects",
+        &value,
+        Some(&registries),
+    )
+    .unwrap();
+    assert!(matches!(
+        overridden,
+        Some(DialogDataComponentValueState::SuspiciousStewEffects { effects })
+            if effects[0].effect.holder_id == 0
+    ));
+
+    for (value, expected) in [
+        (compound(Vec::new()), "is not a list"),
+        (
+            NbtSummaryValue::List(vec![NbtSummaryValue::String("speed".to_string())]),
+            "[0] is not a compound",
+        ),
+        (
+            NbtSummaryValue::List(vec![compound(Vec::new())]),
+            "missing field id",
+        ),
+        (
+            NbtSummaryValue::List(vec![compound(vec![string_entry(
+                "id",
+                "minecraft:missing",
+            )])]),
+            "missing minecraft:mob_effect resource",
+        ),
+    ] {
+        let error = decode_supported_component_value(
+            VANILLA_DATA_COMPONENT_SUSPICIOUS_STEW_EFFECTS_TYPE_ID,
+            "minecraft:suspicious_stew_effects",
+            &value,
+            None,
+        )
+        .unwrap_err();
+        assert!(error.contains(expected), "unexpected error: {error}");
+    }
 }
 
 fn decoded(

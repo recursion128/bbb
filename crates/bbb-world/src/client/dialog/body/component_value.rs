@@ -52,7 +52,7 @@ mod profile;
 
 use holder_set::{
     decode_holder_backed_component_value, DialogRegistryHolderReferenceState,
-    DialogRegistryHolderSetState,
+    DialogRegistryHolderSetState, DialogSuspiciousStewEffectState,
 };
 use profile::decode_profile;
 
@@ -174,6 +174,9 @@ pub enum DialogDataComponentValueState {
     },
     DamageResistant {
         types: DialogRegistryHolderSetState,
+    },
+    SuspiciousStewEffects {
+        effects: Vec<DialogSuspiciousStewEffectState>,
     },
 }
 
