@@ -20136,6 +20136,22 @@ fn stats_screen_tab_hitboxes_match_renderer_column_widths() {
         Some(2)
     );
     assert_eq!(stats_screen_tab_at_position(Some((20, 42)), surface), None);
+    assert_eq!(
+        stats_screen_item_column_at_position(Some((77, 47)), surface),
+        Some(0)
+    );
+    assert_eq!(
+        stats_screen_item_column_at_position(Some((94, 64)), surface),
+        Some(0)
+    );
+    assert_eq!(
+        stats_screen_item_column_at_position(Some((95, 50)), surface),
+        None
+    );
+    assert_eq!(
+        stats_screen_item_column_at_position(Some((157, 50)), surface),
+        Some(2)
+    );
 }
 
 #[test]

@@ -12813,3 +12813,15 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] tab selection 与独立 scroll row 由 native input owner 持有，打开/关闭及切 tab 都重置滚动；
   renderer 支持 General 单行和 Mobs 三行投影。Items 六列、keyboard tab navigation、tooltip/narration
   继续在 unsupported ledger 开放。
+
+## 2026-07-13：StatsScreen Items tab core
+
+- [x] `ItemRegistryCatalog` 从 checked-in Blocks/Items Tree-sitter CST 投影机械派生 block→item 与
+  item→primary-block 映射，覆盖同名 block item、redstone wire→redstone、standing/wall 共用 item 和
+  weathering copper groups；普通 build/test 不读取外部 vanilla source，也没有手写映射表。
+- [x] Items 页按 vanilla 六列 `mined/broken/crafted/used/picked_up/dropped` 聚合 resource identity；
+  仅正数统计引入行，非 BlockItem 的 mined 显示 localized no-value，其余已创建 Stat 缺省为 0。
+  列点击严格循环 descending→ascending→clear-arrow，并在 clear 后保留既有升序行序。
+- [x] native item runtime 提供 selected-pack item name、block-item mapping 和 icon/model projection；
+  renderer 输出 18px slot、六列值、flat item icon，并把 block item 送入既有 3D GUI mesh pass。
+  原版 statistics header/sort sprites、tooltips、keyboard navigation、pixel scroll 与 narration 继续开放。

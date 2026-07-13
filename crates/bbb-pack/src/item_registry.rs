@@ -10,7 +10,10 @@ use bbb_protocol::equipment_slots::{
 use serde::{Deserialize, Serialize};
 
 use crate::generated_java_expression::GeneratedJavaExpression;
-use crate::{resources::ResourceLocation, tags::TagCatalog, PackRoots};
+use crate::{
+    block_registry_declarations::load_generated_block_declarations, resources::ResourceLocation,
+    tags::TagCatalog, PackRoots,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -60,6 +63,10 @@ pub struct ItemRegistryCatalog {
     default_component_type_ids: BTreeMap<String, BTreeSet<i32>>,
     #[serde(default)]
     block_items: BTreeSet<String>,
+    #[serde(default)]
+    block_item_resource_ids: BTreeMap<String, String>,
+    #[serde(default)]
+    primary_block_resource_ids: BTreeMap<String, String>,
     #[serde(default)]
     spawn_egg_items: BTreeSet<String>,
     #[serde(default)]
@@ -249,6 +256,22 @@ struct ItemSourceDeclaration {
     initializer: GeneratedJavaExpression,
 }
 
+fn insert_unique_resource_mapping(
+    mappings: &mut BTreeMap<String, String>,
+    key: &str,
+    value: &str,
+    context: &str,
+) -> Result<()> {
+    if let Some(previous) = mappings.get(key) {
+        if previous != value {
+            bail!("{context}: conflicting mapping for {key}: {previous} vs {value}");
+        }
+        return Ok(());
+    }
+    mappings.insert(key.to_string(), value.to_string());
+    Ok(())
+}
+
 impl ItemRegistryCatalog {
     /// Load the checked-in vanilla 26.1 item catalog without reading a local Java source tree.
     pub fn vanilla_26_1() -> Result<Self> {
@@ -292,6 +315,13 @@ impl ItemRegistryCatalog {
         let mut default_item_name_translation_keys = BTreeMap::new();
         let mut default_component_type_ids = BTreeMap::new();
         let mut block_items = BTreeSet::new();
+        let mut block_item_resource_ids = BTreeMap::new();
+        let mut primary_block_resource_ids = BTreeMap::new();
+        let block_resources_by_constant = load_generated_block_declarations()?
+            .declarations
+            .into_iter()
+            .map(|declaration| (declaration.field, declaration.resource_id))
+            .collect::<BTreeMap<_, _>>();
         let mut spawn_egg_items = BTreeSet::new();
         let mut default_equipment_slots = BTreeMap::new();
         let mut humanoid_armor_assets = BTreeMap::new();
@@ -444,6 +474,70 @@ impl ItemRegistryCatalog {
                     mining_profiles.insert(resource_id.clone(), profile.clone());
                 }
             }
+            if is_block_item {
+                let mut seen_constants = BTreeSet::new();
+                let block_constants = expression
+                    .field_accesses()
+                    .filter_map(|field| field.field_constant("Blocks"))
+                    .filter(|constant| seen_constants.insert(*constant))
+                    .collect::<Vec<_>>();
+                for constant in &block_constants {
+                    if ids.len() == 1 {
+                        let block_resource_id =
+                            block_resources_by_constant.get(*constant).ok_or_else(|| {
+                                anyhow::anyhow!(
+                                    "{}: unknown Blocks.{constant} block-item reference",
+                                    source_context()
+                                )
+                            })?;
+                        insert_unique_resource_mapping(
+                            &mut block_item_resource_ids,
+                            block_resource_id,
+                            &ids[0],
+                            &source_context(),
+                        )?;
+                    }
+                }
+                if ids.len() == 1 {
+                    let Some(primary_constant) = block_constants.first() else {
+                        bail!("{}: block item has no Blocks reference", source_context());
+                    };
+                    let primary = block_resources_by_constant
+                        .get(*primary_constant)
+                        .ok_or_else(|| {
+                            anyhow::anyhow!(
+                            "{}: unknown primary Blocks.{primary_constant} block-item reference",
+                            source_context()
+                        )
+                        })?;
+                    insert_unique_resource_mapping(
+                        &mut primary_block_resource_ids,
+                        &ids[0],
+                        primary,
+                        &source_context(),
+                    )?;
+                }
+                for resource_id in &ids {
+                    if ids.len() > 1
+                        || block_resources_by_constant
+                            .values()
+                            .any(|block| block == resource_id)
+                    {
+                        insert_unique_resource_mapping(
+                            &mut block_item_resource_ids,
+                            resource_id,
+                            resource_id,
+                            &source_context(),
+                        )?;
+                        insert_unique_resource_mapping(
+                            &mut primary_block_resource_ids,
+                            resource_id,
+                            resource_id,
+                            &source_context(),
+                        )?;
+                    }
+                }
+            }
             resource_ids.extend(ids);
         }
 
@@ -469,6 +563,8 @@ impl ItemRegistryCatalog {
             default_item_name_translation_keys,
             default_component_type_ids,
             block_items,
+            block_item_resource_ids,
+            primary_block_resource_ids,
             spawn_egg_items,
             default_equipment_slots,
             humanoid_armor_assets,
@@ -507,6 +603,20 @@ impl ItemRegistryCatalog {
         ResourceLocation::parse(resource_id)
             .ok()
             .is_some_and(|id| self.block_items.contains(&id.id()))
+    }
+
+    pub fn item_resource_id_for_block(&self, block_resource_id: &str) -> Option<&str> {
+        let block_resource_id = ResourceLocation::parse(block_resource_id).ok()?.id();
+        self.block_item_resource_ids
+            .get(&block_resource_id)
+            .map(String::as_str)
+    }
+
+    pub fn primary_block_resource_id_for_item(&self, item_resource_id: &str) -> Option<&str> {
+        let item_resource_id = ResourceLocation::parse(item_resource_id).ok()?.id();
+        self.primary_block_resource_ids
+            .get(&item_resource_id)
+            .map(String::as_str)
     }
 
     pub fn is_spawn_egg_item(&self, resource_id: &str) -> bool {
@@ -2144,6 +2254,46 @@ mod tests {
             assert_eq!(generated.id, id as i32);
             assert_eq!(generated.resource_id, resource_id);
         }
+        assert_eq!(
+            catalog.primary_block_resource_ids.len(),
+            catalog.block_items.len(),
+            "every generated BlockItem must have one primary block"
+        );
+        for (block, item) in &catalog.block_item_resource_ids {
+            assert!(
+                catalog.protocol_id(item).is_some(),
+                "unknown mapped item {item}"
+            );
+            assert!(
+                catalog.block_items.contains(item),
+                "mapped item {item} for {block} is not classified as a BlockItem"
+            );
+        }
+        assert_eq!(
+            catalog.item_resource_id_for_block("minecraft:stone"),
+            Some("minecraft:stone")
+        );
+        assert_eq!(
+            catalog.item_resource_id_for_block("minecraft:redstone_wire"),
+            Some("minecraft:redstone")
+        );
+        assert_eq!(
+            catalog.item_resource_id_for_block("minecraft:redstone_wall_torch"),
+            Some("minecraft:redstone_torch")
+        );
+        assert_eq!(
+            catalog.primary_block_resource_id_for_item("minecraft:redstone_torch"),
+            Some("minecraft:redstone_torch")
+        );
+        assert_eq!(
+            catalog.primary_block_resource_id_for_item("minecraft:redstone"),
+            Some("minecraft:redstone_wire")
+        );
+        assert_eq!(
+            catalog.item_resource_id_for_block("minecraft:weathered_copper_bars"),
+            Some("minecraft:weathered_copper_bars")
+        );
+        assert_eq!(catalog.item_resource_id_for_block("minecraft:water"), None);
     }
 
     #[test]

@@ -3989,6 +3989,7 @@
         "evidence": [
           "crates/bbb-world/src/client/stats.rs#client_stats",
           "crates/bbb-native/src/runtime.rs#hud_stats_screen",
+          "crates/bbb-native/src/runtime.rs#stats_item_rows",
           "crates/bbb-native/src/runtime.rs#format_vanilla_stat_value",
           "crates/bbb-renderer/src/hud.rs#push_hud_stats_screen"
         ],
@@ -4002,9 +4003,12 @@
           "crates/bbb-world/src/client/stats.rs#award_stats_resolves_reordered_session_holder_identity",
           "crates/bbb-world/src/client/stats.rs#award_stats_retains_explicit_unresolved_identity_without_guessing",
           "crates/bbb-world/src/client/stats.rs#award_stats_only_completes_an_open_stats_screen_request",
-          "crates/bbb-native/src/runtime/tests.rs#hud_stats_screen_waits_for_response_then_projects_general_and_mob_rows",
+          "crates/bbb-native/src/runtime/tests.rs#hud_stats_screen_waits_for_response_then_projects_general_item_and_mob_rows",
           "crates/bbb-native/src/runtime/tests.rs#vanilla_stat_formatters_preserve_thresholds_and_grouping",
           "crates/bbb-native/src/input/tests.rs#stats_screen_mouse_wheel_scrolls_general_rows_and_resets_on_close",
+          "crates/bbb-native/src/input/tests.rs#stats_screen_tab_hitboxes_match_renderer_column_widths",
+          "crates/bbb-pack/src/item_registry.rs#checked_in_item_catalog_matches_generated_protocol_catalog",
+          "crates/bbb-renderer/src/hud.rs#stats_screen_block_item_mesh_includes_visible_item_rows",
           "crates/bbb-net/src/probe/play.rs#probe_applies_award_stats_to_world",
           "crates/bbb-native/src/runtime/events/tests/session_protocol_events.rs#award_stats_event_updates_world_state_and_world_counters"
         ],

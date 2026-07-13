@@ -487,6 +487,10 @@ const STATS_SCREEN_ROW_HEIGHT: i32 = 14;
 const STATS_SCREEN_TAB_Y: i32 = 22;
 const STATS_SCREEN_TAB_HEIGHT: i32 = 20;
 const STATS_SCREEN_LIST_WIDTH: i32 = 280;
+const STATS_SCREEN_LIST_TOP: i32 = 46;
+const STATS_SCREEN_ITEM_COLUMN_FIRST_X: i32 = 57;
+const STATS_SCREEN_ITEM_COLUMN_STRIDE: i32 = 40;
+const STATS_SCREEN_ITEM_COLUMN_BUTTON_SIZE: i32 = 18;
 const PAUSE_SCREEN_RELEASE_FEEDBACK_URL: &str = "https://aka.ms/javafeedback?ref=game";
 const PAUSE_SCREEN_SNAPSHOT_FEEDBACK_URL: &str = "https://aka.ms/snapshotfeedback?ref=game";
 const PAUSE_SCREEN_SNAPSHOT_BUGS_URL: &str = "https://aka.ms/snapshotbugs?ref=game";
@@ -724,6 +728,9 @@ pub(crate) struct ClientInputState {
     stats_screen_cursor_position: Option<(i32, i32)>,
     stats_screen_scroll_row: usize,
     stats_screen_tab: usize,
+    stats_screen_item_sort_column: Option<usize>,
+    stats_screen_item_sort_order: i8,
+    stats_screen_item_effective_sort: Option<(usize, i8)>,
     pause_screen_link_requests: Vec<PauseScreenLinkRequest>,
     pause_screen_disconnect_requested: bool,
     debug_entries: DebugScreenEntryList,
@@ -1909,6 +1916,31 @@ impl ClientInputState {
         self.stats_screen_tab
     }
 
+    pub(crate) fn stats_screen_item_sort(&self) -> (Option<usize>, i8) {
+        (
+            self.stats_screen_item_sort_column,
+            self.stats_screen_item_sort_order,
+        )
+    }
+
+    pub(crate) fn stats_screen_item_effective_sort(&self) -> Option<(usize, i8)> {
+        self.stats_screen_item_effective_sort
+    }
+
+    pub(crate) fn stats_screen_item_hovered_column(
+        &self,
+        surface_size: PhysicalSize<u32>,
+    ) -> Option<usize> {
+        (self.stats_screen_tab == 1)
+            .then(|| {
+                stats_screen_item_column_at_position(
+                    self.stats_screen_cursor_position,
+                    surface_size,
+                )
+            })
+            .flatten()
+    }
+
     pub(crate) fn handle_stats_screen_mouse_wheel(
         &mut self,
         world: &WorldStore,
@@ -1964,10 +1996,50 @@ impl ClientInputState {
         }
         self.stats_screen_cursor_position = cursor_position.and_then(physical_position_floor_i32);
         if matches!((button, state), (MouseButton::Left, ElementState::Pressed)) {
-            if let Some(tab) =
+            let item_column = (self.stats_screen_tab == 1 && !world.stats_screen_is_loading())
+                .then(|| {
+                    stats_screen_item_column_at_position(
+                        self.stats_screen_cursor_position,
+                        surface_size,
+                    )
+                })
+                .flatten();
+            if let Some(column) = item_column {
+                match (
+                    self.stats_screen_item_sort_column,
+                    self.stats_screen_item_sort_order,
+                ) {
+                    (Some(current), -1) if current == column => {
+                        self.stats_screen_item_sort_order = 1;
+                        self.stats_screen_item_effective_sort = Some((column, 1));
+                    }
+                    (Some(current), 1) if current == column => {
+                        self.stats_screen_item_sort_column = None;
+                        self.stats_screen_item_sort_order = 0;
+                    }
+                    _ => {
+                        self.stats_screen_item_sort_column = Some(column);
+                        self.stats_screen_item_sort_order = -1;
+                        self.stats_screen_item_effective_sort = Some((column, -1));
+                    }
+                }
+                self.stats_screen_scroll_row = 0;
+            } else if let Some(tab) =
                 stats_screen_tab_at_position(self.stats_screen_cursor_position, surface_size)
             {
                 let enabled = tab == 0
+                    || (tab == 1
+                        && !world.stats_screen_is_loading()
+                        && [
+                            "minecraft:mined",
+                            "minecraft:broken",
+                            "minecraft:crafted",
+                            "minecraft:used",
+                            "minecraft:picked_up",
+                            "minecraft:dropped",
+                        ]
+                        .into_iter()
+                        .any(|stat_type| world.has_positive_stats_for_type(stat_type)))
                     || (tab == 2
                         && !world.stats_screen_is_loading()
                         && (world.has_positive_stats_for_type("minecraft:killed")
@@ -3483,6 +3555,27 @@ fn stats_screen_tab_at_position(
         1
     } else {
         2
+    })
+}
+
+fn stats_screen_item_column_at_position(
+    cursor_position: Option<(i32, i32)>,
+    surface_size: PhysicalSize<u32>,
+) -> Option<usize> {
+    let (mouse_x, mouse_y) = cursor_position?;
+    if !(STATS_SCREEN_LIST_TOP + 1
+        ..STATS_SCREEN_LIST_TOP + 1 + STATS_SCREEN_ITEM_COLUMN_BUTTON_SIZE)
+        .contains(&mouse_y)
+    {
+        return None;
+    }
+    let width = i32::try_from(surface_size.width).unwrap_or(i32::MAX);
+    let list_x = width / 2 - STATS_SCREEN_LIST_WIDTH / 2;
+    (0..6).find(|column| {
+        let x = list_x
+            + STATS_SCREEN_ITEM_COLUMN_FIRST_X
+            + i32::try_from(*column).unwrap_or(i32::MAX) * STATS_SCREEN_ITEM_COLUMN_STRIDE;
+        (x..x + STATS_SCREEN_ITEM_COLUMN_BUTTON_SIZE).contains(&mouse_x)
     })
 }
 
@@ -7285,6 +7378,9 @@ fn open_stats_screen(
         input.stats_screen_cursor_position = None;
         input.stats_screen_scroll_row = 0;
         input.stats_screen_tab = 0;
+        input.stats_screen_item_sort_column = None;
+        input.stats_screen_item_sort_order = 0;
+        input.stats_screen_item_effective_sort = None;
         queue_request_stats_command(counters, net_commands);
     }
 }
@@ -7300,6 +7396,9 @@ fn close_stats_screen(
         input.stats_screen_cursor_position = None;
         input.stats_screen_scroll_row = 0;
         input.stats_screen_tab = 0;
+        input.stats_screen_item_sort_column = None;
+        input.stats_screen_item_sort_order = 0;
+        input.stats_screen_item_effective_sort = None;
     }
 }
 

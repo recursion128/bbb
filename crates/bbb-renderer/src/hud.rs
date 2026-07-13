@@ -160,10 +160,19 @@ pub struct HudStatsRow {
     pub secondary_value: Option<String>,
 }
 
-/// Vanilla `StatsScreen` projection. The general-stat list becomes visible only after the
-/// requested AwardStats response; item and mob tabs remain disabled until their list projections
-/// are implemented.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
+pub struct HudStatsItemRow {
+    pub item_id: i32,
+    pub resource_id: String,
+    pub label: String,
+    pub values: [Option<String>; 6],
+    pub icon: Option<HudItemIcon>,
+    pub block_model: Option<HudBlockItemModel>,
+}
+
+/// Vanilla `StatsScreen` projection. Lists become visible only after the requested AwardStats
+/// response; each empty tab remains disabled like vanilla.
+#[derive(Debug, Clone, PartialEq)]
 pub struct HudStatsScreen {
     pub title: String,
     pub loading_text: String,
@@ -172,8 +181,15 @@ pub struct HudStatsScreen {
     pub items_tab: String,
     pub mobs_tab: String,
     pub active_tab: usize,
+    pub items_tab_enabled: bool,
     pub mobs_tab_enabled: bool,
     pub rows: Vec<HudStatsRow>,
+    pub item_rows: Vec<HudStatsItemRow>,
+    pub item_column_labels: [String; 6],
+    pub item_no_value: String,
+    pub item_sort_column: Option<usize>,
+    pub item_sort_order: i8,
+    pub item_hovered_column: Option<usize>,
     pub scroll_row: usize,
     pub total_rows: usize,
     pub visible_rows: usize,
@@ -3587,6 +3603,16 @@ impl Renderer {
                 }
             }
         }
+        if let Some(screen) = &self.hud_stats_screen {
+            if screen.active_tab == 1 {
+                for (row, item) in screen.item_rows.iter().enumerate() {
+                    if let Some(model) = &item.block_model {
+                        let rect = hud_stats_item_icon_rect(surface_size, row);
+                        append_model(model, gui_item_slot_placement(rect), None);
+                    }
+                }
+            }
+        }
         if let Some(switcher) = self
             .hud_debug_overlay
             .as_ref()
@@ -4454,8 +4480,11 @@ impl Renderer {
         if let Some(screen) = &self.hud_stats_screen {
             push_hud_stats_screen(
                 &mut vertices,
-                &mut post_gui_item_commands,
+                &mut commands,
                 &self.hud_white_pixel,
+                self.hud_item_atlas.as_ref(),
+                self.hud_digit_atlas.as_ref(),
+                &self.hud_digit_glyphs,
                 self.hud_font_atlas.as_ref(),
                 &self.hud_font_glyphs,
                 &self.hud_obfuscated_glyph_pool,
@@ -6138,6 +6167,9 @@ fn push_hud_stats_screen<'a>(
     vertices: &mut Vec<HudVertex>,
     commands: &mut Vec<HudDrawCommand<'a>>,
     white_pixel: &'a HudSpriteGpu,
+    item_atlas: Option<&'a HudSpriteGpu>,
+    digit_atlas: Option<&'a HudSpriteGpu>,
+    digit_glyphs: &[HudDigitGlyph; 10],
     font_atlas: Option<&'a HudSpriteGpu>,
     glyphs: &HudFontGlyphMap,
     obfuscated_pool: &HudObfuscatedGlyphPool,
@@ -6177,7 +6209,7 @@ fn push_hud_stats_screen<'a>(
     let tab_width = HUD_STATS_LIST_WIDTH / 3;
     for (index, (label, enabled)) in [
         (screen.general_tab.as_str(), true),
-        (screen.items_tab.as_str(), false),
+        (screen.items_tab.as_str(), screen.items_tab_enabled),
         (screen.mobs_tab.as_str(), screen.mobs_tab_enabled),
     ]
     .into_iter()
@@ -6222,6 +6254,99 @@ fn push_hud_stats_screen<'a>(
             loading_y,
             HUD_TINT_WHITE,
         );
+    } else if screen.active_tab == 1 {
+        let header_y = HUD_STATS_LIST_TOP + 1;
+        for column in 0..6 {
+            let x = list_x + 57 + i32::try_from(column).unwrap_or(i32::MAX) * 40;
+            let abbreviation = screen.item_column_labels[column]
+                .chars()
+                .next()
+                .map(|ch| ch.to_string())
+                .unwrap_or_else(|| "?".to_string());
+            push_hud_pause_button(
+                vertices,
+                commands,
+                white_pixel,
+                font_atlas,
+                glyphs,
+                obfuscated_pool,
+                frame_index,
+                surface_size,
+                (x, header_y, 18, 18),
+                &abbreviation,
+                screen.item_hovered_column == Some(column),
+                true,
+            );
+            if screen.item_sort_column == Some(column) {
+                push_hud_debug_options_text(
+                    vertices,
+                    commands,
+                    white_pixel,
+                    font_atlas,
+                    glyphs,
+                    obfuscated_pool,
+                    frame_index,
+                    surface_size,
+                    if screen.item_sort_order < 0 { "v" } else { "^" },
+                    ((x - 7) as f32, (header_y + 5) as f32),
+                    HUD_TINT_WHITE,
+                );
+            }
+        }
+        for (index, row) in screen.item_rows.iter().enumerate() {
+            let y = HUD_STATS_LIST_TOP
+                + 22
+                + i32::try_from(index).unwrap_or(i32::MAX) * screen.row_height;
+            push_hud_debug_tinted_rect(
+                vertices,
+                commands,
+                white_pixel,
+                surface_size,
+                list_x,
+                y + 1,
+                18,
+                18,
+                [0.12, 0.12, 0.12, 0.9],
+            );
+            if let (Some(item_atlas), Some(icon)) = (item_atlas, &row.icon) {
+                push_hud_item_icon(
+                    vertices,
+                    commands,
+                    item_atlas,
+                    white_pixel,
+                    digit_atlas,
+                    digit_glyphs,
+                    surface_size,
+                    hud_stats_item_icon_rect(surface_size, index),
+                    icon,
+                    row.block_model.is_none(),
+                    false,
+                );
+            }
+            let tint = if (screen.scroll_row + index) % 2 == 0 {
+                HUD_TINT_WHITE
+            } else {
+                hud_argb_to_tint(0xFFBABABA)
+            };
+            for (column, value) in row.values.iter().enumerate() {
+                let value = value.as_deref().unwrap_or(&screen.item_no_value);
+                let right_x = list_x + 75 + i32::try_from(column).unwrap_or(i32::MAX) * 40;
+                let value_width = hud_plain_text_width(value, glyphs) as i32;
+                push_hud_debug_options_text(
+                    vertices,
+                    commands,
+                    white_pixel,
+                    font_atlas,
+                    glyphs,
+                    obfuscated_pool,
+                    frame_index,
+                    surface_size,
+                    value,
+                    ((right_x - value_width) as f32, (y + 7) as f32),
+                    tint,
+                );
+            }
+        }
     } else {
         for (index, row) in screen.rows.iter().enumerate() {
             let y =
@@ -7341,6 +7466,13 @@ fn hud_stats_done_button_rect(surface_size: PhysicalSize<u32>) -> (i32, i32, i32
         HUD_STATS_DONE_BUTTON_WIDTH,
         HUD_STATS_DONE_BUTTON_HEIGHT,
     )
+}
+
+fn hud_stats_item_icon_rect(surface_size: PhysicalSize<u32>, row: usize) -> HudRect {
+    let width = i32::try_from(surface_size.width).unwrap_or(i32::MAX);
+    let list_x = width / 2 - HUD_STATS_LIST_WIDTH / 2;
+    let y = HUD_STATS_LIST_TOP + 22 + i32::try_from(row).unwrap_or(i32::MAX) * 22;
+    absolute_hud_rect((list_x + 1) as f32, (y + 2) as f32, 16, 16)
 }
 
 fn hud_sign_editor_standing_preview_rect(surface_size: PhysicalSize<u32>) -> HudRect {
@@ -11268,6 +11400,14 @@ fn sanitize_hud_stats_screen(screen: HudStatsScreen) -> Option<HudStatsScreen> {
     let general_tab = sanitize_hud_text_line(screen.general_tab)?;
     let items_tab = sanitize_hud_text_line(screen.items_tab)?;
     let mobs_tab = sanitize_hud_text_line(screen.mobs_tab)?;
+    let item_column_labels = screen
+        .item_column_labels
+        .into_iter()
+        .map(sanitize_hud_text_line)
+        .collect::<Option<Vec<_>>>()?
+        .try_into()
+        .ok()?;
+    let item_no_value = sanitize_hud_text_line(screen.item_no_value)?;
     let visible_rows = screen.visible_rows.min(64);
     let rows = screen
         .rows
@@ -11281,6 +11421,23 @@ fn sanitize_hud_stats_screen(screen: HudStatsScreen) -> Option<HudStatsScreen> {
         })
         .take(visible_rows)
         .collect();
+    let item_rows = screen
+        .item_rows
+        .into_iter()
+        .filter_map(|row| {
+            Some(HudStatsItemRow {
+                item_id: row.item_id,
+                resource_id: sanitize_hud_text_line(row.resource_id)?,
+                label: sanitize_hud_text_line(row.label)?,
+                values: row
+                    .values
+                    .map(|value| value.and_then(sanitize_hud_text_line)),
+                icon: row.icon.and_then(sanitize_hud_item_icon),
+                block_model: row.block_model.filter(hud_block_item_model_is_renderable),
+            })
+        })
+        .take(visible_rows)
+        .collect();
     (!title.is_empty() && !loading_text.is_empty()).then_some(HudStatsScreen {
         title,
         loading_text,
@@ -11289,8 +11446,15 @@ fn sanitize_hud_stats_screen(screen: HudStatsScreen) -> Option<HudStatsScreen> {
         items_tab,
         mobs_tab,
         active_tab: screen.active_tab.min(2),
+        items_tab_enabled: screen.items_tab_enabled,
         mobs_tab_enabled: screen.mobs_tab_enabled,
         rows,
+        item_rows,
+        item_column_labels,
+        item_no_value,
+        item_sort_column: screen.item_sort_column.filter(|column| *column < 6),
+        item_sort_order: screen.item_sort_order.clamp(-1, 1),
+        item_hovered_column: screen.item_hovered_column.filter(|column| *column < 6),
         scroll_row: screen
             .scroll_row
             .min(screen.total_rows.saturating_sub(visible_rows)),
@@ -12752,6 +12916,65 @@ mod tests {
                 ],
             }),
             ..HudDebugOverlay::default()
+        }));
+
+        let meshes = renderer.collect_hud_block_item_mesh();
+
+        assert_eq!(meshes.solid.indices.len(), 6);
+    }
+
+    #[test]
+    fn stats_screen_block_item_mesh_includes_visible_item_rows() {
+        let Some(mut renderer) = Renderer::new_offscreen(320, 240) else {
+            return;
+        };
+        let model = HudBlockItemModel {
+            quads: vec![crate::item_models::ItemModelQuad {
+                corners: [
+                    [0.0, 0.0, 8.0],
+                    [16.0, 0.0, 8.0],
+                    [16.0, 16.0, 8.0],
+                    [0.0, 16.0, 8.0],
+                ],
+                uvs: [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]],
+                tint: [1.0, 1.0, 1.0, 1.0],
+                normal: [0.0, 0.0, 1.0],
+                shade: 1.0,
+                translucent: false,
+            }],
+            gui_display: glam::Mat4::IDENTITY,
+            lighting: GuiItemLightingEntry::Items3d,
+            foil: false,
+        };
+        renderer.set_hud_stats_screen(Some(HudStatsScreen {
+            title: "Stats".to_string(),
+            loading_text: "Loading".to_string(),
+            is_loading: false,
+            general_tab: "General".to_string(),
+            items_tab: "Items".to_string(),
+            mobs_tab: "Mobs".to_string(),
+            active_tab: 1,
+            items_tab_enabled: true,
+            mobs_tab_enabled: false,
+            rows: Vec::new(),
+            item_rows: vec![HudStatsItemRow {
+                item_id: 1,
+                resource_id: "minecraft:stone".to_string(),
+                label: "Stone".to_string(),
+                values: std::array::from_fn(|_| Some("0".to_string())),
+                icon: None,
+                block_model: Some(model),
+            }],
+            item_column_labels: std::array::from_fn(|index| format!("Column {index}")),
+            item_no_value: "-".to_string(),
+            item_sort_column: None,
+            item_sort_order: 0,
+            item_hovered_column: None,
+            scroll_row: 0,
+            total_rows: 1,
+            visible_rows: 6,
+            row_height: 22,
+            done_hovered: false,
         }));
 
         let meshes = renderer.collect_hud_block_item_mesh();
@@ -15760,7 +15983,14 @@ mod tests {
                 secondary_value: None,
             }],
             active_tab: 0,
+            items_tab_enabled: false,
             mobs_tab_enabled: false,
+            item_rows: Vec::new(),
+            item_column_labels: std::array::from_fn(|index| format!("Column {index}")),
+            item_no_value: "-".to_string(),
+            item_sort_column: None,
+            item_sort_order: 0,
+            item_hovered_column: None,
             scroll_row: 3,
             total_rows: 12,
             visible_rows: 1,
@@ -15784,7 +16014,14 @@ mod tests {
             mobs_tab: "Mobs".to_string(),
             rows: Vec::new(),
             active_tab: 0,
+            items_tab_enabled: false,
             mobs_tab_enabled: false,
+            item_rows: Vec::new(),
+            item_column_labels: std::array::from_fn(|index| format!("Column {index}")),
+            item_no_value: "-".to_string(),
+            item_sort_column: None,
+            item_sort_order: 0,
+            item_hovered_column: None,
             scroll_row: 0,
             total_rows: 0,
             visible_rows: 0,

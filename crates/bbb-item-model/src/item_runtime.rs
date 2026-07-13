@@ -909,6 +909,15 @@ impl NativeItemRuntime {
     }
 
     #[cfg(any(test, feature = "test-support"))]
+    pub fn with_vanilla_item_registry_for_test(mut self) -> Self {
+        self.registry = Some(
+            ItemRegistryCatalog::vanilla_26_1().expect("checked-in vanilla item registry is valid"),
+        );
+        self.item_registry_count = self.registry.as_ref().map_or(0, ItemRegistryCatalog::len);
+        self
+    }
+
+    #[cfg(any(test, feature = "test-support"))]
     pub fn for_test_with_registry_and_equipment_assets(
         registry: ItemRegistryCatalog,
         equipment_assets: EquipmentAssetCatalog,
@@ -942,6 +951,22 @@ impl NativeItemRuntime {
     /// The protocol id for an item resource id via the loaded item registry.
     pub fn item_protocol_id(&self, resource_id: &str) -> Option<i32> {
         self.registry.as_ref()?.protocol_id(resource_id)
+    }
+
+    pub fn item_resource_id_for_block(&self, block_resource_id: &str) -> Option<&str> {
+        self.registry
+            .as_ref()?
+            .item_resource_id_for_block(block_resource_id)
+    }
+
+    pub fn primary_block_resource_id_for_item(&self, item_resource_id: &str) -> Option<&str> {
+        self.registry
+            .as_ref()?
+            .primary_block_resource_id_for_item(item_resource_id)
+    }
+
+    pub fn localized_item_name(&self, resource_id: &str) -> String {
+        tooltip::localized_item_name(&self.language, resource_id)
     }
 
     pub fn item_default_kinetic_weapon(

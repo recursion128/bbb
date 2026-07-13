@@ -7399,19 +7399,42 @@ fn hud_pause_screen_projects_disconnect_hover_and_disabled_after_click() {
 }
 
 #[test]
-fn hud_stats_screen_waits_for_response_then_projects_general_and_mob_rows() {
+fn hud_stats_screen_waits_for_response_then_projects_general_item_and_mob_rows() {
     let mut input = ClientInputState::new(true);
     let mut world = WorldStore::new();
     let surface = winit::dpi::PhysicalSize::new(320, 240);
+    let item_runtime = NativeItemRuntime::empty_for_test().with_vanilla_item_registry_for_test();
+    let stone_block_id = world
+        .registry_holder_id_by_resource_id("minecraft:block", "minecraft:stone")
+        .unwrap();
 
-    assert!(hud_stats_screen(&input, &world, None, surface).is_none());
+    let terrain_textures = TerrainTextureState::default();
+    assert!(hud_stats_screen(
+        &input,
+        &world,
+        Some(&item_runtime),
+        &terrain_textures,
+        ItemModelKeybindContext::default(),
+        0.0,
+        surface,
+    )
+    .is_none());
     assert!(world.open_stats_screen());
     assert!(input.handle_stats_screen_cursor_moved(
         &world,
         Some(winit::dpi::PhysicalPosition::new(70.0, 223.0))
     ));
 
-    let screen = hud_stats_screen(&input, &world, None, surface).expect("stats screen");
+    let screen = hud_stats_screen(
+        &input,
+        &world,
+        Some(&item_runtime),
+        &terrain_textures,
+        ItemModelKeybindContext::default(),
+        0.0,
+        surface,
+    )
+    .expect("stats screen");
     assert_eq!(screen.title, "Stats");
     assert_eq!(screen.loading_text, "Downloading statistics...");
     assert!(screen.is_loading);
@@ -7431,16 +7454,42 @@ fn hud_stats_screen_waits_for_response_then_projects_general_and_mob_rows() {
                 amount: 2,
             },
             StatUpdate {
+                stat_type_id: 0,
+                value_id: stone_block_id,
+                amount: 9,
+            },
+            StatUpdate {
                 stat_type_id: 7,
                 value_id: bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_ZOMBIE_ID,
                 amount: 1,
+            },
+            StatUpdate {
+                stat_type_id: 1,
+                value_id: bbb_protocol::item_types::vanilla_item_type_for_resource_id(
+                    "minecraft:snowball",
+                )
+                .unwrap()
+                .id,
+                amount: 7,
+            },
+            StatUpdate {
+                stat_type_id: 1,
+                value_id: bbb_protocol::item_types::vanilla_item_type_for_resource_id(
+                    "minecraft:apple",
+                )
+                .unwrap()
+                .id,
+                amount: 2,
             },
         ],
     });
     let screen = hud_stats_screen(
         &input,
         &world,
-        None,
+        Some(&item_runtime),
+        &terrain_textures,
+        ItemModelKeybindContext::default(),
+        0.0,
         winit::dpi::PhysicalSize::new(320, 1_200),
     )
     .expect("stats screen");
@@ -7459,10 +7508,123 @@ fn hud_stats_screen_waits_for_response_then_projects_general_and_mob_rows() {
         &None,
         MouseButton::Left,
         ElementState::Pressed,
+        Some(winit::dpi::PhysicalPosition::new(160.0, 30.0)),
+        surface,
+    ));
+    let item_screen = hud_stats_screen(
+        &input,
+        &world,
+        Some(&item_runtime),
+        &terrain_textures,
+        ItemModelKeybindContext::default(),
+        0.0,
+        surface,
+    )
+    .expect("items stats tab");
+    assert_eq!(item_screen.active_tab, 1);
+    assert!(item_screen.items_tab_enabled);
+    assert_eq!(item_screen.row_height, 22);
+    assert_eq!(item_screen.item_rows.len(), 3);
+    assert!(item_screen.item_rows.iter().any(|row| {
+        row.resource_id == "minecraft:snowball"
+            && row.values[0].is_none()
+            && row.values[1].as_deref() == Some("0")
+            && row.values[2].as_deref() == Some("7")
+    }));
+    assert!(item_screen.item_rows.iter().any(|row| {
+        row.resource_id == "minecraft:stone"
+            && row.values[0].as_deref() == Some("9")
+            && row.values[1].as_deref() == Some("0")
+            && row.icon.is_some()
+    }));
+
+    assert!(input.handle_stats_screen_mouse_input(
+        &mut counters,
+        &mut world,
+        &None,
+        MouseButton::Left,
+        ElementState::Pressed,
+        Some(winit::dpi::PhysicalPosition::new(160.0, 50.0)),
+        surface,
+    ));
+    let item_screen = hud_stats_screen(
+        &input,
+        &world,
+        Some(&item_runtime),
+        &terrain_textures,
+        ItemModelKeybindContext::default(),
+        0.0,
+        surface,
+    )
+    .unwrap();
+    assert_eq!(item_screen.item_sort_column, Some(2));
+    assert_eq!(item_screen.item_sort_order, -1);
+    assert_eq!(item_screen.item_rows[0].resource_id, "minecraft:snowball");
+
+    assert!(input.handle_stats_screen_mouse_input(
+        &mut counters,
+        &mut world,
+        &None,
+        MouseButton::Left,
+        ElementState::Pressed,
+        Some(winit::dpi::PhysicalPosition::new(160.0, 50.0)),
+        surface,
+    ));
+    let item_screen = hud_stats_screen(
+        &input,
+        &world,
+        Some(&item_runtime),
+        &terrain_textures,
+        ItemModelKeybindContext::default(),
+        0.0,
+        surface,
+    )
+    .unwrap();
+    assert_eq!(item_screen.item_sort_order, 1);
+    assert_eq!(item_screen.item_rows[0].resource_id, "minecraft:stone");
+
+    assert!(input.handle_stats_screen_mouse_input(
+        &mut counters,
+        &mut world,
+        &None,
+        MouseButton::Left,
+        ElementState::Pressed,
+        Some(winit::dpi::PhysicalPosition::new(160.0, 50.0)),
+        surface,
+    ));
+    let item_screen = hud_stats_screen(
+        &input,
+        &world,
+        Some(&item_runtime),
+        &terrain_textures,
+        ItemModelKeybindContext::default(),
+        0.0,
+        surface,
+    )
+    .unwrap();
+    assert_eq!(item_screen.item_sort_column, None);
+    assert_eq!(item_screen.item_sort_order, 0);
+    assert_eq!(item_screen.item_rows[0].resource_id, "minecraft:stone");
+
+    assert!(input.handle_stats_screen_mouse_input(
+        &mut counters,
+        &mut world,
+        &None,
+        MouseButton::Left,
+        ElementState::Pressed,
         Some(winit::dpi::PhysicalPosition::new(253.0, 30.0)),
         surface,
     ));
-    let screen = hud_stats_screen(&input, &world, None, surface).expect("mobs stats tab");
+    let screen = hud_stats_screen(
+        &input,
+        &world,
+        Some(&item_runtime),
+        &terrain_textures,
+        ItemModelKeybindContext::default(),
+        0.0,
+        surface,
+    )
+    .expect("mobs stats tab");
     assert_eq!(screen.active_tab, 2);
     assert!(screen.mobs_tab_enabled);
     assert_eq!(screen.row_height, 36);

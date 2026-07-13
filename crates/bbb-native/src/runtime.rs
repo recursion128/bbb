@@ -1,5 +1,5 @@
 use std::{
-    collections::BTreeMap,
+    collections::{BTreeMap, BTreeSet},
     fs,
     path::PathBuf,
     time::{Duration, Instant, SystemTime, UNIX_EPOCH},
@@ -44,8 +44,8 @@ use bbb_renderer::{
     HudInventorySlot, HudInventoryTextBackground, HudInventoryTextInputDecoration,
     HudInventoryTextLabel, HudInventoryTooltip, HudInventoryTooltipLine, HudItemCountLabel,
     HudItemDurabilityBar, HudItemFoil, HudItemIcon, HudJumpBar, HudPauseScreen, HudPlayerHealth,
-    HudSignEditorKind, HudSignEditorScreen, HudStatsRow, HudStatsScreen, HudUvRect,
-    HudVehicleHealth, LevelLighting, LightmapEnvironment, LightningBoltRenderState,
+    HudSignEditorKind, HudSignEditorScreen, HudStatsItemRow, HudStatsRow, HudStatsScreen,
+    HudUvRect, HudVehicleHealth, LevelLighting, LightmapEnvironment, LightningBoltRenderState,
     ParticleBlockFluidSurfaceSample, ParticleEntityTargetContext, ParticleFluidKind,
     ParticleLocalPlayerScopeContext, ParticlePlayerMotionContext, ParticleSoundEvent,
     ParticleSpawnBatch, ParticleSpawnCommand, Renderer, SelectionColoredBox, SelectionLine,
@@ -2263,7 +2263,15 @@ pub(crate) fn pump_network_and_terrain(
     let hud_stats_screen = if hud_debug_options_screen.is_some() || hud_pause_screen.is_some() {
         None
     } else {
-        hud_stats_screen(input, world, item_runtime, surface_size)
+        hud_stats_screen(
+            input,
+            world,
+            item_runtime,
+            terrain_textures,
+            item_model_keybind_context,
+            entity_partial_tick,
+            surface_size,
+        )
     };
     let hud_sign_editor_screen = if hud_debug_options_screen.is_some()
         || hud_pause_screen.is_some()
@@ -3184,6 +3192,9 @@ fn hud_stats_screen(
     input: &ClientInputState,
     world: &WorldStore,
     item_runtime: Option<&NativeItemRuntime>,
+    terrain_textures: &TerrainTextureState,
+    keybind_context: ItemModelKeybindContext,
+    partial_tick: f32,
     surface_size: winit::dpi::PhysicalSize<u32>,
 ) -> Option<HudStatsScreen> {
     world.stats_screen_is_open().then(|| {
@@ -3263,24 +3274,41 @@ fn hud_stats_screen(
             })
             .collect::<Vec<_>>();
         mob_rows.sort_by(|left, right| left.label.cmp(&right.label));
+        let mut item_rows = stats_item_rows(
+            input,
+            world,
+            item_runtime,
+            terrain_textures,
+            keybind_context,
+            partial_tick,
+        );
+        let items_tab_enabled = !item_rows.is_empty();
         let mobs_tab_enabled = !mob_rows.is_empty();
-        let active_tab = if !is_loading && input.stats_screen_tab() == 2 && mobs_tab_enabled {
-            2
-        } else {
-            0
+        let active_tab = match input.stats_screen_tab() {
+            1 if !is_loading && items_tab_enabled => 1,
+            2 if !is_loading && mobs_tab_enabled => 2,
+            _ => 0,
         };
-        let row_height = if active_tab == 2 { 36 } else { 14 };
-        let rows = if active_tab == 2 {
-            mob_rows
-        } else {
-            general_rows
+        let row_height = match active_tab {
+            1 => 22,
+            2 => 36,
+            _ => 14,
         };
-        let visible_rows = stats_screen_visible_rows(surface_size, row_height);
-        let total_rows = rows.len();
+        let rows = match active_tab {
+            2 => mob_rows,
+            0 => general_rows,
+            _ => Vec::new(),
+        };
+        let visible_rows = stats_screen_visible_rows(surface_size, row_height, active_tab == 1);
+        let total_rows = if active_tab == 1 {
+            item_rows.len()
+        } else {
+            rows.len()
+        };
         let scroll_row = input
             .stats_screen_scroll_row()
             .min(total_rows.saturating_sub(visible_rows));
-        let rows = if is_loading {
+        let rows = if is_loading || active_tab == 1 {
             Vec::new()
         } else {
             rows.into_iter()
@@ -3288,6 +3316,16 @@ fn hud_stats_screen(
                 .take(visible_rows)
                 .collect()
         };
+        item_rows = if active_tab == 1 {
+            item_rows
+                .into_iter()
+                .skip(scroll_row)
+                .take(visible_rows)
+                .collect()
+        } else {
+            Vec::new()
+        };
+        let (item_sort_column, item_sort_order) = input.stats_screen_item_sort();
         HudStatsScreen {
             title: localized_gui_text(item_runtime, "gui.stats", "Stats"),
             loading_text: localized_gui_text(
@@ -3300,8 +3338,22 @@ fn hud_stats_screen(
             items_tab: localized_gui_text(item_runtime, "stat.itemsButton", "Items"),
             mobs_tab: localized_gui_text(item_runtime, "stat.mobsButton", "Mobs"),
             active_tab,
+            items_tab_enabled: items_tab_enabled && !is_loading,
             mobs_tab_enabled: mobs_tab_enabled && !is_loading,
             rows,
+            item_rows,
+            item_column_labels: [
+                localized_gui_text(item_runtime, "stat_type.minecraft.mined", "Mined"),
+                localized_gui_text(item_runtime, "stat_type.minecraft.broken", "Broken"),
+                localized_gui_text(item_runtime, "stat_type.minecraft.crafted", "Crafted"),
+                localized_gui_text(item_runtime, "stat_type.minecraft.used", "Used"),
+                localized_gui_text(item_runtime, "stat_type.minecraft.picked_up", "Picked Up"),
+                localized_gui_text(item_runtime, "stat_type.minecraft.dropped", "Dropped"),
+            ],
+            item_no_value: localized_gui_text(item_runtime, "stats.none", "-"),
+            item_sort_column,
+            item_sort_order,
+            item_hovered_column: input.stats_screen_item_hovered_column(surface_size),
             scroll_row,
             total_rows,
             visible_rows,
@@ -3361,14 +3413,167 @@ fn stat_amount_by_resource_identity(
         .unwrap_or_default()
 }
 
+const STATS_ITEM_COLUMN_TYPES: [&str; 6] = [
+    "minecraft:mined",
+    "minecraft:broken",
+    "minecraft:crafted",
+    "minecraft:used",
+    "minecraft:picked_up",
+    "minecraft:dropped",
+];
+
+struct StatsItemRowCandidate {
+    raw_values: [Option<i32>; 6],
+    row: HudStatsItemRow,
+}
+
+fn stats_item_rows(
+    input: &ClientInputState,
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    terrain_textures: &TerrainTextureState,
+    keybind_context: ItemModelKeybindContext,
+    partial_tick: f32,
+) -> Vec<HudStatsItemRow> {
+    let mut candidates = BTreeSet::new();
+    for identity in &world.client_stats().identities {
+        let Some(stat_type) = identity.stat_type_resource_id.as_deref() else {
+            continue;
+        };
+        let Some(column) = STATS_ITEM_COLUMN_TYPES
+            .iter()
+            .position(|candidate| *candidate == stat_type)
+        else {
+            continue;
+        };
+        let Some(amount) = world.stat_value(identity.stat_type_id, identity.value_id) else {
+            continue;
+        };
+        if amount <= 0 {
+            continue;
+        }
+        let Some(value_resource) = identity.value_resource_id.as_deref() else {
+            continue;
+        };
+        let item_resource = if column == 0 {
+            item_runtime.and_then(|runtime| runtime.item_resource_id_for_block(value_resource))
+        } else {
+            Some(value_resource)
+        };
+        if let Some(item_resource) = item_resource.filter(|item| *item != "minecraft:air") {
+            candidates.insert(item_resource.to_string());
+        }
+    }
+
+    let mut rows = candidates
+        .into_iter()
+        .filter_map(|resource_id| {
+            let item_id = item_runtime
+                .and_then(|runtime| runtime.item_protocol_id(&resource_id))
+                .or_else(|| {
+                    bbb_protocol::item_types::vanilla_item_type_for_resource_id(&resource_id)
+                        .map(|entry| entry.id)
+                })?;
+            let mined = item_runtime
+                .and_then(|runtime| runtime.primary_block_resource_id_for_item(&resource_id))
+                .map(|block| {
+                    stat_amount_by_resource_identity(world, STATS_ITEM_COLUMN_TYPES[0], block)
+                });
+            let values = [
+                mined,
+                Some(stat_amount_by_resource_identity(
+                    world,
+                    STATS_ITEM_COLUMN_TYPES[1],
+                    &resource_id,
+                )),
+                Some(stat_amount_by_resource_identity(
+                    world,
+                    STATS_ITEM_COLUMN_TYPES[2],
+                    &resource_id,
+                )),
+                Some(stat_amount_by_resource_identity(
+                    world,
+                    STATS_ITEM_COLUMN_TYPES[3],
+                    &resource_id,
+                )),
+                Some(stat_amount_by_resource_identity(
+                    world,
+                    STATS_ITEM_COLUMN_TYPES[4],
+                    &resource_id,
+                )),
+                Some(stat_amount_by_resource_identity(
+                    world,
+                    STATS_ITEM_COLUMN_TYPES[5],
+                    &resource_id,
+                )),
+            ];
+            let stack = ItemStackSummary {
+                item_id: Some(item_id),
+                count: 1,
+                component_patch: Default::default(),
+            };
+            let icon = hud_item_icon_for_stack(
+                world,
+                item_runtime,
+                &stack,
+                None,
+                false,
+                false,
+                false,
+                false,
+                false,
+                keybind_context,
+                0,
+                partial_tick,
+            );
+            let block_model = block_item_3d_model(&stack, item_runtime, terrain_textures);
+            let label = item_runtime
+                .map(|runtime| runtime.localized_item_name(&resource_id))
+                .unwrap_or_else(|| resource_id.clone());
+            Some(StatsItemRowCandidate {
+                raw_values: values,
+                row: HudStatsItemRow {
+                    item_id,
+                    resource_id,
+                    label,
+                    values: values.map(|value| value.map(format_grouped_integer)),
+                    icon,
+                    block_model,
+                },
+            })
+        })
+        .collect::<Vec<_>>();
+    rows.sort_by_key(|candidate| candidate.row.item_id);
+    if let Some((column, order)) = input.stats_screen_item_effective_sort() {
+        rows.sort_by(|left, right| {
+            let left_value = left.raw_values[column].unwrap_or(-1);
+            let right_value = right.raw_values[column].unwrap_or(-1);
+            let ordering = left_value
+                .cmp(&right_value)
+                .then_with(|| left.row.item_id.cmp(&right.row.item_id));
+            if order < 0 {
+                ordering.reverse()
+            } else {
+                ordering
+            }
+        });
+    }
+    rows.into_iter().map(|candidate| candidate.row).collect()
+}
+
 fn stats_screen_visible_rows(
     surface_size: winit::dpi::PhysicalSize<u32>,
     row_height: i32,
+    has_header: bool,
 ) -> usize {
     const LIST_TOP: i32 = 46;
     const FOOTER_HEIGHT: i32 = 33;
     let height = i32::try_from(surface_size.height).unwrap_or(i32::MAX);
-    usize::try_from((height - FOOTER_HEIGHT - LIST_TOP).max(row_height) / row_height).unwrap_or(1)
+    let header_height = i32::from(has_header) * 22;
+    usize::try_from(
+        (height - FOOTER_HEIGHT - LIST_TOP - header_height).max(row_height) / row_height,
+    )
+    .unwrap_or(1)
 }
 
 fn format_vanilla_stat_value(formatter: &str, value: i32) -> String {
