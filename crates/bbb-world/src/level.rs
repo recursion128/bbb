@@ -1067,7 +1067,7 @@ mod tests {
         BlockDestruction as ProtocolBlockDestruction, BlockEvent as ProtocolBlockEvent,
         BlockPos as ProtocolBlockPos, EntityDataValue as ProtocolEntityDataValue,
         EntityDataValueKind, GlobalPos as ProtocolGlobalPos, LevelEvent as ProtocolLevelEvent,
-        MobEffectFlags, OpenScreen as ProtocolOpenScreen,
+        MapItemData as ProtocolMapItemData, MobEffectFlags, OpenScreen as ProtocolOpenScreen,
         PlayerExperience as ProtocolPlayerExperience, PlayerHealth as ProtocolPlayerHealth,
         RegistryData, RegistryDataEntry, SetCamera as ProtocolSetCamera,
         SetEntityData as ProtocolSetEntityData, UpdateAttributes as ProtocolUpdateAttributes,
@@ -1201,6 +1201,13 @@ mod tests {
         store.chunks.push(stale_chunk());
         store.first_chunk = Some(ChunkPos { x: 1, z: -2 });
         store.apply_add_entity(protocol_add_entity(123));
+        assert!(store.apply_map_item_data(ProtocolMapItemData {
+            map_id: 42,
+            scale: 2,
+            locked: true,
+            decorations: None,
+            color_patch: None,
+        }));
         store.apply_open_screen(ProtocolOpenScreen {
             container_id: 7,
             menu_type_id: 2,
@@ -1265,6 +1272,10 @@ mod tests {
         assert_eq!(store.chunk_count(), 0);
         assert_eq!(store.first_chunk(), None);
         assert_eq!(store.entity_count(), 0);
+        let map = store.map_item(42).expect("map survives dimension respawn");
+        assert_eq!(map.scale, 2);
+        assert!(map.locked);
+        assert_eq!(store.counters().maps_tracked, 1);
         assert_eq!(store.counters().entities_tracked, 0);
         assert_eq!(store.counters().respawns_received, 2);
         let level = store.level_info().unwrap();

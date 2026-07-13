@@ -13009,3 +13009,10 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   即使 transaction、entity id 与 UUID 全部在新 level 复用，也会在 clipboard 前拒绝并清 pending。
 - [x] focused regression 同时覆盖 unsent 与 matching-response 两条竞态；这不代表 synced
   `DEBUG_SUBSCRIPTION` registry codec/map/renderer 已实现，其 TODO 继续开放。
+
+## 2026-07-13：Respawn map preservation audit
+
+- [x] vanilla dimension-change Respawn 从旧 ClientLevel 取 `getAllMapData()` 并注入新 level；bbb 的
+  `clear_level_bound_state` 同样不清 maps，map canonical owner 已具备等价保留语义。
+- [x] 新 regression 在 Respawn 前创建 map，跨 dimension 后锁定同 id/scale/locked 内容与 tracked counter；
+  从 stale Respawn TODO 删除 map preservation，LocalPlayer/music/debug subscriber/LevelLoadTracker 仍开放。
