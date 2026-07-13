@@ -5,6 +5,7 @@ mod environment_attributes;
 mod instruments;
 mod state;
 mod store;
+mod trim_patterns;
 
 pub use biomes::{
     BiomeClientProjection, BiomeGrassColorModifier, BiomeProjectionError, BiomeTemperatureModifier,
@@ -22,6 +23,7 @@ pub use state::{
     RegistryContentState, RegistryEntrySource, RegistryPacket, RegistryPacketEntry, RegistrySet,
     RegistryTagState, ResolvedRegistryEntry, UnresolvedRegistryTagHolder,
 };
+pub use trim_patterns::VanillaTrimPatternIdentity;
 
 #[cfg(test)]
 mod tests;

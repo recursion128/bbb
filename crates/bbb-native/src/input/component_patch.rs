@@ -1480,7 +1480,9 @@ fn encode_armor_trim(
         return None;
     }
     let material = vanilla_trim_material_resource_id(patch.armor_trim_material_id?)?;
-    let pattern = vanilla_trim_pattern_resource_id(patch.armor_trim_pattern_id?)?;
+    let pattern =
+        VanillaTrimPatternIdentity::for_vanilla_registry_id(patch.armor_trim_pattern_id?)?
+            .resource_id();
     Some(format!(
         "{{material: {}, pattern: {}}}",
         debug_snbt_string(material),

@@ -13259,3 +13259,17 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   `Instrument.DIRECT_CODEC`；本片明确只提供缺少 RegistryAccess 时的 vanilla 26.1 identity 回退，
   不冒充 sound event/use duration/range/Component payload 或 session remapping。generator
   update/check、world/item-model/native focused tests 与 workspace gate 通过。
+
+## 2026-07-13：Move trim-pattern identity to the world registry owner
+
+- [x] bootstrap generator 将 `TrimPatterns.java` 的 18 项 key/bootstrap 顺序生成到
+  `bbb-world::registries`，以 `VanillaTrimPatternIdentity` 统一 resource id、fixed ordinal 与
+  reverse lookup；item-model catch-all 不再输出 `VANILLA_TRIM_PATTERN_KEYS`。
+- [x] item-model tooltip、component condition/holder-set predicate、exact component predicate 与
+  native named trim SNBT 投影直接消费 world typed API，删除 item-model 公开
+  `vanilla_trim_pattern_resource_id` bridge；generated 完整性/顺序/唯一性/边界测试与跨 crates
+  反向扫描通过。
+- [x] 原版 `RegistryDataLoader.SYNCHRONIZED_REGISTRIES` 对 trim pattern 使用
+  `TrimPattern.DIRECT_CODEC`；本片只提供缺少 RegistryAccess 时的 vanilla 26.1 identity 回退，
+  不冒充 asset id/description/decal payload 或 session remapping。generator update/check、
+  world/item-model/native focused tests 与 workspace gate 通过。

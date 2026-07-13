@@ -29,6 +29,7 @@ use bbb_world::{
     vanilla_painting_variant as world_painting_variant,
     vanilla_painting_variant_resource_id as world_painting_variant_resource_id,
     EnchantmentAttributeModifier, RegistrySet, VanillaInstrumentIdentity, VanillaPaintingVariant,
+    VanillaTrimPatternIdentity,
 };
 
 use super::attributes::{
@@ -38,7 +39,6 @@ use super::attributes::{
 use super::bootstrap_catalog::VANILLA_TRIM_MATERIALS;
 use super::bootstrap_catalog::{
     vanilla_trim_material, VANILLA_ENCHANTMENTS, VANILLA_ENCHANTMENT_TOOLTIP_ORDER,
-    VANILLA_TRIM_PATTERN_KEYS,
 };
 use super::icon_model::effective_attribute_modifiers;
 use super::mob_effects::{
@@ -1226,7 +1226,11 @@ mod tests {
             ]
         );
         assert_eq!(
-            VANILLA_TRIM_PATTERN_KEYS,
+            (0..18)
+                .filter_map(VanillaTrimPatternIdentity::for_vanilla_registry_id)
+                .map(VanillaTrimPatternIdentity::resource_id)
+                .collect::<Vec<_>>()
+                .as_slice(),
             &[
                 "minecraft:sentry",
                 "minecraft:dune",
@@ -1259,12 +1263,23 @@ mod tests {
         assert_eq!(vanilla_trim_material_color(11), None);
         assert_eq!(vanilla_trim_material_color(-1), None);
         assert_eq!(
-            vanilla_trim_pattern_resource_id(0),
+            VanillaTrimPatternIdentity::for_vanilla_registry_id(0)
+                .map(VanillaTrimPatternIdentity::resource_id),
             Some("minecraft:sentry")
         );
-        assert_eq!(vanilla_trim_pattern_resource_id(17), Some("minecraft:bolt"));
-        assert_eq!(vanilla_trim_pattern_resource_id(18), None);
-        assert_eq!(vanilla_trim_pattern_resource_id(-1), None);
+        assert_eq!(
+            VanillaTrimPatternIdentity::for_vanilla_registry_id(17)
+                .map(VanillaTrimPatternIdentity::resource_id),
+            Some("minecraft:bolt")
+        );
+        assert_eq!(
+            VanillaTrimPatternIdentity::for_vanilla_registry_id(18),
+            None
+        );
+        assert_eq!(
+            VanillaTrimPatternIdentity::for_vanilla_registry_id(-1),
+            None
+        );
     }
 
     #[test]
@@ -2223,7 +2238,7 @@ fn armor_trim_pattern_description(
             pattern.description_styled.as_deref(),
         ));
     }
-    let key = vanilla_trim_pattern_resource_id(pattern_id?)?;
+    let key = VanillaTrimPatternIdentity::for_vanilla_registry_id(pattern_id?)?.resource_id();
     let text = language
         .get_or_key(&description_key("trim_pattern", key))
         .to_string();
@@ -2266,12 +2281,6 @@ pub fn vanilla_trim_material_resource_id(id: i32) -> Option<&'static str> {
 
 fn vanilla_trim_material_color(id: i32) -> Option<u32> {
     vanilla_trim_material(id).map(|material| material.description_color)
-}
-
-pub fn vanilla_trim_pattern_resource_id(id: i32) -> Option<&'static str> {
-    usize::try_from(id)
-        .ok()
-        .and_then(|index| VANILLA_TRIM_PATTERN_KEYS.get(index).copied())
 }
 
 fn armor_trim_description_line(

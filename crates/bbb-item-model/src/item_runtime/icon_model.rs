@@ -23,13 +23,13 @@ use bbb_protocol::packets::{
     WrittenBookContentSummary,
 };
 use bbb_render_types::VillagerModelType;
+use bbb_world::VanillaTrimPatternIdentity;
 use chrono::{
     Datelike, Duration, FixedOffset, Local, NaiveDate, Offset, TimeZone, Timelike, Utc, Weekday,
 };
 use chrono_tz::{OffsetName, Tz};
 use serde_json::Value;
 
-use super::bootstrap_catalog::VANILLA_TRIM_PATTERN_KEYS;
 use super::mob_effects::vanilla_mob_effect_key;
 use super::potion_catalog::vanilla_potion;
 use super::{
@@ -5273,13 +5273,11 @@ fn item_stack_matches_trim_value(
         }
     }
     if let Some(pattern) = value.get("pattern") {
-        let Some(pattern_id) = component_patch.armor_trim_pattern_id else {
-            return false;
-        };
-        let Ok(pattern_index) = usize::try_from(pattern_id) else {
-            return false;
-        };
-        let Some(pattern_key) = VANILLA_TRIM_PATTERN_KEYS.get(pattern_index) else {
+        let Some(pattern_key) = component_patch
+            .armor_trim_pattern_id
+            .and_then(VanillaTrimPatternIdentity::for_vanilla_registry_id)
+            .map(VanillaTrimPatternIdentity::resource_id)
+        else {
             return false;
         };
         if !registry_key_holder_set_matches(Some(pattern), pattern_key, trim_pattern_tags) {
@@ -5463,12 +5461,12 @@ fn trim_pattern_exact_match(
         ExactTrimPattern::RegistryKey(expected) => {
             let Some(pattern_key) = component_patch
                 .armor_trim_pattern_id
-                .and_then(|id| usize::try_from(id).ok())
-                .and_then(|index| VANILLA_TRIM_PATTERN_KEYS.get(index))
+                .and_then(VanillaTrimPatternIdentity::for_vanilla_registry_id)
+                .map(VanillaTrimPatternIdentity::resource_id)
             else {
                 return false;
             };
-            pattern_key == expected
+            pattern_key == *expected
         }
         ExactTrimPattern::Direct(expected) => component_patch
             .armor_trim_pattern_direct

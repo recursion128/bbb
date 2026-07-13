@@ -3,27 +3,6 @@
 // Update: scripts/vanilla-source-tools.sh scripts/generate-bootstrap-catalog.py
 // Check: scripts/vanilla-source-tools.sh scripts/generate-bootstrap-catalog.py --check
 
-pub(super) const VANILLA_TRIM_PATTERN_KEYS: &[&str] = &[
-    "minecraft:sentry",
-    "minecraft:dune",
-    "minecraft:coast",
-    "minecraft:wild",
-    "minecraft:ward",
-    "minecraft:eye",
-    "minecraft:vex",
-    "minecraft:tide",
-    "minecraft:snout",
-    "minecraft:rib",
-    "minecraft:spire",
-    "minecraft:wayfinder",
-    "minecraft:shaper",
-    "minecraft:silence",
-    "minecraft:raiser",
-    "minecraft:host",
-    "minecraft:flow",
-    "minecraft:bolt",
-];
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) struct VanillaTrimMaterial {
     pub(super) resource_id: &'static str,
@@ -316,7 +295,7 @@ mod tests {
 
     #[test]
     fn bootstrap_catalog_lengths_and_resource_ids_are_stable() {
-        let catalogs: &[(&[&str], usize)] = &[(VANILLA_TRIM_PATTERN_KEYS, 18)];
+        let catalogs: &[(&[&str], usize)] = &[];
         for (entries, expected_len) in catalogs {
             assert_eq!(entries.len(), *expected_len);
             let resources: HashSet<_> = entries.iter().copied().collect();
@@ -357,7 +336,6 @@ mod tests {
         );
         assert_eq!(vanilla_trim_material(-1), None);
         assert_eq!(vanilla_trim_material(11), None);
-        assert_eq!(VANILLA_TRIM_PATTERN_KEYS.last(), Some(&"minecraft:bolt"));
         assert_eq!(
             VANILLA_ENCHANTMENTS.get(13).unwrap().resource_id,
             "minecraft:sharpness"
