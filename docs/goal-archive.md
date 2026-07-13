@@ -13058,3 +13058,17 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] 完整性/顺序/属性测试与 generated 反向扫描禁止 `PAINTING_VARIANT_SIZES`、平行 struct/table 重新进入
   生产代码；这只收敛固定 bootstrap 数据，不把 painting atlas quad、shader/cull 或自定义 session holder
   语义误标完成。
+
+## 2026-07-13：Generate built-in potion effect descriptors
+
+- [x] `bootstrap_catalog_extractor.py` 通过共享 Tree-sitter frontend 严格提取
+  `Potions.java` 的 46 项 `register(name, new Potion(...))` 与 45 项 typed
+  `MobEffectInstance(MobEffects.X, duration[, amplifier])`，并与既有 40 项
+  `MobEffects.java` extractor 常量集合交叉校验；不再保留手写 effect-id 表。
+- [x] generator 新建语义独立、低于 1000 行的 `item_runtime/potion_catalog.rs`，同时拥有
+  contiguous id、resource id 和 base effects；effect id 引用 generated
+  `bbb_protocol::mob_effect_types` 常量，修正旧表把 `wind_charged` 到 `infested`
+  错位一位的问题（26.1 `infested` 为 38）。
+- [x] item-model potion resource predicate/exact-match 与 tooltip base-effect 路径统一消费该
+  descriptor；extractor fixtures、update/check、生成完整性/顺序/反向门禁及 tooltip semantic
+  tests 锁定资源与 effect/duration/amplifier，不改变 custom-effect 或 tooltip 排序算法。

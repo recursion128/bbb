@@ -435,10 +435,9 @@ mod tests {
                     continue;
                 }
                 let source = fs::read_to_string(&path).unwrap();
-                let production = source.split("#[cfg(test)]").next().unwrap_or(&source);
-                if production.contains("PAINTING_VARIANT_SIZES")
-                    || production.contains("struct VanillaPaintingVariant")
-                    || production.contains("const VANILLA_PAINTING_VARIANTS")
+                if source.contains("PAINTING_VARIANT_SIZES")
+                    || source.contains("struct VanillaPaintingVariant")
+                    || source.contains("const VANILLA_PAINTING_VARIANTS")
                 {
                     violations.push(display.to_string());
                 }

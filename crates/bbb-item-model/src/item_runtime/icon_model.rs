@@ -29,10 +29,11 @@ use chrono_tz::{OffsetName, Tz};
 use serde_json::Value;
 
 use super::bootstrap_catalog::{
-    VANILLA_POTION_KEYS, VANILLA_TRIM_PATTERN_KEYS, VANILLA_VILLAGER_TYPE_KEYS,
-    VANILLA_WOLF_SOUND_VARIANT_KEYS, VANILLA_WOLF_VARIANT_KEYS,
+    VANILLA_TRIM_PATTERN_KEYS, VANILLA_VILLAGER_TYPE_KEYS, VANILLA_WOLF_SOUND_VARIANT_KEYS,
+    VANILLA_WOLF_VARIANT_KEYS,
 };
 use super::mob_effects::vanilla_mob_effect_key;
+use super::potion_catalog::vanilla_potion;
 use super::{
     first_texture_ref, generated_layer_texture_refs, ItemIconTextureLayer, ItemIconTextureRef,
     ItemModelCompassContext, ItemModelKeybindContext, ItemModelTimeContext, ItemModelUseContext,
@@ -44,8 +45,7 @@ pub(super) const VANILLA_TRIM_MATERIAL_COLORS: &[u32] = &[
     0x41_6E_97, 0x9A_5C_C6, 0xFC_78_12,
 ];
 pub fn vanilla_potion_resource_id(potion_id: i32) -> Option<&'static str> {
-    let potion_id = usize::try_from(potion_id).ok()?;
-    VANILLA_POTION_KEYS.get(potion_id).copied()
+    vanilla_potion(potion_id).map(|potion| potion.resource_id)
 }
 
 pub fn vanilla_villager_type_resource_id(id: i32) -> Option<&'static str> {
@@ -5803,10 +5803,7 @@ fn item_stack_matches_potion_contents_value(
     let Some(potion_id) = component_patch.potion_id else {
         return false;
     };
-    let Ok(potion_index) = usize::try_from(potion_id) else {
-        return false;
-    };
-    let Some(potion_key) = VANILLA_POTION_KEYS.get(potion_index) else {
+    let Some(potion_key) = vanilla_potion(potion_id).map(|potion| potion.resource_id) else {
         return false;
     };
     registry_key_holder_set_matches(Some(value), potion_key, potion_tags)
@@ -5979,10 +5976,7 @@ fn potion_contents_exact_match(
     match (expected.potion_key, component_patch.potion_id) {
         (None, None) => {}
         (Some(expected), Some(actual)) => {
-            let Ok(actual) = usize::try_from(actual) else {
-                return false;
-            };
-            if VANILLA_POTION_KEYS.get(actual) != Some(&expected) {
+            if vanilla_potion(actual).map(|potion| potion.resource_id) != Some(expected) {
                 return false;
             }
         }

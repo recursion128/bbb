@@ -70,6 +70,7 @@ use crate::{
 mod bootstrap_catalog;
 mod icon_model;
 mod item_membership_catalog;
+mod potion_catalog;
 mod profile_skin;
 
 pub use bootstrap_catalog::{

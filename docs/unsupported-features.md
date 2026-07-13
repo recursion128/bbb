@@ -1148,6 +1148,12 @@ vanilla evidence. Deleting one of these re-opens work already decided against.
   `SYNCHRONIZED_REGISTRIES`. The fixed 40-entry vanilla id/resource/category
   catalog is generated; effect holders therefore resolve against the built-in
   client registry rather than server-defined effect metadata.
+- **Custom/datapack potion registry definitions.** Vanilla 26.1 registers
+  `minecraft:potion` through `BuiltInRegistries.registerSimple` with
+  `Potions::bootstrap`; the registry is absent from both
+  `RegistryDataLoader.WORLDGEN_REGISTRIES` and `SYNCHRONIZED_REGISTRIES`.
+  Potion holder ids and their base effect lists therefore come from the fixed
+  client built-in registry rather than a server-remappable registry payload.
 - **Custom/datapack menu-type definitions.** Vanilla 26.1 registers
   `minecraft:menu` through `BuiltInRegistries.registerSimple`, and the registry
   is absent from both `RegistryDataLoader.WORLDGEN_REGISTRIES` and

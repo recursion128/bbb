@@ -17,6 +17,7 @@ from bootstrap_catalog_extractor import (  # noqa: E402
     enchantment_tooltip_order,
     identifier_constant_paths,
     painting_variant_entries,
+    potion_entries,
     static_register_entries,
 )
 from vanilla_java_source import parse_source  # noqa: E402
@@ -76,6 +77,73 @@ public class Potions {
             [entry.resource_id for entry in entries],
             ["minecraft:water", "minecraft:long"],
         )
+
+    def test_potion_effects_come_from_typed_constructor_arguments(self) -> None:
+        source = parse_source(
+            "fixture/Potions.java",
+            b"""
+package fixture;
+public class Potions {
+  static final Holder.Reference<Potion> WATER = register("water", new Potion("water"));
+  static final Holder.Reference<Potion> SPEED = register(
+      "speed", new Potion("speed", new MobEffectInstance(MobEffects.SPEED, 3_600)));
+  static final Holder.Reference<Potion> MIXED = register(
+      "mixed", new Potion("mixed",
+          new MobEffectInstance(MobEffects.SLOWNESS, 400, 3),
+          new MobEffectInstance(MobEffects.RESISTANCE, 400, 2)));
+}
+""",
+        )
+        entries = potion_entries(
+            source,
+            {"SPEED", "SLOWNESS", "RESISTANCE"},
+            expected_count=3,
+            expected_effect_count=3,
+        )
+        self.assertEqual(
+            [
+                (
+                    entry.constant_name,
+                    entry.resource_id,
+                    [
+                        (effect.constant_name, effect.duration, effect.amplifier)
+                        for effect in entry.effects
+                    ],
+                )
+                for entry in entries
+            ],
+            [
+                ("WATER", "minecraft:water", []),
+                ("SPEED", "minecraft:speed", [("SPEED", 3600, 0)]),
+                (
+                    "MIXED",
+                    "minecraft:mixed",
+                    [("SLOWNESS", 400, 3), ("RESISTANCE", 400, 2)],
+                ),
+            ],
+        )
+
+    def test_potion_effect_rejects_unknown_mob_effect_constant(self) -> None:
+        source = parse_source(
+            "fixture/Potions.java",
+            b"""
+package fixture;
+public class Potions {
+  static final Holder.Reference<Potion> BAD = register(
+      "bad", new Potion("bad", new MobEffectInstance(MobEffects.UNKNOWN, 20)));
+}
+""",
+        )
+        with self.assertRaisesRegex(
+            BootstrapCatalogExtractionError,
+            "unknown MobEffects constant UNKNOWN",
+        ):
+            potion_entries(
+                source,
+                {"SPEED"},
+                expected_count=1,
+                expected_effect_count=1,
+            )
 
     def test_missing_bootstrap_registration_fails_explicitly(self) -> None:
         source = parse_source(

@@ -43,6 +43,7 @@ use super::mob_effects::{
     vanilla_mob_effect_attribute_modifiers, vanilla_mob_effect_category, vanilla_mob_effect_key,
     VanillaMobEffectCategory,
 };
+use super::potion_catalog::{vanilla_potion, VanillaPotionEffect};
 use super::*;
 
 /// Vanilla `ItemLore.LORE_STYLE`
@@ -123,70 +124,6 @@ const INSTRUMENT_DESCRIPTION_STYLE: ComponentStyle = ComponentStyle {
     color: Some(TOOLTIP_GRAY_TEXT_COLOR),
     click_event: None,
 };
-const VANILLA_POTION_EFFECTS_BY_ID: &[&[VanillaPotionEffect]] = &[
-    &[],
-    &[],
-    &[],
-    &[],
-    &[potion_effect(15, 3600, 0)],
-    &[potion_effect(15, 9600, 0)],
-    &[potion_effect(13, 3600, 0)],
-    &[potion_effect(13, 9600, 0)],
-    &[potion_effect(7, 3600, 0)],
-    &[potion_effect(7, 9600, 0)],
-    &[potion_effect(7, 1800, 1)],
-    &[potion_effect(11, 3600, 0)],
-    &[potion_effect(11, 9600, 0)],
-    &[potion_effect(0, 3600, 0)],
-    &[potion_effect(0, 9600, 0)],
-    &[potion_effect(0, 1800, 1)],
-    &[potion_effect(1, 1800, 0)],
-    &[potion_effect(1, 4800, 0)],
-    &[potion_effect(1, 400, 3)],
-    &[potion_effect(1, 400, 3), potion_effect(10, 400, 2)],
-    &[potion_effect(1, 800, 3), potion_effect(10, 800, 2)],
-    &[potion_effect(1, 400, 5), potion_effect(10, 400, 3)],
-    &[potion_effect(12, 3600, 0)],
-    &[potion_effect(12, 9600, 0)],
-    &[potion_effect(5, 1, 0)],
-    &[potion_effect(5, 1, 1)],
-    &[potion_effect(6, 1, 0)],
-    &[potion_effect(6, 1, 1)],
-    &[potion_effect(18, 900, 0)],
-    &[potion_effect(18, 1800, 0)],
-    &[potion_effect(18, 432, 1)],
-    &[potion_effect(9, 900, 0)],
-    &[potion_effect(9, 1800, 0)],
-    &[potion_effect(9, 450, 1)],
-    &[potion_effect(4, 3600, 0)],
-    &[potion_effect(4, 9600, 0)],
-    &[potion_effect(4, 1800, 1)],
-    &[potion_effect(17, 1800, 0)],
-    &[potion_effect(17, 4800, 0)],
-    &[potion_effect(25, 6000, 0)],
-    &[potion_effect(27, 1800, 0)],
-    &[potion_effect(27, 4800, 0)],
-    &[potion_effect(34, 3600, 0)],
-    &[potion_effect(35, 3600, 0)],
-    &[potion_effect(36, 3600, 0)],
-    &[potion_effect(37, 3600, 0)],
-];
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct VanillaPotionEffect {
-    effect_id: i32,
-    duration: i32,
-    amplifier: i32,
-}
-
-const fn potion_effect(effect_id: i32, duration: i32, amplifier: i32) -> VanillaPotionEffect {
-    VanillaPotionEffect {
-        effect_id,
-        duration,
-        amplifier,
-    }
-}
-
 #[derive(Debug, Clone, Copy)]
 struct PotionAttributeModifierLine {
     attribute_description_key: &'static str,
@@ -1070,6 +1007,14 @@ fn push_smithing_template_tooltip_lines(
 mod tests {
     use super::*;
 
+    const fn potion_effect(effect_id: i32, duration: i32, amplifier: i32) -> VanillaPotionEffect {
+        VanillaPotionEffect {
+            effect_id,
+            duration,
+            amplifier,
+        }
+    }
+
     #[test]
     fn tooltip_does_not_restore_component_type_id_aliases() {
         let source = include_str!("tooltip.rs");
@@ -1320,7 +1265,6 @@ mod tests {
 
     #[test]
     fn vanilla_potion_effects_follow_26_1_bootstrap_order() {
-        assert_eq!(VANILLA_POTION_EFFECTS_BY_ID.len(), 46);
         assert_eq!(vanilla_potion_effects(0), Some(&[][..]));
         assert_eq!(
             vanilla_potion_effects(4),
@@ -1336,7 +1280,13 @@ mod tests {
         );
         assert_eq!(
             vanilla_potion_effects(45),
-            Some(&[potion_effect(37, 3600, 0)][..])
+            Some(
+                &[potion_effect(
+                    bbb_protocol::mob_effect_types::VANILLA_MOB_EFFECT_INFESTED_ID,
+                    3600,
+                    0
+                )][..]
+            )
         );
         assert_eq!(vanilla_potion_effects(46), None);
         assert_eq!(vanilla_potion_effects(-1), None);
@@ -1576,9 +1526,7 @@ fn push_potion_contents_tooltip_lines(
 }
 
 fn vanilla_potion_effects(potion_id: i32) -> Option<&'static [VanillaPotionEffect]> {
-    usize::try_from(potion_id)
-        .ok()
-        .and_then(|index| VANILLA_POTION_EFFECTS_BY_ID.get(index).copied())
+    vanilla_potion(potion_id).map(|potion| potion.effects)
 }
 
 fn potion_contents_component_present(component_patch: &DataComponentPatchSummary) -> bool {

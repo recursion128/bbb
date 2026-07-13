@@ -49,6 +49,20 @@ class PaintingVariantEntry:
     has_author: bool
 
 
+@dataclass(frozen=True)
+class PotionEffectEntry:
+    constant_name: str
+    duration: int
+    amplifier: int
+
+
+@dataclass(frozen=True)
+class PotionEntry:
+    constant_name: str
+    resource_id: str
+    effects: tuple[PotionEffectEntry, ...]
+
+
 def enchantment_tooltip_order(
     tag_resources: dict[str, tuple[str, bytes]],
     enchantments: list[EnchantmentEntry],
@@ -307,6 +321,121 @@ def static_register_entries(
         raise BootstrapCatalogExtractionError(f"{source.relative_path}: duplicate constant")
     if len({entry.resource_id for entry in entries}) != len(entries):
         raise BootstrapCatalogExtractionError(f"{source.relative_path}: duplicate resource id")
+    return entries
+
+
+def _object_creation_arguments(
+    source: JavaSource,
+    expression: JavaExpression,
+    expected_type: str,
+) -> tuple[JavaExpression, ...]:
+    node = expression.node
+    type_node = node.child_by_field_name("type")
+    arguments_node = node.child_by_field_name("arguments")
+    if (
+        node.type != "object_creation_expression"
+        or type_node is None
+        or arguments_node is None
+        or source.expression(type_node).canonical.replace(" ", "") != expected_type
+    ):
+        _fail(source, expression, f"expected new {expected_type}(...) expression")
+    return tuple(
+        source.expression(node) for node in arguments_node.named_children
+    )
+
+
+def _decimal_integer(source: JavaSource, expression: JavaExpression) -> int:
+    if expression.node.type != "decimal_integer_literal":
+        _fail(source, expression, "expected a decimal integer literal")
+    return int(expression.canonical.replace("_", ""), 10)
+
+
+def potion_entries(
+    source: JavaSource,
+    known_mob_effect_constants: set[str],
+    expected_count: int = 46,
+    expected_effect_count: int = 45,
+) -> list[PotionEntry]:
+    fields = [
+        field
+        for field in source.fields
+        if field.type_spelling.replace(" ", "").startswith("Holder.Reference<Potion>")
+    ]
+    entries: list[PotionEntry] = []
+    for field in fields:
+        if field.initializer is None:
+            _fail(
+                source,
+                JavaExpression("", field.span, field.node),
+                f"{field.name} lacks initializer",
+            )
+        _, register_arguments = _invocation(source, field.initializer, {"register"})
+        if len(register_arguments) != 2:
+            _fail(source, field.initializer, "potion register must have two arguments")
+        resource_id = f"minecraft:{_string(source, register_arguments[0])}"
+        potion_arguments = _object_creation_arguments(
+            source, register_arguments[1], "Potion"
+        )
+        if not potion_arguments:
+            _fail(source, register_arguments[1], "Potion must carry a translation key")
+        _string(source, potion_arguments[0])
+        effects: list[PotionEffectEntry] = []
+        for effect_expression in potion_arguments[1:]:
+            effect_arguments = _object_creation_arguments(
+                source, effect_expression, "MobEffectInstance"
+            )
+            if len(effect_arguments) not in {2, 3}:
+                _fail(
+                    source,
+                    effect_expression,
+                    "MobEffectInstance must have effect, duration, and optional amplifier",
+                )
+            effect_node = effect_arguments[0].node
+            object_node = effect_node.child_by_field_name("object")
+            field_node = effect_node.child_by_field_name("field")
+            if (
+                effect_node.type != "field_access"
+                or object_node is None
+                or field_node is None
+                or source.expression(object_node).canonical != "MobEffects"
+            ):
+                _fail(
+                    source,
+                    effect_arguments[0],
+                    "potion effect must reference a MobEffects constant",
+                )
+            constant_name = source.text(field_node)
+            if constant_name not in known_mob_effect_constants:
+                _fail(
+                    source,
+                    effect_arguments[0],
+                    f"unknown MobEffects constant {constant_name}",
+                )
+            effects.append(
+                PotionEffectEntry(
+                    constant_name,
+                    _decimal_integer(source, effect_arguments[1]),
+                    _decimal_integer(source, effect_arguments[2])
+                    if len(effect_arguments) == 3
+                    else 0,
+                )
+            )
+        entries.append(PotionEntry(field.name, resource_id, tuple(effects)))
+    if len(entries) != expected_count:
+        raise BootstrapCatalogExtractionError(
+            f"{source.relative_path}: expected {expected_count} potions, "
+            f"extracted {len(entries)}"
+        )
+    if sum(len(entry.effects) for entry in entries) != expected_effect_count:
+        raise BootstrapCatalogExtractionError(
+            f"{source.relative_path}: expected {expected_effect_count} potion effects"
+        )
+    if len({entry.constant_name for entry in entries}) != len(entries):
+        raise BootstrapCatalogExtractionError(f"{source.relative_path}: duplicate potion constant")
+    if len({entry.resource_id for entry in entries}) != len(entries):
+        raise BootstrapCatalogExtractionError(
+            f"{source.relative_path}: duplicate potion resource id"
+        )
     return entries
 
 

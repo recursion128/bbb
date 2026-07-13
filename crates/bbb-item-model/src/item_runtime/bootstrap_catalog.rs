@@ -38,55 +38,6 @@ pub(super) const VANILLA_TRIM_PATTERN_KEYS: &[&str] = &[
     "minecraft:bolt",
 ];
 
-pub(super) const VANILLA_POTION_KEYS: &[&str] = &[
-    "minecraft:water",
-    "minecraft:mundane",
-    "minecraft:thick",
-    "minecraft:awkward",
-    "minecraft:night_vision",
-    "minecraft:long_night_vision",
-    "minecraft:invisibility",
-    "minecraft:long_invisibility",
-    "minecraft:leaping",
-    "minecraft:long_leaping",
-    "minecraft:strong_leaping",
-    "minecraft:fire_resistance",
-    "minecraft:long_fire_resistance",
-    "minecraft:swiftness",
-    "minecraft:long_swiftness",
-    "minecraft:strong_swiftness",
-    "minecraft:slowness",
-    "minecraft:long_slowness",
-    "minecraft:strong_slowness",
-    "minecraft:turtle_master",
-    "minecraft:long_turtle_master",
-    "minecraft:strong_turtle_master",
-    "minecraft:water_breathing",
-    "minecraft:long_water_breathing",
-    "minecraft:healing",
-    "minecraft:strong_healing",
-    "minecraft:harming",
-    "minecraft:strong_harming",
-    "minecraft:poison",
-    "minecraft:long_poison",
-    "minecraft:strong_poison",
-    "minecraft:regeneration",
-    "minecraft:long_regeneration",
-    "minecraft:strong_regeneration",
-    "minecraft:strength",
-    "minecraft:long_strength",
-    "minecraft:strong_strength",
-    "minecraft:weakness",
-    "minecraft:long_weakness",
-    "minecraft:luck",
-    "minecraft:slow_falling",
-    "minecraft:long_slow_falling",
-    "minecraft:wind_charged",
-    "minecraft:weaving",
-    "minecraft:oozing",
-    "minecraft:infested",
-];
-
 pub(super) const VANILLA_VILLAGER_TYPE_KEYS: &[&str] = &[
     "minecraft:desert",
     "minecraft:jungle",
@@ -640,7 +591,6 @@ mod tests {
         let catalogs: &[(&[&str], usize)] = &[
             (VANILLA_TRIM_MATERIAL_KEYS, 11),
             (VANILLA_TRIM_PATTERN_KEYS, 18),
-            (VANILLA_POTION_KEYS, 46),
             (VANILLA_VILLAGER_TYPE_KEYS, 7),
             (VANILLA_WOLF_SOUND_VARIANT_KEYS, 7),
             (VANILLA_WOLF_VARIANT_KEYS, 9),
@@ -687,7 +637,6 @@ mod tests {
             Some(&"minecraft:quartz")
         );
         assert_eq!(VANILLA_TRIM_PATTERN_KEYS.last(), Some(&"minecraft:bolt"));
-        assert_eq!(VANILLA_POTION_KEYS.get(3), Some(&"minecraft:awkward"));
         assert_eq!(VANILLA_VILLAGER_TYPE_KEYS.last(), Some(&"minecraft:taiga"));
         assert_eq!(
             VANILLA_WOLF_SOUND_VARIANT_KEYS.get(1),
