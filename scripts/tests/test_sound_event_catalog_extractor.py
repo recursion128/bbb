@@ -10,6 +10,7 @@ sys.path.insert(0, str(SCRIPTS))
 
 from sound_event_catalog_extractor import (  # noqa: E402
     SoundEventCatalogExtractionError,
+    animal_sound_variant_death_sound_entries,
     direct_sound_event_entries,
     sound_event_resource_ids,
 )
@@ -18,7 +19,7 @@ from vanilla_java_source import parse_source  # noqa: E402
 
 def sound_set_source(family: str, *entries: tuple[str, str]):
     constants = ", ".join(
-        f'{name}("ignored", "{sound}")' for name, sound in entries
+        f'{name}("{name.lower()}", "{sound}")' for name, sound in entries
     )
     return parse_source(
         f"fixture/{family}.java",
@@ -32,6 +33,57 @@ class {family} {{
 
 
 class SoundEventCatalogExtractorTests(unittest.TestCase):
+    def test_animal_variant_death_sounds_join_sound_sets_and_baby_holder(self) -> None:
+        source = parse_source(
+            "net/minecraft/sounds/SoundEvents.java",
+            b'''
+package net.minecraft.sounds;
+class SoundEvents {
+  static final Holder CAT_DEATH_BABY = registerForHolder("entity.baby_cat.death");
+  static final Map CAT_SOUNDS = registerCatSoundVariants();
+  static Map registerCatSoundVariants() {
+    return stream(
+        soundSet -> registerForHolder("entity." + soundEventIdentifier + ".ambient"),
+        soundSet -> registerForHolder("entity." + soundEventIdentifier + ".death"));
+  }
+}
+''',
+        )
+        catalogs = animal_sound_variant_death_sound_entries(
+            source,
+            {
+                "cat": sound_set_source(
+                    "Cat", ("CLASSIC", "cat"), ("ROYAL", "cat_royal")
+                )
+            },
+            expected_direct_count=1,
+        )
+        self.assertEqual(
+            [
+                (
+                    entry.constant_name,
+                    entry.resource_id,
+                    entry.adult_sound_event_id,
+                    entry.baby_sound_event_id,
+                )
+                for entry in catalogs["cat"]
+            ],
+            [
+                (
+                    "CLASSIC",
+                    "minecraft:classic",
+                    "minecraft:entity.cat.death",
+                    "minecraft:entity.baby_cat.death",
+                ),
+                (
+                    "ROYAL",
+                    "minecraft:royal",
+                    "minecraft:entity.cat_royal.death",
+                    "minecraft:entity.baby_cat.death",
+                ),
+            ],
+        )
+
     def test_direct_entries_preserve_constant_and_resource_mapping(self) -> None:
         source = parse_source(
             "net/minecraft/sounds/SoundEvents.java",

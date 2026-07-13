@@ -349,6 +349,94 @@ def bootstrap_resource_key_entries(
     return entries
 
 
+def sound_variant_entries(
+    source: JavaSource,
+    value_type: str,
+    sound_set_owner: str,
+    sound_map_field: str,
+    expected_count: int,
+) -> list[BootstrapEntry]:
+    entries = bootstrap_resource_key_entries(
+        source,
+        value_type,
+        {"createKey"},
+        expected_count,
+    )
+    bootstrap = _bootstrap_method(source)
+    context_name = _bootstrap_context_name(source, bootstrap)
+    calls = [
+        call
+        for call in source.calls
+        if call.name == "register"
+        and call.qualifier is None
+        and bootstrap.body.start_byte <= call.span.start_byte
+        and call.span.end_byte <= bootstrap.body.end_byte
+    ]
+    calls.sort(key=lambda call: (call.span.start_byte, call.span.end_byte))
+    if len(calls) != len(entries):
+        raise BootstrapCatalogExtractionError(
+            f"{source.relative_path}: sound-variant bootstrap registration count changed"
+        )
+    for call, entry in zip(calls, entries, strict=True):
+        expected_sound_set = (
+            f"{sound_set_owner}.SoundSet.{entry.constant_name}"
+        )
+        if (
+            len(call.arguments) != 3
+            or call.arguments[0].canonical != context_name
+            or call.arguments[1].canonical != entry.constant_name
+            or call.arguments[2].canonical != expected_sound_set
+        ):
+            _fail(
+                source,
+                source.expression(call.node),
+                "sound-variant bootstrap payload changed",
+            )
+
+    helpers = [
+        method
+        for method in source.methods
+        if method.name == "register"
+        and len(method.parameters) == 3
+        and method.body is not None
+    ]
+    if len(helpers) != 1:
+        raise BootstrapCatalogExtractionError(
+            f"{source.relative_path}: expected one sound-variant register helper"
+        )
+    helper = helpers[0]
+    parameter_names = []
+    for parameter in helper.parameters:
+        name = parameter.node.child_by_field_name("name")
+        if name is None:
+            _fail(source, parameter, "sound-variant helper parameter lacks a name")
+        parameter_names.append(source.text(name))
+    helper_calls = [
+        call
+        for call in source.calls
+        if call.name == "register"
+        and call.qualifier is not None
+        and call.qualifier.canonical == parameter_names[0]
+        and helper.body.start_byte <= call.span.start_byte
+        and call.span.end_byte <= helper.body.end_byte
+    ]
+    expected_helper = (
+        f"{parameter_names[0]}.register ({parameter_names[1]}, "
+        f"SoundEvents.{sound_map_field}.get ({parameter_names[2]}))"
+    )
+    if (
+        len(helper_calls) != 1
+        or source.expression(helper_calls[0].node).canonical != expected_helper
+    ):
+        expression = (
+            source.expression(helper_calls[0].node)
+            if helper_calls
+            else source.expression(helper.node)
+        )
+        _fail(source, expression, "sound-variant register helper payload changed")
+    return entries
+
+
 def wolf_variant_entries(
     source: JavaSource, expected_count: int = 9
 ) -> list[WolfVariantEntry]:

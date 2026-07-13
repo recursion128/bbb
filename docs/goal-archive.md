@@ -13486,3 +13486,16 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] generator 单测以非标准 pot/banner 尺寸验证输出不再固定为 `16×16`/`64×64`；
   151 项 scripts Python tests、generator update/check、6 项 renderer pattern catalog tests
   与 workspace gate 通过。
+
+## 2026-07-13：Generate built-in animal sound-variant death sounds
+
+- [x] bootstrap/SoundEvents Tree-sitter extractor 交叉读取 cat/chicken/cow/pig/wolf 的
+  registry 注册顺序、`SoundSet` identity/event identifier、最终 `SoundEvents.*_SOUNDS`
+  payload 与成年/幼崽 death holder；pig 的 CLASSIC/BIG/MINI 注册顺序不再误套枚举顺序。
+- [x] generated world catalog 统一拥有 16 个 built-in variant 的成年/幼崽死亡音效；
+  living-entity event 3 按 synced metadata holder 选择 built-in payload，保留 vanilla
+  `1.0 + (a-b)*0.2` pitch 及 cow/wolf 0.4 volume，silent/unknown 行为不变。
+- [x] 服务器一旦同步对应 sound-variant registry，未完成的 `SoundSet.NETWORK_CODEC`
+  typed payload 会 fail closed，不把 resource identity 冒充 payload。154 项 scripts Python
+  tests、generator update/check、4 项 sound-variant world tests、6 项 death-event tests 与
+  workspace gate 通过。

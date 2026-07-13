@@ -16,9 +16,9 @@ use hecs::{Entity, World};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use uuid::Uuid;
 
-use bbb_protocol::packets::EntityDataValueKind;
 use bbb_protocol::packets::EquipmentSlot as ProtocolEquipmentSlot;
 use bbb_protocol::packets::ItemStackSummary;
+use bbb_protocol::packets::{EntityDataRegistryHolder, EntityDataValueKind};
 
 use super::schema::{
     vanilla_minecart_default_display_offset,
@@ -673,6 +673,29 @@ impl EntityStore {
         default: bool,
     ) -> Option<bool> {
         self.metadata_bool(id, data_id, default)
+    }
+
+    pub(crate) fn metadata_registry_id_for_entity(
+        &self,
+        id: i32,
+        data_id: u8,
+        serializer: EntityDataRegistryHolder,
+    ) -> Option<Option<i32>> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let metadata = self.ecs.get::<&EntityMetadata>(entity).ok()?;
+        Some(
+            metadata
+                .data_values
+                .iter()
+                .find(|value| value.data_id == data_id)
+                .and_then(|value| match &value.value {
+                    EntityDataValueKind::RegistryId {
+                        serializer: actual,
+                        id,
+                    } if *actual == serializer => Some(*id),
+                    _ => None,
+                }),
+        )
     }
 
     pub(super) fn metadata_byte(&self, id: i32, data_id: u8, default: i8) -> Option<i8> {

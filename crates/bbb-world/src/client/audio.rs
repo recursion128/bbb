@@ -9,7 +9,7 @@ use bbb_protocol::{
         VANILLA_CLIENT_GAME_EVENT_PUFFER_FISH_STING_ID,
     },
     packets::{
-        GameEvent as ProtocolGameEvent, LevelEvent as ProtocolLevelEvent,
+        EntityDataRegistryHolder, GameEvent as ProtocolGameEvent, LevelEvent as ProtocolLevelEvent,
         SoundEntityEvent as ProtocolSoundEntityEvent, SoundEvent as ProtocolSoundEvent,
         SoundEventHolder as ProtocolSoundEventHolder, SoundSource, StopSound as ProtocolStopSound,
         Vec3d as ProtocolVec3d,
@@ -17,6 +17,15 @@ use bbb_protocol::{
 };
 use serde::{Deserialize, Serialize};
 
+use crate::entities::{
+    CatSoundVariantIdentity, ChickenSoundVariantIdentity, CowSoundVariantIdentity,
+    PigSoundVariantIdentity, WolfSoundVariantIdentity,
+    VANILLA_CAT_DEFAULT_SOUND_VARIANT_RESOURCE_ID, VANILLA_CAT_SOUND_VARIANT_DATA_ID,
+    VANILLA_CHICKEN_DEFAULT_SOUND_VARIANT_RESOURCE_ID, VANILLA_CHICKEN_SOUND_VARIANT_DATA_ID,
+    VANILLA_COW_DEFAULT_SOUND_VARIANT_RESOURCE_ID, VANILLA_COW_SOUND_VARIANT_DATA_ID,
+    VANILLA_PIG_DEFAULT_SOUND_VARIANT_RESOURCE_ID, VANILLA_PIG_SOUND_VARIANT_DATA_ID,
+    VANILLA_WOLF_DEFAULT_SOUND_VARIANT_RESOURCE_ID, VANILLA_WOLF_SOUND_VARIANT_DATA_ID,
+};
 use crate::{block_name_is_air, WorldStore};
 
 const JUKEBOX_PLAY_LEVEL_EVENT: i32 = 1010;
@@ -49,6 +58,11 @@ const STRAY_DEATH_SOUND_EVENT: &str = "minecraft:entity.stray.death";
 const BOGGED_DEATH_SOUND_EVENT: &str = "minecraft:entity.bogged.death";
 const ITEM_PICKUP_SOUND_EVENT: &str = "minecraft:entity.item.pickup";
 const EXPERIENCE_ORB_PICKUP_SOUND_EVENT: &str = "minecraft:entity.experience_orb.pickup";
+const CAT_SOUND_VARIANT_REGISTRY: &str = "minecraft:cat_sound_variant";
+const CHICKEN_SOUND_VARIANT_REGISTRY: &str = "minecraft:chicken_sound_variant";
+const COW_SOUND_VARIANT_REGISTRY: &str = "minecraft:cow_sound_variant";
+const PIG_SOUND_VARIANT_REGISTRY: &str = "minecraft:pig_sound_variant";
+const WOLF_SOUND_VARIANT_REGISTRY: &str = "minecraft:wolf_sound_variant";
 const GLOBAL_LEVEL_EVENT_SOUND_DISTANCE: f64 = 2.0;
 const VANILLA_VEC3_NORMALIZE_EPSILON: f64 = 1.0e-5;
 const SCULK_SHRIEKER_TOP_Y: f64 = 0.5;
@@ -508,17 +522,82 @@ impl WorldStore {
         mut next_float: impl FnMut() -> f32,
     ) -> Option<SoundEventState> {
         let transform = self.entities.transform_state(entity_id)?;
-        let sound = match transform.entity_type_id {
-            VANILLA_ENTITY_TYPE_ARMOR_STAND_ID => ARMOR_STAND_BREAK_SOUND_EVENT,
-            VANILLA_ENTITY_TYPE_ZOMBIE_ID => ZOMBIE_DEATH_SOUND_EVENT,
-            VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID => ZOMBIE_VILLAGER_DEATH_SOUND_EVENT,
-            VANILLA_ENTITY_TYPE_RAVAGER_ID => RAVAGER_DEATH_SOUND_EVENT,
-            VANILLA_ENTITY_TYPE_IRON_GOLEM_ID => IRON_GOLEM_DEATH_SOUND_EVENT,
-            VANILLA_ENTITY_TYPE_VILLAGER_ID => VILLAGER_DEATH_SOUND_EVENT,
-            VANILLA_ENTITY_TYPE_WITCH_ID => WITCH_DEATH_SOUND_EVENT,
-            VANILLA_ENTITY_TYPE_SKELETON_ID => SKELETON_DEATH_SOUND_EVENT,
-            VANILLA_ENTITY_TYPE_STRAY_ID => STRAY_DEATH_SOUND_EVENT,
-            VANILLA_ENTITY_TYPE_BOGGED_ID => BOGGED_DEATH_SOUND_EVENT,
+        let (sound, volume) = match transform.entity_type_id {
+            VANILLA_ENTITY_TYPE_ARMOR_STAND_ID => (ARMOR_STAND_BREAK_SOUND_EVENT, 1.0),
+            VANILLA_ENTITY_TYPE_ZOMBIE_ID => (ZOMBIE_DEATH_SOUND_EVENT, 1.0),
+            VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID => (ZOMBIE_VILLAGER_DEATH_SOUND_EVENT, 1.0),
+            VANILLA_ENTITY_TYPE_RAVAGER_ID => (RAVAGER_DEATH_SOUND_EVENT, 1.0),
+            VANILLA_ENTITY_TYPE_IRON_GOLEM_ID => (IRON_GOLEM_DEATH_SOUND_EVENT, 1.0),
+            VANILLA_ENTITY_TYPE_VILLAGER_ID => (VILLAGER_DEATH_SOUND_EVENT, 1.0),
+            VANILLA_ENTITY_TYPE_WITCH_ID => (WITCH_DEATH_SOUND_EVENT, 1.0),
+            VANILLA_ENTITY_TYPE_SKELETON_ID => (SKELETON_DEATH_SOUND_EVENT, 1.0),
+            VANILLA_ENTITY_TYPE_STRAY_ID => (STRAY_DEATH_SOUND_EVENT, 1.0),
+            VANILLA_ENTITY_TYPE_BOGGED_ID => (BOGGED_DEATH_SOUND_EVENT, 1.0),
+            VANILLA_ENTITY_TYPE_CAT_ID => {
+                let baby = self.entities.is_baby(entity_id)?;
+                let variant = self.builtin_sound_variant_identity(
+                    entity_id,
+                    CAT_SOUND_VARIANT_REGISTRY,
+                    VANILLA_CAT_SOUND_VARIANT_DATA_ID,
+                    EntityDataRegistryHolder::CatSoundVariant,
+                    VANILLA_CAT_DEFAULT_SOUND_VARIANT_RESOURCE_ID,
+                    CatSoundVariantIdentity::for_vanilla_registry_id,
+                    CatSoundVariantIdentity::for_resource_id,
+                )?;
+                (variant.builtin_death_sound_event(baby), 1.0)
+            }
+            VANILLA_ENTITY_TYPE_CHICKEN_ID => {
+                let baby = self.entities.is_baby(entity_id)?;
+                let variant = self.builtin_sound_variant_identity(
+                    entity_id,
+                    CHICKEN_SOUND_VARIANT_REGISTRY,
+                    VANILLA_CHICKEN_SOUND_VARIANT_DATA_ID,
+                    EntityDataRegistryHolder::ChickenSoundVariant,
+                    VANILLA_CHICKEN_DEFAULT_SOUND_VARIANT_RESOURCE_ID,
+                    ChickenSoundVariantIdentity::for_vanilla_registry_id,
+                    ChickenSoundVariantIdentity::for_resource_id,
+                )?;
+                (variant.builtin_death_sound_event(baby), 1.0)
+            }
+            VANILLA_ENTITY_TYPE_COW_ID => {
+                let baby = self.entities.is_baby(entity_id)?;
+                let variant = self.builtin_sound_variant_identity(
+                    entity_id,
+                    COW_SOUND_VARIANT_REGISTRY,
+                    VANILLA_COW_SOUND_VARIANT_DATA_ID,
+                    EntityDataRegistryHolder::CowSoundVariant,
+                    VANILLA_COW_DEFAULT_SOUND_VARIANT_RESOURCE_ID,
+                    CowSoundVariantIdentity::for_vanilla_registry_id,
+                    CowSoundVariantIdentity::for_resource_id,
+                )?;
+                (variant.builtin_death_sound_event(baby), 0.4)
+            }
+            VANILLA_ENTITY_TYPE_PIG_ID => {
+                let baby = self.entities.is_baby(entity_id)?;
+                let variant = self.builtin_sound_variant_identity(
+                    entity_id,
+                    PIG_SOUND_VARIANT_REGISTRY,
+                    VANILLA_PIG_SOUND_VARIANT_DATA_ID,
+                    EntityDataRegistryHolder::PigSoundVariant,
+                    VANILLA_PIG_DEFAULT_SOUND_VARIANT_RESOURCE_ID,
+                    PigSoundVariantIdentity::for_vanilla_registry_id,
+                    PigSoundVariantIdentity::for_resource_id,
+                )?;
+                (variant.builtin_death_sound_event(baby), 1.0)
+            }
+            VANILLA_ENTITY_TYPE_WOLF_ID => {
+                let baby = self.entities.is_baby(entity_id)?;
+                let variant = self.builtin_sound_variant_identity(
+                    entity_id,
+                    WOLF_SOUND_VARIANT_REGISTRY,
+                    VANILLA_WOLF_SOUND_VARIANT_DATA_ID,
+                    EntityDataRegistryHolder::WolfSoundVariant,
+                    VANILLA_WOLF_DEFAULT_SOUND_VARIANT_RESOURCE_ID,
+                    WolfSoundVariantIdentity::for_vanilla_registry_id,
+                    WolfSoundVariantIdentity::for_resource_id,
+                )?;
+                (variant.builtin_death_sound_event(baby), 0.4)
+            }
             _ => return None,
         };
         if self.entities.is_silent(entity_id)? {
@@ -533,12 +612,36 @@ impl WorldStore {
                 y: transform.position.y,
                 z: transform.position.z,
             },
-            volume: 1.0,
+            volume,
             pitch: (next_float().clamp(0.0, 1.0) - next_float().clamp(0.0, 1.0)) * 0.2 + 1.0,
             seed: 0,
             distance_delay: false,
         };
         Some(self.record_positioned_sound(state))
+    }
+
+    fn builtin_sound_variant_identity<T: Copy>(
+        &self,
+        entity_id: i32,
+        registry: &str,
+        data_id: u8,
+        serializer: EntityDataRegistryHolder,
+        default_resource_id: &str,
+        for_vanilla_registry_id: fn(i32) -> Option<T>,
+        for_resource_id: fn(&str) -> Option<T>,
+    ) -> Option<T> {
+        // The synchronized element contains a full SoundSet. Until its NETWORK_CODEC
+        // payload is typed, the server registry must suppress this built-in-only fallback.
+        if self.registry_content(registry).is_some() {
+            return None;
+        }
+        match self
+            .entities
+            .metadata_registry_id_for_entity(entity_id, data_id, serializer)?
+        {
+            Some(registry_id) => for_vanilla_registry_id(registry_id),
+            None => for_resource_id(default_resource_id),
+        }
     }
 
     pub fn take_item_entity_pickup_sound_with_random(
@@ -1510,8 +1613,16 @@ fn sound_holder_state(sound: ProtocolSoundEventHolder) -> SoundHolderState {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use bbb_protocol::entity_data_serializers::{
+        VANILLA_ENTITY_DATA_SERIALIZER_CAT_SOUND_VARIANT_ID,
+        VANILLA_ENTITY_DATA_SERIALIZER_CHICKEN_SOUND_VARIANT_ID,
+        VANILLA_ENTITY_DATA_SERIALIZER_COW_SOUND_VARIANT_ID,
+        VANILLA_ENTITY_DATA_SERIALIZER_PIG_SOUND_VARIANT_ID,
+        VANILLA_ENTITY_DATA_SERIALIZER_WOLF_SOUND_VARIANT_ID,
+    };
     use bbb_protocol::packets::{
-        AddEntity, BlockPos as ProtocolBlockPos, LevelEvent, SoundSource, StopSound,
+        AddEntity, BlockPos as ProtocolBlockPos, EntityDataValue, EntityDataValueKind, LevelEvent,
+        SetEntityData, SoundSource, StopSound,
     };
     use std::collections::BTreeMap;
     use uuid::Uuid;
@@ -1692,6 +1803,143 @@ mod tests {
         assert_eq!(store.counters().sound_entity_events_applied, 1);
         assert_eq!(store.counters().sound_entity_events_ignored, 2);
         assert_eq!(store.counters().stop_sound_packets, 1);
+    }
+
+    #[test]
+    fn built_in_animal_sound_variants_drive_adult_and_baby_death_sounds() {
+        struct Case {
+            entity_type_id: i32,
+            data_id: u8,
+            serializer_id: i32,
+            serializer: EntityDataRegistryHolder,
+            registry_id: i32,
+            adult_sound: &'static str,
+            baby_sound: &'static str,
+            volume: f32,
+        }
+
+        let cases = [
+            Case {
+                entity_type_id: VANILLA_ENTITY_TYPE_CAT_ID,
+                data_id: VANILLA_CAT_SOUND_VARIANT_DATA_ID,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_CAT_SOUND_VARIANT_ID,
+                serializer: EntityDataRegistryHolder::CatSoundVariant,
+                registry_id: 1,
+                adult_sound: "minecraft:entity.cat_royal.death",
+                baby_sound: "minecraft:entity.baby_cat.death",
+                volume: 1.0,
+            },
+            Case {
+                entity_type_id: VANILLA_ENTITY_TYPE_CHICKEN_ID,
+                data_id: VANILLA_CHICKEN_SOUND_VARIANT_DATA_ID,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_CHICKEN_SOUND_VARIANT_ID,
+                serializer: EntityDataRegistryHolder::ChickenSoundVariant,
+                registry_id: 1,
+                adult_sound: "minecraft:entity.chicken_picky.death",
+                baby_sound: "minecraft:entity.baby_chicken.death",
+                volume: 1.0,
+            },
+            Case {
+                entity_type_id: VANILLA_ENTITY_TYPE_COW_ID,
+                data_id: VANILLA_COW_SOUND_VARIANT_DATA_ID,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_COW_SOUND_VARIANT_ID,
+                serializer: EntityDataRegistryHolder::CowSoundVariant,
+                registry_id: 1,
+                adult_sound: "minecraft:entity.cow_moody.death",
+                baby_sound: "minecraft:entity.cow_moody.death",
+                volume: 0.4,
+            },
+            Case {
+                entity_type_id: VANILLA_ENTITY_TYPE_PIG_ID,
+                data_id: VANILLA_PIG_SOUND_VARIANT_DATA_ID,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_PIG_SOUND_VARIANT_ID,
+                serializer: EntityDataRegistryHolder::PigSoundVariant,
+                registry_id: 1,
+                adult_sound: "minecraft:entity.pig_big.death",
+                baby_sound: "minecraft:entity.baby_pig.death",
+                volume: 1.0,
+            },
+            Case {
+                entity_type_id: VANILLA_ENTITY_TYPE_WOLF_ID,
+                data_id: VANILLA_WOLF_SOUND_VARIANT_DATA_ID,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_WOLF_SOUND_VARIANT_ID,
+                serializer: EntityDataRegistryHolder::WolfSoundVariant,
+                registry_id: 6,
+                adult_sound: "minecraft:entity.wolf_cute.death",
+                baby_sound: "minecraft:entity.baby_wolf.death",
+                volume: 0.4,
+            },
+        ];
+
+        let mut store = WorldStore::new();
+        for (index, case) in cases.into_iter().enumerate() {
+            for (baby_offset, baby) in [false, true].into_iter().enumerate() {
+                let id = 1_000 + (index as i32 * 2) + baby_offset as i32;
+                store.apply_add_entity(protocol_add_entity_of_type(id, case.entity_type_id));
+                let mut values = vec![EntityDataValue {
+                    data_id: case.data_id,
+                    serializer_id: case.serializer_id,
+                    value: EntityDataValueKind::RegistryId {
+                        serializer: case.serializer,
+                        id: case.registry_id,
+                    },
+                }];
+                if baby {
+                    values.push(EntityDataValue {
+                        data_id: crate::entities::VANILLA_AGEABLE_MOB_BABY_DATA_ID,
+                        serializer_id: 8,
+                        value: EntityDataValueKind::Boolean(true),
+                    });
+                }
+                assert!(store.apply_set_entity_data(SetEntityData { id, values }));
+
+                let mut samples = [0.75, 0.25].into_iter();
+                let sound = store
+                    .living_death_sound_for_entity(id, || samples.next().unwrap())
+                    .unwrap();
+                assert_eq!(
+                    sound.sound.location.as_deref(),
+                    Some(if baby {
+                        case.baby_sound
+                    } else {
+                        case.adult_sound
+                    })
+                );
+                assert_close(sound.volume, case.volume);
+                assert_close(sound.pitch, 1.1);
+            }
+        }
+    }
+
+    #[test]
+    fn synchronized_sound_variant_registry_does_not_use_builtin_payload_fallback() {
+        let mut store = WorldStore::new();
+        store.apply_add_entity(protocol_add_entity_of_type(
+            2_000,
+            VANILLA_ENTITY_TYPE_CAT_ID,
+        ));
+        assert!(store.apply_set_entity_data(SetEntityData {
+            id: 2_000,
+            values: vec![EntityDataValue {
+                data_id: VANILLA_CAT_SOUND_VARIANT_DATA_ID,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_CAT_SOUND_VARIANT_ID,
+                value: EntityDataValueKind::RegistryId {
+                    serializer: EntityDataRegistryHolder::CatSoundVariant,
+                    id: 1,
+                },
+            }],
+        }));
+        store.record_registry_entries(
+            CAT_SOUND_VARIANT_REGISTRY,
+            0,
+            vec![crate::RegistryPacketEntry::stub("minecraft:royal")],
+        );
+
+        assert!(store
+            .living_death_sound_for_entity(2_000, || {
+                panic!("unknown synchronized SoundSet payload must not sample pitch")
+            })
+            .is_none());
     }
 
     #[test]
@@ -2404,10 +2652,14 @@ mod tests {
     }
 
     fn protocol_add_entity(id: i32) -> AddEntity {
+        protocol_add_entity_of_type(id, 7)
+    }
+
+    fn protocol_add_entity_of_type(id: i32, entity_type_id: i32) -> AddEntity {
         AddEntity {
             id,
             uuid: Uuid::from_u128(id as u128),
-            entity_type_id: 7,
+            entity_type_id,
             position: ProtocolVec3d::default(),
             delta_movement: ProtocolVec3d::default(),
             x_rot: 0.0,

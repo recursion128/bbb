@@ -18,12 +18,35 @@ class DirectSoundEventEntry:
     resource_id: str
 
 
+@dataclass(frozen=True)
+class SoundSetEntry:
+    constant_name: str
+    resource_id: str
+    sound_event_identifier: str
+
+
+@dataclass(frozen=True)
+class SoundVariantDeathSoundEntry:
+    constant_name: str
+    resource_id: str
+    adult_sound_event_id: str
+    baby_sound_event_id: str
+
+
 SPECIAL_VARIANT_FIELDS = {
     "CAT_SOUNDS": ("cat", "registerCatSoundVariants"),
     "CHICKEN_SOUNDS": ("chicken", "registerChickenSoundVariants"),
     "COW_SOUNDS": ("cow", "registerCowSoundVariants"),
     "PIG_SOUNDS": ("pig", "registerPigSoundVariants"),
     "WOLF_SOUNDS": ("wolf", "registerWolfSoundVariants"),
+}
+
+BABY_DEATH_SOUND_FIELDS = {
+    "cat": "CAT_DEATH_BABY",
+    "chicken": "CHICKEN_DEATH_BABY",
+    "cow": None,
+    "pig": "PIG_DEATH_BABY",
+    "wolf": "WOLF_DEATH_BABY",
 }
 
 
@@ -111,7 +134,7 @@ def direct_sound_event_entries(
     return entries
 
 
-def sound_set_event_identifiers(source: JavaSource) -> list[str]:
+def sound_set_entries(source: JavaSource) -> list[SoundSetEntry]:
     sound_sets = [
         java_type
         for java_type in source.types
@@ -121,19 +144,45 @@ def sound_set_event_identifiers(source: JavaSource) -> list[str]:
         raise SoundEventCatalogExtractionError(
             f"{source.relative_path}: expected exactly one SoundSet enum"
         )
-    identifiers: list[str] = []
+    entries: list[SoundSetEntry] = []
     for node in type_body_members(sound_sets[0].body_node):
         if node.type != "enum_constant":
             continue
         arguments = node.child_by_field_name("arguments")
-        if arguments is None or len(arguments.named_children) < 2:
+        if arguments is None or len(arguments.named_children) != 2:
             _fail(source, source.expression(node), "SoundSet constant lacks two arguments")
-        identifiers.append(_string(source, source.expression(arguments.named_children[1])))
-    if not identifiers or len(identifiers) != len(set(identifiers)):
-        raise SoundEventCatalogExtractionError(
-            f"{source.relative_path}: empty or duplicate SoundSet event identifier"
+        name = node.child_by_field_name("name")
+        if name is None:
+            _fail(source, source.expression(node), "SoundSet constant lacks a name")
+        entries.append(
+            SoundSetEntry(
+                source.text(name),
+                "minecraft:"
+                + _string(source, source.expression(arguments.named_children[0])),
+                _string(source, source.expression(arguments.named_children[1])),
+            )
         )
-    return identifiers
+    if not entries:
+        raise SoundEventCatalogExtractionError(
+            f"{source.relative_path}: empty SoundSet enum"
+        )
+    if len({entry.constant_name for entry in entries}) != len(entries):
+        raise SoundEventCatalogExtractionError(
+            f"{source.relative_path}: duplicate SoundSet constant"
+        )
+    if len({entry.resource_id for entry in entries}) != len(entries):
+        raise SoundEventCatalogExtractionError(
+            f"{source.relative_path}: duplicate SoundSet resource id"
+        )
+    if len({entry.sound_event_identifier for entry in entries}) != len(entries):
+        raise SoundEventCatalogExtractionError(
+            f"{source.relative_path}: duplicate SoundSet event identifier"
+        )
+    return entries
+
+
+def sound_set_event_identifiers(source: JavaSource) -> list[str]:
+    return [entry.sound_event_identifier for entry in sound_set_entries(source)]
 
 
 def _variant_helper_suffixes(source: JavaSource, method_name: str) -> list[str]:
@@ -256,3 +305,48 @@ def sound_event_resource_ids(
     if len(ids) != len(set(ids)):
         raise SoundEventCatalogExtractionError(f"{source.relative_path}: duplicate sound event id")
     return ids
+
+
+def animal_sound_variant_death_sound_entries(
+    source: JavaSource,
+    variant_sources: dict[str, JavaSource],
+    expected_direct_count: int = 1808,
+) -> dict[str, list[SoundVariantDeathSoundEntry]]:
+    direct_events = {
+        entry.constant_name: entry.resource_id
+        for entry in direct_sound_event_entries(source, expected_direct_count)
+    }
+    present_fields = {
+        field.name for field in source.fields_for("net.minecraft.sounds.SoundEvents")
+    }
+    catalogs = {}
+    for field_name, (family, helper_name) in SPECIAL_VARIANT_FIELDS.items():
+        if field_name not in present_fields:
+            continue
+        variant_source = variant_sources.get(family)
+        if variant_source is None:
+            raise SoundEventCatalogExtractionError(
+                f"missing {family} SoundSet source"
+            )
+        suffixes = _variant_helper_suffixes(source, helper_name)
+        if "death" not in suffixes:
+            raise SoundEventCatalogExtractionError(
+                f"{source.relative_path}: {helper_name} no longer registers death sounds"
+            )
+        baby_field = BABY_DEATH_SOUND_FIELDS[family]
+        baby_sound = direct_events.get(baby_field) if baby_field is not None else None
+        if baby_field is not None and baby_sound is None:
+            raise SoundEventCatalogExtractionError(
+                f"{source.relative_path}: missing direct baby death sound {baby_field}"
+            )
+        catalogs[family] = [
+            SoundVariantDeathSoundEntry(
+                entry.constant_name,
+                entry.resource_id,
+                f"minecraft:entity.{entry.sound_event_identifier}.death",
+                baby_sound
+                or f"minecraft:entity.{entry.sound_event_identifier}.death",
+            )
+            for entry in sound_set_entries(variant_source)
+        ]
+    return catalogs

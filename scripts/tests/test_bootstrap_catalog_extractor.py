@@ -10,6 +10,7 @@ sys.path.insert(0, str(SCRIPTS))
 
 from bootstrap_catalog_extractor import (  # noqa: E402
     BootstrapCatalogExtractionError,
+    BootstrapEntry,
     CatVariantEntry,
     EnchantmentEntry,
     FarmAnimalVariantEntry,
@@ -27,6 +28,7 @@ from bootstrap_catalog_extractor import (  # noqa: E402
     model_and_texture_variant_entries,
     painting_variant_entries,
     potion_entries,
+    sound_variant_entries,
     static_register_entries,
     trim_material_entries,
     cat_variant_entries,
@@ -36,6 +38,96 @@ from vanilla_java_source import parse_source  # noqa: E402
 
 
 class BootstrapCatalogExtractorTests(unittest.TestCase):
+    def test_sound_variant_entries_follow_bootstrap_sound_map_payload(self) -> None:
+        source = parse_source(
+            "fixture/CatSoundVariants.java",
+            b'''
+package fixture;
+class CatSoundVariants {
+  static final ResourceKey<CatSoundVariant> CLASSIC = createKey(SoundSet.CLASSIC);
+  static final ResourceKey<CatSoundVariant> ROYAL = createKey(SoundSet.ROYAL);
+  static ResourceKey<CatSoundVariant> createKey(SoundSet soundSet) {
+    return ResourceKey.create(Registries.CAT_SOUND_VARIANT,
+        Identifier.withDefaultNamespace(soundSet.getIdentifier()));
+  }
+  static void bootstrap(BootstrapContext<CatSoundVariant> context) {
+    register(context, CLASSIC, CatSoundVariants.SoundSet.CLASSIC);
+    register(context, ROYAL, CatSoundVariants.SoundSet.ROYAL);
+  }
+  static void register(BootstrapContext<CatSoundVariant> context,
+      ResourceKey<CatSoundVariant> key, CatSoundVariants.SoundSet soundSet) {
+    context.register(key, SoundEvents.CAT_SOUNDS.get(soundSet));
+  }
+  enum SoundSet {
+    CLASSIC("classic", "cat"), ROYAL("royal", "cat_royal");
+    final String identifier;
+    final String event;
+    SoundSet(String identifier, String event) {
+      this.identifier = identifier;
+      this.event = event;
+    }
+    String getIdentifier() { return this.identifier; }
+  }
+}
+''',
+        )
+        self.assertEqual(
+            sound_variant_entries(
+                source,
+                "CatSoundVariant",
+                "CatSoundVariants",
+                "CAT_SOUNDS",
+                2,
+            ),
+            [
+                BootstrapEntry("CLASSIC", "minecraft:classic"),
+                BootstrapEntry("ROYAL", "minecraft:royal"),
+            ],
+        )
+
+    def test_sound_variant_entries_reject_changed_sound_map_payload(self) -> None:
+        source = parse_source(
+            "fixture/CatSoundVariants.java",
+            b'''
+package fixture;
+class CatSoundVariants {
+  static final ResourceKey<CatSoundVariant> CLASSIC = createKey(SoundSet.CLASSIC);
+  static ResourceKey<CatSoundVariant> createKey(SoundSet soundSet) {
+    return ResourceKey.create(Registries.CAT_SOUND_VARIANT,
+        Identifier.withDefaultNamespace(soundSet.getIdentifier()));
+  }
+  static void bootstrap(BootstrapContext<CatSoundVariant> context) {
+    register(context, CLASSIC, CatSoundVariants.SoundSet.CLASSIC);
+  }
+  static void register(BootstrapContext<CatSoundVariant> context,
+      ResourceKey<CatSoundVariant> key, CatSoundVariants.SoundSet soundSet) {
+    context.register(key, fallback(soundSet));
+  }
+  enum SoundSet {
+    CLASSIC("classic", "cat");
+    final String identifier;
+    final String event;
+    SoundSet(String identifier, String event) {
+      this.identifier = identifier;
+      this.event = event;
+    }
+    String getIdentifier() { return this.identifier; }
+  }
+}
+''',
+        )
+        with self.assertRaisesRegex(
+            BootstrapCatalogExtractionError,
+            "sound-variant register helper payload changed",
+        ):
+            sound_variant_entries(
+                source,
+                "CatSoundVariant",
+                "CatSoundVariants",
+                "CAT_SOUNDS",
+                1,
+            )
+
     def test_model_and_texture_variant_assets_follow_bootstrap_payload(self) -> None:
         source = parse_source(
             "fixture/ZombieNautilusVariants.java",

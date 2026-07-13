@@ -2774,11 +2774,13 @@ mod tests {
     }
 
     #[test]
-    fn armor_stand_death_event_forwards_randomized_positioned_sound() {
+    fn armor_stand_and_cow_death_events_forward_randomized_positioned_sounds() {
         let mut store = WorldStore::new();
         let mut random = LevelEventSoundRandomState::with_seed(0);
         let mut expected_random = LevelEventSoundRandomState::with_seed(0);
         let expected_pitch =
+            (expected_random.next_float() - expected_random.next_float()) * 0.2 + 1.0;
+        let expected_cow_pitch =
             (expected_random.next_float() - expected_random.next_float()) * 0.2 + 1.0;
         let mut effects = RecordingEffects::default();
 
@@ -2838,7 +2840,7 @@ mod tests {
             assert!(leftover.is_none());
         }
 
-        assert_eq!(effects.positioned_sounds.len(), 1);
+        assert_eq!(effects.positioned_sounds.len(), 2);
         let sound = &effects.positioned_sounds[0];
         assert_eq!(
             sound.sound.location.as_deref(),
@@ -2857,7 +2859,25 @@ mod tests {
         assert!((sound.pitch - expected_pitch).abs() < 1.0e-6);
         assert_eq!(sound.seed, 0);
         assert_eq!(sound.distance_delay, false);
-        assert_eq!(store.last_sound(), Some(sound));
+        let cow_sound = &effects.positioned_sounds[1];
+        assert_eq!(
+            cow_sound.sound.location.as_deref(),
+            Some("minecraft:entity.cow.death")
+        );
+        assert_eq!(cow_sound.source, "neutral");
+        assert_eq!(
+            cow_sound.position,
+            Vec3d {
+                x: 9.0,
+                y: 64.0,
+                z: -3.0,
+            }
+        );
+        assert_eq!(cow_sound.volume, 0.4);
+        assert!((cow_sound.pitch - expected_cow_pitch).abs() < 1.0e-6);
+        assert_eq!(cow_sound.seed, 0);
+        assert_eq!(cow_sound.distance_delay, false);
+        assert_eq!(store.last_sound(), Some(cow_sound));
         assert_eq!(store.counters().entity_events_applied, 3);
         assert_eq!(store.counters().entity_events_ignored, 1);
     }
@@ -2907,7 +2927,7 @@ mod tests {
             }),
             PlayClientbound::AddEntity(add_entity(
                 89,
-                VANILLA_ENTITY_TYPE_COW_ID,
+                VANILLA_ENTITY_TYPE_DOLPHIN_ID,
                 Vec3d {
                     x: 9.0,
                     y: 64.0,
@@ -2996,7 +3016,7 @@ mod tests {
             }),
             PlayClientbound::AddEntity(add_entity(
                 92,
-                VANILLA_ENTITY_TYPE_COW_ID,
+                VANILLA_ENTITY_TYPE_DOLPHIN_ID,
                 Vec3d {
                     x: 9.0,
                     y: 64.0,
@@ -3100,7 +3120,7 @@ mod tests {
             }),
             PlayClientbound::AddEntity(add_entity(
                 96,
-                VANILLA_ENTITY_TYPE_COW_ID,
+                VANILLA_ENTITY_TYPE_DOLPHIN_ID,
                 Vec3d {
                     x: 9.0,
                     y: 64.0,
@@ -3223,7 +3243,7 @@ mod tests {
             }),
             PlayClientbound::AddEntity(add_entity(
                 100,
-                VANILLA_ENTITY_TYPE_COW_ID,
+                VANILLA_ENTITY_TYPE_DOLPHIN_ID,
                 Vec3d {
                     x: 9.0,
                     y: 64.0,
@@ -3361,7 +3381,7 @@ mod tests {
             }),
             PlayClientbound::AddEntity(add_entity(
                 105,
-                VANILLA_ENTITY_TYPE_COW_ID,
+                VANILLA_ENTITY_TYPE_DOLPHIN_ID,
                 Vec3d {
                     x: 9.0,
                     y: 64.0,
