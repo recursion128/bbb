@@ -6,6 +6,10 @@ use serde::{Deserialize, Serialize};
 
 use crate::{registries::normalize_codec_identifier, RegistrySet};
 
+mod body;
+
+pub use body::{DialogBodyState, DialogItemStackTemplateState, DialogPlainMessageState};
+
 const MAX_DIALOG_SEMANTIC_DEPTH: usize = 64;
 const DIALOG_REGISTRY: &str = "minecraft:dialog";
 
@@ -92,6 +96,8 @@ pub struct CommonDialogDataState {
     pub after_action: String,
     #[serde(default)]
     pub body: Vec<NbtSummaryValue>,
+    #[serde(default)]
+    pub body_data: Vec<DialogBodyState>,
     #[serde(default)]
     pub inputs: Vec<NbtSummaryValue>,
 }
@@ -460,6 +466,7 @@ fn decode_common_dialog_data(entries: &[NbtSummaryEntry]) -> Result<CommonDialog
         Some(value) => vec![value.clone()],
     };
     let inputs = optional_list(entries, "inputs", "dialog inputs")?;
+    let body_data = body::decode_dialog_bodies(&body)?;
     Ok(CommonDialogDataState {
         title,
         external_title,
@@ -467,6 +474,7 @@ fn decode_common_dialog_data(entries: &[NbtSummaryEntry]) -> Result<CommonDialog
         pause,
         after_action: after_action.to_string(),
         body,
+        body_data,
         inputs,
     })
 }
@@ -649,7 +657,16 @@ mod tests {
             value_entry("can_close_with_escape", NbtSummaryValue::Byte(0)),
             value_entry("pause", NbtSummaryValue::Byte(0)),
             string_entry("after_action", "none"),
-            value_entry("body", NbtSummaryValue::String("Compact body".to_string())),
+            value_entry(
+                "body",
+                compound(vec![
+                    string_entry("type", "minecraft:plain_message"),
+                    value_entry(
+                        "contents",
+                        NbtSummaryValue::String("Compact body".to_string()),
+                    ),
+                ]),
+            ),
             value_entry("inputs", NbtSummaryValue::List(Vec::new())),
         ]))
         .unwrap();
@@ -669,6 +686,10 @@ mod tests {
         assert!(!common.pause);
         assert_eq!(common.after_action, "none");
         assert_eq!(common.body.len(), 1);
+        assert!(matches!(
+            common.body_data.as_slice(),
+            [DialogBodyState::PlainMessage { message }] if message.contents.text == "Compact body" && message.width == 200
+        ));
         assert!(common.inputs.is_empty());
         assert_eq!(action.label.text, "gui.ok");
         assert_eq!(action.width, 150);

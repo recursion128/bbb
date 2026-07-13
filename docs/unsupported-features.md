@@ -63,10 +63,10 @@ Owner: `bbb-protocol`
   current connection read-only, carry cookies/seen-player/insecure-chat transfer
   state, and reconnect with the Transfer intent instead of only recording the
   requested host and port.
-- Complete typed `Dialog` data beyond the current five top-level variants' common,
-  button, and registry-aware holder-set baseline: decode body, input, and action
-  variants, render the corresponding screens, restore the previous screen on clear,
-  and route custom-click controls through the active dialog state.
+- Complete typed `Dialog` data beyond the current five top-level variants and
+  PlainMessage/Item body baseline: decode item-template component patches plus input
+  and action variants, render the corresponding screens, restore the previous screen
+  on clear, and route custom-click controls through the active dialog state.
 - Decode block/chunk/entity/event debug subscription payloads through the synced
   `DEBUG_SUBSCRIPTION` registry codecs, retain typed values with vanilla game-time
   expiry/removal semantics, ignore entity updates whose target is absent, and feed

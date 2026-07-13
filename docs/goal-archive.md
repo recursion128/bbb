@@ -13639,3 +13639,11 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] tag 重排、resource/inline compact holder、混合 holder、missing tag 与 synchronized stub 均有
   定向测试和显式诊断；configuration context-free provenance 只接受 inline Dialog list，不借用 session
   registry。五种 top-level Dialog semantic baseline 已闭合；typed body/input/action 与 native screens 仍开放。
+
+## 2026-07-13：Decode dialog body semantics
+
+- [x] 新建 `client/dialog/body.rs` semantic owner；对照 `DialogBodyTypes`、`PlainMessage`、`ItemBody`
+  与 `ItemStackTemplate` Codec，typed 投影 compact body、message/description alternative、item id/count、
+  decoration/tooltip flags，以及 message/item width/height defaults 和范围。
+- [x] scalar/compound item template、default namespace、raw component patch、air/unknown item、count 与尺寸
+  边界均有定向测试。异构 component patch 值、input/action variants 与 native screens 仍开放。

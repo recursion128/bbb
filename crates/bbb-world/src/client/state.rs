@@ -22,8 +22,9 @@ pub use crate::client::debug_game::{
 };
 pub use crate::client::debug_query::{ClientDebugQueryState, TagQueryResponseState};
 pub use crate::client::dialog::{
-    CommonDialogDataState, DialogButtonState, DialogDataState, DialogHolderSetState,
-    DialogListEntryState, DialogState, DialogTextState,
+    CommonDialogDataState, DialogBodyState, DialogButtonState, DialogDataState,
+    DialogHolderSetState, DialogItemStackTemplateState, DialogListEntryState,
+    DialogPlainMessageState, DialogState, DialogTextState,
 };
 pub use crate::client::effects::{
     ClientEffectsState, ExplosionEventState, LevelParticlesEventState,
