@@ -13630,3 +13630,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   button width=150 与按钮 width=150 保持 vanilla 值。
 - [x] 双 action、自定义 exit/columns、默认 server-links、空 actions、非正 columns 与越界 width
   均有定向测试。DialogList registry-aware HolderSet、typed body/input/action 与 native screens 仍开放。
+
+## 2026-07-13：Decode dialog-list holder sets
+
+- [x] 对照 `DialogListDialog`、`Dialog.LIST_CODEC`、`HolderSetCodec` 与 `RegistryFileCodec`，typed
+  投影 named tag、compact direct set、同质 registry reference/inline Dialog、external title、exit、
+  positive columns 及 1..=1024 button width；tag 严格按当前 session holder 顺序展开。
+- [x] tag 重排、resource/inline compact holder、混合 holder、missing tag 与 synchronized stub 均有
+  定向测试和显式诊断；configuration context-free provenance 只接受 inline Dialog list，不借用 session
+  registry。五种 top-level Dialog semantic baseline 已闭合；typed body/input/action 与 native screens 仍开放。

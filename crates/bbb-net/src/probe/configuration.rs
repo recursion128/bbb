@@ -302,7 +302,7 @@ mod tests {
             .unwrap();
         probe
             .handle_configuration_packet(ConfigurationClientbound::ShowDialog(ShowDialog {
-                dialog: DialogHolder::Direct {
+                dialog: DialogHolder::ContextFree {
                     dialog: NbtSummaryValue::Compound(Vec::new()),
                 },
             }))
@@ -437,7 +437,7 @@ mod tests {
         assert_eq!(
             probe.world.current_dialog(),
             Some(&DialogState {
-                holder_kind: "direct".to_string(),
+                holder_kind: "context_free".to_string(),
                 registry_id: None,
                 resource_id: None,
                 dialog: Some(NbtSummaryValue::Compound(Vec::new())),

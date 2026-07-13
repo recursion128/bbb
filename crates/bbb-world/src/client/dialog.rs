@@ -1,8 +1,13 @@
 use bbb_protocol::{
-    styled_component_runs_from_nbt_value, styled_runs_summary_text, NbtSummaryEntry,
-    NbtSummaryValue, StyledTextRun,
+    decode_nbt_summary, styled_component_runs_from_nbt_value, styled_runs_summary_text,
+    NbtSummaryEntry, NbtSummaryValue, StyledTextRun,
 };
 use serde::{Deserialize, Serialize};
+
+use crate::{registries::normalize_codec_identifier, RegistrySet};
+
+const MAX_DIALOG_SEMANTIC_DEPTH: usize = 64;
+const DIALOG_REGISTRY: &str = "minecraft:dialog";
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DialogState {
@@ -46,6 +51,35 @@ pub enum DialogDataState {
         columns: i32,
         button_width: i32,
     },
+    DialogList {
+        common: CommonDialogDataState,
+        dialogs: DialogHolderSetState,
+        #[serde(default)]
+        exit_action: Option<DialogButtonState>,
+        columns: i32,
+        button_width: i32,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DialogHolderSetState {
+    pub holder_set_kind: String,
+    #[serde(default)]
+    pub tag: Option<String>,
+    #[serde(default)]
+    pub entries: Vec<DialogListEntryState>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DialogListEntryState {
+    pub holder_kind: String,
+    #[serde(default)]
+    pub registry_id: Option<i32>,
+    #[serde(default)]
+    pub resource_id: Option<String>,
+    pub external_title: DialogTextState,
+    #[serde(default)]
+    pub dialog: Option<NbtSummaryValue>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -81,16 +115,27 @@ pub struct DialogTextState {
 }
 
 impl DialogState {
-    pub(super) fn direct(dialog: NbtSummaryValue) -> Self {
-        Self::resolved("direct", None, None, dialog)
+    pub(super) fn direct(dialog: NbtSummaryValue, registries: &RegistrySet) -> Self {
+        Self::resolved("direct", None, None, dialog, Some(registries))
+    }
+
+    pub(super) fn context_free(dialog: NbtSummaryValue) -> Self {
+        Self::resolved("context_free", None, None, dialog, None)
     }
 
     pub(super) fn reference(
         registry_id: i32,
         resource_id: String,
         dialog: NbtSummaryValue,
+        registries: &RegistrySet,
     ) -> Self {
-        Self::resolved("reference", Some(registry_id), Some(resource_id), dialog)
+        Self::resolved(
+            "reference",
+            Some(registry_id),
+            Some(resource_id),
+            dialog,
+            Some(registries),
+        )
     }
 
     pub(super) fn unresolved_reference(
@@ -114,8 +159,9 @@ impl DialogState {
         registry_id: Option<i32>,
         resource_id: Option<String>,
         dialog: NbtSummaryValue,
+        registries: Option<&RegistrySet>,
     ) -> Self {
-        let (data, semantic_error) = match decode_dialog_data(&dialog) {
+        let (data, semantic_error) = match decode_dialog_data(&dialog, registries) {
             Ok(data) => (Some(data), None),
             Err(error) => (None, Some(error)),
         };
@@ -131,7 +177,23 @@ impl DialogState {
     }
 }
 
-pub(super) fn decode_dialog_data(dialog: &NbtSummaryValue) -> Result<DialogDataState, String> {
+pub(super) fn decode_dialog_data(
+    dialog: &NbtSummaryValue,
+    registries: Option<&RegistrySet>,
+) -> Result<DialogDataState, String> {
+    decode_dialog_data_inner(dialog, registries, 0)
+}
+
+fn decode_dialog_data_inner(
+    dialog: &NbtSummaryValue,
+    registries: Option<&RegistrySet>,
+    depth: usize,
+) -> Result<DialogDataState, String> {
+    if depth > MAX_DIALOG_SEMANTIC_DEPTH {
+        return Err(format!(
+            "dialog semantic nesting exceeds {MAX_DIALOG_SEMANTIC_DEPTH}"
+        ));
+    }
     let entries = compound_entries(dialog, "dialog root")?;
     let dialog_type = required_string(entries, "type", "dialog")?;
     let common = decode_common_dialog_data(entries)?;
@@ -181,8 +243,195 @@ pub(super) fn decode_dialog_data(dialog: &NbtSummaryValue) -> Result<DialogDataS
                 button_width,
             })
         }
+        "dialog_list" | "minecraft:dialog_list" => {
+            let button_width = optional_i32(entries, "button_width", 150, "dialog-list dialog")?;
+            if !(1..=1024).contains(&button_width) {
+                return Err(format!(
+                    "dialog-list dialog button_width {button_width} is outside 1..=1024"
+                ));
+            }
+            Ok(DialogDataState::DialogList {
+                common,
+                dialogs: decode_dialog_holder_set(
+                    required_entry(entries, "dialogs", "dialog-list dialog")?,
+                    registries,
+                    depth,
+                )?,
+                exit_action: find_entry(entries, "exit_action")
+                    .map(|value| decode_button(value, "dialog-list exit button"))
+                    .transpose()?,
+                columns: optional_positive_i32(entries, "columns", 2, "dialog-list dialog")?,
+                button_width,
+            })
+        }
         other => Err(format!("unsupported dialog type {other}")),
     }
+}
+
+fn decode_dialog_holder_set(
+    value: &NbtSummaryValue,
+    registries: Option<&RegistrySet>,
+    depth: usize,
+) -> Result<DialogHolderSetState, String> {
+    let Some(registries) = registries else {
+        return decode_context_free_dialog_holder_set(value, depth);
+    };
+    if let NbtSummaryValue::String(tag) = value {
+        if let Some(tag) = tag.strip_prefix('#') {
+            let tag = normalize_codec_identifier(tag)
+                .ok_or_else(|| format!("invalid dialog tag #{tag}"))?;
+            let holder_ids = registries
+                .holder_ids_for_tag(DIALOG_REGISTRY, &tag)
+                .ok_or_else(|| format!("missing dialog tag #{tag}"))?;
+            let entries = holder_ids
+                .iter()
+                .map(|holder_id| decode_referenced_dialog_entry(*holder_id, registries))
+                .collect::<Result<Vec<_>, _>>()?;
+            return Ok(DialogHolderSetState {
+                holder_set_kind: "named".to_string(),
+                tag: Some(tag),
+                entries,
+            });
+        }
+    }
+
+    let values = match value {
+        NbtSummaryValue::List(values) => values.as_slice(),
+        value => std::slice::from_ref(value),
+    };
+    let holder_kind = values.first().map(dialog_holder_kind).transpose()?;
+    let mut entries = Vec::with_capacity(values.len());
+    for (index, value) in values.iter().enumerate() {
+        let value_kind = dialog_holder_kind(value)?;
+        if holder_kind != Some(value_kind) {
+            return Err(format!(
+                "dialog holder set mixes {} and {value_kind} entries at index {index}",
+                holder_kind.unwrap_or("unknown")
+            ));
+        }
+        entries.push(match value {
+            NbtSummaryValue::String(resource_id) => {
+                let resource_id = normalize_codec_identifier(resource_id)
+                    .ok_or_else(|| format!("invalid dialog resource id {resource_id}"))?;
+                let holder_id = registries
+                    .holder_id_by_resource_id(DIALOG_REGISTRY, &resource_id)
+                    .ok_or_else(|| format!("missing {DIALOG_REGISTRY} resource {resource_id}"))?;
+                decode_referenced_dialog_entry(holder_id, registries)?
+            }
+            dialog @ NbtSummaryValue::Compound(_) => {
+                let data = decode_dialog_data_inner(dialog, Some(registries), depth + 1)?;
+                DialogListEntryState {
+                    holder_kind: "direct".to_string(),
+                    registry_id: None,
+                    resource_id: None,
+                    external_title: dialog_external_title(&data),
+                    dialog: Some(dialog.clone()),
+                }
+            }
+            _ => unreachable!("dialog_holder_kind accepted only strings and compounds"),
+        });
+    }
+    Ok(DialogHolderSetState {
+        holder_set_kind: "direct".to_string(),
+        tag: None,
+        entries,
+    })
+}
+
+fn decode_context_free_dialog_holder_set(
+    value: &NbtSummaryValue,
+    depth: usize,
+) -> Result<DialogHolderSetState, String> {
+    let NbtSummaryValue::List(values) = value else {
+        return Err("context-free dialog holder set is not a list".to_string());
+    };
+    let entries = values
+        .iter()
+        .enumerate()
+        .map(|(index, dialog)| {
+            if !matches!(dialog, NbtSummaryValue::Compound(_)) {
+                return Err(format!(
+                    "context-free dialog holder set entry {index} is not an inline dialog compound"
+                ));
+            }
+            let data = decode_dialog_data_inner(dialog, None, depth + 1)?;
+            Ok(DialogListEntryState {
+                holder_kind: "direct".to_string(),
+                registry_id: None,
+                resource_id: None,
+                external_title: dialog_external_title(&data),
+                dialog: Some(dialog.clone()),
+            })
+        })
+        .collect::<Result<Vec<_>, String>>()?;
+    Ok(DialogHolderSetState {
+        holder_set_kind: "direct".to_string(),
+        tag: None,
+        entries,
+    })
+}
+
+fn dialog_holder_kind(value: &NbtSummaryValue) -> Result<&'static str, String> {
+    match value {
+        NbtSummaryValue::String(_) => Ok("reference"),
+        NbtSummaryValue::Compound(_) => Ok("direct"),
+        _ => Err(
+            "dialog holder set entry is neither a resource id nor a dialog compound".to_string(),
+        ),
+    }
+}
+
+fn decode_referenced_dialog_entry(
+    holder_id: i32,
+    registries: &RegistrySet,
+) -> Result<DialogListEntryState, String> {
+    let entry = registries
+        .entry_by_holder_id(DIALOG_REGISTRY, holder_id)
+        .ok_or_else(|| format!("missing {DIALOG_REGISTRY} holder {holder_id}"))?;
+    let raw_data = entry.raw_data().ok_or_else(|| {
+        format!(
+            "dialog registry entry {} has no synchronized payload",
+            entry.id
+        )
+    })?;
+    let dialog = match decode_nbt_summary(raw_data) {
+        Ok(Some(dialog @ NbtSummaryValue::Compound(_))) => dialog,
+        Ok(Some(_)) => {
+            return Err(format!(
+                "dialog registry entry {} root is not a compound tag",
+                entry.id
+            ))
+        }
+        Ok(None) => return Err(format!("dialog registry entry {} is an end tag", entry.id)),
+        Err(error) => {
+            return Err(format!(
+                "invalid dialog registry entry {}: {error}",
+                entry.id
+            ))
+        }
+    };
+    let common = decode_common_dialog_data(compound_entries(&dialog, "dialog root")?)?;
+    Ok(DialogListEntryState {
+        holder_kind: "reference".to_string(),
+        registry_id: Some(holder_id),
+        resource_id: Some(entry.id.clone()),
+        external_title: common.external_title.unwrap_or(common.title),
+        dialog: None,
+    })
+}
+
+fn dialog_external_title(data: &DialogDataState) -> DialogTextState {
+    let common = match data {
+        DialogDataState::Notice { common, .. }
+        | DialogDataState::Confirmation { common, .. }
+        | DialogDataState::MultiAction { common, .. }
+        | DialogDataState::ServerLinks { common, .. }
+        | DialogDataState::DialogList { common, .. } => common,
+    };
+    common
+        .external_title
+        .clone()
+        .unwrap_or_else(|| common.title.clone())
 }
 
 fn decode_common_dialog_data(entries: &[NbtSummaryEntry]) -> Result<CommonDialogDataState, String> {
@@ -382,11 +631,15 @@ fn find_entry<'a>(entries: &'a [NbtSummaryEntry], key: &str) -> Option<&'a NbtSu
 
 #[cfg(test)]
 mod tests {
+    use bbb_protocol::packets::{RegistryTags, TagNetworkPayload, UpdateTags};
+
+    use crate::{RegistryPacketEntry, WorldStore};
+
     use super::*;
 
     #[test]
     fn decodes_notice_defaults_and_common_dialog_fields() {
-        let data = decode_dialog_data(&compound(vec![
+        let data = decode_test_dialog(&compound(vec![
             string_entry("type", "minecraft:notice"),
             value_entry("title", translated_component("dialog.example.title")),
             value_entry(
@@ -428,7 +681,7 @@ mod tests {
             string_entry("type", "minecraft:dynamic/custom"),
             string_entry("id", "example:confirm"),
         ]);
-        let data = decode_dialog_data(&compound(vec![
+        let data = decode_test_dialog(&compound(vec![
             string_entry("type", "minecraft:confirmation"),
             value_entry("title", NbtSummaryValue::String("Confirm".to_string())),
             value_entry(
@@ -473,7 +726,7 @@ mod tests {
             value_entry("title", NbtSummaryValue::String("Title".to_string())),
             string_entry("after_action", "none"),
         ]);
-        assert!(decode_dialog_data(&invalid_pause)
+        assert!(decode_test_dialog(&invalid_pause)
             .unwrap_err()
             .contains("pausing dialog"));
 
@@ -495,7 +748,7 @@ mod tests {
                 )]),
             ),
         ]);
-        let state = DialogState::direct(invalid_width.clone());
+        let state = DialogState::direct(invalid_width.clone(), &RegistrySet::default());
         assert_eq!(state.dialog, Some(invalid_width));
         assert_eq!(state.data, None);
         assert!(state
@@ -507,7 +760,7 @@ mod tests {
 
     #[test]
     fn decodes_multi_action_buttons_exit_and_columns() {
-        let data = decode_dialog_data(&compound(vec![
+        let data = decode_test_dialog(&compound(vec![
             string_entry("type", "minecraft:multi_action"),
             value_entry("title", NbtSummaryValue::String("Choose".to_string())),
             value_entry(
@@ -538,7 +791,7 @@ mod tests {
 
     #[test]
     fn decodes_server_links_defaults_and_validates_list_dialog_ranges() {
-        let data = decode_dialog_data(&compound(vec![
+        let data = decode_test_dialog(&compound(vec![
             string_entry("type", "minecraft:server_links"),
             value_entry("title", NbtSummaryValue::String("Links".to_string())),
         ]))
@@ -562,7 +815,7 @@ mod tests {
             value_entry("title", NbtSummaryValue::String("Empty".to_string())),
             value_entry("actions", NbtSummaryValue::List(Vec::new())),
         ]);
-        assert!(decode_dialog_data(&empty_actions)
+        assert!(decode_test_dialog(&empty_actions)
             .unwrap_err()
             .contains("must not be empty"));
 
@@ -571,7 +824,7 @@ mod tests {
             value_entry("title", NbtSummaryValue::String("Links".to_string())),
             value_entry("columns", NbtSummaryValue::Int(0)),
         ]);
-        assert!(decode_dialog_data(&invalid_columns)
+        assert!(decode_test_dialog(&invalid_columns)
             .unwrap_err()
             .contains("columns must be positive"));
 
@@ -580,13 +833,207 @@ mod tests {
             value_entry("title", NbtSummaryValue::String("Links".to_string())),
             value_entry("button_width", NbtSummaryValue::Int(1025)),
         ]);
-        assert!(decode_dialog_data(&invalid_width)
+        assert!(decode_test_dialog(&invalid_width)
             .unwrap_err()
             .contains("button_width 1025"));
     }
 
+    #[test]
+    fn decodes_dialog_list_tag_in_session_tag_order() {
+        let mut store = WorldStore::new();
+        store.record_registry_entries(
+            DIALOG_REGISTRY,
+            0,
+            vec![
+                RegistryPacketEntry::with_raw_data(
+                    "example:first",
+                    notice_dialog_nbt("First", None),
+                ),
+                RegistryPacketEntry::with_raw_data(
+                    "example:second",
+                    notice_dialog_nbt("Second", Some("External Second")),
+                ),
+            ],
+        );
+        store.apply_update_tags(UpdateTags {
+            registries: vec![RegistryTags {
+                registry: DIALOG_REGISTRY.to_string(),
+                tags: vec![TagNetworkPayload {
+                    tag: "example:menu".to_string(),
+                    entries: vec![1, 0],
+                }],
+            }],
+        });
+
+        let data = decode_dialog_data(
+            &compound(vec![
+                string_entry("type", "minecraft:dialog_list"),
+                value_entry("title", NbtSummaryValue::String("Menu".to_string())),
+                string_entry("dialogs", "#example:menu"),
+                value_entry("exit_action", button("Back", None)),
+                value_entry("columns", NbtSummaryValue::Int(3)),
+                value_entry("button_width", NbtSummaryValue::Int(220)),
+            ]),
+            Some(store.registries()),
+        )
+        .unwrap();
+
+        let DialogDataState::DialogList {
+            common,
+            dialogs,
+            exit_action,
+            columns,
+            button_width,
+        } = data
+        else {
+            panic!("expected dialog-list dialog");
+        };
+        assert_eq!(common.title.text, "Menu");
+        assert_eq!(dialogs.holder_set_kind, "named");
+        assert_eq!(dialogs.tag.as_deref(), Some("example:menu"));
+        assert_eq!(dialogs.entries.len(), 2);
+        assert_eq!(dialogs.entries[0].registry_id, Some(1));
+        assert_eq!(
+            dialogs.entries[0].resource_id.as_deref(),
+            Some("example:second")
+        );
+        assert_eq!(dialogs.entries[0].external_title.text, "External Second");
+        assert_eq!(dialogs.entries[1].registry_id, Some(0));
+        assert_eq!(dialogs.entries[1].external_title.text, "First");
+        assert_eq!(exit_action.unwrap().label.text, "Back");
+        assert_eq!(columns, 3);
+        assert_eq!(button_width, 220);
+    }
+
+    #[test]
+    fn decodes_compact_dialog_holders_and_rejects_invalid_holder_sets() {
+        let mut store = WorldStore::new();
+        store.record_registry_entries(
+            DIALOG_REGISTRY,
+            0,
+            vec![
+                RegistryPacketEntry::with_raw_data(
+                    "example:first",
+                    notice_dialog_nbt("First", None),
+                ),
+                RegistryPacketEntry::stub("example:stub"),
+            ],
+        );
+        let referenced = decode_dialog_data(
+            &dialog_list(NbtSummaryValue::String("example:first".to_string())),
+            Some(store.registries()),
+        )
+        .unwrap();
+        let DialogDataState::DialogList {
+            dialogs,
+            exit_action,
+            columns,
+            button_width,
+            ..
+        } = referenced
+        else {
+            panic!("expected dialog-list dialog");
+        };
+        assert_eq!(dialogs.holder_set_kind, "direct");
+        assert_eq!(dialogs.tag, None);
+        assert_eq!(dialogs.entries.len(), 1);
+        assert_eq!(dialogs.entries[0].holder_kind, "reference");
+        assert_eq!(dialogs.entries[0].external_title.text, "First");
+        assert_eq!(dialogs.entries[0].dialog, None);
+        assert_eq!(exit_action, None);
+        assert_eq!(columns, 2);
+        assert_eq!(button_width, 150);
+
+        let inline = decode_dialog_data(
+            &dialog_list(compound(vec![
+                string_entry("type", "minecraft:notice"),
+                value_entry("title", NbtSummaryValue::String("Inline".to_string())),
+            ])),
+            Some(store.registries()),
+        )
+        .unwrap();
+        let DialogDataState::DialogList { dialogs, .. } = inline else {
+            panic!("expected dialog-list dialog");
+        };
+        assert_eq!(dialogs.entries[0].holder_kind, "direct");
+        assert_eq!(dialogs.entries[0].registry_id, None);
+        assert_eq!(dialogs.entries[0].external_title.text, "Inline");
+        assert!(matches!(
+            dialogs.entries[0].dialog,
+            Some(NbtSummaryValue::Compound(_))
+        ));
+
+        let mixed = dialog_list(NbtSummaryValue::List(vec![
+            NbtSummaryValue::String("example:first".to_string()),
+            compound(vec![
+                string_entry("type", "minecraft:notice"),
+                value_entry("title", NbtSummaryValue::String("Inline".to_string())),
+            ]),
+        ]));
+        assert!(decode_dialog_data(&mixed, Some(store.registries()))
+            .unwrap_err()
+            .contains("mixes reference and direct"));
+        assert!(decode_dialog_data(
+            &dialog_list(NbtSummaryValue::String("#example:missing".to_string())),
+            Some(store.registries()),
+        )
+        .unwrap_err()
+        .contains("missing dialog tag"));
+        assert!(decode_dialog_data(
+            &dialog_list(NbtSummaryValue::String("example:stub".to_string())),
+            Some(store.registries()),
+        )
+        .unwrap_err()
+        .contains("has no synchronized payload"));
+    }
+
+    #[test]
+    fn decodes_context_free_dialog_list_requires_inline_list() {
+        let context_free = decode_dialog_data(
+            &dialog_list(NbtSummaryValue::List(vec![compound(vec![
+                string_entry("type", "minecraft:notice"),
+                value_entry("title", NbtSummaryValue::String("Context Free".to_string())),
+            ])])),
+            None,
+        )
+        .unwrap();
+        let DialogDataState::DialogList { dialogs, .. } = context_free else {
+            panic!("expected dialog-list dialog");
+        };
+        assert_eq!(dialogs.entries[0].external_title.text, "Context Free");
+        assert!(decode_dialog_data(
+            &dialog_list(compound(vec![
+                string_entry("type", "minecraft:notice"),
+                value_entry("title", NbtSummaryValue::String("Scalar".to_string())),
+            ])),
+            None,
+        )
+        .unwrap_err()
+        .contains("context-free dialog holder set is not a list"));
+        assert!(decode_dialog_data(
+            &dialog_list(NbtSummaryValue::List(vec![NbtSummaryValue::String(
+                "example:referenced".to_string(),
+            )])),
+            None,
+        )
+        .unwrap_err()
+        .contains("is not an inline dialog compound"));
+    }
+
     fn compound(entries: Vec<NbtSummaryEntry>) -> NbtSummaryValue {
         NbtSummaryValue::Compound(entries)
+    }
+
+    fn decode_test_dialog(dialog: &NbtSummaryValue) -> Result<DialogDataState, String> {
+        decode_dialog_data(dialog, Some(&RegistrySet::default()))
+    }
+
+    fn dialog_list(dialogs: NbtSummaryValue) -> NbtSummaryValue {
+        compound(vec![
+            string_entry("type", "minecraft:dialog_list"),
+            value_entry("title", NbtSummaryValue::String("Menu".to_string())),
+            value_entry("dialogs", dialogs),
+        ])
     }
 
     fn value_entry(name: &str, value: NbtSummaryValue) -> NbtSummaryEntry {
@@ -609,5 +1056,27 @@ mod tests {
             entries.push(value_entry("width", NbtSummaryValue::Int(width)));
         }
         compound(entries)
+    }
+
+    fn notice_dialog_nbt(title: &str, external_title: Option<&str>) -> Vec<u8> {
+        let mut out = vec![10];
+        write_nbt_named_string(&mut out, "type", "minecraft:notice");
+        write_nbt_named_string(&mut out, "title", title);
+        if let Some(external_title) = external_title {
+            write_nbt_named_string(&mut out, "external_title", external_title);
+        }
+        out.push(0);
+        out
+    }
+
+    fn write_nbt_named_string(out: &mut Vec<u8>, name: &str, value: &str) {
+        out.push(8);
+        write_nbt_string(out, name);
+        write_nbt_string(out, value);
+    }
+
+    fn write_nbt_string(out: &mut Vec<u8>, value: &str) {
+        out.extend_from_slice(&(value.len() as u16).to_be_bytes());
+        out.extend_from_slice(value.as_bytes());
     }
 }

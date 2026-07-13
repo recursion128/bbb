@@ -338,7 +338,7 @@ impl WorldStore {
                 };
                 match decode_nbt_summary(raw_data) {
                     Ok(Some(dialog @ NbtSummaryValue::Compound(_))) => {
-                        DialogState::reference(registry_id, resource_id, dialog)
+                        DialogState::reference(registry_id, resource_id, dialog, &self.registries)
                     }
                     Ok(Some(_)) => DialogState::unresolved_reference(
                         registry_id,
@@ -357,7 +357,8 @@ impl WorldStore {
                     ),
                 }
             }
-            DialogHolder::Direct { dialog } => DialogState::direct(dialog),
+            DialogHolder::Direct { dialog } => DialogState::direct(dialog, &self.registries),
+            DialogHolder::ContextFree { dialog } => DialogState::context_free(dialog),
         }
     }
 }

@@ -3438,7 +3438,7 @@ fn decodes_configuration_common_packets() {
         )
         .unwrap(),
         ConfigurationClientbound::ShowDialog(ShowDialog {
-            dialog: DialogHolder::Direct {
+            dialog: DialogHolder::ContextFree {
                 dialog: NbtSummaryValue::Compound(vec![NbtSummaryEntry {
                     name: "type".to_string(),
                     value: NbtSummaryValue::String("minecraft:notice".to_string()),

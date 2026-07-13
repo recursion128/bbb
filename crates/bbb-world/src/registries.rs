@@ -40,7 +40,7 @@ pub use state::{
 pub use trim_materials::VanillaTrimMaterialIdentity;
 pub use trim_patterns::VanillaTrimPatternIdentity;
 
-fn normalize_codec_identifier(raw: &str) -> Option<String> {
+pub(crate) fn normalize_codec_identifier(raw: &str) -> Option<String> {
     let (namespace, path) = match raw.find(':') {
         Some(0) => ("minecraft", &raw[1..]),
         Some(separator) => (&raw[..separator], &raw[separator + 1..]),

@@ -35,6 +35,7 @@ pub struct ShowDialog {
 pub enum DialogHolder {
     Reference { registry_id: i32 },
     Direct { dialog: NbtSummaryValue },
+    ContextFree { dialog: NbtSummaryValue },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -97,7 +98,7 @@ pub(crate) fn decode_show_dialog(decoder: &mut Decoder<'_>) -> Result<ShowDialog
 
 pub(crate) fn decode_context_free_show_dialog(decoder: &mut Decoder<'_>) -> Result<ShowDialog> {
     Ok(ShowDialog {
-        dialog: DialogHolder::Direct {
+        dialog: DialogHolder::ContextFree {
             dialog: decode_direct_dialog(decoder, "context-free dialog payload")?,
         },
     })
