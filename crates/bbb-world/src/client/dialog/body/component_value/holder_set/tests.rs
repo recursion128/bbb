@@ -1,5 +1,8 @@
 use std::collections::BTreeMap;
 
+use bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_VILLAGER_VARIANT_TYPE_ID;
+use bbb_render_types::VillagerModelType;
+
 use crate::{RegistryContentState, RegistryPacketEntry, RegistrySet, RegistryTagState};
 
 use super::*;
@@ -236,6 +239,59 @@ fn decodes_single_synchronized_registry_holder_reference() {
         let error =
             decode_registry_holder_reference(&value, registry, registries, "jukebox playable")
                 .unwrap_err();
+        assert!(error.contains(expected), "unexpected error: {error}");
+    }
+}
+
+#[test]
+fn decodes_builtin_villager_variant_without_session_remapping() {
+    let value = NbtSummaryValue::String("plains".to_string());
+    let decoded = super::super::decode_supported_component_value(
+        VANILLA_DATA_COMPONENT_VILLAGER_VARIANT_TYPE_ID,
+        "minecraft:villager/variant",
+        &value,
+        None,
+    )
+    .unwrap();
+    assert!(matches!(
+        decoded,
+        Some(DialogDataComponentValueState::RegistryVariant { registry, holder })
+            if registry == "minecraft:villager_type"
+                && holder.holder_id == VillagerModelType::Plains.vanilla_registry_index() as i32
+                && holder.resource_id == "minecraft:plains"
+    ));
+
+    let mut registries = RegistrySet::default();
+    let mut contents = RegistryContentState::new("minecraft:villager_type");
+    contents.entries = vec![
+        RegistryPacketEntry::stub("example:fake"),
+        RegistryPacketEntry::stub("minecraft:plains"),
+    ];
+    registries
+        .contents
+        .insert("minecraft:villager_type".to_string(), contents);
+    let session_ignored = super::super::decode_supported_component_value(
+        VANILLA_DATA_COMPONENT_VILLAGER_VARIANT_TYPE_ID,
+        "minecraft:villager/variant",
+        &value,
+        Some(&registries),
+    )
+    .unwrap();
+    assert!(matches!(
+        session_ignored,
+        Some(DialogDataComponentValueState::RegistryVariant { holder, .. })
+            if holder.holder_id == VillagerModelType::Plains.vanilla_registry_index() as i32
+    ));
+
+    for (value, expected) in [
+        (NbtSummaryValue::Int(0), "is not a resource id"),
+        (NbtSummaryValue::String("Invalid".to_string()), "invalid"),
+        (
+            NbtSummaryValue::String("minecraft:coast".to_string()),
+            "missing minecraft:villager_type resource",
+        ),
+    ] {
+        let error = decode_builtin_villager_type_reference(&value, "villager variant").unwrap_err();
         assert!(error.contains(expected), "unexpected error: {error}");
     }
 }

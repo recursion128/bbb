@@ -561,7 +561,7 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   charged-projectile/bundle/writable-book/written-book-exact-component-trees/
   lodestone/profile/
   banner-pattern-layers direct-holder payload decoding and resource-pack texture resolution/
-  container/block-state/villager-variant/
+  container/block-state/
   built-in animal/color enum (wolf/cat collars, fox,
   salmon, parrot, mooshroom, rabbit, horse, llama, axolotl, sheep, shulker,
   and tropical-fish) subset on throwable/firework/

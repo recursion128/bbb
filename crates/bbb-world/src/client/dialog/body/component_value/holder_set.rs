@@ -18,7 +18,8 @@ use bbb_protocol::{
         VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID,
         VANILLA_DATA_COMPONENT_REPAIRABLE_TYPE_ID,
         VANILLA_DATA_COMPONENT_SUSPICIOUS_STEW_EFFECTS_TYPE_ID,
-        VANILLA_DATA_COMPONENT_TRIM_TYPE_ID, VANILLA_DATA_COMPONENT_WOLF_SOUND_VARIANT_TYPE_ID,
+        VANILLA_DATA_COMPONENT_TRIM_TYPE_ID, VANILLA_DATA_COMPONENT_VILLAGER_VARIANT_TYPE_ID,
+        VANILLA_DATA_COMPONENT_WOLF_SOUND_VARIANT_TYPE_ID,
         VANILLA_DATA_COMPONENT_WOLF_VARIANT_TYPE_ID,
         VANILLA_DATA_COMPONENT_ZOMBIE_NAUTILUS_VARIANT_TYPE_ID,
     },
@@ -26,6 +27,7 @@ use bbb_protocol::{
     mob_effect_types::vanilla_mob_effect_type_for_resource_id,
     NbtSummaryValue,
 };
+use bbb_render_types::VillagerModelType;
 use serde::{Deserialize, Serialize};
 
 use crate::{registries::normalize_codec_identifier, RegistrySet};
@@ -78,6 +80,16 @@ pub(super) fn decode_holder_backed_component_value(
     registries: Option<&RegistrySet>,
     what: &str,
 ) -> Option<Result<DialogDataComponentValueState, String>> {
+    if type_id == VANILLA_DATA_COMPONENT_VILLAGER_VARIANT_TYPE_ID {
+        return Some(
+            decode_builtin_villager_type_reference(value, what).map(|holder| {
+                DialogDataComponentValueState::RegistryVariant {
+                    registry: "minecraft:villager_type".to_string(),
+                    holder,
+                }
+            }),
+        );
+    }
     if let Some(registry) = synchronized_registry_variant_component(type_id) {
         return Some(
             decode_registry_holder_reference(value, registry, registries, what).map(|holder| {
@@ -142,6 +154,24 @@ pub(super) fn decode_holder_backed_component_value(
         ),
         _ => None,
     }
+}
+
+fn decode_builtin_villager_type_reference(
+    value: &NbtSummaryValue,
+    what: &str,
+) -> Result<DialogRegistryHolderReferenceState, String> {
+    let NbtSummaryValue::String(raw) = value else {
+        return Err(format!("{what} holder is not a resource id"));
+    };
+    let resource_id = normalize_codec_identifier(raw)
+        .ok_or_else(|| format!("invalid {what} holder resource id {raw}"))?;
+    let villager_type = VillagerModelType::for_resource_id(&resource_id).ok_or_else(|| {
+        format!("missing minecraft:villager_type resource {resource_id} for {what}")
+    })?;
+    Ok(DialogRegistryHolderReferenceState {
+        holder_id: villager_type.vanilla_registry_index() as i32,
+        resource_id: villager_type.resource_id().to_string(),
+    })
 }
 
 fn decode_banner_pattern_layers(
