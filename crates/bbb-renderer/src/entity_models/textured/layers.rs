@@ -17,10 +17,10 @@ use super::super::{
         ParrotModelVariant, PigModelVariant, PiglinModelFamily, PlayerModelPartVisibility,
         RabbitModelVariant, SalmonModelSize, SheepWoolColor, SignModelAttachment, SignModelWood,
         SkeletonModelFamily, TropicalFishModelShape, TropicalFishPattern, UndeadHorseModelFamily,
-        VillagerModelData, VillagerModelHat, WolfModelVariant,
+        VillagerModelData, VillagerModelHat,
     },
     model_layers::*,
-    CatModelVariant, DecoratedPotPattern,
+    CatModelVariant, DecoratedPotPattern, WolfModelVariant,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

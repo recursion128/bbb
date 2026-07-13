@@ -20,7 +20,7 @@ use super::catalog::{
     EntityModelKind, EntityModelTextureAtlasLayout, EntityPlayerSkin, HorseColorVariant,
     HorseMarkings, IllagerModelFamily, LlamaModelFamily, LlamaVariant, PigModelVariant,
     PiglinModelFamily, PlayerModelPartVisibility, SkeletonModelFamily, UndeadHorseModelFamily,
-    WolfModelVariant, ZombieVariantModelFamily,
+    ZombieVariantModelFamily,
 };
 use super::colored::{
     arrow_model_root_transform, banner_model_root_transform, bed_model_root_transform,
@@ -126,6 +126,7 @@ use super::textured::{
     zombie_villager_textured_layer_passes, EntityModelLayerKind, EntityModelLayerPass,
     EntityModelLayerRenderType, EntityModelLayerVisibility, EntityModelTexturedMeshes,
 };
+use super::WolfModelVariant;
 
 fn strider_base_layer_pass(baby: bool, cold: bool) -> EntityModelLayerPass {
     EntityModelLayerPass {

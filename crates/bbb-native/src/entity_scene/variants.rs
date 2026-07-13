@@ -479,7 +479,7 @@ pub(super) fn wolf_model_variant(
             if let Some(registries) = registries {
                 wolf_variant_from_registry_id(registries, id).unwrap_or(WolfModelVariant::Pale)
             } else {
-                wolf_variant_from_vanilla_registry_id(id)
+                WolfModelVariant::for_vanilla_registry_id(id).unwrap_or(WolfModelVariant::Pale)
             }
         })
         .unwrap_or(WolfModelVariant::Pale)
@@ -491,31 +491,7 @@ pub(super) fn wolf_variant_from_registry_id(
 ) -> Option<WolfModelVariant> {
     registries
         .resource_id_by_holder_id("minecraft:wolf_variant", registry_id)
-        .and_then(wolf_variant_from_entry_id)
-}
-
-pub(super) fn wolf_variant_from_entry_id(id: &str) -> Option<WolfModelVariant> {
-    match id {
-        "minecraft:pale" => Some(WolfModelVariant::Pale),
-        "minecraft:spotted" => Some(WolfModelVariant::Spotted),
-        "minecraft:snowy" => Some(WolfModelVariant::Snowy),
-        "minecraft:black" => Some(WolfModelVariant::Black),
-        "minecraft:ashen" => Some(WolfModelVariant::Ashen),
-        "minecraft:rusty" => Some(WolfModelVariant::Rusty),
-        "minecraft:woods" => Some(WolfModelVariant::Woods),
-        "minecraft:chestnut" => Some(WolfModelVariant::Chestnut),
-        "minecraft:striped" => Some(WolfModelVariant::Striped),
-        _ => None,
-    }
-}
-
-// Vanilla `WolfVariants.bootstrap` registers pale/spotted/snowy/black/ashen/rusty/woods/chestnut/
-// striped in that order, so the static fallback ids (used before the dynamic `wolf_variant` registry
-// arrives) are 0..=8. The vanilla default is PALE.
-pub(super) fn wolf_variant_from_vanilla_registry_id(registry_id: i32) -> WolfModelVariant {
-    vanilla_wolf_variant_resource_id(registry_id)
-        .and_then(wolf_variant_from_entry_id)
-        .unwrap_or(WolfModelVariant::Pale)
+        .and_then(WolfModelVariant::for_resource_id)
 }
 
 pub(super) fn entity_invisible(values: &[bbb_protocol::packets::EntityDataValue]) -> bool {
