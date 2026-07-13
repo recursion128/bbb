@@ -105,13 +105,13 @@ Owner: `bbb-protocol`
   the full client lifecycle.
 - Recompute vanilla fuel values and creative search-tree tag membership after
   play UpdateTags reloads, following `ClientPacketListener.handleUpdateTags`.
-- Render the AwardStats item and mob StatsScreen tabs: item/block icons and six
-  sortable columns, mob killed/killed-by rows, tab selection/tooltips and list
-  narration. The General tab now leaves its loading state only after the requested
-  AwardStats response, uses the selected pack language, applies vanilla stat
-  formatters, sorts labels and supports wheel scrolling. Canonical state resolves
-  `StatType` and type-specific value holders through session registry identity and
-  retains explicit unresolved entries.
+- Render the AwardStats item StatsScreen tab: item/block icons, the six sortable
+  columns and no-value cells. Complete keyboard tab navigation, empty-tab tooltips
+  and list narration. General and Mobs now leave loading only after the requested
+  AwardStats response, use the selected pack language and support wheel scrolling;
+  General applies vanilla formatters/sorting, while Mobs projects killed/killed-by
+  rows from entity registry identity. Canonical state retains explicit unresolved
+  entries instead of guessing holder identities.
 - Resolve UpdateAttributes holder ids through that session RegistryAccess and
   validate each snapshot against the target living entity's actual AttributeMap
   instance set; do not accept arbitrary fixed-id attributes on every living type.

@@ -20117,6 +20117,28 @@ fn stats_screen_mouse_wheel_scrolls_general_rows_and_resets_on_close() {
 }
 
 #[test]
+fn stats_screen_tab_hitboxes_match_renderer_column_widths() {
+    let surface = PhysicalSize::new(320, 240);
+    assert_eq!(
+        stats_screen_tab_at_position(Some((112, 30)), surface),
+        Some(0)
+    );
+    assert_eq!(
+        stats_screen_tab_at_position(Some((113, 30)), surface),
+        Some(1)
+    );
+    assert_eq!(
+        stats_screen_tab_at_position(Some((205, 30)), surface),
+        Some(1)
+    );
+    assert_eq!(
+        stats_screen_tab_at_position(Some((206, 30)), surface),
+        Some(2)
+    );
+    assert_eq!(stats_screen_tab_at_position(Some((20, 42)), surface), None);
+}
+
+#[test]
 fn escape_key_closes_stats_screen_without_requesting_stats_again() {
     let (tx, mut rx) = mpsc::channel(1);
     let commands = Some(tx);

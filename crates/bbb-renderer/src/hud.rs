@@ -157,6 +157,7 @@ pub struct HudPauseScreen {
 pub struct HudStatsRow {
     pub label: String,
     pub value: String,
+    pub secondary_value: Option<String>,
 }
 
 /// Vanilla `StatsScreen` projection. The general-stat list becomes visible only after the
@@ -170,10 +171,13 @@ pub struct HudStatsScreen {
     pub general_tab: String,
     pub items_tab: String,
     pub mobs_tab: String,
+    pub active_tab: usize,
+    pub mobs_tab_enabled: bool,
     pub rows: Vec<HudStatsRow>,
     pub scroll_row: usize,
     pub total_rows: usize,
     pub visible_rows: usize,
+    pub row_height: i32,
     pub done_hovered: bool,
 }
 
@@ -678,7 +682,6 @@ const HUD_STATS_TAB_Y: i32 = 22;
 const HUD_STATS_TAB_HEIGHT: i32 = 20;
 const HUD_STATS_LIST_WIDTH: i32 = 280;
 const HUD_STATS_LIST_TOP: i32 = 46;
-const HUD_STATS_ROW_HEIGHT: i32 = 14;
 const HUD_DEBUG_CROSSHAIR_SCALE: f32 = 0.01;
 const HUD_DEBUG_CROSSHAIR_FOV_DEGREES: f32 = 70.0;
 const HUD_DEBUG_CROSSHAIR_OUTLINE_WIDTH: f32 = 4.0;
@@ -6175,7 +6178,7 @@ fn push_hud_stats_screen<'a>(
     for (index, (label, enabled)) in [
         (screen.general_tab.as_str(), true),
         (screen.items_tab.as_str(), false),
-        (screen.mobs_tab.as_str(), false),
+        (screen.mobs_tab.as_str(), screen.mobs_tab_enabled),
     ]
     .into_iter()
     .enumerate()
@@ -6200,7 +6203,7 @@ fn push_hud_stats_screen<'a>(
                 HUD_STATS_TAB_HEIGHT,
             ),
             label,
-            index == 0 && !screen.is_loading,
+            index == screen.active_tab && !screen.is_loading,
             enabled,
         );
     }
@@ -6221,8 +6224,8 @@ fn push_hud_stats_screen<'a>(
         );
     } else {
         for (index, row) in screen.rows.iter().enumerate() {
-            let y = HUD_STATS_LIST_TOP
-                + i32::try_from(index).unwrap_or(i32::MAX) * HUD_STATS_ROW_HEIGHT;
+            let y =
+                HUD_STATS_LIST_TOP + i32::try_from(index).unwrap_or(i32::MAX) * screen.row_height;
             let tint = if (screen.scroll_row + index) % 2 == 0 {
                 HUD_TINT_WHITE
             } else {
@@ -6241,7 +6244,12 @@ fn push_hud_stats_screen<'a>(
                 ((list_x + 2) as f32, y as f32),
                 tint,
             );
-            let value_width = hud_plain_text_width(&row.value, glyphs) as i32;
+            let value_x = if row.secondary_value.is_some() {
+                list_x + 12
+            } else {
+                list_x + HUD_STATS_LIST_WIDTH - hud_plain_text_width(&row.value, glyphs) as i32 - 4
+            };
+            let value_y = y + i32::from(row.secondary_value.is_some()) * 9;
             push_hud_debug_options_text(
                 vertices,
                 commands,
@@ -6252,12 +6260,24 @@ fn push_hud_stats_screen<'a>(
                 frame_index,
                 surface_size,
                 &row.value,
-                (
-                    (list_x + HUD_STATS_LIST_WIDTH - value_width - 4) as f32,
-                    y as f32,
-                ),
+                (value_x as f32, value_y as f32),
                 tint,
             );
+            if let Some(secondary) = &row.secondary_value {
+                push_hud_debug_options_text(
+                    vertices,
+                    commands,
+                    white_pixel,
+                    font_atlas,
+                    glyphs,
+                    obfuscated_pool,
+                    frame_index,
+                    surface_size,
+                    secondary,
+                    ((list_x + 12) as f32, (y + 18) as f32),
+                    hud_argb_to_tint(0xFF808080),
+                );
+            }
         }
     }
     push_hud_pause_button(
@@ -11256,6 +11276,7 @@ fn sanitize_hud_stats_screen(screen: HudStatsScreen) -> Option<HudStatsScreen> {
             Some(HudStatsRow {
                 label: sanitize_hud_text_line(row.label)?,
                 value: sanitize_hud_text_line(row.value)?,
+                secondary_value: row.secondary_value.and_then(sanitize_hud_text_line),
             })
         })
         .take(visible_rows)
@@ -11267,12 +11288,15 @@ fn sanitize_hud_stats_screen(screen: HudStatsScreen) -> Option<HudStatsScreen> {
         general_tab,
         items_tab,
         mobs_tab,
+        active_tab: screen.active_tab.min(2),
+        mobs_tab_enabled: screen.mobs_tab_enabled,
         rows,
         scroll_row: screen
             .scroll_row
             .min(screen.total_rows.saturating_sub(visible_rows)),
         total_rows: screen.total_rows,
         visible_rows,
+        row_height: screen.row_height.clamp(9, 64),
         done_hovered: screen.done_hovered,
     })
 }
@@ -15733,10 +15757,14 @@ mod tests {
             rows: vec![HudStatsRow {
                 label: "Walk\none cm".to_string(),
                 value: "1\n.00 m".to_string(),
+                secondary_value: None,
             }],
+            active_tab: 0,
+            mobs_tab_enabled: false,
             scroll_row: 3,
             total_rows: 12,
             visible_rows: 1,
+            row_height: 14,
             done_hovered: true,
         })
         .expect("stats screen");
@@ -15755,9 +15783,12 @@ mod tests {
             items_tab: "Items".to_string(),
             mobs_tab: "Mobs".to_string(),
             rows: Vec::new(),
+            active_tab: 0,
+            mobs_tab_enabled: false,
             scroll_row: 0,
             total_rows: 0,
             visible_rows: 0,
+            row_height: 14,
             done_hovered: false,
         })
         .is_none());

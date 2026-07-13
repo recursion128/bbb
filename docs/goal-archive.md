@@ -12804,3 +12804,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] native 复用 selected pack language 解析 `stat.minecraft.*`/screen 标签，按 vanilla
   `StatFormatter` 的 DEFAULT/DIVIDE_BY_TEN/DISTANCE/TIME 阈值格式化、按显示标签排序并支持滚轮浏览；
   renderer 绘制三页 tab 与 General 行，Items/Mobs 保持 disabled 且在 unsupported ledger 开放。
+
+## 2026-07-12：StatsScreen Mobs tab
+
+- [x] Mobs 页逐 entity registry identity 合并 `minecraft:killed` / `minecraft:killed_by`，仅在任一
+  正数统计存在时启用；点击 tab 后按 vanilla 36px 行布局显示本地化 entity 名、kills 与 killed-by
+  文本，缺失一侧使用 vanilla none 文案而不制造非零值。
+- [x] tab selection 与独立 scroll row 由 native input owner 持有，打开/关闭及切 tab 都重置滚动；
+  renderer 支持 General 单行和 Mobs 三行投影。Items 六列、keyboard tab navigation、tooltip/narration
+  继续在 unsupported ledger 开放。

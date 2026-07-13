@@ -4002,7 +4002,7 @@
           "crates/bbb-world/src/client/stats.rs#award_stats_resolves_reordered_session_holder_identity",
           "crates/bbb-world/src/client/stats.rs#award_stats_retains_explicit_unresolved_identity_without_guessing",
           "crates/bbb-world/src/client/stats.rs#award_stats_only_completes_an_open_stats_screen_request",
-          "crates/bbb-native/src/runtime/tests.rs#hud_stats_screen_waits_for_response_then_projects_general_rows",
+          "crates/bbb-native/src/runtime/tests.rs#hud_stats_screen_waits_for_response_then_projects_general_and_mob_rows",
           "crates/bbb-native/src/runtime/tests.rs#vanilla_stat_formatters_preserve_thresholds_and_grouping",
           "crates/bbb-native/src/input/tests.rs#stats_screen_mouse_wheel_scrolls_general_rows_and_resets_on_close",
           "crates/bbb-net/src/probe/play.rs#probe_applies_award_stats_to_world",

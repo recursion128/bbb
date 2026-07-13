@@ -90,6 +90,15 @@ impl WorldStore {
             .find(|identity| identity.stat_type_id == stat_type_id && identity.value_id == value_id)
     }
 
+    pub fn has_positive_stats_for_type(&self, stat_type_resource_id: &str) -> bool {
+        self.client_stats.identities.iter().any(|identity| {
+            identity.stat_type_resource_id.as_deref() == Some(stat_type_resource_id)
+                && self
+                    .stat_value(identity.stat_type_id, identity.value_id)
+                    .is_some_and(|amount| amount > 0)
+        })
+    }
+
     fn resolve_stat_identity(&self, stat_type_id: i32, value_id: i32) -> StatIdentityState {
         let stat_type_resource_id = self
             .registry_resource_id_by_holder_id("minecraft:stat_type", stat_type_id)

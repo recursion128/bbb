@@ -3188,7 +3188,7 @@ fn hud_stats_screen(
 ) -> Option<HudStatsScreen> {
     world.stats_screen_is_open().then(|| {
         let is_loading = world.stats_screen_is_loading();
-        let mut rows = bbb_protocol::stat_types::VANILLA_CUSTOM_STATS
+        let mut general_rows = bbb_protocol::stat_types::VANILLA_CUSTOM_STATS
             .iter()
             .map(|entry| {
                 let translation_key = format!("stat.{}", entry.resource_id.replace(':', "."));
@@ -3206,11 +3206,76 @@ fn hud_stats_screen(
                 HudStatsRow {
                     label,
                     value: format_vanilla_stat_value(entry.formatter, amount),
+                    secondary_value: None,
                 }
             })
             .collect::<Vec<_>>();
-        rows.sort_by(|left, right| left.label.cmp(&right.label));
-        let visible_rows = stats_screen_visible_rows(surface_size);
+        general_rows.sort_by(|left, right| left.label.cmp(&right.label));
+        let mut mob_rows = bbb_protocol::entity_types::VANILLA_ENTITY_TYPES
+            .iter()
+            .filter_map(|entry| {
+                let kills =
+                    stat_amount_by_resource_identity(world, "minecraft:killed", entry.resource_id);
+                let killed_by = stat_amount_by_resource_identity(
+                    world,
+                    "minecraft:killed_by",
+                    entry.resource_id,
+                );
+                (kills > 0 || killed_by > 0).then(|| {
+                    let name_key = format!("entity.{}", entry.resource_id.replace(':', "."));
+                    let name = localized_gui_text(item_runtime, &name_key, entry.resource_id);
+                    let kills_text = if kills == 0 {
+                        localized_gui_text_with_args(
+                            item_runtime,
+                            "stat_type.minecraft.killed.none",
+                            "You have never killed %1$s",
+                            &[&name],
+                        )
+                    } else {
+                        localized_gui_text_with_args(
+                            item_runtime,
+                            "stat_type.minecraft.killed",
+                            "You killed %1$s %2$s",
+                            &[&format_grouped_integer(kills), &name],
+                        )
+                    };
+                    let killed_by_text = if killed_by == 0 {
+                        localized_gui_text_with_args(
+                            item_runtime,
+                            "stat_type.minecraft.killed_by.none",
+                            "You have never been killed by %1$s",
+                            &[&name],
+                        )
+                    } else {
+                        localized_gui_text_with_args(
+                            item_runtime,
+                            "stat_type.minecraft.killed_by",
+                            "%1$s killed you %2$s time(s)",
+                            &[&name, &format_grouped_integer(killed_by)],
+                        )
+                    };
+                    HudStatsRow {
+                        label: name,
+                        value: kills_text,
+                        secondary_value: Some(killed_by_text),
+                    }
+                })
+            })
+            .collect::<Vec<_>>();
+        mob_rows.sort_by(|left, right| left.label.cmp(&right.label));
+        let mobs_tab_enabled = !mob_rows.is_empty();
+        let active_tab = if !is_loading && input.stats_screen_tab() == 2 && mobs_tab_enabled {
+            2
+        } else {
+            0
+        };
+        let row_height = if active_tab == 2 { 36 } else { 14 };
+        let rows = if active_tab == 2 {
+            mob_rows
+        } else {
+            general_rows
+        };
+        let visible_rows = stats_screen_visible_rows(surface_size, row_height);
         let total_rows = rows.len();
         let scroll_row = input
             .stats_screen_scroll_row()
@@ -3234,10 +3299,13 @@ fn hud_stats_screen(
             general_tab: localized_gui_text(item_runtime, "stat.generalButton", "General"),
             items_tab: localized_gui_text(item_runtime, "stat.itemsButton", "Items"),
             mobs_tab: localized_gui_text(item_runtime, "stat.mobsButton", "Mobs"),
+            active_tab,
+            mobs_tab_enabled: mobs_tab_enabled && !is_loading,
             rows,
             scroll_row,
             total_rows,
             visible_rows,
+            row_height,
             done_hovered: stats_screen_done_button_contains(
                 input.stats_screen_cursor_position(),
                 surface_size,
@@ -3258,12 +3326,49 @@ fn localized_gui_text(
         .to_string()
 }
 
-fn stats_screen_visible_rows(surface_size: winit::dpi::PhysicalSize<u32>) -> usize {
+fn localized_gui_text_with_args(
+    item_runtime: Option<&NativeItemRuntime>,
+    translation_key: &str,
+    fallback: &str,
+    args: &[&str],
+) -> String {
+    let mut text = localized_gui_text(item_runtime, translation_key, fallback);
+    for (index, arg) in args.iter().enumerate() {
+        let positional = format!("%{}$s", index + 1);
+        if text.contains(&positional) {
+            text = text.replace(&positional, arg);
+        } else {
+            text = text.replacen("%s", arg, 1);
+        }
+    }
+    text
+}
+
+fn stat_amount_by_resource_identity(
+    world: &WorldStore,
+    stat_type_resource_id: &str,
+    value_resource_id: &str,
+) -> i32 {
+    world
+        .client_stats()
+        .identities
+        .iter()
+        .find(|identity| {
+            identity.stat_type_resource_id.as_deref() == Some(stat_type_resource_id)
+                && identity.value_resource_id.as_deref() == Some(value_resource_id)
+        })
+        .and_then(|identity| world.stat_value(identity.stat_type_id, identity.value_id))
+        .unwrap_or_default()
+}
+
+fn stats_screen_visible_rows(
+    surface_size: winit::dpi::PhysicalSize<u32>,
+    row_height: i32,
+) -> usize {
     const LIST_TOP: i32 = 46;
     const FOOTER_HEIGHT: i32 = 33;
-    const ROW_HEIGHT: i32 = 14;
     let height = i32::try_from(surface_size.height).unwrap_or(i32::MAX);
-    usize::try_from((height - FOOTER_HEIGHT - LIST_TOP).max(ROW_HEIGHT) / ROW_HEIGHT).unwrap_or(1)
+    usize::try_from((height - FOOTER_HEIGHT - LIST_TOP).max(row_height) / row_height).unwrap_or(1)
 }
 
 fn format_vanilla_stat_value(formatter: &str, value: i32) -> String {

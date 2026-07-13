@@ -7399,7 +7399,7 @@ fn hud_pause_screen_projects_disconnect_hover_and_disabled_after_click() {
 }
 
 #[test]
-fn hud_stats_screen_waits_for_response_then_projects_general_rows() {
+fn hud_stats_screen_waits_for_response_then_projects_general_and_mob_rows() {
     let mut input = ClientInputState::new(true);
     let mut world = WorldStore::new();
     let surface = winit::dpi::PhysicalSize::new(320, 240);
@@ -7419,11 +7419,23 @@ fn hud_stats_screen_waits_for_response_then_projects_general_rows() {
     assert!(screen.done_hovered);
 
     world.apply_award_stats(AwardStats {
-        stats: vec![StatUpdate {
-            stat_type_id: 8,
-            value_id: 6,
-            amount: 12_345,
-        }],
+        stats: vec![
+            StatUpdate {
+                stat_type_id: 8,
+                value_id: 6,
+                amount: 12_345,
+            },
+            StatUpdate {
+                stat_type_id: 6,
+                value_id: bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+                amount: 2,
+            },
+            StatUpdate {
+                stat_type_id: 7,
+                value_id: bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+                amount: 1,
+            },
+        ],
     });
     let screen = hud_stats_screen(
         &input,
@@ -7439,6 +7451,28 @@ fn hud_stats_screen_waits_for_response_then_projects_general_rows() {
         .rows
         .iter()
         .any(|row| { row.label == "minecraft:walk_one_cm" && row.value == "123.45 m" }));
+
+    let mut counters = NetCounters::default();
+    assert!(input.handle_stats_screen_mouse_input(
+        &mut counters,
+        &mut world,
+        &None,
+        MouseButton::Left,
+        ElementState::Pressed,
+        Some(winit::dpi::PhysicalPosition::new(253.0, 30.0)),
+        surface,
+    ));
+    let screen = hud_stats_screen(&input, &world, None, surface).expect("mobs stats tab");
+    assert_eq!(screen.active_tab, 2);
+    assert!(screen.mobs_tab_enabled);
+    assert_eq!(screen.row_height, 36);
+    assert_eq!(screen.rows.len(), 1);
+    assert_eq!(screen.rows[0].label, "minecraft:zombie");
+    assert_eq!(screen.rows[0].value, "You killed 2 minecraft:zombie");
+    assert_eq!(
+        screen.rows[0].secondary_value.as_deref(),
+        Some("minecraft:zombie killed you 1 time(s)")
+    );
 }
 
 #[test]

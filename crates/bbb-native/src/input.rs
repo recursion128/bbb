@@ -484,6 +484,9 @@ const STATS_SCREEN_DONE_BUTTON_WIDTH: i32 = 200;
 const STATS_SCREEN_DONE_BUTTON_HEIGHT: i32 = 20;
 const STATS_SCREEN_FOOTER_HEIGHT: i32 = 33;
 const STATS_SCREEN_ROW_HEIGHT: i32 = 14;
+const STATS_SCREEN_TAB_Y: i32 = 22;
+const STATS_SCREEN_TAB_HEIGHT: i32 = 20;
+const STATS_SCREEN_LIST_WIDTH: i32 = 280;
 const PAUSE_SCREEN_RELEASE_FEEDBACK_URL: &str = "https://aka.ms/javafeedback?ref=game";
 const PAUSE_SCREEN_SNAPSHOT_FEEDBACK_URL: &str = "https://aka.ms/snapshotfeedback?ref=game";
 const PAUSE_SCREEN_SNAPSHOT_BUGS_URL: &str = "https://aka.ms/snapshotbugs?ref=game";
@@ -720,6 +723,7 @@ pub(crate) struct ClientInputState {
     advancement_is_scrolling: bool,
     stats_screen_cursor_position: Option<(i32, i32)>,
     stats_screen_scroll_row: usize,
+    stats_screen_tab: usize,
     pause_screen_link_requests: Vec<PauseScreenLinkRequest>,
     pause_screen_disconnect_requested: bool,
     debug_entries: DebugScreenEntryList,
@@ -1901,6 +1905,10 @@ impl ClientInputState {
         self.stats_screen_scroll_row
     }
 
+    pub(crate) fn stats_screen_tab(&self) -> usize {
+        self.stats_screen_tab
+    }
+
     pub(crate) fn handle_stats_screen_mouse_wheel(
         &mut self,
         world: &WorldStore,
@@ -1955,10 +1963,25 @@ impl ClientInputState {
             return false;
         }
         self.stats_screen_cursor_position = cursor_position.and_then(physical_position_floor_i32);
-        if matches!((button, state), (MouseButton::Left, ElementState::Pressed))
-            && stats_screen_done_button_contains(self.stats_screen_cursor_position, surface_size)
-        {
-            close_stats_screen(self, counters, world, net_commands);
+        if matches!((button, state), (MouseButton::Left, ElementState::Pressed)) {
+            if let Some(tab) =
+                stats_screen_tab_at_position(self.stats_screen_cursor_position, surface_size)
+            {
+                let enabled = tab == 0
+                    || (tab == 2
+                        && !world.stats_screen_is_loading()
+                        && (world.has_positive_stats_for_type("minecraft:killed")
+                            || world.has_positive_stats_for_type("minecraft:killed_by")));
+                if enabled {
+                    self.stats_screen_tab = tab;
+                    self.stats_screen_scroll_row = 0;
+                }
+            } else if stats_screen_done_button_contains(
+                self.stats_screen_cursor_position,
+                surface_size,
+            ) {
+                close_stats_screen(self, counters, world, net_commands);
+            }
         }
         true
     }
@@ -3437,6 +3460,30 @@ fn stats_screen_done_button_rect(surface_size: PhysicalSize<u32>) -> (i32, i32, 
         STATS_SCREEN_DONE_BUTTON_WIDTH,
         STATS_SCREEN_DONE_BUTTON_HEIGHT,
     )
+}
+
+fn stats_screen_tab_at_position(
+    cursor_position: Option<(i32, i32)>,
+    surface_size: PhysicalSize<u32>,
+) -> Option<usize> {
+    let (mouse_x, mouse_y) = cursor_position?;
+    if !(STATS_SCREEN_TAB_Y..STATS_SCREEN_TAB_Y + STATS_SCREEN_TAB_HEIGHT).contains(&mouse_y) {
+        return None;
+    }
+    let width = i32::try_from(surface_size.width).unwrap_or(i32::MAX);
+    let start_x = width / 2 - STATS_SCREEN_LIST_WIDTH / 2;
+    if !(start_x..start_x + STATS_SCREEN_LIST_WIDTH).contains(&mouse_x) {
+        return None;
+    }
+    let relative_x = mouse_x - start_x;
+    let tab_width = STATS_SCREEN_LIST_WIDTH / 3;
+    Some(if relative_x < tab_width {
+        0
+    } else if relative_x < tab_width * 2 {
+        1
+    } else {
+        2
+    })
 }
 
 fn debug_options_scroll_delta_rows(delta: MouseScrollDelta) -> i32 {
@@ -7237,6 +7284,7 @@ fn open_stats_screen(
         release_active_input(input, world, counters, net_commands);
         input.stats_screen_cursor_position = None;
         input.stats_screen_scroll_row = 0;
+        input.stats_screen_tab = 0;
         queue_request_stats_command(counters, net_commands);
     }
 }
@@ -7251,6 +7299,7 @@ fn close_stats_screen(
         release_active_input(input, world, counters, net_commands);
         input.stats_screen_cursor_position = None;
         input.stats_screen_scroll_row = 0;
+        input.stats_screen_tab = 0;
     }
 }
 
