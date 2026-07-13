@@ -1,13 +1,21 @@
 use bbb_protocol::data_component_types::{
+    VANILLA_DATA_COMPONENT_CAT_SOUND_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_CAT_VARIANT_TYPE_ID,
+    VANILLA_DATA_COMPONENT_CHICKEN_SOUND_VARIANT_TYPE_ID,
+    VANILLA_DATA_COMPONENT_CHICKEN_VARIANT_TYPE_ID,
+    VANILLA_DATA_COMPONENT_COW_SOUND_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_COW_VARIANT_TYPE_ID,
     VANILLA_DATA_COMPONENT_CREATIVE_SLOT_LOCK_TYPE_ID, VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID,
     VANILLA_DATA_COMPONENT_DAMAGE_RESISTANT_TYPE_ID, VANILLA_DATA_COMPONENT_DYE_TYPE_ID,
-    VANILLA_DATA_COMPONENT_FOX_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID,
-    VANILLA_DATA_COMPONENT_ITEM_NAME_TYPE_ID, VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID,
-    VANILLA_DATA_COMPONENT_LORE_TYPE_ID, VANILLA_DATA_COMPONENT_PAINTING_VARIANT_TYPE_ID,
+    VANILLA_DATA_COMPONENT_FOX_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_FROG_VARIANT_TYPE_ID,
+    VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID, VANILLA_DATA_COMPONENT_ITEM_NAME_TYPE_ID,
+    VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID, VANILLA_DATA_COMPONENT_LORE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_PAINTING_VARIANT_TYPE_ID,
+    VANILLA_DATA_COMPONENT_PIG_SOUND_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_PIG_VARIANT_TYPE_ID,
     VANILLA_DATA_COMPONENT_POT_DECORATIONS_TYPE_ID,
     VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID,
     VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID,
     VANILLA_DATA_COMPONENT_SUSPICIOUS_STEW_EFFECTS_TYPE_ID, VANILLA_DATA_COMPONENT_TRIM_TYPE_ID,
+    VANILLA_DATA_COMPONENT_WOLF_SOUND_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_WOLF_VARIANT_TYPE_ID,
+    VANILLA_DATA_COMPONENT_ZOMBIE_NAUTILUS_VARIANT_TYPE_ID,
 };
 
 use super::*;
@@ -1577,6 +1585,127 @@ fn decodes_trim_named_holder_pair_from_session_registries() {
         let error = decode_supported_component_value(
             VANILLA_DATA_COMPONENT_TRIM_TYPE_ID,
             "minecraft:trim",
+            &value,
+            context,
+        )
+        .unwrap_err();
+        assert!(error.contains(expected), "unexpected error: {error}");
+    }
+}
+
+#[test]
+fn decodes_all_synchronized_registry_fixed_variant_components() {
+    let variants = [
+        (
+            VANILLA_DATA_COMPONENT_WOLF_VARIANT_TYPE_ID,
+            "minecraft:wolf/variant",
+            "minecraft:wolf_variant",
+        ),
+        (
+            VANILLA_DATA_COMPONENT_WOLF_SOUND_VARIANT_TYPE_ID,
+            "minecraft:wolf/sound_variant",
+            "minecraft:wolf_sound_variant",
+        ),
+        (
+            VANILLA_DATA_COMPONENT_PIG_VARIANT_TYPE_ID,
+            "minecraft:pig/variant",
+            "minecraft:pig_variant",
+        ),
+        (
+            VANILLA_DATA_COMPONENT_PIG_SOUND_VARIANT_TYPE_ID,
+            "minecraft:pig/sound_variant",
+            "minecraft:pig_sound_variant",
+        ),
+        (
+            VANILLA_DATA_COMPONENT_COW_VARIANT_TYPE_ID,
+            "minecraft:cow/variant",
+            "minecraft:cow_variant",
+        ),
+        (
+            VANILLA_DATA_COMPONENT_COW_SOUND_VARIANT_TYPE_ID,
+            "minecraft:cow/sound_variant",
+            "minecraft:cow_sound_variant",
+        ),
+        (
+            VANILLA_DATA_COMPONENT_CHICKEN_VARIANT_TYPE_ID,
+            "minecraft:chicken/variant",
+            "minecraft:chicken_variant",
+        ),
+        (
+            VANILLA_DATA_COMPONENT_CHICKEN_SOUND_VARIANT_TYPE_ID,
+            "minecraft:chicken/sound_variant",
+            "minecraft:chicken_sound_variant",
+        ),
+        (
+            VANILLA_DATA_COMPONENT_ZOMBIE_NAUTILUS_VARIANT_TYPE_ID,
+            "minecraft:zombie_nautilus/variant",
+            "minecraft:zombie_nautilus_variant",
+        ),
+        (
+            VANILLA_DATA_COMPONENT_FROG_VARIANT_TYPE_ID,
+            "minecraft:frog/variant",
+            "minecraft:frog_variant",
+        ),
+        (
+            VANILLA_DATA_COMPONENT_CAT_VARIANT_TYPE_ID,
+            "minecraft:cat/variant",
+            "minecraft:cat_variant",
+        ),
+        (
+            VANILLA_DATA_COMPONENT_CAT_SOUND_VARIANT_TYPE_ID,
+            "minecraft:cat/sound_variant",
+            "minecraft:cat_sound_variant",
+        ),
+    ];
+    let mut registries = RegistrySet::default();
+    for (_, _, registry) in variants {
+        let mut contents = crate::RegistryContentState::new(registry);
+        contents.entries = vec![
+            crate::RegistryPacketEntry::stub("example:first"),
+            crate::RegistryPacketEntry::stub("example:selected"),
+        ];
+        registries.contents.insert(registry.to_string(), contents);
+    }
+
+    for (type_id, resource_id, registry) in variants {
+        let decoded = decode_supported_component_value(
+            type_id,
+            resource_id,
+            &NbtSummaryValue::String("example:selected".to_string()),
+            Some(&registries),
+        )
+        .unwrap();
+        assert!(matches!(
+            decoded,
+            Some(DialogDataComponentValueState::RegistryVariant {
+                registry: decoded_registry,
+                holder,
+            }) if decoded_registry == registry
+                && holder.holder_id == 1
+                && holder.resource_id == "example:selected"
+        ));
+    }
+
+    for (value, context, expected) in [
+        (
+            NbtSummaryValue::String("example:selected".to_string()),
+            None,
+            "without registry context",
+        ),
+        (
+            NbtSummaryValue::String("example:missing".to_string()),
+            Some(&registries),
+            "missing minecraft:wolf_variant resource",
+        ),
+        (
+            compound(vec![string_entry("texture", "example:wolf")]),
+            Some(&registries),
+            "holder is not a resource id",
+        ),
+    ] {
+        let error = decode_supported_component_value(
+            VANILLA_DATA_COMPONENT_WOLF_VARIANT_TYPE_ID,
+            "minecraft:wolf/variant",
             &value,
             context,
         )

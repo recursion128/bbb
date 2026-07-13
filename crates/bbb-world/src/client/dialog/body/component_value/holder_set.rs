@@ -1,14 +1,24 @@
 use bbb_protocol::{
     data_component_types::{
-        VANILLA_DATA_COMPONENT_DAMAGE_RESISTANT_TYPE_ID, VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID,
+        VANILLA_DATA_COMPONENT_CAT_SOUND_VARIANT_TYPE_ID,
+        VANILLA_DATA_COMPONENT_CAT_VARIANT_TYPE_ID,
+        VANILLA_DATA_COMPONENT_CHICKEN_SOUND_VARIANT_TYPE_ID,
+        VANILLA_DATA_COMPONENT_CHICKEN_VARIANT_TYPE_ID,
+        VANILLA_DATA_COMPONENT_COW_SOUND_VARIANT_TYPE_ID,
+        VANILLA_DATA_COMPONENT_COW_VARIANT_TYPE_ID,
+        VANILLA_DATA_COMPONENT_DAMAGE_RESISTANT_TYPE_ID,
+        VANILLA_DATA_COMPONENT_FROG_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID,
         VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID,
         VANILLA_DATA_COMPONENT_PAINTING_VARIANT_TYPE_ID,
-        VANILLA_DATA_COMPONENT_POT_DECORATIONS_TYPE_ID,
+        VANILLA_DATA_COMPONENT_PIG_SOUND_VARIANT_TYPE_ID,
+        VANILLA_DATA_COMPONENT_PIG_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_POT_DECORATIONS_TYPE_ID,
         VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID,
         VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID,
         VANILLA_DATA_COMPONENT_REPAIRABLE_TYPE_ID,
         VANILLA_DATA_COMPONENT_SUSPICIOUS_STEW_EFFECTS_TYPE_ID,
-        VANILLA_DATA_COMPONENT_TRIM_TYPE_ID,
+        VANILLA_DATA_COMPONENT_TRIM_TYPE_ID, VANILLA_DATA_COMPONENT_WOLF_SOUND_VARIANT_TYPE_ID,
+        VANILLA_DATA_COMPONENT_WOLF_VARIANT_TYPE_ID,
+        VANILLA_DATA_COMPONENT_ZOMBIE_NAUTILUS_VARIANT_TYPE_ID,
     },
     item_types::vanilla_item_type_for_resource_id,
     mob_effect_types::vanilla_mob_effect_type_for_resource_id,
@@ -59,6 +69,16 @@ pub(super) fn decode_holder_backed_component_value(
     registries: Option<&RegistrySet>,
     what: &str,
 ) -> Option<Result<DialogDataComponentValueState, String>> {
+    if let Some(registry) = synchronized_registry_variant_component(type_id) {
+        return Some(
+            decode_registry_holder_reference(value, registry, registries, what).map(|holder| {
+                DialogDataComponentValueState::RegistryVariant {
+                    registry: registry.to_string(),
+                    holder,
+                }
+            }),
+        );
+    }
     match type_id {
         VANILLA_DATA_COMPONENT_REPAIRABLE_TYPE_ID => Some(
             decode_registry_holder_set_field(value, "items", "minecraft:item", registries, what)
@@ -107,6 +127,28 @@ pub(super) fn decode_holder_backed_component_value(
             decode_pot_decorations(value, what)
                 .map(|decorations| DialogDataComponentValueState::PotDecorations { decorations }),
         ),
+        _ => None,
+    }
+}
+
+fn synchronized_registry_variant_component(type_id: i32) -> Option<&'static str> {
+    match type_id {
+        VANILLA_DATA_COMPONENT_WOLF_VARIANT_TYPE_ID => Some("minecraft:wolf_variant"),
+        VANILLA_DATA_COMPONENT_WOLF_SOUND_VARIANT_TYPE_ID => Some("minecraft:wolf_sound_variant"),
+        VANILLA_DATA_COMPONENT_PIG_VARIANT_TYPE_ID => Some("minecraft:pig_variant"),
+        VANILLA_DATA_COMPONENT_PIG_SOUND_VARIANT_TYPE_ID => Some("minecraft:pig_sound_variant"),
+        VANILLA_DATA_COMPONENT_COW_VARIANT_TYPE_ID => Some("minecraft:cow_variant"),
+        VANILLA_DATA_COMPONENT_COW_SOUND_VARIANT_TYPE_ID => Some("minecraft:cow_sound_variant"),
+        VANILLA_DATA_COMPONENT_CHICKEN_VARIANT_TYPE_ID => Some("minecraft:chicken_variant"),
+        VANILLA_DATA_COMPONENT_CHICKEN_SOUND_VARIANT_TYPE_ID => {
+            Some("minecraft:chicken_sound_variant")
+        }
+        VANILLA_DATA_COMPONENT_ZOMBIE_NAUTILUS_VARIANT_TYPE_ID => {
+            Some("minecraft:zombie_nautilus_variant")
+        }
+        VANILLA_DATA_COMPONENT_FROG_VARIANT_TYPE_ID => Some("minecraft:frog_variant"),
+        VANILLA_DATA_COMPONENT_CAT_VARIANT_TYPE_ID => Some("minecraft:cat_variant"),
+        VANILLA_DATA_COMPONENT_CAT_SOUND_VARIANT_TYPE_ID => Some("minecraft:cat_sound_variant"),
         _ => None,
     }
 }

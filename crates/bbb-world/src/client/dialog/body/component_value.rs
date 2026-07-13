@@ -183,6 +183,10 @@ pub enum DialogDataComponentValueState {
         material: DialogRegistryHolderReferenceState,
         pattern: DialogRegistryHolderReferenceState,
     },
+    RegistryVariant {
+        registry: String,
+        holder: DialogRegistryHolderReferenceState,
+    },
     PaintingVariant {
         variant: DialogRegistryHolderReferenceState,
     },
