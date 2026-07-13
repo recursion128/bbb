@@ -109,6 +109,10 @@ use crate::{
         sync_loom_pattern_state_for_hud, sync_stonecutter_recipe_scroll_state, ClientInputState,
         DebugOptionsScreenHudRow, InventoryScreenBackground, RecipeBookOverlayHudState,
         RecipeBookPageHudState, RecipeBookSearchHudState, RecipeBookTabSelectionHudState,
+        LOOM_NO_ITEM_REQUIRED_PATTERN_COUNT, LOOM_PATTERN_BUTTON_COLUMNS, LOOM_PATTERN_BUTTON_ROWS,
+        LOOM_PATTERN_BUTTON_SIZE, LOOM_PATTERN_BUTTON_X, LOOM_PATTERN_BUTTON_Y,
+        LOOM_PATTERN_ITEM_PATTERN_COUNT, LOOM_SCROLLER_HEIGHT, LOOM_SCROLLER_MAX_OFFSET,
+        LOOM_SCROLLER_WIDTH, LOOM_SCROLLER_X, LOOM_SCROLLER_Y, LOOM_SELECTED_PATTERN_DATA_ID,
         RECIPE_BOOK_BUTTON_HEIGHT, RECIPE_BOOK_BUTTON_WIDTH, RECIPE_BOOK_FILTER_BUTTON_HEIGHT,
         RECIPE_BOOK_FILTER_BUTTON_WIDTH, RECIPE_BOOK_FILTER_BUTTON_X, RECIPE_BOOK_FILTER_BUTTON_Y,
         RECIPE_BOOK_PAGE_BACKWARD_BUTTON_X, RECIPE_BOOK_PAGE_BUTTON_HEIGHT,
@@ -119,7 +123,12 @@ use crate::{
         RECIPE_BOOK_SEARCH_BOX_Y, RECIPE_BOOK_SEARCH_TEXT_X_OFFSET,
         RECIPE_BOOK_SEARCH_TEXT_Y_OFFSET, RECIPE_BOOK_SELECTED_TAB_X_OFFSET,
         RECIPE_BOOK_TAB_HEIGHT, RECIPE_BOOK_TAB_STRIDE_Y, RECIPE_BOOK_TAB_WIDTH, RECIPE_BOOK_TAB_X,
-        RECIPE_BOOK_TAB_Y,
+        RECIPE_BOOK_TAB_Y, STONECUTTER_RECIPE_BUTTON_COLUMNS, STONECUTTER_RECIPE_BUTTON_HEIGHT,
+        STONECUTTER_RECIPE_BUTTON_ROWS, STONECUTTER_RECIPE_BUTTON_SPRITE_Y,
+        STONECUTTER_RECIPE_BUTTON_WIDTH, STONECUTTER_RECIPE_BUTTON_X, STONECUTTER_RECIPE_ITEM_Y,
+        STONECUTTER_SCROLLER_HEIGHT, STONECUTTER_SCROLLER_MAX_OFFSET, STONECUTTER_SCROLLER_WIDTH,
+        STONECUTTER_SCROLLER_X, STONECUTTER_SCROLLER_Y, STONECUTTER_SELECTED_RECIPE_DATA_ID,
+        STONECUTTER_VISIBLE_RECIPE_BUTTON_COUNT,
     },
     item_entities::item_entity_billboards_from_world,
     item_frames::item_frame_models,
@@ -465,19 +474,6 @@ const CARTOGRAPHY_TABLE_LOCKED_Y: i32 = 60;
 const CARTOGRAPHY_TABLE_LOCKED_WIDTH: u32 = 10;
 const CARTOGRAPHY_TABLE_LOCKED_HEIGHT: u32 = 14;
 const LOOM_SLOT_SPRITE_SIZE: u32 = 16;
-const LOOM_SELECTED_PATTERN_DATA_ID: i16 = 0;
-const LOOM_PATTERN_BUTTON_X: i32 = 60;
-const LOOM_PATTERN_BUTTON_Y: i32 = 13;
-const LOOM_PATTERN_BUTTON_COLUMNS: i32 = 4;
-const LOOM_PATTERN_BUTTON_ROWS: i32 = 4;
-const LOOM_PATTERN_BUTTON_SIZE: u32 = 14;
-const LOOM_SCROLLER_WIDTH: u32 = 12;
-const LOOM_SCROLLER_HEIGHT: u32 = 15;
-const LOOM_SCROLLER_X: i32 = 119;
-const LOOM_SCROLLER_Y: i32 = 13;
-const LOOM_SCROLLER_MAX_OFFSET: i32 = 41;
-const LOOM_NO_ITEM_REQUIRED_PATTERN_COUNT: i32 = 32;
-const LOOM_PATTERN_ITEM_PATTERN_COUNT: i32 = 1;
 const SMITHING_RECIPE_ERROR_DATA_ID: i16 = 0;
 const BREWING_STAND_BREW_TIME_DATA_ID: i16 = 0;
 const BREWING_STAND_FUEL_DATA_ID: i16 = 1;
@@ -522,20 +518,6 @@ const MERCHANT_XP_BAR_X: i32 = 136;
 const MERCHANT_XP_BAR_Y: i32 = 16;
 const MERCHANT_XP_BAR_WIDTH: u32 = 102;
 const MERCHANT_XP_BAR_HEIGHT: u32 = 5;
-const STONECUTTER_SELECTED_RECIPE_DATA_ID: i16 = 0;
-const STONECUTTER_VISIBLE_RECIPE_BUTTON_COUNT: usize = 12;
-const STONECUTTER_RECIPE_BUTTON_COLUMNS: i32 = 4;
-const STONECUTTER_RECIPE_BUTTON_ROWS: i32 = 3;
-const STONECUTTER_RECIPE_BUTTON_X: i32 = 52;
-const STONECUTTER_RECIPE_BUTTON_Y: i32 = 15;
-const STONECUTTER_RECIPE_BUTTON_WIDTH: u32 = 16;
-const STONECUTTER_RECIPE_BUTTON_HEIGHT: u32 = 18;
-const STONECUTTER_RECIPE_ITEM_Y_OFFSET: i32 = 1;
-const STONECUTTER_SCROLLER_X: i32 = 119;
-const STONECUTTER_SCROLLER_Y: i32 = 15;
-const STONECUTTER_SCROLLER_WIDTH: u32 = 12;
-const STONECUTTER_SCROLLER_HEIGHT: u32 = 15;
-const STONECUTTER_SCROLLER_MAX_OFFSET: i32 = 41;
 const VILLAGER_NEXT_LEVEL_XP_THRESHOLDS: [i32; 5] = [0, 10, 70, 150, 250];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -10481,10 +10463,8 @@ fn stonecutter_visible_recipe_option_stacks(
             let column = position as i32 % STONECUTTER_RECIPE_BUTTON_COLUMNS;
             let row = position as i32 / STONECUTTER_RECIPE_BUTTON_COLUMNS;
             Some(StonecutterRecipeOptionStack {
-                x: STONECUTTER_RECIPE_BUTTON_X + column * STONECUTTER_RECIPE_BUTTON_WIDTH as i32,
-                y: STONECUTTER_RECIPE_BUTTON_Y
-                    + STONECUTTER_RECIPE_ITEM_Y_OFFSET
-                    + row * STONECUTTER_RECIPE_BUTTON_HEIGHT as i32,
+                x: STONECUTTER_RECIPE_BUTTON_X + column * STONECUTTER_RECIPE_BUTTON_WIDTH,
+                y: STONECUTTER_RECIPE_ITEM_Y + row * STONECUTTER_RECIPE_BUTTON_HEIGHT,
                 stack,
             })
         })
@@ -10511,8 +10491,8 @@ fn push_stonecutter_recipe_layers(
             } else {
                 0
             },
-        STONECUTTER_SCROLLER_WIDTH,
-        STONECUTTER_SCROLLER_HEIGHT,
+        u32::try_from(STONECUTTER_SCROLLER_WIDTH).unwrap_or_default(),
+        u32::try_from(STONECUTTER_SCROLLER_HEIGHT).unwrap_or_default(),
         [0.0, 0.0],
         [1.0, 1.0],
     ));
@@ -10536,10 +10516,10 @@ fn push_stonecutter_recipe_layers(
             } else {
                 HudInventoryBackgroundTexture::StonecutterRecipe
             },
-            STONECUTTER_RECIPE_BUTTON_X + column * STONECUTTER_RECIPE_BUTTON_WIDTH as i32,
-            STONECUTTER_RECIPE_BUTTON_Y + row * STONECUTTER_RECIPE_BUTTON_HEIGHT as i32,
-            STONECUTTER_RECIPE_BUTTON_WIDTH,
-            STONECUTTER_RECIPE_BUTTON_HEIGHT,
+            STONECUTTER_RECIPE_BUTTON_X + column * STONECUTTER_RECIPE_BUTTON_WIDTH,
+            STONECUTTER_RECIPE_BUTTON_SPRITE_Y + row * STONECUTTER_RECIPE_BUTTON_HEIGHT,
+            u32::try_from(STONECUTTER_RECIPE_BUTTON_WIDTH).unwrap_or_default(),
+            u32::try_from(STONECUTTER_RECIPE_BUTTON_HEIGHT).unwrap_or_default(),
             [0.0, 0.0],
             [1.0, 1.0],
         ));
@@ -11061,8 +11041,8 @@ fn push_loom_state_layers(
             } else {
                 0
             },
-        LOOM_SCROLLER_WIDTH,
-        LOOM_SCROLLER_HEIGHT,
+        u32::try_from(LOOM_SCROLLER_WIDTH).unwrap_or_default(),
+        u32::try_from(LOOM_SCROLLER_HEIGHT).unwrap_or_default(),
         [0.0, 0.0],
         [1.0, 1.0],
     ));
@@ -11086,10 +11066,10 @@ fn push_loom_state_layers(
             } else {
                 HudInventoryBackgroundTexture::LoomPattern
             },
-            LOOM_PATTERN_BUTTON_X + column * LOOM_PATTERN_BUTTON_SIZE as i32,
-            LOOM_PATTERN_BUTTON_Y + row * LOOM_PATTERN_BUTTON_SIZE as i32,
-            LOOM_PATTERN_BUTTON_SIZE,
-            LOOM_PATTERN_BUTTON_SIZE,
+            LOOM_PATTERN_BUTTON_X + column * LOOM_PATTERN_BUTTON_SIZE,
+            LOOM_PATTERN_BUTTON_Y + row * LOOM_PATTERN_BUTTON_SIZE,
+            u32::try_from(LOOM_PATTERN_BUTTON_SIZE).unwrap_or_default(),
+            u32::try_from(LOOM_PATTERN_BUTTON_SIZE).unwrap_or_default(),
             [0.0, 0.0],
             [1.0, 1.0],
         ));

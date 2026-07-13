@@ -92,6 +92,42 @@ pub(crate) const RECIPE_BOOK_RECIPE_BUTTON_Y: i32 = 31;
 pub(crate) const RECIPE_BOOK_RECIPE_BUTTON_SIZE: i32 = 25;
 pub(crate) const RECIPE_BOOK_RECIPE_BUTTON_COLUMNS: usize = 5;
 
+// LoomScreen and StonecutterScreen use these same coordinates for input hit
+// testing and render extraction. Keep the intentional click/drag/sprite/item
+// offsets explicit: vanilla does not use one shared Y coordinate for every
+// interaction surface.
+pub(crate) const LOOM_PATTERN_BUTTON_X: i32 = 60;
+pub(crate) const LOOM_PATTERN_BUTTON_Y: i32 = 13;
+pub(crate) const LOOM_PATTERN_BUTTON_COLUMNS: i32 = 4;
+pub(crate) const LOOM_PATTERN_BUTTON_ROWS: i32 = 4;
+pub(crate) const LOOM_PATTERN_BUTTON_SIZE: i32 = 14;
+pub(crate) const LOOM_SCROLLER_X: i32 = 119;
+pub(crate) const LOOM_SCROLLER_CLICK_Y: i32 = 9;
+pub(crate) const LOOM_SCROLLER_Y: i32 = 13;
+pub(crate) const LOOM_SCROLLER_DRAG_Y: i32 = LOOM_SCROLLER_Y;
+pub(crate) const LOOM_SCROLLER_WIDTH: i32 = 12;
+pub(crate) const LOOM_SCROLLER_HEIGHT: i32 = 15;
+pub(crate) const LOOM_SCROLLER_FULL_HEIGHT: i32 = 56;
+pub(crate) const LOOM_SCROLLER_MAX_OFFSET: i32 = 41;
+
+pub(crate) const STONECUTTER_VISIBLE_RECIPE_BUTTON_COUNT: usize = 12;
+pub(crate) const STONECUTTER_RECIPE_BUTTON_X: i32 = 52;
+pub(crate) const STONECUTTER_RECIPE_BUTTON_Y: i32 = 14;
+pub(crate) const STONECUTTER_RECIPE_BUTTON_SPRITE_Y: i32 = STONECUTTER_RECIPE_BUTTON_Y + 1;
+pub(crate) const STONECUTTER_RECIPE_ITEM_Y: i32 = STONECUTTER_RECIPE_BUTTON_Y + 2;
+pub(crate) const STONECUTTER_RECIPE_BUTTON_COLUMNS: i32 = 4;
+pub(crate) const STONECUTTER_RECIPE_BUTTON_ROWS: i32 = 3;
+pub(crate) const STONECUTTER_RECIPE_BUTTON_WIDTH: i32 = 16;
+pub(crate) const STONECUTTER_RECIPE_BUTTON_HEIGHT: i32 = 18;
+pub(crate) const STONECUTTER_SCROLLER_X: i32 = 119;
+pub(crate) const STONECUTTER_SCROLLER_CLICK_Y: i32 = 9;
+pub(crate) const STONECUTTER_SCROLLER_DRAG_Y: i32 = 14;
+pub(crate) const STONECUTTER_SCROLLER_Y: i32 = 15;
+pub(crate) const STONECUTTER_SCROLLER_WIDTH: i32 = 12;
+pub(crate) const STONECUTTER_SCROLLER_HEIGHT: i32 = 15;
+pub(crate) const STONECUTTER_SCROLLER_FULL_HEIGHT: i32 = 54;
+pub(crate) const STONECUTTER_SCROLLER_MAX_OFFSET: i32 = 41;
+
 pub(crate) fn local_inventory_slot_layouts() -> Vec<InventorySlotLayout> {
     let mut slots = Vec::with_capacity(46);
     slots.push(InventorySlotLayout {
@@ -1199,4 +1235,67 @@ fn stonecutter_slot_layouts() -> Vec<InventorySlotLayout> {
     }
 
     slots
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn loom_grid_and_scroller_layout_match_vanilla_screen() {
+        assert_eq!(LOOM_PATTERN_BUTTON_COLUMNS * LOOM_PATTERN_BUTTON_ROWS, 16);
+        assert_eq!(
+            (
+                LOOM_PATTERN_BUTTON_X,
+                LOOM_PATTERN_BUTTON_Y,
+                LOOM_PATTERN_BUTTON_SIZE
+            ),
+            (60, 13, 14)
+        );
+        assert_eq!(
+            (
+                LOOM_SCROLLER_X,
+                LOOM_SCROLLER_CLICK_Y,
+                LOOM_SCROLLER_DRAG_Y,
+                LOOM_SCROLLER_Y,
+            ),
+            (119, 9, 13, 13)
+        );
+        assert_eq!(LOOM_SCROLLER_MAX_OFFSET, 41);
+        assert_eq!(
+            LOOM_SCROLLER_FULL_HEIGHT - LOOM_SCROLLER_HEIGHT,
+            LOOM_SCROLLER_MAX_OFFSET
+        );
+    }
+
+    #[test]
+    fn stonecutter_layout_preserves_vanilla_surface_offsets() {
+        assert_eq!(
+            STONECUTTER_RECIPE_BUTTON_COLUMNS * STONECUTTER_RECIPE_BUTTON_ROWS,
+            STONECUTTER_VISIBLE_RECIPE_BUTTON_COUNT as i32
+        );
+        assert_eq!(
+            (
+                STONECUTTER_RECIPE_BUTTON_X,
+                STONECUTTER_RECIPE_BUTTON_Y,
+                STONECUTTER_RECIPE_BUTTON_SPRITE_Y,
+                STONECUTTER_RECIPE_ITEM_Y,
+            ),
+            (52, 14, 15, 16)
+        );
+        assert_eq!(
+            (
+                STONECUTTER_SCROLLER_X,
+                STONECUTTER_SCROLLER_CLICK_Y,
+                STONECUTTER_SCROLLER_DRAG_Y,
+                STONECUTTER_SCROLLER_Y,
+            ),
+            (119, 9, 14, 15)
+        );
+        assert_eq!(STONECUTTER_SCROLLER_MAX_OFFSET, 41);
+        assert_eq!(
+            STONECUTTER_SCROLLER_FULL_HEIGHT - STONECUTTER_SCROLLER_HEIGHT,
+            39
+        );
+    }
 }

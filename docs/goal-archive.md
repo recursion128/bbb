@@ -13378,3 +13378,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   `minecraft:woodland_mansion` asset。
 - [x] generated reverse guard 阻止生产代码恢复平行 decoration 表；extractor、generator
   update/check、renderer map-decoration focused tests 与 workspace gate 通过。
+
+## 2026-07-13：Share Loom and stonecutter screen layout facts
+
+- [x] native 将 `LoomScreen` / `StonecutterScreen` 的 pattern/recipe grid、scroller 几何与
+  selected menu data slot 收敛到既有 `input::inventory::layout` / inventory facade 单一声明源；
+  input hit testing 与 runtime HUD extraction 不再各维护一组平行常量。
+- [x] 共享布局显式保留 vanilla 不同 surface 的偏移：切石机点击网格 `y=14`、button sprite
+  `y=15`、item `y=16`，scroller click/drag/sprite 分别为 `9/14/15`；其 41px thumb offset
+  也不误推导为 `54-15`。Loom 的 4x4/14px grid 与 click/drag/sprite scroller 坐标同样锁定。
+- [x] layout focused tests、既有 150 项 inventory input tests 与 `goal.md` workspace gate 通过；
+  renderer/input 算法保持手写，仅 vanilla 固定布局事实共享，不新增配置 UI 或跨 crate API。
