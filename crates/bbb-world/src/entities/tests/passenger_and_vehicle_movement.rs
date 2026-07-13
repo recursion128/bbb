@@ -1052,14 +1052,16 @@ fn minecart_lerp_component_only_attached_to_minecart_entities() {
     // The non-minecart still projects fully (project_entity must not require the component),
     // reporting the empty lerp defaults.
     let bystander = store.probe_entity(20).expect("non-minecart projects");
+    assert!(bystander.minecart_lerp_pending_steps.is_empty());
     assert!(bystander.minecart_lerp_steps.is_empty());
     assert_eq!(bystander.minecart_lerp_old_step, None);
     assert_eq!(bystander.minecart_lerp_delay, 0);
 }
 
 #[test]
-fn minecart_along_track_updates_entity_from_latest_step() {
+fn minecart_along_track_queues_then_advances_on_client_ticks() {
     let mut store = WorldStore::new();
+    enable_minecart_improvements(&mut store);
     store.apply_add_entity(protocol_add_entity_with_type(
         10,
         VANILLA_ENTITY_TYPE_MINECART_ID,
@@ -1080,23 +1082,30 @@ fn minecart_along_track_updates_entity_from_latest_step() {
     assert_eq!(
         entity.position,
         EntityVec3 {
-            x: 1.75,
-            y: 64.2,
-            z: -2.75,
+            x: 1.0,
+            y: 64.0,
+            z: -2.0,
         }
     );
-    assert_eq!(
-        entity.delta_movement,
-        EntityVec3 {
-            x: 0.4,
-            y: 0.0,
-            z: -0.4,
-        }
-    );
-    assert_eq!(entity.y_rot, 90.0);
-    assert_eq!(entity.x_rot, 5.0);
-    assert_eq!(entity.minecart_lerp_steps.len(), 2);
-    assert_eq!(store.entities.minecart_lerp(10).unwrap().steps.len(), 2);
+    assert_eq!(entity.y_rot, 20.0);
+    assert_eq!(entity.x_rot, -10.0);
+    assert_eq!(entity.minecart_lerp_pending_steps.len(), 2);
+    assert!(entity.minecart_lerp_steps.is_empty());
+    let lerp = store.entities.minecart_lerp(10).unwrap();
+    assert_eq!(lerp.pending_steps.len(), 2);
+    assert!(lerp.steps.is_empty());
+    assert_eq!(lerp.old_step, None);
+    assert_eq!(lerp.delay, 0);
+
+    // The network packet only appends pending steps. The next client tick
+    // promotes the batch, captures the current transform as oldLerp, and moves
+    // the canonical entity to partial=1 of the first 3-tick interval.
+    store.advance_entity_client_animations(1);
+    let lerp = store.entities.minecart_lerp(10).unwrap();
+    assert!(lerp.pending_steps.is_empty());
+    assert_eq!(lerp.steps.len(), 2);
+    assert_eq!(lerp.delay, 3);
+    assert_eq!(lerp.old_step.unwrap().position.x, 1.0);
     let source = store
         .entity_model_sources_at_partial_tick(0.5)
         .into_iter()
@@ -1108,7 +1117,6 @@ fn minecart_along_track_updates_entity_from_latest_step() {
     assert!((source.position.z + 2.1458333333333335).abs() < 1.0e-6);
     assert!((source.y_rot - 34.583332).abs() < 1.0e-5);
     assert!((source.x_rot + 10.0).abs() < 1.0e-6);
-    assert_eq!(store.entities.minecart_lerp(10).unwrap().delay, 3);
 
     store.advance_entity_client_animations(1);
     let source = store
@@ -1145,17 +1153,6 @@ fn minecart_along_track_updates_entity_from_latest_step() {
     assert_eq!(source.x_rot, 5.0);
 
     assert!(
-        store.apply_move_minecart_along_track(ProtocolMoveMinecartAlongTrack {
-            entity_id: 10,
-            lerp_steps: vec![minecart_step(
-                2.0, 64.3, -3.0, 0.1, 0.0, -0.1, 135.0, 0.0, 1.0,
-            )],
-        })
-    );
-    assert_eq!(store.probe_entity(10).unwrap().minecart_lerp_steps.len(), 1);
-    assert_eq!(store.entities.minecart_lerp(10).unwrap().steps.len(), 1);
-
-    assert!(
         !store.apply_move_minecart_along_track(ProtocolMoveMinecartAlongTrack {
             entity_id: 999,
             lerp_steps: vec![minecart_step(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0)],
@@ -1167,16 +1164,145 @@ fn minecart_along_track_updates_entity_from_latest_step() {
             lerp_steps: vec![minecart_step(3.0, 64.0, -4.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0)],
         })
     );
-    assert_eq!(store.counters().minecart_moves_received, 4);
-    assert_eq!(store.counters().minecart_moves_applied, 2);
+    assert_eq!(store.counters().minecart_moves_received, 3);
+    assert_eq!(store.counters().minecart_moves_applied, 1);
     assert_eq!(store.counters().minecart_moves_ignored, 2);
-    assert_eq!(store.counters().minecart_lerp_steps_received, 5);
-    assert_eq!(store.counters().minecart_lerp_steps_tracked, 1);
+    assert_eq!(store.counters().minecart_lerp_steps_received, 4);
+    assert_eq!(store.counters().minecart_lerp_steps_tracked, 0);
+}
+
+#[test]
+fn minecart_along_track_appends_pending_steps_behind_active_batch() {
+    let mut store = WorldStore::new();
+    enable_minecart_improvements(&mut store);
+    store.apply_add_entity(protocol_add_entity_with_type(
+        10,
+        VANILLA_ENTITY_TYPE_MINECART_ID,
+    ));
+    let first = minecart_step(1.5, 64.1, -2.5, 0.2, 0.0, -0.2, 45.0, 0.0, 1.0);
+    let second = minecart_step(2.0, 64.2, -3.0, 0.3, 0.0, -0.3, 90.0, 5.0, 1.0);
+    let third = minecart_step(2.5, 64.3, -3.5, 0.4, 0.0, -0.4, 135.0, 10.0, 1.0);
+
+    assert!(
+        store.apply_move_minecart_along_track(ProtocolMoveMinecartAlongTrack {
+            entity_id: 10,
+            lerp_steps: vec![first],
+        })
+    );
+    store.advance_entity_client_animations(1);
+    assert_eq!(store.entities.minecart_lerp(10).unwrap().steps, vec![first]);
+
+    assert!(
+        store.apply_move_minecart_along_track(ProtocolMoveMinecartAlongTrack {
+            entity_id: 10,
+            lerp_steps: vec![second],
+        })
+    );
+    assert!(
+        store.apply_move_minecart_along_track(ProtocolMoveMinecartAlongTrack {
+            entity_id: 10,
+            lerp_steps: vec![third],
+        })
+    );
+    let lerp = store.entities.minecart_lerp(10).unwrap();
+    assert_eq!(lerp.steps, vec![first]);
+    assert_eq!(lerp.pending_steps, vec![second, third]);
+    assert_eq!(store.counters().minecart_lerp_steps_tracked, 3);
+
+    store.advance_entity_client_animations(3);
+    let lerp = store.entities.minecart_lerp(10).unwrap();
+    assert_eq!(lerp.steps, vec![second, third]);
+    assert!(lerp.pending_steps.is_empty());
+    assert_eq!(lerp.delay, 3);
+    let entity = store.probe_entity(10).unwrap();
+    assert!(entity.position.x > first.position.x);
+    assert!(entity.position.x < third.position.x);
+}
+
+#[test]
+fn minecart_along_track_requires_the_improvements_feature() {
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        10,
+        VANILLA_ENTITY_TYPE_MINECART_ID,
+    ));
+
+    assert!(
+        !store.apply_move_minecart_along_track(ProtocolMoveMinecartAlongTrack {
+            entity_id: 10,
+            lerp_steps: vec![minecart_step(
+                2.0, 64.0, -3.0, 0.0, 0.0, 0.0, 90.0, 0.0, 1.0,
+            )],
+        })
+    );
+    let entity = store.probe_entity(10).unwrap();
+    assert_eq!(entity.position.x, 1.0);
+    assert!(entity.minecart_lerp_pending_steps.is_empty());
+    assert!(entity.minecart_lerp_steps.is_empty());
+    assert!(
+        !store
+            .entity_model_sources_at_partial_tick(0.5)
+            .into_iter()
+            .find(|source| source.entity_id == 10)
+            .unwrap()
+            .minecart_new_render
+    );
+    assert_eq!(store.counters().minecart_moves_ignored, 1);
+    assert_eq!(store.counters().minecart_lerp_steps_tracked, 0);
+
+    enable_minecart_improvements(&mut store);
+    assert!(
+        store
+            .entity_model_sources_at_partial_tick(0.5)
+            .into_iter()
+            .find(|source| source.entity_id == 10)
+            .unwrap()
+            .minecart_new_render
+    );
+}
+
+#[test]
+fn minecart_pending_queue_preserves_the_combined_step_limit() {
+    const MAX_STEPS: usize = 65_536;
+
+    let mut store = WorldStore::new();
+    enable_minecart_improvements(&mut store);
+    store.apply_add_entity(protocol_add_entity_with_type(
+        10,
+        VANILLA_ENTITY_TYPE_MINECART_ID,
+    ));
+    let step = minecart_step(2.0, 64.0, -3.0, 0.0, 0.0, 0.0, 90.0, 0.0, 1.0);
+
+    assert!(
+        store.apply_move_minecart_along_track(ProtocolMoveMinecartAlongTrack {
+            entity_id: 10,
+            lerp_steps: vec![step; MAX_STEPS],
+        })
+    );
+    assert!(
+        !store.apply_move_minecart_along_track(ProtocolMoveMinecartAlongTrack {
+            entity_id: 10,
+            lerp_steps: vec![step],
+        })
+    );
+    assert_eq!(
+        store
+            .entities
+            .minecart_lerp(10)
+            .unwrap()
+            .pending_steps
+            .len(),
+        MAX_STEPS
+    );
+    assert_eq!(store.counters().minecart_moves_applied, 1);
+    assert_eq!(store.counters().minecart_moves_ignored, 1);
+    assert_eq!(store.counters().minecart_lerp_steps_tracked, MAX_STEPS);
 }
 
 #[test]
 fn new_minecart_passengers_render_with_vehicle_lerp_offset() {
     let mut store = WorldStore::new();
+    enable_minecart_improvements(&mut store);
     store.apply_add_entity(protocol_add_entity_with_type(
         10,
         VANILLA_ENTITY_TYPE_MINECART_ID,
@@ -1223,24 +1349,30 @@ fn new_minecart_passengers_render_with_vehicle_lerp_offset() {
         })
     );
 
+    // Packet arrival alone only identifies the new behavior; the pending batch
+    // has not entered the active render interpolation until the client tick.
+    assert_eq!(passenger_position(&store, 0.5), still);
+    store.advance_entity_client_animations(1);
+
     // Vanilla `EntityRenderer.extractRenderState`: passengerOffset =
     // `NewMinecartBehavior.getCartLerpPosition(partialTicks)` minus the cart's normal
-    // xOld/getX interpolation. With the existing test packet at partial 0.5, the weighted
-    // render position is (1.1458333, 64.0583333, -2.1458333) while the normal cart
-    // interpolation is (1.375, 64.1, -2.375).
+    // xOld/getX interpolation. After the promotion tick, the canonical cart is only
+    // one third through the batch. At partial 0.5 the weighted render position is
+    // (1.1458333, 64.0583333, -2.1458333), while the normal interpolation is
+    // (1.1416667, 64.0533333, -2.1416667).
     let shifted = passenger_position(&store, 0.5);
     assert!(
-        (shifted.x - 4.770833333333333).abs() < 1.0e-6,
+        (shifted.x - 5.004166666666666).abs() < 1.0e-6,
         "x offset: {}",
         shifted.x
     );
     assert!(
-        (shifted.y - 69.95833333333334).abs() < 1.0e-6,
+        (shifted.y - 70.005).abs() < 1.0e-6,
         "y offset: {}",
         shifted.y
     );
     assert!(
-        (shifted.z - 9.229166666666666).abs() < 1.0e-6,
+        (shifted.z - 8.995833333333334).abs() < 1.0e-6,
         "z offset: {}",
         shifted.z
     );
@@ -1255,6 +1387,15 @@ fn new_minecart_passengers_render_with_vehicle_lerp_offset() {
         },
         "after the minecart lerp drains, passengers no longer get a render-only offset"
     );
+}
+
+fn enable_minecart_improvements(store: &mut WorldStore) {
+    store.apply_update_enabled_features(bbb_protocol::packets::UpdateEnabledFeatures {
+        features: vec![
+            "minecraft:vanilla".to_string(),
+            "minecraft:minecart_improvements".to_string(),
+        ],
+    });
 }
 
 #[test]

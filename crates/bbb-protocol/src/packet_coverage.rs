@@ -867,7 +867,7 @@ mod tests {
     }
 
     #[test]
-    fn play_minecart_track_wire_closes_while_queue_semantics_stay_open() {
+    fn play_minecart_track_is_closed() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
@@ -877,17 +877,10 @@ mod tests {
                     && entry.constant_name == "CLIENTBOUND_MOVE_MINECART_ALONG_TRACK"
             })
             .expect("move minecart along track coverage row");
-        let partial: BTreeSet<_> = entry
+        assert!(entry
             .coverage
-            .iter()
-            .filter_map(|(dimension, cell)| {
-                (cell.status == PacketCoverageStatus::Partial).then_some(dimension.as_str())
-            })
-            .collect();
-        assert_eq!(
-            partial,
-            BTreeSet::from(["canonical_apply", "runtime_side_effect"])
-        );
+            .values()
+            .all(|cell| cell.status == PacketCoverageStatus::Complete));
     }
 
     #[test]

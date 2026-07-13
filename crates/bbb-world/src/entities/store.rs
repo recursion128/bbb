@@ -1413,6 +1413,7 @@ impl EntityStore {
         id: i32,
         position: super::EntityVec3,
         partial_ticks: f32,
+        minecart_improvements_enabled: bool,
         registries: &RegistrySet,
         default_item_max_damage: &BTreeMap<i32, i32>,
         armor_materials: &BTreeMap<i32, ArmorMaterialKind>,
@@ -1847,10 +1848,10 @@ impl EntityStore {
         let (boat_hurt_time, boat_hurt_dir, boat_damage_time) = client_animations
             .animations
             .boat_damage_state(partial_ticks);
-        let minecart_new_render = is_vanilla_minecart_type(identity.entity_type_id)
-            && minecart_lerp
-                .as_ref()
-                .is_some_and(|lerp| !lerp.steps.is_empty() || lerp.old_step.is_some());
+        // `AbstractMinecart` chooses NewMinecartBehavior from the level's
+        // enabled feature set at construction, before any step packet arrives.
+        let minecart_new_render =
+            is_vanilla_minecart_type(identity.entity_type_id) && minecart_improvements_enabled;
         let mut source_position = position;
         let mut source_y_rot = transform.y_rot;
         let mut source_x_rot = transform.x_rot;
@@ -1864,13 +1865,13 @@ impl EntityStore {
                 source_x_rot = render_step.x_rot;
             }
         }
-        if let Some(offset) =
-            mount
-                .as_ref()
-                .and_then(|mount| mount.vehicle_id)
-                .and_then(|vehicle_id| {
-                    self.new_minecart_passenger_render_offset(vehicle_id, partial_ticks)
-                })
+        if let Some(offset) = minecart_improvements_enabled
+            .then_some(())
+            .and_then(|()| mount.as_ref())
+            .and_then(|mount| mount.vehicle_id)
+            .and_then(|vehicle_id| {
+                self.new_minecart_passenger_render_offset(vehicle_id, partial_ticks)
+            })
         {
             // Vanilla `EntityRenderer.extractRenderState` adds this via `passengerOffset`
             // when a new-behavior minecart's weighted render position diverges from its
@@ -3435,6 +3436,7 @@ impl EntityStore {
         &mut self,
         ticks: u32,
         in_water_by_id: &HashMap<i32, bool>,
+        minecart_improvements_enabled: bool,
     ) {
         let wither_head_targets_by_id = self.wither_head_targets_by_id();
         for _ in 0..ticks {
@@ -3555,8 +3557,13 @@ impl EntityStore {
                     particle_triggers,
                 );
             }
-            for (_, minecart_lerp) in self.ecs.query_mut::<&mut EntityMinecartLerp>() {
-                minecart_lerp.advance_client_tick();
+            if minecart_improvements_enabled {
+                for (_, (transform, minecart_lerp)) in self
+                    .ecs
+                    .query_mut::<(&mut EntityTransform, &mut EntityMinecartLerp)>()
+                {
+                    minecart_lerp.advance_client_tick(transform);
+                }
             }
         }
     }
@@ -3599,7 +3606,7 @@ impl EntityStore {
             .iter()
             .filter_map(|id| self.by_protocol_id.get(id).copied())
             .filter_map(|entity| self.ecs.get::<&EntityMinecartLerp>(entity).ok())
-            .map(|lerp| lerp.steps.len())
+            .map(|lerp| lerp.pending_steps.len() + lerp.steps.len())
             .sum()
     }
 
@@ -3777,6 +3784,7 @@ impl EntityStore {
             mob_effects: BTreeMap::new(),
             client_animations: Default::default(),
             last_damage: None,
+            minecart_lerp_pending_steps: Vec::new(),
             minecart_lerp_steps: Vec::new(),
             minecart_lerp_old_step: None,
             minecart_lerp_delay: 0,

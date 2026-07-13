@@ -243,10 +243,6 @@ Movement:
 - Implement `ClientDebugSubscriber`'s subscription value maps and remove an
   entity UUID from every active entity-value map on RemoveEntities. The current
   single last-debug-value diagnostic is not an equivalent substitute.
-- Preserve `NewMinecartBehavior`'s pending/current lerp-step queues: along-track
-  packets append pending steps and only the client tick advances the canonical
-  transform. Do not replace active steps or snap the transform to the last step
-  when the packet arrives.
 - Add a narrator owner and speak the first-local-mount SetPassengers
   `mount.onboard` message as vanilla system narration. Removed-vehicle recovery
   reset, the pre-packet indirect-passenger once guard, boat body/head yaw

@@ -657,6 +657,8 @@ pub struct EntityState {
     #[serde(default)]
     pub last_damage: Option<EntityDamageEventState>,
     #[serde(default)]
+    pub minecart_lerp_pending_steps: Vec<ProtocolMinecartStep>,
+    #[serde(default)]
     pub minecart_lerp_steps: Vec<ProtocolMinecartStep>,
     #[serde(default)]
     pub minecart_lerp_old_step: Option<ProtocolMinecartStep>,
@@ -2928,6 +2930,7 @@ impl WorldStore {
             target.entity_id,
             target.position,
             partial_ticks,
+            self.is_feature_enabled("minecraft:minecart_improvements"),
             &self.registries,
             &self.items.default_item_max_damage,
             &self.items.default_item_armor_materials,

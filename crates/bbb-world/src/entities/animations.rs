@@ -6126,8 +6126,13 @@ impl WorldStore {
             .collect();
         self.entities
             .advance_projectile_lifecycles(ticks, &spectator_player_uuids);
-        self.entities
-            .advance_client_animations(ticks, &in_water_by_id);
+        let minecart_improvements_enabled =
+            self.is_feature_enabled("minecraft:minecart_improvements");
+        self.entities.advance_client_animations(
+            ticks,
+            &in_water_by_id,
+            minecart_improvements_enabled,
+        );
         self.counters.minecart_lerp_steps_tracked = self.entities.total_minecart_lerp_steps();
     }
 }

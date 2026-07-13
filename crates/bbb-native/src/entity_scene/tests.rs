@@ -1518,6 +1518,12 @@ fn entity_model_instances_project_tnt_minecart_fuse_remaining_ticks() {
 #[test]
 fn entity_model_instances_project_minecart_new_render_from_track_steps() {
     let mut world = WorldStore::new();
+    world.apply_update_enabled_features(bbb_protocol::packets::UpdateEnabledFeatures {
+        features: vec![
+            "minecraft:vanilla".to_string(),
+            "minecraft:minecart_improvements".to_string(),
+        ],
+    });
     world.apply_add_entity(protocol_add_entity(
         94,
         VANILLA_ENTITY_TYPE_MINECART_ID,
@@ -1543,6 +1549,7 @@ fn entity_model_instances_project_minecart_new_render_from_track_steps() {
             }],
         })
     );
+    world.advance_entity_client_animations(1);
 
     let instance = entity_model_instances_from_world_at_partial_tick(&world, None, 0.5)
         .into_iter()

@@ -77,6 +77,12 @@ fn saddle_item() -> ItemStackSummary {
 /// the projection touches those branches.
 fn build_store(count: usize) -> WorldStore {
     let mut store = WorldStore::new();
+    store.apply_update_enabled_features(bbb_protocol::packets::UpdateEnabledFeatures {
+        features: vec![
+            "minecraft:vanilla".to_string(),
+            "minecraft:minecart_improvements".to_string(),
+        ],
+    });
     for i in 0..count {
         let id = (i + 1) as i32;
         let entity_type_id = entity_type_for_index(i);

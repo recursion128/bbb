@@ -12935,3 +12935,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   所有首次本地 mount 复用 HUD action-bar owner 显示 60 tick `Press Left Shift to Dismount` overlay。
 - [x] narrator 播放仍保持开放；本切片没有用 chat、日志或 synthetic audio 冒充 vanilla
   `saySystemNow`。
+
+## 2026-07-13：new minecart client lerp queue
+
+- [x] MoveMinecartAlongTrack 不再在 packet apply 时 snap canonical transform 或替换 active batch；
+  `EntityMinecartLerp` 分离 pending/current lists，连续 packet 按 wire order 追加 pending。
+- [x] 启用 `minecraft:minecart_improvements` 时，client tick 复刻 `--lerpDelay`、oldLerp capture、
+  pending promotion、total-weight 三 tick interpolation，并把 partial=1 写回 canonical position/motion/
+  yaw/pitch；disabled feature 明确拒绝该 NewMinecartBehavior-only packet。
+- [x] renderer partial-tick、passenger offset、native event drain 与 offline probe tests 均改为先观察
+  pending、再由 client tick 推进；packet coverage 五格闭合。本切片没有实现 server rail physics。

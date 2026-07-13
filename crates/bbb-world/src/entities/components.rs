@@ -14,6 +14,10 @@ use super::{
 };
 use crate::BlockPos;
 
+// Match the protocol decoder's per-packet allocation guard while also preventing
+// several packets received within one client tick from accumulating without bound.
+const MAX_TRACKED_MINECART_LERP_STEPS: usize = 65_536;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct EntityIdentity {
     pub(crate) id: i32,
@@ -91,6 +95,7 @@ pub(crate) struct EntityDamage {
 
 #[derive(Debug, Clone, PartialEq, Default)]
 pub(crate) struct EntityMinecartLerp {
+    pub(crate) pending_steps: Vec<ProtocolMinecartStep>,
     pub(crate) steps: Vec<ProtocolMinecartStep>,
     pub(crate) old_step: Option<ProtocolMinecartStep>,
     pub(crate) delay: i32,
@@ -222,6 +227,7 @@ impl From<&EntityState> for EntityDamage {
 impl From<&EntityState> for EntityMinecartLerp {
     fn from(state: &EntityState) -> Self {
         Self {
+            pending_steps: state.minecart_lerp_pending_steps.clone(),
             steps: state.minecart_lerp_steps.clone(),
             old_step: state.minecart_lerp_old_step,
             delay: state.minecart_lerp_delay,
@@ -230,15 +236,18 @@ impl From<&EntityState> for EntityMinecartLerp {
 }
 
 impl EntityMinecartLerp {
-    pub(crate) fn start(
-        &mut self,
-        old_step: ProtocolMinecartStep,
-        steps: Vec<ProtocolMinecartStep>,
-    ) {
-        let total_weight: f32 = steps.iter().map(|step| step.weight).sum();
-        self.steps = steps;
-        self.old_step = Some(old_step);
-        self.delay = if total_weight == 0.0 { 0 } else { 3 };
+    pub(crate) fn queue(&mut self, steps: Vec<ProtocolMinecartStep>) -> bool {
+        if self
+            .pending_steps
+            .len()
+            .saturating_add(self.steps.len())
+            .saturating_add(steps.len())
+            > MAX_TRACKED_MINECART_LERP_STEPS
+        {
+            return false;
+        }
+        self.pending_steps.extend(steps);
+        true
     }
 
     pub(crate) fn render_step(&self, partial_ticks: f32) -> Option<ProtocolMinecartStep> {
@@ -259,18 +268,23 @@ impl EntityMinecartLerp {
         })
     }
 
-    pub(crate) fn advance_client_tick(&mut self) {
-        if self.steps.is_empty() {
-            self.delay = 0;
-            return;
+    pub(crate) fn advance_client_tick(&mut self, transform: &mut EntityTransform) {
+        self.delay = self.delay.saturating_sub(1);
+        if self.delay <= 0 {
+            self.old_step = Some(minecart_step_from_transform(*transform));
+            self.steps.clear();
+            if !self.pending_steps.is_empty() {
+                self.steps = std::mem::take(&mut self.pending_steps);
+                let total_weight: f32 = self.steps.iter().map(|step| step.weight).sum();
+                self.delay = if total_weight == 0.0 { 0 } else { 3 };
+            }
         }
-        if self.delay > 1 {
-            self.delay -= 1;
-            return;
+        if let Some(step) = self.render_step(1.0) {
+            transform.position = entity_vec3(step.position);
+            transform.delta_movement = entity_vec3(step.movement);
+            transform.y_rot = step.y_rot;
+            transform.x_rot = step.x_rot;
         }
-        self.old_step = self.steps.last().copied();
-        self.steps.clear();
-        self.delay = 0;
     }
 
     fn current_lerp_step(
@@ -309,6 +323,32 @@ impl EntityMinecartLerp {
             index: self.steps.len() - 1,
             alpha: 1.0,
         })
+    }
+}
+
+fn minecart_step_from_transform(transform: EntityTransform) -> ProtocolMinecartStep {
+    ProtocolMinecartStep {
+        position: ProtocolVec3d {
+            x: transform.position.x,
+            y: transform.position.y,
+            z: transform.position.z,
+        },
+        movement: ProtocolVec3d {
+            x: transform.delta_movement.x,
+            y: transform.delta_movement.y,
+            z: transform.delta_movement.z,
+        },
+        y_rot: transform.y_rot,
+        x_rot: transform.x_rot,
+        weight: 0.0,
+    }
+}
+
+fn entity_vec3(vec: ProtocolVec3d) -> EntityVec3 {
+    EntityVec3 {
+        x: vec.x,
+        y: vec.y,
+        z: vec.z,
     }
 }
 
@@ -463,6 +503,7 @@ impl EntityDamage {
 
 impl EntityMinecartLerp {
     pub(crate) fn write_to_state(self, state: &mut EntityState) {
+        state.minecart_lerp_pending_steps = self.pending_steps;
         state.minecart_lerp_steps = self.steps;
         state.minecart_lerp_old_step = self.old_step;
         state.minecart_lerp_delay = self.delay;

@@ -76,6 +76,7 @@ fn entity_model_sources_project_ender_dragon_death_time() {
                 61,
                 position,
                 partial,
+                false,
                 &store.registries,
                 &store.items.default_item_max_damage,
                 &store.items.default_item_armor_materials,

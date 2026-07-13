@@ -779,6 +779,12 @@ fn move_vehicle_ignored_counters_update_world_counters() {
 fn minecart_along_track_event_updates_world_state_and_world_counters() {
     let (event_tx, mut event_rx) = mpsc::channel(1);
     let mut world = WorldStore::new();
+    world.apply_update_enabled_features(bbb_protocol::packets::UpdateEnabledFeatures {
+        features: vec![
+            "minecraft:vanilla".to_string(),
+            "minecraft:minecart_improvements".to_string(),
+        ],
+    });
     world.apply_add_entity(protocol_add_entity_with_type(10, 85));
 
     event_tx
@@ -814,13 +820,23 @@ fn minecart_along_track_event_updates_world_state_and_world_counters() {
     assert_eq!(
         entity.position,
         bbb_world::EntityVec3 {
-            x: 2.0,
-            y: 64.25,
-            z: -3.0,
+            x: 1.0,
+            y: 64.0,
+            z: -2.0,
         }
     );
+    assert_eq!(entity.minecart_lerp_pending_steps.len(), 1);
+    assert!(entity.minecart_lerp_steps.is_empty());
+
+    world.advance_entity_client_animations(3);
+    let entity = world.probe_entity(10).unwrap();
+    assert_eq!(entity.position.x, 2.0);
+    assert_eq!(entity.position.y, 64.25);
+    assert_eq!(entity.position.z, -3.0);
     assert_eq!(entity.y_rot, 90.0);
     assert_eq!(entity.x_rot, 5.0);
+    assert!(entity.minecart_lerp_pending_steps.is_empty());
+    assert_eq!(entity.minecart_lerp_steps.len(), 1);
     assert_eq!(world.counters().minecart_moves_received, 1);
     assert_eq!(world.counters().minecart_moves_applied, 1);
     assert_eq!(world.counters().minecart_lerp_steps_received, 1);
@@ -831,6 +847,12 @@ fn minecart_along_track_event_updates_world_state_and_world_counters() {
 fn minecart_along_track_ignored_counters_update_world_counters() {
     let (event_tx, mut event_rx) = mpsc::channel(2);
     let mut world = WorldStore::new();
+    world.apply_update_enabled_features(bbb_protocol::packets::UpdateEnabledFeatures {
+        features: vec![
+            "minecraft:vanilla".to_string(),
+            "minecraft:minecart_improvements".to_string(),
+        ],
+    });
     world.apply_add_entity(protocol_add_entity(20));
 
     let step = MinecartStep {

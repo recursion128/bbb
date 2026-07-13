@@ -382,8 +382,9 @@ SetEntityMotion 的 LP Vec3 wire 与 vanilla immediate `lerpMotion` apply 已全
 packed yaw wire/ownership、LivingEntity target + 3-step shortest-angle client tick lerp、base Entity
 immediate set 与 tests 也已五格闭合。
 MoveMinecartAlongTrack 的 step-list wire、ownership 与现有 protocol/world/native tests 已闭合；
-但当前 apply 会立即写入最后一步并替换 active steps，尚未复刻 vanilla pending/current queue 与
-client tick 推进语义，因此 canonical/runtime 保持 partial。
+packet 只按 wire order 追加 pending steps，client tick 到期后保存 oldLerp、提升整批 active、按 weight
+推进三 tick canonical transform，active 期间的新 packet 留待下一批；`minecart_improvements` feature
+gate、partial-tick renderer/passenger offset 与反向 tests 均已闭合，五格 complete。
 RemoveEntities 的 int-id list wire、world cleanup 与 tests 已闭合；vanilla listener 的
 `removedPlayerVehicleId` 已覆盖 vehicle-chain capture、AddEntity/SetPassengers clear、missing-id
 TeleportEntity LocalPlayer apply 与强制 PosRot 回执；只剩 `ClientDebugSubscriber.dropEntity` 的按 UUID

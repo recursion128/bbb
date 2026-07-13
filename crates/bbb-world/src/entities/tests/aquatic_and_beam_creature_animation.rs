@@ -636,6 +636,7 @@ fn entity_model_sources_project_ender_dragon_nearest_crystal_beam() {
                 id,
                 position,
                 partial_ticks,
+                false,
                 &store.registries,
                 &store.items.default_item_max_damage,
                 &store.items.default_item_armor_materials,
