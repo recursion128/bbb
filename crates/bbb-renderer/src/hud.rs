@@ -1248,6 +1248,10 @@ pub enum HudInventoryBackgroundTexture {
     WidgetCheckboxHighlighted,
     WidgetCheckboxSelected,
     WidgetCheckboxSelectedHighlighted,
+    WidgetSlider,
+    WidgetSliderHighlighted,
+    WidgetSliderHandle,
+    WidgetSliderHandleHighlighted,
     Anvil,
     AnvilTextField,
     AnvilTextFieldDisabled,
@@ -2125,6 +2129,42 @@ impl Renderer {
         rgba: &[u8],
     ) -> Result<()> {
         self.hud_widget_checkbox_selected_highlighted =
+            Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_widget_slider(&mut self, width: u32, height: u32, rgba: &[u8]) -> Result<()> {
+        self.hud_widget_slider = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_widget_slider_highlighted(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_widget_slider_highlighted = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_widget_slider_handle(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_widget_slider_handle = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_widget_slider_handle_highlighted(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_widget_slider_handle_highlighted =
             Some(self.upload_hud_sprite(width, height, rgba)?);
         Ok(())
     }
@@ -5001,6 +5041,16 @@ impl Renderer {
             }
             HudInventoryBackgroundTexture::WidgetCheckboxSelectedHighlighted => {
                 self.hud_widget_checkbox_selected_highlighted.as_ref()
+            }
+            HudInventoryBackgroundTexture::WidgetSlider => self.hud_widget_slider.as_ref(),
+            HudInventoryBackgroundTexture::WidgetSliderHighlighted => {
+                self.hud_widget_slider_highlighted.as_ref()
+            }
+            HudInventoryBackgroundTexture::WidgetSliderHandle => {
+                self.hud_widget_slider_handle.as_ref()
+            }
+            HudInventoryBackgroundTexture::WidgetSliderHandleHighlighted => {
+                self.hud_widget_slider_handle_highlighted.as_ref()
             }
             HudInventoryBackgroundTexture::Anvil => self.hud_anvil_background.as_ref(),
             HudInventoryBackgroundTexture::AnvilTextField => self.hud_anvil_text_field.as_ref(),

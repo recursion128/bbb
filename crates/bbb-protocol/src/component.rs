@@ -14,7 +14,7 @@ pub use canonical_json::{
     canonical_component_json_utf16_len, canonical_component_json_utf16_len_with_owner,
     canonical_f32_json_utf16_len, canonical_f64_json_utf16_len, canonical_json_string_utf16_len,
     canonical_nbt_json_utf16_len, canonical_resolvable_profile_json_utf16_len,
-    CanonicalComponentOwnerValue,
+    java_float_to_string, CanonicalComponentOwnerValue,
 };
 pub use codec::{validate_component_nbt, visit_component_payloads, ComponentPayload};
 

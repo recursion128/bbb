@@ -88,6 +88,13 @@ pub fn canonical_f32_json_utf16_len(bits: u32) -> Option<usize> {
     (!matches!(encoded.as_str(), "NaN" | "Infinity" | "-Infinity")).then_some(encoded.len())
 }
 
+/// Formats a Java `float` exactly like `Float.toString`.
+///
+/// This is also the textual value used by vanilla dialog number-range template substitutions.
+pub fn java_float_to_string(value: f32) -> String {
+    java_float_string(value)
+}
+
 /// Exact JsonOps/Gson length for a finite Java `double` value that has already passed its
 /// semantic Codec validation.
 pub fn canonical_f64_json_utf16_len(bits: u64) -> Option<usize> {

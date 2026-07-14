@@ -216,6 +216,31 @@ fn try_load_hud_textures(renderer: &mut bbb_renderer::Renderer, roots: &PackRoot
         widget_checkbox_selected_highlighted.height,
         &widget_checkbox_selected_highlighted.rgba,
     )?;
+    let widget_slider = hud_sprite(&sprites, "widget/slider")?;
+    renderer.upload_hud_widget_slider(
+        widget_slider.width,
+        widget_slider.height,
+        &widget_slider.rgba,
+    )?;
+    let widget_slider_highlighted = hud_sprite(&sprites, "widget/slider_highlighted")?;
+    renderer.upload_hud_widget_slider_highlighted(
+        widget_slider_highlighted.width,
+        widget_slider_highlighted.height,
+        &widget_slider_highlighted.rgba,
+    )?;
+    let widget_slider_handle = hud_sprite(&sprites, "widget/slider_handle")?;
+    renderer.upload_hud_widget_slider_handle(
+        widget_slider_handle.width,
+        widget_slider_handle.height,
+        &widget_slider_handle.rgba,
+    )?;
+    let widget_slider_handle_highlighted =
+        hud_sprite(&sprites, "widget/slider_handle_highlighted")?;
+    renderer.upload_hud_widget_slider_handle_highlighted(
+        widget_slider_handle_highlighted.width,
+        widget_slider_handle_highlighted.height,
+        &widget_slider_handle_highlighted.rgba,
+    )?;
     let inworld_menu_background = gui_texture(
         roots,
         "textures/gui/inworld_menu_background.png",

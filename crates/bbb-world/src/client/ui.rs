@@ -28,6 +28,8 @@ pub struct ClientUiState {
     pub current_dialog: Option<DialogState>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub dialog_input_values: Vec<Option<DialogInputValueState>>,
+    #[serde(skip)]
+    dialog_dragging_number_range_input: Option<usize>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub dialog_previous_screen: Option<DialogPreviousScreenState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -66,6 +68,7 @@ pub enum DialogPreviousScreenState {
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum DialogInputValueState {
     Boolean { selected: bool },
+    NumberRange { slider_value_bits: u64 },
 }
 
 impl ClientUiState {
@@ -82,6 +85,7 @@ impl ClientUiState {
             };
         }
         self.dialog_waiting_ticks = None;
+        self.dialog_dragging_number_range_input = None;
         self.dialog_input_values = initial_dialog_input_values(&dialog);
         self.current_dialog = Some(dialog);
     }
@@ -90,6 +94,7 @@ impl ClientUiState {
         if self.current_dialog.take().is_none() {
             return false;
         }
+        self.dialog_dragging_number_range_input = None;
         self.dialog_input_values.clear();
         self.restore_dialog_previous_screen();
         true
@@ -99,6 +104,7 @@ impl ClientUiState {
         if self.current_dialog.take().is_none() {
             return false;
         }
+        self.dialog_dragging_number_range_input = None;
         self.dialog_input_values.clear();
         self.dialog_waiting_ticks = Some(0);
         true
@@ -133,6 +139,7 @@ impl ClientUiState {
 
     pub(crate) fn replace_dialog(&mut self) {
         self.current_dialog = None;
+        self.dialog_dragging_number_range_input = None;
         self.dialog_input_values.clear();
         self.dialog_waiting_ticks = None;
         self.dialog_previous_screen = None;
@@ -156,6 +163,19 @@ fn initial_dialog_input_values(dialog: &DialogState) -> Vec<Option<DialogInputVa
         .map(|input| match &input.control {
             DialogInputControlState::Boolean { initial, .. } => {
                 Some(DialogInputValueState::Boolean { selected: *initial })
+            }
+            DialogInputControlState::NumberRange { range, .. } => {
+                let start = range.start();
+                let end = range.end();
+                let initial = range.initial().unwrap_or((start + end) / 2.0);
+                let slider_value = if start == end {
+                    0.5
+                } else {
+                    (initial - start) / (end - start)
+                };
+                Some(DialogInputValueState::NumberRange {
+                    slider_value_bits: f64::from(slider_value).to_bits(),
+                })
             }
             _ => None,
         })
@@ -366,6 +386,42 @@ impl WorldStore {
         };
         *selected = !*selected;
         true
+    }
+
+    pub fn set_dialog_number_range_slider_value(&mut self, index: usize, value: f64) -> bool {
+        let Some(Some(DialogInputValueState::NumberRange { slider_value_bits })) =
+            self.client_ui.dialog_input_values.get_mut(index)
+        else {
+            return false;
+        };
+        let value = if value < 0.0 {
+            0.0
+        } else if value > 1.0 {
+            1.0
+        } else {
+            value
+        };
+        *slider_value_bits = value.to_bits();
+        true
+    }
+
+    pub fn begin_dialog_number_range_drag(&mut self, index: usize) -> bool {
+        if !matches!(
+            self.client_ui.dialog_input_values.get(index),
+            Some(Some(DialogInputValueState::NumberRange { .. }))
+        ) {
+            return false;
+        }
+        self.client_ui.dialog_dragging_number_range_input = Some(index);
+        true
+    }
+
+    pub fn end_dialog_number_range_drag(&mut self) -> Option<usize> {
+        self.client_ui.dialog_dragging_number_range_input.take()
+    }
+
+    pub fn dialog_dragging_number_range_input(&self) -> Option<usize> {
+        self.client_ui.dialog_dragging_number_range_input
     }
 
     pub fn dialog_waiting_ticks(&self) -> Option<u32> {
@@ -707,6 +763,57 @@ mod tests {
         );
 
         assert!(store.close_dialog());
+        assert!(store.current_dialog_input_values().is_empty());
+    }
+
+    #[test]
+    fn dialog_number_range_value_initializes_and_drag_state_tracks_dialog_lifecycle() {
+        let entry = |name: &str, value| NbtSummaryEntry {
+            name: name.to_string(),
+            value,
+        };
+        let mut store = WorldStore::new();
+        store.apply_show_dialog(ProtocolShowDialog {
+            dialog: DialogHolder::Direct {
+                dialog: NbtSummaryValue::Compound(vec![
+                    entry(
+                        "type",
+                        NbtSummaryValue::String("minecraft:notice".to_string()),
+                    ),
+                    entry("title", NbtSummaryValue::String("Inputs".to_string())),
+                    entry(
+                        "inputs",
+                        NbtSummaryValue::List(vec![NbtSummaryValue::Compound(vec![
+                            entry("key", NbtSummaryValue::String("speed".to_string())),
+                            entry("type", NbtSummaryValue::String("number_range".to_string())),
+                            entry("label", NbtSummaryValue::String("Speed".to_string())),
+                            entry("start", NbtSummaryValue::Float(10.0f32.to_bits())),
+                            entry("end", NbtSummaryValue::Float(0.0f32.to_bits())),
+                            entry("initial", NbtSummaryValue::Float(7.5f32.to_bits())),
+                        ])]),
+                    ),
+                ]),
+            },
+        });
+
+        assert_eq!(
+            store.current_dialog_input_values(),
+            [Some(DialogInputValueState::NumberRange {
+                slider_value_bits: 0.25f64.to_bits(),
+            })]
+        );
+        assert!(store.begin_dialog_number_range_drag(0));
+        assert_eq!(store.dialog_dragging_number_range_input(), Some(0));
+        assert!(store.set_dialog_number_range_slider_value(0, 2.0));
+        assert_eq!(
+            store.current_dialog_input_values(),
+            [Some(DialogInputValueState::NumberRange {
+                slider_value_bits: 1.0f64.to_bits(),
+            })]
+        );
+
+        assert!(store.close_dialog());
+        assert_eq!(store.dialog_dragging_number_range_input(), None);
         assert!(store.current_dialog_input_values().is_empty());
     }
 

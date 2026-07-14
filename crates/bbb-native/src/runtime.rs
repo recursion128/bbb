@@ -191,7 +191,9 @@ pub(crate) use render_extract::*;
 mod events;
 
 pub(crate) use debug_light_sections::DebugSkyLightSectionCache;
-pub(crate) use dialog_screen::{handle_dialog_key_input, handle_dialog_mouse_input};
+pub(crate) use dialog_screen::{
+    handle_dialog_cursor_moved, handle_dialog_key_input, handle_dialog_mouse_input,
+};
 use dialog_screen::{hud_dialog_screen, hud_waiting_response_screen};
 
 const VANILLA_CLIENT_TICK_INTERVAL: Duration = Duration::from_millis(50);

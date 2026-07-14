@@ -69,8 +69,8 @@ Owner: `bbb-protocol`
 - Complete native `Dialog` screen/runtime behavior against
   `DialogScreen`, `SimpleDialogScreen`, `DialogControlSet`, and
   `DialogBodyHandlers`: add the in-world screen blur/depth-clear and warning button/screen;
-  add Item/Boolean widget keyboard focus outlines,
-  the number-range, single-option, and text input controls,
+  add Item/Boolean/NumberRange widget keyboard focus outlines and keyboard operation,
+  NumberRange long-label scrolling, and the single-option and text input controls,
   remaining button-list action tooltips, and the
   MultiAction/ServerLinks/DialogList layouts with vanilla scrolling,
   focus, and clipping; execute open-url,
@@ -104,7 +104,10 @@ Owner: `bbb-protocol`
   all 107 persistent entries in the 26.1 component catalog now have the dialog decode/summary/native
   encoder path; the three network-only entries cannot occur in persistent dialog Item NBT,
   renders and mouse-toggles Boolean inputs with the vanilla checkbox sprites, binds their
-  `on_true`/`on_false` substitutions and byte tags into dynamic run-command/custom actions, executes
+  `on_true`/`on_false` substitutions and byte tags into dynamic run-command/custom actions, renders
+  and mouse-drags NumberRange inputs with the vanilla nine-sliced track/handle sprites, double slider position and
+  mouse click/drag semantics, exact RangeInfo step/edge math, localized label format, Java float
+  text and FloatTag bindings into the same dynamic actions, and executes
   static run-command through the existing command owner,
   and implements the
   static copy-to-clipboard through the existing native clipboard owner, preserves

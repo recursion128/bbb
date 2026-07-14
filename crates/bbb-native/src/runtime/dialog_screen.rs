@@ -4,6 +4,7 @@ use bbb_control::NetCounters;
 use bbb_item_model::NativeItemRuntime;
 use bbb_net::NetCommand;
 use bbb_protocol::{
+    java_float_to_string,
     packets::{CustomClickAction, GameType, ItemStackSummary},
     NbtSummaryValue,
 };
@@ -15,8 +16,8 @@ use bbb_renderer::{
 use bbb_world::{
     CommonDialogDataState, DialogActionState, DialogBodyState, DialogButtonState,
     DialogCommandTemplateState, DialogDataState, DialogInputControlState, DialogInputValueState,
-    DialogItemStackTemplateState, DialogPlainMessageState, DialogState, DialogTextState,
-    WorldStore,
+    DialogItemStackTemplateState, DialogNumberRangeState, DialogPlainMessageState, DialogState,
+    DialogTextState, WorldStore,
 };
 use tokio::sync::mpsc;
 use winit::dpi::{PhysicalPosition, PhysicalSize};
@@ -45,6 +46,11 @@ const BUTTON_HEIGHT: u32 = 20;
 const BUTTON_TEXT_Y_OFFSET: i32 = 6;
 const CHECKBOX_SIZE: u32 = 17;
 const CHECKBOX_LABEL_SPACING: i32 = 4;
+const SLIDER_HEIGHT: u32 = 20;
+const SLIDER_HANDLE_WIDTH: u32 = 8;
+const SLIDER_HANDLE_HALF_WIDTH: i32 = 4;
+const SLIDER_TEXT_MARGIN: u32 = 2;
+const SLIDER_SPRITE_WIDTH: f32 = 200.0;
 const TEXT_LINE_HEIGHT: i32 = 9;
 const TEXT_COLOR: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
 const INACTIVE_TEXT_COLOR: [f32; 4] = [160.0 / 255.0, 160.0 / 255.0, 160.0 / 255.0, 1.0];
@@ -74,6 +80,12 @@ struct DialogInputLayout {
     y: i32,
     width: i32,
     height: i32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum DialogInputMouseHit {
+    Boolean(usize),
+    NumberRange(DialogInputLayout),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -247,8 +259,12 @@ fn dialog_input_dimensions(control: &DialogInputControlState) -> Option<(i32, i3
                 i32::try_from(CHECKBOX_SIZE).ok()?,
             ))
         }
-        DialogInputControlState::NumberRange { width, .. }
-        | DialogInputControlState::SingleOption { width, .. } => Some((*width, 20)),
+        DialogInputControlState::NumberRange { width, .. } => {
+            Some((*width, i32::try_from(SLIDER_HEIGHT).ok()?))
+        }
+        DialogInputControlState::SingleOption { width, .. } => {
+            Some((*width, i32::try_from(BUTTON_HEIGHT).ok()?))
+        }
         DialogInputControlState::Text {
             width,
             label_visible,
@@ -328,6 +344,167 @@ fn dialog_input_layouts(
             Some(layout)
         })
         .collect()
+}
+
+fn push_slider_track_layers(
+    layers: &mut Vec<HudInventoryBackgroundLayer>,
+    layout: DialogInputLayout,
+) {
+    let width = u32::try_from(layout.width).unwrap_or(0);
+    if width == 0 {
+        return;
+    }
+    // The slider sprite is a 200x20 nine-slice with a one-pixel border. Since the target height
+    // stays 20, vanilla's nine regions collapse to these three exact horizontal columns.
+    let border = 1.min(width / 2);
+    let columns = [
+        (0, border, 0, border),
+        (
+            border,
+            width.saturating_sub(border.saturating_mul(2)),
+            border,
+            200u32.saturating_sub(border.saturating_mul(2)),
+        ),
+        (
+            width.saturating_sub(border),
+            border,
+            200u32.saturating_sub(border),
+            border,
+        ),
+    ];
+    for (screen_x, screen_width, texture_x, texture_width) in columns {
+        if screen_width == 0 || texture_width == 0 {
+            continue;
+        }
+        layers.push(HudInventoryBackgroundLayer {
+            texture: HudInventoryBackgroundTexture::WidgetSlider,
+            x: layout
+                .x
+                .saturating_add(i32::try_from(screen_x).unwrap_or(i32::MAX)),
+            y: layout.y,
+            width: screen_width,
+            height: SLIDER_HEIGHT,
+            uv: HudUvRect {
+                min: [texture_x as f32 / SLIDER_SPRITE_WIDTH, 0.0],
+                max: [
+                    texture_x.saturating_add(texture_width) as f32 / SLIDER_SPRITE_WIDTH,
+                    1.0,
+                ],
+            },
+        });
+    }
+}
+
+fn dialog_number_range_scaled_value(range: &DialogNumberRangeState, slider_value: f64) -> f32 {
+    let start = range.start();
+    let end = range.end();
+    let value_in_range = start + slider_value as f32 * (end - start);
+    let Some(step) = range.step() else {
+        return value_in_range;
+    };
+    let initial = range.initial().unwrap_or((start + end) / 2.0);
+    let steps = ((value_in_range - initial) / step + 0.5).floor() as i32;
+    let stepped_delta = steps as f32 * step;
+    let result = initial + stepped_delta;
+    let slider_position = if start == end {
+        0.5
+    } else {
+        (result - start) / (end - start)
+    };
+    if slider_position < 0.0 || slider_position > 1.0 {
+        let one_step_less = steps - steps.signum();
+        initial + one_step_less as f32 * step
+    } else {
+        result
+    }
+}
+
+fn dialog_number_range_value_string(value: f32) -> String {
+    let integer = value as i32;
+    if integer as f32 == value {
+        integer.to_string()
+    } else {
+        java_float_to_string(value)
+    }
+}
+
+fn dialog_number_range_label_runs(
+    template: &str,
+    label: &DialogTextState,
+    value: &str,
+) -> Vec<HudStyledTextRun> {
+    let label_runs = dialog_text_runs(label);
+    let mut runs = Vec::new();
+    let mut current = 0;
+    let mut replacement_index = 0usize;
+    while let Some(offset) = template[current..].find('%') {
+        let percent = current + offset;
+        append_plain_dialog_run(&mut runs, &template[current..percent]);
+        let bytes = template.as_bytes();
+        let mut next = percent + 1;
+        if bytes.get(next) == Some(&b'%') {
+            append_plain_dialog_run(&mut runs, "%");
+            current = next + 1;
+            continue;
+        }
+
+        let digit_start = next;
+        while bytes.get(next).is_some_and(u8::is_ascii_digit) {
+            next += 1;
+        }
+        let explicit_index = if next > digit_start {
+            if bytes.get(next) != Some(&b'$') {
+                return vec![HudStyledTextRun::plain(template)];
+            }
+            let Ok(index) = template[digit_start..next].parse::<usize>() else {
+                return vec![HudStyledTextRun::plain(template)];
+            };
+            next += 1;
+            let Some(index) = index.checked_sub(1) else {
+                return vec![HudStyledTextRun::plain(template)];
+            };
+            Some(index)
+        } else {
+            None
+        };
+        if bytes.get(next) != Some(&b's') {
+            return vec![HudStyledTextRun::plain(template)];
+        }
+        let index = explicit_index.unwrap_or_else(|| {
+            let index = replacement_index;
+            replacement_index = replacement_index.saturating_add(1);
+            index
+        });
+        match index {
+            0 => append_dialog_runs(&mut runs, &label_runs),
+            1 => append_plain_dialog_run(&mut runs, value),
+            _ => return vec![HudStyledTextRun::plain(template)],
+        }
+        current = next + 1;
+    }
+    append_plain_dialog_run(&mut runs, &template[current..]);
+    runs
+}
+
+fn append_dialog_runs(output: &mut Vec<HudStyledTextRun>, runs: &[HudStyledTextRun]) {
+    for run in runs {
+        if let Some(previous) = output
+            .last_mut()
+            .filter(|previous| previous.style == run.style && previous.color == run.color)
+        {
+            previous.text.push_str(&run.text);
+        } else {
+            output.push(run.clone());
+        }
+    }
+}
+
+fn append_plain_dialog_run(output: &mut Vec<HudStyledTextRun>, text: &str) {
+    if text.is_empty() {
+        return;
+    }
+    let run = HudStyledTextRun::plain(text);
+    append_dialog_runs(output, std::slice::from_ref(&run));
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -520,20 +697,12 @@ pub(super) fn hud_dialog_screen(
     }
 
     let input_layouts = dialog_input_layouts(controls.common, surface_size)?;
-    let mut checkbox_layers = Vec::new();
+    let mut input_layers = Vec::new();
     for input_layout in input_layouts {
         let Some(input) = controls.common.input_data.get(input_layout.index) else {
             continue;
         };
-        let DialogInputControlState::Boolean { label, .. } = &input.control else {
-            continue;
-        };
-        let Some(Some(DialogInputValueState::Boolean { selected })) =
-            world.current_dialog_input_values().get(input_layout.index)
-        else {
-            continue;
-        };
-        let highlighted = dialog_widget_contains(
+        let hovered = dialog_widget_contains(
             input_layout.x,
             input_layout.y,
             input_layout.width,
@@ -543,33 +712,99 @@ pub(super) fn hud_dialog_screen(
             layout.screen_width,
             layout.screen_height,
         );
-        checkbox_layers.push(HudInventoryBackgroundLayer {
-            texture: match (*selected, highlighted) {
-                (false, false) => HudInventoryBackgroundTexture::WidgetCheckbox,
-                (false, true) => HudInventoryBackgroundTexture::WidgetCheckboxHighlighted,
-                (true, false) => HudInventoryBackgroundTexture::WidgetCheckboxSelected,
-                (true, true) => HudInventoryBackgroundTexture::WidgetCheckboxSelectedHighlighted,
-            },
-            x: input_layout.x,
-            y: input_layout.y,
-            width: CHECKBOX_SIZE,
-            height: CHECKBOX_SIZE,
-            uv: HudUvRect {
-                min: [0.0, 0.0],
-                max: [1.0, 1.0],
-            },
-        });
-        push_text_label(
-            &mut text_labels,
-            label,
-            input_layout
-                .x
-                .saturating_add(i32::try_from(CHECKBOX_SIZE).unwrap_or(i32::MAX))
-                .saturating_add(CHECKBOX_LABEL_SPACING),
-            input_layout.y.saturating_add(
-                (i32::try_from(CHECKBOX_SIZE).unwrap_or(i32::MAX) - TEXT_LINE_HEIGHT) / 2,
-            ),
-        );
+        match (
+            &input.control,
+            world.current_dialog_input_values().get(input_layout.index),
+        ) {
+            (
+                DialogInputControlState::Boolean { label, .. },
+                Some(Some(DialogInputValueState::Boolean { selected })),
+            ) => {
+                input_layers.push(HudInventoryBackgroundLayer {
+                    texture: match (*selected, hovered) {
+                        (false, false) => HudInventoryBackgroundTexture::WidgetCheckbox,
+                        (false, true) => HudInventoryBackgroundTexture::WidgetCheckboxHighlighted,
+                        (true, false) => HudInventoryBackgroundTexture::WidgetCheckboxSelected,
+                        (true, true) => {
+                            HudInventoryBackgroundTexture::WidgetCheckboxSelectedHighlighted
+                        }
+                    },
+                    x: input_layout.x,
+                    y: input_layout.y,
+                    width: CHECKBOX_SIZE,
+                    height: CHECKBOX_SIZE,
+                    uv: HudUvRect {
+                        min: [0.0, 0.0],
+                        max: [1.0, 1.0],
+                    },
+                });
+                push_text_label(
+                    &mut text_labels,
+                    label,
+                    input_layout
+                        .x
+                        .saturating_add(i32::try_from(CHECKBOX_SIZE).unwrap_or(i32::MAX))
+                        .saturating_add(CHECKBOX_LABEL_SPACING),
+                    input_layout.y.saturating_add(
+                        (i32::try_from(CHECKBOX_SIZE).unwrap_or(i32::MAX) - TEXT_LINE_HEIGHT) / 2,
+                    ),
+                );
+            }
+            (
+                DialogInputControlState::NumberRange {
+                    label,
+                    label_format,
+                    range,
+                    ..
+                },
+                Some(Some(DialogInputValueState::NumberRange { slider_value_bits })),
+            ) => {
+                push_slider_track_layers(&mut input_layers, input_layout);
+                let slider_value = f64::from_bits(*slider_value_bits);
+                let handle_offset =
+                    (slider_value
+                        * f64::from(input_layout.width.saturating_sub(
+                            i32::try_from(SLIDER_HANDLE_WIDTH).unwrap_or(i32::MAX),
+                        ))) as i32;
+                input_layers.push(HudInventoryBackgroundLayer {
+                    texture: if hovered
+                        || world.dialog_dragging_number_range_input() == Some(input_layout.index)
+                    {
+                        HudInventoryBackgroundTexture::WidgetSliderHandleHighlighted
+                    } else {
+                        HudInventoryBackgroundTexture::WidgetSliderHandle
+                    },
+                    x: input_layout.x.saturating_add(handle_offset),
+                    y: input_layout.y,
+                    width: SLIDER_HANDLE_WIDTH,
+                    height: SLIDER_HEIGHT,
+                    uv: HudUvRect {
+                        min: [0.0, 0.0],
+                        max: [1.0, 1.0],
+                    },
+                });
+                let value = dialog_number_range_scaled_value(range, slider_value);
+                let value = dialog_number_range_value_string(value);
+                let template = match item_runtime {
+                    Some(runtime) => runtime.localized_text(label_format),
+                    None if label_format == "options.generic_value" => "%s: %s",
+                    None => label_format,
+                };
+                let runs = dialog_number_range_label_runs(template, label, &value);
+                let available_width = u32::try_from(input_layout.width)
+                    .unwrap_or(1)
+                    .saturating_sub(SLIDER_TEXT_MARGIN.saturating_mul(2))
+                    .max(1);
+                push_centered_runs_text_label(
+                    &mut text_labels,
+                    runs,
+                    input_layout.x.saturating_add(input_layout.width / 2),
+                    input_layout.y.saturating_add(BUTTON_TEXT_Y_OFFSET),
+                    Some(available_width),
+                );
+            }
+            _ => {}
+        }
     }
 
     for (action, button) in controls.actions.iter().zip(&layout.buttons) {
@@ -586,7 +821,7 @@ pub(super) fn hud_dialog_screen(
         layout.screen_width,
         layout.screen_height,
     )];
-    background_layers.extend(checkbox_layers);
+    background_layers.extend(input_layers);
     background_layers.extend(layout.buttons.iter().enumerate().map(|(index, button)| {
         HudInventoryBackgroundLayer {
             texture: if highlighted_button == Some(index) {
@@ -783,6 +1018,10 @@ pub(crate) fn handle_dialog_mouse_input(
     cursor_position: Option<PhysicalPosition<f64>>,
     surface_size: PhysicalSize<u32>,
 ) -> bool {
+    if button == MouseButton::Left && state == ElementState::Released {
+        world.end_dialog_number_range_drag();
+        return world.dialog_screen_is_open();
+    }
     if world.dialog_waiting_ticks().is_some() {
         if button == MouseButton::Left
             && state == ElementState::Pressed
@@ -793,47 +1032,54 @@ pub(crate) fn handle_dialog_mouse_input(
         }
         return true;
     }
+    if button != MouseButton::Left || state != ElementState::Pressed {
+        return world.current_dialog().is_some();
+    }
+    world.end_dialog_number_range_drag();
     let Some(dialog) = world.current_dialog() else {
         return false;
     };
-    if button != MouseButton::Left || state != ElementState::Pressed {
-        return true;
-    }
     let Some(controls) = dialog.data.as_ref().and_then(simple_dialog_controls) else {
         return true;
     };
     let screen_width = surface_size.width.clamp(1, 512);
     let screen_height = surface_size.height.clamp(1, 512);
-    let boolean_input_index =
-        dialog_input_layouts(controls.common, surface_size).and_then(|layouts| {
-            layouts.into_iter().find_map(|layout| {
-                matches!(
-                    controls
-                        .common
-                        .input_data
-                        .get(layout.index)
-                        .map(|input| &input.control),
-                    Some(DialogInputControlState::Boolean { .. })
-                )
-                .then_some(layout)
-                .filter(|layout| {
-                    dialog_widget_contains(
-                        layout.x,
-                        layout.y,
-                        layout.width,
-                        layout.height,
-                        cursor_position,
-                        surface_size,
-                        screen_width,
-                        screen_height,
-                    )
-                })
-                .map(|layout| layout.index)
-            })
-        });
-    if let Some(index) = boolean_input_index {
-        world.toggle_dialog_boolean_input(index);
-        return true;
+    let input_hit = dialog_input_layouts(controls.common, surface_size).and_then(|layouts| {
+        layouts.into_iter().find_map(|layout| {
+            if !dialog_widget_contains(
+                layout.x,
+                layout.y,
+                layout.width,
+                layout.height,
+                cursor_position,
+                surface_size,
+                screen_width,
+                screen_height,
+            ) {
+                return None;
+            }
+            match &controls.common.input_data.get(layout.index)?.control {
+                DialogInputControlState::Boolean { .. } => {
+                    Some(DialogInputMouseHit::Boolean(layout.index))
+                }
+                DialogInputControlState::NumberRange { .. } => {
+                    Some(DialogInputMouseHit::NumberRange(layout))
+                }
+                _ => None,
+            }
+        })
+    });
+    match input_hit {
+        Some(DialogInputMouseHit::Boolean(index)) => {
+            world.toggle_dialog_boolean_input(index);
+            return true;
+        }
+        Some(DialogInputMouseHit::NumberRange(layout)) => {
+            world.begin_dialog_number_range_drag(layout.index);
+            set_dialog_number_range_from_cursor(world, layout, cursor_position, surface_size);
+            return true;
+        }
+        None => {}
     }
     let Some(action_index) = SimpleDialogLayout::new(
         &controls
@@ -859,6 +1105,54 @@ pub(crate) fn handle_dialog_mouse_input(
         &action.1,
     );
     true
+}
+
+pub(crate) fn handle_dialog_cursor_moved(
+    world: &mut WorldStore,
+    cursor_position: Option<PhysicalPosition<f64>>,
+    surface_size: PhysicalSize<u32>,
+) -> bool {
+    if world.dialog_waiting_ticks().is_some() {
+        world.end_dialog_number_range_drag();
+        return true;
+    }
+    let Some(index) = world.dialog_dragging_number_range_input() else {
+        return world.current_dialog().is_some();
+    };
+    let layout = world
+        .current_dialog()
+        .and_then(|dialog| dialog.data.as_ref())
+        .and_then(simple_dialog_controls)
+        .and_then(|controls| dialog_input_layouts(controls.common, surface_size))
+        .and_then(|layouts| layouts.into_iter().find(|layout| layout.index == index));
+    let Some(layout) = layout else {
+        world.end_dialog_number_range_drag();
+        return world.current_dialog().is_some();
+    };
+    set_dialog_number_range_from_cursor(world, layout, cursor_position, surface_size);
+    true
+}
+
+fn set_dialog_number_range_from_cursor(
+    world: &mut WorldStore,
+    layout: DialogInputLayout,
+    cursor_position: Option<PhysicalPosition<f64>>,
+    surface_size: PhysicalSize<u32>,
+) -> bool {
+    let Some(cursor) = cursor_position else {
+        return false;
+    };
+    let screen_width = surface_size.width.clamp(1, 512);
+    let screen_height = surface_size.height.clamp(1, 512);
+    let (origin_x, _) = centered_screen_origin(surface_size, screen_width, screen_height);
+    let slider_value = (cursor.x
+        - (origin_x + i64::from(layout.x) + i64::from(SLIDER_HANDLE_HALF_WIDTH)) as f64)
+        / f64::from(
+            layout
+                .width
+                .saturating_sub(i32::try_from(SLIDER_HANDLE_WIDTH).unwrap_or(i32::MAX)),
+        );
+    world.set_dialog_number_range_slider_value(layout.index, slider_value)
 }
 
 fn run_dialog_action(
@@ -984,6 +1278,17 @@ fn bound_dialog_input_values(
                 template_substitution: if *selected { on_true } else { on_false }.clone(),
                 tag: NbtSummaryValue::Byte(i8::from(*selected)),
             },
+            (
+                DialogInputControlState::NumberRange { range, .. },
+                Some(DialogInputValueState::NumberRange { slider_value_bits }),
+            ) => {
+                let value =
+                    dialog_number_range_scaled_value(range, f64::from_bits(*slider_value_bits));
+                BoundDialogInputValue {
+                    template_substitution: dialog_number_range_value_string(value),
+                    tag: NbtSummaryValue::Float(value.to_bits()),
+                }
+            }
             _ => return None,
         };
         bound.insert(input.key.clone(), value);
@@ -1273,6 +1578,29 @@ fn push_centered_text_label(
         y,
         width,
         text: text.text.clone(),
+        tint: TEXT_COLOR,
+        background: None,
+        input: None,
+        shadow: false,
+        runs,
+    });
+}
+
+fn push_centered_runs_text_label(
+    labels: &mut Vec<HudInventoryTextLabel>,
+    runs: Vec<HudStyledTextRun>,
+    center_x: i32,
+    y: i32,
+    width_limit: Option<u32>,
+) {
+    let text = runs.iter().map(|run| run.text.as_str()).collect::<String>();
+    let measured_width = runs_approx_width(&runs).max(1);
+    let width = width_limit.map_or(measured_width, |limit| measured_width.min(limit.max(1)));
+    labels.push(HudInventoryTextLabel {
+        x: center_x.saturating_sub(i32::try_from(width).unwrap_or(i32::MAX) / 2),
+        y,
+        width,
+        text,
         tint: TEXT_COLOR,
         background: None,
         input: None,
@@ -1787,6 +2115,242 @@ mod tests {
     }
 
     #[test]
+    fn number_range_renders_drags_and_binds_float_actions() {
+        let mut world = world_with_notice(vec![
+            entry("pause", NbtSummaryValue::Byte(0)),
+            entry("after_action", NbtSummaryValue::String("none".to_string())),
+            entry(
+                "inputs",
+                NbtSummaryValue::List(vec![number_range_input(
+                    "speed",
+                    "Speed",
+                    100,
+                    0.0,
+                    10.0,
+                    Some(2.0),
+                    Some(2.0),
+                )]),
+            ),
+            entry(
+                "action",
+                NbtSummaryValue::Compound(vec![
+                    entry("label", NbtSummaryValue::String("Send".to_string())),
+                    entry(
+                        "action",
+                        NbtSummaryValue::Compound(vec![
+                            entry(
+                                "type",
+                                NbtSummaryValue::String("minecraft:dynamic/custom".to_string()),
+                            ),
+                            entry("id", NbtSummaryValue::String("example:range".to_string())),
+                        ]),
+                    ),
+                ]),
+            ),
+        ]);
+        let surface_size = PhysicalSize::new(320, 240);
+        let input_layout = {
+            let dialog = world.current_dialog().unwrap();
+            let controls = dialog
+                .data
+                .as_ref()
+                .and_then(simple_dialog_controls)
+                .unwrap_or_else(|| panic!("invalid range dialog: {:?}", dialog.semantic_error));
+            dialog_input_layouts(controls.common, surface_size).unwrap()[0]
+        };
+        let screen = hud_dialog_screen(
+            &world,
+            world.current_dialog().unwrap(),
+            None,
+            &TerrainTextureState::default(),
+            &InventoryHudLocalState::default(),
+            surface_size,
+            0.0,
+        )
+        .unwrap();
+        assert!(screen
+            .text_labels
+            .iter()
+            .any(|label| label.text == "Speed: 2"));
+        assert_eq!(
+            screen
+                .background_layers
+                .iter()
+                .filter(|layer| layer.texture == HudInventoryBackgroundTexture::WidgetSlider)
+                .count(),
+            3
+        );
+        assert!(screen.background_layers.iter().any(|layer| {
+            layer.texture == HudInventoryBackgroundTexture::WidgetSliderHandle
+                && layer.x == input_layout.x + 18
+        }));
+
+        let mut counters = NetCounters::default();
+        let (tx, mut rx) = mpsc::channel(2);
+        let net_commands = Some(tx);
+        let pressed_x = input_layout.x + SLIDER_HANDLE_HALF_WIDTH + 69;
+        assert!(handle_dialog_mouse_input(
+            &mut counters,
+            &mut world,
+            &net_commands,
+            None,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(
+                f64::from(pressed_x),
+                f64::from(input_layout.y + 1),
+            )),
+            surface_size,
+        ));
+        assert_eq!(world.dialog_dragging_number_range_input(), Some(0));
+        assert_eq!(
+            world.current_dialog_input_values(),
+            [Some(DialogInputValueState::NumberRange {
+                slider_value_bits: 0.75f64.to_bits(),
+            })]
+        );
+
+        assert!(handle_dialog_cursor_moved(
+            &mut world,
+            Some(PhysicalPosition::new(
+                f64::from(input_layout.x + SLIDER_HANDLE_HALF_WIDTH + 92),
+                f64::from(input_layout.y + 1),
+            )),
+            surface_size,
+        ));
+        assert_eq!(
+            world.current_dialog_input_values(),
+            [Some(DialogInputValueState::NumberRange {
+                slider_value_bits: 1.0f64.to_bits(),
+            })]
+        );
+        assert!(handle_dialog_mouse_input(
+            &mut counters,
+            &mut world,
+            &net_commands,
+            None,
+            MouseButton::Left,
+            ElementState::Released,
+            None,
+            surface_size,
+        ));
+        assert_eq!(world.dialog_dragging_number_range_input(), None);
+
+        assert!(handle_dialog_mouse_input(
+            &mut counters,
+            &mut world,
+            &net_commands,
+            None,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(160.0, 220.0)),
+            surface_size,
+        ));
+        assert_eq!(counters.custom_click_action_commands_queued, 1);
+        assert!(matches!(
+            rx.try_recv().unwrap(),
+            NetCommand::CustomClickAction(CustomClickAction {
+                id,
+                payload: Some(NbtSummaryValue::Compound(entries)),
+            }) if id == "example:range"
+                && entries == vec![entry("speed", NbtSummaryValue::Float(10.0f32.to_bits()))]
+        ));
+
+        world.apply_show_dialog(bbb_protocol::packets::ShowDialog {
+            dialog: DialogHolder::Direct {
+                dialog: NbtSummaryValue::Compound(vec![
+                    entry(
+                        "type",
+                        NbtSummaryValue::String("minecraft:notice".to_string()),
+                    ),
+                    entry("title", NbtSummaryValue::String("Range".to_string())),
+                    entry(
+                        "inputs",
+                        NbtSummaryValue::List(vec![number_range_input(
+                            "speed",
+                            "Speed",
+                            100,
+                            0.0,
+                            10.0,
+                            Some(2.0),
+                            Some(2.0),
+                        )]),
+                    ),
+                    entry(
+                        "action",
+                        NbtSummaryValue::Compound(vec![
+                            entry("label", NbtSummaryValue::String("Run".to_string())),
+                            entry(
+                                "action",
+                                NbtSummaryValue::Compound(vec![
+                                    entry(
+                                        "type",
+                                        NbtSummaryValue::String(
+                                            "minecraft:dynamic/run_command".to_string(),
+                                        ),
+                                    ),
+                                    entry(
+                                        "template",
+                                        NbtSummaryValue::String("/say $(speed)".to_string()),
+                                    ),
+                                ]),
+                            ),
+                        ]),
+                    ),
+                ]),
+            },
+        });
+        assert!(handle_dialog_mouse_input(
+            &mut counters,
+            &mut world,
+            &net_commands,
+            None,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(160.0, 220.0)),
+            surface_size,
+        ));
+        assert_eq!(counters.chat_command_commands_queued, 1);
+        assert!(matches!(
+            rx.try_recv().unwrap(),
+            NetCommand::ChatCommand(command) if command.command == "say 2"
+        ));
+    }
+
+    #[test]
+    fn number_range_step_rounding_and_boundary_correction_match_vanilla() {
+        let range = DialogNumberRangeState {
+            start_bits: 10.0f32.to_bits(),
+            end_bits: 0.0f32.to_bits(),
+            initial_bits: Some(7.5f32.to_bits()),
+            step_bits: Some(2.0f32.to_bits()),
+        };
+
+        let rounded_negative = dialog_number_range_scaled_value(&range, 0.6);
+        assert_eq!(rounded_negative.to_bits(), 3.5f32.to_bits());
+        assert_eq!(dialog_number_range_value_string(rounded_negative), "3.5");
+        assert_eq!(
+            dialog_number_range_scaled_value(&range, 1.0).to_bits(),
+            1.5f32.to_bits()
+        );
+
+        let label = DialogTextState {
+            text: "Speed".to_string(),
+            runs: Vec::new(),
+            component: NbtSummaryValue::String("Speed".to_string()),
+        };
+        let runs = dialog_number_range_label_runs("%2$s / %1$s %%", &label, "3.5");
+        assert_eq!(
+            runs.iter().map(|run| run.text.as_str()).collect::<String>(),
+            "3.5 / Speed %"
+        );
+        assert_eq!(
+            dialog_number_range_label_runs("bad %d", &label, "3.5"),
+            vec![HudStyledTextRun::plain("bad %d")]
+        );
+    }
+
+    #[test]
     fn static_run_command_action_trims_optional_slash_before_send() {
         let mut world = world_with_notice(vec![entry(
             "action",
@@ -1955,6 +2519,7 @@ mod tests {
     #[test]
     fn change_page_dialog_action_only_applies_after_action() {
         let mut world = world_with_notice(vec![
+            entry("pause", NbtSummaryValue::Byte(0)),
             entry(
                 "after_action",
                 NbtSummaryValue::String("wait_for_response".to_string()),
@@ -2182,6 +2747,36 @@ mod tests {
             entry("on_true", NbtSummaryValue::String(on_true.to_string())),
             entry("on_false", NbtSummaryValue::String(on_false.to_string())),
         ])
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn number_range_input(
+        key: &str,
+        label: &str,
+        width: i32,
+        start: f32,
+        end: f32,
+        initial: Option<f32>,
+        step: Option<f32>,
+    ) -> NbtSummaryValue {
+        let mut fields = vec![
+            entry("key", NbtSummaryValue::String(key.to_string())),
+            entry(
+                "type",
+                NbtSummaryValue::String("minecraft:number_range".to_string()),
+            ),
+            entry("width", NbtSummaryValue::Int(width)),
+            entry("label", NbtSummaryValue::String(label.to_string())),
+            entry("start", NbtSummaryValue::Float(start.to_bits())),
+            entry("end", NbtSummaryValue::Float(end.to_bits())),
+        ];
+        if let Some(initial) = initial {
+            fields.push(entry("initial", NbtSummaryValue::Float(initial.to_bits())));
+        }
+        if let Some(step) = step {
+            fields.push(entry("step", NbtSummaryValue::Float(step.to_bits())));
+        }
+        NbtSummaryValue::Compound(fields)
     }
 
     #[test]

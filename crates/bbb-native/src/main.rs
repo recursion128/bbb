@@ -79,10 +79,10 @@ use input::{
 use level_load_runtime::LevelLoadRuntime;
 use particle_runtime::{NativeParticleRuntime, ParticleEventSink};
 use runtime::{
-    control_renderer_counters, handle_dialog_key_input, handle_dialog_mouse_input,
-    publish_snapshot, pump_network_and_terrain, request_net_disconnect, snapshot_is_running,
-    take_control_screenshot, CameraFovTickState, ClientAnimationTickState, DebugCollisionCache,
-    DebugSkyLightSectionCache, DebugSupportingBlockCache, HudDebugFpsSampler,
+    control_renderer_counters, handle_dialog_cursor_moved, handle_dialog_key_input,
+    handle_dialog_mouse_input, publish_snapshot, pump_network_and_terrain, request_net_disconnect,
+    snapshot_is_running, take_control_screenshot, CameraFovTickState, ClientAnimationTickState,
+    DebugCollisionCache, DebugSkyLightSectionCache, DebugSupportingBlockCache, HudDebugFpsSampler,
     HudDebugNetworkSampler, HudDebugTpsSampler, LevelEventSoundRandomState, LightmapTickState,
 };
 use sky_assets::load_sky_textures;
@@ -494,6 +494,11 @@ fn main() -> Result<()> {
                     }
                     if world.dialog_screen_is_open() {
                         input.update_screen_cursor_position(cursor_position);
+                        handle_dialog_cursor_moved(
+                            &mut world,
+                            cursor_position,
+                            window.inner_size(),
+                        );
                         return;
                     }
                     if input.handle_command_suggestion_cursor_moved(&world, cursor_position) {

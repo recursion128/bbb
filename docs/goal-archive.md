@@ -14795,3 +14795,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   `on_true`/`on_false`，dynamic custom 以 byte tag 覆盖同名 additions；dynamic/static run-command 均经既有
   signed-command owner 发送并 trim optional slash。world/native regressions 覆盖初始化/清理、渲染、toggle、
   dynamic custom merge、缺失 template variable 空替换、static command 与 after-action。
+
+## 2026-07-14：Render and drag NumberRange dialog inputs
+
+- [x] 对照 `NumberRangeInput.RangeInfo`、`InputControlHandlers.NumberRangeHandler` 与
+  `AbstractSliderButton`，world UI state 以 bit-exact widened double 保存 initial slider position，native
+  使用 200x20 one-pixel nine-slice track、8px handle 与 `(mouseX-x-4)/(width-8)` 完成 mouse press/drag/release，
+  dialog close/wait/replace 同步清理 transient drag owner。
+- [x] RangeInfo 的 float lerp、以 initial 为基准的 Java `Math.round` step、越界退一步、整数简写与精确
+  `Float.toString` 已用于 localized `label_format`、template substitution 和 FloatTag；regressions 覆盖反向
+  range、负数舍入、edge fallback、indexed translation placeholders、轨道/handle geometry、drag，以及
+  dynamic custom/run-command。键盘 focus/左右键和超长 label 的时间滚动继续留在 TODO。
