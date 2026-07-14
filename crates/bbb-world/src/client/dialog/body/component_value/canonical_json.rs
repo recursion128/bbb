@@ -6,6 +6,7 @@ use bbb_protocol::{
 
 use super::super::DialogDataComponentPatchState;
 use super::holder_set::DialogRegistryHolderSetState;
+use super::sound_event::DialogSoundEventHolderState;
 use super::DialogDataComponentValueState;
 
 /// Returns an exact JsonOps length when every patch value has a supported semantic encoder.
@@ -85,6 +86,13 @@ fn validate_supported_json_floats(value: &DialogDataComponentValueState) -> Resu
                 values.push(decoration.rotation_bits);
             }
         }
+        DialogDataComponentValueState::BreakSound {
+            sound:
+                DialogSoundEventHolderState::Direct {
+                    fixed_range_bits: Some(bits),
+                    ..
+                },
+        } => values.push(*bits),
         _ => {}
     }
     if values
@@ -418,8 +426,25 @@ fn canonical_component_value_json_utf16_len(
         DialogDataComponentValueState::DamageResistant { types } => {
             object_len([("types", registry_holder_set_len(types)?)].into_iter())
         }
+        DialogDataComponentValueState::BreakSound { sound } => sound_event_len(sound)?,
         _ => return None,
     })
+}
+
+fn sound_event_len(sound: &DialogSoundEventHolderState) -> Option<usize> {
+    match sound {
+        DialogSoundEventHolderState::Named { resource_id, .. } => Some(string_len(resource_id)),
+        DialogSoundEventHolderState::Direct {
+            sound_id,
+            fixed_range_bits,
+        } => {
+            let mut fields = vec![("sound_id", string_len(sound_id))];
+            if let Some(bits) = fixed_range_bits {
+                fields.push(("range", canonical_f32_json_utf16_len(*bits)?));
+            }
+            Some(object_len(fields.into_iter()))
+        }
+    }
 }
 
 fn registry_holder_set_len(holder_set: &DialogRegistryHolderSetState) -> Option<usize> {
@@ -851,6 +876,38 @@ mod tests {
             },
             "[]",
         );
+    }
+
+    #[test]
+    fn canonicalizes_registry_file_sound_event_holders() {
+        for (sound, expected) in [
+            (
+                DialogSoundEventHolderState::Named {
+                    registry_id: 0,
+                    resource_id: "minecraft:entity.item.break".to_string(),
+                },
+                r#""minecraft:entity.item.break""#,
+            ),
+            (
+                DialogSoundEventHolderState::Direct {
+                    sound_id: "example:glass".to_string(),
+                    fixed_range_bits: None,
+                },
+                r#"{"sound_id":"example:glass"}"#,
+            ),
+            (
+                DialogSoundEventHolderState::Direct {
+                    sound_id: "example:glass".to_string(),
+                    fixed_range_bits: Some(12.5f32.to_bits()),
+                },
+                r#"{"sound_id":"example:glass","range":12.5}"#,
+            ),
+        ] {
+            assert_exact(
+                DialogDataComponentValueState::BreakSound { sound },
+                expected,
+            );
+        }
     }
 
     fn assert_exact(value: DialogDataComponentValueState, expected: &str) {

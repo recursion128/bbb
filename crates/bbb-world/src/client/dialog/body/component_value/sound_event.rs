@@ -209,6 +209,7 @@ fn decode_direct_sound_event(
 ) -> Result<DialogSoundEventHolderState, String> {
     let sound_id = entries
         .iter()
+        .rev()
         .find(|entry| entry.name == "sound_id")
         .map(|entry| &entry.value)
         .ok_or_else(|| format!("{what} direct holder is missing field sound_id"))?;
@@ -221,6 +222,7 @@ fn decode_direct_sound_event(
         .ok_or_else(|| format!("invalid {what} direct holder field sound_id {raw_sound_id}"))?;
     let fixed_range_bits = entries
         .iter()
+        .rev()
         .find(|entry| entry.name == "range")
         .and_then(|entry| {
             component_f32_bits(&entry.value, &format!("{what} direct holder field range")).ok()
@@ -312,6 +314,30 @@ mod tests {
                 } if fixed_range_bits == expected
             ));
         }
+    }
+
+    #[test]
+    fn direct_break_sound_fields_follow_compound_last_wins_semantics() {
+        let decoded = decode_sound_event_holder(
+            &compound([
+                ("sound_id", NbtSummaryValue::Int(0)),
+                (
+                    "sound_id",
+                    NbtSummaryValue::String("example:glass".to_string()),
+                ),
+                ("range", NbtSummaryValue::String("invalid".to_string())),
+                ("range", NbtSummaryValue::Float(12.5f32.to_bits())),
+            ]),
+            "break sound",
+        )
+        .unwrap();
+        assert!(matches!(
+            decoded,
+            DialogSoundEventHolderState::Direct {
+                sound_id,
+                fixed_range_bits: Some(bits),
+            } if sound_id == "example:glass" && f32::from_bits(bits) == 12.5
+        ));
     }
 
     #[test]

@@ -14200,3 +14200,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   精确形态与显式 session registry 下三组件 hover `show_item` patch 的 32767/32768 UTF-16 unit 边界
   均有回归。show-dialog 和剩余 RegistryFileCodec-direct、typed-NBT、predicate/item-template 及其它
   nested-record positive item-patch value 继续由缺口账本追踪。
+
+## 2026-07-14：Canonicalize break-sound holders
+
+- [x] 对照 `SoundEvent.DIRECT_CODEC`、`SoundEvent.CODEC` 与 `DataComponents.BREAK_SOUND`，扩展单一
+  item-patch canonical owner：named holder 输出 normalized resource-id string，direct holder 输出 required
+  sound_id 与 optional range object；range 使用唯一 JDK 26 float formatter，non-finite 值安全失败。
+- [x] direct sound_id/range 已按 CompoundTag last-wins 修正，并保留 lenient optional range 语义；
+  named/direct-without-range/direct-with-range 精确形态、NaN 拒绝与 written-book hover `show_item`
+  break-sound patch 的 32767/32768 UTF-16 unit 边界均有回归。show-dialog 和剩余
+  RegistryFileCodec-direct、typed-NBT、predicate/item-template 及其它 nested-record positive item-patch
+  value 继续由缺口账本追踪。

@@ -119,8 +119,9 @@ Owner: `bbb-protocol`
   for empty sides. The 13 fixed registry variants (including built-in villager), jukebox song,
   painting variant, and damage type also share normalized resource-id string encoding. Repairable,
   provided banner-pattern, and damage-resistant holder sets now preserve named `#` tags, compact
-  direct singletons, and array-shaped empty/multi-entry sets. Dialog click `show_dialog` payloads
-  also decode through the full
+  direct singletons, and array-shaped empty/multi-entry sets. Break-sound RegistryFileCodec holders
+  now cover named references and direct sound-id/optional-range objects with exact finite-float
+  encoding. Dialog click `show_dialog` payloads also decode through the full
   inline/session-reference `Dialog.CODEC` owner with a shared 64-level semantic-depth budget,
   including recursive item templates and predicates, so registry cycles fail deterministically.
   Object-content player profiles likewise reuse the complete `ResolvableProfile.CODEC`

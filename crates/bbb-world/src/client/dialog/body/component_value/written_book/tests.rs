@@ -210,6 +210,18 @@ fn accepts_written_book_title_page_and_collection_boundaries() {
         "written book",
     )
     .is_ok());
+
+    let break_sound_patch_prefix = concat!(
+        r#"{"text":"item","extra":[""],"hover_event":{"action":"show_item","id":"minecraft:stone","components":{"minecraft:break_sound":{"sound_id":"example:glass","range":12.5}}}}"#
+    )
+    .len();
+    let exact_break_sound_patch_page =
+        component_with_break_sound_item_patch("x".repeat(32_767 - break_sound_patch_prefix), 12.5);
+    assert!(decode_written_book_content(
+        &book_with_pages(vec![exact_break_sound_patch_page]),
+        "written book",
+    )
+    .is_ok());
 }
 
 #[test]
@@ -494,7 +506,27 @@ fn rejects_malformed_written_book_fields_filterables_and_exact_canonical_page_li
             "encodes to 32768 JSON UTF-16 units, maximum is 32767",
         ),
         (
+            book_with_pages(vec![component_with_break_sound_item_patch(
+                "x".repeat(
+                    32_768
+                        - concat!(
+                            r#"{"text":"item","extra":[""],"hover_event":{"action":"show_item","id":"minecraft:stone","components":{"minecraft:break_sound":{"sound_id":"example:glass","range":12.5}}}}"#
+                        )
+                        .len(),
+                ),
+                12.5,
+            )]),
+            "encodes to 32768 JSON UTF-16 units, maximum is 32767",
+        ),
+        (
             book_with_pages(vec![component_with_non_finite_item_patch()]),
+            "canonical item component patch contains a non-finite Float/Double value",
+        ),
+        (
+            book_with_pages(vec![component_with_break_sound_item_patch(
+                String::new(),
+                f32::NAN,
+            )]),
             "canonical item component patch contains a non-finite Float/Double value",
         ),
         (
@@ -741,6 +773,33 @@ fn component_with_named_holder_item_patch(extra: String) -> NbtSummaryValue {
                         string_entry("jukebox_playable", "cat"),
                         string_entry("painting/variant", "kebab"),
                     ]),
+                ),
+            ]),
+        ),
+    ])
+}
+
+fn component_with_break_sound_item_patch(extra: String, range: f32) -> NbtSummaryValue {
+    compound(vec![
+        string_entry("text", "item"),
+        value_entry(
+            "extra",
+            NbtSummaryValue::List(vec![NbtSummaryValue::String(extra)]),
+        ),
+        value_entry(
+            "hover_event",
+            compound(vec![
+                string_entry("action", "show_item"),
+                string_entry("id", "stone"),
+                value_entry(
+                    "components",
+                    compound(vec![value_entry(
+                        "break_sound",
+                        compound(vec![
+                            string_entry("sound_id", "example:glass"),
+                            value_entry("range", NbtSummaryValue::Float(range.to_bits())),
+                        ]),
+                    )]),
                 ),
             ]),
         ),
