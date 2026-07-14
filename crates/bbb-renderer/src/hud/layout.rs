@@ -80,10 +80,10 @@ const HUD_BOSS_BAR_NAME_Y_OFFSET: i32 = 9;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(super) struct HudRect {
-    x: f32,
-    y: f32,
-    width: u32,
-    height: u32,
+    pub(super) x: f32,
+    pub(super) y: f32,
+    pub(super) width: u32,
+    pub(super) height: u32,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

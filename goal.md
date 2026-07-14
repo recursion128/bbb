@@ -379,8 +379,13 @@ footer 顺序循环，方向键复刻 `ContainerEventHandler` 的两层 exact-ov
 PlainMessage/description 取得同样的白色 focus outline，warning/footer 取得 focus sprite/tooltip；
 single-line Text 可用 Tab 离开并在返回时保留 cursor/selection，NumberRange 继续区分 Tab/mouse 的
 keyboard-change mode 与 arrow focus。
-仍须按 `DialogScreen`/`DialogControlSet` 完成 screen blur/depth-clear、ScrollableLayout body 的
-wheel/focus scrolling 与 clipping、NumberRange/SingleOption
+ScrollableLayout body 现由 serde-skipped world `double scrollAmount` owner 驱动，按
+`AbstractScrollArea` 的 10px wheel rate、content-height clamp、6px/32px-min nine-slice scrollbar、
+drag scale 与键盘 focus 上下各留 10px 的 reveal 规则运行；body/input 的背景、focus fill、文字、
+item icon 及 decorations 共享 centered HUD scissor。由于 `ScrollableLayout.Container` 先以
+`AbstractScrollArea.mouseScrolled` 截获 wheel，SingleOption 只在 click/keyboard 路径切换，body wheel
+统一滚动 container。
+仍须按 `DialogScreen`/`DialogControlSet` 完成 screen blur/depth-clear、NumberRange/SingleOption
 超长 label scrolling、Text multiline editor、single-line Text 的 double-click word selection 与
 IME preedit overlay、
 button-list tooltip/scroll/focus、
@@ -392,7 +397,7 @@ label-format、Java Float.toString 与 FloatTag 语义接入；static run-comman
 dynamic run-command/custom 已执行并复用现有 command/custom-click owner。Boolean mouse focus 保持 checkbox
 highlight，Space/Enter/NumpadEnter 切换；NumberRange mouse focus 进入 keyboard-change mode，Space/Enter 切换
 mode、左右键按一像素 slider step 更新，track/handle focus sprite 与 `canChangeValue` 一致。SingleOption 已按 CycleButton 的
-initial-or-first、display-or-id、label-visible、普通/Shift 反向 click 与 wheel 双向 wrap 语义接入，id 同时作为
+initial-or-first、display-or-id、label-visible、普通/Shift 反向 click 与 keyboard wrap 语义接入，id 同时作为
 template substitution 与 StringTag；对应 dynamic action 也已执行，mouse focus 后 Space/Enter/NumpadEnter
 按 Shift 方向切换并保持 button highlight。单行 Text 已按 EditBox 的 label gap、
 20px one-pixel nine-slice、0xE0E0E0 shadow text、focus/cursor/selection/horizontal scroll、mouse press/drag、

@@ -42,6 +42,10 @@ pub struct ClientUiState {
     #[serde(skip)]
     dialog_dragging_text_input: Option<usize>,
     #[serde(skip)]
+    dialog_body_scroll_amount_bits: u64,
+    #[serde(skip)]
+    dialog_body_scroll_drag_y: Option<i32>,
+    #[serde(skip)]
     dialog_warning_open: bool,
     #[serde(skip)]
     dialog_warning_focused_button: Option<bool>,
@@ -135,6 +139,8 @@ impl ClientUiState {
         self.dialog_number_range_keyboard_input = None;
         self.dialog_text_edit = None;
         self.dialog_dragging_text_input = None;
+        self.dialog_body_scroll_amount_bits = 0.0f64.to_bits();
+        self.dialog_body_scroll_drag_y = None;
         self.dialog_input_values = initial_dialog_input_values(&dialog);
         self.current_dialog = Some(dialog);
     }
@@ -148,6 +154,8 @@ impl ClientUiState {
         self.dialog_number_range_keyboard_input = None;
         self.dialog_text_edit = None;
         self.dialog_dragging_text_input = None;
+        self.dialog_body_scroll_amount_bits = 0.0f64.to_bits();
+        self.dialog_body_scroll_drag_y = None;
         self.dialog_input_values.clear();
         self.restore_dialog_previous_screen();
         true
@@ -162,6 +170,8 @@ impl ClientUiState {
         self.dialog_number_range_keyboard_input = None;
         self.dialog_text_edit = None;
         self.dialog_dragging_text_input = None;
+        self.dialog_body_scroll_amount_bits = 0.0f64.to_bits();
+        self.dialog_body_scroll_drag_y = None;
         self.dialog_warning_open = false;
         self.dialog_warning_focused_button = None;
         self.dialog_input_values.clear();
@@ -203,6 +213,8 @@ impl ClientUiState {
         self.dialog_number_range_keyboard_input = None;
         self.dialog_text_edit = None;
         self.dialog_dragging_text_input = None;
+        self.dialog_body_scroll_amount_bits = 0.0f64.to_bits();
+        self.dialog_body_scroll_drag_y = None;
         self.dialog_warning_open = false;
         self.dialog_warning_focused_button = None;
         self.dialog_input_values.clear();
@@ -584,6 +596,51 @@ impl WorldStore {
 
     pub fn dialog_focus(&self) -> Option<DialogFocusState> {
         self.client_ui.dialog_focus
+    }
+
+    pub fn dialog_body_scroll_amount(&self) -> f64 {
+        let amount = f64::from_bits(self.client_ui.dialog_body_scroll_amount_bits);
+        if amount.is_finite() {
+            amount.max(0.0)
+        } else {
+            0.0
+        }
+    }
+
+    pub fn set_dialog_body_scroll_amount(&mut self, amount: f64, max_scroll: f64) -> bool {
+        let max_scroll = if max_scroll.is_finite() {
+            max_scroll.max(0.0)
+        } else {
+            0.0
+        };
+        let amount = if amount.is_finite() {
+            amount.clamp(0.0, max_scroll)
+        } else {
+            0.0
+        };
+        let bits = amount.to_bits();
+        if self.client_ui.dialog_body_scroll_amount_bits == bits {
+            return false;
+        }
+        self.client_ui.dialog_body_scroll_amount_bits = bits;
+        true
+    }
+
+    pub fn begin_dialog_body_scroll_drag(&mut self, cursor_y: i32) {
+        self.client_ui.dialog_body_scroll_drag_y = Some(cursor_y);
+    }
+
+    pub fn dialog_body_scroll_drag_y(&self) -> Option<i32> {
+        self.client_ui.dialog_body_scroll_drag_y
+    }
+
+    pub fn update_dialog_body_scroll_drag_y(&mut self, cursor_y: i32) -> Option<i32> {
+        let previous = self.client_ui.dialog_body_scroll_drag_y.replace(cursor_y)?;
+        Some(cursor_y.saturating_sub(previous))
+    }
+
+    pub fn end_dialog_body_scroll_drag(&mut self) -> bool {
+        self.client_ui.dialog_body_scroll_drag_y.take().is_some()
     }
 
     pub fn focus_dialog_body_item(&mut self, index: usize) -> bool {
@@ -1194,6 +1251,45 @@ mod tests {
 
         assert!(store.close_dialog());
         assert!(store.current_dialog_input_values().is_empty());
+    }
+
+    #[test]
+    fn dialog_body_scroll_state_clamps_drags_and_resets_with_lifecycle() {
+        let entry = |name: &str, value| NbtSummaryEntry {
+            name: name.to_string(),
+            value,
+        };
+        let mut store = WorldStore::new();
+        assert!(store.set_dialog_body_scroll_amount(15.0, 10.0));
+        assert_eq!(store.dialog_body_scroll_amount(), 10.0);
+        store.begin_dialog_body_scroll_drag(40);
+        assert_eq!(store.update_dialog_body_scroll_drag_y(47), Some(7));
+        assert!(store.end_dialog_body_scroll_drag());
+        assert!(!store.end_dialog_body_scroll_drag());
+        assert!(store.set_dialog_body_scroll_amount(f64::NAN, 10.0));
+        assert_eq!(store.dialog_body_scroll_amount(), 0.0);
+
+        store.set_dialog_body_scroll_amount(8.0, 10.0);
+        store.begin_dialog_body_scroll_drag(12);
+        store.apply_show_dialog(ProtocolShowDialog {
+            dialog: DialogHolder::Direct {
+                dialog: NbtSummaryValue::Compound(vec![
+                    entry(
+                        "type",
+                        NbtSummaryValue::String("minecraft:notice".to_string()),
+                    ),
+                    entry("title", NbtSummaryValue::String("Scroll".to_string())),
+                ]),
+            },
+        });
+        assert_eq!(store.dialog_body_scroll_amount(), 0.0);
+        assert_eq!(store.dialog_body_scroll_drag_y(), None);
+
+        store.set_dialog_body_scroll_amount(6.0, 10.0);
+        store.begin_dialog_body_scroll_drag(20);
+        assert!(store.close_dialog());
+        assert_eq!(store.dialog_body_scroll_amount(), 0.0);
+        assert_eq!(store.dialog_body_scroll_drag_y(), None);
     }
 
     #[test]

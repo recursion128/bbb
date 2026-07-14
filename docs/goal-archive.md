@@ -14885,3 +14885,19 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   regression 覆盖完整 Tab 环、Shift 反向、嵌套方向 geometry、description mouse hit、text cursor persistence、
   slider mode 及 focus render。ScrollableLayout body 的 wheel/focus scrolling/clipping 与 button-list 的
   独立 scroll/focus 继续留在 TODO。
+
+## 2026-07-14：Scroll and clip the main dialog body
+
+- [x] 对照 `ScrollableLayout.Container` 与 `AbstractScrollArea`，world 增加 serde-skipped bit-exact
+  `double scrollAmount` 和 scrollbar drag owner；native 按 content-minus-viewport clamp、10px wheel rate、
+  6px scrollbar、32px minimum thumb、`height^2/contentHeight` thumb geometry 与原版 drag scale运行，
+  keyboard focus 越出 viewport 时按上下各 10px margin reveal。
+- [x] renderer 为 inventory-style screen 增加可复用的 nested scroll-area surface；body/input 的 sprite、
+  foreground focus fill、styled/input text 与 item icon 使用同一 centered scissor，scrollbar 复用
+  `widget/scroller_background` / `widget/scroller` nine-slice。既有 floating-item scissor 也改为保留并裁剪
+  count、durability 与 cooldown decorations，不再因部分裁剪直接丢弃装饰。
+- [x] 更正本页早先 “SingleOption wheel wrap” 结论：在 `DialogScreen` 中 CycleButton 是
+  `ScrollableLayout.Container` 的 child，而 Java 方法分派先进入 `AbstractScrollArea.mouseScrolled`，因此
+  viewport 内 wheel 始终滚动 body，不会下发给 SingleOption。regressions 覆盖 overflow range/thumb、
+  wheel interception、focus reveal、scrollbar drag、lifecycle reset、nested sanitizer 与 centered scissor。
+  button-list 的独立 scroll/focus 仍留在 TODO。

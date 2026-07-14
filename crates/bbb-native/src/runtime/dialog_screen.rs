@@ -10,7 +10,8 @@ use bbb_protocol::{
 };
 use bbb_renderer::{
     HudInventoryBackgroundLayer, HudInventoryBackgroundTexture, HudInventoryFillLayer,
-    HudInventoryFillStage, HudInventoryItem, HudInventoryScreen, HudInventoryTextInputDecoration,
+    HudInventoryFillStage, HudInventoryItem, HudInventoryItemScissor, HudInventoryScreen,
+    HudInventoryScrollArea, HudInventoryScrollbar, HudInventoryTextInputDecoration,
     HudInventoryTextLabel, HudInventoryTooltip, HudInventoryTooltipLine, HudStyledTextRun,
     HudTextStyle, HudUvRect, Renderer,
 };
@@ -145,6 +146,24 @@ struct DialogFocusNode {
 struct DialogBodyFocusContainer {
     rectangle: DialogFocusRectangle,
     content_rectangle: DialogFocusRectangle,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct DialogBodyScrollLayout {
+    rectangle: DialogFocusRectangle,
+    content_height: i32,
+    max_scroll: i32,
+    scroll_amount: i32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct DialogScrollbarLayout {
+    x: i32,
+    y: i32,
+    width: i32,
+    height: i32,
+    thumb_y: i32,
+    thumb_height: i32,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -577,9 +596,18 @@ fn dialog_input_dimensions(control: &DialogInputControlState) -> Option<(i32, i3
     }
 }
 
+#[cfg(test)]
 fn dialog_input_layouts(
     common: &CommonDialogDataState,
     surface_size: PhysicalSize<u32>,
+) -> Option<Vec<DialogInputLayout>> {
+    dialog_input_layouts_at_scroll(common, surface_size, 0)
+}
+
+fn dialog_input_layouts_at_scroll(
+    common: &CommonDialogDataState,
+    surface_size: PhysicalSize<u32>,
+    scroll_amount: i32,
 ) -> Option<Vec<DialogInputLayout>> {
     let screen_width = surface_size.width.clamp(1, 512);
     let screen_height = surface_size.height.clamp(1, 512);
@@ -605,7 +633,7 @@ fn dialog_input_layouts(
                 .unwrap_or(i32::MAX)
                 .saturating_mul(BODY_SPACING),
         );
-    let mut y = dialog_content_y(screen_height_i32, content_height);
+    let mut y = dialog_content_y(screen_height_i32, content_height).saturating_sub(scroll_amount);
     for height in body_heights {
         y = y.saturating_add(height).saturating_add(BODY_SPACING);
     }
@@ -626,9 +654,18 @@ fn dialog_input_layouts(
         .collect()
 }
 
+#[cfg(test)]
 fn dialog_focus_graph(
     controls: &SimpleDialogControls<'_>,
     surface_size: PhysicalSize<u32>,
+) -> Option<DialogFocusGraph> {
+    dialog_focus_graph_at_scroll(controls, surface_size, 0)
+}
+
+fn dialog_focus_graph_at_scroll(
+    controls: &SimpleDialogControls<'_>,
+    surface_size: PhysicalSize<u32>,
+    scroll_amount: i32,
 ) -> Option<DialogFocusGraph> {
     let screen_width = surface_size.width.clamp(1, 512);
     let screen_height = surface_size.height.clamp(1, 512);
@@ -664,7 +701,7 @@ fn dialog_focus_graph(
         .max()
         .unwrap_or(0);
     let content_y = dialog_content_y(screen_height_i32, content_height);
-    let mut y = content_y;
+    let mut y = content_y.saturating_sub(scroll_amount);
     let mut body = Vec::new();
     let mut ordinal = 0usize;
     for (index, (body_state, (block_width, block_height))) in controls
@@ -794,7 +831,7 @@ fn dialog_focus_graph(
         },
         content_rectangle: DialogFocusRectangle {
             x: screen_width_i32 / 2 - container_width / 2,
-            y: content_y,
+            y: content_y.saturating_sub(scroll_amount),
             width: container_width,
             height: content_height,
         },
@@ -850,6 +887,149 @@ fn dialog_focus_graph(
         top,
         tab,
     })
+}
+
+fn dialog_body_scroll_layout(
+    common: &CommonDialogDataState,
+    surface_size: PhysicalSize<u32>,
+    scroll_amount: f64,
+) -> Option<DialogBodyScrollLayout> {
+    let screen_width = i32::try_from(surface_size.width.clamp(1, 512)).ok()?;
+    let screen_height = i32::try_from(surface_size.height.clamp(1, 512)).ok()?;
+    let dimensions = common
+        .body_data
+        .iter()
+        .map(dialog_body_declared_dimensions)
+        .chain(
+            common
+                .input_data
+                .iter()
+                .map(|input| dialog_input_dimensions(&input.control)),
+        )
+        .collect::<Option<Vec<_>>>()?;
+    let content_width = dimensions
+        .iter()
+        .map(|(width, _)| *width)
+        .max()
+        .unwrap_or(0);
+    let content_height = dimensions
+        .iter()
+        .map(|(_, height)| *height)
+        .fold(0i32, i32::saturating_add)
+        .saturating_add(
+            i32::try_from(dimensions.len().saturating_sub(1))
+                .unwrap_or(i32::MAX)
+                .saturating_mul(BODY_SPACING),
+        );
+    let height = content_height.min(
+        screen_height
+            .saturating_sub(HEADER_HEIGHT)
+            .saturating_sub(FOOTER_HEIGHT),
+    );
+    let max_scroll = content_height.saturating_sub(height).max(0);
+    let scroll_amount = if scroll_amount.is_finite() {
+        scroll_amount.clamp(0.0, f64::from(max_scroll)) as i32
+    } else {
+        0
+    };
+    let width = content_width.saturating_add(BODY_SCROLLBAR_RESERVE * 2);
+    Some(DialogBodyScrollLayout {
+        rectangle: DialogFocusRectangle {
+            x: screen_width / 2 - width / 2,
+            y: dialog_content_y(screen_height, content_height),
+            width,
+            height,
+        },
+        content_height,
+        max_scroll,
+        scroll_amount,
+    })
+}
+
+fn dialog_scrollbar_layout(layout: DialogBodyScrollLayout) -> Option<DialogScrollbarLayout> {
+    if layout.max_scroll <= 0 || layout.rectangle.height <= 8 || layout.content_height <= 0 {
+        return None;
+    }
+    let thumb_height = layout
+        .rectangle
+        .height
+        .saturating_mul(layout.rectangle.height)
+        .div_euclid(layout.content_height)
+        .clamp(32, layout.rectangle.height.saturating_sub(8));
+    let thumb_y = layout.rectangle.y.max(
+        layout
+            .scroll_amount
+            .saturating_mul(layout.rectangle.height.saturating_sub(thumb_height))
+            .div_euclid(layout.max_scroll)
+            .saturating_add(layout.rectangle.y),
+    );
+    Some(DialogScrollbarLayout {
+        x: layout
+            .rectangle
+            .x
+            .saturating_add(layout.rectangle.width)
+            .saturating_sub(6),
+        y: layout.rectangle.y,
+        width: 6,
+        height: layout.rectangle.height,
+        thumb_y,
+        thumb_height,
+    })
+}
+
+fn dialog_body_viewport_contains(
+    layout: DialogBodyScrollLayout,
+    cursor_position: Option<PhysicalPosition<f64>>,
+    surface_size: PhysicalSize<u32>,
+    screen_width: u32,
+    screen_height: u32,
+) -> bool {
+    dialog_widget_contains(
+        layout.rectangle.x,
+        layout.rectangle.y,
+        layout.rectangle.width,
+        layout.rectangle.height,
+        cursor_position,
+        surface_size,
+        screen_width,
+        screen_height,
+    )
+}
+
+fn dialog_cursor_screen_y(
+    cursor_position: Option<PhysicalPosition<f64>>,
+    surface_size: PhysicalSize<u32>,
+    screen_height: u32,
+) -> Option<i32> {
+    let cursor_y = cursor_position?.y.floor();
+    if !cursor_y.is_finite() {
+        return None;
+    }
+    let (_, origin_y) = centered_screen_origin(
+        surface_size,
+        surface_size.width.clamp(1, 512),
+        screen_height,
+    );
+    i32::try_from((cursor_y as i64).saturating_sub(origin_y)).ok()
+}
+
+fn dialog_scrollbar_contains(
+    scrollbar: DialogScrollbarLayout,
+    cursor_position: Option<PhysicalPosition<f64>>,
+    surface_size: PhysicalSize<u32>,
+    screen_width: u32,
+    screen_height: u32,
+) -> bool {
+    let Some(cursor) = cursor_position else {
+        return false;
+    };
+    let (origin_x, origin_y) = centered_screen_origin(surface_size, screen_width, screen_height);
+    let left = origin_x + i64::from(scrollbar.x);
+    let top = origin_y + i64::from(scrollbar.y);
+    cursor.x >= left as f64
+        && cursor.x <= (left + i64::from(scrollbar.width)) as f64
+        && cursor.y >= top as f64
+        && cursor.y < (top + i64::from(scrollbar.height)) as f64
 }
 
 impl DialogFocusRectangle {
@@ -1448,6 +1628,11 @@ pub(super) fn hud_dialog_screen(
     )?;
     let screen_width_i32 = i32::try_from(layout.screen_width).ok()?;
     let screen_height_i32 = i32::try_from(layout.screen_height).ok()?;
+    let scroll_layout = dialog_body_scroll_layout(
+        controls.common,
+        surface_size,
+        world.dialog_body_scroll_amount(),
+    )?;
     let cursor_screen_position = local_state.cursor_position;
     let cursor_position = local_state
         .cursor_position
@@ -1468,6 +1653,7 @@ pub(super) fn hud_dialog_screen(
         warning_button.title_x,
         warning_button.title_y,
     );
+    let scroll_text_start = text_labels.len();
 
     let body_blocks = controls
         .common
@@ -1522,9 +1708,10 @@ pub(super) fn hud_dialog_screen(
                 .unwrap_or(i32::MAX)
                 .saturating_mul(BODY_SPACING),
         );
-    let mut body_y = dialog_content_y(screen_height_i32, content_height);
+    let mut body_y = dialog_content_y(screen_height_i32, content_height)
+        .saturating_sub(scroll_layout.scroll_amount);
     let mut floating_items = Vec::new();
-    let mut fill_layers = Vec::new();
+    let mut scroll_fill_layers = Vec::new();
     let mut item_tooltip = None;
     for (render_index, (body_index, block)) in body_blocks.into_iter().enumerate() {
         if render_index > 0 {
@@ -1541,7 +1728,7 @@ pub(super) fn hud_dialog_screen(
                     })
                 {
                     push_dialog_outline_layers(
-                        &mut fill_layers,
+                        &mut scroll_fill_layers,
                         block_x,
                         body_y,
                         i32::try_from(text.width).unwrap_or(i32::MAX),
@@ -1555,6 +1742,12 @@ pub(super) fn hud_dialog_screen(
                     body_y.saturating_add(vertical_center_offset(block_height, item.widget_height));
                 item.item.x = block_x;
                 item.item.y = item_y;
+                item.item.scissor = Some(HudInventoryItemScissor {
+                    x: scroll_layout.rectangle.x,
+                    y: scroll_layout.rectangle.y,
+                    width: u32::try_from(scroll_layout.rectangle.width).unwrap_or_default(),
+                    height: u32::try_from(scroll_layout.rectangle.height).unwrap_or_default(),
+                });
                 if world.dialog_focus()
                     == Some(DialogFocusState::Body {
                         index: body_index,
@@ -1562,7 +1755,7 @@ pub(super) fn hud_dialog_screen(
                     })
                 {
                     push_dialog_outline_layers(
-                        &mut fill_layers,
+                        &mut scroll_fill_layers,
                         block_x,
                         item_y,
                         item.widget_width,
@@ -1570,6 +1763,13 @@ pub(super) fn hud_dialog_screen(
                     );
                 }
                 if item.show_tooltip
+                    && dialog_body_viewport_contains(
+                        scroll_layout,
+                        cursor_position,
+                        surface_size,
+                        layout.screen_width,
+                        layout.screen_height,
+                    )
                     && dialog_widget_contains(
                         block_x,
                         item_y,
@@ -1607,7 +1807,7 @@ pub(super) fn hud_dialog_screen(
                         })
                     {
                         push_dialog_outline_layers(
-                            &mut fill_layers,
+                            &mut scroll_fill_layers,
                             description_x,
                             description_y,
                             i32::try_from(description.width).unwrap_or(i32::MAX),
@@ -1626,13 +1826,20 @@ pub(super) fn hud_dialog_screen(
         body_y = body_y.saturating_add(block_height);
     }
 
-    let input_layouts = dialog_input_layouts(controls.common, surface_size)?;
+    let input_layouts =
+        dialog_input_layouts_at_scroll(controls.common, surface_size, scroll_layout.scroll_amount)?;
     let mut input_layers = Vec::new();
     for input_layout in input_layouts {
         let Some(input) = controls.common.input_data.get(input_layout.index) else {
             continue;
         };
-        let hovered = dialog_widget_contains(
+        let hovered = dialog_body_viewport_contains(
+            scroll_layout,
+            cursor_position,
+            surface_size,
+            layout.screen_width,
+            layout.screen_height,
+        ) && dialog_widget_contains(
             input_layout.x,
             input_layout.y,
             input_layout.width,
@@ -1855,6 +2062,8 @@ pub(super) fn hud_dialog_screen(
         }
     }
 
+    let scroll_text_labels = text_labels.split_off(scroll_text_start);
+
     for (action, button) in controls.actions.iter().zip(&layout.buttons) {
         push_centered_text_label(
             &mut text_labels,
@@ -1884,7 +2093,6 @@ pub(super) fn hud_dialog_screen(
             max: [1.0, 1.0],
         },
     });
-    background_layers.extend(input_layers);
     background_layers.extend(layout.buttons.iter().enumerate().map(|(index, button)| {
         HudInventoryBackgroundLayer {
             texture: if highlighted_button == Some(index) || focused_action == Some(index) {
@@ -1988,13 +2196,34 @@ pub(super) fn hud_dialog_screen(
         height: layout.screen_height,
         background_layers,
         foreground_layers: Vec::new(),
-        fill_layers,
+        fill_layers: Vec::new(),
         slots: Vec::new(),
         floating_items,
         foreground_items: Vec::new(),
         ghost_items: Vec::new(),
         entity_previews: Vec::new(),
         text_labels,
+        scroll_area: Some(HudInventoryScrollArea {
+            scissor: HudInventoryItemScissor {
+                x: scroll_layout.rectangle.x,
+                y: scroll_layout.rectangle.y,
+                width: u32::try_from(scroll_layout.rectangle.width).unwrap_or_default(),
+                height: u32::try_from(scroll_layout.rectangle.height).unwrap_or_default(),
+            },
+            background_layers: input_layers,
+            fill_layers: scroll_fill_layers,
+            text_labels: scroll_text_labels,
+            scrollbar: dialog_scrollbar_layout(scroll_layout).map(|scrollbar| {
+                HudInventoryScrollbar {
+                    x: scrollbar.x,
+                    y: scrollbar.y,
+                    width: u32::try_from(scrollbar.width).unwrap_or_default(),
+                    height: u32::try_from(scrollbar.height).unwrap_or_default(),
+                    thumb_y: scrollbar.thumb_y,
+                    thumb_height: u32::try_from(scrollbar.thumb_height).unwrap_or_default(),
+                }
+            }),
+        }),
         hovered_slot_id: None,
         tooltip: warning_tooltip.or(action_tooltip).or(item_tooltip),
     })
@@ -2077,6 +2306,7 @@ pub(super) fn hud_dialog_warning_screen(
         ghost_items: Vec::new(),
         entity_previews: Vec::new(),
         text_labels,
+        scroll_area: None,
         hovered_slot_id: None,
         tooltip: None,
     }
@@ -2156,6 +2386,7 @@ pub(super) fn hud_waiting_response_screen(
         ghost_items: Vec::new(),
         entity_previews: Vec::new(),
         text_labels,
+        scroll_area: None,
         hovered_slot_id: None,
         tooltip: None,
     }
@@ -2347,11 +2578,16 @@ pub(crate) fn handle_dialog_key_input_with_modifiers_for_surface(
         _ => None,
     };
     if code == KeyCode::Tab || direction.is_some() {
+        let scroll_amount = world.dialog_body_scroll_amount();
         let next = world
             .current_dialog()
             .and_then(|dialog| dialog.data.as_ref())
             .and_then(simple_dialog_controls)
-            .and_then(|controls| dialog_focus_graph(&controls, surface_size))
+            .and_then(|controls| {
+                let layout =
+                    dialog_body_scroll_layout(controls.common, surface_size, scroll_amount)?;
+                dialog_focus_graph_at_scroll(&controls, surface_size, layout.scroll_amount)
+            })
             .and_then(|graph| {
                 if code == KeyCode::Tab {
                     next_dialog_tab_focus(&graph, world.dialog_focus(), !shift_down)
@@ -2365,6 +2601,7 @@ pub(crate) fn handle_dialog_key_input_with_modifiers_for_surface(
             });
         if let Some(target) = next {
             world.focus_dialog_navigation_target(target, code == KeyCode::Tab);
+            reveal_dialog_keyboard_focus(world, target, surface_size);
         }
         return true;
     }
@@ -2391,6 +2628,41 @@ pub(crate) fn handle_dialog_key_input_with_modifiers_for_surface(
         "close",
     );
     true
+}
+
+fn reveal_dialog_keyboard_focus(
+    world: &mut WorldStore,
+    target: DialogFocusState,
+    surface_size: PhysicalSize<u32>,
+) -> bool {
+    let scroll_amount = world.dialog_body_scroll_amount();
+    let Some((layout, focused)) = world
+        .current_dialog()
+        .and_then(|dialog| dialog.data.as_ref())
+        .and_then(simple_dialog_controls)
+        .and_then(|controls| {
+            let layout = dialog_body_scroll_layout(controls.common, surface_size, scroll_amount)?;
+            let graph =
+                dialog_focus_graph_at_scroll(&controls, surface_size, layout.scroll_amount)?;
+            let focused = dialog_focus_node(&graph.body, target)?.rectangle;
+            Some((layout, focused))
+        })
+    else {
+        return false;
+    };
+    let top_delta = focused.y.saturating_sub(layout.rectangle.y);
+    let bottom_delta = focused
+        .y
+        .saturating_add(focused.height)
+        .saturating_sub(layout.rectangle.y.saturating_add(layout.rectangle.height));
+    let next = if top_delta < 0 {
+        scroll_amount + f64::from(top_delta) - 10.0
+    } else if bottom_delta > 0 {
+        scroll_amount + f64::from(bottom_delta) + 10.0
+    } else {
+        return false;
+    };
+    world.set_dialog_body_scroll_amount(next, f64::from(layout.max_scroll))
 }
 
 fn handle_focused_dialog_input_key(
@@ -2748,6 +3020,7 @@ pub(crate) fn handle_dialog_mouse_input_with_modifiers_and_measurer(
     if button == MouseButton::Left && state == ElementState::Released {
         world.end_dialog_number_range_drag();
         world.end_dialog_text_input_drag();
+        world.end_dialog_body_scroll_drag();
         return world.dialog_screen_is_open();
     }
     if world.dialog_warning_is_open() {
@@ -2780,6 +3053,7 @@ pub(crate) fn handle_dialog_mouse_input_with_modifiers_and_measurer(
     }
     world.end_dialog_number_range_drag();
     world.end_dialog_text_input_drag();
+    world.end_dialog_body_scroll_drag();
     let Some(dialog) = world.current_dialog() else {
         return false;
     };
@@ -2795,65 +3069,102 @@ pub(crate) fn handle_dialog_mouse_input_with_modifiers_and_measurer(
     }
     let screen_width = surface_size.width.clamp(1, 512);
     let screen_height = surface_size.height.clamp(1, 512);
-    let input_hit = dialog_input_layouts(controls.common, surface_size).and_then(|layouts| {
-        layouts.into_iter().find_map(|layout| {
-            let control = &controls.common.input_data.get(layout.index)?.control;
-            let hit_layout = match control {
-                DialogInputControlState::Text {
-                    label_visible,
-                    multiline: None,
-                    ..
-                } => dialog_single_line_text_box_layout(layout, *label_visible),
-                _ => layout,
-            };
-            if !dialog_widget_contains(
-                hit_layout.x,
-                hit_layout.y,
-                hit_layout.width,
-                hit_layout.height,
-                cursor_position,
-                surface_size,
-                screen_width,
-                screen_height,
-            ) {
-                return None;
-            }
-            match control {
-                DialogInputControlState::Boolean { .. } => {
-                    Some(DialogInputMouseHit::Boolean(layout.index))
-                }
-                DialogInputControlState::NumberRange { .. } => {
-                    Some(DialogInputMouseHit::NumberRange(layout))
-                }
-                DialogInputControlState::SingleOption { .. } => {
-                    Some(DialogInputMouseHit::SingleOption(layout))
-                }
-                DialogInputControlState::Text {
-                    multiline: None, ..
-                } => Some(DialogInputMouseHit::Text(hit_layout)),
-                _ => None,
-            }
-        })
-    });
-    let body_focus_hit = dialog_focus_graph(&controls, surface_size).and_then(|graph| {
-        graph.body.into_iter().find_map(|node| {
-            matches!(node.target, DialogFocusState::Body { .. })
-                .then_some(node)
-                .filter(|node| {
-                    dialog_widget_contains(
-                        node.rectangle.x,
-                        node.rectangle.y,
-                        node.rectangle.width,
-                        node.rectangle.height,
-                        cursor_position,
-                        surface_size,
-                        screen_width,
-                        screen_height,
-                    )
+    let scroll_layout = dialog_body_scroll_layout(
+        controls.common,
+        surface_size,
+        world.dialog_body_scroll_amount(),
+    );
+    if let Some(cursor_y) = scroll_layout.and_then(|scroll_layout| {
+        let scrollbar = dialog_scrollbar_layout(scroll_layout)?;
+        dialog_scrollbar_contains(
+            scrollbar,
+            cursor_position,
+            surface_size,
+            screen_width,
+            screen_height,
+        )
+        .then_some(())?;
+        dialog_cursor_screen_y(cursor_position, surface_size, screen_height)
+    }) {
+        world.begin_dialog_body_scroll_drag(cursor_y);
+        return true;
+    }
+    let Some(scroll_layout) = scroll_layout else {
+        return true;
+    };
+    let cursor_in_body = dialog_body_viewport_contains(
+        scroll_layout,
+        cursor_position,
+        surface_size,
+        screen_width,
+        screen_height,
+    );
+    let input_hit =
+        dialog_input_layouts_at_scroll(controls.common, surface_size, scroll_layout.scroll_amount)
+            .and_then(|layouts| {
+                layouts.into_iter().find_map(|layout| {
+                    let control = &controls.common.input_data.get(layout.index)?.control;
+                    let hit_layout = match control {
+                        DialogInputControlState::Text {
+                            label_visible,
+                            multiline: None,
+                            ..
+                        } => dialog_single_line_text_box_layout(layout, *label_visible),
+                        _ => layout,
+                    };
+                    if !cursor_in_body
+                        || !dialog_widget_contains(
+                            hit_layout.x,
+                            hit_layout.y,
+                            hit_layout.width,
+                            hit_layout.height,
+                            cursor_position,
+                            surface_size,
+                            screen_width,
+                            screen_height,
+                        )
+                    {
+                        return None;
+                    }
+                    match control {
+                        DialogInputControlState::Boolean { .. } => {
+                            Some(DialogInputMouseHit::Boolean(layout.index))
+                        }
+                        DialogInputControlState::NumberRange { .. } => {
+                            Some(DialogInputMouseHit::NumberRange(layout))
+                        }
+                        DialogInputControlState::SingleOption { .. } => {
+                            Some(DialogInputMouseHit::SingleOption(layout))
+                        }
+                        DialogInputControlState::Text {
+                            multiline: None, ..
+                        } => Some(DialogInputMouseHit::Text(hit_layout)),
+                        _ => None,
+                    }
                 })
-                .map(|node| node.target)
-        })
-    });
+            });
+    let body_focus_hit =
+        dialog_focus_graph_at_scroll(&controls, surface_size, scroll_layout.scroll_amount)
+            .and_then(|graph| {
+                graph.body.into_iter().find_map(|node| {
+                    matches!(node.target, DialogFocusState::Body { .. })
+                        .then_some(node)
+                        .filter(|node| {
+                            cursor_in_body
+                                && dialog_widget_contains(
+                                    node.rectangle.x,
+                                    node.rectangle.y,
+                                    node.rectangle.width,
+                                    node.rectangle.height,
+                                    cursor_position,
+                                    surface_size,
+                                    screen_width,
+                                    screen_height,
+                                )
+                        })
+                        .map(|node| node.target)
+                })
+            });
     let action = SimpleDialogLayout::new(
         &controls
             .actions
@@ -3024,44 +3335,30 @@ pub(crate) fn handle_dialog_mouse_wheel(
     };
     let screen_width = surface_size.width.clamp(1, 512);
     let screen_height = surface_size.height.clamp(1, 512);
-    let hovered_index = dialog_input_layouts(controls.common, surface_size).and_then(|layouts| {
-        layouts.into_iter().find_map(|layout| {
-            matches!(
-                controls
-                    .common
-                    .input_data
-                    .get(layout.index)
-                    .map(|input| &input.control),
-                Some(DialogInputControlState::SingleOption { .. })
-            )
-            .then_some(layout)
-            .filter(|layout| {
-                dialog_widget_contains(
-                    layout.x,
-                    layout.y,
-                    layout.width,
-                    layout.height,
-                    cursor_position,
-                    surface_size,
-                    screen_width,
-                    screen_height,
-                )
-            })
-            .map(|layout| layout.index)
-        })
-    });
-    let Some(index) = hovered_index else {
+    let Some(scroll_layout) = dialog_body_scroll_layout(
+        controls.common,
+        surface_size,
+        world.dialog_body_scroll_amount(),
+    ) else {
         return true;
     };
+    if !dialog_body_viewport_contains(
+        scroll_layout,
+        cursor_position,
+        surface_size,
+        screen_width,
+        screen_height,
+    ) {
+        return true;
+    }
     let scroll_y = match delta {
         MouseScrollDelta::LineDelta(_, y) => f64::from(y),
         MouseScrollDelta::PixelDelta(position) => position.y,
     };
-    if scroll_y > 0.0 {
-        cycle_dialog_single_option(world, index, true);
-    } else if scroll_y < 0.0 {
-        cycle_dialog_single_option(world, index, false);
-    }
+    world.set_dialog_body_scroll_amount(
+        world.dialog_body_scroll_amount() - scroll_y * 10.0,
+        f64::from(scroll_layout.max_scroll),
+    );
     true
 }
 
@@ -3088,11 +3385,52 @@ pub(crate) fn handle_dialog_cursor_moved_with_measurer(
     if world.dialog_warning_is_open() {
         world.end_dialog_number_range_drag();
         world.end_dialog_text_input_drag();
+        world.end_dialog_body_scroll_drag();
         return true;
     }
     if world.dialog_waiting_ticks().is_some() {
         world.end_dialog_number_range_drag();
         world.end_dialog_text_input_drag();
+        world.end_dialog_body_scroll_drag();
+        return true;
+    }
+    if world.dialog_body_scroll_drag_y().is_some() {
+        let screen_height = surface_size.height.clamp(1, 512);
+        let Some((layout, scrollbar, cursor_y)) = world
+            .current_dialog()
+            .and_then(|dialog| dialog.data.as_ref())
+            .and_then(simple_dialog_controls)
+            .and_then(|controls| {
+                let layout = dialog_body_scroll_layout(
+                    controls.common,
+                    surface_size,
+                    world.dialog_body_scroll_amount(),
+                )?;
+                let scrollbar = dialog_scrollbar_layout(layout)?;
+                let cursor_y =
+                    dialog_cursor_screen_y(cursor_position, surface_size, screen_height)?;
+                Some((layout, scrollbar, cursor_y))
+            })
+        else {
+            world.end_dialog_body_scroll_drag();
+            return world.current_dialog().is_some();
+        };
+        let delta_y = world
+            .update_dialog_body_scroll_drag_y(cursor_y)
+            .unwrap_or_default();
+        let next = if cursor_y < layout.rectangle.y {
+            0.0
+        } else if cursor_y > layout.rectangle.y.saturating_add(layout.rectangle.height) {
+            f64::from(layout.max_scroll)
+        } else {
+            let travel = layout
+                .rectangle
+                .height
+                .saturating_sub(scrollbar.thumb_height);
+            let scale = (f64::from(layout.max_scroll.max(1)) / f64::from(travel.max(1))).max(1.0);
+            world.dialog_body_scroll_amount() + f64::from(delta_y) * scale
+        };
+        world.set_dialog_body_scroll_amount(next, f64::from(layout.max_scroll));
         return true;
     }
     if let Some(index) = world.dialog_dragging_text_input() {
@@ -3101,7 +3439,16 @@ pub(crate) fn handle_dialog_cursor_moved_with_measurer(
             .and_then(|dialog| dialog.data.as_ref())
             .and_then(simple_dialog_controls)
             .and_then(|controls| {
-                let layouts = dialog_input_layouts(controls.common, surface_size)?;
+                let scroll_layout = dialog_body_scroll_layout(
+                    controls.common,
+                    surface_size,
+                    world.dialog_body_scroll_amount(),
+                )?;
+                let layouts = dialog_input_layouts_at_scroll(
+                    controls.common,
+                    surface_size,
+                    scroll_layout.scroll_amount,
+                )?;
                 let layout = layouts.into_iter().find(|layout| layout.index == index)?;
                 let label_visible = match &controls.common.input_data.get(index)?.control {
                     DialogInputControlState::Text {
@@ -3134,7 +3481,18 @@ pub(crate) fn handle_dialog_cursor_moved_with_measurer(
         .current_dialog()
         .and_then(|dialog| dialog.data.as_ref())
         .and_then(simple_dialog_controls)
-        .and_then(|controls| dialog_input_layouts(controls.common, surface_size))
+        .and_then(|controls| {
+            let scroll_layout = dialog_body_scroll_layout(
+                controls.common,
+                surface_size,
+                world.dialog_body_scroll_amount(),
+            )?;
+            dialog_input_layouts_at_scroll(
+                controls.common,
+                surface_size,
+                scroll_layout.scroll_amount,
+            )
+        })
         .and_then(|layouts| layouts.into_iter().find(|layout| layout.index == index));
     let Some(layout) = layout else {
         world.end_dialog_number_range_drag();
@@ -4262,7 +4620,15 @@ mod tests {
             0.0,
         )
         .unwrap();
-        assert_eq!(focused_plain.fill_layers.len(), 4);
+        assert_eq!(
+            focused_plain
+                .scroll_area
+                .as_ref()
+                .unwrap()
+                .fill_layers
+                .len(),
+            4
+        );
 
         let description = dialog_focus_node(&graph.body, expected[3]).unwrap();
         assert!(handle_dialog_mouse_input(
@@ -4351,6 +4717,168 @@ mod tests {
         ));
         assert_eq!(world.dialog_focus(), Some(expected[7]));
         assert_eq!(world.dialog_text_edit_state().unwrap().cursor, 1);
+    }
+
+    #[test]
+    fn overflowing_dialog_body_scrolls_clips_and_reveals_keyboard_focus() {
+        let body = (0..10)
+            .map(|index| {
+                NbtSummaryValue::Compound(vec![
+                    entry(
+                        "type",
+                        NbtSummaryValue::String("minecraft:plain_message".to_string()),
+                    ),
+                    entry("contents", NbtSummaryValue::String(format!("Line {index}"))),
+                    entry("width", NbtSummaryValue::Int(80)),
+                ])
+            })
+            .collect::<Vec<_>>();
+        let options = vec![
+            NbtSummaryValue::Compound(vec![
+                entry("id", NbtSummaryValue::String("a".to_string())),
+                entry("initial", NbtSummaryValue::Byte(1)),
+            ]),
+            NbtSummaryValue::Compound(vec![entry("id", NbtSummaryValue::String("b".to_string()))]),
+        ];
+        let mut world = world_with_notice(vec![
+            entry("body", NbtSummaryValue::List(body)),
+            entry(
+                "inputs",
+                NbtSummaryValue::List(vec![single_option_input(
+                    "mode", "Mode", 100, true, options,
+                )]),
+            ),
+        ]);
+        let surface_size = PhysicalSize::new(320, 240);
+        let controls = world
+            .current_dialog()
+            .and_then(|dialog| dialog.data.as_ref())
+            .and_then(simple_dialog_controls)
+            .unwrap();
+        let layout = dialog_body_scroll_layout(controls.common, surface_size, 0.0).unwrap();
+        assert_eq!(
+            layout.rectangle,
+            DialogFocusRectangle {
+                x: 100,
+                y: 33,
+                width: 120,
+                height: 174,
+            }
+        );
+        assert_eq!((layout.content_height, layout.max_scroll), (290, 116));
+        assert_eq!(
+            dialog_scrollbar_layout(layout),
+            Some(DialogScrollbarLayout {
+                x: 214,
+                y: 33,
+                width: 6,
+                height: 174,
+                thumb_y: 33,
+                thumb_height: 104,
+            })
+        );
+        let _ = controls;
+
+        assert!(world.focus_dialog_navigation_target(DialogFocusState::Input { index: 0 }, true,));
+        assert!(reveal_dialog_keyboard_focus(
+            &mut world,
+            DialogFocusState::Input { index: 0 },
+            surface_size,
+        ));
+        assert_eq!(world.dialog_body_scroll_amount(), 116.0);
+        let screen = hud_dialog_screen(
+            &world,
+            world.current_dialog().unwrap(),
+            None,
+            &TerrainTextureState::default(),
+            &InventoryHudLocalState::default(),
+            surface_size,
+            0.0,
+        )
+        .unwrap();
+        let scroll_area = screen.scroll_area.as_ref().unwrap();
+        assert_eq!(
+            scroll_area.scissor,
+            HudInventoryItemScissor {
+                x: 100,
+                y: 33,
+                width: 120,
+                height: 174,
+            }
+        );
+        assert_eq!(scroll_area.scrollbar.unwrap().thumb_y, 103);
+        assert!(scroll_area
+            .text_labels
+            .iter()
+            .any(|label| label.text == "Mode: a" && label.y == 193));
+
+        let input_cursor = Some(PhysicalPosition::new(160.0, 190.0));
+        assert!(handle_dialog_mouse_wheel(
+            &mut world,
+            MouseScrollDelta::LineDelta(0.0, 1.0),
+            input_cursor,
+            surface_size,
+        ));
+        assert_eq!(world.dialog_body_scroll_amount(), 106.0);
+        assert_eq!(
+            world.current_dialog_input_values(),
+            [Some(DialogInputValueState::SingleOption {
+                selected_index: 0,
+            })]
+        );
+
+        world.set_dialog_body_scroll_amount(0.0, 116.0);
+        let mut counters = NetCounters::default();
+        assert!(handle_dialog_mouse_input(
+            &mut counters,
+            &mut world,
+            &None,
+            None,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(215.0, 40.0)),
+            surface_size,
+        ));
+        assert_eq!(world.dialog_body_scroll_drag_y(), Some(40));
+        assert!(handle_dialog_cursor_moved(
+            &mut world,
+            Some(PhysicalPosition::new(215.0, 220.0)),
+            surface_size,
+        ));
+        assert_eq!(world.dialog_body_scroll_amount(), 116.0);
+        assert!(handle_dialog_mouse_input(
+            &mut counters,
+            &mut world,
+            &None,
+            None,
+            MouseButton::Left,
+            ElementState::Released,
+            None,
+            surface_size,
+        ));
+        assert_eq!(world.dialog_body_scroll_drag_y(), None);
+        assert!(handle_dialog_mouse_input(
+            &mut counters,
+            &mut world,
+            &None,
+            None,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(220.0, 40.0)),
+            surface_size,
+        ));
+        assert_eq!(world.dialog_body_scroll_drag_y(), Some(40));
+        assert!(handle_dialog_mouse_input(
+            &mut counters,
+            &mut world,
+            &None,
+            None,
+            MouseButton::Left,
+            ElementState::Released,
+            None,
+            surface_size,
+        ));
+        assert_eq!(world.dialog_body_scroll_drag_y(), None);
     }
 
     #[test]
@@ -4701,8 +5229,9 @@ mod tests {
             0.0,
         )
         .unwrap();
-        assert_eq!(screen.text_labels[1].text, "Enabled");
-        assert!(screen.background_layers.iter().any(|layer| {
+        let scroll_area = screen.scroll_area.as_ref().unwrap();
+        assert_eq!(scroll_area.text_labels[0].text, "Enabled");
+        assert!(scroll_area.background_layers.iter().any(|layer| {
             layer.texture == HudInventoryBackgroundTexture::WidgetCheckboxHighlighted
                 && (layer.x, layer.y) == (input_layout.x, input_layout.y)
         }));
@@ -4738,10 +5267,16 @@ mod tests {
             0.0,
         )
         .unwrap();
-        assert!(focused_screen.background_layers.iter().any(|layer| {
-            layer.texture == HudInventoryBackgroundTexture::WidgetCheckboxSelectedHighlighted
-                && (layer.x, layer.y) == (input_layout.x, input_layout.y)
-        }));
+        assert!(focused_screen
+            .scroll_area
+            .as_ref()
+            .unwrap()
+            .background_layers
+            .iter()
+            .any(|layer| {
+                layer.texture == HudInventoryBackgroundTexture::WidgetCheckboxSelectedHighlighted
+                    && (layer.x, layer.y) == (input_layout.x, input_layout.y)
+            }));
         assert!(handle_dialog_key_input_with_modifiers(
             &mut counters,
             &mut world,
@@ -4902,19 +5437,20 @@ mod tests {
             0.0,
         )
         .unwrap();
-        assert!(screen
+        let scroll_area = screen.scroll_area.as_ref().unwrap();
+        assert!(scroll_area
             .text_labels
             .iter()
             .any(|label| label.text == "Speed: 2"));
         assert_eq!(
-            screen
+            scroll_area
                 .background_layers
                 .iter()
                 .filter(|layer| layer.texture == HudInventoryBackgroundTexture::WidgetSlider)
                 .count(),
             3
         );
-        assert!(screen.background_layers.iter().any(|layer| {
+        assert!(scroll_area.background_layers.iter().any(|layer| {
             layer.texture == HudInventoryBackgroundTexture::WidgetSliderHandle
                 && layer.x == input_layout.x + 18
         }));
@@ -4983,6 +5519,9 @@ mod tests {
         .unwrap();
         assert_eq!(
             focused_screen
+                .scroll_area
+                .as_ref()
+                .unwrap()
                 .background_layers
                 .iter()
                 .filter(|layer| {
@@ -5031,6 +5570,9 @@ mod tests {
         .unwrap();
         assert_eq!(
             locked_screen
+                .scroll_area
+                .as_ref()
+                .unwrap()
                 .background_layers
                 .iter()
                 .filter(|layer| {
@@ -5234,12 +5776,13 @@ mod tests {
             0.0,
         )
         .unwrap();
-        assert!(screen
+        let scroll_area = screen.scroll_area.as_ref().unwrap();
+        assert!(scroll_area
             .text_labels
             .iter()
             .any(|label| label.text == "Mode: Second"));
         assert_eq!(
-            screen
+            scroll_area
                 .background_layers
                 .iter()
                 .filter(|layer| {
@@ -5303,6 +5846,9 @@ mod tests {
         .unwrap();
         assert_eq!(
             focused_screen
+                .scroll_area
+                .as_ref()
+                .unwrap()
                 .background_layers
                 .iter()
                 .filter(|layer| {
@@ -5347,7 +5893,7 @@ mod tests {
         assert_eq!(
             world.current_dialog_input_values(),
             [Some(DialogInputValueState::SingleOption {
-                selected_index: 2,
+                selected_index: 1,
             })]
         );
         assert!(handle_dialog_mouse_wheel(
@@ -5444,11 +5990,12 @@ mod tests {
             0.0,
         )
         .unwrap();
-        assert!(screen
+        let scroll_area = screen.scroll_area.as_ref().unwrap();
+        assert!(scroll_area
             .text_labels
             .iter()
             .any(|label| label.text == "Alpha Display"));
-        assert!(!screen
+        assert!(!scroll_area
             .text_labels
             .iter()
             .any(|label| label.text.contains("Mode:")));
@@ -5499,10 +6046,11 @@ mod tests {
             0.0,
         )
         .unwrap();
-        assert!(screen.text_labels.iter().any(|label| {
+        let scroll_area = screen.scroll_area.as_ref().unwrap();
+        assert!(scroll_area.text_labels.iter().any(|label| {
             label.text == "Name" && (label.x, label.y) == (input_layout.x, input_layout.y)
         }));
-        let text = screen
+        let text = scroll_area
             .text_labels
             .iter()
             .find(|label| label.text == "ab😀")
@@ -5516,7 +6064,7 @@ mod tests {
         assert_eq!(text.tint, TEXT_INPUT_COLOR);
         assert!(text.shadow);
         assert_eq!(
-            screen
+            scroll_area
                 .background_layers
                 .iter()
                 .filter(|layer| {
@@ -5667,6 +6215,9 @@ mod tests {
         .unwrap();
         assert_eq!(
             screen
+                .scroll_area
+                .as_ref()
+                .unwrap()
                 .background_layers
                 .iter()
                 .filter(|layer| {
@@ -5677,6 +6228,9 @@ mod tests {
             3
         );
         let edited = screen
+            .scroll_area
+            .as_ref()
+            .unwrap()
             .text_labels
             .iter()
             .find(|label| label.text == "😀😀")

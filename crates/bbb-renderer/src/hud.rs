@@ -1638,6 +1638,27 @@ pub struct HudInventoryTooltip {
     pub lines: Vec<HudInventoryTooltipLine>,
 }
 
+/// A clipped child surface inside a centered inventory-style screen. Coordinates
+/// use the same screen-relative space as the parent layers.
+#[derive(Debug, Clone, PartialEq)]
+pub struct HudInventoryScrollArea {
+    pub scissor: HudInventoryItemScissor,
+    pub background_layers: Vec<HudInventoryBackgroundLayer>,
+    pub fill_layers: Vec<HudInventoryFillLayer>,
+    pub text_labels: Vec<HudInventoryTextLabel>,
+    pub scrollbar: Option<HudInventoryScrollbar>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct HudInventoryScrollbar {
+    pub x: i32,
+    pub y: i32,
+    pub width: u32,
+    pub height: u32,
+    pub thumb_y: i32,
+    pub thumb_height: u32,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct HudInventoryScreen {
     pub width: u32,
@@ -1658,6 +1679,7 @@ pub struct HudInventoryScreen {
     /// Entity previews drawn through vanilla GUI picture-in-picture renderers.
     pub entity_previews: Vec<HudEntityPreview>,
     pub text_labels: Vec<HudInventoryTextLabel>,
+    pub scroll_area: Option<HudInventoryScrollArea>,
     pub hovered_slot_id: Option<u16>,
     pub tooltip: Option<HudInventoryTooltip>,
 }
@@ -4519,6 +4541,19 @@ impl Renderer {
                 screen,
                 &screen.background_layers,
             );
+            if let Some(area) = &screen.scroll_area {
+                if push_hud_inventory_scissor(&mut commands, surface_size, screen, area.scissor) {
+                    push_hud_inventory_background_layers(
+                        &mut vertices,
+                        &mut commands,
+                        self,
+                        surface_size,
+                        screen,
+                        &area.background_layers,
+                    );
+                    push_hud_inventory_scissor_reset(&mut commands, surface_size);
+                }
+            }
 
             // Vanilla screens submit the entity preview right after the background blit
             // (`InventoryScreen.renderBg` / `SmithingScreen.renderBg`), and
@@ -4632,8 +4667,28 @@ impl Renderer {
                 &self.hud_white_pixel,
                 surface_size,
                 screen,
+                &screen.fill_layers,
                 HudInventoryFillStage::BeforeGhostItem,
             );
+            if let Some(area) = &screen.scroll_area {
+                if push_hud_inventory_scissor(
+                    &mut post_gui_item_commands,
+                    surface_size,
+                    screen,
+                    area.scissor,
+                ) {
+                    push_hud_inventory_fill_layers(
+                        &mut vertices,
+                        &mut post_gui_item_commands,
+                        &self.hud_white_pixel,
+                        surface_size,
+                        screen,
+                        &area.fill_layers,
+                        HudInventoryFillStage::BeforeGhostItem,
+                    );
+                    push_hud_inventory_scissor_reset(&mut post_gui_item_commands, surface_size);
+                }
+            }
             if let Some(atlas) = item_atlas {
                 for item in &screen.ghost_items {
                     let item_rect = inventory_slot_item_hud_rect(
@@ -4664,8 +4719,28 @@ impl Renderer {
                 &self.hud_white_pixel,
                 surface_size,
                 screen,
+                &screen.fill_layers,
                 HudInventoryFillStage::AfterGhostItem,
             );
+            if let Some(area) = &screen.scroll_area {
+                if push_hud_inventory_scissor(
+                    &mut post_gui_item_commands,
+                    surface_size,
+                    screen,
+                    area.scissor,
+                ) {
+                    push_hud_inventory_fill_layers(
+                        &mut vertices,
+                        &mut post_gui_item_commands,
+                        &self.hud_white_pixel,
+                        surface_size,
+                        screen,
+                        &area.fill_layers,
+                        HudInventoryFillStage::AfterGhostItem,
+                    );
+                    push_hud_inventory_scissor_reset(&mut post_gui_item_commands, surface_size);
+                }
+            }
             if let Some(atlas) = item_atlas {
                 for item in screen
                     .ghost_items
@@ -4739,8 +4814,28 @@ impl Renderer {
                 &self.hud_white_pixel,
                 surface_size,
                 screen,
+                &screen.fill_layers,
                 HudInventoryFillStage::Foreground,
             );
+            if let Some(area) = &screen.scroll_area {
+                if push_hud_inventory_scissor(
+                    &mut post_gui_item_commands,
+                    surface_size,
+                    screen,
+                    area.scissor,
+                ) {
+                    push_hud_inventory_fill_layers(
+                        &mut vertices,
+                        &mut post_gui_item_commands,
+                        &self.hud_white_pixel,
+                        surface_size,
+                        screen,
+                        &area.fill_layers,
+                        HudInventoryFillStage::Foreground,
+                    );
+                    push_hud_inventory_scissor_reset(&mut post_gui_item_commands, surface_size);
+                }
+            }
 
             push_hud_inventory_background_layers(
                 &mut vertices,
@@ -4761,7 +4856,41 @@ impl Renderer {
                 self.counters.frame_index,
                 surface_size,
                 screen,
+                &screen.text_labels,
             );
+            if let Some(area) = &screen.scroll_area {
+                if push_hud_inventory_scissor(
+                    &mut post_gui_item_commands,
+                    surface_size,
+                    screen,
+                    area.scissor,
+                ) {
+                    push_hud_inventory_text_labels(
+                        &mut vertices,
+                        &mut post_gui_item_commands,
+                        &self.hud_white_pixel,
+                        self.hud_font_atlas.as_ref(),
+                        &self.hud_font_glyphs,
+                        &self.hud_obfuscated_glyph_pool,
+                        self.counters.frame_index,
+                        surface_size,
+                        screen,
+                        &area.text_labels,
+                    );
+                    push_hud_inventory_scissor_reset(&mut post_gui_item_commands, surface_size);
+                }
+                if let Some(scrollbar) = area.scrollbar {
+                    push_hud_inventory_scrollbar(
+                        &mut vertices,
+                        &mut post_gui_item_commands,
+                        &self.hud_white_pixel,
+                        &self.hud_stats_scrollbar_sprites,
+                        surface_size,
+                        screen,
+                        scrollbar,
+                    );
+                }
+            }
 
             if let Some(atlas) = item_atlas {
                 for item in &screen.foreground_items {
@@ -5747,7 +5876,8 @@ fn push_hud_item_icon_clipped<'a>(
         }
         None => (item_rect, [0.0, 0.0], [1.0, 1.0]),
     };
-    let draw_decorations = draw_decorations && scissor_rect.is_none();
+    let scissor_active =
+        scissor_rect.is_some_and(|rect| push_hud_rect_scissor(commands, surface_size, rect));
     for_each_hud_item_icon_draw_step(icon, draw_layers, draw_decorations, |step| match step {
         HudItemIconDrawStep::Layers => {
             for layer in &icon.layers {
@@ -5802,6 +5932,9 @@ fn push_hud_item_icon_clipped<'a>(
             icon.count_label.as_ref(),
         ),
     });
+    if scissor_active {
+        push_hud_inventory_scissor_reset(commands, surface_size);
+    }
 }
 
 fn for_each_hud_item_icon_draw_step(
@@ -5949,6 +6082,66 @@ fn push_hud_item_count_label<'a>(
     }
 }
 
+fn push_hud_rect_scissor(
+    commands: &mut Vec<HudDrawCommand<'_>>,
+    surface_size: PhysicalSize<u32>,
+    rect: HudRect,
+) -> bool {
+    let left = rect.x.floor().max(0.0).min(surface_size.width as f32) as u32;
+    let top = rect.y.floor().max(0.0).min(surface_size.height as f32) as u32;
+    let right = (rect.x + rect.width as f32)
+        .ceil()
+        .max(0.0)
+        .min(surface_size.width as f32) as u32;
+    let bottom = (rect.y + rect.height as f32)
+        .ceil()
+        .max(0.0)
+        .min(surface_size.height as f32) as u32;
+    if right <= left || bottom <= top {
+        return false;
+    }
+    commands.push(HudDrawCommand::Scissor {
+        x: left,
+        y: top,
+        width: right - left,
+        height: bottom - top,
+    });
+    true
+}
+
+fn push_hud_inventory_scissor(
+    commands: &mut Vec<HudDrawCommand<'_>>,
+    surface_size: PhysicalSize<u32>,
+    screen: &HudInventoryScreen,
+    scissor: HudInventoryItemScissor,
+) -> bool {
+    push_hud_rect_scissor(
+        commands,
+        surface_size,
+        inventory_background_hud_rect(
+            surface_size,
+            screen.width,
+            screen.height,
+            scissor.x,
+            scissor.y,
+            scissor.width,
+            scissor.height,
+        ),
+    )
+}
+
+fn push_hud_inventory_scissor_reset(
+    commands: &mut Vec<HudDrawCommand<'_>>,
+    surface_size: PhysicalSize<u32>,
+) {
+    commands.push(HudDrawCommand::Scissor {
+        x: 0,
+        y: 0,
+        width: surface_size.width.max(1),
+        height: surface_size.height.max(1),
+    });
+}
+
 #[allow(clippy::too_many_arguments)]
 fn push_hud_inventory_fill_layers<'a>(
     vertices: &mut Vec<HudVertex>,
@@ -5956,13 +6149,10 @@ fn push_hud_inventory_fill_layers<'a>(
     white_pixel: &'a HudSpriteGpu,
     surface_size: PhysicalSize<u32>,
     screen: &HudInventoryScreen,
+    layers: &[HudInventoryFillLayer],
     stage: HudInventoryFillStage,
 ) {
-    for layer in screen
-        .fill_layers
-        .iter()
-        .filter(|layer| layer.stage == stage)
-    {
+    for layer in layers.iter().filter(|layer| layer.stage == stage) {
         push_hud_draw_with_uv_and_tint(
             vertices,
             commands,
@@ -5983,6 +6173,75 @@ fn push_hud_inventory_fill_layers<'a>(
             },
             layer.tint,
         );
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn push_hud_inventory_scrollbar<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    white_pixel: &'a HudSpriteGpu,
+    sprites: &'a [Option<HudNineSliceSprite>; HudStatsScrollbarSprite::COUNT],
+    surface_size: PhysicalSize<u32>,
+    screen: &HudInventoryScreen,
+    scrollbar: HudInventoryScrollbar,
+) {
+    let background = inventory_background_hud_rect(
+        surface_size,
+        screen.width,
+        screen.height,
+        scrollbar.x,
+        scrollbar.y,
+        scrollbar.width,
+        scrollbar.height,
+    );
+    let thumb = inventory_background_hud_rect(
+        surface_size,
+        screen.width,
+        screen.height,
+        scrollbar.x,
+        scrollbar.thumb_y,
+        scrollbar.width,
+        scrollbar.thumb_height,
+    );
+    for (kind, rect, missing_asset_tint) in [
+        (
+            HudStatsScrollbarSprite::Background,
+            background,
+            [0.0, 0.0, 0.0, 0.45],
+        ),
+        (
+            HudStatsScrollbarSprite::Scroller,
+            thumb,
+            [0.55, 0.55, 0.55, 0.92],
+        ),
+    ] {
+        if let Some(sprite) = sprites[kind.as_index()].as_ref() {
+            for segment in nine_slice_segments(rect, sprite.scaling) {
+                push_hud_draw_with_uv_and_tint(
+                    vertices,
+                    commands,
+                    &sprite.gpu,
+                    surface_size,
+                    segment.rect,
+                    segment.uv,
+                    HUD_TINT_WHITE,
+                );
+            }
+        } else {
+            push_hud_draw_with_uv_and_tint(
+                vertices,
+                commands,
+                white_pixel,
+                surface_size,
+                rect,
+                HudUvRect {
+                    min: [0.0, 0.0],
+                    max: [1.0, 1.0],
+                },
+                missing_asset_tint,
+            );
+        }
     }
 }
 
@@ -6028,11 +6287,12 @@ fn push_hud_inventory_text_labels<'a>(
     obfuscated_seed: u64,
     surface_size: PhysicalSize<u32>,
     screen: &HudInventoryScreen,
+    labels: &[HudInventoryTextLabel],
 ) {
     let Some(font_atlas) = font_atlas else {
         return;
     };
-    for label in &screen.text_labels {
+    for label in labels {
         if let Some(background) = label.background {
             push_hud_draw_with_uv_and_tint(
                 vertices,
@@ -12030,9 +12290,61 @@ fn sanitize_hud_inventory_screen(screen: HudInventoryScreen) -> HudInventoryScre
             .into_iter()
             .filter_map(sanitize_hud_inventory_text_label)
             .collect(),
+        scroll_area: screen
+            .scroll_area
+            .and_then(sanitize_hud_inventory_scroll_area),
         hovered_slot_id: screen.hovered_slot_id,
         tooltip: screen.tooltip.and_then(sanitize_hud_inventory_tooltip),
     }
+}
+
+fn sanitize_hud_inventory_scroll_area(
+    area: HudInventoryScrollArea,
+) -> Option<HudInventoryScrollArea> {
+    let scissor = sanitize_hud_inventory_item_scissor(area.scissor)?;
+    Some(HudInventoryScrollArea {
+        scissor,
+        background_layers: area
+            .background_layers
+            .into_iter()
+            .filter_map(sanitize_hud_inventory_background_layer)
+            .collect(),
+        fill_layers: area
+            .fill_layers
+            .into_iter()
+            .filter_map(sanitize_hud_inventory_fill_layer)
+            .collect(),
+        text_labels: area
+            .text_labels
+            .into_iter()
+            .filter_map(sanitize_hud_inventory_text_label)
+            .collect(),
+        scrollbar: area.scrollbar.and_then(sanitize_hud_inventory_scrollbar),
+    })
+}
+
+fn sanitize_hud_inventory_scrollbar(
+    scrollbar: HudInventoryScrollbar,
+) -> Option<HudInventoryScrollbar> {
+    if scrollbar.width == 0 || scrollbar.height == 0 || scrollbar.thumb_height == 0 {
+        return None;
+    }
+    let width = scrollbar.width.min(512);
+    let height = scrollbar.height.min(512);
+    let thumb_height = scrollbar.thumb_height.min(height);
+    let thumb_y = scrollbar.thumb_y.clamp(
+        scrollbar.y,
+        scrollbar
+            .y
+            .saturating_add(i32::try_from(height.saturating_sub(thumb_height)).unwrap_or(i32::MAX)),
+    );
+    Some(HudInventoryScrollbar {
+        width,
+        height,
+        thumb_y,
+        thumb_height,
+        ..scrollbar
+    })
 }
 
 fn sanitize_hud_sign_editor_screen(mut screen: HudSignEditorScreen) -> Option<HudSignEditorScreen> {
@@ -16317,6 +16629,7 @@ mod tests {
                     runs: Vec::new(),
                 },
             ],
+            scroll_area: None,
             hovered_slot_id: Some(7),
             tooltip: Some(HudInventoryTooltip {
                 slot_id: 5,
@@ -16572,6 +16885,7 @@ mod tests {
             foreground_items: Vec::new(),
             ghost_items: Vec::new(),
             entity_previews: Vec::new(),
+            scroll_area: None,
             hovered_slot_id: None,
             tooltip: None,
             text_labels: Vec::new(),
@@ -17158,9 +17472,93 @@ mod tests {
             ghost_items: Vec::new(),
             entity_previews,
             text_labels: Vec::new(),
+            scroll_area: None,
             hovered_slot_id: None,
             tooltip: None,
         }
+    }
+
+    #[test]
+    fn inventory_scroll_area_sanitizes_nested_layers_and_emits_centered_scissor() {
+        let mut screen = hud_inventory_screen_with_entity_previews(Vec::new());
+        screen.scroll_area = Some(HudInventoryScrollArea {
+            scissor: HudInventoryItemScissor {
+                x: 10,
+                y: 20,
+                width: 80,
+                height: 60,
+            },
+            background_layers: vec![HudInventoryBackgroundLayer {
+                texture: HudInventoryBackgroundTexture::WidgetButton,
+                x: 12,
+                y: 24,
+                width: 40,
+                height: 0,
+                uv: HudUvRect {
+                    min: [0.0, 0.0],
+                    max: [1.0, 1.0],
+                },
+            }],
+            fill_layers: vec![HudInventoryFillLayer {
+                x: 12,
+                y: 24,
+                width: 40,
+                height: 12,
+                tint: [2.0, 0.5, -1.0, 1.0],
+                stage: HudInventoryFillStage::Foreground,
+            }],
+            text_labels: vec![HudInventoryTextLabel {
+                x: 12,
+                y: 24,
+                width: 40,
+                text: "Body".to_string(),
+                tint: HUD_TINT_WHITE,
+                background: None,
+                input: None,
+                shadow: false,
+                runs: Vec::new(),
+            }],
+            scrollbar: Some(HudInventoryScrollbar {
+                x: 84,
+                y: 20,
+                width: 6,
+                height: 60,
+                thumb_y: 30,
+                thumb_height: 100,
+            }),
+        });
+        let screen = sanitize_hud_inventory_screen(screen);
+        let area = screen.scroll_area.as_ref().unwrap();
+        assert!(area.background_layers.is_empty());
+        assert_eq!(area.fill_layers[0].tint, [1.0, 0.5, 0.0, 1.0]);
+        assert_eq!(area.text_labels[0].text, "Body");
+        assert_eq!(area.scrollbar.unwrap().thumb_height, 60);
+
+        let mut commands = Vec::new();
+        assert!(push_hud_inventory_scissor(
+            &mut commands,
+            PhysicalSize::new(320, 240),
+            &screen,
+            area.scissor,
+        ));
+        push_hud_inventory_scissor_reset(&mut commands, PhysicalSize::new(320, 240));
+        assert!(matches!(
+            commands.as_slice(),
+            [
+                HudDrawCommand::Scissor {
+                    x: 82,
+                    y: 57,
+                    width: 80,
+                    height: 60,
+                },
+                HudDrawCommand::Scissor {
+                    x: 0,
+                    y: 0,
+                    width: 320,
+                    height: 240,
+                }
+            ]
+        ));
     }
 
     #[test]

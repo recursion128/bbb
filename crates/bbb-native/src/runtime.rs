@@ -6319,6 +6319,7 @@ fn hud_inventory_screen_with_local_state_for_surface(
         ghost_items,
         entity_previews,
         text_labels,
+        scroll_area: None,
         hovered_slot_id: hovered_slot_id.and_then(|slot| u16::try_from(slot).ok()),
         tooltip: hud_inventory_tooltip(
             world,
@@ -7889,6 +7890,7 @@ fn hud_book_screen(book: &BookScreenState) -> HudInventoryScreen {
         ghost_items: Vec::new(),
         entity_previews: Vec::new(),
         text_labels: book_screen_text_labels(book),
+        scroll_area: None,
         hovered_slot_id: None,
         tooltip: None,
     }
@@ -8044,6 +8046,7 @@ fn hud_advancements_screen(
         ghost_items: Vec::new(),
         entity_previews: Vec::new(),
         text_labels,
+        scroll_area: None,
         hovered_slot_id: None,
         tooltip: None,
     }

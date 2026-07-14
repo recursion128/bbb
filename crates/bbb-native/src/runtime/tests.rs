@@ -14176,12 +14176,21 @@ fn hud_inventory_screen_projects_notice_dialog_text_body_and_hovered_action() {
             .iter()
             .map(|label| (label.text.as_str(), label.x, label.y, label.width))
             .collect::<Vec<_>>(),
+        vec![("Native Notice", 107, 13, 76), ("Continue", 132, 219, 56),]
+    );
+    assert_eq!(
+        screen
+            .scroll_area
+            .as_ref()
+            .unwrap()
+            .text_labels
+            .iter()
+            .map(|label| (label.text.as_str(), label.x, label.y, label.width))
+            .collect::<Vec<_>>(),
         vec![
-            ("Native Notice", 107, 13, 76),
             ("Alp", 151, 67, 18),
             ("haB", 151, 76, 18),
             ("eta", 151, 85, 18),
-            ("Continue", 132, 219, 56),
         ]
     );
     let action_label = screen.text_labels.last().unwrap();
@@ -14302,6 +14311,9 @@ fn hud_inventory_screen_projects_dialog_item_body_structured_patches() {
     );
     assert!(item.block_model.is_none());
     assert!(screen
+        .scroll_area
+        .as_ref()
+        .unwrap()
         .text_labels
         .iter()
         .any(|label| { label.text == "Info" && (label.x, label.y, label.width) == (165, 83, 24) }));
@@ -14322,6 +14334,9 @@ fn hud_inventory_screen_projects_dialog_item_body_structured_patches() {
     .unwrap();
     assert_eq!(
         focused
+            .scroll_area
+            .as_ref()
+            .unwrap()
             .fill_layers
             .iter()
             .map(|layer| {

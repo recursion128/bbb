@@ -69,7 +69,6 @@ Owner: `bbb-protocol`
 - Complete native `Dialog` screen/runtime behavior against
   `DialogScreen`, `SimpleDialogScreen`, `DialogControlSet`, and
   `DialogBodyHandlers`: add the in-world screen blur/depth-clear;
-  add ScrollableLayout body wheel/focus scrolling and clipping,
   NumberRange/SingleOption long-label scrolling, the multiline Text editor, and single-line Text
   double-click word selection and IME preedit overlay,
   remaining button-list action tooltips, and the
@@ -110,7 +109,7 @@ Owner: `bbb-protocol`
   mouse click/drag semantics, exact RangeInfo step/edge math, localized label format, Java float
   text and FloatTag bindings into the same dynamic actions, renders SingleOption through the
   nine-sliced CycleButton with initial/display/label-visible semantics, cycles forward/backward by
-  ordinary/Shift click and wheel with wraparound, binds its id as template text and StringTag, and renders
+  ordinary/Shift click and keyboard with wraparound, binds its id as template text and StringTag, and renders
   mouse-focused Boolean/NumberRange/SingleOption states with their vanilla focus sprites, toggles Boolean
   by Space/Enter, toggles NumberRange keyboard-change mode by Space/Enter and moves it by one slider pixel
   with Left/Right, and cycles SingleOption by Space/Enter with Shift reversal; it renders
