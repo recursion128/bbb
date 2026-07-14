@@ -14431,3 +14431,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   previous screen，late ClearDialog 只计包而不关闭，新的 ShowDialog 替换 waiting 但继续继承原 previous
   screen。生产 tick、键鼠/光标屏蔽、disabled widget sprite、previous-screen restore 与静态 custom
   id/payload 均有 focused regression。
+
+## 2026-07-14：Project native Confirmation dialogs
+
+- [x] 对照 `ConfirmationDialog`、`SimpleDialogScreen.updateHeaderAndFooter` 与 `LinearLayout`，把既有
+  Notice 单按钮布局收敛为共享 simple-dialog owner；Confirmation 按 yes/no 声明顺序和宽度投影两个
+  footer 按钮，保持 vanilla 8px horizontal spacing、整行居中、独立 hover sprite 与共享
+  PlainMessage/title projection。
+- [x] Confirmation 鼠标命中执行对应 yes/no action 和 common `after_action`，Escape 在
+  `can_close_with_escape` 允许时绑定 no 按钮 action 并强制 CLOSE。双 custom action 的命令顺序、
+  `after_action=none` 留屏、Escape restore、精确按钮坐标/宽度/label/hover 均有 focused regression；
+  tooltip、inputs 与剩余 button-list dialogs 继续由缺口账本追踪。

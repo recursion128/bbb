@@ -6,7 +6,8 @@ use bbb_renderer::{
     HudInventoryTextLabel, HudStyledTextRun, HudTextStyle, HudUvRect,
 };
 use bbb_world::{
-    DialogActionState, DialogBodyState, DialogDataState, DialogState, DialogTextState, WorldStore,
+    CommonDialogDataState, DialogActionState, DialogBodyState, DialogButtonState, DialogDataState,
+    DialogState, DialogTextState, WorldStore,
 };
 use tokio::sync::mpsc;
 use winit::dpi::{PhysicalPosition, PhysicalSize};
@@ -22,6 +23,7 @@ const HEADER_HEIGHT: i32 = 33;
 const FOOTER_HEIGHT: i32 = 33;
 const CONTENT_MARGIN_TOP: i32 = 30;
 const BODY_SPACING: i32 = 10;
+const SIMPLE_BUTTON_SPACING: i32 = 8;
 const BUTTON_HEIGHT: u32 = 20;
 const BUTTON_TEXT_Y_OFFSET: i32 = 6;
 const TEXT_LINE_HEIGHT: i32 = 9;
@@ -40,46 +42,100 @@ struct DialogTextLine {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct NoticeLayout {
-    screen_width: u32,
-    screen_height: u32,
-    button_x: i32,
-    button_y: i32,
-    button_width: u32,
+struct DialogButtonLayout {
+    x: i32,
+    y: i32,
+    width: u32,
 }
 
-impl NoticeLayout {
-    fn new(action_width: i32, surface_size: PhysicalSize<u32>) -> Option<Self> {
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct SimpleDialogLayout {
+    screen_width: u32,
+    screen_height: u32,
+    buttons: Vec<DialogButtonLayout>,
+}
+
+impl SimpleDialogLayout {
+    fn new(action_widths: &[i32], surface_size: PhysicalSize<u32>) -> Option<Self> {
         let screen_width = surface_size.width.clamp(1, 512);
         let screen_height = surface_size.height.clamp(1, 512);
         let screen_width_i32 = i32::try_from(screen_width).ok()?;
         let screen_height_i32 = i32::try_from(screen_height).ok()?;
-        let button_width = u32::try_from(action_width).ok()?.clamp(1, 512);
-        let button_width_i32 = i32::try_from(button_width).ok()?;
+        let button_widths = action_widths
+            .iter()
+            .map(|width| u32::try_from(*width).ok().map(|width| width.clamp(1, 512)))
+            .collect::<Option<Vec<_>>>()?;
+        let spacing_width = SIMPLE_BUTTON_SPACING.saturating_mul(
+            i32::try_from(button_widths.len().saturating_sub(1)).unwrap_or(i32::MAX),
+        );
+        let total_width = button_widths.iter().fold(spacing_width, |total, width| {
+            total.saturating_add(i32::try_from(*width).unwrap_or(i32::MAX))
+        });
+        let button_y =
+            screen_height_i32 - FOOTER_HEIGHT + (FOOTER_HEIGHT - BUTTON_HEIGHT as i32) / 2;
+        // Notice and Confirmation have at most two codec-bounded buttons, so this
+        // subtraction is bounded while preserving vanilla's negative centered x
+        // when the declared button row is wider than the screen.
+        let mut button_x = (screen_width_i32 - total_width) / 2;
+        let buttons = button_widths
+            .into_iter()
+            .map(|width| {
+                let button = DialogButtonLayout {
+                    x: button_x,
+                    y: button_y,
+                    width,
+                };
+                button_x = button_x
+                    .saturating_add(i32::try_from(width).unwrap_or(i32::MAX))
+                    .saturating_add(SIMPLE_BUTTON_SPACING);
+                button
+            })
+            .collect();
         Some(Self {
             screen_width,
             screen_height,
-            button_x: (screen_width_i32 - button_width_i32) / 2,
-            button_y: screen_height_i32 - FOOTER_HEIGHT
-                + (FOOTER_HEIGHT - BUTTON_HEIGHT as i32) / 2,
-            button_width,
+            buttons,
         })
     }
 
-    fn button_contains(
-        self,
+    fn button_at(
+        &self,
         cursor_position: Option<PhysicalPosition<f64>>,
         surface_size: PhysicalSize<u32>,
-    ) -> bool {
-        screen_button_contains(
-            self.screen_width,
-            self.screen_height,
-            self.button_x,
-            self.button_y,
-            self.button_width,
-            cursor_position,
-            surface_size,
-        )
+    ) -> Option<usize> {
+        self.buttons.iter().position(|button| {
+            screen_button_contains(
+                self.screen_width,
+                self.screen_height,
+                button.x,
+                button.y,
+                button.width,
+                cursor_position,
+                surface_size,
+            )
+        })
+    }
+}
+
+struct SimpleDialogControls<'a> {
+    common: &'a CommonDialogDataState,
+    actions: Vec<&'a DialogButtonState>,
+    cancel: &'a DialogButtonState,
+}
+
+fn simple_dialog_controls(data: &DialogDataState) -> Option<SimpleDialogControls<'_>> {
+    match data {
+        DialogDataState::Notice { common, action } => Some(SimpleDialogControls {
+            common,
+            actions: vec![action],
+            cancel: action,
+        }),
+        DialogDataState::Confirmation { common, yes, no } => Some(SimpleDialogControls {
+            common,
+            actions: vec![yes, no],
+            cancel: no,
+        }),
+        _ => None,
     }
 }
 
@@ -128,27 +184,31 @@ pub(super) fn hud_dialog_screen(
     cursor_position: Option<(i32, i32)>,
     surface_size: PhysicalSize<u32>,
 ) -> Option<HudInventoryScreen> {
-    let DialogDataState::Notice { common, action } = dialog.data.as_ref()? else {
-        return None;
-    };
-    let layout = NoticeLayout::new(action.width, surface_size)?;
+    let controls = simple_dialog_controls(dialog.data.as_ref()?)?;
+    let layout = SimpleDialogLayout::new(
+        &controls
+            .actions
+            .iter()
+            .map(|action| action.width)
+            .collect::<Vec<_>>(),
+        surface_size,
+    )?;
     let screen_width_i32 = i32::try_from(layout.screen_width).ok()?;
     let screen_height_i32 = i32::try_from(layout.screen_height).ok()?;
-    let button_width_i32 = i32::try_from(layout.button_width).ok()?;
-    let button_highlighted = layout.button_contains(
-        cursor_position.map(|(x, y)| PhysicalPosition::new(f64::from(x), f64::from(y))),
-        surface_size,
-    );
+    let cursor_position =
+        cursor_position.map(|(x, y)| PhysicalPosition::new(f64::from(x), f64::from(y)));
+    let highlighted_button = layout.button_at(cursor_position, surface_size);
 
     let mut text_labels = Vec::new();
     push_centered_text_label(
         &mut text_labels,
-        &common.title,
+        &controls.common.title,
         screen_width_i32 / 2,
         (HEADER_HEIGHT - TEXT_LINE_HEIGHT) / 2,
     );
 
-    let body_blocks = common
+    let body_blocks = controls
+        .common
         .body_data
         .iter()
         .filter_map(|body| match body {
@@ -200,31 +260,40 @@ pub(super) fn hud_dialog_screen(
         }
     }
 
-    push_centered_text_label(
-        &mut text_labels,
-        &action.label,
-        layout.button_x + button_width_i32 / 2,
-        layout.button_y + BUTTON_TEXT_Y_OFFSET,
-    );
+    for (action, button) in controls.actions.iter().zip(&layout.buttons) {
+        push_centered_text_label(
+            &mut text_labels,
+            &action.label,
+            button.x + i32::try_from(button.width).unwrap_or(i32::MAX) / 2,
+            button.y + BUTTON_TEXT_Y_OFFSET,
+        );
+    }
 
-    Some(HudInventoryScreen {
-        width: layout.screen_width,
-        height: layout.screen_height,
-        background_layers: vec![HudInventoryBackgroundLayer {
-            texture: if button_highlighted {
+    let background_layers = layout
+        .buttons
+        .iter()
+        .enumerate()
+        .map(|(index, button)| HudInventoryBackgroundLayer {
+            texture: if highlighted_button == Some(index) {
                 HudInventoryBackgroundTexture::WidgetButtonHighlighted
             } else {
                 HudInventoryBackgroundTexture::WidgetButton
             },
-            x: layout.button_x,
-            y: layout.button_y,
-            width: layout.button_width,
+            x: button.x,
+            y: button.y,
+            width: button.width,
             height: BUTTON_HEIGHT,
             uv: HudUvRect {
                 min: [0.0, 0.0],
                 max: [1.0, 1.0],
             },
-        }],
+        })
+        .collect();
+
+    Some(HudInventoryScreen {
+        width: layout.screen_width,
+        height: layout.screen_height,
+        background_layers,
         foreground_layers: Vec::new(),
         fill_layers: Vec::new(),
         slots: Vec::new(),
@@ -335,12 +404,13 @@ pub(crate) fn handle_dialog_key_input(
     if state != ElementState::Pressed || physical_key != PhysicalKey::Code(KeyCode::Escape) {
         return true;
     }
-    let action = match dialog.data.as_ref() {
-        Some(DialogDataState::Notice { common, action }) if common.can_close_with_escape => {
-            action.action_data.clone()
-        }
-        _ => return true,
+    let Some(controls) = dialog.data.as_ref().and_then(simple_dialog_controls) else {
+        return true;
     };
+    if !controls.common.can_close_with_escape {
+        return true;
+    }
+    let action = controls.cancel.action_data.clone();
     run_dialog_action(counters, world, net_commands, action.as_ref(), "close");
     true
 }
@@ -370,17 +440,24 @@ pub(crate) fn handle_dialog_mouse_input(
     if button != MouseButton::Left || state != ElementState::Pressed {
         return true;
     }
-    let action = match dialog.data.as_ref() {
-        Some(DialogDataState::Notice { common, action }) => {
-            if !NoticeLayout::new(action.width, surface_size)
-                .is_some_and(|layout| layout.button_contains(cursor_position, surface_size))
-            {
-                return true;
-            }
-            (action.action_data.clone(), common.after_action.clone())
-        }
-        _ => return true,
+    let Some(controls) = dialog.data.as_ref().and_then(simple_dialog_controls) else {
+        return true;
     };
+    let Some(action_index) = SimpleDialogLayout::new(
+        &controls
+            .actions
+            .iter()
+            .map(|action| action.width)
+            .collect::<Vec<_>>(),
+        surface_size,
+    )
+    .and_then(|layout| layout.button_at(cursor_position, surface_size)) else {
+        return true;
+    };
+    let action = (
+        controls.actions[action_index].action_data.clone(),
+        controls.common.after_action.clone(),
+    );
     run_dialog_action(counters, world, net_commands, action.0.as_ref(), &action.1);
     true
 }
@@ -702,6 +779,66 @@ mod tests {
     }
 
     #[test]
+    fn confirmation_projects_two_buttons_and_escape_runs_no_button_action() {
+        let mut world = world_with_confirmation(vec![
+            entry("pause", NbtSummaryValue::Byte(0)),
+            entry("after_action", NbtSummaryValue::String("none".to_string())),
+            entry("yes", custom_button("Yes", 80, "example:yes", None)),
+            entry("no", custom_button("No", 100, "example:no", None)),
+        ]);
+        let screen = hud_dialog_screen(
+            world.current_dialog().unwrap(),
+            Some((100, 220)),
+            PhysicalSize::new(320, 240),
+        )
+        .unwrap();
+
+        assert_eq!(screen.background_layers.len(), 2);
+        assert_eq!(screen.background_layers[0].x, 66);
+        assert_eq!(screen.background_layers[0].width, 80);
+        assert_eq!(
+            screen.background_layers[0].texture,
+            HudInventoryBackgroundTexture::WidgetButtonHighlighted
+        );
+        assert_eq!(screen.background_layers[1].x, 154);
+        assert_eq!(screen.background_layers[1].width, 100);
+        assert_eq!(screen.text_labels[1].text, "Yes");
+        assert_eq!(screen.text_labels[2].text, "No");
+
+        let mut counters = NetCounters::default();
+        let (tx, mut rx) = mpsc::channel(2);
+        let net_commands = Some(tx);
+        assert!(handle_dialog_mouse_input(
+            &mut counters,
+            &mut world,
+            &net_commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(100.0, 220.0)),
+            PhysicalSize::new(320, 240),
+        ));
+        assert!(world.current_dialog().is_some());
+        assert!(matches!(
+            rx.try_recv().unwrap(),
+            NetCommand::CustomClickAction(CustomClickAction { id, .. }) if id == "example:yes"
+        ));
+
+        assert!(handle_dialog_key_input(
+            &mut counters,
+            &mut world,
+            &net_commands,
+            PhysicalKey::Code(KeyCode::Escape),
+            ElementState::Pressed,
+        ));
+        assert!(world.current_dialog().is_none());
+        assert!(matches!(
+            rx.try_recv().unwrap(),
+            NetCommand::CustomClickAction(CustomClickAction { id, .. }) if id == "example:no"
+        ));
+        assert_eq!(counters.custom_click_action_commands_queued, 2);
+    }
+
+    #[test]
     fn static_custom_notice_action_queues_exact_payload_then_closes() {
         let mut world = world_with_notice(custom_action_fields());
         let mut counters = NetCounters::default();
@@ -769,6 +906,29 @@ mod tests {
                 ),
             ]),
         )]
+    }
+
+    fn custom_button(
+        label: &str,
+        width: i32,
+        id: &str,
+        payload: Option<NbtSummaryValue>,
+    ) -> NbtSummaryValue {
+        let mut action = vec![
+            entry(
+                "type",
+                NbtSummaryValue::String("minecraft:custom".to_string()),
+            ),
+            entry("id", NbtSummaryValue::String(id.to_string())),
+        ];
+        if let Some(payload) = payload {
+            action.push(entry("payload", payload));
+        }
+        NbtSummaryValue::Compound(vec![
+            entry("label", NbtSummaryValue::String(label.to_string())),
+            entry("width", NbtSummaryValue::Int(width)),
+            entry("action", NbtSummaryValue::Compound(action)),
+        ])
     }
 
     #[test]
@@ -854,6 +1014,24 @@ mod tests {
                 NbtSummaryValue::String("minecraft:notice".to_string()),
             ),
             entry("title", NbtSummaryValue::String("Notice".to_string())),
+        ];
+        dialog.append(&mut fields);
+        let mut world = WorldStore::new();
+        world.apply_show_dialog(ShowDialog {
+            dialog: DialogHolder::Direct {
+                dialog: NbtSummaryValue::Compound(dialog),
+            },
+        });
+        world
+    }
+
+    fn world_with_confirmation(mut fields: Vec<NbtSummaryEntry>) -> WorldStore {
+        let mut dialog = vec![
+            entry(
+                "type",
+                NbtSummaryValue::String("minecraft:confirmation".to_string()),
+            ),
+            entry("title", NbtSummaryValue::String("Confirm".to_string())),
         ];
         dialog.append(&mut fields);
         let mut world = WorldStore::new();
