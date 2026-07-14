@@ -1,6 +1,7 @@
 #[cfg(test)]
 use bbb_protocol::item_component_value_types::ItemRaritySummary;
 use bbb_protocol::{
+    canonical_f32_json_utf16_len,
     data_component_types::vanilla_data_component_type_for_resource_id,
     item_types::vanilla_item_type_for_resource_id, NbtSummaryEntry, NbtSummaryValue,
 };
@@ -77,6 +78,63 @@ pub struct DialogDataComponentPatchEntryState {
     pub value: Option<NbtSummaryValue>,
     #[serde(default)]
     pub value_data: Option<DialogDataComponentValueState>,
+}
+
+impl DialogDataComponentPatchState {
+    /// Returns an exact JsonOps length when every value uses a scalar, enum, unit, or removal
+    /// codec. Complex record and recursive values remain unknown until their semantic encoder is
+    /// available.
+    pub(super) fn canonical_json_utf16_len(&self) -> Option<usize> {
+        self.entries
+            .iter()
+            .enumerate()
+            .try_fold(2usize, |length, (index, entry)| {
+                let value_len = if entry.removed {
+                    // DataComponentPatch.PatchKey selects Codec.EMPTY.codec() for removals.
+                    2
+                } else {
+                    canonical_scalar_component_value_json_utf16_len(entry.value_data.as_ref()?)?
+                };
+                let key_len = entry
+                    .resource_id
+                    .len()
+                    .saturating_add(2)
+                    .saturating_add(usize::from(entry.removed));
+                Some(
+                    length
+                        .saturating_add(usize::from(index != 0))
+                        .saturating_add(key_len)
+                        .saturating_add(1)
+                        .saturating_add(value_len),
+                )
+            })
+    }
+}
+
+fn canonical_scalar_component_value_json_utf16_len(
+    value: &DialogDataComponentValueState,
+) -> Option<usize> {
+    Some(match value {
+        DialogDataComponentValueState::Integer { value }
+        | DialogDataComponentValueState::RgbColor { value } => value.to_string().len(),
+        DialogDataComponentValueState::Float { bits } => canonical_f32_json_utf16_len(*bits)?,
+        DialogDataComponentValueState::Boolean { value } => {
+            if *value {
+                4
+            } else {
+                5
+            }
+        }
+        DialogDataComponentValueState::Unit => 2,
+        DialogDataComponentValueState::ResourceId { resource_id } => {
+            resource_id.len().saturating_add(2)
+        }
+        DialogDataComponentValueState::Rarity { value } => value.as_str().len().saturating_add(2),
+        DialogDataComponentValueState::StringEnum {
+            serialized_name, ..
+        } => serialized_name.len().saturating_add(2),
+        _ => return None,
+    })
 }
 
 pub(super) fn decode_dialog_bodies(
@@ -782,6 +840,47 @@ mod tests {
             value("minecraft:lore"),
             Some(DialogDataComponentValueState::Lore { lines }) if lines.is_empty()
         ));
+    }
+
+    #[test]
+    fn canonicalizes_scalar_and_removed_component_patch_values() {
+        let patch = decode_data_component_patch(&compound(vec![
+            value_entry("max_stack_size", NbtSummaryValue::Byte(64)),
+            value_entry(
+                "minimum_attack_charge",
+                NbtSummaryValue::Float(0.5f32.to_bits()),
+            ),
+            value_entry("enchantment_glint_override", NbtSummaryValue::Byte(0)),
+            value_entry(
+                "unbreakable",
+                compound(vec![string_entry("ignored", "by unit codec")]),
+            ),
+            value_entry("item_model", NbtSummaryValue::String("stone".to_string())),
+            value_entry("rarity", NbtSummaryValue::String("epic".to_string())),
+            value_entry("fox/variant", NbtSummaryValue::String("snow".to_string())),
+            value_entry("dyed_color", NbtSummaryValue::Int(0x12_34_56)),
+            value_entry("!damage", compound(Vec::new())),
+        ]))
+        .unwrap();
+        assert_eq!(
+            patch.canonical_json_utf16_len(),
+            Some(
+                concat!(
+                    r#"{"minecraft:max_stack_size":64,"minecraft:minimum_attack_charge":0.5,"minecraft:enchantment_glint_override":false,"minecraft:unbreakable":{},"minecraft:item_model":"minecraft:stone","minecraft:rarity":"epic","minecraft:fox/variant":"snow","minecraft:dyed_color":1193046,"!minecraft:damage":{}}"#
+                )
+                .len()
+            )
+        );
+
+        let complex = decode_data_component_patch(&compound(vec![value_entry(
+            "custom_name",
+            NbtSummaryValue::String("Name".to_string()),
+        )]))
+        .unwrap();
+        assert_eq!(complex.canonical_json_utf16_len(), None);
+
+        let empty = decode_data_component_patch(&compound(Vec::new())).unwrap();
+        assert_eq!(empty.canonical_json_utf16_len(), Some(2));
     }
 
     #[test]

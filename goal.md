@@ -398,8 +398,8 @@ NBT path 也已按 `NbtPathArgument` 闭合 quoted/unquoted/object/index/all/mat
 完整消费与内嵌 26.1 bounded SNBT compound argument；entity selector 也已闭合 name/UUID、六类 `@`
 selector、21 项 registered option 的 grammar/applicability/重复互斥、built-in entity-type lookup、
 nested SNBT/scores/advancements 与完整消费，并同时接入 selector content/entity data source；structured
-Component page 仍需在 generic packet/session owner 中补齐 show-dialog/item-patch 的 canonical JsonOps
-重编码，当前明确不以 raw NBT 近似这两类 payload；hover
+Component page 仍需在 generic packet/session owner 中补齐 show-dialog 和 complex/recursive positive
+item-patch value 的 canonical JsonOps 重编码，当前明确不以 raw NBT 近似这些 payload；hover
 `show_item` 的 DataComponentPatch envelope 已进一步按 110 项 catalog 校验 Identifier/default namespace、
 persistent gate、remove-unit compound、同符号重复键与 set/remove 覆盖语义；共享 recursive payload visitor
 已由 Dialog 中央 Component decoder 接入现有 107 项 world type codec 和 session registry context，覆盖

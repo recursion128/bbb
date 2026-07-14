@@ -132,6 +132,18 @@ fn accepts_written_book_title_page_and_collection_boundaries() {
         decode_written_book_content(&book_with_pages(vec![exact_player_page]), "written book",)
             .is_ok()
     );
+
+    let item_patch_prefix = concat!(
+        r#"{"text":"item","extra":[""],"hover_event":{"action":"show_item","id":"minecraft:stone","components":{"minecraft:max_stack_size":64,"!minecraft:damage":{}}}}"#
+    )
+    .len();
+    let exact_item_patch_page =
+        component_with_scalar_item_patch("x".repeat(32_767 - item_patch_prefix));
+    assert!(decode_written_book_content(
+        &book_with_pages(vec![exact_item_patch_page]),
+        "written book",
+    )
+    .is_ok());
 }
 
 #[test]
@@ -273,6 +285,16 @@ fn rejects_malformed_written_book_fields_filterables_and_exact_canonical_page_li
             "encodes to 32768 JSON UTF-16 units, maximum is 32767",
         ),
         (
+            book_with_pages(vec![component_with_scalar_item_patch("x".repeat(
+                32_768
+                    - concat!(
+                        r#"{"text":"item","extra":[""],"hover_event":{"action":"show_item","id":"minecraft:stone","components":{"minecraft:max_stack_size":64,"!minecraft:damage":{}}}}"#
+                    )
+                    .len(),
+            ))]),
+            "encodes to 32768 JSON UTF-16 units, maximum is 32767",
+        ),
+        (
             written_book(vec![
                 string_entry("title", "Title"),
                 string_entry("author", "Author"),
@@ -295,6 +317,30 @@ fn book_with_pages(pages: Vec<NbtSummaryValue>) -> NbtSummaryValue {
         string_entry("title", "Title"),
         string_entry("author", "Author"),
         value_entry("pages", NbtSummaryValue::List(pages)),
+    ])
+}
+
+fn component_with_scalar_item_patch(extra: String) -> NbtSummaryValue {
+    compound(vec![
+        string_entry("text", "item"),
+        value_entry(
+            "extra",
+            NbtSummaryValue::List(vec![NbtSummaryValue::String(extra)]),
+        ),
+        value_entry(
+            "hover_event",
+            compound(vec![
+                string_entry("action", "show_item"),
+                string_entry("id", "stone"),
+                value_entry(
+                    "components",
+                    compound(vec![
+                        value_entry("max_stack_size", NbtSummaryValue::Byte(64)),
+                        value_entry("!damage", compound(Vec::new())),
+                    ]),
+                ),
+            ]),
+        ),
     ])
 }
 

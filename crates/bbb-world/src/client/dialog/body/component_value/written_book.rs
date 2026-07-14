@@ -5,6 +5,7 @@ use bbb_protocol::{
 use serde::{Deserialize, Serialize};
 
 use super::super::super::{decode_component, DialogDecodeContext};
+use super::super::decode_data_component_patch;
 use super::profile::decode_profile;
 use super::writable_book::decode_filterable_string;
 use super::{
@@ -148,8 +149,12 @@ fn decode_page_component(
                     .ok()
                     .and_then(|profile| canonical_resolvable_profile_json_utf16_len(&profile))
             }
-            CanonicalComponentOwnerValue::Dialog
-            | CanonicalComponentOwnerValue::ItemComponentPatch => None,
+            CanonicalComponentOwnerValue::ItemComponentPatch => {
+                decode_data_component_patch(value, context)
+                    .ok()
+                    .and_then(|patch| patch.canonical_json_utf16_len())
+            }
+            CanonicalComponentOwnerValue::Dialog => None,
         })
         .map_err(|error| format!("{what} cannot be canonically encoded: {error}"))?
     {

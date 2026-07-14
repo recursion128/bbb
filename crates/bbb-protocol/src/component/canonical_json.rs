@@ -67,6 +67,13 @@ pub fn canonical_resolvable_profile_json_utf16_len(
     canonical_resolvable_profile(profile).map(|value| value.utf16_len())
 }
 
+/// Exact JsonOps/Gson length for a finite Java `float` value that has already passed its semantic
+/// Codec validation.
+pub fn canonical_f32_json_utf16_len(bits: u32) -> Option<usize> {
+    let encoded = java_float_string(f32::from_bits(bits));
+    (!matches!(encoded.as_str(), "NaN" | "Infinity" | "-Infinity")).then_some(encoded.len())
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum JsonValue {
     Bool(bool),
@@ -883,6 +890,8 @@ mod tests {
             exact(&translation),
             r#"{"translate":"key","with":[1.4E-45]}"#.len()
         );
+        assert_eq!(canonical_f32_json_utf16_len(1), Some("1.4E-45".len()));
+        assert_eq!(canonical_f32_json_utf16_len(f32::NAN.to_bits()), None);
         let custom = compound(vec![
             ("text", string("custom")),
             (

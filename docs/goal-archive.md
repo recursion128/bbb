@@ -14111,3 +14111,16 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   player object 加 recursive fallback 的 32767/32768 UTF-16 unit 边界有 world 贯通测试。剩余 click
   show-dialog 与 hover show-item component patch 的 canonical owner 长度继续由缺口账本追踪，且不以 raw
   NBT 大小近似。
+
+## 2026-07-14：Canonicalize scalar Component item patches
+
+- [x] 对照 `DataComponentPatch.CODEC/PatchKey.CODEC`、`Codec.EMPTY`、`Unit.CODEC`、Identifier/
+  StringRepresentable/scalar codec 与 `ExtraCodecs.RGB_COLOR_CODEC`，让 written-book Component owner
+  复用既有完整 typed patch decoder 后精确计算 empty/removal 和 35 项 integer/float/boolean/unit/
+  resource-id/rarity/generated-enum/RGB positive value 的 JsonOps 长度；patch key 与 Identifier value
+  均使用 decoder 已规范化的完整 resource id，Unit/removed payload 统一输出空 object。
+- [x] Java float 长度复用 protocol 已锁定的 JDK 26 formatter，finite/subnormal 与 non-finite API 边界、
+  empty/mixed scalar patch、default namespace、removed key、Unit unknown-field 丢弃、complex exact-unknown，
+  以及 structured page 内 hover `show_item` 的 32767/32768 UTF-16 unit 边界均有定向测试。show-dialog
+  和 complex/recursive positive item-patch value 的 canonical owner 长度继续由缺口账本追踪，不以 raw
+  NBT 大小近似。
