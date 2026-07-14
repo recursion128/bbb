@@ -4,6 +4,8 @@ use bbb_protocol::{
     NbtSummaryValue,
 };
 
+use crate::{RegistryContentState, RegistryPacketEntry, RegistrySet};
+
 use super::super::{decode_supported_component_value, DialogDataComponentValueState};
 use super::*;
 
@@ -230,6 +232,37 @@ fn follows_filterable_full_first_then_component_fallback() {
         assert!(
             decode_written_book_content(&book_with_pages(vec![object]), "written book",).is_ok()
         );
+    }
+}
+
+#[test]
+fn enforces_named_holder_item_patch_page_boundary_with_session_registries() {
+    let mut registries = RegistrySet::default();
+    for (registry, resource_id) in [
+        ("minecraft:wolf_variant", "example:selected"),
+        ("minecraft:damage_type", "minecraft:generic_kill"),
+        ("minecraft:jukebox_song", "minecraft:cat"),
+        ("minecraft:painting_variant", "minecraft:kebab"),
+    ] {
+        let mut contents = RegistryContentState::new(registry);
+        contents.entries = vec![RegistryPacketEntry::stub(resource_id)];
+        registries.contents.insert(registry.to_string(), contents);
+    }
+    let prefix = concat!(
+        r#"{"text":"item","extra":[""],"hover_event":{"action":"show_item","id":"minecraft:stone","components":{"minecraft:villager/variant":"minecraft:plains","minecraft:wolf/variant":"example:selected","minecraft:damage_type":"minecraft:generic_kill","minecraft:jukebox_playable":"minecraft:cat","minecraft:painting/variant":"minecraft:kebab"}}}"#
+    )
+    .len();
+    for (limit, expected_error) in [(32_767usize, None), (32_768usize, Some("encodes to 32768"))] {
+        let page = component_with_named_holder_item_patch("x".repeat(limit - prefix));
+        let result = decode_written_book_content_with_context(
+            &book_with_pages(vec![page]),
+            "written book",
+            DialogDecodeContext::new(Some(&registries), 0),
+        );
+        match expected_error {
+            None => assert!(result.is_ok()),
+            Some(expected) => assert!(result.unwrap_err().contains(expected)),
+        }
     }
 }
 
@@ -630,6 +663,33 @@ fn component_with_holder_collections_item_patch(extra: String) -> NbtSummaryValu
                                 NbtSummaryValue::String("angler_pottery_sherd".to_string()),
                             ]),
                         ),
+                    ]),
+                ),
+            ]),
+        ),
+    ])
+}
+
+fn component_with_named_holder_item_patch(extra: String) -> NbtSummaryValue {
+    compound(vec![
+        string_entry("text", "item"),
+        value_entry(
+            "extra",
+            NbtSummaryValue::List(vec![NbtSummaryValue::String(extra)]),
+        ),
+        value_entry(
+            "hover_event",
+            compound(vec![
+                string_entry("action", "show_item"),
+                string_entry("id", "stone"),
+                value_entry(
+                    "components",
+                    compound(vec![
+                        string_entry("villager/variant", "plains"),
+                        string_entry("wolf/variant", "example:selected"),
+                        string_entry("damage_type", "generic_kill"),
+                        string_entry("jukebox_playable", "cat"),
+                        string_entry("painting/variant", "kebab"),
                     ]),
                 ),
             ]),

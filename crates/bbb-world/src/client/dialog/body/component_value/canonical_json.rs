@@ -398,6 +398,16 @@ fn canonical_component_value_json_utf16_len(
                 )
             }),
         ),
+        DialogDataComponentValueState::RegistryVariant { holder, .. } => {
+            string_len(&holder.resource_id)
+        }
+        DialogDataComponentValueState::JukeboxPlayable { song } => string_len(&song.resource_id),
+        DialogDataComponentValueState::PaintingVariant { variant } => {
+            string_len(&variant.resource_id)
+        }
+        DialogDataComponentValueState::DamageType { damage_type } => {
+            string_len(&damage_type.resource_id)
+        }
         _ => return None,
     })
 }
@@ -732,6 +742,43 @@ mod tests {
             },
             r#"["minecraft:brick","minecraft:angler_pottery_sherd","minecraft:brick","minecraft:brick"]"#,
         );
+    }
+
+    #[test]
+    fn canonicalizes_registry_fixed_named_holders() {
+        let holder = |resource_id: &str| DialogRegistryHolderReferenceState {
+            holder_id: 1,
+            resource_id: resource_id.to_string(),
+        };
+        for (value, expected) in [
+            (
+                DialogDataComponentValueState::RegistryVariant {
+                    registry: "minecraft:wolf_variant".to_string(),
+                    holder: holder("example:selected"),
+                },
+                r#""example:selected""#,
+            ),
+            (
+                DialogDataComponentValueState::JukeboxPlayable {
+                    song: holder("minecraft:cat"),
+                },
+                r#""minecraft:cat""#,
+            ),
+            (
+                DialogDataComponentValueState::PaintingVariant {
+                    variant: holder("minecraft:kebab"),
+                },
+                r#""minecraft:kebab""#,
+            ),
+            (
+                DialogDataComponentValueState::DamageType {
+                    damage_type: holder("minecraft:generic_kill"),
+                },
+                r#""minecraft:generic_kill""#,
+            ),
+        ] {
+            assert_exact(value, expected);
+        }
     }
 
     fn assert_exact(value: DialogDataComponentValueState, expected: &str) {

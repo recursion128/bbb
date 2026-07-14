@@ -14178,3 +14178,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   partial/empty pot sides 与 written-book hover `show_item` 合并 holder-collection patch 的 32767/32768
   UTF-16 unit 边界均有定向回归。show-dialog 和剩余 registry-holder、typed-NBT、predicate/item-template
   及其它 nested-record positive item-patch value 继续由缺口账本追踪。
+
+## 2026-07-14：Canonicalize RegistryFixed named holders
+
+- [x] 对照 12 类 synchronized animal variant、built-in villager variant、`JukeboxSong.CODEC`、
+  `PaintingVariant.CODEC` 与 `DamageType.CODEC`，确认这些 persistent holder 均为 `RegistryFixedCodec`
+  或等价 fixed built-in reference，不接受 direct object；单一 item-patch canonical owner 因而统一输出
+  decoder 已按 session holder identity 规范化的 resource-id JSON string。
+- [x] wolf/jukebox/painting/damage 与 villager 代表值均有精确计长测试；显式 session registry 下五组件
+  合并 hover `show_item` patch 的 32767/32768 UTF-16 unit 边界也有贯通回归。show-dialog 和剩余
+  registry-holder-set/RegistryFileCodec-direct、typed-NBT、predicate/item-template 及其它 nested-record
+  positive item-patch value 继续由缺口账本追踪。
