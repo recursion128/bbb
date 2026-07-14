@@ -14926,3 +14926,18 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   offset；仅 overflow path 建立内层 scissor，并与 `ScrollableLayout` body scissor 相交后恢复 parent，保留
   vanilla 未溢出路径不额外裁剪的行为。回归覆盖短 label 居中、最短/长周期端点、非有限时间保护、nested
   scissor 命令顺序，以及两种 100px Dialog 控件的完整长 label 与 96x20 内框投影。
+
+## 2026-07-14：Render and edit multiline Text dialog inputs
+
+- [x] 对照 `InputControlHandlers.TextInputHandler`、`MultiLineEditBox`、`MultilineTextField` 与
+  `StringSplitter`，native 以 active font advance 处理显式 newline、space break、窄行硬折行与 trailing empty
+  line；编辑支持 Enter、逐字符/逐 whitespace word 删除与移动、行首行尾、Ctrl-Home/End、PageUp/Down、
+  Shift selection、Ctrl-A/C/V/X，并按 Java UTF-16 character limit 截断、按 visual `max_lines` 拒绝整次溢出编辑。
+- [x] world 扩展 serde-skipped text edit owner，保存多行 scroll amount 与独立 scrollbar drag；Tab/方向 focus graph
+  纳入 multiline box，光标移动按 vanilla first/last visible line 规则 reveal，Up/Down 先以 4px scroll rate 消耗，
+  mouse seek/selection drag 使用精确 glyph hit mapping，body 的 `ScrollableLayout.Container` 继续先截获 wheel。
+- [x] renderer 增加 inventory scroll-area 内的 `HudInventoryTextArea` surface，按 4px inset、9px line、1px nested
+  scissor、0xE0E0E0 shadow text、blink cursor、后绘 selection、UTF-16 `%s/%s` counter 和 6px/32px-min scrollbar
+  投影；text-field 背景使用完整 200x20/1px-border nine-slice。world/native/renderer regressions 覆盖 focus、wrap、
+  trailing newline、line-limit rejection、scroll reveal、sanitization、nested scissor restore 与实际 draw submission。
+  Text double-click word selection 和 IME preedit overlay 继续留在 TODO。

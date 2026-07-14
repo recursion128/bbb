@@ -42,6 +42,10 @@ pub struct ClientUiState {
     #[serde(skip)]
     dialog_dragging_text_input: Option<usize>,
     #[serde(skip)]
+    dialog_dragging_multiline_scroll_input: Option<usize>,
+    #[serde(skip)]
+    dialog_dragging_multiline_scroll_y: Option<i32>,
+    #[serde(skip)]
     dialog_body_scroll_amount_bits: u64,
     #[serde(skip)]
     dialog_body_scroll_drag_y: Option<i32>,
@@ -97,6 +101,7 @@ pub struct DialogTextEditState {
     pub input_index: usize,
     pub cursor: usize,
     pub selection: usize,
+    pub scroll_amount: i32,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -139,6 +144,8 @@ impl ClientUiState {
         self.dialog_number_range_keyboard_input = None;
         self.dialog_text_edit = None;
         self.dialog_dragging_text_input = None;
+        self.dialog_dragging_multiline_scroll_input = None;
+        self.dialog_dragging_multiline_scroll_y = None;
         self.dialog_body_scroll_amount_bits = 0.0f64.to_bits();
         self.dialog_body_scroll_drag_y = None;
         self.dialog_input_values = initial_dialog_input_values(&dialog);
@@ -154,6 +161,8 @@ impl ClientUiState {
         self.dialog_number_range_keyboard_input = None;
         self.dialog_text_edit = None;
         self.dialog_dragging_text_input = None;
+        self.dialog_dragging_multiline_scroll_input = None;
+        self.dialog_dragging_multiline_scroll_y = None;
         self.dialog_body_scroll_amount_bits = 0.0f64.to_bits();
         self.dialog_body_scroll_drag_y = None;
         self.dialog_input_values.clear();
@@ -170,6 +179,8 @@ impl ClientUiState {
         self.dialog_number_range_keyboard_input = None;
         self.dialog_text_edit = None;
         self.dialog_dragging_text_input = None;
+        self.dialog_dragging_multiline_scroll_input = None;
+        self.dialog_dragging_multiline_scroll_y = None;
         self.dialog_body_scroll_amount_bits = 0.0f64.to_bits();
         self.dialog_body_scroll_drag_y = None;
         self.dialog_warning_open = false;
@@ -213,6 +224,8 @@ impl ClientUiState {
         self.dialog_number_range_keyboard_input = None;
         self.dialog_text_edit = None;
         self.dialog_dragging_text_input = None;
+        self.dialog_dragging_multiline_scroll_input = None;
+        self.dialog_dragging_multiline_scroll_y = None;
         self.dialog_body_scroll_amount_bits = 0.0f64.to_bits();
         self.dialog_body_scroll_drag_y = None;
         self.dialog_warning_open = false;
@@ -550,6 +563,12 @@ impl WorldStore {
         })
     }
 
+    pub fn dialog_text_edit_state_for_input(&self, index: usize) -> Option<DialogTextEditState> {
+        self.client_ui
+            .dialog_text_edit
+            .filter(|edit| edit.input_index == index)
+    }
+
     pub fn focus_dialog_text_input(
         &mut self,
         index: usize,
@@ -561,22 +580,37 @@ impl WorldStore {
         else {
             return false;
         };
-        if self.dialog_single_line_text_max_length(index).is_none() {
+        if self.dialog_text_max_length(index).is_none() {
             return false;
         }
         let cursor = cursor.min(value.chars().count());
-        let selection = self
+        let previous = self
             .client_ui
             .dialog_text_edit
-            .filter(|edit| extend_selection && edit.input_index == index)
+            .filter(|edit| edit.input_index == index);
+        let selection = previous
+            .filter(|_| extend_selection)
             .map_or(cursor, |edit| edit.selection);
+        let scroll_amount = previous.map_or_else(
+            || {
+                if self.dialog_multiline_text_settings(index).is_some() {
+                    i32::MAX
+                } else {
+                    0
+                }
+            },
+            |edit| edit.scroll_amount,
+        );
         self.client_ui.dialog_text_edit = Some(DialogTextEditState {
             input_index: index,
             cursor,
             selection,
+            scroll_amount,
         });
         self.client_ui.dialog_focus = Some(DialogFocusState::Input { index });
         self.client_ui.dialog_number_range_keyboard_input = None;
+        self.client_ui.dialog_dragging_multiline_scroll_input = None;
+        self.client_ui.dialog_dragging_multiline_scroll_y = None;
         true
     }
 
@@ -659,6 +693,8 @@ impl WorldStore {
         });
         self.client_ui.dialog_number_range_keyboard_input = None;
         self.client_ui.dialog_dragging_text_input = None;
+        self.client_ui.dialog_dragging_multiline_scroll_input = None;
+        self.client_ui.dialog_dragging_multiline_scroll_y = None;
         true
     }
 
@@ -667,7 +703,7 @@ impl WorldStore {
         target: DialogFocusState,
         number_range_can_change: bool,
     ) -> bool {
-        let Some((valid, is_number_range, is_single_line_text)) = self
+        let Some((valid, is_number_range, is_text, is_multiline_text)) = self
             .current_dialog()
             .and_then(|dialog| dialog.data.as_ref())
             .map(|data| {
@@ -704,10 +740,11 @@ impl WorldStore {
                 (
                     valid,
                     matches!(control, Some(DialogInputControlState::NumberRange { .. })),
+                    matches!(control, Some(DialogInputControlState::Text { .. })),
                     matches!(
                         control,
                         Some(DialogInputControlState::Text {
-                            multiline: None,
+                            multiline: Some(_),
                             ..
                         })
                     ),
@@ -722,6 +759,8 @@ impl WorldStore {
 
         self.client_ui.dialog_focus = Some(target);
         self.client_ui.dialog_dragging_text_input = None;
+        self.client_ui.dialog_dragging_multiline_scroll_input = None;
+        self.client_ui.dialog_dragging_multiline_scroll_y = None;
         self.client_ui.dialog_number_range_keyboard_input = match target {
             DialogFocusState::Input { index } if number_range_can_change && is_number_range => {
                 Some(index)
@@ -729,7 +768,7 @@ impl WorldStore {
             _ => None,
         };
         if let DialogFocusState::Input { index } = target {
-            if is_single_line_text
+            if is_text
                 && !self
                     .client_ui
                     .dialog_text_edit
@@ -743,6 +782,7 @@ impl WorldStore {
                     input_index: index,
                     cursor,
                     selection: cursor,
+                    scroll_amount: if is_multiline_text { i32::MAX } else { 0 },
                 });
             }
         }
@@ -770,12 +810,16 @@ impl WorldStore {
         self.client_ui.dialog_focus = Some(DialogFocusState::Input { index });
         self.client_ui.dialog_number_range_keyboard_input = number_range.then_some(index);
         self.client_ui.dialog_dragging_text_input = None;
+        self.client_ui.dialog_dragging_multiline_scroll_input = None;
+        self.client_ui.dialog_dragging_multiline_scroll_y = None;
         true
     }
 
     pub fn clear_dialog_focus(&mut self) -> bool {
         self.client_ui.dialog_number_range_keyboard_input = None;
         self.client_ui.dialog_dragging_text_input = None;
+        self.client_ui.dialog_dragging_multiline_scroll_input = None;
+        self.client_ui.dialog_dragging_multiline_scroll_y = None;
         self.client_ui.dialog_focus.take().is_some()
     }
 
@@ -828,7 +872,7 @@ impl WorldStore {
         cursor: usize,
         selection: usize,
     ) -> bool {
-        let Some(max_length) = self.dialog_single_line_text_max_length(index) else {
+        let Some(max_length) = self.dialog_text_max_length(index) else {
             return false;
         };
         let text_len = value.chars().count();
@@ -849,15 +893,37 @@ impl WorldStore {
             return false;
         };
         *current = value;
+        let scroll_amount = self
+            .client_ui
+            .dialog_text_edit
+            .map_or(0, |edit| edit.scroll_amount);
         self.client_ui.dialog_text_edit = Some(DialogTextEditState {
             input_index: index,
             cursor,
             selection,
+            scroll_amount,
         });
         true
     }
 
-    fn dialog_single_line_text_max_length(&self, index: usize) -> Option<usize> {
+    fn dialog_text_max_length(&self, index: usize) -> Option<usize> {
+        let input = self
+            .current_dialog()?
+            .data
+            .as_ref()
+            .map(common_dialog_data)?
+            .input_data
+            .get(index)?;
+        match &input.control {
+            DialogInputControlState::Text { max_length, .. } => usize::try_from(*max_length).ok(),
+            _ => None,
+        }
+    }
+
+    pub fn dialog_multiline_text_settings(
+        &self,
+        index: usize,
+    ) -> Option<(Option<i32>, Option<i32>)> {
         let input = self
             .current_dialog()?
             .data
@@ -867,12 +933,68 @@ impl WorldStore {
             .get(index)?;
         match &input.control {
             DialogInputControlState::Text {
-                max_length,
-                multiline: None,
+                multiline: Some(multiline),
                 ..
-            } => usize::try_from(*max_length).ok(),
+            } => Some((multiline.max_lines, multiline.height)),
             _ => None,
         }
+    }
+
+    pub fn set_dialog_multiline_text_scroll_amount(
+        &mut self,
+        index: usize,
+        amount: i32,
+        max_scroll: i32,
+    ) -> bool {
+        if self.dialog_multiline_text_settings(index).is_none()
+            || self.dialog_focused_input() != Some(index)
+        {
+            return false;
+        }
+        let Some(edit) = self.client_ui.dialog_text_edit.as_mut() else {
+            return false;
+        };
+        if edit.input_index != index {
+            return false;
+        }
+        let amount = amount.clamp(0, max_scroll.max(0));
+        if edit.scroll_amount == amount {
+            return false;
+        }
+        edit.scroll_amount = amount;
+        true
+    }
+
+    pub fn begin_dialog_multiline_scroll_drag(&mut self, index: usize, cursor_y: i32) -> bool {
+        if self.dialog_multiline_text_settings(index).is_none()
+            || !self
+                .client_ui
+                .dialog_text_edit
+                .is_some_and(|edit| edit.input_index == index)
+        {
+            return false;
+        }
+        self.client_ui.dialog_dragging_text_input = None;
+        self.client_ui.dialog_dragging_multiline_scroll_input = Some(index);
+        self.client_ui.dialog_dragging_multiline_scroll_y = Some(cursor_y);
+        true
+    }
+
+    pub fn dialog_dragging_multiline_scroll_input(&self) -> Option<usize> {
+        self.client_ui.dialog_dragging_multiline_scroll_input
+    }
+
+    pub fn update_dialog_multiline_scroll_drag_y(&mut self, cursor_y: i32) -> Option<i32> {
+        let previous = self
+            .client_ui
+            .dialog_dragging_multiline_scroll_y
+            .replace(cursor_y)?;
+        Some(cursor_y.saturating_sub(previous))
+    }
+
+    pub fn end_dialog_multiline_scroll_drag(&mut self) -> Option<usize> {
+        self.client_ui.dialog_dragging_multiline_scroll_y = None;
+        self.client_ui.dialog_dragging_multiline_scroll_input.take()
     }
 
     pub fn dialog_waiting_ticks(&self) -> Option<u32> {
@@ -1555,6 +1677,7 @@ mod tests {
                 input_index: 0,
                 cursor: 2,
                 selection: 1,
+                scroll_amount: 0,
             })
         );
         assert!(store.begin_dialog_text_input_drag(0));

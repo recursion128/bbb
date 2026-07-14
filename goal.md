@@ -385,9 +385,10 @@ drag scale 与键盘 focus 上下各留 10px 的 reveal 规则运行；body/inpu
 item icon 及 decorations 共享 centered HUD scissor。由于 `ScrollableLayout.Container` 先以
 `AbstractScrollArea.mouseScrolled` 截获 wheel，SingleOption 只在 click/keyboard 路径切换，body wheel
 统一滚动 container。
-仍须按 `DialogScreen`/`DialogControlSet` 完成 Text multiline editor、
-single-line Text 的 double-click word selection 与
-IME preedit overlay、
+Text multiline editor 已按 `MultiLineEditBox`/`MultilineTextField` 接入 active-font wrap、显式 newline、
+4px inset、9px line、nested scissor、UTF-16 counter、line/character limit、cursor/selection、键盘/clipboard 编辑、
+cursor reveal 与 6px scrollbar drag；`ScrollableLayout.Container` 继续优先截获 wheel。
+仍须按 `DialogScreen`/`DialogControlSet` 完成 Text 的 double-click word selection 与 IME preedit overlay、
 button-list tooltip/scroll/focus、
 其余三类 top-level dialog 布局、action-bearing
 open-url 与 Component-click。Boolean input 已按 Checkbox 的 17px box、

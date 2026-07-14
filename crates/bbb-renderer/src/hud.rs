@@ -1631,6 +1631,25 @@ pub struct HudInventoryTextLabel {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub struct HudInventoryTextArea {
+    pub x: i32,
+    pub y: i32,
+    pub width: u32,
+    pub height: u32,
+    pub text: String,
+    pub cursor: usize,
+    pub selection: usize,
+    pub scroll_amount: i32,
+    pub max_length: usize,
+    pub cursor_visible: bool,
+    pub text_tint: [f32; 4],
+    pub cursor_tint: [f32; 4],
+    pub selection_tint: [f32; 4],
+    pub counter_tint: [f32; 4],
+    pub shadow: bool,
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct HudInventoryTooltipLine {
     pub text: String,
     pub tint: [f32; 4],
@@ -1658,6 +1677,7 @@ pub struct HudInventoryScrollArea {
     pub background_layers: Vec<HudInventoryBackgroundLayer>,
     pub fill_layers: Vec<HudInventoryFillLayer>,
     pub text_labels: Vec<HudInventoryTextLabel>,
+    pub text_areas: Vec<HudInventoryTextArea>,
     pub scrollbar: Option<HudInventoryScrollbar>,
 }
 
@@ -4935,6 +4955,20 @@ impl Renderer {
                         Some(area.scissor),
                         scrolling_text_time_seconds,
                     );
+                    push_hud_inventory_text_areas(
+                        &mut vertices,
+                        &mut post_gui_item_commands,
+                        &self.hud_white_pixel,
+                        self.hud_font_atlas.as_ref(),
+                        &self.hud_font_glyphs,
+                        &self.hud_obfuscated_glyph_pool,
+                        self.counters.frame_index,
+                        &self.hud_stats_scrollbar_sprites,
+                        surface_size,
+                        screen,
+                        &area.text_areas,
+                        area.scissor,
+                    );
                     push_hud_inventory_scissor_reset(&mut post_gui_item_commands, surface_size);
                 }
                 if let Some(scrollbar) = area.scrollbar {
@@ -6492,6 +6526,316 @@ fn push_hud_inventory_text_labels<'a>(
             } else {
                 push_hud_inventory_scissor_reset(commands, surface_size);
             }
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct HudMultilineLine {
+    begin: usize,
+    end: usize,
+}
+
+fn hud_multiline_lines(text: &str, width: u32, glyphs: &HudFontGlyphMap) -> Vec<HudMultilineLine> {
+    let chars = text.chars().collect::<Vec<_>>();
+    let mut lines = Vec::new();
+    let mut begin = 0usize;
+    while begin < chars.len() {
+        let mut cursor = begin;
+        let mut last_space = None;
+        let mut wrapped = false;
+        while cursor < chars.len() {
+            let ch = chars[cursor];
+            if ch == '\n' {
+                lines.push(HudMultilineLine { begin, end: cursor });
+                begin = cursor.saturating_add(1);
+                wrapped = true;
+                break;
+            }
+            if ch == ' ' {
+                last_space = Some(cursor);
+            }
+            let candidate = chars[begin..=cursor].iter().collect::<String>();
+            if cursor > begin && hud_plain_text_width(&candidate, glyphs) > width {
+                if let Some(space) = last_space.filter(|space| *space >= begin) {
+                    lines.push(HudMultilineLine { begin, end: space });
+                    begin = space.saturating_add(1);
+                } else {
+                    lines.push(HudMultilineLine { begin, end: cursor });
+                    begin = cursor;
+                }
+                wrapped = true;
+                break;
+            }
+            cursor = cursor.saturating_add(1);
+        }
+        if !wrapped {
+            lines.push(HudMultilineLine {
+                begin,
+                end: chars.len(),
+            });
+            begin = chars.len();
+        }
+    }
+    if chars.is_empty() || chars.last() == Some(&'\n') {
+        lines.push(HudMultilineLine {
+            begin: chars.len(),
+            end: chars.len(),
+        });
+    }
+    lines
+}
+
+#[allow(clippy::too_many_arguments)]
+fn push_hud_inventory_text_areas<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    white_pixel: &'a HudSpriteGpu,
+    font_atlas: Option<&'a HudSpriteGpu>,
+    glyphs: &HudFontGlyphMap,
+    obfuscated_pool: &HudObfuscatedGlyphPool,
+    obfuscated_seed: u64,
+    scrollbar_sprites: &'a [Option<HudNineSliceSprite>; HudStatsScrollbarSprite::COUNT],
+    surface_size: PhysicalSize<u32>,
+    screen: &HudInventoryScreen,
+    areas: &[HudInventoryTextArea],
+    parent_scissor: HudInventoryItemScissor,
+) {
+    let Some(font_atlas) = font_atlas else {
+        return;
+    };
+    let parent_rect = hud_inventory_scissor_rect(surface_size, screen, parent_scissor);
+    for area in areas {
+        let inner_width = area.width.saturating_sub(8).max(1);
+        let lines = hud_multiline_lines(&area.text, inner_width, glyphs);
+        let content_height = i32::try_from(lines.len())
+            .unwrap_or(i32::MAX)
+            .saturating_mul(HUD_WIDGET_TEXT_LINE_HEIGHT)
+            .saturating_add(8);
+        let height = i32::try_from(area.height).unwrap_or(i32::MAX);
+        let max_scroll = content_height.saturating_sub(height).max(0);
+        let scroll_amount = area.scroll_amount.clamp(0, max_scroll);
+        let inner_scissor = HudInventoryItemScissor {
+            x: area.x.saturating_add(1),
+            y: area.y.saturating_add(1),
+            width: area.width.saturating_sub(2),
+            height: area.height.saturating_sub(2),
+        };
+        let Some(inner_rect) = hud_inventory_nested_scissor_rect(
+            surface_size,
+            screen,
+            inner_scissor,
+            Some(parent_rect),
+        ) else {
+            continue;
+        };
+        if !push_hud_rect_scissor(commands, surface_size, inner_rect) {
+            continue;
+        }
+
+        let text_x = area.x.saturating_add(4);
+        let text_y = area.y.saturating_add(4).saturating_sub(scroll_amount);
+        let text_len = area.text.chars().count();
+        for (line_index, line) in lines.iter().copied().enumerate() {
+            let line_text = hud_slice_by_chars(&area.text, line.begin, line.end);
+            if line_text.is_empty() {
+                continue;
+            }
+            let origin = hud_inventory_text_label_origin(
+                surface_size,
+                screen.width,
+                screen.height,
+                text_x,
+                text_y.saturating_add(
+                    i32::try_from(line_index)
+                        .unwrap_or(i32::MAX)
+                        .saturating_mul(HUD_WIDGET_TEXT_LINE_HEIGHT),
+                ),
+            );
+            push_hud_plain_text(
+                vertices,
+                commands,
+                white_pixel,
+                font_atlas,
+                glyphs,
+                obfuscated_pool,
+                obfuscated_seed,
+                surface_size,
+                &line_text,
+                origin,
+                area.text_tint,
+                1.0,
+                area.shadow,
+            );
+        }
+
+        let cursor_line = lines
+            .iter()
+            .position(|line| area.cursor <= line.end)
+            .unwrap_or_else(|| lines.len().saturating_sub(1));
+        let cursor_range = lines[cursor_line];
+        let cursor_prefix = hud_slice_by_chars(
+            &area.text,
+            cursor_range.begin,
+            area.cursor.min(cursor_range.end),
+        );
+        let cursor_origin = hud_inventory_text_label_origin(
+            surface_size,
+            screen.width,
+            screen.height,
+            text_x,
+            text_y.saturating_add(
+                i32::try_from(cursor_line)
+                    .unwrap_or(i32::MAX)
+                    .saturating_mul(HUD_WIDGET_TEXT_LINE_HEIGHT),
+            ),
+        );
+        let cursor_x = cursor_origin.0 + hud_plain_text_width(&cursor_prefix, glyphs) as f32;
+        if area.cursor_visible {
+            if area.cursor < text_len || area.text.encode_utf16().count() >= area.max_length {
+                push_hud_draw_with_uv_and_tint(
+                    vertices,
+                    commands,
+                    white_pixel,
+                    surface_size,
+                    absolute_hud_rect(cursor_x, cursor_origin.1 - 1.0, 1, 11),
+                    HudUvRect {
+                        min: [0.0, 0.0],
+                        max: [1.0, 1.0],
+                    },
+                    area.cursor_tint,
+                );
+            } else {
+                push_hud_plain_text(
+                    vertices,
+                    commands,
+                    white_pixel,
+                    font_atlas,
+                    glyphs,
+                    obfuscated_pool,
+                    obfuscated_seed,
+                    surface_size,
+                    "_",
+                    (cursor_x, cursor_origin.1),
+                    area.cursor_tint,
+                    1.0,
+                    area.shadow,
+                );
+            }
+        }
+
+        let selection_start = area.cursor.min(area.selection);
+        let selection_end = area.cursor.max(area.selection);
+        if selection_start != selection_end {
+            for (line_index, line) in lines.iter().copied().enumerate() {
+                let begin = selection_start.max(line.begin).min(line.end);
+                let end = selection_end.min(line.end).max(line.begin);
+                if begin >= end {
+                    continue;
+                }
+                let before = hud_slice_by_chars(&area.text, line.begin, begin);
+                let selected = hud_slice_by_chars(&area.text, begin, end);
+                let origin = hud_inventory_text_label_origin(
+                    surface_size,
+                    screen.width,
+                    screen.height,
+                    text_x,
+                    text_y.saturating_add(
+                        i32::try_from(line_index)
+                            .unwrap_or(i32::MAX)
+                            .saturating_mul(HUD_WIDGET_TEXT_LINE_HEIGHT),
+                    ),
+                );
+                push_hud_draw_with_uv_and_tint(
+                    vertices,
+                    commands,
+                    white_pixel,
+                    surface_size,
+                    absolute_hud_rect(
+                        origin.0 + hud_plain_text_width(&before, glyphs) as f32,
+                        origin.1 - 1.0,
+                        hud_plain_text_width(&selected, glyphs).max(1),
+                        11,
+                    ),
+                    HudUvRect {
+                        min: [0.0, 0.0],
+                        max: [1.0, 1.0],
+                    },
+                    area.selection_tint,
+                );
+            }
+        }
+
+        push_hud_rect_scissor(commands, surface_size, parent_rect);
+        let counter = format!("{}/{}", area.text.encode_utf16().count(), area.max_length);
+        let counter_x = area
+            .x
+            .saturating_add(i32::try_from(area.width).unwrap_or(i32::MAX))
+            .saturating_sub(
+                i32::try_from(hud_plain_text_width(&counter, glyphs)).unwrap_or(i32::MAX),
+            );
+        let counter_origin = hud_inventory_text_label_origin(
+            surface_size,
+            screen.width,
+            screen.height,
+            counter_x,
+            area.y
+                .saturating_add(i32::try_from(area.height).unwrap_or(i32::MAX))
+                .saturating_add(4),
+        );
+        push_hud_plain_text(
+            vertices,
+            commands,
+            white_pixel,
+            font_atlas,
+            glyphs,
+            obfuscated_pool,
+            obfuscated_seed,
+            surface_size,
+            &counter,
+            counter_origin,
+            area.counter_tint,
+            1.0,
+            false,
+        );
+
+        if max_scroll > 0 {
+            let thumb_upper = height.saturating_sub(8);
+            let calculated = height
+                .saturating_mul(height)
+                .checked_div(content_height.max(1))
+                .unwrap_or(0);
+            let thumb_height = if thumb_upper < 32 {
+                thumb_upper.max(1)
+            } else {
+                calculated.clamp(32, thumb_upper)
+            };
+            let travel = height.saturating_sub(thumb_height);
+            let thumb_y = area.y.max(
+                scroll_amount
+                    .saturating_mul(travel)
+                    .checked_div(max_scroll)
+                    .unwrap_or(0)
+                    .saturating_add(area.y),
+            );
+            push_hud_inventory_scrollbar(
+                vertices,
+                commands,
+                white_pixel,
+                scrollbar_sprites,
+                surface_size,
+                screen,
+                HudInventoryScrollbar {
+                    x: area
+                        .x
+                        .saturating_add(i32::try_from(area.width).unwrap_or(i32::MAX)),
+                    y: area.y,
+                    width: 6,
+                    height: area.height,
+                    thumb_y,
+                    thumb_height: u32::try_from(thumb_height).unwrap_or(1),
+                },
+            );
         }
     }
 }
@@ -12494,8 +12838,45 @@ fn sanitize_hud_inventory_scroll_area(
             .into_iter()
             .filter_map(sanitize_hud_inventory_text_label)
             .collect(),
+        text_areas: area
+            .text_areas
+            .into_iter()
+            .filter_map(sanitize_hud_inventory_text_area)
+            .collect(),
         scrollbar: area.scrollbar.and_then(sanitize_hud_inventory_scrollbar),
     })
+}
+
+fn sanitize_hud_inventory_text_area(
+    mut area: HudInventoryTextArea,
+) -> Option<HudInventoryTextArea> {
+    if area.width == 0
+        || area.height == 0
+        || !area
+            .text_tint
+            .iter()
+            .chain(area.cursor_tint.iter())
+            .chain(area.selection_tint.iter())
+            .chain(area.counter_tint.iter())
+            .all(|component| component.is_finite())
+    {
+        return None;
+    }
+    area.width = area.width.min(1024);
+    area.height = area.height.min(512);
+    area.max_length = area.max_length.min(1024);
+    area.text = sanitize_hud_multiline_text(area.text, area.max_length);
+    let text_len = area.text.chars().count();
+    area.cursor = area.cursor.min(text_len);
+    area.selection = area.selection.min(text_len);
+    area.scroll_amount = area.scroll_amount.max(0);
+    area.text_tint = area.text_tint.map(|component| component.clamp(0.0, 1.0));
+    area.cursor_tint = area.cursor_tint.map(|component| component.clamp(0.0, 1.0));
+    area.selection_tint = area
+        .selection_tint
+        .map(|component| component.clamp(0.0, 1.0));
+    area.counter_tint = area.counter_tint.map(|component| component.clamp(0.0, 1.0));
+    Some(area)
 }
 
 fn sanitize_hud_inventory_scrollbar(
@@ -13231,6 +13612,20 @@ fn sanitize_hud_text_preserving_empty_utf16(line: String, limit: usize) -> Strin
     let mut sanitized = String::new();
     let mut used = 0usize;
     for ch in line.chars().filter(|ch| !ch.is_control()) {
+        let len = ch.len_utf16();
+        if used.saturating_add(len) > limit {
+            break;
+        }
+        sanitized.push(ch);
+        used += len;
+    }
+    sanitized
+}
+
+fn sanitize_hud_multiline_text(line: String, limit: usize) -> String {
+    let mut sanitized = String::new();
+    let mut used = 0usize;
+    for ch in line.chars().filter(|ch| *ch == '\n' || !ch.is_control()) {
         let len = ch.len_utf16();
         if used.saturating_add(len) > limit {
             break;
@@ -15662,6 +16057,55 @@ mod tests {
     }
 
     #[test]
+    fn multiline_text_wrap_preserves_break_boundaries_and_trailing_empty_line() {
+        let mut glyphs = HudFontGlyphMap::new();
+        for ch in ['a', 'b', 'c', 'd', 'x', ' '] {
+            glyphs.insert_first_wins(
+                ch,
+                HudAsciiGlyph {
+                    advance: 6,
+                    width: 5,
+                    height: 8,
+                    ..HudAsciiGlyph::default()
+                },
+            );
+        }
+        assert_eq!(
+            hud_multiline_lines("ab cd\nx\n", 12, &glyphs),
+            [
+                HudMultilineLine { begin: 0, end: 2 },
+                HudMultilineLine { begin: 3, end: 5 },
+                HudMultilineLine { begin: 6, end: 7 },
+                HudMultilineLine { begin: 8, end: 8 },
+            ]
+        );
+
+        let area = sanitize_hud_inventory_text_area(HudInventoryTextArea {
+            x: 0,
+            y: 0,
+            width: 44,
+            height: 17,
+            text: "a\t\n😀b".to_string(),
+            cursor: usize::MAX,
+            selection: usize::MAX,
+            scroll_amount: -5,
+            max_length: 4,
+            cursor_visible: true,
+            text_tint: [1.0; 4],
+            cursor_tint: [1.0; 4],
+            selection_tint: [0.0, 0.0, 2.0, 1.0],
+            counter_tint: [0.5; 4],
+            shadow: true,
+        })
+        .unwrap();
+        assert_eq!(area.text, "a\n😀");
+        assert_eq!(area.cursor, 3);
+        assert_eq!(area.selection, 3);
+        assert_eq!(area.scroll_amount, 0);
+        assert_eq!(area.selection_tint, [0.0, 0.0, 1.0, 1.0]);
+    }
+
+    #[test]
     fn plain_text_display_start_for_width_matches_text_input_layout() {
         let glyphs = styled_test_glyphs();
 
@@ -17947,6 +18391,7 @@ mod tests {
                 shadow: false,
                 runs: vec![HudStyledTextRun::plain("aaaa")],
             }],
+            text_areas: Vec::new(),
             scrollbar: None,
         });
         renderer.set_hud_inventory_screen(Some(screen));
@@ -17971,6 +18416,84 @@ mod tests {
             (74, 67, 10, 20),
             (0, 0, 320, 240),
         ]));
+    }
+
+    #[test]
+    fn multiline_text_area_draws_with_nested_scissor_and_restores_parent() {
+        let Some(mut renderer) = Renderer::new_offscreen(320, 240) else {
+            return;
+        };
+        let glyph = HudAsciiGlyph {
+            uv: HudUvRect {
+                min: [0.0, 0.0],
+                max: [1.0, 1.0],
+            },
+            width: 1,
+            height: 1,
+            advance: 6,
+            ascent: HUD_FONT_BASELINE,
+        };
+        let mut glyphs = HudFontGlyphMap::new();
+        for ch in "a /0123456789_".chars() {
+            glyphs.insert_first_wins(ch, glyph);
+        }
+        renderer
+            .upload_hud_font_atlas(1, 1, &[255, 255, 255, 255], glyphs)
+            .unwrap();
+
+        let mut screen = hud_inventory_screen_with_entity_previews(Vec::new());
+        screen.scroll_area = Some(HudInventoryScrollArea {
+            scissor: HudInventoryItemScissor {
+                x: 2,
+                y: 30,
+                width: 30,
+                height: 40,
+            },
+            background_layers: Vec::new(),
+            fill_layers: Vec::new(),
+            text_labels: Vec::new(),
+            text_areas: vec![HudInventoryTextArea {
+                x: 2,
+                y: 30,
+                width: 20,
+                height: 17,
+                text: "aaaa aaaa aaaa".to_string(),
+                cursor: 14,
+                selection: 5,
+                scroll_amount: i32::MAX,
+                max_length: 32,
+                cursor_visible: true,
+                text_tint: HUD_TINT_WHITE,
+                cursor_tint: HUD_TINT_WHITE,
+                selection_tint: [0.0, 0.0, 1.0, 1.0],
+                counter_tint: [0.5, 0.5, 0.5, 1.0],
+                shadow: true,
+            }],
+            scrollbar: None,
+        });
+        renderer.set_hud_inventory_screen(Some(screen));
+
+        let draws = renderer.collect_hud_draws();
+        let scissors = draws
+            .commands
+            .iter()
+            .filter_map(|command| match command {
+                HudDrawCommand::Scissor {
+                    x,
+                    y,
+                    width,
+                    height,
+                } => Some((*x, *y, *width, *height)),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+        assert!(scissors.ends_with(&[
+            (74, 67, 30, 40),
+            (75, 68, 18, 15),
+            (74, 67, 30, 40),
+            (0, 0, 320, 240),
+        ]));
+        assert!(!draws.vertices.is_empty());
     }
 
     #[test]
@@ -18014,6 +18537,7 @@ mod tests {
                 shadow: false,
                 runs: Vec::new(),
             }],
+            text_areas: Vec::new(),
             scrollbar: Some(HudInventoryScrollbar {
                 x: 84,
                 y: 20,

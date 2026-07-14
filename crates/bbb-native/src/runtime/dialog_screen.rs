@@ -11,7 +11,7 @@ use bbb_protocol::{
 use bbb_renderer::{
     HudInventoryBackgroundLayer, HudInventoryBackgroundTexture, HudInventoryFillLayer,
     HudInventoryFillStage, HudInventoryItem, HudInventoryItemScissor, HudInventoryScreen,
-    HudInventoryScrollArea, HudInventoryScrollbar, HudInventoryScrollingText,
+    HudInventoryScrollArea, HudInventoryScrollbar, HudInventoryScrollingText, HudInventoryTextArea,
     HudInventoryTextInputDecoration, HudInventoryTextLabel, HudInventoryTooltip,
     HudInventoryTooltipLine, HudStyledTextRun, HudTextStyle, HudUvRect, Renderer,
 };
@@ -19,7 +19,8 @@ use bbb_world::{
     CommonDialogDataState, DialogActionState, DialogBodyFocusPartState, DialogBodyState,
     DialogButtonState, DialogCommandTemplateState, DialogDataState, DialogFocusState,
     DialogInputControlState, DialogInputValueState, DialogItemStackTemplateState,
-    DialogNumberRangeState, DialogPlainMessageState, DialogState, DialogTextState, WorldStore,
+    DialogNumberRangeState, DialogPlainMessageState, DialogState, DialogTextMultilineState,
+    DialogTextState, WorldStore,
 };
 use tokio::sync::mpsc;
 use winit::dpi::{PhysicalPosition, PhysicalSize};
@@ -193,16 +194,25 @@ enum DialogInputMouseHit {
     Boolean(usize),
     NumberRange(DialogInputLayout),
     SingleOption(DialogInputLayout),
-    Text(DialogInputLayout),
+    Text {
+        layout: DialogInputLayout,
+        multiline: bool,
+    },
 }
 
 pub(crate) trait DialogTextMeasurer {
+    fn width(&self, text: &str) -> u32;
+
     fn display_start(&self, text: &str, scroll_to: usize, width: u32) -> usize;
 
     fn cursor_for_width(&self, text: &str, display_start: usize, width: u32) -> usize;
 }
 
 impl DialogTextMeasurer for Renderer {
+    fn width(&self, text: &str) -> u32 {
+        self.hud_plain_text_width(text)
+    }
+
     fn display_start(&self, text: &str, scroll_to: usize, width: u32) -> usize {
         self.hud_plain_text_display_start_for_width(text, scroll_to, width)
             .unwrap_or_else(|| approximate_dialog_text_display_start(text, scroll_to, width))
@@ -219,6 +229,12 @@ struct ApproximateDialogTextMeasurer;
 
 #[cfg(test)]
 impl DialogTextMeasurer for ApproximateDialogTextMeasurer {
+    fn width(&self, text: &str) -> u32 {
+        text.chars().fold(0, |width, ch| {
+            width.saturating_add(hud_ascii_approx_char_width(ch))
+        })
+    }
+
     fn display_start(&self, text: &str, scroll_to: usize, width: u32) -> usize {
         approximate_dialog_text_display_start(text, scroll_to, width)
     }
@@ -799,8 +815,10 @@ fn dialog_focus_graph_at_scroll(
                 ..
             } => Some(dialog_single_line_text_box_layout(layout, *label_visible)),
             DialogInputControlState::Text {
-                multiline: Some(_), ..
-            } => None,
+                label_visible,
+                multiline: Some(_),
+                ..
+            } => Some(dialog_multiline_text_box_layout(layout, *label_visible)),
         };
         if let Some(layout) = focus_layout {
             body.push(DialogFocusNode {
@@ -1337,6 +1355,180 @@ fn dialog_single_line_text_box_layout(
     }
 }
 
+fn dialog_multiline_text_box_layout(
+    layout: DialogInputLayout,
+    label_visible: bool,
+) -> DialogInputLayout {
+    let label_height = if label_visible {
+        TEXT_LINE_HEIGHT + 4
+    } else {
+        0
+    };
+    DialogInputLayout {
+        y: layout.y.saturating_add(label_height),
+        height: layout.height.saturating_sub(label_height),
+        ..layout
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct DialogMultilineLine {
+    begin: usize,
+    end: usize,
+}
+
+fn dialog_multiline_lines(
+    text: &str,
+    width: u32,
+    text_measurer: &dyn DialogTextMeasurer,
+) -> Vec<DialogMultilineLine> {
+    let chars = text.chars().collect::<Vec<_>>();
+    let mut lines = Vec::new();
+    let mut begin = 0usize;
+    while begin < chars.len() {
+        let mut cursor = begin;
+        let mut last_space = None;
+        let mut wrapped = false;
+        while cursor < chars.len() {
+            let ch = chars[cursor];
+            if ch == '\n' {
+                lines.push(DialogMultilineLine { begin, end: cursor });
+                begin = cursor.saturating_add(1);
+                wrapped = true;
+                break;
+            }
+            if ch == ' ' {
+                last_space = Some(cursor);
+            }
+            let candidate = chars[begin..=cursor].iter().collect::<String>();
+            if cursor > begin && text_measurer.width(&candidate) > width {
+                if let Some(space) = last_space.filter(|space| *space >= begin) {
+                    lines.push(DialogMultilineLine { begin, end: space });
+                    begin = space.saturating_add(1);
+                } else {
+                    lines.push(DialogMultilineLine { begin, end: cursor });
+                    begin = cursor;
+                }
+                wrapped = true;
+                break;
+            }
+            cursor = cursor.saturating_add(1);
+        }
+        if !wrapped {
+            lines.push(DialogMultilineLine {
+                begin,
+                end: chars.len(),
+            });
+            begin = chars.len();
+        }
+    }
+    if chars.is_empty() || chars.last() == Some(&'\n') {
+        lines.push(DialogMultilineLine {
+            begin: chars.len(),
+            end: chars.len(),
+        });
+    }
+    lines
+}
+
+fn dialog_multiline_content_height(line_count: usize) -> i32 {
+    i32::try_from(line_count)
+        .unwrap_or(i32::MAX)
+        .saturating_mul(TEXT_LINE_HEIGHT)
+        .saturating_add(8)
+}
+
+fn dialog_multiline_max_scroll(line_count: usize, height: i32) -> i32 {
+    dialog_multiline_content_height(line_count)
+        .saturating_sub(height)
+        .max(0)
+}
+
+fn dialog_multiline_cursor_line(lines: &[DialogMultilineLine], cursor: usize) -> usize {
+    lines
+        .iter()
+        .position(|line| cursor <= line.end)
+        .unwrap_or_else(|| lines.len().saturating_sub(1))
+}
+
+fn dialog_multiline_reveal_cursor(
+    scroll_amount: i32,
+    height: i32,
+    lines: &[DialogMultilineLine],
+    cursor: usize,
+) -> i32 {
+    let max_scroll = dialog_multiline_max_scroll(lines.len(), height);
+    let scroll_amount = scroll_amount.clamp(0, max_scroll);
+    let cursor_line = dialog_multiline_cursor_line(lines, cursor);
+    let first_line = usize::try_from(scroll_amount / TEXT_LINE_HEIGHT).unwrap_or(0);
+    if lines
+        .get(first_line)
+        .is_some_and(|line| cursor <= line.begin)
+    {
+        return i32::try_from(cursor_line)
+            .unwrap_or(i32::MAX)
+            .saturating_mul(TEXT_LINE_HEIGHT)
+            .clamp(0, max_scroll);
+    }
+    let last_line = usize::try_from(
+        scroll_amount
+            .saturating_add(height)
+            .saturating_div(TEXT_LINE_HEIGHT)
+            .saturating_sub(1),
+    )
+    .unwrap_or(0)
+    .min(lines.len().saturating_sub(1));
+    if lines.get(last_line).is_some_and(|line| cursor > line.end) {
+        return i32::try_from(cursor_line)
+            .unwrap_or(i32::MAX)
+            .saturating_mul(TEXT_LINE_HEIGHT)
+            .saturating_sub(height)
+            .saturating_add(TEXT_LINE_HEIGHT + 8)
+            .clamp(0, max_scroll);
+    }
+    scroll_amount
+}
+
+fn dialog_multiline_scrollbar_layout(
+    layout: DialogInputLayout,
+    line_count: usize,
+    scroll_amount: i32,
+) -> Option<DialogScrollbarLayout> {
+    let content_height = dialog_multiline_content_height(line_count);
+    let max_scroll = content_height.saturating_sub(layout.height).max(0);
+    if max_scroll == 0 {
+        return None;
+    }
+    let calculated_thumb_height = layout
+        .height
+        .saturating_mul(layout.height)
+        .checked_div(content_height.max(1))
+        .unwrap_or(0);
+    let thumb_upper = layout.height.saturating_sub(8);
+    let thumb_height = if thumb_upper < 32 {
+        thumb_upper.max(1)
+    } else {
+        calculated_thumb_height.clamp(32, thumb_upper)
+    };
+    let travel = layout.height.saturating_sub(thumb_height);
+    let thumb_y = layout.y.max(
+        scroll_amount
+            .clamp(0, max_scroll)
+            .saturating_mul(travel)
+            .checked_div(max_scroll)
+            .unwrap_or(0)
+            .saturating_add(layout.y),
+    );
+    Some(DialogScrollbarLayout {
+        x: layout.x.saturating_add(layout.width),
+        y: layout.y,
+        width: 6,
+        height: layout.height,
+        thumb_y,
+        thumb_height,
+    })
+}
+
 fn approximate_dialog_text_display_start(text: &str, scroll_to: usize, width: u32) -> usize {
     let scroll_to = scroll_to.min(text_edit::char_len(text));
     let prefix_width = text.chars().take(scroll_to).fold(0u32, |total, ch| {
@@ -1442,6 +1634,82 @@ fn push_horizontal_nine_slice_layers(
                 ],
             },
         });
+    }
+}
+
+fn push_full_nine_slice_layers(
+    layers: &mut Vec<HudInventoryBackgroundLayer>,
+    layout: DialogInputLayout,
+    texture: HudInventoryBackgroundTexture,
+    sprite_width: u32,
+    sprite_height: u32,
+    declared_border: u32,
+) {
+    let width = u32::try_from(layout.width).unwrap_or(0);
+    let height = u32::try_from(layout.height).unwrap_or(0);
+    if width == 0 || height == 0 || sprite_width == 0 || sprite_height == 0 {
+        return;
+    }
+    let border_x = declared_border.min(width / 2).min(sprite_width / 2);
+    let border_y = declared_border.min(height / 2).min(sprite_height / 2);
+    let columns = [
+        (0, border_x, 0, border_x),
+        (
+            border_x,
+            width.saturating_sub(border_x.saturating_mul(2)),
+            border_x,
+            sprite_width.saturating_sub(border_x.saturating_mul(2)),
+        ),
+        (
+            width.saturating_sub(border_x),
+            border_x,
+            sprite_width.saturating_sub(border_x),
+            border_x,
+        ),
+    ];
+    let rows = [
+        (0, border_y, 0, border_y),
+        (
+            border_y,
+            height.saturating_sub(border_y.saturating_mul(2)),
+            border_y,
+            sprite_height.saturating_sub(border_y.saturating_mul(2)),
+        ),
+        (
+            height.saturating_sub(border_y),
+            border_y,
+            sprite_height.saturating_sub(border_y),
+            border_y,
+        ),
+    ];
+    for (screen_y, screen_height, texture_y, texture_height) in rows {
+        for (screen_x, screen_width, texture_x, texture_width) in columns {
+            if screen_width == 0 || screen_height == 0 || texture_width == 0 || texture_height == 0
+            {
+                continue;
+            }
+            layers.push(HudInventoryBackgroundLayer {
+                texture,
+                x: layout
+                    .x
+                    .saturating_add(i32::try_from(screen_x).unwrap_or(i32::MAX)),
+                y: layout
+                    .y
+                    .saturating_add(i32::try_from(screen_y).unwrap_or(i32::MAX)),
+                width: screen_width,
+                height: screen_height,
+                uv: HudUvRect {
+                    min: [
+                        texture_x as f32 / sprite_width as f32,
+                        texture_y as f32 / sprite_height as f32,
+                    ],
+                    max: [
+                        texture_x.saturating_add(texture_width) as f32 / sprite_width as f32,
+                        texture_y.saturating_add(texture_height) as f32 / sprite_height as f32,
+                    ],
+                },
+            });
+        }
     }
 }
 
@@ -1829,6 +2097,7 @@ pub(super) fn hud_dialog_screen(
     let input_layouts =
         dialog_input_layouts_at_scroll(controls.common, surface_size, scroll_layout.scroll_amount)?;
     let mut input_layers = Vec::new();
+    let mut text_areas = Vec::new();
     for input_layout in input_layouts {
         let Some(input) = controls.common.input_data.get(input_layout.index) else {
             continue;
@@ -2039,6 +2308,53 @@ pub(super) fn hud_dialog_screen(
                     runs: Vec::new(),
                 });
             }
+            (
+                DialogInputControlState::Text {
+                    label,
+                    label_visible,
+                    max_length,
+                    multiline: Some(_),
+                    ..
+                },
+                Some(Some(DialogInputValueState::Text { value })),
+            ) => {
+                if *label_visible {
+                    push_text_label(&mut text_labels, label, input_layout.x, input_layout.y);
+                }
+                let box_layout = dialog_multiline_text_box_layout(input_layout, *label_visible);
+                let edit = world.dialog_text_edit_state_for_input(input_layout.index);
+                let focused = world.dialog_focused_input() == Some(input_layout.index);
+                push_full_nine_slice_layers(
+                    &mut input_layers,
+                    box_layout,
+                    if focused {
+                        HudInventoryBackgroundTexture::WidgetTextFieldHighlighted
+                    } else {
+                        HudInventoryBackgroundTexture::WidgetTextField
+                    },
+                    WIDGET_SPRITE_WIDTH,
+                    20,
+                    1,
+                );
+                let text_len = text_edit::char_len(value);
+                text_areas.push(HudInventoryTextArea {
+                    x: box_layout.x,
+                    y: box_layout.y,
+                    width: u32::try_from(box_layout.width).unwrap_or_default(),
+                    height: u32::try_from(box_layout.height).unwrap_or_default(),
+                    text: value.clone(),
+                    cursor: edit.map_or(text_len, |edit| edit.cursor),
+                    selection: edit.map_or(text_len, |edit| edit.selection),
+                    scroll_amount: edit.map_or(i32::MAX, |edit| edit.scroll_amount),
+                    max_length: usize::try_from(*max_length).unwrap_or(usize::MAX),
+                    cursor_visible: focused && (wall_clock_millis() / 300) % 2 == 0,
+                    text_tint: TEXT_INPUT_COLOR,
+                    cursor_tint: TEXT_INPUT_COLOR,
+                    selection_tint: TEXT_SELECTION_TINT,
+                    counter_tint: INACTIVE_TEXT_COLOR,
+                    shadow: true,
+                });
+            }
             _ => {}
         }
     }
@@ -2194,6 +2510,7 @@ pub(super) fn hud_dialog_screen(
             background_layers: input_layers,
             fill_layers: scroll_fill_layers,
             text_labels: scroll_text_labels,
+            text_areas,
             scrollbar: dialog_scrollbar_layout(scroll_layout).map(|scrollbar| {
                 HudInventoryScrollbar {
                     x: scrollbar.x,
@@ -2420,7 +2737,34 @@ pub(crate) fn handle_dialog_key_input_with_modifiers(
 }
 
 #[allow(clippy::too_many_arguments)]
+#[cfg(test)]
 pub(crate) fn handle_dialog_key_input_with_modifiers_for_surface(
+    counters: &mut NetCounters,
+    world: &mut WorldStore,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    clipboard: Option<&mut dyn DebugClipboard>,
+    physical_key: PhysicalKey,
+    state: ElementState,
+    shift_down: bool,
+    control_down: bool,
+    surface_size: PhysicalSize<u32>,
+) -> bool {
+    handle_dialog_key_input_with_modifiers_for_surface_and_measurer(
+        counters,
+        world,
+        net_commands,
+        clipboard,
+        physical_key,
+        state,
+        shift_down,
+        control_down,
+        surface_size,
+        &ApproximateDialogTextMeasurer,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn handle_dialog_key_input_with_modifiers_for_surface_and_measurer(
     counters: &mut NetCounters,
     world: &mut WorldStore,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
@@ -2430,6 +2774,7 @@ pub(crate) fn handle_dialog_key_input_with_modifiers_for_surface(
     shift_down: bool,
     control_down: bool,
     surface_size: PhysicalSize<u32>,
+    text_measurer: &dyn DialogTextMeasurer,
 ) -> bool {
     if world.dialog_warning_is_open() {
         if state != ElementState::Pressed {
@@ -2510,6 +2855,7 @@ pub(crate) fn handle_dialog_key_input_with_modifiers_for_surface(
         physical_key,
         shift_down,
         control_down,
+        text_measurer,
     ) {
         return true;
     }
@@ -2706,6 +3052,7 @@ fn handle_focused_dialog_text_key(
     physical_key: PhysicalKey,
     shift_down: bool,
     control_down: bool,
+    text_measurer: &dyn DialogTextMeasurer,
 ) -> bool {
     let PhysicalKey::Code(code) = physical_key else {
         return false;
@@ -2715,36 +3062,106 @@ fn handle_focused_dialog_text_key(
     }
     match code {
         KeyCode::Backspace => {
-            delete_focused_dialog_text(world, -1, control_down);
+            delete_focused_dialog_text(world, -1, control_down, text_measurer);
             true
         }
         KeyCode::Delete => {
-            delete_focused_dialog_text(world, 1, control_down);
+            delete_focused_dialog_text(world, 1, control_down, text_measurer);
             true
         }
         KeyCode::ArrowLeft => {
-            move_focused_dialog_text_cursor(world, -1, shift_down, control_down);
+            move_focused_dialog_text_cursor(world, -1, shift_down, control_down, text_measurer);
             true
         }
         KeyCode::ArrowRight => {
-            move_focused_dialog_text_cursor(world, 1, shift_down, control_down);
+            move_focused_dialog_text_cursor(world, 1, shift_down, control_down, text_measurer);
             true
         }
+        KeyCode::ArrowUp | KeyCode::ArrowDown => {
+            if focused_dialog_text_snapshot(world)
+                .is_some_and(|snapshot| snapshot.multiline.is_some())
+            {
+                move_focused_dialog_multiline_cursor_vertically(
+                    world,
+                    code == KeyCode::ArrowDown,
+                    shift_down,
+                    control_down,
+                    text_measurer,
+                );
+                true
+            } else {
+                false
+            }
+        }
+        KeyCode::PageUp | KeyCode::PageDown => {
+            let Some(snapshot) = focused_dialog_text_snapshot(world) else {
+                return false;
+            };
+            if snapshot.multiline.is_some() {
+                let cursor = if code == KeyCode::PageUp {
+                    0
+                } else {
+                    text_edit::char_len(&snapshot.value)
+                };
+                move_focused_dialog_text_cursor_to(world, cursor, shift_down, text_measurer);
+                true
+            } else {
+                false
+            }
+        }
         KeyCode::Home => {
-            move_focused_dialog_text_cursor_to(world, 0, shift_down);
+            let cursor = focused_dialog_text_snapshot(world).map_or(0, |snapshot| {
+                if snapshot.multiline.is_some() && !control_down {
+                    let lines = dialog_multiline_lines(
+                        &snapshot.value,
+                        snapshot.inner_width(),
+                        text_measurer,
+                    );
+                    lines[dialog_multiline_cursor_line(&lines, snapshot.cursor)].begin
+                } else {
+                    0
+                }
+            });
+            move_focused_dialog_text_cursor_to(world, cursor, shift_down, text_measurer);
             true
         }
         KeyCode::End => {
-            let end = focused_dialog_text_snapshot(world)
-                .map(|(_, value, _, _, _)| text_edit::char_len(&value))
-                .unwrap_or(0);
-            move_focused_dialog_text_cursor_to(world, end, shift_down);
+            let end = focused_dialog_text_snapshot(world).map_or(0, |snapshot| {
+                if snapshot.multiline.is_some() && !control_down {
+                    let lines = dialog_multiline_lines(
+                        &snapshot.value,
+                        snapshot.inner_width(),
+                        text_measurer,
+                    );
+                    lines[dialog_multiline_cursor_line(&lines, snapshot.cursor)].end
+                } else {
+                    text_edit::char_len(&snapshot.value)
+                }
+            });
+            move_focused_dialog_text_cursor_to(world, end, shift_down, text_measurer);
             true
         }
+        KeyCode::Enter | KeyCode::NumpadEnter => {
+            if focused_dialog_text_snapshot(world)
+                .is_some_and(|snapshot| snapshot.multiline.is_some())
+            {
+                replace_focused_dialog_text_selection(world, "\n", text_measurer);
+                true
+            } else {
+                false
+            }
+        }
         KeyCode::KeyA if control_down => {
-            if let Some((index, value, _, _, _)) = focused_dialog_text_snapshot(world) {
-                let end = text_edit::char_len(&value);
-                world.set_dialog_text_input_value_and_selection(index, value, end, 0);
+            if let Some(snapshot) = focused_dialog_text_snapshot(world) {
+                let end = text_edit::char_len(&snapshot.value);
+                set_focused_dialog_text(
+                    world,
+                    &snapshot,
+                    snapshot.value.clone(),
+                    end,
+                    0,
+                    text_measurer,
+                );
             }
             true
         }
@@ -2757,29 +3174,51 @@ fn handle_focused_dialog_text_key(
                 .as_deref_mut()
                 .and_then(DebugClipboard::get_debug_clipboard_text)
             {
-                replace_focused_dialog_text_selection(world, &text);
+                replace_focused_dialog_text_selection(world, &text, text_measurer);
             }
             true
         }
         KeyCode::KeyX if control_down => {
             copy_focused_dialog_text_selection(world, clipboard);
-            replace_focused_dialog_text_selection(world, "");
+            replace_focused_dialog_text_selection(world, "", text_measurer);
             true
         }
         _ => false,
     }
 }
 
-fn focused_dialog_text_snapshot(
-    world: &WorldStore,
-) -> Option<(usize, String, usize, usize, usize)> {
+#[derive(Debug, Clone)]
+struct FocusedDialogTextSnapshot {
+    index: usize,
+    value: String,
+    cursor: usize,
+    selection: usize,
+    scroll_amount: i32,
+    width: i32,
+    height: i32,
+    max_length: usize,
+    multiline: Option<DialogTextMultilineState>,
+}
+
+impl FocusedDialogTextSnapshot {
+    fn inner_width(&self) -> u32 {
+        u32::try_from(
+            self.width
+                .saturating_sub(TEXT_INPUT_INSET.saturating_mul(2))
+                .max(1),
+        )
+        .unwrap_or(1)
+    }
+}
+
+fn focused_dialog_text_snapshot(world: &WorldStore) -> Option<FocusedDialogTextSnapshot> {
     let edit = world.dialog_text_edit_state()?;
     let Some(Some(DialogInputValueState::Text { value })) =
         world.current_dialog_input_values().get(edit.input_index)
     else {
         return None;
     };
-    let max_length = world
+    let (width, max_length, multiline) = world
         .current_dialog()?
         .data
         .as_ref()
@@ -2789,19 +3228,74 @@ fn focused_dialog_text_snapshot(
         .get(edit.input_index)
         .and_then(|input| match &input.control {
             DialogInputControlState::Text {
+                width,
                 max_length,
-                multiline: None,
+                multiline,
                 ..
-            } => usize::try_from(*max_length).ok(),
+            } => Some((
+                *width,
+                usize::try_from(*max_length).ok()?,
+                multiline.clone(),
+            )),
             _ => None,
         })?;
-    Some((
-        edit.input_index,
-        value.clone(),
-        edit.cursor,
-        edit.selection,
+    let height = multiline.as_ref().map_or(TEXT_INPUT_HEIGHT, |multiline| {
+        multiline.height.unwrap_or_else(|| {
+            multiline
+                .max_lines
+                .unwrap_or(4)
+                .saturating_mul(TEXT_LINE_HEIGHT)
+                .saturating_add(8)
+                .min(512)
+        })
+    });
+    Some(FocusedDialogTextSnapshot {
+        index: edit.input_index,
+        value: value.clone(),
+        cursor: edit.cursor,
+        selection: edit.selection,
+        scroll_amount: edit.scroll_amount,
+        width,
+        height,
         max_length,
-    ))
+        multiline,
+    })
+}
+
+fn set_focused_dialog_text(
+    world: &mut WorldStore,
+    snapshot: &FocusedDialogTextSnapshot,
+    value: String,
+    cursor: usize,
+    selection: usize,
+    text_measurer: &dyn DialogTextMeasurer,
+) -> bool {
+    let lines = snapshot
+        .multiline
+        .as_ref()
+        .map(|_| dialog_multiline_lines(&value, snapshot.inner_width(), text_measurer));
+    if snapshot
+        .multiline
+        .as_ref()
+        .and_then(|multiline| multiline.max_lines)
+        .is_some_and(|max_lines| {
+            lines
+                .as_ref()
+                .is_some_and(|lines| i32::try_from(lines.len()).unwrap_or(i32::MAX) > max_lines)
+        })
+    {
+        return false;
+    }
+    if !world.set_dialog_text_input_value_and_selection(snapshot.index, value, cursor, selection) {
+        return false;
+    }
+    if let Some(lines) = lines {
+        let max_scroll = dialog_multiline_max_scroll(lines.len(), snapshot.height);
+        let scroll_amount =
+            dialog_multiline_reveal_cursor(snapshot.scroll_amount, snapshot.height, &lines, cursor);
+        world.set_dialog_multiline_text_scroll_amount(snapshot.index, scroll_amount, max_scroll);
+    }
+    true
 }
 
 fn move_focused_dialog_text_cursor(
@@ -2809,22 +3303,36 @@ fn move_focused_dialog_text_cursor(
     direction: i32,
     extend_selection: bool,
     whole_word: bool,
+    text_measurer: &dyn DialogTextMeasurer,
 ) -> bool {
-    let Some((index, value, cursor, selection, _)) = focused_dialog_text_snapshot(world) else {
+    let Some(snapshot) = focused_dialog_text_snapshot(world) else {
         return false;
     };
     let next = if whole_word {
-        text_edit::word_position(&value, cursor, direction)
+        if snapshot.multiline.is_some() {
+            dialog_multiline_word_position(&snapshot.value, snapshot.cursor, direction)
+        } else {
+            text_edit::word_position(&snapshot.value, snapshot.cursor, direction)
+        }
     } else if direction < 0 {
-        cursor.saturating_sub(1)
+        snapshot.cursor.saturating_sub(1)
     } else {
-        cursor.saturating_add(1).min(text_edit::char_len(&value))
+        snapshot
+            .cursor
+            .saturating_add(1)
+            .min(text_edit::char_len(&snapshot.value))
     };
-    world.set_dialog_text_input_value_and_selection(
-        index,
-        value,
+    set_focused_dialog_text(
+        world,
+        &snapshot,
+        snapshot.value.clone(),
         next,
-        if extend_selection { selection } else { next },
+        if extend_selection {
+            snapshot.selection
+        } else {
+            next
+        },
+        text_measurer,
     )
 }
 
@@ -2832,27 +3340,46 @@ fn move_focused_dialog_text_cursor_to(
     world: &mut WorldStore,
     cursor: usize,
     extend_selection: bool,
+    text_measurer: &dyn DialogTextMeasurer,
 ) -> bool {
-    let Some((index, value, _, selection, _)) = focused_dialog_text_snapshot(world) else {
+    let Some(snapshot) = focused_dialog_text_snapshot(world) else {
         return false;
     };
-    world.set_dialog_text_input_value_and_selection(
-        index,
-        value,
+    set_focused_dialog_text(
+        world,
+        &snapshot,
+        snapshot.value.clone(),
         cursor,
-        if extend_selection { selection } else { cursor },
+        if extend_selection {
+            snapshot.selection
+        } else {
+            cursor
+        },
+        text_measurer,
     )
 }
 
-fn delete_focused_dialog_text(world: &mut WorldStore, direction: i32, whole_word: bool) -> bool {
-    let Some((index, mut value, cursor, selection, _)) = focused_dialog_text_snapshot(world) else {
+fn delete_focused_dialog_text(
+    world: &mut WorldStore,
+    direction: i32,
+    whole_word: bool,
+    text_measurer: &dyn DialogTextMeasurer,
+) -> bool {
+    let Some(snapshot) = focused_dialog_text_snapshot(world) else {
         return false;
     };
+    let mut value = snapshot.value.clone();
+    let cursor = snapshot.cursor;
+    let selection = snapshot.selection;
     let (start, end) = if cursor != selection {
         (cursor.min(selection), cursor.max(selection))
     } else {
         let target = if whole_word {
-            text_edit::word_position(&value, cursor, direction)
+            if snapshot.multiline.is_some() {
+                dialog_multiline_word_position(&value, cursor, direction)
+            } else {
+                text_edit::word_position(&value, cursor, direction)
+            }
         } else if direction < 0 {
             cursor.saturating_sub(1)
         } else {
@@ -2866,26 +3393,31 @@ fn delete_focused_dialog_text(world: &mut WorldStore, direction: i32, whole_word
             "",
         );
     }
-    world.set_dialog_text_input_value_and_selection(index, value, start, start)
+    set_focused_dialog_text(world, &snapshot, value, start, start, text_measurer)
 }
 
-fn replace_focused_dialog_text_selection(world: &mut WorldStore, input: &str) -> bool {
-    let Some((index, mut value, cursor, selection, max_length)) =
-        focused_dialog_text_snapshot(world)
-    else {
+fn replace_focused_dialog_text_selection(
+    world: &mut WorldStore,
+    input: &str,
+    text_measurer: &dyn DialogTextMeasurer,
+) -> bool {
+    let Some(snapshot) = focused_dialog_text_snapshot(world) else {
         return false;
     };
+    let mut value = snapshot.value.clone();
+    let cursor = snapshot.cursor;
+    let selection = snapshot.selection;
     let start = cursor.min(selection);
     let end = cursor.max(selection);
     let start_byte = text_edit::byte_index(&value, start);
     let end_byte = text_edit::byte_index(&value, end);
     let selected_utf16 = value[start_byte..end_byte].encode_utf16().count();
     let retained_utf16 = value.encode_utf16().count().saturating_sub(selected_utf16);
-    let mut remaining = max_length.saturating_sub(retained_utf16);
+    let mut remaining = snapshot.max_length.saturating_sub(retained_utf16);
     let mut replacement = String::new();
     for ch in input
         .chars()
-        .filter(|ch| dialog_text_character_allowed(*ch))
+        .filter(|ch| dialog_text_character_allowed(*ch, snapshot.multiline.is_some()))
     {
         let units = ch.len_utf16();
         if units > remaining {
@@ -2897,20 +3429,118 @@ fn replace_focused_dialog_text_selection(world: &mut WorldStore, input: &str) ->
     let replacement_len = text_edit::char_len(&replacement);
     value.replace_range(start_byte..end_byte, &replacement);
     let cursor = start.saturating_add(replacement_len);
-    world.set_dialog_text_input_value_and_selection(index, value, cursor, cursor)
+    set_focused_dialog_text(world, &snapshot, value, cursor, cursor, text_measurer)
 }
 
-fn dialog_text_character_allowed(ch: char) -> bool {
-    ch != '\u{00a7}' && ch >= ' ' && ch != '\u{007f}'
+fn dialog_text_character_allowed(ch: char, multiline: bool) -> bool {
+    (multiline && ch == '\n') || (ch != '\u{00a7}' && ch >= ' ' && ch != '\u{007f}')
+}
+
+fn dialog_multiline_word_position(text: &str, cursor: usize, direction: i32) -> usize {
+    let chars = text.chars().collect::<Vec<_>>();
+    let mut cursor = cursor.min(chars.len());
+    if direction < 0 {
+        while cursor > 0 && chars[cursor - 1].is_whitespace() {
+            cursor -= 1;
+        }
+        while cursor > 0 && !chars[cursor - 1].is_whitespace() {
+            cursor -= 1;
+        }
+    } else {
+        while cursor < chars.len() && !chars[cursor].is_whitespace() {
+            cursor += 1;
+        }
+        while cursor < chars.len() && chars[cursor].is_whitespace() {
+            cursor += 1;
+        }
+    }
+    cursor
+}
+
+fn move_focused_dialog_multiline_cursor_vertically(
+    world: &mut WorldStore,
+    down: bool,
+    extend_selection: bool,
+    control_down: bool,
+    text_measurer: &dyn DialogTextMeasurer,
+) -> bool {
+    let Some(snapshot) = focused_dialog_text_snapshot(world) else {
+        return false;
+    };
+    if snapshot.multiline.is_none() {
+        return false;
+    }
+    let lines = dialog_multiline_lines(&snapshot.value, snapshot.inner_width(), text_measurer);
+    let max_scroll = dialog_multiline_max_scroll(lines.len(), snapshot.height);
+    let scroll_amount = snapshot.scroll_amount.clamp(0, max_scroll);
+    let scrolled = if down {
+        scroll_amount.saturating_add(4).min(max_scroll)
+    } else {
+        scroll_amount.saturating_sub(4)
+    };
+    if scrolled != scroll_amount {
+        world.set_dialog_multiline_text_scroll_amount(snapshot.index, scrolled, max_scroll);
+        return true;
+    }
+    if control_down {
+        return true;
+    }
+
+    let line_index = dialog_multiline_cursor_line(&lines, snapshot.cursor);
+    let target_index = if down {
+        line_index
+            .saturating_add(1)
+            .min(lines.len().saturating_sub(1))
+    } else {
+        line_index.saturating_sub(1)
+    };
+    if target_index == line_index {
+        return true;
+    }
+    let line = lines[line_index];
+    let prefix = dialog_char_slice(&snapshot.value, line.begin, snapshot.cursor.min(line.end));
+    let target = lines[target_index];
+    let target_text = dialog_char_slice(&snapshot.value, target.begin, target.end);
+    let target_cursor = target.begin.saturating_add(
+        text_measurer
+            .cursor_for_width(
+                &target_text,
+                0,
+                text_measurer.width(&prefix).saturating_add(2),
+            )
+            .min(target.end.saturating_sub(target.begin)),
+    );
+    set_focused_dialog_text(
+        world,
+        &snapshot,
+        snapshot.value.clone(),
+        target_cursor,
+        if extend_selection {
+            snapshot.selection
+        } else {
+            target_cursor
+        },
+        text_measurer,
+    )
+}
+
+fn dialog_char_slice(text: &str, begin: usize, end: usize) -> String {
+    text.chars()
+        .skip(begin)
+        .take(end.saturating_sub(begin))
+        .collect()
 }
 
 fn copy_focused_dialog_text_selection(
     world: &WorldStore,
     clipboard: &mut Option<&mut dyn DebugClipboard>,
 ) -> bool {
-    let Some((_, value, cursor, selection, _)) = focused_dialog_text_snapshot(world) else {
+    let Some(snapshot) = focused_dialog_text_snapshot(world) else {
         return false;
     };
+    let value = snapshot.value;
+    let cursor = snapshot.cursor;
+    let selection = snapshot.selection;
     let start = cursor.min(selection);
     let end = cursor.max(selection);
     if start == end {
@@ -2922,14 +3552,23 @@ fn copy_focused_dialog_text_selection(
         .is_some_and(|clipboard| clipboard.set_debug_clipboard_text(selected))
 }
 
+#[cfg(test)]
 pub(crate) fn handle_dialog_text_input(world: &mut WorldStore, text: &str) -> bool {
+    handle_dialog_text_input_with_measurer(world, text, &ApproximateDialogTextMeasurer)
+}
+
+pub(crate) fn handle_dialog_text_input_with_measurer(
+    world: &mut WorldStore,
+    text: &str,
+    text_measurer: &dyn DialogTextMeasurer,
+) -> bool {
     if world.dialog_warning_is_open() {
         return true;
     }
     if world.dialog_text_edit_state().is_none() {
         return world.dialog_screen_is_open();
     }
-    replace_focused_dialog_text_selection(world, text);
+    replace_focused_dialog_text_selection(world, text, text_measurer);
     true
 }
 
@@ -3001,6 +3640,7 @@ pub(crate) fn handle_dialog_mouse_input_with_modifiers_and_measurer(
     if button == MouseButton::Left && state == ElementState::Released {
         world.end_dialog_number_range_drag();
         world.end_dialog_text_input_drag();
+        world.end_dialog_multiline_scroll_drag();
         world.end_dialog_body_scroll_drag();
         return world.dialog_screen_is_open();
     }
@@ -3034,6 +3674,7 @@ pub(crate) fn handle_dialog_mouse_input_with_modifiers_and_measurer(
     }
     world.end_dialog_number_range_drag();
     world.end_dialog_text_input_drag();
+    world.end_dialog_multiline_scroll_drag();
     world.end_dialog_body_scroll_drag();
     let Some(dialog) = world.current_dialog() else {
         return false;
@@ -3091,13 +3732,29 @@ pub(crate) fn handle_dialog_mouse_input_with_modifiers_and_measurer(
                             multiline: None,
                             ..
                         } => dialog_single_line_text_box_layout(layout, *label_visible),
+                        DialogInputControlState::Text {
+                            label_visible,
+                            multiline: Some(_),
+                            ..
+                        } => dialog_multiline_text_box_layout(layout, *label_visible),
                         _ => layout,
+                    };
+                    let hit_width = if matches!(
+                        control,
+                        DialogInputControlState::Text {
+                            multiline: Some(_),
+                            ..
+                        }
+                    ) {
+                        hit_layout.width.saturating_add(6)
+                    } else {
+                        hit_layout.width
                     };
                     if !cursor_in_body
                         || !dialog_widget_contains(
                             hit_layout.x,
                             hit_layout.y,
-                            hit_layout.width,
+                            hit_width,
                             hit_layout.height,
                             cursor_position,
                             surface_size,
@@ -3119,8 +3776,16 @@ pub(crate) fn handle_dialog_mouse_input_with_modifiers_and_measurer(
                         }
                         DialogInputControlState::Text {
                             multiline: None, ..
-                        } => Some(DialogInputMouseHit::Text(hit_layout)),
-                        _ => None,
+                        } => Some(DialogInputMouseHit::Text {
+                            layout: hit_layout,
+                            multiline: false,
+                        }),
+                        DialogInputControlState::Text {
+                            multiline: Some(_), ..
+                        } => Some(DialogInputMouseHit::Text {
+                            layout: hit_layout,
+                            multiline: true,
+                        }),
                     }
                 })
             });
@@ -3179,16 +3844,26 @@ pub(crate) fn handle_dialog_mouse_input_with_modifiers_and_measurer(
             cycle_dialog_single_option(world, layout.index, shift_down);
             return true;
         }
-        Some(DialogInputMouseHit::Text(layout)) => {
-            focus_dialog_text_from_cursor(
-                world,
-                layout,
-                cursor_position,
-                surface_size,
-                shift_down,
-                text_measurer,
-            );
-            world.begin_dialog_text_input_drag(layout.index);
+        Some(DialogInputMouseHit::Text { layout, multiline }) => {
+            let scrollbar_drag = multiline
+                && begin_dialog_multiline_scroll_drag_from_cursor(
+                    world,
+                    layout,
+                    cursor_position,
+                    surface_size,
+                    text_measurer,
+                );
+            if !scrollbar_drag {
+                focus_dialog_text_from_cursor(
+                    world,
+                    layout,
+                    cursor_position,
+                    surface_size,
+                    shift_down,
+                    text_measurer,
+                );
+                world.begin_dialog_text_input_drag(layout.index);
+            }
             return true;
         }
         None => {}
@@ -3233,7 +3908,54 @@ fn focus_dialog_text_from_cursor(
     else {
         return false;
     };
-    let text_len = text_edit::char_len(value);
+    let value = value.clone();
+    let multiline = world.dialog_multiline_text_settings(layout.index).is_some();
+    let text_len = text_edit::char_len(&value);
+    if multiline {
+        let inner_width = u32::try_from(
+            layout
+                .width
+                .saturating_sub(TEXT_INPUT_INSET.saturating_mul(2))
+                .max(1),
+        )
+        .unwrap_or(1);
+        let lines = dialog_multiline_lines(&value, inner_width, text_measurer);
+        let max_scroll = dialog_multiline_max_scroll(lines.len(), layout.height);
+        let scroll_amount = world
+            .dialog_text_edit_state()
+            .filter(|edit| edit.input_index == layout.index)
+            .map_or(max_scroll, |edit| edit.scroll_amount.clamp(0, max_scroll));
+        let screen_width = surface_size.width.clamp(1, 512);
+        let screen_height = surface_size.height.clamp(1, 512);
+        let (origin_x, origin_y) =
+            centered_screen_origin(surface_size, screen_width, screen_height);
+        let relative_x = (cursor_position.x.floor()
+            - (origin_x + i64::from(layout.x) + i64::from(TEXT_INPUT_INSET)) as f64)
+            .clamp(0.0, f64::from(inner_width)) as u32;
+        let relative_y = (cursor_position.y.floor()
+            - (origin_y + i64::from(layout.y) + i64::from(TEXT_INPUT_INSET)) as f64)
+            as i32;
+        let line_index = usize::try_from(
+            relative_y
+                .saturating_add(scroll_amount)
+                .max(0)
+                .saturating_div(TEXT_LINE_HEIGHT),
+        )
+        .unwrap_or(0)
+        .min(lines.len().saturating_sub(1));
+        let line = lines[line_index];
+        let line_text = dialog_char_slice(&value, line.begin, line.end);
+        let cursor = line.begin.saturating_add(
+            text_measurer
+                .cursor_for_width(&line_text, 0, relative_x)
+                .min(line.end.saturating_sub(line.begin)),
+        );
+        let focused = world.focus_dialog_text_input(layout.index, cursor, extend_selection);
+        let scroll_amount =
+            dialog_multiline_reveal_cursor(scroll_amount, layout.height, &lines, cursor);
+        world.set_dialog_multiline_text_scroll_amount(layout.index, scroll_amount, max_scroll);
+        return focused;
+    }
     let scroll_to = world
         .dialog_text_edit_state()
         .filter(|edit| edit.input_index == layout.index)
@@ -3257,9 +3979,77 @@ fn focus_dialog_text_from_cursor(
     let text_x = origin_x + i64::from(layout.x) + i64::from(TEXT_INPUT_INSET);
     let position_in_text =
         (cursor_position.x.floor() - text_x as f64).clamp(0.0, f64::from(inner_width)) as u32;
-    let display_start = text_measurer.display_start(value, scroll_to, inner_width);
-    let cursor = text_measurer.cursor_for_width(value, display_start, position_in_text);
+    let display_start = text_measurer.display_start(&value, scroll_to, inner_width);
+    let cursor = text_measurer.cursor_for_width(&value, display_start, position_in_text);
     world.focus_dialog_text_input(layout.index, cursor, extend_selection)
+}
+
+fn begin_dialog_multiline_scroll_drag_from_cursor(
+    world: &mut WorldStore,
+    layout: DialogInputLayout,
+    cursor_position: Option<PhysicalPosition<f64>>,
+    surface_size: PhysicalSize<u32>,
+    text_measurer: &dyn DialogTextMeasurer,
+) -> bool {
+    let Some(Some(DialogInputValueState::Text { value })) =
+        world.current_dialog_input_values().get(layout.index)
+    else {
+        return false;
+    };
+    let lines = dialog_multiline_lines(
+        value,
+        u32::try_from(
+            layout
+                .width
+                .saturating_sub(TEXT_INPUT_INSET.saturating_mul(2))
+                .max(1),
+        )
+        .unwrap_or(1),
+        text_measurer,
+    );
+    let max_scroll = dialog_multiline_max_scroll(lines.len(), layout.height);
+    let current_scroll = world
+        .dialog_text_edit_state()
+        .filter(|edit| edit.input_index == layout.index)
+        .map_or(max_scroll, |edit| edit.scroll_amount.clamp(0, max_scroll));
+    let Some(scrollbar) = dialog_multiline_scrollbar_layout(layout, lines.len(), current_scroll)
+    else {
+        return false;
+    };
+    let screen_width = surface_size.width.clamp(1, 512);
+    let screen_height = surface_size.height.clamp(1, 512);
+    if !dialog_scrollbar_contains(
+        scrollbar,
+        cursor_position,
+        surface_size,
+        screen_width,
+        screen_height,
+    ) {
+        return false;
+    }
+    let Some(cursor_y) = dialog_cursor_screen_y(cursor_position, surface_size, screen_height)
+    else {
+        return false;
+    };
+    world.focus_dialog_navigation_target(
+        DialogFocusState::Input {
+            index: layout.index,
+        },
+        false,
+    );
+    let travel = scrollbar
+        .height
+        .saturating_sub(scrollbar.thumb_height)
+        .max(1);
+    let next = cursor_y
+        .saturating_sub(scrollbar.y)
+        .saturating_sub(scrollbar.thumb_height / 2)
+        .clamp(0, travel)
+        .saturating_mul(max_scroll)
+        .checked_div(travel)
+        .unwrap_or(0);
+    world.set_dialog_multiline_text_scroll_amount(layout.index, next, max_scroll);
+    world.begin_dialog_multiline_scroll_drag(layout.index, cursor_y)
 }
 
 fn cycle_dialog_single_option(world: &mut WorldStore, index: usize, reverse: bool) -> bool {
@@ -3366,13 +4156,97 @@ pub(crate) fn handle_dialog_cursor_moved_with_measurer(
     if world.dialog_warning_is_open() {
         world.end_dialog_number_range_drag();
         world.end_dialog_text_input_drag();
+        world.end_dialog_multiline_scroll_drag();
         world.end_dialog_body_scroll_drag();
         return true;
     }
     if world.dialog_waiting_ticks().is_some() {
         world.end_dialog_number_range_drag();
         world.end_dialog_text_input_drag();
+        world.end_dialog_multiline_scroll_drag();
         world.end_dialog_body_scroll_drag();
+        return true;
+    }
+    if let Some(index) = world.dialog_dragging_multiline_scroll_input() {
+        let state = world
+            .current_dialog()
+            .and_then(|dialog| dialog.data.as_ref())
+            .and_then(simple_dialog_controls)
+            .and_then(|controls| {
+                let scroll_layout = dialog_body_scroll_layout(
+                    controls.common,
+                    surface_size,
+                    world.dialog_body_scroll_amount(),
+                )?;
+                let layout = dialog_input_layouts_at_scroll(
+                    controls.common,
+                    surface_size,
+                    scroll_layout.scroll_amount,
+                )?
+                .into_iter()
+                .find(|layout| layout.index == index)?;
+                let label_visible = match &controls.common.input_data.get(index)?.control {
+                    DialogInputControlState::Text {
+                        label_visible,
+                        multiline: Some(_),
+                        ..
+                    } => *label_visible,
+                    _ => return None,
+                };
+                let layout = dialog_multiline_text_box_layout(layout, label_visible);
+                let value = match world.current_dialog_input_values().get(index) {
+                    Some(Some(DialogInputValueState::Text { value })) => value,
+                    _ => return None,
+                };
+                let lines = dialog_multiline_lines(
+                    value,
+                    u32::try_from(
+                        layout
+                            .width
+                            .saturating_sub(TEXT_INPUT_INSET.saturating_mul(2))
+                            .max(1),
+                    )
+                    .unwrap_or(1),
+                    text_measurer,
+                );
+                let max_scroll = dialog_multiline_max_scroll(lines.len(), layout.height);
+                let current = world
+                    .dialog_text_edit_state()
+                    .filter(|edit| edit.input_index == index)?
+                    .scroll_amount
+                    .clamp(0, max_scroll);
+                let scrollbar = dialog_multiline_scrollbar_layout(layout, lines.len(), current)?;
+                let cursor_y = dialog_cursor_screen_y(
+                    cursor_position,
+                    surface_size,
+                    surface_size.height.clamp(1, 512),
+                )?;
+                Some((scrollbar, max_scroll, current, cursor_y))
+            });
+        let Some((scrollbar, max_scroll, current, cursor_y)) = state else {
+            world.end_dialog_multiline_scroll_drag();
+            return world.current_dialog().is_some();
+        };
+        let delta_y = world
+            .update_dialog_multiline_scroll_drag_y(cursor_y)
+            .unwrap_or_default();
+        let travel = scrollbar
+            .height
+            .saturating_sub(scrollbar.thumb_height)
+            .max(1);
+        let next = if cursor_y < scrollbar.y {
+            0
+        } else if cursor_y > scrollbar.y.saturating_add(scrollbar.height) {
+            max_scroll
+        } else {
+            current.saturating_add(
+                delta_y
+                    .saturating_mul(max_scroll.max(1))
+                    .checked_div(travel)
+                    .unwrap_or(0),
+            )
+        };
+        world.set_dialog_multiline_text_scroll_amount(index, next, max_scroll);
         return true;
     }
     if world.dialog_body_scroll_drag_y().is_some() {
@@ -3431,15 +4305,19 @@ pub(crate) fn handle_dialog_cursor_moved_with_measurer(
                     scroll_layout.scroll_amount,
                 )?;
                 let layout = layouts.into_iter().find(|layout| layout.index == index)?;
-                let label_visible = match &controls.common.input_data.get(index)?.control {
+                match &controls.common.input_data.get(index)?.control {
                     DialogInputControlState::Text {
                         label_visible,
                         multiline: None,
                         ..
-                    } => *label_visible,
-                    _ => return None,
-                };
-                Some(dialog_single_line_text_box_layout(layout, label_visible))
+                    } => Some(dialog_single_line_text_box_layout(layout, *label_visible)),
+                    DialogInputControlState::Text {
+                        label_visible,
+                        multiline: Some(_),
+                        ..
+                    } => Some(dialog_multiline_text_box_layout(layout, *label_visible)),
+                    _ => None,
+                }
             });
         let Some(layout) = layout else {
             world.end_dialog_text_input_drag();
@@ -6138,6 +7016,7 @@ mod tests {
                 input_index: 0,
                 cursor: 1,
                 selection: 1,
+                scroll_amount: 0,
             })
         );
         assert!(handle_dialog_cursor_moved(
@@ -6154,6 +7033,7 @@ mod tests {
                 input_index: 0,
                 cursor: 2,
                 selection: 1,
+                scroll_amount: 0,
             })
         );
         assert!(handle_dialog_mouse_input(
@@ -6375,6 +7255,182 @@ mod tests {
         assert_eq!(
             values["name"].tag,
             NbtSummaryValue::String("a\"'\\\n\u{0001}".to_string())
+        );
+    }
+
+    #[test]
+    fn multiline_text_renders_wraps_edits_scrolls_and_enforces_line_limit() {
+        let mut world = world_with_notice(vec![entry(
+            "inputs",
+            NbtSummaryValue::List(vec![multiline_text_input(
+                "notes",
+                "Notes",
+                44,
+                true,
+                "ab cd\nx",
+                64,
+                Some(3),
+                Some(17),
+            )]),
+        )]);
+        let surface_size = PhysicalSize::new(320, 240);
+        let (input_layout, box_layout) = {
+            let controls = world
+                .current_dialog()
+                .and_then(|dialog| dialog.data.as_ref())
+                .and_then(simple_dialog_controls)
+                .unwrap();
+            let input_layout = dialog_input_layouts(controls.common, surface_size).unwrap()[0];
+            (
+                input_layout,
+                dialog_multiline_text_box_layout(input_layout, true),
+            )
+        };
+        let graph = dialog_focus_graph(
+            &world
+                .current_dialog()
+                .and_then(|dialog| dialog.data.as_ref())
+                .and_then(simple_dialog_controls)
+                .unwrap(),
+            surface_size,
+        )
+        .unwrap();
+        assert!(graph.tab.contains(&DialogFocusState::Input { index: 0 }));
+
+        let screen = hud_dialog_screen(
+            &world,
+            world.current_dialog().unwrap(),
+            None,
+            &TerrainTextureState::default(),
+            &InventoryHudLocalState::default(),
+            surface_size,
+            0.0,
+        )
+        .unwrap();
+        let scroll_area = screen.scroll_area.as_ref().unwrap();
+        assert!(scroll_area.text_labels.iter().any(|label| {
+            label.text == "Notes" && (label.x, label.y) == (input_layout.x, input_layout.y)
+        }));
+        assert_eq!(scroll_area.text_areas.len(), 1);
+        let area = &scroll_area.text_areas[0];
+        assert_eq!(
+            (area.x, area.y, area.width, area.height, area.text.as_str()),
+            (box_layout.x, box_layout.y, 44, 17, "ab cd\nx")
+        );
+        assert_eq!(area.scroll_amount, i32::MAX);
+        assert_eq!(area.max_length, 64);
+        assert_eq!(
+            scroll_area
+                .background_layers
+                .iter()
+                .filter(|layer| {
+                    layer.texture == HudInventoryBackgroundTexture::WidgetTextField
+                        && layer.x >= box_layout.x
+                        && layer.y >= box_layout.y
+                })
+                .count(),
+            9
+        );
+
+        assert!(world.focus_dialog_navigation_target(DialogFocusState::Input { index: 0 }, true));
+        let mut counters = NetCounters::default();
+        assert!(handle_dialog_key_input_with_modifiers(
+            &mut counters,
+            &mut world,
+            &None,
+            None,
+            PhysicalKey::Code(KeyCode::Home),
+            ElementState::Pressed,
+            false,
+            false,
+        ));
+        assert_eq!(world.dialog_text_edit_state().unwrap().cursor, 6);
+        assert!(handle_dialog_text_input(&mut world, "§Y"));
+        assert_eq!(
+            world.current_dialog_input_values(),
+            [Some(DialogInputValueState::Text {
+                value: "ab cd\nYx".to_string(),
+            })]
+        );
+        assert!(handle_dialog_key_input_with_modifiers(
+            &mut counters,
+            &mut world,
+            &None,
+            None,
+            PhysicalKey::Code(KeyCode::Enter),
+            ElementState::Pressed,
+            false,
+            false,
+        ));
+        assert_eq!(
+            world.current_dialog_input_values(),
+            [Some(DialogInputValueState::Text {
+                value: "ab cd\nY\nx".to_string(),
+            })]
+        );
+        assert!(world.dialog_text_edit_state().unwrap().scroll_amount > 0);
+
+        let before = world.current_dialog_input_values().to_vec();
+        assert!(handle_dialog_key_input_with_modifiers(
+            &mut counters,
+            &mut world,
+            &None,
+            None,
+            PhysicalKey::Code(KeyCode::Enter),
+            ElementState::Pressed,
+            false,
+            false,
+        ));
+        assert_eq!(world.current_dialog_input_values(), before);
+        let scrollbar_cursor = Some(PhysicalPosition::new(
+            f64::from(box_layout.x + box_layout.width + 2),
+            f64::from(box_layout.y + 4),
+        ));
+        assert!(handle_dialog_mouse_input(
+            &mut counters,
+            &mut world,
+            &None,
+            None,
+            MouseButton::Left,
+            ElementState::Pressed,
+            scrollbar_cursor,
+            surface_size,
+        ));
+        assert_eq!(world.dialog_dragging_multiline_scroll_input(), Some(0));
+        assert!(handle_dialog_cursor_moved(
+            &mut world,
+            Some(PhysicalPosition::new(
+                f64::from(box_layout.x + box_layout.width + 2),
+                f64::from(box_layout.y + 14),
+            )),
+            surface_size,
+        ));
+        assert!(handle_dialog_mouse_input(
+            &mut counters,
+            &mut world,
+            &None,
+            None,
+            MouseButton::Left,
+            ElementState::Released,
+            scrollbar_cursor,
+            surface_size,
+        ));
+        assert_eq!(world.dialog_dragging_multiline_scroll_input(), None);
+        assert!(handle_dialog_key_input_with_modifiers(
+            &mut counters,
+            &mut world,
+            &None,
+            None,
+            PhysicalKey::Code(KeyCode::Backspace),
+            ElementState::Pressed,
+            false,
+            false,
+        ));
+        assert_eq!(
+            world.current_dialog_input_values(),
+            [Some(DialogInputValueState::Text {
+                value: "ab cd\nYx".to_string(),
+            })]
         );
     }
 
@@ -6853,6 +7909,33 @@ mod tests {
             entry("initial", NbtSummaryValue::String(initial.to_string())),
             entry("max_length", NbtSummaryValue::Int(max_length)),
         ])
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn multiline_text_input(
+        key: &str,
+        label: &str,
+        width: i32,
+        label_visible: bool,
+        initial: &str,
+        max_length: i32,
+        max_lines: Option<i32>,
+        height: Option<i32>,
+    ) -> NbtSummaryValue {
+        let mut multiline = Vec::new();
+        if let Some(max_lines) = max_lines {
+            multiline.push(entry("max_lines", NbtSummaryValue::Int(max_lines)));
+        }
+        if let Some(height) = height {
+            multiline.push(entry("height", NbtSummaryValue::Int(height)));
+        }
+        let NbtSummaryValue::Compound(mut fields) =
+            text_input(key, label, width, label_visible, initial, max_length)
+        else {
+            unreachable!("text input helper always returns a compound")
+        };
+        fields.push(entry("multiline", NbtSummaryValue::Compound(multiline)));
+        NbtSummaryValue::Compound(fields)
     }
 
     #[test]
