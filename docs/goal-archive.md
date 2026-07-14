@@ -14023,3 +14023,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [ ] click show-dialog direct value、hover show-item component patch 的完整 typed/registry-aware decode，
   command-backed selector/NBT/block-position parser 与 canonical JsonOps 重编码仍由 Component codec 缺口
   继续跟踪。
+
+## 2026-07-14：Validate Component hover item patch keys
+
+- [x] 对照 vanilla 26.1 `HoverEvent.ShowItem.CODEC`、`ItemStackTemplate.MAP_CODEC`、
+  `DataComponentPatch.CODEC/PatchKey.CODEC` 与 `DataComponentType.PERSISTENT_CODEC`，让共享 Component
+  validator 不再只接受任意 `components` compound：逐键规范化默认 namespace、绑定生成的 110 项
+  data-component catalog、拒绝 unknown/transient type，并校验 `!` removal 的 empty-map codec shape。
+- [x] 同一 decoded type 的同符号 alias key 按 dispatched-map duplicate 拒绝，set/remove 相反符号按 patch
+  投影覆盖；empty/positive/removal、unknown/transient、malformed removal 与 semantic duplicate 均有定向
+  测试。各 persistent component 的正值 codec 与 registry-aware nested value 仍需在 world component
+  context 中复用现有 dialog item patch owner，不能把 key envelope 冒充完整 payload validation。

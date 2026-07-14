@@ -1,6 +1,7 @@
 use url::Url;
 
 use crate::{
+    data_component_types::vanilla_data_component_type_for_resource_id,
     entity_types::vanilla_entity_type_for_resource_id,
     item_types::vanilla_item_type_for_resource_id,
     nbt_summary::{NbtSummaryEntry, NbtSummaryValue},
@@ -403,8 +404,51 @@ fn validate_hover_item(entries: &[NbtSummaryEntry], what: &str) -> Result<(), St
         }
     }
     if let Some(components) = find_entry(entries, "components") {
-        if !matches!(components, NbtSummaryValue::Compound(_)) {
-            return Err(format!("{what} field components is not a compound"));
+        validate_data_component_patch(components, &format!("{what} field components"))?;
+    }
+    Ok(())
+}
+
+fn validate_data_component_patch(value: &NbtSummaryValue, what: &str) -> Result<(), String> {
+    let NbtSummaryValue::Compound(entries) = value else {
+        return Err(format!("{what} is not a compound"));
+    };
+    let mut decoded_keys = Vec::<(i32, bool)>::new();
+    for entry in entries {
+        let (removed, raw_resource_id) = entry
+            .name
+            .strip_prefix('!')
+            .map_or((false, entry.name.as_str()), |resource_id| {
+                (true, resource_id)
+            });
+        let resource_id = normalize_resource_location(raw_resource_id.to_string())
+            .map_err(|_| format!("{what} has invalid component identifier {raw_resource_id}"))?;
+        let component_type = vanilla_data_component_type_for_resource_id(&resource_id)
+            .ok_or_else(|| format!("{what} has unknown component {resource_id}"))?;
+        if !component_type.persistent {
+            return Err(format!("{what} component {resource_id} is not persistent"));
+        }
+        if removed && !matches!(entry.value, NbtSummaryValue::Compound(_)) {
+            return Err(format!(
+                "{what} removed component {resource_id} payload is not a compound"
+            ));
+        }
+        if decoded_keys.iter().any(|(type_id, existing_removed)| {
+            *type_id == component_type.type_id && *existing_removed == removed
+        }) {
+            return Err(format!(
+                "{what} has duplicate component patch key {}{}",
+                if removed { "!" } else { "" },
+                resource_id
+            ));
+        }
+        if let Some(existing) = decoded_keys
+            .iter_mut()
+            .find(|(type_id, _)| *type_id == component_type.type_id)
+        {
+            *existing = (component_type.type_id, removed);
+        } else {
+            decoded_keys.push((component_type.type_id, removed));
         }
     }
     Ok(())

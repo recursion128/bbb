@@ -307,7 +307,14 @@ fn accepts_hover_text_item_and_entity_event_shapes() {
             ("action", string("show_item")),
             ("id", string("diamond")),
             ("count", NbtSummaryValue::Double(99.0f64.to_bits())),
-            ("components", NbtSummaryValue::Compound(Vec::new())),
+            (
+                "components",
+                compound([
+                    ("custom_name", compound([("text", string("Shiny"))])),
+                    ("damage", NbtSummaryValue::Int(1)),
+                    ("!damage", NbtSummaryValue::Compound(Vec::new())),
+                ]),
+            ),
         ]),
         compound([
             ("action", string("show_entity")),
@@ -441,6 +448,50 @@ fn rejects_malformed_hover_event_payloads() {
                 ("components", string("not a map")),
             ]),
             "components is not a compound",
+        ),
+        (
+            compound([
+                ("action", string("show_item")),
+                ("id", string("diamond")),
+                ("components", compound([("missing", compound([]))])),
+            ]),
+            "unknown component minecraft:missing",
+        ),
+        (
+            compound([
+                ("action", string("show_item")),
+                ("id", string("diamond")),
+                (
+                    "components",
+                    compound([("creative_slot_lock", compound([]))]),
+                ),
+            ]),
+            "is not persistent",
+        ),
+        (
+            compound([
+                ("action", string("show_item")),
+                ("id", string("diamond")),
+                (
+                    "components",
+                    compound([("!damage", NbtSummaryValue::Int(0))]),
+                ),
+            ]),
+            "removed component minecraft:damage payload is not a compound",
+        ),
+        (
+            compound([
+                ("action", string("show_item")),
+                ("id", string("diamond")),
+                (
+                    "components",
+                    NbtSummaryValue::Compound(vec![
+                        entry("damage", NbtSummaryValue::Int(1)),
+                        entry("minecraft:damage", NbtSummaryValue::Int(2)),
+                    ]),
+                ),
+            ]),
+            "duplicate component patch key minecraft:damage",
         ),
         (
             compound([
