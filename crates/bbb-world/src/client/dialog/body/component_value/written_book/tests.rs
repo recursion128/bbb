@@ -625,6 +625,22 @@ fn enforces_direct_instrument_item_patch_page_boundary() {
 }
 
 #[test]
+fn enforces_direct_trim_item_patch_page_boundary() {
+    let prefix = concat!(
+        r#"{"text":"item","extra":[""],"hover_event":{"action":"show_item","id":"minecraft:stone","components":{"minecraft:provides_trim_material":{"asset_name":"quartz","override_armor_assets":{"example:copper":"nested/copper","minecraft:iron":"iron_darker"},"description":"Quartz"},"minecraft:trim":{"material":{"asset_name":"resin","description":"Resin"},"pattern":{"asset_id":"minecraft:sentry","description":"Sentry","decal":false}}}}}"#
+    )
+    .len();
+    for (limit, expected_error) in [(32_767usize, None), (32_768usize, Some("encodes to 32768"))] {
+        let page = component_with_trim_item_patch("x".repeat(limit - prefix));
+        let result = decode_written_book_content(&book_with_pages(vec![page]), "written book");
+        match expected_error {
+            None => assert!(result.is_ok()),
+            Some(expected) => assert!(result.unwrap_err().contains(expected)),
+        }
+    }
+}
+
+#[test]
 fn rejects_malformed_written_book_fields_filterables_and_exact_canonical_page_limit() {
     let cases = [
         (NbtSummaryValue::List(Vec::new()), "is not a compound"),
@@ -1826,6 +1842,61 @@ fn component_with_instrument_item_patch(extra: String) -> NbtSummaryValue {
                             ),
                         ]),
                     )]),
+                ),
+            ]),
+        ),
+    ])
+}
+
+fn component_with_trim_item_patch(extra: String) -> NbtSummaryValue {
+    compound(vec![
+        string_entry("text", "item"),
+        value_entry(
+            "extra",
+            NbtSummaryValue::List(vec![NbtSummaryValue::String(extra)]),
+        ),
+        value_entry(
+            "hover_event",
+            compound(vec![
+                string_entry("action", "show_item"),
+                string_entry("id", "stone"),
+                value_entry(
+                    "components",
+                    compound(vec![
+                        value_entry(
+                            "provides_trim_material",
+                            compound(vec![
+                                string_entry("asset_name", "quartz"),
+                                value_entry(
+                                    "override_armor_assets",
+                                    compound(vec![
+                                        string_entry("iron", "iron_darker"),
+                                        string_entry("example:copper", "nested/copper"),
+                                    ]),
+                                ),
+                                string_entry("description", "Quartz"),
+                            ]),
+                        ),
+                        value_entry(
+                            "trim",
+                            compound(vec![
+                                value_entry(
+                                    "material",
+                                    compound(vec![
+                                        string_entry("asset_name", "resin"),
+                                        string_entry("description", "Resin"),
+                                    ]),
+                                ),
+                                value_entry(
+                                    "pattern",
+                                    compound(vec![
+                                        string_entry("asset_id", "sentry"),
+                                        string_entry("description", "Sentry"),
+                                    ]),
+                                ),
+                            ]),
+                        ),
+                    ]),
                 ),
             ]),
         ),

@@ -451,6 +451,9 @@ payload 仍返回 unknown 而非 raw NBT 估算；
 INSTRUMENT 也已闭合 RegistryFileCodec named resource string 与 direct sound-event/positive-float/
 description record 的 canonical length；direct sound range 与 required float 复用 JDK 26 formatter，
 registry-independent description 精确编码，owner-sensitive Component 仍保持 unknown；
+PROVIDES_TRIM_MATERIAL/TRIM 也已闭合 trim-material/trim-pattern RegistryFileCodec named/direct holder；
+direct material 保持 asset name、非空 override map 与 description，direct pattern 的
+`fieldOf("decal").orElse(false)` 按 encoder 语义始终输出 decal，registry-independent description 精确编码；
 click `show_dialog` 也已由同一中央 visitor 按 `Dialog.CODEC` 解析 inline/session reference holder，
 并让 title/button/body/input、item patch 与 recursive predicate/item-template 路径共享 64 层 Dialog
 semantic depth，registry 自引用/互引用不会重置预算；

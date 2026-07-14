@@ -21,6 +21,10 @@ use super::sound_event::{
     DialogKineticWeaponConditionState, DialogKineticWeaponState, DialogPiercingWeaponState,
     DialogSoundEventHolderState,
 };
+use super::trim::{
+    DialogTrimMaterialHolderState, DialogTrimMaterialState, DialogTrimPatternHolderState,
+    DialogTrimPatternState,
+};
 use super::DialogDataComponentValueState;
 
 /// Returns an exact JsonOps length when every patch value has a supported semantic encoder.
@@ -75,6 +79,19 @@ fn validate_supported_json_numbers(value: &DialogDataComponentValueState) -> Res
             values.extend([instrument.use_duration_bits, instrument.range_bits]);
             append_sound_range_bits(&mut values, Some(&instrument.sound_event));
             canonical_component_json_utf16_len(&instrument.description.component)?;
+        }
+        DialogDataComponentValueState::ProvidesTrimMaterial {
+            material: DialogTrimMaterialHolderState::Direct { material },
+        } => {
+            canonical_component_json_utf16_len(&material.description.component)?;
+        }
+        DialogDataComponentValueState::Trim { material, pattern } => {
+            if let DialogTrimMaterialHolderState::Direct { material } = material {
+                canonical_component_json_utf16_len(&material.description.component)?;
+            }
+            if let DialogTrimPatternHolderState::Direct { pattern } = pattern {
+                canonical_component_json_utf16_len(&pattern.description.component)?;
+            }
         }
         DialogDataComponentValueState::Float { bits } => values.push(*bits),
         DialogDataComponentValueState::UseEffects {
@@ -529,6 +546,16 @@ fn canonical_component_value_json_utf16_len(
         DialogDataComponentValueState::Instrument { instrument } => {
             instrument_holder_len(instrument)?
         }
+        DialogDataComponentValueState::ProvidesTrimMaterial { material } => {
+            trim_material_holder_len(material)?
+        }
+        DialogDataComponentValueState::Trim { material, pattern } => object_len(
+            [
+                ("material", trim_material_holder_len(material)?),
+                ("pattern", trim_pattern_holder_len(pattern)?),
+            ]
+            .into_iter(),
+        ),
         DialogDataComponentValueState::PaintingVariant { variant } => {
             string_len(&variant.resource_id)
         }
@@ -760,6 +787,56 @@ fn direct_instrument_len(instrument: &DialogInstrumentState) -> Option<usize> {
                 "description",
                 component_json_len(&instrument.description.component)?,
             ),
+        ]
+        .into_iter(),
+    ))
+}
+
+fn trim_material_holder_len(material: &DialogTrimMaterialHolderState) -> Option<usize> {
+    match material {
+        DialogTrimMaterialHolderState::Named { resource_id, .. } => Some(string_len(resource_id)),
+        DialogTrimMaterialHolderState::Direct { material } => direct_trim_material_len(material),
+    }
+}
+
+fn direct_trim_material_len(material: &DialogTrimMaterialState) -> Option<usize> {
+    let mut fields = vec![("asset_name", string_len(&material.asset_name))];
+    if !material.override_armor_assets.is_empty() {
+        fields.push((
+            "override_armor_assets",
+            object_len(
+                material
+                    .override_armor_assets
+                    .iter()
+                    .map(|(asset, suffix)| (asset.as_str(), string_len(suffix))),
+            ),
+        ));
+    }
+    fields.push((
+        "description",
+        component_json_len(&material.description.component)?,
+    ));
+    Some(object_len(fields.into_iter()))
+}
+
+fn trim_pattern_holder_len(pattern: &DialogTrimPatternHolderState) -> Option<usize> {
+    match pattern {
+        DialogTrimPatternHolderState::Named { resource_id, .. } => Some(string_len(resource_id)),
+        DialogTrimPatternHolderState::Direct { pattern } => direct_trim_pattern_len(pattern),
+    }
+}
+
+fn direct_trim_pattern_len(pattern: &DialogTrimPatternState) -> Option<usize> {
+    Some(object_len(
+        [
+            ("asset_id", string_len(&pattern.asset_id)),
+            (
+                "description",
+                component_json_len(&pattern.description.component)?,
+            ),
+            // fieldOf("decal").orElse(false) falls back while decoding but still
+            // delegates every encode to the required field codec.
+            ("decal", bool_len(pattern.decal)),
         ]
         .into_iter(),
     ))
@@ -1349,6 +1426,81 @@ mod tests {
             concat!(
                 r#"{"sound_event":{"sound_id":"example:horn","range":16.0},"use_duration":7.0,"range":256.0,"description":{"text":"Ponder","color":"gold","italic":true}}"#
             ),
+        );
+    }
+
+    #[test]
+    fn canonicalizes_named_and_registry_independent_direct_trim_holders() {
+        let text_state = |component| super::super::DialogTextState {
+            text: String::new(),
+            runs: Vec::new(),
+            component,
+        };
+        assert_exact(
+            DialogDataComponentValueState::ProvidesTrimMaterial {
+                material: DialogTrimMaterialHolderState::Named {
+                    registry_id: 0,
+                    resource_id: "minecraft:resin".to_string(),
+                },
+            },
+            r#""minecraft:resin""#,
+        );
+        assert_exact(
+            DialogDataComponentValueState::ProvidesTrimMaterial {
+                material: DialogTrimMaterialHolderState::Direct {
+                    material: DialogTrimMaterialState {
+                        asset_name: "quartz".to_string(),
+                        override_armor_assets: std::collections::BTreeMap::from([
+                            ("minecraft:iron".to_string(), "iron_darker".to_string()),
+                            ("example:copper".to_string(), "nested/copper".to_string()),
+                        ]),
+                        description: text_state(NbtSummaryValue::Compound(vec![
+                            NbtSummaryEntry {
+                                name: "text".to_string(),
+                                value: NbtSummaryValue::String("Quartz".to_string()),
+                            },
+                            NbtSummaryEntry {
+                                name: "italic".to_string(),
+                                value: NbtSummaryValue::Byte(1),
+                            },
+                        ])),
+                    },
+                },
+            },
+            concat!(
+                r#"{"asset_name":"quartz","override_armor_assets":{"example:copper":"nested/copper","minecraft:iron":"iron_darker"},"description":{"text":"Quartz","italic":true}}"#
+            ),
+        );
+        assert_exact(
+            DialogDataComponentValueState::Trim {
+                material: DialogTrimMaterialHolderState::Named {
+                    registry_id: 0,
+                    resource_id: "minecraft:quartz".to_string(),
+                },
+                pattern: DialogTrimPatternHolderState::Direct {
+                    pattern: DialogTrimPatternState {
+                        asset_id: "minecraft:sentry".to_string(),
+                        description: text_state(NbtSummaryValue::String("Sentry".to_string())),
+                        decal: false,
+                    },
+                },
+            },
+            concat!(
+                r#"{"material":"minecraft:quartz","pattern":{"asset_id":"minecraft:sentry","description":"Sentry","decal":false}}"#
+            ),
+        );
+        assert_exact(
+            DialogDataComponentValueState::Trim {
+                material: DialogTrimMaterialHolderState::Named {
+                    registry_id: 0,
+                    resource_id: "minecraft:quartz".to_string(),
+                },
+                pattern: DialogTrimPatternHolderState::Named {
+                    registry_id: 0,
+                    resource_id: "minecraft:coast".to_string(),
+                },
+            },
+            r#"{"material":"minecraft:quartz","pattern":"minecraft:coast"}"#,
         );
     }
 
