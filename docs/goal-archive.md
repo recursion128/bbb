@@ -14098,3 +14098,16 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   server OpenScreen 不再错误保留 dialog；world lifecycle 回归覆盖 restore、dialog replacement、late clear
   与 container replacement。native-owned chat/sign/debug、warning return-screen stack 和 dialog surface 仍由
   protocol/session runtime 缺口账本追踪。
+
+## 2026-07-14：Canonicalize Component player profiles
+
+- [x] 对照 `ResolvableProfile.CODEC/FULL_CODEC`、`ExtraCodecs.STORED_GAME_PROFILE/PROPERTY_MAP`、
+  `UUIDUtil.CODEC`、`PlayerSkin.Patch.MAP_CODEC` 与 `PlayerSprite.MAP_CODEC`，让 protocol Component
+  canonical encoder 通过显式 semantic-owner 回调接收既有 world profile decoder 的 normalized
+  `ResolvableProfileSummary`；profile-name alternative 统一按 FULL codec 输出，UUID 投影四项 signed int，
+  properties 固定输出 record list，并保留 skin patch 的 texture/cape/elytra/model 字段。
+- [x] partial/full profile、property signature、resource texture、wide model、非法 full summary、默认/false
+  hat 与无 owner 时的 exact-unknown 均有 protocol 定向测试；written-book page 复用唯一 profile decoder，
+  player object 加 recursive fallback 的 32767/32768 UTF-16 unit 边界有 world 贯通测试。剩余 click
+  show-dialog 与 hover show-item component patch 的 canonical owner 长度继续由缺口账本追踪，且不以 raw
+  NBT 大小近似。

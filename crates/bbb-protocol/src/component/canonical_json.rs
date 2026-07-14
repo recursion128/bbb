@@ -7,7 +7,13 @@ use super::{
 };
 use crate::{
     nbt_summary::{NbtSummaryEntry, NbtSummaryValue},
-    packets::normalize_resource_location,
+    packets::{
+        inventory::{
+            GameProfilePropertySummary, PlayerModelTypeSummary, PlayerSkinPatchSummary,
+            ResolvableProfileKindSummary, ResolvableProfileSummary,
+        },
+        normalize_resource_location,
+    },
 };
 
 mod java_number;
@@ -23,14 +29,42 @@ use java_number::{java_double_string, java_float_string};
 pub fn canonical_component_json_utf16_len(
     value: &NbtSummaryValue,
 ) -> Result<Option<usize>, String> {
+    canonical_component_json_utf16_len_with_owner(value, |_, _| None)
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CanonicalComponentOwnerValue {
+    PlayerProfile,
+    Dialog,
+    ItemComponentPatch,
+}
+
+/// Returns the exact canonical Component JSON length while delegating values whose Codec belongs
+/// to a higher semantic owner. The callback receives the selected owner kind and its raw NBT
+/// value; `None` keeps the complete Component length unknown rather than estimating it.
+pub fn canonical_component_json_utf16_len_with_owner(
+    value: &NbtSummaryValue,
+    mut owner_value_utf16_len: impl FnMut(
+        CanonicalComponentOwnerValue,
+        &NbtSummaryValue,
+    ) -> Option<usize>,
+) -> Result<Option<usize>, String> {
     validate_component_nbt(value, "component")?;
-    let Some(value) = canonical_component(value) else {
+    let Some(value) = canonical_component(value, &mut owner_value_utf16_len) else {
         return Ok(None);
     };
     if value.has_non_finite_number() {
         return Err("canonical JsonWriter rejects non-finite Float/Double values".to_string());
     }
     Ok(Some(value.utf16_len()))
+}
+
+/// Exact JsonOps encoding length for a `ResolvableProfile` that has already been decoded and
+/// normalized by its semantic owner.
+pub fn canonical_resolvable_profile_json_utf16_len(
+    profile: &ResolvableProfileSummary,
+) -> Option<usize> {
+    canonical_resolvable_profile(profile).map(|value| value.utf16_len())
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -41,6 +75,7 @@ enum JsonValue {
     Array(Vec<JsonValue>),
     Object(Vec<(&'static str, JsonValue)>),
     Map(Vec<(String, JsonValue)>),
+    EncodedLen(usize),
 }
 
 impl JsonValue {
@@ -54,7 +89,7 @@ impl JsonValue {
             Self::Map(fields) => fields
                 .iter()
                 .any(|(_, value)| value.has_non_finite_number()),
-            Self::Bool(_) | Self::String(_) => false,
+            Self::Bool(_) | Self::String(_) | Self::EncodedLen(_) => false,
         }
     }
 
@@ -81,6 +116,7 @@ impl JsonValue {
                 });
                 collection_utf16_len(entries)
             }
+            Self::EncodedLen(length) => *length,
         }
     }
 }
@@ -93,20 +129,31 @@ fn collection_utf16_len(entries: impl Iterator<Item = usize>) -> usize {
     })
 }
 
-fn canonical_component(value: &NbtSummaryValue) -> Option<JsonValue> {
-    canonical_component_at(value, 0)
+type OwnerValueLength<'a> =
+    dyn FnMut(CanonicalComponentOwnerValue, &NbtSummaryValue) -> Option<usize> + 'a;
+
+fn canonical_component(
+    value: &NbtSummaryValue,
+    owner_value_utf16_len: &mut OwnerValueLength<'_>,
+) -> Option<JsonValue> {
+    canonical_component_at(value, 0, owner_value_utf16_len)
 }
 
 type ComponentRef<'a> = (&'a NbtSummaryValue, usize);
 
-fn canonical_component_at(value: &NbtSummaryValue, depth: usize) -> Option<JsonValue> {
-    canonical_component_with_siblings(value, depth, Vec::new())
+fn canonical_component_at(
+    value: &NbtSummaryValue,
+    depth: usize,
+    owner_value_utf16_len: &mut OwnerValueLength<'_>,
+) -> Option<JsonValue> {
+    canonical_component_with_siblings(value, depth, Vec::new(), owner_value_utf16_len)
 }
 
 fn canonical_component_with_siblings<'a>(
     value: &'a NbtSummaryValue,
     depth: usize,
     appended_siblings: Vec<ComponentRef<'a>>,
+    owner_value_utf16_len: &mut OwnerValueLength<'_>,
 ) -> Option<JsonValue> {
     match value {
         NbtSummaryValue::String(text) => {
@@ -115,7 +162,10 @@ fn canonical_component_with_siblings<'a>(
             } else {
                 Some(JsonValue::Object(vec![
                     ("text", JsonValue::String(text.clone())),
-                    ("extra", canonical_component_list(&appended_siblings)?),
+                    (
+                        "extra",
+                        canonical_component_list(&appended_siblings, owner_value_utf16_len)?,
+                    ),
                 ]))
             }
         }
@@ -124,10 +174,10 @@ fn canonical_component_with_siblings<'a>(
             let mut siblings = Vec::with_capacity(rest.len() + appended_siblings.len());
             siblings.extend(rest.iter().map(|value| (value, depth + 1)));
             siblings.extend(appended_siblings);
-            canonical_component_with_siblings(first, depth + 1, siblings)
+            canonical_component_with_siblings(first, depth + 1, siblings, owner_value_utf16_len)
         }
         NbtSummaryValue::Compound(entries) => {
-            canonical_full_component(entries, depth, appended_siblings)
+            canonical_full_component(entries, depth, appended_siblings, owner_value_utf16_len)
         }
         _ => None,
     }
@@ -137,9 +187,10 @@ fn canonical_full_component<'a>(
     entries: &'a [NbtSummaryEntry],
     depth: usize,
     appended_siblings: Vec<ComponentRef<'a>>,
+    owner_value_utf16_len: &mut OwnerValueLength<'_>,
 ) -> Option<JsonValue> {
     let content_type = decoded_content_type(entries, "component", depth);
-    let mut fields = canonical_content_fields(content_type, entries, depth)?;
+    let mut fields = canonical_content_fields(content_type, entries, depth, owner_value_utf16_len)?;
     let mut siblings = match find_entry(entries, "extra") {
         Some(NbtSummaryValue::List(values)) => values
             .iter()
@@ -148,7 +199,7 @@ fn canonical_full_component<'a>(
         _ => Vec::new(),
     };
     siblings.extend(appended_siblings);
-    let style = canonical_style_fields(entries, depth)?;
+    let style = canonical_style_fields(entries, depth, owner_value_utf16_len)?;
 
     if content_type == "text" && siblings.is_empty() && style.is_empty() {
         let NbtSummaryValue::String(text) = find_entry(entries, "text")? else {
@@ -157,16 +208,22 @@ fn canonical_full_component<'a>(
         return Some(JsonValue::String(text.clone()));
     }
     if !siblings.is_empty() {
-        fields.push(("extra", canonical_component_list(&siblings)?));
+        fields.push((
+            "extra",
+            canonical_component_list(&siblings, owner_value_utf16_len)?,
+        ));
     }
     fields.extend(style);
     Some(JsonValue::Object(fields))
 }
 
-fn canonical_component_list(values: &[ComponentRef<'_>]) -> Option<JsonValue> {
+fn canonical_component_list(
+    values: &[ComponentRef<'_>],
+    owner_value_utf16_len: &mut OwnerValueLength<'_>,
+) -> Option<JsonValue> {
     values
         .iter()
-        .map(|(value, depth)| canonical_component_at(value, *depth))
+        .map(|(value, depth)| canonical_component_at(value, *depth, owner_value_utf16_len))
         .collect::<Option<Vec<_>>>()
         .map(JsonValue::Array)
 }
@@ -175,6 +232,7 @@ fn canonical_content_fields(
     content_type: &str,
     entries: &[NbtSummaryEntry],
     depth: usize,
+    owner_value_utf16_len: &mut OwnerValueLength<'_>,
 ) -> Option<Vec<(&'static str, JsonValue)>> {
     let mut fields = Vec::new();
     match content_type {
@@ -188,7 +246,13 @@ fn canonical_content_fields(
                 if !arguments.is_empty() {
                     let arguments = arguments
                         .iter()
-                        .map(|argument| canonical_translation_argument(argument, depth + 1))
+                        .map(|argument| {
+                            canonical_translation_argument(
+                                argument,
+                                depth + 1,
+                                owner_value_utf16_len,
+                            )
+                        })
                         .collect::<Option<Vec<_>>>()?;
                     fields.push(("with", JsonValue::Array(arguments)));
                 }
@@ -210,7 +274,10 @@ fn canonical_content_fields(
         "selector" => {
             fields.push(("selector", string_field(entries, "selector")?));
             if let Some(separator) = find_entry(entries, "separator") {
-                fields.push(("separator", canonical_component_at(separator, depth + 1)?));
+                fields.push((
+                    "separator",
+                    canonical_component_at(separator, depth + 1, owner_value_utf16_len)?,
+                ));
             }
         }
         "nbt" => {
@@ -229,7 +296,10 @@ fn canonical_content_fields(
             }
             if let Some(separator) = find_entry(entries, "separator") {
                 if validate_component(separator, "component separator", depth + 1).is_ok() {
-                    fields.push(("separator", canonical_component_at(separator, depth + 1)?));
+                    fields.push((
+                        "separator",
+                        canonical_component_at(separator, depth + 1, owner_value_utf16_len)?,
+                    ));
                 }
             }
             match decoded_data_source_type(entries, "component") {
@@ -253,13 +323,25 @@ fn canonical_content_fields(
                     }
                     fields.push(("sprite", normalized_identifier_field(entries, "sprite")?));
                 }
-                // `ResolvableProfile.CODEC` is owned by the world layer and may normalize the
-                // compact/full alternatives before JsonOps encoding.
-                "player" => return None,
+                "player" => {
+                    let player = find_entry(entries, "player")?;
+                    let encoded_len =
+                        owner_value_utf16_len(CanonicalComponentOwnerValue::PlayerProfile, player)?;
+                    fields.push(("player", JsonValue::EncodedLen(encoded_len)));
+                    if !find_entry(entries, "hat")
+                        .and_then(component_bool)
+                        .unwrap_or(true)
+                    {
+                        fields.push(("hat", JsonValue::Bool(false)));
+                    }
+                }
                 _ => unreachable!("component object was validated before canonical encoding"),
             }
             if let Some(fallback) = find_entry(entries, "fallback") {
-                fields.push(("fallback", canonical_component_at(fallback, depth + 1)?));
+                fields.push((
+                    "fallback",
+                    canonical_component_at(fallback, depth + 1, owner_value_utf16_len)?,
+                ));
             }
         }
         _ => unreachable!("component content was validated before canonical encoding"),
@@ -267,7 +349,11 @@ fn canonical_content_fields(
     Some(fields)
 }
 
-fn canonical_translation_argument(value: &NbtSummaryValue, depth: usize) -> Option<JsonValue> {
+fn canonical_translation_argument(
+    value: &NbtSummaryValue,
+    depth: usize,
+    owner_value_utf16_len: &mut OwnerValueLength<'_>,
+) -> Option<JsonValue> {
     match value {
         NbtSummaryValue::Byte(value) => Some(number(i64::from(*value))),
         NbtSummaryValue::Short(value) => Some(number(i64::from(*value))),
@@ -276,13 +362,14 @@ fn canonical_translation_argument(value: &NbtSummaryValue, depth: usize) -> Opti
         NbtSummaryValue::Float(bits) => Some(java_float(f32::from_bits(*bits))),
         NbtSummaryValue::Double(bits) => Some(java_double(f64::from_bits(*bits))),
         NbtSummaryValue::String(value) => Some(JsonValue::String(value.clone())),
-        _ => canonical_component_at(value, depth),
+        _ => canonical_component_at(value, depth, owner_value_utf16_len),
     }
 }
 
 fn canonical_style_fields(
     entries: &[NbtSummaryEntry],
     depth: usize,
+    owner_value_utf16_len: &mut OwnerValueLength<'_>,
 ) -> Option<Vec<(&'static str, JsonValue)>> {
     let mut fields = Vec::new();
     if let Some(NbtSummaryValue::String(color)) = find_entry(entries, "color") {
@@ -311,10 +398,16 @@ fn canonical_style_fields(
         }
     }
     if let Some(click_event) = find_entry(entries, "click_event") {
-        fields.push(("click_event", canonical_click_event(click_event)?));
+        fields.push((
+            "click_event",
+            canonical_click_event(click_event, owner_value_utf16_len)?,
+        ));
     }
     if let Some(hover_event) = find_entry(entries, "hover_event") {
-        fields.push(("hover_event", canonical_hover_event(hover_event, depth)?));
+        fields.push((
+            "hover_event",
+            canonical_hover_event(hover_event, depth, owner_value_utf16_len)?,
+        ));
     }
     if let Some(NbtSummaryValue::String(insertion)) = find_entry(entries, "insertion") {
         fields.push(("insertion", JsonValue::String(insertion.clone())));
@@ -325,7 +418,10 @@ fn canonical_style_fields(
     Some(fields)
 }
 
-fn canonical_click_event(value: &NbtSummaryValue) -> Option<JsonValue> {
+fn canonical_click_event(
+    value: &NbtSummaryValue,
+    owner_value_utf16_len: &mut OwnerValueLength<'_>,
+) -> Option<JsonValue> {
     let NbtSummaryValue::Compound(entries) = value else {
         return None;
     };
@@ -336,7 +432,11 @@ fn canonical_click_event(value: &NbtSummaryValue) -> Option<JsonValue> {
         "run_command" | "suggest_command" => {
             fields.push(("command", string_field(entries, "command")?));
         }
-        "show_dialog" => return None,
+        "show_dialog" => {
+            let dialog = find_entry(entries, "dialog")?;
+            let encoded_len = owner_value_utf16_len(CanonicalComponentOwnerValue::Dialog, dialog)?;
+            fields.push(("dialog", JsonValue::EncodedLen(encoded_len)));
+        }
         "change_page" => fields.push((
             "page",
             number(i64::from(component_i32(find_entry(entries, "page")?)?)),
@@ -353,7 +453,11 @@ fn canonical_click_event(value: &NbtSummaryValue) -> Option<JsonValue> {
     Some(JsonValue::Object(fields))
 }
 
-fn canonical_hover_event(value: &NbtSummaryValue, depth: usize) -> Option<JsonValue> {
+fn canonical_hover_event(
+    value: &NbtSummaryValue,
+    depth: usize,
+    owner_value_utf16_len: &mut OwnerValueLength<'_>,
+) -> Option<JsonValue> {
     let NbtSummaryValue::Compound(entries) = value else {
         return None;
     };
@@ -362,7 +466,11 @@ fn canonical_hover_event(value: &NbtSummaryValue, depth: usize) -> Option<JsonVa
     match action {
         "show_text" => fields.push((
             "value",
-            canonical_component_at(find_entry(entries, "value")?, depth + 1)?,
+            canonical_component_at(
+                find_entry(entries, "value")?,
+                depth + 1,
+                owner_value_utf16_len,
+            )?,
         )),
         "show_item" => {
             fields.push(("id", normalized_identifier_field(entries, "id")?));
@@ -371,15 +479,22 @@ fn canonical_hover_event(value: &NbtSummaryValue, depth: usize) -> Option<JsonVa
                     fields.push(("count", number(i64::from(count))));
                 }
             }
-            if find_entry(entries, "components").is_some() {
-                return None;
+            if let Some(components) = find_entry(entries, "components") {
+                let encoded_len = owner_value_utf16_len(
+                    CanonicalComponentOwnerValue::ItemComponentPatch,
+                    components,
+                )?;
+                fields.push(("components", JsonValue::EncodedLen(encoded_len)));
             }
         }
         "show_entity" => {
             fields.push(("id", normalized_identifier_field(entries, "id")?));
             fields.push(("uuid", canonical_uuid(find_entry(entries, "uuid")?)?));
             if let Some(name) = find_entry(entries, "name") {
-                fields.push(("name", canonical_component_at(name, depth + 1)?));
+                fields.push((
+                    "name",
+                    canonical_component_at(name, depth + 1, owner_value_utf16_len)?,
+                ));
             }
         }
         _ => return None,
@@ -409,6 +524,91 @@ fn canonical_uuid(value: &NbtSummaryValue) -> Option<JsonValue> {
             .map(|value| number(i64::from(value)))
             .collect(),
     ))
+}
+
+fn canonical_resolvable_profile(profile: &ResolvableProfileSummary) -> Option<JsonValue> {
+    let mut fields = Vec::new();
+    match profile.kind {
+        ResolvableProfileKindSummary::GameProfile => {
+            fields.push(("id", canonical_uuid_value(profile.uuid?)));
+            fields.push(("name", JsonValue::String(profile.name.clone()?)));
+        }
+        ResolvableProfileKindSummary::Partial => {
+            if let Some(name) = &profile.name {
+                fields.push(("name", JsonValue::String(name.clone())));
+            }
+            if let Some(uuid) = profile.uuid {
+                fields.push(("id", canonical_uuid_value(uuid)));
+            }
+        }
+    }
+    if !profile.properties.is_empty() {
+        fields.push((
+            "properties",
+            JsonValue::Array(
+                profile
+                    .properties
+                    .iter()
+                    .map(canonical_profile_property)
+                    .collect(),
+            ),
+        ));
+    }
+    append_skin_patch_fields(&mut fields, &profile.skin_patch);
+    Some(JsonValue::Object(fields))
+}
+
+fn canonical_uuid_value(uuid: uuid::Uuid) -> JsonValue {
+    let bits = uuid.as_u128();
+    JsonValue::Array(
+        [
+            (bits >> 96) as u32 as i32,
+            (bits >> 64) as u32 as i32,
+            (bits >> 32) as u32 as i32,
+            bits as u32 as i32,
+        ]
+        .into_iter()
+        .map(|value| number(i64::from(value)))
+        .collect(),
+    )
+}
+
+fn canonical_profile_property(property: &GameProfilePropertySummary) -> JsonValue {
+    let mut fields = vec![
+        ("name", JsonValue::String(property.name.clone())),
+        ("value", JsonValue::String(property.value.clone())),
+    ];
+    if let Some(signature) = &property.signature {
+        fields.push(("signature", JsonValue::String(signature.clone())));
+    }
+    JsonValue::Object(fields)
+}
+
+fn append_skin_patch_fields(
+    fields: &mut Vec<(&'static str, JsonValue)>,
+    patch: &PlayerSkinPatchSummary,
+) {
+    for (field, texture) in [
+        ("texture", patch.body.as_ref()),
+        ("cape", patch.cape.as_ref()),
+        ("elytra", patch.elytra.as_ref()),
+    ] {
+        if let Some(texture) = texture {
+            fields.push((field, JsonValue::String(texture.asset_id.clone())));
+        }
+    }
+    if let Some(model) = patch.model {
+        fields.push((
+            "model",
+            JsonValue::String(
+                match model {
+                    PlayerModelTypeSummary::Slim => "slim",
+                    PlayerModelTypeSummary::Wide => "wide",
+                }
+                .to_string(),
+            ),
+        ));
+    }
 }
 
 fn canonical_argb_color(value: &NbtSummaryValue) -> Option<i32> {
@@ -719,26 +919,96 @@ mod tests {
     }
 
     #[test]
-    fn reports_owner_values_as_unknown() {
-        for value in [
-            compound(vec![
-                ("object", string("player")),
-                ("player", string("Alex")),
-            ]),
-            compound(vec![
-                ("text", string("item")),
-                (
-                    "hover_event",
-                    compound(vec![
-                        ("action", string("show_item")),
-                        ("id", string("stone")),
-                        ("components", compound(Vec::new())),
-                    ]),
-                ),
-            ]),
-        ] {
-            assert_eq!(canonical_component_json_utf16_len(&value).unwrap(), None);
-        }
+    fn canonicalizes_resolvable_profiles_through_the_semantic_owner() {
+        let partial = ResolvableProfileSummary {
+            kind: ResolvableProfileKindSummary::Partial,
+            uuid: None,
+            name: Some("Alex".to_string()),
+            properties: Vec::new(),
+            profile_textures: None,
+            skin_patch: PlayerSkinPatchSummary::default(),
+        };
+        assert_eq!(
+            canonical_resolvable_profile_json_utf16_len(&partial),
+            Some(r#"{"name":"Alex"}"#.len())
+        );
+
+        let complete = ResolvableProfileSummary {
+            kind: ResolvableProfileKindSummary::GameProfile,
+            uuid: Some(uuid::Uuid::from_u128(1)),
+            name: Some("Alex".to_string()),
+            properties: vec![GameProfilePropertySummary {
+                name: "textures".to_string(),
+                value: "value".to_string(),
+                signature: Some("sig".to_string()),
+            }],
+            profile_textures: None,
+            skin_patch: PlayerSkinPatchSummary {
+                body: Some(crate::packets::inventory::ResourceTextureSummary {
+                    asset_id: "minecraft:entity/player".to_string(),
+                    texture_path: "ignored-derived-path".to_string(),
+                }),
+                cape: Some(crate::packets::inventory::ResourceTextureSummary {
+                    asset_id: "example:cape".to_string(),
+                    texture_path: "ignored-derived-path".to_string(),
+                }),
+                elytra: Some(crate::packets::inventory::ResourceTextureSummary {
+                    asset_id: "minecraft:elytra".to_string(),
+                    texture_path: "ignored-derived-path".to_string(),
+                }),
+                model: Some(PlayerModelTypeSummary::Wide),
+            },
+        };
+        assert_eq!(
+            canonical_resolvable_profile_json_utf16_len(&complete),
+            Some(
+                concat!(
+                    r#"{"id":[0,0,0,1],"name":"Alex","properties":[{"name":"textures","value":"value","signature":"sig"}],"texture":"minecraft:entity/player","cape":"example:cape","elytra":"minecraft:elytra","model":"wide"}"#
+                )
+                .len()
+            )
+        );
+
+        let invalid = ResolvableProfileSummary {
+            kind: ResolvableProfileKindSummary::GameProfile,
+            uuid: None,
+            name: None,
+            properties: Vec::new(),
+            profile_textures: None,
+            skin_patch: PlayerSkinPatchSummary::default(),
+        };
+        assert_eq!(canonical_resolvable_profile_json_utf16_len(&invalid), None);
+
+        let player = compound(vec![
+            ("object", string("player")),
+            ("player", string("Alex")),
+            ("hat", NbtSummaryValue::Byte(0)),
+        ]);
+        assert_eq!(canonical_component_json_utf16_len(&player).unwrap(), None);
+        assert_eq!(
+            canonical_component_json_utf16_len_with_owner(&player, |kind, _| {
+                assert_eq!(kind, CanonicalComponentOwnerValue::PlayerProfile);
+                canonical_resolvable_profile_json_utf16_len(&partial)
+            })
+            .unwrap(),
+            Some(r#"{"player":{"name":"Alex"},"hat":false}"#.len())
+        );
+    }
+
+    #[test]
+    fn reports_remaining_owner_values_as_unknown() {
+        let value = compound(vec![
+            ("text", string("item")),
+            (
+                "hover_event",
+                compound(vec![
+                    ("action", string("show_item")),
+                    ("id", string("stone")),
+                    ("components", compound(Vec::new())),
+                ]),
+            ),
+        ]);
+        assert_eq!(canonical_component_json_utf16_len(&value).unwrap(), None);
     }
 
     fn exact(value: &NbtSummaryValue) -> usize {

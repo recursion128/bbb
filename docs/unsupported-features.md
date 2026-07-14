@@ -101,8 +101,8 @@ Owner: `bbb-protocol`
   fail safely instead of being counted as JSON. Network-NBT decode, SNBT parse,
   bounded NBT encode, Component/Dialog field lookup, and canonical maps now share CompoundTag's
   last-wins duplicate-key semantics while every wire occurrence still counts toward the safety
-  limit. Finish owner-sensitive payloads in generic packet Components and the remaining canonical
-  value codecs: player/show-dialog/item-patch payloads. Then complete
+  limit. Finish the remaining owner-sensitive payloads in generic packet Components and canonical
+  value codecs: show-dialog/item-patch payloads. Then complete
   `flatRestrictedCodec(32767)` sizing for every structured page; render
   the dialog and warning screens, integrate clear-dialog restoration with the remaining
   native-owned chat/sign/debug and warning return-screen stacks, and route custom-click controls

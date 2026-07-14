@@ -2,11 +2,12 @@ mod component;
 mod nbt_summary;
 
 pub use component::{
-    canonical_component_json_utf16_len, decode_sign_block_entity_nbt,
+    canonical_component_json_utf16_len, canonical_component_json_utf16_len_with_owner,
+    canonical_resolvable_profile_json_utf16_len, decode_sign_block_entity_nbt,
     decode_styled_component_summary, styled_component_runs_from_nbt_value,
     styled_runs_summary_text, validate_component_nbt, visit_component_payloads,
-    ComponentClickEvent, ComponentPayload, ComponentStyle, SignBlockEntityNbt, SignTextNbt,
-    StyledTextRun,
+    CanonicalComponentOwnerValue, ComponentClickEvent, ComponentPayload, ComponentStyle,
+    SignBlockEntityNbt, SignTextNbt, StyledTextRun,
 };
 pub use nbt_summary::{decode_nbt_summary, parse_snbt_compound, NbtSummaryEntry, NbtSummaryValue};
 

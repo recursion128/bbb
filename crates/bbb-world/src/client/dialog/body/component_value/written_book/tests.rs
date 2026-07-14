@@ -1,4 +1,5 @@
 use bbb_protocol::{
+    canonical_component_json_utf16_len,
     data_component_types::VANILLA_DATA_COMPONENT_WRITTEN_BOOK_CONTENT_TYPE_ID, NbtSummaryEntry,
     NbtSummaryValue,
 };
@@ -120,6 +121,17 @@ fn accepts_written_book_title_page_and_collection_boundaries() {
         "written book",
     )
     .is_ok());
+
+    let player_prefix = r#"{"player":{"name":"Alex"},"fallback":""}"#.len();
+    let exact_player_page = compound(vec![
+        string_entry("object", "player"),
+        string_entry("player", "Alex"),
+        string_entry("fallback", &"x".repeat(32_767 - player_prefix)),
+    ]);
+    assert!(
+        decode_written_book_content(&book_with_pages(vec![exact_player_page]), "written book",)
+            .is_ok()
+    );
 }
 
 #[test]
@@ -246,6 +258,17 @@ fn rejects_malformed_written_book_fields_filterables_and_exact_canonical_page_li
             book_with_pages(vec![compound(vec![
                 string_entry("text", &"x".repeat(32_745)),
                 value_entry("bold", NbtSummaryValue::Byte(1)),
+            ])]),
+            "encodes to 32768 JSON UTF-16 units, maximum is 32767",
+        ),
+        (
+            book_with_pages(vec![compound(vec![
+                string_entry("object", "player"),
+                string_entry("player", "Alex"),
+                string_entry(
+                    "fallback",
+                    &"x".repeat(32_768 - r#"{"player":{"name":"Alex"},"fallback":""}"#.len()),
+                ),
             ])]),
             "encodes to 32768 JSON UTF-16 units, maximum is 32767",
         ),

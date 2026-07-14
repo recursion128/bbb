@@ -1,7 +1,11 @@
-use bbb_protocol::{canonical_component_json_utf16_len, NbtSummaryEntry, NbtSummaryValue};
+use bbb_protocol::{
+    canonical_component_json_utf16_len_with_owner, canonical_resolvable_profile_json_utf16_len,
+    CanonicalComponentOwnerValue, NbtSummaryEntry, NbtSummaryValue,
+};
 use serde::{Deserialize, Serialize};
 
 use super::super::super::{decode_component, DialogDecodeContext};
+use super::profile::decode_profile;
 use super::writable_book::decode_filterable_string;
 use super::{
     component_bool, component_i32, find_entry, validate_i32_range, DialogFilterableStringState,
@@ -134,9 +138,19 @@ fn decode_page_component(
     }
     let component = decode_component(value, what, context)?;
     // Vanilla measures the semantic Component after decoding and canonical JsonOps re-encoding.
-    // The protocol owner returns `None` when an owner-sensitive payload or another unimplemented
-    // canonical value codec prevents an exact answer; raw NBT size is never used as a substitute.
-    if let Some(encoded_len) = canonical_component_json_utf16_len(value)
+    // The protocol owner returns `None` when a remaining owner-sensitive payload or another
+    // unimplemented canonical value codec prevents an exact answer; raw NBT size is never used as
+    // a substitute. Player profiles reuse this module's sole semantic decoder before encoding.
+    if let Some(encoded_len) =
+        canonical_component_json_utf16_len_with_owner(value, |kind, value| match kind {
+            CanonicalComponentOwnerValue::PlayerProfile => {
+                decode_profile(value, "component player")
+                    .ok()
+                    .and_then(|profile| canonical_resolvable_profile_json_utf16_len(&profile))
+            }
+            CanonicalComponentOwnerValue::Dialog
+            | CanonicalComponentOwnerValue::ItemComponentPatch => None,
+        })
         .map_err(|error| format!("{what} cannot be canonically encoded: {error}"))?
     {
         if encoded_len > MAX_WRITTEN_BOOK_PAGE_FLAT_JSON_UTF16_UNITS {

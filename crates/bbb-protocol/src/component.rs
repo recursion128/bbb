@@ -10,7 +10,10 @@ mod canonical_json;
 mod codec;
 mod command;
 
-pub use canonical_json::canonical_component_json_utf16_len;
+pub use canonical_json::{
+    canonical_component_json_utf16_len, canonical_component_json_utf16_len_with_owner,
+    canonical_resolvable_profile_json_utf16_len, CanonicalComponentOwnerValue,
+};
 pub use codec::{validate_component_nbt, visit_component_payloads, ComponentPayload};
 
 /// The client-visible subset of vanilla `net.minecraft.network.chat.Style`
