@@ -21,6 +21,7 @@ use bbb_protocol::{
         VANILLA_DATA_COMPONENT_CUSTOM_MODEL_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID,
         VANILLA_DATA_COMPONENT_DEBUG_STICK_STATE_TYPE_ID,
         VANILLA_DATA_COMPONENT_DYED_COLOR_TYPE_ID, VANILLA_DATA_COMPONENT_ENCHANTABLE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID,
         VANILLA_DATA_COMPONENT_ENCHANTMENT_GLINT_OVERRIDE_TYPE_ID,
         VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID,
         VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID,
@@ -38,6 +39,7 @@ use bbb_protocol::{
         VANILLA_DATA_COMPONENT_POTION_DURATION_SCALE_TYPE_ID,
         VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID, VANILLA_DATA_COMPONENT_RARITY_TYPE_ID,
         VANILLA_DATA_COMPONENT_RECIPES_TYPE_ID, VANILLA_DATA_COMPONENT_REPAIR_COST_TYPE_ID,
+        VANILLA_DATA_COMPONENT_STORED_ENCHANTMENTS_TYPE_ID,
         VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID,
         VANILLA_DATA_COMPONENT_TOOLTIP_DISPLAY_TYPE_ID,
         VANILLA_DATA_COMPONENT_TOOLTIP_STYLE_TYPE_ID,
@@ -57,6 +59,7 @@ use super::super::{compound_entries, find_entry};
 mod bees;
 mod blocks_attacks;
 mod debug_stick;
+mod enchantments;
 mod equippable;
 mod holder_set;
 mod map_decorations;
@@ -67,6 +70,7 @@ mod typed_data;
 use bees::{decode_bees, DialogBeeOccupantState};
 use blocks_attacks::{decode_blocks_attacks, DialogBlocksAttacksState};
 use debug_stick::{decode_debug_stick_state, DialogDebugStickPropertyState};
+use enchantments::{decode_enchantments, DialogEnchantmentEntryState};
 use equippable::{decode_equippable, DialogEquippableState};
 use holder_set::{
     decode_holder_backed_component_value, DialogBannerPatternLayerState, DialogPotDecorationsState,
@@ -265,6 +269,12 @@ pub enum DialogDataComponentValueState {
     BlocksAttacks {
         blocks_attacks: DialogBlocksAttacksState,
     },
+    Enchantments {
+        entries: Vec<DialogEnchantmentEntryState>,
+    },
+    StoredEnchantments {
+        entries: Vec<DialogEnchantmentEntryState>,
+    },
 }
 
 impl DialogDataComponentValueState {
@@ -421,6 +431,16 @@ pub(super) fn decode_supported_component_value(
         VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID => {
             DialogDataComponentValueState::BlocksAttacks {
                 blocks_attacks: decode_blocks_attacks(value, registries, &what)?,
+            }
+        }
+        VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID => {
+            DialogDataComponentValueState::Enchantments {
+                entries: decode_enchantments(value, registries, &what)?,
+            }
+        }
+        VANILLA_DATA_COMPONENT_STORED_ENCHANTMENTS_TYPE_ID => {
+            DialogDataComponentValueState::StoredEnchantments {
+                entries: decode_enchantments(value, registries, &what)?,
             }
         }
         _ => {

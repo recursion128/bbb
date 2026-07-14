@@ -13806,3 +13806,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   nested float（含 NaN/Infinity 位）、session tag/list/compact/context-free empty HolderSet、named/direct
   sound、missing/wrong shapes 与 unknown holders 均有定向测试；其余 persistent Codec 与 native screens
   仍开放。
+
+## 2026-07-13：Decode enchantment-map dialog item components
+
+- [x] 新建 `client/dialog/body/component_value/enchantments.rs` semantic owner；对照
+  `ItemEnchantments.CODEC`、`Enchantment.CODEC` 与 `LEVEL_CODEC`，typed 投影 ENCHANTMENTS 和
+  STORED_ENCHANTMENTS 两个 identifier-keyed persistent map，复用 session registry holder identity。
+- [x] current-session holder id、default namespace、输入顺序、NBT `Number.intValue`、1..=255 边界、
+  context-free empty map、malformed root/key/value、missing registry/context 与 duplicate semantic holder
+  均有定向测试；其余 persistent Codec 与 native screens 仍开放。
