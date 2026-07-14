@@ -119,6 +119,12 @@ fn canonical_component_value_json_utf16_len_with_context(
         DialogDataComponentValueState::AttributeModifiers { modifiers } => {
             attribute_modifiers_len_with_context(modifiers, context)
         }
+        DialogDataComponentValueState::AdventureModePredicate { predicate } => {
+            predicates::adventure_mode_predicate_len_with_context(predicate, context)
+        }
+        DialogDataComponentValueState::Lock { predicate } => {
+            predicates::item_predicate_len_with_context(predicate, context)
+        }
         DialogDataComponentValueState::Instrument { instrument } => {
             instrument_holder_len_with_context(instrument, context)
         }

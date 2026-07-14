@@ -117,8 +117,8 @@ Owner: `bbb-protocol`
   homogeneous compact holder sets are also canonical. Generic packet Components still need this
   world context.
   The same world/session Component owner now also reaches WRITTEN_BOOK_CONTENT
-  pages nested inside item patches. Thread it through the remaining
-  Component-valued item predicates and recursive
+  pages nested inside item patches, WRITTEN_BOOK_CONTENT predicate pages, and
+  exact component maps throughout recursive item predicates. Thread it through recursive
   ItemStackTemplate patches so `flatRestrictedCodec(32767)` can size every
   structured page; render
   the dialog and warning screens, integrate clear-dialog restoration with the remaining

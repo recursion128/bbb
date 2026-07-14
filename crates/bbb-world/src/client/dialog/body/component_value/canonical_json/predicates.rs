@@ -8,10 +8,11 @@ use super::super::predicates::{
     DialogPartialDataComponentPredicateState, DialogStatePropertyValueMatcherState,
 };
 use super::{
-    array_len, bool_len, canonical_component_value_json_utf16_len, collection_len,
-    component_json_len, object_len, registry_holder_set_len, string_len,
-    validate_supported_json_numbers,
+    array_len, bool_len, canonical_component_value_json_utf16_len,
+    canonical_component_value_json_utf16_len_with_context, collection_len, component_json_len,
+    object_len, registry_holder_set_len, string_len, validate_supported_json_numbers,
 };
+use crate::client::dialog::{canonical_component_json_utf16_len_with_context, DialogDecodeContext};
 
 pub(super) fn validate_adventure_mode_predicate(
     predicate: &DialogAdventureModePredicateState,
@@ -134,6 +135,24 @@ pub(super) fn adventure_mode_predicate_len(
     }
 }
 
+pub(super) fn adventure_mode_predicate_len_with_context(
+    predicate: &DialogAdventureModePredicateState,
+    context: DialogDecodeContext<'_>,
+) -> Result<Option<usize>, String> {
+    let mut lengths = Vec::with_capacity(predicate.predicates.len());
+    for block in &predicate.predicates {
+        let Some(length) = block_predicate_len_with_context(block, context)? else {
+            return Ok(None);
+        };
+        lengths.push(length);
+    }
+    Ok(match lengths.as_slice() {
+        [] => None,
+        [single] => Some(*single),
+        _ => Some(array_len(lengths.into_iter())),
+    })
+}
+
 fn block_predicate_len(predicate: &DialogBlockPredicateState) -> Option<usize> {
     let mut fields = Vec::new();
     if let Some(blocks) = &predicate.blocks {
@@ -168,6 +187,49 @@ fn block_predicate_len(predicate: &DialogBlockPredicateState) -> Option<usize> {
     Some(object_len(fields.into_iter()))
 }
 
+fn block_predicate_len_with_context(
+    predicate: &DialogBlockPredicateState,
+    context: DialogDecodeContext<'_>,
+) -> Result<Option<usize>, String> {
+    let mut fields = Vec::new();
+    if let Some(blocks) = &predicate.blocks {
+        let Some(blocks_len) = registry_holder_set_len(blocks) else {
+            return Ok(None);
+        };
+        fields.push(("blocks", blocks_len));
+    }
+    if let Some(state) = &predicate.state {
+        fields.push((
+            "state",
+            collection_len(state.iter().map(|property| {
+                string_len(&property.name)
+                    .saturating_add(1)
+                    .saturating_add(match &property.value {
+                        DialogStatePropertyValueMatcherState::Exact { value } => string_len(value),
+                        DialogStatePropertyValueMatcherState::Range { min, max } => {
+                            let mut fields = Vec::new();
+                            if let Some(min) = min {
+                                fields.push(("min", string_len(min)));
+                            }
+                            if let Some(max) = max {
+                                fields.push(("max", string_len(max)));
+                            }
+                            object_len(fields.into_iter())
+                        }
+                    })
+            })),
+        ));
+    }
+    if let Some(nbt) = &predicate.nbt {
+        fields.push(("nbt", canonical_nbt_json_utf16_len(nbt)?));
+    }
+    let Some(()) = append_matchers_with_context(&mut fields, &predicate.components, context)?
+    else {
+        return Ok(None);
+    };
+    Ok(Some(object_len(fields.into_iter())))
+}
+
 pub(super) fn item_predicate_len(predicate: &DialogItemPredicateState) -> Option<usize> {
     let mut fields = Vec::new();
     if let Some(items) = &predicate.items {
@@ -178,6 +240,27 @@ pub(super) fn item_predicate_len(predicate: &DialogItemPredicateState) -> Option
     }
     append_matchers(&mut fields, &predicate.components)?;
     Some(object_len(fields.into_iter()))
+}
+
+pub(super) fn item_predicate_len_with_context(
+    predicate: &DialogItemPredicateState,
+    context: DialogDecodeContext<'_>,
+) -> Result<Option<usize>, String> {
+    let mut fields = Vec::new();
+    if let Some(items) = &predicate.items {
+        let Some(items_len) = registry_holder_set_len(items) else {
+            return Ok(None);
+        };
+        fields.push(("items", items_len));
+    }
+    if !int_bounds_is_any(&predicate.count) {
+        fields.push(("count", int_bounds_len(&predicate.count)));
+    }
+    let Some(()) = append_matchers_with_context(&mut fields, &predicate.components, context)?
+    else {
+        return Ok(None);
+    };
+    Ok(Some(object_len(fields.into_iter())))
 }
 
 fn append_matchers(
@@ -233,6 +316,55 @@ fn append_matchers(
         ));
     }
     Some(())
+}
+
+fn append_matchers_with_context(
+    fields: &mut Vec<(&'static str, usize)>,
+    matchers: &DialogDataComponentMatchersState,
+    context: DialogDecodeContext<'_>,
+) -> Result<Option<()>, String> {
+    if !matchers.exact.is_empty() {
+        let mut lengths = Vec::with_capacity(matchers.exact.len());
+        for predicate in &matchers.exact {
+            let Some(value_len) = canonical_component_value_json_utf16_len_with_context(
+                &predicate.value,
+                Some(context),
+            )?
+            else {
+                return Ok(None);
+            };
+            lengths.push(
+                string_len(&predicate.resource_id)
+                    .saturating_add(1)
+                    .saturating_add(value_len),
+            );
+        }
+        fields.push(("components", collection_len(lengths.into_iter())));
+    }
+    if !matchers.partial.is_empty() {
+        let mut lengths = Vec::with_capacity(matchers.partial.len());
+        for predicate in &matchers.partial {
+            let length = match predicate {
+                DialogPartialDataComponentPredicateState::Concrete {
+                    resource_id, value, ..
+                } => {
+                    let Some(value_len) = component_predicate_len_with_context(value, context)?
+                    else {
+                        return Ok(None);
+                    };
+                    string_len(resource_id)
+                        .saturating_add(1)
+                        .saturating_add(value_len)
+                }
+                DialogPartialDataComponentPredicateState::AnyComponent { resource_id, .. } => {
+                    string_len(resource_id).saturating_add(3)
+                }
+            };
+            lengths.push(length);
+        }
+        fields.push(("predicates", collection_len(lengths.into_iter())));
+    }
+    Ok(Some(()))
 }
 
 fn component_predicate_len(predicate: &DialogDataComponentPredicateState) -> Option<usize> {
@@ -337,6 +469,50 @@ fn component_predicate_len(predicate: &DialogDataComponentPredicateState) -> Opt
     })
 }
 
+fn component_predicate_len_with_context(
+    predicate: &DialogDataComponentPredicateState,
+    context: DialogDecodeContext<'_>,
+) -> Result<Option<usize>, String> {
+    match predicate {
+        DialogDataComponentPredicateState::Container { items }
+        | DialogDataComponentPredicateState::BundleContents { items } => {
+            optional_collection_object_len_with_context("items", items.as_ref(), |predicate| {
+                item_predicate_len_with_context(predicate, context)
+            })
+        }
+        DialogDataComponentPredicateState::WrittenBookContent {
+            pages,
+            author,
+            title,
+            generation,
+            resolved,
+        } => {
+            let mut fields = Vec::new();
+            if let Some(pages) = pages {
+                let Some(pages_len) = collection_predicate_len_with_context(pages, |page| {
+                    canonical_component_json_utf16_len_with_context(&page.component, context)
+                })?
+                else {
+                    return Ok(None);
+                };
+                fields.push(("pages", pages_len));
+            }
+            if let Some(author) = author {
+                fields.push(("author", string_len(author)));
+            }
+            if let Some(title) = title {
+                fields.push(("title", string_len(title)));
+            }
+            append_non_any_int_bounds(&mut fields, "generation", generation);
+            if let Some(resolved) = resolved {
+                fields.push(("resolved", bool_len(*resolved)));
+            }
+            Ok(Some(object_len(fields.into_iter())))
+        }
+        _ => Ok(component_predicate_len(predicate)),
+    }
+}
+
 fn optional_collection_object_len<T>(
     name: &'static str,
     predicate: Option<&DialogCollectionPredicateState<T>>,
@@ -390,6 +566,55 @@ fn collection_predicate_len<T>(
         fields.push(("size", int_bounds_len(size)));
     }
     Some(object_len(fields.into_iter()))
+}
+
+fn optional_collection_object_len_with_context<T>(
+    name: &'static str,
+    predicate: Option<&DialogCollectionPredicateState<T>>,
+    value_len: impl Fn(&T) -> Result<Option<usize>, String> + Copy,
+) -> Result<Option<usize>, String> {
+    let mut fields = Vec::new();
+    if let Some(predicate) = predicate {
+        let Some(predicate_len) = collection_predicate_len_with_context(predicate, value_len)?
+        else {
+            return Ok(None);
+        };
+        fields.push((name, predicate_len));
+    }
+    Ok(Some(object_len(fields.into_iter())))
+}
+
+fn collection_predicate_len_with_context<T>(
+    predicate: &DialogCollectionPredicateState<T>,
+    value_len: impl Fn(&T) -> Result<Option<usize>, String> + Copy,
+) -> Result<Option<usize>, String> {
+    let mut fields = Vec::new();
+    if let Some(contains) = &predicate.contains {
+        let mut lengths = Vec::with_capacity(contains.len());
+        for value in contains {
+            let Some(length) = value_len(value)? else {
+                return Ok(None);
+            };
+            lengths.push(length);
+        }
+        fields.push(("contains", array_len(lengths.into_iter())));
+    }
+    if let Some(counts) = &predicate.count {
+        let mut lengths = Vec::with_capacity(counts.len());
+        for count in counts {
+            let Some(test_len) = value_len(&count.test)? else {
+                return Ok(None);
+            };
+            lengths.push(object_len(
+                [("test", test_len), ("count", int_bounds_len(&count.count))].into_iter(),
+            ));
+        }
+        fields.push(("count", array_len(lengths.into_iter())));
+    }
+    if let Some(size) = &predicate.size {
+        fields.push(("size", int_bounds_len(size)));
+    }
+    Ok(Some(object_len(fields.into_iter())))
 }
 
 fn enchantment_predicate_len(predicate: &DialogEnchantmentPredicateState) -> Option<usize> {

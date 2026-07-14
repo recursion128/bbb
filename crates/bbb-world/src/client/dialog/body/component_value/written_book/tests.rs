@@ -822,6 +822,31 @@ fn enforces_predicate_item_patch_page_boundary_with_session_registries() {
 }
 
 #[test]
+fn enforces_dialog_components_in_predicate_tree_page_boundary() {
+    let prefix = concat!(
+        r#"{"text":"item","extra":[""],"hover_event":{"action":"show_item","id":"minecraft:stone","components":{"minecraft:can_break":{"components":{"minecraft:custom_name":{"text":"Break","click_event":{"action":"show_dialog","dialog":{"type":"minecraft:notice","title":"Break dialog"}}}}},"minecraft:lock":{"components":{"minecraft:item_name":{"text":"Lock","click_event":{"action":"show_dialog","dialog":{"type":"minecraft:notice","title":"Lock dialog"}}}},"predicates":{"minecraft:written_book_content":{"pages":{"contains":[{"text":"Page","click_event":{"action":"show_dialog","dialog":{"type":"minecraft:notice","title":"Page dialog"}}}],"count":[{"test":{"text":"Count","click_event":{"action":"show_dialog","dialog":{"type":"minecraft:notice","title":"Count dialog"}}},"count":1}]}},"minecraft:container":{"items":{"contains":[{"components":{"minecraft:custom_name":{"text":"Nested","click_event":{"action":"show_dialog","dialog":{"type":"minecraft:notice","title":"Nested dialog"}}}}}]}}}}}}}"#
+    )
+    .len();
+    let empty = component_with_dialog_predicate_item_patch(String::new());
+    assert_eq!(canonical_component_json_utf16_len(&empty).unwrap(), None);
+    let canonical_prefix = crate::client::dialog::canonical_component_json_utf16_len_with_context(
+        &empty,
+        DialogDecodeContext::new(None, 0),
+    )
+    .unwrap()
+    .unwrap();
+    assert_eq!(canonical_prefix, prefix);
+    for (limit, expected_error) in [(32_767usize, None), (32_768usize, Some("encodes to 32768"))] {
+        let page = component_with_dialog_predicate_item_patch("x".repeat(limit - prefix));
+        let result = decode_written_book_content(&book_with_pages(vec![page]), "written book");
+        match expected_error {
+            None => assert!(result.is_ok(), "{result:?}"),
+            Some(expected) => assert!(result.unwrap_err().contains(expected)),
+        }
+    }
+}
+
+#[test]
 fn enforces_recursive_item_template_patch_page_boundary() {
     let prefix = concat!(
         r#"{"text":"item","extra":[""],"hover_event":{"action":"show_item","id":"minecraft:stone","components":{"minecraft:use_remainder":{"id":"minecraft:glass_bottle"},"minecraft:charged_projectiles":[{"id":"minecraft:arrow"},{"id":"minecraft:firework_rocket","count":3,"components":{"minecraft:repair_cost":4}}],"minecraft:bundle_contents":[{"id":"minecraft:diamond"}],"minecraft:container":[{"slot":0,"item":{"id":"minecraft:diamond"}},{"slot":2,"item":{"id":"minecraft:dirt","count":5}}]}}}"#
@@ -1249,6 +1274,127 @@ fn component_with_predicate_item_patch(extra: String) -> NbtSummaryValue {
                                             )]),
                                         )]),
                                     )]),
+                                ),
+                            ]),
+                        ),
+                    ]),
+                ),
+            ]),
+        ),
+    ])
+}
+
+fn component_with_dialog_predicate_item_patch(extra: String) -> NbtSummaryValue {
+    let dialog_text = |text: &str, title: &str| {
+        compound(vec![
+            string_entry("text", text),
+            value_entry(
+                "click_event",
+                compound(vec![
+                    string_entry("action", "show_dialog"),
+                    value_entry(
+                        "dialog",
+                        compound(vec![
+                            string_entry("type", "notice"),
+                            string_entry("title", title),
+                        ]),
+                    ),
+                ]),
+            ),
+        ])
+    };
+    compound(vec![
+        string_entry("text", "item"),
+        value_entry(
+            "extra",
+            NbtSummaryValue::List(vec![NbtSummaryValue::String(extra)]),
+        ),
+        value_entry(
+            "hover_event",
+            compound(vec![
+                string_entry("action", "show_item"),
+                string_entry("id", "stone"),
+                value_entry(
+                    "components",
+                    compound(vec![
+                        value_entry(
+                            "can_break",
+                            compound(vec![value_entry(
+                                "components",
+                                compound(vec![value_entry(
+                                    "custom_name",
+                                    dialog_text("Break", "Break dialog"),
+                                )]),
+                            )]),
+                        ),
+                        value_entry(
+                            "lock",
+                            compound(vec![
+                                value_entry(
+                                    "components",
+                                    compound(vec![value_entry(
+                                        "item_name",
+                                        dialog_text("Lock", "Lock dialog"),
+                                    )]),
+                                ),
+                                value_entry(
+                                    "predicates",
+                                    compound(vec![
+                                        value_entry(
+                                            "written_book_content",
+                                            compound(vec![value_entry(
+                                                "pages",
+                                                compound(vec![
+                                                    value_entry(
+                                                        "contains",
+                                                        NbtSummaryValue::List(vec![dialog_text(
+                                                            "Page",
+                                                            "Page dialog",
+                                                        )]),
+                                                    ),
+                                                    value_entry(
+                                                        "count",
+                                                        NbtSummaryValue::List(vec![compound(
+                                                            vec![
+                                                                value_entry(
+                                                                    "test",
+                                                                    dialog_text(
+                                                                        "Count",
+                                                                        "Count dialog",
+                                                                    ),
+                                                                ),
+                                                                value_entry(
+                                                                    "count",
+                                                                    NbtSummaryValue::Int(1),
+                                                                ),
+                                                            ],
+                                                        )]),
+                                                    ),
+                                                ]),
+                                            )]),
+                                        ),
+                                        value_entry(
+                                            "container",
+                                            compound(vec![value_entry(
+                                                "items",
+                                                compound(vec![value_entry(
+                                                    "contains",
+                                                    NbtSummaryValue::List(vec![compound(vec![
+                                                        value_entry(
+                                                            "components",
+                                                            compound(vec![value_entry(
+                                                                "custom_name",
+                                                                dialog_text(
+                                                                    "Nested",
+                                                                    "Nested dialog",
+                                                                ),
+                                                            )]),
+                                                        ),
+                                                    ])]),
+                                                )]),
+                                            )]),
+                                        ),
+                                    ]),
                                 ),
                             ]),
                         ),

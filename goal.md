@@ -501,7 +501,8 @@ structure/content/style/event-envelope validation、block data-source position �
 子集；written-book Component owner 已接入 named/direct、五类 top-level Dialog、Common/button/action/
 body/input show-dialog、CUSTOM_NAME/ITEM_NAME/LORE item value、item patch 内递归 WRITTEN_BOOK_CONTENT
 page、ATTRIBUTE_MODIFIERS override display 与 direct instrument/trim descriptions；其它
-Component-valued item record 的
+Component-valued item predicate（含 WRITTEN_BOOK_CONTENT pages 与 recursive exact component map）
+也已贯通；其它 item record 的
 递归 context 及 generic packet Component 的 world context 更高 owner 仍开放；
 四类 input control 与九类 static/dynamic action 已按 codec typed 投影并同时保留 raw；DialogList 的 play
 tag/direct 同质 HolderSet、session reference、context-free inline-list
