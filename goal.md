@@ -398,7 +398,9 @@ NBT path 也已按 `NbtPathArgument` 闭合 quoted/unquoted/object/index/all/mat
 完整消费与内嵌 26.1 bounded SNBT compound argument；entity selector 也已闭合 name/UUID、六类 `@`
 selector、21 项 registered option 的 grammar/applicability/重复互斥、built-in entity-type lookup、
 nested SNBT/scores/advancements 与完整消费，并同时接入 selector content/entity data source；structured
-Component page 仍需在 generic packet/session owner 中补齐 show-dialog world context；item-patch 的 107 项
+Component page 的 written-book world/session owner 已闭合 named holder 与全默认 CommonData/default button
+direct Notice，并让 title 递归进入 profile/item-patch/Dialog owner；其余非默认 Common/body/input/action 与
+四类 Dialog 仍严格返回 unknown，generic packet owner 也仍需接入；item-patch 的 107 项
 typed positive value 已全部闭合 canonical JsonOps 重编码，嵌套 Component 若需要更高 owner 则传播
 unknown，当前明确不以 raw NBT 近似这些 payload；hover
 `show_item` 的 DataComponentPatch envelope 已进一步按 110 项 catalog 校验 Identifier/default namespace、
@@ -491,7 +493,8 @@ persistent catalog registration 均有 typed positive-value dispatch；persisten
 RegistryFileCodec inline/direct-holder 分支也已全部闭合。structured Component 的核心 recursive
 structure/content/style/event-envelope validation、block data-source position 与 NBT path command parser
 以及 selector/entity-source command parser 已闭合；registry-independent canonical 重编码已有上述精确
-子集，generic packet Component 的 show-dialog world context 等更高 owner 仍开放；
+子集；written-book Component owner 已接入 named/default-Notice show-dialog 严格子集，generic packet
+Component 与非默认/其它 Dialog 的 world context 等更高 owner 仍开放；
 四类 input control 与九类 static/dynamic action 已按 codec typed 投影并同时保留 raw；DialogList 的 play
 tag/direct 同质 HolderSet、session reference、context-free inline-list
 边界、external title 与 default/validation 已 typed 投影，仍缺全部 screen；custom-click 的 resource-id +

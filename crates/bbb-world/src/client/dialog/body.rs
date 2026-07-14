@@ -18,6 +18,10 @@ use super::{
 mod component_value;
 
 pub use component_value::DialogDataComponentValueState;
+pub(super) use component_value::{
+    canonical_component_player_profile_json_utf16_len,
+    canonical_data_component_patch_json_utf16_len,
+};
 use component_value::{
     decode_supported_component_value_with_context,
     validate_component_player_profile as validate_player_profile,

@@ -8,7 +8,10 @@ use crate::{registries::normalize_codec_identifier, RegistrySet};
 
 mod action;
 mod body;
+mod canonical_json;
 mod input;
+
+pub(in crate::client::dialog) use canonical_json::canonical_component_json_utf16_len_with_context;
 
 pub use action::{DialogActionState, DialogCommandTemplateState};
 pub use body::{

@@ -1,13 +1,7 @@
-use bbb_protocol::{
-    canonical_component_json_utf16_len_with_owner, canonical_resolvable_profile_json_utf16_len,
-    CanonicalComponentOwnerValue, NbtSummaryEntry, NbtSummaryValue,
-};
+use bbb_protocol::{NbtSummaryEntry, NbtSummaryValue};
 use serde::{Deserialize, Serialize};
 
 use super::super::super::{decode_component, DialogDecodeContext};
-use super::super::decode_data_component_patch;
-use super::canonical_data_component_patch_json_utf16_len;
-use super::profile::decode_profile;
 use super::writable_book::decode_filterable_string;
 use super::{
     component_bool, component_i32, find_entry, validate_i32_range, DialogFilterableStringState,
@@ -144,18 +138,8 @@ fn decode_page_component(
     // unimplemented canonical value codec prevents an exact answer; raw NBT size is never used as
     // a substitute. Player profiles reuse this module's sole semantic decoder before encoding.
     if let Some(encoded_len) =
-        canonical_component_json_utf16_len_with_owner(value, |kind, value| match kind {
-            CanonicalComponentOwnerValue::PlayerProfile => {
-                let profile = decode_profile(value, "component player")?;
-                Ok(canonical_resolvable_profile_json_utf16_len(&profile))
-            }
-            CanonicalComponentOwnerValue::ItemComponentPatch => {
-                let patch = decode_data_component_patch(value, context)?;
-                canonical_data_component_patch_json_utf16_len(&patch)
-            }
-            CanonicalComponentOwnerValue::Dialog => Ok(None),
-        })
-        .map_err(|error| format!("{what} cannot be canonically encoded: {error}"))?
+        super::super::super::canonical_component_json_utf16_len_with_context(value, context)
+            .map_err(|error| format!("{what} cannot be canonically encoded: {error}"))?
     {
         if encoded_len > MAX_WRITTEN_BOOK_PAGE_FLAT_JSON_UTF16_UNITS {
             return Err(format!(

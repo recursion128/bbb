@@ -103,8 +103,10 @@ Owner: `bbb-protocol`
   last-wins duplicate-key semantics while every wire occurrence still counts toward the safety
   limit. All 107 typed positive item-patch values now have canonical JsonOps encoders; nested
   Components propagate an unknown result when they require a higher owner instead of substituting
-  raw NBT size. Finish the remaining owner-sensitive payloads in generic packet Components,
-  especially show-dialog world context in the generic packet owner.
+  raw NBT size. Written-book pages now provide a world/session Dialog owner for named holders and
+  direct Notice dialogs with default CommonData/button state; titles recurse through profile,
+  item-patch, and Dialog owners. Non-default common/body/input/action state and the other four Dialog
+  types still return unknown, and generic packet Components still need this world context.
   Then complete
   `flatRestrictedCodec(32767)` sizing for every structured page; render
   the dialog and warning screens, integrate clear-dialog restoration with the remaining

@@ -41,7 +41,7 @@ mod predicates;
 
 /// Returns an exact JsonOps length when every patch value has a supported semantic encoder.
 /// Complex holder and recursive values remain unknown rather than falling back to raw NBT size.
-pub(in crate::client::dialog::body) fn canonical_data_component_patch_json_utf16_len(
+pub(in crate::client::dialog) fn canonical_data_component_patch_json_utf16_len(
     patch: &DialogDataComponentPatchState,
 ) -> Result<Option<usize>, String> {
     let mut length = 2usize;
