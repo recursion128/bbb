@@ -14719,3 +14719,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] world focused regression 覆盖 numeric-to-long seed normalization、default namespace/empty path、
   default seed omission 与 container-loot presence；native dialog Item body 加入 default-seed loot table 后
   继续进入唯一 item runtime。partial/lock predicate 与其余富结构值继续由后续明确切片处理。
+
+## 2026-07-14：Bridge pot-decorations dialog Item patches
+
+- [x] 对照 `PotDecorations.CODEC/STREAM_CODEC` 与 `ordered()`，把 back/left/right/front 规范化为严格四个
+  builtin item ids；empty side 与 persistent 短列表的缺项均按 vanilla 重编码为 `minecraft:brick`，不把
+  decode 前“省略或显式 brick”的等价写法误当成 wire identity。
+- [x] world focused regression 覆盖三项 persistent list、empty/nonempty sides、builtin holder ids、四项
+  ordered summary、全空四 brick 与 session registry 不覆盖 builtin identity；native dialog Item body 加入
+  empty pot-decorations 后继续进入唯一 item runtime。partial/lock predicate 与其余富结构值继续由后续
+  明确切片处理。

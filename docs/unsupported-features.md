@@ -95,6 +95,7 @@ Owner: `bbb-protocol`
   plus normalized debug-stick block/property dispatched maps,
   plus normalized ordered recipe-key lists,
   plus codec-normalized seeded container-loot references,
+  plus four-side normalized pot-decoration item ids,
   and item tooltips while conservatively rejecting an entire body when any added component value
   has no summary bridge,
   and implements the

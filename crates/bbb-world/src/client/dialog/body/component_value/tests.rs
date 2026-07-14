@@ -2217,6 +2217,27 @@ fn decodes_pot_decorations_with_builtin_item_holders_and_empty_sides() {
     );
     assert!(decorations.front.is_none());
 
+    let brick_id = bbb_protocol::item_types::vanilla_item_type_for_resource_id("minecraft:brick")
+        .unwrap()
+        .id;
+    let mut patch = DataComponentPatchSummary::default();
+    assert!(apply_item_patch_value(
+        VANILLA_DATA_COMPONENT_POT_DECORATIONS_TYPE_ID,
+        &DialogDataComponentValueState::PotDecorations {
+            decorations: decorations.clone(),
+        },
+        &mut patch,
+    ));
+    assert_eq!(
+        patch.pot_decorations_item_ids,
+        vec![
+            brick_id,
+            left.holder_id,
+            decorations.right.as_ref().unwrap().holder_id,
+            brick_id,
+        ]
+    );
+
     let mut registries = RegistrySet::default();
     let mut contents = crate::RegistryContentState::new("minecraft:item");
     contents.entries = vec![
@@ -2247,13 +2268,20 @@ fn decodes_pot_decorations_with_builtin_item_holders_and_empty_sides() {
     )
     .unwrap();
     assert!(matches!(
-        empty,
+        &empty,
         Some(DialogDataComponentValueState::PotDecorations { decorations })
             if decorations.back.is_none()
                 && decorations.left.is_none()
                 && decorations.right.is_none()
                 && decorations.front.is_none()
     ));
+    let mut empty_patch = DataComponentPatchSummary::default();
+    assert!(apply_item_patch_value(
+        VANILLA_DATA_COMPONENT_POT_DECORATIONS_TYPE_ID,
+        empty.as_ref().unwrap(),
+        &mut empty_patch,
+    ));
+    assert_eq!(empty_patch.pot_decorations_item_ids, vec![brick_id; 4]);
 
     for (value, expected) in [
         (compound(Vec::new()), "is not a list"),

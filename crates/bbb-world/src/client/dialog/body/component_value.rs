@@ -77,7 +77,7 @@ use bbb_protocol::{
         VANILLA_DATA_COMPONENT_PIG_SOUND_VARIANT_TYPE_ID,
         VANILLA_DATA_COMPONENT_PIG_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID,
         VANILLA_DATA_COMPONENT_POTION_DURATION_SCALE_TYPE_ID,
-        VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_POT_DECORATIONS_TYPE_ID, VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID,
         VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID,
         VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID,
         VANILLA_DATA_COMPONENT_RARITY_TYPE_ID, VANILLA_DATA_COMPONENT_RECIPES_TYPE_ID,
@@ -970,6 +970,20 @@ pub(super) fn apply_item_patch_value(
             patch
                 .codec_backed_nbt
                 .insert(type_id, NbtSummaryValue::Compound(entries));
+        }
+        (VANILLA_DATA_COMPONENT_POT_DECORATIONS_TYPE_ID, Value::PotDecorations { decorations }) => {
+            let Some(brick) = vanilla_item_type_for_resource_id("minecraft:brick") else {
+                return false;
+            };
+            patch.pot_decorations_item_ids = [
+                decorations.back.as_ref(),
+                decorations.left.as_ref(),
+                decorations.right.as_ref(),
+                decorations.front.as_ref(),
+            ]
+            .into_iter()
+            .map(|decoration| decoration.map_or(brick.id, |item| item.holder_id))
+            .collect();
         }
         (
             VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID,
