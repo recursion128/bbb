@@ -14749,3 +14749,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   trim 的 raw value retention；native encoder 单测覆盖三种 raw priority，dialog Item body 组合回归加入三种
   direct value。另对照 `RegistryFixedCodec` 并锁定 jukebox-song/painting-variant 的 persistent dialog 形状只
   允许 named resource id，inline compound 不作为待实现语法。其余 direct registry variants 继续审计。
+
+## 2026-07-14：Execute dialog suggest-command screen transition
+
+- [x] 对照 `Screen.defaultHandleClickEvent` 与 `Screen.insertText`，确认普通 `DialogScreen` 的静态
+  suggest-command 不修改任何文本，但仍激活按 `after_action` 计算的 screen；native runtime 不再把该动作
+  当作未支持分支而跳过转换。
+- [x] focused regression 覆盖 suggest-command + wait-for-response，断言 current dialog 清除、waiting screen
+  从 tick 0 开始且不会错误发送 chat command；open-url、run-command、dynamic action 与 Component-click
+  仍由后续明确切片处理。

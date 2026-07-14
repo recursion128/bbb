@@ -74,7 +74,7 @@ Owner: `bbb-protocol`
   all four input controls,
   remaining button-list action tooltips, and the
   MultiAction/ServerLinks/DialogList layouts with vanilla scrolling,
-  focus, and clipping; execute open-url, run/suggest-command,
+  focus, and clipping; execute open-url, run-command,
   dynamic action and Component-click paths; and
   restore native-owned
   chat/sign/debug and warning return-screen stacks when dialogs clear. The current
@@ -105,7 +105,7 @@ Owner: `bbb-protocol`
   has no summary bridge,
   and implements the
   static copy-to-clipboard through the existing native clipboard owner, preserves
-  DialogScreen's side-effect-free static change-page handling, and implements
+  DialogScreen's side-effect-free static change-page and suggest-command handling, and implements
   the close/none/waiting `after_action` transitions, including vanilla's delayed Back
   screen; it still needs the remaining controls and actions before either
   `ShowDialog` row's `runtime_side_effect` coverage cell can close.

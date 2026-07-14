@@ -677,6 +677,12 @@ fn run_dialog_action(
             // which has no ChangePage arm. The BookViewScreen override is not
             // consulted, but the computed after-action screen is still applied.
         }
+        Some(DialogActionState::SuggestCommand { .. }) => {
+            // Screen.defaultHandleClickEvent calls `activeScreen.insertText` for
+            // SuggestCommand. DialogScreen does not override Screen.insertText,
+            // so the suggestion has no text side effect, but vanilla still
+            // activates the screen computed from `after_action` below.
+        }
         Some(_) => return false,
     }
     match after_action {
@@ -1426,6 +1432,51 @@ mod tests {
 
         assert_eq!(world.current_dialog(), None);
         assert_eq!(world.dialog_waiting_ticks(), Some(0));
+    }
+
+    #[test]
+    fn suggest_command_dialog_action_only_applies_after_action() {
+        let mut world = world_with_notice(vec![
+            entry(
+                "after_action",
+                NbtSummaryValue::String("wait_for_response".to_string()),
+            ),
+            entry(
+                "action",
+                NbtSummaryValue::Compound(vec![
+                    entry("label", NbtSummaryValue::String("Suggest".to_string())),
+                    entry(
+                        "action",
+                        NbtSummaryValue::Compound(vec![
+                            entry(
+                                "type",
+                                NbtSummaryValue::String("minecraft:suggest_command".to_string()),
+                            ),
+                            entry(
+                                "command",
+                                NbtSummaryValue::String("/say unchanged".to_string()),
+                            ),
+                        ]),
+                    ),
+                ]),
+            ),
+        ]);
+        let mut counters = NetCounters::default();
+
+        assert!(handle_dialog_mouse_input(
+            &mut counters,
+            &mut world,
+            &None,
+            None,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(160.0, 220.0)),
+            PhysicalSize::new(320, 240),
+        ));
+
+        assert_eq!(world.current_dialog(), None);
+        assert_eq!(world.dialog_waiting_ticks(), Some(0));
+        assert_eq!(counters.chat_command_commands_queued, 0);
     }
 
     #[test]

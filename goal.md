@@ -366,8 +366,8 @@ jukebox-song 与 painting-variant 的 persistent `RegistryFixedCodec` 只允许 
 剩余有损/未 typed holder 形式及递归/富结构 component-patched Item body bridge 与 item focus outline、四类 input、
 button-list tooltip/scroll/focus、
 其余三类 top-level dialog 布局、action-bearing
-open-url/run/suggest/dynamic action 与 Component-click。静态 change-page 在 DialogScreen 的 default
-handler 中无页面 side effect，仅按 vanilla 执行 `after_action`；静态 show-dialog action 已同步
+open-url/run-command/dynamic action 与 Component-click。静态 change-page 与 suggest-command 在
+DialogScreen 的 default handler 中无页面 side effect，仅按 vanilla 执行 `after_action`；静态 show-dialog action 已同步
 替换当前 dialog、保留最初 previous screen，且不误增 clientbound packet counter。clear-dialog 还须接入 native-owned
 chat/sign/debug screen 和 warning return-screen stack；上述 runtime 完成前两个 `ShowDialog`
 的 `runtime_side_effect` cell 保持 `partial`。generic packet Component 的 world/session higher
