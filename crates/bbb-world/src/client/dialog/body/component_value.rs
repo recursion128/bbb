@@ -6,10 +6,11 @@ use bbb_protocol::item_component_value_types::{
 use bbb_protocol::packets::{
     chunks::BlockPos,
     inventory::{
-        AttackRangeSummary, BannerPatternLayerSummary, DataComponentPatchSummary,
+        AttackRangeSummary, BannerPatternLayerSummary, BlocksAttacksSummary,
+        DamageReductionSummary, DamageTypeHolderSetSummary, DataComponentPatchSummary,
         EntityTypeHolderSetSummary, EquippableSummary, FireworkExplosionSummary,
-        KineticWeaponConditionSummary, KineticWeaponSummary, LodestoneTargetSummary,
-        PiercingWeaponSummary, ResolvableProfileSummary, SoundEventSummary,
+        ItemDamageFunctionSummary, KineticWeaponConditionSummary, KineticWeaponSummary,
+        LodestoneTargetSummary, PiercingWeaponSummary, ResolvableProfileSummary, SoundEventSummary,
         SuspiciousStewEffectSummary, SwingAnimationSummary, TrimMaterialSummary,
         TrimPatternSummary, UseEffectsSummary,
     },
@@ -675,6 +676,15 @@ pub(super) fn apply_item_patch_value(
             });
         }
         (
+            VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID,
+            Value::BlocksAttacks { blocks_attacks },
+        ) => {
+            let Some(summary) = blocks_attacks_summary(blocks_attacks) else {
+                return false;
+            };
+            patch.blocks_attacks = Some(summary);
+        }
+        (
             VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID,
             Value::AttackRange {
                 min_reach_bits,
@@ -860,6 +870,55 @@ fn entity_type_holder_set_summary(
             tag: Some(tag.clone()),
         }),
         ("direct", None) => Some(EntityTypeHolderSetSummary {
+            registry_ids: value.entries.iter().map(|entry| entry.holder_id).collect(),
+            tag: None,
+        }),
+        _ => None,
+    }
+}
+
+fn blocks_attacks_summary(value: &DialogBlocksAttacksState) -> Option<BlocksAttacksSummary> {
+    let mut damage_reductions = Vec::with_capacity(value.damage_reductions.len());
+    for reduction in &value.damage_reductions {
+        let damage_types = match reduction.damage_types.as_ref() {
+            Some(types) => Some(damage_type_holder_set_summary(types)?),
+            None => None,
+        };
+        damage_reductions.push(DamageReductionSummary {
+            horizontal_blocking_angle_bits: reduction.horizontal_blocking_angle_bits,
+            damage_types,
+            base_bits: reduction.base_bits,
+            factor_bits: reduction.factor_bits,
+        });
+    }
+    let bypassed_by = match value.bypassed_by.as_ref() {
+        Some(types) => Some(damage_type_holder_set_summary(types)?),
+        None => None,
+    };
+    Some(BlocksAttacksSummary {
+        block_delay_seconds_bits: value.block_delay_seconds_bits,
+        disable_cooldown_scale_bits: value.disable_cooldown_scale_bits,
+        damage_reductions,
+        item_damage: ItemDamageFunctionSummary {
+            threshold_bits: value.item_damage.threshold_bits,
+            base_bits: value.item_damage.base_bits,
+            factor_bits: value.item_damage.factor_bits,
+        },
+        bypassed_by,
+        block_sound: value.block_sound.as_ref().map(sound_event_summary),
+        disable_sound: value.disabled_sound.as_ref().map(sound_event_summary),
+    })
+}
+
+fn damage_type_holder_set_summary(
+    value: &DialogRegistryHolderSetState,
+) -> Option<DamageTypeHolderSetSummary> {
+    match (value.holder_set_kind.as_str(), &value.tag) {
+        ("named", Some(tag)) => Some(DamageTypeHolderSetSummary {
+            registry_ids: Vec::new(),
+            tag: Some(tag.clone()),
+        }),
+        ("direct", None) => Some(DamageTypeHolderSetSummary {
             registry_ids: value.entries.iter().map(|entry| entry.holder_id).collect(),
             tag: None,
         }),

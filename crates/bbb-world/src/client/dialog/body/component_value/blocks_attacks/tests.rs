@@ -2,12 +2,18 @@ use std::collections::BTreeMap;
 
 use bbb_protocol::{
     data_component_types::VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID,
-    sound_event_types::vanilla_sound_event_registry_id, NbtSummaryEntry, NbtSummaryValue,
+    packets::inventory::{
+        DamageTypeHolderSetSummary, DataComponentPatchSummary, SoundEventSummary,
+    },
+    sound_event_types::vanilla_sound_event_registry_id,
+    NbtSummaryEntry, NbtSummaryValue,
 };
 
 use crate::{RegistryContentState, RegistryPacketEntry, RegistryTagState};
 
-use super::super::{decode_supported_component_value, DialogDataComponentValueState};
+use super::super::{
+    apply_item_patch_value, decode_supported_component_value, DialogDataComponentValueState,
+};
 use super::*;
 
 #[test]
@@ -123,6 +129,74 @@ fn decodes_blocks_attacks_nested_records_holders_and_sounds() {
         blocks_attacks.bypassed_by.as_ref().unwrap().entries[0].holder_id,
         1
     );
+    let mut patch = DataComponentPatchSummary::default();
+    assert!(apply_item_patch_value(
+        VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID,
+        &DialogDataComponentValueState::BlocksAttacks {
+            blocks_attacks: blocks_attacks.clone(),
+        },
+        &mut patch,
+    ));
+    let summary = patch.blocks_attacks.unwrap();
+    assert_eq!(summary.block_delay_seconds_bits, 0.25f32.to_bits());
+    assert_eq!(summary.disable_cooldown_scale_bits, 2.0f32.to_bits());
+    assert_eq!(summary.damage_reductions.len(), 2);
+    assert_eq!(
+        summary.damage_reductions[0].damage_types,
+        Some(DamageTypeHolderSetSummary {
+            registry_ids: Vec::new(),
+            tag: Some("example:fire".to_string()),
+        })
+    );
+    assert_eq!(
+        summary.damage_reductions[1]
+            .damage_types
+            .as_ref()
+            .unwrap()
+            .registry_ids,
+        [0, 1]
+    );
+    assert_eq!(summary.damage_reductions[0].factor_bits, nan_bits);
+    assert_eq!(summary.item_damage.base_bits, f32::INFINITY.to_bits());
+    assert_eq!(
+        summary.bypassed_by,
+        Some(DamageTypeHolderSetSummary {
+            registry_ids: vec![1],
+            tag: None,
+        })
+    );
+    assert_eq!(
+        summary.block_sound,
+        Some(SoundEventSummary {
+            registry_id: Some(
+                vanilla_sound_event_registry_id("minecraft:item.shield.block").unwrap(),
+            ),
+            sound_id: None,
+            fixed_range_bits: None,
+        })
+    );
+    assert_eq!(
+        summary.disable_sound,
+        Some(SoundEventSummary {
+            registry_id: None,
+            sound_id: Some("example:disable".to_string()),
+            fixed_range_bits: Some(8.0f32.to_bits()),
+        })
+    );
+
+    let mut invalid = blocks_attacks.clone();
+    invalid.damage_reductions[0].damage_types = Some(DialogRegistryHolderSetState {
+        holder_set_kind: "named".to_string(),
+        tag: None,
+        entries: Vec::new(),
+    });
+    assert!(!apply_item_patch_value(
+        VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID,
+        &DialogDataComponentValueState::BlocksAttacks {
+            blocks_attacks: invalid,
+        },
+        &mut DataComponentPatchSummary::default(),
+    ));
     assert!(matches!(
         blocks_attacks.block_sound,
         Some(DialogSoundEventHolderState::Named { registry_id, resource_id })

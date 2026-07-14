@@ -14561,3 +14561,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   entities、optional resource ids 与全部 boolean，并证明畸形 persisted holder-set 仍整值拒绝；native
   dialog Item body 加入 defaulted equippable 后继续进入唯一 item runtime。blocks-attacks、consume/effect、
   tool 及递归 item-stack collection 等其余富结构值继续由后续明确切片处理。
+
+## 2026-07-14：Bridge blocks-attacks dialog Item patches
+
+- [x] 对照 `BlocksAttacks.CODEC/STREAM_CODEC`，把 dialog typed blocks-attacks 的 outer float bits、
+  ordered damage-reduction records、default/explicit item-damage function、optional bypass damage-type set
+  与 block/disabled sound 投影到既有 `BlocksAttacksSummary`；codec 的 `disabled_sound` 明确映射到
+  protocol summary 的 `disable_sound`，不依名称猜测。
+- [x] world focused regression 覆盖 named tag/direct ids、NaN factor、Infinity item-damage、named/direct
+  sound 与 optional range，并证明畸形 nested persisted holder-set 会在 summary 写入前整值拒绝；native
+  dialog Item body 加入 default blocks-attacks 后继续进入唯一 item runtime。consume/effect、tool 与递归
+  item-stack collection 等其余富结构值继续由后续明确切片处理。

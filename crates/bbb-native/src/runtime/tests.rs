@@ -14355,6 +14355,10 @@ fn hud_inventory_screen_projects_dialog_item_body_structured_patches() {
                                                 NbtSummaryValue::String("head".to_string()),
                                             )]),
                                         ),
+                                        entry(
+                                            "minecraft:blocks_attacks",
+                                            NbtSummaryValue::Compound(Vec::new()),
+                                        ),
                                     ]),
                                 ),
                             ]),
