@@ -14481,6 +14481,10 @@ fn hud_inventory_screen_projects_dialog_item_body_structured_patches() {
                                             "minecraft:pot_decorations",
                                             NbtSummaryValue::List(Vec::new()),
                                         ),
+                                        entry(
+                                            "minecraft:lock",
+                                            NbtSummaryValue::Compound(Vec::new()),
+                                        ),
                                     ]),
                                 ),
                             ]),

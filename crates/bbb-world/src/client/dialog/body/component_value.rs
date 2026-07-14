@@ -444,6 +444,25 @@ impl DialogDataComponentValueState {
     }
 }
 
+pub(super) fn apply_item_patch_entry_value(
+    type_id: i32,
+    value: &DialogDataComponentValueState,
+    persistent_value: Option<&NbtSummaryValue>,
+    patch: &mut DataComponentPatchSummary,
+) -> bool {
+    if type_id == VANILLA_DATA_COMPONENT_LOCK_TYPE_ID {
+        if !matches!(value, DialogDataComponentValueState::Lock { .. }) {
+            return false;
+        }
+        let Some(persistent @ NbtSummaryValue::Compound(_)) = persistent_value else {
+            return false;
+        };
+        patch.codec_backed_nbt.insert(type_id, persistent.clone());
+        return true;
+    }
+    apply_item_patch_value(type_id, value, patch)
+}
+
 pub(super) fn apply_item_patch_value(
     type_id: i32,
     value: &DialogDataComponentValueState,

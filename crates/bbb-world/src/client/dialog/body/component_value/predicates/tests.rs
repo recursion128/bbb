@@ -16,7 +16,8 @@ use bbb_protocol::{
 use crate::RegistryTagState;
 
 use super::super::{
-    apply_item_patch_value, decode_supported_component_value, DialogDataComponentValueState,
+    apply_item_patch_entry_value, apply_item_patch_value, decode_supported_component_value,
+    DialogDataComponentValueState,
 };
 use super::*;
 
@@ -228,6 +229,20 @@ fn decodes_adventure_list_and_lock_recursive_item_collections() {
     assert_eq!(items.contains.as_ref().unwrap().len(), 1);
     assert_eq!(items.count.as_ref().unwrap()[0].count.min, Some(0));
     assert_eq!(items.size.as_ref().unwrap().min, Some(1));
+
+    let mut patch = DataComponentPatchSummary::default();
+    assert!(apply_item_patch_entry_value(
+        VANILLA_DATA_COMPONENT_LOCK_TYPE_ID,
+        &DialogDataComponentValueState::Lock { predicate },
+        Some(&lock),
+        &mut patch,
+    ));
+    assert_eq!(
+        patch
+            .codec_backed_nbt
+            .get(&VANILLA_DATA_COMPONENT_LOCK_TYPE_ID),
+        Some(&lock)
+    );
 }
 
 #[test]

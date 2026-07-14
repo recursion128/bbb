@@ -18,9 +18,11 @@ use super::{
 
 mod component_value;
 
+#[cfg(test)]
+use component_value::apply_item_patch_value;
 pub use component_value::DialogDataComponentValueState;
 use component_value::{
-    apply_item_patch_value, decode_supported_component_value_with_context,
+    apply_item_patch_entry_value, decode_supported_component_value_with_context,
     validate_component_player_profile as validate_player_profile,
 };
 pub(super) use component_value::{
@@ -94,9 +96,10 @@ impl DialogItemStackTemplateState {
                     component_patch.removed_type_ids.push(entry.type_id);
                     continue;
                 }
-                apply_item_patch_value(
+                apply_item_patch_entry_value(
                     entry.type_id,
                     entry.value_data.as_ref()?,
+                    entry.value.as_ref(),
                     &mut component_patch,
                 )
                 .then_some(())?;
@@ -572,16 +575,35 @@ mod tests {
         );
         assert_eq!(summary.component_patch.tropical_fish_pattern_id, Some(1));
 
-        let mut unbridged = item;
-        let mut unbridged_patch =
+        let mut lock_patch =
             decode_data_component_patch(&compound(vec![value_entry("lock", compound(Vec::new()))]))
                 .unwrap();
+        let lock_entry = lock_patch.entries.remove(0);
+        let mut lock_bridged = item.clone();
+        lock_bridged
+            .component_data
+            .as_mut()
+            .unwrap()
+            .entries
+            .push(lock_entry.clone());
+        let lock_summary = lock_bridged.item_stack_summary_for_protocol_id(4).unwrap();
+        assert_eq!(
+            lock_summary
+                .component_patch
+                .codec_backed_nbt
+                .get(&type_id("minecraft:lock")),
+            Some(&compound(Vec::new()))
+        );
+
+        let mut unbridged = item;
+        let mut rawless_lock = lock_entry;
+        rawless_lock.value = None;
         unbridged
             .component_data
             .as_mut()
             .unwrap()
             .entries
-            .push(unbridged_patch.entries.remove(0));
+            .push(rawless_lock);
         assert!(unbridged.item_stack_summary_for_protocol_id(4).is_none());
     }
 

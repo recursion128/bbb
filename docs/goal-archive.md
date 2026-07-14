@@ -14729,3 +14729,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   ordered summary、全空四 brick 与 session registry 不覆盖 builtin identity；native dialog Item body 加入
   empty pot-decorations 后继续进入唯一 item runtime。partial/lock predicate 与其余富结构值继续由后续
   明确切片处理。
+
+## 2026-07-14：Bridge top-level lock dialog Item patches
+
+- [x] 对照 `DataComponents.LOCK` 的 persistent `ItemPredicate.CODEC` 与 native codec-backed NBT encoder，
+  要求 `DialogDataComponentValueState::Lock` typed variant 和已通过 decoder 验证的原始 CompoundTag 同时
+  存在，再按 type id 无损落入 summary；不从复杂 partial predicate typed tree 反向猜测 persistent NBT。
+- [x] world all-or-nothing regression 覆盖 decoded empty lock 成功桥接及 rawless lock 整栈拒绝；native
+  dialog Item body 加入 empty lock 后继续进入唯一 item runtime。adventure partial component predicate 与
+  nested exact lock 仍因 protocol persistent summary 无对应形状保持拒绝，其余富结构值继续明确审计。
