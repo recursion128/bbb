@@ -1,9 +1,9 @@
 use bbb_protocol::item_component_value_types::ItemUseAnimationSummary;
 use bbb_protocol::packets::inventory::FireworkExplosionSummary;
 use bbb_protocol::{
-    canonical_f32_json_utf16_len, canonical_f64_json_utf16_len, canonical_json_string_utf16_len,
-    canonical_nbt_json_utf16_len, canonical_resolvable_profile_json_utf16_len, NbtSummaryEntry,
-    NbtSummaryValue,
+    canonical_component_json_utf16_len, canonical_f32_json_utf16_len, canonical_f64_json_utf16_len,
+    canonical_json_string_utf16_len, canonical_nbt_json_utf16_len,
+    canonical_resolvable_profile_json_utf16_len, NbtSummaryEntry, NbtSummaryValue,
 };
 
 use super::super::DialogDataComponentPatchState;
@@ -60,6 +60,14 @@ fn validate_supported_json_numbers(value: &DialogDataComponentValueState) -> Res
     let mut values = Vec::new();
     let mut double_values = Vec::new();
     match value {
+        DialogDataComponentValueState::TextComponent { component } => {
+            canonical_component_json_utf16_len(&component.component)?;
+        }
+        DialogDataComponentValueState::Lore { lines } => {
+            for line in lines {
+                canonical_component_json_utf16_len(&line.component)?;
+            }
+        }
         DialogDataComponentValueState::Float { bits } => values.push(*bits),
         DialogDataComponentValueState::UseEffects {
             speed_multiplier_bits,
@@ -202,6 +210,16 @@ fn canonical_component_value_json_utf16_len(
     value: &DialogDataComponentValueState,
 ) -> Option<usize> {
     Some(match value {
+        DialogDataComponentValueState::TextComponent { component } => {
+            component_json_len(&component.component)?
+        }
+        DialogDataComponentValueState::Lore { lines } => array_len(
+            lines
+                .iter()
+                .map(|line| component_json_len(&line.component))
+                .collect::<Option<Vec<_>>>()?
+                .into_iter(),
+        ),
         DialogDataComponentValueState::Integer { value }
         | DialogDataComponentValueState::RgbColor { value } => value.to_string().len(),
         DialogDataComponentValueState::Float { bits } => canonical_f32_json_utf16_len(*bits)?,
@@ -702,6 +720,12 @@ fn typed_data_json_utf16_len(data: &NbtSummaryValue, resource_id: &str) -> Resul
     canonical_nbt_json_utf16_len(&NbtSummaryValue::Compound(entries))
 }
 
+fn component_json_len(component: &NbtSummaryValue) -> Option<usize> {
+    // The production caller has already propagated canonical Component errors through
+    // validate_supported_json_numbers; None here is reserved for a remaining higher owner.
+    canonical_component_json_utf16_len(component).ok().flatten()
+}
+
 fn banner_pattern_holder_len(holder: &DialogBannerPatternHolderState) -> usize {
     match holder {
         DialogBannerPatternHolderState::Named { resource_id, .. } => string_len(resource_id),
@@ -1175,6 +1199,71 @@ mod tests {
     use super::super::holder_set::DialogRegistryHolderReferenceState;
     use super::super::map_decorations::DialogMapDecorationState;
     use super::*;
+
+    #[test]
+    fn canonicalizes_registry_independent_text_and_lore_components() {
+        let compound = |entries: Vec<(&str, NbtSummaryValue)>| {
+            NbtSummaryValue::Compound(
+                entries
+                    .into_iter()
+                    .map(|(name, value)| NbtSummaryEntry {
+                        name: name.to_string(),
+                        value,
+                    })
+                    .collect(),
+            )
+        };
+        let text_state = |component| super::super::DialogTextState {
+            text: String::new(),
+            runs: Vec::new(),
+            component,
+        };
+        assert_exact(
+            DialogDataComponentValueState::TextComponent {
+                component: text_state(NbtSummaryValue::String("Named".to_string())),
+            },
+            r#""Named""#,
+        );
+        assert_exact(
+            DialogDataComponentValueState::TextComponent {
+                component: text_state(compound(vec![
+                    ("text", NbtSummaryValue::String("Sword".to_string())),
+                    ("bold", NbtSummaryValue::Byte(1)),
+                    ("color", NbtSummaryValue::String("dark_purple".to_string())),
+                ])),
+            },
+            r#"{"text":"Sword","color":"dark_purple","bold":true}"#,
+        );
+        assert_exact(
+            DialogDataComponentValueState::Lore {
+                lines: vec![
+                    text_state(compound(vec![(
+                        "text",
+                        NbtSummaryValue::String("First".to_string()),
+                    )])),
+                    text_state(compound(vec![
+                        (
+                            "translate",
+                            NbtSummaryValue::String("item.second".to_string()),
+                        ),
+                        ("italic", NbtSummaryValue::Byte(0)),
+                    ])),
+                ],
+            },
+            r#"["First",{"translate":"item.second","italic":false}]"#,
+        );
+        assert_eq!(
+            canonical_component_value_json_utf16_len(
+                &DialogDataComponentValueState::TextComponent {
+                    component: text_state(compound(vec![
+                        ("object", NbtSummaryValue::String("player".to_string())),
+                        ("player", NbtSummaryValue::String("Alex".to_string())),
+                    ])),
+                },
+            ),
+            None
+        );
+    }
 
     #[test]
     fn canonicalizes_flat_record_defaults_and_required_fields() {

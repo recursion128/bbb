@@ -151,6 +151,9 @@ Owner: `bbb-protocol`
   record emits `show_icon` per its getter, and every effect/direct-sound float must remain finite.
   Potion contents now reuse that mob-effect owner for potion/color/custom-effect/name fields; compact
   potion-holder inputs re-encode through the left/full branch of their full/potion alternative.
+  Registry-independent custom-name/item-name/lore values now reuse the protocol Component-to-JsonOps
+  owner, including content/style normalization and lore arrays. Owner-sensitive nested payloads still
+  return unknown instead of substituting raw NBT size.
   Dialog click `show_dialog` payloads also decode through the full
   inline/session-reference `Dialog.CODEC` owner with a shared 64-level semantic-depth budget,
   including recursive item templates and predicates, so registry cycles fail deterministically.

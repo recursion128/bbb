@@ -445,6 +445,9 @@ MobEffectInstance details、mob-effect HolderSet 与 sound holder；details 的 
 重编码，default sound 仅省略 exact named holder，全部 effect/direct-sound float 严格拒绝 non-finite；
 `potion_contents` 也已复用同一 MobEffectInstance owner 闭合 potion/custom color/custom effects/custom name；
 compact potion holder 输入按 `withAlternative(full,potion)` 的 left/full encoder 统一重编码为 full object；
+CUSTOM_NAME/ITEM_NAME/LORE 的 registry-independent Component 正值也已复用协议层 Component→JsonOps
+owner 闭合 canonical length、style/content 归一和 lore array；player/dialog/show-item 等 owner-sensitive
+payload 仍返回 unknown 而非 raw NBT 估算；
 click `show_dialog` 也已由同一中央 visitor 按 `Dialog.CODEC` 解析 inline/session reference holder，
 并让 title/button/body/input、item patch 与 recursive predicate/item-template 路径共享 64 层 Dialog
 semantic depth，registry 自引用/互引用不会重置预算；

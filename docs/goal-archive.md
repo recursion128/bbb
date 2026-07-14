@@ -14337,3 +14337,15 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   exact JSON、`show_icon` 重编码与 written-book hover `show_item` potion-contents patch 的 32767/32768
   UTF-16 unit 边界均有回归。generic packet show-dialog world context 与剩余 predicate/item-template 及
   其它 nested-record positive item-patch value 继续由缺口账本追踪。
+
+## 2026-07-14：Canonicalize text-component item patches
+
+- [x] 对照 `DataComponents.CUSTOM_NAME/ITEM_NAME` 的 `ComponentSerialization.CODEC` 与
+  `ItemLore.CODEC`，让三类 positive item-patch value 复用协议层 Component→JsonOps owner；单 Component
+  保持 compact/full 归一，LORE 保持最多 256 项的 ordered canonical component array。
+- [x] registry-independent content/style/click/hover 形态获得精确长度，Component 内 Float/Double 继续走
+  JDK 26 formatter 与 Gson non-finite 拒绝；player/dialog/show-item 等 higher-owner payload 仍返回 unknown，
+  不以 raw NBT 大小估算。plain/styled/translated/lore exact JSON、owner-sensitive negative proof、nested
+  NaN 拒绝与 written-book hover `show_item` custom-name + item-name + lore patch 的 32767/32768 UTF-16
+  unit 边界均有回归。generic packet show-dialog world context 与剩余 predicate/item-template 及其它
+  nested-record positive item-patch value 继续由缺口账本追踪。

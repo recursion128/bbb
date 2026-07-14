@@ -576,6 +576,39 @@ fn enforces_potion_contents_item_patch_page_boundary() {
 }
 
 #[test]
+fn enforces_text_component_item_patch_page_boundary() {
+    let prefix = concat!(
+        r#"{"text":"item","extra":[""],"hover_event":{"action":"show_item","id":"minecraft:stone","components":{"minecraft:custom_name":{"text":"Sword","color":"dark_purple","bold":true},"minecraft:item_name":"Named","minecraft:lore":["First",{"translate":"item.second","italic":false}]}}}"#
+    )
+    .len();
+    let canonical_prefix = canonical_component_json_utf16_len_with_owner(
+        &component_with_text_item_patch(String::new()),
+        |kind, value| match kind {
+            CanonicalComponentOwnerValue::PlayerProfile => {
+                let profile = decode_profile(value, "component player")?;
+                Ok(canonical_resolvable_profile_json_utf16_len(&profile))
+            }
+            CanonicalComponentOwnerValue::ItemComponentPatch => {
+                let patch = decode_data_component_patch(value, DialogDecodeContext::new(None, 0))?;
+                canonical_data_component_patch_json_utf16_len(&patch)
+            }
+            CanonicalComponentOwnerValue::Dialog => Ok(None),
+        },
+    )
+    .unwrap()
+    .unwrap();
+    assert_eq!(canonical_prefix, prefix);
+    for (limit, expected_error) in [(32_767usize, None), (32_768usize, Some("encodes to 32768"))] {
+        let page = component_with_text_item_patch("x".repeat(limit - prefix));
+        let result = decode_written_book_content(&book_with_pages(vec![page]), "written book");
+        match expected_error {
+            None => assert!(result.is_ok()),
+            Some(expected) => assert!(result.unwrap_err().contains(expected)),
+        }
+    }
+}
+
+#[test]
 fn rejects_malformed_written_book_fields_filterables_and_exact_canonical_page_limit() {
     let cases = [
         (NbtSummaryValue::List(Vec::new()), "is not a compound"),
@@ -849,6 +882,10 @@ fn rejects_malformed_written_book_fields_filterables_and_exact_canonical_page_li
         (
             book_with_pages(vec![component_with_non_finite_consume_effect_item_patch()]),
             "canonical item component patch contains a non-finite Float/Double value",
+        ),
+        (
+            book_with_pages(vec![component_with_non_finite_text_item_patch()]),
+            "canonical JsonWriter rejects non-finite Float/Double values",
         ),
         (
             written_book(vec![
@@ -1696,6 +1733,47 @@ fn component_with_potion_contents_item_patch(extra: String) -> NbtSummaryValue {
     ])
 }
 
+fn component_with_text_item_patch(extra: String) -> NbtSummaryValue {
+    compound(vec![
+        string_entry("text", "item"),
+        value_entry(
+            "extra",
+            NbtSummaryValue::List(vec![NbtSummaryValue::String(extra)]),
+        ),
+        value_entry(
+            "hover_event",
+            compound(vec![
+                string_entry("action", "show_item"),
+                string_entry("id", "stone"),
+                value_entry(
+                    "components",
+                    compound(vec![
+                        value_entry(
+                            "custom_name",
+                            compound(vec![
+                                string_entry("text", "Sword"),
+                                value_entry("bold", NbtSummaryValue::Byte(1)),
+                                string_entry("color", "dark_purple"),
+                            ]),
+                        ),
+                        string_entry("item_name", "Named"),
+                        value_entry(
+                            "lore",
+                            NbtSummaryValue::List(vec![
+                                NbtSummaryValue::String("First".to_string()),
+                                compound(vec![
+                                    string_entry("translate", "item.second"),
+                                    value_entry("italic", NbtSummaryValue::Byte(0)),
+                                ]),
+                            ]),
+                        ),
+                    ]),
+                ),
+            ]),
+        ),
+    ])
+}
+
 fn component_with_non_finite_tool_item_patch() -> NbtSummaryValue {
     compound(vec![
         string_entry("text", "item"),
@@ -1808,6 +1886,34 @@ fn component_with_non_finite_consume_effect_item_patch() -> NbtSummaryValue {
                                 )],
                             )]),
                         )]),
+                    )]),
+                ),
+            ]),
+        ),
+    ])
+}
+
+fn component_with_non_finite_text_item_patch() -> NbtSummaryValue {
+    compound(vec![
+        string_entry("text", "item"),
+        value_entry(
+            "hover_event",
+            compound(vec![
+                string_entry("action", "show_item"),
+                string_entry("id", "stone"),
+                value_entry(
+                    "components",
+                    compound(vec![value_entry(
+                        "custom_name",
+                        compound(vec![
+                            string_entry("translate", "example.value"),
+                            value_entry(
+                                "with",
+                                NbtSummaryValue::List(vec![NbtSummaryValue::Float(
+                                    f32::NAN.to_bits(),
+                                )]),
+                            ),
+                        ]),
                     )]),
                 ),
             ]),

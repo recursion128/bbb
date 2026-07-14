@@ -814,14 +814,14 @@ mod tests {
             ))
         );
 
-        let complex = decode_data_component_patch(&compound(vec![value_entry(
+        let text = decode_data_component_patch(&compound(vec![value_entry(
             "custom_name",
             NbtSummaryValue::String("Name".to_string()),
         )]))
         .unwrap();
         assert_eq!(
-            component_value::canonical_data_component_patch_json_utf16_len(&complex),
-            Ok(None)
+            component_value::canonical_data_component_patch_json_utf16_len(&text),
+            Ok(Some(r#"{"minecraft:custom_name":"Name"}"#.len()))
         );
 
         let empty = decode_data_component_patch(&compound(Vec::new())).unwrap();
