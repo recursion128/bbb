@@ -42,7 +42,7 @@ use bbb_protocol::{
         VANILLA_DATA_COMPONENT_STORED_ENCHANTMENTS_TYPE_ID,
         VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID,
         VANILLA_DATA_COMPONENT_TOOLTIP_DISPLAY_TYPE_ID,
-        VANILLA_DATA_COMPONENT_TOOLTIP_STYLE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_TOOLTIP_STYLE_TYPE_ID, VANILLA_DATA_COMPONENT_TOOL_TYPE_ID,
         VANILLA_DATA_COMPONENT_TROPICAL_FISH_PATTERN_TYPE_ID,
         VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID, VANILLA_DATA_COMPONENT_USE_COOLDOWN_TYPE_ID,
         VANILLA_DATA_COMPONENT_USE_EFFECTS_TYPE_ID, VANILLA_DATA_COMPONENT_WEAPON_TYPE_ID,
@@ -65,6 +65,7 @@ mod holder_set;
 mod map_decorations;
 mod profile;
 mod sound_event;
+mod tool;
 mod typed_data;
 
 use bees::{decode_bees, DialogBeeOccupantState};
@@ -83,6 +84,7 @@ use sound_event::{
     decode_kinetic_weapon, decode_piercing_weapon, decode_sound_event_holder,
     DialogKineticWeaponState, DialogPiercingWeaponState, DialogSoundEventHolderState,
 };
+use tool::{decode_tool, DialogToolState};
 use typed_data::{
     decode_builtin_block_entity_data, decode_builtin_entity_data, decode_custom_data,
     DialogTypedBlockEntityDataState, DialogTypedEntityDataState,
@@ -278,6 +280,9 @@ pub enum DialogDataComponentValueState {
     StoredEnchantments {
         entries: Vec<DialogEnchantmentEntryState>,
     },
+    Tool {
+        tool: DialogToolState,
+    },
 }
 
 impl DialogDataComponentValueState {
@@ -446,6 +451,9 @@ pub(super) fn decode_supported_component_value(
                 entries: decode_enchantments(value, registries, &what)?,
             }
         }
+        VANILLA_DATA_COMPONENT_TOOL_TYPE_ID => DialogDataComponentValueState::Tool {
+            tool: decode_tool(value, registries, &what)?,
+        },
         _ => {
             if let Some(decoded) =
                 decode_holder_backed_component_value(type_id, value, registries, &what)

@@ -363,7 +363,9 @@ entity HolderSet 与五个 default bool 也已 typed 投影；BLOCKS_ATTACKS 的
 defaulted nested damage-reduction/item-damage record、damage-type HolderSet 与两个 optional sound holder
 也已 typed 投影；ENCHANTMENTS/STORED_ENCHANTMENTS 的 session-aware named enchantment holder map、
 1..=255 level 与 context-free empty map 也已 typed 投影；DAMAGE_TYPE 的 session-aware named
-RegistryFixedCodec holder 也已 typed 投影且明确拒绝 direct compound；
+RegistryFixedCodec holder 也已 typed 投影且明确拒绝 direct compound；TOOL 的 required ordered rule
+list、block HolderSet、optional positive speed/drop correctness、unrestricted default mining speed、
+non-negative damage 与 creative default 也已 typed 投影；
 其余 Component、holder、list 与 compound record 等 persistent Codec 仍未展开；
 四类 input control 与九类 static/dynamic action 已按 codec typed 投影并同时保留 raw；DialogList 的 play
 tag/direct 同质 HolderSet、session reference、context-free inline-list

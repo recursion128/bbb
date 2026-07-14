@@ -13823,3 +13823,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   `DIRECT_CODEC` compound 错当成 persistent holder 分支。
 - [x] default namespace、session registration order、missing registry context、unknown resource 与
   direct compound 拒绝均有定向测试；其余 persistent Codec 与 native screens 仍开放。
+
+## 2026-07-13：Decode tool dialog item component
+
+- [x] 新建 `client/dialog/body/component_value/tool.rs` semantic owner；对照 `Tool.CODEC` 与
+  `Tool.Rule.CODEC`，typed 投影 required ordered rule list、block HolderSet、optional positive speed/
+  drop correctness，以及顶层 unrestricted mining speed、non-negative damage/default creative flag。
+- [x] empty/default rules、session/built-in block tag/list、context-free empty HolderSet、NaN unrestricted
+  float 位、positive/non-negative 边界、NBT numeric/bool conversion、missing/wrong shapes 与 unknown block
+  均有定向测试；其余 persistent Codec 与 native screens 仍开放。
