@@ -940,6 +940,18 @@ pub(super) fn apply_item_patch_value(
                 ),
             );
         }
+        (VANILLA_DATA_COMPONENT_RECIPES_TYPE_ID, Value::Recipes { resource_ids }) => {
+            patch.codec_backed_nbt.insert(
+                type_id,
+                NbtSummaryValue::List(
+                    resource_ids
+                        .iter()
+                        .cloned()
+                        .map(NbtSummaryValue::String)
+                        .collect(),
+                ),
+            );
+        }
         (
             VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID,
             Value::AttackRange {

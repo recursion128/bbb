@@ -650,6 +650,13 @@ fn rejects_invalid_numeric_item_behavior_records() {
 
 #[test]
 fn decodes_resource_key_and_component_catalog_metadata() {
+    let recipes = DialogDataComponentValueState::Recipes {
+        resource_ids: vec![
+            "minecraft:stick".to_string(),
+            "minecraft:custom".to_string(),
+            "minecraft:stick".to_string(),
+        ],
+    };
     assert_eq!(
         decoded(
             VANILLA_DATA_COMPONENT_RECIPES_TYPE_ID,
@@ -661,13 +668,39 @@ fn decodes_resource_key_and_component_catalog_metadata() {
             ]),
         )
         .unwrap(),
-        Some(DialogDataComponentValueState::Recipes {
-            resource_ids: vec![
-                "minecraft:stick".to_string(),
-                "minecraft:custom".to_string(),
-                "minecraft:stick".to_string(),
-            ],
-        })
+        Some(recipes.clone())
+    );
+
+    let mut patch = DataComponentPatchSummary::default();
+    assert!(apply_item_patch_value(
+        VANILLA_DATA_COMPONENT_RECIPES_TYPE_ID,
+        &recipes,
+        &mut patch,
+    ));
+    assert_eq!(
+        patch
+            .codec_backed_nbt
+            .get(&VANILLA_DATA_COMPONENT_RECIPES_TYPE_ID),
+        Some(&NbtSummaryValue::List(vec![
+            NbtSummaryValue::String("minecraft:stick".to_string()),
+            NbtSummaryValue::String("minecraft:custom".to_string()),
+            NbtSummaryValue::String("minecraft:stick".to_string()),
+        ]))
+    );
+
+    let mut empty_patch = DataComponentPatchSummary::default();
+    assert!(apply_item_patch_value(
+        VANILLA_DATA_COMPONENT_RECIPES_TYPE_ID,
+        &DialogDataComponentValueState::Recipes {
+            resource_ids: Vec::new(),
+        },
+        &mut empty_patch,
+    ));
+    assert_eq!(
+        empty_patch
+            .codec_backed_nbt
+            .get(&VANILLA_DATA_COMPONENT_RECIPES_TYPE_ID),
+        Some(&NbtSummaryValue::List(Vec::new()))
     );
 
     assert_eq!(

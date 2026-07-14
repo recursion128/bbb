@@ -352,6 +352,7 @@ summary，保留 nested patch、ordered items、last-duplicate slot 与 nonempty
 bees 保留 ordered occupant、builtin entity type id、去除 persistent `id` 后的 CompoundTag 与两个 tick；
 map-decorations 按 persistent CODEC 形状保留 ordered key、builtin type resource 与 double/float bits；
 debug-stick-state 按 dispatched map CODEC 保留 ordered builtin block resource 与 property name；
+recipes 按 `Recipe.KEY_CODEC.listOf()` 保留 normalized ordered resource ids 与 duplicates；
 未桥接的其余富结构值不会被猜测性投影。
 仍须按 `DialogScreen`/`DialogControlSet` 完成 screen blur/depth-clear、warning button/screen、
 剩余有损/未 typed holder 形式及递归/富结构 component-patched Item body bridge 与 item focus outline、四类 input、

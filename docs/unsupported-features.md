@@ -93,6 +93,7 @@ Owner: `bbb-protocol`
   plus ordered bee occupants with builtin typed-entity data and hive tick values,
   plus codec-normalized map decorations with bit-exact coordinates and rotation,
   plus normalized debug-stick block/property dispatched maps,
+  plus normalized ordered recipe-key lists,
   and item tooltips while conservatively rejecting an entire body when any added component value
   has no summary bridge,
   and implements the

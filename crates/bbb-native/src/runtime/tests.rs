@@ -14464,6 +14464,10 @@ fn hud_inventory_screen_projects_dialog_item_body_structured_patches() {
                                             "minecraft:debug_stick_state",
                                             NbtSummaryValue::Compound(Vec::new()),
                                         ),
+                                        entry(
+                                            "minecraft:recipes",
+                                            NbtSummaryValue::List(Vec::new()),
+                                        ),
                                     ]),
                                 ),
                             ]),

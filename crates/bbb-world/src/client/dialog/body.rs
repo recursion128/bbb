@@ -573,17 +573,15 @@ mod tests {
         assert_eq!(summary.component_patch.tropical_fish_pattern_id, Some(1));
 
         let mut unbridged = item;
-        unbridged.component_data.as_mut().unwrap().entries.push(
-            DialogDataComponentPatchEntryState {
-                type_id: type_id("minecraft:recipes"),
-                resource_id: "minecraft:recipes".to_string(),
-                removed: false,
-                value: None,
-                value_data: Some(DialogDataComponentValueState::Recipes {
-                    resource_ids: vec!["minecraft:test".to_string()],
-                }),
-            },
-        );
+        let mut unbridged_patch =
+            decode_data_component_patch(&compound(vec![value_entry("lock", compound(Vec::new()))]))
+                .unwrap();
+        unbridged
+            .component_data
+            .as_mut()
+            .unwrap()
+            .entries
+            .push(unbridged_patch.entries.remove(0));
         assert!(unbridged.item_stack_summary_for_protocol_id(4).is_none());
     }
 

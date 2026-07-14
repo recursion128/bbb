@@ -14700,3 +14700,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] world focused regression 覆盖 two-block ordered map、duplicate original key last-value、empty map 与
   session registry 不覆盖 builtin block identity；native dialog Item body 加入 empty debug-stick-state 后
   继续进入唯一 item runtime。partial/lock predicate 与其余富结构值继续由后续明确切片处理。
+
+## 2026-07-14：Bridge recipes dialog Item patches
+
+- [x] 对照 `DataComponents.RECIPES` 的 `Recipe.KEY_CODEC.listOf()`，把 normalized ordered recipe resource
+  ids（含 duplicates）重建为 persistent NBT list，并按 type id 进入既有 codec-backed NBT
+  summary/encoder；empty list 也显式保留 component presence。
+- [x] world focused regression 覆盖 default namespace、empty path normalization、duplicate order 与 empty
+  list；all-or-nothing 回归改用 protocol summary 尚无字段的 `lock` 作为明确未桥接哨兵。native dialog
+  Item body 加入 empty recipes 后继续进入唯一 item runtime。partial/lock predicate 与其余富结构值继续
+  由后续明确切片处理。
