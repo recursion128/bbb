@@ -1,14 +1,20 @@
+use std::collections::BTreeMap;
+
 use bbb_control::NetCounters;
 use bbb_item_model::NativeItemRuntime;
 use bbb_net::NetCommand;
-use bbb_protocol::packets::{CustomClickAction, GameType, ItemStackSummary};
+use bbb_protocol::{
+    packets::{CustomClickAction, GameType, ItemStackSummary},
+    NbtSummaryValue,
+};
 use bbb_renderer::{
     HudInventoryBackgroundLayer, HudInventoryBackgroundTexture, HudInventoryItem,
     HudInventoryScreen, HudInventoryTextLabel, HudInventoryTooltip, HudInventoryTooltipLine,
     HudStyledTextRun, HudTextStyle, HudUvRect,
 };
 use bbb_world::{
-    CommonDialogDataState, DialogActionState, DialogBodyState, DialogButtonState, DialogDataState,
+    CommonDialogDataState, DialogActionState, DialogBodyState, DialogButtonState,
+    DialogCommandTemplateState, DialogDataState, DialogInputControlState, DialogInputValueState,
     DialogItemStackTemplateState, DialogPlainMessageState, DialogState, DialogTextState,
     WorldStore,
 };
@@ -17,7 +23,7 @@ use winit::dpi::{PhysicalPosition, PhysicalSize};
 use winit::event::{ElementState, MouseButton};
 use winit::keyboard::{KeyCode, PhysicalKey};
 
-use crate::input::DebugClipboard;
+use crate::input::{queue_chat_command, DebugClipboard};
 use crate::terrain_runtime::TerrainTextureState;
 
 use super::{
@@ -37,6 +43,8 @@ const FOCUSABLE_TEXT_PADDING: i32 = 4;
 const SIMPLE_BUTTON_SPACING: i32 = 8;
 const BUTTON_HEIGHT: u32 = 20;
 const BUTTON_TEXT_Y_OFFSET: i32 = 6;
+const CHECKBOX_SIZE: u32 = 17;
+const CHECKBOX_LABEL_SPACING: i32 = 4;
 const TEXT_LINE_HEIGHT: i32 = 9;
 const TEXT_COLOR: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
 const INACTIVE_TEXT_COLOR: [f32; 4] = [160.0 / 255.0, 160.0 / 255.0, 160.0 / 255.0, 1.0];
@@ -57,6 +65,15 @@ struct DialogButtonLayout {
     x: i32,
     y: i32,
     width: u32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct DialogInputLayout {
+    index: usize,
+    x: i32,
+    y: i32,
+    width: i32,
+    height: i32,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -202,6 +219,117 @@ fn simple_dialog_controls(data: &DialogDataState) -> Option<SimpleDialogControls
     }
 }
 
+fn dialog_body_declared_height(body: &DialogBodyState) -> Option<i32> {
+    match body {
+        DialogBodyState::PlainMessage { message } => Some(dialog_text_block(message)?.height),
+        DialogBodyState::Item {
+            description,
+            height,
+            ..
+        } => Some(
+            description
+                .as_ref()
+                .and_then(dialog_text_block)
+                .map_or(*height, |text| (*height).max(text.height)),
+        ),
+    }
+}
+
+fn dialog_input_dimensions(control: &DialogInputControlState) -> Option<(i32, i32)> {
+    match control {
+        DialogInputControlState::Boolean { label, .. } => {
+            let label_width = i32::try_from(runs_approx_width(&dialog_text_runs(label))).ok()?;
+            Some((
+                i32::try_from(CHECKBOX_SIZE)
+                    .ok()?
+                    .saturating_add(CHECKBOX_LABEL_SPACING)
+                    .saturating_add(label_width),
+                i32::try_from(CHECKBOX_SIZE).ok()?,
+            ))
+        }
+        DialogInputControlState::NumberRange { width, .. }
+        | DialogInputControlState::SingleOption { width, .. } => Some((*width, 20)),
+        DialogInputControlState::Text {
+            width,
+            label_visible,
+            multiline,
+            ..
+        } => {
+            let control_height = multiline.as_ref().map_or(20, |multiline| {
+                multiline.height.unwrap_or_else(|| {
+                    multiline
+                        .max_lines
+                        .unwrap_or(4)
+                        .saturating_mul(TEXT_LINE_HEIGHT)
+                        .saturating_add(8)
+                        .min(512)
+                })
+            });
+            Some((
+                *width,
+                control_height.saturating_add(if *label_visible {
+                    TEXT_LINE_HEIGHT + 4
+                } else {
+                    0
+                }),
+            ))
+        }
+    }
+}
+
+fn dialog_input_layouts(
+    common: &CommonDialogDataState,
+    surface_size: PhysicalSize<u32>,
+) -> Option<Vec<DialogInputLayout>> {
+    let screen_width = surface_size.width.clamp(1, 512);
+    let screen_height = surface_size.height.clamp(1, 512);
+    let screen_width_i32 = i32::try_from(screen_width).ok()?;
+    let screen_height_i32 = i32::try_from(screen_height).ok()?;
+    let body_heights = common
+        .body_data
+        .iter()
+        .map(dialog_body_declared_height)
+        .collect::<Option<Vec<_>>>()?;
+    let input_dimensions = common
+        .input_data
+        .iter()
+        .map(|input| dialog_input_dimensions(&input.control))
+        .collect::<Option<Vec<_>>>()?;
+    let element_count = body_heights.len().saturating_add(input_dimensions.len());
+    let content_height = body_heights
+        .iter()
+        .chain(input_dimensions.iter().map(|(_, height)| height))
+        .fold(0i32, |total, height| total.saturating_add(*height))
+        .saturating_add(
+            i32::try_from(element_count.saturating_sub(1))
+                .unwrap_or(i32::MAX)
+                .saturating_mul(BODY_SPACING),
+        );
+    let mut y = (HEADER_HEIGHT + CONTENT_MARGIN_TOP).min(
+        screen_height_i32
+            .saturating_sub(FOOTER_HEIGHT)
+            .saturating_sub(content_height),
+    );
+    for height in body_heights {
+        y = y.saturating_add(height).saturating_add(BODY_SPACING);
+    }
+    input_dimensions
+        .into_iter()
+        .enumerate()
+        .map(|(index, (width, height))| {
+            let layout = DialogInputLayout {
+                index,
+                x: screen_width_i32 / 2 - width / 2,
+                y,
+                width,
+                height,
+            };
+            y = y.saturating_add(height).saturating_add(BODY_SPACING);
+            Some(layout)
+        })
+        .collect()
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct WaitingLayout {
     screen_width: u32,
@@ -310,15 +438,27 @@ pub(super) fn hud_dialog_screen(
     let body_height = body_blocks
         .iter()
         .fold(0i32, |height, block| height.saturating_add(block.height()));
-    let body_height = body_height.saturating_add(
-        i32::try_from(body_blocks.len().saturating_sub(1))
-            .unwrap_or(i32::MAX)
-            .saturating_mul(BODY_SPACING),
-    );
+    let input_dimensions = controls
+        .common
+        .input_data
+        .iter()
+        .map(|input| dialog_input_dimensions(&input.control))
+        .collect::<Option<Vec<_>>>()?;
+    let content_element_count = body_blocks.len().saturating_add(input_dimensions.len());
+    let content_height = input_dimensions
+        .iter()
+        .fold(body_height, |height, (_, input_height)| {
+            height.saturating_add(*input_height)
+        })
+        .saturating_add(
+            i32::try_from(content_element_count.saturating_sub(1))
+                .unwrap_or(i32::MAX)
+                .saturating_mul(BODY_SPACING),
+        );
     let mut body_y = (HEADER_HEIGHT + CONTENT_MARGIN_TOP).min(
         screen_height_i32
             .saturating_sub(FOOTER_HEIGHT)
-            .saturating_sub(body_height),
+            .saturating_sub(content_height),
     );
     let mut floating_items = Vec::new();
     let mut item_tooltip = None;
@@ -379,6 +519,59 @@ pub(super) fn hud_dialog_screen(
         body_y = body_y.saturating_add(block_height);
     }
 
+    let input_layouts = dialog_input_layouts(controls.common, surface_size)?;
+    let mut checkbox_layers = Vec::new();
+    for input_layout in input_layouts {
+        let Some(input) = controls.common.input_data.get(input_layout.index) else {
+            continue;
+        };
+        let DialogInputControlState::Boolean { label, .. } = &input.control else {
+            continue;
+        };
+        let Some(Some(DialogInputValueState::Boolean { selected })) =
+            world.current_dialog_input_values().get(input_layout.index)
+        else {
+            continue;
+        };
+        let highlighted = dialog_widget_contains(
+            input_layout.x,
+            input_layout.y,
+            input_layout.width,
+            input_layout.height,
+            cursor_position,
+            surface_size,
+            layout.screen_width,
+            layout.screen_height,
+        );
+        checkbox_layers.push(HudInventoryBackgroundLayer {
+            texture: match (*selected, highlighted) {
+                (false, false) => HudInventoryBackgroundTexture::WidgetCheckbox,
+                (false, true) => HudInventoryBackgroundTexture::WidgetCheckboxHighlighted,
+                (true, false) => HudInventoryBackgroundTexture::WidgetCheckboxSelected,
+                (true, true) => HudInventoryBackgroundTexture::WidgetCheckboxSelectedHighlighted,
+            },
+            x: input_layout.x,
+            y: input_layout.y,
+            width: CHECKBOX_SIZE,
+            height: CHECKBOX_SIZE,
+            uv: HudUvRect {
+                min: [0.0, 0.0],
+                max: [1.0, 1.0],
+            },
+        });
+        push_text_label(
+            &mut text_labels,
+            label,
+            input_layout
+                .x
+                .saturating_add(i32::try_from(CHECKBOX_SIZE).unwrap_or(i32::MAX))
+                .saturating_add(CHECKBOX_LABEL_SPACING),
+            input_layout.y.saturating_add(
+                (i32::try_from(CHECKBOX_SIZE).unwrap_or(i32::MAX) - TEXT_LINE_HEIGHT) / 2,
+            ),
+        );
+    }
+
     for (action, button) in controls.actions.iter().zip(&layout.buttons) {
         push_centered_text_label(
             &mut text_labels,
@@ -393,6 +586,7 @@ pub(super) fn hud_dialog_screen(
         layout.screen_width,
         layout.screen_height,
     )];
+    background_layers.extend(checkbox_layers);
     background_layers.extend(layout.buttons.iter().enumerate().map(|(index, button)| {
         HudInventoryBackgroundLayer {
             texture: if highlighted_button == Some(index) {
@@ -608,6 +802,39 @@ pub(crate) fn handle_dialog_mouse_input(
     let Some(controls) = dialog.data.as_ref().and_then(simple_dialog_controls) else {
         return true;
     };
+    let screen_width = surface_size.width.clamp(1, 512);
+    let screen_height = surface_size.height.clamp(1, 512);
+    let boolean_input_index =
+        dialog_input_layouts(controls.common, surface_size).and_then(|layouts| {
+            layouts.into_iter().find_map(|layout| {
+                matches!(
+                    controls
+                        .common
+                        .input_data
+                        .get(layout.index)
+                        .map(|input| &input.control),
+                    Some(DialogInputControlState::Boolean { .. })
+                )
+                .then_some(layout)
+                .filter(|layout| {
+                    dialog_widget_contains(
+                        layout.x,
+                        layout.y,
+                        layout.width,
+                        layout.height,
+                        cursor_position,
+                        surface_size,
+                        screen_width,
+                        screen_height,
+                    )
+                })
+                .map(|layout| layout.index)
+            })
+        });
+    if let Some(index) = boolean_input_index {
+        world.toggle_dialog_boolean_input(index);
+        return true;
+    }
     let Some(action_index) = SimpleDialogLayout::new(
         &controls
             .actions
@@ -657,6 +884,43 @@ fn run_dialog_action(
                 }
             }
         }
+        Some(DialogActionState::RunCommand { command }) => {
+            queue_chat_command(
+                counters,
+                world,
+                net_commands,
+                command.strip_prefix('/').unwrap_or(command),
+            );
+        }
+        Some(DialogActionState::DynamicRunCommand { template }) => {
+            let Some(values) = bound_dialog_input_values(world) else {
+                return false;
+            };
+            let command = instantiate_dialog_command_template(template, &values);
+            queue_chat_command(
+                counters,
+                world,
+                net_commands,
+                command.strip_prefix('/').unwrap_or(&command),
+            );
+        }
+        Some(DialogActionState::DynamicCustom { id, additions }) => {
+            let Some(values) = bound_dialog_input_values(world) else {
+                return false;
+            };
+            let payload = dynamic_custom_payload(additions.as_ref(), &values);
+            if let Some(tx) = net_commands {
+                if tx
+                    .try_send(NetCommand::CustomClickAction(CustomClickAction {
+                        id: id.clone(),
+                        payload: Some(payload),
+                    }))
+                    .is_ok()
+                {
+                    counters.custom_click_action_commands_queued += 1;
+                }
+            }
+        }
         Some(DialogActionState::ShowDialog { dialog }) => {
             // Vanilla computes an active screen from `after_action`, then
             // `showDialog` unwraps an active Dialog/Waiting screen back to its
@@ -691,6 +955,78 @@ fn run_dialog_action(
         "wait_for_response" => world.wait_for_dialog_response(),
         _ => false,
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct BoundDialogInputValue {
+    template_substitution: String,
+    tag: NbtSummaryValue,
+}
+
+fn bound_dialog_input_values(
+    world: &WorldStore,
+) -> Option<BTreeMap<String, BoundDialogInputValue>> {
+    let controls = world
+        .current_dialog()?
+        .data
+        .as_ref()
+        .and_then(simple_dialog_controls)?;
+    let values = world.current_dialog_input_values();
+    let mut bound = BTreeMap::new();
+    for (index, input) in controls.common.input_data.iter().enumerate() {
+        let value = match (&input.control, values.get(index)?) {
+            (
+                DialogInputControlState::Boolean {
+                    on_true, on_false, ..
+                },
+                Some(DialogInputValueState::Boolean { selected }),
+            ) => BoundDialogInputValue {
+                template_substitution: if *selected { on_true } else { on_false }.clone(),
+                tag: NbtSummaryValue::Byte(i8::from(*selected)),
+            },
+            _ => return None,
+        };
+        bound.insert(input.key.clone(), value);
+    }
+    Some(bound)
+}
+
+fn instantiate_dialog_command_template(
+    template: &DialogCommandTemplateState,
+    values: &BTreeMap<String, BoundDialogInputValue>,
+) -> String {
+    let mut command = String::new();
+    for (index, variable) in template.variables.iter().enumerate() {
+        command.push_str(template.segments.get(index).map_or("", String::as_str));
+        if let Some(value) = values.get(variable) {
+            command.push_str(&value.template_substitution);
+        }
+    }
+    if let Some(trailing) = template.segments.get(template.variables.len()) {
+        command.push_str(trailing);
+    }
+    command
+}
+
+fn dynamic_custom_payload(
+    additions: Option<&NbtSummaryValue>,
+    values: &BTreeMap<String, BoundDialogInputValue>,
+) -> NbtSummaryValue {
+    let mut fields = BTreeMap::new();
+    if let Some(NbtSummaryValue::Compound(entries)) = additions {
+        for entry in entries {
+            fields.insert(entry.name.clone(), entry.value.clone());
+        }
+    }
+    for (key, value) in values {
+        fields.insert(key.clone(), value.tag.clone());
+    }
+    NbtSummaryValue::Compound(
+        fields
+            .into_iter()
+            .map(|(name, value)| bbb_protocol::NbtSummaryEntry { name, value })
+            .collect(),
+    )
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -945,6 +1281,27 @@ fn push_centered_text_label(
     });
 }
 
+fn push_text_label(
+    labels: &mut Vec<HudInventoryTextLabel>,
+    text: &DialogTextState,
+    x: i32,
+    y: i32,
+) {
+    let runs = dialog_text_runs(text);
+    let width = runs_approx_width(&runs).max(1);
+    labels.push(HudInventoryTextLabel {
+        x,
+        y,
+        width,
+        text: text.text.clone(),
+        tint: TEXT_COLOR,
+        background: None,
+        input: None,
+        shadow: false,
+        runs,
+    });
+}
+
 fn wrapped_text_lines(text: &DialogTextState, max_width: u32) -> Vec<DialogTextLine> {
     let mut lines = Vec::new();
     let mut current = empty_text_line();
@@ -1129,7 +1486,7 @@ mod tests {
     }
 
     #[test]
-    fn notice_escape_requires_permission_and_actionless_cancel() {
+    fn notice_escape_requires_permission_and_forces_close_after_cancel_action() {
         let mut default_notice = world_with_notice(Vec::new());
         let mut counters = NetCounters::default();
         assert!(handle_dialog_key_input(
@@ -1183,7 +1540,8 @@ mod tests {
             PhysicalKey::Code(KeyCode::Escape),
             ElementState::Pressed,
         ));
-        assert!(action_notice.current_dialog().is_some());
+        assert!(action_notice.current_dialog().is_none());
+        assert_eq!(counters.chat_command_commands_queued, 0);
     }
 
     #[test]
@@ -1268,6 +1626,207 @@ mod tests {
             NetCommand::CustomClickAction(CustomClickAction { id, .. }) if id == "example:no"
         ));
         assert_eq!(counters.custom_click_action_commands_queued, 2);
+    }
+
+    #[test]
+    fn boolean_input_renders_toggles_and_binds_dynamic_actions() {
+        let mut world = world_with_notice(vec![
+            entry("pause", NbtSummaryValue::Byte(0)),
+            entry("after_action", NbtSummaryValue::String("none".to_string())),
+            entry(
+                "inputs",
+                NbtSummaryValue::List(vec![boolean_input(
+                    "enabled", "Enabled", false, "yes", "no",
+                )]),
+            ),
+            entry(
+                "action",
+                NbtSummaryValue::Compound(vec![
+                    entry("label", NbtSummaryValue::String("Send".to_string())),
+                    entry(
+                        "action",
+                        NbtSummaryValue::Compound(vec![
+                            entry(
+                                "type",
+                                NbtSummaryValue::String("minecraft:dynamic/custom".to_string()),
+                            ),
+                            entry("id", NbtSummaryValue::String("example:dynamic".to_string())),
+                            entry(
+                                "additions",
+                                NbtSummaryValue::Compound(vec![
+                                    entry("enabled", NbtSummaryValue::String("old".to_string())),
+                                    entry("fixed", NbtSummaryValue::Int(7)),
+                                ]),
+                            ),
+                        ]),
+                    ),
+                ]),
+            ),
+        ]);
+        let surface_size = PhysicalSize::new(320, 240);
+        let input_layout = {
+            let controls = world
+                .current_dialog()
+                .and_then(|dialog| dialog.data.as_ref())
+                .and_then(simple_dialog_controls)
+                .unwrap();
+            dialog_input_layouts(controls.common, surface_size).unwrap()[0]
+        };
+        let input_cursor = (
+            input_layout.x.saturating_add(1),
+            input_layout.y.saturating_add(1),
+        );
+        let terrain_textures = TerrainTextureState::default();
+        let screen = hud_dialog_screen(
+            &world,
+            world.current_dialog().unwrap(),
+            None,
+            &terrain_textures,
+            &InventoryHudLocalState {
+                cursor_position: Some(input_cursor),
+                ..Default::default()
+            },
+            surface_size,
+            0.0,
+        )
+        .unwrap();
+        assert_eq!(screen.text_labels[1].text, "Enabled");
+        assert!(screen.background_layers.iter().any(|layer| {
+            layer.texture == HudInventoryBackgroundTexture::WidgetCheckboxHighlighted
+                && (layer.x, layer.y) == (input_layout.x, input_layout.y)
+        }));
+
+        let mut counters = NetCounters::default();
+        let (tx, mut rx) = mpsc::channel(2);
+        let net_commands = Some(tx);
+        assert!(handle_dialog_mouse_input(
+            &mut counters,
+            &mut world,
+            &net_commands,
+            None,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(
+                f64::from(input_cursor.0),
+                f64::from(input_cursor.1),
+            )),
+            surface_size,
+        ));
+        assert_eq!(
+            world.current_dialog_input_values(),
+            [Some(DialogInputValueState::Boolean { selected: true })]
+        );
+
+        assert!(handle_dialog_mouse_input(
+            &mut counters,
+            &mut world,
+            &net_commands,
+            None,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(160.0, 220.0)),
+            surface_size,
+        ));
+        assert!(world.current_dialog().is_some());
+        assert_eq!(counters.custom_click_action_commands_queued, 1);
+        assert!(matches!(
+            rx.try_recv().unwrap(),
+            NetCommand::CustomClickAction(CustomClickAction {
+                id,
+                payload: Some(NbtSummaryValue::Compound(entries)),
+            }) if id == "example:dynamic"
+                && entries == vec![
+                    entry("enabled", NbtSummaryValue::Byte(1)),
+                    entry("fixed", NbtSummaryValue::Int(7)),
+                ]
+        ));
+
+        let mut command_world = world_with_notice(vec![
+            entry(
+                "inputs",
+                NbtSummaryValue::List(vec![boolean_input("enabled", "Enabled", true, "yes", "no")]),
+            ),
+            entry(
+                "action",
+                NbtSummaryValue::Compound(vec![
+                    entry("label", NbtSummaryValue::String("Run".to_string())),
+                    entry(
+                        "action",
+                        NbtSummaryValue::Compound(vec![
+                            entry(
+                                "type",
+                                NbtSummaryValue::String(
+                                    "minecraft:dynamic/run_command".to_string(),
+                                ),
+                            ),
+                            entry(
+                                "template",
+                                NbtSummaryValue::String("/say $(enabled)-$(missing)".to_string()),
+                            ),
+                        ]),
+                    ),
+                ]),
+            ),
+        ]);
+        assert!(handle_dialog_mouse_input(
+            &mut counters,
+            &mut command_world,
+            &net_commands,
+            None,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(160.0, 220.0)),
+            surface_size,
+        ));
+        assert!(command_world.current_dialog().is_none());
+        assert_eq!(counters.chat_command_commands_queued, 1);
+        assert!(matches!(
+            rx.try_recv().unwrap(),
+            NetCommand::ChatCommand(command) if command.command == "say yes-"
+        ));
+    }
+
+    #[test]
+    fn static_run_command_action_trims_optional_slash_before_send() {
+        let mut world = world_with_notice(vec![entry(
+            "action",
+            NbtSummaryValue::Compound(vec![
+                entry("label", NbtSummaryValue::String("Run".to_string())),
+                entry(
+                    "action",
+                    NbtSummaryValue::Compound(vec![
+                        entry(
+                            "type",
+                            NbtSummaryValue::String("minecraft:run_command".to_string()),
+                        ),
+                        entry(
+                            "command",
+                            NbtSummaryValue::String("/say static".to_string()),
+                        ),
+                    ]),
+                ),
+            ]),
+        )]);
+        let mut counters = NetCounters::default();
+        let (tx, mut rx) = mpsc::channel(1);
+
+        assert!(handle_dialog_mouse_input(
+            &mut counters,
+            &mut world,
+            &Some(tx),
+            None,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(160.0, 220.0)),
+            PhysicalSize::new(320, 240),
+        ));
+
+        assert!(world.current_dialog().is_none());
+        assert_eq!(counters.chat_command_commands_queued, 1);
+        assert!(matches!(
+            rx.try_recv().unwrap(),
+            NetCommand::ChatCommand(command) if command.command == "say static"
+        ));
     }
 
     #[test]
@@ -1603,6 +2162,26 @@ mod tests {
             ));
         }
         NbtSummaryValue::Compound(button)
+    }
+
+    fn boolean_input(
+        key: &str,
+        label: &str,
+        initial: bool,
+        on_true: &str,
+        on_false: &str,
+    ) -> NbtSummaryValue {
+        NbtSummaryValue::Compound(vec![
+            entry("key", NbtSummaryValue::String(key.to_string())),
+            entry(
+                "type",
+                NbtSummaryValue::String("minecraft:boolean".to_string()),
+            ),
+            entry("label", NbtSummaryValue::String(label.to_string())),
+            entry("initial", NbtSummaryValue::Byte(i8::from(initial))),
+            entry("on_true", NbtSummaryValue::String(on_true.to_string())),
+            entry("on_false", NbtSummaryValue::String(on_false.to_string())),
+        ])
     }
 
     #[test]

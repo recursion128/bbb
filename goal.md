@@ -366,10 +366,12 @@ jukebox-song 与 painting-variant 的 persistent `RegistryFixedCodec` 只允许 
 persistent CODEC，剩余 107 项 persistent component 均有 dialog typed decoder/summary bridge 与 native
 persistent encoder，未知未来形状仍不会被猜测性投影。
 仍须按 `DialogScreen`/`DialogControlSet` 完成 screen blur/depth-clear、warning button/screen、
-item focus outline、四类 input、
+Item/Boolean keyboard focus outline、number-range/single-option/text 三类 input、
 button-list tooltip/scroll/focus、
 其余三类 top-level dialog 布局、action-bearing
-open-url/run-command/dynamic action 与 Component-click。静态 change-page 与 suggest-command 在
+open-url、其余 input-backed dynamic action 与 Component-click。Boolean input 已按 Checkbox 的 17px box、
+label、initial/on-true/on-false 与 byte-tag 语义接入 mouse toggle；static run-command 以及 Boolean-backed
+dynamic run-command/custom 已执行并复用现有 command/custom-click owner。静态 change-page 与 suggest-command 在
 DialogScreen 的 default handler 中无页面 side effect，仅按 vanilla 执行 `after_action`；静态 show-dialog action 已同步
 替换当前 dialog、保留最初 previous screen，且不误增 clientbound packet counter。clear-dialog 还须接入 native-owned
 chat/sign/debug screen 和 warning return-screen stack；上述 runtime 完成前两个 `ShowDialog`

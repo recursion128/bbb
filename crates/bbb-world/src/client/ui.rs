@@ -13,7 +13,7 @@ use bbb_protocol::{
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    client::dialog::DialogState,
+    client::dialog::{DialogDataState, DialogInputControlState, DialogState},
     entities::{is_vanilla_abstract_horse_type, is_vanilla_abstract_nautilus_type},
     protocol_block_pos, BlockPos, WorldStore,
 };
@@ -26,6 +26,8 @@ pub struct ClientUiState {
     pub low_disk_space_warning_count: usize,
     #[serde(default)]
     pub current_dialog: Option<DialogState>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub dialog_input_values: Vec<Option<DialogInputValueState>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub dialog_previous_screen: Option<DialogPreviousScreenState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -60,6 +62,12 @@ pub enum DialogPreviousScreenState {
     Stats,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum DialogInputValueState {
+    Boolean { selected: bool },
+}
+
 impl ClientUiState {
     fn show_dialog(&mut self, dialog: DialogState) {
         if self.current_dialog.is_none() && self.dialog_waiting_ticks.is_none() {
@@ -74,6 +82,7 @@ impl ClientUiState {
             };
         }
         self.dialog_waiting_ticks = None;
+        self.dialog_input_values = initial_dialog_input_values(&dialog);
         self.current_dialog = Some(dialog);
     }
 
@@ -81,6 +90,7 @@ impl ClientUiState {
         if self.current_dialog.take().is_none() {
             return false;
         }
+        self.dialog_input_values.clear();
         self.restore_dialog_previous_screen();
         true
     }
@@ -89,6 +99,7 @@ impl ClientUiState {
         if self.current_dialog.take().is_none() {
             return false;
         }
+        self.dialog_input_values.clear();
         self.dialog_waiting_ticks = Some(0);
         true
     }
@@ -122,9 +133,33 @@ impl ClientUiState {
 
     pub(crate) fn replace_dialog(&mut self) {
         self.current_dialog = None;
+        self.dialog_input_values.clear();
         self.dialog_waiting_ticks = None;
         self.dialog_previous_screen = None;
     }
+}
+
+fn initial_dialog_input_values(dialog: &DialogState) -> Vec<Option<DialogInputValueState>> {
+    let Some(data) = dialog.data.as_ref() else {
+        return Vec::new();
+    };
+    let common = match data {
+        DialogDataState::Notice { common, .. }
+        | DialogDataState::Confirmation { common, .. }
+        | DialogDataState::MultiAction { common, .. }
+        | DialogDataState::ServerLinks { common, .. }
+        | DialogDataState::DialogList { common, .. } => common,
+    };
+    common
+        .input_data
+        .iter()
+        .map(|input| match &input.control {
+            DialogInputControlState::Boolean { initial, .. } => {
+                Some(DialogInputValueState::Boolean { selected: *initial })
+            }
+            _ => None,
+        })
+        .collect()
 }
 
 const DIALOG_REGISTRY: &str = "minecraft:dialog";
@@ -317,6 +352,20 @@ impl WorldStore {
 
     pub fn current_dialog(&self) -> Option<&DialogState> {
         self.client_ui.current_dialog.as_ref()
+    }
+
+    pub fn current_dialog_input_values(&self) -> &[Option<DialogInputValueState>] {
+        &self.client_ui.dialog_input_values
+    }
+
+    pub fn toggle_dialog_boolean_input(&mut self, index: usize) -> bool {
+        let Some(Some(DialogInputValueState::Boolean { selected })) =
+            self.client_ui.dialog_input_values.get_mut(index)
+        else {
+            return false;
+        };
+        *selected = !*selected;
+        true
     }
 
     pub fn dialog_waiting_ticks(&self) -> Option<u32> {
@@ -603,6 +652,62 @@ mod tests {
         assert_eq!(counters.low_disk_space_warnings, 1);
         assert_eq!(counters.show_dialog_packets, 2);
         assert_eq!(counters.clear_dialog_packets, 1);
+    }
+
+    #[test]
+    fn dialog_boolean_input_values_initialize_toggle_and_clear_with_screen() {
+        let entry = |name: &str, value| NbtSummaryEntry {
+            name: name.to_string(),
+            value,
+        };
+        let mut store = WorldStore::new();
+        store.apply_show_dialog(ProtocolShowDialog {
+            dialog: DialogHolder::Direct {
+                dialog: NbtSummaryValue::Compound(vec![
+                    entry(
+                        "type",
+                        NbtSummaryValue::String("minecraft:notice".to_string()),
+                    ),
+                    entry("title", NbtSummaryValue::String("Inputs".to_string())),
+                    entry(
+                        "inputs",
+                        NbtSummaryValue::List(vec![
+                            NbtSummaryValue::Compound(vec![
+                                entry("key", NbtSummaryValue::String("enabled".to_string())),
+                                entry("type", NbtSummaryValue::String("boolean".to_string())),
+                                entry("label", NbtSummaryValue::String("Enabled".to_string())),
+                                entry("initial", NbtSummaryValue::Byte(1)),
+                            ]),
+                            NbtSummaryValue::Compound(vec![
+                                entry("key", NbtSummaryValue::String("name".to_string())),
+                                entry("type", NbtSummaryValue::String("text".to_string())),
+                                entry("label", NbtSummaryValue::String("Name".to_string())),
+                            ]),
+                        ]),
+                    ),
+                ]),
+            },
+        });
+
+        assert_eq!(
+            store.current_dialog_input_values(),
+            [
+                Some(DialogInputValueState::Boolean { selected: true }),
+                None,
+            ]
+        );
+        assert!(store.toggle_dialog_boolean_input(0));
+        assert!(!store.toggle_dialog_boolean_input(1));
+        assert_eq!(
+            store.current_dialog_input_values(),
+            [
+                Some(DialogInputValueState::Boolean { selected: false }),
+                None,
+            ]
+        );
+
+        assert!(store.close_dialog());
+        assert!(store.current_dialog_input_values().is_empty());
     }
 
     #[test]

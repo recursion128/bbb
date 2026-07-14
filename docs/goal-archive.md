@@ -14785,3 +14785,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] 26.1 catalog 共 110 项，其中 creative-slot-lock、additional-trade-cost、map-post-processing 三项没有
   persistent CODEC，剩余 107 项均已有 dialog typed decode/summary bridge 与 native persistent SNBT encoder。
   native registry regression 改为逐项对比 generated persistent catalog，不再仅用易漂移的硬编码数量断言。
+
+## 2026-07-14：Render and bind Boolean dialog inputs
+
+- [x] 对照 `BooleanInput`、`InputControlHandlers.BooleanHandler`、`Checkbox` 与 `DialogControlSet`，world UI state
+  在每次 dialog show/replace 时按 `initial` 初始化 aligned Boolean values，并在 close/wait/其他 screen replacement
+  时清理；native 按 17px box、4px label spacing 与 vanilla 四张 checkbox sprite 渲染和 mouse toggle。
+- [x] 对照 `Action.ValueGetter`、`CommandTemplate` 与 `CustomAll`，Boolean template substitution 精确保留
+  `on_true`/`on_false`，dynamic custom 以 byte tag 覆盖同名 additions；dynamic/static run-command 均经既有
+  signed-command owner 发送并 trim optional slash。world/native regressions 覆盖初始化/清理、渲染、toggle、
+  dynamic custom merge、缺失 template variable 空替换、static command 与 after-action。

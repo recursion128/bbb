@@ -69,12 +69,12 @@ Owner: `bbb-protocol`
 - Complete native `Dialog` screen/runtime behavior against
   `DialogScreen`, `SimpleDialogScreen`, `DialogControlSet`, and
   `DialogBodyHandlers`: add the in-world screen blur/depth-clear and warning button/screen;
-  add Item widget focus outlines,
-  all four input controls,
+  add Item/Boolean widget keyboard focus outlines,
+  the number-range, single-option, and text input controls,
   remaining button-list action tooltips, and the
   MultiAction/ServerLinks/DialogList layouts with vanilla scrolling,
-  focus, and clipping; execute open-url, run-command,
-  dynamic action and Component-click paths; and
+  focus, and clipping; execute open-url,
+  dynamic actions backed by the remaining input types, and Component-click paths; and
   restore native-owned
   chat/sign/debug and warning return-screen stacks when dialogs clear. The current
   Notice/Confirmation projection already sends static custom id/payload, lays out
@@ -103,6 +103,9 @@ Owner: `bbb-protocol`
   and item tooltips. The other animal/sound registry variants also use `RegistryFixedCodec`, and
   all 107 persistent entries in the 26.1 component catalog now have the dialog decode/summary/native
   encoder path; the three network-only entries cannot occur in persistent dialog Item NBT,
+  renders and mouse-toggles Boolean inputs with the vanilla checkbox sprites, binds their
+  `on_true`/`on_false` substitutions and byte tags into dynamic run-command/custom actions, executes
+  static run-command through the existing command owner,
   and implements the
   static copy-to-clipboard through the existing native clipboard owner, preserves
   DialogScreen's side-effect-free static change-page and suggest-command handling, and implements

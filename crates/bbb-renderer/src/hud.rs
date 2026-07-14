@@ -1244,6 +1244,10 @@ pub enum HudInventoryBackgroundTexture {
     WidgetButton,
     WidgetButtonDisabled,
     WidgetButtonHighlighted,
+    WidgetCheckbox,
+    WidgetCheckboxHighlighted,
+    WidgetCheckboxSelected,
+    WidgetCheckboxSelectedHighlighted,
     Anvil,
     AnvilTextField,
     AnvilTextFieldDisabled,
@@ -2081,6 +2085,47 @@ impl Renderer {
         rgba: &[u8],
     ) -> Result<()> {
         self.hud_widget_button_highlighted = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_widget_checkbox(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_widget_checkbox = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_widget_checkbox_highlighted(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_widget_checkbox_highlighted = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_widget_checkbox_selected(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_widget_checkbox_selected = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_widget_checkbox_selected_highlighted(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_widget_checkbox_selected_highlighted =
+            Some(self.upload_hud_sprite(width, height, rgba)?);
         Ok(())
     }
 
@@ -4946,6 +4991,16 @@ impl Renderer {
             }
             HudInventoryBackgroundTexture::WidgetButtonHighlighted => {
                 self.hud_widget_button_highlighted.as_ref()
+            }
+            HudInventoryBackgroundTexture::WidgetCheckbox => self.hud_widget_checkbox.as_ref(),
+            HudInventoryBackgroundTexture::WidgetCheckboxHighlighted => {
+                self.hud_widget_checkbox_highlighted.as_ref()
+            }
+            HudInventoryBackgroundTexture::WidgetCheckboxSelected => {
+                self.hud_widget_checkbox_selected.as_ref()
+            }
+            HudInventoryBackgroundTexture::WidgetCheckboxSelectedHighlighted => {
+                self.hud_widget_checkbox_selected_highlighted.as_ref()
             }
             HudInventoryBackgroundTexture::Anvil => self.hud_anvil_background.as_ref(),
             HudInventoryBackgroundTexture::AnvilTextField => self.hud_anvil_text_field.as_ref(),
