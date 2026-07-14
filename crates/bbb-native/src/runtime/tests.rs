@@ -14367,6 +14367,13 @@ fn hud_inventory_screen_projects_dialog_item_body_structured_patches() {
                                             "minecraft:death_protection",
                                             NbtSummaryValue::Compound(Vec::new()),
                                         ),
+                                        entry(
+                                            "minecraft:tool",
+                                            NbtSummaryValue::Compound(vec![entry(
+                                                "rules",
+                                                NbtSummaryValue::List(Vec::new()),
+                                            )]),
+                                        ),
                                     ]),
                                 ),
                             ]),

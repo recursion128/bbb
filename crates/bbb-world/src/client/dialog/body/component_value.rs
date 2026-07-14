@@ -12,8 +12,8 @@ use bbb_protocol::packets::{
         FireworkExplosionSummary, ItemDamageFunctionSummary, KineticWeaponConditionSummary,
         KineticWeaponSummary, LodestoneTargetSummary, MobEffectDetailsSummary,
         MobEffectInstanceSummary, PiercingWeaponSummary, ResolvableProfileSummary,
-        SoundEventSummary, SuspiciousStewEffectSummary, SwingAnimationSummary, TrimMaterialSummary,
-        TrimPatternSummary, UseEffectsSummary,
+        SoundEventSummary, SuspiciousStewEffectSummary, SwingAnimationSummary, ToolRuleSummary,
+        ToolSummary, TrimMaterialSummary, TrimPatternSummary, UseEffectsSummary,
     },
 };
 use bbb_protocol::{
@@ -707,6 +707,12 @@ pub(super) fn apply_item_patch_value(
             };
             patch.death_protection_effects = effects;
         }
+        (VANILLA_DATA_COMPONENT_TOOL_TYPE_ID, Value::Tool { tool }) => {
+            let Some(summary) = tool_summary(tool) else {
+                return false;
+            };
+            patch.tool = Some(summary);
+        }
         (
             VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID,
             Value::AttackRange {
@@ -1004,6 +1010,25 @@ fn holder_set_summary_parts(
         )),
         _ => None,
     }
+}
+
+fn tool_summary(value: &DialogToolState) -> Option<ToolSummary> {
+    let mut rules = Vec::with_capacity(value.rules.len());
+    for rule in &value.rules {
+        let (block_registry_ids, block_tag) = holder_set_summary_parts(&rule.blocks)?;
+        rules.push(ToolRuleSummary {
+            block_registry_ids,
+            block_tag,
+            speed_bits: rule.speed_bits,
+            correct_for_drops: rule.correct_for_drops,
+        });
+    }
+    Some(ToolSummary {
+        rules,
+        default_mining_speed_bits: value.default_mining_speed_bits,
+        damage_per_block: value.damage_per_block,
+        can_destroy_blocks_in_creative: value.can_destroy_blocks_in_creative,
+    })
 }
 
 fn apply_holder_set(

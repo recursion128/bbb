@@ -83,7 +83,7 @@ Owner: `bbb-protocol`
   projects unpatched, registry-independent text/scalar-patched, typed registry-holder-patched,
   and summary-native nonrecursive structured Item bodies—including break-sound, piercing-weapon,
   kinetic-weapon, full equippable, blocks-attacks, consumable, and death-protection sound,
-  holder-set, and consume-effect forms—with description layout, decorations,
+  holder-set, consume-effect, and ordered tool-rule forms—with description layout, decorations,
   and item tooltips while conservatively rejecting an entire body when any added component value
   has no summary bridge,
   and implements the

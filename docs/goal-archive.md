@@ -14583,3 +14583,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   nested hidden effect、双组件共享列表与畸形 persisted remove-effect holder-set 整值拒绝；native dialog
   Item body 加入 default consumable/death-protection 后继续进入唯一 item runtime。tool、potion contents 与
   递归 item-stack collection 等其余富结构值继续由后续明确切片处理。
+
+## 2026-07-14：Bridge tool dialog Item patches
+
+- [x] 对照 `Tool.CODEC/STREAM_CODEC` 与 `Tool.Rule.CODEC/STREAM_CODEC`，把 required ordered rule list、
+  block holder-set、optional speed/correct-for-drops 及 outer default-mining-speed/damage/creative flag
+  投影到既有 `ToolSummary`；named block set 仅保留 tag，direct set 保留声明 registry-id 顺序，float
+  字段保持 bit-exact。
+- [x] world focused regression 覆盖 named/direct rules、optional fields、NaN default speed 与 outer defaults，
+  并证明畸形 persisted rule holder-set 整项拒绝；native dialog Item body 加入 empty-rule tool 后继续进入
+  唯一 item runtime。potion contents、attribute/enchantment/predicate/book/typed-data 与递归 item-stack
+  collection 等其余富结构值继续由后续明确切片处理。

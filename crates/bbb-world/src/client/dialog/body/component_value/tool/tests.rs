@@ -1,12 +1,16 @@
 use std::collections::BTreeMap;
 
 use bbb_protocol::{
-    data_component_types::VANILLA_DATA_COMPONENT_TOOL_TYPE_ID, NbtSummaryEntry, NbtSummaryValue,
+    data_component_types::VANILLA_DATA_COMPONENT_TOOL_TYPE_ID,
+    packets::inventory::{DataComponentPatchSummary, ToolRuleSummary, ToolSummary},
+    NbtSummaryEntry, NbtSummaryValue,
 };
 
 use crate::RegistryTagState;
 
-use super::super::{decode_supported_component_value, DialogDataComponentValueState};
+use super::super::{
+    apply_item_patch_value, decode_supported_component_value, DialogDataComponentValueState,
+};
 use super::*;
 
 #[test]
@@ -90,6 +94,47 @@ fn decodes_tool_defaults_and_block_holder_rules() {
     );
     assert_eq!(tool.rules[1].speed_bits, None);
     assert_eq!(tool.rules[1].correct_for_drops, Some(false));
+
+    let mut patch = DataComponentPatchSummary::default();
+    assert!(apply_item_patch_value(
+        VANILLA_DATA_COMPONENT_TOOL_TYPE_ID,
+        &DialogDataComponentValueState::Tool { tool: tool.clone() },
+        &mut patch,
+    ));
+    assert_eq!(
+        patch.tool,
+        Some(ToolSummary {
+            rules: vec![
+                ToolRuleSummary {
+                    block_registry_ids: Vec::new(),
+                    block_tag: Some("example:mineable".to_string()),
+                    speed_bits: Some(4.0f32.to_bits()),
+                    correct_for_drops: Some(true),
+                },
+                ToolRuleSummary {
+                    block_registry_ids: vec![dirt_id, stone_id],
+                    block_tag: None,
+                    speed_bits: None,
+                    correct_for_drops: Some(false),
+                },
+            ],
+            default_mining_speed_bits: nan_bits,
+            damage_per_block: 0,
+            can_destroy_blocks_in_creative: false,
+        })
+    );
+
+    let mut invalid = tool;
+    invalid.rules[0].blocks = DialogRegistryHolderSetState {
+        holder_set_kind: "named".to_string(),
+        tag: None,
+        entries: Vec::new(),
+    };
+    assert!(!apply_item_patch_value(
+        VANILLA_DATA_COMPONENT_TOOL_TYPE_ID,
+        &DialogDataComponentValueState::Tool { tool: invalid },
+        &mut DataComponentPatchSummary::default(),
+    ));
 }
 
 #[test]
