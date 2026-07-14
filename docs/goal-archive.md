@@ -14245,3 +14245,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   custom-data patch 的 32767/32768 UTF-16 unit 边界均有回归。generic packet show-dialog world context 与
   剩余 registry-holder、predicate/item-template 及其它 nested-record positive item-patch value 继续由
   缺口账本追踪。
+
+## 2026-07-14：Canonicalize debug-stick item patches
+
+- [x] 对照 `DebugStickState.CODEC` 与本地 DFU 9.0.19 `DispatchedMapCodec`，扩展单一 item-patch
+  canonical owner：built-in block holder key 输出 normalized resource id，对应 state-definition property
+  输出 JSON string，empty map 保持 `{}`。
+- [x] 完全同名 raw CompoundTag key 在 codec 前按 last-wins 折叠；不同 raw key 解析为同一 block holder
+  时按 DFU `putIfAbsent` duplicate error 拒绝。built-in/session-independent holder、property validation、
+  exact/normalized duplicate 与 written-book hover `show_item` debug-stick patch 的 32767/32768 UTF-16
+  unit 边界均有回归。generic packet show-dialog world context 与剩余 registry-holder、predicate/
+  item-template 及其它 nested-record positive item-patch value 继续由缺口账本追踪。

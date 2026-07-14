@@ -9,6 +9,7 @@ use crate::{RegistryContentState, RegistryPacketEntry, RegistrySet};
 #[test]
 fn decodes_debug_stick_block_property_map_from_builtin_registry() {
     let value = compound(vec![
+        value_entry("oak_log", NbtSummaryValue::Int(0)),
         string_entry("oak_log", "axis"),
         string_entry("minecraft:lever", "powered"),
     ]);
@@ -84,6 +85,13 @@ fn rejects_unknown_blocks_properties_and_malformed_debug_stick_maps() {
             "is not a string",
         ),
         (string_map_entry("Bad Namespace:oak_log", "axis"), "invalid"),
+        (
+            compound(vec![
+                string_entry("oak_log", "axis"),
+                string_entry("minecraft:oak_log", "axis"),
+            ]),
+            "duplicate debug stick block holder",
+        ),
     ] {
         let error = decode_debug_stick_state(&value, "debug stick").unwrap_err();
         assert!(error.contains(expected), "unexpected error: {error}");

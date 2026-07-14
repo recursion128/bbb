@@ -128,8 +128,10 @@ Owner: `bbb-protocol`
   translation fields, and dye-color names with last-wins field lookup. Custom/bucket compounds,
   typed entity/block-entity compounds with normalized `id` restoration, and bee occupant lists now
   reuse one protocol NbtOps-to-JsonOps length owner across every tag/array kind; duplicate compound
-  keys are last-wins and non-finite numbers fail strictly. Dialog click `show_dialog` payloads also
-  decode through the full
+  keys are last-wins and non-finite numbers fail strictly. Debug-stick dispatched maps likewise
+  encode normalized built-in block ids and validated property names; exact duplicate NBT keys are
+  last-wins while distinct raw keys that normalize to the same holder are rejected like DFU.
+  Dialog click `show_dialog` payloads also decode through the full
   inline/session-reference `Dialog.CODEC` owner with a shared 64-level semantic-depth budget,
   including recursive item templates and predicates, so registry cycles fail deterministically.
   Object-content player profiles likewise reuse the complete `ResolvableProfile.CODEC`

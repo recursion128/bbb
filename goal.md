@@ -425,6 +425,8 @@ layer/direct holder 字段均按 CompoundTag last-wins；`custom_data`/`bucket_e
 `entity_data`/`block_entity_data` 的 TypedEntityData 规范化 id 回填，以及 `bees` occupant list 也已复用
 协议层单一 NbtOps→JsonOps owner 精确计长，覆盖所有 tag/array 类型、duplicate last-wins、JDK 26
 float/double 与 non-finite 拒绝，typed/occupant required 字段 lookup 也已统一 last-wins；
+`debug_stick_state` 的 built-in block dispatched map 也已闭合 canonical resource-id/property string map，
+完全同名 CompoundTag key 按 last-wins，归一化后碰撞的不同 raw key 则与 DFU `putIfAbsent` 一致拒绝；
 click `show_dialog` 也已由同一中央 visitor 按 `Dialog.CODEC` 解析 inline/session reference holder，
 并让 title/button/body/input、item patch 与 recursive predicate/item-template 路径共享 64 层 Dialog
 semantic depth，registry 自引用/互引用不会重置预算；

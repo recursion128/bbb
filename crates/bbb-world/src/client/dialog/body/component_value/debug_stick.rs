@@ -1,4 +1,6 @@
-use bbb_protocol::NbtSummaryValue;
+use std::collections::HashSet;
+
+use bbb_protocol::{NbtSummaryEntry, NbtSummaryValue};
 use serde::{Deserialize, Serialize};
 
 use crate::registries::{normalize_codec_identifier, BlockStateRegistry};
@@ -19,11 +21,28 @@ pub(super) fn decode_debug_stick_state(
         return Err(format!("{what} is not a compound"));
     };
     let blocks = BlockStateRegistry::vanilla_26_1();
-    entries
+    let mut compound_entries = Vec::<&NbtSummaryEntry>::with_capacity(entries.len());
+    for entry in entries {
+        if let Some(existing) = compound_entries
+            .iter_mut()
+            .find(|existing| existing.name == entry.name)
+        {
+            *existing = entry;
+        } else {
+            compound_entries.push(entry);
+        }
+    }
+    let mut decoded_blocks = HashSet::new();
+    compound_entries
         .iter()
         .map(|entry| {
             let resource_id = normalize_codec_identifier(&entry.name)
                 .ok_or_else(|| format!("invalid {what} block resource id {}", entry.name))?;
+            if !decoded_blocks.insert(resource_id.clone()) {
+                return Err(format!(
+                    "duplicate {what} block holder after resource-id normalization: {resource_id}"
+                ));
+            }
             let holder_id = blocks
                 .block_registry_id_by_name(&resource_id)
                 .ok_or_else(|| {

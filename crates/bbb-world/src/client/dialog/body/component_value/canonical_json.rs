@@ -524,6 +524,13 @@ fn canonical_component_value_json_utf16_len(
         | DialogDataComponentValueState::CustomData { data } => {
             canonical_nbt_json_utf16_len(data).ok()?
         }
+        DialogDataComponentValueState::DebugStickState { properties } => {
+            collection_len(properties.iter().map(|entry| {
+                string_len(&entry.block.resource_id)
+                    .saturating_add(1)
+                    .saturating_add(string_len(&entry.property))
+            }))
+        }
         _ => return None,
     })
 }
@@ -1303,6 +1310,37 @@ mod tests {
             canonical_data_component_patch_json_utf16_len(&non_finite_patch)
                 .unwrap_err()
                 .contains("non-finite")
+        );
+    }
+
+    #[test]
+    fn canonicalizes_debug_stick_dispatched_map() {
+        assert_exact(
+            DialogDataComponentValueState::DebugStickState {
+                properties: vec![
+                    super::super::debug_stick::DialogDebugStickPropertyState {
+                        block: DialogRegistryHolderReferenceState {
+                            holder_id: 0,
+                            resource_id: "minecraft:oak_log".to_string(),
+                        },
+                        property: "axis".to_string(),
+                    },
+                    super::super::debug_stick::DialogDebugStickPropertyState {
+                        block: DialogRegistryHolderReferenceState {
+                            holder_id: 1,
+                            resource_id: "minecraft:lever".to_string(),
+                        },
+                        property: "powered".to_string(),
+                    },
+                ],
+            },
+            r#"{"minecraft:oak_log":"axis","minecraft:lever":"powered"}"#,
+        );
+        assert_exact(
+            DialogDataComponentValueState::DebugStickState {
+                properties: Vec::new(),
+            },
+            "{}",
         );
     }
 
