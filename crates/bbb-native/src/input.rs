@@ -435,6 +435,7 @@ const DEBUG_OPTIONS_SEARCH_INNER_WIDTH: i32 = DEBUG_OPTIONS_SEARCH_WIDTH - 8;
 const DEBUG_OPTIONS_SEARCH_CHAR_ADVANCE: i32 = 6;
 const DEBUG_OPTIONS_SEARCH_MAX_LENGTH: usize = 32;
 const DEBUG_OPTIONS_DOUBLE_CLICK_THRESHOLD: Duration = Duration::from_millis(250);
+const DIALOG_DOUBLE_CLICK_THRESHOLD: Duration = Duration::from_millis(250);
 
 pub(crate) trait DebugOptionsSearchTextMeasurer {
     fn debug_options_search_display_start_for_width(
@@ -693,6 +694,9 @@ pub(crate) struct ClientInputState {
     inventory_last_click_slot: Option<i16>,
     inventory_last_click_button_num: Option<i8>,
     inventory_last_click_at: Option<Instant>,
+    dialog_last_click_button: Option<MouseButton>,
+    dialog_last_click_at: Option<Instant>,
+    dialog_last_click_screen_revision: Option<u64>,
     inventory_quick_craft_button_num: Option<i8>,
     inventory_quick_craft_slots: Vec<i16>,
     stonecutter_recipe_scroll_row: i32,
@@ -1020,6 +1024,37 @@ impl ClientInputState {
         }
     }
 
+    pub(crate) fn dialog_mouse_click_is_double(
+        &mut self,
+        button: MouseButton,
+        state: ElementState,
+        screen_revision: u64,
+    ) -> bool {
+        self.dialog_mouse_click_is_double_at(button, state, screen_revision, Instant::now())
+    }
+
+    fn dialog_mouse_click_is_double_at(
+        &mut self,
+        button: MouseButton,
+        state: ElementState,
+        screen_revision: u64,
+        now: Instant,
+    ) -> bool {
+        if state != ElementState::Pressed {
+            return false;
+        }
+        let double_click = self.dialog_last_click_button == Some(button)
+            && self.dialog_last_click_screen_revision == Some(screen_revision)
+            && self
+                .dialog_last_click_at
+                .and_then(|last| now.checked_duration_since(last))
+                .is_some_and(|elapsed| elapsed < DIALOG_DOUBLE_CLICK_THRESHOLD);
+        self.dialog_last_click_button = Some(button);
+        self.dialog_last_click_at = Some(now);
+        self.dialog_last_click_screen_revision = Some(screen_revision);
+        double_click
+    }
+
     fn clear_pressed(&mut self) {
         self.forward = false;
         self.backward = false;
@@ -1046,6 +1081,9 @@ impl ClientInputState {
         self.inventory_last_click_slot = None;
         self.inventory_last_click_button_num = None;
         self.inventory_last_click_at = None;
+        self.dialog_last_click_button = None;
+        self.dialog_last_click_at = None;
+        self.dialog_last_click_screen_revision = None;
         self.inventory_quick_craft_button_num = None;
         self.inventory_quick_craft_slots.clear();
         self.loom_pattern_scrolling = false;

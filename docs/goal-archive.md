@@ -14941,3 +14941,17 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   投影；text-field 背景使用完整 200x20/1px-border nine-slice。world/native/renderer regressions 覆盖 focus、wrap、
   trailing newline、line-limit rejection、scroll reveal、sanitization、nested scissor restore 与实际 draw submission。
   Text double-click word selection 和 IME preedit overlay 继续留在 TODO。
+
+## 2026-07-14：Select Dialog Text words on double-click
+
+- [x] 对照 `MouseHandler`，platform input 以严格小于 250ms、同一 mouse button 和同一具体 Screen
+  判定 double-click；world 为 Dialog、warning confirmation 与 waiting screen 的每次替换维护 serde-skipped
+  revision，避免 ShowDialog、warning Back 或 waiting lifecycle 两侧的点击串成双击，focus loss 同步清空计时。
+- [x] 对照 `EditBox.onClick/selectWord`，single-line Text 在第二击重新执行 active-font hit mapping，再按
+  literal-space `getWordPosition(-1/+1)` 将 cursor 放在词尾、selection anchor 放在词首；双击忽略 Shift，随后
+  仍进入 drag selection。
+- [x] 对照 `MultiLineEditBox.onClick` 与 `MultilineTextField.selectWordAtCursor/getPreviousWord`，multiline
+  第二击不重新 seek，而以第一次点击留下的 cursor 按 Java whitespace 边界选择 previous word；scrollbar
+  click 继续只启动 scroll drag。world/input/native regressions 覆盖 screen revision lifecycle、同屏/同按钮/
+  严格阈值、单行第二击重命中、多行第一次落点保留与 cursor/selection 方向。Text IME preedit overlay
+  继续留在 TODO。

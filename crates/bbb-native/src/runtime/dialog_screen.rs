@@ -3593,6 +3593,7 @@ pub(crate) fn handle_dialog_mouse_input(
         cursor_position,
         surface_size,
         false,
+        false,
         &ApproximateDialogTextMeasurer,
     )
 }
@@ -3620,6 +3621,7 @@ pub(crate) fn handle_dialog_mouse_input_with_modifiers(
         cursor_position,
         surface_size,
         shift_down,
+        false,
         &ApproximateDialogTextMeasurer,
     )
 }
@@ -3635,6 +3637,7 @@ pub(crate) fn handle_dialog_mouse_input_with_modifiers_and_measurer(
     cursor_position: Option<PhysicalPosition<f64>>,
     surface_size: PhysicalSize<u32>,
     shift_down: bool,
+    double_click: bool,
     text_measurer: &dyn DialogTextMeasurer,
 ) -> bool {
     if button == MouseButton::Left && state == ElementState::Released {
@@ -3854,14 +3857,35 @@ pub(crate) fn handle_dialog_mouse_input_with_modifiers_and_measurer(
                     text_measurer,
                 );
             if !scrollbar_drag {
-                focus_dialog_text_from_cursor(
-                    world,
-                    layout,
-                    cursor_position,
-                    surface_size,
-                    shift_down,
-                    text_measurer,
-                );
+                if double_click {
+                    if multiline {
+                        world.focus_dialog_navigation_target(
+                            DialogFocusState::Input {
+                                index: layout.index,
+                            },
+                            false,
+                        );
+                    } else {
+                        focus_dialog_text_from_cursor(
+                            world,
+                            layout,
+                            cursor_position,
+                            surface_size,
+                            false,
+                            text_measurer,
+                        );
+                    }
+                    select_focused_dialog_text_word(world, multiline, text_measurer);
+                } else {
+                    focus_dialog_text_from_cursor(
+                        world,
+                        layout,
+                        cursor_position,
+                        surface_size,
+                        shift_down,
+                        text_measurer,
+                    );
+                }
                 world.begin_dialog_text_input_drag(layout.index);
             }
             return true;
@@ -3890,6 +3914,51 @@ pub(crate) fn handle_dialog_mouse_input_with_modifiers_and_measurer(
         &after_action,
     );
     true
+}
+
+fn select_focused_dialog_text_word(
+    world: &mut WorldStore,
+    multiline: bool,
+    text_measurer: &dyn DialogTextMeasurer,
+) -> bool {
+    let Some(snapshot) = focused_dialog_text_snapshot(world) else {
+        return false;
+    };
+    let (start, end) = if multiline {
+        dialog_multiline_word_selection(&snapshot.value, snapshot.cursor)
+    } else {
+        (
+            text_edit::word_position(&snapshot.value, snapshot.cursor, -1),
+            text_edit::word_position(&snapshot.value, snapshot.cursor, 1),
+        )
+    };
+    set_focused_dialog_text(
+        world,
+        &snapshot,
+        snapshot.value.clone(),
+        end,
+        start,
+        text_measurer,
+    )
+}
+
+fn dialog_multiline_word_selection(text: &str, cursor: usize) -> (usize, usize) {
+    let chars = text.chars().collect::<Vec<_>>();
+    if chars.is_empty() {
+        return (0, 0);
+    }
+    let mut start = cursor.min(chars.len().saturating_sub(1));
+    while start > 0 && chars[start - 1].is_whitespace() {
+        start -= 1;
+    }
+    while start > 0 && !chars[start - 1].is_whitespace() {
+        start -= 1;
+    }
+    let mut end = start;
+    while end < chars.len() && !chars[end].is_whitespace() {
+        end += 1;
+    }
+    (start, end)
 }
 
 fn focus_dialog_text_from_cursor(
@@ -7432,6 +7501,161 @@ mod tests {
                 value: "ab cd\nYx".to_string(),
             })]
         );
+    }
+
+    #[test]
+    fn text_double_click_uses_vanilla_single_and_multiline_word_selection() {
+        let surface_size = PhysicalSize::new(320, 240);
+        let mut counters = NetCounters::default();
+        let mut single = world_with_notice(vec![entry(
+            "inputs",
+            NbtSummaryValue::List(vec![text_input(
+                "name",
+                "Name",
+                120,
+                false,
+                "one two three",
+                32,
+            )]),
+        )]);
+        let single_layout = {
+            let controls = single
+                .current_dialog()
+                .and_then(|dialog| dialog.data.as_ref())
+                .and_then(simple_dialog_controls)
+                .unwrap();
+            let layout = dialog_input_layouts(controls.common, surface_size).unwrap()[0];
+            dialog_single_line_text_box_layout(layout, false)
+        };
+        let single_first = Some(PhysicalPosition::new(
+            f64::from(
+                single_layout.x
+                    + TEXT_INPUT_INSET
+                    + i32::try_from(ApproximateDialogTextMeasurer.width("one t")).unwrap(),
+            ),
+            f64::from(single_layout.y + TEXT_INPUT_INSET),
+        ));
+        let single_second = Some(PhysicalPosition::new(
+            f64::from(
+                single_layout.x
+                    + TEXT_INPUT_INSET
+                    + i32::try_from(ApproximateDialogTextMeasurer.width("one two th")).unwrap(),
+            ),
+            f64::from(single_layout.y + TEXT_INPUT_INSET),
+        ));
+        assert!(handle_dialog_mouse_input_with_modifiers_and_measurer(
+            &mut counters,
+            &mut single,
+            &None,
+            None,
+            MouseButton::Left,
+            ElementState::Pressed,
+            single_first,
+            surface_size,
+            false,
+            false,
+            &ApproximateDialogTextMeasurer,
+        ));
+        assert_eq!(single.dialog_text_edit_state().unwrap().cursor, 5);
+        assert!(handle_dialog_mouse_input_with_modifiers_and_measurer(
+            &mut counters,
+            &mut single,
+            &None,
+            None,
+            MouseButton::Left,
+            ElementState::Pressed,
+            single_second,
+            surface_size,
+            true,
+            true,
+            &ApproximateDialogTextMeasurer,
+        ));
+        assert_eq!(
+            single.dialog_text_edit_state(),
+            Some(bbb_world::DialogTextEditState {
+                input_index: 0,
+                cursor: 13,
+                selection: 8,
+                scroll_amount: 0,
+            })
+        );
+        assert_eq!(single.dialog_dragging_text_input(), Some(0));
+
+        let mut multiline = world_with_notice(vec![entry(
+            "inputs",
+            NbtSummaryValue::List(vec![multiline_text_input(
+                "notes",
+                "Notes",
+                120,
+                false,
+                "one two\nthree",
+                64,
+                None,
+                Some(30),
+            )]),
+        )]);
+        let multiline_layout = {
+            let controls = multiline
+                .current_dialog()
+                .and_then(|dialog| dialog.data.as_ref())
+                .and_then(simple_dialog_controls)
+                .unwrap();
+            let layout = dialog_input_layouts(controls.common, surface_size).unwrap()[0];
+            dialog_multiline_text_box_layout(layout, false)
+        };
+        let multiline_first = Some(PhysicalPosition::new(
+            f64::from(
+                multiline_layout.x
+                    + TEXT_INPUT_INSET
+                    + i32::try_from(ApproximateDialogTextMeasurer.width("one t")).unwrap(),
+            ),
+            f64::from(multiline_layout.y + TEXT_INPUT_INSET),
+        ));
+        let multiline_second = Some(PhysicalPosition::new(
+            f64::from(
+                multiline_layout.x
+                    + TEXT_INPUT_INSET
+                    + i32::try_from(ApproximateDialogTextMeasurer.width("thr")).unwrap(),
+            ),
+            f64::from(multiline_layout.y + TEXT_INPUT_INSET + TEXT_LINE_HEIGHT),
+        ));
+        assert!(handle_dialog_mouse_input_with_modifiers_and_measurer(
+            &mut counters,
+            &mut multiline,
+            &None,
+            None,
+            MouseButton::Left,
+            ElementState::Pressed,
+            multiline_first,
+            surface_size,
+            false,
+            false,
+            &ApproximateDialogTextMeasurer,
+        ));
+        assert_eq!(multiline.dialog_text_edit_state().unwrap().cursor, 5);
+        assert!(handle_dialog_mouse_input_with_modifiers_and_measurer(
+            &mut counters,
+            &mut multiline,
+            &None,
+            None,
+            MouseButton::Left,
+            ElementState::Pressed,
+            multiline_second,
+            surface_size,
+            true,
+            true,
+            &ApproximateDialogTextMeasurer,
+        ));
+        assert_eq!(
+            multiline.dialog_text_edit_state(),
+            Some(bbb_world::DialogTextEditState {
+                input_index: 0,
+                cursor: 7,
+                selection: 4,
+                scroll_amount: 0,
+            })
+        );
+        assert_eq!(multiline.dialog_dragging_text_input(), Some(0));
     }
 
     #[test]

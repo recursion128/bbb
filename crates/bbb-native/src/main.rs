@@ -967,6 +967,11 @@ fn main() -> Result<()> {
                     }
                     if world.dialog_screen_is_open() {
                         set_cursor_capture(&window, &mut cursor_captured, false);
+                        let double_click = input.dialog_mouse_click_is_double(
+                            button,
+                            state,
+                            world.dialog_screen_revision(),
+                        );
                         handle_dialog_mouse_input_with_modifiers_and_measurer(
                             &mut net_counters,
                             &mut world,
@@ -977,6 +982,7 @@ fn main() -> Result<()> {
                             cursor_position,
                             window.inner_size(),
                             input.shift_down(),
+                            double_click,
                             &renderer,
                         );
                         if !runtime_wants_cursor(&input, &world) {

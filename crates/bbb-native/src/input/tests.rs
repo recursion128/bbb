@@ -14489,6 +14489,71 @@ fn debug_options_screen_search_double_click_selects_word() {
 }
 
 #[test]
+fn dialog_double_click_timing_requires_same_screen_button_and_strict_threshold() {
+    let start = Instant::now();
+    let mut input = ClientInputState::new(true);
+    assert!(!input.dialog_mouse_click_is_double_at(
+        MouseButton::Left,
+        ElementState::Pressed,
+        7,
+        start,
+    ));
+    assert!(input.dialog_mouse_click_is_double_at(
+        MouseButton::Left,
+        ElementState::Pressed,
+        7,
+        start + DIALOG_DOUBLE_CLICK_THRESHOLD - Duration::from_millis(1),
+    ));
+
+    let mut exact = ClientInputState::new(true);
+    assert!(!exact.dialog_mouse_click_is_double_at(
+        MouseButton::Left,
+        ElementState::Pressed,
+        7,
+        start,
+    ));
+    assert!(!exact.dialog_mouse_click_is_double_at(
+        MouseButton::Left,
+        ElementState::Pressed,
+        7,
+        start + DIALOG_DOUBLE_CLICK_THRESHOLD,
+    ));
+
+    let mut identity = ClientInputState::new(true);
+    assert!(!identity.dialog_mouse_click_is_double_at(
+        MouseButton::Left,
+        ElementState::Pressed,
+        7,
+        start,
+    ));
+    assert!(!identity.dialog_mouse_click_is_double_at(
+        MouseButton::Left,
+        ElementState::Released,
+        7,
+        start + Duration::from_millis(50),
+    ));
+    assert!(!identity.dialog_mouse_click_is_double_at(
+        MouseButton::Right,
+        ElementState::Pressed,
+        7,
+        start + Duration::from_millis(100),
+    ));
+    assert!(!identity.dialog_mouse_click_is_double_at(
+        MouseButton::Right,
+        ElementState::Pressed,
+        8,
+        start + Duration::from_millis(150),
+    ));
+    identity.clear_pressed();
+    assert!(!identity.dialog_mouse_click_is_double_at(
+        MouseButton::Right,
+        ElementState::Pressed,
+        8,
+        start + Duration::from_millis(200),
+    ));
+}
+
+#[test]
 fn debug_options_screen_search_double_click_requires_vanilla_threshold() {
     let mut input = ClientInputState::new(true);
     input.open_debug_options_screen();

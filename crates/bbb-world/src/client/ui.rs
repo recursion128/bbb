@@ -53,6 +53,8 @@ pub struct ClientUiState {
     dialog_warning_open: bool,
     #[serde(skip)]
     dialog_warning_focused_button: Option<bool>,
+    #[serde(skip)]
+    dialog_screen_revision: u64,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub dialog_previous_screen: Option<DialogPreviousScreenState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -126,6 +128,10 @@ pub enum DialogFocusState {
 }
 
 impl ClientUiState {
+    fn advance_dialog_screen_revision(&mut self) {
+        self.dialog_screen_revision = self.dialog_screen_revision.saturating_add(1);
+    }
+
     fn show_dialog(&mut self, dialog: DialogState) {
         if self.current_dialog.is_none() && self.dialog_waiting_ticks.is_none() {
             self.dialog_previous_screen = if let Some(screen) = self.current_book.take() {
@@ -150,6 +156,7 @@ impl ClientUiState {
         self.dialog_body_scroll_drag_y = None;
         self.dialog_input_values = initial_dialog_input_values(&dialog);
         self.current_dialog = Some(dialog);
+        self.advance_dialog_screen_revision();
     }
 
     fn clear_dialog(&mut self) -> bool {
@@ -167,6 +174,7 @@ impl ClientUiState {
         self.dialog_body_scroll_drag_y = None;
         self.dialog_input_values.clear();
         self.restore_dialog_previous_screen();
+        self.advance_dialog_screen_revision();
         true
     }
 
@@ -187,6 +195,7 @@ impl ClientUiState {
         self.dialog_warning_focused_button = None;
         self.dialog_input_values.clear();
         self.dialog_waiting_ticks = Some(0);
+        self.advance_dialog_screen_revision();
         true
     }
 
@@ -199,6 +208,7 @@ impl ClientUiState {
         }
         self.dialog_waiting_ticks = None;
         self.restore_dialog_previous_screen();
+        self.advance_dialog_screen_revision();
         true
     }
 
@@ -233,6 +243,7 @@ impl ClientUiState {
         self.dialog_input_values.clear();
         self.dialog_waiting_ticks = None;
         self.dialog_previous_screen = None;
+        self.advance_dialog_screen_revision();
     }
 }
 
@@ -1005,18 +1016,30 @@ impl WorldStore {
         self.client_ui.dialog_warning_open
     }
 
+    /// Monotonic identity for the currently owned dialog, warning, or waiting
+    /// screen. Platform input uses it to keep vanilla's double-click timing
+    /// scoped to one concrete Screen instance.
+    pub fn dialog_screen_revision(&self) -> u64 {
+        self.client_ui.dialog_screen_revision
+    }
+
     pub fn open_dialog_warning(&mut self) -> bool {
         if self.current_dialog().is_none() || self.client_ui.dialog_warning_open {
             return false;
         }
         self.client_ui.dialog_warning_open = true;
         self.client_ui.dialog_warning_focused_button = None;
+        self.client_ui.advance_dialog_screen_revision();
         true
     }
 
     pub fn close_dialog_warning(&mut self) -> bool {
         self.client_ui.dialog_warning_focused_button = None;
-        std::mem::take(&mut self.client_ui.dialog_warning_open)
+        let closed = std::mem::take(&mut self.client_ui.dialog_warning_open);
+        if closed {
+            self.client_ui.advance_dialog_screen_revision();
+        }
+        closed
     }
 
     pub fn dialog_warning_focused_button(&self) -> Option<bool> {
@@ -1313,6 +1336,35 @@ mod tests {
         assert_eq!(counters.low_disk_space_warnings, 1);
         assert_eq!(counters.show_dialog_packets, 2);
         assert_eq!(counters.clear_dialog_packets, 1);
+    }
+
+    #[test]
+    fn dialog_screen_revision_tracks_concrete_screen_replacements() {
+        let mut store = WorldStore::new();
+        assert_eq!(store.dialog_screen_revision(), 0);
+        store.apply_clear_dialog();
+        assert_eq!(store.dialog_screen_revision(), 0);
+
+        store.apply_show_dialog(ProtocolShowDialog {
+            dialog: DialogHolder::Reference { registry_id: 1 },
+        });
+        assert_eq!(store.dialog_screen_revision(), 1);
+        assert!(store.open_dialog_warning());
+        assert_eq!(store.dialog_screen_revision(), 2);
+        assert!(!store.open_dialog_warning());
+        assert_eq!(store.dialog_screen_revision(), 2);
+        assert!(store.close_dialog_warning());
+        assert_eq!(store.dialog_screen_revision(), 3);
+        assert!(!store.close_dialog_warning());
+        assert_eq!(store.dialog_screen_revision(), 3);
+
+        assert!(store.wait_for_dialog_response());
+        assert_eq!(store.dialog_screen_revision(), 4);
+        store.advance_dialog_waiting_ticks(DIALOG_WAITING_CLOSE_ACTIVE_TICKS);
+        assert!(store.close_dialog_waiting_response());
+        assert_eq!(store.dialog_screen_revision(), 5);
+        assert!(!store.close_dialog_waiting_response());
+        assert_eq!(store.dialog_screen_revision(), 5);
     }
 
     #[test]
