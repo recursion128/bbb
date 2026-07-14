@@ -12,7 +12,7 @@ use bbb_protocol::{
     NbtSummaryEntry, NbtSummaryValue,
 };
 
-use super::super::DialogDataComponentPatchState;
+use super::super::{DialogDataComponentPatchState, DialogItemStackTemplateState};
 use super::attribute_modifiers::{
     DialogAttributeModifierDisplayState, DialogAttributeModifierState,
 };
@@ -88,6 +88,20 @@ fn validate_supported_json_numbers(value: &DialogDataComponentValueState) -> Res
                 if let Some(component) = &modifier.display.value {
                     canonical_component_json_utf16_len(&component.component)?;
                 }
+            }
+        }
+        DialogDataComponentValueState::UseRemainder { convert_into } => {
+            validate_item_stack_template_json(convert_into)?;
+        }
+        DialogDataComponentValueState::ChargedProjectiles { items }
+        | DialogDataComponentValueState::BundleContents { items } => {
+            for item in items {
+                validate_item_stack_template_json(item)?;
+            }
+        }
+        DialogDataComponentValueState::Container { slots } => {
+            for item in slots.iter().flatten() {
+                validate_item_stack_template_json(item)?;
             }
         }
         DialogDataComponentValueState::Instrument {
@@ -264,6 +278,9 @@ fn canonical_component_value_json_utf16_len(
         ),
         DialogDataComponentValueState::AttributeModifiers { modifiers } => {
             attribute_modifiers_len(modifiers)?
+        }
+        DialogDataComponentValueState::UseRemainder { convert_into } => {
+            item_stack_template_len(convert_into)?
         }
         DialogDataComponentValueState::Integer { value }
         | DialogDataComponentValueState::RgbColor { value } => value.to_string().len(),
@@ -534,6 +551,32 @@ fn canonical_component_value_json_utf16_len(
                 .collect::<Option<Vec<_>>>()?
                 .into_iter(),
         ),
+        DialogDataComponentValueState::ChargedProjectiles { items }
+        | DialogDataComponentValueState::BundleContents { items } => array_len(
+            items
+                .iter()
+                .map(item_stack_template_len)
+                .collect::<Option<Vec<_>>>()?
+                .into_iter(),
+        ),
+        DialogDataComponentValueState::Container { slots } => array_len(
+            slots
+                .iter()
+                .enumerate()
+                .filter_map(|(slot, item)| {
+                    item.as_ref().map(|item| {
+                        Some(object_len(
+                            [
+                                ("slot", slot.to_string().len()),
+                                ("item", item_stack_template_len(item)?),
+                            ]
+                            .into_iter(),
+                        ))
+                    })
+                })
+                .collect::<Option<Vec<_>>>()?
+                .into_iter(),
+        ),
         DialogDataComponentValueState::SuspiciousStewEffects { effects } => {
             array_len(effects.iter().map(|effect| {
                 let mut fields = vec![("id", string_len(&effect.effect.resource_id))];
@@ -782,6 +825,32 @@ fn component_json_len(component: &NbtSummaryValue) -> Option<usize> {
     // The production caller has already propagated canonical Component errors through
     // validate_supported_json_numbers; None here is reserved for a remaining higher owner.
     canonical_component_json_utf16_len(component).ok().flatten()
+}
+
+fn validate_item_stack_template_json(item: &DialogItemStackTemplateState) -> Result<(), String> {
+    if let Some(patch) = &item.component_data {
+        canonical_data_component_patch_json_utf16_len(patch)?;
+    }
+    Ok(())
+}
+
+fn item_stack_template_len(item: &DialogItemStackTemplateState) -> Option<usize> {
+    let mut fields = vec![("id", string_len(&item.resource_id))];
+    if item.count != 1 {
+        fields.push(("count", item.count.to_string().len()));
+    }
+    match &item.component_data {
+        Some(patch) if !patch.entries.is_empty() => fields.push((
+            "components",
+            canonical_data_component_patch_json_utf16_len(patch)
+                .ok()
+                .flatten()?,
+        )),
+        Some(_) => {}
+        None if item.components.is_some() => return None,
+        None => {}
+    }
+    Some(object_len(fields.into_iter()))
 }
 
 fn attribute_modifiers_len(modifiers: &[DialogAttributeModifierState]) -> Option<usize> {
@@ -1658,6 +1727,75 @@ mod tests {
             DialogDataComponentValueState::AttributeModifiers {
                 modifiers: Vec::new(),
             },
+            "[]",
+        );
+    }
+
+    #[test]
+    fn canonicalizes_recursive_item_stack_templates_and_sparse_slots() {
+        let plain_item = |resource_id: &str| DialogItemStackTemplateState {
+            resource_id: resource_id.to_string(),
+            count: 1,
+            components: None,
+            component_data: None,
+        };
+        let patched_item = DialogItemStackTemplateState {
+            resource_id: "minecraft:firework_rocket".to_string(),
+            count: 3,
+            components: Some(NbtSummaryValue::Compound(vec![NbtSummaryEntry {
+                name: "repair_cost".to_string(),
+                value: NbtSummaryValue::Int(4),
+            }])),
+            component_data: Some(DialogDataComponentPatchState {
+                entries: vec![super::super::super::DialogDataComponentPatchEntryState {
+                    type_id: 0,
+                    resource_id: "minecraft:repair_cost".to_string(),
+                    removed: false,
+                    value: Some(NbtSummaryValue::Int(4)),
+                    value_data: Some(DialogDataComponentValueState::Integer { value: 4 }),
+                }],
+            }),
+        };
+        assert_exact(
+            DialogDataComponentValueState::UseRemainder {
+                convert_into: plain_item("minecraft:glass_bottle"),
+            },
+            r#"{"id":"minecraft:glass_bottle"}"#,
+        );
+        for value in [
+            DialogDataComponentValueState::ChargedProjectiles {
+                items: vec![plain_item("minecraft:arrow"), patched_item.clone()],
+            },
+            DialogDataComponentValueState::BundleContents {
+                items: vec![plain_item("minecraft:arrow"), patched_item],
+            },
+        ] {
+            assert_exact(
+                value,
+                concat!(
+                    r#"[{"id":"minecraft:arrow"},{"id":"minecraft:firework_rocket","count":3,"components":{"minecraft:repair_cost":4}}]"#
+                ),
+            );
+        }
+        assert_exact(
+            DialogDataComponentValueState::Container {
+                slots: vec![
+                    Some(plain_item("minecraft:diamond")),
+                    None,
+                    Some(DialogItemStackTemplateState {
+                        resource_id: "minecraft:dirt".to_string(),
+                        count: 5,
+                        components: None,
+                        component_data: None,
+                    }),
+                ],
+            },
+            concat!(
+                r#"[{"slot":0,"item":{"id":"minecraft:diamond"}},{"slot":2,"item":{"id":"minecraft:dirt","count":5}}]"#
+            ),
+        );
+        assert_exact(
+            DialogDataComponentValueState::BundleContents { items: Vec::new() },
             "[]",
         );
     }

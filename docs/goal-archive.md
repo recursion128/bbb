@@ -14384,3 +14384,16 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   registry-independent styled override、NaN 拒绝及 written-book hover `show_item` attribute-modifier patch 的
   32767/32768 UTF-16 unit 边界均有回归。generic packet show-dialog world context 与剩余
   predicate/item-template 及其它 nested-record positive item-patch value 继续由缺口账本追踪。
+
+## 2026-07-14：Canonicalize recursive item-template patches
+
+- [x] 对照 `ItemStackTemplate.CODEC/MAP_CODEC`、`UseRemainder.CODEC`、`ChargedProjectiles.CODEC`、
+  `BundleContents.CODEC` 与 `ItemContainerContents.CODEC`，建立共享 recursive canonical owner；
+  `Codec.withAlternative(full,item)` 的 encoder 固定走 left/full 分支，compact item string 统一输出
+  id object，count=1 与 empty DataComponentPatch 按 optional defaults 省略。
+- [x] charged/bundle 保持 ordered template list；container 从 last-wins sparse state 重建升序非空
+  slot/item record，空洞与 trailing empty slot 不输出；nested DataComponentPatch 递归进入同一 owner，
+  unknown higher-owner payload 仍向上传播 unknown。compact/full/nested patch/sparse-container exact JSON、
+  递归 NaN 拒绝与 written-book hover `show_item` 四类 item-template patch 的 32767/32768 UTF-16 unit 边界
+  均有回归。generic packet show-dialog world context 与剩余 predicate 及 written-book positive
+  item-patch value 继续由缺口账本追踪。

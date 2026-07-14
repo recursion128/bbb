@@ -457,6 +457,9 @@ direct material 保持 asset name、非空 override map 与 description，direct
 ATTRIBUTE_MODIFIERS 也已闭合 ordered entry list、built-in attribute holder、Identifier/double/operation；
 `slot:any` 与 default display 整字段省略，hidden/override dispatch 保持 type/value，override 的
 registry-independent Component 精确编码，double 复用 JDK 26 formatter 并拒绝 non-finite；
+USE_REMAINDER/CHARGED_PROJECTILES/BUNDLE_CONTENTS/CONTAINER 也已复用 recursive ItemStackTemplate
+canonical owner；compact item 输入按 `withAlternative(full,item)` 的 left/full encoder 输出 object，
+count/empty patch 默认省略，nested patch 递归计长，container 按最终非空 slot 升序输出；
 click `show_dialog` 也已由同一中央 visitor 按 `Dialog.CODEC` 解析 inline/session reference holder，
 并让 title/button/body/input、item patch 与 recursive predicate/item-template 路径共享 64 层 Dialog
 semantic depth，registry 自引用/互引用不会重置预算；

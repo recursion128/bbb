@@ -657,6 +657,22 @@ fn enforces_attribute_modifier_item_patch_page_boundary() {
 }
 
 #[test]
+fn enforces_recursive_item_template_patch_page_boundary() {
+    let prefix = concat!(
+        r#"{"text":"item","extra":[""],"hover_event":{"action":"show_item","id":"minecraft:stone","components":{"minecraft:use_remainder":{"id":"minecraft:glass_bottle"},"minecraft:charged_projectiles":[{"id":"minecraft:arrow"},{"id":"minecraft:firework_rocket","count":3,"components":{"minecraft:repair_cost":4}}],"minecraft:bundle_contents":[{"id":"minecraft:diamond"}],"minecraft:container":[{"slot":0,"item":{"id":"minecraft:diamond"}},{"slot":2,"item":{"id":"minecraft:dirt","count":5}}]}}}"#
+    )
+    .len();
+    for (limit, expected_error) in [(32_767usize, None), (32_768usize, Some("encodes to 32768"))] {
+        let page = component_with_recursive_item_template_patch("x".repeat(limit - prefix));
+        let result = decode_written_book_content(&book_with_pages(vec![page]), "written book");
+        match expected_error {
+            None => assert!(result.is_ok()),
+            Some(expected) => assert!(result.unwrap_err().contains(expected)),
+        }
+    }
+}
+
+#[test]
 fn rejects_malformed_written_book_fields_filterables_and_exact_canonical_page_limit() {
     let cases = [
         (NbtSummaryValue::List(Vec::new()), "is not a compound"),
@@ -937,6 +953,10 @@ fn rejects_malformed_written_book_fields_filterables_and_exact_canonical_page_li
         ),
         (
             book_with_pages(vec![component_with_non_finite_attribute_modifier_item_patch()]),
+            "canonical item component patch contains a non-finite Float/Double value",
+        ),
+        (
+            book_with_pages(vec![component_with_non_finite_recursive_item_template_patch()]),
             "canonical item component patch contains a non-finite Float/Double value",
         ),
         (
@@ -2002,6 +2022,73 @@ fn component_with_attribute_modifier_item_patch(extra: String) -> NbtSummaryValu
     ])
 }
 
+fn component_with_recursive_item_template_patch(extra: String) -> NbtSummaryValue {
+    let item = |id: &str, count: Option<i32>, components: Option<NbtSummaryValue>| {
+        let mut entries = vec![string_entry("id", id)];
+        if let Some(count) = count {
+            entries.push(value_entry("count", NbtSummaryValue::Int(count)));
+        }
+        if let Some(components) = components {
+            entries.push(value_entry("components", components));
+        }
+        compound(entries)
+    };
+    let slot = |index: i32, item: NbtSummaryValue| {
+        compound(vec![
+            value_entry("slot", NbtSummaryValue::Int(index)),
+            value_entry("item", item),
+        ])
+    };
+    compound(vec![
+        string_entry("text", "item"),
+        value_entry(
+            "extra",
+            NbtSummaryValue::List(vec![NbtSummaryValue::String(extra)]),
+        ),
+        value_entry(
+            "hover_event",
+            compound(vec![
+                string_entry("action", "show_item"),
+                string_entry("id", "stone"),
+                value_entry(
+                    "components",
+                    compound(vec![
+                        string_entry("use_remainder", "glass_bottle"),
+                        value_entry(
+                            "charged_projectiles",
+                            NbtSummaryValue::List(vec![
+                                NbtSummaryValue::String("arrow".to_string()),
+                                item(
+                                    "firework_rocket",
+                                    Some(3),
+                                    Some(compound(vec![value_entry(
+                                        "repair_cost",
+                                        NbtSummaryValue::Int(4),
+                                    )])),
+                                ),
+                            ]),
+                        ),
+                        value_entry(
+                            "bundle_contents",
+                            NbtSummaryValue::List(vec![NbtSummaryValue::String(
+                                "diamond".to_string(),
+                            )]),
+                        ),
+                        value_entry(
+                            "container",
+                            NbtSummaryValue::List(vec![
+                                slot(2, NbtSummaryValue::String("stone".to_string())),
+                                slot(0, NbtSummaryValue::String("diamond".to_string())),
+                                slot(2, item("dirt", Some(5), None)),
+                            ]),
+                        ),
+                    ]),
+                ),
+            ]),
+        ),
+    ])
+}
+
 fn component_with_non_finite_tool_item_patch() -> NbtSummaryValue {
     compound(vec![
         string_entry("text", "item"),
@@ -2166,6 +2253,43 @@ fn component_with_non_finite_attribute_modifier_item_patch() -> NbtSummaryValue 
                             string_entry("id", "example:non_finite"),
                             value_entry("amount", NbtSummaryValue::Double(f64::NAN.to_bits())),
                             string_entry("operation", "add_value"),
+                        ])]),
+                    )]),
+                ),
+            ]),
+        ),
+    ])
+}
+
+fn component_with_non_finite_recursive_item_template_patch() -> NbtSummaryValue {
+    compound(vec![
+        string_entry("text", "item"),
+        value_entry(
+            "hover_event",
+            compound(vec![
+                string_entry("action", "show_item"),
+                string_entry("id", "stone"),
+                value_entry(
+                    "components",
+                    compound(vec![value_entry(
+                        "bundle_contents",
+                        NbtSummaryValue::List(vec![compound(vec![
+                            string_entry("id", "diamond"),
+                            value_entry(
+                                "components",
+                                compound(vec![value_entry(
+                                    "attribute_modifiers",
+                                    NbtSummaryValue::List(vec![compound(vec![
+                                        string_entry("type", "armor"),
+                                        string_entry("id", "example:non_finite"),
+                                        value_entry(
+                                            "amount",
+                                            NbtSummaryValue::Double(f64::NAN.to_bits()),
+                                        ),
+                                        string_entry("operation", "add_value"),
+                                    ])]),
+                                )]),
+                            ),
                         ])]),
                     )]),
                 ),
