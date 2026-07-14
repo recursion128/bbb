@@ -69,8 +69,8 @@ Owner: `bbb-protocol`
 - Complete native `Dialog` screen/runtime behavior against
   `DialogScreen`, `SimpleDialogScreen`, `DialogControlSet`, and
   `DialogBodyHandlers`: add the in-world screen blur/depth-clear and warning button/screen;
-  add Item/Boolean/NumberRange widget keyboard focus outlines and keyboard operation,
-  NumberRange long-label scrolling, and the single-option and text input controls,
+  add Item/Boolean/NumberRange/SingleOption widget keyboard focus outlines and keyboard operation,
+  NumberRange/SingleOption long-label scrolling, and the text input control,
   remaining button-list action tooltips, and the
   MultiAction/ServerLinks/DialogList layouts with vanilla scrolling,
   focus, and clipping; execute open-url,
@@ -107,7 +107,9 @@ Owner: `bbb-protocol`
   `on_true`/`on_false` substitutions and byte tags into dynamic run-command/custom actions, renders
   and mouse-drags NumberRange inputs with the vanilla nine-sliced track/handle sprites, double slider position and
   mouse click/drag semantics, exact RangeInfo step/edge math, localized label format, Java float
-  text and FloatTag bindings into the same dynamic actions, and executes
+  text and FloatTag bindings into the same dynamic actions, renders SingleOption through the
+  nine-sliced CycleButton with initial/display/label-visible semantics, cycles forward/backward by
+  ordinary/Shift click and wheel with wraparound, binds its id as template text and StringTag, and executes
   static run-command through the existing command owner,
   and implements the
   static copy-to-clipboard through the existing native clipboard owner, preserves

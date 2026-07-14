@@ -80,10 +80,11 @@ use level_load_runtime::LevelLoadRuntime;
 use particle_runtime::{NativeParticleRuntime, ParticleEventSink};
 use runtime::{
     control_renderer_counters, handle_dialog_cursor_moved, handle_dialog_key_input,
-    handle_dialog_mouse_input, publish_snapshot, pump_network_and_terrain, request_net_disconnect,
-    snapshot_is_running, take_control_screenshot, CameraFovTickState, ClientAnimationTickState,
-    DebugCollisionCache, DebugSkyLightSectionCache, DebugSupportingBlockCache, HudDebugFpsSampler,
-    HudDebugNetworkSampler, HudDebugTpsSampler, LevelEventSoundRandomState, LightmapTickState,
+    handle_dialog_mouse_input_with_modifiers, handle_dialog_mouse_wheel, publish_snapshot,
+    pump_network_and_terrain, request_net_disconnect, snapshot_is_running, take_control_screenshot,
+    CameraFovTickState, ClientAnimationTickState, DebugCollisionCache, DebugSkyLightSectionCache,
+    DebugSupportingBlockCache, HudDebugFpsSampler, HudDebugNetworkSampler, HudDebugTpsSampler,
+    LevelEventSoundRandomState, LightmapTickState,
 };
 use sky_assets::load_sky_textures;
 use startup::{
@@ -767,6 +768,7 @@ fn main() -> Result<()> {
                     let pause_open = input.debug_pause_screen_is_open();
                     let command_entry_open = input.command_entry_is_active();
                     if dialog_open {
+                        input.update_screen_shift_key(event.physical_key, event.state);
                         set_cursor_capture(&window, &mut cursor_captured, false);
                         handle_dialog_key_input(
                             &mut net_counters,
@@ -956,7 +958,7 @@ fn main() -> Result<()> {
                     }
                     if world.dialog_screen_is_open() {
                         set_cursor_capture(&window, &mut cursor_captured, false);
-                        handle_dialog_mouse_input(
+                        handle_dialog_mouse_input_with_modifiers(
                             &mut net_counters,
                             &mut world,
                             &net_commands,
@@ -965,6 +967,7 @@ fn main() -> Result<()> {
                             state,
                             cursor_position,
                             window.inner_size(),
+                            input.shift_down(),
                         );
                         if !runtime_wants_cursor(&input, &world) {
                             set_cursor_capture(&window, &mut cursor_captured, true);
@@ -1054,6 +1057,16 @@ fn main() -> Result<()> {
                     if input.debug_options_screen_is_open() {
                         set_cursor_capture(&window, &mut cursor_captured, false);
                         input.handle_debug_options_screen_mouse_wheel(delta, window.inner_size());
+                        return;
+                    }
+                    if world.dialog_screen_is_open() {
+                        set_cursor_capture(&window, &mut cursor_captured, false);
+                        handle_dialog_mouse_wheel(
+                            &mut world,
+                            delta,
+                            cursor_position,
+                            window.inner_size(),
+                        );
                         return;
                     }
                     if input.command_entry_is_active() {

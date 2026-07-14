@@ -21,7 +21,7 @@ use bbb_world::{
 };
 use tokio::sync::mpsc;
 use winit::dpi::{PhysicalPosition, PhysicalSize};
-use winit::event::{ElementState, MouseButton};
+use winit::event::{ElementState, MouseButton, MouseScrollDelta};
 use winit::keyboard::{KeyCode, PhysicalKey};
 
 use crate::input::{queue_chat_command, DebugClipboard};
@@ -49,8 +49,8 @@ const CHECKBOX_LABEL_SPACING: i32 = 4;
 const SLIDER_HEIGHT: u32 = 20;
 const SLIDER_HANDLE_WIDTH: u32 = 8;
 const SLIDER_HANDLE_HALF_WIDTH: i32 = 4;
-const SLIDER_TEXT_MARGIN: u32 = 2;
-const SLIDER_SPRITE_WIDTH: f32 = 200.0;
+const WIDGET_TEXT_MARGIN: u32 = 2;
+const WIDGET_SPRITE_WIDTH: u32 = 200;
 const TEXT_LINE_HEIGHT: i32 = 9;
 const TEXT_COLOR: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
 const INACTIVE_TEXT_COLOR: [f32; 4] = [160.0 / 255.0, 160.0 / 255.0, 160.0 / 255.0, 1.0];
@@ -86,6 +86,7 @@ struct DialogInputLayout {
 enum DialogInputMouseHit {
     Boolean(usize),
     NumberRange(DialogInputLayout),
+    SingleOption(DialogInputLayout),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -350,25 +351,42 @@ fn push_slider_track_layers(
     layers: &mut Vec<HudInventoryBackgroundLayer>,
     layout: DialogInputLayout,
 ) {
+    push_horizontal_nine_slice_layers(
+        layers,
+        layout,
+        HudInventoryBackgroundTexture::WidgetSlider,
+        WIDGET_SPRITE_WIDTH,
+        1,
+    );
+}
+
+fn push_horizontal_nine_slice_layers(
+    layers: &mut Vec<HudInventoryBackgroundLayer>,
+    layout: DialogInputLayout,
+    texture: HudInventoryBackgroundTexture,
+    sprite_width: u32,
+    declared_border: u32,
+) {
     let width = u32::try_from(layout.width).unwrap_or(0);
-    if width == 0 {
+    let height = u32::try_from(layout.height).unwrap_or(0);
+    if width == 0 || height == 0 || sprite_width == 0 {
         return;
     }
-    // The slider sprite is a 200x20 nine-slice with a one-pixel border. Since the target height
-    // stays 20, vanilla's nine regions collapse to these three exact horizontal columns.
-    let border = 1.min(width / 2);
+    // These widget sprites keep their declared 20px target height, so vanilla's nine regions
+    // collapse to three exact horizontal columns while retaining the clamped left/right borders.
+    let border = declared_border.min(width / 2);
     let columns = [
         (0, border, 0, border),
         (
             border,
             width.saturating_sub(border.saturating_mul(2)),
             border,
-            200u32.saturating_sub(border.saturating_mul(2)),
+            sprite_width.saturating_sub(border.saturating_mul(2)),
         ),
         (
             width.saturating_sub(border),
             border,
-            200u32.saturating_sub(border),
+            sprite_width.saturating_sub(border),
             border,
         ),
     ];
@@ -377,17 +395,17 @@ fn push_slider_track_layers(
             continue;
         }
         layers.push(HudInventoryBackgroundLayer {
-            texture: HudInventoryBackgroundTexture::WidgetSlider,
+            texture,
             x: layout
                 .x
                 .saturating_add(i32::try_from(screen_x).unwrap_or(i32::MAX)),
             y: layout.y,
             width: screen_width,
-            height: SLIDER_HEIGHT,
+            height,
             uv: HudUvRect {
-                min: [texture_x as f32 / SLIDER_SPRITE_WIDTH, 0.0],
+                min: [texture_x as f32 / sprite_width as f32, 0.0],
                 max: [
-                    texture_x.saturating_add(texture_width) as f32 / SLIDER_SPRITE_WIDTH,
+                    texture_x.saturating_add(texture_width) as f32 / sprite_width as f32,
                     1.0,
                 ],
             },
@@ -433,7 +451,18 @@ fn dialog_number_range_label_runs(
     label: &DialogTextState,
     value: &str,
 ) -> Vec<HudStyledTextRun> {
-    let label_runs = dialog_text_runs(label);
+    dialog_translated_two_arg_runs(
+        template,
+        &dialog_text_runs(label),
+        &[HudStyledTextRun::plain(value)],
+    )
+}
+
+fn dialog_translated_two_arg_runs(
+    template: &str,
+    first: &[HudStyledTextRun],
+    second: &[HudStyledTextRun],
+) -> Vec<HudStyledTextRun> {
     let mut runs = Vec::new();
     let mut current = 0;
     let mut replacement_index = 0usize;
@@ -476,8 +505,8 @@ fn dialog_number_range_label_runs(
             index
         });
         match index {
-            0 => append_dialog_runs(&mut runs, &label_runs),
-            1 => append_plain_dialog_run(&mut runs, value),
+            0 => append_dialog_runs(&mut runs, first),
+            1 => append_dialog_runs(&mut runs, second),
             _ => return vec![HudStyledTextRun::plain(template)],
         }
         current = next + 1;
@@ -793,7 +822,55 @@ pub(super) fn hud_dialog_screen(
                 let runs = dialog_number_range_label_runs(template, label, &value);
                 let available_width = u32::try_from(input_layout.width)
                     .unwrap_or(1)
-                    .saturating_sub(SLIDER_TEXT_MARGIN.saturating_mul(2))
+                    .saturating_sub(WIDGET_TEXT_MARGIN.saturating_mul(2))
+                    .max(1);
+                push_centered_runs_text_label(
+                    &mut text_labels,
+                    runs,
+                    input_layout.x.saturating_add(input_layout.width / 2),
+                    input_layout.y.saturating_add(BUTTON_TEXT_Y_OFFSET),
+                    Some(available_width),
+                );
+            }
+            (
+                DialogInputControlState::SingleOption {
+                    options,
+                    label,
+                    label_visible,
+                    ..
+                },
+                Some(Some(DialogInputValueState::SingleOption { selected_index })),
+            ) => {
+                let Some(selected) = options.get(*selected_index) else {
+                    continue;
+                };
+                push_horizontal_nine_slice_layers(
+                    &mut input_layers,
+                    input_layout,
+                    if hovered {
+                        HudInventoryBackgroundTexture::WidgetButtonHighlighted
+                    } else {
+                        HudInventoryBackgroundTexture::WidgetButton
+                    },
+                    WIDGET_SPRITE_WIDTH,
+                    3,
+                );
+                let value_runs = selected.display.as_ref().map_or_else(
+                    || vec![HudStyledTextRun::plain(&selected.id)],
+                    dialog_text_runs,
+                );
+                let runs = if *label_visible {
+                    let template = match item_runtime {
+                        Some(runtime) => runtime.localized_text("options.generic_value"),
+                        None => "%s: %s",
+                    };
+                    dialog_translated_two_arg_runs(template, &dialog_text_runs(label), &value_runs)
+                } else {
+                    value_runs
+                };
+                let available_width = u32::try_from(input_layout.width)
+                    .unwrap_or(1)
+                    .saturating_sub(WIDGET_TEXT_MARGIN.saturating_mul(2))
                     .max(1);
                 push_centered_runs_text_label(
                     &mut text_labels,
@@ -1008,6 +1085,7 @@ pub(crate) fn handle_dialog_key_input(
     true
 }
 
+#[cfg(test)]
 pub(crate) fn handle_dialog_mouse_input(
     counters: &mut NetCounters,
     world: &mut WorldStore,
@@ -1017,6 +1095,31 @@ pub(crate) fn handle_dialog_mouse_input(
     state: ElementState,
     cursor_position: Option<PhysicalPosition<f64>>,
     surface_size: PhysicalSize<u32>,
+) -> bool {
+    handle_dialog_mouse_input_with_modifiers(
+        counters,
+        world,
+        net_commands,
+        clipboard,
+        button,
+        state,
+        cursor_position,
+        surface_size,
+        false,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn handle_dialog_mouse_input_with_modifiers(
+    counters: &mut NetCounters,
+    world: &mut WorldStore,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    clipboard: Option<&mut dyn DebugClipboard>,
+    button: MouseButton,
+    state: ElementState,
+    cursor_position: Option<PhysicalPosition<f64>>,
+    surface_size: PhysicalSize<u32>,
+    shift_down: bool,
 ) -> bool {
     if button == MouseButton::Left && state == ElementState::Released {
         world.end_dialog_number_range_drag();
@@ -1065,6 +1168,9 @@ pub(crate) fn handle_dialog_mouse_input(
                 DialogInputControlState::NumberRange { .. } => {
                     Some(DialogInputMouseHit::NumberRange(layout))
                 }
+                DialogInputControlState::SingleOption { .. } => {
+                    Some(DialogInputMouseHit::SingleOption(layout))
+                }
                 _ => None,
             }
         })
@@ -1077,6 +1183,10 @@ pub(crate) fn handle_dialog_mouse_input(
         Some(DialogInputMouseHit::NumberRange(layout)) => {
             world.begin_dialog_number_range_drag(layout.index);
             set_dialog_number_range_from_cursor(world, layout, cursor_position, surface_size);
+            return true;
+        }
+        Some(DialogInputMouseHit::SingleOption(layout)) => {
+            cycle_dialog_single_option(world, layout.index, shift_down);
             return true;
         }
         None => {}
@@ -1104,6 +1214,98 @@ pub(crate) fn handle_dialog_mouse_input(
         action.0.as_ref(),
         &action.1,
     );
+    true
+}
+
+fn cycle_dialog_single_option(world: &mut WorldStore, index: usize, reverse: bool) -> bool {
+    let (selected_index, option_count) = {
+        let Some(dialog) = world.current_dialog() else {
+            return false;
+        };
+        let Some(controls) = dialog.data.as_ref().and_then(simple_dialog_controls) else {
+            return false;
+        };
+        let Some(input) = controls.common.input_data.get(index) else {
+            return false;
+        };
+        let DialogInputControlState::SingleOption { options, .. } = &input.control else {
+            return false;
+        };
+        let Some(Some(DialogInputValueState::SingleOption { selected_index })) =
+            world.current_dialog_input_values().get(index)
+        else {
+            return false;
+        };
+        (*selected_index, options.len())
+    };
+    if option_count == 0 {
+        return false;
+    }
+    let selected_index = if reverse {
+        selected_index
+            .checked_sub(1)
+            .unwrap_or(option_count.saturating_sub(1))
+    } else {
+        selected_index.saturating_add(1) % option_count
+    };
+    world.set_dialog_single_option_index(index, selected_index)
+}
+
+pub(crate) fn handle_dialog_mouse_wheel(
+    world: &mut WorldStore,
+    delta: MouseScrollDelta,
+    cursor_position: Option<PhysicalPosition<f64>>,
+    surface_size: PhysicalSize<u32>,
+) -> bool {
+    if world.dialog_waiting_ticks().is_some() {
+        return true;
+    }
+    let Some(dialog) = world.current_dialog() else {
+        return false;
+    };
+    let Some(controls) = dialog.data.as_ref().and_then(simple_dialog_controls) else {
+        return true;
+    };
+    let screen_width = surface_size.width.clamp(1, 512);
+    let screen_height = surface_size.height.clamp(1, 512);
+    let hovered_index = dialog_input_layouts(controls.common, surface_size).and_then(|layouts| {
+        layouts.into_iter().find_map(|layout| {
+            matches!(
+                controls
+                    .common
+                    .input_data
+                    .get(layout.index)
+                    .map(|input| &input.control),
+                Some(DialogInputControlState::SingleOption { .. })
+            )
+            .then_some(layout)
+            .filter(|layout| {
+                dialog_widget_contains(
+                    layout.x,
+                    layout.y,
+                    layout.width,
+                    layout.height,
+                    cursor_position,
+                    surface_size,
+                    screen_width,
+                    screen_height,
+                )
+            })
+            .map(|layout| layout.index)
+        })
+    });
+    let Some(index) = hovered_index else {
+        return true;
+    };
+    let scroll_y = match delta {
+        MouseScrollDelta::LineDelta(_, y) => f64::from(y),
+        MouseScrollDelta::PixelDelta(position) => position.y,
+    };
+    if scroll_y > 0.0 {
+        cycle_dialog_single_option(world, index, true);
+    } else if scroll_y < 0.0 {
+        cycle_dialog_single_option(world, index, false);
+    }
     true
 }
 
@@ -1287,6 +1489,16 @@ fn bound_dialog_input_values(
                 BoundDialogInputValue {
                     template_substitution: dialog_number_range_value_string(value),
                     tag: NbtSummaryValue::Float(value.to_bits()),
+                }
+            }
+            (
+                DialogInputControlState::SingleOption { options, .. },
+                Some(DialogInputValueState::SingleOption { selected_index }),
+            ) => {
+                let selected = options.get(*selected_index)?;
+                BoundDialogInputValue {
+                    template_substitution: selected.id.clone(),
+                    tag: NbtSummaryValue::String(selected.id.clone()),
                 }
             }
             _ => return None,
@@ -2351,6 +2563,257 @@ mod tests {
     }
 
     #[test]
+    fn single_option_renders_cycles_and_binds_string_actions() {
+        let options = vec![
+            NbtSummaryValue::String("one".to_string()),
+            NbtSummaryValue::Compound(vec![
+                entry("id", NbtSummaryValue::String("two".to_string())),
+                entry("display", NbtSummaryValue::String("Second".to_string())),
+                entry("initial", NbtSummaryValue::Byte(1)),
+            ]),
+            NbtSummaryValue::String("three".to_string()),
+        ];
+        let mut world = world_with_notice(vec![
+            entry("pause", NbtSummaryValue::Byte(0)),
+            entry("after_action", NbtSummaryValue::String("none".to_string())),
+            entry(
+                "inputs",
+                NbtSummaryValue::List(vec![single_option_input(
+                    "mode",
+                    "Mode",
+                    100,
+                    true,
+                    options.clone(),
+                )]),
+            ),
+            entry(
+                "action",
+                NbtSummaryValue::Compound(vec![
+                    entry("label", NbtSummaryValue::String("Send".to_string())),
+                    entry(
+                        "action",
+                        NbtSummaryValue::Compound(vec![
+                            entry(
+                                "type",
+                                NbtSummaryValue::String("minecraft:dynamic/custom".to_string()),
+                            ),
+                            entry("id", NbtSummaryValue::String("example:option".to_string())),
+                        ]),
+                    ),
+                ]),
+            ),
+        ]);
+        let surface_size = PhysicalSize::new(320, 240);
+        let input_layout = {
+            let controls = world
+                .current_dialog()
+                .and_then(|dialog| dialog.data.as_ref())
+                .and_then(simple_dialog_controls)
+                .unwrap();
+            dialog_input_layouts(controls.common, surface_size).unwrap()[0]
+        };
+        let input_cursor = (input_layout.x + 1, input_layout.y + 1);
+        let screen = hud_dialog_screen(
+            &world,
+            world.current_dialog().unwrap(),
+            None,
+            &TerrainTextureState::default(),
+            &InventoryHudLocalState {
+                cursor_position: Some(input_cursor),
+                ..Default::default()
+            },
+            surface_size,
+            0.0,
+        )
+        .unwrap();
+        assert!(screen
+            .text_labels
+            .iter()
+            .any(|label| label.text == "Mode: Second"));
+        assert_eq!(
+            screen
+                .background_layers
+                .iter()
+                .filter(|layer| {
+                    layer.texture == HudInventoryBackgroundTexture::WidgetButtonHighlighted
+                        && layer.y == input_layout.y
+                })
+                .count(),
+            3
+        );
+
+        let mut counters = NetCounters::default();
+        let (tx, mut rx) = mpsc::channel(2);
+        let net_commands = Some(tx);
+        let cursor = Some(PhysicalPosition::new(
+            f64::from(input_cursor.0),
+            f64::from(input_cursor.1),
+        ));
+        assert!(handle_dialog_mouse_input(
+            &mut counters,
+            &mut world,
+            &net_commands,
+            None,
+            MouseButton::Left,
+            ElementState::Pressed,
+            cursor,
+            surface_size,
+        ));
+        assert_eq!(
+            world.current_dialog_input_values(),
+            [Some(DialogInputValueState::SingleOption {
+                selected_index: 2,
+            })]
+        );
+        assert!(handle_dialog_mouse_input_with_modifiers(
+            &mut counters,
+            &mut world,
+            &net_commands,
+            None,
+            MouseButton::Left,
+            ElementState::Pressed,
+            cursor,
+            surface_size,
+            true,
+        ));
+        assert_eq!(
+            world.current_dialog_input_values(),
+            [Some(DialogInputValueState::SingleOption {
+                selected_index: 1,
+            })]
+        );
+        assert!(handle_dialog_mouse_wheel(
+            &mut world,
+            MouseScrollDelta::LineDelta(0.0, -1.0),
+            cursor,
+            surface_size,
+        ));
+        assert_eq!(
+            world.current_dialog_input_values(),
+            [Some(DialogInputValueState::SingleOption {
+                selected_index: 2,
+            })]
+        );
+        assert!(handle_dialog_mouse_wheel(
+            &mut world,
+            MouseScrollDelta::PixelDelta(PhysicalPosition::new(0.0, 1.0)),
+            cursor,
+            surface_size,
+        ));
+        assert_eq!(
+            world.current_dialog_input_values(),
+            [Some(DialogInputValueState::SingleOption {
+                selected_index: 1,
+            })]
+        );
+
+        assert!(handle_dialog_mouse_input(
+            &mut counters,
+            &mut world,
+            &net_commands,
+            None,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(160.0, 220.0)),
+            surface_size,
+        ));
+        assert_eq!(counters.custom_click_action_commands_queued, 1);
+        assert!(matches!(
+            rx.try_recv().unwrap(),
+            NetCommand::CustomClickAction(CustomClickAction {
+                id,
+                payload: Some(NbtSummaryValue::Compound(entries)),
+            }) if id == "example:option"
+                && entries == vec![entry(
+                    "mode",
+                    NbtSummaryValue::String("two".to_string()),
+                )]
+        ));
+
+        world.apply_show_dialog(bbb_protocol::packets::ShowDialog {
+            dialog: DialogHolder::Direct {
+                dialog: NbtSummaryValue::Compound(vec![
+                    entry(
+                        "type",
+                        NbtSummaryValue::String("minecraft:notice".to_string()),
+                    ),
+                    entry("title", NbtSummaryValue::String("Options".to_string())),
+                    entry(
+                        "inputs",
+                        NbtSummaryValue::List(vec![single_option_input(
+                            "mode",
+                            "Mode",
+                            100,
+                            false,
+                            vec![NbtSummaryValue::Compound(vec![
+                                entry("id", NbtSummaryValue::String("alpha".to_string())),
+                                entry(
+                                    "display",
+                                    NbtSummaryValue::String("Alpha Display".to_string()),
+                                ),
+                            ])],
+                        )]),
+                    ),
+                    entry(
+                        "action",
+                        NbtSummaryValue::Compound(vec![
+                            entry("label", NbtSummaryValue::String("Run".to_string())),
+                            entry(
+                                "action",
+                                NbtSummaryValue::Compound(vec![
+                                    entry(
+                                        "type",
+                                        NbtSummaryValue::String(
+                                            "minecraft:dynamic/run_command".to_string(),
+                                        ),
+                                    ),
+                                    entry(
+                                        "template",
+                                        NbtSummaryValue::String("/say $(mode)".to_string()),
+                                    ),
+                                ]),
+                            ),
+                        ]),
+                    ),
+                ]),
+            },
+        });
+        let screen = hud_dialog_screen(
+            &world,
+            world.current_dialog().unwrap(),
+            None,
+            &TerrainTextureState::default(),
+            &InventoryHudLocalState::default(),
+            surface_size,
+            0.0,
+        )
+        .unwrap();
+        assert!(screen
+            .text_labels
+            .iter()
+            .any(|label| label.text == "Alpha Display"));
+        assert!(!screen
+            .text_labels
+            .iter()
+            .any(|label| label.text.contains("Mode:")));
+        assert!(handle_dialog_mouse_input(
+            &mut counters,
+            &mut world,
+            &net_commands,
+            None,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(160.0, 220.0)),
+            surface_size,
+        ));
+        assert_eq!(counters.chat_command_commands_queued, 1);
+        assert!(matches!(
+            rx.try_recv().unwrap(),
+            NetCommand::ChatCommand(command) if command.command == "say alpha"
+        ));
+    }
+
+    #[test]
     fn static_run_command_action_trims_optional_slash_before_send() {
         let mut world = world_with_notice(vec![entry(
             "action",
@@ -2777,6 +3240,29 @@ mod tests {
             fields.push(entry("step", NbtSummaryValue::Float(step.to_bits())));
         }
         NbtSummaryValue::Compound(fields)
+    }
+
+    fn single_option_input(
+        key: &str,
+        label: &str,
+        width: i32,
+        label_visible: bool,
+        options: Vec<NbtSummaryValue>,
+    ) -> NbtSummaryValue {
+        NbtSummaryValue::Compound(vec![
+            entry("key", NbtSummaryValue::String(key.to_string())),
+            entry(
+                "type",
+                NbtSummaryValue::String("minecraft:single_option".to_string()),
+            ),
+            entry("width", NbtSummaryValue::Int(width)),
+            entry("options", NbtSummaryValue::List(options)),
+            entry("label", NbtSummaryValue::String(label.to_string())),
+            entry(
+                "label_visible",
+                NbtSummaryValue::Byte(i8::from(label_visible)),
+            ),
+        ])
     }
 
     #[test]

@@ -14806,3 +14806,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   `Float.toString` 已用于 localized `label_format`、template substitution 和 FloatTag；regressions 覆盖反向
   range、负数舍入、edge fallback、indexed translation placeholders、轨道/handle geometry、drag，以及
   dynamic custom/run-command。键盘 focus/左右键和超长 label 的时间滚动继续留在 TODO。
+
+## 2026-07-14：Render and cycle SingleOption dialog inputs
+
+- [x] 对照 `SingleOptionInput`、`InputControlHandlers.SingleOptionHandler`、`CycleButton` 与
+  `CommonComponents.optionNameValue`，world input value 按 marked initial 或首项初始化；native 以 button 的
+  200x20/3px-border nine-slice 渲染，保留 optional styled display、raw id 与 label-visible 组合语义。
+- [x] 主循环在 dialog 打开时继续跟踪左右 Shift；普通 click 向前、Shift+click 向后，line/pixel wheel 上下双向
+  wrap。dynamic template 使用 raw id，custom payload 使用 StringTag。world/native regressions 覆盖初值、显示、
+  hover geometry、forward/reverse click、wheel、label hidden 及两类 dynamic action；keyboard focus/selection 与
+  超长 label 时间滚动继续留在 TODO。

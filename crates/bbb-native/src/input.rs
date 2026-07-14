@@ -1101,6 +1101,16 @@ impl ClientInputState {
         self.shift_left_down || self.shift_right_down
     }
 
+    pub(crate) fn update_screen_shift_key(
+        &mut self,
+        physical_key: PhysicalKey,
+        state: ElementState,
+    ) {
+        if let PhysicalKey::Code(code) = physical_key {
+            self.set_shift_key(code, matches!(state, ElementState::Pressed));
+        }
+    }
+
     pub(crate) fn player_list_key_down(&self) -> bool {
         self.pressed_keys.contains(&KeyCode::Tab)
     }

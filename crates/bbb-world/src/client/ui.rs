@@ -13,7 +13,9 @@ use bbb_protocol::{
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    client::dialog::{DialogDataState, DialogInputControlState, DialogState},
+    client::dialog::{
+        CommonDialogDataState, DialogDataState, DialogInputControlState, DialogState,
+    },
     entities::{is_vanilla_abstract_horse_type, is_vanilla_abstract_nautilus_type},
     protocol_block_pos, BlockPos, WorldStore,
 };
@@ -69,6 +71,7 @@ pub enum DialogPreviousScreenState {
 pub enum DialogInputValueState {
     Boolean { selected: bool },
     NumberRange { slider_value_bits: u64 },
+    SingleOption { selected_index: usize },
 }
 
 impl ClientUiState {
@@ -150,13 +153,7 @@ fn initial_dialog_input_values(dialog: &DialogState) -> Vec<Option<DialogInputVa
     let Some(data) = dialog.data.as_ref() else {
         return Vec::new();
     };
-    let common = match data {
-        DialogDataState::Notice { common, .. }
-        | DialogDataState::Confirmation { common, .. }
-        | DialogDataState::MultiAction { common, .. }
-        | DialogDataState::ServerLinks { common, .. }
-        | DialogDataState::DialogList { common, .. } => common,
-    };
+    let common = common_dialog_data(data);
     common
         .input_data
         .iter()
@@ -177,9 +174,27 @@ fn initial_dialog_input_values(dialog: &DialogState) -> Vec<Option<DialogInputVa
                     slider_value_bits: f64::from(slider_value).to_bits(),
                 })
             }
+            DialogInputControlState::SingleOption { options, .. } => {
+                Some(DialogInputValueState::SingleOption {
+                    selected_index: options
+                        .iter()
+                        .position(|option| option.initial)
+                        .unwrap_or(0),
+                })
+            }
             _ => None,
         })
         .collect()
+}
+
+fn common_dialog_data(data: &DialogDataState) -> &CommonDialogDataState {
+    match data {
+        DialogDataState::Notice { common, .. }
+        | DialogDataState::Confirmation { common, .. }
+        | DialogDataState::MultiAction { common, .. }
+        | DialogDataState::ServerLinks { common, .. }
+        | DialogDataState::DialogList { common, .. } => common,
+    }
 }
 
 const DIALOG_REGISTRY: &str = "minecraft:dialog";
@@ -422,6 +437,32 @@ impl WorldStore {
 
     pub fn dialog_dragging_number_range_input(&self) -> Option<usize> {
         self.client_ui.dialog_dragging_number_range_input
+    }
+
+    pub fn set_dialog_single_option_index(&mut self, index: usize, selected_index: usize) -> bool {
+        if !self
+            .current_dialog()
+            .and_then(|dialog| dialog.data.as_ref())
+            .map(common_dialog_data)
+            .and_then(|common| common.input_data.get(index))
+            .is_some_and(|input| {
+                matches!(
+                    &input.control,
+                    DialogInputControlState::SingleOption { options, .. }
+                        if selected_index < options.len()
+                )
+            })
+        {
+            return false;
+        }
+        let Some(Some(DialogInputValueState::SingleOption {
+            selected_index: current,
+        })) = self.client_ui.dialog_input_values.get_mut(index)
+        else {
+            return false;
+        };
+        *current = selected_index;
+        true
     }
 
     pub fn dialog_waiting_ticks(&self) -> Option<u32> {
@@ -815,6 +856,58 @@ mod tests {
         assert!(store.close_dialog());
         assert_eq!(store.dialog_dragging_number_range_input(), None);
         assert!(store.current_dialog_input_values().is_empty());
+    }
+
+    #[test]
+    fn dialog_single_option_uses_marked_initial_and_updates_selected_index() {
+        let entry = |name: &str, value| NbtSummaryEntry {
+            name: name.to_string(),
+            value,
+        };
+        let mut store = WorldStore::new();
+        store.apply_show_dialog(ProtocolShowDialog {
+            dialog: DialogHolder::Direct {
+                dialog: NbtSummaryValue::Compound(vec![
+                    entry(
+                        "type",
+                        NbtSummaryValue::String("minecraft:notice".to_string()),
+                    ),
+                    entry("title", NbtSummaryValue::String("Inputs".to_string())),
+                    entry(
+                        "inputs",
+                        NbtSummaryValue::List(vec![NbtSummaryValue::Compound(vec![
+                            entry("key", NbtSummaryValue::String("mode".to_string())),
+                            entry("type", NbtSummaryValue::String("single_option".to_string())),
+                            entry("label", NbtSummaryValue::String("Mode".to_string())),
+                            entry(
+                                "options",
+                                NbtSummaryValue::List(vec![
+                                    NbtSummaryValue::String("first".to_string()),
+                                    NbtSummaryValue::Compound(vec![
+                                        entry("id", NbtSummaryValue::String("second".to_string())),
+                                        entry("initial", NbtSummaryValue::Byte(1)),
+                                    ]),
+                                ]),
+                            ),
+                        ])]),
+                    ),
+                ]),
+            },
+        });
+
+        assert_eq!(
+            store.current_dialog_input_values(),
+            [Some(DialogInputValueState::SingleOption {
+                selected_index: 1,
+            })]
+        );
+        assert!(store.set_dialog_single_option_index(0, 0));
+        assert_eq!(
+            store.current_dialog_input_values(),
+            [Some(DialogInputValueState::SingleOption {
+                selected_index: 0,
+            })]
+        );
     }
 
     #[test]

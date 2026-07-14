@@ -192,7 +192,8 @@ mod events;
 
 pub(crate) use debug_light_sections::DebugSkyLightSectionCache;
 pub(crate) use dialog_screen::{
-    handle_dialog_cursor_moved, handle_dialog_key_input, handle_dialog_mouse_input,
+    handle_dialog_cursor_moved, handle_dialog_key_input, handle_dialog_mouse_input_with_modifiers,
+    handle_dialog_mouse_wheel,
 };
 use dialog_screen::{hud_dialog_screen, hud_waiting_response_screen};
 
