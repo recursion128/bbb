@@ -81,9 +81,11 @@ Owner: `bbb-protocol`
   instrument, 2 trim-material/pattern-backed named/direct registrations, and 1
   banner-pattern-layer direct holder. All 107 persistent catalog registrations now
   have a typed positive-value dispatch and their RegistryFileCodec inline/direct
-  holder branches are complete. Finish persistent Component command-backed
-  selector/NBT/block-position parsing, owner-sensitive payloads in generic
-  packet Components, and canonical
+  holder branches are complete. Component block data-source positions now match
+  vanilla `BlockPosArgument`/Brigadier parsing, including full string consumption,
+  world-relative decimals, local coordinates, and absolute integer bounds. Finish
+  persistent Component command-backed selector/NBT-path/entity-source parsing,
+  owner-sensitive payloads in generic packet Components, and canonical
   re-encoding, including
   exact `flatRestrictedCodec(32767)` sizing for structured written-book pages; render
   the corresponding screens, restore the previous screen on clear,

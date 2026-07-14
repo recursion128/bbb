@@ -72,6 +72,79 @@ fn accepts_structural_complex_contents_extra_and_scalar_style() {
 }
 
 #[test]
+fn accepts_vanilla_block_data_source_coordinate_forms() {
+    for coordinates in [
+        "0 64 -12",
+        "-2147483648 0 2147483647",
+        "~ ~ ~",
+        "~0.5 ~1 ~-5",
+        "^ ^ ^",
+        "^1 ^ ^-5",
+        "^.5 ^-0.25 ^1.",
+        " 1 2",
+        "1  2",
+    ] {
+        validate_component_nbt(
+            &compound([
+                ("type", string("nbt")),
+                ("nbt", string("Pos")),
+                ("source", string("block")),
+                ("block", string(coordinates)),
+            ]),
+            "component",
+        )
+        .unwrap_or_else(|error| panic!("{coordinates:?} was rejected: {error}"));
+    }
+
+    // Legacy fuzzy dispatch checks entity before block, so a malformed extra
+    // block field cannot override a valid entity data source.
+    validate_component_nbt(
+        &compound([
+            ("type", string("nbt")),
+            ("nbt", string("Pos")),
+            ("entity", string("@e")),
+            ("block", string("not coordinates")),
+        ]),
+        "component",
+    )
+    .unwrap();
+}
+
+#[test]
+fn rejects_non_brigadier_block_data_source_coordinates() {
+    for coordinates in [
+        "",
+        "0 0",
+        "0 0 0 ",
+        "0 0 0 extra",
+        "0 0 0 1",
+        "1.0 2 3",
+        "2147483648 0 0",
+        "+1 0 0",
+        "~+1 ~ ~",
+        "~1e2 ~ ~",
+        "^1 ~2 ^3",
+        "^1  ^3",
+        "^NaN ^ ^",
+    ] {
+        let error = validate_component_nbt(
+            &compound([
+                ("type", string("nbt")),
+                ("nbt", string("Pos")),
+                ("source", string("block")),
+                ("block", string(coordinates)),
+            ]),
+            "component",
+        )
+        .unwrap_err();
+        assert!(
+            error.contains("field block is not valid block coordinates"),
+            "{coordinates:?} failed with unexpected error: {error}"
+        );
+    }
+}
+
+#[test]
 fn rejects_invalid_roots_lists_dispatch_and_extra() {
     for (value, expected) in [
         (NbtSummaryValue::Int(1), "is not a component"),

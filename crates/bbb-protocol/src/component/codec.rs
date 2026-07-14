@@ -392,23 +392,115 @@ fn validate_data_source(entries: &[NbtSummaryEntry], what: &str) -> Result<(), S
             return Err(format!("{what} field source is not a string"));
         };
         return match source.as_str() {
-            "block" => required_string(entries, "block", what).map(|_| ()),
+            "block" => validate_block_data_source(entries, what),
             "entity" => required_string(entries, "entity", what).map(|_| ()),
             "storage" => validate_identifier_field(entries, "storage", what).map(|_| ()),
             _ => Err(format!("{what} has unknown component data source {source}")),
         };
     }
+    // DataSources registers its legacy fuzzy codecs in entity/block/storage
+    // order. Keep that first-success dispatch even though more than one field
+    // may be present in the same compound.
     if matches!(
-        find_entry(entries, "block"),
-        Some(NbtSummaryValue::String(_))
-    ) || matches!(
         find_entry(entries, "entity"),
         Some(NbtSummaryValue::String(_))
-    ) || validate_identifier_field(entries, "storage", what).is_ok()
+    ) || validate_block_data_source(entries, what).is_ok()
+        || validate_identifier_field(entries, "storage", what).is_ok()
     {
         return Ok(());
     }
     Err(format!("{what} has no matching component data source"))
+}
+
+fn validate_block_data_source(entries: &[NbtSummaryEntry], what: &str) -> Result<(), String> {
+    let coordinates = required_string(entries, "block", what)?;
+    if is_brigadier_block_position(coordinates) {
+        Ok(())
+    } else {
+        Err(format!(
+            "{what} field block is not valid block coordinates: {coordinates}"
+        ))
+    }
+}
+
+fn is_brigadier_block_position(value: &str) -> bool {
+    let bytes = value.as_bytes();
+    let mut cursor = 0;
+    let local = bytes.first() == Some(&b'^');
+    for axis in 0..3 {
+        let valid = if local {
+            parse_local_coordinate(bytes, &mut cursor)
+        } else {
+            parse_world_block_coordinate(bytes, &mut cursor)
+        };
+        if !valid {
+            return false;
+        }
+        if axis < 2 {
+            if bytes.get(cursor) != Some(&b' ') {
+                return false;
+            }
+            cursor += 1;
+        }
+    }
+    cursor == bytes.len()
+}
+
+fn parse_world_block_coordinate(bytes: &[u8], cursor: &mut usize) -> bool {
+    if *cursor >= bytes.len() || bytes[*cursor] == b'^' {
+        return false;
+    }
+    let relative = bytes[*cursor] == b'~';
+    if relative {
+        *cursor += 1;
+    }
+    if *cursor >= bytes.len() || bytes[*cursor] == b' ' {
+        // WorldCoordinate.parseInt treats an omitted value as zero, including
+        // an absolute axis positioned directly at a separator.
+        return true;
+    }
+    let number = read_brigadier_number(bytes, cursor);
+    if relative {
+        is_brigadier_double(number)
+    } else {
+        number.parse::<i32>().is_ok()
+    }
+}
+
+fn parse_local_coordinate(bytes: &[u8], cursor: &mut usize) -> bool {
+    if bytes.get(*cursor) != Some(&b'^') {
+        return false;
+    }
+    *cursor += 1;
+    if *cursor >= bytes.len() || bytes[*cursor] == b' ' {
+        return true;
+    }
+    is_brigadier_double(read_brigadier_number(bytes, cursor))
+}
+
+fn read_brigadier_number<'a>(bytes: &'a [u8], cursor: &mut usize) -> &'a str {
+    let start = *cursor;
+    while bytes
+        .get(*cursor)
+        .is_some_and(|byte| byte.is_ascii_digit() || matches!(*byte, b'.' | b'-'))
+    {
+        *cursor += 1;
+    }
+    std::str::from_utf8(&bytes[start..*cursor]).expect("Brigadier number characters are ASCII")
+}
+
+fn is_brigadier_double(number: &str) -> bool {
+    let unsigned = number.strip_prefix('-').unwrap_or(number);
+    let mut halves = unsigned.split('.');
+    let whole = halves.next().expect("split always yields one part");
+    let fraction = halves.next();
+    if halves.next().is_some() {
+        return false;
+    }
+    let fraction = fraction.unwrap_or("");
+    (!whole.is_empty() || !fraction.is_empty())
+        && whole.bytes().all(|byte| byte.is_ascii_digit())
+        && fraction.bytes().all(|byte| byte.is_ascii_digit())
 }
 
 fn validate_object_contents(
