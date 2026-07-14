@@ -102,8 +102,9 @@ Owner: `bbb-protocol`
   bounded NBT encode, Component/Dialog field lookup, and canonical maps now share CompoundTag's
   last-wins duplicate-key semantics while every wire occurrence still counts toward the safety
   limit. Finish the remaining owner-sensitive payloads in generic packet Components and canonical
-  value codecs: show-dialog and the remaining registry-holder, typed-NBT,
-  predicate/item-template, and other nested-record positive item-patch values. Then complete
+  value codecs: show-dialog world context in the generic packet owner plus the remaining
+  registry-holder, predicate/item-template, and other nested-record positive item-patch values.
+  Then complete
   `flatRestrictedCodec(32767)` sizing for every structured page; render
   the dialog and warning screens, integrate clear-dialog restoration with the remaining
   native-owned chat/sign/debug and warning return-screen stacks, and route custom-click controls
@@ -124,8 +125,11 @@ Owner: `bbb-protocol`
   encoding. Piercing- and kinetic-weapon records reuse that holder projection and now cover their
   defaulted scalars, three optional kinetic conditions, nested floats, and strict non-finite
   rejection. Banner-pattern layer lists now cover named/direct pattern holders, direct asset and
-  translation fields, and dye-color names with last-wins field lookup. Dialog click `show_dialog`
-  payloads also decode through the full
+  translation fields, and dye-color names with last-wins field lookup. Custom/bucket compounds,
+  typed entity/block-entity compounds with normalized `id` restoration, and bee occupant lists now
+  reuse one protocol NbtOps-to-JsonOps length owner across every tag/array kind; duplicate compound
+  keys are last-wins and non-finite numbers fail strictly. Dialog click `show_dialog` payloads also
+  decode through the full
   inline/session-reference `Dialog.CODEC` owner with a shared 64-level semantic-depth budget,
   including recursive item templates and predicates, so registry cycles fail deterministically.
   Object-content player profiles likewise reuse the complete `ResolvableProfile.CODEC`

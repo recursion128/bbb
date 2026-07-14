@@ -14232,3 +14232,16 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   修正；named/direct 精确列表及 written-book hover `show_item` direct banner-pattern patch 的 32767/32768
   UTF-16 unit 边界均有回归。show-dialog 和剩余 RegistryFileCodec-direct、typed-NBT、predicate/
   item-template 及其它 nested-record positive item-patch value 继续由缺口账本追踪。
+
+## 2026-07-14：Canonicalize typed-NBT item patches
+
+- [x] 对照 `CompoundTag.CODEC`、`CustomData.CODEC`、`TypedEntityData.codec` 与
+  `BeehiveBlockEntity.Occupant.CODEC`，协议层公开单一 NbtOps→JsonOps/Gson 精确计长 owner；
+  custom/bucket compound、entity/block-entity 的 normalized type `id` 回填及 bee occupant list 均复用
+  同一入口，不以 raw NBT 大小近似 canonical JSON。
+- [x] Byte/Short/Int/Long/Float/Double、string、list、三类 array 与 compound 均保持 JsonOps 形态，
+  duplicate compound/typed/occupant field 统一 last-wins，JDK 26 number formatting 与 strict non-finite
+  拒绝沿用协议 owner；精确形态、flattened/compound typed id 与 written-book hover `show_item`
+  custom-data patch 的 32767/32768 UTF-16 unit 边界均有回归。generic packet show-dialog world context 与
+  剩余 registry-holder、predicate/item-template 及其它 nested-record positive item-patch value 继续由
+  缺口账本追踪。

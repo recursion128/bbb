@@ -100,6 +100,17 @@ pub fn canonical_json_string_utf16_len(value: &str) -> usize {
     json_string_utf16_len(value)
 }
 
+/// Exact JsonOps/Gson length for an NBT value after vanilla's `NbtOps -> JsonOps`
+/// conversion. Compound keys follow `CompoundTag` last-wins semantics.
+pub fn canonical_nbt_json_utf16_len(value: &NbtSummaryValue) -> Result<usize, String> {
+    let value = canonical_nbt(value)
+        .ok_or_else(|| "canonical NBT value cannot be converted to JsonOps".to_string())?;
+    if value.has_non_finite_number() {
+        return Err("canonical JsonWriter rejects non-finite Float/Double values".to_string());
+    }
+    Ok(value.utf16_len())
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum JsonValue {
     Bool(bool),
@@ -904,6 +915,34 @@ mod tests {
             exact(&custom),
             r#"{"text":"x","click_event":{"action":"custom","id":"minecraft:test","payload":{"key":"last"}}}"#.len()
         );
+    }
+
+    #[test]
+    fn canonicalizes_raw_nbt_with_last_wins_and_strict_numbers() {
+        let value = compound(vec![
+            ("key", NbtSummaryValue::Int(1)),
+            ("key", string("last")),
+            ("bytes", NbtSummaryValue::ByteArray(vec![-1, 2])),
+            (
+                "nested",
+                list(vec![
+                    NbtSummaryValue::Float(8.0f32.to_bits()),
+                    NbtSummaryValue::Long(9),
+                ]),
+            ),
+        ]);
+        assert_eq!(
+            canonical_nbt_json_utf16_len(&value).unwrap(),
+            r#"{"key":"last","bytes":[-1,2],"nested":[8.0,9]}"#.len()
+        );
+
+        let non_finite = compound(vec![(
+            "value",
+            NbtSummaryValue::Double(f64::NEG_INFINITY.to_bits()),
+        )]);
+        assert!(canonical_nbt_json_utf16_len(&non_finite)
+            .unwrap_err()
+            .contains("non-finite"));
     }
 
     #[test]

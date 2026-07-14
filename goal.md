@@ -398,9 +398,9 @@ NBT path 也已按 `NbtPathArgument` 闭合 quoted/unquoted/object/index/all/mat
 完整消费与内嵌 26.1 bounded SNBT compound argument；entity selector 也已闭合 name/UUID、六类 `@`
 selector、21 项 registered option 的 grammar/applicability/重复互斥、built-in entity-type lookup、
 nested SNBT/scores/advancements 与完整消费，并同时接入 selector content/entity data source；structured
-Component page 仍需在 generic packet/session owner 中补齐 show-dialog 和剩余 registry-holder、
-typed-NBT、predicate/item-template 及其它 nested-record positive item-patch value 的 canonical JsonOps
-重编码，当前明确不以 raw NBT 近似这些 payload；hover
+Component page 仍需在 generic packet/session owner 中补齐 show-dialog world context，并继续闭合剩余
+registry-holder、predicate/item-template 及其它 nested-record positive item-patch value 的 canonical
+JsonOps 重编码，当前明确不以 raw NBT 近似这些 payload；hover
 `show_item` 的 DataComponentPatch envelope 已进一步按 110 项 catalog 校验 Identifier/default namespace、
 persistent gate、remove-unit compound、同符号重复键与 set/remove 覆盖语义；共享 recursive payload visitor
 已由 Dialog 中央 Component decoder 接入现有 107 项 world type codec 和 session registry context，覆盖
@@ -421,7 +421,10 @@ packet Component 尚无该 world context；`repairable`、`provides_banner_patte
 holder canonical owner，闭合默认布尔/整数/float 省略、三个 optional Condition 与全部 nested float
 non-finite 拒绝，局部 optional record/float/sound 也已统一 last-wins；`banner_patterns` layer list 也已
 闭合 RegistryFileCodec named/direct pattern holder、direct asset_id/translation_key 与 dye-color name，
-layer/direct holder 字段均按 CompoundTag last-wins；
+layer/direct holder 字段均按 CompoundTag last-wins；`custom_data`/`bucket_entity_data` compound、
+`entity_data`/`block_entity_data` 的 TypedEntityData 规范化 id 回填，以及 `bees` occupant list 也已复用
+协议层单一 NbtOps→JsonOps owner 精确计长，覆盖所有 tag/array 类型、duplicate last-wins、JDK 26
+float/double 与 non-finite 拒绝，typed/occupant required 字段 lookup 也已统一 last-wins；
 click `show_dialog` 也已由同一中央 visitor 按 `Dialog.CODEC` 解析 inline/session reference holder，
 并让 title/button/body/input、item patch 与 recursive predicate/item-template 路径共享 64 层 Dialog
 semantic depth，registry 自引用/互引用不会重置预算；

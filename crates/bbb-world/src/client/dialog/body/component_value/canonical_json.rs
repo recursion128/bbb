@@ -1,7 +1,8 @@
 use bbb_protocol::packets::inventory::FireworkExplosionSummary;
 use bbb_protocol::{
     canonical_f32_json_utf16_len, canonical_f64_json_utf16_len, canonical_json_string_utf16_len,
-    canonical_resolvable_profile_json_utf16_len,
+    canonical_nbt_json_utf16_len, canonical_resolvable_profile_json_utf16_len, NbtSummaryEntry,
+    NbtSummaryValue,
 };
 
 use super::super::DialogDataComponentPatchState;
@@ -26,7 +27,7 @@ pub(in crate::client::dialog::body) fn canonical_data_component_patch_json_utf16
             let Some(value) = entry.value_data.as_ref() else {
                 return Ok(None);
             };
-            validate_supported_json_floats(value)?;
+            validate_supported_json_numbers(value)?;
             let Some(length) = canonical_component_value_json_utf16_len(value) else {
                 return Ok(None);
             };
@@ -46,7 +47,7 @@ pub(in crate::client::dialog::body) fn canonical_data_component_patch_json_utf16
     Ok(Some(length))
 }
 
-fn validate_supported_json_floats(value: &DialogDataComponentValueState) -> Result<(), String> {
+fn validate_supported_json_numbers(value: &DialogDataComponentValueState) -> Result<(), String> {
     let mut values = Vec::new();
     let mut double_values = Vec::new();
     match value {
@@ -114,6 +115,27 @@ fn validate_supported_json_floats(value: &DialogDataComponentValueState) -> Resu
             }
             append_sound_range_bits(&mut values, weapon.sound.as_ref());
             append_sound_range_bits(&mut values, weapon.hit_sound.as_ref());
+        }
+        DialogDataComponentValueState::Bees { occupants } => {
+            for occupant in occupants {
+                typed_data_json_utf16_len(
+                    &occupant.entity_data,
+                    &occupant.entity_type.resource_id,
+                )?;
+            }
+        }
+        DialogDataComponentValueState::EntityData { entity } => {
+            typed_data_json_utf16_len(&entity.data, &entity.entity_type.resource_id)?;
+        }
+        DialogDataComponentValueState::BlockEntityData { block_entity } => {
+            typed_data_json_utf16_len(
+                &block_entity.data,
+                &block_entity.block_entity_type.resource_id,
+            )?;
+        }
+        DialogDataComponentValueState::BucketEntityData { data }
+        | DialogDataComponentValueState::CustomData { data } => {
+            canonical_nbt_json_utf16_len(data)?;
         }
         _ => {}
     }
@@ -462,8 +484,60 @@ fn canonical_component_value_json_utf16_len(
                 )
             }))
         }
+        DialogDataComponentValueState::Bees { occupants } => array_len(
+            occupants
+                .iter()
+                .map(|occupant| {
+                    Some(object_len(
+                        [
+                            (
+                                "entity_data",
+                                typed_data_json_utf16_len(
+                                    &occupant.entity_data,
+                                    &occupant.entity_type.resource_id,
+                                )
+                                .ok()?,
+                            ),
+                            ("ticks_in_hive", occupant.ticks_in_hive.to_string().len()),
+                            (
+                                "min_ticks_in_hive",
+                                occupant.min_ticks_in_hive.to_string().len(),
+                            ),
+                        ]
+                        .into_iter(),
+                    ))
+                })
+                .collect::<Option<Vec<_>>>()?
+                .into_iter(),
+        ),
+        DialogDataComponentValueState::EntityData { entity } => {
+            typed_data_json_utf16_len(&entity.data, &entity.entity_type.resource_id).ok()?
+        }
+        DialogDataComponentValueState::BlockEntityData { block_entity } => {
+            typed_data_json_utf16_len(
+                &block_entity.data,
+                &block_entity.block_entity_type.resource_id,
+            )
+            .ok()?
+        }
+        DialogDataComponentValueState::BucketEntityData { data }
+        | DialogDataComponentValueState::CustomData { data } => {
+            canonical_nbt_json_utf16_len(data).ok()?
+        }
         _ => return None,
     })
+}
+
+fn typed_data_json_utf16_len(data: &NbtSummaryValue, resource_id: &str) -> Result<usize, String> {
+    let NbtSummaryValue::Compound(entries) = data else {
+        return Err("typed entity data owner did not retain a compound".to_string());
+    };
+    let mut entries = entries.clone();
+    entries.push(NbtSummaryEntry {
+        name: "id".to_string(),
+        value: NbtSummaryValue::String(resource_id.to_string()),
+    });
+    canonical_nbt_json_utf16_len(&NbtSummaryValue::Compound(entries))
 }
 
 fn banner_pattern_holder_len(holder: &DialogBannerPatternHolderState) -> usize {
@@ -1138,6 +1212,97 @@ mod tests {
                 ],
             },
             r#"[{"pattern":"minecraft:flower","color":"red"},{"pattern":{"asset_id":"example:spiral","translation_key":"block.example.spiral"},"color":"blue"}]"#,
+        );
+    }
+
+    #[test]
+    fn canonicalizes_typed_nbt_and_bee_occupants() {
+        let compound = |entries: Vec<(&str, NbtSummaryValue)>| {
+            NbtSummaryValue::Compound(
+                entries
+                    .into_iter()
+                    .map(|(name, value)| NbtSummaryEntry {
+                        name: name.to_string(),
+                        value,
+                    })
+                    .collect(),
+            )
+        };
+        let custom_data = compound(vec![
+            ("owner", NbtSummaryValue::String("first".to_string())),
+            ("owner", NbtSummaryValue::String("Alex".to_string())),
+            (
+                "flags",
+                NbtSummaryValue::List(vec![NbtSummaryValue::Byte(1), NbtSummaryValue::Int(2)]),
+            ),
+        ]);
+        assert_exact(
+            DialogDataComponentValueState::CustomData {
+                data: custom_data.clone(),
+            },
+            r#"{"owner":"Alex","flags":[1,2]}"#,
+        );
+        assert_exact(
+            DialogDataComponentValueState::BucketEntityData { data: custom_data },
+            r#"{"owner":"Alex","flags":[1,2]}"#,
+        );
+
+        let entity_data = compound(vec![("Health", NbtSummaryValue::Float(12.0f32.to_bits()))]);
+        let entity_type = DialogRegistryHolderReferenceState {
+            holder_id: 0,
+            resource_id: "minecraft:zombie".to_string(),
+        };
+        assert_exact(
+            DialogDataComponentValueState::EntityData {
+                entity: super::super::typed_data::DialogTypedEntityDataState {
+                    entity_type: entity_type.clone(),
+                    data: entity_data.clone(),
+                },
+            },
+            r#"{"Health":12.0,"id":"minecraft:zombie"}"#,
+        );
+        assert_exact(
+            DialogDataComponentValueState::BlockEntityData {
+                block_entity: super::super::typed_data::DialogTypedBlockEntityDataState {
+                    block_entity_type: DialogRegistryHolderReferenceState {
+                        holder_id: 0,
+                        resource_id: "minecraft:mob_spawner".to_string(),
+                    },
+                    data: compound(vec![("Delay", NbtSummaryValue::Short(20))]),
+                },
+            },
+            r#"{"Delay":20,"id":"minecraft:mob_spawner"}"#,
+        );
+        assert_exact(
+            DialogDataComponentValueState::Bees {
+                occupants: vec![super::super::bees::DialogBeeOccupantState {
+                    entity_type,
+                    entity_data,
+                    ticks_in_hive: 42,
+                    min_ticks_in_hive: -5,
+                }],
+            },
+            r#"[{"entity_data":{"Health":12.0,"id":"minecraft:zombie"},"ticks_in_hive":42,"min_ticks_in_hive":-5}]"#,
+        );
+
+        let non_finite_patch = DialogDataComponentPatchState {
+            entries: vec![super::super::super::DialogDataComponentPatchEntryState {
+                type_id: 0,
+                resource_id: "minecraft:custom_data".to_string(),
+                removed: false,
+                value: None,
+                value_data: Some(DialogDataComponentValueState::CustomData {
+                    data: compound(vec![(
+                        "value",
+                        NbtSummaryValue::Double(f64::INFINITY.to_bits()),
+                    )]),
+                }),
+            }],
+        };
+        assert!(
+            canonical_data_component_patch_json_utf16_len(&non_finite_patch)
+                .unwrap_err()
+                .contains("non-finite")
         );
     }
 

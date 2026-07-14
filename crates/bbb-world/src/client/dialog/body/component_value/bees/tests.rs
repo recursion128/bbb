@@ -9,14 +9,18 @@ use crate::{RegistryContentState, RegistryPacketEntry, RegistrySet};
 #[test]
 fn decodes_bee_occupants_with_builtin_typed_entity_data() {
     let value = NbtSummaryValue::List(vec![compound(vec![
+        value_entry("entity_data", NbtSummaryValue::Int(0)),
         value_entry(
             "entity_data",
             compound(vec![
+                string_entry("id", "minecraft:missing"),
                 string_entry("id", "bee"),
                 value_entry("Health", NbtSummaryValue::Float(8.0f32.to_bits())),
             ]),
         ),
+        string_entry("ticks_in_hive", "invalid"),
         value_entry("ticks_in_hive", NbtSummaryValue::Short(42)),
+        string_entry("min_ticks_in_hive", "invalid"),
         value_entry("min_ticks_in_hive", NbtSummaryValue::Int(-5)),
     ])]);
     let decoded = super::super::decode_supported_component_value(

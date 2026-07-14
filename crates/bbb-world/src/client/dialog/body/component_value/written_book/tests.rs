@@ -247,6 +247,18 @@ fn accepts_written_book_title_page_and_collection_boundaries() {
         "written book",
     )
     .is_ok());
+
+    let typed_nbt_patch_prefix = concat!(
+        r#"{"text":"item","extra":[""],"hover_event":{"action":"show_item","id":"minecraft:stone","components":{"minecraft:custom_data":{"value":"typed"}}}}"#
+    )
+    .len();
+    let exact_typed_nbt_patch_page =
+        component_with_typed_nbt_item_patch("x".repeat(32_767 - typed_nbt_patch_prefix));
+    assert!(decode_written_book_content(
+        &book_with_pages(vec![exact_typed_nbt_patch_page]),
+        "written book",
+    )
+    .is_ok());
 }
 
 #[test]
@@ -562,6 +574,20 @@ fn rejects_malformed_written_book_fields_filterables_and_exact_canonical_page_li
                     .len(),
             ))]),
             "encodes to 32768 JSON UTF-16 units, maximum is 32767",
+        ),
+        (
+            book_with_pages(vec![component_with_typed_nbt_item_patch("x".repeat(
+                32_768
+                    - concat!(
+                        r#"{"text":"item","extra":[""],"hover_event":{"action":"show_item","id":"minecraft:stone","components":{"minecraft:custom_data":{"value":"typed"}}}}"#
+                    )
+                    .len(),
+            ))]),
+            "encodes to 32768 JSON UTF-16 units, maximum is 32767",
+        ),
+        (
+            book_with_pages(vec![component_with_non_finite_typed_nbt_item_patch()]),
+            "canonical JsonWriter rejects non-finite Float/Double values",
         ),
         (
             book_with_pages(vec![component_with_non_finite_item_patch()]),
@@ -966,6 +992,53 @@ fn component_with_banner_patterns_item_patch(extra: String) -> NbtSummaryValue {
                             ),
                             string_entry("color", "blue"),
                         ])]),
+                    )]),
+                ),
+            ]),
+        ),
+    ])
+}
+
+fn component_with_typed_nbt_item_patch(extra: String) -> NbtSummaryValue {
+    compound(vec![
+        string_entry("text", "item"),
+        value_entry(
+            "extra",
+            NbtSummaryValue::List(vec![NbtSummaryValue::String(extra)]),
+        ),
+        value_entry(
+            "hover_event",
+            compound(vec![
+                string_entry("action", "show_item"),
+                string_entry("id", "stone"),
+                value_entry(
+                    "components",
+                    compound(vec![value_entry(
+                        "custom_data",
+                        compound(vec![string_entry("value", "typed")]),
+                    )]),
+                ),
+            ]),
+        ),
+    ])
+}
+
+fn component_with_non_finite_typed_nbt_item_patch() -> NbtSummaryValue {
+    compound(vec![
+        string_entry("text", "item"),
+        value_entry(
+            "hover_event",
+            compound(vec![
+                string_entry("action", "show_item"),
+                string_entry("id", "stone"),
+                value_entry(
+                    "components",
+                    compound(vec![value_entry(
+                        "custom_data",
+                        compound(vec![value_entry(
+                            "value",
+                            NbtSummaryValue::Double(f64::NAN.to_bits()),
+                        )]),
                     )]),
                 ),
             ]),

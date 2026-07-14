@@ -107,6 +107,7 @@ fn required_field<'a>(
 ) -> Result<&'a NbtSummaryValue, String> {
     entries
         .iter()
+        .rev()
         .find(|entry| entry.name == field)
         .map(|entry| &entry.value)
         .ok_or_else(|| format!("{what} is missing field {field}"))

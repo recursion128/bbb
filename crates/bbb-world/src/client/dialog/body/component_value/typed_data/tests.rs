@@ -15,6 +15,7 @@ use crate::{RegistryContentState, RegistryPacketEntry, RegistrySet};
 #[test]
 fn decodes_builtin_typed_entity_data_and_strips_id() {
     let value = compound(vec![
+        string_entry("id", "minecraft:missing"),
         string_entry("id", "zombie"),
         value_entry("Health", NbtSummaryValue::Float(12.0f32.to_bits())),
     ]);
@@ -62,6 +63,7 @@ fn decodes_builtin_typed_entity_data_and_strips_id() {
 #[test]
 fn decodes_builtin_typed_block_entity_data_and_strips_id() {
     let value = compound(vec![
+        string_entry("id", "minecraft:missing"),
         string_entry("id", "minecraft:mob_spawner"),
         value_entry("SpawnCount", NbtSummaryValue::Short(4)),
         value_entry(
