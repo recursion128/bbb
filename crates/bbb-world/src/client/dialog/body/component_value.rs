@@ -6,8 +6,9 @@ use bbb_protocol::item_component_value_types::{
 use bbb_protocol::packets::{
     chunks::BlockPos,
     inventory::{
-        DataComponentPatchSummary, FireworkExplosionSummary, LodestoneTargetSummary,
-        ResolvableProfileSummary,
+        BannerPatternLayerSummary, DataComponentPatchSummary, FireworkExplosionSummary,
+        LodestoneTargetSummary, ResolvableProfileSummary, SuspiciousStewEffectSummary,
+        TrimMaterialSummary, TrimPatternSummary,
     },
 };
 use bbb_protocol::{
@@ -16,18 +17,26 @@ use bbb_protocol::{
     },
     data_component_types::{
         vanilla_data_component_type_for_resource_id, VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID,
-        VANILLA_DATA_COMPONENT_ATTRIBUTE_MODIFIERS_TYPE_ID, VANILLA_DATA_COMPONENT_BEES_TYPE_ID,
+        VANILLA_DATA_COMPONENT_ATTRIBUTE_MODIFIERS_TYPE_ID,
+        VANILLA_DATA_COMPONENT_BANNER_PATTERNS_TYPE_ID, VANILLA_DATA_COMPONENT_BEES_TYPE_ID,
         VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID,
         VANILLA_DATA_COMPONENT_BLOCK_ENTITY_DATA_TYPE_ID,
         VANILLA_DATA_COMPONENT_BLOCK_STATE_TYPE_ID, VANILLA_DATA_COMPONENT_BREAK_SOUND_TYPE_ID,
         VANILLA_DATA_COMPONENT_BUCKET_ENTITY_DATA_TYPE_ID,
         VANILLA_DATA_COMPONENT_BUNDLE_CONTENTS_TYPE_ID, VANILLA_DATA_COMPONENT_CAN_BREAK_TYPE_ID,
         VANILLA_DATA_COMPONENT_CAN_PLACE_ON_TYPE_ID,
+        VANILLA_DATA_COMPONENT_CAT_SOUND_VARIANT_TYPE_ID,
+        VANILLA_DATA_COMPONENT_CAT_VARIANT_TYPE_ID,
         VANILLA_DATA_COMPONENT_CHARGED_PROJECTILES_TYPE_ID,
-        VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID, VANILLA_DATA_COMPONENT_CONTAINER_LOOT_TYPE_ID,
-        VANILLA_DATA_COMPONENT_CONTAINER_TYPE_ID, VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID,
+        VANILLA_DATA_COMPONENT_CHICKEN_SOUND_VARIANT_TYPE_ID,
+        VANILLA_DATA_COMPONENT_CHICKEN_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_CONTAINER_LOOT_TYPE_ID, VANILLA_DATA_COMPONENT_CONTAINER_TYPE_ID,
+        VANILLA_DATA_COMPONENT_COW_SOUND_VARIANT_TYPE_ID,
+        VANILLA_DATA_COMPONENT_COW_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID,
         VANILLA_DATA_COMPONENT_CUSTOM_MODEL_DATA_TYPE_ID,
-        VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID, VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID,
+        VANILLA_DATA_COMPONENT_DAMAGE_RESISTANT_TYPE_ID, VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID,
         VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID,
         VANILLA_DATA_COMPONENT_DEBUG_STICK_STATE_TYPE_ID,
         VANILLA_DATA_COMPONENT_DYED_COLOR_TYPE_ID, VANILLA_DATA_COMPONENT_ENCHANTABLE_TYPE_ID,
@@ -36,9 +45,11 @@ use bbb_protocol::{
         VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID,
         VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID,
         VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID, VANILLA_DATA_COMPONENT_FOOD_TYPE_ID,
-        VANILLA_DATA_COMPONENT_GLIDER_TYPE_ID, VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID,
+        VANILLA_DATA_COMPONENT_FROG_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_GLIDER_TYPE_ID,
+        VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID,
         VANILLA_DATA_COMPONENT_INTANGIBLE_PROJECTILE_TYPE_ID,
         VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID, VANILLA_DATA_COMPONENT_ITEM_NAME_TYPE_ID,
+        VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID,
         VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID, VANILLA_DATA_COMPONENT_LOCK_TYPE_ID,
         VANILLA_DATA_COMPONENT_LODESTONE_TRACKER_TYPE_ID, VANILLA_DATA_COMPONENT_LORE_TYPE_ID,
         VANILLA_DATA_COMPONENT_MAP_COLOR_TYPE_ID, VANILLA_DATA_COMPONENT_MAP_DECORATIONS_TYPE_ID,
@@ -47,23 +58,30 @@ use bbb_protocol::{
         VANILLA_DATA_COMPONENT_MINIMUM_ATTACK_CHARGE_TYPE_ID,
         VANILLA_DATA_COMPONENT_NOTE_BLOCK_SOUND_TYPE_ID,
         VANILLA_DATA_COMPONENT_OMINOUS_BOTTLE_AMPLIFIER_TYPE_ID,
+        VANILLA_DATA_COMPONENT_PAINTING_VARIANT_TYPE_ID,
         VANILLA_DATA_COMPONENT_PIERCING_WEAPON_TYPE_ID,
-        VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID,
+        VANILLA_DATA_COMPONENT_PIG_SOUND_VARIANT_TYPE_ID,
+        VANILLA_DATA_COMPONENT_PIG_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID,
         VANILLA_DATA_COMPONENT_POTION_DURATION_SCALE_TYPE_ID,
         VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID,
         VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID,
         VANILLA_DATA_COMPONENT_RARITY_TYPE_ID, VANILLA_DATA_COMPONENT_RECIPES_TYPE_ID,
-        VANILLA_DATA_COMPONENT_REPAIR_COST_TYPE_ID,
+        VANILLA_DATA_COMPONENT_REPAIRABLE_TYPE_ID, VANILLA_DATA_COMPONENT_REPAIR_COST_TYPE_ID,
         VANILLA_DATA_COMPONENT_STORED_ENCHANTMENTS_TYPE_ID,
+        VANILLA_DATA_COMPONENT_SUSPICIOUS_STEW_EFFECTS_TYPE_ID,
         VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID,
         VANILLA_DATA_COMPONENT_TOOLTIP_DISPLAY_TYPE_ID,
         VANILLA_DATA_COMPONENT_TOOLTIP_STYLE_TYPE_ID, VANILLA_DATA_COMPONENT_TOOL_TYPE_ID,
         VANILLA_DATA_COMPONENT_TRIM_TYPE_ID, VANILLA_DATA_COMPONENT_TROPICAL_FISH_PATTERN_TYPE_ID,
         VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID, VANILLA_DATA_COMPONENT_USE_COOLDOWN_TYPE_ID,
         VANILLA_DATA_COMPONENT_USE_EFFECTS_TYPE_ID, VANILLA_DATA_COMPONENT_USE_REMAINDER_TYPE_ID,
-        VANILLA_DATA_COMPONENT_WEAPON_TYPE_ID,
+        VANILLA_DATA_COMPONENT_VILLAGER_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_WEAPON_TYPE_ID,
+        VANILLA_DATA_COMPONENT_WOLF_SOUND_VARIANT_TYPE_ID,
+        VANILLA_DATA_COMPONENT_WOLF_VARIANT_TYPE_ID,
         VANILLA_DATA_COMPONENT_WRITABLE_BOOK_CONTENT_TYPE_ID,
         VANILLA_DATA_COMPONENT_WRITTEN_BOOK_CONTENT_TYPE_ID,
+        VANILLA_DATA_COMPONENT_ZOMBIE_NAUTILUS_VARIANT_TYPE_ID,
     },
     tropical_fish_patterns::vanilla_tropical_fish_pattern_for_name,
     NbtSummaryEntry, NbtSummaryValue,
@@ -109,13 +127,13 @@ use consume_effect::{
 use debug_stick::{decode_debug_stick_state, DialogDebugStickPropertyState};
 use enchantments::{decode_enchantments, DialogEnchantmentEntryState};
 use equippable::{decode_equippable, DialogEquippableState};
-use holder_set::{
-    decode_holder_backed_component_value, DialogBannerPatternLayerState, DialogPotDecorationsState,
-    DialogRegistryHolderReferenceState, DialogRegistryHolderSetState,
-    DialogSuspiciousStewEffectState,
-};
 #[cfg(test)]
-use holder_set::{DialogBannerPatternHolderState, DialogDirectBannerPatternState};
+use holder_set::DialogDirectBannerPatternState;
+use holder_set::{
+    decode_holder_backed_component_value, DialogBannerPatternHolderState,
+    DialogBannerPatternLayerState, DialogPotDecorationsState, DialogRegistryHolderReferenceState,
+    DialogRegistryHolderSetState, DialogSuspiciousStewEffectState,
+};
 use instrument::{decode_instrument_holder, DialogInstrumentHolderState};
 use item_stack_collections::{
     decode_item_stack_template_list_with_context, decode_item_stack_template_slots_with_context,
@@ -408,7 +426,7 @@ impl DialogDataComponentValueState {
     }
 }
 
-pub(super) fn apply_registry_independent_item_patch_value(
+pub(super) fn apply_item_patch_value(
     type_id: i32,
     value: &DialogDataComponentValueState,
     patch: &mut DataComponentPatchSummary,
@@ -530,8 +548,238 @@ pub(super) fn apply_registry_independent_item_patch_value(
         {
             patch.builtin_enum_component_ids.insert(type_id, *value_id);
         }
+        (VANILLA_DATA_COMPONENT_REPAIRABLE_TYPE_ID, Value::Repairable { items }) => {
+            if !apply_holder_set(
+                items,
+                &mut patch.repairable_item_registry_ids,
+                &mut patch.repairable_item_tag,
+            ) {
+                return false;
+            }
+        }
+        (
+            VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID,
+            Value::ProvidesBannerPatterns { patterns },
+        ) => {
+            if !apply_holder_set(
+                patterns,
+                &mut patch.provides_banner_pattern_registry_ids,
+                &mut patch.provides_banner_pattern_tag,
+            ) {
+                return false;
+            }
+        }
+        (VANILLA_DATA_COMPONENT_BANNER_PATTERNS_TYPE_ID, Value::BannerPatterns { layers }) => {
+            patch.banner_pattern_layers = layers.iter().map(banner_pattern_summary).collect();
+        }
+        (VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID, Value::JukeboxPlayable { song }) => {
+            patch.jukebox_song_id = Some(song.holder_id);
+        }
+        (VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID, Value::Instrument { instrument }) => {
+            match instrument {
+                DialogInstrumentHolderState::Named { registry_id, .. } => {
+                    patch.instrument_id = Some(*registry_id);
+                }
+                DialogInstrumentHolderState::Direct { instrument } => {
+                    patch.instrument_description = Some(instrument.description.text.clone());
+                    patch.instrument_description_styled = Some(instrument.description.runs.clone());
+                }
+            }
+        }
+        (
+            VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID,
+            Value::ProvidesTrimMaterial { material },
+        ) => apply_trim_material_holder(
+            material,
+            &mut patch.provides_trim_material_id,
+            &mut patch.provides_trim_material_direct,
+        ),
+        (VANILLA_DATA_COMPONENT_TRIM_TYPE_ID, Value::Trim { material, pattern }) => {
+            apply_trim_material_holder(
+                material,
+                &mut patch.armor_trim_material_id,
+                &mut patch.armor_trim_material_direct,
+            );
+            apply_trim_pattern_holder(
+                pattern,
+                &mut patch.armor_trim_pattern_id,
+                &mut patch.armor_trim_pattern_direct,
+            );
+        }
+        (VANILLA_DATA_COMPONENT_PAINTING_VARIANT_TYPE_ID, Value::PaintingVariant { variant }) => {
+            patch.painting_variant_id = Some(variant.holder_id);
+        }
+        (VANILLA_DATA_COMPONENT_DAMAGE_RESISTANT_TYPE_ID, Value::DamageResistant { types }) => {
+            if !apply_holder_set(
+                types,
+                &mut patch.damage_resistant_type_registry_ids,
+                &mut patch.damage_resistant_type_tag,
+            ) {
+                return false;
+            }
+        }
+        (VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID, Value::DamageType { damage_type }) => {
+            patch.damage_type_id = Some(damage_type.holder_id);
+        }
+        (
+            VANILLA_DATA_COMPONENT_SUSPICIOUS_STEW_EFFECTS_TYPE_ID,
+            Value::SuspiciousStewEffects { effects },
+        ) => {
+            patch.suspicious_stew_effects = effects
+                .iter()
+                .map(|effect| SuspiciousStewEffectSummary {
+                    effect_id: effect.effect.holder_id,
+                    duration: effect.duration,
+                })
+                .collect();
+        }
+        (_, Value::RegistryVariant { registry, holder }) => {
+            if !apply_registry_variant(type_id, registry, holder, patch) {
+                return false;
+            }
+        }
         _ => return false,
     }
+    true
+}
+
+fn apply_holder_set(
+    value: &DialogRegistryHolderSetState,
+    registry_ids: &mut Vec<i32>,
+    tag: &mut Option<String>,
+) -> bool {
+    match (value.holder_set_kind.as_str(), &value.tag) {
+        ("named", Some(named_tag)) => {
+            registry_ids.clear();
+            *tag = Some(named_tag.clone());
+        }
+        ("direct", None) => {
+            *registry_ids = value.entries.iter().map(|entry| entry.holder_id).collect();
+            *tag = None;
+        }
+        _ => return false,
+    }
+    true
+}
+
+fn banner_pattern_summary(value: &DialogBannerPatternLayerState) -> BannerPatternLayerSummary {
+    let (registry_id, asset_id, translation_key) = match &value.pattern {
+        DialogBannerPatternHolderState::Named { registry_id, .. } => {
+            (Some(*registry_id), None, None)
+        }
+        DialogBannerPatternHolderState::Direct { pattern } => (
+            None,
+            Some(pattern.asset_id.clone()),
+            Some(pattern.translation_key.clone()),
+        ),
+    };
+    BannerPatternLayerSummary {
+        registry_id,
+        asset_id,
+        translation_key,
+        color_id: value.color_id,
+    }
+}
+
+fn apply_trim_material_holder(
+    value: &DialogTrimMaterialHolderState,
+    registry_id: &mut Option<i32>,
+    direct: &mut Option<Box<TrimMaterialSummary>>,
+) {
+    match value {
+        DialogTrimMaterialHolderState::Named {
+            registry_id: value, ..
+        } => {
+            *registry_id = Some(*value);
+            *direct = None;
+        }
+        DialogTrimMaterialHolderState::Direct { material } => {
+            *registry_id = None;
+            *direct = Some(Box::new(TrimMaterialSummary {
+                asset_name: material.asset_name.clone(),
+                override_armor_assets: material.override_armor_assets.clone(),
+                description: material.description.text.clone(),
+                description_styled: Some(material.description.runs.clone().into_boxed_slice()),
+            }));
+        }
+    }
+}
+
+fn apply_trim_pattern_holder(
+    value: &DialogTrimPatternHolderState,
+    registry_id: &mut Option<i32>,
+    direct: &mut Option<Box<TrimPatternSummary>>,
+) {
+    match value {
+        DialogTrimPatternHolderState::Named {
+            registry_id: value, ..
+        } => {
+            *registry_id = Some(*value);
+            *direct = None;
+        }
+        DialogTrimPatternHolderState::Direct { pattern } => {
+            *registry_id = None;
+            *direct = Some(Box::new(TrimPatternSummary {
+                asset_id: pattern.asset_id.clone(),
+                description: pattern.description.text.clone(),
+                description_styled: Some(pattern.description.runs.clone().into_boxed_slice()),
+                decal: pattern.decal,
+            }));
+        }
+    }
+}
+
+fn apply_registry_variant(
+    type_id: i32,
+    registry: &str,
+    holder: &DialogRegistryHolderReferenceState,
+    patch: &mut DataComponentPatchSummary,
+) -> bool {
+    let target = match (type_id, registry) {
+        (VANILLA_DATA_COMPONENT_VILLAGER_VARIANT_TYPE_ID, "minecraft:villager_type") => {
+            &mut patch.villager_variant_id
+        }
+        (VANILLA_DATA_COMPONENT_WOLF_VARIANT_TYPE_ID, "minecraft:wolf_variant") => {
+            &mut patch.wolf_variant_id
+        }
+        (VANILLA_DATA_COMPONENT_WOLF_SOUND_VARIANT_TYPE_ID, "minecraft:wolf_sound_variant") => {
+            &mut patch.wolf_sound_variant_id
+        }
+        (VANILLA_DATA_COMPONENT_PIG_VARIANT_TYPE_ID, "minecraft:pig_variant") => {
+            &mut patch.pig_variant_id
+        }
+        (VANILLA_DATA_COMPONENT_PIG_SOUND_VARIANT_TYPE_ID, "minecraft:pig_sound_variant") => {
+            &mut patch.pig_sound_variant_id
+        }
+        (VANILLA_DATA_COMPONENT_COW_VARIANT_TYPE_ID, "minecraft:cow_variant") => {
+            &mut patch.cow_variant_id
+        }
+        (VANILLA_DATA_COMPONENT_COW_SOUND_VARIANT_TYPE_ID, "minecraft:cow_sound_variant") => {
+            &mut patch.cow_sound_variant_id
+        }
+        (VANILLA_DATA_COMPONENT_CHICKEN_VARIANT_TYPE_ID, "minecraft:chicken_variant") => {
+            &mut patch.chicken_variant_id
+        }
+        (
+            VANILLA_DATA_COMPONENT_CHICKEN_SOUND_VARIANT_TYPE_ID,
+            "minecraft:chicken_sound_variant",
+        ) => &mut patch.chicken_sound_variant_id,
+        (
+            VANILLA_DATA_COMPONENT_ZOMBIE_NAUTILUS_VARIANT_TYPE_ID,
+            "minecraft:zombie_nautilus_variant",
+        ) => &mut patch.zombie_nautilus_variant_id,
+        (VANILLA_DATA_COMPONENT_FROG_VARIANT_TYPE_ID, "minecraft:frog_variant") => {
+            &mut patch.frog_variant_id
+        }
+        (VANILLA_DATA_COMPONENT_CAT_VARIANT_TYPE_ID, "minecraft:cat_variant") => {
+            &mut patch.cat_variant_id
+        }
+        (VANILLA_DATA_COMPONENT_CAT_SOUND_VARIANT_TYPE_ID, "minecraft:cat_sound_variant") => {
+            &mut patch.cat_sound_variant_id
+        }
+        _ => return false,
+    };
+    *target = Some(holder.holder_id);
     true
 }
 

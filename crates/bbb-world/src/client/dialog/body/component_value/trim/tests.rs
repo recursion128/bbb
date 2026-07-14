@@ -2,12 +2,15 @@ use bbb_protocol::{
     data_component_types::{
         VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID, VANILLA_DATA_COMPONENT_TRIM_TYPE_ID,
     },
+    packets::DataComponentPatchSummary,
     NbtSummaryEntry, NbtSummaryValue,
 };
 
 use crate::{RegistryContentState, RegistryPacketEntry};
 
-use super::super::{decode_supported_component_value, DialogDataComponentValueState};
+use super::super::{
+    apply_item_patch_value, decode_supported_component_value, DialogDataComponentValueState,
+};
 use super::*;
 
 #[test]
@@ -32,6 +35,21 @@ fn decodes_direct_provides_trim_material_with_assets_and_component() {
         None,
     )
     .unwrap();
+    let mut patch = DataComponentPatchSummary::default();
+    assert!(apply_item_patch_value(
+        VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID,
+        decoded.as_ref().unwrap(),
+        &mut patch,
+    ));
+    let projected = patch.provides_trim_material_direct.as_ref().unwrap();
+    assert_eq!(projected.asset_name, "quartz");
+    assert_eq!(projected.description, "Quartz");
+    assert_eq!(
+        projected.description_styled.as_ref().unwrap()[0]
+            .style
+            .italic,
+        Some(true)
+    );
     let Some(DialogDataComponentValueState::ProvidesTrimMaterial {
         material: DialogTrimMaterialHolderState::Direct { material },
     }) = decoded
@@ -75,6 +93,24 @@ fn decodes_context_free_direct_armor_trim_and_pattern_defaults() {
         None,
     )
     .unwrap();
+    let mut patch = DataComponentPatchSummary::default();
+    assert!(apply_item_patch_value(
+        VANILLA_DATA_COMPONENT_TRIM_TYPE_ID,
+        decoded.as_ref().unwrap(),
+        &mut patch,
+    ));
+    assert_eq!(
+        patch
+            .armor_trim_material_direct
+            .as_ref()
+            .unwrap()
+            .description,
+        "Resin"
+    );
+    assert_eq!(
+        patch.armor_trim_pattern_direct.as_ref().unwrap().asset_id,
+        "minecraft:sentry"
+    );
     let Some(DialogDataComponentValueState::Trim { material, pattern }) = decoded else {
         panic!("expected armor trim")
     };

@@ -14516,3 +14516,15 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   值；任何 added entry 缺 typed value 或仍属 registry-backed/递归/复杂类型时整栈返回 `None`，不产生
   部分 patch 或猜测性视觉。world focused test 覆盖 added/removed、glint、专属 fish-pattern 字段与复杂
   Food 拒绝；native focused test 证明 custom-name patch 驱动真实 item tooltip 且 count=1 不显示装饰文字。
+
+## 2026-07-14：Bridge typed holder-backed dialog Item patches
+
+- [x] 复用 dialog component codec 已解析的 holder id/tag/direct payload，把 repairable、damage-resistant、
+  provides/banner patterns、jukebox、instrument、trim/provides-trim、damage type、painting、suspicious-stew
+  effects 及 13 类 entity variant 投影到既有 `DataComponentPatchSummary`；named holder-set 保持 wire 的
+  tag 形态，direct set 保持有序 ids，direct banner/instrument/trim 保留文本 styled runs 与 inline 字段。
+- [x] holder 类型与 registry/type-id 必须一致，畸形 persisted typed state 仍整栈拒绝；world focused
+  regressions 覆盖 named/direct set、named/direct banner、direct instrument/trim、variant mismatch 与 holder
+  effects，native dialog regression 同时携带 custom-name 和 suspicious-stew holder patch 并进入唯一 item
+  runtime。`pot_decorations` typed state 尚不能区分 trailing brick 与缺省槽位，direct jukebox/painting 也
+  尚无 typed direct payload，均继续保守留在明确缺口而不反解析 raw NBT。

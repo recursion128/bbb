@@ -14204,7 +14204,7 @@ fn hud_inventory_screen_projects_notice_dialog_text_body_and_hovered_action() {
 }
 
 #[test]
-fn hud_inventory_screen_projects_dialog_item_body_and_registry_independent_patch() {
+fn hud_inventory_screen_projects_dialog_item_body_text_and_holder_patches() {
     let entry = |name: &str, value| NbtSummaryEntry {
         name: name.to_string(),
         value,
@@ -14306,10 +14306,26 @@ fn hud_inventory_screen_projects_dialog_item_body_and_registry_independent_patch
                                 entry("id", NbtSummaryValue::String("minecraft:stick".to_string())),
                                 entry(
                                     "components",
-                                    NbtSummaryValue::Compound(vec![entry(
-                                        "minecraft:custom_name",
-                                        NbtSummaryValue::String("Named".to_string()),
-                                    )]),
+                                    NbtSummaryValue::Compound(vec![
+                                        entry(
+                                            "minecraft:custom_name",
+                                            NbtSummaryValue::String("Named".to_string()),
+                                        ),
+                                        entry(
+                                            "minecraft:suspicious_stew_effects",
+                                            NbtSummaryValue::List(vec![NbtSummaryValue::Compound(
+                                                vec![
+                                                    entry(
+                                                        "id",
+                                                        NbtSummaryValue::String(
+                                                            "minecraft:speed".to_string(),
+                                                        ),
+                                                    ),
+                                                    entry("duration", NbtSummaryValue::Int(160)),
+                                                ],
+                                            )]),
+                                        ),
+                                    ]),
                                 ),
                             ]),
                         ),

@@ -20,7 +20,7 @@ mod component_value;
 
 pub use component_value::DialogDataComponentValueState;
 use component_value::{
-    apply_registry_independent_item_patch_value, decode_supported_component_value_with_context,
+    apply_item_patch_value, decode_supported_component_value_with_context,
     validate_component_player_profile as validate_player_profile,
 };
 pub(super) use component_value::{
@@ -94,7 +94,7 @@ impl DialogItemStackTemplateState {
                     component_patch.removed_type_ids.push(entry.type_id);
                     continue;
                 }
-                apply_registry_independent_item_patch_value(
+                apply_item_patch_value(
                     entry.type_id,
                     entry.value_data.as_ref()?,
                     &mut component_patch,

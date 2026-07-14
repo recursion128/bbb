@@ -5,14 +5,16 @@ use bbb_protocol::data_component_types::{
     VANILLA_DATA_COMPONENT_CHICKEN_VARIANT_TYPE_ID,
     VANILLA_DATA_COMPONENT_COW_SOUND_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_COW_VARIANT_TYPE_ID,
     VANILLA_DATA_COMPONENT_CREATIVE_SLOT_LOCK_TYPE_ID,
-    VANILLA_DATA_COMPONENT_DAMAGE_RESISTANT_TYPE_ID, VANILLA_DATA_COMPONENT_DYE_TYPE_ID,
-    VANILLA_DATA_COMPONENT_FOX_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_FROG_VARIANT_TYPE_ID,
-    VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID, VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_DAMAGE_RESISTANT_TYPE_ID, VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_DYE_TYPE_ID, VANILLA_DATA_COMPONENT_FOX_VARIANT_TYPE_ID,
+    VANILLA_DATA_COMPONENT_FROG_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID,
+    VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID,
     VANILLA_DATA_COMPONENT_PAINTING_VARIANT_TYPE_ID,
     VANILLA_DATA_COMPONENT_PIG_SOUND_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_PIG_VARIANT_TYPE_ID,
     VANILLA_DATA_COMPONENT_POT_DECORATIONS_TYPE_ID,
     VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID,
     VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID,
+    VANILLA_DATA_COMPONENT_REPAIRABLE_TYPE_ID,
     VANILLA_DATA_COMPONENT_SUSPICIOUS_STEW_EFFECTS_TYPE_ID, VANILLA_DATA_COMPONENT_TRIM_TYPE_ID,
     VANILLA_DATA_COMPONENT_WOLF_SOUND_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_WOLF_VARIANT_TYPE_ID,
     VANILLA_DATA_COMPONENT_ZOMBIE_NAUTILUS_VARIANT_TYPE_ID,
@@ -2209,6 +2211,163 @@ fn decodes_pot_decorations_with_builtin_item_holders_and_empty_sides() {
         .unwrap_err();
         assert!(error.contains(expected), "unexpected error: {error}");
     }
+}
+
+#[test]
+fn projects_holder_backed_component_values_into_protocol_summary() {
+    let holder = |holder_id, resource_id: &str| DialogRegistryHolderReferenceState {
+        holder_id,
+        resource_id: resource_id.to_string(),
+    };
+    let direct_set = DialogRegistryHolderSetState {
+        holder_set_kind: "direct".to_string(),
+        tag: None,
+        entries: vec![holder(3, "example:first"), holder(5, "example:second")],
+    };
+    let named_set = DialogRegistryHolderSetState {
+        holder_set_kind: "named".to_string(),
+        tag: Some("example:tag".to_string()),
+        entries: vec![holder(7, "example:resolved")],
+    };
+    let mut patch = DataComponentPatchSummary::default();
+
+    assert!(apply_item_patch_value(
+        VANILLA_DATA_COMPONENT_REPAIRABLE_TYPE_ID,
+        &DialogDataComponentValueState::Repairable {
+            items: direct_set.clone(),
+        },
+        &mut patch,
+    ));
+    assert!(apply_item_patch_value(
+        VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID,
+        &DialogDataComponentValueState::ProvidesBannerPatterns {
+            patterns: named_set.clone(),
+        },
+        &mut patch,
+    ));
+    assert!(apply_item_patch_value(
+        VANILLA_DATA_COMPONENT_BANNER_PATTERNS_TYPE_ID,
+        &DialogDataComponentValueState::BannerPatterns {
+            layers: vec![
+                DialogBannerPatternLayerState {
+                    pattern: DialogBannerPatternHolderState::Named {
+                        registry_id: 2,
+                        resource_id: "example:named".to_string(),
+                    },
+                    color_id: 4,
+                    color: "yellow".to_string(),
+                },
+                DialogBannerPatternLayerState {
+                    pattern: DialogBannerPatternHolderState::Direct {
+                        pattern: DialogDirectBannerPatternState {
+                            asset_id: "example:direct".to_string(),
+                            translation_key: "block.example.banner.direct".to_string(),
+                        },
+                    },
+                    color_id: 11,
+                    color: "blue".to_string(),
+                },
+            ],
+        },
+        &mut patch,
+    ));
+    assert!(apply_item_patch_value(
+        VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID,
+        &DialogDataComponentValueState::JukeboxPlayable {
+            song: holder(6, "example:song"),
+        },
+        &mut patch,
+    ));
+    assert!(apply_item_patch_value(
+        VANILLA_DATA_COMPONENT_DAMAGE_RESISTANT_TYPE_ID,
+        &DialogDataComponentValueState::DamageResistant { types: named_set },
+        &mut patch,
+    ));
+    assert!(apply_item_patch_value(
+        VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID,
+        &DialogDataComponentValueState::DamageType {
+            damage_type: holder(8, "example:damage"),
+        },
+        &mut patch,
+    ));
+    assert!(apply_item_patch_value(
+        VANILLA_DATA_COMPONENT_SUSPICIOUS_STEW_EFFECTS_TYPE_ID,
+        &DialogDataComponentValueState::SuspiciousStewEffects {
+            effects: vec![DialogSuspiciousStewEffectState {
+                effect: holder(1, "minecraft:speed"),
+                duration: 160,
+            }],
+        },
+        &mut patch,
+    ));
+    assert!(apply_item_patch_value(
+        VANILLA_DATA_COMPONENT_WOLF_VARIANT_TYPE_ID,
+        &DialogDataComponentValueState::RegistryVariant {
+            registry: "minecraft:wolf_variant".to_string(),
+            holder: holder(9, "example:wolf"),
+        },
+        &mut patch,
+    ));
+    assert!(apply_item_patch_value(
+        VANILLA_DATA_COMPONENT_PAINTING_VARIANT_TYPE_ID,
+        &DialogDataComponentValueState::PaintingVariant {
+            variant: holder(10, "example:painting"),
+        },
+        &mut patch,
+    ));
+
+    assert_eq!(patch.repairable_item_registry_ids, vec![3, 5]);
+    assert_eq!(
+        patch.provides_banner_pattern_registry_ids,
+        Vec::<i32>::new()
+    );
+    assert_eq!(
+        patch.provides_banner_pattern_tag.as_deref(),
+        Some("example:tag")
+    );
+    assert_eq!(patch.banner_pattern_layers.len(), 2);
+    assert_eq!(patch.banner_pattern_layers[0].registry_id, Some(2));
+    assert_eq!(
+        patch.banner_pattern_layers[1].asset_id.as_deref(),
+        Some("example:direct")
+    );
+    assert_eq!(patch.jukebox_song_id, Some(6));
+    assert_eq!(patch.damage_resistant_type_registry_ids, Vec::<i32>::new());
+    assert_eq!(
+        patch.damage_resistant_type_tag.as_deref(),
+        Some("example:tag")
+    );
+    assert_eq!(patch.damage_type_id, Some(8));
+    assert_eq!(
+        patch.suspicious_stew_effects,
+        vec![SuspiciousStewEffectSummary {
+            effect_id: 1,
+            duration: 160,
+        }]
+    );
+    assert_eq!(patch.wolf_variant_id, Some(9));
+    assert_eq!(patch.painting_variant_id, Some(10));
+
+    let mismatched_variant = DialogDataComponentValueState::RegistryVariant {
+        registry: "minecraft:cat_variant".to_string(),
+        holder: holder(1, "example:cat"),
+    };
+    assert!(!apply_item_patch_value(
+        VANILLA_DATA_COMPONENT_WOLF_VARIANT_TYPE_ID,
+        &mismatched_variant,
+        &mut patch,
+    ));
+    assert!(!apply_item_patch_value(
+        VANILLA_DATA_COMPONENT_REPAIRABLE_TYPE_ID,
+        &DialogDataComponentValueState::Repairable {
+            items: DialogRegistryHolderSetState {
+                holder_set_kind: "named".to_string(),
+                tag: None,
+                entries: Vec::new(),
+            },
+        },
+        &mut patch,
+    ));
 }
 
 fn decoded(

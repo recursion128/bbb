@@ -1,11 +1,14 @@
 use bbb_protocol::{
     data_component_types::VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID,
-    sound_event_types::vanilla_sound_event_registry_id, NbtSummaryEntry, NbtSummaryValue,
+    packets::DataComponentPatchSummary, sound_event_types::vanilla_sound_event_registry_id,
+    NbtSummaryEntry, NbtSummaryValue,
 };
 
 use crate::{RegistryContentState, RegistryPacketEntry};
 
-use super::super::{decode_supported_component_value, DialogDataComponentValueState};
+use super::super::{
+    apply_item_patch_value, decode_supported_component_value, DialogDataComponentValueState,
+};
 use super::*;
 
 #[test]
@@ -48,6 +51,20 @@ fn decodes_direct_instrument_with_named_sound_and_component() {
         None,
     )
     .unwrap();
+    let mut patch = DataComponentPatchSummary::default();
+    assert!(apply_item_patch_value(
+        VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID,
+        decoded.as_ref().unwrap(),
+        &mut patch,
+    ));
+    assert_eq!(patch.instrument_id, None);
+    assert_eq!(patch.instrument_description.as_deref(), Some("Ponder"));
+    assert_eq!(
+        patch.instrument_description_styled.as_ref().unwrap()[0]
+            .style
+            .italic,
+        Some(true)
+    );
     let Some(DialogDataComponentValueState::Instrument {
         instrument: DialogInstrumentHolderState::Direct { instrument },
     }) = decoded

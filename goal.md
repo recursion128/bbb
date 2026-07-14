@@ -323,13 +323,13 @@ custom action 已发送完整 id/payload，并按 `after_action` 进入 close/no
 按 vanilla 1 秒显示、5 秒启用 Back，且保持 previous-screen、ShowDialog replacement 与
 ClearDialog ignore 语义。Dialog 与 waiting screen 已按 `Screen.extractMenuBackgroundTexture` 以逻辑
 32x32 尺寸重复采样 `inworld_menu_background.png` 并覆盖完整 surface，超过 512px 的 centered dialog
-限宽也不会留下未覆盖边缘。无 patch 及 registry-independent 文本/标量 component patch 的 Item body
-已复用 native item icon、3D block model、decorations 与 tooltip owner；有 description 时按 2px
-horizontal spacing/vertical-middle 排列，PlainMessage/description 也已计入 `FocusableTextWidget` 的
-4px padding 与 inner wrap width。typed dialog state 现以 all-or-nothing bridge 生成既有
-`DataComponentPatchSummary`，未桥接的 registry/递归/复杂值不会被猜测性投影。
+限宽也不会留下未覆盖边缘。无 patch、registry-independent 文本/标量 patch 以及 typed
+registry-holder patch 的 Item body 已复用 native item icon、3D block model、decorations 与 tooltip
+owner；有 description 时按 2px horizontal spacing/vertical-middle 排列，PlainMessage/description 也已
+计入 `FocusableTextWidget` 的 4px padding 与 inner wrap width。typed dialog state 现以 all-or-nothing
+bridge 生成既有 `DataComponentPatchSummary`，未桥接的递归/复杂值不会被猜测性投影。
 仍须按 `DialogScreen`/`DialogControlSet` 完成 screen blur/depth-clear、warning button/screen、
-剩余 registry-backed/递归/复杂 component-patched Item body bridge 与 item focus outline、四类 input、
+剩余有损/未 typed holder 形式及递归/复杂 component-patched Item body bridge 与 item focus outline、四类 input、
 button-list tooltip/scroll/focus、
 其余三类 top-level dialog 布局、action-bearing
 open-url/run/suggest/dynamic action 与 Component-click。静态 change-page 在 DialogScreen 的 default
