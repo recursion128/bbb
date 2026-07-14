@@ -108,7 +108,7 @@ fn decode_builtin_potion_holder(
     })
 }
 
-fn decode_mob_effect_instance(
+pub(super) fn decode_mob_effect_instance(
     value: &NbtSummaryValue,
     what: &str,
 ) -> Result<DialogMobEffectInstanceState, String> {

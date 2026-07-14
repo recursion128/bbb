@@ -369,6 +369,8 @@ non-negative damage 与 creative default 也已 typed 投影；WRITABLE_BOOK_CON
 Filterable<String> page list、compact/full alternative、100 页与 1024 UTF-16 unit 边界也已 typed 投影；
 POTION_CONTENTS 的 built-in potion compact/full alternative、optional color/name、custom MobEffect
 holder list 与 recursive details defaults/unsigned-byte amplifier 也已 typed 投影；
+CONSUMABLE/DEATH_PROTECTION 的共享 5 分支 ConsumeEffect dispatch、record defaults、mob-effect
+instance/HolderSet、sound holder 与 float range 也已 typed 投影；
 其余 Component、holder、list 与 compound record 等 persistent Codec 仍未展开；
 四类 input control 与九类 static/dynamic action 已按 codec typed 投影并同时保留 raw；DialogList 的 play
 tag/direct 同质 HolderSet、session reference、context-free inline-list

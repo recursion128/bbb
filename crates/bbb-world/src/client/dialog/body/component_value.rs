@@ -17,8 +17,10 @@ use bbb_protocol::{
         VANILLA_DATA_COMPONENT_BLOCK_ENTITY_DATA_TYPE_ID,
         VANILLA_DATA_COMPONENT_BLOCK_STATE_TYPE_ID, VANILLA_DATA_COMPONENT_BREAK_SOUND_TYPE_ID,
         VANILLA_DATA_COMPONENT_BUCKET_ENTITY_DATA_TYPE_ID,
-        VANILLA_DATA_COMPONENT_CONTAINER_LOOT_TYPE_ID, VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID,
+        VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID, VANILLA_DATA_COMPONENT_CONTAINER_LOOT_TYPE_ID,
+        VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID,
         VANILLA_DATA_COMPONENT_CUSTOM_MODEL_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID,
         VANILLA_DATA_COMPONENT_DEBUG_STICK_STATE_TYPE_ID,
         VANILLA_DATA_COMPONENT_DYED_COLOR_TYPE_ID, VANILLA_DATA_COMPONENT_ENCHANTABLE_TYPE_ID,
         VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID,
@@ -60,6 +62,7 @@ use super::super::{compound_entries, find_entry};
 
 mod bees;
 mod blocks_attacks;
+mod consume_effect;
 mod debug_stick;
 mod enchantments;
 mod equippable;
@@ -74,6 +77,9 @@ mod writable_book;
 
 use bees::{decode_bees, DialogBeeOccupantState};
 use blocks_attacks::{decode_blocks_attacks, DialogBlocksAttacksState};
+use consume_effect::{
+    decode_consumable, decode_death_protection, DialogConsumableState, DialogConsumeEffectState,
+};
 use debug_stick::{decode_debug_stick_state, DialogDebugStickPropertyState};
 use enchantments::{decode_enchantments, DialogEnchantmentEntryState};
 use equippable::{decode_equippable, DialogEquippableState};
@@ -205,6 +211,12 @@ pub enum DialogDataComponentValueState {
     },
     PotionContents {
         contents: DialogPotionContentsState,
+    },
+    Consumable {
+        consumable: DialogConsumableState,
+    },
+    DeathProtection {
+        effects: Vec<DialogConsumeEffectState>,
     },
     Repairable {
         items: DialogRegistryHolderSetState,
@@ -406,6 +418,14 @@ pub(super) fn decode_supported_component_value(
         VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID => {
             DialogDataComponentValueState::PotionContents {
                 contents: decode_potion_contents(value, &what)?,
+            }
+        }
+        VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID => DialogDataComponentValueState::Consumable {
+            consumable: decode_consumable(value, registries, &what)?,
+        },
+        VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID => {
+            DialogDataComponentValueState::DeathProtection {
+                effects: decode_death_protection(value, registries, &what)?,
             }
         }
         VANILLA_DATA_COMPONENT_BEES_TYPE_ID => DialogDataComponentValueState::Bees {

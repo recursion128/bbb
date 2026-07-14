@@ -13853,3 +13853,15 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] 空/default record、default namespace、固定 holder identity、NBT numeric/bool conversion、
   show-icon 跟随 particles 默认、0..=255 amplifier、recursive details、missing/wrong fields 与 unknown
   potion/effect 均有定向测试；其余 Component、holder、list/compound-record Codec 与 screens 仍开放。
+
+## 2026-07-14：Decode consume-effect-backed dialog item components
+
+- [x] 新建 `client/dialog/body/component_value/consume_effect.rs` semantic owner；对照
+  `Consumable.CODEC`、`DeathProtection.CODEC` 与 `ConsumeEffect.CODEC`，typed 投影两个 record 的
+  defaults 和共享 built-in type dispatch，不复制 generated consume-effect type 目录。
+- [x] 对照五个 `ConsumeEffect` subtype codec，复用 MobEffectInstance、mob-effect HolderSet 与
+  sound-event holder surface，完整投影 apply/remove/clear/teleport/play-sound 分支及 probability/diameter
+  float 边界。
+- [x] 空/default record、全部 12 个 item-use animation、五种 effect、两个顶层 component dispatch、
+  context-free empty HolderSet、NBT numeric/bool conversion、missing/wrong fields、unknown type 与非法范围
+  均有定向测试；其余 Component、holder、list/compound-record Codec 与 native screens 仍开放。
