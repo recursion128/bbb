@@ -7,6 +7,7 @@ use bbb_protocol::attribute_modifier_types::{
 use bbb_protocol::item_component_value_types::{
     FireworkExplosionShapeSummary, ItemRaritySummary, SwingAnimationTypeSummary,
 };
+use bbb_protocol::item_types::vanilla_item_type_for_resource_id;
 use bbb_protocol::packets::{
     chunks::BlockPos,
     inventory::{
@@ -15,12 +16,13 @@ use bbb_protocol::packets::{
         BlockPredicateSummary, BlocksAttacksSummary, ConsumableSummary, ConsumeEffectSummary,
         DamageReductionSummary, DamageTypeHolderSetSummary, DataComponentPatchSummary,
         EntityTypeHolderSetSummary, EquippableSummary, FireworkExplosionSummary,
-        ItemDamageFunctionSummary, ItemEnchantmentSummary, KineticWeaponConditionSummary,
-        KineticWeaponSummary, LodestoneTargetSummary, MobEffectDetailsSummary,
-        MobEffectInstanceSummary, PiercingWeaponSummary, ResolvableProfileSummary,
-        SoundEventSummary, StatePropertyMatcherSummary, StatePropertyValueMatcherSummary,
-        SuspiciousStewEffectSummary, SwingAnimationSummary, ToolRuleSummary, ToolSummary,
-        TrimMaterialSummary, TrimPatternSummary, UseEffectsSummary, WrittenBookContentSummary,
+        ItemContainerSlotSummary, ItemDamageFunctionSummary, ItemEnchantmentSummary,
+        ItemStackTemplateSummary, KineticWeaponConditionSummary, KineticWeaponSummary,
+        LodestoneTargetSummary, MobEffectDetailsSummary, MobEffectInstanceSummary,
+        PiercingWeaponSummary, ResolvableProfileSummary, SoundEventSummary,
+        StatePropertyMatcherSummary, StatePropertyValueMatcherSummary, SuspiciousStewEffectSummary,
+        SwingAnimationSummary, ToolRuleSummary, ToolSummary, TrimMaterialSummary,
+        TrimPatternSummary, UseEffectsSummary, WrittenBookContentSummary,
     },
 };
 use bbb_protocol::{
@@ -828,6 +830,45 @@ pub(super) fn apply_item_patch_value(
             patch.block_entity_spawn_entity_type = typed_data_spawn_entity_type(&block_entity.data);
             patch.block_entity_data_tag = Some(block_entity.data.clone());
         }
+        (VANILLA_DATA_COMPONENT_USE_REMAINDER_TYPE_ID, Value::UseRemainder { convert_into }) => {
+            let Some(item) = item_stack_template_summary(convert_into) else {
+                return false;
+            };
+            patch.use_remainder = Some(Box::new(item));
+        }
+        (
+            VANILLA_DATA_COMPONENT_CHARGED_PROJECTILES_TYPE_ID,
+            Value::ChargedProjectiles { items },
+        ) => {
+            let Some(items) = item_stack_template_summaries(items) else {
+                return false;
+            };
+            patch.charged_projectiles_items = items;
+        }
+        (VANILLA_DATA_COMPONENT_BUNDLE_CONTENTS_TYPE_ID, Value::BundleContents { items }) => {
+            let Some(items) = item_stack_template_summaries(items) else {
+                return false;
+            };
+            patch.bundle_contents_item_count = Some(items.len());
+            patch.bundle_contents_items = items;
+        }
+        (VANILLA_DATA_COMPONENT_CONTAINER_TYPE_ID, Value::Container { slots }) => {
+            let mut items = Vec::new();
+            let mut item_slots = Vec::new();
+            for (slot, item) in slots.iter().enumerate() {
+                let Some(item) = item else {
+                    continue;
+                };
+                let Some(item) = item_stack_template_summary(item) else {
+                    return false;
+                };
+                items.push(item.clone());
+                item_slots.push(ItemContainerSlotSummary { slot, item });
+            }
+            patch.container_item_count = Some(items.len());
+            patch.container_items = items;
+            patch.container_slots = item_slots;
+        }
         (
             VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID,
             Value::AttackRange {
@@ -1305,6 +1346,24 @@ fn typed_data_spawn_entity_type(value: &NbtSummaryValue) -> Option<String> {
         return None;
     };
     normalize_codec_identifier(raw_id)
+}
+
+fn item_stack_template_summaries(
+    items: &[DialogItemStackTemplateState],
+) -> Option<Vec<ItemStackTemplateSummary>> {
+    items.iter().map(item_stack_template_summary).collect()
+}
+
+fn item_stack_template_summary(
+    item: &DialogItemStackTemplateState,
+) -> Option<ItemStackTemplateSummary> {
+    let item_id = vanilla_item_type_for_resource_id(&item.resource_id)?.id;
+    let item_stack = item.item_stack_summary_for_protocol_id(item_id)?;
+    Some(ItemStackTemplateSummary {
+        item_id,
+        count: item_stack.count,
+        component_patch: item_stack.component_patch,
+    })
 }
 
 fn apply_holder_set(

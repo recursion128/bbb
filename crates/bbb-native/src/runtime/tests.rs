@@ -14437,6 +14437,24 @@ fn hud_inventory_screen_projects_dialog_item_body_structured_patches() {
                                                 ),
                                             )]),
                                         ),
+                                        entry(
+                                            "minecraft:use_remainder",
+                                            NbtSummaryValue::String(
+                                                "minecraft:glass_bottle".to_string(),
+                                            ),
+                                        ),
+                                        entry(
+                                            "minecraft:charged_projectiles",
+                                            NbtSummaryValue::List(Vec::new()),
+                                        ),
+                                        entry(
+                                            "minecraft:bundle_contents",
+                                            NbtSummaryValue::List(Vec::new()),
+                                        ),
+                                        entry(
+                                            "minecraft:container",
+                                            NbtSummaryValue::List(Vec::new()),
+                                        ),
                                     ]),
                                 ),
                             ]),

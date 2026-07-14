@@ -14661,3 +14661,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   builtin wire identity、bucket 原样 NBT 与 spawner projection，native dialog Item body 加入三类 compact
   data 后继续进入唯一 item runtime。partial/lock predicate 与递归 item-stack collection 等其余富结构值
   继续由后续明确切片处理。
+
+## 2026-07-14：Bridge recursive item-template dialog Item patches
+
+- [x] 对照 `ItemStackTemplate.CODEC/STREAM_CODEC`、`UseRemainder`、`BundleContents` 与
+  `ItemContainerContents`，用同一 item-id/count/component-patch 转换入口递归投影 use-remainder、ordered
+  charged-projectiles、bundle-contents 及 container；nested component patch 继续执行 all-or-nothing，不
+  绕过已桥接类型的唯一分派。
+- [x] container 从 persistent slot records 的 last-duplicate sparse state 生成 ordered nonempty items 与
+  原 slot index，并按 protocol decoder 记录 nonempty count；world focused regressions 覆盖两层 remainder、
+  nested repair-cost、empty lists 与 slot 0/2，native dialog Item body 加入四类 compact/empty component 后
+  继续进入唯一 item runtime。partial/lock predicate 与其余富结构值继续由后续明确切片处理。

@@ -632,6 +632,28 @@ mod tests {
             panic!("expected nested use-remainder component");
         };
         assert_eq!(convert_into.resource_id, "minecraft:glass_bottle");
+
+        let mut patch = DataComponentPatchSummary::default();
+        assert!(apply_item_patch_value(
+            full.entries[0].type_id,
+            full.entries[0].value_data.as_ref().unwrap(),
+            &mut patch,
+        ));
+        let remainder = patch.use_remainder.as_ref().unwrap();
+        assert_eq!(
+            remainder.item_id,
+            vanilla_item_type_for_resource_id("minecraft:bucket")
+                .unwrap()
+                .id
+        );
+        assert_eq!(remainder.count, 2);
+        let nested = remainder.component_patch.use_remainder.as_ref().unwrap();
+        assert_eq!(
+            nested.item_id,
+            vanilla_item_type_for_resource_id("minecraft:glass_bottle")
+                .unwrap()
+                .id
+        );
     }
 
     #[test]

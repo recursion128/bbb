@@ -4,10 +4,14 @@ use bbb_protocol::{
         VANILLA_DATA_COMPONENT_CHARGED_PROJECTILES_TYPE_ID,
         VANILLA_DATA_COMPONENT_CONTAINER_TYPE_ID,
     },
+    item_types::vanilla_item_type_for_resource_id,
+    packets::inventory::DataComponentPatchSummary,
     NbtSummaryEntry,
 };
 
-use super::super::{decode_supported_component_value, DialogDataComponentValueState};
+use super::super::{
+    apply_item_patch_value, decode_supported_component_value, DialogDataComponentValueState,
+};
 use super::*;
 
 #[test]
@@ -41,6 +45,28 @@ fn decodes_ordered_charged_projectile_and_bundle_item_template_lists() {
         decoded[1].component_data.as_ref().unwrap().entries[0].value_data,
         Some(DialogDataComponentValueState::Integer { value: 4 })
     );
+    let mut patch = DataComponentPatchSummary::default();
+    assert!(apply_item_patch_value(
+        VANILLA_DATA_COMPONENT_CHARGED_PROJECTILES_TYPE_ID,
+        &DialogDataComponentValueState::ChargedProjectiles {
+            items: decoded.clone(),
+        },
+        &mut patch,
+    ));
+    assert_eq!(patch.charged_projectiles_items.len(), 2);
+    assert_eq!(
+        patch.charged_projectiles_items[0].item_id,
+        vanilla_item_type_for_resource_id("minecraft:arrow")
+            .unwrap()
+            .id
+    );
+    assert_eq!(patch.charged_projectiles_items[1].count, 3);
+    assert_eq!(
+        patch.charged_projectiles_items[1]
+            .component_patch
+            .repair_cost,
+        Some(4)
+    );
 
     let bundle = decode(
         VANILLA_DATA_COMPONENT_BUNDLE_CONTENTS_TYPE_ID,
@@ -54,6 +80,14 @@ fn decodes_ordered_charged_projectile_and_bundle_item_template_lists() {
     assert_eq!(decoded.len(), 2);
     assert_eq!(decoded[0].resource_id, "minecraft:arrow");
     assert_eq!(decoded[1].resource_id, "minecraft:firework_rocket");
+    let mut patch = DataComponentPatchSummary::default();
+    assert!(apply_item_patch_value(
+        VANILLA_DATA_COMPONENT_BUNDLE_CONTENTS_TYPE_ID,
+        &DialogDataComponentValueState::BundleContents { items: decoded },
+        &mut patch,
+    ));
+    assert_eq!(patch.bundle_contents_items.len(), 2);
+    assert_eq!(patch.bundle_contents_item_count, Some(2));
 
     for type_id in [
         VANILLA_DATA_COMPONENT_CHARGED_PROJECTILES_TYPE_ID,
@@ -102,6 +136,26 @@ fn decodes_sparse_container_slots_and_preserves_last_duplicate() {
     assert!(slots[1].is_none());
     assert_eq!(slots[2].as_ref().unwrap().resource_id, "minecraft:dirt");
     assert_eq!(slots[2].as_ref().unwrap().count, 5);
+
+    let mut patch = DataComponentPatchSummary::default();
+    assert!(apply_item_patch_value(
+        VANILLA_DATA_COMPONENT_CONTAINER_TYPE_ID,
+        &DialogDataComponentValueState::Container {
+            slots: slots.clone(),
+        },
+        &mut patch,
+    ));
+    assert_eq!(patch.container_item_count, Some(2));
+    assert_eq!(patch.container_items.len(), 2);
+    assert_eq!(
+        patch
+            .container_slots
+            .iter()
+            .map(|entry| entry.slot)
+            .collect::<Vec<_>>(),
+        vec![0, 2]
+    );
+    assert_eq!(patch.container_slots[1].item.count, 5);
 
     let maximum = NbtSummaryValue::List(vec![slot(255, string("stone")); 256]);
     let decoded = decode_item_stack_template_slots(
