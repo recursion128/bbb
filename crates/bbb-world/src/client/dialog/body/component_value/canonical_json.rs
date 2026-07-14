@@ -373,6 +373,31 @@ fn canonical_component_value_json_utf16_len(
                 .collect::<Option<Vec<_>>>()?
                 .into_iter(),
         ),
+        DialogDataComponentValueState::SuspiciousStewEffects { effects } => {
+            array_len(effects.iter().map(|effect| {
+                let mut fields = vec![("id", string_len(&effect.effect.resource_id))];
+                if effect.duration != 160 {
+                    fields.push(("duration", effect.duration.to_string().len()));
+                }
+                object_len(fields.into_iter())
+            }))
+        }
+        DialogDataComponentValueState::PotDecorations { decorations } => array_len(
+            [
+                decorations.back.as_ref(),
+                decorations.left.as_ref(),
+                decorations.right.as_ref(),
+                decorations.front.as_ref(),
+            ]
+            .into_iter()
+            .map(|decoration| {
+                string_len(
+                    decoration
+                        .map(|decoration| decoration.resource_id.as_str())
+                        .unwrap_or("minecraft:brick"),
+                )
+            }),
+        ),
         _ => return None,
     })
 }
@@ -672,6 +697,40 @@ mod tests {
                 }],
             },
             r#"{"home\"":{"type":"minecraft:mansion","x":-120.5,"z":64.0,"rotation":180.0}}"#,
+        );
+    }
+
+    #[test]
+    fn canonicalizes_stew_and_pot_holder_collections() {
+        let holder = |holder_id, resource_id: &str| DialogRegistryHolderReferenceState {
+            holder_id,
+            resource_id: resource_id.to_string(),
+        };
+        assert_exact(
+            DialogDataComponentValueState::SuspiciousStewEffects {
+                effects: vec![
+                    super::super::holder_set::DialogSuspiciousStewEffectState {
+                        effect: holder(0, "minecraft:speed"),
+                        duration: 160,
+                    },
+                    super::super::holder_set::DialogSuspiciousStewEffectState {
+                        effect: holder(18, "minecraft:poison"),
+                        duration: -20,
+                    },
+                ],
+            },
+            r#"[{"id":"minecraft:speed"},{"id":"minecraft:poison","duration":-20}]"#,
+        );
+        assert_exact(
+            DialogDataComponentValueState::PotDecorations {
+                decorations: super::super::holder_set::DialogPotDecorationsState {
+                    back: None,
+                    left: Some(holder(0, "minecraft:angler_pottery_sherd")),
+                    right: None,
+                    front: None,
+                },
+            },
+            r#"["minecraft:brick","minecraft:angler_pottery_sherd","minecraft:brick","minecraft:brick"]"#,
         );
     }
 

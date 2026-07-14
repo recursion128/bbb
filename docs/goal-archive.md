@@ -14168,3 +14168,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   double、integral double 的 `.0`、float 以及 written-book hover `show_item` map-decorations patch 的
   32767/32768 UTF-16 unit 边界均有定向回归。show-dialog 和剩余 registry-holder、typed-NBT、
   predicate/item-template 及其它 nested-record positive item-patch value 继续由缺口账本追踪。
+
+## 2026-07-14：Canonicalize stew and pot holder collections
+
+- [x] 对照 `SuspiciousStewEffects.CODEC/Entry.CODEC` 与 `PotDecorations.CODEC/ordered()`，扩展单一
+  item-patch canonical owner：stew entry 输出 built-in mob-effect holder id 并省略 duration=160；pot
+  不保留输入短列表，而是固定按 back/left/right/front 输出四项，并把空侧编码为 `minecraft:brick`。
+- [x] stew entry duplicate id/duration 已按 CompoundTag last-wins 修正；default/non-default duration、
+  partial/empty pot sides 与 written-book hover `show_item` 合并 holder-collection patch 的 32767/32768
+  UTF-16 unit 边界均有定向回归。show-dialog 和剩余 registry-holder、typed-NBT、predicate/item-template
+  及其它 nested-record positive item-patch value 继续由缺口账本追踪。

@@ -114,7 +114,9 @@ Owner: `bbb-protocol`
   FULL/partial/player-name, property-map, UUID int-stream, and skin-patch forms.
   `minecraft:map_decorations` string-map values likewise encode map-decoration holder ids and
   required double/double/float entries with exact JDK 26 formatters and CompoundTag last-wins
-  normalization. Their click `show_dialog` payloads also decode through the full
+  normalization. Suspicious-stew entries now encode built-in mob-effect holders while omitting
+  duration 160; pot decorations always re-encode all four ordered sides with `minecraft:brick`
+  for empty sides. Their click `show_dialog` payloads also decode through the full
   inline/session-reference `Dialog.CODEC` owner with a shared 64-level semantic-depth budget,
   including recursive item templates and predicates, so registry cycles fail deterministically.
   Object-content player profiles likewise reuse the complete `ResolvableProfile.CODEC`

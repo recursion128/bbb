@@ -378,11 +378,13 @@ fn decode_suspicious_stew_effects(
             };
             let id = entries
                 .iter()
+                .rev()
                 .find(|entry| entry.name == "id")
                 .map(|entry| &entry.value)
                 .ok_or_else(|| format!("{entry_what} is missing field id"))?;
             let duration = entries
                 .iter()
+                .rev()
                 .find(|entry| entry.name == "duration")
                 .map(|entry| {
                     super::component_i32(&entry.value, &format!("{entry_what} field duration"))

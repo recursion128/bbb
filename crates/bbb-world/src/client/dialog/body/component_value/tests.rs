@@ -2089,6 +2089,29 @@ fn decodes_suspicious_stew_effects_with_builtin_holders_and_lenient_duration() {
 }
 
 #[test]
+fn suspicious_stew_fields_follow_compound_last_wins_semantics() {
+    let value = NbtSummaryValue::List(vec![compound(vec![
+        string_entry("id", "missing"),
+        string_entry("id", "speed"),
+        value_entry("duration", NbtSummaryValue::Int(10)),
+        value_entry("duration", NbtSummaryValue::Int(20)),
+    ])]);
+    let decoded = decode_supported_component_value(
+        VANILLA_DATA_COMPONENT_SUSPICIOUS_STEW_EFFECTS_TYPE_ID,
+        "minecraft:suspicious_stew_effects",
+        &value,
+        None,
+    )
+    .unwrap();
+    assert!(matches!(
+        decoded,
+        Some(DialogDataComponentValueState::SuspiciousStewEffects { effects })
+            if effects[0].effect.resource_id == "minecraft:speed"
+                && effects[0].duration == 20
+    ));
+}
+
+#[test]
 fn decodes_pot_decorations_with_builtin_item_holders_and_empty_sides() {
     let value = NbtSummaryValue::List(vec![
         NbtSummaryValue::String("brick".to_string()),

@@ -193,6 +193,19 @@ fn accepts_written_book_title_page_and_collection_boundaries() {
         "written book",
     )
     .is_ok());
+
+    let holder_collections_patch_prefix = concat!(
+        r#"{"text":"item","extra":[""],"hover_event":{"action":"show_item","id":"minecraft:stone","components":{"minecraft:suspicious_stew_effects":[{"id":"minecraft:speed"}],"minecraft:pot_decorations":["minecraft:brick","minecraft:angler_pottery_sherd","minecraft:brick","minecraft:brick"]}}}"#
+    )
+    .len();
+    let exact_holder_collections_patch_page = component_with_holder_collections_item_patch(
+        "x".repeat(32_767 - holder_collections_patch_prefix),
+    );
+    assert!(decode_written_book_content(
+        &book_with_pages(vec![exact_holder_collections_patch_page]),
+        "written book",
+    )
+    .is_ok());
 }
 
 #[test]
@@ -386,6 +399,18 @@ fn rejects_malformed_written_book_fields_filterables_and_exact_canonical_page_li
             "encodes to 32768 JSON UTF-16 units, maximum is 32767",
         ),
         (
+            book_with_pages(vec![component_with_holder_collections_item_patch(
+                "x".repeat(
+                    32_768
+                        - concat!(
+                            r#"{"text":"item","extra":[""],"hover_event":{"action":"show_item","id":"minecraft:stone","components":{"minecraft:suspicious_stew_effects":[{"id":"minecraft:speed"}],"minecraft:pot_decorations":["minecraft:brick","minecraft:angler_pottery_sherd","minecraft:brick","minecraft:brick"]}}}"#
+                        )
+                        .len(),
+                ),
+            )]),
+            "encodes to 32768 JSON UTF-16 units, maximum is 32767",
+        ),
+        (
             book_with_pages(vec![component_with_non_finite_item_patch()]),
             "canonical item component patch contains a non-finite Float/Double value",
         ),
@@ -571,6 +596,41 @@ fn component_with_map_decorations_item_patch(extra: String) -> NbtSummaryValue {
                             ]),
                         )]),
                     )]),
+                ),
+            ]),
+        ),
+    ])
+}
+
+fn component_with_holder_collections_item_patch(extra: String) -> NbtSummaryValue {
+    compound(vec![
+        string_entry("text", "item"),
+        value_entry(
+            "extra",
+            NbtSummaryValue::List(vec![NbtSummaryValue::String(extra)]),
+        ),
+        value_entry(
+            "hover_event",
+            compound(vec![
+                string_entry("action", "show_item"),
+                string_entry("id", "stone"),
+                value_entry(
+                    "components",
+                    compound(vec![
+                        value_entry(
+                            "suspicious_stew_effects",
+                            NbtSummaryValue::List(vec![compound(vec![string_entry(
+                                "id", "speed",
+                            )])]),
+                        ),
+                        value_entry(
+                            "pot_decorations",
+                            NbtSummaryValue::List(vec![
+                                NbtSummaryValue::String("brick".to_string()),
+                                NbtSummaryValue::String("angler_pottery_sherd".to_string()),
+                            ]),
+                        ),
+                    ]),
                 ),
             ]),
         ),
