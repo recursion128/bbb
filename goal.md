@@ -405,7 +405,9 @@ typed-NBT、predicate/item-template 及其它 nested-record positive item-patch 
 persistent gate、remove-unit compound、同符号重复键与 set/remove 覆盖语义；共享 recursive payload visitor
 已由 Dialog 中央 Component decoder 接入现有 107 项 world type codec 和 session registry context，覆盖
 title/button/body/input、CUSTOM_NAME/ITEM_NAME/LORE、written-book、attribute override、predicate 及 direct
-instrument/trim description；generic packet Component 尚无该 world context；
+instrument/trim description；item patch 的 `minecraft:profile` positive value 也已复用同一
+`ResolvableProfile.CODEC` decoder 与协议 canonical owner，闭合 FULL/partial/player-name、property-map、
+UUID int stream 和 skin patch 的精确 JsonOps 长度；generic packet Component 尚无该 world context；
 click `show_dialog` 也已由同一中央 visitor 按 `Dialog.CODEC` 解析 inline/session reference holder，
 并让 title/button/body/input、item patch 与 recursive predicate/item-template 路径共享 64 层 Dialog
 semantic depth，registry 自引用/互引用不会重置预算；

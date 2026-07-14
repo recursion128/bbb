@@ -1,5 +1,8 @@
 use bbb_protocol::packets::inventory::FireworkExplosionSummary;
-use bbb_protocol::{canonical_f32_json_utf16_len, canonical_json_string_utf16_len};
+use bbb_protocol::{
+    canonical_f32_json_utf16_len, canonical_json_string_utf16_len,
+    canonical_resolvable_profile_json_utf16_len,
+};
 
 use super::super::DialogDataComponentPatchState;
 use super::DialogDataComponentValueState;
@@ -331,6 +334,9 @@ fn canonical_component_value_json_utf16_len(
             }
             object_len(fields.into_iter())
         }
+        DialogDataComponentValueState::Profile { profile } => {
+            canonical_resolvable_profile_json_utf16_len(profile)?
+        }
         _ => return None,
     })
 }
@@ -412,7 +418,10 @@ mod tests {
         FireworkExplosionShapeSummary, SwingAnimationTypeSummary,
     };
     use bbb_protocol::packets::chunks::BlockPos;
-    use bbb_protocol::packets::inventory::LodestoneTargetSummary;
+    use bbb_protocol::packets::inventory::{
+        LodestoneTargetSummary, PlayerSkinPatchSummary, ResolvableProfileKindSummary,
+        ResolvableProfileSummary,
+    };
 
     use super::*;
 
@@ -589,6 +598,23 @@ mod tests {
                 tracked: false,
             },
             r#"{"target":{"dimension":"minecraft:overworld","pos":[1,-2,3]},"tracked":false}"#,
+        );
+    }
+
+    #[test]
+    fn canonicalizes_profile_through_the_protocol_owner() {
+        assert_exact(
+            DialogDataComponentValueState::Profile {
+                profile: ResolvableProfileSummary {
+                    kind: ResolvableProfileKindSummary::Partial,
+                    uuid: None,
+                    name: Some("Alex".to_string()),
+                    properties: Vec::new(),
+                    profile_textures: None,
+                    skin_patch: PlayerSkinPatchSummary::default(),
+                },
+            },
+            r#"{"name":"Alex"}"#,
         );
     }
 

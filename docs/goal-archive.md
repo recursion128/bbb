@@ -14148,3 +14148,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   written-book hover `show_item` firework patch 的 32767/32768 UTF-16 unit 边界均有定向测试。show-dialog
   和剩余 registry-holder、typed-NBT、predicate/item-template 及其它 nested-record positive item-patch
   value 继续由缺口账本追踪。
+
+## 2026-07-14：Canonicalize profile item patches
+
+- [x] 对照 `DataComponents.PROFILE` 与 `ResolvableProfile.CODEC`，让单一 item-patch canonical owner 直接
+  复用协议层已有的 `canonical_resolvable_profile_json_utf16_len`，不复制 FULL/partial/player-name
+  alternative、property-map、UUID int stream 或 `PlayerSkin.Patch` 的字段顺序和默认省略规则。
+- [x] world owner 的 partial-name 精确 JSON 与 written-book hover `show_item` profile patch 的
+  32767/32768 UTF-16 unit 边界均有定向回归。show-dialog 和剩余 registry-holder、typed-NBT、
+  predicate/item-template 及其它 nested-record positive item-patch value 继续由缺口账本追踪。

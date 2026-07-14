@@ -109,7 +109,10 @@ Owner: `bbb-protocol`
   native-owned chat/sign/debug and warning return-screen stacks, and route custom-click controls
   through the active dialog state. Dialog Component holders
   already validate hover `show_item` patches through the complete typed world patch owner and
-  session registry context. Their click `show_dialog` payloads also decode through the full
+  session registry context. The `minecraft:profile` positive patch value also reuses the sole
+  `ResolvableProfile.CODEC` decoder and protocol canonical owner, including
+  FULL/partial/player-name, property-map, UUID int-stream, and skin-patch forms. Their click
+  `show_dialog` payloads also decode through the full
   inline/session-reference `Dialog.CODEC` owner with a shared 64-level semantic-depth budget,
   including recursive item templates and predicates, so registry cycles fail deterministically.
   Object-content player profiles likewise reuse the complete `ResolvableProfile.CODEC`
