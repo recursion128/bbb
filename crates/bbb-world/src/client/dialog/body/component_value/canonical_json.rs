@@ -531,6 +531,14 @@ fn canonical_component_value_json_utf16_len(
                     .saturating_add(string_len(&entry.property))
             }))
         }
+        DialogDataComponentValueState::Enchantments { entries }
+        | DialogDataComponentValueState::StoredEnchantments { entries } => {
+            collection_len(entries.iter().map(|entry| {
+                string_len(&entry.enchantment.resource_id)
+                    .saturating_add(1)
+                    .saturating_add(entry.level.to_string().len())
+            }))
+        }
         _ => return None,
     })
 }
@@ -1339,6 +1347,42 @@ mod tests {
         assert_exact(
             DialogDataComponentValueState::DebugStickState {
                 properties: Vec::new(),
+            },
+            "{}",
+        );
+    }
+
+    #[test]
+    fn canonicalizes_enchantment_holder_maps() {
+        let entries = vec![
+            super::super::enchantments::DialogEnchantmentEntryState {
+                enchantment: DialogRegistryHolderReferenceState {
+                    holder_id: 1,
+                    resource_id: "minecraft:sharpness".to_string(),
+                },
+                level: 5,
+            },
+            super::super::enchantments::DialogEnchantmentEntryState {
+                enchantment: DialogRegistryHolderReferenceState {
+                    holder_id: 2,
+                    resource_id: "example:last".to_string(),
+                },
+                level: 255,
+            },
+        ];
+        assert_exact(
+            DialogDataComponentValueState::Enchantments {
+                entries: entries.clone(),
+            },
+            r#"{"minecraft:sharpness":5,"example:last":255}"#,
+        );
+        assert_exact(
+            DialogDataComponentValueState::StoredEnchantments { entries },
+            r#"{"minecraft:sharpness":5,"example:last":255}"#,
+        );
+        assert_exact(
+            DialogDataComponentValueState::Enchantments {
+                entries: Vec::new(),
             },
             "{}",
         );

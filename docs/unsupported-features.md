@@ -131,6 +131,9 @@ Owner: `bbb-protocol`
   keys are last-wins and non-finite numbers fail strictly. Debug-stick dispatched maps likewise
   encode normalized built-in block ids and validated property names; exact duplicate NBT keys are
   last-wins while distinct raw keys that normalize to the same holder are rejected like DFU.
+  Enchantment and stored-enchantment maps now likewise encode session-resolved holder ids as
+  normalized resource keys with 1..=255 integer levels, preserving exact-key last-wins and
+  rejecting post-resolution holder collisions.
   Dialog click `show_dialog` payloads also decode through the full
   inline/session-reference `Dialog.CODEC` owner with a shared 64-level semantic-depth budget,
   including recursive item templates and predicates, so registry cycles fail deterministically.

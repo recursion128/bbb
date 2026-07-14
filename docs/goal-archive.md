@@ -14256,3 +14256,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   exact/normalized duplicate 与 written-book hover `show_item` debug-stick patch 的 32767/32768 UTF-16
   unit 边界均有回归。generic packet show-dialog world context 与剩余 registry-holder、predicate/
   item-template 及其它 nested-record positive item-patch value 继续由缺口账本追踪。
+
+## 2026-07-14：Canonicalize enchantment item patches
+
+- [x] 对照 `ItemEnchantments.CODEC`、`Enchantment.CODEC`、`Codec.intRange(1,255)` 与本地 DFU
+  `BaseMapCodec`，扩展单一 item-patch canonical owner：`enchantments`/`stored_enchantments` 共用
+  session-resolved normalized resource-id key 与整数 level JSON object，empty map 保持 `{}`。
+- [x] 完全同名 raw CompoundTag key 在 codec 前按 last-wins 折叠；default-namespace 与 fully-qualified
+  key 解析到同一 holder 时按 DFU `putIfAbsent` duplicate error 拒绝。holder 顺序、1/255 范围边界、
+  两组件精确形态与显式 session registry 下 written-book hover `show_item` 合并 patch 的 32767/32768
+  UTF-16 unit 边界均有回归。generic packet show-dialog world context 与剩余 registry-holder、predicate/
+  item-template 及其它 nested-record positive item-patch value 继续由缺口账本追踪。

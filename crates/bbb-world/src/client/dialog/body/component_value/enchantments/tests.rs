@@ -15,6 +15,7 @@ use super::*;
 fn decodes_enchantment_maps_with_session_holder_ids() {
     let registries = enchantment_registries();
     let value = compound([
+        ("sharpness", NbtSummaryValue::Int(0)),
         ("sharpness", NbtSummaryValue::Byte(5)),
         ("example:last", NbtSummaryValue::Long(255)),
         ("example:first", NbtSummaryValue::Double(2.9f64.to_bits())),

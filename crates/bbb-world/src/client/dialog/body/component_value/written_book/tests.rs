@@ -330,6 +330,35 @@ fn enforces_named_holder_item_patch_page_boundary_with_session_registries() {
 }
 
 #[test]
+fn enforces_enchantment_item_patch_page_boundary_with_session_registries() {
+    let mut registries = RegistrySet::default();
+    let mut contents = RegistryContentState::new("minecraft:enchantment");
+    contents.entries = vec![
+        RegistryPacketEntry::stub("example:first"),
+        RegistryPacketEntry::stub("minecraft:sharpness"),
+    ];
+    registries
+        .contents
+        .insert("minecraft:enchantment".to_string(), contents);
+    let prefix = concat!(
+        r#"{"text":"item","extra":[""],"hover_event":{"action":"show_item","id":"minecraft:stone","components":{"minecraft:enchantments":{"example:first":1},"minecraft:stored_enchantments":{"minecraft:sharpness":255}}}}"#
+    )
+    .len();
+    for (limit, expected_error) in [(32_767usize, None), (32_768usize, Some("encodes to 32768"))] {
+        let page = component_with_enchantment_item_patch("x".repeat(limit - prefix));
+        let result = decode_written_book_content_with_context(
+            &book_with_pages(vec![page]),
+            "written book",
+            DialogDecodeContext::new(Some(&registries), 0),
+        );
+        match expected_error {
+            None => assert!(result.is_ok()),
+            Some(expected) => assert!(result.unwrap_err().contains(expected)),
+        }
+    }
+}
+
+#[test]
 fn enforces_holder_set_item_patch_page_boundary_with_session_registries() {
     let mut registries = RegistrySet::default();
     let stone_id = registries
@@ -869,6 +898,36 @@ fn component_with_named_holder_item_patch(extra: String) -> NbtSummaryValue {
                         string_entry("damage_type", "generic_kill"),
                         string_entry("jukebox_playable", "cat"),
                         string_entry("painting/variant", "kebab"),
+                    ]),
+                ),
+            ]),
+        ),
+    ])
+}
+
+fn component_with_enchantment_item_patch(extra: String) -> NbtSummaryValue {
+    compound(vec![
+        string_entry("text", "item"),
+        value_entry(
+            "extra",
+            NbtSummaryValue::List(vec![NbtSummaryValue::String(extra)]),
+        ),
+        value_entry(
+            "hover_event",
+            compound(vec![
+                string_entry("action", "show_item"),
+                string_entry("id", "stone"),
+                value_entry(
+                    "components",
+                    compound(vec![
+                        value_entry(
+                            "enchantments",
+                            compound(vec![value_entry("example:first", NbtSummaryValue::Int(1))]),
+                        ),
+                        value_entry(
+                            "stored_enchantments",
+                            compound(vec![value_entry("sharpness", NbtSummaryValue::Int(255))]),
+                        ),
                     ]),
                 ),
             ]),

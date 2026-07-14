@@ -1,6 +1,6 @@
 use std::collections::BTreeSet;
 
-use bbb_protocol::NbtSummaryValue;
+use bbb_protocol::{NbtSummaryEntry, NbtSummaryValue};
 use serde::{Deserialize, Serialize};
 
 use crate::RegistrySet;
@@ -31,8 +31,19 @@ pub(super) fn decode_enchantments(
         return Ok(Vec::new());
     }
 
+    let mut compound_entries = Vec::<&NbtSummaryEntry>::with_capacity(entries.len());
+    for entry in entries {
+        if let Some(existing) = compound_entries
+            .iter_mut()
+            .find(|existing| existing.name == entry.name)
+        {
+            *existing = entry;
+        } else {
+            compound_entries.push(entry);
+        }
+    }
     let mut seen_holders = BTreeSet::new();
-    entries
+    compound_entries
         .iter()
         .map(|entry| {
             let entry_what = format!("{what} enchantment {}", entry.name);
