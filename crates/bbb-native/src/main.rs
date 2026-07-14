@@ -141,7 +141,7 @@ impl NativeDebugClipboard {
             match arboard::Clipboard::new() {
                 Ok(clipboard) => self.clipboard = Some(clipboard),
                 Err(err) => {
-                    tracing::warn!(?err, "debug clipboard unavailable");
+                    tracing::warn!(?err, "clipboard unavailable");
                     return None;
                 }
             }
@@ -156,7 +156,7 @@ impl DebugClipboard for NativeDebugClipboard {
             return false;
         };
         if let Err(err) = clipboard.set_text(text.to_string()) {
-            tracing::warn!(?err, "failed to set debug clipboard text");
+            tracing::warn!(?err, "failed to set clipboard text");
             return false;
         }
         true
@@ -167,7 +167,7 @@ impl DebugClipboard for NativeDebugClipboard {
         match clipboard.get_text() {
             Ok(text) => Some(text),
             Err(err) => {
-                tracing::warn!(?err, "failed to get debug clipboard text");
+                tracing::warn!(?err, "failed to get clipboard text");
                 None
             }
         }
@@ -767,6 +767,7 @@ fn main() -> Result<()> {
                             &mut net_counters,
                             &mut world,
                             &net_commands,
+                            Some(&mut debug_clipboard),
                             event.physical_key,
                             event.state,
                         );
@@ -954,6 +955,7 @@ fn main() -> Result<()> {
                             &mut net_counters,
                             &mut world,
                             &net_commands,
+                            Some(&mut debug_clipboard),
                             button,
                             state,
                             cursor_position,

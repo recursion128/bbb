@@ -14,6 +14,8 @@ use winit::dpi::{PhysicalPosition, PhysicalSize};
 use winit::event::{ElementState, MouseButton};
 use winit::keyboard::{KeyCode, PhysicalKey};
 
+use crate::input::DebugClipboard;
+
 use super::hud_ascii_approx_char_width;
 
 // Vanilla `HeaderAndFooterLayout` uses 33-pixel header/footer frames and places
@@ -386,6 +388,7 @@ pub(crate) fn handle_dialog_key_input(
     counters: &mut NetCounters,
     world: &mut WorldStore,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
+    clipboard: Option<&mut dyn DebugClipboard>,
     physical_key: PhysicalKey,
     state: ElementState,
 ) -> bool {
@@ -411,7 +414,14 @@ pub(crate) fn handle_dialog_key_input(
         return true;
     }
     let action = controls.cancel.action_data.clone();
-    run_dialog_action(counters, world, net_commands, action.as_ref(), "close");
+    run_dialog_action(
+        counters,
+        world,
+        net_commands,
+        clipboard,
+        action.as_ref(),
+        "close",
+    );
     true
 }
 
@@ -419,6 +429,7 @@ pub(crate) fn handle_dialog_mouse_input(
     counters: &mut NetCounters,
     world: &mut WorldStore,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
+    clipboard: Option<&mut dyn DebugClipboard>,
     button: MouseButton,
     state: ElementState,
     cursor_position: Option<PhysicalPosition<f64>>,
@@ -458,7 +469,14 @@ pub(crate) fn handle_dialog_mouse_input(
         controls.actions[action_index].action_data.clone(),
         controls.common.after_action.clone(),
     );
-    run_dialog_action(counters, world, net_commands, action.0.as_ref(), &action.1);
+    run_dialog_action(
+        counters,
+        world,
+        net_commands,
+        clipboard,
+        action.0.as_ref(),
+        &action.1,
+    );
     true
 }
 
@@ -466,6 +484,7 @@ fn run_dialog_action(
     counters: &mut NetCounters,
     world: &mut WorldStore,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
+    clipboard: Option<&mut dyn DebugClipboard>,
     action: Option<&DialogActionState>,
     after_action: &str,
 ) -> bool {
@@ -490,6 +509,14 @@ fn run_dialog_action(
             // original previous screen. All three after-action variants
             // therefore replace the current dialog while retaining that owner.
             return world.show_dialog_from_action((**dialog).clone());
+        }
+        Some(DialogActionState::CopyToClipboard { value }) => {
+            // KeyboardHandler.setClipboard intentionally ignores empty text.
+            if !value.is_empty() {
+                if let Some(clipboard) = clipboard {
+                    clipboard.set_debug_clipboard_text(value);
+                }
+            }
         }
         Some(_) => return false,
     }
@@ -675,6 +702,22 @@ mod tests {
 
     use super::*;
 
+    #[derive(Default)]
+    struct MockDialogClipboard {
+        text: Option<String>,
+        rejects_write: bool,
+    }
+
+    impl DebugClipboard for MockDialogClipboard {
+        fn set_debug_clipboard_text(&mut self, text: &str) -> bool {
+            if self.rejects_write {
+                return false;
+            }
+            self.text = Some(text.to_string());
+            true
+        }
+    }
+
     #[test]
     fn wrapped_text_preserves_explicit_trailing_empty_line() {
         let text = DialogTextState {
@@ -699,6 +742,7 @@ mod tests {
             &mut counters,
             &mut world,
             &None,
+            None,
             MouseButton::Left,
             ElementState::Pressed,
             Some(PhysicalPosition::new(160.0, 220.0)),
@@ -721,6 +765,7 @@ mod tests {
             &mut counters,
             &mut world,
             &None,
+            None,
             MouseButton::Left,
             ElementState::Pressed,
             Some(PhysicalPosition::new(160.0, 220.0)),
@@ -738,6 +783,7 @@ mod tests {
             &mut counters,
             &mut default_notice,
             &None,
+            None,
             PhysicalKey::Code(KeyCode::Escape),
             ElementState::Pressed,
         ));
@@ -751,6 +797,7 @@ mod tests {
             &mut counters,
             &mut locked_notice,
             &None,
+            None,
             PhysicalKey::Code(KeyCode::Escape),
             ElementState::Pressed,
         ));
@@ -779,6 +826,7 @@ mod tests {
             &mut counters,
             &mut action_notice,
             &None,
+            None,
             PhysicalKey::Code(KeyCode::Escape),
             ElementState::Pressed,
         ));
@@ -819,6 +867,7 @@ mod tests {
             &mut counters,
             &mut world,
             &net_commands,
+            None,
             MouseButton::Left,
             ElementState::Pressed,
             Some(PhysicalPosition::new(100.0, 220.0)),
@@ -834,6 +883,7 @@ mod tests {
             &mut counters,
             &mut world,
             &net_commands,
+            None,
             PhysicalKey::Code(KeyCode::Escape),
             ElementState::Pressed,
         ));
@@ -892,6 +942,7 @@ mod tests {
             &mut counters,
             &mut world,
             &None,
+            None,
             MouseButton::Left,
             ElementState::Pressed,
             Some(PhysicalPosition::new(160.0, 220.0)),
@@ -913,6 +964,61 @@ mod tests {
     }
 
     #[test]
+    fn copy_to_clipboard_action_writes_non_empty_text_before_transition() {
+        let mut world = world_with_notice(copy_action_fields("copied text"));
+        let mut counters = NetCounters::default();
+        let mut clipboard = MockDialogClipboard::default();
+
+        assert!(handle_dialog_mouse_input(
+            &mut counters,
+            &mut world,
+            &None,
+            Some(&mut clipboard),
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(160.0, 220.0)),
+            PhysicalSize::new(320, 240),
+        ));
+
+        assert_eq!(clipboard.text.as_deref(), Some("copied text"));
+        assert!(world.current_dialog().is_some());
+
+        let mut empty_world = world_with_notice(copy_action_fields(""));
+        assert!(handle_dialog_mouse_input(
+            &mut counters,
+            &mut empty_world,
+            &None,
+            Some(&mut clipboard),
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(160.0, 220.0)),
+            PhysicalSize::new(320, 240),
+        ));
+        assert_eq!(clipboard.text.as_deref(), Some("copied text"));
+        assert!(empty_world.current_dialog().is_some());
+
+        let mut closing_fields = copy_action_fields("not copied");
+        closing_fields[1] = entry("after_action", NbtSummaryValue::String("close".to_string()));
+        let mut closing_world = world_with_notice(closing_fields);
+        let mut rejecting_clipboard = MockDialogClipboard {
+            text: Some("unchanged".to_string()),
+            rejects_write: true,
+        };
+        assert!(handle_dialog_mouse_input(
+            &mut counters,
+            &mut closing_world,
+            &None,
+            Some(&mut rejecting_clipboard),
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(160.0, 220.0)),
+            PhysicalSize::new(320, 240),
+        ));
+        assert_eq!(rejecting_clipboard.text.as_deref(), Some("unchanged"));
+        assert!(closing_world.current_dialog().is_none());
+    }
+
+    #[test]
     fn static_custom_notice_action_queues_exact_payload_then_closes() {
         let mut world = world_with_notice(custom_action_fields());
         let mut counters = NetCounters::default();
@@ -922,6 +1028,7 @@ mod tests {
             &mut counters,
             &mut world,
             &Some(tx),
+            None,
             MouseButton::Left,
             ElementState::Pressed,
             Some(PhysicalPosition::new(160.0, 220.0)),
@@ -950,6 +1057,7 @@ mod tests {
             &mut counters,
             &mut world,
             &Some(tx),
+            None,
             PhysicalKey::Code(KeyCode::Escape),
             ElementState::Pressed,
         ));
@@ -980,6 +1088,29 @@ mod tests {
                 ),
             ]),
         )]
+    }
+
+    fn copy_action_fields(value: &str) -> Vec<NbtSummaryEntry> {
+        vec![
+            entry("pause", NbtSummaryValue::Byte(0)),
+            entry("after_action", NbtSummaryValue::String("none".to_string())),
+            entry(
+                "action",
+                NbtSummaryValue::Compound(vec![
+                    entry("label", NbtSummaryValue::String("Copy".to_string())),
+                    entry(
+                        "action",
+                        NbtSummaryValue::Compound(vec![
+                            entry(
+                                "type",
+                                NbtSummaryValue::String("minecraft:copy_to_clipboard".to_string()),
+                            ),
+                            entry("value", NbtSummaryValue::String(value.to_string())),
+                        ]),
+                    ),
+                ]),
+            ),
+        ]
     }
 
     fn custom_button(
@@ -1017,6 +1148,7 @@ mod tests {
             &mut counters,
             &mut world,
             &None,
+            None,
             MouseButton::Left,
             ElementState::Pressed,
             Some(PhysicalPosition::new(160.0, 220.0)),
@@ -1042,6 +1174,7 @@ mod tests {
             &mut counters,
             &mut world,
             &None,
+            None,
             PhysicalKey::Code(KeyCode::Escape),
             ElementState::Pressed,
         ));
@@ -1058,6 +1191,7 @@ mod tests {
             &mut counters,
             &mut world,
             &None,
+            None,
             PhysicalKey::Code(KeyCode::Escape),
             ElementState::Pressed,
         ));
@@ -1073,6 +1207,7 @@ mod tests {
             &mut counters,
             &mut mouse_world,
             &None,
+            None,
             MouseButton::Left,
             ElementState::Pressed,
             Some(PhysicalPosition::new(160.0, 64.0)),

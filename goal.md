@@ -324,7 +324,7 @@ custom action 已发送完整 id/payload，并按 `after_action` 进入 close/no
 ClearDialog ignore 语义。
 仍须按 `DialogScreen`/`DialogControlSet` 完成 screen background、warning button/screen、
 Item body、四类 input、tooltip/scroll/focus、其余三类 top-level dialog 布局、action-bearing
-open-url/run/suggest/change-page/copy/dynamic action 与 Component-click。静态 show-dialog action 已同步
+open-url/run/suggest/change-page/dynamic action 与 Component-click。静态 show-dialog action 已同步
 替换当前 dialog、保留最初 previous screen，且不误增 clientbound packet counter。clear-dialog 还须接入 native-owned
 chat/sign/debug screen 和 warning return-screen stack；上述 runtime 完成前两个 `ShowDialog`
 的 `runtime_side_effect` cell 保持 `partial`。generic packet Component 的 world/session higher

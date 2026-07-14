@@ -14452,3 +14452,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] 新增不计 clientbound packet 的 `WorldStore::show_dialog_from_action` surface；nested Notice 的
   `after_action=wait_for_response` replacement、原 advancements previous-screen 保留、无 waiting 中间态、
   ShowDialog packet counter 不变及最终 restore 均有 focused regression。
+
+## 2026-07-14：Execute static copy-to-clipboard actions
+
+- [x] 对照 `Screen.defaultHandleClickEvent` 与 `KeyboardHandler.setClipboard`，静态
+  copy-to-clipboard action 复用 `bbb-native` 既有 arboard/`DebugClipboard` 平台 owner，先尝试写入原始
+  value，再执行 common `after_action`；平台 clipboard 不可用或写入失败不阻断 vanilla screen transition。
+- [x] 保持 vanilla 空字符串不触碰 clipboard 的门禁；非空 exact text、`after_action=none` 留屏与空值
+  保留旧 clipboard 内容均有 focused regression。该 capability 同时接入按钮和 Escape 共享 action runner，
+  后续 Component-click 可复用同一平台边界。
