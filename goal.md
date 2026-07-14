@@ -327,7 +327,7 @@ ClearDialog ignore 语义。Dialog 与 waiting screen 已按 `Screen.extractMenu
 summary-native nonrecursive structured patch（含 named/direct sound holder 的 break-sound、
 piercing/kinetic-weapon、完整 equippable、blocks-attacks、consumable、death-protection、tool 与
 potion-contents，以及 enchantments/stored-enchantments、attribute-modifiers、can-break/can-place-on
-adventure predicates、writable/written book content）的 Item body 已复用
+adventure predicates、writable/written book content、entity/bucket/block-entity typed data）的 Item body 已复用
 native item icon、3D block model、
 decorations 与 tooltip owner；有 description 时按 2px horizontal spacing/vertical-middle 排列，
 PlainMessage/description 也已计入 `FocusableTextWidget` 的 4px padding 与 inner wrap width。typed dialog
@@ -344,6 +344,8 @@ adventure predicate 的 ordered block holder-set、state exact/range、block-ent
 component matcher 同样进入 persistent summary，partial component predicate 与 lock 仍保持整栈拒绝；
 writable book 保留 aligned raw/filtered page strings，written book 同时保留 title/author/generation/resolved、
 aligned page text/filter 与逐页原始 raw/filtered Component NBT；
+entity/block-entity data 保留 builtin type id 与去除 persistent `id` 后的完整 CompoundTag，bucket data
+进入 codec-backed NBT；block-entity 同步按 wire summary 派生 spawner `SpawnData.entity.id`；
 未桥接的 item-stack 递归/其余富结构值不会被猜测性投影。
 仍须按 `DialogScreen`/`DialogControlSet` 完成 screen blur/depth-clear、warning button/screen、
 剩余有损/未 typed holder 形式及递归/富结构 component-patched Item body bridge 与 item focus outline、四类 input、

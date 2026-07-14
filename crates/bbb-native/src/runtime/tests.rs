@@ -14415,6 +14415,28 @@ fn hud_inventory_screen_projects_dialog_item_body_structured_patches() {
                                                 ),
                                             ]),
                                         ),
+                                        entry(
+                                            "minecraft:entity_data",
+                                            NbtSummaryValue::Compound(vec![entry(
+                                                "id",
+                                                NbtSummaryValue::String(
+                                                    "minecraft:pig".to_string(),
+                                                ),
+                                            )]),
+                                        ),
+                                        entry(
+                                            "minecraft:bucket_entity_data",
+                                            NbtSummaryValue::Compound(Vec::new()),
+                                        ),
+                                        entry(
+                                            "minecraft:block_entity_data",
+                                            NbtSummaryValue::Compound(vec![entry(
+                                                "id",
+                                                NbtSummaryValue::String(
+                                                    "minecraft:chest".to_string(),
+                                                ),
+                                            )]),
+                                        ),
                                     ]),
                                 ),
                             ]),

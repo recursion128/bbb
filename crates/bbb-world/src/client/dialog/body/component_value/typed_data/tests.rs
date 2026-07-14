@@ -6,9 +6,11 @@ use bbb_protocol::{
         VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID,
     },
     entity_types::vanilla_entity_type_for_resource_id,
+    packets::inventory::DataComponentPatchSummary,
     NbtSummaryEntry, NbtSummaryValue,
 };
 
+use super::super::apply_item_patch_value;
 use super::*;
 use crate::{RegistryContentState, RegistryPacketEntry, RegistrySet};
 
@@ -36,6 +38,20 @@ fn decodes_builtin_typed_entity_data_and_strips_id() {
             .id
     );
     assert_compound_names(&entity.data, &["Health"]);
+
+    let mut patch = DataComponentPatchSummary::default();
+    assert!(apply_item_patch_value(
+        VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID,
+        &super::super::DialogDataComponentValueState::EntityData {
+            entity: entity.clone(),
+        },
+        &mut patch,
+    ));
+    assert_eq!(
+        patch.entity_data_entity_type_id,
+        Some(entity.entity_type.holder_id)
+    );
+    assert_eq!(patch.entity_data_tag, Some(entity.data.clone()));
 
     let mut registries = RegistrySet::default();
     let mut contents = RegistryContentState::new("minecraft:entity_type");
@@ -96,6 +112,24 @@ fn decodes_builtin_typed_block_entity_data_and_strips_id() {
     );
     assert_compound_names(&block_entity.data, &["SpawnCount", "SpawnData"]);
 
+    let mut patch = DataComponentPatchSummary::default();
+    assert!(apply_item_patch_value(
+        VANILLA_DATA_COMPONENT_BLOCK_ENTITY_DATA_TYPE_ID,
+        &super::super::DialogDataComponentValueState::BlockEntityData {
+            block_entity: block_entity.clone(),
+        },
+        &mut patch,
+    ));
+    assert_eq!(
+        patch.block_entity_data_type_id,
+        Some(block_entity.block_entity_type.holder_id)
+    );
+    assert_eq!(patch.block_entity_data_tag, Some(block_entity.data.clone()));
+    assert_eq!(
+        patch.block_entity_spawn_entity_type.as_deref(),
+        Some("minecraft:pig")
+    );
+
     let mut registries = RegistrySet::default();
     let mut contents = RegistryContentState::new("minecraft:block_entity_type");
     contents.entries = vec![
@@ -136,6 +170,18 @@ fn decodes_bucket_entity_data_as_unmodified_compound() {
         super::super::DialogDataComponentValueState::BucketEntityData {
             data: value.clone()
         }
+    );
+    let mut patch = DataComponentPatchSummary::default();
+    assert!(apply_item_patch_value(
+        VANILLA_DATA_COMPONENT_BUCKET_ENTITY_DATA_TYPE_ID,
+        &decoded,
+        &mut patch,
+    ));
+    assert_eq!(
+        patch
+            .codec_backed_nbt
+            .get(&VANILLA_DATA_COMPONENT_BUCKET_ENTITY_DATA_TYPE_ID),
+        Some(&value)
     );
     assert_eq!(
         decode_custom_data(&compound(Vec::new()), "bucket entity data").unwrap(),

@@ -14650,3 +14650,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   styled filtered page、alignment 与 defaults，native dialog Item body 加入两类 empty/default book 后继续
   进入唯一 item runtime。typed-data、partial/lock predicate 与递归 item-stack collection 等其余富结构值
   继续由后续明确切片处理。
+
+## 2026-07-14：Bridge typed-data dialog Item patches
+
+- [x] 对照 `TypedEntityData.codec/streamCodec` 与 `DataComponents` registration，把 entity/block-entity
+  typed data 的 builtin type id 和去除 persistent `id` 后的完整 CompoundTag 投影到既有 summary；bucket
+  entity custom data 进入 type-id keyed codec-backed NBT，不把它误当 typed holder。
+- [x] block-entity summary 按 protocol decoder 的相同 `SpawnData.entity.id` 路径派生 normalized spawner
+  entity type；world focused regressions 覆盖 duplicate-id last-value、去 id tag、session registry 不覆盖
+  builtin wire identity、bucket 原样 NBT 与 spawner projection，native dialog Item body 加入三类 compact
+  data 后继续进入唯一 item runtime。partial/lock predicate 与递归 item-stack collection 等其余富结构值
+  继续由后续明确切片处理。

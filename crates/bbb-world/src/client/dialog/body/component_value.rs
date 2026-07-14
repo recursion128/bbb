@@ -804,6 +804,30 @@ pub(super) fn apply_item_patch_value(
                 .map(|page| page.filtered.as_ref().map(|page| page.component.clone()))
                 .collect();
         }
+        (VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID, Value::EntityData { entity }) => {
+            if !matches!(entity.data, NbtSummaryValue::Compound(_)) {
+                return false;
+            }
+            patch.entity_data_entity_type_id = Some(entity.entity_type.holder_id);
+            patch.entity_data_tag = Some(entity.data.clone());
+        }
+        (VANILLA_DATA_COMPONENT_BUCKET_ENTITY_DATA_TYPE_ID, Value::BucketEntityData { data }) => {
+            if !matches!(data, NbtSummaryValue::Compound(_)) {
+                return false;
+            }
+            patch.codec_backed_nbt.insert(type_id, data.clone());
+        }
+        (
+            VANILLA_DATA_COMPONENT_BLOCK_ENTITY_DATA_TYPE_ID,
+            Value::BlockEntityData { block_entity },
+        ) => {
+            if !matches!(block_entity.data, NbtSummaryValue::Compound(_)) {
+                return false;
+            }
+            patch.block_entity_data_type_id = Some(block_entity.block_entity_type.holder_id);
+            patch.block_entity_spawn_entity_type = typed_data_spawn_entity_type(&block_entity.data);
+            patch.block_entity_data_tag = Some(block_entity.data.clone());
+        }
         (
             VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID,
             Value::AttackRange {
@@ -1262,6 +1286,25 @@ fn block_predicate_summary(value: &DialogBlockPredicateState) -> Option<BlockPre
         exact_components,
         partial_components: Vec::new(),
     })
+}
+
+fn typed_data_spawn_entity_type(value: &NbtSummaryValue) -> Option<String> {
+    fn compound_entry<'a>(value: &'a NbtSummaryValue, name: &str) -> Option<&'a NbtSummaryValue> {
+        let NbtSummaryValue::Compound(entries) = value else {
+            return None;
+        };
+        entries
+            .iter()
+            .find(|entry| entry.name == name)
+            .map(|entry| &entry.value)
+    }
+
+    let spawn_data = compound_entry(value, "SpawnData")?;
+    let entity = compound_entry(spawn_data, "entity")?;
+    let NbtSummaryValue::String(raw_id) = compound_entry(entity, "id")? else {
+        return None;
+    };
+    normalize_codec_identifier(raw_id)
 }
 
 fn apply_holder_set(
