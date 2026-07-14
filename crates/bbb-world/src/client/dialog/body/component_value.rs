@@ -13,7 +13,8 @@ use bbb_protocol::{
     },
     data_component_types::{
         vanilla_data_component_type_for_resource_id, VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID,
-        VANILLA_DATA_COMPONENT_BEES_TYPE_ID, VANILLA_DATA_COMPONENT_BLOCK_ENTITY_DATA_TYPE_ID,
+        VANILLA_DATA_COMPONENT_BEES_TYPE_ID, VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID,
+        VANILLA_DATA_COMPONENT_BLOCK_ENTITY_DATA_TYPE_ID,
         VANILLA_DATA_COMPONENT_BLOCK_STATE_TYPE_ID, VANILLA_DATA_COMPONENT_BREAK_SOUND_TYPE_ID,
         VANILLA_DATA_COMPONENT_BUCKET_ENTITY_DATA_TYPE_ID,
         VANILLA_DATA_COMPONENT_CONTAINER_LOOT_TYPE_ID, VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID,
@@ -54,6 +55,7 @@ use crate::{registries::normalize_codec_identifier, RegistrySet};
 use super::super::{compound_entries, find_entry};
 
 mod bees;
+mod blocks_attacks;
 mod debug_stick;
 mod equippable;
 mod holder_set;
@@ -63,6 +65,7 @@ mod sound_event;
 mod typed_data;
 
 use bees::{decode_bees, DialogBeeOccupantState};
+use blocks_attacks::{decode_blocks_attacks, DialogBlocksAttacksState};
 use debug_stick::{decode_debug_stick_state, DialogDebugStickPropertyState};
 use equippable::{decode_equippable, DialogEquippableState};
 use holder_set::{
@@ -259,6 +262,9 @@ pub enum DialogDataComponentValueState {
     Equippable {
         equippable: DialogEquippableState,
     },
+    BlocksAttacks {
+        blocks_attacks: DialogBlocksAttacksState,
+    },
 }
 
 impl DialogDataComponentValueState {
@@ -412,6 +418,11 @@ pub(super) fn decode_supported_component_value(
         VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID => DialogDataComponentValueState::Equippable {
             equippable: decode_equippable(value, registries, &what)?,
         },
+        VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID => {
+            DialogDataComponentValueState::BlocksAttacks {
+                blocks_attacks: decode_blocks_attacks(value, registries, &what)?,
+            }
+        }
         _ => {
             if let Some(decoded) =
                 decode_holder_backed_component_value(type_id, value, registries, &what)

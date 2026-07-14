@@ -13795,3 +13795,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] 空/default record、全部八个 slot catalog 入口、named/direct sound、resource-id normalization、
   compact/list/tag/context-free empty HolderSet、built-in entity identity、wrong/missing fields 与
   unknown holder 均有定向测试；BlocksAttacks 等其余 sound-backed record 与 native screens 仍开放。
+
+## 2026-07-13：Decode blocks-attacks dialog item component
+
+- [x] 新建 `client/dialog/body/component_value/blocks_attacks.rs` semantic owner；对照
+  `BlocksAttacks.CODEC`、`DamageReduction.CODEC` 与 `ItemDamageFunction.CODEC`，typed 投影两个
+  non-negative float default、defaulted reduction list/item-damage record、两处 damage-type HolderSet
+  与两个 optional sound holder。
+- [x] `Float.compareTo` positive/non-negative 边界、默认单 reduction、显式空 list、required/unrestricted
+  nested float（含 NaN/Infinity 位）、session tag/list/compact/context-free empty HolderSet、named/direct
+  sound、missing/wrong shapes 与 unknown holders 均有定向测试；其余 persistent Codec 与 native screens
+  仍开放。
