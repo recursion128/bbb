@@ -14076,3 +14076,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   world owner，覆盖 FULL/player-name alternative、UUID、property map/list 与 skin patch；typed/fuzzy visitor
   和 17 UTF-16 unit 非法玩家名均有回归。generic packet owner、command-backed content 与 canonical
   encoding 仍开放。
+
+## 2026-07-14：Canonicalize Java floating component values
+
+- [x] 对照 JDK 26 `Float.toString`/`Double.toString` 与 vanilla `NbtOps.convertTo(JsonOps)`，为
+  translation primitive 和 custom-click NBT 的 Float/Double 增加精确 canonical JSON 数字编码；普通
+  最短十进制复用 Ryū，最短长度为一位时用精确二进制/十进制有理数比较全部可回转二位候选，保留
+  Java 的最近值与偶数 tie 规则，并按 scientific exponent `[-3,7)` 选择 plain/scientific 形式。
+- [x] f32/f64 最小次正规数、负零、Infinity/NaN `toString`、`0.001`/`1e7` notation 边界、translation
+  与 nested custom-NBT 长度均有定向测试；canonical Gson strict writer 对非有限值安全报错，unknown
+  fuzzy 字段仍先丢弃。structured page 剩余 owner-sensitive player/show-dialog/item-patch 重编码继续由
+  protocol/session 缺口账本追踪。

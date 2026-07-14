@@ -1,8 +1,3 @@
-use crate::{
-    nbt_summary::{NbtSummaryEntry, NbtSummaryValue},
-    packets::normalize_resource_location,
-};
-
 use super::{
     codec::{
         component_bool, component_i32, decoded_content_type, decoded_data_source_type,
@@ -10,19 +5,32 @@ use super::{
     },
     parse_text_color, validate_component_nbt,
 };
+use crate::{
+    nbt_summary::{NbtSummaryEntry, NbtSummaryValue},
+    packets::normalize_resource_location,
+};
+
+mod java_number;
+
+use java_number::{java_double_string, java_float_string};
 
 /// Returns the exact UTF-16 length of vanilla 26.1's canonical JsonOps encoding when the
 /// registry-independent Component model is sufficient to reproduce it.
 ///
 /// `None` means that decoding succeeded but canonical re-encoding still needs a higher semantic
-/// owner (a player profile, dialog, or item component patch) or Java Float/Double formatting. It
-/// is deliberately not an estimate: callers enforcing `flatRestrictedCodec` must only act on an
-/// exact `Some` result.
+/// owner (a player profile, dialog, or item component patch). It is deliberately not an estimate:
+/// callers enforcing `flatRestrictedCodec` must only act on an exact `Some` result.
 pub fn canonical_component_json_utf16_len(
     value: &NbtSummaryValue,
 ) -> Result<Option<usize>, String> {
     validate_component_nbt(value, "component")?;
-    Ok(canonical_component(value).map(|value| value.utf16_len()))
+    let Some(value) = canonical_component(value) else {
+        return Ok(None);
+    };
+    if value.has_non_finite_number() {
+        return Err("canonical JsonWriter rejects non-finite Float/Double values".to_string());
+    }
+    Ok(Some(value.utf16_len()))
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -36,6 +44,20 @@ enum JsonValue {
 }
 
 impl JsonValue {
+    fn has_non_finite_number(&self) -> bool {
+        match self {
+            Self::Number(value) => matches!(value.as_str(), "NaN" | "Infinity" | "-Infinity"),
+            Self::Array(values) => values.iter().any(Self::has_non_finite_number),
+            Self::Object(fields) => fields
+                .iter()
+                .any(|(_, value)| value.has_non_finite_number()),
+            Self::Map(fields) => fields
+                .iter()
+                .any(|(_, value)| value.has_non_finite_number()),
+            Self::Bool(_) | Self::String(_) => false,
+        }
+    }
+
     fn utf16_len(&self) -> usize {
         match self {
             Self::Bool(true) => 4,
@@ -251,10 +273,8 @@ fn canonical_translation_argument(value: &NbtSummaryValue, depth: usize) -> Opti
         NbtSummaryValue::Short(value) => Some(number(i64::from(*value))),
         NbtSummaryValue::Int(value) => Some(number(i64::from(*value))),
         NbtSummaryValue::Long(value) => Some(number(*value)),
-        // Java Float/Double.toString has observable shortest-decimal rules that differ from
-        // Rust's formatter at exponent and subnormal edges. Keep the result explicitly unknown
-        // until that codec-owned representation is implemented exactly.
-        NbtSummaryValue::Float(_) | NbtSummaryValue::Double(_) => None,
+        NbtSummaryValue::Float(bits) => Some(java_float(f32::from_bits(*bits))),
+        NbtSummaryValue::Double(bits) => Some(java_double(f64::from_bits(*bits))),
         NbtSummaryValue::String(value) => Some(JsonValue::String(value.clone())),
         _ => canonical_component_at(value, depth),
     }
@@ -428,7 +448,8 @@ fn canonical_nbt(value: &NbtSummaryValue) -> Option<JsonValue> {
         NbtSummaryValue::Short(value) => number(i64::from(*value)),
         NbtSummaryValue::Int(value) => number(i64::from(*value)),
         NbtSummaryValue::Long(value) => number(*value),
-        NbtSummaryValue::Float(_) | NbtSummaryValue::Double(_) => return None,
+        NbtSummaryValue::Float(bits) => java_float(f32::from_bits(*bits)),
+        NbtSummaryValue::Double(bits) => java_double(f64::from_bits(*bits)),
         NbtSummaryValue::ByteArray(values) => JsonValue::Array(
             values
                 .iter()
@@ -506,6 +527,14 @@ fn string_value(value: &NbtSummaryValue) -> Option<&str> {
 
 fn number(value: i64) -> JsonValue {
     JsonValue::Number(value.to_string())
+}
+
+fn java_float(value: f32) -> JsonValue {
+    JsonValue::Number(java_float_string(value))
+}
+
+fn java_double(value: f64) -> JsonValue {
+    JsonValue::Number(java_double_string(value))
 }
 
 fn find_entry<'a>(entries: &'a [NbtSummaryEntry], field: &str) -> Option<&'a NbtSummaryValue> {
@@ -645,7 +674,52 @@ mod tests {
     }
 
     #[test]
-    fn reports_owner_and_non_integral_java_values_as_unknown() {
+    fn canonicalizes_java_float_and_double_values() {
+        let translation = compound(vec![
+            ("translate", string("key")),
+            ("with", list(vec![NbtSummaryValue::Float(1)])),
+        ]);
+        assert_eq!(
+            exact(&translation),
+            r#"{"translate":"key","with":[1.4E-45]}"#.len()
+        );
+        let custom = compound(vec![
+            ("text", string("custom")),
+            (
+                "click_event",
+                compound(vec![
+                    ("action", string("custom")),
+                    ("id", string("test")),
+                    ("payload", NbtSummaryValue::Double(1)),
+                ]),
+            ),
+        ]);
+        assert_eq!(
+            exact(&custom),
+            r#"{"text":"custom","click_event":{"action":"custom","id":"minecraft:test","payload":4.9E-324}}"#.len()
+        );
+
+        let non_finite = compound(vec![
+            ("translate", string("key")),
+            (
+                "with",
+                list(vec![NbtSummaryValue::Float(f32::NAN.to_bits())]),
+            ),
+        ]);
+        assert!(canonical_component_json_utf16_len(&non_finite)
+            .unwrap_err()
+            .contains("non-finite"));
+
+        // Fuzzy Component encoding discards unknown fields before Gson's strict writer sees them.
+        let ignored = compound(vec![
+            ("text", string("ok")),
+            ("unknown", NbtSummaryValue::Double(f64::INFINITY.to_bits())),
+        ]);
+        assert_eq!(exact(&ignored), r#""ok""#.len());
+    }
+
+    #[test]
+    fn reports_owner_values_as_unknown() {
         for value in [
             compound(vec![
                 ("object", string("player")),
@@ -659,21 +733,6 @@ mod tests {
                         ("action", string("show_item")),
                         ("id", string("stone")),
                         ("components", compound(Vec::new())),
-                    ]),
-                ),
-            ]),
-            compound(vec![
-                ("translate", string("key")),
-                ("with", list(vec![NbtSummaryValue::Float(1.0f32.to_bits())])),
-            ]),
-            compound(vec![
-                ("text", string("custom")),
-                (
-                    "click_event",
-                    compound(vec![
-                        ("action", string("custom")),
-                        ("id", string("test")),
-                        ("payload", NbtSummaryValue::Double(1.0f64.to_bits())),
                     ]),
                 ),
             ]),
