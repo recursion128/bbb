@@ -14672,3 +14672,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   原 slot index，并按 protocol decoder 记录 nonempty count；world focused regressions 覆盖两层 remainder、
   nested repair-cost、empty lists 与 slot 0/2，native dialog Item body 加入四类 compact/empty component 后
   继续进入唯一 item runtime。partial/lock predicate 与其余富结构值继续由后续明确切片处理。
+
+## 2026-07-14：Bridge bees dialog Item patches
+
+- [x] 对照 `Bees.CODEC/STREAM_CODEC` 与 `BeehiveBlockEntity.Occupant`，把 ordered occupant 的 builtin
+  entity type id、去除 persistent `id` 后的 CompoundTag、`ticks_in_hive` 与
+  `min_ticks_in_hive` 投影到既有 `BeeOccupantSummary`；empty list 也显式保留 component presence。
+- [x] world focused regression 覆盖 duplicate-id last-value、session registry 不覆盖 builtin wire identity、
+  entity tag、两个 tick、empty list 与非 CompoundTag 整项拒绝；native dialog Item body 加入 empty bees
+  component 后继续进入唯一 item runtime。partial/lock predicate 与其余富结构值继续由后续明确切片处理。

@@ -69,7 +69,7 @@ Owner: `bbb-protocol`
 - Complete native `Dialog` screen/runtime behavior against
   `DialogScreen`, `SimpleDialogScreen`, `DialogControlSet`, and
   `DialogBodyHandlers`: add the in-world screen blur/depth-clear and warning button/screen;
-  bridge the remaining lossy or untyped holder forms plus recursive and rich-structure
+  bridge the remaining lossy or untyped holder forms plus unbridged rich-structure
   component-patched Item bodies into the native item renderer, add Item widget focus outlines,
   all four input controls,
   remaining button-list action tooltips, and the
@@ -90,6 +90,7 @@ Owner: `bbb-protocol`
   as well as writable/written book filterable strings and exact written-page Component NBT,
   plus entity, bucket-entity, and block-entity typed data with spawner entity projection,
   and recursive use-remainder, charged-projectile, bundle, and sparse-container item templates,
+  plus ordered bee occupants with builtin typed-entity data and hive tick values,
   and item tooltips while conservatively rejecting an entire body when any added component value
   has no summary bridge,
   and implements the

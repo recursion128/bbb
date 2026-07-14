@@ -12,17 +12,17 @@ use bbb_protocol::packets::{
     chunks::BlockPos,
     inventory::{
         AdventureModePredicateDataSummary, AdventureModePredicateSummary, AttackRangeSummary,
-        AttributeModifierSummary, BannerPatternLayerSummary, BlockHolderSetSummary,
-        BlockPredicateSummary, BlocksAttacksSummary, ConsumableSummary, ConsumeEffectSummary,
-        DamageReductionSummary, DamageTypeHolderSetSummary, DataComponentPatchSummary,
-        EntityTypeHolderSetSummary, EquippableSummary, FireworkExplosionSummary,
-        ItemContainerSlotSummary, ItemDamageFunctionSummary, ItemEnchantmentSummary,
-        ItemStackTemplateSummary, KineticWeaponConditionSummary, KineticWeaponSummary,
-        LodestoneTargetSummary, MobEffectDetailsSummary, MobEffectInstanceSummary,
-        PiercingWeaponSummary, ResolvableProfileSummary, SoundEventSummary,
-        StatePropertyMatcherSummary, StatePropertyValueMatcherSummary, SuspiciousStewEffectSummary,
-        SwingAnimationSummary, ToolRuleSummary, ToolSummary, TrimMaterialSummary,
-        TrimPatternSummary, UseEffectsSummary, WrittenBookContentSummary,
+        AttributeModifierSummary, BannerPatternLayerSummary, BeeOccupantSummary,
+        BlockHolderSetSummary, BlockPredicateSummary, BlocksAttacksSummary, ConsumableSummary,
+        ConsumeEffectSummary, DamageReductionSummary, DamageTypeHolderSetSummary,
+        DataComponentPatchSummary, EntityTypeHolderSetSummary, EquippableSummary,
+        FireworkExplosionSummary, ItemContainerSlotSummary, ItemDamageFunctionSummary,
+        ItemEnchantmentSummary, ItemStackTemplateSummary, KineticWeaponConditionSummary,
+        KineticWeaponSummary, LodestoneTargetSummary, MobEffectDetailsSummary,
+        MobEffectInstanceSummary, PiercingWeaponSummary, ResolvableProfileSummary,
+        SoundEventSummary, StatePropertyMatcherSummary, StatePropertyValueMatcherSummary,
+        SuspiciousStewEffectSummary, SwingAnimationSummary, ToolRuleSummary, ToolSummary,
+        TrimMaterialSummary, TrimPatternSummary, UseEffectsSummary, WrittenBookContentSummary,
     },
 };
 use bbb_protocol::{
@@ -868,6 +868,27 @@ pub(super) fn apply_item_patch_value(
             patch.container_item_count = Some(items.len());
             patch.container_items = items;
             patch.container_slots = item_slots;
+        }
+        (VANILLA_DATA_COMPONENT_BEES_TYPE_ID, Value::Bees { occupants }) => {
+            let Some(bees) = occupants
+                .iter()
+                .map(|occupant| {
+                    matches!(&occupant.entity_data, NbtSummaryValue::Compound(_)).then(|| {
+                        BeeOccupantSummary {
+                            entity_type_id: occupant.entity_type.holder_id,
+                            entity_data_tag: Some(occupant.entity_data.clone()),
+                            ticks_in_hive: occupant.ticks_in_hive,
+                            min_ticks_in_hive: occupant.min_ticks_in_hive,
+                        }
+                    })
+                })
+                .collect::<Option<Vec<_>>>()
+            else {
+                return false;
+            };
+            patch.bees_present = true;
+            patch.bees_count = bees.len();
+            patch.bees = bees;
         }
         (
             VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID,

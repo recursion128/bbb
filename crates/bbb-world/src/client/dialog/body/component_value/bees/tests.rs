@@ -1,8 +1,11 @@
 use bbb_protocol::{
     data_component_types::VANILLA_DATA_COMPONENT_BEES_TYPE_ID,
-    entity_types::vanilla_entity_type_for_resource_id, NbtSummaryEntry, NbtSummaryValue,
+    entity_types::vanilla_entity_type_for_resource_id,
+    packets::inventory::{BeeOccupantSummary, DataComponentPatchSummary},
+    NbtSummaryEntry, NbtSummaryValue,
 };
 
+use super::super::apply_item_patch_value;
 use super::*;
 use crate::{RegistryContentState, RegistryPacketEntry, RegistrySet};
 
@@ -49,6 +52,38 @@ fn decodes_bee_occupants_with_builtin_typed_entity_data() {
     };
     assert_eq!(entity_data.len(), 1);
     assert_eq!(entity_data[0].name, "Health");
+
+    let mut patch = DataComponentPatchSummary::default();
+    assert!(apply_item_patch_value(
+        VANILLA_DATA_COMPONENT_BEES_TYPE_ID,
+        &super::super::DialogDataComponentValueState::Bees {
+            occupants: occupants.clone(),
+        },
+        &mut patch,
+    ));
+    assert!(patch.bees_present);
+    assert_eq!(patch.bees_count, 1);
+    assert_eq!(
+        patch.bees,
+        vec![BeeOccupantSummary {
+            entity_type_id: occupant.entity_type.holder_id,
+            entity_data_tag: Some(occupant.entity_data.clone()),
+            ticks_in_hive: 42,
+            min_ticks_in_hive: -5,
+        }]
+    );
+
+    let mut empty_patch = DataComponentPatchSummary::default();
+    assert!(apply_item_patch_value(
+        VANILLA_DATA_COMPONENT_BEES_TYPE_ID,
+        &super::super::DialogDataComponentValueState::Bees {
+            occupants: Vec::new(),
+        },
+        &mut empty_patch,
+    ));
+    assert!(empty_patch.bees_present);
+    assert_eq!(empty_patch.bees_count, 0);
+    assert!(empty_patch.bees.is_empty());
 
     let mut registries = RegistrySet::default();
     let mut contents = RegistryContentState::new("minecraft:entity_type");
@@ -124,6 +159,22 @@ fn rejects_malformed_bee_occupants() {
         let error = decode_bees(&value, "bees").unwrap_err();
         assert!(error.contains(expected), "unexpected error: {error}");
     }
+
+    assert!(!apply_item_patch_value(
+        VANILLA_DATA_COMPONENT_BEES_TYPE_ID,
+        &super::super::DialogDataComponentValueState::Bees {
+            occupants: vec![DialogBeeOccupantState {
+                entity_type: DialogRegistryHolderReferenceState {
+                    holder_id: 0,
+                    resource_id: "minecraft:bee".to_string(),
+                },
+                entity_data: NbtSummaryValue::String("not a compound".to_string()),
+                ticks_in_hive: 0,
+                min_ticks_in_hive: 0,
+            }],
+        },
+        &mut DataComponentPatchSummary::default(),
+    ));
 }
 
 fn occupant(entity_data: NbtSummaryValue) -> NbtSummaryValue {

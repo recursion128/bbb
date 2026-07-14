@@ -14455,6 +14455,7 @@ fn hud_inventory_screen_projects_dialog_item_body_structured_patches() {
                                             "minecraft:container",
                                             NbtSummaryValue::List(Vec::new()),
                                         ),
+                                        entry("minecraft:bees", NbtSummaryValue::List(Vec::new())),
                                     ]),
                                 ),
                             ]),
