@@ -14710,3 +14710,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   list；all-or-nothing 回归改用 protocol summary 尚无字段的 `lock` 作为明确未桥接哨兵。native dialog
   Item body 加入 empty recipes 后继续进入唯一 item runtime。partial/lock predicate 与其余富结构值继续
   由后续明确切片处理。
+
+## 2026-07-14：Bridge container-loot dialog Item patches
+
+- [x] 对照 `SeededContainerLoot.CODEC`，把 normalized loot-table resource key 与 long seed 重建为
+  persistent CompoundTag，并按 type id 进入既有 codec-backed NBT summary/encoder；`seed == 0` 严格按
+  `optionalFieldOf("seed", 0L)` 省略，非零 seed 则保留 long 类型。
+- [x] world focused regression 覆盖 numeric-to-long seed normalization、default namespace/empty path、
+  default seed omission 与 container-loot presence；native dialog Item body 加入 default-seed loot table 后
+  继续进入唯一 item runtime。partial/lock predicate 与其余富结构值继续由后续明确切片处理。

@@ -14468,6 +14468,15 @@ fn hud_inventory_screen_projects_dialog_item_body_structured_patches() {
                                             "minecraft:recipes",
                                             NbtSummaryValue::List(Vec::new()),
                                         ),
+                                        entry(
+                                            "minecraft:container_loot",
+                                            NbtSummaryValue::Compound(vec![entry(
+                                                "loot_table",
+                                                NbtSummaryValue::String(
+                                                    "minecraft:empty".to_string(),
+                                                ),
+                                            )]),
+                                        ),
                                     ]),
                                 ),
                             ]),

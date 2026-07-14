@@ -747,32 +747,68 @@ fn decodes_resource_key_and_component_catalog_metadata() {
         })
     );
 
+    let container_loot = decoded(
+        VANILLA_DATA_COMPONENT_CONTAINER_LOOT_TYPE_ID,
+        "minecraft:container_loot",
+        &compound(vec![
+            string_entry("loot_table", "chests/simple_dungeon"),
+            value_entry("seed", NbtSummaryValue::Double(12.75f64.to_bits())),
+        ]),
+    )
+    .unwrap();
     assert_eq!(
-        decoded(
-            VANILLA_DATA_COMPONENT_CONTAINER_LOOT_TYPE_ID,
-            "minecraft:container_loot",
-            &compound(vec![
-                string_entry("loot_table", "chests/simple_dungeon"),
-                value_entry("seed", NbtSummaryValue::Double(12.75f64.to_bits())),
-            ]),
-        )
-        .unwrap(),
+        container_loot,
         Some(DialogDataComponentValueState::ContainerLoot {
             loot_table: "minecraft:chests/simple_dungeon".to_string(),
             seed: 12,
         })
     );
+    let default_seed_loot = decoded(
+        VANILLA_DATA_COMPONENT_CONTAINER_LOOT_TYPE_ID,
+        "minecraft:container_loot",
+        &compound(vec![string_entry("loot_table", ":empty")]),
+    )
+    .unwrap();
     assert_eq!(
-        decoded(
-            VANILLA_DATA_COMPONENT_CONTAINER_LOOT_TYPE_ID,
-            "minecraft:container_loot",
-            &compound(vec![string_entry("loot_table", ":empty")]),
-        )
-        .unwrap(),
+        default_seed_loot,
         Some(DialogDataComponentValueState::ContainerLoot {
             loot_table: "minecraft:empty".to_string(),
             seed: 0,
         })
+    );
+
+    let mut patch = DataComponentPatchSummary::default();
+    assert!(apply_item_patch_value(
+        VANILLA_DATA_COMPONENT_CONTAINER_LOOT_TYPE_ID,
+        container_loot.as_ref().unwrap(),
+        &mut patch,
+    ));
+    assert!(patch.container_loot);
+    assert_eq!(
+        patch
+            .codec_backed_nbt
+            .get(&VANILLA_DATA_COMPONENT_CONTAINER_LOOT_TYPE_ID),
+        Some(&compound(vec![
+            string_entry("loot_table", "minecraft:chests/simple_dungeon"),
+            value_entry("seed", NbtSummaryValue::Long(12)),
+        ]))
+    );
+
+    let mut default_seed_patch = DataComponentPatchSummary::default();
+    assert!(apply_item_patch_value(
+        VANILLA_DATA_COMPONENT_CONTAINER_LOOT_TYPE_ID,
+        default_seed_loot.as_ref().unwrap(),
+        &mut default_seed_patch,
+    ));
+    assert!(default_seed_patch.container_loot);
+    assert_eq!(
+        default_seed_patch
+            .codec_backed_nbt
+            .get(&VANILLA_DATA_COMPONENT_CONTAINER_LOOT_TYPE_ID),
+        Some(&compound(vec![string_entry(
+            "loot_table",
+            "minecraft:empty"
+        )]))
     );
 }
 

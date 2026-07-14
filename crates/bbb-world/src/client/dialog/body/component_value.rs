@@ -953,6 +953,25 @@ pub(super) fn apply_item_patch_value(
             );
         }
         (
+            VANILLA_DATA_COMPONENT_CONTAINER_LOOT_TYPE_ID,
+            Value::ContainerLoot { loot_table, seed },
+        ) => {
+            let mut entries = vec![NbtSummaryEntry {
+                name: "loot_table".to_string(),
+                value: NbtSummaryValue::String(loot_table.clone()),
+            }];
+            if *seed != 0 {
+                entries.push(NbtSummaryEntry {
+                    name: "seed".to_string(),
+                    value: NbtSummaryValue::Long(*seed),
+                });
+            }
+            patch.container_loot = true;
+            patch
+                .codec_backed_nbt
+                .insert(type_id, NbtSummaryValue::Compound(entries));
+        }
+        (
             VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID,
             Value::AttackRange {
                 min_reach_bits,
