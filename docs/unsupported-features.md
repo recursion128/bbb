@@ -118,8 +118,8 @@ Owner: `bbb-protocol`
   world context.
   The same world/session Component owner now also reaches WRITTEN_BOOK_CONTENT
   pages nested inside item patches. Thread it through the remaining
-  Component-valued item records (attribute overrides, predicates, and direct
-  instrument/trim descriptions) and recursive
+  Component-valued item records (predicates and direct instrument/trim
+  descriptions) and recursive
   ItemStackTemplate patches so `flatRestrictedCodec(32767)` can size every
   structured page; render
   the dialog and warning screens, integrate clear-dialog restoration with the remaining

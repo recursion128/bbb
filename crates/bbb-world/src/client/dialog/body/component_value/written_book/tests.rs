@@ -764,11 +764,18 @@ fn enforces_direct_trim_item_patch_page_boundary() {
 }
 
 #[test]
-fn enforces_attribute_modifier_item_patch_page_boundary() {
+fn enforces_attribute_modifier_override_dialog_page_boundary() {
     let prefix = concat!(
-        r#"{"text":"item","extra":[""],"hover_event":{"action":"show_item","id":"minecraft:stone","components":{"minecraft:attribute_modifiers":[{"type":"minecraft:attack_damage","id":"minecraft:base_attack_damage","amount":-2.5,"operation":"add_value"},{"type":"minecraft:armor","id":"example:hidden","amount":0.25,"operation":"add_multiplied_base","slot":"mainhand","display":{"type":"hidden"}},{"type":"minecraft:movement_speed","id":"example:override","amount":1.5,"operation":"add_multiplied_total","slot":"head","display":{"type":"override","value":{"text":"Boost","color":"red","bold":true}}}]}}}"#
+        r#"{"text":"item","extra":[""],"hover_event":{"action":"show_item","id":"minecraft:stone","components":{"minecraft:attribute_modifiers":[{"type":"minecraft:attack_damage","id":"minecraft:base_attack_damage","amount":-2.5,"operation":"add_value"},{"type":"minecraft:armor","id":"example:hidden","amount":0.25,"operation":"add_multiplied_base","slot":"mainhand","display":{"type":"hidden"}},{"type":"minecraft:movement_speed","id":"example:override","amount":1.5,"operation":"add_multiplied_total","slot":"head","display":{"type":"override","value":{"text":"Boost","click_event":{"action":"show_dialog","dialog":{"type":"minecraft:notice","title":"Inner"}}}}}]}}}"#
     )
     .len();
+    let canonical_prefix = crate::client::dialog::canonical_component_json_utf16_len_with_context(
+        &component_with_attribute_modifier_item_patch(String::new()),
+        DialogDecodeContext::new(None, 0),
+    )
+    .unwrap()
+    .unwrap();
+    assert_eq!(canonical_prefix, prefix);
     for (limit, expected_error) in [(32_767usize, None), (32_768usize, Some("encodes to 32768"))] {
         let page = component_with_attribute_modifier_item_patch("x".repeat(limit - prefix));
         let result = decode_written_book_content(&book_with_pages(vec![page]), "written book");
@@ -2550,8 +2557,19 @@ fn component_with_attribute_modifier_item_patch(extra: String) -> NbtSummaryValu
                                         "value",
                                         compound(vec![
                                             string_entry("text", "Boost"),
-                                            value_entry("bold", NbtSummaryValue::Byte(1)),
-                                            string_entry("color", "red"),
+                                            value_entry(
+                                                "click_event",
+                                                compound(vec![
+                                                    string_entry("action", "show_dialog"),
+                                                    value_entry(
+                                                        "dialog",
+                                                        compound(vec![
+                                                            string_entry("type", "notice"),
+                                                            string_entry("title", "Inner"),
+                                                        ]),
+                                                    ),
+                                                ]),
+                                            ),
                                         ]),
                                     ),
                                 ])),

@@ -116,6 +116,9 @@ fn canonical_component_value_json_utf16_len_with_context(
         DialogDataComponentValueState::WrittenBookContent { content } => {
             written_book_content_len_with_context(content, context)
         }
+        DialogDataComponentValueState::AttributeModifiers { modifiers } => {
+            attribute_modifiers_len_with_context(modifiers, context)
+        }
         _ => Ok(canonical_component_value_json_utf16_len(value)),
     }
 }
@@ -1039,6 +1042,20 @@ fn attribute_modifiers_len(modifiers: &[DialogAttributeModifierState]) -> Option
     ))
 }
 
+fn attribute_modifiers_len_with_context(
+    modifiers: &[DialogAttributeModifierState],
+    context: DialogDecodeContext<'_>,
+) -> Result<Option<usize>, String> {
+    let mut lengths = Vec::with_capacity(modifiers.len());
+    for modifier in modifiers {
+        let Some(length) = attribute_modifier_len_with_context(modifier, context)? else {
+            return Ok(None);
+        };
+        lengths.push(length);
+    }
+    Ok(Some(array_len(lengths.into_iter())))
+}
+
 fn attribute_modifier_len(modifier: &DialogAttributeModifierState) -> Option<usize> {
     let mut fields = vec![
         ("type", string_len(&modifier.attribute.resource_id)),
@@ -1061,6 +1078,33 @@ fn attribute_modifier_len(modifier: &DialogAttributeModifierState) -> Option<usi
     Some(object_len(fields.into_iter()))
 }
 
+fn attribute_modifier_len_with_context(
+    modifier: &DialogAttributeModifierState,
+    context: DialogDecodeContext<'_>,
+) -> Result<Option<usize>, String> {
+    let Some(amount_len) = canonical_f64_json_utf16_len(modifier.amount_bits) else {
+        return Ok(None);
+    };
+    let mut fields = vec![
+        ("type", string_len(&modifier.attribute.resource_id)),
+        ("id", string_len(&modifier.modifier_id)),
+        ("amount", amount_len),
+        ("operation", string_len(&modifier.operation)),
+    ];
+    if modifier.slot_group_id != VANILLA_EQUIPMENT_SLOT_GROUP_ANY_ID {
+        fields.push(("slot", string_len(&modifier.slot_group)));
+    }
+    if modifier.display.type_id != VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_DEFAULT_ID {
+        let Some(display_len) =
+            attribute_modifier_display_len_with_context(&modifier.display, context)?
+        else {
+            return Ok(None);
+        };
+        fields.push(("display", display_len));
+    }
+    Ok(Some(object_len(fields.into_iter())))
+}
+
 fn attribute_modifier_display_len(display: &DialogAttributeModifierDisplayState) -> Option<usize> {
     let mut fields = vec![("type", string_len(&display.serialized_name))];
     if display.type_id == VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_OVERRIDE_ID {
@@ -1070,6 +1114,25 @@ fn attribute_modifier_display_len(display: &DialogAttributeModifierDisplayState)
         ));
     }
     Some(object_len(fields.into_iter()))
+}
+
+fn attribute_modifier_display_len_with_context(
+    display: &DialogAttributeModifierDisplayState,
+    context: DialogDecodeContext<'_>,
+) -> Result<Option<usize>, String> {
+    let mut fields = vec![("type", string_len(&display.serialized_name))];
+    if display.type_id == VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_OVERRIDE_ID {
+        let Some(value) = display.value.as_ref() else {
+            return Ok(None);
+        };
+        let Some(value_len) =
+            canonical_component_json_utf16_len_with_context(&value.component, context)?
+        else {
+            return Ok(None);
+        };
+        fields.push(("value", value_len));
+    }
+    Ok(Some(object_len(fields.into_iter())))
 }
 
 fn instrument_holder_len(instrument: &DialogInstrumentHolderState) -> Option<usize> {

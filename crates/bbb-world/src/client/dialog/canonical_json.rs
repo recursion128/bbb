@@ -1222,6 +1222,64 @@ mod tests {
         );
     }
 
+    #[test]
+    fn threads_dialog_owner_through_attribute_override_components() {
+        let override_value = compound(vec![
+            string_entry("text", "Boost"),
+            value_entry(
+                "click_event",
+                compound(vec![
+                    string_entry("action", "show_dialog"),
+                    value_entry("dialog", notice("Inner")),
+                ]),
+            ),
+        ]);
+        let value = compound(vec![
+            string_entry("text", "item"),
+            value_entry(
+                "hover_event",
+                compound(vec![
+                    string_entry("action", "show_item"),
+                    string_entry("id", "stone"),
+                    value_entry(
+                        "components",
+                        compound(vec![value_entry(
+                            "attribute_modifiers",
+                            NbtSummaryValue::List(vec![compound(vec![
+                                string_entry("type", "movement_speed"),
+                                string_entry("id", "example:override"),
+                                value_entry("amount", NbtSummaryValue::Double(1.5f64.to_bits())),
+                                string_entry("operation", "add_multiplied_total"),
+                                string_entry("slot", "head"),
+                                value_entry(
+                                    "display",
+                                    compound(vec![
+                                        string_entry("type", "override"),
+                                        value_entry("value", override_value),
+                                    ]),
+                                ),
+                            ])]),
+                        )]),
+                    ),
+                ]),
+            ),
+        ]);
+        assert_eq!(
+            canonical_component_json_utf16_len(&value).unwrap(),
+            None,
+            "registry-independent Component owner must remain conservative"
+        );
+        let expected = r#"{"text":"item","hover_event":{"action":"show_item","id":"minecraft:stone","components":{"minecraft:attribute_modifiers":[{"type":"minecraft:movement_speed","id":"example:override","amount":1.5,"operation":"add_multiplied_total","slot":"head","display":{"type":"override","value":{"text":"Boost","click_event":{"action":"show_dialog","dialog":{"type":"minecraft:notice","title":"Inner"}}}}}]}}}"#;
+        assert_eq!(
+            canonical_component_json_utf16_len_with_context(
+                &value,
+                DialogDecodeContext::new(None, 0),
+            )
+            .unwrap(),
+            Some(expected.len())
+        );
+    }
+
     fn component_with_show_dialog(dialog: NbtSummaryValue) -> NbtSummaryValue {
         compound(vec![
             string_entry("text", "Open"),
