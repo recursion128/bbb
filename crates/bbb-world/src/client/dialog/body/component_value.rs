@@ -94,7 +94,9 @@ mod typed_data;
 mod writable_book;
 mod written_book;
 
-use attribute_modifiers::{decode_attribute_modifiers, DialogAttributeModifierState};
+use attribute_modifiers::{
+    decode_attribute_modifiers_with_registries, DialogAttributeModifierState,
+};
 use bees::{decode_bees, DialogBeeOccupantState};
 use blocks_attacks::{decode_blocks_attacks, DialogBlocksAttacksState};
 use consume_effect::{
@@ -134,7 +136,7 @@ use typed_data::{
     DialogTypedBlockEntityDataState, DialogTypedEntityDataState,
 };
 use writable_book::{decode_writable_book_content, DialogFilterableStringState};
-use written_book::{decode_written_book_content, DialogWrittenBookContentState};
+use written_book::{decode_written_book_content_with_registries, DialogWrittenBookContentState};
 
 use super::super::DialogTextState;
 
@@ -466,7 +468,7 @@ pub(super) fn decode_supported_component_value(
         },
         VANILLA_DATA_COMPONENT_ATTRIBUTE_MODIFIERS_TYPE_ID => {
             DialogDataComponentValueState::AttributeModifiers {
-                modifiers: decode_attribute_modifiers(value, &what)?,
+                modifiers: decode_attribute_modifiers_with_registries(value, &what, registries)?,
             }
         }
         VANILLA_DATA_COMPONENT_CAN_PLACE_ON_TYPE_ID | VANILLA_DATA_COMPONENT_CAN_BREAK_TYPE_ID => {
@@ -615,7 +617,7 @@ pub(super) fn decode_supported_component_value(
         }
         VANILLA_DATA_COMPONENT_WRITTEN_BOOK_CONTENT_TYPE_ID => {
             DialogDataComponentValueState::WrittenBookContent {
-                content: decode_written_book_content(value, &what)?,
+                content: decode_written_book_content_with_registries(value, &what, registries)?,
             }
         }
         _ => {

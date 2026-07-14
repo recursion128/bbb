@@ -1,4 +1,4 @@
-use bbb_protocol::{visit_component_payloads, ComponentPayload, NbtSummaryValue};
+use bbb_protocol::NbtSummaryValue;
 
 use crate::RegistrySet;
 
@@ -12,9 +12,7 @@ pub(super) fn decode_text_component(
     what: &str,
     registries: Option<&RegistrySet>,
 ) -> Result<DialogTextState, String> {
-    let component = decode_component(value, what)?;
-    validate_component_payloads(value, what, registries)?;
-    Ok(component)
+    decode_component(value, what, registries)
 }
 
 pub(super) fn decode_lore(
@@ -34,21 +32,6 @@ pub(super) fn decode_lore(
         .enumerate()
         .map(|(index, value)| decode_text_component(value, &format!("{what}[{index}]"), registries))
         .collect()
-}
-
-fn validate_component_payloads(
-    value: &NbtSummaryValue,
-    what: &str,
-    registries: Option<&RegistrySet>,
-) -> Result<(), String> {
-    visit_component_payloads(value, what, |payload, payload_what| match payload {
-        ComponentPayload::ShowDialog(_) => Ok(()),
-        ComponentPayload::ShowItemComponents(components) => {
-            super::super::decode_data_component_patch(components, registries)
-                .map(|_| ())
-                .map_err(|error| format!("{payload_what}: {error}"))
-        }
-    })
 }
 
 #[cfg(test)]

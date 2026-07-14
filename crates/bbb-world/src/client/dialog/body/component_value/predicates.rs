@@ -521,7 +521,7 @@ fn decode_concrete_component_predicate(
                 pages: find_entry(entries, "pages")
                     .map(|value| {
                         decode_collection_predicate(value, what, &|value, nested_what| {
-                            decode_component(value, nested_what)
+                            decode_component(value, nested_what, registries)
                         })
                     })
                     .transpose()?,

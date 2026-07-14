@@ -87,7 +87,7 @@ fn decode_dialog_body(
     let entries = compound_entries(value, &what)?;
     match required_string(entries, "type", &what)? {
         "plain_message" | "minecraft:plain_message" => Ok(DialogBodyState::PlainMessage {
-            message: decode_plain_message_map(entries, &what)?,
+            message: decode_plain_message_map(entries, &what, registries)?,
         }),
         "item" | "minecraft:item" => {
             let width = optional_i32(entries, "width", 16, "item dialog body")?;
@@ -100,7 +100,7 @@ fn decode_dialog_body(
                     registries,
                 )?,
                 description: find_entry(entries, "description")
-                    .map(decode_plain_message)
+                    .map(|value| decode_plain_message(value, registries))
                     .transpose()?,
                 show_decorations: optional_bool(entries, "show_decorations", true)?,
                 show_tooltip: optional_bool(entries, "show_tooltip", true)?,
@@ -112,14 +112,17 @@ fn decode_dialog_body(
     }
 }
 
-fn decode_plain_message(value: &NbtSummaryValue) -> Result<DialogPlainMessageState, String> {
+fn decode_plain_message(
+    value: &NbtSummaryValue,
+    registries: Option<&RegistrySet>,
+) -> Result<DialogPlainMessageState, String> {
     if let NbtSummaryValue::Compound(entries) = value {
         if find_entry(entries, "contents").is_some() {
-            return decode_plain_message_map(entries, "dialog plain message");
+            return decode_plain_message_map(entries, "dialog plain message", registries);
         }
     }
     Ok(DialogPlainMessageState {
-        contents: decode_component(value, "dialog plain message contents")?,
+        contents: decode_component(value, "dialog plain message contents", registries)?,
         width: 200,
     })
 }
@@ -127,6 +130,7 @@ fn decode_plain_message(value: &NbtSummaryValue) -> Result<DialogPlainMessageSta
 fn decode_plain_message_map(
     entries: &[NbtSummaryEntry],
     what: &str,
+    registries: Option<&RegistrySet>,
 ) -> Result<DialogPlainMessageState, String> {
     let width = optional_i32(entries, "width", 200, what)?;
     validate_range(width, 1, 1024, &format!("{what} width"))?;
@@ -134,6 +138,7 @@ fn decode_plain_message_map(
         contents: decode_component(
             required_entry(entries, "contents", what)?,
             "dialog plain message contents",
+            registries,
         )?,
         width,
     })
@@ -180,7 +185,7 @@ fn decode_item_stack_template(
     }
 }
 
-fn decode_data_component_patch(
+pub(super) fn decode_data_component_patch(
     value: &NbtSummaryValue,
     registries: Option<&RegistrySet>,
 ) -> Result<DialogDataComponentPatchState, String> {

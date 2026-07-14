@@ -48,7 +48,7 @@ pub(super) fn decode_instrument_holder(
             })
         }
         NbtSummaryValue::Compound(entries) => Ok(DialogInstrumentHolderState::Direct {
-            instrument: decode_direct_instrument(entries, what)?,
+            instrument: decode_direct_instrument(entries, registries, what)?,
         }),
         _ => Err(format!(
             "{what} holder is neither a resource id nor a direct instrument"
@@ -58,6 +58,7 @@ pub(super) fn decode_instrument_holder(
 
 fn decode_direct_instrument(
     entries: &[NbtSummaryEntry],
+    registries: Option<&RegistrySet>,
     what: &str,
 ) -> Result<DialogInstrumentState, String> {
     let sound_event = required_entry(entries, "sound_event", what)?;
@@ -73,6 +74,7 @@ fn decode_direct_instrument(
         description: decode_component(
             required_entry(entries, "description", what)?,
             &format!("{what} direct holder field description"),
+            registries,
         )?,
     })
 }

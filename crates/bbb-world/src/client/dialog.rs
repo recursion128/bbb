@@ -1,6 +1,6 @@
 use bbb_protocol::{
     decode_nbt_summary, styled_component_runs_from_nbt_value, styled_runs_summary_text,
-    validate_component_nbt, NbtSummaryEntry, NbtSummaryValue, StyledTextRun,
+    visit_component_payloads, ComponentPayload, NbtSummaryEntry, NbtSummaryValue, StyledTextRun,
 };
 use serde::{Deserialize, Serialize};
 
@@ -486,9 +486,10 @@ fn decode_common_dialog_data(
     let title = decode_component(
         required_entry(entries, "title", "common dialog data")?,
         "dialog title",
+        registries,
     )?;
     let external_title = find_entry(entries, "external_title")
-        .map(|value| decode_component(value, "dialog external title"))
+        .map(|value| decode_component(value, "dialog external title", registries))
         .transpose()?;
     let can_close_with_escape = optional_bool(entries, "can_close_with_escape", true)?;
     let pause = optional_bool(entries, "pause", true)?;
@@ -509,7 +510,7 @@ fn decode_common_dialog_data(
     };
     let inputs = optional_list(entries, "inputs", "dialog inputs")?;
     let body_data = body::decode_dialog_bodies(&body, registries)?;
-    let input_data = input::decode_dialog_inputs(&inputs)?;
+    let input_data = input::decode_dialog_inputs_with_registries(&inputs, registries)?;
     Ok(CommonDialogDataState {
         title,
         external_title,
@@ -530,9 +531,13 @@ fn decode_button(
     depth: usize,
 ) -> Result<DialogButtonState, String> {
     let entries = compound_entries(value, what)?;
-    let label = decode_component(required_entry(entries, "label", what)?, "button label")?;
+    let label = decode_component(
+        required_entry(entries, "label", what)?,
+        "button label",
+        registries,
+    )?;
     let tooltip = find_entry(entries, "tooltip")
-        .map(|value| decode_component(value, "button tooltip"))
+        .map(|value| decode_component(value, "button tooltip", registries))
         .transpose()?;
     let width = optional_i32(entries, "width", 150, what)?;
     if !(1..=1024).contains(&width) {
@@ -573,8 +578,12 @@ fn decode_non_empty_button_list(
 
 fn default_notice_action() -> DialogButtonState {
     DialogButtonState {
-        label: decode_component(&translated_component("gui.ok"), "default notice label")
-            .expect("built-in gui.ok component is valid"),
+        label: decode_component(
+            &translated_component("gui.ok"),
+            "default notice label",
+            None,
+        )
+        .expect("built-in gui.ok component is valid"),
         tooltip: None,
         width: 150,
         action: None,
@@ -589,8 +598,19 @@ fn translated_component(key: &str) -> NbtSummaryValue {
     }])
 }
 
-fn decode_component(value: &NbtSummaryValue, what: &str) -> Result<DialogTextState, String> {
-    validate_component_nbt(value, what)?;
+fn decode_component(
+    value: &NbtSummaryValue,
+    what: &str,
+    registries: Option<&RegistrySet>,
+) -> Result<DialogTextState, String> {
+    visit_component_payloads(value, what, |payload, payload_what| match payload {
+        ComponentPayload::ShowDialog(_) => Ok(()),
+        ComponentPayload::ShowItemComponents(components) => {
+            body::decode_data_component_patch(components, registries)
+                .map(|_| ())
+                .map_err(|error| format!("{payload_what}: {error}"))
+        }
+    })?;
     let runs = styled_component_runs_from_nbt_value(value);
     Ok(DialogTextState {
         text: styled_runs_summary_text(&runs),
@@ -916,6 +936,34 @@ mod tests {
             .as_deref()
             .unwrap()
             .contains("outside 1..=1024"));
+    }
+
+    #[test]
+    fn dialog_components_validate_hover_item_positive_values_through_central_owner() {
+        let title = compound(vec![
+            string_entry("text", "Hover"),
+            value_entry(
+                "hover_event",
+                compound(vec![
+                    string_entry("action", "show_item"),
+                    string_entry("id", "diamond"),
+                    value_entry(
+                        "components",
+                        compound(vec![string_entry("damage", "not numeric")]),
+                    ),
+                ]),
+            ),
+        ]);
+        let error = decode_test_dialog(&compound(vec![
+            string_entry("type", "minecraft:notice"),
+            value_entry("title", title),
+        ]))
+        .unwrap_err();
+        assert!(
+            error.contains("dialog title field hover_event field components")
+                && error.contains("minecraft:damage is not numeric"),
+            "{error:?}"
+        );
     }
 
     #[test]

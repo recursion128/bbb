@@ -14045,3 +14045,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   persistent component codec 和 session registry context；三类持有位置中的 malformed `damage` 正值均有
   贯通拒绝测试。Dialog 标题/按钮等其他 Component 持有位置、click show-dialog 与 canonical 编码继续由
   缺口账本追踪。
+
+## 2026-07-14：Validate all Dialog hover item values
+
+- [x] 将 nested-payload visitor 下沉到 Dialog 的中央 Component decoder，并传递已有 `RegistrySet` 到
+  common title/external title、button label/tooltip、PlainMessage/body description、四类 input label/option
+  display，以及 CUSTOM_NAME/ITEM_NAME/LORE、written-book page/filter、attribute override、written-book
+  predicate、direct instrument/trim description；删除 name/lore 的局部重复 visitor。
+- [x] hover `show_item.components` 在所有 Dialog Component 持有位置统一复用同一个 107 项 persistent
+  positive-value decoder、recursive item template owner 与 session registry context；中央 title malformed
+  `damage` 贯通测试与全 Dialog 139 项测试通过。generic packet Component 没有 Dialog/world context，click
+  show-dialog、object/profile registry-aware value、command-backed content 与 canonical encoding 仍开放。

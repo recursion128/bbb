@@ -13,7 +13,7 @@ use bbb_protocol::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::registries::normalize_codec_identifier;
+use crate::{registries::normalize_codec_identifier, RegistrySet};
 
 use super::super::super::decode_component;
 use super::holder_set::DialogRegistryHolderReferenceState;
@@ -39,9 +39,18 @@ pub struct DialogAttributeModifierState {
     pub display: DialogAttributeModifierDisplayState,
 }
 
+#[cfg(test)]
 pub(super) fn decode_attribute_modifiers(
     value: &NbtSummaryValue,
     what: &str,
+) -> Result<Vec<DialogAttributeModifierState>, String> {
+    decode_attribute_modifiers_with_registries(value, what, None)
+}
+
+pub(super) fn decode_attribute_modifiers_with_registries(
+    value: &NbtSummaryValue,
+    what: &str,
+    registries: Option<&RegistrySet>,
 ) -> Result<Vec<DialogAttributeModifierState>, String> {
     let NbtSummaryValue::List(entries) = value else {
         return Err(format!("{what} is not a list"));
@@ -49,13 +58,16 @@ pub(super) fn decode_attribute_modifiers(
     entries
         .iter()
         .enumerate()
-        .map(|(index, entry)| decode_attribute_modifier(entry, &format!("{what}[{index}]")))
+        .map(|(index, entry)| {
+            decode_attribute_modifier(entry, &format!("{what}[{index}]"), registries)
+        })
         .collect()
 }
 
 fn decode_attribute_modifier(
     value: &NbtSummaryValue,
     what: &str,
+    registries: Option<&RegistrySet>,
 ) -> Result<DialogAttributeModifierState, String> {
     let NbtSummaryValue::Compound(entries) = value else {
         return Err(format!("{what} is not a compound"));
@@ -108,7 +120,7 @@ fn decode_attribute_modifier(
         slot_group_id,
         slot_group,
         display: find_entry(entries, "display")
-            .map(|display| decode_display(display, &format!("{what} field display")))
+            .map(|display| decode_display(display, &format!("{what} field display"), registries))
             .transpose()?
             .unwrap_or_else(default_display),
     })
@@ -117,6 +129,7 @@ fn decode_attribute_modifier(
 fn decode_display(
     value: &NbtSummaryValue,
     what: &str,
+    registries: Option<&RegistrySet>,
 ) -> Result<DialogAttributeModifierDisplayState, String> {
     let NbtSummaryValue::Compound(entries) = value else {
         return Err(format!("{what} is not a compound"));
@@ -126,7 +139,11 @@ fn decode_display(
         .ok_or_else(|| format!("unknown {what} type {raw_type}"))?;
     let component = if type_id == VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_OVERRIDE_ID {
         let value = required_entry(entries, "value", what)?;
-        Some(decode_component(value, &format!("{what} field value"))?)
+        Some(decode_component(
+            value,
+            &format!("{what} field value"),
+            registries,
+        )?)
     } else {
         None
     };

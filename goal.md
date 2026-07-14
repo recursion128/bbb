@@ -383,12 +383,13 @@ WRITTEN_BOOK_CONTENT 的 required Filterable<String> title/author、defaulted 0.
 和纯字符串 page 的 canonical JSON 32767 UTF-16 unit 边界已精确闭合；共享 Component codec 已闭合
 string/non-empty-list/full-compound root、typed/fuzzy 七类 content dispatch、simple/nested content、extra
 与 scalar style validation，并已校验七种 server-allowed click event、三种 hover event 的 discriminator
-及 registry-independent payload；structured Component page 的 command-backed parser、deep dialog/item
-component value payload、registry-aware value 和 canonical JsonOps 重编码长度仍开放；hover
+及 registry-independent payload；structured Component page 的 command-backed parser、deep click dialog、
+registry-aware object/profile、generic packet owner 和 canonical JsonOps 重编码长度仍开放；hover
 `show_item` 的 DataComponentPatch envelope 已进一步按 110 项 catalog 校验 Identifier/default namespace、
 persistent gate、remove-unit compound、同符号重复键与 set/remove 覆盖语义；共享 recursive payload visitor
-已让 CUSTOM_NAME/ITEM_NAME/LORE 中的 hover item patch 正值进入既有 107 项 world type codec，其他
-Component 持有位置仍需接入该 visitor；
+已由 Dialog 中央 Component decoder 接入现有 107 项 world type codec 和 session registry context，覆盖
+title/button/body/input、CUSTOM_NAME/ITEM_NAME/LORE、written-book、attribute override、predicate 及 direct
+instrument/trim description；generic packet Component 尚无该 world context；
 POTION_CONTENTS 的 built-in potion compact/full alternative、optional color/name、custom MobEffect
 holder list 与 recursive details defaults/unsigned-byte amplifier 也已 typed 投影；
 CONSUMABLE/DEATH_PROTECTION 的共享 5 分支 ConsumeEffect dispatch、record defaults、mob-effect

@@ -82,14 +82,14 @@ Owner: `bbb-protocol`
   banner-pattern-layer direct holder. All 107 persistent catalog registrations now
   have a typed positive-value dispatch and their RegistryFileCodec inline/direct
   holder branches are complete. Finish persistent Component command-backed
-  selector/NBT/block-position parsing, deep click `show_dialog` and hover
-  `show_item` component-patch positive-value validation (its persistent-key/removal/override
-  envelope is validated, and CUSTOM_NAME/ITEM_NAME/LORE reuse the typed world patch owner),
-  registry-aware nested values in the remaining Component holders,
-  and canonical re-encoding, including
+  selector/NBT/block-position parsing, deep click `show_dialog`, registry-aware
+  object/profile values, owner-sensitive payloads in generic packet Components, and canonical
+  re-encoding, including
   exact `flatRestrictedCodec(32767)` sizing for structured written-book pages; render
   the corresponding screens, restore the previous screen on clear,
-  and route custom-click controls through the active dialog state. Flattened SNBT
+  and route custom-click controls through the active dialog state. Dialog Component holders
+  already validate hover `show_item` patches through the complete typed world patch owner and
+  session registry context. Flattened SNBT
   now resolves the JDK 26 `\N{name}` surface for Unicode scalar values, but the
   UTF-8-backed canonical string state still cannot preserve lone-surrogate escapes.
 - Decode block/chunk/entity/event debug subscription payloads through the synced

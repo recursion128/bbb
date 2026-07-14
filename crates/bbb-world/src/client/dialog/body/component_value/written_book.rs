@@ -1,6 +1,8 @@
 use bbb_protocol::{NbtSummaryEntry, NbtSummaryValue};
 use serde::{Deserialize, Serialize};
 
+use crate::RegistrySet;
+
 use super::super::super::decode_component;
 use super::writable_book::decode_filterable_string;
 use super::{
@@ -27,9 +29,18 @@ pub struct DialogWrittenBookContentState {
     pub resolved: bool,
 }
 
+#[cfg(test)]
 pub(super) fn decode_written_book_content(
     value: &NbtSummaryValue,
     what: &str,
+) -> Result<DialogWrittenBookContentState, String> {
+    decode_written_book_content_with_registries(value, what, None)
+}
+
+pub(super) fn decode_written_book_content_with_registries(
+    value: &NbtSummaryValue,
+    what: &str,
+    registries: Option<&RegistrySet>,
 ) -> Result<DialogWrittenBookContentState, String> {
     let NbtSummaryValue::Compound(entries) = value else {
         return Err(format!("{what} is not a compound"));
@@ -58,7 +69,11 @@ pub(super) fn decode_written_book_content(
             .iter()
             .enumerate()
             .map(|(index, page)| {
-                decode_filterable_component(page, &format!("{what} field pages[{index}]"))
+                decode_filterable_component(
+                    page,
+                    &format!("{what} field pages[{index}]"),
+                    registries,
+                )
             })
             .collect::<Result<_, _>>()?,
         Some(_) => return Err(format!("{what} field pages is not a list")),
@@ -78,13 +93,14 @@ pub(super) fn decode_written_book_content(
 fn decode_filterable_component(
     value: &NbtSummaryValue,
     what: &str,
+    registries: Option<&RegistrySet>,
 ) -> Result<DialogFilterableComponentState, String> {
     if let NbtSummaryValue::Compound(entries) = value {
         if find_entry(entries, "raw").is_some() {
-            match decode_full_filterable_component(entries, what) {
+            match decode_full_filterable_component(entries, what, registries) {
                 Ok(component) => return Ok(component),
                 Err(full_error) => {
-                    return decode_page_component(value, what)
+                    return decode_page_component(value, what, registries)
                         .map(|raw| DialogFilterableComponentState {
                             raw,
                             filtered: None,
@@ -94,7 +110,7 @@ fn decode_filterable_component(
             }
         }
     }
-    decode_page_component(value, what).map(|raw| DialogFilterableComponentState {
+    decode_page_component(value, what, registries).map(|raw| DialogFilterableComponentState {
         raw,
         filtered: None,
     })
@@ -103,17 +119,22 @@ fn decode_filterable_component(
 fn decode_full_filterable_component(
     entries: &[NbtSummaryEntry],
     what: &str,
+    registries: Option<&RegistrySet>,
 ) -> Result<DialogFilterableComponentState, String> {
     let raw = find_entry(entries, "raw")
         .ok_or_else(|| format!("{what} is missing field raw"))
-        .and_then(|value| decode_page_component(value, &format!("{what} field raw")))?;
+        .and_then(|value| decode_page_component(value, &format!("{what} field raw"), registries))?;
     let filtered = find_entry(entries, "filtered")
-        .map(|value| decode_page_component(value, &format!("{what} field filtered")))
+        .map(|value| decode_page_component(value, &format!("{what} field filtered"), registries))
         .transpose()?;
     Ok(DialogFilterableComponentState { raw, filtered })
 }
 
-fn decode_page_component(value: &NbtSummaryValue, what: &str) -> Result<DialogTextState, String> {
+fn decode_page_component(
+    value: &NbtSummaryValue,
+    what: &str,
+    registries: Option<&RegistrySet>,
+) -> Result<DialogTextState, String> {
     if !has_component_shape(value) {
         return Err(format!("{what} is not a component"));
     }
@@ -128,7 +149,7 @@ fn decode_page_component(value: &NbtSummaryValue, what: &str) -> Result<DialogTe
             ));
         }
     }
-    decode_component(value, what)
+    decode_component(value, what, registries)
 }
 
 fn has_component_shape(value: &NbtSummaryValue) -> bool {

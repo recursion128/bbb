@@ -65,7 +65,7 @@ pub(super) fn decode_trim_material_holder(
             })
         }
         NbtSummaryValue::Compound(entries) => Ok(DialogTrimMaterialHolderState::Direct {
-            material: decode_direct_trim_material(entries, what)?,
+            material: decode_direct_trim_material(entries, registries, what)?,
         }),
         _ => Err(format!(
             "{what} holder is neither a resource id nor a direct trim material"
@@ -88,7 +88,7 @@ pub(super) fn decode_trim_pattern_holder(
             })
         }
         NbtSummaryValue::Compound(entries) => Ok(DialogTrimPatternHolderState::Direct {
-            pattern: decode_direct_trim_pattern(entries, what)?,
+            pattern: decode_direct_trim_pattern(entries, registries, what)?,
         }),
         _ => Err(format!(
             "{what} holder is neither a resource id nor a direct trim pattern"
@@ -119,6 +119,7 @@ pub(super) fn decode_armor_trim(
 
 fn decode_direct_trim_material(
     entries: &[NbtSummaryEntry],
+    registries: Option<&RegistrySet>,
     what: &str,
 ) -> Result<DialogTrimMaterialState, String> {
     let direct_what = format!("{what} direct holder");
@@ -131,12 +132,14 @@ fn decode_direct_trim_material(
         description: decode_component(
             required_entry(entries, "description", &direct_what)?,
             &format!("{direct_what} field description"),
+            registries,
         )?,
     })
 }
 
 fn decode_direct_trim_pattern(
     entries: &[NbtSummaryEntry],
+    registries: Option<&RegistrySet>,
     what: &str,
 ) -> Result<DialogTrimPatternState, String> {
     let direct_what = format!("{what} direct holder");
@@ -151,6 +154,7 @@ fn decode_direct_trim_pattern(
         description: decode_component(
             required_entry(entries, "description", &direct_what)?,
             &format!("{direct_what} field description"),
+            registries,
         )?,
         decal: find_entry(entries, "decal").map_or(Ok(false), |value| {
             component_bool(value, &format!("{direct_what} field decal"))

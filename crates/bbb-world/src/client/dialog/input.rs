@@ -1,6 +1,8 @@
 use bbb_protocol::{NbtSummaryEntry, NbtSummaryValue};
 use serde::{Deserialize, Serialize};
 
+use crate::RegistrySet;
+
 use super::{
     compound_entries, decode_component, find_entry, optional_bool, optional_i32, required_entry,
     required_string, string_value, DialogTextState,
@@ -88,17 +90,29 @@ pub struct DialogTextMultilineState {
     pub height: Option<i32>,
 }
 
+#[cfg(test)]
 pub(super) fn decode_dialog_inputs(
     values: &[NbtSummaryValue],
+) -> Result<Vec<DialogInputState>, String> {
+    decode_dialog_inputs_with_registries(values, None)
+}
+
+pub(super) fn decode_dialog_inputs_with_registries(
+    values: &[NbtSummaryValue],
+    registries: Option<&RegistrySet>,
 ) -> Result<Vec<DialogInputState>, String> {
     values
         .iter()
         .enumerate()
-        .map(|(index, value)| decode_dialog_input(value, index))
+        .map(|(index, value)| decode_dialog_input(value, index, registries))
         .collect()
 }
 
-fn decode_dialog_input(value: &NbtSummaryValue, index: usize) -> Result<DialogInputState, String> {
+fn decode_dialog_input(
+    value: &NbtSummaryValue,
+    index: usize,
+    registries: Option<&RegistrySet>,
+) -> Result<DialogInputState, String> {
     let what = format!("dialog input[{index}]");
     let entries = compound_entries(value, &what)?;
     let key = required_string(entries, "key", &what)?;
@@ -107,19 +121,21 @@ fn decode_dialog_input(value: &NbtSummaryValue, index: usize) -> Result<DialogIn
     }
     Ok(DialogInputState {
         key: key.to_string(),
-        control: decode_input_control(entries, &what)?,
+        control: decode_input_control(entries, &what, registries)?,
     })
 }
 
 fn decode_input_control(
     entries: &[NbtSummaryEntry],
     what: &str,
+    registries: Option<&RegistrySet>,
 ) -> Result<DialogInputControlState, String> {
     match required_string(entries, "type", what)? {
         "boolean" | "minecraft:boolean" => Ok(DialogInputControlState::Boolean {
             label: decode_component(
                 required_entry(entries, "label", what)?,
                 "boolean input label",
+                registries,
             )?,
             initial: optional_bool(entries, "initial", false)?,
             on_true: optional_string(entries, "on_true", "true", what)?.to_string(),
@@ -133,6 +149,7 @@ fn decode_input_control(
                 label: decode_component(
                     required_entry(entries, "label", what)?,
                     "number-range input label",
+                    registries,
                 )?,
                 label_format: optional_string(
                     entries,
@@ -147,13 +164,15 @@ fn decode_input_control(
         "single_option" | "minecraft:single_option" => {
             let width = optional_i32(entries, "width", 200, what)?;
             validate_range(width, 1, 1024, &format!("{what} width"))?;
-            let options = decode_single_options(required_entry(entries, "options", what)?, what)?;
+            let options =
+                decode_single_options(required_entry(entries, "options", what)?, what, registries)?;
             Ok(DialogInputControlState::SingleOption {
                 width,
                 options,
                 label: decode_component(
                     required_entry(entries, "label", what)?,
                     "single-option input label",
+                    registries,
                 )?,
                 label_visible: optional_bool(entries, "label_visible", true)?,
             })
@@ -176,6 +195,7 @@ fn decode_input_control(
                 label: decode_component(
                     required_entry(entries, "label", what)?,
                     "text input label",
+                    registries,
                 )?,
                 label_visible: optional_bool(entries, "label_visible", true)?,
                 initial,
@@ -233,6 +253,7 @@ fn decode_number_range(
 fn decode_single_options(
     value: &NbtSummaryValue,
     what: &str,
+    registries: Option<&RegistrySet>,
 ) -> Result<Vec<DialogSingleOptionEntryState>, String> {
     let NbtSummaryValue::List(values) = value else {
         return Err(format!("{what} options is not a list"));
@@ -243,7 +264,7 @@ fn decode_single_options(
     let options = values
         .iter()
         .enumerate()
-        .map(|(index, value)| decode_single_option(value, index, what))
+        .map(|(index, value)| decode_single_option(value, index, what, registries))
         .collect::<Result<Vec<_>, _>>()?;
     if options.iter().filter(|option| option.initial).count() > 1 {
         return Err(format!("{what} has multiple initial options"));
@@ -255,6 +276,7 @@ fn decode_single_option(
     value: &NbtSummaryValue,
     index: usize,
     what: &str,
+    registries: Option<&RegistrySet>,
 ) -> Result<DialogSingleOptionEntryState, String> {
     let value = unwrap_list_element(value);
     match value {
@@ -266,7 +288,7 @@ fn decode_single_option(
         NbtSummaryValue::Compound(entries) => Ok(DialogSingleOptionEntryState {
             id: required_string(entries, "id", &format!("{what} option[{index}]"))?.to_string(),
             display: find_entry(entries, "display")
-                .map(|value| decode_component(value, "single-option display"))
+                .map(|value| decode_component(value, "single-option display", registries))
                 .transpose()?,
             initial: optional_bool(entries, "initial", false)?,
         }),
