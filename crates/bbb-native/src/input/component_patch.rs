@@ -1874,9 +1874,13 @@ mod tests {
             ]),
             nbt: Some(NbtSummaryValue::Compound(Vec::new())),
             exact_components: Some(Box::new(DataComponentPatchSummary {
-                added: 1,
-                added_type_ids: vec![1],
+                added: 2,
+                added_type_ids: vec![1, component_id::VANILLA_DATA_COMPONENT_LOCK_TYPE_ID],
                 max_stack_size: Some(64),
+                codec_backed_nbt: std::collections::BTreeMap::from([(
+                    component_id::VANILLA_DATA_COMPONENT_LOCK_TYPE_ID,
+                    NbtSummaryValue::Compound(Vec::new()),
+                )]),
                 ..Default::default()
             })),
             partial_components: vec![
@@ -1919,7 +1923,7 @@ mod tests {
             Some(
                 "{blocks: \"minecraft:stone\", state: {\"facing\": \"north\", \
                  \"age\": {min: \"1\", max: \"3\"}}, nbt: \"{}\", components: \
-                 {\"minecraft:max_stack_size\": 64}, predicates: \
+                 {\"minecraft:max_stack_size\": 64, \"minecraft:lock\": {}}, predicates: \
                  {\"minecraft:custom_name\": {}, \"minecraft:damage\": \
                  {durability: {min: 1}}}}"
                     .to_string()

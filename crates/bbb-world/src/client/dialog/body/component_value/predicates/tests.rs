@@ -113,10 +113,18 @@ fn decodes_adventure_compact_block_predicate_and_matchers() {
         block.components.exact[0].value,
         DialogDataComponentValueState::Integer { value: 64 }
     ));
+    assert_eq!(
+        block.components.exact[0].persistent_value,
+        Some(NbtSummaryValue::Int(64))
+    );
     assert!(matches!(
         block.components.exact[1].value,
         DialogDataComponentValueState::Lock { .. }
     ));
+    assert_eq!(
+        block.components.exact[1].persistent_value,
+        Some(compound([]))
+    );
     assert!(matches!(
         &block.components.partial[0],
         DialogPartialDataComponentPredicateState::Concrete {
@@ -141,6 +149,41 @@ fn decodes_adventure_compact_block_predicate_and_matchers() {
             wire_value: Some(compound([("ignored", NbtSummaryValue::Int(1))])),
         }
     );
+
+    let mut patch = DataComponentPatchSummary::default();
+    assert!(apply_item_patch_value(
+        VANILLA_DATA_COMPONENT_CAN_PLACE_ON_TYPE_ID,
+        &DialogDataComponentValueState::AdventureModePredicate {
+            predicate: predicate.clone(),
+        },
+        &mut patch,
+    ));
+    let exact = patch.can_place_on_persistent.as_ref().unwrap().predicates[0]
+        .exact_components
+        .as_ref()
+        .unwrap();
+    assert_eq!(
+        exact.added_type_ids,
+        vec![
+            VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
+            VANILLA_DATA_COMPONENT_LOCK_TYPE_ID,
+        ]
+    );
+    assert_eq!(exact.max_stack_size, Some(64));
+    assert_eq!(
+        exact
+            .codec_backed_nbt
+            .get(&VANILLA_DATA_COMPONENT_LOCK_TYPE_ID),
+        Some(&compound([]))
+    );
+
+    let mut rawless = predicate;
+    rawless.predicates[0].components.exact[1].persistent_value = None;
+    assert!(!apply_item_patch_value(
+        VANILLA_DATA_COMPONENT_CAN_PLACE_ON_TYPE_ID,
+        &DialogDataComponentValueState::AdventureModePredicate { predicate: rawless },
+        &mut DataComponentPatchSummary::default(),
+    ));
 }
 
 #[test]

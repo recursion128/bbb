@@ -759,6 +759,7 @@ mod tests {
                     component_type_id: 0,
                     resource_id: "minecraft:max_stack_size".to_string(),
                     value: DialogDataComponentValueState::Integer { value: 64 },
+                    persistent_value: Some(NbtSummaryValue::Int(64)),
                 }],
                 partial: vec![
                     DialogPartialDataComponentPredicateState::Concrete {

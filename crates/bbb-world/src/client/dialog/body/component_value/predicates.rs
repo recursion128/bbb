@@ -82,6 +82,8 @@ pub struct DialogExactDataComponentPredicateState {
     pub component_type_id: i32,
     pub resource_id: String,
     pub value: DialogDataComponentValueState,
+    #[serde(default)]
+    pub persistent_value: Option<NbtSummaryValue>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -395,6 +397,7 @@ fn decode_exact_component_predicates(
                 component_type_id: component_type.type_id,
                 resource_id,
                 value,
+                persistent_value: Some(entry.value.clone()),
             })
         })
         .collect()

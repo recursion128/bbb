@@ -1472,9 +1472,10 @@ fn block_predicate_summary(value: &DialogBlockPredicateState) -> Option<BlockPre
         let mut patch = DataComponentPatchSummary::default();
         for component in &value.components.exact {
             if patch.added_type_ids.contains(&component.component_type_id)
-                || !apply_item_patch_value(
+                || !apply_item_patch_entry_value(
                     component.component_type_id,
                     &component.value,
+                    component.persistent_value.as_ref(),
                     &mut patch,
                 )
             {

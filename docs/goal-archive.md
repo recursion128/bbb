@@ -14767,3 +14767,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] world focused regression 从 can-break dialog NBT 贯通 damage concrete 与 custom-name any-component，
   断言 type dispatch、numeric tag、empty compound 与 unknown-tooltip 语义；既有 native persistent encoder
   regression 继续锁定 `predicates` map 输出。nested exact lock summary 仍由后续明确切片处理。
+
+## 2026-07-14：Bridge nested exact lock in dialog Item predicates
+
+- [x] 对照 `DataComponentExactPredicate.CODEC` 的 component-type dispatched map，在 exact matcher typed
+  state 中保留每项已经 CODEC 验证的 persistent value，并统一复用 top-level component entry bridge；nested
+  lock 因而进入既有 type-id keyed codec-backed NBT，不再绕开 lock 的 raw-value 要求。
+- [x] world focused regression 以同一个 can-place-on predicate 贯通 max-stack-size、nested lock 与 partial
+  matchers，断言 added order、lock CompoundTag 与 rawless all-or-nothing 拒绝；native encoder regression
+  同步锁定 exact `minecraft:lock` 的 persistent `{}` 输出。
