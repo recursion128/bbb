@@ -46,6 +46,7 @@ use bbb_protocol::{
         VANILLA_DATA_COMPONENT_TROPICAL_FISH_PATTERN_TYPE_ID,
         VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID, VANILLA_DATA_COMPONENT_USE_COOLDOWN_TYPE_ID,
         VANILLA_DATA_COMPONENT_USE_EFFECTS_TYPE_ID, VANILLA_DATA_COMPONENT_WEAPON_TYPE_ID,
+        VANILLA_DATA_COMPONENT_WRITABLE_BOOK_CONTENT_TYPE_ID,
     },
     tropical_fish_patterns::vanilla_tropical_fish_pattern_for_name,
     NbtSummaryEntry, NbtSummaryValue,
@@ -67,6 +68,7 @@ mod profile;
 mod sound_event;
 mod tool;
 mod typed_data;
+mod writable_book;
 
 use bees::{decode_bees, DialogBeeOccupantState};
 use blocks_attacks::{decode_blocks_attacks, DialogBlocksAttacksState};
@@ -89,6 +91,7 @@ use typed_data::{
     decode_builtin_block_entity_data, decode_builtin_entity_data, decode_custom_data,
     DialogTypedBlockEntityDataState, DialogTypedEntityDataState,
 };
+use writable_book::{decode_writable_book_content, DialogFilterableStringState};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DialogStringMapEntryState {
@@ -283,6 +286,9 @@ pub enum DialogDataComponentValueState {
     Tool {
         tool: DialogToolState,
     },
+    WritableBookContent {
+        pages: Vec<DialogFilterableStringState>,
+    },
 }
 
 impl DialogDataComponentValueState {
@@ -454,6 +460,11 @@ pub(super) fn decode_supported_component_value(
         VANILLA_DATA_COMPONENT_TOOL_TYPE_ID => DialogDataComponentValueState::Tool {
             tool: decode_tool(value, registries, &what)?,
         },
+        VANILLA_DATA_COMPONENT_WRITABLE_BOOK_CONTENT_TYPE_ID => {
+            DialogDataComponentValueState::WritableBookContent {
+                pages: decode_writable_book_content(value, &what)?,
+            }
+        }
         _ => {
             if let Some(decoded) =
                 decode_holder_backed_component_value(type_id, value, registries, &what)

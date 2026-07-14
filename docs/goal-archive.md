@@ -13832,3 +13832,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] empty/default rules、session/built-in block tag/list、context-free empty HolderSet、NaN unrestricted
   float 位、positive/non-negative 边界、NBT numeric/bool conversion、missing/wrong shapes 与 unknown block
   均有定向测试；其余 persistent Codec 与 native screens 仍开放。
+
+## 2026-07-13：Decode writable-book dialog item component
+
+- [x] 新建 `client/dialog/body/component_value/writable_book.rs` semantic owner；对照
+  `WritableBookContent.CODEC`、`Filterable.codec` 与 `Codec.string(0, 1024)`，typed 投影 default-empty
+  page list 及 compact string/full raw+filtered record alternatives。
+- [x] 空/default record、输入顺序、100 页边界、1024 UTF-16 unit（含 astral character）边界、
+  missing/wrong page shapes 与 raw/filtered 独立长度均有定向测试；其余 Component、holder、list/
+  compound-record persistent Codec 与 native screens 仍开放。
