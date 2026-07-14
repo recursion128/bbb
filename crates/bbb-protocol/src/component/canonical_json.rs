@@ -17,7 +17,7 @@ use super::{
 /// registry-independent Component model is sufficient to reproduce it.
 ///
 /// `None` means that decoding succeeded but canonical re-encoding still needs a higher semantic
-/// owner (a player profile, dialog, or item component patch), a non-integral Java primitive, or
+/// owner (a player profile, dialog, or item component patch), Java Float/Double formatting, or
 /// duplicate compound-key normalization that the summary tree does not retain canonically. It is
 /// deliberately not an estimate: callers enforcing `flatRestrictedCodec` must only act on an
 /// exact `Some` result.
@@ -38,6 +38,7 @@ enum JsonValue {
     String(String),
     Array(Vec<JsonValue>),
     Object(Vec<(&'static str, JsonValue)>),
+    Map(Vec<(String, JsonValue)>),
 }
 
 impl JsonValue {
@@ -49,6 +50,14 @@ impl JsonValue {
             Self::String(value) => json_string_utf16_len(value),
             Self::Array(values) => collection_utf16_len(values.iter().map(Self::utf16_len)),
             Self::Object(fields) => {
+                let entries = fields.iter().map(|(name, value)| {
+                    json_string_utf16_len(name)
+                        .saturating_add(1)
+                        .saturating_add(value.utf16_len())
+                });
+                collection_utf16_len(entries)
+            }
+            Self::Map(fields) => {
                 let entries = fields.iter().map(|(name, value)| {
                     json_string_utf16_len(name)
                         .saturating_add(1)
@@ -272,9 +281,8 @@ fn canonical_style_fields(
     }
     if let Some(shadow) = find_entry(entries, "shadow_color") {
         // `ARGB_COLOR_CODEC` always re-encodes through its primary `Codec.INT` branch. Numeric
-        // NBT values therefore have an exact projection; the vector4f alternative still needs
-        // Java float conversion and is kept unknown.
-        let shadow = component_i32(shadow)?;
+        // NBT values and the vector4f alternative therefore both normalize to one signed int.
+        let shadow = canonical_argb_color(shadow)?;
         fields.push(("shadow_color", number(i64::from(shadow))));
     }
     for field in [
@@ -322,8 +330,8 @@ fn canonical_click_event(value: &NbtSummaryValue) -> Option<JsonValue> {
         "copy_to_clipboard" => fields.push(("value", string_field(entries, "value")?)),
         "custom" => {
             fields.push(("id", normalized_identifier_field(entries, "id")?));
-            if find_entry(entries, "payload").is_some() {
-                return None;
+            if let Some(payload) = find_entry(entries, "payload") {
+                fields.push(("payload", canonical_nbt(payload)?));
             }
         }
         _ => return None,
@@ -387,6 +395,75 @@ fn canonical_uuid(value: &NbtSummaryValue) -> Option<JsonValue> {
             .map(|value| number(i64::from(value)))
             .collect(),
     ))
+}
+
+fn canonical_argb_color(value: &NbtSummaryValue) -> Option<i32> {
+    if let Some(value) = component_i32(value) {
+        return Some(value);
+    }
+    let NbtSummaryValue::List(values) = value else {
+        return None;
+    };
+    let [red, green, blue, alpha] = values.as_slice() else {
+        return None;
+    };
+    let channel = |value| -> Option<u32> {
+        Some(((component_f32(value)? * 255.0).floor() as i32 as u32) & 0xff)
+    };
+    Some(
+        ((channel(alpha)? << 24) | (channel(red)? << 16) | (channel(green)? << 8) | channel(blue)?)
+            as i32,
+    )
+}
+
+fn component_f32(value: &NbtSummaryValue) -> Option<f32> {
+    Some(match value {
+        NbtSummaryValue::Byte(value) => f32::from(*value),
+        NbtSummaryValue::Short(value) => f32::from(*value),
+        NbtSummaryValue::Int(value) => *value as f32,
+        NbtSummaryValue::Long(value) => *value as f32,
+        NbtSummaryValue::Float(bits) => f32::from_bits(*bits),
+        NbtSummaryValue::Double(bits) => f64::from_bits(*bits) as f32,
+        _ => return None,
+    })
+}
+
+fn canonical_nbt(value: &NbtSummaryValue) -> Option<JsonValue> {
+    Some(match value {
+        NbtSummaryValue::Byte(value) => number(i64::from(*value)),
+        NbtSummaryValue::Short(value) => number(i64::from(*value)),
+        NbtSummaryValue::Int(value) => number(i64::from(*value)),
+        NbtSummaryValue::Long(value) => number(*value),
+        NbtSummaryValue::Float(_) | NbtSummaryValue::Double(_) => return None,
+        NbtSummaryValue::ByteArray(values) => JsonValue::Array(
+            values
+                .iter()
+                .map(|value| number(i64::from(*value)))
+                .collect(),
+        ),
+        NbtSummaryValue::String(value) => JsonValue::String(value.clone()),
+        NbtSummaryValue::List(values) => JsonValue::Array(
+            values
+                .iter()
+                .map(canonical_nbt)
+                .collect::<Option<Vec<_>>>()?,
+        ),
+        NbtSummaryValue::Compound(entries) => JsonValue::Map(
+            entries
+                .iter()
+                .map(|entry| Some((entry.name.clone(), canonical_nbt(&entry.value)?)))
+                .collect::<Option<Vec<_>>>()?,
+        ),
+        NbtSummaryValue::IntArray(values) => JsonValue::Array(
+            values
+                .iter()
+                .map(|value| number(i64::from(*value)))
+                .collect(),
+        ),
+        NbtSummaryValue::LongArray(values) => {
+            JsonValue::Array(values.iter().map(|value| number(*value)).collect())
+        }
+    })
 }
 
 fn java_uuid_int_array(value: &str) -> Option<Vec<i32>> {
@@ -516,6 +593,40 @@ mod tests {
     }
 
     #[test]
+    fn canonicalizes_vector_shadow_and_custom_nbt_payload() {
+        let shadow = list(vec![
+            NbtSummaryValue::Float(1.0f32.to_bits()),
+            NbtSummaryValue::Double(0.5f64.to_bits()),
+            NbtSummaryValue::Int(0),
+            NbtSummaryValue::Byte(1),
+        ]);
+        assert_eq!(canonical_argb_color(&shadow), Some(0xffff_7f00u32 as i32));
+        let value = compound(vec![
+            ("text", string("x")),
+            ("shadow_color", shadow),
+            (
+                "click_event",
+                compound(vec![
+                    ("action", string("custom")),
+                    ("id", string("test")),
+                    (
+                        "payload",
+                        compound(vec![
+                            ("a", NbtSummaryValue::Int(1)),
+                            ("bytes", NbtSummaryValue::ByteArray(vec![-1, 2])),
+                            ("nested", list(vec![string("z")])),
+                        ]),
+                    ),
+                ]),
+            ),
+        ]);
+        assert_eq!(
+            exact(&value),
+            r#"{"text":"x","shadow_color":-33024,"click_event":{"action":"custom","id":"minecraft:test","payload":{"a":1,"bytes":[-1,2],"nested":["z"]}}}"#.len()
+        );
+    }
+
+    #[test]
     fn reports_owner_and_non_integral_java_values_as_unknown() {
         for value in [
             compound(vec![
@@ -536,6 +647,17 @@ mod tests {
             compound(vec![
                 ("translate", string("key")),
                 ("with", list(vec![NbtSummaryValue::Float(1.0f32.to_bits())])),
+            ]),
+            compound(vec![
+                ("text", string("custom")),
+                (
+                    "click_event",
+                    compound(vec![
+                        ("action", string("custom")),
+                        ("id", string("test")),
+                        ("payload", NbtSummaryValue::Double(1.0f64.to_bits())),
+                    ]),
+                ),
             ]),
         ] {
             assert_eq!(canonical_component_json_utf16_len(&value).unwrap(), None);

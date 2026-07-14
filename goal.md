@@ -383,6 +383,8 @@ WRITTEN_BOOK_CONTENT 的 required Filterable<String> title/author、defaulted 0.
 和纯字符串 page 的 canonical JSON 32767 UTF-16 unit 边界已精确闭合；registry-independent structured
 page 也已按语义 Component 重编码计长，覆盖 special/list/full root、fuzzy content、unknown/type 丢弃、
 default/lenient optional 省略、标量 style、Identifier 规范化与无需外部 owner 的 click/hover payload；
+vector4f shadow color 也已按 `ARGB_COLOR_CODEC` 归一为 signed int，custom-click NBT payload 已覆盖
+Byte/Short/Int/Long、String、array/list/compound 的 NbtOps→JsonOps 投影；
 共享 Component codec 已闭合
 string/non-empty-list/full-compound root、typed/fuzzy 七类 content dispatch、simple/nested content、extra
 与 scalar style validation，并已校验七种 server-allowed click event、三种 hover event 的 discriminator
@@ -393,8 +395,8 @@ NBT path 也已按 `NbtPathArgument` 闭合 quoted/unquoted/object/index/all/mat
 selector、21 项 registered option 的 grammar/applicability/重复互斥、built-in entity-type lookup、
 nested SNBT/scores/advancements 与完整消费，并同时接入 selector content/entity data source；structured
 Component page 的 generic packet owner 和完整 canonical JsonOps 重编码仍开放，当前明确不以 raw NBT
-近似 owner-sensitive player/show-dialog/item-patch、custom NBT payload、Float/Double Java primitive、
-vector4f shadow color 或 duplicate-compound normalization；hover
+近似 owner-sensitive player/show-dialog/item-patch、Float/Double Java primitive（包括 custom NBT payload
+中的浮点 tag）或 duplicate-compound normalization；hover
 `show_item` 的 DataComponentPatch envelope 已进一步按 110 项 catalog 校验 Identifier/default namespace、
 persistent gate、remove-unit compound、同符号重复键与 set/remove 覆盖语义；共享 recursive payload visitor
 已由 Dialog 中央 Component decoder 接入现有 107 项 world type codec 和 session registry context，覆盖
