@@ -1,6 +1,6 @@
 use bbb_protocol::packets::inventory::FireworkExplosionSummary;
 use bbb_protocol::{
-    canonical_f32_json_utf16_len, canonical_json_string_utf16_len,
+    canonical_f32_json_utf16_len, canonical_f64_json_utf16_len, canonical_json_string_utf16_len,
     canonical_resolvable_profile_json_utf16_len,
 };
 
@@ -43,6 +43,7 @@ pub(in crate::client::dialog::body) fn canonical_data_component_patch_json_utf16
 
 fn validate_supported_json_floats(value: &DialogDataComponentValueState) -> Result<(), String> {
     let mut values = Vec::new();
+    let mut double_values = Vec::new();
     match value {
         DialogDataComponentValueState::Float { bits } => values.push(*bits),
         DialogDataComponentValueState::UseEffects {
@@ -77,13 +78,24 @@ fn validate_supported_json_floats(value: &DialogDataComponentValueState) -> Resu
         DialogDataComponentValueState::CustomModelData { floats_bits, .. } => {
             values.extend(floats_bits);
         }
+        DialogDataComponentValueState::MapDecorations { decorations } => {
+            for decoration in decorations {
+                double_values.extend([decoration.x_bits, decoration.z_bits]);
+                values.push(decoration.rotation_bits);
+            }
+        }
         _ => {}
     }
     if values
         .into_iter()
         .any(|bits| canonical_f32_json_utf16_len(bits).is_none())
+        || double_values
+            .into_iter()
+            .any(|bits| canonical_f64_json_utf16_len(bits).is_none())
     {
-        return Err("canonical item component patch contains a non-finite float".to_string());
+        return Err(
+            "canonical item component patch contains a non-finite Float/Double value".to_string(),
+        );
     }
     Ok(())
 }
@@ -337,6 +349,30 @@ fn canonical_component_value_json_utf16_len(
         DialogDataComponentValueState::Profile { profile } => {
             canonical_resolvable_profile_json_utf16_len(profile)?
         }
+        DialogDataComponentValueState::MapDecorations { decorations } => collection_len(
+            decorations
+                .iter()
+                .map(|decoration| {
+                    Some(
+                        string_len(&decoration.id)
+                            .saturating_add(1)
+                            .saturating_add(object_len(
+                                [
+                                    ("type", string_len(&decoration.decoration_type.resource_id)),
+                                    ("x", canonical_f64_json_utf16_len(decoration.x_bits)?),
+                                    ("z", canonical_f64_json_utf16_len(decoration.z_bits)?),
+                                    (
+                                        "rotation",
+                                        canonical_f32_json_utf16_len(decoration.rotation_bits)?,
+                                    ),
+                                ]
+                                .into_iter(),
+                            )),
+                    )
+                })
+                .collect::<Option<Vec<_>>>()?
+                .into_iter(),
+        ),
         _ => return None,
     })
 }
@@ -423,6 +459,8 @@ mod tests {
         ResolvableProfileSummary,
     };
 
+    use super::super::holder_set::DialogRegistryHolderReferenceState;
+    use super::super::map_decorations::DialogMapDecorationState;
     use super::*;
 
     #[test]
@@ -615,6 +653,25 @@ mod tests {
                 },
             },
             r#"{"name":"Alex"}"#,
+        );
+    }
+
+    #[test]
+    fn canonicalizes_map_decoration_maps_and_java_numbers() {
+        assert_exact(
+            DialogDataComponentValueState::MapDecorations {
+                decorations: vec![DialogMapDecorationState {
+                    id: "home\"".to_string(),
+                    decoration_type: DialogRegistryHolderReferenceState {
+                        holder_id: 0,
+                        resource_id: "minecraft:mansion".to_string(),
+                    },
+                    x_bits: (-120.5f64).to_bits(),
+                    z_bits: 64.0f64.to_bits(),
+                    rotation_bits: 180.0f32.to_bits(),
+                }],
+            },
+            r#"{"home\"":{"type":"minecraft:mansion","x":-120.5,"z":64.0,"rotation":180.0}}"#,
         );
     }
 

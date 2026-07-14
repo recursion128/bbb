@@ -79,6 +79,35 @@ fn decodes_map_decorations_with_builtin_types_and_numeric_codecs() {
 }
 
 #[test]
+fn map_and_entry_fields_follow_compound_last_wins_semantics() {
+    let decorations = decode_map_decorations(
+        &compound(vec![
+            value_entry("home", NbtSummaryValue::Int(0)),
+            value_entry(
+                "home",
+                decoration_with(vec![
+                    string_entry("type", "mansion"),
+                    double_entry("x", 4.0),
+                    double_entry("x", 5.0),
+                    double_entry("z", 6.0),
+                    float_entry("rotation", 7.0),
+                ]),
+            ),
+        ]),
+        "map decorations",
+    )
+    .unwrap();
+    assert_eq!(decorations.len(), 1);
+    assert_eq!(
+        decorations[0].decoration_type.resource_id,
+        "minecraft:mansion"
+    );
+    assert_eq!(f64::from_bits(decorations[0].x_bits), 5.0);
+    assert_eq!(f64::from_bits(decorations[0].z_bits), 6.0);
+    assert_eq!(f32::from_bits(decorations[0].rotation_bits), 7.0);
+}
+
+#[test]
 fn rejects_malformed_map_decoration_maps_and_entries() {
     for (value, expected) in [
         (NbtSummaryValue::List(Vec::new()), "is not a compound map"),

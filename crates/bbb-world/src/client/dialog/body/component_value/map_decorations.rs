@@ -22,8 +22,19 @@ pub(super) fn decode_map_decorations(
     let NbtSummaryValue::Compound(entries) = value else {
         return Err(format!("{what} is not a compound map"));
     };
-    entries
-        .iter()
+    let mut normalized = Vec::<&NbtSummaryEntry>::with_capacity(entries.len());
+    for entry in entries {
+        if let Some(index) = normalized
+            .iter()
+            .position(|existing| existing.name == entry.name)
+        {
+            normalized[index] = entry;
+        } else {
+            normalized.push(entry);
+        }
+    }
+    normalized
+        .into_iter()
         .map(|entry| decode_map_decoration(&entry.name, &entry.value, what))
         .collect()
 }
@@ -75,6 +86,7 @@ fn required_field<'a>(
 ) -> Result<&'a NbtSummaryValue, String> {
     entries
         .iter()
+        .rev()
         .find(|entry| entry.name == field)
         .map(|entry| &entry.value)
         .ok_or_else(|| format!("{what} is missing field {field}"))

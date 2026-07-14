@@ -407,7 +407,9 @@ persistent gate、remove-unit compound、同符号重复键与 set/remove 覆盖
 title/button/body/input、CUSTOM_NAME/ITEM_NAME/LORE、written-book、attribute override、predicate 及 direct
 instrument/trim description；item patch 的 `minecraft:profile` positive value 也已复用同一
 `ResolvableProfile.CODEC` decoder 与协议 canonical owner，闭合 FULL/partial/player-name、property-map、
-UUID int stream 和 skin patch 的精确 JsonOps 长度；generic packet Component 尚无该 world context；
+UUID int stream 和 skin patch 的精确 JsonOps 长度；`minecraft:map_decorations` string map 也已闭合
+map-decoration holder id 与 required double/double/float entry，复用 JDK 26 double/float formatter 并按
+CompoundTag last-wins 归一重复 map/entry key；generic packet Component 尚无该 world context；
 click `show_dialog` 也已由同一中央 visitor 按 `Dialog.CODEC` 解析 inline/session reference holder，
 并让 title/button/body/input、item patch 与 recursive predicate/item-template 路径共享 64 层 Dialog
 semantic depth，registry 自引用/互引用不会重置预算；

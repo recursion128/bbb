@@ -180,6 +180,19 @@ fn accepts_written_book_title_page_and_collection_boundaries() {
         "written book",
     )
     .is_ok());
+
+    let map_decorations_patch_prefix = concat!(
+        r#"{"text":"item","extra":[""],"hover_event":{"action":"show_item","id":"minecraft:stone","components":{"minecraft:map_decorations":{"home":{"type":"minecraft:frame","x":0.0,"z":0.0,"rotation":0.0}}}}}"#
+    )
+    .len();
+    let exact_map_decorations_patch_page = component_with_map_decorations_item_patch(
+        "x".repeat(32_767 - map_decorations_patch_prefix),
+    );
+    assert!(decode_written_book_content(
+        &book_with_pages(vec![exact_map_decorations_patch_page]),
+        "written book",
+    )
+    .is_ok());
 }
 
 #[test]
@@ -361,8 +374,20 @@ fn rejects_malformed_written_book_fields_filterables_and_exact_canonical_page_li
             "encodes to 32768 JSON UTF-16 units, maximum is 32767",
         ),
         (
+            book_with_pages(vec![component_with_map_decorations_item_patch(
+                "x".repeat(
+                    32_768
+                        - concat!(
+                            r#"{"text":"item","extra":[""],"hover_event":{"action":"show_item","id":"minecraft:stone","components":{"minecraft:map_decorations":{"home":{"type":"minecraft:frame","x":0.0,"z":0.0,"rotation":0.0}}}}}"#
+                        )
+                        .len(),
+                ),
+            )]),
+            "encodes to 32768 JSON UTF-16 units, maximum is 32767",
+        ),
+        (
             book_with_pages(vec![component_with_non_finite_item_patch()]),
-            "canonical item component patch contains a non-finite float",
+            "canonical item component patch contains a non-finite Float/Double value",
         ),
         (
             written_book(vec![
@@ -514,6 +539,38 @@ fn component_with_profile_item_patch(extra: String) -> NbtSummaryValue {
                 value_entry(
                     "components",
                     compound(vec![string_entry("profile", "Alex")]),
+                ),
+            ]),
+        ),
+    ])
+}
+
+fn component_with_map_decorations_item_patch(extra: String) -> NbtSummaryValue {
+    compound(vec![
+        string_entry("text", "item"),
+        value_entry(
+            "extra",
+            NbtSummaryValue::List(vec![NbtSummaryValue::String(extra)]),
+        ),
+        value_entry(
+            "hover_event",
+            compound(vec![
+                string_entry("action", "show_item"),
+                string_entry("id", "stone"),
+                value_entry(
+                    "components",
+                    compound(vec![value_entry(
+                        "map_decorations",
+                        compound(vec![value_entry(
+                            "home",
+                            compound(vec![
+                                string_entry("type", "frame"),
+                                value_entry("x", NbtSummaryValue::Int(0)),
+                                value_entry("z", NbtSummaryValue::Int(0)),
+                                value_entry("rotation", NbtSummaryValue::Int(0)),
+                            ]),
+                        )]),
+                    )]),
                 ),
             ]),
         ),

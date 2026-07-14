@@ -14157,3 +14157,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] world owner 的 partial-name 精确 JSON 与 written-book hover `show_item` profile patch 的
   32767/32768 UTF-16 unit 边界均有定向回归。show-dialog 和剩余 registry-holder、typed-NBT、
   predicate/item-template 及其它 nested-record positive item-patch value 继续由缺口账本追踪。
+
+## 2026-07-14：Canonicalize map-decoration item patches
+
+- [x] 对照 `MapDecorations.CODEC` 与 `MapDecorations.Entry.CODEC`，扩展单一 item-patch canonical owner：
+  string map key 走 Gson escaping，map-decoration holder 输出 normalized resource id，entry 按 required
+  type/x/z/rotation 顺序投影。协议层公开唯一的 JDK 26 double JsonOps/Gson 计长入口，与既有 float
+  formatter 一起拒绝 non-finite 值。
+- [x] map id 和 entry 同名字段均修正为 CompoundTag last-wins；escaped map key、signed/fractional
+  double、integral double 的 `.0`、float 以及 written-book hover `show_item` map-decorations patch 的
+  32767/32768 UTF-16 unit 边界均有定向回归。show-dialog 和剩余 registry-holder、typed-NBT、
+  predicate/item-template 及其它 nested-record positive item-patch value 继续由缺口账本追踪。

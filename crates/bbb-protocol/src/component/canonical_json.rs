@@ -88,6 +88,13 @@ pub fn canonical_f32_json_utf16_len(bits: u32) -> Option<usize> {
     (!matches!(encoded.as_str(), "NaN" | "Infinity" | "-Infinity")).then_some(encoded.len())
 }
 
+/// Exact JsonOps/Gson length for a finite Java `double` value that has already passed its
+/// semantic Codec validation.
+pub fn canonical_f64_json_utf16_len(bits: u64) -> Option<usize> {
+    let encoded = java_double_string(f64::from_bits(bits));
+    (!matches!(encoded.as_str(), "NaN" | "Infinity" | "-Infinity")).then_some(encoded.len())
+}
+
 /// Exact Gson string length in UTF-16 units, including quotes and required JSON escaping.
 pub fn canonical_json_string_utf16_len(value: &str) -> usize {
     json_string_utf16_len(value)
@@ -911,6 +918,8 @@ mod tests {
         );
         assert_eq!(canonical_f32_json_utf16_len(1), Some("1.4E-45".len()));
         assert_eq!(canonical_f32_json_utf16_len(f32::NAN.to_bits()), None);
+        assert_eq!(canonical_f64_json_utf16_len(1), Some("4.9E-324".len()));
+        assert_eq!(canonical_f64_json_utf16_len(f64::NAN.to_bits()), None);
         assert_eq!(canonical_json_string_utf16_len("\"\u{2028}😀"), 12);
         let custom = compound(vec![
             ("text", string("custom")),
