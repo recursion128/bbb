@@ -121,6 +121,7 @@ fn optional_kinetic_condition(
 ) -> Result<Option<DialogKineticWeaponConditionState>, String> {
     entries
         .iter()
+        .rev()
         .find(|entry| entry.name == field)
         .map(|entry| decode_kinetic_condition(&entry.value, &format!("{what} field {field}")))
         .transpose()
@@ -160,6 +161,7 @@ fn optional_unrestricted_float(
 ) -> Result<u32, String> {
     entries
         .iter()
+        .rev()
         .find(|entry| entry.name == field)
         .map_or(Ok(default.to_bits()), |entry| {
             component_f32_bits(&entry.value, &format!("{what} field {field}"))
@@ -173,6 +175,7 @@ fn optional_sound_event(
 ) -> Result<Option<DialogSoundEventHolderState>, String> {
     entries
         .iter()
+        .rev()
         .find(|entry| entry.name == field)
         .map(|entry| decode_sound_event_holder(&entry.value, &format!("{what} field {field}")))
         .transpose()
@@ -559,6 +562,44 @@ mod tests {
                 && f32::from_bits(damage_multiplier_bits) == -2.0
                 && resource_id == "minecraft:entity.item.break"
                 && sound_id == "example:spear_impact"
+        ));
+    }
+
+    #[test]
+    fn kinetic_weapon_optional_records_floats_and_sounds_follow_last_wins_semantics() {
+        let decoded = decode_kinetic_weapon(
+            &compound([
+                ("damage_conditions", NbtSummaryValue::Int(0)),
+                (
+                    "damage_conditions",
+                    compound([("max_duration_ticks", NbtSummaryValue::Int(20))]),
+                ),
+                (
+                    "forward_movement",
+                    NbtSummaryValue::String("invalid".to_string()),
+                ),
+                ("forward_movement", NbtSummaryValue::Float(0.5f32.to_bits())),
+                ("sound", NbtSummaryValue::Int(0)),
+                (
+                    "sound",
+                    NbtSummaryValue::String("entity.item.break".to_string()),
+                ),
+            ]),
+            "kinetic weapon",
+        )
+        .unwrap();
+        assert!(matches!(
+            decoded,
+            DialogKineticWeaponState {
+                damage_conditions: Some(DialogKineticWeaponConditionState {
+                    max_duration_ticks: 20,
+                    ..
+                }),
+                forward_movement_bits,
+                sound: Some(DialogSoundEventHolderState::Named { resource_id, .. }),
+                ..
+            } if f32::from_bits(forward_movement_bits) == 0.5
+                && resource_id == "minecraft:entity.item.break"
         ));
     }
 

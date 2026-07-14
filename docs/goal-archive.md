@@ -14211,3 +14211,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   break-sound patch 的 32767/32768 UTF-16 unit 边界均有回归。show-dialog 和剩余
   RegistryFileCodec-direct、typed-NBT、predicate/item-template 及其它 nested-record positive item-patch
   value 继续由缺口账本追踪。
+
+## 2026-07-14：Canonicalize piercing and kinetic weapons
+
+- [x] 对照 `PiercingWeapon.CODEC`、`KineticWeapon.CODEC/Condition.CODEC`，复用已有 sound-event holder
+  canonical helper，闭合两个默认布尔、两个默认非负整数、三个 optional Condition、两个默认 float 与
+  两个 optional sound holder 的字段顺序/default omission；Condition 保留 required max_duration_ticks。
+- [x] 所有 weapon/Condition/direct-sound float 均走唯一 JDK 26 formatter 与 non-finite 门禁；局部 optional
+  Condition/float/sound lookup 已按 CompoundTag last-wins 修正。default/non-default record、nested named/
+  direct sound、NaN 拒绝与 written-book hover `show_item` 双 weapon patch 的 32767/32768 UTF-16 unit
+  边界均有回归。show-dialog 和剩余 RegistryFileCodec-direct、typed-NBT、predicate/item-template 及其它
+  nested-record positive item-patch value 继续由缺口账本追踪。

@@ -222,6 +222,18 @@ fn accepts_written_book_title_page_and_collection_boundaries() {
         "written book",
     )
     .is_ok());
+
+    let weapon_records_patch_prefix = concat!(
+        r#"{"text":"item","extra":[""],"hover_event":{"action":"show_item","id":"minecraft:stone","components":{"minecraft:piercing_weapon":{"deals_knockback":false,"sound":{"sound_id":"example:throw"}},"minecraft:kinetic_weapon":{"contact_cooldown_ticks":5,"damage_conditions":{"max_duration_ticks":20,"min_relative_speed":2.0},"forward_movement":0.25,"hit_sound":{"sound_id":"example:hit","range":8.0}}}}}"#
+    )
+    .len();
+    let exact_weapon_records_patch_page =
+        component_with_weapon_records_item_patch("x".repeat(32_767 - weapon_records_patch_prefix));
+    assert!(decode_written_book_content(
+        &book_with_pages(vec![exact_weapon_records_patch_page]),
+        "written book",
+    )
+    .is_ok());
 }
 
 #[test]
@@ -519,6 +531,16 @@ fn rejects_malformed_written_book_fields_filterables_and_exact_canonical_page_li
             "encodes to 32768 JSON UTF-16 units, maximum is 32767",
         ),
         (
+            book_with_pages(vec![component_with_weapon_records_item_patch("x".repeat(
+                32_768
+                    - concat!(
+                        r#"{"text":"item","extra":[""],"hover_event":{"action":"show_item","id":"minecraft:stone","components":{"minecraft:piercing_weapon":{"deals_knockback":false,"sound":{"sound_id":"example:throw"}},"minecraft:kinetic_weapon":{"contact_cooldown_ticks":5,"damage_conditions":{"max_duration_ticks":20,"min_relative_speed":2.0},"forward_movement":0.25,"hit_sound":{"sound_id":"example:hit","range":8.0}}}}}"#
+                    )
+                    .len(),
+            ))]),
+            "encodes to 32768 JSON UTF-16 units, maximum is 32767",
+        ),
+        (
             book_with_pages(vec![component_with_non_finite_item_patch()]),
             "canonical item component patch contains a non-finite Float/Double value",
         ),
@@ -527,6 +549,10 @@ fn rejects_malformed_written_book_fields_filterables_and_exact_canonical_page_li
                 String::new(),
                 f32::NAN,
             )]),
+            "canonical item component patch contains a non-finite Float/Double value",
+        ),
+        (
+            book_with_pages(vec![component_with_non_finite_weapon_item_patch()]),
             "canonical item component patch contains a non-finite Float/Double value",
         ),
         (
@@ -799,6 +825,91 @@ fn component_with_break_sound_item_patch(extra: String, range: f32) -> NbtSummar
                             string_entry("sound_id", "example:glass"),
                             value_entry("range", NbtSummaryValue::Float(range.to_bits())),
                         ]),
+                    )]),
+                ),
+            ]),
+        ),
+    ])
+}
+
+fn component_with_weapon_records_item_patch(extra: String) -> NbtSummaryValue {
+    compound(vec![
+        string_entry("text", "item"),
+        value_entry(
+            "extra",
+            NbtSummaryValue::List(vec![NbtSummaryValue::String(extra)]),
+        ),
+        value_entry(
+            "hover_event",
+            compound(vec![
+                string_entry("action", "show_item"),
+                string_entry("id", "stone"),
+                value_entry(
+                    "components",
+                    compound(vec![
+                        value_entry(
+                            "piercing_weapon",
+                            compound(vec![
+                                value_entry("deals_knockback", NbtSummaryValue::Byte(0)),
+                                value_entry(
+                                    "sound",
+                                    compound(vec![string_entry("sound_id", "example:throw")]),
+                                ),
+                            ]),
+                        ),
+                        value_entry(
+                            "kinetic_weapon",
+                            compound(vec![
+                                value_entry("contact_cooldown_ticks", NbtSummaryValue::Int(5)),
+                                value_entry(
+                                    "damage_conditions",
+                                    compound(vec![
+                                        value_entry("max_duration_ticks", NbtSummaryValue::Int(20)),
+                                        value_entry(
+                                            "min_relative_speed",
+                                            NbtSummaryValue::Float(2.0f32.to_bits()),
+                                        ),
+                                    ]),
+                                ),
+                                value_entry(
+                                    "forward_movement",
+                                    NbtSummaryValue::Float(0.25f32.to_bits()),
+                                ),
+                                value_entry(
+                                    "hit_sound",
+                                    compound(vec![
+                                        string_entry("sound_id", "example:hit"),
+                                        value_entry(
+                                            "range",
+                                            NbtSummaryValue::Float(8.0f32.to_bits()),
+                                        ),
+                                    ]),
+                                ),
+                            ]),
+                        ),
+                    ]),
+                ),
+            ]),
+        ),
+    ])
+}
+
+fn component_with_non_finite_weapon_item_patch() -> NbtSummaryValue {
+    compound(vec![
+        string_entry("text", "item"),
+        value_entry(
+            "hover_event",
+            compound(vec![
+                string_entry("action", "show_item"),
+                string_entry("id", "stone"),
+                value_entry(
+                    "components",
+                    compound(vec![value_entry(
+                        "kinetic_weapon",
+                        compound(vec![value_entry(
+                            "forward_movement",
+                            NbtSummaryValue::Float(f32::NAN.to_bits()),
+                        )]),
                     )]),
                 ),
             ]),

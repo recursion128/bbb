@@ -6,7 +6,10 @@ use bbb_protocol::{
 
 use super::super::DialogDataComponentPatchState;
 use super::holder_set::DialogRegistryHolderSetState;
-use super::sound_event::DialogSoundEventHolderState;
+use super::sound_event::{
+    DialogKineticWeaponConditionState, DialogKineticWeaponState, DialogPiercingWeaponState,
+    DialogSoundEventHolderState,
+};
 use super::DialogDataComponentValueState;
 
 /// Returns an exact JsonOps length when every patch value has a supported semantic encoder.
@@ -93,6 +96,25 @@ fn validate_supported_json_floats(value: &DialogDataComponentValueState) -> Resu
                     ..
                 },
         } => values.push(*bits),
+        DialogDataComponentValueState::PiercingWeapon { weapon } => {
+            append_sound_range_bits(&mut values, weapon.sound.as_ref());
+            append_sound_range_bits(&mut values, weapon.hit_sound.as_ref());
+        }
+        DialogDataComponentValueState::KineticWeapon { weapon } => {
+            values.extend([weapon.forward_movement_bits, weapon.damage_multiplier_bits]);
+            for condition in [
+                weapon.dismount_conditions.as_ref(),
+                weapon.knockback_conditions.as_ref(),
+                weapon.damage_conditions.as_ref(),
+            ]
+            .into_iter()
+            .flatten()
+            {
+                values.extend([condition.min_speed_bits, condition.min_relative_speed_bits]);
+            }
+            append_sound_range_bits(&mut values, weapon.sound.as_ref());
+            append_sound_range_bits(&mut values, weapon.hit_sound.as_ref());
+        }
         _ => {}
     }
     if values
@@ -427,8 +449,93 @@ fn canonical_component_value_json_utf16_len(
             object_len([("types", registry_holder_set_len(types)?)].into_iter())
         }
         DialogDataComponentValueState::BreakSound { sound } => sound_event_len(sound)?,
+        DialogDataComponentValueState::PiercingWeapon { weapon } => piercing_weapon_len(weapon)?,
+        DialogDataComponentValueState::KineticWeapon { weapon } => kinetic_weapon_len(weapon)?,
         _ => return None,
     })
+}
+
+fn append_sound_range_bits(values: &mut Vec<u32>, sound: Option<&DialogSoundEventHolderState>) {
+    if let Some(DialogSoundEventHolderState::Direct {
+        fixed_range_bits: Some(bits),
+        ..
+    }) = sound
+    {
+        values.push(*bits);
+    }
+}
+
+fn piercing_weapon_len(weapon: &DialogPiercingWeaponState) -> Option<usize> {
+    let mut fields = Vec::new();
+    if !weapon.deals_knockback {
+        fields.push(("deals_knockback", bool_len(false)));
+    }
+    if weapon.dismounts {
+        fields.push(("dismounts", bool_len(true)));
+    }
+    if let Some(sound) = &weapon.sound {
+        fields.push(("sound", sound_event_len(sound)?));
+    }
+    if let Some(sound) = &weapon.hit_sound {
+        fields.push(("hit_sound", sound_event_len(sound)?));
+    }
+    Some(object_len(fields.into_iter()))
+}
+
+fn kinetic_weapon_len(weapon: &DialogKineticWeaponState) -> Option<usize> {
+    let mut fields = Vec::new();
+    if weapon.contact_cooldown_ticks != 10 {
+        fields.push((
+            "contact_cooldown_ticks",
+            weapon.contact_cooldown_ticks.to_string().len(),
+        ));
+    }
+    if weapon.delay_ticks != 0 {
+        fields.push(("delay_ticks", weapon.delay_ticks.to_string().len()));
+    }
+    for (name, condition) in [
+        ("dismount_conditions", weapon.dismount_conditions.as_ref()),
+        ("knockback_conditions", weapon.knockback_conditions.as_ref()),
+        ("damage_conditions", weapon.damage_conditions.as_ref()),
+    ] {
+        if let Some(condition) = condition {
+            fields.push((name, kinetic_condition_len(condition)?));
+        }
+    }
+    append_non_default_float(
+        &mut fields,
+        "forward_movement",
+        weapon.forward_movement_bits,
+        0.0,
+    )?;
+    append_non_default_float(
+        &mut fields,
+        "damage_multiplier",
+        weapon.damage_multiplier_bits,
+        1.0,
+    )?;
+    if let Some(sound) = &weapon.sound {
+        fields.push(("sound", sound_event_len(sound)?));
+    }
+    if let Some(sound) = &weapon.hit_sound {
+        fields.push(("hit_sound", sound_event_len(sound)?));
+    }
+    Some(object_len(fields.into_iter()))
+}
+
+fn kinetic_condition_len(condition: &DialogKineticWeaponConditionState) -> Option<usize> {
+    let mut fields = vec![(
+        "max_duration_ticks",
+        condition.max_duration_ticks.to_string().len(),
+    )];
+    append_non_default_float(&mut fields, "min_speed", condition.min_speed_bits, 0.0)?;
+    append_non_default_float(
+        &mut fields,
+        "min_relative_speed",
+        condition.min_relative_speed_bits,
+        0.0,
+    )?;
+    Some(object_len(fields.into_iter()))
 }
 
 fn sound_event_len(sound: &DialogSoundEventHolderState) -> Option<usize> {
@@ -908,6 +1015,77 @@ mod tests {
                 expected,
             );
         }
+    }
+
+    #[test]
+    fn canonicalizes_piercing_and_kinetic_weapon_records() {
+        let named_sound = || DialogSoundEventHolderState::Named {
+            registry_id: 0,
+            resource_id: "minecraft:entity.item.break".to_string(),
+        };
+        let direct_sound =
+            |sound_id: &str, range: Option<f32>| DialogSoundEventHolderState::Direct {
+                sound_id: sound_id.to_string(),
+                fixed_range_bits: range.map(f32::to_bits),
+            };
+        assert_exact(
+            DialogDataComponentValueState::PiercingWeapon {
+                weapon: DialogPiercingWeaponState {
+                    deals_knockback: true,
+                    dismounts: false,
+                    sound: None,
+                    hit_sound: None,
+                },
+            },
+            "{}",
+        );
+        assert_exact(
+            DialogDataComponentValueState::PiercingWeapon {
+                weapon: DialogPiercingWeaponState {
+                    deals_knockback: false,
+                    dismounts: true,
+                    sound: Some(named_sound()),
+                    hit_sound: Some(direct_sound("example:hit", Some(8.0))),
+                },
+            },
+            r#"{"deals_knockback":false,"dismounts":true,"sound":"minecraft:entity.item.break","hit_sound":{"sound_id":"example:hit","range":8.0}}"#,
+        );
+        assert_exact(
+            DialogDataComponentValueState::KineticWeapon {
+                weapon: DialogKineticWeaponState {
+                    contact_cooldown_ticks: 10,
+                    delay_ticks: 0,
+                    dismount_conditions: None,
+                    knockback_conditions: None,
+                    damage_conditions: None,
+                    forward_movement_bits: 0.0f32.to_bits(),
+                    damage_multiplier_bits: 1.0f32.to_bits(),
+                    sound: None,
+                    hit_sound: None,
+                },
+            },
+            "{}",
+        );
+        assert_exact(
+            DialogDataComponentValueState::KineticWeapon {
+                weapon: DialogKineticWeaponState {
+                    contact_cooldown_ticks: 5,
+                    delay_ticks: 2,
+                    dismount_conditions: None,
+                    knockback_conditions: None,
+                    damage_conditions: Some(DialogKineticWeaponConditionState {
+                        max_duration_ticks: 20,
+                        min_speed_bits: 0.0f32.to_bits(),
+                        min_relative_speed_bits: 2.0f32.to_bits(),
+                    }),
+                    forward_movement_bits: 0.25f32.to_bits(),
+                    damage_multiplier_bits: 2.0f32.to_bits(),
+                    sound: Some(named_sound()),
+                    hit_sound: Some(direct_sound("example:hit", Some(8.0))),
+                },
+            },
+            r#"{"contact_cooldown_ticks":5,"delay_ticks":2,"damage_conditions":{"max_duration_ticks":20,"min_relative_speed":2.0},"forward_movement":0.25,"damage_multiplier":2.0,"sound":"minecraft:entity.item.break","hit_sound":{"sound_id":"example:hit","range":8.0}}"#,
+        );
     }
 
     fn assert_exact(value: DialogDataComponentValueState, expected: &str) {
