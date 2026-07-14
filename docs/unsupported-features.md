@@ -69,7 +69,8 @@ Owner: `bbb-protocol`
   5 numeric item-behavior record, and 3 resource-key/catalog metadata positive-value
   registrations, plus 2 RGB-alternative/list, 2 firework-record, and 1 global-position
   registration, plus 1 profile-alternative, 1 sound-holder, 4 defaulted
-  sound-backed record registrations, and 2 registry-holder map registrations:
+  sound-backed record registrations, 2 registry-holder map registrations, and 1
+  dynamic registry-holder registration:
   decode the remaining Component, holder, list, and compound-record persistent value
   Codecs, render the corresponding screens, restore the previous screen on clear, and
   route custom-click controls through the active dialog state.

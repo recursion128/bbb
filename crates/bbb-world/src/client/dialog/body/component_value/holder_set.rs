@@ -9,8 +9,8 @@ use bbb_protocol::{
         VANILLA_DATA_COMPONENT_COW_SOUND_VARIANT_TYPE_ID,
         VANILLA_DATA_COMPONENT_COW_VARIANT_TYPE_ID,
         VANILLA_DATA_COMPONENT_DAMAGE_RESISTANT_TYPE_ID,
-        VANILLA_DATA_COMPONENT_FROG_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID,
-        VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID, VANILLA_DATA_COMPONENT_FROG_VARIANT_TYPE_ID,
+        VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID, VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID,
         VANILLA_DATA_COMPONENT_PAINTING_VARIANT_TYPE_ID,
         VANILLA_DATA_COMPONENT_PIG_SOUND_VARIANT_TYPE_ID,
         VANILLA_DATA_COMPONENT_PIG_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_POT_DECORATIONS_TYPE_ID,
@@ -143,6 +143,10 @@ pub(super) fn decode_holder_backed_component_value(
                 what,
             )
             .map(|types| DialogDataComponentValueState::DamageResistant { types }),
+        ),
+        VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID => Some(
+            decode_registry_holder_reference(value, "minecraft:damage_type", registries, what)
+                .map(|damage_type| DialogDataComponentValueState::DamageType { damage_type }),
         ),
         VANILLA_DATA_COMPONENT_SUSPICIOUS_STEW_EFFECTS_TYPE_ID => Some(
             decode_suspicious_stew_effects(value, what)

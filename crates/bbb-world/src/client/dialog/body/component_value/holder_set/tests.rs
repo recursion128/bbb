@@ -1,13 +1,81 @@
 use std::collections::BTreeMap;
 
-use bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_VILLAGER_VARIANT_TYPE_ID;
+use bbb_protocol::data_component_types::{
+    VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID, VANILLA_DATA_COMPONENT_VILLAGER_VARIANT_TYPE_ID,
+};
 use bbb_render_types::VillagerModelType;
 
 use crate::{RegistryContentState, RegistryPacketEntry, RegistrySet, RegistryTagState};
 
+use super::super::decode_supported_component_value;
 use super::*;
 
 const ITEM_REGISTRY: &str = "minecraft:item";
+const DAMAGE_TYPE_REGISTRY: &str = "minecraft:damage_type";
+
+#[test]
+fn decodes_damage_type_named_holder_from_session_registry() {
+    let mut registries = RegistrySet::default();
+    let mut contents = RegistryContentState::new(DAMAGE_TYPE_REGISTRY);
+    contents.entries = vec![
+        RegistryPacketEntry::stub("example:first"),
+        RegistryPacketEntry::stub("minecraft:generic_kill"),
+    ];
+    registries
+        .contents
+        .insert(DAMAGE_TYPE_REGISTRY.to_string(), contents);
+
+    let decoded = decode_supported_component_value(
+        VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID,
+        "minecraft:damage_type",
+        &NbtSummaryValue::String("generic_kill".to_string()),
+        Some(&registries),
+    )
+    .unwrap();
+    assert!(matches!(
+        decoded,
+        Some(DialogDataComponentValueState::DamageType { damage_type })
+            if damage_type.holder_id == 1
+                && damage_type.resource_id == "minecraft:generic_kill"
+    ));
+}
+
+#[test]
+fn rejects_context_free_direct_and_unknown_damage_type_holders() {
+    let mut registries = RegistrySet::default();
+    let mut contents = RegistryContentState::new(DAMAGE_TYPE_REGISTRY);
+    contents.entries = vec![RegistryPacketEntry::stub("minecraft:generic_kill")];
+    registries
+        .contents
+        .insert(DAMAGE_TYPE_REGISTRY.to_string(), contents);
+
+    for (value, context, expected) in [
+        (
+            NbtSummaryValue::String("generic_kill".to_string()),
+            None,
+            "without registry context",
+        ),
+        (
+            NbtSummaryValue::String("example:missing".to_string()),
+            Some(&registries),
+            "missing minecraft:damage_type resource",
+        ),
+        (
+            NbtSummaryValue::Compound(Vec::new()),
+            Some(&registries),
+            "holder is not a resource id",
+        ),
+    ] {
+        let error = decode_supported_component_value(
+            VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID,
+            "minecraft:damage_type",
+            &value,
+            context,
+        )
+        .unwrap_err();
+        assert!(error.contains(expected), "unexpected error: {error}");
+    }
+}
 
 #[test]
 fn decodes_compact_list_and_named_registry_holder_sets() {

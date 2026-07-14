@@ -13815,3 +13815,11 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] current-session holder id、default namespace、输入顺序、NBT `Number.intValue`、1..=255 边界、
   context-free empty map、malformed root/key/value、missing registry/context 与 duplicate semantic holder
   均有定向测试；其余 persistent Codec 与 native screens 仍开放。
+
+## 2026-07-13：Decode damage-type dialog item component
+
+- [x] 对照 `DamageType.CODEC = RegistryFixedCodec.create(Registries.DAMAGE_TYPE)`，复用 shared
+  registry-holder surface，typed 投影 DAMAGE_TYPE 的 current-session holder id/resource id，不把
+  `DIRECT_CODEC` compound 错当成 persistent holder 分支。
+- [x] default namespace、session registration order、missing registry context、unknown resource 与
+  direct compound 拒绝均有定向测试；其余 persistent Codec 与 native screens 仍开放。

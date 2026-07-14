@@ -227,6 +227,9 @@ pub enum DialogDataComponentValueState {
     DamageResistant {
         types: DialogRegistryHolderSetState,
     },
+    DamageType {
+        damage_type: DialogRegistryHolderReferenceState,
+    },
     SuspiciousStewEffects {
         effects: Vec<DialogSuspiciousStewEffectState>,
     },
