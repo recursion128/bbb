@@ -361,9 +361,12 @@ instrument、provides-trim-material 与 trim 同时保留 typed summary 和经 C
 String/CompoundTag，native encoder 优先复用 raw value，完整覆盖 direct sound/float/Component/asset 字段；
 jukebox-song 与 painting-variant 的 persistent `RegistryFixedCodec` 只允许 named resource id，dialog NBT
 中的 inline compound 不是 vanilla 可表达形状并继续严格拒绝；
-未桥接的其余富结构值不会被猜测性投影。
+其余 animal/sound registry variant 同样使用 `RegistryFixedCodec`，不是 direct holder 缺口；当前 110 项
+26.1 component catalog 中仅 creative-slot-lock、additional-trade-cost 与 map-post-processing 三项没有
+persistent CODEC，剩余 107 项 persistent component 均有 dialog typed decoder/summary bridge 与 native
+persistent encoder，未知未来形状仍不会被猜测性投影。
 仍须按 `DialogScreen`/`DialogControlSet` 完成 screen blur/depth-clear、warning button/screen、
-剩余有损/未 typed holder 形式及递归/富结构 component-patched Item body bridge 与 item focus outline、四类 input、
+item focus outline、四类 input、
 button-list tooltip/scroll/focus、
 其余三类 top-level dialog 布局、action-bearing
 open-url/run-command/dynamic action 与 Component-click。静态 change-page 与 suggest-command 在

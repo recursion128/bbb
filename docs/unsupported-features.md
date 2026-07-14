@@ -69,8 +69,7 @@ Owner: `bbb-protocol`
 - Complete native `Dialog` screen/runtime behavior against
   `DialogScreen`, `SimpleDialogScreen`, `DialogControlSet`, and
   `DialogBodyHandlers`: add the in-world screen blur/depth-clear and warning button/screen;
-  bridge the remaining lossy or untyped holder forms plus unbridged rich-structure
-  component-patched Item bodies into the native item renderer, add Item widget focus outlines,
+  add Item widget focus outlines,
   all four input controls,
   remaining button-list action tooltips, and the
   MultiAction/ServerLinks/DialogList layouts with vanilla scrolling,
@@ -101,8 +100,9 @@ Owner: `bbb-protocol`
   plus validated persistent named/direct instrument and trim holder values while retaining their
   typed summaries; jukebox-song and painting-variant compounds remain rejected because their
   persistent `RegistryFixedCodec` only accepts named resource ids,
-  and item tooltips while conservatively rejecting an entire body when any added component value
-  has no summary bridge,
+  and item tooltips. The other animal/sound registry variants also use `RegistryFixedCodec`, and
+  all 107 persistent entries in the 26.1 component catalog now have the dialog decode/summary/native
+  encoder path; the three network-only entries cannot occur in persistent dialog Item NBT,
   and implements the
   static copy-to-clipboard through the existing native clipboard owner, preserves
   DialogScreen's side-effect-free static change-page and suggest-command handling, and implements

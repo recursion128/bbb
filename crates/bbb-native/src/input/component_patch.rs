@@ -1813,10 +1813,17 @@ mod tests {
 
     #[test]
     fn encoder_registry_is_unique_sorted_and_persistent() {
-        assert_eq!(PERSISTENT_SNBT_ENCODERS.len(), 107);
+        let expected_type_ids = bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_TYPES
+            .iter()
+            .filter(|descriptor| descriptor.persistent)
+            .map(|descriptor| descriptor.type_id)
+            .collect::<Vec<_>>();
+        assert_eq!(PERSISTENT_SNBT_ENCODERS.len(), expected_type_ids.len());
         let mut ids = HashSet::new();
         let mut previous = None;
-        for descriptor in PERSISTENT_SNBT_ENCODERS {
+        for (descriptor, expected_type_id) in PERSISTENT_SNBT_ENCODERS.iter().zip(expected_type_ids)
+        {
+            assert_eq!(descriptor.type_id, expected_type_id);
             assert!(ids.insert(descriptor.type_id));
             if let Some(previous) = previous {
                 assert!(previous < descriptor.type_id);

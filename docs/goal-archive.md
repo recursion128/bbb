@@ -14776,3 +14776,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] world focused regression 以同一个 can-place-on predicate 贯通 max-stack-size、nested lock 与 partial
   matchers，断言 added order、lock CompoundTag 与 rawless all-or-nothing 拒绝；native encoder regression
   同步锁定 exact `minecraft:lock` 的 persistent `{}` 输出。
+
+## 2026-07-14：Close persistent dialog Item component coverage audit
+
+- [x] 对照 `DataComponents`、各 animal/sound variant 的 holder `CODEC` 与 `RegistryFixedCodec`，确认 variant
+  类自身的 `DIRECT_CODEC` 只负责 registry element，Item component 的 persistent holder 仍只接受 named
+  resource id；此前“其余 direct registry variants”不是可表达的 dialog NBT 缺口。
+- [x] 26.1 catalog 共 110 项，其中 creative-slot-lock、additional-trade-cost、map-post-processing 三项没有
+  persistent CODEC，剩余 107 项均已有 dialog typed decode/summary bridge 与 native persistent SNBT encoder。
+  native registry regression 改为逐项对比 generated persistent catalog，不再仅用易漂移的硬编码数量断言。
