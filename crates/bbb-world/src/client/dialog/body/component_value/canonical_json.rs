@@ -5,6 +5,7 @@ use bbb_protocol::{
 };
 
 use super::super::DialogDataComponentPatchState;
+use super::holder_set::DialogRegistryHolderSetState;
 use super::DialogDataComponentValueState;
 
 /// Returns an exact JsonOps length when every patch value has a supported semantic encoder.
@@ -408,8 +409,37 @@ fn canonical_component_value_json_utf16_len(
         DialogDataComponentValueState::DamageType { damage_type } => {
             string_len(&damage_type.resource_id)
         }
+        DialogDataComponentValueState::Repairable { items } => {
+            object_len([("items", registry_holder_set_len(items)?)].into_iter())
+        }
+        DialogDataComponentValueState::ProvidesBannerPatterns { patterns } => {
+            registry_holder_set_len(patterns)?
+        }
+        DialogDataComponentValueState::DamageResistant { types } => {
+            object_len([("types", registry_holder_set_len(types)?)].into_iter())
+        }
         _ => return None,
     })
+}
+
+fn registry_holder_set_len(holder_set: &DialogRegistryHolderSetState) -> Option<usize> {
+    match holder_set.holder_set_kind.as_str() {
+        "named" => holder_set
+            .tag
+            .as_ref()
+            .map(|tag| string_len(&format!("#{tag}"))),
+        "direct" => Some(if let [entry] = holder_set.entries.as_slice() {
+            string_len(&entry.resource_id)
+        } else {
+            array_len(
+                holder_set
+                    .entries
+                    .iter()
+                    .map(|entry| string_len(&entry.resource_id)),
+            )
+        }),
+        _ => None,
+    }
 }
 
 fn firework_explosion_len(explosion: &FireworkExplosionSummary) -> usize {
@@ -779,6 +809,48 @@ mod tests {
         ] {
             assert_exact(value, expected);
         }
+    }
+
+    #[test]
+    fn canonicalizes_registry_holder_sets_in_compact_and_tag_forms() {
+        let entry = |resource_id: &str| DialogRegistryHolderReferenceState {
+            holder_id: 0,
+            resource_id: resource_id.to_string(),
+        };
+        let direct =
+            |entries: Vec<DialogRegistryHolderReferenceState>| DialogRegistryHolderSetState {
+                holder_set_kind: "direct".to_string(),
+                tag: None,
+                entries,
+            };
+        assert_exact(
+            DialogDataComponentValueState::Repairable {
+                items: DialogRegistryHolderSetState {
+                    holder_set_kind: "named".to_string(),
+                    tag: Some("minecraft:planks".to_string()),
+                    entries: Vec::new(),
+                },
+            },
+            r##"{"items":"#minecraft:planks"}"##,
+        );
+        assert_exact(
+            DialogDataComponentValueState::ProvidesBannerPatterns {
+                patterns: direct(vec![entry("minecraft:base")]),
+            },
+            r#""minecraft:base""#,
+        );
+        assert_exact(
+            DialogDataComponentValueState::DamageResistant {
+                types: direct(vec![entry("minecraft:generic"), entry("minecraft:fall")]),
+            },
+            r#"{"types":["minecraft:generic","minecraft:fall"]}"#,
+        );
+        assert_exact(
+            DialogDataComponentValueState::ProvidesBannerPatterns {
+                patterns: direct(Vec::new()),
+            },
+            "[]",
+        );
     }
 
     fn assert_exact(value: DialogDataComponentValueState, expected: &str) {

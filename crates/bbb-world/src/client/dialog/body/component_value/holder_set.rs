@@ -445,6 +445,7 @@ pub(super) fn decode_registry_holder_set_field(
     };
     let field_value = entries
         .iter()
+        .rev()
         .find(|entry| entry.name == field)
         .map(|entry| &entry.value)
         .ok_or_else(|| format!("{what} is missing field {field}"))?;

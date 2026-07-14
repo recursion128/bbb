@@ -4,7 +4,9 @@ use bbb_protocol::{
     NbtSummaryValue,
 };
 
-use crate::{RegistryContentState, RegistryPacketEntry, RegistrySet};
+use std::collections::BTreeMap;
+
+use crate::{RegistryContentState, RegistryPacketEntry, RegistrySet, RegistryTagState};
 
 use super::super::{decode_supported_component_value, DialogDataComponentValueState};
 use super::*;
@@ -254,6 +256,54 @@ fn enforces_named_holder_item_patch_page_boundary_with_session_registries() {
     .len();
     for (limit, expected_error) in [(32_767usize, None), (32_768usize, Some("encodes to 32768"))] {
         let page = component_with_named_holder_item_patch("x".repeat(limit - prefix));
+        let result = decode_written_book_content_with_context(
+            &book_with_pages(vec![page]),
+            "written book",
+            DialogDecodeContext::new(Some(&registries), 0),
+        );
+        match expected_error {
+            None => assert!(result.is_ok()),
+            Some(expected) => assert!(result.unwrap_err().contains(expected)),
+        }
+    }
+}
+
+#[test]
+fn enforces_holder_set_item_patch_page_boundary_with_session_registries() {
+    let mut registries = RegistrySet::default();
+    let stone_id = registries
+        .holder_id_by_resource_id("minecraft:item", "minecraft:stone")
+        .unwrap();
+    let dirt_id = registries
+        .holder_id_by_resource_id("minecraft:item", "minecraft:dirt")
+        .unwrap();
+    registries.tags.insert(
+        "minecraft:item".to_string(),
+        RegistryTagState {
+            registry: "minecraft:item".to_string(),
+            tags: BTreeMap::from([("example:repair_items".to_string(), vec![stone_id, dirt_id])]),
+        },
+    );
+    for (registry, resource_ids) in [
+        ("minecraft:banner_pattern", &["minecraft:base"][..]),
+        (
+            "minecraft:damage_type",
+            &["minecraft:generic", "minecraft:fall"][..],
+        ),
+    ] {
+        let mut contents = RegistryContentState::new(registry);
+        contents.entries = resource_ids
+            .iter()
+            .map(|resource_id| RegistryPacketEntry::stub(*resource_id))
+            .collect();
+        registries.contents.insert(registry.to_string(), contents);
+    }
+    let prefix = concat!(
+        r##"{"text":"item","extra":[""],"hover_event":{"action":"show_item","id":"minecraft:stone","components":{"minecraft:repairable":{"items":"#example:repair_items"},"minecraft:provides_banner_patterns":"minecraft:base","minecraft:damage_resistant":{"types":["minecraft:generic","minecraft:fall"]}}}}"##
+    )
+    .len();
+    for (limit, expected_error) in [(32_767usize, None), (32_768usize, Some("encodes to 32768"))] {
+        let page = component_with_holder_set_item_patch("x".repeat(limit - prefix));
         let result = decode_written_book_content_with_context(
             &book_with_pages(vec![page]),
             "written book",
@@ -690,6 +740,43 @@ fn component_with_named_holder_item_patch(extra: String) -> NbtSummaryValue {
                         string_entry("damage_type", "generic_kill"),
                         string_entry("jukebox_playable", "cat"),
                         string_entry("painting/variant", "kebab"),
+                    ]),
+                ),
+            ]),
+        ),
+    ])
+}
+
+fn component_with_holder_set_item_patch(extra: String) -> NbtSummaryValue {
+    compound(vec![
+        string_entry("text", "item"),
+        value_entry(
+            "extra",
+            NbtSummaryValue::List(vec![NbtSummaryValue::String(extra)]),
+        ),
+        value_entry(
+            "hover_event",
+            compound(vec![
+                string_entry("action", "show_item"),
+                string_entry("id", "stone"),
+                value_entry(
+                    "components",
+                    compound(vec![
+                        value_entry(
+                            "repairable",
+                            compound(vec![string_entry("items", "#example:repair_items")]),
+                        ),
+                        string_entry("provides_banner_patterns", "base"),
+                        value_entry(
+                            "damage_resistant",
+                            compound(vec![value_entry(
+                                "types",
+                                NbtSummaryValue::List(vec![
+                                    NbtSummaryValue::String("generic".to_string()),
+                                    NbtSummaryValue::String("fall".to_string()),
+                                ]),
+                            )]),
+                        ),
                     ]),
                 ),
             ]),

@@ -218,6 +218,30 @@ fn context_free_holder_set_accepts_only_the_empty_direct_list() {
 }
 
 #[test]
+fn holder_set_record_fields_follow_compound_last_wins_semantics() {
+    let registries = RegistrySet::default();
+    let decoded = decode_registry_holder_set_field(
+        &NbtSummaryValue::Compound(vec![
+            NbtSummaryEntry {
+                name: "items".to_string(),
+                value: NbtSummaryValue::Int(0),
+            },
+            NbtSummaryEntry {
+                name: "items".to_string(),
+                value: NbtSummaryValue::String("stone".to_string()),
+            },
+        ]),
+        "items",
+        ITEM_REGISTRY,
+        Some(&registries),
+        "repairable",
+    )
+    .unwrap();
+    assert_eq!(decoded.entries.len(), 1);
+    assert_eq!(decoded.entries[0].resource_id, "minecraft:stone");
+}
+
+#[test]
 fn synchronized_registry_holder_set_uses_session_order_and_tags() {
     let registry = "minecraft:banner_pattern";
     let mut registries = RegistrySet::default();

@@ -413,7 +413,9 @@ CompoundTag last-wins 归一重复 map/entry key；`minecraft:suspicious_stew_ef
 mob-effect holder 与 duration=160 省略，`minecraft:pot_decorations` 则按 ordered() 始终重编码四侧并以
 `minecraft:brick` 填充空侧；13 类 fixed registry variant（含 built-in villager）、jukebox song、
 painting variant 与 damage type 的 named holder 也已统一输出 normalized resource-id string；generic
-packet Component 尚无该 world context；
+packet Component 尚无该 world context；`repairable`、`provides_banner_patterns` 与 `damage_resistant`
+也已复用 HolderSetCodec canonical 规则，named tag 保留 `#`，direct singleton 压成字符串，零/多项保持
+数组，并按 CompoundTag last-wins 读取 record wrapper；
 click `show_dialog` 也已由同一中央 visitor 按 `Dialog.CODEC` 解析 inline/session reference holder，
 并让 title/button/body/input、item patch 与 recursive predicate/item-template 路径共享 64 层 Dialog
 semantic depth，registry 自引用/互引用不会重置预算；
