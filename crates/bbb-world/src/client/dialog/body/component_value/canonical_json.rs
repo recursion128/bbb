@@ -539,6 +539,22 @@ fn canonical_component_value_json_utf16_len(
                     .saturating_add(entry.level.to_string().len())
             }))
         }
+        DialogDataComponentValueState::WritableBookContent { pages } => {
+            let mut fields = Vec::new();
+            if !pages.is_empty() {
+                fields.push((
+                    "pages",
+                    array_len(pages.iter().map(|page| {
+                        let mut fields = vec![("raw", string_len(&page.raw))];
+                        if let Some(filtered) = &page.filtered {
+                            fields.push(("filtered", string_len(filtered)));
+                        }
+                        object_len(fields.into_iter())
+                    })),
+                ));
+            }
+            object_len(fields.into_iter())
+        }
         _ => return None,
     })
 }
@@ -1385,6 +1401,29 @@ mod tests {
                 entries: Vec::new(),
             },
             "{}",
+        );
+    }
+
+    #[test]
+    fn canonicalizes_writable_book_filterable_pages_as_full_records() {
+        assert_exact(
+            DialogDataComponentValueState::WritableBookContent { pages: Vec::new() },
+            "{}",
+        );
+        assert_exact(
+            DialogDataComponentValueState::WritableBookContent {
+                pages: vec![
+                    super::super::writable_book::DialogFilterableStringState {
+                        raw: "compact\"".to_string(),
+                        filtered: None,
+                    },
+                    super::super::writable_book::DialogFilterableStringState {
+                        raw: "raw".to_string(),
+                        filtered: Some("filtered\n".to_string()),
+                    },
+                ],
+            },
+            r#"{"pages":[{"raw":"compact\""},{"raw":"raw","filtered":"filtered\n"}]}"#,
         );
     }
 

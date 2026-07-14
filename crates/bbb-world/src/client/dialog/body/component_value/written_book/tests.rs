@@ -271,6 +271,18 @@ fn accepts_written_book_title_page_and_collection_boundaries() {
         "written book",
     )
     .is_ok());
+
+    let writable_book_patch_prefix = concat!(
+        r#"{"text":"item","extra":[""],"hover_event":{"action":"show_item","id":"minecraft:stone","components":{"minecraft:writable_book_content":{"pages":[{"raw":"page"}]}}}}"#
+    )
+    .len();
+    let exact_writable_book_patch_page =
+        component_with_writable_book_item_patch("x".repeat(32_767 - writable_book_patch_prefix));
+    assert!(decode_written_book_content(
+        &book_with_pages(vec![exact_writable_book_patch_page]),
+        "written book",
+    )
+    .is_ok());
 }
 
 #[test]
@@ -635,6 +647,16 @@ fn rejects_malformed_written_book_fields_filterables_and_exact_canonical_page_li
                 32_768
                     - concat!(
                         r#"{"text":"item","extra":[""],"hover_event":{"action":"show_item","id":"minecraft:stone","components":{"minecraft:debug_stick_state":{"minecraft:oak_log":"axis"}}}}"#
+                    )
+                    .len(),
+            ))]),
+            "encodes to 32768 JSON UTF-16 units, maximum is 32767",
+        ),
+        (
+            book_with_pages(vec![component_with_writable_book_item_patch("x".repeat(
+                32_768
+                    - concat!(
+                        r#"{"text":"item","extra":[""],"hover_event":{"action":"show_item","id":"minecraft:stone","components":{"minecraft:writable_book_content":{"pages":[{"raw":"page"}]}}}}"#
                     )
                     .len(),
             ))]),
@@ -1144,6 +1166,35 @@ fn component_with_debug_stick_item_patch(extra: String) -> NbtSummaryValue {
                     compound(vec![value_entry(
                         "debug_stick_state",
                         compound(vec![string_entry("oak_log", "axis")]),
+                    )]),
+                ),
+            ]),
+        ),
+    ])
+}
+
+fn component_with_writable_book_item_patch(extra: String) -> NbtSummaryValue {
+    compound(vec![
+        string_entry("text", "item"),
+        value_entry(
+            "extra",
+            NbtSummaryValue::List(vec![NbtSummaryValue::String(extra)]),
+        ),
+        value_entry(
+            "hover_event",
+            compound(vec![
+                string_entry("action", "show_item"),
+                string_entry("id", "stone"),
+                value_entry(
+                    "components",
+                    compound(vec![value_entry(
+                        "writable_book_content",
+                        compound(vec![value_entry(
+                            "pages",
+                            NbtSummaryValue::List(vec![NbtSummaryValue::String(
+                                "page".to_string(),
+                            )]),
+                        )]),
                     )]),
                 ),
             ]),

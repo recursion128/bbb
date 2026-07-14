@@ -429,6 +429,8 @@ float/double 与 non-finite 拒绝，typed/occupant required 字段 lookup 也�
 完全同名 CompoundTag key 按 last-wins，归一化后碰撞的不同 raw key 则与 DFU `putIfAbsent` 一致拒绝；
 `enchantments`/`stored_enchantments` 的 session-aware holder→1..=255 level map 也已闭合 normalized
 resource-id/integer canonical object，同名 raw key last-wins、归一化 holder 碰撞拒绝；
+`writable_book_content` 也已按 `withAlternative(full,simple)` 的 left/full encoder 闭合，compact string
+输入统一输出 Filterable raw/optional filtered record，empty pages 保持 default omission；
 click `show_dialog` 也已由同一中央 visitor 按 `Dialog.CODEC` 解析 inline/session reference holder，
 并让 title/button/body/input、item patch 与 recursive predicate/item-template 路径共享 64 层 Dialog
 semantic depth，registry 自引用/互引用不会重置预算；

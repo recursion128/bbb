@@ -134,6 +134,9 @@ Owner: `bbb-protocol`
   Enchantment and stored-enchantment maps now likewise encode session-resolved holder ids as
   normalized resource keys with 1..=255 integer levels, preserving exact-key last-wins and
   rejecting post-resolution holder collisions.
+  Writable-book content now follows the left/full encoder of its full/simple `Filterable<String>`
+  alternative: compact string inputs re-encode as raw/optional-filtered records, with default-empty
+  pages omitted.
   Dialog click `show_dialog` payloads also decode through the full
   inline/session-reference `Dialog.CODEC` owner with a shared 64-level semantic-depth budget,
   including recursive item templates and predicates, so registry cycles fail deterministically.
