@@ -33,6 +33,8 @@ pub struct NetCounters {
     #[serde(default)]
     pub chat_acknowledgement_commands_queued: usize,
     #[serde(default)]
+    pub custom_click_action_commands_queued: usize,
+    #[serde(default)]
     pub change_difficulty_commands_queued: usize,
     #[serde(default)]
     pub change_game_mode_commands_queued: usize,

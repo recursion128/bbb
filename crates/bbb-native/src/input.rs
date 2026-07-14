@@ -3081,7 +3081,7 @@ impl ClientInputState {
         self.command_entry_is_active()
             || self.sign_editor_is_active_or_pending(world)
             || world.open_container_id().is_some()
-            || world.current_dialog().is_some()
+            || world.dialog_screen_is_open()
             || world.current_book().is_some()
             || world.advancements_screen_is_open()
             || world.stats_screen_is_open()
@@ -8360,7 +8360,7 @@ pub(crate) fn handle_key_input_with_item_runtime(
         return;
     }
 
-    if world.current_dialog().is_some() {
+    if world.dialog_screen_is_open() {
         return;
     }
 
@@ -8652,7 +8652,7 @@ pub(crate) fn handle_text_input_with_item_runtime(
         return;
     }
 
-    if world.current_dialog().is_some()
+    if world.dialog_screen_is_open()
         || world.current_book().is_some()
         || world.advancements_screen_is_open()
         || world.stats_screen_is_open()

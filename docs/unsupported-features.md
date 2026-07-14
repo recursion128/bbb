@@ -71,11 +71,13 @@ Owner: `bbb-protocol`
   `DialogBodyHandlers`: add the in-world screen background and warning button/screen;
   render Item bodies, all four input controls, action tooltips, and the
   Confirmation/MultiAction/ServerLinks/DialogList layouts with vanilla scrolling,
-  focus, and clipping; execute action-bearing button/Escape, Component-click,
-  custom-click, and waiting-response paths with complete `after_action` semantics;
-  and restore native-owned
+  focus, and clipping; execute open-url, run/suggest-command, show-dialog,
+  change-page, copy-to-clipboard, dynamic action, and Component-click paths; and
+  restore native-owned
   chat/sign/debug and warning return-screen stacks when dialogs clear. The current
-  Notice projection still needs these controls and actions before either
+  Notice projection already sends static custom id/payload and implements the
+  close/none/waiting `after_action` transitions, including vanilla's delayed Back
+  screen; it still needs the remaining controls and actions before either
   `ShowDialog` row's `runtime_side_effect` coverage cell can close.
 - Thread the world/session owner into generic packet Components whose nested
   player, dialog-holder, or show-item payloads require registry context, while

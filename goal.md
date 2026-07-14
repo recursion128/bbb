@@ -317,10 +317,13 @@ transfer state 并重连仍保持具体 `partial`，不能把记录 host/port �
 configuration client-information 的 startup command owner、language bound、9 字段 encoder、
 configuration finish 无 play duplicate 与无 ack 语义已闭合；仓库禁止的 in-game option UI
 不再作为 play packet 的虚构 command surface。
-dialog runtime 的当前可见基线只投影 Notice 标题、PlainMessage 正文与主按钮/悬停；
+dialog runtime 的当前可见基线投影 Notice 标题、PlainMessage 正文与主按钮/悬停，静态
+custom action 已发送完整 id/payload，并按 `after_action` 进入 close/none/waiting；waiting screen
+按 vanilla 1 秒显示、5 秒启用 Back，且保持 previous-screen、ShowDialog replacement 与
+ClearDialog ignore 语义。
 仍须按 `DialogScreen`/`DialogControlSet` 完成 screen background、warning button/screen、
 Item body、四类 input、tooltip/scroll/focus、其余四类 top-level dialog 布局、action-bearing
-按钮/Escape、Component/custom-click action 与 `after_action` waiting 语义。clear-dialog 还须接入 native-owned
+open-url/run/suggest/show-dialog/change-page/copy/dynamic action 与 Component-click。clear-dialog 还须接入 native-owned
 chat/sign/debug screen 和 warning return-screen stack；上述 runtime 完成前两个 `ShowDialog`
 的 `runtime_side_effect` cell 保持 `partial`。generic packet Component 的 world/session higher
 owner 也仍须接入；context-free 路径必须继续显式返回 unknown，不得回退 raw NBT 估算。

@@ -191,8 +191,8 @@ pub(crate) use render_extract::*;
 mod events;
 
 pub(crate) use debug_light_sections::DebugSkyLightSectionCache;
-use dialog_screen::hud_dialog_screen;
 pub(crate) use dialog_screen::{handle_dialog_key_input, handle_dialog_mouse_input};
+use dialog_screen::{hud_dialog_screen, hud_waiting_response_screen};
 
 const VANILLA_CLIENT_TICK_INTERVAL: Duration = Duration::from_millis(50);
 const VANILLA_OVERWORLD_AMBIENT_LIGHT_COLOR: [f32; 3] = rgb24(-16_119_286);
@@ -2110,6 +2110,7 @@ pub(crate) fn pump_network_and_terrain(
     // 1145-1166), outside the tick-rate manager's freeze gate, so the action
     // bar / title countdowns advance on raw client ticks, not running ticks.
     world.advance_hud_text_ticks(advanced_ticks);
+    world.advance_dialog_waiting_ticks(advanced_ticks);
     lightmap_ticks.advance_for_world(advanced_ticks, world);
     lightmap_ticks.advance_rain_fog_for_world(advanced_ticks, world, terrain_textures);
     let water_vision = lightmap_ticks.water_vision(world);
@@ -3256,7 +3257,7 @@ fn release_input_if_screen_opened(
 
 fn input_screen_is_open(input: &ClientInputState, world: &WorldStore) -> bool {
     world.open_container_id().is_some()
-        || world.current_dialog().is_some()
+        || world.dialog_screen_is_open()
         || world.current_book().is_some()
         || world.advancements_screen_is_open()
         || world.stats_screen_is_open()
@@ -6032,6 +6033,13 @@ fn hud_inventory_screen_with_local_state_for_surface(
 ) -> Option<HudInventoryScreen> {
     if let Some(dialog) = world.current_dialog() {
         return hud_dialog_screen(dialog, local_state.cursor_position, surface_size);
+    }
+    if let Some(waiting_ticks) = world.dialog_waiting_ticks() {
+        return Some(hud_waiting_response_screen(
+            waiting_ticks,
+            local_state.cursor_position,
+            surface_size,
+        ));
     }
 
     if let Some(book) = world.current_book() {

@@ -1241,6 +1241,7 @@ pub enum HudInventoryBackgroundTexture {
     WidgetTextField,
     WidgetTextFieldHighlighted,
     WidgetButton,
+    WidgetButtonDisabled,
     WidgetButtonHighlighted,
     Anvil,
     AnvilTextField,
@@ -4919,6 +4920,9 @@ impl Renderer {
                 self.hud_widget_text_field_highlighted.as_ref()
             }
             HudInventoryBackgroundTexture::WidgetButton => self.hud_widget_button.as_ref(),
+            HudInventoryBackgroundTexture::WidgetButtonDisabled => {
+                self.hud_widget_button_disabled.as_ref()
+            }
             HudInventoryBackgroundTexture::WidgetButtonHighlighted => {
                 self.hud_widget_button_highlighted.as_ref()
             }

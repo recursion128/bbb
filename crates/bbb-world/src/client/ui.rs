@@ -18,6 +18,8 @@ use crate::{
     protocol_block_pos, BlockPos, WorldStore,
 };
 
+const DIALOG_WAITING_CLOSE_ACTIVE_TICKS: u32 = 101;
+
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ClientUiState {
     #[serde(default)]
@@ -26,6 +28,8 @@ pub struct ClientUiState {
     pub current_dialog: Option<DialogState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub dialog_previous_screen: Option<DialogPreviousScreenState>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub dialog_waiting_ticks: Option<u32>,
     #[serde(default)]
     pub current_book: Option<BookScreenState>,
     #[serde(default)]
@@ -58,7 +62,7 @@ pub enum DialogPreviousScreenState {
 
 impl ClientUiState {
     fn show_dialog(&mut self, dialog: DialogState) {
-        if self.current_dialog.is_none() {
+        if self.current_dialog.is_none() && self.dialog_waiting_ticks.is_none() {
             self.dialog_previous_screen = if let Some(screen) = self.current_book.take() {
                 Some(DialogPreviousScreenState::Book { screen })
             } else if std::mem::take(&mut self.current_advancements_screen) {
@@ -69,6 +73,7 @@ impl ClientUiState {
                 None
             };
         }
+        self.dialog_waiting_ticks = None;
         self.current_dialog = Some(dialog);
     }
 
@@ -76,6 +81,31 @@ impl ClientUiState {
         if self.current_dialog.take().is_none() {
             return false;
         }
+        self.restore_dialog_previous_screen();
+        true
+    }
+
+    fn wait_for_dialog_response(&mut self) -> bool {
+        if self.current_dialog.take().is_none() {
+            return false;
+        }
+        self.dialog_waiting_ticks = Some(0);
+        true
+    }
+
+    fn close_dialog_waiting_response(&mut self) -> bool {
+        if !self
+            .dialog_waiting_ticks
+            .is_some_and(|ticks| ticks >= DIALOG_WAITING_CLOSE_ACTIVE_TICKS)
+        {
+            return false;
+        }
+        self.dialog_waiting_ticks = None;
+        self.restore_dialog_previous_screen();
+        true
+    }
+
+    fn restore_dialog_previous_screen(&mut self) {
         match self.dialog_previous_screen.take() {
             Some(DialogPreviousScreenState::Book { screen }) => {
                 self.current_book = Some(screen);
@@ -88,11 +118,11 @@ impl ClientUiState {
             }
             None => {}
         }
-        true
     }
 
     pub(crate) fn replace_dialog(&mut self) {
         self.current_dialog = None;
+        self.dialog_waiting_ticks = None;
         self.dialog_previous_screen = None;
     }
 }
@@ -162,6 +192,21 @@ impl WorldStore {
     /// restores the native world-owned screen that preceded it.
     pub fn close_dialog(&mut self) -> bool {
         self.client_ui.clear_dialog()
+    }
+
+    pub fn wait_for_dialog_response(&mut self) -> bool {
+        self.client_ui.wait_for_dialog_response()
+    }
+
+    pub fn close_dialog_waiting_response(&mut self) -> bool {
+        self.client_ui.close_dialog_waiting_response()
+    }
+
+    pub fn advance_dialog_waiting_ticks(&mut self, ticks: u32) {
+        let Some(waiting_ticks) = &mut self.client_ui.dialog_waiting_ticks else {
+            return;
+        };
+        *waiting_ticks = waiting_ticks.saturating_add(ticks);
     }
 
     pub fn apply_show_dialog(&mut self, packet: ProtocolShowDialog) {
@@ -264,6 +309,19 @@ impl WorldStore {
 
     pub fn current_dialog(&self) -> Option<&DialogState> {
         self.client_ui.current_dialog.as_ref()
+    }
+
+    pub fn dialog_waiting_ticks(&self) -> Option<u32> {
+        self.client_ui.dialog_waiting_ticks
+    }
+
+    pub fn dialog_screen_is_open(&self) -> bool {
+        self.current_dialog().is_some() || self.dialog_waiting_ticks().is_some()
+    }
+
+    pub fn dialog_waiting_can_close(&self) -> bool {
+        self.dialog_waiting_ticks()
+            .is_some_and(|ticks| ticks >= DIALOG_WAITING_CLOSE_ACTIVE_TICKS)
     }
 
     pub fn current_book(&self) -> Option<&BookScreenState> {
@@ -593,6 +651,50 @@ mod tests {
         assert_eq!(store.counters().clear_dialog_packets, 0);
         assert!(!store.close_dialog());
         assert_eq!(store.counters().clear_dialog_packets, 0);
+    }
+
+    #[test]
+    fn waiting_dialog_preserves_previous_screen_and_ignores_clear_packet() {
+        let mut store = WorldStore::new();
+        assert!(store.open_advancements_screen());
+        store.apply_show_dialog(ProtocolShowDialog {
+            dialog: DialogHolder::Reference { registry_id: 3 },
+        });
+
+        assert!(store.wait_for_dialog_response());
+        assert_eq!(store.current_dialog(), None);
+        assert_eq!(store.dialog_waiting_ticks(), Some(0));
+        assert!(!store.advancements_screen_is_open());
+        store.apply_clear_dialog();
+        assert_eq!(store.dialog_waiting_ticks(), Some(0));
+        assert_eq!(store.counters().clear_dialog_packets, 1);
+
+        store.advance_dialog_waiting_ticks(100);
+        assert!(!store.dialog_waiting_can_close());
+        assert!(!store.close_dialog_waiting_response());
+        store.advance_dialog_waiting_ticks(1);
+        assert!(store.dialog_waiting_can_close());
+        assert!(store.close_dialog_waiting_response());
+        assert!(store.advancements_screen_is_open());
+    }
+
+    #[test]
+    fn show_dialog_replaces_waiting_screen_without_losing_previous_screen() {
+        let mut store = WorldStore::new();
+        assert!(store.open_advancements_screen());
+        store.apply_show_dialog(ProtocolShowDialog {
+            dialog: DialogHolder::Reference { registry_id: 3 },
+        });
+        assert!(store.wait_for_dialog_response());
+
+        store.apply_show_dialog(ProtocolShowDialog {
+            dialog: DialogHolder::Reference { registry_id: 4 },
+        });
+
+        assert!(store.current_dialog().is_some());
+        assert_eq!(store.dialog_waiting_ticks(), None);
+        assert!(store.close_dialog());
+        assert!(store.advancements_screen_is_open());
     }
 
     #[test]

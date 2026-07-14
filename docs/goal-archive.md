@@ -14419,3 +14419,15 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   previous-screen restoration 且不误增 packet counter。button hit-test 与渲染共享唯一 centered layout，
   鼠标 release/非左键/框外、禁止 Escape、带 action 的未实现路径均保守消费而不丢动作；world restore、
   main event wiring 与四类 native control regression 均有 focused test。
+
+## 2026-07-14：Send static custom dialog actions and wait for response
+
+- [x] 对照 `DialogScreen.runAction/handleDialogClickEvent`，Notice 的静态 custom action 现在把原始
+  identifier 与 optional NBT payload 排入既有 `ServerboundCustomClickActionPacket` command owner，成功
+  排队时递增专用 runtime counter；按钮和允许 Escape 的 cancel action 复用同一 action runner，未实现
+  action 继续保守停留在当前 dialog。
+- [x] 对照 `WaitingForResponseScreen` 与 `ClientCommonPacketListenerImpl`，新增 world-owned waiting state
+  和 native HUD：第 21 tick 显示 disabled `Back (4s)`，第 101 tick 启用 Back/Escape；等待期间保持原
+  previous screen，late ClearDialog 只计包而不关闭，新的 ShowDialog 替换 waiting 但继续继承原 previous
+  screen。生产 tick、键鼠/光标屏蔽、disabled widget sprite、previous-screen restore 与静态 custom
+  id/payload 均有 focused regression。

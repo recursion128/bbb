@@ -1,8 +1,14 @@
+use bbb_control::NetCounters;
+use bbb_net::NetCommand;
+use bbb_protocol::packets::CustomClickAction;
 use bbb_renderer::{
     HudInventoryBackgroundLayer, HudInventoryBackgroundTexture, HudInventoryScreen,
     HudInventoryTextLabel, HudStyledTextRun, HudTextStyle, HudUvRect,
 };
-use bbb_world::{DialogBodyState, DialogDataState, DialogState, DialogTextState, WorldStore};
+use bbb_world::{
+    DialogActionState, DialogBodyState, DialogDataState, DialogState, DialogTextState, WorldStore,
+};
+use tokio::sync::mpsc;
 use winit::dpi::{PhysicalPosition, PhysicalSize};
 use winit::event::{ElementState, MouseButton};
 use winit::keyboard::{KeyCode, PhysicalKey};
@@ -20,6 +26,11 @@ const BUTTON_HEIGHT: u32 = 20;
 const BUTTON_TEXT_Y_OFFSET: i32 = 6;
 const TEXT_LINE_HEIGHT: i32 = 9;
 const TEXT_COLOR: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
+const INACTIVE_TEXT_COLOR: [f32; 4] = [160.0 / 255.0, 160.0 / 255.0, 160.0 / 255.0, 1.0];
+const WAITING_BUTTON_WIDTH: u32 = 200;
+const WAITING_BUTTON_VISIBLE_TICKS: u32 = 21;
+const WAITING_BUTTON_ACTIVE_TICKS: u32 = 101;
+const WAITING_TITLE: &str = "Waiting for Server";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct DialogTextLine {
@@ -60,17 +71,55 @@ impl NoticeLayout {
         cursor_position: Option<PhysicalPosition<f64>>,
         surface_size: PhysicalSize<u32>,
     ) -> bool {
-        let Some(cursor) = cursor_position else {
-            return false;
-        };
-        let (origin_x, origin_y) =
-            centered_screen_origin(surface_size, self.screen_width, self.screen_height);
-        let button_left = origin_x + i64::from(self.button_x);
-        let button_top = origin_y + i64::from(self.button_y);
-        cursor.x >= button_left as f64
-            && cursor.x < (button_left + i64::from(self.button_width)) as f64
-            && cursor.y >= button_top as f64
-            && cursor.y < (button_top + i64::from(BUTTON_HEIGHT)) as f64
+        screen_button_contains(
+            self.screen_width,
+            self.screen_height,
+            self.button_x,
+            self.button_y,
+            self.button_width,
+            cursor_position,
+            surface_size,
+        )
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct WaitingLayout {
+    screen_width: u32,
+    screen_height: u32,
+    button_x: i32,
+    button_y: i32,
+}
+
+impl WaitingLayout {
+    fn new(surface_size: PhysicalSize<u32>) -> Self {
+        let screen_width = surface_size.width.clamp(1, 512);
+        let screen_height = surface_size.height.clamp(1, 512);
+        let screen_width_i32 = i32::try_from(screen_width).unwrap_or(i32::MAX);
+        let screen_height_i32 = i32::try_from(screen_height).unwrap_or(i32::MAX);
+        Self {
+            screen_width,
+            screen_height,
+            button_x: (screen_width_i32 - WAITING_BUTTON_WIDTH as i32) / 2,
+            button_y: (HEADER_HEIGHT + CONTENT_MARGIN_TOP)
+                .min(screen_height_i32 - BUTTON_HEIGHT as i32),
+        }
+    }
+
+    fn button_contains(
+        self,
+        cursor_position: Option<PhysicalPosition<f64>>,
+        surface_size: PhysicalSize<u32>,
+    ) -> bool {
+        screen_button_contains(
+            self.screen_width,
+            self.screen_height,
+            self.button_x,
+            self.button_y,
+            WAITING_BUTTON_WIDTH,
+            cursor_position,
+            surface_size,
+        )
     }
 }
 
@@ -189,54 +238,205 @@ pub(super) fn hud_dialog_screen(
     })
 }
 
+pub(super) fn hud_waiting_response_screen(
+    waiting_ticks: u32,
+    cursor_position: Option<(i32, i32)>,
+    surface_size: PhysicalSize<u32>,
+) -> HudInventoryScreen {
+    let layout = WaitingLayout::new(surface_size);
+    let screen_width_i32 = i32::try_from(layout.screen_width).unwrap_or(i32::MAX);
+    let visible = waiting_ticks >= WAITING_BUTTON_VISIBLE_TICKS;
+    let active = waiting_ticks >= WAITING_BUTTON_ACTIVE_TICKS;
+    let cursor_position =
+        cursor_position.map(|(x, y)| PhysicalPosition::new(f64::from(x), f64::from(y)));
+    let highlighted = active && layout.button_contains(cursor_position, surface_size);
+    let mut text_labels = Vec::new();
+    push_centered_plain_text_label(
+        &mut text_labels,
+        WAITING_TITLE,
+        screen_width_i32 / 2,
+        (HEADER_HEIGHT - TEXT_LINE_HEIGHT) / 2,
+        TEXT_COLOR,
+    );
+    let mut background_layers = Vec::new();
+    if visible {
+        let seconds_visible = waiting_ticks.saturating_sub(1) / 20;
+        let button_text = if active {
+            "Back".to_string()
+        } else {
+            format!("Back ({}s)", 5u32.saturating_sub(seconds_visible))
+        };
+        background_layers.push(HudInventoryBackgroundLayer {
+            texture: if highlighted {
+                HudInventoryBackgroundTexture::WidgetButtonHighlighted
+            } else if active {
+                HudInventoryBackgroundTexture::WidgetButton
+            } else {
+                HudInventoryBackgroundTexture::WidgetButtonDisabled
+            },
+            x: layout.button_x,
+            y: layout.button_y,
+            width: WAITING_BUTTON_WIDTH,
+            height: BUTTON_HEIGHT,
+            uv: HudUvRect {
+                min: [0.0, 0.0],
+                max: [1.0, 1.0],
+            },
+        });
+        push_centered_plain_text_label(
+            &mut text_labels,
+            &button_text,
+            layout.button_x + WAITING_BUTTON_WIDTH as i32 / 2,
+            layout.button_y + BUTTON_TEXT_Y_OFFSET,
+            if active {
+                TEXT_COLOR
+            } else {
+                INACTIVE_TEXT_COLOR
+            },
+        );
+    }
+
+    HudInventoryScreen {
+        width: layout.screen_width,
+        height: layout.screen_height,
+        background_layers,
+        foreground_layers: Vec::new(),
+        fill_layers: Vec::new(),
+        slots: Vec::new(),
+        floating_items: Vec::new(),
+        foreground_items: Vec::new(),
+        ghost_items: Vec::new(),
+        entity_previews: Vec::new(),
+        text_labels,
+        hovered_slot_id: None,
+        tooltip: None,
+    }
+}
+
 pub(crate) fn handle_dialog_key_input(
+    counters: &mut NetCounters,
     world: &mut WorldStore,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
     physical_key: PhysicalKey,
     state: ElementState,
 ) -> bool {
+    if world.dialog_waiting_ticks().is_some() {
+        if state == ElementState::Pressed
+            && physical_key == PhysicalKey::Code(KeyCode::Escape)
+            && world.dialog_waiting_can_close()
+        {
+            world.close_dialog_waiting_response();
+        }
+        return true;
+    }
     let Some(dialog) = world.current_dialog() else {
         return false;
     };
     if state != ElementState::Pressed || physical_key != PhysicalKey::Code(KeyCode::Escape) {
         return true;
     }
-    let should_close = matches!(
-        dialog.data.as_ref(),
-        Some(DialogDataState::Notice { common, action })
-            if common.can_close_with_escape && action.action_data.is_none()
-    );
-    if should_close {
-        world.close_dialog();
-    }
+    let action = match dialog.data.as_ref() {
+        Some(DialogDataState::Notice { common, action }) if common.can_close_with_escape => {
+            action.action_data.clone()
+        }
+        _ => return true,
+    };
+    run_dialog_action(counters, world, net_commands, action.as_ref(), "close");
     true
 }
 
 pub(crate) fn handle_dialog_mouse_input(
+    counters: &mut NetCounters,
     world: &mut WorldStore,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
     button: MouseButton,
     state: ElementState,
     cursor_position: Option<PhysicalPosition<f64>>,
     surface_size: PhysicalSize<u32>,
 ) -> bool {
+    if world.dialog_waiting_ticks().is_some() {
+        if button == MouseButton::Left
+            && state == ElementState::Pressed
+            && world.dialog_waiting_can_close()
+            && WaitingLayout::new(surface_size).button_contains(cursor_position, surface_size)
+        {
+            world.close_dialog_waiting_response();
+        }
+        return true;
+    }
     let Some(dialog) = world.current_dialog() else {
         return false;
     };
     if button != MouseButton::Left || state != ElementState::Pressed {
         return true;
     }
-    let should_close = match dialog.data.as_ref() {
+    let action = match dialog.data.as_ref() {
         Some(DialogDataState::Notice { common, action }) => {
-            NoticeLayout::new(action.width, surface_size)
+            if !NoticeLayout::new(action.width, surface_size)
                 .is_some_and(|layout| layout.button_contains(cursor_position, surface_size))
-                && action.action_data.is_none()
-                && common.after_action == "close"
+            {
+                return true;
+            }
+            (action.action_data.clone(), common.after_action.clone())
         }
-        _ => false,
+        _ => return true,
     };
-    if should_close {
-        world.close_dialog();
-    }
+    run_dialog_action(counters, world, net_commands, action.0.as_ref(), &action.1);
     true
+}
+
+fn run_dialog_action(
+    counters: &mut NetCounters,
+    world: &mut WorldStore,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    action: Option<&DialogActionState>,
+    after_action: &str,
+) -> bool {
+    match action {
+        None => {}
+        Some(DialogActionState::Custom { id, payload }) => {
+            if let Some(tx) = net_commands {
+                if tx
+                    .try_send(NetCommand::CustomClickAction(CustomClickAction {
+                        id: id.clone(),
+                        payload: payload.clone(),
+                    }))
+                    .is_ok()
+                {
+                    counters.custom_click_action_commands_queued += 1;
+                }
+            }
+        }
+        Some(_) => return false,
+    }
+    match after_action {
+        "close" => world.close_dialog(),
+        "none" => true,
+        "wait_for_response" => world.wait_for_dialog_response(),
+        _ => false,
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn screen_button_contains(
+    screen_width: u32,
+    screen_height: u32,
+    button_x: i32,
+    button_y: i32,
+    button_width: u32,
+    cursor_position: Option<PhysicalPosition<f64>>,
+    surface_size: PhysicalSize<u32>,
+) -> bool {
+    let Some(cursor) = cursor_position else {
+        return false;
+    };
+    let (origin_x, origin_y) = centered_screen_origin(surface_size, screen_width, screen_height);
+    let button_left = origin_x + i64::from(button_x);
+    let button_top = origin_y + i64::from(button_y);
+    cursor.x >= button_left as f64
+        && cursor.x < (button_left + i64::from(button_width)) as f64
+        && cursor.y >= button_top as f64
+        && cursor.y < (button_top + i64::from(BUTTON_HEIGHT)) as f64
 }
 
 fn centered_screen_origin(
@@ -248,6 +448,29 @@ fn centered_screen_origin(
         (i64::from(surface_size.width.max(1)) - i64::from(screen_width)) / 2,
         (i64::from(surface_size.height.max(1)) - i64::from(screen_height)) / 2,
     )
+}
+
+fn push_centered_plain_text_label(
+    labels: &mut Vec<HudInventoryTextLabel>,
+    text: &str,
+    center_x: i32,
+    y: i32,
+    tint: [f32; 4],
+) {
+    let width = text.chars().fold(0u32, |width, ch| {
+        width.saturating_add(char_approx_width(ch, HudTextStyle::default()))
+    });
+    labels.push(HudInventoryTextLabel {
+        x: center_x - i32::try_from(width).unwrap_or(i32::MAX) / 2,
+        y,
+        width: width.max(1),
+        text: text.to_string(),
+        tint,
+        background: None,
+        input: None,
+        shadow: false,
+        runs: Vec::new(),
+    });
 }
 
 fn push_centered_text_label(
@@ -386,9 +609,12 @@ mod tests {
     #[test]
     fn actionless_notice_button_closes_without_counting_clear_packet() {
         let mut world = world_with_notice(Vec::new());
+        let mut counters = NetCounters::default();
 
         assert!(handle_dialog_mouse_input(
+            &mut counters,
             &mut world,
+            &None,
             MouseButton::Left,
             ElementState::Pressed,
             Some(PhysicalPosition::new(160.0, 220.0)),
@@ -405,9 +631,12 @@ mod tests {
             entry("pause", NbtSummaryValue::Byte(0)),
             entry("after_action", NbtSummaryValue::String("none".to_string())),
         ]);
+        let mut counters = NetCounters::default();
 
         assert!(handle_dialog_mouse_input(
+            &mut counters,
             &mut world,
+            &None,
             MouseButton::Left,
             ElementState::Pressed,
             Some(PhysicalPosition::new(160.0, 220.0)),
@@ -420,8 +649,11 @@ mod tests {
     #[test]
     fn notice_escape_requires_permission_and_actionless_cancel() {
         let mut default_notice = world_with_notice(Vec::new());
+        let mut counters = NetCounters::default();
         assert!(handle_dialog_key_input(
+            &mut counters,
             &mut default_notice,
+            &None,
             PhysicalKey::Code(KeyCode::Escape),
             ElementState::Pressed,
         ));
@@ -432,7 +664,9 @@ mod tests {
             NbtSummaryValue::Byte(0),
         )]);
         assert!(handle_dialog_key_input(
+            &mut counters,
             &mut locked_notice,
+            &None,
             PhysicalKey::Code(KeyCode::Escape),
             ElementState::Pressed,
         ));
@@ -447,19 +681,170 @@ mod tests {
                     NbtSummaryValue::Compound(vec![
                         entry(
                             "type",
-                            NbtSummaryValue::String("minecraft:custom".to_string()),
+                            NbtSummaryValue::String("minecraft:run_command".to_string()),
                         ),
-                        entry("id", NbtSummaryValue::String("example:test".to_string())),
+                        entry(
+                            "command",
+                            NbtSummaryValue::String("say deferred".to_string()),
+                        ),
                     ]),
                 ),
             ]),
         )]);
         assert!(handle_dialog_key_input(
+            &mut counters,
             &mut action_notice,
+            &None,
             PhysicalKey::Code(KeyCode::Escape),
             ElementState::Pressed,
         ));
         assert!(action_notice.current_dialog().is_some());
+    }
+
+    #[test]
+    fn static_custom_notice_action_queues_exact_payload_then_closes() {
+        let mut world = world_with_notice(custom_action_fields());
+        let mut counters = NetCounters::default();
+        let (tx, mut rx) = mpsc::channel(1);
+
+        assert!(handle_dialog_mouse_input(
+            &mut counters,
+            &mut world,
+            &Some(tx),
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(160.0, 220.0)),
+            PhysicalSize::new(320, 240),
+        ));
+
+        assert!(world.current_dialog().is_none());
+        assert_eq!(counters.custom_click_action_commands_queued, 1);
+        let command = rx.try_recv().unwrap();
+        assert!(matches!(
+            command,
+            NetCommand::CustomClickAction(CustomClickAction {
+                id,
+                payload: Some(NbtSummaryValue::Int(7)),
+            }) if id == "example:test"
+        ));
+    }
+
+    #[test]
+    fn static_custom_notice_cancel_queues_action_before_forced_close() {
+        let mut world = world_with_notice(custom_action_fields());
+        let mut counters = NetCounters::default();
+        let (tx, mut rx) = mpsc::channel(1);
+
+        assert!(handle_dialog_key_input(
+            &mut counters,
+            &mut world,
+            &Some(tx),
+            PhysicalKey::Code(KeyCode::Escape),
+            ElementState::Pressed,
+        ));
+
+        assert!(world.current_dialog().is_none());
+        assert_eq!(counters.custom_click_action_commands_queued, 1);
+        assert!(matches!(
+            rx.try_recv().unwrap(),
+            NetCommand::CustomClickAction(_)
+        ));
+    }
+
+    fn custom_action_fields() -> Vec<NbtSummaryEntry> {
+        vec![entry(
+            "action",
+            NbtSummaryValue::Compound(vec![
+                entry("label", NbtSummaryValue::String("Send".to_string())),
+                entry(
+                    "action",
+                    NbtSummaryValue::Compound(vec![
+                        entry(
+                            "type",
+                            NbtSummaryValue::String("minecraft:custom".to_string()),
+                        ),
+                        entry("id", NbtSummaryValue::String("example:test".to_string())),
+                        entry("payload", NbtSummaryValue::Int(7)),
+                    ]),
+                ),
+            ]),
+        )]
+    }
+
+    #[test]
+    fn wait_for_response_countdown_enables_back_after_five_seconds() {
+        let mut world = world_with_notice(vec![entry(
+            "after_action",
+            NbtSummaryValue::String("wait_for_response".to_string()),
+        )]);
+        let mut counters = NetCounters::default();
+
+        assert!(handle_dialog_mouse_input(
+            &mut counters,
+            &mut world,
+            &None,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(160.0, 220.0)),
+            PhysicalSize::new(320, 240),
+        ));
+        assert_eq!(world.dialog_waiting_ticks(), Some(0));
+
+        let hidden = hud_waiting_response_screen(20, None, PhysicalSize::new(320, 240));
+        assert!(hidden.background_layers.is_empty());
+        assert_eq!(hidden.text_labels.len(), 1);
+
+        let first_countdown = hud_waiting_response_screen(21, None, PhysicalSize::new(320, 240));
+        assert_eq!(first_countdown.text_labels[1].text, "Back (4s)");
+        assert_eq!(
+            first_countdown.background_layers[0].texture,
+            HudInventoryBackgroundTexture::WidgetButtonDisabled
+        );
+        let last_countdown = hud_waiting_response_screen(100, None, PhysicalSize::new(320, 240));
+        assert_eq!(last_countdown.text_labels[1].text, "Back (1s)");
+
+        world.advance_dialog_waiting_ticks(100);
+        assert!(handle_dialog_key_input(
+            &mut counters,
+            &mut world,
+            &None,
+            PhysicalKey::Code(KeyCode::Escape),
+            ElementState::Pressed,
+        ));
+        assert_eq!(world.dialog_waiting_ticks(), Some(100));
+
+        world.advance_dialog_waiting_ticks(1);
+        let active = hud_waiting_response_screen(101, Some((160, 64)), PhysicalSize::new(320, 240));
+        assert_eq!(active.text_labels[1].text, "Back");
+        assert_eq!(
+            active.background_layers[0].texture,
+            HudInventoryBackgroundTexture::WidgetButtonHighlighted
+        );
+        assert!(handle_dialog_key_input(
+            &mut counters,
+            &mut world,
+            &None,
+            PhysicalKey::Code(KeyCode::Escape),
+            ElementState::Pressed,
+        ));
+        assert!(!world.dialog_screen_is_open());
+
+        let mut mouse_world = world_with_notice(vec![entry(
+            "after_action",
+            NbtSummaryValue::String("wait_for_response".to_string()),
+        )]);
+        assert!(mouse_world.wait_for_dialog_response());
+        mouse_world.advance_dialog_waiting_ticks(101);
+        assert!(handle_dialog_mouse_input(
+            &mut counters,
+            &mut mouse_world,
+            &None,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(160.0, 64.0)),
+            PhysicalSize::new(320, 240),
+        ));
+        assert!(!mouse_world.dialog_screen_is_open());
     }
 
     fn world_with_notice(mut fields: Vec<NbtSummaryEntry>) -> WorldStore {
