@@ -419,6 +419,40 @@ fn enforces_holder_set_item_patch_page_boundary_with_session_registries() {
 }
 
 #[test]
+fn enforces_tool_item_patch_page_boundary_with_session_registries() {
+    let mut registries = RegistrySet::default();
+    let stone_id = registries
+        .holder_id_by_resource_id("minecraft:block", "minecraft:stone")
+        .unwrap();
+    let dirt_id = registries
+        .holder_id_by_resource_id("minecraft:block", "minecraft:dirt")
+        .unwrap();
+    registries.tags.insert(
+        "minecraft:block".to_string(),
+        RegistryTagState {
+            registry: "minecraft:block".to_string(),
+            tags: BTreeMap::from([("example:mineable".to_string(), vec![stone_id, dirt_id])]),
+        },
+    );
+    let prefix = concat!(
+        r##"{"text":"item","extra":[""],"hover_event":{"action":"show_item","id":"minecraft:stone","components":{"minecraft:tool":{"rules":[{"blocks":"#example:mineable","speed":4.0,"correct_for_drops":true}],"damage_per_block":0,"can_destroy_blocks_in_creative":false}}}}"##
+    )
+    .len();
+    for (limit, expected_error) in [(32_767usize, None), (32_768usize, Some("encodes to 32768"))] {
+        let page = component_with_tool_item_patch("x".repeat(limit - prefix));
+        let result = decode_written_book_content_with_context(
+            &book_with_pages(vec![page]),
+            "written book",
+            DialogDecodeContext::new(Some(&registries), 0),
+        );
+        match expected_error {
+            None => assert!(result.is_ok()),
+            Some(expected) => assert!(result.unwrap_err().contains(expected)),
+        }
+    }
+}
+
+#[test]
 fn rejects_malformed_written_book_fields_filterables_and_exact_canonical_page_limit() {
     let cases = [
         (NbtSummaryValue::List(Vec::new()), "is not a compound"),
@@ -675,6 +709,10 @@ fn rejects_malformed_written_book_fields_filterables_and_exact_canonical_page_li
         ),
         (
             book_with_pages(vec![component_with_non_finite_weapon_item_patch()]),
+            "canonical item component patch contains a non-finite Float/Double value",
+        ),
+        (
+            book_with_pages(vec![component_with_non_finite_tool_item_patch()]),
             "canonical item component patch contains a non-finite Float/Double value",
         ),
         (
@@ -1233,6 +1271,67 @@ fn component_with_holder_set_item_patch(extra: String) -> NbtSummaryValue {
                             )]),
                         ),
                     ]),
+                ),
+            ]),
+        ),
+    ])
+}
+
+fn component_with_tool_item_patch(extra: String) -> NbtSummaryValue {
+    compound(vec![
+        string_entry("text", "item"),
+        value_entry(
+            "extra",
+            NbtSummaryValue::List(vec![NbtSummaryValue::String(extra)]),
+        ),
+        value_entry(
+            "hover_event",
+            compound(vec![
+                string_entry("action", "show_item"),
+                string_entry("id", "stone"),
+                value_entry(
+                    "components",
+                    compound(vec![value_entry(
+                        "tool",
+                        compound(vec![
+                            value_entry(
+                                "rules",
+                                NbtSummaryValue::List(vec![compound(vec![
+                                    string_entry("blocks", "#example:mineable"),
+                                    value_entry("speed", NbtSummaryValue::Float(4.0f32.to_bits())),
+                                    value_entry("correct_for_drops", NbtSummaryValue::Byte(1)),
+                                ])]),
+                            ),
+                            value_entry("damage_per_block", NbtSummaryValue::Int(0)),
+                            value_entry("can_destroy_blocks_in_creative", NbtSummaryValue::Byte(0)),
+                        ]),
+                    )]),
+                ),
+            ]),
+        ),
+    ])
+}
+
+fn component_with_non_finite_tool_item_patch() -> NbtSummaryValue {
+    compound(vec![
+        string_entry("text", "item"),
+        value_entry(
+            "hover_event",
+            compound(vec![
+                string_entry("action", "show_item"),
+                string_entry("id", "stone"),
+                value_entry(
+                    "components",
+                    compound(vec![value_entry(
+                        "tool",
+                        compound(vec![
+                            value_entry("rules", NbtSummaryValue::List(Vec::new())),
+                            value_entry(
+                                "default_mining_speed",
+                                NbtSummaryValue::Float(f32::NEG_INFINITY.to_bits()),
+                            ),
+                        ]),
+                    )]),
                 ),
             ]),
         ),

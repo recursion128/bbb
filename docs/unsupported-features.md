@@ -137,6 +137,9 @@ Owner: `bbb-protocol`
   Writable-book content now follows the left/full encoder of its full/simple `Filterable<String>`
   alternative: compact string inputs re-encode as raw/optional-filtered records, with default-empty
   pages omitted.
+  Tool records now encode their required ordered rule list, block holder sets, optional positive
+  speed/drop fields, and defaulted mining-speed/damage/creative fields; all floats share the exact
+  JDK formatter and strict non-finite rejection.
   Dialog click `show_dialog` payloads also decode through the full
   inline/session-reference `Dialog.CODEC` owner with a shared 64-level semantic-depth budget,
   including recursive item templates and predicates, so registry cycles fail deterministically.

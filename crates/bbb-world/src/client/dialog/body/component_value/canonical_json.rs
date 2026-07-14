@@ -116,6 +116,10 @@ fn validate_supported_json_numbers(value: &DialogDataComponentValueState) -> Res
             append_sound_range_bits(&mut values, weapon.sound.as_ref());
             append_sound_range_bits(&mut values, weapon.hit_sound.as_ref());
         }
+        DialogDataComponentValueState::Tool { tool } => {
+            values.push(tool.default_mining_speed_bits);
+            values.extend(tool.rules.iter().filter_map(|rule| rule.speed_bits));
+        }
         DialogDataComponentValueState::Bees { occupants } => {
             for occupant in occupants {
                 typed_data_json_utf16_len(
@@ -552,6 +556,41 @@ fn canonical_component_value_json_utf16_len(
                         object_len(fields.into_iter())
                     })),
                 ));
+            }
+            object_len(fields.into_iter())
+        }
+        DialogDataComponentValueState::Tool { tool } => {
+            let mut fields = vec![(
+                "rules",
+                array_len(
+                    tool.rules
+                        .iter()
+                        .map(|rule| {
+                            let mut fields =
+                                vec![("blocks", registry_holder_set_len(&rule.blocks)?)];
+                            if let Some(bits) = rule.speed_bits {
+                                fields.push(("speed", canonical_f32_json_utf16_len(bits)?));
+                            }
+                            if let Some(correct_for_drops) = rule.correct_for_drops {
+                                fields.push(("correct_for_drops", bool_len(correct_for_drops)));
+                            }
+                            Some(object_len(fields.into_iter()))
+                        })
+                        .collect::<Option<Vec<_>>>()?
+                        .into_iter(),
+                ),
+            )];
+            if tool.default_mining_speed_bits != 1.0f32.to_bits() {
+                fields.push((
+                    "default_mining_speed",
+                    canonical_f32_json_utf16_len(tool.default_mining_speed_bits)?,
+                ));
+            }
+            if tool.damage_per_block != 1 {
+                fields.push(("damage_per_block", tool.damage_per_block.to_string().len()));
+            }
+            if !tool.can_destroy_blocks_in_creative {
+                fields.push(("can_destroy_blocks_in_creative", bool_len(false)));
             }
             object_len(fields.into_iter())
         }
@@ -1424,6 +1463,62 @@ mod tests {
                 ],
             },
             r#"{"pages":[{"raw":"compact\""},{"raw":"raw","filtered":"filtered\n"}]}"#,
+        );
+    }
+
+    #[test]
+    fn canonicalizes_tool_rules_and_defaults() {
+        assert_exact(
+            DialogDataComponentValueState::Tool {
+                tool: super::super::tool::DialogToolState {
+                    rules: Vec::new(),
+                    default_mining_speed_bits: 1.0f32.to_bits(),
+                    damage_per_block: 1,
+                    can_destroy_blocks_in_creative: true,
+                },
+            },
+            r#"{"rules":[]}"#,
+        );
+        assert_exact(
+            DialogDataComponentValueState::Tool {
+                tool: super::super::tool::DialogToolState {
+                    rules: vec![super::super::tool::DialogToolRuleState {
+                        blocks: DialogRegistryHolderSetState {
+                            holder_set_kind: "named".to_string(),
+                            tag: Some("example:mineable".to_string()),
+                            entries: Vec::new(),
+                        },
+                        speed_bits: Some(4.0f32.to_bits()),
+                        correct_for_drops: Some(true),
+                    }],
+                    default_mining_speed_bits: 0.5f32.to_bits(),
+                    damage_per_block: 0,
+                    can_destroy_blocks_in_creative: false,
+                },
+            },
+            r##"{"rules":[{"blocks":"#example:mineable","speed":4.0,"correct_for_drops":true}],"default_mining_speed":0.5,"damage_per_block":0,"can_destroy_blocks_in_creative":false}"##,
+        );
+
+        let non_finite_patch = DialogDataComponentPatchState {
+            entries: vec![super::super::super::DialogDataComponentPatchEntryState {
+                type_id: 0,
+                resource_id: "minecraft:tool".to_string(),
+                removed: false,
+                value: None,
+                value_data: Some(DialogDataComponentValueState::Tool {
+                    tool: super::super::tool::DialogToolState {
+                        rules: Vec::new(),
+                        default_mining_speed_bits: f32::NAN.to_bits(),
+                        damage_per_block: 1,
+                        can_destroy_blocks_in_creative: true,
+                    },
+                }),
+            }],
+        };
+        assert!(
+            canonical_data_component_patch_json_utf16_len(&non_finite_patch)
+                .unwrap_err()
+                .contains("non-finite")
         );
     }
 

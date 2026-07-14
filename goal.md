@@ -431,6 +431,9 @@ float/double 与 non-finite 拒绝，typed/occupant required 字段 lookup 也�
 resource-id/integer canonical object，同名 raw key last-wins、归一化 holder 碰撞拒绝；
 `writable_book_content` 也已按 `withAlternative(full,simple)` 的 left/full encoder 闭合，compact string
 输入统一输出 Filterable raw/optional filtered record，empty pages 保持 default omission；
+`tool` 的 required ordered rule list、block HolderSet compact/tag/list、optional positive speed/drop flag、
+默认 mining speed/damage/creative 字段也已闭合 canonical，所有 float 复用 JDK 26 formatter 并严格拒绝
+non-finite；
 click `show_dialog` 也已由同一中央 visitor 按 `Dialog.CODEC` 解析 inline/session reference holder，
 并让 title/button/body/input、item patch 与 recursive predicate/item-template 路径共享 64 层 Dialog
 semantic depth，registry 自引用/互引用不会重置预算；
