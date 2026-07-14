@@ -196,7 +196,7 @@ pub(crate) use dialog_screen::{
     handle_dialog_mouse_input_with_modifiers_and_measurer, handle_dialog_mouse_wheel,
     handle_dialog_text_input,
 };
-use dialog_screen::{hud_dialog_screen, hud_waiting_response_screen};
+use dialog_screen::{hud_dialog_screen, hud_dialog_warning_screen, hud_waiting_response_screen};
 
 const VANILLA_CLIENT_TICK_INTERVAL: Duration = Duration::from_millis(50);
 const VANILLA_OVERWORLD_AMBIENT_LIGHT_COLOR: [f32; 3] = rgb24(-16_119_286);
@@ -6035,6 +6035,13 @@ fn hud_inventory_screen_with_local_state_for_surface(
     surface_size: winit::dpi::PhysicalSize<u32>,
     partial_tick: f32,
 ) -> Option<HudInventoryScreen> {
+    if world.dialog_warning_is_open() {
+        return Some(hud_dialog_warning_screen(
+            world.dialog_warning_focused_button(),
+            local_state.cursor_position,
+            surface_size,
+        ));
+    }
     if let Some(dialog) = world.current_dialog() {
         return hud_dialog_screen(
             world,

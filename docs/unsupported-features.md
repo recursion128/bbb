@@ -68,7 +68,7 @@ Owner: `bbb-protocol`
   requested host and port.
 - Complete native `Dialog` screen/runtime behavior against
   `DialogScreen`, `SimpleDialogScreen`, `DialogControlSet`, and
-  `DialogBodyHandlers`: add the in-world screen blur/depth-clear and warning button/screen;
+  `DialogBodyHandlers`: add the in-world screen blur/depth-clear;
   add the unified warning/body/input/footer Tab and directional focus graph,
   NumberRange/SingleOption long-label scrolling, the multiline Text editor, and single-line Text
   Tab focus traversal, double-click word selection, and IME preedit overlay,
@@ -123,7 +123,9 @@ Owner: `bbb-protocol`
   static copy-to-clipboard through the existing native clipboard owner, preserves
   DialogScreen's side-effect-free static change-page and suggest-command handling, and implements
   the close/none/waiting `after_action` transitions, including vanilla's delayed Back
-  screen; it still needs the remaining controls and actions before either
+  screen; it also renders the exact dialog warning-button sprites and tooltip, opens the centered
+  warning confirmation with mouse/keyboard Disconnect and Back controls, and preserves the warning
+  while its hidden return dialog is replaced or cleared. It still needs the remaining controls and actions before either
   `ShowDialog` row's `runtime_side_effect` coverage cell can close.
 - Thread the world/session owner into generic packet Components whose nested
   player, dialog-holder, or show-item payloads require registry context, while

@@ -38,6 +38,14 @@ use super::{
 // 10-pixel gap; vanilla font lines are 9 pixels high.
 const HEADER_HEIGHT: i32 = 33;
 const FOOTER_HEIGHT: i32 = 33;
+const WARNING_BUTTON_SIZE: i32 = 20;
+const WARNING_BUTTON_SPACING: i32 = 10;
+const CONFIRM_BUTTON_WIDTH: u32 = 150;
+const CONFIRM_BUTTON_SPACING: i32 = 4;
+const CONFIRM_ELEMENT_SPACING: i32 = 8;
+const CONFIRM_BUTTON_PADDING_TOP: i32 = 16;
+const CONFIRM_MESSAGE_HORIZONTAL_PADDING: u32 = 50;
+const CONFIRM_MESSAGE_MAX_ROWS: usize = 15;
 const CONTENT_MARGIN_TOP: i32 = 30;
 const BODY_SPACING: i32 = 10;
 const ITEM_DESCRIPTION_SPACING: i32 = 2;
@@ -64,6 +72,18 @@ const WAITING_BUTTON_WIDTH: u32 = 200;
 const WAITING_BUTTON_VISIBLE_TICKS: u32 = 21;
 const WAITING_BUTTON_ACTIVE_TICKS: u32 = 101;
 const WAITING_TITLE: &str = "Waiting for Server";
+const DIALOG_WARNING_TITLE: &str = "Note about custom screens";
+const DIALOG_WARNING_CONTENTS: &str = concat!(
+    "The contents of this screen are controlled by third-party servers and maps that are not ",
+    "owned, operated, or supervised by Mojang Studios or Microsoft.\n\n",
+    "Handle with care! Always be careful when following links and never give away your personal ",
+    "information, including login details.\n\n",
+    "If this screen prevents you from playing, you can also disconnect from the current server ",
+    "by using the button below."
+);
+const DIALOG_WARNING_TOOLTIP: &str = "This is a custom screen. Click here to learn more.";
+const DIALOG_WARNING_DISCONNECT: &str = "Disconnect";
+const DIALOG_WARNING_BACK: &str = "Back";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct DialogTextLine {
@@ -77,6 +97,24 @@ struct DialogButtonLayout {
     x: i32,
     y: i32,
     width: u32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct DialogWarningButtonLayout {
+    title_x: i32,
+    title_y: i32,
+    x: i32,
+    y: i32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct DialogWarningScreenLayout {
+    screen_width: u32,
+    screen_height: u32,
+    title_y: i32,
+    message_y: i32,
+    yes: DialogButtonLayout,
+    no: DialogButtonLayout,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -271,6 +309,134 @@ impl SimpleDialogLayout {
                 surface_size,
             )
         })
+    }
+}
+
+impl DialogWarningButtonLayout {
+    fn new(title: &DialogTextState, surface_size: PhysicalSize<u32>) -> Option<Self> {
+        let screen_width = i32::try_from(surface_size.width.clamp(1, 512)).ok()?;
+        let screen_height = i32::try_from(surface_size.height.clamp(1, 512)).ok()?;
+        let title_width = i32::try_from(runs_approx_width(&dialog_text_runs(title))).ok()?;
+        let row_width = title_width
+            .saturating_add(WARNING_BUTTON_SPACING)
+            .saturating_add(WARNING_BUTTON_SIZE);
+        let row_x = (screen_width - row_width) / 2;
+        let row_y = (HEADER_HEIGHT - WARNING_BUTTON_SIZE)
+            .saturating_add(1)
+            .div_euclid(2);
+        let mut x = row_x
+            .saturating_add(title_width)
+            .saturating_add(WARNING_BUTTON_SPACING);
+        let mut y = row_y;
+        if x < 0
+            || y < 0
+            || x > screen_width.saturating_sub(WARNING_BUTTON_SIZE)
+            || y > screen_height.saturating_sub(WARNING_BUTTON_SIZE)
+        {
+            x = 0.max(screen_width.saturating_sub(40));
+            y = 5.min(screen_height);
+        }
+        Some(Self {
+            title_x: row_x,
+            title_y: row_y.saturating_add(
+                (WARNING_BUTTON_SIZE - TEXT_LINE_HEIGHT)
+                    .saturating_add(1)
+                    .div_euclid(2),
+            ),
+            x,
+            y,
+        })
+    }
+
+    fn contains(
+        self,
+        cursor_position: Option<PhysicalPosition<f64>>,
+        surface_size: PhysicalSize<u32>,
+    ) -> bool {
+        let screen_width = surface_size.width.clamp(1, 512);
+        let screen_height = surface_size.height.clamp(1, 512);
+        dialog_widget_contains(
+            self.x,
+            self.y,
+            WARNING_BUTTON_SIZE,
+            WARNING_BUTTON_SIZE,
+            cursor_position,
+            surface_size,
+            screen_width,
+            screen_height,
+        )
+    }
+}
+
+impl DialogWarningScreenLayout {
+    fn new(message_line_count: usize, surface_size: PhysicalSize<u32>) -> Self {
+        let screen_width = surface_size.width.clamp(1, 512);
+        let screen_height = surface_size.height.clamp(1, 512);
+        let screen_width_i32 = i32::try_from(screen_width).unwrap_or(i32::MAX);
+        let screen_height_i32 = i32::try_from(screen_height).unwrap_or(i32::MAX);
+        let message_height = i32::try_from(message_line_count)
+            .unwrap_or(i32::MAX)
+            .saturating_mul(TEXT_LINE_HEIGHT);
+        let layout_height = TEXT_LINE_HEIGHT
+            .saturating_add(CONFIRM_ELEMENT_SPACING)
+            .saturating_add(message_height)
+            .saturating_add(CONFIRM_ELEMENT_SPACING)
+            .saturating_add(CONFIRM_BUTTON_PADDING_TOP)
+            .saturating_add(i32::try_from(BUTTON_HEIGHT).unwrap_or(i32::MAX));
+        let layout_y = (screen_height_i32 - layout_height) / 2;
+        let button_row_width = i32::try_from(CONFIRM_BUTTON_WIDTH)
+            .unwrap_or(i32::MAX)
+            .saturating_mul(2)
+            .saturating_add(CONFIRM_BUTTON_SPACING);
+        let yes_x = (screen_width_i32 - button_row_width) / 2;
+        let button_y = layout_y
+            .saturating_add(TEXT_LINE_HEIGHT)
+            .saturating_add(CONFIRM_ELEMENT_SPACING)
+            .saturating_add(message_height)
+            .saturating_add(CONFIRM_ELEMENT_SPACING)
+            .saturating_add(CONFIRM_BUTTON_PADDING_TOP);
+        Self {
+            screen_width,
+            screen_height,
+            title_y: layout_y,
+            message_y: layout_y
+                .saturating_add(TEXT_LINE_HEIGHT)
+                .saturating_add(CONFIRM_ELEMENT_SPACING),
+            yes: DialogButtonLayout {
+                x: yes_x,
+                y: button_y,
+                width: CONFIRM_BUTTON_WIDTH,
+            },
+            no: DialogButtonLayout {
+                x: yes_x
+                    .saturating_add(i32::try_from(CONFIRM_BUTTON_WIDTH).unwrap_or(i32::MAX))
+                    .saturating_add(CONFIRM_BUTTON_SPACING),
+                y: button_y,
+                width: CONFIRM_BUTTON_WIDTH,
+            },
+        }
+    }
+
+    fn button_at(
+        self,
+        cursor_position: Option<PhysicalPosition<f64>>,
+        surface_size: PhysicalSize<u32>,
+    ) -> Option<bool> {
+        [(&self.yes, true), (&self.no, false)]
+            .into_iter()
+            .find_map(|(button, result)| {
+                dialog_widget_contains(
+                    button.x,
+                    button.y,
+                    i32::try_from(button.width).unwrap_or(i32::MAX),
+                    i32::try_from(BUTTON_HEIGHT).unwrap_or(i32::MAX),
+                    cursor_position,
+                    surface_size,
+                    self.screen_width,
+                    self.screen_height,
+                )
+                .then_some(result)
+            })
     }
 }
 
@@ -783,13 +949,15 @@ pub(super) fn hud_dialog_screen(
         .cursor_position
         .map(|(x, y)| PhysicalPosition::new(f64::from(x), f64::from(y)));
     let highlighted_button = layout.button_at(cursor_position, surface_size);
+    let warning_button = DialogWarningButtonLayout::new(&controls.common.title, surface_size)?;
+    let warning_button_hovered = warning_button.contains(cursor_position, surface_size);
 
     let mut text_labels = Vec::new();
-    push_centered_text_label(
+    push_text_label(
         &mut text_labels,
         &controls.common.title,
-        screen_width_i32 / 2,
-        (HEADER_HEIGHT - TEXT_LINE_HEIGHT) / 2,
+        warning_button.title_x,
+        warning_button.title_y,
     );
 
     let body_blocks = controls
@@ -1162,6 +1330,21 @@ pub(super) fn hud_dialog_screen(
         layout.screen_width,
         layout.screen_height,
     )];
+    background_layers.push(HudInventoryBackgroundLayer {
+        texture: if warning_button_hovered {
+            HudInventoryBackgroundTexture::DialogWarningButtonHighlighted
+        } else {
+            HudInventoryBackgroundTexture::DialogWarningButton
+        },
+        x: warning_button.x,
+        y: warning_button.y,
+        width: u32::try_from(WARNING_BUTTON_SIZE).unwrap_or_default(),
+        height: u32::try_from(WARNING_BUTTON_SIZE).unwrap_or_default(),
+        uv: HudUvRect {
+            min: [0.0, 0.0],
+            max: [1.0, 1.0],
+        },
+    });
     background_layers.extend(input_layers);
     background_layers.extend(layout.buttons.iter().enumerate().map(|(index, button)| {
         HudInventoryBackgroundLayer {
@@ -1211,6 +1394,36 @@ pub(super) fn hud_dialog_screen(
                 .collect(),
         })
     });
+    let warning_tooltip = warning_button_hovered.then(|| {
+        let (cursor_x, cursor_y) = cursor_screen_position.unwrap_or_default();
+        let (origin_x, origin_y) =
+            centered_screen_origin(surface_size, layout.screen_width, layout.screen_height);
+        HudInventoryTooltip {
+            slot_id: u16::MAX,
+            x: i32::try_from(i64::from(cursor_x) - origin_x).unwrap_or_else(|_| {
+                if i64::from(cursor_x) < origin_x {
+                    i32::MIN
+                } else {
+                    i32::MAX
+                }
+            }),
+            y: i32::try_from(i64::from(cursor_y) - origin_y).unwrap_or_else(|_| {
+                if i64::from(cursor_y) < origin_y {
+                    i32::MIN
+                } else {
+                    i32::MAX
+                }
+            }),
+            lines: plain_dialog_text_lines(DIALOG_WARNING_TOOLTIP, 170)
+                .into_iter()
+                .map(|line| HudInventoryTooltipLine {
+                    text: line.text,
+                    tint: TEXT_COLOR,
+                    runs: line.runs,
+                })
+                .collect(),
+        }
+    });
 
     Some(HudInventoryScreen {
         width: layout.screen_width,
@@ -1225,8 +1438,90 @@ pub(super) fn hud_dialog_screen(
         entity_previews: Vec::new(),
         text_labels,
         hovered_slot_id: None,
-        tooltip: action_tooltip.or(item_tooltip),
+        tooltip: warning_tooltip.or(action_tooltip).or(item_tooltip),
     })
+}
+
+pub(super) fn hud_dialog_warning_screen(
+    focused_button: Option<bool>,
+    cursor_position: Option<(i32, i32)>,
+    surface_size: PhysicalSize<u32>,
+) -> HudInventoryScreen {
+    let message_lines = dialog_warning_message_lines(surface_size);
+    let layout = DialogWarningScreenLayout::new(message_lines.len(), surface_size);
+    let cursor = cursor_position.map(|(x, y)| PhysicalPosition::new(f64::from(x), f64::from(y)));
+    let highlighted = layout.button_at(cursor, surface_size);
+    let screen_center_x = i32::try_from(layout.screen_width).unwrap_or(i32::MAX) / 2;
+    let mut text_labels = Vec::new();
+    push_centered_plain_text_label(
+        &mut text_labels,
+        DIALOG_WARNING_TITLE,
+        screen_center_x,
+        layout.title_y,
+        TEXT_COLOR,
+    );
+    let mut message_y = layout.message_y;
+    for line in message_lines {
+        push_centered_runs_text_label(
+            &mut text_labels,
+            line.runs,
+            screen_center_x,
+            message_y,
+            None,
+        );
+        message_y = message_y.saturating_add(TEXT_LINE_HEIGHT);
+    }
+    for (button, label) in [
+        (layout.yes, DIALOG_WARNING_DISCONNECT),
+        (layout.no, DIALOG_WARNING_BACK),
+    ] {
+        push_centered_plain_text_label(
+            &mut text_labels,
+            label,
+            button
+                .x
+                .saturating_add(i32::try_from(button.width).unwrap_or(i32::MAX) / 2),
+            button.y.saturating_add(BUTTON_TEXT_Y_OFFSET),
+            TEXT_COLOR,
+        );
+    }
+    let mut background_layers = vec![inworld_menu_background_layer(
+        surface_size,
+        layout.screen_width,
+        layout.screen_height,
+    )];
+    background_layers.extend([(layout.yes, true), (layout.no, false)].into_iter().map(
+        |(button, result)| HudInventoryBackgroundLayer {
+            texture: if highlighted == Some(result) || focused_button == Some(result) {
+                HudInventoryBackgroundTexture::WidgetButtonHighlighted
+            } else {
+                HudInventoryBackgroundTexture::WidgetButton
+            },
+            x: button.x,
+            y: button.y,
+            width: button.width,
+            height: BUTTON_HEIGHT,
+            uv: HudUvRect {
+                min: [0.0, 0.0],
+                max: [1.0, 1.0],
+            },
+        },
+    ));
+    HudInventoryScreen {
+        width: layout.screen_width,
+        height: layout.screen_height,
+        background_layers,
+        foreground_layers: Vec::new(),
+        fill_layers: Vec::new(),
+        slots: Vec::new(),
+        floating_items: Vec::new(),
+        foreground_items: Vec::new(),
+        ghost_items: Vec::new(),
+        entity_previews: Vec::new(),
+        text_labels,
+        hovered_slot_id: None,
+        tooltip: None,
+    }
 }
 
 pub(super) fn hud_waiting_response_screen(
@@ -1340,6 +1635,64 @@ pub(crate) fn handle_dialog_key_input_with_modifiers(
     shift_down: bool,
     control_down: bool,
 ) -> bool {
+    if world.dialog_warning_is_open() {
+        if state != ElementState::Pressed {
+            return true;
+        }
+        let PhysicalKey::Code(code) = physical_key else {
+            return true;
+        };
+        match code {
+            KeyCode::Escape => {
+                world.close_dialog_warning();
+            }
+            KeyCode::Tab => {
+                let current = world.dialog_warning_focused_button();
+                let next = if shift_down {
+                    match current {
+                        None | Some(true) => false,
+                        Some(false) => true,
+                    }
+                } else {
+                    match current {
+                        None | Some(false) => true,
+                        Some(true) => false,
+                    }
+                };
+                world.focus_dialog_warning_button(next);
+            }
+            KeyCode::ArrowLeft => match world.dialog_warning_focused_button() {
+                None => {
+                    world.focus_dialog_warning_button(false);
+                }
+                Some(false) => {
+                    world.focus_dialog_warning_button(true);
+                }
+                Some(true) => {}
+            },
+            KeyCode::ArrowRight => match world.dialog_warning_focused_button() {
+                None => {
+                    world.focus_dialog_warning_button(true);
+                }
+                Some(true) => {
+                    world.focus_dialog_warning_button(false);
+                }
+                Some(false) => {}
+            },
+            KeyCode::ArrowUp | KeyCode::ArrowDown => {
+                if world.dialog_warning_focused_button().is_none() {
+                    world.focus_dialog_warning_button(true);
+                }
+            }
+            KeyCode::Enter | KeyCode::NumpadEnter | KeyCode::Space => {
+                if let Some(disconnect) = world.dialog_warning_focused_button() {
+                    run_dialog_warning_button(world, net_commands, disconnect);
+                }
+            }
+            _ => {}
+        }
+        return true;
+    }
     if world.dialog_waiting_ticks().is_some() {
         if state == ElementState::Pressed
             && physical_key == PhysicalKey::Code(KeyCode::Escape)
@@ -1669,6 +2022,9 @@ fn copy_focused_dialog_text_selection(
 }
 
 pub(crate) fn handle_dialog_text_input(world: &mut WorldStore, text: &str) -> bool {
+    if world.dialog_warning_is_open() {
+        return true;
+    }
     if world.dialog_text_edit_state().is_none() {
         return world.dialog_screen_is_open();
     }
@@ -1746,6 +2102,21 @@ pub(crate) fn handle_dialog_mouse_input_with_modifiers_and_measurer(
         world.end_dialog_text_input_drag();
         return world.dialog_screen_is_open();
     }
+    if world.dialog_warning_is_open() {
+        if button == MouseButton::Left && state == ElementState::Pressed {
+            let message_line_count = dialog_warning_message_lines(surface_size).len();
+            match DialogWarningScreenLayout::new(message_line_count, surface_size)
+                .button_at(cursor_position, surface_size)
+            {
+                Some(disconnect) => {
+                    world.focus_dialog_warning_button(disconnect);
+                    run_dialog_warning_button(world, net_commands, disconnect);
+                }
+                None => {}
+            }
+        }
+        return true;
+    }
     if world.dialog_waiting_ticks().is_some() {
         if button == MouseButton::Left
             && state == ElementState::Pressed
@@ -1767,6 +2138,12 @@ pub(crate) fn handle_dialog_mouse_input_with_modifiers_and_measurer(
     let Some(controls) = dialog.data.as_ref().and_then(simple_dialog_controls) else {
         return true;
     };
+    if DialogWarningButtonLayout::new(&controls.common.title, surface_size)
+        .is_some_and(|layout| layout.contains(cursor_position, surface_size))
+    {
+        world.open_dialog_warning();
+        return true;
+    }
     let screen_width = surface_size.width.clamp(1, 512);
     let screen_height = surface_size.height.clamp(1, 512);
     let input_hit = dialog_input_layouts(controls.common, surface_size).and_then(|layouts| {
@@ -1976,6 +2353,9 @@ pub(crate) fn handle_dialog_mouse_wheel(
     cursor_position: Option<PhysicalPosition<f64>>,
     surface_size: PhysicalSize<u32>,
 ) -> bool {
+    if world.dialog_warning_is_open() {
+        return true;
+    }
     if world.dialog_waiting_ticks().is_some() {
         return true;
     }
@@ -2048,6 +2428,11 @@ pub(crate) fn handle_dialog_cursor_moved_with_measurer(
     surface_size: PhysicalSize<u32>,
     text_measurer: &dyn DialogTextMeasurer,
 ) -> bool {
+    if world.dialog_warning_is_open() {
+        world.end_dialog_number_range_drag();
+        world.end_dialog_text_input_drag();
+        return true;
+    }
     if world.dialog_waiting_ticks().is_some() {
         world.end_dialog_number_range_drag();
         world.end_dialog_text_input_drag();
@@ -2100,6 +2485,20 @@ pub(crate) fn handle_dialog_cursor_moved_with_measurer(
     };
     set_dialog_number_range_from_cursor(world, layout, cursor_position, surface_size);
     true
+}
+
+fn run_dialog_warning_button(
+    world: &mut WorldStore,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    disconnect: bool,
+) {
+    if disconnect {
+        if let Some(tx) = net_commands {
+            let _ = tx.try_send(NetCommand::Disconnect);
+        }
+    } else {
+        world.close_dialog_warning();
+    }
 }
 
 fn set_dialog_number_range_from_cursor(
@@ -2728,6 +3127,29 @@ fn wrapped_text_lines(text: &DialogTextState, max_width: u32) -> Vec<DialogTextL
     lines
 }
 
+fn plain_dialog_text_lines(text: &str, max_width: u32) -> Vec<DialogTextLine> {
+    wrapped_text_lines(
+        &DialogTextState {
+            text: text.to_string(),
+            runs: Vec::new(),
+            component: NbtSummaryValue::String(text.to_string()),
+        },
+        max_width,
+    )
+}
+
+fn dialog_warning_message_lines(surface_size: PhysicalSize<u32>) -> Vec<DialogTextLine> {
+    let message_width = surface_size
+        .width
+        .clamp(1, 512)
+        .saturating_sub(CONFIRM_MESSAGE_HORIZONTAL_PADDING)
+        .max(1);
+    plain_dialog_text_lines(DIALOG_WARNING_CONTENTS, message_width)
+        .into_iter()
+        .take(CONFIRM_MESSAGE_MAX_ROWS)
+        .collect()
+}
+
 fn empty_text_line() -> DialogTextLine {
     DialogTextLine {
         text: String::new(),
@@ -2827,6 +3249,159 @@ mod tests {
         assert_eq!((layer.width, layer.height), (800, 600));
         assert_eq!(layer.uv.min, [0.0, 0.0]);
         assert_eq!(layer.uv.max, [25.0, 18.75]);
+    }
+
+    #[test]
+    fn dialog_warning_button_opens_confirm_screen_and_dispatches_back_or_disconnect() {
+        let mut world = world_with_notice(Vec::new());
+        let surface_size = PhysicalSize::new(320, 240);
+        let terrain_textures = TerrainTextureState::default();
+        let warning_button = DialogWarningButtonLayout::new(
+            &world
+                .current_dialog()
+                .and_then(|dialog| dialog.data.as_ref())
+                .and_then(simple_dialog_controls)
+                .unwrap()
+                .common
+                .title,
+            surface_size,
+        )
+        .unwrap();
+        assert_eq!(
+            warning_button,
+            DialogWarningButtonLayout {
+                title_x: 127,
+                title_y: 13,
+                x: 173,
+                y: 7,
+            }
+        );
+        let screen = hud_dialog_screen(
+            &world,
+            world.current_dialog().unwrap(),
+            None,
+            &terrain_textures,
+            &InventoryHudLocalState {
+                cursor_position: Some((174, 8)),
+                ..Default::default()
+            },
+            surface_size,
+            0.0,
+        )
+        .unwrap();
+        assert_eq!(
+            (screen.text_labels[0].x, screen.text_labels[0].y),
+            (127, 13)
+        );
+        assert_eq!(
+            screen.background_layers[1].texture,
+            HudInventoryBackgroundTexture::DialogWarningButtonHighlighted
+        );
+        assert!(screen.tooltip.as_ref().unwrap().lines[0]
+            .text
+            .starts_with("This is a custom screen"));
+
+        let mut counters = NetCounters::default();
+        let (tx, mut rx) = mpsc::channel(1);
+        let net_commands = Some(tx);
+        assert!(handle_dialog_mouse_input(
+            &mut counters,
+            &mut world,
+            &net_commands,
+            None,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(174.0, 8.0)),
+            surface_size,
+        ));
+        assert!(world.dialog_warning_is_open());
+
+        let warning_screen = hud_dialog_warning_screen(None, None, surface_size);
+        assert_eq!(warning_screen.text_labels[0].text, DIALOG_WARNING_TITLE);
+        assert!(warning_screen
+            .text_labels
+            .iter()
+            .any(|label| label.text == DIALOG_WARNING_DISCONNECT));
+        assert!(warning_screen
+            .text_labels
+            .iter()
+            .any(|label| label.text == DIALOG_WARNING_BACK));
+        let message_line_count = dialog_warning_message_lines(surface_size).len();
+        let warning_layout = DialogWarningScreenLayout::new(message_line_count, surface_size);
+
+        assert!(handle_dialog_key_input_with_modifiers(
+            &mut counters,
+            &mut world,
+            &net_commands,
+            None,
+            PhysicalKey::Code(KeyCode::Tab),
+            ElementState::Pressed,
+            false,
+            false,
+        ));
+        assert_eq!(world.dialog_warning_focused_button(), Some(true));
+        assert!(handle_dialog_key_input(
+            &mut counters,
+            &mut world,
+            &net_commands,
+            None,
+            PhysicalKey::Code(KeyCode::ArrowRight),
+            ElementState::Pressed,
+        ));
+        assert_eq!(world.dialog_warning_focused_button(), Some(false));
+        let keyboard_focused =
+            hud_dialog_warning_screen(world.dialog_warning_focused_button(), None, surface_size);
+        assert_eq!(
+            keyboard_focused.background_layers[2].texture,
+            HudInventoryBackgroundTexture::WidgetButtonHighlighted
+        );
+        assert!(handle_dialog_key_input(
+            &mut counters,
+            &mut world,
+            &net_commands,
+            None,
+            PhysicalKey::Code(KeyCode::Space),
+            ElementState::Pressed,
+        ));
+        assert!(!world.dialog_warning_is_open());
+        assert!(world.current_dialog().is_some());
+
+        assert!(world.open_dialog_warning());
+        assert!(handle_dialog_key_input_with_modifiers(
+            &mut counters,
+            &mut world,
+            &net_commands,
+            None,
+            PhysicalKey::Code(KeyCode::Tab),
+            ElementState::Pressed,
+            true,
+            false,
+        ));
+        assert_eq!(world.dialog_warning_focused_button(), Some(false));
+        assert!(handle_dialog_mouse_input(
+            &mut counters,
+            &mut world,
+            &net_commands,
+            None,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(
+                f64::from(warning_layout.yes.x + 1),
+                f64::from(warning_layout.yes.y + 1),
+            )),
+            surface_size,
+        ));
+        assert_eq!(rx.try_recv().unwrap(), NetCommand::Disconnect);
+        assert!(world.dialog_warning_is_open());
+        assert!(handle_dialog_key_input(
+            &mut counters,
+            &mut world,
+            &net_commands,
+            None,
+            PhysicalKey::Code(KeyCode::Escape),
+            ElementState::Pressed,
+        ));
+        assert!(!world.dialog_warning_is_open());
     }
 
     #[test]
@@ -3045,7 +3620,7 @@ mod tests {
         )
         .unwrap();
 
-        assert_eq!(screen.background_layers.len(), 3);
+        assert_eq!(screen.background_layers.len(), 4);
         assert_eq!(screen.background_layers[0].x, 0);
         assert_eq!(screen.background_layers[0].width, 320);
         assert_eq!(
@@ -3053,14 +3628,20 @@ mod tests {
             HudInventoryBackgroundTexture::InworldMenuBackground
         );
         assert_eq!(screen.background_layers[0].uv.max, [10.0, 7.5]);
-        assert_eq!(screen.background_layers[1].x, 66);
-        assert_eq!(screen.background_layers[1].width, 80);
+        assert_eq!(screen.background_layers[1].x, 176);
+        assert_eq!(screen.background_layers[1].width, 20);
         assert_eq!(
             screen.background_layers[1].texture,
+            HudInventoryBackgroundTexture::DialogWarningButton
+        );
+        assert_eq!(screen.background_layers[2].x, 66);
+        assert_eq!(screen.background_layers[2].width, 80);
+        assert_eq!(
+            screen.background_layers[2].texture,
             HudInventoryBackgroundTexture::WidgetButtonHighlighted
         );
-        assert_eq!(screen.background_layers[2].x, 154);
-        assert_eq!(screen.background_layers[2].width, 100);
+        assert_eq!(screen.background_layers[3].x, 154);
+        assert_eq!(screen.background_layers[3].width, 100);
         assert_eq!(screen.text_labels[1].text, "Yes");
         assert_eq!(screen.text_labels[2].text, "No");
         let tooltip = screen.tooltip.as_ref().unwrap();

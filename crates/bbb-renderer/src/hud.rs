@@ -1244,6 +1244,9 @@ pub enum HudInventoryBackgroundTexture {
     WidgetButton,
     WidgetButtonDisabled,
     WidgetButtonHighlighted,
+    DialogWarningButton,
+    DialogWarningButtonDisabled,
+    DialogWarningButtonHighlighted,
     WidgetCheckbox,
     WidgetCheckboxHighlighted,
     WidgetCheckboxSelected,
@@ -2089,6 +2092,38 @@ impl Renderer {
         rgba: &[u8],
     ) -> Result<()> {
         self.hud_widget_button_highlighted = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_dialog_warning_button(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_dialog_warning_button = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_dialog_warning_button_disabled(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_dialog_warning_button_disabled =
+            Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_dialog_warning_button_highlighted(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_dialog_warning_button_highlighted =
+            Some(self.upload_hud_sprite(width, height, rgba)?);
         Ok(())
     }
 
@@ -5031,6 +5066,15 @@ impl Renderer {
             }
             HudInventoryBackgroundTexture::WidgetButtonHighlighted => {
                 self.hud_widget_button_highlighted.as_ref()
+            }
+            HudInventoryBackgroundTexture::DialogWarningButton => {
+                self.hud_dialog_warning_button.as_ref()
+            }
+            HudInventoryBackgroundTexture::DialogWarningButtonDisabled => {
+                self.hud_dialog_warning_button_disabled.as_ref()
+            }
+            HudInventoryBackgroundTexture::DialogWarningButtonHighlighted => {
+                self.hud_dialog_warning_button_highlighted.as_ref()
             }
             HudInventoryBackgroundTexture::WidgetCheckbox => self.hud_widget_checkbox.as_ref(),
             HudInventoryBackgroundTexture::WidgetCheckboxHighlighted => {

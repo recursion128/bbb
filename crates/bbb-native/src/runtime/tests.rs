@@ -14151,6 +14151,15 @@ fn hud_inventory_screen_projects_notice_dialog_text_body_and_hovered_action() {
                 [10.0, 7.5],
             ),
             hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::DialogWarningButton,
+                193,
+                7,
+                20,
+                20,
+                [0.0, 0.0],
+                [1.0, 1.0],
+            ),
+            hud_inventory_background_layer(
                 HudInventoryBackgroundTexture::WidgetButtonHighlighted,
                 110,
                 213,
@@ -14168,7 +14177,7 @@ fn hud_inventory_screen_projects_notice_dialog_text_body_and_hovered_action() {
             .map(|label| (label.text.as_str(), label.x, label.y, label.width))
             .collect::<Vec<_>>(),
         vec![
-            ("Native Notice", 122, 12, 76),
+            ("Native Notice", 107, 13, 76),
             ("Alp", 151, 67, 18),
             ("haB", 151, 76, 18),
             ("eta", 151, 85, 18),
@@ -14199,8 +14208,24 @@ fn hud_inventory_screen_projects_notice_dialog_text_body_and_hovered_action() {
     );
     assert_eq!(
         idle.background_layers[1].texture,
+        HudInventoryBackgroundTexture::DialogWarningButton
+    );
+    assert_eq!(
+        idle.background_layers[2].texture,
         HudInventoryBackgroundTexture::WidgetButton
     );
+    assert!(world.open_dialog_warning());
+    let warning = hud_inventory_screen_with_local_state_for_surface(
+        &world,
+        None,
+        &TerrainTextureState::default(),
+        None,
+        InventoryHudLocalState::default(),
+        surface_size,
+        0.0,
+    )
+    .unwrap();
+    assert_eq!(warning.text_labels[0].text, "Note about custom screens");
 }
 
 #[test]

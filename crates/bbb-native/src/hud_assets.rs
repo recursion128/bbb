@@ -191,6 +191,25 @@ fn try_load_hud_textures(renderer: &mut bbb_renderer::Renderer, roots: &PackRoot
         widget_button_highlighted.height,
         &widget_button_highlighted.rgba,
     )?;
+    let dialog_warning_button = hud_sprite(&sprites, "dialog/warning_button")?;
+    renderer.upload_hud_dialog_warning_button(
+        dialog_warning_button.width,
+        dialog_warning_button.height,
+        &dialog_warning_button.rgba,
+    )?;
+    let dialog_warning_button_disabled = hud_sprite(&sprites, "dialog/warning_button_disabled")?;
+    renderer.upload_hud_dialog_warning_button_disabled(
+        dialog_warning_button_disabled.width,
+        dialog_warning_button_disabled.height,
+        &dialog_warning_button_disabled.rgba,
+    )?;
+    let dialog_warning_button_highlighted =
+        hud_sprite(&sprites, "dialog/warning_button_highlighted")?;
+    renderer.upload_hud_dialog_warning_button_highlighted(
+        dialog_warning_button_highlighted.width,
+        dialog_warning_button_highlighted.height,
+        &dialog_warning_button_highlighted.rgba,
+    )?;
     let widget_checkbox = hud_sprite(&sprites, "widget/checkbox")?;
     renderer.upload_hud_widget_checkbox(
         widget_checkbox.width,
@@ -1454,6 +1473,19 @@ mod tests {
             hud_sprite(&sprites, "toast/system").unwrap().id,
             "minecraft:toast/system"
         );
+
+        for id in [
+            "dialog/warning_button",
+            "dialog/warning_button_disabled",
+            "dialog/warning_button_highlighted",
+        ] {
+            let image = SpriteImage::new(format!("minecraft:{id}"), 20, 20, vec![255; 20 * 20 * 4])
+                .unwrap();
+            sprites.insert(image.id.clone(), image);
+            let warning = hud_sprite(&sprites, id).unwrap();
+            assert_eq!(warning.id, format!("minecraft:{id}"));
+            assert_eq!((warning.width, warning.height), (20, 20));
+        }
     }
 
     #[test]

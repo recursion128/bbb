@@ -368,7 +368,12 @@ persistent encoder，未知未来形状仍不会被猜测性投影。
 ItemDisplayWidget 已共享 serde-skipped body/input focus owner，mouse press 仅以声明 item widget rect 接管
 focus、blank click 保持既有 focus、input/footer 接管或释放；focused item 在 floating item 后按 vanilla
 `GuiGraphicsExtractor.outline` 的四次 fill 端点输出白色 Foreground outline。
-仍须按 `DialogScreen`/`DialogControlSet` 完成 screen blur/depth-clear、warning button/screen、
+Dialog warning button 已按 title+10px+20px header row、三张 `dialog/warning_button*` sprite 与 tooltip
+投影；WarningScreen 使用 vanilla 文案、15-row centered message、150px Disconnect/Back buttons，支持
+mouse、Tab/Shift-Tab、方向键、Space/Enter 与 Escape，Disconnect 复用 native net command owner。
+warning 打开期间 ShowDialog 只替换隐藏 return dialog，ClearDialog 只移除隐藏 dialog 并保留 warning，
+Back 后精确回到替换后的 dialog 或原 previous screen。
+仍须按 `DialogScreen`/`DialogControlSet` 完成 screen blur/depth-clear、
 warning/body/input/footer 的统一 Tab/方向 focus navigation、NumberRange/SingleOption
 超长 label scrolling、Text multiline editor、single-line Text 的 Tab focus traversal、double-click
 word selection 与 IME preedit overlay、

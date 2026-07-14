@@ -41,6 +41,10 @@ pub struct ClientUiState {
     dialog_text_edit: Option<DialogTextEditState>,
     #[serde(skip)]
     dialog_dragging_text_input: Option<usize>,
+    #[serde(skip)]
+    dialog_warning_open: bool,
+    #[serde(skip)]
+    dialog_warning_focused_button: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub dialog_previous_screen: Option<DialogPreviousScreenState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -143,6 +147,8 @@ impl ClientUiState {
         self.dialog_number_range_keyboard_input = None;
         self.dialog_text_edit = None;
         self.dialog_dragging_text_input = None;
+        self.dialog_warning_open = false;
+        self.dialog_warning_focused_button = None;
         self.dialog_input_values.clear();
         self.dialog_waiting_ticks = Some(0);
         true
@@ -182,6 +188,8 @@ impl ClientUiState {
         self.dialog_number_range_keyboard_input = None;
         self.dialog_text_edit = None;
         self.dialog_dragging_text_input = None;
+        self.dialog_warning_open = false;
+        self.dialog_warning_focused_button = None;
         self.dialog_input_values.clear();
         self.dialog_waiting_ticks = None;
         self.dialog_previous_screen = None;
@@ -702,8 +710,40 @@ impl WorldStore {
         self.client_ui.dialog_waiting_ticks
     }
 
+    pub fn dialog_warning_is_open(&self) -> bool {
+        self.client_ui.dialog_warning_open
+    }
+
+    pub fn open_dialog_warning(&mut self) -> bool {
+        if self.current_dialog().is_none() || self.client_ui.dialog_warning_open {
+            return false;
+        }
+        self.client_ui.dialog_warning_open = true;
+        self.client_ui.dialog_warning_focused_button = None;
+        true
+    }
+
+    pub fn close_dialog_warning(&mut self) -> bool {
+        self.client_ui.dialog_warning_focused_button = None;
+        std::mem::take(&mut self.client_ui.dialog_warning_open)
+    }
+
+    pub fn dialog_warning_focused_button(&self) -> Option<bool> {
+        self.client_ui.dialog_warning_focused_button
+    }
+
+    pub fn focus_dialog_warning_button(&mut self, disconnect: bool) -> bool {
+        if !self.client_ui.dialog_warning_open {
+            return false;
+        }
+        self.client_ui.dialog_warning_focused_button = Some(disconnect);
+        true
+    }
+
     pub fn dialog_screen_is_open(&self) -> bool {
-        self.current_dialog().is_some() || self.dialog_waiting_ticks().is_some()
+        self.dialog_warning_is_open()
+            || self.current_dialog().is_some()
+            || self.dialog_waiting_ticks().is_some()
     }
 
     pub fn dialog_waiting_can_close(&self) -> bool {
@@ -1106,6 +1146,52 @@ mod tests {
         assert!(store.close_dialog());
         assert_eq!(store.dialog_focused_body(), None);
         assert_eq!(store.dialog_focused_input(), None);
+    }
+
+    #[test]
+    fn dialog_warning_keeps_replaced_or_cleared_return_screen_hidden_until_back() {
+        let entry = |name: &str, value| NbtSummaryEntry {
+            name: name.to_string(),
+            value,
+        };
+        let notice = |title: &str| ProtocolShowDialog {
+            dialog: DialogHolder::Direct {
+                dialog: NbtSummaryValue::Compound(vec![
+                    entry(
+                        "type",
+                        NbtSummaryValue::String("minecraft:notice".to_string()),
+                    ),
+                    entry("title", NbtSummaryValue::String(title.to_string())),
+                ]),
+            },
+        };
+        let mut store = WorldStore::new();
+        assert!(store.open_advancements_screen());
+        store.apply_show_dialog(notice("First"));
+        assert!(store.open_dialog_warning());
+        assert!(store.dialog_warning_is_open());
+        assert!(!store.open_dialog_warning());
+
+        store.apply_show_dialog(notice("Second"));
+        assert!(store.dialog_warning_is_open());
+        let Some(DialogDataState::Notice { common, .. }) = store
+            .current_dialog()
+            .and_then(|dialog| dialog.data.as_ref())
+        else {
+            panic!("expected replacement notice");
+        };
+        assert_eq!(common.title.text, "Second");
+        assert!(!store.advancements_screen_is_open());
+
+        store.apply_clear_dialog();
+        assert!(store.dialog_warning_is_open());
+        assert!(store.current_dialog().is_none());
+        assert!(store.advancements_screen_is_open());
+        assert!(store.dialog_screen_is_open());
+        assert!(store.close_dialog_warning());
+        assert!(!store.dialog_warning_is_open());
+        assert!(!store.dialog_screen_is_open());
+        assert!(!store.close_dialog_warning());
     }
 
     #[test]

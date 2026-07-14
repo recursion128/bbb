@@ -14853,3 +14853,18 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   端点和 `-1` 白色生成边框。world/native regressions 覆盖 body/input 切换与 lifecycle、包含右下边界而
   排除右边界的 widget hit、blank persistence、action release，以及 32x48 Item 的四条 exact fill geometry；
   warning/body/input/footer 的统一 Tab/方向 focus graph 继续留在 TODO。
+
+## 2026-07-14：Open and operate the dialog warning screen
+
+- [x] 对照 `DialogScreen.createTitleWithWarningButton`、`makeSureWarningButtonIsInBounds` 与三张
+  `dialog/warning_button*` sprite，native 以 title+10px+20px 的 header row 重排标题，加载并渲染原生
+  warning image button，保留 20px 边界修正与官方 tooltip；focused render regression 同步锁定 320px
+  surface 上的 title/button geometry 和 runtime screen precedence。
+- [x] 对照 `DialogScreen.WarningScreen` 与 `ConfirmScreen`，world 增加 serde-skipped warning/confirm-focus
+  owner；native 投影官方 title/contents、15-row centered message、150px Disconnect/Back buttons，支持
+  hover/mouse、Tab/Shift-Tab、方向键、Space/Enter 与 Escape，Disconnect 复用 `NetCommand::Disconnect`。
+- [x] 对照 `ClientCommonPacketListenerImpl.showDialog/clearDialog` 的 WarningScreen 分支，warning 打开期间
+  ShowDialog 替换隐藏 return dialog 而不弹走 warning，ClearDialog 清除隐藏 dialog 并先恢复 previous screen，
+  Back 才关闭 warning；world/native regressions 覆盖 replacement/clear/back stack、keyboard focus、sprite
+  catalog、tooltip、Disconnect command 与旧 Notice/Confirmation header 投影。主 dialog 的统一 Tab/方向
+  focus graph 继续留在 TODO。
