@@ -15,7 +15,7 @@ mod layout;
 
 pub(super) use self::gpu::{
     create_hud_bind_group_layout, create_hud_item_glint_pipeline, create_hud_pipeline,
-    create_hud_sprite_gpu, HudSpriteGpu,
+    create_hud_sprite_gpu, create_repeating_hud_sprite_gpu, HudSpriteGpu,
 };
 use self::layout::{
     absolute_hud_rect, air_bubble_hud_rect, armor_hud_rect, boss_bar_hud_rect, centered_hud_rect,
@@ -1214,6 +1214,7 @@ pub enum HudAdvancementLineTexture {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HudInventoryBackgroundTexture {
+    InworldMenuBackground,
     Inventory,
     GenericContainer,
     Dispenser,
@@ -2080,6 +2081,23 @@ impl Renderer {
         rgba: &[u8],
     ) -> Result<()> {
         self.hud_widget_button_highlighted = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_inworld_menu_background(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_inworld_menu_background = Some(create_repeating_hud_sprite_gpu(
+            &self.device,
+            &self.queue,
+            &self.hud_bind_group_layout,
+            width,
+            height,
+            rgba,
+        )?);
         Ok(())
     }
 
@@ -4863,6 +4881,9 @@ impl Renderer {
         texture: HudInventoryBackgroundTexture,
     ) -> Option<&HudSpriteGpu> {
         match texture {
+            HudInventoryBackgroundTexture::InworldMenuBackground => {
+                self.hud_inworld_menu_background.as_ref()
+            }
             HudInventoryBackgroundTexture::Inventory => self.hud_inventory_background.as_ref(),
             HudInventoryBackgroundTexture::GenericContainer => {
                 self.hud_generic_container_background.as_ref()
@@ -11897,8 +11918,24 @@ fn sanitize_hud_sign_editor_screen(mut screen: HudSignEditorScreen) -> Option<Hu
 fn sanitize_hud_inventory_background_layer(
     layer: HudInventoryBackgroundLayer,
 ) -> Option<HudInventoryBackgroundLayer> {
-    let uv = sanitize_hud_uv_rect(layer.uv)?;
+    let uv = match layer.texture {
+        HudInventoryBackgroundTexture::InworldMenuBackground => {
+            sanitize_repeating_hud_uv_rect(layer.uv)?
+        }
+        _ => sanitize_hud_uv_rect(layer.uv)?,
+    };
     (layer.width > 0 && layer.height > 0).then_some(HudInventoryBackgroundLayer { uv, ..layer })
+}
+
+fn sanitize_repeating_hud_uv_rect(rect: HudUvRect) -> Option<HudUvRect> {
+    let components = [rect.min[0], rect.min[1], rect.max[0], rect.max[1]];
+    if !components.iter().all(|component| component.is_finite()) {
+        return None;
+    }
+    Some(HudUvRect {
+        min: [rect.min[0].min(rect.max[0]), rect.min[1].min(rect.max[1])],
+        max: [rect.min[0].max(rect.max[0]), rect.min[1].max(rect.max[1])],
+    })
 }
 
 fn sanitize_hud_inventory_fill_layer(
@@ -16284,6 +16321,41 @@ mod tests {
                 selection_tint: [0.0, 0.0, 1.0, 1.0],
             })
         );
+    }
+
+    #[test]
+    fn sanitize_hud_inventory_background_keeps_repeat_uv_outside_unit_range() {
+        let mut screen = hud_inventory_screen_with_entity_previews(Vec::new());
+        screen.background_layers = vec![
+            HudInventoryBackgroundLayer {
+                texture: HudInventoryBackgroundTexture::InworldMenuBackground,
+                x: -144,
+                y: -44,
+                width: 800,
+                height: 600,
+                uv: HudUvRect {
+                    min: [25.0, 18.75],
+                    max: [0.0, 0.0],
+                },
+            },
+            HudInventoryBackgroundLayer {
+                texture: HudInventoryBackgroundTexture::WidgetButton,
+                x: 0,
+                y: 0,
+                width: 200,
+                height: 20,
+                uv: HudUvRect {
+                    min: [0.0, 0.0],
+                    max: [25.0, 18.75],
+                },
+            },
+        ];
+
+        let screen = sanitize_hud_inventory_screen(screen);
+
+        assert_eq!(screen.background_layers[0].uv.min, [0.0, 0.0]);
+        assert_eq!(screen.background_layers[0].uv.max, [25.0, 18.75]);
+        assert_eq!(screen.background_layers[1].uv.max, [1.0, 1.0]);
     }
 
     #[test]

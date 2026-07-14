@@ -219,6 +219,45 @@ pub(crate) fn create_hud_sprite_gpu(
     height: u32,
     rgba: &[u8],
 ) -> Result<HudSpriteGpu> {
+    create_hud_sprite_gpu_with_address_mode(
+        device,
+        queue,
+        layout,
+        width,
+        height,
+        rgba,
+        wgpu::AddressMode::ClampToEdge,
+    )
+}
+
+pub(crate) fn create_repeating_hud_sprite_gpu(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    layout: &wgpu::BindGroupLayout,
+    width: u32,
+    height: u32,
+    rgba: &[u8],
+) -> Result<HudSpriteGpu> {
+    create_hud_sprite_gpu_with_address_mode(
+        device,
+        queue,
+        layout,
+        width,
+        height,
+        rgba,
+        wgpu::AddressMode::Repeat,
+    )
+}
+
+fn create_hud_sprite_gpu_with_address_mode(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    layout: &wgpu::BindGroupLayout,
+    width: u32,
+    height: u32,
+    rgba: &[u8],
+    address_mode: wgpu::AddressMode,
+) -> Result<HudSpriteGpu> {
     if width == 0 || height == 0 {
         bail!("hud sprite dimensions must be non-zero");
     }
@@ -277,9 +316,9 @@ pub(crate) fn create_hud_sprite_gpu(
     let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
     let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
         label: Some("bbb-hud-sprite-sampler"),
-        address_mode_u: wgpu::AddressMode::ClampToEdge,
-        address_mode_v: wgpu::AddressMode::ClampToEdge,
-        address_mode_w: wgpu::AddressMode::ClampToEdge,
+        address_mode_u: address_mode,
+        address_mode_v: address_mode,
+        address_mode_w: address_mode,
         mag_filter: wgpu::FilterMode::Nearest,
         min_filter: wgpu::FilterMode::Nearest,
         mipmap_filter: wgpu::FilterMode::Nearest,

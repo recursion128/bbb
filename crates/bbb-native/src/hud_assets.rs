@@ -191,6 +191,16 @@ fn try_load_hud_textures(renderer: &mut bbb_renderer::Renderer, roots: &PackRoot
         widget_button_highlighted.height,
         &widget_button_highlighted.rgba,
     )?;
+    let inworld_menu_background = gui_texture(
+        roots,
+        "textures/gui/inworld_menu_background.png",
+        "minecraft:textures/gui/inworld_menu_background",
+    )?;
+    renderer.upload_hud_inworld_menu_background(
+        inworld_menu_background.width,
+        inworld_menu_background.height,
+        &inworld_menu_background.rgba,
+    )?;
     for stats_sprite in HudStatsSprite::ALL {
         let sprite = hud_sprite(&sprites, stats_sprite.sprite_path())?;
         renderer.upload_hud_stats_sprite(

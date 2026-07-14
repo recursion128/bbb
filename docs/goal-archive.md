@@ -14480,3 +14480,15 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   已有 tooltip background/frame、边界定位和 styled line surface。Confirmation yes-only tooltip 的 hover
   sprite、exact anchor、line text 与 no-button 无 tooltip 路径有 focused regression；未来 button-list dialog
   复用该投影时仍须同时完成 scrolling/clipping/focus。
+
+## 2026-07-14：Tile in-world dialog screen backgrounds
+
+- [x] 对照 `Screen.extractBackground/extractMenuBackgroundTexture`，确认 `DialogScreen` 与
+  `WaitingForResponseScreen` 都不覆写 `isInGameUi`，有 active level 时使用
+  `textures/gui/inworld_menu_background.png`，并以声明的逻辑 32x32 texture size 铺满 screen；本项不把
+  pause screen 的透明渐变误用于 dialog。
+- [x] renderer 新增仅供 in-world menu background 使用的 Repeat sampler 和 finite unbounded UV
+  sanitize 路径，普通 GUI sprite 继续限制在 0..1/ClampToEdge。Notice、Confirmation 与 waiting screen
+  均先提交全 surface 背景层；800x600 surface 配合 512px centered-screen 限宽、32px repeat UV、普通
+  widget UV 仍 clamp 及 waiting 延迟按钮层次均有 focused regression。vanilla blur-before-screen 与
+  depth-clear ordering 继续由明确 renderer 缺口追踪。

@@ -273,11 +273,13 @@ pub(super) fn hud_dialog_screen(
         );
     }
 
-    let background_layers = layout
-        .buttons
-        .iter()
-        .enumerate()
-        .map(|(index, button)| HudInventoryBackgroundLayer {
+    let mut background_layers = vec![inworld_menu_background_layer(
+        surface_size,
+        layout.screen_width,
+        layout.screen_height,
+    )];
+    background_layers.extend(layout.buttons.iter().enumerate().map(|(index, button)| {
+        HudInventoryBackgroundLayer {
             texture: if highlighted_button == Some(index) {
                 HudInventoryBackgroundTexture::WidgetButtonHighlighted
             } else {
@@ -291,8 +293,8 @@ pub(super) fn hud_dialog_screen(
                 min: [0.0, 0.0],
                 max: [1.0, 1.0],
             },
-        })
-        .collect();
+        }
+    }));
     let tooltip = highlighted_button.and_then(|index| {
         let tooltip = controls.actions.get(index)?.tooltip.as_ref()?;
         let (cursor_x, cursor_y) = cursor_screen_position?;
@@ -362,7 +364,11 @@ pub(super) fn hud_waiting_response_screen(
         (HEADER_HEIGHT - TEXT_LINE_HEIGHT) / 2,
         TEXT_COLOR,
     );
-    let mut background_layers = Vec::new();
+    let mut background_layers = vec![inworld_menu_background_layer(
+        surface_size,
+        layout.screen_width,
+        layout.screen_height,
+    )];
     if visible {
         let seconds_visible = waiting_ticks.saturating_sub(1) / 20;
         let button_text = if active {
@@ -599,6 +605,30 @@ fn centered_screen_origin(
     )
 }
 
+fn inworld_menu_background_layer(
+    surface_size: PhysicalSize<u32>,
+    screen_width: u32,
+    screen_height: u32,
+) -> HudInventoryBackgroundLayer {
+    let surface_width = surface_size.width.max(1);
+    let surface_height = surface_size.height.max(1);
+    let (origin_x, origin_y) = centered_screen_origin(surface_size, screen_width, screen_height);
+    HudInventoryBackgroundLayer {
+        texture: HudInventoryBackgroundTexture::InworldMenuBackground,
+        x: i32::try_from(-origin_x).unwrap_or(i32::MIN),
+        y: i32::try_from(-origin_y).unwrap_or(i32::MIN),
+        width: surface_width,
+        height: surface_height,
+        uv: HudUvRect {
+            min: [0.0, 0.0],
+            // Screen.extractMenuBackgroundTexture declares a logical 32x32
+            // texture size even though vanilla's PNG is 16x16, so each source
+            // texel occupies two GUI pixels before the repeat sampler wraps.
+            max: [surface_width as f32 / 32.0, surface_height as f32 / 32.0],
+        },
+    }
+}
+
 fn push_centered_plain_text_label(
     labels: &mut Vec<HudInventoryTextLabel>,
     text: &str,
@@ -772,6 +802,20 @@ mod tests {
     }
 
     #[test]
+    fn inworld_menu_background_covers_surface_outside_centered_dialog_width() {
+        let layer = inworld_menu_background_layer(PhysicalSize::new(800, 600), 512, 512);
+
+        assert_eq!(
+            layer.texture,
+            HudInventoryBackgroundTexture::InworldMenuBackground
+        );
+        assert_eq!((layer.x, layer.y), (-144, -44));
+        assert_eq!((layer.width, layer.height), (800, 600));
+        assert_eq!(layer.uv.min, [0.0, 0.0]);
+        assert_eq!(layer.uv.max, [25.0, 18.75]);
+    }
+
+    #[test]
     fn actionless_notice_button_closes_without_counting_clear_packet() {
         let mut world = world_with_notice(Vec::new());
         let mut counters = NetCounters::default();
@@ -889,15 +933,22 @@ mod tests {
         )
         .unwrap();
 
-        assert_eq!(screen.background_layers.len(), 2);
-        assert_eq!(screen.background_layers[0].x, 66);
-        assert_eq!(screen.background_layers[0].width, 80);
+        assert_eq!(screen.background_layers.len(), 3);
+        assert_eq!(screen.background_layers[0].x, 0);
+        assert_eq!(screen.background_layers[0].width, 320);
         assert_eq!(
             screen.background_layers[0].texture,
+            HudInventoryBackgroundTexture::InworldMenuBackground
+        );
+        assert_eq!(screen.background_layers[0].uv.max, [10.0, 7.5]);
+        assert_eq!(screen.background_layers[1].x, 66);
+        assert_eq!(screen.background_layers[1].width, 80);
+        assert_eq!(
+            screen.background_layers[1].texture,
             HudInventoryBackgroundTexture::WidgetButtonHighlighted
         );
-        assert_eq!(screen.background_layers[1].x, 154);
-        assert_eq!(screen.background_layers[1].width, 100);
+        assert_eq!(screen.background_layers[2].x, 154);
+        assert_eq!(screen.background_layers[2].width, 100);
         assert_eq!(screen.text_labels[1].text, "Yes");
         assert_eq!(screen.text_labels[2].text, "No");
         let tooltip = screen.tooltip.as_ref().unwrap();
@@ -1251,13 +1302,17 @@ mod tests {
         assert_eq!(world.dialog_waiting_ticks(), Some(0));
 
         let hidden = hud_waiting_response_screen(20, None, PhysicalSize::new(320, 240));
-        assert!(hidden.background_layers.is_empty());
+        assert_eq!(hidden.background_layers.len(), 1);
+        assert_eq!(
+            hidden.background_layers[0].texture,
+            HudInventoryBackgroundTexture::InworldMenuBackground
+        );
         assert_eq!(hidden.text_labels.len(), 1);
 
         let first_countdown = hud_waiting_response_screen(21, None, PhysicalSize::new(320, 240));
         assert_eq!(first_countdown.text_labels[1].text, "Back (4s)");
         assert_eq!(
-            first_countdown.background_layers[0].texture,
+            first_countdown.background_layers[1].texture,
             HudInventoryBackgroundTexture::WidgetButtonDisabled
         );
         let last_countdown = hud_waiting_response_screen(100, None, PhysicalSize::new(320, 240));
@@ -1278,7 +1333,7 @@ mod tests {
         let active = hud_waiting_response_screen(101, Some((160, 64)), PhysicalSize::new(320, 240));
         assert_eq!(active.text_labels[1].text, "Back");
         assert_eq!(
-            active.background_layers[0].texture,
+            active.background_layers[1].texture,
             HudInventoryBackgroundTexture::WidgetButtonHighlighted
         );
         assert!(handle_dialog_key_input(

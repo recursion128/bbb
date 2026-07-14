@@ -321,8 +321,10 @@ dialog runtime 的当前可见基线投影 Notice 与 Confirmation 的标题、P
 按钮/悬停，Confirmation 保持 8px footer button spacing 且 Escape 绑定 no action；静态
 custom action 已发送完整 id/payload，并按 `after_action` 进入 close/none/waiting；waiting screen
 按 vanilla 1 秒显示、5 秒启用 Back，且保持 previous-screen、ShowDialog replacement 与
-ClearDialog ignore 语义。
-仍须按 `DialogScreen`/`DialogControlSet` 完成 screen background、warning button/screen、
+ClearDialog ignore 语义。Dialog 与 waiting screen 已按 `Screen.extractMenuBackgroundTexture` 以逻辑
+32x32 尺寸重复采样 `inworld_menu_background.png` 并覆盖完整 surface，超过 512px 的 centered dialog
+限宽也不会留下未覆盖边缘。
+仍须按 `DialogScreen`/`DialogControlSet` 完成 screen blur/depth-clear、warning button/screen、
 Item body、四类 input、button-list tooltip/scroll/focus、其余三类 top-level dialog 布局、action-bearing
 open-url/run/suggest/dynamic action 与 Component-click。静态 change-page 在 DialogScreen 的 default
 handler 中无页面 side effect，仅按 vanilla 执行 `after_action`；静态 show-dialog action 已同步

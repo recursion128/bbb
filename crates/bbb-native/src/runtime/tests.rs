@@ -14140,15 +14140,26 @@ fn hud_inventory_screen_projects_notice_dialog_text_body_and_hovered_action() {
     assert_eq!((screen.width, screen.height), (320, 240));
     assert_eq!(
         screen.background_layers,
-        vec![hud_inventory_background_layer(
-            HudInventoryBackgroundTexture::WidgetButtonHighlighted,
-            110,
-            213,
-            100,
-            20,
-            [0.0, 0.0],
-            [1.0, 1.0],
-        )]
+        vec![
+            hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::InworldMenuBackground,
+                0,
+                0,
+                320,
+                240,
+                [0.0, 0.0],
+                [10.0, 7.5],
+            ),
+            hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::WidgetButtonHighlighted,
+                110,
+                213,
+                100,
+                20,
+                [0.0, 0.0],
+                [1.0, 1.0],
+            ),
+        ]
     );
     assert_eq!(
         screen
@@ -14183,6 +14194,10 @@ fn hud_inventory_screen_projects_notice_dialog_text_body_and_hovered_action() {
     .unwrap();
     assert_eq!(
         idle.background_layers[0].texture,
+        HudInventoryBackgroundTexture::InworldMenuBackground
+    );
+    assert_eq!(
+        idle.background_layers[1].texture,
         HudInventoryBackgroundTexture::WidgetButton
     );
 }
